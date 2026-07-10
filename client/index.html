@@ -59,8 +59,8 @@
     <span id="nav-user" class="topnav__user"></span>
     <span id="nav-badge" class="topnav__badge"></span>
     <button id="theme-toggle" class="topnav__btn topnav__btn--icon" type="button" aria-label="Toggle Theme" title="Chuyển giao diện">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <i class="ph ph-moon icon-moon" style="font-size: 20px;"></i>
+      <i class="ph ph-sun icon-sun" style="font-size: 20px;"></i>
     </button>
     <button id="btn-logout" class="topnav__btn" type="button" data-i18n="nav.logout">Đăng xuất</button>
   </div>
@@ -79,21 +79,20 @@
     </h1>
     <div style="display:flex; gap:8px;">
       <a href="history.html" class="btn-secondary" style="text-decoration:none;">
-        <!-- Clock / history icon -->
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <i class="ph ph-clock-counter-clockwise" style="font-size: 16px;"></i>
         <span data-i18n="lobby.history">Lịch sử</span>
       </a>
       <button id="btn-create" class="btn-create" type="button">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <i class="ph ph-plus-circle" style="font-size: 18px;"></i>
         <span data-i18n="lobby.btn_create">Tạo phòng</span>
       </button>
     </div>
   </div>
 
   <!-- Room list container -->
-  <div id="room-list" class="room-list animate-fade-up delay-3">
+  <div class="ui-shell animate-fade-up delay-3" style="width:100%;">
+    <div class="ui-core">
+      <div id="room-list" class="room-list">
     <div class="room-list__empty">
       <div class="room-list__empty-icon">
         <!-- Gomoku board SVG icon -->
@@ -118,6 +117,8 @@
       </div>
       <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
       <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
+    </div>
+  </div>
     </div>
   </div>
 

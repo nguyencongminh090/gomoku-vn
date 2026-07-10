@@ -108,12 +108,7 @@
 
 /* ── Room List ────────────────────────────────────────────────────────────── */
 .room-list {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  transition: box-shadow var(--duration-normal) var(--ease-in-out);
+  /* Handled by .ui-shell > .ui-core */
 }
 
 /* Premium empty state */

@@ -20,31 +20,32 @@
 }
 
 /* ── Board Area ───────────────────────────────────────────────────────────── */
+.board-area-shell {
+  height: calc(100vh - 76px);
+  display: flex;
+  flex-direction: column;
+}
 .board-area {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--c-surface);
-  border: none;
-  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(0,0,0,0.03);
-  border-radius: var(--radius-xl);
   min-height: 400px;
-  /* Fill remaining viewport: 52px nav + 12px top + 12px bottom padding. */
-  height: calc(100vh - 76px);
 }
 
 /* ── Right Panel ──────────────────────────────────────────────────────────── */
-.panel-right {
+.panel-right-shell {
+  height: calc(100vh - 76px);
   display: flex;
   flex-direction: column;
-  background: var(--c-surface);
-  border: none;
-  box-shadow: var(--shadow-sm), 0 0 0 1px rgba(0,0,0,0.03);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-  max-height: calc(100vh - 76px);
   position: sticky;
   top: 64px;
+}
+.panel-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ── Players Section (top of panel, always visible) ──────────────────────── */
@@ -478,29 +479,32 @@
 @media (max-width: 768px) {
   .room {
     grid-template-columns: 1fr;
-    gap: 0;
-    padding: 0 0 32px;
+    gap: 16px;
+    padding: 16px;
+  }
+
+  .board-area-shell {
+    order: 1;
+    height: auto;
+    min-width: 0; /* Fixes width changing/stretching bug */
   }
 
   .board-area {
-    order: 1;
     height: auto; /* let content drive height on single-column mobile */
     min-height: 50vw;
-    min-width: 0; /* allow the 1fr grid track to shrink below content min-size → no horizontal overflow */
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    min-width: 0; 
+  }
+
+  .panel-right-shell {
+    order: 2;
+    height: auto;
+    min-width: 0; /* Fixes width changing/stretching bug */
+    position: static;
   }
 
   .panel-right {
-    order: 2;
     max-height: none;
     min-width: 0;
-    position: static;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    border-top: none;
   }
 
   .panel-players {
