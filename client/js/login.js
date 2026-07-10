@@ -283,3 +283,16 @@ regConfirm.addEventListener('input', () => {
     setFieldError(regConfirm, 'err-reg-confirm', '');
   }
 });
+
+// ---------------------------------------------------------------------------
+// 3D Parallax Motion for Abstract Board
+// ---------------------------------------------------------------------------
+document.addEventListener('mousemove', (e) => {
+  // Normalize mouse position from -1 to 1 based on window width/height
+  const mx = (e.clientX / window.innerWidth) * 2 - 1;
+  const my = (e.clientY / window.innerHeight) * 2 - 1;
+  
+  // Set CSS variables on the root for the board to consume
+  document.documentElement.style.setProperty('--mx', mx.toFixed(3));
+  document.documentElement.style.setProperty('--my', my.toFixed(3));
+});

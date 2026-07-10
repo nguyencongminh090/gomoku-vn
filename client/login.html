@@ -5,188 +5,166 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Đăng nhập</title>
   <meta name="description" content="Đăng nhập vào Play3CR — nền tảng chơi Caro trực tuyến với luật Wall và Portal." />
-  <link rel="stylesheet" href="css/login.css" />
-  <link rel="stylesheet" href="css/main.css?v=7" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/login.css?v=11" />
+  <link rel="stylesheet" href="css/main.css?v=10" />
 </head>
 <body>
 
-<div class="page">
-  <main class="card" role="main">
-
-    <!-- ── Header ─────────────────────────────────────────────────────── -->
-    <header class="card__header">
-      <div class="card__logo">
-        <!-- Flat board icon: 3×3 grid of dots -->
-        <svg class="logo-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="36" height="36" rx="4" fill="rgba(255,255,255,0.12)"/>
-          <!-- Grid lines -->
-          <line x1="12" y1="6" x2="12" y2="30" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>
-          <line x1="24" y1="6" x2="24" y2="30" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>
-          <line x1="6" y1="12" x2="30" y2="12" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>
-          <line x1="6" y1="24" x2="30" y2="24" stroke="rgba(255,255,255,0.45)" stroke-width="1"/>
-          <!-- Black piece (X) -->
-          <line x1="9" y1="9" x2="15" y2="15" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-          <line x1="15" y1="9" x2="9" y2="15" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
-          <!-- White piece (O) -->
-          <circle cx="24" cy="24" r="4" fill="white"/>
-          <!-- Star points -->
-          <circle cx="12" cy="24" r="1.5" fill="rgba(255,255,255,0.6)"/>
-          <circle cx="24" cy="12" r="1.5" fill="rgba(255,255,255,0.6)"/>
-        </svg>
-        <h1 class="card__title">Play3CR</h1>
-      </div>
-      <p class="card__subtitle" data-i18n="login.subtitle">Cờ Caro trực tuyến — Luật Wall &amp; Portal</p>
-    </header>
-
-    <!-- ── Tabs ───────────────────────────────────────────────────────── -->
-    <nav class="tabs" role="tablist" aria-label="Chế độ đăng nhập">
-      <button
-        id="tab-login"
-        class="tab-btn active"
-        role="tab"
-        aria-selected="true"
-        aria-controls="panel-login"
-        onclick="switchTab('login')"
-        data-i18n="login.tab_login"
-      >Đăng nhập</button>
-      <button
-        id="tab-register"
-        class="tab-btn"
-        role="tab"
-        aria-selected="false"
-        aria-controls="panel-register"
-        onclick="switchTab('register')"
-        data-i18n="login.tab_register"
-      >Đăng ký</button>
-    </nav>
-
-    <!-- ── Global alert banner ────────────────────────────────────────── -->
-    <div id="alert-banner" class="alert alert-error" role="alert" aria-live="polite"></div>
-
-    <!-- ── Login Panel ────────────────────────────────────────────────── -->
-    <section id="panel-login" class="panel active" role="tabpanel" aria-labelledby="tab-login">
-      <form id="form-login" novalidate>
-
-        <div class="field">
-          <label for="login-username" data-i18n="login.username">Tên đăng nhập</label>
-          <input
-            id="login-username"
-            type="text"
-            name="username"
-            data-i18n-placeholder="login.ph_username"
-            placeholder="Nhập tên đăng nhập"
-            autocomplete="username"
-            autocapitalize="none"
-            spellcheck="false"
-            required
-          />
-          <span class="field-error" id="err-login-username"></span>
-        </div>
-
-        <div class="field">
-          <label for="login-password" data-i18n="login.password">Mật khẩu</label>
-          <input
-            id="login-password"
-            type="password"
-            name="password"
-            data-i18n-placeholder="login.ph_password"
-            placeholder="Nhập mật khẩu"
-            autocomplete="current-password"
-            required
-          />
-          <span class="field-error" id="err-login-password"></span>
-        </div>
-
-        <button id="btn-login" type="submit" class="btn btn-primary" data-i18n="login.btn_login">
-          Đăng nhập
-        </button>
-      </form>
-    </section>
-
-    <!-- ── Register Panel ─────────────────────────────────────────────── -->
-    <section id="panel-register" class="panel" role="tabpanel" aria-labelledby="tab-register">
-      <form id="form-register" novalidate>
-
-        <div class="field">
-          <label for="reg-username" data-i18n="login.username">Tên đăng nhập</label>
-          <input
-            id="reg-username"
-            type="text"
-            name="username"
-            data-i18n-placeholder="login.ph_reg_user"
-            placeholder="3-20 ký tự, chữ/số/gạch dưới"
-            autocomplete="username"
-            autocapitalize="none"
-            spellcheck="false"
-            required
-          />
-          <span class="field-error" id="err-reg-username"></span>
-        </div>
-
-        <div class="field">
-          <label for="reg-display" data-i18n="login.display_name">Tên hiển thị</label>
-          <input
-            id="reg-display"
-            type="text"
-            name="displayName"
-            data-i18n-placeholder="login.ph_display"
-            placeholder="Tên xuất hiện trong phòng"
-            autocomplete="nickname"
-            maxlength="24"
-            required
-          />
-          <span class="field-error" id="err-reg-display"></span>
-        </div>
-
-        <div class="field">
-          <label for="reg-password" data-i18n="login.password">Mật khẩu</label>
-          <input
-            id="reg-password"
-            type="password"
-            name="password"
-            data-i18n-placeholder="login.ph_reg_pass"
-            placeholder="Ít nhất 6 ký tự"
-            autocomplete="new-password"
-            required
-          />
-          <span class="field-error" id="err-reg-password"></span>
-        </div>
-
-        <div class="field">
-          <label for="reg-confirm" data-i18n="login.confirm_pass">Xác nhận mật khẩu</label>
-          <input
-            id="reg-confirm"
-            type="password"
-            name="confirmPassword"
-            data-i18n-placeholder="login.ph_confirm"
-            placeholder="Nhập lại mật khẩu"
-            autocomplete="new-password"
-            required
-          />
-          <span class="field-error" id="err-reg-confirm"></span>
-        </div>
-
-        <button id="btn-register" type="submit" class="btn btn-primary" data-i18n="login.btn_register">
-          Tạo tài khoản
-        </button>
-      </form>
-    </section>
-
-    <!-- ── Divider + Guest ─────────────────────────────────────────────── -->
-    <div class="divider"><span data-i18n="login.divider">hoặc</span></div>
-
-    <div class="guest-section">
-      <button id="btn-guest" class="btn btn-guest" type="button" data-i18n="login.btn_guest">
-        Chơi như khách
-      </button>
+<div class="page-split">
+  
+  <!-- ── Left Side (Editorial & Brand) ──────────────────────────────── -->
+  <aside class="split-left">
+    <div class="brand-content">
+      <div class="brand-eyebrow anim-entry delay-100">Phiên bản trực tuyến</div>
+      <h1 class="brand-title anim-entry delay-200">Play3CR</h1>
+      <p class="brand-subtitle anim-entry delay-300" data-i18n="login.subtitle">Cờ Caro trực tuyến — Luật Wall &amp; Portal</p>
     </div>
 
-  </main><!-- /.card -->
+    <!-- Haptic Abstract Graphic (Floating Board) -->
+    <div class="abstract-board-wrapper anim-entry delay-500" aria-hidden="true">
+      <div class="abstract-board">
+        <svg viewBox="0 0 100 100" class="abstract-svg">
+          <defs>
+            <linearGradient id="boardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="rgba(0,0,0,0.03)" />
+              <stop offset="100%" stop-color="rgba(0,0,0,0.08)" />
+            </linearGradient>
+          </defs>
+          <!-- Isometric Board Plate -->
+          <path d="M 50 15 L 90 35 L 50 55 L 10 35 Z" fill="url(#boardGrad)" stroke="rgba(0,0,0,0.12)" stroke-width="0.5"/>
+          <path d="M 10 35 L 50 55 L 50 65 L 10 45 Z" fill="rgba(0,0,0,0.02)"/>
+          <path d="M 90 35 L 50 55 L 50 65 L 90 45 Z" fill="rgba(0,0,0,0.06)"/>
+          
+          <!-- Grid Lines -->
+          <path d="M 30 25 L 70 45 M 20 30 L 60 50 M 40 20 L 80 40 M 70 25 L 30 45 M 80 30 L 40 50 M 60 20 L 20 40" stroke="rgba(0,0,0,0.08)" stroke-width="0.5"/>
+          
+          <!-- Pieces -->
+          <!-- White piece floating -->
+          <g class="parallax-white">
+            <g class="anim-piece-white" transform="translate(0, 0)">
+              <circle cx="50" cy="30" r="4.5" fill="#FFFFFF" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.2))"/>
+            </g>
+          </g>
+          <!-- Black piece floating -->
+          <g class="parallax-black">
+            <g class="anim-piece-black" transform="translate(0, 0)">
+              <circle cx="30" cy="40" r="4.5" fill="#1A1A1A" stroke="rgba(255,255,255,0.2)" stroke-width="0.5" filter="drop-shadow(0 4px 6px rgba(0,0,0,0.3))"/>
+            </g>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </aside>
 
-  <footer class="page-footer" data-i18n="login.footer">
-    Play3CR &nbsp;·&nbsp; Self-hosted &nbsp;·&nbsp; Dữ liệu lưu cục bộ
-  </footer>
-</div><!-- /.page -->
+  <!-- ── Right Side (Interactive Panel) ─────────────────────────────── -->
+  <main class="split-right" role="main">
+    
+    <!-- Double-Bezel Architecture Outer Shell -->
+    <div class="login-shell anim-entry delay-400">
+      <!-- Inner Core -->
+      <div class="login-core">
+        
+        <!-- Tabs -->
+        <nav class="tabs" role="tablist" aria-label="Chế độ đăng nhập">
+          <button id="tab-login" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-login" onclick="switchTab('login')" data-i18n="login.tab_login">
+            Đăng nhập
+          </button>
+          <button id="tab-register" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-register" onclick="switchTab('register')" data-i18n="login.tab_register">
+            Đăng ký
+          </button>
+        </nav>
+
+        <!-- Global alert banner -->
+        <div id="alert-banner" class="alert alert-error" role="alert" aria-live="polite"></div>
+
+        <!-- Login Panel -->
+        <section id="panel-login" class="panel active" role="tabpanel" aria-labelledby="tab-login">
+          <form id="form-login" novalidate>
+            <div class="field">
+              <label for="login-username" data-i18n="login.username">Tên đăng nhập</label>
+              <input id="login-username" type="text" name="username" data-i18n-placeholder="login.ph_username" placeholder="Nhập tên đăng nhập" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+              <span class="field-error" id="err-login-username"></span>
+            </div>
+            <div class="field">
+              <label for="login-password" data-i18n="login.password">Mật khẩu</label>
+              <input id="login-password" type="password" name="password" data-i18n-placeholder="login.ph_password" placeholder="Nhập mật khẩu" autocomplete="current-password" required />
+              <span class="field-error" id="err-login-password"></span>
+            </div>
+
+            <!-- Button-in-Button Pattern -->
+            <button id="btn-login" type="submit" class="btn btn-primary magnetic-btn group">
+              <span class="btn-text" data-i18n="login.btn_login">Đăng nhập</span>
+              <span class="btn-icon-wrapper">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </span>
+            </button>
+          </form>
+        </section>
+
+        <!-- Register Panel -->
+        <section id="panel-register" class="panel" role="tabpanel" aria-labelledby="tab-register">
+          <form id="form-register" novalidate>
+            <div class="field">
+              <label for="reg-username" data-i18n="login.username">Tên đăng nhập</label>
+              <input id="reg-username" type="text" name="username" data-i18n-placeholder="login.ph_reg_user" placeholder="3-20 ký tự, chữ/số/gạch dưới" autocomplete="username" autocapitalize="none" spellcheck="false" required />
+              <span class="field-error" id="err-reg-username"></span>
+            </div>
+            <div class="field">
+              <label for="reg-display" data-i18n="login.display_name">Tên hiển thị</label>
+              <input id="reg-display" type="text" name="displayName" data-i18n-placeholder="login.ph_display" placeholder="Tên xuất hiện trong phòng" autocomplete="nickname" maxlength="24" required />
+              <span class="field-error" id="err-reg-display"></span>
+            </div>
+            <div class="field">
+              <label for="reg-password" data-i18n="login.password">Mật khẩu</label>
+              <input id="reg-password" type="password" name="password" data-i18n-placeholder="login.ph_reg_pass" placeholder="Ít nhất 6 ký tự" autocomplete="new-password" required />
+              <span class="field-error" id="err-reg-password"></span>
+            </div>
+            <div class="field">
+              <label for="reg-confirm" data-i18n="login.confirm_pass">Xác nhận mật khẩu</label>
+              <input id="reg-confirm" type="password" name="confirmPassword" data-i18n-placeholder="login.ph_confirm" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required />
+              <span class="field-error" id="err-reg-confirm"></span>
+            </div>
+
+            <!-- Button-in-Button Pattern -->
+            <button id="btn-register" type="submit" class="btn btn-primary magnetic-btn group">
+              <span class="btn-text" data-i18n="login.btn_register">Tạo tài khoản</span>
+              <span class="btn-icon-wrapper">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </span>
+            </button>
+          </form>
+        </section>
+
+        <!-- Divider + Guest -->
+        <div class="divider"><span data-i18n="login.divider">hoặc</span></div>
+        <div class="guest-section">
+          <button id="btn-guest" class="btn btn-guest magnetic-btn group" type="button">
+            <span class="btn-text" data-i18n="login.btn_guest">Chơi như khách</span>
+            <span class="btn-icon-wrapper">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+            </span>
+          </button>
+        </div>
+
+      </div><!-- /.login-core -->
+    </div><!-- /.login-shell -->
+
+    <footer class="page-footer" data-i18n="login.footer">
+      Play3CR &nbsp;·&nbsp; Self-hosted &nbsp;·&nbsp; Dữ liệu lưu cục bộ
+    </footer>
+
+  </main>
+</div>
 
 <script src="js/i18n.js"></script>
 <script src="js/login.js"></script>
