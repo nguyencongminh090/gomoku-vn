@@ -107,11 +107,12 @@ class BoardRenderer {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Use .board-area's CSS-driven clientHeight as the height budget.
-    // The CSS sets height: calc(100vh - 76px) on desktop so this is always
+    // Use .board-area-shell's CSS-driven clientHeight as the height budget.
+    // The CSS sets height: calc(100vh - 76px) on desktop, so this is always
     // viewport-aware without re-deriving nav/padding heights here.
+    const boardAreaShell = document.querySelector('.board-area-shell');
     const boardAreaEl = document.querySelector('.board-area');
-    const boardAreaH = boardAreaEl ? boardAreaEl.clientHeight : (window.innerHeight - 76);
+    const boardAreaH = boardAreaShell ? boardAreaShell.clientHeight : (boardAreaEl ? boardAreaEl.clientHeight : (window.innerHeight - 76));
 
     const turnBarEl = document.getElementById('turn-bar');
     const controlsEl = document.getElementById('game-controls');
@@ -121,20 +122,23 @@ class BoardRenderer {
     // bottom strip; reserve it so the game controls are never covered.
     const focusMode = document.body.classList.contains('room--focus');
     const focusReserve = focusMode ? 140 : 0;
-    // Subtract inner padding (8px×2) + turn-bar + controls + controls margin (12) + safety (8)
+    // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar + controls + controls margin (12) + safety (8)
     // + focus-mode bottom strip reserve (focusReserve) for the fixed chat input + focus button.
-    // Constants mirror CSS — .board-area-inner padding:8px and .game-controls
-    // margin-top:12px (game.css); keep in sync if those rules change.
-    const maxVh = boardAreaH - 16 - tbH - gcH - 12 - 8 - focusReserve;
+    const maxVh = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8 - focusReserve;
 
     // Single-column layout (mobile, <=768px) has an auto-height board-area, so the
     // height budget collapses — drive the board by available width instead and let
     // the page scroll vertically. Focus mode (fixed fullscreen) and desktop keep the
     // viewport-height budget so controls/chat never get pushed off-screen.
     const singleColumn = window.innerWidth <= 768;
-    const rawSize = (singleColumn && !focusMode)
-      ? parent.clientWidth
-      : Math.min(parent.clientWidth, maxVh);
+    // Subtract width overhead: outer padding/border (14px) + inner padding (16px) + safety
+    const maxVw = boardAreaShell ? (boardAreaShell.clientWidth - 32) : (boardAreaEl ? (boardAreaEl.clientWidth - 32) : parent.clientWidth);
+    
+    // Cap max size to 860px to prevent the board from looking comically huge on large screens
+    let rawSize = (singleColumn && !focusMode)
+      ? maxVw
+      : Math.min(maxVw, maxVh);
+    rawSize = Math.min(rawSize, 860);
     const s = Math.max(rawSize, 200); // usable minimum
 
     // Support High-DPI screens
@@ -365,18 +369,33 @@ class BoardRenderer {
     const gridW = intervals * g.cellSize;
     const gridH = intervals * g.cellSize;
 
-    ctx.fillStyle = this.displayMode === 'stone'
-      ? '#F4F0EA'
-      : '#F9F8F6';
     const w = this.cssSize || this.canvas.width;
     const h = this.cssSize || this.canvas.height;
+
+    // Premium radial gradient background (tactile matte feel)
+    const cx = w / 2;
+    const cy = h / 2;
+    const r = Math.max(w, h);
+    
+    if (this.displayMode === 'stone') {
+      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+      grad.addColorStop(0, '#F9F7F3');
+      grad.addColorStop(1, '#EBE6DC');
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = '#F9F8F6';
+    }
+    
     ctx.fillRect(0, 0, w, h);
 
-    // Grid lines
+    // Grid lines (crisp teal for standard/caro, darker for stone)
     ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(0, 0, 0, 0.08)'
-      : 'rgba(0, 0, 0, 0.05)';
-    ctx.lineWidth = 1.0;
+      ? 'rgba(0, 0, 0, 0.15)'
+      : 'rgba(15, 118, 110, 0.22)';
+    // Use thinner lines on high-DPI for elegance
+    const dpr = window.devicePixelRatio || 1;
+    ctx.lineWidth = dpr > 1 ? 0.75 : 1.0;
+    
     ctx.beginPath();
     for (let i = 0; i < lineCount; i++) {
       // Vertical
@@ -390,11 +409,11 @@ class BoardRenderer {
     }
     ctx.stroke();
 
-    // Board border (thicker)
+    // Board border (thicker and slightly darker)
     ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(0, 0, 0, 0.12)'
-      : 'rgba(0, 0, 0, 0.1)';
-    ctx.lineWidth = 1.0;
+      ? 'rgba(0, 0, 0, 0.25)'
+      : 'rgba(15, 118, 110, 0.4)';
+    ctx.lineWidth = 1.5;
     ctx.strokeRect(g.originX, g.originY, gridW, gridH);
   }
 
@@ -406,8 +425,15 @@ class BoardRenderer {
     const stars = STAR_POINTS[g.boardSize];
     if (!stars) return;
 
-    ctx.fillStyle = 'rgb(115, 102, 89)';
+    ctx.fillStyle = this.displayMode === 'stone' 
+      ? 'rgba(0, 0, 0, 0.6)' 
+      : 'rgba(15, 118, 110, 0.5)';
     const dotR = g.cellSize * 0.08;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
+    ctx.shadowBlur = 1;
+    ctx.shadowOffsetY = 1;
 
     for (const [sx, sy] of stars) {
       const { px, py } = this._cellToPixel(sx, sy);
@@ -415,6 +441,7 @@ class BoardRenderer {
       ctx.arc(px, py, dotR, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.restore();
   }
 
   // ─── Coordinates ────────────────────────────────────────────────
@@ -425,7 +452,9 @@ class BoardRenderer {
     const fontSize = g.cellSize * 0.35;
     const labelOffset = g.cellSize * 0.55;
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.fillStyle = this.displayMode === 'stone'
+      ? 'rgba(0, 0, 0, 0.4)'
+      : 'rgba(15, 118, 110, 0.5)';
     ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -491,24 +520,44 @@ class BoardRenderer {
     const g = this.geo;
     const { px, py } = this._cellToPixel(x, y);
 
+    ctx.save();
     if (this.displayMode === 'stone') {
       const r = g.cellSize * 0.38;
-      ctx.save();
-      ctx.fillStyle = 'rgba(35, 35, 35, 0.08)';
-      ctx.strokeStyle = 'rgba(35, 35, 35, 0.22)';
-      ctx.lineWidth = Math.max(g.cellSize * 0.025, 1);
+      ctx.strokeStyle = 'rgba(15, 118, 110, 0.6)'; // Brand teal glowing ring
+      ctx.lineWidth = Math.max(g.cellSize * 0.04, 1.5);
+      
+      ctx.shadowColor = 'rgba(15, 118, 110, 0.3)';
+      ctx.shadowBlur = 6;
+      
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      const half = g.cellSize * 0.45;
+      ctx.fillStyle = 'rgba(15, 118, 110, 0.06)';
+      ctx.strokeStyle = 'rgba(15, 118, 110, 0.5)';
+      ctx.lineWidth = 1.5;
+      
+      const r = 4;
+      const nx = px - half;
+      const ny = py - half;
+      const s = half * 2;
+      
+      ctx.beginPath();
+      ctx.moveTo(nx + r, ny);
+      ctx.lineTo(nx + s - r, ny);
+      ctx.quadraticCurveTo(nx + s, ny, nx + s, ny + r);
+      ctx.lineTo(nx + s, ny + s - r);
+      ctx.quadraticCurveTo(nx + s, ny + s, nx + s - r, ny + s);
+      ctx.lineTo(nx + r, ny + s);
+      ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
+      ctx.lineTo(nx, ny + r);
+      ctx.quadraticCurveTo(nx, ny, nx + r, ny);
+      
       ctx.fill();
       ctx.stroke();
-      ctx.restore();
-      return;
     }
-
-    const half = g.cellSize * 0.5;
-
-    ctx.fillStyle = 'rgba(204, 204, 204, 0.5)';
-    ctx.fillRect(px - half, py - half, half * 2, half * 2);
+    ctx.restore();
   }
 
   _drawWinHighlight(stones) {

@@ -818,12 +818,25 @@ function appendChatMessage(msg) {
     div.className = 'chat-msg chat-msg--system';
     div.textContent = msg.text;
   } else {
-    div.className = 'chat-msg';
-    const nameSpan = document.createElement('span');
-    nameSpan.className = 'chat-msg__name';
-    nameSpan.textContent = msg.from + ':';
-    div.appendChild(nameSpan);
-    div.appendChild(document.createTextNode(' ' + msg.text));
+    const isSelf = msg.from === (window.myUser ? myUser.username : '');
+    div.className = `chat-msg ${isSelf ? 'chat-msg--self' : 'chat-msg--other'}`;
+    
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-msg__bubble';
+    
+    if (!isSelf) {
+      const nameSpan = document.createElement('div');
+      nameSpan.className = 'chat-msg__name';
+      nameSpan.textContent = msg.from;
+      bubble.appendChild(nameSpan);
+    }
+    
+    const textSpan = document.createElement('div');
+    textSpan.className = 'chat-msg__text';
+    textSpan.textContent = msg.text;
+    bubble.appendChild(textSpan);
+    
+    div.appendChild(bubble);
   }
 
   chatMessages.appendChild(div);
