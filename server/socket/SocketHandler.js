@@ -955,8 +955,8 @@ function startGame(io, room) {
       roomId,
       boardSize: settings.boardSize,
       players: [
-        { userId: slot1Player.userId, displayName: slot1Player.displayName, color: null },
-        { userId: slot2Player.userId, displayName: slot2Player.displayName, color: null },
+        { userId: blackPlayer.userId, displayName: blackPlayer.displayName, color: null },
+        { userId: whitePlayer.userId, displayName: whitePlayer.displayName, color: null },
       ],
       walls,
       portals,
@@ -985,7 +985,7 @@ function startGame(io, room) {
 
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
-      text: `Swap2: ${slot1Player.displayName} đặt 3 quân mở màn.`,
+      text: `Swap2: ${blackPlayer.displayName} đặt 3 quân mở màn.`,
       timestamp: Date.now(), isSystem: true,
     });
 
