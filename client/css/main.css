@@ -1,9 +1,7 @@
 /* =============================================================================
    main.css — Play3CR Shared Design Tokens & Utilities
-   Style: Modern Premium — soft depth, restrained glassmorphism, fluid motion
+   Style: Premium Agency-grade (Double-Bezel, Soft Depth, Fluid Motion)
    ============================================================================= */
-
-
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,20 +9,20 @@ input, button, textarea, select { font-family: inherit; }
 
 :root, [data-theme="light"] {
   /* ── Color Palette (Light) ─────────────────────────────────────────────── */
-  --c-bg:          #FAFAFA;
+  --c-bg:          #F9F9FB;
   --c-surface:     #FFFFFF;
-  --c-surface-2:   #F4F4F5;
-  --c-border:      #EAEAEA;
-  --c-border-light:#FAFAFA;
+  --c-surface-2:   #F3F4F6;
+  --c-border:      #E5E7EB;
+  --c-border-light:#F3F4F6;
 
-  --c-ink:         #111111;
-  --c-ink-2:       #666666;
-  --c-ink-3:       #9CA3AF;
+  --c-ink:         #0F172A;
+  --c-ink-2:       #475569;
+  --c-ink-3:       #94A3B8;
 
-  /* Brand — elegant indigo */
-  --c-brand:       #5E6AD2;
-  --c-brand-dark:  #4956C2;
-  --c-brand-light: rgba(94, 106, 210, 0.1);
+  /* Brand — Sophisticated Indigo */
+  --c-brand:       #4F46E5;
+  --c-brand-dark:  #4338CA;
+  --c-brand-light: rgba(79, 70, 229, 0.08);
 
   --c-accent:      #F59E0B;
   --c-accent-light:#FEF3C7;
@@ -36,43 +34,44 @@ input, button, textarea, select { font-family: inherit; }
   --c-warning:     #F59E0B;
   --c-warning-bg:  #FFFBEB;
 
-  --c-state-idle:    #9CA3AF;
+  --c-state-idle:    #94A3B8;
   --c-state-playing: #10B981;
   --c-state-waiting: #F59E0B;
 
   /* Glass / Translucent */
   --bg-glass:      rgba(255, 255, 255, 0.7);
-  --bg-glass-heavy:rgba(255, 255, 255, 0.85);
+  --bg-glass-heavy:rgba(255, 255, 255, 0.9);
 
-  /* ── Geometry & Depth ──────────────────────────────────────────────────── */
-  --radius:     8px;
-  --radius-lg:  16px;
-  --radius-xl:  24px;
-  --shadow-sm:  0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow:     0 8px 16px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.02);
-  --shadow-lg:  0 24px 48px rgba(0,0,0,0.08), 0 12px 24px rgba(0,0,0,0.04);
-  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.6);
-  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,0.8), inset 0 0 0 1px rgba(255,255,255,0.4), 0 4px 6px rgba(0,0,0,0.02);
+  /* ── Geometry & Depth (Double-Bezel compatible) ────────────────────────── */
+  --radius:     12px;
+  --radius-lg:  20px;
+  --radius-xl:  32px;
+  --shadow-sm:  0 2px 8px -2px rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.08);
+  --shadow:     0 12px 24px -4px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.06);
+  --shadow-lg:  0 32px 64px -12px rgba(15, 23, 42, 0.06), 0 16px 32px -8px rgba(15, 23, 42, 0.08);
+  --shadow-glass: inset 0 1px 0 rgba(255,255,255,1);
+  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,1), 0 4px 12px rgba(0,0,0,0.02);
 
   /* ── Typography ────────────────────────────────────────────────────────── */
   --font: 'Manrope', system-ui, -apple-system, sans-serif;
   
   /* ── Animation (Fluid Dynamics) ────────────────────────────────────────── */
-  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --duration-fast: 0.15s;
-  --duration-normal: 0.25s;
-  --duration-slow: 0.35s;
+  --duration-fast: 0.2s;
+  --duration-normal: 0.4s;
+  --duration-slow: 0.7s;
 }
 
 /* ── Entry Animations ────────────────────────────────────────────────────── */
 @keyframes fadeUp {
-  0% { opacity: 0; transform: translateY(16px); }
-  100% { opacity: 1; transform: translateY(0); }
+  0% { opacity: 0; transform: translateY(24px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
 }
 .animate-fade-up {
   animation: fadeUp var(--duration-slow) var(--ease-spring) backwards;
+  will-change: transform, opacity, filter;
 }
 .delay-1 { animation-delay: 0.05s; }
 .delay-2 { animation-delay: 0.1s; }
@@ -82,19 +81,19 @@ input, button, textarea, select { font-family: inherit; }
 
 [data-theme="dark"] {
   /* ── Color Palette (Dark) ──────────────────────────────────────────────── */
-  --c-bg:          #0A0A0A;
-  --c-surface:     #141415;
-  --c-surface-2:   #222224;
-  --c-border:      #2E2E32;
-  --c-border-light:#1E1E22;
+  --c-bg:          #09090B;
+  --c-surface:     #18181B;
+  --c-surface-2:   #27272A;
+  --c-border:      #3F3F46;
+  --c-border-light:#27272A;
 
-  --c-ink:         #EDEDED;
-  --c-ink-2:       #A1A1AA;
-  --c-ink-3:       #6B7280;
+  --c-ink:         #F8FAFC;
+  --c-ink-2:       #94A3B8;
+  --c-ink-3:       #64748B;
 
-  --c-brand:       #7885FF;
-  --c-brand-dark:  #5E6AD2;
-  --c-brand-light: rgba(120, 133, 255, 0.15);
+  --c-brand:       #6366F1;
+  --c-brand-dark:  #4F46E5;
+  --c-brand-light: rgba(99, 102, 241, 0.15);
 
   --c-accent:      #FBBF24;
   --c-accent-light:rgba(251, 191, 36, 0.15);
@@ -106,18 +105,18 @@ input, button, textarea, select { font-family: inherit; }
   --c-warning:     #FBBF24;
   --c-warning-bg:  rgba(251, 191, 36, 0.15);
 
-  --c-state-idle:    #9CA3AF;
+  --c-state-idle:    #94A3B8;
   --c-state-playing: #34D399;
   --c-state-waiting: #FBBF24;
 
-  --bg-glass:      rgba(18, 18, 20, 0.7);
-  --bg-glass-heavy:rgba(18, 18, 20, 0.85);
+  --bg-glass:      rgba(24, 24, 27, 0.7);
+  --bg-glass-heavy:rgba(24, 24, 27, 0.9);
 
-  --shadow-sm:  0 2px 4px rgba(0,0,0,0.4);
-  --shadow:     0 8px 16px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3);
-  --shadow-lg:  0 24px 48px rgba(0,0,0,0.6), 0 12px 24px rgba(0,0,0,0.4);
-  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.05);
-  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02), 0 4px 6px rgba(0,0,0,0.2);
+  --shadow-sm:  0 2px 8px -2px rgba(0,0,0,0.6), 0 1px 2px -1px rgba(0,0,0,0.8);
+  --shadow:     0 12px 24px -4px rgba(0,0,0,0.6), 0 4px 12px -2px rgba(0,0,0,0.8);
+  --shadow-lg:  0 32px 64px -12px rgba(0,0,0,0.8), 0 16px 32px -8px rgba(0,0,0,0.9);
+  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.06);
+  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -130,24 +129,25 @@ input, button, textarea, select { font-family: inherit; }
 
 html, body {
   min-height: 100vh;
+  /* iOS fix for min-height */
+  min-height: 100dvh;
   font-family: var(--font);
   background: var(--c-bg);
   color: var(--c-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
+  line-height: 1.6;
   transition: background-color var(--duration-normal) var(--ease-out), color var(--duration-normal) var(--ease-out);
 }
 
 /* Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.03em;
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
 }
 p, li {
   letter-spacing: -0.01em;
-  line-height: 1.6;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
@@ -185,18 +185,19 @@ p, li {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  height: 56px;
+  height: 64px;
   background: var(--bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--c-border);
   border-radius: 9999px;
   position: sticky;
   top: 16px;
-  margin: 0 auto 24px auto;
+  margin: 0 auto 32px auto;
   max-width: 1200px;
   z-index: 1000;
-  box-shadow: var(--shadow-lg), var(--shadow-glass-inset);
+  box-shadow: var(--shadow-sm), var(--shadow-glass-inset);
+  transition: all var(--duration-normal) var(--ease-out);
 }
 
 .topnav__brand {
@@ -210,7 +211,7 @@ p, li {
 
 .topnav__title {
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--c-ink);
   letter-spacing: -0.02em;
 }
@@ -224,7 +225,7 @@ p, li {
 .topnav__user {
   font-size: 14px;
   color: var(--c-ink-2);
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -232,7 +233,7 @@ p, li {
 }
 
 .topnav__room-id {
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.06em;
   font-size: 14px;
   color: var(--c-ink);
@@ -240,31 +241,31 @@ p, li {
 
 .topnav__badge {
   font-size: 11px;
-  padding: 3px 8px;
-  border-radius: 12px;
+  padding: 4px 10px;
+  border-radius: 9999px;
   background: var(--c-surface-2);
   color: var(--c-ink-2);
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border: 1px solid var(--c-border);
 }
 
 .topnav__btn {
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--c-ink);
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  border-radius: var(--radius);
+  border-radius: 9999px;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all var(--duration-fast) var(--ease-spring);
   font-family: var(--font);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   box-shadow: var(--shadow-sm);
 }
 .topnav__btn:hover {
@@ -274,35 +275,39 @@ p, li {
 }
 .topnav__btn:active {
   transform: translateY(0) scale(0.96);
-  transition-duration: var(--duration-fast);
-  transition-timing-function: var(--ease-spring);
 }
 
 .topnav__btn--icon {
-  padding: 6px;
-  width: 32px;
-  height: 32px;
+  padding: 8px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
-@media (max-width: 600px) {
-  .topnav { padding: 0 16px; }
+@media (max-width: 768px) {
+  .topnav {
+    margin-inline: 8px;
+    margin-bottom: 16px;
+    top: 8px;
+    height: 48px;
+    padding: 0 12px;
+  }
   .topnav__title { display: none; }
   .topnav__user { max-width: 120px; }
-  .topnav__right { gap: 10px; }
+  .topnav__right { gap: 8px; }
 }
 
 /* ── Language Switcher ────────────────────────────────────────────────────── */
 .lang-switch {
   padding: 4px 10px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   font-family: var(--font);
   color: var(--c-ink-2);
   background: transparent;
   border: 1px solid var(--c-border);
-  border-radius: var(--radius);
+  border-radius: 9999px;
   cursor: pointer;
   letter-spacing: 0.03em;
   transition: all var(--duration-fast) var(--ease-in-out);
@@ -313,7 +318,6 @@ p, li {
   color: var(--c-ink);
 }
 
-/* Login page variant — inside card header */
 .card__logo .lang-switch {
   color: var(--c-ink-2);
   background: var(--c-surface);
@@ -321,15 +325,10 @@ p, li {
   margin-left: 8px;
 }
 
-/* -- Notification Z-Index Ladder ---------------------------------------------
-   toast-stack 1200 > status-banner 1150 > game-overlay 1100 > draw-prompt 10
-   > btn-focus 600 > float-messages 550 (650 focus) > focus board-area 500
-   -------------------------------------------------------------------------- */
-
-/* -- Toast Stack (transient, non-blocking notifications) -------------------- */
+/* ── Toast Stack ────────────────────────────────────────────────────────── */
 .toast-stack {
   position: fixed;
-  top: 24px;
+  top: 32px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 1200;
@@ -342,29 +341,29 @@ p, li {
 }
 .toast {
   pointer-events: auto;
-  padding: 12px 20px;
-  border-radius: var(--radius-lg);
+  padding: 14px 24px;
+  border-radius: 9999px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   color: #FFFFFF;
   background: var(--c-ink);
   box-shadow: var(--shadow-lg);
   text-align: center;
   word-break: break-word;
-  animation: toast-in 0.3s var(--ease-spring), toast-out 0.4s var(--ease-out) forwards;
-  animation-delay: 0s, 3s; /* Assuming the script holds the toast for 3s */
+  animation: toast-in 0.4s var(--ease-spring), toast-out 0.4s var(--ease-out) forwards;
+  animation-delay: 0s, 3s;
 }
-.toast--error   { background: var(--c-error); color: #fff; }
-.toast--success { background: var(--c-success); color: #fff; }
-.toast--info    { background: var(--c-brand); color: #fff; }
+.toast--error   { background: var(--c-error); }
+.toast--success { background: var(--c-success); }
+.toast--info    { background: var(--c-brand); }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
+  from { opacity: 0; transform: translateY(-24px) scale(0.95); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 }
 @keyframes toast-out {
-  0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  0%   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: translateY(-16px) scale(0.95); filter: blur(4px); }
 }
 
 /* ── Accessibility & Global UX ───────────────────────────────────────────── */
@@ -383,23 +382,23 @@ button:not(:disabled):active,
 
 /* ── Double-Bezel Architecture (Global) ──────────────────────────────────── */
 .ui-shell {
-  background: rgba(0,0,0,0.02);
+  background: rgba(0, 0, 0, 0.02);
   border: 1px solid var(--c-border);
-  border-radius: 2rem;
+  border-radius: var(--radius-xl);
   padding: 6px;
   box-shadow:
-    0 20px 40px -10px rgba(0,0,0,0.05),
-    0 1px 3px rgba(0,0,0,0.02);
+    0 2px 2px rgba(0,0,0,0.01),
+    0 8px 24px -4px rgba(0,0,0,0.03);
 }
 
 .ui-core {
   background: var(--c-surface);
-  border-radius: calc(2rem - 6px);
+  border-radius: calc(var(--radius-xl) - 6px);
   box-shadow: var(--shadow-glass-inset);
   border: 1px solid var(--c-border);
   overflow: hidden;
 }
 
 [data-theme="dark"] .ui-shell {
-  background: rgba(255,255,255,0.02);
+  background: rgba(255, 255, 255, 0.02);
 }

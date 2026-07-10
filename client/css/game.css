@@ -151,6 +151,13 @@
   cursor: crosshair;
 }
 
+@media (max-width: 768px) {
+  .board-canvas-wrap canvas {
+    width: 100% !important;
+    height: auto !important;
+  }
+}
+
 /* ─── Game Controls ──────────────────────────────────────────────── */
 
 .game-controls {
