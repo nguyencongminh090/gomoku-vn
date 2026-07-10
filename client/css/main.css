@@ -11,20 +11,20 @@ input, button, textarea, select { font-family: inherit; }
 
 :root, [data-theme="light"] {
   /* ── Color Palette (Light) ─────────────────────────────────────────────── */
-  --c-bg:          #FAFAFA;
+  --c-bg:          #F9FAFB;
   --c-surface:     #FFFFFF;
-  --c-surface-2:   #F4F4F5;
-  --c-border:      #E4E4E7;
-  --c-border-light:#F4F4F5;
+  --c-surface-2:   #F3F4F6;
+  --c-border:      #E5E7EB;
+  --c-border-light:#F9FAFB;
 
-  --c-ink:         #09090B;
-  --c-ink-2:       #52525B;
-  --c-ink-3:       #A1A1AA;
+  --c-ink:         #111827;
+  --c-ink-2:       #4B5563;
+  --c-ink-3:       #9CA3AF;
 
-  /* Brand — elegant deep teal */
-  --c-brand:       #0F766E;
-  --c-brand-dark:  #0D9488;
-  --c-brand-light: #CCFBF1;
+  /* Brand — elegant indigo */
+  --c-brand:       #4F46E5;
+  --c-brand-dark:  #4338CA;
+  --c-brand-light: #EEF2FF;
 
   --c-accent:      #F59E0B;
   --c-accent-light:#FEF3C7;
@@ -36,34 +36,34 @@ input, button, textarea, select { font-family: inherit; }
   --c-warning:     #F59E0B;
   --c-warning-bg:  #FFFBEB;
 
-  --c-state-idle:    #A1A1AA;
+  --c-state-idle:    #9CA3AF;
   --c-state-playing: #10B981;
   --c-state-waiting: #F59E0B;
 
   /* Glass / Translucent */
-  --bg-glass:      rgba(255, 255, 255, 0.85);
-  --bg-glass-heavy:rgba(255, 255, 255, 0.65);
+  --bg-glass:      rgba(255, 255, 255, 0.7);
+  --bg-glass-heavy:rgba(255, 255, 255, 0.85);
 
   /* ── Geometry & Depth ──────────────────────────────────────────────────── */
-  --radius:     6px;
-  --radius-lg:  12px;
-  --radius-xl:  16px;
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.04);
-  --shadow:     0 4px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
-  --shadow-lg:  0 12px 32px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
-  --shadow-glass: inset 0 0 0 1px rgba(255,255,255,0.2);
-  --shadow-glass-inset: inset 0 0 0 1px rgba(255,255,255,0.8), inset 0 2px 4px rgba(0,0,0,0.02);
+  --radius:     8px;
+  --radius-lg:  16px;
+  --radius-xl:  24px;
+  --shadow-sm:  0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:     0 8px 16px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.02);
+  --shadow-lg:  0 24px 48px rgba(0,0,0,0.08), 0 12px 24px rgba(0,0,0,0.04);
+  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.6);
+  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,0.8), inset 0 0 0 1px rgba(255,255,255,0.4), 0 4px 6px rgba(0,0,0,0.02);
 
   /* ── Typography ────────────────────────────────────────────────────────── */
   --font: 'Manrope', system-ui, -apple-system, sans-serif;
   
   /* ── Animation (Fluid Dynamics) ────────────────────────────────────────── */
-  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
-  --duration-fast: 0.2s;
-  --duration-normal: 0.4s;
-  --duration-slow: 0.7s;
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-slow: 0.35s;
 }
 
 /* ── Entry Animations ────────────────────────────────────────────────────── */
@@ -83,18 +83,18 @@ input, button, textarea, select { font-family: inherit; }
 [data-theme="dark"] {
   /* ── Color Palette (Dark) ──────────────────────────────────────────────── */
   --c-bg:          #09090B;
-  --c-surface:     #18181B;
-  --c-surface-2:   #27272A;
-  --c-border:      #3F3F46;
-  --c-border-light:#27272A;
+  --c-surface:     #121214;
+  --c-surface-2:   #1E1E22;
+  --c-border:      #2D2D33;
+  --c-border-light:#1E1E22;
 
-  --c-ink:         #FAFAFA;
-  --c-ink-2:       #A1A1AA;
-  --c-ink-3:       #71717A;
+  --c-ink:         #F3F4F6;
+  --c-ink-2:       #9CA3AF;
+  --c-ink-3:       #6B7280;
 
-  --c-brand:       #2DD4BF;
-  --c-brand-dark:  #14B8A6;
-  --c-brand-light: rgba(45, 212, 191, 0.15);
+  --c-brand:       #6366F1;
+  --c-brand-dark:  #4F46E5;
+  --c-brand-light: rgba(99, 102, 241, 0.15);
 
   --c-accent:      #FBBF24;
   --c-accent-light:rgba(251, 191, 36, 0.15);
@@ -106,18 +106,18 @@ input, button, textarea, select { font-family: inherit; }
   --c-warning:     #FBBF24;
   --c-warning-bg:  rgba(251, 191, 36, 0.15);
 
-  --c-state-idle:    #A1A1AA;
+  --c-state-idle:    #9CA3AF;
   --c-state-playing: #34D399;
   --c-state-waiting: #FBBF24;
 
-  --bg-glass:      rgba(24, 24, 27, 0.85);
-  --bg-glass-heavy:rgba(24, 24, 27, 0.65);
+  --bg-glass:      rgba(18, 18, 20, 0.7);
+  --bg-glass-heavy:rgba(18, 18, 20, 0.85);
 
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.2);
-  --shadow:     0 4px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
-  --shadow-lg:  0 12px 32px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
-  --shadow-glass: inset 0 0 0 1px rgba(255,255,255,0.05);
-  --shadow-glass-inset: inset 0 0 0 1px rgba(255,255,255,0.05), inset 0 1px 2px rgba(255,255,255,0.1);
+  --shadow-sm:  0 2px 4px rgba(0,0,0,0.4);
+  --shadow:     0 8px 16px rgba(0,0,0,0.5), 0 4px 8px rgba(0,0,0,0.3);
+  --shadow-lg:  0 24px 48px rgba(0,0,0,0.6), 0 12px 24px rgba(0,0,0,0.4);
+  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.05);
+  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,0.05), inset 0 0 0 1px rgba(255,255,255,0.02), 0 4px 6px rgba(0,0,0,0.2);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -136,13 +136,18 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
-  transition: background-color var(--duration-normal) var(--ease-in-out), color var(--duration-normal) var(--ease-in-out);
+  transition: background-color var(--duration-normal) var(--ease-out), color var(--duration-normal) var(--ease-out);
 }
 
 /* Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   font-weight: 700;
+  line-height: 1.2;
+}
+p, li {
+  letter-spacing: -0.01em;
+  line-height: 1.6;
 }
 
 /* ── Scrollbar ────────────────────────────────────────────────────────────── */
@@ -254,7 +259,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid var(--c-border);
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-in-out);
+  transition: all var(--duration-fast) var(--ease-out);
   font-family: var(--font);
   display: flex;
   align-items: center;
@@ -264,11 +269,11 @@ h1, h2, h3, h4, h5, h6 {
 }
 .topnav__btn:hover {
   background: var(--c-surface-2);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
 .topnav__btn:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.96);
 }
 
 .topnav__btn--icon {
