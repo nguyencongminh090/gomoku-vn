@@ -55,13 +55,28 @@
   /* ── Typography ────────────────────────────────────────────────────────── */
   --font: 'Inter', system-ui, -apple-system, sans-serif;
   
-  /* ── Animation ─────────────────────────────────────────────────────────── */
-  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  /* ── Animation (Fluid Dynamics) ────────────────────────────────────────── */
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --duration-fast: 0.15s;
-  --duration-normal: 0.25s;
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 0.2s;
+  --duration-normal: 0.4s;
+  --duration-slow: 0.7s;
 }
+
+/* ── Entry Animations ────────────────────────────────────────────────────── */
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up {
+  animation: fadeUp var(--duration-slow) var(--ease-spring) backwards;
+}
+.delay-1 { animation-delay: 0.05s; }
+.delay-2 { animation-delay: 0.1s; }
+.delay-3 { animation-delay: 0.15s; }
+.delay-4 { animation-delay: 0.2s; }
+.delay-5 { animation-delay: 0.25s; }
 
 [data-theme="dark"] {
   /* ── Color Palette (Dark) ──────────────────────────────────────────────── */
@@ -106,6 +121,7 @@
   :root {
     --duration-fast: 0s;
     --duration-normal: 0s;
+    --duration-slow: 0s;
   }
 }
 

@@ -113,9 +113,10 @@ client.on('lobby:online_users', (users) => {
     if (count === 0) {
       onlineUserList.innerHTML = '<li style="color:var(--c-ink-3);font-style:italic;">Không có ai online</li>';
     } else {
-      onlineUserList.innerHTML = users.map(name =>
-        `<li>${escapeHtml(name)}</li>`
-      ).join('');
+      onlineUserList.innerHTML = users.map((name, i) => {
+        const animDelay = (i * 0.05).toFixed(2);
+        return `<li class="animate-fade-up" style="animation-delay: ${animDelay}s">${escapeHtml(name)}</li>`;
+      }).join('');
     }
   }
 });
@@ -177,13 +178,15 @@ function renderRoomList(rooms) {
       <tbody>
   `;
 
+  let i = 0;
   for (const room of rooms) {
     const stateLabel = getStateLabel(room.state, room.playerCount);
     const stateClass = getStateClass(room.state, room.playerCount);
     const ruleTags   = buildRuleTags(room);
 
+    const animDelay = (i * 0.05).toFixed(2);
     html += `
-      <tr data-room-id="${room.roomId}">
+      <tr data-room-id="${room.roomId}" class="animate-fade-up" style="animation-delay: ${animDelay}s">
         <td>
           <div style="font-weight:600; color:var(--c-ink); margin-bottom:2px;">${escapeHtml(room.roomName || room.roomId)}</div>
           <span class="room-id" style="font-size:11px; font-weight:400; color:var(--c-ink-3);">ID: ${escapeHtml(room.roomId)}</span>
@@ -204,6 +207,7 @@ function renderRoomList(rooms) {
         </td>
       </tr>
     `;
+    i++;
   }
 
   html += '</tbody></table>';
