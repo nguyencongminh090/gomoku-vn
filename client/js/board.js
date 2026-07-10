@@ -366,16 +366,16 @@ class BoardRenderer {
     const gridH = intervals * g.cellSize;
 
     ctx.fillStyle = this.displayMode === 'stone'
-      ? 'rgb(224, 190, 136)'
-      : 'rgb(250, 245, 232)';
+      ? '#F4F0EA'
+      : '#F9F8F6';
     const w = this.cssSize || this.canvas.width;
     const h = this.cssSize || this.canvas.height;
     ctx.fillRect(0, 0, w, h);
 
     // Grid lines
     ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(60, 48, 31, 0.72)'
-      : 'rgba(126, 111, 82, 0.72)';
+      ? 'rgba(0, 0, 0, 0.08)'
+      : 'rgba(0, 0, 0, 0.05)';
     ctx.lineWidth = 1.0;
     ctx.beginPath();
     for (let i = 0; i < lineCount; i++) {
@@ -392,9 +392,9 @@ class BoardRenderer {
 
     // Board border (thicker)
     ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(35, 28, 18, 0.88)'
-      : 'rgba(82, 72, 52, 0.9)';
-    ctx.lineWidth = 1.6;
+      ? 'rgba(0, 0, 0, 0.12)'
+      : 'rgba(0, 0, 0, 0.1)';
+    ctx.lineWidth = 1.0;
     ctx.strokeRect(g.originX, g.originY, gridW, gridH);
   }
 
@@ -425,10 +425,13 @@ class BoardRenderer {
     const fontSize = g.cellSize * 0.35;
     const labelOffset = g.cellSize * 0.55;
 
-    ctx.fillStyle = 'rgb(77, 77, 77)';
-    ctx.font = `bold ${fontSize}px sans-serif`;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.font = `600 ${fontSize}px "Plus Jakarta Sans", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    if (ctx.letterSpacing !== undefined) {
+      ctx.letterSpacing = '1px';
+    }
 
     // Column letters (A, B, C, ...)
     for (let x = 0; x < g.boardSize; x++) {
@@ -462,9 +465,25 @@ class BoardRenderer {
     const { px, py } = this._cellToPixel(x, y);
     const half = g.cellSize * 0.45;
 
-    // Golden yellow highlight square
-    ctx.fillStyle = 'rgba(250, 224, 77, 0.75)';
-    ctx.fillRect(px - half, py - half, half * 2, half * 2);
+    // Elegant subtle rounded box highlight
+    ctx.fillStyle = 'rgba(15, 118, 110, 0.15)'; // Brand teal with low opacity
+    
+    // Draw rounded rect manually
+    const r = 6;
+    const nx = px - half;
+    const ny = py - half;
+    const s = half * 2;
+    ctx.beginPath();
+    ctx.moveTo(nx + r, ny);
+    ctx.lineTo(nx + s - r, ny);
+    ctx.quadraticCurveTo(nx + s, ny, nx + s, ny + r);
+    ctx.lineTo(nx + s, ny + s - r);
+    ctx.quadraticCurveTo(nx + s, ny + s, nx + s - r, ny + s);
+    ctx.lineTo(nx + r, ny + s);
+    ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
+    ctx.lineTo(nx, ny + r);
+    ctx.quadraticCurveTo(nx, ny, nx + r, ny);
+    ctx.fill();
   }
 
   _drawHoverHighlight(x, y) {
@@ -589,9 +608,9 @@ class BoardRenderer {
 
     // Diagonal cross — 60% visual extent
     const arm = g.cellSize * 0.22;
-    const lw = g.cellSize * 0.16;
+    const lw = Math.max(g.cellSize * 0.1, 2);
 
-    ctx.strokeStyle = 'rgb(26, 26, 26)';
+    ctx.strokeStyle = 'rgb(15, 23, 42)'; // Sleek slate-900 ink
     ctx.lineWidth = lw;
     ctx.lineCap = 'round';
 
@@ -683,115 +702,50 @@ class BoardRenderer {
     const { px, py } = this._cellToPixel(x, y);
 
     // Circle — 60% visual extent
-    const radius = g.cellSize * 0.26;
-    const lw = g.cellSize * 0.08;
+    const radius = g.cellSize * 0.24;
+    const lw = Math.max(g.cellSize * 0.1, 2);
 
-    // White fill
-    ctx.fillStyle = 'rgb(255, 255, 255)';
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Bold black outline
-    ctx.strokeStyle = 'rgb(26, 26, 26)';
+    // White fill (no fill, just red ink outline for elegant paper look)
+    
+    // Sleek red ink outline
+    ctx.strokeStyle = 'rgb(225, 29, 72)'; // Rose-600
     ctx.lineWidth = lw;
     ctx.beginPath();
     ctx.arc(px, py, radius, 0, Math.PI * 2);
     ctx.stroke();
   }
 
-  // ─── Wall — Brick Pattern ──────────────────────────────────────
+  // ─── Wall — Block ────────────────────────────────────────────────
 
   _drawWall(x, y) {
     const ctx = this.ctx;
     const g = this.geo;
     const { px, py } = this._cellToPixel(x, y);
-    const half = g.cellSize * 0.45;
-    const w = half * 2;
-    const h = half * 2;
-    const left = px - half;
-    const top = py - half;
-
-    const rows = 7;
-    const cols = 3;
-    const rowH = h / rows;
-    const colW = w / cols;
-
-    // Draw individual bricks with deterministic light/dark variation.
-    for (let r = 0; r < rows; r++) {
-      const y0 = top + r * rowH;
-      const xOff = (r % 2 === 0) ? 0 : colW * 0.5;
-      const cuts = [left, left + w];
-
-      for (let c = 1; c < cols; c++) {
-        const lx = left + c * colW + xOff;
-        if (lx > left && lx < left + w) cuts.push(lx);
-      }
-      if (r % 2 !== 0) {
-        const lx = left + colW * 0.5;
-        if (lx > left && lx < left + w) cuts.push(lx);
-      }
-
-      cuts.sort((a, b) => a - b);
-      for (let i = 0; i < cuts.length - 1; i++) {
-        const brickLeft = cuts[i];
-        const brickW = cuts[i + 1] - cuts[i];
-        const shade = this._wallBrickShade(x, y, r, i);
-        const red = 186 + Math.round(shade * 45);
-        const green = 66 + Math.round(shade * 38);
-        const blue = 48 + Math.round(shade * 24);
-        ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
-        ctx.fillRect(brickLeft, y0, brickW, rowH);
-      }
-    }
-
-    // Mortar lines
-    ctx.strokeStyle = 'rgb(230, 217, 191)';
-    ctx.lineWidth = 1.0;
-
-    // Horizontal mortar
+    const half = g.cellSize * 0.42;
+    
+    // Draw an elegant rounded block
+    const r = 4;
+    const nx = px - half;
+    const ny = py - half;
+    const s = half * 2;
+    
+    ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'; // Brand Red-500
     ctx.beginPath();
-    for (let r = 1; r < rows; r++) {
-      const ly = top + r * rowH;
-      ctx.moveTo(left, ly);
-      ctx.lineTo(left + w, ly);
-    }
+    ctx.moveTo(nx + r, ny + r);
+    ctx.lineTo(nx + s - r, ny);
+    ctx.quadraticCurveTo(nx + s, ny, nx + s, ny + r);
+    ctx.lineTo(nx + s, ny + s - r);
+    ctx.quadraticCurveTo(nx + s, ny + s, nx + s - r, ny + s);
+    ctx.lineTo(nx + r, ny + s);
+    ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
+    ctx.lineTo(nx, ny + r);
+    ctx.quadraticCurveTo(nx, ny, nx + r, ny);
+    ctx.fill();
+    
+    // Inner shadow for depth
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 2;
     ctx.stroke();
-
-    // Vertical mortar (offset every other row)
-    ctx.beginPath();
-    for (let r = 0; r < rows; r++) {
-      const y0 = top + r * rowH;
-      const y1 = y0 + rowH;
-      const xOff = (r % 2 === 0) ? 0 : colW * 0.5;
-
-      for (let c = 1; c < cols; c++) {
-        const lx = left + c * colW + xOff;
-        if (lx > left && lx < left + w) {
-          ctx.moveTo(lx, y0);
-          ctx.lineTo(lx, y1);
-        }
-      }
-      // Offset line on odd rows
-      if (r % 2 !== 0) {
-        const lx = left + colW * 0.5;
-        ctx.moveTo(lx, y0);
-        ctx.lineTo(lx, y1);
-      }
-    }
-    ctx.stroke();
-
-    // Subtle border
-    ctx.strokeStyle = 'rgba(128, 51, 38, 0.6)';
-    ctx.lineWidth = 1.0;
-    ctx.strokeRect(left, top, w, h);
-  }
-
-  _wallBrickShade(x, y, row, col) {
-    let n = ((x + 1) * 73856093) ^ ((y + 1) * 19349663) ^
-      ((row + 1) * 83492791) ^ ((col + 1) * 2654435761);
-    n = (n ^ (n >>> 13)) >>> 0;
-    return (n % 1000) / 999;
   }
 
   // ─── Portal — Colored Ring with Center Dot ─────────────────────
