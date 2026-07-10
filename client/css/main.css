@@ -11,20 +11,20 @@ input, button, textarea, select { font-family: inherit; }
 
 :root, [data-theme="light"] {
   /* ── Color Palette (Light) ─────────────────────────────────────────────── */
-  --c-bg:          #F9FAFB;
+  --c-bg:          #FAFAFA;
   --c-surface:     #FFFFFF;
-  --c-surface-2:   #F3F4F6;
-  --c-border:      #E5E7EB;
-  --c-border-light:#F9FAFB;
+  --c-surface-2:   #F4F4F5;
+  --c-border:      #EAEAEA;
+  --c-border-light:#FAFAFA;
 
-  --c-ink:         #111827;
-  --c-ink-2:       #4B5563;
+  --c-ink:         #111111;
+  --c-ink-2:       #666666;
   --c-ink-3:       #9CA3AF;
 
   /* Brand — elegant indigo */
-  --c-brand:       #4F46E5;
-  --c-brand-dark:  #4338CA;
-  --c-brand-light: #EEF2FF;
+  --c-brand:       #5E6AD2;
+  --c-brand-dark:  #4956C2;
+  --c-brand-light: rgba(94, 106, 210, 0.1);
 
   --c-accent:      #F59E0B;
   --c-accent-light:#FEF3C7;
@@ -82,19 +82,19 @@ input, button, textarea, select { font-family: inherit; }
 
 [data-theme="dark"] {
   /* ── Color Palette (Dark) ──────────────────────────────────────────────── */
-  --c-bg:          #09090B;
-  --c-surface:     #121214;
-  --c-surface-2:   #1E1E22;
-  --c-border:      #2D2D33;
+  --c-bg:          #0A0A0A;
+  --c-surface:     #141415;
+  --c-surface-2:   #222224;
+  --c-border:      #2E2E32;
   --c-border-light:#1E1E22;
 
-  --c-ink:         #F3F4F6;
-  --c-ink-2:       #9CA3AF;
+  --c-ink:         #EDEDED;
+  --c-ink-2:       #A1A1AA;
   --c-ink-3:       #6B7280;
 
-  --c-brand:       #6366F1;
-  --c-brand-dark:  #4F46E5;
-  --c-brand-light: rgba(99, 102, 241, 0.15);
+  --c-brand:       #7885FF;
+  --c-brand-dark:  #5E6AD2;
+  --c-brand-light: rgba(120, 133, 255, 0.15);
 
   --c-accent:      #FBBF24;
   --c-accent-light:rgba(251, 191, 36, 0.15);
@@ -142,7 +142,7 @@ html, body {
 /* Typography Hierarchy */
 h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.03em;
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.2;
 }
 p, li {
@@ -274,6 +274,8 @@ p, li {
 }
 .topnav__btn:active {
   transform: translateY(0) scale(0.96);
+  transition-duration: var(--duration-fast);
+  transition-timing-function: var(--ease-spring);
 }
 
 .topnav__btn--icon {
