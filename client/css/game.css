@@ -152,9 +152,13 @@
 }
 
 @media (max-width: 768px) {
-  .board-canvas-wrap canvas {
-    width: 100% !important;
-    height: auto !important;
+  .turn-bar {
+    width: calc(100% - 32px);
+    margin: 0 auto 10px auto;
+  }
+  .game-controls {
+    width: calc(100% - 32px);
+    margin: 10px auto 0 auto;
   }
 }
 
