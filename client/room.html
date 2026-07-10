@@ -9,10 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main.css?v=11" />
-  <link rel="stylesheet" href="css/lobby.css?v=11" />
-  <link rel="stylesheet" href="css/room.css?v=11" />
-  <link rel="stylesheet" href="css/game.css?v=11" />
+  <link rel="stylesheet" href="css/main.css?v=12" />
+  <link rel="stylesheet" href="css/lobby.css?v=12" />
+  <link rel="stylesheet" href="css/room.css?v=12" />
+  <link rel="stylesheet" href="css/game.css?v=12" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,7 +36,10 @@
     </a>
     <div class="topnav__right">
       <span id="room-id-nav" class="topnav__user topnav__room-id"></span>
-      <button id="btn-leave" class="topnav__btn" type="button" data-i18n="nav.leave">Rời phòng</button>
+      <button id="btn-leave" class="topnav__btn" type="button" title="Rời phòng">
+        <i class="ph-bold ph-sign-out" style="font-size: 16px;"></i>
+        <span data-i18n="nav.leave" class="hide-on-mobile">Rời phòng</span>
+      </button>
     </div>
   </nav>
 
