@@ -35,9 +35,17 @@
 /* ── Section header + action bar ──────────────────────────────────────────── */
 .lobby__header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 640px) {
+  .lobby__header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
 }
 
 .lobby__title {

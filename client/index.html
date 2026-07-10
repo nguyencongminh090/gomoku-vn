@@ -7,8 +7,8 @@
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=11" />
-  <link rel="stylesheet" href="css/lobby.css?v=11" />
+  <link rel="stylesheet" href="css/main.css?v=12" />
+  <link rel="stylesheet" href="css/lobby.css?v=12" />
   <style>
     /* Theme toggle icons */
     [data-theme="dark"] .icon-moon { display: none; }
@@ -61,7 +61,10 @@
       <i class="ph ph-moon icon-moon" style="font-size: 20px;"></i>
       <i class="ph ph-sun icon-sun" style="font-size: 20px;"></i>
     </button>
-    <button id="btn-logout" class="topnav__btn" type="button" data-i18n="nav.logout">Đăng xuất</button>
+    <button id="btn-logout" class="topnav__btn" type="button" title="Đăng xuất">
+      <i class="ph-bold ph-sign-out" style="font-size: 16px;"></i>
+      <span data-i18n="nav.logout" class="hide-on-mobile">Đăng xuất</span>
+    </button>
   </div>
 </nav>
 

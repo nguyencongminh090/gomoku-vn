@@ -267,6 +267,7 @@ p, li {
   justify-content: center;
   gap: 8px;
   box-shadow: var(--shadow-sm);
+  white-space: nowrap;
 }
 .topnav__btn:hover {
   background: var(--c-surface-2);
@@ -294,8 +295,10 @@ p, li {
     padding: 0 12px;
   }
   .topnav__title { display: none; }
-  .topnav__user { max-width: 120px; }
-  .topnav__right { gap: 8px; }
+  .topnav__user { max-width: 80px; }
+  .topnav__right { gap: 6px; }
+  .hide-on-mobile { display: none !important; }
+  .topnav__btn { padding: 8px; }
 }
 
 /* ── Language Switcher ────────────────────────────────────────────────────── */
