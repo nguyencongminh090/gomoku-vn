@@ -27,7 +27,7 @@ input, button, textarea, select { font-family: inherit; }
   --c-success:     #10B981;
 
   /* Typography */
-  --font:          'Inter', system-ui, -apple-system, sans-serif;
+  --font:          'Manrope', system-ui, -apple-system, sans-serif;
   
   /* Fluid Dynamics */
   --ease-spring:   cubic-bezier(0.32, 0.72, 0, 1);
