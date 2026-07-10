@@ -1,0 +1,323 @@
+/* =============================================================================
+   main.css — Play3CR Shared Design Tokens & Utilities
+   Style: Modern Premium — soft depth, restrained glassmorphism, fluid motion
+   ============================================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root, [data-theme="light"] {
+  /* ── Color Palette (Light) ─────────────────────────────────────────────── */
+  --c-bg:          #FAFAFA;
+  --c-surface:     #FFFFFF;
+  --c-surface-2:   #F4F4F5;
+  --c-border:      #E4E4E7;
+  --c-border-light:#F4F4F5;
+
+  --c-ink:         #09090B;
+  --c-ink-2:       #52525B;
+  --c-ink-3:       #A1A1AA;
+
+  /* Brand — elegant deep teal */
+  --c-brand:       #0F766E;
+  --c-brand-dark:  #0D9488;
+  --c-brand-light: #CCFBF1;
+
+  --c-accent:      #F59E0B;
+  --c-accent-light:#FEF3C7;
+
+  --c-error:       #EF4444;
+  --c-error-bg:    #FEF2F2;
+  --c-success:     #10B981;
+  --c-success-bg:  #ECFDF5;
+  --c-warning:     #F59E0B;
+  --c-warning-bg:  #FFFBEB;
+
+  --c-state-idle:    #A1A1AA;
+  --c-state-playing: #10B981;
+  --c-state-waiting: #F59E0B;
+
+  /* Glass / Translucent */
+  --bg-glass:      rgba(255, 255, 255, 0.85);
+  --bg-glass-heavy:rgba(255, 255, 255, 0.65);
+
+  /* ── Geometry & Depth ──────────────────────────────────────────────────── */
+  --radius:     6px;
+  --radius-lg:  12px;
+  --radius-xl:  16px;
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.04);
+  --shadow:     0 4px 12px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.03);
+  --shadow-lg:  0 12px 32px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-glass: inset 0 0 0 1px rgba(255,255,255,0.2);
+
+  /* ── Typography ────────────────────────────────────────────────────────── */
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
+  
+  /* ── Animation ─────────────────────────────────────────────────────────── */
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+}
+
+[data-theme="dark"] {
+  /* ── Color Palette (Dark) ──────────────────────────────────────────────── */
+  --c-bg:          #09090B;
+  --c-surface:     #18181B;
+  --c-surface-2:   #27272A;
+  --c-border:      #3F3F46;
+  --c-border-light:#27272A;
+
+  --c-ink:         #FAFAFA;
+  --c-ink-2:       #A1A1AA;
+  --c-ink-3:       #71717A;
+
+  --c-brand:       #2DD4BF;
+  --c-brand-dark:  #14B8A6;
+  --c-brand-light: rgba(45, 212, 191, 0.15);
+
+  --c-accent:      #FBBF24;
+  --c-accent-light:rgba(251, 191, 36, 0.15);
+
+  --c-error:       #F87171;
+  --c-error-bg:    rgba(248, 113, 113, 0.15);
+  --c-success:     #34D399;
+  --c-success-bg:  rgba(52, 211, 153, 0.15);
+  --c-warning:     #FBBF24;
+  --c-warning-bg:  rgba(251, 191, 36, 0.15);
+
+  --c-state-idle:    #A1A1AA;
+  --c-state-playing: #34D399;
+  --c-state-waiting: #FBBF24;
+
+  --bg-glass:      rgba(24, 24, 27, 0.85);
+  --bg-glass-heavy:rgba(24, 24, 27, 0.65);
+
+  --shadow-sm:  0 1px 2px rgba(0,0,0,0.2);
+  --shadow:     0 4px 12px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-lg:  0 12px 32px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.2);
+  --shadow-glass: inset 0 0 0 1px rgba(255,255,255,0.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0s;
+    --duration-normal: 0s;
+  }
+}
+
+html, body {
+  min-height: 100vh;
+  font-family: var(--font);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.5;
+  transition: background-color var(--duration-normal) var(--ease-in-out), color var(--duration-normal) var(--ease-in-out);
+}
+
+/* ── Scrollbar ────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 4px; border: 2px solid var(--c-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--c-ink-3); }
+
+/* ── Connection Status Banner ─────────────────────────────────────────────── */
+.status-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1150;
+  padding: 10px 16px;
+  background: var(--c-warning-bg);
+  color: var(--c-warning);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid var(--c-border);
+  transform: translateY(-100%);
+  transition: transform var(--duration-normal) var(--ease-out);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.status-banner.visible {
+  transform: translateY(0);
+}
+
+/* ── Top Nav ──────────────────────────────────────────────────────────────── */
+.topnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 56px;
+  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: var(--shadow-sm);
+}
+
+.topnav__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  transition: opacity var(--duration-fast) var(--ease-in-out);
+}
+.topnav__brand:hover { opacity: 0.8; }
+
+.topnav__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-ink);
+  letter-spacing: -0.02em;
+}
+
+.topnav__right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topnav__user {
+  font-size: 14px;
+  color: var(--c-ink-2);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+}
+
+.topnav__badge {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  background: var(--c-surface-2);
+  color: var(--c-ink-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--c-border);
+}
+
+.topnav__btn {
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-in-out);
+  font-family: var(--font);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: var(--shadow-sm);
+}
+.topnav__btn:hover {
+  background: var(--c-surface-2);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+.topnav__btn:active {
+  transform: translateY(0);
+}
+
+.topnav__btn--icon {
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .topnav { padding: 0 16px; }
+  .topnav__title { display: none; }
+  .topnav__user { max-width: 120px; }
+  .topnav__right { gap: 10px; }
+}
+
+/* ── Language Switcher ────────────────────────────────────────────────────── */
+.lang-switch {
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--c-ink-2);
+  background: transparent;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: all var(--duration-fast) var(--ease-in-out);
+  text-transform: uppercase;
+}
+.lang-switch:hover {
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+}
+
+/* Login page variant — inside card header */
+.card__logo .lang-switch {
+  color: var(--c-ink-2);
+  background: var(--c-surface);
+  border-color: var(--c-border);
+  margin-left: 8px;
+}
+
+/* -- Notification Z-Index Ladder ---------------------------------------------
+   toast-stack 1200 > status-banner 1150 > game-overlay 1100 > draw-prompt 10
+   > btn-focus 600 > float-messages 550 (650 focus) > focus board-area 500
+   -------------------------------------------------------------------------- */
+
+/* -- Toast Stack (transient, non-blocking notifications) -------------------- */
+.toast-stack {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  width: max-content;
+  max-width: min(90vw, 420px);
+}
+.toast {
+  pointer-events: auto;
+  padding: 12px 20px;
+  border-radius: var(--radius-lg);
+  font-size: 14px;
+  font-weight: 500;
+  color: #FFFFFF;
+  background: var(--c-ink);
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+  word-break: break-word;
+  animation: toast-in 0.3s var(--ease-spring), toast-out 0.4s var(--ease-out) forwards;
+  animation-delay: 0s, 3s; /* Assuming the script holds the toast for 3s */
+}
+.toast--error   { background: var(--c-error); color: #fff; }
+.toast--success { background: var(--c-success); color: #fff; }
+.toast--info    { background: var(--c-brand); color: #fff; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-20px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toast-out {
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+}

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Play3CR — Sảnh</title>
+  <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
+  <link rel="stylesheet" href="css/main.css?v=7" />
+  <link rel="stylesheet" href="css/lobby.css?v=7" />
+  <style>
+    /* Theme toggle icons */
+    [data-theme="dark"] .icon-moon { display: none; }
+    [data-theme="light"] .icon-sun { display: none; }
+    .icon-sun, .icon-moon { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
+    #theme-toggle:hover svg { transform: rotate(15deg) scale(1.1); }
+  </style>
+  <script>
+    (function() {
+      var storedTheme = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var defaultTheme = storedTheme ? storedTheme : (prefersDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', defaultTheme);
+    })();
+  </script>
+</head>
+<body>
+
+<!-- ── Connection Status Banner ─────────────────────────────────────────── -->
+<div id="status-banner" class="status-banner" aria-live="polite"></div>
+
+<!-- ── Top Nav ──────────────────────────────────────────────────────────── -->
+<nav class="topnav" role="navigation" aria-label="Điều hướng chính">
+  <a href="index.html" class="topnav__brand">
+    <!-- Premium board icon -->
+    <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <rect width="36" height="36" rx="10" fill="var(--c-brand-light)"/>
+      <line x1="12" y1="6" x2="12" y2="30" stroke="var(--c-brand)" stroke-width="1.5"/>
+      <line x1="24" y1="6" x2="24" y2="30" stroke="var(--c-brand)" stroke-width="1.5"/>
+      <line x1="6" y1="12" x2="30" y2="12" stroke="var(--c-brand)" stroke-width="1.5"/>
+      <line x1="6" y1="24" x2="30" y2="24" stroke="var(--c-brand)" stroke-width="1.5"/>
+      <line x1="9" y1="9" x2="15" y2="15" stroke="var(--c-brand-dark)" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="15" y1="9" x2="9" y2="15" stroke="var(--c-brand-dark)" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="24" cy="24" r="4.5" fill="var(--c-brand-dark)"/>
+    </svg>
+    <span class="topnav__title">Play3CR</span>
+  </a>
+  <div class="topnav__right">
+    <span id="nav-user" class="topnav__user"></span>
+    <span id="nav-badge" class="topnav__badge"></span>
+    <button id="theme-toggle" class="topnav__btn topnav__btn--icon" type="button" aria-label="Toggle Theme" title="Chuyển giao diện">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="icon-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+    </button>
+    <button id="btn-logout" class="topnav__btn" type="button" data-i18n="nav.logout">Đăng xuất</button>
+  </div>
+</nav>
+
+<!-- ── Lobby Content ───────────────────────────────────────────────────── -->
+<div class="lobby-layout">
+
+<main class="lobby" role="main">
+
+  <div class="lobby__header">
+    <h1>
+      <span class="lobby__title" data-i18n="lobby.room_list">Danh sách phòng</span>
+      <span id="room-count" class="lobby__count"></span>
+      <span id="online-count" class="lobby__count" style="margin-left:8px; cursor:help; color:var(--c-brand);" title="Đang tải..."></span>
+    </h1>
+    <div style="display:flex; gap:8px;">
+      <a href="history.html" class="btn-secondary" style="text-decoration:none;">
+        <!-- Clock / history icon -->
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span data-i18n="lobby.history">Lịch sử</span>
+      </a>
+      <button id="btn-create" class="btn-create" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span data-i18n="lobby.btn_create">Tạo phòng</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Room list container -->
+  <div id="room-list" class="room-list">
+    <div class="room-list__empty">
+      <div class="room-list__empty-icon">
+        <!-- Gomoku board SVG icon -->
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="56" height="56" rx="14" fill="var(--c-surface-2)"/>
+          <!-- Grid lines -->
+          <line x1="14" y1="14" x2="14" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="22" y1="14" x2="22" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="30" y1="14" x2="30" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="38" y1="14" x2="38" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="14" y1="14" x2="42" y2="14" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="14" y1="22" x2="42" y2="22" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="14" y1="30" x2="42" y2="30" stroke="var(--c-border)" stroke-width="1.5"/>
+          <line x1="14" y1="38" x2="42" y2="38" stroke="var(--c-border)" stroke-width="1.5"/>
+          <!-- Black stone -->
+          <circle cx="22" cy="22" r="5.5" fill="var(--c-ink-2)"/>
+          <!-- White stone -->
+          <circle cx="30" cy="30" r="5.5" fill="var(--c-surface)" stroke="var(--c-border)" stroke-width="1.5"/>
+          <!-- Winning stone -->
+          <circle cx="38" cy="22" r="5.5" fill="var(--c-brand)" opacity="0.7"/>
+        </svg>
+      </div>
+      <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
+      <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Online Users Sidebar ──────────────────────────────────────────────── -->
+<aside class="lobby-sidebar">
+  <div id="online-panel" class="online-panel">
+    <div class="online-panel__header" id="online-panel-toggle">
+      <span class="online-panel__dot"></span>
+      <span class="online-panel__title">Đang online</span>
+      <span id="online-panel-count" class="online-panel__count">0</span>
+      <span class="online-panel__arrow">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </span>
+    </div>
+    <div id="online-panel-body" class="online-panel__body">
+      <ul id="online-user-list" class="online-panel__list"></ul>
+    </div>
+  </div>
+</aside>
+
+</div>
+
+<!-- ── Create Room Modal ───────────────────────────────────────────────── -->
+<div id="modal-create" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 id="modal-title" class="modal__title" data-i18n="modal.title">Tạo phòng mới</h2>
+      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng">✕</button>
+    </div>
+    <div class="modal__body">
+
+      <!-- Room Name -->
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.room_name">Tên phòng</span>
+        <div class="timer-input" style="width: 100%;">
+          <input type="text" id="room-name" data-i18n-placeholder="modal.ph_room_name" placeholder="Tùy chọn (để trống tự tạo tên)" style="width: 100%; box-sizing: border-box;" maxlength="30" />
+        </div>
+      </div>
+
+      <!-- Board size -->
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.board_size">Kích thước bàn</span>
+        <div class="pill-group">
+          <input type="radio" name="boardSize" id="bs-15" value="15" />
+          <label for="bs-15">15×15</label>
+          <input type="radio" name="boardSize" id="bs-17" value="17" checked />
+          <label for="bs-17">17×17</label>
+          <input type="radio" name="boardSize" id="bs-19" value="19" />
+          <label for="bs-19">19×19</label>
+          <input type="radio" name="boardSize" id="bs-20" value="20" />
+          <label for="bs-20">20×20</label>
+        </div>
+      </div>
+
+      <!-- Winning rule (radio — pick one) -->
+      <div class="setting-row">
+        <div class="pill-group">
+          <input type="radio" name="winRule" id="wr-freestyle" value="freestyle" checked />
+          <label for="wr-freestyle" data-i18n="rule.freestyle">Tự do</label>
+          <input type="radio" name="winRule" id="wr-standard" value="standard" />
+          <label for="wr-standard" data-i18n="rule.standard">Tiêu chuẩn</label>
+          <input type="radio" name="winRule" id="wr-caro" value="caro" />
+          <label for="wr-caro" data-i18n="rule.caro">Caro</label>
+        </div>
+      </div>
+
+      <!-- Board setup (checkboxes — may combine) -->
+      <div class="setting-row">
+        <div class="toggle-row">
+          <span class="toggle-name" data-i18n="modal.rule_wall">Tường (Wall)</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rule-wall" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-name" data-i18n="modal.rule_portal">Cổng dịch chuyển (Portal)</span>
+          <label class="toggle-switch">
+            <input type="checkbox" id="rule-portal" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Opening rule (radio — pick one) -->
+      <div class="setting-row">
+        <div class="pill-group">
+          <input type="radio" name="openRule" id="or-none" value="none" checked />
+          <label for="or-none" data-i18n="rule.none">Không</label>
+          <input type="radio" name="openRule" id="or-swap2" value="swap2" />
+          <label for="or-swap2">Swap2</label>
+        </div>
+      </div>
+
+      <!-- Timer mode -->
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.timer_mode">Bộ đếm giờ</span>
+        <div class="pill-group">
+          <input type="radio" name="timerMode" id="tm-move" value="per_move" checked />
+          <label for="tm-move" data-i18n="modal.per_move">Mỗi nước</label>
+          <input type="radio" name="timerMode" id="tm-game" value="per_game" />
+          <label for="tm-game" data-i18n="modal.per_game">Mỗi ván</label>
+          <input type="radio" name="timerMode" id="tm-blitz" value="blitz" />
+          <label for="tm-blitz" data-i18n="modal.blitz">Blitz</label>
+        </div>
+      </div>
+
+      <!-- Timer seconds -->
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.time_label">Thời gian</span>
+        <div class="timer-input">
+          <input type="number" id="timer-seconds" value="60" min="5" max="3600" step="5" />
+          <span class="unit" data-i18n="modal.time_unit">giây</span>
+        </div>
+      </div>
+
+      <!-- Timer increment -->
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.time_plus">Cộng thêm</span>
+        <div class="timer-input">
+          <input type="number" id="timer-increment" value="0" min="0" max="600" step="1" />
+          <span class="unit" data-i18n="modal.time_unit">giây</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="modal__actions">
+        <button id="modal-cancel" class="btn btn-cancel" type="button" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button id="modal-confirm" class="btn btn-confirm" type="button" data-i18n="modal.btn_confirm">Tạo phòng</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Socket.io CDN -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/socket-client.js?v=7"></script>
+<script src="js/lobby.js?v=12"></script>
+<script>
+  document.getElementById('theme-toggle').addEventListener('click', function() {
+    var root = document.documentElement;
+    var current = root.getAttribute('data-theme');
+    var next = current === 'dark' ? 'light' : 'dark';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  });
+
+  // Auto-open the online panel on desktop sidebar (>= 900px)
+  (function() {
+    var body = document.getElementById('online-panel-body');
+    var toggle = document.getElementById('online-panel-toggle');
+    if (window.innerWidth >= 900 && body && toggle) {
+      body.classList.add('open');
+      toggle.classList.add('open');
+    }
+  })();
+</script>
+</body>
+</html>

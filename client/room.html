@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Play3CR — Phòng chơi</title>
+  <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
+  <link rel="stylesheet" href="css/main.css?v=7" />
+  <link rel="stylesheet" href="css/lobby.css?v=6" />
+  <link rel="stylesheet" href="css/room.css?v=13" />
+  <link rel="stylesheet" href="css/game.css?v=11" />
+</head>
+
+<body>
+
+  <!-- ── Connection Status ───────────────────────────────────────────────── -->
+  <div id="status-banner" class="status-banner" aria-live="polite"></div>
+
+  <!-- ── Top Nav ──────────────────────────────────────────────────────────── -->
+  <nav class="topnav" role="navigation">
+    <a href="index.html" class="topnav__brand">
+      <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="36" height="36" rx="4" fill="rgba(255,255,255,0.12)" />
+        <line x1="12" y1="6" x2="12" y2="30" stroke="rgba(255,255,255,0.45)" stroke-width="1" />
+        <line x1="24" y1="6" x2="24" y2="30" stroke="rgba(255,255,255,0.45)" stroke-width="1" />
+        <line x1="6" y1="12" x2="30" y2="12" stroke="rgba(255,255,255,0.45)" stroke-width="1" />
+        <line x1="6" y1="24" x2="30" y2="24" stroke="rgba(255,255,255,0.45)" stroke-width="1" />
+        <line x1="9" y1="9" x2="15" y2="15" stroke="white" stroke-width="2" stroke-linecap="round" />
+        <line x1="15" y1="9" x2="9" y2="15" stroke="white" stroke-width="2" stroke-linecap="round" />
+        <circle cx="24" cy="24" r="4" fill="white" />
+      </svg>
+      <span class="topnav__title">Play3CR</span>
+    </a>
+    <div class="topnav__right">
+      <span id="room-id-nav" class="topnav__user"
+        style="font-family:'SF Mono','Consolas',monospace;font-weight:700;"></span>
+      <button id="btn-leave" class="topnav__btn" type="button" data-i18n="nav.leave">Rời phòng</button>
+    </div>
+  </nav>
+
+  <!-- ── Room: 2-Column Layout ────────────────────────────────────────────── -->
+  <main class="room" role="main">
+
+    <!-- ── Board Area (left, main column) ─────────────────────────────────── -->
+    <section class="board-area" id="board-area">
+      <div class="board-placeholder">
+        <div class="board-placeholder__icon">♟</div>
+        <div class="board-placeholder__text" data-i18n="room.placeholder">Chờ người chơi ngồi vào và sẵn sàng...</div>
+      </div>
+    </section>
+
+    <!-- ── Right Panel: Players + Tabs ────────────────────────────────────── -->
+    <aside class="panel-right">
+
+      <!-- Players section (always visible, never hidden behind a tab) -->
+      <div class="panel-players">
+        <div class="players-row">
+          <div id="slot-1" class="slot-card">
+            <div class="slot-card__label">#1</div>
+            <div id="slot-1-content"></div>
+          </div>
+          <div class="players-vs">VS</div>
+          <div id="slot-2" class="slot-card">
+            <div class="slot-card__label">#2</div>
+            <div id="slot-2-content"></div>
+          </div>
+        </div>
+        <div id="action-buttons" class="slot-actions"></div>
+        <div class="score-panel" id="score-panel" style="display:none;">
+          <div class="score-panel__title" data-i18n="room.score_title">Bảng điểm</div>
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th data-i18n="room.th_name">Tên</th>
+                <th data-i18n="room.th_win">T</th>
+                <th data-i18n="room.th_loss">B</th>
+                <th data-i18n="room.th_draw">H</th>
+              </tr>
+            </thead>
+            <tbody id="score-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabs: Chat | Spectators | Settings -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn tab-btn--active" data-tab="tab-chat" data-i18n="room.tab_chat">Trò chuyện</button>
+        <button class="tab-btn" data-tab="tab-users" data-i18n="room.tab_spectators">Khán giả</button>
+        <button class="tab-btn" data-tab="tab-settings" data-i18n="room.tab_settings">Cài đặt</button>
+      </div>
+
+      <div class="tab-content tab-content--active" id="tab-chat">
+        <div class="chat-panel">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input" id="chat-input-wrapper">
+            <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
+              maxlength="500" autocomplete="off" />
+            <button id="btn-send" type="button" data-i18n="room.btn_send">Gửi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-users">
+        <div id="users-panel" class="users-panel">
+          <ul id="users-list" class="users-list"></ul>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-settings">
+        <div id="settings-panel" class="settings-panel">
+          <div class="settings-panel__body open" id="settings-body"></div>
+        </div>
+      </div>
+
+    </aside>
+  </main>
+
+  <!-- Game End Overlay -->
+  <div class="game-overlay" id="game-overlay">
+    <div class="game-overlay__card">
+      <div class="game-overlay__icon" id="overlay-icon"></div>
+      <div class="game-overlay__result" id="overlay-result"></div>
+      <div class="game-overlay__reason" id="overlay-reason"></div>
+      <div class="game-overlay__divider"></div>
+      <div class="game-overlay__buttons">
+        <button class="btn-primary" id="btn-rematch" type="button" data-i18n="overlay.btn_rematch">Đấu lại</button>
+        <button class="btn-secondary" id="btn-close-overlay" type="button" data-i18n="overlay.btn_close">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Float Messages (appear on top of game board) -->
+  <div id="float-messages" class="float-messages"></div>
+
+  <!-- Focus Mode Toggle (only visible during game) -->
+  <button id="btn-focus" class="btn-focus" type="button" data-i18n-title="game.focus_title" title="Chế độ tập trung"
+    aria-label="Chế độ tập trung (F)" style="display:none;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+    </svg>
+  </button>
+
+  <!-- Socket.io CDN -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/i18n.js?v=2"></script>
+  <script src="js/socket-client.js?v=7"></script>
+  <script src="js/board.js?v=9"></script>
+  <script src="js/room.js?v=16"></script>
+</body>
+
+</html>
