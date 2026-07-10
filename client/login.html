@@ -90,7 +90,15 @@
             </div>
             <div class="field">
               <label for="login-password" data-i18n="login.password">Mật khẩu</label>
-              <input id="login-password" type="password" name="password" data-i18n-placeholder="login.ph_password" placeholder="Nhập mật khẩu" autocomplete="current-password" required />
+              <div class="input-wrapper">
+                <input id="login-password" type="password" name="password" data-i18n-placeholder="login.ph_password" placeholder="Nhập mật khẩu" autocomplete="current-password" required />
+                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" onclick="togglePassword(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
               <span class="field-error" id="err-login-password"></span>
             </div>
 
@@ -121,12 +129,28 @@
             </div>
             <div class="field">
               <label for="reg-password" data-i18n="login.password">Mật khẩu</label>
-              <input id="reg-password" type="password" name="password" data-i18n-placeholder="login.ph_reg_pass" placeholder="Ít nhất 6 ký tự" autocomplete="new-password" required />
+              <div class="input-wrapper">
+                <input id="reg-password" type="password" name="password" data-i18n-placeholder="login.ph_reg_pass" placeholder="Ít nhất 6 ký tự" autocomplete="new-password" required />
+                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" onclick="togglePassword(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
               <span class="field-error" id="err-reg-password"></span>
             </div>
             <div class="field">
               <label for="reg-confirm" data-i18n="login.confirm_pass">Xác nhận mật khẩu</label>
-              <input id="reg-confirm" type="password" name="confirmPassword" data-i18n-placeholder="login.ph_confirm" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required />
+              <div class="input-wrapper">
+                <input id="reg-confirm" type="password" name="confirmPassword" data-i18n-placeholder="login.ph_confirm" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required />
+                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" onclick="togglePassword(this)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                </button>
+              </div>
               <span class="field-error" id="err-reg-confirm"></span>
             </div>
 
