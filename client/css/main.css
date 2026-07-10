@@ -179,14 +179,19 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
+  padding: 0 16px;
   height: 56px;
-  background: var(--c-surface);
-  border-bottom: 1px solid var(--c-border);
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--c-border);
+  border-radius: 9999px;
   position: sticky;
-  top: 0;
+  top: 16px;
+  margin: 0 auto 24px auto;
+  max-width: 1200px;
   z-index: 1000;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg), var(--shadow-glass-inset);
 }
 
 .topnav__brand {
@@ -367,4 +372,27 @@ button:not(:disabled):active,
 .topnav__btn:not(:disabled):active {
   transform: scale(0.97) !important;
   transition: transform var(--duration-fast) var(--ease-spring);
+}
+
+/* ── Double-Bezel Architecture (Global) ──────────────────────────────────── */
+.ui-shell {
+  background: rgba(0,0,0,0.02);
+  border: 1px solid var(--c-border);
+  border-radius: 2rem;
+  padding: 6px;
+  box-shadow:
+    0 20px 40px -10px rgba(0,0,0,0.05),
+    0 1px 3px rgba(0,0,0,0.02);
+}
+
+.ui-core {
+  background: var(--c-surface);
+  border-radius: calc(2rem - 6px);
+  box-shadow: var(--shadow-glass-inset);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
+}
+
+[data-theme="dark"] .ui-shell {
+  background: rgba(255,255,255,0.02);
 }
