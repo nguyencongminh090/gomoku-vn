@@ -4,7 +4,7 @@
    Panel contains: Players section (always visible) + Tabs (Chat/Spectators/Settings)
    ============================================================================= */
 
-/* ── Room Grid: 2-Column ──────────────────────────────────────────────────── */
+/* ── Room Grid: 2-Column ───────────────────────────────────────────────────────────── */
 .room {
   width: 100%;
   max-width: 1400px;
@@ -12,11 +12,42 @@
   margin: 0 auto;
   padding-inline: clamp(6px, 2.5vw, 16px);
   padding-top: 12px;
-  padding-bottom: 12px;
+  padding-bottom: 16px;
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 14px;
+  grid-template-columns: 1fr clamp(320px, 28vw, 420px);
+  gap: 16px;
   align-items: start;
+}
+
+/* Entry animations */
+.board-area-shell {
+  animation: fadeUp 0.7s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+  animation-delay: 0.05s;
+}
+.panel-right-shell {
+  animation: fadeUp 0.7s cubic-bezier(0.32, 0.72, 0, 1) backwards;
+  animation-delay: 0.12s;
+}
+
+@keyframes fadeUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Dark mode for new Double-Bezel panels */
+[data-theme="dark"] .board-area,
+[data-theme="dark"] .panel-right-shell {
+  background: rgba(255,255,255,0.018);
+}
+[data-theme="dark"] .board-area-shell {
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    rgba(45, 212, 191, 0.04) 0%,
+    transparent 70%
+  );
+}
+[data-theme="dark"] .panel-players {
+  background: linear-gradient(to bottom, rgba(45,212,191,0.04) 0%, transparent 100%);
 }
 
 /* ── Board Area ───────────────────────────────────────────────────────────── */
@@ -24,35 +55,89 @@
   height: calc(100vh - 76px);
   display: flex;
   flex-direction: column;
-}
-.board-area {
-  flex: 1;
-  display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  /* Subtle radial ambient light — gives the empty space visual interest */
+  background: radial-gradient(
+    ellipse 70% 60% at 50% 50%,
+    rgba(15, 118, 110, 0.04) 0%,
+    transparent 70%
+  );
 }
 
-/* ── Right Panel ──────────────────────────────────────────────────────────── */
+/* Board card — Double-Bezel outer shell */
+.board-area {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.018);
+  border: 1px solid var(--c-border);
+  border-radius: 2rem;
+  padding: 6px;
+  box-shadow:
+    0 2px 2px rgba(0,0,0,0.02),
+    0 8px 24px -4px rgba(0,0,0,0.07),
+    0 32px 64px -16px rgba(0,0,0,0.06);
+  transition: box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.board-area:hover {
+  box-shadow:
+    0 2px 2px rgba(0,0,0,0.02),
+    0 12px 32px -4px rgba(0,0,0,0.1),
+    0 40px 80px -16px rgba(0,0,0,0.08);
+}
+
+/* Double-Bezel inner core */
+.board-area-inner {
+  background: var(--c-surface);
+  border-radius: calc(2rem - 6px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.85),
+    inset 0 2px 6px rgba(0,0,0,0.025);
+  border: 1px solid rgba(228, 228, 231, 0.8);
+  overflow: hidden;
+}
+
+/* ── Right Panel ───────────────────────────────────────────────────────────── */
 .panel-right-shell {
   height: calc(100vh - 76px);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 64px;
+  /* Outer shell */
+  background: rgba(0, 0, 0, 0.018);
+  border: 1px solid var(--c-border);
+  border-radius: 2rem;
+  padding: 6px;
+  box-shadow:
+    0 2px 2px rgba(0,0,0,0.02),
+    0 8px 24px -4px rgba(0,0,0,0.06);
 }
 .panel-right {
   flex: 1;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* Inner core */
+  background: var(--c-surface);
+  border-radius: calc(2rem - 6px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.85),
+    inset 0 2px 4px rgba(0,0,0,0.02);
+  border: 1px solid rgba(228, 228, 231, 0.8);
 }
 
-/* ── Players Section (top of panel, always visible) ──────────────────────── */
+/* ── Players Section ───────────────────────────────────────────────────────── */
 .panel-players {
-  padding: 12px;
-  border-bottom: 1px solid var(--c-border);
+  padding: 14px;
+  border-bottom: 1px solid var(--c-border-light);
   flex-shrink: 0;
+  background: linear-gradient(to bottom, rgba(15,118,110,0.03) 0%, transparent 100%);
+  border-radius: calc(2rem - 6px) calc(2rem - 6px) 0 0;
 }
 
 .players-row {
@@ -66,35 +151,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 800;
   color: var(--c-ink-3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  align-self: center;
+  background: var(--c-surface-2);
+  border-radius: 50%;
+  border: 1px solid var(--c-border);
+  box-shadow: 
+    0 2px 4px rgba(0,0,0,0.02),
+    inset 0 1px 0 rgba(255,255,255,0.5);
 }
 
-/* ── Player Slot Cards ────────────────────────────────────────────────────── */
+/* ── Player Slot Cards ───────────────────────────────────────────────────────── */
 .slot-card {
   flex: 1;
   background: var(--c-surface-2);
-  border: 1px solid transparent;
+  border: 1px solid var(--c-border-light);
   border-radius: var(--radius-lg);
   padding: 10px;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   min-width: 0;
 }
 .slot-card--active {
   background: var(--c-surface);
-  border-color: transparent;
-  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15), inset 0 0 0 1.5px var(--c-brand);
+  border-color: rgba(15, 118, 110, 0.25);
+  box-shadow:
+    0 0 0 1.5px var(--c-brand),
+    0 4px 16px rgba(15, 118, 110, 0.12),
+    0 1px 3px rgba(0,0,0,0.04);
 }
 
 .slot-card__label {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   color: var(--c-ink-3);
   margin-bottom: 4px;
 }
@@ -299,19 +396,19 @@
 }
 .score-table td:first-child { text-align: left; font-weight: 500; }
 
-/* ── Tabs (inside panel-right, below players section) ────────────────────── */
+/* ── Tabs ─────────────────────────────────────────────────────────────── */
 .sidebar-tabs {
   display: flex;
-  border-bottom: 1px solid var(--c-border);
-  background: var(--c-surface);
+  border-bottom: 1px solid var(--c-border-light);
+  background: var(--c-surface-2);
   flex-shrink: 0;
-  padding: 4px;
-  gap: 4px;
+  padding: 5px 6px;
+  gap: 2px;
 }
 
 .tab-btn {
   flex: 1;
-  padding: 8px 0;
+  padding: 7px 0;
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font);
@@ -320,18 +417,21 @@
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: color 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  letter-spacing: 0.01em;
 }
 
 .tab-btn:hover {
-  color: var(--c-ink-1);
-  background: var(--c-surface-2);
+  color: var(--c-ink);
+  background: rgba(0,0,0,0.04);
 }
 
 .tab-btn--active {
   color: var(--c-brand);
-  background: var(--c-brand-light);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  background: var(--c-surface);
+  box-shadow:
+    0 1px 3px rgba(0,0,0,0.07),
+    inset 0 0 0 1px rgba(15,118,110,0.12);
 }
 
 .tab-content {
@@ -381,7 +481,7 @@
 .settings-info__label { color: var(--c-ink-3); font-size: 12px; }
 .settings-info__value { font-weight: 600; }
 
-/* ── Chat Panel ───────────────────────────────────────────────────────────── */
+/* ── Chat Panel ─────────────────────────────────────────────────────────────── */
 .chat-panel {
   flex: 1;
   display: flex;
@@ -393,56 +493,124 @@
 .chat-messages {
   flex: 1;
   overflow-y: auto;
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .chat-msg {
-  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
   word-break: break-word;
 }
-.chat-msg__name {
-  font-weight: 600;
-  margin-right: 4px;
-}
+
 .chat-msg--system {
+  align-items: center;
   color: var(--c-ink-3);
-  font-size: 12px;
+  font-size: 11.5px;
   font-style: italic;
+  padding: 6px 0;
+  margin-bottom: 4px;
+}
+
+.chat-msg--self {
+  align-items: flex-end;
+}
+
+.chat-msg--other {
+  align-items: flex-start;
+}
+
+.chat-msg__bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  position: relative;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.chat-msg--self .chat-msg__bubble {
+  background: var(--c-brand);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+
+.chat-msg--other .chat-msg__bubble {
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  border: 1px solid var(--c-border-light);
+  border-bottom-left-radius: 4px;
+}
+
+.chat-msg__name {
+  font-size: 10.5px;
+  font-weight: 700;
+  margin-bottom: 2px;
+  opacity: 0.7;
+}
+
+.chat-msg--other .chat-msg__name {
+  color: var(--c-brand);
+}
+
+.chat-msg__text {
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .chat-input {
   display: flex;
+  align-items: center;
   border-top: 1px solid var(--c-border-light);
   flex-shrink: 0;
+  padding: 6px 8px;
+  gap: 6px;
+  background: var(--c-surface-2);
+  border-radius: 0 0 calc(2rem - 6px) calc(2rem - 6px);
 }
 .chat-input input {
   flex: 1;
-  padding: 9px 12px;
-  border: none;
+  padding: 8px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
   font-size: 13px;
   font-family: var(--font);
   color: var(--c-ink);
-  background: transparent;
+  background: var(--c-surface);
   outline: none;
   min-width: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.chat-input input:focus {
+  border-color: var(--c-brand);
+  box-shadow: 0 0 0 3px rgba(15,118,110,0.08);
 }
 .chat-input input::placeholder { color: var(--c-ink-3); }
 .chat-input button {
-  padding: 0 14px;
-  font-size: 13px;
-  font-weight: 600;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 700;
   font-family: var(--font);
-  color: var(--c-brand);
-  background: none;
+  color: #fff;
+  background: var(--c-brand);
   border: none;
-  border-left: 1px solid var(--c-border-light);
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.2s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s;
   flex-shrink: 0;
+  letter-spacing: 0.02em;
 }
-.chat-input button:hover { background: var(--c-brand-light); }
+.chat-input button:hover {
+  background: var(--c-brand-dark);
+  transform: translateY(-1px);
+}
+.chat-input button:active {
+  transform: scale(0.96);
+}
 
 /* ── Users List (Spectators Tab) ─────────────────────────────────────────── */
 .users-panel {
