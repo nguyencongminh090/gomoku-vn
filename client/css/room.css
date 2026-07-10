@@ -647,14 +647,20 @@
   .room {
     grid-template-columns: 1fr;
     gap: 12px;
-    padding: 8px;
+    padding: 0;
   }
 
   .board-area-shell {
     order: 1;
     height: auto;
     min-width: 0; 
-    padding: 4px;
+    width: calc(100% + 32px);
+    margin-left: -16px;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
   }
 
   .board-area {
@@ -666,15 +672,19 @@
   }
 
   .board-area-inner {
-    border-radius: calc(var(--radius-xl) - 8px);
-    padding: 6px;
+    border-radius: 0;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background: transparent;
   }
 
   .panel-right-shell {
     order: 2;
     height: auto;
-    min-width: 0; /* Fixes width changing/stretching bug */
+    min-width: 0;
     position: static;
+    padding: 0 12px 12px;
   }
 
   .panel-right {
