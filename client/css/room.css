@@ -1,0 +1,521 @@
+/* =============================================================================
+   room.css — Play3CR Room Page
+   2-Column Layout: [Board 1fr] [Right Panel 320px]
+   Panel contains: Players section (always visible) + Tabs (Chat/Spectators/Settings)
+   ============================================================================= */
+
+/* ── Room Grid: 2-Column ──────────────────────────────────────────────────── */
+.room {
+  width: 100%;
+  max-width: 1400px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding-inline: clamp(6px, 2.5vw, 16px);
+  padding-top: 12px;
+  padding-bottom: 12px;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 14px;
+  align-items: start;
+}
+
+/* ── Board Area ───────────────────────────────────────────────────────────── */
+.board-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  min-height: 400px;
+  /* Fill remaining viewport: 52px nav + 12px top + 12px bottom padding. */
+  height: calc(100vh - 76px);
+}
+
+/* ── Right Panel ──────────────────────────────────────────────────────────── */
+.panel-right {
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  max-height: calc(100vh - 76px);
+  position: sticky;
+  top: 64px;
+}
+
+/* ── Players Section (top of panel, always visible) ──────────────────────── */
+.panel-players {
+  padding: 12px;
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+
+.players-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.players-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--c-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
+
+/* ── Player Slot Cards ────────────────────────────────────────────────────── */
+.slot-card {
+  flex: 1;
+  background: var(--c-surface-2);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  transition: border-color 0.15s;
+  min-width: 0;
+}
+.slot-card--active {
+  background: var(--c-surface);
+  border-color: var(--c-brand);
+}
+
+.slot-card__label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-ink-3);
+  margin-bottom: 4px;
+}
+
+.slot-card__name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.slot-card__empty {
+  color: var(--c-ink-3);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 0;
+}
+
+.slot-card__clickable {
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  border-radius: 6px;
+  padding: 8px 0;
+}
+
+.slot-card__clickable:hover {
+  background: rgba(42, 107, 95, 0.1);
+  color: var(--c-brand);
+}
+
+.slot-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.slot-card__stand {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--c-ink-3);
+  padding: 6px 8px;
+  min-height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.slot-card__stand:hover {
+  color: #c0392b;
+  background: rgba(192, 57, 43, 0.1);
+}
+
+.slot-card__status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.ready-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-border);
+  flex-shrink: 0;
+}
+.ready-dot--ready {
+  background: var(--c-success);
+}
+
+.ready-text {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--c-ink-3);
+}
+.ready-text--ready {
+  color: var(--c-success);
+}
+
+.slot-card__role {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.slot-card__role--host {
+  background: #FFF3E0;
+  color: #D4760A;
+}
+.slot-card__role--guest-badge {
+  background: #F2F0EE;
+  color: var(--c-ink-3);
+}
+
+/* ── Action Buttons (horizontal row) ─────────────────────────────────────── */
+.slot-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.btn-slot {
+  flex: 1;
+  padding: 9px 0;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  background: var(--c-surface);
+  color: var(--c-ink-2);
+  text-align: center;
+}
+.btn-slot:hover {
+  background: var(--c-brand-light);
+  border-color: var(--c-brand);
+  color: var(--c-brand);
+}
+.btn-slot--ready {
+  background: var(--c-brand);
+  color: #FFFFFF;
+  border-color: var(--c-brand);
+}
+.btn-slot--ready:hover {
+  background: var(--c-brand-dark);
+}
+.btn-slot--stand {
+  background: var(--c-surface);
+  color: var(--c-ink-3);
+  border-color: var(--c-border);
+}
+.btn-slot--stand:hover {
+  color: var(--c-error);
+  border-color: var(--c-error);
+  background: var(--c-error-bg);
+}
+.btn-slot--cancel-ready {
+  background: var(--c-surface-2);
+  color: var(--c-ink-2);
+  border-color: var(--c-border);
+}
+.btn-slot--cancel-ready:hover {
+  background: #EBE8E5;
+}
+
+/* ── Score Panel (integrated inside panel-players) ───────────────────────── */
+.score-panel {
+  border-top: 1px solid var(--c-border-light);
+  padding-top: 8px;
+  margin-top: 8px;
+}
+
+.score-panel__title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--c-ink-3);
+  margin-bottom: 6px;
+}
+
+.score-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+.score-table th {
+  text-align: center;
+  font-weight: 600;
+  font-size: 10px;
+  color: var(--c-ink-3);
+  padding: 2px 4px;
+  text-transform: uppercase;
+}
+.score-table th:first-child { text-align: left; }
+.score-table td {
+  padding: 2px 4px;
+  text-align: center;
+}
+.score-table td:first-child { text-align: left; font-weight: 500; }
+
+/* ── Tabs (inside panel-right, below players section) ────────────────────── */
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--c-ink-3);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--c-ink-1);
+  background: rgba(0,0,0,0.02);
+}
+
+.tab-btn--active {
+  color: var(--c-brand);
+  border-bottom-color: var(--c-brand);
+  background: var(--c-surface);
+}
+
+.tab-content {
+  display: none;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tab-content--active {
+  display: flex;
+}
+
+/* ── Settings Panel ───────────────────────────────────────────────────────── */
+.settings-panel {
+  overflow-y: auto;
+  height: 100%;
+}
+
+.settings-panel__body {
+  padding: 14px;
+}
+
+.settings-panel .setting-row { margin-bottom: 12px; }
+.settings-panel .setting-row:last-child { margin-bottom: 0; }
+.settings-panel .setting-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--c-ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.settings-info {
+  padding: 14px;
+}
+.settings-info__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.settings-info__label { color: var(--c-ink-3); font-size: 12px; }
+.settings-info__value { font-weight: 600; }
+
+/* ── Chat Panel ───────────────────────────────────────────────────────────── */
+.chat-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.chat-msg {
+  margin-bottom: 4px;
+  word-break: break-word;
+}
+.chat-msg__name {
+  font-weight: 600;
+  margin-right: 4px;
+}
+.chat-msg--system {
+  color: var(--c-ink-3);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.chat-input {
+  display: flex;
+  border-top: 1px solid var(--c-border-light);
+  flex-shrink: 0;
+}
+.chat-input input {
+  flex: 1;
+  padding: 9px 12px;
+  border: none;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--c-ink);
+  background: transparent;
+  outline: none;
+  min-width: 0;
+}
+.chat-input input::placeholder { color: var(--c-ink-3); }
+.chat-input button {
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--c-brand);
+  background: none;
+  border: none;
+  border-left: 1px solid var(--c-border-light);
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.chat-input button:hover { background: var(--c-brand-light); }
+
+/* ── Users List (Spectators Tab) ─────────────────────────────────────────── */
+.users-panel {
+  padding: 10px 14px;
+}
+
+.users-list {
+  list-style: none;
+  font-size: 13px;
+}
+.users-list li {
+  padding: 3px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.users-list li .user-name { font-weight: 500; }
+
+.btn-kick {
+  padding: 6px 12px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--c-error);
+  background: var(--c-error-bg);
+  border: 1px solid #F0C9C4;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-kick:hover { background: #FBE0DD; }
+
+/* ── Responsive: Single Column on Mobile (≤768px) ────────────────────────── */
+@media (max-width: 768px) {
+  .room {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0 0 32px;
+  }
+
+  .board-area {
+    order: 1;
+    height: auto; /* let content drive height on single-column mobile */
+    min-height: 50vw;
+    min-width: 0; /* allow the 1fr grid track to shrink below content min-size → no horizontal overflow */
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .panel-right {
+    order: 2;
+    max-height: none;
+    min-width: 0;
+    position: static;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
+
+  .panel-players {
+    padding: 8px;
+  }
+
+  .players-row {
+    gap: 6px;
+  }
+
+  .slot-card {
+    padding: 8px;
+  }
+
+  .slot-card__name {
+    font-size: 12px;
+  }
+
+  .slot-card__empty {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 360px) {
+  .slot-card__label { font-size: 10px; }
+  .score-table { font-size: 10px; }
+  .score-table th, .score-table td { padding: 2px 2px; }
+}
