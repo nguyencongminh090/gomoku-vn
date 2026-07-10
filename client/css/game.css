@@ -451,7 +451,7 @@
    ========================================================================== */
 
 .room--focus .topnav,
-.room--focus .panel-right {
+.room--focus .panel-right-shell {
   display: none !important;
 }
 
@@ -465,6 +465,9 @@
   align-items: center;
   justify-content: flex-start;
   padding: 10px 10px 140px;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .room--focus .board-canvas-wrap {
