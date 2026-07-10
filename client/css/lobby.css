@@ -185,11 +185,11 @@
 
 /* Room ID column */
 .room-id {
-  font-weight: 600;
-  font-family: 'SF Mono', 'Consolas', monospace;
+  font-weight: 700;
+  font-family: var(--font);
   color: var(--c-ink-2);
   font-size: 13px;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
 }
 
 /* State badge */

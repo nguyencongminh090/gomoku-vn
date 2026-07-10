@@ -3,10 +3,11 @@
    Style: Modern Premium — soft depth, restrained glassmorphism, fluid motion
    ============================================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+
 
 /* ── Reset ────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+input, button, textarea, select { font-family: inherit; }
 
 :root, [data-theme="light"] {
   /* ── Color Palette (Light) ─────────────────────────────────────────────── */
@@ -53,7 +54,7 @@
   --shadow-glass: inset 0 0 0 1px rgba(255,255,255,0.2);
 
   /* ── Typography ────────────────────────────────────────────────────────── */
-  --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font: 'Inter', system-ui, -apple-system, sans-serif;
   
   /* ── Animation (Fluid Dynamics) ────────────────────────────────────────── */
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
@@ -216,6 +217,13 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 250px;
+}
+
+.topnav__room-id {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 14px;
+  color: var(--c-ink);
 }
 
 .topnav__badge {

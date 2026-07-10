@@ -426,7 +426,7 @@ class BoardRenderer {
     const labelOffset = g.cellSize * 0.55;
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.font = `600 ${fontSize}px "Plus Jakarta Sans", sans-serif`;
+    ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     if (ctx.letterSpacing !== undefined) {
