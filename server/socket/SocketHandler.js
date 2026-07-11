@@ -1129,17 +1129,19 @@ function handleDisconnect(io, socket) {
 
   const room = roomManager.getRoom(roomId);
 
+  // RACE CONDITION FIX: Check if this user already has another active socket.
+  // If they do, this is just a stale socket closing (e.g., closing a duplicate tab).
+  // Do NOT remove them from the room or start grace periods.
+  const activeSockets = findSocketsByUserId(io, user.userId);
+  if (activeSockets.length > 0) {
+    logger.info(`[Socket] Stale socket closed for ${user.displayName}, active socket exists — skipping leave/grace`);
+    return;
+  }
+
   // [5.2] If a game is active and this user is a player, start grace period
   if (room && room.gameState && room.gameState.status === 'ongoing') {
     const isPlayer = room.gameState.players.some(p => p.userId === user.userId);
     if (isPlayer) {
-      // RACE CONDITION FIX: Check if this user already has another active socket.
-      // If they do, this is just a stale socket closing — don't start grace.
-      const activeSockets = findSocketsByUserId(io, user.userId);
-      if (activeSockets.length > 0) {
-        logger.info(`[Socket] Stale socket closed for ${user.displayName}, active socket exists — skipping grace`);
-        return;
-      }
       startDisconnectGrace(io, room, user);
       return; // Don't remove from room yet
     }
