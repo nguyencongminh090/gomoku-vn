@@ -474,16 +474,42 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  padding: 10px 10px 140px;
+  /* Turn-bar at top, board + controls in the centre, bottom space for chat */
+  justify-content: center;
+  padding: 10px 10px 0;
   border-radius: 0;
   border: none;
   box-shadow: none;
+  /* Leave space at the bottom for fixed chat input + focus button */
+  padding-bottom: 140px;
+  box-sizing: border-box;
+}
+
+/* The inner card should shrink to its content, not stretch full height */
+.room--focus .board-area-inner {
+  height: auto;
+  flex: 0 0 auto;
+  width: auto;   /* shrink to the board's natural square width */
+  max-width: calc(100vw - 20px);
+  border-radius: 16px;
+  overflow: visible; /* allow turn-bar to breathe above */
+}
+
+/* The turn-bar lives inside .board-area-inner — give it a small top margin */
+.room--focus .turn-bar {
+  margin-bottom: 8px;
+}
+
+/* Controls below board */
+.room--focus .game-controls {
+  margin-top: 10px;
 }
 
 .room--focus .board-canvas-wrap {
-  max-height: calc(100vh - 120px);
-  max-width: 100vw;
+  /* Size is driven by the JS resize() budget, CSS just prevents overflow */
+  max-height: none;
+  max-width: 100%;
+  overflow: visible;
 }
 
 /* Chat input in focus mode */

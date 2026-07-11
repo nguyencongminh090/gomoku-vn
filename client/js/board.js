@@ -107,37 +107,49 @@ class BoardRenderer {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    // Use .board-area-shell's CSS-driven clientHeight as the height budget.
-    // The CSS sets height: calc(100vh - 76px) on desktop, so this is always
-    // viewport-aware without re-deriving nav/padding heights here.
-    const boardAreaShell = document.querySelector('.board-area-shell');
-    const boardAreaEl = document.querySelector('.board-area');
-    const boardAreaH = boardAreaShell ? boardAreaShell.clientHeight : (boardAreaEl ? boardAreaEl.clientHeight : (window.innerHeight - 76));
-
+    const focusMode = document.body.classList.contains('room--focus');
     const turnBarEl = document.getElementById('turn-bar');
     const controlsEl = document.getElementById('game-controls');
     const tbH = turnBarEl ? (turnBarEl.offsetHeight || 0) : 0;
     const gcH = controlsEl ? (controlsEl.offsetHeight || 0) : 0;
-    // In focus mode the fixed chat input (bottom:85px) + focus button occupy a
-    // bottom strip; reserve it so the game controls are never covered.
-    const focusMode = document.body.classList.contains('room--focus');
-    const focusReserve = focusMode ? 140 : 0;
-    // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar + controls + controls margin (12) + safety (8)
-    // + focus-mode bottom strip reserve (focusReserve) for the fixed chat input + focus button.
-    const maxVh = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8 - focusReserve;
 
-    // Single-column layout (mobile, <=768px) has an auto-height board-area, so the
-    // height budget collapses — drive the board by available width instead and let
-    // the page scroll vertically. Focus mode (fixed fullscreen) and desktop keep the
-    // viewport-height budget so controls/chat never get pushed off-screen.
+    let boardAreaH, maxVw;
+
+    if (focusMode) {
+      // In focus mode .board-area is position:fixed filling the entire viewport.
+      // The shell element sits behind in normal flow and reports wrong dimensions —
+      // always use raw viewport dimensions here.
+      // Reserve: 10px top padding + 20px top gap + tbH + gcH + 18px controls margin
+      //        + 140px bottom strip (fixed chat + focus-btn)
+      const topReserve = 10 + 20 + tbH + 18;
+      const bottomReserve = gcH + 18 + 140;
+      boardAreaH = window.innerHeight - topReserve - bottomReserve;
+      // Side padding: 10px each side in the CSS
+      maxVw = window.innerWidth - 20;
+    } else {
+      // Normal layout: derive from the shell element which has
+      // height: calc(100vh - 76px) on desktop.
+      const boardAreaShell = document.querySelector('.board-area-shell');
+      const boardAreaEl = document.querySelector('.board-area');
+      boardAreaH = boardAreaShell
+        ? boardAreaShell.clientHeight
+        : (boardAreaEl ? boardAreaEl.clientHeight : (window.innerHeight - 76));
+      // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar +
+      // controls + controls margin (12) + safety (8)
+      boardAreaH = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8;
+      maxVw = boardAreaShell
+        ? (boardAreaShell.clientWidth - 32)
+        : (boardAreaEl ? (boardAreaEl.clientWidth - 32) : parent.clientWidth);
+    }
+
+    // Single-column layout (mobile, <=768px) has auto-height board-area in normal
+    // mode, so height budget collapses — drive by width instead.
+    // Focus mode always uses the viewport budget calculated above.
     const singleColumn = window.innerWidth <= 768;
-    // Subtract width overhead: outer padding/border (14px) + inner padding (16px) + safety
-    const maxVw = boardAreaShell ? (boardAreaShell.clientWidth - 32) : (boardAreaEl ? (boardAreaEl.clientWidth - 32) : parent.clientWidth);
-    
-    // Cap max size to 860px to prevent the board from looking comically huge on large screens
     let rawSize = (singleColumn && !focusMode)
       ? maxVw
-      : Math.min(maxVw, maxVh);
+      : Math.min(maxVw, boardAreaH);
+    // Cap to 860px to prevent the board looking comically large on big screens
     rawSize = Math.min(rawSize, 860);
     const s = Math.max(rawSize, 200); // usable minimum
 
