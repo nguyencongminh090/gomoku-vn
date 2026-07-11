@@ -770,30 +770,117 @@ class BoardRenderer {
     const ctx = this.ctx;
     const g = this.geo;
     const { px, py } = this._cellToPixel(x, y);
-    const half = g.cellSize * 0.42;
+
+    // Size of the block (84% of cell size to leave a small gap)
+    const blockScale = 0.84;
+    const s = g.cellSize * blockScale;
+    const nx = px - s / 2;
+    const ny = py - s / 2;
+
+    const br = 4; // outer radius
+    const br2 = 2; // inner brick radius
+    const GAP = 1; // mortar thickness
     
-    // Draw an elegant rounded block
-    const r = 4;
-    const nx = px - half;
-    const ny = py - half;
-    const s = half * 2;
+    // Classic Stone/Grey Palette (from WormHole reference)
+    // Crucial for UX: Walls must be neutral (Grey) to avoid clashing with the Red 'O' piece!
+    const BLOCK_MORTAR = '#4B5563'; // Gray-600
+    const BLOCK_DARK   = '#6B7280'; // Gray-500
+    const BLOCK_BASE   = '#9CA3AF'; // Gray-400
+    const BLOCK_LIGHT  = '#D1D5DB'; // Gray-300
     
-    ctx.fillStyle = 'rgba(239, 68, 68, 0.9)'; // Brand Red-500
-    ctx.beginPath();
-    ctx.moveTo(nx + r, ny + r);
-    ctx.lineTo(nx + s - r, ny);
-    ctx.quadraticCurveTo(nx + s, ny, nx + s, ny + r);
-    ctx.lineTo(nx + s, ny + s - r);
-    ctx.quadraticCurveTo(nx + s, ny + s, nx + s - r, ny + s);
-    ctx.lineTo(nx + r, ny + s);
-    ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
-    ctx.lineTo(nx, ny + r);
-    ctx.quadraticCurveTo(nx, ny, nx + r, ny);
+    const PALETTE = [
+      BLOCK_DARK, BLOCK_DARK, BLOCK_DARK,
+      BLOCK_BASE, BLOCK_BASE,
+      BLOCK_LIGHT,
+    ];
+    
+    // A fast, deterministic hash for natural randomness (avoids diagonal banding)
+    const hash = (r, b, wx, wy) => {
+      let h = (wx * 374761393) ^ (wy * 668265263) ^ (r * 2246822507) ^ (b * 3266489909);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h = h ^ (h >>> 16);
+      return Math.abs(h);
+    };
+    
+    // Stable pseudo-random color for each individual brick
+    const brickColor = (r, b) => PALETTE[hash(r, b, x, y) % PALETTE.length];
+
+    const drawRoundRect = (bx, by, bw, bh, radius) => {
+      ctx.beginPath();
+      ctx.moveTo(bx + radius, by);
+      ctx.lineTo(bx + bw - radius, by);
+      ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + radius);
+      ctx.lineTo(bx + bw, by + bh - radius);
+      ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - radius, by + bh);
+      ctx.lineTo(bx + radius, by + bh);
+      ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - radius);
+      ctx.lineTo(bx, by + radius);
+      ctx.quadraticCurveTo(bx, by, bx + radius, by);
+      ctx.closePath();
+    };
+
+    ctx.save();
+    
+    // 1 — Mortar background
+    drawRoundRect(nx, ny, s, s, br);
+    ctx.fillStyle = BLOCK_MORTAR;
     ctx.fill();
+    ctx.clip(); // clip bricks to the rounded square
+
+    // 2 — Bricks (5 rows)
+    const rows = 5;
+    const bh = Math.floor((s - GAP * (rows + 1)) / rows);
+    const bw3 = Math.floor((s - GAP * 4) / 3);
+
+    for (let r = 0; r < rows; r++) {
+      const by = ny + GAP + r * (bh + GAP);
+      const staggered = r % 2 === 1;
+
+      if (!staggered) {
+        // 3 equal bricks
+        for (let b = 0; b < 3; b++) {
+          const bx = nx + GAP + b * (bw3 + GAP);
+          drawRoundRect(bx, by, bw3, bh, br2);
+          ctx.fillStyle = brickColor(r, b);
+          ctx.fill();
+        }
+      } else {
+        // Staggered: half | full | full | half
+        const halfW = Math.floor(bw3 / 2);
+
+        // Left half
+        drawRoundRect(nx + GAP, by, halfW, bh, br2);
+        ctx.fillStyle = brickColor(r, 0);
+        ctx.fill();
+
+        // 2 full
+        for (let b = 0; b < 2; b++) {
+          const bx = nx + GAP + halfW + GAP + b * (bw3 + GAP);
+          drawRoundRect(bx, by, bw3, bh, br2);
+          ctx.fillStyle = brickColor(r, b + 1);
+          ctx.fill();
+        }
+
+        // Right half
+        const rightHalfX = nx + GAP + halfW + GAP + bw3 + GAP + bw3 + GAP;
+        drawRoundRect(rightHalfX, by, halfW, bh, br2);
+        ctx.fillStyle = brickColor(r, 3);
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
+
+    // 3 — Subtle outer border (Double-Bezel shadow)
+    drawRoundRect(nx, ny, s, s, br);
+    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
     
-    // Inner shadow for depth
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-    ctx.lineWidth = 2;
+    // 4 — Glossy inner highlight (Double-Bezel core highlight)
+    drawRoundRect(nx + 1, ny + 1, s - 2, s - 2, Math.max(0, br - 1));
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
     ctx.stroke();
   }
 
