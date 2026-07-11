@@ -47,6 +47,7 @@ class BoardRenderer {
     this.boardSize = opts.boardSize || 17;
     this.onCellClick = opts.onCellClick || null;
     this.displayMode = opts.displayMode || 'paper';
+    this.clickMode = opts.clickMode || 'double';
 
     // State (set externally via setState)
     this.board = null;
@@ -288,8 +289,14 @@ class BoardRenderer {
     }
   }
 
-  /** Double-tap logic: first tap highlights, second tap confirms. */
+  /** Tap logic: depending on clickMode (single/double). */
   _handleCellSelect(x, y) {
+    if (this.clickMode === 'single') {
+      this._pendingCell = null;
+      this.onCellClick(x, y);
+      return;
+    }
+
     if (this._pendingCell && this._pendingCell.x === x && this._pendingCell.y === y) {
       // Second tap on same cell → confirm
       this._pendingCell = null;

@@ -54,6 +54,10 @@ const BOARD_DISPLAY_KEY = 'play3cr_board_display';
 let boardDisplayMode = localStorage.getItem(BOARD_DISPLAY_KEY) || 'paper';
 if (!['paper', 'stone'].includes(boardDisplayMode)) boardDisplayMode = 'paper';
 
+const CLICK_MODE_KEY = 'gomoku_click_mode';
+let clickMode = localStorage.getItem(CLICK_MODE_KEY) || 'double';
+if (!['single', 'double'].includes(clickMode)) clickMode = 'double';
+
 // Game state
 let gameState = null;   // From game:init
 let boardRenderer = null;
@@ -608,15 +612,24 @@ function getTimerSettingsText(settings) {
   return settings.timerMode === 'blitz' ? `${base} + ${inc}s — ${mode}` : `${base} — ${mode}`;
 }
 
-function renderBoardDisplayControl() {
+function renderLocalSettingsControl() {
   return `
     <div class="setting-row">
       <span class="setting-label">${t('settings.display')}</span>
       <div class="pill-group">
-        <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${boardDisplayMode === 'paper' ? 'checked' : ''} onchange="updateBoardDisplayMode()" />
+        <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${boardDisplayMode === 'paper' ? 'checked' : ''} onchange="updateLocalSettings()" />
         <label for="bdm-paper">${t('settings.display_paper')}</label>
-        <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${boardDisplayMode === 'stone' ? 'checked' : ''} onchange="updateBoardDisplayMode()" />
+        <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${boardDisplayMode === 'stone' ? 'checked' : ''} onchange="updateLocalSettings()" />
         <label for="bdm-stone">${t('settings.display_stone')}</label>
+      </div>
+    </div>
+    <div class="setting-row">
+      <span class="setting-label">${t('settings.click_mode')}</span>
+      <div class="pill-group">
+        <input type="radio" name="clickMode" id="cm-single" value="single" ${clickMode === 'single' ? 'checked' : ''} onchange="updateLocalSettings()" />
+        <label for="cm-single">${t('settings.click_single')}</label>
+        <input type="radio" name="clickMode" id="cm-double" value="double" ${clickMode === 'double' ? 'checked' : ''} onchange="updateLocalSettings()" />
+        <label for="cm-double">${t('settings.click_double')}</label>
       </div>
     </div>
   `;
@@ -700,7 +713,7 @@ function renderSettings() {
           <span class="unit">${t('modal.time_unit')}</span>
         </div>
       </div>
-      ${renderBoardDisplayControl()}
+      ${renderLocalSettingsControl()}
     `;
     settingsBody.classList.add('open');
   } else {
@@ -728,7 +741,7 @@ function renderSettings() {
           <span class="settings-info__value">${timerText}</span>
         </div>
       </div>
-      ${renderBoardDisplayControl()}
+      ${renderLocalSettingsControl()}
     `;
     settingsBody.classList.add('open');
   }
@@ -976,15 +989,26 @@ window.updateSettings = function() {
   });
 };
 
-window.updateBoardDisplayMode = function() {
+window.updateLocalSettings = function() {
   const modeEl = document.querySelector('input[name="boardDisplayMode"]:checked');
   const mode = modeEl ? modeEl.value : 'paper';
   boardDisplayMode = ['paper', 'stone'].includes(mode) ? mode : 'paper';
   localStorage.setItem(BOARD_DISPLAY_KEY, boardDisplayMode);
+
+  const cmEl = document.querySelector('input[name="clickMode"]:checked');
+  if (cmEl) {
+    clickMode = cmEl.value;
+    localStorage.setItem(CLICK_MODE_KEY, clickMode);
+    if (boardRenderer) {
+      boardRenderer.clickMode = clickMode;
+    }
+  }
+
   if (boardRenderer) {
     boardRenderer.setState({
       displayMode: boardDisplayMode,
       moveHistory: gameState ? (gameState.moveHistory || []) : [],
+      lastMove: gameState ? gameState.lastMove : null,
     });
   }
 };
@@ -1044,6 +1068,7 @@ function initBoard() {
     const canvas = document.getElementById('game-canvas');
     boardRenderer = new BoardRenderer(canvas, {
       boardSize: boardSize,
+      clickMode: clickMode,
       onCellClick: (x, y) => {
         // Swap2 opening: route placements to the opening handler instead.
         if (gameState && gameState.swap2 && gameState.swap2.enabled && gameState.swap2.openingPhase !== 'play') {
