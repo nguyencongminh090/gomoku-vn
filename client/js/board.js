@@ -776,124 +776,116 @@ class BoardRenderer {
     ctx.stroke();
   }
 
-  // ─── Wall — Block ────────────────────────────────────────────────
-
   _drawWall(x, y) {
     const ctx = this.ctx;
     const g = this.geo;
     const { px, py } = this._cellToPixel(x, y);
 
-    // Size of the block (84% of cell size to leave a small gap)
-    const blockScale = 0.84;
-    const s = g.cellSize * blockScale;
-    const nx = px - s / 2;
-    const ny = py - s / 2;
+    // ── Perfect Port of WormHole's _drawBlock using Canvas Transform ──
+    // Instead of quantizing dimensions (which breaks on small screens), we
+    // scale the context itself. On high-DPI mobile screens, Canvas will use
+    // physical sub-pixels to render the 36x36 reference block perfectly crisp!
+    const CS    = g.cellSize;
+    const REF   = 36;
+    const scale = CS / REF;
 
-    const br = 4; // outer radius
-    const br2 = 2; // inner brick radius
-    const GAP = 1; // mortar thickness
-    
-    // Classic Stone/Grey Palette (from WormHole reference)
-    // Crucial for UX: Walls must be neutral (Grey) to avoid clashing with the Red 'O' piece!
-    const BLOCK_MORTAR = '#4B5563'; // Gray-600
-    const BLOCK_DARK   = '#6B7280'; // Gray-500
-    const BLOCK_BASE   = '#9CA3AF'; // Gray-400
-    const BLOCK_LIGHT  = '#D1D5DB'; // Gray-300
-    
+    ctx.save();
+    // Move to cell center, scale to reference size, and move to top-left of local 36x36 box
+    ctx.translate(px, py);
+    ctx.scale(scale, scale);
+    ctx.translate(-REF / 2, -REF / 2);
+
+    const pad = 1;
+    const bx0 = pad;
+    const by0 = pad;
+    const w   = REF - pad * 2;
+    const h   = REF - pad * 2;
+    const br  = 3;
+    const br2 = 2;
+    const GAP = 1;
+
+    // Classic Stone/Grey Palette
+    const BLOCK_MORTAR = '#4B5563';
+    const BLOCK_DARK   = '#6B7280';
+    const BLOCK_BASE   = '#9CA3AF';
+    const BLOCK_LIGHT  = '#D1D5DB';
+
     const PALETTE = [
       BLOCK_DARK, BLOCK_DARK, BLOCK_DARK,
       BLOCK_BASE, BLOCK_BASE,
       BLOCK_LIGHT,
     ];
     
-    // A fast, deterministic hash for natural randomness (avoids diagonal banding)
-    const hash = (r, b, wx, wy) => {
-      let h = (wx * 374761393) ^ (wy * 668265263) ^ (r * 2246822507) ^ (b * 3266489909);
-      h = Math.imul(h ^ (h >>> 13), 3266489909);
-      h = h ^ (h >>> 16);
-      return Math.abs(h);
-    };
-    
-    // Stable pseudo-random color for each individual brick
-    const brickColor = (r, b) => PALETTE[hash(r, b, x, y) % PALETTE.length];
+    const brickColor = (r, b) => PALETTE[Math.abs(r * 17 + b * 11 + r * b * 3 + x * 7 + y * 5) % PALETTE.length];
 
-    const drawRoundRect = (bx, by, bw, bh, radius) => {
+    const rr = (rx, ry, rw, rh, radius) => {
       ctx.beginPath();
-      ctx.moveTo(bx + radius, by);
-      ctx.lineTo(bx + bw - radius, by);
-      ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + radius);
-      ctx.lineTo(bx + bw, by + bh - radius);
-      ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - radius, by + bh);
-      ctx.lineTo(bx + radius, by + bh);
-      ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - radius);
-      ctx.lineTo(bx, by + radius);
-      ctx.quadraticCurveTo(bx, by, bx + radius, by);
+      ctx.moveTo(rx + radius, ry);
+      ctx.lineTo(rx + rw - radius, ry);
+      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + radius);
+      ctx.lineTo(rx + rw, ry + rh - radius);
+      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - radius, ry + rh);
+      ctx.lineTo(rx + radius, ry + rh);
+      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - radius);
+      ctx.lineTo(rx, ry + radius);
+      ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
       ctx.closePath();
     };
 
-    ctx.save();
-    
     // 1 — Mortar background
-    drawRoundRect(nx, ny, s, s, br);
+    rr(bx0, by0, w, h, br);
     ctx.fillStyle = BLOCK_MORTAR;
     ctx.fill();
-    ctx.clip(); // clip bricks to the rounded square
+    ctx.clip(); 
 
-    // 2 — Bricks (5 rows)
+    // 2 — Exactly 5 rows (WormHole standard)
     const rows = 5;
-    const bh = Math.floor((s - GAP * (rows + 1)) / rows);
-    const bw3 = Math.floor((s - GAP * 4) / 3);
+    const bh   = Math.floor((h - GAP * (rows + 1)) / rows);
+    const bw3  = Math.floor((w - GAP * 4) / 3);
 
     for (let r = 0; r < rows; r++) {
-      const by = ny + GAP + r * (bh + GAP);
+      const byRow    = by0 + GAP + r * (bh + GAP);
       const staggered = r % 2 === 1;
 
       if (!staggered) {
-        // 3 equal bricks
         for (let b = 0; b < 3; b++) {
-          const bx = nx + GAP + b * (bw3 + GAP);
-          drawRoundRect(bx, by, bw3, bh, br2);
+          const bxCol = bx0 + GAP + b * (bw3 + GAP);
+          rr(bxCol, byRow, bw3, bh, br2);
           ctx.fillStyle = brickColor(r, b);
           ctx.fill();
         }
       } else {
-        // Staggered: half | full | full | half
         const halfW = Math.floor(bw3 / 2);
-
-        // Left half
-        drawRoundRect(nx + GAP, by, halfW, bh, br2);
+        
+        // Left
+        rr(bx0 + GAP, byRow, halfW, bh, br2);
         ctx.fillStyle = brickColor(r, 0);
         ctx.fill();
 
-        // 2 full
+        // Middle 2
         for (let b = 0; b < 2; b++) {
-          const bx = nx + GAP + halfW + GAP + b * (bw3 + GAP);
-          drawRoundRect(bx, by, bw3, bh, br2);
+          const bxCol = bx0 + GAP + halfW + GAP + b * (bw3 + GAP);
+          rr(bxCol, byRow, bw3, bh, br2);
           ctx.fillStyle = brickColor(r, b + 1);
           ctx.fill();
         }
 
-        // Right half
-        const rightHalfX = nx + GAP + halfW + GAP + bw3 + GAP + bw3 + GAP;
-        drawRoundRect(rightHalfX, by, halfW, bh, br2);
+        // Right
+        const rightHalfX = bx0 + GAP + halfW + GAP + bw3 + GAP + bw3 + GAP;
+        rr(rightHalfX, byRow, halfW, bh, br2);
         ctx.fillStyle = brickColor(r, 3);
         ctx.fill();
       }
     }
 
-    ctx.restore();
+    // 3 — Subtle outer border
+    ctx.strokeStyle = 'rgba(0,0,0,0.20)';
+    // In local 36x36 coords, 0.8 is the exact WormHole border size
+    ctx.lineWidth   = 0.8;
+    rr(bx0, by0, w, h, br);
+    ctx.stroke();
 
-    // 3 — Subtle outer border (Double-Bezel shadow)
-    drawRoundRect(nx, ny, s, s, br);
-    ctx.strokeStyle = 'rgba(0,0,0,0.15)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    
-    // 4 — Glossy inner highlight (Double-Bezel core highlight)
-    drawRoundRect(nx + 1, ny + 1, s - 2, s - 2, Math.max(0, br - 1));
-    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.restore();
   }
 
   // ─── Portal — Colored Ring with Center Dot ─────────────────────
