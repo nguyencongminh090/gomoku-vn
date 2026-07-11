@@ -685,6 +685,10 @@
     min-width: 0;
     position: static;
     padding: 0 12px 12px;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
   }
 
   .panel-right {
