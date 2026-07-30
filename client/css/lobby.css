@@ -327,6 +327,9 @@
   box-shadow: var(--shadow-lg), var(--shadow-glass-inset);
   width: 100%;
   max-width: 480px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
   animation: modalIn var(--duration-normal) var(--ease-spring) forwards;
   border: 1px solid var(--c-border);
@@ -368,7 +371,11 @@
 .modal__close:hover { background: var(--c-border); color: var(--c-ink); transform: scale(1.05); }
 .modal__close:active { transform: scale(0.95); }
 
-.modal__body { padding: 32px; }
+.modal__body { 
+  padding: 32px; 
+  overflow-y: auto;
+  flex: 1; /* allow it to take available space inside the column flex modal */
+}
 
 /* Setting row */
 .setting-row { margin-bottom: 20px; }
@@ -407,6 +414,13 @@
   border-radius: 9999px;
   user-select: none;
 }
+.pill-group input:not(:checked) + label:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--c-ink);
+}
+.pill-group label:active {
+  transform: scale(0.96);
+}
 .pill-group input:checked + label {
   background: var(--c-surface);
   color: var(--c-ink);
@@ -432,7 +446,10 @@
   background: var(--c-border);
   border-radius: 12px;
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-in-out);
+  transition: all var(--duration-fast) var(--ease-spring);
+}
+.toggle-switch:active .toggle-slider {
+  transform: scale(0.92);
 }
 .toggle-slider::before {
   content: '';
