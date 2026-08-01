@@ -9,6 +9,7 @@
 const MAX_ROOMS             = 10;
 const MAX_USERS_PER_ROOM    = 20;      // 2 players + 18 guests
 const IDLE_TIMEOUT_MS       = 600_000; // 10 minutes
+const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against IDLE_TIMEOUT_MS
 
 // --- Disconnect grace ---
 const DISCONNECT_GRACE_MS   = 60_000; // 60 seconds
@@ -74,6 +75,7 @@ module.exports = {
   MAX_ROOMS,
   MAX_USERS_PER_ROOM,
   IDLE_TIMEOUT_MS,
+  IDLE_SCAN_INTERVAL_MS,
   DISCONNECT_GRACE_MS,
   DEFAULT_BOARD_SIZE,
   VALID_BOARD_SIZES,
