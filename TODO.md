@@ -357,7 +357,7 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
 
 14. ~~**`reconnect_attempt`/`reconnect` listener ở `socket-client.js` không bao
     giờ chạy**~~
-    **✅ ĐÃ XONG** (2026-08-02, commit đang chờ) — chuyển cả 2 listener sang
+    **✅ ĐÃ XONG** (2026-08-02, commit `c149bc4`, merge `d32a149`) — chuyển cả 2 listener sang
     `this.socket.io.on(...)` (Manager), gộp phần cập nhật banner và phần set cờ
     `reconnect` trong auth payload vào chung 1 handler `reconnect_attempt` (2
     listener cũ cho cùng 1 event, 1 cái chết 1 cái sống — nay chỉ còn 1). Bump
