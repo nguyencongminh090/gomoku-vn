@@ -259,7 +259,11 @@ describe('LobbyHandler — room:join', () => {
     const mockGameState = { serialize: jest.fn(() => ({ boardSize: 15 })), status: 'ongoing' };
     const mockRoom = { roomId: 'room-live', roomName: 'Live', gameState: mockGameState };
     mockRoomManager.joinRoom.mockReturnValue({ room: mockRoom });
-    mockState.timerMap.set('room-live', { getTimers: () => ({ black: 30, white: 45 }) });
+    mockState.timerMap.set('room-live', {
+      getTimers: () => ({ black: 30, white: 45 }),
+      // Reconnect payloads now also carry the deadline the client counts from.
+      getSync: () => ({ black: 30, white: 45, activeColor: 'black', deadline: 1000, serverTime: 0, running: true }),
+    });
 
     LobbyHandler.register(io, socket);
     handlers['room:join']({ roomId: 'room-live' });
