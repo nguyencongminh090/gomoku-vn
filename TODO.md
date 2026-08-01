@@ -225,17 +225,19 @@ code và nên ưu tiên cao vì rẻ.
 Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các fix đó
 (rule "scope discipline") — ghi riêng ở đây.
 
-13. **Chat hiển thị entity thô sau fix #2** — server escape `<`/`>` thành
+13. ~~**Chat hiển thị entity thô sau fix #2**~~ — server escape `<`/`>` thành
     `&lt;`/`&gt;`, nhưng client render bằng `textContent`, nên người dùng gõ
     `<b>bold</b>` thì **thấy đúng chuỗi `&lt;b&gt;bold&lt;/b&gt;`** trên màn
-    hình (đã xác nhận bằng browser). Trước fix #2 thì thẻ bị xoá hẳn — cả hai
-    đều không hiển thị đúng thứ người dùng gõ. `R&D & co` hiển thị đúng (vì
-    cố ý không escape `&`), và không có injection nào (`0` thẻ `<img>` sống).
-    **Cần quyết định sản phẩm:** (a) giữ nguyên, đúng chữ của
-    `instruction.md` §B2; hoặc (b) chuyển sang escape **tại sink** — server gửi
-    text thô, client `textContent` (đã an toàn sẵn) và bất kỳ consumer HTML nào
-    trong tương lai tự escape. (b) hiển thị đúng thứ người dùng gõ nhưng ngược
-    với hướng dẫn của reviewer, nên không tự ý làm.
+    hình (đã xác nhận bằng browser). `R&D & co` hiển thị đúng (vì cố ý không
+    escape `&`), và không có injection nào (`0` thẻ `<img>` sống).
+    **✅ ĐÃ QUYẾT ĐỊNH (2026-08-02, hỏi người dùng trực tiếp — xem hội thoại,
+    không phải fix code):** giữ nguyên phương án (a) — escape tại server đúng
+    chữ `instruction.md` §B2. Lý do chọn: payload trên dây luôn trơ (bất kỳ
+    consumer tương lai nào — client khác, admin panel, log — đều an toàn mặc
+    định kể cả nếu quên tự escape), rẻ hơn việc phải giữ đúng invariant
+    "mọi nơi render đều dùng `textContent`" mãi mãi. Phần hiển thị sai
+    (`&lt;b&gt;` thay vì `<b>` trên màn hình) được tách thành lỗi UI riêng —
+    xem mục 15 — không lẫn vào quyết định an ninh này.
 
 14. **`reconnect_attempt`/`reconnect` listener ở `socket-client.js` không bao
     giờ chạy** — [socket-client.js:57,61](client/js/socket-client.js#L57) gắn 2
@@ -246,6 +248,17 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
     sang `this.socket.io.on(...)`. Test: client-side; `escape-utils.js` đã tạo
     tiền lệ tách hàm thuần ra để test, nhưng phần này là wiring socket nên có
     thể cần e2e Playwright (repo giờ đã có Playwright) thay vì unit test.
+
+15. **Chat hiển thị `&lt;`/`&gt;` thô thay vì `<`/`>`** — hệ quả UI của quyết
+    định giữ nguyên fix #2 (xem mục 13): server escape entity đúng như thiết
+    kế, nhưng `chat-ui.js` (4 chỗ dùng `textContent` — dòng 32, 43, 49, 78) gán
+    thẳng `msg.text` chưa giải mã, nên người gõ `<b>bold</b>` thấy đúng chữ
+    `&lt;b&gt;bold&lt;/b&gt;` trên màn hình thay vì chữ họ gõ. Sửa: decode
+    entity (`&lt;`→`<`, `&gt;`→`>`) **ngay trước khi** gán `textContent` tại 4
+    điểm đó — an toàn vì `textContent` không parse lại thành thẻ dù input là
+    gì. Rẻ, không đụng phần server/an ninh của fix #2. Test: client-side, có
+    thể tách hàm decode thuần ra module test được qua Node (theo tiền lệ
+    `escape-utils.js`) hoặc test bằng Playwright.
 
 ---
 
