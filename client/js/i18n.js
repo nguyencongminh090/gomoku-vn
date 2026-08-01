@@ -157,6 +157,13 @@ const TRANSLATIONS = {
     'room.timer_per_move': 'Mỗi nước',
     'room.timer_per_game': 'Mỗi ván',
     'room.timer_blitz': 'Blitz',
+    'room.seat_timeout_kicked': 'Bạn không bấm Bắt đầu kịp thời nên bị rời khỏi vị trí (vẫn ở trong phòng).',
+
+    // ── Start modal (ready window) ─────────────────────────────
+    'start_modal.title': 'Sẵn sàng vào trận?',
+    'start_modal.countdown_label': 'Còn',
+    'start_modal.btn_start': 'Bắt đầu',
+    'start_modal.waiting': 'Đang chờ đối thủ bấm Bắt đầu...',
 
     // ── Game UI ───────────────────────────────────────────────
     'game.your_turn': 'Lượt của bạn',
@@ -365,6 +372,13 @@ const TRANSLATIONS = {
     'room.timer_per_move': 'Per move',
     'room.timer_per_game': 'Per game',
     'room.timer_blitz': 'Blitz',
+    'room.seat_timeout_kicked': 'You didn\'t click Start in time, so you were removed from your seat (still in the room).',
+
+    // ── Start modal (ready window) ─────────────────────────────
+    'start_modal.title': 'Ready to start?',
+    'start_modal.countdown_label': 'Time left',
+    'start_modal.btn_start': 'Start',
+    'start_modal.waiting': 'Waiting for opponent to click Start...',
 
     // ── Game UI ───────────────────────────────────────────────
     'game.your_turn': 'Your turn',

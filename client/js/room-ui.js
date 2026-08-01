@@ -13,10 +13,11 @@
  *   RoomUI.renderSettings()
  *   RoomUI.renderUsersList()
  *   RoomUI.renderScoreTable()
+ *   RoomUI.renderStartModal() — Start-modal ready window (both seated, 30s countdown)
  *   RoomUI.showGameOverlay(result)
  *   window.sitDown(slot)     — onclick shim
  *   window.standUp()         — onclick shim
- *   window.toggleReady()     — onclick shim
+ *   window.confirmStart()    — onclick shim (Start modal)
  *   window.kickUser(userId)  — onclick shim
  *   window.updateSettings()  — onclick shim
  *   window.updateLocalSettings() — onclick shim
@@ -93,6 +94,7 @@
     renderSettings();
     renderUsersList();
     renderScoreTable();
+    renderStartModal();
 
     if (!st.gameState) {
       GameUI.initBoard();
@@ -180,23 +182,55 @@
   }
 
   // ── Action buttons ────────────────────────────────────────────────────────
+  // Ready/Start used to live here as an inline toggle button. It's now the
+  // Start modal (see renderStartModal) so this row is currently unused but
+  // kept as a slot-actions extension point.
 
   function renderActionButtons() {
+    actionButtons.innerHTML = '';
+  }
+
+  // ── Start modal (ready window) ──────────────────────────────────────────
+  // Shown to both seated players once both slots are filled. The 30s
+  // countdown is server-authoritative (st.roomData.readyDeadline, an epoch-ms
+  // timestamp) — this just renders it locally; the server enforces it.
+
+  let startModalCountdownHandle = null;
+
+  function renderStartModal() {
     const st = S();
-    if (!st.myRole || st.roomData.state === 'playing') {
-      actionButtons.innerHTML = '';
+    const modal = document.getElementById('start-modal');
+    if (!modal) return;
+
+    const deadline = st.roomData ? st.roomData.readyDeadline : null;
+    const visible = st.mySlot !== null && !!deadline && st.roomData.state !== 'playing';
+
+    if (!visible) {
+      modal.classList.remove('visible');
+      if (startModalCountdownHandle) {
+        clearInterval(startModalCountdownHandle);
+        startModalCountdownHandle = null;
+      }
       return;
     }
 
-    let html = '';
-    if (st.mySlot !== null) {
-      if (st.isReady) {
-        html += `<button class="btn-slot btn-slot--cancel-ready" onclick="toggleReady()">Huỷ sẵn sàng</button>`;
-      } else {
-        html += `<button class="btn-slot btn-slot--ready" onclick="toggleReady()">Sẵn sàng</button>`;
-      }
-    }
-    actionButtons.innerHTML = html;
+    modal.classList.add('visible');
+
+    const btn        = document.getElementById('start-modal-btn');
+    const waitingEl   = document.getElementById('start-modal-waiting');
+    const countdownEl = document.getElementById('start-modal-countdown');
+
+    if (btn)      btn.style.display      = st.isReady ? 'none'  : '';
+    if (waitingEl) waitingEl.style.display = st.isReady ? ''     : 'none';
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      if (countdownEl) countdownEl.textContent = String(remaining);
+    };
+    tick();
+
+    if (startModalCountdownHandle) clearInterval(startModalCountdownHandle);
+    startModalCountdownHandle = setInterval(tick, 250);
   }
 
   // ── Settings rendering ────────────────────────────────────────────────────
@@ -566,10 +600,11 @@
   };
 
   global.standUp = function() {
+    S().standRequested = true; // suppress the "kicked from seat" toast for a voluntary stand
     global.RoomClient.emit('room:stand');
   };
 
-  global.toggleReady = function() {
+  global.confirmStart = function() {
     global.RoomClient.emit('room:ready');
   };
 
@@ -625,6 +660,7 @@
     renderSettings,
     renderUsersList,
     renderScoreTable,
+    renderStartModal,
     showGameOverlay,
   };
 

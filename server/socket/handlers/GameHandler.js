@@ -33,6 +33,8 @@ const {
   timerMap,
   broadcastLobbyUpdate,
   cleanupRoomTimer,
+  cleanupReadyTimer,
+  syncReadyWindow,
 } = require('../state');
 
 /**
@@ -395,16 +397,20 @@ function register(io, socket) {
       return;
     }
 
-    const result = roomManager.toggleReady(user.userId);
+    const result = roomManager.confirmStart(user.userId);
     if (result.error) {
       socket.emit('game:error', { message: result.error });
       return;
     }
 
-    io.to(room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
-
     if (result.allReady) {
+      cleanupReadyTimer(room.roomId);
+      result.room.readyDeadline = null;
+      io.to(room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
       startGame(io, result.room);
+    } else {
+      syncReadyWindow(io, result.room);
+      io.to(room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     }
   });
 }
@@ -625,6 +631,7 @@ function handleGameEnd(io, room, opts = {}) {
   const noScore = opts.noScore || false;
 
   cleanupRoomTimer(roomId);
+  cleanupReadyTimer(roomId);
 
   if (engine && engine.result && !noScore) {
     const { winner } = engine.result;

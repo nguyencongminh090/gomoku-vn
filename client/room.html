@@ -12,8 +12,8 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="stylesheet" href="css/main.css?v=17" />
   <link rel="stylesheet" href="css/lobby.css?v=17" />
-  <link rel="stylesheet" href="css/room.css?v=17" />
-  <link rel="stylesheet" href="css/game.css?v=17" />
+  <link rel="stylesheet" href="css/room.css?v=18" />
+  <link rel="stylesheet" href="css/game.css?v=18" />
   <link rel="stylesheet" href="css/settings-panel.css?v=1" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -138,6 +138,21 @@
       </div>
     </aside>
   </main>
+
+  <!-- Start Modal (ready window — both seated players must confirm within 30s) -->
+  <div class="game-overlay" id="start-modal">
+    <div class="game-overlay__card">
+      <div class="game-overlay__icon"><i class="ph-bold ph-play-circle"></i></div>
+      <div class="game-overlay__result" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
+      <div class="game-overlay__reason">
+        <span data-i18n="start_modal.countdown_label">Còn</span>
+        <span id="start-modal-countdown">30</span>s
+      </div>
+      <div class="game-overlay__divider"></div>
+      <button class="btn-primary" id="start-modal-btn" type="button" onclick="confirmStart()" data-i18n="start_modal.btn_start">Bắt đầu</button>
+      <div class="start-modal__waiting" id="start-modal-waiting" data-i18n="start_modal.waiting" style="display:none;">Đang chờ đối thủ bấm Bắt đầu...</div>
+    </div>
+  </div>
 
   <!-- Game End Overlay -->
   <div class="game-overlay" id="game-overlay">

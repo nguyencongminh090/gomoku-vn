@@ -57,8 +57,20 @@
   });
 
   client.on('room:updated', (data) => {
-    S().roomData = data;
+    const st = S();
+    const prevSlot = st.mySlot;
+
+    st.roomData = data;
     RoomUI.updateUI();
+
+    // Detect an involuntary seat vacate — the ready-window timeout kicks a
+    // seated-but-unconfirmed player out of their slot server-side. A manual
+    // stand-up (✕ icon) sets standRequested first, so only the unexpected
+    // case (server-initiated) surfaces this toast.
+    if (prevSlot !== null && st.mySlot === null && !st.standRequested) {
+      showToast(t('room.seat_timeout_kicked'), 'error');
+    }
+    st.standRequested = false;
   });
 
   client.on('room:left', () => {

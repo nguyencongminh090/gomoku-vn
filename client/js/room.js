@@ -23,7 +23,10 @@
  * Manual test checklist:
  *   [ ] Redirect to login.html if not authenticated
  *   [ ] Room data populates after room:joined
- *   [ ] Sit / stand / ready / leave / kick work
+ *   [ ] Sit / stand / leave / kick work
+ *   [ ] Start modal appears once both slots are filled; countdown ticks down
+ *   [ ] Clicking Start shows "waiting for opponent" until the other confirms
+ *   [ ] Not confirming within 30s vacates that seat (toast shown to that player)
  *   [ ] Settings change emitted correctly (host only)
  *   [ ] Chat send on Enter and button click
  *   [ ] Focus mode toggle (F key, button click, Escape)
@@ -62,6 +65,7 @@ window.RoomState = {
   myRole:            null,   // 'host' | 'player' | 'guest'
   mySlot:            null,   // 1 | 2 | null
   isReady:           false,
+  standRequested:    false,  // set true just before an intentional room:stand emit
 
   // Game
   gameState:         null,   // from game:init / room:joined.gameState

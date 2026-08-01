@@ -17,6 +17,14 @@
  *   [ ] leaveRoom transfers host to next user in join-order
  *   [ ] listRooms returns correct summary for each room
  *   [ ] idleCleanup destroys rooms with no activity for IDLE_TIMEOUT_MS
+ *
+ * Start-modal ready window (see RoomHandler.js / state.js syncReadyWindow):
+ *   [ ] Both players confirm Start within 30s → game starts
+ *   [ ] One player never confirms → they're vacated from their seat at 30s,
+ *       still in the room, other player's modal reverts to waiting-for-seat
+ *   [ ] A seated player stands up / disconnects mid-window → countdown cancels
+ *   [ ] Host changes settings mid-window → countdown restarts fresh at 30s
+ *   [ ] Rematch after a finished game re-uses the same confirm/timeout flow
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -80,6 +88,7 @@ class RoomManager extends EventEmitter {
       joinOrder: [],                    // For host transfer queue
       settings: validatedSettings,
       state: 'idle',                    // idle | playing | interrupted
+      readyDeadline: null,              // epoch ms — Start-modal countdown deadline, or null
       gameState: null,                  // Set in Phase 4 when game starts
       scoreTable: {},                   // Per-room cumulative scores
       lastActivity: Date.now(),
@@ -320,16 +329,18 @@ class RoomManager extends EventEmitter {
   }
 
   // ---------------------------------------------------------------------------
-  // Toggle Ready
+  // Confirm Start (Start modal)
   // ---------------------------------------------------------------------------
 
   /**
-   * Toggle a player's ready status. Only seated players can ready up.
+   * Confirm "Start" for a seated player. One-directional (no un-ready) — the
+   * only ways out of a pending ready state are standing up, being kicked, or
+   * the 30s ready-window timing out (see RoomHandler's ready-window logic).
    *
    * @param {string} userId
    * @returns {{ room: object, allReady: boolean } | { error: string }}
    */
-  toggleReady(userId) {
+  confirmStart(userId) {
     const room = this._getUserRoom(userId);
     if (!room) return { error: 'Bạn chưa vào phòng nào.' };
 
@@ -339,16 +350,15 @@ class RoomManager extends EventEmitter {
 
     const user = room.users.get(userId);
     if (user.slot === null) {
-      return { error: 'Bạn cần ngồi vào chỗ trước khi sẵn sàng.' };
+      return { error: 'Bạn cần ngồi vào chỗ trước khi bắt đầu.' };
     }
 
-    user.ready = !user.ready;
-    room.lastActivity = Date.now();
+    if (!user.ready) {
+      user.ready = true;
+      room.lastActivity = Date.now();
+    }
 
-    // Check if both slots are filled and both ready
-    const allReady = this._areAllPlayersReady(room);
-
-    return { room, allReady };
+    return { room, allReady: this._areAllPlayersReady(room) };
   }
 
   // ---------------------------------------------------------------------------
@@ -419,6 +429,41 @@ class RoomManager extends EventEmitter {
       if (u.slot === 2) slot2 = u;
     }
     return slot1 && slot2 && slot1.ready && slot2.ready;
+  }
+
+  /** Check if both player slots (1 and 2) are currently occupied. */
+  bothSeated(room) {
+    let slot1 = null, slot2 = null;
+    for (const [, u] of room.users) {
+      if (u.slot === 1) slot1 = u;
+      if (u.slot === 2) slot2 = u;
+    }
+    return !!(slot1 && slot2);
+  }
+
+  /**
+   * Ready-window timeout: vacate the seat of any seated-but-not-ready player
+   * (same effect as standUp — they remain in the room as a guest). Used so a
+   * player who doesn't confirm Start within 30s doesn't block their opponent.
+   *
+   * @param {string} roomId
+   * @returns {{ room: object|null, kicked: Array<{userId: string, displayName: string}> }}
+   */
+  forceUnreadyPlayersToStand(roomId) {
+    const room = this.rooms.get(roomId);
+    if (!room) return { room: null, kicked: [] };
+
+    const kicked = [];
+    for (const [, u] of room.users) {
+      if (u.slot !== null && !u.ready) {
+        kicked.push({ userId: u.userId, displayName: u.displayName });
+        u.slot = null;
+        u.ready = false;
+      }
+    }
+    if (kicked.length) room.lastActivity = Date.now();
+
+    return { room, kicked };
   }
 
   /** Helper: get the room a user is in, or null. */
@@ -512,6 +557,7 @@ class RoomManager extends EventEmitter {
       hostName: hostUser ? hostUser.displayName : '—',
       users,
       state: room.state,
+      readyDeadline: room.readyDeadline,
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
     };

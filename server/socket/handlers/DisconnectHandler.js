@@ -17,7 +17,9 @@ const {
   disconnectTimers,
   broadcastLobbyUpdate,
   cleanupRoomTimer,
+  cleanupReadyTimer,
   findSocketsByUserId,
+  syncReadyWindow,
 } = require('../state');
 const { handleGameEnd } = require('./GameHandler');
 
@@ -57,8 +59,12 @@ function handleDisconnect(io, socket) {
   const result = roomManager.leaveRoom(user.userId);
   if (result.destroyed) {
     cleanupRoomTimer(roomId);
+    cleanupReadyTimer(roomId);
     broadcastLobbyUpdate(io);
   } else if (result.room) {
+    // Leaving a seat mid ready-window frees it — resync (clears the window
+    // since the room now has fewer than 2 seated players).
+    syncReadyWindow(io, result.room);
     io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,

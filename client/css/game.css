@@ -449,6 +449,30 @@
   color: var(--c-ink);
 }
 
+/* ─── Start Modal (ready window) ────────────────────────────────── */
+
+#start-modal-countdown {
+  font-weight: 700;
+  color: var(--c-brand);
+}
+
+#start-modal .game-overlay__card {
+  min-width: 240px;
+}
+
+#start-modal-btn {
+  width: 100%;
+  padding: 14px 22px;
+  font-size: 16px;
+}
+
+.start-modal__waiting {
+  color: var(--c-ink-3);
+  font-size: 14px;
+  font-family: var(--font);
+  padding: 8px 4px;
+}
+
 /* ─── Board Placeholder ─────────────────────────────────────────── */
 
 .board-placeholder {

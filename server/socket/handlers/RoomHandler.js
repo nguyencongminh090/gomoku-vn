@@ -8,8 +8,13 @@
  *   room:sit      — take a player slot
  *   room:stand    — vacate a player slot
  *   room:settings — update room settings (host only)
- *   room:ready    — toggle ready state; triggers game start when both players ready
+ *   room:ready    — confirm Start (Start modal); triggers game start when both players confirm
  *   room:kick     — kick a user from the room (host only)
+ *
+ * Start-modal ready window: once both player slots are filled, a 30s
+ * server-authoritative countdown starts (see state.js syncReadyWindow). If a
+ * seated player hasn't confirmed Start by the deadline, they are vacated from
+ * their seat (still in the room) so the other player isn't stuck waiting.
  */
 
 const logger      = require('../../utils/logger');
@@ -17,7 +22,10 @@ const roomManager = require('../../managers/RoomManager');
 const {
   broadcastLobbyUpdate,
   cleanupRoomTimer,
+  cleanupReadyTimer,
   findSocketsByUserId,
+  syncReadyWindow,
+  restartReadyWindow,
 } = require('../state');
 
 // Lazy-require GameHandler to avoid circular dependency at load time
@@ -72,8 +80,10 @@ function register(io, socket) {
 
     if (result.destroyed) {
       cleanupRoomTimer(roomId);
+      cleanupReadyTimer(roomId);
       broadcastLobbyUpdate(io);
     } else if (result.room) {
+      syncReadyWindow(io, result.room);
       io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
       if (result.hostTransferred) {
         const newHost = result.room.users.get(result.room.host);
@@ -94,6 +104,7 @@ function register(io, socket) {
       socket.emit('room:error', { message: result.error });
       return;
     }
+    syncReadyWindow(io, result.room);
     io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     broadcastLobbyUpdate(io);
   });
@@ -104,6 +115,7 @@ function register(io, socket) {
       socket.emit('room:error', { message: result.error });
       return;
     }
+    syncReadyWindow(io, result.room);
     io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     broadcastLobbyUpdate(io);
   });
@@ -115,6 +127,9 @@ function register(io, socket) {
       return;
     }
     const roomId = result.room.roomId;
+    // Settings changes reset ready for seated players (RoomManager.updateSettings) —
+    // restart the ready window fresh rather than leaving a stale countdown running.
+    restartReadyWindow(io, result.room);
     io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     broadcastLobbyUpdate(io);
     io.to(roomId).emit('chat:message', {
@@ -125,18 +140,22 @@ function register(io, socket) {
   });
 
   socket.on('room:ready', () => {
-    const result = roomManager.toggleReady(user.userId);
+    const result = roomManager.confirmStart(user.userId);
     if (result.error) {
       socket.emit('room:error', { message: result.error });
       return;
     }
 
     const roomId = result.room.roomId;
-    io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
 
-    // Both players ready → start the game
+    // Both players confirmed → start the game
     if (result.allReady) {
+      cleanupReadyTimer(roomId);
+      result.room.readyDeadline = null;
+      io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
       getGameHandler().startGame(io, result.room);
+    } else {
+      io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     }
   });
 
@@ -160,6 +179,7 @@ function register(io, socket) {
       s.emit('room:kicked', { message: 'Bạn đã bị mời ra khỏi phòng.' });
     }
 
+    syncReadyWindow(io, result.room);
     io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     broadcastLobbyUpdate(io);
   });

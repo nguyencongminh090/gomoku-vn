@@ -332,14 +332,6 @@
 .btn-slot:active {
   transform: translateY(0) scale(0.96);
 }
-.btn-slot--ready {
-  background: var(--c-brand);
-  color: #FFFFFF;
-  border-color: var(--c-brand);
-}
-.btn-slot--ready:hover {
-  background: var(--c-brand-dark);
-}
 .btn-slot--stand {
   background: var(--c-surface);
   color: var(--c-ink-3);
@@ -350,15 +342,6 @@
   border-color: var(--c-error);
   background: var(--c-error-bg);
 }
-.btn-slot--cancel-ready {
-  background: var(--c-surface-2);
-  color: var(--c-ink-2);
-  border-color: var(--c-border);
-}
-.btn-slot--cancel-ready:hover {
-  background: #EBE8E5;
-}
-
 /* ── Score Panel (integrated inside panel-players) ───────────────────────── */
 .score-panel {
   border-top: 1px solid var(--c-border-light);
