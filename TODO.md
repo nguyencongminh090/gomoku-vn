@@ -355,15 +355,22 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
     (`&lt;b&gt;` thay vì `<b>` trên màn hình) được tách thành lỗi UI riêng —
     xem mục 15 — không lẫn vào quyết định an ninh này.
 
-14. **`reconnect_attempt`/`reconnect` listener ở `socket-client.js` không bao
-    giờ chạy** — [socket-client.js:57,61](client/js/socket-client.js#L57) gắn 2
-    listener này lên **socket**, nhưng Socket.io v4 phát chúng ở **Manager**
-    (`socket.io.on(...)`). Hệ quả: banner trạng thái không bao giờ hiện
-    "đang kết nối lại". Phát hiện khi làm đính chính fix #1 (fix đó dùng đúng
-    `socket.io.on('reconnect_attempt')` nên không bị ảnh hưởng). Rẻ: đổi 2 dòng
-    sang `this.socket.io.on(...)`. Test: client-side; `escape-utils.js` đã tạo
-    tiền lệ tách hàm thuần ra để test, nhưng phần này là wiring socket nên có
-    thể cần e2e Playwright (repo giờ đã có Playwright) thay vì unit test.
+14. ~~**`reconnect_attempt`/`reconnect` listener ở `socket-client.js` không bao
+    giờ chạy**~~
+    **✅ ĐÃ XONG** (2026-08-02, commit đang chờ) — chuyển cả 2 listener sang
+    `this.socket.io.on(...)` (Manager), gộp phần cập nhật banner và phần set cờ
+    `reconnect` trong auth payload vào chung 1 handler `reconnect_attempt` (2
+    listener cũ cho cùng 1 event, 1 cái chết 1 cái sống — nay chỉ còn 1). Bump
+    `?v=32` → `?v=33`. Test: file mới `e2e/reconnect-banner.spec.ts`
+    (Playwright) — `context.setOffline(true)` trên browser thật + server thật,
+    assert banner đi từ "Mất kết nối..." sang "Kết nối lại... (lần N)" rồi tắt
+    khi online lại. **Đã chạy test này trên bản lỗi trước khi sửa** — đỏ đúng
+    như dự đoán (banner kẹt ở "Mất kết nối..."), sau đó xanh khi khôi phục fix.
+    **Tiện thể sửa luôn 1 lỗi có sẵn không liên quan** mà test này lộ ra:
+    `playwright.config.ts` chưa set `baseURL`, nên mọi e2e test dùng
+    `page.goto()` tương đối — kể cả `e2e/homepage.spec.ts` đã commit trước đó —
+    đều lỗi "Cannot navigate to invalid URL"; đã set `http://localhost:3000`
+    (override được qua `PLAYWRIGHT_BASE_URL`). Chi tiết: `docs/fix-log.md`.
 
 15. ~~**Chat hiển thị `&lt;`/`&gt;` thô thay vì `<`/`>`**~~
     **✅ ĐÃ XONG** (2026-08-02, commit `fed57d1`, merge `4d4d3e1`) — thêm
