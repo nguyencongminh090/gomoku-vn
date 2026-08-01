@@ -92,6 +92,16 @@ sau cùng.
    "connection with no surviving room (restart-hang)" (3 case) vào
    `SocketHandler.test.js`; `npm test` 148/148 xanh. Chi tiết: `docs/fix-log.md`.
 
+   **Đính chính (2026-08-02, commit `5b3a9f5`, merge `8678d2e`):** bản đầu gây
+   **regression** — nhánh `else` bắn `room:destroyed` cho *mọi* kết nối chưa ở
+   phòng, mà trang room mở socket **trước** khi gửi `room:create`/`room:join`,
+   nên tạo phòng xong bị đá về sảnh và phòng vừa tạo bị huỷ (rỗng). Đã sửa:
+   chỉ bắn khi `socket.handshake.auth.reconnect` (client set cờ này từ
+   `socket.io.on('reconnect_attempt')` trong `socket-client.js`). Bump
+   `?v=27` → `?v=28`. Thêm 2 test regression; `npm test` 174/174 xanh. Đã kiểm
+   bằng browser thật (Playwright): tạo phòng OK, và kịch bản restart server
+   thật cho thấy client quay về sảnh (bản `0079f8f` thì treo vĩnh viễn).
+
 2. ~~**Chat sanitize → escape entity** (review 3.5) — `ChatHandler.js:74`, đổi
    `replace(/<[^>]*>/g,'')` → escape `&lt;`/`&gt;`.~~
    **✅ ĐÃ XONG** (2026-08-01, commit `8fb3c4e`, merge `248ff36`) — `sanitize()`
@@ -111,8 +121,10 @@ sau cùng.
    khi JS được parse), nên 2 site đó dùng `escapeAttr(escapeJsString(x))`.
    Đã bump `?v=26` → `?v=27` (45 chỗ). Test: file mới
    `server/tests/escape-utils.test.js`, 13 case; `npm test` 172/172 xanh.
-   **Chưa kiểm bằng browser thật** (repo không cài Playwright). Chi tiết:
-   `docs/fix-log.md`.
+   **Đã kiểm bằng browser thật** (Playwright, 2026-08-02): card sảnh khớp
+   `.room-card[data-room-id="#MJ7"]`, `onclick` render đúng `joinRoom('#MJ7')`
+   và bấm vào thì vào phòng thật; nút kick render đúng
+   `kickUser('guest_40ab74a5')`. Chi tiết: `docs/fix-log.md`.
 
    *Đính chính:* jest `testMatch` thực tế là `**/tests/**/*.test.js` (không chỉ
    `server/tests/**`), nên test cho code client **không** cần đổi config.
@@ -207,6 +219,33 @@ code và nên ưu tiên cao vì rẻ.
     [DisconnectHandler.js](server/socket/handlers/DisconnectHandler.js). Test:
     thêm case vào `DisconnectHandler.test.js` dựng đúng kịch bản race (membership
     mất trước khi grace hết) để xác nhận ván kết thúc thay vì kẹt.
+
+### Nguồn: kiểm chứng bằng browser thật (Playwright, 2026-08-02)
+
+Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các fix đó
+(rule "scope discipline") — ghi riêng ở đây.
+
+13. **Chat hiển thị entity thô sau fix #2** — server escape `<`/`>` thành
+    `&lt;`/`&gt;`, nhưng client render bằng `textContent`, nên người dùng gõ
+    `<b>bold</b>` thì **thấy đúng chuỗi `&lt;b&gt;bold&lt;/b&gt;`** trên màn
+    hình (đã xác nhận bằng browser). Trước fix #2 thì thẻ bị xoá hẳn — cả hai
+    đều không hiển thị đúng thứ người dùng gõ. `R&D & co` hiển thị đúng (vì
+    cố ý không escape `&`), và không có injection nào (`0` thẻ `<img>` sống).
+    **Cần quyết định sản phẩm:** (a) giữ nguyên, đúng chữ của
+    `instruction.md` §B2; hoặc (b) chuyển sang escape **tại sink** — server gửi
+    text thô, client `textContent` (đã an toàn sẵn) và bất kỳ consumer HTML nào
+    trong tương lai tự escape. (b) hiển thị đúng thứ người dùng gõ nhưng ngược
+    với hướng dẫn của reviewer, nên không tự ý làm.
+
+14. **`reconnect_attempt`/`reconnect` listener ở `socket-client.js` không bao
+    giờ chạy** — [socket-client.js:57,61](client/js/socket-client.js#L57) gắn 2
+    listener này lên **socket**, nhưng Socket.io v4 phát chúng ở **Manager**
+    (`socket.io.on(...)`). Hệ quả: banner trạng thái không bao giờ hiện
+    "đang kết nối lại". Phát hiện khi làm đính chính fix #1 (fix đó dùng đúng
+    `socket.io.on('reconnect_attempt')` nên không bị ảnh hưởng). Rẻ: đổi 2 dòng
+    sang `this.socket.io.on(...)`. Test: client-side; `escape-utils.js` đã tạo
+    tiền lệ tách hàm thuần ra để test, nhưng phần này là wiring socket nên có
+    thể cần e2e Playwright (repo giờ đã có Playwright) thay vì unit test.
 
 ---
 
