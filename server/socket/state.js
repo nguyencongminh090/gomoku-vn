@@ -52,22 +52,89 @@ function getOnlineUsersList() {
 
 /**
  * How long to coalesce bursts of room mutations (sit/ready/start/resign/...)
- * into a single `lobby:update` broadcast. broadcastLobbyUpdate() is called
- * from ~15 sites across the room lifecycle; without this, a single seat +
- * ready + start + resign cycle in one room pushes 4 separate full-room-list
- * payloads to every idle lobby viewer.
+ * into a single lobby broadcast. broadcastLobbyUpdate() is called from ~15
+ * sites across the room lifecycle, and several of them fire back-to-back for
+ * one user action.
+ *
+ * This window used to be the whole defence, and the verification pass showed
+ * it failing at real player pace: actions ~1200ms apart each landed in their
+ * own window, so a seat+ready+start+resign cycle still pushed 4 full-list
+ * payloads. Now that each broadcast carries only what changed, the window size
+ * stops being load-bearing — it just merges same-instant bursts.
  */
 const LOBBY_UPDATE_DEBOUNCE_MS = 300;
 
 /** Per-io pending debounce timer for broadcastLobbyUpdate(). */
 const _lobbyUpdateTimers = new WeakMap();
 
-/** Broadcast the current room list to everyone in the lobby room (debounced). */
+/**
+ * Per-io record of what lobby clients were last told: roomId → serialized
+ * entry. Diffing against this at flush time is what makes the delta possible
+ * without touching the ~15 call sites: they say "something changed", and the
+ * flush works out what, by comparing against real state. A call site cannot
+ * describe the change wrongly or forget to, because it never describes it.
+ */
+const _lobbySnapshots = new WeakMap();
+
+/**
+ * Compare the live room list against what lobby clients were last sent.
+ * @returns {{ upserts: object[], removed: string[] }}
+ */
+function _diffLobbyRooms(io) {
+  const previous = _lobbySnapshots.get(io) || new Map();
+  const next = new Map();
+  const upserts = [];
+
+  for (const entry of roomManager.listRooms()) {
+    const serialized = JSON.stringify(entry);
+    next.set(entry.roomId, serialized);
+    if (previous.get(entry.roomId) !== serialized) upserts.push(entry);
+  }
+
+  const removed = [];
+  for (const roomId of previous.keys()) {
+    if (!next.has(roomId)) removed.push(roomId);
+  }
+
+  _lobbySnapshots.set(io, next);
+  return { upserts, removed };
+}
+
+/**
+ * Send the full room list to one socket, and seed the delta baseline.
+ *
+ * A client joining mid-stream must receive a complete snapshot once before any
+ * patch can mean anything — see LobbyHandler's `lobby:subscribe`.
+ */
+function sendLobbySnapshot(io, socket) {
+  const rooms = roomManager.listRooms();
+  socket.emit('lobby:update', { rooms });
+  if (!_lobbySnapshots.has(io)) {
+    const baseline = new Map();
+    for (const entry of rooms) baseline.set(entry.roomId, JSON.stringify(entry));
+    _lobbySnapshots.set(io, baseline);
+  }
+}
+
+/**
+ * Broadcast what changed in the room list to everyone in the lobby (debounced).
+ *
+ * Sends `lobby:patch` — `{ upserts, removed }` — instead of the whole list.
+ * Both operations are idempotent by design: re-sending an entry a client
+ * already has is a no-op, and removing a roomId it never had is a no-op. That
+ * matters because a socket that subscribes between two flushes gets a snapshot
+ * which may already include a change the next patch also carries.
+ *
+ * Emits nothing at all when nothing actually changed — the old code sent a
+ * full list every time regardless.
+ */
 function broadcastLobbyUpdate(io) {
   if (_lobbyUpdateTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _lobbyUpdateTimers.delete(io);
-    io.to('lobby').emit('lobby:update', { rooms: roomManager.listRooms() });
+    const { upserts, removed } = _diffLobbyRooms(io);
+    if (upserts.length === 0 && removed.length === 0) return;
+    io.to('lobby').emit('lobby:patch', { upserts, removed });
   }, LOBBY_UPDATE_DEBOUNCE_MS);
   _lobbyUpdateTimers.set(io, timeout);
 }
@@ -178,6 +245,7 @@ module.exports = {
   sessions,
   getOnlineUsersList,
   broadcastLobbyUpdate,
+  sendLobbySnapshot,
   findSocketsByUserId,
   cleanupRoomTimer,
   cleanupReadyTimer,

@@ -41,7 +41,11 @@ function init(io) {
   roomManager.on('room_destroyed', (roomId) => {
     io.to(roomId).emit('room:destroyed', { message: 'Phòng đã tự động đóng do quá lâu không có hoạt động.' });
     io.in(roomId).socketsLeave(roomId);
-    io.to(LOBBY_ROOM).emit('lobby:update', { rooms: roomManager.listRooms() });
+    // Goes through the shared broadcast so the lobby gets a delta like every
+    // other mutation. Emitting a full list straight to the lobby here (as this
+    // did) both wasted the payload and left the delta baseline stale, so the
+    // next patch re-announced a removal the lobby had already been told about.
+    broadcastLobbyUpdate(io);
   });
 
   // Socket event flood-protection middleware

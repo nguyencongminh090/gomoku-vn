@@ -15,6 +15,7 @@ const roomManager = require('../../managers/RoomManager');
 const {
   timerMap,
   broadcastLobbyUpdate,
+  sendLobbySnapshot,
 } = require('../state');
 
 const LOBBY_ROOM = 'lobby';
@@ -30,7 +31,10 @@ function register(io, socket) {
 
   socket.on('lobby:subscribe', () => {
     socket.join(LOBBY_ROOM);
-    socket.emit('lobby:update', { rooms: roomManager.listRooms() });
+    // Full snapshot first — every later broadcast is only a delta against it,
+    // so a client that joins mid-stream has nothing to apply patches to
+    // until it has received this.
+    sendLobbySnapshot(io, socket);
     socket.emit('lobby:online_users', _getOnlineList(io));
   });
 

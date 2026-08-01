@@ -34,6 +34,11 @@ jest.mock('../utils/logger', () => ({
 const mockState = {
   timerMap: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  // The real one sends the full room list and seeds the delta baseline; here
+  // only the emit matters, which is what this suite asserts on.
+  sendLobbySnapshot: jest.fn((io, socket) => {
+    socket.emit('lobby:update', { rooms: mockRoomManager.listRooms() });
+  }),
   getOnlineUsersList: jest.fn(() => []),
 };
 jest.mock('../socket/state', () => mockState);
