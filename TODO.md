@@ -402,7 +402,7 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
 ### Nguồn: phát hiện khi làm Phần B #4 (2026-08-02)
 
 16. ~~**`GET /api/games` (route list) vẫn trả `black_player_id`/`white_player_id`**~~
-    **✅ ĐÃ XONG** (2026-08-02, commit đang chờ, làm cùng mục 17) — bỏ 2 cột
+    **✅ ĐÃ XONG** (2026-08-02, commit `3664314`, merge `5e7fd79`, làm cùng mục 17) — bỏ 2 cột
     khỏi response của cả `getRecentGames` (list) lẫn `getGameById` (`:id`).
     **Không dừng ở việc bỏ cột:** dữ liệu cũ (trước khi `saveGame` chuẩn hoá
     `winner` thành màu ghế) lưu `winner` = chính raw player id — nếu chỉ bỏ 2
@@ -411,7 +411,7 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
     khi trả về (xem mục 17). Chi tiết: `docs/fix-log.md`.
 
 17. ~~**`resolveWinnerName` phụ thuộc `*_player_id` cho dữ liệu cũ**~~
-    **✅ ĐÃ XONG** (2026-08-02, commit đang chờ) — không đợi kiểm được số hàng
+    **✅ ĐÃ XONG** (2026-08-02, commit `3664314`, merge `5e7fd79`) — không đợi kiểm được số hàng
     production (DB dev có 0 ván, không đo được), chọn thẳng hướng "đúng" mà
     mục này đã đề xuất sẵn cho trường hợp còn hàng cũ: server tự phân giải.
     Thêm `resolveWinnerSeat()` + `withWinnerName()` trong `database.js`, lặp
