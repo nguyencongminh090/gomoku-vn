@@ -175,10 +175,6 @@ function cancelDisconnectGrace(io, socket) {
   const entry = disconnectTimers.get(user.userId);
   if (!entry) return false;
 
-  clearTimeout(entry.timeout);
-  clearInterval(entry.countdown);
-  disconnectTimers.delete(user.userId);
-
   const room = roomManager.getRoom(entry.roomId);
   if (!room || !room.gameState) return false;
 
@@ -186,6 +182,22 @@ function cancelDisconnectGrace(io, socket) {
   // room.state === 'interrupted', but if membership was lost some other way,
   // don't let a non-member rejoin the room socket or resume the game.
   if (!room.users.has(user.userId)) return false;
+
+  // Only now tear the grace timer down. Doing this above the two checks meant
+  // an early return left the game with nothing to end it: the timeout that
+  // would have called handleGameEnd was already cleared and its entry gone, so
+  // the room sat in 'interrupted' forever — and _idleCleanup deliberately
+  // skips rooms in that state, so nothing else would ever collect it. Bailing
+  // out before this point now leaves the grace period running, exactly as if
+  // the player had never reconnected.
+  //
+  // It must also stay ABOVE the otherStillAway scan below, which asks whether
+  // anyone *else* from this room is still in grace: with this entry still in
+  // the map, that scan would always find the reconnecting player themselves
+  // and the game would never resume.
+  clearTimeout(entry.timeout);
+  clearInterval(entry.countdown);
+  disconnectTimers.delete(user.userId);
 
   socket.join(entry.roomId);
 

@@ -350,3 +350,99 @@ describe('DisconnectHandler — both players disconnected', () => {
     expect(timer.start).toHaveBeenCalledTimes(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Early-return paths must not disarm the grace timer (TODO Phần B #12)
+// ---------------------------------------------------------------------------
+describe('DisconnectHandler — cancelDisconnectGrace bailing out', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockState.disconnectTimers.clear();
+    mockState.timerMap.clear();
+    jest.clearAllMocks();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  function activeRoom() {
+    return {
+      roomId: 'room1',
+      state: 'playing',
+      users: new Map([
+        ['u1', { userId: 'u1', displayName: 'Alice' }],
+        ['u2', { userId: 'u2', displayName: 'Bob' }],
+      ]),
+      gameState: {
+        status: 'ongoing',
+        players: [{ userId: 'u1', color: 'black' }, { userId: 'u2', color: 'white' }],
+        serialize: jest.fn(() => ({ boardSize: 15 })),
+      },
+      scoreTable: {},
+    };
+  }
+
+  test('losing membership mid-grace still leaves something to end the game', () => {
+    // The latent bug: the timer teardown ran before the membership check, so
+    // this path cleared the timeout AND dropped the entry, and nothing was
+    // left to finish the game. The room would sit in 'interrupted' forever —
+    // a state _idleCleanup skips, so nothing else would collect it either.
+    const io = makeIo();
+    const room = activeRoom();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    expect(mockState.disconnectTimers.has('u1')).toBe(true);
+
+    // Membership disappears while Alice is away, then she reconnects.
+    room.users.delete('u1');
+    const resumed = DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'));
+
+    expect(resumed).toBe(false);
+    // The grace period is still armed, exactly as if she had never come back.
+    expect(mockState.disconnectTimers.has('u1')).toBe(true);
+
+    // And it still fires, so the game actually ends instead of hanging.
+    jest.advanceTimersByTime(60_000);
+    expect(mockHandleGameEnd).toHaveBeenCalledTimes(1);
+    expect(mockState.disconnectTimers.has('u1')).toBe(false);
+  });
+
+  test('a vanished room also leaves the grace entry alone', () => {
+    const io = makeIo();
+    const room = activeRoom();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+
+    mockRoomManager.getRoom.mockReturnValue(null);   // room gone
+    const resumed = DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'));
+
+    expect(resumed).toBe(false);
+    expect(mockState.disconnectTimers.has('u1')).toBe(true);
+  });
+
+  test('a normal reconnect still tears the grace timer down exactly once', () => {
+    // The other direction: the reorder must not leave the entry behind on the
+    // happy path, or the otherStillAway scan would see the reconnecting player
+    // themselves and never resume.
+    const io = makeIo();
+    const room = activeRoom();
+    const timer = { start: jest.fn(), stop: jest.fn(), getTimers: jest.fn(() => ({})), getSync: jest.fn(() => ({})) };
+    mockState.timerMap.set('room1', timer);
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    const resumed = DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'));
+
+    expect(resumed).toBe(true);
+    expect(mockState.disconnectTimers.has('u1')).toBe(false);
+    expect(room.state).toBe('playing');
+    expect(timer.start).toHaveBeenCalledTimes(1);
+
+    // The cleared timeout must not fire later and end a resumed game.
+    jest.advanceTimersByTime(60_000);
+    expect(mockHandleGameEnd).not.toHaveBeenCalled();
+  });
+});
