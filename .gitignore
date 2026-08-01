@@ -16,3 +16,12 @@ dist/
 # on the same data) — used offline only for classifier training, never
 # committed or shipped. See tools/profanity-training/README.md.
 tools/profanity-training/data/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Playwright
+/playwright/.auth/
