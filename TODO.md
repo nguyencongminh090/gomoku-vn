@@ -92,11 +92,13 @@ sau cùng.
    "connection with no surviving room (restart-hang)" (3 case) vào
    `SocketHandler.test.js`; `npm test` 148/148 xanh. Chi tiết: `docs/fix-log.md`.
 
-2. **Chat sanitize → escape entity** (review 3.5) — `ChatHandler.js:74`, đổi
-   `replace(/<[^>]*>/g,'')` → escape `&lt;`/`&gt;`. Rẻ, không rủi ro (consumer
-   dùng `textContent` nên đây là phòng thủ chiều sâu). Test: file mới
-   `ChatHandler.test.js` (chưa tồn tại), feed đúng chuỗi repro của review
-   (`<img src=x onerror=alert(1)` thiếu `>`).
+2. ~~**Chat sanitize → escape entity** (review 3.5) — `ChatHandler.js:74`, đổi
+   `replace(/<[^>]*>/g,'')` → escape `&lt;`/`&gt;`.~~
+   **✅ ĐÃ XONG** (2026-08-01, commit `8fb3c4e`, merge `248ff36`) — `sanitize()`
+   nay escape `<`/`>`; **cố ý không escape `&`** (client render bằng
+   `textContent`, escape `&` sẽ làm hỏng chữ thường như "R&D", mà cũng không
+   thêm an toàn gì). Test: file mới `ChatHandler.test.js`, 11 case gồm đúng
+   chuỗi repro của review; `npm test` 159/159 xanh. Chi tiết: `docs/fix-log.md`.
 
 3. **`escapeAttr` sửa đúng cách escape** (review 3.7) — `lobby.js:474-476`,
    `room-ui.js:62-64`, đổi `\"`/`\'` → `&quot;`/`&#39;`. Rẻ, không rủi ro (input
