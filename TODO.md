@@ -169,12 +169,22 @@ sau cùng.
    **Đã đo thời gian thật — xem Phần A #4, mục đó coi như đóng.**
    Chi tiết: `docs/fix-log.md`.
 
-7. **Room quota theo IP** (review 3.2) — `RoomManager.createRoom()`, đếm số
-   phòng theo IP người tạo, chặn khi vượt ngưỡng (không phải 1 — tránh khoá oan
-   NAT/wifi chung IP). Rủi ro thật: phải nhớ decrement khi phòng đóng qua CẢ
-   đường idle-timeout lẫn đóng chủ động, không chỉ 1 đường. Test: mở rộng
-   `server/tests/RoomManager.test.js` (**đã tồn tại từ mục 5** — không còn phải
-   tạo mới), cover cả 2 đường decrement.
+7. ~~**Room quota theo IP** (review 3.2) — `RoomManager.createRoom()`, đếm số
+   phòng theo IP người tạo, chặn khi vượt ngưỡng (không phải 1).~~
+   **✅ ĐÃ XONG** (2026-08-02, commit `3abe3a3`, merge `972f695`) — chọn hướng
+   (a) của `instruction.md` §B7 (quota theo IP), không chọn (b) cấm guest tạo
+   phòng. Thêm `MAX_ROOMS_PER_IP = 3`, room lưu `creatorIp`, `LobbyHandler`
+   truyền `socket.handshake.address`. **Không dùng bộ đếm tăng/giảm** — đếm
+   trực tiếp bằng cách quét `this.rooms` lúc tạo, nên **không có đường decrement
+   nào để quên** (đúng rủi ro mà mục này cảnh báo): phòng bị huỷ là biến khỏi
+   map, đếm lại là đúng. Test: mở rộng `RoomManager.test.js` 4 → 14 case (cover
+   cả 3 đường huỷ + case xoá thẳng khỏi map + `creatorIp` không lộ ra client);
+   mutation-check: bỏ khối quota thì 4/14 đỏ. `npm test` 203/203 xanh.
+   **Đã kiểm bằng browser thật:** 3 phòng đầu tạo được, phòng thứ 4 bị từ chối
+   kèm toast tiếng Việt, sau khi 1 phòng đóng thì tạo được tiếp.
+   **Hạn chế đã biết (không thuộc phạm vi mục này):** sau reverse proxy thì mọi
+   kết nối mang IP của proxy → gộp chung 1 quota; cần `trust proxy`, xem Phần A #1.
+   Chi tiết: `docs/fix-log.md`.
 
 8. **Bỏ `settings` khỏi `room:updated`** (review 4.2) — `RoomManager.js`
    `serializeRoom()`, chỉ gửi `settings` khi thực sự đổi. Rủi ro chính: có
