@@ -301,7 +301,22 @@ code và nên ưu tiên cao vì rẻ.
     thêm vào `server/tests/`. Khớp đúng rule "Bug-fix workflow" mới thêm vào
     `CLAUDE.md` — không xoá test sau khi viết.
 
-12. **Thứ tự sai tiềm ẩn trong `cancelDisconnectGrace`** — `disconnectTimers.delete()`
+12. ~~**Thứ tự sai tiềm ẩn trong `cancelDisconnectGrace`**~~
+    **✅ ĐÃ XONG** (2026-08-02, commit `b7ee25a`, merge `5145b79`) — dời 3 dòng
+    teardown (`clearTimeout`/`clearInterval`/`delete`) xuống **sau** cả 2 guard,
+    nên nhánh bail-out để nguyên grace timer đang chạy, ván vẫn kết thúc được
+    thay vì phòng kẹt `interrupted` vĩnh viễn.
+    **Ràng buộc thứ 2 mà mục này chưa nêu:** teardown phải nằm **trên** vòng
+    quét `otherStillAway` — nếu để xuống dưới, chính entry của người vừa vào
+    lại sẽ bị đếm là "đối thủ còn trong grace" và **không ván nào resume được**
+    (đây mới là lỗi thật, không còn latent). Đã ghi rõ cả 2 ranh giới trong
+    comment tại chỗ và pin bằng test.
+    Test: +3 case trong `DisconnectHandler.test.js`; `npm test` 264/264 xanh.
+    **Mutation-check 2 chiều:** trả lại thứ tự cũ → 2 case mới đỏ; dời teardown
+    xuống dưới `otherStillAway` → 4 case đỏ (gồm 3 case resume có sẵn).
+    Chi tiết: `docs/fix-log.md`.
+
+    ~~Mô tả gốc:~~ `disconnectTimers.delete()`
     chạy ở dòng 174, **trước** khi kiểm tra membership ở dòng 181. Nếu nhánh đó
     từng chạy được, grace timer bị huỷ sớm và không còn gì kết thúc ván — phòng
     kẹt vĩnh viễn ở `interrupted` (mà `_idleCleanup` lại bỏ qua trạng thái này).
