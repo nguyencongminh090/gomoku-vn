@@ -48,7 +48,7 @@ class RoomManager extends EventEmitter {
     // Start idle room cleanup interval
     this._cleanupInterval = setInterval(
       () => this._idleCleanup(),
-      60_000 // Check every 60 seconds
+      config.IDLE_SCAN_INTERVAL_MS
     );
 
     logger.info('[RoomManager] Initialized');
