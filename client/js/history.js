@@ -435,34 +435,9 @@ window.loadGames  = loadGames;
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
-/**
- * Resolve winner display name from game record.
- * Handles both new data (player IDs stored) and old data (player IDs null).
- */
-function resolveWinnerName(g) {
-  if (!g.winner || g.winner === 'draw') return null;
-  // New data: winner stored as seat color, resolvable for guests too.
-  if (g.winner === 'BLACK') return g.black_player_name;
-  if (g.winner === 'WHITE') return g.white_player_name;
-  // Old data: winner stored as raw player ID.
-  if (g.winner === g.black_player_id) return g.black_player_name;
-  if (g.winner === g.white_player_id) return g.white_player_name;
-  // Fallback: winner might be a name directly, or match via name
-  if (g.winner === g.black_player_name) return g.black_player_name;
-  if (g.winner === g.white_player_name) return g.white_player_name;
-  // Old guest winner: guest seats have no stored player ID, so a guest's
-  // raw id never matches black_player_id/white_player_id above. Infer by
-  // elimination — if exactly one seat is a guest (null id), that seat won.
-  if (g.black_player_id == null && g.white_player_id != null) return g.black_player_name;
-  if (g.white_player_id == null && g.black_player_id != null) return g.white_player_name;
-  // Last resort: both seats are guests (old data) — can't disambiguate.
-  return g.winner.length > 15 ? null : g.winner;
-}
-
 function getResultText(g) {
   if (!g.winner || g.winner === 'draw') return 'Hoà';
-  const name = resolveWinnerName(g);
-  return name ? `${name} thắng` : 'Có người thắng';
+  return g.winner_name ? `${g.winner_name} thắng` : 'Có người thắng';
 }
 
 function getResultTextFull(g) {
@@ -478,7 +453,7 @@ function getResultTextFull(g) {
     return `Hoà — ${reasonMap[g.reason] || g.reason || ''}`;
   }
 
-  const name = resolveWinnerName(g) || 'Người chơi';
+  const name = g.winner_name || 'Người chơi';
   const reason = reasonMap[g.reason] || g.reason || '';
   return `${name} thắng${reason ? ' — ' + reason : ''}`;
 }

@@ -176,13 +176,72 @@ function getPlayerHistory(playerId) {
 }
 
 /**
+ * Resolve which seat won from a game row that still has
+ * black_player_id/white_player_id on it (before those are stripped for the
+ * public response — see getRecentGames/getGameById below).
+ *
+ * saveGame() normalizes `winner` to 'BLACK'/'WHITE'/'draw' for every game it
+ * writes, so the id/name-matching and elimination branches below only exist
+ * to resolve rows written before that normalization shipped, where `winner`
+ * is a raw player id (or, on older data still, a raw name).
+ *
+ * @param {object} row — must have winner, black_player_id, white_player_id,
+ *   black_player_name, white_player_name
+ * @returns {'BLACK'|'WHITE'|null} null when the seat can't be determined
+ *   (both seats are guests on old data — no id to eliminate by)
+ */
+function resolveWinnerSeat(row) {
+  const { winner, black_player_id, white_player_id, black_player_name, white_player_name } = row;
+  if (!winner || winner === 'draw') return null;
+  if (winner === 'BLACK') return 'BLACK';
+  if (winner === 'WHITE') return 'WHITE';
+  // Legacy: winner stored as raw player id.
+  if (winner === black_player_id) return 'BLACK';
+  if (winner === white_player_id) return 'WHITE';
+  // Legacy: winner stored as a raw name directly.
+  if (winner === black_player_name) return 'BLACK';
+  if (winner === white_player_name) return 'WHITE';
+  // Legacy guest winner: guest seats have no stored player id, so a guest's
+  // raw id never matches black_player_id/white_player_id above. Infer by
+  // elimination — if exactly one seat is a guest (null id), that seat won.
+  if (black_player_id == null && white_player_id != null) return 'BLACK';
+  if (white_player_id == null && black_player_id != null) return 'WHITE';
+  return null;
+}
+
+/**
+ * Attach `winner_name` to a game row, normalize `winner` to a seat color
+ * wherever it can be resolved, then strip black_player_id/white_player_id —
+ * those are internal user ids, needed here only to resolve legacy winner
+ * data, and must not leave the server.
+ *
+ * Normalizing `winner` matters, not just `winner_name`: on legacy rows where
+ * `winner` was stored as the raw winning player's id, that id is itself the
+ * same secret black_player_id/white_player_id is being stripped to protect —
+ * leaving it in `winner` would defeat the point.
+ *
+ * @param {object} row
+ * @returns {object} the same row, mutated
+ */
+function withWinnerName(row) {
+  const seat = resolveWinnerSeat(row);
+  row.winner_name = seat === 'BLACK' ? row.black_player_name
+    : seat === 'WHITE' ? row.white_player_name
+    : null;
+  if (seat) row.winner = seat;
+  delete row.black_player_id;
+  delete row.white_player_id;
+  return row;
+}
+
+/**
  * Fetch recent games (all players), paginated.
  * @param {number} limit
  * @param {number} offset
  * @returns {Array}
  */
 function getRecentGames(limit = 20, offset = 0) {
-  return db.prepare(`
+  const rows = db.prepare(`
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
            winner, reason, board_size, rule_wall, rule_portal,
@@ -191,28 +250,32 @@ function getRecentGames(limit = 20, offset = 0) {
     ORDER BY ended_at DESC
     LIMIT ? OFFSET ?
   `).all(limit, offset);
+  return rows.map(withWinnerName);
 }
 
 /**
  * Fetch a single game by ID with full move data.
  *
  * Columns are listed explicitly rather than `SELECT *` so that adding a column
- * to the table never silently widens this endpoint's public response. In
- * particular `black_player_id` / `white_player_id` are deliberately omitted —
- * `/api/games/:id` is unauthenticated, and those are internal user ids.
+ * to the table never silently widens this endpoint's public response.
+ * `black_player_id` / `white_player_id` are selected (needed to resolve a
+ * legacy winner via `withWinnerName`) but stripped before the row is
+ * returned — `/api/games/:id` is unauthenticated, and those are internal
+ * user ids.
  *
  * @param {string} gameId
  * @returns {object|undefined}
  */
 function getGameById(gameId) {
-  return db.prepare(`
-    SELECT id, room_id,
+  const row = db.prepare(`
+    SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
            winner, reason, board_size, rule_wall, rule_portal,
            moves, walls, portals,
            started_at, ended_at
     FROM games WHERE id = ?
   `).get(gameId);
+  return row && withWinnerName(row);
 }
 
 /**

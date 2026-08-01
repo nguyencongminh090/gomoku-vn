@@ -55,6 +55,24 @@ const GAME = {
   ended_at: '1700000060000',
 };
 
+// Written before saveGame() normalized `winner` to a seat color — the raw
+// winning player's id is stored directly in the `winner` column.
+const LEGACY_ID_GAME = {
+  ...GAME,
+  id: 'game-2',
+  winner: 'user-white-secret', // = white_player_id, not 'WHITE'
+};
+
+// Legacy data, guest winner: guest seats never had a stored player id, so a
+// guest's raw id in `winner` can't match either *_player_id column — the
+// only way to resolve it is elimination (exactly one seat is a guest).
+const LEGACY_GUEST_GAME = {
+  ...GAME,
+  id: 'game-3',
+  black_player_id: null,
+  winner: 'guest_ab12cd34',
+};
+
 let server;
 let baseUrl;
 
@@ -68,7 +86,7 @@ beforeAll(async () => {
   insertUser.run(GAME.black_player_id, 'alice', 'hash', 'Alice', Date.now());
   insertUser.run(GAME.white_player_id, 'bob', 'hash', 'Bob', Date.now());
 
-  database.db.prepare(`
+  const insertGame = database.db.prepare(`
     INSERT INTO games (id, room_id, black_player_id, white_player_id,
                        black_player_name, white_player_name, winner, reason,
                        board_size, rule_wall, rule_portal, moves, walls,
@@ -77,7 +95,10 @@ beforeAll(async () => {
             @black_player_name, @white_player_name, @winner, @reason,
             @board_size, @rule_wall, @rule_portal, @moves, @walls,
             @portals, @started_at, @ended_at)
-  `).run(GAME);
+  `);
+  insertGame.run(GAME);
+  insertGame.run(LEGACY_ID_GAME);
+  insertGame.run(LEGACY_GUEST_GAME);
 
   const app = express();
   app.use('/api/games', gamesRouter);
@@ -124,6 +145,7 @@ describe('GET /api/games/:id', () => {
     expect(game.black_player_name).toBe('Alice');
     expect(game.white_player_name).toBe('Bob');
     expect(game.winner).toBe('BLACK');
+    expect(game.winner_name).toBe('Alice');
     expect(game.reason).toBe('normal');
     expect(game.board_size).toBe(15);
     expect(game.started_at).toBe(GAME.started_at);
@@ -150,6 +172,31 @@ describe('GET /api/games/:id', () => {
     const game = database.getGameById('game-1');
     expect(game).not.toHaveProperty('internal_note');
   });
+
+  // ── TODO #17: winner_name resolves legacy winner formats ─────────────────
+
+  test('resolves a legacy raw-player-id winner to a display name, and normalizes winner itself', async () => {
+    const res = await get('/api/games/game-2');
+    const { game } = await res.json();
+
+    // `winner` was stored as the raw secret id — must come back normalized
+    // to the seat color, not leak the id it was resolved from.
+    expect(game.winner).toBe('WHITE');
+    expect(game.winner_name).toBe('Bob');
+    expect(game).not.toHaveProperty('black_player_id');
+    expect(game).not.toHaveProperty('white_player_id');
+    expect(JSON.stringify(game)).not.toContain('user-white-secret');
+  });
+
+  test('resolves a legacy guest winner by seat elimination', async () => {
+    const res = await get('/api/games/game-3');
+    const { game } = await res.json();
+
+    // Resolved by elimination (black seat is the guest, null id), and the
+    // raw guest id in `winner` is normalized to the seat color too.
+    expect(game.winner).toBe('BLACK');
+    expect(game.winner_name).toBe('Alice');
+  });
 });
 
 // ── GET /api/games — list route ────────────────────────────────────────────
@@ -163,6 +210,30 @@ describe('GET /api/games', () => {
     expect(Array.isArray(body.games)).toBe(true);
     expect(body.games.length).toBeGreaterThan(0);
     expect(body.pagination).toMatchObject({ page: 1, limit: 10 });
+  });
+
+  test('does not expose black_player_id / white_player_id (TODO #16)', async () => {
+    const res = await get('/api/games?page=1&limit=10');
+    const { games } = await res.json();
+
+    for (const g of games) {
+      expect(g).not.toHaveProperty('black_player_id');
+      expect(g).not.toHaveProperty('white_player_id');
+    }
+
+    const raw = JSON.stringify(games);
+    expect(raw).not.toContain('user-black-secret');
+    expect(raw).not.toContain('user-white-secret');
+  });
+
+  test('includes winner_name, resolved for both modern and legacy rows', async () => {
+    const res = await get('/api/games?page=1&limit=10');
+    const { games } = await res.json();
+    const byId = Object.fromEntries(games.map(g => [g.id, g]));
+
+    expect(byId['game-1'].winner_name).toBe('Alice');
+    expect(byId['game-2'].winner_name).toBe('Bob');
+    expect(byId['game-3'].winner_name).toBe('Alice');
   });
 });
 
