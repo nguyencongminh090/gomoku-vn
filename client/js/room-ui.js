@@ -59,9 +59,11 @@
     return div.innerHTML;
   }
 
-  function escapeAttr(str) {
-    return String(str).replace(/'/g, "\\'").replace(/"/g, '\\"');
-  }
+  // Escaping lives in escape-utils.js (a pure, Node-testable module imported by
+  // room-entry.js before this file). These are thin aliases so the call sites
+  // below read the same as before.
+  const escapeAttr     = (str) => global.EscapeUtils.escapeAttr(str);
+  const escapeJsString = (str) => global.EscapeUtils.escapeJsString(str);
 
   // ── Main render entry ─────────────────────────────────────────────────────
 
@@ -458,7 +460,7 @@
     let html = '';
     for (const g of guests) {
       const kickBtn = (st.myRole === 'host' && g.userId !== st.myUser.userId && st.roomData.state !== 'playing')
-        ? `<button class="btn-kick" onclick="kickUser('${escapeAttr(g.userId)}')">Mời ra</button>`
+        ? `<button class="btn-kick" onclick="kickUser('${escapeAttr(escapeJsString(g.userId))}')">Mời ra</button>`
         : '';
       const hostBadge = g.role === 'host'
         ? ' <span class="slot-card__role slot-card__role--host">CP</span>'
