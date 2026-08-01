@@ -77,8 +77,37 @@
       .replace(/\u2029/g, '\\u2029');
   }
 
+  /**
+   * Turn the server's escaped chat text back into the characters the sender
+   * actually typed, for rendering into a text node.
+   *
+   * ChatHandler.sanitize() escapes `<` and `>` on the way out, so the payload
+   * on the wire is inert for any consumer that ever renders it as HTML. The
+   * chat UI does not: it assigns to `textContent`, which shows the escaped form
+   * verbatim — someone typing `<b>bold</b>` saw `&lt;b&gt;bold&lt;/b&gt;`.
+   *
+   * Reversing exactly those two entities immediately before writing to a text
+   * node is safe, and is not a hole in the escaping: `textContent` never parses
+   * its input as markup, so the result is displayed, not interpreted. The value
+   * must not be handed to `innerHTML` afterwards — that is what the escaped
+   * form is for.
+   *
+   * `&amp;` is deliberately NOT decoded: the server never produces it (it
+   * leaves `&` alone so ordinary text like "R&D" survives), so a literal
+   * "&amp;" in a message is something the sender actually typed.
+   *
+   * @param {*} str
+   * @returns {string}
+   */
+  function decodeChatText(str) {
+    return String(str)
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+  }
+
   return {
     escapeAttr: escapeAttr,
     escapeJsString: escapeJsString,
+    decodeChatText: decodeChatText,
   };
 });

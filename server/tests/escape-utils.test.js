@@ -9,7 +9,7 @@
  * module from the server-side Jest suite.
  */
 
-const { escapeAttr, escapeJsString } = require('../../client/js/escape-utils');
+const { escapeAttr, escapeJsString, decodeChatText } = require('../../client/js/escape-utils');
 
 describe('escapeAttr — HTML attribute context', () => {
   test('a double quote can no longer terminate the attribute it sits in', () => {
@@ -112,5 +112,47 @@ describe('nested context — a JS literal inside an inline handler attribute', (
   test('a normal server-generated id round-trips to exactly itself', () => {
     const id = 'a3f9c2e1-4b7d-4f2a-9c1e-8d6b5a4f3e2d';
     expect(jsSourceFor(id)).toBe(`joinRoom('${id}')`);
+  });
+});
+
+// ── Chat display decode (TODO #15, follow-up of the #13 decision) ──────────
+
+describe('decodeChatText — rendering server-escaped chat into a text node', () => {
+  // ChatHandler.sanitize() is the other half of this pair; these assert the
+  // round trip, so the two cannot drift apart silently.
+  const { sanitize } = require('../managers/ChatHandler');
+
+  test('shows the sender what they actually typed', () => {
+    expect(decodeChatText('&lt;b&gt;bold&lt;/b&gt;')).toBe('<b>bold</b>');
+  });
+
+  test('round-trips the review\'s repro string back to the original', () => {
+    const typed = '<img src=x onerror=alert(1)';
+    expect(decodeChatText(sanitize(typed))).toBe(typed);
+  });
+
+  test('round-trips ordinary text unchanged', () => {
+    for (const typed of ['xin chào', 'R&D & co', 'a < b > c', '5 > 3 và 2 < 4']) {
+      expect(decodeChatText(sanitize(typed))).toBe(typed);
+    }
+  });
+
+  test('does not decode &amp;, which the server never produces', () => {
+    // The server leaves `&` alone so "R&D" survives, so a literal "&amp;" in a
+    // message is something the sender typed and must stay visible as typed.
+    expect(decodeChatText('R&amp;D')).toBe('R&amp;D');
+  });
+
+  test('non-string input is coerced, not crashed on', () => {
+    expect(decodeChatText(null)).toBe('null');
+    expect(decodeChatText(42)).toBe('42');
+  });
+
+  test('the wire format itself stays escaped — this only changes rendering', () => {
+    // Guards the point of the #13 decision: the payload leaving the server is
+    // still inert for any future consumer that renders it as HTML.
+    const onTheWire = sanitize('<script>alert(1)</script>');
+    expect(onTheWire).not.toContain('<');
+    expect(decodeChatText(onTheWire)).toContain('<');
   });
 });
