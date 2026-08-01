@@ -156,7 +156,7 @@
     densityRow.appendChild(densityLabel);
     densityRow.appendChild(segment(
       [['lite', T('mode.lite')], ['default', T('mode.default')], ['pro', T('mode.pro')]],
-      global.getUiMode ? global.getUiMode() : 'default',
+      global.getUiMode ? global.getUiMode() : 'lite',
       (value) => { if (global.setUiMode) global.setUiMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
     ));
 

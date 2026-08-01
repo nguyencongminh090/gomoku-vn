@@ -8,9 +8,9 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=17" />
-  <link rel="stylesheet" href="css/lobby.css?v=17" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=1" />
+  <link rel="stylesheet" href="css/main.css?v=22" />
+  <link rel="stylesheet" href="css/lobby.css?v=22" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=22" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -30,7 +30,7 @@
     (function() {
       var m;
       try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
-      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'default';
+      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'lite';
       document.documentElement.setAttribute('data-ui-mode', mode);
     })();
   </script>
@@ -277,7 +277,7 @@
 
 <!-- Socket.io CDN -->
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/index-entry.js"></script>
+<script type="module" src="js/index-entry.js?v=22"></script>
 <script>
   // Auto-open the online panel on desktop sidebar (>= 900px)
   (function() {

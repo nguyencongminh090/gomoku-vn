@@ -5,6 +5,10 @@
  *
  * Rate limit: max CHAT_RATE_LIMIT messages per CHAT_RATE_WINDOW_MS per user.
  * Sanitization: strip all HTML tags from messages.
+ * Profanity: VI/EN bad words are masked (see ../../client/js/profanity-filter.js).
+ * This is the authoritative pass — the client also filters optimistically,
+ * but only this server-side pass determines what other participants see.
+ * Masking is silent by design: no toast, log line, or indicator to anyone.
  *
  * Manual test checklist:
  *   [ ] Message broadcast reaches all room members
@@ -12,10 +16,16 @@
  *   [ ] HTML tags are stripped from messages
  *   [ ] Empty messages are rejected
  *   [ ] Messages longer than 500 chars are truncated
+ *   [ ] An exact bad word (e.g. "shit", "lồn") is masked to asterisks
+ *   [ ] An obfuscated/misspelled variant (e.g. "sh1t", "d.m") is masked
+ *   [ ] A diacritic-stripped Vietnamese variant (e.g. "dit me may") is masked
+ *   [ ] A false-positive-prone legitimate word (e.g. "buổi sáng", "các bạn") passes through unmasked
+ *   [ ] A clean message passes through completely unchanged
  */
 
 const config = require('../config');
 const logger = require('../utils/logger');
+const profanityFilter = require('../../client/js/profanity-filter');
 
 // Per-user sliding window: userId → [timestamp, timestamp, ...]
 const rateLimitMap = new Map();
@@ -86,6 +96,9 @@ function handleMessage(io, socket, roomId, text) {
     ? clean.slice(0, MAX_MESSAGE_LENGTH) + '…'
     : clean;
 
+  // Mask profanity (authoritative — this is what gets broadcast)
+  const filtered = profanityFilter.filterMessage(truncated);
+
   // Rate limit
   if (isRateLimited(user.userId)) {
     socket.emit('chat:error', {
@@ -97,7 +110,7 @@ function handleMessage(io, socket, roomId, text) {
   const payload = {
     from: user.displayName,
     fromId: user.userId,
-    text: truncated,
+    text: filtered,
     timestamp: Date.now(),
   };
 

@@ -77,6 +77,15 @@ function getUserById(id) {
   return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
+/**
+ * Stamp a user's last_login_at on successful authentication.
+ * @param {string} id
+ * @param {string} loggedInAt  ISO 8601 timestamp
+ */
+function updateLastLogin(id, loggedInAt) {
+  db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(loggedInAt, id);
+}
+
 // ---------------------------------------------------------------------------
 // Game helpers
 // ---------------------------------------------------------------------------
@@ -105,6 +114,19 @@ function saveGame(game) {
   const black = game.players.find(p => p.color === 'BLACK');
   const white = game.players.find(p => p.color === 'WHITE');
 
+  // Store winner as seat color ('BLACK'/'WHITE'/'draw') rather than the raw
+  // player id — guest ids have no matching black_player_id/white_player_id
+  // column (those are null for guests), so a raw-id winner can never be
+  // resolved back to a display name at read time. Color is always resolvable
+  // via black_player_name/white_player_name, guest or not.
+  let winner = null;
+  if (game.result) {
+    if (game.result.winner === 'draw') winner = 'draw';
+    else if (black && game.result.winner === black.id) winner = 'BLACK';
+    else if (white && game.result.winner === white.id) winner = 'WHITE';
+    else winner = game.result.winner;
+  }
+
   // Wrap in a transaction for atomicity
   const saveAll = db.transaction(() => {
     insertGame.run(
@@ -114,7 +136,7 @@ function saveGame(game) {
       (!white || white.isGuest) ? null : white.id,
       black ? black.name : 'Unknown',
       white ? white.name : 'Unknown',
-      game.result ? game.result.winner : null,
+      winner,
       game.result ? game.result.reason : null,
       game.boardSize,
       game.ruleWall  ? 1 : 0,
@@ -193,6 +215,7 @@ module.exports = {
   createUser,
   getUserByUsername,
   getUserById,
+  updateLastLogin,
   saveGame,
   getPlayerHistory,
   getRecentGames,

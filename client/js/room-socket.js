@@ -154,6 +154,11 @@
     if (data.gameOver) st.gameState.status = 'finished';
     if (data.result)   st.gameState.result = data.result;
 
+    if (global.audioManager) {
+      const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
+      global.audioManager.playMoveSound(!myPlayer || myPlayer.color !== data.color);
+    }
+
     GameUI.updateBoardState();
     RoomUI.updateUI();
   });
@@ -190,8 +195,21 @@
   });
 
   client.on('timer:tick', (data) => {
-    S().timerValues = data;
+    const st = S();
+    st.timerValues = data;
     GameUI.renderTimers();
+
+    // Beep once per second through the active player's own final 10s —
+    // never for the opponent's clock (see prompt-architect spec).
+    if (global.audioManager && st.gameState && st.gameState.status === 'ongoing') {
+      const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
+      if (myPlayer && st.gameState.currentTurn === st.myUser.userId) {
+        const myTime = myPlayer.color === 'BLACK' ? data.black : data.white;
+        if (myTime > 0 && myTime <= 10) {
+          global.audioManager.playTimerTickSound();
+        }
+      }
+    }
   });
 
   client.on('game:ended', (data) => {

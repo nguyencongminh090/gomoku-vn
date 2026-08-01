@@ -57,7 +57,7 @@ let currentRooms = [];
 
 // Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
 function uiMode() {
-  return document.documentElement.getAttribute('data-ui-mode') || 'default';
+  return document.documentElement.getAttribute('data-ui-mode') || 'lite';
 }
 
 // ---------------------------------------------------------------------------

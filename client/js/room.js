@@ -173,7 +173,11 @@ const btnSend = document.getElementById('btn-send');
 function sendChat() {
   const text = chatInput.value.trim();
   if (!text) return;
-  window.RoomClient.emit('chat:message', { text });
+  // Optimistic client-side pass — purely cosmetic UX; the server's own
+  // filterMessage() pass in ChatHandler.handleMessage is authoritative for
+  // what other participants actually receive.
+  const filtered = window.ProfanityFilter ? window.ProfanityFilter.filterMessage(text) : text;
+  window.RoomClient.emit('chat:message', { text: filtered });
   chatInput.value = '';
 }
 

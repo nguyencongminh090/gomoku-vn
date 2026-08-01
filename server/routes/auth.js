@@ -142,6 +142,8 @@ router.post('/login', async (req, res, next) => {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
     }
 
+    db.updateLastLogin(user.id, new Date().toISOString());
+
     const token = signToken(
       {
         userId: user.id,

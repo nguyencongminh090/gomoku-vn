@@ -23,7 +23,7 @@
 
   function getUiMode() {
     const m = document.documentElement.getAttribute('data-ui-mode');
-    return MODES.includes(m) ? m : 'default';
+    return MODES.includes(m) ? m : 'lite';
   }
 
   function setUiMode(mode) {

@@ -176,7 +176,7 @@ async function openReplay(gameId) {
     history.replaceState(null, '', `history.html?id=${gameId}`);
 
     // Reset analysis mode. Pro opens straight into it (analysis is the reason a
-    // power user opens a replay at all); Lite has no analysis affordance.
+    // power user opens a replay at all); Lite/Default start closed but can toggle it.
     applyReplayMode();
     setAnalysisMode(uiMode() === 'pro');
 
@@ -267,18 +267,16 @@ function countMainLine(node) {
 
 // Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
 function uiMode() {
-  return document.documentElement.getAttribute('data-ui-mode') || 'default';
+  return document.documentElement.getAttribute('data-ui-mode') || 'lite';
 }
 
-// Lite drops the analysis affordance entirely — button and tree panel both.
+// Analysis is available in every UI mode; only the default entry state
+// (auto-opened in Pro, closed otherwise) differs — see openReplay().
 function applyReplayMode() {
-  const lite = uiMode() === 'lite';
-  if (btnAnalysis) btnAnalysis.style.display = lite ? 'none' : '';
-  if (lite && treePanel) treePanel.style.display = 'none';
+  if (btnAnalysis) btnAnalysis.style.display = '';
 }
 
 function setAnalysisMode(on) {
-  if (uiMode() === 'lite') on = false; // no analysis surface in Lite
   analysisMode = on;
   btnAnalysis.classList.toggle('active', on);
   treePanel.style.display = on ? '' : 'none';
@@ -365,7 +363,7 @@ function startAutoPlay() {
   if (!moveTree) return;
   if (moveTree.currentNode.isLeaf) moveTree.goToStart();
   
-  btnPlay.textContent = '⏸';
+  btnPlay.innerHTML = '<i class="ph-bold ph-pause"></i>';
   btnPlay.classList.add('playing');
   autoPlayTimer = setInterval(() => {
     if (!moveTree.goForward()) {
@@ -378,7 +376,7 @@ function startAutoPlay() {
 
 function stopAutoPlay() {
   if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
-  btnPlay.textContent = '⏵';
+  btnPlay.innerHTML = '<i class="ph-bold ph-play"></i>';
   btnPlay.classList.remove('playing');
 }
 
@@ -403,6 +401,14 @@ btnPlay.addEventListener('click',  toggleAutoPlay);
 btnBack.addEventListener('click',  closeReplay);
 btnAnalysis.addEventListener('click', toggleAnalysis);
 if (btnDeleteBranch) btnDeleteBranch.addEventListener('click', deleteBranch);
+
+// Re-fit the board when the viewport/window changes (browser resize, device
+// rotation, DevTools panel toggling) — board.js only recomputes size when
+// resize() is called explicitly, so this must be wired up like game-ui.js does.
+window.addEventListener('resize', () => {
+  if (!boardRenderer || viewReplay.style.display === 'none') return;
+  boardRenderer.resize();
+});
 
 // Keyboard shortcuts
 document.addEventListener('keydown', (e) => {
@@ -435,14 +441,22 @@ window.loadGames  = loadGames;
  */
 function resolveWinnerName(g) {
   if (!g.winner || g.winner === 'draw') return null;
-  // Match by player ID (new data)
+  // New data: winner stored as seat color, resolvable for guests too.
+  if (g.winner === 'BLACK') return g.black_player_name;
+  if (g.winner === 'WHITE') return g.white_player_name;
+  // Old data: winner stored as raw player ID.
   if (g.winner === g.black_player_id) return g.black_player_name;
   if (g.winner === g.white_player_id) return g.white_player_name;
   // Fallback: winner might be a name directly, or match via name
   if (g.winner === g.black_player_name) return g.black_player_name;
   if (g.winner === g.white_player_name) return g.white_player_name;
-  // Last resort: show winner raw value truncated
-  return g.winner.length > 15 ? g.black_player_name : g.winner;
+  // Old guest winner: guest seats have no stored player ID, so a guest's
+  // raw id never matches black_player_id/white_player_id above. Infer by
+  // elimination — if exactly one seat is a guest (null id), that seat won.
+  if (g.black_player_id == null && g.white_player_id != null) return g.black_player_name;
+  if (g.white_player_id == null && g.black_player_id != null) return g.white_player_name;
+  // Last resort: both seats are guests (old data) — can't disambiguate.
+  return g.winner.length > 15 ? null : g.winner;
 }
 
 function getResultText(g) {
@@ -497,11 +511,10 @@ function escapeHtml(str) {
 // ---------------------------------------------------------------------------
 window.addEventListener('uimodechange', () => {
   applyReplayMode();
-  // Lite must drop out of analysis; Pro entering mid-replay should switch in.
+  // Pro entering mid-replay should switch straight into analysis.
   if (replayGameData) {
     const mode = uiMode();
-    if (mode === 'lite') setAnalysisMode(false);
-    else if (mode === 'pro' && !analysisMode) setAnalysisMode(true);
+    if (mode === 'pro' && !analysisMode) setAnalysisMode(true);
     requestAnimationFrame(() => {
       if (boardRenderer) boardRenderer.resize();
       syncBoardToTree();
