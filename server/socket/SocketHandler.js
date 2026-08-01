@@ -138,6 +138,15 @@ function init(io) {
         }
         socket.emit('room:joined', payload);
         logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
+      } else {
+        // Room state lives in memory only, so a server restart (or an idle
+        // cleanup that ran while this client was offline) leaves a room page
+        // attached to a room that no longer exists. Socket.io reconnects
+        // silently and the room page only sends room:join once per page load,
+        // so without this branch the page waits forever for state that will
+        // never arrive. The lobby page does not listen for room:destroyed, so
+        // telling every roomless connection is a no-op there.
+        socket.emit('room:destroyed', { message: 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.' });
       }
     }
 
