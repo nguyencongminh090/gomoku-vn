@@ -139,9 +139,16 @@ sau cùng.
    bên dưới** (client *có* đọc 2 cột đó cho dữ liệu cũ; route list vẫn trả
    ids). Chi tiết: `docs/fix-log.md`.
 
-5. **Idle-scan magic number → config** (review 5.5) — `RoomManager.js:49-52`,
-   rút `60000` thành hằng số trong `config.js`. Thuần rename, không cần test
-   riêng.
+5. ~~**Idle-scan magic number → config** (review 5.5) — `RoomManager.js:49-52`,
+   rút `60000` thành hằng số trong `config.js`.~~
+   **✅ ĐÃ XONG** (2026-08-02, commit `c468d16`, merge `2a622db`) — thêm
+   `IDLE_SCAN_INTERVAL_MS = 60_000` vào `config.js` ngay dưới `IDLE_TIMEOUT_MS`;
+   hành vi không đổi. TODO nói "không cần test riêng" nhưng vẫn viết theo rule
+   `CLAUDE.md`: file mới `server/tests/RoomManager.test.js` (4 case, mock config
+   bằng **sentinel** `12_345` — nếu assert theo giá trị thật 60_000 thì test vẫn
+   xanh dù chưa sửa gì). Đã mutation-check: khôi phục literal thì 2/4 case đỏ.
+   `npm test` 184/184 xanh. **File này là thứ mục 7 (room quota theo IP) cần —
+   mục đó mở rộng file sẵn có, không phải tạo mới.** Chi tiết: `docs/fix-log.md`.
 
 6. **Timing attack — dummy bcrypt compare** (review 3.6) — `auth.js:135-143`,
    khi `!user` vẫn chạy `bcrypt.compare(password, DUMMY_HASH_CỐ_ĐỊNH)` trước
@@ -153,9 +160,9 @@ sau cùng.
 7. **Room quota theo IP** (review 3.2) — `RoomManager.createRoom()`, đếm số
    phòng theo IP người tạo, chặn khi vượt ngưỡng (không phải 1 — tránh khoá oan
    NAT/wifi chung IP). Rủi ro thật: phải nhớ decrement khi phòng đóng qua CẢ
-   đường idle-timeout lẫn đóng chủ động, không chỉ 1 đường. Test: file mới
-   `RoomManager.test.js` (hiện chưa tồn tại — không có test nào cho
-   RoomManager), cover cả 2 đường decrement.
+   đường idle-timeout lẫn đóng chủ động, không chỉ 1 đường. Test: mở rộng
+   `server/tests/RoomManager.test.js` (**đã tồn tại từ mục 5** — không còn phải
+   tạo mới), cover cả 2 đường decrement.
 
 8. **Bỏ `settings` khỏi `room:updated`** (review 4.2) — `RoomManager.js`
    `serializeRoom()`, chỉ gửi `settings` khi thực sự đổi. Rủi ro chính: có
