@@ -1,4 +1,5 @@
 node_modules/
+.venv/
 .agents/
 .claude/
 .DS_Store
@@ -10,3 +11,8 @@ node_modules/
 *.sqlite-shm
 *.sqlite-wal
 dist/
+*.png
+# Third-party wordlist with disputed/unclear license (GPL-2.0 vs MIT claims
+# on the same data) — used offline only for classifier training, never
+# committed or shipped. See tools/profanity-training/README.md.
+tools/profanity-training/data/

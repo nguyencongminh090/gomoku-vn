@@ -29,6 +29,17 @@ describe('normalizeToken', () => {
   });
 });
 
+describe('toTelex', () => {
+  test('encodes accented Vietnamese into Telex spelling', () => {
+    expect(pf.toTelex('lồn')).toBe('loofn');
+    expect(pf.toTelex('địt mẹ')).toBe('ddijt mej');
+  });
+
+  test('leaves plain ASCII unchanged', () => {
+    expect(pf.toTelex('hello')).toBe('hello');
+  });
+});
+
 describe('tokenize', () => {
   test('keeps original-text offsets', () => {
     const tokens = pf.tokenize('hello  world');
@@ -136,6 +147,19 @@ describe('filterMessage — exact and obfuscated matches', () => {
   test('masks a Vietnamese multi-word slur phrase', () => {
     expect(pf.filterMessage('vãi cả lồn')).toBe('**********');
   });
+
+  test('masks "con mẹ" — kept as a product decision despite a neutral reading', () => {
+    // Reviewed alongside "bỏ mẹ"/"thấy mẹ" (removed) and "má" (removed) —
+    // "con mẹ" leans tục enough in practice to stay, unlike those.
+    expect(pf.filterMessage('con mẹ này')).toBe('****** này');
+  });
+
+  test('masks un-decoded Telex typing (IME off) of a bad word', () => {
+    // "loofn" is literally what lands in the chat box if a user types the
+    // Telex sequence for "lồn" without their Vietnamese IME switched on.
+    expect(pf.filterMessage('loofn')).toBe('*****');
+    expect(pf.filterMessage('ddijt mej')).toBe('*********');
+  });
 });
 
 describe('filterMessage — false-positive resistance', () => {
@@ -162,16 +186,55 @@ describe('filterMessage — false-positive resistance', () => {
     'lóng ngóng thế',
     'lộng lẫy quá',
     'buổi họp hôm nay',
+    // Surfaced after lowering MIN_TOKEN_LENGTH_FOR_FUZZY/MIN_SKELETON_LENGTH_FOR_FUZZY
+    // to 4 (see tools/profanity-training/) — "well" sits at edit distance 1
+    // from the vendored "dell" entry; the classifier reject-stage is what
+    // keeps it (and the Vietnamese loanword collisions) from being masked.
+    // NOTE: "consol"/"contac"/"culong"-style borderline cases (score close
+    // to 0) are deliberately left out of this list — confirmed flaky across
+    // two separate retrains (a dictionary change shifts the char-n-gram
+    // vocabulary enough to flip these). That's an expected property of a
+    // statistical model on a modest dataset, not a regression to chase by
+    // pinning individual borderline predictions in tests. Fix at the
+    // dataset/model level instead (tools/profanity-training/).
+    // "má" ("mom"/"cheek") and the "vãi" casual intensifier ("vui vãi",
+    // "đẹp vãi") were removed from VI_BADWORDS as standalone entries — they
+    // were common, benign words, not obfuscation of anything. The genuinely
+    // vulgar phrases they originated from ("đù má", "vãi lồn") are separate
+    // array entries and still get caught (see the exact-match tests above).
+    'má tôi bảo vậy',
+    'gọi má đi con',
+    'vui vãi',
+    'đẹp vãi',
+    'mệt vãi luôn',
+    'vãi cả nồi',
+    // "cái lon"/"cai lon" ("a can") and "cái lờ" ("a bamboo fish trap") were
+    // removed from VI_BADWORDS — "cái" + noun is the single most common
+    // Vietnamese noun-classifier construction, so this was the highest-risk
+    // euphemism entry in the whole "X lon" family. Other "X lon" phrases
+    // (con lon, ăn lon, etc.) are unaffected and still get caught above.
+    'cái lon nước',
+    'cho tôi cái lon nước ngọt',
+    // "sấp mặt" ("ngã sấp mặt", "làm sấp mặt" — an ordinary idiom for
+    // exhaustion/falling flat, not inherently vulgar) and the "bỏ mẹ"/"thấy
+    // mẹ" casual intensifiers ("mệt bỏ mẹ", "mệt thấy mẹ" ~ "damn tired",
+    // same family as "vãi") were removed — product decision. "con mẹ" was
+    // reviewed alongside these and kept (see the exact-match test below).
+    'sấp mặt',
+    'làm việc sấp mặt luôn',
+    'mệt bỏ mẹ',
+    'mệt thấy mẹ',
   ])('leaves %j unchanged', (text) => {
     expect(pf.filterMessage(text)).toBe(text);
   });
 
-  // Known limitation: a few multi-word phrases are vendored verbatim in the
-  // source dictionary as slang euphemisms but are also completely ordinary
-  // Vietnamese ("cái lon" = "the can", also a euphemism for "lồn"). This is
-  // an exact dictionary-content collision, not a distance-scoring issue, and
-  // isn't fixed by the tone-aware model above.
-  test.todo('cái lon nước (can of soda) is currently over-blocked — dictionary-content issue, not fuzzy-matching');
+  // Product decision: "lờ" stays in the dictionary despite being ambiguous
+  // (vulgar slang for female genitalia vs. the ordinary verb "to ignore" —
+  // "lờ đi", "đừng lờ tôi"). Unlike "cái lon"/"má", this one doesn't lean
+  // overwhelmingly benign, so "đừng lờ tôi" is accepted as over-blocked.
+  test('accepts "lờ" standalone being over-blocked as a deliberate trade-off', () => {
+    expect(pf.filterMessage('đừng lờ tôi')).not.toBe('đừng lờ tôi');
+  });
 });
 
 describe('filterMessage — edge cases', () => {

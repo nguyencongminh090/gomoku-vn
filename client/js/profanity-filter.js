@@ -6,19 +6,44 @@
  * UMD-style module: `require()`-able from server (CommonJS) and side-effect
  * `import`-able from the browser (ES module), attaching to `globalThis` there.
  *
- * Vietnamese dictionary data (VI_BADWORDS below) is vendored verbatim from
+ * Vietnamese dictionary data (VI_BADWORDS below) is vendored from
  * TheQuantumCrew/viet_badwords_filter_python (WTFPL — public domain-equivalent,
  * no attribution/permission required), specifically its
- * `viet_badwords_filter/badwords_list.py`. Only the data was reused; the
- * matching algorithm in this file is an original implementation.
+ * `viet_badwords_filter/badwords_list.py`, with a curation pass on top:
+ * entries that are common, benign Vietnamese words/phrases on their own —
+ * only vulgar as a euphemism in context — were removed: "má" ("mom"/"cheek");
+ * "vãi"/"vãi l" (an everyday casual intensifier, "vui vãi"/"đẹp vãi"); "cái
+ * lon"/"cai lon" (a can — "cái lon nước ngọt" = "a can of soda", "cái" is
+ * the single most common Vietnamese noun classifier); "cái lờ" (a bamboo
+ * fish trap); "sấp mặt" (a very ordinary idiom — "ngã sấp mặt" = "fell flat
+ * on your face", "làm sấp mặt" = "worked to exhaustion" — not inherently
+ * vulgar); "bỏ mẹ"/"thấy mẹ" and their spelling variants (everyday casual
+ * intensifiers, "mệt bỏ mẹ"/"mệt thấy mẹ" ~ "damn tired", same family as
+ * "vãi" — product decision). "lờ" and "con mẹ" were reviewed and kept
+ * deliberately (product decision: skew tục enough on their own to outweigh
+ * their benign readings — "lờ" = "to ignore" as a verb; "con mẹ" = neutral
+ * "the mother/that woman" as a noun phrase). The genuinely vulgar
+ * multi-word phrases these euphemisms originated from ("đù má", "vãi lồn",
+ * "vãi cả lồn", "con lon", "con mẹ mày", etc.) are separate array entries
+ * and are unaffected. The Telex mapping table (VN_TELEX_MAP) is vendored
+ * from hoangnguyennn/vn2telex (ISC license). Only data was
+ * reused from either source; the matching algorithm in this file is an
+ * original implementation.
  *
  * Pipeline (each stage independently callable/testable):
  *   normalizeToken  → per-token lowercase/diacritic/leet/repeat normalization
+ *   toTelex         → encodes an accented word into Telex spelling, used at
+ *                     dictionary-build time so literal un-decoded Telex
+ *                     typing (IME off — e.g. "loofn" for "lồn") exact-matches
  *   tokenize        → splits raw text into tokens with original-text offsets
  *   buildCandidates → word tokens + overlapping n-grams (multi-word phrases,
  *                     and glued single-letter runs like "c u c" → "cuc")
  *   buildDictionary → indexes a wordlist for fast lookup/scoring
- *   scoreCandidate  → exact + bounded edit-distance match against a dictionary
+ *   scoreCandidate / scoreToneAware → exact + bounded edit-distance match
+ *   classifierSaysReal → optional reject-stage for fuzzy (non-exact) matches
+ *                     only, backed by a small char-n-gram linear model
+ *                     (see tools/profanity-training/); degrades to a no-op
+ *                     if profanity-classifier-model.js isn't loaded
  *   maskMessage     → replaces matched spans with asterisks, same length,
  *                     preserving everything else (whitespace, punctuation,
  *                     total message length)
@@ -45,10 +70,10 @@
     'đjt', 'djt', 'đis', 'ditmemayconcho', 'ditmemay', 'ditmethangoccho',
     'ditmeconcho', 'dmconcho', 'dmcs', 'ditmecondi', 'ditmecondicho',
     'con cặc', 'cặc', 'cac', 'lon', 'loz', 'lozz', 'cacc', 'concac', 'concu',
-    'cailon', 'lồn', 'lồng', 'lờ', 'mé', 'má', 'mọe', 'buồi', 'cu', 'cứt',
+    'cailon', 'lồn', 'lồng', 'lờ', 'mọe', 'buồi', 'cu', 'cứt',
     'con mẹ', 'vãi lồn', 'vl', 'vãi cả lồn', 'vcl', 'vãi cặc', 'vãi lồng',
-    'vãi lìn', 'vãi con cặc', 'vcc', 'như cái lồn', 'như con cặc', 'chịch',
-    'lếu lều', 'liếm lồn', 'bú cu', 'xoạc', 'mặt lồn', 'mặt lờ', 'đầu buồi',
+    'vãi lìn', 'vãi con cặc', 'vcc', 'như cái lồn', 'như con cặc',
+    'chịch', 'lếu lều', 'liếm lồn', 'bú cu', 'xoạc', 'mặt lồn', 'mặt lờ', 'đầu buồi',
     'đồ khỉ', 'cailonmemay', 'cailonme', 'thangmatlon', 'buoi', 'dau buoi',
     'daubuoi', 'caidaubuoi', 'nhucaidaubuoi', 'dau boi', 'bòi', 'dauboi',
     'caidauboi', 'đầu bòy', 'đầu bùi', 'dau boy', 'dauboy', 'caidauboy', 'b`',
@@ -77,14 +102,14 @@
     'dach lol', 'mu lol', 'banh lol', 'tét lol', 'tet lol', 'vạch lol',
     'vach lol', 'cào lol', 'cao lol', 'tung lol', 'mặt lol', 'xàm lon',
     'xam lon', 'xạo lon', 'xao lon', 'con lon', 'ăn lon', 'an lon',
-    'mát lon', 'mat lon', 'cái lon', 'cai lon', 'lòi lon', 'loi lon',
+    'mát lon', 'mat lon', 'lòi lon', 'loi lon',
     'ham lon', 'củ lon', 'cu lon', 'ngu lon', 'tuổi lon', 'tuoi lon',
     'mõm lon', 'mồm lon', 'mom lon', 'như lon', 'nhu lon', 'nứng lon',
     'nung lon', 'nug lon', 'nuglon', 'rảnh lon', 'ranh lon', 'đách lon',
     'dach lon', 'mu lon', 'banh lon', 'tét lon', 'tet lon', 'vạch lon',
-    'vach lon', 'cào lon', 'cao lon', 'tung lon', 'mặt lon', 'cái lờ', 'cl',
+    'vach lon', 'cào lon', 'cao lon', 'tung lon', 'mặt lon', 'cl',
     'clgt', 'cờ lờ gờ tờ', 'cái lề gì thốn', 'đốn cửa lòng', 'sml',
-    'sapmatlol', 'sapmatlon', 'sapmatloz', 'sấp mặt', 'sap mat', 'vlon',
+    'sapmatlol', 'sapmatlon', 'sapmatloz', 'vlon',
     'vloz', 'vlol', 'vailon', 'vai lon', 'vai lol', 'vailol', 'nốn lừng',
     'vleu', 'chich', 'v~', 'nứng', 'nug', 'đút đít', 'chổng mông',
     'banh háng', 'xéo háng', 'xhct', 'xephinh', 'la liếm', 'đổ vỏ', 'xoac',
@@ -96,11 +121,9 @@
     'mẹ cha nhà mày', 'me cha nha may', 'mả cha mày', 'mả cha nhà mày',
     'ma cha may', 'ma cha nha may', 'mả mẹ', 'mả cha', 'kệ mẹ', 'kệ mịe',
     'kệ mịa', 'kệ mje', 'kệ mja', 'ke me', 'ke mie', 'ke mia', 'ke mja',
-    'ke mje', 'bỏ mẹ', 'bỏ mịa', 'bỏ mịe', 'bỏ mja', 'bỏ mje', 'bo me',
-    'bo mia', 'bo mie', 'bo mje', 'bo mja', 'chetme', 'chet me', 'chết mẹ',
+    'ke mje', 'chetme', 'chet me', 'chết mẹ',
     'chết mịa', 'chết mja', 'chết mịe', 'chết mie', 'chet mia', 'chet mie',
-    'chet mja', 'chet mje', 'thấy mẹ', 'thấy mịe', 'thấy mịa', 'thay me',
-    'thay mie', 'thay mia', 'tổ cha', 'bà cha mày', 'cmn', 'cmnl',
+    'chet mja', 'chet mje', 'tổ cha', 'bà cha mày', 'cmn', 'cmnl',
   ];
 
   // Small curated English list (kept short on purpose — see constraint against
@@ -120,8 +143,10 @@
   // Tokens shorter than this require an EXACT match — no fuzzy. Vietnamese
   // has a dense inventory of short monosyllables sharing a rime (e.g. xong,
   // phong, cong, mong, trong, khong all sit at edit-distance 1 of each
-  // other), so fuzzy-matching below length 6 flags ordinary words constantly.
-  var MIN_TOKEN_LENGTH_FOR_FUZZY = 6;
+  // other), so a bare rule-based floor had to sit at 6 to avoid flagging
+  // ordinary words. Lowered to 4 now that classifierSaysReal() acts as a
+  // reject-stage backstop on exactly this zone — see tools/profanity-training/.
+  var MIN_TOKEN_LENGTH_FOR_FUZZY = 4;
   var MAX_NGRAM = 3;                // widest multi-word phrase window to build
 
   // Diacritic-stripped forms that collide with common, everyday Vietnamese
@@ -146,6 +171,43 @@
     '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's',
     '7': 't', '8': 'b', '@': 'a', '$': 's', '+': 't', '|': 'l',
   };
+
+  // Per-character Telex mapping, vendored from hoangnguyennn/vn2telex
+  // (ISC license). Catches a real, common case: a user typing in Telex
+  // (the standard Vietnamese IME scheme) with their IME OFF, so what lands
+  // in the chat box is the literal raw key sequence — e.g. "loofn" for
+  // "lồn" — which is neither properly accented nor plain diacritic-free
+  // ASCII, so it doesn't match either existing path.
+  var VN_TELEX_MAP = {
+    'á': 'as', 'à': 'af', 'ả': 'ar', 'ã': 'ax', 'ạ': 'aj',
+    'ắ': 'aws', 'ằ': 'awf', 'ẳ': 'awr', 'ẵ': 'awx', 'ặ': 'awj', 'ă': 'aw',
+    'ấ': 'aas', 'ầ': 'aaf', 'ẩ': 'aar', 'ẫ': 'aax', 'ậ': 'aaj', 'â': 'aa',
+    'đ': 'dd',
+    'é': 'es', 'è': 'ef', 'ẻ': 'er', 'ẽ': 'ex', 'ẹ': 'ej',
+    'ế': 'ees', 'ề': 'eef', 'ể': 'eer', 'ễ': 'eex', 'ệ': 'eej', 'ê': 'ee',
+    'í': 'is', 'ì': 'if', 'ỉ': 'ir', 'ĩ': 'ix', 'ị': 'ij',
+    'ó': 'os', 'ò': 'of', 'ỏ': 'or', 'õ': 'ox', 'ọ': 'oj',
+    'ố': 'oos', 'ồ': 'oof', 'ổ': 'oor', 'ỗ': 'oox', 'ộ': 'ooj', 'ô': 'oo',
+    'ớ': 'ows', 'ờ': 'owf', 'ở': 'owr', 'ỡ': 'owx', 'ợ': 'owj', 'ơ': 'ow',
+    'ú': 'us', 'ù': 'uf', 'ủ': 'ur', 'ũ': 'ux', 'ụ': 'uj',
+    'ứ': 'uws', 'ừ': 'uwf', 'ử': 'uwr', 'ữ': 'uwx', 'ự': 'uwj', 'ư': 'uw',
+    'ý': 'ys', 'ỳ': 'yf', 'ỷ': 'yr', 'ỹ': 'yx', 'ỵ': 'yj',
+  };
+
+  /**
+   * Encode a lowercase, precomposed-accented (NFC) Vietnamese string into
+   * its Telex spelling. Non-Vietnamese characters pass through unchanged.
+   * @param {string} lowerNFC
+   * @returns {string}
+   */
+  function toTelex(lowerNFC) {
+    var out = '';
+    for (var i = 0; i < lowerNFC.length; i++) {
+      var ch = lowerNFC[i];
+      out += VN_TELEX_MAP.hasOwnProperty(ch) ? VN_TELEX_MAP[ch] : ch;
+    }
+    return out;
+  }
 
   function stripDiacritics(str) {
     return str
@@ -326,10 +388,10 @@
         var slice = tokens.slice(i, i + n);
         if (slice.some(function (t) { return t.basic.length === 0; })) continue;
         var basicSpaced = slice.map(function (t) { return t.basic; }).join(' ');
-        var basicGlued  = slice.map(function (t) { return t.basic; }).join('');
-        var tightGlued  = collapseRepeats(basicGlued);
+        var basicGlued = slice.map(function (t) { return t.basic; }).join('');
+        var tightGlued = collapseRepeats(basicGlued);
         var accentedSpaced = slice.map(function (t) { return t.accented; }).join(' ');
-        var accentedGlued  = slice.map(function (t) { return t.accented; }).join('');
+        var accentedGlued = slice.map(function (t) { return t.accented; }).join('');
         candidates.push({
           start: slice[0].start,
           end: slice[slice.length - 1].end,
@@ -363,7 +425,10 @@
    * Index a wordlist into two lookup structures:
    *  - `stripped`: diacritic-stripped forms (fuzzy-eligible), for tokens
    *    typed without Vietnamese accents. Skips STRIPPED_DICT_EXCLUDE entries
-   *    (there's no tone information left to disambiguate them safely).
+   *    (there's no tone information left to disambiguate them safely). Also
+   *    includes each word's Telex spelling (see toTelex) — exact-match only,
+   *    since Telex sequences are distinctive enough that fuzzy tolerance
+   *    isn't needed and would just add false-positive surface.
    *  - `toneAware`: {sym,tone}-unit sequences (fuzzy-eligible via
    *    toneAwareDistanceBounded), for tokens typed with proper accents.
    * @param {string[]} words
@@ -377,6 +442,17 @@
         if (STRIPPED_DICT_EXCLUDE.has(form)) return;
         addToIndex(stripped, form);
       });
+
+      if (norm.hasDiacritics) {
+        var telex = toTelex(norm.accented);
+        // Exact-only: added straight to the exact Set, not the byLength
+        // buckets the fuzzy scan iterates — a Telex spelling is already a
+        // very literal, distinctive sequence, so there's no obfuscation
+        // case left for fuzzy tolerance to catch, only false-positive risk.
+        if (telex !== norm.accented && telex.length >= 2 && !STRIPPED_DICT_EXCLUDE.has(telex)) {
+          stripped.exact.add(telex);
+        }
+      }
 
       // Only entries that themselves carry real Vietnamese diacritics belong
       // in the tone-aware index — an ASCII dict entry (e.g. "buoi", "di")
@@ -506,9 +582,9 @@
   // an ordinary *consonant or full-vowel* substitution is still cost 1 —
   // and short Vietnamese syllables come in dense families that differ by
   // exactly one such substitution (lắng/lặng/lẳng/lồng/lộng/lóng all share
-  // the "l_ng" frame). Same reasoning as MIN_TOKEN_LENGTH_FOR_FUZZY: keep
-  // the floor high enough that a single full-letter swap can't cross it.
-  var MIN_SKELETON_LENGTH_FOR_FUZZY = 6;
+  // the "l_ng" frame). Lowered to 4 alongside MIN_TOKEN_LENGTH_FOR_FUZZY —
+  // classifierSaysReal() is the backstop for what this floor used to block.
+  var MIN_SKELETON_LENGTH_FOR_FUZZY = 4;
 
   /**
    * Score an already-accented (diacritics preserved) candidate string
@@ -628,6 +704,64 @@
     return out;
   }
 
+  // ── Stage 7: classifier reject-stage (optional) ─────────────────────────
+
+  // Loaded from client/js/profanity-classifier-model.js (auto-generated by
+  // tools/profanity-training/train.py). Absent in environments that haven't
+  // loaded it — the filter degrades gracefully to rule-only matching, never
+  // throws. See that file's header for what trained it and on what data.
+  var classifierModel = (function loadClassifierModel() {
+    if (typeof module === 'object' && module.exports) {
+      try {
+        return require('./profanity-classifier-model.js');
+      } catch (e) {
+        return null;
+      }
+    }
+    var g = typeof globalThis !== 'undefined' ? globalThis : null;
+    return (g && g.ProfanityClassifierModel) || null;
+  })();
+
+  /**
+   * Char n-gram linear model score for a single word: sum(weight * count)
+   * over n-grams present in both the word and the trained vocabulary, + bias.
+   * Mirrors sklearn's CountVectorizer(analyzer='char', ngram_range) + a
+   * linear SVM's decision_function — no ML runtime needed, just a dot
+   * product over a small precomputed weight table.
+   * @param {string} word
+   * @returns {number|null} null if no model is loaded
+   */
+  function classifierScore(word) {
+    if (!classifierModel) return null;
+    var nMin = classifierModel.ngramRange[0];
+    var nMax = classifierModel.ngramRange[1];
+    var vocab = classifierModel.vocab;
+    var weights = classifierModel.weights;
+    var score = classifierModel.bias;
+    for (var n = nMin; n <= nMax; n++) {
+      for (var i = 0; i + n <= word.length; i++) {
+        var gram = word.slice(i, i + n);
+        if (Object.prototype.hasOwnProperty.call(vocab, gram)) {
+          score += weights[vocab[gram]];
+        }
+      }
+    }
+    return score;
+  }
+
+  /**
+   * True if the classifier is confident `word` is an ordinary word rather
+   * than an obfuscated bad word — used only to REJECT a fuzzy (non-exact)
+   * rule-based match, never to create a new one. If no model is loaded,
+   * always returns false (i.e. defers entirely to the rule-based match).
+   * @param {string} word
+   */
+  function classifierSaysReal(word) {
+    var score = classifierScore(word);
+    if (score === null) return false;
+    return score <= classifierModel.threshold;
+  }
+
   // ── Orchestration ────────────────────────────────────────────────────────
 
   var DEFAULT_DICT = buildDictionary(VI_BADWORDS.concat(EN_BADWORDS));
@@ -689,6 +823,15 @@
       }
       if (!hit.matched) return;
 
+      // Classifier reject-stage: only for fuzzy (non-exact) single-token
+      // matches — exact dictionary hits are ground truth and always stand.
+      // This can only IMPROVE precision (it removes matches, never adds
+      // any), so it's safe to layer on top of the existing rule thresholds.
+      if (hit.distance > 0 && !isMultiWord) {
+        var candidateWord = cand.hasDiacritics ? cand.accentedGlued : cand.basicGlued;
+        if (classifierSaysReal(candidateWord)) return;
+      }
+
       for (t = lo; t <= hi; t++) claimedTokens[t] = true;
       matchedSpans.push([cand.start, cand.end]);
     });
@@ -698,6 +841,7 @@
 
   return {
     normalizeToken: normalizeToken,
+    toTelex: toTelex,
     tokenize: tokenize,
     buildCandidates: buildCandidates,
     buildDictionary: buildDictionary,
@@ -706,6 +850,8 @@
     toneAwareDistanceBounded: toneAwareDistanceBounded,
     scoreCandidate: scoreCandidate,
     scoreToneAware: scoreToneAware,
+    classifierScore: classifierScore,
+    classifierSaysReal: classifierSaysReal,
     maskMessage: maskMessage,
     filterMessage: filterMessage,
     VI_BADWORDS: VI_BADWORDS,
