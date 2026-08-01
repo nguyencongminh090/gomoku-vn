@@ -45,6 +45,7 @@
     if (data.gameState) {
       st.gameState   = data.gameState;
       st.timerValues = data.timer || st.timerValues;
+      applyTimerSync(data.timerSync);
       if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
         GameUI.initBoard();
         GameUI.renderSwap2();
@@ -122,6 +123,7 @@
     const st = S();
     st.gameState          = data;
     st.timerValues        = data.timer || { black: data.timerSeconds || 60, white: data.timerSeconds || 60 };
+    applyTimerSync(data.timerSync);
     st.drawOfferPending   = null;
     st.timeRequestPending = null;
 
@@ -156,6 +158,7 @@
     if (!st.gameState.moveHistory) st.gameState.moveHistory = [];
     st.gameState.moveHistory.push({ x: data.x, y: data.y, color: data.color, timestamp: Date.now() });
     if (data.timer) st.timerValues = data.timer;
+    if (data.timerSync) applyTimerSync(data.timerSync);
     if (data.gameOver) st.gameState.status = 'finished';
     if (data.result)   st.gameState.result = data.result;
 
@@ -199,26 +202,87 @@
     }
   });
 
-  client.on('timer:tick', (data) => {
+  // ── Local clock ───────────────────────────────────────────────────────────
+  //
+  // The server no longer ticks once per second over the socket (review 4.3:
+  // that was ~71% of in-game bandwidth). It sends `timer:sync` — both players'
+  // remaining seconds, who is counting down, and when that player's clock hits
+  // zero — whenever the clock changes discontinuously: game start, each move,
+  // bonus time, pause on disconnect, resume. Between those, this ticks locally.
+  //
+  // Every sync carries the server's own clock reading, and we count down
+  // against an offset rather than comparing timestamps directly, so a client
+  // whose system clock is wrong still shows the right remaining time.
+
+  let localTimer = null;      // setInterval handle for the local countdown
+  let clockOffsetMs = 0;      // serverTime - our Date.now() at the last sync
+  let activeDeadline = null;  // server-clock ms when the active player hits 0
+  let activeColor = null;     // 'black' | 'white'
+
+  /** Our best estimate of the server's clock right now. */
+  function serverNow() {
+    return Date.now() + clockOffsetMs;
+  }
+
+  function stopLocalTimer() {
+    if (localTimer) {
+      clearInterval(localTimer);
+      localTimer = null;
+    }
+  }
+
+  /** Recompute the active player's remaining seconds and repaint. */
+  function tickLocal() {
     const st = S();
-    st.timerValues = data;
+    if (activeDeadline === null || !activeColor) return;
+
+    const remaining = Math.max(0, Math.round((activeDeadline - serverNow()) / 1000));
+    st.timerValues = Object.assign({}, st.timerValues, { [activeColor]: remaining });
     GameUI.renderTimers();
 
-    // Beep once per second through the active player's own final 10s —
-    // never for the opponent's clock (see prompt-architect spec).
+    // Beep once per second through the active player's own final 10s — never
+    // for the opponent's clock (see prompt-architect spec). Unchanged in
+    // behaviour; it just reads the locally-derived value now.
     if (global.audioManager && st.gameState && st.gameState.status === 'ongoing') {
       const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
       if (myPlayer && st.gameState.currentTurn === st.myUser.userId) {
-        const myTime = myPlayer.color === 'BLACK' ? data.black : data.white;
-        if (myTime > 0 && myTime <= 10) {
+        const myColor = myPlayer.color === 'BLACK' ? 'black' : 'white';
+        if (myColor === activeColor && remaining > 0 && remaining <= 10) {
           global.audioManager.playTimerTickSound();
         }
       }
     }
-  });
+
+    // The server decides the actual timeout and will send game:ended; stop
+    // counting past zero so we don't render negatives while that arrives.
+    if (remaining <= 0) stopLocalTimer();
+  }
+
+  /** Adopt a timer state from the server and (re)start the local countdown. */
+  function applyTimerSync(sync) {
+    if (!sync) return;
+    const st = S();
+
+    clockOffsetMs = (sync.serverTime || Date.now()) - Date.now();
+    st.timerValues = { black: sync.black, white: sync.white };
+    activeColor = sync.activeColor;
+    activeDeadline = sync.deadline;
+
+    stopLocalTimer();
+    GameUI.renderTimers();
+
+    // `running: false` means the server's clock is paused (disconnect grace) —
+    // show the frozen values and count nothing.
+    if (sync.running && sync.deadline) {
+      localTimer = setInterval(tickLocal, 1000);
+    }
+  }
+
+  client.on('timer:sync', applyTimerSync);
 
   client.on('game:ended', (data) => {
     const st = S();
+    stopLocalTimer();   // the clock is over; the final values stay on screen
     if (data.scoreTable && st.roomData) st.roomData.scoreTable = data.scoreTable;
     if (st.gameState) {
       st.gameState.status = 'finished';

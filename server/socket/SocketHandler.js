@@ -138,7 +138,12 @@ function init(io) {
         if (existingRoom.gameState) {
           payload.gameState = existingRoom.gameState.serialize();
           const timer = timerMap.get(existingRoom.roomId);
-          if (timer) payload.timer = timer.getTimers();
+          if (timer) {
+            payload.timer = timer.getTimers();
+            // Reconnecting mid-game: hand over the deadline too, so the local
+            // countdown restarts in step with the server instead of freezing.
+            payload.timerSync = timer.getSync();
+          }
         }
         socket.emit('room:joined', payload);
         logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);

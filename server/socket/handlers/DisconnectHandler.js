@@ -107,7 +107,13 @@ function startDisconnectGrace(io, room, user) {
 
   // Pause the game timer
   const timer = timerMap.get(roomId);
-  if (timer) timer.stop();
+  if (timer) {
+    timer.stop();
+    // Tell clients to stop their local countdown — with no per-second ticks,
+    // silence would otherwise let their clocks keep running while the real
+    // one is paused.
+    io.to(roomId).emit('timer:sync', timer.getSync());
+  }
 
   room.state = 'interrupted';
 
@@ -205,12 +211,16 @@ function cancelDisconnectGrace(io, socket) {
   room.state = 'playing';
 
   const timer = timerMap.get(entry.roomId);
-  if (timer) timer.start();
+  if (timer) {
+    timer.start();
+    io.to(entry.roomId).emit('timer:sync', timer.getSync());
+  }
 
   io.to(entry.roomId).emit('game:resumed', { playerId: user.userId });
   socket.emit('game:init', {
     ...room.gameState.serialize(),
     timer: timer ? timer.getTimers() : null,
+    timerSync: timer ? timer.getSync() : null,
   });
   io.to(entry.roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
   io.to(entry.roomId).emit('chat:message', {

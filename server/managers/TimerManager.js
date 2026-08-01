@@ -8,8 +8,12 @@
  *   - per_game: each player gets timerSeconds total for the entire game
  *   - blitz: each player gets timerSeconds total, plus increment after each move
  *
- * Timer ticks every 1 second via setInterval.
- * On timeout, calls the provided onTimeout callback.
+ * Timer ticks every 1 second via setInterval, server-side only: the tick keeps
+ * the authoritative remaining time and fires onTimeout. Clients are NOT sent a
+ * message per tick — they receive `getSync()` (a deadline plus the server's
+ * clock reading) whenever the clock changes discontinuously and count down
+ * locally in between. See review 4.3: the old per-second broadcast was ~71% of
+ * in-game bandwidth.
  *
  * Manual test checklist:
  *   [ ] Timer starts and ticks every second
@@ -109,6 +113,40 @@ class TimerManager {
   /** Get current timer values. */
   getTimers() {
     return { black: this.black, white: this.white };
+  }
+
+  /**
+   * Get everything a client needs to run the clock itself until the next
+   * change: both remaining values, who is counting down, when that player's
+   * clock reaches zero, and the server's clock reading right now.
+   *
+   * This replaces broadcasting a tick every second. The server still ticks
+   * internally — it stays the authority on timeouts — but the wire only sees a
+   * message when the clock changes discontinuously (turn switch, bonus time,
+   * pause/resume), which is once per move instead of once per second.
+   *
+   * `serverTime` is what makes `deadline` usable. A client whose system clock
+   * is off by minutes would otherwise compute nonsense from an absolute
+   * timestamp; with it, the client can work in offsets and never compare its
+   * own wall clock to the server's. The reviewer did not ask for this (see
+   * instruction.md §B10) but also never measured a skewed client, and it costs
+   * one number per message.
+   *
+   * @returns {{black:number, white:number, activeColor:'black'|'white',
+   *            deadline:number|null, serverTime:number, running:boolean}}
+   */
+  getSync() {
+    const running = this._interval !== null;
+    const remainingSeconds = this.activeColor === 'black' ? this.black : this.white;
+    const now = Date.now();
+    return {
+      black: this.black,
+      white: this.white,
+      activeColor: this.activeColor,
+      deadline: running ? now + remainingSeconds * 1000 : null,
+      serverTime: now,
+      running,
+    };
   }
 
   /**

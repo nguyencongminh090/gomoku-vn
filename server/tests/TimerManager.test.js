@@ -208,3 +208,158 @@ describe('TimerManager — destroy()', () => {
     jest.advanceTimersByTime(5000); // must not throw despite null callbacks
   });
 });
+
+// ── Deadline sync (review 4.3) ─────────────────────────────────────────────
+//
+// The per-second broadcast is gone: onTick above is now server-internal only
+// (it keeps the authoritative clock and fires onTimeout), and clients get
+// getSync() at each discontinuity and count down themselves. The existing
+// start/tick tests above still apply unchanged — the internal tick behaviour
+// they cover did not change, only who hears about it.
+
+describe('TimerManager — getSync()', () => {
+  test('reports a deadline matching the active player’s remaining time', () => {
+    const now = 1_700_000_000_000;
+    jest.setSystemTime(now);
+
+    const timer = makeTimer();          // black: 10s, white: 10s, black active
+    timer.start();
+
+    const sync = timer.getSync();
+    expect(sync.activeColor).toBe('black');
+    expect(sync.deadline).toBe(now + 10_000);
+    expect(sync.serverTime).toBe(now);
+    expect(sync.running).toBe(true);
+    expect(sync).toMatchObject({ black: 10, white: 10 });
+  });
+
+  test('the deadline moves with the clock as it ticks down', () => {
+    const now = 1_700_000_000_000;
+    jest.setSystemTime(now);
+    const timer = makeTimer();
+    timer.start();
+
+    jest.advanceTimersByTime(4000);
+    jest.setSystemTime(now + 4000);
+
+    const sync = timer.getSync();
+    expect(sync.black).toBe(6);
+    // 6s left at t+4s → still the same absolute moment as the original deadline.
+    expect(sync.deadline).toBe(now + 10_000);
+  });
+
+  test('a turn switch retargets the deadline at the other player', () => {
+    const now = 1_700_000_000_000;
+    jest.setSystemTime(now);
+    const timer = makeTimer({ mode: 'per_game' });
+    timer.start();
+
+    jest.advanceTimersByTime(3000);
+    jest.setSystemTime(now + 3000);
+    timer.switchTurn('white');
+
+    const sync = timer.getSync();
+    expect(sync.activeColor).toBe('white');
+    expect(sync.white).toBe(10);
+    expect(sync.deadline).toBe(now + 3000 + 10_000);
+    // The idle player's clock is reported but is not what the deadline tracks.
+    expect(sync.black).toBe(7);
+  });
+
+  test('bonus time pushes the deadline out by exactly that much', () => {
+    const now = 1_700_000_000_000;
+    jest.setSystemTime(now);
+    const timer = makeTimer();
+    timer.start();
+
+    const before = timer.getSync().deadline;
+    timer.addTime('black', 30);
+    const after = timer.getSync().deadline;
+
+    expect(after - before).toBe(30_000);
+  });
+
+  test('a paused clock reports running:false and no deadline', () => {
+    const timer = makeTimer();
+    timer.start();
+    timer.stop();
+
+    const sync = timer.getSync();
+    expect(sync.running).toBe(false);
+    expect(sync.deadline).toBeNull();
+    // The frozen values are still reported, so a client can render them.
+    expect(sync.black).toBe(10);
+    expect(sync.white).toBe(10);
+  });
+
+  test('resuming after a pause issues a fresh deadline from the resume moment', () => {
+    const now = 1_700_000_000_000;
+    jest.setSystemTime(now);
+    const timer = makeTimer();
+    timer.start();
+
+    jest.advanceTimersByTime(2000);
+    timer.stop();                       // disconnect grace
+    jest.setSystemTime(now + 60_000);   // a minute passes while paused
+    timer.start();
+
+    const sync = timer.getSync();
+    expect(sync.running).toBe(true);
+    expect(sync.black).toBe(8);
+    // The paused minute is not charged to the player.
+    expect(sync.deadline).toBe(now + 60_000 + 8000);
+  });
+
+  test('a client counting down from the deadline agrees with the server’s own clock', () => {
+    // What the client actually does: remaining = round((deadline - now) / 1000).
+    const now = 1_700_000_000_000;
+    jest.setSystemTime(now);
+    const timer = makeTimer({ mode: 'per_game' });
+    timer.start();
+    const { deadline } = timer.getSync();
+
+    // Step second by second, keeping the fake wall clock in step with the
+    // fake timers, and check the client's arithmetic against the server's
+    // authoritative value at every step.
+    for (let elapsed = 1000; elapsed <= 9000; elapsed += 1000) {
+      jest.advanceTimersByTime(1000);
+      jest.setSystemTime(now + elapsed);
+
+      const clientView = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      expect(clientView).toBe(timer.black);
+    }
+  });
+});
+
+describe('no per-second timer broadcast remains', () => {
+  const fs = require('fs');
+  const path = require('path');
+
+  function jsFilesUnder(dir) {
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...jsFilesUnder(full));
+      else if (entry.name.endsWith('.js')) out.push(full);
+    }
+    return out;
+  }
+
+  test("no server code emits 'timer:tick' any more", () => {
+    const offenders = [];
+    for (const file of jsFilesUnder(path.join(__dirname, '..', 'socket'))) {
+      const src = fs.readFileSync(file, 'utf8');
+      if (src.includes("emit('timer:tick'")) offenders.push(path.basename(file));
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test('the timer callback wired into the socket layer broadcasts nothing', () => {
+    // GameHandler builds TimerManager with an onTick that must stay a no-op —
+    // re-adding an emit there would restore the once-per-second traffic.
+    const src = fs.readFileSync(
+      path.join(__dirname, '..', 'socket', 'handlers', 'GameHandler.js'), 'utf8'
+    );
+    expect(src).toMatch(/onTick:\s*\(\)\s*=>\s*\{\s*\}/);
+  });
+});

@@ -90,6 +90,10 @@ function register(io, socket) {
         const nextColor = np && np.color === 'BLACK' ? 'black' : 'white';
         timer.switchTurn(nextColor);
         movePayload.timer = timer.getTimers();
+        // Ride along on the move rather than sending a separate timer event:
+        // the turn switch is exactly when the clock changes, so this costs no
+        // extra packet per move.
+        movePayload.timerSync = timer.getSync();
       }
     }
 
@@ -155,7 +159,7 @@ function register(io, socket) {
       io.to(room.roomId).emit('game:swap2_state', buildSwap2State(engine, null, null));
 
       const timer = timerMap.get(room.roomId);
-      if (timer) io.to(room.roomId).emit('timer:tick', timer.getTimers());
+      if (timer) io.to(room.roomId).emit('timer:sync', timer.getSync());
 
       const whiteP = engine.players.find(p => p.color === 'WHITE');
       io.to(room.roomId).emit('chat:message', {
@@ -301,7 +305,7 @@ function register(io, socket) {
       if (timer) {
         const color = player.color === 'BLACK' ? 'black' : 'white';
         timer.addTime(color, config.TIME_REQUEST_BONUS);
-        io.to(room.roomId).emit('timer:tick', timer.getTimers());
+        io.to(room.roomId).emit('timer:sync', timer.getSync());
         io.to(room.roomId).emit('chat:message', {
           from: null, fromId: null,
           text: `${user.displayName} đã dùng quyền thêm thời gian tự động (+${config.TIME_REQUEST_BONUS}s). Còn ${remaining} lần.`,
@@ -349,7 +353,7 @@ function register(io, socket) {
     if (timer) {
       const color = requester.color === 'BLACK' ? 'black' : 'white';
       timer.addTime(color, config.TIME_REQUEST_BONUS);
-      io.to(room.roomId).emit('timer:tick', timer.getTimers());
+      io.to(room.roomId).emit('timer:sync', timer.getSync());
       io.to(room.roomId).emit('game:time_granted', {
         playerId: requesterId,
         bonus: config.TIME_REQUEST_BONUS,
@@ -437,9 +441,10 @@ function startTimerForGame(io, room, engine) {
     incrementSeconds: settings.timerIncrementSeconds || 0,
     blackPlayerId: blackPlayer.userId,
     whitePlayerId: whitePlayer.userId,
-    onTick: (timers) => {
-      io.to(roomId).emit('timer:tick', timers);
-    },
+    // No per-tick broadcast. The tick keeps the server's authoritative
+    // clock (and fires onTimeout); clients run their own countdown from the
+    // deadline in timer:sync. See review 4.3.
+    onTick: () => {},
     onTimeout: (timedOutPlayerId) => {
       engine.handleTimeout(timedOutPlayerId);
       handleGameEnd(io, room);
@@ -459,6 +464,8 @@ function startTimerForGame(io, room, engine) {
 
   timerMap.set(roomId, timer);
   timer.start();
+  // First sync of the game — the client starts its own countdown from here.
+  io.to(roomId).emit('timer:sync', timer.getSync());
   return timer;
 }
 
@@ -607,7 +614,11 @@ function startGame(io, room) {
   // Full state, not a delta — game:init is the one-time initial sync each
   // client needs to build its board from scratch; there is no prior client
   // state for a delta to apply against.
-  io.to(roomId).emit('game:init', { ...engine.serialize(), timer: timer.getTimers() });
+  io.to(roomId).emit('game:init', {
+    ...engine.serialize(),
+    timer: timer.getTimers(),
+    timerSync: timer.getSync(),
+  });
   io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
   broadcastLobbyUpdate(io);
   io.to(roomId).emit('chat:message', {

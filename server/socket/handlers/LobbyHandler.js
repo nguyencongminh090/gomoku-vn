@@ -95,7 +95,10 @@ function register(io, socket) {
     if (room.gameState) {
       joinPayload.gameState = room.gameState.serialize();
       const timer = timerMap.get(room.roomId);
-      if (timer) joinPayload.timer = timer.getTimers();
+      if (timer) {
+        joinPayload.timer = timer.getTimers();
+        joinPayload.timerSync = timer.getSync();
+      }
     }
     socket.emit('room:joined', joinPayload);
     socket.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
