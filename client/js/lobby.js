@@ -78,9 +78,33 @@ client.bindStatusBanner(statusBanner);
 // ---------------------------------------------------------------------------
 client.emit('lobby:subscribe');
 
-client.on('lobby:update', (data) => {
-  currentRooms = data.rooms || [];
+// Local room map, keyed by roomId — the base that `lobby:patch` applies to.
+// A Map keeps insertion order and, importantly, keeps an updated entry in its
+// existing position rather than moving it to the end, so a room does not jump
+// around the list every time someone sits down in it.
+let roomMap = new Map();
+
+function renderFromMap() {
+  currentRooms = Array.from(roomMap.values());
   renderRoomList(currentRooms);
+}
+
+// Full snapshot — sent once on subscribe, and again on every reconnect, since
+// the client re-subscribes. Replaces the local map wholesale.
+client.on('lobby:update', (data) => {
+  roomMap = new Map((data.rooms || []).map(r => [r.roomId, r]));
+  renderFromMap();
+});
+
+// Delta — only the rooms that actually changed, plus the ids of rooms that are
+// gone. Removals are applied before upserts so a room destroyed and recreated
+// with the same id inside one debounce window ends up present, not missing.
+// Both operations are idempotent: re-applying an entry already held, or
+// removing an id never held, changes nothing.
+client.on('lobby:patch', (data) => {
+  for (const roomId of data.removed || []) roomMap.delete(roomId);
+  for (const room of data.upserts || []) roomMap.set(room.roomId, room);
+  renderFromMap();
 });
 
 // ── Online Users Panel ──────────────────────────────────────────────────────
