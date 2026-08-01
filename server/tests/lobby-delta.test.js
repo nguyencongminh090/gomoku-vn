@@ -206,6 +206,91 @@ describe('lobby delta — debounce', () => {
     expect(io.emitted[0].data.upserts[0].playerCount).toBe(2);
   });
 
+  test('a later, separate call gets its own independent broadcast', () => {
+    // Second half of the scenario from backend fix #12 (docs/fix-log.md): a
+    // burst collapses to one broadcast, but a call arriving after that window
+    // must not be swallowed by it.
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA')]);
+    flush(io);
+    expect(io.emitted).toHaveLength(1);
+
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA'), entry('#BBB')]);
+    flush(io);
+
+    expect(io.emitted).toHaveLength(2);
+    expect(io.emitted[1].data.upserts.map(r => r.roomId)).toEqual(['#BBB']);
+  });
+
+  test('four changes inside one window collapse into a single broadcast', () => {
+    // Stronger than counting calls: the room list changes between each call,
+    // so without the debounce guard each would flush its own distinct patch.
+    // This is what actually fails if the coalescing is removed — with the
+    // delta in place, repeated calls over *unchanged* state emit nothing
+    // anyway and would not notice.
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA')]);
+    flush(io);
+    io.emitted.length = 0;
+
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA'), entry('#BBB')]);
+    broadcastLobbyUpdate(io);
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA'), entry('#BBB'), entry('#CCC')]);
+    broadcastLobbyUpdate(io);
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA'), entry('#BBB'), entry('#CCC'), entry('#DDD')]);
+    broadcastLobbyUpdate(io);
+    mockRoomManager.listRooms.mockReturnValue([
+      entry('#AAA', { playerCount: 1 }), entry('#BBB'), entry('#CCC'), entry('#DDD'),
+    ]);
+    broadcastLobbyUpdate(io);
+
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+
+    expect(io.emitted).toHaveLength(1);
+    expect(io.emitted[0].data.upserts.map(r => r.roomId).sort())
+      .toEqual(['#AAA', '#BBB', '#CCC', '#DDD']);
+  });
+
+  test('a burst schedules exactly one timer, not one per call', () => {
+    // What the debounce guard still guarantees after the delta landed.
+    //
+    // Worth stating plainly, because it is easy to over-claim here: with the
+    // delta in place, *removing* the guard no longer changes how many packets
+    // go out. Extra flushes over unchanged state diff to nothing and emit
+    // nothing, so packet count alone cannot detect the regression. What the
+    // guard still prevents is a timer per call — 15 call sites firing during
+    // one busy moment would otherwise queue 15 timeouts, each re-running
+    // listRooms() and a full diff.
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA')]);
+
+    const before = jest.getTimerCount();
+    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io);
+
+    expect(jest.getTimerCount() - before).toBe(1);
+
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+    expect(io.emitted).toHaveLength(1);
+  });
+
+  test('four calls in one tick produce zero immediate emissions and exactly one after the window', () => {
+    // The review's 4-packets-to-1 scenario, as reproduced when fix #12 was made.
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA')]);
+
+    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io);
+    expect(io.emitted).toHaveLength(0);
+
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+    expect(io.emitted).toHaveLength(1);
+  });
+
   test('nothing is sent before the window elapses', () => {
     const io = makeIo();
     mockRoomManager.listRooms.mockReturnValue([entry('#AAA')]);
