@@ -284,6 +284,59 @@ describe('every room:updated emit site', () => {
   });
 });
 
+// ── Kick guard during an interrupted game (restores the test discarded when
+//    backend fix #6 was made — see docs/fix-log.md) ─────────────────────────
+
+describe('RoomManager — kickUser while a game is interrupted', () => {
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  function roomWithTwo() {
+    const { room } = roomManager.createRoom(
+      { userId: 'host', displayName: 'Host', isGuest: false, ip: '198.51.100.1' }
+    );
+    roomManager.joinRoom(
+      { userId: 'guest', displayName: 'Guest', isGuest: true }, room.roomId
+    );
+    return room;
+  }
+
+  test('a host cannot kick anyone while the room is interrupted', () => {
+    // The exact scenario from fix #6: without this guard, kicking a player who
+    // was mid-game but disconnected removed them from room.users, and the
+    // grace timer then had nobody to restore — the room stuck in 'interrupted'
+    // forever, which _idleCleanup deliberately skips.
+    const room = roomWithTwo();
+    room.state = 'interrupted';
+
+    const result = roomManager.kickUser('host', 'guest');
+
+    expect(result.error).toBeTruthy();
+    expect(room.users.has('guest')).toBe(true);
+  });
+
+  test('a host cannot kick while the room is playing either', () => {
+    const room = roomWithTwo();
+    room.state = 'playing';
+
+    expect(roomManager.kickUser('host', 'guest').error).toBeTruthy();
+    expect(room.users.has('guest')).toBe(true);
+  });
+
+  test('kicking still works in an idle room', () => {
+    const room = roomWithTwo();
+    expect(room.state).toBe('idle');
+
+    const result = roomManager.kickUser('host', 'guest');
+
+    expect(result.error).toBeUndefined();
+    expect(room.users.has('guest')).toBe(false);
+  });
+});
+
 describe('config — idle scan interval', () => {
   test('the real value is a positive number', () => {
     expect(typeof realConfig.IDLE_SCAN_INTERVAL_MS).toBe('number');
