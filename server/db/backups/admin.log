@@ -1,0 +1,2 @@
+{"timestamp":"2026-08-01T11:13:38.517Z","command":"purge-games","flags":{"before":"2026-07-30"},"rowsAffected":619,"backupPath":"/run/media/ngmint/Data/Programming/Programming/HTML/gomoku-vn/server/db/backups/gomoku-2026-08-01T11-13-38-480Z.db"}
+{"timestamp":"2026-08-01T11:16:03.886Z","command":"purge-games","flags":{"before":"now"},"rowsAffected":57,"backupPath":"/run/media/ngmint/Data/Programming/Programming/HTML/gomoku-vn/server/db/backups/gomoku-2026-08-01T11-16-03-851Z.db"}
