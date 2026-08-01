@@ -8,9 +8,18 @@
  */
 
 const express  = require('express');
+const rateLimit = require('express-rate-limit');
 const database = require('../db/database');
 
 const router = express.Router();
+
+// Both routes are unauthenticated and hit SQLite on every call, so they are
+// the cheapest thing on the server to hammer. Same shape as auth.js's
+// authLimiter, with a higher ceiling because browsing history legitimately
+// means many more requests than logging in does (one per page + one per
+// replay opened).
+const gamesLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+router.use(gamesLimiter);
 
 // ---------------------------------------------------------------------------
 // GET /api/games — List recent games

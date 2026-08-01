@@ -195,11 +195,24 @@ function getRecentGames(limit = 20, offset = 0) {
 
 /**
  * Fetch a single game by ID with full move data.
+ *
+ * Columns are listed explicitly rather than `SELECT *` so that adding a column
+ * to the table never silently widens this endpoint's public response. In
+ * particular `black_player_id` / `white_player_id` are deliberately omitted —
+ * `/api/games/:id` is unauthenticated, and those are internal user ids.
+ *
  * @param {string} gameId
  * @returns {object|undefined}
  */
 function getGameById(gameId) {
-  return db.prepare('SELECT * FROM games WHERE id = ?').get(gameId);
+  return db.prepare(`
+    SELECT id, room_id,
+           black_player_name, white_player_name,
+           winner, reason, board_size, rule_wall, rule_portal,
+           moves, walls, portals,
+           started_at, ended_at
+    FROM games WHERE id = ?
+  `).get(gameId);
 }
 
 /**
