@@ -1,0 +1,11 @@
+import './i18n.js?v=999';
+import './ui-mode.js?v=999';
+import './settings-panel.js?v=999';
+import './audio-manager.js?v=999';
+import './socket-client.js?v=999';
+import './board.js?v=999';
+import './room.js?v=999';
+import './chat-ui.js?v=999';
+import './room-ui.js?v=999';
+import './game-ui.js?v=999';
+import './room-socket.js?v=999';

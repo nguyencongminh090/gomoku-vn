@@ -168,55 +168,69 @@
   font-weight: 400;
 }
 
-/* Table */
-.room-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 14px;
+/* Card list (replaces the old 6-column .room-table at every viewport) */
+.room-cards {
+  display: flex;
+  flex-direction: column;
 }
 
-.room-table thead {
-  background: var(--c-surface-2);
-}
-
-.room-table th {
+.room-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
   padding: 14px 16px;
-  text-align: left;
-  font-weight: 700;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--c-ink-3);
-  user-select: none;
-  border-bottom: 1px solid var(--c-border);
-}
-
-.room-table td {
-  padding: 16px;
-  color: var(--c-ink);
-  vertical-align: middle;
   border-bottom: 1px solid var(--c-border-light);
   transition: background var(--duration-fast) var(--ease-out);
 }
+.room-card:last-child { border-bottom: none; }
+.room-card:hover { background: var(--c-surface-2); }
 
-.room-table tbody tr {
-  transition: all var(--duration-normal) var(--ease-spring);
-  cursor: pointer;
-}
-.room-table tbody tr:hover td { 
-  background: var(--c-surface-2);
-}
-.room-table tbody tr:hover td:first-child {
-  border-top-left-radius: var(--radius);
-  border-bottom-left-radius: var(--radius);
-}
-.room-table tbody tr:hover td:last-child {
-  border-top-right-radius: var(--radius);
-  border-bottom-right-radius: var(--radius);
+.room-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.room-table tbody tr:last-child td { border-bottom: none; }
+.room-card__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--c-ink-3);
+  min-width: 0;
+}
+
+.room-card__host {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 45%;
+}
+
+.room-card__dot { color: var(--c-border); }
+
+.room-card__id {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.room-card__chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
 
 /* Room ID column */
 .room-id {
@@ -250,12 +264,31 @@
   color: var(--c-state-waiting);
 }
 
+/* Single plain-language rule summary chip */
+.rule-chip {
+  display: inline-block;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 9999px;
+  white-space: nowrap;
+  background: var(--c-surface-2);
+  color: var(--c-ink-3);
+  border: 1px solid var(--c-border);
+}
+.rule-chip--custom {
+  background: var(--c-brand-light);
+  color: var(--c-brand);
+  border-color: transparent;
+}
+
 /* Rule tags */
 .rule-tags { display: flex; gap: 6px; }
 .rule-tag {
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 700;
+  white-space: nowrap;
   border-radius: 6px;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -273,6 +306,21 @@
   background: var(--c-brand-light);
   border-color: transparent;
 }
+.rule-tag--swap2 {
+  color: var(--c-success);
+  background: var(--c-success-bg);
+  border-color: transparent;
+}
+.rule-tag--win {
+  color: var(--c-accent);
+  background: var(--c-accent-light);
+  border-color: transparent;
+}
+.rule-tag--size {
+  color: var(--c-ink-3);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
 
 /* Player count */
 .player-count { font-weight: 700; font-size: 15px; }
@@ -281,6 +329,8 @@
 
 /* Join button */
 .btn-join {
+  flex: 0 0 auto;
+  white-space: nowrap;
   padding: 8px 20px;
   font-size: 13px;
   font-weight: 700;
@@ -487,6 +537,70 @@
 .timer-input .unit { font-size: 14px; color: var(--c-ink-3); font-weight: 600; }
 
 /* Modal actions */
+/* ── Create-room modal: UI-mode affordances ───────────────────────────────── */
+/* Quick match (Lite) and the Advanced disclosure are hidden unless Lite is on;
+   Use-last-settings (Pro) is toggled by JS since it also depends on whether
+   anything has actually been remembered. */
+.modal__quick,
+.modal__advanced-toggle { display: none; }
+
+.modal--lite .modal__quick {
+  display: block;
+  width: 100%;
+  padding: 14px 20px;
+  margin-bottom: 8px;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.modal--lite .modal__advanced-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 4px;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.modal--lite .modal__advanced-toggle:hover { color: var(--c-ink); }
+
+.modal__advanced-arrow {
+  display: inline-flex;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+.modal__advanced-toggle[aria-expanded="true"] .modal__advanced-arrow { transform: rotate(180deg); }
+
+/* Collapsed only in Lite — Default/Pro keep the form flat and always open. */
+.modal--lite .modal__advanced {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s var(--ease-out);
+}
+.modal--lite .modal__advanced.open {
+  max-height: 1200px;
+  overflow: visible;
+}
+
+/* Lite collapsed: Quick match is the only create action. Once Advanced is
+   expanded the user is customising, so the explicit "Create room" confirm —
+   which submits the edited form rather than the remembered preset — returns. */
+.modal--lite .modal__actions .btn-confirm { display: none; }
+.modal--lite .modal__advanced.open ~ .modal__actions .btn-confirm { display: block; }
+
+.modal__use-last {
+  width: 100%;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
 .modal__actions { display: flex; gap: 16px; margin-top: 40px; }
 .modal__actions .btn {
   flex: 1;
@@ -600,6 +714,18 @@
   overflow-y: auto;
 }
 
+/* Lite: bare "N online" count — no list, no expand affordance at any width.
+   Selectors are deliberately over-specific so they win over both the desktop
+   sidebar fallback above and the ≤900px overrides further down. */
+.online-panel.online-panel--lite .online-panel__body,
+.online-panel.online-panel--lite .online-panel__body.open {
+  max-height: 0;
+  overflow: hidden;
+}
+.online-panel.online-panel--lite .online-panel__arrow { display: none; }
+.online-panel.online-panel--lite .online-panel__header { cursor: default; }
+.online-panel.online-panel--lite .online-panel__header:hover { background: transparent; }
+
 .online-panel__list {
   list-style: none;
   margin: 0;
@@ -657,10 +783,10 @@
   .lobby { padding: 16px 12px 20px; }
   .lobby-sidebar { padding: 0 12px 32px; }
 
-  .room-table th:nth-child(4),
-  .room-table td:nth-child(4),
-  .room-table th:nth-child(5),
-  .room-table td:nth-child(5) { display: none; }
+  /* Card list keeps every field (incl. status) at phone widths — only tighten it */
+  .room-card { padding: 12px; gap: 10px; }
+  .room-card__title { font-size: 14px; }
+  .btn-join { padding: 8px 16px; }
 
   .modal { max-width: calc(100vw - 32px); }
 }

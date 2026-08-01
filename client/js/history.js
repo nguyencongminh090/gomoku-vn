@@ -175,8 +175,10 @@ async function openReplay(gameId) {
     // Update URL for sharing
     history.replaceState(null, '', `history.html?id=${gameId}`);
 
-    // Reset analysis mode
-    setAnalysisMode(false);
+    // Reset analysis mode. Pro opens straight into it (analysis is the reason a
+    // power user opens a replay at all); Lite has no analysis affordance.
+    applyReplayMode();
+    setAnalysisMode(uiMode() === 'pro');
 
     // Init board renderer (once)
     if (!boardRenderer) {
@@ -262,7 +264,21 @@ function countMainLine(node) {
 // ---------------------------------------------------------------------------
 // Analysis Mode
 // ---------------------------------------------------------------------------
+
+// Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
+function uiMode() {
+  return document.documentElement.getAttribute('data-ui-mode') || 'default';
+}
+
+// Lite drops the analysis affordance entirely — button and tree panel both.
+function applyReplayMode() {
+  const lite = uiMode() === 'lite';
+  if (btnAnalysis) btnAnalysis.style.display = lite ? 'none' : '';
+  if (lite && treePanel) treePanel.style.display = 'none';
+}
+
 function setAnalysisMode(on) {
+  if (uiMode() === 'lite') on = false; // no analysis surface in Lite
   analysisMode = on;
   btnAnalysis.classList.toggle('active', on);
   treePanel.style.display = on ? '' : 'none';
@@ -477,8 +493,27 @@ function escapeHtml(str) {
 }
 
 // ---------------------------------------------------------------------------
+// UI mode change listener — re-gate the replay view without a reload
+// ---------------------------------------------------------------------------
+window.addEventListener('uimodechange', () => {
+  applyReplayMode();
+  // Lite must drop out of analysis; Pro entering mid-replay should switch in.
+  if (replayGameData) {
+    const mode = uiMode();
+    if (mode === 'lite') setAnalysisMode(false);
+    else if (mode === 'pro' && !analysisMode) setAnalysisMode(true);
+    requestAnimationFrame(() => {
+      if (boardRenderer) boardRenderer.resize();
+      syncBoardToTree();
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
+applyReplayMode();
+
 const urlParams = new URLSearchParams(window.location.search);
 const urlGameId = urlParams.get('id');
 if (urlGameId) {

@@ -54,6 +54,7 @@ const TRANSLATIONS = {
     'login.err_register_fail': 'Đăng ký thất bại. Vui lòng thử lại.',
     'login.err_guest_fail': 'Không thể tạo phiên khách. Vui lòng thử lại.',
     'login.err_network': 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.',
+    'login.session_kicked': 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác, phiên này đã bị ngắt kết nối.',
 
     // ── Lobby page ────────────────────────────────────────────
     'lobby.title': 'Play3CR — Sảnh',
@@ -73,6 +74,28 @@ const TRANSLATIONS = {
     'lobby.state_ready': 'Chờ sẵn sàng',
     'lobby.state_waiting': 'Đang chờ',
     'lobby.rule_basic': 'Cơ bản',
+    'lobby.rules_standard': 'Luật cơ bản',
+    'lobby.rules_custom': 'Luật tuỳ chỉnh',
+
+    // ── UI mode (lite / default / pro) ────────────────────────
+    'mode.title': 'Chế độ giao diện',
+    'mode.lite': 'Gọn',
+    'mode.default': 'Mặc định',
+    'mode.pro': 'Chuyên sâu',
+    'mode.lite_desc': 'Tối giản cho người mới',
+    'mode.default_desc': 'Cân bằng giữa gọn và đầy đủ',
+    'mode.pro_desc': 'Hiển thị đầy đủ chi tiết',
+
+    // ── Create room modal (mode-dependent) ────────────────────
+    'modal.quick_match': 'Tạo nhanh',
+    'modal.advanced': 'Tuỳ chọn nâng cao',
+    'modal.use_last': 'Dùng cài đặt lần trước',
+
+    // ── Guest settings summary (Lite) ─────────────────────────
+    'settings.summary': '{board}, luật {rules}, {timer}',
+    'settings.timer_move_low': '{n} giây mỗi nước',
+    'settings.timer_game_low': '{n} giây mỗi ván',
+    'settings.timer_blitz_low': '{n} giây +{inc} giây mỗi nước',
 
     // ── Create room modal ─────────────────────────────────────
     'modal.title': 'Tạo phòng mới',
@@ -114,6 +137,7 @@ const TRANSLATIONS = {
     'room.btn_send': 'Gửi',
 
     // ── Room dynamic text ─────────────────────────────────────
+    'room.slot_empty': 'Trống',
     'room.not_ready': 'Chưa sẵn sàng',
     'room.ready': 'Sẵn sàng',
     'room.empty_slot': 'Trống',
@@ -164,6 +188,11 @@ const TRANSLATIONS = {
     'overlay.btn_close': 'Đóng',
 
     // ── Settings panel (room) ─────────────────────────────────
+    'settings.group_room': 'Phòng chơi',
+    'settings.group_room_hint_host': 'Áp dụng cho mọi người trong phòng',
+    'settings.group_room_hint_guest': 'Chỉ chủ phòng thay đổi được',
+    'settings.group_personal': 'Tuỳ chọn của tôi',
+    'settings.group_personal_hint': 'Chỉ áp dụng trên thiết bị này',
     'settings.board_size': 'Bàn cờ',
     'settings.rules': 'Luật chơi',
     'settings.timer': 'Bộ hẹn giờ',
@@ -173,6 +202,26 @@ const TRANSLATIONS = {
     'settings.click_mode': 'Cách đặt quân',
     'settings.click_single': '1 chạm',
     'settings.click_double': '2 chạm',
+    'settings.sound': 'Âm thanh',
+    'settings.sound_on': '🔊 Bật',
+    'settings.sound_off': '🔇 Tắt',
+
+    // ── Global Settings panel (header) ────────────────────────
+    'gset.title': 'Cài đặt',
+    'gset.appearance': 'Giao diện',
+    'gset.theme': 'Chủ đề',
+    'gset.theme_light': 'Sáng',
+    'gset.theme_dark': 'Tối',
+    'gset.density': 'Mật độ hiển thị',
+    'gset.language': 'Ngôn ngữ',
+    'gset.lang_vi': 'Tiếng Việt',
+    'gset.lang_en': 'Tiếng Anh',
+    'gset.game': 'Ván đấu',
+    'gset.click_mode_default': 'Cách đặt quân (mặc định)',
+    'gset.account': 'Tài khoản',
+    'gset.guest_hint': 'Bạn đang chơi với tư cách khách. Tạo tài khoản để lưu lịch sử đấu.',
+    'gset.btn_create_account': 'Tạo tài khoản',
+    'gset.btn_logout': 'Đăng xuất',
   },
 
   en: {
@@ -213,6 +262,7 @@ const TRANSLATIONS = {
     'login.err_register_fail': 'Registration failed. Please try again.',
     'login.err_guest_fail': 'Could not create guest session. Please try again.',
     'login.err_network': 'Cannot connect to server. Please check your network.',
+    'login.session_kicked': 'Your account signed in from another device, so this session was disconnected.',
 
     // ── Lobby page ────────────────────────────────────────────
     'lobby.title': 'Play3CR — Lobby',
@@ -232,8 +282,30 @@ const TRANSLATIONS = {
     'lobby.state_ready': 'Ready to start',
     'lobby.state_waiting': 'Waiting',
     'lobby.rule_basic': 'Basic',
+    'lobby.rules_standard': 'Standard rules',
+    'lobby.rules_custom': 'Custom rules',
 
     // ── Create room modal ─────────────────────────────────────
+    // ── UI mode (lite / default / pro) ────────────────────────
+    'mode.title': 'Interface mode',
+    'mode.lite': 'Lite',
+    'mode.default': 'Default',
+    'mode.pro': 'Pro',
+    'mode.lite_desc': 'Simplified for new players',
+    'mode.default_desc': 'Balanced between simple and complete',
+    'mode.pro_desc': 'Full detail for power users',
+
+    // ── Create room modal (mode-dependent) ────────────────────
+    'modal.quick_match': 'Quick match',
+    'modal.advanced': 'Advanced options',
+    'modal.use_last': 'Use last settings',
+
+    // ── Guest settings summary (Lite) ─────────────────────────
+    'settings.summary': '{board}, {rules} rules, {timer}',
+    'settings.timer_move_low': '{n}s per move',
+    'settings.timer_game_low': '{n}s per game',
+    'settings.timer_blitz_low': '{n}s +{inc}s per move',
+
     'modal.title': 'Create new room',
     'modal.close': 'Close',
     'modal.room_name': 'Room name',
@@ -273,6 +345,7 @@ const TRANSLATIONS = {
     'room.btn_send': 'Send',
 
     // ── Room dynamic text ─────────────────────────────────────
+    'room.slot_empty': 'Empty',
     'room.not_ready': 'Not ready',
     'room.ready': 'Ready',
     'room.empty_slot': 'Empty',
@@ -323,6 +396,11 @@ const TRANSLATIONS = {
     'overlay.btn_close': 'Close',
 
     // ── Settings panel (room) ─────────────────────────────────
+    'settings.group_room': 'Room',
+    'settings.group_room_hint_host': 'Applies to everyone in this room',
+    'settings.group_room_hint_guest': 'Only the host can change these',
+    'settings.group_personal': 'My preferences',
+    'settings.group_personal_hint': 'Only affects this device',
     'settings.board_size': 'Board',
     'settings.rules': 'Rules',
     'settings.timer': 'Timer',
@@ -332,6 +410,26 @@ const TRANSLATIONS = {
     'settings.click_mode': 'Placement',
     'settings.click_single': '1 Tap',
     'settings.click_double': '2 Taps',
+    'settings.sound': 'Sound',
+    'settings.sound_on': '🔊 On',
+    'settings.sound_off': '🔇 Muted',
+
+    // ── Global Settings panel (header) ────────────────────────
+    'gset.title': 'Settings',
+    'gset.appearance': 'Appearance',
+    'gset.theme': 'Theme',
+    'gset.theme_light': 'Light',
+    'gset.theme_dark': 'Dark',
+    'gset.density': 'Display density',
+    'gset.language': 'Language',
+    'gset.lang_vi': 'Vietnamese',
+    'gset.lang_en': 'English',
+    'gset.game': 'Game',
+    'gset.click_mode_default': 'Default placement mode',
+    'gset.account': 'Account',
+    'gset.guest_hint': 'You are playing as a guest. Create an account to save your match history.',
+    'gset.btn_create_account': 'Create account',
+    'gset.btn_logout': 'Log out',
   },
 };
 
@@ -457,13 +555,17 @@ function createLangSwitcher(container) {
 document.addEventListener('DOMContentLoaded', () => {
   applyI18n();
 
-  // Inject language switcher into topnav or login card header
-  const topnavRight = document.querySelector('.topnav__right');
+  // Login page has no header/Settings panel yet, so it keeps its own
+  // standalone switcher. On authenticated pages, language now lives inside
+  // the global Settings panel (see settings-panel.js) instead of a topnav pill.
   const cardLogo = document.querySelector('.card__logo');
-
-  if (topnavRight) {
-    createLangSwitcher(topnavRight);
-  } else if (cardLogo) {
+  if (cardLogo) {
     createLangSwitcher(cardLogo);
   }
 });
+
+// Expose globals for ESM compatibility
+window.t = t;
+window.applyI18n = applyI18n;
+window.setLanguage = setLanguage;
+window.getLanguage = getLanguage;

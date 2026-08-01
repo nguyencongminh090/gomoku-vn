@@ -77,6 +77,30 @@ class BoardRenderer {
     this.canvas.addEventListener('click', (e) => this._onClick(e));
     // Touch support for mobile
     this.canvas.addEventListener('touchend', (e) => this._onTouchEnd(e));
+
+    // The app's data-theme toggle (settings-panel.js) fires no change event,
+    // so redraw directly when it flips — the canvas's paper/caro colors are
+    // sourced from --board-* CSS custom properties and won't repaint on
+    // their own the way DOM elements do.
+    this._themeObserver = new MutationObserver(() => this._draw());
+    this._themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  }
+
+  /** Resolve --board-* custom properties for the current theme (paper/caro mode only). */
+  _readBoardTheme() {
+    const cs = getComputedStyle(document.documentElement);
+    const read = (name, fallback) => (cs.getPropertyValue(name) || '').trim() || fallback;
+    return {
+      bg: read('--board-bg', '#F7F7F7'),
+      accentRgb: read('--board-accent-rgb', '45, 60, 95'),
+      inkRgb: read('--board-ink-rgb', '41, 98, 255'),
+      pendingRgb: read('--board-pending-rgb', '72, 135, 95'),
+      highlightRgb: read('--board-highlight-rgb', '255, 234, 0'),
+      wallMortarRgb: read('--board-wall-mortar-rgb', '74, 74, 74'),
+      wallDarkRgb: read('--board-wall-dark-rgb', '97, 97, 97'),
+      wallBaseRgb: read('--board-wall-base-rgb', '138, 138, 138'),
+      wallLightRgb: read('--board-wall-light-rgb', '176, 176, 176'),
+    };
   }
 
   /** Update board state and redraw. */
@@ -138,9 +162,24 @@ class BoardRenderer {
       // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar +
       // controls + controls margin (12) + safety (8)
       boardAreaH = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8;
-      maxVw = boardAreaShell
-        ? (boardAreaShell.clientWidth - 32)
-        : (boardAreaEl ? (boardAreaEl.clientWidth - 32) : parent.clientWidth);
+      // On mobile (<=768px), .board-area-shell bleeds full-bleed via CSS
+      // (width: calc(100% + 32px); margin-left: -16px; padding: 0) to reclaim
+      // the .room padding-inline. That +32/-16 math assumes a fixed 16px
+      // padding, but .room's actual padding-inline is clamp(6px, 2.5vw, 16px)
+      // — on many phone widths the real padding is smaller, so the bleed
+      // overshoots and the shell's clientWidth can exceed the true viewport
+      // width, clipping the board against .board-canvas-wrap's overflow:
+      // hidden instead of scaling to fit. Clamp against window.innerWidth
+      // directly so the board can never be wider than the viewport. On
+      // desktop the shell still has its own padding/border (~32px) to
+      // subtract, and no viewport-bleed trick is in play.
+      const mobileWidth = window.innerWidth <= 768;
+      const shellWidth = boardAreaShell
+        ? boardAreaShell.clientWidth
+        : (boardAreaEl ? boardAreaEl.clientWidth : parent.clientWidth);
+      maxVw = mobileWidth
+        ? Math.min(shellWidth - 8, window.innerWidth - 8)
+        : shellWidth - 32;
     }
 
     // Single-column layout (mobile, <=768px) has auto-height board-area in normal
@@ -154,12 +193,21 @@ class BoardRenderer {
     rawSize = Math.min(rawSize, 860);
     const s = Math.max(rawSize, 200); // usable minimum
 
-    // Support High-DPI screens
-    const dpr = window.devicePixelRatio || 1;
+    // Support High-DPI screens. Some Android WebViews/browsers under-report
+    // devicePixelRatio (e.g. report 1 or 1.5 on a physically dense small
+    // screen), which makes the grid and glyphs look soft even though the
+    // CSS size itself is now correct — floor the render resolution at 2x on
+    // mobile so hairlines and stone glyphs stay crisp regardless of what the
+    // device reports. Cap at 3x everywhere to bound canvas memory/perf on
+    // very high-density panels (4x+ Android panels, etc).
+    const rawDpr = window.devicePixelRatio || 1;
+    const isMobileDpr = window.innerWidth <= 768;
+    const dpr = isMobileDpr ? Math.min(Math.max(rawDpr, 2), 3) : Math.min(rawDpr, 3);
+    this.dpr = dpr;
     this.canvas.style.width = `${s}px`;
     this.canvas.style.height = `${s}px`;
-    this.canvas.width = s * dpr;
-    this.canvas.height = s * dpr;
+    this.canvas.width = Math.round(s * dpr);
+    this.canvas.height = Math.round(s * dpr);
 
     // Scale context to match CSS size
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -176,9 +224,12 @@ class BoardRenderer {
     const h = this.cssSize || this.canvas.height;
     const n = this.boardSize;
 
-    // Margin for coordinate labels
-    let margin = Math.min(w, h) * 0.06;
-    margin = Math.max(margin, 24);
+    // Margin for coordinate labels. Mobile boards are smaller in absolute
+    // terms, so a smaller minimum keeps more of the canvas as playable grid
+    // instead of label whitespace.
+    const mobile = window.innerWidth <= 768;
+    let margin = Math.min(w, h) * (mobile ? 0.045 : 0.06);
+    margin = Math.max(margin, mobile ? 16 : 24);
 
     const availW = w - 2 * margin;
     const availH = h - 2 * margin;
@@ -320,6 +371,8 @@ class BoardRenderer {
     const g = this.geo;
     if (!g.cellSize) return;
 
+    this._theme = this._readBoardTheme();
+
     const w = this.cssSize || this.canvas.width;
     const h = this.cssSize || this.canvas.height;
     ctx.clearRect(0, 0, w, h);
@@ -397,41 +450,47 @@ class BoardRenderer {
     const r = Math.max(w, h);
     
     if (this.displayMode === 'stone') {
+      // Stone mode intentionally keeps a fixed light backdrop regardless of
+      // theme — filled black/white discs need a light board to read against;
+      // see the note on --board-bg in main.css.
       const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
       grad.addColorStop(0, '#F9F7F3');
       grad.addColorStop(1, '#EBE6DC');
       ctx.fillStyle = grad;
     } else {
-      ctx.fillStyle = '#F9F8F6';
+      ctx.fillStyle = this._theme.bg;
     }
-    
+
     ctx.fillRect(0, 0, w, h);
 
-    // Grid lines (crisp teal for standard/caro, darker for stone)
+    // Grid lines (theme-aware teal for standard/caro, fixed dark for stone)
     ctx.strokeStyle = this.displayMode === 'stone'
       ? 'rgba(0, 0, 0, 0.15)'
-      : 'rgba(15, 118, 110, 0.22)';
-    // Use thinner lines on high-DPI for elegance
-    const dpr = window.devicePixelRatio || 1;
-    ctx.lineWidth = dpr > 1 ? 0.75 : 1.0;
-    
+      : `rgba(${this._theme.accentRgb}, 0.22)`;
+    // Snap to the physical device-pixel grid and stroke exactly 1px wide so
+    // hairlines stay crisp at any devicePixelRatio, including the fractional
+    // ratios (2.625, 3.5, ...) common on Android phones.
+    const dpr = this.dpr || (window.devicePixelRatio || 1);
+    const snap = (v) => Math.round(v * dpr) / dpr;
+    ctx.lineWidth = 1 / dpr;
+
     ctx.beginPath();
     for (let i = 0; i < lineCount; i++) {
       // Vertical
-      const vx = g.originX + i * g.cellSize;
-      ctx.moveTo(vx, g.originY);
-      ctx.lineTo(vx, g.originY + gridH);
+      const vx = snap(g.originX + i * g.cellSize) + 0.5 / dpr;
+      ctx.moveTo(vx, snap(g.originY));
+      ctx.lineTo(vx, snap(g.originY + gridH));
       // Horizontal
-      const hy = g.originY + i * g.cellSize;
-      ctx.moveTo(g.originX, hy);
-      ctx.lineTo(g.originX + gridW, hy);
+      const hy = snap(g.originY + i * g.cellSize) + 0.5 / dpr;
+      ctx.moveTo(snap(g.originX), hy);
+      ctx.lineTo(snap(g.originX + gridW), hy);
     }
     ctx.stroke();
 
     // Board border (thicker and slightly darker)
     ctx.strokeStyle = this.displayMode === 'stone'
       ? 'rgba(0, 0, 0, 0.25)'
-      : 'rgba(15, 118, 110, 0.4)';
+      : `rgba(${this._theme.accentRgb}, 0.4)`;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(g.originX, g.originY, gridW, gridH);
   }
@@ -444,9 +503,9 @@ class BoardRenderer {
     const stars = STAR_POINTS[g.boardSize];
     if (!stars) return;
 
-    ctx.fillStyle = this.displayMode === 'stone' 
-      ? 'rgba(0, 0, 0, 0.6)' 
-      : 'rgba(15, 118, 110, 0.5)';
+    ctx.fillStyle = this.displayMode === 'stone'
+      ? 'rgba(0, 0, 0, 0.6)'
+      : `rgba(${this._theme.accentRgb}, 0.6)`;
     const dotR = g.cellSize * 0.08;
 
     ctx.save();
@@ -470,10 +529,13 @@ class BoardRenderer {
     const g = this.geo;
     const fontSize = g.cellSize * 0.35;
     const labelOffset = g.cellSize * 0.55;
+    const hover = this._hoverCell;
 
-    ctx.fillStyle = this.displayMode === 'stone'
+    const normalStyle = this.displayMode === 'stone'
       ? 'rgba(0, 0, 0, 0.4)'
-      : 'rgba(15, 118, 110, 0.5)';
+      : `rgba(${this._theme.accentRgb}, 0.85)`;
+    const hoverStyle = `rgb(${this._theme.highlightRgb})`;
+
     ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -481,17 +543,18 @@ class BoardRenderer {
       ctx.letterSpacing = '1px';
     }
 
-    // Column letters (A, B, C, ...)
+    // Column letters (A, B, C, ...) — the hovered column is highlighted
     for (let x = 0; x < g.boardSize; x++) {
       const ch = String.fromCharCode(65 + x);
       const px = this.displayMode === 'stone'
         ? g.originX + x * g.cellSize
         : g.originX + (x + 0.5) * g.cellSize;
       const py = g.originY - labelOffset;
+      ctx.fillStyle = hover && hover.x === x ? hoverStyle : normalStyle;
       ctx.fillText(ch, px, py);
     }
 
-    // Row numbers (1, 2, 3, ...)
+    // Row numbers (1, 2, 3, ...) — the hovered row is highlighted
     ctx.textAlign = 'center';
     for (let y = 0; y < g.boardSize; y++) {
       const text = String(y + 1);
@@ -499,6 +562,7 @@ class BoardRenderer {
       const py = this.displayMode === 'stone'
         ? g.originY + y * g.cellSize
         : g.originY + (y + 0.5) * g.cellSize;
+      ctx.fillStyle = hover && hover.y === y ? hoverStyle : normalStyle;
       ctx.fillText(text, px, py);
     }
   }
@@ -513,14 +577,11 @@ class BoardRenderer {
     const { px, py } = this._cellToPixel(x, y);
     const half = g.cellSize * 0.45;
 
-    // Elegant subtle rounded box highlight
-    ctx.fillStyle = 'rgba(15, 118, 110, 0.15)'; // Brand teal with low opacity
-    
-    // Draw rounded rect manually
-    const r = 6;
+    // Amber/gold highlight (Fix #14/#16) — fill only, no border.
     const nx = px - half;
     const ny = py - half;
     const s = half * 2;
+    const r = 6;
     ctx.beginPath();
     ctx.moveTo(nx + r, ny);
     ctx.lineTo(nx + s - r, ny);
@@ -531,6 +592,8 @@ class BoardRenderer {
     ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
     ctx.lineTo(nx, ny + r);
     ctx.quadraticCurveTo(nx, ny, nx + r, ny);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${this._theme.highlightRgb}, 0.45)`;
     ctx.fill();
   }
 
@@ -553,8 +616,8 @@ class BoardRenderer {
       ctx.stroke();
     } else {
       const half = g.cellSize * 0.45;
-      ctx.fillStyle = 'rgba(15, 118, 110, 0.06)';
-      ctx.strokeStyle = 'rgba(15, 118, 110, 0.5)';
+      ctx.fillStyle = `rgba(${this._theme.accentRgb}, 0.1)`;
+      ctx.strokeStyle = `rgba(${this._theme.accentRgb}, 0.6)`;
       ctx.lineWidth = 1.5;
       
       const r = 4;
@@ -620,11 +683,11 @@ class BoardRenderer {
     }
 
     // Green highlight background
-    ctx.fillStyle = 'rgba(72, 135, 95, 0.3)';
+    ctx.fillStyle = `rgba(${this._theme.pendingRgb}, 0.3)`;
     ctx.fillRect(px - half, py - half, half * 2, half * 2);
 
     // Green border ring
-    ctx.strokeStyle = 'rgba(72, 135, 95, 0.8)';
+    ctx.strokeStyle = `rgba(${this._theme.pendingRgb}, 0.8)`;
     ctx.lineWidth = 2;
     ctx.strokeRect(px - half, py - half, half * 2, half * 2);
 
@@ -633,7 +696,7 @@ class BoardRenderer {
     if (this.myColor === 'BLACK') {
       // X cross preview
       ctx.globalAlpha = 0.45;
-      ctx.strokeStyle = '#1A1714';
+      ctx.strokeStyle = `rgb(${this._theme.inkRgb})`;
       ctx.lineWidth = Math.max(g.cellSize * 0.11, 1.5);
       ctx.lineCap = 'round';
       ctx.beginPath();
@@ -648,7 +711,7 @@ class BoardRenderer {
       ctx.beginPath();
       ctx.arc(px, py, r, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#1A1714';
+      ctx.strokeStyle = 'rgb(255, 29, 35)';
       ctx.lineWidth = Math.max(g.cellSize * 0.07, 1);
       ctx.stroke();
       ctx.globalAlpha = 1;
@@ -676,9 +739,9 @@ class BoardRenderer {
 
     // Diagonal cross — 60% visual extent
     const arm = g.cellSize * 0.22;
-    const lw = Math.max(g.cellSize * 0.1, 2);
+    const lw = Math.max(g.cellSize * 0.14, 2.5);
 
-    ctx.strokeStyle = 'rgb(15, 23, 42)'; // Sleek slate-900 ink
+    ctx.strokeStyle = `rgb(${this._theme.inkRgb})`; // Theme-aware ink (slate-900 light / slate-50 dark)
     ctx.lineWidth = lw;
     ctx.lineCap = 'round';
 
@@ -771,12 +834,12 @@ class BoardRenderer {
 
     // Circle — 60% visual extent
     const radius = g.cellSize * 0.24;
-    const lw = Math.max(g.cellSize * 0.1, 2);
+    const lw = Math.max(g.cellSize * 0.14, 2.5);
 
     // White fill (no fill, just red ink outline for elegant paper look)
-    
-    // Sleek red ink outline
-    ctx.strokeStyle = 'rgb(225, 29, 72)'; // Rose-600
+
+    // Bright red ink outline (Fix #10)
+    ctx.strokeStyle = 'rgb(255, 29, 35)';
     ctx.lineWidth = lw;
     ctx.beginPath();
     ctx.arc(px, py, radius, 0, Math.PI * 2);
@@ -811,11 +874,12 @@ class BoardRenderer {
     const br2 = 2;
     const GAP = 1;
 
-    // Classic Stone/Grey Palette
-    const BLOCK_MORTAR = '#4B5563';
-    const BLOCK_DARK   = '#6B7280';
-    const BLOCK_BASE   = '#9CA3AF';
-    const BLOCK_LIGHT  = '#D1D5DB';
+    // WCAG-derived neutral palette — theme-aware, sourced from --board-wall-*
+    const theme = this._theme;
+    const BLOCK_MORTAR = `rgb(${theme.wallMortarRgb})`;
+    const BLOCK_DARK   = `rgb(${theme.wallDarkRgb})`;
+    const BLOCK_BASE   = `rgb(${theme.wallBaseRgb})`;
+    const BLOCK_LIGHT  = `rgb(${theme.wallLightRgb})`;
 
     const PALETTE = [
       BLOCK_DARK, BLOCK_DARK, BLOCK_DARK,
@@ -939,3 +1003,5 @@ class BoardRenderer {
     ctx.fill();
   }
 }
+
+window.BoardRenderer = BoardRenderer;

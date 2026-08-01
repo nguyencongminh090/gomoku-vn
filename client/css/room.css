@@ -467,6 +467,43 @@
   display: block;
 }
 
+/* Settings sections: room-wide config vs. personal preferences */
+.settings-group + .settings-group {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--c-border);
+}
+
+.settings-group__head {
+  margin-bottom: 10px;
+}
+
+.settings-group__title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--c-ink);
+}
+
+.settings-group__hint {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--c-ink-3);
+}
+
+/* Rows already carry their own padding when rendered as an info list */
+.settings-group .settings-info { padding: 0; }
+
+/* Lite guest view: board/rules/timer as one plain sentence */
+.settings-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--c-ink-2);
+}
+
 .settings-info {
   padding: 14px;
 }
@@ -649,6 +686,10 @@
   transform: scale(0.95);
 }
 
+/* ── Compact players strip ────────────────────────────────────────────────
+   Mobile-only: on desktop both slot cards already sit beside the board. */
+.players-strip { display: none; }
+
 /* ── Responsive: Single Column on Mobile (≤768px) ────────────────────────── */
 @media (max-width: 768px) {
   .room {
@@ -656,6 +697,51 @@
     gap: 12px;
     padding: 0;
   }
+
+  .players-strip {
+    display: flex;
+    order: 0;               /* above .board-area-shell (order: 1) */
+    flex-direction: column;
+    gap: 2px;
+    margin: 8px 12px 0;
+    padding: 8px 10px;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    background: var(--c-surface);
+    font-size: 13px;
+  }
+  .players-strip--hidden { display: none; }
+
+  .players-strip__slot {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .players-strip__num {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--c-ink-3);
+  }
+
+  .players-strip__name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+    color: var(--c-ink);
+  }
+
+  .players-strip__slot--empty .players-strip__name {
+    font-weight: 400;
+    color: var(--c-ink-3);
+  }
+
+  .players-strip .ready-text { flex: 0 0 auto; font-size: 11px; }
 
   .board-area-shell {
     order: 1;

@@ -3,21 +3,33 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Phòng chơi</title>
   <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/main.css?v=15" />
-  <link rel="stylesheet" href="css/lobby.css?v=15" />
-  <link rel="stylesheet" href="css/room.css?v=15" />
-  <link rel="stylesheet" href="css/game.css?v=15" />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=17" />
+  <link rel="stylesheet" href="css/lobby.css?v=17" />
+  <link rel="stylesheet" href="css/room.css?v=17" />
+  <link rel="stylesheet" href="css/game.css?v=17" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=1" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   
+  <script>
+    // UI mode (lite | default | pro) — applied before first paint on every page
+    // so mode-dependent layout is correct on first load, not just in the lobby.
+    (function() {
+      var m;
+      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
+      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'default';
+      document.documentElement.setAttribute('data-ui-mode', mode);
+    })();
+  </script>
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
@@ -45,6 +57,9 @@
 
   <!-- ── Room: 2-Column Layout ────────────────────────────────────────────── -->
   <main class="room" role="main">
+
+    <!-- ── Compact "who's in this room" strip (mobile only, above the board) ── -->
+    <div id="players-strip" class="players-strip" aria-live="polite"></div>
 
     <!-- ── Board Area (left, main column) ─────────────────────────────────── -->
     <section class="board-area-shell" id="board-area-shell">
@@ -149,10 +164,8 @@
 
   <!-- Socket.io CDN -->
   <script src="/socket.io/socket.io.js"></script>
-  <script src="js/i18n.js?v=9"></script>
-  <script src="js/socket-client.js?v=9"></script>
-  <script src="js/board.js?v=9"></script>
-  <script src="js/room.js?v=9"></script>
+  <!-- Application Scripts via Vite entry point -->
+  <script type="module" src="js/room-entry.js"></script>
 </body>
 
 </html>

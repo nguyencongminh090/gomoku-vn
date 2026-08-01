@@ -1,0 +1,6 @@
+<svg width="150" height="40" viewBox="0 0 150 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Play3CR">
+  <rect x="1" y="1" width="38" height="38" rx="10" fill="var(--c-ink, #0F172A)"/>
+  <text x="20" y="27.5" text-anchor="middle" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="22" font-weight="800" fill="var(--c-bg, #FFFFFF)">P</text>
+
+  <text x="48" y="27" font-family="'Segoe UI', system-ui, -apple-system, sans-serif" font-size="21" letter-spacing="-0.3" fill="var(--c-ink, #0F172A)"><tspan font-weight="500">Play</tspan><tspan font-weight="800">3CR</tspan></text>
+</svg>

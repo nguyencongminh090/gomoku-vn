@@ -20,8 +20,12 @@ const express = require('express');
 const bcrypt  = require('bcrypt');
 const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 
 const router  = express.Router();
+
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+router.use(authLimiter);
 const db      = require('../db/database');
 const config  = require('../config');
 const logger  = require('../utils/logger');
@@ -63,7 +67,7 @@ function generateGuestName() {
 // ---------------------------------------------------------------------------
 // POST /api/auth/register
 // ---------------------------------------------------------------------------
-router.post('/register', async (req, res) => {
+router.post('/register', async (req, res, next) => {
   try {
     const { username, password, displayName } = req.body;
 
@@ -113,14 +117,14 @@ router.post('/register', async (req, res) => {
 
   } catch (err) {
     logger.error('[Auth] Register error:', err);
-    return res.status(500).json({ error: 'Lỗi máy chủ. Vui lòng thử lại.' });
+    return next(err);
   }
 });
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/login
 // ---------------------------------------------------------------------------
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
@@ -153,14 +157,14 @@ router.post('/login', async (req, res) => {
 
   } catch (err) {
     logger.error('[Auth] Login error:', err);
-    return res.status(500).json({ error: 'Lỗi máy chủ. Vui lòng thử lại.' });
+    return next(err);
   }
 });
 
 // ---------------------------------------------------------------------------
 // POST /api/auth/guest
 // ---------------------------------------------------------------------------
-router.post('/guest', (req, res) => {
+router.post('/guest', (req, res, next) => {
   try {
     // Generate unique guest ID (not persisted)
     const guestId      = 'guest_' + uuidv4().slice(0, 8);
@@ -181,7 +185,7 @@ router.post('/guest', (req, res) => {
 
   } catch (err) {
     logger.error('[Auth] Guest error:', err);
-    return res.status(500).json({ error: 'Lỗi máy chủ. Vui lòng thử lại.' });
+    return next(err);
   }
 });
 

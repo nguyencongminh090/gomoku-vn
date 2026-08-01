@@ -7,7 +7,9 @@
  *   - Render live room list from server
  *   - Create room modal (collect settings → emit room:create)
  *   - Join room (emit room:join → redirect to room page)
- *   - Display user info + logout
+ *   - Display user info in the nav
+ *
+ * Logout now lives in the global Settings panel (see settings-panel.js).
  *
  * Manual test checklist:
  *   [ ] No token → redirect to login
@@ -17,7 +19,6 @@
  *   [ ] room:create emits correct settings payload
  *   [ ] room:joined → stores roomId → redirects to room.html
  *   [ ] room:error shows alert
- *   [ ] Logout clears token and redirects
  */
 
 // ---------------------------------------------------------------------------
@@ -42,7 +43,6 @@ const client = new SocketClient();
 const statusBanner  = document.getElementById('status-banner');
 const navUser       = document.getElementById('nav-user');
 const navBadge      = document.getElementById('nav-badge');
-const btnLogout     = document.getElementById('btn-logout');
 const roomCount     = document.getElementById('room-count');
 const roomListEl    = document.getElementById('room-list');
 const btnCreate     = document.getElementById('btn-create');
@@ -50,7 +50,15 @@ const modalOverlay  = document.getElementById('modal-create');
 const modalClose    = document.getElementById('modal-close');
 const modalCancel   = document.getElementById('modal-cancel');
 const modalConfirm  = document.getElementById('modal-confirm');
+const btnQuickMatch = document.getElementById('btn-quick-match');
+const btnUseLast    = document.getElementById('btn-use-last');
+const modalAdvancedToggle = document.getElementById('modal-advanced-toggle');
 let currentRooms = [];
+
+// Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
+function uiMode() {
+  return document.documentElement.getAttribute('data-ui-mode') || 'default';
+}
 
 // ---------------------------------------------------------------------------
 // Display user info in nav
@@ -64,13 +72,6 @@ if (userInfo) {
 
 // Bind status banner
 client.bindStatusBanner(statusBanner);
-
-// ---------------------------------------------------------------------------
-// Logout
-// ---------------------------------------------------------------------------
-btnLogout.addEventListener('click', () => {
-  client.logout();
-});
 
 // ---------------------------------------------------------------------------
 // Subscribe to lobby updates
@@ -89,13 +90,29 @@ const onlinePanelToggle = document.getElementById('online-panel-toggle');
 const onlinePanelBody   = document.getElementById('online-panel-body');
 const onlineUserList    = document.getElementById('online-user-list');
 
-// Toggle panel open/close
+// Toggle panel open/close — suppressed in Lite, which shows the count only.
 if (onlinePanelToggle) {
   onlinePanelToggle.addEventListener('click', () => {
+    if (uiMode() === 'lite') return;
     onlinePanelToggle.classList.toggle('open');
     onlinePanelBody.classList.toggle('open');
   });
 }
+
+// Lite collapses the online panel to a bare "N online" count: no expandable
+// list, no click-to-expand affordance. The `online-panel--lite` class drops the
+// chevron and the pointer/hover affordances via CSS.
+function applyOnlinePanelMode() {
+  const panel = document.getElementById('online-panel');
+  if (!panel) return;
+  const lite = uiMode() === 'lite';
+  panel.classList.toggle('online-panel--lite', lite);
+  if (lite) {
+    onlinePanelToggle.classList.remove('open');
+    onlinePanelBody.classList.remove('open');
+  }
+}
+applyOnlinePanelMode();
 
 client.on('lobby:online_users', (users) => {
   const count = users.length;
@@ -127,7 +144,7 @@ client.on('room:error', (data) => {
 
 // Auto-redirect if server detects we are already in a room
 client.on('room:joined', (data) => {
-  window.location.replace(`room.html?id=${data.roomId}`);
+  window.location.replace(`room.html?id=${encodeURIComponent(data.roomId)}`);
 });
 
 // ---------------------------------------------------------------------------
@@ -163,54 +180,40 @@ function renderRoomList(rooms) {
     return;
   }
 
-  let html = `
-    <table class="room-table">
-      <thead>
-        <tr>
-          <th>${t('lobby.th_room')}</th>
-          <th>${t('lobby.th_host')}</th>
-          <th>${t('lobby.th_players')}</th>
-          <th>${t('lobby.th_status')}</th>
-          <th>${t('lobby.th_rules')}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
+  let html = '<div class="room-cards">';
 
   let i = 0;
   for (const room of rooms) {
     const stateLabel = getStateLabel(room.state, room.playerCount);
     const stateClass = getStateClass(room.state, room.playerCount);
-    const ruleTags   = buildRuleTags(room);
+    const ruleChip   = buildRuleChip(room);
 
     const animDelay = (i * 0.05).toFixed(2);
     html += `
-      <tr data-room-id="${room.roomId}" class="animate-fade-up" style="animation-delay: ${animDelay}s">
-        <td>
-          <div style="font-weight:600; color:var(--c-ink); margin-bottom:2px;">${escapeHtml(room.roomName || room.roomId)}</div>
-          <span class="room-id" style="font-size:11px; font-weight:400; color:var(--c-ink-3);">ID: ${escapeHtml(room.roomId)}</span>
-        </td>
-        <td>${escapeHtml(room.hostName)}</td>
-        <td>
-          <span class="player-count ${room.playerCount >= 2 ? 'player-count--full' : 'player-count--open'}">
-            ${room.playerCount}/2
-          </span>
-          <span style="color:var(--c-ink-3);font-size:11px;margin-left:4px">(${room.userCount})</span>
-        </td>
-        <td><span class="state-badge ${stateClass}">${stateLabel}</span></td>
-        <td>${ruleTags}</td>
-        <td>
-          <button class="btn-join" onclick="joinRoom('${escapeAttr(room.roomId)}')" type="button">
-            ${t('lobby.btn_join')}
-          </button>
-        </td>
-      </tr>
+      <div class="room-card animate-fade-up" data-room-id="${escapeAttr(room.roomId)}" style="animation-delay: ${animDelay}s">
+        <div class="room-card__body">
+          <div class="room-card__title">${escapeHtml(room.roomName || room.roomId)}</div>
+          <div class="room-card__meta">
+            <span class="room-card__host">${escapeHtml(room.hostName)}</span>
+            <span class="room-card__dot" aria-hidden="true">·</span>
+            <span class="player-count ${room.playerCount >= 2 ? 'player-count--full' : 'player-count--open'}">${room.playerCount}/2</span>
+            <span class="room-card__dot" aria-hidden="true">·</span>
+            <span class="room-card__id">${escapeHtml(room.roomId)}</span>
+          </div>
+          <div class="room-card__chips">
+            <span class="state-badge ${stateClass}">${stateLabel}</span>
+            ${ruleChip}
+          </div>
+        </div>
+        <button class="btn-join" onclick="joinRoom('${escapeAttr(room.roomId)}')" type="button">
+          ${t('lobby.btn_join')}
+        </button>
+      </div>
     `;
     i++;
   }
 
-  html += '</tbody></table>';
+  html += '</div>';
   roomListEl.innerHTML = html;
 }
 
@@ -227,20 +230,42 @@ function getStateClass(state, playerCount) {
   return 'state-badge--idle';
 }
 
+// Lite/Default: one plain-language summary chip instead of the jargon tag
+// cluster (Wall / Portal / Swap2 / Caro).
+// Pro: the full tag breakdown, restoring the detail Default collapses.
+function buildRuleChip(room) {
+  if (uiMode() === 'pro') return buildRuleTags(room);
+
+  const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
+    || (room.winningRule || 'freestyle') !== 'freestyle';
+  const label = isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard');
+  const cls   = isCustom ? 'rule-chip rule-chip--custom' : 'rule-chip';
+  return `<span class="${cls}">${label} · ${room.boardSize}×${room.boardSize}</span>`;
+}
+
+// Pro-mode tag breakdown. Rendered as individual `.rule-tag`s inside the same
+// `.room-card` chip row — the row wraps, so this never reintroduces the
+// table-cell wrapping bug the card layout was built to fix.
 function buildRuleTags(room) {
-  let tags = '';
-  tags += `<span style="color:var(--c-ink-3);font-size:12px">${room.boardSize}×${room.boardSize}</span> `;
-  if (room.ruleWall) tags += '<span class="rule-tag rule-tag--wall">Wall</span>';
-  if (room.rulePortal) tags += '<span class="rule-tag rule-tag--portal">Portal</span>';
-  if (room.winningRule === 'standard') tags += `<span class="rule-tag" style="background:#eef0fb;color:#3a4bba;border:1px solid #ccd2f0;">${t('rule.standard')}</span>`;
-  if (room.winningRule === 'caro') tags += `<span class="rule-tag" style="background:#e8f4fd;color:#1a6fa8;border:1px solid #b3d9f0;">${t('rule.caro')}</span>`;
-  if (room.ruleSwap2) tags += '<span class="rule-tag" style="background:#eafaf0;color:#2c7a4b;border:1px solid #b6e0c6;">Swap2</span>';
-  if (!room.ruleWall && !room.rulePortal && !room.ruleSwap2 && (room.winningRule || 'freestyle') === 'freestyle') tags += `<span style="color:var(--c-ink-3);font-size:11px">${t('lobby.rule_basic')}</span>`;
-  return `<div class="rule-tags">${tags}</div>`;
+  let tags = `<span class="rule-tag rule-tag--size">${room.boardSize}×${room.boardSize}</span>`;
+  if (room.ruleWall)   tags += `<span class="rule-tag rule-tag--wall">${t('modal.rule_wall')}</span>`;
+  if (room.rulePortal) tags += `<span class="rule-tag rule-tag--portal">${t('modal.rule_portal')}</span>`;
+  if (room.ruleSwap2)  tags += '<span class="rule-tag rule-tag--swap2">Swap2</span>';
+  const win = room.winningRule || 'freestyle';
+  if (win === 'standard') tags += `<span class="rule-tag rule-tag--win">${t('rule.standard')}</span>`;
+  if (win === 'caro')     tags += `<span class="rule-tag rule-tag--win">${t('rule.caro')}</span>`;
+  if (win === 'freestyle') tags += `<span class="rule-tag">${t('rule.freestyle')}</span>`;
+  return tags;
 }
 
 window.addEventListener('langchange', () => {
   renderRoomList(currentRooms);
+});
+
+window.addEventListener('uimodechange', () => {
+  renderRoomList(currentRooms);
+  applyOnlinePanelMode();
+  applyModalMode();
 });
 
 // ---------------------------------------------------------------------------
@@ -258,6 +283,17 @@ window.joinRoom = function(roomId) {
 // ---------------------------------------------------------------------------
 
 function openModal() {
+  if (uiMode() === 'lite') {
+    // Lite is a one-click, low-decision path — always start from the fixed
+    // Lite preset rather than recalling last-used settings (that recall is
+    // a Pro-only affordance via "Use last settings"). The user can still
+    // open Advanced and tweak before hitting Quick Match/Confirm.
+    applySettingsToForm(LITE_DEFAULT_SETTINGS);
+  } else {
+    const last = loadLastSettings();
+    if (last) applySettingsToForm(last); // so Quick match/Confirm reflect the real form state
+  }
+  applyModalMode(); // re-checks last-used settings, which may have appeared since
   modalOverlay.classList.add('visible');
 }
 
@@ -281,30 +317,131 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Confirm → create room
-modalConfirm.addEventListener('click', () => {
+// ── Create-room settings: read / defaults / last-used ───────────────────────
+
+const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
+
+// The form's own hardcoded defaults, used when nothing has been remembered yet.
+const DEFAULT_ROOM_SETTINGS = {
+  boardSize: 17, winningRule: 'freestyle',
+  ruleWall: false, rulePortal: false, ruleSwap2: false,
+  timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
+};
+
+// Lite mode's fixed preset — Board 17x17 + WALL — applied on every modal
+// open in Lite, regardless of any previously recalled settings.
+const LITE_DEFAULT_SETTINGS = { ...DEFAULT_ROOM_SETTINGS, ruleWall: true };
+
+function readFormSettings() {
   const boardSize = parseInt(
     document.querySelector('input[name="boardSize"]:checked').value, 10
   );
   const timerMode = document.querySelector('input[name="timerMode"]:checked').value;
   const timerSeconds = parseInt(document.getElementById('timer-seconds').value, 10) || 60;
   const timerIncrementSeconds = parseInt(document.getElementById('timer-increment').value, 10) || 0;
-  const winningRule     = (document.querySelector('input[name="winRule"]:checked') || {}).value || 'freestyle';
-  const ruleSwap2       = (document.querySelector('input[name="openRule"]:checked') || {}).value === 'swap2';
-  let   ruleWall        = document.getElementById('rule-wall').checked;
-  let   rulePortal      = document.getElementById('rule-portal').checked;
+  const winningRule = (document.querySelector('input[name="winRule"]:checked') || {}).value || 'freestyle';
+  const ruleSwap2   = (document.querySelector('input[name="openRule"]:checked') || {}).value === 'swap2';
+  let   ruleWall    = document.getElementById('rule-wall').checked;
+  let   rulePortal  = document.getElementById('rule-portal').checked;
   if (ruleSwap2) { ruleWall = false; rulePortal = false; } // Swap2 plays on a plain board
-  const roomName        = document.getElementById('room-name').value.trim();
+  return { boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
+}
+
+function loadLastSettings() {
+  try {
+    const raw = localStorage.getItem(LAST_SETTINGS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' ? { ...DEFAULT_ROOM_SETTINGS, ...parsed } : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveLastSettings(settings) {
+  try {
+    localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(settings));
+  } catch (e) { /* private mode — remembering is best-effort */ }
+}
+
+// Push a settings object back into the form controls (Pro "use last settings").
+function applySettingsToForm(s) {
+  const check = (sel) => { const el = document.querySelector(sel); if (el) el.checked = true; };
+  check(`input[name="boardSize"][value="${s.boardSize}"]`);
+  check(`input[name="winRule"][value="${s.winningRule}"]`);
+  check(`input[name="openRule"][value="${s.ruleSwap2 ? 'swap2' : 'none'}"]`);
+  check(`input[name="timerMode"][value="${s.timerMode}"]`);
+  const wall = document.getElementById('rule-wall');
+  const portal = document.getElementById('rule-portal');
+  if (wall) wall.checked = !!s.ruleWall;
+  if (portal) portal.checked = !!s.rulePortal;
+  document.getElementById('timer-seconds').value = s.timerSeconds;
+  document.getElementById('timer-increment').value = s.timerIncrementSeconds;
+  // Re-run the Swap2 ⇄ board-setup interlock
+  document.querySelectorAll('input[name="openRule"]').forEach(r => r.dispatchEvent(new Event('change')));
+}
+
+function submitCreate(settings) {
+  const roomName = document.getElementById('room-name').value.trim();
+  saveLastSettings(settings);
 
   // Store intent and navigate — room.js will handle the actual create
   sessionStorage.setItem('gvn_room_intent', JSON.stringify({
     action: 'create',
-    settings: { roomName, boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds },
+    settings: { roomName, ...settings },
   }));
 
   closeModal();
   window.location.href = 'room.html'; // Create room ID is assigned by server later
+}
+
+// Confirm → create room
+modalConfirm.addEventListener('click', () => submitCreate(readFormSettings()));
+
+// Lite: "Quick match" — the form, which is already pre-filled with last-used
+// settings (or defaults) on open, plus whatever the user tweaked in Advanced.
+btnQuickMatch.addEventListener('click', () => {
+  submitCreate(readFormSettings());
 });
+
+// Pro: "Use last settings" — refill the form, leaving the user free to tweak.
+btnUseLast.addEventListener('click', () => {
+  const last = loadLastSettings();
+  if (last) applySettingsToForm(last);
+});
+
+// ── Modal mode gating ───────────────────────────────────────────────────────
+
+// Lite  → Quick match primary, everything else behind a closed "Advanced".
+// Default → unchanged flat form.
+// Pro   → flat form plus a "Use last settings" affordance (only once something
+//         has actually been remembered).
+function applyModalMode() {
+  const mode = uiMode();
+  const advanced = document.getElementById('modal-advanced');
+  const toggle   = document.getElementById('modal-advanced-toggle');
+  if (!advanced || !toggle) return;
+
+  const lite = mode === 'lite';
+  modalOverlay.classList.toggle('modal--lite', lite);
+  modalOverlay.classList.toggle('modal--pro', mode === 'pro');
+
+  // Advanced disclosure exists only in Lite; other modes show the form flat.
+  if (lite) {
+    advanced.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+  }
+
+  btnUseLast.style.display = (mode === 'pro' && loadLastSettings()) ? '' : 'none';
+}
+
+modalAdvancedToggle.addEventListener('click', () => {
+  const advanced = document.getElementById('modal-advanced');
+  const open = advanced.classList.toggle('open');
+  modalAdvancedToggle.setAttribute('aria-expanded', String(open));
+});
+
+applyModalMode();
 
 // Swap2 (opening rule) is played on a plain board → disable & clear board setup.
 (function () {

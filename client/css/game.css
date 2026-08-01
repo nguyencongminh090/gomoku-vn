@@ -27,6 +27,10 @@
   box-sizing: border-box;
 }
 
+/* Pre-game: take up no layout height at all (was visibility:hidden, which
+   still reserved the bar's full height as dead space above the board). */
+.turn-bar--hidden { display: none; }
+
 .turn-bar__player {
   display: flex;
   align-items: center;
@@ -156,9 +160,18 @@
     width: calc(100% - 32px);
     margin: 0 auto 10px auto;
   }
-  .game-controls {
-    width: calc(100% - 32px);
-    margin: 10px auto 0 auto;
+  /* .game-controls's width here used to be dead CSS: the unconditional
+     base rule at ~L177 (width: 100%) sits later in the file and won the
+     cascade regardless of viewport, so the controls silently inherited
+     the full bled width of .board-area-shell's full-bleed hack and
+     overflowed past the viewport on both sides instead of staying inset
+     like the canvas above them. The real override now lives in the
+     mobile block below (~L700), which is declared after the base rule. */
+  /* game.css loads after room.css, so its unconditional 8px padding on
+     .board-area-inner (line 137) otherwise wins over room.css's mobile
+     full-bleed override — re-zero it here to keep the board full-width. */
+  .board-area-inner {
+    padding: 0;
   }
 }
 
@@ -686,18 +699,24 @@
     white-space: nowrap;
   }
 
-  /* Controls must shrink to fit the row, not overflow off-screen */
+  /* Controls must shrink to fit the row, not overflow off-screen. Width is
+     inset by the same 32px .board-area-shell over-bleeds by, so the row
+     lands flush with the true viewport edges — matching the canvas above
+     it — instead of bleeding past the screen like the shell itself does. */
   .game-controls {
+    width: calc(100% - 32px);
     max-width: 100%;
+    margin: 10px auto 0 auto;
     gap: 6px;
     flex-wrap: wrap;
   }
 
   .btn-game {
     min-width: 0;
+    min-height: 44px;
     flex: 1 1 30%;
     font-size: 12px;
-    padding: 8px 6px;
+    padding: 10px 6px;
     letter-spacing: 0.3px;
   }
 

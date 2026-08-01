@@ -41,6 +41,9 @@ const CHAT_RATE_WINDOW_MS   = 3000; // Window duration
 
 // --- Authentication ---
 const JWT_SECRET  = process.env.JWT_SECRET || 'gomokuvn-dev-secret-change-in-production';
+if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'gomokuvn-dev-secret-change-in-production')) {
+  throw new Error('JWT_SECRET must be set in production');
+}
 const JWT_EXPIRY  = '7d';
 const JWT_GUEST_EXPIRY = '24h';
 const BCRYPT_ROUNDS = 12;

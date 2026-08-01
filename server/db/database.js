@@ -32,6 +32,15 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
 db.exec(schema);
 
+// Periodic WAL checkpoint to prevent unbounded growth
+setInterval(() => {
+  try {
+    db.pragma('wal_checkpoint(PASSIVE)');
+  } catch (err) {
+    logger.error('[DB] WAL checkpoint failed:', err);
+  }
+}, 60 * 60 * 1000); // Every hour
+
 logger.info('[DB] SQLite initialized at', DB_PATH);
 
 // ---------------------------------------------------------------------------

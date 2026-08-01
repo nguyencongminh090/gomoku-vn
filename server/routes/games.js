@@ -14,8 +14,9 @@ const router = express.Router();
 
 // ---------------------------------------------------------------------------
 // GET /api/games — List recent games
+// Note: Intentionally public to allow anyone to view the leaderboard/recent games.
 // ---------------------------------------------------------------------------
-router.get('/', (req, res) => {
+router.get('/', (req, res, next) => {
   try {
     const page  = Math.max(1, parseInt(req.query.page) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
@@ -34,14 +35,14 @@ router.get('/', (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: 'Lỗi khi tải lịch sử ván đấu.' });
+    return next(err);
   }
 });
 
 // ---------------------------------------------------------------------------
 // GET /api/games/:id — Get single game with full details
 // ---------------------------------------------------------------------------
-router.get('/:id', (req, res) => {
+router.get('/:id', (req, res, next) => {
   try {
     const game = database.getGameById(req.params.id);
     if (!game) {
@@ -55,7 +56,7 @@ router.get('/:id', (req, res) => {
 
     res.json({ game });
   } catch (err) {
-    res.status(500).json({ error: 'Lỗi khi tải chi tiết ván đấu.' });
+    return next(err);
   }
 });
 

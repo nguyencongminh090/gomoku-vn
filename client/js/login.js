@@ -20,7 +20,14 @@ const API_BASE = '';   // Same origin
 // ---------------------------------------------------------------------------
 (function checkExistingSession() {
   const token = localStorage.getItem('gvn_token');
-  if (token) {
+  // A kicked tab no longer wipes the shared gvn_token (see socket-client.js —
+  // it's shared across all tabs, and clearing it here would falsely log out
+  // sibling tabs). So this tab's own token may still be present even though
+  // it just got kicked; skip the auto-bounce in that one case so the
+  // kicked-notice below actually gets a chance to render instead of
+  // silently reconnecting (and immediately re-kicking whichever tab is
+  // still active).
+  if (token && !sessionStorage.getItem('gvn_kicked_notice')) {
     // Quick sanity check — don't bother decoding, server will reject if expired
     window.location.replace('index.html');
   }
@@ -30,6 +37,15 @@ const API_BASE = '';   // Same origin
 // Element refs
 // ---------------------------------------------------------------------------
 const alertBanner    = document.getElementById('alert-banner');
+
+// ---------------------------------------------------------------------------
+// Show a one-time notice if we were redirected here after a forced logout
+// (server disconnected this session because the account signed in elsewhere)
+// ---------------------------------------------------------------------------
+if (sessionStorage.getItem('gvn_kicked_notice')) {
+  sessionStorage.removeItem('gvn_kicked_notice');
+  showAlert(t('login.session_kicked'));
+}
 
 // Login form
 const formLogin      = document.getElementById('form-login');

@@ -5,16 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Đăng nhập</title>
   <meta name="description" content="Đăng nhập vào Play3CR — nền tảng chơi Caro trực tuyến với luật Wall và Portal." />
+  <!-- Google Fonts: Manrope (project-wide design token) -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/login.css?v=15" />
-  <link rel="stylesheet" href="css/main.css?v=15" />
-  <!-- Google Fonts: Manrope -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=17" />
+  <link rel="stylesheet" href="css/login.css?v=17" />
+
   
+  <script>
+    // UI mode (lite | default | pro) — applied before first paint on every page
+    // so mode-dependent layout is correct on first load, not just in the lobby.
+    (function() {
+      var m;
+      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
+      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'default';
+      document.documentElement.setAttribute('data-ui-mode', mode);
+    })();
+  </script>
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
@@ -194,11 +203,10 @@
     <footer class="page-footer" data-i18n="login.footer">
       Play3CR &nbsp;·&nbsp; Self-hosted &nbsp;·&nbsp; Dữ liệu lưu cục bộ
     </footer>
-
   </main>
 </div>
 
-<script src="js/i18n.js"></script>
-<script src="js/login.js"></script>
+  <!-- Application Scripts via Vite entry point -->
+  <script type="module" src="js/login-entry.js"></script>
 </body>
 </html>

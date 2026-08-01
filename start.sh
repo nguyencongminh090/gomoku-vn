@@ -8,5 +8,5 @@ echo "🔄 Đang dọn dẹp port 3000..."
 fuser -k 3000/tcp 2>/dev/null
 
 echo "🚀 Bắt đầu khởi động Node.js Server..."
-# Chạy server
-npm start
+# Chạy server ở chế độ ổn định (không tự khởi động lại khi có thay đổi file)
+npm run dev:stable

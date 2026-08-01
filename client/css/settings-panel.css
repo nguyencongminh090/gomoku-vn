@@ -1,0 +1,205 @@
+/* ── Global Settings panel ────────────────────────────────────────────────
+   Shared across index.html, room.html and history.html via settings-panel.js.
+   Consolidates theme, UI density, language, sound and account controls that
+   used to be separate topnav icon buttons into one entry point, so the
+   header stays down to logo + badge + one icon on small screens.
+   ─────────────────────────────────────────────────────────────────────── */
+
+.gset-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.gset-overlay.visible { display: flex; }
+
+.gset-panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: min(80vh, 640px);
+  margin: 0 8px 8px;
+  padding: 0;
+  border: 1px solid var(--c-border);
+  border-radius: 20px;
+  background: var(--c-surface);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gset-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--c-border);
+  flex-shrink: 0;
+}
+.gset-panel__title { font-size: 16px; font-weight: 800; color: var(--c-ink); }
+.gset-panel__close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: none;
+  background: var(--c-surface-2);
+  color: var(--c-ink-2);
+  cursor: pointer;
+  font-size: 16px;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.gset-panel__close:hover { background: var(--c-border); color: var(--c-ink); }
+
+.gset-panel__body {
+  padding: 8px 18px 18px;
+  overflow-y: auto;
+}
+
+.gset-group + .gset-group {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--c-border-light);
+}
+
+.gset-group__title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--c-ink-3);
+  margin-bottom: 12px;
+}
+
+.gset-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.gset-row:last-child { margin-bottom: 0; }
+
+.gset-row__label { font-size: 14px; color: var(--c-ink); font-weight: 500; }
+
+/* 3-way segmented control (theme / density / language) */
+.gset-segment {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--c-border);
+  border-radius: 9999px;
+  background: var(--c-surface-2);
+}
+.gset-segment__opt {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font);
+  color: var(--c-ink-3);
+  background: transparent;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+.gset-segment__opt:hover { color: var(--c-ink); }
+.gset-segment__opt.is-active {
+  color: var(--c-brand);
+  background: var(--c-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Toggle switch (sound) — visually matches the in-room settings toggle */
+.gset-toggle { position: relative; width: 44px; height: 24px; flex-shrink: 0; }
+.gset-toggle input { opacity: 0; width: 0; height: 0; }
+.gset-toggle__slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background: var(--c-border);
+  border-radius: 9999px;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.gset-toggle__slider::before {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  left: 3px;
+  top: 3px;
+  background: var(--c-surface);
+  border-radius: 50%;
+  transition: transform var(--duration-fast) var(--ease-out);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.gset-toggle input:checked + .gset-toggle__slider { background: var(--c-brand); }
+.gset-toggle input:checked + .gset-toggle__slider::before { transform: translateX(20px); }
+
+/* Account section */
+.gset-account__user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.gset-account__name { font-size: 14px; font-weight: 700; color: var(--c-ink); }
+.gset-account__hint {
+  font-size: 13px;
+  color: var(--c-ink-2);
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.gset-account__actions { display: flex; gap: 10px; }
+
+.gset-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font);
+  text-decoration: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-spring);
+  white-space: nowrap;
+}
+.gset-btn--primary {
+  color: #fff;
+  background: var(--c-brand);
+  border: 1px solid var(--c-brand);
+}
+.gset-btn--primary:hover { background: var(--c-brand-dark); }
+.gset-btn--secondary {
+  color: var(--c-ink);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+}
+.gset-btn--secondary:hover { background: var(--c-surface-2); }
+
+/* ── Desktop: anchor as a dropdown card instead of a full bottom sheet ──── */
+@media (min-width: 769px) {
+  .gset-overlay {
+    align-items: flex-start;
+    justify-content: flex-end;
+    background: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .gset-panel {
+    margin: 76px 24px 0 0;
+    max-height: min(70vh, 560px);
+  }
+}

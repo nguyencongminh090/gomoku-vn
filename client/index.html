@@ -2,20 +2,15 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Sảnh</title>
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=15" />
-  <link rel="stylesheet" href="css/lobby.css?v=15" />
-  <style>
-    /* Theme toggle icons */
-    [data-theme="dark"] .icon-moon { display: none; }
-    [data-theme="light"] .icon-sun { display: none; }
-    .icon-sun, .icon-moon { transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.2); }
-    #theme-toggle:hover svg { transform: rotate(15deg) scale(1.1); }
-  </style>
+  <link rel="stylesheet" href="css/main.css?v=17" />
+  <link rel="stylesheet" href="css/lobby.css?v=17" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=1" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -29,6 +24,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
   
+  <script>
+    // UI mode (lite | default | pro) — applied before first paint on every page
+    // so mode-dependent layout is correct on first load, not just in the lobby.
+    (function() {
+      var m;
+      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
+      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'default';
+      document.documentElement.setAttribute('data-ui-mode', mode);
+    })();
+  </script>
   <!-- Phosphor Icons -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
 
@@ -57,14 +62,9 @@
   <div class="topnav__right">
     <span id="nav-user" class="topnav__user"></span>
     <span id="nav-badge" class="topnav__badge"></span>
-    <button id="theme-toggle" class="topnav__btn topnav__btn--icon" type="button" aria-label="Toggle Theme" title="Chuyển giao diện">
-      <i class="ph ph-moon icon-moon" style="font-size: 20px;"></i>
-      <i class="ph ph-sun icon-sun" style="font-size: 20px;"></i>
-    </button>
-    <button id="btn-logout" class="topnav__btn" type="button" title="Đăng xuất">
-      <i class="ph-bold ph-sign-out" style="font-size: 16px;"></i>
-      <span data-i18n="nav.logout" class="hide-on-mobile">Đăng xuất</span>
-    </button>
+    <!-- The Settings icon button is injected here by settings-panel.js. It
+         consolidates what used to be 4 separate icons (UI density, theme,
+         language, logout) into one entry point. -->
   </div>
 </nav>
 
@@ -162,6 +162,22 @@
         </div>
       </div>
 
+      <!-- Lite: one-tap create with last-used (or default) settings -->
+      <button id="btn-quick-match" class="btn btn-confirm modal__quick" type="button" data-i18n="modal.quick_match">Tạo nhanh</button>
+
+      <!-- Pro: refill the form from the last submitted settings -->
+      <button id="btn-use-last" class="btn-secondary modal__use-last" type="button" data-i18n="modal.use_last">Dùng cài đặt lần trước</button>
+
+      <!-- Lite: everything below collapses behind this disclosure -->
+      <button id="modal-advanced-toggle" class="modal__advanced-toggle" type="button" aria-expanded="false" aria-controls="modal-advanced">
+        <span data-i18n="modal.advanced">Tuỳ chọn nâng cao</span>
+        <span class="modal__advanced-arrow" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </span>
+      </button>
+
+      <div id="modal-advanced" class="modal__advanced">
+
       <!-- Board size -->
       <div class="setting-row">
         <span class="setting-label" data-i18n="modal.board_size">Kích thước bàn</span>
@@ -232,7 +248,7 @@
 
       <!-- Timer seconds -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.time_label">Thời gian</span>
+        <label class="setting-label" for="timer-seconds" data-i18n="modal.time_label">Thời gian</label>
         <div class="timer-input">
           <input type="number" id="timer-seconds" value="60" min="5" max="3600" step="5" />
           <span class="unit" data-i18n="modal.time_unit">giây</span>
@@ -241,12 +257,14 @@
 
       <!-- Timer increment -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.time_plus">Cộng thêm</span>
+        <label class="setting-label" for="timer-increment" data-i18n="modal.time_plus">Cộng thêm</label>
         <div class="timer-input">
           <input type="number" id="timer-increment" value="0" min="0" max="600" step="1" />
           <span class="unit" data-i18n="modal.time_unit">giây</span>
         </div>
       </div>
+
+      </div><!-- /#modal-advanced -->
 
       <!-- Actions -->
       <div class="modal__actions">
@@ -259,18 +277,8 @@
 
 <!-- Socket.io CDN -->
 <script src="/socket.io/socket.io.js"></script>
-<script src="js/i18n.js"></script>
-<script src="js/socket-client.js?v=9"></script>
-<script src="js/lobby.js?v=9"></script>
+<script type="module" src="js/index-entry.js"></script>
 <script>
-  document.getElementById('theme-toggle').addEventListener('click', function() {
-    var root = document.documentElement;
-    var current = root.getAttribute('data-theme');
-    var next = current === 'dark' ? 'light' : 'dark';
-    root.setAttribute('data-theme', next);
-    localStorage.setItem('theme', next);
-  });
-
   // Auto-open the online panel on desktop sidebar (>= 900px)
   (function() {
     var body = document.getElementById('online-panel-body');

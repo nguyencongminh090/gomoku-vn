@@ -22,7 +22,9 @@ const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
 const { verifySocketToken } = require('./middleware/auth');
+const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
+const { db }         = require('./db/database');
 
 // ---------------------------------------------------------------------------
 // Express
@@ -32,8 +34,12 @@ const app = express();
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
 
+const clientPath = process.env.NODE_ENV === 'production' 
+  ? path.join(__dirname, '..', 'dist')
+  : path.join(__dirname, '..', 'client');
+
 // Serve client static files
-app.use(express.static(path.join(__dirname, '..', 'client')));
+app.use(express.static(clientPath));
 
 // REST API routes
 app.use('/api/auth', authRouter);
@@ -43,9 +49,14 @@ app.use('/api/games', gamesRouter);
 app.get('*', (req, res) => {
   // If not an API request, redirect to login
   if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '..', 'client', 'login.html'));
+    res.sendFile(path.join(clientPath, 'login.html'));
+    return;
   }
+  res.status(404).json({ error: 'Not found' });
 });
+
+// Centralized Express error handler — must be mounted AFTER all routes
+app.use(errorHandler);
 
 // ---------------------------------------------------------------------------
 // HTTP Server
@@ -57,7 +68,7 @@ const server = http.createServer(app);
 // ---------------------------------------------------------------------------
 const io = new Server(server, {
   cors: {
-    origin: '*',   // Adjust in production (e.g. Cloudflare tunnel domain)
+    origin: process.env.CORS_ORIGIN || (process.env.NODE_ENV === 'production' ? false : '*'),
     methods: ['GET', 'POST'],
   },
 });
@@ -74,5 +85,32 @@ socketHandler.init(io);
 server.listen(config.HTTP_PORT, () => {
   logger.info(`[Server] Play3CR listening on http://localhost:${config.HTTP_PORT}`);
 });
+
+// Last-resort safety net: an error that escapes every other try/catch (e.g. a
+// bug in a socket handler not covered by SocketHandler.js's per-handler wrap)
+// must not silently kill the whole process and drop every connected player.
+process.on('uncaughtException', (err) => {
+  logger.error('[Server] Uncaught exception:', err.stack || err.message);
+});
+
+process.on('unhandledRejection', (reason) => {
+  logger.error('[Server] Unhandled rejection:', reason instanceof Error ? (reason.stack || reason.message) : reason);
+});
+
+const gracefulShutdown = () => {
+  logger.info('[Server] Shutdown signal received. Shutting down gracefully.');
+  io.emit('server:shutdown', { message: 'Server đang khởi động lại. Vui lòng chờ.' });
+  
+  // Force close socket connections so the HTTP server can actually close
+  io.disconnectSockets();
+
+  server.close(() => {
+    try { db.close(); } catch (err) { logger.error('DB close error', err); }
+    process.exit(0);
+  });
+};
+
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
 
 module.exports = { app, server, io };

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS games (
 CREATE TABLE IF NOT EXISTS player_games (
   player_id  TEXT NOT NULL,
   game_id    TEXT NOT NULL,
+  PRIMARY KEY (player_id, game_id),
   FOREIGN KEY (game_id) REFERENCES games(id)
 );
 

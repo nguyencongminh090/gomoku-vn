@@ -70,6 +70,21 @@ class SocketClient {
         window.location.replace('login.html');
       }
     });
+
+    // Server forced this session out (same account connected elsewhere) →
+    // stash a notice for login.html to display, then sign out. This tab
+    // already knows it was kicked via this live socket event, so it redirects
+    // on its own — it must NOT wipe localStorage's shared gvn_token, since
+    // that store is shared across every tab of the origin (not per-tab) and
+    // this app navigates via full page loads. Clearing it here would make a
+    // sibling tab that was never kicked see a missing token on its next
+    // navigation and incorrectly redirect to login too. sessionStorage is
+    // already per-tab, so gvn_kicked_notice alone is enough for this tab.
+    this.socket.on('session:kicked', () => {
+      sessionStorage.setItem('gvn_kicked_notice', '1');
+      this.destroy();
+      window.location.replace('login.html');
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -154,3 +169,6 @@ class SocketClient {
     }
   }
 }
+
+// Expose to global scope for ESM module usage
+window.SocketClient = SocketClient;
