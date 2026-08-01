@@ -47,12 +47,28 @@ function init(io) {
   // Socket event flood-protection middleware
   io.use((socket, next) => {
     let eventCount = 0;
-    const resetInterval = setInterval(() => { eventCount = 0; }, 1000);
+    let warnedThisWindow = false;
+    let violationStreak = 0;
+    const resetInterval = setInterval(() => {
+      if (eventCount > config.MAX_EVENTS_PER_SECOND) {
+        violationStreak++;
+        if (violationStreak >= config.FLOOD_DISCONNECT_STREAK) {
+          socket.disconnect(true);
+        }
+      } else {
+        violationStreak = 0;
+      }
+      eventCount = 0;
+      warnedThisWindow = false;
+    }, 1000);
     const origEmit = socket.onevent;
     socket.onevent = function(packet) {
       eventCount++;
       if (eventCount > config.MAX_EVENTS_PER_SECOND) {
-        socket.emit('room:error', { message: 'Bạn đang gửi quá nhiều yêu cầu. Vui lòng chờ.' });
+        if (!warnedThisWindow) {
+          socket.emit('room:error', { message: 'Bạn đang gửi quá nhiều yêu cầu. Vui lòng chờ.' });
+          warnedThisWindow = true;
+        }
         return;
       }
       origEmit.call(this, packet);

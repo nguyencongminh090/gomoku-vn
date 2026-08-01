@@ -558,8 +558,8 @@ function startGame(io, room) {
       roomId,
       boardSize: settings.boardSize,
       players: [
-        { userId: blackPlayer.userId, displayName: blackPlayer.displayName, color: null },
-        { userId: whitePlayer.userId, displayName: whitePlayer.displayName, color: null },
+        { userId: blackPlayer.userId, displayName: blackPlayer.displayName, color: null, isGuest: blackPlayer.isGuest },
+        { userId: whitePlayer.userId, displayName: whitePlayer.displayName, color: null, isGuest: whitePlayer.isGuest },
       ],
       walls, portals, firstMoveZones,
       winningRule: settings.winningRule,
@@ -589,8 +589,8 @@ function startGame(io, room) {
     roomId,
     boardSize: settings.boardSize,
     players: [
-      { userId: blackPlayer.userId, displayName: blackPlayer.displayName, color: 'BLACK' },
-      { userId: whitePlayer.userId, displayName: whitePlayer.displayName, color: 'WHITE' },
+      { userId: blackPlayer.userId, displayName: blackPlayer.displayName, color: 'BLACK', isGuest: blackPlayer.isGuest },
+      { userId: whitePlayer.userId, displayName: whitePlayer.displayName, color: 'WHITE', isGuest: whitePlayer.isGuest },
     ],
     walls, portals, firstMoveZones,
     winningRule: settings.winningRule,
@@ -650,7 +650,7 @@ function handleGameEnd(io, room, opts = {}) {
   }
 
   // Persist game to SQLite
-  if (engine && engine.result) {
+  if (engine && engine.result && !noScore) {
     try {
       database.saveGame({
         gameId: engine.gameId,
@@ -659,7 +659,7 @@ function handleGameEnd(io, room, opts = {}) {
           id: p.userId,
           name: p.displayName,
           color: p.color,
-          isGuest: false,
+          isGuest: p.isGuest,
         })),
         result: engine.result,
         boardSize: engine.boardSize,

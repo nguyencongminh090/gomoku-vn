@@ -50,9 +50,26 @@ function getOnlineUsersList() {
   return Array.from(sessions.values()).map(s => s.user.displayName).sort();
 }
 
-/** Broadcast the current room list to everyone in the lobby room. */
+/**
+ * How long to coalesce bursts of room mutations (sit/ready/start/resign/...)
+ * into a single `lobby:update` broadcast. broadcastLobbyUpdate() is called
+ * from ~15 sites across the room lifecycle; without this, a single seat +
+ * ready + start + resign cycle in one room pushes 4 separate full-room-list
+ * payloads to every idle lobby viewer.
+ */
+const LOBBY_UPDATE_DEBOUNCE_MS = 300;
+
+/** Per-io pending debounce timer for broadcastLobbyUpdate(). */
+const _lobbyUpdateTimers = new WeakMap();
+
+/** Broadcast the current room list to everyone in the lobby room (debounced). */
 function broadcastLobbyUpdate(io) {
-  io.to('lobby').emit('lobby:update', { rooms: roomManager.listRooms() });
+  if (_lobbyUpdateTimers.has(io)) return; // a broadcast is already scheduled for this burst
+  const timeout = setTimeout(() => {
+    _lobbyUpdateTimers.delete(io);
+    io.to('lobby').emit('lobby:update', { rooms: roomManager.listRooms() });
+  }, LOBBY_UPDATE_DEBOUNCE_MS);
+  _lobbyUpdateTimers.set(io, timeout);
 }
 
 /**

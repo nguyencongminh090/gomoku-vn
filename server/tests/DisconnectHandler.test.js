@@ -38,6 +38,7 @@ const mockState = {
   broadcastLobbyUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
   findSocketsByUserId: jest.fn(() => []),
+  syncReadyWindow: jest.fn(),
 };
 jest.mock('../socket/state', () => mockState);
 
@@ -130,6 +131,11 @@ describe('DisconnectHandler — grace period lifecycle', () => {
   function activeGameRoom() {
     return {
       roomId: 'room1',
+      state: 'interrupted',
+      users: new Map([
+        ['u1', { userId: 'u1', displayName: 'Alice' }],
+        ['u2', { userId: 'u2', displayName: 'Bob' }],
+      ]),
       gameState: {
         status: 'ongoing',
         players: [{ userId: 'u1', color: 'black' }, { userId: 'u2', color: 'white' }],

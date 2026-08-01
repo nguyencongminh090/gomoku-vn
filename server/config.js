@@ -41,8 +41,8 @@ const CHAT_RATE_WINDOW_MS   = 3000; // Window duration
 
 // --- Authentication ---
 const JWT_SECRET  = process.env.JWT_SECRET || 'gomokuvn-dev-secret-change-in-production';
-if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'gomokuvn-dev-secret-change-in-production')) {
-  throw new Error('JWT_SECRET must be set in production');
+if (process.env.NODE_ENV !== 'test' && JWT_SECRET === 'gomokuvn-dev-secret-change-in-production') {
+  throw new Error('JWT_SECRET must be set (no default secret allowed outside test)');
 }
 const JWT_EXPIRY  = '7d';
 const JWT_GUEST_EXPIRY = '24h';
@@ -68,6 +68,7 @@ const HTTP_PORT = process.env.PORT || 3000;
 
 // --- Security ---
 const MAX_EVENTS_PER_SECOND = 50; // Socket flood protection
+const FLOOD_DISCONNECT_STREAK = 5; // Consecutive over-limit 1s windows before force-disconnect
 
 module.exports = {
   MAX_ROOMS,
@@ -100,4 +101,5 @@ module.exports = {
   GUEST_NAME_NOUNS,
   HTTP_PORT,
   MAX_EVENTS_PER_SECOND,
+  FLOOD_DISCONNECT_STREAK,
 };

@@ -388,7 +388,7 @@ class RoomManager extends EventEmitter {
       return { error: 'Người dùng không có trong phòng.' };
     }
 
-    if (room.state === 'playing') {
+    if (room.state === 'playing' || room.state === 'interrupted') {
       return { error: 'Không thể mời người ra khi đang chơi.' };
     }
 

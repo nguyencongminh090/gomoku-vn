@@ -13,6 +13,7 @@
  */
 
 const express      = require('express');
+const helmet       = require('helmet');
 const http         = require('http');
 const { Server }   = require('socket.io');
 const path         = require('path');
@@ -30,6 +31,11 @@ const { db }         = require('./db/database');
 // Express
 // ---------------------------------------------------------------------------
 const app = express();
+
+// Security headers. CSP is left off for now — the client ships inline
+// <script>/style="" (theme/mode-init IIFEs, run before first paint) that
+// helmet's default CSP would block; see docs/fix-log.md for the verification.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 // Parse JSON bodies for REST endpoints
 app.use(express.json());

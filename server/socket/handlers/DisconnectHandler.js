@@ -176,8 +176,33 @@ function cancelDisconnectGrace(io, socket) {
   const room = roomManager.getRoom(entry.roomId);
   if (!room || !room.gameState) return false;
 
-  room.state = 'playing';
+  // Defense in depth: kickUser() already refuses to remove someone while
+  // room.state === 'interrupted', but if membership was lost some other way,
+  // don't let a non-member rejoin the room socket or resume the game.
+  if (!room.users.has(user.userId)) return false;
+
   socket.join(entry.roomId);
+
+  // If another player of this room is still within their own grace window,
+  // let this player back in to see the board, but don't resume the clock —
+  // resuming here would run out the timer on the still-absent player's turn
+  // even though their own grace window hasn't expired yet.
+  const otherStillAway = [...disconnectTimers.values()].some(e => e.roomId === entry.roomId);
+  if (otherStillAway) {
+    socket.emit('game:init', {
+      ...room.gameState.serialize(),
+      timer: null,
+    });
+    io.to(entry.roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} đã kết nối lại, đang chờ đối thủ...`,
+      timestamp: Date.now(), isSystem: true,
+    });
+    logger.info(`[Disconnect] ${user.displayName} reconnected to room ${entry.roomId} but another player is still in grace — not resuming yet`);
+    return true;
+  }
+
+  room.state = 'playing';
 
   const timer = timerMap.get(entry.roomId);
   if (timer) timer.start();
