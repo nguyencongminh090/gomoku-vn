@@ -129,12 +129,15 @@ sau cùng.
    *Đính chính:* jest `testMatch` thực tế là `**/tests/**/*.test.js` (không chỉ
    `server/tests/**`), nên test cho code client **không** cần đổi config.
 
-4. **`SELECT *` lộ player_id + thiếu rate limit `GET /api/games`** (review 6.4)
-   — chọn cột tường minh (bỏ `black_player_id`/`white_player_id` khỏi response
-   `GET /api/games/:id`), thêm rate-limit middleware giống `authLimiter` cho
-   `/api/games`. Rẻ, thấp rủi ro — cần grep client (`history.js`) xác nhận
-   không đọc 2 cột đó trước khi bỏ. Test: chưa có test file cho route `games`,
-   cần tạo mới.
+4. ~~**`SELECT *` lộ player_id + thiếu rate limit `GET /api/games`** (review 6.4)~~
+   **✅ ĐÃ XONG** (2026-08-02, commit `1b8c458`, merge `15fda80`) —
+   `getGameById` chọn cột tường minh (bỏ `black_player_id`/`white_player_id`);
+   thêm `gamesLimiter` (15 phút / 300 request) cho cả 2 route. Test: file mới
+   `server/tests/games-route.test.js`, 6 case chạy SQL thật trên SQLite
+   in-memory; `npm test` 180/180 xanh. Đã kiểm trên server thật (header
+   `X-RateLimit-Limit: 300` ở cả 2 route). **2 điểm cần biết → mục 16 và 17
+   bên dưới** (client *có* đọc 2 cột đó cho dữ liệu cũ; route list vẫn trả
+   ids). Chi tiết: `docs/fix-log.md`.
 
 5. **Idle-scan magic number → config** (review 5.5) — `RoomManager.js:49-52`,
    rút `60000` thành hằng số trong `config.js`. Thuần rename, không cần test
@@ -259,6 +262,31 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
     gì. Rẻ, không đụng phần server/an ninh của fix #2. Test: client-side, có
     thể tách hàm decode thuần ra module test được qua Node (theo tiền lệ
     `escape-utils.js`) hoặc test bằng Playwright.
+
+### Nguồn: phát hiện khi làm Phần B #4 (2026-08-02)
+
+16. **`GET /api/games` (route list) vẫn trả `black_player_id`/`white_player_id`**
+    — `getRecentGames` trong [database.js:184-194](server/db/database.js#L184)
+    liệt kê 2 cột này **tường minh** (không phải `SELECT *`), nên review 6.4 chỉ
+    nhắc route `/:id`. Hệ quả: sau khi làm xong mục 4, cùng 2 id đó **vẫn** công
+    khai cho mọi khách vãng lai qua route list — tức lỗ hổng thông tin chưa
+    thực sự đóng. Sửa: bỏ 2 cột khỏi `getRecentGames`. **Ràng buộc:** phải làm
+    cùng lúc với mục 17, vì `renderGameTable` → `getResultText` →
+    `resolveWinnerName` đọc chính 2 cột này cho dữ liệu cũ trên màn hình danh
+    sách. Test: thêm case vào `server/tests/games-route.test.js` (đã có sẵn hạ
+    tầng in-memory).
+
+17. **`resolveWinnerName` phụ thuộc `*_player_id` cho dữ liệu cũ** —
+    [history.js:441-459](client/js/history.js#L441-L459) có 3 nhánh dự phòng
+    đọc `black_player_id`/`white_player_id` (winner lưu dạng raw player id;
+    suy luận theo loại trừ khi 1 ghế là khách). Sau mục 4, màn hình xem lại
+    (`/api/games/:id`) không còn 2 cột đó nên các ván **cũ** rơi về nhãn chung
+    "Có người thắng"/"Người chơi" thay vì tên. DB dev có 0 ván nên **chưa đo
+    được ảnh hưởng thật** — cần kiểm trên DB production xem còn bao nhiêu hàng
+    có `winner NOT IN ('BLACK','WHITE','draw')`. Nếu còn: sửa đúng cách là để
+    **server** tự phân giải tên người thắng (thêm trường `winner_name` vào
+    response) rồi bỏ hẳn 3 nhánh legacy ở client — khi đó mục 16 cũng làm được
+    an toàn. Nếu không còn hàng nào: xoá 3 nhánh legacy là đủ.
 
 ---
 
