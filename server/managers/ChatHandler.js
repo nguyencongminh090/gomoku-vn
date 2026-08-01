@@ -4,7 +4,7 @@
  * ChatHandler.js — Per-room chat with rate limiting and sanitization.
  *
  * Rate limit: max CHAT_RATE_LIMIT messages per CHAT_RATE_WINDOW_MS per user.
- * Sanitization: strip all HTML tags from messages.
+ * Sanitization: escape angle brackets in messages (see `sanitize`).
  * Profanity: VI/EN bad words are masked (see ../../client/js/profanity-filter.js).
  * This is the authoritative pass — the client also filters optimistically,
  * but only this server-side pass determines what other participants see.
@@ -13,7 +13,7 @@
  * Manual test checklist:
  *   [ ] Message broadcast reaches all room members
  *   [ ] Rate limit blocks 6th message within 3s window
- *   [ ] HTML tags are stripped from messages
+ *   [ ] HTML tags are escaped in messages, closed and unclosed alike
  *   [ ] Empty messages are rejected
  *   [ ] Messages longer than 500 chars are truncated
  *   [ ] An exact bad word (e.g. "shit", "lồn") is masked to asterisks
@@ -65,13 +65,26 @@ function isRateLimited(userId) {
 }
 
 /**
- * Strip all HTML tags from a string.
+ * Neutralize HTML markup in a string by escaping the angle brackets.
+ *
+ * This replaced an earlier `replace(/<[^>]*>/g, '')` tag-strip, which only
+ * removed *closed* tags: an unterminated `<img src=x onerror=alert(1)` passed
+ * through untouched, so anything that ever rendered a message as HTML would
+ * parse it as a live tag. Escaping is not a stricter strip rule, it is a
+ * different strategy — the text is never markup to begin with.
+ *
+ * `&` is deliberately NOT escaped. Messages are rendered with `textContent`
+ * (client/js/chat-ui.js), so escaping `&` would visibly mangle ordinary text
+ * like "R&D" into "R&amp;D", and omitting it costs nothing security-wise: an
+ * HTML parser decodes `&lt;` into a literal "<" text node and does not re-parse
+ * that result as a tag.
+ *
  * @param {string} str
  * @returns {string}
  */
 function sanitize(str) {
   if (typeof str !== 'string') return '';
-  return str.replace(/<[^>]*>/g, '').trim();
+  return str.replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
 }
 
 /**
