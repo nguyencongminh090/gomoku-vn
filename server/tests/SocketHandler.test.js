@@ -239,3 +239,49 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     }
   });
 });
+
+describe('SocketHandler — connection with no surviving room (restart-hang)', () => {
+  test('a connection whose room no longer exists is told, instead of being left waiting', () => {
+    const io = makeIo();
+    init(io);
+
+    // Default mockRoomManager.getRoomByUser returns null — i.e. the room the
+    // client was in is gone (server restarted, or idle cleanup ran).
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+
+    const destroyed = sockEmit(a, 'room:destroyed');
+    expect(destroyed).toBeDefined();
+    expect(typeof destroyed.data.message).toBe('string');
+    expect(sockEmit(a, 'room:joined')).toBeUndefined();
+  });
+
+  test('a connection whose room still exists gets room:joined and no room:destroyed', () => {
+    const io = makeIo();
+    init(io);
+
+    mockRoomManager.getRoomByUser.mockReturnValueOnce({ roomId: 'r1', gameState: null });
+    mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'r1' }));
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+
+    expect(sockEmit(a, 'room:joined')).toBeDefined();
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+    expect(a.join).toHaveBeenCalledWith('r1');
+  });
+
+  test('a reconnect that resumes a disconnect-grace game is not told the room is gone', () => {
+    const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
+    DisconnectHandler.cancelDisconnectGrace.mockReturnValueOnce(true);
+
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+    expect(mockRoomManager.getRoomByUser).not.toHaveBeenCalled();
+  });
+});
