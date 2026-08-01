@@ -67,10 +67,11 @@ function makeIo() {
   return io;
 }
 
-function makeSocket(io, id, userId, displayName = 'User') {
+function makeSocket(io, id, userId, displayName = 'User', auth = {}) {
   const socket = {
     id,
     user: { userId, displayName },
+    handshake: { auth },
     _listeners: {},
     _emitted: [],
     disconnected: false,
@@ -241,13 +242,16 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
 });
 
 describe('SocketHandler — connection with no surviving room (restart-hang)', () => {
-  test('a connection whose room no longer exists is told, instead of being left waiting', () => {
+  /** A connection that replaces an earlier one — the client sets this auth flag. */
+  const RECONNECT = { reconnect: true };
+
+  test('a reconnect whose room no longer exists is told, instead of being left waiting', () => {
     const io = makeIo();
     init(io);
 
     // Default mockRoomManager.getRoomByUser returns null — i.e. the room the
     // client was in is gone (server restarted, or idle cleanup ran).
-    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', RECONNECT);
     connectSocket(io, a);
 
     const destroyed = sockEmit(a, 'room:destroyed');
@@ -256,14 +260,39 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(sockEmit(a, 'room:joined')).toBeUndefined();
   });
 
-  test('a connection whose room still exists gets room:joined and no room:destroyed', () => {
+  test('a FIRST connect is never told the room is gone — it has not asked for one yet', () => {
+    // Regression guard: the room page opens a socket *before* it sends
+    // room:create / room:join, so a roomless first connect is the normal case,
+    // not a lost room. Emitting here bounced every visitor straight back to
+    // the lobby and destroyed the room they were creating.
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice'); // no auth.reconnect
+    connectSocket(io, a);
+
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+  });
+
+  test('an absent handshake/auth object is treated as a first connect, not a reconnect', () => {
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    delete a.handshake;
+    connectSocket(io, a);
+
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+  });
+
+  test('a reconnect whose room still exists gets room:joined and no room:destroyed', () => {
     const io = makeIo();
     init(io);
 
     mockRoomManager.getRoomByUser.mockReturnValueOnce({ roomId: 'r1', gameState: null });
     mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'r1' }));
 
-    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', RECONNECT);
     connectSocket(io, a);
 
     expect(sockEmit(a, 'room:joined')).toBeDefined();
@@ -278,7 +307,7 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     const io = makeIo();
     init(io);
 
-    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', RECONNECT);
     connectSocket(io, a);
 
     expect(sockEmit(a, 'room:destroyed')).toBeUndefined();

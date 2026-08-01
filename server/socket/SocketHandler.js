@@ -138,14 +138,21 @@ function init(io) {
         }
         socket.emit('room:joined', payload);
         logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
-      } else {
+      } else if (socket.handshake && socket.handshake.auth && socket.handshake.auth.reconnect) {
         // Room state lives in memory only, so a server restart (or an idle
         // cleanup that ran while this client was offline) leaves a room page
         // attached to a room that no longer exists. Socket.io reconnects
         // silently and the room page only sends room:join once per page load,
-        // so without this branch the page waits forever for state that will
-        // never arrive. The lobby page does not listen for room:destroyed, so
-        // telling every roomless connection is a no-op there.
+        // so without this the page waits forever for state that will never
+        // arrive.
+        //
+        // The `reconnect` guard is essential, not defensive: on a *first*
+        // connect no user is in a room yet — the room page connects and only
+        // then sends room:create/room:join — so emitting here unconditionally
+        // bounces every visitor out of the room they are in the middle of
+        // creating or joining. The client sets this auth flag from the
+        // Manager's reconnect_attempt (see client/js/socket-client.js), so it
+        // is only ever true for a connection that replaces an earlier one.
         socket.emit('room:destroyed', { message: 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.' });
       }
     }

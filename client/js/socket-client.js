@@ -58,6 +58,17 @@ class SocketClient {
       this._setStatus('reconnecting', attempt);
     });
 
+    // Flag every attempt after the first connect as a reconnect, in the auth
+    // payload the server reads on connection. The server needs this to tell
+    // "this page just opened and is about to send room:create/room:join" from
+    // "this client already believed it was in a room and the socket dropped" —
+    // only the second case means a missing room is actually a lost room. The
+    // Manager (socket.io) owns the reconnect events in Socket.io v4; the
+    // socket-level listener above is a separate, pre-existing status hook.
+    this.socket.io.on('reconnect_attempt', () => {
+      this.socket.auth = Object.assign({}, this.socket.auth, { reconnect: true });
+    });
+
     this.socket.on('reconnect', () => {
       this._setStatus('connected');
     });
