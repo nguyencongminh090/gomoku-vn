@@ -84,11 +84,13 @@ hồi token) trước khi đánh giá được đây có sửa bằng code đư�
 còn phải làm. Thứ tự đề xuất: rẻ/an toàn trước, đụng nhiều điểm gọi/cả client
 sau cùng.
 
-1. **Restart-hang: thêm nhánh `else`** (review 5.1) — `SocketHandler.js:113-125`,
-   emit `room:destroyed`/`room:left` khi `!existingRoom` thay vì im lặng.
-   Rẻ, an toàn nhất trong danh sách. Test: thêm case mới vào
-   `SocketHandler.test.js` (hiện chỉ có describe "single-device-per-token
-   enforcement").
+1. ~~**Restart-hang: thêm nhánh `else`** (review 5.1) — `SocketHandler.js:113-125`,
+   emit `room:destroyed`/`room:left` khi `!existingRoom` thay vì im lặng.~~
+   **✅ ĐÃ XONG** (2026-08-01, commit `b35614e`, merge `3fcb619`) — nhánh `else`
+   emit `room:destroyed`; client `room-socket.js` đã có sẵn handler (toast +
+   redirect về `index.html`), không phải sửa client. Test: thêm describe mới
+   "connection with no surviving room (restart-hang)" (3 case) vào
+   `SocketHandler.test.js`; `npm test` 148/148 xanh. Chi tiết: `docs/fix-log.md`.
 
 2. **Chat sanitize → escape entity** (review 3.5) — `ChatHandler.js:74`, đổi
    `replace(/<[^>]*>/g,'')` → escape `&lt;`/`&gt;`. Rẻ, không rủi ro (consumer
