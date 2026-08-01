@@ -401,28 +401,31 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
 
 ### Nguồn: phát hiện khi làm Phần B #4 (2026-08-02)
 
-16. **`GET /api/games` (route list) vẫn trả `black_player_id`/`white_player_id`**
-    — `getRecentGames` trong [database.js:184-194](server/db/database.js#L184)
-    liệt kê 2 cột này **tường minh** (không phải `SELECT *`), nên review 6.4 chỉ
-    nhắc route `/:id`. Hệ quả: sau khi làm xong mục 4, cùng 2 id đó **vẫn** công
-    khai cho mọi khách vãng lai qua route list — tức lỗ hổng thông tin chưa
-    thực sự đóng. Sửa: bỏ 2 cột khỏi `getRecentGames`. **Ràng buộc:** phải làm
-    cùng lúc với mục 17, vì `renderGameTable` → `getResultText` →
-    `resolveWinnerName` đọc chính 2 cột này cho dữ liệu cũ trên màn hình danh
-    sách. Test: thêm case vào `server/tests/games-route.test.js` (đã có sẵn hạ
-    tầng in-memory).
+16. ~~**`GET /api/games` (route list) vẫn trả `black_player_id`/`white_player_id`**~~
+    **✅ ĐÃ XONG** (2026-08-02, commit đang chờ, làm cùng mục 17) — bỏ 2 cột
+    khỏi response của cả `getRecentGames` (list) lẫn `getGameById` (`:id`).
+    **Không dừng ở việc bỏ cột:** dữ liệu cũ (trước khi `saveGame` chuẩn hoá
+    `winner` thành màu ghế) lưu `winner` = chính raw player id — nếu chỉ bỏ 2
+    cột `*_player_id` mà giữ nguyên `winner`, id vẫn lộ qua trường khác. Nay
+    `winner` cũng được chuẩn hoá về `'BLACK'`/`'WHITE'`/`'draw'`/`null` trước
+    khi trả về (xem mục 17). Chi tiết: `docs/fix-log.md`.
 
-17. **`resolveWinnerName` phụ thuộc `*_player_id` cho dữ liệu cũ** —
-    [history.js:441-459](client/js/history.js#L441-L459) có 3 nhánh dự phòng
-    đọc `black_player_id`/`white_player_id` (winner lưu dạng raw player id;
-    suy luận theo loại trừ khi 1 ghế là khách). Sau mục 4, màn hình xem lại
-    (`/api/games/:id`) không còn 2 cột đó nên các ván **cũ** rơi về nhãn chung
-    "Có người thắng"/"Người chơi" thay vì tên. DB dev có 0 ván nên **chưa đo
-    được ảnh hưởng thật** — cần kiểm trên DB production xem còn bao nhiêu hàng
-    có `winner NOT IN ('BLACK','WHITE','draw')`. Nếu còn: sửa đúng cách là để
-    **server** tự phân giải tên người thắng (thêm trường `winner_name` vào
-    response) rồi bỏ hẳn 3 nhánh legacy ở client — khi đó mục 16 cũng làm được
-    an toàn. Nếu không còn hàng nào: xoá 3 nhánh legacy là đủ.
+17. ~~**`resolveWinnerName` phụ thuộc `*_player_id` cho dữ liệu cũ**~~
+    **✅ ĐÃ XONG** (2026-08-02, commit đang chờ) — không đợi kiểm được số hàng
+    production (DB dev có 0 ván, không đo được), chọn thẳng hướng "đúng" mà
+    mục này đã đề xuất sẵn cho trường hợp còn hàng cũ: server tự phân giải.
+    Thêm `resolveWinnerSeat()` + `withWinnerName()` trong `database.js`, lặp
+    lại đúng chuỗi fallback mà `history.js` từng chạy ở client (seat có sẵn →
+    khớp raw id → khớp raw tên → loại trừ theo ghế khách), gắn `winner_name`
+    vào mọi row trả về từ cả 2 route. Xoá hẳn `resolveWinnerName()` phía client
+    (19 dòng) — 2 nơi gọi nay chỉ đọc `g.winner_name`. Bump `?v=33` → `?v=34`.
+    Test: 2 fixture mới mô phỏng đúng hình dạng dữ liệu cũ thật (raw id +
+    guest loại trừ) trong `server/tests/games-route.test.js`, 4 case mới;
+    `npm test` 284/284 xanh. **Đã kiểm bằng browser thật:** chèn 1 ván thật qua
+    đúng `saveGame()`, mở `history.html` trên server thật (port riêng, không
+    đụng server :3000 đang chạy), xác nhận cả bảng danh sách lẫn màn xem lại
+    hiện đúng tên người thắng; xoá ván test sau khi kiểm xong. Chi tiết:
+    `docs/fix-log.md`.
 
 ---
 
