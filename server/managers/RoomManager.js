@@ -61,7 +61,7 @@ class RoomManager extends EventEmitter {
   /**
    * Create a new room. The creator becomes the Host.
    *
-   * @param {object} userInfo  — { userId, displayName, isGuest }
+   * @param {object} userInfo  — { userId, displayName, isGuest, ip }
    * @param {object} settings  — optional partial settings override
    * @returns {{ room: object } | { error: string }}
    */
@@ -76,6 +76,23 @@ class RoomManager extends EventEmitter {
       return { error: 'Bạn đang ở trong một phòng khác.' };
     }
 
+    // Per-IP quota. Counted by scanning live rooms rather than kept in a
+    // tally that create increments and teardown decrements: a tally has to be
+    // decremented on every destruction path (explicit close, last user
+    // leaving, idle cleanup, and any path added later) and leaks quota
+    // permanently the first time one is missed. Deriving the count from
+    // this.rooms cannot drift — a destroyed room is gone from the map by
+    // definition. MAX_ROOMS is 10, so this scan is trivially cheap.
+    if (userInfo.ip) {
+      let fromThisIp = 0;
+      for (const [, existing] of this.rooms) {
+        if (existing.creatorIp === userInfo.ip) fromThisIp++;
+      }
+      if (fromThisIp >= config.MAX_ROOMS_PER_IP) {
+        return { error: 'Bạn đã tạo quá nhiều phòng. Hãy đóng bớt phòng cũ rồi thử lại.' };
+      }
+    }
+
     const roomId = this._generateRoomId();
     const roomName = settings.roomName ? settings.roomName.slice(0, 30) : `Phòng của ${userInfo.displayName}`;
     const validatedSettings = this._validateSettings(settings);
@@ -84,6 +101,7 @@ class RoomManager extends EventEmitter {
       roomId,
       roomName,
       host: userInfo.userId,
+      creatorIp: userInfo.ip || null,   // Per-IP quota bookkeeping; never serialized to clients
       users: new Map(),
       joinOrder: [],                    // For host transfer queue
       settings: validatedSettings,
