@@ -5,6 +5,11 @@
 // All constants are defined here. Never use magic numbers elsewhere.
 // =============================================================================
 
+// Pull in a local .env before anything reads process.env. Real environment
+// variables always win; see server/utils/load-env.js for why this exists and
+// what it deliberately does not do.
+require('./utils/load-env').loadEnv();
+
 // --- Room limits ---
 const MAX_ROOMS             = 10;
 // Per-IP share of MAX_ROOMS. Deliberately not 1: phones on the same mobile
@@ -48,7 +53,12 @@ const CHAT_RATE_WINDOW_MS   = 3000; // Window duration
 // --- Authentication ---
 const JWT_SECRET  = process.env.JWT_SECRET || 'gomokuvn-dev-secret-change-in-production';
 if (process.env.NODE_ENV !== 'test' && JWT_SECRET === 'gomokuvn-dev-secret-change-in-production') {
-  throw new Error('JWT_SECRET must be set (no default secret allowed outside test)');
+  throw new Error(
+    'JWT_SECRET must be set (no default secret allowed outside test).\n' +
+    'For local development, run ./start.sh — it generates one into .env on ' +
+    'first run. Otherwise export JWT_SECRET yourself, e.g.\n' +
+    "  JWT_SECRET=$(node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\") npm start"
+  );
 }
 const JWT_EXPIRY  = '7d';
 const JWT_GUEST_EXPIRY = '24h';
