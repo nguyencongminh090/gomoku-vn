@@ -53,11 +53,19 @@ sửa được → thêm vào Phần B, dưới một heading nguồn riêng (gi
   ngắt trên localhost tới server ngay lập tức nên không mô phỏng được; cần
   **2 máy thật + `iptables DROP`** để đo đúng khoảng "mù" (ước tính 45s
   pingTimeout + 60s grace ≈ 105s, nhưng đây là suy luận chưa kiểm chứng).
-- **Timing attack trên login** (review 3.6) — `bcrypt` không load được trên máy
-  đánh giá nên chưa đo được chênh lệch thời gian phản hồi thật. Sau khi áp fix
-  "always compare với dummy hash" (xem Phần B #8), nên đo lại trên máy có
-  bcrypt hoạt động để xác nhận thời gian phản hồi giữa "user không tồn tại" và
-  "sai mật khẩu" không còn phân biệt được.
+- ~~**Timing attack trên login** (review 3.6) — `bcrypt` không load được trên máy
+  đánh giá nên chưa đo được chênh lệch thời gian phản hồi thật.~~
+  **✅ ĐÃ ĐO XONG (2026-08-02)** — máy này chạy được `bcrypt`, đã đo bằng 2
+  git worktree (trước fix `82c861e` vs sau fix), server thật, n=60 mẫu/ca,
+  bỏ 10 mẫu warmup, limiter nới **chỉ trong bản đo** (không commit):
+  - **Trước:** user không tồn tại 1.10ms vs sai mật khẩu 206.27ms — **188x**,
+    2 phân phối không giao nhau, 1 request là phân biệt được. Chạy lại: 1.06 vs
+    203.66ms (192x).
+  - **Sau:** 206.99 vs 204.12ms (lệch −2.87ms); 3 lần chạy lại: +14.61, +1.83,
+    −0.18ms — **lệch đổi dấu giữa các lần chạy** và nằm trong khoảng p10–p90 của
+    chính từng ca, tức là nhiễu chứ không phải tín hiệu.
+  - Lưu ý giữ lại: đo trên localhost, **không có jitter mạng** — đây là điều
+    kiện thuận lợi nhất cho kẻ tấn công; deploy thật còn nhiễu hơn nhiều.
 - **`room:updated` ở đúng 20 người** — bị rate limiter chặn khi đo (không mint
   quá 20 guest token/15 phút/IP). Muốn đo đúng mốc `MAX_USERS_PER_ROOM = 20`
   cần restart server giữa các đợt hoặc tạm nới rate limit trên môi trường test.
@@ -150,12 +158,16 @@ sau cùng.
    `npm test` 184/184 xanh. **File này là thứ mục 7 (room quota theo IP) cần —
    mục đó mở rộng file sẵn có, không phải tạo mới.** Chi tiết: `docs/fix-log.md`.
 
-6. **Timing attack — dummy bcrypt compare** (review 3.6) — `auth.js:135-143`,
-   khi `!user` vẫn chạy `bcrypt.compare(password, DUMMY_HASH_CỐ_ĐỊNH)` trước
-   khi trả lỗi. Đúng về logic; **hiệu quả thời gian thực chưa đo được** (xem
-   Phần A #4 — cần đo lại sau khi áp). Test: file mới cho `auth.js`, assert
-   `bcrypt.compare` được gọi đúng 1 lần dù `user` có tồn tại hay không (test
-   tính đối xứng code path, không test thời gian thật).
+6. ~~**Timing attack — dummy bcrypt compare** (review 3.6) — `auth.js:135-143`,
+   khi `!user` vẫn chạy `bcrypt.compare(password, DUMMY_HASH_CỐ_ĐỊNH)`.~~
+   **✅ ĐÃ XONG** (2026-08-02, commit `985c9c4`, merge `2a842a1`) — thêm hằng
+   `DUMMY_PASSWORD_HASH` (hardcode, cost 12 khớp `BCRYPT_ROUNDS`), bỏ
+   early-return, đổi thành `if (!user || !match)`. Test: file mới
+   `server/tests/auth-login-timing.test.js`, 9 case (đối xứng code path +
+   2 guard ở mức source: hằng phải hardcode, cost phải khớp `BCRYPT_ROUNDS`);
+   mutation-check: khôi phục early-return thì 3/9 đỏ. `npm test` 193/193 xanh.
+   **Đã đo thời gian thật — xem Phần A #4, mục đó coi như đóng.**
+   Chi tiết: `docs/fix-log.md`.
 
 7. **Room quota theo IP** (review 3.2) — `RoomManager.createRoom()`, đếm số
    phòng theo IP người tạo, chặn khi vượt ngưỡng (không phải 1 — tránh khoá oan
