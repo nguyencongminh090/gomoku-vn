@@ -18,6 +18,12 @@
 
   const S = () => global.RoomState;
 
+  // Server-sent chat text arrives with `<`/`>` escaped (ChatHandler.sanitize).
+  // Decode immediately before writing it into a text node so the reader sees
+  // what the sender typed rather than `&lt;b&gt;`. Safe because textContent
+  // never parses its input as markup — see EscapeUtils.decodeChatText.
+  const chatText = (t) => global.EscapeUtils.decodeChatText(t);
+
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const chatMessages   = document.getElementById('chat-messages');
   const floatContainer = document.getElementById('float-messages');
@@ -46,7 +52,7 @@
 
       const textSpan = document.createElement('div');
       textSpan.className = 'chat-msg__text';
-      textSpan.textContent = msg.text;
+      textSpan.textContent = chatText(msg.text);
       bubble.appendChild(textSpan);
 
       div.appendChild(bubble);
@@ -81,7 +87,7 @@
       nameSpan.className = 'float-msg__name';
       nameSpan.textContent = msg.from + ':';
       el.appendChild(nameSpan);
-      el.appendChild(document.createTextNode(' ' + msg.text));
+      el.appendChild(document.createTextNode(' ' + chatText(msg.text)));
     }
 
     floatContainer.appendChild(el);
