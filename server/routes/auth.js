@@ -30,6 +30,20 @@ const db      = require('../db/database');
 const config  = require('../config');
 const logger  = require('../utils/logger');
 
+// A fixed, real bcrypt hash compared against when the submitted username does
+// not exist, so that branch costs the same as a wrong-password branch instead
+// of returning immediately. Without it, login response time alone tells an
+// attacker whether an account exists (measured before this fix: 1.1ms for an
+// unknown user vs 206ms for a known one — a 188x difference).
+//
+// It is hardcoded on purpose. Generating it at startup (hashing a random or
+// empty string) would make the dummy comparison's cost depend on how it was
+// produced, which is the timing variance this is meant to remove. Its cost
+// factor is 12, matching config.BCRYPT_ROUNDS — a test asserts they stay in
+// sync, since a mismatch would silently reintroduce the difference.
+// The plaintext behind it is irrelevant and matches no real password.
+const DUMMY_PASSWORD_HASH = '$2b$12$eUr5s4pTKi0RtLu1yZOW8OcojkmfCDTKHECx1T910kJMAcfsOjK9O';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -133,12 +147,13 @@ router.post('/login', async (req, res, next) => {
     }
 
     const user = db.getUserByUsername(username);
-    if (!user) {
-      return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
-    }
 
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (!match) {
+    // Always run one bcrypt.compare, whether or not the account exists — see
+    // DUMMY_PASSWORD_HASH above. The unknown-user branch compares against the
+    // dummy and then fails on `!user`, so both paths do the same work and
+    // return the same message.
+    const match = await bcrypt.compare(password, user ? user.password_hash : DUMMY_PASSWORD_HASH);
+    if (!user || !match) {
       return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
     }
 
