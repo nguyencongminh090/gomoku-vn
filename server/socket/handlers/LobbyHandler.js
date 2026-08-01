@@ -40,7 +40,17 @@ function register(io, socket) {
 
   socket.on('room:create', (payload = {}) => {
     const result = roomManager.createRoom(
-      { userId: user.userId, displayName: user.displayName, isGuest: user.isGuest },
+      {
+        userId: user.userId,
+        displayName: user.displayName,
+        isGuest: user.isGuest,
+        // Raw socket address. Behind a reverse proxy every connection would
+        // report the proxy's address instead, collapsing all users into one
+        // quota — that needs `app.set('trust proxy', <hops>)` plus reading the
+        // forwarded address, which is tracked as TODO Phần A #1 and is not
+        // this item's call to make.
+        ip: socket.handshake && socket.handshake.address,
+      },
       payload.settings || {}
     );
 

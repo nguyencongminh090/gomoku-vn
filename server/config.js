@@ -7,6 +7,11 @@
 
 // --- Room limits ---
 const MAX_ROOMS             = 10;
+// Per-IP share of MAX_ROOMS. Deliberately not 1: phones on the same mobile
+// carrier NAT, and everyone on one office/school/home wifi, share a public IP,
+// so a limit of 1 would lock out real users who did nothing wrong. 3 still
+// stops one client from taking the whole MAX_ROOMS pool.
+const MAX_ROOMS_PER_IP      = 3;
 const MAX_USERS_PER_ROOM    = 20;      // 2 players + 18 guests
 const IDLE_TIMEOUT_MS       = 600_000; // 10 minutes
 const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against IDLE_TIMEOUT_MS
@@ -73,6 +78,7 @@ const FLOOD_DISCONNECT_STREAK = 5; // Consecutive over-limit 1s windows before f
 
 module.exports = {
   MAX_ROOMS,
+  MAX_ROOMS_PER_IP,
   MAX_USERS_PER_ROOM,
   IDLE_TIMEOUT_MS,
   IDLE_SCAN_INTERVAL_MS,
