@@ -406,11 +406,11 @@ function register(io, socket) {
     if (result.allReady) {
       cleanupReadyTimer(room.roomId);
       result.room.readyDeadline = null;
-      io.to(room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+      io.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
       startGame(io, result.room);
     } else {
       syncReadyWindow(io, result.room);
-      io.to(room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+      io.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
     }
   });
 }
@@ -573,7 +573,7 @@ function startGame(io, room) {
     for (const [, u] of room.users) u.ready = false;
 
     io.to(roomId).emit('game:init', { ...engine.serialize(), timer: null });
-    io.to(roomId).emit('room:updated', roomManager.serializeRoom(room));
+    io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
     broadcastLobbyUpdate(io);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -608,7 +608,7 @@ function startGame(io, room) {
   // client needs to build its board from scratch; there is no prior client
   // state for a delta to apply against.
   io.to(roomId).emit('game:init', { ...engine.serialize(), timer: timer.getTimers() });
-  io.to(roomId).emit('room:updated', roomManager.serializeRoom(room));
+  io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
   broadcastLobbyUpdate(io);
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null,
@@ -683,7 +683,7 @@ function handleGameEnd(io, room, opts = {}) {
   room._timeRequestPending = null;
   for (const [, u] of room.users) u.ready = false;
 
-  io.to(roomId).emit('room:updated', roomManager.serializeRoom(room));
+  io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
   broadcastLobbyUpdate(io);
 }
 

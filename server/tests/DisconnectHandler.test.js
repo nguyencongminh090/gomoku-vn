@@ -17,7 +17,9 @@ const mockRoomManager = {
   getRoomIdByUser: jest.fn(),
   getRoom: jest.fn(),
   leaveRoom: jest.fn(),
-  serializeRoom: jest.fn((room) => ({ roomId: room.roomId })),
+  serializeRoom: jest.fn((room) => ({ roomId: room.roomId, settings: {} })),
+  // room:updated carries everything serializeRoom does except settings.
+  serializeRoomUpdate: jest.fn((room) => ({ roomId: room.roomId })),
 };
 jest.mock('../managers/RoomManager', () => mockRoomManager);
 

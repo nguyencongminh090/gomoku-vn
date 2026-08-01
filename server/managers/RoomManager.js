@@ -551,7 +551,8 @@ class RoomManager extends EventEmitter {
   // ---------------------------------------------------------------------------
 
   /**
-   * Serialize a room for the `room:joined` / `room:updated` payload.
+   * Serialize a room for the `room:joined` payload — the full snapshot,
+   * including `settings`.
    * Converts Map to arrays for JSON transport.
    */
   serializeRoom(room) {
@@ -579,6 +580,28 @@ class RoomManager extends EventEmitter {
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
     };
+  }
+
+  /**
+   * Serialize a room for the `room:updated` broadcast — everything
+   * `serializeRoom` sends except `settings`.
+   *
+   * `room:updated` fires on sit/stand/ready/join/leave/kick/game-end, none of
+   * which change settings, yet it re-sent the whole settings object to every
+   * member of the room every time (measured: 163B of a 2073B payload at 16
+   * users, and the payload is sent once per member, so the waste scales with
+   * room size squared).
+   *
+   * The one broadcast that *does* follow a settings change — the `room:settings`
+   * handler in RoomHandler.js — deliberately keeps using serializeRoom, since
+   * that is the only moment the client needs the new values. Clients merge
+   * `room:updated` into their existing room state rather than replacing it, so
+   * the settings they already hold survive.
+   */
+  serializeRoomUpdate(room) {
+    const payload = this.serializeRoom(room);
+    delete payload.settings;
+    return payload;
   }
 
   // ---------------------------------------------------------------------------

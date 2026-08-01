@@ -31,6 +31,9 @@ jest.mock('../utils/logger', () => ({
   error: jest.fn(),
 }));
 
+const fs = require('fs');
+const path = require('path');
+
 const setIntervalSpy = jest.spyOn(global, 'setInterval');
 
 const realConfig = jest.requireActual('../config');
@@ -179,6 +182,105 @@ describe('RoomManager — per-IP room quota', () => {
 
     const listed = roomManager.listRooms();
     expect(JSON.stringify(listed)).not.toContain(IP_A);
+  });
+});
+
+// ── room:updated payload ───────────────────────────────────────────────────
+
+describe('RoomManager — serializeRoomUpdate', () => {
+  function makeRoom() {
+    const { room } = roomManager.createRoom({
+      userId: 'host-1', displayName: 'Host', isGuest: false, ip: '198.51.100.7',
+    });
+    return room;
+  }
+
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  test('omits settings', () => {
+    const update = roomManager.serializeRoomUpdate(makeRoom());
+    expect(update).not.toHaveProperty('settings');
+  });
+
+  test('is otherwise identical to the full room:joined snapshot', () => {
+    const room = makeRoom();
+    const full = roomManager.serializeRoom(room);
+    const update = roomManager.serializeRoomUpdate(room);
+
+    const { settings, ...fullWithoutSettings } = full;
+    expect(update).toEqual(fullWithoutSettings);
+    // Everything the room screen re-renders on each update is still present.
+    expect(update.users).toBeDefined();
+    expect(update.state).toBeDefined();
+    expect(update.scoreTable).toBeDefined();
+    expect(update.hostId).toBeDefined();
+    expect(update.readyDeadline !== undefined).toBe(true);
+  });
+
+  test('does not mutate the room, so the next room:joined still has settings', () => {
+    const room = makeRoom();
+    roomManager.serializeRoomUpdate(room);
+
+    expect(room.settings).toBeDefined();
+    expect(roomManager.serializeRoom(room).settings).toBeDefined();
+  });
+
+  test('measurably smaller than the full snapshot', () => {
+    const room = makeRoom();
+    const fullSize = JSON.stringify(roomManager.serializeRoom(room)).length;
+    const updateSize = JSON.stringify(roomManager.serializeRoomUpdate(room)).length;
+
+    expect(updateSize).toBeLessThan(fullSize);
+  });
+});
+
+describe('every room:updated emit site', () => {
+  // The review counted 17 emit sites and warned that missing one leaves the
+  // old payload in place. A source-level sweep is the only way to guard that:
+  // a behavioural test only covers the paths it happens to exercise.
+  const SOCKET_DIR = path.join(__dirname, '..', 'socket');
+
+  function jsFilesUnder(dir) {
+    const out = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) out.push(...jsFilesUnder(full));
+      else if (entry.name.endsWith('.js')) out.push(full);
+    }
+    return out;
+  }
+
+  const emitSites = [];
+  for (const file of jsFilesUnder(SOCKET_DIR)) {
+    const src = fs.readFileSync(file, 'utf8');
+    src.split('\n').forEach((line, i) => {
+      if (line.includes("emit('room:updated'")) {
+        emitSites.push({ file: path.relative(SOCKET_DIR, file), line: i + 1, text: line.trim() });
+      }
+    });
+  }
+
+  test('all 17 sites are still accounted for', () => {
+    expect(emitSites).toHaveLength(17);
+  });
+
+  test('uses serializeRoomUpdate everywhere except the one settings-change site', () => {
+    const withFullSettings = emitSites.filter(s => /serializeRoom\(/.test(s.text));
+
+    // Exactly one: the room:settings handler, the only event where settings
+    // actually changed and the client needs the new values.
+    expect(withFullSettings).toHaveLength(1);
+    expect(withFullSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
+
+    const rest = emitSites.filter(s => !/serializeRoom\(/.test(s.text));
+    expect(rest).toHaveLength(16);
+    for (const site of rest) {
+      expect(site.text).toContain('serializeRoomUpdate(');
+    }
   });
 });
 

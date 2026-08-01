@@ -94,7 +94,7 @@ function register(io, socket) {
       if (timer) joinPayload.timer = timer.getTimers();
     }
     socket.emit('room:joined', joinPayload);
-    socket.to(room.roomId).emit('room:updated', roomManager.serializeRoom(room));
+    socket.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
     broadcastLobbyUpdate(io);
 
     io.to(room.roomId).emit('chat:message', {

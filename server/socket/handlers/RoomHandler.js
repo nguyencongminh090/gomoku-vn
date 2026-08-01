@@ -84,7 +84,7 @@ function register(io, socket) {
       broadcastLobbyUpdate(io);
     } else if (result.room) {
       syncReadyWindow(io, result.room);
-      io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+      io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
       if (result.hostTransferred) {
         const newHost = result.room.users.get(result.room.host);
         io.to(roomId).emit('chat:message', {
@@ -105,7 +105,7 @@ function register(io, socket) {
       return;
     }
     syncReadyWindow(io, result.room);
-    io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+    io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
     broadcastLobbyUpdate(io);
   });
 
@@ -116,7 +116,7 @@ function register(io, socket) {
       return;
     }
     syncReadyWindow(io, result.room);
-    io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+    io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
     broadcastLobbyUpdate(io);
   });
 
@@ -130,6 +130,9 @@ function register(io, socket) {
     // Settings changes reset ready for seated players (RoomManager.updateSettings) —
     // restart the ready window fresh rather than leaving a stale countdown running.
     restartReadyWindow(io, result.room);
+    // The one room:updated that must carry `settings`: this is the only event
+    // where they actually changed, and clients merge rather than replace, so
+    // this is where they learn the new values. See RoomManager.serializeRoomUpdate.
     io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
     broadcastLobbyUpdate(io);
     io.to(roomId).emit('chat:message', {
@@ -152,10 +155,10 @@ function register(io, socket) {
     if (result.allReady) {
       cleanupReadyTimer(roomId);
       result.room.readyDeadline = null;
-      io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+      io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
       getGameHandler().startGame(io, result.room);
     } else {
-      io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+      io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
     }
   });
 
@@ -180,7 +183,7 @@ function register(io, socket) {
     }
 
     syncReadyWindow(io, result.room);
-    io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+    io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
     broadcastLobbyUpdate(io);
   });
 }

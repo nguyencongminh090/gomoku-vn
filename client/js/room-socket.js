@@ -60,7 +60,12 @@
     const st = S();
     const prevSlot = st.mySlot;
 
-    st.roomData = data;
+    // Merge, don't replace. room:updated omits `settings` (they don't change on
+    // sit/stand/ready/join/leave/kick — see RoomManager.serializeRoomUpdate),
+    // so the values from room:joined have to survive here. renderSettings() and
+    // initBoard() read st.roomData.settings without optional chaining and would
+    // throw on a replace.
+    st.roomData = Object.assign({}, st.roomData, data);
     RoomUI.updateUI();
 
     // Detect an involuntary seat vacate — the ready-window timeout kicks a

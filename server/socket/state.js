@@ -160,7 +160,7 @@ function handleReadyWindowTimeout(io, roomId) {
   const { kicked } = roomManager.forceUnreadyPlayersToStand(roomId);
   if (!kicked.length) return;
 
-  io.to(roomId).emit('room:updated', roomManager.serializeRoom(room));
+  io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
   for (const u of kicked) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
