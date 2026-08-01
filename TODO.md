@@ -186,13 +186,24 @@ sau cùng.
    kết nối mang IP của proxy → gộp chung 1 quota; cần `trust proxy`, xem Phần A #1.
    Chi tiết: `docs/fix-log.md`.
 
-8. **Bỏ `settings` khỏi `room:updated`** (review 4.2) — `RoomManager.js`
-   `serializeRoom()`, chỉ gửi `settings` khi thực sự đổi. Rủi ro chính: có
-   **17 điểm emit** `room:updated` trong review, bỏ sót 1 điểm là để lại lỗ
-   hổng cũ; cũng cần kiểm client (`room-ui.js`, `room-socket.js`) đọc
-   `settings` không optional-chain ở đâu trước khi đổi. Test: mở rộng
-   `LobbyHandler.test.js` (hiện chỉ cover `room:create`/`room:join`) hoặc file
-   mới, table-driven qua các điểm emit đại diện.
+8. ~~**Bỏ `settings` khỏi `room:updated`** (review 4.2) — chỉ gửi `settings`
+   khi thực sự đổi.~~
+   **✅ ĐÃ XONG** (2026-08-02, commit `09a6de1`, merge `3f01271`) — thêm
+   `RoomManager.serializeRoomUpdate()` (= `serializeRoom` bỏ `settings`), đổi
+   **đủ 17/17 điểm emit**, trừ đúng 1 điểm ở handler `room:settings` (chỗ duy
+   nhất settings thật sự đổi). Client `room-socket.js` chuyển sang **merge**
+   thay vì replace — **bắt buộc**, vì `room-ui.js:315` và `game-ui.js:62` đọc
+   `roomData.settings` **không** optional-chain (đúng rủi ro mục này cảnh báo),
+   replace là throw ngay update đầu tiên. Bump `?v=28` → `?v=29`.
+   Test: `RoomManager.test.js` 14 → 20 case, trong đó có **quét source** đếm
+   đủ 17 điểm emit và bắt buộc 16 dùng `serializeRoomUpdate` — đây mới là thứ
+   chặn được rủi ro "sót 1 điểm"; mutation-check: đổi 1 điểm về `serializeRoom`
+   thì test đỏ. `npm test` 209/209 xanh. **Đã kiểm browser thật** (6 guest
+   trong 1 phòng): settings sống sót qua `room:updated`, đổi board size 17→19
+   thì cả 2 phía cập nhật, 0 lỗi JS. **Đo thật:** 809B/bản × 6 người = 4854B
+   mỗi hành động, so với 5898B trước — **giảm 17.7%**, càng đông càng lợi
+   (≈3480B/hành động ở 20 người). Chưa làm phần delta "user X đổi slot"
+   (`instruction.md` §B8 ghi rõ đây là bước tuỳ chọn). Chi tiết: `docs/fix-log.md`.
 
 9. **`lobby:update` → delta thật** (review 4.1/13, fix-log #12 mới debounce
    nửa vế) — `state.js` `broadcastLobbyUpdate`, emit `{roomId, patch}` thay vì
