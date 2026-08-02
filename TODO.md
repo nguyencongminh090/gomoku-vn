@@ -488,28 +488,46 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
 
 ### Nguồn: báo cáo người dùng khi test thủ công, tái hiện bằng Playwright (2026-08-02)
 
-18. **Tạo phòng bị từ chối do quota IP (mục 7) vẫn "flash" sang `room.html` rồi
-    mới đá về lobby, dễ gây cảm giác "bấm Tạo phòng → bị đá về sảnh chính"** —
-    `submitCreate()` trong `client/js/lobby.js` (~dòng 406) điều hướng sang
-    `room.html` **ngay khi bấm nút**, trước khi biết `room:create` có thành
-    công hay không (chỉ lưu ý định vào `sessionStorage`, request thật chỉ gửi
-    sau khi `room.html` load và socket kết nối, xem `processRoomIntent()` ở
-    `room-socket.js`). Nếu server từ chối (đụng `MAX_ROOMS_PER_IP` — mục 7 —
-    hoặc bất kỳ lỗi `room:create` nào khác), `room:error` handler hiện 1 toast
-    rồi ~1.5s sau tự về `index.html` (`room-socket.js` dòng ~91-104). Kịch bản
-    thực tế dễ đụng ngưỡng 3: người chơi rời phòng nhưng đối thủ còn ở lại
-    (`leaveRoom()` chỉ huỷ phòng khi rỗng hoàn toàn) — lặp lại vài lần, phòng
-    cũ vẫn "sống" và cộng dồn vào quota của người tạo.
-    Tái hiện được bằng `e2e/leave-then-create-room.spec.ts` (tạo 3 phòng, mỗi
-    lần để 1 khách ở lại không rời, phòng thứ 4 bị từ chối và điều hướng lại
-    lobby ~1.5s sau khi đã sang `room.html`). **Đã kiểm:** danh sách phòng ở
-    lobby vẫn hiển thị đúng sau khi bị đá về — phần "danh sách phòng không
-    load" trong báo cáo gốc **chưa tái hiện được**, có thể do độ trễ cảm nhận
-    (1.5s + round-trip subscribe) chứ không phải lỗi thật; cần thêm chi tiết
-    cụ thể hơn từ người báo cáo nếu vẫn gặp lại.
-    **Không phải lỗi ở quota theo IP (mục 7) — quota hoạt động đúng thiết
-    kế.** Vấn đề nằm ở trải nghiệm điều hướng lạc quan (optimistic navigation)
-    phía client khi request đó bị từ chối.
+18. ~~**Tạo phòng bị từ chối do quota IP (mục 7) vẫn "flash" sang `room.html`
+    rồi mới đá về lobby, dễ gây cảm giác "bấm Tạo phòng → bị đá về sảnh
+    chính"**~~
+    **✅ ĐÃ SỬA (2026-08-02)** — không phải lỗi ở quota theo IP (mục 7), quota
+    hoạt động đúng thiết kế; vấn đề nằm ở trải nghiệm điều hướng lạc quan phía
+    client khi request bị từ chối.
+    - **Thử 2 hướng, chọn hướng an toàn hơn sau khi hướng đầu lộ ra lỗi thật:**
+      hướng 1 (`submitCreate()` emit `room:create` từ chính trang lobby, chờ
+      ack rồi mới điều hướng) đã **implement xong nhưng bị revert** — nó đòi
+      hỏi ngắt socket của lobby trước khi socket mới của `room.html` kết nối
+      lại, và dưới tải song song thật (nhiều Playwright worker cùng lúc trên
+      máy dev) đã đo được khoảng cách ngắt→kết-nối-lại **vượt quá 5s, rồi vượt
+      luôn cả 15s** — nghĩa là **bất kỳ** grace period hữu hạn nào cũng có thể
+      bị phá vỡ bởi mạng/thiết bị chậm thật, không chỉ máy test. Rủi ro thật:
+      phòng vừa tạo tự huỷ ngay dưới mắt người dùng thật trên kết nối chậm.
+    - **Hướng 2 (đã chọn, đang dùng):** giữ nguyên kiến trúc điều hướng lạc
+      quan cũ (`submitCreate()` vẫn điều hướng sang `room.html` ngay, `room:create`
+      vẫn emit từ `processRoomIntent()` sau khi trang mới kết nối — không đổi gì
+      ở server, không thêm cơ chế grace mới nào) — chỉ sửa phần **hiển thị**:
+      thêm `#room-entry-overlay` (`client/room.html`) hiện mặc định (không cần
+      JS bật) che toàn bộ khung phòng trống/chưa init cho tới khi `room:joined`
+      thật sự tới (`room-socket.js` `hideEntryOverlay()`). Nếu bị từ chối,
+      overlay vẫn che, toast lỗi hiện đè lên (z-index 1200 > 1100), rồi về lại
+      `index.html` sau ~1.5s — đúng pattern đã dùng sẵn cho `room:kicked`/
+      `room:destroyed`. Không còn thấy UI phòng trống/vỡ, không có cơ chế
+      server mới nào để có thể lỗi tinh vi hơn.
+    - Kịch bản thực tế dễ đụng ngưỡng 3: người chơi rời phòng nhưng đối thủ
+      còn ở lại (`leaveRoom()` chỉ huỷ phòng khi rỗng hoàn toàn) — lặp lại vài
+      lần, phòng cũ vẫn "sống" và cộng dồn vào quota của người tạo.
+    - **Đã kiểm:** danh sách phòng ở lobby vẫn hiển thị đúng sau khi bị đá về
+      — phần "danh sách phòng không load" trong báo cáo gốc **chưa tái hiện
+      được**, có thể do độ trễ cảm nhận (1.5s + round-trip subscribe) chứ
+      không phải lỗi thật; cần thêm chi tiết cụ thể hơn từ người báo cáo nếu
+      vẫn gặp lại.
+    - **Test:** `e2e/leave-then-create-room.spec.ts` cập nhật lại theo hành vi
+      cuối cùng — assert overlay hiện ngay khi vừa sang `room.html`, toast lỗi
+      xuất hiện, rồi bounce về lobby. Chạy PASS ổn định kể cả dưới tải song
+      song nặng (`--workers=6`, cùng 3 file spec chạy chung — đúng điều kiện
+      từng làm lộ ra lỗi của hướng 1). `npm test`: 289/289 xanh (không đổi số
+      lượng test unit vì #18 không cần code phía server).
 
 ### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 

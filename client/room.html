@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=34" />
-  <link rel="stylesheet" href="css/lobby.css?v=34" />
-  <link rel="stylesheet" href="css/room.css?v=34" />
-  <link rel="stylesheet" href="css/game.css?v=34" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=34" />
+  <link rel="stylesheet" href="css/main.css?v=35" />
+  <link rel="stylesheet" href="css/lobby.css?v=35" />
+  <link rel="stylesheet" href="css/room.css?v=35" />
+  <link rel="stylesheet" href="css/game.css?v=35" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=35" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,6 +36,18 @@
 </head>
 
 <body>
+
+  <!-- Shown by default (no JS toggle needed to appear) until room:joined or
+       room:error arrives, so a rejected room:create/room:join (e.g. hitting
+       MAX_ROOMS_PER_IP) never shows the empty/uninitialized room chrome
+       underneath — just this, then a redirect. Hidden by room-socket.js once
+       real room data lands. See TODO.md #18 / instruction.md §B18. -->
+  <div class="game-overlay visible" id="room-entry-overlay">
+    <div class="game-overlay__card">
+      <div class="game-overlay__icon">⏳</div>
+      <div class="game-overlay__result" data-i18n="room.entering">Đang vào phòng...</div>
+    </div>
+  </div>
 
   <!-- ── Connection Status ───────────────────────────────────────────────── -->
   <div id="status-banner" class="status-banner" aria-live="polite"></div>
@@ -180,7 +192,7 @@
   <!-- Socket.io CDN -->
   <script src="/socket.io/socket.io.js"></script>
   <!-- Application Scripts via Vite entry point -->
-  <script type="module" src="js/room-entry.js?v=34"></script>
+  <script type="module" src="js/room-entry.js?v=35"></script>
 </body>
 
 </html>
