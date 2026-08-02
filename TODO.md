@@ -1070,6 +1070,120 @@ khi tái hiện được vấn đề** — thứ tự đúng là đo/chẩn đo�
       mối đe doạ *spoofing tên*, khác với XSS mà §B32 nhắm tới. Nếu sau này
       thấy cần thì mở mục riêng, không gộp ngược vào đây.
 
+### Nguồn: security review toàn bộ codebase — recheck (2026-08-03)
+
+Đợt recheck sau mục 32: audit lại từ đầu (không tin kết luận cũ), tập trung
+vào các đường ít bị soi hơn (thoả thuận hoà, cộng giờ). Cả 2 finding dưới đây
+đã qua vòng lọc false-positive riêng (sub-task độc lập, đọc code trực tiếp,
+confidence ≥ 8/10) trước khi đưa vào đây.
+
+33. **Chấp nhận/từ chối đề nghị hoà không kiểm tra tư cách người chơi** —
+    `server/managers/GameEngine.js`, `acceptDraw()` (~dòng 439) và
+    `declineDraw()` (~dòng 458) chỉ kiểm `this.drawOffer.from !== userId`
+    (chặn tự chấp nhận/tự từ chối đề nghị của chính mình), **không** kiểm
+    `userId` có nằm trong `this.players` hay không — khác với 2 hàm liền kề
+    `resign()` (~dòng 398) và `offerDraw()` (~dòng 424) đã có đúng kiểm tra
+    này. Handler socket `game:draw_accept`/`game:draw_decline`
+    (`server/socket/handlers/GameHandler.js:228-261`) cũng không bù thêm
+    kiểm tra ở tầng handler.
+    - **Đối tượng khai thác thật:** khán giả trong phòng (không phải người
+      chơi có ghế) — `RoomManager.joinRoom()` thêm mọi user vào
+      `room.users`/`userRoomMap` không cần ghế, và `getRoomByUser()` tra ra
+      đúng phòng cho cả khán giả lẫn người chơi. Khán giả có thể tự ý chấp
+      nhận đề nghị hoà (ép ván kết thúc hoà, lưu vào DB, không cần Người
+      chơi B đồng ý) hoặc tự ý từ chối đề nghị hoà hợp lệ thay Người chơi B.
+    - Đánh giá hiệu quả/an toàn: sửa rẻ — thêm đúng 1 dòng kiểm tra tư cách
+      người chơi vào mỗi hàm, dùng lại pattern có sẵn của `resign`/
+      `offerDraw` trong cùng file, không đổi kiến trúc.
+    - **Chưa sửa — đang chờ làm.** Xem `instruction.md` §B33 cho hướng dẫn
+      thực thi cụ thể trước khi code.
+
+34. **Chấp nhận/từ chối yêu cầu cộng giờ không kiểm tra tư cách người chơi** —
+    `server/socket/handlers/GameHandler.js`, `game:time_accept` (~dòng 335)
+    và `game:time_decline` (~dòng 372) chỉ kiểm
+    `room._timeRequestPending.from !== user.userId` (chặn tự chấp nhận/từ
+    chối yêu cầu của chính mình), **không** kiểm tư cách đối thủ — khác với
+    `game:request_time` (~dòng 281) đã có đúng kiểm tra
+    `engine.players.find(p => p.userId === user.userId)`.
+    - **Đối tượng khai thác thật:** khán giả trong phòng (cùng cơ chế join
+      như mục 33). Sau khi một người chơi dùng hết `TIME_REQUEST_FREE` (3
+      lần miễn phí, `server/config.js`), các lần cộng giờ tiếp theo
+      (`+TIME_REQUEST_BONUS`, 30s) cần đối thủ đồng ý tường minh — khán giả
+      có thể tự ý phát `game:time_accept` thay đối thủ, cấp giờ không giới
+      hạn cho một bên, vô hiệu hoá cơ chế chống câu giờ.
+    - Đánh giá hiệu quả/an toàn: sửa rẻ — thêm đúng kiểm tra
+      `engine.players.find(...)` mà `game:request_time` đã có, vào cả 2
+      handler còn thiếu.
+    - **Chưa sửa — đang chờ làm.** Xem `instruction.md` §B34.
+
+### Nguồn: báo cáo người dùng khi test thủ công (2026-08-03)
+
+35. ~~**`#start-modal` và `#game-overlay` (thông báo Thắng/Thua/Đấu lại) chồng
+    lên nhau sau khi ván kết thúc**~~
+    **✅ ĐÃ XONG (2026-08-03)** — người dùng xác nhận repro: **lặp lại được ổn
+    định** (mọi lần), 2 overlay **chồng hình lên nhau** trực tiếp.
+    - **Nguyên nhân gốc, đã xác nhận bằng Playwright (không chỉ giả thuyết
+      đọc code):** khi 1 trong 2 người bấm "Đấu lại" trước người kia,
+      `game:rematch` (`server/socket/handlers/GameHandler.js:396`) gọi
+      `confirmStart` rồi `syncReadyWindow` (vì `allReady` false), set
+      `readyDeadline` mới và broadcast `room:updated` tới **cả 2 client**.
+      Người **chưa** bấm gì vẫn còn `#game-overlay` hiện, và
+      `renderStartModal()` (`client/js/room-ui.js:202`) cũ không kiểm tra
+      điều đó trước khi thêm `.visible` vào `#start-modal` → chồng hình.
+    - **Hướng sửa đã chọn (thảo luận trực tiếp với người dùng, xem hội
+      thoại):** thay vì vá tại điểm hiển thị đơn thuần, đổi luôn mô hình —
+      Start Modal chỉ còn 1 nguồn kích hoạt duy nhất: **"tôi đang ngồi vào
+      chỗ"**, không phải "phòng có `readyDeadline`" một cách gián tiếp qua
+      broadcast. Cụ thể:
+      1. **`client/js/room.js` — `btnCloseOverlay`:** trước đây bấm "Đóng"
+         chỉ ẩn overlay phía client, không báo gì cho server, để người chơi
+         ngồi lại ở trạng thái "còn ngồi nhưng chưa ready" vô thời hạn. Nay
+         bấm "Đóng" = **đứng dậy thật** (`window.RoomState.standRequested =
+         true; window.RoomClient.emit('room:stand')`) — tái dùng đúng luồng
+         `room:stand`/`standUp()` có sẵn cho nút đứng dậy ở ghế, không tạo
+         event mới. Hệ quả: `bothSeated` false → `syncReadyWindow` tự huỷ
+         ready-window, `readyDeadline` về `null` — không còn trạng thái lửng
+         lơ nào để dây vào bug này nữa.
+      2. **`client/js/room-ui.js` — `renderStartModal()`:** thêm phòng thủ
+         chiều sâu — không hiện `#start-modal` nếu `#game-overlay` đang có
+         class `.visible` (đọc DOM trực tiếp), bất kể `readyDeadline` là gì.
+         Chặn mọi đường khác (nếu có) có thể dẫn tới cùng bug mà không cần
+         lường hết từng đường.
+      - **Không đụng:** `btnRematch` (giữ nguyên, chỉ ẩn overlay cục bộ rồi
+        emit `game:rematch` — bấm "Đấu lại" khi đang ngồi tương đương xác
+        nhận ready, đúng luồng `confirmStart` sẵn có), luồng `syncReadyWindow`
+        cho ván đầu tiên của phòng (trước `game:ended` đầu tiên).
+      - **Việc phụ đã kiểm, không phải bug riêng:** comment ở
+        `server/socket/state.js:342` liệt kê "game end" là 1 mốc phải gọi
+        `syncReadyWindow`, nhưng `handleGameEnd` không gọi trực tiếp — không
+        cần sửa gì thêm vì hướng sửa trên (gate qua `#game-overlay` +
+        đứng dậy khi Đóng) đã loại bỏ hoàn toàn triệu chứng mà không cần
+        `handleGameEnd` tự gọi `syncReadyWindow`; để nguyên comment, không
+        rõ ràng buộc lịch sử nào khác dựa vào hành vi hiện tại nên không tự
+        ý "sửa cho khớp comment".
+    - Bump `?v=38` → `?v=39` (đổi `client/js/room.js` + `client/js/
+      room-ui.js`).
+    - **Test:** file mới `e2e/rematch-overlay-conflict.spec.ts` (Playwright,
+      2 case): (1) dựng đúng kịch bản báo cáo — 2 người chơi thật, kết thúc
+      ván bằng đầu hàng, PlayerA bấm "Đấu lại" trước, xác nhận PlayerB (chưa
+      bấm gì) **không** thấy `#start-modal` hiện trong khi `#game-overlay`
+      còn `.visible`, rồi PlayerB bấm "Đóng" và xác nhận `RoomState.mySlot
+      === null` (đứng dậy thật) + không phòng nào còn ready-window; (2) case
+      hồi quy — 2 ghế mới ngồi vào vẫn hiện Start Modal bình thường (đảm bảo
+      fix không vô hiệu hoá tính năng gốc). Chạy trên cả 3 trình duyệt
+      (chromium/firefox/webkit) đều xanh.
+      **Mutation-check:** revert tạm cả 2 đoạn sửa trên bản copy (không sửa
+      file gốc trong lúc kiểm), chạy lại đúng case 1 trên chromium →
+      **đỏ đúng ở dòng assert `#start-modal` not visible** (`Received:
+      "game-overlay visible"` — bắt được đúng bug được báo cáo), khôi phục
+      lại thì xanh. `npm test` (server-side, không đổi) vẫn 359/359 xanh —
+      đây là fix thuần client, không đụng code server nào.
+      **Client-side hiện chưa có Jest/unit-test framework** (đúng như
+      `CLAUDE.md` ghi nhận) nên guard duy nhất cho fix này là e2e Playwright
+      ở trên, không có unit test bổ sung.
+    - **Đã kiểm bằng browser thật qua Playwright** (không chỉ tin giả định) —
+      xem chi tiết Mutation-check ở trên. Chi tiết đầy đủ: `docs/fix-log.md`.
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

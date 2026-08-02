@@ -204,8 +204,16 @@
     const modal = document.getElementById('start-modal');
     if (!modal) return;
 
+    // Never show over an unactioned game-end result — a player who hasn't
+    // clicked "Đấu lại"/"Đóng" yet on #game-overlay must not have Start Modal
+    // pop up on top of it just because the *other* player already rematched
+    // (that rematch's ready-window broadcast reaches both clients). See
+    // TODO.md #35 / instruction.md §B35.
+    const overlayEl = document.getElementById('game-overlay');
+    const overlayOpen = !!(overlayEl && overlayEl.classList.contains('visible'));
+
     const deadline = st.roomData ? st.roomData.readyDeadline : null;
-    const visible = st.mySlot !== null && !!deadline && st.roomData.state !== 'playing';
+    const visible = !overlayOpen && st.mySlot !== null && !!deadline && st.roomData.state !== 'playing';
 
     if (!visible) {
       modal.classList.remove('visible');
