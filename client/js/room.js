@@ -200,4 +200,11 @@ btnRematch.addEventListener('click', () => {
 
 btnCloseOverlay.addEventListener('click', () => {
   gameOverlay.classList.remove('visible');
+  // Declining a rematch stands the player up (same as the seat's stand-up
+  // button) instead of leaving them seated-but-not-ready. This keeps Start
+  // Modal's only trigger "I am seated", so it can never reappear as a side
+  // effect of the *other* player's rematch click while this player still has
+  // an unactioned game overlay open — see TODO.md #35 / instruction.md §B35.
+  window.RoomState.standRequested = true;
+  window.RoomClient.emit('room:stand');
 });

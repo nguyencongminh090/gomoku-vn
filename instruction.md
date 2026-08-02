@@ -600,6 +600,124 @@ Bài học phương pháp cho lần đo tiếp theo nếu mục này còn mở:
   có dấu, khoảng trắng giữa tên) để tránh chính regression "chặn nhầm tên
   thật" nêu trên.
 
+### B33. Kiểm tra tư cách người chơi khi chấp nhận/từ chối đề nghị hoà (từ recheck security review, 2026-08-03)
+
+- Đây là bug thật đang mở, không phải phòng thủ chiều sâu như B32 — đã xác
+  nhận CONFIRMED qua vòng lọc false-positive độc lập (confidence 9/10), có
+  đường khai thác cụ thể bởi khán giả (bên thứ ba không có ghế), không phải
+  suy đoán lý thuyết.
+- **Sửa đúng bằng cách tái dùng pattern có sẵn trong cùng file** — không cần
+  thiết kế mới: `resign()` và `offerDraw()` (`server/managers/GameEngine.js`,
+  cùng file) đã có đúng dòng kiểm tra
+  `const player = this.players.find(p => p.userId === userId); if (!player) return { error: 'Bạn không phải người chơi.' };`
+  Copy đúng logic đó vào đầu `acceptDraw(userId)` và `declineDraw(userId)`,
+  trước dòng kiểm `drawOffer.from`.
+- **Không đụng vào handler socket** (`GameHandler.js` `game:draw_accept`/
+  `game:draw_decline`) — kiểm tra nên đặt ở tầng `GameEngine` (nguồn sự thật
+  của trạng thái ván), không phải tầng handler, để bất kỳ lối gọi nào khác
+  tới `acceptDraw`/`declineDraw` trong tương lai cũng được bảo vệ, không chỉ
+  lối gọi qua socket hiện tại.
+- **Không đổi thông báo lỗi `'Bạn không phải người chơi.'`** — đây là chuỗi
+  đã dùng sẵn cho `resign`/`offerDraw`, giữ nguyên để nhất quán UX, không bịa
+  thông báo mới.
+- Test: theo rule "Bug-fix workflow" — thêm case vào file test hiện có của
+  `GameEngine` (nếu có) hoặc file mới, dựng đúng kịch bản: 1 người chơi + 1
+  "khán giả" (userId không nằm trong `players`) gọi `acceptDraw`/
+  `declineDraw`, assert bị từ chối với đúng lỗi trên và ván **không** kết
+  thúc/không đổi `drawOffer`. Mutation-check: gỡ dòng kiểm tra mới, xác nhận
+  test đỏ.
+
+### B34. Kiểm tra tư cách người chơi khi chấp nhận/từ chối yêu cầu cộng giờ (từ recheck security review, 2026-08-03)
+
+- Cùng đợt recheck với B33, cùng mức độ nghiêm trọng (CONFIRMED, confidence
+  8/10) — khán giả trong phòng có thể cấp giờ không giới hạn cho một người
+  chơi thay đối thủ thật, vô hiệu hoá cơ chế chống câu giờ.
+- **Sửa đúng bằng cách tái dùng pattern có sẵn ngay trong cùng file** —
+  `game:request_time` (`server/socket/handlers/GameHandler.js`, ~dòng
+  281-285) đã có đúng kiểm tra
+  `engine.players.find(p => p.userId === user.userId)`. Copy đúng kiểm tra
+  đó vào đầu `game:time_accept` (~dòng 335) và `game:time_decline`
+  (~dòng 372), trước logic kiểm `room._timeRequestPending.from`.
+- **Khác B33 ở chỗ:** đây nằm ở tầng handler (`GameHandler.js`), không phải
+  tầng `GameEngine` — vì `_timeRequestPending` là state của `room`, không
+  phải state của `GameEngine`; giữ nguyên vị trí kiểm tra ở handler cho nhất
+  quán với `game:request_time` đã có, không chuyển state này vào
+  `GameEngine` chỉ để làm cho giống B33.
+- Không đổi tên sự kiện lỗi (`game:error`) hay format `{ message }` — dùng
+  đúng convention đang có ở `game:request_time` khi từ chối.
+- Test: thêm case vào file test của `GameHandler`/socket handlers hiện có,
+  dựng kịch bản: 1 "khán giả" (không nằm trong `engine.players`) phát
+  `game:time_accept`/`game:time_decline` khi có `_timeRequestPending` đang
+  chờ, assert bị từ chối và **không** cộng giờ / không xoá pending request.
+  Mutation-check: gỡ kiểm tra mới, xác nhận test đỏ.
+
+### B35. `#start-modal` chồng hình lên `#game-overlay` (từ báo cáo người dùng, 2026-08-03)
+
+- **Tái hiện trước, đừng sửa theo suy đoán** — giả thuyết nguyên nhân gốc ở
+  `TODO.md` #35 đọc từ code, chưa chạy Playwright xác nhận. Viết kịch bản
+  2 trang (2 người chơi thật, không phải 1 trang giả lập 2 người) chơi hết 1
+  ván, sau đó **chỉ 1 trong 2** bấm "Đấu lại" (`#btn-rematch`), chụp lại
+  trạng thái DOM của trang còn lại — xác nhận đúng cả `#start-modal` và
+  `#game-overlay` cùng có class `.visible` tại cùng 1 thời điểm trước khi
+  chọn hướng sửa.
+- **Việc phụ cần làm trước, không bỏ qua:** đối chiếu comment ở
+  `server/socket/state.js:342` ("Called after every mutation that can affect
+  it (sit, stand, kick, leave, settings change, confirmStart, **game
+  end**)") với thực tế `handleGameEnd` (`server/socket/handlers/
+  GameHandler.js:640`) — hàm này **không** gọi `syncReadyWindow`. Cần xác
+  định đây là tài liệu lỗi thời (hành vi đúng, comment sai) hay đúng là thiếu
+  1 lệnh gọi (bug khác, độc lập với B35) — không tự ý sửa `handleGameEnd` chỉ
+  vì thấy comment không khớp, vì có thể comment mới là cái cần sửa.
+- **Hướng sửa gợi ý (chưa chốt, chọn sau khi tái hiện xong):**
+  - (a) Rẻ nhất, chỉ sửa hiển thị: trong `renderStartModal()`
+    (`client/js/room-ui.js:202`), thêm điều kiện không hiện nếu
+    `#game-overlay` đang có class `.visible` (kiểm tra DOM trực tiếp, hoặc
+    thêm 1 cờ state `st.gameOverlayVisible` được set/gỡ đúng lúc trong
+    `showGameOverlay()`/khi bấm "Đóng"/"Đấu lại").
+  - (b) Đúng gốc hơn: không cho `readyDeadline` được set trong lúc
+    `#game-overlay` còn đang chờ người dùng đóng — tức chặn từ phía server
+    (trong `syncReadyWindow`) hoặc trì hoãn tới khi cả 2 phía đã dismiss
+    overlay. Rủi ro cao hơn (a) vì đụng luồng ready-window dùng chung cho cả
+    lượt chơi đầu tiên (không chỉ rematch).
+  - **Khuyến nghị chọn (a) trước** — cùng tinh thần "sửa ở lớp hiển thị,
+    không đụng state server" đã áp dụng cho mục 18 hướng 2 (overlay che UI
+    vỡ) — trừ khi tái hiện cho thấy (a) không đủ.
+- **Không đụng:** luồng `confirmStart`/`syncReadyWindow` cho lượt chơi ván
+  ĐẦU TIÊN của phòng (trước khi có `game:ended` nào) — đó là hành vi đúng,
+  không phải nguồn gốc bug này.
+- Test: theo rule "Bug-fix workflow" — nếu chọn hướng (a), thêm test đơn vị
+  cho phần logic thuần (nếu tách được hàm quyết định visible ra khỏi DOM) hoặc
+  test bằng Playwright dựng đúng kịch bản 2 trang ở trên (client-side hiện
+  chưa có unit test framework, ghi rõ theo đúng luật CLAUDE.md nếu không tách
+  được phần thuần để test qua Jest).
+
+**✅ ĐÃ SỬA (2026-08-03) — xem TODO.md #35.** Tái hiện xong bằng Playwright
+trước khi sửa (đúng yêu cầu ở trên) — xác nhận cả `#start-modal` và
+`#game-overlay` cùng `.visible` khi 1 người bấm "Đấu lại" trước người kia.
+
+**Đã đổi hướng so với gợi ý ban đầu, sau khi thảo luận trực tiếp với người
+dùng** — không chỉ chọn (a) hay (b) như liệt kê ở trên, mà đổi luôn mô hình:
+Start Modal chỉ còn kích hoạt bởi đúng 1 sự kiện — "tôi vừa ngồi vào chỗ"
+(ngồi lần đầu, hoặc đứng dậy rồi ngồi lại) — thay vì suy ra từ
+`readyDeadline` gián tiếp qua broadcast. Cụ thể:
+- Bấm "Đóng" (`btnCloseOverlay`, `client/js/room.js`) giờ **đứng dậy thật**
+  (`room:stand`) thay vì chỉ ẩn overlay — người dùng đề xuất ý này, lý do
+  chọn: xoá hẳn trạng thái lửng lơ "còn ngồi, chưa ready, không có hạn" mà
+  bug này dựa vào, không chỉ che triệu chứng ở tầng hiển thị. Không cần tạo
+  event mới — tái dùng đúng `roomManager.standUp()` đã có.
+- **Vẫn giữ (a) làm phòng thủ chiều sâu**, không thay thế: `renderStartModal()`
+  vẫn gate thêm bằng `#game-overlay` có `.visible` hay không, đề phòng đường
+  khác (không phải rematch) cũng có thể set `readyDeadline` sớm mà chưa
+  lường hết.
+- Việc phụ (comment ở `state.js:342` không khớp `handleGameEnd`) đã xem lại
+  — **không sửa**, vì hướng sửa trên loại bỏ triệu chứng mà không cần
+  `handleGameEnd` tự gọi `syncReadyWindow`; không có bằng chứng cụ thể nào
+  khác đang phụ thuộc vào đúng câu chữ của comment đó để buộc phải sửa theo.
+- Test: `e2e/rematch-overlay-conflict.spec.ts` (Playwright, đúng kịch bản 2
+  trang ở trên) — client vẫn chưa có unit test framework nên đây là guard
+  duy nhất, đúng như dự đoán ở trên. Mutation-check: revert tạm 2 đoạn sửa
+  trên bản copy → đỏ đúng dòng assert bắt bug; khôi phục → xanh.
+
 ---
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
