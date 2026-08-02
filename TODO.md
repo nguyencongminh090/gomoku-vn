@@ -78,6 +78,65 @@ sửa được → thêm vào Phần B, dưới một heading nguồn riêng (gi
   quá 20 guest token/15 phút/IP). Muốn đo đúng mốc `MAX_USERS_PER_ROOM = 20`
   cần restart server giữa các đợt hoặc tạm nới rate limit trên môi trường test.
 
+### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
+
+#### 6. Quyết định kiến trúc khi cần scale quá 1 tiến trình
+
+- Toàn bộ state sống trong RAM của đúng 1 tiến trình: `RoomManager.rooms` (Map),
+  và trong `server/socket/state.js` là `sessions`/`timerMap`/`disconnectTimers`/
+  `readyTimers`. Không có clustering, không có worker_threads, không có adapter.
+- Muốn chạy nhiều instance (hoặc `cluster`) thì **bắt buộc** kèm: sticky session
+  ở tầng proxy + `@socket.io/redis-adapter` (hoặc tương đương) + đưa state phòng
+  ra ngoài RAM tiến trình. Đây là quyết định hạ tầng + phụ thuộc mới, không phải
+  sửa trong repo.
+- **Đo được (2026-08-02): CPU chỉ ~12% của MỘT core ở 2000 người chơi đồng thời**,
+  RSS ~200MB. Tức là **chưa** chạm trần 1 core — đừng làm việc này vì lý do hiệu
+  năng ở thời điểm hiện tại. Chỉ làm khi có nhu cầu HA/không được downtime, hoặc
+  khi đo lại thật sự thấy 1 core bão hoà.
+- Ràng buộc kèm theo nếu làm: mất tiến trình = mất toàn bộ ván đang chơi (không
+  có persistence cho state phòng), nên đây cũng là câu hỏi "chấp nhận mất ván khi
+  restart hay không", không chỉ là câu hỏi throughput.
+
+#### 7. ~~Đo lại bằng harness đa tiến trình (hoặc máy thứ 2)~~
+
+**✅ ĐÃ ĐO (2026-08-02)** — dùng `scripts/capacity-test/` (B26, xem mục 26)
+với server phụ raised-cap ở cổng 3099 (đã tắt sau khi xong; server thật ở 3000
+không đụng tới):
+
+- Bắt được 1 bug thật trong chính harness trước khi tin số liệu: `worker.js`
+  ban đầu chạy các phòng được giao cho 1 worker **tuần tự**, nên
+  `--workers=8` chỉ tạo ra ~8 phòng đồng thời thật bất kể `--rooms` là bao
+  nhiêu — đúng loại lỗi mục này lo ngại. Đã sửa thành `Promise.all` toàn bộ
+  phòng của 1 worker, xác nhận bằng thời gian chạy giảm đúng tỉ lệ (150 phòng:
+  100s tuần tự → 6.9s song song thật).
+- Sau khi sửa: 100-400 người sạch, CPU 3-4%/1 core. **2000 người đồng thời**
+  (đúng con số nghi ngờ trong báo cáo cũ): **0 lỗi**, p95=75ms, p99=135ms,
+  **CPU ~37%/1 core** (số cũ 12% là giả tạo do chính harness đơn tiến trình
+  nghẽn). **3000 người**: vẫn sạch 100%, CPU ~31%, RSS ~273MB. **3200 người**:
+  bắt đầu lác đác lỗi (6/1600 phòng). **3500+ người**: lỗi rõ (13-18%), log
+  server có `Session ID unknown` — bắt tay long-polling Engine.io va chạm khi
+  hàng nghìn kết nối MỚI nổ cùng lúc.
+- **Điểm gãy không phải CPU/RAM** — CPU đỉnh chỉ ~41%/1 core, RSS ~271MB ngay
+  tại điểm bắt đầu lỗi. Nút thắt nằm ở bước bắt tay kết nối dưới burst cực
+  đoan, không phải logic ván đấu/bộ nhớ.
+- Vẫn còn giới hạn: đây là burst nhân tạo (toàn bộ N người connect cùng lúc
+  qua `Promise.all`), traffic thật rải rác theo thời gian sẽ nhẹ hơn nhiều ở
+  bước này — số liệu vẫn là "sàn bi quan", không phải trần thực tế.
+- **Con số có thể trích dẫn**: server chịu được **~3000 người chơi đồng thời
+  sạch**, bắt đầu suy giảm ở **~3200-3500+**, do bắt tay kết nối chứ không
+  phải CPU/RAM. Chi tiết: `docs/stress-test-report.md` §9,
+  `instruction.md` §A7.
+
+#### 8. Chưa có cách quan sát heap/GC của server đang chạy
+
+- Đợt đo chỉ lấy được RSS qua `ps` từ ngoài. Không thấy heap used/limit, không
+  thấy GC pause — mà đúng lúc p95/p99 vọt lên (94–143ms ở 2000 người) thì GC là
+  một nghi phạm hợp lý không kiểm chứng được bằng RSS.
+- Cần quyết định cách lấy: chạy server với `--inspect` rồi lấy profile, hoặc thêm
+  endpoint debug **chỉ bật ngoài production** trả `process.memoryUsage()`, hoặc
+  gắn APM. Là quyết định vận hành nên xếp Phần A; phần code của nó (nếu chọn
+  hướng endpoint) thì nhỏ.
+
 ### Nguồn: kiểm chứng bản sửa (commit `3da53dd`, đo lại 2026-08-01)
 
 #### 5. Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ
@@ -426,6 +485,260 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
     đụng server :3000 đang chạy), xác nhận cả bảng danh sách lẫn màn xem lại
     hiện đúng tên người thắng; xoá ván test sau khi kiểm xong. Chi tiết:
     `docs/fix-log.md`.
+
+### Nguồn: báo cáo người dùng khi test thủ công, tái hiện bằng Playwright (2026-08-02)
+
+18. **Tạo phòng bị từ chối do quota IP (mục 7) vẫn "flash" sang `room.html` rồi
+    mới đá về lobby, dễ gây cảm giác "bấm Tạo phòng → bị đá về sảnh chính"** —
+    `submitCreate()` trong `client/js/lobby.js` (~dòng 406) điều hướng sang
+    `room.html` **ngay khi bấm nút**, trước khi biết `room:create` có thành
+    công hay không (chỉ lưu ý định vào `sessionStorage`, request thật chỉ gửi
+    sau khi `room.html` load và socket kết nối, xem `processRoomIntent()` ở
+    `room-socket.js`). Nếu server từ chối (đụng `MAX_ROOMS_PER_IP` — mục 7 —
+    hoặc bất kỳ lỗi `room:create` nào khác), `room:error` handler hiện 1 toast
+    rồi ~1.5s sau tự về `index.html` (`room-socket.js` dòng ~91-104). Kịch bản
+    thực tế dễ đụng ngưỡng 3: người chơi rời phòng nhưng đối thủ còn ở lại
+    (`leaveRoom()` chỉ huỷ phòng khi rỗng hoàn toàn) — lặp lại vài lần, phòng
+    cũ vẫn "sống" và cộng dồn vào quota của người tạo.
+    Tái hiện được bằng `e2e/leave-then-create-room.spec.ts` (tạo 3 phòng, mỗi
+    lần để 1 khách ở lại không rời, phòng thứ 4 bị từ chối và điều hướng lại
+    lobby ~1.5s sau khi đã sang `room.html`). **Đã kiểm:** danh sách phòng ở
+    lobby vẫn hiển thị đúng sau khi bị đá về — phần "danh sách phòng không
+    load" trong báo cáo gốc **chưa tái hiện được**, có thể do độ trễ cảm nhận
+    (1.5s + round-trip subscribe) chứ không phải lỗi thật; cần thêm chi tiết
+    cụ thể hơn từ người báo cáo nếu vẫn gặp lại.
+    **Không phải lỗi ở quota theo IP (mục 7) — quota hoạt động đúng thiết
+    kế.** Vấn đề nằm ở trải nghiệm điều hướng lạc quan (optimistic navigation)
+    phía client khi request đó bị từ chối.
+
+### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
+
+Tất cả các mục dưới đây là **nghi vấn/rủi ro tiềm ẩn phát hiện khi đo tải, chưa
+mục nào được xác nhận là bug đang mở**. Đợt đo chứng minh được điều ngược lại:
+tới 2000 người chơi đồng thời (1000 ván) **không crash, không treo, không rò rỉ
+bộ nhớ**, CPU ~12% một core, RSS ~200MB. Vì vậy **đừng "sửa" mục nào ở đây trước
+khi tái hiện được vấn đề** — thứ tự đúng là đo/chẩn đoán trước, sửa sau.
+
+19. ~~**`game:init` không tới trong 15s ở tải cao — chưa xác định được nguyên nhân**~~
+    **✅ ĐÃ ĐO (2026-08-02)** — tách riêng chuỗi bắt tay (không kèm nước đi nào)
+    thành 2 đoạn đo từ phía client: A = `room:sit` phát ra → xác nhận cả 2 đã
+    ngồi (`room:updated`); C = `room:ready` phát ra → nhận `game:init`. Chạy
+    2000 người (1000 cặp) đồng thời, **chỉ riêng bắt tay, không có nước đi nào
+    cả**: **0 lỗi**, độ trễ tối đa toàn bộ chuỗi chỉ **122ms** — thấp hơn nhiều
+    so với cửa sổ chờ 15 000ms từng gây lỗi trước đó.
+    Chạy lại đúng script gốc (có kèm 6 nước đi/cặp, giống bản đo ban đầu) trên
+    cùng server vừa khởi động lại: vẫn ra lỗi (6.7% lần này), nhưng **giai đoạn
+    bị timeout khác lần trước** — lần này là `room:joined` (bước đầu tiên), lần
+    trước là `game:init` (bước cuối). **Giai đoạn lỗi đổi giữa các lần chạy →
+    không phải lỗi/race cố định ở một khâu cụ thể trong `room:sit` →
+    `syncReadyWindow` → `room:ready` → `startGame`** (loại được giả thuyết (c)).
+    **Kết luận: bản thân chuỗi bắt tay của server rất nhanh (≤122ms ở 2000
+    người khi đo riêng); độ trễ/lỗi quan sát được trước đây đến từ việc cộng
+    dồn lưu lượng nước đi chạy song song trong CHÍNH harness đo (giả thuyết
+    (a)/(b)), không phải một lỗi cụ thể trong code bắt tay.** Không cần sửa gì
+    ở `room:sit`/`syncReadyWindow`/`room:ready`/`startGame`. Vẫn giữ nguyên đề
+    xuất ở Phần A #7 (harness đa tiến trình) nếu muốn đo tiếp con số chính xác.
+
+20. ~~**p95/p99 độ trễ nước đi vọt lên dưới tải**~~
+    **✅ ĐÃ ĐO PHẦN GC (2026-08-02), LOẠI ĐƯỢC GC** — chạy lại server với cờ
+    `--trace-gc` (chỉ là flag chẩn đoán, không đổi code), lặp lại đúng kịch bản
+    2000 người gây p95/p99 cao trước đó, rồi đối chiếu log GC với đúng khung
+    giờ burst chạy (11-30 giây sau khi server khởi động). Trong khung đó: 66
+    lần GC (đều là Scavenge trẻ + 1 Mark-Compact), **pause dài nhất chỉ
+    3.92ms**, tổng cộng dồn **98.26ms GC trong suốt 19 giây burst**. 2 lần
+    Mark-Compact "nặng" hơn (10-12ms) trong log đều xảy ra **sau khi burst đã
+    xong** (dọn rác sau khi client đóng kết nối hàng loạt), không trùng khung
+    giờ đo latency.
+    **Kết luận: GC không giải thích được đuôi 70-143ms đã quan sát** — pause
+    GC lớn nhất trong khung đo chưa tới 4ms. Đuôi latency nhiều khả năng vẫn là
+    hệ quả của cùng nguyên nhân đã nêu ở mục 19 (cộng dồn lưu lượng trong
+    harness), không phải GC. **Chưa đo được phần "chi phí fan-out" (mục 22) và
+    "burst harness" tách biệt hoàn toàn khỏi GC** — 2 khả năng còn lại đã có dữ
+    liệu ở mục 22 và Phần A #7 tương ứng.
+
+21. ~~**Số timer chạy song song tăng tuyến tính theo số phòng**~~
+    **✅ ĐÃ ĐO (2026-08-02), CHI PHÍ KHÔNG ĐÁNG KỂ** — dựng 784 ván thật đang
+    sống song song (784 interval 1s của `TimerManager`, `timerMode: per_move`
+    nên interval phải làm việc thật mỗi tick, không phải nhàn rỗi), rồi để
+    **hoàn toàn im lặng** (không nước đi, không traffic gì) trong 12 giây, đo
+    CPU server mỗi giây. **CPU giữ nguyên ~7.0-7.2% suốt 12 giây** — chỉ cao
+    hơn baseline lúc chưa dựng ván (~5.7%) đúng 1.3-1.5 điểm phần trăm, cho
+    784 timer cùng chạy. **Kết luận: chi phí interval-mỗi-phòng không đáng kể
+    ở quy mô đã đo (tới ~800 phòng).** Không cần gộp về 1 interval chung —
+    hướng đó (đã nêu trong mô tả gốc) **không nên làm** vì chưa có bằng chứng
+    cần, đúng tinh thần "đừng sửa khi chưa đo được là nó đắt".
+
+22. ~~**Chi phí fan-out của broadcast theo số người trong phòng**~~
+    **✅ ĐÃ ĐO (2026-08-02)** — so sánh 2 cách chia **cùng 1000 kết nối**: (a)
+    500 phòng × 2 người (0 khán giả) vs (b) 50 phòng × 20 người (2 người chơi +
+    18 khán giả, đúng `MAX_USERS_PER_ROOM`).
+    - **Trong 1 phòng đã ổn định (đang trao đổi nước đi), độ trễ người chơi
+      chính và độ trễ khán giả nhận được gần như giống hệt nhau** (p50=1-2ms cả
+      2 phía) — `io.to(roomId).emit()` là 1 lệnh đồng bộ quét hết thành viên
+      trong cùng 1 tick, không có độ trễ tăng dần theo từng người nhận ở quy mô
+      20 người/phòng.
+    - **Nhưng đuôi p95/p99 của kịch bản (b) lại CAO HƨN kịch bản (a) rõ rệt**
+      (70/122ms so với 19/24ms) dù (b) có ÍT phòng hơn hẳn (50 so với 500, tức
+      ít lệnh `room:create` hơn). Nguyên nhân khoanh vùng được: mỗi phòng ở
+      kịch bản (b) có 18 khán giả **join gần như cùng lúc** (`Promise.all`) sau
+      khi phòng tạo xong — mỗi lần `room:join` lại phát `room:updated` tới
+      **toàn bộ thành viên hiện có**, nên chi phí broadcast trong riêng giai
+      đoạn LẤP ĐẦY phòng tăng theo kiểu bậc hai với số người (~1+2+...+19 lần
+      gửi mỗi phòng chỉ tính riêng phần join), không phải tuyến tính. Độ trễ đo
+      được ở vài nước đi đầu có thể là dư âm của đợt dồn này chưa kịp giải toả.
+    **Kết luận: fan-out KHÔNG phải vấn đề ở giai đoạn ổn định (mỗi nước đi khi
+    phòng đã đầy), NHƯNG có chi phí thật ở giai đoạn nhiều khán giả cùng ập vào
+    1 phòng trong thời gian ngắn.** Nếu muốn tối ưu, hướng đúng là gộp/giảm số
+    lần broadcast `room:updated` khi nhiều người join dồn dập (vd. debounce
+    ngắn ở phase join, tương tự cách đã làm cho `lobby:update` ở TODO #9) —
+    nhưng **chưa đủ bằng chứng để coi đây là ưu tiên sửa ngay**, vì kịch bản
+    "18 khán giả join cùng lúc trong <1s vào 1 phòng" hiếm khi xảy ra thật
+    ngoài môi trường test tải.
+
+23. ~~**`better-sqlite3` đồng bộ + `bcrypt` chặn event loop**~~
+    **✅ ĐÃ ĐO (2026-08-02)** — chạy 100 ván thật song song (200 người chơi, nhịp
+    nước 500ms/nước) liên tục, giữa chừng bắn 14 lệnh `POST /api/auth/register`
+    **thật** đồng thời (không bypass). Đo độ trễ nước đi ở 3 khoảng: trước/trong/
+    sau đợt đăng ký. **Kết quả: độ trễ nước đi KHÔNG đổi** — p50=1ms cả 3 khoảng,
+    p95/p99/max đều ở mức single-digit ms suốt, kể cả đúng lúc đợt đăng ký đang
+    chạy (186 mẫu trong cửa sổ ~921ms của đợt bắn). **Giả thuyết ban đầu — "chặn
+    toàn bộ ván đang chơi" — SAI ở quy mô đã đo.** Lý do: `bcrypt.hash()` dùng
+    bản Promise (không có callback) → chạy trên libuv threadpool, **không** chặn
+    main thread; phần đồng bộ thật sự (2 câu SQLite: check trùng tên + insert)
+    đủ nhanh (DB nhỏ, có index) để không lộ ra ở độ trễ nước đi tại quy mô này.
+    Bản thân request đăng ký thì chậm thật (p50=517ms, max=913ms cho 14 request
+    đồng thời — hợp lý vì threadpool mặc định chỉ có 4 luồng, 14 request tranh
+    nhau) — nhưng độ chậm đó **không lan sang** người đang chơi.
+    **Giới hạn của phép đo này — đừng coi đây là đóng hẳn:** chỉ 14 request đăng
+    ký cùng lúc (bị `authLimiter` 20/15 phút chặn bớt, không bắn được nhiều hơn),
+    DB gần như rỗng (không đại diện DB đã có hàng nghìn user), và cửa sổ "trong
+    đợt bắn" chỉ ~921ms nên số mẫu ít (186). Nếu sau này thấy nghi ngờ tương tự
+    ở DB lớn hoặc burst đăng ký lớn hơn nhiều, nên đo lại chứ đừng dựa vào kết
+    quả này mãi mãi. Harness: xem `docs/stress-test-report.md` (đoạn bổ sung).
+
+24. ~~**Chưa kiểm flood protection có báo nhầm dưới tải cao hay không**~~
+    **✅ ĐÃ LÀM (2026-08-02), KHÔNG THẤY BÁO NHẦM** — làm chung với TEST-MATRIX
+    row 23 đúng như đề xuất, ra thành test thật `e2e/flood-protection.spec.ts`
+    (2 case, chạy `npx playwright test e2e/flood-protection.spec.ts
+    --project=chromium` xanh 2 lần liên tiếp, kể cả khi 2 case chạy song song
+    2 worker).
+    - **Case dương (row 23):** 1 socket bắn liên tục ~200 event/s (gấp 4 lần
+      ngưỡng 50) → nhận đúng nhiều cảnh báo `room:error`, rồi bị
+      `socket.disconnect(true)` sau đúng `FLOOD_DISCONNECT_STREAK=5` cửa sổ vi
+      phạm liên tiếp (khớp code, không sai lệch số cửa sổ).
+    - **Case âm (B24):** 300 socket đồng thời, mỗi socket giữ nhịp 40 event/s
+      (dưới ngưỡng 50), tổng toàn server = 12 000 event/s → **0 cảnh báo oan, 0
+      bị ngắt oan**. Đo tay thêm ở mức khắc nghiệt hơn (500 socket × 45/s = 22
+      500 event/s, sát ngưỡng 50 hơn) vẫn **0 báo nhầm**.
+    - **Kết luận: thiết kế đếm theo closure-riêng-từng-socket (không có bộ đếm
+      dùng chung) chịu được tải tổng cao mà không báo nhầm, kể cả khi timer
+      1s/socket có thể bị trễ dưới áp lực event loop.** Không cần sửa gì.
+    - **Lưu ý trung thực (2026-08-02, phát hiện khi làm B19-B22 ngay sau đó):**
+      chạy lại `e2e/flood-protection.spec.ts` để double-check sau 1 phiên tải
+      nặng khác (B19-B22, dựng/huỷ 784+ ván) trên **cùng 1 tiến trình server**
+      → case âm **fail đúng 1 lần** (`falseDisconnects` > 0). Restart server
+      sạch rồi chạy lại **10/10 lần liên tiếp đều xanh**; chạy thêm 4 lần ngay
+      sau lần fail (chưa restart) cũng xanh cả 4. Tổng: **14/15 lần xanh**, 1
+      lần fail xảy ra ngay sau khi tiến trình server vừa xử lý xong một đợt
+      tải nặng không liên quan. **Chưa đủ bằng chứng để coi đây là bug thật**
+      (không lặp lại được khi thử lại có chủ đích), nhưng cũng chưa loại trừ
+      hẳn được khả năng dồn GC/event-loop từ đợt tải trước đó làm 1 cửa sổ bị
+      trễ thật. Nếu `e2e/flood-protection.spec.ts` fail lại trong CI hay lần
+      chạy sau, đừng coi là flaky-test-nên-retry — đối chiếu xem ngay trước đó
+      server có vừa xử lý tải nặng khác không trước khi kết luận.
+      Chi tiết đầy đủ: `docs/stress-test-report.md` (đoạn bổ sung).
+
+25. ~~**Đường từ chối ở cap thật chưa được test dưới burst**~~
+    **✅ ĐÃ ĐO (2026-08-02), KHÔNG THẤY LỖI** — chạy đúng ở cap production
+    (`MAX_ROOMS_PER_IP = 3`, `MAX_USERS_PER_ROOM = 20`, không nâng gì):
+    (A) bắn 15 lệnh `room:create` đồng thời từ cùng 1 IP → đúng **3** thành công,
+    12 bị từ chối sạch bằng `room:error` (0 timeout/rơi gói im lặng), và 1 lệnh
+    tạo tiếp **sau khi** đợt burst đã lắng vẫn bị từ chối đúng — tức bộ đếm quota
+    không bị lệch (không có "ghost room" nào latent làm sai số đếm).
+    (B) bắn 40 lệnh `room:join` đồng thời vào **1** phòng (đã có sẵn 1 người) →
+    đúng **19** thành công (= `MAX_USERS_PER_ROOM - 1`), 21 bị từ chối sạch bằng
+    `room:error`, 0 timeout.
+    **Kết luận: cả 2 cap đều đúng thiết kế dưới burst đồng thời, không có race,
+    không rò phòng/người.** Không cần sửa gì. Harness:
+    `docs/stress-test-report.md` (đoạn bổ sung).
+
+26. ~~**Harness đo tải hiện chỉ là script tạm, chưa vào repo**~~
+    **✅ ĐÃ LÀM (2026-08-02)** — người dùng xác nhận muốn đo định kỳ nên đã viết
+    thành harness thật, nằm ngoài `e2e/*.spec.ts` (phá hoại tài nguyên, không
+    trộn vào suite chức năng): `scripts/capacity-test/{orchestrator.js,
+    worker.js,README.md}`.
+    - **Đa tiến trình thật**: `orchestrator.js` dùng `child_process.fork` chia
+      số phòng cho N tiến trình OS riêng (`worker.js`), không phải 1 event
+      loop giả lập nhiều kết nối — đúng hướng Phần A #7 nêu, dù không giải
+      quyết được A7 (đa máy) mà chỉ đa tiến trình cùng máy.
+    - **Nhịp người thật**: mỗi nước có độ trễ ngẫu nhiên có thể chỉnh
+      (mặc định 1200-3500ms), không còn nén cố định 400ms.
+    - **Ngưỡng pass/fail rõ ràng**: tỉ lệ tạo phòng thành công tối thiểu, p95
+      độ trễ nước đi tối đa, 0 lỗi khi chơi — exit code 0/1, không chỉ in số.
+    - `server/config.js`: `MAX_ROOMS`/`MAX_ROOMS_PER_IP`/`MAX_USERS_PER_ROOM`
+      giờ đọc được từ env (mặc định giữ nguyên giá trị production 10/3/20) để
+      harness đổi tải mà không phải sửa file đã track mỗi lần — thay cho cách
+      sửa tạm + `git checkout` trước đây ở mục 19-25.
+    - **Phát hiện phụ khi chạy thử**: chạy nhiều tiến trình trên cùng 1 máy
+      chia sẻ chung 1 IP nên bị `MAX_ROOMS_PER_IP` (không phải `MAX_ROOMS`)
+      giới hạn trước — khớp đúng phát hiện đã xác nhận ở mục 25, không phải
+      bug của harness; đã đổi mặc định `--rooms=3 --workers=3` cho đúng. Và:
+      đóng socket thô (không phát `room:leave`) giữ phòng qua
+      `DISCONNECT_GRACE_MS` (60s) trước khi nhả quota — đã sửa `worker.js`
+      phát `room:leave` (đợi ack `room:left`) trước khi đóng để nhả ngay,
+      chạy 2 lần liên tiếp không cần đợi xác nhận ổn.
+    - Đã chạy thật để xác minh: ở cap production (`--rooms=3`) PASS 3 lần liên
+      tiếp; ở cap nâng tạm (`MAX_ROOMS=20 MAX_ROOMS_PER_IP=20`, server phụ ở
+      cổng 3099, đã tắt sau khi xong) `--rooms=20 --workers=5` PASS. `npm test`
+      (284 test) vẫn xanh sau khi đổi `server/config.js`.
+
+### Nguồn: truy nguyên trần kết nối (2026-08-02, xem `docs/stress-test-report.md` §10)
+
+27. ~~**Hàng đợi accept TCP tràn — mất 12-14% kết nối ở burst lớn**~~
+    **✅ ĐÃ SỬA (2026-08-02), CHƯA COMMIT** — đây là **bug thật đầu tiên** tìm
+    được từ toàn bộ đợt đo tải, và là nguyên nhân gốc của trần ~3000 người ghi
+    ở mục 7.
+    - **Lỗi:** `server.listen(port, cb)` của Node dùng backlog mặc định **511**.
+      Khi hàng nghìn kết nối MỚI ập đến cùng lúc, hàng đợi accept của kernel đầy
+      và mọi SYN tiếp theo bị **drop im lặng**.
+    - **Vì sao khó thấy:** drop xảy ra ở tầng kernel, **dưới** ứng dụng — không
+      log, không event lỗi, CPU server chỉ ~26-42% một core trông rất khoẻ.
+      Triệu chứng duy nhất là `connect timeout` ở **phía client**, rất dễ bị
+      hiểu nhầm là lỗi mạng/client.
+    - **Bằng chứng đo trực tiếp** (không suy đoán): `TcpExtListenOverflows`
+      trong `/proc/net/netstat` tăng **+14 003** trong 1 lần chạy 4000 người ở
+      backlog 511; sau khi sửa còn +3 118 và **không mất kết nối nào**.
+    - **Sửa:** `server/index.js` truyền backlog tường minh
+      (`server.listen({ port, backlog: config.LISTEN_BACKLOG })`), hằng số
+      `LISTEN_BACKLOG` trong `server/config.js` mặc định **4096**, đổi được qua
+      env. Kernel tự kẹp theo `net.core.somaxconn` nên đặt cao **an toàn**,
+      máy nào cho phép ít hơn thì tự giảm chứ không lỗi.
+    - **Kết quả:** 4000 người kết nối đồng thời, **đúng cấu hình transport mặc
+      định đang ship**: từ 86-88% (240-282 lỗi) → **100%, 0 lỗi**, lặp lại 2 lần.
+    - **Unit test:** `server/tests/listen-backlog.test.js` (5 test) — đã kiểm
+      chứng là **fail đúng khi revert bản sửa**, không phải test luôn xanh.
+      `npm test` 289/289 xanh.
+
+28. **Thứ tự transport `websocket` trước `polling` — đã đo, CỐ Ý CHƯA ÁP DỤNG**
+    - Đo được: ở 4000 người, backlog 511, `['polling','websocket']` (mặc định
+      socket.io, đang ship) = 88.0% / 240 lỗi; `['websocket']` = 100% / 0 lỗi;
+      `['websocket','polling']` + `tryAllTransports` = **100% / 0 lỗi mà vẫn
+      giữ được fallback polling**.
+    - **Chưa áp dụng vì:** riêng bản sửa backlog (mục 27) đã đưa cấu hình mặc
+      định về 100% ở 4000 người rồi. Đổi thứ tự transport ảnh hưởng đường kết
+      nối của **mọi client thật** (kể cả người sau proxy chặn WebSocket — đúng
+      lý do socket.io mặc định polling trước), nên phải là một thay đổi riêng
+      có lý lẽ riêng, không gộp vào bản sửa backlog.
+
+29. **Trần >6000 người vẫn chưa quy được nguyên nhân** — sau khi sửa backlog,
+    ở 6000 người: **0** `ListenOverflows` (hàng đợi accept đã hết tràn hoàn
+    toàn) nhưng tỉ lệ thành công vẫn ~75%, CPU server chỉ ~26%. Tăng số tiến
+    trình sinh tải (8 → 16) **không cải thiện**, nên không phải chỉ do số
+    tiến trình harness. Nghi phạm còn lại chưa tách bạch được: đường handshake
+    engine.io đơn luồng, `jwt.verify` mỗi kết nối trên main thread, hoặc chính
+    khả năng mở 6000 socket dồn dập của máy chạy test. **Chưa sửa gì** — giữ
+    đúng quy tắc "tái hiện → đo → mới sửa", ghi lại là chưa giải thích được
+    thay vì đoán.
 
 ---
 
