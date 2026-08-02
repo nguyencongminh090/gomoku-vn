@@ -15,13 +15,25 @@ require('./utils/load-env').loadEnv();
 // can dial concurrency for a run without editing this tracked file each time
 // (see TODO.md #26 / instruction.md §B26). Unset in production — the literal
 // defaults below are what actually ships.
-const MAX_ROOMS             = parseInt(process.env.MAX_ROOMS, 10) || 10;
+//
+// Raised 2026-08-03 (TODO.md #31) from the original 10/20 (200 total
+// room-members) to 50/40 (2000 total): these were always an abuse-prevention
+// choice, not a capacity one (see docs/stress-test-report.md §8) — the
+// server itself is verified clean up to ~3000-4000 concurrent players
+// (docs/stress-test-report.md §9-10, TODO.md #27-29), so 2000 total
+// room-members still leaves comfortable headroom under that ceiling.
+// MAX_ROOMS_PER_IP was deliberately left at 3 (not asked for, not scaled
+// up) — see the comment on it below for why that's still a meaningful cap
+// at the new pool size.
+const MAX_ROOMS             = parseInt(process.env.MAX_ROOMS, 10) || 50;
 // Per-IP share of MAX_ROOMS. Deliberately not 1: phones on the same mobile
 // carrier NAT, and everyone on one office/school/home wifi, share a public IP,
 // so a limit of 1 would lock out real users who did nothing wrong. 3 still
-// stops one client from taking the whole MAX_ROOMS pool.
+// stops one client from taking the whole MAX_ROOMS pool — and still does at
+// MAX_ROOMS=50 (3/50 = 6% of the pool, tighter in relative terms than the
+// original 3/10 = 30%), so this was not raised alongside MAX_ROOMS.
 const MAX_ROOMS_PER_IP      = parseInt(process.env.MAX_ROOMS_PER_IP, 10) || 3;
-const MAX_USERS_PER_ROOM    = parseInt(process.env.MAX_USERS_PER_ROOM, 10) || 20; // 2 players + 18 guests
+const MAX_USERS_PER_ROOM    = parseInt(process.env.MAX_USERS_PER_ROOM, 10) || 40; // 2 players + 38 guests
 const IDLE_TIMEOUT_MS       = 600_000; // 10 minutes
 const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against IDLE_TIMEOUT_MS
 
