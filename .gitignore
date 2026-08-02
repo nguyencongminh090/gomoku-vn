@@ -22,6 +22,7 @@ tools/profanity-training/data/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+/e2e/results/
 
 # Playwright
 /playwright/.auth/
