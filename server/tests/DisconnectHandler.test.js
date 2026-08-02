@@ -37,12 +37,16 @@ jest.mock('../socket/handlers/GameHandler', () => ({
 const mockState = {
   timerMap: new Map(),
   disconnectTimers: new Map(),
+  emptyRoomGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
+  cleanupReadyTimer: jest.fn(),
   findSocketsByUserId: jest.fn(() => []),
   syncReadyWindow: jest.fn(),
 };
 jest.mock('../socket/state', () => mockState);
+
+const config = require('../config');
 
 const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
 
@@ -78,6 +82,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockState.timerMap.clear();
   mockState.disconnectTimers.clear();
+  mockState.emptyRoomGraceTimers.clear();
   mockState.findSocketsByUserId.mockReturnValue([]);
 });
 
@@ -99,11 +104,15 @@ describe('DisconnectHandler — stale socket race guard', () => {
     expect(mockState.disconnectTimers.size).toBe(0);
   });
 
-  test('proceeds with normal leave when no other active socket exists and not in a live game', () => {
+  test('proceeds with normal leave when no other active socket exists, not in a live game, and not the sole occupant', () => {
     const io = makeIo();
     const socket = makeSocket('u1', 'Alice');
     mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
-    mockRoomManager.getRoom.mockReturnValue({ roomId: 'room1', gameState: null });
+    mockRoomManager.getRoom.mockReturnValue({
+      roomId: 'room1',
+      gameState: null,
+      users: new Map([['u1', { userId: 'u1' }], ['u2', { userId: 'u2' }]]),
+    });
     mockRoomManager.leaveRoom.mockReturnValue({ room: { roomId: 'room1', users: new Map() } });
 
     DisconnectHandler.handleDisconnect(io, socket);
@@ -237,6 +246,96 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     const resumed = DisconnectHandler.cancelDisconnectGrace(io, socket);
 
     expect(resumed).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Empty-room grace period (TODO.md #18 / instruction.md §B18, second pass —
+// a full-page navigation always disconnects the old socket before the new
+// page's socket reconnects, so destroying a solo-occupant room immediately
+// on disconnect punishes ordinary navigation, not just abandonment).
+// ---------------------------------------------------------------------------
+describe('DisconnectHandler — empty-room grace period', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockState.disconnectTimers.clear();
+    mockState.emptyRoomGraceTimers.clear();
+    mockState.timerMap.clear();
+    jest.clearAllMocks();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  function soloRoom() {
+    return {
+      roomId: 'room1',
+      gameState: null,
+      users: new Map([['u1', { userId: 'u1', displayName: 'Alice' }]]),
+    };
+  }
+
+  test('starts a grace period instead of destroying the room when the disconnecting user is the sole occupant', () => {
+    const io = makeIo();
+    const socket = makeSocket('u1', 'Alice');
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(soloRoom());
+
+    DisconnectHandler.handleDisconnect(io, socket);
+
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
+    expect(mockState.emptyRoomGraceTimers.has('u1')).toBe(true);
+  });
+
+  test('cancelEmptyRoomGrace cancels the timer and leaveRoom is never called', () => {
+    const io = makeIo();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(soloRoom());
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    expect(mockState.emptyRoomGraceTimers.has('u1')).toBe(true);
+
+    const cancelled = DisconnectHandler.cancelEmptyRoomGrace('u1');
+
+    expect(cancelled).toBe(true);
+    expect(mockState.emptyRoomGraceTimers.has('u1')).toBe(false);
+
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
+  });
+
+  test('grace expiring without a reconnect leaves for real and destroys the room', () => {
+    const io = makeIo();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(soloRoom());
+    mockRoomManager.leaveRoom.mockReturnValue({ room: { roomId: 'room1' }, destroyed: true });
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    expect(mockState.emptyRoomGraceTimers.has('u1')).toBe(true);
+
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+
+    expect(mockState.emptyRoomGraceTimers.has('u1')).toBe(false);
+    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u1');
+    expect(mockState.cleanupRoomTimer).toHaveBeenCalledWith('room1');
+    expect(mockState.broadcastLobbyUpdate).toHaveBeenCalled();
+  });
+
+  test('a second disconnect for the same user replaces the stale timer instead of stacking two', () => {
+    const io = makeIo();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(soloRoom());
+    mockRoomManager.leaveRoom.mockReturnValue({ room: { roomId: 'room1' }, destroyed: true });
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+
+    expect(mockState.emptyRoomGraceTimers.size).toBe(1);
+
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+    expect(mockRoomManager.leaveRoom).toHaveBeenCalledTimes(1);
+  });
+
+  test('cancelEmptyRoomGrace returns false when nothing is pending for the user', () => {
+    expect(DisconnectHandler.cancelEmptyRoomGrace('nobody')).toBe(false);
   });
 });
 

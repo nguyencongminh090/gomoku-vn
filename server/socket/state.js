@@ -22,6 +22,9 @@ const timerMap = new Map();
 /** Per-player disconnect grace timers: userId → { timeout, countdown, roomId } */
 const disconnectTimers = new Map();
 
+/** Per-user empty-room grace timers: userId → { timeout, roomId } */
+const emptyRoomGraceTimers = new Map();
+
 /** Per-room ready-window timers (Start modal 30s countdown): roomId → Timeout */
 const readyTimers = new Map();
 
@@ -241,6 +244,7 @@ function handleReadyWindowTimeout(io, roomId) {
 module.exports = {
   timerMap,
   disconnectTimers,
+  emptyRoomGraceTimers,
   readyTimers,
   sessions,
   getOnlineUsersList,

@@ -126,6 +126,12 @@ function init(io) {
       io.to(LOBBY_ROOM).emit('lobby:online_users', getOnlineUsersList());
     }
 
+    // Cancel any pending empty-room grace for this user (see
+    // DisconnectHandler.js) before the reconnect/rejoin checks below run, so
+    // a returning socket — e.g. room.html's fresh connection right after
+    // index.html's navigated away — finds the room still there.
+    DisconnectHandler.cancelEmptyRoomGrace(user.userId);
+
     // Check if this is a reconnect during a disconnect grace period
     if (DisconnectHandler.cancelDisconnectGrace(io, socket)) {
       // Game resumed — nothing more to do

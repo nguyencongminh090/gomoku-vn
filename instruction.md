@@ -309,6 +309,53 @@ không"):
    kiện đã làm lộ lỗi của hướng 1). `npm test`: 289/289 xanh — không có test
    unit mới vì #18 cuối cùng không đụng code server.
 
+**⚠️ Vòng 2 (2026-08-02, sau test thật trên `play3cr.dpdns.org`)**: hướng 2 ở
+trên hoá ra chỉ che triệu chứng. Người dùng thật báo cáo **không tạo được
+phòng nào**, log server xác nhận: mỗi lần tạo phòng, phòng bị huỷ ngay trong
+cùng giây do `handleDisconnect()` — không phải hiếm dưới tải nặng như lần đo
+trên localhost, mà là **mọi lần**, một mình, mạng thật. Người dùng xác nhận
+trực tiếp nguyên nhân: chuyển trang lobby → room bị server xử lý y như một
+lần ngắt kết nối thật, và bị lặp lại liên tục.
+
+Sửa lại lần này bằng đúng cơ chế đã revert ở hướng 1 (`emptyRoomGraceTimers`),
+nhưng **không** kèm theo phần ack-trước-khi-điều-hướng đã gây rủi ro trước đó:
+
+- `EMPTY_ROOM_GRACE_MS` (`server/config.js`, mặc định 20s, override qua env
+  `EMPTY_ROOM_GRACE_MS`). `DisconnectHandler.handleDisconnect()`: nếu người
+  vừa ngắt kết nối là **thành viên duy nhất còn lại** trong phòng, không gọi
+  `roomManager.leaveRoom()` ngay — gọi `startEmptyRoomGrace()`, giữ nguyên
+  membership trong `RoomManager`, chỉ đặt 1 `setTimeout`. Hết giờ mới thật sự
+  gọi `leaveRoom()` (qua `finalizeNormalLeave()`, dùng chung logic với đường
+  disconnect thường để không lặp code).
+- `SocketHandler.js`: mọi kết nối mới đều gọi
+  `DisconnectHandler.cancelEmptyRoomGrace(user.userId)` **trước** khi chạy
+  logic auto-rejoin sẵn có (`roomManager.getRoomByUser` → emit `room:joined`)
+  — không cần đổi gì thêm, vì phòng chưa từng bị xoá khỏi `RoomManager` nên
+  auto-rejoin tự nhiên tìm thấy và vào lại được.
+- **Vì sao lần này khác lần trước dù cùng ý tưởng "grace period":**
+  - Nút "Rời phòng" (`room:leave`, `RoomHandler.js`) hoàn toàn tách biệt khỏi
+    `handleDisconnect()` — vẫn huỷ phòng ngay lập tức như cũ. Grace chỉ áp
+    dụng cho đường disconnect **ngoài ý muốn** (điều hướng trang, mạng chập
+    chờn), không bao giờ trì hoãn một lần rời phòng chủ động.
+  - Không đổi `submitCreate()`/kiến trúc điều hướng lạc quan — không thêm
+    "chờ ack trước khi chuyển trang" nên không tạo thêm cửa sổ ngắt-kết-nối
+    mới nào so với hiện trạng đang chạy.
+  - Lo ngại cũ ("bất kỳ timeout hữu hạn nào cũng có thể bị phá vỡ") vẫn đúng
+    về lý thuyết, nhưng giờ có bằng chứng thật: **không có grace = hỏng 100%
+    số lần**, có grace 20s = một cải thiện chắc chắn so với hiện trạng, không
+    phải rủi ro cộng thêm vào một đường đang chạy tốt (vì đường đó *đang
+    không* chạy tốt).
+- **Test**: `server/tests/DisconnectHandler.test.js`, describe block mới
+  "empty-room grace period" — 5 test (bắt đầu grace đúng lúc, cancel qua
+  reconnect không gọi `leaveRoom`, hết hạn thì huỷ thật + cleanup timer/ready
+  timer + broadcast lobby, disconnect lặp lại không chồng timer, cancel khi
+  không có gì đang chờ trả `false`). Mutation-check: revert riêng
+  `DisconnectHandler.js` → cả 5 fail → khôi phục → `npm test`: 294/294 xanh.
+  Cũng phải sửa mock `DisconnectHandler` trong `SocketHandler.test.js` và
+  `flood-protection.test.js` (thêm `cancelEmptyRoomGrace: jest.fn(() =>
+  false)`) và mock room trong test "proceeds with normal leave..." (thêm
+  `users` map 2 người, vì code mới đọc `room.users.size`).
+
 ### B19–B26. Nhóm phát hiện từ stress test (2026-08-02)
 
 **Quy tắc chung cho cả nhóm này — đọc trước khi đụng bất kỳ mục nào:**
