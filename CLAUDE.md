@@ -33,3 +33,12 @@ When fixing a reported bug or issue:
 - **Merge to `main` only once the fix is verified** (tests green, matches the guidance in `instruction.md` for that item if any exists). Use a regular merge commit (not squash, not rebase) so the branch's commit stays traceable back to the fix.
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
 - This applies to actual code fixes. Doc-only updates (`TODO.md`, `instruction.md`, `CLAUDE.md`, `docs/fix-log.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
+
+## Short/underspecified prompts: enhance, confirm, then execute
+
+If a user prompt is short or lacks the detail an AI agent needs to act on safely (ambiguous scope, missing target file/fix id, unclear which of several plausible interpretations applies):
+
+- Use the `prompt-architect` skill to expand the prompt into a clearer, more actionable version.
+- Verify the enhanced interpretation with the user (e.g. via `AskUserQuestion` or a short confirmation) before executing — do not silently act on a guessed interpretation.
+- Only proceed with execution once the user has confirmed the intended scope/context.
+- This does not apply to prompts that are short but already unambiguous (e.g. "run tests", "yes", "continue") — the enhance-and-confirm step is for genuine ambiguity, not brevity alone.
