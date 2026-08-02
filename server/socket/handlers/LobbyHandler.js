@@ -15,6 +15,7 @@ const roomManager = require('../../managers/RoomManager');
 const {
   timerMap,
   broadcastLobbyUpdate,
+  broadcastRoomUpdate,
   sendLobbySnapshot,
   getClientIp,
 } = require('../state');
@@ -101,7 +102,7 @@ function register(io, socket) {
       }
     }
     socket.emit('room:joined', joinPayload);
-    socket.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
+    broadcastRoomUpdate(io, room);
     broadcastLobbyUpdate(io);
 
     io.to(room.roomId).emit('chat:message', {

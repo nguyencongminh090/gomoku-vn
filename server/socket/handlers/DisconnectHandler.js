@@ -17,6 +17,7 @@ const {
   disconnectTimers,
   emptyRoomGraceTimers,
   broadcastLobbyUpdate,
+  broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
   findSocketsByUserId,
@@ -88,7 +89,7 @@ function finalizeNormalLeave(io, roomId, user, result) {
     // Leaving a seat mid ready-window frees it — resync (clears the window
     // since the room now has fewer than 2 seated players).
     syncReadyWindow(io, result.room);
-    io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+    broadcastRoomUpdate(io, result.room);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} đã mất kết nối.`,
@@ -225,7 +226,7 @@ function startDisconnectGrace(io, room, user) {
 
     const result = roomManager.leaveRoom(user.userId);
     if (result.destroyed) cleanupRoomTimer(roomId);
-    else if (result.room) io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+    else if (result.room) broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   }, config.DISCONNECT_GRACE_MS);
 
@@ -304,7 +305,7 @@ function cancelDisconnectGrace(io, socket) {
     timer: timer ? timer.getTimers() : null,
     timerSync: timer ? timer.getSync() : null,
   });
-  io.to(entry.roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
+  broadcastRoomUpdate(io, room);
   io.to(entry.roomId).emit('chat:message', {
     from: null, fromId: null,
     text: `${user.displayName} đã kết nối lại! Ván đấu tiếp tục.`,

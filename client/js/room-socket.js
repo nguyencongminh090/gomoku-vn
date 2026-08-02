@@ -69,12 +69,28 @@
     const st = S();
     const prevSlot = st.mySlot;
 
-    // Merge, don't replace. room:updated omits `settings` (they don't change on
-    // sit/stand/ready/join/leave/kick — see RoomManager.serializeRoomUpdate),
-    // so the values from room:joined have to survive here. renderSettings() and
-    // initBoard() read st.roomData.settings without optional chaining and would
-    // throw on a replace.
-    st.roomData = Object.assign({}, st.roomData, data);
+    // Merge, don't replace. `settings` only arrives on the one event where it
+    // actually changed (see RoomManager.serializeRoomUpdate), and `users` /
+    // `scoreTable` only arrive when something in them actually changed (see
+    // broadcastRoomUpdate in server/socket/state.js) — any omitted field must
+    // keep whatever the client already holds. renderSettings() and initBoard()
+    // read st.roomData.settings without optional chaining and would throw on
+    // a wholesale replace.
+    const { users: usersPatch, ...rest } = data;
+    st.roomData = Object.assign({}, st.roomData, rest);
+
+    // `users` is a patch — { upserts, removed } — not the full array, so it
+    // has to be folded into the existing list by userId rather than assigned
+    // wholesale. Both operations are idempotent (re-upserting an entry already
+    // held, or removing a userId never held, changes nothing), same as the
+    // lobby's room-list patch in lobby.js.
+    if (usersPatch) {
+      const byId = new Map((st.roomData.users || []).map(u => [u.userId, u]));
+      for (const userId of usersPatch.removed || []) byId.delete(userId);
+      for (const user of usersPatch.upserts || []) byId.set(user.userId, user);
+      st.roomData.users = Array.from(byId.values());
+    }
+
     RoomUI.updateUI();
 
     // Detect an involuntary seat vacate — the ready-window timeout kicks a

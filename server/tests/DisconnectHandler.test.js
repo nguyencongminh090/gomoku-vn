@@ -39,6 +39,7 @@ const mockState = {
   disconnectTimers: new Map(),
   emptyRoomGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  broadcastRoomUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
   cleanupReadyTimer: jest.fn(),
   findSocketsByUserId: jest.fn(() => []),
@@ -118,7 +119,7 @@ describe('DisconnectHandler — stale socket race guard', () => {
     DisconnectHandler.handleDisconnect(io, socket);
 
     expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u1');
-    expect(toEmitted(io, 'room1', 'room:updated')).toBeDefined();
+    expect(mockState.broadcastRoomUpdate).toHaveBeenCalledWith(io, { roomId: 'room1', users: new Map() });
   });
 
   test('does nothing when user is not in any room', () => {

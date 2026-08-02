@@ -21,6 +21,7 @@ const logger      = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
 const {
   broadcastLobbyUpdate,
+  broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
   findSocketsByUserId,
@@ -84,7 +85,7 @@ function register(io, socket) {
       broadcastLobbyUpdate(io);
     } else if (result.room) {
       syncReadyWindow(io, result.room);
-      io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+      broadcastRoomUpdate(io, result.room);
       if (result.hostTransferred) {
         const newHost = result.room.users.get(result.room.host);
         io.to(roomId).emit('chat:message', {
@@ -105,7 +106,7 @@ function register(io, socket) {
       return;
     }
     syncReadyWindow(io, result.room);
-    io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+    broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   });
 
@@ -116,7 +117,7 @@ function register(io, socket) {
       return;
     }
     syncReadyWindow(io, result.room);
-    io.to(result.room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+    broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   });
 
@@ -133,7 +134,7 @@ function register(io, socket) {
     // The one room:updated that must carry `settings`: this is the only event
     // where they actually changed, and clients merge rather than replace, so
     // this is where they learn the new values. See RoomManager.serializeRoomUpdate.
-    io.to(roomId).emit('room:updated', roomManager.serializeRoom(result.room));
+    broadcastRoomUpdate(io, result.room, { settings: true });
     broadcastLobbyUpdate(io);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -155,10 +156,10 @@ function register(io, socket) {
     if (result.allReady) {
       cleanupReadyTimer(roomId);
       result.room.readyDeadline = null;
-      io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+      broadcastRoomUpdate(io, result.room);
       getGameHandler().startGame(io, result.room);
     } else {
-      io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+      broadcastRoomUpdate(io, result.room);
     }
   });
 
@@ -183,7 +184,7 @@ function register(io, socket) {
     }
 
     syncReadyWindow(io, result.room);
-    io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+    broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   });
 }

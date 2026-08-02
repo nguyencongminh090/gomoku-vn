@@ -21,6 +21,7 @@ const {
   sessions,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
+  clearRoomUpdateSnapshot,
   cleanupRoomTimer,
 } = require('./state');
 
@@ -44,6 +45,11 @@ function init(io) {
     // did) both wasted the payload and left the delta baseline stale, so the
     // next patch re-announced a removal the lobby had already been told about.
     broadcastLobbyUpdate(io);
+    // `_destroyRoom` is the single choke point for every teardown path (idle
+    // cleanup, last member leaving, etc.), so this is the one place that needs
+    // to drop the room's `room:updated` diff baseline — otherwise state.js's
+    // snapshot maps would grow forever as rooms are created and destroyed.
+    clearRoomUpdateSnapshot(roomId);
   });
 
   // Socket event flood-protection middleware

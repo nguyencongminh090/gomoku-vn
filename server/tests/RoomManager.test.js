@@ -242,6 +242,14 @@ describe('every room:updated emit site', () => {
   // The review counted 17 emit sites and warned that missing one leaves the
   // old payload in place. A source-level sweep is the only way to guard that:
   // a behavioural test only covers the paths it happens to exercise.
+  //
+  // Since the room:updated O(n²) delta fix (see state.js's broadcastRoomUpdate
+  // and docs/fix-log.md), every one of those 17 sites goes through the shared
+  // broadcastRoomUpdate(io, room[, opts]) helper instead of emitting directly
+  // — mirroring the same "call sites can't describe the change, only that
+  // something changed" shape already used for lobby:patch. The direct
+  // `.emit('room:updated', ...)` should now exist in exactly one place: inside
+  // broadcastRoomUpdate itself.
   const SOCKET_DIR = path.join(__dirname, '..', 'socket');
 
   function jsFilesUnder(dir) {
@@ -255,32 +263,37 @@ describe('every room:updated emit site', () => {
   }
 
   const emitSites = [];
+  const callSites = [];
   for (const file of jsFilesUnder(SOCKET_DIR)) {
     const src = fs.readFileSync(file, 'utf8');
     src.split('\n').forEach((line, i) => {
       if (line.includes("emit('room:updated'")) {
         emitSites.push({ file: path.relative(SOCKET_DIR, file), line: i + 1, text: line.trim() });
       }
+      // Exclude the function's own declaration line and the destructured
+      // import lines — only lines that actually invoke it with an `io` arg.
+      if (/broadcastRoomUpdate\(io\b/.test(line) && !/^function /.test(line.trim())) {
+        callSites.push({ file: path.relative(SOCKET_DIR, file), line: i + 1, text: line.trim() });
+      }
     });
   }
 
-  test('all 17 sites are still accounted for', () => {
-    expect(emitSites).toHaveLength(17);
+  test('the raw room:updated emit exists in exactly one place: inside broadcastRoomUpdate', () => {
+    expect(emitSites).toHaveLength(1);
+    expect(emitSites[0].file).toBe('state.js');
   });
 
-  test('uses serializeRoomUpdate everywhere except the one settings-change site', () => {
-    const withFullSettings = emitSites.filter(s => /serializeRoom\(/.test(s.text));
+  test('all 17 sites are still accounted for, now via broadcastRoomUpdate', () => {
+    expect(callSites).toHaveLength(17);
+  });
 
-    // Exactly one: the room:settings handler, the only event where settings
-    // actually changed and the client needs the new values.
-    expect(withFullSettings).toHaveLength(1);
-    expect(withFullSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
+  test('passes { settings: true } at exactly the one settings-change site', () => {
+    const withSettings = callSites.filter(s => /settings:\s*true/.test(s.text));
 
-    const rest = emitSites.filter(s => !/serializeRoom\(/.test(s.text));
-    expect(rest).toHaveLength(16);
-    for (const site of rest) {
-      expect(site.text).toContain('serializeRoomUpdate(');
-    }
+    expect(withSettings).toHaveLength(1);
+    expect(withSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
+
+    expect(callSites.length - withSettings.length).toBe(16);
   });
 });
 
