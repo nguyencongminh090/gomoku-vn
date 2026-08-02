@@ -88,7 +88,7 @@ socketHandler.init(io);
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
-server.listen(config.HTTP_PORT, () => {
+server.listen({ port: config.HTTP_PORT, backlog: config.LISTEN_BACKLOG }, () => {
   logger.info(`[Server] Play3CR listening on http://localhost:${config.HTTP_PORT}`);
 });
 
