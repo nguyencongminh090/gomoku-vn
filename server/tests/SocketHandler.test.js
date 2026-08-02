@@ -189,11 +189,30 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
 
     const a = makeSocket(io, 'sockA', 'u1', 'Alice');
     connectSocket(io, a);
+    jest.advanceTimersByTime(300);
     expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(1);
 
     fireDisconnect(a);
+    jest.advanceTimersByTime(300);
     expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(2);
     expect(sessions.has('u1')).toBe(false);
+  });
+
+  test('a burst of connects/disconnects within the debounce window collapses to one lobby:online_users broadcast', () => {
+    const io = makeIo();
+    init(io);
+
+    // Five distinct users connecting back-to-back (e.g. a connection burst)
+    // used to each trigger their own full-list rebuild+broadcast — an O(n)
+    // rebuild fired n times. Debouncing should coalesce all of this into a
+    // single broadcast once the window elapses.
+    for (let i = 0; i < 5; i++) {
+      connectSocket(io, makeSocket(io, `sockBurst${i}`, `burst${i}`, `Burst${i}`));
+    }
+    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(0);
+
+    jest.advanceTimersByTime(300);
+    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(1);
   });
 
   test('eviction is an O(1) session-registry lookup, not a scan of io.sockets.sockets', () => {

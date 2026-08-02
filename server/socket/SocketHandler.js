@@ -19,8 +19,8 @@ const config             = require('../config');
 const {
   timerMap,
   sessions,
-  getOnlineUsersList,
   broadcastLobbyUpdate,
+  broadcastOnlineUsers,
   cleanupRoomTimer,
 } = require('./state');
 
@@ -29,8 +29,6 @@ const RoomHandler       = require('./handlers/RoomHandler');
 const GameHandler       = require('./handlers/GameHandler');
 const ChatHandler       = require('./handlers/ChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
-
-const LOBBY_ROOM = 'lobby';
 
 /**
  * Initialize the Socket.io event handler.
@@ -123,7 +121,7 @@ function init(io) {
     const wasOnline = sessions.has(user.userId);
     sessions.set(user.userId, socket);
     if (!wasOnline) {
-      io.to(LOBBY_ROOM).emit('lobby:online_users', getOnlineUsersList());
+      broadcastOnlineUsers(io);
     }
 
     // Cancel any pending empty-room grace for this user (see
@@ -187,7 +185,7 @@ function init(io) {
       // that already replaced it in the registry (see eviction above).
       if (sessions.get(user.userId) === socket) {
         sessions.delete(user.userId);
-        io.to(LOBBY_ROOM).emit('lobby:online_users', getOnlineUsersList());
+        broadcastOnlineUsers(io);
       }
 
       DisconnectHandler.handleDisconnect(io, socket);

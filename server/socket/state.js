@@ -98,6 +98,21 @@ const LOBBY_UPDATE_DEBOUNCE_MS = 300;
 const _lobbyUpdateTimers = new WeakMap();
 
 /**
+ * Debounce window for broadcastOnlineUsers(), mirroring
+ * LOBBY_UPDATE_DEBOUNCE_MS above. Connect/disconnect churn (many sessions
+ * flipping in a short window — reconnect storms, or the synchronized
+ * connection bursts measured in docs/stress-test-report.md §10) used to
+ * rebuild and broadcast the full online-users list once per individual
+ * connect/disconnect, an O(n) rebuild-and-fan-out fired up to n times, i.e.
+ * O(n²) total during a burst of n near-simultaneous connections. Debouncing
+ * collapses any such burst into one rebuild+broadcast per window.
+ */
+const ONLINE_USERS_DEBOUNCE_MS = 300;
+
+/** Per-io pending debounce timer for broadcastOnlineUsers(). */
+const _onlineUsersTimers = new WeakMap();
+
+/**
  * Per-io record of what lobby clients were last told: roomId → serialized
  * entry. Diffing against this at flush time is what makes the delta possible
  * without touching the ~15 call sites: they say "something changed", and the
@@ -167,6 +182,23 @@ function broadcastLobbyUpdate(io) {
     io.to('lobby').emit('lobby:patch', { upserts, removed });
   }, LOBBY_UPDATE_DEBOUNCE_MS);
   _lobbyUpdateTimers.set(io, timeout);
+}
+
+/**
+ * Broadcast the current online-users list to the lobby (debounced).
+ *
+ * See ONLINE_USERS_DEBOUNCE_MS above for why this can't just emit
+ * immediately on every call the way it used to.
+ *
+ * @param {import('socket.io').Server} io
+ */
+function broadcastOnlineUsers(io) {
+  if (_onlineUsersTimers.has(io)) return; // a broadcast is already scheduled for this burst
+  const timeout = setTimeout(() => {
+    _onlineUsersTimers.delete(io);
+    io.to('lobby').emit('lobby:online_users', getOnlineUsersList());
+  }, ONLINE_USERS_DEBOUNCE_MS);
+  _onlineUsersTimers.set(io, timeout);
 }
 
 /**
@@ -277,6 +309,7 @@ module.exports = {
   getOnlineUsersList,
   getClientIp,
   broadcastLobbyUpdate,
+  broadcastOnlineUsers,
   sendLobbySnapshot,
   findSocketsByUserId,
   cleanupRoomTimer,
