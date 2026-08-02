@@ -82,7 +82,8 @@ class RoomManager extends EventEmitter {
     // leaving, idle cleanup, and any path added later) and leaks quota
     // permanently the first time one is missed. Deriving the count from
     // this.rooms cannot drift — a destroyed room is gone from the map by
-    // definition. MAX_ROOMS is 10, so this scan is trivially cheap.
+    // definition. MAX_ROOMS stays small enough (config-driven, currently 50)
+    // that this scan is trivially cheap regardless of its exact value.
     if (userInfo.ip) {
       let fromThisIp = 0;
       for (const [, existing] of this.rooms) {

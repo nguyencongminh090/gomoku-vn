@@ -1,25 +1,20 @@
 # Play3CR (gomoku-vn)
 
-Real-time multiplayer Gomoku platform with two custom mechanics — **WALL** and **PORTAL** — built on Express, Socket.IO, and a Vite-bundled vanilla-JS client.
+Play3CR is a real-time multiplayer Gomoku platform built on Express, Socket.IO, and a Vite-bundled vanilla-JS client. Two custom mechanics set it apart from standard Gomoku: WALL, which drops obstacle cells onto the board, and PORTAL, which teleports pieces between paired cells.
 
 ## Features
 
-- Real-time multiplayer Gomoku over WebSockets (Socket.IO), with spectators/guests supported per room
-- **WALL** mechanic — obstacle cells placed on the board under configurable distance rules
-- **PORTAL** mechanic — paired teleport cells that alter piece placement
-- Configurable board sizes (15/17/19/20) and timer modes (per-move timers with "Xin Time" bonus requests)
-- JWT-authenticated sessions, room quotas per IP, idle-room reclamation, and graceful shutdown handling
-- In-room chat and move history/tree view on the client
+Matches run over WebSockets via Socket.IO, and each room supports both players and guest spectators. WALL places three obstacle cells under configurable distance rules; PORTAL adds two teleport pairs that change how pieces land. Board size (15, 17, 19, or 20) and timer mode are configurable per room, and players can request extra time with a limited number of free "Xin Time" bonuses before needing the opponent's permission. Sessions are JWT-authenticated, room creation is rate-limited per IP, idle rooms get reclaimed automatically, and the server shuts down gracefully without dropping active connections. On the client, players get in-room chat and a move history tree for reviewing past games.
 
-## Tech Stack
+## Tech stack
 
 **Server:** Node.js, Express, Socket.IO, better-sqlite3, JWT (jsonwebtoken), bcrypt, helmet, express-rate-limit
-**Client:** Vanilla JavaScript (ES modules), built/served via Vite
-**Testing:** Jest (unit/server), Playwright (end-to-end)
+**Client:** Vanilla JavaScript (ES modules), built and served via Vite
+**Testing:** Jest for unit tests, Playwright for end-to-end tests
 
 ## Prerequisites
 
-- Node.js >= 18.0.0
+- Node.js 18.0.0 or later
 
 ## Installation
 
@@ -29,43 +24,43 @@ cd gomoku-vn
 npm install
 ```
 
-Configure environment variables as needed (all optional, sensible defaults are used otherwise):
+All environment variables below are optional and fall back to sensible defaults, so this step can be skipped for local development.
 
 | Variable | Purpose | Default |
 |---|---|---|
 | `PORT` | HTTP server port | `3000` |
-| `JWT_SECRET` | Secret used to sign auth tokens (**required in production**) | dev-only fallback |
+| `JWT_SECRET` | Secret used to sign auth tokens (required in production) | dev-only fallback |
 | `CORS_ORIGIN` | Allowed Socket.IO CORS origin | `*` in dev, disabled in production |
-| `MAX_ROOMS` | Max concurrent rooms | `10` |
+| `MAX_ROOMS` | Max concurrent rooms | `50` |
 | `MAX_ROOMS_PER_IP` | Max rooms a single IP can create | `3` |
-| `MAX_USERS_PER_ROOM` | Max occupants per room | `20` |
+| `MAX_USERS_PER_ROOM` | Max occupants per room | `40` |
 | `EMPTY_ROOM_GRACE_MS` | Grace period before an empty room is destroyed | `20000` |
 | `LISTEN_BACKLOG` | TCP listen backlog | `4096` |
 
-Set these in a `.env` file at the project root — it's loaded automatically on startup (real environment variables always take precedence).
+Put these in a `.env` file at the project root. It loads automatically on startup, and any variable already set in the real environment takes precedence over it.
 
 ## Development
 
-Run the server and client dev servers:
+Run the server and client dev servers side by side:
 
 ```bash
 npm run dev          # server with --watch (auto-restart on file changes)
 npm run client:dev   # Vite dev server for the client
 ```
 
-Or run the server without `--watch`:
+To run the server without file watching:
 
 ```bash
 npm run dev:stable
 ```
 
-Build the client for production:
+To build the client for production:
 
 ```bash
 npm run build
 ```
 
-Run the production server (serves `client/` in dev, `dist/` when `NODE_ENV=production`):
+To start the production server (it serves `client/` in development and `dist/` once `NODE_ENV=production`):
 
 ```bash
 npm start
@@ -73,14 +68,14 @@ npm start
 
 ## Testing
 
-Unit tests (Jest, server-side):
+Unit tests run on the server with Jest:
 
 ```bash
 npm test
 npm run test:watch
 ```
 
-End-to-end tests (Playwright):
+End-to-end tests run with Playwright:
 
 ```bash
 npm run test:e2e
@@ -89,7 +84,7 @@ npm run test:e2e:ui       # interactive UI mode
 npm run test:e2e:report   # view the last HTML report
 ```
 
-## Project Structure
+## Project structure
 
 ```
 client/               Vite-built vanilla-JS frontend
@@ -115,6 +110,23 @@ e2e/                    Playwright end-to-end tests
 docs/                   Project documentation (including fix-log.md)
 scripts/                Utility scripts (e.g. capacity-test load harness)
 ```
+
+## Contributing
+
+Contributions are welcome, whether that's a bug fix, a new feature, or a documentation improvement. To get started:
+
+1. Fork the repository and create a branch off `main` for your change.
+2. Run `npm install` and confirm `npm test` passes before you start.
+3. Make your change, add or update tests for it, and keep `npm test` green.
+4. Open a pull request describing what changed and why.
+
+If you're planning something larger than a small fix, open an issue first so the approach can be discussed before you invest the time.
+
+## Roadmap
+
+Planned for a future release:
+
+- **Tournament mode**: bracket-style competitions with multiple players, seeding, and match progression, building on the existing room and matchmaking system.
 
 ## License
 

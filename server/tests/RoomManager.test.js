@@ -185,6 +185,74 @@ describe('RoomManager — per-IP room quota', () => {
   });
 });
 
+// ── Total room cap (MAX_ROOMS) ──────────────────────────────────────────────
+// Previously untested: the per-IP quota above had thorough coverage, but the
+// site-wide MAX_ROOMS cap it sits alongside (server/managers/RoomManager.js,
+// createRoom's very first check) had none. Spreads rooms across enough unique
+// IPs to hit MAX_ROOMS without tripping MAX_ROOMS_PER_IP first, so this tests
+// the cap this describe block is actually about.
+
+describe('RoomManager — total room cap (MAX_ROOMS)', () => {
+  let seq = 0;
+
+  function user(ip) {
+    seq++;
+    return { userId: `cap-u${seq}`, displayName: `CapUser${seq}`, isGuest: false, ip };
+  }
+
+  /** A fresh, never-before-used IP for every call, so MAX_ROOMS_PER_IP is never the blocker here. */
+  function freshIp() {
+    seq++;
+    return `198.51.100.${seq}`;
+  }
+
+  /** Fill the room pool to exactly `count`, spreading across as many unique IPs as needed. */
+  function fillRooms(count) {
+    const results = [];
+    let ip = freshIp();
+    let fromThisIp = 0;
+    for (let i = 0; i < count; i++) {
+      if (fromThisIp >= realConfig.MAX_ROOMS_PER_IP) {
+        ip = freshIp();
+        fromThisIp = 0;
+      }
+      results.push(roomManager.createRoom(user(ip)));
+      fromThisIp++;
+    }
+    return results;
+  }
+
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  test('exactly MAX_ROOMS rooms can be created, all from distinct IPs', () => {
+    const results = fillRooms(realConfig.MAX_ROOMS);
+    expect(results.every(r => r.room)).toBe(true);
+    expect(roomManager.rooms.size).toBe(realConfig.MAX_ROOMS);
+  });
+
+  test('the room after MAX_ROOMS is refused with a message, not a crash, even from a brand-new IP', () => {
+    fillRooms(realConfig.MAX_ROOMS);
+
+    const over = roomManager.createRoom(user(freshIp()));
+    expect(over.room).toBeUndefined();
+    expect(typeof over.error).toBe('string');
+    expect(roomManager.rooms.size).toBe(realConfig.MAX_ROOMS);
+  });
+
+  test('destroying one room frees a slot for a new one', () => {
+    const rooms = fillRooms(realConfig.MAX_ROOMS);
+    expect(roomManager.createRoom(user(freshIp())).error).toBeTruthy();
+
+    roomManager._destroyRoom(rooms[0].room.roomId);
+
+    expect(roomManager.createRoom(user(freshIp())).room).toBeDefined();
+  });
+});
+
 // ── room:updated payload ───────────────────────────────────────────────────
 
 describe('RoomManager — serializeRoomUpdate', () => {

@@ -40,12 +40,12 @@ node scripts/capacity-test/orchestrator.js --rooms=3
 
 **Important:** all workers on one test machine share a single source IP, so
 against real caps this harness is bounded by `MAX_ROOMS_PER_IP` (default 3),
-not the higher `MAX_ROOMS` (default 10) — confirmed empirically: a
-`--rooms=10` run against real caps from one machine reliably creates exactly
-3 rooms and rejects the other 7 with the real "quá nhiều phòng" quota
-message (this matches the already-verified TODO.md #25 finding, it is not a
-harness bug). Default is set to `3` for exactly this reason. To exercise the
-full `MAX_ROOMS` capacity, see below.
+not the higher `MAX_ROOMS` (default 50, raised from 10 — see TODO.md #31) —
+confirmed empirically: a `--rooms=10` run against real caps from one machine
+reliably creates exactly 3 rooms and rejects the rest with the real "quá
+nhiều phòng" quota message (this matches the already-verified TODO.md #25
+finding, it is not a harness bug). Default is set to `3` for exactly this
+reason. To exercise the full `MAX_ROOMS` capacity, see below.
 
 ### Testing above the real cap / total-room capacity (not per-IP quota)
 
