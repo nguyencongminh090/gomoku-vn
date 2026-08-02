@@ -139,6 +139,31 @@ không đụng tới):
   gắn APM. Là quyết định vận hành nên xếp Phần A; phần code của nó (nếu chọn
   hướng endpoint) thì nhỏ.
 
+### Nguồn: security review toàn bộ codebase (2026-08-03, yêu cầu người dùng "Does my website safe?")
+
+#### 9. Audit an ninh toàn bộ server + client — không phải diff, không có PR đang mở
+
+- Bối cảnh: `main` sạch, không có commit/diff đang chờ (`git status` "nothing to
+  commit"), nên không dùng được flow `/security-review` chuẩn (vốn review diff).
+  Đã chuyển sang audit toàn bộ codebase qua sub-agent thay vì review diff rỗng.
+- Phạm vi đã kiểm: SQL injection (`server/db/database.js`, `server/routes/
+  games.js`), stored XSS qua `displayName`, JWT lưu ở `localStorage`, JWT alg
+  confusion/`alg:none`, authorization bypass nước đi/lượt (`GameEngine.js`),
+  authorization phòng (host-only actions, `RoomManager.js`), SQL interpolation
+  trong `server/scripts/admin.js`, lộ id nội bộ qua `/api/games`.
+- **Kết quả: không có finding HIGH/MEDIUM đạt ngưỡng tin cậy ≥0.8.** Toàn bộ 8
+  candidate đều bị loại (confidence exploit 1-2/10) — chi tiết lý do loại từng
+  cái nằm trong báo cáo đã gửi người dùng (không chép lại ở đây, xem lịch sử
+  hội thoại nếu cần tra lại lý do cụ thể của từng candidate).
+- **Điểm không đạt ngưỡng "finding" nhưng đáng ghi nhận (không phải lỗ hổng
+  đang mở, là thiếu phòng thủ chiều sâu):** `isValidDisplayName`
+  (`server/routes/auth.js`) chỉ kiểm độ dài (2-24 ký tự), không giới hạn ký
+  tự — thứ duy nhất chặn stored XSS qua `displayName` là việc mọi điểm render
+  phía client (`room-ui.js`, `lobby.js`, `history.js`) đều gọi đúng
+  `escapeHtml`/`escapeAttr`/`escapeJsString` trước khi chèn vào `innerHTML`.
+  Không có lớp chặn nào ở nguồn (server) nếu một điểm render tương lai quên
+  escape. **Đã tách thành việc sửa được bằng code → xem Phần B #32.**
+
 ### Nguồn: kiểm chứng bản sửa (commit `3da53dd`, đo lại 2026-08-01)
 
 #### 5. Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ
@@ -995,6 +1020,55 @@ khi tái hiện được vấn đề** — thứ tự đúng là đo/chẩn đo�
       `"Phòng đã đầy."`, khớp chính xác dự đoán.
     - **Không thuộc phạm vi việc này** (không tự ý đổi): `MAX_ROOMS_PER_IP`.
       Nếu sau này muốn nới thêm `MAX_ROOMS`, nên xem lại tỷ lệ này cùng lúc.
+
+### Nguồn: security review toàn bộ codebase (2026-08-03)
+
+32. ~~**Giới hạn ký tự cho `displayName` — defense-in-depth, không phải lỗ hổng
+    đang mở**~~
+    **✅ ĐÃ XONG (2026-08-03)** — `isValidDisplayName` (`server/routes/auth.js`)
+    nay ngoài kiểm độ dài (2-24 ký tự, giữ nguyên) còn từ chối `DISPLAY_NAME_
+    FORBIDDEN`: 5 ký tự có ý nghĩa trong HTML/attribute/JS-string (`< > & " '`)
+    + control character C0/C1 (`U+0000-U+001F`, `U+007F-U+009F` — bao gồm
+    xuống dòng, tab, NUL, ký tự định dạng vô hình).
+    - **Chọn deny-list, KHÔNG allow-list ASCII** — đúng ràng buộc quan trọng
+      nhất của `instruction.md` §B32. Tên tiếng Việt có dấu ("Nguyễn Văn A"),
+      chữ Latin-1 có dấu, chữ CJK... đều **qua được**; đây là phần dễ hỏng
+      nhất nên test bên accept quan trọng ngang test bên reject.
+    - **Chỉ đúng 1 call site**: `POST /api/auth/register`. **Đính chính mô tả
+      gốc của mục này** — repo **không có route đổi tên hiển thị** nào (mô tả
+      cũ viết "khi đăng ký/đổi tên hiển thị"); tên khách do server tự sinh từ
+      `config.GUEST_NAME_ADJECTIVES/NOUNS` nên không đi qua hàm này.
+    - **Cố ý KHÔNG mở rộng phạm vi** (rule scope discipline): không chặn thêm
+      backtick/backslash dù cùng lý lẽ — không nằm trong danh sách §B32 đưa
+      ra. Lớp escape phía client giữ nguyên, đây là lớp chặn **thêm** ở nguồn,
+      không thay thế.
+    - **Thu hẹp đã biết, chấp nhận:** cấm `'` cũng chặn luôn tên thật kiểu
+      "O'Brien"/"D'Angelo" — không phải rủi ro với người dùng Việt (đối tượng
+      của app), và `'` đúng là ký tự thoát ra khỏi ngữ cảnh
+      `onclick="joinRoom('…')"` mà repo này đang dùng — nhưng đây là đánh đổi
+      thật, không phải lợi ích miễn phí.
+    - **Không đụng file `client/`** → không bump `?v=N`. Chỉ sửa thêm thông
+      báo lỗi 400 để nói rõ vi phạm luật ký tự, không phải luật độ dài.
+    - **Test:** file mới `server/tests/auth-display-name.test.js`, 25 case
+      chạy qua route thật (hàm là module-private, và route mới là thứ thật sự
+      gác cửa vào DB): 9 case accept (tiếng Việt có dấu, khoảng trắng giữa
+      tên, Latin-1, CJK, biên 2 và 24 ký tự, trim, dấu câu không phải HTML),
+      12 case reject (payload thẻ, `<`, `>`, `&`, `"`, `'`, img/onerror,
+      newline, CR, tab, NUL, C1), + reject theo độ dài vẫn chạy, reject
+      non-string, thông báo lỗi có nhắc luật ký tự, và tên bị từ chối **không
+      bao giờ** tới `db.createUser` lẫn `bcrypt.hash`.
+      **Mutation-check** (trên bản copy tạm, không sửa file gốc): khôi phục
+      bản chỉ-kiểm-độ-dài → **đúng 11/25 đỏ** (toàn bộ phía reject), 9 case
+      accept + case độ dài vẫn xanh — xác nhận test bắt đúng hành vi mới chứ
+      không phải chỉ bắt "hàm có tồn tại". `npm test` 359/359 xanh.
+      `express-rate-limit` bị stub thành pass-through **chỉ trong file test
+      này** (ma trận ký tự cần ~30 request register từ 1 IP, vượt hạn mức
+      20/15 phút của `authLimiter`) — ngưỡng production không đổi, đúng luật
+      "đừng nới rate limiter trong code production chỉ để tự test được".
+    - **Ngoài phạm vi, ghi lại chứ chưa làm:** ký tự Unicode gây giả mạo hiển
+      thị (zero-width, RTL override `U+202E`, homoglyph) vẫn qua được — đó là
+      mối đe doạ *spoofing tên*, khác với XSS mà §B32 nhắm tới. Nếu sau này
+      thấy cần thì mở mục riêng, không gộp ngược vào đây.
 
 ---
 
