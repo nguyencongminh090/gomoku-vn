@@ -30,7 +30,15 @@
 
   // ── Room state events ─────────────────────────────────────────────────────
 
+  // See the #room-entry-overlay comment in room.html — visible by default,
+  // hidden once we actually have room data to show instead of it.
+  function hideEntryOverlay() {
+    const el = document.getElementById('room-entry-overlay');
+    if (el) el.classList.remove('visible');
+  }
+
   client.on('room:joined', (data) => {
+    hideEntryOverlay();
     const st = S();
     st.roomData = data;
 

@@ -263,6 +263,52 @@ không"):
   sửa xong phần flash — nếu người báo cáo còn gặp lại, cần thêm chi tiết cụ
   thể (ảnh chụp, log console/network lúc đó) trước khi tìm tiếp.
 
+**✅ ĐÃ SỬA (2026-08-02) — xem TODO.md #18.** Hai hướng đã thử, chỉ giữ một:
+
+1. **Hướng ack-trước-khi-điều-hướng (đã làm, sau đó revert)** — đúng gợi ý ở
+   trên: `submitCreate()` emit `room:create` từ chính socket của trang lobby,
+   chờ `room:joined`/`room:error` rồi mới điều hướng, không còn "flash" sang
+   `room.html` nữa trong trường hợp thành công lẫn thất bại. **Nhưng** điều
+   hướng trang (lobby → room.html) luôn ngắt socket cũ và trang mới phải mở
+   socket mới — trong khoảng ngắt-tới-kết-nối-lại đó, phòng vừa tạo chỉ có
+   đúng 1 người (chính người tạo), và `DisconnectHandler.handleDisconnect()`
+   coi đây là "phòng rỗng" rồi **huỷ ngay lập tức**. Phải thêm 1 cơ chế grace
+   period mới ở server (`emptyRoomGraceTimers`, tách biệt với
+   `disconnectTimers` 60s có sẵn cho ván đang chơi) để né việc này. Đo dưới
+   tải song song thật (nhiều Playwright worker cùng chạy, mô phỏng máy chậm):
+   **grace 5s không đủ**, tăng lên **15s vẫn không đủ** — một số lần điều
+   hướng thật sự mất hơn 15 giây dưới tải nặng. Kết luận: đây không phải vấn
+   đề "chỉnh số cho đúng" mà là **giới hạn kiến trúc** — bất kỳ grace period
+   hữu hạn nào cũng có thể bị phá vỡ bởi mạng/thiết bị đủ chậm, kể cả với
+   người dùng thật (không chỉ máy test), và cái giá phải trả khi bị phá vỡ là
+   **mất chính phòng người dùng vừa tạo**. Rủi ro này lớn hơn cái lợi của việc
+   xoá hẳn flash, nên **đã revert toàn bộ phần server** (không còn
+   `emptyRoomGraceTimers`/`cancelEmptyRoomGrace` trong `state.js`/
+   `DisconnectHandler.js`/`SocketHandler.js`/`config.js`) và revert
+   `submitCreate()`/`processRoomIntent()` về đúng kiến trúc điều hướng lạc
+   quan ban đầu.
+2. **Hướng giữ điều hướng lạc quan, chỉ sửa hiển thị (đã làm, đang dùng)** —
+   không đổi gì ở server hay ở luồng emit `room:create`. Thêm
+   `#room-entry-overlay` trong `client/room.html`, hiện **mặc định** (đặt sẵn
+   class `visible` trong HTML, không cần JS bật) che toàn bộ khung phòng
+   trống/chưa init ngay khi vừa sang `room.html`, đến khi `room:joined` thật
+   sự tới thì `room-socket.js`'s `hideEntryOverlay()` mới ẩn đi. Nếu bị từ
+   chối, overlay vẫn che nguyên (không ai thấy UI phòng trống/vỡ), toast lỗi
+   (`.toast--error`, z-index 1200) hiện đè lên overlay (z-index 1100), rồi
+   `room:error` handler đưa về `index.html` sau ~1.5s — đúng pattern đã dùng
+   sẵn cho `room:kicked`/`room:destroyed` trong cùng file. Không thêm bất kỳ
+   cơ chế server mới nào, không có bề mặt lỗi mới.
+3. **Bài học giữ lại**: khi một hướng sửa UX đòi hỏi thêm state/timing mới ở
+   server (ở đây là "giữ socket sống qua một lần điều hướng trang"), phải đo
+   dưới tải/điều kiện xấu THẬT trước khi tin, không chỉ chạy 1 lần thấy xanh
+   là đủ — đúng tinh thần "tái hiện → đo → mới sửa" đã áp dụng cho nhóm
+   B19-B26 bên dưới, giờ áp dụng luôn cho cả nhóm B-thường.
+4. **Test**: `e2e/leave-then-create-room.spec.ts` cập nhật theo hành vi cuối
+   cùng (assert overlay hiện ngay + toast lỗi + bounce về lobby), chạy PASS ổn
+   định kể cả dưới `--workers=6` chạy chung với 2 spec nặng khác (đúng điều
+   kiện đã làm lộ lỗi của hướng 1). `npm test`: 289/289 xanh — không có test
+   unit mới vì #18 cuối cùng không đụng code server.
+
 ### B19–B26. Nhóm phát hiện từ stress test (2026-08-02)
 
 **Quy tắc chung cho cả nhóm này — đọc trước khi đụng bất kỳ mục nào:**

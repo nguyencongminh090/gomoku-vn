@@ -1,12 +1,14 @@
 import { test, expect, Page } from '@playwright/test';
 
 /**
- * Repro for a reported bug: "Start -> play -> Leave -> Create table -> play"
- * — after leaving a room and immediately creating a new one, the app bounces
- * back to the lobby instead of entering the new room, and the lobby's room
- * list doesn't (visibly) refresh.
+ * Repro + regression test for a reported bug: "Start -> play -> Leave ->
+ * Create table -> play" — after leaving a room and immediately creating a
+ * new one, the app used to flash over to room.html (showing the empty,
+ * uninitialized room chrome underneath) and then bounce back to the lobby
+ * instead of entering the new room (TODO.md #18 / instruction.md §B18), and
+ * the lobby's room list didn't (visibly) refresh.
  *
- * Root-cause theory (confirmed by reading server/managers/RoomManager.js):
+ * Root cause (confirmed by reading server/managers/RoomManager.js):
  * leaveRoom() only destroys a room once it's EMPTY (room.users.size === 0).
  * If the player who leaves was the host and the other player/spectator
  * stays connected, the room lives on. server/socket/handlers/LobbyHandler.js
@@ -15,14 +17,29 @@ import { test, expect, Page } from '@playwright/test';
  * create → join → leave (host leaves, guest stays behind) from the same IP
  * — which is exactly what happens testing with multiple browser tabs/guests
  * on one machine — silently accumulates live rooms without the host
- * realizing it, until the 4th create hits the quota and the client's
- * room:error handler (client/js/room-socket.js) bounces back to index.html.
+ * realizing it, until the 4th create hits the quota.
+ *
+ * The quota itself was always correct (this never leaked rooms or
+ * miscounted). What was fixed: `submitCreate()` (client/js/lobby.js) still
+ * navigates to room.html optimistically (an ack-before-navigate rewrite was
+ * tried and reverted — it required disconnecting the lobby's own socket
+ * before the new page's socket reconnects, and under real-world-plausible
+ * slow-navigation conditions that gap could destroy the very room the user
+ * just created; see instruction.md §B18 for the full writeup). Instead,
+ * room.html now shows a `#room-entry-overlay` loading state (room.html) by
+ * default, hiding the empty/uninitialized chrome until room:joined actually
+ * arrives — so a rejected create shows a clear error toast over a
+ * deliberate loading state instead of a flash of broken-looking UI, then
+ * redirects back after the same ~1.5s pattern already used for
+ * room:kicked/room:destroyed elsewhere in room-socket.js.
  *
  * This test creates 3 rooms as the same host (each with a different guest
  * who stays behind and never leaves, keeping the room alive) and asserts
- * that a 4th create attempt fails with the per-IP quota error and bounces
- * back to the lobby — then checks whether the lobby's room list actually
- * repopulates after the bounce, since that's the second half of the report.
+ * that a 4th create attempt fails with the per-IP quota error: the entry
+ * overlay stays visible (no glimpse of broken room UI), an error toast
+ * appears, and the host bounces back to the lobby — then checks whether the
+ * lobby's room list actually repopulates, since that's the second half of
+ * the original report.
  */
 
 test.describe('leave then create room — per-IP room quota', () => {
@@ -95,23 +112,30 @@ test.describe('leave then create room — per-IP room quota', () => {
     await host.page.click('#btn-create');
     await host.page.click('#btn-quick-match');
 
-    // submitCreate() in lobby.js navigates to room.html OPTIMISTICALLY —
-    // before the server has responded at all. The actual `room:create` emit
-    // only happens once room.html loads and its socket connects
-    // (processRoomIntent() on 'connect'). So the URL always hits room.html
-    // first; if the server then rejects the create (e.g. quota exceeded),
-    // room-socket.js's `room:error` handler bounces back to index.html
-    // ~1.5s later. Racing on the *first* URL change (as an earlier version
-    // of this test did) always reports "entered_room" as a false negative —
-    // wait for room.html first, then give the server's verdict time to land.
+    // Still navigates to room.html optimistically (the ack-before-navigate
+    // rewrite was reverted — see the file header comment for why). What's
+    // fixed: #room-entry-overlay (room.html) is visible by default, so the
+    // empty/uninitialized room chrome underneath is never shown — this is
+    // the actual fix for the "flash" complaint.
     await host.page.waitForURL(/room\.html/, { timeout: 8000 });
+    await expect(host.page.locator('#room-entry-overlay'), 'the entry overlay should cover the room UI immediately on arrival, before room:joined/room:error has had a chance to resolve').toHaveClass(/visible/);
+
+    // A clear error toast should appear (over the overlay, z-index 1200 vs
+    // 1100 — see main.css .toast-stack) rather than the rejection being
+    // silent or only visible as a bare URL bounce.
+    const errorToast = host.page.locator('.toast--error');
+    await expect(errorToast).toBeVisible({ timeout: 5000 });
+    const toastText = await errorToast.textContent();
+    console.log(`[cycle 4] rejection toast: ${toastText}`);
+    expect(toastText).toContain('quá nhiều phòng');
+
+    // Then bounces back to the lobby, same ~1.5s pattern as room:kicked /
+    // room:destroyed elsewhere in room-socket.js.
     const bounced = await host.page
       .waitForURL(/index\.html/, { timeout: 5000 })
-      .then(() => 'bounced_to_lobby' as const)
-      .catch(() => 'entered_room' as const);
-
-    console.log(`[cycle 4] result: ${bounced}`);
-    expect(bounced, '4th room:create from the same IP should be rejected by MAX_ROOMS_PER_IP and bounce back to the lobby').toBe('bounced_to_lobby');
+      .then(() => true)
+      .catch(() => false);
+    expect(bounced, '4th room:create from the same IP should be rejected by MAX_ROOMS_PER_IP and bounce back to the lobby').toBe(true);
 
     // Now check the actual complaint: does the lobby's room list repopulate
     // after being bounced back? The 3 leftover rooms (still alive, guests
