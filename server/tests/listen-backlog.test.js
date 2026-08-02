@@ -69,3 +69,19 @@ describe('server.listen wiring', () => {
     expect(source).not.toMatch(/server\.listen\(\s*config\.HTTP_PORT\s*,/);
   });
 });
+
+describe('trust proxy', () => {
+  // Same rationale as above — asserted against source, not by booting the
+  // server. A proxy/tunnel (e.g. cloudflared) in front of this process sets
+  // X-Forwarded-For; without `trust proxy` configured, express-rate-limit
+  // throws ERR_ERL_UNEXPECTED_X_FORWARDED_FOR on every rate-limited request
+  // instead of running at all. 'loopback' (not `true`) is required, not just
+  // any truthy value — trusting every peer would let a client that reaches
+  // this port directly (bypassing the tunnel) spoof its own
+  // X-Forwarded-For to dodge the auth rate limit and the per-IP room quota.
+  const source = fs.readFileSync(path.join(__dirname, '..', 'index.js'), 'utf8');
+
+  test('trusts only the loopback hop for X-Forwarded-For', () => {
+    expect(source).toMatch(/app\.set\(\s*['"]trust proxy['"]\s*,\s*['"]loopback['"]\s*\)/);
+  });
+});

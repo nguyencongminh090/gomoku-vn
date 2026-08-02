@@ -569,6 +569,32 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
         `DisconnectHandler.js` → cả 5 test fail đúng như kỳ vọng → khôi phục →
         `npm test`: 294/294 xanh.
 
+### Nguồn: điều tra #18 vòng 2 trên `play3cr.dpdns.org` (2026-08-02)
+
+30. **`MAX_ROOMS_PER_IP` có thể đang là cap theo cả site, không phải theo
+    từng người dùng thật, khi chạy sau Cloudflare Tunnel** — chưa xác nhận có
+    gây sự cố thật hay chưa, cần đo/quan sát thêm trước khi sửa.
+    - Trong lúc điều tra #18 vòng 2, sửa lỗi crash `trust proxy` (xem
+      `docs/fix-log.md` dòng 2026-08-02 21:05) thì phát hiện thêm:
+      `socket.handshake.address` (dùng để tính `creatorIp` cho quota, xem
+      [server/socket/handlers/LobbyHandler.js:56](server/socket/handlers/LobbyHandler.js#L56))
+      đọc thẳng `req.connection.remoteAddress` ở tầng engine.io — **không bao
+      giờ** nhìn header `X-Forwarded-For`, bất kể Express có `trust proxy`
+      hay không (đó là hai tầng khác nhau, fix vừa rồi chỉ chỉnh Express).
+    - Với deployment hiện tại (cloudflared chạy trên cùng máy, kết nối vào
+      Node qua loopback), điều này nghĩa là **mọi user thật đều có cùng một
+      `creatorIp` là loopback** — quota "tối đa 3 phòng mỗi IP" (thiết kế để
+      chặn 1 IP chiếm hết `MAX_ROOMS`) thực chất đang giới hạn **toàn bộ site
+      chỉ 3 phòng đang sống cùng lúc**, bất kể có bao nhiêu người dùng khác
+      nhau thật sự đang tạo phòng.
+    - **Chưa sửa vì nằm ngoài phạm vi #18** (người dùng chỉ báo "không tạo
+      được phòng", đây là phát hiện phụ trong lúc điều tra) — cần người dùng
+      xác nhận có đúng là vấn đề thật đang gặp không (ví dụ: đã từng thấy
+      thông báo "Bạn đã tạo quá nhiều phòng" dù chỉ có 1-2 người chơi thật)
+      trước khi quyết định hướng sửa (đọc `X-Forwarded-For` thủ công ở tầng
+      socket, tương tự cách Express xử lý `trust proxy: 'loopback'`, chỉ tin
+      header khi `socket.handshake.address` chính nó là loopback).
+
 ### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 
 Tất cả các mục dưới đây là **nghi vấn/rủi ro tiềm ẩn phát hiện khi đo tải, chưa

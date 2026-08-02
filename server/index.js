@@ -32,6 +32,18 @@ const { db }         = require('./db/database');
 // ---------------------------------------------------------------------------
 const app = express();
 
+// Trust exactly one hop: a proxy/tunnel (e.g. cloudflared) running on this
+// same machine and connecting in over loopback. Without this, Express reads
+// req.ip from the raw TCP peer (always loopback behind such a tunnel) and
+// express-rate-limit refuses to start its key generator at all once it sees
+// an X-Forwarded-For header arrive while trust proxy is unset — see
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR. 'loopback' (not `true`) means the
+// header is only honored when the immediate connection actually is
+// loopback, so a client that could reach this port directly (bypassing the
+// tunnel) can't spoof its own X-Forwarded-For to dodge the auth rate limit
+// or the per-IP room quota.
+app.set('trust proxy', 'loopback');
+
 // Security headers. CSP is left off for now — the client ships inline
 // <script>/style="" (theme/mode-init IIFEs, run before first paint) that
 // helmet's default CSP would block; see docs/fix-log.md for the verification.
