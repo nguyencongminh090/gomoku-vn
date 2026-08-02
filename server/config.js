@@ -81,6 +81,16 @@ const GUEST_NAME_NOUNS = [
 
 // --- HTTP ---
 const HTTP_PORT = process.env.PORT || 3000;
+// TCP accept-queue depth passed to server.listen(). Node's own default is 511,
+// which the kernel silently overflows (dropping SYNs — surfacing to clients as
+// "connect timeout", and NEVER as a server-side log line) once thousands of NEW
+// connections arrive in the same burst. Measured directly, at 4000 players
+// connecting at once: with 511 the run lost ~12-14% of connections and
+// TcpExtListenOverflows climbed by ~14 000; with 4096 the same run completed
+// 100% with zero errors. See docs/stress-test-report.md §10.
+// The kernel caps this at net.core.somaxconn, so a value larger than the host
+// allows is silently clamped rather than failing — safe to leave high.
+const LISTEN_BACKLOG = parseInt(process.env.LISTEN_BACKLOG, 10) || 4096;
 
 // --- Security ---
 const MAX_EVENTS_PER_SECOND = 50; // Socket flood protection
@@ -118,6 +128,7 @@ module.exports = {
   GUEST_NAME_ADJECTIVES,
   GUEST_NAME_NOUNS,
   HTTP_PORT,
+  LISTEN_BACKLOG,
   MAX_EVENTS_PER_SECOND,
   FLOOD_DISCONNECT_STREAK,
 };
