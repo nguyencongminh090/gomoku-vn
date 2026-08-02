@@ -27,6 +27,16 @@ const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against ID
 
 // --- Disconnect grace ---
 const DISCONNECT_GRACE_MS   = 60_000; // 60 seconds
+// How long a room with exactly one occupant is kept alive after that
+// occupant's socket drops before being destroyed as "empty". A full-page
+// navigation (index.html -> room.html, or any reload) always disconnects the
+// old socket before the new page's socket reconnects; over a real network
+// that gap can be several seconds, not the near-zero gap seen on localhost.
+// Without this grace, that gap alone destroys a just-created room before its
+// creator's room.html socket ever gets to join it. Bounded — not "wait
+// forever" — so a genuinely abandoned solo room still gets reclaimed
+// promptly. See TODO.md #18 / instruction.md §B18 (second pass).
+const EMPTY_ROOM_GRACE_MS   = parseInt(process.env.EMPTY_ROOM_GRACE_MS, 10) || 20_000;
 
 // --- Game / Board ---
 const DEFAULT_BOARD_SIZE    = 17;
@@ -107,6 +117,7 @@ module.exports = {
   IDLE_TIMEOUT_MS,
   IDLE_SCAN_INTERVAL_MS,
   DISCONNECT_GRACE_MS,
+  EMPTY_ROOM_GRACE_MS,
   DEFAULT_BOARD_SIZE,
   VALID_BOARD_SIZES,
   DEFAULT_TIMER_MODE,

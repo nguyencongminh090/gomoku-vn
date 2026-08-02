@@ -528,6 +528,46 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
       song nặng (`--workers=6`, cùng 3 file spec chạy chung — đúng điều kiện
       từng làm lộ ra lỗi của hướng 1). `npm test`: 289/289 xanh (không đổi số
       lượng test unit vì #18 không cần code phía server).
+    - **⚠️ Vòng 2 (2026-08-02, sau khi test thật trên `play3cr.dpdns.org`):**
+      người dùng báo cáo **không tạo được phòng nào cả** — log server cho
+      thấy `Room #XYT created` → `Disconnected` → `Room #XYT destroyed
+      (empty)` gần như cùng giây, lặp lại liên tục cho mỗi lần bấm Tạo phòng.
+      Hướng 2 ở trên chỉ sửa phần **hiển thị** (che UI vỡ bằng overlay) chứ
+      **không sửa nguyên nhân gốc**: `DisconnectHandler.handleDisconnect()`
+      huỷ phòng ngay lập tức khi người dùng còn lại (0 người) — kể cả khi
+      chính là do socket vừa ngắt để chuyển trang / kết nối lại chưa kịp, chứ
+      không phải bỏ phòng thật. Trên localhost khoảng ngắt→nối lại đủ nhanh để
+      không lộ; qua mạng thật (không phải do proxy — người dùng xác nhận vẫn
+      là do transition lobby → room bị server xử lý như ngắt kết nối thật) nó
+      lộ ra ở **mọi lần**, không chỉ dưới tải nặng giả lập.
+      - **Sửa thật lần này:** thêm `EMPTY_ROOM_GRACE_MS` (`server/config.js`,
+        mặc định 20s, override qua env) — khi người dùng ngắt kết nối và là
+        thành viên duy nhất còn lại trong phòng (không phải do bấm nút "Rời
+        phòng" — `room:leave` trong `RoomHandler.js` vẫn huỷ ngay lập tức,
+        không đổi), `DisconnectHandler.js` không huỷ phòng ngay mà chờ tối đa
+        20s (`startEmptyRoomGrace`/`cancelEmptyRoomGrace`,
+        `emptyRoomGraceTimers` trong `state.js`). Nếu cùng userId kết nối lại
+        trong lúc chờ, `SocketHandler.js` huỷ timer trước khi chạy logic
+        auto-rejoin sẵn có (`getRoomByUser`) — phòng vẫn còn, người dùng được
+        đưa thẳng vào phòng như bình thường, không cần đổi gì phía client.
+      - Đây là cùng ý tưởng với lần thử đầu (grace period) đã bị revert, khác
+        ở chỗ: (1) **không** đổi client sang chờ ack trước khi điều hướng —
+        kiến trúc điều hướng lạc quan giữ nguyên, nên không tạo thêm cửa sổ
+        rủi ro nào mới so với hiện trạng; (2) grace chỉ áp dụng cho đường
+        disconnect ngoài ý muốn, tách biệt hoàn toàn khỏi đường `room:leave`
+        chủ động; (3) lần trước bị revert vì lo "bất kỳ timeout hữu hạn nào
+        cũng có thể bị phá vỡ" — đúng về mặt lý thuyết, nhưng giờ đã biết rõ
+        **hiện trạng không-có-grace mới là thứ luôn hỏng** (100% các lần thử
+        tạo phòng thật, không phải lỗi hiếm dưới tải), nên grace hữu hạn là
+        cải thiện chắc chắn chứ không phải rủi ro thêm vào một đường vốn đã
+        chạy tốt.
+      - **Test:** `server/tests/DisconnectHandler.test.js` — thêm describe
+        block "empty-room grace period" (5 test: bắt đầu grace thay vì huỷ
+        ngay, cancel qua reconnect thì không gọi `leaveRoom`, hết hạn thì huỷ
+        thật, disconnect lặp lại không chồng timer, cancel khi không có gì
+        đang chờ trả về `false`). Mutation-check: revert riêng
+        `DisconnectHandler.js` → cả 5 test fail đúng như kỳ vọng → khôi phục →
+        `npm test`: 294/294 xanh.
 
 ### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 
