@@ -9,9 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=37" />
-  <link rel="stylesheet" href="css/history.css?v=37" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=37" />
+  <link rel="stylesheet" href="css/main.css?v=38" />
+  <link rel="stylesheet" href="css/history.css?v=38" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=38" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -55,6 +55,50 @@
       <h1>Lịch sử ván đấu</h1>
       <span id="game-total" class="history__count"></span>
     </div>
+
+    <form id="history-search" class="history-search" autocomplete="off">
+      <div class="history-search__field">
+        <label for="search-player">Người chơi</label>
+        <input type="text" id="search-player" name="player" placeholder="Tên người chơi..." maxlength="50" />
+      </div>
+      <div class="history-search__field">
+        <label for="search-from">Từ ngày</label>
+        <input type="date" id="search-from" name="from" />
+      </div>
+      <div class="history-search__field">
+        <label for="search-to">Đến ngày</label>
+        <input type="date" id="search-to" name="to" />
+      </div>
+      <div class="history-search__field">
+        <label for="search-result">Kết quả</label>
+        <select id="search-result" name="result">
+          <option value="">Tất cả</option>
+          <option value="win">Thắng/thua</option>
+          <option value="draw">Hoà</option>
+        </select>
+      </div>
+      <div class="history-search__actions">
+        <button type="submit" class="history-search__btn history-search__btn--primary">Tìm kiếm</button>
+        <button type="button" id="search-reset" class="history-search__btn">Xoá lọc</button>
+      </div>
+    </form>
+
+    <div id="history-stats" class="history-stats" style="display:none;">
+      <div class="history-stats__item">
+        <span class="history-stats__label">Tổng số ván</span>
+        <span id="stats-total" class="history-stats__value">0</span>
+      </div>
+      <div class="history-stats__item">
+        <span class="history-stats__label">Thắng/thua</span>
+        <span id="stats-win" class="history-stats__value">0</span>
+      </div>
+      <div class="history-stats__item">
+        <span class="history-stats__label">Hoà</span>
+        <span id="stats-draw" class="history-stats__value">0</span>
+      </div>
+      <div id="stats-by-date" class="history-stats__by-date"></div>
+    </div>
+
     <div id="game-list" class="game-list">
       <div class="game-list__empty">Đang tải...</div>
     </div>
@@ -114,13 +158,13 @@
 </main>
 
 <!-- Scripts -->
-<script src="js/i18n.js?v=37"></script>
-<script src="js/ui-mode.js?v=37"></script>
-<script src="js/audio-manager.js?v=37"></script>
-<script src="js/settings-panel.js?v=37"></script>
-<script src="js/board.js?v=37"></script>
-<script src="js/move-tree.js?v=37"></script>
-<script src="js/tree-view.js?v=37"></script>
-<script src="js/history.js?v=37"></script>
+<script src="js/i18n.js?v=38"></script>
+<script src="js/ui-mode.js?v=38"></script>
+<script src="js/audio-manager.js?v=38"></script>
+<script src="js/settings-panel.js?v=38"></script>
+<script src="js/board.js?v=38"></script>
+<script src="js/move-tree.js?v=38"></script>
+<script src="js/tree-view.js?v=38"></script>
+<script src="js/history.js?v=38"></script>
 </body>
 </html>

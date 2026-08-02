@@ -235,21 +235,62 @@ function withWinnerName(row) {
 }
 
 /**
- * Fetch recent games (all players), paginated.
+ * Build a `WHERE` clause + bound params for the games list/stats filters
+ * shared by getRecentGames / getGameCount / getGameStatsByDate /
+ * getGameStatsByResult, so all four stay consistent with each other.
+ *
+ * @param {{player?: string, from?: string, to?: string, result?: 'win'|'draw'}} filters
+ * @param {string[]} [extraClauses] — additional raw SQL clauses ANDed in (e.g. NULL guards for stats)
+ * @returns {{ where: string, params: Array }}
+ */
+function buildGameFilters(filters = {}, extraClauses = []) {
+  const clauses = [...extraClauses];
+  const params = [];
+
+  if (filters.player) {
+    clauses.push('(black_player_name LIKE ? OR white_player_name LIKE ?)');
+    const like = `%${filters.player}%`;
+    params.push(like, like);
+  }
+  if (filters.from) {
+    clauses.push('ended_at >= ?');
+    params.push(filters.from);
+  }
+  if (filters.to) {
+    clauses.push('ended_at <= ?');
+    params.push(filters.to);
+  }
+  if (filters.result === 'draw') {
+    clauses.push("winner = 'draw'");
+  } else if (filters.result === 'win') {
+    clauses.push("winner IS NOT NULL AND winner != 'draw'");
+  }
+
+  return {
+    where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '',
+    params,
+  };
+}
+
+/**
+ * Fetch recent games (all players), paginated, optionally filtered.
  * @param {number} limit
  * @param {number} offset
+ * @param {{player?: string, from?: string, to?: string, result?: 'win'|'draw'}} [filters]
  * @returns {Array}
  */
-function getRecentGames(limit = 20, offset = 0) {
+function getRecentGames(limit = 20, offset = 0, filters = {}) {
+  const { where, params } = buildGameFilters(filters);
   const rows = db.prepare(`
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
            winner, reason, board_size, rule_wall, rule_portal,
            started_at, ended_at
     FROM games
+    ${where}
     ORDER BY ended_at DESC
     LIMIT ? OFFSET ?
-  `).all(limit, offset);
+  `).all(...params, limit, offset);
   return rows.map(withWinnerName);
 }
 
@@ -279,11 +320,48 @@ function getGameById(gameId) {
 }
 
 /**
- * Count total games.
+ * Count total games, optionally filtered.
+ * @param {{player?: string, from?: string, to?: string, result?: 'win'|'draw'}} [filters]
  * @returns {number}
  */
-function getGameCount() {
-  return db.prepare('SELECT COUNT(*) as count FROM games').get().count;
+function getGameCount(filters = {}) {
+  const { where, params } = buildGameFilters(filters);
+  return db.prepare(`SELECT COUNT(*) as count FROM games ${where}`).get(...params).count;
+}
+
+/**
+ * Count finished games grouped by day (ended_at's date part), optionally filtered.
+ * Interrupted games (no ended_at) are excluded — there's no date to group them by.
+ * @param {{player?: string, from?: string, to?: string, result?: 'win'|'draw'}} [filters]
+ * @returns {Array<{date: string, count: number}>}
+ */
+function getGameStatsByDate(filters = {}) {
+  const { where, params } = buildGameFilters(filters, ['ended_at IS NOT NULL']);
+  return db.prepare(`
+    SELECT substr(ended_at, 1, 10) as date, COUNT(*) as count
+    FROM games
+    ${where}
+    GROUP BY date
+    ORDER BY date DESC
+  `).all(...params);
+}
+
+/**
+ * Count finished games by result (win vs. draw), optionally filtered.
+ * @param {{player?: string, from?: string, to?: string, result?: 'win'|'draw'}} [filters]
+ * @returns {{ win: number, draw: number, total: number }}
+ */
+function getGameStatsByResult(filters = {}) {
+  const { where, params } = buildGameFilters(filters, ['ended_at IS NOT NULL']);
+  const row = db.prepare(`
+    SELECT
+      SUM(CASE WHEN winner = 'draw' THEN 1 ELSE 0 END) as draw,
+      SUM(CASE WHEN winner IS NOT NULL AND winner != 'draw' THEN 1 ELSE 0 END) as win,
+      COUNT(*) as total
+    FROM games
+    ${where}
+  `).get(...params);
+  return { win: row.win || 0, draw: row.draw || 0, total: row.total || 0 };
 }
 
 module.exports = {
@@ -297,4 +375,6 @@ module.exports = {
   getRecentGames,
   getGameById,
   getGameCount,
+  getGameStatsByDate,
+  getGameStatsByResult,
 };
