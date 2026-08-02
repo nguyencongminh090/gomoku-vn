@@ -48,6 +48,17 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   catch-all, nếu không catch-all nuốt mất đường socket — lỗi hay gặp khi dựng
   lần đầu.
 
+**✅ Đã xác nhận + sửa (2026-08-02):** deploy thật dùng Cloudflare Tunnel,
+đúng 1 hop qua loopback — khớp chính xác gợi ý ở trên.
+`app.set('trust proxy', 'loopback')` đã thêm vào `server/index.js` (sửa crash
+`ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` của `express-rate-limit`). Phát hiện
+thêm lúc sửa: dòng đó **không** tự động sửa `socket.handshake.address` (dùng
+cho quota `MAX_ROOMS_PER_IP`) — engine.io đọc thẳng
+`req.connection.remoteAddress`, hoàn toàn tách biệt khỏi cấu hình `trust
+proxy` của Express, nên phải thêm riêng `getClientIp()`
+(`server/socket/state.js`) cùng logic loopback-only. Xem TODO.md #30,
+`docs/fix-log.md`.
+
 ### A4. Đo lại timing attack sau khi áp Phần B #6
 
 Sau khi thêm dummy-compare (Phần B #6), phải đo lại **thời gian phản hồi thật**
