@@ -53,9 +53,27 @@ function isValidUsername(u) {
   return typeof u === 'string' && /^[a-zA-Z0-9_]{3,20}$/.test(u);
 }
 
-/** Validate display name: 2-24 chars, no HTML. */
+// Characters a display name may never contain: the five that are significant
+// in HTML/attribute/JS-string contexts, plus C0/C1 control characters (which
+// includes newlines and other invisible formatting).
+//
+// This is defence in depth, not the thing that stops XSS — every client render
+// path already escapes (`escapeHtml`/`escapeAttr`/`escapeJsString`) and stays
+// that way. This is a second layer at the source, so a future render site that
+// forgets to escape does not become exploitable through a stored name.
+//
+// Deliberately a **deny-list, not an ASCII allow-list**: display names are real
+// people's names, and this app's users are Vietnamese — `[a-zA-Z0-9 ]+` would
+// reject most of them ("Nguyễn Văn A"). Anything not on this list, accented
+// Vietnamese included, still goes through (instruction.md §B32).
+const DISPLAY_NAME_FORBIDDEN = /[<>&"']|[\u0000-\u001F\u007F-\u009F]/;
+
+/** Validate display name: 2-24 chars, no HTML-significant or control chars. */
 function isValidDisplayName(d) {
-  return typeof d === 'string' && d.trim().length >= 2 && d.trim().length <= 24;
+  if (typeof d !== 'string') return false;
+  const trimmed = d.trim();
+  if (trimmed.length < 2 || trimmed.length > 24) return false;
+  return !DISPLAY_NAME_FORBIDDEN.test(trimmed);
 }
 
 /** Validate password: minimum 6 characters. */
@@ -92,7 +110,7 @@ router.post('/register', async (req, res, next) => {
     }
     if (!isValidDisplayName(displayName)) {
       return res.status(400).json({
-        error: 'Tên hiển thị phải từ 2-24 ký tự.',
+        error: 'Tên hiển thị phải từ 2-24 ký tự, không chứa < > & " \' hoặc ký tự điều khiển.',
       });
     }
     if (!isValidPassword(password)) {
