@@ -73,6 +73,45 @@ const LEGACY_GUEST_GAME = {
   winner: 'guest_ab12cd34',
 };
 
+// Fixtures for search/filter/stats tests — guest players (no FK rows needed),
+// spread across distinct ISO dates and results so date/result/player
+// filtering can each be asserted independently.
+const SEARCH_WIN_JAN = {
+  ...GAME,
+  id: 'game-search-win-jan',
+  black_player_id: null,
+  white_player_id: null,
+  black_player_name: 'Charlie',
+  white_player_name: 'Dave',
+  winner: 'BLACK',
+  started_at: '2026-01-05T10:00:00.000Z',
+  ended_at: '2026-01-05T10:20:00.000Z',
+};
+
+const SEARCH_DRAW_JAN = {
+  ...GAME,
+  id: 'game-search-draw-jan',
+  black_player_id: null,
+  white_player_id: null,
+  black_player_name: 'Charlie',
+  white_player_name: 'Eve',
+  winner: 'draw',
+  started_at: '2026-01-10T10:00:00.000Z',
+  ended_at: '2026-01-10T10:20:00.000Z',
+};
+
+const SEARCH_WIN_FEB = {
+  ...GAME,
+  id: 'game-search-win-feb',
+  black_player_id: null,
+  white_player_id: null,
+  black_player_name: 'Frank',
+  white_player_name: 'Grace',
+  winner: 'WHITE',
+  started_at: '2026-02-01T10:00:00.000Z',
+  ended_at: '2026-02-01T10:20:00.000Z',
+};
+
 let server;
 let baseUrl;
 
@@ -99,6 +138,9 @@ beforeAll(async () => {
   insertGame.run(GAME);
   insertGame.run(LEGACY_ID_GAME);
   insertGame.run(LEGACY_GUEST_GAME);
+  insertGame.run(SEARCH_WIN_JAN);
+  insertGame.run(SEARCH_DRAW_JAN);
+  insertGame.run(SEARCH_WIN_FEB);
 
   const app = express();
   app.use('/api/games', gamesRouter);
@@ -234,6 +276,91 @@ describe('GET /api/games', () => {
     expect(byId['game-1'].winner_name).toBe('Alice');
     expect(byId['game-2'].winner_name).toBe('Bob');
     expect(byId['game-3'].winner_name).toBe('Alice');
+  });
+
+  // ── Search filters: player / date range / result ────────────────────────
+
+  test('filters by player name (substring match, either seat)', async () => {
+    const res = await get('/api/games?player=Charlie');
+    const { games, pagination } = await res.json();
+
+    expect(pagination.total).toBe(2);
+    expect(games.map(g => g.id).sort()).toEqual(
+      ['game-search-draw-jan', 'game-search-win-jan'].sort()
+    );
+  });
+
+  test('a player filter with no matches returns an empty, not an error', async () => {
+    const res = await get('/api/games?player=NoSuchPlayer');
+    expect(res.status).toBe(200);
+    const { games, pagination } = await res.json();
+    expect(games).toEqual([]);
+    expect(pagination.total).toBe(0);
+  });
+
+  test('filters by date range (inclusive)', async () => {
+    const res = await get('/api/games?from=2026-01-01&to=2026-01-31');
+    const { games } = await res.json();
+
+    expect(games.map(g => g.id).sort()).toEqual(
+      ['game-search-draw-jan', 'game-search-win-jan'].sort()
+    );
+  });
+
+  test('filters by result=win (excludes draws)', async () => {
+    const res = await get('/api/games?player=Charlie&result=win');
+    const { games } = await res.json();
+    expect(games.map(g => g.id)).toEqual(['game-search-win-jan']);
+  });
+
+  test('filters by result=draw (excludes decisive games)', async () => {
+    const res = await get('/api/games?player=Charlie&result=draw');
+    const { games } = await res.json();
+    expect(games.map(g => g.id)).toEqual(['game-search-draw-jan']);
+  });
+
+  test('combines player + date + result filters', async () => {
+    const res = await get('/api/games?player=Frank&from=2026-02-01&to=2026-02-28&result=win');
+    const { games } = await res.json();
+    expect(games.map(g => g.id)).toEqual(['game-search-win-feb']);
+  });
+
+  test('a malformed date filter is dropped rather than erroring', async () => {
+    const res = await get('/api/games?from=not-a-date');
+    expect(res.status).toBe(200);
+    const { pagination } = await res.json();
+    // Falls back to the unfiltered count (all 6 fixture games).
+    expect(pagination.total).toBe(6);
+  });
+});
+
+// ── GET /api/games/stats — aggregate counts ────────────────────────────────
+
+describe('GET /api/games/stats', () => {
+  test('counts by result, respecting the same filters as the list route', async () => {
+    const res = await get('/api/games/stats?player=Charlie');
+    expect(res.status).toBe(200);
+
+    const { byResult } = await res.json();
+    expect(byResult).toEqual({ win: 1, draw: 1, total: 2 });
+  });
+
+  test('counts by date, one row per day, filtered', async () => {
+    const res = await get('/api/games/stats?from=2026-01-01&to=2026-01-31');
+    const { byDate } = await res.json();
+
+    const byDateMap = Object.fromEntries(byDate.map(r => [r.date, r.count]));
+    expect(byDateMap['2026-01-05']).toBe(1);
+    expect(byDateMap['2026-01-10']).toBe(1);
+    expect(byDateMap['2026-02-01']).toBeUndefined();
+  });
+
+  test('is mounted before /:id so the literal path is not swallowed as a game id', async () => {
+    const res = await get('/api/games/stats');
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body).toHaveProperty('byDate');
+    expect(body).toHaveProperty('byResult');
   });
 });
 

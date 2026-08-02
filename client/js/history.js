@@ -23,6 +23,19 @@ const gameListEl   = document.getElementById('game-list');
 const gameTotalEl  = document.getElementById('game-total');
 const paginationEl = document.getElementById('pagination');
 
+// Search/filter elements
+const searchForm   = document.getElementById('history-search');
+const searchPlayer = document.getElementById('search-player');
+const searchFrom   = document.getElementById('search-from');
+const searchTo     = document.getElementById('search-to');
+const searchResult = document.getElementById('search-result');
+const searchReset  = document.getElementById('search-reset');
+const statsEl      = document.getElementById('history-stats');
+const statsTotalEl = document.getElementById('stats-total');
+const statsWinEl   = document.getElementById('stats-win');
+const statsDrawEl  = document.getElementById('stats-draw');
+const statsByDateEl = document.getElementById('stats-by-date');
+
 // Replay elements
 const replayBlack   = document.getElementById('replay-black');
 const replayWhite   = document.getElementById('replay-white');
@@ -47,6 +60,7 @@ const btnDeleteBranch = document.getElementById('btn-delete-branch');
 let currentPage = 1;
 let boardRenderer = null;
 let autoPlayTimer = null;
+let currentFilters = {}; // { player?, from?, to?, result? } — read from the search form
 
 // Tree-based state
 let moveTree = null;      // MoveTree instance
@@ -55,12 +69,25 @@ let analysisMode = false;
 let replayGameData = null; // Raw game data for info display
 
 // ---------------------------------------------------------------------------
+// Build a query string from currentFilters + pagination
+// ---------------------------------------------------------------------------
+function buildFilterParams(extra = {}) {
+  const params = new URLSearchParams(extra);
+  if (currentFilters.player) params.set('player', currentFilters.player);
+  if (currentFilters.from)   params.set('from', currentFilters.from);
+  if (currentFilters.to)     params.set('to', currentFilters.to);
+  if (currentFilters.result) params.set('result', currentFilters.result);
+  return params;
+}
+
+// ---------------------------------------------------------------------------
 // Load game list
 // ---------------------------------------------------------------------------
 async function loadGames(page = 1) {
   currentPage = page;
   try {
-    const res = await fetch(`/api/games?page=${page}&limit=15`);
+    const params = buildFilterParams({ page: String(page), limit: '15' });
+    const res = await fetch(`/api/games?${params.toString()}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -72,15 +99,41 @@ async function loadGames(page = 1) {
     gameTotalEl.textContent = `(${pagination.total} ván)`;
 
     if (games.length === 0) {
-      gameListEl.innerHTML = '<div class="game-list__empty">Chưa có ván đấu nào được ghi nhận.</div>';
+      gameListEl.innerHTML = '<div class="game-list__empty">Không tìm thấy ván đấu nào phù hợp.</div>';
       paginationEl.innerHTML = '';
-      return;
+    } else {
+      renderGameTable(games);
+      renderPagination(pagination);
     }
 
-    renderGameTable(games);
-    renderPagination(pagination);
+    loadStats();
   } catch {
     gameListEl.innerHTML = '<div class="game-list__empty">Không thể kết nối server.</div>';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Load aggregate stats (count by date, count by result) for current filters
+// ---------------------------------------------------------------------------
+async function loadStats() {
+  try {
+    const params = buildFilterParams();
+    const res = await fetch(`/api/games/stats?${params.toString()}`);
+    if (!res.ok) { statsEl.style.display = 'none'; return; }
+
+    const { byDate, byResult } = await res.json();
+
+    statsTotalEl.textContent = byResult.total;
+    statsWinEl.textContent = byResult.win;
+    statsDrawEl.textContent = byResult.draw;
+
+    statsByDateEl.innerHTML = byDate.slice(0, 14).map(row =>
+      `<span class="history-stats__date-row"><span>${escapeHtml(row.date)}</span><span>${row.count}</span></span>`
+    ).join('');
+
+    statsEl.style.display = '';
+  } catch {
+    statsEl.style.display = 'none';
   }
 }
 
@@ -426,6 +479,26 @@ document.addEventListener('keydown', (e) => {
     case 'a': case 'A': toggleAnalysis(); break;
     case 'Delete':     if (analysisMode) deleteBranch(); break;
   }
+});
+
+// ---------------------------------------------------------------------------
+// Search form
+// ---------------------------------------------------------------------------
+searchForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  currentFilters = {
+    player: searchPlayer.value.trim(),
+    from:   searchFrom.value,
+    to:     searchTo.value,
+    result: searchResult.value,
+  };
+  loadGames(1);
+});
+
+searchReset.addEventListener('click', () => {
+  searchForm.reset();
+  currentFilters = {};
+  loadGames(1);
 });
 
 // Expose for inline onclick
