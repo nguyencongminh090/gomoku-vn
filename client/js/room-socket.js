@@ -12,10 +12,10 @@
  * NO WebSocket event names or payload structures are changed here.
  */
 
-(function(global) {
+(function (global) {
   'use strict';
 
-  const S      = () => global.RoomState;
+  const S = () => global.RoomState;
   const client = global.RoomClient;
 
   // ── Connection ────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@
 
     // Restore game state on reconnect
     if (data.gameState) {
-      st.gameState   = data.gameState;
+      st.gameState = data.gameState;
       st.timerValues = data.timer || st.timerValues;
       applyTimerSync(data.timerSync);
       if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
@@ -145,10 +145,10 @@
 
   client.on('game:init', (data) => {
     const st = S();
-    st.gameState          = data;
-    st.timerValues        = data.timer || { black: data.timerSeconds || 60, white: data.timerSeconds || 60 };
+    st.gameState = data;
+    st.timerValues = data.timer || { black: data.timerSeconds || 60, white: data.timerSeconds || 60 };
     applyTimerSync(data.timerSync);
-    st.drawOfferPending   = null;
+    st.drawOfferPending = null;
     st.timeRequestPending = null;
 
     const gameOverlay = document.getElementById('game-overlay');
@@ -177,14 +177,14 @@
 
     const colorVal = data.color === 'BLACK' ? 1 : 2;
     st.gameState.board[data.y][data.x] = colorVal;
-    st.gameState.currentTurn  = data.nextTurn;
-    st.gameState.moveCount    = data.moveCount;
+    st.gameState.currentTurn = data.nextTurn;
+    st.gameState.moveCount = data.moveCount;
     if (!st.gameState.moveHistory) st.gameState.moveHistory = [];
     st.gameState.moveHistory.push({ x: data.x, y: data.y, color: data.color, timestamp: Date.now() });
     if (data.timer) st.timerValues = data.timer;
     if (data.timerSync) applyTimerSync(data.timerSync);
     if (data.gameOver) st.gameState.status = 'finished';
-    if (data.result)   st.gameState.result = data.result;
+    if (data.result) st.gameState.result = data.result;
 
     if (global.audioManager) {
       const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
@@ -199,13 +199,13 @@
     const st = S();
     if (!st.gameState) return;
 
-    st.gameState.board        = data.board;
-    st.gameState.currentTurn  = data.currentTurn;
-    st.gameState.moveCount    = data.moveCount;
+    st.gameState.board = data.board;
+    st.gameState.currentTurn = data.currentTurn;
+    st.gameState.moveCount = data.moveCount;
     if (data.moveHistory) st.gameState.moveHistory = data.moveHistory;
-    st.gameState.swap2        = data.swap2;
-    st.gameState.players      = data.players;
-    st.gameState._nextColor   = data.nextColor;
+    st.gameState.swap2 = data.swap2;
+    st.gameState.players = data.players;
+    st.gameState._nextColor = data.nextColor;
     if (data.lastStone) st.gameState._lastStone = data.lastStone;
 
     if (st.gameState.swap2.openingPhase !== 'play') {
@@ -217,8 +217,8 @@
 
       GameUI.setTurnBarVisible(true);
 
-      const blackP  = st.gameState.players.find(p => p.color === 'BLACK');
-      const whiteP  = st.gameState.players.find(p => p.color === 'WHITE');
+      const blackP = st.gameState.players.find(p => p.color === 'BLACK');
+      const whiteP = st.gameState.players.find(p => p.color === 'WHITE');
       const bNameEl = document.getElementById('tb-black-name');
       const wNameEl = document.getElementById('tb-white-name');
       if (bNameEl) bNameEl.textContent = blackP ? blackP.displayName : '—';
