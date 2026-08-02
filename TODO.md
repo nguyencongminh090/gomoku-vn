@@ -26,9 +26,11 @@ sửa được → thêm vào Phần B, dưới một heading nguồn riêng (gi
   proxy, khoá nhầm người thật; set sai (quá rộng) thì `X-Forwarded-For` giả mạo
   được và bypass rate limit.
 - Nếu dùng Caddy: block `handle /socket.io*` phải đặt **trước** catch-all.
-- **Việc của bạn:** xác nhận cách deploy thật hiện tại — có proxy TLS đặt ngoài
-  repo chưa (nginx/Caddy/Cloudflare)? Nếu có rồi thì mục này coi như xong, chỉ
-  cần xác nhận `trust proxy` đã set đúng số hop.
+- **✅ Đã xác nhận + sửa xong (2026-08-02):** deploy thật dùng **Cloudflare
+  Tunnel** (`cloudflared`, chạy cùng máy, kết nối vào Node qua loopback) — TLS
+  do Cloudflare xử lý, coi như xong phần này. Phần code còn thiếu (`trust
+  proxy` + đọc `X-Forwarded-For` ở tầng socket) đã sửa, xem TODO.md mục #30 và
+  `docs/fix-log.md`.
 
 #### 2. Xác nhận biến môi trường khi deploy thật
 
@@ -249,8 +251,9 @@ sau cùng.
    mutation-check: bỏ khối quota thì 4/14 đỏ. `npm test` 203/203 xanh.
    **Đã kiểm bằng browser thật:** 3 phòng đầu tạo được, phòng thứ 4 bị từ chối
    kèm toast tiếng Việt, sau khi 1 phòng đóng thì tạo được tiếp.
-   **Hạn chế đã biết (không thuộc phạm vi mục này):** sau reverse proxy thì mọi
-   kết nối mang IP của proxy → gộp chung 1 quota; cần `trust proxy`, xem Phần A #1.
+   **Hạn chế đã biết, đã sửa (2026-08-02, xem mục #30):** sau reverse
+   proxy/tunnel thì mọi kết nối từng mang IP của proxy → gộp chung 1 quota;
+   `getClientIp()` (`server/socket/state.js`) đã sửa việc này.
    Chi tiết: `docs/fix-log.md`.
 
 8. ~~**Bỏ `settings` khỏi `room:updated`** (review 4.2) — chỉ gửi `settings`
@@ -571,9 +574,9 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
 
 ### Nguồn: điều tra #18 vòng 2 trên `play3cr.dpdns.org` (2026-08-02)
 
-30. **`MAX_ROOMS_PER_IP` có thể đang là cap theo cả site, không phải theo
-    từng người dùng thật, khi chạy sau Cloudflare Tunnel** — chưa xác nhận có
-    gây sự cố thật hay chưa, cần đo/quan sát thêm trước khi sửa.
+30. ~~**`MAX_ROOMS_PER_IP` có thể đang là cap theo cả site, không phải theo
+    từng người dùng thật, khi chạy sau Cloudflare Tunnel**~~
+    **✅ ĐÃ SỬA (2026-08-02)**
     - Trong lúc điều tra #18 vòng 2, sửa lỗi crash `trust proxy` (xem
       `docs/fix-log.md` dòng 2026-08-02 21:05) thì phát hiện thêm:
       `socket.handshake.address` (dùng để tính `creatorIp` cho quota, xem
@@ -587,13 +590,25 @@ Phát hiện khi verify Phần B #1/#2/#3 trên Chromium. Không gộp vào các
       chặn 1 IP chiếm hết `MAX_ROOMS`) thực chất đang giới hạn **toàn bộ site
       chỉ 3 phòng đang sống cùng lúc**, bất kể có bao nhiêu người dùng khác
       nhau thật sự đang tạo phòng.
-    - **Chưa sửa vì nằm ngoài phạm vi #18** (người dùng chỉ báo "không tạo
-      được phòng", đây là phát hiện phụ trong lúc điều tra) — cần người dùng
-      xác nhận có đúng là vấn đề thật đang gặp không (ví dụ: đã từng thấy
-      thông báo "Bạn đã tạo quá nhiều phòng" dù chỉ có 1-2 người chơi thật)
-      trước khi quyết định hướng sửa (đọc `X-Forwarded-For` thủ công ở tầng
-      socket, tương tự cách Express xử lý `trust proxy: 'loopback'`, chỉ tin
-      header khi `socket.handshake.address` chính nó là loopback).
+    - Ban đầu để ngỏ chờ xác nhận (đây từng là Phần A #1 — "không sửa được
+      bằng code" — vì chưa biết deployment thật có proxy gì, hop bao nhiêu).
+      Buổi làm việc tiếp theo xác nhận rõ: đúng là Cloudflare Tunnel, đúng 1
+      hop qua loopback — đủ thông tin để sửa an toàn, không còn là quyết định
+      ngoài code nữa.
+    - **Sửa:** thêm `getClientIp(socket)` (`server/socket/state.js`) — cùng
+      logic với `trust proxy: 'loopback'` phía Express: chỉ đọc
+      `X-Forwarded-For` khi chính `socket.handshake.address` là loopback,
+      nếu không thì dùng `socket.handshake.address` như cũ. Không cho phép
+      giả mạo `X-Forwarded-For` để né quota nếu port lỡ bị lộ ra ngoài trực
+      tiếp (không qua tunnel). `LobbyHandler.js` dùng hàm này thay vì đọc
+      `socket.handshake.address` trực tiếp.
+    - **Test:** `server/tests/LobbyHandler.test.js` — 3 test mới (dùng địa
+      chỉ thường, dùng địa chỉ sau proxy loopback + forwarded header, và
+      không tin forwarded header khi kết nối không thực sự là loopback).
+      Mock `state` lấy `getClientIp` thật qua `jest.requireActual` thay vì
+      viết lại logic riêng, tránh lệch với bản thật. Mutation-check: revert
+      riêng `state.js` → 6 test fail (3 mới + 3 cũ phụ thuộc field `ip`) →
+      khôi phục → `npm test`: 298/298 xanh.
 
 ### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 

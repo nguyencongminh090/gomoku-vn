@@ -16,6 +16,7 @@ const {
   timerMap,
   broadcastLobbyUpdate,
   sendLobbySnapshot,
+  getClientIp,
 } = require('../state');
 
 const LOBBY_ROOM = 'lobby';
@@ -48,12 +49,11 @@ function register(io, socket) {
         userId: user.userId,
         displayName: user.displayName,
         isGuest: user.isGuest,
-        // Raw socket address. Behind a reverse proxy every connection would
-        // report the proxy's address instead, collapsing all users into one
-        // quota — that needs `app.set('trust proxy', <hops>)` plus reading the
-        // forwarded address, which is tracked as TODO Phần A #1 and is not
-        // this item's call to make.
-        ip: socket.handshake && socket.handshake.address,
+        // See getClientIp() in state.js: resolves the real client address
+        // even behind a same-host proxy (e.g. cloudflared), instead of the
+        // raw socket address, which would collapse every real user behind
+        // that proxy into one shared IP for quota purposes.
+        ip: getClientIp(socket),
       },
       payload.settings || {}
     );

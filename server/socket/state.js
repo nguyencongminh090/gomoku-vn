@@ -53,6 +53,33 @@ function getOnlineUsersList() {
   return Array.from(sessions.values()).map(s => s.user.displayName).sort();
 }
 
+/** Loopback forms Node can report as the immediate TCP peer address. */
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+/**
+ * Resolve the real client IP for a socket, accounting for a same-host proxy
+ * (e.g. cloudflared) connecting in over loopback. engine.io always reports
+ * `socket.handshake.address` from the raw TCP connection — it never reads
+ * X-Forwarded-For itself, unlike Express's `trust proxy` setting (see
+ * server/index.js), which only affects Express's own req.ip.
+ *
+ * Mirrors Express's `trust proxy: 'loopback'` semantics: only honor
+ * X-Forwarded-For when the immediate peer is itself loopback, so a client
+ * that could reach this port directly (bypassing the proxy) cannot spoof its
+ * own X-Forwarded-For to dodge the per-IP room quota.
+ *
+ * @param {import('socket.io').Socket} socket
+ * @returns {string|undefined}
+ */
+function getClientIp(socket) {
+  const remote = socket.handshake && socket.handshake.address;
+  if (LOOPBACK_ADDRESSES.has(remote)) {
+    const forwarded = socket.handshake.headers && socket.handshake.headers['x-forwarded-for'];
+    if (forwarded) return forwarded.split(',')[0].trim();
+  }
+  return remote;
+}
+
 /**
  * How long to coalesce bursts of room mutations (sit/ready/start/resign/...)
  * into a single lobby broadcast. broadcastLobbyUpdate() is called from ~15
@@ -248,6 +275,7 @@ module.exports = {
   readyTimers,
   sessions,
   getOnlineUsersList,
+  getClientIp,
   broadcastLobbyUpdate,
   sendLobbySnapshot,
   findSocketsByUserId,

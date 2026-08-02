@@ -30,7 +30,10 @@ jest.mock('../utils/logger', () => ({
   error: jest.fn(),
 }));
 
-// Mock state module
+// Mock state module — getClientIp is pulled from the real module rather than
+// re-implemented here, so these tests exercise its actual loopback/forwarded
+// logic instead of a hand-rolled stand-in that could drift from it.
+const actualState = jest.requireActual('../socket/state');
 const mockState = {
   timerMap: new Map(),
   broadcastLobbyUpdate: jest.fn(),
@@ -40,6 +43,7 @@ const mockState = {
     socket.emit('lobby:update', { rooms: mockRoomManager.listRooms() });
   }),
   getOnlineUsersList: jest.fn(() => []),
+  getClientIp: actualState.getClientIp,
 };
 jest.mock('../socket/state', () => mockState);
 
@@ -47,9 +51,10 @@ const LobbyHandler = require('../socket/handlers/LobbyHandler');
 
 // ── Socket / IO factory helpers ────────────────────────────────────────────
 
-function makeSocket(userId = 'u1', displayName = 'User 1') {
+function makeSocket(userId = 'u1', displayName = 'User 1', handshake = { address: '203.0.113.5', headers: {} }) {
   const socket = {
     user: { userId, displayName, isGuest: false },
+    handshake,
     rooms: new Set(),
     _emitted: [],
     join: jest.fn(function(room) { this.rooms.add(room); }),
@@ -194,6 +199,60 @@ describe('LobbyHandler — room:create', () => {
     expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
       expect.any(Object),
       {} // empty settings default
+    );
+  });
+
+  test('uses the raw socket address as the room-quota IP for a direct connection', () => {
+    const io = makeIo();
+    const socket = makeSocket('u1', 'Alice', { address: '203.0.113.5', headers: {} });
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    mockRoomManager.createRoom.mockReturnValue({ room: { roomId: 'r1', roomName: 'R1' } });
+
+    LobbyHandler.register(io, socket);
+    handlers['room:create']({ settings: {} });
+
+    expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ ip: '203.0.113.5' }),
+      {}
+    );
+  });
+
+  test('uses the forwarded client IP, not the loopback proxy address, when behind a same-host proxy', () => {
+    const io = makeIo();
+    const socket = makeSocket('u1', 'Alice', {
+      address: '127.0.0.1',
+      headers: { 'x-forwarded-for': '198.51.100.7' },
+    });
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    mockRoomManager.createRoom.mockReturnValue({ room: { roomId: 'r1', roomName: 'R1' } });
+
+    LobbyHandler.register(io, socket);
+    handlers['room:create']({ settings: {} });
+
+    expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ ip: '198.51.100.7' }),
+      {}
+    );
+  });
+
+  test('ignores a spoofed X-Forwarded-For from a connection that is not actually loopback', () => {
+    const io = makeIo();
+    const socket = makeSocket('u1', 'Alice', {
+      address: '203.0.113.9', // a real remote peer, not the trusted local proxy
+      headers: { 'x-forwarded-for': '198.51.100.7' },
+    });
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    mockRoomManager.createRoom.mockReturnValue({ room: { roomId: 'r1', roomName: 'R1' } });
+
+    LobbyHandler.register(io, socket);
+    handlers['room:create']({ settings: {} });
+
+    expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
+      expect.objectContaining({ ip: '203.0.113.9' }),
+      {}
     );
   });
 });
