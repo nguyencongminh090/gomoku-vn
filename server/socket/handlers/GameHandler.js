@@ -32,6 +32,7 @@ const config          = require('../../config');
 const {
   timerMap,
   broadcastLobbyUpdate,
+  broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
   syncReadyWindow,
@@ -410,11 +411,11 @@ function register(io, socket) {
     if (result.allReady) {
       cleanupReadyTimer(room.roomId);
       result.room.readyDeadline = null;
-      io.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+      broadcastRoomUpdate(io, result.room);
       startGame(io, result.room);
     } else {
       syncReadyWindow(io, result.room);
-      io.to(room.roomId).emit('room:updated', roomManager.serializeRoomUpdate(result.room));
+      broadcastRoomUpdate(io, result.room);
     }
   });
 }
@@ -580,7 +581,7 @@ function startGame(io, room) {
     for (const [, u] of room.users) u.ready = false;
 
     io.to(roomId).emit('game:init', { ...engine.serialize(), timer: null });
-    io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
+    broadcastRoomUpdate(io, room);
     broadcastLobbyUpdate(io);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -619,7 +620,7 @@ function startGame(io, room) {
     timer: timer.getTimers(),
     timerSync: timer.getSync(),
   });
-  io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
+  broadcastRoomUpdate(io, room);
   broadcastLobbyUpdate(io);
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null,
@@ -694,7 +695,7 @@ function handleGameEnd(io, room, opts = {}) {
   room._timeRequestPending = null;
   for (const [, u] of room.users) u.ready = false;
 
-  io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
+  broadcastRoomUpdate(io, room);
   broadcastLobbyUpdate(io);
 }
 

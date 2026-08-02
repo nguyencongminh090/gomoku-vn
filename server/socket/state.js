@@ -202,6 +202,108 @@ function broadcastOnlineUsers(io) {
 }
 
 /**
+ * Per-room record of what `room:updated` clients were last told about that
+ * room's user list: roomId → Map(userId → serialized-user JSON string).
+ * Diffing against this at broadcast time is what makes a per-user delta
+ * possible without touching the ~17 call sites that trigger a `room:updated`
+ * (sit/stand/ready/join/leave/kick/game-end/...): they say "something in this
+ * room changed", and the diff works out which users' entries actually did, by
+ * comparing against real state — the same technique `_diffLobbyRooms` above
+ * already uses for the lobby room list.
+ *
+ * Keyed by roomId (a plain Map, not a WeakMap) because a roomId is a string,
+ * not an object to hold a weak reference to — entries are dropped explicitly
+ * via clearRoomUpdateSnapshot() when the room is destroyed instead.
+ */
+const _roomUserSnapshots = new Map();
+
+/** Per-room last-broadcast `scoreTable` JSON string, for change detection. */
+const _roomScoreTableSnapshots = new Map();
+
+/**
+ * Diff a room's current user list against what was last broadcast for it.
+ * A user's role (host/player/guest) is computed fresh into each serialized
+ * entry by RoomManager, so e.g. a host handover naturally shows up as both
+ * the old and new host's entries changing — no separate handling needed.
+ *
+ * @returns {{ upserts: object[], removed: string[] }}
+ */
+function _diffRoomUsers(roomId, users) {
+  const previous = _roomUserSnapshots.get(roomId) || new Map();
+  const next = new Map();
+  const upserts = [];
+
+  for (const user of users) {
+    const serialized = JSON.stringify(user);
+    next.set(user.userId, serialized);
+    if (previous.get(user.userId) !== serialized) upserts.push(user);
+  }
+
+  const removed = [];
+  for (const userId of previous.keys()) {
+    if (!next.has(userId)) removed.push(userId);
+  }
+
+  _roomUserSnapshots.set(roomId, next);
+  return { upserts, removed };
+}
+
+/**
+ * Broadcast a room's current state to everyone in it, as a delta.
+ *
+ * `RoomManager.serializeRoomUpdate()` still builds the full current state —
+ * that part hasn't changed — but the `users` array (the O(n) piece that made
+ * the old full-broadcast-to-full-room shape scale as O(n²) with room size,
+ * per `issue report.md` §4.2) is now diffed into `{ upserts, removed }`
+ * instead of always going out whole, and only included at all when something
+ * in it actually changed. `scoreTable` (the other array-shaped, room-size-
+ * scaling field) gets the same treatment. The remaining scalar fields
+ * (roomName, hostId, hostName, state, readyDeadline) are cheap regardless of
+ * room size, so they're just always included — diffing them individually
+ * would add complexity without addressing the O(n²) this exists to remove.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {object} room
+ * @param {{ settings?: boolean }} [opts] — pass `settings: true` for the one
+ *   call site (RoomHandler.js's `room:settings` handler) where settings did
+ *   actually just change and clients need the new values.
+ */
+function broadcastRoomUpdate(io, room, opts = {}) {
+  const full = roomManager.serializeRoomUpdate(room);
+  const { upserts, removed } = _diffRoomUsers(room.roomId, full.users);
+
+  const scoreTableJson = JSON.stringify(full.scoreTable);
+  const scoreTableChanged = _roomScoreTableSnapshots.get(room.roomId) !== scoreTableJson;
+  if (scoreTableChanged) _roomScoreTableSnapshots.set(room.roomId, scoreTableJson);
+
+  const payload = {
+    roomName: full.roomName,
+    hostId: full.hostId,
+    hostName: full.hostName,
+    state: full.state,
+    readyDeadline: full.readyDeadline,
+  };
+  if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };
+  if (scoreTableChanged) payload.scoreTable = full.scoreTable;
+  if (opts.settings) payload.settings = { ...room.settings };
+
+  io.to(room.roomId).emit('room:updated', payload);
+}
+
+/**
+ * Drop a destroyed room's `room:updated` diff baseline, so these maps don't
+ * grow forever as rooms are created and destroyed over the server's uptime.
+ * Called from RoomManager's `room_destroyed` event (SocketHandler.js), which
+ * fires from every teardown path (`_destroyRoom` is the single choke point).
+ *
+ * @param {string} roomId
+ */
+function clearRoomUpdateSnapshot(roomId) {
+  _roomUserSnapshots.delete(roomId);
+  _roomScoreTableSnapshots.delete(roomId);
+}
+
+/**
  * Find all active Socket.io sockets belonging to a given userId.
  * @param {import('socket.io').Server} io
  * @param {string} userId
@@ -289,7 +391,7 @@ function handleReadyWindowTimeout(io, roomId) {
   const { kicked } = roomManager.forceUnreadyPlayersToStand(roomId);
   if (!kicked.length) return;
 
-  io.to(roomId).emit('room:updated', roomManager.serializeRoomUpdate(room));
+  broadcastRoomUpdate(io, room);
   for (const u of kicked) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -310,6 +412,8 @@ module.exports = {
   getClientIp,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
+  broadcastRoomUpdate,
+  clearRoomUpdateSnapshot,
   sendLobbySnapshot,
   findSocketsByUserId,
   cleanupRoomTimer,
