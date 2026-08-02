@@ -11,13 +11,17 @@
 require('./utils/load-env').loadEnv();
 
 // --- Room limits ---
-const MAX_ROOMS             = 10;
+// Overridable via env var so the capacity-test harness (scripts/capacity-test/)
+// can dial concurrency for a run without editing this tracked file each time
+// (see TODO.md #26 / instruction.md §B26). Unset in production — the literal
+// defaults below are what actually ships.
+const MAX_ROOMS             = parseInt(process.env.MAX_ROOMS, 10) || 10;
 // Per-IP share of MAX_ROOMS. Deliberately not 1: phones on the same mobile
 // carrier NAT, and everyone on one office/school/home wifi, share a public IP,
 // so a limit of 1 would lock out real users who did nothing wrong. 3 still
 // stops one client from taking the whole MAX_ROOMS pool.
-const MAX_ROOMS_PER_IP      = 3;
-const MAX_USERS_PER_ROOM    = 20;      // 2 players + 18 guests
+const MAX_ROOMS_PER_IP      = parseInt(process.env.MAX_ROOMS_PER_IP, 10) || 3;
+const MAX_USERS_PER_ROOM    = parseInt(process.env.MAX_USERS_PER_ROOM, 10) || 20; // 2 players + 18 guests
 const IDLE_TIMEOUT_MS       = 600_000; // 10 minutes
 const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against IDLE_TIMEOUT_MS
 

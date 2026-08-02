@@ -14,7 +14,8 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:report": "playwright show-report"
+    "test:e2e:report": "playwright show-report",
+    "capacity-test": "node scripts/capacity-test/orchestrator.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
