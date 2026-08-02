@@ -36,9 +36,25 @@ class SocketClient {
       return;
     }
 
-    // Connect with JWT in auth handshake
+    // Connect with JWT in auth handshake.
+    //
+    // `transports: ['websocket', 'polling']` tries a direct WebSocket upgrade
+    // first instead of socket.io's default HTTP long-polling handshake
+    // (['polling', 'websocket']). Measured in docs/stress-test-report.md §10
+    // and re-verified in TODO.md #28/#29: at a synchronized burst of many
+    // thousand new connections, the polling-first handshake is measurably
+    // more likely to fail (`connect timeout`) than websocket-first — up to
+    // ~15 percentage points at 6000 concurrent connecting players in this
+    // session's re-measurement. `tryAllTransports: true` is required for
+    // socket.io-client >=4.8 so a failed *first* transport (e.g. a proxy that
+    // blocks WebSocket entirely) falls through to the next one in the list
+    // instead of failing the connection outright — this keeps the same
+    // eventual-connectivity guarantee polling-first had, just with websocket
+    // tried before polling instead of after.
     this.socket = io({
       auth: { token },
+      transports: ['websocket', 'polling'],
+      tryAllTransports: true,
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
