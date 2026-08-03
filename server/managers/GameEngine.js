@@ -438,6 +438,10 @@ class GameEngine {
    */
   acceptDraw(userId) {
     if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.' };
+
+    const player = this.players.find(p => p.userId === userId);
+    if (!player) return { error: 'Bạn không phải người chơi.' };
+
     if (!this.drawOffer) return { error: 'Không có lời đề nghị hoà nào.' };
     if (this.drawOffer.from === userId) return { error: 'Bạn không thể tự chấp nhận.' };
 
@@ -456,6 +460,9 @@ class GameEngine {
    * @returns {{ error?: string, declined?: boolean }}
    */
   declineDraw(userId) {
+    const player = this.players.find(p => p.userId === userId);
+    if (!player) return { error: 'Bạn không phải người chơi.' };
+
     if (!this.drawOffer) return { error: 'Không có lời đề nghị hoà nào.' };
     if (this.drawOffer.from === userId) return { error: 'Bạn không thể tự từ chối.' };
 

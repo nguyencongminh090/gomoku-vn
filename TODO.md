@@ -1077,26 +1077,21 @@ vào các đường ít bị soi hơn (thoả thuận hoà, cộng giờ). Cả 
 đã qua vòng lọc false-positive riêng (sub-task độc lập, đọc code trực tiếp,
 confidence ≥ 8/10) trước khi đưa vào đây.
 
-33. **Chấp nhận/từ chối đề nghị hoà không kiểm tra tư cách người chơi** —
-    `server/managers/GameEngine.js`, `acceptDraw()` (~dòng 439) và
-    `declineDraw()` (~dòng 458) chỉ kiểm `this.drawOffer.from !== userId`
-    (chặn tự chấp nhận/tự từ chối đề nghị của chính mình), **không** kiểm
-    `userId` có nằm trong `this.players` hay không — khác với 2 hàm liền kề
-    `resign()` (~dòng 398) và `offerDraw()` (~dòng 424) đã có đúng kiểm tra
-    này. Handler socket `game:draw_accept`/`game:draw_decline`
-    (`server/socket/handlers/GameHandler.js:228-261`) cũng không bù thêm
-    kiểm tra ở tầng handler.
-    - **Đối tượng khai thác thật:** khán giả trong phòng (không phải người
-      chơi có ghế) — `RoomManager.joinRoom()` thêm mọi user vào
-      `room.users`/`userRoomMap` không cần ghế, và `getRoomByUser()` tra ra
-      đúng phòng cho cả khán giả lẫn người chơi. Khán giả có thể tự ý chấp
-      nhận đề nghị hoà (ép ván kết thúc hoà, lưu vào DB, không cần Người
-      chơi B đồng ý) hoặc tự ý từ chối đề nghị hoà hợp lệ thay Người chơi B.
-    - Đánh giá hiệu quả/an toàn: sửa rẻ — thêm đúng 1 dòng kiểm tra tư cách
-      người chơi vào mỗi hàm, dùng lại pattern có sẵn của `resign`/
-      `offerDraw` trong cùng file, không đổi kiến trúc.
-    - **Chưa sửa — đang chờ làm.** Xem `instruction.md` §B33 cho hướng dẫn
-      thực thi cụ thể trước khi code.
+33. ~~**Chấp nhận/từ chối đề nghị hoà không kiểm tra tư cách người chơi**~~
+    **✅ ĐÃ XONG (2026-08-04)** — thêm đúng kiểm tra
+    `const player = this.players.find(p => p.userId === userId); if (!player) return { error: 'Bạn không phải người chơi.' };`
+    vào đầu `acceptDraw()` và `declineDraw()` (`server/managers/GameEngine.js`),
+    copy nguyên pattern có sẵn từ `resign()`/`offerDraw()` trong cùng file,
+    đúng như `instruction.md` §B33. Không đụng tầng handler
+    (`GameHandler.js`) — kiểm tra đặt ở `GameEngine` để bảo vệ mọi lối gọi
+    tương lai, không chỉ lối gọi qua socket hiện tại.
+    Test: +2 case trong `GameEngine.test.js` (describe "Draw offer") — khán
+    giả (`userId` không nằm trong `players`) gọi `acceptDraw`/`declineDraw`
+    khi có `drawOffer` đang chờ, assert bị từ chối đúng thông báo
+    `'Bạn không phải người chơi.'` và trạng thái ván/`drawOffer` không đổi.
+    Mutation-check: revert riêng `GameEngine.js` → cả 2 case đỏ đúng dự kiến
+    → khôi phục → xanh lại. `npm test`: 361/361 xanh (+2 case). Chi tiết:
+    `docs/fix-log.md`.
 
 34. **Chấp nhận/từ chối yêu cầu cộng giờ không kiểm tra tư cách người chơi** —
     `server/socket/handlers/GameHandler.js`, `game:time_accept` (~dòng 335)

@@ -432,6 +432,23 @@ describe('GameEngine — Draw offer', () => {
     const r = g.acceptDraw(P2);
     expect(r.error).toBeTruthy();
   });
+
+  test('spectator (non-player) cannot accept a pending draw offer', () => {
+    const g = makeGame();
+    g.offerDraw(P1);
+    const r = g.acceptDraw('spectator-1');
+    expect(r.error).toBe('Bạn không phải người chơi.');
+    expect(g.status).toBe('ongoing');
+    expect(g.drawOffer).toMatchObject({ from: P1 });
+  });
+
+  test('spectator (non-player) cannot decline a pending draw offer', () => {
+    const g = makeGame();
+    g.offerDraw(P1);
+    const r = g.declineDraw('spectator-1');
+    expect(r.error).toBe('Bạn không phải người chơi.');
+    expect(g.drawOffer).toMatchObject({ from: P1 });
+  });
 });
 
 // ---------------------------------------------------------------------------
