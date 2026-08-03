@@ -196,6 +196,54 @@ describe('TimerManager — addTime ("Xin Time")', () => {
   });
 });
 
+// ── Swap2 placeholder → real color remap (instruction.md §B37) ─────────────
+//
+// During Swap2's opening phases, colors aren't assigned yet, so the timer is
+// constructed with firstPlayerId/secondPlayerId as black/white placeholders.
+// remapForSwap2() re-labels those slots to the real BLACK/WHITE player ids
+// once _assignColors() resolves them, without discarding time already spent.
+
+describe('TimerManager — remapForSwap2()', () => {
+  test('firstPlayer really is Đen (black) — no swap, activeColor becomes white', () => {
+    const timer = makeTimer({ blackPlayerId: 'first-id', whitePlayerId: 'second-id' });
+    timer.black = 7;  // time spent during the opening
+    timer.white = 9;
+
+    timer.remapForSwap2('first-id', 'second-id');
+
+    expect(timer.blackPlayerId).toBe('first-id');
+    expect(timer.whitePlayerId).toBe('second-id');
+    expect(timer.black).toBe(7);
+    expect(timer.white).toBe(9);
+    expect(timer.activeColor).toBe('white');
+  });
+
+  test('firstPlayer turns out to be Trắng (white) — slots swap, activeColor becomes white', () => {
+    const timer = makeTimer({ blackPlayerId: 'first-id', whitePlayerId: 'second-id' });
+    timer.black = 7;  // was ticking for firstPlayer (placeholder "black")
+    timer.white = 9;
+
+    // Real colors resolved opposite of the placeholder assignment.
+    timer.remapForSwap2('second-id', 'first-id');
+
+    expect(timer.blackPlayerId).toBe('second-id');
+    expect(timer.whitePlayerId).toBe('first-id');
+    // Remaining seconds follow the player, not the slot label.
+    expect(timer.black).toBe(9);
+    expect(timer.white).toBe(7);
+    expect(timer.activeColor).toBe('white');
+  });
+
+  test('does not touch mode/roomId/other fields', () => {
+    const timer = makeTimer({ blackPlayerId: 'first-id', whitePlayerId: 'second-id', mode: 'blitz' });
+
+    timer.remapForSwap2('second-id', 'first-id');
+
+    expect(timer.mode).toBe('blitz');
+    expect(timer.roomId).toBe('room1');
+  });
+});
+
 describe('TimerManager — destroy()', () => {
   test('stops the timer and nulls callback references', () => {
     const timer = makeTimer();

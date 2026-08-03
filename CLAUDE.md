@@ -34,6 +34,28 @@ When fixing a reported bug or issue:
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
 - This applies to actual code fixes. Doc-only updates (`TODO.md`, `instruction.md`, `CLAUDE.md`, `docs/fix-log.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
 
+## New requirements/tasks: stack, don't perform directly
+
+When the user raises a new requirement, feature request, or task during a conversation (as opposed to an explicit "do this now" instruction):
+
+- **Default to recording it, not implementing it.** Add an entry to `TODO.md` (what to do) and a matching entry to `instruction.md` (the execution guidance discussed — approach, pitfalls, boundaries), per the existing `TODO.md`/`instruction.md` pairing convention.
+- **Only perform the task directly if the user explicitly requires it now** (e.g. "do this now", "implement this", "fix it" — a direct ask for action rather than just describing a problem or idea).
+- This is about triage of new work, not about re-litigating tasks already in progress or already explicitly assigned in the current turn.
+
+## Writing comprehensive test cases
+
+When writing unit tests for a fix or feature (per the "Bug-fix workflow" rule above), don't stop at one obvious happy-path test — build coverage deliberately:
+
+- **Enumerate the case space before writing tests.** For business logic with multiple interacting conditions, sketch a decision table (conditions × expected actions) and turn each row into a test case. For state-driven code (game phases, connection state, accept/decline flows), map valid *and* invalid transitions, not just the expected sequence.
+- **Apply equivalence partitioning + boundary value analysis to inputs.** Split inputs into classes that should behave the same way, test one representative per class, then add boundary tests at the edge of each class (the boundary value itself, plus one step on either side) — defects cluster at boundaries, not in the middle of a range.
+- **Split cases into two deliberate groups, and write both:**
+  - *Basic/correctness cases* — prove the feature works as documented on typical input.
+  - *Rare/edge cases* — nulls, empty collections, max-length input, off-by-one counts, near-simultaneous/racing actions, disconnects mid-flow, invalid state transitions. These are where real bugs hide; happy-path tests alone are the least likely to catch defects.
+- **Don't duplicate near-identical cases.** If two cases exercise the same equivalence class or boundary with no behavioral difference, keep only one; prefer a parameterized/data-driven test over copy-pasted near-identical test functions.
+- **Assert on actual expected output/state, not just "it didn't throw."** A test that only checks the call succeeded will rubber-stamp incorrect behavior as passing.
+
+This is additive to, not a replacement for, the existing rule that every unit test written to verify a fix stays permanently in the suite.
+
 ## Short/underspecified prompts: enhance, confirm, then execute
 
 If a user prompt is short or lacks the detail an AI agent needs to act on safely (ambiguous scope, missing target file/fix id, unclear which of several plausible interpretations applies):

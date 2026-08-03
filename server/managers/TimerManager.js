@@ -150,6 +150,24 @@ class TimerManager {
   }
 
   /**
+   * Remap the placeholder black/white slots (assigned by opening-order at
+   * construction time) to the real BLACK/WHITE colors once Swap2 resolves.
+   * Swap2 always has WHITE move first after resolution, so activeColor is
+   * pinned to 'white' regardless of which slot swapped.
+   *
+   * @param {string} realBlackPlayerId
+   * @param {string} realWhitePlayerId
+   */
+  remapForSwap2(realBlackPlayerId, realWhitePlayerId) {
+    if (this.blackPlayerId !== realBlackPlayerId) {
+      [this.black, this.white] = [this.white, this.black];
+    }
+    this.blackPlayerId = realBlackPlayerId;
+    this.whitePlayerId = realWhitePlayerId;
+    this.activeColor = 'white';
+  }
+
+  /**
    * Add bonus time to a player.
    * Used for "Xin Time" feature.
    *

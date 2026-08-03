@@ -79,6 +79,24 @@ test.describe('Swap2 opening', () => {
     const swap2 = await A.page.evaluate(() => (window as any).RoomState.gameState.swap2);
     expect(swap2.openingPhase).toBe('place3');
 
+    // instruction.md §B37: the timer must run from the very first opening
+    // stone, no exemption for the Swap2 phases — and be visible to the user
+    // (turn bar was previously force-hidden during Swap2 via
+    // setTurnBarVisible(false), which masked a correctly-ticking server
+    // clock; assert both the visibility fix and the ticking itself).
+    await expect(A.page.locator('#turn-bar')).not.toHaveClass(/turn-bar--hidden/, { timeout: 10000 });
+    const timerBefore = await A.page.evaluate(() => (window as any).RoomState.timerValues);
+    expect(timerBefore.black).toBeGreaterThan(0);
+    expect(timerBefore.white).toBeGreaterThan(0);
+
+    // firstPlayerId is the "black" placeholder slot and moves first in
+    // place3, so its remaining time must actually be ticking down — not
+    // frozen the way it was before startTimerForGame() was wired into the
+    // Swap2 branch of startGame().
+    await A.page.waitForTimeout(2200);
+    const timerTicked = await A.page.evaluate(() => (window as any).RoomState.timerValues);
+    expect(timerTicked.black).toBeLessThan(timerBefore.black);
+
     const aId = await A.page.evaluate(() => (window as any).RoomState.myUser.userId);
     const bId = await B.page.evaluate(() => (window as any).RoomState.myUser.userId);
     const first = swap2.firstPlayerId === aId ? A.page : B.page;
@@ -117,6 +135,14 @@ test.describe('Swap2 opening', () => {
     expect(resolved.swap2.colorsAssigned).toBe(true);
     const firstPlayerColor = resolved.players.find((p: any) => p.userId === swap2.firstPlayerId).color;
     expect(firstPlayerColor).toBe('BLACK');
+
+    // Swap2 rule: WHITE always moves first after resolution — remapForSwap2()
+    // must have pinned activeColor to 'white', reflected here as the WHITE
+    // player's slot being highlighted as active (turn-bar__active).
+    const whitePlayerId = resolved.players.find((p: any) => p.color === 'WHITE').userId;
+    expect(resolved.currentTurn).toBe(whitePlayerId);
+    await expect(first.locator('#tb-white')).toHaveClass(/turn-bar__active/, { timeout: 5000 });
+    await expect(first.locator('#tb-black')).not.toHaveClass(/turn-bar__active/);
 
     // Normal play resumes: a regular game:move by whoever's turn it now is
     // succeeds and increments moveCount past the 5 opening stones.
