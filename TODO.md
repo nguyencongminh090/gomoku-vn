@@ -1288,13 +1288,25 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ### Nguồn: báo cáo người dùng — "Reconnect Logic is not very well" (2026-08-04)
 
-39. **Guest/spectator (và người chơi khi ván chưa `ongoing`) mất kết nối bị
+39. ~~**Guest/spectator (và người chơi khi ván chưa `ongoing`) mất kết nối bị
     đuổi khỏi phòng ngay lập tức, không có grace period — khác hẳn với
-    người chơi đang trong ván đang chạy.** Đọc kỹ `instruction.md` §39
+    người chơi đang trong ván đang chạy.**~~
+    **✅ ĐÃ XONG (2026-08-04)** — thêm `SPECTATOR_GRACE_MS = 30s` (mặc định,
+    override qua env), `spectatorGraceTimers` map riêng trong `state.js`, và
+    `startSpectatorGrace()`/`cancelSpectatorGrace()` trong
+    `DisconnectHandler.js` — cùng khuôn mẫu `startEmptyRoomGrace`. Xem chi
+    tiết đầy đủ trong `docs/fix-log.md` (dòng `2026-08-04 04:56`).
+    Test: describe block mới "spectator grace period" (6 case) trong
+    `DisconnectHandler.test.js`, `npm test` 385/385 xanh. Mutation-check: 7/25
+    đỏ khi revert. **Đã kiểm bằng server thật + `socket.io-client` thật**
+    (không chỉ unit test): reconnect trong grace nhận đúng `room:joined`,
+    reconnect sau khi hết grace nhận đúng `room:destroyed`.
+
+    ~~Đọc kỹ `instruction.md` §39
     trước khi làm — có 2 nhánh grace hiện có (`startDisconnectGrace` chỉ áp
     dụng khi `gameState.status === 'ongoing'` và user là player;
     `startEmptyRoomGrace` chỉ áp dụng khi user là **người duy nhất** còn lại
-    trong phòng) và một khoảng trống ở giữa 2 nhánh đó chưa được xử lý.
+    trong phòng) và một khoảng trống ở giữa 2 nhánh đó chưa được xử lý.~~
     - **Triệu chứng:** một guest xem ván đấu (hoặc 1 player đã ngồi ghế
       nhưng ván chưa bắt đầu) rớt mạng thoáng qua (khoá màn hình điện thoại,
       wifi chập chờn) trong khi còn người khác ở lại phòng →

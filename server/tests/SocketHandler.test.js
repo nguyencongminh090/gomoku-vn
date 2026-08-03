@@ -37,6 +37,7 @@ jest.mock('../socket/handlers/ChatHandler', () => ({ register: jest.fn() }));
 jest.mock('../socket/handlers/DisconnectHandler', () => ({
   cancelDisconnectGrace: jest.fn(() => false),
   cancelEmptyRoomGrace: jest.fn(() => false),
+  cancelSpectatorGrace: jest.fn(() => false),
   handleDisconnect: jest.fn(),
 }));
 jest.mock('../managers/ChatHandler', () => ({ cleanupUser: jest.fn() }));
