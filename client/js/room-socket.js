@@ -404,7 +404,16 @@
     } else {
       const params = new URLSearchParams(window.location.search);
       const roomId = params.get('id');
-      if (roomId) client.emit('room:join', { roomId });
+      if (roomId) {
+        client.emit('room:join', { roomId });
+      } else {
+        // No sessionStorage intent and no ?id= — e.g. a bare room.html link
+        // pasted/typed directly. Nothing will ever emit room:join/create, so
+        // room:joined will never arrive and #room-entry-overlay would stay up
+        // forever (see TODO.md #40 / instruction.md §40). Bounce back to the
+        // lobby instead of freezing there.
+        window.location.href = 'index.html';
+      }
     }
   }
 
