@@ -202,8 +202,17 @@
     const tbBlack = document.getElementById('tb-black');
     const tbWhite = document.getElementById('tb-white');
     if (tbBlack && tbWhite && st.gameState) {
-      const blackP = st.gameState.players.find(p => p.color === 'BLACK');
-      const isBlackTurn = st.gameState.currentTurn === (blackP ? blackP.userId : null);
+      // During Swap2's opening phases, colors aren't assigned yet
+      // (`player.color` is null) — the black/white slots are placeholders
+      // for firstPlayerId/secondPlayerId instead (instruction.md §B37).
+      const swap2 = st.gameState.swap2;
+      let isBlackTurn;
+      if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
+        isBlackTurn = st.gameState.currentTurn === swap2.firstPlayerId;
+      } else {
+        const blackP = st.gameState.players.find(p => p.color === 'BLACK');
+        isBlackTurn = st.gameState.currentTurn === (blackP ? blackP.userId : null);
+      }
       tbBlack.classList.toggle('turn-bar__active', isBlackTurn && st.gameState.status === 'ongoing');
       tbWhite.classList.toggle('turn-bar__active', !isBlackTurn && st.gameState.status === 'ongoing');
     }
@@ -281,7 +290,17 @@
       moveHistory: st.gameState.moveHistory || [],
     });
 
-    setTurnBarVisible(false);
+    // Timer runs throughout the opening (instruction.md §B37) — keep the
+    // turn bar visible instead of hiding it, and label the two slots by
+    // firstPlayerId/secondPlayerId since `player.color` is still null.
+    setTurnBarVisible(true);
+    const bNameEl = document.getElementById('tb-black-name');
+    const wNameEl = document.getElementById('tb-white-name');
+    const firstP  = st.gameState.players.find(p => p.userId === st.gameState.swap2.firstPlayerId);
+    const secondP = st.gameState.players.find(p => p.userId === st.gameState.swap2.secondPlayerId);
+    if (bNameEl) bNameEl.textContent = firstP ? firstP.displayName : '—';
+    if (wNameEl) wNameEl.textContent = secondP ? secondP.displayName : '—';
+    renderTimers();
 
     renderDrawPrompt();
     renderTimePrompt();

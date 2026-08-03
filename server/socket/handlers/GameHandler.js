@@ -136,6 +136,17 @@ function register(io, socket) {
 
     io.to(room.roomId).emit('game:swap2_state',
       buildSwap2State(engine, { x: r.x, y: r.y, color: r.color }, r.nextColor));
+
+    // Phase boundary (place3 → p2choice, or place2 → p1choice) hands the turn
+    // to the other placeholder player — sync the timer to match.
+    if (r.currentTurn !== user.userId) {
+      const timer = timerMap.get(room.roomId);
+      if (timer) {
+        timer.switchTurn(r.currentTurn === engine.secondPlayerId ? 'white' : 'black');
+        io.to(room.roomId).emit('timer:sync', timer.getSync());
+      }
+    }
+
     room.lastActivity = Date.now();
   });
 
@@ -156,10 +167,18 @@ function register(io, socket) {
     }
 
     if (r.done) {
-      startTimerForGame(io, room, engine);
+      // Colors are resolved now — remap the timer's placeholder black/white
+      // slots to the real colors in place, rather than creating a fresh
+      // TimerManager (which would discard time already spent during the
+      // opening). See instruction.md §B37.
+      const timer = timerMap.get(room.roomId);
+      if (timer) {
+        const blackPlayer = engine.players.find(p => p.color === 'BLACK');
+        const whitePlayer = engine.players.find(p => p.color === 'WHITE');
+        timer.remapForSwap2(blackPlayer.userId, whitePlayer.userId);
+      }
       io.to(room.roomId).emit('game:swap2_state', buildSwap2State(engine, null, null));
 
-      const timer = timerMap.get(room.roomId);
       if (timer) io.to(room.roomId).emit('timer:sync', timer.getSync());
 
       const whiteP = engine.players.find(p => p.color === 'WHITE');
@@ -438,22 +457,31 @@ function register(io, socket) {
 
 /**
  * Build and start the per-room timer using the engine's resolved player colors.
- * Shared by normal game start and Swap2 resolution.
+ * Shared by normal game start and Swap2 opening.
+ *
+ * @param {{blackPlayerId: string, whitePlayerId: string}} [idOverride] — use
+ *   these ids instead of looking players up by `color`. Needed for Swap2,
+ *   where `startGame()` must start the clock before colors are assigned
+ *   (`player.color` is still `null`); see instruction.md §B37.
  */
-function startTimerForGame(io, room, engine) {
+function startTimerForGame(io, room, engine, idOverride) {
   const roomId = room.roomId;
   const settings = room.settings;
 
-  const blackPlayer = engine.players.find(p => p.color === 'BLACK');
-  const whitePlayer = engine.players.find(p => p.color === 'WHITE');
+  const blackPlayerId = idOverride
+    ? idOverride.blackPlayerId
+    : engine.players.find(p => p.color === 'BLACK').userId;
+  const whitePlayerId = idOverride
+    ? idOverride.whitePlayerId
+    : engine.players.find(p => p.color === 'WHITE').userId;
 
   const timer = new TimerManager({
     roomId,
     mode: settings.timerMode,
     seconds: settings.timerSeconds,
     incrementSeconds: settings.timerIncrementSeconds || 0,
-    blackPlayerId: blackPlayer.userId,
-    whitePlayerId: whitePlayer.userId,
+    blackPlayerId,
+    whitePlayerId,
     // No per-tick broadcast. The tick keeps the server's authoritative
     // clock (and fires onTimeout); clients run their own countdown from the
     // deadline in timer:sync. See review 4.3.
@@ -592,7 +620,21 @@ function startGame(io, room) {
     room._timeRequestPending = null;
     for (const [, u] of room.users) u.ready = false;
 
-    io.to(roomId).emit('game:init', { ...engine.serialize(), timer: null });
+    // Timer runs from the very first opening stone — no exemption for the
+    // Swap2 place3/p2choice/place2/p1choice phases (instruction.md §B37).
+    // Colors aren't assigned yet, so black/white slots are placeholders for
+    // firstPlayerId/secondPlayerId; the game:swap2_choice handler calls
+    // timer.remapForSwap2() to fix the labels once colors resolve.
+    const timer = startTimerForGame(io, room, engine, {
+      blackPlayerId: engine.firstPlayerId,
+      whitePlayerId: engine.secondPlayerId,
+    });
+
+    io.to(roomId).emit('game:init', {
+      ...engine.serialize(),
+      timer: timer.getTimers(),
+      timerSync: timer.getSync(),
+    });
     broadcastRoomUpdate(io, room);
     broadcastLobbyUpdate(io);
     io.to(roomId).emit('chat:message', {

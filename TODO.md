@@ -1179,6 +1179,108 @@ confidence ≥ 8/10) trước khi đưa vào đây.
     - **Đã kiểm bằng browser thật qua Playwright** (không chỉ tin giả định) —
       xem chi tiết Mutation-check ở trên. Chi tiết đầy đủ: `docs/fix-log.md`.
 
+### Nguồn: báo cáo người dùng — lỗi đếm giờ trong luồng Swap2 (2026-08-04)
+
+37. ~~**Timer không chạy trong suốt giai đoạn khai cuộc Swap2, và chạy sai bên
+    sau khi Swap2 resolve**~~
+    **✅ ĐÃ XONG (2026-08-04)** — người dùng phát hiện khi test thủ công, đã xem
+    sơ đồ luồng Swap2 hiện tại (state diagram + sequence diagram, mermaid) do
+    agent dựng từ code, rồi tự chốt hướng sửa: **tính giờ ngay từ lúc bắt đầu
+    ván, không có giai đoạn nào được miễn trừ** ("Apply Time manager right
+    after START game. Không có ngoại lệ"). **Đọc kỹ `instruction.md` §B37
+    trước khi làm — thiết kế có 1 điểm dễ làm sai (nhãn placeholder
+    black/white trong lúc màu chưa gán), tóm tắt ở đây chỉ là gạch đầu dòng.**
+    - **Lỗi 1 (đã xác nhận):** `startGame()` nhánh `ruleSwap2`
+      (`server/socket/handlers/GameHandler.js:576-605`) emit `game:init` với
+      `timer: null`, không gọi `startTimerForGame()`. Suốt các phase
+      `place3`/`p2choice`/`place2`/`p1choice`, `timerMap` không có entry cho
+      phòng đó → không ai bị trừ giờ khi đặt quân mở màn / chọn bên.
+    - **Lỗi 2 (đã xác nhận):** `TimerManager` constructor hard-code
+      `this.activeColor = 'black'` (`server/managers/TimerManager.js:59`),
+      đúng cho ván thường (Đen đi trước) nhưng sai cho Swap2 — luật Swap2 quy
+      định **Trắng luôn đi trước** sau khi resolve
+      (`GameEngine.js:380`, `_assignColors`). `startTimerForGame()` (gọi tại
+      `GameHandler.js:158-159` khi `r.done`) không truyền `activeColor` khởi
+      tạo theo `engine.currentTurn` thực tế → timer luôn bắt đầu trừ giờ Đen
+      dù đang là lượt Trắng.
+    - **Hướng sửa đã chốt:** dùng `firstPlayerId`/`secondPlayerId` (cố định
+      suốt khai cuộc) làm nhãn placeholder cho 2 khe đếm `black`/`white` của
+      `TimerManager` ngay từ lúc `startGame()` tạo engine Swap2, sau đó
+      **remap** nhãn đó sang màu thật khi `_assignColors()` chạy (thêm
+      method `remapForSwap2()` mới trên `TimerManager`, không đổi API cũ).
+      Switch lượt trong lúc khai cuộc (`game:swap2_place`/`game:swap2_choice`
+      handler) qua `timer.switchTurn()` mỗi khi `currentTurn` đổi người.
+    - **Đụng tới cả client:** `renderSwap2()`
+      (`client/js/game-ui.js`) hiện đang ẩn hẳn turn-bar
+      (`setTurnBarVisible(false)`) — phải bật hiển thị + sửa
+      `renderTimers()`/tên hiển thị để không dựa vào `player.color` (đang
+      `null` lúc chưa gán màu), nếu không đồng hồ chạy đúng ở server nhưng
+      người dùng không thấy gì. Bump `?v=N` (rule `CLAUDE.md`) vì đụng
+      `client/js/game-ui.js`.
+    - **Trạng thái:** đã triển khai đúng hướng đã chốt — xem chi tiết đầy đủ
+      trong `docs/fix-log.md` (dòng `2026-08-04 09:52`).
+    - **Test:** `server/tests/TimerManager.test.js` — 3 case cho
+      `remapForSwap2()` (firstPlayer thật sự là Đen → không hoán đổi;
+      firstPlayer hoá ra là Trắng → hoán đổi đúng `black`/`white` +
+      `blackPlayerId`/`whitePlayerId`; field khác không bị đụng), mutation
+      qua stash → cả 3 đỏ đúng dự kiến → khôi phục xanh lại. `npm test`
+      368/368 xanh (was 365). Client-side vẫn chưa có Jest — mở rộng
+      `e2e/swap2-opening.spec.ts` với assertion timer thật (turn-bar không
+      ẩn, `timerValues.black` giảm thật qua 2.2s trong lúc khai cuộc, đúng
+      bên WHITE được `turn-bar__active` sau khi resolve); chạy trên server
+      thật ở cổng 3099 (không đụng server thật đang phục vụ Cloudflare
+      Tunnel ở 3000). Mutation-check cả assertion e2e bằng stash 3 file sửa
+      + restart server → đỏ đúng ngay tại assertion turn-bar ẩn, khớp lỗi
+      báo cáo; khôi phục → xanh lại trên chromium.
+
+### Nguồn: yêu cầu người dùng — redesign Start Modal & luồng ready/kết-thúc-ván (2026-08-04)
+
+36. **Redesign Start Modal + bỏ Game-End Modal, đổi cơ chế đếm-trượt cho
+    ready-window** — người dùng xem sơ đồ luồng "bắt đầu ván" hiện tại
+    (mermaid) và đánh giá UX chưa tốt, tự đề xuất thiết kế mới, đã hỏi lại
+    3 vòng làm rõ trực tiếp trước khi ghi mục này. **Đọc kỹ
+    `instruction.md` §B36 trước khi làm — thiết kế khá tinh vi (máy trạng
+    thái đếm-trượt 3 lần), tóm tắt ở đây chỉ là gạch đầu dòng.**
+    - **Đổi thời điểm mở đếm ngược:** hiện tại cả 2 ngồi đủ ghế là tự động mở
+      đếm ngược 30s (`syncReadyWindow`). Mới: đủ 2 ghế chỉ đứng yên chờ, đếm
+      ngược **15s** chỉ mở khi **1 người bấm "Bắt đầu" trước**.
+    - **Cơ chế 3 lần trượt:** hết 15s mà người còn lại chưa bấm → tính 1 lần
+      trượt, quay lại chờ (không tự mở lại đếm ngược). Trượt đủ 3 lần → kick
+      đúng người không bấm ở lần thứ 3, người kia được giữ ghế. Bất kỳ thay
+      đổi tư cách ngồi nào ở 1 trong 2 ghế (đứng dậy/kick/rời phòng, kể cả
+      giữa chừng 1 vòng đếm chưa hết hạn) → reset bộ đếm về 0, coi là cặp
+      ghế mới.
+    - **Modal nhỏ lại:** bỏ backdrop full-screen của `#start-modal`, định vị
+      **giữa bàn cờ** thay vì che cả màn hình — người dùng vẫn bấm được nút
+      đứng dậy trên ghế (`.slot-card__stand`, đã có sẵn) và dùng chat bình
+      thường trong lúc modal hiện.
+    - **Bỏ hẳn `#game-overlay`** (modal công bố Thắng/Thua/Hoà + nút "Đấu
+      lại"/"Đóng") — không cần công bố thắng/thua vì bàn cờ đã tô nước thắng
+      (`_drawWinHighlight`); case Hoà chỉ cần cải thiện toast/system-chat,
+      không cần modal. Kết thúc ván = coi như "cặp ghế mới", chạy lại đúng
+      luồng B36 từ đầu — **không còn phân biệt ván đầu tiên và rematch** (cố
+      ý đảo ngược 1 ranh giới cũ từng ghi ở B35, xem lý do trong
+      `instruction.md` §B36).
+    - **Phạm vi đụng tới:** `server/socket/state.js` (`syncReadyWindow`,
+      `handleReadyWindowTimeout`, `READY_WINDOW_MS`), `server/managers/
+      RoomManager.js` (`forceUnreadyPlayersToStand`, cần state
+      `readyMissCount` mới trên room), `server/socket/handlers/
+      GameHandler.js` (`handleGameEnd`, bỏ `game:rematch` đặc biệt),
+      `client/room.html` (`#start-modal` CSS + xoá `#game-overlay`),
+      `client/js/room-ui.js` (`renderStartModal`, xoá `showGameOverlay`),
+      `client/js/room.js` (xoá `btnRematch`/`btnCloseOverlay`, hoặc đổi mục
+      đích). Nhớ bump `?v=N` (rule `CLAUDE.md`) vì đụng cả `client/css/` lẫn
+      `client/js/`.
+    - **Trạng thái:** chưa làm — mục này chỉ mới lên kế hoạch + ghi hướng
+      dẫn thực thi, đang chờ triển khai.
+    - **Test dự kiến:** server-side bắt buộc Jest cho máy trạng thái
+      `readyMissCount` (3 nhánh: trượt 1-2 lần, trượt đủ 3 lần kick đúng
+      người, reset khi đổi tư cách ngồi giữa chừng) theo rule "Bug-fix
+      workflow" trong `CLAUDE.md`. Client-side dùng Playwright (`e2e/`,
+      chưa có Jest client) — bắt buộc có 1 test xác nhận modal không chặn
+      click nền (đứng dậy/chat được trong lúc modal hiện), vì đây là lý do
+      chính của redesign.
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
