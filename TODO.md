@@ -1093,23 +1093,23 @@ confidence ≥ 8/10) trước khi đưa vào đây.
     → khôi phục → xanh lại. `npm test`: 361/361 xanh (+2 case). Chi tiết:
     `docs/fix-log.md`.
 
-34. **Chấp nhận/từ chối yêu cầu cộng giờ không kiểm tra tư cách người chơi** —
-    `server/socket/handlers/GameHandler.js`, `game:time_accept` (~dòng 335)
-    và `game:time_decline` (~dòng 372) chỉ kiểm
-    `room._timeRequestPending.from !== user.userId` (chặn tự chấp nhận/từ
-    chối yêu cầu của chính mình), **không** kiểm tư cách đối thủ — khác với
-    `game:request_time` (~dòng 281) đã có đúng kiểm tra
-    `engine.players.find(p => p.userId === user.userId)`.
-    - **Đối tượng khai thác thật:** khán giả trong phòng (cùng cơ chế join
-      như mục 33). Sau khi một người chơi dùng hết `TIME_REQUEST_FREE` (3
-      lần miễn phí, `server/config.js`), các lần cộng giờ tiếp theo
-      (`+TIME_REQUEST_BONUS`, 30s) cần đối thủ đồng ý tường minh — khán giả
-      có thể tự ý phát `game:time_accept` thay đối thủ, cấp giờ không giới
-      hạn cho một bên, vô hiệu hoá cơ chế chống câu giờ.
-    - Đánh giá hiệu quả/an toàn: sửa rẻ — thêm đúng kiểm tra
-      `engine.players.find(...)` mà `game:request_time` đã có, vào cả 2
-      handler còn thiếu.
-    - **Chưa sửa — đang chờ làm.** Xem `instruction.md` §B34.
+34. ~~**Chấp nhận/từ chối yêu cầu cộng giờ không kiểm tra tư cách người chơi**~~
+    **✅ ĐÃ XONG (2026-08-04)** — thêm đúng kiểm tra
+    `const player = room.gameState.players.find(p => p.userId === user.userId); if (!player) { socket.emit('game:error', { message: 'Bạn không phải người chơi.' }); return; }`
+    vào đầu `game:time_accept` (`server/socket/handlers/GameHandler.js`) và
+    `game:time_decline`, trước logic kiểm `room._timeRequestPending`, theo
+    đúng pattern có sẵn của `game:request_time` như `instruction.md` §B34
+    chỉ định. Giữ nguyên ở tầng handler (không chuyển state
+    `_timeRequestPending` sang `GameEngine`), khớp lý do đã nêu trong §B34
+    (state này thuộc `room`, không phải `GameEngine`).
+    Test: file mới `server/tests/GameHandler.test.js` (4 case) — khán giả
+    (`userId` không nằm trong `engine.players`) phát `game:time_accept`/
+    `game:time_decline` khi có `_timeRequestPending` đang chờ, assert bị từ
+    chối đúng thông báo và request không bị xoá/tiêu thụ; kèm 2 case đối
+    chứng xác nhận người chơi thật (đối thủ) vẫn accept/decline được bình
+    thường. Mutation-check: revert riêng `GameHandler.js` → cả 2 case
+    spectator đỏ đúng dự kiến → khôi phục → xanh lại. `npm test`: 365/365
+    xanh (+4 case). Chi tiết: `docs/fix-log.md`.
 
 ### Nguồn: báo cáo người dùng khi test thủ công (2026-08-03)
 

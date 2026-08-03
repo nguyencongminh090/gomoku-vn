@@ -336,6 +336,12 @@ function register(io, socket) {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState || room.gameState.status !== 'ongoing') return;
 
+    const player = room.gameState.players.find(p => p.userId === user.userId);
+    if (!player) {
+      socket.emit('game:error', { message: 'Bạn không phải người chơi.' });
+      return;
+    }
+
     if (!room._timeRequestPending) {
       socket.emit('game:error', { message: 'Không có yêu cầu xin thời gian.' });
       return;
@@ -372,6 +378,12 @@ function register(io, socket) {
   socket.on('game:time_decline', () => {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState || room.gameState.status !== 'ongoing') return;
+
+    const player = room.gameState.players.find(p => p.userId === user.userId);
+    if (!player) {
+      socket.emit('game:error', { message: 'Bạn không phải người chơi.' });
+      return;
+    }
 
     if (!room._timeRequestPending) {
       socket.emit('game:error', { message: 'Không có yêu cầu xin thời gian.' });
