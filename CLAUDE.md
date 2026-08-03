@@ -56,6 +56,20 @@ When writing unit tests for a fix or feature (per the "Bug-fix workflow" rule ab
 
 This is additive to, not a replacement for, the existing rule that every unit test written to verify a fix stays permanently in the suite.
 
+## Playwright/e2e testing: never run against the real user database
+
+`server/db/database.js`'s `DB_PATH` is hardcoded to `server/db/gomoku.db` — there is no `NODE_ENV`/env-var override, so simply running `node server/index.js` (as Playwright's `baseURL` expects a live server at `localhost:3000`) reads and writes the same database file a real deployment or the user's own local dev session uses. Guest game sessions completing a game (resign, draw, timeout, five-in-a-row) call `database.saveGame()` and *do* persist rows there.
+
+Whenever you need a real running server for Playwright (`npx playwright test`, `npm run test:e2e`) — not just `npm test` (Jest), which never touches this file:
+
+1. **Before starting the server, move the real db aside**, don't copy/leave it in place: e.g. `mv server/db/gomoku.db server/db/gomoku.db.pre-e2e` (and the `-wal`/`-shm` sidecar files alongside it, if present). Starting the server after that lets `new Database(DB_PATH)` create a **fresh, empty** db at the same path from `schema.sql` — this is what actually gets written during the test run, not the user's data.
+2. Run the Playwright tests against that fresh db.
+3. **After the run (pass or fail), stop the server, delete the throwaway db** (and its `-wal`/`-shm` files), **then move the real db back** to `server/db/gomoku.db`. The user's data must be exactly what it was before step 1 — never leave the throwaway db in place, and never merge/copy test rows into the restored real db.
+4. Verify the restore worked (e.g. row counts or `diff` against a pre-move checksum) before ending the task — don't just assume the `mv` back succeeded.
+5. **Always kill every server process you started for this**, even ones from earlier failed attempts — a leftover `node server/index.js` left running against the real db defeats the whole point of steps 1-3.
+
+This applies any time you start `server/index.js` yourself for verification. It does not apply to `npm test` (Jest unit tests already mock or use in-memory SQLite, never this file) or to a server the user themselves is already running for their own dev/deployment use — never restart or interfere with a server process you didn't start.
+
 ## Short/underspecified prompts: enhance, confirm, then execute
 
 If a user prompt is short or lacks the detail an AI agent needs to act on safely (ambiguous scope, missing target file/fix id, unclear which of several plausible interpretations applies):
