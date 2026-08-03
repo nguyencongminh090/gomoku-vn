@@ -135,6 +135,10 @@ function init(io) {
     // a returning socket — e.g. room.html's fresh connection right after
     // index.html's navigated away — finds the room still there.
     DisconnectHandler.cancelEmptyRoomGrace(user.userId);
+    // Same reasoning as above, for the spectator/non-ongoing-player grace
+    // window (TODO.md #39 / instruction.md §39) — must also run before the
+    // rejoin checks below.
+    DisconnectHandler.cancelSpectatorGrace(user.userId);
 
     // Check if this is a reconnect during a disconnect grace period
     if (DisconnectHandler.cancelDisconnectGrace(io, socket)) {

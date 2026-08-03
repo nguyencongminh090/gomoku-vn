@@ -49,6 +49,14 @@ const DISCONNECT_GRACE_MS   = 60_000; // 60 seconds
 // forever" — so a genuinely abandoned solo room still gets reclaimed
 // promptly. See TODO.md #18 / instruction.md §B18 (second pass).
 const EMPTY_ROOM_GRACE_MS   = parseInt(process.env.EMPTY_ROOM_GRACE_MS, 10) || 20_000;
+// A guest/spectator (or a seated player whose game isn't 'ongoing' yet) who
+// drops connection while other people remain in the room used to be removed
+// immediately — no grace at all — unlike the two cases above. That gap made a
+// brief mobile network blip (screen lock, wifi handoff) permanently evict
+// them and, on reconnect, made the client wrongly show "Phòng không còn tồn
+// tại" even though the room was still alive with other people in it. See
+// TODO.md #39 / instruction.md §39.
+const SPECTATOR_GRACE_MS    = parseInt(process.env.SPECTATOR_GRACE_MS, 10) || 30_000;
 
 // --- Game / Board ---
 const DEFAULT_BOARD_SIZE    = 17;
@@ -130,6 +138,7 @@ module.exports = {
   IDLE_SCAN_INTERVAL_MS,
   DISCONNECT_GRACE_MS,
   EMPTY_ROOM_GRACE_MS,
+  SPECTATOR_GRACE_MS,
   DEFAULT_BOARD_SIZE,
   VALID_BOARD_SIZES,
   DEFAULT_TIMER_MODE,

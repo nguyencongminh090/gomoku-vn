@@ -16,6 +16,7 @@ const {
   timerMap,
   disconnectTimers,
   emptyRoomGraceTimers,
+  spectatorGraceTimers,
   broadcastLobbyUpdate,
   broadcastRoomUpdate,
   cleanupRoomTimer,
@@ -67,8 +68,14 @@ function handleDisconnect(io, socket) {
     return;
   }
 
-  // Normal disconnect (not in game, or spectator, not the sole occupant)
-  finalizeNormalLeave(io, roomId, user, roomManager.leaveRoom(user.userId));
+  // Guest/spectator, or a seated player whose game isn't 'ongoing' yet, with
+  // other people still in the room: give them a bounded window to reconnect
+  // too, instead of evicting them the instant the socket drops. Without this,
+  // a brief network blip (screen lock, wifi handoff) permanently removed them
+  // from room.users/userRoomMap, and their reconnect then hit the "room no
+  // longer exists" branch in SocketHandler.js even though the room was still
+  // alive with the other occupant(s) in it. See TODO.md #39 / instruction.md §39.
+  startSpectatorGrace(io, room, user);
 }
 
 /**
@@ -152,6 +159,55 @@ function cancelEmptyRoomGrace(userId) {
   clearTimeout(entry.timeout);
   emptyRoomGraceTimers.delete(userId);
   logger.info(`[Disconnect] Empty-room grace cancelled for ${userId} — reconnected in time`);
+  return true;
+}
+
+/**
+ * Start a bounded grace period for a guest/spectator (or a seated player
+ * whose game isn't 'ongoing' yet) who just disconnected while other people
+ * remain in the room — the gap left uncovered between startEmptyRoomGrace
+ * (sole occupant) and startDisconnectGrace (player in an ongoing game).
+ * Cancelled by cancelSpectatorGrace() if the same user reconnects in time —
+ * see the call site in SocketHandler.js, which runs before the existing
+ * auto-rejoin (getRoomByUser) check, so a reconnect within the window finds
+ * the room and the user's seat/membership still there.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {object} room
+ * @param {{ userId: string, displayName: string }} user
+ */
+function startSpectatorGrace(io, room, user) {
+  const roomId = room.roomId;
+  const graceSec = Math.floor(config.SPECTATOR_GRACE_MS / 1000);
+
+  const existing = spectatorGraceTimers.get(user.userId);
+  if (existing) clearTimeout(existing.timeout);
+
+  const timeout = setTimeout(() => {
+    spectatorGraceTimers.delete(user.userId);
+    finalizeNormalLeave(io, roomId, user, roomManager.leaveRoom(user.userId));
+    logger.info(`[Disconnect] Spectator grace expired for ${user.displayName}, room ${roomId} — left for real`);
+  }, config.SPECTATOR_GRACE_MS);
+
+  spectatorGraceTimers.set(user.userId, { timeout, roomId });
+  logger.info(`[Disconnect] Spectator grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
+}
+
+/**
+ * Cancel a pending spectator grace timer for a user. Called on every new
+ * connection (see SocketHandler.js), before the existing room-rejoin check
+ * runs, so a returning socket finds the room and their membership intact.
+ * No-op if none was pending.
+ *
+ * @param {string} userId
+ * @returns {boolean} true if a grace timer was cancelled
+ */
+function cancelSpectatorGrace(userId) {
+  const entry = spectatorGraceTimers.get(userId);
+  if (!entry) return false;
+  clearTimeout(entry.timeout);
+  spectatorGraceTimers.delete(userId);
+  logger.info(`[Disconnect] Spectator grace cancelled for ${userId} — reconnected in time`);
   return true;
 }
 
@@ -317,4 +373,4 @@ function cancelDisconnectGrace(io, socket) {
   return true;
 }
 
-module.exports = { handleDisconnect, cancelDisconnectGrace, cancelEmptyRoomGrace };
+module.exports = { handleDisconnect, cancelDisconnectGrace, cancelEmptyRoomGrace, cancelSpectatorGrace };

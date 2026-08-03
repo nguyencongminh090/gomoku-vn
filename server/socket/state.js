@@ -25,6 +25,16 @@ const disconnectTimers = new Map();
 /** Per-user empty-room grace timers: userId → { timeout, roomId } */
 const emptyRoomGraceTimers = new Map();
 
+/**
+ * Per-user spectator/non-ongoing-player grace timers: userId → { timeout, roomId }.
+ * Separate map from emptyRoomGraceTimers even though the shape is identical —
+ * they cover disjoint cases (sole occupant vs. others still present) and are
+ * started/cancelled independently; merging them would make a user who is
+ * simultaneously "the last one" and "not in an ongoing game" ambiguous to
+ * reason about. See TODO.md #39 / instruction.md §39.
+ */
+const spectatorGraceTimers = new Map();
+
 /** Per-room ready-window timers (Start modal 15s countdown): roomId → Timeout */
 const readyTimers = new Map();
 
@@ -421,6 +431,7 @@ module.exports = {
   timerMap,
   disconnectTimers,
   emptyRoomGraceTimers,
+  spectatorGraceTimers,
   readyTimers,
   sessions,
   getOnlineUsersList,
