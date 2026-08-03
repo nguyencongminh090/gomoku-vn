@@ -18,13 +18,18 @@
  *   [ ] listRooms returns correct summary for each room
  *   [ ] idleCleanup destroys rooms with no activity for IDLE_TIMEOUT_MS
  *
- * Start-modal ready window (see RoomHandler.js / state.js syncReadyWindow):
- *   [ ] Both players confirm Start within 30s → game starts
- *   [ ] One player never confirms → they're vacated from their seat at 30s,
- *       still in the room, other player's modal reverts to waiting-for-seat
- *   [ ] A seated player stands up / disconnects mid-window → countdown cancels
- *   [ ] Host changes settings mid-window → countdown restarts fresh at 30s
- *   [ ] Rematch after a finished game re-uses the same confirm/timeout flow
+ * Start-modal ready window (see RoomHandler.js / state.js handleReadyClick,
+ * instruction.md §B36):
+ *   [ ] Both seated, neither has clicked Start → no countdown, waits forever
+ *   [ ] One player clicks Start → 15s countdown opens for the other
+ *   [ ] Countdown expires, miss count < 3 → both reset to not-ready, no kick
+ *   [ ] Countdown expires at miss count 3 → only the non-clicking seat is
+ *       vacated; the seat that clicked keeps it
+ *   [ ] A seated player stands up / disconnects mid-window → countdown
+ *       cancels and miss count resets to 0 (new seat pair)
+ *   [ ] Host changes settings mid-window → countdown cancels (no auto-restart)
+ *   [ ] Game end resets both seats to not-ready and miss count to 0, then
+ *       re-runs the same flow from scratch (no separate rematch path)
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -108,6 +113,7 @@ class RoomManager extends EventEmitter {
       settings: validatedSettings,
       state: 'idle',                    // idle | playing | interrupted
       readyDeadline: null,              // epoch ms — Start-modal countdown deadline, or null
+      readyMissCount: 0,                 // consecutive ready-window misses for the CURRENT seat pair (0-3)
       gameState: null,                  // Set in Phase 4 when game starts
       scoreTable: {},                   // Per-room cumulative scores
       lastActivity: Date.now(),
@@ -209,6 +215,8 @@ class RoomManager extends EventEmitter {
     }
 
     // Remove user
+    const leavingUser = room.users.get(userId);
+    const wasSeated = leavingUser.slot !== null;
     room.users.delete(userId);
     room.joinOrder = room.joinOrder.filter(id => id !== userId);
     this.userRoomMap.delete(userId);
@@ -220,6 +228,8 @@ class RoomManager extends EventEmitter {
       logger.info(`[RoomManager] Room ${roomId} destroyed (empty)`);
       return { room, destroyed: true, hostTransferred: false };
     }
+
+    if (wasSeated) this.resetReadyPair(room);
 
     // Host transfer if needed
     let hostTransferred = false;
@@ -274,6 +284,9 @@ class RoomManager extends EventEmitter {
     user.slot = slot;
     user.ready = false;
     room.lastActivity = Date.now();
+    // A newly-occupied seat is a brand new pair for ready-window purposes —
+    // see instruction.md §B36 ("cặp ghế mới hoàn toàn").
+    this.resetReadyPair(room);
 
     logger.info(`[RoomManager] ${user.displayName} sat in slot ${slot} in room ${room.roomId}`);
     return { room };
@@ -305,6 +318,9 @@ class RoomManager extends EventEmitter {
     user.slot = null;
     user.ready = false;
     room.lastActivity = Date.now();
+    // Vacating a seat resets the pair even mid-countdown — see instruction.md
+    // §B36 ("kể cả khi đang giữa chừng 1 vòng đếm 15s chưa hết hạn").
+    this.resetReadyPair(room);
 
     logger.info(`[RoomManager] ${user.displayName} stood up in room ${room.roomId}`);
     return { room };
@@ -354,7 +370,8 @@ class RoomManager extends EventEmitter {
   /**
    * Confirm "Start" for a seated player. One-directional (no un-ready) — the
    * only ways out of a pending ready state are standing up, being kicked, or
-   * the 30s ready-window timing out (see RoomHandler's ready-window logic).
+   * the 15s ready-window timing out (see state.js's handleReadyClick /
+   * handleReadyWindowTimeout).
    *
    * @param {string} userId
    * @returns {{ room: object, allReady: boolean } | { error: string }}
@@ -412,10 +429,12 @@ class RoomManager extends EventEmitter {
     }
 
     // Remove the user
+    const wasSeated = room.users.get(targetId).slot !== null;
     room.users.delete(targetId);
     room.joinOrder = room.joinOrder.filter(id => id !== targetId);
     this.userRoomMap.delete(targetId);
     room.lastActivity = Date.now();
+    if (wasSeated) this.resetReadyPair(room);
 
     return { room, kicked: true };
   }
@@ -461,28 +480,63 @@ class RoomManager extends EventEmitter {
   }
 
   /**
-   * Ready-window timeout: vacate the seat of any seated-but-not-ready player
-   * (same effect as standUp — they remain in the room as a guest). Used so a
-   * player who doesn't confirm Start within 30s doesn't block their opponent.
+   * Reset the current seat pair's ready-window bookkeeping: both slot-1 and
+   * slot-2 occupants (if any) go back to not-ready, and the miss counter
+   * clears. Called whenever the OCCUPANCY of either seat changes (sit,
+   * stand, kick, leave) — see instruction.md §B36: any such change makes
+   * this a "brand new pair", discarding whatever ready-click/miss history
+   * belonged to the previous occupants of these two seats.
+   *
+   * @param {object} room
+   */
+  resetReadyPair(room) {
+    for (const [, u] of room.users) {
+      if (u.slot === 1 || u.slot === 2) u.ready = false;
+    }
+    room.readyMissCount = 0;
+  }
+
+  /**
+   * Ready-window deadline reached with the two seats unchanged since the
+   * countdown opened — record one "miss" for this seat pair (instruction.md
+   * §B36's 3-strike rule).
+   *
+   * - Below 3 misses: both seats go back to not-ready (waiting for either to
+   *   click Start again); nobody is removed from their seat.
+   * - At the 3rd miss: whichever of the two seats still hasn't clicked Start
+   *   is vacated (same effect as standUp); the seat that did click keeps it.
    *
    * @param {string} roomId
-   * @returns {{ room: object|null, kicked: Array<{userId: string, displayName: string}> }}
+   * @returns {{ room: object|null, kicked: {userId: string, displayName: string}|null, missCount: number }}
    */
-  forceUnreadyPlayersToStand(roomId) {
+  registerReadyMiss(roomId) {
     const room = this.rooms.get(roomId);
-    if (!room) return { room: null, kicked: [] };
+    if (!room) return { room: null, kicked: null, missCount: 0 };
 
-    const kicked = [];
+    let slot1 = null, slot2 = null;
     for (const [, u] of room.users) {
-      if (u.slot !== null && !u.ready) {
-        kicked.push({ userId: u.userId, displayName: u.displayName });
-        u.slot = null;
-        u.ready = false;
-      }
+      if (u.slot === 1) slot1 = u;
+      if (u.slot === 2) slot2 = u;
     }
-    if (kicked.length) room.lastActivity = Date.now();
+    // Defensive: a countdown can only be running while both seats are filled.
+    if (!slot1 || !slot2) return { room, kicked: null, missCount: room.readyMissCount || 0 };
 
-    return { room, kicked };
+    const notReadyUser = !slot1.ready ? slot1 : (!slot2.ready ? slot2 : null);
+
+    room.readyMissCount = (room.readyMissCount || 0) + 1;
+    room.lastActivity = Date.now();
+
+    let kicked = null;
+    if (room.readyMissCount >= 3 && notReadyUser) {
+      kicked = { userId: notReadyUser.userId, displayName: notReadyUser.displayName };
+      notReadyUser.slot = null;
+      room.readyMissCount = 0;
+    }
+
+    slot1.ready = false;
+    slot2.ready = false;
+
+    return { room, kicked, missCount: room.readyMissCount };
   }
 
   /** Helper: get the room a user is in, or null. */
@@ -578,6 +632,7 @@ class RoomManager extends EventEmitter {
       users,
       state: room.state,
       readyDeadline: room.readyDeadline,
+      readyMissCount: room.readyMissCount || 0,
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
     };

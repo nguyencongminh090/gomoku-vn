@@ -312,12 +312,17 @@ describe('every room:updated emit site', () => {
   // a behavioural test only covers the paths it happens to exercise.
   //
   // Since the room:updated O(n²) delta fix (see state.js's broadcastRoomUpdate
-  // and docs/fix-log.md), every one of those 17 sites goes through the shared
+  // and docs/fix-log.md), every one of those sites goes through the shared
   // broadcastRoomUpdate(io, room[, opts]) helper instead of emitting directly
   // — mirroring the same "call sites can't describe the change, only that
   // something changed" shape already used for lobby:patch. The direct
   // `.emit('room:updated', ...)` should now exist in exactly one place: inside
   // broadcastRoomUpdate itself.
+  //
+  // Count dropped 17 → 15 when TODO.md #36 removed the game:rematch handler
+  // (GameHandler.js): it had 2 of its own broadcastRoomUpdate call sites
+  // (allReady / not-allReady branches), now folded into the same room:ready
+  // flow (RoomHandler.js) that a first game start already used.
   const SOCKET_DIR = path.join(__dirname, '..', 'socket');
 
   function jsFilesUnder(dir) {
@@ -351,8 +356,8 @@ describe('every room:updated emit site', () => {
     expect(emitSites[0].file).toBe('state.js');
   });
 
-  test('all 17 sites are still accounted for, now via broadcastRoomUpdate', () => {
-    expect(callSites).toHaveLength(17);
+  test('all 15 sites are still accounted for, now via broadcastRoomUpdate', () => {
+    expect(callSites).toHaveLength(15);
   });
 
   test('passes { settings: true } at exactly the one settings-change site', () => {
@@ -361,7 +366,7 @@ describe('every room:updated emit site', () => {
     expect(withSettings).toHaveLength(1);
     expect(withSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
 
-    expect(callSites.length - withSettings.length).toBe(16);
+    expect(callSites.length - withSettings.length).toBe(14);
   });
 });
 
@@ -415,6 +420,183 @@ describe('RoomManager — kickUser while a game is interrupted', () => {
 
     expect(result.error).toBeUndefined();
     expect(room.users.has('guest')).toBe(false);
+  });
+});
+
+describe('RoomManager — ready-window miss counting (TODO.md #36)', () => {
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  function roomWithTwoSeated() {
+    const { room } = roomManager.createRoom(
+      { userId: 'host', displayName: 'Host', isGuest: false, ip: '198.51.100.20' }
+    );
+    roomManager.joinRoom(
+      { userId: 'guest', displayName: 'Guest', isGuest: true }, room.roomId
+    );
+    roomManager.sitDown('host', 1);
+    roomManager.sitDown('guest', 2);
+    return room;
+  }
+
+  // ── confirmStart / handleReadyClick precondition ──────────────────────────
+
+  test('confirmStart marks only the calling player ready; allReady stays false until both are', () => {
+    const room = roomWithTwoSeated();
+
+    const first = roomManager.confirmStart('host');
+    expect(first.allReady).toBe(false);
+    expect(room.users.get('host').ready).toBe(true);
+    expect(room.users.get('guest').ready).toBe(false);
+
+    const second = roomManager.confirmStart('guest');
+    expect(second.allReady).toBe(true);
+  });
+
+  // ── registerReadyMiss: 3-strike rule ───────────────────────────────────────
+
+  test('miss 1/3: neither seat is kicked, both reset to not-ready, count is 1', () => {
+    const room = roomWithTwoSeated();
+    roomManager.confirmStart('host'); // host clicked, guest never does
+
+    const { kicked, missCount } = roomManager.registerReadyMiss(room.roomId);
+
+    expect(kicked).toBeNull();
+    expect(missCount).toBe(1);
+    expect(room.readyMissCount).toBe(1);
+    expect(room.users.get('host').ready).toBe(false);
+    expect(room.users.get('guest').ready).toBe(false);
+    // Nobody vacated their seat on a miss below 3.
+    expect(room.users.get('host').slot).toBe(1);
+    expect(room.users.get('guest').slot).toBe(2);
+  });
+
+  test('miss 2/3: still no kick, count accumulates across separate rounds', () => {
+    const room = roomWithTwoSeated();
+
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1
+
+    roomManager.confirmStart('host'); // host clicks again for round 2
+    const { kicked, missCount } = roomManager.registerReadyMiss(room.roomId);
+
+    expect(kicked).toBeNull();
+    expect(missCount).toBe(2);
+    expect(room.users.get('host').slot).toBe(1);
+    expect(room.users.get('guest').slot).toBe(2);
+  });
+
+  test('miss 3/3: exactly the player who never clicked is vacated; the clicker keeps their seat', () => {
+    const room = roomWithTwoSeated();
+
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 2
+    roomManager.confirmStart('host');
+    const { kicked, missCount } = roomManager.registerReadyMiss(room.roomId); // miss 3
+
+    expect(kicked).toEqual({ userId: 'guest', displayName: 'Guest' });
+    expect(missCount).toBe(0); // resets after a kick — fresh pair once someone re-sits
+    expect(room.readyMissCount).toBe(0);
+    expect(room.users.get('guest').slot).toBeNull(); // vacated
+    expect(room.users.get('host').slot).toBe(1);      // clicker keeps their seat
+  });
+
+  test('miss 3/3 kicks whichever seat is not-ready that round, not always the same one', () => {
+    // Round 1 and 2: host clicks, guest misses. Round 3: guest clicks instead —
+    // the 3rd miss must kick host (the one who did NOT click this round), not
+    // guest just because guest missed rounds 1-2.
+    const room = roomWithTwoSeated();
+
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 2
+    roomManager.confirmStart('guest');
+    const { kicked } = roomManager.registerReadyMiss(room.roomId); // miss 3
+
+    expect(kicked).toEqual({ userId: 'host', displayName: 'Host' });
+    expect(room.users.get('host').slot).toBeNull();
+    expect(room.users.get('guest').slot).toBe(2);
+  });
+
+  // ── Reset on seat-occupancy change (instruction.md §B36) ──────────────────
+
+  test('standing up mid-countdown resets the miss count to 0, not counted as a miss', () => {
+    const room = roomWithTwoSeated();
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1 — count is now 1
+
+    roomManager.confirmStart('host'); // host re-clicks for round 2
+    roomManager.standUp('guest');     // guest leaves the seat before the 15s elapses
+
+    expect(room.readyMissCount).toBe(0);
+    expect(room.users.get('host').ready).toBe(false); // baseline: neither flagged ready
+  });
+
+  test('a fresh occupant of a vacated seat starts a brand new pair (missCount 0, not stale-ready)', () => {
+    const room = roomWithTwoSeated();
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1
+    roomManager.registerReadyMiss(room.roomId); // miss 2
+    roomManager.standUp('guest');
+
+    roomManager.joinRoom({ userId: 'newcomer', displayName: 'Newcomer', isGuest: true }, room.roomId);
+    roomManager.sitDown('newcomer', 2);
+
+    expect(room.readyMissCount).toBe(0);
+    expect(room.users.get('host').ready).toBe(false);
+    expect(room.users.get('newcomer').ready).toBe(false);
+  });
+
+  test('kicking a seated player resets the pair; kicking a spectator does not touch it', () => {
+    const room = roomWithTwoSeated();
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1
+    expect(room.readyMissCount).toBe(1);
+
+    roomManager.joinRoom({ userId: 'spectator', displayName: 'Spec', isGuest: true }, room.roomId);
+    roomManager.kickUser('host', 'spectator'); // not seated — must not reset the pair
+    expect(room.readyMissCount).toBe(1);
+
+    roomManager.kickUser('host', 'guest'); // seated — resets the pair
+    expect(room.readyMissCount).toBe(0);
+  });
+
+  test('leaving the room while seated resets the pair for whoever remains', () => {
+    const room = roomWithTwoSeated();
+    roomManager.confirmStart('host');
+    roomManager.registerReadyMiss(room.roomId); // miss 1
+    expect(room.readyMissCount).toBe(1);
+
+    roomManager.leaveRoom('guest');
+
+    expect(room.readyMissCount).toBe(0);
+    expect(room.users.get('host').ready).toBe(false);
+  });
+
+  // ── Defensive edge cases ───────────────────────────────────────────────────
+
+  test('registerReadyMiss on a room with fewer than 2 seated players is a no-op', () => {
+    const { room } = roomManager.createRoom(
+      { userId: 'solo', displayName: 'Solo', isGuest: false, ip: '198.51.100.21' }
+    );
+    roomManager.sitDown('solo', 1);
+
+    const { kicked, missCount } = roomManager.registerReadyMiss(room.roomId);
+
+    expect(kicked).toBeNull();
+    expect(missCount).toBe(0);
+    expect(room.readyMissCount).toBe(0);
+  });
+
+  test('registerReadyMiss on an unknown roomId does not throw', () => {
+    const result = roomManager.registerReadyMiss('#NOPE');
+    expect(result).toEqual({ room: null, kicked: null, missCount: 0 });
   });
 });
 

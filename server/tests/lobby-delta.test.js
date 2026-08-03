@@ -19,7 +19,7 @@ const mockRoomManager = {
   getRoom: jest.fn(),
   bothSeated: jest.fn(() => false),
   serializeRoomUpdate: jest.fn(room => ({ roomId: room.roomId })),
-  forceUnreadyPlayersToStand: jest.fn(() => ({ kicked: [] })),
+  registerReadyMiss: jest.fn(() => ({ kicked: null, missCount: 0 })),
 };
 jest.mock('../managers/RoomManager', () => mockRoomManager);
 

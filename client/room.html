@@ -10,11 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=40" />
-  <link rel="stylesheet" href="css/lobby.css?v=40" />
-  <link rel="stylesheet" href="css/room.css?v=40" />
-  <link rel="stylesheet" href="css/game.css?v=40" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=40" />
+  <link rel="stylesheet" href="css/main.css?v=41" />
+  <link rel="stylesheet" href="css/lobby.css?v=41" />
+  <link rel="stylesheet" href="css/room.css?v=41" />
+  <link rel="stylesheet" href="css/game.css?v=41" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=41" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,6 +79,25 @@
         <div class="board-placeholder">
           <div class="board-placeholder__icon"><i class="ph ph-checkerboard"></i></div>
           <div class="board-placeholder__text" data-i18n="room.placeholder">Chờ người chơi ngồi vào và sẵn sàng...</div>
+        </div>
+      </div>
+
+      <!-- Start Modal (ready window) — centered over the board, not a
+           full-screen backdrop: only the card itself catches clicks, so the
+           seat's stand-up button and chat stay usable while this shows. Kept
+           as a sibling of #board-area (not a child) because GameUI.initBoard()
+           replaces #board-area's innerHTML wholesale on first render. -->
+      <div class="start-modal" id="start-modal">
+        <div class="start-modal__card">
+          <div class="start-modal__icon"><i class="ph-bold ph-play-circle"></i></div>
+          <div class="start-modal__title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
+          <div class="start-modal__countdown" id="start-modal-countdown-wrap" style="display:none;">
+            <span data-i18n="start_modal.countdown_label">Còn</span>
+            <span id="start-modal-countdown">15</span>s
+          </div>
+          <div class="start-modal__divider"></div>
+          <button class="btn-primary" id="start-modal-btn" type="button" onclick="confirmStart()" data-i18n="start_modal.btn_start">Bắt đầu</button>
+          <div class="start-modal__waiting" id="start-modal-waiting" data-i18n="start_modal.waiting" style="display:none;">Đang chờ đối thủ bấm Bắt đầu...</div>
         </div>
       </div>
     </section>
@@ -151,35 +170,6 @@
     </aside>
   </main>
 
-  <!-- Start Modal (ready window — both seated players must confirm within 30s) -->
-  <div class="game-overlay" id="start-modal">
-    <div class="game-overlay__card">
-      <div class="game-overlay__icon"><i class="ph-bold ph-play-circle"></i></div>
-      <div class="game-overlay__result" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
-      <div class="game-overlay__reason">
-        <span data-i18n="start_modal.countdown_label">Còn</span>
-        <span id="start-modal-countdown">30</span>s
-      </div>
-      <div class="game-overlay__divider"></div>
-      <button class="btn-primary" id="start-modal-btn" type="button" onclick="confirmStart()" data-i18n="start_modal.btn_start">Bắt đầu</button>
-      <div class="start-modal__waiting" id="start-modal-waiting" data-i18n="start_modal.waiting" style="display:none;">Đang chờ đối thủ bấm Bắt đầu...</div>
-    </div>
-  </div>
-
-  <!-- Game End Overlay -->
-  <div class="game-overlay" id="game-overlay">
-    <div class="game-overlay__card">
-      <div class="game-overlay__icon" id="overlay-icon"></div>
-      <div class="game-overlay__result" id="overlay-result"></div>
-      <div class="game-overlay__reason" id="overlay-reason"></div>
-      <div class="game-overlay__divider"></div>
-      <div class="game-overlay__buttons">
-        <button class="btn-primary" id="btn-rematch" type="button" data-i18n="overlay.btn_rematch">Đấu lại</button>
-        <button class="btn-secondary" id="btn-close-overlay" type="button" data-i18n="overlay.btn_close">Đóng</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Float Messages (appear on top of game board) -->
   <div id="float-messages" class="float-messages"></div>
 
@@ -192,7 +182,7 @@
   <!-- Socket.io CDN -->
   <script src="/socket.io/socket.io.js"></script>
   <!-- Application Scripts via Vite entry point -->
-  <script type="module" src="js/room-entry.js?v=40"></script>
+  <script type="module" src="js/room-entry.js?v=41"></script>
 </body>
 
 </html>

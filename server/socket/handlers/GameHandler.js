@@ -14,7 +14,10 @@
  *   game:request_time  — request bonus seconds
  *   game:time_accept   — opponent accepts the time request
  *   game:time_decline  — opponent declines the time request
- *   game:rematch       — request a rematch
+ *
+ * No separate rematch event: game end resets both seats to not-ready (same
+ * as a brand new seat pair) and the normal Start-modal flow (RoomHandler's
+ * room:ready) runs again from scratch — see instruction.md §B36.
  *
  * Exported for use by RoomHandler (startGame / handleGameEnd on room:leave):
  *   startGame(io, room)
@@ -35,7 +38,6 @@ const {
   broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
-  syncReadyWindow,
 } = require('../state');
 
 /**
@@ -108,6 +110,17 @@ function register(io, socket) {
         result: finalResult,
         scoreTable: room.scoreTable,
       });
+      // Board-full draw has no dedicated modal any more (instruction.md
+      // §B36 removed #game-overlay) — this system-chat line is now the only
+      // announcement of it, matching the wording already used for an agreed
+      // draw (game:draw_accept below).
+      if (result.draw) {
+        io.to(room.roomId).emit('chat:message', {
+          from: null, fromId: null,
+          text: 'Ván đấu hoà do bàn cờ đã đầy.',
+          timestamp: Date.now(), isSystem: true,
+        });
+      }
     }
   });
 
@@ -262,7 +275,7 @@ function register(io, socket) {
     });
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
-      text: 'Hai bên đồng ý hoà.',
+      text: 'Ván đấu hoà theo thoả thuận.',
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -422,33 +435,6 @@ function register(io, socket) {
     });
   });
 
-  // ── game:rematch ─────────────────────────────────────────────────────────
-
-  socket.on('game:rematch', () => {
-    const room = roomManager.getRoomByUser(user.userId);
-    if (!room) return;
-
-    if (room.state !== 'idle') {
-      socket.emit('game:error', { message: 'Phòng đang trong trạng thái không hợp lệ.' });
-      return;
-    }
-
-    const result = roomManager.confirmStart(user.userId);
-    if (result.error) {
-      socket.emit('game:error', { message: result.error });
-      return;
-    }
-
-    if (result.allReady) {
-      cleanupReadyTimer(room.roomId);
-      result.room.readyDeadline = null;
-      broadcastRoomUpdate(io, result.room);
-      startGame(io, result.room);
-    } else {
-      syncReadyWindow(io, result.room);
-      broadcastRoomUpdate(io, result.room);
-    }
-  });
 }
 
 // =============================================================================
@@ -747,6 +733,8 @@ function handleGameEnd(io, room, opts = {}) {
   room.state = 'idle';
   room.gameState = null;
   room._timeRequestPending = null;
+  room.readyDeadline = null;
+  room.readyMissCount = 0;
   for (const [, u] of room.users) u.ready = false;
 
   broadcastRoomUpdate(io, room);

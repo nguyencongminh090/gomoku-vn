@@ -277,12 +277,13 @@ test.describe('real-player gameplay simulation', () => {
     latencies.push(await placeStone(white, whiteId, 12, 8));
     latencies.push(await placeStone(black, blackId, 5, 9)); // five-in-a-row → BLACK wins
 
-    // ── Verify win detection and end-of-game overlay on both clients ──
-    await expect(black.page.locator('#game-overlay')).toHaveClass(/visible/, { timeout: 15000 });
-    await expect(white.page.locator('#game-overlay')).toHaveClass(/visible/, { timeout: 15000 });
-    const blackOverlayText = await black.page.locator('#overlay-result').innerText();
-    const whiteOverlayText = await white.page.locator('#overlay-result').innerText();
-    record('system', 'game_over_overlays', { [black.actor]: blackOverlayText, [white.actor]: whiteOverlayText });
+    // ── Verify win detection on both clients ──
+    // No more win/lose modal (TODO.md #36 removed #game-overlay) — game end
+    // resets both seats to not-ready ("new seat pair") and the Start Modal
+    // reappears, ready for a fresh round, since nobody stood up.
+    await expect(black.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
+    await expect(white.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
+    record('system', 'start_modal_reappeared_after_game_end', { [black.actor]: true, [white.actor]: true });
 
     const finalResult = await black.page.evaluate(() => (window as any).RoomState.gameState.result);
     expect(finalResult?.winner, 'server should report BLACK as the winner').toBe(blackId);

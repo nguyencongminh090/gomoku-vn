@@ -11,10 +11,11 @@
  *   room:ready    — confirm Start (Start modal); triggers game start when both players confirm
  *   room:kick     — kick a user from the room (host only)
  *
- * Start-modal ready window: once both player slots are filled, a 30s
- * server-authoritative countdown starts (see state.js syncReadyWindow). If a
- * seated player hasn't confirmed Start by the deadline, they are vacated from
- * their seat (still in the room) so the other player isn't stuck waiting.
+ * Start-modal ready window: once both player slots are filled, players wait
+ * (no countdown) until one of them clicks Start. That opens a 15s
+ * server-authoritative countdown for the other seat (see state.js
+ * handleReadyClick). If they don't confirm in time, it counts as one miss
+ * (up to 3) — see RoomManager.registerReadyMiss and instruction.md §B36.
  */
 
 const logger      = require('../../utils/logger');
@@ -25,8 +26,8 @@ const {
   cleanupRoomTimer,
   cleanupReadyTimer,
   findSocketsByUserId,
-  syncReadyWindow,
-  restartReadyWindow,
+  clearReadyState,
+  handleReadyClick,
 } = require('../state');
 
 // Lazy-require GameHandler to avoid circular dependency at load time
@@ -84,7 +85,7 @@ function register(io, socket) {
       cleanupReadyTimer(roomId);
       broadcastLobbyUpdate(io);
     } else if (result.room) {
-      syncReadyWindow(io, result.room);
+      clearReadyState(io, result.room);
       broadcastRoomUpdate(io, result.room);
       if (result.hostTransferred) {
         const newHost = result.room.users.get(result.room.host);
@@ -105,7 +106,7 @@ function register(io, socket) {
       socket.emit('room:error', { message: result.error });
       return;
     }
-    syncReadyWindow(io, result.room);
+    clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   });
@@ -116,7 +117,7 @@ function register(io, socket) {
       socket.emit('room:error', { message: result.error });
       return;
     }
-    syncReadyWindow(io, result.room);
+    clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   });
@@ -129,8 +130,9 @@ function register(io, socket) {
     }
     const roomId = result.room.roomId;
     // Settings changes reset ready for seated players (RoomManager.updateSettings) —
-    // restart the ready window fresh rather than leaving a stale countdown running.
-    restartReadyWindow(io, result.room);
+    // cancel any in-flight countdown rather than leaving a stale one running;
+    // it does NOT auto-restart (a player must click Start again).
+    clearReadyState(io, result.room);
     // The one room:updated that must carry `settings`: this is the only event
     // where they actually changed, and clients merge rather than replace, so
     // this is where they learn the new values. See RoomManager.serializeRoomUpdate.
@@ -150,16 +152,19 @@ function register(io, socket) {
       return;
     }
 
-    const roomId = result.room.roomId;
+    const room = result.room;
 
     // Both players confirmed → start the game
     if (result.allReady) {
-      cleanupReadyTimer(roomId);
-      result.room.readyDeadline = null;
-      broadcastRoomUpdate(io, result.room);
-      getGameHandler().startGame(io, result.room);
+      cleanupReadyTimer(room.roomId);
+      room.readyDeadline = null;
+      room.readyMissCount = 0;
+      broadcastRoomUpdate(io, room);
+      getGameHandler().startGame(io, room);
     } else {
-      broadcastRoomUpdate(io, result.room);
+      // First click of the pair — open the 15s window for the other seat.
+      handleReadyClick(io, room);
+      broadcastRoomUpdate(io, room);
     }
   });
 
@@ -183,7 +188,7 @@ function register(io, socket) {
       s.emit('room:kicked', { message: 'Bạn đã bị mời ra khỏi phòng.' });
     }
 
-    syncReadyWindow(io, result.room);
+    clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
     broadcastLobbyUpdate(io);
   });

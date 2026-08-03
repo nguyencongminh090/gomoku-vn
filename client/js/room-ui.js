@@ -13,8 +13,8 @@
  *   RoomUI.renderSettings()
  *   RoomUI.renderUsersList()
  *   RoomUI.renderScoreTable()
- *   RoomUI.renderStartModal() — Start-modal ready window (both seated, 30s countdown)
- *   RoomUI.showGameOverlay(result)
+ *   RoomUI.renderStartModal() — Start-modal ready window (both seated; 15s
+ *     countdown only once one player clicks Start — see instruction.md §B36)
  *   window.sitDown(slot)     — onclick shim
  *   window.standUp()         — onclick shim
  *   window.confirmStart()    — onclick shim (Start modal)
@@ -42,9 +42,6 @@
   const usersList      = document.getElementById('users-list');
   const scorePanel     = document.getElementById('score-panel');
   const scoreBody      = document.getElementById('score-body');
-  const gameOverlay    = document.getElementById('game-overlay');
-  const overlayResult  = document.getElementById('overlay-result');
-  const overlayReason  = document.getElementById('overlay-reason');
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 
@@ -193,9 +190,12 @@
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
-  // Shown to both seated players once both slots are filled. The 30s
-  // countdown is server-authoritative (st.roomData.readyDeadline, an epoch-ms
-  // timestamp) — this just renders it locally; the server enforces it.
+  // Shown to both seated players once both slots are filled — this is a
+  // waiting state, not a countdown yet: no timer runs until one of the two
+  // clicks Start. Only then does the server open a 15s countdown for the
+  // other seat (st.roomData.readyDeadline, an epoch-ms timestamp, null while
+  // waiting). See instruction.md §B36. The modal itself never blocks clicks
+  // on the board/seats/chat underneath — see .start-modal in game.css.
 
   let startModalCountdownHandle = null;
 
@@ -204,16 +204,11 @@
     const modal = document.getElementById('start-modal');
     if (!modal) return;
 
-    // Never show over an unactioned game-end result — a player who hasn't
-    // clicked "Đấu lại"/"Đóng" yet on #game-overlay must not have Start Modal
-    // pop up on top of it just because the *other* player already rematched
-    // (that rematch's ready-window broadcast reaches both clients). See
-    // TODO.md #35 / instruction.md §B35.
-    const overlayEl = document.getElementById('game-overlay');
-    const overlayOpen = !!(overlayEl && overlayEl.classList.contains('visible'));
+    const bothSeated = st.roomData.users.some(u => u.slot === 1)
+      && st.roomData.users.some(u => u.slot === 2);
+    const visible = st.mySlot !== null && bothSeated && st.roomData.state !== 'playing';
 
-    const deadline = st.roomData ? st.roomData.readyDeadline : null;
-    const visible = !overlayOpen && st.mySlot !== null && !!deadline && st.roomData.state !== 'playing';
+    const countdownWrap = document.getElementById('start-modal-countdown-wrap');
 
     if (!visible) {
       modal.classList.remove('visible');
@@ -226,12 +221,26 @@
 
     modal.classList.add('visible');
 
-    const btn        = document.getElementById('start-modal-btn');
-    const waitingEl   = document.getElementById('start-modal-waiting');
-    const countdownEl = document.getElementById('start-modal-countdown');
+    const btn         = document.getElementById('start-modal-btn');
+    const waitingEl    = document.getElementById('start-modal-waiting');
+    const countdownEl  = document.getElementById('start-modal-countdown');
 
     if (btn)      btn.style.display      = st.isReady ? 'none'  : '';
     if (waitingEl) waitingEl.style.display = st.isReady ? ''     : 'none';
+
+    const deadline = st.roomData.readyDeadline;
+
+    // Nobody has clicked Start yet — no countdown to show.
+    if (!deadline) {
+      if (countdownWrap) countdownWrap.style.display = 'none';
+      if (startModalCountdownHandle) {
+        clearInterval(startModalCountdownHandle);
+        startModalCountdownHandle = null;
+      }
+      return;
+    }
+
+    if (countdownWrap) countdownWrap.style.display = '';
 
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
@@ -530,55 +539,6 @@
     scoreBody.innerHTML = html;
   }
 
-  // ── Game end overlay ──────────────────────────────────────────────────────
-
-  function showGameOverlay(result) {
-    const st = S();
-    if (!result) return;
-    if (st.mySlot === null) return; // Spectators don't see personal overlay
-
-    const overlayIcon = document.getElementById('overlay-icon');
-    let resultText, resultClass, reasonText, icon;
-
-    if (result.winner === 'draw') {
-      icon = '🤝';
-      resultText  = t('overlay.draw');
-      resultClass = 'game-overlay__result--draw';
-      reasonText  = result.reason === 'agreement' ? t('overlay.reason_draw_agree') : t('overlay.reason_draw_full');
-    } else if (result.winner === st.myUser.userId) {
-      if (window.audioManager) window.audioManager.playWinSound();
-      icon = '🎉';
-      resultText  = t('overlay.win');
-      resultClass = 'game-overlay__result--win';
-      reasonText  = _getReasonText(result.reason, true);
-    } else {
-      if (window.audioManager) window.audioManager.playLoseSound();
-      icon = '👊';
-      resultText  = t('overlay.lose');
-      resultClass = 'game-overlay__result--lose';
-      reasonText  = _getReasonText(result.reason, false);
-    }
-
-    if (overlayIcon) overlayIcon.textContent = icon;
-    overlayResult.textContent = resultText;
-    overlayResult.className = 'game-overlay__result ' + resultClass;
-    overlayReason.textContent = reasonText;
-    gameOverlay.classList.add('visible');
-
-    setTimeout(() => {
-      if (!st.gameState && st.roomData) GameUI.initBoard();
-    }, 500);
-  }
-
-  function _getReasonText(reason, isWinner) {
-    switch (reason) {
-      case 'win':     return t('overlay.reason_win');
-      case 'resign':  return isWinner ? t('overlay.reason_resign_w')  : t('overlay.reason_resign_l');
-      case 'timeout': return isWinner ? t('overlay.reason_timeout_w') : t('overlay.reason_timeout_l');
-      default:        return '';
-    }
-  }
-
   // ── Lang change listener ──────────────────────────────────────────────────
   window.addEventListener('langchange', () => {
     const st = S();
@@ -671,7 +631,6 @@
     renderUsersList,
     renderScoreTable,
     renderStartModal,
-    showGameOverlay,
   };
 
 })(window);

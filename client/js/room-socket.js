@@ -151,8 +151,6 @@
     st.drawOfferPending = null;
     st.timeRequestPending = null;
 
-    const gameOverlay = document.getElementById('game-overlay');
-    if (gameOverlay) gameOverlay.classList.remove('visible');
     const btnFocus = document.getElementById('btn-focus');
     if (btnFocus) btnFocus.style.display = 'flex';
 
@@ -327,7 +325,20 @@
       if (tabChat && chatInputWrapper) tabChat.querySelector('.chat-panel').appendChild(chatInputWrapper);
     }
 
-    RoomUI.showGameOverlay(data.result);
+    // No more win/lose/draw modal (instruction.md §B36 removed
+    // #game-overlay) — the board's own win highlight (board.js
+    // _drawWinHighlight) plus the system-chat lines already emitted
+    // server-side (resign/timeout/draw) are the announcement. The win/lose
+    // sound cue is the one thing that used to live inside that removed
+    // RoomUI.showGameOverlay(), so it's kept here directly.
+    if (st.mySlot !== null && data.result && data.result.winner !== 'draw') {
+      if (data.result.winner === st.myUser.userId) {
+        if (window.audioManager) window.audioManager.playWinSound();
+      } else {
+        if (window.audioManager) window.audioManager.playLoseSound();
+      }
+    }
+
     RoomUI.updateUI();
   });
 

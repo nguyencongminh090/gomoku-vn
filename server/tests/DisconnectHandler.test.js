@@ -43,7 +43,7 @@ const mockState = {
   cleanupRoomTimer: jest.fn(),
   cleanupReadyTimer: jest.fn(),
   findSocketsByUserId: jest.fn(() => []),
-  syncReadyWindow: jest.fn(),
+  clearReadyState: jest.fn(),
 };
 jest.mock('../socket/state', () => mockState);
 
