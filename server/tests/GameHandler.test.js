@@ -33,7 +33,6 @@ const mockState = {
   broadcastRoomUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
   cleanupReadyTimer: jest.fn(),
-  syncReadyWindow: jest.fn(),
 };
 jest.mock('../socket/state', () => mockState);
 

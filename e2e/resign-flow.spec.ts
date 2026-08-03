@@ -63,10 +63,11 @@ test.describe('Resign', () => {
     expect(result.reason).toBe('resign');
     expect(result.winner, 'PlayerB (the non-resigning player) should win').toBe(bUserId);
 
-    await expect(A.page.locator('#game-overlay')).toHaveClass(/visible/, { timeout: 10000 });
-    await expect(B.page.locator('#game-overlay')).toHaveClass(/visible/, { timeout: 10000 });
-    await expect(A.page.locator('#overlay-result')).toContainText('thua');
-    await expect(B.page.locator('#overlay-result')).toContainText('thắng');
+    // No more win/lose modal (TODO.md #36 removed #game-overlay) — game end
+    // resets both seats to not-ready ("new seat pair") and the Start Modal
+    // reappears, ready for a fresh round, since nobody stood up.
+    await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 10000 });
+    await expect(B.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 10000 });
 
     await A.ctx.close();
     await B.ctx.close();

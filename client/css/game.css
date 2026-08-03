@@ -328,7 +328,12 @@
   background: #a93226;
 }
 
-/* ─── Game End Overlay ──────────────────────────────────────────── */
+/* ─── Full-screen overlay (shared) ──────────────────────────────────
+   Only consumer left is #room-entry-overlay ("Đang vào phòng...") — the
+   Start Modal and the old Game-End Overlay used to share this class too,
+   but TODO.md #36 gave Start Modal its own non-blocking .start-modal below
+   and removed the Game-End Overlay entirely. Keep this backdrop-style block
+   only for the loading overlay. ─────────────────────────────────────── */
 
 .game-overlay {
   display: none;
@@ -384,80 +389,72 @@
   font-family: var(--font);
 }
 
-.game-overlay__result--win {
+/* ─── Start Modal (ready window) ──────────────────────────────────
+   Not a full-screen backdrop like .game-overlay above (which stays
+   reserved for #room-entry-overlay) — this is centered over the board and
+   only its card catches clicks, so the seat's stand-up button and chat
+   remain usable while it shows. See instruction.md §B36. ───────────── */
+
+.start-modal {
+  display: none;
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  padding: 16px;
+}
+
+.start-modal.visible {
+  display: flex;
+  animation: overlay-fade-in 0.25s ease-out;
+}
+
+.start-modal__card {
+  pointer-events: auto;
+  background: var(--c-surface);
+  border: 1.5px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+  text-align: center;
+  box-shadow: var(--shadow);
+  min-width: 240px;
+  max-width: calc(100% - 32px);
+  animation: card-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.start-modal__icon {
+  font-size: 36px;
+  line-height: 1;
+  margin-bottom: 10px;
   color: var(--c-brand);
 }
 
-.game-overlay__result--lose {
-  color: var(--c-error);
+.start-modal__title {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+  font-family: var(--font);
 }
 
-.game-overlay__result--draw {
-  color: var(--c-ink-2);
-}
-
-.game-overlay__reason {
+.start-modal__countdown {
   font-size: 13px;
   color: var(--c-ink-3);
   margin-bottom: 8px;
   font-family: var(--font);
 }
 
-.game-overlay__divider {
-  height: 1px;
-  background: var(--c-border-light);
-  margin: 20px 0;
-}
-
-.game-overlay__buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-
-.game-overlay__buttons .btn-primary {
-  padding: 9px 22px;
-  background: var(--c-brand);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  font-weight: 600;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.game-overlay__buttons .btn-primary:hover {
-  background: var(--c-brand-dark);
-}
-
-.game-overlay__buttons .btn-secondary {
-  padding: 9px 22px;
-  background: transparent;
-  color: var(--c-ink-2);
-  border: 1.5px solid var(--c-border);
-  border-radius: var(--radius-lg);
-  font-size: 14px;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-
-.game-overlay__buttons .btn-secondary:hover {
-  border-color: var(--c-ink-3);
-  color: var(--c-ink);
-}
-
-/* ─── Start Modal (ready window) ────────────────────────────────── */
-
 #start-modal-countdown {
   font-weight: 700;
   color: var(--c-brand);
 }
 
-#start-modal .game-overlay__card {
-  min-width: 240px;
+.start-modal__divider {
+  height: 1px;
+  background: var(--c-border-light);
+  margin: 16px 0;
 }
 
 #start-modal-btn {

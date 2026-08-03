@@ -52,6 +52,9 @@
 
 /* ── Board Area ───────────────────────────────────────────────────────────── */
 .board-area-shell {
+  /* Anchors #start-modal (position:absolute; inset:0), which must center over
+     the board without becoming a child of #board-area — see room.html. */
+  position: relative;
   height: calc(100vh - 76px);
   display: flex;
   flex-direction: column;

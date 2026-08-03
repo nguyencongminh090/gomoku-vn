@@ -1271,15 +1271,18 @@ confidence ≥ 8/10) trước khi đưa vào đây.
       `client/js/room.js` (xoá `btnRematch`/`btnCloseOverlay`, hoặc đổi mục
       đích). Nhớ bump `?v=N` (rule `CLAUDE.md`) vì đụng cả `client/css/` lẫn
       `client/js/`.
-    - **Trạng thái:** chưa làm — mục này chỉ mới lên kế hoạch + ghi hướng
-      dẫn thực thi, đang chờ triển khai.
-    - **Test dự kiến:** server-side bắt buộc Jest cho máy trạng thái
-      `readyMissCount` (3 nhánh: trượt 1-2 lần, trượt đủ 3 lần kick đúng
-      người, reset khi đổi tư cách ngồi giữa chừng) theo rule "Bug-fix
-      workflow" trong `CLAUDE.md`. Client-side dùng Playwright (`e2e/`,
-      chưa có Jest client) — bắt buộc có 1 test xác nhận modal không chặn
-      click nền (đứng dậy/chat được trong lúc modal hiện), vì đây là lý do
-      chính của redesign.
+    - **Trạng thái:** ✅ ĐÃ XONG (2026-08-04) — xem `docs/fix-log.md` (hàng
+      `2026-08-04 04:23`) để biết chi tiết đầy đủ.
+    - **Test:** `server/tests/RoomManager.test.js` — describe block mới
+      "ready-window miss counting" (13 case: confirmStart/allReady, trượt
+      1/3, 2/3, 3/3 đúng người, reset khi đứng dậy/kick/leave giữa chừng,
+      2 case biên). `npm test` 379/379 xanh. Playwright:
+      `e2e/start-modal-non-blocking.spec.ts` (mới, bắt buộc theo yêu cầu ở
+      trên) + cập nhật `draw-offer`/`resign-flow`/`room-lifecycle`/
+      `rematch-overlay-conflict`/`real-player-gameplay` cho khớp DOM mới —
+      chạy riêng từng file qua thật, tất cả pass (trừ
+      `real-player-gameplay.spec.ts`, chưa chạy được trọn vẹn trong phiên
+      này do giới hạn tiến trình nền của sandbox, không phải regression).
 
 ---
 

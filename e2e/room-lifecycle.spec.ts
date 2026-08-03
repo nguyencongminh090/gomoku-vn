@@ -4,12 +4,15 @@ import { test, expect, Page } from '@playwright/test';
  * TEST-MATRIX.md rows 16 & 17 — room lifecycle around seating and host
  * membership, distinct from the game-in-progress lifecycle covered elsewhere.
  *
- * Row 16: once both slots are seated, the server starts a 30s ready-window
- * countdown (`room.readyDeadline`, set/cleared in `syncReadyWindow`,
- * server/socket/state.js). If a seated player stands up (`room:stand`)
- * before both confirm ready, `roomManager.bothSeated(room)` becomes false and
- * `syncReadyWindow` clears the timer + nulls `readyDeadline` — the
- * `#start-modal` disappears for the remaining seated player too.
+ * Row 16 (updated for TODO.md #36 / instruction.md §B36): once both slots are
+ * seated, `#start-modal` becomes visible but nothing counts down yet — the
+ * 15s countdown (`room.readyDeadline`, server/socket/state.js
+ * handleReadyClick) only opens once one seated player clicks Start. If the
+ * OTHER seated player then stands up (`room:stand`) before confirming,
+ * `roomManager.resetReadyPair` clears both seats' ready state and
+ * `clearReadyState` nulls `readyDeadline` — the countdown cancels and
+ * `#start-modal` disappears for the remaining seated player too (their seat
+ * alone isn't "both seated" any more).
  *
  * Row 17: when the host leaves via `room:leave` and a non-host member
  * remains, `RoomManager.leaveRoom` reassigns `room.host` to
@@ -63,17 +66,21 @@ test.describe('Room lifecycle — ready-window cancel and host transfer', () => 
     await A.page.locator('#slot-1 .slot-card__clickable').click();
     await B.page.locator('#slot-2 .slot-card__clickable').click();
 
-    // Both slots seated → the ready-window countdown starts for both.
+    // Both slots seated → Start Modal is visible, but nobody has clicked
+    // Start yet, so there's no countdown running (instruction.md §B36).
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await expect(B.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
-    const deadlineBefore = await A.page.evaluate(() => (window as any).RoomState.roomData.readyDeadline);
-    expect(deadlineBefore, 'readyDeadline should be set once both slots are seated').toBeTruthy();
+    const deadlineBaseline = await A.page.evaluate(() => (window as any).RoomState.roomData.readyDeadline);
+    expect(deadlineBaseline, 'no countdown until someone clicks Start').toBeNull();
 
-    // B stands up before either confirms ready — this must cancel the
-    // countdown for BOTH clients, not just B. Driven via the same
-    // window.standUp() the '.slot-card__stand' button calls: the Start modal
-    // is a full-viewport overlay that visually covers the slot cards while
-    // the countdown is showing, so the button itself isn't clickable then.
+    // A clicks Start — this opens the 15s window for B.
+    await A.page.click('#start-modal-btn');
+    await A.page.waitForFunction(() => (window as any).RoomState.roomData.readyDeadline != null, null, { timeout: 10000 });
+    const deadlineBefore = await A.page.evaluate(() => (window as any).RoomState.roomData.readyDeadline);
+    expect(deadlineBefore, 'readyDeadline should be set once one player clicks Start').toBeTruthy();
+
+    // B stands up before confirming — this must cancel the countdown for
+    // BOTH clients, not just B, and reset A's ready flag (fresh seat pair).
     await B.page.evaluate(() => (window as any).standUp());
 
     await A.page.waitForFunction(() => (window as any).RoomState.roomData.readyDeadline === null, null, { timeout: 10000 });

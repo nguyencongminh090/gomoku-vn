@@ -25,11 +25,15 @@ const disconnectTimers = new Map();
 /** Per-user empty-room grace timers: userId → { timeout, roomId } */
 const emptyRoomGraceTimers = new Map();
 
-/** Per-room ready-window timers (Start modal 30s countdown): roomId → Timeout */
+/** Per-room ready-window timers (Start modal 15s countdown): roomId → Timeout */
 const readyTimers = new Map();
 
-/** How long seated players get to click Start before being vacated from their seat. */
-const READY_WINDOW_MS = 30_000;
+/**
+ * How long the *other* seated player has to click Start once one of the two
+ * has already clicked it. Unlike the old model, both seats filled does NOT
+ * start this countdown by itself — see handleReadyClick() below.
+ */
+const READY_WINDOW_MS = 15_000;
 
 /**
  * Session registry: userId → live Socket.
@@ -258,7 +262,7 @@ function _diffRoomUsers(roomId, users) {
  * instead of always going out whole, and only included at all when something
  * in it actually changed. `scoreTable` (the other array-shaped, room-size-
  * scaling field) gets the same treatment. The remaining scalar fields
- * (roomName, hostId, hostName, state, readyDeadline) are cheap regardless of
+ * (roomName, hostId, hostName, state, readyDeadline, readyMissCount) are cheap regardless of
  * room size, so they're just always included — diffing them individually
  * would add complexity without addressing the O(n²) this exists to remove.
  *
@@ -282,6 +286,7 @@ function broadcastRoomUpdate(io, room, opts = {}) {
     hostName: full.hostName,
     state: full.state,
     readyDeadline: full.readyDeadline,
+    readyMissCount: full.readyMissCount,
   };
   if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };
   if (scoreTableChanged) payload.scoreTable = full.scoreTable;
@@ -337,28 +342,36 @@ function cleanupReadyTimer(roomId) {
 }
 
 /**
- * Reconcile the Start-modal ready-window against the room's current state.
- * Called after every mutation that can affect it (sit, stand, kick, leave,
- * settings change, confirmStart, game end). Centralized here (rather than in
- * RoomHandler) so GameHandler's rematch/handleGameEnd paths can reuse it
- * without a circular require.
- *
- * - Room playing, or fewer than 2 seated → cancel any pending window.
- * - Both seated, not all ready, no window running → start a fresh 30s window.
- * - Both seated and already all ready → nothing to do (caller starts the game).
+ * Cancel any pending ready-window countdown for a room and clear its
+ * deadline, WITHOUT starting a new one. Called after every mutation that can
+ * invalidate an in-flight countdown (sit, stand, kick, leave, settings
+ * change, game end) — see instruction.md §B36 for why this no longer
+ * auto-starts a new window the way the old syncReadyWindow() did: the
+ * countdown is now only ever opened by a player explicitly clicking Start
+ * (handleReadyClick() below), never merely by both seats being filled.
  *
  * @param {import('socket.io').Server} io
  * @param {object} room
  */
-function syncReadyWindow(io, room) {
+function clearReadyState(io, room) {
   if (!room) return;
+  cleanupReadyTimer(room.roomId);
+  room.readyDeadline = null;
+}
 
-  if (room.state === 'playing' || !roomManager.bothSeated(room)) {
-    cleanupReadyTimer(room.roomId);
-    room.readyDeadline = null;
-    return;
-  }
-
+/**
+ * One seated player clicked "Start" (`room:ready`) and the room isn't fully
+ * ready yet — open the 15s window for the other seat to click too, unless
+ * one is already running. No-ops if fewer than 2 seats are filled (the
+ * click still records that player as ready; the countdown only makes sense
+ * once there's an opponent to wait on).
+ *
+ * @param {import('socket.io').Server} io
+ * @param {object} room
+ */
+function handleReadyClick(io, room) {
+  if (!room) return;
+  if (!roomManager.bothSeated(room)) return;
   if (readyTimers.has(room.roomId)) return; // window already counting down
 
   room.readyDeadline = Date.now() + READY_WINDOW_MS;
@@ -366,17 +379,13 @@ function syncReadyWindow(io, room) {
   readyTimers.set(room.roomId, timeout);
 }
 
-/** Force-restart the ready window (used when settings change resets both players' ready state). */
-function restartReadyWindow(io, room) {
-  if (!room) return;
-  cleanupReadyTimer(room.roomId);
-  room.readyDeadline = null;
-  syncReadyWindow(io, room);
-}
-
 /**
- * Ready-window deadline reached: vacate the seat of whichever seated player(s)
- * never clicked Start, so the other seated player isn't stuck waiting.
+ * Ready-window deadline reached without the other seated player clicking
+ * Start — this is one "miss" for the current seat pair (see
+ * RoomManager.registerReadyMiss for the 3-miss counting/kick rule). Below 3
+ * misses, both seats simply go back to waiting (no kick, no auto-restart).
+ * At the 3rd miss, the seat that still hasn't clicked is vacated; the seat
+ * that did click keeps their spot.
  *
  * @param {import('socket.io').Server} io
  * @param {string} roomId
@@ -388,18 +397,24 @@ function handleReadyWindowTimeout(io, roomId) {
   if (!room || room.state === 'playing') return;
   room.readyDeadline = null;
 
-  const { kicked } = roomManager.forceUnreadyPlayersToStand(roomId);
-  if (!kicked.length) return;
+  const { kicked, missCount } = roomManager.registerReadyMiss(roomId);
+  if (!kicked && missCount === 0) return; // defensive: nothing to report (see registerReadyMiss)
 
   broadcastRoomUpdate(io, room);
-  for (const u of kicked) {
+  if (kicked) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
-      text: `${u.displayName} không bấm Bắt đầu kịp thời nên bị rời khỏi vị trí.`,
+      text: `${kicked.displayName} không bấm Bắt đầu kịp thời (lần 3/3) nên bị rời khỏi vị trí.`,
+      timestamp: Date.now(), isSystem: true,
+    });
+    broadcastLobbyUpdate(io);
+  } else {
+    io.to(roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `Chưa đủ 2 người bấm Bắt đầu kịp thời (lần ${missCount}/3). Hãy bấm lại.`,
       timestamp: Date.now(), isSystem: true,
     });
   }
-  broadcastLobbyUpdate(io);
 }
 
 module.exports = {
@@ -418,6 +433,6 @@ module.exports = {
   findSocketsByUserId,
   cleanupRoomTimer,
   cleanupReadyTimer,
-  syncReadyWindow,
-  restartReadyWindow,
+  clearReadyState,
+  handleReadyClick,
 };

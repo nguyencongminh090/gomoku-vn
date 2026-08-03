@@ -24,14 +24,15 @@
  *   [ ] Redirect to login.html if not authenticated
  *   [ ] Room data populates after room:joined
  *   [ ] Sit / stand / leave / kick work
- *   [ ] Start modal appears once both slots are filled; countdown ticks down
- *   [ ] Clicking Start shows "waiting for opponent" until the other confirms
- *   [ ] Not confirming within 30s vacates that seat (toast shown to that player)
+ *   [ ] Start modal appears (no countdown) once both slots are filled
+ *   [ ] Clicking Start opens a 15s countdown for the other seat; that seat's
+ *       own view shows "waiting for opponent" once they click
+ *   [ ] Not confirming within 15s for the 3rd time vacates that seat (toast
+ *       shown to that player); misses 1-2 just reset both to not-ready
  *   [ ] Settings change emitted correctly (host only)
  *   [ ] Chat send on Enter and button click
  *   [ ] Focus mode toggle (F key, button click, Escape)
- *   [ ] Game overlay close and rematch buttons work
- *   [ ] Overlay removed when game:init fires for new game
+ *   [ ] Start modal reappears (no separate rematch flow) once a game ends
  */
 
 // ---------------------------------------------------------------------------
@@ -186,25 +187,3 @@ chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChat();
 });
 
-// ---------------------------------------------------------------------------
-// Game overlay buttons
-// ---------------------------------------------------------------------------
-const gameOverlay     = document.getElementById('game-overlay');
-const btnRematch      = document.getElementById('btn-rematch');
-const btnCloseOverlay = document.getElementById('btn-close-overlay');
-
-btnRematch.addEventListener('click', () => {
-  gameOverlay.classList.remove('visible');
-  window.RoomClient.emit('game:rematch');
-});
-
-btnCloseOverlay.addEventListener('click', () => {
-  gameOverlay.classList.remove('visible');
-  // Declining a rematch stands the player up (same as the seat's stand-up
-  // button) instead of leaving them seated-but-not-ready. This keeps Start
-  // Modal's only trigger "I am seated", so it can never reappear as a side
-  // effect of the *other* player's rematch click while this player still has
-  // an unactioned game overlay open — see TODO.md #35 / instruction.md §B35.
-  window.RoomState.standRequested = true;
-  window.RoomClient.emit('room:stand');
-});

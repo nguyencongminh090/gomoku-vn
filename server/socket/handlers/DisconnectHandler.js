@@ -21,7 +21,7 @@ const {
   cleanupRoomTimer,
   cleanupReadyTimer,
   findSocketsByUserId,
-  syncReadyWindow,
+  clearReadyState,
 } = require('../state');
 const { handleGameEnd } = require('./GameHandler');
 
@@ -86,9 +86,10 @@ function finalizeNormalLeave(io, roomId, user, result) {
     cleanupReadyTimer(roomId);
     broadcastLobbyUpdate(io);
   } else if (result.room) {
-    // Leaving a seat mid ready-window frees it — resync (clears the window
-    // since the room now has fewer than 2 seated players).
-    syncReadyWindow(io, result.room);
+    // Leaving a seat mid ready-window frees it — roomManager.leaveRoom()
+    // already reset the pair's ready state; this just cancels the socket-side
+    // countdown timer to match.
+    clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
