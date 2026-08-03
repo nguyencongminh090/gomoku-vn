@@ -957,6 +957,91 @@ thêm method mới `remapForSwap2`, không đổi hành vi các method cũ).
 
 ---
 
+## §39 — Guest/spectator reconnect thiếu grace period (TODO.md #39)
+
+**Bối cảnh phát hiện:** người dùng yêu cầu kiểm tra reconnect logic cho (1)
+player đang chơi và (2) guest trong bàn. Đã đọc
+`server/socket/handlers/DisconnectHandler.js`, `server/socket/SocketHandler.js`,
+`server/managers/RoomManager.js` bằng codegraph. Kết luận: có đúng 2 nhánh
+grace, và khoảng trống nằm GIỮA 2 nhánh đó, không phải toàn bộ luồng reconnect
+đều hỏng — case (1) player-in-active-game hoạt động đúng, không cần sửa.
+
+**Chỗ cần sửa:** `handleDisconnect()`
+(`server/socket/handlers/DisconnectHandler.js:36-72`). Hiện tại:
+```
+if (room && room.gameState && room.gameState.status === 'ongoing') { ... player → grace }
+if (room.users.size === 1) { ... sole occupant → grace }
+// còn lại → finalizeNormalLeave ngay, KHÔNG có case nào ở giữa
+```
+Cách tiếp cận gợi ý: thêm một grace period thứ 3 (có thể tái dùng cơ chế của
+`startEmptyRoomGrace`, đổi tên tổng quát hơn hoặc thêm hàm mới
+`startSpectatorGrace`) áp dụng cho case "còn người khác trong phòng nhưng
+`gameState` không `ongoing` (hoặc user không phải player)". Thời lượng grace
+gợi ý: dùng chung `config.EMPTY_ROOM_GRACE_MS` hoặc thêm hằng số mới riêng
+(ví dụ `SPECTATOR_GRACE_MS`) trong `server/config.js` — **hỏi lại người dùng
+thời lượng cụ thể trước khi hard-code**, không tự đoán số giây.
+
+**Điểm mấu chốt không được bỏ sót:** `SocketHandler.js:160-176` — nhánh
+`socket.handshake.auth.reconnect === true` emit `room:destroyed` khi
+`roomManager.getRoomByUser` trả về `null`. Nhánh này được viết đúng cho use
+case "phòng thật sự đã bị huỷ khi client offline" (server restart / idle
+cleanup) — **không được xoá nhánh này**, chỉ cần đảm bảo user không bị xoá
+khỏi `userRoomMap` quá sớm (trong lúc grace) để `getRoomByUser` vẫn trả về
+đúng phòng khi họ reconnect kịp thời, giống hệt cách
+`startEmptyRoomGrace`/`startDisconnectGrace` đang giữ user trong map cho tới
+khi grace hết hạn.
+
+**Không đụng:** `startDisconnectGrace`/`cancelDisconnectGrace` (case player
+trong ván `ongoing` đã đúng, xác nhận qua đọc code — không có bug ở đây),
+cơ chế `game:interrupted`/`game:resumed`, `TimerManager` pause/resume.
+
+**Test dự kiến:** mở rộng `server/tests/DisconnectHandler.test.js` (đã có
+fixture `twoPlayerRoom`) — thêm case guest/spectator rớt mạng khi còn ≥2
+người trong phòng và game không `ongoing`, xác nhận: (a) không bị xoá khỏi
+`room.users` ngay, (b) reconnect trong thời gian grace → được nối lại đúng
+phòng, không nhận `room:destroyed`, (c) reconnect sau khi grace hết hạn →
+mới thực sự bị xoá.
+
+## §40 — `room.html` không `?id=` freeze ở overlay "Đang vào phòng" (TODO.md #40)
+
+**Bối cảnh phát hiện:** người dùng báo dán link `room.html` trần (không tạo
+phòng trước) → màn hình đứng im, không fallback về sảnh chờ. Đã xác nhận
+bằng đọc `client/js/room-socket.js:377-398` (`processRoomIntent`) và
+`client/room.html:45-50` (`#room-entry-overlay`).
+
+**Chỗ cần sửa:** `processRoomIntent()` trong
+`client/js/room-socket.js:393-397` — nhánh `else` hiện tại:
+```javascript
+} else {
+  const params = new URLSearchParams(window.location.search);
+  const roomId = params.get('id');
+  if (roomId) client.emit('room:join', { roomId });
+}
+```
+Thêm `else` fallback khi `!roomId`: redirect `window.location.href =
+'index.html'`. Đây là toàn bộ phạm vi sửa — **không cần đổi** nhánh
+`intent.action === 'create'`/`'join'` phía trên, không cần đổi
+`#room-entry-overlay` hay `hideEntryOverlay()`.
+
+**Cân nhắc UX nhỏ trước khi sửa (hỏi người dùng nếu muốn khác):** redirect
+ngay lập tức không hiện thông báo gì — có thể người dùng muốn 1 toast ngắn
+kiểu "Thiếu mã phòng, đưa bạn về sảnh chờ" trước khi chuyển trang (tham khảo
+pattern đã có ở `room:kicked`/`room:destroyed` trong cùng file, dùng
+`showToast` + `setTimeout` 1500ms). Không tự quyết định thêm toast nếu không
+được yêu cầu — giữ bug-fix tối giản theo đúng nội dung `TODO.md` #40 trừ khi
+người dùng xác nhận muốn có thông báo.
+
+**Không đụng:** `client/room.html` cấu trúc overlay, luồng `sessionStorage
+gvn_room_intent` (được set từ `index.html` lúc tạo/join phòng — không phải
+nguồn của bug này).
+
+**Test dự kiến:** `client/js/` chưa có Jest — verify bằng Playwright
+(`e2e/`) case mới: mở `room.html` không query string, assert URL cuối cùng
+là `index.html`. Không viết test tay rồi xoá — giữ lại theo rule
+"Bug-fix workflow" trong `CLAUDE.md`.
+
+---
+
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 
 - **Đừng chuyển `game:moved` sang delta** — đã là delta tối ưu (121 B/nước,

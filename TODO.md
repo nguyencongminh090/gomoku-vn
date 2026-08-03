@@ -1283,6 +1283,71 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ---
 
+### Nguồn: báo cáo người dùng — "Reconnect Logic is not very well" (2026-08-04)
+
+39. **Guest/spectator (và người chơi khi ván chưa `ongoing`) mất kết nối bị
+    đuổi khỏi phòng ngay lập tức, không có grace period — khác hẳn với
+    người chơi đang trong ván đang chạy.** Đọc kỹ `instruction.md` §39
+    trước khi làm — có 2 nhánh grace hiện có (`startDisconnectGrace` chỉ áp
+    dụng khi `gameState.status === 'ongoing'` và user là player;
+    `startEmptyRoomGrace` chỉ áp dụng khi user là **người duy nhất** còn lại
+    trong phòng) và một khoảng trống ở giữa 2 nhánh đó chưa được xử lý.
+    - **Triệu chứng:** một guest xem ván đấu (hoặc 1 player đã ngồi ghế
+      nhưng ván chưa bắt đầu) rớt mạng thoáng qua (khoá màn hình điện thoại,
+      wifi chập chờn) trong khi còn người khác ở lại phòng →
+      `handleDisconnect` (`server/socket/handlers/DisconnectHandler.js:36`)
+      rơi thẳng xuống `finalizeNormalLeave` → bị xoá khỏi `room.users`/
+      `userRoomMap` ngay lập tức, không có cửa sổ chờ nào.
+    - Khi socket tự động reconnect (socket.io `reconnection: true`), do
+      user đã bị xoá khỏi phòng, `SocketHandler.js:144`
+      (`roomManager.getRoomByUser`) trả về `null` → rơi vào nhánh
+      `socket.handshake.auth.reconnect === true`
+      (`SocketHandler.js:160-176`) → server emit `room:destroyed` với
+      thông báo **"Phòng không còn tồn tại"** — sai sự thật, vì phòng vẫn
+      còn người khác ở trong đó. Người dùng bị đá về sảnh chờ kèm thông
+      báo gây hiểu lầm, thay vì được nối lại vào phòng như player đang
+      trong ván vẫn được.
+    - **Đánh giá hiệu quả/an toàn:** an toàn để sửa — chỉ mở rộng phạm vi
+      grace period đã có sẵn (không đổi cơ chế), rủi ro thấp; hiệu quả cao
+      vì đây là trải nghiệm người dùng gặp thường xuyên hơn ca "player mất
+      kết nối giữa ván" (guest/spectator đông hơn, mạng di động chập chờn
+      phổ biến).
+    - **Trạng thái:** mới phát hiện, ghi lại phân tích — Sequence UML
+      (mermaid) đã vẽ, chưa sửa code.
+    - **Test dự kiến:** Jest trong `server/tests/DisconnectHandler.test.js`
+      (đã có `twoPlayerRoom` fixture) — case guest rớt mạng trong phòng có
+      ≥2 người, ván chưa `ongoing`, xác nhận có grace period thay vì bị xoá
+      ngay theo rule "Bug-fix workflow" + "Viết test case toàn diện" trong
+      `CLAUDE.md`.
+
+40. **Dán link `room.html` không có `?id=` (và không phải vừa tạo/join từ
+    sảnh chờ) → màn hình đứng im ở overlay "⏳ Đang vào phòng..." vĩnh viễn,
+    không có fallback về sảnh chờ.** Đọc `instruction.md` §40 trước khi
+    làm.
+    - **Nguyên nhân:** `processRoomIntent()` (`client/js/room-socket.js:377`)
+      chỉ emit `room:create`/`room:join` khi có `sessionStorage`
+      `gvn_room_intent` HOẶC query param `?id=`. Nếu cả 2 đều không có (ví
+      dụ người dùng copy-paste URL trần `.../room.html` rồi dán cho người
+      khác, hoặc gõ tay), hàm không emit gì cả và cũng không redirect.
+    - `#room-entry-overlay` (`client/room.html:45`) hiển thị mặc định
+      (`class="game-overlay visible"`) và chỉ được ẩn bởi
+      `hideEntryOverlay()` — hàm này chỉ được gọi từ handler `room:joined`
+      (`client/js/room-socket.js:40-41`). Event đó không bao giờ tới →
+      overlay giữ nguyên vĩnh viễn, đúng như báo cáo "freeze".
+    - **Đánh giá hiệu quả/an toàn:** an toàn để sửa — chỉ thêm 1 nhánh
+      `else` fallback trong `processRoomIntent()` (không có intent và không
+      có `id` → redirect `index.html`), không đụng luồng join/create hiện
+      có; hiệu quả cao vì đây là lỗi UX rõ ràng, dễ tái hiện 100%.
+    - **Trạng thái:** mới phát hiện, ghi lại phân tích — Sequence UML
+      (mermaid) đã vẽ, chưa sửa code.
+    - **Test dự kiến:** `client/js/` hiện chưa có hạ tầng Jest/unit test
+      (theo rule "Bug-fix workflow" trong `CLAUDE.md`, nói rõ trường hợp
+      này thay vì bỏ qua) — verify bằng Playwright (`e2e/`) hoặc chạy app
+      thật: mở `room.html` không tham số, xác nhận redirect về
+      `index.html` thay vì đứng im ở overlay.
+
+---
+
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
      Phần A hoặc Phần B, giữ định dạng số thứ tự + đánh giá hiệu quả/an toàn +
      trạng thái test như trên. -->
