@@ -1479,8 +1479,20 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.6 — chuyển từ Phần A #10, xác nhận qua Cloudflare API (2026-08-04)
 
-44. **`getClientIp()` đọc `CF-Connecting-IP` thay vì suy luận qua
-    `X-Forwarded-For`**
+44. ~~**`getClientIp()` đọc `CF-Connecting-IP` thay vì suy luận qua
+    `X-Forwarded-For`**~~
+    **✅ ĐÃ XONG (2026-08-04)** — `getClientIp(socket)` (`server/socket/state.js`)
+    nay đọc `socket.handshake.headers['cf-connecting-ip']` trước tiên, dùng
+    thẳng nếu có mặt. Không có header đó → giữ nguyên fallback cũ
+    (`X-Forwarded-For` chỉ khi peer loopback, ngược lại dùng
+    `socket.handshake.address`), đúng phạm vi `instruction.md` §44 — không
+    xoá nhánh fallback, không đụng tầng Express `trust proxy`.
+    Test: file mới `server/tests/get-client-ip.test.js` (8 case — ưu tiên
+    CF header kể cả khi khác XFF, kể cả khi peer không loopback; fallback
+    XFF cho peer loopback IPv4/IPv6; không có header nào → dùng peer;
+    không có address/không có CF header → `undefined`). `npm test`:
+    393/393 xanh (tăng 8 so với baseline 385, không hồi quy). Chi tiết:
+    `docs/fix-log.md` 2026-08-04 08:00.
 
     - **Ở đâu:** `server/socket/state.js` — `getClientIp(socket)`.
     - **Vì sao:** hiện tại chỉ tin `X-Forwarded-For` khi
