@@ -14,6 +14,7 @@ const logger      = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
 const {
   timerMap,
+  emptyRoomGraceTimers,
   broadcastLobbyUpdate,
   broadcastRoomUpdate,
   sendLobbySnapshot,
@@ -45,6 +46,15 @@ function register(io, socket) {
   });
 
   socket.on('room:create', (payload = {}) => {
+    // roomIds currently sitting in DisconnectHandler's empty-room grace
+    // window (state.js `emptyRoomGraceTimers` is keyed by userId, not
+    // roomId, so collect the `.roomId` off each pending entry) — passed
+    // through so RoomManager.createRoom can exempt them from the main
+    // MAX_ROOMS_PER_IP quota while still bounding them separately. See
+    // TODO.md #43 / instruction.md §43.
+    const graceRoomIds = new Set();
+    for (const { roomId } of emptyRoomGraceTimers.values()) graceRoomIds.add(roomId);
+
     const result = roomManager.createRoom(
       {
         userId: user.userId,
@@ -56,7 +66,8 @@ function register(io, socket) {
         // that proxy into one shared IP for quota purposes.
         ip: getClientIp(socket),
       },
-      payload.settings || {}
+      payload.settings || {},
+      graceRoomIds
     );
 
     if (result.error) {
