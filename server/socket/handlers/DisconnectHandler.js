@@ -101,6 +101,7 @@ function finalizeNormalLeave(io, roomId, user, result) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} đã mất kết nối.`,
+      code: 'PLAYER_DISCONNECTED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
     if (result.hostTransferred) {
@@ -108,6 +109,7 @@ function finalizeNormalLeave(io, roomId, user, result) {
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,
         text: `${newHost ? newHost.displayName : '—'} là chủ phòng mới.`,
+        code: 'ROOM_NEW_HOST', vars: { name: newHost ? newHost.displayName : '—' },
         timestamp: Date.now(), isSystem: true,
       });
     }
@@ -253,6 +255,7 @@ function startDisconnectGrace(io, room, user) {
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null,
     text: `${user.displayName} mất kết nối. Chờ kết nối lại (${graceSec}s)...`,
+    code: 'PLAYER_DISCONNECTED_GRACE', vars: { name: user.displayName, seconds: graceSec },
     timestamp: Date.now(), isSystem: true,
   });
 
@@ -277,6 +280,7 @@ function startDisconnectGrace(io, room, user) {
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,
         text: `${user.displayName} không kết nối lại. Ván đấu huỷ, không ghi điểm.`,
+        code: 'PLAYER_DISCONNECT_TIMEOUT', vars: { name: user.displayName },
         timestamp: Date.now(), isSystem: true,
       });
     }
@@ -342,6 +346,7 @@ function cancelDisconnectGrace(io, socket) {
     io.to(entry.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} đã kết nối lại, đang chờ đối thủ...`,
+      code: 'PLAYER_RECONNECTED_WAITING', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
     logger.info(`[Disconnect] ${user.displayName} reconnected to room ${entry.roomId} but another player is still in grace — not resuming yet`);
@@ -366,6 +371,7 @@ function cancelDisconnectGrace(io, socket) {
   io.to(entry.roomId).emit('chat:message', {
     from: null, fromId: null,
     text: `${user.displayName} đã kết nối lại! Ván đấu tiếp tục.`,
+    code: 'PLAYER_RECONNECTED_RESUMED', vars: { name: user.displayName },
     timestamp: Date.now(), isSystem: true,
   });
 

@@ -25,7 +25,7 @@ function register(io, socket) {
   socket.on('chat:message', (payload = {}) => {
     const roomId = roomManager.getRoomIdByUser(user.userId);
     if (!roomId) {
-      socket.emit('chat:error', { message: 'Bạn cần vào phòng để chat.' });
+      socket.emit('chat:error', { message: 'Bạn cần vào phòng để chat.', code: 'MUST_BE_IN_ROOM_TO_CHAT' });
       return;
     }
 

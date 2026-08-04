@@ -97,7 +97,8 @@ async function loadGames(page = 1) {
     const data = await res.json();
 
     if (!res.ok) {
-      gameListEl.innerHTML = `<div class="game-list__empty">${t('history.err_prefix', { msg: data.error || t('history.load_error') })}</div>`;
+      const msg = data.code ? t('err.' + data.code.toLowerCase()) : (data.error || t('history.load_error'));
+      gameListEl.innerHTML = `<div class="game-list__empty">${t('history.err_prefix', { msg })}</div>`;
       return;
     }
 

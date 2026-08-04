@@ -437,6 +437,7 @@ function handleReadyWindowTimeout(io, roomId) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${kicked.displayName} không bấm Bắt đầu kịp thời (lần 3/3) nên bị rời khỏi vị trí.`,
+      code: 'READY_MISS_KICKED', vars: { name: kicked.displayName },
       timestamp: Date.now(), isSystem: true,
     });
     broadcastLobbyUpdate(io);
@@ -444,6 +445,7 @@ function handleReadyWindowTimeout(io, roomId) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `Chưa đủ 2 người bấm Bắt đầu kịp thời (lần ${missCount}/3). Hãy bấm lại.`,
+      code: 'READY_MISS_RETRY', vars: { count: missCount },
       timestamp: Date.now(), isSystem: true,
     });
   }

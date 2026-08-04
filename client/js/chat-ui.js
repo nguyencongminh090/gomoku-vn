@@ -22,7 +22,13 @@
   // Decode immediately before writing it into a text node so the reader sees
   // what the sender typed rather than `&lt;b&gt;`. Safe because textContent
   // never parses its input as markup — see EscapeUtils.decodeChatText.
-  const chatText = (t) => global.EscapeUtils.decodeChatText(t);
+  const chatText = (txt) => global.EscapeUtils.decodeChatText(txt);
+
+  // Server system-chat events carry a language-neutral `code` (+ `vars` for
+  // interpolation) alongside the Vietnamese `text` (logs/back-compat) — same
+  // convention as error payloads. Prefer translating via `code` so English
+  // mode doesn't show these announcements in Vietnamese (TODO #45).
+  const systemText = (msg) => msg.code ? t('sys.' + msg.code.toLowerCase(), msg.vars) : msg.text;
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const chatMessages   = document.getElementById('chat-messages');
@@ -35,7 +41,7 @@
 
     if (msg.isSystem) {
       div.className = 'chat-msg chat-msg--system';
-      div.textContent = msg.text;
+      div.textContent = systemText(msg);
     } else {
       const isSelf = msg.from === (S().myUser ? S().myUser.username : '');
       div.className = `chat-msg ${isSelf ? 'chat-msg--self' : 'chat-msg--other'}`;
@@ -81,7 +87,7 @@
     el.className = msg.isSystem ? 'float-msg float-msg--system' : 'float-msg';
 
     if (msg.isSystem) {
-      el.textContent = msg.text;
+      el.textContent = systemText(msg);
     } else {
       const nameSpan = document.createElement('span');
       nameSpan.className = 'float-msg__name';

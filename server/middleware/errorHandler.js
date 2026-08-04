@@ -45,7 +45,7 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
 
   // Unexpected error — log full stack, return generic message
   logger.error(`[Express] Unhandled error on ${req.method} ${req.path}:`, err);
-  return res.status(500).json({ error: 'Lỗi máy chủ. Vui lòng thử lại.' });
+  return res.status(500).json({ error: 'Lỗi máy chủ. Vui lòng thử lại.', code: 'SERVER_ERROR' });
 }
 
 module.exports = { AppError, errorHandler };
