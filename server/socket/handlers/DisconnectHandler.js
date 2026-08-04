@@ -247,16 +247,15 @@ function startDisconnectGrace(io, room, user) {
 
   room.state = 'interrupted';
 
+  // No server-side chat:message here — the client's own game:interrupted
+  // handler (room-socket.js) already shows this same announcement via
+  // ChatUI.appendSystemMessage(t('room.disconnected', ...)) + a toast.
+  // Emitting both produced two near-identical lines in the chat panel for
+  // one event (TODO #47).
   io.to(roomId).emit('game:interrupted', {
     playerId: user.userId,
     playerName: user.displayName,
     secondsLeft: graceSec,
-  });
-  io.to(roomId).emit('chat:message', {
-    from: null, fromId: null,
-    text: `${user.displayName} mất kết nối. Chờ kết nối lại (${graceSec}s)...`,
-    code: 'PLAYER_DISCONNECTED_GRACE', vars: { name: user.displayName, seconds: graceSec },
-    timestamp: Date.now(), isSystem: true,
   });
 
   let remaining = graceSec;
@@ -361,6 +360,9 @@ function cancelDisconnectGrace(io, socket) {
     io.to(entry.roomId).emit('timer:sync', timer.getSync());
   }
 
+  // No server-side chat:message here either — the client's game:resumed
+  // handler already shows ChatUI.appendSystemMessage(t('room.reconnected'))
+  // + a toast. See the matching comment in startDisconnectGrace (TODO #47).
   io.to(entry.roomId).emit('game:resumed', { playerId: user.userId });
   socket.emit('game:init', {
     ...room.gameState.serialize(),
@@ -368,12 +370,6 @@ function cancelDisconnectGrace(io, socket) {
     timerSync: timer ? timer.getSync() : null,
   });
   broadcastRoomUpdate(io, room);
-  io.to(entry.roomId).emit('chat:message', {
-    from: null, fromId: null,
-    text: `${user.displayName} đã kết nối lại! Ván đấu tiếp tục.`,
-    code: 'PLAYER_RECONNECTED_RESUMED', vars: { name: user.displayName },
-    timestamp: Date.now(), isSystem: true,
-  });
 
   logger.info(`[Disconnect] ${user.displayName} reconnected, game resumed in room ${entry.roomId}`);
   return true;
