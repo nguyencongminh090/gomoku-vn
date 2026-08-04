@@ -398,10 +398,10 @@
             <span class="unit">${t('modal.time_unit')}</span>
           </div>
         </div>
-        <div class="setting-row">
+        <div class="setting-row" style="${s.timerMode === 'blitz' ? '' : 'opacity:0.45;'}">
           <span class="setting-label">${t('modal.time_plus')}</span>
           <div class="timer-input">
-            <input type="number" id="r-timer-increment" value="${s.timerIncrementSeconds || 0}" min="0" max="600" step="1" onchange="updateSettings()" />
+            <input type="number" id="r-timer-increment" value="${s.timerIncrementSeconds || 0}" min="0" max="600" step="1" ${s.timerMode === 'blitz' ? '' : 'disabled'} onchange="updateSettings()" />
             <span class="unit">${t('modal.time_unit')}</span>
           </div>
         </div>
@@ -592,6 +592,8 @@
 
     if (!boardSizeEl || !timerModeEl) return;
 
+    const timerMode = timerModeEl.value;
+
     global.RoomClient.emit('room:settings', {
       settings: {
         boardSize:             parseInt(boardSizeEl.value, 10),
@@ -599,9 +601,11 @@
         ruleWall:              wallEl   ? wallEl.checked   : false,
         rulePortal:            portalEl ? portalEl.checked : false,
         ruleSwap2:             (document.querySelector('input[name="r-openRule"]:checked') || {}).value === 'swap2',
-        timerMode:             timerModeEl.value,
+        timerMode,
         timerSeconds:          timerEl          ? (parseInt(timerEl.value, 10) || 60)          : 60,
-        timerIncrementSeconds: timerIncrementEl ? (parseInt(timerIncrementEl.value, 10) || 0)  : 0,
+        // Increment only takes effect in blitz mode (TimerManager.applyMove) —
+        // zero it out otherwise so the stored setting doesn't imply it's active.
+        timerIncrementSeconds: (timerMode === 'blitz' && timerIncrementEl) ? (parseInt(timerIncrementEl.value, 10) || 0) : 0,
       },
     });
   };
