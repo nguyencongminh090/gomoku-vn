@@ -4,14 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Lịch sử ván đấu</title>
-  <meta name="description" content="Xem lại và phát lại các ván Caro đã chơi trên Play3CR." />
+  <meta name="description" content="Xem lại và phát lại các ván Caro đã chơi trên Play3CR." id="meta-description" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css?family=Inter:400,500,600,700&amp;subset=vietnamese&amp;display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=52" />
-  <link rel="stylesheet" href="css/history.css?v=52" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=52" />
+  <link rel="stylesheet" href="css/main.css?v=53" />
+  <link rel="stylesheet" href="css/history.css?v=53" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=53" />
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,9 +39,9 @@
     <span class="topnav__title">Play3CR</span>
   </a>
   <div class="topnav__right">
-    <a href="index.html" class="topnav__btn" style="text-decoration:none;" title="Sảnh">
+    <a href="index.html" class="topnav__btn" style="text-decoration:none;" data-i18n-title="nav.lobby" title="Sảnh">
       <i class="ph-bold ph-house" style="font-size: 16px;"></i>
-      <span class="hide-on-mobile">Sảnh</span>
+      <span class="hide-on-mobile" data-i18n="nav.lobby">Sảnh</span>
     </a>
   </div>
 </nav>
@@ -52,55 +52,55 @@
   <!-- Game List View -->
   <div id="view-list">
     <div class="history__header">
-      <h1>Lịch sử ván đấu</h1>
+      <h1 data-i18n="history.h1">Lịch sử ván đấu</h1>
       <span id="game-total" class="history__count"></span>
     </div>
 
     <form id="history-search" class="history-search" autocomplete="off">
       <div class="history-search__field">
-        <label for="search-player">Người chơi</label>
-        <input type="text" id="search-player" name="player" placeholder="Tên người chơi..." maxlength="50" />
+        <label for="search-player" data-i18n="history.search_player">Người chơi</label>
+        <input type="text" id="search-player" name="player" data-i18n-placeholder="history.ph_player" placeholder="Tên người chơi..." maxlength="50" />
       </div>
       <div class="history-search__field">
-        <label for="search-from">Từ ngày</label>
+        <label for="search-from" data-i18n="history.search_from">Từ ngày</label>
         <input type="date" id="search-from" name="from" />
       </div>
       <div class="history-search__field">
-        <label for="search-to">Đến ngày</label>
+        <label for="search-to" data-i18n="history.search_to">Đến ngày</label>
         <input type="date" id="search-to" name="to" />
       </div>
       <div class="history-search__field">
-        <label for="search-result">Kết quả</label>
+        <label for="search-result" data-i18n="history.search_result">Kết quả</label>
         <select id="search-result" name="result">
-          <option value="">Tất cả</option>
-          <option value="win">Thắng/thua</option>
-          <option value="draw">Hoà</option>
+          <option value="" data-i18n="history.result_all">Tất cả</option>
+          <option value="win" data-i18n="history.result_win">Thắng/thua</option>
+          <option value="draw" data-i18n="history.result_draw">Hoà</option>
         </select>
       </div>
       <div class="history-search__actions">
-        <button type="submit" class="history-search__btn history-search__btn--primary">Tìm kiếm</button>
-        <button type="button" id="search-reset" class="history-search__btn">Xoá lọc</button>
+        <button type="submit" class="history-search__btn history-search__btn--primary" data-i18n="history.btn_search">Tìm kiếm</button>
+        <button type="button" id="search-reset" class="history-search__btn" data-i18n="history.btn_reset">Xoá lọc</button>
       </div>
     </form>
 
     <div id="history-stats" class="history-stats" style="display:none;">
       <div class="history-stats__item">
-        <span class="history-stats__label">Tổng số ván</span>
+        <span class="history-stats__label" data-i18n="history.stats_total_games">Tổng số ván</span>
         <span id="stats-total" class="history-stats__value">0</span>
       </div>
       <div class="history-stats__item">
-        <span class="history-stats__label">Thắng/thua</span>
+        <span class="history-stats__label" data-i18n="history.result_win">Thắng/thua</span>
         <span id="stats-win" class="history-stats__value">0</span>
       </div>
       <div class="history-stats__item">
-        <span class="history-stats__label">Hoà</span>
+        <span class="history-stats__label" data-i18n="history.result_draw">Hoà</span>
         <span id="stats-draw" class="history-stats__value">0</span>
       </div>
       <div id="stats-by-date" class="history-stats__by-date"></div>
     </div>
 
     <div id="game-list" class="game-list">
-      <div class="game-list__empty">Đang tải...</div>
+      <div class="game-list__empty" data-i18n="history.loading">Đang tải...</div>
     </div>
     <div id="pagination" class="pagination"></div>
   </div>
@@ -110,11 +110,11 @@
     <div class="replay__top-bar">
       <button id="replay-back" class="replay__back-btn" type="button">
         <i class="ph-bold ph-arrow-left"></i>
-        <span>Quay lại</span>
+        <span data-i18n="history.btn_back">Quay lại</span>
       </button>
-      <button id="btn-analysis" class="replay__analysis-btn" type="button" title="Bật/tắt chế độ phân tích">
+      <button id="btn-analysis" class="replay__analysis-btn" type="button" data-i18n-title="history.btn_analysis_title" title="Bật/tắt chế độ phân tích">
         <i class="ph-bold ph-flow-arrow"></i>
-        <span>Phân tích</span>
+        <span data-i18n="history.btn_analysis">Phân tích</span>
       </button>
     </div>
 
@@ -135,20 +135,20 @@
           <canvas id="replay-canvas"></canvas>
         </div>
         <div class="replay__controls">
-          <button id="btn-first" class="replay__btn" type="button" title="Đầu tiên"><i class="ph-bold ph-skip-back"></i></button>
-          <button id="btn-prev" class="replay__btn" type="button" title="Lùi 1 nước"><i class="ph-bold ph-caret-left"></i></button>
+          <button id="btn-first" class="replay__btn" type="button" data-i18n-title="history.btn_first_title" title="Đầu tiên"><i class="ph-bold ph-skip-back"></i></button>
+          <button id="btn-prev" class="replay__btn" type="button" data-i18n-title="history.btn_prev_title" title="Lùi 1 nước"><i class="ph-bold ph-caret-left"></i></button>
           <span id="move-counter" class="replay__counter">0 / 0</span>
-          <button id="btn-next" class="replay__btn" type="button" title="Tiến 1 nước"><i class="ph-bold ph-caret-right"></i></button>
-          <button id="btn-last" class="replay__btn" type="button" title="Cuối cùng"><i class="ph-bold ph-skip-forward"></i></button>
-          <button id="btn-play" class="replay__btn" type="button" title="Tự động phát"><i class="ph-bold ph-play"></i></button>
+          <button id="btn-next" class="replay__btn" type="button" data-i18n-title="history.btn_next_title" title="Tiến 1 nước"><i class="ph-bold ph-caret-right"></i></button>
+          <button id="btn-last" class="replay__btn" type="button" data-i18n-title="history.btn_last_title" title="Cuối cùng"><i class="ph-bold ph-skip-forward"></i></button>
+          <button id="btn-play" class="replay__btn" type="button" data-i18n-title="history.btn_play_title" title="Tự động phát"><i class="ph-bold ph-play"></i></button>
         </div>
       </div>
 
       <!-- Tree panel (visible in analysis mode) -->
       <div id="tree-panel" class="replay__tree-panel" style="display:none;">
         <div class="tree-panel__header">
-          <span class="tree-panel__title">Cây nước đi</span>
-          <button id="btn-delete-branch" class="tree-panel__action" type="button" title="Xoá nhánh hiện tại"><i class="ph-bold ph-trash"></i></button>
+          <span class="tree-panel__title" data-i18n="history.tree_title">Cây nước đi</span>
+          <button id="btn-delete-branch" class="tree-panel__action" type="button" data-i18n-title="history.btn_delete_branch_title" title="Xoá nhánh hiện tại"><i class="ph-bold ph-trash"></i></button>
         </div>
         <div id="tree-container" class="tree-panel__body"></div>
       </div>
@@ -158,13 +158,13 @@
 </main>
 
 <!-- Scripts -->
-<script src="js/i18n.js?v=52"></script>
-<script src="js/ui-mode.js?v=52"></script>
-<script src="js/audio-manager.js?v=52"></script>
-<script src="js/settings-panel.js?v=52"></script>
-<script src="js/board.js?v=52"></script>
-<script src="js/move-tree.js?v=52"></script>
-<script src="js/tree-view.js?v=52"></script>
-<script src="js/history.js?v=52"></script>
+<script src="js/i18n.js?v=53"></script>
+<script src="js/ui-mode.js?v=53"></script>
+<script src="js/audio-manager.js?v=53"></script>
+<script src="js/settings-panel.js?v=53"></script>
+<script src="js/board.js?v=53"></script>
+<script src="js/move-tree.js?v=53"></script>
+<script src="js/tree-view.js?v=53"></script>
+<script src="js/history.js?v=53"></script>
 </body>
 </html>

@@ -101,7 +101,7 @@ router.get('/:id', (req, res, next) => {
   try {
     const game = database.getGameById(req.params.id);
     if (!game) {
-      return res.status(404).json({ error: 'Không tìm thấy ván đấu.' });
+      return res.status(404).json({ error: 'Không tìm thấy ván đấu.', code: 'GAME_NOT_FOUND' });
     }
 
     // Parse JSON fields
