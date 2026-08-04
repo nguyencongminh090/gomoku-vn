@@ -146,37 +146,37 @@ class GameEngine {
   makeMove(userId, x, y) {
     // Swap2: block normal moves until the opening is fully resolved.
     if (this.ruleSwap2 && this.openingPhase !== 'play') {
-      return { error: 'Đang trong giai đoạn khai cuộc Swap2.' };
+      return { error: 'Đang trong giai đoạn khai cuộc Swap2.', code: 'SWAP2_IN_PROGRESS' };
     }
 
     // Game must be ongoing
     if (this.status !== 'ongoing') {
-      return { error: 'Ván đấu đã kết thúc.' };
+      return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
     }
 
     // Must be this player's turn
     if (userId !== this.currentTurn) {
-      return { error: 'Chưa đến lượt bạn.' };
+      return { error: 'Chưa đến lượt bạn.', code: 'NOT_YOUR_TURN' };
     }
 
     // Bounds check
     if (x < 0 || x >= this.boardSize || y < 0 || y >= this.boardSize) {
-      return { error: 'Vị trí ngoài bàn cờ.' };
+      return { error: 'Vị trí ngoài bàn cờ.', code: 'OUT_OF_BOUNDS' };
     }
 
     // Cell must be empty
     const cell = this.board[y][x];
     if (cell !== EMPTY) {
-      if (cell === WALL) return { error: 'Không thể đặt vào ô tường.' };
-      if (cell === PORTAL) return { error: 'Không thể đặt vào ô cổng dịch chuyển.' };
-      return { error: 'Ô này đã có quân.' };
+      if (cell === WALL) return { error: 'Không thể đặt vào ô tường.', code: 'CELL_IS_WALL' };
+      if (cell === PORTAL) return { error: 'Không thể đặt vào ô cổng dịch chuyển.', code: 'CELL_IS_PORTAL' };
+      return { error: 'Ô này đã có quân.', code: 'CELL_OCCUPIED' };
     }
 
     // First-move zone enforcement (only when walls exist)
     if (this.walls.length > 0 && this.moveCount === 0) {
       const inZone = this.firstMoveZones.some(z => z.x === x && z.y === y);
       if (!inZone) {
-        return { error: 'Nước đầu tiên phải đặt cạnh một ô tường.' };
+        return { error: 'Nước đầu tiên phải đặt cạnh một ô tường.', code: 'SWAP2_FIRST_MOVE_MUST_BE_ADJACENT_WALL' };
       }
     }
 
@@ -240,26 +240,26 @@ class GameEngine {
    */
   placeOpeningStone(userId, x, y) {
     if (this.status !== 'ongoing') {
-      return { error: 'Ván đấu đã kết thúc.' };
+      return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
     }
     if (!this.ruleSwap2) {
-      return { error: 'Luật Swap2 không được bật.' };
+      return { error: 'Luật Swap2 không được bật.', code: 'SWAP2_NOT_ENABLED' };
     }
     if (this.openingPhase !== 'place3' && this.openingPhase !== 'place2') {
-      return { error: 'Không trong giai đoạn đặt quân mở màn.' };
+      return { error: 'Không trong giai đoạn đặt quân mở màn.', code: 'NOT_IN_OPENING_PHASE' };
     }
     if (userId !== this.currentTurn) {
-      return { error: 'Chưa đến lượt bạn.' };
+      return { error: 'Chưa đến lượt bạn.', code: 'NOT_YOUR_TURN' };
     }
     if (x < 0 || x >= this.boardSize || y < 0 || y >= this.boardSize) {
-      return { error: 'Vị trí ngoài bàn cờ.' };
+      return { error: 'Vị trí ngoài bàn cờ.', code: 'OUT_OF_BOUNDS' };
     }
 
     const cell = this.board[y][x];
     if (cell !== EMPTY) {
-      if (cell === WALL) return { error: 'Không thể đặt vào ô tường.' };
-      if (cell === PORTAL) return { error: 'Không thể đặt vào ô cổng dịch chuyển.' };
-      return { error: 'Ô này đã có quân.' };
+      if (cell === WALL) return { error: 'Không thể đặt vào ô tường.', code: 'CELL_IS_WALL' };
+      if (cell === PORTAL) return { error: 'Không thể đặt vào ô cổng dịch chuyển.', code: 'CELL_IS_PORTAL' };
+      return { error: 'Ô này đã có quân.', code: 'CELL_OCCUPIED' };
     }
 
     const seq = this.openingPhase === 'place3' ? PLACE3 : PLACE2;
@@ -317,18 +317,18 @@ class GameEngine {
    */
   swap2Choice(userId, choice) {
     if (this.status !== 'ongoing') {
-      return { error: 'Ván đấu đã kết thúc.' };
+      return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
     }
     if (!this.ruleSwap2) {
-      return { error: 'Luật Swap2 không được bật.' };
+      return { error: 'Luật Swap2 không được bật.', code: 'SWAP2_NOT_ENABLED' };
     }
 
     if (this.openingPhase === 'p2choice') {
       if (userId !== this.secondPlayerId) {
-        return { error: 'Chưa đến lượt bạn lựa chọn.' };
+        return { error: 'Chưa đến lượt bạn lựa chọn.', code: 'NOT_YOUR_TURN_TO_CHOOSE' };
       }
       if (choice !== 'white' && choice !== 'black' && choice !== 'place') {
-        return { error: 'Lựa chọn không hợp lệ.' };
+        return { error: 'Lựa chọn không hợp lệ.', code: 'INVALID_CHOICE' };
       }
       if (choice === 'white') {
         // P2 takes white, P1 black.
@@ -349,10 +349,10 @@ class GameEngine {
 
     if (this.openingPhase === 'p1choice') {
       if (userId !== this.firstPlayerId) {
-        return { error: 'Chưa đến lượt bạn lựa chọn.' };
+        return { error: 'Chưa đến lượt bạn lựa chọn.', code: 'NOT_YOUR_TURN_TO_CHOOSE' };
       }
       if (choice !== 'black' && choice !== 'white') {
-        return { error: 'Lựa chọn không hợp lệ.' };
+        return { error: 'Lựa chọn không hợp lệ.', code: 'INVALID_CHOICE' };
       }
       if (choice === 'black') {
         this._assignColors('BLACK', 'WHITE');
@@ -362,7 +362,7 @@ class GameEngine {
       return { ok: true, done: true, openingPhase: 'play', currentTurn: this.currentTurn };
     }
 
-    return { error: 'Không trong giai đoạn lựa chọn.' };
+    return { error: 'Không trong giai đoạn lựa chọn.', code: 'NOT_IN_CHOICE_PHASE' };
   }
 
   /**
@@ -392,11 +392,11 @@ class GameEngine {
    */
   resign(userId) {
     if (this.status !== 'ongoing') {
-      return { error: 'Ván đấu đã kết thúc.' };
+      return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
     }
 
     const player = this.players.find(p => p.userId === userId);
-    if (!player) return { error: 'Bạn không phải người chơi.' };
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
 
     const opponent = this.players.find(p => p.userId !== userId);
 
@@ -419,12 +419,12 @@ class GameEngine {
    * @returns {{ error?: string, offered?: boolean }}
    */
   offerDraw(userId) {
-    if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.' };
+    if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
 
     const player = this.players.find(p => p.userId === userId);
-    if (!player) return { error: 'Bạn không phải người chơi.' };
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
 
-    if (this.drawOffer) return { error: 'Đã có lời đề nghị hoà đang chờ.' };
+    if (this.drawOffer) return { error: 'Đã có lời đề nghị hoà đang chờ.', code: 'DRAW_OFFER_PENDING' };
 
     this.drawOffer = { from: userId };
     return { offered: true };
@@ -437,13 +437,13 @@ class GameEngine {
    * @returns {{ error?: string, accepted?: boolean }}
    */
   acceptDraw(userId) {
-    if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.' };
+    if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
 
     const player = this.players.find(p => p.userId === userId);
-    if (!player) return { error: 'Bạn không phải người chơi.' };
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
 
-    if (!this.drawOffer) return { error: 'Không có lời đề nghị hoà nào.' };
-    if (this.drawOffer.from === userId) return { error: 'Bạn không thể tự chấp nhận.' };
+    if (!this.drawOffer) return { error: 'Không có lời đề nghị hoà nào.', code: 'NO_DRAW_OFFER' };
+    if (this.drawOffer.from === userId) return { error: 'Bạn không thể tự chấp nhận.', code: 'CANNOT_SELF_ACCEPT' };
 
     this.status = 'finished';
     this.result = { winner: 'draw', reason: 'agreement' };
@@ -461,10 +461,10 @@ class GameEngine {
    */
   declineDraw(userId) {
     const player = this.players.find(p => p.userId === userId);
-    if (!player) return { error: 'Bạn không phải người chơi.' };
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
 
-    if (!this.drawOffer) return { error: 'Không có lời đề nghị hoà nào.' };
-    if (this.drawOffer.from === userId) return { error: 'Bạn không thể tự từ chối.' };
+    if (!this.drawOffer) return { error: 'Không có lời đề nghị hoà nào.', code: 'NO_DRAW_OFFER' };
+    if (this.drawOffer.from === userId) return { error: 'Bạn không thể tự từ chối.', code: 'CANNOT_SELF_DECLINE' };
 
     this.drawOffer = null;
     return { declined: true };

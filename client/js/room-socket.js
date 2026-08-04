@@ -18,6 +18,15 @@
   const S = () => global.RoomState;
   const client = global.RoomClient;
 
+  // Server error/status payloads carry a language-neutral `code` alongside a
+  // Vietnamese `message` (for logs/back-compat) — see server/routes/auth.js's
+  // equivalent pattern. Always prefer `code`'s i18n translation over the raw
+  // message so English-mode users don't see Vietnamese text (TODO #45).
+  function serverMessage(data) {
+    if (data && data.code) return t('err.' + data.code.toLowerCase());
+    return (data && data.message) || '';
+  }
+
   // ── Connection ────────────────────────────────────────────────────────────
 
   client.on('connect', () => {
@@ -108,23 +117,23 @@
   });
 
   client.on('room:kicked', (data) => {
-    showToast(data.message || t('room.kicked'), 'error');
+    showToast(data.code ? serverMessage(data) : (data.message || t('room.kicked')), 'error');
     setTimeout(() => { window.location.href = 'index.html'; }, 1500);
   });
 
   client.on('room:destroyed', (data) => {
-    showToast(data.message, 'error');
+    showToast(serverMessage(data), 'error');
     setTimeout(() => { window.location.href = 'index.html'; }, 1500);
   });
 
   client.on('room:error', (data) => {
     const st = S();
     if (!st.roomData) {
-      showToast(data.message, 'error');
+      showToast(serverMessage(data), 'error');
       setTimeout(() => { window.location.href = 'index.html'; }, 1500);
       return;
     }
-    ChatUI.appendSystemMessage(`⚠ ${data.message}`);
+    ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
   });
 
   // ── Chat events ───────────────────────────────────────────────────────────
@@ -134,13 +143,13 @@
   });
 
   client.on('chat:error', (data) => {
-    ChatUI.appendSystemMessage(`⚠ ${data.message}`);
+    ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
   });
 
   // ── Game events ───────────────────────────────────────────────────────────
 
   client.on('game:error', (data) => {
-    ChatUI.appendSystemMessage(`⚠ ${data.message}`);
+    ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
   });
 
   client.on('game:init', (data) => {

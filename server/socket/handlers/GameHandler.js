@@ -54,21 +54,21 @@ function register(io, socket) {
   socket.on('game:move', (payload = {}) => {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState) {
-      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.' });
+      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_GAME' });
       return;
     }
 
     const x = parseInt(payload.x, 10);
     const y = parseInt(payload.y, 10);
     if (isNaN(x) || isNaN(y)) {
-      socket.emit('game:error', { message: 'Toạ độ không hợp lệ.' });
+      socket.emit('game:error', { message: 'Toạ độ không hợp lệ.', code: 'INVALID_COORDS' });
       return;
     }
 
     const engine = room.gameState;
     const result = engine.makeMove(user.userId, x, y);
     if (result.error) {
-      socket.emit('game:error', { message: result.error });
+      socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -129,21 +129,21 @@ function register(io, socket) {
   socket.on('game:swap2_place', (payload = {}) => {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState || !room.gameState.ruleSwap2) {
-      socket.emit('game:error', { message: 'Không có ván Swap2 đang diễn ra.' });
+      socket.emit('game:error', { message: 'Không có ván Swap2 đang diễn ra.', code: 'NO_ACTIVE_SWAP2' });
       return;
     }
 
     const x = parseInt(payload.x, 10);
     const y = parseInt(payload.y, 10);
     if (isNaN(x) || isNaN(y)) {
-      socket.emit('game:error', { message: 'Toạ độ không hợp lệ.' });
+      socket.emit('game:error', { message: 'Toạ độ không hợp lệ.', code: 'INVALID_COORDS' });
       return;
     }
 
     const engine = room.gameState;
     const r = engine.placeOpeningStone(user.userId, x, y);
     if (r.error) {
-      socket.emit('game:error', { message: r.error });
+      socket.emit('game:error', { message: r.error, code: r.code });
       return;
     }
 
@@ -168,14 +168,14 @@ function register(io, socket) {
   socket.on('game:swap2_choice', (payload = {}) => {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState || !room.gameState.ruleSwap2) {
-      socket.emit('game:error', { message: 'Không có ván Swap2 đang diễn ra.' });
+      socket.emit('game:error', { message: 'Không có ván Swap2 đang diễn ra.', code: 'NO_ACTIVE_SWAP2' });
       return;
     }
 
     const engine = room.gameState;
     const r = engine.swap2Choice(user.userId, payload.choice);
     if (r.error) {
-      socket.emit('game:error', { message: r.error });
+      socket.emit('game:error', { message: r.error, code: r.code });
       return;
     }
 
@@ -212,13 +212,13 @@ function register(io, socket) {
   socket.on('game:resign', () => {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState) {
-      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.' });
+      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_GAME' });
       return;
     }
 
     const result = room.gameState.resign(user.userId);
     if (result.error) {
-      socket.emit('game:error', { message: result.error });
+      socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -243,7 +243,7 @@ function register(io, socket) {
 
     const result = room.gameState.offerDraw(user.userId);
     if (result.error) {
-      socket.emit('game:error', { message: result.error });
+      socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -263,7 +263,7 @@ function register(io, socket) {
 
     const result = room.gameState.acceptDraw(user.userId);
     if (result.error) {
-      socket.emit('game:error', { message: result.error });
+      socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -288,7 +288,7 @@ function register(io, socket) {
 
     const result = room.gameState.declineDraw(user.userId);
     if (result.error) {
-      socket.emit('game:error', { message: result.error });
+      socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -305,24 +305,24 @@ function register(io, socket) {
   socket.on('game:request_time', () => {
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState || room.gameState.status !== 'ongoing') {
-      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.' });
+      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_GAME' });
       return;
     }
 
     const engine = room.gameState;
     const player = engine.players.find(p => p.userId === user.userId);
     if (!player) {
-      socket.emit('game:error', { message: 'Bạn không phải người chơi.' });
+      socket.emit('game:error', { message: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' });
       return;
     }
 
     if (engine.currentTurn !== user.userId) {
-      socket.emit('game:error', { message: 'Chỉ được xin thời gian trong lượt của bạn.' });
+      socket.emit('game:error', { message: 'Chỉ được xin thời gian trong lượt của bạn.', code: 'TIME_REQUEST_ONLY_ON_YOUR_TURN' });
       return;
     }
 
     if (room._timeRequestPending) {
-      socket.emit('game:error', { message: 'Đang chờ đối thủ phản hồi yêu cầu xin thời gian.' });
+      socket.emit('game:error', { message: 'Đang chờ đối thủ phản hồi yêu cầu xin thời gian.', code: 'TIME_REQUEST_PENDING' });
       return;
     }
 
@@ -370,16 +370,16 @@ function register(io, socket) {
 
     const player = room.gameState.players.find(p => p.userId === user.userId);
     if (!player) {
-      socket.emit('game:error', { message: 'Bạn không phải người chơi.' });
+      socket.emit('game:error', { message: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' });
       return;
     }
 
     if (!room._timeRequestPending) {
-      socket.emit('game:error', { message: 'Không có yêu cầu xin thời gian.' });
+      socket.emit('game:error', { message: 'Không có yêu cầu xin thời gian.', code: 'NO_TIME_REQUEST' });
       return;
     }
     if (room._timeRequestPending.from === user.userId) {
-      socket.emit('game:error', { message: 'Bạn không thể tự chấp nhận.' });
+      socket.emit('game:error', { message: 'Bạn không thể tự chấp nhận.', code: 'CANNOT_SELF_ACCEPT' });
       return;
     }
 
@@ -413,16 +413,16 @@ function register(io, socket) {
 
     const player = room.gameState.players.find(p => p.userId === user.userId);
     if (!player) {
-      socket.emit('game:error', { message: 'Bạn không phải người chơi.' });
+      socket.emit('game:error', { message: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' });
       return;
     }
 
     if (!room._timeRequestPending) {
-      socket.emit('game:error', { message: 'Không có yêu cầu xin thời gian.' });
+      socket.emit('game:error', { message: 'Không có yêu cầu xin thời gian.', code: 'NO_TIME_REQUEST' });
       return;
     }
     if (room._timeRequestPending.from === user.userId) {
-      socket.emit('game:error', { message: 'Bạn không thể tự từ chối.' });
+      socket.emit('game:error', { message: 'Bạn không thể tự từ chối.', code: 'CANNOT_SELF_DECLINE' });
       return;
     }
 
@@ -541,7 +541,7 @@ function startGame(io, room) {
   }
 
   if (!slot1Player || !slot2Player) {
-    io.to(roomId).emit('game:error', { message: 'Thiếu người chơi.' });
+    io.to(roomId).emit('game:error', { message: 'Thiếu người chơi.', code: 'MISSING_PLAYERS' });
     return;
   }
 
@@ -575,6 +575,7 @@ function startGame(io, room) {
   if (!genSuccess) {
     io.to(roomId).emit('game:error', {
       message: 'Không thể tạo bản đồ hợp lệ (quá nhiều ràng buộc). Vui lòng tắt bớt tuỳ chọn hoặc thử lại.',
+      code: 'MAP_GEN_FAILED',
     });
     return;
   }

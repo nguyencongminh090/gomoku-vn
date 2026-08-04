@@ -83,12 +83,12 @@ class RoomManager extends EventEmitter {
   createRoom(userInfo, settings = {}, graceRoomIds = EMPTY_SET) {
     // Enforce MAX_ROOMS cap
     if (this.rooms.size >= config.MAX_ROOMS) {
-      return { error: 'Số phòng đã đạt giới hạn. Vui lòng thử lại sau.' };
+      return { error: 'Số phòng đã đạt giới hạn. Vui lòng thử lại sau.', code: 'ROOM_LIMIT_REACHED' };
     }
 
     // User can only be in one room at a time
     if (this.userRoomMap.has(userInfo.userId)) {
-      return { error: 'Bạn đang ở trong một phòng khác.' };
+      return { error: 'Bạn đang ở trong một phòng khác.', code: 'ALREADY_IN_ANOTHER_ROOM' };
     }
 
     // Per-IP quota. Counted by scanning live rooms rather than kept in a
@@ -119,10 +119,10 @@ class RoomManager extends EventEmitter {
         else activeCount++;
       }
       if (activeCount >= config.MAX_ROOMS_PER_IP) {
-        return { error: 'Bạn đã tạo quá nhiều phòng. Hãy đóng bớt phòng cũ rồi thử lại.' };
+        return { error: 'Bạn đã tạo quá nhiều phòng. Hãy đóng bớt phòng cũ rồi thử lại.', code: 'ROOM_QUOTA_EXCEEDED' };
       }
       if (graceCount >= config.MAX_GRACE_ROOMS_PER_IP) {
-        return { error: 'Bạn có quá nhiều phòng vừa bỏ đang chờ dọn dẹp. Vui lòng thử lại sau ít giây.' };
+        return { error: 'Bạn có quá nhiều phòng vừa bỏ đang chờ dọn dẹp. Vui lòng thử lại sau ít giây.', code: 'ROOM_CLEANUP_PENDING' };
       }
     }
 
@@ -180,7 +180,7 @@ class RoomManager extends EventEmitter {
   joinRoom(userInfo, roomId) {
     const room = this.rooms.get(roomId);
     if (!room) {
-      return { error: 'Phòng không tồn tại.' };
+      return { error: 'Phòng không tồn tại.', code: 'ROOM_NOT_FOUND' };
     }
 
     // Already in this room? (reconnect scenario)
@@ -191,12 +191,12 @@ class RoomManager extends EventEmitter {
 
     // Already in another room?
     if (this.userRoomMap.has(userInfo.userId)) {
-      return { error: 'Bạn đang ở trong một phòng khác.' };
+      return { error: 'Bạn đang ở trong một phòng khác.', code: 'ALREADY_IN_ANOTHER_ROOM' };
     }
 
     // Enforce per-room user cap
     if (room.users.size >= config.MAX_USERS_PER_ROOM) {
-      return { error: 'Phòng đã đầy.' };
+      return { error: 'Phòng đã đầy.', code: 'ROOM_FULL' };
     }
 
     const userEntry = {
@@ -286,14 +286,14 @@ class RoomManager extends EventEmitter {
    */
   sitDown(userId, slot) {
     const room = this._getUserRoom(userId);
-    if (!room) return { error: 'Bạn chưa vào phòng nào.' };
+    if (!room) return { error: 'Bạn chưa vào phòng nào.', code: 'NOT_IN_ROOM' };
 
     if (room.state === 'playing') {
-      return { error: 'Không thể ngồi vào khi đang chơi.' };
+      return { error: 'Không thể ngồi vào khi đang chơi.', code: 'CANNOT_SIT_WHILE_PLAYING' };
     }
 
     if (slot !== 1 && slot !== 2) {
-      return { error: 'Vị trí không hợp lệ.' };
+      return { error: 'Vị trí không hợp lệ.', code: 'INVALID_SEAT' };
     }
 
     const user = room.users.get(userId);
@@ -304,7 +304,7 @@ class RoomManager extends EventEmitter {
     // Check if slot is occupied by another user
     for (const [, u] of room.users) {
       if (u.slot === slot && u.userId !== userId) {
-        return { error: 'Vị trí này đã có người.' };
+        return { error: 'Vị trí này đã có người.', code: 'SEAT_TAKEN' };
       }
     }
 
@@ -331,15 +331,15 @@ class RoomManager extends EventEmitter {
    */
   standUp(userId) {
     const room = this._getUserRoom(userId);
-    if (!room) return { error: 'Bạn chưa vào phòng nào.' };
+    if (!room) return { error: 'Bạn chưa vào phòng nào.', code: 'NOT_IN_ROOM' };
 
     if (room.state === 'playing') {
-      return { error: 'Không thể đứng dậy khi đang chơi.' };
+      return { error: 'Không thể đứng dậy khi đang chơi.', code: 'CANNOT_STAND_WHILE_PLAYING' };
     }
 
     const user = room.users.get(userId);
     if (user.slot === null) {
-      return { error: 'Bạn chưa ngồi vào chỗ nào.' };
+      return { error: 'Bạn chưa ngồi vào chỗ nào.', code: 'NOT_SEATED' };
     }
 
     user.slot = null;
@@ -366,14 +366,14 @@ class RoomManager extends EventEmitter {
    */
   updateSettings(userId, newSettings) {
     const room = this._getUserRoom(userId);
-    if (!room) return { error: 'Bạn chưa vào phòng nào.' };
+    if (!room) return { error: 'Bạn chưa vào phòng nào.', code: 'NOT_IN_ROOM' };
 
     if (room.host !== userId) {
-      return { error: 'Chỉ chủ phòng mới có thể thay đổi cài đặt.' };
+      return { error: 'Chỉ chủ phòng mới có thể thay đổi cài đặt.', code: 'HOST_ONLY_SETTINGS' };
     }
 
     if (room.state === 'playing') {
-      return { error: 'Không thể thay đổi cài đặt khi đang chơi.' };
+      return { error: 'Không thể thay đổi cài đặt khi đang chơi.', code: 'CANNOT_CHANGE_SETTINGS_WHILE_PLAYING' };
     }
 
     // Merge new settings with validation
@@ -405,15 +405,15 @@ class RoomManager extends EventEmitter {
    */
   confirmStart(userId) {
     const room = this._getUserRoom(userId);
-    if (!room) return { error: 'Bạn chưa vào phòng nào.' };
+    if (!room) return { error: 'Bạn chưa vào phòng nào.', code: 'NOT_IN_ROOM' };
 
     if (room.state === 'playing') {
-      return { error: 'Ván đang diễn ra.' };
+      return { error: 'Ván đang diễn ra.', code: 'GAME_IN_PROGRESS' };
     }
 
     const user = room.users.get(userId);
     if (user.slot === null) {
-      return { error: 'Bạn cần ngồi vào chỗ trước khi bắt đầu.' };
+      return { error: 'Bạn cần ngồi vào chỗ trước khi bắt đầu.', code: 'MUST_BE_SEATED_TO_START' };
     }
 
     if (!user.ready) {
@@ -437,22 +437,22 @@ class RoomManager extends EventEmitter {
    */
   kickUser(hostId, targetId) {
     const room = this._getUserRoom(hostId);
-    if (!room) return { error: 'Bạn chưa vào phòng nào.' };
+    if (!room) return { error: 'Bạn chưa vào phòng nào.', code: 'NOT_IN_ROOM' };
 
     if (room.host !== hostId) {
-      return { error: 'Chỉ chủ phòng mới có thể mời người ra.' };
+      return { error: 'Chỉ chủ phòng mới có thể mời người ra.', code: 'HOST_ONLY_KICK' };
     }
 
     if (hostId === targetId) {
-      return { error: 'Bạn không thể mời chính mình ra.' };
+      return { error: 'Bạn không thể mời chính mình ra.', code: 'CANNOT_KICK_SELF' };
     }
 
     if (!room.users.has(targetId)) {
-      return { error: 'Người dùng không có trong phòng.' };
+      return { error: 'Người dùng không có trong phòng.', code: 'USER_NOT_IN_ROOM' };
     }
 
     if (room.state === 'playing' || room.state === 'interrupted') {
-      return { error: 'Không thể mời người ra khi đang chơi.' };
+      return { error: 'Không thể mời người ra khi đang chơi.', code: 'CANNOT_KICK_WHILE_PLAYING' };
     }
 
     // Remove the user

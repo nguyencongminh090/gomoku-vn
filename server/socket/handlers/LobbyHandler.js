@@ -71,7 +71,7 @@ function register(io, socket) {
     );
 
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -84,7 +84,7 @@ function register(io, socket) {
 
   socket.on('room:join', (payload = {}) => {
     if (!payload.roomId) {
-      socket.emit('room:error', { message: 'Thiếu mã phòng.' });
+      socket.emit('room:error', { message: 'Thiếu mã phòng.', code: 'MISSING_ROOM_ID' });
       return;
     }
 
@@ -94,7 +94,7 @@ function register(io, socket) {
     );
 
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
 
