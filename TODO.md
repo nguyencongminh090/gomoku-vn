@@ -137,6 +137,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.6 — chuyển từ Phần A #10, xác nhận qua Cloudflare API (2026-08-04)
 - ✅ **#44.** `getClientIp()` đọc `CF-Connecting-IP` thay vì suy luận qua — [chi tiết](docs/todo/B44-getclientip-doc-cf-connecting-ip-thay-vi-suy-luan-qua.md)
 
+### Nguồn: báo cáo người dùng — "Text not fully English on English mode" (2026-08-04)
+- **#45.** Text không dịch / hardcode tiếng Việt khi ở chế độ English — [chi tiết](docs/todo/B45-text-khong-dich-hardcode-tieng-viet-khi-o-che-do-english.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
