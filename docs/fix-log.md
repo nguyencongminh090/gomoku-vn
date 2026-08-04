@@ -74,3 +74,4 @@
 | 2026-08-04 05:00 | TODO.md #40 (báo cáo người dùng test thủ công): dán link room.html trần — không ?id= và không phải v… | [chi tiết](docs/fix-log/2026-08-04-todo-md-40-bao-cao-nguoi-dung-test.md) |
 | 2026-08-04 08:06 | TODO.md #42 / instruction.md §42 (review 12.5, kiểm chứng 2026-08-02): review nêu cancelEmptyRoomGra… | [chi tiết](docs/fix-log/2026-08-04-todo-md-42-instruction-md-42-review-12.md) |
 | 2026-08-04 08:16 | TODO.md #43 / instruction.md §43 (review 12.5, kiểm chứng 2026-08-02): MAX_ROOMS_PER_IP đếm quota bằ… | [chi tiết](docs/fix-log/2026-08-04-todo-md-43-instruction-md-43-review-12.md) |
+| 2026-08-04 09:00 | TODO.md #41 / instruction.md §41 (review 12.5, kiểm chứng 2026-08-02): ONLINE_USERS_DEBOUNCE_MS 300ms gần vô dụ… | [chi tiết](docs/fix-log/2026-08-04-todo-md-41-debounce-lobby-online-users.md) |

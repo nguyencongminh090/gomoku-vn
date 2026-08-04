@@ -42,7 +42,7 @@ jest.mock('../socket/handlers/DisconnectHandler', () => ({
 }));
 jest.mock('../managers/ChatHandler', () => ({ cleanupUser: jest.fn() }));
 
-const { sessions } = require('../socket/state');
+const { sessions, ONLINE_USERS_DEBOUNCE_MS } = require('../socket/state');
 const { init } = require('../socket/SocketHandler');
 
 // ── Socket / IO factory helpers ────────────────────────────────────────────
@@ -190,11 +190,11 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
 
     const a = makeSocket(io, 'sockA', 'u1', 'Alice');
     connectSocket(io, a);
-    jest.advanceTimersByTime(300);
+    jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
     expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(1);
 
     fireDisconnect(a);
-    jest.advanceTimersByTime(300);
+    jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
     expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(2);
     expect(sessions.has('u1')).toBe(false);
   });
@@ -212,8 +212,36 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     }
     expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(0);
 
-    jest.advanceTimersByTime(300);
+    jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
     expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(1);
+  });
+
+  test('TODO.md #41: reconnect traffic spread 150-400ms apart (not a synchronized burst) still collapses to far fewer broadcasts than the old 300ms window managed', () => {
+    const io = makeIo();
+    init(io);
+
+    // Mirrors review 12.5's real-world measurement: reconnects landing
+    // 150-400ms apart (client/js/socket-client.js's reconnectionDelay is
+    // randomized per socket, so many sockets' attempts interleave at this
+    // spacing) rather than all at once. The old 300ms window only
+    // collapsed this into ~28 broadcasts for 39 events (~28% reduction);
+    // the new 1.5s window should do much better.
+    const gaps = [150, 400, 200, 350, 180, 320, 250, 400, 150, 300, 220, 380];
+    let elapsed = 0;
+    gaps.forEach((gap, i) => {
+      connectSocket(io, makeSocket(io, `sockGap${i}`, `gap${i}`, `Gap${i}`));
+      jest.advanceTimersByTime(gap);
+      elapsed += gap;
+    });
+    // Flush whatever window is still pending after the last event.
+    jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
+
+    const broadcastCount = (io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users').length;
+    // 12 events with no debounce at all would be 12 broadcasts; the old
+    // 300ms window reduced that by well under half at this pace. The 1.5s
+    // window should coalesce nearly all of them into very few broadcasts.
+    expect(broadcastCount).toBeLessThanOrEqual(3);
+    expect(broadcastCount).toBeGreaterThan(0);
   });
 
   test('eviction is an O(1) session-registry lookup, not a scan of io.sockets.sockets', () => {
