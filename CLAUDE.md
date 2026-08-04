@@ -47,6 +47,49 @@ When fixing a reported bug or issue:
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
 - This applies to actual code fixes. Doc-only updates (`TODO.md`/`docs/todo/*.md`, `instruction.md`/`docs/instruction/*.md`, `CLAUDE.md`, `docs/fix-log.md`/`docs/fix-log/*.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
 
+## Git workflow: `dev` branch for new features (as of 2026-08-04)
+
+Bugfixes keep using the `fix/<slug>` workflow above unchanged (short-lived branch off `main`, one commit, merge back to `main`). New feature work uses a separate, parallel structure so unrelated in-progress ideas never block each other:
+
+- **`dev` is the integration branch for new features**, branched off `main`. It sits ahead of `main` and is never force-pushed.
+- **Each new feature idea gets its own `feature/<short-kebab-slug>` branch, branched off `dev`** (not off `main`) — e.g. `feature/spectator-mode`. Multiple `feature/*` branches can be in flight at once; they don't need to merge together or in any particular order.
+- **A `feature/*` branch merges into `dev` only when that specific idea is working/ready.** Use a regular merge commit (not squash, not rebase), same as the `fix/*` convention. Other `feature/*` branches are unaffected by this — that's the point of keeping them separate.
+- **An abandoned or shelved idea's branch is just left alone or deleted** — since `dev` never saw it, nothing needs to be reverted or cleaned up elsewhere.
+- **`dev` merges into `main` periodically**, as a deliberate checkpoint (e.g. once a batch of features is stable and tested), not automatically on every feature merge. This keeps `main` deployable at all times.
+- **After a `feature/*` branch merges into `dev`, delete it** (`git branch -d feature/...`), same as the `fix/*` cleanup rule, unless told to keep it for further review.
+- New feature work discovered mid-conversation still follows the "New requirements/tasks: stack, don't perform directly" rule below — record it in `TODO.md`/`instruction.md` first unless the user explicitly asks to implement it now, at which point it starts life as a `feature/*` branch off `dev` per this rule.
+
+## `features/<slug>/`: pre-implementation feature discussion folders
+
+Before a new feature idea becomes tracked work in `TODO.md`/`instruction.md`, work it through a
+discussion folder at `features/<slug>/` (e.g. `features/tournament/`). This is a design-discussion
+stage, separate from and prior to the "stack, don't perform directly" tracked-work rule below.
+
+- **Every `features/<slug>/` folder has the same fixed structure** — don't omit or rename these:
+  - `user_story.md` — actors, user stories ("As a [actor], I want..., so that..."), rules, and any
+    hard architectural constraints.
+  - `diagram/uml_diagram/` — sequence diagrams (one `.md` file per diagram, e.g.
+    `sequence-<flow-name>.md`).
+  - `diagram/` — additional structure-and-behavior diagrams alongside `uml_diagram/` (e.g. state
+    diagrams, conceptual class diagrams) as `.md` files named for what they show, e.g.
+    `state-diagram-<name>.md`.
+  - `planning.md` — the open questions blocking implementation, plus the resolution/implementation
+    sequencing once they're answered.
+- **Diagrams are Mermaid fenced code blocks inside Markdown files**, not separate `.puml`,
+  `.drawio`, or image files — this keeps every diagram reviewable as a plain-text diff like the
+  rest of the repo's docs, and renders natively wherever the Markdown is viewed.
+- **Cross-link liberally.** `user_story.md`, the `diagram/` files, and `planning.md` should link to
+  each other (relative Markdown links) so a reader can navigate the whole discussion from any entry
+  point.
+- **A `features/<slug>/` folder is a discussion artifact, not tracked work.** It does not by itself
+  authorize implementation. Once the open questions in `planning.md` are resolved with the user,
+  formalize the feature into `docs/todo/<CODE>-<slug>.md` + `TODO.md` and
+  `docs/instruction/<CODE>-<slug>.md` + `instruction.md` per the "New requirements/tasks" rule
+  below, *before* writing any implementation code. `planning.md` should note this handoff as its
+  final step.
+- Doc-only, like the other tracking files — `features/<slug>/*.md` can be written/updated straight
+  on `main`, no `fix/`/`feature/` branch needed for the discussion docs themselves.
+
 ## New requirements/tasks: stack, don't perform directly
 
 When the user raises a new requirement, feature request, or task during a conversation (as opposed to an explicit "do this now" instruction):
