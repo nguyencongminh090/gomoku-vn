@@ -1042,6 +1042,168 @@ là `index.html`. Không viết test tay rồi xoá — giữ lại theo rule
 
 ---
 
+### A10. ~~`cloudflared` với `X-Forwarded-For` thật~~ — chuyển sang §44 (review 12.6)
+
+**Đã đóng, chuyển sang Phần B #44 (2026-08-04).** Không cần request thật đi
+qua tunnel để xác minh nữa — kiểm bằng Cloudflare API (`mcp__cloudflare-api`)
+xác nhận zone `play3cr.dpdns.org` proxied thật (`proxied: true`), nên
+Cloudflare edge luôn tự set `CF-Connecting-IP`, ghi đè chứ không cho client
+nối thêm/giả mạo. Đọc thẳng header đó thay vì tiếp tục suy luận qua
+`X-Forwarded-For` là việc sửa được bằng code — xem §44 bên dưới.
+
+### A11. `permessage-deflate` (review 8.5, TODO.md #11)
+
+- Đây là quyết định cấu hình (bật/tắt nén WebSocket), không phải bug — dự án
+  hiện dùng mặc định của engine.io/socket.io mà **chưa ai xác nhận** mặc định
+  đó là gì ở runtime thật (giả định tắt, chưa đo).
+- Nếu quyết định bật: đo lại băng thông (giảm) và CPU/độ trễ (tăng do nén mỗi
+  frame) trên server thật, đối chiếu với các số đã đo ở mục 4 (broadcast) —
+  đừng bật rồi bỏ qua, vì review đã cho thấy CPU không phải nút thắt hiện tại
+  nhưng nén thêm có thể đổi lại điều đó ở tải cao.
+- **Không tự bật** nếu người dùng chưa xác nhận muốn đánh đổi CPU lấy băng
+  thông — ghi rõ 2 phương án và số đo dự kiến cần thu thập trước khi hỏi.
+
+---
+
+## §41 — Debounce `lobby:online_users` gần vô dụng ở nhịp reconnect thật (review 12.5, TODO.md #41)
+
+**Đừng nhầm với TODO #29** — debounce hiện có (`ONLINE_USERS_DEBOUNCE_MS =
+300`, `server/socket/state.js`) được thêm để giảm chi phí O(n²) lúc **burst**
+6000 người connect đồng thời, dùng đúng pattern `broadcastLobbyUpdate()`
+(per-`io` WeakMap timer). Đó là một vấn đề khác — chi phí CPU lúc burst — với
+vấn đề review 12.5 nêu: **hiệu quả giảm gói tin** ở nhịp reconnect rải rác
+thật (mỗi lần cách nhau 150-400ms do backoff của client, không phải burst).
+Cả hai đều đúng, không loại trừ nhau — sửa #41 không được làm hồi quy #29.
+
+**Hướng sửa rẻ (khuyến nghị làm trước):** nâng `ONLINE_USERS_DEBOUNCE_MS` lên
+1-2s — cùng bài học đã áp dụng cho `lobby:update` debounce (TODO #9, cửa sổ
+300ms không khớp nhịp người thật ~1200ms). Không giảm được payload, chỉ giảm
+số gói.
+
+**Hướng sửa thật (xa hơn, không bắt buộc trong lần này):** chuyển
+`lobby:online_users` sang delta `{added, removed}` giống `lobby:patch` (TODO
+#9) và `room:updated` delta (TODO #8 phần mở rộng) — khi đó cửa sổ debounce
+bao nhiêu không còn quan trọng vì gói không đổi thì không gửi.
+
+**Test:** mô phỏng đúng backoff 1000-5000ms của `client/js/socket-client.js`
+(không phải burst đồng loạt) trong test debounce, assert số gói giảm đáng kể
+so với baseline không debounce — bài test cũ (nếu có) chỉ assert case burst
+thì không đủ để coi mục này đã được bảo vệ.
+
+---
+
+## §42 — `cancelEmptyRoomGrace` thiếu test cho đúng kịch bản mutation (review 12.5, TODO.md #42)
+
+**Trước khi làm, đọc lại test đã có** từ TODO #18 (vòng 2) trong
+`server/tests/DisconnectHandler.test.js`, describe "empty-room grace period"
+— đã có case "cancel qua reconnect thì không gọi `leaveRoom`". Việc đầu tiên
+là xác nhận case đó có thật sự đỏ khi gỡ `cancelEmptyRoomGrace` (không phải
+gỡ toàn bộ cơ chế grace) hay không, bằng mutation-check trên bản copy — nếu
+nó đã đỏ đúng, mục này coi như đóng và chỉ cần cập nhật `TODO.md` ghi lại
+bằng chứng, không cần viết thêm code/test mới.
+
+**Nếu case đó không bắt được mutation cụ thể này:** viết case mới dựng đúng
+kịch bản review đã đo — phòng có đúng 1 người, người đó disconnect (bắt đầu
+`startEmptyRoomGrace`), rồi **họ reconnect trong lúc grace đang chạy**
+(`cancelEmptyRoomGrace` được gọi), sau đó chờ qua mốc 20s gốc (giả lập bằng
+fake timer) — assert phòng **vẫn còn sống** vì `cancelEmptyRoomGrace` đã huỷ
+timer đúng cách. Mutation cần bắt: gỡ hẳn lệnh gọi `cancelEmptyRoomGrace`
+(không phải gỡ cả grace) → phòng phải **bị xoá sai** dù user đang online, vì
+timer gốc vẫn chạy tiếp.
+
+**Không đụng:** logic `startEmptyRoomGrace`/`cancelEmptyRoomGrace` hiện có —
+mục này chỉ thêm test, không đổi hành vi.
+
+---
+
+## §43 — Grace 20s + `MAX_ROOMS_PER_IP` khoá nhầm người dùng chung IP (review 12.5, TODO.md #43)
+
+**Bản chất vấn đề:** `MAX_ROOMS_PER_IP` (TODO #7, `RoomManager.js`) đếm quota
+bằng cách **quét `this.rooms`** tại thời điểm tạo phòng (cố ý chọn cách này
+để không có đường decrement nào bị quên — xem `docs/fix-log.md` 2026-08-02
+02:37). Grace period 20s (TODO #18 vòng 2) giữ phòng **sống trong map** thêm
+20s sau khi người cuối cùng rời/rớt mạng, để họ reconnect được. Hai cơ chế
+này cộng lại nghĩa là: phòng bỏ hoang vẫn đếm vào quota của IP tạo ra nó
+trong suốt 20s, dù không còn ai trong đó.
+
+**Ràng buộc quan trọng — không được phá vỡ khi sửa:** đừng quay lại kiểu bộ
+đếm tăng/giảm riêng cho quota (tally) — đúng lý do `MAX_ROOMS_PER_IP` chọn
+cách quét-trực-tiếp thay vì tally là để tránh lớp bug "quên decrement ở 1
+trong N đường teardown". Nếu tách "phòng còn sống" khỏi "phòng tính vào
+quota", **vẫn phải đếm bằng cách quét** — ví dụ quét `this.rooms` nhưng bỏ
+qua phòng đang trong `emptyRoomGraceTimers` (đang chờ xoá, không còn ai)
+thay vì cộng thêm 1 map đếm riêng.
+
+**Rủi ro cần tránh khi sửa:** nếu nhả quota ngay lúc bắt đầu grace (thay vì
+lúc phòng thực sự bị xoá), một client có thể lách `MAX_ROOMS_PER_IP` bằng
+cách tạo phòng → rời ngay lập tức (kích hoạt grace) → tạo phòng mới — lặp lại
+liên tục để giữ nhiều hơn 3 phòng "gần sống" cùng lúc. Đây chính xác là kiểu
+tấn công `MAX_ROOMS_PER_IP` được thêm vào để chặn (review 3.2). Cần đảm bảo:
+phòng đang trong empty-room-grace vẫn tính vào quota của IP đó cho tới khi
+**hoặc** grace hết hạn thật (phòng bị xoá) **hoặc** đủ lâu để coi là bỏ hoang
+thật — không nhả ngay lập tức chỉ vì "đang chờ".
+
+**Hướng khả dĩ, cần hỏi người dùng chọn trước khi sửa:** (a) giữ nguyên hành
+vi hiện tại, chỉ rút ngắn `EMPTY_ROOM_GRACE_MS` cho case đây (đánh đổi ít hơn
+thời gian phục hồi phòng); (b) tách 1 quota riêng nhỏ hơn cho phòng "đang
+grace" (vd. không tính phòng-đang-grace vào `MAX_ROOMS_PER_IP` cứng nhưng
+vẫn có 1 giới hạn phụ để chặn lách quota); (c) chấp nhận đây là rủi ro thấp
+(người dùng chung IP hợp lệ hiếm khi đụng đúng lúc 3 phòng cùng trong grace)
+và không sửa. **Không tự chọn (b) chỉ vì nó "đúng nhất về mặt kỹ thuật"** —
+đây là đánh đổi UX-vs-an-toàn-chống-abuse mà reviewer để ngỏ, cần người dùng
+quyết định trước khi code.
+
+**Test dự kiến (khi đã chọn hướng):** case trong `RoomManager.test.js` dựng
+đúng kịch bản — 3 phòng cùng IP, 1 phòng vào grace (chủ rời), assert quota
+theo đúng hướng đã chọn (nhả ngay hay giữ), và **thêm 1 case chống lách quota**
+xác nhận việc lặp lại tạo-rồi-rời không cho phép vượt quá giới hạn thật.
+
+---
+
+## §44 — `getClientIp()` ưu tiên `CF-Connecting-IP` (review 12.6, TODO.md #44)
+
+**Bối cảnh xác nhận (2026-08-04, qua Cloudflare API, không phải giả định):**
+zone `play3cr.dpdns.org` (id `5008081877e47332e151721d4d3cc8c9`) là zone
+riêng trên Cloudflare, `status: active`, bản ghi CNAME trỏ tới tunnel
+`aae65c10-cae3-4fdf-8e61-42e3c59a954f.cfargotunnel.com` với `proxied: true`.
+Tunnel `GomokuApp` chỉ có 1 ingress rule (`play3cr.dpdns.org →
+http://localhost:3000`, `originRequest: {}`, không override gì). Hai dữ kiện
+này cùng xác nhận: (1) mọi request public đều đi qua Cloudflare edge thật —
+Cloudflare **tự set** `CF-Connecting-IP` ở edge, ghi đè bất kỳ giá trị client
+tự gửi, không thể giả mạo; (2) `cloudflared` nối vào Node qua loopback trần,
+đúng như `trust proxy: 'loopback'`/`getClientIp()` hiện tại đang giả định.
+
+**Chỗ sửa:** `getClientIp(socket)` trong `server/socket/state.js`. Thứ tự ưu
+tiên mới:
+1. `socket.handshake.headers['cf-connecting-ip']` nếu có mặt — dùng thẳng,
+   không cần kiểm `socket.handshake.address` có phải loopback hay không
+   (Cloudflare tự đảm bảo tính đúng đắn của header này ở edge, khác
+   `X-Forwarded-For` vốn client tự viết được).
+2. Không có `CF-Connecting-IP` (vd. dev local không qua Cloudflare) → giữ
+   nguyên logic cũ: đọc `X-Forwarded-For` **chỉ khi** `socket.handshake.
+   address` là loopback, ngược lại dùng thẳng `socket.handshake.address`.
+
+**Vì sao vẫn giữ fallback thay vì xoá hẳn nhánh `X-Forwarded-For`:** dev
+local (`npm start` không qua tunnel) và bất kỳ deployment tương lai nào khác
+Cloudflare Tunnel vẫn cần đường vào cũ hoạt động — đừng coi cấu hình hiện tại
+là vĩnh viễn.
+
+**Không đụng:** phía Express (`app.set('trust proxy', 'loopback')` trong
+`server/index.js`) — đây là tầng khác (HTTP route, dùng cho `authLimiter`),
+không liên quan tới `getClientIp()` (tầng socket, dùng cho
+`MAX_ROOMS_PER_IP`). Không gộp 2 tầng lại dù chúng dùng chung ý tưởng
+"loopback nghĩa là tin cậy".
+
+**Test dự kiến:** thêm case vào `server/tests/LobbyHandler.test.js` (hoặc
+file test hiện có của `getClientIp`) — (a) có header `cf-connecting-ip` →
+dùng đúng giá trị đó dù `x-forwarded-for` khác; (b) không có
+`cf-connecting-ip`, peer loopback, có `x-forwarded-for` → hành vi y hệt
+trước khi sửa (regression guard); (c) không có cả hai → dùng
+`socket.handshake.address`. Mutation-check: gỡ nhánh ưu tiên
+`cf-connecting-ip` → case (a) phải đỏ.
+
+---
+
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 
 - **Đừng chuyển `game:moved` sang delta** — đã là delta tối ưu (121 B/nước,
