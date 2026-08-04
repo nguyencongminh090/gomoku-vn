@@ -1431,8 +1431,24 @@ confidence ≥ 8/10) trước khi đưa vào đây.
       150-400ms/lần thay vì burst đồng loạt, assert số gói giảm đáng kể so
       với baseline không debounce.
 
-42. **`cancelEmptyRoomGrace` không có test bảo vệ cho đúng kịch bản mutation
-    mà review nêu**
+42. ~~**`cancelEmptyRoomGrace` không có test bảo vệ cho đúng kịch bản mutation
+    mà review nêu**~~
+    **✅ ĐÃ XONG (2026-08-04)** — mutation-check xác nhận test cũ (TODO #18,
+    `server/tests/DisconnectHandler.test.js:294`) KHÔNG bắt được mutation mà
+    review mô tả: nó gọi thẳng `DisconnectHandler.cancelEmptyRoomGrace()` như
+    một hàm thuần, bỏ qua hẳn call site thật trong `SocketHandler.js:137` —
+    đúng nơi review nhắm tới khi nói "gỡ hẳn lệnh gọi". Thêm test case mới
+    trong `server/tests/SocketHandler.test.js` (describe "connection with no
+    surviving room (restart-hang)") assert `cancelEmptyRoomGrace`/
+    `cancelSpectatorGrace` được gọi đúng `user.userId` trên mọi connection,
+    và chạy trước `getRoomByUser` (`mock.invocationCallOrder`). Không sửa
+    logic thật (`startEmptyRoomGrace`/`cancelEmptyRoomGrace` không đổi, đúng
+    ranh giới `instruction.md` §42 — chỉ thêm test). Xem chi tiết đầy đủ
+    trong `docs/fix-log.md` (dòng `2026-08-04 08:06`).
+    Test: `npm test` 394/394 xanh (+1 so với baseline 393). Mutation-check:
+    comment tạm dòng gọi thật trong `SocketHandler.js` → test mới đỏ đúng
+    kỳ vọng (`Expected: "u1", Number of calls: 0`); khôi phục → xanh lại,
+    `git diff` trên `SocketHandler.js` rỗng.
 
     - **Ở đâu:** `server/socket/handlers/DisconnectHandler.js:148-155`.
     - **Vì sao:** bản thân grace (`startEmptyRoomGrace`) có test, nhưng phần
