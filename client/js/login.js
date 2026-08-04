@@ -142,6 +142,26 @@ async function apiPost(endpoint, body) {
 }
 
 // ---------------------------------------------------------------------------
+// Map a server error `code` to its i18n key. The server always sends a
+// Vietnamese `error` string too (for logs/older clients), but that string
+// must never be shown directly — only `code` (language-neutral) drives what
+// the user sees, otherwise English-mode users get Vietnamese error text.
+// ---------------------------------------------------------------------------
+const ERROR_CODE_KEYS = {
+  USERNAME_INVALID: 'login.err_reg_username',
+  DISPLAY_NAME_INVALID: 'login.err_display',
+  PASSWORD_TOO_SHORT: 'login.err_pass_short',
+  USERNAME_TAKEN: 'login.err_username_taken',
+  MISSING_CREDENTIALS: 'login.err_missing_credentials',
+  INVALID_CREDENTIALS: 'login.err_invalid_credentials',
+};
+
+function errorMessage(data, fallbackKey) {
+  const key = data && data.code && ERROR_CODE_KEYS[data.code];
+  return t(key || fallbackKey);
+}
+
+// ---------------------------------------------------------------------------
 // Save JWT and redirect to lobby
 // ---------------------------------------------------------------------------
 function onAuthSuccess(token, displayName) {
@@ -220,7 +240,7 @@ formLogin.addEventListener('submit', async (e) => {
     if (ok) {
       onAuthSuccess(data.token, data.displayName);
     } else {
-      showAlert(data.error || t('login.err_login_fail'));
+      showAlert(errorMessage(data, 'login.err_login_fail'));
     }
   } catch {
     showAlert(t('login.err_network'));
@@ -246,7 +266,7 @@ formRegister.addEventListener('submit', async (e) => {
     if (ok) {
       onAuthSuccess(data.token, data.displayName);
     } else {
-      showAlert(data.error || t('login.err_register_fail'));
+      showAlert(errorMessage(data, 'login.err_register_fail'));
     }
   } catch {
     showAlert(t('login.err_network'));
@@ -263,7 +283,7 @@ btnGuest.addEventListener('click', async () => {
     if (ok) {
       onAuthSuccess(data.token, data.displayName);
     } else {
-      showAlert(data.error || t('login.err_guest_fail'));
+      showAlert(errorMessage(data, 'login.err_guest_fail'));
     }
   } catch {
     showAlert(t('login.err_network'));

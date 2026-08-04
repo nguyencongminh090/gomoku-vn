@@ -55,6 +55,9 @@ const TRANSLATIONS = {
     'login.err_guest_fail': 'Không thể tạo phiên khách. Vui lòng thử lại.',
     'login.err_network': 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.',
     'login.session_kicked': 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác, phiên này đã bị ngắt kết nối.',
+    'login.err_username_taken': 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.',
+    'login.err_invalid_credentials': 'Tên đăng nhập hoặc mật khẩu không đúng.',
+    'login.err_missing_credentials': 'Vui lòng nhập tên đăng nhập và mật khẩu.',
 
     // ── Lobby page ────────────────────────────────────────────
     'lobby.title': 'Play3CR — Sảnh',
@@ -271,6 +274,9 @@ const TRANSLATIONS = {
     'login.err_guest_fail': 'Could not create guest session. Please try again.',
     'login.err_network': 'Cannot connect to server. Please check your network.',
     'login.session_kicked': 'Your account signed in from another device, so this session was disconnected.',
+    'login.err_username_taken': 'This username is already taken. Please choose another.',
+    'login.err_invalid_credentials': 'Incorrect username or password.',
+    'login.err_missing_credentials': 'Please enter your username and password.',
 
     // ── Lobby page ────────────────────────────────────────────
     'lobby.title': 'Play3CR — Lobby',
