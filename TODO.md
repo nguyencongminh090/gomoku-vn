@@ -144,6 +144,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - **#46.** `login.js` nút ẩn/hiện mật khẩu — fallback hardcode tiếng Việt vì thiếu khoá i18n — [chi tiết](docs/todo/B46-login-js-nut-an-hien-mat-khau-fallback-hardcode-tieng.md)
 - ✅ **#47.** Thông báo mất-kết-nối/kết-nối-lại hiện trùng lặp (server chat:message + client tự dịch) — [chi tiết](docs/todo/B47-thong-bao-mat-ket-noi-ket-noi-lai-hien-trung-lap-server.md)
 
+### Nguồn: yêu cầu người dùng — thảo luận + blueprint UI cho tính năng Tournament (2026-08-04)
+- **#48.** Triển khai đầy đủ tính năng Tournament (Tables & Tournaments) từ mockup — [chi tiết](docs/todo/B48-trien-khai-tinh-nang-tournament-tu-mockup-tables-tournaments.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
