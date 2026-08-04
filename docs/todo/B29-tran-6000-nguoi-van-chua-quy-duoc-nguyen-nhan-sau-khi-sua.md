@@ -53,3 +53,61 @@
       mới sửa": chỉ sửa phần đã xác nhận nhân-quả (broadcast O(n²)), phần còn
       lại ghi lại là chưa isolate xong (cần profiling sâu hơn — flame graph —
       ngoài phạm vi phiên này) thay vì đoán và sửa theo suy đoán.
+
+    **🟡 ĐIỀU TRA TIẾP (2026-08-04, phiên sau TODO #41)** — chạy lại
+    `scripts/capacity-test/` ở 6000 và 8000 người trên **cùng máy/sandbox**
+    đang dùng cho phiên làm việc hôm nay (khác máy/sandbox so với 2 lần đo
+    trước — số tuyệt đối không so trực tiếp được, nhưng phương pháp/kết luận
+    định tính có giá trị). Real db được di chuyển ra ngoài trước khi chạy,
+    khôi phục + verify checksum sau (đúng rule Playwright/e2e trong
+    `CLAUDE.md`, áp dụng tương tự cho harness này vì nó cũng chạy
+    `server/index.js` thật và gọi `saveGame()`).
+    - **Phát hiện phương pháp quan trọng: `--cpu-prof` tự nó là một phần
+      nhiễu, không chỉ là công cụ đo.** Chạy đúng burst 6000 người
+      (`--rooms=3000 --workers=16`) 2 lần với cấu hình mã nguồn giống hệt
+      nhau (debounce 300ms và 1500ms) nhưng **không** bật `--cpu-prof`: cả 2
+      lần đều ra **100%** thành công (0-3 lỗi lẻ tẻ, không phải connect
+      timeout hàng loạt). Cùng kịch bản đó **có** bật `--cpu-prof`: tụt còn
+      **97.6%** (71 connect timeout). Tức là chính việc bật profiler trong
+      tiến trình (V8 sampling profiler) tạo ra một phần đáng kể của tỉ lệ lỗi
+      từng đo được — số "73-86%" ghi ở trên (phiên 2026-08-02) **nhiều khả
+      năng gộp cả nhiễu này**, vì phiên đó lấy `--cpu-prof` cùng lúc với đo
+      tỉ lệ thành công, không tách 2 việc ra làm 2 lần chạy riêng. Đây là
+      thực nghiệm nhân-quả thật (bật/tắt 1 biến, giữ nguyên mọi thứ khác),
+      không phải suy luận.
+    - **Ở 6000 người, không bật profiler: 100% sạch, lặp lại 2 lần trên 2
+      cấu hình debounce khác nhau.** Với mã nguồn hiện tại (sau backlog fix +
+      TODO #41 hôm nay), trần "6000" cũ **không tái hiện được** ở điều kiện
+      đo sạch (không profiler). Đổi giá trị `ONLINE_USERS_DEBOUNCE_MS` giữa
+      300ms/1500ms **không tạo khác biệt** ở 6000 người trong phiên này (cả 2
+      đều ~100%) — tức là **không có bằng chứng nhân-quả** rằng riêng việc
+      nới debounce hôm nay (#41) là nguyên nhân đóng được mục #29; nhiều khả
+      năng là cộng dồn của các fix trước đó (backlog + debounce 300ms có sẵn
+      từ 2026-08-02) đã đủ, và/hoặc điều kiện máy/tải nền hôm nay khác đi.
+    - **Trần thật hiện tại nằm quanh ~8000, không phải 6000.** Đẩy tải lên
+      8000 người (`--rooms=4000 --workers=16`), không bật profiler: **81.5%**
+      và **85.3%** ở 2 lần chạy liên tiếp (740 rồi 590 `connect timeout`) —
+      lặp lại được, không phải nhiễu 1 lần. CPU đo bằng sampler ngoài tiến
+      trình (`/proc/PID/stat`, 5 mẫu/giây, không đụng vào tiến trình đang đo
+      nên không có nhiễu kiểu `--cpu-prof`) đỉnh **~241%** của 1 core — dưới
+      xa mức bão hoà 800% của máy 8 core, khớp với khung "nghẽn đường
+      single-thread (engine.io handshake / main thread), không phải bão hoà
+      CPU toàn máy" mà báo cáo gốc đã nêu làm giả thuyết.
+    - **Vẫn CHƯA quy được nguyên nhân cụ thể ở mức ~8000** — phiên này không
+      đủ thời gian chạy `--cpu-prof` ở đúng điểm 8000 (vì đã xác nhận
+      `--cpu-prof` tự nó làm sai lệch số đo thành công/thất bại, nên cần một
+      phương pháp profiling không xâm lấn tiến trình, vd. `perf record` ở
+      mức OS hoặc `0x`, ngoài phạm vi công cụ có sẵn trong repo) để tách bạch
+      đúng hàm nào chiếm dụng single-thread ở ngưỡng đó. Nghi phạm cũ vẫn còn
+      nguyên (đường handshake engine.io đơn luồng, `jwt.verify` mỗi kết nối)
+      — `jwt.verify` đã bị loại trừ ở phiên 2026-08-02 cho kịch bản 6000,
+      chưa re-test riêng cho 8000.
+    - **Kết luận cho mục #29:** KHÔNG đóng mục này — nguyên nhân gốc ở ngưỡng
+      cao (nay là ~8000, không còn 6000) vẫn chưa được quy kết. Nhưng thực tế
+      vận hành đã thay đổi đáng kể: **ở quy mô 6000 người dùng đồng thời kết
+      nối mới trong cùng 1 khung thời gian ngắn — kịch bản pessimistic nhất
+      mà báo cáo gốc dùng để đo — hệ thống hiện tại đạt ~100% thành công**
+      trong điều kiện đo sạch, thay vì 72-86% như trước. Không có thay đổi mã
+      nguồn nào được thực hiện trong phiên này ngoài dọn dẹp môi trường test
+      (đúng rule "tái hiện → đo → mới sửa": chưa xác nhận nhân-quả ở mức 8000
+      thì chưa sửa gì).
