@@ -80,6 +80,10 @@ const TRANSLATIONS = {
     'lobby.rule_basic': 'Cơ bản',
     'lobby.rules_standard': 'Luật cơ bản',
     'lobby.rules_custom': 'Luật tuỳ chỉnh',
+    'lobby.online_title': 'Đang online',
+    'lobby.loading': 'Đang tải...',
+    'lobby.online_count_badge': '— {n} đang online',
+    'lobby.no_one_online': 'Không có ai online',
 
     // ── UI mode (lite / default / pro) ────────────────────────
     'mode.title': 'Chế độ giao diện',
@@ -163,6 +167,8 @@ const TRANSLATIONS = {
     'room.timer_per_game': 'Mỗi ván',
     'room.timer_blitz': 'Blitz',
     'room.seat_timeout_kicked': 'Bạn không bấm Bắt đầu kịp thời nên bị rời khỏi vị trí (vẫn ở trong phòng).',
+    'conn.disconnected_retrying': 'Mất kết nối. Đang thử kết nối lại...',
+    'conn.reconnecting_attempt': 'Kết nối lại... (lần {n})',
 
     // ── Start modal (ready window) ─────────────────────────────
     'start_modal.title': 'Sẵn sàng vào trận?',
@@ -415,6 +421,10 @@ const TRANSLATIONS = {
     'lobby.rule_basic': 'Basic',
     'lobby.rules_standard': 'Standard rules',
     'lobby.rules_custom': 'Custom rules',
+    'lobby.online_title': 'Online',
+    'lobby.loading': 'Loading...',
+    'lobby.online_count_badge': '— {n} online',
+    'lobby.no_one_online': 'No one online',
 
     // ── Create room modal ─────────────────────────────────────
     // ── UI mode (lite / default / pro) ────────────────────────
@@ -498,6 +508,8 @@ const TRANSLATIONS = {
     'room.timer_per_game': 'Per game',
     'room.timer_blitz': 'Blitz',
     'room.seat_timeout_kicked': 'You didn\'t click Start in time, so you were removed from your seat (still in the room).',
+    'conn.disconnected_retrying': 'Connection lost. Reconnecting...',
+    'conn.reconnecting_attempt': 'Reconnecting... (attempt {n})',
 
     // ── Start modal (ready window) ─────────────────────────────
     'start_modal.title': 'Ready to start?',

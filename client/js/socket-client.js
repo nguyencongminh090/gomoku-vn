@@ -176,21 +176,29 @@ class SocketClient {
   /** Bind a status banner DOM element. */
   bindStatusBanner(el) {
     this._statusEl = el;
+    // Re-render the currently visible status text on language switch — it's
+    // set via textContent (not data-i18n), so applyI18n() alone can't
+    // translate it (TODO #45).
+    window.addEventListener('langchange', () => {
+      if (this._lastStatus) this._setStatus(this._lastStatus, this._lastDetail);
+    });
   }
 
   _setStatus(status, detail) {
     if (!this._statusEl) return;
+    this._lastStatus = status;
+    this._lastDetail = detail;
 
     switch (status) {
       case 'connected':
         this._statusEl.classList.remove('visible');
         break;
       case 'disconnected':
-        this._statusEl.textContent = 'Mất kết nối. Đang thử kết nối lại...';
+        this._statusEl.textContent = t('conn.disconnected_retrying');
         this._statusEl.classList.add('visible');
         break;
       case 'reconnecting':
-        this._statusEl.textContent = `Kết nối lại... (lần ${detail})`;
+        this._statusEl.textContent = t('conn.reconnecting_attempt', { n: detail });
         this._statusEl.classList.add('visible');
         break;
     }
