@@ -93,6 +93,12 @@ html, body {
 .delay-400 { animation-delay: 400ms; }
 .delay-500 { animation-delay: 500ms; }
 
+.brand-logo {
+  display: block;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
 .brand-eyebrow {
   display: inline-block;
   padding: 4px 12px;
