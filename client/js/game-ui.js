@@ -313,26 +313,26 @@
 
     let html = '';
     if (placing && mine) {
-      html = `<div class="swap2-hint">Swap2 — Đặt quân mở màn</div>`;
+      html = `<div class="swap2-hint">${t('game.swap2_place_title')}</div>`;
     } else if (placing && !mine) {
-      html = `<div class="swap2-hint">Đối thủ đang đặt quân mở màn...</div>`;
+      html = `<div class="swap2-hint">${t('game.swap2_opponent_placing')}</div>`;
     } else if (phase === 'p2choice' && isSecond) {
       html = `
         <div class="swap2-choice">
-          <button class="btn-game" onclick="swap2Choose('white')">Đi Trắng</button>
-          <button class="btn-game" onclick="swap2Choose('black')">Đi Đen</button>
-          <button class="btn-game" onclick="swap2Choose('place')">Đặt thêm 2 quân</button>
+          <button class="btn-game" onclick="swap2Choose('white')">${t('game.swap2_go_white')}</button>
+          <button class="btn-game" onclick="swap2Choose('black')">${t('game.swap2_go_black')}</button>
+          <button class="btn-game" onclick="swap2Choose('place')">${t('game.swap2_place_two_more')}</button>
         </div>`;
     } else if (phase === 'p2choice' && !isSecond) {
-      html = `<div class="swap2-hint">Đối thủ đang lựa chọn (Swap2)...</div>`;
+      html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing')}</div>`;
     } else if (phase === 'p1choice' && isFirst) {
       html = `
         <div class="swap2-choice">
-          <button class="btn-game" onclick="swap2Choose('black')">Chọn Đen</button>
-          <button class="btn-game" onclick="swap2Choose('white')">Chọn Trắng</button>
+          <button class="btn-game" onclick="swap2Choose('black')">${t('game.swap2_choose_black')}</button>
+          <button class="btn-game" onclick="swap2Choose('white')">${t('game.swap2_choose_white')}</button>
         </div>`;
     } else if (phase === 'p1choice' && !isFirst) {
-      html = `<div class="swap2-hint">Đối thủ đang lựa chọn màu...</div>`;
+      html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing_color')}</div>`;
     }
     el.innerHTML = html;
   }
@@ -350,16 +350,16 @@
     }
 
     if (st.drawOfferPending.from === st.myUser.userId) {
-      el.innerHTML = `<div class="draw-prompt">Đang chờ đối thủ phản hồi đề nghị hoà...</div>`;
+      el.innerHTML = `<div class="draw-prompt">${t('game.draw_waiting')}</div>`;
       return;
     }
 
     el.innerHTML = `
       <div class="draw-prompt">
-        <span>${_esc(st.drawOfferPending.fromName || 'Đối thủ')} đề nghị hoà</span>
+        <span>${t('game.draw_offer', { name: _esc(st.drawOfferPending.fromName || t('game.opponent_generic')) })}</span>
         <div class="draw-prompt__actions">
-          <button class="btn-draw-action btn-draw-accept"  onclick="doDrawAccept()">Đồng ý</button>
-          <button class="btn-draw-action btn-draw-decline" onclick="doDrawDecline()">Từ chối</button>
+          <button class="btn-draw-action btn-draw-accept"  onclick="doDrawAccept()">${t('game.btn_accept')}</button>
+          <button class="btn-draw-action btn-draw-decline" onclick="doDrawDecline()">${t('game.btn_decline')}</button>
         </div>
       </div>
     `;
@@ -412,6 +412,17 @@
   global.doTimeAccept  = () => global.RoomClient.emit('game:time_accept');
   global.doTimeDecline = () => global.RoomClient.emit('game:time_decline');
   global.swap2Choose   = (c) => global.RoomClient.emit('game:swap2_choice', { choice: c });
+
+  // ── Lang change listener ──────────────────────────────────────────────────
+  // Swap2/draw/time prompts are built as raw innerHTML strings (not
+  // data-i18n), so applyI18n() alone can't re-translate them — re-run their
+  // render functions on language switch instead.
+  window.addEventListener('langchange', () => {
+    const st = S();
+    if (!st.gameState) return;
+    renderSwap2();
+    renderGameControls();
+  });
 
   // ── Public API ────────────────────────────────────────────────────────────
   global.GameUI = {
