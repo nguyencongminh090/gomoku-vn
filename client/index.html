@@ -8,9 +8,9 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=42" />
-  <link rel="stylesheet" href="css/lobby.css?v=42" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=42" />
+  <link rel="stylesheet" href="css/main.css?v=43" />
+  <link rel="stylesheet" href="css/lobby.css?v=43" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=43" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -254,11 +254,11 @@
         </div>
       </div>
 
-      <!-- Timer increment -->
-      <div class="setting-row">
+      <!-- Timer increment (only applies in Blitz mode; grayed out otherwise via lobby.js) -->
+      <div class="setting-row" id="timer-increment-row">
         <label class="setting-label" for="timer-increment" data-i18n="modal.time_plus">Cộng thêm</label>
         <div class="timer-input">
-          <input type="number" id="timer-increment" value="0" min="0" max="600" step="1" />
+          <input type="number" id="timer-increment" value="0" min="0" max="600" step="1" disabled />
           <span class="unit" data-i18n="modal.time_unit">giây</span>
         </div>
       </div>
@@ -276,7 +276,7 @@
 
 <!-- Socket.io CDN -->
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/index-entry.js?v=42"></script>
+<script type="module" src="js/index-entry.js?v=43"></script>
 <script>
   // Auto-open the online panel on desktop sidebar (>= 900px)
   (function() {

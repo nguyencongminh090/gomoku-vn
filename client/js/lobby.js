@@ -362,7 +362,11 @@ function readFormSettings() {
   );
   const timerMode = document.querySelector('input[name="timerMode"]:checked').value;
   const timerSeconds = parseInt(document.getElementById('timer-seconds').value, 10) || 60;
-  const timerIncrementSeconds = parseInt(document.getElementById('timer-increment').value, 10) || 0;
+  // Increment only takes effect in blitz mode (TimerManager.applyMove) — zero
+  // it out otherwise so the stored/submitted setting doesn't imply it's active.
+  const timerIncrementSeconds = timerMode === 'blitz'
+    ? (parseInt(document.getElementById('timer-increment').value, 10) || 0)
+    : 0;
   const winningRule = (document.querySelector('input[name="winRule"]:checked') || {}).value || 'freestyle';
   const ruleSwap2   = (document.querySelector('input[name="openRule"]:checked') || {}).value === 'swap2';
   let   ruleWall    = document.getElementById('rule-wall').checked;
@@ -401,8 +405,9 @@ function applySettingsToForm(s) {
   if (portal) portal.checked = !!s.rulePortal;
   document.getElementById('timer-seconds').value = s.timerSeconds;
   document.getElementById('timer-increment').value = s.timerIncrementSeconds;
-  // Re-run the Swap2 ⇄ board-setup interlock
+  // Re-run the Swap2 ⇄ board-setup interlock and the Blitz ⇄ increment interlock
   document.querySelectorAll('input[name="openRule"]').forEach(r => r.dispatchEvent(new Event('change')));
+  document.querySelectorAll('input[name="timerMode"]').forEach(r => r.dispatchEvent(new Event('change')));
 }
 
 function submitCreate(settings) {
@@ -482,6 +487,24 @@ applyModalMode();
     });
   };
   document.querySelectorAll('input[name="openRule"]').forEach(r => r.addEventListener('change', sync));
+  sync();
+})();
+
+// Timer increment ("Cộng thêm") only takes effect in Blitz mode server-side
+// (TimerManager.applyMove) — disable & gray it out for the other modes so it
+// doesn't look active when it silently has no effect.
+(function () {
+  const sync = () => {
+    const blitz = document.getElementById('tm-blitz');
+    const active = !!(blitz && blitz.checked);
+    const el = document.getElementById('timer-increment');
+    if (!el) return;
+    if (!active) el.value = 0;
+    el.disabled = !active;
+    const row = document.getElementById('timer-increment-row');
+    if (row) row.style.opacity = active ? '' : '0.45';
+  };
+  document.querySelectorAll('input[name="timerMode"]').forEach(r => r.addEventListener('change', sync));
   sync();
 })();
 
