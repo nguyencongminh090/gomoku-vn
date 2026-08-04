@@ -54,6 +54,7 @@ const btnQuickMatch = document.getElementById('btn-quick-match');
 const btnUseLast    = document.getElementById('btn-use-last');
 const modalAdvancedToggle = document.getElementById('modal-advanced-toggle');
 let currentRooms = [];
+let currentOnlineCount = 0; // cached from the last lobby:online_users, for langchange re-render
 
 // Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
 function uiMode() {
@@ -140,10 +141,11 @@ applyOnlinePanelMode();
 
 client.on('lobby:online_users', (users) => {
   const count = users.length;
+  currentOnlineCount = count;
 
   // Update header badge
   if (onlineCountEl) {
-    onlineCountEl.textContent = `— ${count} online`;
+    onlineCountEl.textContent = t('lobby.online_count_badge', { n: count });
   }
   if (onlinePanelCount) {
     onlinePanelCount.textContent = count;
@@ -152,7 +154,7 @@ client.on('lobby:online_users', (users) => {
   // Render user list
   if (onlineUserList) {
     if (count === 0) {
-      onlineUserList.innerHTML = '<li style="color:var(--c-ink-3);font-style:italic;">Không có ai online</li>';
+      onlineUserList.innerHTML = `<li style="color:var(--c-ink-3);font-style:italic;">${t('lobby.no_one_online')}</li>`;
     } else {
       onlineUserList.innerHTML = users.map((name, i) => {
         const animDelay = (i * 0.05).toFixed(2);
@@ -286,6 +288,12 @@ function buildRuleTags(room) {
 
 window.addEventListener('langchange', () => {
   renderRoomList(currentRooms);
+  if (onlineCountEl) {
+    onlineCountEl.textContent = t('lobby.online_count_badge', { n: currentOnlineCount });
+  }
+  if (onlineUserList && currentOnlineCount === 0) {
+    onlineUserList.innerHTML = `<li style="color:var(--c-ink-3);font-style:italic;">${t('lobby.no_one_online')}</li>`;
+  }
 });
 
 window.addEventListener('uimodechange', () => {

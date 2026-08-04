@@ -112,7 +112,7 @@
       contentEl.innerHTML = `
         <div class="slot-card__empty ${canSit ? 'slot-card__clickable' : ''}"
              ${canSit ? `onclick="sitDown(${slotNum})"` : ''}
-             title="${canSit ? 'Nhấn để ngồi vào' : ''}">
+             title="${canSit ? t('room.click_to_sit') : ''}">
           #${slotNum}
         </div>
       `;
