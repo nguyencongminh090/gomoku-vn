@@ -123,7 +123,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#37.** Timer không chạy trong suốt giai đoạn khai cuộc Swap2, và chạy sai bên — [chi tiết](docs/todo/B37-timer-khong-chay-trong-suot-giai-doan-khai-cuoc-swap2-va.md)
 
 ### Nguồn: yêu cầu người dùng — redesign Start Modal & luồng ready/kết-thúc-ván (2026-08-04)
-- **#36.** Redesign Start Modal + bỏ Game-End Modal, đổi cơ chế đếm-trượt cho — [chi tiết](docs/todo/B36-redesign-start-modal-bo-game-end-modal-doi-co-che-dem-truot.md)
+- ✅ **#36.** Redesign Start Modal + bỏ Game-End Modal, đổi cơ chế đếm-trượt cho — [chi tiết](docs/todo/B36-redesign-start-modal-bo-game-end-modal-doi-co-che-dem-truot.md)
 
 ### Nguồn: báo cáo người dùng — "Reconnect Logic is not very well" (2026-08-04)
 - ✅ **#39.** Guest/spectator (và người chơi khi ván chưa `ongoing`) mất kết nối bị — [chi tiết](docs/todo/B39-guest-spectator-va-nguoi-choi-khi-van-chua-ongoing-mat-ket.md)
