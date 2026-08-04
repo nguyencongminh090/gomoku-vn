@@ -29,6 +29,7 @@ const SERVER_FILES = [
   'server/socket/handlers/RoomHandler.js',
   'server/socket/handlers/LobbyHandler.js',
   'server/socket/SocketHandler.js',
+  'server/routes/games.js',
 ];
 
 /** Every `code: 'X'` literal that sits inside an `{ error/message: ..., code: 'X' }` object literal. */

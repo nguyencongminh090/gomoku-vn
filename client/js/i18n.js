@@ -21,6 +21,7 @@ const TRANSLATIONS = {
     'nav.logout': 'Đăng xuất',
     'nav.leave': 'Rời phòng',
     'nav.guest_badge': 'Khách',
+    'nav.lobby': 'Sảnh',
 
     // ── Login page ────────────────────────────────────────────
     'login.title': 'Play3CR — Đăng nhập',
@@ -244,6 +245,53 @@ const TRANSLATIONS = {
     'gset.guest_hint': 'Bạn đang chơi với tư cách khách. Tạo tài khoản để lưu lịch sử đấu.',
     'gset.btn_create_account': 'Tạo tài khoản',
     'gset.btn_logout': 'Đăng xuất',
+    // ── History page ───────────────────────────────────────────
+    'history.title': 'Play3CR — Lịch sử ván đấu',
+    'history.meta_description': 'Xem lại và phát lại các ván Caro đã chơi trên Play3CR.',
+    'history.h1': 'Lịch sử ván đấu',
+    'history.loading': 'Đang tải...',
+    'history.search_player': 'Người chơi',
+    'history.ph_player': 'Tên người chơi...',
+    'history.search_from': 'Từ ngày',
+    'history.search_to': 'Đến ngày',
+    'history.search_result': 'Kết quả',
+    'history.result_all': 'Tất cả',
+    'history.result_win': 'Thắng/thua',
+    'history.result_draw': 'Hoà',
+    'history.btn_search': 'Tìm kiếm',
+    'history.btn_reset': 'Xoá lọc',
+    'history.stats_total_games': 'Tổng số ván',
+    'history.no_match': 'Không tìm thấy ván đấu nào phù hợp.',
+    'history.load_error': 'Không thể tải.',
+    'history.err_prefix': 'Lỗi: {msg}',
+    'history.network_error': 'Không thể kết nối server.',
+    'history.game_count': '({n} ván)',
+    'history.btn_view': 'Xem lại',
+    'history.th_time': 'Thời gian',
+    'history.th_black': 'Đen (X)',
+    'history.th_white': 'Trắng (O)',
+    'history.th_result': 'Kết quả',
+    'history.btn_back': 'Quay lại',
+    'history.btn_analysis': 'Phân tích',
+    'history.btn_analysis_title': 'Bật/tắt chế độ phân tích',
+    'history.btn_first_title': 'Đầu tiên',
+    'history.btn_prev_title': 'Lùi 1 nước',
+    'history.btn_next_title': 'Tiến 1 nước',
+    'history.btn_last_title': 'Cuối cùng',
+    'history.btn_play_title': 'Tự động phát',
+    'history.tree_title': 'Cây nước đi',
+    'history.btn_delete_branch_title': 'Xoá nhánh hiện tại',
+    'history.confirm_delete_branch': 'Xoá nhánh này và tất cả các nước sau?',
+    'history.err_load_game': 'Không thể tải ván đấu.',
+    'history.err_load_game_generic': 'Lỗi khi tải ván đấu.',
+    'history.someone_won': 'Có người thắng',
+    'history.x_won': '{name} thắng',
+    'history.draw_with_reason': 'Hoà — {reason}',
+    'history.player_generic': 'Người chơi',
+    'history.reason_normal': '5 liên tiếp',
+    'history.reason_timeout': 'Hết giờ',
+    'history.reason_draw_agreement': 'Đồng ý hoà',
+    'history.reason_board_full': 'Bàn cờ đầy',
     // ── Server error codes (socket/API) ───────────────────────
     'err.swap2_in_progress': 'Đang trong giai đoạn khai cuộc Swap2.',
     'err.game_over': 'Ván đấu đã kết thúc.',
@@ -300,6 +348,7 @@ const TRANSLATIONS = {
     'err.session_kicked': 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác.',
     'err.generic_error': 'Đã xảy ra lỗi. Vui lòng thử lại.',
     'err.room_gone': 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.',
+    'err.game_not_found': 'Không tìm thấy ván đấu.',
   },
 
   en: {
@@ -307,6 +356,7 @@ const TRANSLATIONS = {
     'nav.logout': 'Log out',
     'nav.leave': 'Leave room',
     'nav.guest_badge': 'Guest',
+    'nav.lobby': 'Lobby',
 
     // ── Login page ────────────────────────────────────────────
     'login.title': 'Play3CR — Login',
@@ -530,6 +580,53 @@ const TRANSLATIONS = {
     'gset.guest_hint': 'You are playing as a guest. Create an account to save your match history.',
     'gset.btn_create_account': 'Create account',
     'gset.btn_logout': 'Log out',
+    // ── History page ────────────────────────────────────────────
+    'history.title': 'Play3CR — Match History',
+    'history.meta_description': 'Review and replay your past Gomoku games on Play3CR.',
+    'history.h1': 'Match History',
+    'history.loading': 'Loading...',
+    'history.search_player': 'Player',
+    'history.ph_player': 'Player name...',
+    'history.search_from': 'From date',
+    'history.search_to': 'To date',
+    'history.search_result': 'Result',
+    'history.result_all': 'All',
+    'history.result_win': 'Win/Loss',
+    'history.result_draw': 'Draw',
+    'history.btn_search': 'Search',
+    'history.btn_reset': 'Clear filters',
+    'history.stats_total_games': 'Total games',
+    'history.no_match': 'No matching games found.',
+    'history.load_error': 'Could not load.',
+    'history.err_prefix': 'Error: {msg}',
+    'history.network_error': 'Could not connect to server.',
+    'history.game_count': '({n} games)',
+    'history.btn_view': 'View',
+    'history.th_time': 'Time',
+    'history.th_black': 'Black (X)',
+    'history.th_white': 'White (O)',
+    'history.th_result': 'Result',
+    'history.btn_back': 'Back',
+    'history.btn_analysis': 'Analysis',
+    'history.btn_analysis_title': 'Toggle analysis mode',
+    'history.btn_first_title': 'First',
+    'history.btn_prev_title': 'Previous move',
+    'history.btn_next_title': 'Next move',
+    'history.btn_last_title': 'Last',
+    'history.btn_play_title': 'Auto-play',
+    'history.tree_title': 'Move tree',
+    'history.btn_delete_branch_title': 'Delete current branch',
+    'history.confirm_delete_branch': 'Delete this branch and all moves after it?',
+    'history.err_load_game': 'Could not load game.',
+    'history.err_load_game_generic': 'Error loading game.',
+    'history.someone_won': 'Someone won',
+    'history.x_won': '{name} won',
+    'history.draw_with_reason': 'Draw — {reason}',
+    'history.player_generic': 'Player',
+    'history.reason_normal': 'Five in a row',
+    'history.reason_timeout': 'Time out',
+    'history.reason_draw_agreement': 'Agreed draw',
+    'history.reason_board_full': 'Board full',
     // ── Server error codes (socket/API) ────────────────────────
     'err.swap2_in_progress': 'The Swap2 opening phase is in progress.',
     'err.game_over': 'The game has ended.',
@@ -586,6 +683,7 @@ const TRANSLATIONS = {
     'err.session_kicked': 'Your account just signed in from another device.',
     'err.generic_error': 'An error occurred. Please try again.',
     'err.room_gone': 'The room no longer exists. You will be returned to the lobby.',
+    'err.game_not_found': 'Game not found.',
   },
 };
 
@@ -677,6 +775,10 @@ function updatePageTitle() {
     document.title = t('login.title');
   } else if (path.includes('room')) {
     document.title = t('room.title');
+  } else if (path.includes('history')) {
+    document.title = t('history.title');
+    const meta = document.getElementById('meta-description');
+    if (meta) meta.setAttribute('content', t('history.meta_description'));
   } else {
     document.title = t('lobby.title');
   }
@@ -710,6 +812,11 @@ function createLangSwitcher(container) {
 // ---------------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   applyI18n();
+  // A returning user with English saved (localStorage) previously kept seeing
+  // the hardcoded-Vietnamese <title>/meta description until their next
+  // manual language toggle, since this only ran inside setLanguage() before
+  // (TODO #45) — run it on first load too so the tab title matches immediately.
+  updatePageTitle();
 
   // Login page has no header/Settings panel yet, so it keeps its own
   // standalone switcher. On authenticated pages, language now lives inside

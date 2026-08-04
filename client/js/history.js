@@ -68,6 +68,12 @@ let treeView = null;      // TreeView instance
 let analysisMode = false;
 let replayGameData = null; // Raw game data for info display
 
+// Cached from the last successful loadGames() response, so a language switch
+// can re-render translated text (table headers, result labels) without
+// re-fetching from the server (TODO #45).
+let lastGamesList = [];
+let lastPagination = null;
+
 // ---------------------------------------------------------------------------
 // Build a query string from currentFilters + pagination
 // ---------------------------------------------------------------------------
@@ -91,15 +97,17 @@ async function loadGames(page = 1) {
     const data = await res.json();
 
     if (!res.ok) {
-      gameListEl.innerHTML = `<div class="game-list__empty">Lỗi: ${data.error || 'Không thể tải.'}</div>`;
+      gameListEl.innerHTML = `<div class="game-list__empty">${t('history.err_prefix', { msg: data.error || t('history.load_error') })}</div>`;
       return;
     }
 
     const { games, pagination } = data;
-    gameTotalEl.textContent = `(${pagination.total} ván)`;
+    lastGamesList = games;
+    lastPagination = pagination;
+    gameTotalEl.textContent = t('history.game_count', { n: pagination.total });
 
     if (games.length === 0) {
-      gameListEl.innerHTML = '<div class="game-list__empty">Không tìm thấy ván đấu nào phù hợp.</div>';
+      gameListEl.innerHTML = `<div class="game-list__empty">${t('history.no_match')}</div>`;
       paginationEl.innerHTML = '';
     } else {
       renderGameTable(games);
@@ -108,7 +116,7 @@ async function loadGames(page = 1) {
 
     loadStats();
   } catch {
-    gameListEl.innerHTML = '<div class="game-list__empty">Không thể kết nối server.</div>';
+    gameListEl.innerHTML = `<div class="game-list__empty">${t('history.network_error')}</div>`;
   }
 }
 
@@ -142,10 +150,10 @@ function renderGameTable(games) {
     <table class="game-table">
       <thead>
         <tr>
-          <th>Thời gian</th>
-          <th>Đen (X)</th>
-          <th>Trắng (O)</th>
-          <th>Kết quả</th>
+          <th>${t('history.th_time')}</th>
+          <th>${t('history.th_black')}</th>
+          <th>${t('history.th_white')}</th>
+          <th>${t('history.th_result')}</th>
           <th></th>
         </tr>
       </thead>
@@ -163,7 +171,7 @@ function renderGameTable(games) {
         <td><strong>${escapeHtml(g.black_player_name)}</strong></td>
         <td>${escapeHtml(g.white_player_name)}</td>
         <td><span class="${resultClass}">${resultText}</span></td>
-        <td><button class="btn-replay" onclick="openReplay('${g.id}')" type="button">Xem lại</button></td>
+        <td><button class="btn-replay" onclick="openReplay('${g.id}')" type="button">${t('history.btn_view')}</button></td>
       </tr>
     `;
   }
@@ -190,13 +198,25 @@ function renderPagination(p) {
 // ---------------------------------------------------------------------------
 // Replay viewer
 // ---------------------------------------------------------------------------
+function renderReplayInfo(game) {
+  replayBlack.textContent = `✕ ${game.black_player_name}`;
+  replayWhite.textContent = `○ ${game.white_player_name}`;
+  replayResult.textContent = getResultTextFull(game);
+
+  const rules = [];
+  if (game.rule_wall) rules.push('Wall');
+  if (game.rule_portal) rules.push('Portal');
+  const ruleStr = rules.length > 0 ? rules.join(' + ') : t('lobby.rule_basic');
+  replayMeta.textContent = `${game.board_size}×${game.board_size} | ${ruleStr} | ${formatTime(game.ended_at)}`;
+}
+
 async function openReplay(gameId) {
   try {
     const res = await fetch(`/api/games/${gameId}`);
     const data = await res.json();
 
     if (!res.ok || !data.game) {
-      alert(data.error || 'Không thể tải ván đấu.');
+      alert(data.code ? t('err.' + data.code.toLowerCase()) : (data.error || t('history.err_load_game')));
       return;
     }
 
@@ -211,15 +231,7 @@ async function openReplay(gameId) {
     });
 
     // Fill info
-    replayBlack.textContent = `✕ ${game.black_player_name}`;
-    replayWhite.textContent = `○ ${game.white_player_name}`;
-    replayResult.textContent = getResultTextFull(game);
-
-    const rules = [];
-    if (game.rule_wall) rules.push('Wall');
-    if (game.rule_portal) rules.push('Portal');
-    const ruleStr = rules.length > 0 ? rules.join(' + ') : 'Cơ bản';
-    replayMeta.textContent = `${game.board_size}×${game.board_size} | ${ruleStr} | ${formatTime(game.ended_at)}`;
+    renderReplayInfo(game);
 
     // Switch view FIRST (so parent has dimensions when we call resize)
     viewList.style.display = 'none';
@@ -256,7 +268,7 @@ async function openReplay(gameId) {
       syncBoardToTree();
     });
   } catch (err) {
-    alert('Lỗi khi tải ván đấu.');
+    alert(t('history.err_load_game_generic'));
   }
 }
 
@@ -438,7 +450,7 @@ function stopAutoPlay() {
 // ---------------------------------------------------------------------------
 function deleteBranch() {
   if (!moveTree || !moveTree.currentNode || moveTree.currentNode.isRoot) return;
-  if (!confirm('Xoá nhánh này và tất cả các nước sau?')) return;
+  if (!confirm(t('history.confirm_delete_branch'))) return;
   moveTree.deleteNode(moveTree.currentNode);
   syncBoardToTree();
 }
@@ -509,26 +521,26 @@ window.loadGames  = loadGames;
 // Utilities
 // ---------------------------------------------------------------------------
 function getResultText(g) {
-  if (!g.winner || g.winner === 'draw') return 'Hoà';
-  return g.winner_name ? `${g.winner_name} thắng` : 'Có người thắng';
+  if (!g.winner || g.winner === 'draw') return t('history.result_draw');
+  return g.winner_name ? t('history.x_won', { name: g.winner_name }) : t('history.someone_won');
 }
 
 function getResultTextFull(g) {
   const reasonMap = {
-    normal: '5 liên tiếp',
-    resign: 'Đầu hàng',
-    timeout: 'Hết giờ',
-    draw_agreement: 'Đồng ý hoà',
-    board_full: 'Bàn cờ đầy',
+    normal: t('history.reason_normal'),
+    resign: t('game.btn_resign'),
+    timeout: t('history.reason_timeout'),
+    draw_agreement: t('history.reason_draw_agreement'),
+    board_full: t('history.reason_board_full'),
   };
 
   if (!g.winner || g.winner === 'draw') {
-    return `Hoà — ${reasonMap[g.reason] || g.reason || ''}`;
+    return t('history.draw_with_reason', { reason: reasonMap[g.reason] || g.reason || '' });
   }
 
-  const name = g.winner_name || 'Người chơi';
+  const name = g.winner_name || t('history.player_generic');
   const reason = reasonMap[g.reason] || g.reason || '';
-  return `${name} thắng${reason ? ' — ' + reason : ''}`;
+  return t('history.x_won', { name }) + (reason ? ' — ' + reason : '');
 }
 
 function formatTime(isoStr) {
@@ -553,6 +565,22 @@ function escapeHtml(str) {
   div.textContent = str || '';
   return div.innerHTML;
 }
+
+// ---------------------------------------------------------------------------
+// Lang change listener — re-render text this page builds outside data-i18n
+// (table headers, result labels, replay meta) without a re-fetch (TODO #45).
+// ---------------------------------------------------------------------------
+window.addEventListener('langchange', () => {
+  if (viewReplay.style.display !== 'none' && replayGameData) {
+    renderReplayInfo(replayGameData);
+  } else if (lastGamesList.length > 0) {
+    renderGameTable(lastGamesList);
+    if (lastPagination) {
+      gameTotalEl.textContent = t('history.game_count', { n: lastPagination.total });
+      renderPagination(lastPagination);
+    }
+  }
+});
 
 // ---------------------------------------------------------------------------
 // UI mode change listener — re-gate the replay view without a reload
