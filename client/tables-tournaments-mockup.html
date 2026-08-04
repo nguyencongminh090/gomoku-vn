@@ -38,7 +38,7 @@
     .section-tabs {
       display: flex;
       gap: 4px;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
       border-bottom: 1px solid var(--c-border);
     }
     .section-tabs__btn {
@@ -50,12 +50,22 @@
       font-size: 15px;
       font-weight: 600;
       color: var(--c-ink-2);
-      padding: 10px 4px 12px;
+      /* min-height 44px keeps this a valid touch target on mobile, per
+         touch-target-size guideline, without changing desktop density. */
+      min-height: 44px;
+      padding: 0 4px;
       margin-right: 24px;
+      display: inline-flex;
+      align-items: center;
       border-bottom: 2px solid transparent;
       transition: color .15s ease, border-color .15s ease;
     }
     .section-tabs__btn:hover { color: var(--c-ink); }
+    .section-tabs__btn:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
     .section-tabs__btn.is-active {
       color: var(--c-brand);
       border-bottom-color: var(--c-brand);
@@ -69,7 +79,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
       flex-wrap: wrap;
     }
     .filter-pill {
@@ -77,12 +87,19 @@
       background: var(--c-surface-2);
       border: 1px solid transparent;
       border-radius: 999px;
-      padding: 6px 14px;
+      padding: 8px 14px;
+      min-height: 36px;
       font-size: 13px;
       font-weight: 600;
       color: var(--c-ink-2);
       cursor: pointer;
       font-family: inherit;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .filter-pill:hover { background: var(--c-border-light); }
+    .filter-pill:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
     }
     .filter-pill.is-active {
       background: var(--c-brand-light);
@@ -98,13 +115,19 @@
       background: var(--c-surface);
       border: 1px solid var(--c-border);
       border-radius: 8px;
-      padding: 6px 10px;
+      padding: 8px 10px;
+      min-height: 36px;
+      cursor: pointer;
+    }
+    .filter-select:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
     }
 
     .tournament-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 14px;
+      gap: 16px;
       padding: 16px;
     }
     .tournament-card {
@@ -114,13 +137,30 @@
       padding: 16px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       transition: box-shadow .15s ease, transform .15s ease;
       cursor: pointer;
     }
     .tournament-card:hover {
       box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
       transform: translateY(-1px);
+    }
+    .tournament-card:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tournament-card,
+      .section-tabs__btn,
+      .filter-pill {
+        transition: none;
+      }
+      .tournament-card:hover { transform: none; }
+    }
+    @media (max-width: 480px) {
+      /* Filter pills and select need the full 44px touch target on small
+         screens even though 36px reads fine at desktop pointer precision. */
+      .filter-pill, .filter-select { min-height: 44px; }
     }
     .tournament-card__top {
       display: flex;
@@ -309,7 +349,7 @@
 
         <div class="tournament-grid">
 
-          <div class="tournament-card">
+          <div class="tournament-card" tabindex="0" role="link" aria-label="Mùa hè 2026, thể thức Swiss, đang diễn ra, đến lượt bạn báo lịch thi đấu">
             <div class="tournament-card__top">
               <span class="tournament-card__name">Mùa hè 2026</span>
               <span class="badge badge--format">Swiss</span>
@@ -322,7 +362,7 @@
             </div>
           </div>
 
-          <div class="tournament-card">
+          <div class="tournament-card" tabindex="0" role="link" aria-label="Cúp tốc chiến, thể thức Double Elimination, sắp diễn ra, đã đăng ký">
             <div class="tournament-card__top">
               <span class="tournament-card__name">Cúp tốc chiến</span>
               <span class="badge badge--format">Double Elim.</span>
@@ -335,7 +375,7 @@
             </div>
           </div>
 
-          <div class="tournament-card">
+          <div class="tournament-card" tabindex="0" role="link" aria-label="Giải giao hữu số 3, thể thức Round robin, đã kết thúc, hạng 3">
             <div class="tournament-card__top">
               <span class="tournament-card__name">Giải giao hữu #3</span>
               <span class="badge badge--format">Round robin</span>
