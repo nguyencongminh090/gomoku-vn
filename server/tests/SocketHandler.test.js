@@ -334,4 +334,30 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
     expect(mockRoomManager.getRoomByUser).not.toHaveBeenCalled();
   });
+
+  // TODO.md #42 / instruction.md §42: the DisconnectHandler unit tests only
+  // ever call cancelEmptyRoomGrace() directly, so they can't catch the call
+  // site here in SocketHandler.js being dropped — confirmed by a mutation
+  // check that removed this call site alone (leaving cancelEmptyRoomGrace()
+  // itself intact) and re-ran the full suite: 393/393 still green. This test
+  // asserts the call site itself, and its ordering relative to the rejoin
+  // checks, so that same mutation now fails here.
+  test('every connection cancels any pending empty-room/spectator grace for the user before the rejoin checks run', () => {
+    const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+
+    expect(DisconnectHandler.cancelEmptyRoomGrace).toHaveBeenCalledWith('u1');
+    expect(DisconnectHandler.cancelSpectatorGrace).toHaveBeenCalledWith('u1');
+
+    const graceCallOrder = DisconnectHandler.cancelEmptyRoomGrace.mock.invocationCallOrder[0];
+    const spectatorGraceCallOrder = DisconnectHandler.cancelSpectatorGrace.mock.invocationCallOrder[0];
+    const rejoinCheckCallOrder = mockRoomManager.getRoomByUser.mock.invocationCallOrder[0];
+
+    expect(graceCallOrder).toBeLessThan(rejoinCheckCallOrder);
+    expect(spectatorGraceCallOrder).toBeLessThan(rejoinCheckCallOrder);
+  });
 });
