@@ -77,6 +77,13 @@ const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
  * X-Forwarded-For itself, unlike Express's `trust proxy` setting (see
  * server/index.js), which only affects Express's own req.ip.
  *
+ * CF-Connecting-IP takes priority when present: this deployment's zone is
+ * proxied through Cloudflare, which sets that header itself at the edge to
+ * the real client IP (overwriting, not appending — unlike X-Forwarded-For,
+ * which a client could otherwise write multiple values into). When it's
+ * absent (e.g. local dev without the tunnel, or a future non-Cloudflare
+ * deployment), fall back to the old logic:
+ *
  * Mirrors Express's `trust proxy: 'loopback'` semantics: only honor
  * X-Forwarded-For when the immediate peer is itself loopback, so a client
  * that could reach this port directly (bypassing the proxy) cannot spoof its
@@ -86,9 +93,13 @@ const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
  * @returns {string|undefined}
  */
 function getClientIp(socket) {
+  const headers = socket.handshake && socket.handshake.headers;
+  const cfConnectingIp = headers && headers['cf-connecting-ip'];
+  if (cfConnectingIp) return cfConnectingIp;
+
   const remote = socket.handshake && socket.handshake.address;
   if (LOOPBACK_ADDRESSES.has(remote)) {
-    const forwarded = socket.handshake.headers && socket.handshake.headers['x-forwarded-for'];
+    const forwarded = headers && headers['x-forwarded-for'];
     if (forwarded) return forwarded.split(',')[0].trim();
   }
   return remote;

@@ -176,6 +176,33 @@ cần bạn cung cấp nội dung đầy đủ của mục 3.8 mới (rất có 
 review 3.0 đã nêu: đổi mật khẩu không vô hiệu hoá JWT cũ, không có cơ chế thu
 hồi token) trước khi đánh giá được đây có sửa bằng code được không.
 
+### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.6 (kiểm chứng 2026-08-02)
+
+#### 10. ~~Hành vi thật của `cloudflared` với `X-Forwarded-For` do client tự gửi~~
+
+**→ Chuyển sang Phần B #44 (2026-08-04).** Kiểm bằng Cloudflare API (không
+cần request thật/half-open probe): zone `play3cr.dpdns.org` là zone riêng
+trên Cloudflare (`5008081877e47332e151721d4d3cc8c9`), **active**, bản ghi
+CNAME trỏ vào tunnel với **`proxied: true`** — tức traffic đi qua Cloudflare
+edge thật (không phải DNS pass-through trần của dịch vụ dpdns.org), nên
+Cloudflare **luôn tự set `CF-Connecting-IP`** ở edge và **không cho client
+giả mạo** (ghi đè, không phải nối thêm — khác hẳn giả định ban đầu về
+`X-Forwarded-For`). Tunnel `GomokuApp` (`aae65c10-cae3-4fdf-8e61-42e3c59a954f`)
+chỉ có đúng 1 ingress rule `play3cr.dpdns.org → http://localhost:3000`,
+`originRequest: {}` không override gì — khớp đúng giả định `cloudflared` nối
+vào Node qua loopback trần mà `trust proxy: 'loopback'`/`getClientIp()` hiện
+tại đang dựa vào. Với dữ kiện này, đọc thẳng `CF-Connecting-IP` thay vì tiếp
+tục vá đường vòng qua `X-Forwarded-For` là việc sửa được bằng code, không
+còn cần xác nhận qua traffic thật nữa — xem Phần B #44.
+
+#### 11. Hành vi khi bật `permessage-deflate`
+
+- Dự án không cấu hình gì cho `perMessageDeflate` của engine.io/socket.io —
+  giả định đang tắt theo mặc định, **chưa xác minh runtime thật**.
+- Cần quyết định: có bật hay không (đánh đổi CPU nén ↔ băng thông), rồi đo lại
+  băng thông/độ trễ thật trên server đang chạy nếu bật. Là quyết định vận
+  hành/cấu hình, không phải lỗi code cần sửa.
+
 ---
 
 ## Phần B — Sửa được bằng code, đang chờ làm
@@ -1378,6 +1405,108 @@ confidence ≥ 8/10) trước khi đưa vào đây.
       này thay vì bỏ qua) — verify bằng Playwright (`e2e/`) hoặc chạy app
       thật: mở `room.html` không tham số, xác nhận redirect về
       `index.html` thay vì đứng im ở overlay.
+
+### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.5 (kiểm chứng 2026-08-02)
+
+41. **Debounce `lobby:online_users` (300ms) gần vô dụng ở nhịp reconnect
+    thật**
+
+    - **Ở đâu:** `server/socket/state.js` — hằng `ONLINE_USERS_DEBOUNCE_MS =
+      300`.
+    - **Vì sao:** comment tự nêu "reconnect storms" là kịch bản mục tiêu,
+      nhưng `client/js/socket-client.js` dùng backoff 1000-5000ms giữa các
+      lần reconnect — mỗi lần rơi vào một cửa sổ debounce riêng, không gộp
+      được với nhau.
+    - **Bằng chứng review đã đo:** burst đồng loạt 39 gói → 1 gói (giảm 97%);
+      nhưng rải 150-400ms/lần thì 39 → 28 gói (chỉ giảm ~28%). Đúng kịch bản
+      code tự nhận là mục tiêu lại là kịch bản nó giúp ít nhất.
+    - **Lưu ý:** debounce này hiện tại được thêm (TODO #29) để giải quyết chi
+      phí O(n²) lúc burst 6000 người kết nối đồng thời — một lý do khác,
+      không phải để tối ưu nhịp reconnect rải rác. Mục này vẫn còn mở.
+    - **Đánh giá hiệu quả/an toàn:** rẻ, an toàn — cùng loại giải pháp đã
+      dùng cho `lobby:update`/`room:updated` (nâng cửa sổ debounce, hoặc xa
+      hơn là chuyển sang delta `{added, removed}` giống `lobby:patch`).
+    - **Test dự kiến:** mở rộng test debounce hiện có trong
+      `server/tests/` (nếu có) hoặc file mới, mô phỏng đúng nhịp
+      150-400ms/lần thay vì burst đồng loạt, assert số gói giảm đáng kể so
+      với baseline không debounce.
+
+42. **`cancelEmptyRoomGrace` không có test bảo vệ cho đúng kịch bản mutation
+    mà review nêu**
+
+    - **Ở đâu:** `server/socket/handlers/DisconnectHandler.js:148-155`.
+    - **Vì sao:** bản thân grace (`startEmptyRoomGrace`) có test, nhưng phần
+      **huỷ** grace (`cancelEmptyRoomGrace`) không có test độc lập bảo vệ.
+    - **Bằng chứng review đã đo:** gỡ `cancelEmptyRoomGrace` ra khỏi bản copy
+      → `359 passed, 359 total`, không test nào đỏ. Kiểm chứng hành vi thật
+      bằng 2 bản build: bản gốc (vào lại OK trong 20s → phòng còn); bản gỡ
+      cancel (vào lại OK trong 20s → qua mốc 20s → **phòng bị xoá dù user
+      đang online**).
+    - **Lưu ý:** TODO #18 (vòng 2, thêm `EMPTY_ROOM_GRACE_MS`) đã có test
+      "cancel qua reconnect thì không gọi `leaveRoom`" — cần xác nhận lại
+      test đó có thực sự bắt được đúng mutation "gỡ hẳn lệnh gọi
+      `cancelEmptyRoomGrace`" mà review mô tả hay không trước khi coi mục
+      này là đã đóng.
+    - **Đánh giá hiệu quả/an toàn:** rất rẻ — chỉ cần 1 test case dựng đúng
+      kịch bản "gỡ cancel → user online vẫn bị đá ra khi hết grace", theo
+      đúng rule "Viết test case toàn diện" trong `CLAUDE.md`.
+    - **Test dự kiến:** thêm case vào `server/tests/DisconnectHandler.test.js`
+      dựng đúng kịch bản trên; mutation-check bằng cách gỡ tạm lệnh gọi
+      `cancelEmptyRoomGrace` trên bản copy, xác nhận test mới đỏ, rồi khôi
+      phục.
+
+43. **Grace 20s + hạn mức 3 phòng/IP khoá nhầm người dùng chung IP**
+
+    - **Ở đâu:** `server/config.js` — `EMPTY_ROOM_GRACE_MS=20s`,
+      `MAX_ROOMS_PER_IP=3`.
+    - **Vì sao:** phòng bỏ hoang (chủ phòng rời/rớt mạng) vẫn giữ chỗ trong
+      hạn mức `MAX_ROOMS_PER_IP` suốt 20s grace trước khi thực sự bị huỷ.
+    - **Bằng chứng review đã đo:** 3 người cùng IP tạo rồi bỏ phòng → người
+      thứ 4 (cùng IP) bị từ chối, 22 giây sau mới tạo được. Đúng nhóm bị ảnh
+      hưởng mà comment trong `config.js` tự giải thích hạn mức 3 tồn tại VÌ
+      (wifi công ty/trường, NAT nhà mạng) — người dùng chung IP hợp lệ bị
+      khoá oan bởi chính cơ chế được thêm để bảo vệ họ.
+    - **Đánh giá hiệu quả/an toàn:** trung bình — sửa đúng (nhả suất quota
+      ngay khi disconnect, chỉ giữ **phòng** sống cho reconnect chứ không giữ
+      **quota**) cần tách rõ 2 khái niệm "phòng còn sống" và "phòng tính vào
+      quota của IP" hiện đang gộp làm một; cẩn thận để không mở lại đúng lỗ
+      hổng mà `MAX_ROOMS_PER_IP` được thêm vào để chặn (1 IP chiếm hết
+      `MAX_ROOMS` bằng cách tạo-rồi-bỏ-ngay liên tục).
+    - **Test dự kiến:** case trong `server/tests/RoomManager.test.js` —
+      chủ phòng rời/disconnect → quota nhả ngay (phòng khác từ cùng IP tạo
+      được) trong khi phòng vẫn còn sống cho tới hết grace nếu chủ phòng
+      reconnect.
+
+### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.6 — chuyển từ Phần A #10, xác nhận qua Cloudflare API (2026-08-04)
+
+44. **`getClientIp()` đọc `CF-Connecting-IP` thay vì suy luận qua
+    `X-Forwarded-For`**
+
+    - **Ở đâu:** `server/socket/state.js` — `getClientIp(socket)`.
+    - **Vì sao:** hiện tại chỉ tin `X-Forwarded-For` khi
+      `socket.handshake.address` là loopback (mirror `trust proxy:
+      'loopback'` phía Express) — đúng cho deployment hiện tại, nhưng vẫn là
+      suy luận gián tiếp qua 1 header có thể mang nhiều IP (thứ tự client tự
+      ghi được). Đã xác nhận qua Cloudflare API (không cần probe traffic
+      thật): zone `play3cr.dpdns.org` proxied qua Cloudflare thật
+      (`proxied: true`), nên Cloudflare **luôn tự set** `CF-Connecting-IP` ở
+      edge bằng đúng 1 giá trị (IP client thật), **ghi đè chứ không nối
+      thêm**, và client không giả mạo được — khác hẳn `X-Forwarded-For` vốn
+      có thể có nhiều giá trị nối chuỗi.
+    - **Đánh giá hiệu quả/an toàn:** rẻ, an toàn — đọc thẳng 1 header rõ
+      ràng thay vì duyệt/tin tưởng có điều kiện một header mơ hồ hơn; loại
+      bỏ hẳn lớp giả định "Cloudflare nối thêm IP vào cuối" mà trước đây
+      cần xác minh bằng traffic thật.
+    - **Vẫn phải giữ fallback** — không phải mọi deployment tương lai đều
+      chắc chắn đi qua Cloudflare (nếu port `3000` từng bị lộ ra ngoài trực
+      tiếp, hoặc đổi sang proxy khác); giữ nguyên logic cũ
+      (`X-Forwarded-For` khi peer là loopback) làm fallback khi
+      `CF-Connecting-IP` không có mặt, không xoá hẳn.
+    - **Test dự kiến:** mở rộng `server/tests/LobbyHandler.test.js`/test
+      cho `getClientIp` — case có `CF-Connecting-IP` thì ưu tiên dùng nó
+      (kể cả khi `X-Forwarded-For` khác giá trị, để lộ rõ ưu tiên đúng);
+      case không có `CF-Connecting-IP` thì rơi về hành vi cũ
+      (`X-Forwarded-For` khi loopback, ngược lại dùng địa chỉ gốc).
 
 ---
 
