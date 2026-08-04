@@ -431,6 +431,67 @@ class BoardRenderer {
     }
   }
 
+  // ─── Wood Texture (Stone mode) ────────────────────────────────────
+
+  /** Cached offscreen wood-grain texture, keyed by size — regenerated only on resize. */
+  _getWoodTexture(w, h) {
+    const rw = Math.max(1, Math.round(w));
+    const rh = Math.max(1, Math.round(h));
+    if (!this._woodTexture || this._woodTextureW !== rw || this._woodTextureH !== rh) {
+      this._woodTexture = this._buildWoodTexture(rw, rh);
+      this._woodTextureW = rw;
+      this._woodTextureH = rh;
+    }
+    return this._woodTexture;
+  }
+
+  /** Paint a kaya-wood gold/amber base with painted grain streaks onto an offscreen canvas. */
+  _buildWoodTexture(w, h) {
+    const off = document.createElement('canvas');
+    off.width = w;
+    off.height = h;
+    const c = off.getContext('2d');
+
+    // Flat base — the WCAG-solved #b58a40 (white-stone contrast ≈3.15:1,
+    // black-stone contrast ≈6.67:1), no gradient wash. Grain streaks below
+    // are the only variation.
+    c.fillStyle = '#b58a40';
+    c.fillRect(0, 0, w, h);
+
+    // Deterministic PRNG (mulberry32) — same seed every call, so the grain
+    // pattern is stable across redraws at a given canvas size instead of
+    // re-randomizing (and visibly flickering) on every _draw().
+    let seed = 0x9e3779b9;
+    const rand = () => {
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+
+    const streakCount = Math.max(6, Math.round(h / 16));
+    const cp1x = w * 0.33, cp2x = w * 0.66;
+    for (let i = 0; i < streakCount; i++) {
+      const baseY = ((i + 0.5) / streakCount) * h;
+      const amp = 6 + rand() * 10;
+      const alpha = 0.05 + rand() * 0.07;
+      c.strokeStyle = rand() > 0.55
+        ? `rgba(235, 205, 155, ${alpha.toFixed(3)})`
+        : `rgba(90, 62, 26, ${alpha.toFixed(3)})`;
+      c.lineWidth = 1 + rand() * 2;
+      c.beginPath();
+      c.moveTo(0, baseY + (rand() - 0.5) * amp);
+      c.bezierCurveTo(
+        cp1x, baseY + (rand() - 0.5) * amp * 2,
+        cp2x, baseY + (rand() - 0.5) * amp * 2,
+        w, baseY + (rand() - 0.5) * amp
+      );
+      c.stroke();
+    }
+
+    return off;
+  }
+
   // ─── Background & Grid ──────────────────────────────────────────
 
   _drawBackground() {
@@ -450,22 +511,25 @@ class BoardRenderer {
     const r = Math.max(w, h);
     
     if (this.displayMode === 'stone') {
-      // Stone mode intentionally keeps a fixed light backdrop regardless of
-      // theme — filled black/white discs need a light board to read against;
-      // see the note on --board-bg in main.css.
-      const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-      grad.addColorStop(0, '#F9F7F3');
-      grad.addColorStop(1, '#EBE6DC');
-      ctx.fillStyle = grad;
+      // Stone mode intentionally keeps a fixed backdrop regardless of theme
+      // (filled black/white discs need a consistent board to read against;
+      // see the note on --board-bg in main.css) — a kaya-wood gold/amber
+      // tone (hue 38°, sat 48%) with painted grain streaks, instead of a
+      // flat gradient. Base #b58a40 is picked so white stones sit right at
+      // the WCAG 1.4.11 graphical-object floor of ~3:1 (contrast shrinks as
+      // the board lightens toward gold) while black stones stay crisp at
+      // ~6.7:1 — same medium-contrast approach as before, just re-solved
+      // for the warmer/more saturated hue the wood look needs.
+      ctx.drawImage(this._getWoodTexture(w, h), 0, 0, w, h);
     } else {
       ctx.fillStyle = this._theme.bg;
+      ctx.fillRect(0, 0, w, h);
     }
 
-    ctx.fillRect(0, 0, w, h);
-
-    // Grid lines (theme-aware teal for standard/caro, fixed dark for stone)
+    // Grid lines (theme-aware teal for standard/caro, dark ink for stone —
+    // real goban lines are inked in dark lacquer, not a light overlay)
     ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(0, 0, 0, 0.15)'
+      ? 'rgba(34, 28, 17, 0.55)'
       : `rgba(${this._theme.accentRgb}, 0.22)`;
     // Snap to the physical device-pixel grid and stroke exactly 1px wide so
     // hairlines stay crisp at any devicePixelRatio, including the fractional
@@ -554,10 +618,12 @@ class BoardRenderer {
       ctx.fillText(ch, px, py);
     }
 
-    // Row numbers (1, 2, 3, ...) — the hovered row is highlighted
+    // Row numbers — displayed bottom-up (row 1 at the bottom, highest at the
+    // top, standard Go/Gomoku board convention) while internal y indices
+    // (top-to-bottom, used for board state/click mapping) stay unchanged.
     ctx.textAlign = 'center';
     for (let y = 0; y < g.boardSize; y++) {
-      const text = String(y + 1);
+      const text = String(g.boardSize - y);
       const px = g.originX - labelOffset;
       const py = this.displayMode === 'stone'
         ? g.originY + y * g.cellSize
