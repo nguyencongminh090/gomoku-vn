@@ -131,8 +131,19 @@ const _lobbyUpdateTimers = new WeakMap();
  * connect/disconnect, an O(n) rebuild-and-fan-out fired up to n times, i.e.
  * O(n²) total during a burst of n near-simultaneous connections. Debouncing
  * collapses any such burst into one rebuild+broadcast per window.
+ *
+ * 300ms was tuned for that synchronized-burst case, but review 12.5
+ * (TODO.md #41) measured real reconnect traffic — sockets rejoining
+ * 150-400ms apart, spread out by client/js/socket-client.js's
+ * reconnectionDelay (1000ms base + jitter) applied independently per
+ * socket — landing mostly in separate 300ms windows: 39 reconnects only
+ * collapsed to 28 broadcasts (~28% reduction) instead of the ~97% seen in
+ * the synchronized-burst case. Widening the window to 1.5s (still well
+ * under the >1s gap between a single socket's own reconnect attempts, so
+ * it can't merge two real distinct reconnects from the same socket)
+ * catches that spread-out traffic too, without a payload-format change.
  */
-const ONLINE_USERS_DEBOUNCE_MS = 300;
+const ONLINE_USERS_DEBOUNCE_MS = 1_500;
 
 /** Per-io pending debounce timer for broadcastOnlineUsers(). */
 const _onlineUsersTimers = new WeakMap();
@@ -439,6 +450,7 @@ function handleReadyWindowTimeout(io, roomId) {
 }
 
 module.exports = {
+  ONLINE_USERS_DEBOUNCE_MS,
   timerMap,
   disconnectTimers,
   emptyRoomGraceTimers,

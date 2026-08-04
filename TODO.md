@@ -130,7 +130,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#40.** Dán link `room.html` không có `?id=` (và không phải vừa tạo/join từ — [chi tiết](docs/todo/B40-dan-link-room-html-khong-co-id-va-khong-phai-vua-tao-join-tu.md)
 
 ### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.5 (kiểm chứng 2026-08-02)
-- **#41.** Debounce `lobby:online_users` (300ms) gần vô dụng ở nhịp reconnect — [chi tiết](docs/todo/B41-debounce-lobby-online-users-300ms-gan-vo-dung-o-nhip.md)
+- ✅ **#41.** Debounce `lobby:online_users` (300ms) gần vô dụng ở nhịp reconnect — [chi tiết](docs/todo/B41-debounce-lobby-online-users-300ms-gan-vo-dung-o-nhip.md)
 - ✅ **#42.** `cancelEmptyRoomGrace` không có test bảo vệ cho đúng kịch bản mutation — [chi tiết](docs/todo/B42-cancelemptyroomgrace-khong-co-test-bao-ve-cho-dung-kich-ban.md)
 - ✅ **#43.** Grace 20s + hạn mức 3 phòng/IP khoá nhầm người dùng chung IP — [chi tiết](docs/todo/B43-grace-20s-han-muc-3-phong-ip-khoa-nham-nguoi-dung-chung-ip.md)
 

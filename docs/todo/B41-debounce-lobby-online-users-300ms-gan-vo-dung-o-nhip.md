@@ -25,3 +25,15 @@
       `server/tests/` (nếu có) hoặc file mới, mô phỏng đúng nhịp
       150-400ms/lần thay vì burst đồng loạt, assert số gói giảm đáng kể so
       với baseline không debounce.
+    - **Trạng thái:** ✅ ĐÃ XONG (2026-08-04) — xem `docs/fix-log.md` cho
+      chi tiết đầy đủ. Đã áp dụng hướng sửa rẻ (khuyến nghị): nâng
+      `ONLINE_USERS_DEBOUNCE_MS` từ 300ms lên 1500ms trong
+      `server/socket/state.js`. Chưa làm hướng sửa thật (chuyển sang delta
+      `{added, removed}`) — không bắt buộc trong lần này theo
+      `instruction.md` §41.
+    - **Test:** `server/tests/SocketHandler.test.js` — test case mới mô
+      phỏng đúng nhịp reconnect 150-400ms/lần (không phải burst đồng loạt),
+      assert số gói `lobby:online_users` giảm mạnh so với số sự kiện. 2 test
+      case cũ dùng hằng `300` cứng đã đổi sang tham chiếu
+      `ONLINE_USERS_DEBOUNCE_MS` export từ `state.js` để không vỡ khi đổi
+      hằng số. `npm test`: 401/401 xanh.
