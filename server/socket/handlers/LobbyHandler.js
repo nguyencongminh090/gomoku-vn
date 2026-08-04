@@ -119,6 +119,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} đã vào phòng.`,
+      code: 'ROOM_PLAYER_JOINED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
   });

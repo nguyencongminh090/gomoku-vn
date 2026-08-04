@@ -118,6 +118,7 @@ function register(io, socket) {
         io.to(room.roomId).emit('chat:message', {
           from: null, fromId: null,
           text: 'Ván đấu hoà do bàn cờ đã đầy.',
+          code: 'GAME_DRAW_BOARD_FULL',
           timestamp: Date.now(), isSystem: true,
         });
       }
@@ -198,6 +199,7 @@ function register(io, socket) {
       io.to(room.roomId).emit('chat:message', {
         from: null, fromId: null,
         text: `Khai cuộc kết thúc! ${whiteP ? whiteP.displayName : '—'} (Trắng) đi trước.`,
+        code: 'SWAP2_OPENING_DONE', vars: { name: whiteP ? whiteP.displayName : '—' },
         timestamp: Date.now(), isSystem: true,
       });
     } else {
@@ -231,6 +233,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} đã đầu hàng.`,
+      code: 'GAME_RESIGNED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -251,6 +254,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} đề nghị hoà.`,
+      code: 'GAME_DRAW_OFFERED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -276,6 +280,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: 'Ván đấu hoà theo thoả thuận.',
+      code: 'GAME_DRAW_AGREED',
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -296,6 +301,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} từ chối hoà.`,
+      code: 'GAME_DRAW_DECLINED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -342,6 +348,7 @@ function register(io, socket) {
         io.to(room.roomId).emit('chat:message', {
           from: null, fromId: null,
           text: `${user.displayName} đã dùng quyền thêm thời gian tự động (+${config.TIME_REQUEST_BONUS}s). Còn ${remaining} lần.`,
+          code: 'GAME_TIME_AUTO_BONUS', vars: { name: user.displayName, bonus: config.TIME_REQUEST_BONUS, remaining },
           timestamp: Date.now(), isSystem: true,
         });
       }
@@ -358,6 +365,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} xin thêm ${config.TIME_REQUEST_BONUS} giây (đã hết lượt tự động).`,
+      code: 'GAME_TIME_REQUESTED_MANUAL', vars: { name: user.displayName, bonus: config.TIME_REQUEST_BONUS },
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -400,6 +408,7 @@ function register(io, socket) {
       io.to(room.roomId).emit('chat:message', {
         from: null, fromId: null,
         text: `${user.displayName} đồng ý cho thêm ${config.TIME_REQUEST_BONUS} giây.`,
+        code: 'GAME_TIME_ACCEPTED', vars: { name: user.displayName, bonus: config.TIME_REQUEST_BONUS },
         timestamp: Date.now(), isSystem: true,
       });
     }
@@ -431,6 +440,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `${user.displayName} từ chối yêu cầu xin thời gian.`,
+      code: 'GAME_TIME_DECLINED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
   });
@@ -484,6 +494,7 @@ function startTimerForGame(io, room, engine, idOverride) {
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,
         text: `${timedOutUser ? timedOutUser.displayName : '—'} hết thời gian!`,
+        code: 'GAME_TIMED_OUT', vars: { name: timedOutUser ? timedOutUser.displayName : '—' },
         timestamp: Date.now(), isSystem: true,
       });
     },
@@ -627,6 +638,7 @@ function startGame(io, room) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `Swap2: ${blackPlayer.displayName} đặt 3 quân mở màn.`,
+      code: 'SWAP2_PLACED_OPENING', vars: { name: blackPlayer.displayName },
       timestamp: Date.now(), isSystem: true,
     });
     logger.info(`[Game] Swap2 opening started in room ${roomId}`);
@@ -666,6 +678,7 @@ function startGame(io, room) {
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null,
     text: 'Ván đấu bắt đầu! Đen đi trước.',
+    code: 'GAME_STARTED',
     timestamp: Date.now(), isSystem: true,
   });
   logger.info(`[Game] Game started in room ${roomId}`);

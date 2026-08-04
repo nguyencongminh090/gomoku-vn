@@ -30,7 +30,7 @@ function verifyToken(req, res, next) {
     : null;
 
   if (!token) {
-    return res.status(401).json({ error: 'Cần đăng nhập để thực hiện thao tác này.' });
+    return res.status(401).json({ error: 'Cần đăng nhập để thực hiện thao tác này.', code: 'AUTH_REQUIRED' });
   }
 
   try {
@@ -38,7 +38,7 @@ function verifyToken(req, res, next) {
     next();
   } catch (err) {
     logger.warn('[Auth] Invalid token:', err.message);
-    return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.' });
+    return res.status(401).json({ error: 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.', code: 'AUTH_INVALID_TOKEN' });
   }
 }
 

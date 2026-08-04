@@ -63,6 +63,7 @@ function register(io, socket) {
             io.to(roomId).emit('chat:message', {
               from: null, fromId: null,
               text: `${user.displayName} rời phòng (xử thua).`,
+              code: 'ROOM_PLAYER_LEFT_FORFEIT', vars: { name: user.displayName },
               timestamp: Date.now(), isSystem: true,
             });
           }
@@ -72,6 +73,7 @@ function register(io, socket) {
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,
         text: `${user.displayName} đã rời phòng.`,
+        code: 'ROOM_PLAYER_LEFT', vars: { name: user.displayName },
         timestamp: Date.now(), isSystem: true,
       });
     }
@@ -92,6 +94,7 @@ function register(io, socket) {
         io.to(roomId).emit('chat:message', {
           from: null, fromId: null,
           text: `${newHost ? newHost.displayName : '—'} là chủ phòng mới.`,
+          code: 'ROOM_NEW_HOST', vars: { name: newHost ? newHost.displayName : '—' },
           timestamp: Date.now(), isSystem: true,
         });
       }
@@ -141,6 +144,7 @@ function register(io, socket) {
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: 'Cài đặt phòng đã được thay đổi.',
+      code: 'ROOM_SETTINGS_CHANGED',
       timestamp: Date.now(), isSystem: true,
     });
   });

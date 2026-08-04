@@ -117,7 +117,7 @@ process.on('unhandledRejection', (reason) => {
 
 const gracefulShutdown = () => {
   logger.info('[Server] Shutdown signal received. Shutting down gracefully.');
-  io.emit('server:shutdown', { message: 'Server đang khởi động lại. Vui lòng chờ.' });
+  io.emit('server:shutdown', { message: 'Server đang khởi động lại. Vui lòng chờ.', code: 'SERVER_RESTARTING' });
   
   // Force close socket connections so the HTTP server can actually close
   io.disconnectSockets();
