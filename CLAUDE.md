@@ -1,5 +1,18 @@
 # Project Rules
 
+## Tracking-file layout: index + detail files (query and append)
+
+`TODO.md`, `instruction.md`, and `docs/fix-log.md` used to be single monolithic files. As of 2026-08-04 they were split for agent-read efficiency (each had grown to 90-200KB, so any task that touched one pulled the entire history into context even when only one item was relevant). The split:
+
+- **Each of the three files stays at its original path and still gets `@`-referenced the same way** — but now holds only a lightweight **index**: structural headings (Part A/B, `Nguồn`/source groupings, global rules, "Đừng làm" boundaries) plus one line per item linking to its detail file. Read the index first; it's small enough to read in full.
+- **Actual item content lives one level down**, one file per item:
+  - `docs/todo/<CODE>-<slug>.md` — `CODE` is the item's part-prefixed number exactly as used in `TODO.md` (e.g. `A07`, `B36`).
+  - `docs/instruction/<CODE>-<slug>.md` — `CODE` matches the corresponding `instruction.md` heading (`A1`, `B37`, or `S39`/`S44` for the later items that use the global `§NN` numbering scheme — `§` is written `S` in filenames only, ASCII-only for portability).
+  - `docs/fix-log/<YYYY-MM-DD>-<slug>.md` — one file per fix-log row, named by the entry's date + a slug of its opening words.
+- **Query:** grep or scan the relevant index file for the item number/keyword, then `Read` only the matched detail file(s) (typically 1-5KB) instead of the whole original file.
+- **Append:** write one new detail file, then add one new line/row to the matching index. Never re-open or edit an existing detail file's content when adding unrelated history (this is what makes `docs/fix-log.md`'s append-only rule, below, cheap to honor: a new fix is a new file, not an edit to a shared one).
+- This changes *where* content lives, not the rules governing it — the "read the matching `instruction.md` entry", "`docs/fix-log.md` is append-only", and "`TODO.md`/`instruction.md` pairing" rules below still apply verbatim, just resolved through the index → detail-file indirection.
+
 ## Cache-busting version bump
 
 All CSS and JS assets are cache-busted with a shared `?v=N` query string (see `client/*.html` `<link>`/`<script>` tags and the `?v=N` suffixes on ES-module `import` statements inside `client/js/index-entry.js`, `client/js/room-entry.js`, `client/js/login-entry.js`).
@@ -22,8 +35,8 @@ When fixing a reported bug or issue:
 
 ## `docs/fix-log.md`: append-only, every row timestamped
 
-- **`docs/fix-log.md` is append-only.** Never edit, reword, reorder, or delete an existing row once written — only add new rows. If a past entry turns out to be wrong, add a new row noting the correction; don't rewrite history in place.
-- **Every row has a `Timestamp` column (first column).** New rows get the real wall-clock time at the moment the row is written (`date "+%Y-%m-%d %H:%M"` or equivalent) — not the time the underlying fix was made, if those differ. The timestamp is what lets a reader tell what order entries were actually appended in, since row position in the table is the only other ordering signal.
+- **`docs/fix-log.md` (the index) and `docs/fix-log/*.md` (the detail files, see "Tracking-file layout" above) are append-only together.** A new fix means writing one new `docs/fix-log/<date>-<slug>.md` file (with `## Prompt` / `## Action` / `## Decision` / `## Summary output` sections) plus one new row in the `docs/fix-log.md` index table. Never edit, reword, reorder, or delete an existing index row or detail file once written. If a past entry turns out to be wrong, add a new one noting the correction; don't rewrite history in place.
+- **Every index row has a `Timestamp` column (first column), matching the `# Fix log entry — <timestamp>` heading in its detail file.** New entries get the real wall-clock time at the moment they're written (`date "+%Y-%m-%d %H:%M"` or equivalent) — not the time the underlying fix was made, if those differ. The timestamp is what lets a reader tell what order entries were actually appended in, since row position in the table is the only other ordering signal.
 - Existing rows written before this rule (all of them as of 2026-08-01) were retroactively stamped `2026-08-01 22:30` — this is the time the column was added, not each entry's real original write time, since that history wasn't captured. Don't re-stamp them again; treat `2026-08-01 22:30` as their permanent value going forward, same as any other already-written row.
 
 ## Git workflow: one fix, one branch, one commit
@@ -32,13 +45,13 @@ When fixing a reported bug or issue:
 - **One commit per fix.** Implement the fix, its kept unit test(s) (per the "Bug-fix workflow" rule above), and its `docs/fix-log.md` row together, then commit once — after `npm test` passes. Don't bundle multiple unrelated fixes into one commit, and don't split a single fix across multiple commits on `main`'s history (rework on the branch before merging, not after).
 - **Merge to `main` only once the fix is verified** (tests green, matches the guidance in `instruction.md` for that item if any exists). Use a regular merge commit (not squash, not rebase) so the branch's commit stays traceable back to the fix.
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
-- This applies to actual code fixes. Doc-only updates (`TODO.md`, `instruction.md`, `CLAUDE.md`, `docs/fix-log.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
+- This applies to actual code fixes. Doc-only updates (`TODO.md`/`docs/todo/*.md`, `instruction.md`/`docs/instruction/*.md`, `CLAUDE.md`, `docs/fix-log.md`/`docs/fix-log/*.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
 
 ## New requirements/tasks: stack, don't perform directly
 
 When the user raises a new requirement, feature request, or task during a conversation (as opposed to an explicit "do this now" instruction):
 
-- **Default to recording it, not implementing it.** Add an entry to `TODO.md` (what to do) and a matching entry to `instruction.md` (the execution guidance discussed — approach, pitfalls, boundaries), per the existing `TODO.md`/`instruction.md` pairing convention.
+- **Default to recording it, not implementing it.** Add a new `docs/todo/<CODE>-<slug>.md` detail file plus its index line in `TODO.md` (what to do), and a matching `docs/instruction/<CODE>-<slug>.md` plus its index line in `instruction.md` (the execution guidance discussed — approach, pitfalls, boundaries), per the existing `TODO.md`/`instruction.md` pairing convention (see "Tracking-file layout" above).
 - **Only perform the task directly if the user explicitly requires it now** (e.g. "do this now", "implement this", "fix it" — a direct ask for action rather than just describing a problem or idea).
 - This is about triage of new work, not about re-litigating tasks already in progress or already explicitly assigned in the current turn.
 

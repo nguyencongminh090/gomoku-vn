@@ -1,0 +1,17 @@
+# Fix log entry — 2026-08-02 01:44
+
+## Prompt
+
+Backend TODO Phần B #4 (review 6.4): two independent problems on the public game-history API. (a) `getGameById` in [server/db/database.js](server/db/database.js) used `SELECT * FROM games`, so `GET /api/games/:id` — unauthenticated by design — returned the internal `black_player_id` / `white_player_id` user ids alongside the replay data. (b) Neither `/api/games` nor `/api/games/:id` had any rate limiting, unlike `/api/auth` which has had `authLimiter` since before this backlog. `instruction.md` §B4 adds no guidance beyond the defect description and notes the two are independent.
+
+## Action
+
+(a) Replaced the `SELECT *` with an explicit column list omitting both id columns, keeping everything the replay screen renders (names, winner, reason, board size, rules, `moves`/`walls`/`portals`, timestamps). (b) Added `gamesLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 })` mounted via `router.use()` at the top of [server/routes/games.js](server/routes/games.js), same shape as `authLimiter` but with a higher ceiling — browsing history is legitimately many more requests than logging in (one per page plus one per replay opened). No client change, so no `?v=N` bump.
+
+## Decision
+
+**Two caveats found while verifying, neither folded into this fix (scope rule):** (1) `TODO.md` said to "grep the client to confirm it does not read those two columns before removing them" — it *does*. `resolveWinnerName()` in [client/js/history.js:441-459](client/js/history.js#L441-L459) reads `black_player_id`/`white_player_id` in three legacy-data branches (winner stored as a raw player id, and a guest-elimination inference). Those branches only fire for rows whose `winner` is not `BLACK`/`WHITE`/`draw`, i.e. pre-dating the current write format; for such rows the replay screen's result line now degrades to the generic "Có người thắng"/"Người chơi" instead of a name. The dev DB has 0 rows, so the real-world blast radius could not be measured here — noted in `TODO.md` as #17 rather than guessed at. (2) The list route still exposes the same two ids: `getRecentGames` selects them explicitly (not via `SELECT *`), so this item as scoped narrows the detail route while `/api/games` keeps handing the ids to the same anonymous caller — logged as `TODO.md` #16. Anyone treating review 6.4 as "the player ids are no longer public" should read that item first.
+
+## Summary output
+
+`npm test`: 180/180 passing, 9 suites green (was 174/8). New file [server/tests/games-route.test.js](server/tests/games-route.test.js) with 6 kept tests. It mocks `better-sqlite3` so the **real** `database.js` runs its real schema and real SQL against an in-memory DB — a mocked database module would have asserted nothing about the column list, which is the fix. Tests: the detail response has neither id property and neither secret value appears anywhere in the serialized JSON; the response still carries every field the replay screen renders, with `moves`/`walls`/`portals` parsed to arrays; an unknown id is still 404; `ALTER TABLE games ADD COLUMN internal_note` does not appear in the response (guards the column-explicit intent, not just today's output); the list route still paginates; and both routes carry rate-limit headers with `x-ratelimit-limit: 300` while a control route on the same app carries none. Also verified against a live server: `GET /api/games` → 200 with `X-RateLimit-Limit: 300`, `GET /api/games/nope` → 404 with the same headers.

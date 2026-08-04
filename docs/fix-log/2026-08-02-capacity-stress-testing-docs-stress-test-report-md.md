@@ -1,0 +1,17 @@
+# Fix log entry — 2026-08-02 17:57
+
+## Prompt
+
+Capacity stress-testing (`docs/stress-test-report.md` §9-10, requested by the user to find a real verified concurrent-player ceiling using a multi-process load harness): at ~3200+ simultaneous *newly connecting* players the server started rejecting connections with client-side `connect timeout`, while server CPU stayed at only ~26-42% of one core and RSS stayed modest — ruling out CPU/RAM/GC/timers/fan-out (all separately measured and ruled out earlier the same day) as the cause. Confirmed against kernel counters rather than inferred: `TcpExtListenOverflows` in `/proc/net/netstat` jumped **+14,003** during a single 4000-player burst run. Root cause: `server/index.js` called `server.listen(config.HTTP_PORT, cb)`, which uses Node's default TCP accept-queue (listen backlog) of 511 — under a burst of thousands of new connections in the same instant, the kernel's accept queue fills and further SYNs are silently dropped, invisible to the application (no log line, no error event) and visible only as a client-side timeout. The host's own `net.core.somaxconn` was already 4096, so the backlog was never actually constrained by the OS — only by the unset application argument.
+
+## Action
+
+[server/index.js](server/index.js): `server.listen(config.HTTP_PORT, cb)` → `server.listen({ port: config.HTTP_PORT, backlog: config.LISTEN_BACKLOG }, cb)`. New constant `LISTEN_BACKLOG` in [server/config.js](server/config.js), defaulting to `4096` (env-overridable via `process.env.LISTEN_BACKLOG`, same pattern as the file's other env-configurable constants). The kernel clamps any value above `somaxconn`, so a high default is safe even on hosts with a lower ceiling — it silently degrades rather than erroring.
+
+## Decision
+
+Left the default transport (`['polling','websocket']`) and connection auth path untouched. A second, independent fix was measured in the same investigation — forcing `transports: ['websocket','polling']` client-side also reaches 100% success at 4000 players while still keeping polling as a fallback for proxies that block WebSocket — but was deliberately **not** applied here: the backlog fix alone already brings the *existing, unmodified* client configuration to 100% success at the load that mattered, and changing transport order affects every real client's connection path today, which deserves its own scoped decision rather than riding along with this fix. Tracked separately (`TODO.md` #28) rather than folded in.
+
+## Summary output
+
+`npm test`: 289/289 passing, 16 suites green. New regression suite [server/tests/listen-backlog.test.js](server/tests/listen-backlog.test.js) (5 tests): pins the `LISTEN_BACKLOG` default/override/invalid-input behavior, and — checked by source-pattern assertion rather than booting a real server/DB in a unit test — that `server.listen()` is actually called with `backlog: config.LISTEN_BACKLOG` and not the bare `listen(port, cb)` form. **Mutation-checked**: manually reverted the `server.listen()` call back to the bare form and confirmed the two wiring tests fail exactly as expected, restored, confirmed green again. **Load-verified end-to-end** with a real running server (throwaway instance on a scratch port, the dev server on :3000 left untouched throughout) and the multi-process `scripts/capacity-test/` harness: 4000 concurrent connecting players went from 86-88% success / 240-282 `connect timeout` errors (backlog 511) to **100% success / 0 errors** (backlog 4096), reproduced twice.

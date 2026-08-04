@@ -1,0 +1,17 @@
+# Fix log entry — 2026-08-03 02:33
+
+## Prompt
+
+TODO.md #35: `#start-modal` and `#game-overlay` (win/loss/rematch notification) visually overlapping after a match ends, reported by the user as reliably reproducible. Root cause: `game:rematch` ([server/socket/handlers/GameHandler.js:396](server/socket/handlers/GameHandler.js#L396)) marks the clicking player ready and, when the opponent hasn't matched yet, starts a fresh ready-window via `syncReadyWindow`, broadcasting a new `readyDeadline` to both clients. The slower player — who hasn't clicked "Đấu lại"/"Đóng" yet — still has `#game-overlay` open, but `renderStartModal()` had no way to know that and unconditionally showed `#start-modal` on top of it.
+
+## Action
+
+Redesigned the model per the user's own framing (discussed directly with the user, see conversation): Start Modal's only trigger becomes "I am seated" instead of a passive `readyDeadline` side effect. (1) [client/js/room.js](client/js/room.js) `btnCloseOverlay` now stands the player up (`window.RoomState.standRequested = true; window.RoomClient.emit('room:stand')`) instead of only hiding the overlay locally — reuses the existing `room:stand`/`standUp()` seat-vacate flow, no new server event. (2) [client/js/room-ui.js](client/js/room-ui.js) `renderStartModal()` additionally gates on `#game-overlay` not having class `.visible`, as defense-in-depth against any other path setting `readyDeadline` early. `btnRematch` and the first-game `confirmStart`/`syncReadyWindow` flow are untouched. Bumped `?v=38` → `?v=39`.
+
+## Decision
+
+Rejected patching only at the display layer (checking `#game-overlay` visibility alone) as the sole fix, because it leaves the underlying "seated but not ready, indefinitely" state that caused the bug in the first place — chose to also close that state at the source (stand up on decline) per the user's suggestion, with the display-layer check kept only as a defense-in-depth backstop, not the primary fix. Investigated but deliberately left alone: a comment in [server/socket/state.js:342](server/socket/state.js#L342) claims `syncReadyWindow` runs on "game end", but `handleGameEnd` never calls it — the chosen fix doesn't depend on that call existing, and no other behavior was found relying on the comment's literal claim, so it was left as-is rather than "fixed" to match a comment with no other consequence.
+
+## Summary output
+
+New Playwright spec [e2e/rematch-overlay-conflict.spec.ts](e2e/rematch-overlay-conflict.spec.ts) (2 cases): (1) reproduces the exact reported scenario — two real guest players finish a game via resign, PlayerA clicks rematch first, asserts PlayerB (who hasn't acted) never sees `#start-modal` while `#game-overlay` is still visible, then PlayerB declines and the test asserts `RoomState.mySlot === null` (really stood up); (2) regression guard confirming Start Modal still shows normally when two fresh seats fill. Both pass on chromium/firefox/webkit. Mutation-check: reverted both code changes on the working tree (not committed), reran case 1 on chromium — failed exactly at the `#start-modal` assertion with `Received: "game-overlay visible"`, reproducing the reported bug verbatim; restored the fix, reran, green. `npm test` (server-side, untouched by this fix): 359/359 passing — confirms no server-side regression from an unrelated client-only change. Client-side has no Jest/unit-test framework (per CLAUDE.md), so the Playwright spec is the sole regression guard for this fix.
