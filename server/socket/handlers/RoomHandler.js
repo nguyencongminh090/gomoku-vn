@@ -103,7 +103,7 @@ function register(io, socket) {
     const slot = parseInt(payload.slot, 10);
     const result = roomManager.sitDown(user.userId, slot);
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
     clearReadyState(io, result.room);
@@ -114,7 +114,7 @@ function register(io, socket) {
   socket.on('room:stand', () => {
     const result = roomManager.standUp(user.userId);
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
     clearReadyState(io, result.room);
@@ -125,7 +125,7 @@ function register(io, socket) {
   socket.on('room:settings', (payload = {}) => {
     const result = roomManager.updateSettings(user.userId, payload.settings || {});
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
     const roomId = result.room.roomId;
@@ -148,7 +148,7 @@ function register(io, socket) {
   socket.on('room:ready', () => {
     const result = roomManager.confirmStart(user.userId);
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
 
@@ -171,21 +171,21 @@ function register(io, socket) {
   socket.on('room:kick', (payload = {}) => {
     const targetId = payload.userId;
     if (!targetId) {
-      socket.emit('room:error', { message: 'Thiếu thông tin người dùng.' });
+      socket.emit('room:error', { message: 'Thiếu thông tin người dùng.', code: 'MISSING_USER_INFO' });
       return;
     }
 
     const roomId = roomManager.getRoomIdByUser(user.userId);
     const result = roomManager.kickUser(user.userId, targetId);
     if (result.error) {
-      socket.emit('room:error', { message: result.error });
+      socket.emit('room:error', { message: result.error, code: result.code });
       return;
     }
 
     const kickedSockets = findSocketsByUserId(io, targetId);
     for (const s of kickedSockets) {
       s.leave(roomId);
-      s.emit('room:kicked', { message: 'Bạn đã bị mời ra khỏi phòng.' });
+      s.emit('room:kicked', { message: 'Bạn đã bị mời ra khỏi phòng.', code: 'KICKED' });
     }
 
     clearReadyState(io, result.room);

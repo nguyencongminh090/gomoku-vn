@@ -178,7 +178,7 @@ describe('LobbyHandler — room:create', () => {
     const handlers = {};
     socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
 
-    mockRoomManager.createRoom.mockReturnValue({ error: 'Bạn đã ở trong phòng khác.' });
+    mockRoomManager.createRoom.mockReturnValue({ error: 'Bạn đã ở trong phòng khác.', code: 'ALREADY_IN_ANOTHER_ROOM' });
 
     LobbyHandler.register(io, socket);
     handlers['room:create']({ settings: {} });
@@ -186,6 +186,9 @@ describe('LobbyHandler — room:create', () => {
     const errEmit = socket._emitted.find(e => e.event === 'room:error');
     expect(errEmit).toBeDefined();
     expect(errEmit.data.message).toBe('Bạn đã ở trong phòng khác.');
+    // `code` is the language-neutral field the client actually renders
+    // (TODO #45) — a regression here silently reintroduces Vietnamese-only errors.
+    expect(errEmit.data.code).toBe('ALREADY_IN_ANOTHER_ROOM');
   });
 
   test('handles missing payload gracefully (uses empty settings)', () => {
@@ -308,6 +311,7 @@ describe('LobbyHandler — room:join', () => {
 
     const err = socket._emitted.find(e => e.event === 'room:error');
     expect(err).toBeDefined();
+    expect(err.data.code).toBe('MISSING_ROOM_ID');
   });
 
   test('emits room:joined and notifies room members on success', () => {
@@ -333,7 +337,7 @@ describe('LobbyHandler — room:join', () => {
     const handlers = {};
     socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
 
-    mockRoomManager.joinRoom.mockReturnValue({ error: 'Phòng không tồn tại.' });
+    mockRoomManager.joinRoom.mockReturnValue({ error: 'Phòng không tồn tại.', code: 'ROOM_NOT_FOUND' });
 
     LobbyHandler.register(io, socket);
     handlers['room:join']({ roomId: 'nonexistent' });
@@ -341,6 +345,7 @@ describe('LobbyHandler — room:join', () => {
     const err = socket._emitted.find(e => e.event === 'room:error');
     expect(err).toBeDefined();
     expect(err.data.message).toBe('Phòng không tồn tại.');
+    expect(err.data.code).toBe('ROOM_NOT_FOUND');
   });
 
   test('includes gameState in room:joined payload when game is active', () => {

@@ -38,7 +38,7 @@ const DisconnectHandler = require('./handlers/DisconnectHandler');
 function init(io) {
   // Listen for idle room destructions and clean up
   roomManager.on('room_destroyed', (roomId) => {
-    io.to(roomId).emit('room:destroyed', { message: 'Phòng đã tự động đóng do quá lâu không có hoạt động.' });
+    io.to(roomId).emit('room:destroyed', { message: 'Phòng đã tự động đóng do quá lâu không có hoạt động.', code: 'ROOM_AUTO_CLOSED' });
     io.in(roomId).socketsLeave(roomId);
     // Goes through the shared broadcast so the lobby gets a delta like every
     // other mutation. Emitting a full list straight to the lobby here (as this
@@ -74,7 +74,7 @@ function init(io) {
       eventCount++;
       if (eventCount > config.MAX_EVENTS_PER_SECOND) {
         if (!warnedThisWindow) {
-          socket.emit('room:error', { message: 'Bạn đang gửi quá nhiều yêu cầu. Vui lòng chờ.' });
+          socket.emit('room:error', { message: 'Bạn đang gửi quá nhiều yêu cầu. Vui lòng chờ.', code: 'RATE_LIMITED' });
           warnedThisWindow = true;
         }
         return;
@@ -98,7 +98,7 @@ function init(io) {
     // the new one back into a room.
     const staleSocket = sessions.get(user.userId);
     if (staleSocket) {
-      staleSocket.emit('session:kicked', { message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác.' });
+      staleSocket.emit('session:kicked', { message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác.', code: 'SESSION_KICKED' });
       staleSocket.disconnect(true);
     }
 
@@ -118,7 +118,7 @@ function init(io) {
           listener(...args);
         } catch (err) {
           logger.error(`[Socket] Handler error on '${event}' for ${user.displayName} (${user.userId}):`, err.stack || err.message);
-          socket.emit('room:error', { message: 'Đã xảy ra lỗi. Vui lòng thử lại.' });
+          socket.emit('room:error', { message: 'Đã xảy ra lỗi. Vui lòng thử lại.', code: 'GENERIC_ERROR' });
         }
       });
     };
@@ -176,7 +176,7 @@ function init(io) {
         // creating or joining. The client sets this auth flag from the
         // Manager's reconnect_attempt (see client/js/socket-client.js), so it
         // is only ever true for a connection that replaces an earlier one.
-        socket.emit('room:destroyed', { message: 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.' });
+        socket.emit('room:destroyed', { message: 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.', code: 'ROOM_GONE' });
       }
     }
 
@@ -208,7 +208,7 @@ function init(io) {
     // ── Per-socket error handler ──────────────────────────────────────────
     socket.on('error', (err) => {
       logger.error(`[Socket] Unhandled error for ${user.displayName}:`, err.stack || err.message);
-      socket.emit('room:error', { message: 'Đã xảy ra lỗi. Vui lòng thử lại.' });
+      socket.emit('room:error', { message: 'Đã xảy ra lỗi. Vui lòng thử lại.', code: 'GENERIC_ERROR' });
     });
   });
 

@@ -37,6 +37,7 @@
 | 2026-08-01 22:30 | Fix #19: user asked to try a vivid, fully-saturated green — #00FF44 — as the highlight, flat across … | [chi tiết](docs/fix-log/2026-08-01-fix-19-user-asked-to-try-a-vivid.md) |
 | 2026-08-01 22:30 | Fix #20: user asked to try a saturated yellow — #FFEA00 — as the highlight, flat across both themes. | [chi tiết](docs/fix-log/2026-08-01-fix-20-user-asked-to-try-a-saturated.md) |
 | 2026-08-04 14:13 | TODO #45 (1/N): root cause — auth.js error responses now carry a language-neutral `code`; login.js maps `co… | [chi tiết](docs/fix-log/2026-08-04-todo-45-1-root-cause-auth-error-codes.md) |
+| 2026-08-04 14:35 | TODO #45 (2/N): socket-level errors (GameEngine, RoomManager, ChatHandler, GameHandler, RoomHandler, LobbyHan… | [chi tiết](docs/fix-log/2026-08-04-todo-45-2-socket-level-error-codes.md) |
 | 2026-08-01 22:48 | Backend TODO Phần B #1 (review 5.1): restart-hang — on connection, SocketHandler.js had if (existing… | [chi tiết](docs/fix-log/2026-08-01-backend-todo-phan-b-1-review-5-1.md) |
 | 2026-08-01 22:54 | Backend TODO Phần B #2 (review 3.5): chat sanitization used replace(/<[^>]>/g, '') in server/manager… | [chi tiết](docs/fix-log/2026-08-01-backend-todo-phan-b-2-review-3-5.md) |
 | 2026-08-01 23:04 | Backend TODO Phần B #3 (review 3.7): escapeAttr in client/js/lobby.js:474 and client/js/room-ui.js:6… | [chi tiết](docs/fix-log/2026-08-01-backend-todo-phan-b-3-review-3-7.md) |

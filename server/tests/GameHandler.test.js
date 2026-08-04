@@ -94,7 +94,7 @@ describe('GameHandler — game:time_accept player-membership guard', () => {
 
     fire(socket, 'game:time_accept');
 
-    expect(socket.emit).toHaveBeenCalledWith('game:error', { message: 'Bạn không phải người chơi.' });
+    expect(socket.emit).toHaveBeenCalledWith('game:error', { message: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' });
     // Request must survive — a spectator's call must not consume/clear it.
     expect(room._timeRequestPending).toMatchObject({ from: 'p1' });
     expect(mockState.timerMap.size).toBe(0);
@@ -147,7 +147,7 @@ describe('GameHandler — game:time_decline player-membership guard', () => {
 
     fire(socket, 'game:time_decline');
 
-    expect(socket.emit).toHaveBeenCalledWith('game:error', { message: 'Bạn không phải người chơi.' });
+    expect(socket.emit).toHaveBeenCalledWith('game:error', { message: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' });
     expect(room._timeRequestPending).toMatchObject({ from: 'p1' });
   });
 

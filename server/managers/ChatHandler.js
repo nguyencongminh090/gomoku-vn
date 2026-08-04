@@ -116,6 +116,7 @@ function handleMessage(io, socket, roomId, text) {
   if (isRateLimited(user.userId)) {
     socket.emit('chat:error', {
       message: 'Bạn đang gửi tin nhắn quá nhanh. Vui lòng chờ một chút.',
+      code: 'CHAT_RATE_LIMITED',
     });
     return;
   }

@@ -163,7 +163,9 @@ client.on('lobby:online_users', (users) => {
 });
 
 client.on('room:error', (data) => {
-  alert(data.message);
+  // `code` is language-neutral; `message` is Vietnamese-only fallback for
+  // servers/events that haven't been given a code yet (TODO #45).
+  alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
 });
 
 // Auto-redirect if server detects we are already in a room
