@@ -1471,7 +1471,31 @@ confidence ≥ 8/10) trước khi đưa vào đây.
       `cancelEmptyRoomGrace` trên bản copy, xác nhận test mới đỏ, rồi khôi
       phục.
 
-43. **Grace 20s + hạn mức 3 phòng/IP khoá nhầm người dùng chung IP**
+43. ~~**Grace 20s + hạn mức 3 phòng/IP khoá nhầm người dùng chung IP**~~
+    **✅ ĐÃ XONG (2026-08-04)** — người dùng chọn hướng (b): thêm
+    `MAX_GRACE_ROOMS_PER_IP=3` (mặc định, override qua env,
+    [server/config.js](server/config.js)). `RoomManager.createRoom()`
+    ([server/managers/RoomManager.js](server/managers/RoomManager.js)) nhận
+    thêm tham số `graceRoomIds` (Set roomId đang trong empty-room-grace, mặc
+    định rỗng) — vẫn quét `this.rooms` (không quay lại tally) nhưng tách
+    `activeCount` (không tính phòng-đang-grace, so với `MAX_ROOMS_PER_IP`) và
+    `graceCount` (chỉ phòng-đang-grace, so với `MAX_GRACE_ROOMS_PER_IP`) —
+    chặn riêng nếu 1 trong 2 vượt ngưỡng, đúng ràng buộc "vẫn phải đếm bằng
+    cách quét" và "không nhả quota ngay lúc bắt đầu grace" mà
+    `instruction.md` §43 nêu. `LobbyHandler.js` build `graceRoomIds` từ
+    `emptyRoomGraceTimers` (`state.js`) rồi truyền vào. Xem chi tiết đầy đủ
+    trong `docs/fix-log.md` (dòng `2026-08-04 08:16`).
+    Test: `npm test` 400/400 xanh (+6). Mutation-check riêng 2 điểm (tách
+    active/grace count trong `RoomManager.js`, và truyền `graceRoomIds` ở
+    `LobbyHandler.js`) — cả 2 đều đỏ đúng khi gỡ, xanh lại khi khôi phục.
+    **Đã kiểm bằng server thật + `socket.io-client` thật** (không chỉ unit
+    test, theo đúng rule DB trong `CLAUDE.md` — di chuyển `gomoku.db` sang
+    `.pre-verify` trước khi chạy, khôi phục + xác nhận `md5sum` khớp 100%
+    sau khi xong): 3 phòng đầu OK, phòng 4 bị từ chối (quota chính); disconnect
+    1 phòng (vào grace) → phòng mới lại tạo được (miễn trừ hoạt động);
+    disconnect thêm 1 phòng nữa (chạm `MAX_GRACE_ROOMS_PER_IP=2` trong lần
+    test này) → phòng tiếp theo bị từ chối đúng thông báo quota-phụ mới,
+    không phải quota chính.
 
     - **Ở đâu:** `server/config.js` — `EMPTY_ROOM_GRACE_MS=20s`,
       `MAX_ROOMS_PER_IP=3`.

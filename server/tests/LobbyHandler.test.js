@@ -36,6 +36,7 @@ jest.mock('../utils/logger', () => ({
 const actualState = jest.requireActual('../socket/state');
 const mockState = {
   timerMap: new Map(),
+  emptyRoomGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   // The real one sends the full room list and seeds the delta baseline; here
@@ -148,7 +149,10 @@ describe('LobbyHandler — lobby:unsubscribe', () => {
 // 3. room:create
 // ---------------------------------------------------------------------------
 describe('LobbyHandler — room:create', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockState.emptyRoomGraceTimers.clear();
+  });
 
   test('emits room:joined on successful room creation', () => {
     const io = makeIo();
@@ -199,7 +203,8 @@ describe('LobbyHandler — room:create', () => {
 
     expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
       expect.any(Object),
-      {} // empty settings default
+      {}, // empty settings default
+      new Set()
     );
   });
 
@@ -215,7 +220,8 @@ describe('LobbyHandler — room:create', () => {
 
     expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
       expect.objectContaining({ ip: '203.0.113.5' }),
-      {}
+      {},
+      new Set()
     );
   });
 
@@ -234,7 +240,8 @@ describe('LobbyHandler — room:create', () => {
 
     expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
       expect.objectContaining({ ip: '198.51.100.7' }),
-      {}
+      {},
+      new Set()
     );
   });
 
@@ -253,7 +260,33 @@ describe('LobbyHandler — room:create', () => {
 
     expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
       expect.objectContaining({ ip: '203.0.113.9' }),
-      {}
+      {},
+      new Set()
+    );
+  });
+
+  // TODO.md #43 / instruction.md §43: emptyRoomGraceTimers is keyed by
+  // userId, not roomId — every other test in this describe block leaves it
+  // empty, so an empty Set is always the "correct" answer there and can't
+  // catch a wiring bug in the `.roomId` extraction (e.g. collecting userIds
+  // instead of roomIds by mistake). This test seeds real entries.
+  test('collects the .roomId of every pending empty-room-grace entry into the graceRoomIds Set passed to createRoom', () => {
+    mockState.emptyRoomGraceTimers.set('grace-user-1', { timeout: {}, roomId: 'room-A' });
+    mockState.emptyRoomGraceTimers.set('grace-user-2', { timeout: {}, roomId: 'room-B' });
+
+    const io = makeIo();
+    const socket = makeSocket('u1', 'Alice');
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    mockRoomManager.createRoom.mockReturnValue({ room: { roomId: 'r1', roomName: 'R1' } });
+
+    LobbyHandler.register(io, socket);
+    handlers['room:create']({ settings: {} });
+
+    expect(mockRoomManager.createRoom).toHaveBeenCalledWith(
+      expect.any(Object),
+      {},
+      new Set(['room-A', 'room-B'])
     );
   });
 });

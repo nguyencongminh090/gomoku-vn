@@ -37,6 +37,9 @@ const config = require('../config');
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
 
+/** Shared empty Set — default for createRoom's optional graceRoomIds param. */
+const EMPTY_SET = new Set();
+
 // =============================================================================
 // RoomManager — singleton
 // =============================================================================
@@ -68,9 +71,16 @@ class RoomManager extends EventEmitter {
    *
    * @param {object} userInfo  — { userId, displayName, isGuest, ip }
    * @param {object} settings  — optional partial settings override
+   * @param {Set<string>} [graceRoomIds] — roomIds currently sitting in
+   *   DisconnectHandler's empty-room grace window (see state.js
+   *   `emptyRoomGraceTimers`). Passed in by the caller rather than read from
+   *   socket/state.js directly, since state.js already requires this module
+   *   — importing it back here would be circular. Defaults to empty (no
+   *   exemptions) so every other caller, including existing tests, keeps the
+   *   old behavior unless it opts in.
    * @returns {{ room: object } | { error: string }}
    */
-  createRoom(userInfo, settings = {}) {
+  createRoom(userInfo, settings = {}, graceRoomIds = EMPTY_SET) {
     // Enforce MAX_ROOMS cap
     if (this.rooms.size >= config.MAX_ROOMS) {
       return { error: 'Số phòng đã đạt giới hạn. Vui lòng thử lại sau.' };
@@ -89,13 +99,30 @@ class RoomManager extends EventEmitter {
     // this.rooms cannot drift — a destroyed room is gone from the map by
     // definition. MAX_ROOMS stays small enough (config-driven, currently 50)
     // that this scan is trivially cheap regardless of its exact value.
+    //
+    // Split into two counts (TODO.md #43 / instruction.md §43): a room whose
+    // sole occupant just disconnected sits alive in `this.rooms` for
+    // EMPTY_ROOM_GRACE_MS so they can reconnect into it, but it's abandoned
+    // in every practical sense — it shouldn't cost the IP a slot in the main
+    // MAX_ROOMS_PER_IP quota. `graceRoomIds` are excluded from `activeCount`
+    // for that reason. They're still counted separately against
+    // MAX_GRACE_ROOMS_PER_IP so exemption can't become a bypass: an attacker
+    // repeatedly creating a room and immediately disconnecting it (which
+    // starts a fresh grace timer each time) is still capped by that second
+    // scan, deliberately NOT folded into a single combined count.
     if (userInfo.ip) {
-      let fromThisIp = 0;
-      for (const [, existing] of this.rooms) {
-        if (existing.creatorIp === userInfo.ip) fromThisIp++;
+      let activeCount = 0;
+      let graceCount = 0;
+      for (const [roomId, existing] of this.rooms) {
+        if (existing.creatorIp !== userInfo.ip) continue;
+        if (graceRoomIds.has(roomId)) graceCount++;
+        else activeCount++;
       }
-      if (fromThisIp >= config.MAX_ROOMS_PER_IP) {
+      if (activeCount >= config.MAX_ROOMS_PER_IP) {
         return { error: 'Bạn đã tạo quá nhiều phòng. Hãy đóng bớt phòng cũ rồi thử lại.' };
+      }
+      if (graceCount >= config.MAX_GRACE_ROOMS_PER_IP) {
+        return { error: 'Bạn có quá nhiều phòng vừa bỏ đang chờ dọn dẹp. Vui lòng thử lại sau ít giây.' };
       }
     }
 

@@ -185,6 +185,111 @@ describe('RoomManager — per-IP room quota', () => {
   });
 });
 
+// ── Per-IP quota exemption for empty-room-grace rooms (TODO.md #43) ────────
+// A room whose sole occupant just disconnected sits alive in `this.rooms`
+// for EMPTY_ROOM_GRACE_MS so they can reconnect, but is abandoned in every
+// practical sense — createRoom's 3rd param (graceRoomIds) lets the caller
+// exclude such rooms from the main MAX_ROOMS_PER_IP count, while a separate
+// MAX_GRACE_ROOMS_PER_IP still bounds them so the exemption can't become an
+// unlimited bypass (repeatedly create-then-disconnect to hoard "near-alive"
+// rooms). See instruction.md §43.
+
+describe('RoomManager — per-IP quota exemption for empty-room-grace rooms', () => {
+  const IP_A = '203.0.113.20';
+  let seq = 0;
+
+  function user(ip) {
+    seq++;
+    return { userId: `grace-u${seq}`, displayName: `GraceUser${seq}`, isGuest: false, ip };
+  }
+
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  test('a room sitting in grace is not counted toward MAX_ROOMS_PER_IP for a fresh room from the same IP', () => {
+    // Fill the active quota, then mark only the FIRST of those rooms as "in
+    // grace" (mirrors LobbyHandler.js collecting emptyRoomGraceTimers'
+    // roomIds) — leaving the other MAX_ROOMS_PER_IP - 1 genuinely active.
+    // (Marking all of them in-grace at once would itself trip
+    // MAX_GRACE_ROOMS_PER_IP, which defaults to the same value as
+    // MAX_ROOMS_PER_IP — that combined scenario is covered by the
+    // MAX_GRACE_ROOMS_PER_IP test below instead.)
+    const rooms = [];
+    for (let i = 0; i < realConfig.MAX_ROOMS_PER_IP; i++) {
+      rooms.push(roomManager.createRoom(user(IP_A)).room);
+    }
+    const graceRoomIds = new Set([rooms[0].roomId]);
+
+    // Without the grace set, this would be refused (matches the pre-#43
+    // "the next room from the same IP is refused" test above) — active
+    // count would be the full MAX_ROOMS_PER_IP.
+    expect(roomManager.createRoom(user(IP_A)).error).toBeTruthy();
+
+    // With the first room recognized as in-grace, active count drops to
+    // MAX_ROOMS_PER_IP - 1, so a fresh one is allowed.
+    const result = roomManager.createRoom(user(IP_A), {}, graceRoomIds);
+    expect(result.room).toBeDefined();
+    expect(roomManager.rooms.size).toBe(realConfig.MAX_ROOMS_PER_IP + 1);
+  });
+
+  test('only the rooms actually in graceRoomIds are exempted — a mixed active+grace IP still gets refused at MAX_ROOMS_PER_IP active', () => {
+    const rooms = [];
+    for (let i = 0; i < realConfig.MAX_ROOMS_PER_IP; i++) {
+      rooms.push(roomManager.createRoom(user(IP_A)).room);
+    }
+    // Only exempt ONE of the MAX_ROOMS_PER_IP rooms — the other
+    // (MAX_ROOMS_PER_IP - 1) are still "active" and already at the cap
+    // minus one, so this one exemption should be exactly enough to allow
+    // exactly one more room, not unlimited more.
+    const graceRoomIds = new Set([rooms[0].roomId]);
+
+    expect(roomManager.createRoom(user(IP_A), {}, graceRoomIds).room).toBeDefined();
+    // The slot opened by the one exemption is now used up (that new room
+    // is itself "active" and not in graceRoomIds) — the next one is refused.
+    expect(roomManager.createRoom(user(IP_A), {}, graceRoomIds).error).toBeTruthy();
+  });
+
+  test('grace rooms are still bounded by MAX_GRACE_ROOMS_PER_IP — exemption cannot become an unlimited bypass', () => {
+    // Simulate the create-then-disconnect abuse loop instruction.md §43 warns
+    // against: every room created from this IP immediately becomes
+    // "in grace" (as if its sole occupant disconnected right away).
+    const graceRoomIds = new Set();
+    const results = [];
+    for (let i = 0; i < realConfig.MAX_GRACE_ROOMS_PER_IP; i++) {
+      const result = roomManager.createRoom(user(IP_A), {}, graceRoomIds);
+      results.push(result);
+      expect(result.room).toBeDefined();
+      graceRoomIds.add(result.room.roomId);
+    }
+    expect(roomManager.rooms.size).toBe(realConfig.MAX_GRACE_ROOMS_PER_IP);
+
+    // One more, still with every prior room recognized as in-grace (so the
+    // active-quota check alone would allow it) — MAX_GRACE_ROOMS_PER_IP
+    // must refuse it instead.
+    const over = roomManager.createRoom(user(IP_A), {}, graceRoomIds);
+    expect(over.room).toBeUndefined();
+    expect(typeof over.error).toBe('string');
+    expect(roomManager.rooms.size).toBe(realConfig.MAX_GRACE_ROOMS_PER_IP);
+  });
+
+  test('a graceRoomIds entry for a different IP\'s room does not exempt this IP\'s own rooms', () => {
+    const IP_B = '203.0.113.21';
+    const otherRoom = roomManager.createRoom(user(IP_B)).room;
+    for (let i = 0; i < realConfig.MAX_ROOMS_PER_IP; i++) roomManager.createRoom(user(IP_A));
+
+    const graceRoomIds = new Set([otherRoom.roomId]); // belongs to IP_B, not IP_A
+    expect(roomManager.createRoom(user(IP_A), {}, graceRoomIds).error).toBeTruthy();
+  });
+
+  test('omitting graceRoomIds behaves exactly as before #43 (no exemptions)', () => {
+    for (let i = 0; i < realConfig.MAX_ROOMS_PER_IP; i++) roomManager.createRoom(user(IP_A));
+    expect(roomManager.createRoom(user(IP_A)).error).toBeTruthy();
+  });
+});
+
 // ── Total room cap (MAX_ROOMS) ──────────────────────────────────────────────
 // Previously untested: the per-IP quota above had thorough coverage, but the
 // site-wide MAX_ROOMS cap it sits alongside (server/managers/RoomManager.js,

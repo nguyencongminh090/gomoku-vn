@@ -33,6 +33,19 @@ const MAX_ROOMS             = parseInt(process.env.MAX_ROOMS, 10) || 50;
 // MAX_ROOMS=50 (3/50 = 6% of the pool, tighter in relative terms than the
 // original 3/10 = 30%), so this was not raised alongside MAX_ROOMS.
 const MAX_ROOMS_PER_IP      = parseInt(process.env.MAX_ROOMS_PER_IP, 10) || 3;
+// A room whose sole occupant just disconnected sits in EMPTY_ROOM_GRACE_MS
+// (below) still counting toward MAX_ROOMS_PER_IP even though it's abandoned
+// in every practical sense — that let a stray disconnect eat into a shared
+// IP's quota for up to 20s with nobody actually online. MAX_ROOMS_PER_IP
+// itself now only counts rooms NOT currently in that grace window (see
+// RoomManager.createRoom's graceRoomIds param), so a real new room isn't
+// blocked by one that's mid-teardown. This second, separate cap exists so
+// that exemption can't be turned into a bypass: an attacker repeatedly
+// creating a room and immediately disconnecting it (which starts a fresh
+// grace timer each time) can still be capped, since grace-room count is
+// checked on its own instead of being uncounted entirely. See TODO.md #43 /
+// instruction.md §43.
+const MAX_GRACE_ROOMS_PER_IP = parseInt(process.env.MAX_GRACE_ROOMS_PER_IP, 10) || 3;
 const MAX_USERS_PER_ROOM    = parseInt(process.env.MAX_USERS_PER_ROOM, 10) || 40; // 2 players + 38 guests
 const IDLE_TIMEOUT_MS       = 600_000; // 10 minutes
 const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against IDLE_TIMEOUT_MS
@@ -133,6 +146,7 @@ const FLOOD_DISCONNECT_STREAK = 5; // Consecutive over-limit 1s windows before f
 module.exports = {
   MAX_ROOMS,
   MAX_ROOMS_PER_IP,
+  MAX_GRACE_ROOMS_PER_IP,
   MAX_USERS_PER_ROOM,
   IDLE_TIMEOUT_MS,
   IDLE_SCAN_INTERVAL_MS,
