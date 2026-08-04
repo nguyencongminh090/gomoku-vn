@@ -77,3 +77,4 @@
 | 2026-08-04 09:00 | TODO.md #41 / instruction.md §41 (review 12.5, kiểm chứng 2026-08-02): ONLINE_USERS_DEBOUNCE_MS 300ms gần vô dụ… | [chi tiết](docs/fix-log/2026-08-04-todo-md-41-debounce-lobby-online-users.md) |
 | 2026-08-04 09:18 | TODO.md #29 (follow-up to TODO #41 debounce fix): re-ran scripts/capacity-test at 6000/8000 players, … | [chi tiết](docs/fix-log/2026-08-04-todo-md-29-unexplained-8000-player-ceiling.md) |
 | 2026-08-04 09:45 | User report "time plus not work": timer-increment ("Cộng thêm") field only applies server-side in Bl… | [chi tiết](docs/fix-log/2026-08-04-time-plus-not-working-outside-blitz-mode.md) |
+| 2026-08-04 13:45 | Fix #21: multi-step user request to rework the stone-mode board — WCAG-solved darker/medium-contrast… | [chi tiết](docs/fix-log/2026-08-04-fix-21-stone-mode-board-wood-redesign.md) |

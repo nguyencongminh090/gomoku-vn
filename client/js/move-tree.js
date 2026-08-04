@@ -19,9 +19,11 @@
 // ---------------------------------------------------------------------------
 const COL_LABELS = 'ABCDEFGHJKLMNOPQRST'; // Skip 'I' (Gomoku convention)
 
-function coordToLabel(x, y) {
+function coordToLabel(x, y, boardSize) {
   const col = x < COL_LABELS.length ? COL_LABELS[x] : '?';
-  const row = y + 1;
+  // Displayed bottom-up (row 1 at the bottom), matching board.js's
+  // _drawCoordinates — internal y stays 0-based top-down for board logic.
+  const row = boardSize - y;
   return `${col}${row}`;
 }
 
@@ -34,13 +36,15 @@ class MoveNode {
   /**
    * @param {{ x: number, y: number, color: string }|null} move
    * @param {MoveNode|null} parent
+   * @param {number} [boardSize] — only needed for the root (children inherit from parent)
    */
-  constructor(move, parent = null) {
+  constructor(move, parent = null, boardSize) {
     this.id = ++_nodeIdCounter;
     this.move = move;             // { x, y, color:'BLACK'|'WHITE' } or null for root
     this.parent = parent;
     this.children = [];
     this.comment = '';
+    this.boardSize = boardSize !== undefined ? boardSize : (parent ? parent.boardSize : 17);
 
     // Computed: depth from root (root = 0, first move = 1, etc.)
     this.depth = parent ? parent.depth + 1 : 0;
@@ -68,7 +72,7 @@ class MoveNode {
   get label() {
     if (this.isRoot) return 'Root';
     const num = this.depth;
-    const coord = coordToLabel(this.move.x, this.move.y);
+    const coord = coordToLabel(this.move.x, this.move.y, this.boardSize);
     if (!this.isVariation) return `${num}.${coord}`;
     // Variation letter: a, b, c, ...
     const varIdx = this.variationIndex;
@@ -79,7 +83,7 @@ class MoveNode {
   /** Short label for tree display: just the coordinate. */
   get shortLabel() {
     if (this.isRoot) return '⊙';
-    return coordToLabel(this.move.x, this.move.y);
+    return coordToLabel(this.move.x, this.move.y, this.boardSize);
   }
 }
 
@@ -92,9 +96,9 @@ class MoveTree {
    * @param {{ walls: Array, portals: Array, boardSize: number }} opts
    */
   constructor(opts = {}) {
-    this.root = new MoveNode(null, null);
-    this.currentNode = this.root;
     this.boardSize = opts.boardSize || 17;
+    this.root = new MoveNode(null, null, this.boardSize);
+    this.currentNode = this.root;
     this.walls = opts.walls || [];
     this.portals = opts.portals || [];
   }
