@@ -175,13 +175,11 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(mockState.disconnectTimers.has('u1')).toBe(true);
     expect(toEmitted(io, 'room1', 'game:interrupted')).toBeDefined();
 
-    // The system-chat announcement must carry a language-neutral `code` (+
-    // `vars` for the name/seconds interpolation), not just the Vietnamese
-    // `text` — otherwise it always renders in Vietnamese client-side
-    // regardless of the viewer's language (TODO #45).
-    const chatMsg = toEmitted(io, 'room1', 'chat:message');
-    expect(chatMsg.data.code).toBe('PLAYER_DISCONNECTED_GRACE');
-    expect(chatMsg.data.vars).toEqual({ name: 'Alice', seconds: expect.any(Number) });
+    // No server-side chat:message for this event — the client's own
+    // game:interrupted handler already announces it in the chat panel.
+    // Emitting both duplicated the announcement (TODO #47).
+    const chatMessages = (io._toEmitted['room1'] || []).filter(e => e.event === 'chat:message');
+    expect(chatMessages.find(e => e.data.code === 'PLAYER_DISCONNECTED_GRACE')).toBeUndefined();
   });
 
   test('reconnecting within the grace window cancels the timer and resumes the game (no game-end)', () => {
@@ -204,10 +202,10 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(reconnectSocket.join).toHaveBeenCalledWith('room1');
     expect(toEmitted(io, 'room1', 'game:resumed')).toBeDefined();
 
+    // No server-side chat:message for this event either — the client's own
+    // game:resumed handler already announces it in the chat panel (TODO #47).
     const chatMessages = (io._toEmitted['room1'] || []).filter(e => e.event === 'chat:message');
-    const resumeMsg = chatMessages.find(e => e.data.code === 'PLAYER_RECONNECTED_RESUMED');
-    expect(resumeMsg).toBeDefined();
-    expect(resumeMsg.data.vars).toEqual({ name: 'Alice' });
+    expect(chatMessages.find(e => e.data.code === 'PLAYER_RECONNECTED_RESUMED')).toBeUndefined();
 
     // Advancing past the original 60s deadline must NOT end the game —
     // the timeout was cleared by cancelDisconnectGrace().
