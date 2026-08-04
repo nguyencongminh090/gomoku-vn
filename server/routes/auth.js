@@ -106,16 +106,19 @@ router.post('/register', async (req, res, next) => {
     if (!isValidUsername(username)) {
       return res.status(400).json({
         error: 'Tên đăng nhập phải từ 3-20 ký tự, chỉ gồm chữ cái, số và dấu gạch dưới.',
+        code: 'USERNAME_INVALID',
       });
     }
     if (!isValidDisplayName(displayName)) {
       return res.status(400).json({
         error: 'Tên hiển thị phải từ 2-24 ký tự, không chứa < > & " \' hoặc ký tự điều khiển.',
+        code: 'DISPLAY_NAME_INVALID',
       });
     }
     if (!isValidPassword(password)) {
       return res.status(400).json({
         error: 'Mật khẩu phải có ít nhất 6 ký tự.',
+        code: 'PASSWORD_TOO_SHORT',
       });
     }
 
@@ -124,6 +127,7 @@ router.post('/register', async (req, res, next) => {
     if (existing) {
       return res.status(409).json({
         error: 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.',
+        code: 'USERNAME_TAKEN',
       });
     }
 
@@ -161,7 +165,10 @@ router.post('/login', async (req, res, next) => {
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({ error: 'Vui lòng nhập tên đăng nhập và mật khẩu.' });
+      return res.status(400).json({
+        error: 'Vui lòng nhập tên đăng nhập và mật khẩu.',
+        code: 'MISSING_CREDENTIALS',
+      });
     }
 
     const user = db.getUserByUsername(username);
@@ -172,7 +179,10 @@ router.post('/login', async (req, res, next) => {
     // return the same message.
     const match = await bcrypt.compare(password, user ? user.password_hash : DUMMY_PASSWORD_HASH);
     if (!user || !match) {
-      return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
+      return res.status(401).json({
+        error: 'Tên đăng nhập hoặc mật khẩu không đúng.',
+        code: 'INVALID_CREDENTIALS',
+      });
     }
 
     db.updateLastLogin(user.id, new Date().toISOString());
