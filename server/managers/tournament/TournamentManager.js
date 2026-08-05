@@ -912,7 +912,14 @@ class TournamentManager extends EventEmitter {
     };
   }
 
-  /** Diffed broadcast shape — everything serializeTournament sends except ruleSet. */
+  /**
+   * Broadcast shape for `tournament:updated` — everything serializeTournament
+   * sends except ruleSet. Still the FULL entries array; TournamentHandler.js's
+   * broadcastTournamentDetail() is what diffs `entries` down to an
+   * upserts/removed patch before emitting, same split as
+   * listTournaments()/serializeTournamentUpdate() vs. state.js's
+   * broadcastLobbyUpdate() diffing the room list one layer up.
+   */
   serializeTournamentUpdate(tournament) {
     const payload = this.serializeTournament(tournament);
     delete payload.ruleSet;

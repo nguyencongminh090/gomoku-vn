@@ -85,3 +85,4 @@
 | 2026-08-04 09:45 | User report "time plus not work": timer-increment ("Cộng thêm") field only applies server-side in Bl… | [chi tiết](docs/fix-log/2026-08-04-time-plus-not-working-outside-blitz-mode.md) |
 | 2026-08-04 13:45 | Fix #21: multi-step user request to rework the stone-mode board — WCAG-solved darker/medium-contrast… | [chi tiết](docs/fix-log/2026-08-04-fix-21-stone-mode-board-wood-redesign.md) |
 | 2026-08-04 16:10 | TODO.md #47 (phát hiện phụ khi làm follow-up #45): thông báo mất-kết-nối/kết-nối-lại hiện trùng lặp … | [chi tiết](docs/fix-log/2026-08-04-todo-47-disconnect-reconnect-chat-duplicate.md) |
+| 2026-08-06 03:17 | Code review follow-up on the `pairing_changed` batching fix: `broadcastTournamentDetail` still sent … | [chi tiết](docs/fix-log/2026-08-06-tournament-updated-entries-diff.md) |

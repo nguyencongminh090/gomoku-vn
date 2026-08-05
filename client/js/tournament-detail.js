@@ -97,8 +97,13 @@ client.on('tournament:detail', (data) => {
 
 client.on('tournament:updated', (data) => {
   if (!tournament || data.tournamentId !== tournamentId) return;
-  Object.assign(tournament, data);
-  entriesById = new Map(tournament.entries.map((e) => [e.entryId, e]));
+  const { entries, ...scalars } = data;
+  Object.assign(tournament, scalars);
+  if (entries) {
+    for (const entryId of entries.removed) entriesById.delete(entryId);
+    for (const entry of entries.upserts) entriesById.set(entry.entryId, entry);
+    tournament.entries = Array.from(entriesById.values());
+  }
   renderAll();
 });
 

@@ -91,11 +91,47 @@ function broadcastTournamentListUpdate(io) {
   _listUpdateTimers.set(io, timeout);
 }
 
+// ---------------------------------------------------------------------------
+// tournament:updated entries diff — serializeTournamentUpdate() includes the
+// FULL entries array (every registered player) on every call, so before this
+// a tournament with e.g. 30 registered players re-sent all 30 to the whole
+// room on every single register/unregister. Diff entries the same way
+// _diffRoomUsers (state.js) diffs a room's users: keyed per tournamentId
+// (shared across the whole tournament room, mirroring _diffRoomUsers being
+// keyed per roomId), only included when something in it actually changed.
+// ---------------------------------------------------------------------------
+
+const _tournamentEntrySnapshots = new Map(); // tournamentId -> Map<entryId, serialized-entry JSON>
+
+function _diffTournamentEntries(tournamentId, entries) {
+  const previous = _tournamentEntrySnapshots.get(tournamentId) || new Map();
+  const next = new Map();
+  const upserts = [];
+
+  for (const entry of entries) {
+    const serialized = JSON.stringify(entry);
+    next.set(entry.entryId, serialized);
+    if (previous.get(entry.entryId) !== serialized) upserts.push(entry);
+  }
+
+  const removed = [];
+  for (const entryId of previous.keys()) {
+    if (!next.has(entryId)) removed.push(entryId);
+  }
+
+  _tournamentEntrySnapshots.set(tournamentId, next);
+  return { upserts, removed };
+}
+
 function broadcastTournamentDetail(io, tournament) {
-  io.to(tournamentRoom(tournament.tournamentId)).emit(
-    'tournament:updated',
-    tournamentManager.serializeTournamentUpdate(tournament)
-  );
+  const full = tournamentManager.serializeTournamentUpdate(tournament);
+  const { upserts, removed } = _diffTournamentEntries(tournament.tournamentId, full.entries || []);
+
+  const payload = { ...full };
+  delete payload.entries;
+  if (upserts.length > 0 || removed.length > 0) payload.entries = { upserts, removed };
+
+  io.to(tournamentRoom(tournament.tournamentId)).emit('tournament:updated', payload);
 }
 
 // ---------------------------------------------------------------------------

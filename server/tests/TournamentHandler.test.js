@@ -492,3 +492,118 @@ describe('TournamentHandler — init(io) event wiring', () => {
     expect(() => _handlers['tournament_started']('ghost')).not.toThrow();
   });
 });
+
+// ---------------------------------------------------------------------------
+// broadcastTournamentDetail — entries diff. serializeTournamentUpdate()
+// includes the FULL entries array on every call (every registered player),
+// so before this fix a tournament:updated broadcast after a single
+// register/unregister re-sent every other already-known entry too. Diffed
+// the same way state.js's _diffRoomUsers diffs a room's users. Each test
+// below uses its own tournamentId so the per-tournamentId snapshot Map
+// (module-level, not reset between tests) can't leak state across cases.
+// ---------------------------------------------------------------------------
+describe('TournamentHandler — broadcastTournamentDetail entries diff', () => {
+  test('first broadcast for a tournament upserts every current entry, with no removed', () => {
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({
+      tournamentId: 'te-first', status: 'draft',
+      entries: [{ entryId: 'e1', userId: 'u1' }, { entryId: 'e2', userId: 'u2' }],
+    });
+    const io = makeIo();
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-first' });
+
+    const payload = io._toEmitted['tournament:te-first'][0].data;
+    expect(payload.entries.upserts.map((e) => e.entryId).sort()).toEqual(['e1', 'e2']);
+    expect(payload.entries.removed).toEqual([]);
+  });
+
+  test('a second broadcast with no entry changes omits `entries` entirely', () => {
+    const entries = [{ entryId: 'e1', userId: 'u1' }];
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({ tournamentId: 'te-nochange', status: 'draft', entries });
+    const io = makeIo();
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-nochange' });
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-nochange' });
+
+    expect(io._toEmitted['tournament:te-nochange'][1].data).not.toHaveProperty('entries');
+  });
+
+  test('only a newly-registered entry appears in upserts', () => {
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({
+      tournamentId: 'te-added', status: 'draft', entries: [{ entryId: 'e1', userId: 'u1' }],
+    });
+    const io = makeIo();
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-added' });
+
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({
+      tournamentId: 'te-added', status: 'draft',
+      entries: [{ entryId: 'e1', userId: 'u1' }, { entryId: 'e2', userId: 'u2' }],
+    });
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-added' });
+
+    const second = io._toEmitted['tournament:te-added'][1].data;
+    expect(second.entries.upserts.map((e) => e.entryId)).toEqual(['e2']);
+    expect(second.entries.removed).toEqual([]);
+  });
+
+  test('an unregistered entry appears in removed, not upserts', () => {
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({
+      tournamentId: 'te-removed', status: 'draft',
+      entries: [{ entryId: 'e1', userId: 'u1' }, { entryId: 'e2', userId: 'u2' }],
+    });
+    const io = makeIo();
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-removed' });
+
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({
+      tournamentId: 'te-removed', status: 'draft', entries: [{ entryId: 'e1', userId: 'u1' }],
+    });
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-removed' });
+
+    const second = io._toEmitted['tournament:te-removed'][1].data;
+    expect(second.entries.removed).toEqual(['e2']);
+    expect(second.entries.upserts).toEqual([]);
+  });
+
+  test('entries are diffed independently per tournament', () => {
+    const io = makeIo();
+    mockTournamentManager.serializeTournamentUpdate.mockImplementation((t) => ({
+      tournamentId: t.tournamentId, status: 'draft', entries: [{ entryId: 'e1', userId: 'u1' }],
+    }));
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-p1' });
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-p2' });
+
+    mockTournamentManager.serializeTournamentUpdate.mockImplementation((t) => ({
+      tournamentId: t.tournamentId, status: 'draft',
+      entries: t.tournamentId === 'te-p2'
+        ? [{ entryId: 'e1', userId: 'u1' }, { entryId: 'e2', userId: 'u2' }]
+        : [{ entryId: 'e1', userId: 'u1' }],
+    }));
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-p1' });
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-p2' });
+
+    expect(io._toEmitted['tournament:te-p1'][1].data).not.toHaveProperty('entries');
+    expect(io._toEmitted['tournament:te-p2'][1].data.entries.upserts.map((e) => e.entryId)).toEqual(['e2']);
+  });
+
+  test('scalar fields are always included alongside a diffed entries patch', () => {
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({
+      tournamentId: 'te-scalars', status: 'active', currentRoundIndex: 2,
+      entries: [{ entryId: 'e1', userId: 'u1' }],
+    });
+    const io = makeIo();
+    TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-scalars' });
+
+    const payload = io._toEmitted['tournament:te-scalars'][0].data;
+    expect(payload.status).toBe('active');
+    expect(payload.currentRoundIndex).toBe(2);
+  });
+
+  test('a tournament with no entries field at all (mocked default) broadcasts without an entries key', () => {
+    // Regression guard: serializeTournamentUpdate mocks elsewhere in this file
+    // return no `entries` field — must not throw on `full.entries` being
+    // undefined (guarded with `|| []` in TournamentHandler.js).
+    mockTournamentManager.serializeTournamentUpdate.mockReturnValue({ tournamentId: 'te-no-entries', status: 'draft' });
+    const io = makeIo();
+
+    expect(() => TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-no-entries' })).not.toThrow();
+    expect(io._toEmitted['tournament:te-no-entries'][0].data).not.toHaveProperty('entries');
+  });
+});
