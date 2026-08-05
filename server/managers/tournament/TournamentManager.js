@@ -331,7 +331,7 @@ class TournamentManager extends EventEmitter {
     const entryId = this._findEntryIdByUserId(ctx.tournament, userId);
     if (!entryId) return { error: 'Bạn không tham gia giải đấu này.', code: 'NOT_A_PARTICIPANT' };
     const result = PairingLifecycle.reportTime(ctx.pairing, entryId, proposedTime);
-    if (!result.error) this._persistPairing(ctx.pairing);
+    if (!result.error) { this._persistPairing(ctx.pairing); this._emitPairingChanged(tournamentId, pairingId); }
     return result;
   }
 
@@ -341,7 +341,7 @@ class TournamentManager extends EventEmitter {
     const entryId = this._findEntryIdByUserId(ctx.tournament, userId);
     if (!entryId) return { error: 'Bạn không tham gia giải đấu này.', code: 'NOT_A_PARTICIPANT' };
     const result = PairingLifecycle.confirmTime(ctx.pairing, entryId);
-    if (!result.error) this._persistPairing(ctx.pairing);
+    if (!result.error) { this._persistPairing(ctx.pairing); this._emitPairingChanged(tournamentId, pairingId); }
     return result;
   }
 
@@ -351,7 +351,7 @@ class TournamentManager extends EventEmitter {
     const entryId = this._findEntryIdByUserId(ctx.tournament, userId);
     if (!entryId) return { error: 'Bạn không tham gia giải đấu này.', code: 'NOT_A_PARTICIPANT' };
     const result = PairingLifecycle.disputeTime(ctx.pairing, entryId);
-    if (!result.error) this._persistPairing(ctx.pairing);
+    if (!result.error) { this._persistPairing(ctx.pairing); this._emitPairingChanged(tournamentId, pairingId); }
     return result;
   }
 
@@ -367,6 +367,7 @@ class TournamentManager extends EventEmitter {
     if (wasOverdue) {
       tournamentState.trackDeadline(pairingId, tournamentId, new Date(ctx.pairing.deadline).getTime());
     }
+    this._emitPairingChanged(tournamentId, pairingId);
     return result;
   }
 
@@ -378,6 +379,7 @@ class TournamentManager extends EventEmitter {
     this._persistPairing(ctx.pairing);
     tournamentState.untrackDeadline(pairingId);
     this._advanceIfRoundComplete(ctx.tournament);
+    this._emitPairingChanged(tournamentId, pairingId);
     return result;
   }
 
@@ -387,7 +389,7 @@ class TournamentManager extends EventEmitter {
     const entryId = this._findEntryIdByUserId(ctx.tournament, userId);
     if (!entryId) return { error: 'Bạn không tham gia giải đấu này.', code: 'NOT_A_PARTICIPANT' };
     const result = PairingLifecycle.requestReschedule(ctx.pairing, entryId, newProposedTime);
-    if (!result.error) this._persistPairing(ctx.pairing);
+    if (!result.error) { this._persistPairing(ctx.pairing); this._emitPairingChanged(tournamentId, pairingId); }
     return result;
   }
 
@@ -395,7 +397,7 @@ class TournamentManager extends EventEmitter {
     const ctx = this._resolvePairingContext(tournamentId, pairingId);
     if (ctx.error) return ctx;
     const result = PairingLifecycle.approveReschedule(ctx.pairing, userId, ctx.tournament.organizerId);
-    if (!result.error) this._persistPairing(ctx.pairing);
+    if (!result.error) { this._persistPairing(ctx.pairing); this._emitPairingChanged(tournamentId, pairingId); }
     return result;
   }
 
@@ -403,7 +405,7 @@ class TournamentManager extends EventEmitter {
     const ctx = this._resolvePairingContext(tournamentId, pairingId);
     if (ctx.error) return ctx;
     const result = PairingLifecycle.denyReschedule(ctx.pairing, userId, ctx.tournament.organizerId);
-    if (!result.error) this._persistPairing(ctx.pairing);
+    if (!result.error) { this._persistPairing(ctx.pairing); this._emitPairingChanged(tournamentId, pairingId); }
     return result;
   }
 
@@ -429,29 +431,56 @@ class TournamentManager extends EventEmitter {
       tournamentState.untrackDeadline(pairingId);
       tournamentState.tournamentTimerMap.set(pairingId, result.timer);
       result.timer.start();
+      // Tells the socket layer (TournamentMatchHandler) to instantiate a
+      // GameEngine and join both participants' sockets into the match room —
+      // TournamentManager itself never touches io (see class header).
+      this.emit('pairing_ready', { tournamentId, pairingId });
     }
+    this._emitPairingChanged(tournamentId, pairingId);
     return { pairing: ctx.pairing, bothReady: result.bothReady };
   }
 
   /**
    * Record a finished match's result (normal completion — walkover/void-replay
    * come from the deadline sweep instead, see _handlePairingDeadline).
+   *
+   * @param {string} tournamentId
+   * @param {string} pairingId
+   * @param {string} outcome — the winning entryId, or the literal string
+   *   'draw'. Double Elimination brackets have no slot for an undecided
+   *   match — a draw there is treated like DoubleNoShow (void + fresh
+   *   replay pairing, reusing the existing decision-5 mechanism) rather
+   *   than silently picking a winner or leaving the bracket stuck.
    */
-  recordPairingResult(tournamentId, pairingId, winnerEntryId) {
+  recordPairingResult(tournamentId, pairingId, outcome) {
     const ctx = this._resolvePairingContext(tournamentId, pairingId);
     if (ctx.error) return ctx;
     if (ctx.pairing.state !== 'InProgress') {
       return { error: 'Ván đấu chưa bắt đầu hoặc đã kết thúc.', code: 'PAIRING_NOT_IN_PROGRESS' };
     }
 
+    const isDraw = outcome === 'draw';
+
+    if (isDraw && ctx.tournament.format === 'double_elim') {
+      ctx.pairing.state = 'DoubleNoShow';
+      ctx.pairing.result = { winnerEntryId: null, reason: 'draw_replay' };
+      ctx.pairing.endedAt = new Date().toISOString();
+      this._persistPairing(ctx.pairing);
+      this._teardownPairingTimer(pairingId);
+      const replay = this._createReplayPairing(ctx.tournament, ctx.pairing);
+      this._emitPairingChanged(tournamentId, pairingId);
+      return { tournament: ctx.tournament, pairing: ctx.pairing, replay };
+    }
+
     ctx.pairing.state = 'Completed';
-    ctx.pairing.result = { winnerEntryId, reason: 'normal' };
+    ctx.pairing.result = { winnerEntryId: isDraw ? null : outcome, reason: isDraw ? 'draw' : 'normal' };
     ctx.pairing.endedAt = new Date().toISOString();
     this._persistPairing(ctx.pairing);
     this._teardownPairingTimer(pairingId);
 
-    this._recordCompletion(ctx.tournament, ctx.pairing, winnerEntryId);
+    this._recordCompletion(ctx.tournament, ctx.pairing, isDraw ? 'draw' : outcome);
     this._advanceIfRoundComplete(ctx.tournament);
+    this._emitPairingChanged(tournamentId, pairingId);
 
     return { tournament: ctx.tournament, pairing: ctx.pairing };
   }
@@ -477,6 +506,20 @@ class TournamentManager extends EventEmitter {
     }
     // 'forced_organizer_resolution_needed': pairing.overdue=true, nothing
     // further automatic — awaits organizerResolvePairing().
+    this._emitPairingChanged(tournamentId, pairingId);
+  }
+
+  /**
+   * Notify the socket layer that a pairing's state changed — covers both
+   * player/organizer-initiated actions AND automatic ones (deadline sweep,
+   * bracket auto-sync) that have no socket call site of their own to
+   * broadcast from. TournamentHandler.js is the sole listener that turns
+   * this into a `tournament:pairing_updated` room broadcast, so every
+   * mutation path funnels through here instead of each call site knowing
+   * about io.
+   */
+  _emitPairingChanged(tournamentId, pairingId) {
+    this.emit('pairing_changed', { tournamentId, pairingId });
   }
 
   // ---------------------------------------------------------------------------
@@ -666,6 +709,7 @@ class TournamentManager extends EventEmitter {
       tournamentState.trackDeadline(pairingId, tournament.tournamentId, new Date(deadline).getTime());
     }
 
+    this._emitPairingChanged(tournament.tournamentId, pairingId);
     return pairing;
   }
 
@@ -698,6 +742,7 @@ class TournamentManager extends EventEmitter {
       });
       this._persistPairing(oldPairing);
       tournamentState.trackDeadline(oldPairing.pairingId, tournament.tournamentId, new Date(deadline).getTime());
+      this._emitPairingChanged(tournament.tournamentId, oldPairing.pairingId);
       return oldPairing;
     }
 
@@ -720,6 +765,7 @@ class TournamentManager extends EventEmitter {
       tournament.currentRoundPairingIds.delete(oldPairing.pairingId);
       tournament.currentRoundPairingIds.add(replay.pairingId);
     }
+    this._emitPairingChanged(tournament.tournamentId, replay.pairingId);
     return replay;
   }
 
@@ -846,6 +892,30 @@ class TournamentManager extends EventEmitter {
     const payload = this.serializeTournament(tournament);
     delete payload.ruleSet;
     return payload;
+  }
+
+  /** Socket-safe pairing snapshot — readyPlayers (a Set) becomes a plain array. */
+  serializePairing(pairing) {
+    return {
+      pairingId: pairing.pairingId,
+      tournamentId: pairing.tournamentId,
+      roundId: pairing.roundId,
+      player1EntryId: pairing.player1EntryId,
+      player2EntryId: pairing.player2EntryId,
+      state: pairing.state,
+      proposedTime: pairing.proposedTime,
+      reportedBy: pairing.reportedBy,
+      disputed: pairing.disputed,
+      overdue: pairing.overdue,
+      agreedTime: pairing.agreedTime,
+      rescheduleRequest: pairing.rescheduleRequest,
+      readyPlayers: Array.from(pairing.readyPlayers),
+      deadline: pairing.deadline,
+      pairedAt: pairing.pairedAt,
+      result: pairing.result,
+      startedAt: pairing.startedAt,
+      endedAt: pairing.endedAt,
+    };
   }
 
   // ---------------------------------------------------------------------------

@@ -25,6 +25,16 @@ const logger = require('../utils/logger');
 /** @type {Map<string, TimerManager>} pairingId -> TimerManager instance */
 const tournamentTimerMap = new Map();
 
+/**
+ * @type {Map<string, {engine: object, tournamentId: string,
+ *   entryByUserId: Map<string,string>, userIdByEntry: Map<string,string>}>}
+ * pairingId -> live match context, populated by TournamentMatchHandler.js
+ * once a pairing reaches InProgress. Disjoint from RoomManager's rooms and
+ * from state.js's timerMap/readyTimers — same "separate session model"
+ * rule this whole file exists for.
+ */
+const tournamentGameMap = new Map();
+
 /** @type {Map<string, {tournamentId: string, deadline: number}>} pairingId -> deadline bookkeeping */
 const pendingDeadlines = new Map();
 
@@ -73,12 +83,14 @@ function shutdown() {
   for (const timer of tournamentTimerMap.values()) timer.destroy();
   tournamentTimerMap.clear();
   pendingDeadlines.clear();
+  tournamentGameMap.clear();
 }
 
 logger.info('[tournamentState] Initialized');
 
 module.exports = {
   tournamentTimerMap,
+  tournamentGameMap,
   pendingDeadlines,
   setDeadlineHandler,
   trackDeadline,

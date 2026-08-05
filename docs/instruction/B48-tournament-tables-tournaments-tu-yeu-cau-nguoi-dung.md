@@ -281,3 +281,130 @@ Phase 4-5 (socket handler `TournamentHandler.js`, client UI wiring vào
 Phase 3 trước khi tiếp tục.
 
 ---
+
+## Phase 4 — Socket handler layer (`TournamentHandler.js` + `TournamentMatchHandler.js`) — ĐÃ XONG (2026-08-05)
+
+Branch `feature/tournament-server`. Không đổi gì ở Phase 1-3's public API ngoài
+các bổ sung nêu dưới; `npm test` toàn bộ suite: **713/713 xanh**, không
+regression.
+
+**Các file mới:**
+- `server/socket/handlers/TournamentHandler.js` — domain quản lý giải đấu:
+  `tournament:subscribe/unsubscribe` (join/leave `tournament-lobby`, diff+
+  debounce `tournament:list_patch` giống hệt `_diffLobbyRooms`/
+  `broadcastLobbyUpdate` ở `state.js`, đặt local trong file này vì
+  `tournamentState.js` không được phép require `TournamentManager` ngược
+  lại — xem header của file đó), `tournament:create/register/unregister/
+  start/get/leave_room`, và 9 action lịch trình pairing
+  (report_time/confirm_time/dispute_time/organizer_resolve/
+  organizer_adjust/request_reschedule/approve_reschedule/deny_reschedule/
+  ready) — mỗi action chỉ forward `userId` vào wrapper tương ứng của
+  `TournamentManager`, không tự làm authorization (đã làm ở tầng manager).
+  - `init(io)` (gọi 1 lần lúc khởi động, không phải mỗi kết nối) lắng nghe
+    3 event `TournamentManager` phát ra (`tournament_started`,
+    `tournament_completed`, `pairing_changed`) rồi mới thật sự `io.to(...)
+    .emit(...)` — đây là **điểm broadcast DUY NHẤT** cho mọi thay đổi
+    pairing, kể cả những thay đổi tự động (deadline sweep walkover/
+    void-replay, Double Elimination bracket auto-sync) không có socket
+    call site nào để tự broadcast. Nhờ vậy handler action ở trên không cần
+    tự gọi broadcast sau mỗi lần gọi manager — chỉ cần gọi đúng, phần còn
+    lại tự động.
+- `server/socket/handlers/TournamentMatchHandler.js` — domain gameplay
+  thật một khi pairing vào `InProgress`: `tmatch:move/swap2_place/
+  swap2_choice/resign`, dùng `GameEngine` trực tiếp (không qua
+  `GameHandler.js`/`RoomManager` — đúng ràng buộc kiến trúc "tách khỏi
+  casual game" từ `user_story.md`). Room Socket.io riêng
+  `tournament-match:<pairingId>`, tách biệt hoàn toàn khỏi `roomId`-keyed
+  rooms của phòng thường.
+  - `startMatch(io, tournamentId, pairingId)` — được `TournamentHandler.
+    init()`'s `pairing_ready` listener gọi (event mới, phát ra từ
+    `TournamentManager.markPairingReady()` khi cả 2 người check-in xong).
+    Sinh bàn cờ/tường/cổng y hệt `GameHandler.startGame()` (dùng lại
+    `WallGenerator`/`PortalGenerator`, cùng vòng lặp retry 1000 lần), rồi
+    `new GameEngine(...)`.
+  - `resyncOnConnect(io, socket)` — được `SocketHandler.js` gọi ở mọi kết
+    nối, y hệt khối reconnect `existingRoom` cho phòng thường: nếu user có
+    trận tournament đang sống, tự join lại room + gửi `tmatch:init`.
+  - **Bug thật phát hiện lúc code (không phải review):** `PairingLifecycle.
+    markReady()` (Phase 3) tạo `TimerManager` với
+    `blackPlayerId: player1EntryId, whitePlayerId: player2EntryId` —
+    **entryId, không phải userId** — vì lúc đó chưa có `GameEngine` để biết
+    userId thật. Nếu `onTimeout` gọi thẳng `engine.handleTimeout(entryId)`
+    thì sai hoàn toàn (GameEngine so khớp theo `userId`). Sửa: `_handleTimeout`
+    dịch `entryId → userId` qua `match.userIdByEntry` (map dựng lúc
+    `startMatch`) trước khi gọi `engine.handleTimeout()`. Đồng thời màu
+    quân được gán khớp với quy ước của timer: `player1EntryId` luôn là
+    "black slot" nên `entry1` luôn nhận `color: 'BLACK'` (và ngược lại cho
+    Swap2, nơi `entry1`/`entry2` đóng vai `firstPlayerId`/`secondPlayerId`).
+  - `timer.onTimeout` **không** được gán lúc `TimerManager` khởi tạo (Phase
+    3's `markReady()` không biết `GameEngine` sẽ dựng lúc nào) — `startMatch`
+    gán trực tiếp `timer.onTimeout = fn` như một field thường (TimerManager
+    không có setter riêng, đây là cách `_tick()` đã set sẵn từ trước) ngay
+    sau khi lấy timer từ `tournamentState.tournamentTimerMap`.
+- `server/managers/tournament/TournamentManager.js` (sửa) — thêm
+  `serializePairing()` (chuyển `readyPlayers` Set → array cho socket.io),
+  event `pairing_ready` (phát khi `markPairingReady()` đạt `bothReady`) và
+  `pairing_changed` (phát ở **mọi** điểm pairing thay đổi — 8 wrapper action,
+  `_handlePairingDeadline`, `_createAndRegisterPairing`,
+  `_createReplayPairing` — qua helper `_emitPairingChanged()`).
+  - **Quyết định nhỏ mới:** `recordPairingResult(tournamentId, pairingId,
+    outcome)` giờ nhận `outcome` là entryId thắng **hoặc** chuỗi `'draw'`
+    (Phase 2's `standings.js` vốn đã hỗ trợ `winner: 'draw'` trong
+    `completedPairings`, nhưng Phase 3 chưa từng expose đường dẫn để gọi
+    nó — lỗ hổng lộ ra ngay khi wiring gameplay thật ở Phase 4, vì cờ
+    caro/gomoku có thể hoà khi đầy bàn). Double Elimination không có chỗ
+    cho 1 trận hoà (bracket cần người thắng dứt khoát) — hoà ở thể thức
+    này được xử lý như `DoubleNoShow`: void + tạo pairing replay mới, tái
+    dùng nguyên `_createReplayPairing()` đã test kỹ ở Phase 3 (quyết định
+    5) thay vì viết luồng riêng.
+- `server/socket/tournamentState.js` (sửa) — thêm
+  `tournamentGameMap: Map<pairingId, {engine, tournamentId, entryByUserId,
+  userIdByEntry}>`, dọn trong `shutdown()`.
+- `server/socket/SocketHandler.js` (sửa) — require 2 handler mới;
+  `TournamentHandler.init(io)` gọi 1 lần ở đầu `init()`; 2 handler
+  `.register(io, socket)` ở cuối khối "Wire domain handlers"; thêm
+  `TournamentMatchHandler.resyncOnConnect(io, socket)` ngay trước đó (cùng
+  chỗ với khối reconnect `existingRoom` của phòng thường).
+- 2 file test mới:
+  - `TournamentHandler.test.js` (47 case) — mock toàn bộ `TournamentManager`
+    (như `LobbyHandler.test.js` mock `RoomManager`), test tầng dịch
+    socket-event → manager-call: validate payload thiếu field, forward
+    đúng tham số + đúng thứ tự, propagate lỗi (kể cả `ORGANIZER_ONLY`/
+    `NOT_A_PARTICIPANT`) thành `tournament:error` mà **không** phát broadcast
+    nào, và test riêng phần wiring event của `init(io)`
+    (`tournament_started`/`tournament_completed`/`pairing_changed` →
+    đúng room, đúng payload, an toàn khi pairing/tournament đã biến mất).
+  - `TournamentMatchHandler.test.js` (12 case) — mock `TournamentManager`
+    + `findSocketsByUserId`, nhưng dùng **`GameEngine` thật** (không mock)
+    để test genuine: người ngoài cuộc bị chặn, đi sai lượt bị engine từ
+    chối, 5 quân thẳng hàng → `tmatch:ended` + `recordPairingResult` đúng
+    entryId thắng, resign → đối thủ thắng, bàn 4×4 lấp đầy (không thể có 5
+    liên tiếp trên bàn rộng 4 ô → hoà chắc chắn, xác định được) →
+    `outcome:'draw'`, timeout qua `timer.onTimeout` → đúng người thua cuộc,
+    và `resyncOnConnect` cho người chơi có trận sống vs. người ngoài cuộc.
+- `server/tests/SocketHandler.test.js` (sửa) — mock thêm 2 handler mới
+  (giống các handler khác đã mock sẵn trong file này), vì file này gọi
+  `init(io)` ~15 lần trong các test case khác nhau — không mock sẽ khiến
+  `TournamentManager` (singleton EventEmitter thật) tích luỹ listener thật
+  qua từng lần gọi, gây `MaxListenersExceededWarning` (phát hiện thật khi
+  chạy `npm test` lần đầu sau khi thêm `TournamentHandler.init()`).
+
+**Phạm vi cố tình bỏ qua ở Phase 4** (ghi rõ thay vì âm thầm bỏ sót — xem
+`TournamentMatchHandler.js`'s header comment):
+- Đề nghị hoà (`game:draw_offer/accept/decline`) và xin thêm giờ
+  (`game:request_time/...`) của `GameHandler.js` **không** được port sang
+  `tmatch:*` — trận vẫn kết thúc đúng khi thắng tự nhiên/hết bàn cờ/đầu
+  hàng/hết giờ (đủ cho quyết định 1 "chỉ thua ván"). Đây là tiện ích chơi
+  thường, không nằm trong 10 quyết định đã khoá, để lại làm việc sau nếu
+  cần.
+- Không lưu `games` table cho trận tournament (khác phòng thường) — bảng
+  đó gắn với `roomId` thật của 1 `Room`, còn trận tournament không có
+  `Room`. Lịch sử nước đi được lưu trực tiếp vào `tournament_pairings.moves`
+  (cột đã có sẵn từ Phase 1's schema nhưng chưa từng được set — `_endMatch`
+  giờ gán `pairing.moves = engine.moveHistory` trước khi gọi
+  `recordPairingResult()`).
+
+Phase 5 (client UI wiring vào `index.html`/`lobby.js`/`tournaments.js` thật)
+**chưa bắt đầu** — chờ người dùng xác nhận Phase 4 trước khi tiếp tục.
+
+---
