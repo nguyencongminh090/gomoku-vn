@@ -9,6 +9,8 @@
  *   - handlers/GameHandler.js       — game:*
  *   - handlers/ChatHandler.js       — chat:message
  *   - handlers/DisconnectHandler.js — disconnect grace period
+ *   - handlers/TournamentHandler.js      — tournament:* (create/register/pairing scheduling)
+ *   - handlers/TournamentMatchHandler.js — tmatch:* (a pairing's live GameEngine)
  *
  * No event names or payload structures are changed by this refactor.
  */
@@ -30,12 +32,19 @@ const RoomHandler       = require('./handlers/RoomHandler');
 const GameHandler       = require('./handlers/GameHandler');
 const ChatHandler       = require('./handlers/ChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
+const TournamentHandler      = require('./handlers/TournamentHandler');
+const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
 
 /**
  * Initialize the Socket.io event handler.
  * @param {import('socket.io').Server} io
  */
 function init(io) {
+  // One-time wiring of TournamentManager's events (tournament_started,
+  // tournament_completed, pairing_changed) to broadcasts — see
+  // TournamentHandler.js's header for why this is init(), not register().
+  TournamentHandler.init(io);
+
   // Listen for idle room destructions and clean up
   roomManager.on('room_destroyed', (roomId) => {
     io.to(roomId).emit('room:destroyed', { message: 'Phòng đã tự động đóng do quá lâu không có hoạt động.', code: 'ROOM_AUTO_CLOSED' });
@@ -180,11 +189,18 @@ function init(io) {
       }
     }
 
+    // Reconnect during a live tournament match — same reasoning as the
+    // existingRoom check above, for TournamentMatchHandler's disjoint
+    // room/session model.
+    TournamentMatchHandler.resyncOnConnect(io, socket);
+
     // ── Wire domain handlers ──────────────────────────────────────────────
     LobbyHandler.register(io, socket);
     RoomHandler.register(io, socket);
     GameHandler.register(io, socket);
     ChatHandler.register(io, socket);
+    TournamentHandler.register(io, socket);
+    TournamentMatchHandler.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {

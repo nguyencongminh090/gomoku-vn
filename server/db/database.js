@@ -364,6 +364,145 @@ function getGameStatsByResult(filters = {}) {
   return { win: row.win || 0, draw: row.draw || 0, total: row.total || 0 };
 }
 
+// ---------------------------------------------------------------------------
+// Tournament helpers (features/tournament/, TODO.md #48)
+//
+// Unlike rooms/games, tournament rows are written at every state transition,
+// not just on completion — see the header comment in schema.sql for why.
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert a new tournament (status 'draft').
+ * @param {{ id, name, format, organizerId, ruleSet, createdAt }} tournament
+ */
+function createTournament({ id, name, format, organizerId, ruleSet, createdAt }) {
+  const stmt = db.prepare(
+    `INSERT INTO tournaments (id, name, format, organizer_id, rule_set, status, created_at)
+     VALUES (?, ?, ?, ?, ?, 'draft', ?)`
+  );
+  return stmt.run(id, name, format, organizerId, JSON.stringify(ruleSet), createdAt);
+}
+
+/**
+ * Look up a tournament by ID. `rule_set` is parsed back into an object.
+ * @param {string} id
+ * @returns {object|undefined}
+ */
+function getTournamentById(id) {
+  const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+  if (row) row.rule_set = JSON.parse(row.rule_set);
+  return row;
+}
+
+/**
+ * Update a tournament's status, and started_at/completed_at when relevant.
+ * @param {string} id
+ * @param {'draft'|'active'|'completed'} status
+ * @param {{ startedAt?: string, completedAt?: string }} [timestamps]
+ */
+function updateTournamentStatus(id, status, timestamps = {}) {
+  if (status === 'active') {
+    db.prepare('UPDATE tournaments SET status = ?, started_at = ? WHERE id = ?')
+      .run(status, timestamps.startedAt, id);
+  } else if (status === 'completed') {
+    db.prepare('UPDATE tournaments SET status = ?, completed_at = ? WHERE id = ?')
+      .run(status, timestamps.completedAt, id);
+  } else {
+    db.prepare('UPDATE tournaments SET status = ? WHERE id = ?').run(status, id);
+  }
+}
+
+/**
+ * Insert a tournament player entry (guest-tolerant — playerId may be null).
+ * @param {{ entryId, tournamentId, playerId, displayName, registeredAt }} entry
+ */
+function saveTournamentPlayer({ entryId, tournamentId, playerId, displayName, registeredAt }) {
+  const stmt = db.prepare(
+    `INSERT INTO tournament_players (entry_id, tournament_id, player_id, display_name, registered_at)
+     VALUES (?, ?, ?, ?, ?)`
+  );
+  return stmt.run(entryId, tournamentId, playerId || null, displayName, registeredAt);
+}
+
+/**
+ * Remove a tournament player entry (unregister while still 'draft').
+ * @param {string} entryId
+ */
+function deleteTournamentPlayer(entryId) {
+  db.prepare('DELETE FROM tournament_players WHERE entry_id = ?').run(entryId);
+}
+
+/**
+ * List all player entries for a tournament.
+ * @param {string} tournamentId
+ * @returns {Array}
+ */
+function getTournamentPlayers(tournamentId) {
+  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ?').all(tournamentId);
+}
+
+/**
+ * Insert a tournament round (created once, at round-generation time).
+ * @param {{ id, tournamentId, roundIndex, bracketSide }} round
+ */
+function createTournamentRound({ id, tournamentId, roundIndex, bracketSide }) {
+  db.prepare(
+    `INSERT INTO tournament_rounds (id, tournament_id, round_index, bracket_side)
+     VALUES (?, ?, ?, ?)`
+  ).run(id, tournamentId, roundIndex, bracketSide || null);
+}
+
+/**
+ * Upsert a pairing row — called at creation and again on every lifecycle
+ * transition (unlike casual rooms, pairing history is persisted throughout,
+ * not just on completion; see schema.sql's header comment for why).
+ * @param {object} pairing — a PairingLifecycle pairing object
+ */
+function savePairing(pairing) {
+  db.prepare(`
+    INSERT INTO tournament_pairings
+      (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
+       agreed_time, deadline, paired_at, result, moves, started_at, ended_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      state = excluded.state,
+      agreed_time = excluded.agreed_time,
+      deadline = excluded.deadline,
+      result = excluded.result,
+      moves = excluded.moves,
+      started_at = excluded.started_at,
+      ended_at = excluded.ended_at
+  `).run(
+    pairing.pairingId,
+    pairing.roundId,
+    pairing.tournamentId,
+    pairing.player1EntryId,
+    pairing.player2EntryId,
+    pairing.state,
+    pairing.agreedTime,
+    pairing.deadline,
+    pairing.pairedAt,
+    pairing.result ? JSON.stringify(pairing.result) : null,
+    pairing.moves ? JSON.stringify(pairing.moves) : null,
+    pairing.startedAt,
+    pairing.endedAt
+  );
+}
+
+/**
+ * List all pairings for a tournament, most recently paired first.
+ * @param {string} tournamentId
+ * @returns {Array}
+ */
+function getPairingsByTournament(tournamentId) {
+  const rows = db.prepare('SELECT * FROM tournament_pairings WHERE tournament_id = ? ORDER BY paired_at DESC').all(tournamentId);
+  return rows.map((row) => {
+    if (row.result) row.result = JSON.parse(row.result);
+    if (row.moves) row.moves = JSON.parse(row.moves);
+    return row;
+  });
+}
+
 module.exports = {
   db,
   createUser,
@@ -377,4 +516,13 @@ module.exports = {
   getGameCount,
   getGameStatsByDate,
   getGameStatsByResult,
+  createTournament,
+  getTournamentById,
+  updateTournamentStatus,
+  saveTournamentPlayer,
+  deleteTournamentPlayer,
+  getTournamentPlayers,
+  createTournamentRound,
+  savePairing,
+  getPairingsByTournament,
 };
