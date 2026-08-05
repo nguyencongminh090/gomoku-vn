@@ -161,8 +161,42 @@ CRUD + đăng ký giải đấu, **chưa có** pairing/round generation (đó l�
   (organizer là khách thì phải cho phép null). Đã sửa thành nullable.
 - `npm test` (toàn bộ suite): **539/539 xanh**, không có regression.
 
-Phase 2-6 (format engines, state machine + deadline sweep, socket handler,
-client UI wiring) **chưa bắt đầu** — chờ người dùng xác nhận Phase 1 trước
-khi tiếp tục, đúng như lựa chọn "phase by phase, check in after each".
+### Phase 2 — ĐÃ XONG (cùng nhánh `feature/tournament-server`)
+
+3 thuật toán pairing/bracket + standings/tiebreak, **hàm thuần** (pure
+function), không I/O, không phụ thuộc `TournamentManager`'s Maps — tách
+biệt hoàn toàn để test độc lập.
+
+- `server/managers/tournament/pairing/swiss.js` — `generateNextRound(standings)`.
+  Score-group/fold pairing đơn giản hoá (không phải FIDE Dutch đầy đủ — cân
+  bằng màu quân không áp dụng ở đây vì màu đến từ luật Swap2 của
+  `GameEngine`, không phải từ pairing). Tránh đấu lại (rematch avoidance) +
+  bye tối đa 1 lần/người + score-group lẻ float xuống nhóm dưới.
+- `server/managers/tournament/pairing/roundRobin.js` — `generateAllRounds(players)`.
+  Circle method, sinh **toàn bộ lịch một lần** (khác Swiss/DE vì lịch RR
+  không phụ thuộc kết quả).
+- `server/managers/tournament/pairing/doubleElim.js` — `generateBracket(players)`
+  + `resolveBracket(bracket, results)` + `needsBracketReset(bracket, results)`.
+  Bracket là **slot-graph tĩnh** dựng sẵn toàn bộ (mọi trận mọi vòng, winners +
+  losers + grand final) bằng tham chiếu id (`{type:'winner'|'loser', matchId}`)
+  — chưa cần biết kết quả thật. `resolveBracket` mới đệ quy tra ra người chơi
+  thật từ 1 map kết quả. Seed theo thuật toán chuẩn (`computeSeedOrder`) giữ
+  seed1/seed2 tách nhau tới chung kết; field không phải luỹ thừa 2 được đệm
+  bằng seed ảo (phantom) — do seed ảo luôn rơi vào seed số cao nhất trong thứ
+  tự ghép, **bye tự động rơi vào top seed** (đúng ý đồ thiết kế).
+- `server/managers/tournament/standings.js` — `computeStandings`,
+  `computeTiebreaks` (Buchholz + Sonneborn-Berger, quyết định 9),
+  `rankStandings` (tie thật sự — giống hệt cả 3 chỉ số — giữ nguyên đồng
+  hạng, không tự ý phá tie).
+- 4 file test mới dưới `server/tests/pairing/` (46 test case): boundary
+  N=0/1/2 cho từng thuật toán, bye/rematch-avoidance cho Swiss, exhaustive
+  pairwise coverage cho Round robin, walkthrough đầy đủ 8 người cho Double
+  Elimination (xác nhận đúng vị trí rớt xuống losers bracket + bracket-reset
+  đúng điều kiện), Buchholz/SB đối chiếu tính tay.
+- `npm test` (toàn bộ suite): **585/585 xanh**, không regression.
+
+Phase 3-6 (state machine + deadline sweep, socket handler, client UI wiring)
+**chưa bắt đầu** — chờ người dùng xác nhận Phase 2 trước khi tiếp tục, đúng
+như lựa chọn "phase by phase, check in after each".
 
 ---
