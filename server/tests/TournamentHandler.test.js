@@ -394,16 +394,17 @@ describe('TournamentHandler — init(io) event wiring', () => {
     });
   });
 
-  test('pairing_changed broadcasts the serialized pairing to the tournament room', () => {
+  test('pairing_changed broadcasts the serialized pairing to the tournament room, batched via a pairings_patch', () => {
     mockTournamentManager.getPairing.mockReturnValue({ pairingId: 'p1', state: 'Ready' });
     const io = makeIo();
     TournamentHandler.init(io);
 
     _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p1' });
+    jest.runAllTimers();
 
     expect(io._toEmitted['tournament:t1']).toContainEqual({
-      event: 'tournament:pairing_updated',
-      data: { pairingId: 'p1', state: 'Ready' },
+      event: 'tournament:pairings_patch',
+      data: { tournamentId: 't1', pairings: [{ pairingId: 'p1', state: 'Ready' }] },
     });
   });
 
@@ -412,8 +413,59 @@ describe('TournamentHandler — init(io) event wiring', () => {
     const io = makeIo();
     TournamentHandler.init(io);
 
-    expect(() => _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'ghost' })).not.toThrow();
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'ghost' });
+    expect(() => jest.runAllTimers()).not.toThrow();
     expect(io._toEmitted['tournament:t1']).toBeUndefined();
+  });
+
+  test('several pairing_changed events for the same tournament in one synchronous burst coalesce into a single pairings_patch', () => {
+    mockTournamentManager.getPairing.mockImplementation((pairingId) => ({ pairingId, state: 'Reported' }));
+    const io = makeIo();
+    TournamentHandler.init(io);
+
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p1' });
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p2' });
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p3' });
+    jest.runAllTimers();
+
+    const patches = io._toEmitted['tournament:t1'].filter((e) => e.event === 'tournament:pairings_patch');
+    expect(patches).toHaveLength(1);
+    expect(patches[0].data.pairings.map((p) => p.pairingId).sort()).toEqual(['p1', 'p2', 'p3']);
+  });
+
+  test('a second pairing_changed for the same pairingId within one burst is deduplicated to its latest state', () => {
+    const states = { p1: 'Reported' };
+    mockTournamentManager.getPairing.mockImplementation((pairingId) => ({ pairingId, state: states[pairingId] }));
+    const io = makeIo();
+    TournamentHandler.init(io);
+
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p1' });
+    states.p1 = 'Ready';
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p1' });
+    jest.runAllTimers();
+
+    const patches = io._toEmitted['tournament:t1'].filter((e) => e.event === 'tournament:pairings_patch');
+    expect(patches).toHaveLength(1);
+    expect(patches[0].data.pairings).toEqual([{ pairingId: 'p1', state: 'Ready' }]);
+  });
+
+  test('pairing_changed bursts for different tournaments do not merge into one patch', () => {
+    mockTournamentManager.getPairing.mockImplementation((pairingId) => ({ pairingId, state: 'Reported' }));
+    const io = makeIo();
+    TournamentHandler.init(io);
+
+    _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'p1' });
+    _handlers['pairing_changed']({ tournamentId: 't2', pairingId: 'p2' });
+    jest.runAllTimers();
+
+    expect(io._toEmitted['tournament:t1']).toContainEqual({
+      event: 'tournament:pairings_patch',
+      data: { tournamentId: 't1', pairings: [{ pairingId: 'p1', state: 'Reported' }] },
+    });
+    expect(io._toEmitted['tournament:t2']).toContainEqual({
+      event: 'tournament:pairings_patch',
+      data: { tournamentId: 't2', pairings: [{ pairingId: 'p2', state: 'Reported' }] },
+    });
   });
 
   // Regression test: this exact wiring was missing end-to-end until a real

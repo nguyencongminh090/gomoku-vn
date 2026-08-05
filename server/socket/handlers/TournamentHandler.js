@@ -99,6 +99,45 @@ function broadcastTournamentDetail(io, tournament) {
 }
 
 // ---------------------------------------------------------------------------
+// Pairing-changed batching — 'pairing_changed' can fire several times back to
+// back in the SAME synchronous pass (round-advance creating a whole new
+// round's pairings, a deadline-sweep tick resolving several overdue pairings,
+// Double Elimination bracket auto-sync cascading bye→bye), each for a
+// different pairingId. Emitting one 'tournament:pairing_updated' per pairing
+// meant N socket messages AND N full page re-renders on the client
+// (tournament-detail.js calls renderAll() on every message) for what is, from
+// a viewer's perspective, one state change. setImmediate (not a timed
+// debounce) coalesces only pairings changed within the current synchronous
+// burst — a single isolated user action (report/confirm/dispute/...) still
+// flushes on the very next tick, so this adds no perceptible latency.
+// ---------------------------------------------------------------------------
+
+const _pairingPatchQueues = new Map(); // tournamentId -> Map<pairingId, serializedPairing>
+const _pairingPatchTimers = new Map(); // tournamentId -> Immediate
+
+function _queuePairingChanged(io, tournamentId, pairing) {
+  let queue = _pairingPatchQueues.get(tournamentId);
+  if (!queue) {
+    queue = new Map();
+    _pairingPatchQueues.set(tournamentId, queue);
+  }
+  queue.set(pairing.pairingId, pairing);
+
+  if (_pairingPatchTimers.has(tournamentId)) return;
+  const immediate = setImmediate(() => {
+    _pairingPatchTimers.delete(tournamentId);
+    const pending = _pairingPatchQueues.get(tournamentId);
+    _pairingPatchQueues.delete(tournamentId);
+    if (!pending || pending.size === 0) return;
+    io.to(tournamentRoom(tournamentId)).emit('tournament:pairings_patch', {
+      tournamentId,
+      pairings: Array.from(pending.values()),
+    });
+  });
+  _pairingPatchTimers.set(tournamentId, immediate);
+}
+
+// ---------------------------------------------------------------------------
 // init — one-time wiring of TournamentManager's events to broadcasts
 // ---------------------------------------------------------------------------
 
@@ -126,7 +165,7 @@ function init(io) {
   tournamentManager.on('pairing_changed', ({ tournamentId, pairingId }) => {
     const pairing = tournamentManager.getPairing(pairingId);
     if (!pairing) return;
-    io.to(tournamentRoom(tournamentId)).emit('tournament:pairing_updated', tournamentManager.serializePairing(pairing));
+    _queuePairingChanged(io, tournamentId, tournamentManager.serializePairing(pairing));
   });
 
   // Both players just checked in (Ready -> InProgress, TournamentManager.

@@ -519,7 +519,7 @@ class TournamentManager extends EventEmitter {
    * player/organizer-initiated actions AND automatic ones (deadline sweep,
    * bracket auto-sync) that have no socket call site of their own to
    * broadcast from. TournamentHandler.js is the sole listener that turns
-   * this into a `tournament:pairing_updated` room broadcast, so every
+   * this into a (batched) `tournament:pairings_patch` room broadcast, so every
    * mutation path funnels through here instead of each call site knowing
    * about io.
    */

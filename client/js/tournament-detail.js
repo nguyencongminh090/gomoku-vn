@@ -12,7 +12,7 @@
  * list already received (mirrors server/managers/tournament/standings.js's
  * pure functions) rather than adding a new socket round-trip — the server
  * never exposes a "get standings" event, but every pairing's result is
- * already in the `tournament:detail`/`tournament:pairing_updated` payloads,
+ * already in the `tournament:detail`/`tournament:pairings_patch` payloads,
  * which is all that pure computation needs.
  *
  * Manual test checklist:
@@ -21,7 +21,7 @@
  *   [ ] report/confirm/dispute/reschedule all emit the right event+payload
  *   [ ] organizer-only actions only render for the organizer, and only in
  *       the pairing states PairingLifecycle actually allows them in
- *   [ ] tournament:pairing_updated / tournament:updated live-update the page
+ *   [ ] tournament:pairings_patch / tournament:updated live-update the page
  *   [ ] "Vào trận" navigates to tournament-match.html with the right ids
  */
 
@@ -102,9 +102,9 @@ client.on('tournament:updated', (data) => {
   renderAll();
 });
 
-client.on('tournament:pairing_updated', (pairing) => {
-  if (!tournament || pairing.tournamentId !== tournamentId) return;
-  pairingsById.set(pairing.pairingId, pairing);
+client.on('tournament:pairings_patch', (data) => {
+  if (!tournament || data.tournamentId !== tournamentId) return;
+  for (const pairing of data.pairings) pairingsById.set(pairing.pairingId, pairing);
   renderAll();
 });
 
