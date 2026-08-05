@@ -1,49 +1,49 @@
 # Tournament — Planning
 
-Status: **discussion stage**. Nothing in this feature has been implemented or scheduled into
-`TODO.md`/`instruction.md` yet. This file tracks the open questions that block moving from spec to
-implementation planning, plus the sequencing once they're answered.
+Status: **decisions locked (2026-08-05)**. All 10 open questions below have been answered by the
+user. `TODO.md`/`instruction.md` B48 already tracks this feature. Next step is implementation
+planning/build-out — see [Sequencing](#sequencing-sonuk-implementation).
 
-## Open questions (must resolve before implementation planning)
+## Resolved decisions (2026-08-05)
 
-1. **Punishment definition** — What does "punishment" mean for a no-show beyond losing the round
-   (point deduction, tournament elimination, suspension from future tournaments)? Severity/duration
-   undefined.
-2. **"Overtime (by date)" meaning** — Is the deadline per-round (shared cutoff for all pairs in a
-   round), per-match (own window from when paired), or per-tournament (one global end date)?
-3. **"Release user change date" meaning** — Does the organizer unilaterally reschedule a pair's
-   match time, or approve/deny a player-initiated change request? Current spec assumes the latter
-   (approval flow) — needs confirmation.
-4. **Rule scope per format** — Do all three formats (Swiss, Round robin, Double Elimination) share
-   one rule schema, or does each need its own (e.g. Double Elimination's upper/lower bracket rules
-   don't apply to Round robin)?
-5. **Double no-show handling** — If neither player shows by the deadline: double walkover (double
-   loss), void/replay, or organizer decides case-by-case? See `DoubleNoShow` state in
-   [diagram/state-diagram-match-lifecycle.md](diagram/state-diagram-match-lifecycle.md).
-6. **Concurrency** — How many tournaments can run simultaneously? Can a player be in multiple
-   tournaments (or multiple active matches) at once?
-7. **Time control relationship to existing `TimerManager`** — Reuse the existing casual-game timer,
-   or does the self-scheduled/server-verified flow need its own timer semantics?
-8. **Site placement** — Where does the Tournament section live in the existing site (top-level nav,
-   lobby sub-section, separate page)? Not decided.
-9. **Tiebreaks** — What tiebreak rule(s) apply for tied standings (Round robin/Swiss especially)?
-10. **Bracket/pairing algorithm** — Does the organizer configure/approve each round's pairings, or
-    is pairing fully automatic per the chosen format's standard algorithm?
+1. **Punishment** — Round loss only. No point deduction, no elimination, no suspension beyond
+   losing that round's walkover.
+2. **"Overtime (by date)" scope** — Per-match window: each pair's deadline is counted from when
+   they were paired (own window), not a shared per-round or per-tournament cutoff.
+3. **Reschedule control** — Organizer approves/denies a player-initiated change request. Organizer
+   cannot unilaterally override a pair's agreed time without a request.
+4. **Rule schema scope** — One shared `RuleSet` schema applies across all three formats (Swiss,
+   Round robin, Double Elimination). No per-format rule schema.
+5. **Double no-show** — Void/replay. If neither player shows by the deadline, the match is voided
+   and rescheduled/replayed — not scored as a double walkover.
+6. **Concurrency** — Unrestricted. No cap on concurrent tournaments or a player's simultaneous
+   active tournaments/matches for the initial version.
+7. **Timer relationship** — Reuse the existing `TimerManager` once a match actually starts (both
+   players ready). The self-scheduled/server-verified deadline flow (pairing → negotiate → report →
+   ready) is separate tournament-scheduling logic, not part of `TimerManager`.
+8. **Site placement** — Single Lobby page, tab switcher ("Bàn chơi" / "Giải đấu"), not a separate
+   `/tournaments` route. (Decided earlier, during the blueprint discussion — see
+   [user_story.md](user_story.md).)
+9. **Tiebreaks** — Buchholz/Sonneborn-Berger (opponent-strength-weighted), applied uniformly since
+   rule schema is shared across formats (decision 4).
+10. **Pairing algorithm** — Fully automatic per the chosen format's standard algorithm (Swiss
+    pairing, round-robin schedule, bracket seeding). No organizer approval step per round.
 
-## Sequencing (once open questions are resolved)
+## Sequencing — implementation
 
-1. Resolve open questions above with the user.
-2. Formalize this feature into the repo's tracked-work convention: add
-   `docs/todo/<CODE>-tournament.md` (+ `TODO.md` index line) and
-   `docs/instruction/<CODE>-tournament.md` (+ `instruction.md` index line), per
-   `CLAUDE.md`'s "New requirements/tasks: stack, don't perform directly" rule.
-3. Data model / schema design (deferred — see the conceptual class diagram in
-   [diagram/state-diagram-match-lifecycle.md](diagram/state-diagram-match-lifecycle.md), not final).
-4. Server-side design: new tournament session/state handling, kept separate from
+1. ~~Resolve open questions above with the user.~~ ✅ Done 2026-08-05.
+2. ~~Formalize this feature into the repo's tracked-work convention.~~ ✅ Done — `TODO.md` #48 /
+   `instruction.md` B48.
+3. Data model / schema design — turn the conceptual class diagram in
+   [diagram/state-diagram-match-lifecycle.md](diagram/state-diagram-match-lifecycle.md) into real
+   `server/db/schema.sql` tables, informed by decisions 1-10 above.
+4. Server-side design: new `TournamentManager` + tournament socket handler, kept separate from
    `GameHandler`/`RoomHandler` per the architectural constraint in
-   [user_story.md](user_story.md#architectural-constraint).
-5. Implementation on a `feature/tournament` branch off `dev`, per `CLAUDE.md`'s feature-branch
-   workflow.
+   [user_story.md](user_story.md#architectural-constraint); reuses `TimerManager` per decision 7.
+5. Wire the already-approved UI (`client/tables-tournaments-mockup.html`) into
+   `client/index.html`/`client/js/lobby.js`.
+6. Implementation continues on `feature/tables-tournaments-mockup` (or a new `feature/tournament-*`
+   branch off `dev` if split further), per `CLAUDE.md`'s feature-branch workflow.
 
 ## Related files
 
