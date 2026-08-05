@@ -373,13 +373,26 @@ describe('TournamentManager — listTournaments / serialization', () => {
     expect(summary.status).toBe('draft');
   });
 
-  test('serializeTournament includes ruleSet and full entry list', () => {
-    const tournament = tournamentManager.createTournament(user(), { format: 'swiss' }).tournament;
+  test('listTournaments includes organizerName and entryUserIds — the client-side lobby has no other way to show "you organize this"/"you\'re registered" without one round-trip per card', () => {
+    const organizer = user({ displayName: 'GrimLark' });
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const player = user({ displayName: 'SlimFish' });
+    tournamentManager.registerPlayer(player, tournament.tournamentId);
+
+    const summary = tournamentManager.listTournaments().find(t => t.tournamentId === tournament.tournamentId);
+    expect(summary.organizerName).toBe('GrimLark');
+    expect(summary.entryUserIds).toEqual([player.userId]);
+  });
+
+  test('serializeTournament includes ruleSet, organizerName, and full entry list', () => {
+    const organizer = user({ displayName: 'GrimLark' });
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
     const player = user();
     tournamentManager.registerPlayer(player, tournament.tournamentId);
 
     const payload = tournamentManager.serializeTournament(tournament);
     expect(payload.ruleSet).toBeDefined();
+    expect(payload.organizerName).toBe('GrimLark');
     expect(payload.entries).toHaveLength(1);
     expect(payload.entries[0].userId).toBe(player.userId);
   });

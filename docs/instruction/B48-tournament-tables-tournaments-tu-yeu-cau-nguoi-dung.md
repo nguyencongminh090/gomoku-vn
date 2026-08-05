@@ -408,3 +408,83 @@ Phase 5 (client UI wiring vào `index.html`/`lobby.js`/`tournaments.js` thật)
 **chưa bắt đầu** — chờ người dùng xác nhận Phase 4 trước khi tiếp tục.
 
 ---
+
+## Phase 5 — Client UI wiring (tab switcher + tournament list + create/register) — ĐÃ XONG (2026-08-05)
+
+Branch `feature/tournament-client` (off `dev`, sau khi `feature/tournament-server` và
+`feature/tables-tournaments-mockup` đã merge vào `dev`). `npm test`: **714/714 xanh**.
+Xác minh thật bằng Playwright (guest login → tạo giải đấu → giải đấu thứ 2 đăng ký/huỷ
+đăng ký, 2 browser context riêng biệt) — 0 lỗi console/page, mọi bước phản ánh đúng
+trên UI theo thời gian thực qua `tournament:list_patch`.
+
+**Phạm vi (khớp đúng những gì mockup đã duyệt — không thêm UI chưa được thiết kế):**
+tab switcher Bàn chơi/Giải đấu, danh sách thẻ giải đấu (từ `tournament:list`/
+`tournament:list_patch`), bộ lọc trạng thái + thể thức (lọc phía client trên dữ liệu đã
+có, không gọi server), modal Tạo giải đấu (→ `tournament:create`), nút Đăng ký/Huỷ đăng
+ký (→ `tournament:register`/`unregister`), nút Bắt đầu cho organizer khi `playerCount >= 2`
+và `status === 'draft'` (→ `tournament:start`).
+
+**Cố tình để ngoài phạm vi Phase 5** (ghi rõ trong header comment của
+`tournaments.js`, không phải bỏ sót): trang chi tiết giải đấu/bracket/bảng xếp hạng, UI
+lịch trình cặp đấu (báo giờ/xác nhận/tranh chấp/check-in — `tournament:report_time` v.v.,
+đã có ở Phase 4 nhưng chưa có UI), và bàn cờ chơi thật cho `tmatch:*`. Không cái nào trong
+số này từng được mock — xây bây giờ là tự thiết kế UI chưa qua duyệt, vi phạm quy trình
+"mockup trước, code sau" mà người dùng đã thiết lập. Đây là việc **Phase 6** trong tương
+lai, cần mockup riêng trước khi triển khai.
+
+**Lỗ hổng dữ liệu phát hiện khi wiring (không phải bug — API Phase 1-4 đơn giản là chưa
+cần các field này cho tới khi có UI thật):**
+- `TournamentManager.listTournaments()` trước đây chỉ trả `{tournamentId, name, format,
+  organizerId, playerCount, status}` — không đủ để client tự tính "bạn đã đăng ký"/"bạn
+  là người tổ chức" cho mỗi thẻ mà không gọi `tournament:get` cho từng giải đấu một. Thêm
+  `entryUserIds: string[]` (danh sách userId đã đăng ký) vào cả `listTournaments()` lẫn
+  `serializeTournament()`.
+- Tournament object không lưu `organizerName` (chỉ có `organizerId`) — không hiện được
+  "Tổ chức bởi X" như mockup. Thêm `organizerName` (lưu tại `createTournament()`, giống
+  cách `RoomManager` lưu `hostName` cạnh `hostId`) — **chỉ lưu trong bộ nhớ, không có cột
+  DB mới**, vì tính năng này chưa có đường khôi phục từ DB sau khi restart server (giống
+  hệt giới hạn đã có từ Phase 1).
+- Cả 2 field được thêm test mới trong `TournamentManager.test.js` (assert trực tiếp trên
+  field, không phải `toEqual` nguyên object, nên không phá test cũ nào).
+
+**Các file mới:**
+- `client/js/tournaments.js` — controller cho tab Giải đấu: tab switching, subscribe
+  `tournament:subscribe` (không cần đợi user bấm tab — cùng kiểu với `lobby.js`'s
+  `lobby:subscribe` không điều kiện), render danh sách/thẻ, modal tạo giải đấu (đọc form
+  y hệt cấu trúc `lobby.js`'s `readFormSettings()`, kể cả 2 interlock Swap2⇄wall/portal và
+  Blitz⇄increment), đăng ký/huỷ đăng ký/bắt đầu. **Reuse đúng 1 kết nối socket.io** — import
+  `client` từ `lobby.js` (xem export mới bên dưới) thay vì tự tạo `SocketClient` thứ 2 (sẽ
+  tự đá chính mình ra do luật "1 phiên/tài khoản" phía server).
+
+**Các file sửa:**
+- `client/js/lobby.js` — `const client = new SocketClient()` → `export const client = ...`.
+- `client/js/index-entry.js` — thêm `import './tournaments.js?v=58';` sau `lobby.js`.
+- `client/index.html` — thêm `.section-tabs` (Bàn chơi/Giải đấu) phía trên
+  `.lobby__header` cũ; bọc toàn bộ khối `#room-list` cũ (giữ nguyên mọi id) vào
+  `#panel-tables`; thêm `#panel-tournaments` (header + filter-row + `#tournament-list`)
+  và modal `#modal-create-tournament` (bản rút gọn của modal tạo phòng — không có toggle
+  lite/pro vì tạo giải đấu vốn là hành động của organizer/power-user, không cần giản lược
+  như modal phòng thường dành cho người mới).
+- `client/css/lobby.css` — chuyển nguyên khối CSS mockup-only (`.section-tabs`,
+  `.tab-panel`, `.filter-row`, `.tournament-grid`, `.tournament-card`, `.badge--*`) từ
+  `client/tables-tournaments-mockup.html`'s inline `<style>` vào file dùng chung (bỏ
+  `.mock-banner`, thêm `.tournament-card__actions` mới cho nút Đăng ký/Bắt đầu).
+- `client/js/i18n.js` — khối `tabs.*`/`tournaments.*` (vi+en) và 7 khoá `err.*` cho các mã
+  lỗi tournament thực sự có thể xảy ra ở tầng lobby Phase 5 chạm tới (`INVALID_FORMAT`,
+  `MISSING_TOURNAMENT_ID`, `TOURNAMENT_NOT_FOUND`, `TOURNAMENT_ALREADY_STARTED`,
+  `ALREADY_REGISTERED`, `NOT_REGISTERED`, `ORGANIZER_ONLY`) — các mã lỗi thuộc luồng lịch
+  trình cặp đấu (`NOT_A_PARTICIPANT`, `INVALID_STATE`, ...) chưa cần vì chưa có UI gọi tới.
+- `server/managers/tournament/TournamentManager.js` — `organizerName`/`entryUserIds` như
+  mô tả ở trên.
+- Bump cache-bust `?v=57` → `?v=58` **ở mọi nơi** (tất cả `client/*.html`, mọi
+  `import` trong `client/js/*-entry.js`, kể cả `tables-tournaments-mockup.html` dù không
+  sửa nội dung file đó) theo đúng quy tắc `CLAUDE.md`.
+
+**Xác minh:** `npm test` (714/714), cộng với Playwright thật (theo đúng quy trình an toàn
+DB của `CLAUDE.md`: dừng server thật của người dùng → dời `gomoku.db` thật sang
+`.pre-e2e` → khởi động server mới với DB rỗng từ schema → chạy Playwright trên
+`localhost:3000` → dừng server → xoá DB thử nghiệm → khôi phục `gomoku.db` thật, xác minh
+bằng `md5sum` khớp checksum trước khi dời → khởi động lại server người dùng y hệt cách cũ,
+`npm run dev:stable`).
+
+---

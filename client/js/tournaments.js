@@ -1,0 +1,328 @@
+'use strict';
+
+/**
+ * tournaments.js — "Giải đấu" (Tournaments) tab controller.
+ *
+ * Responsibilities:
+ *   - Section tab switching (Bàn chơi / Giải đấu), reusing lobby.js's markup
+ *   - Render the live tournament list (tournament:list / tournament:list_patch)
+ *   - Create-tournament modal → tournament:create
+ *   - Register / Unregister → tournament:register / tournament:unregister
+ *   - Organizer "Start" button → tournament:start
+ *
+ * Reuses the SAME SocketClient instance as lobby.js (imported, not a second
+ * connection — see lobby.js's `client` export comment).
+ *
+ * Scope decision (Phase 5, TODO.md #48 / instruction.md B48): this wires up
+ * exactly what the approved mockup (client/tables-tournaments-mockup.html)
+ * shows — the lobby-level tab + card list + create/register flow. It does
+ * NOT include a tournament detail/bracket/standings page, or the pairing-
+ * scheduling UI (report/confirm/dispute match time, ready check-in) or a
+ * match-play board for `tmatch:*` events — none of that was ever mocked, so
+ * building it now would be un-reviewed UI design, not "wiring the mockup
+ * in". That's tracked as follow-up work rather than half-built here.
+ *
+ * Manual test checklist:
+ *   [ ] Tab switch shows/hides the right panel, updates aria-selected
+ *   [ ] Tournament list renders from tournament:list, updates on tournament:list_patch
+ *   [ ] Status/format filters narrow the visible cards
+ *   [ ] Create-tournament modal opens/closes; tournament:create emits the right payload
+ *   [ ] Register/Unregister buttons emit the right events and reflect entryUserIds
+ *   [ ] Organizer sees a Start button once playerCount >= 2, while status is draft
+ *   [ ] tournament:error shows an alert
+ */
+
+import { client } from './lobby.js?v=58';
+
+// ---------------------------------------------------------------------------
+// Element refs
+// ---------------------------------------------------------------------------
+const tabTables        = document.getElementById('tab-tables');
+const tabTournaments    = document.getElementById('tab-tournaments');
+const panelTables       = document.getElementById('panel-tables');
+const panelTournaments  = document.getElementById('panel-tournaments');
+const tournamentCountEl = document.getElementById('tournament-count');
+const tournamentListEl  = document.getElementById('tournament-list');
+const btnCreateTournament = document.getElementById('btn-create-tournament');
+const modalOverlay  = document.getElementById('modal-create-tournament');
+const modalClose    = document.getElementById('modal-tournament-close');
+const modalCancel   = document.getElementById('modal-tournament-cancel');
+const modalConfirm  = document.getElementById('modal-tournament-confirm');
+const formatFilterSelect = document.getElementById('tournament-format-filter');
+
+const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);
+
+const currentUser = client.getUserInfo();
+
+let tournamentMap = new Map(); // tournamentId → summary (see TournamentManager.listTournaments)
+let activeStatusFilter = 'all'; // 'all' | 'draft' | 'active' | 'completed'
+let activeFormatFilter = '';    // '' | 'swiss' | 'round_robin' | 'double_elim'
+
+// ---------------------------------------------------------------------------
+// Tab switching
+// ---------------------------------------------------------------------------
+
+function activateTab(name) {
+  const isTables = name === 'tables';
+  tabTables.classList.toggle('is-active', isTables);
+  tabTables.setAttribute('aria-selected', String(isTables));
+  tabTournaments.classList.toggle('is-active', !isTables);
+  tabTournaments.setAttribute('aria-selected', String(!isTables));
+  panelTables.classList.toggle('is-active', isTables);
+  panelTournaments.classList.toggle('is-active', !isTables);
+}
+
+tabTables.addEventListener('click', () => activateTab('tables'));
+tabTournaments.addEventListener('click', () => activateTab('tournaments'));
+
+// ---------------------------------------------------------------------------
+// Subscribe to the tournament list (unconditionally on load, same as
+// lobby.js's own lobby:subscribe — the list is a lightweight summary array,
+// not worth gating behind first tab click).
+// ---------------------------------------------------------------------------
+client.emit('tournament:subscribe');
+
+client.on('tournament:list', (data) => {
+  tournamentMap = new Map((data.tournaments || []).map((t) => [t.tournamentId, t]));
+  renderTournamentList();
+});
+
+client.on('tournament:list_patch', (data) => {
+  for (const tournamentId of data.removed || []) tournamentMap.delete(tournamentId);
+  for (const t of data.upserts || []) tournamentMap.set(t.tournamentId, t);
+  renderTournamentList();
+});
+
+client.on('tournament:error', (data) => {
+  alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
+});
+
+// ---------------------------------------------------------------------------
+// Filters
+// ---------------------------------------------------------------------------
+
+document.querySelectorAll('#panel-tournaments .filter-pill').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#panel-tournaments .filter-pill').forEach((b) => b.classList.remove('is-active'));
+    btn.classList.add('is-active');
+    activeStatusFilter = btn.dataset.filter;
+    renderTournamentList();
+  });
+});
+
+if (formatFilterSelect) {
+  formatFilterSelect.addEventListener('change', () => {
+    activeFormatFilter = formatFilterSelect.value;
+    renderTournamentList();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+function formatLabel(format) {
+  if (format === 'swiss') return t('tournaments.format_swiss');
+  if (format === 'round_robin') return t('tournaments.format_round_robin');
+  if (format === 'double_elim') return t('tournaments.format_double_elim_short');
+  return format;
+}
+
+function statusBadge(status) {
+  if (status === 'active') return { cls: 'badge--live', label: t('tournaments.filter_active') };
+  if (status === 'completed') return { cls: 'badge--done', label: t('tournaments.filter_done') };
+  return { cls: 'badge--upcoming', label: t('tournaments.filter_upcoming') };
+}
+
+function renderTournamentList() {
+  let tournaments = Array.from(tournamentMap.values());
+  if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
+  if (activeFormatFilter) tournaments = tournaments.filter((t) => t.format === activeFormatFilter);
+
+  const liveCount = Array.from(tournamentMap.values()).filter((t) => t.status === 'active').length;
+  // .lobby__count (shared with #room-count) always renders a visible pill
+  // background — an empty string still shows as a small blank badge, so the
+  // element itself has to be hidden, not just emptied.
+  tournamentCountEl.style.display = liveCount > 0 ? '' : 'none';
+  tournamentCountEl.textContent = liveCount > 0 ? t('tournaments.count_live', { n: liveCount }) : '';
+
+  if (tournaments.length === 0) {
+    tournamentListEl.innerHTML = `
+      <div class="empty-tournaments">
+        <span class="room-list__empty-text">${t('tournaments.no_tournaments')}</span>
+        <span class="room-list__empty-sub">${t('tournaments.no_tournaments_sub')}</span>
+      </div>
+    `;
+    return;
+  }
+
+  let html = '';
+  let i = 0;
+  for (const tournament of tournaments) {
+    html += renderCard(tournament, i);
+    i++;
+  }
+  tournamentListEl.innerHTML = html;
+
+  tournamentListEl.querySelectorAll('[data-action="register"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      client.emit('tournament:register', { tournamentId: btn.dataset.tournamentId });
+    });
+  });
+  tournamentListEl.querySelectorAll('[data-action="unregister"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      client.emit('tournament:unregister', { tournamentId: btn.dataset.tournamentId });
+    });
+  });
+  tournamentListEl.querySelectorAll('[data-action="start"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      client.emit('tournament:start', { tournamentId: btn.dataset.tournamentId });
+    });
+  });
+}
+
+function renderCard(tournament, index) {
+  const isOrganizer = !!currentUser && tournament.organizerId === currentUser.userId;
+  const isRegistered = !!currentUser && (tournament.entryUserIds || []).includes(currentUser.userId);
+  const badge = statusBadge(tournament.status);
+  const animDelay = (index * 0.05).toFixed(2);
+
+  let statusLine;
+  if (isOrganizer) {
+    statusLine = `<div class="tournament-card__status tournament-card__status--registered"><i class="ph ph-crown-simple"></i>${t('tournaments.status_organizer')}</div>`;
+  } else if (isRegistered) {
+    statusLine = `<div class="tournament-card__status tournament-card__status--registered"><i class="ph ph-check-circle"></i>${t('tournaments.status_registered')}</div>`;
+  } else if (tournament.status === 'draft') {
+    statusLine = `<div class="tournament-card__status tournament-card__status--waiting"><i class="ph ph-user-plus"></i>${t('tournaments.status_open')}</div>`;
+  } else {
+    statusLine = '';
+  }
+
+  let actions = '';
+  if (tournament.status === 'draft') {
+    if (isOrganizer) {
+      if (tournament.playerCount >= 2) {
+        actions = `<div class="tournament-card__actions"><button class="btn btn-confirm" type="button" data-action="start" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_start')}</button></div>`;
+      }
+    } else if (isRegistered) {
+      actions = `<div class="tournament-card__actions"><button class="btn-secondary" type="button" data-action="unregister" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_unregister')}</button></div>`;
+    } else {
+      actions = `<div class="tournament-card__actions"><button class="btn btn-confirm" type="button" data-action="register" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_register')}</button></div>`;
+    }
+  }
+
+  return `
+    <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}">
+      <div class="tournament-card__top">
+        <span class="tournament-card__name">${escapeHtml(tournament.name)}</span>
+        <span class="badge badge--format">${formatLabel(tournament.format)}</span>
+      </div>
+      <span class="badge ${badge.cls}" style="width:fit-content;">${badge.label}</span>
+      <div class="tournament-card__meta"><i class="ph ph-users-three"></i>${tournament.playerCount} ${t('tournaments.players_suffix')}</div>
+      <div class="tournament-card__meta"><i class="ph ph-user-circle"></i>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</div>
+      ${statusLine}
+      ${actions}
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+window.addEventListener('langchange', renderTournamentList);
+
+// ---------------------------------------------------------------------------
+// Create Tournament Modal
+// ---------------------------------------------------------------------------
+
+function openCreateModal() {
+  modalOverlay.classList.add('visible');
+}
+function closeCreateModal() {
+  modalOverlay.classList.remove('visible');
+}
+
+btnCreateTournament.addEventListener('click', openCreateModal);
+modalClose.addEventListener('click', closeCreateModal);
+modalCancel.addEventListener('click', closeCreateModal);
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) closeCreateModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && modalOverlay.classList.contains('visible')) closeCreateModal();
+});
+
+function readTournamentFormat() {
+  return document.querySelector('input[name="tFormat"]:checked').value;
+}
+
+function readTournamentRuleSet() {
+  const boardSize = parseInt(document.querySelector('input[name="tBoardSize"]:checked').value, 10);
+  const timerMode = document.querySelector('input[name="tTimerMode"]:checked').value;
+  const timerSeconds = parseInt(document.getElementById('t-timer-seconds').value, 10) || 60;
+  const timerIncrementSeconds = timerMode === 'blitz'
+    ? (parseInt(document.getElementById('t-timer-increment').value, 10) || 0)
+    : 0;
+  const winningRule = (document.querySelector('input[name="tWinRule"]:checked') || {}).value || 'freestyle';
+  const ruleSwap2   = (document.querySelector('input[name="tOpenRule"]:checked') || {}).value === 'swap2';
+  let   ruleWall    = document.getElementById('t-rule-wall').checked;
+  let   rulePortal  = document.getElementById('t-rule-portal').checked;
+  if (ruleSwap2) { ruleWall = false; rulePortal = false; }
+  const hours = parseInt(document.getElementById('t-scheduling-hours').value, 10) || 48;
+  return {
+    boardSize, winningRule, ruleWall, rulePortal, ruleSwap2,
+    timerMode, timerSeconds, timerIncrementSeconds,
+    schedulingWindowMs: hours * 60 * 60 * 1000,
+  };
+}
+
+modalConfirm.addEventListener('click', () => {
+  const name = document.getElementById('tournament-name').value.trim();
+  client.emit('tournament:create', {
+    name: name || undefined,
+    format: readTournamentFormat(),
+    ruleSet: readTournamentRuleSet(),
+  });
+  closeCreateModal();
+});
+
+// Swap2 (opening rule) is played on a plain board → disable & clear board setup.
+// Mirrors lobby.js's identical interlock for the room-create modal.
+(function () {
+  const sync = () => {
+    const swap2 = document.getElementById('tor-swap2');
+    const disabled = !!(swap2 && swap2.checked);
+    ['t-rule-wall', 't-rule-portal'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (disabled) el.checked = false;
+      el.disabled = disabled;
+      const trow = el.closest('.toggle-row');
+      if (trow) trow.style.opacity = disabled ? '0.45' : '';
+    });
+  };
+  document.querySelectorAll('input[name="tOpenRule"]').forEach((r) => r.addEventListener('change', sync));
+  sync();
+})();
+
+// Timer increment only takes effect in Blitz mode — disable & gray it out otherwise.
+(function () {
+  const sync = () => {
+    const blitz = document.getElementById('ttm-blitz');
+    const active = !!(blitz && blitz.checked);
+    const el = document.getElementById('t-timer-increment');
+    if (!el) return;
+    if (!active) el.value = 0;
+    el.disabled = !active;
+    const row = document.getElementById('t-timer-increment-row');
+    if (row) row.style.opacity = active ? '' : '0.45';
+  };
+  document.querySelectorAll('input[name="tTimerMode"]').forEach((r) => r.addEventListener('change', sync));
+  sync();
+})();
