@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Chi tiết giải đấu (mockup)</title>
+  <meta name="description" content="Front-end mockup only — not wired to the server. Static preview of the tournament detail / pairing-scheduling / bracket UI (Phase 6)." />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Reuses the real app's stylesheets so the mockup matches production tokens/components exactly. -->
+  <link rel="stylesheet" href="css/main.css?v=58" />
+  <link rel="stylesheet" href="css/lobby.css?v=58" />
+  <script>
+    (function() {
+      var storedTheme = localStorage.getItem('theme');
+      document.documentElement.setAttribute('data-theme', storedTheme ? storedTheme : 'light');
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    /* ── Mockup-only styles: everything not already in lobby.css's tab/card
+       rules from Phase 5. Scoped here rather than bumping the site-wide
+       ?v= cache version for an unshipped prototype (same convention as
+       tables-tournaments-mockup.html). ─────────────────────────────────── */
+
+    .mock-banner {
+      background: var(--c-accent-light);
+      color: var(--c-ink);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
+    }
+    .mock-switcher {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      padding: 8px 12px 0;
+      flex-wrap: wrap;
+    }
+    .mock-switcher button {
+      appearance: none;
+      border: 1px solid var(--c-border);
+      background: var(--c-surface);
+      color: var(--c-ink-2);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .mock-switcher button.is-active { background: var(--c-brand); color: #fff; border-color: var(--c-brand); }
+    .mock-screen { display: none; }
+    .mock-screen.is-active { display: block; }
+
+    /* ── Detail header ─────────────────────────────────────────────────── */
+    .detail-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--c-ink-2);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .detail-back:hover { color: var(--c-brand); }
+    .detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .detail-header__name { font-size: 26px; font-weight: 800; color: var(--c-ink); letter-spacing: -0.02em; }
+    .detail-header__meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .detail-header__meta .ph { font-size: 14px; }
+    .detail-meta-item { font-size: 13px; color: var(--c-ink-2); display: flex; align-items: center; gap: 5px; }
+
+    /* ── "Your turn" banner ───────────────────────────────────────────── */
+    .action-banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--c-brand-light);
+      border: 1px solid var(--c-brand);
+      border-radius: 14px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+    }
+    .action-banner__icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--c-brand); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .action-banner__title { font-size: 14px; font-weight: 700; color: var(--c-ink); }
+    .action-banner__sub { font-size: 13px; color: var(--c-ink-2); margin-top: 2px; }
+    .action-banner__spacer { flex: 1; }
+
+    /* ── Sub tabs (Standings / Pairings) ──────────────────────────────── */
+    .sub-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--c-border); }
+    .sub-tabs__btn {
+      appearance: none; background: none; border: none; cursor: pointer;
+      font-family: inherit; font-size: 14px; font-weight: 600; color: var(--c-ink-2);
+      min-height: 40px; padding: 0 4px; margin-right: 20px;
+      display: inline-flex; align-items: center; gap: 6px;
+      border-bottom: 2px solid transparent; transition: color .15s ease, border-color .15s ease;
+    }
+    .sub-tabs__btn:hover { color: var(--c-ink); }
+    .sub-tabs__btn.is-active { color: var(--c-brand); border-bottom-color: var(--c-brand); }
+
+    /* ── Standings table ──────────────────────────────────────────────── */
+    .standings-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .standings-table th {
+      text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 700;
+      color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .standings-table td { padding: 10px 12px; border-bottom: 1px solid var(--c-border-light); color: var(--c-ink); }
+    .standings-table tr:last-child td { border-bottom: none; }
+    .standings-table tr.is-me { background: var(--c-brand-light); }
+    .standings-table .rank-cell { font-weight: 700; width: 36px; }
+    .standings-table .name-cell { font-weight: 600; }
+    .standings-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; color: var(--c-ink-2); }
+
+    /* ── Pairing list / cards ─────────────────────────────────────────── */
+    .round-group { margin-bottom: 20px; }
+    .round-group__title { font-size: 13px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 10px; padding: 0 16px; }
+    .pairing-list { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; }
+    .pairing-card {
+      border: 1px solid var(--c-border); border-radius: 12px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .pairing-card.is-me { border-color: var(--c-brand); box-shadow: 0 0 0 1px var(--c-brand) inset; }
+    .pairing-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .pairing-card__players { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--c-ink); }
+    .pairing-card__vs { font-size: 12px; font-weight: 600; color: var(--c-ink-3); }
+    .pairing-card__you { color: var(--c-brand); }
+    .state-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+    }
+    .state-pill--negotiating { background: var(--c-surface-2); color: var(--c-ink-2); }
+    .state-pill--reported { background: var(--c-warning-bg); color: var(--c-warning); }
+    .state-pill--disputed { background: var(--c-danger-bg, #fee2e2); color: var(--c-danger, #dc2626); }
+    .state-pill--ready { background: var(--c-success-bg); color: var(--c-success); }
+    .state-pill--inprogress { background: var(--c-brand-light); color: var(--c-brand); }
+    .state-pill--completed { background: var(--c-surface-2); color: var(--c-ink-3); }
+    .state-pill--walkover { background: var(--c-warning-bg); color: var(--c-warning); }
+
+    .pairing-card__meta { font-size: 12px; color: var(--c-ink-3); display: flex; align-items: center; gap: 6px; }
+    .pairing-card__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pairing-card__actions .btn, .pairing-card__actions .btn-secondary { padding: 8px 14px; font-size: 13px; }
+    .pairing-card__result { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+    .pairing-card__result .win { color: var(--c-success); }
+
+    .organizer-tools {
+      border-top: 1px dashed var(--c-border); margin-top: 4px; padding-top: 10px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .organizer-tools__label {
+      font-size: 11px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase;
+      letter-spacing: 0.03em; display: flex; align-items: center; gap: 4px; margin-right: 4px;
+    }
+    .organizer-tools .btn-secondary { padding: 6px 10px; font-size: 12px; }
+    .organizer-tools .btn-secondary--danger { color: var(--c-danger, #dc2626); border-color: var(--c-danger, #dc2626); }
+
+    /* ── Bracket (Double Elimination) ─────────────────────────────────── */
+    .bracket-wrap { overflow-x: auto; padding: 20px 16px; }
+    .bracket { display: flex; gap: 40px; min-width: max-content; }
+    .bracket-round { display: flex; flex-direction: column; justify-content: space-around; gap: 24px; min-width: 180px; }
+    .bracket-round__label { font-size: 11px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; text-align: center; margin-bottom: 4px; }
+    .bracket-match { border: 1px solid var(--c-border); border-radius: 10px; overflow: hidden; font-size: 12px; }
+    .bracket-match__slot { padding: 8px 10px; display: flex; justify-content: space-between; gap: 8px; background: var(--c-surface); }
+    .bracket-match__slot:first-child { border-bottom: 1px solid var(--c-border-light); }
+    .bracket-match__slot.is-winner { font-weight: 700; color: var(--c-success); background: var(--c-success-bg); }
+    .bracket-match__slot.is-tbd { color: var(--c-ink-3); font-style: italic; }
+    .bracket-section-title { font-size: 13px; font-weight: 700; color: var(--c-ink-2); padding: 0 16px; margin: 8px 0; }
+
+    /* ── Modals reuse .modal-overlay/.modal/.setting-row from main.css ───
+       Only the datetime-specific bits are new. ─────────────────────────── */
+    .dispute-notice {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--c-warning-bg); color: var(--c-warning);
+      border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 4px;
+    }
+
+    /* ── Match-play screen (lightweight, non-interactive visual only) ──── */
+    .match-shell { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+    @media (max-width: 900px) { .match-shell { grid-template-columns: 1fr; } }
+    .match-board-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .match-clocks { display: flex; gap: 12px; width: 100%; max-width: 480px; }
+    .match-clock { flex: 1; border: 1px solid var(--c-border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+    .match-clock.is-active { border-color: var(--c-brand); background: var(--c-brand-light); }
+    .match-clock__name { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; }
+    .match-clock__time { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink); }
+    .mock-board {
+      display: grid;
+      grid-template-columns: repeat(15, 26px);
+      grid-template-rows: repeat(15, 26px);
+      background: #dcb35c;
+      border: 2px solid #a97c34;
+      border-radius: 4px;
+    }
+    .mock-board__cell { border: 0.5px solid rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center; }
+    .mock-stone { width: 20px; height: 20px; border-radius: 50%; }
+    .mock-stone--black { background: #1a1a1a; box-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+    .mock-stone--white { background: #f5f5f5; border: 1px solid #999; }
+    .mock-stone--win { outline: 2px solid var(--c-brand); outline-offset: 1px; }
+    .match-actions { display: flex; gap: 10px; }
+    .move-list { max-height: 260px; overflow-y: auto; font-size: 12px; }
+    .move-list__row { display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 6px; }
+    .move-list__row:nth-child(odd) { background: var(--c-surface-2); }
+  </style>
+</head>
+<body>
+
+<div class="mock-banner">
+  Front-end mockup only — static preview, not wired to the server. Branch: feature/tournament-detail-mockup (Phase 6)
+</div>
+<div class="mock-banner mock-switcher">
+  <button class="is-active" data-screen="screen-swiss">Chi tiết — Swiss (đang diễn ra)</button>
+  <button data-screen="screen-bracket">Chi tiết — Double Elimination (bracket)</button>
+  <button data-screen="screen-match">Bàn cờ trận đấu</button>
+</div>
+
+<!-- ── Top Nav (identical to production) ───────────────────────────────── -->
+<nav class="topnav" role="navigation" aria-label="Điều hướng chính">
+  <a href="index.html" class="topnav__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
+    <span class="topnav__title">Play3CR</span>
+  </a>
+  <div class="topnav__right">
+    <span class="topnav__user">GrimLark</span>
+  </div>
+</nav>
+
+<div class="lobby-layout">
+<main class="lobby" role="main">
+
+  <!-- ══════════════════════ SCREEN 1: Swiss detail (active) ═══════════════ -->
+  <div class="mock-screen is-active" id="screen-swiss">
+
+    <a href="tables-tournaments-mockup.html" class="detail-back"><i class="ph ph-arrow-left"></i>Quay lại danh sách giải đấu</a>
+
+    <div class="detail-header">
+      <div>
+        <div class="detail-header__name">Mùa hè 2026</div>
+        <div class="detail-header__meta">
+          <span class="badge badge--format">Swiss</span>
+          <span class="badge badge--live">Đang diễn ra</span>
+          <span class="detail-meta-item"><i class="ph ph-users-three"></i>8 người chơi</span>
+          <span class="detail-meta-item"><i class="ph ph-user-circle"></i>Tổ chức bởi GrimLark</span>
+          <span class="detail-meta-item"><i class="ph ph-flag-checkered"></i>Vòng 2 / 4</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- "Your turn" banner — the piece explicitly deferred from Phase 5's card view -->
+    <div class="action-banner">
+      <div class="action-banner__icon"><i class="ph-bold ph-hourglass-medium"></i></div>
+      <div>
+        <div class="action-banner__title">Đến lượt bạn — đối thủ đã báo giờ thi đấu</div>
+        <div class="action-banner__sub">SlimFish đề nghị 20:00, Thứ Bảy 08/08/2026. Xác nhận hoặc tranh chấp bên dưới.</div>
+      </div>
+      <div class="action-banner__spacer"></div>
+      <button class="btn btn-confirm" type="button" onclick="document.getElementById('pairing-you').scrollIntoView({behavior:'smooth', block:'center'})">Xem cặp đấu</button>
+    </div>
+
+    <div class="sub-tabs" role="tablist">
+      <button class="sub-tabs__btn is-active" data-subtab="pairings"><i class="ph ph-sword"></i>Cặp đấu</button>
+      <button class="sub-tabs__btn" data-subtab="standings"><i class="ph ph-ranking"></i>Bảng xếp hạng</button>
+    </div>
+
+    <!-- ── Pairings sub-tab ─────────────────────────────────────────────── -->
+    <div class="mock-screen is-active" id="subtab-pairings">
+      <div class="ui-shell" style="width:100%;">
+        <div class="ui-core">
+
+          <div class="round-group" style="padding-top:16px;">
+            <div class="round-group__title">Vòng 2 (đang diễn ra)</div>
+            <div class="pairing-list">
+
+              <!-- Pairing card: Reported, viewer is the one who must confirm -->
+              <div class="pairing-card is-me" id="pairing-you">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players">
+                    <span class="pairing-card__you">Bạn</span>
+                    <span class="pairing-card__vs">vs</span>
+                    <span>SlimFish</span>
+                  </div>
+                  <span class="state-pill state-pill--reported"><i class="ph ph-clock"></i>Đã báo giờ — chờ bạn xác nhận</span>
+                </div>
+                <div class="pairing-card__meta"><i class="ph ph-calendar"></i>Đề nghị: 20:00, Thứ Bảy 08/08/2026 &nbsp;·&nbsp; <i class="ph ph-hourglass"></i>Hạn báo lịch: còn 31 giờ</div>
+                <div class="pairing-card__actions">
+                  <button class="btn btn-confirm" type="button" onclick="openModal('modal-confirm-time')">Xác nhận giờ này</button>
+                  <button class="btn-secondary" type="button" onclick="openModal('modal-dispute-time')">Tranh chấp</button>
+                </div>
+              </div>
+
+              <!-- Pairing card: Negotiating, no time reported yet -->
+              <div class="pairing-card">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players"><span>BoldElk</span><span class="pairing-card__vs">vs</span><span>TealFox</span></div>
+                  <span class="state-pill state-pill--negotiating"><i class="ph ph-chats-circle"></i>Đang thoả thuận giờ</span>
+                </div>
+                <div class="pairing-card__meta"><i class="ph ph-hourglass"></i>Hạn báo lịch: còn 31 giờ</div>
+                <div class="organizer-tools">
+                  <span class="organizer-tools__label"><i class="ph ph-crown-simple"></i>Công cụ tổ chức</span>
+                  <button class="btn-secondary btn-secondary--danger" type="button" onclick="openModal('modal-adjust')">Điều chỉnh / Huỷ cặp đấu</button>
+                </div>
+              </div>
+
+              <!-- Pairing card: Ready, awaiting check-in -->
+              <div class="pairing-card">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players"><span>NightOwl</span><span class="pairing-card__vs">vs</span><span>QuietStorm</span></div>
+                  <span class="state-pill state-pill--ready"><i class="ph ph-check-circle"></i>Đã thống nhất giờ</span>
+                </div>
+                <div class="pairing-card__meta"><i class="ph ph-calendar"></i>19:00, Thứ Sáu 07/08/2026 &nbsp;·&nbsp; Chưa ai check-in</div>
+              </div>
+
+              <!-- Pairing card: Reported + disputed, needs organizer -->
+              <div class="pairing-card">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players"><span>RedFalcon</span><span class="pairing-card__vs">vs</span><span>IronWolf</span></div>
+                  <span class="state-pill state-pill--disputed"><i class="ph ph-warning"></i>Tranh chấp giờ — chờ tổ chức</span>
+                </div>
+                <div class="pairing-card__meta"><i class="ph ph-hourglass"></i>Hạn báo lịch: còn 31 giờ</div>
+                <div class="organizer-tools">
+                  <span class="organizer-tools__label"><i class="ph ph-crown-simple"></i>Công cụ tổ chức</span>
+                  <button class="btn btn-confirm" type="button" onclick="openModal('modal-resolve')" style="padding:6px 12px; font-size:12px;">Giải quyết tranh chấp</button>
+                  <button class="btn-secondary btn-secondary--danger" type="button" onclick="openModal('modal-adjust')">Điều chỉnh / Huỷ</button>
+                </div>
+              </div>
+
+              <!-- Pairing card: InProgress -->
+              <div class="pairing-card">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players"><span>PixelKnight</span><span class="pairing-card__vs">vs</span><span>SilverHawk</span></div>
+                  <span class="state-pill state-pill--inprogress"><i class="ph ph-play-circle"></i>Đang diễn ra</span>
+                </div>
+                <div class="pairing-card__actions">
+                  <button class="btn-secondary" type="button" onclick="showScreen('screen-match')">Xem trận đấu</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="round-group">
+            <div class="round-group__title">Vòng 1 (đã xong)</div>
+            <div class="pairing-list">
+              <div class="pairing-card">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players"><span>Bạn</span><span class="pairing-card__vs">vs</span><span>BoldElk</span></div>
+                  <span class="state-pill state-pill--completed"><i class="ph ph-flag-checkered"></i>Hoàn thành</span>
+                </div>
+                <div class="pairing-card__result">Kết quả: <span class="win">Bạn thắng</span> (5 quân liên tiếp)</div>
+              </div>
+              <div class="pairing-card">
+                <div class="pairing-card__top">
+                  <div class="pairing-card__players"><span>SlimFish</span><span class="pairing-card__vs">vs</span><span>TealFox</span></div>
+                  <span class="state-pill state-pill--walkover"><i class="ph ph-flag"></i>Thắng do vắng mặt</span>
+                </div>
+                <div class="pairing-card__result">Kết quả: <span class="win">SlimFish thắng</span> (walkover)</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Standings sub-tab ────────────────────────────────────────────── -->
+    <div class="mock-screen" id="subtab-standings">
+      <div class="ui-shell" style="width:100%;">
+        <div class="ui-core">
+          <table class="standings-table">
+            <thead>
+              <tr>
+                <th>#</th><th>Người chơi</th><th style="text-align:right;">Điểm</th>
+                <th style="text-align:right;">Buchholz</th><th style="text-align:right;">Sonneborn–Berger</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="rank-cell">1</td><td class="name-cell">SlimFish</td><td class="num-cell">2.0</td><td class="num-cell">3.5</td><td class="num-cell">2.0</td></tr>
+              <tr class="is-me"><td class="rank-cell">2</td><td class="name-cell">Bạn</td><td class="num-cell">1.5</td><td class="num-cell">3.0</td><td class="num-cell">1.5</td></tr>
+              <tr><td class="rank-cell">3</td><td class="name-cell">PixelKnight</td><td class="num-cell">1.5</td><td class="num-cell">2.5</td><td class="num-cell">1.0</td></tr>
+              <tr><td class="rank-cell">4</td><td class="name-cell">NightOwl</td><td class="num-cell">1.0</td><td class="num-cell">2.5</td><td class="num-cell">0.5</td></tr>
+              <tr><td class="rank-cell">5</td><td class="name-cell">BoldElk</td><td class="num-cell">1.0</td><td class="num-cell">2.0</td><td class="num-cell">0.5</td></tr>
+              <tr><td class="rank-cell">6</td><td class="name-cell">RedFalcon</td><td class="num-cell">0.5</td><td class="num-cell">2.0</td><td class="num-cell">0.0</td></tr>
+              <tr><td class="rank-cell">7</td><td class="name-cell">TealFox</td><td class="num-cell">0.5</td><td class="num-cell">1.5</td><td class="num-cell">0.0</td></tr>
+              <tr><td class="rank-cell">8</td><td class="name-cell">IronWolf</td><td class="num-cell">0.0</td><td class="num-cell">1.0</td><td class="num-cell">0.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════ SCREEN 2: Double Elimination bracket ═════════ -->
+  <div class="mock-screen" id="screen-bracket">
+
+    <a href="tables-tournaments-mockup.html" class="detail-back"><i class="ph ph-arrow-left"></i>Quay lại danh sách giải đấu</a>
+
+    <div class="detail-header">
+      <div>
+        <div class="detail-header__name">Cúp tốc chiến</div>
+        <div class="detail-header__meta">
+          <span class="badge badge--format">Double Elim.</span>
+          <span class="badge badge--live">Đang diễn ra</span>
+          <span class="detail-meta-item"><i class="ph ph-users-three"></i>8 người chơi</span>
+          <span class="detail-meta-item"><i class="ph ph-user-circle"></i>Tổ chức bởi SlimFish</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ui-shell" style="width:100%;">
+      <div class="ui-core">
+
+        <div class="bracket-section-title">Nhánh thắng (Winners bracket)</div>
+        <div class="bracket-wrap">
+          <div class="bracket">
+            <div class="bracket-round">
+              <div class="bracket-round__label">Vòng 1</div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-winner">Bạn</div>
+                <div class="bracket-match__slot">BoldElk</div>
+              </div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot">SlimFish</div>
+                <div class="bracket-match__slot is-winner">TealFox</div>
+              </div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-winner">RedFalcon</div>
+                <div class="bracket-match__slot">IronWolf</div>
+              </div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot">NightOwl</div>
+                <div class="bracket-match__slot is-winner">PixelKnight</div>
+              </div>
+            </div>
+            <div class="bracket-round">
+              <div class="bracket-round__label">Bán kết</div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-winner">Bạn</div>
+                <div class="bracket-match__slot">TealFox</div>
+              </div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-tbd">RedFalcon</div>
+                <div class="bracket-match__slot is-tbd">PixelKnight</div>
+              </div>
+            </div>
+            <div class="bracket-round">
+              <div class="bracket-round__label">Chung kết nhánh thắng</div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot">Bạn</div>
+                <div class="bracket-match__slot is-tbd">Chờ kết quả bán kết</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bracket-section-title">Nhánh thua (Losers bracket)</div>
+        <div class="bracket-wrap">
+          <div class="bracket">
+            <div class="bracket-round">
+              <div class="bracket-round__label">Vòng 1</div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-winner">BoldElk</div>
+                <div class="bracket-match__slot">SlimFish</div>
+              </div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot">IronWolf</div>
+                <div class="bracket-match__slot is-winner">NightOwl</div>
+              </div>
+            </div>
+            <div class="bracket-round">
+              <div class="bracket-round__label">Vòng 2</div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-tbd">BoldElk</div>
+                <div class="bracket-match__slot is-tbd">Chờ bán kết nhánh thắng</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bracket-section-title">Chung kết tổng (Grand Final)</div>
+        <div class="bracket-wrap">
+          <div class="bracket">
+            <div class="bracket-round">
+              <div class="bracket-round__label">&nbsp;</div>
+              <div class="bracket-match">
+                <div class="bracket-match__slot is-tbd">Vô địch nhánh thắng</div>
+                <div class="bracket-match__slot is-tbd">Vô địch nhánh thua</div>
+              </div>
+              <div class="pairing-card__meta" style="padding:6px 2px 0;"><i class="ph ph-info"></i>Nếu vô địch nhánh thua thắng trận này, hệ thống tự tạo thêm 1 trận "reset" quyết định.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ SCREEN 3: Match-play (static visual only) ═══ -->
+  <div class="mock-screen" id="screen-match">
+
+    <a href="#" class="detail-back" onclick="showScreen('screen-swiss'); return false;"><i class="ph ph-arrow-left"></i>Quay lại chi tiết giải đấu</a>
+
+    <div class="detail-header">
+      <div>
+        <div class="detail-header__name">PixelKnight vs SilverHawk</div>
+        <div class="detail-header__meta">
+          <span class="badge badge--format">Swiss</span>
+          <span class="detail-meta-item"><i class="ph ph-trophy"></i>Mùa hè 2026 — Vòng 2</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="match-shell">
+      <div class="match-board-wrap">
+        <div class="match-clocks">
+          <div class="match-clock is-active">
+            <span class="match-clock__name"><span class="mock-stone mock-stone--black" style="width:14px;height:14px;"></span>PixelKnight</span>
+            <span class="match-clock__time">04:12</span>
+          </div>
+          <div class="match-clock">
+            <span class="match-clock__name"><span class="mock-stone mock-stone--white" style="width:14px;height:14px;"></span>SilverHawk</span>
+            <span class="match-clock__time">05:47</span>
+          </div>
+        </div>
+
+        <div class="mock-board" id="mock-board"></div>
+
+        <div class="match-actions">
+          <button class="btn-secondary" type="button">Xin hoà</button>
+          <button class="btn btn-cancel" type="button">Đầu hàng</button>
+        </div>
+      </div>
+
+      <aside class="ui-shell">
+        <div class="ui-core" style="padding:14px;">
+          <div class="pairing-card__meta" style="margin-bottom:10px;"><i class="ph ph-list-numbers"></i>Lịch sử nước đi</div>
+          <div class="move-list">
+            <div class="move-list__row"><span>1. Đen</span><span>(7,7)</span></div>
+            <div class="move-list__row"><span>1. Trắng</span><span>(8,7)</span></div>
+            <div class="move-list__row"><span>2. Đen</span><span>(7,8)</span></div>
+            <div class="move-list__row"><span>2. Trắng</span><span>(8,8)</span></div>
+            <div class="move-list__row"><span>3. Đen</span><span>(6,6)</span></div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- ── Modal: Xác nhận giờ ─────────────────────────────────────────────── -->
+<div id="modal-confirm-time" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title">Xác nhận giờ thi đấu</h2>
+      <button class="modal__close" type="button" onclick="closeModal('modal-confirm-time')">✕</button>
+    </div>
+    <div class="modal__body">
+      <p style="font-size:14px; color:var(--c-ink-2); margin:0 0 16px;">SlimFish đề nghị thi đấu lúc <strong>20:00, Thứ Bảy 08/08/2026</strong>. Xác nhận nếu bạn đồng ý — cặp đấu sẽ chuyển sang trạng thái "Đã thống nhất giờ" ngay lập tức, không cần tổ chức duyệt.</p>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" onclick="closeModal('modal-confirm-time')">Đóng</button>
+        <button class="btn btn-confirm" type="button" onclick="closeModal('modal-confirm-time')">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Tranh chấp giờ ───────────────────────────────────────────── -->
+<div id="modal-dispute-time" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title">Tranh chấp giờ đã báo</h2>
+      <button class="modal__close" type="button" onclick="closeModal('modal-dispute-time')">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i>Sau khi tranh chấp, cặp đấu sẽ chờ người tổ chức giải đấu vào quyết định giờ cuối cùng — 2 bên không thể tự thương lượng tiếp trong hệ thống.</div>
+      <div class="setting-row">
+        <span class="setting-label">Lý do (không bắt buộc)</span>
+        <div class="timer-input" style="width:100%;"><input type="text" placeholder="VD: giờ này tôi không thể tham gia" style="width:100%; box-sizing:border-box;" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" onclick="closeModal('modal-dispute-time')">Đóng</button>
+        <button class="btn btn-confirm" type="button" onclick="closeModal('modal-dispute-time')">Xác nhận tranh chấp</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Organizer — giải quyết tranh chấp ────────────────────────── -->
+<div id="modal-resolve" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title">Giải quyết tranh chấp giờ</h2>
+      <button class="modal__close" type="button" onclick="closeModal('modal-resolve')">✕</button>
+    </div>
+    <div class="modal__body">
+      <p style="font-size:13px; color:var(--c-ink-2); margin:0 0 12px;">Cặp đấu: <strong>RedFalcon vs IronWolf</strong></p>
+      <div class="setting-row">
+        <span class="setting-label">Giờ thi đấu cuối cùng</span>
+        <div class="timer-input" style="width:100%;"><input type="datetime-local" style="width:100%; box-sizing:border-box;" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" onclick="closeModal('modal-resolve')">Đóng</button>
+        <button class="btn btn-confirm" type="button" onclick="closeModal('modal-resolve')">Chốt giờ này</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Organizer — điều chỉnh / huỷ cặp đấu ─────────────────────── -->
+<div id="modal-adjust" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title">Điều chỉnh / Huỷ cặp đấu</h2>
+      <button class="modal__close" type="button" onclick="closeModal('modal-adjust')">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i>Hành động này kết thúc cặp đấu ngay lập tức, không có người thắng — dùng khi có vấn đề cần xử lý thủ công (VD: 1 người vi phạm quy định).</div>
+      <div class="setting-row">
+        <span class="setting-label">Lý do</span>
+        <div class="timer-input" style="width:100%;"><input type="text" placeholder="VD: vi phạm quy định giải đấu" style="width:100%; box-sizing:border-box;" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" onclick="closeModal('modal-adjust')">Đóng</button>
+        <button class="btn btn-cancel" type="button" style="background:var(--c-danger-bg,#fee2e2); color:var(--c-danger,#dc2626);" onclick="closeModal('modal-adjust')">Xác nhận huỷ cặp đấu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Mockup-only navigation — no server calls, purely for design review.
+  function showScreen(id) {
+    document.querySelectorAll('.mock-switcher [data-screen]').forEach(function(b) { b.classList.toggle('is-active', b.dataset.screen === id); });
+    document.querySelectorAll('main > .mock-screen').forEach(function(p) { p.classList.toggle('is-active', p.id === id); });
+  }
+  document.querySelectorAll('.mock-switcher [data-screen]').forEach(function(btn) {
+    btn.addEventListener('click', function() { showScreen(btn.dataset.screen); });
+  });
+
+  document.querySelectorAll('.sub-tabs__btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.sub-tabs__btn').forEach(function(b) { b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+      var target = 'subtab-' + btn.dataset.subtab;
+      document.querySelectorAll('#screen-swiss > .mock-screen').forEach(function(p) { p.classList.remove('is-active'); });
+      document.getElementById(target).classList.add('is-active');
+    });
+  });
+
+  function openModal(id) { document.getElementById(id).classList.add('visible'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('visible'); }
+  document.querySelectorAll('.modal-overlay').forEach(function(ov) {
+    ov.addEventListener('click', function(e) { if (e.target === ov) ov.classList.remove('visible'); });
+  });
+
+  // Static 15x15 board with a handful of stones, purely illustrative.
+  (function renderMockBoard() {
+    var board = document.getElementById('mock-board');
+    var stones = {
+      '7,7':'black', '8,7':'white', '7,8':'black', '8,8':'white', '6,6':'black',
+      '9,9':'white', '6,8':'black', '9,7':'white',
+    };
+    for (var y = 0; y < 15; y++) {
+      for (var x = 0; x < 15; x++) {
+        var cell = document.createElement('div');
+        cell.className = 'mock-board__cell';
+        var key = x + ',' + y;
+        if (stones[key]) {
+          var stone = document.createElement('div');
+          stone.className = 'mock-stone mock-stone--' + stones[key];
+          cell.appendChild(stone);
+        }
+        board.appendChild(cell);
+      }
+    }
+  })();
+</script>
+</body>
+</html>
