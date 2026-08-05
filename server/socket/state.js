@@ -285,7 +285,9 @@ function _diffRoomUsers(roomId, users) {
 }
 
 /**
- * Broadcast a room's current state to everyone in it, as a delta.
+ * Compute and emit one room's delta payload right now. Split out from
+ * broadcastRoomUpdate() so the debounced flush below can call it with a
+ * freshly-looked-up room, without re-triggering the debounce itself.
  *
  * `RoomManager.serializeRoomUpdate()` still builds the full current state —
  * that part hasn't changed — but the `users` array (the O(n) piece that made
@@ -300,11 +302,9 @@ function _diffRoomUsers(roomId, users) {
  *
  * @param {import('socket.io').Server} io
  * @param {object} room
- * @param {{ settings?: boolean }} [opts] — pass `settings: true` for the one
- *   call site (RoomHandler.js's `room:settings` handler) where settings did
- *   actually just change and clients need the new values.
+ * @param {{ settings?: boolean }} [opts]
  */
-function broadcastRoomUpdate(io, room, opts = {}) {
+function _emitRoomUpdate(io, room, opts = {}) {
   const full = roomManager.serializeRoomUpdate(room);
   const { upserts, removed } = _diffRoomUsers(room.roomId, full.users);
 
@@ -328,8 +328,80 @@ function broadcastRoomUpdate(io, room, opts = {}) {
 }
 
 /**
- * Drop a destroyed room's `room:updated` diff baseline, so these maps don't
- * grow forever as rooms are created and destroyed over the server's uptime.
+ * How long to coalesce bursts of `broadcastRoomUpdate()` calls for the SAME
+ * room into a single `room:updated` emit. Added per TODO.md #22's stress-test
+ * finding: a burst of spectators joining one room within a short window (each
+ * `room:join` independently calling broadcastRoomUpdate) re-broadcasts full
+ * per-user state to the WHOLE room on every single join, so join-phase cost
+ * scaled quadratically with room size (~1+2+...+19 sends for 19 near-
+ * simultaneous joins) even though steady-state (one move at a time in an
+ * already-full room) measured fine.
+ *
+ * 80ms is far below human reaction time — nobody perceives a room:updated
+ * landing 80ms later than the action that caused it — but wide enough to
+ * merge a realistic join burst (or a sit+ready+kick sequence a caller fires
+ * back-to-back) into one flush, same rationale as LOBBY_UPDATE_DEBOUNCE_MS
+ * above, just scoped per-room instead of server-wide.
+ */
+const ROOM_UPDATE_DEBOUNCE_MS = 80;
+
+/** Per-room pending debounce timer for broadcastRoomUpdate(): roomId → Timeout. */
+const _roomUpdateTimers = new Map();
+
+/**
+ * Per-room state accumulated across calls within one debounce window:
+ * roomId → { io, settings }. `room` itself isn't stored here — RoomManager
+ * mutates rooms in place (never replaces the Map entry except on create), so
+ * a fresh `roomManager.getRoom(roomId)` at flush time is already current;
+ * storing a captured `room` reference would work too but this avoids relying
+ * on that mutate-in-place invariant holding across handler changes.
+ */
+const _roomUpdatePending = new Map();
+
+function _flushRoomUpdate(roomId) {
+  _roomUpdateTimers.delete(roomId);
+  const pending = _roomUpdatePending.get(roomId);
+  _roomUpdatePending.delete(roomId);
+  if (!pending) return;
+
+  const room = roomManager.getRoom(roomId);
+  if (!room) return; // destroyed before this burst's debounce window elapsed
+
+  _emitRoomUpdate(pending.io, room, { settings: pending.settings });
+}
+
+/**
+ * Broadcast a room's current state to everyone in it, as a delta (debounced).
+ *
+ * See ROOM_UPDATE_DEBOUNCE_MS above and TODO.md #22 for why this is debounced
+ * per-room rather than firing synchronously like it used to.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {object} room
+ * @param {{ settings?: boolean }} [opts] — pass `settings: true` for the one
+ *   call site (RoomHandler.js's `room:settings` handler) where settings did
+ *   actually just change and clients need the new values. If ANY call within
+ *   a debounce window passed `settings: true`, the flushed payload includes
+ *   settings — the flag doesn't get lost if a later call in the same burst
+ *   omits it.
+ */
+function broadcastRoomUpdate(io, room, opts = {}) {
+  const roomId = room.roomId;
+  const existing = _roomUpdatePending.get(roomId);
+  _roomUpdatePending.set(roomId, {
+    io,
+    settings: !!(opts.settings || (existing && existing.settings)),
+  });
+
+  if (_roomUpdateTimers.has(roomId)) return; // a flush is already scheduled for this burst
+  const timeout = setTimeout(() => _flushRoomUpdate(roomId), ROOM_UPDATE_DEBOUNCE_MS);
+  _roomUpdateTimers.set(roomId, timeout);
+}
+
+/**
+ * Drop a destroyed room's `room:updated` diff baseline and cancel any pending
+ * debounced flush, so these maps/timers don't grow forever (or fire after
+ * teardown) as rooms are created and destroyed over the server's uptime.
  * Called from RoomManager's `room_destroyed` event (SocketHandler.js), which
  * fires from every teardown path (`_destroyRoom` is the single choke point).
  *
@@ -338,6 +410,13 @@ function broadcastRoomUpdate(io, room, opts = {}) {
 function clearRoomUpdateSnapshot(roomId) {
   _roomUserSnapshots.delete(roomId);
   _roomScoreTableSnapshots.delete(roomId);
+
+  const timeout = _roomUpdateTimers.get(roomId);
+  if (timeout) {
+    clearTimeout(timeout);
+    _roomUpdateTimers.delete(roomId);
+  }
+  _roomUpdatePending.delete(roomId);
 }
 
 /**
