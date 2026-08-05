@@ -10,15 +10,22 @@
  * changing over time (a user sitting down, going ready, leaving, etc.)
  * without needing a real GameEngine/RoomManager instance.
  *
- * Unlike broadcastLobbyUpdate()/broadcastOnlineUsers(), broadcastRoomUpdate()
- * is not debounced — it fires synchronously on every call, same as before
- * the delta fix. The delta only changes *what* is sent, not *when*.
+ * broadcastRoomUpdate() is now debounced per-room (ROOM_UPDATE_DEBOUNCE_MS in
+ * state.js, TODO.md #22) — same coalescing technique as
+ * broadcastLobbyUpdate()/broadcastOnlineUsers(), just scoped per roomId
+ * instead of server-wide. Every test below drives the debounce explicitly via
+ * flush(), mirroring lobby-delta.test.js's own flush() helper.
  */
+
+jest.useFakeTimers();
+
+const DEBOUNCE_MS = 80;
 
 let currentFullState;
 
 const mockRoomManager = {
   on: jest.fn(),
+  getRoom: jest.fn((roomId) => ({ roomId })),
   serializeRoomUpdate: jest.fn(() => currentFullState),
 };
 jest.mock('../managers/RoomManager', () => mockRoomManager);
@@ -73,8 +80,15 @@ function lastPayload(io) {
   return io.emitted[io.emitted.length - 1].data;
 }
 
+/** Run a broadcast and let the debounce window elapse. */
+function flush(io, room, opts) {
+  broadcastRoomUpdate(io, room, opts);
+  jest.advanceTimersByTime(DEBOUNCE_MS);
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  mockRoomManager.getRoom.mockImplementation((roomId) => ({ roomId }));
 });
 
 describe('broadcastRoomUpdate — users delta', () => {
@@ -84,7 +98,7 @@ describe('broadcastRoomUpdate — users delta', () => {
       users: [user('host-1', { role: 'host' }), user('guest-1')],
     });
 
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     const payload = lastPayload(io);
     expect(payload.users.upserts.map(u => u.userId).sort()).toEqual(['guest-1', 'host-1']);
@@ -94,10 +108,10 @@ describe('broadcastRoomUpdate — users delta', () => {
   test('a second broadcast with no user changes omits `users` entirely', () => {
     const io = makeIo();
     currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0; // clear, only inspect the second broadcast
-    broadcastRoomUpdate(io, { roomId: 'r1' }); // same state again
+    flush(io, { roomId: 'r1' }); // same state again
 
     expect(lastPayload(io)).not.toHaveProperty('users');
   });
@@ -107,14 +121,14 @@ describe('broadcastRoomUpdate — users delta', () => {
     currentFullState = fullState({
       users: [user('host-1', { role: 'host', slot: 1 }), user('guest-1', { slot: 2 })],
     });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0;
     // Only guest-1 flips ready — host-1's entry is byte-for-byte identical.
     currentFullState = fullState({
       users: [user('host-1', { role: 'host', slot: 1 }), user('guest-1', { slot: 2, ready: true })],
     });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     const payload = lastPayload(io);
     expect(payload.users.upserts.map(u => u.userId)).toEqual(['guest-1']);
@@ -126,11 +140,11 @@ describe('broadcastRoomUpdate — users delta', () => {
     currentFullState = fullState({
       users: [user('host-1', { role: 'host' }), user('guest-1')],
     });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0;
     currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     const payload = lastPayload(io);
     expect(payload.users.removed).toEqual(['guest-1']);
@@ -143,7 +157,7 @@ describe('broadcastRoomUpdate — users delta', () => {
       hostId: 'host-1',
       users: [user('host-1', { role: 'host' }), user('guest-1', { role: 'guest' })],
     });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0;
     // host-1 left, guest-1 is promoted — RoomManager would recompute role for
@@ -152,7 +166,7 @@ describe('broadcastRoomUpdate — users delta', () => {
       hostId: 'guest-1',
       users: [user('guest-1', { role: 'host' })],
     });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     const payload = lastPayload(io);
     expect(payload.users.removed).toEqual(['host-1']);
@@ -163,18 +177,18 @@ describe('broadcastRoomUpdate — users delta', () => {
   test('rooms are diffed independently — one room changing does not affect another', () => {
     const io = makeIo();
     currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
     currentFullState = fullState({ users: [user('host-2', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r2' });
+    flush(io, { roomId: 'r2' });
 
     io.emitted.length = 0;
     // r1 unchanged, r2 gains a guest.
     currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
     currentFullState = fullState({
       users: [user('host-2', { role: 'host' }), user('guest-2')],
     });
-    broadcastRoomUpdate(io, { roomId: 'r2' });
+    flush(io, { roomId: 'r2' });
 
     expect(io.emitted[0].data).not.toHaveProperty('users'); // r1: nothing changed
     expect(io.emitted[1].data.users.upserts.map(u => u.userId)).toEqual(['guest-2']); // r2: only the new guest
@@ -185,10 +199,10 @@ describe('broadcastRoomUpdate — scoreTable delta', () => {
   test('unchanged scoreTable is omitted from the second broadcast', () => {
     const io = makeIo();
     currentFullState = fullState({ scoreTable: { 'host-1': { win: 1, loss: 0, draw: 0 } } });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0;
-    broadcastRoomUpdate(io, { roomId: 'r1' }); // same scoreTable again
+    flush(io, { roomId: 'r1' }); // same scoreTable again
 
     expect(lastPayload(io)).not.toHaveProperty('scoreTable');
   });
@@ -196,11 +210,11 @@ describe('broadcastRoomUpdate — scoreTable delta', () => {
   test('a changed scoreTable is included in full', () => {
     const io = makeIo();
     currentFullState = fullState({ scoreTable: { 'host-1': { win: 0, loss: 0, draw: 0 } } });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0;
     currentFullState = fullState({ scoreTable: { 'host-1': { win: 1, loss: 0, draw: 0 } } });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     expect(lastPayload(io).scoreTable).toEqual({ 'host-1': { win: 1, loss: 0, draw: 0 } });
   });
@@ -210,10 +224,10 @@ describe('broadcastRoomUpdate — scalar fields and settings', () => {
   test('scalar fields (roomName, hostId, hostName, state, readyDeadline) are always included', () => {
     const io = makeIo();
     currentFullState = fullState();
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     io.emitted.length = 0;
-    broadcastRoomUpdate(io, { roomId: 'r1' }); // nothing changed at all
+    flush(io, { roomId: 'r1' }); // nothing changed at all
 
     const payload = lastPayload(io);
     expect(payload.roomName).toBe('Phòng Test');
@@ -226,7 +240,8 @@ describe('broadcastRoomUpdate — scalar fields and settings', () => {
   test('settings is omitted unless explicitly requested', () => {
     const io = makeIo();
     currentFullState = fullState();
-    broadcastRoomUpdate(io, { roomId: 'r1', settings: { boardSize: 19 } });
+    mockRoomManager.getRoom.mockImplementation((roomId) => ({ roomId, settings: { boardSize: 19 } }));
+    flush(io, { roomId: 'r1', settings: { boardSize: 19 } });
 
     expect(lastPayload(io)).not.toHaveProperty('settings');
   });
@@ -234,9 +249,86 @@ describe('broadcastRoomUpdate — scalar fields and settings', () => {
   test('settings is included, in full, when { settings: true } is passed', () => {
     const io = makeIo();
     currentFullState = fullState();
-    broadcastRoomUpdate(io, { roomId: 'r1', settings: { boardSize: 19 } }, { settings: true });
+    mockRoomManager.getRoom.mockImplementation((roomId) => ({ roomId, settings: { boardSize: 19 } }));
+    flush(io, { roomId: 'r1', settings: { boardSize: 19 } }, { settings: true });
 
     expect(lastPayload(io).settings).toEqual({ boardSize: 19 });
+  });
+});
+
+describe('broadcastRoomUpdate — debounce', () => {
+  test('a burst of calls for the same room produces a single room:updated emit', () => {
+    const io = makeIo();
+    currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
+
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    expect(io.emitted).toHaveLength(0);
+
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+    expect(io.emitted).toHaveLength(1);
+  });
+
+  test('a burst schedules exactly one timer per room, not one per call', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    const before = jest.getTimerCount();
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    expect(jest.getTimerCount() - before).toBe(1);
+
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+  });
+
+  test('bursts for different rooms flush independently, one timer each', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    const before = jest.getTimerCount();
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    broadcastRoomUpdate(io, { roomId: 'r2' });
+    expect(jest.getTimerCount() - before).toBe(2);
+
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+    expect(io.emitted.map(e => e.room).sort()).toEqual(['r1', 'r2']);
+  });
+
+  test('a settings:true call inside a burst is not lost by a later call in the same burst omitting it', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+    mockRoomManager.getRoom.mockImplementation((roomId) => ({ roomId, settings: { boardSize: 19 } }));
+
+    broadcastRoomUpdate(io, { roomId: 'r1' }, { settings: true });
+    broadcastRoomUpdate(io, { roomId: 'r1' }); // same burst, no settings flag this time
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+
+    expect(lastPayload(io).settings).toEqual({ boardSize: 19 });
+  });
+
+  test('nothing is sent before the window elapses', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    jest.advanceTimersByTime(DEBOUNCE_MS - 1);
+    expect(io.emitted).toHaveLength(0);
+
+    jest.advanceTimersByTime(1);
+    expect(io.emitted).toHaveLength(1);
+  });
+
+  test('a room destroyed before its debounce window elapses is skipped, not broadcast stale', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    broadcastRoomUpdate(io, { roomId: 'r1' });
+    mockRoomManager.getRoom.mockImplementation(() => null); // torn down mid-window
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+
+    expect(io.emitted).toHaveLength(0);
   });
 });
 
@@ -244,12 +336,12 @@ describe('clearRoomUpdateSnapshot', () => {
   test('resets the diff baseline, so the next broadcast upserts every current user again', () => {
     const io = makeIo();
     currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
 
     clearRoomUpdateSnapshot('r1');
 
     io.emitted.length = 0;
-    broadcastRoomUpdate(io, { roomId: 'r1' }); // same state, but baseline was cleared
+    flush(io, { roomId: 'r1' }); // same state, but baseline was cleared
 
     expect(lastPayload(io).users.upserts.map(u => u.userId)).toEqual(['host-1']);
   });
@@ -257,15 +349,26 @@ describe('clearRoomUpdateSnapshot', () => {
   test('clearing one room does not disturb another room\'s baseline', () => {
     const io = makeIo();
     currentFullState = fullState({ users: [user('host-1', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r1' });
+    flush(io, { roomId: 'r1' });
     currentFullState = fullState({ users: [user('host-2', { role: 'host' })] });
-    broadcastRoomUpdate(io, { roomId: 'r2' });
+    flush(io, { roomId: 'r2' });
 
     clearRoomUpdateSnapshot('r1');
 
     io.emitted.length = 0;
-    broadcastRoomUpdate(io, { roomId: 'r2' }); // unaffected by r1's clear
+    flush(io, { roomId: 'r2' }); // unaffected by r1's clear
 
     expect(lastPayload(io)).not.toHaveProperty('users');
+  });
+
+  test('cancels a pending debounced flush for that room, so it never fires after teardown', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    broadcastRoomUpdate(io, { roomId: 'r1' }); // schedules a flush, does not fire yet
+    clearRoomUpdateSnapshot('r1');
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+
+    expect(io.emitted).toHaveLength(0);
   });
 });

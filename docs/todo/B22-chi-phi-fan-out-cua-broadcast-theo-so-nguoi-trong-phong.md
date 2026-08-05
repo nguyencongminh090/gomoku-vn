@@ -29,3 +29,10 @@
     nhưng **chưa đủ bằng chứng để coi đây là ưu tiên sửa ngay**, vì kịch bản
     "18 khán giả join cùng lúc trong <1s vào 1 phòng" hiếm khi xảy ra thật
     ngoài môi trường test tải.
+
+    **✅ ĐÃ SỬA (2026-08-06)** — người dùng chủ động chọn sửa ngay trong lúc rà
+    soát hiệu năng broadcast tổng thể (xem `docs/fix-log/2026-08-06-todo-22-room-updated-join-burst-debounce.md`).
+    `broadcastRoomUpdate()` giờ debounce theo từng `roomId` (80ms, `state.js`),
+    cùng kỹ thuật với `broadcastLobbyUpdate()`/`broadcastOnlineUsers()` nhưng
+    scope hẹp hơn (per-room thay vì toàn server). Branch `fix/room-broadcast-join-debounce`
+    (off `main`), `npm test`: 508/508.
