@@ -143,6 +143,19 @@ const LISTEN_BACKLOG = parseInt(process.env.LISTEN_BACKLOG, 10) || 4096;
 const MAX_EVENTS_PER_SECOND = 50; // Socket flood protection
 const FLOOD_DISCONNECT_STREAK = 5; // Consecutive over-limit 1s windows before force-disconnect
 
+// --- Tournament (features/tournament/, TODO.md #48) ---
+const TOURNAMENT_FORMATS = ['swiss', 'round_robin', 'double_elim'];
+// Per-match scheduling deadline (decision 2 in features/tournament/planning.md):
+// counted from when a pairing is announced, not per-round/per-tournament.
+// 48h gives a same-day-negotiate, next-day-play window without forcing same-day
+// play — a real "self-dealt" World-Blitz-Cup-style pair needs room to find a
+// mutually free slot. Organizer-configurable per tournament via ruleSet.
+const DEFAULT_SCHEDULING_WINDOW_MS = parseInt(process.env.TOURNAMENT_SCHEDULING_WINDOW_MS, 10) || 48 * 60 * 60 * 1000;
+// Only one tiebreak method is implemented (decision 9) — kept as a ruleSet
+// field, not a hardcoded constant, so a future format-specific override has
+// somewhere to live without a schema change.
+const DEFAULT_TIEBREAK_RULE = 'buchholz_sonneborn_berger';
+
 module.exports = {
   MAX_ROOMS,
   MAX_ROOMS_PER_IP,
@@ -181,4 +194,7 @@ module.exports = {
   LISTEN_BACKLOG,
   MAX_EVENTS_PER_SECOND,
   FLOOD_DISCONNECT_STREAK,
+  TOURNAMENT_FORMATS,
+  DEFAULT_SCHEDULING_WINDOW_MS,
+  DEFAULT_TIEBREAK_RULE,
 };

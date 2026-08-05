@@ -91,3 +91,78 @@ dựng mockup front-end trước khi làm thật.
    `dev` khi ổn định, theo git workflow đã có trong `CLAUDE.md`.
 
 ---
+
+## Cập nhật 2026-08-05 — kiến trúc 6-phase đã chốt, Phase 1 đã xong
+
+10 câu hỏi mở đã được người dùng trả lời (xem `features/tournament/planning.md`
+"Resolved decisions"). Implementation được chia thành **6 phase độc lập, làm
+từng phase một, có check-in với người dùng sau mỗi phase** (người dùng chọn
+rõ "phase by phase" thay vì làm hết một lượt) — không tự ý gộp phase để "cho
+nhanh". Toàn bộ kiến trúc chi tiết (thuật toán pairing từng thể thức, cách
+enforce deadline không dùng 1 timer/pairing, cách match session tách khỏi
+`RoomManager`/`GameHandler`) nằm trong plan file gốc của phiên làm việc —
+tóm tắt lại đây phần liên quan tới từng phase để không cần đọc lại toàn bộ
+lịch sử hội thoại.
+
+**2 diễn giải đã ghi nhận rõ (không phải suy đoán ngầm):**
+- `Reported → Ready` tự động khi 2 bên đồng thuận thời gian; chỉ chuyển qua
+  organizer khi có tranh chấp (dispute). Nhãn "Organizer confirms..." trong
+  state diagram chỉ áp dụng cho nhánh dispute, không áp dụng cho happy path
+  (đối chiếu với sequence diagram — P2 tự confirm thẳng, không qua organizer).
+- Quyết định 2 (1 deadline/match) được hiện thực bằng 1 field
+  `pairing.deadline` duy nhất; khi deadline tới mà pairing chưa `InProgress`,
+  kết quả rẽ nhánh theo sub-state hiện tại (chưa ai ready → walkover/void-replay
+  theo quyết định 1/5; đang dispute chưa giải quyết → bắt buộc organizer xử lý).
+
+**3 quyết định nhỏ tự đưa ra (không thuộc 10 câu hỏi gốc — sẽ để người dùng
+sửa lại ở check-in nếu không đúng ý):**
+- Organizer được phép tự đăng ký làm Player trong chính giải đấu mình tạo
+  (user story không cấm) — đã có test riêng cho case này.
+- Organizer duyệt đổi lịch chỉ đổi `agreedTime`, **không** reset lại deadline
+  gốc — deadline vẫn neo theo `pairedAt` ban đầu (đúng tinh thần quyết định 2
+  "per-match window từ lúc ghép cặp", không phải từ lần reschedule gần nhất).
+- Xử lý mất kết nối giữa chừng ván tournament: để ngỏ tới Phase 4 (socket
+  layer), không đoán trước ở Phase 1-3.
+
+### Phase 1 — ĐÃ XONG (nhánh `feature/tournament-server`, branch off `dev`)
+
+CRUD + đăng ký giải đấu, **chưa có** pairing/round generation (đó là Phase 3),
+**chưa có** socket handler (Phase 4), **chưa có** UI (Phase 5).
+
+- `server/db/schema.sql` — 4 bảng mới: `tournaments`, `tournament_players`
+  (guest-tolerant, `entry_id` là PK thật vì `player_id` có thể null),
+  `tournament_rounds`, `tournament_pairings` (state machine đầy đủ 9 trạng
+  thái). Khác với `rooms` (chỉ lưu RAM), tournament được persist **từ lúc
+  tạo**, không chỉ lúc kết thúc — vì lịch sử pairing cần cho việc giải quyết
+  tranh chấp/audit của organizer sau này.
+- `server/db/database.js` — thêm `createTournament`, `getTournamentById`,
+  `updateTournamentStatus`, `saveTournamentPlayer`, `deleteTournamentPlayer`,
+  `getTournamentPlayers`. Chưa thêm `savePairing`/`getPairingsByTournament` —
+  để dành cho Phase 3 khi pairing thật sự tồn tại (tránh code chết).
+- `server/config.js` — thêm `TOURNAMENT_FORMATS`, `DEFAULT_SCHEDULING_WINDOW_MS`
+  (48h, override qua env `TOURNAMENT_SCHEDULING_WINDOW_MS`), `DEFAULT_TIEBREAK_RULE`
+  (`'buchholz_sonneborn_berger'`, theo quyết định 9).
+- `server/managers/tournament/TournamentManager.js` (mới) — singleton
+  `EventEmitter`, giống hệt hình dạng `RoomManager` nhưng **hoàn toàn tách
+  biệt** (không đụng `RoomManager.rooms`/`userRoomMap`). Khác biệt quan
+  trọng: `userTournamentMap` là `Map<userId, Set<tournamentId>>` (không phải
+  1-1 như `RoomManager`) vì quyết định 6 cho phép 1 người tham gia nhiều giải
+  đấu cùng lúc. `startTournament()` hiện chỉ là stub (chuyển status →
+  `active`, chưa sinh pairing) — có comment TODO trỏ rõ tới Phase 3.
+- `server/tests/TournamentManager.test.js` (mới) — 38 test case, bao gồm
+  boundary test cho `timerSeconds` (4/5/3600/3601), quyết định 6 (đăng ký
+  đồng thời nhiều giải đấu), organizer-cũng-là-player, double-registration,
+  unregister-chưa-từng-đăng-ký (không throw). Theo đúng convention
+  `save-game.test.js`: mock `better-sqlite3` sang `:memory:` để chạy schema
+  thật + `jest.useFakeTimers()` để tránh treo worker do
+  `database.js`'s hourly WAL-checkpoint interval.
+- **Lưu ý sửa lúc code:** `schema.sql`'s `tournaments.organizer_id` ban đầu
+  viết nhầm là `NOT NULL` — sai với quy ước guest-tolerant của `games.*_player_id`
+  (organizer là khách thì phải cho phép null). Đã sửa thành nullable.
+- `npm test` (toàn bộ suite): **539/539 xanh**, không có regression.
+
+Phase 2-6 (format engines, state machine + deadline sweep, socket handler,
+client UI wiring) **chưa bắt đầu** — chờ người dùng xác nhận Phase 1 trước
+khi tiếp tục, đúng như lựa chọn "phase by phase, check in after each".
+
+---
