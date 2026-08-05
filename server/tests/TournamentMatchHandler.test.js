@@ -159,6 +159,68 @@ describe('TournamentMatchHandler — startMatch', () => {
 });
 
 // ---------------------------------------------------------------------------
+// tmatch:subscribe — direct page navigation / spectator join
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — tmatch:subscribe', () => {
+  test('a participant navigating straight to the match URL gets tmatch:init and joins the room', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    fire(p1socket, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(p1socket.join).toHaveBeenCalledWith('tournament-match:p1');
+    expect(sockEmit(p1socket, 'tmatch:init')).toBeDefined();
+  });
+
+  test('a spectator (not a participant) can also subscribe — unlike tmatch:move/resign, watching is not restricted to the two players', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const spectator = makeSocket('spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, spectator);
+
+    fire(spectator, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(spectator.join).toHaveBeenCalledWith('tournament-match:p1');
+    expect(sockEmit(spectator, 'tmatch:init')).toBeDefined();
+    expect(sockEmit(spectator, 'tmatch:error')).toBeUndefined();
+  });
+
+  test('subscribing to a pairing with no live match (never started, or already ended) is rejected', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    // Deliberately never call startMatch() — tournamentGameMap stays empty.
+
+    const socket = makeSocket('u1', 'Player One');
+    TournamentMatchHandler.register(io, socket);
+
+    fire(socket, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(socket, 'tmatch:error').data.code).toBe('NO_ACTIVE_MATCH');
+    expect(socket.join).not.toHaveBeenCalled();
+  });
+
+  test('subscribing with a mismatched tournamentId is rejected the same way', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const socket = makeSocket(entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, socket);
+
+    fire(socket, 'tmatch:subscribe', { tournamentId: 'wrong-tournament', pairingId: 'p1' });
+
+    expect(sockEmit(socket, 'tmatch:error').data.code).toBe('NO_ACTIVE_MATCH');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // tmatch:move — gameplay decision table: wrong turn / non-participant / win / draw
 // ---------------------------------------------------------------------------
 

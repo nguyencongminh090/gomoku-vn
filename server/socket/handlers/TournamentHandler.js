@@ -27,6 +27,11 @@
 
 const logger = require('../../utils/logger');
 const tournamentManager = require('../../managers/tournament/TournamentManager');
+// Lazy-require to mirror RoomHandler.js's getGameHandler() pattern — avoids
+// a load-time circular require if TournamentMatchHandler.js ever needs to
+// reach back into this module (it doesn't today, but the pattern is cheap
+// insurance and matches the rest of the codebase's convention).
+function getTournamentMatchHandler() { return require('./TournamentMatchHandler'); }
 
 const TOURNAMENT_LIST_ROOM = 'tournament-lobby';
 
@@ -122,6 +127,15 @@ function init(io) {
     const pairing = tournamentManager.getPairing(pairingId);
     if (!pairing) return;
     io.to(tournamentRoom(tournamentId)).emit('tournament:pairing_updated', tournamentManager.serializePairing(pairing));
+  });
+
+  // Both players just checked in (Ready -> InProgress, TournamentManager.
+  // markPairingReady()) — this is what actually turns a pairing into a live
+  // GameEngine. Without this listener a pairing sits at InProgress forever
+  // with no match behind it, since TournamentManager itself never touches
+  // io (see its class header) and nothing else calls startMatch().
+  tournamentManager.on('pairing_ready', ({ tournamentId, pairingId }) => {
+    getTournamentMatchHandler().startMatch(io, tournamentId, pairingId);
   });
 
   logger.info('[TournamentHandler] Initialized');

@@ -665,7 +665,7 @@ class TournamentManager extends EventEmitter {
 
     tournament.currentRoundPairingIds = new Set();
     for (const spec of pairingsSpec) {
-      const pairing = this._createAndRegisterPairing(tournament, spec, roundId);
+      const pairing = this._createAndRegisterPairing(tournament, spec, roundId, tournament.currentRoundIndex);
       tournament.currentRoundPairingIds.add(pairing.pairingId);
     }
 
@@ -678,8 +678,14 @@ class TournamentManager extends EventEmitter {
    * Create one pairing (real match or bye) and wire up its persistence +
    * deadline tracking. `spec.pairingId` lets Double Elimination reuse its
    * bracket match ids directly instead of minting a new uuid.
+   *
+   * @param {number|null} roundIndex — Swiss/Round robin's 1-based round
+   *   number, for the client to group pairings by round (Phase 6). Double
+   *   Elimination has no discrete rounds in this sense (one synthetic DB row
+   *   for the whole bracket) — left null; the client renders those as a
+   *   flat, unsectioned list instead of grouping.
    */
-  _createAndRegisterPairing(tournament, spec, roundId) {
+  _createAndRegisterPairing(tournament, spec, roundId, roundIndex = null) {
     const pairingId = spec.pairingId || uuidv4();
     const now = new Date();
     const deadline = new Date(now.getTime() + tournament.ruleSet.schedulingWindowMs).toISOString();
@@ -696,11 +702,11 @@ class TournamentManager extends EventEmitter {
 
     if (pairing.state === 'Paired') PairingLifecycle.announcePairing(pairing);
 
-    // Double Elimination only: the LOCAL (unscoped) bracket match id this
+    // Not persisted to SQLite — pure in-memory bookkeeping/display fields.
+    // bracketMatchId: the LOCAL (unscoped) Double Elimination match id this
     // globally-scoped pairingId corresponds to — see _deId's doc comment.
-    // Not persisted to SQLite (purely in-memory bookkeeping for
-    // _recordCompletion's tournament.bracketResults updates).
     pairing.bracketMatchId = spec.bracketMatchId || null;
+    pairing.roundIndex = roundIndex;
 
     this.pairings.set(pairingId, pairing);
     this._persistPairing(pairing);
@@ -761,6 +767,7 @@ class TournamentManager extends EventEmitter {
       pairedAt: now.toISOString(),
     });
     PairingLifecycle.announcePairing(replay);
+    replay.roundIndex = oldPairing.roundIndex;
 
     this.pairings.set(replay.pairingId, replay);
     this._persistPairing(replay);
@@ -895,6 +902,13 @@ class TournamentManager extends EventEmitter {
       createdAt: tournament.createdAt,
       startedAt: tournament.startedAt,
       completedAt: tournament.completedAt,
+      // Swiss/Round robin only — lets the client show "Round 2 / 4" and group
+      // pairings by round. Double Elimination has no analogous single number
+      // (a bracket has depth, not a round count), left null/undefined.
+      currentRoundIndex: tournament.currentRoundIndex ?? null,
+      totalRounds: tournament.format === 'swiss'
+        ? (tournament.totalRounds ?? null)
+        : (tournament.format === 'round_robin' ? (tournament.allRounds ? tournament.allRounds.length : null) : null),
     };
   }
 
@@ -911,6 +925,7 @@ class TournamentManager extends EventEmitter {
       pairingId: pairing.pairingId,
       tournamentId: pairing.tournamentId,
       roundId: pairing.roundId,
+      roundIndex: pairing.roundIndex ?? null,
       player1EntryId: pairing.player1EntryId,
       player2EntryId: pairing.player2EntryId,
       state: pairing.state,

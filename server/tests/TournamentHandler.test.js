@@ -44,6 +44,9 @@ const mockTournamentManager = {
 };
 jest.mock('../managers/tournament/TournamentManager', () => mockTournamentManager);
 
+const mockTournamentMatchHandler = { startMatch: jest.fn() };
+jest.mock('../socket/handlers/TournamentMatchHandler', () => mockTournamentMatchHandler);
+
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 const TournamentHandler = require('../socket/handlers/TournamentHandler');
@@ -411,6 +414,22 @@ describe('TournamentHandler — init(io) event wiring', () => {
 
     expect(() => _handlers['pairing_changed']({ tournamentId: 't1', pairingId: 'ghost' })).not.toThrow();
     expect(io._toEmitted['tournament:t1']).toBeUndefined();
+  });
+
+  // Regression test: this exact wiring was missing end-to-end until a real
+  // Playwright run caught it — TournamentManager.markPairingReady() emits
+  // 'pairing_ready' when both players check in, but nothing called
+  // TournamentMatchHandler.startMatch() for it, so a pairing sat at
+  // InProgress forever with no GameEngine behind it. Unit tests that called
+  // startMatch() directly (TournamentMatchHandler.test.js) never exercised
+  // this wire, which is exactly why it slipped through.
+  test('pairing_ready calls TournamentMatchHandler.startMatch with the right io/tournamentId/pairingId', () => {
+    const io = makeIo();
+    TournamentHandler.init(io);
+
+    _handlers['pairing_ready']({ tournamentId: 't1', pairingId: 'p1' });
+
+    expect(mockTournamentMatchHandler.startMatch).toHaveBeenCalledWith(io, 't1', 'p1');
   });
 
   test('a completed tournament_started callback with an unknown tournamentId does not throw', () => {

@@ -488,3 +488,90 @@ bằng `md5sum` khớp checksum trước khi dời → khởi động lại serv
 `npm run dev:stable`).
 
 ---
+
+## Phase 6 — Trang chi tiết giải đấu + lịch trình cặp đấu + bàn cờ trận đấu — ĐÃ XONG (2026-08-06)
+
+Branch `feature/tournament-detail-mockup` (tiếp tục từ mockup Phase 6 đã duyệt, không tạo
+branch mới — đúng tiền lệ Phase 5 dùng lại `feature/tables-tournaments-mockup`). `npm test`:
+**721/721 xanh**. Xác minh **thật** bằng Playwright — không chỉ tới lúc vào trận như các phase
+trước, mà chơi trọn 1 giải Swiss 2 người thật: tạo → đăng ký → bắt đầu → báo giờ → xác nhận →
+check-in cả 2 → vào trận → đầu hàng → xem kết quả → quay lại trang chi tiết thấy trạng thái
+"Đã kết thúc" và bảng xếp hạng đúng điểm.
+
+**Phạm vi:** đúng những gì mockup `tournament-detail-mockup.html` đã duyệt — trang chi tiết
+(header, banner "đến lượt bạn", tab Cặp đấu/Bảng xếp hạng, thẻ cặp đấu theo từng trạng thái
+`PairingLifecycle`, công cụ tổ chức), 4 modal lịch trình (báo giờ / tranh chấp / xin đổi lịch /
+tổ chức chốt giờ & điều chỉnh-huỷ), và trang chơi trận thật.
+
+**2 lỗ hổng dữ liệu phát hiện khi wiring** (API Phase 1-4 chưa cần các field này cho tới khi có
+UI thật dùng tới):
+- `serializePairing()` không có `roundIndex` → client không nhóm được cặp đấu theo vòng để hiện
+  "Vòng 2 (đang diễn ra)" / "Vòng 1 (đã xong)". Thêm `pairing.roundIndex` (gán tại
+  `_createAndRegisterPairing()`/kế thừa tại `_createReplayPairing()`), `null` cho Double
+  Elimination (không có khái niệm "vòng" theo nghĩa này).
+- `serializeTournament()` không có `currentRoundIndex`/`totalRounds` → không hiện được "Vòng 2/4".
+  Thêm cả 2, `null` cho Double Elimination. **Lưu ý bất đối xứng có sẵn từ Phase 3**:
+  `currentRoundIndex` là 1-based cho Swiss nhưng 0-based (chỉ số mảng) cho Round robin — không
+  sửa lại logic server (rủi ro phá test Phase 3), chỉ chuẩn hoá hiển thị phía client
+  (`tournament-detail.js`'s `renderHeader()`/`renderPairings()`).
+- Không có socket event "lấy bảng xếp hạng" — `standings.js`'s 3 hàm thuần (`computeStandings`/
+  `computeTiebreaks`/`rankStandings`) được **port sang JS phía client y hệt** trong
+  `tournament-detail.js`, chạy trên danh sách pairings client đã có sẵn, tránh phải thêm round-trip
+  server mới cho mỗi lần render bảng xếp hạng.
+
+**Quyết định kiến trúc (không phải bug, cân nhắc trước khi code):**
+- **Không tái sử dụng `game-ui.js`** cho trang chơi trận — file đó gắn chặt với
+  `window.RoomState`/`window.RoomClient` và các tính năng chỉ phòng thường mới có (đề nghị hoà,
+  xin thêm giờ) mà `TournamentMatchHandler.js` chưa từng làm (quyết định phạm vi Phase 4). Viết
+  lại phần điều khiển timer/turn-bar/swap2 riêng cho `tournament-match.js` (nhỏ, ~350 dòng), NHƯNG
+  **tái sử dụng thẳng `board.js`'s `BoardRenderer`** — class đó tự chứa, không phụ thuộc
+  `RoomState`, dùng lại nguyên vẹn.
+- Trang chơi trận **hỗ trợ khán giả xem** (không chỉ 2 người chơi) — thêm event mới
+  `tmatch:subscribe` (join room + trả `tmatch:init`) ở `TournamentMatchHandler.js`, cần thiết vì
+  các cơ chế cũ (`startMatch()` tự đẩy tới 2 người chơi, `resyncOnConnect()` chỉ cho người chơi
+  reconnect) không phủ được trường hợp **điều hướng thẳng vào URL trận đấu** hoặc khán giả.
+
+**2 bug thật phát hiện qua Playwright, không phải qua code review:**
+1. **Bug nghiêm trọng, tồn tại từ Phase 4:** `TournamentManager.markPairingReady()` phát event
+   `pairing_ready` khi cả 2 người check-in xong, nhưng **không có gì lắng nghe event này** để gọi
+   `TournamentMatchHandler.startMatch()` — nghĩa là trong bản build thật (không phải test), một
+   cặp đấu chuyển sang `InProgress` **nhưng không bao giờ thực sự tạo ra ván cờ**. Sở dĩ 44 test
+   PairingLifecycle + 16 test TournamentMatchHandler không bắt được: chúng gọi thẳng `startMatch()`
+   trong test, chưa bao giờ thật sự đi qua đường dây event thật. Chỉ Playwright chơi trọn 1 trận
+   mới lộ ra. Sửa: thêm listener `tournamentManager.on('pairing_ready', ...)` trong
+   `TournamentHandler.js`'s `init()`, gọi `TournamentMatchHandler.startMatch(io, tournamentId,
+   pairingId)` — kèm test hồi quy giải thích rõ lý do bug lọt qua trong comment.
+2. **Cache-bust không nhất quán:** `tournaments.js` (viết ở Phase 5) có dòng
+   `import { client } from './lobby.js?v=58';` — khi Phase 6 bump `?v=58 → ?v=59` ở mọi
+   `*-entry.js`/`*.html`, dòng import NỘI BỘ này trong `tournaments.js` bị bỏ sót (không nằm
+   trong danh sách file được `sed` qua). Hậu quả: `index-entry.js` import `lobby.js?v=59`,
+   `tournaments.js` import `lobby.js?v=58` — 2 URL module khác nhau (dù cùng nội dung file) khiến
+   trình duyệt coi là **2 module ES riêng biệt**, mỗi module chạy `export const client = new
+   SocketClient()` **của riêng nó** → 2 kết nối socket.io cho cùng 1 token → server tự huỷ 1 kết
+   nối (luật 1 phiên/tài khoản) → client nhận `session:kicked` → tự động đá về `login.html` ngay
+   sau khi vừa đăng nhập thành công. Mất ~20 lượt bisect (`git stash` qua từng file) mới cô lập
+   được vì triệu chứng (bị đá về login) trông giống lỗi xác thực, không giống lỗi cache-bust. Sửa:
+   đồng bộ `?v=59` trong `tournaments.js`'s import, và grep lại toàn bộ `client/js/*.js` để chắc
+   chắn không còn `?v=` nào lệch phiên bản.
+
+**Các file mới:**
+- `client/tournament.html` + `client/js/tournament-detail.js` (~600 dòng) — trang chi tiết.
+- `client/tournament-match.html` + `client/js/tournament-match.js` (~350 dòng) — trang chơi trận.
+- `client/css/tournament.css` — CSS cho cả 2 trang, port từ mockup.
+- `client/js/tournament-detail-entry.js`, `client/js/tournament-match-entry.js` — entry point
+  kiểu Vite, giống `index-entry.js`/`room-entry.js`.
+
+**Các file sửa:**
+- `server/socket/handlers/TournamentMatchHandler.js` — thêm `tmatch:subscribe`.
+- `server/socket/handlers/TournamentHandler.js` — thêm listener `pairing_ready` (bug #1 ở trên).
+- `server/managers/tournament/TournamentManager.js` — `roundIndex`/`currentRoundIndex`/
+  `totalRounds` (2 lỗ hổng dữ liệu ở trên).
+- `client/js/tournaments.js` — thẻ giải đấu giờ click được để mở trang chi tiết (bug #2 ở trên
+  nằm ở đây).
+- `client/js/i18n.js` — ~110 khoá `tdetail.*`/`tmatch.*` mới (vi+en).
+- Bump `?v=58 → ?v=59` toàn bộ.
+
+**Xác minh:** `npm test` (721/721) + Playwright thật chơi trọn 1 giải đấu Swiss 2 người từ đầu
+tới cuối (đúng quy trình an toàn DB — xem Phase 5's ghi chú, lặp lại y hệt ở đây).
+
+---

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Chi tiết giải đấu</title>
+  <meta name="description" content="Play3CR — Chi tiết giải đấu, bảng xếp hạng, lịch thi đấu." />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="css/main.css?v=59" />
+  <link rel="stylesheet" href="css/lobby.css?v=59" />
+  <link rel="stylesheet" href="css/tournament.css?v=59" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=59" />
+  <script>
+    (function() {
+      var storedTheme = localStorage.getItem('theme');
+      document.documentElement.setAttribute('data-theme', storedTheme ? storedTheme : 'light');
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      var m;
+      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
+      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'lite';
+      document.documentElement.setAttribute('data-ui-mode', mode);
+    })();
+  </script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+<div id="status-banner" class="status-banner" aria-live="polite"></div>
+
+<nav class="topnav" role="navigation" aria-label="Điều hướng chính">
+  <a href="index.html" class="topnav__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
+    <span class="topnav__title">Play3CR</span>
+  </a>
+  <div class="topnav__right">
+    <span id="nav-user" class="topnav__user"></span>
+    <span id="nav-badge" class="topnav__badge"></span>
+  </div>
+</nav>
+
+<div class="lobby-layout">
+<main class="lobby" role="main">
+
+  <a href="index.html" class="detail-back"><i class="ph ph-arrow-left"></i><span data-i18n="tdetail.back">Quay lại danh sách giải đấu</span></a>
+
+  <div class="detail-header">
+    <div>
+      <div class="detail-header__name" id="detail-name">—</div>
+      <div class="detail-header__meta" id="detail-meta"></div>
+    </div>
+  </div>
+
+  <div id="action-banner-slot"></div>
+
+  <div class="sub-tabs" role="tablist">
+    <button class="sub-tabs__btn is-active" id="sub-tab-pairings" role="tab" aria-selected="true"><i class="ph ph-sword"></i><span data-i18n="tdetail.tab_pairings">Cặp đấu</span></button>
+    <button class="sub-tabs__btn" id="sub-tab-standings" role="tab" aria-selected="false"><i class="ph ph-ranking"></i><span data-i18n="tdetail.tab_standings">Bảng xếp hạng</span></button>
+  </div>
+
+  <div class="sub-tab-panel is-active" id="subtab-pairings">
+    <div class="ui-shell" style="width:100%;">
+      <div class="ui-core">
+        <div id="pairings-container" style="padding-top:16px; padding-bottom:16px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-tab-panel" id="subtab-standings">
+    <div class="ui-shell" style="width:100%;">
+      <div class="ui-core">
+        <div id="standings-container"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</div>
+
+<!-- ── Modal: Báo giờ thi đấu ───────────────────────────────────────────── -->
+<div id="modal-report-time" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title" data-i18n="tdetail.modal_report_title">Báo giờ thi đấu</h2>
+      <button class="modal__close" type="button" data-modal-close="modal-report-time">✕</button>
+    </div>
+    <div class="modal__body">
+      <p style="font-size:13px; color:var(--c-ink-2); margin:0 0 12px;" data-i18n="tdetail.modal_report_hint">Thời gian bạn và đối thủ đã thống nhất bên ngoài hệ thống — đối thủ sẽ cần xác nhận lại giờ này.</p>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="tdetail.time_label">Giờ thi đấu</span>
+        <div class="timer-input" style="width:100%;"><input type="datetime-local" id="report-time-input" style="width:100%; box-sizing:border-box;" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" data-modal-close="modal-report-time" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button class="btn btn-confirm" type="button" id="btn-submit-report-time" data-i18n="tdetail.btn_report">Báo giờ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Tranh chấp giờ ───────────────────────────────────────────── -->
+<div id="modal-dispute-time" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title" data-i18n="tdetail.modal_dispute_title">Tranh chấp giờ đã báo</h2>
+      <button class="modal__close" type="button" data-modal-close="modal-dispute-time">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i><span data-i18n="tdetail.dispute_notice">Sau khi tranh chấp, cặp đấu sẽ chờ người tổ chức giải đấu quyết định giờ cuối cùng — 2 bên không thể tự thương lượng tiếp trong hệ thống.</span></div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" data-modal-close="modal-dispute-time" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button class="btn btn-confirm" type="button" id="btn-submit-dispute" data-i18n="tdetail.btn_dispute">Xác nhận tranh chấp</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Xin đổi lịch ──────────────────────────────────────────────── -->
+<div id="modal-reschedule" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title" data-i18n="tdetail.modal_reschedule_title">Xin đổi lịch thi đấu</h2>
+      <button class="modal__close" type="button" data-modal-close="modal-reschedule">✕</button>
+    </div>
+    <div class="modal__body">
+      <p style="font-size:13px; color:var(--c-ink-2); margin:0 0 12px;" data-i18n="tdetail.modal_reschedule_hint">Yêu cầu này cần người tổ chức duyệt trước khi có hiệu lực.</p>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="tdetail.time_label">Giờ thi đấu</span>
+        <div class="timer-input" style="width:100%;"><input type="datetime-local" id="reschedule-time-input" style="width:100%; box-sizing:border-box;" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" data-modal-close="modal-reschedule" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button class="btn btn-confirm" type="button" id="btn-submit-reschedule" data-i18n="tdetail.btn_request_reschedule">Gửi yêu cầu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Organizer — giải quyết tranh chấp ────────────────────────── -->
+<div id="modal-resolve" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title" data-i18n="tdetail.modal_resolve_title">Giải quyết tranh chấp giờ</h2>
+      <button class="modal__close" type="button" data-modal-close="modal-resolve">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="tdetail.time_label_final">Giờ thi đấu cuối cùng</span>
+        <div class="timer-input" style="width:100%;"><input type="datetime-local" id="resolve-time-input" style="width:100%; box-sizing:border-box;" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" data-modal-close="modal-resolve" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button class="btn btn-confirm" type="button" id="btn-submit-resolve" data-i18n="tdetail.btn_resolve">Chốt giờ này</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal: Organizer — điều chỉnh / huỷ cặp đấu ─────────────────────── -->
+<div id="modal-adjust" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title" data-i18n="tdetail.modal_adjust_title">Điều chỉnh / Huỷ cặp đấu</h2>
+      <button class="modal__close" type="button" data-modal-close="modal-adjust">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i><span data-i18n="tdetail.adjust_notice">Hành động này kết thúc cặp đấu ngay lập tức, không có người thắng — dùng khi có vấn đề cần xử lý thủ công.</span></div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="tdetail.reason_label">Lý do</span>
+        <div class="timer-input" style="width:100%;"><input type="text" id="adjust-reason-input" style="width:100%; box-sizing:border-box;" maxlength="200" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" data-modal-close="modal-adjust" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button class="btn btn-cancel" type="button" id="btn-submit-adjust" style="background:var(--c-danger-bg,#fee2e2); color:var(--c-danger,#dc2626);" data-i18n="tdetail.btn_adjust_confirm">Xác nhận huỷ cặp đấu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="js/tournament-detail-entry.js?v=59"></script>
+</body>
+</html>

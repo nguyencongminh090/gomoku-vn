@@ -1,8 +1,6 @@
 import './i18n.js?v=59';
 import './ui-mode.js?v=59';
 import './settings-panel.js?v=59';
-import './audio-manager.js?v=59';
 import './socket-client.js?v=59';
 import './escape-utils.js?v=59';
-import './lobby.js?v=59';
-import './tournaments.js?v=59';
+import './tournament-detail.js?v=59';
