@@ -183,6 +183,11 @@ client.on('room:joined', (data) => {
 // ---------------------------------------------------------------------------
 
 function renderRoomList(rooms) {
+  // .lobby__count always renders a visible pill background — an empty
+  // string still shows as a small blank badge, so hide the element itself
+  // rather than just emptying its text (same fix as tournaments.js's
+  // #tournament-count).
+  roomCount.style.display = rooms.length > 0 ? '' : 'none';
   roomCount.textContent = rooms.length > 0 ? `(${rooms.length})` : '';
 
   if (rooms.length === 0) {

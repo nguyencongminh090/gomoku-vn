@@ -140,6 +140,10 @@ function renderTournamentList() {
   if (activeFormatFilter) tournaments = tournaments.filter((t) => t.format === activeFormatFilter);
 
   const liveCount = Array.from(tournamentMap.values()).filter((t) => t.status === 'active').length;
+  // .lobby__count (shared with #room-count) always renders a visible pill
+  // background — an empty string still shows as a small blank badge, so the
+  // element itself has to be hidden, not just emptied.
+  tournamentCountEl.style.display = liveCount > 0 ? '' : 'none';
   tournamentCountEl.textContent = liveCount > 0 ? t('tournaments.count_live', { n: liveCount }) : '';
 
   if (tournaments.length === 0) {

@@ -842,8 +842,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  /* .filter-row and .tournament-grid are siblings directly inside .ui-core,
+     which (main.css's Double-Bezel Architecture) carries no padding of its
+     own — .tournament-grid supplies its own 16px, but .filter-row had none,
+     so the pills sat flush against the card's top/left border. */
+  padding: 16px 16px 0;
   margin-bottom: 16px;
   flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .filter-row { padding: 12px 8px 0; }
 }
 .filter-pill {
   appearance: none;
