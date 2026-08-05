@@ -195,8 +195,89 @@ biệt hoàn toàn để test độc lập.
   đúng điều kiện), Buchholz/SB đối chiếu tính tay.
 - `npm test` (toàn bộ suite): **585/585 xanh**, không regression.
 
-Phase 3-6 (state machine + deadline sweep, socket handler, client UI wiring)
-**chưa bắt đầu** — chờ người dùng xác nhận Phase 2 trước khi tiếp tục, đúng
-như lựa chọn "phase by phase, check in after each".
+### Phase 3 — ĐÃ XONG (cùng nhánh `feature/tournament-server`)
+
+State machine đầy đủ + deadline sweep + tích hợp `TimerManager` +
+`TournamentManager.startTournament()`/round-advancement thật (không còn
+stub). Đây là phase nặng nhất tới giờ — 3 bug thật phát hiện và sửa ngay
+trong lúc code (không phải sau khi merge):
+
+- **Bug 1 — FK sai:** `tournaments.organizer_id` ban đầu viết `NOT NULL`,
+  sai với guest-tolerant convention (`games.*_player_id` cho phép null).
+  Đã sửa (ghi lại ở Phase 1's note, chỉ nhắc lại vì liên quan).
+- **Bug 2 — `_sweep` không thể spy được:** `setInterval(_sweep, ...)` bind
+  thẳng vào function reference tại thời điểm require, khác với
+  `RoomManager`'s `setInterval(() => this._idleCleanup(), ...)` (late-bind
+  qua `this`). Test spy trên export không chặn được lệnh gọi thật của
+  interval. Sửa: `setInterval(() => module.exports._sweep(), ...)`.
+- **Bug 3 — pairingId đụng độ giữa các giải Double Elimination (nghiêm
+  trọng nhất, phát hiện qua test, không phải qua đọc code):** id trận đấu
+  của DE ('W1M1', 'GF', 'GF_RESET'...) đến từ Phase 2's bracket engine —
+  cùng 1 tên cho MỌI giải đấu dùng thể thức này, không global-unique. Vì
+  `this.pairings` (Map toàn cục), `tournamentState`'s Map, và
+  `tournament_pairings.id` (PRIMARY KEY trong SQLite) đều dùng thẳng
+  pairingId làm key/PK, 2 giải Double Elimination chạy đồng thời sẽ **ghi
+  đè lẫn nhau** (`ON CONFLICT DO UPDATE` càng làm việc này âm thầm, không
+  báo lỗi). Sửa bằng `_deId(tournament, localMatchId)` — pairingId thật sự
+  dùng khắp nơi (DB, `this.pairings`, `tournamentState`) là
+  `${tournamentId}:${localMatchId}` (vd `"<uuid>:W1M1"`); `tournament.bracketResults`
+  và mọi lệnh gọi vào `resolveBracket`/`needsBracketReset` (Phase 2, thuần
+  hàm) vẫn giữ nguyên namespace LOCAL không đổi — chỉ pairing object mới có
+  `pairing.bracketMatchId` lưu tên local để map ngược lại.
+
+**Các file mới:**
+- `server/managers/tournament/PairingLifecycle.js` — state machine (9
+  trạng thái), 12 hàm chuyển trạng thái (report/confirm/dispute/
+  organizerResolve/organizerAdjust/requestReschedule/approve/deny/
+  markReady/resolveDeadline), mỗi hàm nhận id "người có quyền" làm tham số
+  tường minh (không tự tra cứu tournament) để test độc lập không cần mock
+  `TournamentManager`.
+  - **Diễn giải đã ghi nhận:** `Reported → Ready` tự động khi 2 bên đồng ý
+    (không qua organizer) — chỉ nhánh dispute mới cần organizer.
+  - **Quyết định nhỏ mới phát sinh khi code (chưa có trong 10 câu hỏi
+    gốc):** khi 1 pairing bị đánh dấu `overdue` (hết hạn giữa lúc tranh
+    chấp chưa giải quyết) rồi organizer mới resolve, pairing được cấp
+    **deadline mới** (từ lúc resolve, không phải deadline cũ đã hết hạn) —
+    nếu không, sweep sẽ lập tức void/replay lại ngay tick kế tiếp, vô hiệu
+    hoá hoàn toàn hành động can thiệp của organizer.
+- `server/socket/tournamentState.js` — `tournamentTimerMap`,
+  `pendingDeadlines`, sweep interval (`config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS`,
+  mặc định 10s), `setDeadlineHandler()` (TournamentManager cài callback vào
+  đây lúc khởi tạo — 1 chiều, `tournamentState.js` không bao giờ require
+  `TournamentManager` để tránh circular require).
+- `server/managers/tournament/TournamentManager.js` (sửa) —
+  `startTournament()` giờ sinh pairing vòng 1 thật cho cả 3 thể thức;
+  `recordPairingResult()`, `markPairingReady()`, và 7 wrapper khác
+  (report/confirm/dispute/organizerResolve/organizerAdjust/
+  requestReschedule/approve/denyReschedule) tra `userId → entryId` rồi gọi
+  `PairingLifecycle`; `_advanceIfRoundComplete()` (Swiss/Round robin) +
+  `_syncDoubleElimPairings()` (Double Elimination, pull-based: gọi lại
+  `resolveBracket` mỗi khi có kết quả mới, tự động phát hiện trận nào vừa
+  đủ 2 người chơi — kể cả cascade bye→bye ở losers bracket) đảm nhiệm việc
+  sinh vòng/trận kế tiếp.
+  - **Void/replay (quyết định 5) khác nhau theo thể thức:** Swiss/Round
+    robin sinh pairingId MỚI (không có gì tham chiếu id cũ). Double
+    Elimination **reset lại chính pairing cũ, cùng id** — vì các trận khác
+    trong bracket tham chiếu tới id đó, không thể đổi.
+  - **Xếp hạng cuối Double Elimination:** chỉ chính xác cho hạng 1
+    (champion) và hạng 2 (runner-up, quyết định trực tiếp từ trận chung
+    kết/reset) — xếp hạng đầy đủ hạng 3 trở xuống cần theo dõi độ sâu bị
+    loại ở losers bracket, **để ngỏ ngoài phạm vi phase này**, ghi rõ TODO
+    trong code thay vì suy đoán bằng điểm số (không có ý nghĩa xếp hạng cho
+    thể thức này).
+- 3 file test mới: `PairingLifecycle.test.js` (44 case — bảng quyết định
+  đầy đủ mọi chuyển trạng thái hợp lệ/không hợp lệ, nhánh walkover-vs-
+  void/replay, non-organizer-bị-từ-chối viết TRƯỚC theo đúng class bug đã
+  gặp 2 lần ở phòng thường `TODO.md #33`/`#34`), `tournamentDeadlineSweep.test.js`
+  (9 case — cadence từ config với sentinel, giống hệt `RoomManager.test.js`),
+  và mở rộng `TournamentManager.test.js` thêm 16 case tích hợp (sinh pairing
+  vòng 1 đúng cho cả 3 thể thức, full walkthrough round-robin 3 người +
+  double-elim 4 người bao gồm cả bracket-reset, deadline-sweep-driven
+  walkover/void-replay/reset-in-place qua fake timers).
+- `npm test` (toàn bộ suite): **654/654 xanh**, không regression.
+
+Phase 4-5 (socket handler `TournamentHandler.js`, client UI wiring vào
+`index.html`/`lobby.js` thật) **chưa bắt đầu** — chờ người dùng xác nhận
+Phase 3 trước khi tiếp tục.
 
 ---

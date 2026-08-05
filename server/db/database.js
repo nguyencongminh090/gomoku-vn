@@ -441,6 +441,68 @@ function getTournamentPlayers(tournamentId) {
   return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ?').all(tournamentId);
 }
 
+/**
+ * Insert a tournament round (created once, at round-generation time).
+ * @param {{ id, tournamentId, roundIndex, bracketSide }} round
+ */
+function createTournamentRound({ id, tournamentId, roundIndex, bracketSide }) {
+  db.prepare(
+    `INSERT INTO tournament_rounds (id, tournament_id, round_index, bracket_side)
+     VALUES (?, ?, ?, ?)`
+  ).run(id, tournamentId, roundIndex, bracketSide || null);
+}
+
+/**
+ * Upsert a pairing row — called at creation and again on every lifecycle
+ * transition (unlike casual rooms, pairing history is persisted throughout,
+ * not just on completion; see schema.sql's header comment for why).
+ * @param {object} pairing — a PairingLifecycle pairing object
+ */
+function savePairing(pairing) {
+  db.prepare(`
+    INSERT INTO tournament_pairings
+      (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
+       agreed_time, deadline, paired_at, result, moves, started_at, ended_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      state = excluded.state,
+      agreed_time = excluded.agreed_time,
+      deadline = excluded.deadline,
+      result = excluded.result,
+      moves = excluded.moves,
+      started_at = excluded.started_at,
+      ended_at = excluded.ended_at
+  `).run(
+    pairing.pairingId,
+    pairing.roundId,
+    pairing.tournamentId,
+    pairing.player1EntryId,
+    pairing.player2EntryId,
+    pairing.state,
+    pairing.agreedTime,
+    pairing.deadline,
+    pairing.pairedAt,
+    pairing.result ? JSON.stringify(pairing.result) : null,
+    pairing.moves ? JSON.stringify(pairing.moves) : null,
+    pairing.startedAt,
+    pairing.endedAt
+  );
+}
+
+/**
+ * List all pairings for a tournament, most recently paired first.
+ * @param {string} tournamentId
+ * @returns {Array}
+ */
+function getPairingsByTournament(tournamentId) {
+  const rows = db.prepare('SELECT * FROM tournament_pairings WHERE tournament_id = ? ORDER BY paired_at DESC').all(tournamentId);
+  return rows.map((row) => {
+    if (row.result) row.result = JSON.parse(row.result);
+    if (row.moves) row.moves = JSON.parse(row.moves);
+    return row;
+  });
+}
+
 module.exports = {
   db,
   createUser,
@@ -460,4 +522,7 @@ module.exports = {
   saveTournamentPlayer,
   deleteTournamentPlayer,
   getTournamentPlayers,
+  createTournamentRound,
+  savePairing,
+  getPairingsByTournament,
 };

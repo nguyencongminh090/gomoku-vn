@@ -155,6 +155,12 @@ const DEFAULT_SCHEDULING_WINDOW_MS = parseInt(process.env.TOURNAMENT_SCHEDULING_
 // field, not a hardcoded constant, so a future format-specific override has
 // somewhere to live without a schema change.
 const DEFAULT_TIEBREAK_RULE = 'buchholz_sonneborn_berger';
+// Deadline-sweep cadence (design answer (b) in the Phase 1-6 plan): mirrors
+// RoomManager's IDLE_SCAN_INTERVAL_MS pattern — one setInterval scanning a
+// Map of only currently-pending deadlines, not one timer per pairing. 10s is
+// tight enough that a missed deadline resolves promptly, loose enough to be
+// cheap even with many concurrent tournaments.
+const TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS = parseInt(process.env.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS, 10) || 10_000;
 
 module.exports = {
   MAX_ROOMS,
@@ -197,4 +203,5 @@ module.exports = {
   TOURNAMENT_FORMATS,
   DEFAULT_SCHEDULING_WINDOW_MS,
   DEFAULT_TIEBREAK_RULE,
+  TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS,
 };

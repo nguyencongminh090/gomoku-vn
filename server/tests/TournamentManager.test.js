@@ -27,6 +27,7 @@ jest.mock('better-sqlite3', () => {
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 const tournamentManager = require('../managers/tournament/TournamentManager');
+const tournamentState = require('../socket/tournamentState');
 const database = require('../db/database');
 const config = require('../config');
 
@@ -388,5 +389,363 @@ describe('TournamentManager — listTournaments / serialization', () => {
     const payload = tournamentManager.serializeTournamentUpdate(tournament);
     expect(payload.ruleSet).toBeUndefined();
     expect(payload.tournamentId).toBe(tournament.tournamentId);
+  });
+});
+
+// ── Phase 3: pairing lifecycle integration ──────────────────────────────
+// TournamentManager.startTournament() now generates real round-1 pairings
+// via the Phase 2 format engines; these tests cover the integration glue
+// (wrapper auth resolution, DB persistence, round/bracket advancement,
+// TimerManager lifecycle, deadline-sweep-driven walkover/void-replay) —
+// PairingLifecycle.test.js already covers per-transition correctness
+// exhaustively, so these stay focused on what only TournamentManager adds.
+
+/** Advance a real (non-bye) pairing from Negotiating to Ready via report+confirm. */
+function advanceToReady(tournamentId, pairingId, reporterUserId, confirmerUserId, time = '2026-09-01T10:00:00Z') {
+  tournamentManager.reportPairingTime(reporterUserId, tournamentId, pairingId, time);
+  tournamentManager.confirmPairingTime(confirmerUserId, tournamentId, pairingId);
+}
+
+describe('TournamentManager — startTournament generates real round-1 pairings', () => {
+  test('swiss, 4 players: 2 real pairings, no bye', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const players = [user(), user(), user(), user()];
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    expect(pairings).toHaveLength(2);
+    expect(pairings.every((p) => p.state === 'Negotiating')).toBe(true);
+    expect(pairings.every((p) => p.player2EntryId !== null)).toBe(true);
+  });
+
+  test('round_robin, 3 players: 1 real pairing + 1 bye (already Completed)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const players = [user(), user(), user()];
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    expect(pairings).toHaveLength(2);
+    const byes = pairings.filter((p) => p.player2EntryId === null);
+    const real = pairings.filter((p) => p.player2EntryId !== null);
+    expect(byes).toHaveLength(1);
+    expect(byes[0].state).toBe('Completed');
+    expect(real).toHaveLength(1);
+    expect(real[0].state).toBe('Negotiating');
+  });
+
+  test('double_elim, 4 players: 2 real winners-round-1 pairings', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    expect(pairings).toHaveLength(2);
+    expect(pairings.map((p) => p.bracketMatchId).sort()).toEqual(['W1M1', 'W1M2']);
+    expect(pairings.every((p) => p.state === 'Negotiating')).toBe(true);
+  });
+
+  test('double_elim, 5 players (padded to 8): byes for the top 3 seeds are auto-Completed', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user(), user()];
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    const byes = pairings.filter((p) => p.player2EntryId === null);
+    expect(byes).toHaveLength(3);
+    expect(byes.every((p) => p.state === 'Completed')).toBe(true);
+  });
+});
+
+describe('TournamentManager — pairing wrappers resolve identity correctly', () => {
+  test('reportPairingTime rejects a user who never registered for this tournament', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    const stranger = user();
+    const { error, code } = tournamentManager.reportPairingTime(stranger.userId, tournament.tournamentId, pairing.pairingId, 'x');
+    expect(code).toBe('NOT_A_PARTICIPANT');
+    expect(error).toBeTruthy();
+  });
+
+  test('organizerAdjustPairing rejects a non-organizer, even if they are a registered player', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    const { code } = tournamentManager.organizerAdjustPairing(p1.userId, tournament.tournamentId, pairing.pairingId, 'x');
+    expect(code).toBe('ORGANIZER_ONLY');
+  });
+
+  test('operations against an unknown pairingId fail with PAIRING_NOT_FOUND, not a throw', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    expect(() => {
+      const { code } = tournamentManager.reportPairingTime(organizer.userId, tournament.tournamentId, 'nonexistent', 'x');
+      expect(code).toBe('PAIRING_NOT_FOUND');
+    }).not.toThrow();
+  });
+});
+
+describe('TournamentManager — markPairingReady creates/tears down a TimerManager', () => {
+  test('both players ready: a timer is created in tournamentState.tournamentTimerMap and started', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    expect(tournamentState.tournamentTimerMap.has(pairing.pairingId)).toBe(false); // only 1 of 2 ready
+    const { bothReady } = tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+
+    expect(bothReady).toBe(true);
+    expect(tournamentState.tournamentTimerMap.has(pairing.pairingId)).toBe(true);
+    expect(tournamentState.pendingDeadlines.has(pairing.pairingId)).toBe(false); // untracked once InProgress
+    expect(tournamentManager.getPairing(pairing.pairingId).state).toBe('InProgress');
+  });
+
+  test('recordPairingResult tears down the timer (no leaked interval)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    expect(tournamentState.tournamentTimerMap.has(pairing.pairingId)).toBe(true);
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairing.pairingId, e1);
+    expect(tournamentState.tournamentTimerMap.has(pairing.pairingId)).toBe(false);
+  });
+});
+
+describe('TournamentManager — round advancement (Swiss, 2 players -> 1 round)', () => {
+  test('completing the only round completes the tournament and assigns final ranks', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    const { entryId: e2 } = tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairing.pairingId, e1);
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.get(e1).finalRank).toBe(1);
+    expect(tournament.entries.get(e2).finalRank).toBe(2);
+  });
+});
+
+describe('TournamentManager — round advancement (Round robin, 3 players -> 3 rounds)', () => {
+  test('a full round-robin schedule plays out and completes with 2 real games total', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const p1 = user(); const p2 = user(); const p3 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.registerPlayer(p3, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const userById = { [e1]: p1 };
+    // Play out real matches round by round until the tournament completes.
+    // (3 players -> 3 rounds, 1 real match per round, 1 bye per round.)
+    let guard = 0;
+    while (tournament.status === 'active' && guard < 10) {
+      guard++;
+      const real = tournamentManager.listPairings(tournament.tournamentId)
+        .find((p) => p.player2EntryId !== null && p.state !== 'Completed');
+      if (!real) break;
+      const entryToUser = (entryId) => [p1, p2, p3].find((u) => {
+        const found = Array.from(tournament.entries.values()).find((e) => e.entryId === entryId);
+        return found && found.userId === u.userId;
+      });
+      const u1 = entryToUser(real.player1EntryId);
+      const u2 = entryToUser(real.player2EntryId);
+      advanceToReady(tournament.tournamentId, real.pairingId, u1.userId, u2.userId);
+      tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, real.pairingId);
+      tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, real.pairingId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, real.pairingId, real.player1EntryId);
+    }
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.completedPairings).toHaveLength(6); // 3 rounds x (1 real win + 1 bye)
+    const realGames = tournament.completedPairings.filter((p) => p.player2 !== null);
+    expect(realGames).toHaveLength(3);
+  });
+});
+
+describe('TournamentManager — round advancement (Double Elimination, 4 players)', () => {
+  test('a full bracket plays out to a champion without a reset (winners finalist wins the grand final)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const userByEntry = new Map(entries.map((e, i) => [e, players[i]]));
+
+    function playPairing(localId, winnerEntryId) {
+      const pairingId = `${tournament.tournamentId}:${localId}`;
+      const pairing = tournamentManager.getPairing(pairingId);
+      const u1 = userByEntry.get(pairing.player1EntryId);
+      const u2 = userByEntry.get(pairing.player2EntryId);
+      advanceToReady(tournament.tournamentId, pairingId, u1.userId, u2.userId);
+      tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, pairingId);
+      tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, pairingId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, winnerEntryId);
+    }
+
+    // W1M1: seed1(entries[0]) vs seed4(entries[3]) -> seed1 wins.
+    // W1M2: seed2(entries[1]) vs seed3(entries[2]) -> seed2 wins.
+    playPairing('W1M1', entries[0]);
+    playPairing('W1M2', entries[1]);
+
+    // Losers bracket: L1M1 = loser(W1M1)=entries[3] vs loser(W1M2)=entries[2].
+    let pairings = tournamentManager.listPairings(tournament.tournamentId);
+    expect(pairings.some((p) => p.bracketMatchId === 'L1M1')).toBe(true);
+    playPairing('L1M1', entries[3]); // entries[3] (seed4) survives the losers bracket
+
+    // Winners final: W2M1 = winner(W1M1) vs winner(W1M2) = entries[0] vs entries[1].
+    playPairing('W2M1', entries[0]); // seed1 wins winners bracket
+
+    // Losers final: L2M1 = winner(L1M1)=entries[3] vs loser(W2M1)=entries[1].
+    playPairing('L2M1', entries[3]);
+
+    // Grand final: winner(W2M1)=entries[0] vs winner(L2M1)=entries[3].
+    playPairing('GF', entries[0]); // winners-bracket finalist wins -> champion, no reset
+
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.get(entries[0]).finalRank).toBe(1);
+    expect(tournament.entries.get(entries[3]).finalRank).toBe(2);
+    expect(tournamentManager.getPairing(`${tournament.tournamentId}:GF_RESET`)).toBeNull();
+  });
+
+  test('a bracket reset is played when the losers-bracket finalist wins the grand final', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const userByEntry = new Map(entries.map((e, i) => [e, players[i]]));
+
+    function playPairing(localId, winnerEntryId) {
+      const pairingId = `${tournament.tournamentId}:${localId}`;
+      const pairing = tournamentManager.getPairing(pairingId);
+      const u1 = userByEntry.get(pairing.player1EntryId);
+      const u2 = userByEntry.get(pairing.player2EntryId);
+      advanceToReady(tournament.tournamentId, pairingId, u1.userId, u2.userId);
+      tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, pairingId);
+      tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, pairingId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, winnerEntryId);
+    }
+
+    playPairing('W1M1', entries[0]);
+    playPairing('W1M2', entries[1]);
+    playPairing('L1M1', entries[3]);
+    playPairing('W2M1', entries[0]);
+    playPairing('L2M1', entries[3]);
+    playPairing('GF', entries[3]); // losers-bracket finalist wins -> reset required
+
+    expect(tournament.status).toBe('active'); // not complete yet — reset match pending
+    const resetPairing = tournamentManager.getPairing(`${tournament.tournamentId}:GF_RESET`);
+    expect(resetPairing).not.toBeNull();
+    expect(resetPairing.state).toBe('Negotiating');
+
+    playPairing('GF_RESET', entries[3]); // entries[3] wins the reset too -> true champion
+    expect(tournament.status).toBe('completed');
+    expect(tournament.entries.get(entries[3]).finalRank).toBe(1);
+    expect(tournament.entries.get(entries[0]).finalRank).toBe(2);
+  });
+});
+
+describe('TournamentManager — deadline-sweep-driven walkover and void/replay', () => {
+  function shortWindowTournament(format = 'swiss') {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, {
+      format,
+      ruleSet: { schedulingWindowMs: 5000 },
+    }).tournament;
+    return { organizer, tournament };
+  }
+
+  test('exactly one player ready when the deadline fires: Walkover, tournament completes (2-player swiss)', () => {
+    const { organizer, tournament } = shortWindowTournament();
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId); // only e1 checks in
+
+    jest.advanceTimersByTime(config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS + 6000);
+
+    const resolved = tournamentManager.getPairing(pairing.pairingId);
+    expect(resolved.state).toBe('Walkover');
+    expect(resolved.result.winnerEntryId).toBe(e1);
+    expect(tournament.status).toBe('completed');
+  });
+
+  test('nobody negotiates before the deadline: DoubleNoShow -> a fresh replay pairing is created (swiss)', () => {
+    const { organizer, tournament } = shortWindowTournament();
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [original] = tournamentManager.listPairings(tournament.tournamentId);
+
+    jest.advanceTimersByTime(config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS + 6000);
+
+    expect(tournamentManager.getPairing(original.pairingId).state).toBe('DoubleNoShow');
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    const replay = pairings.find((p) => p.pairingId !== original.pairingId);
+    expect(replay).toBeDefined();
+    expect(replay.state).toBe('Negotiating');
+    expect(replay.player1EntryId).toBe(original.player1EntryId);
+    expect(replay.player2EntryId).toBe(original.player2EntryId);
+    expect(tournament.status).toBe('active'); // not completed — replay is still pending
+  });
+
+  test('double_elim void/replay resets the SAME pairingId in place (bracket references it by id)', () => {
+    const { organizer, tournament } = shortWindowTournament('double_elim');
+    const players = [user(), user(), user(), user()];
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    jest.advanceTimersByTime(config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS + 6000);
+
+    const w1m1Id = `${tournament.tournamentId}:W1M1`;
+    const w1m1 = tournamentManager.getPairing(w1m1Id);
+    expect(w1m1.state).toBe('Negotiating'); // reset in place, not DoubleNoShow
+    expect(tournamentManager.listPairings(tournament.tournamentId).filter((p) => p.pairingId === w1m1Id)).toHaveLength(1);
   });
 });
