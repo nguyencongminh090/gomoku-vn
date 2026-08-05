@@ -85,6 +85,41 @@ const TRANSLATIONS = {
     'lobby.online_count_badge': '— {n} đang online',
     'lobby.no_one_online': 'Không có ai online',
 
+    // ── Tables & Tournaments tabs ──────────────────────────────
+    'tabs.tables': 'Bàn chơi',
+    'tabs.tournaments': 'Giải đấu',
+
+    // ── Tournaments ─────────────────────────────────────────────
+    'tournaments.title': 'Giải đấu',
+    'tournaments.btn_create': 'Tạo giải đấu',
+    'tournaments.count_live': '— {n} đang diễn ra',
+    'tournaments.filter_all': 'Tất cả',
+    'tournaments.filter_upcoming': 'Sắp diễn ra',
+    'tournaments.filter_active': 'Đang diễn ra',
+    'tournaments.filter_done': 'Đã kết thúc',
+    'tournaments.filter_format_aria': 'Lọc theo thể thức',
+    'tournaments.filter_format_all': 'Mọi thể thức',
+    'tournaments.format_swiss': 'Swiss system',
+    'tournaments.format_round_robin': 'Round robin',
+    'tournaments.format_double_elim': 'Double Elimination',
+    'tournaments.format_double_elim_short': 'Double Elim.',
+    'tournaments.no_tournaments': 'Chưa có giải đấu nào.',
+    'tournaments.no_tournaments_sub': 'Hãy tạo giải đấu mới để bắt đầu!',
+    'tournaments.players_suffix': 'người chơi',
+    'tournaments.organized_by': 'Tổ chức bởi {name}',
+    'tournaments.status_organizer': 'Bạn là người tổ chức',
+    'tournaments.status_registered': 'Đã đăng ký',
+    'tournaments.status_open': 'Đang mở đăng ký',
+    'tournaments.btn_start': 'Bắt đầu',
+    'tournaments.btn_register': 'Đăng ký',
+    'tournaments.btn_unregister': 'Huỷ đăng ký',
+    'tournaments.modal_title': 'Tạo giải đấu mới',
+    'tournaments.name_label': 'Tên giải đấu',
+    'tournaments.name_placeholder': 'Tùy chọn (để trống tự tạo tên)',
+    'tournaments.format_label': 'Thể thức',
+    'tournaments.scheduling_window_label': 'Hạn báo lịch mỗi trận',
+    'tournaments.scheduling_window_unit': 'giờ',
+
     // ── UI mode (lite / default / pro) ────────────────────────
     'mode.title': 'Chế độ giao diện',
     'mode.lite': 'Gọn',
@@ -386,6 +421,15 @@ const TRANSLATIONS = {
     'err.auth_invalid_token': 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.',
     'err.server_error': 'Lỗi máy chủ. Vui lòng thử lại.',
     'err.server_restarting': 'Server đang khởi động lại. Vui lòng chờ.',
+
+    // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
+    'err.invalid_format': 'Thể thức giải đấu không hợp lệ.',
+    'err.missing_tournament_id': 'Thiếu mã giải đấu.',
+    'err.tournament_not_found': 'Giải đấu không tồn tại.',
+    'err.tournament_already_started': 'Giải đấu đã bắt đầu hoặc đã kết thúc.',
+    'err.already_registered': 'Bạn đã đăng ký giải đấu này rồi.',
+    'err.not_registered': 'Bạn chưa đăng ký giải đấu này.',
+    'err.organizer_only': 'Chỉ người tổ chức mới có thể thực hiện thao tác này.',
   },
 
   en: {
@@ -456,6 +500,41 @@ const TRANSLATIONS = {
     'lobby.loading': 'Loading...',
     'lobby.online_count_badge': '— {n} online',
     'lobby.no_one_online': 'No one online',
+
+    // ── Tables & Tournaments tabs ──────────────────────────────
+    'tabs.tables': 'Tables',
+    'tabs.tournaments': 'Tournaments',
+
+    // ── Tournaments ─────────────────────────────────────────────
+    'tournaments.title': 'Tournaments',
+    'tournaments.btn_create': 'Create tournament',
+    'tournaments.count_live': '— {n} live',
+    'tournaments.filter_all': 'All',
+    'tournaments.filter_upcoming': 'Upcoming',
+    'tournaments.filter_active': 'Live',
+    'tournaments.filter_done': 'Finished',
+    'tournaments.filter_format_aria': 'Filter by format',
+    'tournaments.filter_format_all': 'Any format',
+    'tournaments.format_swiss': 'Swiss system',
+    'tournaments.format_round_robin': 'Round robin',
+    'tournaments.format_double_elim': 'Double Elimination',
+    'tournaments.format_double_elim_short': 'Double Elim.',
+    'tournaments.no_tournaments': 'No tournaments yet.',
+    'tournaments.no_tournaments_sub': 'Create a new one to start!',
+    'tournaments.players_suffix': 'players',
+    'tournaments.organized_by': 'Organized by {name}',
+    'tournaments.status_organizer': 'You organize this',
+    'tournaments.status_registered': 'Registered',
+    'tournaments.status_open': 'Registration open',
+    'tournaments.btn_start': 'Start',
+    'tournaments.btn_register': 'Register',
+    'tournaments.btn_unregister': 'Unregister',
+    'tournaments.modal_title': 'Create new tournament',
+    'tournaments.name_label': 'Tournament name',
+    'tournaments.name_placeholder': 'Optional (auto-generated if empty)',
+    'tournaments.format_label': 'Format',
+    'tournaments.scheduling_window_label': 'Scheduling window per match',
+    'tournaments.scheduling_window_unit': 'hours',
 
     // ── Create room modal ─────────────────────────────────────
     // ── UI mode (lite / default / pro) ────────────────────────
@@ -758,6 +837,15 @@ const TRANSLATIONS = {
     'err.auth_invalid_token': 'Your session is invalid. Please log in again.',
     'err.server_error': 'Server error. Please try again.',
     'err.server_restarting': 'Server is restarting. Please wait.',
+
+    // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
+    'err.invalid_format': 'Invalid tournament format.',
+    'err.missing_tournament_id': 'Missing tournament ID.',
+    'err.tournament_not_found': 'Tournament does not exist.',
+    'err.tournament_already_started': 'The tournament has already started or finished.',
+    'err.already_registered': 'You\'re already registered for this tournament.',
+    'err.not_registered': 'You haven\'t registered for this tournament.',
+    'err.organizer_only': 'Only the organizer can do this.',
   },
 };
 

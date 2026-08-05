@@ -94,6 +94,11 @@ class TournamentManager extends EventEmitter {
       name: tournamentName,
       format,
       organizerId: organizerInfo.userId,
+      // In-memory only (no DB column) — same reasoning as RoomManager's
+      // hostName: display names aren't part of the durable audit trail,
+      // and nothing survives a server restart for this feature yet anyway
+      // (Phase 1-4 never added a "reload tournaments from DB" path).
+      organizerName: organizerInfo.displayName,
       ruleSet: validatedRuleSet,
       status: 'draft',      // draft | active | completed
       entries: new Map(),   // entryId → entry
@@ -843,8 +848,13 @@ class TournamentManager extends EventEmitter {
         name: tournament.name,
         format: tournament.format,
         organizerId: tournament.organizerId,
+        organizerName: tournament.organizerName,
         playerCount: tournament.entries.size,
         status: tournament.status,
+        // Lets the lobby card show "you're registered"/"you organize this"
+        // without a round-trip per card — the list summary otherwise has no
+        // per-entry detail at all.
+        entryUserIds: Array.from(tournament.entries.values()).map((e) => e.userId),
       });
     }
     return list;
@@ -878,6 +888,7 @@ class TournamentManager extends EventEmitter {
       name: tournament.name,
       format: tournament.format,
       organizerId: tournament.organizerId,
+      organizerName: tournament.organizerName,
       ruleSet: { ...tournament.ruleSet },
       status: tournament.status,
       entries,

@@ -35,7 +35,10 @@
 // ---------------------------------------------------------------------------
 // Initialize Socket.io client
 // ---------------------------------------------------------------------------
-const client = new SocketClient();
+// Exported so tournaments.js can reuse this exact connection instead of
+// opening a second socket.io connection from the same page (which would
+// also self-evict via the server's single-device-per-token enforcement).
+export const client = new SocketClient();
 
 // ---------------------------------------------------------------------------
 // Element refs
