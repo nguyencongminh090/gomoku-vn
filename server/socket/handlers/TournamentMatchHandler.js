@@ -322,6 +322,18 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
       seriesComplete: recordResult.seriesComplete !== false,
       scores: (tournament && updatedPairing) ? _seriesInfo(tournament, updatedPairing).scores : null,
     };
+    // The PAIRING's overall winner (once the series itself is decided) can
+    // differ from who won this last individual GAME — e.g. a series tied
+    // 1-1 after 2 games, where the second game's winner still resigns-loses
+    // the series overall. `engineResult.winner` only ever carries the game's
+    // outcome, so the client needs this to render the final overlay
+    // correctly for anything beyond 'single' mode (see showResultOverlay's
+    // caller in tournament-match.js for why).
+    if (seriesInfo.seriesComplete && updatedPairing && updatedPairing.result) {
+      const winnerEntryId = updatedPairing.result.winnerEntryId;
+      seriesInfo.seriesWinnerUserId = winnerEntryId ? (match.userIdByEntry.get(winnerEntryId) || null) : null;
+      seriesInfo.seriesIsDraw = winnerEntryId === null;
+    }
   }
 
   io.to(matchRoom(pairingId)).emit('tmatch:ended', {

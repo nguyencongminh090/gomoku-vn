@@ -158,6 +158,15 @@ client.on('tmatch:ended', (data) => {
   // joined — see TournamentMatchHandler.js's _endMatch) clears it again.
   if (data.series && data.series.seriesComplete === false) {
     showSeriesTransition(data.result);
+  } else if (seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single') {
+    // The PAIRING's overall winner can differ from who won this last
+    // individual game (e.g. a series that ties 1-1 after 2 games) —
+    // data.result is only ever this game's outcome, so a decided multi-game
+    // series must show its OWN winner/draw, not the last game's.
+    showResultOverlay(data.result, {
+      winnerUserId: data.series.seriesWinnerUserId,
+      isDraw: data.series.seriesIsDraw,
+    });
   } else {
     showResultOverlay(data.result);
   }
@@ -381,19 +390,31 @@ btnResign.addEventListener('click', () => {
 
 // ── Result overlay ───────────────────────────────────────────────────────
 
-function showResultOverlay(result) {
+/**
+ * @param {object} result — the last GAME's engine result (used for `reason`
+ *   regardless of scope — see below).
+ * @param {{winnerUserId: string|null, isDraw: boolean}} [seriesOverride] —
+ *   when the pairing is a decided multi-game series (TODO.md #50), the
+ *   PAIRING's overall winner can differ from who won this last game (e.g. a
+ *   series tied 1-1 after 2 games) — pass this to show the series' own
+ *   outcome instead of defaulting to `result.winner`.
+ */
+function showResultOverlay(result, seriesOverride) {
   if (!result) return;
   const mp = myPlayer();
   let icon = '🏁', title, sub = '';
 
-  if (result.winner === 'draw') {
+  const isDraw = seriesOverride ? seriesOverride.isDraw : result.winner === 'draw';
+  const winnerUserId = seriesOverride ? seriesOverride.winnerUserId : result.winner;
+
+  if (isDraw) {
     icon = '🤝'; title = t('tmatch.result_draw');
-  } else if (mp && result.winner === userInfo.userId) {
+  } else if (mp && winnerUserId === userInfo.userId) {
     icon = '🏆'; title = t('tmatch.result_you_won');
   } else if (mp) {
     icon = '😔'; title = t('tmatch.result_you_lost');
   } else {
-    const winnerP = gameState.players.find((p) => p.userId === result.winner);
+    const winnerP = gameState.players.find((p) => p.userId === winnerUserId);
     title = t('tmatch.result_winner', { name: winnerP ? winnerP.displayName : '—' });
   }
   if (result.reason === 'resign') sub = t('tmatch.reason_resign');

@@ -483,6 +483,72 @@ describe('TournamentMatchHandler — series transition (_endMatch)', () => {
     expect(ended.data.series.seriesComplete).toBe(true);
     expect(io.in).toHaveBeenCalledWith('tournament-match:p1');
   });
+
+  test('a decided series carries the PAIRING\'s overall winner, which can differ from who won this last game', () => {
+    // Series tied 1-1 after 2 games: entry2 won game 1, entry1 (who just
+    // resigned this game) actually... construct the scenario explicitly:
+    // pairing.result reflects the SERIES winner (entry2), even though THIS
+    // game's engine result says entry1's opponent (entry2) is who benefits
+    // from the resign — i.e. the two must be capable of disagreeing, which
+    // this test asserts by pointing them at different entries.
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({
+      tournament: {}, pairing: {}, // seriesComplete absent -> complete
+    });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Completed',
+        games: [
+          { index: 0, winnerEntryId: entry2.entryId },
+          { index: 1, winnerEntryId: entry1.entryId },
+        ],
+        seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 1 },
+        result: { winnerEntryId: null, reason: 'draw' }, // series tied overall
+      });
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' }); // this GAME: entry2 wins
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.result.winner).toBe(entry2.userId); // this game's winner
+    expect(ended.data.series.seriesIsDraw).toBe(true);     // but the SERIES tied overall
+    expect(ended.data.series.seriesWinnerUserId).toBeNull();
+  });
+
+  test('a decided series with a real overall winner resolves seriesWinnerUserId to that player\'s userId', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({ tournament: {}, pairing: {} });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Completed',
+        games: [{ index: 0, winnerEntryId: entry1.entryId }, { index: 1, winnerEntryId: entry1.entryId }],
+        seriesScore: { [entry1.entryId]: 2, [entry2.entryId]: 0 },
+        result: { winnerEntryId: entry1.entryId, reason: 'series_decided' },
+      });
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.series.seriesWinnerUserId).toBe(entry1.userId);
+    expect(ended.data.series.seriesIsDraw).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
