@@ -884,3 +884,184 @@ describe('TournamentManager — deadline-sweep-driven walkover and void/replay',
     expect(tournamentManager.listPairings(tournament.tournamentId).filter((p) => p.pairingId === w1m1Id)).toHaveLength(1);
   });
 });
+
+// ── recordPairingResult series loop (TODO.md #50) ───────────────────────
+
+describe('TournamentManager — recordPairingResult series loop (TODO.md #50)', () => {
+  function twoPlayerTournament(format, ruleSet) {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format, ruleSet }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    const { entryId: e2 } = tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    return { tournament, p1, p2, e1, e2, pairingId: pairing.pairingId };
+  }
+
+  /** Re-checks in both players for the next game — no renegotiation, per decision 2. */
+  function checkInNextGame(tournamentId, pairingId, p1UserId, p2UserId) {
+    tournamentManager.markPairingReady(p1UserId, tournamentId, pairingId);
+    tournamentManager.markPairingReady(p2UserId, tournamentId, pairingId);
+  }
+
+  test('single mode (default): unaffected — completes after exactly 1 game with reason "normal", matching pre-B50 behavior', () => {
+    const { tournament, e1, pairingId } = twoPlayerTournament('swiss', {}); // seriesMode defaults to 'single'
+    const result = tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(result.seriesComplete).toBeUndefined(); // completion path doesn't set this flag
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.games).toHaveLength(1);
+    expect(pairing.games[0]).toMatchObject({ index: 0, winnerEntryId: e1 });
+    expect(pairing.result).toEqual({ winnerEntryId: e1, reason: 'normal' });
+  });
+
+  test('single mode: a draw keeps reason "draw", exactly as before B50', () => {
+    const { tournament, pairingId } = twoPlayerTournament('swiss', {});
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, 'draw');
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.result).toEqual({ winnerEntryId: null, reason: 'draw' });
+  });
+
+  test('fixedCount: series loops back to Ready (not Completed) before the game count is reached', () => {
+    const { tournament, e1, e2, pairingId } = twoPlayerTournament('swiss', { seriesMode: 'fixedCount', seriesGameCount: 3 });
+    const result = tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    expect(result.seriesComplete).toBe(false);
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Ready');
+    expect(pairing.games).toHaveLength(1);
+    expect(pairing.seriesScore).toEqual({ [e1]: 1, [e2]: 0 });
+    expect(tournamentState.tournamentTimerMap.has(pairingId)).toBe(false); // torn down between games
+    expect(tournamentState.pendingDeadlines.has(pairingId)).toBe(true); // fresh check-in deadline tracked
+  });
+
+  test('fixedCount: reaching the count completes the pairing with the SERIES winner, reason "series_decided"', () => {
+    const { tournament, p1, p2, e1, e2, pairingId } = twoPlayerTournament('swiss', { seriesMode: 'fixedCount', seriesGameCount: 3 });
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1); // game 1: e1
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1); // game 2: e1
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e2); // game 3: e2
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.games).toHaveLength(3);
+    expect(pairing.games.map((g) => g.winnerEntryId)).toEqual([e1, e1, e2]);
+    expect(pairing.seriesScore).toEqual({ [e1]: 2, [e2]: 1 });
+    expect(pairing.result).toEqual({ winnerEntryId: e1, reason: 'series_decided' });
+  });
+
+  test('fixedCount: a series tied at the count completes with a null (draw) winner', () => {
+    const { tournament, p1, p2, e1, e2, pairingId } = twoPlayerTournament('swiss', { seriesMode: 'fixedCount', seriesGameCount: 2 });
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e2);
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.result).toEqual({ winnerEntryId: null, reason: 'draw' });
+  });
+
+  test('raceToMargin: uncapped — drawn games do not decide the series, decisive wins later do', () => {
+    const { tournament, p1, p2, e1, e2, pairingId } = twoPlayerTournament('swiss', {
+      seriesMode: 'raceToMargin', seriesTargetScore: 3, seriesMargin: 2,
+    });
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, 'draw');
+    expect(tournamentManager.getPairing(pairingId).state).toBe('Ready');
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, 'draw');
+    expect(tournamentManager.getPairing(pairingId).state).toBe('Ready'); // still 1-1, nowhere near target
+
+    // e1 wins twice: e1 = 1(from draws) + 2 = 3, e2 = 1 -> target 3 met, margin 2 >= 2 -> complete
+    // after only 2 more wins (not 3 — the series ends as soon as the condition
+    // is satisfied, it doesn't wait for a pre-planned number of iterations).
+    for (let i = 0; i < 2; i++) {
+      checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    }
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.games).toHaveLength(4);
+    expect(pairing.seriesScore).toEqual({ [e1]: 3, [e2]: 1 });
+    expect(pairing.result).toEqual({ winnerEntryId: e1, reason: 'series_decided' });
+  });
+
+  test('double_elim: a series that ends TIED (fixedCount) is void/replay in place, with fresh games[]/seriesScore', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, {
+      format: 'double_elim',
+      ruleSet: { seriesMode: 'fixedCount', seriesGameCount: 2 },
+    }).tournament;
+    const players = [user(), user(), user(), user()];
+    const userByEntryId = new Map();
+    for (const p of players) {
+      const { entryId } = tournamentManager.registerPlayer(p, tournament.tournamentId);
+      userByEntryId.set(entryId, p);
+    }
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    const pairingId = pairing.pairingId;
+    const p1 = userByEntryId.get(pairing.player1EntryId);
+    const p2 = userByEntryId.get(pairing.player2EntryId);
+
+    advanceToReady(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairingId);
+
+    // Game 1: player1 wins. Game 2: player2 wins -> 1-1 tie at count=2.
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, pairing.player1EntryId);
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    const result = tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, pairing.player2EntryId);
+
+    expect(result.replay).toBeDefined();
+    const afterPairing = tournamentManager.getPairing(pairingId); // double_elim reuses the SAME pairingId
+    expect(afterPairing.state).toBe('Negotiating');
+    expect(afterPairing.games).toEqual([]); // stale series history does not leak into the replay
+    expect(afterPairing.seriesScore).toBeNull();
+  });
+});
+
+// ── Mid-series walkover forfeits the whole remaining series (TODO.md #50 decision 6) ──
+
+describe('TournamentManager — mid-series no-show forfeits the whole remaining series', () => {
+  test('a no-show for game 2 walks the ENTIRE pairing over, discarding the series in progress (not just that game)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, {
+      format: 'swiss',
+      ruleSet: { schedulingWindowMs: 5000, seriesMode: 'fixedCount', seriesGameCount: 3 },
+    }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    const pairingId = pairing.pairingId;
+
+    advanceToReady(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairingId);
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1); // game 1 done, series continues
+    expect(tournamentManager.getPairing(pairingId).state).toBe('Ready');
+
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairingId); // only p1 shows up for game 2
+
+    jest.advanceTimersByTime(config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS + 6000);
+
+    const resolved = tournamentManager.getPairing(pairingId);
+    expect(resolved.state).toBe('Walkover');
+    expect(resolved.result).toEqual({ winnerEntryId: e1, reason: 'walkover' });
+    // Game 1's already-played result isn't erased, but doesn't change the outcome —
+    // the whole remaining series is forfeited, not scored out.
+    expect(resolved.games).toHaveLength(1);
+    expect(tournament.status).toBe('completed');
+  });
+});

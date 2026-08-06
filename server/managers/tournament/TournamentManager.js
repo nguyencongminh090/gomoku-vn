@@ -447,16 +447,33 @@ class TournamentManager extends EventEmitter {
   }
 
   /**
-   * Record a finished match's result (normal completion — walkover/void-replay
-   * come from the deadline sweep instead, see _handlePairingDeadline).
+   * Record one finished GAME's result within a pairing (TODO.md #50 — a
+   * pairing may be a multi-game series, not just one game). Normal
+   * completion only — walkover/void-replay for a no-show come from the
+   * deadline sweep instead, see _handlePairingDeadline.
+   *
+   * Pushes the game into pairing.games[], re-evaluates whether the SERIES
+   * (not just this game) is decided via series.js#evaluateSeries, and only
+   * then does one of:
+   *   - series not decided: loop back to Ready for the next game
+   *     (PairingLifecycle.startNextGame — fresh check-in/deadline window,
+   *     see that function's doc comment for why) instead of completing.
+   *   - series decided: complete the pairing exactly as before. In 'single'
+   *     mode this is unconditionally true after the first game, so behavior
+   *     for existing (non-series) tournaments is byte-for-byte unchanged.
    *
    * @param {string} tournamentId
    * @param {string} pairingId
    * @param {string} outcome — the winning entryId, or the literal string
-   *   'draw'. Double Elimination brackets have no slot for an undecided
-   *   match — a draw there is treated like DoubleNoShow (void + fresh
-   *   replay pairing, reusing the existing decision-5 mechanism) rather
-   *   than silently picking a winner or leaving the bracket stuck.
+   *   'draw', for the game that just ended (not necessarily the pairing).
+   *   Double Elimination brackets have no slot for an undecided match — if
+   *   the SERIES itself ends tied (fixedCount only; raceToMargin can never
+   *   tie), it's treated like DoubleNoShow (void + fresh replay pairing,
+   *   reusing the existing decision-5 mechanism) rather than silently
+   *   picking a winner or leaving the bracket stuck. A single game within
+   *   an ongoing series ending in a draw does NOT trigger this — draws
+   *   count immediately toward the running score and play continues
+   *   (planning.md decision 2).
    */
   recordPairingResult(tournamentId, pairingId, outcome) {
     const ctx = this._resolvePairingContext(tournamentId, pairingId);
@@ -465,30 +482,53 @@ class TournamentManager extends EventEmitter {
       return { error: 'Ván đấu chưa bắt đầu hoặc đã kết thúc.', code: 'PAIRING_NOT_IN_PROGRESS' };
     }
 
+    const pairing = ctx.pairing;
+    const ruleSet = ctx.tournament.ruleSet;
     const isDraw = outcome === 'draw';
+    const now = new Date().toISOString();
 
-    if (isDraw && ctx.tournament.format === 'double_elim') {
-      ctx.pairing.state = 'DoubleNoShow';
-      ctx.pairing.result = { winnerEntryId: null, reason: 'draw_replay' };
-      ctx.pairing.endedAt = new Date().toISOString();
-      this._persistPairing(ctx.pairing);
+    pairing.games.push({ index: pairing.games.length, winnerEntryId: isDraw ? null : outcome, endedAt: now });
+    pairing.seriesScore = seriesModule.computeSeriesScore(pairing.games, pairing.player1EntryId, pairing.player2EntryId);
+
+    const evalResult = seriesModule.evaluateSeries(pairing.games, ruleSet, pairing.player1EntryId, pairing.player2EntryId);
+
+    if (!evalResult.seriesComplete) {
+      PairingLifecycle.startNextGame(pairing, ruleSet.schedulingWindowMs);
+      this._persistPairing(pairing);
       this._teardownPairingTimer(pairingId);
-      const replay = this._createReplayPairing(ctx.tournament, ctx.pairing);
+      tournamentState.trackDeadline(pairingId, tournamentId, new Date(pairing.deadline).getTime());
       this._emitPairingChanged(tournamentId, pairingId);
-      return { tournament: ctx.tournament, pairing: ctx.pairing, replay };
+      return { tournament: ctx.tournament, pairing, seriesComplete: false };
     }
 
-    ctx.pairing.state = 'Completed';
-    ctx.pairing.result = { winnerEntryId: isDraw ? null : outcome, reason: isDraw ? 'draw' : 'normal' };
-    ctx.pairing.endedAt = new Date().toISOString();
-    this._persistPairing(ctx.pairing);
+    const seriesWinnerEntryId = evalResult.winnerEntryId;
+    const seriesIsDraw = seriesWinnerEntryId === null;
+
+    if (seriesIsDraw && ctx.tournament.format === 'double_elim') {
+      pairing.state = 'DoubleNoShow';
+      pairing.result = { winnerEntryId: null, reason: 'draw_replay' };
+      pairing.endedAt = now;
+      this._persistPairing(pairing);
+      this._teardownPairingTimer(pairingId);
+      const replay = this._createReplayPairing(ctx.tournament, pairing);
+      this._emitPairingChanged(tournamentId, pairingId);
+      return { tournament: ctx.tournament, pairing, replay };
+    }
+
+    pairing.state = 'Completed';
+    pairing.result = {
+      winnerEntryId: seriesWinnerEntryId,
+      reason: seriesIsDraw ? 'draw' : ((ruleSet.seriesMode || 'single') === 'single' ? 'normal' : 'series_decided'),
+    };
+    pairing.endedAt = now;
+    this._persistPairing(pairing);
     this._teardownPairingTimer(pairingId);
 
-    this._recordCompletion(ctx.tournament, ctx.pairing, isDraw ? 'draw' : outcome);
+    this._recordCompletion(ctx.tournament, pairing, seriesIsDraw ? 'draw' : seriesWinnerEntryId);
     this._advanceIfRoundComplete(ctx.tournament);
     this._emitPairingChanged(tournamentId, pairingId);
 
-    return { tournament: ctx.tournament, pairing: ctx.pairing };
+    return { tournament: ctx.tournament, pairing };
   }
 
   // ---------------------------------------------------------------------------
@@ -749,6 +789,11 @@ class TournamentManager extends EventEmitter {
         pairedAt: now.toISOString(),
         deadline,
         result: null,
+        // A void/replay (whether from a mid-series double-no-show or the
+        // whole series ending tied) restarts the series from scratch — the
+        // old games[]/seriesScore must not leak into the replay.
+        games: [],
+        seriesScore: null,
         startedAt: null,
         endedAt: null,
       });
@@ -947,6 +992,8 @@ class TournamentManager extends EventEmitter {
       deadline: pairing.deadline,
       pairedAt: pairing.pairedAt,
       result: pairing.result,
+      games: pairing.games,
+      seriesScore: pairing.seriesScore,
       startedAt: pairing.startedAt,
       endedAt: pairing.endedAt,
     };
