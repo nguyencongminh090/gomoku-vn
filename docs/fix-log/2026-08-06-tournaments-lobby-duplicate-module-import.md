@@ -1,0 +1,23 @@
+# Fix log entry — 2026-08-06 22:46
+
+## Prompt
+
+Follow-up: after the [[2026-08-06-session-kicked-false-positive-on-reconnect]] fix was merged to `main` and confirmed present in a freshly-restarted server process, user reported the "Tài khoản của bạn vừa đăng nhập ở một thiết bị khác, phiên này đã bị ngắt kết nối." false-kick still happened with only one tab open — meaning that fix, while correct for the reconnect case it targeted, did not address this occurrence.
+
+## Action
+
+Ruled out a second deployment gap first: confirmed via `ps` that the server producing the new log was a fresh process (pid 25246, started 22:43) started after the `main`→`dev` merge (22:42), and confirmed the fix's marker code (`isOwnReconnect`, `RAW_PAYLOAD_EVENTS`) was present in the `dev` working tree it was running from. So this was a distinct, second bug, not a repeat of the same one.
+
+Re-examined the new log's timing: both `Connected` lines land in the *same second* (22:38:28/22:38:28), unlike the earlier evidence where the two connects were seconds apart — too fast to be a ping-timeout-triggered reconnect (default `pingTimeout` ~20s), and the `auth.reconnect` flag the prior fix relies on is never set on a page's first connect. This ruled out the reconnect path entirely and pointed at duplicate socket creation on initial page load, from a single tab.
+
+Audited every `new SocketClient()` call site (`client/js/lobby.js`, `room.js`, `tournament-detail.js`, `tournament-match.js`) — only one instantiation each — then audited every `?v=` cache-busting query string across `client/*.html` and `client/js/*.js` per the CLAUDE.md convention. Found the root cause: [client/js/tournaments.js:35](client/js/tournaments.js#L35) imported `./lobby.js?v=63`, while [client/js/index-entry.js:7](client/js/index-entry.js#L7) (loaded on the same `index.html` page) imported `./lobby.js?v=64` — a stale version string left behind by a prior cache-bust that didn't touch this one import. Browsers resolve ES module specifiers as distinct URLs including the query string, so `lobby.js?v=63` and `lobby.js?v=64` are two *separate* module instances — `lobby.js`'s top-level `export const client = new SocketClient()` therefore ran twice on every load of `index.html`, opening two real, near-simultaneous socket.io connections authenticating as the same user from the one tab. The server's single-device enforcement then legitimately (from its point of view) saw "two connections for this userId" and kicked one, producing the exact false-positive symptom — independent of the reconnect-flag logic entirely.
+
+## Decision
+
+Fixed by aligning the stale `?v=63` reference to match the current site-wide version, rather than special-casing `tournaments.js`'s import — a query-string mismatch on a *specific* import is a landmine that will keep recurring on future version bumps if `tournaments.js` is treated as an exception; the CLAUDE.md rule ("bump `?v=N` everywhere it appears... a mismatched/partial bump reintroduces stale-cache bugs") already exists precisely to prevent this, so the actual fix is bumping every `?v=` occurrence site-wide to a new number (64→65) in one pass, which both restores consistency and closes out the immediate bug (the stale `?v=63` reference had never been advanced through the last several bumps, since `grep`-based bump passes that miss one occurrence don't fail loudly).
+
+Branched off `dev`, not `main`, per this repo's `feature/`-vs-`fix/` convention: `tournaments.js`/`tournament.html`/etc. are tournament-feature files that only exist on `dev` (not yet merged to `main`), so a `fix/` branch for this bug cannot be cut from `main` without those files being absent.
+
+## Summary output
+
+Bumped `?v=64` → `?v=65` across every occurrence in `client/*.html` and `client/js/*.js` (12 files), which in the same pass corrects `client/js/tournaments.js`'s stale `./lobby.js?v=63` import to `?v=65`, matching `index-entry.js`'s `./lobby.js?v=65` — eliminating the duplicate `lobby.js` module evaluation and the duplicate `SocketClient`/socket.io connection it caused. `npm test`: 809/809 green (no server-side regression; this bug and fix are purely client-side ES-module loading, which this repo's Jest/server test infra has no coverage surface for — per CLAUDE.md's bug-fix workflow rule, stating this explicitly rather than skipping silently). Not manually verified in a live browser in this pass; recommend the user hard-reload `index.html` (bypassing any stale service-worker/HTTP cache of the old `?v=63`/`?v=64` assets) and confirm only one `Connected` line appears per login in server logs going forward.
