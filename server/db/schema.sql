@@ -103,8 +103,9 @@ CREATE TABLE IF NOT EXISTS tournament_pairings (
   agreed_time       TEXT,                -- ISO 8601 timestamp, set once both sides agree
   deadline          TEXT NOT NULL,       -- ISO 8601 timestamp — per-match deadline (decision 2)
   paired_at         TEXT NOT NULL,       -- ISO 8601 timestamp
-  result            TEXT,                -- JSON — {winnerEntryId, reason: 'normal'|'walkover'|'void_replay'|'organizer_adjusted'}
-  moves             TEXT,                -- JSON array, same shape as games.moves once InProgress
+  result            TEXT,                -- JSON — {winnerEntryId, reason: 'normal'|'draw'|'walkover'|'void_replay'|'organizer_adjusted'|'draw_replay'|'series_decided'} — the pairing's OVERALL (series) outcome
+  games             TEXT,                -- JSON array — [{index, winnerEntryId|null (draw), endedAt}], one entry per game played in the pairing's series (TODO.md #50); single-game pairings (ruleSet.seriesMode='single') always have exactly one entry once Completed
+  moves             TEXT,                -- JSON array, same shape as games.moves once InProgress — the CURRENT/last game's move history only (not per-series)
   started_at        TEXT,
   ended_at          TEXT
 );

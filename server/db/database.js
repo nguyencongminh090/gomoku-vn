@@ -32,6 +32,16 @@ db.pragma('foreign_keys = ON');
 const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
 db.exec(schema);
 
+// CREATE TABLE IF NOT EXISTS never adds a column to an already-existing
+// table, so a db file created before TODO.md #50 (pairing.games) is missing
+// this column — add it in place if so. Additive-only (nullable, no data
+// touched), safe to run every startup.
+const pairingColumns = db.prepare("PRAGMA table_info(tournament_pairings)").all().map((c) => c.name);
+if (pairingColumns.length > 0 && !pairingColumns.includes('games')) {
+  db.exec('ALTER TABLE tournament_pairings ADD COLUMN games TEXT');
+  logger.info('[DB] Migrated tournament_pairings: added games column (TODO.md #50)');
+}
+
 // Periodic WAL checkpoint to prevent unbounded growth
 setInterval(() => {
   try {
@@ -462,13 +472,14 @@ function savePairing(pairing) {
   db.prepare(`
     INSERT INTO tournament_pairings
       (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
-       agreed_time, deadline, paired_at, result, moves, started_at, ended_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       agreed_time, deadline, paired_at, result, games, moves, started_at, ended_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       state = excluded.state,
       agreed_time = excluded.agreed_time,
       deadline = excluded.deadline,
       result = excluded.result,
+      games = excluded.games,
       moves = excluded.moves,
       started_at = excluded.started_at,
       ended_at = excluded.ended_at
@@ -483,6 +494,7 @@ function savePairing(pairing) {
     pairing.deadline,
     pairing.pairedAt,
     pairing.result ? JSON.stringify(pairing.result) : null,
+    pairing.games ? JSON.stringify(pairing.games) : null,
     pairing.moves ? JSON.stringify(pairing.moves) : null,
     pairing.startedAt,
     pairing.endedAt
@@ -498,6 +510,7 @@ function getPairingsByTournament(tournamentId) {
   const rows = db.prepare('SELECT * FROM tournament_pairings WHERE tournament_id = ? ORDER BY paired_at DESC').all(tournamentId);
   return rows.map((row) => {
     if (row.result) row.result = JSON.parse(row.result);
+    if (row.games) row.games = JSON.parse(row.games);
     if (row.moves) row.moves = JSON.parse(row.moves);
     return row;
   });

@@ -40,6 +40,16 @@ describe('createPairing', () => {
     expect(p.state).toBe('Completed');
     expect(p.result).toEqual({ winnerEntryId: 'e1', reason: 'bye' });
   });
+
+  test('every pairing (including a bye) starts with an empty games[] and null seriesScore (TODO.md #50)', () => {
+    const p = freshPairing();
+    expect(p.games).toEqual([]);
+    expect(p.seriesScore).toBeNull();
+
+    const bye = freshPairing({ player2EntryId: null });
+    expect(bye.games).toEqual([]);
+    expect(bye.seriesScore).toBeNull();
+  });
 });
 
 // ── Full transition decision table ──────────────────────────────────────
@@ -371,6 +381,66 @@ describe('markReady (Ready -> InProgress)', () => {
     const p = readyPairingBothChecking();
     const { code } = PairingLifecycle.markReady(p, 'stranger', TIME_CONTROL);
     expect(code).toBe('NOT_A_PARTICIPANT');
+  });
+});
+
+// ── startNextGame (InProgress -> Ready, TODO.md #50 series loop) ─────────
+
+describe('startNextGame', () => {
+  function inProgressPairing() {
+    const p = readyPairingBothChecking();
+    PairingLifecycle.markReady(p, 'e1', TIME_CONTROL);
+    const { timer } = PairingLifecycle.markReady(p, 'e2', TIME_CONTROL);
+    timer.destroy();
+    return p;
+  }
+
+  test('valid: InProgress -> Ready, readyPlayers cleared, deadline refreshed', () => {
+    const p = inProgressPairing();
+    // A distinct window from freshPairing()'s original (60s-from-creation)
+    // deadline guarantees the two ISO strings differ regardless of how fast
+    // this synchronous test runs — asserting "not equal" against a deadline
+    // computed with the SAME offset would be timing-flaky (both could land
+    // in the same millisecond).
+    const { pairing, error } = PairingLifecycle.startNextGame(p, 5_000);
+    expect(error).toBeUndefined();
+    expect(pairing.state).toBe('Ready');
+    expect(pairing.readyPlayers.size).toBe(0);
+    const deadlineMs = new Date(pairing.deadline).getTime();
+    expect(deadlineMs).toBeGreaterThan(Date.now());
+    expect(deadlineMs).toBeLessThan(Date.now() + 60_000);
+  });
+
+  test('negotiation is not repeated: agreedTime stays untouched (decision 2)', () => {
+    const p = inProgressPairing();
+    const agreedBefore = p.agreedTime;
+    const { pairing } = PairingLifecycle.startNextGame(p, 60_000);
+    expect(pairing.agreedTime).toBe(agreedBefore);
+  });
+
+  test('invalid: cannot start the next game from a state other than InProgress', () => {
+    const p = readyPairingBothChecking(); // Ready, not InProgress
+    const { error, code } = PairingLifecycle.startNextGame(p, 60_000);
+    expect(code).toBe('INVALID_STATE');
+    expect(error).toBeTruthy();
+    expect(p.state).toBe('Ready'); // unchanged
+  });
+
+  test('after startNextGame, the reused check-in flow can walkover the whole pairing on a mid-series no-show', () => {
+    // This is the mechanism instruction.md B50 requires reusing rather than
+    // writing a new one: startNextGame -> Ready -> only one player re-checks
+    // in -> resolveDeadline's existing walkover branch fires.
+    const p = inProgressPairing();
+    p.games.push({ index: 0, winnerEntryId: 'e1', endedAt: new Date().toISOString() });
+    PairingLifecycle.startNextGame(p, 60_000);
+    PairingLifecycle.markReady(p, 'e1', TIME_CONTROL); // e2 never shows up for game 2
+    const { action, pairing, winnerEntryId } = PairingLifecycle.resolveDeadline(p);
+    expect(action).toBe('walkover');
+    expect(pairing.state).toBe('Walkover');
+    expect(winnerEntryId).toBe('e1');
+    // The whole pairing is forfeited — game 1's already-recorded result does
+    // not leak into pairing.result; the walkover result replaces it outright.
+    expect(pairing.result).toEqual({ winnerEntryId: 'e1', reason: 'walkover' });
   });
 });
 

@@ -58,6 +58,16 @@ function createPairing(init) {
     deadline: init.deadline,
     pairedAt: init.pairedAt,
     result: null,
+    // Per-game history for the pairing's series (TODO.md #50): one entry per
+    // game played so far — {index, winnerEntryId|null (draw), endedAt}.
+    // Always present (even for a 1-game 'single'-mode pairing, and even for
+    // a bye) so every pairing object has the same key set regardless of
+    // seriesMode — see PairingLifecycle.test.js's walkover key-set assertion.
+    games: [],
+    // Derived from `games` (see series.js#computeSeriesScore) — null until
+    // the first game is recorded, since it needs both entry ids as keys and
+    // a bye has no player2EntryId to key by.
+    seriesScore: null,
     startedAt: null,
     endedAt: null,
   };
@@ -268,6 +278,35 @@ function markReady(pairing, entryId, timeControl) {
 }
 
 /**
+ * InProgress -> Ready, for a pairing whose series (TODO.md #50) isn't
+ * decided yet after the game that just ended — the pairing loops back to
+ * Ready for the next game instead of completing (see
+ * features/tournament-match-series/diagram/state-diagram-pairing-series.md).
+ *
+ * Deliberately reuses the SAME Ready-state check-in/deadline machinery as
+ * the pairing's initial scheduling, rather than a new mechanism: this is
+ * what lets a mid-series no-show fall through the EXISTING resolveDeadline()
+ * walkover branch below and forfeit the whole remaining series (planning.md
+ * decision 3 / instruction.md B50's "don't write a new walkover mechanism").
+ * `agreedTime` is untouched — negotiation itself isn't repeated (decision 2),
+ * only the ready check-in is.
+ *
+ * @param {object} pairing
+ * @param {number} schedulingWindowMs — fresh check-in deadline, same field
+ *   used for the pairing's original scheduling window.
+ * @returns {{pairing: object} | {error: string, code: string}}
+ */
+function startNextGame(pairing, schedulingWindowMs) {
+  if (pairing.state !== 'InProgress') {
+    return { error: 'Chỉ có thể chuyển ván kế tiếp khi ván hiện tại đang diễn ra.', code: 'INVALID_STATE' };
+  }
+  pairing.state = 'Ready';
+  pairing.readyPlayers = new Set();
+  pairing.deadline = new Date(Date.now() + schedulingWindowMs).toISOString();
+  return { pairing };
+}
+
+/**
  * Deadline sweep callback (design answer (b) — see tournamentState.js for
  * the interval that calls this). Branches on the pairing's actual sub-state
  * when the single per-match deadline fires:
@@ -323,5 +362,6 @@ module.exports = {
   approveReschedule,
   denyReschedule,
   markReady,
+  startNextGame,
   resolveDeadline,
 };
