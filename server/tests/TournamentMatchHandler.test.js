@@ -27,12 +27,19 @@ jest.mock('../managers/tournament/TournamentManager', () => mockTournamentManage
 const mockFindSocketsByUserId = jest.fn(() => []);
 jest.mock('../socket/state', () => ({ findSocketsByUserId: mockFindSocketsByUserId }));
 
+const mockChatManager = { handleMessage: jest.fn() };
+jest.mock('../managers/ChatHandler', () => mockChatManager);
+
 const TournamentMatchHandler = require('../socket/handlers/TournamentMatchHandler');
 const tournamentState = require('../socket/tournamentState');
 
 // ── Mock io/socket helpers ──────────────────────────────────────────────────
 
+let socketSeq = 0;
+
 function makeIo() {
+  const roomAdapter = new Map(); // room -> Set<socketId>, mirrors io.sockets.adapter.rooms
+  const socketRegistry = new Map(); // socketId -> socket, mirrors io.sockets.sockets
   const io = {
     _toEmitted: {},
     to: jest.fn(function (room) {
@@ -44,21 +51,36 @@ function makeIo() {
       };
     }),
     in: jest.fn(function () { return { socketsLeave: jest.fn() }; }),
+    sockets: { adapter: { rooms: roomAdapter }, sockets: socketRegistry },
   };
   return io;
 }
 
-function makeSocket(userId, displayName) {
+/**
+ * Registers the socket into `io`'s room adapter as a real connection would,
+ * so `_getSpectators`' room-membership read (TODO.md #50) sees it — plain
+ * `fire()` calls bypass Socket.io's real room/broadcast machinery entirely,
+ * so without this a mock socket's `.join()` would never show up anywhere.
+ */
+function makeSocket(io, userId, displayName) {
+  socketSeq++;
+  const id = `sock-${socketSeq}`;
   const handlers = {};
   const socket = {
+    id,
     user: { userId, displayName, isGuest: false },
     rooms: new Set(),
     _emitted: [],
-    join: jest.fn(function (room) { this.rooms.add(room); }),
+    join: jest.fn(function (room) {
+      this.rooms.add(room);
+      if (!io.sockets.adapter.rooms.has(room)) io.sockets.adapter.rooms.set(room, new Set());
+      io.sockets.adapter.rooms.get(room).add(id);
+    }),
     emit: jest.fn(function (event, data) { this._emitted.push({ event, data }); }),
     on: jest.fn((event, fn) => { handlers[event] = fn; }),
   };
   socket._handlers = handlers;
+  io.sockets.sockets.set(id, socket);
   return socket;
 }
 
@@ -87,6 +109,7 @@ function ruleSet(overrides = {}) {
     boardSize: 8, winningRule: 'freestyle',
     ruleWall: false, rulePortal: false, ruleSwap2: false,
     timerMode: 'per_game', timerSeconds: 300, timerIncrementSeconds: 0,
+    seriesMode: 'single', seriesGameCount: null, seriesTargetScore: null, seriesMargin: null,
     ...overrides,
   };
 }
@@ -99,7 +122,10 @@ function setupTournamentAndPairing({ boardSize = 8, ruleSwap2 = false } = {}) {
     ruleSet: ruleSet({ boardSize, ruleSwap2 }),
     entries: new Map([[entry1.entryId, entry1], [entry2.entryId, entry2]]),
   };
-  const pairing = { pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress' };
+  const pairing = {
+    pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+    games: [], seriesScore: null,
+  };
 
   mockTournamentManager.getTournament.mockReturnValue(tournament);
   mockTournamentManager.getPairing.mockReturnValue(pairing);
@@ -111,6 +137,11 @@ beforeEach(() => {
   jest.clearAllMocks();
   tournamentState.tournamentGameMap.clear();
   tournamentState.tournamentTimerMap.clear();
+  // Default: pairing completes outright (seriesComplete key absent, same as
+  // TournamentManager.recordPairingResult's real 'single'-mode return
+  // shape) — individual tests override this via mockReturnValueOnce for
+  // series-in-progress scenarios.
+  mockTournamentManager.recordPairingResult.mockReturnValue({ pairing: {}, tournament: {} });
 });
 
 // ---------------------------------------------------------------------------
@@ -156,6 +187,76 @@ describe('TournamentMatchHandler — startMatch', () => {
     expect(() => TournamentMatchHandler.startMatch(io, 't1', 'ghost')).not.toThrow();
     expect(tournamentState.tournamentGameMap.has('ghost')).toBe(false);
   });
+
+  // ── Series (TODO.md #50): color alternation + series info in tmatch:init ──
+
+  test('gameIndex 0 (no games played yet): player1=BLACK/player2=WHITE, series.gameIndex=0', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    expect(match.engine.players[0]).toMatchObject({ userId: entry1.userId, color: 'BLACK' });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry2.userId, color: 'WHITE' });
+
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init');
+    expect(init.data.series).toMatchObject({ gameIndex: 0, seriesMode: 'single', scores: null });
+  });
+
+  test('gameIndex 1 (one game already played): colors flip to player1=WHITE/player2=BLACK', () => {
+    const { pairing, entry1, entry2 } = setupTournamentAndPairing();
+    pairing.games = [{ index: 0, winnerEntryId: entry1.entryId, endedAt: new Date().toISOString() }];
+    pairing.seriesScore = { [entry1.entryId]: 1, [entry2.entryId]: 0 };
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    // Stone color alternates (planning.md decision 4)...
+    expect(match.engine.players[0]).toMatchObject({ userId: entry2.userId, color: 'BLACK' });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry1.userId, color: 'WHITE' });
+    // ...but the TimerManager slot / entryByUserId mapping stays FIXED to
+    // player1/player2 regardless of which stone color they hold this game.
+    expect(match.entryByUserId.get(entry1.userId)).toBe(entry1.entryId);
+    expect(match.entryByUserId.get(entry2.userId)).toBe(entry2.entryId);
+
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init');
+    expect(init.data.series).toMatchObject({
+      gameIndex: 1,
+      scores: [
+        { displayName: entry1.displayName, score: 1 },
+        { displayName: entry2.displayName, score: 0 },
+      ],
+    });
+  });
+
+  test('gameIndex 2 (two games played): colors flip back to game-0 assignment', () => {
+    const { entry1, entry2, pairing } = setupTournamentAndPairing();
+    pairing.games = [
+      { index: 0, winnerEntryId: entry1.entryId, endedAt: new Date().toISOString() },
+      { index: 1, winnerEntryId: entry2.entryId, endedAt: new Date().toISOString() },
+    ];
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    expect(match.engine.players[0]).toMatchObject({ userId: entry1.userId, color: 'BLACK' });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry2.userId, color: 'WHITE' });
+  });
+
+  test('ruleSwap2 pairing: seats still alternate (both colors null, Swap2 decides for real)', () => {
+    const { entry1, entry2, pairing } = setupTournamentAndPairing({ ruleSwap2: true });
+    pairing.games = [{ index: 0, winnerEntryId: entry1.entryId, endedAt: new Date().toISOString() }];
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    expect(match.engine.players[0]).toMatchObject({ userId: entry2.userId, color: null });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry1.userId, color: null });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -168,7 +269,7 @@ describe('TournamentMatchHandler — tmatch:subscribe', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const p1socket = makeSocket(entry1.userId, 'Player One');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
     TournamentMatchHandler.register(io, p1socket);
 
     fire(p1socket, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
@@ -182,7 +283,7 @@ describe('TournamentMatchHandler — tmatch:subscribe', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const spectator = makeSocket('spectator1', 'Spectator');
+    const spectator = makeSocket(io, 'spectator1', 'Spectator');
     TournamentMatchHandler.register(io, spectator);
 
     fire(spectator, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
@@ -197,7 +298,7 @@ describe('TournamentMatchHandler — tmatch:subscribe', () => {
     const io = makeIo();
     // Deliberately never call startMatch() — tournamentGameMap stays empty.
 
-    const socket = makeSocket('u1', 'Player One');
+    const socket = makeSocket(io, 'u1', 'Player One');
     TournamentMatchHandler.register(io, socket);
 
     fire(socket, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
@@ -211,7 +312,7 @@ describe('TournamentMatchHandler — tmatch:subscribe', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const socket = makeSocket(entry1.userId, 'Player One');
+    const socket = makeSocket(io, entry1.userId, 'Player One');
     TournamentMatchHandler.register(io, socket);
 
     fire(socket, 'tmatch:subscribe', { tournamentId: 'wrong-tournament', pairingId: 'p1' });
@@ -230,7 +331,7 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const outsider = makeSocket('spectator1', 'Spectator');
+    const outsider = makeSocket(io, 'spectator1', 'Spectator');
     TournamentMatchHandler.register(io, outsider);
 
     fire(outsider, 'tmatch:move', { tournamentId: 't1', pairingId: 'p1', x: 0, y: 0 });
@@ -243,7 +344,7 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const p2socket = makeSocket(entry2.userId, 'Player Two');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
     TournamentMatchHandler.register(io, p2socket);
 
     fire(p2socket, 'tmatch:move', { tournamentId: 't1', pairingId: 'p1', x: 0, y: 0 });
@@ -256,8 +357,8 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const p1socket = makeSocket(entry1.userId, 'Player One');
-    const p2socket = makeSocket(entry2.userId, 'Player Two');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
     TournamentMatchHandler.register(io, p1socket);
     TournamentMatchHandler.register(io, p2socket);
 
@@ -281,7 +382,7 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const p1socket = makeSocket(entry1.userId, 'Player One');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
     TournamentMatchHandler.register(io, p1socket);
 
     fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
@@ -297,8 +398,8 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const p1socket = makeSocket(entry1.userId, 'Player One');
-    const p2socket = makeSocket(entry2.userId, 'Player Two');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
     TournamentMatchHandler.register(io, p1socket);
     TournamentMatchHandler.register(io, p2socket);
 
@@ -316,6 +417,137 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
     expect(ended.data.result.winner).toBe('draw');
     expect(mockTournamentManager.recordPairingResult).toHaveBeenCalledWith('t1', 'p1', 'draw');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _endMatch series transition (TODO.md #50) — via tmatch:resign, the
+// simplest single-move path to a game-ending result.
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — series transition (_endMatch)', () => {
+  test('series NOT complete: tmatch:ended carries seriesComplete=false + running score, and the match room stays joined', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1'); // consumes the default pairing mock
+
+    // Now arrange the two getPairing() calls _endMatch itself makes: one for
+    // `pairing.moves = ...`, one (after recordPairingResult) for the
+    // now-updated running score.
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({
+      tournament: {}, pairing: {}, seriesComplete: false,
+    });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Ready',
+        games: [{ index: 0, winnerEntryId: entry1.entryId }],
+        seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
+      });
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.series).toEqual({
+      seriesComplete: false,
+      scores: [
+        { displayName: entry1.displayName, score: 1 },
+        { displayName: entry2.displayName, score: 0 },
+      ],
+    });
+    // The GameEngine itself is torn down (a fresh one is built for the next
+    // game once both players re-check-in)...
+    expect(tournamentState.tournamentGameMap.has('p1')).toBe(false);
+    // ...but socketsLeave is NOT called — players/spectators stay in the
+    // match room to receive the next game's tmatch:init automatically.
+    expect(io.in).not.toHaveBeenCalled();
+  });
+
+  test('series complete (or single-mode, or double_elim replay): the match room is torn down as before', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    // Default mock (see beforeEach) returns no seriesComplete key — same
+    // shape as a real single-mode/fully-decided completion.
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.series.seriesComplete).toBe(true);
+    expect(io.in).toHaveBeenCalledWith('tournament-match:p1');
+  });
+
+  test('a decided series carries the PAIRING\'s overall winner, which can differ from who won this last game', () => {
+    // Series tied 1-1 after 2 games: entry2 won game 1, entry1 (who just
+    // resigned this game) actually... construct the scenario explicitly:
+    // pairing.result reflects the SERIES winner (entry2), even though THIS
+    // game's engine result says entry1's opponent (entry2) is who benefits
+    // from the resign — i.e. the two must be capable of disagreeing, which
+    // this test asserts by pointing them at different entries.
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({
+      tournament: {}, pairing: {}, // seriesComplete absent -> complete
+    });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Completed',
+        games: [
+          { index: 0, winnerEntryId: entry2.entryId },
+          { index: 1, winnerEntryId: entry1.entryId },
+        ],
+        seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 1 },
+        result: { winnerEntryId: null, reason: 'draw' }, // series tied overall
+      });
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' }); // this GAME: entry2 wins
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.result.winner).toBe(entry2.userId); // this game's winner
+    expect(ended.data.series.seriesIsDraw).toBe(true);     // but the SERIES tied overall
+    expect(ended.data.series.seriesWinnerUserId).toBeNull();
+  });
+
+  test('a decided series with a real overall winner resolves seriesWinnerUserId to that player\'s userId', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({ tournament: {}, pairing: {} });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Completed',
+        games: [{ index: 0, winnerEntryId: entry1.entryId }, { index: 1, winnerEntryId: entry1.entryId }],
+        seriesScore: { [entry1.entryId]: 2, [entry2.entryId]: 0 },
+        result: { winnerEntryId: entry1.entryId, reason: 'series_decided' },
+      });
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.series.seriesWinnerUserId).toBe(entry1.userId);
+    expect(ended.data.series.seriesIsDraw).toBe(false);
   });
 });
 
@@ -361,7 +593,7 @@ describe('TournamentMatchHandler — resyncOnConnect', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const reconnecting = makeSocket(entry1.userId, 'Player One');
+    const reconnecting = makeSocket(io, entry1.userId, 'Player One');
     TournamentMatchHandler.resyncOnConnect(io, reconnecting);
 
     expect(reconnecting.join).toHaveBeenCalledWith('tournament-match:p1');
@@ -373,10 +605,124 @@ describe('TournamentMatchHandler — resyncOnConnect', () => {
     const io = makeIo();
     TournamentMatchHandler.startMatch(io, 't1', 'p1');
 
-    const bystander = makeSocket('someone-else', 'Bystander');
+    const bystander = makeSocket(io, 'someone-else', 'Bystander');
     TournamentMatchHandler.resyncOnConnect(io, bystander);
 
     expect(bystander.join).not.toHaveBeenCalled();
     expect(sockEmit(bystander, 'tmatch:init')).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Chat + spectator presence (TODO.md #50 step 7 — "audience support")
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — tmatch:chat_message', () => {
+  test('a player in the match room can chat — relayed via managers/ChatHandler, scoped to the match room', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' }); // joins the room
+
+    fire(p1socket, 'tmatch:chat_message', { pairingId: 'p1', text: 'gg' });
+
+    expect(mockChatManager.handleMessage).toHaveBeenCalledWith(io, p1socket, 'tournament-match:p1', 'gg');
+  });
+
+  test('a subscribed spectator can also chat — not restricted to the two players', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const spectator = makeSocket(io, 'spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, spectator);
+    fire(spectator, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    fire(spectator, 'tmatch:chat_message', { pairingId: 'p1', text: 'hi all' });
+
+    expect(mockChatManager.handleMessage).toHaveBeenCalledWith(io, spectator, 'tournament-match:p1', 'hi all');
+  });
+
+  test('a socket that never joined the match room is rejected with MUST_BE_IN_MATCH_TO_CHAT', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const outsider = makeSocket(io, 'outsider1', 'Outsider');
+    TournamentMatchHandler.register(io, outsider); // never subscribes/joins
+
+    fire(outsider, 'tmatch:chat_message', { pairingId: 'p1', text: 'gg' });
+
+    expect(mockChatManager.handleMessage).not.toHaveBeenCalled();
+    expect(sockEmit(outsider, 'tmatch:error').data.code).toBe('MUST_BE_IN_MATCH_TO_CHAT');
+  });
+});
+
+describe('TournamentMatchHandler — tmatch:presence', () => {
+  test('starting a match broadcasts presence with no spectators yet (players are excluded from the spectator list)', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const presence = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:presence');
+    expect(presence.data.spectators).toEqual([]);
+  });
+
+  test('a spectator subscribing is broadcast to everyone in the room, not just themselves', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    const spectator = makeSocket(io, 'spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, spectator);
+    fire(spectator, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    const presenceEvents = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:presence');
+    const latest = presenceEvents[presenceEvents.length - 1];
+    expect(latest.data.spectators).toEqual([{ userId: 'spectator1', displayName: 'Spectator' }]);
+  });
+
+  test('the SAME spectator joining with two sockets (two tabs) is only counted once', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const tab1 = makeSocket(io, 'spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, tab1);
+    fire(tab1, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    const tab2 = makeSocket(io, 'spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, tab2);
+    fire(tab2, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    const presenceEvents = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:presence');
+    const latest = presenceEvents[presenceEvents.length - 1];
+    expect(latest.data.spectators).toHaveLength(1);
+  });
+
+  test('a spectator disconnecting is removed from the next presence broadcast', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const spectator = makeSocket(io, 'spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, spectator);
+    fire(spectator, 'tmatch:subscribe', { tournamentId: 't1', pairingId: 'p1' });
+
+    // Simulate what Socket.io does on a real disconnect: remove the socket
+    // from the room adapter, THEN fire 'disconnecting' — the handler defers
+    // its own re-broadcast via setImmediate specifically so it runs after
+    // this, see the doc comment on that listener.
+    io.sockets.adapter.rooms.get('tournament-match:p1').delete(spectator.id);
+    fire(spectator, 'disconnecting', {});
+    jest.advanceTimersByTime(0); // flushes the setImmediate() the handler defers its re-broadcast onto
+
+    const presenceEvents = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:presence');
+    const latest = presenceEvents[presenceEvents.length - 1];
+    expect(latest.data.spectators).toEqual([]);
   });
 });

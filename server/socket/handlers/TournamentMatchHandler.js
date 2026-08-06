@@ -34,9 +34,53 @@ const PortalGenerator = require('../../generators/PortalGenerator');
 const tournamentManager = require('../../managers/tournament/TournamentManager');
 const tournamentState = require('../tournamentState');
 const { findSocketsByUserId } = require('../state');
+// Reused as-is (TODO.md #50 step 7 "UI/component reuse" — the SAME rule
+// applies to the chat mechanism underneath it): managers/ChatHandler.js's
+// handleMessage() is already decoupled from RoomManager, it just broadcasts
+// to whatever Socket.io room string it's given — passing matchRoom(pairingId)
+// scopes it to a tournament match's own room instead of writing a parallel
+// rate-limit/sanitize/profanity-filter pipeline from scratch.
+const chatManager = require('../../managers/ChatHandler');
+
+const MATCH_ROOM_PREFIX = 'tournament-match:';
 
 function matchRoom(pairingId) {
-  return `tournament-match:${pairingId}`;
+  return `${MATCH_ROOM_PREFIX}${pairingId}`;
+}
+
+/**
+ * Spectator/audience list for a live match (TODO.md #50 decision 9 — the
+ * ported "Khán giả" tab needs real occupants, not just chrome). Deliberately
+ * NOT a hand-rolled Map of who's present — Socket.io's own room membership
+ * (io.sockets.adapter.rooms) is already the source of truth and already
+ * self-cleans on disconnect, so reading it on demand can never drift out of
+ * sync the way a separately-maintained presence Map could.
+ *
+ * @returns {Array<{userId: string, displayName: string}>} everyone in the
+ *   match room who ISN'T one of the two players.
+ */
+function _getSpectators(io, pairingId) {
+  const match = tournamentState.tournamentGameMap.get(pairingId);
+  const room = io.sockets.adapter.rooms.get(matchRoom(pairingId));
+  if (!match || !room) return [];
+
+  const seen = new Set();
+  const spectators = [];
+  for (const socketId of room) {
+    const sock = io.sockets.sockets.get(socketId);
+    if (!sock || !sock.user) continue;
+    const userId = sock.user.userId;
+    if (match.entryByUserId.has(userId)) continue; // a player, not a spectator
+    if (seen.has(userId)) continue; // same user, multiple tabs/sockets
+    seen.add(userId);
+    spectators.push({ userId, displayName: sock.user.displayName });
+  }
+  return spectators;
+}
+
+function _broadcastPresence(io, pairingId) {
+  const spectators = _getSpectators(io, pairingId);
+  io.to(matchRoom(pairingId)).emit('tmatch:presence', { pairingId, spectators });
 }
 
 /**
@@ -74,6 +118,40 @@ function _generateLayout(ruleSet) {
 }
 
 /**
+ * Series info block (TODO.md #50) attached to every tmatch:init — the
+ * pairing's current game index + running score, always present (null-shaped
+ * for a plain 'single'-mode pairing) so the client doesn't need two payload
+ * shapes. Shared by startMatch, resyncOnConnect, and tmatch:subscribe, since
+ * all three emit tmatch:init for a live-or-just-started game and gameIndex
+ * means the same thing in each case: how many games in the series are
+ * already recorded (the live/about-to-start one isn't pushed until it ends).
+ */
+function _seriesInfo(tournament, pairing) {
+  const ruleSet = tournament.ruleSet;
+  // pairing.seriesScore is keyed by entryId — meaningless to the client on
+  // its own, since GameEngine.serialize()'s players[] only carries userId.
+  // Resolve display names here (server already has tournament.entries in
+  // scope) rather than pushing an entryId->displayName lookup onto the
+  // client for a field it only ever renders as-is.
+  const entry1 = tournament.entries.get(pairing.player1EntryId);
+  const entry2 = tournament.entries.get(pairing.player2EntryId);
+  const scores = pairing.seriesScore
+    ? [
+        { displayName: entry1 ? entry1.displayName : '—', score: pairing.seriesScore[pairing.player1EntryId] || 0 },
+        { displayName: entry2 ? entry2.displayName : '—', score: pairing.seriesScore[pairing.player2EntryId] || 0 },
+      ]
+    : null;
+  return {
+    seriesMode: ruleSet.seriesMode,
+    gameIndex: pairing.games.length,
+    scores,
+    seriesGameCount: ruleSet.seriesGameCount,
+    seriesTargetScore: ruleSet.seriesTargetScore,
+    seriesMargin: ruleSet.seriesMargin,
+  };
+}
+
+/**
  * Start the live game for a pairing that just reached InProgress. Called
  * from TournamentHandler's 'pairing_ready' listener — TournamentManager
  * itself never touches io (see its class header), so this is the one place
@@ -99,21 +177,33 @@ function startMatch(io, tournamentId, pairingId) {
     return;
   }
 
-  // player1EntryId is TimerManager's "black" slot, player2EntryId is "white"
-  // (see PairingLifecycle.markReady) — colors mirror that pairing here so a
-  // timeout's blackPlayerId/whitePlayerId label lines up with who is
-  // actually assigned that color below.
+  // This new game's 0-based index within the pairing's series (TODO.md #50)
+  // — equal to how many games are already recorded, since recordPairingResult
+  // pushes a game BEFORE looping the pairing back to Ready for the next one.
+  // Single-game (non-series) pairings always start at gameIndex 0.
+  const gameIndex = pairing.games.length;
+
+  // Color alternates every game in the series (planning.md decision 4) —
+  // swap which entry sits in the "first" seat based on gameIndex parity.
+  // player1EntryId/player2EntryId themselves stay FIXED as TimerManager's
+  // black/white slots (see PairingLifecycle.markReady) and as the
+  // entryByUserId/userIdByEntry keys below — only the GameEngine seat
+  // (and therefore stone color / Swap2 first-mover) alternates.
+  const evenGame = gameIndex % 2 === 0;
+  const first = evenGame ? entry1 : entry2;
+  const second = evenGame ? entry2 : entry1;
+
   const engine = new GameEngine({
     roomId: pairingId,
     boardSize: ruleSet.boardSize,
     players: ruleSet.ruleSwap2
       ? [
-          { userId: entry1.userId, displayName: entry1.displayName, color: null, isGuest: entry1.isGuest },
-          { userId: entry2.userId, displayName: entry2.displayName, color: null, isGuest: entry2.isGuest },
+          { userId: first.userId, displayName: first.displayName, color: null, isGuest: first.isGuest },
+          { userId: second.userId, displayName: second.displayName, color: null, isGuest: second.isGuest },
         ]
       : [
-          { userId: entry1.userId, displayName: entry1.displayName, color: 'BLACK', isGuest: entry1.isGuest },
-          { userId: entry2.userId, displayName: entry2.displayName, color: 'WHITE', isGuest: entry2.isGuest },
+          { userId: first.userId, displayName: first.displayName, color: 'BLACK', isGuest: first.isGuest },
+          { userId: second.userId, displayName: second.displayName, color: 'WHITE', isGuest: second.isGuest },
         ],
     walls: layout.walls,
     portals: layout.portals,
@@ -147,8 +237,20 @@ function startMatch(io, tournamentId, pairingId) {
     ...engine.serialize(),
     timer: timer ? timer.getTimers() : null,
     timerSync: timer ? timer.getSync() : null,
+    // Series info (TODO.md #50) — always present, null-shaped the same way
+    // for a plain 1-game ('single' mode) pairing as for an actual series, so
+    // the client doesn't need two different payload shapes. This doubles as
+    // the "next game in the series has started" transition signal from
+    // features/tournament-match-series/diagram/uml_diagram/
+    // sequence-match-series-game-transition.md — that diagram's proposed
+    // event name is `tmatch:started`, but tmatch:init is the real event this
+    // codebase already uses for every "a live GameEngine now exists for this
+    // pairing" case (initial start, reconnect resync, subscribe); reusing it
+    // here keeps one event instead of two doing the same job.
+    series: _seriesInfo(tournament, pairing),
   });
-  logger.info(`[TournamentMatch] Match started for pairing ${pairingId}`);
+  _broadcastPresence(io, pairingId);
+  logger.info(`[TournamentMatch] Match started for pairing ${pairingId} (game ${gameIndex + 1})`);
 }
 
 /**
@@ -165,12 +267,15 @@ function resyncOnConnect(io, socket) {
     if (!match.entryByUserId.has(userId)) continue;
     socket.join(matchRoom(pairingId));
     const timer = tournamentState.tournamentTimerMap.get(pairingId);
+    const tournament = tournamentManager.getTournament(match.tournamentId);
+    const pairing = tournamentManager.getPairing(pairingId);
     socket.emit('tmatch:init', {
       tournamentId: match.tournamentId,
       pairingId,
       ...match.engine.serialize(),
       timer: timer ? timer.getTimers() : null,
       timerSync: timer ? timer.getSync() : null,
+      series: (tournament && pairing) ? _seriesInfo(tournament, pairing) : null,
     });
     return;
   }
@@ -183,12 +288,16 @@ function _handleTimeout(io, tournamentId, pairingId, timedOutEntryId) {
   if (!timedOutUserId) return;
 
   match.engine.handleTimeout(timedOutUserId);
-  const finalResult = match.engine.result;
-  io.to(matchRoom(pairingId)).emit('tmatch:ended', { tournamentId, pairingId, result: finalResult });
-  _endMatch(io, tournamentId, pairingId, finalResult);
+  _endMatch(io, tournamentId, pairingId, match.engine.result);
 }
 
-/** Resolve TournamentManager.recordPairingResult from a finished engine's result, then tear down local match state. */
+/**
+ * Resolve TournamentManager.recordPairingResult from a finished engine's
+ * result, tear down local match state, and emit tmatch:ended — the single
+ * place that happens now (TODO.md #50), since whether the match room should
+ * stay joined depends on the SERIES outcome (which only recordPairingResult
+ * knows), not just this one game's outcome.
+ */
 function _endMatch(io, tournamentId, pairingId, engineResult) {
   const match = tournamentState.tournamentGameMap.get(pairingId);
   if (!match) return;
@@ -198,9 +307,45 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
 
   const outcome = engineResult.winner === 'draw' ? 'draw' : match.entryByUserId.get(engineResult.winner);
   tournamentState.tournamentGameMap.delete(pairingId);
-  if (outcome) tournamentManager.recordPairingResult(tournamentId, pairingId, outcome);
 
-  io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));
+  // seriesComplete stays true (not just "truthy") for anything that isn't
+  // the explicit "loop back to Ready for the next game" signal —
+  // recordPairingResult only sets `seriesComplete: false` on that one path;
+  // a fully Completed pairing or a double_elim void/replay both count as
+  // "this match session is over" from the socket layer's point of view.
+  let seriesInfo = null;
+  if (outcome) {
+    const recordResult = tournamentManager.recordPairingResult(tournamentId, pairingId, outcome);
+    const updatedPairing = tournamentManager.getPairing(pairingId);
+    const tournament = tournamentManager.getTournament(tournamentId);
+    seriesInfo = {
+      seriesComplete: recordResult.seriesComplete !== false,
+      scores: (tournament && updatedPairing) ? _seriesInfo(tournament, updatedPairing).scores : null,
+    };
+    // The PAIRING's overall winner (once the series itself is decided) can
+    // differ from who won this last individual GAME — e.g. a series tied
+    // 1-1 after 2 games, where the second game's winner still resigns-loses
+    // the series overall. `engineResult.winner` only ever carries the game's
+    // outcome, so the client needs this to render the final overlay
+    // correctly for anything beyond 'single' mode (see showResultOverlay's
+    // caller in tournament-match.js for why).
+    if (seriesInfo.seriesComplete && updatedPairing && updatedPairing.result) {
+      const winnerEntryId = updatedPairing.result.winnerEntryId;
+      seriesInfo.seriesWinnerUserId = winnerEntryId ? (match.userIdByEntry.get(winnerEntryId) || null) : null;
+      seriesInfo.seriesIsDraw = winnerEntryId === null;
+    }
+  }
+
+  io.to(matchRoom(pairingId)).emit('tmatch:ended', {
+    tournamentId, pairingId, result: engineResult, series: seriesInfo,
+  });
+
+  if (!seriesInfo || seriesInfo.seriesComplete) {
+    io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));
+  }
+  // else: series continues — players/spectators stay in the match room so
+  // they receive the next game's tmatch:init once both players re-check-in,
+  // without having to re-navigate or re-subscribe.
 }
 
 /**
@@ -234,13 +379,46 @@ function register(io, socket) {
 
     socket.join(matchRoom(payload.pairingId));
     const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
+    const tournament = tournamentManager.getTournament(payload.tournamentId);
+    const pairing = tournamentManager.getPairing(payload.pairingId);
     socket.emit('tmatch:init', {
       tournamentId: payload.tournamentId,
       pairingId: payload.pairingId,
       ...match.engine.serialize(),
       timer: timer ? timer.getTimers() : null,
       timerSync: timer ? timer.getSync() : null,
+      series: (tournament && pairing) ? _seriesInfo(tournament, pairing) : null,
     });
+    _broadcastPresence(io, payload.pairingId);
+  });
+
+  // ── tmatch:chat_message ─────────────────────────────────────────────────
+  // Reuses managers/ChatHandler.js's handleMessage() as-is (rate limit,
+  // sanitize, profanity filter) — see the require above for why this is
+  // "reuse the mechanism" rather than a parallel chat implementation.
+  // Anyone actually in the match room (a player OR a subscribed spectator)
+  // may chat, unlike getOwnMatch()'s player-only check above.
+  socket.on('tmatch:chat_message', (payload = {}) => {
+    if (!socket.rooms.has(matchRoom(payload.pairingId))) {
+      socket.emit('tmatch:error', { message: 'Bạn cần vào trận đấu để trò chuyện.', code: 'MUST_BE_IN_MATCH_TO_CHAT' });
+      return;
+    }
+    chatManager.handleMessage(io, socket, matchRoom(payload.pairingId), payload.text || '');
+  });
+
+  // ── disconnecting: presence cleanup ─────────────────────────────────────
+  // 'disconnecting' (not 'disconnect') fires while socket.rooms is still
+  // populated — by 'disconnect' time Socket.io has already emptied it, so
+  // there would be no way to know which match room(s) to re-broadcast for.
+  // setImmediate lets socket.io finish actually removing this socket from
+  // its rooms first, so _getSpectators' room-membership read reflects the
+  // departure instead of racing ahead of it.
+  socket.on('disconnecting', () => {
+    for (const room of socket.rooms) {
+      if (!room.startsWith(MATCH_ROOM_PREFIX)) continue;
+      const pairingId = room.slice(MATCH_ROOM_PREFIX.length);
+      setImmediate(() => _broadcastPresence(io, pairingId));
+    }
   });
 
   socket.on('tmatch:move', (payload = {}) => {
@@ -279,10 +457,7 @@ function register(io, socket) {
       movePayload.gameOver = true;
       movePayload.result = engine.result;
       io.to(matchRoom(payload.pairingId)).emit('tmatch:moved', movePayload);
-      io.to(matchRoom(payload.pairingId)).emit('tmatch:ended', {
-        tournamentId: payload.tournamentId, pairingId: payload.pairingId, result: engine.result,
-      });
-      _endMatch(io, payload.tournamentId, payload.pairingId, engine.result);
+      _endMatch(io, payload.tournamentId, payload.pairingId, engine.result); // emits tmatch:ended itself
       return;
     }
 
@@ -389,11 +564,7 @@ function register(io, socket) {
       return;
     }
 
-    const finalResult = match.engine.result;
-    io.to(matchRoom(payload.pairingId)).emit('tmatch:ended', {
-      tournamentId: payload.tournamentId, pairingId: payload.pairingId, result: finalResult,
-    });
-    _endMatch(io, payload.tournamentId, payload.pairingId, finalResult);
+    _endMatch(io, payload.tournamentId, payload.pairingId, match.engine.result); // emits tmatch:ended itself
   });
 }
 

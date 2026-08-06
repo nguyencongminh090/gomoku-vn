@@ -73,6 +73,7 @@ client.bindStatusBanner(statusBanner);
 let gameState = null;    // GameEngine.serialize() shape, plus _lastStone/_nextColor scratch fields
 let boardRenderer = null;
 let myColor = null;      // 'BLACK' | 'WHITE' | null (spectator)
+let seriesInfo = null;   // { seriesMode, gameIndex, seriesScore, seriesGameCount, seriesTargetScore, seriesMargin } | null (TODO.md #50)
 
 function myPlayer() {
   return gameState ? gameState.players.find((p) => p.userId === userInfo.userId) : null;
@@ -88,8 +89,11 @@ client.on('tmatch:error', (data) => {
 client.on('tmatch:init', (data) => {
   if (data.pairingId !== pairingId) return;
   gameState = data;
+  seriesInfo = data.series || null;
   const mp = myPlayer();
   myColor = mp ? mp.color : null;
+
+  hideSeriesTransition(); // the next game just started — clear any "waiting for next game" state
 
   initBoard();
   applyTimerSync(data.timerSync);
@@ -144,7 +148,28 @@ client.on('tmatch:ended', (data) => {
   stopLocalTimer();
   if (gameState) { gameState.status = 'finished'; gameState.result = data.result; }
   matchActionsEl.style.display = 'none';
-  showResultOverlay(data.result);
+
+  if (data.series) seriesInfo = { ...seriesInfo, scores: data.series.scores };
+
+  // A game inside an unfinished series (TODO.md #50) ends differently from
+  // the whole pairing: show a lighter "waiting for next game" transition
+  // instead of the final result overlay + "back to tournament" link — the
+  // next game's tmatch:init (already inbound, since the match room stays
+  // joined — see TournamentMatchHandler.js's _endMatch) clears it again.
+  if (data.series && data.series.seriesComplete === false) {
+    showSeriesTransition(data.result);
+  } else if (seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single') {
+    // The PAIRING's overall winner can differ from who won this last
+    // individual game (e.g. a series that ties 1-1 after 2 games) —
+    // data.result is only ever this game's outcome, so a decided multi-game
+    // series must show its OWN winner/draw, not the last game's.
+    showResultOverlay(data.result, {
+      winnerUserId: data.series.seriesWinnerUserId,
+      isDraw: data.series.seriesIsDraw,
+    });
+  } else {
+    showResultOverlay(data.result);
+  }
 });
 
 // ── Board ────────────────────────────────────────────────────────────────
@@ -222,10 +247,28 @@ function renderSwap2Board() {
 function renderHeader() {
   const p1 = gameState.players[0], p2 = gameState.players[1];
   matchTitleEl.textContent = `${p1 ? p1.displayName : '—'} vs ${p2 ? p2.displayName : '—'}`;
-  matchMetaEl.innerHTML = `<span class="detail-meta-item"><i class="ph ph-trophy"></i>${t('tmatch.in_tournament')}</span>`;
+
+  let metaHtml = `<span class="detail-meta-item"><i class="ph ph-trophy"></i>${t('tmatch.in_tournament')}</span>`;
+  // Series score badge (TODO.md #50) — only shown for an actual multi-game
+  // series; a plain 'single'-mode pairing keeps today's meta line unchanged.
+  if (seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single') {
+    const gameLabel = t('tmatch.series_game_index', { n: seriesInfo.gameIndex + 1 });
+    metaHtml += `<span class="detail-meta-item"><i class="ph ph-medal"></i>${gameLabel}</span>`;
+    if (seriesInfo.scores) {
+      const scoreText = seriesInfo.scores.map((s) => `${escapeHtml(s.displayName)}: ${s.score}`).join(' — ');
+      metaHtml += `<span class="detail-meta-item"><i class="ph ph-chart-bar"></i>${scoreText}</span>`;
+    }
+  }
+  matchMetaEl.innerHTML = metaHtml;
 
   document.getElementById('clock-black-name').textContent = p1 ? p1.displayName : '—';
   document.getElementById('clock-white-name').textContent = p2 ? p2.displayName : '—';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
 }
 
 // ── Swap2 banner (choice phase only — placement phase just uses the board) ─
@@ -347,19 +390,31 @@ btnResign.addEventListener('click', () => {
 
 // ── Result overlay ───────────────────────────────────────────────────────
 
-function showResultOverlay(result) {
+/**
+ * @param {object} result — the last GAME's engine result (used for `reason`
+ *   regardless of scope — see below).
+ * @param {{winnerUserId: string|null, isDraw: boolean}} [seriesOverride] —
+ *   when the pairing is a decided multi-game series (TODO.md #50), the
+ *   PAIRING's overall winner can differ from who won this last game (e.g. a
+ *   series tied 1-1 after 2 games) — pass this to show the series' own
+ *   outcome instead of defaulting to `result.winner`.
+ */
+function showResultOverlay(result, seriesOverride) {
   if (!result) return;
   const mp = myPlayer();
   let icon = '🏁', title, sub = '';
 
-  if (result.winner === 'draw') {
+  const isDraw = seriesOverride ? seriesOverride.isDraw : result.winner === 'draw';
+  const winnerUserId = seriesOverride ? seriesOverride.winnerUserId : result.winner;
+
+  if (isDraw) {
     icon = '🤝'; title = t('tmatch.result_draw');
-  } else if (mp && result.winner === userInfo.userId) {
+  } else if (mp && winnerUserId === userInfo.userId) {
     icon = '🏆'; title = t('tmatch.result_you_won');
   } else if (mp) {
     icon = '😔'; title = t('tmatch.result_you_lost');
   } else {
-    const winnerP = gameState.players.find((p) => p.userId === result.winner);
+    const winnerP = gameState.players.find((p) => p.userId === winnerUserId);
     title = t('tmatch.result_winner', { name: winnerP ? winnerP.displayName : '—' });
   }
   if (result.reason === 'resign') sub = t('tmatch.reason_resign');
@@ -371,6 +426,125 @@ function showResultOverlay(result) {
   document.getElementById('match-result-sub').textContent = sub;
   resultOverlay.classList.add('visible');
 }
+
+// ── Series between-games transition (TODO.md #50) ───────────────────────────
+
+const seriesTransitionOverlay = document.getElementById('series-transition-overlay');
+
+function showSeriesTransition(result) {
+  const mp = myPlayer();
+  let title;
+  if (result.winner === 'draw') {
+    title = t('tmatch.result_draw');
+  } else if (mp && result.winner === userInfo.userId) {
+    title = t('tmatch.result_you_won');
+  } else if (mp) {
+    title = t('tmatch.result_you_lost');
+  } else {
+    const winnerP = gameState ? gameState.players.find((p) => p.userId === result.winner) : null;
+    title = t('tmatch.result_winner', { name: winnerP ? winnerP.displayName : '—' });
+  }
+  document.getElementById('series-transition-title').textContent = title;
+
+  const sub = (seriesInfo && seriesInfo.scores)
+    ? seriesInfo.scores.map((s) => `${s.displayName}: ${s.score}`).join(' — ')
+    : '';
+  document.getElementById('series-transition-sub').textContent = sub;
+
+  seriesTransitionOverlay.classList.add('visible');
+}
+
+function hideSeriesTransition() {
+  seriesTransitionOverlay.classList.remove('visible');
+}
+
+// ── Chat (ported from room.html/room.js — TODO.md #50 step 7 "component
+// reuse only": same CSS classes and interaction pattern, but a fresh, small,
+// self-contained implementation rather than reusing chat-ui.js/room.js's JS,
+// since those are written against window.RoomState which this page has
+// deliberately never had (see this file's header). ─────────────────────────
+
+const chatMessagesEl = document.getElementById('chat-messages');
+const chatInputEl = document.getElementById('chat-input');
+const btnSend = document.getElementById('btn-send');
+
+// Server-sent chat text arrives with `<`/`>` escaped (ChatHandler.sanitize) —
+// decode before writing into a text node so the reader sees what the sender
+// typed. Safe because textContent never parses its input as markup.
+function decodeChatText(str) {
+  return String(str).replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+}
+
+function appendChatMessage(msg) {
+  const div = document.createElement('div');
+  const isSelf = msg.fromId === userInfo.userId;
+  div.className = `chat-msg ${isSelf ? 'chat-msg--self' : 'chat-msg--other'}`;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'chat-msg__bubble';
+
+  if (!isSelf) {
+    const nameSpan = document.createElement('div');
+    nameSpan.className = 'chat-msg__name';
+    nameSpan.textContent = msg.from;
+    bubble.appendChild(nameSpan);
+  }
+
+  const textSpan = document.createElement('div');
+  textSpan.className = 'chat-msg__text';
+  textSpan.textContent = decodeChatText(msg.text);
+  bubble.appendChild(textSpan);
+
+  div.appendChild(bubble);
+  chatMessagesEl.appendChild(div);
+  chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+}
+
+function sendChat() {
+  const text = chatInputEl.value.trim();
+  if (!text) return;
+  client.emit('tmatch:chat_message', { tournamentId, pairingId, text });
+  chatInputEl.value = '';
+}
+
+btnSend.addEventListener('click', sendChat);
+chatInputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') sendChat();
+});
+
+client.on('chat:message', (msg) => appendChatMessage(msg));
+// Chat-specific errors (CHAT_RATE_LIMITED, MUST_BE_IN_MATCH_TO_CHAT) are
+// already covered by the generic tmatch:error handler registered above.
+
+// ── Spectators tab (ported room.html component — TODO.md #50 step 7) ───────
+
+const usersListEl = document.getElementById('users-list');
+
+function renderSpectators(spectators) {
+  usersListEl.innerHTML = (spectators || []).map(
+    (s) => `<li><span class="user-name">${escapeHtml(s.displayName)}</span></li>`
+  ).join('');
+}
+
+client.on('tmatch:presence', (data) => {
+  if (data.pairingId !== pairingId) return;
+  renderSpectators(data.spectators);
+});
+
+// ── Tabs: Nước đi | Trò chuyện | Khán giả (ported room.html chrome) ─────────
+
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabContents = document.querySelectorAll('.tab-content');
+tabBtns.forEach((btn) => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach((b) => b.classList.remove('tab-btn--active'));
+    tabContents.forEach((c) => c.classList.remove('tab-content--active'));
+    btn.classList.add('tab-btn--active');
+    const tabId = btn.getAttribute('data-tab');
+    document.getElementById(tabId).classList.add('tab-content--active');
+    if (tabId === 'tab-chat') chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+  });
+});
 
 window.addEventListener('langchange', () => {
   if (gameState) { renderHeader(); renderSwap2Banner(); renderMoveList(); }

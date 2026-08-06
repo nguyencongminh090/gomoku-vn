@@ -226,6 +226,9 @@ const TRANSLATIONS = {
     'tmatch.reason_resign': 'Đối thủ đã đầu hàng.',
     'tmatch.reason_timeout': 'Hết thời gian.',
     'tmatch.reason_board_full': 'Bàn cờ đã đầy.',
+    'tmatch.tab_moves': 'Nước đi',
+    'tmatch.series_game_index': 'Ván {n}',
+    'tmatch.series_waiting_next': 'Đang chuẩn bị ván tiếp theo...',
 
     // ── UI mode (lite / default / pro) ────────────────────────
     'mode.title': 'Chế độ giao diện',
@@ -749,6 +752,9 @@ const TRANSLATIONS = {
     'tmatch.reason_resign': 'Opponent resigned.',
     'tmatch.reason_timeout': 'Time out.',
     'tmatch.reason_board_full': 'The board is full.',
+    'tmatch.tab_moves': 'Moves',
+    'tmatch.series_game_index': 'Game {n}',
+    'tmatch.series_waiting_next': 'Preparing the next game...',
 
     // ── Create room modal ─────────────────────────────────────
     // ── UI mode (lite / default / pro) ────────────────────────

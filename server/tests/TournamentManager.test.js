@@ -113,6 +113,10 @@ describe('TournamentManager — createTournament', () => {
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,
       schedulingWindowMs: config.DEFAULT_SCHEDULING_WINDOW_MS,
       tiebreakRule: config.DEFAULT_TIEBREAK_RULE,
+      seriesMode: 'single',
+      seriesGameCount: null,
+      seriesTargetScore: null,
+      seriesMargin: null,
     });
   });
 
@@ -166,6 +170,92 @@ describe('TournamentManager — createTournament', () => {
       ruleSet: { tiebreakRule: 'elo_delta' },
     });
     expect(tournament.ruleSet.tiebreakRule).toBe(config.DEFAULT_TIEBREAK_RULE);
+  });
+
+  // ── seriesMode ruleSet fields (TODO.md #50) ─────────────────────────────
+
+  test('an unrecognized seriesMode falls back to "single"', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'best_of_bogus' },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
+    expect(tournament.ruleSet.seriesGameCount).toBeNull();
+  });
+
+  test('fixedCount with a valid seriesGameCount is accepted', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'fixedCount', seriesGameCount: 10 },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('fixedCount');
+    expect(tournament.ruleSet.seriesGameCount).toBe(10);
+  });
+
+  test.each([
+    [0, false],   // below min (1) → rejected
+    [1, true],    // exact min → kept
+    [99, true],   // exact max → kept
+    [100, false], // above max → rejected
+    [3.5, false], // non-integer → rejected
+    ['10', false], // non-number → rejected
+  ])('fixedCount seriesGameCount=%p accepted=%p', (input, accepted) => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'fixedCount', seriesGameCount: input },
+    });
+    if (accepted) {
+      expect(tournament.ruleSet.seriesMode).toBe('fixedCount');
+      expect(tournament.ruleSet.seriesGameCount).toBe(input);
+    } else {
+      // Invalid companion field -> whole seriesMode falls back to 'single'
+      // rather than leaving a half-configured fixedCount pairing series.
+      expect(tournament.ruleSet.seriesMode).toBe('single');
+      expect(tournament.ruleSet.seriesGameCount).toBeNull();
+    }
+  });
+
+  test('fixedCount with seriesGameCount missing entirely falls back to single', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'fixedCount' },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
+  });
+
+  test('raceToMargin with valid seriesTargetScore + seriesMargin is accepted', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'raceToMargin', seriesTargetScore: 12, seriesMargin: 2 },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('raceToMargin');
+    expect(tournament.ruleSet.seriesTargetScore).toBe(12);
+    expect(tournament.ruleSet.seriesMargin).toBe(2);
+  });
+
+  test.each([
+    [{ seriesTargetScore: 0, seriesMargin: 2 }],        // target not > 0
+    [{ seriesTargetScore: 12, seriesMargin: 0 }],       // margin not > 0
+    [{ seriesTargetScore: -5, seriesMargin: 2 }],       // negative target
+    [{ seriesTargetScore: 12 }],                        // margin missing
+    [{ seriesMargin: 2 }],                              // target missing
+    [{}],                                                // both missing
+  ])('raceToMargin with invalid config %p falls back to single (no uncapped-with-bogus-target series)', (partial) => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'raceToMargin', ...partial },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
+    expect(tournament.ruleSet.seriesTargetScore).toBeNull();
+    expect(tournament.ruleSet.seriesMargin).toBeNull();
+  });
+
+  test('a plain object literal is not accidentally coerced — string numbers for series fields are rejected', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'raceToMargin', seriesTargetScore: '12', seriesMargin: '2' },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
   });
 });
 
@@ -792,5 +882,186 @@ describe('TournamentManager — deadline-sweep-driven walkover and void/replay',
     const w1m1 = tournamentManager.getPairing(w1m1Id);
     expect(w1m1.state).toBe('Negotiating'); // reset in place, not DoubleNoShow
     expect(tournamentManager.listPairings(tournament.tournamentId).filter((p) => p.pairingId === w1m1Id)).toHaveLength(1);
+  });
+});
+
+// ── recordPairingResult series loop (TODO.md #50) ───────────────────────
+
+describe('TournamentManager — recordPairingResult series loop (TODO.md #50)', () => {
+  function twoPlayerTournament(format, ruleSet) {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format, ruleSet }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    const { entryId: e2 } = tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    return { tournament, p1, p2, e1, e2, pairingId: pairing.pairingId };
+  }
+
+  /** Re-checks in both players for the next game — no renegotiation, per decision 2. */
+  function checkInNextGame(tournamentId, pairingId, p1UserId, p2UserId) {
+    tournamentManager.markPairingReady(p1UserId, tournamentId, pairingId);
+    tournamentManager.markPairingReady(p2UserId, tournamentId, pairingId);
+  }
+
+  test('single mode (default): unaffected — completes after exactly 1 game with reason "normal", matching pre-B50 behavior', () => {
+    const { tournament, e1, pairingId } = twoPlayerTournament('swiss', {}); // seriesMode defaults to 'single'
+    const result = tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(result.seriesComplete).toBeUndefined(); // completion path doesn't set this flag
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.games).toHaveLength(1);
+    expect(pairing.games[0]).toMatchObject({ index: 0, winnerEntryId: e1 });
+    expect(pairing.result).toEqual({ winnerEntryId: e1, reason: 'normal' });
+  });
+
+  test('single mode: a draw keeps reason "draw", exactly as before B50', () => {
+    const { tournament, pairingId } = twoPlayerTournament('swiss', {});
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, 'draw');
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.result).toEqual({ winnerEntryId: null, reason: 'draw' });
+  });
+
+  test('fixedCount: series loops back to Ready (not Completed) before the game count is reached', () => {
+    const { tournament, e1, e2, pairingId } = twoPlayerTournament('swiss', { seriesMode: 'fixedCount', seriesGameCount: 3 });
+    const result = tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    expect(result.seriesComplete).toBe(false);
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Ready');
+    expect(pairing.games).toHaveLength(1);
+    expect(pairing.seriesScore).toEqual({ [e1]: 1, [e2]: 0 });
+    expect(tournamentState.tournamentTimerMap.has(pairingId)).toBe(false); // torn down between games
+    expect(tournamentState.pendingDeadlines.has(pairingId)).toBe(true); // fresh check-in deadline tracked
+  });
+
+  test('fixedCount: reaching the count completes the pairing with the SERIES winner, reason "series_decided"', () => {
+    const { tournament, p1, p2, e1, e2, pairingId } = twoPlayerTournament('swiss', { seriesMode: 'fixedCount', seriesGameCount: 3 });
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1); // game 1: e1
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1); // game 2: e1
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e2); // game 3: e2
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.games).toHaveLength(3);
+    expect(pairing.games.map((g) => g.winnerEntryId)).toEqual([e1, e1, e2]);
+    expect(pairing.seriesScore).toEqual({ [e1]: 2, [e2]: 1 });
+    expect(pairing.result).toEqual({ winnerEntryId: e1, reason: 'series_decided' });
+  });
+
+  test('fixedCount: a series tied at the count completes with a null (draw) winner', () => {
+    const { tournament, p1, p2, e1, e2, pairingId } = twoPlayerTournament('swiss', { seriesMode: 'fixedCount', seriesGameCount: 2 });
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e2);
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.result).toEqual({ winnerEntryId: null, reason: 'draw' });
+  });
+
+  test('raceToMargin: uncapped — drawn games do not decide the series, decisive wins later do', () => {
+    const { tournament, p1, p2, e1, e2, pairingId } = twoPlayerTournament('swiss', {
+      seriesMode: 'raceToMargin', seriesTargetScore: 3, seriesMargin: 2,
+    });
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, 'draw');
+    expect(tournamentManager.getPairing(pairingId).state).toBe('Ready');
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, 'draw');
+    expect(tournamentManager.getPairing(pairingId).state).toBe('Ready'); // still 1-1, nowhere near target
+
+    // e1 wins twice: e1 = 1(from draws) + 2 = 3, e2 = 1 -> target 3 met, margin 2 >= 2 -> complete
+    // after only 2 more wins (not 3 — the series ends as soon as the condition
+    // is satisfied, it doesn't wait for a pre-planned number of iterations).
+    for (let i = 0; i < 2; i++) {
+      checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1);
+    }
+
+    const pairing = tournamentManager.getPairing(pairingId);
+    expect(pairing.state).toBe('Completed');
+    expect(pairing.games).toHaveLength(4);
+    expect(pairing.seriesScore).toEqual({ [e1]: 3, [e2]: 1 });
+    expect(pairing.result).toEqual({ winnerEntryId: e1, reason: 'series_decided' });
+  });
+
+  test('double_elim: a series that ends TIED (fixedCount) is void/replay in place, with fresh games[]/seriesScore', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, {
+      format: 'double_elim',
+      ruleSet: { seriesMode: 'fixedCount', seriesGameCount: 2 },
+    }).tournament;
+    const players = [user(), user(), user(), user()];
+    const userByEntryId = new Map();
+    for (const p of players) {
+      const { entryId } = tournamentManager.registerPlayer(p, tournament.tournamentId);
+      userByEntryId.set(entryId, p);
+    }
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    const pairingId = pairing.pairingId;
+    const p1 = userByEntryId.get(pairing.player1EntryId);
+    const p2 = userByEntryId.get(pairing.player2EntryId);
+
+    advanceToReady(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairingId);
+
+    // Game 1: player1 wins. Game 2: player2 wins -> 1-1 tie at count=2.
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, pairing.player1EntryId);
+    checkInNextGame(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    const result = tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, pairing.player2EntryId);
+
+    expect(result.replay).toBeDefined();
+    const afterPairing = tournamentManager.getPairing(pairingId); // double_elim reuses the SAME pairingId
+    expect(afterPairing.state).toBe('Negotiating');
+    expect(afterPairing.games).toEqual([]); // stale series history does not leak into the replay
+    expect(afterPairing.seriesScore).toBeNull();
+  });
+});
+
+// ── Mid-series walkover forfeits the whole remaining series (TODO.md #50 decision 6) ──
+
+describe('TournamentManager — mid-series no-show forfeits the whole remaining series', () => {
+  test('a no-show for game 2 walks the ENTIRE pairing over, discarding the series in progress (not just that game)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, {
+      format: 'swiss',
+      ruleSet: { schedulingWindowMs: 5000, seriesMode: 'fixedCount', seriesGameCount: 3 },
+    }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    const pairingId = pairing.pairingId;
+
+    advanceToReady(tournament.tournamentId, pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairingId);
+
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, e1); // game 1 done, series continues
+    expect(tournamentManager.getPairing(pairingId).state).toBe('Ready');
+
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairingId); // only p1 shows up for game 2
+
+    jest.advanceTimersByTime(config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS + 6000);
+
+    const resolved = tournamentManager.getPairing(pairingId);
+    expect(resolved.state).toBe('Walkover');
+    expect(resolved.result).toEqual({ winnerEntryId: e1, reason: 'walkover' });
+    // Game 1's already-played result isn't erased, but doesn't change the outcome —
+    // the whole remaining series is forfeited, not scored out.
+    expect(resolved.games).toHaveLength(1);
+    expect(tournament.status).toBe('completed');
   });
 });

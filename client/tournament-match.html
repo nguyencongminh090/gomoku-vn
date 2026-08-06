@@ -8,11 +8,11 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=61" />
-  <link rel="stylesheet" href="css/lobby.css?v=61" />
-  <link rel="stylesheet" href="css/room.css?v=61" />
-  <link rel="stylesheet" href="css/tournament.css?v=61" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=61" />
+  <link rel="stylesheet" href="css/main.css?v=62" />
+  <link rel="stylesheet" href="css/lobby.css?v=62" />
+  <link rel="stylesheet" href="css/room.css?v=62" />
+  <link rel="stylesheet" href="css/tournament.css?v=62" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=62" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -86,9 +86,41 @@
     </div>
 
     <aside class="ui-shell">
-      <div class="ui-core" style="padding:14px;">
-        <div class="pairing-card__meta" style="margin-bottom:10px;"><i class="ph ph-list-numbers"></i><span data-i18n="tmatch.move_history">Lịch sử nước đi</span></div>
-        <div class="move-list" id="move-list"></div>
+      <div class="ui-core" style="padding:0;">
+
+        <!-- Tabs: Move history | Chat | Spectators — the chat/spectators tabs
+             are ported from room.html's component chrome (TODO.md #50 step 7,
+             decision 9: UI/CSS reuse only, NOT routed through RoomHandler —
+             see server/socket/handlers/TournamentMatchHandler.js's
+             tmatch:chat_message/tmatch:presence, its own parallel mechanism
+             scoped to the match's own Socket.io room). -->
+        <div class="sidebar-tabs">
+          <button class="tab-btn tab-btn--active" data-tab="tab-moves" data-i18n="tmatch.tab_moves">Nước đi</button>
+          <button class="tab-btn" data-tab="tab-chat" data-i18n="room.tab_chat">Trò chuyện</button>
+          <button class="tab-btn" data-tab="tab-users" data-i18n="room.tab_spectators">Khán giả</button>
+        </div>
+
+        <div class="tab-content tab-content--active" id="tab-moves">
+          <div class="move-list" id="move-list" style="padding:10px 14px;"></div>
+        </div>
+
+        <div class="tab-content" id="tab-chat">
+          <div class="chat-panel">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input" id="chat-input-wrapper">
+              <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
+                maxlength="500" autocomplete="off" />
+              <button id="btn-send" type="button" data-i18n="room.btn_send">Gửi</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-users">
+          <div id="users-panel" class="users-panel">
+            <ul id="users-list" class="users-list"></ul>
+          </div>
+        </div>
+
       </div>
     </aside>
   </div>
@@ -105,7 +137,20 @@
   </div>
 </div>
 
+<!-- Between-games transition (TODO.md #50 — a game inside a series ended but
+     the pairing isn't decided yet). Same visual treatment as the final
+     result overlay, but auto-hides once the next game's tmatch:init arrives
+     instead of linking back out to the tournament. -->
+<div class="match-result-overlay" id="series-transition-overlay">
+  <div class="match-result-card">
+    <div class="match-result-card__icon" id="series-transition-icon">⏭️</div>
+    <div class="match-result-card__title" id="series-transition-title"></div>
+    <div class="match-result-card__sub" id="series-transition-sub"></div>
+    <div class="match-result-card__sub" data-i18n="tmatch.series_waiting_next">Đang chuẩn bị ván tiếp theo...</div>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/tournament-match-entry.js?v=61"></script>
+<script type="module" src="js/tournament-match-entry.js?v=62"></script>
 </body>
 </html>
