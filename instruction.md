@@ -72,6 +72,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B48.** Tournament (Tables & Tournaments) — từ yêu cầu người dùng, thảo luận + blueprint UI (TODO.md #48) — [chi tiết](docs/instruction/B48-tournament-tables-tournaments-tu-yeu-cau-nguoi-dung.md)
 - **B49.** Bàn cờ trận đấu giải đấu quá nhỏ / thiếu nhất quán — từ báo cáo người dùng kèm ảnh chụp màn hình (TODO.md #49) — [chi tiết](docs/instruction/B49-ban-co-trong-tran-dau-giai-dau-qua-nho-thieu-nhat-quan.md)
 - **B50.** Cặp đấu chơi nhiều ván (game series) thay vì một ván — từ yêu cầu người dùng, thảo luận qua `features/tournament-match-series/` (TODO.md #50) — [chi tiết](docs/instruction/B50-cho-phep-mot-cap-dau-choi-nhieu-van-thay-vi-mot-van.md)
+- **B51.** Quy tắc cache-bust bỏ sót cross-module import — từ báo cáo người dùng "đăng nhập thiết bị khác" đá nhầm (TODO.md #51) — [chi tiết](docs/instruction/B51-cache-bust-quy-tac-bo-sot-cross-module-import.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 

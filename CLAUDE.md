@@ -15,14 +15,19 @@
 
 ## Cache-busting version bump
 
-All CSS and JS assets are cache-busted with a shared `?v=N` query string (see `client/*.html` `<link>`/`<script>` tags and the `?v=N` suffixes on ES-module `import` statements inside `client/js/index-entry.js`, `client/js/room-entry.js`, `client/js/login-entry.js`).
+All CSS and JS assets are cache-busted with a shared `?v=N` query string. This appears in two kinds of places, and **both must be covered by every bump** — a rule that only names one of them (as this section used to) will keep missing the other:
 
-**Whenever you modify any file under `client/css/` or `client/js/`, bump `?v=N` to `?v=N+1` everywhere it appears** — across all HTML files (`client/index.html`, `client/room.html`, `client/login.html`, `client/history.html`) and inside the module entry files' `import` statements. All occurrences must use the same new number; do not bump some files but not others, since a mismatched/partial bump reintroduces stale-cache bugs on mobile.
+- Every `client/*.html` file's `<link>`/`<script>` tags.
+- **Every ES-module `import '...?v=N'` statement inside every file in `client/js/*.js`** — not just the `*-entry.js` files (`index-entry.js`, `room-entry.js`, `login-entry.js`, `tournament-match-entry.js`, `tournament-detail-entry.js`). Non-entry modules can and do import each other directly with their own `?v=N`-suffixed specifier (e.g. `tournaments.js` importing `./lobby.js?v=N` to reuse its exported `client` instance) — the browser resolves each distinct query string as a **separate module instance**, so a stale `?v=` left on one such cross-import silently re-executes that module's top-level code a second time. This is exactly how a duplicate `SocketClient`/socket.io connection bug shipped twice (`docs/fix-log/2026-08-04-*` at `?v=61`, then again at `docs/fix-log/2026-08-06-tournaments-lobby-duplicate-module-import.md` at `?v=63`) — both times because the bump only touched the files explicitly named in this rule, and a lone hardcoded import elsewhere was invisible to it.
+- The two `*-mockup.html` files (`client/tournament-detail-mockup.html`, `client/tables-tournaments-mockup.html`) are the sole deliberate exception: they intentionally stay pinned to an old, frozen version per their own in-file comments (unshipped prototypes) — do not bump these, and do not let their presence mask a real mismatch elsewhere (see verification command below, which excludes them explicitly).
 
-Find the current version with:
+**Whenever you modify any file under `client/css/` or `client/js/`, bump `?v=N` to `?v=N+1` everywhere it appears**, across every location above. All occurrences must use the same new number; do not bump some files but not others, since a mismatched/partial bump reintroduces stale-cache bugs on mobile — or worse, a silent duplicate-module-execution bug like the one above, which has no visible symptom until it manifests as something unrelated-looking (e.g. a false "logged in on another device" kick).
+
+Find the current version — **and verify the bump is complete** — with:
 ```
-grep -rn "?v=" client/*.html client/js/*-entry.js
+grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup
 ```
+This must show exactly **one** distinct `?v=N` value across all matches. If it shows two or more, some file was missed — find it and fix it before considering the bump done. Do not rely on eyeballing individual files; run this command as the actual completion check every time.
 
 ## Bug-fix workflow: scope discipline and unit tests
 

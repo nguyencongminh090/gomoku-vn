@@ -153,6 +153,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng — thảo luận qua `features/tournament-match-series/` (2026-08-06)
 - ✅ **#50.** Cho phép một cặp đấu (pairing) chơi nhiều ván (game series: số ván cố định hoặc race-to-margin) thay vì chỉ một ván — [chi tiết](docs/todo/B50-cho-phep-mot-cap-dau-choi-nhieu-van-thay-vi-mot-van.md)
 
+### Nguồn: báo cáo người dùng — "đăng nhập thiết bị khác" đá nhầm dù chỉ mở 1 tab (2026-08-06)
+- ✅ **#51.** Quy tắc bump `?v=N` trong CLAUDE.md bỏ sót cross-module import — `tournaments.js` load `lobby.js` 2 lần, mở 2 kết nối socket.io — [chi tiết](docs/todo/B51-cache-bust-quy-tac-bo-sot-cross-module-import.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
