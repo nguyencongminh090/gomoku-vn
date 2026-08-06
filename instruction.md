@@ -70,6 +70,8 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **§44.** `getClientIp()` ưu tiên `CF-Connecting-IP` (review 12.6, TODO.md #44) — [chi tiết](docs/instruction/S44-getclientip-uu-tien-cf-connecting-ip-review-12-6-todo-md-44.md)
 - **B45.** Text không dịch / hardcode tiếng Việt ở English mode (báo cáo người dùng, TODO.md #45) — [chi tiết](docs/instruction/B45-text-khong-dich-hardcode-tieng-viet-khi-o-che-do-english.md)
 - **B48.** Tournament (Tables & Tournaments) — từ yêu cầu người dùng, thảo luận + blueprint UI (TODO.md #48) — [chi tiết](docs/instruction/B48-tournament-tables-tournaments-tu-yeu-cau-nguoi-dung.md)
+- **B49.** Bàn cờ trận đấu giải đấu quá nhỏ / thiếu nhất quán — từ báo cáo người dùng kèm ảnh chụp màn hình (TODO.md #49) — [chi tiết](docs/instruction/B49-ban-co-trong-tran-dau-giai-dau-qua-nho-thieu-nhat-quan.md)
+- **B50.** Cặp đấu chơi nhiều ván (game series) thay vì một ván — từ yêu cầu người dùng, thảo luận qua `features/tournament-match-series/` (TODO.md #50) — [chi tiết](docs/instruction/B50-cho-phep-mot-cap-dau-choi-nhieu-van-thay-vi-mot-van.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 
