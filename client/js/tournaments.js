@@ -32,7 +32,7 @@
  *   [ ] tournament:error shows an alert
  */
 
-import { client } from './lobby.js?v=65';
+import { client } from './lobby.js?v=66';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -74,6 +74,15 @@ function activateTab(name) {
 
 tabTables.addEventListener('click', () => activateTab('tables'));
 tabTournaments.addEventListener('click', () => activateTab('tournaments'));
+
+// Honor `?tab=tournaments` so links back from the tournament detail page
+// (tournament.html's "Quay lại danh sách giải đấu") land on the right tab
+// instead of always falling back to the markup's default "Bàn chơi" tab.
+const requestedTab = new URLSearchParams(location.search).get('tab');
+if (requestedTab === 'tournaments') {
+  activateTab('tournaments');
+  history.replaceState(null, '', location.pathname);
+}
 
 // ---------------------------------------------------------------------------
 // Subscribe to the tournament list (unconditionally on load, same as
