@@ -163,7 +163,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - **#53.** Modal "Tạo giải đấu" thiếu hẳn UI để chọn series mode (race-to-margin/số ván cố định) — backend đã hỗ trợ đầy đủ nhưng frontend chưa có input nào — [chi tiết](docs/todo/B53-modal-tao-giai-dau-thieu-ui-chon-series-mode.md)
 
 ### Nguồn: báo cáo người dùng — 2 vấn đề UX trận đấu/điều hướng giải đấu (2026-08-07)
-- **#54.** "Quay lại danh sách giải đấu" từ trang chi tiết giải đấu luôn về tab "Bàn chơi" thay vì tab "Giải đấu" — [chi tiết](docs/todo/B54-quay-lai-tu-chi-tiet-giai-dau-ve-lobby-mat-tab-giai-dau.md)
+- ✅ **#54.** "Quay lại danh sách giải đấu" từ trang chi tiết giải đấu luôn về tab "Bàn chơi" thay vì tab "Giải đấu" — [chi tiết](docs/todo/B54-quay-lai-tu-chi-tiet-giai-dau-ve-lobby-mat-tab-giai-dau.md)
 - **#55.** Trận đấu giải đấu không áp dụng/đồng bộ click mode từ Cài đặt — khác hành vi với phòng chơi thường — [chi tiết](docs/todo/B55-tran-dau-giai-dau-khong-ap-dung-dong-bo-click-mode-tu-settings.md)
 
 ---
