@@ -41,6 +41,7 @@ const swissPairing = require('./pairing/swiss');
 const roundRobinPairing = require('./pairing/roundRobin');
 const doubleElimPairing = require('./pairing/doubleElim');
 const standingsModule = require('./standings');
+const seriesModule = require('./series');
 const tournamentState = require('../../socket/tournamentState');
 
 class TournamentManager extends EventEmitter {
@@ -1005,6 +1006,41 @@ class TournamentManager extends EventEmitter {
     r.tiebreakRule = ruleSet.tiebreakRule === config.DEFAULT_TIEBREAK_RULE
       ? ruleSet.tiebreakRule
       : config.DEFAULT_TIEBREAK_RULE;
+
+    // Pairing game series (TODO.md #50) — 'single' is the required default,
+    // reproducing today's one-game-per-pairing behavior exactly for every
+    // tournament that doesn't opt in. An organizer-supplied 'fixedCount'/
+    // 'raceToMargin' with an invalid or missing companion field (game count,
+    // or target+margin) falls back to 'single' rather than risking a
+    // pairing stuck mid-series with a nonsensical config (e.g. an uncapped
+    // race with target=0 would "complete" after the very first game).
+    let seriesMode = seriesModule.VALID_SERIES_MODES.includes(ruleSet.seriesMode) ? ruleSet.seriesMode : 'single';
+    let seriesGameCount = null;
+    let seriesTargetScore = null;
+    let seriesMargin = null;
+
+    if (seriesMode === 'fixedCount') {
+      const n = ruleSet.seriesGameCount;
+      if (typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= 99) {
+        seriesGameCount = n;
+      } else {
+        seriesMode = 'single';
+      }
+    } else if (seriesMode === 'raceToMargin') {
+      const target = ruleSet.seriesTargetScore;
+      const margin = ruleSet.seriesMargin;
+      if (typeof target === 'number' && target > 0 && typeof margin === 'number' && margin > 0) {
+        seriesTargetScore = target;
+        seriesMargin = margin;
+      } else {
+        seriesMode = 'single';
+      }
+    }
+
+    r.seriesMode = seriesMode;
+    r.seriesGameCount = seriesGameCount;
+    r.seriesTargetScore = seriesTargetScore;
+    r.seriesMargin = seriesMargin;
 
     return r;
   }

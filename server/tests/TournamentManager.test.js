@@ -113,6 +113,10 @@ describe('TournamentManager — createTournament', () => {
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,
       schedulingWindowMs: config.DEFAULT_SCHEDULING_WINDOW_MS,
       tiebreakRule: config.DEFAULT_TIEBREAK_RULE,
+      seriesMode: 'single',
+      seriesGameCount: null,
+      seriesTargetScore: null,
+      seriesMargin: null,
     });
   });
 
@@ -166,6 +170,92 @@ describe('TournamentManager — createTournament', () => {
       ruleSet: { tiebreakRule: 'elo_delta' },
     });
     expect(tournament.ruleSet.tiebreakRule).toBe(config.DEFAULT_TIEBREAK_RULE);
+  });
+
+  // ── seriesMode ruleSet fields (TODO.md #50) ─────────────────────────────
+
+  test('an unrecognized seriesMode falls back to "single"', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'best_of_bogus' },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
+    expect(tournament.ruleSet.seriesGameCount).toBeNull();
+  });
+
+  test('fixedCount with a valid seriesGameCount is accepted', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'fixedCount', seriesGameCount: 10 },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('fixedCount');
+    expect(tournament.ruleSet.seriesGameCount).toBe(10);
+  });
+
+  test.each([
+    [0, false],   // below min (1) → rejected
+    [1, true],    // exact min → kept
+    [99, true],   // exact max → kept
+    [100, false], // above max → rejected
+    [3.5, false], // non-integer → rejected
+    ['10', false], // non-number → rejected
+  ])('fixedCount seriesGameCount=%p accepted=%p', (input, accepted) => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'fixedCount', seriesGameCount: input },
+    });
+    if (accepted) {
+      expect(tournament.ruleSet.seriesMode).toBe('fixedCount');
+      expect(tournament.ruleSet.seriesGameCount).toBe(input);
+    } else {
+      // Invalid companion field -> whole seriesMode falls back to 'single'
+      // rather than leaving a half-configured fixedCount pairing series.
+      expect(tournament.ruleSet.seriesMode).toBe('single');
+      expect(tournament.ruleSet.seriesGameCount).toBeNull();
+    }
+  });
+
+  test('fixedCount with seriesGameCount missing entirely falls back to single', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'fixedCount' },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
+  });
+
+  test('raceToMargin with valid seriesTargetScore + seriesMargin is accepted', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'raceToMargin', seriesTargetScore: 12, seriesMargin: 2 },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('raceToMargin');
+    expect(tournament.ruleSet.seriesTargetScore).toBe(12);
+    expect(tournament.ruleSet.seriesMargin).toBe(2);
+  });
+
+  test.each([
+    [{ seriesTargetScore: 0, seriesMargin: 2 }],        // target not > 0
+    [{ seriesTargetScore: 12, seriesMargin: 0 }],       // margin not > 0
+    [{ seriesTargetScore: -5, seriesMargin: 2 }],       // negative target
+    [{ seriesTargetScore: 12 }],                        // margin missing
+    [{ seriesMargin: 2 }],                              // target missing
+    [{}],                                                // both missing
+  ])('raceToMargin with invalid config %p falls back to single (no uncapped-with-bogus-target series)', (partial) => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'raceToMargin', ...partial },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
+    expect(tournament.ruleSet.seriesTargetScore).toBeNull();
+    expect(tournament.ruleSet.seriesMargin).toBeNull();
+  });
+
+  test('a plain object literal is not accidentally coerced — string numbers for series fields are rejected', () => {
+    const { tournament } = tournamentManager.createTournament(user(), {
+      format: 'swiss',
+      ruleSet: { seriesMode: 'raceToMargin', seriesTargetScore: '12', seriesMargin: '2' },
+    });
+    expect(tournament.ruleSet.seriesMode).toBe('single');
   });
 });
 
