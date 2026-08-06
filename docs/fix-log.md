@@ -87,3 +87,4 @@
 | 2026-08-04 16:10 | TODO.md #47 (phát hiện phụ khi làm follow-up #45): thông báo mất-kết-nối/kết-nối-lại hiện trùng lặp … | [chi tiết](docs/fix-log/2026-08-04-todo-47-disconnect-reconnect-chat-duplicate.md) |
 | 2026-08-06 00:59 | TODO.md #22 (user-selected follow-up to a broadcast-performance audit): `broadcastRoomUpdate` fired s… | [chi tiết](docs/fix-log/2026-08-06-todo-22-room-updated-join-burst-debounce.md) |
 | 2026-08-06 03:17 | Code review follow-up on the `pairing_changed` batching fix: `broadcastTournamentDetail` still sent … | [chi tiết](docs/fix-log/2026-08-06-tournament-updated-entries-diff.md) |
+| 2026-08-06 15:42 | TODO.md #46: login.js password-toggle aria-label always showed the raw i18n key (`login.hide_pas… | [chi tiết](docs/fix-log/2026-08-06-todo-46-login-js-password-toggle-i18n-fallback.md) |

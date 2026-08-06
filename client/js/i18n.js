@@ -59,6 +59,8 @@ const TRANSLATIONS = {
     'login.err_username_taken': 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.',
     'login.err_invalid_credentials': 'Tên đăng nhập hoặc mật khẩu không đúng.',
     'login.err_missing_credentials': 'Vui lòng nhập tên đăng nhập và mật khẩu.',
+    'login.hide_password': 'Ẩn mật khẩu',
+    'login.show_password': 'Hiện mật khẩu',
 
     // ── Lobby page ────────────────────────────────────────────
     'lobby.title': 'Play3CR — Sảnh',
@@ -585,6 +587,8 @@ const TRANSLATIONS = {
     'login.err_username_taken': 'This username is already taken. Please choose another.',
     'login.err_invalid_credentials': 'Incorrect username or password.',
     'login.err_missing_credentials': 'Please enter your username and password.',
+    'login.hide_password': 'Hide password',
+    'login.show_password': 'Show password',
 
     // ── Lobby page ────────────────────────────────────────────
     'lobby.title': 'Play3CR — Lobby',

@@ -351,7 +351,7 @@ window.togglePassword = function(btn) {
         <line x1="1" y1="1" x2="23" y2="23"></line>
       </svg>
     `;
-    btn.setAttribute('aria-label', t('login.hide_password') || 'Ẩn mật khẩu');
+    btn.setAttribute('aria-label', t('login.hide_password'));
   } else {
     btn.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
@@ -359,6 +359,6 @@ window.togglePassword = function(btn) {
         <circle cx="12" cy="12" r="3"></circle>
       </svg>
     `;
-    btn.setAttribute('aria-label', t('login.show_password') || 'Hiện mật khẩu');
+    btn.setAttribute('aria-label', t('login.show_password'));
   }
 };
