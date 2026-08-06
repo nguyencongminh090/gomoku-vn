@@ -96,9 +96,23 @@ function init(io) {
     // io.sockets.sockets. Evict it first, before the disconnect-grace check
     // and the existingRoom rejoin below, so a stale session can never race
     // the new one back into a room.
+    //
+    // A connection flagged `auth.reconnect` (see socket-client.js's
+    // reconnect_attempt listener) is this SAME browser tab re-establishing
+    // its own dropped transport (ping timeout, brief wifi/proxy hiccup) —
+    // not a second device. Server-side disconnect detection lags the
+    // client's own (default pingTimeout ~20s), so the old socket can still
+    // be sitting in `sessions` when the reconnect arrives. Still evict it
+    // (it's dead or about to be), but skip the 'session:kicked' notice: that
+    // notice makes the client wipe its session and bounce to the login page,
+    // which is exactly the false "logged in on another device" symptom this
+    // guards against. A genuine second-device login never carries this flag.
     const staleSocket = sessions.get(user.userId);
     if (staleSocket) {
-      staleSocket.emit('session:kicked', { message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác.', code: 'SESSION_KICKED' });
+      const isOwnReconnect = !!(socket.handshake && socket.handshake.auth && socket.handshake.auth.reconnect);
+      if (!isOwnReconnect) {
+        staleSocket.emit('session:kicked', { message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác.', code: 'SESSION_KICKED' });
+      }
       staleSocket.disconnect(true);
     }
 
@@ -107,11 +121,18 @@ function init(io) {
     //   2. guaranteed a plain-object payload, even if the client sends null/a
     //      string/a number instead of `undefined` (which is the only value
     //      default parameters like `(payload = {})` actually guard against).
+    // Built-in lifecycle events (currently just 'disconnect') are exempted
+    // from the payload coercion: socket.io calls their listener with a
+    // string reason ('ping timeout', 'transport close', ...), and coercing
+    // that string to {} turned every disconnect log into an unreadable
+    // "reason=[object Object]" — destroying the exact signal needed to tell
+    // a network-driven reconnect apart from a deliberate disconnect.
     const origOn = socket.on.bind(socket);
+    const RAW_PAYLOAD_EVENTS = new Set(['disconnect']);
     socket.on = function wrappedOn(event, listener) {
       if (typeof listener !== 'function') return origOn(event, listener);
       return origOn(event, (...args) => {
-        if (args.length > 0 && (typeof args[0] !== 'object' || args[0] === null)) {
+        if (!RAW_PAYLOAD_EVENTS.has(event) && args.length > 0 && (typeof args[0] !== 'object' || args[0] === null)) {
           args[0] = {};
         }
         try {
