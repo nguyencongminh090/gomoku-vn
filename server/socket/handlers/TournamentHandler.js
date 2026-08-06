@@ -27,6 +27,11 @@
 
 const logger = require('../../utils/logger');
 const tournamentManager = require('../../managers/tournament/TournamentManager');
+// Lazy-require to mirror RoomHandler.js's getGameHandler() pattern — avoids
+// a load-time circular require if TournamentMatchHandler.js ever needs to
+// reach back into this module (it doesn't today, but the pattern is cheap
+// insurance and matches the rest of the codebase's convention).
+function getTournamentMatchHandler() { return require('./TournamentMatchHandler'); }
 
 const TOURNAMENT_LIST_ROOM = 'tournament-lobby';
 
@@ -86,11 +91,86 @@ function broadcastTournamentListUpdate(io) {
   _listUpdateTimers.set(io, timeout);
 }
 
+// ---------------------------------------------------------------------------
+// tournament:updated entries diff — serializeTournamentUpdate() includes the
+// FULL entries array (every registered player) on every call, so before this
+// a tournament with e.g. 30 registered players re-sent all 30 to the whole
+// room on every single register/unregister. Diff entries the same way
+// _diffRoomUsers (state.js) diffs a room's users: keyed per tournamentId
+// (shared across the whole tournament room, mirroring _diffRoomUsers being
+// keyed per roomId), only included when something in it actually changed.
+// ---------------------------------------------------------------------------
+
+const _tournamentEntrySnapshots = new Map(); // tournamentId -> Map<entryId, serialized-entry JSON>
+
+function _diffTournamentEntries(tournamentId, entries) {
+  const previous = _tournamentEntrySnapshots.get(tournamentId) || new Map();
+  const next = new Map();
+  const upserts = [];
+
+  for (const entry of entries) {
+    const serialized = JSON.stringify(entry);
+    next.set(entry.entryId, serialized);
+    if (previous.get(entry.entryId) !== serialized) upserts.push(entry);
+  }
+
+  const removed = [];
+  for (const entryId of previous.keys()) {
+    if (!next.has(entryId)) removed.push(entryId);
+  }
+
+  _tournamentEntrySnapshots.set(tournamentId, next);
+  return { upserts, removed };
+}
+
 function broadcastTournamentDetail(io, tournament) {
-  io.to(tournamentRoom(tournament.tournamentId)).emit(
-    'tournament:updated',
-    tournamentManager.serializeTournamentUpdate(tournament)
-  );
+  const full = tournamentManager.serializeTournamentUpdate(tournament);
+  const { upserts, removed } = _diffTournamentEntries(tournament.tournamentId, full.entries || []);
+
+  const payload = { ...full };
+  delete payload.entries;
+  if (upserts.length > 0 || removed.length > 0) payload.entries = { upserts, removed };
+
+  io.to(tournamentRoom(tournament.tournamentId)).emit('tournament:updated', payload);
+}
+
+// ---------------------------------------------------------------------------
+// Pairing-changed batching — 'pairing_changed' can fire several times back to
+// back in the SAME synchronous pass (round-advance creating a whole new
+// round's pairings, a deadline-sweep tick resolving several overdue pairings,
+// Double Elimination bracket auto-sync cascading bye→bye), each for a
+// different pairingId. Emitting one 'tournament:pairing_updated' per pairing
+// meant N socket messages AND N full page re-renders on the client
+// (tournament-detail.js calls renderAll() on every message) for what is, from
+// a viewer's perspective, one state change. setImmediate (not a timed
+// debounce) coalesces only pairings changed within the current synchronous
+// burst — a single isolated user action (report/confirm/dispute/...) still
+// flushes on the very next tick, so this adds no perceptible latency.
+// ---------------------------------------------------------------------------
+
+const _pairingPatchQueues = new Map(); // tournamentId -> Map<pairingId, serializedPairing>
+const _pairingPatchTimers = new Map(); // tournamentId -> Immediate
+
+function _queuePairingChanged(io, tournamentId, pairing) {
+  let queue = _pairingPatchQueues.get(tournamentId);
+  if (!queue) {
+    queue = new Map();
+    _pairingPatchQueues.set(tournamentId, queue);
+  }
+  queue.set(pairing.pairingId, pairing);
+
+  if (_pairingPatchTimers.has(tournamentId)) return;
+  const immediate = setImmediate(() => {
+    _pairingPatchTimers.delete(tournamentId);
+    const pending = _pairingPatchQueues.get(tournamentId);
+    _pairingPatchQueues.delete(tournamentId);
+    if (!pending || pending.size === 0) return;
+    io.to(tournamentRoom(tournamentId)).emit('tournament:pairings_patch', {
+      tournamentId,
+      pairings: Array.from(pending.values()),
+    });
+  });
+  _pairingPatchTimers.set(tournamentId, immediate);
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +201,16 @@ function init(io) {
   tournamentManager.on('pairing_changed', ({ tournamentId, pairingId }) => {
     const pairing = tournamentManager.getPairing(pairingId);
     if (!pairing) return;
-    io.to(tournamentRoom(tournamentId)).emit('tournament:pairing_updated', tournamentManager.serializePairing(pairing));
+    _queuePairingChanged(io, tournamentId, tournamentManager.serializePairing(pairing));
+  });
+
+  // Both players just checked in (Ready -> InProgress, TournamentManager.
+  // markPairingReady()) — this is what actually turns a pairing into a live
+  // GameEngine. Without this listener a pairing sits at InProgress forever
+  // with no match behind it, since TournamentManager itself never touches
+  // io (see its class header) and nothing else calls startMatch().
+  tournamentManager.on('pairing_ready', ({ tournamentId, pairingId }) => {
+    getTournamentMatchHandler().startMatch(io, tournamentId, pairingId);
   });
 
   logger.info('[TournamentHandler] Initialized');

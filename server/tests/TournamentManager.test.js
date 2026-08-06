@@ -397,6 +397,38 @@ describe('TournamentManager — listTournaments / serialization', () => {
     expect(payload.entries[0].userId).toBe(player.userId);
   });
 
+  test('serializeTournament reports currentRoundIndex/totalRounds for Swiss, and serializePairing reports the pairing\'s round — so the client can render "Round X / Y" and group pairings without a separate round lookup', () => {
+    const organizer = user();
+    const p1 = user(), p2 = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const payload = tournamentManager.serializeTournament(tournament);
+    expect(payload.currentRoundIndex).toBe(1);
+    expect(payload.totalRounds).toBeGreaterThanOrEqual(1);
+
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    expect(tournamentManager.serializePairing(pairing).roundIndex).toBe(1);
+  });
+
+  test('Double Elimination has no round grouping — currentRoundIndex/totalRounds and each pairing\'s roundIndex are null', () => {
+    const organizer = user();
+    const p1 = user(), p2 = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    const payload = tournamentManager.serializeTournament(tournament);
+    expect(payload.currentRoundIndex).toBeNull();
+    expect(payload.totalRounds).toBeNull();
+
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    expect(tournamentManager.serializePairing(pairing).roundIndex).toBeNull();
+  });
+
   test('serializeTournamentUpdate omits ruleSet', () => {
     const tournament = tournamentManager.createTournament(user(), { format: 'swiss' }).tournament;
     const payload = tournamentManager.serializeTournamentUpdate(tournament);

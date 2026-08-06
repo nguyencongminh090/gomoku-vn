@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Trận đấu giải đấu</title>
+  <meta name="description" content="Play3CR — Trận đấu trong giải đấu Caro trực tuyến." />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="css/main.css?v=61" />
+  <link rel="stylesheet" href="css/lobby.css?v=61" />
+  <link rel="stylesheet" href="css/room.css?v=61" />
+  <link rel="stylesheet" href="css/tournament.css?v=61" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=61" />
+  <script>
+    (function() {
+      var storedTheme = localStorage.getItem('theme');
+      document.documentElement.setAttribute('data-theme', storedTheme ? storedTheme : 'light');
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      var m;
+      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
+      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'lite';
+      document.documentElement.setAttribute('data-ui-mode', mode);
+    })();
+  </script>
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+</head>
+<body>
+
+<div id="status-banner" class="status-banner" aria-live="polite"></div>
+
+<nav class="topnav" role="navigation" aria-label="Điều hướng chính">
+  <a href="index.html" class="topnav__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
+    <span class="topnav__title">Play3CR</span>
+  </a>
+  <div class="topnav__right">
+    <span id="nav-user" class="topnav__user"></span>
+    <span id="nav-badge" class="topnav__badge"></span>
+  </div>
+</nav>
+
+<div class="lobby-layout">
+<main class="lobby" role="main">
+
+  <a href="#" id="back-to-tournament" class="detail-back"><i class="ph ph-arrow-left"></i><span data-i18n="tmatch.back">Quay lại chi tiết giải đấu</span></a>
+
+  <div class="detail-header">
+    <div>
+      <div class="detail-header__name" id="match-title">—</div>
+      <div class="detail-header__meta" id="match-meta"></div>
+    </div>
+  </div>
+
+  <div id="swap2-banner-slot"></div>
+
+  <div class="match-shell">
+    <div class="match-board-wrap">
+      <div class="match-clocks">
+        <div class="match-clock" id="clock-black">
+          <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--black"></span><span id="clock-black-name">—</span></span>
+          <span class="match-clock__time" id="clock-black-time">--:--</span>
+        </div>
+        <div class="match-clock" id="clock-white">
+          <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--white"></span><span id="clock-white-name">—</span></span>
+          <span class="match-clock__time" id="clock-white-time">--:--</span>
+        </div>
+      </div>
+
+      <section class="board-area-shell" id="board-area-shell">
+        <div class="board-area" id="board-area">
+          <div class="board-canvas-wrap match-board-canvas-wrap" id="board-wrap">
+            <canvas id="match-canvas"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <div class="match-actions" id="match-actions" style="display:none;">
+        <button class="btn btn-cancel" type="button" id="btn-resign" data-i18n="tmatch.btn_resign">Đầu hàng</button>
+      </div>
+    </div>
+
+    <aside class="ui-shell">
+      <div class="ui-core" style="padding:14px;">
+        <div class="pairing-card__meta" style="margin-bottom:10px;"><i class="ph ph-list-numbers"></i><span data-i18n="tmatch.move_history">Lịch sử nước đi</span></div>
+        <div class="move-list" id="move-list"></div>
+      </div>
+    </aside>
+  </div>
+
+</main>
+</div>
+
+<div class="match-result-overlay" id="match-result-overlay">
+  <div class="match-result-card">
+    <div class="match-result-card__icon" id="match-result-icon">🏁</div>
+    <div class="match-result-card__title" id="match-result-title"></div>
+    <div class="match-result-card__sub" id="match-result-sub"></div>
+    <a class="btn btn-confirm" id="match-result-back" href="#" data-i18n="tmatch.back_to_tournament">Quay lại giải đấu</a>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="js/tournament-match-entry.js?v=61"></script>
+</body>
+</html>

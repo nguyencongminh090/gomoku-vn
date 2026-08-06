@@ -32,7 +32,7 @@
  *   [ ] tournament:error shows an alert
  */
 
-import { client } from './lobby.js?v=58';
+import { client } from './lobby.js?v=61';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -182,6 +182,16 @@ function renderTournamentList() {
       client.emit('tournament:start', { tournamentId: btn.dataset.tournamentId });
     });
   });
+
+  // Whole-card click/Enter opens the detail page (Phase 6) — action buttons
+  // above already stopPropagation() so this never double-fires on them.
+  tournamentListEl.querySelectorAll('[data-open-detail]').forEach((card) => {
+    const open = () => { window.location.href = `tournament.html?id=${encodeURIComponent(card.dataset.openDetail)}`; };
+    card.addEventListener('click', open);
+    card.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); }
+    });
+  });
 }
 
 function renderCard(tournament, index) {
@@ -215,7 +225,7 @@ function renderCard(tournament, index) {
   }
 
   return `
-    <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}">
+    <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}" data-open-detail="${escapeAttr(tournament.tournamentId)}" tabindex="0" role="link" aria-label="${escapeAttr(tournament.name)}">
       <div class="tournament-card__top">
         <span class="tournament-card__name">${escapeHtml(tournament.name)}</span>
         <span class="badge badge--format">${formatLabel(tournament.format)}</span>

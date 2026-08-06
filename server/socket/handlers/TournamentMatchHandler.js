@@ -217,6 +217,32 @@ function register(io, socket) {
     return match;
   }
 
+  // ── tmatch:subscribe ────────────────────────────────────────────────────
+  // startMatch()/resyncOnConnect() push tmatch:init automatically for the two
+  // participants (match start, socket reconnect), but neither covers a plain
+  // page navigation straight to the match URL (tournament.html's "Vào trận"
+  // link) — the client has to actively ask for the current state. Also the
+  // only way for a SPECTATOR (anyone with the pairingId, not just the two
+  // players) to watch a tournament match, matching casual rooms allowing
+  // spectators via room:join.
+  socket.on('tmatch:subscribe', (payload = {}) => {
+    const match = tournamentState.tournamentGameMap.get(payload.pairingId);
+    if (!match || match.tournamentId !== payload.tournamentId) {
+      socket.emit('tmatch:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_MATCH' });
+      return;
+    }
+
+    socket.join(matchRoom(payload.pairingId));
+    const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
+    socket.emit('tmatch:init', {
+      tournamentId: payload.tournamentId,
+      pairingId: payload.pairingId,
+      ...match.engine.serialize(),
+      timer: timer ? timer.getTimers() : null,
+      timerSync: timer ? timer.getSync() : null,
+    });
+  });
+
   socket.on('tmatch:move', (payload = {}) => {
     const match = getOwnMatch(payload.pairingId, payload.tournamentId);
     if (!match) {
