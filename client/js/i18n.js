@@ -121,6 +121,15 @@ const TRANSLATIONS = {
     'tournaments.format_label': 'Thể thức',
     'tournaments.scheduling_window_label': 'Hạn báo lịch mỗi trận',
     'tournaments.scheduling_window_unit': 'giờ',
+    'tournaments.series_mode_label': 'Số ván mỗi cặp đấu',
+    'tournaments.series_single': 'Một ván',
+    'tournaments.series_fixed': 'Số ván cố định',
+    'tournaments.series_race': 'Race-to-margin',
+    'tournaments.series_game_count_label': 'Số ván',
+    'tournaments.series_target_label': 'Đích điểm',
+    'tournaments.series_margin_label': 'Cách biệt tối thiểu',
+    'tournaments.series_validation_count': 'Số ván cố định phải là số nguyên từ 2 trở lên.',
+    'tournaments.series_validation_race': 'Đích điểm và cách biệt tối thiểu phải là số lớn hơn 0.',
 
     // ── Tournament detail page (tournament.html) ───────────────
     'tdetail.back': 'Quay lại danh sách giải đấu',
@@ -649,6 +658,15 @@ const TRANSLATIONS = {
     'tournaments.format_label': 'Format',
     'tournaments.scheduling_window_label': 'Scheduling window per match',
     'tournaments.scheduling_window_unit': 'hours',
+    'tournaments.series_mode_label': 'Games per pairing',
+    'tournaments.series_single': 'Single game',
+    'tournaments.series_fixed': 'Fixed game count',
+    'tournaments.series_race': 'Race-to-margin',
+    'tournaments.series_game_count_label': 'Game count',
+    'tournaments.series_target_label': 'Target score',
+    'tournaments.series_margin_label': 'Minimum margin',
+    'tournaments.series_validation_count': 'Fixed game count must be an integer of 2 or more.',
+    'tournaments.series_validation_race': 'Target score and minimum margin must both be greater than 0.',
 
     // ── Tournament detail page (tournament.html) ───────────────
     'tdetail.back': 'Back to tournament list',

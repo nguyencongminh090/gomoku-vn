@@ -1,2 +1,2 @@
-import './i18n.js?v=66';
-import './login.js?v=66';
+import './i18n.js?v=67';
+import './login.js?v=67';

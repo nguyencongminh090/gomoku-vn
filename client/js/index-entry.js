@@ -1,8 +1,8 @@
-import './i18n.js?v=66';
-import './ui-mode.js?v=66';
-import './settings-panel.js?v=66';
-import './audio-manager.js?v=66';
-import './socket-client.js?v=66';
-import './escape-utils.js?v=66';
-import './lobby.js?v=66';
-import './tournaments.js?v=66';
+import './i18n.js?v=67';
+import './ui-mode.js?v=67';
+import './settings-panel.js?v=67';
+import './audio-manager.js?v=67';
+import './socket-client.js?v=67';
+import './escape-utils.js?v=67';
+import './lobby.js?v=67';
+import './tournaments.js?v=67';

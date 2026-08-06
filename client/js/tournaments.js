@@ -32,7 +32,7 @@
  *   [ ] tournament:error shows an alert
  */
 
-import { client } from './lobby.js?v=66';
+import { client } from './lobby.js?v=67';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -294,19 +294,48 @@ function readTournamentRuleSet() {
   let   rulePortal  = document.getElementById('t-rule-portal').checked;
   if (ruleSwap2) { ruleWall = false; rulePortal = false; }
   const hours = parseInt(document.getElementById('t-scheduling-hours').value, 10) || 48;
+
+  const seriesMode = (document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'single';
+  let seriesGameCount = null;
+  let seriesTargetScore = null;
+  let seriesMargin = null;
+  if (seriesMode === 'fixedCount') {
+    seriesGameCount = parseInt(document.getElementById('t-series-game-count').value, 10);
+  } else if (seriesMode === 'raceToMargin') {
+    seriesTargetScore = parseInt(document.getElementById('t-series-target').value, 10);
+    seriesMargin = parseInt(document.getElementById('t-series-margin').value, 10);
+  }
+
   return {
     boardSize, winningRule, ruleWall, rulePortal, ruleSwap2,
     timerMode, timerSeconds, timerIncrementSeconds,
     schedulingWindowMs: hours * 60 * 60 * 1000,
+    seriesMode, seriesGameCount, seriesTargetScore, seriesMargin,
   };
 }
 
 modalConfirm.addEventListener('click', () => {
   const name = document.getElementById('tournament-name').value.trim();
+  const ruleSet = readTournamentRuleSet();
+
+  // Client-side validation (backend already falls back to 'single' safely on
+  // bad input — this just stops the organizer from silently getting 'single'
+  // when they meant to configure a series, per docs/todo/B53-*.md).
+  if (ruleSet.seriesMode === 'fixedCount'
+      && !(Number.isInteger(ruleSet.seriesGameCount) && ruleSet.seriesGameCount >= 2)) {
+    alert(t('tournaments.series_validation_count'));
+    return;
+  }
+  if (ruleSet.seriesMode === 'raceToMargin'
+      && !(ruleSet.seriesTargetScore > 0 && ruleSet.seriesMargin > 0)) {
+    alert(t('tournaments.series_validation_race'));
+    return;
+  }
+
   client.emit('tournament:create', {
     name: name || undefined,
     format: readTournamentFormat(),
-    ruleSet: readTournamentRuleSet(),
+    ruleSet,
   });
   closeCreateModal();
 });
@@ -343,5 +372,21 @@ modalConfirm.addEventListener('click', () => {
     if (row) row.style.opacity = active ? '' : '0.45';
   };
   document.querySelectorAll('input[name="tTimerMode"]').forEach((r) => r.addEventListener('change', sync));
+  sync();
+})();
+
+// Series mode (TODO.md #53) — show the game-count input only in "fixedCount",
+// the target/margin inputs only in "raceToMargin".
+(function () {
+  const rowCount  = document.getElementById('t-series-count-row');
+  const rowRace   = document.getElementById('t-series-race-row');
+  const rowMargin = document.getElementById('t-series-margin-row');
+  const sync = () => {
+    const mode = (document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'single';
+    rowCount.style.display = mode === 'fixedCount' ? '' : 'none';
+    rowRace.style.display = mode === 'raceToMargin' ? '' : 'none';
+    rowMargin.style.display = mode === 'raceToMargin' ? '' : 'none';
+  };
+  document.querySelectorAll('input[name="tSeriesMode"]').forEach((r) => r.addEventListener('change', sync));
   sync();
 })();
