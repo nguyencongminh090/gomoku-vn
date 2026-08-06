@@ -169,6 +169,22 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     expect(sockEmit(a, 'session:kicked')).toBeUndefined();
   });
 
+  test('a disconnect reason string (e.g. "ping timeout") reaches the log unmangled, not coerced to an object', () => {
+    const logger = require('../utils/logger');
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+    logger.info.mockClear();
+
+    fireDisconnect(a, 'ping timeout');
+
+    const disconnectLog = logger.info.mock.calls.find(call => call[0].includes('[Socket] Disconnected'));
+    expect(disconnectLog[0]).toContain('reason=ping timeout');
+    expect(disconnectLog[0]).not.toContain('[object Object]');
+  });
+
   test("the kicked socket's later disconnect does not erase the new session's online presence", () => {
     const io = makeIo();
     init(io);
@@ -273,6 +289,39 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     expect(a.disconnect).toHaveBeenCalledWith(true);
     expect(b.disconnect).not.toHaveBeenCalled();
     expect(sessions.get('u1')).toBe(b);
+  });
+
+  test('a reconnect of the same tab (auth.reconnect flag) evicts the stale socket silently, without a session:kicked notice', () => {
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+    expect(sessions.get('u1')).toBe(a);
+
+    // Same browser tab, socket.io internal reconnect after a transient
+    // network drop (ping timeout / transport close) — the client flags this
+    // via auth.reconnect (see socket-client.js reconnect_attempt listener).
+    const b = makeSocket(io, 'sockB', 'u1', 'Alice', { reconnect: true });
+    connectSocket(io, b);
+
+    expect(sockEmit(a, 'session:kicked')).toBeUndefined();
+    expect(a.disconnect).toHaveBeenCalledWith(true);
+    expect(sessions.get('u1')).toBe(b);
+  });
+
+  test('a genuine second-device login (no reconnect flag) still emits session:kicked to the first socket', () => {
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice');
+    connectSocket(io, a);
+
+    const b = makeSocket(io, 'sockB', 'u1', 'Alice');
+    connectSocket(io, b);
+
+    expect(sockEmit(a, 'session:kicked')).toBeDefined();
+    expect(a.disconnect).toHaveBeenCalledWith(true);
   });
 
   test('near-simultaneous connections for the same userId: exactly one socket ends up kicked, never zero, never both', () => {
