@@ -201,7 +201,7 @@ describe('TournamentMatchHandler — startMatch', () => {
     expect(match.engine.players[1]).toMatchObject({ userId: entry2.userId, color: 'WHITE' });
 
     const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init');
-    expect(init.data.series).toMatchObject({ gameIndex: 0, seriesMode: 'single', seriesScore: null });
+    expect(init.data.series).toMatchObject({ gameIndex: 0, seriesMode: 'single', scores: null });
   });
 
   test('gameIndex 1 (one game already played): colors flip to player1=WHITE/player2=BLACK', () => {
@@ -224,7 +224,10 @@ describe('TournamentMatchHandler — startMatch', () => {
     const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init');
     expect(init.data.series).toMatchObject({
       gameIndex: 1,
-      seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
+      scores: [
+        { displayName: entry1.displayName, score: 1 },
+        { displayName: entry2.displayName, score: 0 },
+      ],
     });
   });
 
@@ -440,7 +443,8 @@ describe('TournamentMatchHandler — series transition (_endMatch)', () => {
         games: [], seriesScore: null,
       })
       .mockReturnValueOnce({
-        pairingId: 'p1', state: 'Ready', games: [{ index: 0, winnerEntryId: entry1.entryId }],
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Ready',
+        games: [{ index: 0, winnerEntryId: entry1.entryId }],
         seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
       });
 
@@ -451,7 +455,10 @@ describe('TournamentMatchHandler — series transition (_endMatch)', () => {
     const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
     expect(ended.data.series).toEqual({
       seriesComplete: false,
-      seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
+      scores: [
+        { displayName: entry1.displayName, score: 1 },
+        { displayName: entry2.displayName, score: 0 },
+      ],
     });
     // The GameEngine itself is torn down (a fresh one is built for the next
     // game once both players re-check-in)...

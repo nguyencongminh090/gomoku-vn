@@ -168,6 +168,17 @@
 .move-list__row { display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 6px; }
 .move-list__row:nth-child(odd) { background: var(--c-surface-2); }
 
+/* Ported room.html tab chrome (TODO.md #50 step 7 — Chat/Khán giả tabs).
+   room.html's version of these tabs lives inside .panel-right-shell/
+   .panel-right, which is what actually supplies the flex-column + bounded
+   height the tab-switching CSS in room.css (.tab-content { flex:1 }) needs
+   to do anything — .match-shell's aside doesn't have that ancestor, so give
+   the ported tabs their own bounded, scrollable box here instead. */
+.match-shell .ui-core { display: flex; flex-direction: column; max-height: 480px; }
+.match-shell #tab-moves .move-list { max-height: none; flex: 1; }
+.match-shell .chat-panel,
+.match-shell .users-panel { max-height: 100%; }
+
 .swap2-banner {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   background: var(--c-brand-light); border: 1px solid var(--c-brand);

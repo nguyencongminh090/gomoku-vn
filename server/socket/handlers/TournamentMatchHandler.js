@@ -128,10 +128,23 @@ function _generateLayout(ruleSet) {
  */
 function _seriesInfo(tournament, pairing) {
   const ruleSet = tournament.ruleSet;
+  // pairing.seriesScore is keyed by entryId — meaningless to the client on
+  // its own, since GameEngine.serialize()'s players[] only carries userId.
+  // Resolve display names here (server already has tournament.entries in
+  // scope) rather than pushing an entryId->displayName lookup onto the
+  // client for a field it only ever renders as-is.
+  const entry1 = tournament.entries.get(pairing.player1EntryId);
+  const entry2 = tournament.entries.get(pairing.player2EntryId);
+  const scores = pairing.seriesScore
+    ? [
+        { displayName: entry1 ? entry1.displayName : '—', score: pairing.seriesScore[pairing.player1EntryId] || 0 },
+        { displayName: entry2 ? entry2.displayName : '—', score: pairing.seriesScore[pairing.player2EntryId] || 0 },
+      ]
+    : null;
   return {
     seriesMode: ruleSet.seriesMode,
     gameIndex: pairing.games.length,
-    seriesScore: pairing.seriesScore,
+    scores,
     seriesGameCount: ruleSet.seriesGameCount,
     seriesTargetScore: ruleSet.seriesTargetScore,
     seriesMargin: ruleSet.seriesMargin,
@@ -304,9 +317,10 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
   if (outcome) {
     const recordResult = tournamentManager.recordPairingResult(tournamentId, pairingId, outcome);
     const updatedPairing = tournamentManager.getPairing(pairingId);
+    const tournament = tournamentManager.getTournament(tournamentId);
     seriesInfo = {
       seriesComplete: recordResult.seriesComplete !== false,
-      seriesScore: updatedPairing ? updatedPairing.seriesScore : null,
+      scores: (tournament && updatedPairing) ? _seriesInfo(tournament, updatedPairing).scores : null,
     };
   }
 
