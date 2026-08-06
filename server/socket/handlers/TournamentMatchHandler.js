@@ -99,21 +99,33 @@ function startMatch(io, tournamentId, pairingId) {
     return;
   }
 
-  // player1EntryId is TimerManager's "black" slot, player2EntryId is "white"
-  // (see PairingLifecycle.markReady) — colors mirror that pairing here so a
-  // timeout's blackPlayerId/whitePlayerId label lines up with who is
-  // actually assigned that color below.
+  // This new game's 0-based index within the pairing's series (TODO.md #50)
+  // — equal to how many games are already recorded, since recordPairingResult
+  // pushes a game BEFORE looping the pairing back to Ready for the next one.
+  // Single-game (non-series) pairings always start at gameIndex 0.
+  const gameIndex = pairing.games.length;
+
+  // Color alternates every game in the series (planning.md decision 4) —
+  // swap which entry sits in the "first" seat based on gameIndex parity.
+  // player1EntryId/player2EntryId themselves stay FIXED as TimerManager's
+  // black/white slots (see PairingLifecycle.markReady) and as the
+  // entryByUserId/userIdByEntry keys below — only the GameEngine seat
+  // (and therefore stone color / Swap2 first-mover) alternates.
+  const evenGame = gameIndex % 2 === 0;
+  const first = evenGame ? entry1 : entry2;
+  const second = evenGame ? entry2 : entry1;
+
   const engine = new GameEngine({
     roomId: pairingId,
     boardSize: ruleSet.boardSize,
     players: ruleSet.ruleSwap2
       ? [
-          { userId: entry1.userId, displayName: entry1.displayName, color: null, isGuest: entry1.isGuest },
-          { userId: entry2.userId, displayName: entry2.displayName, color: null, isGuest: entry2.isGuest },
+          { userId: first.userId, displayName: first.displayName, color: null, isGuest: first.isGuest },
+          { userId: second.userId, displayName: second.displayName, color: null, isGuest: second.isGuest },
         ]
       : [
-          { userId: entry1.userId, displayName: entry1.displayName, color: 'BLACK', isGuest: entry1.isGuest },
-          { userId: entry2.userId, displayName: entry2.displayName, color: 'WHITE', isGuest: entry2.isGuest },
+          { userId: first.userId, displayName: first.displayName, color: 'BLACK', isGuest: first.isGuest },
+          { userId: second.userId, displayName: second.displayName, color: 'WHITE', isGuest: second.isGuest },
         ],
     walls: layout.walls,
     portals: layout.portals,
@@ -147,8 +159,26 @@ function startMatch(io, tournamentId, pairingId) {
     ...engine.serialize(),
     timer: timer ? timer.getTimers() : null,
     timerSync: timer ? timer.getSync() : null,
+    // Series info (TODO.md #50) — always present, null-shaped the same way
+    // for a plain 1-game ('single' mode) pairing as for an actual series, so
+    // the client doesn't need two different payload shapes. This doubles as
+    // the "next game in the series has started" transition signal from
+    // features/tournament-match-series/diagram/uml_diagram/
+    // sequence-match-series-game-transition.md — that diagram's proposed
+    // event name is `tmatch:started`, but tmatch:init is the real event this
+    // codebase already uses for every "a live GameEngine now exists for this
+    // pairing" case (initial start, reconnect resync, subscribe); reusing it
+    // here keeps one event instead of two doing the same job.
+    series: {
+      seriesMode: ruleSet.seriesMode,
+      gameIndex,
+      seriesScore: pairing.seriesScore,
+      seriesGameCount: ruleSet.seriesGameCount,
+      seriesTargetScore: ruleSet.seriesTargetScore,
+      seriesMargin: ruleSet.seriesMargin,
+    },
   });
-  logger.info(`[TournamentMatch] Match started for pairing ${pairingId}`);
+  logger.info(`[TournamentMatch] Match started for pairing ${pairingId} (game ${gameIndex + 1})`);
 }
 
 /**
@@ -183,12 +213,16 @@ function _handleTimeout(io, tournamentId, pairingId, timedOutEntryId) {
   if (!timedOutUserId) return;
 
   match.engine.handleTimeout(timedOutUserId);
-  const finalResult = match.engine.result;
-  io.to(matchRoom(pairingId)).emit('tmatch:ended', { tournamentId, pairingId, result: finalResult });
-  _endMatch(io, tournamentId, pairingId, finalResult);
+  _endMatch(io, tournamentId, pairingId, match.engine.result);
 }
 
-/** Resolve TournamentManager.recordPairingResult from a finished engine's result, then tear down local match state. */
+/**
+ * Resolve TournamentManager.recordPairingResult from a finished engine's
+ * result, tear down local match state, and emit tmatch:ended — the single
+ * place that happens now (TODO.md #50), since whether the match room should
+ * stay joined depends on the SERIES outcome (which only recordPairingResult
+ * knows), not just this one game's outcome.
+ */
 function _endMatch(io, tournamentId, pairingId, engineResult) {
   const match = tournamentState.tournamentGameMap.get(pairingId);
   if (!match) return;
@@ -198,9 +232,32 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
 
   const outcome = engineResult.winner === 'draw' ? 'draw' : match.entryByUserId.get(engineResult.winner);
   tournamentState.tournamentGameMap.delete(pairingId);
-  if (outcome) tournamentManager.recordPairingResult(tournamentId, pairingId, outcome);
 
-  io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));
+  // seriesComplete stays true (not just "truthy") for anything that isn't
+  // the explicit "loop back to Ready for the next game" signal —
+  // recordPairingResult only sets `seriesComplete: false` on that one path;
+  // a fully Completed pairing or a double_elim void/replay both count as
+  // "this match session is over" from the socket layer's point of view.
+  let seriesInfo = null;
+  if (outcome) {
+    const recordResult = tournamentManager.recordPairingResult(tournamentId, pairingId, outcome);
+    const updatedPairing = tournamentManager.getPairing(pairingId);
+    seriesInfo = {
+      seriesComplete: recordResult.seriesComplete !== false,
+      seriesScore: updatedPairing ? updatedPairing.seriesScore : null,
+    };
+  }
+
+  io.to(matchRoom(pairingId)).emit('tmatch:ended', {
+    tournamentId, pairingId, result: engineResult, series: seriesInfo,
+  });
+
+  if (!seriesInfo || seriesInfo.seriesComplete) {
+    io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));
+  }
+  // else: series continues — players/spectators stay in the match room so
+  // they receive the next game's tmatch:init once both players re-check-in,
+  // without having to re-navigate or re-subscribe.
 }
 
 /**
@@ -279,10 +336,7 @@ function register(io, socket) {
       movePayload.gameOver = true;
       movePayload.result = engine.result;
       io.to(matchRoom(payload.pairingId)).emit('tmatch:moved', movePayload);
-      io.to(matchRoom(payload.pairingId)).emit('tmatch:ended', {
-        tournamentId: payload.tournamentId, pairingId: payload.pairingId, result: engine.result,
-      });
-      _endMatch(io, payload.tournamentId, payload.pairingId, engine.result);
+      _endMatch(io, payload.tournamentId, payload.pairingId, engine.result); // emits tmatch:ended itself
       return;
     }
 
@@ -389,11 +443,7 @@ function register(io, socket) {
       return;
     }
 
-    const finalResult = match.engine.result;
-    io.to(matchRoom(payload.pairingId)).emit('tmatch:ended', {
-      tournamentId: payload.tournamentId, pairingId: payload.pairingId, result: finalResult,
-    });
-    _endMatch(io, payload.tournamentId, payload.pairingId, finalResult);
+    _endMatch(io, payload.tournamentId, payload.pairingId, match.engine.result); // emits tmatch:ended itself
   });
 }
 

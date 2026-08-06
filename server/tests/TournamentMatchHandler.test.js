@@ -87,6 +87,7 @@ function ruleSet(overrides = {}) {
     boardSize: 8, winningRule: 'freestyle',
     ruleWall: false, rulePortal: false, ruleSwap2: false,
     timerMode: 'per_game', timerSeconds: 300, timerIncrementSeconds: 0,
+    seriesMode: 'single', seriesGameCount: null, seriesTargetScore: null, seriesMargin: null,
     ...overrides,
   };
 }
@@ -99,7 +100,10 @@ function setupTournamentAndPairing({ boardSize = 8, ruleSwap2 = false } = {}) {
     ruleSet: ruleSet({ boardSize, ruleSwap2 }),
     entries: new Map([[entry1.entryId, entry1], [entry2.entryId, entry2]]),
   };
-  const pairing = { pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress' };
+  const pairing = {
+    pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+    games: [], seriesScore: null,
+  };
 
   mockTournamentManager.getTournament.mockReturnValue(tournament);
   mockTournamentManager.getPairing.mockReturnValue(pairing);
@@ -111,6 +115,11 @@ beforeEach(() => {
   jest.clearAllMocks();
   tournamentState.tournamentGameMap.clear();
   tournamentState.tournamentTimerMap.clear();
+  // Default: pairing completes outright (seriesComplete key absent, same as
+  // TournamentManager.recordPairingResult's real 'single'-mode return
+  // shape) — individual tests override this via mockReturnValueOnce for
+  // series-in-progress scenarios.
+  mockTournamentManager.recordPairingResult.mockReturnValue({ pairing: {}, tournament: {} });
 });
 
 // ---------------------------------------------------------------------------
@@ -155,6 +164,73 @@ describe('TournamentMatchHandler — startMatch', () => {
 
     expect(() => TournamentMatchHandler.startMatch(io, 't1', 'ghost')).not.toThrow();
     expect(tournamentState.tournamentGameMap.has('ghost')).toBe(false);
+  });
+
+  // ── Series (TODO.md #50): color alternation + series info in tmatch:init ──
+
+  test('gameIndex 0 (no games played yet): player1=BLACK/player2=WHITE, series.gameIndex=0', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    expect(match.engine.players[0]).toMatchObject({ userId: entry1.userId, color: 'BLACK' });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry2.userId, color: 'WHITE' });
+
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init');
+    expect(init.data.series).toMatchObject({ gameIndex: 0, seriesMode: 'single', seriesScore: null });
+  });
+
+  test('gameIndex 1 (one game already played): colors flip to player1=WHITE/player2=BLACK', () => {
+    const { pairing, entry1, entry2 } = setupTournamentAndPairing();
+    pairing.games = [{ index: 0, winnerEntryId: entry1.entryId, endedAt: new Date().toISOString() }];
+    pairing.seriesScore = { [entry1.entryId]: 1, [entry2.entryId]: 0 };
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    // Stone color alternates (planning.md decision 4)...
+    expect(match.engine.players[0]).toMatchObject({ userId: entry2.userId, color: 'BLACK' });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry1.userId, color: 'WHITE' });
+    // ...but the TimerManager slot / entryByUserId mapping stays FIXED to
+    // player1/player2 regardless of which stone color they hold this game.
+    expect(match.entryByUserId.get(entry1.userId)).toBe(entry1.entryId);
+    expect(match.entryByUserId.get(entry2.userId)).toBe(entry2.entryId);
+
+    const init = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:init');
+    expect(init.data.series).toMatchObject({
+      gameIndex: 1,
+      seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
+    });
+  });
+
+  test('gameIndex 2 (two games played): colors flip back to game-0 assignment', () => {
+    const { entry1, entry2, pairing } = setupTournamentAndPairing();
+    pairing.games = [
+      { index: 0, winnerEntryId: entry1.entryId, endedAt: new Date().toISOString() },
+      { index: 1, winnerEntryId: entry2.entryId, endedAt: new Date().toISOString() },
+    ];
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    expect(match.engine.players[0]).toMatchObject({ userId: entry1.userId, color: 'BLACK' });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry2.userId, color: 'WHITE' });
+  });
+
+  test('ruleSwap2 pairing: seats still alternate (both colors null, Swap2 decides for real)', () => {
+    const { entry1, entry2, pairing } = setupTournamentAndPairing({ ruleSwap2: true });
+    pairing.games = [{ index: 0, winnerEntryId: entry1.entryId, endedAt: new Date().toISOString() }];
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const match = tournamentState.tournamentGameMap.get('p1');
+    expect(match.engine.players[0]).toMatchObject({ userId: entry2.userId, color: null });
+    expect(match.engine.players[1]).toMatchObject({ userId: entry1.userId, color: null });
   });
 });
 
@@ -316,6 +392,67 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
     expect(ended.data.result.winner).toBe('draw');
     expect(mockTournamentManager.recordPairingResult).toHaveBeenCalledWith('t1', 'p1', 'draw');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// _endMatch series transition (TODO.md #50) — via tmatch:resign, the
+// simplest single-move path to a game-ending result.
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — series transition (_endMatch)', () => {
+  test('series NOT complete: tmatch:ended carries seriesComplete=false + running score, and the match room stays joined', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1'); // consumes the default pairing mock
+
+    // Now arrange the two getPairing() calls _endMatch itself makes: one for
+    // `pairing.moves = ...`, one (after recordPairingResult) for the
+    // now-updated running score.
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({
+      tournament: {}, pairing: {}, seriesComplete: false,
+    });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', state: 'Ready', games: [{ index: 0, winnerEntryId: entry1.entryId }],
+        seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
+      });
+
+    const p1socket = makeSocket(entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.series).toEqual({
+      seriesComplete: false,
+      seriesScore: { [entry1.entryId]: 1, [entry2.entryId]: 0 },
+    });
+    // The GameEngine itself is torn down (a fresh one is built for the next
+    // game once both players re-check-in)...
+    expect(tournamentState.tournamentGameMap.has('p1')).toBe(false);
+    // ...but socketsLeave is NOT called — players/spectators stay in the
+    // match room to receive the next game's tmatch:init automatically.
+    expect(io.in).not.toHaveBeenCalled();
+  });
+
+  test('series complete (or single-mode, or double_elim replay): the match room is torn down as before', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    // Default mock (see beforeEach) returns no seriesComplete key — same
+    // shape as a real single-mode/fully-decided completion.
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.series.seriesComplete).toBe(true);
+    expect(io.in).toHaveBeenCalledWith('tournament-match:p1');
   });
 });
 
