@@ -8,9 +8,9 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=66" />
-  <link rel="stylesheet" href="css/lobby.css?v=66" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=66" />
+  <link rel="stylesheet" href="css/main.css?v=67" />
+  <link rel="stylesheet" href="css/lobby.css?v=67" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=67" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -440,6 +440,41 @@
         </div>
       </div>
 
+      <!-- Series mode (TODO.md #50/#53) — how many games each pairing plays -->
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="tournaments.series_mode_label">Số ván mỗi cặp đấu</span>
+        <div class="pill-group">
+          <input type="radio" name="tSeriesMode" id="tsm-single" value="single" checked />
+          <label for="tsm-single" data-i18n="tournaments.series_single">Một ván</label>
+          <input type="radio" name="tSeriesMode" id="tsm-fixed" value="fixedCount" />
+          <label for="tsm-fixed" data-i18n="tournaments.series_fixed">Số ván cố định</label>
+          <input type="radio" name="tSeriesMode" id="tsm-race" value="raceToMargin" />
+          <label for="tsm-race" data-i18n="tournaments.series_race">Race-to-margin</label>
+        </div>
+      </div>
+
+      <!-- Fixed game count — only shown/used in "fixedCount" series mode -->
+      <div class="setting-row" id="t-series-count-row" style="display:none;">
+        <label class="setting-label" for="t-series-game-count" data-i18n="tournaments.series_game_count_label">Số ván</label>
+        <div class="timer-input">
+          <input type="number" id="t-series-game-count" value="3" min="2" max="99" step="1" />
+        </div>
+      </div>
+
+      <!-- Race-to-margin target/margin — only shown/used in "raceToMargin" series mode -->
+      <div class="setting-row" id="t-series-race-row" style="display:none;">
+        <label class="setting-label" for="t-series-target" data-i18n="tournaments.series_target_label">Đích điểm</label>
+        <div class="timer-input">
+          <input type="number" id="t-series-target" value="3" min="1" max="99" step="1" />
+        </div>
+      </div>
+      <div class="setting-row" id="t-series-margin-row" style="display:none;">
+        <label class="setting-label" for="t-series-margin" data-i18n="tournaments.series_margin_label">Cách biệt tối thiểu</label>
+        <div class="timer-input">
+          <input type="number" id="t-series-margin" value="2" min="1" max="99" step="1" />
+        </div>
+      </div>
+
       <!-- Actions -->
       <div class="modal__actions">
         <button id="modal-tournament-cancel" class="btn btn-cancel" type="button" data-i18n="modal.btn_cancel">Huỷ</button>
@@ -451,7 +486,7 @@
 
 <!-- Socket.io CDN -->
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/index-entry.js?v=66"></script>
+<script type="module" src="js/index-entry.js?v=67"></script>
 <script>
   // Auto-open the online panel on desktop sidebar (>= 900px)
   (function() {
