@@ -90,3 +90,4 @@
 | 2026-08-06 15:42 | TODO.md #46: login.js password-toggle aria-label always showed the raw i18n key (`login.hide_pas… | [chi tiết](docs/fix-log/2026-08-06-todo-46-login-js-password-toggle-i18n-fallback.md) |
 | 2026-08-06 16:42 | TODO.md #49: tournament match board renders too small/inconsistent vs. room.html — CSS max-width + b… | [chi tiết](docs/fix-log/2026-08-06-todo-49-tournament-match-board-too-small.md) |
 | 2026-08-06 21:45 | User report (kèm log, chỉ mở 1 tab): "đăng nhập thiết bị khác" hiện ra và bị đăng xuất nhầm — single-… | [chi tiết](docs/fix-log/2026-08-06-session-kicked-false-positive-on-reconnect.md) |
+| 2026-08-06 22:46 | Follow-up: false-kick persisted after the above fix — root cause was `tournaments.js` importing `lo… | [chi tiết](docs/fix-log/2026-08-06-tournaments-lobby-duplicate-module-import.md) |
