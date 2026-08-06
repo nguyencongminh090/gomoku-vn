@@ -43,3 +43,23 @@ duy nhất). Người dùng muốn tổ chức có thể cấu hình mỗi cặp
   chức nhập tay); mặc định `seriesMode: 'single'` để không phá vỡ giải đấu/test hiện có.
 - UI: chuyển các component khán giả/chat của `room.html` sang `tournament-match.html`, thêm hiển
   thị điểm số chuỗi ván đang chạy + luồng chuyển ván kế tiếp.
+
+## Trạng thái: đã xong (2026-08-06)
+
+Triển khai đủ 7 bước theo `docs/instruction/B50-*.md` trên nhánh `feature/tournament-match-series`
+(off `dev`), mỗi bước một commit riêng kèm test:
+
+1. `be9beb6` — mô hình dữ liệu pairing + hàm thuần đánh giá chuỗi ván (`server/managers/tournament/series.js`).
+2. `5702ec1` — `RuleSet` thêm `seriesMode`/`seriesGameCount`/`seriesTargetScore`/`seriesMargin`.
+3. `850dbc4` — nối vòng lặp chuỗi ván vào `recordPairingResult`.
+4. `25fdb9d` — `TournamentMatchHandler` chuyển ván kế tiếp.
+5. `42ac45c`/`68d05a5` — chat + presence khán giả cho trận đấu giải đấu, port UI/CSS từ `room.html`.
+6. `2463078` — fix phát hiện khi kiểm chứng bằng browser thật: overlay kết quả cuối phải hiện
+   thắng/thua/hoà của **cả chuỗi**, không phải chỉ ván cuối.
+
+Đã merge vào `dev` (`b3dcb53`, không xung đột), 799 test pass tại thời điểm merge (806 sau khi
+merge tiếp `main`→`dev` mang theo B49/B50 tracking + fix #22). Đã kiểm chứng end-to-end bằng
+Playwright/Chromium thật trên `tournament-match.html`: 3-ván fixedCount series, overlay chuyển ván
+giữa chừng, badge điểm số "Ván N" trên header, tab Khán giả (spectator xuất hiện đúng), tab Trò
+chuyện (gửi/nhận tin nhắn), và overlay kết quả cuối hiện đúng kết quả chuỗi (hoà) — không còn lỗi
+"hiện kết quả ván cuối thay vì cả chuỗi". Không có lỗi console trong suốt luồng.
