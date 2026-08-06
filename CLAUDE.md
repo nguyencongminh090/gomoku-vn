@@ -51,6 +51,7 @@ When fixing a reported bug or issue:
 - **Merge to `main` only once the fix is verified** (tests green, matches the guidance in `instruction.md` for that item if any exists). Use a regular merge commit (not squash, not rebase) so the branch's commit stays traceable back to the fix.
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
 - This applies to actual code fixes. Doc-only updates (`TODO.md`/`docs/todo/*.md`, `instruction.md`/`docs/instruction/*.md`, `CLAUDE.md`, `docs/fix-log.md`/`docs/fix-log/*.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
+- **Exception: a fix for code that only exists on `dev`** (i.e. the buggy code was introduced by a `feature/*` branch already merged into `dev` but not yet merged into `main`) **branches off `dev` and merges back into `dev`, not `main`** — branching off `main` would have nothing to fix, since `main` never had the buggy code in the first place. Naming/one-commit/delete-after-merge conventions are unchanged, only the base/target branch flips from `main` to `dev`. Precedent: `fix/tournament-match-board-size` (TODO.md #49, commit `b31bc78`/merge `fb1cc6c`) fixed a CSS bug in `tournament-match.html`, which at the time existed only on `dev` (from the still-unmerged B48 tournament feature).
 
 ## Git workflow: `dev` branch for new features (as of 2026-08-04)
 
@@ -116,6 +117,39 @@ When writing unit tests for a fix or feature (per the "Bug-fix workflow" rule ab
 - **Assert on actual expected output/state, not just "it didn't throw."** A test that only checks the call succeeded will rubber-stamp incorrect behavior as passing.
 
 This is additive to, not a replacement for, the existing rule that every unit test written to verify a fix stays permanently in the suite.
+
+## Feature completion checklist: test both layers, verify UX before calling it "done"
+
+Extends the "Writing comprehensive test cases" rule above from bug fixes to full feature
+development. A feature is not "done" just because its backend unit tests are green. Precedent:
+B50 (tournament match series) shipped marked "Trạng thái: đã xong" with 806 passing backend tests,
+then generated four follow-up bug reports (`TODO.md` #52-#55) — the organizer-facing config UI was
+never built (#53), a client-side setting was never wired into the feature (#55), the overall layout
+was never reviewed as a whole (#52), and a navigation link lost tab context (#54). All four were
+gaps a backend-only test pass structurally cannot catch. Prevent this recurrence on every feature
+that touches both `server/` and `client/`:
+
+- **Verify both layers, not just the one with test infrastructure.** Backend (`server/`) gets Jest
+  unit tests per "Writing comprehensive test cases" above. Frontend (`client/`) currently has no
+  automated test runner — that does not mean skip it: verify the frontend by actually driving the
+  feature in a real browser (via the `run` skill, or manual Playwright per the e2e/db-safety rules
+  below) end-to-end, starting from the entry point a real user would use (a form, a button, a
+  settings panel) through to the visible result. Server-side test output alone is not frontend
+  verification, even when the frontend code loads without console errors.
+- **Check that every user-facing control the feature's design calls for actually exists in the
+  DOM/UI**, not just that the backend accepts the data it would send. (Exactly what #53 missed: the
+  backend fully accepted `seriesMode`, but no input for it was ever added to the create-tournament
+  modal, so nothing could ever send it.)
+- **Assess the user flow's complexity before calling a feature done**: how many steps/clicks does a
+  real user take, is the flow easy to follow or does it assume the user already understands
+  internals, and does a setting configured elsewhere (e.g. the global Settings panel) actually carry
+  through into this feature's screens the way a user would expect (exactly what #55 missed — the
+  click-mode setting saves correctly but silently never applied inside the tournament match screen).
+  Prefer running the `ux-audit` skill (or an equivalent live walkthrough covering both desktop and
+  mobile) as part of finishing a feature, not only after a user reports confusion.
+- This checklist gates marking a feature's tracked-work entry (`docs/todo/<CODE>-*.md`) as
+  "Trạng thái: đã xong" — do not mark a feature done off backend test output alone when it has a
+  `client/` surface.
 
 ## Playwright/e2e testing: never run against the real user database
 
