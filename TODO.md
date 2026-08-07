@@ -167,7 +167,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#55.** Trận đấu giải đấu không áp dụng/đồng bộ click mode từ Cài đặt — khác hành vi với phòng chơi thường — [chi tiết](docs/todo/B55-tran-dau-giai-dau-khong-ap-dung-dong-bo-click-mode-tu-settings.md)
 
 ### Nguồn: phát hiện phụ khi làm #52 (2026-08-07)
-- **#56.** Mobile: nội dung tab (Nước đi/Trò chuyện/Khán giả) co về ~0 chiều cao ở `tournament-match.html` (mục 1 đã sửa, mục 2 `tournament.html` còn mở) — [chi tiết](docs/todo/B56-tournament-match-mobile-tab-content-collapse-va-lobby-layout.md)
+- ✅ **#56.** Mobile: nội dung tab (Nước đi/Trò chuyện/Khán giả) co về ~0 chiều cao ở `tournament-match.html` (mục 1 đã sửa, mục 2 `tournament.html` còn mở) — [chi tiết](docs/todo/B56-tournament-match-mobile-tab-content-collapse-va-lobby-layout.md)
 
 ### Nguồn: yêu cầu người dùng, giữa lúc làm #52 full-refactor (2026-08-07)
 - **#57.** Trận đấu giải đấu chỉ có Đầu hàng — thêm Cầu hoà (Draw) và Xin cộng giờ (Time Request) như phòng chơi thường — [chi tiết](docs/todo/B57-tournament-match-them-draw-offer-va-time-request-nhu-phong-thuong.md)
