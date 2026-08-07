@@ -32,7 +32,7 @@
  *   [ ] tournament:error shows an alert
  */
 
-import { client } from './lobby.js?v=70';
+import { client } from './lobby.js?v=71';
 
 // ---------------------------------------------------------------------------
 // Element refs

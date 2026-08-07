@@ -97,3 +97,4 @@
 | 2026-08-07 07:28 | Follow-up on #52 (user: "Make as Room"): full refactor to reuse room.html's DOM/CSS directly, bundl… | [chi tiết](docs/fix-log/2026-08-07-todo-52-full-room-refactor.md) |
 | 2026-08-07 08:02 | TODO.md #58: tournament-match.html never read the saved Paper/Stone board-display setting, always r… | [chi tiết](docs/fix-log/2026-08-07-todo-58-tournament-match-stone-board-style.md) |
 | 2026-08-07 10:13 | User report (screenshot from UI/UX review): series-transition overlay showed the same ⏭️ icon for w… | [chi tiết](docs/fix-log/2026-08-07-tournament-match-result-icon-consistency.md) |
+| 2026-08-07 10:18 | TODO.md #56 item 2: tournament.html reused .lobby-layout's 1fr 260px grid without ever rendering a .… | [chi tiết](docs/fix-log/2026-08-07-todo-56-tournament-detail-lobby-layout-phantom-sidebar.md) |

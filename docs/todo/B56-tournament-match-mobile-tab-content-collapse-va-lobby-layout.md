@@ -32,6 +32,14 @@ code trước và sau fix #52 — không phải regression do fix #52 gây ra).
   (`room.css`'s `.panel-right` mobile override chỉ bỏ `max-height`, không có vấn đề này vì
   ngữ cảnh flex khác — xem lại kỹ trước khi áp dụng y nguyên).
 
+**Cập nhật 2026-08-07 (fix-log `2026-08-07-todo-56-tournament-detail-lobby-layout-phantom-sidebar.md`):**
+Mục 2 **đã được sửa** — xác nhận đúng là cùng gốc lỗi. Thêm modifier `.lobby-layout--single {
+grid-template-columns: 1fr; }` vào `lobby.css` (tái tạo lại — bản gốc từng nhắc tới đã không còn tồn
+tại trong code sau đợt full-refactor #52) và gắn class này lên `tournament.html`. Đã xác minh bằng
+Playwright: `.lobby-layout`'s `gridTemplateColumns` đổi từ `900px 260px` thành `1160px` ở 1280px,
+`.lobby` giờ chiếm đủ 1160px thay vì ~900px. Mobile (≤900px) không đổi hành vi (đã tự collapse về 1
+cột từ trước qua `@media (max-width: 900px)` sẵn có).
+
 ## 2. `tournament.html` (và khả năng `index.html` dùng cách khác) có thể chung gốc lỗi `.lobby-layout`
 
 - `.lobby-layout` (`lobby.css`) là `grid-template-columns: 1fr 260px` — cột 260px dành cho

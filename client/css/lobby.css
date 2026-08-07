@@ -15,6 +15,13 @@
   align-items: start;
 }
 
+/* Pages that reuse .lobby-layout for its centered/max-width column but never
+   render a .lobby-sidebar (tournament.html — TODO.md #56 item 2) — without
+   this, the reserved 260px column just sits empty as dead space. */
+.lobby-layout--single {
+  grid-template-columns: 1fr;
+}
+
 /* ── Main lobby column ────────────────────────────────────────────────────── */
 .lobby {
   width: 100%;
