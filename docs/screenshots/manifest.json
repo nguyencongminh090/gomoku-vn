@@ -1,0 +1,188 @@
+[
+  {
+    "file": "t01-lobby-tournaments-empty-desktop.png",
+    "title": "Lobby — \"Giải đấu\" tab, no tournaments yet",
+    "note": "First thing an organizer sees before creating anything.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t02-create-modal-default-desktop.png",
+    "title": "Create-tournament modal — default (Swiss, single game)",
+    "note": "Full modal as it opens: name, format, board rules, timer, scheduling window, series mode.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t03-create-modal-series-fixed-desktop.png",
+    "title": "Create-tournament modal — series mode \"Số ván cố định\" (fixed count)",
+    "note": "Reveals the game-count input (TODO #53).",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t04-create-modal-series-race-desktop.png",
+    "title": "Create-tournament modal — series mode \"Race-to-margin\"",
+    "note": "Reveals target-score + margin inputs (TODO #53).",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t05-lobby-tournament-card-organizer-desktop.png",
+    "title": "Lobby — tournament card as seen by the Organizer",
+    "note": "Draft status, organizer badge, no Start button yet (needs ≥2 registered players).",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t06-lobby-tournament-card-register-desktop.png",
+    "title": "Lobby — tournament card as seen by a non-registered Player",
+    "note": "\"Tham gia\" (Register) CTA visible.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t07-lobby-tournament-card-registered-desktop.png",
+    "title": "Lobby — card after Player A registers",
+    "note": "Status flips to \"Đã đăng ký\" with an Unregister option.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t08-lobby-tournament-card-start-desktop.png",
+    "title": "Lobby — Organizer view once 2 players registered",
+    "note": "Start button now available.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t09-tournament-detail-pairings-organizer-desktop.png",
+    "title": "Tournament detail — Pairings tab (Organizer)",
+    "note": "Round robin bracket just started; one pairing in \"Negotiating\" state.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t10-tournament-detail-standings-desktop.png",
+    "title": "Tournament detail — Standings tab",
+    "note": "Initial standings, all players at 0.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t11-action-banner-needs-report-desktop.png",
+    "title": "Action banner — \"Bạn cần báo lịch thi đấu\" (needs to report a time)",
+    "note": "Player A has not reported a match time yet.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t12-report-time-modal-desktop.png",
+    "title": "Report match-time modal (Player A)",
+    "note": "Player self-schedules the match with their opponent.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t13-action-banner-needs-confirm-desktop.png",
+    "title": "Action banner — needs to confirm proposed time (Player B)",
+    "note": "Shows the time Player A proposed.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t14-action-banner-needs-checkin-desktop.png",
+    "title": "Action banner — check-in / ready (Player A)",
+    "note": "Match time agreed; players must mark themselves ready to start.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t15-action-banner-in-progress-desktop.png",
+    "title": "Action banner — match in progress, \"Vào trận\"",
+    "note": "Both players checked in; the match has started.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t16-tournament-match-ingame-desktop.png",
+    "title": "Tournament match — in-game board, game 1 of 2 (Player A)",
+    "note": "Series score panel (\"0 – 0, game 1/2\"), move list, chat/spectator tabs.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t17-tournament-match-spectator-desktop.png",
+    "title": "Tournament match — spectator view",
+    "note": "No resign/move controls; read-only board + chat + spectator list.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t18-tournament-match-first-move-desktop.png",
+    "title": "Tournament match — after the opening move",
+    "note": "Board with the first stone placed.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t19-tournament-match-series-transition-desktop.png",
+    "title": "Tournament match — between-games transition (Player A)",
+    "note": "Game 1 decided by resign; series not over (fixed count 2) — waiting to check in for game 2.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t20-tournament-match-series-transition-loser-desktop.png",
+    "title": "Tournament match — between-games transition (Player B, won game 1)",
+    "note": "Same overlay from the winner's side.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t21-tournament-match-game2-desktop.png",
+    "title": "Tournament match — game 2 of 2",
+    "note": "Fresh board, score panel now shows 0 – 1.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t29-tournament-match-mobile-moves-tab.png",
+    "title": "Tournament match (Mobile) — \"Nước đi\" (Moves) tab",
+    "note": "Spectating game 2 live.",
+    "viewport": "Mobile 375×812"
+  },
+  {
+    "file": "t30-tournament-match-mobile-chat-tab.png",
+    "title": "Tournament match (Mobile) — \"Trò chuyện\" (Chat) tab",
+    "note": "Checks tab-content height/collapse (TODO #56).",
+    "viewport": "Mobile 375×812"
+  },
+  {
+    "file": "t31-tournament-match-mobile-spectators-tab.png",
+    "title": "Tournament match (Mobile) — \"Khán giả\" (Spectators) tab",
+    "note": "Checks tab-content height/collapse (TODO #56).",
+    "viewport": "Mobile 375×812"
+  },
+  {
+    "file": "t22-tournament-match-final-result-desktop.png",
+    "title": "Tournament match — final result overlay (series complete, Player A lost 0–2)",
+    "note": "Series decided; \"back to tournament\" link shown instead of a between-games transition.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t23-tournament-detail-pairing-completed-desktop.png",
+    "title": "Tournament detail — pairing card after the series finishes",
+    "note": "State pill flips to \"Đã hoàn thành\" with the result line.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t24-tournament-detail-standings-final-desktop.png",
+    "title": "Tournament detail — Standings after the round finishes",
+    "note": "Player B now leads with 1 point.",
+    "viewport": "Desktop 1280×900"
+  },
+  {
+    "file": "t32-lobby-tournaments-mobile.png",
+    "title": "Lobby — \"Giải đấu\" tab (Mobile)",
+    "note": "Tournament list + filters on a 375px viewport.",
+    "viewport": "Mobile 375×812"
+  },
+  {
+    "file": "t33-create-modal-mobile.png",
+    "title": "Create-tournament modal (Mobile)",
+    "note": "Full-height modal scroll behavior on a small viewport.",
+    "viewport": "Mobile 375×812"
+  },
+  {
+    "file": "t34-tournament-detail-mobile.png",
+    "title": "Tournament detail — Pairings tab (Mobile, spectator/non-participant)",
+    "note": "Header, sub-tabs, pairing list stacked for narrow width.",
+    "viewport": "Mobile 375×812"
+  },
+  {
+    "file": "t35-tournament-detail-standings-mobile.png",
+    "title": "Tournament detail — Standings tab (Mobile)",
+    "note": "",
+    "viewport": "Mobile 375×812"
+  }
+]
