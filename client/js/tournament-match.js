@@ -48,6 +48,7 @@ if (!tournamentId || !pairingId) window.location.replace('index.html');
 
 document.getElementById('back-to-tournament').href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
 document.getElementById('match-result-back').href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
+document.getElementById('series-transition-back').href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
 
 // ── Element refs ─────────────────────────────────────────────────────────
 const statusBanner = document.getElementById('status-banner');
