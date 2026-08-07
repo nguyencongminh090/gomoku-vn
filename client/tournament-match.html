@@ -8,12 +8,12 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=72" />
-  <link rel="stylesheet" href="css/lobby.css?v=72" />
-  <link rel="stylesheet" href="css/room.css?v=72" />
-  <link rel="stylesheet" href="css/game.css?v=72" />
-  <link rel="stylesheet" href="css/tournament.css?v=72" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=72" />
+  <link rel="stylesheet" href="css/main.css?v=73" />
+  <link rel="stylesheet" href="css/lobby.css?v=73" />
+  <link rel="stylesheet" href="css/room.css?v=73" />
+  <link rel="stylesheet" href="css/game.css?v=73" />
+  <link rel="stylesheet" href="css/tournament.css?v=73" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=73" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -89,7 +89,11 @@
          didn't match the rest of the app's in-game action buttons. -->
     <div class="game-controls match-actions" id="match-actions" style="display:none;">
       <button class="btn-game btn-game--resign" type="button" id="btn-resign" data-i18n="tmatch.btn_resign">Đầu hàng</button>
+      <button class="btn-game btn-game--draw" type="button" id="btn-draw" data-i18n="game.btn_draw">Đề nghị hoà</button>
+      <button class="btn-game btn-game--time" type="button" id="btn-time" data-i18n="game.btn_time">Xin thêm giờ</button>
     </div>
+    <div id="draw-prompt-area"></div>
+    <div id="time-prompt-area"></div>
   </section>
 
   <aside class="panel-right-shell">
@@ -193,6 +197,6 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/tournament-match-entry.js?v=72"></script>
+<script type="module" src="js/tournament-match-entry.js?v=73"></script>
 </body>
 </html>

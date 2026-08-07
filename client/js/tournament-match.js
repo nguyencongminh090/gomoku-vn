@@ -8,12 +8,12 @@
  * / instruction.md B48.
  *
  * Deliberately does NOT reuse client/js/game-ui.js — that file is coupled
- * throughout to `window.RoomState`/`window.RoomClient` and to casual-room-only
- * features (draw offers, bonus-time requests) that TournamentMatchHandler.js
- * never implemented (documented Phase 4 scope decision). Reusing it would
- * mean stripping out more than would be reused. client/js/board.js's
- * `BoardRenderer`, however, is a clean, self-contained canvas renderer with
- * no such coupling, so it IS reused directly.
+ * throughout to `window.RoomState`/`window.RoomClient`. Reusing it would mean
+ * stripping out more than would be reused, so draw-offer/bonus-time-request
+ * UI (TODO.md #57) got its own small port here instead of a shared module —
+ * same CSS classes and i18n keys as game-ui.js's version, different plumbing.
+ * client/js/board.js's `BoardRenderer`, however, is a clean, self-contained
+ * canvas renderer with no such coupling, so it IS reused directly.
  *
  * The timer countdown logic (applyTimerSync/tickLocal) is a deliberate,
  * small port of the same pattern in room-socket.js — same reasoning: the
@@ -29,6 +29,11 @@
  *   [ ] Swap2 opening (if the tournament's ruleSet enables it) renders the
  *       placement/choice banner correctly
  *   [ ] Resign asks for confirmation; only shown to participants
+ *   [ ] Draw offer/accept/decline works between the two participants
+ *       (TODO.md #57); the offering player sees a "waiting" state
+ *   [ ] Bonus-time request auto-grants up to config.TIME_REQUEST_FREE times,
+ *       then requires opponent accept/decline; limit resets each new game
+ *       in a series
  *   [ ] tmatch:ended shows the result overlay with a link back to the
  *       tournament detail page
  *   [ ] A spectator (non-participant) can watch but sees no action buttons
@@ -59,6 +64,8 @@ const matchMetaEl = document.getElementById('match-meta');
 const swap2BannerSlot = document.getElementById('swap2-banner-slot');
 const matchActionsEl = document.getElementById('match-actions');
 const btnResign = document.getElementById('btn-resign');
+const btnDraw = document.getElementById('btn-draw');
+const btnTime = document.getElementById('btn-time');
 const moveListEl = document.getElementById('move-list');
 const resultOverlay = document.getElementById('match-result-overlay');
 
@@ -75,6 +82,8 @@ let gameState = null;    // GameEngine.serialize() shape, plus _lastStone/_nextC
 let boardRenderer = null;
 let myColor = null;      // 'BLACK' | 'WHITE' | null (spectator)
 let seriesInfo = null;   // { seriesMode, gameIndex, seriesScore, seriesGameCount, seriesTargetScore, seriesMargin } | null (TODO.md #50)
+let drawOfferPending = null;   // { from, fromName } | null (TODO.md #57)
+let timeRequestPending = null; // { from, fromName, bonus } | null (TODO.md #57)
 
 function myPlayer() {
   return gameState ? gameState.players.find((p) => p.userId === userInfo.userId) : null;
@@ -94,6 +103,13 @@ client.on('tmatch:init', (data) => {
   const mp = myPlayer();
   myColor = mp ? mp.color : null;
 
+  // A new game just (re)started (initial start, reconnect, or the next game
+  // in a series) — any draw/time-request prompt from a PREVIOUS game no
+  // longer applies (TODO.md #57's per-game time-request limit also resets
+  // server-side every startMatch() call — see TournamentMatchHandler.js).
+  drawOfferPending = null;
+  timeRequestPending = null;
+
   hideSeriesTransition(); // the next game just started — clear any "waiting for next game" state
 
   initBoard();
@@ -104,6 +120,8 @@ client.on('tmatch:init', (data) => {
   updateBoardState();
 
   matchActionsEl.style.display = mp ? '' : 'none';
+  renderDrawPrompt();
+  renderTimePrompt();
 });
 
 client.on('tmatch:moved', (data) => {
@@ -149,6 +167,10 @@ client.on('tmatch:ended', (data) => {
   stopLocalTimer();
   if (gameState) { gameState.status = 'finished'; gameState.result = data.result; }
   matchActionsEl.style.display = 'none';
+  drawOfferPending = null;
+  timeRequestPending = null;
+  renderDrawPrompt();
+  renderTimePrompt();
 
   if (data.series) {
     seriesInfo = { ...seriesInfo, scores: data.series.scores };
@@ -449,6 +471,92 @@ function renderTimers() {
 btnResign.addEventListener('click', () => {
   if (!confirm(t('tmatch.confirm_resign'))) return;
   client.emit('tmatch:resign', { tournamentId, pairingId });
+});
+
+// ── Draw offer / bonus-time request (TODO.md #57) ───────────────────────────
+// Deliberately a small self-contained port, not a reuse of game-ui.js's
+// renderDrawPrompt/renderTimePrompt — those are written against
+// window.RoomState, which this page has never had (see file header).
+// Reuses game.css's .draw-prompt/.btn-draw-action classes and the existing
+// game.* i18n keys as-is (same wording as room.html, no tmatch.* duplicates).
+
+btnDraw.addEventListener('click', () => {
+  client.emit('tmatch:draw_offer', { tournamentId, pairingId });
+});
+btnTime.addEventListener('click', () => {
+  if (!timeRequestPending) client.emit('tmatch:request_time', { tournamentId, pairingId });
+});
+
+function renderDrawPrompt() {
+  const el = document.getElementById('draw-prompt-area');
+  if (!el) return;
+  if (!drawOfferPending || !gameState || gameState.status !== 'ongoing') { el.innerHTML = ''; return; }
+
+  if (drawOfferPending.from === userInfo.userId) {
+    el.innerHTML = `<div class="draw-prompt">${t('game.draw_waiting')}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="draw-prompt">
+      <span>${t('game.draw_offer', { name: escapeHtml(drawOfferPending.fromName || t('game.opponent_generic')) })}</span>
+      <div class="draw-prompt__actions">
+        <button class="btn-draw-action btn-draw-accept" type="button" id="draw-accept-btn">${t('game.btn_accept')}</button>
+        <button class="btn-draw-action btn-draw-decline" type="button" id="draw-decline-btn">${t('game.btn_decline')}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('draw-accept-btn').addEventListener('click', () => client.emit('tmatch:draw_accept', { tournamentId, pairingId }));
+  document.getElementById('draw-decline-btn').addEventListener('click', () => client.emit('tmatch:draw_decline', { tournamentId, pairingId }));
+}
+
+function renderTimePrompt() {
+  const el = document.getElementById('time-prompt-area');
+  if (!el) return;
+  if (!timeRequestPending || !gameState || gameState.status !== 'ongoing') { el.innerHTML = ''; return; }
+
+  if (timeRequestPending.from === userInfo.userId) {
+    el.innerHTML = `<div class="draw-prompt">${t('game.time_waiting')}</div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="draw-prompt">
+      <span>${t('game.time_offer', { name: escapeHtml(timeRequestPending.fromName || ''), bonus: timeRequestPending.bonus || 10 })}</span>
+      <div class="draw-prompt__actions">
+        <button class="btn-draw-action btn-draw-accept" type="button" id="time-accept-btn">${t('game.btn_accept')}</button>
+        <button class="btn-draw-action btn-draw-decline" type="button" id="time-decline-btn">${t('game.btn_decline')}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('time-accept-btn').addEventListener('click', () => client.emit('tmatch:time_accept', { tournamentId, pairingId }));
+  document.getElementById('time-decline-btn').addEventListener('click', () => client.emit('tmatch:time_decline', { tournamentId, pairingId }));
+}
+
+client.on('tmatch:draw_offered', (data) => {
+  if (data.pairingId !== pairingId) return;
+  drawOfferPending = { from: data.from, fromName: data.fromName };
+  renderDrawPrompt();
+});
+client.on('tmatch:draw_declined', (data) => {
+  if (data.pairingId !== pairingId) return;
+  drawOfferPending = null;
+  renderDrawPrompt();
+});
+client.on('tmatch:time_offered', (data) => {
+  if (data.pairingId !== pairingId) return;
+  timeRequestPending = { from: data.from, fromName: data.fromName, bonus: data.bonus };
+  renderTimePrompt();
+});
+client.on('tmatch:time_granted', (data) => {
+  if (data.pairingId !== pairingId) return;
+  timeRequestPending = null;
+  renderTimePrompt();
+});
+client.on('tmatch:time_declined', (data) => {
+  if (data.pairingId !== pairingId) return;
+  timeRequestPending = null;
+  renderTimePrompt();
 });
 
 // ── Result overlay ───────────────────────────────────────────────────────

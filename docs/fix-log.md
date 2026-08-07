@@ -99,3 +99,4 @@
 | 2026-08-07 10:13 | User report (screenshot from UI/UX review): series-transition overlay showed the same ⏭️ icon for w… | [chi tiết](docs/fix-log/2026-08-07-tournament-match-result-icon-consistency.md) |
 | 2026-08-07 10:18 | TODO.md #56 item 2: tournament.html reused .lobby-layout's 1fr 260px grid without ever rendering a .… | [chi tiết](docs/fix-log/2026-08-07-todo-56-tournament-detail-lobby-layout-phantom-sidebar.md) |
 | 2026-08-07 10:28 | User report: "Đang chuẩn bị ván tiếp theo..." got stuck, server not moving to game 2 of a series. R… | [chi tiết](docs/fix-log/2026-08-07-series-transition-overlay-dead-end.md) |
+| 2026-08-07 10:58 | TODO.md #57: tournament matches only had Đầu hàng (Resign) — added Cầu hoà (Draw) and Xin thêm giờ … | [chi tiết](docs/fix-log/2026-08-07-todo-57-tournament-match-draw-time-request.md) |

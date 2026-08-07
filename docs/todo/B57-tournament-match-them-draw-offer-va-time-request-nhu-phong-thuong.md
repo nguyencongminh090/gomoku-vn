@@ -1,5 +1,7 @@
 # #57. Trận đấu giải đấu chỉ có Đầu hàng — thêm Cầu hoà (Draw) và Xin cộng giờ (Time Request) như phòng chơi thường
 
+**Trạng thái:** ✅ Đã sửa (xem `docs/fix-log/2026-08-07-todo-57-tournament-match-draw-time-request.md`).
+
 **Nguồn:** yêu cầu người dùng, 2026-08-07, giữa lúc làm TODO.md #52 full-refactor: "Tournament room
 can keep: Resign, Draw, TIme Request as Tables." (Tables = `room.html`/phòng chơi thường).
 
