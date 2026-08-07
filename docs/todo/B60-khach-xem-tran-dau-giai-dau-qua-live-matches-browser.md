@@ -31,11 +31,41 @@ does not enroll & enrolled but not play in pairs)." Đã thảo luận + chốt 
       public trong phạm vi từng trận). Cần chú ý giới hạn kích thước danh sách (xem câu hỏi mở) để
       tránh gửi payload lớn khi có hàng trăm trận sống cùng lúc (stress test đã cho thấy hệ thống có
       thể chạy hàng trăm ván đồng thời).
-    - **Trạng thái:** ⏳ CHƯA LÀM — mới ở giai đoạn thiết kế (`features/tournament-live-matches-browser/`).
-    - **Test:** chưa có gì để test (chưa có logic thật). Khi triển khai, viết Jest test cho hàm tổng
-      hợp theo `features/tournament-live-matches-browser/planning.md#sequencing` bước 6 (0 trận live,
-      1 trận, nhiều trận ở nhiều giải khác nhau, 1 trận kết thúc giữa danh sách, số khán giả khớp
-      `_getSpectators`) — giữ lại vĩnh viễn theo rule "Bug-fix workflow" trong `CLAUDE.md`.
+    - **Trạng thái:** ✅ đã xong (2026-08-07, nhánh `feature/tournament-live-matches-browser` off `dev`).
+      - Server: `TournamentMatchHandler.listLiveMatches(io)` — đọc `tournamentState.tournamentGameMap`,
+        join tên giải đấu + tên 2 người chơi (`tournamentManager.getTournament`/`getPairing` +
+        `tournament.entries`) + `_seriesInfo` + `_getSpectators().length`, sắp mới nhất trước
+        (field mới `match.startedAt`, gán trong `startMatch`), cắt ở `MAX_LIVE_MATCHES = 20`.
+      - Room mới `LIVE_MATCHES_ROOM = 'live-matches-lobby'` (không trùng `TOURNAMENT_LIST_ROOM`) —
+        `live_matches:subscribe`/`live_matches:unsubscribe` trong `register()`, broadcast
+        `live_matches:list` từ cuối `startMatch`, `_endMatch`, `forceCancelMatch` (cover cả nhánh B59).
+      - Client: panel `#live-matches-panel` mới trong `client/index.html` (tab Giải đấu / `tournaments.js`),
+        `live_matches:subscribe` không điều kiện khi tab load, render `.live-match-row`, click điều
+        hướng `tournament-match.html?tournamentId=...&pairingId=...`.
+      - **Sai khác so với `instruction.md`:** không literally `import`/gọi `goToMatch(pairingId)` từ
+        `tournament-detail.js` như instruction đề xuất — hàm đó đọc biến `tournamentId` ở module scope
+        riêng của trang `tournament.html` và không được export, nên không dùng lại được từ
+        `tournaments.js` (chạy trên `index.html`, khác trang). Thay vào đó viết cùng logic điều hướng
+        (`window.location.href = tournament-match.html?...`) trực tiếp trong `tournaments.js`, hành vi
+        giống hệt `goToMatch`.
+      - CSS mới đặt ở `client/css/lobby.css` (không phải `tournament.css`) — `index.html` không load
+        `tournament.css`.
+      - i18n: thêm namespace `live_matches.*` (vi + en) trong `client/js/i18n.js`.
+      - `?v=` bump: 74 → 75 (toàn bộ `client/*.html` + `client/js/*.js`, verify script trong
+        `CLAUDE.md` cho ra đúng 1 giá trị).
+    - **Verify:** `npm test` — 844/844 pass (bao gồm 5 test mới, xem bên dưới). Xác minh UI thật: khởi
+      động server với db tạm (theo rule Playwright/e2e trong `CLAUDE.md`), dựng 1 trận live qua
+      socket.io-client thật (create → register x2 → start → report/confirm_time → ready x2), mở
+      Playwright/Chromium thật với 1 guest thứ 3 (khách chưa từng đăng ký giải), xác nhận panel hiện
+      đúng 1 dòng (tên giải + tên 2 người chơi + số khán giả), click dòng điều hướng đúng URL trận đấu,
+      trang spectator hiện đúng (không có nút hành động, đúng theo phần "đã hoạt động sẵn"). Sau đó
+      resign trận từ 1 người chơi thật qua socket — panel tự cập nhật real-time, dòng biến mất mà không
+      cần reload trang, không có console error. Restore lại db thật sau khi xong.
+    - **Test:** `server/tests/TournamentMatchHandler.test.js` — describe mới `listLiveMatches` (5 case,
+      theo `features/tournament-live-matches-browser/planning.md#sequencing` bước 6): 0 trận live, 1
+      trận (đúng tên giải/người chơi/series/spectator=0), nhiều trận nhiều giải (sắp mới nhất trước),
+      1 trận kết thúc giữa danh sách (bị loại khỏi truy vấn sau), spectatorCount khớp `_getSpectators`
+      (giữ lại vĩnh viễn theo rule "Bug-fix workflow" trong `CLAUDE.md`).
 
 ## Tài liệu liên quan
 

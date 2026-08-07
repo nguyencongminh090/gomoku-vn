@@ -1015,3 +1015,27 @@
   .tournament-grid { padding: 8px; gap: 12px; }
   .tournament-card { padding: 12px; }
 }
+
+/* ── Live matches browser (TODO.md #60) ─────────────────────────────────── */
+.live-matches-panel {
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 16px; width: 100%; box-sizing: border-box;
+}
+.live-matches-panel__header {
+  display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px;
+}
+.live-matches-panel__header .ph { color: var(--c-danger, #dc2626); font-size: 15px; }
+.live-matches-panel__list { display: flex; flex-direction: column; gap: 8px; }
+.live-match-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--c-border-light); border-radius: 10px;
+  background: var(--c-surface-2); cursor: pointer; transition: border-color 0.15s;
+  flex-wrap: wrap;
+}
+.live-match-row:hover { border-color: var(--c-brand); }
+.live-match-row__players { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.live-match-row__vs { font-size: 11px; font-weight: 600; color: var(--c-ink-3); }
+.live-match-row__meta { font-size: 11px; color: var(--c-ink-3); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.live-match-row__meta .ph { font-size: 12px; }
+.live-match-row__tournament { font-size: 11px; color: var(--c-ink-2); width: 100%; }

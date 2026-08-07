@@ -8,9 +8,9 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=74" />
-  <link rel="stylesheet" href="css/lobby.css?v=74" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=74" />
+  <link rel="stylesheet" href="css/main.css?v=75" />
+  <link rel="stylesheet" href="css/lobby.css?v=75" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=75" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -139,6 +139,14 @@
           <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
         </button>
       </div>
+    </div>
+
+    <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
+      <div class="live-matches-panel__header">
+        <i class="ph ph-broadcast"></i>
+        <span data-i18n="live_matches.title">Trận đang diễn ra</span>
+      </div>
+      <div id="live-matches-list" class="live-matches-panel__list"></div>
     </div>
 
     <div class="ui-shell" style="width:100%;">
@@ -486,7 +494,7 @@
 
 <!-- Socket.io CDN -->
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/index-entry.js?v=74"></script>
+<script type="module" src="js/index-entry.js?v=75"></script>
 <script>
   // Auto-open the online panel on desktop sidebar (>= 900px)
   (function() {

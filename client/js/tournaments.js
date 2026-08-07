@@ -30,9 +30,11 @@
  *   [ ] Register/Unregister buttons emit the right events and reflect entryUserIds
  *   [ ] Organizer sees a Start button once playerCount >= 2, while status is draft
  *   [ ] tournament:error shows an alert
+ *   [ ] Live matches panel (TODO.md #60) shows/hides with the live-matches
+ *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client } from './lobby.js?v=74';
+import { client } from './lobby.js?v=75';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -49,6 +51,8 @@ const modalClose    = document.getElementById('modal-tournament-close');
 const modalCancel   = document.getElementById('modal-tournament-cancel');
 const modalConfirm  = document.getElementById('modal-tournament-confirm');
 const formatFilterSelect = document.getElementById('tournament-format-filter');
+const liveMatchesPanelEl = document.getElementById('live-matches-panel');
+const liveMatchesListEl  = document.getElementById('live-matches-list');
 
 const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);
 
@@ -105,6 +109,57 @@ client.on('tournament:list_patch', (data) => {
 client.on('tournament:error', (data) => {
   alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
 });
+
+// ---------------------------------------------------------------------------
+// Live matches browser (TODO.md #60) — cross-tournament "what's live right
+// now" discovery list, so a visitor doesn't have to already be on one
+// specific tournament's detail page to find a match to watch. Subscribed
+// unconditionally on load, same rationale as tournament:subscribe above.
+// ---------------------------------------------------------------------------
+client.emit('live_matches:subscribe');
+
+client.on('live_matches:list', (data) => {
+  renderLiveMatches(data.matches || []);
+});
+
+function renderLiveMatches(matches) {
+  if (matches.length === 0) {
+    liveMatchesPanelEl.style.display = 'none';
+    liveMatchesListEl.innerHTML = '';
+    return;
+  }
+  liveMatchesPanelEl.style.display = '';
+  liveMatchesListEl.innerHTML = matches.map(renderLiveMatchRow).join('');
+  liveMatchesListEl.querySelectorAll('[data-live-match]').forEach((row) => {
+    row.addEventListener('click', () => {
+      const { tournamentId, pairingId } = row.dataset;
+      // Same navigation as tournament-detail.js's goToMatch(pairingId) — not
+      // imported directly, since that module is scoped to tournament.html's
+      // single-tournament page (reads its own module-level `tournamentId`,
+      // nothing exported), and importing it here would run page-specific
+      // code expecting tournament.html's DOM (docs/instruction/B60-*.md).
+      window.location.href = `tournament-match.html?tournamentId=${encodeURIComponent(tournamentId)}&pairingId=${encodeURIComponent(pairingId)}`;
+    });
+  });
+}
+
+function renderLiveMatchRow(match) {
+  const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
+  const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
+  const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
+    ? `<span><i class="ph ph-repeat"></i>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    : '';
+  return `
+    <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
+      <div class="live-match-row__tournament">${escapeHtml(match.tournamentName)}</div>
+      <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
+      <div class="live-match-row__meta">
+        ${gameIndexLabel}
+        <span><i class="ph ph-eye"></i>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+      </div>
+    </div>
+  `;
+}
 
 // ---------------------------------------------------------------------------
 // Filters

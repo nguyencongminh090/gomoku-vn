@@ -1056,3 +1056,106 @@ describe('TournamentMatchHandler — bonus-time request', () => {
     expect(timer2.addTime).toHaveBeenCalledWith('black', config.TIME_REQUEST_BONUS); // auto-granted again
   });
 });
+
+// ---------------------------------------------------------------------------
+// listLiveMatches (TODO.md #60 — live-matches browser aggregation)
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — listLiveMatches', () => {
+  /** Registers a second tournament/pairing ('t2'/'p2') alongside 't1'/'p1'. */
+  function setupSecondTournamentAndPairing() {
+    const entry3 = { entryId: 'e3', userId: 'u3', displayName: 'Player Three', isGuest: false };
+    const entry4 = { entryId: 'e4', userId: 'u4', displayName: 'Player Four', isGuest: false };
+    const tournament2 = {
+      tournamentId: 't2',
+      name: 'Second Tournament',
+      ruleSet: ruleSet(),
+      entries: new Map([[entry3.entryId, entry3], [entry4.entryId, entry4]]),
+    };
+    const pairing2 = {
+      pairingId: 'p2', player1EntryId: entry3.entryId, player2EntryId: entry4.entryId, state: 'InProgress',
+      games: [], seriesScore: null,
+    };
+    return { tournament2, pairing2, entry3, entry4 };
+  }
+
+  /** Wires getTournament/getPairing to dispatch by id across several fixtures. */
+  function mockMultiTournament(fixtures) {
+    // fixtures: Array<{ tournament, pairing }>
+    mockTournamentManager.getTournament.mockImplementation(
+      (tournamentId) => (fixtures.find((f) => f.tournament.tournamentId === tournamentId) || {}).tournament || null);
+    mockTournamentManager.getPairing.mockImplementation(
+      (pairingId) => (fixtures.find((f) => f.pairing.pairingId === pairingId) || {}).pairing || null);
+  }
+
+  test('zero live matches: returns an empty array', () => {
+    const io = makeIo();
+    expect(TournamentMatchHandler.listLiveMatches(io)).toEqual([]);
+  });
+
+  test('one live match: joins tournament name + both player names + series info', () => {
+    const { tournament, entry1, entry2 } = setupTournamentAndPairing();
+    tournament.name = 'First Tournament';
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const matches = TournamentMatchHandler.listLiveMatches(io);
+    expect(matches).toHaveLength(1);
+    expect(matches[0]).toMatchObject({
+      tournamentId: 't1',
+      tournamentName: 'First Tournament',
+      pairingId: 'p1',
+      player1: { userId: entry1.userId, displayName: entry1.displayName },
+      player2: { userId: entry2.userId, displayName: entry2.displayName },
+      series: { seriesMode: 'single', gameIndex: 0 },
+      spectatorCount: 0,
+    });
+    expect(typeof matches[0].startedAt).toBe('number');
+  });
+
+  test('several matches across different tournaments: all present, newest-started first', () => {
+    const { tournament, pairing } = setupTournamentAndPairing();
+    const { tournament2, pairing2 } = setupSecondTournamentAndPairing();
+    mockMultiTournament([{ tournament, pairing }, { tournament: tournament2, pairing: pairing2 }]);
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    jest.advanceTimersByTime(1000); // ensure a distinct, later startedAt for p2
+    TournamentMatchHandler.startMatch(io, 't2', 'p2');
+
+    const matches = TournamentMatchHandler.listLiveMatches(io);
+    expect(matches.map((m) => m.pairingId)).toEqual(['p2', 'p1']); // newest first
+    expect(matches.map((m) => m.tournamentId).sort()).toEqual(['t1', 't2']);
+  });
+
+  test('a match ending mid-list is removed from subsequent queries', () => {
+    const { tournament, pairing } = setupTournamentAndPairing();
+    const { tournament2, pairing2 } = setupSecondTournamentAndPairing();
+    mockMultiTournament([{ tournament, pairing }, { tournament: tournament2, pairing: pairing2 }]);
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    TournamentMatchHandler.startMatch(io, 't2', 'p2');
+    expect(TournamentMatchHandler.listLiveMatches(io)).toHaveLength(2);
+
+    const p1socket = makeSocket(io, 'u1', 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const matches = TournamentMatchHandler.listLiveMatches(io);
+    expect(matches).toHaveLength(1);
+    expect(matches[0].pairingId).toBe('p2');
+  });
+
+  test('spectatorCount reflects _getSpectators (a joined non-player socket counts, players do not)', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const spectatorSocket = makeSocket(io, 'u-spectator', 'Onlooker');
+    spectatorSocket.join(TournamentMatchHandler.matchRoom('p1'));
+
+    const matches = TournamentMatchHandler.listLiveMatches(io);
+    expect(matches[0].spectatorCount).toBe(1);
+  });
+});
