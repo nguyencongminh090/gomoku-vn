@@ -28,7 +28,7 @@
 const TimerManager = require('../TimerManager');
 const logger = require('../../utils/logger');
 
-const TERMINAL_STATES = new Set(['Completed', 'Walkover', 'DoubleNoShow', 'OrganizerAdjusted']);
+const TERMINAL_STATES = new Set(['Completed', 'Walkover', 'DoubleNoShow', 'OrganizerAdjusted', 'Cancelled']);
 
 /**
  * Create a new pairing in its initial state. Byes (player2EntryId === null)
@@ -182,6 +182,21 @@ function organizerAdjust(pairing, requestingUserId, organizerId, reason) {
   }
   pairing.state = 'OrganizerAdjusted';
   pairing.result = { winnerEntryId: null, reason: reason || 'organizer_adjusted' };
+  pairing.endedAt = new Date().toISOString();
+  return { pairing };
+}
+
+/**
+ * Any non-terminal state -> Cancelled. Force-terminates a single pairing as
+ * part of TournamentManager.cancelTournament() (TODO.md #59) — no per-pairing
+ * ORGANIZER_ONLY check here, since the whole tournament is already being
+ * cancelled by the time this runs (checked once, at the tournament level).
+ * No winner is ever recorded, including for a pairing that was `InProgress`
+ * (the live game itself is torn down separately by the socket layer).
+ */
+function cancelForTournament(pairing, reason) {
+  pairing.state = 'Cancelled';
+  pairing.result = { winnerEntryId: null, reason: reason || 'tournament_cancelled' };
   pairing.endedAt = new Date().toISOString();
   return { pairing };
 }
@@ -358,6 +373,7 @@ module.exports = {
   disputeTime,
   organizerResolve,
   organizerAdjust,
+  cancelForTournament,
   requestReschedule,
   approveReschedule,
   denyReschedule,

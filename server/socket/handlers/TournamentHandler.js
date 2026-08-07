@@ -11,6 +11,7 @@
  *   tournament:subscribe / tournament:unsubscribe — join/leave the
  *     tournament-lobby room and receive the tournament list
  *   tournament:create / tournament:register / tournament:unregister / tournament:start
+ *   tournament:cancel — organizer-only, any time before natural completion (TODO.md #59)
  *   tournament:get / tournament:leave_room — subscribe/unsubscribe to one
  *     tournament's live room (standings, pairings)
  *   tournament:report_time / tournament:confirm_time / tournament:dispute_time
@@ -193,6 +194,21 @@ function init(io) {
     broadcastTournamentListUpdate(io);
   });
 
+  // Organizer cancel (TODO.md #59) — TournamentManager already flipped every
+  // non-terminal pairing to 'Cancelled' and emitted 'pairing_changed' for
+  // each (picked up by the listener below), so this only needs to: tear down
+  // any live match's socket room/state (TournamentManager itself never
+  // touches io — see TournamentMatchHandler.forceCancelMatch's doc comment),
+  // then broadcast the tournament-level status change.
+  tournamentManager.on('tournament_cancelled', ({ tournamentId, cancelledLivePairingIds }) => {
+    for (const pairingId of cancelledLivePairingIds) {
+      getTournamentMatchHandler().forceCancelMatch(io, tournamentId, pairingId);
+    }
+    const tournament = tournamentManager.getTournament(tournamentId);
+    if (tournament) broadcastTournamentDetail(io, tournament);
+    broadcastTournamentListUpdate(io);
+  });
+
   // Covers every pairing mutation, whether it came from a socket action
   // below (report/confirm/organizer resolve/...) or an automatic one
   // (deadline sweep walkover/void-replay, Double Elimination bracket
@@ -305,6 +321,20 @@ function register(io, socket) {
       return;
     }
     // tournament_started listener (init()) handles the broadcast.
+  });
+
+  socket.on('tournament:cancel', (payload = {}) => {
+    if (!payload.tournamentId) {
+      socket.emit('tournament:error', { message: 'Thiếu mã giải đấu.', code: 'MISSING_TOURNAMENT_ID' });
+      return;
+    }
+
+    const result = tournamentManager.cancelTournament(user.userId, payload.tournamentId, payload.reason);
+    if (result.error) {
+      socket.emit('tournament:error', { message: result.error, code: result.code });
+      return;
+    }
+    // tournament_cancelled listener (init()) handles the broadcast.
   });
 
   socket.on('tournament:get', (payload = {}) => {

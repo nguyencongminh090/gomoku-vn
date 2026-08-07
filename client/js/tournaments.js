@@ -32,7 +32,7 @@
  *   [ ] tournament:error shows an alert
  */
 
-import { client } from './lobby.js?v=73';
+import { client } from './lobby.js?v=74';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -140,6 +140,7 @@ function formatLabel(format) {
 function statusBadge(status) {
   if (status === 'active') return { cls: 'badge--live', label: t('tournaments.filter_active') };
   if (status === 'completed') return { cls: 'badge--done', label: t('tournaments.filter_done') };
+  if (status === 'cancelled') return { cls: 'badge--done', label: t('tournaments.status_cancelled') };
   return { cls: 'badge--upcoming', label: t('tournaments.filter_upcoming') };
 }
 
@@ -191,6 +192,13 @@ function renderTournamentList() {
       client.emit('tournament:start', { tournamentId: btn.dataset.tournamentId });
     });
   });
+  tournamentListEl.querySelectorAll('[data-action="cancel_tournament"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!confirm(t('tournaments.confirm_cancel'))) return;
+      client.emit('tournament:cancel', { tournamentId: btn.dataset.tournamentId });
+    });
+  });
 
   // Whole-card click/Enter opens the detail page (Phase 6) — action buttons
   // above already stopPropagation() so this never double-fires on them.
@@ -220,18 +228,25 @@ function renderCard(tournament, index) {
     statusLine = '';
   }
 
-  let actions = '';
+  let actionButtons = '';
   if (tournament.status === 'draft') {
     if (isOrganizer) {
       if (tournament.playerCount >= 2) {
-        actions = `<div class="tournament-card__actions"><button class="btn btn-confirm" type="button" data-action="start" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_start')}</button></div>`;
+        actionButtons += `<button class="btn btn-confirm" type="button" data-action="start" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_start')}</button>`;
       }
     } else if (isRegistered) {
-      actions = `<div class="tournament-card__actions"><button class="btn-secondary" type="button" data-action="unregister" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_unregister')}</button></div>`;
+      actionButtons += `<button class="btn-secondary" type="button" data-action="unregister" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_unregister')}</button>`;
     } else {
-      actions = `<div class="tournament-card__actions"><button class="btn btn-confirm" type="button" data-action="register" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_register')}</button></div>`;
+      actionButtons += `<button class="btn btn-confirm" type="button" data-action="register" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_register')}</button>`;
     }
   }
+  // Cancel is its own, broader gate than Start's ('draft' only) — an
+  // organizer can cancel at any point before natural completion, i.e. also
+  // while 'active' (TODO.md #59).
+  if (isOrganizer && (tournament.status === 'draft' || tournament.status === 'active')) {
+    actionButtons += `<button class="btn-secondary btn-secondary--danger" type="button" data-action="cancel_tournament" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_cancel')}</button>`;
+  }
+  const actions = actionButtons ? `<div class="tournament-card__actions">${actionButtons}</div>` : '';
 
   return `
     <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}" data-open-detail="${escapeAttr(tournament.tournamentId)}" tabindex="0" role="link" aria-label="${escapeAttr(tournament.name)}">

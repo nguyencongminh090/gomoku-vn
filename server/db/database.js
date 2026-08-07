@@ -42,6 +42,16 @@ if (pairingColumns.length > 0 && !pairingColumns.includes('games')) {
   logger.info('[DB] Migrated tournament_pairings: added games column (TODO.md #50)');
 }
 
+// Same additive-migration need as above, for the 'cancelled' tournament
+// status (TODO.md #59) — a db file created before this feature is missing
+// these two columns.
+const tournamentColumns = db.prepare("PRAGMA table_info(tournaments)").all().map((c) => c.name);
+if (tournamentColumns.length > 0 && !tournamentColumns.includes('cancelled_at')) {
+  db.exec('ALTER TABLE tournaments ADD COLUMN cancelled_at TEXT');
+  db.exec('ALTER TABLE tournaments ADD COLUMN cancel_reason TEXT');
+  logger.info('[DB] Migrated tournaments: added cancelled_at/cancel_reason columns (TODO.md #59)');
+}
+
 // Periodic WAL checkpoint to prevent unbounded growth
 setInterval(() => {
   try {
@@ -405,10 +415,10 @@ function getTournamentById(id) {
 }
 
 /**
- * Update a tournament's status, and started_at/completed_at when relevant.
+ * Update a tournament's status, and started_at/completed_at/cancelled_at when relevant.
  * @param {string} id
- * @param {'draft'|'active'|'completed'} status
- * @param {{ startedAt?: string, completedAt?: string }} [timestamps]
+ * @param {'draft'|'active'|'completed'|'cancelled'} status
+ * @param {{ startedAt?: string, completedAt?: string, cancelledAt?: string, cancelReason?: string|null }} [timestamps]
  */
 function updateTournamentStatus(id, status, timestamps = {}) {
   if (status === 'active') {
@@ -417,6 +427,9 @@ function updateTournamentStatus(id, status, timestamps = {}) {
   } else if (status === 'completed') {
     db.prepare('UPDATE tournaments SET status = ?, completed_at = ? WHERE id = ?')
       .run(status, timestamps.completedAt, id);
+  } else if (status === 'cancelled') {
+    db.prepare('UPDATE tournaments SET status = ?, cancelled_at = ?, cancel_reason = ? WHERE id = ?')
+      .run(status, timestamps.cancelledAt, timestamps.cancelReason || null, id);
   } else {
     db.prepare('UPDATE tournaments SET status = ? WHERE id = ?').run(status, id);
   }

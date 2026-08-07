@@ -65,10 +65,12 @@ CREATE TABLE IF NOT EXISTS tournaments (
   format        TEXT NOT NULL,           -- 'swiss' | 'round_robin' | 'double_elim'
   organizer_id  TEXT REFERENCES users(id), -- null for a guest organizer
   rule_set      TEXT NOT NULL,           -- JSON — shared RuleSet schema (all formats)
-  status        TEXT NOT NULL,           -- 'draft' | 'active' | 'completed'
+  status        TEXT NOT NULL,           -- 'draft' | 'active' | 'completed' | 'cancelled'
   created_at    TEXT NOT NULL,           -- ISO 8601 timestamp
   started_at    TEXT,                    -- ISO 8601 timestamp, null until startTournament()
-  completed_at  TEXT                     -- ISO 8601 timestamp, null until final round ends
+  completed_at  TEXT,                    -- ISO 8601 timestamp, null until final round ends
+  cancelled_at  TEXT,                    -- ISO 8601 timestamp, null unless cancelTournament() (TODO.md #59)
+  cancel_reason TEXT                     -- optional freeform organizer note, null unless cancelled
 );
 
 -- Tournament players — one row per registered entry (guest-tolerant, like games.*_player_id)
@@ -99,7 +101,7 @@ CREATE TABLE IF NOT EXISTS tournament_pairings (
   tournament_id     TEXT NOT NULL REFERENCES tournaments(id),
   player1_entry_id  TEXT REFERENCES tournament_players(entry_id),
   player2_entry_id  TEXT REFERENCES tournament_players(entry_id), -- null = bye
-  state             TEXT NOT NULL,       -- Paired|Negotiating|Reported|Ready|InProgress|Completed|Walkover|DoubleNoShow|OrganizerAdjusted
+  state             TEXT NOT NULL,       -- Paired|Negotiating|Reported|Ready|InProgress|Completed|Walkover|DoubleNoShow|OrganizerAdjusted|Cancelled
   agreed_time       TEXT,                -- ISO 8601 timestamp, set once both sides agree
   deadline          TEXT NOT NULL,       -- ISO 8601 timestamp — per-match deadline (decision 2)
   paired_at         TEXT NOT NULL,       -- ISO 8601 timestamp

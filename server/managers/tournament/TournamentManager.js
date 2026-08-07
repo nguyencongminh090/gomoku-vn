@@ -101,11 +101,13 @@ class TournamentManager extends EventEmitter {
       // (Phase 1-4 never added a "reload tournaments from DB" path).
       organizerName: organizerInfo.displayName,
       ruleSet: validatedRuleSet,
-      status: 'draft',      // draft | active | completed
+      status: 'draft',      // draft | active | completed | cancelled
       entries: new Map(),   // entryId → entry
       createdAt,
       startedAt: null,
       completedAt: null,
+      cancelledAt: null,
+      cancelReason: null,
     };
 
     this.tournaments.set(tournamentId, tournament);
@@ -293,6 +295,70 @@ class TournamentManager extends EventEmitter {
     this.emit('tournament_started', tournamentId);
     logger.info(`[TournamentManager] Tournament ${tournamentId} started`);
     return { tournament };
+  }
+
+  /**
+   * Organizer-only cancel, reachable from 'draft' or 'active' at any point
+   * before natural completion (TODO.md #59) — never from 'completed' (a
+   * finished tournament can't retroactively be cancelled) or 'cancelled'
+   * itself (one-way terminal action, not a re-entrant no-op).
+   *
+   * Force-terminates every non-terminal pairing via
+   * PairingLifecycle.cancelForTournament (no winner recorded). Partial
+   * standings need no extra computation here — tournament-detail.js's
+   * standings table is already computed purely from each pairing's own
+   * state/result (not from tournament.status), so pairings left `Completed`
+   * before the cancel keep counting once the client sees status='cancelled'
+   * and labels the table as partial (see instruction.md B59 for why this
+   * deviates from the originally-sketched "reuse _completeTournament's
+   * standings helper" approach).
+   *
+   * TournamentManager never touches io (see class header) — an `InProgress`
+   * pairing's TimerManager is torn down here (tournamentState, not io), but
+   * its actual socket-room teardown/broadcast is the caller's job, using the
+   * pairingIds returned in `cancelledLivePairingIds`.
+   *
+   * @param {string} organizerId
+   * @param {string} tournamentId
+   * @param {string} [reason] optional freeform note, shown to players/visitors
+   * @returns {{ tournament: object, cancelledLivePairingIds: string[] } | { error: string, code: string }}
+   */
+  cancelTournament(organizerId, tournamentId, reason) {
+    const tournament = this.tournaments.get(tournamentId);
+    if (!tournament) {
+      return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
+    }
+    if (tournament.organizerId !== organizerId) {
+      return { error: 'Chỉ người tổ chức mới có thể huỷ giải đấu.', code: 'ORGANIZER_ONLY' };
+    }
+    if (tournament.status !== 'draft' && tournament.status !== 'active') {
+      return { error: 'Giải đấu đã kết thúc hoặc đã bị huỷ.', code: 'TOURNAMENT_NOT_CANCELLABLE' };
+    }
+
+    const cancelledLivePairingIds = [];
+    for (const pairing of this.listPairings(tournamentId)) {
+      if (PairingLifecycle.TERMINAL_STATES.has(pairing.state)) continue;
+      if (pairing.state === 'InProgress') {
+        this._teardownPairingTimer(pairing.pairingId);
+        cancelledLivePairingIds.push(pairing.pairingId);
+      }
+      tournamentState.untrackDeadline(pairing.pairingId);
+      PairingLifecycle.cancelForTournament(pairing, reason);
+      this._persistPairing(pairing);
+      this._emitPairingChanged(tournamentId, pairing.pairingId);
+    }
+
+    tournament.status = 'cancelled';
+    tournament.cancelledAt = new Date().toISOString();
+    tournament.cancelReason = reason || null;
+    database.updateTournamentStatus(tournamentId, 'cancelled', {
+      cancelledAt: tournament.cancelledAt,
+      cancelReason: tournament.cancelReason,
+    });
+
+    this.emit('tournament_cancelled', { tournamentId, cancelledLivePairingIds });
+    logger.info(`[TournamentManager] Tournament ${tournamentId} cancelled by ${organizerId}`);
+    return { tournament, cancelledLivePairingIds };
   }
 
   // ---------------------------------------------------------------------------
@@ -948,6 +1014,8 @@ class TournamentManager extends EventEmitter {
       createdAt: tournament.createdAt,
       startedAt: tournament.startedAt,
       completedAt: tournament.completedAt,
+      cancelledAt: tournament.cancelledAt ?? null,
+      cancelReason: tournament.cancelReason ?? null,
       // Swiss/Round robin only — lets the client show "Round 2 / 4" and group
       // pairings by round. Double Elimination has no analogous single number
       // (a bracket has depth, not a round count), left null/undefined.
