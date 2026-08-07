@@ -57,16 +57,20 @@ discussion-folder trong `CLAUDE.md`).
       cùng lúc, không đụng pairing đã terminal/`Completed`, huỷ bởi người không phải organizer, huỷ 2
       lần, huỷ tournament đã `completed`, `tournamentId` không tồn tại) +
       `server/tests/PairingLifecycle.test.js` (describe `cancelForTournament`, 4 case). `npm test`:
-      839/839 pass. **Xác minh trình duyệt thực tế bị chặn:** một server dev của người dùng
-      (`node server/index.js`, PID có sẵn, đã chạy >24 phút) đang chiếm cổng 3000 khi bắt đầu bước
-      này; `server/db/database.js`'s `DB_PATH` không có cách override theo tiến trình/cổng
-      (xem cảnh báo an toàn Playwright/e2e trong `CLAUDE.md`), nên không có cách khởi một server thứ
-      hai để lái Playwright mà không cùng lúc ghi vào chính DB thật của server đang chạy. Đã dừng lại
-      đúng lúc (git status/checksum xác nhận DB thật không bị hỏng, server người dùng không bị gián
-      đoạn) thay vì tiếp tục — xem tóm tắt hội thoại cho chi tiết sự cố suýt xảy ra. Do đó tính năng
-      mới chỉ được xác minh qua unit test + rà soát code, **chưa được xác minh UI/UX thực tế trong
-      trình duyệt** — cờ này nên được dọn lại khi có cơ hội chạy Playwright an toàn (server riêng, DB
-      riêng).
+      839/839 pass. **Xác minh trình duyệt thực tế (2026-08-07, sau khi người dùng dừng server dev
+      riêng của họ):** theo đúng quy trình an toàn Playwright/e2e trong `CLAUDE.md` — chuyển
+      `server/db/gomoku.db` (+ `-wal`/`-shm`) sang `.pre-e2e` trước khi khởi `node server/index.js`,
+      chạy kịch bản Playwright 3-context (organizer + 2 người chơi khách) qua toàn bộ luồng: tạo giải
+      → 2 người đăng ký → organizer bấm Start → báo giờ/xác nhận/sẵn sàng đưa cặp đấu tới `InProgress`
+      → cả hai vào trận sống → organizer huỷ giải từ trang chi tiết **trong khi trận đang diễn ra**.
+      Xác nhận: cả hai người chơi nhận overlay "Giải đấu đã bị huỷ bởi người tổ chức." và bị đưa về
+      `tournament.html`; badge "Đã huỷ" hiện đúng ở cả lobby và trang chi tiết; banner lý do huỷ hiện
+      đúng; bảng xếp hạng có nhãn "Bảng xếp hạng tạm — giải đấu đã bị huỷ trước khi kết thúc"; pairing
+      state pill hiện "Đã huỷ"; nút Huỷ biến mất sau khi đã huỷ (không lặp lại được); người không phải
+      organizer không thấy nút Huỷ ở thẻ lobby; **0 console error** ở cả 3 trang trong suốt luồng. Sau
+      đó dừng server, xoá db tạm, khôi phục `gomoku.db` gốc, xác nhận lại checksum khớp. Xem thêm ghi
+      chú sự cố suýt xảy ra ở lần thử đầu (server dev của người dùng đang chiếm cổng 3000) trong tóm
+      tắt hội thoại — lần chạy thứ hai này (sau khi người dùng tự dừng server) sạch, không có sự cố.
 
 ## Tài liệu liên quan
 
