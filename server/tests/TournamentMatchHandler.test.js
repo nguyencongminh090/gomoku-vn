@@ -32,6 +32,7 @@ jest.mock('../managers/ChatHandler', () => mockChatManager);
 
 const TournamentMatchHandler = require('../socket/handlers/TournamentMatchHandler');
 const tournamentState = require('../socket/tournamentState');
+const config = require('../config');
 
 // ── Mock io/socket helpers ──────────────────────────────────────────────────
 
@@ -98,6 +99,7 @@ function fakeTimer() {
     getTimers: jest.fn(() => ({ black: 300, white: 300 })),
     getSync: jest.fn(() => ({ deadline: Date.now() + 300_000 })),
     switchTurn: jest.fn(),
+    addTime: jest.fn(),
     start: jest.fn(),
     destroy: jest.fn(),
   };
@@ -724,5 +726,333 @@ describe('TournamentMatchHandler — tmatch:presence', () => {
     const presenceEvents = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:presence');
     const latest = presenceEvents[presenceEvents.length - 1];
     expect(latest.data.spectators).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tmatch:draw_offer / draw_accept / draw_decline (TODO.md #57)
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — draw offer', () => {
+  test('a participant offering a draw broadcasts tmatch:draw_offered + a system chat line', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+
+    const offered = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:draw_offered');
+    expect(offered.data).toMatchObject({ pairingId: 'p1', from: entry1.userId, fromName: 'Player One' });
+    const chat = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'chat:message' && e.data.code === 'GAME_DRAW_OFFERED');
+    expect(chat).toBeDefined();
+  });
+
+  test('a non-participant offering a draw is rejected with NO_ACTIVE_MATCH', () => {
+    setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const outsider = makeSocket(io, 'spectator1', 'Spectator');
+    TournamentMatchHandler.register(io, outsider);
+
+    fire(outsider, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(outsider, 'tmatch:error').data.code).toBe('NO_ACTIVE_MATCH');
+  });
+
+  test('offering a draw while one is already pending is rejected by the engine', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p1socket, 'tmatch:error').data.code).toBe('DRAW_OFFER_PENDING');
+  });
+
+  test('the opponent accepting ends the match as a draw and records it via recordPairingResult', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p1socket);
+    TournamentMatchHandler.register(io, p2socket);
+
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+    fire(p2socket, 'tmatch:draw_accept', { tournamentId: 't1', pairingId: 'p1' });
+
+    const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
+    expect(ended.data.result.winner).toBe('draw');
+    expect(mockTournamentManager.recordPairingResult).toHaveBeenCalledWith('t1', 'p1', 'draw');
+    expect(tournamentState.tournamentGameMap.has('p1')).toBe(false);
+  });
+
+  test('the offering player cannot accept their own draw offer', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+    fire(p1socket, 'tmatch:draw_accept', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p1socket, 'tmatch:error').data.code).toBe('CANNOT_SELF_ACCEPT');
+    expect(tournamentState.tournamentGameMap.has('p1')).toBe(true); // match still live
+  });
+
+  test('accepting with no pending offer is rejected', () => {
+    const { entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p2socket);
+
+    fire(p2socket, 'tmatch:draw_accept', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p2socket, 'tmatch:error').data.code).toBe('NO_DRAW_OFFER');
+  });
+
+  test('the opponent declining clears the offer without ending the match', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p1socket);
+    TournamentMatchHandler.register(io, p2socket);
+
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+    fire(p2socket, 'tmatch:draw_decline', { tournamentId: 't1', pairingId: 'p1' });
+
+    const declined = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:draw_declined');
+    expect(declined.data).toMatchObject({ pairingId: 'p1', by: entry2.userId });
+    expect(tournamentState.tournamentGameMap.has('p1')).toBe(true);
+
+    // The offer is really cleared server-side — a fresh offer now succeeds.
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+    expect(sockEmit(p1socket, 'tmatch:error')).toBeUndefined();
+  });
+
+  test('declining your own draw offer is rejected', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    fire(p1socket, 'tmatch:draw_offer', { tournamentId: 't1', pairingId: 'p1' });
+    fire(p1socket, 'tmatch:draw_decline', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p1socket, 'tmatch:error').data.code).toBe('CANNOT_SELF_DECLINE');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// tmatch:request_time / time_accept / time_decline (TODO.md #57)
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — bonus-time request', () => {
+  test('a request on your own turn, within the free quota, auto-grants and adds time to the requester\'s FIXED timer slot', () => {
+    const { entry1 } = setupTournamentAndPairing(); // entry1 = player1 = black turn first
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(timer.addTime).toHaveBeenCalledWith('black', config.TIME_REQUEST_BONUS);
+    const sync = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:timer_sync');
+    expect(sync).toBeDefined();
+    expect(io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:time_offered')).toBeUndefined();
+  });
+
+  test('requesting out of turn is rejected', () => {
+    const { entry2 } = setupTournamentAndPairing(); // entry2 = white, not the first turn
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p2socket);
+
+    fire(p2socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p2socket, 'tmatch:error').data.code).toBe('TIME_REQUEST_ONLY_ON_YOUR_TURN');
+    expect(timer.addTime).not.toHaveBeenCalled();
+  });
+
+  test('after using up the free quota, the next request needs the opponent\'s permission (tmatch:time_offered)', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    expect(timer.addTime).toHaveBeenCalledTimes(config.TIME_REQUEST_FREE);
+
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(timer.addTime).toHaveBeenCalledTimes(config.TIME_REQUEST_FREE); // not auto-granted this time
+    const offered = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:time_offered');
+    expect(offered.data).toMatchObject({ pairingId: 'p1', from: entry1.userId, bonus: config.TIME_REQUEST_BONUS });
+  });
+
+  test('a second request while one is already pending is rejected', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' }); // now pending
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' }); // rejected
+
+    expect(sockEmit(p1socket, 'tmatch:error').data.code).toBe('TIME_REQUEST_PENDING');
+  });
+
+  test('the opponent accepting a pending request grants the bonus to the FIXED slot of the original requester', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p1socket);
+    TournamentMatchHandler.register(io, p2socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' }); // now pending
+    timer.addTime.mockClear();
+
+    fire(p2socket, 'tmatch:time_accept', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(timer.addTime).toHaveBeenCalledWith('black', config.TIME_REQUEST_BONUS); // entry1 = black slot
+    const granted = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:time_granted');
+    expect(granted.data).toMatchObject({ pairingId: 'p1', playerId: entry1.userId, bonus: config.TIME_REQUEST_BONUS });
+
+    // Pending is cleared — a fresh request can be made again immediately
+    // (still out of free quota, so it goes straight back to pending, not an error).
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    expect(sockEmit(p1socket, 'tmatch:error')).toBeUndefined();
+  });
+
+  test('the requester cannot accept their own pending request', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+
+    fire(p1socket, 'tmatch:time_accept', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p1socket, 'tmatch:error').data.code).toBe('CANNOT_SELF_ACCEPT');
+  });
+
+  test('accepting with no pending request is rejected', () => {
+    const { entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p2socket);
+
+    fire(p2socket, 'tmatch:time_accept', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p2socket, 'tmatch:error').data.code).toBe('NO_TIME_REQUEST');
+  });
+
+  test('the opponent declining clears the pending request without granting time', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p1socket);
+    TournamentMatchHandler.register(io, p2socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' }); // now pending
+    timer.addTime.mockClear();
+
+    fire(p2socket, 'tmatch:time_decline', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(timer.addTime).not.toHaveBeenCalled();
+    const declined = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:time_declined');
+    expect(declined.data).toMatchObject({ pairingId: 'p1', by: entry2.userId });
+  });
+
+  test('declining your own pending request is rejected', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+
+    fire(p1socket, 'tmatch:time_decline', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(sockEmit(p1socket, 'tmatch:error').data.code).toBe('CANNOT_SELF_DECLINE');
+  });
+
+  test('the free-request quota resets for the NEXT game in a series (per-game, not per-series — B57 decision)', () => {
+    const { entry1 } = setupTournamentAndPairing();
+    const timer1 = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer1);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+
+    for (let i = 0; i < config.TIME_REQUEST_FREE; i++) {
+      fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+    }
+    expect(timer1.addTime).toHaveBeenCalledTimes(config.TIME_REQUEST_FREE);
+
+    // Game 1 ends (resign) and a fresh game 2 starts for the same pairing —
+    // startMatch() always builds a brand-new `match` object.
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+    const timer2 = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer2);
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    fire(p1socket, 'tmatch:request_time', { tournamentId: 't1', pairingId: 'p1' });
+
+    expect(timer2.addTime).toHaveBeenCalledWith('black', config.TIME_REQUEST_BONUS); // auto-granted again
   });
 });

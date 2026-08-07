@@ -10,6 +10,8 @@
  *
  * Events handled:
  *   tmatch:move / tmatch:swap2_place / tmatch:swap2_choice / tmatch:resign
+ *   tmatch:draw_offer / tmatch:draw_accept / tmatch:draw_decline
+ *   tmatch:request_time / tmatch:time_accept / tmatch:time_decline
  *
  * startMatch(io, tournamentId, pairingId) is exported for TournamentHandler's
  * init() to call when TournamentManager emits 'pairing_ready' (both players
@@ -17,14 +19,19 @@
  * to call on every connection, so a reconnecting player rejoins their live
  * match room the same way the casual-room reconnect block does for RoomManager.
  *
- * Scope decision (Phase 4, see docs/instruction/B48-*.md "Cập nhật 2026-08-05"):
- * draw offers and the bonus-time-request flow (game:draw_offer/accept/decline,
- * game:request_time/time_accept/time_decline in GameHandler.js) are NOT
- * ported here — a tournament match still ends correctly on a natural
- * five-in-a-row/board-full result, resignation, or clock timeout, which
- * covers decision 1's "round loss only" outcomes. Draw offers/time banks are
- * a casual-play convenience, not part of the locked tournament spec, and are
- * left as a follow-up rather than expanding this phase's surface further.
+ * Draw offers / bonus-time requests (TODO.md #57, docs/instruction/B57-*.md):
+ * originally scoped out at Phase 4 (see the same file's earlier "Cập nhật
+ * 2026-08-05" note in docs/instruction/B48-*.md), now ported. Draw reuses
+ * GameEngine.offerDraw/acceptDraw/declineDraw as-is (already decoupled from
+ * RoomManager). Bonus-time has no GameEngine equivalent — GameHandler.js
+ * keeps that state on the casual `room` object
+ * (`room._timeRequestsUsed`/`room._timeRequestPending`), which a tournament
+ * match has no equivalent of, so the same two fields live on the `match`
+ * object in `tournamentState.tournamentGameMap` instead, reset implicitly
+ * every new game since `startMatch()` always creates a fresh `match` object
+ * (decision: per-game limit, not per-series — see B57 instruction). The
+ * request limit reuses `config.TIME_REQUEST_FREE`/`TIME_REQUEST_BONUS`
+ * unchanged (no tournament-specific config).
  */
 
 const logger = require('../../utils/logger');
@@ -34,6 +41,7 @@ const PortalGenerator = require('../../generators/PortalGenerator');
 const tournamentManager = require('../../managers/tournament/TournamentManager');
 const tournamentState = require('../tournamentState');
 const { findSocketsByUserId } = require('../state');
+const config = require('../../config');
 // Reused as-is (TODO.md #50 step 7 "UI/component reuse" — the SAME rule
 // applies to the chat mechanism underneath it): managers/ChatHandler.js's
 // handleMessage() is already decoupled from RoomManager, it just broadcasts
@@ -217,6 +225,9 @@ function startMatch(io, tournamentId, pairingId) {
 
   tournamentState.tournamentGameMap.set(pairingId, {
     engine, tournamentId, entryByUserId, userIdByEntry,
+    // Bonus-time state (TODO.md #57) — per-game, since this object is
+    // recreated fresh by every startMatch() call.
+    _timeRequestsUsed: {}, _timeRequestPending: null,
   });
 
   for (const userId of [entry1.userId, entry2.userId]) {
@@ -565,6 +576,204 @@ function register(io, socket) {
     }
 
     _endMatch(io, payload.tournamentId, payload.pairingId, match.engine.result); // emits tmatch:ended itself
+  });
+
+  // ── tmatch:draw_offer / draw_accept / draw_decline (TODO.md #57) ────────
+  // Reuses GameEngine.offerDraw/acceptDraw/declineDraw as-is — see file
+  // header. Self-agreed between the two players, no organizer approval
+  // (B57 decision).
+
+  socket.on('tmatch:draw_offer', (payload = {}) => {
+    const match = getOwnMatch(payload.pairingId, payload.tournamentId);
+    if (!match) {
+      socket.emit('tmatch:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_MATCH' });
+      return;
+    }
+
+    const result = match.engine.offerDraw(user.userId);
+    if (result.error) {
+      socket.emit('tmatch:error', { message: result.error, code: result.code });
+      return;
+    }
+
+    io.to(matchRoom(payload.pairingId)).emit('tmatch:draw_offered', {
+      pairingId: payload.pairingId, from: user.userId, fromName: user.displayName,
+    });
+    io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} đề nghị hoà.`,
+      code: 'GAME_DRAW_OFFERED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
+  });
+
+  socket.on('tmatch:draw_accept', (payload = {}) => {
+    const match = getOwnMatch(payload.pairingId, payload.tournamentId);
+    if (!match) {
+      socket.emit('tmatch:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_MATCH' });
+      return;
+    }
+
+    const result = match.engine.acceptDraw(user.userId);
+    if (result.error) {
+      socket.emit('tmatch:error', { message: result.error, code: result.code });
+      return;
+    }
+
+    io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+      from: null, fromId: null,
+      text: 'Ván đấu hoà theo thoả thuận.',
+      code: 'GAME_DRAW_AGREED',
+      timestamp: Date.now(), isSystem: true,
+    });
+    _endMatch(io, payload.tournamentId, payload.pairingId, match.engine.result); // emits tmatch:ended itself
+  });
+
+  socket.on('tmatch:draw_decline', (payload = {}) => {
+    const match = getOwnMatch(payload.pairingId, payload.tournamentId);
+    if (!match) {
+      socket.emit('tmatch:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_MATCH' });
+      return;
+    }
+
+    const result = match.engine.declineDraw(user.userId);
+    if (result.error) {
+      socket.emit('tmatch:error', { message: result.error, code: result.code });
+      return;
+    }
+
+    io.to(matchRoom(payload.pairingId)).emit('tmatch:draw_declined', { pairingId: payload.pairingId, by: user.userId });
+    io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} từ chối hoà.`,
+      code: 'GAME_DRAW_DECLINED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
+  });
+
+  // ── tmatch:request_time / time_accept / time_decline (TODO.md #57) ──────
+  // Same free-request/permission-gate flow as GameHandler.js's
+  // game:request_time, but the "used count"/"pending request" bookkeeping
+  // lives on the `match` object (see file header) instead of a `room`.
+  //
+  // TimerManager's black/white slots are FIXED to player1EntryId/
+  // player2EntryId for the whole series (see startMatch/tmatch:move) —
+  // unlike engine.players[].color, which alternates every game — so the
+  // slot for a given user is resolved via the pairing's entry ids, not the
+  // engine's current color assignment.
+
+  function _timerSlotForUser(pairingId, userId) {
+    const match = tournamentState.tournamentGameMap.get(pairingId);
+    const pairing = tournamentManager.getPairing(pairingId);
+    if (!match || !pairing) return null;
+    const entryId = match.entryByUserId.get(userId);
+    return entryId === pairing.player1EntryId ? 'black' : 'white';
+  }
+
+  socket.on('tmatch:request_time', (payload = {}) => {
+    const match = getOwnMatch(payload.pairingId, payload.tournamentId);
+    if (!match || match.engine.status !== 'ongoing') {
+      socket.emit('tmatch:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_MATCH' });
+      return;
+    }
+
+    if (match.engine.currentTurn !== user.userId) {
+      socket.emit('tmatch:error', { message: 'Chỉ được xin thời gian trong lượt của bạn.', code: 'TIME_REQUEST_ONLY_ON_YOUR_TURN' });
+      return;
+    }
+
+    if (match._timeRequestPending) {
+      socket.emit('tmatch:error', { message: 'Đang chờ đối thủ phản hồi yêu cầu xin thời gian.', code: 'TIME_REQUEST_PENDING' });
+      return;
+    }
+
+    const used = match._timeRequestsUsed[user.userId] || 0;
+    const color = _timerSlotForUser(payload.pairingId, user.userId);
+    const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
+
+    if (used < config.TIME_REQUEST_FREE) {
+      match._timeRequestsUsed[user.userId] = used + 1;
+      const remaining = config.TIME_REQUEST_FREE - match._timeRequestsUsed[user.userId];
+
+      if (timer && color) {
+        timer.addTime(color, config.TIME_REQUEST_BONUS);
+        io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
+        io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+          from: null, fromId: null,
+          text: `${user.displayName} đã dùng quyền thêm thời gian tự động (+${config.TIME_REQUEST_BONUS}s). Còn ${remaining} lần.`,
+          code: 'GAME_TIME_AUTO_BONUS', vars: { name: user.displayName, bonus: config.TIME_REQUEST_BONUS, remaining },
+          timestamp: Date.now(), isSystem: true,
+        });
+      }
+      return;
+    }
+
+    match._timeRequestPending = { from: user.userId, fromName: user.displayName, bonus: config.TIME_REQUEST_BONUS };
+    io.to(matchRoom(payload.pairingId)).emit('tmatch:time_offered', {
+      pairingId: payload.pairingId, from: user.userId, fromName: user.displayName, bonus: config.TIME_REQUEST_BONUS,
+    });
+    io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} xin thêm ${config.TIME_REQUEST_BONUS} giây (đã hết lượt tự động).`,
+      code: 'GAME_TIME_REQUESTED_MANUAL', vars: { name: user.displayName, bonus: config.TIME_REQUEST_BONUS },
+      timestamp: Date.now(), isSystem: true,
+    });
+  });
+
+  socket.on('tmatch:time_accept', (payload = {}) => {
+    const match = getOwnMatch(payload.pairingId, payload.tournamentId);
+    if (!match || match.engine.status !== 'ongoing') return;
+
+    if (!match._timeRequestPending) {
+      socket.emit('tmatch:error', { message: 'Không có yêu cầu xin thời gian.', code: 'NO_TIME_REQUEST' });
+      return;
+    }
+    if (match._timeRequestPending.from === user.userId) {
+      socket.emit('tmatch:error', { message: 'Bạn không thể tự chấp nhận.', code: 'CANNOT_SELF_ACCEPT' });
+      return;
+    }
+
+    const requesterId = match._timeRequestPending.from;
+    match._timeRequestPending = null;
+    const color = _timerSlotForUser(payload.pairingId, requesterId);
+    const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
+
+    if (timer && color) {
+      timer.addTime(color, config.TIME_REQUEST_BONUS);
+      io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
+      io.to(matchRoom(payload.pairingId)).emit('tmatch:time_granted', {
+        pairingId: payload.pairingId, playerId: requesterId, bonus: config.TIME_REQUEST_BONUS,
+      });
+      io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+        from: null, fromId: null,
+        text: `${user.displayName} đồng ý cho thêm ${config.TIME_REQUEST_BONUS} giây.`,
+        code: 'GAME_TIME_ACCEPTED', vars: { name: user.displayName, bonus: config.TIME_REQUEST_BONUS },
+        timestamp: Date.now(), isSystem: true,
+      });
+    }
+  });
+
+  socket.on('tmatch:time_decline', (payload = {}) => {
+    const match = getOwnMatch(payload.pairingId, payload.tournamentId);
+    if (!match || match.engine.status !== 'ongoing') return;
+
+    if (!match._timeRequestPending) {
+      socket.emit('tmatch:error', { message: 'Không có yêu cầu xin thời gian.', code: 'NO_TIME_REQUEST' });
+      return;
+    }
+    if (match._timeRequestPending.from === user.userId) {
+      socket.emit('tmatch:error', { message: 'Bạn không thể tự từ chối.', code: 'CANNOT_SELF_DECLINE' });
+      return;
+    }
+
+    match._timeRequestPending = null;
+    io.to(matchRoom(payload.pairingId)).emit('tmatch:time_declined', { pairingId: payload.pairingId, by: user.userId });
+    io.to(matchRoom(payload.pairingId)).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} từ chối yêu cầu xin thời gian.`,
+      code: 'GAME_TIME_DECLINED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
   });
 }
 
