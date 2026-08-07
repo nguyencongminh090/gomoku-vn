@@ -75,6 +75,8 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B51.** Quy tắc cache-bust bỏ sót cross-module import — từ báo cáo người dùng "đăng nhập thiết bị khác" đá nhầm (TODO.md #51) — [chi tiết](docs/instruction/B51-cache-bust-quy-tac-bo-sot-cross-module-import.md)
 - **B52.** Trang trận đấu giải đấu UX kém — mất cân bằng bố cục dù bàn cờ đã to hơn (TODO.md #52) — [chi tiết](docs/instruction/B52-trang-tran-dau-giai-dau-ux-kem-du-bang-co-da-to-mat-can-bang.md)
 - **B57.** Trận đấu giải đấu thêm Cầu hoà và Xin cộng giờ như phòng thường — từ yêu cầu người dùng (TODO.md #57) — [chi tiết](docs/instruction/B57-tournament-match-them-draw-offer-va-time-request-nhu-phong-thuong.md)
+- **B59.** Organizer huỷ giải đấu bất cứ lúc nào — thảo luận qua `features/tournament-cancel/` (TODO.md #59) — [chi tiết](docs/instruction/B59-to-chuc-huy-giai-dau-bat-cu-luc-nao.md)
+- **B60.** Khách xem trận đấu giải đấu qua Live Matches Browser — thảo luận qua `features/tournament-live-matches-browser/` (TODO.md #60) — [chi tiết](docs/instruction/B60-khach-xem-tran-dau-giai-dau-qua-live-matches-browser.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 

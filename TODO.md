@@ -175,6 +175,10 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng, ngay sau đợt full-refactor #52/#55/#56 (2026-08-07)
 - ✅ **#58.** Trận đấu giải đấu không có kiểu bàn cờ "Đá" (Stone) — luôn hiện "Giấy" (Paper) — [chi tiết](docs/todo/B58-tournament-match-thieu-board-display-mode-stone.md)
 
+### Nguồn: yêu cầu người dùng — thảo luận qua `features/tournament-cancel/` và `features/tournament-live-matches-browser/` (2026-08-07)
+- **#59.** Organizer huỷ giải đấu bất cứ lúc nào — [chi tiết](docs/todo/B59-to-chuc-huy-giai-dau-bat-cu-luc-nao.md)
+- **#60.** Khách (visitor) xem trận đấu giải đấu — qua "Live Matches Browser" mới (yêu cầu xem trận đã hoạt động sẵn, phần mới là bảng khám phá) — [chi tiết](docs/todo/B60-khach-xem-tran-dau-giai-dau-qua-live-matches-browser.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
