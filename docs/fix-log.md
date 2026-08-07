@@ -95,3 +95,4 @@
 | 2026-08-07 06:40 | TODO.md #53: create-tournament modal had no UI for series mode (race-to-margin/fixed count) though b… | [chi tiết](docs/fix-log/2026-08-07-todo-53-tournament-create-series-mode-ui.md) |
 | 2026-08-07 06:59 | TODO.md #52: tournament-match.html UX kém — `.lobby-layout` phantom 260px sidebar column + `.match-s… | [chi tiết](docs/fix-log/2026-08-07-todo-52-tournament-match-layout-dead-space.md) |
 | 2026-08-07 07:28 | Follow-up on #52 (user: "Make as Room"): full refactor to reuse room.html's DOM/CSS directly, bundl… | [chi tiết](docs/fix-log/2026-08-07-todo-52-full-room-refactor.md) |
+| 2026-08-07 08:02 | TODO.md #58: tournament-match.html never read the saved Paper/Stone board-display setting, always r… | [chi tiết](docs/fix-log/2026-08-07-todo-58-tournament-match-stone-board-style.md) |
