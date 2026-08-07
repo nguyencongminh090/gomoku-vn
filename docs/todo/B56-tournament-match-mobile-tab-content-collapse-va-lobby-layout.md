@@ -1,5 +1,15 @@
 # #56. Phát hiện phụ khi làm #52: `tournament-match.html` Mobile tab-content (Nước đi/Trò chuyện/Khán giả) co về ~0 chiều cao; `tournament.html`/khả năng cùng lỗi `.lobby-layout` phantom sidebar column
 
+**Cập nhật 2026-08-07 (fix-log `2026-08-07-todo-52-full-room-refactor.md`):** Mục 1 (mobile
+tab-content co về ~0 chiều cao) **đã được sửa** — không phải sửa riêng, mà là hệ quả tự động của
+việc #52 chuyển sang full-refactor (tái dùng nguyên khối `.room`/`.panel-right-shell`/`.panel-right`
+của `room.html`/`room.css` thay cho `.match-shell`/`.ui-shell`/`.ui-core` riêng). `room.css`'s mobile
+override cho `.panel-right`/`.panel-right-shell` (đã hoạt động đúng trên `room.html` từ trước) giờ áp
+dụng y nguyên cho `tournament-match.html`, không còn `max-height:480px` cụt què nữa. Đã xác minh lại
+bằng Playwright (390px): `.panel-right` cao 242px với nội dung đầy đủ (thẻ người chơi, bảng điểm,
+tabs), so với 76px/trống hoàn toàn trước đó. Mục 2 (`tournament.html`) **vẫn chưa sửa/chưa kiểm
+chứng** — giữ nguyên bên dưới.
+
 **Nguồn:** phát hiện khi kiểm chứng bằng trình duyệt thật (Playwright, mobile 390px) cho fix #52
 (`fix/tournament-match-layout`), 2026-08-07. Không gộp vào fix #52 (rule "scope discipline" —
 CLAUDE.md) vì đây là 2 lỗi khác gốc, xác nhận đã tồn tại **trước** fix #52 (tái hiện được trên cả

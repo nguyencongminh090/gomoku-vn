@@ -240,6 +240,12 @@ const TRANSLATIONS = {
     'tmatch.tab_moves': 'Nước đi',
     'tmatch.series_game_index': 'Ván {n}',
     'tmatch.series_waiting_next': 'Đang chuẩn bị ván tiếp theo...',
+    'tmatch.series_fixed_count': 'Đấu {n} ván',
+    'tmatch.series_race_to_margin': 'Đấu tới {target} điểm, cách biệt {margin}',
+    'tmatch.score_title': 'Bảng điểm',
+    'tmatch.score_title_fixed_count': 'Bảng điểm — Đấu {n} ván',
+    'tmatch.score_title_race_to_margin': 'Bảng điểm — Đấu tới {target} điểm',
+    'tmatch.th_score': 'Điểm',
 
     // ── UI mode (lite / default / pro) ────────────────────────
     'mode.title': 'Chế độ giao diện',
@@ -777,6 +783,12 @@ const TRANSLATIONS = {
     'tmatch.tab_moves': 'Moves',
     'tmatch.series_game_index': 'Game {n}',
     'tmatch.series_waiting_next': 'Preparing the next game...',
+    'tmatch.series_fixed_count': 'Best of {n} games',
+    'tmatch.series_race_to_margin': 'Race to {target}, margin of {margin}',
+    'tmatch.score_title': 'Scoreboard',
+    'tmatch.score_title_fixed_count': 'Scoreboard — Best of {n}',
+    'tmatch.score_title_race_to_margin': 'Scoreboard — Race to {target}',
+    'tmatch.th_score': 'Score',
 
     // ── Create room modal ─────────────────────────────────────
     // ── UI mode (lite / default / pro) ────────────────────────

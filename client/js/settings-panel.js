@@ -78,6 +78,11 @@
     global.dispatchEvent(new CustomEvent('clickmodechange', { detail: { mode } }));
   }
 
+  // Exported so pages without their own RoomState-style store (e.g.
+  // tournament-match.js — TODO.md #55) can read the same setting instead of
+  // duplicating the 'gomoku_click_mode' localStorage key a 3rd time.
+  global.getClickMode = getClickMode;
+
   // ── Panel DOM ───────────────────────────────────────────────────────────
   let overlayEl = null;
 
