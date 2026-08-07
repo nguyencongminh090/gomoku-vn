@@ -1065,3 +1065,164 @@ describe('TournamentManager — mid-series no-show forfeits the whole remaining 
     expect(tournament.status).toBe('completed');
   });
 });
+
+// ── cancelTournament (TODO.md #59 / docs/instruction/B59-*.md) ─────────────
+
+describe('TournamentManager — cancelTournament', () => {
+  test('cancel from draft: no pairings yet, tournament flips to cancelled and persists reason/timestamp', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+
+    const { tournament: cancelled, cancelledLivePairingIds } =
+      tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId, 'changed my mind');
+
+    expect(cancelled.status).toBe('cancelled');
+    expect(cancelled.cancelReason).toBe('changed my mind');
+    expect(cancelled.cancelledAt).toBeTruthy();
+    expect(cancelledLivePairingIds).toEqual([]);
+
+    const row = database.getTournamentById(tournament.tournamentId);
+    expect(row.status).toBe('cancelled');
+    expect(row.cancel_reason).toBe('changed my mind');
+  });
+
+  test('cancel from active with a live InProgress pairing: pairing forced to Cancelled, timer torn down, pairingId reported as live', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    expect(tournamentState.tournamentTimerMap.has(pairing.pairingId)).toBe(true);
+
+    const { cancelledLivePairingIds } = tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId);
+
+    expect(cancelledLivePairingIds).toEqual([pairing.pairingId]);
+    expect(tournamentState.tournamentTimerMap.has(pairing.pairingId)).toBe(false);
+    const resolved = tournamentManager.getPairing(pairing.pairingId);
+    expect(resolved.state).toBe('Cancelled');
+    expect(resolved.result.winnerEntryId).toBeNull();
+    expect(tournament.status).toBe('cancelled');
+  });
+
+  test('cancel with pairings in every non-terminal state at once: all forced to Cancelled, only the InProgress one reported as live', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const players = Array.from({ length: 8 }, () => user());
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    expect(pairings).toHaveLength(4);
+    const userIdFor = (entryId) => tournament.entries.get(entryId).userId;
+    const [pNegotiating, pReported, pReady, pInProgress] = pairings;
+
+    // pNegotiating: left untouched.
+    tournamentManager.reportPairingTime(
+      userIdFor(pReported.player1EntryId), tournament.tournamentId, pReported.pairingId, '2026-09-01T10:00:00Z'
+    ); // 'Reported', no confirm
+
+    advanceToReady(tournament.tournamentId, pReady.pairingId, userIdFor(pReady.player1EntryId), userIdFor(pReady.player2EntryId));
+    // 'Ready', no check-in
+
+    advanceToReady(tournament.tournamentId, pInProgress.pairingId, userIdFor(pInProgress.player1EntryId), userIdFor(pInProgress.player2EntryId));
+    tournamentManager.markPairingReady(userIdFor(pInProgress.player1EntryId), tournament.tournamentId, pInProgress.pairingId);
+    tournamentManager.markPairingReady(userIdFor(pInProgress.player2EntryId), tournament.tournamentId, pInProgress.pairingId);
+    expect(tournamentManager.getPairing(pInProgress.pairingId).state).toBe('InProgress');
+
+    const { cancelledLivePairingIds } = tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId, 'test');
+
+    expect(cancelledLivePairingIds).toEqual([pInProgress.pairingId]);
+    for (const p of [pNegotiating, pReported, pReady, pInProgress]) {
+      const resolved = tournamentManager.getPairing(p.pairingId);
+      expect(resolved.state).toBe('Cancelled');
+      expect(resolved.result.winnerEntryId).toBeNull();
+    }
+    expect(tournament.status).toBe('cancelled');
+  });
+
+  test('does not touch pairings that are already terminal (e.g. Completed) — their result stands as history', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const players = [user(), user(), user(), user()];
+    for (const p of players) tournamentManager.registerPlayer(p, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const pairings = tournamentManager.listPairings(tournament.tournamentId);
+    expect(pairings).toHaveLength(2);
+    const userIdFor = (entryId) => tournament.entries.get(entryId).userId;
+    const [pDone, pOpen] = pairings;
+
+    advanceToReady(tournament.tournamentId, pDone.pairingId, userIdFor(pDone.player1EntryId), userIdFor(pDone.player2EntryId));
+    tournamentManager.markPairingReady(userIdFor(pDone.player1EntryId), tournament.tournamentId, pDone.pairingId);
+    tournamentManager.markPairingReady(userIdFor(pDone.player2EntryId), tournament.tournamentId, pDone.pairingId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pDone.pairingId, pDone.player1EntryId);
+    const doneResultBefore = tournamentManager.getPairing(pDone.pairingId).result;
+    expect(tournamentManager.getPairing(pDone.pairingId).state).toBe('Completed');
+    expect(tournament.status).toBe('active'); // round not fully complete — pOpen is still Negotiating
+
+    tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId);
+
+    const doneAfter = tournamentManager.getPairing(pDone.pairingId);
+    expect(doneAfter.state).toBe('Completed');
+    expect(doneAfter.result).toEqual(doneResultBefore);
+    expect(tournamentManager.getPairing(pOpen.pairingId).state).toBe('Cancelled');
+  });
+
+  test('rejects a non-organizer with ORGANIZER_ONLY, leaving the tournament untouched', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const intruder = user();
+
+    const { error, code } = tournamentManager.cancelTournament(intruder.userId, tournament.tournamentId);
+    expect(code).toBe('ORGANIZER_ONLY');
+    expect(error).toBeTruthy();
+    expect(tournament.status).toBe('draft');
+  });
+
+  test('cancelling twice: the second call fails with TOURNAMENT_NOT_CANCELLABLE, not a silent no-op or a crash', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+
+    tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId);
+    expect(tournament.status).toBe('cancelled');
+
+    expect(() => {
+      const { error, code } = tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId);
+      expect(code).toBe('TOURNAMENT_NOT_CANCELLABLE');
+      expect(error).toBeTruthy();
+    }).not.toThrow();
+  });
+
+  test('cancelling an already-completed tournament fails with TOURNAMENT_NOT_CANCELLABLE', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairing.pairingId, e1);
+    expect(tournament.status).toBe('completed');
+
+    const { error, code } = tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId);
+    expect(code).toBe('TOURNAMENT_NOT_CANCELLABLE');
+    expect(error).toBeTruthy();
+  });
+
+  test('unknown tournamentId fails with TOURNAMENT_NOT_FOUND, not a throw', () => {
+    const organizer = user();
+    expect(() => {
+      const { code } = tournamentManager.cancelTournament(organizer.userId, 'nonexistent-id');
+      expect(code).toBe('TOURNAMENT_NOT_FOUND');
+    }).not.toThrow();
+  });
+});

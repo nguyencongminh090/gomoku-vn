@@ -268,6 +268,42 @@ describe('organizerAdjust (Negotiating/Reported -> OrganizerAdjusted)', () => {
   });
 });
 
+// ── cancelForTournament (any non-terminal state -> Cancelled, TODO.md #59) ──
+
+describe('cancelForTournament', () => {
+  test('force-terminates a Negotiating pairing with no winner', () => {
+    const p = freshPairing();
+    PairingLifecycle.announcePairing(p);
+    const { pairing, error } = PairingLifecycle.cancelForTournament(p, 'tournament cancelled');
+    expect(error).toBeUndefined();
+    expect(pairing.state).toBe('Cancelled');
+    expect(pairing.result).toEqual({ winnerEntryId: null, reason: 'tournament cancelled' });
+    expect(pairing.endedAt).toBeTruthy();
+  });
+
+  test('defaults result.reason to tournament_cancelled when no reason given', () => {
+    const p = freshPairing();
+    PairingLifecycle.announcePairing(p);
+    const { pairing } = PairingLifecycle.cancelForTournament(p, undefined);
+    expect(pairing.result.reason).toBe('tournament_cancelled');
+  });
+
+  test('force-terminates an InProgress pairing too (no per-pairing state guard, unlike organizerAdjust)', () => {
+    const p = readyPairingBothChecking();
+    PairingLifecycle.markReady(p, 'e1', TIME_CONTROL);
+    const { timer } = PairingLifecycle.markReady(p, 'e2', TIME_CONTROL);
+    expect(p.state).toBe('InProgress');
+    const { pairing } = PairingLifecycle.cancelForTournament(p, 'x');
+    expect(pairing.state).toBe('Cancelled');
+    expect(pairing.result.winnerEntryId).toBeNull();
+    timer.destroy();
+  });
+
+  test('Cancelled is a member of TERMINAL_STATES', () => {
+    expect(PairingLifecycle.TERMINAL_STATES.has('Cancelled')).toBe(true);
+  });
+});
+
 function readyPairingBothChecking() {
   const p = freshPairing();
   PairingLifecycle.announcePairing(p);

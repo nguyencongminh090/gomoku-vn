@@ -8,10 +8,10 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=73" />
-  <link rel="stylesheet" href="css/lobby.css?v=73" />
-  <link rel="stylesheet" href="css/tournament.css?v=73" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=73" />
+  <link rel="stylesheet" href="css/main.css?v=74" />
+  <link rel="stylesheet" href="css/lobby.css?v=74" />
+  <link rel="stylesheet" href="css/tournament.css?v=74" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=74" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -54,6 +54,7 @@
       <div class="detail-header__name" id="detail-name">—</div>
       <div class="detail-header__meta" id="detail-meta"></div>
     </div>
+    <div id="detail-cancel-slot"></div>
   </div>
 
   <div id="action-banner-slot"></div>
@@ -182,7 +183,28 @@
   </div>
 </div>
 
+<!-- ── Modal: Organizer — huỷ giải đấu ─────────────────────────────────── -->
+<div id="modal-cancel-tournament" class="modal-overlay" role="dialog" aria-modal="true">
+  <div class="modal">
+    <div class="modal__header">
+      <h2 class="modal__title" data-i18n="tdetail.modal_cancel_tournament_title">Huỷ giải đấu</h2>
+      <button class="modal__close" type="button" data-modal-close="modal-cancel-tournament">✕</button>
+    </div>
+    <div class="modal__body">
+      <div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i><span data-i18n="tdetail.cancel_tournament_notice">Hành động này huỷ toàn bộ giải đấu ngay lập tức và không thể hoàn tác — mọi trận đang diễn ra sẽ bị dừng, các cặp đấu chưa xong sẽ không có người thắng.</span></div>
+      <div class="setting-row">
+        <span class="setting-label" data-i18n="tdetail.reason_label">Lý do</span>
+        <div class="timer-input" style="width:100%;"><input type="text" id="cancel-tournament-reason-input" style="width:100%; box-sizing:border-box;" maxlength="200" /></div>
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn-cancel" type="button" data-modal-close="modal-cancel-tournament" data-i18n="modal.btn_cancel">Huỷ</button>
+        <button class="btn btn-cancel" type="button" id="btn-submit-cancel-tournament" style="background:var(--c-danger-bg,#fee2e2); color:var(--c-danger,#dc2626);" data-i18n="tdetail.btn_cancel_tournament_confirm">Xác nhận huỷ giải đấu</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/tournament-detail-entry.js?v=73"></script>
+<script type="module" src="js/tournament-detail-entry.js?v=74"></script>
 </body>
 </html>

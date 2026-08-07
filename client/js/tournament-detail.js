@@ -43,6 +43,7 @@ const navBadge = document.getElementById('nav-badge');
 const detailNameEl = document.getElementById('detail-name');
 const detailMetaEl = document.getElementById('detail-meta');
 const actionBannerSlot = document.getElementById('action-banner-slot');
+const detailCancelSlot = document.getElementById('detail-cancel-slot');
 const subTabPairings = document.getElementById('sub-tab-pairings');
 const subTabStandings = document.getElementById('sub-tab-standings');
 const subtabPairingsPanel = document.getElementById('subtab-pairings');
@@ -165,6 +166,7 @@ function formatLabel(format) {
 function statusBadgeInfo(status) {
   if (status === 'active') return { cls: 'badge--live', label: t('tournaments.filter_active') };
   if (status === 'completed') return { cls: 'badge--done', label: t('tournaments.filter_done') };
+  if (status === 'cancelled') return { cls: 'badge--done', label: t('tournaments.status_cancelled') };
   return { cls: 'badge--upcoming', label: t('tournaments.filter_upcoming') };
 }
 
@@ -189,6 +191,24 @@ function renderHeader() {
     <span class="detail-meta-item"><i class="ph ph-user-circle"></i>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
     ${roundMeta}
   `;
+
+  if (isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active')) {
+    detailCancelSlot.innerHTML = `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-cancel-tournament">${t('tdetail.btn_cancel_tournament')}</button>`;
+    document.getElementById('btn-cancel-tournament').addEventListener('click', () => {
+      document.getElementById('cancel-tournament-reason-input').value = '';
+      document.getElementById('modal-cancel-tournament').classList.add('visible');
+    });
+  } else {
+    detailCancelSlot.innerHTML = '';
+  }
+
+  if (tournament.status === 'cancelled') {
+    detailCancelSlot.innerHTML = `
+      <div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i>
+        <span>${t('tdetail.cancelled_notice')}${tournament.cancelReason ? ` — ${escapeHtml(tournament.cancelReason)}` : ''}</span>
+      </div>
+    `;
+  }
 }
 
 // ── "Your turn" banner ───────────────────────────────────────────────────
@@ -308,6 +328,7 @@ function stateLabel(pairing) {
     case 'Walkover': return { cls: 'walkover', label: t('tdetail.state_walkover') };
     case 'DoubleNoShow': return { cls: 'walkover', label: t('tdetail.state_doublenoshow') };
     case 'OrganizerAdjusted': return { cls: 'completed', label: t('tdetail.state_adjusted') };
+    case 'Cancelled': return { cls: 'walkover', label: t('tdetail.state_cancelled') };
     default: return { cls: 'negotiating', label: pairing.state };
   }
 }
@@ -542,6 +563,11 @@ document.getElementById('btn-submit-adjust').addEventListener('click', () => {
   client.emit('tournament:organizer_adjust', { tournamentId, pairingId: activePairingId, reason: reason || undefined });
   closeModal('modal-adjust');
 });
+document.getElementById('btn-submit-cancel-tournament').addEventListener('click', () => {
+  const reason = document.getElementById('cancel-tournament-reason-input').value.trim();
+  client.emit('tournament:cancel', { tournamentId, reason: reason || undefined });
+  document.getElementById('modal-cancel-tournament').classList.remove('visible');
+});
 
 // ── Standings (client-side port of standings.js's pure functions) ────────
 
@@ -628,7 +654,11 @@ function renderStandings() {
 
   const me = myEntry();
   const ranked = computeStandings();
+  const partialNotice = tournament.status === 'cancelled'
+    ? `<div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    : '';
   standingsContainer.innerHTML = `
+    ${partialNotice}
     <table class="standings-table">
       <thead>
         <tr>

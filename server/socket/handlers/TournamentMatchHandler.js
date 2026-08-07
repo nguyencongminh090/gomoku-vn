@@ -360,6 +360,37 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
 }
 
 /**
+ * Force-terminate a live match because the whole tournament was cancelled
+ * (TournamentManager.cancelTournament, TODO.md #59) — called by
+ * TournamentHandler's 'tournament_cancelled' listener, once per pairingId in
+ * `cancelledLivePairingIds`. Deliberately NOT routed through
+ * GameEngine.resign()/handleTimeout() or recordPairingResult() (see
+ * docs/instruction/B59-*.md "đừng định tuyến qua GameEngine thật") — this is
+ * an external, tournament-level force-stop, not an in-game outcome, and the
+ * pairing's own state was already flipped to 'Cancelled' by
+ * TournamentManager itself (which never touches io — see file header). This
+ * only tears down the socket room + local match state TournamentManager
+ * couldn't reach.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {string} tournamentId
+ * @param {string} pairingId
+ */
+function forceCancelMatch(io, tournamentId, pairingId) {
+  const match = tournamentState.tournamentGameMap.get(pairingId);
+  if (!match) return;
+  tournamentState.tournamentGameMap.delete(pairingId);
+
+  io.to(matchRoom(pairingId)).emit('tmatch:ended', {
+    tournamentId,
+    pairingId,
+    result: { winner: null, reason: 'tournament_cancelled' },
+    series: null,
+  });
+  io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));
+}
+
+/**
  * @param {import('socket.io').Server} io
  * @param {import('socket.io').Socket} socket
  */
@@ -777,4 +808,4 @@ function register(io, socket) {
   });
 }
 
-module.exports = { register, startMatch, resyncOnConnect, matchRoom };
+module.exports = { register, startMatch, resyncOnConnect, matchRoom, forceCancelMatch };

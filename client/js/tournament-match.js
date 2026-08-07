@@ -165,6 +165,17 @@ client.on('tmatch:timer_sync', (data) => {
 client.on('tmatch:ended', (data) => {
   if (data.pairingId !== pairingId) return;
   stopLocalTimer();
+
+  // The whole tournament was cancelled by the organizer mid-match (TODO.md
+  // #59) — not a normal game outcome, so skip the win/loss/draw overlay
+  // entirely and redirect straight back, same pattern as the NO_ACTIVE_MATCH
+  // error above.
+  if (data.result && data.result.reason === 'tournament_cancelled') {
+    alert(t('tmatch.tournament_cancelled_message'));
+    window.location.href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
+    return;
+  }
+
   if (gameState) { gameState.status = 'finished'; gameState.result = data.result; }
   matchActionsEl.style.display = 'none';
   drawOfferPending = null;
