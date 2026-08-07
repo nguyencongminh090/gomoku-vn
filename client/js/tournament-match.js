@@ -149,7 +149,10 @@ client.on('tmatch:ended', (data) => {
   if (gameState) { gameState.status = 'finished'; gameState.result = data.result; }
   matchActionsEl.style.display = 'none';
 
-  if (data.series) seriesInfo = { ...seriesInfo, scores: data.series.scores };
+  if (data.series) {
+    seriesInfo = { ...seriesInfo, scores: data.series.scores };
+    renderScorePanel(seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single');
+  }
 
   // A game inside an unfinished series (TODO.md #50) ends differently from
   // the whole pairing: show a lighter "waiting for next game" transition
@@ -179,6 +182,10 @@ function initBoard() {
   const canvas = document.getElementById('match-canvas');
   boardRenderer = new BoardRenderer(canvas, {
     boardSize: gameState.boardSize,
+    // TODO.md #55: initBoard() never read the user's click-mode setting, so
+    // BoardRenderer fell back to its hardcoded 'double' default regardless of
+    // what Cài đặt had — game-ui.js:96 (room.html) is the reference behavior.
+    clickMode: (typeof window.getClickMode === 'function') ? window.getClickMode() : 'double',
     onCellClick: (x, y) => {
       if (!gameState) return;
       if (gameState.swap2 && gameState.swap2.enabled && gameState.swap2.openingPhase !== 'play') {
@@ -244,25 +251,64 @@ function renderSwap2Board() {
 
 // ── Header / meta ────────────────────────────────────────────────────────
 
+const slot1NameEl = document.getElementById('slot-1-name');
+const slot2NameEl = document.getElementById('slot-2-name');
+const scorePanelEl = document.getElementById('score-panel');
+const scorePanelTitleEl = document.getElementById('score-panel-title');
+const scoreBodyEl = document.getElementById('score-body');
+
 function renderHeader() {
   const p1 = gameState.players[0], p2 = gameState.players[1];
   matchTitleEl.textContent = `${p1 ? p1.displayName : '—'} vs ${p2 ? p2.displayName : '—'}`;
+  slot1NameEl.textContent = p1 ? p1.displayName : '—';
+  slot2NameEl.textContent = p2 ? p2.displayName : '—';
 
   let metaHtml = `<span class="detail-meta-item"><i class="ph ph-trophy"></i>${t('tmatch.in_tournament')}</span>`;
-  // Series score badge (TODO.md #50) — only shown for an actual multi-game
-  // series; a plain 'single'-mode pairing keeps today's meta line unchanged.
-  if (seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single') {
+  // Only shown for an actual multi-game series; a plain 'single'-mode pairing
+  // keeps today's meta line unchanged and the score-panel stays hidden.
+  const isSeries = seriesInfo && seriesInfo.seriesMode && seriesInfo.seriesMode !== 'single';
+  if (isSeries) {
     const gameLabel = t('tmatch.series_game_index', { n: seriesInfo.gameIndex + 1 });
     metaHtml += `<span class="detail-meta-item"><i class="ph ph-medal"></i>${gameLabel}</span>`;
-    if (seriesInfo.scores) {
-      const scoreText = seriesInfo.scores.map((s) => `${escapeHtml(s.displayName)}: ${s.score}`).join(' — ');
-      metaHtml += `<span class="detail-meta-item"><i class="ph ph-chart-bar"></i>${scoreText}</span>`;
-    }
+    const targetLabel = seriesInfo.seriesMode === 'raceToMargin'
+      ? t('tmatch.series_race_to_margin', { target: seriesInfo.seriesTargetScore, margin: seriesInfo.seriesMargin })
+      : t('tmatch.series_fixed_count', { n: seriesInfo.seriesGameCount });
+    metaHtml += `<span class="detail-meta-item"><i class="ph ph-flag-checkered"></i>${targetLabel}</span>`;
   }
   matchMetaEl.innerHTML = metaHtml;
 
   document.getElementById('clock-black-name').textContent = p1 ? p1.displayName : '—';
   document.getElementById('clock-white-name').textContent = p2 ? p2.displayName : '—';
+
+  renderScorePanel(isSeries);
+}
+
+// Series score table (TODO.md #52/#55 — "Room.html has score count, you can
+// use it": reuses .score-panel/.score-table (room.css) the same way
+// room-ui.js's renderScoreTable() does, instead of the old inline meta-line
+// score text — just a 2-column Tên/Điểm table since a series tracks one
+// numeric "games won" score per player, not room.html's rematch Win/Loss/Draw.
+function renderScorePanel(isSeries) {
+  if (!isSeries) {
+    scorePanelEl.style.display = 'none';
+    return;
+  }
+  // seriesInfo.scores is null until the series' first game finishes
+  // (pairing.seriesScore starts null server-side) — fall back to the two
+  // known players at 0 each so the table (and the fact a series is running)
+  // is visible from game 1, matching room.html's score-panel showing seated
+  // players at 0 before any result exists.
+  const scores = seriesInfo.scores || gameState.players.map((p) => ({ displayName: p.displayName, score: 0 }));
+  scorePanelTitleEl.textContent = seriesInfo.seriesMode === 'raceToMargin'
+    ? t('tmatch.score_title_race_to_margin', { target: seriesInfo.seriesTargetScore })
+    : t('tmatch.score_title_fixed_count', { n: seriesInfo.seriesGameCount });
+  scoreBodyEl.innerHTML = scores.map((s) => `
+    <tr>
+      <td>${escapeHtml(s.displayName)}</td>
+      <td>${s.score}</td>
+    </tr>
+  `).join('');
+  scorePanelEl.style.display = '';
 }
 
 function escapeHtml(str) {
@@ -548,4 +594,10 @@ tabBtns.forEach((btn) => {
 
 window.addEventListener('langchange', () => {
   if (gameState) { renderHeader(); renderSwap2Banner(); renderMoveList(); }
+});
+
+// TODO.md #55: live-sync an already-open match when Cài đặt's click-mode
+// toggle changes, same mechanism room-ui.js:560 uses for room.html.
+window.addEventListener('clickmodechange', (e) => {
+  if (boardRenderer) boardRenderer.clickMode = e.detail.mode;
 });

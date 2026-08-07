@@ -8,11 +8,12 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=68" />
-  <link rel="stylesheet" href="css/lobby.css?v=68" />
-  <link rel="stylesheet" href="css/room.css?v=68" />
-  <link rel="stylesheet" href="css/tournament.css?v=68" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=68" />
+  <link rel="stylesheet" href="css/main.css?v=69" />
+  <link rel="stylesheet" href="css/lobby.css?v=69" />
+  <link rel="stylesheet" href="css/room.css?v=69" />
+  <link rel="stylesheet" href="css/game.css?v=69" />
+  <link rel="stylesheet" href="css/tournament.css?v=69" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=69" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -45,9 +46,7 @@
   </div>
 </nav>
 
-<div class="lobby-layout lobby-layout--single">
-<main class="lobby" role="main">
-
+<div class="match-page-header">
   <a href="#" id="back-to-tournament" class="detail-back"><i class="ph ph-arrow-left"></i><span data-i18n="tmatch.back">Quay lại chi tiết giải đấu</span></a>
 
   <div class="detail-header">
@@ -58,75 +57,110 @@
   </div>
 
   <div id="swap2-banner-slot"></div>
+</div>
 
-  <div class="match-shell">
-    <div class="match-board-wrap">
-      <div class="match-clocks">
-        <div class="match-clock" id="clock-black">
-          <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--black"></span><span id="clock-black-name">—</span></span>
-          <span class="match-clock__time" id="clock-black-time">--:--</span>
-        </div>
-        <div class="match-clock" id="clock-white">
-          <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--white"></span><span id="clock-white-name">—</span></span>
-          <span class="match-clock__time" id="clock-white-time">--:--</span>
-        </div>
+<!-- Reuses room.html's proven .room 2-col synced-height grid (TODO.md #52)
+     instead of a bespoke .match-shell — same classes room.css already styles
+     and tests (desktop/tablet/mobile breakpoints), so this page gets the
+     same layout guarantees room.html has instead of a parallel, easier-to-
+     drift implementation. See docs/instruction/B52-*.md's full-refactor note. -->
+<main class="room" role="main">
+
+  <section class="board-area-shell" id="board-area-shell">
+    <div class="match-clocks">
+      <div class="match-clock" id="clock-black">
+        <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--black"></span><span id="clock-black-name">—</span></span>
+        <span class="match-clock__time" id="clock-black-time">--:--</span>
       </div>
-
-      <section class="board-area-shell" id="board-area-shell">
-        <div class="board-area" id="board-area">
-          <div class="board-canvas-wrap match-board-canvas-wrap" id="board-wrap">
-            <canvas id="match-canvas"></canvas>
-          </div>
-        </div>
-      </section>
-
-      <div class="match-actions" id="match-actions" style="display:none;">
-        <button class="btn btn-cancel" type="button" id="btn-resign" data-i18n="tmatch.btn_resign">Đầu hàng</button>
+      <div class="match-clock" id="clock-white">
+        <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--white"></span><span id="clock-white-name">—</span></span>
+        <span class="match-clock__time" id="clock-white-time">--:--</span>
       </div>
     </div>
 
-    <aside class="ui-shell">
-      <div class="ui-core" style="padding:0;">
-
-        <!-- Tabs: Move history | Chat | Spectators — the chat/spectators tabs
-             are ported from room.html's component chrome (TODO.md #50 step 7,
-             decision 9: UI/CSS reuse only, NOT routed through RoomHandler —
-             see server/socket/handlers/TournamentMatchHandler.js's
-             tmatch:chat_message/tmatch:presence, its own parallel mechanism
-             scoped to the match's own Socket.io room). -->
-        <div class="sidebar-tabs">
-          <button class="tab-btn tab-btn--active" data-tab="tab-moves" data-i18n="tmatch.tab_moves">Nước đi</button>
-          <button class="tab-btn" data-tab="tab-chat" data-i18n="room.tab_chat">Trò chuyện</button>
-          <button class="tab-btn" data-tab="tab-users" data-i18n="room.tab_spectators">Khán giả</button>
-        </div>
-
-        <div class="tab-content tab-content--active" id="tab-moves">
-          <div class="move-list" id="move-list" style="padding:10px 14px;"></div>
-        </div>
-
-        <div class="tab-content" id="tab-chat">
-          <div class="chat-panel">
-            <div class="chat-messages" id="chat-messages"></div>
-            <div class="chat-input" id="chat-input-wrapper">
-              <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
-                maxlength="500" autocomplete="off" />
-              <button id="btn-send" type="button" data-i18n="room.btn_send">Gửi</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="tab-content" id="tab-users">
-          <div id="users-panel" class="users-panel">
-            <ul id="users-list" class="users-list"></ul>
-          </div>
-        </div>
-
+    <div class="board-area" id="board-area">
+      <div class="board-canvas-wrap match-board-canvas-wrap" id="board-wrap">
+        <canvas id="match-canvas"></canvas>
       </div>
-    </aside>
-  </div>
+    </div>
 
+    <!-- Reuses room.html's .game-controls/.btn-game classes (game.css) instead
+         of the old .btn/.btn-cancel modal-button classes, which visually
+         didn't match the rest of the app's in-game action buttons. -->
+    <div class="game-controls match-actions" id="match-actions" style="display:none;">
+      <button class="btn-game btn-game--resign" type="button" id="btn-resign" data-i18n="tmatch.btn_resign">Đầu hàng</button>
+    </div>
+  </section>
+
+  <aside class="panel-right-shell">
+    <div class="panel-right">
+
+      <!-- Players (static — no sit/stand, the pairing already fixed who's
+           playing) + series score table (TODO.md #52/#55 note: "Room.html
+           has score count, you can use it" — reuses .score-panel/.score-table
+           rather than the old inline meta-line score text). -->
+      <div class="panel-players">
+        <div class="players-row">
+          <div class="slot-card" id="slot-1">
+            <div class="slot-card__label"><span class="match-stone-dot match-stone-dot--black"></span></div>
+            <div class="slot-card__name" id="slot-1-name">—</div>
+          </div>
+          <div class="players-vs">VS</div>
+          <div class="slot-card" id="slot-2">
+            <div class="slot-card__label"><span class="match-stone-dot match-stone-dot--white"></span></div>
+            <div class="slot-card__name" id="slot-2-name">—</div>
+          </div>
+        </div>
+        <div class="score-panel" id="score-panel" style="display:none;">
+          <div class="score-panel__title" id="score-panel-title" data-i18n="tmatch.score_title">Bảng điểm</div>
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th data-i18n="room.th_name">Tên</th>
+                <th data-i18n="tmatch.th_score">Điểm</th>
+              </tr>
+            </thead>
+            <tbody id="score-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabs: Move history | Chat | Spectators — the chat/spectators tabs
+           are ported from room.html's component chrome (TODO.md #50 step 7,
+           decision 9: UI/CSS reuse only, NOT routed through RoomHandler —
+           see server/socket/handlers/TournamentMatchHandler.js's
+           tmatch:chat_message/tmatch:presence, its own parallel mechanism
+           scoped to the match's own Socket.io room). -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn tab-btn--active" data-tab="tab-moves" data-i18n="tmatch.tab_moves">Nước đi</button>
+        <button class="tab-btn" data-tab="tab-chat" data-i18n="room.tab_chat">Trò chuyện</button>
+        <button class="tab-btn" data-tab="tab-users" data-i18n="room.tab_spectators">Khán giả</button>
+      </div>
+
+      <div class="tab-content tab-content--active" id="tab-moves">
+        <div class="move-list" id="move-list" style="padding:10px 14px;"></div>
+      </div>
+
+      <div class="tab-content" id="tab-chat">
+        <div class="chat-panel">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input" id="chat-input-wrapper">
+            <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
+              maxlength="500" autocomplete="off" />
+            <button id="btn-send" type="button" data-i18n="room.btn_send">Gửi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-users">
+        <div id="users-panel" class="users-panel">
+          <ul id="users-list" class="users-list"></ul>
+        </div>
+      </div>
+
+    </div>
+  </aside>
 </main>
-</div>
 
 <div class="match-result-overlay" id="match-result-overlay">
   <div class="match-result-card">
@@ -151,6 +185,6 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/tournament-match-entry.js?v=68"></script>
+<script type="module" src="js/tournament-match-entry.js?v=69"></script>
 </body>
 </html>

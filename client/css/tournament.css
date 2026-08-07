@@ -146,41 +146,25 @@
   border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 4px;
 }
 
-/* TODO.md #52: .lobby-layout's 2nd column (260px, lobby.css) is reserved for
-   .lobby-sidebar, which this page never renders — left as dead space on the
-   right without this override. index.html/tournament.html DO render a real
-   sidebar so the base .lobby-layout rule must stay untouched for them; this
-   modifier only applies here. */
-.lobby-layout--single { grid-template-columns: 1fr; max-width: 1400px; }
+/* TODO.md #52 (full refactor, per user request "Make as Room, user get used
+   to is better"): the match-play screen used to be a bespoke .match-shell
+   grid that had to independently re-solve every layout problem room.css's
+   .room grid already solves (2-col synced height, mobile stacking, dead
+   space). It now reuses room.css's .room/.board-area-shell/.board-area/
+   .panel-right-shell/.panel-right/.panel-players/.slot-card/.score-panel/
+   .sidebar-tabs/.tab-content classes directly (see tournament-match.html) —
+   this file only adds what's genuinely match-specific: the header strip
+   above .room, the clocks bar, and small static-player-card tweaks. */
+.match-page-header {
+  width: 100%;
+  max-width: 1400px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding-inline: clamp(6px, 2.5vw, 16px);
+  padding-top: 12px;
+}
 
-/* ── Match-play screen ────────────────────────────────────────────────── */
-/* align-items: stretch (grid default) — was `start`, which let the aside's
-   .ui-core cap out at max-height:480px regardless of how tall the board
-   column actually rendered, leaving a large empty gap under the panel
-   (TODO.md #52). Stretch makes the aside match .match-board-wrap's real
-   rendered height (clocks + board-area-shell + actions) every time, the same
-   synced-height relationship room.css's .room grid gives .board-area-shell/
-   .panel-right-shell — without hardcoding a calc(100vh - Npx) here, which
-   would need to account for this page's taller/variable header chrome
-   (back-link + detail-header + swap2-banner-slot) above .match-shell that
-   room.html doesn't have above .room. */
-.match-shell { display: grid; grid-template-columns: 1fr clamp(320px, 28vw, 420px); gap: 20px; align-items: stretch; }
-/* Synced to room.css's 768px mobile-bleed breakpoint for .board-area-shell/
-   .board-area (shared, unscoped classes room.css also styles) — a higher
-   threshold here left a 769-900px gap where .match-shell had already gone
-   single-column but the board card still carried desktop height/padding. */
-@media (max-width: 768px) { .match-shell { grid-template-columns: 1fr; } }
-.match-board-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; }
-/* .board-area-shell relies on being a grid item (room.css's `.room` grid,
-   default align-self: stretch) to receive the parent's full column width so
-   BoardRenderer.resize() (board.js) has real space to size the canvas into.
-   Here it's a flex child of .match-board-wrap instead, and that flex
-   container's align-items: center (needed to center .match-clocks/
-   .match-actions) shrink-wraps .board-area-shell to its content's width —
-   which starts as the canvas's tiny default size, so resize() reads a small
-   shellWidth and the board stabilizes small. Stretch just this one child. */
-.match-board-wrap > .board-area-shell { align-self: stretch; width: 100%; }
-.match-clocks { display: flex; gap: 12px; width: 100%; max-width: 480px; }
+.match-clocks { display: flex; gap: 12px; width: 100%; max-width: 480px; margin-bottom: 16px; }
 .match-clock { flex: 1; border: 1px solid var(--c-border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
 .match-clock.is-active { border-color: var(--c-brand); background: var(--c-brand-light); }
 .match-clock__name { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; }
@@ -198,31 +182,29 @@
 .match-board-canvas-wrap { width: 100%; display: flex; justify-content: center; }
 #match-canvas { touch-action: none; }
 
-.match-actions { display: flex; gap: 10px; }
+/* Layout comes from .game-controls (game.css, shared with room.html) now —
+   .match-actions only needs to stay addressable for the mobile bleed-cancel
+   rule below. */
+
+@media (max-width: 768px) {
+  /* .board-area-shell bleeds edge-to-edge on mobile (room.css: width:calc(100%
+     + 32px); margin-left:-16px), which is correct for the board itself but
+     was also stretching .match-clocks/.match-actions (siblings inside the
+     same shell) past the real viewport edge, overflowing the page
+     horizontally (measured bodyScrollWidth 406px vs. clientWidth 390px).
+     Cancel the inherited bleed for just these two header-like children. */
+  .match-clocks, .match-actions { align-self: flex-start; width: calc(100% - 32px); margin-left: 16px; }
+}
+
 .move-list { max-height: 320px; overflow-y: auto; font-size: 12px; }
 .move-list__row { display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 6px; }
 .move-list__row:nth-child(odd) { background: var(--c-surface-2); }
 
-/* Ported room.html tab chrome (TODO.md #50 step 7 — Chat/Khán giả tabs).
-   room.html's version of these tabs lives inside .panel-right-shell/
-   .panel-right, which is what actually supplies the flex-column + bounded
-   height the tab-switching CSS in room.css (.tab-content { flex:1 }) needs
-   to do anything — .match-shell's aside doesn't have that ancestor, so give
-   the ported tabs their own bounded box here instead: height:100% of the
-   now grid-stretched .ui-shell (TODO.md #52 — was a hardcoded max-height:480px
-   that ignored how tall the board column actually rendered). */
-.match-shell .ui-core { display: flex; flex-direction: column; height: 100%; }
-.match-shell #tab-moves .move-list { max-height: none; flex: 1; }
-.match-shell .chat-panel,
-.match-shell .users-panel { max-height: 100%; }
-
-@media (max-width: 768px) {
-  /* Grid stretch only makes sense with 2 columns sharing a row; single-column
-     mobile stacks board then aside in separate rows, so let the aside size to
-     its own content instead of matching the board's height (which room.css
-     also resets to `auto` on mobile for .board-area-shell). */
-  .match-shell .ui-core { height: auto; max-height: 480px; }
-}
+/* .slot-card is normally clickable (room.html: sit down/stand up) — here the
+   pairing already fixed who's playing, so drop the pointer affordance and
+   center the static name/color-dot content instead. */
+.room #slot-1, .room #slot-2 { cursor: default; text-align: center; }
+.room .slot-card__label { display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
 
 .swap2-banner {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
