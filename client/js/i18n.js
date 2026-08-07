@@ -134,6 +134,12 @@ const TRANSLATIONS = {
     'tournaments.series_validation_count': 'Số ván cố định phải là số nguyên từ 2 trở lên.',
     'tournaments.series_validation_race': 'Đích điểm và cách biệt tối thiểu phải là số lớn hơn 0.',
 
+    // ── Live matches browser (TODO.md #60) ──────────────────────
+    'live_matches.title': 'Trận đang diễn ra',
+    'live_matches.empty': 'Hiện không có trận nào đang diễn ra.',
+    'live_matches.spectators': '{n} khán giả',
+    'live_matches.game_index': 'Ván {n}',
+
     // ── Tournament detail page (tournament.html) ───────────────
     'tdetail.back': 'Quay lại danh sách giải đấu',
     'tdetail.tab_pairings': 'Cặp đấu',
@@ -689,6 +695,12 @@ const TRANSLATIONS = {
     'tournaments.series_margin_label': 'Minimum margin',
     'tournaments.series_validation_count': 'Fixed game count must be an integer of 2 or more.',
     'tournaments.series_validation_race': 'Target score and minimum margin must both be greater than 0.',
+
+    // ── Live matches browser (TODO.md #60) ──────────────────────
+    'live_matches.title': 'Live matches',
+    'live_matches.empty': 'No matches are live right now.',
+    'live_matches.spectators': '{n} watching',
+    'live_matches.game_index': 'Game {n}',
 
     // ── Tournament detail page (tournament.html) ───────────────
     'tdetail.back': 'Back to tournament list',

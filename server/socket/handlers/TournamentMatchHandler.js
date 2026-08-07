@@ -12,6 +12,9 @@
  *   tmatch:move / tmatch:swap2_place / tmatch:swap2_choice / tmatch:resign
  *   tmatch:draw_offer / tmatch:draw_accept / tmatch:draw_decline
  *   tmatch:request_time / tmatch:time_accept / tmatch:time_decline
+ *   live_matches:subscribe / live_matches:unsubscribe — cross-tournament
+ *     "what's live right now" discovery browser (TODO.md #60), separate from
+ *     the per-match tmatch:* room above
  *
  * startMatch(io, tournamentId, pairingId) is exported for TournamentHandler's
  * init() to call when TournamentManager emits 'pairing_ready' (both players
@@ -55,6 +58,19 @@ const MATCH_ROOM_PREFIX = 'tournament-match:';
 function matchRoom(pairingId) {
   return `${MATCH_ROOM_PREFIX}${pairingId}`;
 }
+
+// Cross-tournament "what's live right now" discovery room (TODO.md #60) —
+// deliberately separate from TournamentHandler.js's TOURNAMENT_LIST_ROOM
+// (that one lists tournaments themselves, not their live matches) and from
+// matchRoom() (that one is per-pairing, scoped to a single match's players/
+// spectators/chat). No existing room fits this audience, per
+// docs/instruction/B60-*.md's "verify before creating a new room" note.
+const LIVE_MATCHES_ROOM = 'live-matches-lobby';
+
+// Cap (docs/instruction/B60-*.md step 4) — the stress-test report shows the
+// system already handles hundreds of concurrent games, so an uncapped list
+// could get large; most-recently-started first, capped at N.
+const MAX_LIVE_MATCHES = 20;
 
 /**
  * Spectator/audience list for a live match (TODO.md #50 decision 9 — the
@@ -228,6 +244,9 @@ function startMatch(io, tournamentId, pairingId) {
     // Bonus-time state (TODO.md #57) — per-game, since this object is
     // recreated fresh by every startMatch() call.
     _timeRequestsUsed: {}, _timeRequestPending: null,
+    // Live-matches browser sort key (TODO.md #60) — "most recently started
+    // first" ordering for listLiveMatches().
+    startedAt: Date.now(),
   });
 
   for (const userId of [entry1.userId, entry2.userId]) {
@@ -261,7 +280,49 @@ function startMatch(io, tournamentId, pairingId) {
     series: _seriesInfo(tournament, pairing),
   });
   _broadcastPresence(io, pairingId);
+  broadcastLiveMatchesUpdate(io);
   logger.info(`[TournamentMatch] Match started for pairing ${pairingId} (game ${gameIndex + 1})`);
+}
+
+/**
+ * Live-matches browser aggregation (TODO.md #60) — read-only query over
+ * `tournamentState.tournamentGameMap`, the existing single source of truth
+ * for "what's live right now" (no parallel tracking structure — see
+ * docs/instruction/B60-*.md's "đừng đụng" list). For each live pairing,
+ * joins in the tournament name and both players' display names, reuses
+ * `_seriesInfo`/`_getSpectators` rather than re-deriving that data.
+ *
+ * @param {import('socket.io').Server} io
+ * @returns {Array<object>} at most MAX_LIVE_MATCHES entries, newest first
+ */
+function listLiveMatches(io) {
+  const list = [];
+  for (const [pairingId, match] of tournamentState.tournamentGameMap) {
+    const tournament = tournamentManager.getTournament(match.tournamentId);
+    const pairing = tournamentManager.getPairing(pairingId);
+    if (!tournament || !pairing) continue; // defensive: shouldn't happen, map entries always have a live pairing
+
+    const entry1 = tournament.entries.get(pairing.player1EntryId);
+    const entry2 = tournament.entries.get(pairing.player2EntryId);
+
+    list.push({
+      tournamentId: match.tournamentId,
+      tournamentName: tournament.name,
+      pairingId,
+      player1: entry1 ? { userId: entry1.userId, displayName: entry1.displayName } : null,
+      player2: entry2 ? { userId: entry2.userId, displayName: entry2.displayName } : null,
+      series: _seriesInfo(tournament, pairing),
+      spectatorCount: _getSpectators(io, pairingId).length,
+      startedAt: match.startedAt,
+    });
+  }
+  list.sort((a, b) => b.startedAt - a.startedAt);
+  return list.slice(0, MAX_LIVE_MATCHES);
+}
+
+/** Push the current live-matches snapshot to everyone with the browser open. */
+function broadcastLiveMatchesUpdate(io) {
+  io.to(LIVE_MATCHES_ROOM).emit('live_matches:list', { matches: listLiveMatches(io) });
 }
 
 /**
@@ -357,6 +418,8 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
   // else: series continues — players/spectators stay in the match room so
   // they receive the next game's tmatch:init once both players re-check-in,
   // without having to re-navigate or re-subscribe.
+
+  broadcastLiveMatchesUpdate(io);
 }
 
 /**
@@ -388,6 +451,7 @@ function forceCancelMatch(io, tournamentId, pairingId) {
     series: null,
   });
   io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));
+  broadcastLiveMatchesUpdate(io);
 }
 
 /**
@@ -396,6 +460,19 @@ function forceCancelMatch(io, tournamentId, pairingId) {
  */
 function register(io, socket) {
   const user = socket.user;
+
+  // ── live_matches:subscribe / unsubscribe (TODO.md #60) ──────────────────
+  // Cross-tournament "what's live right now" browser — any authenticated
+  // user, visitor or not (same open-to-everyone posture as tmatch:subscribe
+  // above, since this only surfaces already-public per-match data).
+  socket.on('live_matches:subscribe', () => {
+    socket.join(LIVE_MATCHES_ROOM);
+    socket.emit('live_matches:list', { matches: listLiveMatches(io) });
+  });
+
+  socket.on('live_matches:unsubscribe', () => {
+    socket.leave(LIVE_MATCHES_ROOM);
+  });
 
   function getOwnMatch(pairingId, tournamentId) {
     const match = tournamentState.tournamentGameMap.get(pairingId);
@@ -808,4 +885,4 @@ function register(io, socket) {
   });
 }
 
-module.exports = { register, startMatch, resyncOnConnect, matchRoom, forceCancelMatch };
+module.exports = { register, startMatch, resyncOnConnect, matchRoom, forceCancelMatch, listLiveMatches };
