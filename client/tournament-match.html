@@ -8,12 +8,12 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=71" />
-  <link rel="stylesheet" href="css/lobby.css?v=71" />
-  <link rel="stylesheet" href="css/room.css?v=71" />
-  <link rel="stylesheet" href="css/game.css?v=71" />
-  <link rel="stylesheet" href="css/tournament.css?v=71" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=71" />
+  <link rel="stylesheet" href="css/main.css?v=72" />
+  <link rel="stylesheet" href="css/lobby.css?v=72" />
+  <link rel="stylesheet" href="css/room.css?v=72" />
+  <link rel="stylesheet" href="css/game.css?v=72" />
+  <link rel="stylesheet" href="css/tournament.css?v=72" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=72" />
   <script>
     (function() {
       var storedTheme = localStorage.getItem('theme');
@@ -173,18 +173,26 @@
 
 <!-- Between-games transition (TODO.md #50 — a game inside a series ended but
      the pairing isn't decided yet). Same visual treatment as the final
-     result overlay, but auto-hides once the next game's tmatch:init arrives
-     instead of linking back out to the tournament. -->
+     result overlay, and auto-hides once the next game's tmatch:init arrives
+     — but the server requires BOTH players to check in again on the
+     tournament detail page before that happens (PairingLifecycle.startNextGame
+     reuses the Ready-state check-in machinery per game, deliberately, for
+     mid-series no-show/walkover detection — see that function's doc
+     comment). Without an explicit link out, this overlay is a full-viewport
+     dead end: it covers #back-to-tournament in the page header underneath,
+     so a player has no way to reach the check-in step (user report: stuck
+     forever on "Đang chuẩn bị ván tiếp theo..."). -->
 <div class="match-result-overlay" id="series-transition-overlay">
   <div class="match-result-card">
     <i class="match-result-card__icon ph-bold ph-flag-checkered" id="series-transition-icon"></i>
     <div class="match-result-card__title" id="series-transition-title"></div>
     <div class="match-result-card__sub" id="series-transition-sub"></div>
-    <div class="match-result-card__sub" data-i18n="tmatch.series_waiting_next">Đang chuẩn bị ván tiếp theo...</div>
+    <div class="match-result-card__sub" data-i18n="tmatch.series_check_in_prompt">Cả hai người chơi cần quay lại trang giải đấu và bấm "Sẵn sàng" để bắt đầu ván tiếp theo.</div>
+    <a class="btn btn-confirm" id="series-transition-back" href="#" data-i18n="tmatch.series_back_to_check_in">Về trang giải đấu để sẵn sàng</a>
   </div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/tournament-match-entry.js?v=71"></script>
+<script type="module" src="js/tournament-match-entry.js?v=72"></script>
 </body>
 </html>
