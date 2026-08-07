@@ -177,6 +177,19 @@ client.on('tmatch:ended', (data) => {
 
 // ── Board ────────────────────────────────────────────────────────────────
 
+// Board display style (Giấy/Paper vs Đá/Stone) — a room-local setting (its
+// radio toggle lives in room.html's own Settings tab, room-ui.js:321-324,
+// not the global Cài đặt panel), but the choice persists across pages via
+// this same localStorage key (room-ui.js:618) — read it here instead of
+// leaving BoardRenderer on its hardcoded 'paper' default, same root cause as
+// TODO.md #55's click-mode fix (initBoard() never read a saved setting at
+// all). No live-sync listener needed: unlike click-mode there is no
+// in-tournament-match UI to change it, so it only needs to be read once.
+function boardDisplayMode() {
+  const v = localStorage.getItem('play3cr_board_display');
+  return v === 'stone' ? 'stone' : 'paper';
+}
+
 function initBoard() {
   if (boardRenderer) return;
   const canvas = document.getElementById('match-canvas');
@@ -186,6 +199,7 @@ function initBoard() {
     // BoardRenderer fell back to its hardcoded 'double' default regardless of
     // what Cài đặt had — game-ui.js:96 (room.html) is the reference behavior.
     clickMode: (typeof window.getClickMode === 'function') ? window.getClickMode() : 'double',
+    displayMode: boardDisplayMode(),
     onCellClick: (x, y) => {
       if (!gameState) return;
       if (gameState.swap2 && gameState.swap2.enabled && gameState.swap2.openingPhase !== 'play') {
@@ -224,6 +238,7 @@ function updateBoardState() {
     myColor,
     winLine: gameState.result ? gameState.result.winLine : null,
     moveHistory: gameState.moveHistory || [],
+    displayMode: boardDisplayMode(),
   });
   renderTimers();
   requestAnimationFrame(() => boardRenderer.resize());
@@ -246,6 +261,7 @@ function renderSwap2Board() {
     showZones: false,
     winLine: null,
     moveHistory: gameState.moveHistory || [],
+    displayMode: boardDisplayMode(),
   });
 }
 
