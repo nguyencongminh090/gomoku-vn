@@ -93,3 +93,4 @@
 | 2026-08-06 22:46 | Follow-up: false-kick persisted after the above fix — root cause was `tournaments.js` importing `lo… | [chi tiết](docs/fix-log/2026-08-06-tournaments-lobby-duplicate-module-import.md) |
 | 2026-08-07 06:29 | TODO.md #54: "Quay lại danh sách giải đấu" back link from tournament detail page always landed on … | [chi tiết](docs/fix-log/2026-08-07-todo-54-tournament-back-link-tab.md) |
 | 2026-08-07 06:40 | TODO.md #53: create-tournament modal had no UI for series mode (race-to-margin/fixed count) though b… | [chi tiết](docs/fix-log/2026-08-07-todo-53-tournament-create-series-mode-ui.md) |
+| 2026-08-07 06:59 | TODO.md #52: tournament-match.html UX kém — `.lobby-layout` phantom 260px sidebar column + `.match-s… | [chi tiết](docs/fix-log/2026-08-07-todo-52-tournament-match-layout-dead-space.md) |

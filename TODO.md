@@ -157,7 +157,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#51.** Quy tắc bump `?v=N` trong CLAUDE.md bỏ sót cross-module import — `tournaments.js` load `lobby.js` 2 lần, mở 2 kết nối socket.io — [chi tiết](docs/todo/B51-cache-bust-quy-tac-bo-sot-cross-module-import.md)
 
 ### Nguồn: báo cáo người dùng kèm ảnh chụp thật — xác nhận #49/#50 hoạt động đúng nhưng UX tổng thể vẫn kém (2026-08-07)
-- **#52.** Trang trận đấu giải đấu (`tournament-match.html`) UX kém dù bàn cờ đã to hơn — mất cân bằng bố cục, khoảng trắng chết lớn, cả PC lẫn Mobile — [chi tiết](docs/todo/B52-trang-tran-dau-giai-dau-ux-kem-du-bang-co-da-to-mat-can-bang.md)
+- ✅ **#52.** Trang trận đấu giải đấu (`tournament-match.html`) UX kém dù bàn cờ đã to hơn — mất cân bằng bố cục, khoảng trắng chết lớn, cả PC lẫn Mobile — [chi tiết](docs/todo/B52-trang-tran-dau-giai-dau-ux-kem-du-bang-co-da-to-mat-can-bang.md)
 
 ### Nguồn: báo cáo người dùng — "Organizer cannot set race-to-margin or sub-game" (2026-08-07)
 - ✅ **#53.** Modal "Tạo giải đấu" thiếu hẳn UI để chọn series mode (race-to-margin/số ván cố định) — backend đã hỗ trợ đầy đủ nhưng frontend chưa có input nào — [chi tiết](docs/todo/B53-modal-tao-giai-dau-thieu-ui-chon-series-mode.md)
@@ -165,6 +165,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng — 2 vấn đề UX trận đấu/điều hướng giải đấu (2026-08-07)
 - ✅ **#54.** "Quay lại danh sách giải đấu" từ trang chi tiết giải đấu luôn về tab "Bàn chơi" thay vì tab "Giải đấu" — [chi tiết](docs/todo/B54-quay-lai-tu-chi-tiet-giai-dau-ve-lobby-mat-tab-giai-dau.md)
 - **#55.** Trận đấu giải đấu không áp dụng/đồng bộ click mode từ Cài đặt — khác hành vi với phòng chơi thường — [chi tiết](docs/todo/B55-tran-dau-giai-dau-khong-ap-dung-dong-bo-click-mode-tu-settings.md)
+
+### Nguồn: phát hiện phụ khi làm #52 (2026-08-07)
+- **#56.** Mobile: nội dung tab (Nước đi/Trò chuyện/Khán giả) co về ~0 chiều cao ở `tournament-match.html`; nghi vấn `tournament.html` cùng lỗi `.lobby-layout` phantom sidebar 260px — [chi tiết](docs/todo/B56-tournament-match-mobile-tab-content-collapse-va-lobby-layout.md)
 
 ---
 
