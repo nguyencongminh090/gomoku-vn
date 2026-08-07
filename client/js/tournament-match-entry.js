@@ -1,6 +1,6 @@
-import './i18n.js?v=67';
-import './ui-mode.js?v=67';
-import './settings-panel.js?v=67';
-import './socket-client.js?v=67';
-import './board.js?v=67';
-import './tournament-match.js?v=67';
+import './i18n.js?v=68';
+import './ui-mode.js?v=68';
+import './settings-panel.js?v=68';
+import './socket-client.js?v=68';
+import './board.js?v=68';
+import './tournament-match.js?v=68';

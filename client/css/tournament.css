@@ -146,8 +146,25 @@
   border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 4px;
 }
 
+/* TODO.md #52: .lobby-layout's 2nd column (260px, lobby.css) is reserved for
+   .lobby-sidebar, which this page never renders — left as dead space on the
+   right without this override. index.html/tournament.html DO render a real
+   sidebar so the base .lobby-layout rule must stay untouched for them; this
+   modifier only applies here. */
+.lobby-layout--single { grid-template-columns: 1fr; max-width: 1400px; }
+
 /* ── Match-play screen ────────────────────────────────────────────────── */
-.match-shell { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
+/* align-items: stretch (grid default) — was `start`, which let the aside's
+   .ui-core cap out at max-height:480px regardless of how tall the board
+   column actually rendered, leaving a large empty gap under the panel
+   (TODO.md #52). Stretch makes the aside match .match-board-wrap's real
+   rendered height (clocks + board-area-shell + actions) every time, the same
+   synced-height relationship room.css's .room grid gives .board-area-shell/
+   .panel-right-shell — without hardcoding a calc(100vh - Npx) here, which
+   would need to account for this page's taller/variable header chrome
+   (back-link + detail-header + swap2-banner-slot) above .match-shell that
+   room.html doesn't have above .room. */
+.match-shell { display: grid; grid-template-columns: 1fr clamp(320px, 28vw, 420px); gap: 20px; align-items: stretch; }
 /* Synced to room.css's 768px mobile-bleed breakpoint for .board-area-shell/
    .board-area (shared, unscoped classes room.css also styles) — a higher
    threshold here left a 769-900px gap where .match-shell had already gone
@@ -191,11 +208,21 @@
    .panel-right, which is what actually supplies the flex-column + bounded
    height the tab-switching CSS in room.css (.tab-content { flex:1 }) needs
    to do anything — .match-shell's aside doesn't have that ancestor, so give
-   the ported tabs their own bounded, scrollable box here instead. */
-.match-shell .ui-core { display: flex; flex-direction: column; max-height: 480px; }
+   the ported tabs their own bounded box here instead: height:100% of the
+   now grid-stretched .ui-shell (TODO.md #52 — was a hardcoded max-height:480px
+   that ignored how tall the board column actually rendered). */
+.match-shell .ui-core { display: flex; flex-direction: column; height: 100%; }
 .match-shell #tab-moves .move-list { max-height: none; flex: 1; }
 .match-shell .chat-panel,
 .match-shell .users-panel { max-height: 100%; }
+
+@media (max-width: 768px) {
+  /* Grid stretch only makes sense with 2 columns sharing a row; single-column
+     mobile stacks board then aside in separate rows, so let the aside size to
+     its own content instead of matching the board's height (which room.css
+     also resets to `auto` on mobile for .board-area-shell). */
+  .match-shell .ui-core { height: auto; max-height: 480px; }
+}
 
 .swap2-banner {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
