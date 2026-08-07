@@ -461,21 +461,30 @@ btnResign.addEventListener('click', () => {
  *   series tied 1-1 after 2 games) — pass this to show the series' own
  *   outcome instead of defaulting to `result.winner`.
  */
+// Phosphor icon (this app's icon font everywhere else — see topnav/action-banner/
+// pairing-card — not raw emoji) for a win/lose/draw/spectator outcome.
+function outcomeIconClass(isDraw, isWin, isSpectator) {
+  if (isDraw) return 'ph-handshake';
+  if (isSpectator) return 'ph-flag-checkered';
+  return isWin ? 'ph-trophy' : 'ph-smiley-sad';
+}
+
 function showResultOverlay(result, seriesOverride) {
   if (!result) return;
   const mp = myPlayer();
-  let icon = '🏁', title, sub = '';
+  let iconClass = 'ph-flag-checkered', title, sub = '';
 
   const isDraw = seriesOverride ? seriesOverride.isDraw : result.winner === 'draw';
   const winnerUserId = seriesOverride ? seriesOverride.winnerUserId : result.winner;
 
   if (isDraw) {
-    icon = '🤝'; title = t('tmatch.result_draw');
+    iconClass = outcomeIconClass(true); title = t('tmatch.result_draw');
   } else if (mp && winnerUserId === userInfo.userId) {
-    icon = '🏆'; title = t('tmatch.result_you_won');
+    iconClass = outcomeIconClass(false, true); title = t('tmatch.result_you_won');
   } else if (mp) {
-    icon = '😔'; title = t('tmatch.result_you_lost');
+    iconClass = outcomeIconClass(false, false); title = t('tmatch.result_you_lost');
   } else {
+    iconClass = outcomeIconClass(false, false, true);
     const winnerP = gameState.players.find((p) => p.userId === winnerUserId);
     title = t('tmatch.result_winner', { name: winnerP ? winnerP.displayName : '—' });
   }
@@ -483,7 +492,7 @@ function showResultOverlay(result, seriesOverride) {
   else if (result.reason === 'timeout') sub = t('tmatch.reason_timeout');
   else if (result.reason === 'board_full') sub = t('tmatch.reason_board_full');
 
-  document.getElementById('match-result-icon').textContent = icon;
+  document.getElementById('match-result-icon').className = `match-result-card__icon ph-bold ${iconClass}`;
   document.getElementById('match-result-title').textContent = title;
   document.getElementById('match-result-sub').textContent = sub;
   resultOverlay.classList.add('visible');
@@ -495,17 +504,19 @@ const seriesTransitionOverlay = document.getElementById('series-transition-overl
 
 function showSeriesTransition(result) {
   const mp = myPlayer();
-  let title;
+  let title, iconClass;
   if (result.winner === 'draw') {
-    title = t('tmatch.result_draw');
+    iconClass = outcomeIconClass(true); title = t('tmatch.result_draw');
   } else if (mp && result.winner === userInfo.userId) {
-    title = t('tmatch.result_you_won');
+    iconClass = outcomeIconClass(false, true); title = t('tmatch.result_you_won');
   } else if (mp) {
-    title = t('tmatch.result_you_lost');
+    iconClass = outcomeIconClass(false, false); title = t('tmatch.result_you_lost');
   } else {
+    iconClass = outcomeIconClass(false, false, true);
     const winnerP = gameState ? gameState.players.find((p) => p.userId === result.winner) : null;
     title = t('tmatch.result_winner', { name: winnerP ? winnerP.displayName : '—' });
   }
+  document.getElementById('series-transition-icon').className = `match-result-card__icon ph-bold ${iconClass}`;
   document.getElementById('series-transition-title').textContent = title;
 
   const sub = (seriesInfo && seriesInfo.scores)
