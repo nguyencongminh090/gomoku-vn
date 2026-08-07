@@ -162,6 +162,7 @@
   margin: 0 auto;
   padding-inline: clamp(6px, 2.5vw, 16px);
   padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .match-clocks { display: flex; gap: 12px; width: 100%; max-width: 480px; margin-bottom: 16px; }
