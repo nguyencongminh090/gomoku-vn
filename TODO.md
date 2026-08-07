@@ -179,6 +179,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - **#59.** Organizer huỷ giải đấu bất cứ lúc nào — [chi tiết](docs/todo/B59-to-chuc-huy-giai-dau-bat-cu-luc-nao.md)
 - **#60.** Khách (visitor) xem trận đấu giải đấu — qua "Live Matches Browser" mới (yêu cầu xem trận đã hoạt động sẵn, phần mới là bảng khám phá) — [chi tiết](docs/todo/B60-khach-xem-tran-dau-giai-dau-qua-live-matches-browser.md)
 
+### Nguồn: review nhanh UI desktop theo yêu cầu người dùng (2026-08-07)
+- **#61.** Trận đấu giải đấu (PC): khối `.match-clocks` nằm quá sát/thiếu khoảng cách dọc với dòng `#match-meta` phía trên — [chi tiết](docs/todo/B61-match-clocks-qua-sat-detail-header-meta-tournament-match-pc.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
