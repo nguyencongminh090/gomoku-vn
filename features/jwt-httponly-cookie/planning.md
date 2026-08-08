@@ -212,6 +212,93 @@ hồi được) mà (a) không chạm tới** — nhưng nó biến task này t�
 tầng phiên", vượt xa phạm vi #68 ban đầu. Nếu người dùng thấy khả năng thu hồi là quan trọng, nên
 tách thành mục riêng thay vì nhồi vào #68.
 
+### Q7 phụ lục — làm theo (b) có khả thi với repo này không? (khảo sát 2026-08-08)
+
+Câu hỏi của người dùng: *"Could we implement mechanics as big tech did?"* — **Có, và rẻ hơn thông
+thường**, vì bốn điều kiện thuận lợi có sẵn trong repo. Nhưng có đúng một rủi ro thật cần đo trước.
+
+**Vì sao rẻ hơn ở đây:**
+
+1. **Không cần dựng Redis — SQLite đã chạy sẵn và *đồng bộ*.** Lý do các hướng dẫn BFF luôn kèm
+   Redis/DynamoDB là vì phải tra phiên trên mỗi request mà không được chặn event loop. `better-sqlite3`
+   (`server/db/database.js:14,25`) là **in-process, đồng bộ** — một `SELECT` theo khoá chính là lời gọi
+   hàm sub-millisecond, không `await`, không thêm dịch vụ, không thêm điểm hỏng. Phần hạ tầng đắt nhất
+   của mẫu BFF vốn đã có.
+2. **Đã có sẵn khái niệm "session registry", chỉ là chưa bền vững.**
+   `sessions` Map (`server/socket/state.js:59`) ánh xạ `userId` → socket đang sống, và
+   `SocketHandler.js:119-126` dùng nó để ép **một thiết bị một tài khoản** (`session:kicked`). Nghĩa
+   là mô hình phiên *đã* tồn tại về mặt khái niệm — nó chỉ nằm trong RAM, một tiến trình, và **đá
+   socket chứ không thu hồi chứng chỉ**. Chuyển sang (b) là làm cho thứ đang có trở nên thật, không
+   phải phát minh khái niệm mới.
+3. **Schema đã có sẵn khuôn mẫu "guest không có bản ghi user".** Guest mang id `guest_<uuid8>` và
+   **không bao giờ** được ghi vào bảng `users` (`auth.js:221`). Bảng `sessions` vì thế **không được**
+   `REFERENCES users(id)` — nhưng đây là bài toán schema đã giải hai lần rồi:
+   `games.black_player_id` ("null for guests") và `tournament_players` (khoá chính là `entry_id`,
+   `player_id` nullable). Bảng phiên đi theo đúng khuôn đó: khoá chính là `id` phiên, `user_id`
+   nullable, kèm `display_name` + `is_guest`.
+4. **Đã có sẵn cơ chế migration schema tại chỗ.** `database.js:39,48` dùng `PRAGMA table_info(...)`
+   để thêm cột cho DB cũ mà không cần công cụ migration — thêm một bảng qua `CREATE TABLE IF NOT
+   EXISTS` trong `schema.sql` là thao tác đã có tiền lệ, DB hiện có của người dùng không việc gì.
+
+**Phác thảo (chưa code):**
+
+```sql
+-- server/db/schema.sql — CỐ Ý không REFERENCES users(id): guest không có bản ghi user,
+-- cùng khuôn với games.black_player_id / tournament_players.player_id.
+CREATE TABLE IF NOT EXISTS sessions (
+  id            TEXT PRIMARY KEY,   -- 256-bit ngẫu nhiên (crypto.randomBytes(32).toString('base64url')) — MỜ, không phải JWT
+  user_id       TEXT,               -- null với guest
+  display_name  TEXT NOT NULL,
+  is_guest      INTEGER NOT NULL DEFAULT 0,
+  created_at    TEXT NOT NULL,
+  last_seen_at  TEXT NOT NULL,
+  expires_at    TEXT NOT NULL,      -- 7 ngày / 24h, giữ nguyên chính sách hiện tại
+  revoked_at    TEXT                -- non-null = đã thu hồi (đăng xuất, bị đá, đổi mật khẩu)
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+```
+
+- Cookie chứa **đúng `sessions.id`** — không ký, không payload, không có gì để giải mã. `jsonwebtoken`
+  biến mất khỏi đường xác thực (vẫn có thể giữ cho mục đích khác, nhưng auth thì không dùng nữa).
+- `verifySocketToken` → tra phiên: `SELECT` theo id, kiểm `revoked_at IS NULL AND expires_at > now`,
+  gán `socket.user` từ hàng đó. **Danh tính lấy từ DB, không từ chứng chỉ do client cầm** — đây chính
+  là điểm khác biệt cốt lõi của mẫu big-tech.
+- `session:kicked` trở thành **thu hồi thật**: đặt `revoked_at` cho phiên cũ *rồi mới* ngắt socket.
+  Hôm nay bị đá xong kết nối lại là vào tiếp; sau đổi thì không.
+- Mở đường (không bắt buộc làm ngay) cho: "đăng xuất mọi thiết bị", đổi mật khẩu là huỷ mọi phiên,
+  danh sách phiên đang hoạt động.
+
+**Rủi ro thật, phải đo trước khi chốt — không được bỏ qua:**
+
+- **Mỗi lần bắt tay socket = một lần đọc SQLite đồng bộ, tức là *chặn event loop*.** Bình thường
+  không sao (sub-ms), nhưng repo này có lịch sử đo tải rõ ràng: `docs/stress-test-report.md` §10 và
+  `TODO.md` #28/#29 đo tới **6000 kết nối đồng thời**, và chính vì burst đó mà `transports` được đổi
+  sang websocket-first. Một `SELECT` đồng bộ nhân với burst 6000 kết nối là thứ **phải đo**, không
+  phải suy đoán — đúng tinh thần quy tắc "Root-cause diagnosis" trong `CLAUDE.md` (đo ở điều kiện
+  giống production, không chỉ ở dev).
+- Giảm nhẹ nếu số đo xấu: **cache phiên trong RAM, DB là lớp bền vững** (đọc DB chỉ khi cache miss)
+  — vẫn thu hồi được ngay vì thu hồi ghi cả hai nơi. Nhưng chỉ làm khi số đo đòi hỏi, không làm sẵn.
+- **Cần một tác vụ dọn phiên hết hạn** (hôm nay JWT tự hết hạn, không cần dọn gì). Đơn giản: xoá
+  `expires_at < now` lúc khởi động + định kỳ.
+
+**Kết luận Q7:** khả thi và phù hợp repo. Nhưng cần nói rõ để người dùng chốt: đây **không còn là
+#68 nữa**. #68 hỏi "token nằm ở đâu"; (b) trả lời "phiên được quản lý thế nào". Khuyến nghị nếu
+chọn (b): **tách thành mục `TODO.md` riêng** (vd. "Phiên phía server + thu hồi được"), và làm #68
+theo phương án (a) trước hoặc gộp luôn — xem ba lựa chọn ở cuối tài liệu này.
+
+### Ba lựa chọn phạm vi, để người dùng chốt
+
+| | Phạm vi | Được gì | Chi phí |
+|---|---|---|---|
+| **A. Chỉ #68 (a)** | Cookie đựng JWT + kiểm `Origin` | Hết XSS-trộm-token; đúng chuẩn OWASP | ~10 file, 2 tầng, không thêm bảng DB |
+| **B. #68 (a) rồi mục mới (b)** | Làm A trước, phiên phía server sau | Như A, rồi thêm thu hồi thật; mỗi bước kiểm chứng được riêng | Hai đợt, phải migrate hai lần |
+| **C. Nhảy thẳng (b)** | Cookie mờ + bảng `sessions` ngay | Đúng mẫu big-tech ngay, chỉ migrate một lần | Lớn nhất; phải đo tải bắt tay trước |
+
+→ Khuyến nghị **B**: A xoá bỏ đúng rủi ro mà `network_security_audit.md` nêu, có thể chứng minh
+xong trong một đợt; (b) là bài toán khác (thu hồi) xứng đáng có mục theo dõi riêng và phép đo tải
+riêng. **C** chỉ nên chọn nếu người dùng muốn tránh migrate hai lần và chấp nhận một đợt lớn.
+
 ## Trình tự triển khai (chỉ thực hiện sau khi Q1-Q7 được chốt)
 
 1. **Server — nền tảng cookie.** Thêm helper `setAuthCookie(res, token, maxAge)` / `clearAuthCookie(res)`
