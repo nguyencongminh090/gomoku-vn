@@ -66,4 +66,48 @@ thẳng. Audit tìm thấy các điểm lệch cụ thể sau, xếp theo mức 
 
 ## Trạng thái
 
-Chưa làm.
+✅ ĐÃ XONG (2026-08-08, branch `fix/button-style-inconsistency` trên `dev`).
+
+**Quyết định đã xác nhận với người dùng trước khi làm** (qua AskUserQuestion):
+- `--c-danger` → gộp về `--c-error`/`--c-error-bg` đã có sẵn (không định nghĩa `--c-danger` mới).
+- `.btn-kick` màu hồng hardcode → coi là không chủ ý, đổi sang `--c-error`/`--c-error-bg`.
+- Bug `:active` (mục 7) → thêm `!important` vào rule cục bộ từng component (không sửa rule toàn cục).
+
+**Đã làm theo đúng thứ tự ưu tiên 1 → 7:**
+1. Xoá hết hex xanh lá cũ (`#48875f`/`#2c7a4b`/`#3a7050`) trong `game.css`
+   (`.game-info__turn--mine`, `.swap2-choice .btn-game`, `.btn-focus`,
+   `.room--focus #chat-input-wrapper button`) → dùng `var(--c-brand)`/`var(--c-brand-dark)`.
+2. Gộp `--c-danger`/`--c-danger-bg` → `--c-error`/`--c-error-bg` trong `tournament.css`, `lobby.css`,
+   `tournament.html` (giữ nguyên `tournament-detail-mockup.html` — file đông lạnh theo quy tắc
+   cache-busting).
+3. Đồng bộ nút gửi chat focus-mode (`game.css`) với bản thường (`room.css`): cùng
+   `border-radius: var(--radius)`, `var(--c-brand)`, hover/active transition giống hệt.
+4. `.btn-kick` (`room.css`): border/hover đổi từ hồng hardcode sang `var(--c-error)`, border-radius
+   `4px` → `var(--radius)`, xoá dòng `padding` trùng lặp (dead code).
+5. `.draw-prompt` + `.btn-draw-accept`/`.btn-draw-decline` (`game.css`): đổi bảng màu hardcode riêng
+   sang `var(--c-warning)`/`var(--c-warning-bg)`/`var(--c-ink)`/`var(--c-success)`/`var(--c-error)`.
+6. Box-shadow hardcode → `var(--shadow-sm)`/`var(--shadow)`: `.btn-primary` (login.css),
+   `.btn-focus` (game.css), `.btn-game--resign:hover` (game.css).
+7. Thêm `!important` vào ~13 rule `:active` cục bộ trên `<button>`/`.btn` bị rule toàn cục
+   `button:not(:disabled):active { transform: scale(0.97) !important; }` (main.css:449) đè chết —
+   `.password-toggle`, `.btn` (login.css), `.btn-game`, `.room--focus #chat-input-wrapper button`,
+   `.btn-focus` (game.css), `.btn-create`, `.btn-secondary`, `.btn-join`, `.modal__close`,
+   `.modal__actions .btn-confirm` (lobby.css), `.btn-slot`, `.chat-input button`, `.btn-kick`
+   (room.css).
+8. Cosmetic (border-radius/disabled-state/font-weight tiers): **bỏ qua** — mục ưu tiên thấp nhất
+   theo chính tài liệu này ("làm sau cùng nếu còn thời gian"), không làm trong lượt này.
+
+**Phát sinh ngoài phạm vi, tách ra #71:** lúc verify bằng Playwright thật (không chỉ đọc code),
+phát hiện `.room--focus > #chat-input-wrapper` dùng combinator con trực tiếp (`>`) trong khi
+`#chat-input-wrapper` lồng sâu hơn — sửa combinator đó (CSS-only, đã xác nhận với người dùng) nhưng
+verify tiếp thì lộ ra bug sâu hơn: `.room--focus .panel-right-shell { display: none !important; }`
+ẩn cả tổ tiên chứa `#chat-input-wrapper`, mà `position:fixed` không thoát được tổ tiên `display:none`
+— toàn bộ ô chat focus-mode không vẽ ra được dù CSS đúng. Bug này cần đổi HTML/JS (ngoài phạm vi
+CSS-only của #70) → tách thành `TODO.md #71`, không sửa trong lượt này.
+
+**Verify:** chạy server thật với DB tạm (theo quy tắc Playwright/e2e trong `CLAUDE.md`), Playwright
+guest-login → tạo phòng → chụp màn hình `login.html`, `index.html` (+ modal tạo phòng), `room.html`
+(+ tab Khán giả với `.btn-kick`), cả light lẫn dark mode. Không có console error. Xác nhận màu
+brand indigo, `--c-error` áp đúng theo theme; `.btn-kick` chuyển từ hồng sang đỏ chuẩn. Không chạy
+được `npm test` liên quan vì đây là CSS-only, `client/` không có test runner tự động (theo đúng ghi
+chú "Bug-fix workflow" trong `CLAUDE.md`).

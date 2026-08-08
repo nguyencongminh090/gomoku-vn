@@ -10,14 +10,14 @@
 // window.EscapeUtils/window.ProfanityFilter never getting set). room.html
 // loads all four as plain classic <script> tags instead, before this module
 // script, so the global attachment always runs as ordinary script execution.
-import './session.js?v=80';
-import './i18n.js?v=80';
-import './ui-mode.js?v=80';
-import './settings-panel.js?v=80';
-import './socket-client.js?v=80';
-import './board.js?v=80';
-import './room.js?v=80';
-import './chat-ui.js?v=80';
-import './room-ui.js?v=80';
-import './game-ui.js?v=80';
-import './room-socket.js?v=80';
+import './session.js?v=81';
+import './i18n.js?v=81';
+import './ui-mode.js?v=81';
+import './settings-panel.js?v=81';
+import './socket-client.js?v=81';
+import './board.js?v=81';
+import './room.js?v=81';
+import './chat-ui.js?v=81';
+import './room-ui.js?v=81';
+import './game-ui.js?v=81';
+import './room-socket.js?v=81';

@@ -97,7 +97,7 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 20px var(--c-brand-light);
 }
-.btn-create:active { transform: translateY(0) scale(0.96); }
+.btn-create:active { transform: translateY(0) scale(0.96) !important; }
 .btn-create i { 
   display: flex;
   align-items: center;
@@ -137,7 +137,7 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
-.btn-secondary:active { transform: translateY(0) scale(0.96); }
+.btn-secondary:active { transform: translateY(0) scale(0.96) !important; }
 .btn-secondary i { width: 18px; height: 18px; flex-shrink: 0; }
 
 /* ── Room List ────────────────────────────────────────────────────────────── */
@@ -355,7 +355,7 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 16px var(--c-brand-light);
 }
-.btn-join:active { transform: translateY(0) scale(0.96); }
+.btn-join:active { transform: translateY(0) scale(0.96) !important; }
 
 /* ── Create Room Modal ────────────────────────────────────────────────────── */
 .modal-overlay {
@@ -426,7 +426,7 @@
   transition: all var(--duration-fast) var(--ease-spring);
 }
 .modal__close:hover { background: var(--c-border); color: var(--c-ink); transform: scale(1.05); }
-.modal__close:active { transform: scale(0.95); }
+.modal__close:active { transform: scale(0.95) !important; }
 
 .modal__body { 
   padding: 32px; 
@@ -636,7 +636,7 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 24px var(--c-brand-light);
 }
-.modal__actions .btn-confirm:active { transform: translateY(0) scale(0.96); }
+.modal__actions .btn-confirm:active { transform: translateY(0) scale(0.96) !important; }
 
 /* ── Online Users Sidebar Panel ──────────────────────────────────────────── */
 .online-panel {
@@ -1025,7 +1025,7 @@
   display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
   color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px;
 }
-.live-matches-panel__header .ph { color: var(--c-danger, #dc2626); font-size: 15px; }
+.live-matches-panel__header .ph { color: var(--c-error, #EF4444); font-size: 15px; }
 .live-matches-panel__list { display: flex; flex-direction: column; gap: 8px; }
 .live-match-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;

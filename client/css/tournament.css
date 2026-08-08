@@ -105,7 +105,7 @@
 }
 .state-pill--negotiating { background: var(--c-surface-2); color: var(--c-ink-2); }
 .state-pill--reported { background: var(--c-warning-bg); color: var(--c-warning); }
-.state-pill--disputed { background: var(--c-danger-bg, #fee2e2); color: var(--c-danger, #dc2626); }
+.state-pill--disputed { background: var(--c-error-bg, #FEF2F2); color: var(--c-error, #EF4444); }
 .state-pill--ready { background: var(--c-success-bg); color: var(--c-success); }
 .state-pill--inprogress { background: var(--c-brand-light); color: var(--c-brand); }
 .state-pill--completed { background: var(--c-surface-2); color: var(--c-ink-3); }
@@ -126,7 +126,7 @@
   letter-spacing: 0.03em; display: flex; align-items: center; gap: 4px; margin-right: 4px;
 }
 .organizer-tools .btn-secondary { padding: 6px 10px; font-size: 12px; }
-.organizer-tools .btn-secondary--danger { color: var(--c-danger, #dc2626); border-color: var(--c-danger, #dc2626); }
+.organizer-tools .btn-secondary--danger { color: var(--c-error, #EF4444); border-color: var(--c-error, #EF4444); }
 
 /* ── Bracket (Double Elimination) ─────────────────────────────────────── */
 .bracket-wrap { overflow-x: auto; padding: 20px 16px; }
@@ -171,7 +171,7 @@
 .match-clock.is-active { border-color: var(--c-brand); background: var(--c-brand-light); }
 .match-clock__name { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; }
 .match-clock__time { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink); }
-.match-clock__time.is-low { color: var(--c-danger, #dc2626); }
+.match-clock__time.is-low { color: var(--c-error, #EF4444); }
 .match-stone-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 .match-stone-dot--black { background: #1a1a1a; }
 .match-stone-dot--white { background: #f5f5f5; border: 1px solid #999; }
