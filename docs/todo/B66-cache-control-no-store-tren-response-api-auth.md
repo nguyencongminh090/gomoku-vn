@@ -28,4 +28,14 @@ có nguy cơ bị lưu lại ngoài ý muốn.
 
 ## Trạng thái
 
-Chưa làm.
+✅ ĐÃ XONG.
+
+- Thêm middleware `router.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); })`
+  ngay sau `authLimiter` trong `server/routes/auth.js` — áp cho cả 3 route (`/register`, `/login`,
+  `/guest`), cả nhánh thành công lẫn lỗi (middleware chạy trước handler nên set header trước khi bất
+  kỳ response nào được gửi). Không đổi Helmet global config, không đụng `games.js` — đúng theo
+  `instruction.md`.
+- Test mới: `server/tests/auth-cache-control.test.js` — dựng server thật (theo pattern của
+  `auth-error-codes.test.js`), gọi qua `fetch`, assert header `cache-control: no-store` trên response
+  thật của 5 case: register thành công, register lỗi (400), login thành công, login lỗi (401), guest.
+  Toàn bộ 855 test hiện có (`npm test`) vẫn pass.

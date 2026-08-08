@@ -26,6 +26,12 @@ const router  = express.Router();
 
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 router.use(authLimiter);
+
+// Responses here carry a fresh JWT — never let a proxy/browser cache them.
+router.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 const db      = require('../db/database');
 const config  = require('../config');
 const logger  = require('../utils/logger');
