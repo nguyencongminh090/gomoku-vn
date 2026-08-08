@@ -26,6 +26,7 @@ const gamesRouter    = require('./routes/games');
 const { verifySocketToken } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
+const sessionManager = require('./managers/SessionManager');
 const { db }         = require('./db/database');
 
 // ---------------------------------------------------------------------------
@@ -101,6 +102,11 @@ io.use(verifySocketToken);
 
 // Wire up event handlers
 socketHandler.init(io);
+
+// Expired session rows do not clean themselves up the way an expired JWT did
+// (TODO.md #68) — sweep once at startup, then hourly.
+sessionManager.sweepExpiredSessions();
+setInterval(() => sessionManager.sweepExpiredSessions(), config.SESSION_SWEEP_INTERVAL_MS).unref();
 
 // ---------------------------------------------------------------------------
 // Start

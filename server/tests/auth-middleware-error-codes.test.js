@@ -19,8 +19,16 @@ jest.mock('../utils/logger', () => ({
   error: jest.fn(),
 }));
 
-const jwt = require('jsonwebtoken');
-const config = require('../config');
+jest.mock('../db/database', () => ({
+  createSession: jest.fn(),
+  getSessionById: jest.fn(),
+  revokeSession: jest.fn(() => ({ changes: 1 })),
+  revokeSessionsForUser: jest.fn(() => ({ changes: 0 })),
+  touchSession: jest.fn(),
+  deleteExpiredSessions: jest.fn(() => ({ changes: 0 })),
+}));
+
+const db = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { errorHandler, AppError } = require('../middleware/errorHandler');
 
@@ -31,8 +39,18 @@ function mockRes() {
   return res;
 }
 
+const hourFromNow = () => new Date(Date.now() + 3600e3).toISOString();
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  db.getSessionById.mockReturnValue(undefined);
+});
+
 describe('verifyToken — error codes', () => {
-  test('missing token → 401 AUTH_REQUIRED', () => {
+  // Since TODO.md #68 this middleware reads a session cookie rather than a
+  // Bearer JWT. The #45 contract it was written for is unchanged: every 401
+  // still carries a language-neutral `code` next to the Vietnamese `error`.
+  test('missing cookie → 401 AUTH_REQUIRED', () => {
     const req = { headers: {} };
     const res = mockRes();
     const next = jest.fn();
@@ -46,22 +64,27 @@ describe('verifyToken — error codes', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  test('invalid/expired token → 401 AUTH_INVALID_TOKEN', () => {
-    const req = { headers: { authorization: 'Bearer not-a-real-token' } };
+  test('unknown/revoked/expired session → 401 AUTH_REQUIRED, indistinguishable from missing', () => {
+    // Deliberately the SAME code as the missing-cookie case: telling "this id
+    // was revoked" apart from "this id never existed" would confirm to a
+    // caller that a guessed session id had once been real.
+    const req = { headers: { cookie: 'gvn_session=no-such-session' } };
     const res = mockRes();
     const next = jest.fn();
 
     verifyToken(req, res, next);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    const body = res.json.mock.calls[0][0];
-    expect(body.code).toBe('AUTH_INVALID_TOKEN');
+    expect(res.json.mock.calls[0][0].code).toBe('AUTH_REQUIRED');
     expect(next).not.toHaveBeenCalled();
   });
 
-  test('valid token → next() called, req.user set, no error response', () => {
-    const token = jwt.sign({ userId: 'u1' }, config.JWT_SECRET, { expiresIn: '1h' });
-    const req = { headers: { authorization: `Bearer ${token}` } };
+  test('valid session → next() called, req.user set, no error response', () => {
+    db.getSessionById.mockReturnValue({
+      id: 'sid-1', user_id: 'u1', display_name: 'Alice', is_guest: 0,
+      expires_at: hourFromNow(), revoked_at: null,
+    });
+    const req = { headers: { cookie: 'gvn_session=sid-1' } };
     const res = mockRes();
     const next = jest.fn();
 

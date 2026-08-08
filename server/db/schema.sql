@@ -13,6 +13,42 @@ CREATE TABLE IF NOT EXISTS users (
   last_login_at TEXT                   -- ISO 8601 timestamp, null until first login
 );
 
+-- Sessions — server-side session store (TODO.md #68, features/jwt-httponly-cookie/)
+--
+-- The browser holds ONLY `sessions.id` (a 256-bit opaque random string) in an
+-- HttpOnly cookie. Identity comes from this row, never from a credential the
+-- client carries — which is what makes revocation possible at all. A signed
+-- JWT cannot be invalidated before it expires; a row can.
+--
+-- DELIBERATELY no `REFERENCES users(id)` on user_id: guests get id
+-- `guest_<uuid8>` and are NEVER written to `users` (see routes/auth.js POST
+-- /guest), so a foreign key would kill every guest session the moment
+-- `PRAGMA foreign_keys = ON` (database.js) took effect. Same shape already
+-- used twice in this schema: games.black_player_id ("null for guests") and
+-- tournament_players (entry_id is the PK, player_id nullable).
+--
+-- Because there is no FK, user_id is populated for guests too (their
+-- `guest_xxxx` id) rather than left null — the rest of the app keys players
+-- by a non-null userId everywhere. `is_guest`, not nullness, marks a guest.
+-- The column stays nullable only so a future non-player session type has
+-- somewhere to go.
+CREATE TABLE IF NOT EXISTS sessions (
+  id            TEXT PRIMARY KEY,       -- opaque 256-bit random, base64url — SECRET, cookie-only
+  user_id       TEXT,                   -- null for guests (see note above — no FK on purpose)
+  display_name  TEXT NOT NULL,
+  is_guest      INTEGER NOT NULL DEFAULT 0,  -- 0 or 1
+  created_at    TEXT NOT NULL,          -- ISO 8601 timestamp
+  last_seen_at  TEXT NOT NULL,          -- ISO 8601 timestamp, refreshed on socket handshake
+  expires_at    TEXT NOT NULL,          -- ISO 8601 timestamp — 7d (user) / 24h (guest)
+  revoked_at    TEXT                    -- ISO 8601 timestamp; non-null = revoked (logout, kicked)
+);
+
+-- Lookup by user is how "revoke every session for this account" works
+-- (session:kicked, and a future "log out everywhere"); expires_at drives the
+-- periodic sweep of dead rows.
+CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
 -- Games — completed game records (written ONLY on game end)
 CREATE TABLE IF NOT EXISTS games (
   id                 TEXT PRIMARY KEY,

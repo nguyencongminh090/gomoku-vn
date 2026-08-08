@@ -106,3 +106,4 @@
 | 2026-08-08 09:10 | Follow-up TODO.md #65: recheck độc lập phát hiện `dist/` production build không được rebuild (còn u… | [chi tiết](docs/fix-log/2026-08-08-todo-65-csp-production-build-gaps.md) |
 | 2026-08-08 09:43 | TODO.md #66: `POST /api/auth/{login,register,guest}` trả JWT nhưng không set `Cache-Control` — thêm … | [chi tiết](docs/fix-log/2026-08-08-todo-66-auth-cache-control-no-store.md) |
 | 2026-08-08 10:00 | TODO.md #69: self-hosted Manrope fonts (dropped fonts.googleapis.com/gstatic.com + dead Inter link)… | [chi tiết](docs/fix-log/2026-08-08-self-host-google-fonts-and-audio.md) |
+| 2026-08-08 12:55 | TODO.md #68: JWT trong `localStorage` → **phiên mờ phía server** + `HttpOnly` cookie (theo chuẩn OW… | [chi tiết](docs/fix-log/2026-08-08-todo-68-server-side-sessions-httponly-cookie.md) |

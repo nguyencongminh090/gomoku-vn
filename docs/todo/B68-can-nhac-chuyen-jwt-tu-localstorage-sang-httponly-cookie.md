@@ -26,7 +26,41 @@ rủi ro nếu tương lai có lỗ hổng XSS tự thân (vd. một field user-
 
 ## Trạng thái
 
-**Đang chờ người dùng chốt** — thư mục thảo luận đã viết xong (2026-08-08):
+**✅ ĐÃ XONG** (2026-08-08) — nhánh `feature/jwt-httponly-cookie` (từ `dev`).
+Fix log: [`docs/fix-log/2026-08-08-todo-68-server-side-sessions-httponly-cookie.md`](../fix-log/2026-08-08-todo-68-server-side-sessions-httponly-cookie.md).
+
+### Đã làm
+
+- Bảng `sessions` (id mờ 256-bit từ `crypto.randomBytes`, **không** khoá ngoại tới `users` vì
+  guest), `managers/SessionManager.js`, `utils/session-cookie.js` (một chỗ duy nhất định nghĩa
+  cookie; `Secure` suy từ `req.secure`).
+- 3 route `/api/auth/*` cấp phiên qua `Set-Cookie` và **bỏ `token` khỏi body**; thêm
+  `POST /logout` (thu hồi thật) và `POST /upgrade-session` (migration, giữ nguyên hạn còn lại).
+- `verifySocketToken`: kiểm `Origin` (CSWSH) → tra phiên từ cookie; fallback JWT **chỉ khi không có
+  cookie** (cookie chết không rơi xuống fallback).
+- `session:kicked` ghi `revoked_at` trước khi ngắt socket → đá phiên giờ là **thu hồi thật**.
+- Client: `session.js` mới thay **hai bản `getUserInfo()` trùng lặp**; identity đổi sang getter
+  sống ở `RoomState` + 4 trang; logout thành network call có xử lý thất bại; `?v=79` → `?v=80`.
+
+### Kiểm chứng
+
+- **Jest 931/931 xanh** (thêm 76 test mới: vòng đời phiên, thu hồi, bảng quyết định socket auth,
+  thuộc tính cookie, `Origin`, migration). Test phiên chạy trên SQLite thật nạp từ `schema.sql` với
+  `foreign_keys = ON` — chính là thứ bắt được lỗi khoá ngoại làm chết phiên guest.
+- **Trình duyệt 26/26** (db thật đã dời ra và khôi phục, md5 khớp). Phép thử quyết định:
+  `document.cookie` **rỗng**, không còn credential nào trong `localStorage`.
+- **Đo tải:** burst 6000 kết nối, bảng 100k hàng → chặn event loop tổng 58,6 ms (p50 7,9 µs).
+  **Không thêm cache RAM.**
+
+### Còn nợ
+
+Xoá fallback JWT trong `verifySocketToken` + endpoint `/upgrade-session` + `migrateLegacyToken()`
+sau **≥7 ngày** kể từ khi deploy (bằng `JWT_EXPIRY` dài nhất) — `planning.md` bước 12. Để lại vĩnh
+viễn sẽ vô hiệu hoá chính mục tiêu của #68.
+
+---
+
+*(lịch sử) Thảo luận trước khi code — thư mục đã viết xong 2026-08-08:*
 [`features/jwt-httponly-cookie/`](../../features/jwt-httponly-cookie/planning.md). Chưa code dòng
 nào, đúng theo `instruction.md` B68 (*"Đừng bắt đầu sửa code trước khi `planning.md` được người dùng
 xác nhận"*).

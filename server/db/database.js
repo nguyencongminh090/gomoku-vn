@@ -107,6 +107,78 @@ function updateLastLogin(id, loggedInAt) {
 }
 
 // ---------------------------------------------------------------------------
+// Session helpers (TODO.md #68 — server-side sessions)
+//
+// These are the persistence half of managers/SessionManager.js; all policy
+// (id generation, expiry/revocation checks) lives there, not here. Nothing in
+// this section validates a session — getSessionById returns the raw row,
+// including expired and revoked ones, precisely so the caller can tell those
+// two cases apart from "no such session".
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert a new session row.
+ * @param {{ id, userId, displayName, isGuest, createdAt, expiresAt }} session
+ */
+function createSession({ id, userId, displayName, isGuest, createdAt, expiresAt }) {
+  return db.prepare(
+    `INSERT INTO sessions (id, user_id, display_name, is_guest, created_at, last_seen_at, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, userId || null, displayName, isGuest ? 1 : 0, createdAt, createdAt, expiresAt);
+}
+
+/**
+ * Fetch a session row by id — raw, WITHOUT any expiry/revocation filtering.
+ * @returns {{ id, user_id, display_name, is_guest, created_at, last_seen_at, expires_at, revoked_at } | undefined}
+ */
+function getSessionById(id) {
+  return db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
+}
+
+/**
+ * Mark one session revoked. Idempotent: an already-revoked session keeps its
+ * ORIGINAL revoked_at, so re-revoking never rewrites when it first happened.
+ */
+function revokeSession(id, revokedAt) {
+  return db.prepare('UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')
+    .run(revokedAt, id);
+}
+
+/**
+ * Revoke every live session belonging to one user. This is what makes
+ * session:kicked an actual eviction rather than a disconnect, and what a
+ * future "log out everywhere" / "password changed" flow would call.
+ *
+ * Guests are excluded by construction: their user_id is null, and `= ?` never
+ * matches null in SQL — so this can never mass-revoke unrelated guests.
+ *
+ * @param {string} [exceptId] session to spare (the one just created)
+ */
+function revokeSessionsForUser(userId, revokedAt, exceptId) {
+  if (!userId) return { changes: 0 };
+  return exceptId
+    ? db.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND id != ? AND revoked_at IS NULL')
+      .run(revokedAt, userId, exceptId)
+    : db.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL')
+      .run(revokedAt, userId);
+}
+
+/** Refresh last_seen_at (observability only — never affects validity). */
+function touchSession(id, seenAt) {
+  return db.prepare('UPDATE sessions SET last_seen_at = ? WHERE id = ?').run(seenAt, id);
+}
+
+/**
+ * Delete sessions that expired before `before`. Revoked-but-unexpired rows are
+ * deliberately KEPT until their natural expiry — deleting a revoked session
+ * early would make its id look merely "unknown" again, which is the same
+ * outcome but loses the audit trail of why it stopped working.
+ */
+function deleteExpiredSessions(before) {
+  return db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(before);
+}
+
+// ---------------------------------------------------------------------------
 // Game helpers
 // ---------------------------------------------------------------------------
 
@@ -535,6 +607,12 @@ module.exports = {
   getUserByUsername,
   getUserById,
   updateLastLogin,
+  createSession,
+  getSessionById,
+  revokeSession,
+  revokeSessionsForUser,
+  touchSession,
+  deleteExpiredSessions,
   saveGame,
   getPlayerHistory,
   getRecentGames,

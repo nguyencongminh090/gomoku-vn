@@ -432,6 +432,7 @@ const TRANSLATIONS = {
     'gset.guest_hint': 'Bạn đang chơi với tư cách khách. Tạo tài khoản để lưu lịch sử đấu.',
     'gset.btn_create_account': 'Tạo tài khoản',
     'gset.btn_logout': 'Đăng xuất',
+    'gset.btn_logout_failed': 'Đăng xuất thất bại — thử lại',
     // ── System chat messages (socket) ──────────────────────────
     'sys.room_player_left_forfeit': '{name} rời phòng (xử thua).',
     'sys.room_player_left': '{name} đã rời phòng.',
@@ -995,6 +996,7 @@ const TRANSLATIONS = {
     'gset.guest_hint': 'You are playing as a guest. Create an account to save your match history.',
     'gset.btn_create_account': 'Create account',
     'gset.btn_logout': 'Log out',
+    'gset.btn_logout_failed': 'Log out failed — try again',
     // ── System chat messages (socket) ───────────────────────────
     'sys.room_player_left_forfeit': '{name} left the room (forfeit).',
     'sys.room_player_left': '{name} left the room.',

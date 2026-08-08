@@ -17,6 +17,7 @@
 
 const logger             = require('../utils/logger');
 const roomManager        = require('../managers/RoomManager');
+const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
 const {
   timerMap,
@@ -120,6 +121,14 @@ function init(io) {
     if (staleSocket) {
       const isOwnReconnect = !!(socket.handshake && socket.handshake.auth && socket.handshake.auth.reconnect);
       if (!isOwnReconnect) {
+        // Revoke BEFORE disconnecting (TODO.md #68). Disconnecting a socket
+        // only closes a transport — with server-side sessions the evicted
+        // device still holds a working session cookie, so without this it
+        // would simply reconnect and win the account straight back, and
+        // "signed in on another device" would be a message rather than an
+        // eviction. Scoped to this user's OTHER sessions; the one that just
+        // connected is spared by exceptSessionId.
+        sessionManager.revokeOtherSessionsForUser(user.userId, socket.sessionId);
         staleSocket.emit('session:kicked', { message: 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác.', code: 'SESSION_KICKED' });
       }
       staleSocket.disconnect(true);
@@ -152,6 +161,18 @@ function init(io) {
         }
       });
     };
+
+    // Hand the client its own identity (TODO.md #68). The client used to read
+    // this by base64-decoding the JWT it held; with an HttpOnly credential
+    // there is nothing for it to decode, so the server — which is the real
+    // source of truth anyway — states who this socket belongs to. Emitted
+    // before any room state below, so the UI knows which player it is by the
+    // time a room:joined arrives.
+    socket.emit('session:me', {
+      userId: user.userId,
+      displayName: user.displayName,
+      isGuest: !!user.isGuest,
+    });
 
     // Track this connection as the user's active session (see eviction above)
     const wasOnline = sessions.has(user.userId);

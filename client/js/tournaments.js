@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client } from './lobby.js?v=79';
+import { client } from './lobby.js?v=80';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -56,7 +56,21 @@ const liveMatchesListEl  = document.getElementById('live-matches-list');
 
 const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);
 
-const currentUser = client.getUserInfo();
+// Live view of the session identity (TODO.md #68).
+//
+// Deliberately an object of getters rather than a snapshot: identity now
+// arrives from the server as `session:me` shortly AFTER this module runs, so
+// a value captured here would be null on the first load following the
+// migration and would never update. Every `currentUser.userId` / `.displayName`
+// read below therefore stays live, with no re-assignment plumbing. Use
+// `currentUser.signedIn` where the old code tested the snapshot for truthiness —
+// this object itself is always truthy.
+const currentUser = {
+  get signedIn()    { return !!window.GvnSession.getUser(); },
+  get userId()      { const u = window.GvnSession.getUser(); return u ? u.userId : null; },
+  get displayName() { const u = window.GvnSession.getUser(); return u ? u.displayName : ''; },
+  get isGuest()     { const u = window.GvnSession.getUser(); return !!(u && u.isGuest); },
+};
 
 let tournamentMap = new Map(); // tournamentId → summary (see TournamentManager.listTournaments)
 let activeStatusFilter = 'all'; // 'all' | 'draft' | 'active' | 'completed'
@@ -267,8 +281,8 @@ function renderTournamentList() {
 }
 
 function renderCard(tournament, index) {
-  const isOrganizer = !!currentUser && tournament.organizerId === currentUser.userId;
-  const isRegistered = !!currentUser && (tournament.entryUserIds || []).includes(currentUser.userId);
+  const isOrganizer = currentUser.signedIn && tournament.organizerId === currentUser.userId;
+  const isRegistered = currentUser.signedIn && (tournament.entryUserIds || []).includes(currentUser.userId);
   const badge = statusBadge(tournament.status);
   const animDelay = (index * 0.05).toFixed(2);
 

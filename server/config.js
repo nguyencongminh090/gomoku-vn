@@ -107,9 +107,25 @@ if (process.env.NODE_ENV !== 'test' && JWT_SECRET === 'gomokuvn-dev-secret-chang
     "  JWT_SECRET=$(node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\") npm start"
   );
 }
+// JWT is no longer the session credential (TODO.md #68 — sessions now live in
+// the `sessions` table, browser holds an opaque id). These two remain ONLY for
+// the time-boxed migration path: POST /api/auth/upgrade-session still verifies
+// a legacy token issued before the switch, and verifySocketToken still accepts
+// one during the transition window. Delete both, and the jsonwebtoken
+// dependency on the auth path, once the window closes (see
+// features/jwt-httponly-cookie/planning.md step 12).
 const JWT_EXPIRY  = '7d';
 const JWT_GUEST_EXPIRY = '24h';
 const BCRYPT_ROUNDS = 12;
+
+// --- Sessions (TODO.md #68) ---
+// Same lifetimes the JWTs had, so the switch changes the mechanism without
+// silently changing how long people stay signed in.
+const SESSION_TTL_MS       = 7 * 24 * 60 * 60 * 1000;  // 7 days  — registered users
+const SESSION_GUEST_TTL_MS = 24 * 60 * 60 * 1000;      // 24 hours — guests
+const SESSION_COOKIE_NAME  = 'gvn_session';
+// Expired rows do not disappear on their own the way an expired JWT does.
+const SESSION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;      // hourly
 
 // --- Guest name generation ---
 // All words 3-5 letters so combined name is 4-8 letters total.
@@ -193,6 +209,10 @@ module.exports = {
   JWT_SECRET,
   JWT_EXPIRY,
   JWT_GUEST_EXPIRY,
+  SESSION_TTL_MS,
+  SESSION_GUEST_TTL_MS,
+  SESSION_COOKIE_NAME,
+  SESSION_SWEEP_INTERVAL_MS,
   BCRYPT_ROUNDS,
   GUEST_NAME_ADJECTIVES,
   GUEST_NAME_NOUNS,

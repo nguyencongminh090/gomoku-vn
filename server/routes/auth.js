@@ -3,17 +3,26 @@
 /**
  * auth.js — REST authentication routes.
  *
- * POST /api/auth/register  — create account, return JWT
- * POST /api/auth/login     — verify credentials, return JWT
- * POST /api/auth/guest     — generate ephemeral guest session, return JWT
+ * POST /api/auth/register — create account, start a session
+ * POST /api/auth/login    — verify credentials, start a session
+ * POST /api/auth/guest    — ephemeral guest identity, start a session
+ * POST /api/auth/logout   — revoke the session, clear the cookie
+ * POST /api/auth/upgrade-session — trade a pre-#68 JWT for a session (migration)
+ *
+ * Since TODO.md #68 these routes no longer hand a credential to JavaScript.
+ * The session id goes out ONLY in a Set-Cookie header (HttpOnly), and the
+ * response body carries just non-secret profile fields for the UI to show.
+ * Anything that puts the session id back in the body would undo the whole
+ * change, so a test pins that it never appears there.
  *
  * Manual test checklist:
- *   [ ] Register with valid username → returns token
+ *   [ ] Register with valid username → Set-Cookie, no credential in the body
  *   [ ] Register with duplicate username → 409 + Vietnamese error
  *   [ ] Register with short username (<3) → 400
- *   [ ] Login with correct password → returns token
+ *   [ ] Login with correct password → Set-Cookie
  *   [ ] Login with wrong password → 401 + Vietnamese error
- *   [ ] Guest → returns token with isGuest: true and a 4-8 letter displayName
+ *   [ ] Guest → isGuest: true and a 4-8 letter displayName
+ *   [ ] Logout → session unusable afterwards, not merely cookie-cleared
  */
 
 const express = require('express');
@@ -27,7 +36,9 @@ const router  = express.Router();
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
 router.use(authLimiter);
 
-// Responses here carry a fresh JWT — never let a proxy/browser cache them.
+// Responses here carry a fresh session cookie — never let a proxy/browser
+// cache them. Kept from TODO.md #66; it matters MORE now, since a cached
+// response would replay a Set-Cookie rather than just a body value.
 router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
@@ -35,6 +46,8 @@ router.use((req, res, next) => {
 const db      = require('../db/database');
 const config  = require('../config');
 const logger  = require('../utils/logger');
+const sessionManager = require('../managers/SessionManager');
+const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader } = require('../utils/session-cookie');
 
 // A fixed, real bcrypt hash compared against when the submitted username does
 // not exist, so that branch costs the same as a wrong-password branch instead
@@ -87,9 +100,25 @@ function isValidPassword(p) {
   return typeof p === 'string' && p.length >= 6;
 }
 
-/** Sign a JWT for a user (registered or guest). */
-function signToken(payload, expiry) {
-  return jwt.sign(payload, config.JWT_SECRET, { expiresIn: expiry });
+/**
+ * Start a session and attach its cookie, then return the body the client gets.
+ *
+ * The returned object is deliberately the ONLY thing these routes send back:
+ * non-secret profile fields the UI needs to render, and nothing that could be
+ * replayed as a credential. `session.id` stays in the Set-Cookie header.
+ */
+function startSession(req, res, { userId, displayName, isGuest }, opts) {
+  const session = sessionManager.createSession({ userId, displayName, isGuest }, opts);
+  setSessionCookie(req, res, session.id, session.ttlMs);
+  return {
+    user: {
+      userId,
+      displayName,
+      isGuest,
+      expiresAt: session.expiresAt,
+    },
+    displayName, // kept for compatibility with the existing login.js contract
+  };
 }
 
 /** Generate a random guest display name (4-8 letters). */
@@ -149,13 +178,14 @@ router.post('/register', async (req, res, next) => {
       createdAt: now,
     });
 
-    const token = signToken(
-      { userId, username, displayName: displayName.trim(), isGuest: false },
-      config.JWT_EXPIRY
-    );
+    const body = startSession(req, res, {
+      userId,
+      displayName: displayName.trim(),
+      isGuest: false,
+    });
 
     logger.info(`[Auth] Registered user: ${username} (${userId})`);
-    return res.status(201).json({ token, displayName: displayName.trim() });
+    return res.status(201).json(body);
 
   } catch (err) {
     logger.error('[Auth] Register error:', err);
@@ -193,18 +223,14 @@ router.post('/login', async (req, res, next) => {
 
     db.updateLastLogin(user.id, new Date().toISOString());
 
-    const token = signToken(
-      {
-        userId: user.id,
-        username: user.username,
-        displayName: user.display_name,
-        isGuest: false,
-      },
-      config.JWT_EXPIRY
-    );
+    const body = startSession(req, res, {
+      userId: user.id,
+      displayName: user.display_name,
+      isGuest: false,
+    });
 
     logger.info(`[Auth] Login: ${username}`);
-    return res.json({ token, displayName: user.display_name });
+    return res.json(body);
 
   } catch (err) {
     logger.error('[Auth] Login error:', err);
@@ -221,21 +247,98 @@ router.post('/guest', (req, res, next) => {
     const guestId      = 'guest_' + uuidv4().slice(0, 8);
     const displayName  = generateGuestName();
 
-    const token = signToken(
-      {
-        userId: guestId,
-        username: guestId,
-        displayName,
-        isGuest: true,
-      },
-      config.JWT_GUEST_EXPIRY
-    );
+    const body = startSession(req, res, {
+      userId: guestId,
+      displayName,
+      isGuest: true,
+    });
 
     logger.info(`[Auth] Guest session: ${displayName} (${guestId})`);
-    return res.json({ token, displayName });
+    return res.json(body);
 
   } catch (err) {
     logger.error('[Auth] Guest error:', err);
+    return next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/logout
+//
+// New with TODO.md #68. Logging out used to be a pure client-side
+// localStorage.removeItem, which cannot work once the credential is HttpOnly —
+// and, more importantly, never actually ended anything server-side.
+//
+// Order matters: revoke the row FIRST, then clear the cookie. Revocation is
+// what ends the session; clearing the cookie only stops the browser resending
+// a dead id. Doing it the other way round would leave a live session behind if
+// the response never reached the client.
+// ---------------------------------------------------------------------------
+router.post('/logout', (req, res, next) => {
+  try {
+    const sessionId = readSessionIdFromHeader(req.headers.cookie);
+    if (sessionId) sessionManager.revokeSession(sessionId);
+    clearSessionCookie(req, res);
+    // 204 whether or not a session was found: "log me out" is satisfied either
+    // way, and reporting which ids exist would leak session-id validity.
+    return res.status(204).end();
+  } catch (err) {
+    logger.error('[Auth] Logout error:', err);
+    return next(err);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /api/auth/upgrade-session  — TIME-BOXED MIGRATION, delete after the
+// transition window (features/jwt-httponly-cookie/planning.md step 12).
+//
+// When #68 shipped, users were holding JWTs in localStorage valid for up to 7
+// more days (24h for guests). Switching the server to sessions-only would have
+// signed all of them out at once — and a guest signed out is a guest whose
+// identity is gone for good, since there is no account to log back into.
+//
+// This trades such a token for a real session. It deliberately preserves the
+// old token's REMAINING lifetime instead of granting a fresh TTL: a migration
+// should move a session, not silently extend everyone's.
+// ---------------------------------------------------------------------------
+router.post('/upgrade-session', (req, res, next) => {
+  try {
+    const token = req.body && req.body.token;
+    if (!token || typeof token !== 'string') {
+      return res.status(400).json({ error: 'Thiếu token.', code: 'MISSING_TOKEN' });
+    }
+
+    let payload;
+    try {
+      payload = jwt.verify(token, config.JWT_SECRET);
+    } catch {
+      // Expired or forged — nothing to migrate. Client falls back to login.
+      return res.status(401).json({
+        error: 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.',
+        code: 'AUTH_INVALID_TOKEN',
+      });
+    }
+
+    // `exp` is in seconds. Anything already past is rejected above by verify(),
+    // so this is always positive here, but clamp anyway rather than trust it.
+    const remainingMs = Math.max(0, (payload.exp * 1000) - Date.now());
+    if (remainingMs === 0) {
+      return res.status(401).json({
+        error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
+        code: 'AUTH_INVALID_TOKEN',
+      });
+    }
+
+    const body = startSession(req, res, {
+      userId: payload.userId,
+      displayName: payload.displayName,
+      isGuest: !!payload.isGuest,
+    }, { ttlMs: remainingMs });
+
+    logger.info(`[Auth] Upgraded legacy token → session: ${payload.displayName} (${payload.userId})`);
+    return res.json(body);
+  } catch (err) {
+    logger.error('[Auth] Upgrade-session error:', err);
     return next(err);
   }
 });

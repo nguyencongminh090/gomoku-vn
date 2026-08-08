@@ -16,33 +16,38 @@
  */
 
 (function(global) {
-  const TOKEN_KEY = 'gvn_token';
   const CLICK_MODE_KEY = 'gomoku_click_mode';
 
   function T(key, vars) {
     return typeof global.t === 'function' ? global.t(key, vars) : key;
   }
 
-  // ── User info (decoded client-side from the stored JWT; no network call) ──
+  // ── User info ────────────────────────────────────────────────────────────
+  // This used to be a second, near-identical copy of socket-client.js's JWT
+  // decode. Both are gone (TODO.md #68): the credential is an HttpOnly cookie
+  // now, so there is nothing to decode, and both call sites read the one
+  // shared cache in session.js instead. Keeping two copies of identity logic
+  // was the single most likely way for this change to go wrong — fix one,
+  // forget the other.
   function getUserInfo() {
-    const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return null;
-    try {
-      let payload = token.split('.')[1];
-      payload = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const decoded = decodeURIComponent(
-        atob(payload).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-      );
-      return JSON.parse(decoded);
-    } catch (e) {
-      return null;
-    }
+    return global.GvnSession.getUser();
   }
 
-  function logout() {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('gvn_display_name');
-    window.location.replace('login.html');
+  // Logout is a network call now (the session lives server-side), so it can
+  // fail. On failure the user is still signed in and must be told so, rather
+  // than being sent to the login page as though it had worked.
+  async function logout(ev) {
+    const btn = ev && ev.currentTarget;
+    if (btn) btn.disabled = true;
+    const ok = await global.GvnSession.logout();
+    if (ok) {
+      global.location.replace('login.html');
+      return;
+    }
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = T('gset.btn_logout_failed');
+    }
   }
 
   // ── Theme ───────────────────────────────────────────────────────────────
