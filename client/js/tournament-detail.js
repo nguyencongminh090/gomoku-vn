@@ -734,13 +734,23 @@ function crossTableCell(lookup, rowEntryId, colEntryId) {
 
 function renderCrossTable() {
   const me = myEntry();
-  const ranked = computeStandings(); // rank/match-points/Buchholz/SB — unchanged, appended as trailing columns
+  const ranked = computeStandings(); // rank/match-points/Buchholz/SB — unchanged, only its ORDER is now consumed for row/col layout
   const rankById = new Map(ranked.map((r) => [r.id, r]));
   const lookup = buildPairingLookup();
-  const entries = tournament.entries;
+  // Row/col order follows current rank (leader first), not registration order —
+  // both axes reuse the same `entries` array so the grid stays symmetric ([i,j]/[j,i]).
+  const entriesByIdLocal = new Map(tournament.entries.map((e) => [e.entryId, e]));
+  const entries = ranked.map((r) => entriesByIdLocal.get(r.id)).filter(Boolean);
   const partialNotice = tournament.status === 'cancelled'
     ? `<div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
+
+  // Highlight Vô địch/Á quân only once the tournament is over (rank is still
+  // provisional while `active`) — see TODO.md #75. Ties at rank 1 all count
+  // as champions; runner-up is the first rank-2 row after any rank-1 ties.
+  const isCompleted = tournament.status === 'completed';
+  const championIds = isCompleted ? new Set(ranked.filter((r) => r.rank === 1).map((r) => r.id)) : new Set();
+  const runnerUpIds = isCompleted ? new Set(ranked.filter((r) => r.rank === 2).map((r) => r.id)) : new Set();
 
   standingsContainer.innerHTML = `
     ${partialNotice}
@@ -757,9 +767,19 @@ function renderCrossTable() {
         <tbody>
           ${entries.map((rowEntry) => {
             const r = rankById.get(rowEntry.entryId);
+            const isChampion = championIds.has(rowEntry.entryId);
+            const isRunnerUp = !isChampion && runnerUpIds.has(rowEntry.entryId);
+            const rowCls = [
+              me && rowEntry.entryId === me.entryId ? 'is-me' : '',
+              isChampion ? 'is-champion' : '',
+              isRunnerUp ? 'is-runner-up' : '',
+            ].filter(Boolean).join(' ');
+            const trophyIcon = isChampion
+              ? `<i class="ph ph-trophy cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"></i>`
+              : (isRunnerUp ? `<i class="ph ph-trophy cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"></i>` : '');
             return `
-              <tr class="${me && rowEntry.entryId === me.entryId ? 'is-me' : ''}">
-                <th class="cross-table__name-col">${escapeHtml(entryName(rowEntry.entryId))}</th>
+              <tr class="${rowCls}">
+                <th class="cross-table__name-col">${trophyIcon}${escapeHtml(entryName(rowEntry.entryId))}</th>
                 ${entries.map((colEntry) => `<td>${crossTableCell(lookup, rowEntry.entryId, colEntry.entryId)}</td>`).join('')}
                 <td class="cross-table__total">${r ? fmtScore(r.score) : '0'}</td>
                 <td class="cross-table__total">${r ? r.rank : '—'}</td>
