@@ -1,3 +1,3 @@
-import './session.js?v=81';
-import './i18n.js?v=81';
-import './login.js?v=81';
+import './session.js?v=82';
+import './i18n.js?v=82';
+import './login.js?v=82';
