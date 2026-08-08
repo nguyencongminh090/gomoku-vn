@@ -312,7 +312,7 @@ html, body {
 }
 
 .password-toggle:active {
-  transform: translateY(-50%) scale(0.92);
+  transform: translateY(-50%) scale(0.92) !important;
 }
 
 .password-toggle svg {
@@ -351,7 +351,7 @@ html, body {
   transition: transform 0.4s var(--ease-spring), background 0.3s ease;
 }
 
-.btn:active { transform: scale(0.97); }
+.btn:active { transform: scale(0.97) !important; }
 
 .btn-text {
   flex: 1;
@@ -379,7 +379,7 @@ html, body {
   background: var(--c-ink);
   color: #FFFFFF;
   margin-top: 12px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover {
   background: var(--c-brand);

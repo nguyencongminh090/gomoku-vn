@@ -212,7 +212,10 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#69.** Tự host Google Fonts + audio assets — giảm rò rỉ IP người dùng cho bên thứ ba `[Model: Sonnet 5]` — [chi tiết](docs/todo/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
 
 ### Nguồn: yêu cầu người dùng — audit style nút bấm toàn client (2026-08-08)
-- **#70.** Style nút bấm (button) không nhất quán toàn `client/` — màu xanh lá cũ còn sót, `--c-danger` chưa định nghĩa, nút chat focus-mode khác bản thường, `.btn-kick`/`.draw-prompt` hardcode màu, rule `:active` cục bộ bị `!important` toàn cục đè `[Model: Sonnet 5]` — [chi tiết](docs/todo/B70-button-style-khong-nhat-quan-toan-client.md)
+- ✅ **#70.** Style nút bấm (button) không nhất quán toàn `client/` — màu xanh lá cũ còn sót, `--c-danger` chưa định nghĩa, nút chat focus-mode khác bản thường, `.btn-kick`/`.draw-prompt` hardcode màu, rule `:active` cục bộ bị `!important` toàn cục đè `[Model: Sonnet 5]` — [chi tiết](docs/todo/B70-button-style-khong-nhat-quan-toan-client.md)
+
+### Nguồn: phát hiện trong lúc verify #70 bằng browser thật (2026-08-08)
+- **#71.** Ô nhập chat ở focus-mode (`#chat-input-wrapper`) hoàn toàn không hiện ra được — `.room--focus .panel-right-shell { display: none !important; }` ẩn cả cây cha chứa nó, mà `position: fixed` không "thoát" được một tổ tiên `display:none` (phần tử bị loại khỏi render tree hoàn toàn). Sửa cần dời `#chat-input-wrapper` ra khỏi `.panel-right-shell` trong HTML hoặc JS re-parent lúc bật focus-mode — vượt phạm vi CSS-only của #70 nên tách riêng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B71-chat-input-focus-mode-khong-hien-do-display-none-to-tien.md)
 
 ---
 

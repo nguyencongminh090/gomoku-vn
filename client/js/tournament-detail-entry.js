@@ -1,9 +1,9 @@
 // escape-utils.js is a UMD module — see the comment in room-entry.js for why
 // it loads as a classic <script> tag in tournament.html instead of an ES
 // import here.
-import './session.js?v=80';
-import './i18n.js?v=80';
-import './ui-mode.js?v=80';
-import './settings-panel.js?v=80';
-import './socket-client.js?v=80';
-import './tournament-detail.js?v=80';
+import './session.js?v=81';
+import './i18n.js?v=81';
+import './ui-mode.js?v=81';
+import './settings-panel.js?v=81';
+import './socket-client.js?v=81';
+import './tournament-detail.js?v=81';
