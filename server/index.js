@@ -19,6 +19,7 @@ const { Server }   = require('socket.io');
 const path         = require('path');
 
 const config         = require('./config');
+const { cspDirectives } = require('./config/csp');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -44,10 +45,14 @@ const app = express();
 // or the per-IP room quota.
 app.set('trust proxy', 'loopback');
 
-// Security headers. CSP is left off for now — the client ships inline
-// <script>/style="" (theme/mode-init IIFEs, run before first paint) that
-// helmet's default CSP would block; see docs/fix-log.md for the verification.
-app.use(helmet({ contentSecurityPolicy: false }));
+// Security headers, CSP enforced (TODO.md #65 — was `contentSecurityPolicy:
+// false` because the client used to ship inline <script> IIFEs and a
+// non-pinned https://unpkg.com script; both are gone now, see
+// docs/fix-log.md). Directives live in ./config/csp.js so the policy itself
+// is unit-testable (server/tests/csp.test.js) without booting this server.
+app.use(helmet({
+  contentSecurityPolicy: { directives: cspDirectives },
+}));
 
 // Parse JSON bodies for REST endpoints
 app.use(express.json());

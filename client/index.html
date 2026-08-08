@@ -8,33 +8,19 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=77" />
-  <link rel="stylesheet" href="css/lobby.css?v=77" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=77" />
-  <script>
-    (function() {
-      var storedTheme = localStorage.getItem('theme');
-      var defaultTheme = storedTheme ? storedTheme : 'light';
-      document.documentElement.setAttribute('data-theme', defaultTheme);
-    })();
-  </script>
+  <link rel="stylesheet" href="css/main.css?v=78" />
+  <link rel="stylesheet" href="css/lobby.css?v=78" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=78" />
+  <script src="js/theme-preload.js?v=78"></script>
   <!-- Google Fonts: Manrope -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <script>
-    // UI mode (lite | default | pro) — applied before first paint on every page
-    // so mode-dependent layout is correct on first load, not just in the lobby.
-    (function() {
-      var m;
-      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
-      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'lite';
-      document.documentElement.setAttribute('data-ui-mode', mode);
-    })();
-  </script>
+
+  <script src="js/ui-mode-preload.js?v=78"></script>
   <!-- Phosphor Icons -->
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=78" />
+  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=78" />
 
 </head>
 <body>
@@ -494,17 +480,8 @@
 
 <!-- Socket.io CDN -->
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/index-entry.js?v=77"></script>
-<script>
-  // Auto-open the online panel on desktop sidebar (>= 900px)
-  (function() {
-    var body = document.getElementById('online-panel-body');
-    var toggle = document.getElementById('online-panel-toggle');
-    if (window.innerWidth >= 900 && body && toggle) {
-      body.classList.add('open');
-      toggle.classList.add('open');
-    }
-  })();
-</script>
+<script src="js/action-delegate.js?v=78"></script>
+<script type="module" src="js/index-entry.js?v=78"></script>
+<script src="js/online-panel-preload.js?v=78"></script>
 </body>
 </html>

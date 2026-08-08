@@ -172,7 +172,7 @@ function renderGameTable(games) {
         <td><strong>${escapeHtml(g.black_player_name)}</strong></td>
         <td>${escapeHtml(g.white_player_name)}</td>
         <td><span class="${resultClass}">${resultText}</span></td>
-        <td><button class="btn-replay" onclick="openReplay('${g.id}')" type="button">${t('history.btn_view')}</button></td>
+        <td><button class="btn-replay" data-action="openReplay" data-arg="${escapeAttr(g.id)}" type="button">${t('history.btn_view')}</button></td>
       </tr>
     `;
   }
@@ -184,15 +184,15 @@ function renderGameTable(games) {
 function renderPagination(p) {
   if (p.totalPages <= 1) { paginationEl.innerHTML = ''; return; }
 
-  let html = `<button ${p.page <= 1 ? 'disabled' : ''} onclick="loadGames(${p.page - 1})">‹</button>`;
+  let html = `<button ${p.page <= 1 ? 'disabled' : ''} data-action="loadGames" data-arg="${p.page - 1}" data-arg-type="number">‹</button>`;
   for (let i = 1; i <= p.totalPages; i++) {
     if (p.totalPages > 7 && Math.abs(i - p.page) > 2 && i !== 1 && i !== p.totalPages) {
       if (i === 2 || i === p.totalPages - 1) html += '<button disabled>…</button>';
       continue;
     }
-    html += `<button class="${i === p.page ? 'active' : ''}" onclick="loadGames(${i})">${i}</button>`;
+    html += `<button class="${i === p.page ? 'active' : ''}" data-action="loadGames" data-arg="${i}" data-arg-type="number">${i}</button>`;
   }
-  html += `<button ${p.page >= p.totalPages ? 'disabled' : ''} onclick="loadGames(${p.page + 1})">›</button>`;
+  html += `<button ${p.page >= p.totalPages ? 'disabled' : ''} data-action="loadGames" data-arg="${p.page + 1}" data-arg-type="number">›</button>`;
   paginationEl.innerHTML = html;
 }
 
@@ -560,6 +560,8 @@ function formatTime(isoStr) {
     return '—';
   }
 }
+
+const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);
 
 function escapeHtml(str) {
   const div = document.createElement('div');
