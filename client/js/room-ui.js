@@ -59,8 +59,7 @@
   // Escaping lives in escape-utils.js (a pure, Node-testable module imported by
   // room-entry.js before this file). These are thin aliases so the call sites
   // below read the same as before.
-  const escapeAttr     = (str) => global.EscapeUtils.escapeAttr(str);
-  const escapeJsString = (str) => global.EscapeUtils.escapeJsString(str);
+  const escapeAttr = (str) => global.EscapeUtils.escapeAttr(str);
 
   // ── Main render entry ─────────────────────────────────────────────────────
 
@@ -111,7 +110,7 @@
       const canSit = st.mySlot === null && st.roomData.state !== 'playing';
       contentEl.innerHTML = `
         <div class="slot-card__empty ${canSit ? 'slot-card__clickable' : ''}"
-             ${canSit ? `onclick="sitDown(${slotNum})"` : ''}
+             ${canSit ? `data-action="sitDown" data-arg="${slotNum}" data-arg-type="number"` : ''}
              title="${canSit ? t('room.click_to_sit') : ''}">
           #${slotNum}
         </div>
@@ -124,7 +123,7 @@
       ? '<span class="slot-card__role slot-card__role--host">Chủ phòng</span>'
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<span class="slot-card__stand" onclick="event.stopPropagation(); standUp();" title="Rời vị trí">✕</span>`
+      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí">✕</span>`
       : '';
 
     contentEl.innerHTML = `
@@ -477,7 +476,7 @@
     let html = '';
     for (const g of guests) {
       const kickBtn = (st.myRole === 'host' && g.userId !== st.myUser.userId && st.roomData.state !== 'playing')
-        ? `<button class="btn-kick" onclick="kickUser('${escapeAttr(escapeJsString(g.userId))}')">Mời ra</button>`
+        ? `<button class="btn-kick" data-action="kickUser" data-arg="${escapeAttr(g.userId)}">Mời ra</button>`
         : '';
       const hostBadge = g.role === 'host'
         ? ' <span class="slot-card__role slot-card__role--host">CP</span>'

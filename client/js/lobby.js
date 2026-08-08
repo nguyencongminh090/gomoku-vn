@@ -241,7 +241,7 @@ function renderRoomList(rooms) {
             ${ruleChip}
           </div>
         </div>
-        <button class="btn-join" onclick="joinRoom('${escapeAttr(escapeJsString(room.roomId))}')" type="button">
+        <button class="btn-join" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
           ${t('lobby.btn_join')}
         </button>
       </div>
@@ -539,5 +539,4 @@ function escapeHtml(str) {
 // Escaping lives in escape-utils.js (a pure, Node-testable module imported by
 // index-entry.js before this file). These are thin aliases so the call sites
 // below read the same as before.
-const escapeAttr     = (str) => globalThis.EscapeUtils.escapeAttr(str);
-const escapeJsString = (str) => globalThis.EscapeUtils.escapeJsString(str);
+const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);

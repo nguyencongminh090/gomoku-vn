@@ -8,28 +8,17 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="css/main.css?v=77" />
-  <link rel="stylesheet" href="css/lobby.css?v=77" />
-  <link rel="stylesheet" href="css/room.css?v=77" />
-  <link rel="stylesheet" href="css/game.css?v=77" />
-  <link rel="stylesheet" href="css/tournament.css?v=77" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=77" />
-  <script>
-    (function() {
-      var storedTheme = localStorage.getItem('theme');
-      document.documentElement.setAttribute('data-theme', storedTheme ? storedTheme : 'light');
-    })();
-  </script>
+  <link rel="stylesheet" href="css/main.css?v=78" />
+  <link rel="stylesheet" href="css/lobby.css?v=78" />
+  <link rel="stylesheet" href="css/room.css?v=78" />
+  <link rel="stylesheet" href="css/game.css?v=78" />
+  <link rel="stylesheet" href="css/tournament.css?v=78" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=78" />
+  <script src="js/theme-preload.js?v=78"></script>
   <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script>
-    (function() {
-      var m;
-      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
-      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'lite';
-      document.documentElement.setAttribute('data-ui-mode', mode);
-    })();
-  </script>
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <script src="js/ui-mode-preload.js?v=78"></script>
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=78" />
+  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=78" />
 </head>
 <body>
 
@@ -194,6 +183,6 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script type="module" src="js/tournament-match-entry.js?v=77"></script>
+<script type="module" src="js/tournament-match-entry.js?v=78"></script>
 </body>
 </html>

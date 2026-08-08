@@ -102,3 +102,4 @@
 | 2026-08-07 10:58 | TODO.md #57: tournament matches only had Đầu hàng (Resign) — added Cầu hoà (Draw) and Xin thêm giờ … | [chi tiết](docs/fix-log/2026-08-07-todo-57-tournament-match-draw-time-request.md) |
 | 2026-08-07 23:48 | TODO.md #61: `.match-clocks` quá sát `#match-meta` trên `tournament-match.html` (PC) — thêm `paddin… | [chi tiết](docs/fix-log/2026-08-07-todo-61-tournament-match-clocks-meta-spacing.md) |
 | 2026-08-08 08:27 | TODO.md #62: series check-in "Sẵn sàng" giữa các ván bắt quay lại trang giải đấu — chuyển check-in v… | [chi tiết](docs/fix-log/2026-08-08-todo-62-series-checkin-in-place.md) |
+| 2026-08-08 08:48 | TODO.md #65: CSP tắt hoàn toàn (`contentSecurityPolicy: false`) + script không pin từ unpkg.com đọc … | [chi tiết](docs/fix-log/2026-08-08-todo-65-csp-third-party-script.md) |
