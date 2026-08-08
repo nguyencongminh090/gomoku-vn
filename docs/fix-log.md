@@ -111,3 +111,4 @@
 | 2026-08-08 14:56 | TODO.md #72: User report "Display (Paper/Stone) auto get back" — CSP `scriptSrcAttr:'none'` (TODO.… | [chi tiết](docs/fix-log/2026-08-08-todo-72-room-settings-csp-onchange-blocked.md) |
 | 2026-08-08 15:12 | Fix #21 follow-up: stone-mode wall/brick colors — WCAG-solved warm-stone palette (mortar/dark/base/… | [chi tiết](docs/fix-log/2026-08-08-stone-mode-wall-brick-colors.md) |
 | 2026-08-08 15:25 | TODO.md #73: `.btn`/`.btn-confirm` had no unscoped base rule outside `.modal__actions` — tournamen… | [chi tiết](docs/fix-log/2026-08-08-todo-73-btn-confirm-missing-base-style.md) |
+| 2026-08-08 15:41 | TODO.md #74: tournament matches had no sound (missing `audio-manager.js` + no calls at all) and no… | [chi tiết](docs/fix-log/2026-08-08-todo-74-tournament-match-sound-display-mode.md) |
