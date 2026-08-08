@@ -15,14 +15,19 @@
 
 ## Cache-busting version bump
 
-All CSS and JS assets are cache-busted with a shared `?v=N` query string (see `client/*.html` `<link>`/`<script>` tags and the `?v=N` suffixes on ES-module `import` statements inside `client/js/index-entry.js`, `client/js/room-entry.js`, `client/js/login-entry.js`).
+All CSS and JS assets are cache-busted with a shared `?v=N` query string. This appears in two kinds of places, and **both must be covered by every bump** — a rule that only names one of them (as this section used to) will keep missing the other:
 
-**Whenever you modify any file under `client/css/` or `client/js/`, bump `?v=N` to `?v=N+1` everywhere it appears** — across all HTML files (`client/index.html`, `client/room.html`, `client/login.html`, `client/history.html`) and inside the module entry files' `import` statements. All occurrences must use the same new number; do not bump some files but not others, since a mismatched/partial bump reintroduces stale-cache bugs on mobile.
+- Every `client/*.html` file's `<link>`/`<script>` tags.
+- **Every ES-module `import '...?v=N'` statement inside every file in `client/js/*.js`** — not just the `*-entry.js` files (`index-entry.js`, `room-entry.js`, `login-entry.js`, `tournament-match-entry.js`, `tournament-detail-entry.js`). Non-entry modules can and do import each other directly with their own `?v=N`-suffixed specifier (e.g. `tournaments.js` importing `./lobby.js?v=N` to reuse its exported `client` instance) — the browser resolves each distinct query string as a **separate module instance**, so a stale `?v=` left on one such cross-import silently re-executes that module's top-level code a second time. This is exactly how a duplicate `SocketClient`/socket.io connection bug shipped twice (`docs/fix-log/2026-08-04-*` at `?v=61`, then again at `docs/fix-log/2026-08-06-tournaments-lobby-duplicate-module-import.md` at `?v=63`) — both times because the bump only touched the files explicitly named in this rule, and a lone hardcoded import elsewhere was invisible to it.
+- The two `*-mockup.html` files (`client/tournament-detail-mockup.html`, `client/tables-tournaments-mockup.html`) are the sole deliberate exception: they intentionally stay pinned to an old, frozen version per their own in-file comments (unshipped prototypes) — do not bump these, and do not let their presence mask a real mismatch elsewhere (see verification command below, which excludes them explicitly).
 
-Find the current version with:
+**Whenever you modify any file under `client/css/` or `client/js/`, bump `?v=N` to `?v=N+1` everywhere it appears**, across every location above. All occurrences must use the same new number; do not bump some files but not others, since a mismatched/partial bump reintroduces stale-cache bugs on mobile — or worse, a silent duplicate-module-execution bug like the one above, which has no visible symptom until it manifests as something unrelated-looking (e.g. a false "logged in on another device" kick).
+
+Find the current version — **and verify the bump is complete** — with:
 ```
-grep -rn "?v=" client/*.html client/js/*-entry.js
+grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup
 ```
+This must show exactly **one** distinct `?v=N` value across all matches. If it shows two or more, some file was missed — find it and fix it before considering the bump done. Do not rely on eyeballing individual files; run this command as the actual completion check every time.
 
 ## Bug-fix workflow: scope discipline and unit tests
 
@@ -46,6 +51,49 @@ When fixing a reported bug or issue:
 - **Merge to `main` only once the fix is verified** (tests green, matches the guidance in `instruction.md` for that item if any exists). Use a regular merge commit (not squash, not rebase) so the branch's commit stays traceable back to the fix.
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
 - This applies to actual code fixes. Doc-only updates (`TODO.md`/`docs/todo/*.md`, `instruction.md`/`docs/instruction/*.md`, `CLAUDE.md`, `docs/fix-log.md`/`docs/fix-log/*.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
+
+## Git workflow: `dev` branch for new features (as of 2026-08-04)
+
+Bugfixes keep using the `fix/<slug>` workflow above unchanged (short-lived branch off `main`, one commit, merge back to `main`). New feature work uses a separate, parallel structure so unrelated in-progress ideas never block each other:
+
+- **`dev` is the integration branch for new features**, branched off `main`. It sits ahead of `main` and is never force-pushed.
+- **Each new feature idea gets its own `feature/<short-kebab-slug>` branch, branched off `dev`** (not off `main`) — e.g. `feature/spectator-mode`. Multiple `feature/*` branches can be in flight at once; they don't need to merge together or in any particular order.
+- **A `feature/*` branch merges into `dev` only when that specific idea is working/ready.** Use a regular merge commit (not squash, not rebase), same as the `fix/*` convention. Other `feature/*` branches are unaffected by this — that's the point of keeping them separate.
+- **An abandoned or shelved idea's branch is just left alone or deleted** — since `dev` never saw it, nothing needs to be reverted or cleaned up elsewhere.
+- **`dev` merges into `main` periodically**, as a deliberate checkpoint (e.g. once a batch of features is stable and tested), not automatically on every feature merge. This keeps `main` deployable at all times.
+- **After a `feature/*` branch merges into `dev`, delete it** (`git branch -d feature/...`), same as the `fix/*` cleanup rule, unless told to keep it for further review.
+- New feature work discovered mid-conversation still follows the "New requirements/tasks: stack, don't perform directly" rule below — record it in `TODO.md`/`instruction.md` first unless the user explicitly asks to implement it now, at which point it starts life as a `feature/*` branch off `dev` per this rule.
+
+## `features/<slug>/`: pre-implementation feature discussion folders
+
+Before a new feature idea becomes tracked work in `TODO.md`/`instruction.md`, work it through a
+discussion folder at `features/<slug>/` (e.g. `features/tournament/`). This is a design-discussion
+stage, separate from and prior to the "stack, don't perform directly" tracked-work rule below.
+
+- **Every `features/<slug>/` folder has the same fixed structure** — don't omit or rename these:
+  - `user_story.md` — actors, user stories ("As a [actor], I want..., so that..."), rules, and any
+    hard architectural constraints.
+  - `diagram/uml_diagram/` — sequence diagrams (one `.md` file per diagram, e.g.
+    `sequence-<flow-name>.md`).
+  - `diagram/` — additional structure-and-behavior diagrams alongside `uml_diagram/` (e.g. state
+    diagrams, conceptual class diagrams) as `.md` files named for what they show, e.g.
+    `state-diagram-<name>.md`.
+  - `planning.md` — the open questions blocking implementation, plus the resolution/implementation
+    sequencing once they're answered.
+- **Diagrams are Mermaid fenced code blocks inside Markdown files**, not separate `.puml`,
+  `.drawio`, or image files — this keeps every diagram reviewable as a plain-text diff like the
+  rest of the repo's docs, and renders natively wherever the Markdown is viewed.
+- **Cross-link liberally.** `user_story.md`, the `diagram/` files, and `planning.md` should link to
+  each other (relative Markdown links) so a reader can navigate the whole discussion from any entry
+  point.
+- **A `features/<slug>/` folder is a discussion artifact, not tracked work.** It does not by itself
+  authorize implementation. Once the open questions in `planning.md` are resolved with the user,
+  formalize the feature into `docs/todo/<CODE>-<slug>.md` + `TODO.md` and
+  `docs/instruction/<CODE>-<slug>.md` + `instruction.md` per the "New requirements/tasks" rule
+  below, *before* writing any implementation code. `planning.md` should note this handoff as its
+  final step.
+- Doc-only, like the other tracking files — `features/<slug>/*.md` can be written/updated straight
+  on `main`, no `fix/`/`feature/` branch needed for the discussion docs themselves.
 
 ## New requirements/tasks: stack, don't perform directly
 
