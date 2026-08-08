@@ -39,27 +39,29 @@
 // Auth guard
 // ---------------------------------------------------------------------------
 (function authGuard() {
-  if (!localStorage.getItem('gvn_token')) {
-    window.location.replace('login.html');
-  }
+  // See lobby.js — optimistic only; the socket handshake is the real check.
+  window.GvnSession.requireAuth();
 })();
 
 // ---------------------------------------------------------------------------
 // Socket client — exposed globally so modules can emit without circular deps
 // ---------------------------------------------------------------------------
 window.RoomClient = new SocketClient();
-const myUser = window.RoomClient.getUserInfo();
-
-if (!myUser) {
-  window.location.replace('login.html');
-}
 
 // ---------------------------------------------------------------------------
 // Shared state singleton (read/written by all modules)
 // ---------------------------------------------------------------------------
 window.RoomState = {
-  // Socket / user
-  myUser,
+  // Socket / user.
+  //
+  // A live getter, not a value captured at load (TODO.md #68). Identity now
+  // arrives from the server via `session:me` shortly AFTER this object is
+  // built, so a snapshot taken here would be null on the first load after
+  // migration and stay null forever — every `st.myUser.userId` read in
+  // game-ui/room-ui/room-socket would then throw. Reading through to the
+  // session cache means those call sites see the identity as soon as it
+  // lands, with no re-assignment plumbing.
+  get myUser() { return window.GvnSession.getUser(); },
 
   // Room
   roomData:          null,   // latest room:joined / room:updated payload

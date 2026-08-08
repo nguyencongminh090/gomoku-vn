@@ -25,6 +25,15 @@ jest.mock('../db/database', () => ({
   getUserById: jest.fn(),
   createUser: jest.fn(),
   updateLastLogin: jest.fn(),
+  // Session helpers — the auth routes start a server-side session on success
+  // since TODO.md #68, so these must exist even for tests that only care
+  // about validation or headers.
+  createSession: jest.fn(),
+  getSessionById: jest.fn(),
+  revokeSession: jest.fn(() => ({ changes: 1 })),
+  revokeSessionsForUser: jest.fn(() => ({ changes: 0 })),
+  touchSession: jest.fn(),
+  deleteExpiredSessions: jest.fn(() => ({ changes: 0 })),
 }));
 
 jest.mock('../utils/logger', () => ({
@@ -139,7 +148,10 @@ describe('POST /api/auth/login — timing symmetry', () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.token).toBeTruthy();
+    // No credential in the body since TODO.md #68 — the session id goes out in
+    // a Set-Cookie header, and auth-session.test.js pins that it stays there.
+    expect(body.token).toBeUndefined();
+    expect(body.user.userId).toBe('user-1');
     expect(body.displayName).toBe('Alice');
     expect(db.updateLastLogin).toHaveBeenCalledTimes(1);
   });

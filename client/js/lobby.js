@@ -25,11 +25,10 @@
 // Auth guard: redirect if no token
 // ---------------------------------------------------------------------------
 (function authGuard() {
-  const token = localStorage.getItem('gvn_token');
-  if (!token) {
-    window.location.replace('login.html');
-    return;
-  }
+  // Optimistic: the credential is an HttpOnly cookie now (TODO.md #68), so
+  // this cannot verify it — it only rules out "definitely signed out". The
+  // socket handshake is the real check.
+  window.GvnSession.requireAuth();
 })();
 
 // ---------------------------------------------------------------------------
@@ -67,8 +66,22 @@ function uiMode() {
 // ---------------------------------------------------------------------------
 // Display user info in nav
 // ---------------------------------------------------------------------------
-const userInfo = client.getUserInfo();
-if (userInfo) {
+// Live view of the session identity (TODO.md #68).
+//
+// Deliberately an object of getters rather than a snapshot: identity now
+// arrives from the server as `session:me` shortly AFTER this module runs, so
+// a value captured here would be null on the first load following the
+// migration and would never update. Every `userInfo.userId` / `.displayName`
+// read below therefore stays live, with no re-assignment plumbing. Use
+// `userInfo.signedIn` where the old code tested the snapshot for truthiness —
+// this object itself is always truthy.
+const userInfo = {
+  get signedIn()    { return !!window.GvnSession.getUser(); },
+  get userId()      { const u = window.GvnSession.getUser(); return u ? u.userId : null; },
+  get displayName() { const u = window.GvnSession.getUser(); return u ? u.displayName : ''; },
+  get isGuest()     { const u = window.GvnSession.getUser(); return !!(u && u.isGuest); },
+};
+if (userInfo.signedIn) {
   navUser.textContent = userInfo.displayName;
   navBadge.textContent = userInfo.isGuest ? t('nav.guest_badge') : '';
   navBadge.style.display = userInfo.isGuest ? '' : 'none';

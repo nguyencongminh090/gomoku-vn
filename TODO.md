@@ -208,7 +208,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
 - ✅ **#66.** Thiếu `Cache-Control: no-store` trên response `/api/auth/*` — JWT có thể bị cache `[Model: Sonnet 5]` — [chi tiết](docs/todo/B66-cache-control-no-store-tren-response-api-auth.md)
-- **#68.** Cân nhắc chuyển JWT từ `localStorage` sang `HttpOnly` cookie — phòng thủ theo chiều sâu, độ ưu tiên thấp `[Model: Opus 5]` — [chi tiết](docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
+- ✅ **#68.** Chuyển JWT từ `localStorage` sang phiên mờ phía server + `HttpOnly` cookie — kèm thu hồi phiên được (revocation) và kiểm `Origin` chống CSWSH `[Model: Opus 5]` — [chi tiết](docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
 - ✅ **#69.** Tự host Google Fonts + audio assets — giảm rò rỉ IP người dùng cho bên thứ ba `[Model: Sonnet 5]` — [chi tiết](docs/todo/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
 
 ### Nguồn: yêu cầu người dùng — audit style nút bấm toàn client (2026-08-08)

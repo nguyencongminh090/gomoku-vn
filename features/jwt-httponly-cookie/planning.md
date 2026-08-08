@@ -292,6 +292,20 @@ CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 - Mở đường (không bắt buộc làm ngay) cho: "đăng xuất mọi thiết bị", đổi mật khẩu là huỷ mọi phiên,
   danh sách phiên đang hoạt động.
 
+> **✅ ĐÃ ĐO (2026-08-08) — không cần cache.** `server/scripts/bench-session-lookup.js`, SQLite trên
+> **đĩa + WAL** (không phải `:memory:`, để giống production), ghi vào file tạm — không đụng
+> `server/db/gomoku.db`:
+>
+> | Số hàng `sessions` | Burst | Tổng chặn event loop | p50 | p99 |
+> |---|---|---|---|---|
+> | 1.000 | 6000 | 40,8 ms | 6,1 µs | 14,8 µs |
+> | 100.000 | 6000 | 58,6 ms | 7,9 µs | 15,4 µs |
+>
+> Ngay cả kịch bản xấu nhất — cả 6000 kết nối ập đến **cùng một lúc**, bảng 100k hàng (nhiều hơn
+> thực tế rất nhiều) — chỉ chặn event loop tổng cộng ~59 ms. Kết nối thật đến rải rác, nên con số
+> thực còn thấp hơn. **Kết luận: KHÔNG thêm cache RAM** — đúng theo nguyên tắc "chỉ thêm khi số đo
+> đòi hỏi". Giữ lại script để đo lại nếu sau này bảng phình to hoặc đổi cơ chế.
+
 **Rủi ro thật, phải đo trước khi chốt — không được bỏ qua:**
 
 - **Mỗi lần bắt tay socket = một lần đọc SQLite đồng bộ, tức là *chặn event loop*.** Bình thường

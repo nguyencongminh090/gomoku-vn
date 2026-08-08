@@ -43,7 +43,13 @@
       div.className = 'chat-msg chat-msg--system';
       div.textContent = systemText(msg);
     } else {
-      const isSelf = msg.from === (S().myUser ? S().myUser.username : '');
+      // Compares displayName because that is what the server puts in
+      // `msg.from` (ChatHandler.js: `from: user.displayName`). This used to
+      // read `.username`, which never matched for anyone whose display name
+      // differed from their login handle — so own messages rendered as
+      // someone else's. The session identity introduced by TODO.md #68 has no
+      // `username` field at all, which is what surfaced the mismatch.
+      const isSelf = !!(S().myUser && msg.from === S().myUser.displayName);
       div.className = `chat-msg ${isSelf ? 'chat-msg--self' : 'chat-msg--other'}`;
 
       const bubble = document.createElement('div');

@@ -1,13 +1,19 @@
 'use strict';
 
 /**
- * socket-client.js — Socket.io client wrapper with JWT auth.
+ * socket-client.js — Socket.io client wrapper with cookie-based session auth.
  *
  * Provides:
- *   - Automatic JWT injection from localStorage
- *   - Reconnection with token
+ *   - Authentication via the HttpOnly session cookie (TODO.md #68)
+ *   - Reconnection (the cookie is re-sent by the browser automatically)
  *   - Auth failure → redirect to login
  *   - Connection status tracking
+ *
+ * Since #68 this file no longer touches the credential at all: the browser
+ * attaches the session cookie to the handshake, and identity arrives back from
+ * the server as `session:me`. It used to read a JWT out of localStorage and
+ * base64-decode it locally; that decode is gone, and `getUserInfo()` now just
+ * forwards to the shared GvnSession cache (see session.js).
  *
  * Usage:
  *   const client = new SocketClient();
@@ -30,13 +36,23 @@ class SocketClient {
   // ---------------------------------------------------------------------------
 
   _connect() {
-    const token = localStorage.getItem('gvn_token');
-    if (!token) {
+    if (!window.GvnSession.hasBelievedSession()) {
       window.location.replace('login.html');
       return;
     }
 
-    // Connect with JWT in auth handshake.
+    // The session cookie authenticates this handshake and the browser attaches
+    // it on its own — there is nothing to read or pass here, which is the
+    // point of #68. `withCredentials` keeps that true if the client is ever
+    // served from a different origin than the server.
+    //
+    // `auth.token` is populated ONLY while a pre-#68 token is still sitting in
+    // localStorage, as the migration fallback the server accepts during the
+    // transition window. It is not read once migration has run, and both sides
+    // of the fallback get deleted together (planning.md step 12).
+    const legacy = window.GvnSession.legacyToken();
+    const auth = legacy ? { token: legacy } : {};
+
     //
     // `transports: ['websocket', 'polling']` tries a direct WebSocket upgrade
     // first instead of socket.io's default HTTP long-polling handshake
@@ -52,7 +68,8 @@ class SocketClient {
     // eventual-connectivity guarantee polling-first had, just with websocket
     // tried before polling instead of after.
     this.socket = io({
-      auth: { token },
+      auth,
+      withCredentials: true,
       transports: ['websocket', 'polling'],
       tryAllTransports: true,
       reconnection: true,
@@ -64,6 +81,14 @@ class SocketClient {
     // ── Connection lifecycle ──────────────────────────────────────────
     this.socket.on('connect', () => {
       this._setStatus('connected');
+    });
+
+    // The server states who this connection belongs to (TODO.md #68). With an
+    // HttpOnly credential the client has no way to work this out for itself,
+    // and the server was always the authority anyway — the old local JWT
+    // decode just happened to agree with it.
+    this.socket.on('session:me', (me) => {
+      window.GvnSession.applyServerIdentity(me);
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -89,11 +114,17 @@ class SocketClient {
       this._setStatus('connected');
     });
 
-    // Auth failure → back to login
+    // Auth failure → back to login.
+    //
+    // This is the moment the client learns its session is actually dead:
+    // revoked, expired, or never valid. Only the local profile cache is
+    // cleared — the cookie itself is HttpOnly and cannot be removed from here,
+    // and does not need to be, since the server has already stopped honouring
+    // it. AUTH_ORIGIN means the handshake was refused as cross-site (CSWSH
+    // defence); it is not a session problem, so it is not treated as one.
     this.socket.on('connect_error', (err) => {
       if (err.message === 'AUTH_REQUIRED' || err.message === 'AUTH_INVALID') {
-        localStorage.removeItem('gvn_token');
-        localStorage.removeItem('gvn_display_name');
+        window.GvnSession.clearUser();
         window.location.replace('login.html');
       }
     });
@@ -101,12 +132,15 @@ class SocketClient {
     // Server forced this session out (same account connected elsewhere) →
     // stash a notice for login.html to display, then sign out. This tab
     // already knows it was kicked via this live socket event, so it redirects
-    // on its own — it must NOT wipe localStorage's shared gvn_token, since
-    // that store is shared across every tab of the origin (not per-tab) and
+    // on its own — it must NOT clear the shared `gvn_user` cache, since
+    // localStorage is shared across every tab of the origin (not per-tab) and
     // this app navigates via full page loads. Clearing it here would make a
-    // sibling tab that was never kicked see a missing token on its next
+    // sibling tab that was never kicked see a missing profile on its next
     // navigation and incorrectly redirect to login too. sessionStorage is
     // already per-tab, so gvn_kicked_notice alone is enough for this tab.
+    //
+    // Since #68 the server also revokes the session row before sending this,
+    // so the eviction survives a reconnect instead of being undone by one.
     this.socket.on('session:kicked', () => {
       sessionStorage.setItem('gvn_kicked_notice', '1');
       this.destroy();
@@ -143,30 +177,34 @@ class SocketClient {
     this.socket = null;
   }
 
-  /** Get current user info from stored JWT (client-side decode). */
+  /**
+   * Current user info, from the shared session cache (session.js).
+   *
+   * Used to decode the JWT locally; there is no longer a token to decode. The
+   * returned object may briefly be null on the first paint after a fresh
+   * login until `session:me` lands.
+   */
   getUserInfo() {
-    const token = localStorage.getItem('gvn_token');
-    if (!token) return null;
-    try {
-      let payload = token.split('.')[1];
-      payload = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const decodedPayload = decodeURIComponent(
-        atob(payload).split('').map(function(c) {
-          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join('')
-      );
-      return JSON.parse(decodedPayload);
-    } catch {
-      return null;
-    }
+    return window.GvnSession.getUser();
   }
 
-  /** Log out: clear storage, redirect to login. */
-  logout() {
-    localStorage.removeItem('gvn_token');
-    localStorage.removeItem('gvn_display_name');
+  /**
+   * Log out.
+   *
+   * Now a network call — the session lives on the server, so only the server
+   * can end it (session.js logout()). If it fails the user is still signed in,
+   * and navigating to the login page anyway would tell them they had logged
+   * out of a shared machine when they had not. So on failure this stays put
+   * and reports it.
+   *
+   * @returns {Promise<boolean>} true if the session was really ended
+   */
+  async logout() {
+    const ok = await window.GvnSession.logout();
+    if (!ok) return false;
     this.destroy();
     window.location.replace('login.html');
+    return true;
   }
 
   // ---------------------------------------------------------------------------
