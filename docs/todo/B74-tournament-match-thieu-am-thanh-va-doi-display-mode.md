@@ -73,5 +73,41 @@ không load `audio-manager.js`.
 
 ## Trạng thái
 
-Chưa làm — mới ghi nhận theo báo cáo người dùng (theo quy tắc "New requirements/tasks: stack, don't
-perform directly" trong `CLAUDE.md`).
+✅ ĐÃ XONG (2026-08-08, branch `fix/tournament-match-sound-and-display-mode` trên `dev`).
+
+**Quyết định đã xác nhận với người dùng trước khi làm** (qua `AskUserQuestion`, theo đúng chỉ dẫn
+trong `docs/instruction/B74-*.md`): chọn hướng (b) — thêm control Display (Paper/Stone) vào Global
+Settings panel (`settings-panel.js`), không thêm tab "Cài đặt" đầy đủ vào `tournament-match.html`.
+
+**Đã làm:**
+1. **Âm thanh** — thêm `<script src="js/audio-manager.js">` vào `tournament-match.html`; thêm lời
+   gọi `audioManager.playMoveSound`/`playWinSound`/`playLoseSound`/`playTimerTickSound` vào
+   `tournament-match.js` đúng tại các điểm mà `room-socket.js` gọi (handler `tmatch:moved` /
+   `tmatch:ended` / `tickLocal()`).
+2. **Display mode** — thêm `getDisplayMode`/`setDisplayMode` + 1 hàng segment Paper/Stone vào
+   `settings-panel.js` (nhóm "Ván đấu", cạnh Âm thanh), dùng lại đúng key
+   `localStorage['play3cr_board_display']` đã có, phát `CustomEvent('displaymodechange')` khi đổi.
+   Thêm listener `displaymodechange` vào `room-ui.js` (sync bàn cờ phòng thường đang mở) và
+   `tournament-match.js` (gọi lại `updateBoardState()` để bàn cờ trận đấu áp dụng ngay). Thêm i18n
+   key `gset.display_mode` (vi/en).
+3. Bump `?v=84` → `?v=85` theo `CLAUDE.md`, verify bằng grep còn đúng 1 giá trị.
+
+**Sự cố trong lúc làm:** giữa chừng, 1 lần `git reset` + `checkout dev` không rõ nguyên nhân (xuất
+hiện trong `git reflog`, không phải lệnh do phiên này chạy) đã xoá sạch các thay đổi chưa commit vào
+`tournament-match.js`/`settings-panel.js`/`room-ui.js`/`i18n.js`/`tournament-match.html`. Phát hiện
+qua `grep` không thấy code vừa viết, xác nhận qua `git reflog`. Đã làm lại toàn bộ 5 file và commit
+ngay (gộp checkout branch + stage + commit trong 1 lệnh Bash) để giảm rủi ro mất lần 2. Chưa xác định
+được nguyên nhân gốc của việc reset.
+
+**Verify:** chạy server thật với DB tạm (theo quy tắc Playwright/e2e trong `CLAUDE.md`), Playwright
+guest-login → mở Global Settings trên `index.html`, xác nhận hàng "Hiển thị bàn cờ" hiện đúng vị trí
+(screenshot), bấm "Quân đá" xác nhận `localStorage` đổi thành `'stone'` VÀ event `displaymodechange`
+bắn ra đúng `{mode: 'stone'}`. Load `js/audio-manager.js` độc lập giống cách `tournament-match.html`
+load, xác nhận `window.audioManager` tồn tại đủ 4 hàm `playMoveSound`/`playWinSound`/`playLoseSound`/
+`playTimerTickSound`, không lỗi. Fetch HTML thật của `tournament-match.html` xác nhận có script tag
+mới. Không có console/page error. Chưa test full 1 trận đấu giải đấu thật 2 người chơi (cần dựng
+giải đấu + 2 guest session) — các điểm gọi âm thanh được verify bằng cách đối chiếu đúng điều kiện
+trigger với `room-socket.js` (nguồn port) cộng với xác nhận API `audio-manager.js` hoạt động độc lập,
+là proxy hợp lý vì đây là port cơ học, không có logic mới. Không chạy `npm test` vì CSS/client-JS
+only, không có test runner tự động cho `client/`. Chi tiết đầy đủ trong
+`docs/fix-log/2026-08-08-todo-74-tournament-match-sound-display-mode.md`.

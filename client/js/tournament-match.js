@@ -167,6 +167,13 @@ client.on('tmatch:moved', (data) => {
   if (data.gameOver) gameState.status = 'finished';
   if (data.result) gameState.result = data.result;
 
+  // Move sound cue — same trigger as room-socket.js's game:moved handler
+  // (TODO.md #74: tournament matches never called audioManager at all).
+  if (window.audioManager) {
+    const mp = myPlayer();
+    window.audioManager.playMoveSound(!mp || mp.color !== data.color);
+  }
+
   updateBoardState();
   renderMoveList();
 });
@@ -210,6 +217,13 @@ client.on('tmatch:ended', (data) => {
   matchActionsEl.style.display = 'none';
   drawOfferPending = null;
   timeRequestPending = null;
+
+  // Win/lose sound cue, participants only — same trigger as
+  // room-socket.js's game:ended handler (TODO.md #74).
+  if (window.audioManager && myPlayer() && data.result && data.result.winner !== 'draw') {
+    if (data.result.winner === userInfo.userId) window.audioManager.playWinSound();
+    else window.audioManager.playLoseSound();
+  }
   renderDrawPrompt();
   renderTimePrompt();
 
@@ -241,18 +255,25 @@ client.on('tmatch:ended', (data) => {
 
 // ── Board ────────────────────────────────────────────────────────────────
 
-// Board display style (Giấy/Paper vs Đá/Stone) — a room-local setting (its
-// radio toggle lives in room.html's own Settings tab, room-ui.js:321-324,
-// not the global Cài đặt panel), but the choice persists across pages via
-// this same localStorage key (room-ui.js:618) — read it here instead of
-// leaving BoardRenderer on its hardcoded 'paper' default, same root cause as
-// TODO.md #55's click-mode fix (initBoard() never read a saved setting at
-// all). No live-sync listener needed: unlike click-mode there is no
-// in-tournament-match UI to change it, so it only needs to be read once.
+// Board display style (Giấy/Paper vs Đá/Stone) — persists across pages via
+// the shared 'play3cr_board_display' localStorage key (room-ui.js:618) —
+// read it here instead of leaving BoardRenderer on its hardcoded 'paper'
+// default, same root cause as TODO.md #55's click-mode fix (initBoard()
+// never read a saved setting at all).
+//
+// TODO.md #74: this page has no Settings tab of its own (the room Settings
+// tab's other controls — board size, win rule, Wall/Portal, Swap2, timer —
+// are tournament-fixed and shouldn't be editable mid-match), but the global
+// Settings panel (settings-panel.js) can now change Display mode from here
+// too, so this DOES need to live-sync like click-mode does.
 function boardDisplayMode() {
   const v = localStorage.getItem('play3cr_board_display');
   return v === 'stone' ? 'stone' : 'paper';
 }
+
+window.addEventListener('displaymodechange', () => {
+  if (boardRenderer) updateBoardState();
+});
 
 function initBoard() {
   if (boardRenderer) return;
@@ -469,6 +490,16 @@ function tickLocal() {
   const remaining = Math.max(0, Math.round((activeDeadline - serverNow()) / 1000));
   timerValues = { ...timerValues, [activeColor]: remaining };
   renderTimers();
+
+  // Beep once per second through the active player's own final 10s — same
+  // trigger as room-socket.js's tickLocal (TODO.md #74).
+  if (window.audioManager && gameState && gameState.status === 'ongoing' && myColor) {
+    const myColorLower = myColor === 'BLACK' ? 'black' : 'white';
+    if (gameState.currentTurn === userInfo.userId && myColorLower === activeColor && remaining > 0 && remaining <= 10) {
+      window.audioManager.playTimerTickSound();
+    }
+  }
+
   if (remaining <= 0) stopLocalTimer();
 }
 

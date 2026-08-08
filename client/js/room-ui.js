@@ -562,6 +562,23 @@
     if (st.boardRenderer) st.boardRenderer.clickMode = st.clickMode;
   });
 
+  // ── Display-mode change listener (TODO.md #74) ──────────────────────────
+  // Board display (Paper/Stone) can now also be changed from the global
+  // Settings panel (settings-panel.js), not just this room's own Settings
+  // tab (updateLocalSettings above) — apply it to the live board immediately
+  // either way, same pattern as clickmodechange.
+  window.addEventListener('displaymodechange', (e) => {
+    const st = S();
+    st.boardDisplayMode = e.detail.mode;
+    if (st.boardRenderer) {
+      st.boardRenderer.setState({
+        displayMode:  st.boardDisplayMode,
+        moveHistory:  st.gameState ? (st.gameState.moveHistory || []) : [],
+        lastMove:     st.gameState ? st.gameState.lastMove : null,
+      });
+    }
+  });
+
   // ── Global onclick shims ──────────────────────────────────────────────────
 
   global.sitDown = function(slot) {

@@ -88,6 +88,26 @@
   // duplicating the 'gomoku_click_mode' localStorage key a 3rd time.
   global.getClickMode = getClickMode;
 
+  // ── Board display mode (Paper/Stone) — TODO.md #74. Previously only
+  // changeable from room.html's own in-room Settings tab (room-ui.js:320-324),
+  // so tournament-match.html (which has no Settings tab at all — that tab's
+  // other controls are tournament-fixed and shouldn't be editable mid-match)
+  // had no way to change it. Reads/writes the same 'play3cr_board_display'
+  // key room-ui.js already uses, so this is one more writer of an existing
+  // setting, not a second parallel one. ──
+  function getDisplayMode() {
+    const v = localStorage.getItem('play3cr_board_display');
+    return v === 'stone' ? 'stone' : 'paper';
+  }
+
+  function setDisplayMode(mode) {
+    const value = mode === 'stone' ? 'stone' : 'paper';
+    try { localStorage.setItem('play3cr_board_display', value); } catch (e) { /* private mode */ }
+    // Live-sync an already-open room/tournament-match board, same pattern as
+    // 'clickmodechange' above.
+    global.dispatchEvent(new CustomEvent('displaymodechange', { detail: { mode: value } }));
+  }
+
   // ── Panel DOM ───────────────────────────────────────────────────────────
   let overlayEl = null;
 
@@ -190,9 +210,23 @@
     ));
     body.appendChild(group(T('gset.language'), [langRow]));
 
-    // Game: sound + default placement mode
+    // Game: sound + board display mode + default placement mode
     body.appendChild(group(T('gset.game'), [
       toggleRow(T('settings.sound'), isSoundOn(), (on) => setSoundOn(on)),
+      (() => {
+        const row = document.createElement('div');
+        row.className = 'gset-row';
+        const label = document.createElement('span');
+        label.className = 'gset-row__label';
+        label.textContent = T('gset.display_mode');
+        row.appendChild(label);
+        row.appendChild(segment(
+          [['paper', T('settings.display_paper')], ['stone', T('settings.display_stone')]],
+          getDisplayMode(),
+          (value) => { setDisplayMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
+        ));
+        return row;
+      })(),
       (() => {
         const row = document.createElement('div');
         row.className = 'gset-row';
