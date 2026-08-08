@@ -24,4 +24,12 @@ CSP (`style-src`/`font-src`/`media-src`) như một đánh đổi có chủ ý, 
 
 ## Trạng thái
 
-Chưa làm.
+✅ ĐÃ XONG (2026-08-08). Tự host Manrope (3 file subset latin/latin-ext/vietnamese, `client/vendor/fonts/manrope/`,
+license SIL OFL 1.1 — free redistribute), bỏ luôn link Google Fonts `Inter` chết (không CSS nào dùng).
+Audio: xác minh lại thấy `soundSources` trong `audio-manager.js` là dead code — không method nào từng đọc nó,
+toàn bộ âm thanh thực tế đều synthesize bằng Web Audio API — nên **không cần vendor file audio nào**, chỉ xoá
+object chết đó và bỏ `cdn.freesound.org`/`raw.githubusercontent.com` khỏi CSP `media-src`. CSP `styleSrc`/
+`fontSrc`/`mediaSrc` giờ chỉ còn `'self'` (+ `'unsafe-inline'`/`data:` cũ). Chi tiết:
+[docs/fix-log/2026-08-08-self-host-google-fonts-and-audio.md](../fix-log/2026-08-08-self-host-google-fonts-and-audio.md).
+`npm test`: 856/856 xanh. Branch `fix/self-host-fonts-audio` off `dev` (không phải `main`, vì
+`tournament.html`/`tournaments.js` chỉ tồn tại trên `dev`).

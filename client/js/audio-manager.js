@@ -1,7 +1,7 @@
 /**
- * Gomoku AudioManager - Comprehensive Audio Manager with Web Audio API Synthesizers
- * Supports royalty-free audio file loading, volume controls, mute state persistence,
- * browser autoplay unlock, and realistic synthesized sound fallbacks.
+ * Gomoku AudioManager - Web Audio API sound synthesizer for game sound effects.
+ * All sounds are synthesized locally (no external audio files); handles volume
+ * controls, mute state persistence, and browser autoplay unlock.
  */
 
 class AudioManager {
@@ -11,29 +11,6 @@ class AudioManager {
         this.volume = parseFloat(localStorage.getItem('gomoku_volume') || '0.7');
         this.soundPool = {};
         this.isUnlocked = false;
-
-        // Sound effect source options (CC0 / Royalty Free sound resources)
-        this.soundSources = {
-            move: [
-                'https://cdn.freesound.org/previews/588/588234_11861866-lq.mp3', // Wood stone place click (CC0)
-                'https://raw.githubusercontent.com/lichess-org/lila/master/public/sound/standard/Move.mp3' // Lichess Move (GPL/CC0)
-            ],
-            opponentMove: [
-                'https://cdn.freesound.org/previews/588/588235_11861866-lq.mp3'
-            ],
-            win: [
-                'https://cdn.freesound.org/previews/270/270404_5123851-lq.mp3' // Win fanfare (CC0)
-            ],
-            lose: [
-                'https://cdn.freesound.org/previews/331/331912_3248244-lq.mp3' // Defeat sound (CC0)
-            ],
-            invalid: [
-                'https://cdn.freesound.org/previews/142/142608_1840739-lq.mp3' // Error thud (CC0)
-            ],
-            tick: [
-                'https://cdn.freesound.org/previews/254/254316_4062622-lq.mp3' // Clock tick (CC0)
-            ]
-        };
 
         this._initAudioContext();
         this._setupAutoplayUnlock();
