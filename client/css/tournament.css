@@ -108,6 +108,11 @@
 .cross-table .cross-table__win { color: var(--c-success); font-weight: 700; }
 .cross-table .cross-table__loss { color: var(--c-ink-3); }
 .cross-table .cross-table__live { color: var(--c-brand); font-weight: 700; }
+.cross-table tr.is-champion td, .cross-table tr.is-champion th { background: var(--c-accent-light); }
+.cross-table tr.is-runner-up td, .cross-table tr.is-runner-up th { background: var(--c-surface-2); }
+.cross-table .cross-table__trophy { margin-right: 4px; font-size: 13px; }
+.cross-table .cross-table__trophy--champion { color: var(--c-accent); }
+.cross-table .cross-table__trophy--runner-up { color: var(--c-ink-3); }
 
 /* ── Pairing list / cards ─────────────────────────────────────────────── */
 .round-group { margin-bottom: 20px; }
