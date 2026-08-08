@@ -671,7 +671,16 @@ function fmtScore(n) {
   return Number.isInteger(n) ? String(n) : n.toFixed(1);
 }
 
-/** entryId pair -> pairing, for pairings that involve exactly 2 real entries (no byes). */
+/**
+ * entryId pair -> pairing, for pairings that involve exactly 2 real entries
+ * (no byes). A void/replay (PairingLifecycle._createReplayPairing, Round
+ * Robin/Swiss branch) creates a brand-new pairing between the same two
+ * entries rather than reusing the old one, so more than one pairing can
+ * exist for the same pair — keep the one with the latest `pairedAt`
+ * explicitly (not whichever happens to be visited last in Map iteration
+ * order, which depends on server sort order / live-patch insertion order
+ * and isn't guaranteed to put the newest pairing last).
+ */
 function buildPairingLookup() {
   const lookup = new Map();
   for (const p of pairingsById.values()) {
@@ -679,7 +688,8 @@ function buildPairingLookup() {
     const key = p.player1EntryId < p.player2EntryId
       ? `${p.player1EntryId}|${p.player2EntryId}`
       : `${p.player2EntryId}|${p.player1EntryId}`;
-    lookup.set(key, p);
+    const existing = lookup.get(key);
+    if (!existing || p.pairedAt > existing.pairedAt) lookup.set(key, p);
   }
   return lookup;
 }
