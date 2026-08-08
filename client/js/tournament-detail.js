@@ -91,6 +91,10 @@ function myEntry() {
   for (const e of tournament.entries) if (e.userId === userInfo.userId) return e;
   return null;
 }
+function isMinePairing(pairing) {
+  const me = myEntry();
+  return !!me && (pairing.player1EntryId === me.entryId || pairing.player2EntryId === me.entryId);
+}
 function isOrganizer() {
   return userInfo.signedIn && !!tournament && tournament.organizerId === userInfo.userId;
 }
@@ -103,11 +107,30 @@ function entryName(entryId) {
 
 client.emit('tournament:get', { tournamentId });
 
+// TODO.md #76 — the match clock starts server-side the instant both players
+// check in ready (TournamentManager.markPairingReady -> timer.start()), so
+// any manual "Vào trận" click delay eats into a real player's own clock.
+// Skip the click for real participants; spectators still click through
+// (isMinePairing() is false for them, so this never fires for a "watch"
+// button). One flag is enough since goToMatch() navigates the page away.
+let navigatingToMatch = false;
+function checkAutoEnterMatch() {
+  if (navigatingToMatch) return;
+  for (const pairing of pairingsById.values()) {
+    if (pairing.state === 'InProgress' && isMinePairing(pairing)) {
+      navigatingToMatch = true;
+      goToMatch(pairing.pairingId);
+      return;
+    }
+  }
+}
+
 client.on('tournament:detail', (data) => {
   if (!data.tournament || data.tournament.tournamentId !== tournamentId) return;
   tournament = data.tournament;
   entriesById = new Map(tournament.entries.map((e) => [e.entryId, e]));
   pairingsById = new Map(data.pairings.map((p) => [p.pairingId, p]));
+  checkAutoEnterMatch();
   renderAll();
 });
 
@@ -126,6 +149,7 @@ client.on('tournament:updated', (data) => {
 client.on('tournament:pairings_patch', (data) => {
   if (!tournament || data.tournamentId !== tournamentId) return;
   for (const pairing of data.pairings) pairingsById.set(pairing.pairingId, pairing);
+  checkAutoEnterMatch();
   renderAll();
 });
 
@@ -366,7 +390,7 @@ function resultLine(pairing, me) {
 
 function renderPairingCard(pairing) {
   const me = myEntry();
-  const isMine = !!me && (pairing.player1EntryId === me.entryId || pairing.player2EntryId === me.entryId);
+  const isMine = isMinePairing(pairing);
   const st = stateLabel(pairing);
   const p1Name = entryName(pairing.player1EntryId);
   const p2Name = pairing.player2EntryId ? entryName(pairing.player2EntryId) : t('tdetail.bye_opponent');

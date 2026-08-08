@@ -114,3 +114,4 @@
 | 2026-08-08 15:41 | TODO.md #74: tournament matches had no sound (missing `audio-manager.js` + no calls at all) and no… | [chi tiết](docs/fix-log/2026-08-08-todo-74-tournament-match-sound-display-mode.md) |
 | 2026-08-08 16:16 | TODO.md #64 follow-up: `buildPairingLookup()` let a voided pairing shadow its replay in the Cross T… | [chi tiết](docs/fix-log/2026-08-08-cross-table-replay-pairing-lookup.md) |
 | 2026-08-08 18:31 | TODO.md #75: Round Robin Cross Table now sorts rows/columns by current rank (`computeStandings()` … | [chi tiết](docs/fix-log/2026-08-08-todo-75-cross-table-rank-sort-highlight.md) |
+| 2026-08-08 19:04 | TODO.md #76: match clock starts server-side the instant both players check in ready, but client req… | [chi tiết](docs/fix-log/2026-08-08-todo-76-tournament-ready-auto-enter.md) |

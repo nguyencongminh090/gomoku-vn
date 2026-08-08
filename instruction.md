@@ -91,6 +91,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B73.** `.btn`/`.btn-confirm` thiếu base rule ngoài modal — thêm rule mới, không di chuyển `.modal__actions .btn-confirm` hiện có; kiểm tra `<link>` từng trang trước khi chọn file CSS để đặt rule (báo cáo người dùng kèm ảnh, TODO.md #73) — [chi tiết](docs/instruction/B73-nut-btn-btn-confirm-khong-co-base-style-ngoai-modal.md)
 - **B74.** Tournament match thiếu âm thanh (bug thật, làm thẳng được) + thiếu UI đổi Display mode (quyết định cố ý từ B50, phải hỏi lại hướng (a)/(b) trước khi code) (báo cáo người dùng, TODO.md #74) — [chi tiết](docs/instruction/B74-tournament-match-thieu-am-thanh-va-doi-display-mode.md)
 - **B75.** Cross Table sắp theo hạng + highlight Vô địch/Á quân khi giải kết thúc — không đổi `computeStandings()`, hỏi lại nếu gặp đồng hạng 1 (báo cáo người dùng kèm ảnh, TODO.md #75) — [chi tiết](docs/instruction/B75-cross-table-sap-xep-theo-hang-va-highlight-champion.md)
+- **B76.** Sẵn sàng → tự động vào trận thay vì đợi bấm nút "Vào trận" — sửa client-side (`tournament-detail.js`), chỉ auto-navigate cho người chơi thật (`isMine`), không đụng khán giả, không đổi mốc server start timer (báo cáo người dùng, TODO.md #76) — [chi tiết](docs/instruction/B76-ready-auto-vao-tran-thay-vi-doi-bam-nut-enter.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 
