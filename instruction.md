@@ -82,6 +82,10 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B63.** Standings nên cộng dồn điểm thật (`seriesScore`) thay vì 1 điểm/pairing thắng — từ báo cáo người dùng (TODO.md #63) — [chi tiết](docs/instruction/B63-standings-score-nen-cong-don-tung-van-thay-vi-1-diem-moi-pairing.md)
 - **B64.** Round Robin: Cross Table thay bảng Standings dạng danh sách — tiếp nối #63 (TODO.md #64) — [chi tiết](docs/instruction/B64-round-robin-cross-table-thay-danh-sach-standings.md)
 - **B65.** CSP + third-party script — bảo vệ JWT bearer trong `localStorage` (security review Network, TODO.md #65) — [chi tiết](docs/instruction/B65-csp-va-third-party-script-bao-ve-jwt-localstorage.md)
+- **B66.** `Cache-Control: no-store` trên response `/api/auth/*` — chỉ sửa `auth.js`, không áp toàn cục (audit network, TODO.md #66) — [chi tiết](docs/instruction/B66-cache-control-no-store-tren-response-api-auth.md)
+- **A67.** Xác minh HSTS thực tế qua Cloudflare Tunnel — đo, không sửa code (audit network, TODO.md #67) — [chi tiết](docs/instruction/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
+- **B68.** Cân nhắc JWT → HttpOnly cookie — cần `features/` thảo luận trước, không code trực tiếp (audit network, TODO.md #68) — [chi tiết](docs/instruction/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
+- **B69.** Tự host Google Fonts + audio — theo khuôn mẫu B65, kiểm license Freesound trước khi vendor (audit network, TODO.md #69) — [chi tiết](docs/instruction/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 

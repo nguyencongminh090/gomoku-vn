@@ -11,31 +11,45 @@ Quy ước: file này tách làm 2 phần.
 Khi có báo cáo mới, mục nào không sửa được bằng code → thêm vào Phần A; mục nào
 sửa được → thêm vào Phần B, dưới một heading nguồn riêng (giữ nguyên theo report).
 
+**Model đề xuất** (đánh giá 2026-08-08, xem lý do đầy đủ trong hội thoại lưu ở
+`docs/fix-log.md` cùng ngày nếu cần tra lại): mỗi mục còn mở dưới đây có gắn
+`[Model: <tên>]`. Đây là gợi ý dựa trên bản chất việc — đo đạc thuần túy/không
+cần quyết định → Haiku 4.5; implement có phạm vi rõ ràng theo đúng quy tắc repo
+→ Sonnet 5; quyết định kiến trúc/bảo mật có đánh đổi thật hoặc chẩn đoán nguyên
+nhân gốc nhiều vòng dễ tự nhiễu (xem rule "Root-cause diagnosis" trong
+`CLAUDE.md`) → Opus 5. **Nhắc khi bắt đầu làm:** đọc lại gợi ý này lúc thật sự
+bấm vào làm task, không lúc ghi việc — bản chất việc có thể đã đổi (vd. một
+quyết định kiến trúc có thể đã thu hẹp phạm vi sau khi bàn thêm với người
+dùng), và danh sách model khả dụng cũng có thể đã đổi theo thời gian.
+
 ---
 
 
 ## Phần A — Không sửa được bằng code
 
 ### Nguồn: `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
-- **#1.** TLS/HTTPS trước app (review 3.0) — Nghiêm trọng nếu đang chạy HTTP trần — [chi tiết](docs/todo/A01-tls-https-truoc-app-review-3-0-nghiem-trong-neu-dang-chay.md)
-- **#2.** Xác nhận biến môi trường khi deploy thật — [chi tiết](docs/todo/A02-xac-nhan-bien-moi-truong-khi-deploy-that.md)
-- **#3.** `npm install` không chạy được trên Node 24 tại máy đánh giá — [chi tiết](docs/todo/A03-npm-install-khong-chay-duoc-tren-node-24-tai-may-danh-gia.md)
-- **#4.** Kiểm chứng thật cho các mục "CHƯA ĐO ĐƯỢC" trong review — [chi tiết](docs/todo/A04-kiem-chung-that-cho-cac-muc-chua-do-duoc-trong-review.md)
+- ✅ **#1.** TLS/HTTPS trước app (review 3.0) — Nghiêm trọng nếu đang chạy HTTP trần — [chi tiết](docs/todo/A01-tls-https-truoc-app-review-3-0-nghiem-trong-neu-dang-chay.md)
+- **#2.** Xác nhận biến môi trường khi deploy thật `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A02-xac-nhan-bien-moi-truong-khi-deploy-that.md)
+- **#3.** `npm install` không chạy được trên Node 24 tại máy đánh giá `[Model: Sonnet 5]` — [chi tiết](docs/todo/A03-npm-install-khong-chay-duoc-tren-node-24-tai-may-danh-gia.md)
+- **#4.** Kiểm chứng thật cho các mục "CHƯA ĐO ĐƯỢC" trong review `[Model: Sonnet 5]` — [chi tiết](docs/todo/A04-kiem-chung-that-cho-cac-muc-chua-do-duoc-trong-review.md)
 
 ### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
-- **#6.** Quyết định kiến trúc khi cần scale quá 1 tiến trình — [chi tiết](docs/todo/A06-quyet-dinh-kien-truc-khi-can-scale-qua-1-tien-trinh.md)
+- **#6.** Quyết định kiến trúc khi cần scale quá 1 tiến trình `[Model: Opus 5]` — [chi tiết](docs/todo/A06-quyet-dinh-kien-truc-khi-can-scale-qua-1-tien-trinh.md)
 - ✅ **#7.** Đo lại bằng harness đa tiến trình (hoặc máy thứ 2) — [chi tiết](docs/todo/A07-do-lai-bang-harness-da-tien-trinh-hoac-may-thu-2.md)
-- **#8.** Chưa có cách quan sát heap/GC của server đang chạy — [chi tiết](docs/todo/A08-chua-co-cach-quan-sat-heap-gc-cua-server-dang-chay.md)
+- **#8.** Chưa có cách quan sát heap/GC của server đang chạy `[Model: Sonnet 5]` — [chi tiết](docs/todo/A08-chua-co-cach-quan-sat-heap-gc-cua-server-dang-chay.md)
 
 ### Nguồn: security review toàn bộ codebase (2026-08-03, yêu cầu người dùng "Does my website safe?")
-- **#9.** Audit an ninh toàn bộ server + client — không phải diff, không có PR đang mở — [chi tiết](docs/todo/A09-audit-an-ninh-toan-bo-server-client-khong-phai-diff-khong.md)
+- **#9.** Audit an ninh toàn bộ server + client — không phải diff, không có PR đang mở `[Model: Opus 5]` — [chi tiết](docs/todo/A09-audit-an-ninh-toan-bo-server-client-khong-phai-diff-khong.md)
 
 ### Nguồn: kiểm chứng bản sửa (commit `3da53dd`, đo lại 2026-08-01)
-- **#5.** Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ — [chi tiết](docs/todo/A05-muc-3-8-vong-doi-mat-khau-can-noi-dung-day-du.md)
+- **#5.** Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A05-muc-3-8-vong-doi-mat-khau-can-noi-dung-day-du.md)
 
 ### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.6 (kiểm chứng 2026-08-02)
 - ✅ **#10.** Hành vi thật của `cloudflared` với `X-Forwarded-For` do client tự gửi — [chi tiết](docs/todo/A10-hanh-vi-that-cua-cloudflared-voi-x-forwarded-for-do-client.md)
-- **#11.** Hành vi khi bật `permessage-deflate` — [chi tiết](docs/todo/A11-hanh-vi-khi-bat-permessage-deflate.md)
+- **#11.** Hành vi khi bật `permessage-deflate` `[Model: Sonnet 5]` — [chi tiết](docs/todo/A11-hanh-vi-khi-bat-permessage-deflate.md)
+
+### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
+- **#67.** Xác minh HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không (claim của audit gốc sai — Helmet đã bật HSTS mặc định, cần đo thật trên deploy) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 
 ## Phần B — Sửa được bằng code, đang chờ làm
 
@@ -99,7 +113,7 @@ khi tái hiện được vấn đề** — thứ tự đúng là đo/chẩn đo�
 ### Nguồn: truy nguyên trần kết nối (2026-08-02, xem `docs/stress-test-report.md` §10)
 - ✅ **#27.** Hàng đợi accept TCP tràn — mất 12-14% kết nối ở burst lớn — [chi tiết](docs/todo/B27-hang-doi-accept-tcp-tran-mat-12-14-ket-noi-o-burst-lon.md)
 - ✅ **#28.** Thứ tự transport `websocket` trước `polling` — đã đo, CỐ Ý CHƯA ÁP DỤNG — [chi tiết](docs/todo/B28-thu-tu-transport-websocket-truoc-polling-da-do-co-y-chua-ap.md)
-- **#29.** Trần >6000 người vẫn chưa quy được nguyên nhân — sau khi sửa backlog, — [chi tiết](docs/todo/B29-tran-6000-nguoi-van-chua-quy-duoc-nguyen-nhan-sau-khi-sua.md)
+- **#29.** Trần >6000 người vẫn chưa quy được nguyên nhân — sau khi sửa backlog, `[Model: Opus 5]` — [chi tiết](docs/todo/B29-tran-6000-nguoi-van-chua-quy-duoc-nguyen-nhan-sau-khi-sua.md)
 
 ### Nguồn: yêu cầu người dùng, dựa trên số liệu stress test (2026-08-03)
 - ✅ **#31.** Nâng `MAX_ROOMS`/`MAX_USERS_PER_ROOM` — có dư địa kỹ thuật, người dùng — [chi tiết](docs/todo/B31-nang-max-rooms-max-users-per-room-co-du-dia-ky-thuat-nguoi.md)
@@ -187,10 +201,15 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ### Nguồn: báo cáo người dùng — "Final score in standing tables is wrong and not match" (2026-08-08)
 - ✅ **#63.** Round Robin: bảng Standings tính 1 điểm/pairing thắng, không cộng dồn điểm thật của series (VD thắng 3.5-0.5 chỉ hiện 1-0) — đối chiếu luật Swiss/FIDE thật: **không phải bug**, đóng — [chi tiết](docs/todo/B63-standings-score-nen-cong-don-tung-van-thay-vi-1-diem-moi-pairing.md)
-- **#64.** Round Robin: thay bảng Standings dạng danh sách bằng Cross Table (bảng chéo) hiện tỉ số thật từng cặp đấu — hiển thị, không đổi cách tính rank — [chi tiết](docs/todo/B64-round-robin-cross-table-thay-danh-sach-standings.md)
+- **#64.** Round Robin: thay bảng Standings dạng danh sách bằng Cross Table (bảng chéo) hiện tỉ số thật từng cặp đấu — hiển thị, không đổi cách tính rank `[Model: Sonnet 5]` — [chi tiết](docs/todo/B64-round-robin-cross-table-thay-danh-sach-standings.md)
 
 ### Nguồn: security review Network trong Developer Tools (2026-08-08)
 ✅ **#65.** CSP + third-party script — bảo vệ JWT bearer đang ở `localStorage` — [chi tiết](docs/todo/B65-csp-va-third-party-script-bao-ve-jwt-localstorage.md)
+
+### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
+- **#66.** Thiếu `Cache-Control: no-store` trên response `/api/auth/*` — JWT có thể bị cache `[Model: Sonnet 5]` — [chi tiết](docs/todo/B66-cache-control-no-store-tren-response-api-auth.md)
+- **#68.** Cân nhắc chuyển JWT từ `localStorage` sang `HttpOnly` cookie — phòng thủ theo chiều sâu, độ ưu tiên thấp `[Model: Opus 5]` — [chi tiết](docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
+- **#69.** Tự host Google Fonts + audio assets — giảm rò rỉ IP người dùng cho bên thứ ba `[Model: Sonnet 5]` — [chi tiết](docs/todo/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
 
 ---
 

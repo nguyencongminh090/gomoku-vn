@@ -13,6 +13,34 @@
 - **Append:** write one new detail file, then add one new line/row to the matching index. Never re-open or edit an existing detail file's content when adding unrelated history (this is what makes `docs/fix-log.md`'s append-only rule, below, cheap to honor: a new fix is a new file, not an edit to a shared one).
 - This changes *where* content lives, not the rules governing it — the "read the matching `instruction.md` entry", "`docs/fix-log.md` is append-only", and "`TODO.md`/`instruction.md` pairing" rules below still apply verbatim, just resolved through the index → detail-file indirection.
 
+## Index/detail sync: status markers move together, in one edit
+
+`TODO.md` marks a finished item with a leading `✅` on its index line; the matching
+`docs/todo/<CODE>-<slug>.md` detail file marks the same fact with its own `**Trạng thái:** ✅ ĐÃ
+XONG` (or `✅ đã xong`) line plus the implementation/test summary. These two markers describe the
+same underlying fact and must never be updated one without the other:
+
+- **Finishing a task = one edit that touches both files.** Write the detail file's `Trạng thái`
+  line (with the summary, test results, verification notes) *and* prefix the corresponding index
+  line in `TODO.md` with `✅ ` in the same turn. Neither file is "the real one" — an index line
+  without a matching detail-file status, or a detail file marked done with no `✅` in the index, is
+  a drift bug, not a style choice.
+- **Before telling the user a task is/isn't done, read both** — the index line's `✅` and the
+  detail file's `Trạng thái` — rather than trusting either alone. If they disagree, that's a
+  sync bug to fix (bring the index in line with the detail file's actual status, since the detail
+  file carries the evidence — test output, verification notes — the index line doesn't), not
+  something to silently pick a side on.
+- **Quick consistency check across all items:**
+  ```
+  grep -oP '^\- (✅ )?\*\*#\S+' TODO.md
+  grep -rl '✅ ĐÃ XONG\|✅ đã xong' docs/todo/
+  ```
+  Cross-reference the two: every detail file with a done marker should have a `✅`-prefixed index
+  line, and vice versa. Run this after any batch status update, not just after a single item.
+- This applies to `TODO.md` ↔ `docs/todo/*.md`. `instruction.md` ↔ `docs/instruction/*.md` doesn't
+  carry a done/not-done marker (it's execution guidance, not a status tracker), so nothing to sync
+  there beyond the existing "read the matching entry before implementing" rule.
+
 ## Cache-busting version bump
 
 All CSS and JS assets are cache-busted with a shared `?v=N` query string. This appears in two kinds of places, and **both must be covered by every bump** — a rule that only names one of them (as this section used to) will keep missing the other:
@@ -103,6 +131,55 @@ When the user raises a new requirement, feature request, or task during a conver
 - **Default to recording it, not implementing it.** Add a new `docs/todo/<CODE>-<slug>.md` detail file plus its index line in `TODO.md` (what to do), and a matching `docs/instruction/<CODE>-<slug>.md` plus its index line in `instruction.md` (the execution guidance discussed — approach, pitfalls, boundaries), per the existing `TODO.md`/`instruction.md` pairing convention (see "Tracking-file layout" above).
 - **Only perform the task directly if the user explicitly requires it now** (e.g. "do this now", "implement this", "fix it" — a direct ask for action rather than just describing a problem or idea).
 - This is about triage of new work, not about re-litigating tasks already in progress or already explicitly assigned in the current turn.
+
+## Security findings: verify against current code before filing
+
+When triaging a security report (an audit, pentest note, CVE, or similar external write-up — not a
+bug the user reproduced themselves) into `TODO.md`/`instruction.md` per the "New requirements/tasks"
+rule above:
+
+- **Verify each claimed finding against the current code/config before filing it** — don't transcribe
+  the report's claims as fact. Reports can be stale or simply wrong about what the code does.
+  Precedent: `network_security_audit.md` (2026-08-08) claimed Helmet has no HSTS header by default;
+  it does — the report was wrong, and the filed item (`TODO.md` #67) was rewritten to say so and to
+  ask for a real measurement, not to blindly implement the report's suggested fix.
+- **Check whether a prior review already covered or explicitly ruled out the same finding** (e.g. a
+  `docs/todo/<CODE>-*.md` "Ngoài phạm vi" section) before filing it again as new work — link back to
+  that entry instead of duplicating it.
+- **A finding that turns out to be a deliberate, already-documented design tradeoff gets closed as
+  such, not filed as new work** — same precedent as `#63` (Standings score, closed "không phải bug"
+  after checking against real Swiss/FIDE rules).
+
+## Root-cause diagnosis: check the layer below the symptom before calling a bug fixed
+
+`docs/fix-log.md`'s history has a recurring shape: an early fix patches the layer where the symptom
+is *visible* (a UI overlay, a debounce timer, a policy header), ships, and then the same bug
+resurfaces from the layer where it actually *lives* (proxy/infra, wire payload shape, build
+artifact, module resolution) — sometimes 2-6 iterations later. Confirmed precedents already in the
+fix-log:
+
+- Chat XSS: 3 rounds before the fix landed on "escape on the wire, decode only at the `textContent`
+  render site" (`docs/fix-log/2026-08-02-todo-15-follow-up-carved-out-of-the.md`) — the first fix
+  addressed encoding, not where/how the escaped text got displayed.
+- Room/IP quota: 6 rounds before finding `socket.handshake.address` is always `127.0.0.1` behind the
+  Cloudflare Tunnel — see [[A67]]/`§44` and `getClientIp()` reading `CF-Connecting-IP`. Early fixes
+  patched the room UI, not the IP the quota logic was actually reading.
+- CSP/production build: CSP headers landed correct, then a follow-up found `dist/` itself was stale
+  and still shipping the vulnerable HTML (TODO.md #65 "production build gaps" follow-up) — the fix
+  was correct in `client/`, but nothing verified the *built* artifact matched.
+- `?v=N` cache-busting: this is exactly why the "Cache-busting version bump" rule above lists ES
+  cross-imports as a separate bullet — the first version of that rule only named entry files, and
+  the same duplicate-module bug shipped twice before the rule (and its verification grep) covered
+  every import site.
+
+When a fix's symptom keeps recurring after being "fixed," or a fix touches only the layer where the
+bug is *observed* (client rendering, a timing knob, a config flag) without touching the layer that
+*produces* the value being observed (server logic, wire format, infra/proxy behavior, the actual
+built/deployed artifact) — treat that as a signal the root cause hasn't been found yet, not as a
+reason to add another patch on the same layer. Trace the value back to where it originates before
+writing the fix, and verify the fix against production-shaped conditions (behind the real proxy,
+against the real build output) when the layer in question could plausibly differ between dev and
+prod — not just against local dev behavior.
 
 ## Writing comprehensive test cases
 
