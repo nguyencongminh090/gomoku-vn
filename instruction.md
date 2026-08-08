@@ -88,6 +88,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B69.** Tự host Google Fonts + audio — theo khuôn mẫu B65, kiểm license Freesound trước khi vendor (audit network, TODO.md #69) — [chi tiết](docs/instruction/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
 - **B70.** Style nút bấm không nhất quán toàn `client/` — xử lý theo thứ tự ưu tiên, CSS-only không đổi HTML/JS structure (yêu cầu người dùng, TODO.md #70) — [chi tiết](docs/instruction/B70-button-style-khong-nhat-quan-toan-client.md)
 - **B71.** Ô chat focus-mode không hiện do tổ tiên `display:none` — cần đổi HTML/JS (dời DOM hoặc re-parent), không phải CSS-only (phát hiện lúc verify #70, TODO.md #71) — [chi tiết](docs/instruction/B71-chat-input-focus-mode-khong-hien-do-display-none-to-tien.md)
+- **B73.** `.btn`/`.btn-confirm` thiếu base rule ngoài modal — thêm rule mới, không di chuyển `.modal__actions .btn-confirm` hiện có; kiểm tra `<link>` từng trang trước khi chọn file CSS để đặt rule (báo cáo người dùng kèm ảnh, TODO.md #73) — [chi tiết](docs/instruction/B73-nut-btn-btn-confirm-khong-co-base-style-ngoai-modal.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 
