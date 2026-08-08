@@ -70,6 +70,223 @@ class TournamentManager extends EventEmitter {
   }
 
   // ---------------------------------------------------------------------------
+  // Reload from DB (TODO.md #77) — rebuilds tournaments/pairings/
+  // userTournamentMap from SQLite at server boot, so live and historical
+  // tournaments survive a restart instead of only living in these Maps.
+  //
+  // NOT called from the constructor — kept explicit and side-effect-free at
+  // require() time; server/index.js calls this once, before accepting
+  // connections (see docs/instruction/B77-*.md for the full design
+  // rationale: what's DB-backed vs. reconstructed via the same pure
+  // generator functions startTournament() uses vs. an accepted gap).
+  // ---------------------------------------------------------------------------
+
+  loadTournamentsFromDb() {
+    const rows = database.getAllTournaments();
+    for (const row of rows) {
+      const tournament = this._hydrateTournament(row);
+      this.tournaments.set(tournament.tournamentId, tournament);
+
+      for (const [, entry] of tournament.entries) {
+        // Guest entries have no durable id (tournament_players.player_id is
+        // null for guests by design) — can't be re-linked to a userId after
+        // a restart. Known, accepted gap — see B77.
+        if (!entry.userId) continue;
+        if (!this.userTournamentMap.has(entry.userId)) {
+          this.userTournamentMap.set(entry.userId, new Set());
+        }
+        this.userTournamentMap.get(entry.userId).add(tournament.tournamentId);
+      }
+    }
+    logger.info(`[TournamentManager] Reloaded ${rows.length} tournament(s) from DB`);
+  }
+
+  /** Build one tournament object — entries, pairings, format-derived state — from its DB row. */
+  _hydrateTournament(row) {
+    const tournament = {
+      tournamentId: row.id,
+      name: row.name,
+      format: row.format,
+      organizerId: row.organizer_id,
+      organizerName: row.organizer_name,
+      ruleSet: row.rule_set,
+      status: row.status,
+      entries: new Map(),
+      createdAt: row.created_at,
+      startedAt: row.started_at,
+      completedAt: row.completed_at,
+      cancelledAt: row.cancelled_at ?? null,
+      cancelReason: row.cancel_reason ?? null,
+    };
+
+    for (const playerRow of database.getTournamentPlayers(row.id)) {
+      tournament.entries.set(playerRow.entry_id, {
+        entryId: playerRow.entry_id,
+        userId: playerRow.player_id,
+        displayName: playerRow.display_name,
+        isGuest: playerRow.player_id === null,
+        seed: playerRow.seed,
+        finalRank: playerRow.final_rank,
+        withdrawn: !!playerRow.withdrawn,
+        hadBye: false, // set below, from reloaded bye pairings
+      });
+    }
+
+    if (tournament.status === 'draft') return tournament; // never started: no rounds/pairings yet
+
+    const roundsById = new Map();
+    for (const r of database.getTournamentRounds(row.id)) {
+      roundsById.set(r.id, { roundIndex: r.round_index, bracketSide: r.bracket_side });
+    }
+
+    tournament.completedPairings = []; // for standings.js (Swiss/Round robin)
+    const pairingRows = database.getPairingsByTournament(row.id);
+    for (const pairingRow of pairingRows) {
+      const pairing = this._hydratePairing(tournament, pairingRow, roundsById);
+      this.pairings.set(pairing.pairingId, pairing);
+
+      if (pairing.player2EntryId === null) {
+        const entry = tournament.entries.get(pairing.player1EntryId);
+        if (entry) entry.hadBye = true;
+      }
+      // Same set _recordCompletion pushes to live — OrganizerAdjusted/
+      // Cancelled/DoubleNoShow never record a completedPairings entry either.
+      if (pairing.state === 'Completed' || pairing.state === 'Walkover') {
+        tournament.completedPairings.push({
+          player1: pairing.player1EntryId,
+          player2: pairing.player2EntryId,
+          winner: pairing.result.winnerEntryId ?? 'draw',
+        });
+      }
+      if (!PairingLifecycle.TERMINAL_STATES.has(pairing.state)) {
+        tournamentState.trackDeadline(pairing.pairingId, tournament.tournamentId, new Date(pairing.deadline).getTime());
+      }
+    }
+
+    this._hydrateFormatState(tournament, roundsById);
+    return tournament;
+  }
+
+  /**
+   * Build one pairing object from its DB row. Every DB-backed field is set
+   * directly; fields with no DB column (proposedTime, reportedBy, disputed,
+   * overdue, rescheduleRequest, readyPlayers) default to createPairing()'s
+   * initial values — reasonable degradation (a player re-clicks ready, or
+   * re-proposes a time), except:
+   *   - 'Reported' is demoted to 'Negotiating': confirmTime/disputeTime's
+   *     self-report guard reads the (unrecoverable) reportedBy field, so
+   *     leaving it in 'Reported' would silently make that guard unenforceable.
+   *   - 'InProgress' falls back one game via the same PairingLifecycle.
+   *     startNextGame() transition already used for "series not decided yet" —
+   *     no move data survives a crash mid-game (games[] only records
+   *     COMPLETED games), but any earlier games in the series are untouched.
+   * Both fixups are persisted immediately so a second reload sees the
+   * corrected state, not the stale one.
+   */
+  _hydratePairing(tournament, row, roundsById) {
+    const round = roundsById.get(row.round_id);
+    const pairing = {
+      pairingId: row.id,
+      tournamentId: row.tournament_id,
+      roundId: row.round_id,
+      player1EntryId: row.player1_entry_id,
+      player2EntryId: row.player2_entry_id,
+      state: row.state,
+      proposedTime: null,
+      reportedBy: null,
+      disputed: false,
+      overdue: false,
+      agreedTime: row.agreed_time,
+      rescheduleRequest: null,
+      readyPlayers: new Set(),
+      deadline: row.deadline,
+      pairedAt: row.paired_at,
+      result: row.result || null,
+      games: row.games || [],
+      seriesScore: null,
+      startedAt: row.started_at,
+      endedAt: row.ended_at,
+      bracketMatchId: tournament.format === 'double_elim' ? this._bracketMatchIdFromPairingId(tournament, row.id) : null,
+      roundIndex: round ? round.roundIndex : null,
+    };
+    pairing.seriesScore = seriesModule.computeSeriesScore(pairing.games, pairing.player1EntryId, pairing.player2EntryId);
+
+    let mutated = false;
+    if (pairing.state === 'Reported') {
+      pairing.state = 'Negotiating';
+      mutated = true;
+    } else if (pairing.state === 'InProgress') {
+      PairingLifecycle.startNextGame(pairing, tournament.ruleSet.schedulingWindowMs);
+      mutated = true;
+    }
+    if (mutated) this._persistPairing(pairing);
+
+    return pairing;
+  }
+
+  /**
+   * `_deId(tournament, localMatchId)` is the pure function
+   * `${tournamentId}:${localMatchId}` — so a Double Elimination pairing's
+   * (never persisted) bracketMatchId is recoverable losslessly by stripping
+   * the tournamentId prefix back off its (persisted) pairingId.
+   */
+  _bracketMatchIdFromPairingId(tournament, pairingId) {
+    const prefix = `${tournament.tournamentId}:`;
+    return pairingId.startsWith(prefix) ? pairingId.slice(prefix.length) : null;
+  }
+
+  /**
+   * Recompute the per-format bookkeeping that's never persisted (Swiss
+   * totalRounds, round-robin allRounds, DE bracket) via the same pure
+   * generator functions startTournament() uses — deterministic given the
+   * same (registration-ordered) entry ids, and only consulted going forward
+   * for FUTURE mutations, never to fabricate history.
+   */
+  _hydrateFormatState(tournament, roundsById) {
+    if (roundsById.size === 0) return; // started with <2 entries: nothing was ever materialized
+
+    const maxRoundIndex = Math.max(...Array.from(roundsById.values(), (r) => r.roundIndex));
+    const entryIds = Array.from(tournament.entries.keys());
+    const tournamentPairings = () => Array.from(this.pairings.values()).filter((p) => p.tournamentId === tournament.tournamentId);
+
+    if (tournament.format === 'swiss') {
+      tournament.currentRoundIndex = maxRoundIndex;
+      tournament.totalRounds = tournament.ruleSet.swissRounds
+        || Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
+      tournament.currentRoundPairingIds = new Set(
+        tournamentPairings().filter((p) => p.roundIndex === maxRoundIndex).map((p) => p.pairingId)
+      );
+    } else if (tournament.format === 'round_robin') {
+      tournament.allRounds = roundRobinPairing.generateAllRounds(entryIds);
+      tournament.currentRoundIndex = maxRoundIndex;
+      tournament.currentRoundPairingIds = new Set(
+        tournamentPairings().filter((p) => p.roundIndex === maxRoundIndex).map((p) => p.pairingId)
+      );
+    } else if (tournament.format === 'double_elim') {
+      tournament.bracket = doubleElimPairing.generateBracket(entryIds);
+      tournament.bracketResults = new Map();
+      for (const p of tournamentPairings()) {
+        if (p.player2EntryId === null) continue; // byes never enter bracketResults live either
+        if (p.state === 'Completed' || p.state === 'Walkover') {
+          tournament.bracketResults.set(p.bracketMatchId, p.result.winnerEntryId);
+        }
+      }
+      tournament.bracketRoundId = roundsById.keys().next().value ?? null; // DE has exactly one round row
+    }
+
+    // Self-heal a crash that happened between "last pairing completed" and
+    // "round materialized / tournament completed" — idempotent-safe, these
+    // methods only look at current pairing states, not fragile counters.
+    if (tournament.status === 'active') {
+      if (tournament.format === 'double_elim') {
+        this._checkDoubleElimComplete(tournament);
+      } else {
+        this._advanceIfRoundComplete(tournament);
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Create
   // ---------------------------------------------------------------------------
 
@@ -95,10 +312,9 @@ class TournamentManager extends EventEmitter {
       name: tournamentName,
       format,
       organizerId: organizerInfo.userId,
-      // In-memory only (no DB column) — same reasoning as RoomManager's
-      // hostName: display names aren't part of the durable audit trail,
-      // and nothing survives a server restart for this feature yet anyway
-      // (Phase 1-4 never added a "reload tournaments from DB" path).
+      // Persisted to tournaments.organizer_name (TODO.md #77) — needed to
+      // render the organizer's name after a loadTournamentsFromDb() reload,
+      // when there's no live organizerInfo to fall back on.
       organizerName: organizerInfo.displayName,
       ruleSet: validatedRuleSet,
       status: 'draft',      // draft | active | completed | cancelled
@@ -117,6 +333,7 @@ class TournamentManager extends EventEmitter {
       name: tournamentName,
       format,
       organizerId: organizerInfo.isGuest ? null : organizerInfo.userId,
+      organizerName: organizerInfo.displayName,
       ruleSet: validatedRuleSet,
       createdAt,
     });
@@ -919,7 +1136,10 @@ class TournamentManager extends EventEmitter {
       const ranked = standingsModule.rankStandings(tiebreaks);
       for (const row of ranked) {
         const entry = tournament.entries.get(row.id);
-        if (entry) entry.finalRank = row.rank;
+        if (entry) {
+          entry.finalRank = row.rank;
+          database.updateTournamentPlayerRank(entry.entryId, row.rank);
+        }
       }
     }
 
@@ -947,8 +1167,14 @@ class TournamentManager extends EventEmitter {
     const runnerUpId = championId === finalPairing.player1EntryId ? finalPairing.player2EntryId : finalPairing.player1EntryId;
     const championEntry = tournament.entries.get(championId);
     const runnerUpEntry = tournament.entries.get(runnerUpId);
-    if (championEntry) championEntry.finalRank = 1;
-    if (runnerUpEntry) runnerUpEntry.finalRank = 2;
+    if (championEntry) {
+      championEntry.finalRank = 1;
+      database.updateTournamentPlayerRank(championEntry.entryId, 1);
+    }
+    if (runnerUpEntry) {
+      runnerUpEntry.finalRank = 2;
+      database.updateTournamentPlayerRank(runnerUpEntry.entryId, 2);
+    }
   }
 
   // ---------------------------------------------------------------------------

@@ -232,6 +232,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng — luồng Sẵn sàng → Vào trận gây sai lệch thời gian giữa 2 người chơi (2026-08-08)
 - ✅ **#76.** Đồng hồ trận đấu start server-side ngay khi cả 2 "Sẵn sàng", nhưng client bắt bấm thêm nút "Vào trận" thủ công — ai bấm sau bị trừ giờ oan; nên tự động vào trận khi cả 2 đã sẵn sàng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B76-ready-auto-vao-tran-thay-vi-doi-bam-nut-enter.md)
 
+### Nguồn: người dùng hỏi "Nó có lưu database ko" (2026-08-08)
+- ✅ **#77.** Tournament đã ghi SQLite ở mọi transition nhưng `TournamentManager` chưa từng đọc lại — restart server xoá sạch mọi giải đấu khỏi bộ nhớ dù dữ liệu vẫn còn trong `gomoku.db`; thêm `loadTournamentsFromDb()` reload đầy đủ `[Model: Sonnet 5]` — [chi tiết](docs/todo/B77-tournament-du-lieu-song-sot-qua-restart-server.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

@@ -27,6 +27,7 @@ const { verifySocketToken } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
 const sessionManager = require('./managers/SessionManager');
+const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
 
 // ---------------------------------------------------------------------------
@@ -99,6 +100,12 @@ const io = new Server(server, {
 
 // Apply JWT auth middleware to ALL socket connections
 io.use(verifySocketToken);
+
+// Rebuild live/historical tournament state from SQLite (TODO.md #77) —
+// before socketHandler.init() so every handler sees a warm state from the
+// first connection, not an empty one that fills in only as new mutations
+// happen.
+tournamentManager.loadTournamentsFromDb();
 
 // Wire up event handlers
 socketHandler.init(io);

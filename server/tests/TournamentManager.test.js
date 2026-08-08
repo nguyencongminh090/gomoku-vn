@@ -1226,3 +1226,264 @@ describe('TournamentManager — cancelTournament', () => {
     }).not.toThrow();
   });
 });
+
+// ── Reload from DB (TODO.md #77) ────────────────────────────────────────────
+
+/** Wipe all three in-memory Maps and rebuild them purely from SQLite. */
+function reload() {
+  tournamentManager.tournaments.clear();
+  tournamentManager.pairings.clear();
+  tournamentManager.userTournamentMap.clear();
+  tournamentManager.loadTournamentsFromDb();
+}
+
+describe('TournamentManager — loadTournamentsFromDb', () => {
+  test('reload does not throw, and picks up exactly what is in the DB (this file shares one :memory: DB across tests, so "empty" isn\'t guaranteed here)', () => {
+    const expectedCount = database.getAllTournaments().length;
+    expect(() => reload()).not.toThrow();
+    expect(tournamentManager.tournaments.size).toBe(expectedCount);
+  });
+
+  test('a draft tournament (never started) reloads with its entries, no pairings', () => {
+    const organizer = user({ displayName: 'Người tổ chức' });
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss', name: 'Giải mùa xuân' }).tournament;
+    const p1 = user();
+    const { entryId } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.status).toBe('draft');
+    expect(reloaded.name).toBe('Giải mùa xuân');
+    expect(reloaded.organizerName).toBe('Người tổ chức');
+    expect(reloaded.entries.get(entryId).displayName).toBe(p1.displayName);
+    expect(tournamentManager.listPairings(tournament.tournamentId)).toHaveLength(0);
+    expect(tournamentManager.userTournamentMap.get(p1.userId).has(tournament.tournamentId)).toBe(true);
+  });
+
+  test('organizer name round-trips for a guest organizer too', () => {
+    const organizer = guest({ displayName: 'Khách tổ chức' });
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+
+    reload();
+
+    expect(tournamentManager.getTournament(tournament.tournamentId).organizerName).toBe('Khách tổ chức');
+  });
+
+  test('guest entries are absent from userTournamentMap after reload (known limitation, no durable guest id)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const g = guest();
+    tournamentManager.registerPlayer(g, tournament.tournamentId);
+
+    reload();
+
+    expect(tournamentManager.userTournamentMap.has(g.userId)).toBe(false);
+    const [entry] = Array.from(tournamentManager.getTournament(tournament.tournamentId).entries.values());
+    expect(entry.userId).toBeNull();
+    expect(entry.isGuest).toBe(true);
+    expect(entry.displayName).toBe(g.displayName);
+  });
+
+  test('swiss: reloaded pairing/round/standings state matches pre-reload state, and play continues correctly after reload', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    const { entryId: e2 } = tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.recordPairingResult(tournament.tournamentId, pairing.pairingId, e1);
+    expect(tournament.status).toBe('completed'); // 2 players, 1 round -> done
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.status).toBe('completed');
+    expect(reloaded.entries.get(e1).finalRank).toBe(1);
+    expect(reloaded.entries.get(e2).finalRank).toBe(2);
+    const reloadedPairing = tournamentManager.getPairing(pairing.pairingId);
+    expect(reloadedPairing.state).toBe('Completed');
+    expect(reloadedPairing.result.winnerEntryId).toBe(e1);
+    expect(reloadedPairing.roundIndex).toBe(1);
+  });
+
+  test('round robin: allRounds/currentRoundIndex regenerate correctly, and a post-reload result still advances the schedule', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const p1 = user(); const p2 = user(); const p3 = user();
+    const { entryId: e1 } = tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.registerPlayer(p3, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    reload();
+
+    let reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.allRounds).toHaveLength(3);
+    expect(reloaded.currentRoundIndex).toBe(0);
+    expect(reloaded.status).toBe('active');
+
+    // Play the reloaded tournament out to completion the same way the live
+    // round-advancement test does — proves _advanceIfRoundComplete/
+    // _materializeRound keep working against reconstructed state.
+    const entryToUser = (entryId) => [p1, p2, p3].find((u) => {
+      const found = Array.from(reloaded.entries.values()).find((e) => e.entryId === entryId);
+      return found && found.userId === u.userId;
+    });
+    let guard = 0;
+    while (reloaded.status === 'active' && guard < 10) {
+      guard++;
+      const real = tournamentManager.listPairings(tournament.tournamentId)
+        .find((p) => p.player2EntryId !== null && p.state !== 'Completed');
+      if (!real) break;
+      const u1 = entryToUser(real.player1EntryId);
+      const u2 = entryToUser(real.player2EntryId);
+      advanceToReady(tournament.tournamentId, real.pairingId, u1.userId, u2.userId);
+      tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, real.pairingId);
+      tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, real.pairingId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, real.pairingId, real.player1EntryId);
+    }
+
+    expect(reloaded.status).toBe('completed');
+    expect(reloaded.completedPairings).toHaveLength(6);
+    expect(reloaded.entries.get(e1).finalRank).toBeTruthy();
+  });
+
+  test('double elim: bracket/bracketResults/bracketMatchId reconstruct, and a post-reload result still syncs the next bracket match', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const userByEntry = new Map(entries.map((e, i) => [e, players[i]]));
+
+    function playPairing(localId, winnerEntryId) {
+      const pairingId = `${tournament.tournamentId}:${localId}`;
+      const pairing = tournamentManager.getPairing(pairingId);
+      const u1 = userByEntry.get(pairing.player1EntryId);
+      const u2 = userByEntry.get(pairing.player2EntryId);
+      advanceToReady(tournament.tournamentId, pairingId, u1.userId, u2.userId);
+      tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, pairingId);
+      tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, pairingId);
+      tournamentManager.recordPairingResult(tournament.tournamentId, pairingId, winnerEntryId);
+    }
+
+    // Play only W1M1/W1M2 (winners round 1), then reload mid-tournament.
+    playPairing('W1M1', entries[0]);
+    playPairing('W1M2', entries[1]);
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.status).toBe('active');
+    expect(reloaded.bracket).toBeTruthy();
+    expect(reloaded.bracketResults.get('W1M1')).toBe(entries[0]);
+    expect(reloaded.bracketResults.get('W1M2')).toBe(entries[1]);
+    const l1m1 = tournamentManager.getPairing(`${tournament.tournamentId}:L1M1`);
+    expect(l1m1.bracketMatchId).toBe('L1M1');
+
+    // Finish the bracket post-reload the same way the live test does.
+    playPairing('L1M1', entries[3]);
+    playPairing('W2M1', entries[0]);
+    playPairing('L2M1', entries[3]);
+    playPairing('GF', entries[0]);
+
+    expect(reloaded.status).toBe('completed');
+    expect(reloaded.entries.get(entries[0]).finalRank).toBe(1);
+    expect(reloaded.entries.get(entries[3]).finalRank).toBe(2);
+  });
+
+  test('a bye pairing reloads with entry.hadBye === true', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const players = [user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const bye = tournamentManager.listPairings(tournament.tournamentId).find((p) => p.player2EntryId === null);
+    expect(bye).toBeTruthy();
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.entries.get(bye.player1EntryId).hadBye).toBe(true);
+    const noBye = entries.filter((e) => e !== bye.player1EntryId);
+    for (const e of noBye) expect(reloaded.entries.get(e).hadBye).toBe(false);
+  });
+
+  test('a pairing frozen at InProgress reloads demoted to Ready, readyPlayers empty, deadline re-armed', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    advanceToReady(tournament.tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournament.tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournament.tournamentId, pairing.pairingId);
+    expect(tournamentManager.getPairing(pairing.pairingId).state).toBe('InProgress');
+
+    reload();
+
+    const reloaded = tournamentManager.getPairing(pairing.pairingId);
+    expect(reloaded.state).toBe('Ready');
+    expect(reloaded.readyPlayers.size).toBe(0);
+    expect(tournamentState.pendingDeadlines.has(pairing.pairingId)).toBe(true);
+
+    // The demotion is persisted, not just in-memory — a second reload sees
+    // 'Ready', not 'InProgress' again.
+    const row = database.getPairingsByTournament(tournament.tournamentId).find((r) => r.id === pairing.pairingId);
+    expect(row.state).toBe('Ready');
+  });
+
+  test('a pairing frozen at Reported reloads demoted to Negotiating, reportedBy/proposedTime reset', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const p1 = user(); const p2 = user();
+    tournamentManager.registerPlayer(p1, tournament.tournamentId);
+    tournamentManager.registerPlayer(p2, tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+    tournamentManager.reportPairingTime(p1.userId, tournament.tournamentId, pairing.pairingId, '2026-09-01T10:00:00Z');
+    expect(tournamentManager.getPairing(pairing.pairingId).state).toBe('Reported');
+
+    reload();
+
+    const reloaded = tournamentManager.getPairing(pairing.pairingId);
+    expect(reloaded.state).toBe('Negotiating');
+    expect(reloaded.reportedBy).toBeNull();
+    expect(reloaded.proposedTime).toBeNull();
+  });
+
+  test('a cancelled tournament reloads with cancelledAt/cancelReason intact', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.cancelTournament(organizer.userId, tournament.tournamentId, 'lý do huỷ');
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.status).toBe('cancelled');
+    expect(reloaded.cancelReason).toBe('lý do huỷ');
+    expect(reloaded.cancelledAt).toBeTruthy();
+  });
+
+  test('userTournamentMap rebuilds correctly for a user registered in multiple tournaments', () => {
+    const organizer = user();
+    const p1 = user();
+    const t1 = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const t2 = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    tournamentManager.registerPlayer(p1, t1.tournamentId);
+    tournamentManager.registerPlayer(p1, t2.tournamentId);
+
+    reload();
+
+    const set = tournamentManager.userTournamentMap.get(p1.userId);
+    expect(set.has(t1.tournamentId)).toBe(true);
+    expect(set.has(t2.tournamentId)).toBe(true);
+  });
+});
