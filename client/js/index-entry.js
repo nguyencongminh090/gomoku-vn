@@ -1,8 +1,10 @@
+// audio-manager.js and escape-utils.js are UMD modules — see the comment in
+// room-entry.js for why they load as classic <script> tags in index.html
+// instead of an ES import here (a bare side-effect import of a CJS-shaped
+// file never runs in a production Vite build).
 import './i18n.js?v=78';
 import './ui-mode.js?v=78';
 import './settings-panel.js?v=78';
-import './audio-manager.js?v=78';
 import './socket-client.js?v=78';
-import './escape-utils.js?v=78';
 import './lobby.js?v=78';
 import './tournaments.js?v=78';
