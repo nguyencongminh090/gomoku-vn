@@ -44,10 +44,12 @@ describe('CSP directives (TODO.md #65)', () => {
     expect(cspDirectives.defaultSrc).toEqual(["'self'"]);
   });
 
-  test('style-src explicitly allows only self, inline, and Google Fonts', () => {
-    expect(cspDirectives.styleSrc).toEqual(
-      expect.arrayContaining(["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'])
-    );
-    expect(cspDirectives.styleSrc).toHaveLength(3);
+  test('style-src explicitly allows only self and inline (fonts are self-hosted, TODO.md #69)', () => {
+    expect(cspDirectives.styleSrc).toEqual(["'self'", "'unsafe-inline'"]);
+  });
+
+  test('font-src and media-src have no third-party origins (TODO.md #69)', () => {
+    expect(cspDirectives.fontSrc).toEqual(["'self'", 'data:']);
+    expect(cspDirectives.mediaSrc).toEqual(["'self'"]);
   });
 });
