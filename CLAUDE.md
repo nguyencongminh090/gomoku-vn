@@ -95,6 +95,42 @@ Bugfixes keep using the `fix/<slug>` workflow above unchanged (short-lived branc
 - **After a `feature/*` branch merges into `dev`, delete it** (`git branch -d feature/...`), same as the `fix/*` cleanup rule, unless told to keep it for further review.
 - New feature work discovered mid-conversation still follows the "New requirements/tasks: stack, don't perform directly" rule below — record it in `TODO.md`/`instruction.md` first unless the user explicitly asks to implement it now, at which point it starts life as a `feature/*` branch off `dev` per this rule.
 
+## Concurrent sessions sharing the repo: check `git stash list` before assuming lost work
+
+The user may run multiple Claude Code sessions against this repo at once (e.g. one fixing a bug
+while another builds a feature in an isolated `git worktree`). Setting up a new session's worktree
+briefly touches the *main* checkout's `HEAD` — if another session has uncommitted edits sitting there
+at that exact moment, they can vanish from the working tree mid-task.
+
+Precedent (2026-08-08, TODO.md #74): mid-implementation, `grep`/`git diff` suddenly came up empty for
+code just written. `git reflog` showed an unexplained `checkout`/`reset` pair. The instinctive read —
+"a destructive `git reset --hard` from nowhere wiped my work" — was wrong and led to redoing the
+entire edit from scratch before checking further. The actual cause, found afterward: a second,
+concurrent session was being moved into its own `git worktree` (`git worktree list` showed it, on its
+own branch, in a separate path), and something stashed the first session's dirty working tree
+(`git stash list` → `stash@{0}`, labeled `wip: <branch> before switching for <other task>`) rather
+than destroying it. The reflog's `reset: moving to HEAD` line is exactly what `git stash` produces —
+easy to misread as `reset --hard` if you don't check the stash list first.
+
+**If uncommitted edits appear to have vanished mid-task** (a file you just wrote no longer contains
+the change, `git status`/`git diff` shows less than expected):
+- **Run `git stash list` before redoing anything.** If the missing edits are there, `git stash show
+  -p stash@{N}` to confirm content, then `git stash pop` (or apply and drop once merged) instead of
+  retyping the work.
+- **Run `git worktree list` and `git reflog`** to understand whether a concurrent session's worktree
+  setup caused it — a `checkout`/`reset` pair around the loss, paired with a branch you don't
+  recognize appearing in `git branch -vv` (marked `+`, pointing at a path outside this repo's own
+  directory), is the signature of this scenario specifically, not of a destructive command this
+  session ran.
+- **After recovering (or redoing) the work, drop the now-superseded stash entry** once it's confirmed
+  merged/committed, rather than leaving stale stashes to accumulate and confuse future recovery
+  attempts — but confirm with the user first per the general "ask before destructive-ish actions"
+  rule, since a stash isn't code but is still work product.
+- **This is not corruption.** `git fsck` after such an incident is a reasonable sanity check (verifies
+  no commit objects are actually damaged) but is not itself evidence anything went wrong — repos
+  normally carry unreachable objects from ordinary history rework (rebases, amends, `filter-branch`),
+  and a large `git fsck --unreachable` count on its own means nothing.
+
 ## `features/<slug>/`: pre-implementation feature discussion folders
 
 Before a new feature idea becomes tracked work in `TODO.md`/`instruction.md`, work it through a
