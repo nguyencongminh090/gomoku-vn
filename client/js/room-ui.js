@@ -317,9 +317,9 @@
       <div class="setting-row">
         <span class="setting-label">${t('settings.display')}</span>
         <div class="pill-group">
-          <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${st.boardDisplayMode === 'paper' ? 'checked' : ''} onchange="updateLocalSettings()" />
+          <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${st.boardDisplayMode === 'paper' ? 'checked' : ''} data-change-action="updateLocalSettings" />
           <label for="bdm-paper">${t('settings.display_paper')}</label>
-          <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${st.boardDisplayMode === 'stone' ? 'checked' : ''} onchange="updateLocalSettings()" />
+          <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${st.boardDisplayMode === 'stone' ? 'checked' : ''} data-change-action="updateLocalSettings" />
           <label for="bdm-stone">${t('settings.display_stone')}</label>
         </div>
       </div>
@@ -335,23 +335,23 @@
         <div class="setting-row">
           <span class="setting-label">${t('modal.board_size')}</span>
           <div class="pill-group">
-            <input type="radio" name="r-boardSize" id="r-bs-15" value="15" ${s.boardSize === 15 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-15" value="15" ${s.boardSize === 15 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-15">15×15</label>
-            <input type="radio" name="r-boardSize" id="r-bs-17" value="17" ${s.boardSize === 17 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-17" value="17" ${s.boardSize === 17 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-17">17×17</label>
-            <input type="radio" name="r-boardSize" id="r-bs-19" value="19" ${s.boardSize === 19 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-19" value="19" ${s.boardSize === 19 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-19">19×19</label>
-            <input type="radio" name="r-boardSize" id="r-bs-20" value="20" ${s.boardSize === 20 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-20" value="20" ${s.boardSize === 20 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-20">20×20</label>
           </div>
         </div>
         <div class="setting-row">
           <div class="pill-group">
-            <input type="radio" name="r-winRule" id="r-wr-freestyle" value="freestyle" ${s.winningRule === 'freestyle' || !s.winningRule ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-winRule" id="r-wr-freestyle" value="freestyle" ${s.winningRule === 'freestyle' || !s.winningRule ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-wr-freestyle">${t('rule.freestyle')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-standard" value="standard" ${s.winningRule === 'standard' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-winRule" id="r-wr-standard" value="standard" ${s.winningRule === 'standard' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-wr-standard">${t('rule.standard')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-caro" value="caro" ${s.winningRule === 'caro' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-winRule" id="r-wr-caro" value="caro" ${s.winningRule === 'caro' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-wr-caro">${t('rule.caro')}</label>
           </div>
         </div>
@@ -359,48 +359,48 @@
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_wall')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-wall" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} onchange="updateSettings()" />
+              <input type="checkbox" id="r-wall" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_portal')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-portal" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} onchange="updateSettings()" />
+              <input type="checkbox" id="r-portal" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
         <div class="setting-row">
           <div class="pill-group">
-            <input type="radio" name="r-openRule" id="r-or-none" value="none" ${!s.ruleSwap2 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-openRule" id="r-or-none" value="none" ${!s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-or-none">${t('rule.none')}</label>
-            <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-or-swap2">Swap2</label>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">${t('modal.timer_mode')}</span>
           <div class="pill-group">
-            <input type="radio" name="r-timerMode" id="r-tm-move" value="per_move" ${s.timerMode === 'per_move' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-timerMode" id="r-tm-move" value="per_move" ${s.timerMode === 'per_move' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-tm-move">${t('modal.per_move')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-game" value="per_game" ${s.timerMode === 'per_game' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-timerMode" id="r-tm-game" value="per_game" ${s.timerMode === 'per_game' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-tm-game">${t('modal.per_game')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-blitz" value="blitz" ${s.timerMode === 'blitz' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-timerMode" id="r-tm-blitz" value="blitz" ${s.timerMode === 'blitz' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-tm-blitz">${t('modal.blitz')}</label>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">${t('modal.time_label')}</span>
           <div class="timer-input">
-            <input type="number" id="r-timer" value="${s.timerSeconds}" min="5" max="3600" step="5" onchange="updateSettings()" />
+            <input type="number" id="r-timer" value="${s.timerSeconds}" min="5" max="3600" step="5" data-change-action="updateSettings" />
             <span class="unit">${t('modal.time_unit')}</span>
           </div>
         </div>
         <div class="setting-row" style="${s.timerMode === 'blitz' ? '' : 'opacity:0.45;'}">
           <span class="setting-label">${t('modal.time_plus')}</span>
           <div class="timer-input">
-            <input type="number" id="r-timer-increment" value="${s.timerIncrementSeconds || 0}" min="0" max="600" step="1" ${s.timerMode === 'blitz' ? '' : 'disabled'} onchange="updateSettings()" />
+            <input type="number" id="r-timer-increment" value="${s.timerIncrementSeconds || 0}" min="0" max="600" step="1" ${s.timerMode === 'blitz' ? '' : 'disabled'} data-change-action="updateSettings" />
             <span class="unit">${t('modal.time_unit')}</span>
           </div>
         </div>
