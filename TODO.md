@@ -220,6 +220,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng — "User cannot change Display (Paper/Stone) It auto get back." (2026-08-08)
 - ✅ **#72.** Toàn bộ tab Cài đặt trong phòng (Paper/Stone + board size + luật thắng + Wall/Portal + Swap2 + timer) không lưu được — 18 chỗ `onchange="fn()"` inline bị CSP `scriptSrcAttr:'none'` (TODO.md #65) chặn câm lặng, radio bật lại giá trị cũ ở lần re-render kế tiếp `[Model: Sonnet 5]` — [chi tiết](docs/todo/B72-room-settings-tab-onchange-blocked-boi-csp.md)
 
+### Nguồn: báo cáo người dùng — "User in Tournament room cannot set Display (Paper/Stone) and no sound" (2026-08-08)
+- **#74.** `tournament-match.html` không có tab "Cài đặt"/UI nào để đổi Display (Paper/Stone) giữa trận (cố ý từ B50, comment xác nhận), và hoàn toàn không có âm thanh — thiếu cả `<script audio-manager.js>` lẫn lời gọi `playMoveSound`/`playWinSound`/... mà `room-socket.js` có cho phòng thường `[Model: Sonnet 5]` — [chi tiết](docs/todo/B74-tournament-match-thieu-am-thanh-va-doi-display-mode.md)
+
 ### Nguồn: báo cáo người dùng kèm ảnh chụp — nút bấm trang giải đấu trông như mặc định trình duyệt (2026-08-08)
 - ✅ **#73.** `.btn`/`.btn-confirm` không có rule base (unscoped) nào áp dụng được ngoài `.modal__actions` — nút "Bắt đầu"/"Xem cặp đấu"/"Báo giờ"/"Sẵn sàng" trên trang giải đấu render bằng UA stylesheet mặc định của trình duyệt; phát hiện ngoài phạm vi #70 vì verify của #70 không chụp trang giải đấu `[Model: Sonnet 5]` — [chi tiết](docs/todo/B73-nut-btn-btn-confirm-khong-co-base-style-ngoai-modal.md)
 
