@@ -109,3 +109,4 @@
 | 2026-08-08 12:55 | TODO.md #68: JWT trong `localStorage` → **phiên mờ phía server** + `HttpOnly` cookie (theo chuẩn OW… | [chi tiết](docs/fix-log/2026-08-08-todo-68-server-side-sessions-httponly-cookie.md) |
 | 2026-08-08 13:36 | TODO.md #70: style nút bấm không nhất quán toàn `client/` — gộp `--c-danger`→`--c-error`, xoá xanh l… | [chi tiết](docs/fix-log/2026-08-08-todo-70-button-style-inconsistency.md) |
 | 2026-08-08 14:56 | TODO.md #72: User report "Display (Paper/Stone) auto get back" — CSP `scriptSrcAttr:'none'` (TODO.… | [chi tiết](docs/fix-log/2026-08-08-todo-72-room-settings-csp-onchange-blocked.md) |
+| 2026-08-08 15:12 | Fix #21 follow-up: stone-mode wall/brick colors — WCAG-solved warm-stone palette (mortar/dark/base/… | [chi tiết](docs/fix-log/2026-08-08-stone-mode-wall-brick-colors.md) |
