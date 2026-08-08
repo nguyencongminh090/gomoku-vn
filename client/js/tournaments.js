@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client } from './lobby.js?v=83';
+import { client } from './lobby.js?v=84';
 
 // ---------------------------------------------------------------------------
 // Element refs

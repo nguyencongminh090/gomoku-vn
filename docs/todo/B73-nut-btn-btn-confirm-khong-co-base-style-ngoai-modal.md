@@ -76,5 +76,26 @@ qua. Xác nhận bằng cách đọc `docs/todo/B70-*.md`: verify của #70 ch�
 
 ## Trạng thái
 
-Chưa làm — mới ghi nhận, chờ xác nhận với người dùng trước khi implement (theo quy tắc "New
-requirements/tasks: stack, don't perform directly" trong `CLAUDE.md`).
+✅ ĐÃ XONG (2026-08-08, branch `fix/btn-confirm-base-style-outside-modal` trên `dev` — nhánh off
+`dev` vì entry #73 chỉ tồn tại trên `dev`, không có trên `main`).
+
+**Đã làm:**
+- Thêm rule base unscoped `.btn` (layout: inline-flex/padding/border-radius:9999px/pointer) +
+  `.btn-confirm` (nền `var(--c-brand)`, hover/active khớp `.modal__actions .btn-confirm`) vào
+  `client/css/lobby.css`, ngay sau `.btn-secondary` — vì `lobby.css` được load trên mọi trang cần
+  (`index.html`, `tournament.html`, `tournament-match.html`).
+- Giữ nguyên toàn bộ rule scoped hiện có (`.pairing-card__actions .btn`,
+  `.tournament-card__actions .btn`, `.swap2-banner__actions .btn`, `.modal__actions .btn`) — chúng
+  vẫn override kích thước đúng như cũ, chỉ base bị thiếu trước đó là được bù thêm.
+- Bump `?v=83` → `?v=84` toàn bộ `client/*.html` + `client/js/*.js` theo đúng quy tắc cache-busting,
+  verify bằng `grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup` → đúng 1 giá trị `?v=84`.
+
+**Verify:** chạy server thật với DB tạm (theo quy tắc Playwright/e2e trong `CLAUDE.md` — dời
+`gomoku.db` ra, chạy DB rỗng, phục hồi DB thật sau khi xong), dựng trang probe qua static file
+server load đúng `main.css`/`lobby.css`/`tournament.css` (`?v=84`) tái tạo markup thật của cả 5 vị
+trí bị ảnh hưởng (`tournaments.js:304`, `tournament-detail.js:314`, `tournament-detail.js:383`,
+`tournament-match.html:162,179`). `getComputedStyle` xác nhận cả 5 đều ra `background: rgb(79, 70,
+229)`, `color: rgb(255,255,255)`, `border-radius: 9999px` — khớp hình pill của `.btn-secondary` đã
+đúng từ trước — ở cả `light` và `dark` `prefers-color-scheme`. Screenshot xác nhận trực quan. Không
+có console/page error. Không chạy `npm test` vì CSS-only, `client/` không có test runner tự động
+(giống tiền lệ #70). Chi tiết đầy đủ trong `docs/fix-log/2026-08-08-todo-73-btn-confirm-missing-base-style.md`.
