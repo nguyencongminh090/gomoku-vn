@@ -47,10 +47,13 @@ const actionBannerSlot = document.getElementById('action-banner-slot');
 const detailCancelSlot = document.getElementById('detail-cancel-slot');
 const subTabPairings = document.getElementById('sub-tab-pairings');
 const subTabStandings = document.getElementById('sub-tab-standings');
+const subTabGames = document.getElementById('sub-tab-games');
 const subtabPairingsPanel = document.getElementById('subtab-pairings');
 const subtabStandingsPanel = document.getElementById('subtab-standings');
+const subtabGamesPanel = document.getElementById('subtab-games');
 const pairingsContainer = document.getElementById('pairings-container');
 const standingsContainer = document.getElementById('standings-container');
+const gamesContainer = document.getElementById('games-container');
 
 const escapeHtml = (str) => {
   const div = document.createElement('div');
@@ -162,17 +165,27 @@ client.on('tournament:unregistered', () => client.emit('tournament:get', { tourn
 
 // ── Sub-tabs ─────────────────────────────────────────────────────────────
 
+const SUB_TABS = {
+  pairings: { btn: subTabPairings, panel: subtabPairingsPanel },
+  standings: { btn: subTabStandings, panel: subtabStandingsPanel },
+  games: { btn: subTabGames, panel: subtabGamesPanel },
+};
+
 function activateSubTab(name) {
-  const isPairings = name === 'pairings';
-  subTabPairings.classList.toggle('is-active', isPairings);
-  subTabPairings.setAttribute('aria-selected', String(isPairings));
-  subTabStandings.classList.toggle('is-active', !isPairings);
-  subTabStandings.setAttribute('aria-selected', String(!isPairings));
-  subtabPairingsPanel.classList.toggle('is-active', isPairings);
-  subtabStandingsPanel.classList.toggle('is-active', !isPairings);
+  for (const [key, { btn, panel }] of Object.entries(SUB_TABS)) {
+    const isActive = key === name;
+    btn.classList.toggle('is-active', isActive);
+    btn.setAttribute('aria-selected', String(isActive));
+    panel.classList.toggle('is-active', isActive);
+  }
+  // Games history has no live socket payload (unlike pairings/standings,
+  // which are derived from data already in memory) — fetch lazily, only
+  // when the tab is actually opened.
+  if (name === 'games') loadGamesHistory();
 }
 subTabPairings.addEventListener('click', () => activateSubTab('pairings'));
 subTabStandings.addEventListener('click', () => activateSubTab('standings'));
+subTabGames.addEventListener('click', () => activateSubTab('games'));
 
 // ── Formatting helpers ───────────────────────────────────────────────────
 
@@ -862,6 +875,85 @@ function renderStandings() {
   `;
 }
 
+// ── Games History (TODO.md #78) ─────────────────────────────────────────
+
+let gamesHistory = null; // cached last-fetched list, re-rendered on langchange without refetching
+
+const GAME_REASON_KEY = {
+  normal: 'history.reason_normal',
+  resign: 'game.btn_resign',
+  timeout: 'history.reason_timeout',
+  draw_agreement: 'history.reason_draw_agreement',
+  board_full: 'history.reason_board_full',
+};
+
+function gameResultText(g) {
+  const reason = GAME_REASON_KEY[g.reason] ? t(GAME_REASON_KEY[g.reason]) : (g.reason || '');
+  if (!g.winner || g.winner === 'draw') {
+    return reason ? `${t('history.result_draw')} — ${reason}` : t('history.result_draw');
+  }
+  const name = g.winner === 'BLACK' ? g.black_player_name : g.white_player_name;
+  return reason ? `${t('history.x_won', { name })} — ${reason}` : t('history.x_won', { name });
+}
+
+function gameMatchLabel(g) {
+  const pairing = pairingsById.get(g.pairing_id);
+  if (!pairing) return '—';
+  return tournament.format === 'double_elim'
+    ? (pairing.bracketMatchId || '—')
+    : (pairing.roundIndex != null ? `${t('tdetail.round_word')} ${pairing.roundIndex}` : '—');
+}
+
+async function loadGamesHistory() {
+  gamesContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">${t('history.loading')}</span></div>`;
+  try {
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/games`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'load failed');
+    gamesHistory = data.games;
+    renderGamesHistory();
+  } catch (err) {
+    gamesContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">${t('tdetail.games_load_error')}</span></div>`;
+  }
+}
+
+function renderGamesHistory() {
+  if (!gamesHistory) return;
+  if (gamesHistory.length === 0) {
+    gamesContainer.innerHTML = `
+      <div class="empty-tournaments">
+        <span class="room-list__empty-text">${t('tdetail.games_empty')}</span>
+      </div>
+    `;
+    return;
+  }
+
+  gamesContainer.innerHTML = `
+    <table class="standings-table">
+      <thead>
+        <tr>
+          <th>${t('tdetail.games_th_match')}</th>
+          <th>${t('tdetail.games_th_players')}</th>
+          <th>${t('tdetail.games_th_result')}</th>
+          <th>${t('tdetail.games_th_ended')}</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${gamesHistory.map((g) => `
+          <tr>
+            <td>${escapeHtml(gameMatchLabel(g))}</td>
+            <td class="name-cell">${escapeHtml(g.black_player_name)} vs ${escapeHtml(g.white_player_name)}</td>
+            <td>${escapeHtml(gameResultText(g))}</td>
+            <td>${escapeHtml(formatDateTime(g.ended_at))}</td>
+            <td><a class="btn-replay" href="history.html?id=${escapeAttr(g.id)}&source=tournament">${t('tdetail.games_btn_replay')}</a></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 // ── Render orchestration ─────────────────────────────────────────────────
 
 function renderAll() {
@@ -872,4 +964,7 @@ function renderAll() {
   renderStandings();
 }
 
-window.addEventListener('langchange', renderAll);
+window.addEventListener('langchange', () => {
+  renderAll();
+  if (gamesHistory) renderGamesHistory();
+});

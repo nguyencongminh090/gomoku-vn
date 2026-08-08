@@ -149,6 +149,34 @@ CREATE TABLE IF NOT EXISTS tournament_pairings (
   ended_at          TEXT
 );
 
+-- Tournament games — one row per INDIVIDUAL game played within a pairing
+-- (TODO.md #78). tournament_pairings.moves only ever holds the CURRENT/last
+-- game's move history (overwritten every game in a series) — this table is
+-- the full, per-game, never-overwritten history, mirroring `games` above but
+-- keyed to a tournament/pairing and using tournament entries (not raw user
+-- ids) for player identity, since entry ids are already client-visible
+-- (serializePairing) and don't need the guest-id stripping `games` does.
+CREATE TABLE IF NOT EXISTS tournament_games (
+  id                 TEXT PRIMARY KEY,
+  tournament_id      TEXT NOT NULL REFERENCES tournaments(id),
+  pairing_id         TEXT NOT NULL REFERENCES tournament_pairings(id),
+  game_index         INTEGER NOT NULL,        -- 0-based, matches pairing.games[].index
+  black_entry_id     TEXT REFERENCES tournament_players(entry_id),
+  white_entry_id     TEXT REFERENCES tournament_players(entry_id),
+  black_player_name  TEXT NOT NULL,
+  white_player_name  TEXT NOT NULL,
+  winner             TEXT,             -- 'BLACK' | 'WHITE' | 'draw' | null
+  reason             TEXT,
+  board_size         INTEGER NOT NULL,
+  rule_wall          INTEGER NOT NULL DEFAULT 0,
+  rule_portal        INTEGER NOT NULL DEFAULT 0,
+  moves              TEXT,            -- JSON array of {x, y, color, timestamp}
+  walls              TEXT,            -- JSON array of {x, y}
+  portals            TEXT,            -- JSON array of {a:{x,y}, b:{x,y}}
+  started_at         TEXT NOT NULL,
+  ended_at           TEXT
+);
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_tournament_players_tournament_id ON tournament_players(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_tournament_players_player_id ON tournament_players(player_id);
@@ -156,3 +184,5 @@ CREATE INDEX IF NOT EXISTS idx_tournament_rounds_tournament_id ON tournament_rou
 CREATE INDEX IF NOT EXISTS idx_tournament_pairings_round_id ON tournament_pairings(round_id);
 CREATE INDEX IF NOT EXISTS idx_tournament_pairings_tournament_id ON tournament_pairings(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_tournament_pairings_state ON tournament_pairings(state);
+CREATE INDEX IF NOT EXISTS idx_tournament_games_tournament_id ON tournament_games(tournament_id);
+CREATE INDEX IF NOT EXISTS idx_tournament_games_pairing_id ON tournament_games(pairing_id);

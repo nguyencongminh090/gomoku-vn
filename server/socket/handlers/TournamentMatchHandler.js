@@ -38,6 +38,7 @@
  */
 
 const logger = require('../../utils/logger');
+const { v4: uuidv4 } = require('uuid');
 const { GameEngine } = require('../../managers/GameEngine');
 const WallGenerator = require('../../generators/WallGenerator');
 const PortalGenerator = require('../../generators/PortalGenerator');
@@ -45,6 +46,7 @@ const tournamentManager = require('../../managers/tournament/TournamentManager')
 const tournamentState = require('../tournamentState');
 const { findSocketsByUserId } = require('../state');
 const config = require('../../config');
+const database = require('../../db/database');
 // Reused as-is (TODO.md #50 step 7 "UI/component reuse" — the SAME rule
 // applies to the chat mechanism underneath it): managers/ChatHandler.js's
 // handleMessage() is already decoupled from RoomManager, it just broadcasts
@@ -376,6 +378,42 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
 
   const pairing = tournamentManager.getPairing(pairingId);
   if (pairing) pairing.moves = match.engine.moveHistory;
+
+  // Full per-game history (TODO.md #78) — one row per individual game,
+  // never overwritten (unlike pairing.moves above, which the NEXT game in a
+  // series clobbers). gameIndex mirrors startMatch()'s own computation:
+  // pairing.games.length BEFORE recordPairingResult() below pushes this
+  // game's summary entry. Placed unconditionally, not inside `if (outcome)`
+  // — _endMatch is only ever called from a genuinely finished GameEngine
+  // (win/draw/resign/timeout); forceCancelMatch deliberately never routes
+  // through here (see its own doc comment), so there's always a real game
+  // to record here, same as GameHandler.js's saveGame() guard.
+  if (pairing) {
+    database.saveTournamentGame({
+      gameId: uuidv4(),
+      tournamentId,
+      pairingId,
+      gameIndex: pairing.games.length,
+      players: match.engine.players.map((p) => ({
+        id: p.userId,
+        name: p.displayName,
+        color: p.color,
+        isGuest: p.isGuest,
+        entryId: match.entryByUserId.get(p.userId),
+      })),
+      result: engineResult,
+      boardSize: match.engine.boardSize,
+      ruleWall: match.engine.walls.length > 0,
+      rulePortal: match.engine.portals.length > 0,
+      moveHistory: match.engine.moveHistory,
+      walls: match.engine.walls,
+      portals: match.engine.portals,
+      startedAt: match.engine.moveHistory.length > 0
+        ? new Date(match.engine.moveHistory[0].timestamp).toISOString()
+        : new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+    });
+  }
 
   const outcome = engineResult.winner === 'draw' ? 'draw' : match.entryByUserId.get(engineResult.winner);
   tournamentState.tournamentGameMap.delete(pairingId);

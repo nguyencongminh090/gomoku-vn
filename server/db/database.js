@@ -650,6 +650,102 @@ function getPairingsByTournament(tournamentId) {
   });
 }
 
+/**
+ * Persist one INDIVIDUAL finished tournament game (TODO.md #78) — called once
+ * per game from TournamentMatchHandler._endMatch, not once per pairing, so a
+ * multi-game series gets one row per game instead of tournament_pairings.moves'
+ * single overwritten column. Mirrors saveGame()'s exact winner-normalization
+ * logic, keyed to a tournament entry instead of a raw user id.
+ *
+ * @param {{ gameId, tournamentId, pairingId, gameIndex,
+ *   players: Array<{id, name, color, isGuest, entryId}>, result: {winner, reason}|null,
+ *   boardSize, ruleWall, rulePortal, moveHistory, walls, portals, startedAt, endedAt }} game
+ */
+function saveTournamentGame({
+  gameId, tournamentId, pairingId, gameIndex, players, result,
+  boardSize, ruleWall, rulePortal, moveHistory, walls, portals, startedAt, endedAt,
+}) {
+  const black = players.find((p) => p.color === 'BLACK');
+  const white = players.find((p) => p.color === 'WHITE');
+
+  let winner = null;
+  if (result) {
+    if (result.winner === 'draw') winner = 'draw';
+    else if (black && result.winner === black.id) winner = 'BLACK';
+    else if (white && result.winner === white.id) winner = 'WHITE';
+    else winner = result.winner;
+  }
+
+  db.prepare(`
+    INSERT INTO tournament_games
+      (id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
+       black_player_name, white_player_name, winner, reason, board_size,
+       rule_wall, rule_portal, moves, walls, portals, started_at, ended_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    gameId,
+    tournamentId,
+    pairingId,
+    gameIndex,
+    black ? black.entryId : null,
+    white ? white.entryId : null,
+    black ? black.name : 'Unknown',
+    white ? white.name : 'Unknown',
+    winner,
+    result ? result.reason : null,
+    boardSize,
+    ruleWall ? 1 : 0,
+    rulePortal ? 1 : 0,
+    JSON.stringify(moveHistory),
+    JSON.stringify(walls),
+    JSON.stringify(portals),
+    startedAt,
+    endedAt
+  );
+  logger.info(`[DB] Tournament game ${gameId} saved (pairing ${pairingId}, game ${gameIndex}).`);
+}
+
+/**
+ * List every individual game played in a tournament, chronologically —
+ * lightweight (no moves/walls/portals), for the tournament detail page's
+ * Games History tab.
+ * @param {string} tournamentId
+ * @returns {Array}
+ */
+function getTournamentGames(tournamentId) {
+  return db.prepare(`
+    SELECT id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
+           black_player_name, white_player_name, winner, reason, board_size,
+           rule_wall, rule_portal, started_at, ended_at
+    FROM tournament_games
+    WHERE tournament_id = ?
+    ORDER BY started_at ASC
+  `).all(tournamentId);
+}
+
+/**
+ * Fetch a single tournament game with full replay data (moves/walls/portals)
+ * — same response shape as getGameById(), so the client's existing replay
+ * viewer (history.js) needs no rendering changes to consume it.
+ * @param {string} id
+ * @returns {object|undefined}
+ */
+function getTournamentGameById(id) {
+  const row = db.prepare('SELECT * FROM tournament_games WHERE id = ?').get(id);
+  if (!row) return row;
+  row.moves = row.moves ? JSON.parse(row.moves) : [];
+  row.walls = row.walls ? JSON.parse(row.walls) : [];
+  row.portals = row.portals ? JSON.parse(row.portals) : [];
+  // Same derived field withWinnerName() adds for casual games — the client's
+  // existing replay viewer (history.js's getResultTextFull) reads
+  // `winner_name` directly, so this keeps that code path unchanged for a
+  // tournament-sourced replay too.
+  row.winner_name = row.winner === 'BLACK' ? row.black_player_name
+    : row.winner === 'WHITE' ? row.white_player_name
+    : null;
+  return row;
+}
+
 module.exports = {
   db,
   createUser,
@@ -681,4 +777,7 @@ module.exports = {
   getTournamentRounds,
   savePairing,
   getPairingsByTournament,
+  saveTournamentGame,
+  getTournamentGames,
+  getTournamentGameById,
 };

@@ -211,9 +211,14 @@ function renderReplayInfo(game) {
   replayMeta.textContent = `${game.board_size}×${game.board_size} | ${ruleStr} | ${formatTime(game.ended_at)}`;
 }
 
-async function openReplay(gameId) {
+// `source` — 'tournament' fetches a tournament game (TODO.md #78, separate
+// from the casual `games` table) instead of a casual one; same response
+// shape either way (GET /api/tournament-games/:id mirrors GET /api/games/:id)
+// so everything below this point needs no branching.
+async function openReplay(gameId, source) {
   try {
-    const res = await fetch(`/api/games/${gameId}`);
+    const endpoint = source === 'tournament' ? `/api/tournament-games/${gameId}` : `/api/games/${gameId}`;
+    const res = await fetch(endpoint);
     const data = await res.json();
 
     if (!res.ok || !data.game) {
@@ -239,7 +244,9 @@ async function openReplay(gameId) {
     viewReplay.style.display = '';
 
     // Update URL for sharing
-    history.replaceState(null, '', `history.html?id=${gameId}`);
+    history.replaceState(null, '', source === 'tournament'
+      ? `history.html?id=${gameId}&source=tournament`
+      : `history.html?id=${gameId}`);
 
     // Reset analysis mode. Pro opens straight into it (analysis is the reason a
     // power user opens a replay at all); Lite/Default start closed but can toggle it.
@@ -274,6 +281,12 @@ async function openReplay(gameId) {
 }
 
 function closeReplay() {
+  // A tournament-sourced replay (TODO.md #78) has no casual list to go back
+  // to — "back" means the tournament it came from, not history.html's list.
+  if (replayGameData && replayGameData.tournament_id) {
+    window.location.href = `tournament.html?id=${encodeURIComponent(replayGameData.tournament_id)}`;
+    return;
+  }
   stopAutoPlay();
   setAnalysisMode(false);
   viewReplay.style.display = 'none';
@@ -608,7 +621,11 @@ applyReplayMode();
 
 const urlParams = new URLSearchParams(window.location.search);
 const urlGameId = urlParams.get('id');
-if (urlGameId) {
+const urlSource = urlParams.get('source');
+if (urlGameId && urlSource === 'tournament') {
+  // No casual list to show for a tournament-sourced deep link (TODO.md #78).
+  openReplay(urlGameId, 'tournament');
+} else if (urlGameId) {
   loadGames(1);
   openReplay(urlGameId);
 } else {
