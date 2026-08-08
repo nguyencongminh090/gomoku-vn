@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS tournaments (
   name          TEXT NOT NULL,
   format        TEXT NOT NULL,           -- 'swiss' | 'round_robin' | 'double_elim'
   organizer_id  TEXT REFERENCES users(id), -- null for a guest organizer
+  organizer_name TEXT,                    -- display name, kept even for guest organizers (TODO.md #77)
   rule_set      TEXT NOT NULL,           -- JSON — shared RuleSet schema (all formats)
   status        TEXT NOT NULL,           -- 'draft' | 'active' | 'completed' | 'cancelled'
   created_at    TEXT NOT NULL,           -- ISO 8601 timestamp

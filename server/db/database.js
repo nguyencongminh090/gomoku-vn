@@ -52,6 +52,14 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('cancelled_at'))
   logger.info('[DB] Migrated tournaments: added cancelled_at/cancel_reason columns (TODO.md #59)');
 }
 
+// Same additive-migration need as above, for organizer_name (TODO.md #77) —
+// previously in-memory only (TournamentManager.js's tournament.organizerName),
+// needed now so a reloaded tournament can still render its organizer's name.
+if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name')) {
+  db.exec('ALTER TABLE tournaments ADD COLUMN organizer_name TEXT');
+  logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
+}
+
 // Periodic WAL checkpoint to prevent unbounded growth
 setInterval(() => {
   try {
@@ -464,15 +472,18 @@ function getGameStatsByResult(filters = {}) {
 // ---------------------------------------------------------------------------
 
 /**
- * Insert a new tournament (status 'draft').
- * @param {{ id, name, format, organizerId, ruleSet, createdAt }} tournament
+ * Insert a new tournament (status 'draft'). `organizerName` is stored even
+ * for a guest organizer (only `organizer_id` stays null for guests, since
+ * that column is an FK into `users`) — it's needed to render the tournament
+ * after a reload, when there's no live `organizerInfo` to fall back on.
+ * @param {{ id, name, format, organizerId, organizerName, ruleSet, createdAt }} tournament
  */
-function createTournament({ id, name, format, organizerId, ruleSet, createdAt }) {
+function createTournament({ id, name, format, organizerId, organizerName, ruleSet, createdAt }) {
   const stmt = db.prepare(
-    `INSERT INTO tournaments (id, name, format, organizer_id, rule_set, status, created_at)
-     VALUES (?, ?, ?, ?, ?, 'draft', ?)`
+    `INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'draft', ?)`
   );
-  return stmt.run(id, name, format, organizerId, JSON.stringify(ruleSet), createdAt);
+  return stmt.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt);
 }
 
 /**
@@ -484,6 +495,18 @@ function getTournamentById(id) {
   const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
   if (row) row.rule_set = JSON.parse(row.rule_set);
   return row;
+}
+
+/**
+ * List every tournament, any status — the read half of the reload path
+ * (TODO.md #77). `rule_set` is parsed back into an object per row, same as
+ * getTournamentById.
+ * @returns {Array<object>}
+ */
+function getAllTournaments() {
+  const rows = db.prepare('SELECT * FROM tournaments').all();
+  for (const row of rows) row.rule_set = JSON.parse(row.rule_set);
+  return rows;
 }
 
 /**
@@ -528,12 +551,26 @@ function deleteTournamentPlayer(entryId) {
 }
 
 /**
- * List all player entries for a tournament.
+ * List all player entries for a tournament, in registration order — the
+ * reload path (TODO.md #77) depends on this order to regenerate round-robin/
+ * double-elim schedules deterministically (both are seeded off entry array
+ * order).
  * @param {string} tournamentId
  * @returns {Array}
  */
 function getTournamentPlayers(tournamentId) {
-  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ?').all(tournamentId);
+  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY registered_at ASC').all(tournamentId);
+}
+
+/**
+ * Persist an entry's final standing once a tournament completes
+ * (TournamentManager._completeTournament/_assignDoubleElimFinalRanks) —
+ * previously in-memory only, needed now so it survives a reload (TODO.md #77).
+ * @param {string} entryId
+ * @param {number} finalRank
+ */
+function updateTournamentPlayerRank(entryId, finalRank) {
+  db.prepare('UPDATE tournament_players SET final_rank = ? WHERE entry_id = ?').run(finalRank, entryId);
 }
 
 /**
@@ -545,6 +582,18 @@ function createTournamentRound({ id, tournamentId, roundIndex, bracketSide }) {
     `INSERT INTO tournament_rounds (id, tournament_id, round_index, bracket_side)
      VALUES (?, ?, ?, ?)`
   ).run(id, tournamentId, roundIndex, bracketSide || null);
+}
+
+/**
+ * List every round row for a tournament — the reload path (TODO.md #77)
+ * joins this against pairings' round_id to recover each pairing's
+ * roundIndex (Swiss/round-robin) and to find double-elim's single synthetic
+ * round row.
+ * @param {string} tournamentId
+ * @returns {Array<{id, tournament_id, round_index, bracket_side}>}
+ */
+function getTournamentRounds(tournamentId) {
+  return db.prepare('SELECT * FROM tournament_rounds WHERE tournament_id = ?').all(tournamentId);
 }
 
 /**
@@ -622,11 +671,14 @@ module.exports = {
   getGameStatsByResult,
   createTournament,
   getTournamentById,
+  getAllTournaments,
   updateTournamentStatus,
   saveTournamentPlayer,
   deleteTournamentPlayer,
   getTournamentPlayers,
+  updateTournamentPlayerRank,
   createTournamentRound,
+  getTournamentRounds,
   savePairing,
   getPairingsByTournament,
 };
