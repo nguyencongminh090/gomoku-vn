@@ -211,6 +211,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - **#68.** Cân nhắc chuyển JWT từ `localStorage` sang `HttpOnly` cookie — phòng thủ theo chiều sâu, độ ưu tiên thấp `[Model: Opus 5]` — [chi tiết](docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
 - ✅ **#69.** Tự host Google Fonts + audio assets — giảm rò rỉ IP người dùng cho bên thứ ba `[Model: Sonnet 5]` — [chi tiết](docs/todo/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
 
+### Nguồn: yêu cầu người dùng — audit style nút bấm toàn client (2026-08-08)
+- **#70.** Style nút bấm (button) không nhất quán toàn `client/` — màu xanh lá cũ còn sót, `--c-danger` chưa định nghĩa, nút chat focus-mode khác bản thường, `.btn-kick`/`.draw-prompt` hardcode màu, rule `:active` cục bộ bị `!important` toàn cục đè `[Model: Sonnet 5]` — [chi tiết](docs/todo/B70-button-style-khong-nhat-quan-toan-client.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

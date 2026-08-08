@@ -1,7 +1,30 @@
 # JWT → HttpOnly cookie — Planning
 
-Trạng thái: **đang thảo luận, CHƯA được duyệt để code.** Theo `instruction.md` B68: *"Đừng bắt đầu
-sửa code trước khi `planning.md` được người dùng xác nhận."*
+Trạng thái: **ĐÃ CHỐT (2026-08-08) — phương án C.** Người dùng trả lời câu hỏi phạm vi bằng chỉ thị
+*"Follow standard & real-world practices."* → chọn cơ chế mà chuẩn (OWASP/RFC 9700) **và** thực tế
+site lớn (Google/GitHub: session mờ phía server) cùng chỉ tới, **không** chọn bước tối thiểu
+"nhét JWT vào cookie". Điều kiện *"đừng code trước khi `planning.md` được xác nhận"* trong
+`instruction.md` B68 coi như đã thoả.
+
+## Quyết định chốt (Q1-Q7)
+
+| | Chốt |
+|---|---|
+| **Q1. Có làm không** | **Có.** `localStorage` là mẫu bị OWASP khuyến cáo tường minh, không phải vùng xám. |
+| **Q2. Thay `getUserInfo()`** | **(a)** — server là nguồn sự thật, phát `session:me` qua socket; `gvn_user` chỉ là cache hiển thị **không bí mật**. Không thêm route REST có xác thực nào (giữ bề mặt CSRF ở 0). |
+| **Q3. SameSite** | **`Lax`** (giống `_gh_sess` của GitHub; giữ được trải nghiệm mở link phòng từ Zalo/Messenger) **+ kiểm `Origin` phía server cho socket — bắt buộc**, vì `cors.origin` không bảo vệ WebSocket. |
+| **Q4. Luật CSRF tương lai** | Ghi luật + comment cảnh báo tại `verifyToken`. Chưa dựng cơ chế CSRF khi chưa có route nào dùng. |
+| **Q5. Migration** | **Dual-read có thời hạn** — đổi JWT cũ trong `localStorage` lấy một phiên thật, giữ nguyên hạn còn lại. Thực tế ngành không đá sạch người dùng khi đổi hệ thống phiên, và **guest bị đá là mất phiên vĩnh viễn**. |
+| **Q6. Nhánh** | `feature/jwt-httponly-cookie` off `dev` (tracking `#68` chỉ có trên `dev`). |
+| **Q7. Cookie đựng gì** | **(b) — định danh phiên MỜ + bảng `sessions` phía server.** Đây là điểm cốt lõi của chỉ thị: danh tính đến từ hàng DB, không từ chứng chỉ client cầm → **thu hồi được thật**. |
+
+**Hệ quả kèm theo của Q7 (không phải việc phụ, phải làm cùng):** `session:kicked` hiện chỉ ngắt
+socket — sau thay đổi nó phải **ghi `revoked_at`** rồi mới ngắt, nếu không thì bị đá xong kết nối
+lại là vào tiếp, và mục tiêu "thu hồi được" chỉ có trên giấy.
+
+**Rủi ro đã biết, phải đo trong lúc làm (xem Q7 phụ lục):** mỗi lần bắt tay socket = một lần đọc
+SQLite **đồng bộ**, chặn event loop; repo này từng đo tới 6000 kết nối đồng thời. Đo trước, chỉ
+thêm cache RAM nếu số đo đòi hỏi.
 
 Liên quan: [user_story.md](user_story.md) ·
 [diagram/uml_diagram/sequence-login-and-socket-handshake.md](diagram/uml_diagram/sequence-login-and-socket-handshake.md) ·
@@ -295,39 +318,58 @@ theo phương án (a) trước hoặc gộp luôn — xem ba lựa chọn ở cu
 | **B. #68 (a) rồi mục mới (b)** | Làm A trước, phiên phía server sau | Như A, rồi thêm thu hồi thật; mỗi bước kiểm chứng được riêng | Hai đợt, phải migrate hai lần |
 | **C. Nhảy thẳng (b)** | Cookie mờ + bảng `sessions` ngay | Đúng mẫu big-tech ngay, chỉ migrate một lần | Lớn nhất; phải đo tải bắt tay trước |
 
-→ Khuyến nghị **B**: A xoá bỏ đúng rủi ro mà `network_security_audit.md` nêu, có thể chứng minh
-xong trong một đợt; (b) là bài toán khác (thu hồi) xứng đáng có mục theo dõi riêng và phép đo tải
-riêng. **C** chỉ nên chọn nếu người dùng muốn tránh migrate hai lần và chấp nhận một đợt lớn.
+→ Khuyến nghị ban đầu là **B**. **Người dùng chọn C** (2026-08-08, *"Follow standard & real-world
+practices"*) — làm thẳng cơ chế mà chuẩn và site lớn dùng, chỉ migrate một lần. Phép đo tải bắt tay
+vì thế chuyển từ "điều kiện tiên quyết trước khi chốt" thành **một bước bắt buộc trong lúc làm**.
 
-## Trình tự triển khai (chỉ thực hiện sau khi Q1-Q7 được chốt)
+## Trình tự triển khai (đã chốt phương án C)
 
-1. **Server — nền tảng cookie.** Thêm helper `setAuthCookie(res, token, maxAge)` / `clearAuthCookie(res)`
-   ở một chỗ duy nhất (cờ `Secure` suy từ `req.secure`/`X-Forwarded-Proto`, dùng `trust proxy` sẵn có).
-   Sửa 3 route `/api/auth/*`. Thêm `/api/auth/logout`.
-2. **Server — `verifySocketToken` đọc cookie**, fallback `auth.token` (nếu chọn dual-read ở Q5).
-3. **Server — sự kiện `session:me`** (nếu chọn (a) ở Q2) phát ngay sau khi kết nối thành công.
-4. **Client — gộp hai bản `getUserInfo()` trùng lặp làm một** trước khi đổi cách nó hoạt động; hiện
-   `socket-client.js` và `settings-panel.js` có hai bản sao chép gần như y hệt, sửa một mà quên bản
-   kia là kịch bản lỗi rõ ràng nhất của cả task này.
-5. **Client — auth guard + `socket-client._connect()` + `logout()`** theo thiết kế đã chốt.
-6. **Migration** (nếu chọn dual-read).
-7. **Bump `?v=N`** — task này chạm `client/js/*.js` nên bắt buộc theo quy tắc cache-busting trong
-   `CLAUDE.md`, kể cả các cross-import giữa các module không phải `*-entry.js`. Kiểm tra bằng
-   `grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup` → phải ra **đúng một** giá trị.
-8. **Xoá nhánh fallback** sau ≥7 ngày, commit dọn dẹp riêng.
+1. **DB — bảng `sessions`** trong `schema.sql` (theo phác thảo ở Q7 phụ lục: `CREATE TABLE IF NOT
+   EXISTS`, **không** `REFERENCES users(id)` vì guest), + CRUD trong `database.js`.
+2. **Server — `SessionManager`**: tạo phiên (id mờ 256-bit từ `crypto.randomBytes`), tra cứu, thu
+   hồi, dọn phiên hết hạn.
+3. **Server — cookie helper** ở một chỗ duy nhất: `setSessionCookie` / `clearSessionCookie`
+   (`HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` suy từ `req.secure`/`X-Forwarded-Proto` nhờ
+   `trust proxy` sẵn có, `Max-Age` = hạn phiên).
+4. **Server — 3 route `/api/auth/*`**: tạo phiên + `Set-Cookie`, **bỏ `token` khỏi body**. Thêm
+   `POST /api/auth/logout` (thu hồi thật) và `POST /api/auth/upgrade-session` (migration Q5).
+5. **Server — `verifySocketToken` → tra phiên từ cookie** + **kiểm `Origin`** (CSWSH, Q3). Giữ
+   fallback JWT `auth.token` trong cửa sổ chuyển tiếp.
+6. **Server — `session:kicked` ghi `revoked_at`** trước khi ngắt socket.
+7. **Server — `session:me`** phát ngay sau khi kết nối (Q2).
+8. **Client — gộp hai bản `getUserInfo()` trùng lặp làm một** *trước khi* đổi cách nó hoạt động;
+   `socket-client.js` và `settings-panel.js` đang có hai bản chép gần như y hệt — sửa một mà quên
+   bản kia là kịch bản lỗi rõ ràng nhất của cả task này.
+9. **Client — auth guard + `_connect()` + `logout()` + migration một lần** theo thiết kế đã chốt.
+10. **Đo tải bắt tay** (rủi ro đã biết ở Q7 phụ lục) — chỉ thêm cache RAM nếu số đo đòi hỏi.
+11. **Bump `?v=N`** — task này chạm `client/js/*.js` nên bắt buộc theo quy tắc cache-busting trong
+    `CLAUDE.md`, kể cả cross-import giữa các module không phải `*-entry.js`. Kiểm bằng
+    `grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup` → phải ra **đúng một** giá trị.
+12. **Xoá nhánh fallback JWT + `/upgrade-session`** sau ≥7 ngày, commit dọn dẹp riêng.
 
 ## Kế hoạch kiểm thử
 
 **Backend (Jest, `server/tests/**/*.test.js`)** — theo quy tắc "Writing comprehensive test cases":
 
-- `verifySocketToken` — bảng quyết định (cookie hợp lệ / cookie hỏng / cookie hết hạn / không cookie
-  nhưng có `auth.token` hợp lệ / không cả hai / có **cả hai** và lệch nhau → cookie phải thắng /
-  header `cookie` có nhiều cookie khác lẫn vào / chuỗi cookie dị dạng không được làm crash).
-- Thuộc tính cookie ở `/api/auth/{login,register,guest}` — khẳng định **có** `HttpOnly`, `SameSite`,
-  `Path`, `Max-Age` đúng theo từng loại (7d vs 24h guest), và `Secure` **bật khi HTTPS, tắt khi
-  HTTP** (đây là chỗ dev/prod dễ lệch nhất).
-- Body của 3 route đó **không còn** trường `token` (chống rò ngược).
-- `/api/auth/logout` xoá cookie đúng cùng `Path`/`SameSite` (sai `Path` thì cookie không bị xoá).
+- `verifySocketToken` — bảng quyết định (phiên hợp lệ / id phiên không tồn tại / phiên **đã thu
+  hồi** / phiên **hết hạn** / không cookie nhưng có JWT `auth.token` hợp lệ (cửa sổ chuyển tiếp) /
+  không có gì / có **cả hai** và lệch nhau → cookie phải thắng / header `cookie` lẫn nhiều cookie
+  khác / chuỗi cookie dị dạng không được làm crash).
+- **Kiểm `Origin`** — cùng origin qua / origin lạ bị chặn / **thiếu header `Origin`** (client không
+  phải trình duyệt) phải có hành vi xác định, không được crash.
+- Vòng đời phiên — tạo/tra/thu hồi/hết hạn; **thu hồi rồi thì tra lại phải trượt** (đây là khẳng
+  định chứng minh mục tiêu "thu hồi được" đã đạt, không chỉ ghi cột).
+- **Guest**: phiên guest tạo được **mà không** có hàng trong `users` (bảng `sessions` không được
+  ràng buộc khoá ngoại tới `users`) — chính là bẫy schema đã nêu ở Q7 phụ lục.
+- Thuộc tính cookie ở `/api/auth/{login,register,guest}` — `HttpOnly`, `SameSite`, `Path`,
+  `Max-Age` đúng theo từng loại (7d vs 24h guest), và `Secure` **bật khi HTTPS, tắt khi HTTP** (chỗ
+  dev/prod dễ lệch nhất).
+- Body của 3 route đó **không còn** trường `token`, và **không** rò `sessions.id` ra ngoài
+  `Set-Cookie` (id phiên là bí mật ngang token — lọt vào body là quay lại đúng vấn đề cũ).
+- `/api/auth/logout` thu hồi phiên **và** xoá cookie đúng cùng `Path`/`SameSite` (sai `Path` thì
+  cookie không bị xoá).
+- `/api/auth/upgrade-session` — JWT cũ hợp lệ → tạo phiên **giữ nguyên hạn còn lại** (không gia hạn
+  thêm 7 ngày); JWT hết hạn/hỏng → 401, không tạo phiên.
 - Giữ nguyên khẳng định `Cache-Control: no-store` đã có từ #66 — giờ càng quan trọng vì response
   mang `Set-Cookie`.
 
@@ -339,11 +381,12 @@ chạy server, khôi phục sau). Kịch bản tối thiểu: đăng nhập → 
 devtools rồi reload (kiểm trạng thái `TinCoPhien` lệch) → và **xác nhận `document.cookie` trong
 console KHÔNG thấy `gvn_token`** — đây là phép thử duy nhất chứng minh mục tiêu của cả task đã đạt.
 
-## Bàn giao (bước cuối của thảo luận)
+## Bàn giao — ĐÃ THỰC HIỆN (2026-08-08)
 
-Sau khi Q1-Q7 được chốt với người dùng, chuyển tài liệu này thành công việc theo dõi được:
-cập nhật `docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md` +
-`docs/instruction/B68-...md` với quyết định đã chốt và trình tự trên (giữ nguyên mã `B68`/`#68`,
-không tạo mục mới — mục này đã tồn tại), rồi mới bắt đầu code trên
-`feature/jwt-httponly-cookie` nhánh từ `dev`. Nếu Q1 chốt là "hoãn"/"đóng", cập nhật
-`docs/todo/B68-*.md` phản ánh quyết định đó và trỏ về thư mục này làm căn cứ.
+Q1-Q7 đã chốt (bảng đầu tài liệu). `docs/todo/B68-*.md` và `docs/instruction/B68-*.md` đã được cập
+nhật theo quyết định C, giữ nguyên mã `B68`/`#68` (không tạo mục mới). Việc code diễn ra trên
+`feature/jwt-httponly-cookie` nhánh từ `dev`.
+
+Ghi chú phạm vi: Q7 biến #68 từ *"token nằm ở đâu"* thành *"phiên được quản lý thế nào"*. Người
+dùng đã chọn gộp, nên **không** tách mục `TODO.md` mới — nhưng phần "thu hồi được" là năng lực mới,
+cần được nêu rõ trong `docs/todo/B68-*.md` để về sau đọc lại không tưởng #68 chỉ là đổi chỗ lưu.

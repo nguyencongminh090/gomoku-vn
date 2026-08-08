@@ -86,6 +86,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **A67.** Xác minh HSTS thực tế qua Cloudflare Tunnel — đo, không sửa code (audit network, TODO.md #67) — [chi tiết](docs/instruction/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 - **B68.** Cân nhắc JWT → HttpOnly cookie — cần `features/` thảo luận trước, không code trực tiếp (audit network, TODO.md #68) — [chi tiết](docs/instruction/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
 - **B69.** Tự host Google Fonts + audio — theo khuôn mẫu B65, kiểm license Freesound trước khi vendor (audit network, TODO.md #69) — [chi tiết](docs/instruction/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
+- **B70.** Style nút bấm không nhất quán toàn `client/` — xử lý theo thứ tự ưu tiên, CSS-only không đổi HTML/JS structure (yêu cầu người dùng, TODO.md #70) — [chi tiết](docs/instruction/B70-button-style-khong-nhat-quan-toan-client.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 

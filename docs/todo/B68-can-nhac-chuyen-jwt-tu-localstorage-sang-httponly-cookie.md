@@ -46,7 +46,27 @@ Phát hiện quan trọng từ khảo sát code (làm thay đổi hình dung ban
   client; với `HttpOnly` phải thêm `POST /api/auth/logout`, và xử lý trường hợp lỗi mạng (nếu vẫn
   chuyển trang như cũ thì cookie còn sống → chính bản sửa bảo mật tạo ra hồi quy bảo mật).
 
-Bảy câu hỏi mở (Q1-Q7 trong `planning.md`) cần chốt trước khi làm, trong đó Q1 là *có làm hay
-không* — bảng threat model trong `user_story.md` chỉ ra `HttpOnly` chặn được **rò rỉ/tái sử dụng
-token ngoài phiên** nhưng **không** chặn được lạm dụng ngay trong trang khi có XSS, nên lợi ích thật
-sự có giới hạn so với chi phí chạm 10+ file ở cả hai tầng.
+## Quyết định (2026-08-08) — phương án C, phiên phía server
+
+Người dùng chốt bằng chỉ thị *"Follow standard & real-world practices."* → làm theo cơ chế mà chuẩn
+(OWASP, RFC 9700) **và** thực tế site lớn (Google/GitHub dùng session mờ phía server) cùng chỉ tới,
+**không** dừng ở bước tối thiểu "nhét JWT vào cookie". Toàn bộ Q1-Q7 đã chốt — xem bảng quyết định
+đầu [`features/jwt-httponly-cookie/planning.md`](../../features/jwt-httponly-cookie/planning.md).
+
+**⚠ Phạm vi #68 đã mở rộng so với tiêu đề mục này.** Tiêu đề hỏi *"token nằm ở đâu"*; quyết định C
+trả lời *"phiên được quản lý thế nào"*. Cụ thể:
+
+- Cookie mang **định danh phiên mờ 256-bit**, không phải JWT. Bảng `sessions` mới trong SQLite giữ
+  trạng thái; danh tính lấy từ hàng DB, không từ chứng chỉ client cầm.
+- **Năng lực mới: thu hồi được (revocation)** — thứ JWT stateless không có. `session:kicked` từ chỗ
+  chỉ ngắt socket (kết nối lại là vào tiếp) trở thành thu hồi thật; đăng xuất trở thành thu hồi thật.
+- Kèm theo bắt buộc: **kiểm header `Origin` cho socket** (chống CSWSH — cookie mở ra bề mặt này,
+  `localStorage` thì không, và `cors.origin` của Socket.IO **không** bảo vệ WebSocket).
+- Migration dual-read có thời hạn để không đá sạch phiên đang mở (đặc biệt **guest**, bị đá là mất
+  phiên vĩnh viễn).
+
+Người dùng chọn **gộp vào #68** thay vì tách mục mới, nên mục này giờ bao cả hai việc.
+
+**Rủi ro đã biết, phải đo trong lúc làm:** mỗi lần bắt tay socket thành một lần đọc SQLite **đồng
+bộ** (chặn event loop); repo từng đo tới 6000 kết nối đồng thời (`docs/stress-test-report.md` §10,
+`TODO.md` #28/#29). Đo trước, chỉ thêm cache RAM nếu số đo đòi hỏi.
