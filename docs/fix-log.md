@@ -104,3 +104,4 @@
 | 2026-08-08 08:27 | TODO.md #62: series check-in "Sẵn sàng" giữa các ván bắt quay lại trang giải đấu — chuyển check-in v… | [chi tiết](docs/fix-log/2026-08-08-todo-62-series-checkin-in-place.md) |
 | 2026-08-08 08:48 | TODO.md #65: CSP tắt hoàn toàn (`contentSecurityPolicy: false`) + script không pin từ unpkg.com đọc … | [chi tiết](docs/fix-log/2026-08-08-todo-65-csp-third-party-script.md) |
 | 2026-08-08 09:10 | Follow-up TODO.md #65: recheck độc lập phát hiện `dist/` production build không được rebuild (còn u… | [chi tiết](docs/fix-log/2026-08-08-todo-65-csp-production-build-gaps.md) |
+| 2026-08-08 09:43 | TODO.md #66: `POST /api/auth/{login,register,guest}` trả JWT nhưng không set `Cache-Control` — thêm … | [chi tiết](docs/fix-log/2026-08-08-todo-66-auth-cache-control-no-store.md) |
