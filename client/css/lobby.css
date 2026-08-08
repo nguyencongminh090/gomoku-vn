@@ -140,6 +140,39 @@
 .btn-secondary:active { transform: translateY(0) scale(0.96) !important; }
 .btn-secondary i { width: 18px; height: 18px; flex-shrink: 0; }
 
+/* ── Generic brand-filled pill button (TODO.md #73) ──────────────────────────
+   .btn/.btn-confirm previously had no base rule outside .modal__actions
+   (see below), so every use elsewhere (tournament cards, pairing rows,
+   match-result overlays) fell back to the browser's default button chrome.
+   This is the shared look; scoped rules (.pairing-card__actions .btn,
+   .tournament-card__actions .btn, .modal__actions .btn, ...) still override
+   sizing/width on top of it. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-spring);
+  text-decoration: none;
+}
+.btn-confirm {
+  background: var(--c-brand);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-sm);
+}
+.btn-confirm:hover {
+  background: var(--c-brand-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--c-brand-light);
+}
+.btn-confirm:active { transform: translateY(0) scale(0.96) !important; }
+
 /* ── Room List ────────────────────────────────────────────────────────────── */
 .room-list {
   /* Handled by .ui-shell > .ui-core */
