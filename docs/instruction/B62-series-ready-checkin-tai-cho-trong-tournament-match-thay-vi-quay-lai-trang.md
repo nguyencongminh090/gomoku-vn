@@ -41,18 +41,21 @@ code.
   bằng trình duyệt (2 người chơi thật hoặc 2 tab) để xác nhận cả hai bên đều check-in được tại chỗ và
   vào đúng ván kế tiếp mà không mất kết nối/state.
 
-## Câu hỏi mở cần chốt trước khi code
+## Câu hỏi mở — đã chốt với người dùng, 2026-08-08
 
-- Modal check-in hiển thị đồng thời với `series-transition-overlay` (kết quả ván vừa xong), hay thay
-  thế overlay đó sau vài giây? Cần tránh chồng 2 overlay cùng lúc (đúng loại lỗi đã sửa ở B35).
-  Có thể ưu tiên phương án chồng nút "Sẵn sàng" vào cùng overlay để tránh thêm layer.
-- Đối thủ chưa sẵn sàng (đang xem lại bàn cờ, bị rớt mạng) — hiển thị trạng thái chờ ra sao trong
-  overlay mới? Đối chiếu với `readyTimers`/`READY_WINDOW_MS`/`handleReadyWindowTimeout` ở
-  `server/socket/state.js` — series có deadline tương tự riêng
-  (`pairing.deadline` set trong `startNextGame`) hay dùng chung cơ chế timeout Room? Cần xác nhận
-  không đụng lẫn giữa 2 cơ chế deadline khác nhau.
-- Có cần nút "rời trận, xem sau" (opt-out quay lại trang giải đấu) hay bắt buộc ở lại? Ảnh hưởng đến
-  việc có giữ luôn lối vào Ready ở trang giải đấu như cũ (dự phòng) hay bỏ hẳn.
+- **Bố cục overlay:** gộp chung 1 overlay — không tạo overlay/modal riêng nối tiếp. Bảng tỉ số ván đã
+  hiển thị sẵn ở nơi khác trong `tournament-match.html` (score table kiểu Room), nên overlay chuyển
+  ván chỉ cần thêm nút "Sẵn sàng" tái dùng logic/UI của Start Modal (Room, B36) — không hiển thị lại
+  kết quả ván vừa xong trong overlay này vì đã trùng với score table.
+- **Deadline chờ đối thủ:** dùng lại nguyên cơ chế Room hiện có
+  (`readyTimers`/`READY_WINDOW_MS`/`handleReadyWindowTimeout` ở `server/socket/state.js`) — không tạo
+  cơ chế deadline riêng cho series, không dùng `pairing.deadline` như một cơ chế timeout song song.
+- **Không có nút "rời trận, xem sau" giữa series.** Người chơi bị khoá ở lại `tournament-match.html`
+  trong suốt series — kể cả lúc đang chơi (theo hành vi hiện tại) lẫn lúc chờ check-in "Sẵn sàng"
+  giữa 2 ván. Nút rời trận chỉ **release** (bật lại) sau khi toàn bộ series đã hoàn thành (đủ ván
+  thắng theo `seriesMode`/best-of, hoặc series kết thúc) — lúc đó người chơi có thể chọn ở lại xem ván
+  cuối hoặc tự thoát về trang giải đấu. Không giữ lối vào Ready dự phòng ở trang giải đấu cho các ván
+  giữa series — chỉ còn 1 lối check-in duy nhất, ngay tại `tournament-match.html`.
 
 ## Ranh giới
 

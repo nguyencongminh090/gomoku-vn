@@ -21,6 +21,7 @@
   margin-bottom: 12px;
 }
 .detail-back:hover { color: var(--c-brand); }
+.detail-back--disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 
 .detail-header {
   display: flex;

@@ -51,9 +51,23 @@ const tournamentId = params.get('tournamentId');
 const pairingId = params.get('pairingId');
 if (!tournamentId || !pairingId) window.location.replace('index.html');
 
-document.getElementById('back-to-tournament').href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
+const backToTournamentLink = document.getElementById('back-to-tournament');
+backToTournamentLink.href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
 document.getElementById('match-result-back').href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
-document.getElementById('series-transition-back').href = `tournament.html?id=${encodeURIComponent(tournamentId)}`;
+
+// TODO.md #62: locked while the pairing is still undecided (mid-game or
+// waiting on series check-in) — released once a final result overlay shows
+// (single-game pairing decided, or series decided). Prevents a player from
+// wandering off mid-series the way the old "back to tournament to check in"
+// link on the between-games overlay used to require.
+function setLeaveLocked(locked) {
+  backToTournamentLink.classList.toggle('detail-back--disabled', locked);
+  backToTournamentLink.setAttribute('aria-disabled', locked ? 'true' : 'false');
+}
+backToTournamentLink.addEventListener('click', (e) => {
+  if (backToTournamentLink.classList.contains('detail-back--disabled')) e.preventDefault();
+});
+setLeaveLocked(true);
 
 // ── Element refs ─────────────────────────────────────────────────────────
 const statusBanner = document.getElementById('status-banner');
@@ -102,6 +116,7 @@ client.on('tmatch:init', (data) => {
   seriesInfo = data.series || null;
   const mp = myPlayer();
   myColor = mp ? mp.color : null;
+  setLeaveLocked(true); // pairing active again — see showResultOverlay for the release point
 
   // A new game just (re)started (initial start, reconnect, or the next game
   // in a series) — any draw/time-request prompt from a PREVIOUS game no
@@ -616,11 +631,26 @@ function showResultOverlay(result, seriesOverride) {
   document.getElementById('match-result-title').textContent = title;
   document.getElementById('match-result-sub').textContent = sub;
   resultOverlay.classList.add('visible');
+  setLeaveLocked(false); // pairing decided (single-game, or series' final game) — safe to leave now
 }
 
-// ── Series between-games transition (TODO.md #50) ───────────────────────────
+// ── Series between-games transition (TODO.md #50 / #62) ─────────────────────
+// TODO.md #62: the "Sẵn sàng" button here reuses the SAME tournament:ready
+// socket event tournament-detail.js's pairing-card "Sẵn sàng" button sends
+// (server/socket/handlers/TournamentHandler.js's pairingAction('tournament:ready', ...)
+// -> TournamentManager.markPairingReady() -> PairingLifecycle.markReady()) —
+// no new server event, only a second UI entry point into the existing one.
 
 const seriesTransitionOverlay = document.getElementById('series-transition-overlay');
+const seriesTransitionReadyBtn = document.getElementById('series-transition-ready-btn');
+const seriesTransitionWaitingEl = document.getElementById('series-transition-waiting');
+
+seriesTransitionReadyBtn.addEventListener('click', () => {
+  client.emit('tournament:ready', { tournamentId, pairingId });
+  seriesTransitionReadyBtn.style.display = 'none';
+  seriesTransitionWaitingEl.textContent = t('tmatch.series_ready_waiting');
+  seriesTransitionWaitingEl.style.display = '';
+});
 
 function showSeriesTransition(result) {
   const mp = myPlayer();
@@ -644,7 +674,21 @@ function showSeriesTransition(result) {
     : '';
   document.getElementById('series-transition-sub').textContent = sub;
 
+  // Fresh Ready-state window every game (PairingLifecycle.startNextGame
+  // clears pairing.readyPlayers) — reset the button/waiting toggle each time
+  // this overlay opens rather than carrying over the previous game's click.
+  if (mp) {
+    seriesTransitionReadyBtn.style.display = '';
+    seriesTransitionWaitingEl.style.display = 'none';
+  } else {
+    // Spectators can't check in on anyone's behalf — just show the wait state.
+    seriesTransitionReadyBtn.style.display = 'none';
+    seriesTransitionWaitingEl.textContent = t('tmatch.series_ready_waiting_spectator');
+    seriesTransitionWaitingEl.style.display = '';
+  }
+
   seriesTransitionOverlay.classList.add('visible');
+  setLeaveLocked(true); // still mid-series — see showResultOverlay for the release point
 }
 
 function hideSeriesTransition() {
