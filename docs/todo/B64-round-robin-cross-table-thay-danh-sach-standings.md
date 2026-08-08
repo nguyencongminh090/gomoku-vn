@@ -65,5 +65,56 @@ Robin**.
 
 ## Trạng thái
 
-Chưa làm — mới ghi nhận theo thiết kế đã chốt với người dùng qua trao đổi 2026-08-08. Xem
-`docs/instruction/B64-*.md` cho hướng triển khai chi tiết hơn.
+✅ ĐÃ XONG (2026-08-08, nhánh `feature/round-robin-cross-table` off `dev`, chạy trong git worktree
+riêng — xem ghi chú cuối mục này).
+
+- `client/js/tournament-detail.js` — `renderStandings()` thêm nhánh `tournament.format === 'round_robin'`
+  gọi `renderCrossTable()` mới, TRƯỚC nhánh Swiss hiện có (Swiss không đổi gì, vẫn dùng
+  `computeStandings()` + bảng liệt kê cũ). `renderCrossTable()`: lưới N×N từ `tournament.entries`,
+  map pairwise `entryIdA|entryIdB -> pairing` dựng 1 lần mỗi render (`buildPairingLookup()`), mỗi ô
+  đọc `pairing.seriesScore` (đã serialize sẵn từ server, không cần sửa server) format qua `fmtScore()`
+  (bỏ `.0` thừa cho số nguyên, giữ `.5` cho số lẻ). 2 cột cuối (Điểm/`#`) tái dùng đúng
+  `computeStandings()` không đổi — rank/tie-break Buchholz/SB nguyên vẹn như trước.
+  - Ô đường chéo (chính mình): "—".
+  - Chưa có pairing giữa 2 người (round chưa materialize tới, hoặc round-robin chưa xếp cặp đó) hoặc
+    pairing tồn tại nhưng chưa `Completed`/`Walkover`/`InProgress`: "–" (placeholder).
+  - `InProgress`: nhãn "Đang đấu"/"Live" (`tdetail.cross_table_live`).
+  - `Walkover` (không có ván nào thật để cộng điểm): "T (bỏ cuộc)"/"W (walkover)" hoặc
+    "B (bỏ cuộc)"/"L (walkover)" (`tdetail.cross_table_walkover_win/loss`) thay vì tỉ số, đúng theo
+    hướng dẫn trong `docs/instruction/B64-*.md`.
+  - Bye (`player2EntryId === null`): không có ô pairwise nào cần vẽ (đúng như instruction đề xuất, edge
+    case đã xử lý bằng cách bỏ qua trong `buildPairingLookup()`), chỉ ảnh hưởng cột "Điểm" qua
+    `computeStandings()` như trước.
+- `client/css/tournament.css` — style mới `.cross-table*` (thêm sau `.standings-table`), cột tên người
+  chơi `position: sticky; left: 0` để giữ cố định khi cuộn ngang trên mobile/N lớn, bọc
+  `.cross-table-wrap { overflow-x: auto; }` đúng pattern `.bracket-wrap` đã có.
+- `client/js/i18n.js` — 3 khoá mới `tdetail.cross_table_live`/`cross_table_walkover_win`/
+  `cross_table_walkover_loss`, cả vi + en.
+- Server: **không đổi gì** — xác nhận `TournamentManager.serializePairing()` (dòng 1044-1068) đã
+  expose sẵn `seriesScore` (và `result`/`games`) trong payload, đúng như instruction dự đoán.
+- `?v=`: 84 → 85 trên toàn bộ `client/*.html` + mọi `import '...?v=N'` trong `client/js/*.js` (script
+  verify trong CLAUDE.md cho ra đúng 1 giá trị `85`).
+
+**Verify:** `npm test` — 931/931 pass (không có test mới vì đây là thay đổi UI thuần
+`client/js/`, không có test infra tự động theo CLAUDE.md — đã nêu rõ thay vì bỏ qua). Xác minh trình
+duyệt thật theo đúng quy trình Playwright/e2e trong CLAUDE.md, **chạy trong 1 git worktree riêng**
+(`git worktree add`, không phải trên nhánh làm việc chính của người dùng — xem ghi chú bên dưới) nên
+không cần dời `server/db/gomoku.db` thật (worktree không có file db, tự tạo db tạm mới từ
+`schema.sql`, xoá cùng worktree khi dọn dẹp):
+  - Kịch bản 1 (socket.io-client dựng dữ liệu + Playwright/Chromium kiểm tra DOM thật): tạo giải Round
+    Robin 3 người, chơi xong 1 cặp đấu (thắng 0-1), để 1 cặp khác "Negotiating" (chưa đấu), 2 bye tự
+    động `Completed`. Mở `tournament.html` bằng guest thứ 4 (khách, để test rendering không phụ thuộc
+    danh tính), tab Bảng xếp hạng: xác nhận đúng lưới 3×3 — ô [KindBull, TealElk] hiện "0–1" (màu
+    loss), ô [TealElk, KindBull] hiện "1–0" (màu win), ô liên quan tới PaleMink (bye) hiện "–", cột
+    Điểm/# đúng theo `computeStandings()` (cả 3 người 1 điểm — do mỗi người có đúng 1 kết quả đã quyết
+    (bye hoặc 1 ván) — rank tách bởi Buchholz/SB đúng logic cũ, không phải bug). **0 console error.**
+  - Kịch bản 2 (trạng thái `InProgress`): giải Round Robin 2 người riêng, đưa cặp đấu duy nhất tới
+    `InProgress` (không kết thúc), xác nhận cả 2 ô chéo hiện đúng nhãn "Đang đấu". **0 console error.**
+  - Ảnh chụp màn hình xác nhận bố cục desktop hợp lý (sticky cột tên, viền rõ ràng); chưa test riêng
+    viewport mobile hẹp thật (chỉ dựa vào `overflow-x: auto` theo pattern có sẵn của `.bracket-wrap`,
+    chưa đo bằng thiết bị/viewport thật) — nếu cần xác nhận thêm, verify riêng ở lần dùng thật tiếp
+    theo.
+  - Ghi chú vận hành: phiên làm việc này chạy song song với 1 nhánh khác của người dùng
+    (`fix/tournament-match-sound-and-display-mode`, không liên quan) đang có edit chưa lưu trong cùng
+    thư mục làm việc chính — để tránh xung đột, toàn bộ việc code + verify của #64 được làm trong 1
+    `git worktree` tách biệt (branch off `dev`), không đụng tới thư mục làm việc chính của người dùng.

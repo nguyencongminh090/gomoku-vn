@@ -201,7 +201,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ### Nguồn: báo cáo người dùng — "Final score in standing tables is wrong and not match" (2026-08-08)
 - ✅ **#63.** Round Robin: bảng Standings tính 1 điểm/pairing thắng, không cộng dồn điểm thật của series (VD thắng 3.5-0.5 chỉ hiện 1-0) — đối chiếu luật Swiss/FIDE thật: **không phải bug**, đóng — [chi tiết](docs/todo/B63-standings-score-nen-cong-don-tung-van-thay-vi-1-diem-moi-pairing.md)
-- **#64.** Round Robin: thay bảng Standings dạng danh sách bằng Cross Table (bảng chéo) hiện tỉ số thật từng cặp đấu — hiển thị, không đổi cách tính rank `[Model: Sonnet 5]` — [chi tiết](docs/todo/B64-round-robin-cross-table-thay-danh-sach-standings.md)
+- ✅ **#64.** Round Robin: thay bảng Standings dạng danh sách bằng Cross Table (bảng chéo) hiện tỉ số thật từng cặp đấu — hiển thị, không đổi cách tính rank — [chi tiết](docs/todo/B64-round-robin-cross-table-thay-danh-sach-standings.md)
 
 ### Nguồn: security review Network trong Developer Tools (2026-08-08)
 ✅ **#65.** CSP + third-party script — bảo vệ JWT bearer đang ở `localStorage` — [chi tiết](docs/todo/B65-csp-va-third-party-script-bao-ve-jwt-localstorage.md)

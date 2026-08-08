@@ -86,6 +86,29 @@
 .standings-table .name-cell { font-weight: 600; }
 .standings-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; color: var(--c-ink-2); }
 
+/* ── Cross table (Round Robin — TODO.md #64) ──────────────────────────── */
+.cross-table-wrap { overflow-x: auto; }
+.cross-table { border-collapse: collapse; font-size: 12px; min-width: max-content; }
+.cross-table th, .cross-table td {
+  border: 1px solid var(--c-border-light); padding: 6px 10px; text-align: center;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.cross-table thead th {
+  background: var(--c-surface-2); font-size: 11px; font-weight: 700; color: var(--c-ink-3);
+  text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--c-border);
+}
+.cross-table th.cross-table__name-col, .cross-table td.cross-table__name-col {
+  text-align: left; font-weight: 600; color: var(--c-ink);
+  position: sticky; left: 0; background: var(--c-surface); z-index: 1;
+}
+.cross-table tr.is-me td, .cross-table tr.is-me th { background: var(--c-brand-light); }
+.cross-table th.cross-table__total, .cross-table td.cross-table__total { font-weight: 700; color: var(--c-ink); }
+.cross-table .cross-table__diag { color: var(--c-border); }
+.cross-table .cross-table__empty { color: var(--c-border); }
+.cross-table .cross-table__win { color: var(--c-success); font-weight: 700; }
+.cross-table .cross-table__loss { color: var(--c-ink-3); }
+.cross-table .cross-table__live { color: var(--c-brand); font-weight: 700; }
+
 /* ── Pairing list / cards ─────────────────────────────────────────────── */
 .round-group { margin-bottom: 20px; }
 .round-group__title { font-size: 13px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 10px; padding: 0 16px; }

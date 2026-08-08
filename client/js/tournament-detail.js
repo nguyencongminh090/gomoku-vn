@@ -657,6 +657,111 @@ function computeStandings() {
   return ranked;
 }
 
+// ── Cross Table (Round Robin only — TODO.md #64) ─────────────────────────
+//
+// Round Robin has every entry facing every other entry exactly once, so
+// (unlike Swiss, whose opponents differ per player) a pairwise grid of real
+// scores is more informative than a ranked list — this is the standard
+// "cross table" display for round-robin events in chess/esports. Rank/
+// tie-break math is untouched (computeStandings() below, Buchholz/SB is
+// still correct per FIDE — see docs/todo/B63-*.md) — this only replaces how
+// Round Robin RENDERS its standings; Swiss keeps the ranked-list table.
+
+function fmtScore(n) {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
+/** entryId pair -> pairing, for pairings that involve exactly 2 real entries (no byes). */
+function buildPairingLookup() {
+  const lookup = new Map();
+  for (const p of pairingsById.values()) {
+    if (p.player2EntryId == null) continue; // bye — only one real player, no cell to fill
+    const key = p.player1EntryId < p.player2EntryId
+      ? `${p.player1EntryId}|${p.player2EntryId}`
+      : `${p.player2EntryId}|${p.player1EntryId}`;
+    lookup.set(key, p);
+  }
+  return lookup;
+}
+
+function pairingBetween(lookup, entryIdA, entryIdB) {
+  const key = entryIdA < entryIdB ? `${entryIdA}|${entryIdB}` : `${entryIdB}|${entryIdA}`;
+  return lookup.get(key) || null;
+}
+
+/** Cell content for the pairing between rowEntryId and colEntryId, from rowEntryId's point of view. */
+function crossTableCell(lookup, rowEntryId, colEntryId) {
+  if (rowEntryId === colEntryId) return `<span class="cross-table__diag">—</span>`;
+
+  const p = pairingBetween(lookup, rowEntryId, colEntryId);
+  if (!p) return `<span class="cross-table__empty">–</span>`;
+  if (p.state === 'InProgress') return `<span class="cross-table__live">${t('tdetail.cross_table_live')}</span>`;
+  if (p.state !== 'Completed' && p.state !== 'Walkover') return `<span class="cross-table__empty">–</span>`;
+
+  // Walkover has no real games played — no score to sum, show W/L instead
+  // (same convention as the pairing-card state pill for walkover elsewhere).
+  if (p.result && p.result.reason === 'walkover') {
+    const won = p.result.winnerEntryId === rowEntryId;
+    return won
+      ? `<span class="cross-table__win">${t('tdetail.cross_table_walkover_win')}</span>`
+      : `<span class="cross-table__loss">${t('tdetail.cross_table_walkover_loss')}</span>`;
+  }
+
+  if (p.seriesScore) {
+    const mine = p.seriesScore[rowEntryId] || 0;
+    const theirs = p.seriesScore[colEntryId] || 0;
+    const cls = mine > theirs ? 'cross-table__win' : (mine < theirs ? 'cross-table__loss' : '');
+    return `<span class="${cls}">${fmtScore(mine)}–${fmtScore(theirs)}</span>`;
+  }
+
+  // Defensive fallback (shouldn't happen — every non-bye Completed/Walkover
+  // pairing has seriesScore, even single-game ones — see series.js).
+  if (!p.result) return `<span class="cross-table__empty">–</span>`;
+  if (p.result.winnerEntryId === null) return `<span>0.5–0.5</span>`;
+  const won = p.result.winnerEntryId === rowEntryId;
+  return `<span class="${won ? 'cross-table__win' : 'cross-table__loss'}">${won ? '1–0' : '0–1'}</span>`;
+}
+
+function renderCrossTable() {
+  const me = myEntry();
+  const ranked = computeStandings(); // rank/match-points/Buchholz/SB — unchanged, appended as trailing columns
+  const rankById = new Map(ranked.map((r) => [r.id, r]));
+  const lookup = buildPairingLookup();
+  const entries = tournament.entries;
+  const partialNotice = tournament.status === 'cancelled'
+    ? `<div class="dispute-notice"><i class="ph ph-warning" style="font-size:18px;"></i><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    : '';
+
+  standingsContainer.innerHTML = `
+    ${partialNotice}
+    <div class="cross-table-wrap">
+      <table class="cross-table">
+        <thead>
+          <tr>
+            <th class="cross-table__name-col">${t('tdetail.th_player')}</th>
+            ${entries.map((e) => `<th>${escapeHtml(entryName(e.entryId))}</th>`).join('')}
+            <th class="cross-table__total">${t('tdetail.th_score')}</th>
+            <th class="cross-table__total">#</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entries.map((rowEntry) => {
+            const r = rankById.get(rowEntry.entryId);
+            return `
+              <tr class="${me && rowEntry.entryId === me.entryId ? 'is-me' : ''}">
+                <th class="cross-table__name-col">${escapeHtml(entryName(rowEntry.entryId))}</th>
+                ${entries.map((colEntry) => `<td>${crossTableCell(lookup, rowEntry.entryId, colEntry.entryId)}</td>`).join('')}
+                <td class="cross-table__total">${r ? fmtScore(r.score) : '0'}</td>
+                <td class="cross-table__total">${r ? r.rank : '—'}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function renderStandings() {
   if (tournament.format === 'double_elim') {
     standingsContainer.innerHTML = `
@@ -664,6 +769,11 @@ function renderStandings() {
         <span class="room-list__empty-text">${t('tdetail.no_standings_bracket')}</span>
       </div>
     `;
+    return;
+  }
+
+  if (tournament.format === 'round_robin') {
+    renderCrossTable();
     return;
   }
 
