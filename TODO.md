@@ -229,6 +229,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng kèm ảnh chụp Cross Table thật (2026-08-08)
 - ✅ **#75.** Cross Table (Round Robin, #64) chưa sắp theo hạng + chưa highlight Vô địch/Á quân khi giải kết thúc `[Model: Sonnet 5]` — [chi tiết](docs/todo/B75-cross-table-sap-xep-theo-hang-va-highlight-champion.md)
 
+### Nguồn: báo cáo người dùng — luồng Sẵn sàng → Vào trận gây sai lệch thời gian giữa 2 người chơi (2026-08-08)
+- ✅ **#76.** Đồng hồ trận đấu start server-side ngay khi cả 2 "Sẵn sàng", nhưng client bắt bấm thêm nút "Vào trận" thủ công — ai bấm sau bị trừ giờ oan; nên tự động vào trận khi cả 2 đã sẵn sàng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B76-ready-auto-vao-tran-thay-vi-doi-bam-nut-enter.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
