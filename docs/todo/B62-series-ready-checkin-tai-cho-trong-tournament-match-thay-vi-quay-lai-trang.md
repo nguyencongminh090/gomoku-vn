@@ -25,6 +25,11 @@
       CLAUDE.md). An toàn: không đổi state machine phía server (`Ready`→`InProgress` vẫn giữ nguyên
       qua `markPairingReady`), chỉ đổi **nơi** UI check-in được trigger — rủi ro thấp nếu giữ đúng event
       `pairing:ready` (hoặc tên tương đương) hiện có, không tạo luồng check-in song song mới.
-    - **Trạng thái:** chưa làm — mới ghi nhận yêu cầu, cần thảo luận thêm chi tiết kỹ thuật (modal chỉ
-      tái dùng UI/CSS của Start Modal, hay cả áp dụng cho cả 2 người chơi cùng lúc trong 1 trang) trước
-      khi triển khai. Xem `docs/instruction/B62-*.md` cho hướng tiếp cận kỹ thuật đề xuất.
+    - **Trạng thái:** ✅ ĐÃ XONG (2026-08-08). Nút "Sẵn sàng" gắn thẳng vào
+      `series-transition-overlay` hiện có trong `tournament-match.html`, emit cùng event
+      `tournament:ready` mà `tournament-detail.js` đã dùng (không đổi state machine
+      `Ready`↔`InProgress` phía server). `#back-to-tournament` bị khoá (`.detail-back--disabled`)
+      suốt khi pairing chưa quyết định — kể cả lúc đang chơi lẫn lúc chờ check-in giữa 2 ván — chỉ mở
+      lại khi ván/series đã có kết quả cuối. Xác nhận qua `npm test` (844/844, không đổi code
+      server) + verify bằng Playwright 2 tab thật (script tạm, đã xoá sau khi chạy) theo đúng quy
+      trình an toàn DB ở CLAUDE.md. Chi tiết: `docs/fix-log/2026-08-08-todo-62-series-checkin-in-place.md`.
