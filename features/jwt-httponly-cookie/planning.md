@@ -48,6 +48,95 @@ dự đoán ở phía server, nhưng lớn hơn dự đoán ở phía client.**
 | Auth guard | Kiểm tra `gvn_user` + `exp`, không kiểm tra token |
 | Migration | `POST /api/auth/upgrade-session` đổi token cũ trong `localStorage` lấy cookie, giữ nguyên `exp` |
 
+## Ngành làm thế nào? (khảo sát 2026-08-08)
+
+Khảo sát tài liệu chuẩn + thực tế các site lớn, để biết đề xuất trên có lệch chuẩn không. Nguồn ở
+cuối mục.
+
+### 1. Chuẩn chính thức nói gì
+
+- **OWASP Session Management Cheat Sheet** nói thẳng: *"Do not store authentication tokens, session
+  IDs, JWTs, refresh tokens, or any credential in `localStorage` or `sessionStorage`."* Khuyến nghị
+  cookie với `HttpOnly` (*"mandatory to prevent session ID stealing through XSS"*), `Secure`, và
+  `SameSite=Strict` (ưu tiên) hoặc `Lax`.
+- **RFC 9700** (BCP bảo mật OAuth 2.0) + **draft-ietf-oauth-browser-based-apps**: khuyến nghị mạnh
+  nhất là giữ token **hoàn toàn ngoài trình duyệt**, trình duyệt chỉ cầm một cookie phiên `HttpOnly`.
+- → Đề xuất trong tài liệu này **đúng hướng chuẩn ngành**. Việc lưu JWT ở `localStorage` như hiện
+  tại là mẫu bị khuyến cáo rõ ràng, không phải vùng xám.
+
+### 2. Site lớn thực sự làm gì — và điểm khác biệt quan trọng
+
+Đây là phần đáng chú ý nhất, vì nó **không phải** "giống hệt đề xuất của ta":
+
+- **Google, GitHub không dùng JWT cho phiên trình duyệt** — họ dùng **session phía server** với một
+  cookie **mờ (opaque)**: GitHub là `_gh_sess` (Rails signed cookie). Cookie chỉ mang định danh
+  phiên, **không mang dữ liệu**; trạng thái nằm ở server.
+- **Mẫu BFF / Token Handler** (Auth0, Curity, Duende, FusionAuth) đẩy xa hơn: token thật nằm trong
+  session store phía server (Redis/DynamoDB), trình duyệt chỉ có `session_id` trong cookie
+  `HttpOnly; Secure; SameSite=Strict`.
+- **Mẫu lai phổ biến 2026** (Auth0/Clerk/Okta): access token **rất ngắn** (60s-15 phút) giữ **trong
+  bộ nhớ JS** (không persist), refresh token dài hạn nằm trong cookie `HttpOnly` + xoay vòng
+  (rotation) + phát hiện tái sử dụng.
+
+**Lý do chính họ chọn opaque session, và nó áp thẳng vào app này: thu hồi (revocation).** JWT đã ký
+thì **không thể vô hiệu hoá** trước hạn — token 7 ngày của repo này bị lộ là dùng được 7 ngày, kể
+cả sau khi user đổi mật khẩu. `HttpOnly` giảm *khả năng bị lộ*, nhưng **không** thêm khả năng *thu
+hồi khi đã lộ*. Đáng chú ý: app đã có `session:kicked` (đá phiên khi đăng nhập nơi khác), nhưng đó
+là đá **socket đang mở**, không phải vô hiệu hoá **token** — kẻ cầm token bị đá chỉ cần kết nối lại.
+
+### 3. WebSocket: cookie là lựa chọn *chuẩn*, không phải giải pháp chắp vá
+
+Phát hiện củng cố cho việc chuyển sang cookie, chưa nêu trong `user_story.md`:
+
+- **API WebSocket gốc của trình duyệt không cho đặt custom header**, nên `Authorization: Bearer`
+  không dùng được lúc bắt tay. Cookie là cơ chế xác thực WS *tự nhiên* của nền tảng web; token qua
+  query string bị khuyến cáo (lọt vào access log, proxy log, lịch sử trình duyệt, header `Referer`).
+- App này lách được vì Socket.IO có `auth: { token }` riêng (gửi trong payload handshake của
+  engine.io, không phải header) — hợp lệ, nhưng là giải pháp đặc thù thư viện, không phải chuẩn nền
+  tảng.
+- **Socket.IO chính thức hỗ trợ cookie**, và mặc định cookie do nó đặt là `httpOnly: true`,
+  `sameSite: "lax"` — trùng đúng với thiết kế đề xuất.
+
+### 4. ⚠ Rủi ro MỚI phải xử lý: CSWSH (Cross-Site WebSocket Hijacking)
+
+Đây là thứ khảo sát này phát hiện thêm và **phải** đưa vào thiết kế:
+
+- Hôm nay app **miễn nhiễm** CSWSH: một trang độc hại không thể mở socket thay mặt nạn nhân, vì nó
+  không đọc được `localStorage` của origin này để lấy token.
+- **Sau khi chuyển sang cookie, điều đó không còn đúng** — cookie được trình duyệt tự đính kèm. Đây
+  chính xác là phiên bản WebSocket của bề mặt CSRF đã nêu ở Q4.
+- **`SameSite=Lax`/`Strict` chặn được** (bắt tay WS do script khởi tạo là cross-site, không phải
+  điều hướng top-level, nên cookie `Lax` không được gửi) — nhưng chuẩn ngành yêu cầu **kiểm tra
+  header `Origin` phía server** như lớp phòng thủ thứ hai, không phụ thuộc mỗi `SameSite`.
+- **Lưu ý cấu hình hiện tại:** `cors.origin` của Socket.IO ở `server/index.js:93-96` **không** bảo
+  vệ WebSocket — trình duyệt không áp CORS cho WS. Phải kiểm `Origin` một cách tường minh
+  (`allowRequest`, hoặc kiểm trong `verifySocketToken`). Hiện dev đang để `origin: '*'`.
+
+### 5. Kết luận rút ra cho app này
+
+1. Hướng đi (JWT → cookie `HttpOnly`) **khớp chuẩn OWASP/IETF**; không cần bàn lại phần này.
+2. Nhưng chuẩn ngành **đi xa hơn một bước** mà đề xuất hiện tại chưa chạm tới: cookie mang **định
+   danh phiên mờ + trạng thái ở server** (thu hồi được), thay vì mang thẳng JWT 7 ngày. Xem **Q7**.
+3. Chuyển sang cookie **bắt buộc kèm kiểm `Origin`** cho socket, nếu không là đổi một lỗ hổng
+   (XSS-trộm-token) lấy một lỗ hổng khác (CSWSH). Xem **Q3** đã được sửa lại.
+4. Mẫu "access token ngắn trong bộ nhớ + refresh token trong cookie" là chuẩn 2026 nhưng **quá nặng**
+   cho app này (cần refresh endpoint, rotation, reuse detection) — nên loại, trừ khi Q7 chọn hướng
+   session phía server.
+
+**Nguồn:**
+[OWASP Session Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html) ·
+[RFC 9700 — BCP for OAuth 2.0 Security](https://www.rfc-editor.org/info/rfc9700/) ·
+[draft-ietf-oauth-browser-based-apps](https://www.ietf.org/archive/id/draft-ietf-oauth-browser-based-apps-26.html) ·
+[Curity — The Token Handler Pattern](https://curity.io/resources/learn/the-token-handler-pattern/) ·
+[Auth0 — The BFF Pattern](https://auth0.com/blog/the-backend-for-frontend-pattern-bff/) ·
+[Duende BFF — Session Management](https://docs.duendesoftware.com/bff/fundamentals/session/) ·
+[FusionAuth — BFF security architecture](https://fusionauth.io/blog/backend-for-frontend-security-architecture) ·
+[Socket.IO — How to deal with cookies](https://socket.io/how-to/deal-with-cookies) ·
+[WebSocket.org — Security: Auth, TLS, CSWSH](https://websocket.org/guides/security/) ·
+[WebSocket.org — Authentication](https://websocket.org/guides/authentication/) ·
+[Stytch — JWTs vs sessions](https://stytch.com/blog/jwts-vs-sessions-which-is-right-for-you/) ·
+[Okta — Cookies vs Tokens](https://developer.okta.com/blog/2022/02/08/cookies-vs-tokens)
+
 ## Câu hỏi mở — cần người dùng chốt trước khi code
 
 **Q1. Có thực sự làm không?**
@@ -68,12 +157,20 @@ khi có XSS. B65 đã hạ rủi ro XSS đáng kể. Đây là thay đổi chạ
   Nhược: hai cookie phải hết hạn đồng bộ, dễ lệch.
   → Khuyến nghị: **(a)**, vì nó không tạo thêm bề mặt REST nào.
 
-**Q3. `SameSite=Lax` hay `Strict`?**
+**Q3. `SameSite=Lax` hay `Strict`? — và kiểm `Origin` (đã sửa sau khảo sát ngành)**
 App không có luồng quay-về từ site ngoài (không OAuth, không thanh toán), nên `Strict` không làm
 hỏng gì và chặt hơn. `Lax` an toàn hơn cho tương lai (ví dụ chia sẻ link phòng chơi qua Zalo/Messenger —
 với `Strict`, lần điều hướng đầu từ app ngoài vào sẽ **không** kèm cookie và user thấy màn hình đăng
 nhập dù đang có phiên). → Khuyến nghị **`Lax`**, nhưng cần chốt vì nó ảnh hưởng trải nghiệm chia sẻ
 link.
+
+> **Bổ sung bắt buộc, không phải tuỳ chọn:** dù chọn `Lax` hay `Strict`, phải **kiểm header `Origin`
+> phía server cho kết nối socket** (chống CSWSH — xem mục "Ngành làm thế nào?" §4). `SameSite` một
+> mình về lý thuyết là đủ, nhưng chuẩn ngành không cho phép phụ thuộc một lớp duy nhất, và
+> `cors.origin` của Socket.IO **không** bảo vệ WebSocket (trình duyệt không áp CORS cho WS). Nếu bỏ
+> qua bước này thì việc chuyển sang cookie là đổi lỗ hổng XSS-trộm-token lấy lỗ hổng CSWSH — tệ
+> hơn nguyên trạng. Cần chốt: kiểm `Origin` trong `allowRequest` hay trong `verifySocketToken`, và
+> lấy origin hợp lệ từ đâu (biến môi trường `CORS_ORIGIN` sẵn có?).
 
 **Q4. Quy tắc CSRF cho tương lai.**
 Hôm nay không có route REST nào xác thực → không có bề mặt CSRF. Nhưng sau khi có cookie, route đầu
@@ -97,7 +194,25 @@ giản hơn nhiều và với quy mô app hiện tại có thể chấp nhận �
 (đã kiểm tra), nên nền tảng phải là `dev` dù thế nào. Cần xác nhận không có lý do gì để đưa thẳng
 lên `main`.
 
-## Trình tự triển khai (chỉ thực hiện sau khi Q1-Q6 được chốt)
+**Q7. Cookie mang JWT, hay mang định danh phiên mờ (opaque) + trạng thái ở server?**
+*(câu hỏi mới, phát sinh từ khảo sát ngành — xem mục "Ngành làm thế nào?" §2)*
+Đề xuất ban đầu chỉ **đổi chỗ chứa** JWT: cookie đựng nguyên JWT 7 ngày như cũ. Google/GitHub và mẫu
+BFF không làm vậy — cookie của họ mang một **định danh phiên mờ**, dữ liệu nằm ở server, nhờ đó
+**thu hồi được ngay lập tức**.
+- **(a) Cookie đựng JWT (đề xuất hiện tại)** — thay đổi tối thiểu, không thêm hạ tầng lưu trữ. Nhược:
+  vẫn **không thu hồi được** — token lộ là dùng được tới 7 ngày, kể cả sau khi đổi mật khẩu; và
+  `session:kicked` hiện có vẫn chỉ đá socket chứ không giết token.
+- **(b) Cookie đựng session id mờ, phiên lưu ở server** — thu hồi được thật, đăng xuất là thu hồi
+  thật, mở đường cho "đăng xuất mọi thiết bị". Nhược: cần một session store. App đã có **SQLite
+  (`better-sqlite3`) đồng bộ, chạy sẵn** nên chi phí thấp hơn nhiều so với dựng Redis — nhưng
+  **guest** thì không có bản ghi user, cần bảng phiên riêng, và mọi lần bắt tay socket thành một lần
+  đọc DB.
+→ Chưa khuyến nghị dứt khoát. **(b) đúng chuẩn ngành hơn và giải quyết một vấn đề thật (không thu
+hồi được) mà (a) không chạm tới** — nhưng nó biến task này từ "đổi chỗ lưu token" thành "làm lại
+tầng phiên", vượt xa phạm vi #68 ban đầu. Nếu người dùng thấy khả năng thu hồi là quan trọng, nên
+tách thành mục riêng thay vì nhồi vào #68.
+
+## Trình tự triển khai (chỉ thực hiện sau khi Q1-Q7 được chốt)
 
 1. **Server — nền tảng cookie.** Thêm helper `setAuthCookie(res, token, maxAge)` / `clearAuthCookie(res)`
    ở một chỗ duy nhất (cờ `Secure` suy từ `req.secure`/`X-Forwarded-Proto`, dùng `trust proxy` sẵn có).
@@ -139,7 +254,7 @@ console KHÔNG thấy `gvn_token`** — đây là phép thử duy nhất chứng
 
 ## Bàn giao (bước cuối của thảo luận)
 
-Sau khi Q1-Q6 được chốt với người dùng, chuyển tài liệu này thành công việc theo dõi được:
+Sau khi Q1-Q7 được chốt với người dùng, chuyển tài liệu này thành công việc theo dõi được:
 cập nhật `docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md` +
 `docs/instruction/B68-...md` với quyết định đã chốt và trình tự trên (giữ nguyên mã `B68`/`#68`,
 không tạo mục mới — mục này đã tồn tại), rồi mới bắt đầu code trên

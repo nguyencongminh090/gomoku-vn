@@ -46,7 +46,7 @@ Phát hiện quan trọng từ khảo sát code (làm thay đổi hình dung ban
   client; với `HttpOnly` phải thêm `POST /api/auth/logout`, và xử lý trường hợp lỗi mạng (nếu vẫn
   chuyển trang như cũ thì cookie còn sống → chính bản sửa bảo mật tạo ra hồi quy bảo mật).
 
-Sáu câu hỏi mở (Q1-Q6 trong `planning.md`) cần chốt trước khi làm, trong đó Q1 là *có làm hay
+Bảy câu hỏi mở (Q1-Q7 trong `planning.md`) cần chốt trước khi làm, trong đó Q1 là *có làm hay
 không* — bảng threat model trong `user_story.md` chỉ ra `HttpOnly` chặn được **rò rỉ/tái sử dụng
 token ngoài phiên** nhưng **không** chặn được lạm dụng ngay trong trang khi có XSS, nên lợi ích thật
 sự có giới hạn so với chi phí chạm 10+ file ở cả hai tầng.
