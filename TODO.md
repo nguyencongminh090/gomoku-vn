@@ -235,6 +235,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: người dùng hỏi "Nó có lưu database ko" (2026-08-08)
 - ✅ **#77.** Tournament đã ghi SQLite ở mọi transition nhưng `TournamentManager` chưa từng đọc lại — restart server xoá sạch mọi giải đấu khỏi bộ nhớ dù dữ liệu vẫn còn trong `gomoku.db`; thêm `loadTournamentsFromDb()` reload đầy đủ `[Model: Sonnet 5]` — [chi tiết](docs/todo/B77-tournament-du-lieu-song-sot-qua-restart-server.md)
 
+### Nguồn: yêu cầu người dùng trực tiếp (2026-08-08)
+- ✅ **#78.** Ván đấu tournament chưa từng lưu move history đầy đủ — `pairing.moves` bị ghi đè mỗi ván mới trong 1 series, không có replay UI nào; thêm bảng `tournament_games` (1 hàng/ván, tách khỏi `games` thường) + tab "Lịch sử ván đấu" + tái dùng replay viewer có sẵn `[Model: Sonnet 5]` — [chi tiết](docs/todo/B78-tournament-games-history-luu-tung-van-dau-rieng.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

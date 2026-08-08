@@ -30,9 +30,32 @@ jest.mock('../socket/state', () => ({ findSocketsByUserId: mockFindSocketsByUser
 const mockChatManager = { handleMessage: jest.fn() };
 jest.mock('../managers/ChatHandler', () => mockChatManager);
 
+// TournamentManager is mocked above (this suite isn't re-testing it), but
+// TournamentMatchHandler.js now also requires db/database.js directly, to
+// persist per-game history (TODO.md #78) — real database.js, real
+// better-sqlite3 API, backed by :memory: instead of the real gomoku.db file
+// (same technique as TournamentManager.test.js/save-game.test.js), so
+// saveTournamentGame's actual SQL runs for real and can be asserted on.
+jest.mock('better-sqlite3', () => {
+  const Actual = jest.requireActual('better-sqlite3');
+  return function MockedDatabase() {
+    return new Actual(':memory:');
+  };
+});
+
 const TournamentMatchHandler = require('../socket/handlers/TournamentMatchHandler');
 const tournamentState = require('../socket/tournamentState');
+const database = require('../db/database');
 const config = require('../config');
+
+// This suite mocks TournamentManager (see header comment) and never creates
+// real tournaments/tournament_pairings/tournament_players rows for its
+// made-up ids ('t1', 'p1', 'e1'/'e2') — referential integrity across those
+// tables is TournamentManager.test.js's job, where the real manager creates
+// them. tournament_games' FK columns would otherwise reject every
+// saveTournamentGame() call _endMatch now makes (TODO.md #78) against
+// parent rows this file deliberately never creates.
+database.db.pragma('foreign_keys = OFF');
 
 // ── Mock io/socket helpers ──────────────────────────────────────────────────
 
@@ -419,6 +442,151 @@ describe('TournamentMatchHandler — tmatch:move', () => {
     const ended = io._toEmitted['tournament-match:p1'].find((e) => e.event === 'tmatch:ended');
     expect(ended.data.result.winner).toBe('draw');
     expect(mockTournamentManager.recordPairingResult).toHaveBeenCalledWith('t1', 'p1', 'draw');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tournament games history (TODO.md #78) — one tournament_games row per
+// INDIVIDUAL game, persisted from _endMatch, never overwritten by the next
+// game in a series (unlike pairing.moves, which the next game DOES clobber).
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — tournament games history (_endMatch persistence)', () => {
+  // This file shares one :memory: DB across every test (no per-test reset —
+  // see the file's other tests, which all reuse 't1'/'p1' too); without this,
+  // getTournamentGames('t1') here would also pick up rows from earlier tests
+  // in this file that happen to end a match under the same made-up ids.
+  beforeEach(() => {
+    database.db.exec('DELETE FROM tournament_games');
+  });
+
+  test('five in a row persists exactly one tournament_games row with correct entries/winner/moves', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p1socket);
+    TournamentMatchHandler.register(io, p2socket);
+
+    const move = (socket, x, y) => fire(socket, 'tmatch:move', { tournamentId: 't1', pairingId: 'p1', x, y });
+    move(p1socket, 0, 0); move(p2socket, 0, 1);
+    move(p1socket, 1, 0); move(p2socket, 1, 1);
+    move(p1socket, 2, 0); move(p2socket, 2, 1);
+    move(p1socket, 3, 0); move(p2socket, 3, 1);
+    move(p1socket, 4, 0); // five in a row for entry1 (BLACK)
+
+    const games = database.getTournamentGames('t1');
+    expect(games).toHaveLength(1);
+    expect(games[0]).toMatchObject({
+      tournament_id: 't1', pairing_id: 'p1', game_index: 0,
+      black_entry_id: entry1.entryId, white_entry_id: entry2.entryId,
+      black_player_name: 'Player One', white_player_name: 'Player Two',
+      winner: 'BLACK',
+    });
+
+    const full = database.getTournamentGameById(games[0].id);
+    expect(full.moves).toHaveLength(9);
+    expect(full.winner_name).toBe('Player One');
+  });
+
+  test('resigning persists a row crediting the OTHER color as winner, reason "resign"', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing(); // player1=entry1=BLACK
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const [game] = database.getTournamentGames('t1');
+    expect(game.winner).toBe('WHITE'); // entry2 benefits from entry1's resign
+    expect(game.reason).toBe('resign');
+  });
+
+  test('a board-full draw persists a row with winner="draw"', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing({ boardSize: 4 });
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    const p2socket = makeSocket(io, entry2.userId, 'Player Two');
+    TournamentMatchHandler.register(io, p1socket);
+    TournamentMatchHandler.register(io, p2socket);
+
+    const cells = [];
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) cells.push([x, y]);
+    let turn = p1socket;
+    for (const [x, y] of cells) {
+      if (!tournamentState.tournamentGameMap.get('p1')) break;
+      fire(turn, 'tmatch:move', { tournamentId: 't1', pairingId: 'p1', x, y });
+      turn = turn === p1socket ? p2socket : p1socket;
+    }
+
+    const [game] = database.getTournamentGames('t1');
+    expect(game.winner).toBe('draw');
+  });
+
+  test('a guest player still saves with a real entry_id (unlike casual games\' null guest player_id)', () => {
+    const entry1 = { entryId: 'e1', userId: 'u1', displayName: 'Player One', isGuest: false };
+    const entry2 = { entryId: 'e2', userId: 'guest_1', displayName: 'Khách', isGuest: true };
+    mockTournamentManager.getTournament.mockReturnValue({
+      tournamentId: 't1', ruleSet: ruleSet(), entries: new Map([[entry1.entryId, entry1], [entry2.entryId, entry2]]),
+    });
+    mockTournamentManager.getPairing.mockReturnValue({
+      pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+      games: [], seriesScore: null,
+    });
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' });
+
+    const [game] = database.getTournamentGames('t1');
+    expect(game.white_entry_id).toBe(entry2.entryId); // guest still gets a real entry_id, not null
+    expect(game.white_player_name).toBe('Khách');
+  });
+
+  test('a multi-game series persists ONE ROW PER GAME — the first game\'s moves survive the second game starting', () => {
+    const { entry1, entry2 } = setupTournamentAndPairing();
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1'); // game 0
+
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({
+      tournament: {}, pairing: {}, seriesComplete: false,
+    });
+    mockTournamentManager.getPairing
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+        games: [], seriesScore: null,
+      })
+      .mockReturnValueOnce({
+        pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'Ready',
+        games: [{ index: 0, winnerEntryId: entry2.entryId }],
+        seriesScore: { [entry1.entryId]: 0, [entry2.entryId]: 1 },
+      });
+
+    const p1socket = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket);
+    fire(p1socket, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' }); // game 0 ends, entry2 wins
+
+    // Game 1: pairing.games now has one entry, so gameIndex should be 1.
+    mockTournamentManager.getPairing.mockReturnValue({
+      pairingId: 'p1', player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+      games: [{ index: 0, winnerEntryId: entry2.entryId }], seriesScore: { [entry1.entryId]: 0, [entry2.entryId]: 1 },
+    });
+    mockTournamentManager.recordPairingResult.mockReturnValueOnce({ tournament: {}, pairing: {} }); // series decided
+    TournamentMatchHandler.startMatch(io, 't1', 'p1'); // game 1
+    const p1socket2 = makeSocket(io, entry1.userId, 'Player One');
+    TournamentMatchHandler.register(io, p1socket2);
+    fire(p1socket2, 'tmatch:resign', { tournamentId: 't1', pairingId: 'p1' }); // game 1 ends
+
+    const games = database.getTournamentGames('t1');
+    expect(games).toHaveLength(2);
+    expect(games.map((g) => g.game_index).sort()).toEqual([0, 1]);
   });
 });
 

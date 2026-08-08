@@ -6,16 +6,16 @@
   <title>Play3CR — Chi tiết giải đấu</title>
   <meta name="description" content="Play3CR — Chi tiết giải đấu, bảng xếp hạng, lịch thi đấu." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=88" />
-  <link rel="stylesheet" href="css/lobby.css?v=88" />
-  <link rel="stylesheet" href="css/tournament.css?v=88" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=88" />
-  <script src="js/theme-preload.js?v=88"></script>
+  <link rel="stylesheet" href="css/main.css?v=89" />
+  <link rel="stylesheet" href="css/lobby.css?v=89" />
+  <link rel="stylesheet" href="css/tournament.css?v=89" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=89" />
+  <script src="js/theme-preload.js?v=89"></script>
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=88">
-  <script src="js/ui-mode-preload.js?v=88"></script>
-  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=88" />
-  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=88" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=89">
+  <script src="js/ui-mode-preload.js?v=89"></script>
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=89" />
+  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=89" />
 </head>
 <body>
 
@@ -50,6 +50,7 @@
   <div class="sub-tabs" role="tablist">
     <button class="sub-tabs__btn is-active" id="sub-tab-pairings" role="tab" aria-selected="true"><i class="ph ph-sword"></i><span data-i18n="tdetail.tab_pairings">Cặp đấu</span></button>
     <button class="sub-tabs__btn" id="sub-tab-standings" role="tab" aria-selected="false"><i class="ph ph-ranking"></i><span data-i18n="tdetail.tab_standings">Bảng xếp hạng</span></button>
+    <button class="sub-tabs__btn" id="sub-tab-games" role="tab" aria-selected="false"><i class="ph ph-clock-counter-clockwise"></i><span data-i18n="tdetail.tab_games">Lịch sử ván đấu</span></button>
   </div>
 
   <div class="sub-tab-panel is-active" id="subtab-pairings">
@@ -64,6 +65,14 @@
     <div class="ui-shell" style="width:100%;">
       <div class="ui-core">
         <div id="standings-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-tab-panel" id="subtab-games">
+    <div class="ui-shell" style="width:100%;">
+      <div class="ui-core">
+        <div id="games-container" style="padding-top:16px; padding-bottom:16px;"></div>
       </div>
     </div>
   </div>
@@ -193,7 +202,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
-<script src="js/escape-utils.js?v=88"></script>
-<script type="module" src="js/tournament-detail-entry.js?v=88"></script>
+<script src="js/escape-utils.js?v=89"></script>
+<script type="module" src="js/tournament-detail-entry.js?v=89"></script>
 </body>
 </html>

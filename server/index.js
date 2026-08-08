@@ -23,6 +23,7 @@ const { cspDirectives } = require('./config/csp');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
+const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
@@ -69,6 +70,7 @@ app.use(express.static(clientPath));
 // REST API routes
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
+app.use('/api', tournamentGamesRouter);
 
 // Catch-all: serve login page for unknown routes (SPA-style fallback)
 app.get('*', (req, res) => {

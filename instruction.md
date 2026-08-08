@@ -93,6 +93,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B75.** Cross Table sắp theo hạng + highlight Vô địch/Á quân khi giải kết thúc — không đổi `computeStandings()`, hỏi lại nếu gặp đồng hạng 1 (báo cáo người dùng kèm ảnh, TODO.md #75) — [chi tiết](docs/instruction/B75-cross-table-sap-xep-theo-hang-va-highlight-champion.md)
 - **B76.** Sẵn sàng → tự động vào trận thay vì đợi bấm nút "Vào trận" — sửa client-side (`tournament-detail.js`), chỉ auto-navigate cho người chơi thật (`isMine`), không đụng khán giả, không đổi mốc server start timer (báo cáo người dùng, TODO.md #76) — [chi tiết](docs/instruction/B76-ready-auto-vao-tran-thay-vi-doi-bam-nut-enter.md)
 - **B77.** Tournament reload từ SQLite khi server khởi động — dựng lại 3 Map trong bộ nhớ từ dữ liệu đã ghi sẵn (không chạy lại game logic), 2 fixup bắt buộc (Reported→Negotiating, InProgress→Ready qua startNextGame), guest mất userId là giới hạn đã biết không sửa (người dùng hỏi có lưu DB không, TODO.md #77) — [chi tiết](docs/instruction/B77-tournament-du-lieu-song-sot-qua-restart-server.md)
+- **B78.** Tournament Games History — bảng `tournament_games` mới (1 hàng/ván, tách khỏi `games`), điểm lưu duy nhất trong `_endMatch` (không điều kiện, không qua `forceCancelMatch`), tái dùng replay viewer có sẵn qua tham số `source`, `winner_name` phải tính ở server (yêu cầu người dùng trực tiếp, TODO.md #78) — [chi tiết](docs/instruction/B78-tournament-games-history-luu-tung-van-dau-rieng.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 
