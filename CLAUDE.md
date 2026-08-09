@@ -280,6 +280,82 @@ Whenever you need a real running server for Playwright (`npx playwright test`, `
 
 This applies any time you start `server/index.js` yourself for verification. It does not apply to `npm test` (Jest unit tests already mock or use in-memory SQLite, never this file) or to a server the user themselves is already running for their own dev/deployment use — never restart or interfere with a server process you didn't start.
 
+## Playwright browser binaries: never run `npx playwright install` speculatively
+
+The machine's Playwright browser binaries live at `~/.local/share/ms-playwright/` (not the
+library's built-in default of `~/.cache/ms-playwright/`), pinned there via
+`PLAYWRIGHT_BROWSERS_PATH` set in both `~/.bashrc` and, as of 2026-08-09, system-wide in
+`/etc/environment`.
+
+**Correction (2026-08-09, same day): `/etc/environment` does NOT reliably reach an
+already-running agent/tool shell.** `/etc/environment` is read by PAM at *session start* (login,
+new SSH connection, fresh terminal after reboot) — a shell process that was already running
+before the file was added (e.g. this harness's persistent Bash tool shell, or a VSCode-extension
+-hosted terminal opened earlier) keeps whatever environment it started with and never re-reads
+`/etc/environment` later. Confirmed same-day: `echo $PLAYWRIGHT_BROWSERS_PATH` came back empty in
+the actual Bash tool shell despite the file being correctly set, and `chromium.launch()` failed
+looking in the wrong (`~/.cache/...`) path as a result. **Don't assume propagation — verify it in
+the shell you're about to use, every time**, and don't treat "the user restarted/rebooted since"
+as a substitute for checking: `echo $PLAYWRIGHT_BROWSERS_PATH` right before the command that needs
+it.
+
+**Never run `npx playwright install` (or `install chromium`/`firefox`/`webkit`) as a defensive or
+"just in case" step before an e2e run.** Precedent (2026-08-09): an agent ran it speculatively
+before a Playwright session in an environment where `PLAYWRIGHT_BROWSERS_PATH` hadn't propagated
+yet (pre-`/etc/environment` fix), so Playwright silently fell back to its built-in default path
+and downloaded a full second copy of chromium/headless_shell/ffmpeg (~656MB) into
+`~/.cache/ms-playwright/`, duplicating what already existed at the correct location. That stray
+copy was found and deleted (`rm -rf ~/.cache/ms-playwright`) after the fact.
+
+- **Check first, don't install first**: `ls ~/.local/share/ms-playwright/` (or
+  `npx playwright install --dry-run chromium` if unsure) to confirm the browser revision your
+  `@playwright/test` version needs is already present, before ever invoking `install`.
+- If a binary genuinely is missing, confirm `echo $PLAYWRIGHT_BROWSERS_PATH` resolves to
+  `~/.local/share/ms-playwright` in the actual shell that will run `install` before running it —
+  do not assume env propagation, since non-interactive/non-login shells (`bash -c "..."`, which is
+  how tool-invoked commands typically run) do not source `~/.bashrc` at all, only
+  `/etc/environment` reaches them (and only after the shell's session/login was started after the
+  var was added).
+- If `~/.cache/ms-playwright/` ever reappears, that's the signal this happened again — investigate
+  which shell/tool bypassed `PLAYWRIGHT_BROWSERS_PATH` rather than just deleting it silently.
+- **If `$PLAYWRIGHT_BROWSERS_PATH` is empty in the shell you're about to run Playwright in, do
+  NOT run `npx playwright install` to "fix" it and do NOT ask the user to reboot.** Just prefix
+  the one command that needs it: `PLAYWRIGHT_BROWSERS_PATH=/home/ngmint/.local/share/ms-playwright
+  node your-script.js`. This is a one-command workaround, not a system fix — it doesn't change the
+  shell's persisted environment, so check again (`echo $PLAYWRIGHT_BROWSERS_PATH`) at the start of
+  a *different* session before assuming it carried over. A reboot (or any fresh login/terminal
+  session started after `/etc/environment` was set) does fix it permanently for that new session,
+  but is the user's call to do, never something to request or wait on mid-task — the prefix
+  workaround is always available and unblocks the current task immediately.
+
+## Playwright/e2e: authenticated pages need the real login UI flow, not just an API cookie
+
+`client/js/session.js`'s `requireAuth()` (called at the top of every page that needs a session,
+e.g. `tournament.html`) does not trust the session cookie alone — the cookie is HttpOnly and
+therefore unreadable client-side, so `requireAuth()` instead checks a `gvn_user` flag in
+`localStorage`, which is only ever set by the login page's own JS (`client/js/login.js`) after a
+successful login/guest click, via `onAuthSuccess()`. **A Playwright script that logs a guest in via
+a raw `context.request.post('/api/auth/guest')` call gets a valid cookie in the browser context,
+but `localStorage.gvn_user` is still unset — every `requireAuth()`-gated page will `location.replace`
+straight to `login.html`, even though the cookie itself is perfectly valid.**
+
+Drive the actual UI instead: `page.goto('/login.html')` → `page.click('#btn-guest')` (or fill+submit
+the real login form for a registered account) → wait for the redirect away from the login page →
+*then* navigate to the page under test. This is also the more faithful test regardless (it's what a
+real user does), and it's the same amount of code as the raw-API shortcut once you factor in the
+`localStorage` gap.
+
+**Seeding data for a page like this beyond what the UI can practically create** (e.g. 20+ rows to
+prove pagination, which nobody creates by hand through the UI): drive the *real* create/register/
+start flow once via a small `socket.io-client` script (not the browser) to get real, FK-valid ids
+(tournament id, pairing id, entry ids — `tournament_games` has `foreign_keys = ON` enforced FKs
+into `tournaments`/`tournament_pairings`/`tournament_players`), then bulk-insert the remaining rows
+directly via `sqlite3`/`python3 sqlite3` using those real ids. Trying to fabricate a whole
+tournament/pairing/entry graph by hand to satisfy the FKs (to skip the socket step) is much more
+work and easy to get subtly wrong against `TournamentManager._hydrateTournament()`'s expectations;
+letting the real server generate the parent rows and only bulk-seeding the leaf table is far less
+fragile. Precedent: TODO.md #84 (games-history pagination) verification, 2026-08-09.
+
 ## Short/underspecified prompts: enhance, confirm, then execute
 
 If a user prompt is short or lacks the detail an AI agent needs to act on safely (ambiguous scope, missing target file/fix id, unclear which of several plausible interpretations applies):
