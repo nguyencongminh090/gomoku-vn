@@ -370,7 +370,6 @@ function updateBoardState() {
     displayMode: boardDisplayMode(),
   });
   renderTimers();
-  requestAnimationFrame(() => boardRenderer.resize());
 }
 
 function renderSwap2Board() {

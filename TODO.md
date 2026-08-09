@@ -263,6 +263,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: phát hiện phụ khi cài `jest-environment-jsdom` cho #88's unit test (2026-08-09)
 - ✅ **#89.** `npm audit` báo 3 lỗ hổng high-severity ở dependency gián tiếp, có từ trước (không phải do gói mới thêm): `js-yaml` (qua `jest`), `nanoid` (qua `vite`, cả 2 chỉ devDependency, rủi ro thấp), và `socket.io-parser` (qua `socket.io` — dependency PRODUCTION thật, DoS "memory exhaustion", đáng ưu tiên hơn 2 cái kia) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B89-npm-audit-3-high-severity-transitive.md)
 
+### Nguồn: báo cáo người dùng — "sometime website auto scroll on board click (make move)" trên Tournament Room (2026-08-09)
+- ✅ **#90.** `tournament-match.js`'s `updateBoardState()` gọi `boardRenderer.resize()` sau MỌI nước đi (qua `requestAnimationFrame`), khác `game-ui.js` (Tables Room) không làm vậy — resize canvas lặp lại mỗi click gây reflow, kết hợp `overflow-anchor` mặc định của trình duyệt (không nơi nào tắt) khớp với hiện tượng scroll bất định sau click; chưa sửa, chỉ mới phân tích theo yêu cầu người dùng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B90-tournament-match-tu-dong-scroll-khi-click-ban-co.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
