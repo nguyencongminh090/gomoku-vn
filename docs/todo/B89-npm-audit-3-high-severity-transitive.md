@@ -49,4 +49,8 @@ Xem hướng dẫn chi tiết: [docs/instruction/B89-npm-audit-3-high-severity-t
 
 ## Trạng thái
 
-Chưa làm.
+✅ ĐÃ XONG (2026-08-09). `npm audit fix` (không `--force`) resolve cả 3 gói cùng lúc, semver-safe:
+`socket.io-parser` 4.2.6→4.2.7, `js-yaml` 3.15.0→3.15.1, `nanoid` 3.3.16→3.3.18. Chỉ
+`package-lock.json` đổi, không cần bump `socket.io`/`socket.io-client`/`jest`/`vite` khai báo trong
+`package.json`. `npm audit` sau fix: 0 vulnerabilities. `npm test`: 41/41 suites, 977/977 tests
+pass. Chi tiết: [docs/fix-log/2026-08-09-todo-89-npm-audit-transitive-deps.md](../fix-log/2026-08-09-todo-89-npm-audit-transitive-deps.md).
