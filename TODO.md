@@ -266,6 +266,13 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng — "sometime website auto scroll on board click (make move)" trên Tournament Room (2026-08-09)
 - ✅ **#90.** `tournament-match.js`'s `updateBoardState()` gọi `boardRenderer.resize()` sau MỌI nước đi (qua `requestAnimationFrame`), khác `game-ui.js` (Tables Room) không làm vậy — resize canvas lặp lại mỗi click gây reflow, kết hợp `overflow-anchor` mặc định của trình duyệt (không nơi nào tắt) khớp với hiện tượng scroll bất định sau click; chưa sửa, chỉ mới phân tích theo yêu cầu người dùng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B90-tournament-match-tu-dong-scroll-khi-click-ban-co.md)
 
+### Nguồn: yêu cầu người dùng — "Cách để thêm OAuth? ... write to TODO, You will do it" (2026-08-09)
+- ✅ **#91.** Thêm đăng nhập bằng Google (OAuth 2.0) — route mới `GET /api/auth/google`/`/callback`, cột `oauth_provider`/`oauth_id` trên `users`, tái dùng nguyên session cookie mechanism sẵn có; ban đầu dùng 1 `GOOGLE_CALLBACK_URL` cố định nên vỡ khi dùng qua nhiều origin cùng lúc (`localhost:3000` + tunnel `play3cr.dpdns.org`) — sửa bằng cách tính callback URL động theo `Host` của từng request, bỏ hẳn biến env cố định; đã xác minh thủ công thành công qua `localhost:3000`, unit test 994/994 pass (2 test mới cho hành vi đa-origin) — **xác minh qua `play3cr.dpdns.org` với bản sửa mới CHƯA làm lại** (cần người dùng tự khởi động lại server rồi thử lần nữa) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B91-google-oauth-login.md)
+
+### Nguồn: báo cáo người dùng khi xác minh thủ công OAuth (nhánh `feature/oauth-login`, chưa merge) qua Cloudflare Tunnel — "Too many requests... It just affect same IP? My phone cannot log out" (2026-08-09)
+- ✅ **#92.** `authLimiter` (`server/routes/auth.js`) dùng `req.ip` mặc định của `express-rate-limit` — đằng sau Cloudflare Tunnel mọi client thật đều gộp thành 1 "IP" quan sát được (peer TCP luôn là loopback), chia sẻ chung đúng 1 ngân sách 20 request/15 phút thay vì mỗi người 1 ngân sách; thêm `server/utils/get-client-ip.js` tái dùng logic CF-Connecting-IP đã có ở #44, gắn `keyGenerator` vào `authLimiter` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B92-auth-rate-limit-shared-ip-behind-tunnel.md)
+- **#93.** `gamesLimiter`/`tournamentGamesLimiter` có đúng lỗi IP-gộp y hệt #92 (cùng thiếu `keyGenerator`) — chưa sửa, mức độ thấp hơn nhiều (ngưỡng 300 req/15 phút so với 20 của auth), không có báo cáo người dùng cụ thể `[Model: Sonnet 5]` — [chi tiết](docs/todo/B93-games-tournamentgames-rate-limit-same-ip-bug.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

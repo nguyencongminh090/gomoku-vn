@@ -60,6 +60,19 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
   logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
 }
 
+// Same additive-migration need as above, for oauth_provider/oauth_id
+// (TODO.md #91) — a db file created before Google login is missing these
+// two columns. idx_users_oauth is created unconditionally (IF NOT EXISTS is
+// itself idempotent) since an index add never needs the same guard a column
+// add does.
+const userColumns = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+if (userColumns.length > 0 && !userColumns.includes('oauth_provider')) {
+  db.exec('ALTER TABLE users ADD COLUMN oauth_provider TEXT');
+  db.exec('ALTER TABLE users ADD COLUMN oauth_id TEXT');
+  logger.info('[DB] Migrated users: added oauth_provider/oauth_id columns (TODO.md #91)');
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id)');
+
 // Periodic WAL checkpoint to prevent unbounded growth
 setInterval(() => {
   try {
@@ -77,14 +90,14 @@ logger.info('[DB] SQLite initialized at', DB_PATH);
 
 /**
  * Insert a new user.
- * @param {{ id, username, passwordHash, displayName, createdAt }} user
+ * @param {{ id, username, passwordHash, displayName, createdAt, oauthProvider?, oauthId? }} user
  */
-function createUser({ id, username, passwordHash, displayName, createdAt }) {
+function createUser({ id, username, passwordHash, displayName, createdAt, oauthProvider = null, oauthId = null }) {
   const stmt = db.prepare(
-    `INSERT INTO users (id, username, password_hash, display_name, created_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO users (id, username, password_hash, display_name, created_at, oauth_provider, oauth_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
-  return stmt.run(id, username, passwordHash, displayName, createdAt);
+  return stmt.run(id, username, passwordHash, displayName, createdAt, oauthProvider, oauthId);
 }
 
 /**
@@ -94,6 +107,16 @@ function createUser({ id, username, passwordHash, displayName, createdAt }) {
  */
 function getUserByUsername(username) {
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+}
+
+/**
+ * Look up a user by OAuth provider + subject id (TODO.md #91).
+ * @param {string} provider e.g. 'google'
+ * @param {string} oauthId provider's stable subject id
+ * @returns {{ id, username, password_hash, display_name, created_at, oauth_provider, oauth_id } | undefined}
+ */
+function getUserByOAuthId(provider, oauthId) {
+  return db.prepare('SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?').get(provider, oauthId);
 }
 
 /**
@@ -773,6 +796,7 @@ module.exports = {
   db,
   createUser,
   getUserByUsername,
+  getUserByOAuthId,
   getUserById,
   updateLastLogin,
   createSession,

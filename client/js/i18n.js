@@ -41,6 +41,7 @@ const TRANSLATIONS = {
     'login.ph_confirm': 'Nhập lại mật khẩu',
     'login.btn_register': 'Tạo tài khoản',
     'login.divider': 'hoặc',
+    'login.btn_google': 'Đăng nhập với Google',
     'login.btn_guest': 'Khách',
     'login.footer': 'Play3CR',
 
@@ -54,6 +55,7 @@ const TRANSLATIONS = {
     'login.err_login_fail': 'Đăng nhập thất bại. Vui lòng thử lại.',
     'login.err_register_fail': 'Đăng ký thất bại. Vui lòng thử lại.',
     'login.err_guest_fail': 'Không thể tạo phiên khách. Vui lòng thử lại.',
+    'login.err_oauth_fail': 'Đăng nhập bằng Google thất bại. Vui lòng thử lại.',
     'login.err_network': 'Không thể kết nối máy chủ. Vui lòng kiểm tra mạng.',
     'login.session_kicked': 'Tài khoản của bạn vừa đăng nhập ở một thiết bị khác, phiên này đã bị ngắt kết nối.',
     'login.err_username_taken': 'Tên đăng nhập đã tồn tại. Vui lòng chọn tên khác.',
@@ -619,6 +621,7 @@ const TRANSLATIONS = {
     'login.ph_confirm': 'Re-enter password',
     'login.btn_register': 'Create account',
     'login.divider': 'or',
+    'login.btn_google': 'Continue with Google',
     'login.btn_guest': 'Play as guest',
     'login.footer': 'Play3CR · Self-hosted · Local data',
 
@@ -632,6 +635,7 @@ const TRANSLATIONS = {
     'login.err_login_fail': 'Login failed. Please try again.',
     'login.err_register_fail': 'Registration failed. Please try again.',
     'login.err_guest_fail': 'Could not create guest session. Please try again.',
+    'login.err_oauth_fail': 'Google login failed. Please try again.',
     'login.err_network': 'Cannot connect to server. Please check your network.',
     'login.session_kicked': 'Your account signed in from another device, so this session was disconnected.',
     'login.err_username_taken': 'This username is already taken. Please choose another.',

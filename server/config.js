@@ -118,6 +118,22 @@ const JWT_EXPIRY  = '7d';
 const JWT_GUEST_EXPIRY = '24h';
 const BCRYPT_ROUNDS = 12;
 
+// --- OAuth (Google, TODO.md #91) ---
+// Optional, unlike JWT_SECRET: an environment that hasn't configured Google
+// OAuth (local dev without it, CI) must still boot. The routes check for
+// null themselves and respond with a clear "not configured" error instead.
+//
+// No GOOGLE_CALLBACK_URL here on purpose (removed post-launch — see
+// docs/fix-log for the incident): a single fixed callback URL breaks the
+// moment the app is reachable under more than one origin at once (e.g.
+// localhost:3000 for local testing AND a Cloudflare Tunnel domain for real
+// use) — the state cookie set on one origin never reaches Google's redirect
+// back to the other. routes/auth.js now derives the callback URL from each
+// request's own Host header instead, so every origin that's actually
+// registered as an authorized redirect URI in Google Cloud Console works.
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID || null;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || null;
+
 // --- Sessions (TODO.md #68) ---
 // Same lifetimes the JWTs had, so the switch changes the mechanism without
 // silently changing how long people stay signed in.
@@ -209,6 +225,8 @@ module.exports = {
   JWT_SECRET,
   JWT_EXPIRY,
   JWT_GUEST_EXPIRY,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
   SESSION_TTL_MS,
   SESSION_GUEST_TTL_MS,
   SESSION_COOKIE_NAME,

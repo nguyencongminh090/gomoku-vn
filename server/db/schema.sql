@@ -4,14 +4,26 @@
 -- =============================================================================
 
 -- Users — persistent accounts
+--
+-- oauth_provider/oauth_id (TODO.md #91): an OAuth-created account still gets
+-- a real password_hash (a random, never-shared bcrypt hash) so the NOT NULL
+-- constraint doesn't need loosening — it authenticates via Google only, the
+-- hash is simply unreachable through POST /login. username is likewise
+-- still generated (see generateOAuthUsername in routes/auth.js) so every
+-- row keeps the same UNIQUE NOT NULL shape regardless of how it was created.
 CREATE TABLE IF NOT EXISTS users (
   id           TEXT PRIMARY KEY,       -- UUID v4
   username     TEXT UNIQUE NOT NULL,   -- login handle (3-20 chars)
   password_hash TEXT NOT NULL,         -- bcrypt hash (cost 12)
   display_name TEXT NOT NULL,          -- shown in-game
   created_at   TEXT NOT NULL,          -- ISO 8601 timestamp
-  last_login_at TEXT                   -- ISO 8601 timestamp, null until first login
+  last_login_at TEXT,                  -- ISO 8601 timestamp, null until first login
+  oauth_provider TEXT,                 -- 'google', null for password accounts
+  oauth_id       TEXT                  -- provider's stable subject id, null for password accounts
 );
+
+-- Lookup by (provider, id) is how the OAuth callback finds a returning user.
+CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id);
 
 -- Sessions — server-side session store (TODO.md #68, features/jwt-httponly-cookie/)
 --

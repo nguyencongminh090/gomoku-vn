@@ -401,6 +401,9 @@ html, body {
 
 /* ── Guest Button ─────────────────────────────────────────────────────────── */
 .guest-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding: 0 40px 40px;
 }
 
