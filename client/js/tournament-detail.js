@@ -160,9 +160,6 @@ client.on('tournament:error', (data) => {
   alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
 });
 
-client.on('tournament:registered', () => client.emit('tournament:get', { tournamentId }));
-client.on('tournament:unregistered', () => client.emit('tournament:get', { tournamentId }));
-
 // ── Sub-tabs ─────────────────────────────────────────────────────────────
 
 const SUB_TABS = {
