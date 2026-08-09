@@ -28,8 +28,22 @@ router.use(tournamentGamesLimiter);
 // ---------------------------------------------------------------------------
 router.get('/tournaments/:tournamentId/games', (req, res, next) => {
   try {
-    const games = database.getTournamentGames(req.params.tournamentId);
-    res.json({ games });
+    const page  = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const games = database.getTournamentGames(req.params.tournamentId, limit, offset);
+    const total = database.getTournamentGameCount(req.params.tournamentId);
+
+    res.json({
+      games,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     return next(err);
   }

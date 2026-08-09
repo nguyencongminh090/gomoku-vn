@@ -710,9 +710,21 @@ function saveTournamentGame({
  * lightweight (no moves/walls/portals), for the tournament detail page's
  * Games History tab.
  * @param {string} tournamentId
+ * @param {number|null} [limit] - page size; null (default) returns every row unpaginated
+ * @param {number} [offset]
  * @returns {Array}
  */
-function getTournamentGames(tournamentId) {
+function getTournamentGames(tournamentId, limit = null, offset = 0) {
+  if (limit == null) {
+    return db.prepare(`
+      SELECT id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
+             black_player_name, white_player_name, winner, reason, board_size,
+             rule_wall, rule_portal, started_at, ended_at
+      FROM tournament_games
+      WHERE tournament_id = ?
+      ORDER BY started_at ASC
+    `).all(tournamentId);
+  }
   return db.prepare(`
     SELECT id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
            black_player_name, white_player_name, winner, reason, board_size,
@@ -720,7 +732,18 @@ function getTournamentGames(tournamentId) {
     FROM tournament_games
     WHERE tournament_id = ?
     ORDER BY started_at ASC
-  `).all(tournamentId);
+    LIMIT ? OFFSET ?
+  `).all(tournamentId, limit, offset);
+}
+
+/**
+ * Count a tournament's games, for the Games History tab's pagination.
+ * @param {string} tournamentId
+ * @returns {number}
+ */
+function getTournamentGameCount(tournamentId) {
+  return db.prepare('SELECT COUNT(*) as count FROM tournament_games WHERE tournament_id = ?')
+    .get(tournamentId).count;
 }
 
 /**
@@ -779,5 +802,6 @@ module.exports = {
   getPairingsByTournament,
   saveTournamentGame,
   getTournamentGames,
+  getTournamentGameCount,
   getTournamentGameById,
 };

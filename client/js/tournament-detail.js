@@ -875,6 +875,8 @@ function renderStandings() {
 // ── Games History (TODO.md #78) ─────────────────────────────────────────
 
 let gamesHistory = null; // cached last-fetched list, re-rendered on langchange without refetching
+let gamesPagination = null; // cached last-fetched pagination, re-rendered on langchange without refetching
+let currentGamesPage = 1;
 
 const GAME_REASON_KEY = {
   normal: 'history.reason_normal',
@@ -901,13 +903,15 @@ function gameMatchLabel(g) {
     : (pairing.roundIndex != null ? `${t('tdetail.round_word')} ${pairing.roundIndex}` : '—');
 }
 
-async function loadGamesHistory() {
+async function loadGamesHistory(page = 1) {
   gamesContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">${t('history.loading')}</span></div>`;
   try {
-    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/games`);
+    const res = await fetch(`/api/tournaments/${encodeURIComponent(tournamentId)}/games?page=${page}&limit=20`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'load failed');
+    currentGamesPage = page;
     gamesHistory = data.games;
+    gamesPagination = data.pagination;
     renderGamesHistory();
   } catch (err) {
     gamesContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">${t('tdetail.games_load_error')}</span></div>`;
@@ -948,7 +952,31 @@ function renderGamesHistory() {
         `).join('')}
       </tbody>
     </table>
+    <div class="pagination" id="games-pagination"></div>
   `;
+  renderGamesPagination();
+}
+
+function renderGamesPagination() {
+  const el = document.getElementById('games-pagination');
+  if (!el || !gamesPagination) return;
+  const p = gamesPagination;
+  if (p.totalPages <= 1) { el.innerHTML = ''; return; }
+
+  let html = `<button type="button" data-page="${p.page - 1}" ${p.page <= 1 ? 'disabled' : ''}>‹</button>`;
+  for (let i = 1; i <= p.totalPages; i++) {
+    if (p.totalPages > 7 && Math.abs(i - p.page) > 2 && i !== 1 && i !== p.totalPages) {
+      if (i === 2 || i === p.totalPages - 1) html += '<button type="button" disabled>…</button>';
+      continue;
+    }
+    html += `<button type="button" class="${i === p.page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+  }
+  html += `<button type="button" data-page="${p.page + 1}" ${p.page >= p.totalPages ? 'disabled' : ''}>›</button>`;
+  el.innerHTML = html;
+
+  el.querySelectorAll('button[data-page]:not([disabled])').forEach((btn) => {
+    btn.addEventListener('click', () => loadGamesHistory(parseInt(btn.dataset.page, 10)));
+  });
 }
 
 // ── Render orchestration ─────────────────────────────────────────────────
