@@ -378,8 +378,10 @@ function renderHeader() {
   }
   matchMetaEl.innerHTML = metaHtml;
 
-  document.getElementById('clock-black-name').textContent = p1 ? p1.displayName : '—';
-  document.getElementById('clock-white-name').textContent = p2 ? p2.displayName : '—';
+  const black = gameState.players.find(p => p.color === 'BLACK');
+  const white = gameState.players.find(p => p.color === 'WHITE');
+  document.getElementById('clock-black-name').textContent = black ? black.displayName : '—';
+  document.getElementById('clock-white-name').textContent = white ? white.displayName : '—';
 
   renderScorePanel(isSeries);
 }
