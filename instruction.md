@@ -100,6 +100,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **B83.** Debounce broadcast register/unregister theo khuôn mẫu `_queuePairingChanged` (setImmediate-batch theo tournamentId); giữ nguyên broadcast trực tiếp không-debounce cho tournament_started/completed/cancelled (điều tra latency, TODO.md #83) — [chi tiết](docs/instruction/B83-tournament-register-broadcast-khong-debounce.md)
 - **B84.** Phân trang `getTournamentGames()`/`GET /api/tournaments/:id/games` theo khuôn mẫu `routes/games.js` (page/limit/pagination); không đổi `ORDER BY started_at ASC` hay endpoint lấy 1 ván (điều tra latency, TODO.md #84) — [chi tiết](docs/instruction/B84-tournament-games-history-khong-phan-trang.md)
 - **B85.** `savePairing()` ghi đồng bộ + blob JSON tăng dần — ĐO trước (log tạm quanh `.run()`, đo kích thước blob + thời gian ghi qua 1 series dài) rồi mới quyết định sửa hay đóng lại "không phải bottleneck"; không tự đổi schema/threading khi chưa có số liệu (điều tra latency, TODO.md #85) — [chi tiết](docs/instruction/B85-save-pairing-ghi-dong-bo-json-blob-tang-dan.md)
+- **B86.** Click bàn cờ trận đấu giải đấu thỉnh thoảng trễ ~1s, refresh thì hết — đã loại trừ canvas listener/DB đồng bộ qua code; bước tiếp theo CHỈ là thêm instrumentation tạm thời (delta click→ack, transport type, tab visibility) và tái hiện thật, KHÔNG sửa code production trước khi có số đo (báo cáo người dùng, TODO.md #86) — [chi tiết](docs/instruction/B86-tournament-match-board-click-doi-khi-tre-1s-refresh-het.md)
 
 ## "Đừng làm" — reviewer chỉ rõ ranh giới không nên đụng
 

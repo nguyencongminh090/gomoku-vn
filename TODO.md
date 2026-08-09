@@ -251,6 +251,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#84.** Tab "Lịch sử ván đấu" giải đấu: `getTournamentGames()` không `LIMIT`/phân trang, client render toàn bộ bảng bằng `innerHTML` đồng bộ — giật UI khi chuyển tab với giải đấu nhiều ván `[Model: Sonnet 5]` — [chi tiết](docs/todo/B84-tournament-games-history-khong-phan-trang.md)
 - ✅ **#85.** `savePairing()` ghi SQLite đồng bộ mỗi lần pairing đổi trạng thái, `JSON.stringify` lại toàn bộ `games`/`moves` mỗi lần — **đã đo (2026-08-09), không phải bottleneck** (dưới 0.3ms kể cả worst-case 20×20/99 ván), đóng không sửa `[Model: Sonnet 5]` — [chi tiết](docs/todo/B85-save-pairing-ghi-dong-bo-json-blob-tang-dan.md)
 
+### Nguồn: báo cáo người dùng — "user click on board but delay for 1s (low latency) it sometimes happen, but after refresh, it work fast again" (2026-08-09)
+- ✅ **#86.** Trận đấu giải đấu: click bàn cờ thỉnh thoảng trễ ~1s trước khi quân xuất hiện, refresh trang thì lại nhanh — đã loại trừ trùng lặp listener canvas, rò rỉ listener banner/prompt, ghi DB đồng bộ trên đường đi 1 nước cờ, và tải server (p99 5.35ms, 0 nước ≥300ms — [báo cáo](docs/tournament-20-player-latency-test-report.md)); **đã thêm instrumentation client-side** (delta click→ack, transport, tab visibility) nhưng **không tái hiện lại được** — đóng theo đúng nhánh dự phòng của instruction.md, giữ instrumentation lại vĩnh viễn (chi phí thấp, là công cụ duy nhất bắt được lần tái phát tiếp theo) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B86-tournament-match-board-click-doi-khi-tre-1s-refresh-het.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

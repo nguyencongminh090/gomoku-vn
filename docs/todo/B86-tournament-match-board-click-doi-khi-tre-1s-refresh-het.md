@@ -98,9 +98,29 @@ sự chơi trận đấu giải đấu và gặp lại độ trễ, agent không
 người dùng mở DevTools Console trong lúc chơi (đặc biệt khi nghi ngờ sắp bị
 trễ) và báo lại nội dung log nếu thấy `[B86 instrumentation] slow click→ack`.
 
+## Đóng mục (2026-08-09)
+
+Không tái hiện được lỗi sau khi đã thêm instrumentation (xem trên) — đóng
+theo đúng nhánh dự phòng đã nêu sẵn trong
+`docs/instruction/B86-*.md` ("Nếu không tái hiện được sau một thời gian hợp
+lý, đóng mục lại..."). Quyết định rõ ràng (theo đúng lưu ý ở "Bẫy cụ thể"
+của file instruction — không giữ lại ngầm định): **giữ instrumentation lại
+vĩnh viễn** thay vì gỡ bỏ, vì chi phí gần như bằng 0 (chỉ 1 `console.warn`
+có điều kiện, không chạy gì khi delta < 300ms) và đây là công cụ duy nhất có
+thể bắt được số đo nếu lỗi tái phát trong điều kiện thật (mạng/tab-background)
+mà agent không tự tái hiện được.
+
+**Nếu người dùng gặp lại độ trễ này**: mở DevTools Console lúc chơi, tìm
+dòng `[B86 instrumentation] slow click→ack`, báo lại nội dung log
+(`deltaMs`, `transportAtClick`/`transportNow`, `tabHiddenAtClick`/`tabHiddenNow`)
+kèm điều kiện cụ thể (mạng, thiết bị, trình duyệt) — đó sẽ là số đo thật đầu
+tiên để mở lại mục này với dữ liệu thay vì suy đoán.
+
 ## Trạng thái
 
-Chưa xong — đã thêm instrumentation client-side (xem trên), còn thiếu tái
-hiện thật kèm số đo trước khi kết luận nguyên nhân. Nhắc: gỡ instrumentation
-này sau khi có kết luận, trừ khi quyết định giữ lại làm logging vĩnh viễn
-(đầu instruction.md — "Bẫy cụ thể").
+✅ ĐÃ XONG (đóng, không tái hiện được) — đã loại trừ hết các nguyên nhân
+trong code ứng dụng (canvas listener, banner/prompt listener, DB ghi đồng bộ
+per-move, tải server), đã thêm instrumentation client-side đo delta
+click→ack + transport + tab visibility, giữ lại vĩnh viễn. Không tái hiện
+được lỗi thật trong phiên làm việc này — đóng theo nhánh dự phòng của
+instruction.md, chờ báo cáo lại kèm số đo nếu tái phát.
