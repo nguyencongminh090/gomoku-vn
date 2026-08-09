@@ -238,6 +238,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng trực tiếp (2026-08-08)
 - ✅ **#78.** Ván đấu tournament chưa từng lưu move history đầy đủ — `pairing.moves` bị ghi đè mỗi ván mới trong 1 series, không có replay UI nào; thêm bảng `tournament_games` (1 hàng/ván, tách khỏi `games` thường) + tab "Lịch sử ván đấu" + tái dùng replay viewer có sẵn `[Model: Sonnet 5]` — [chi tiết](docs/todo/B78-tournament-games-history-luu-tung-van-dau-rieng.md)
 
+### Nguồn: báo cáo người dùng — "Time sometimes run on wrong sides" (2026-08-09)
+- ✅ **#79.** Đồng hồ trận đấu giải đấu đôi khi hiện sai bên — `renderHeader()` gán panel `clock-black-name`/`clock-white-name` theo vị trí mảng `players[0]`/`[1]` cố định, trong khi màu quân thực tế đổi theo Swap2 choice (trong 1 ván) hoặc theo xoay seat mỗi ván trong series (từ ván 2 trở đi) — không phải bug reconnect `[Model: Sonnet 5]` — [chi tiết](docs/todo/B79-tournament-match-timer-hien-sai-ben.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
