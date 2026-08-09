@@ -30,10 +30,25 @@ const bcrypt  = require('bcrypt');
 const jwt     = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const { getClientIpFromReq } = require('../utils/get-client-ip');
 
 const router  = express.Router();
 
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20 });
+// keyGenerator: express-rate-limit's default keys on req.ip, which behind
+// this deployment's Cloudflare Tunnel resolves to the tunnel's own loopback
+// address for every visitor — collapsing everyone into ONE shared 20-req/15m
+// budget instead of one per real client (see get-client-ip.js's module
+// comment for the incident this fixes: one device exhausting the budget
+// broke login/logout for every other device, phone included). ipKeyGenerator()
+// wraps the resolved IP per express-rate-limit v8's own documented pattern —
+// without it, an IPv6 client could rotate within its own /56 to bypass the
+// limit entirely.
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || ''),
+});
 router.use(authLimiter);
 
 // Responses here carry a fresh session cookie — never let a proxy/browser

@@ -11,6 +11,7 @@
 const logger      = require('../utils/logger');
 const roomManager = require('../managers/RoomManager');
 const TimerManager = require('../managers/TimerManager');
+const { resolveClientIp } = require('../utils/get-client-ip');
 
 // ---------------------------------------------------------------------------
 // Shared state maps
@@ -67,9 +68,6 @@ function getOnlineUsersList() {
   return Array.from(sessions.values()).map(s => s.user.displayName).sort();
 }
 
-/** Loopback forms Node can report as the immediate TCP peer address. */
-const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
-
 /**
  * Resolve the real client IP for a socket, accounting for a same-host proxy
  * (e.g. cloudflared) connecting in over loopback. engine.io always reports
@@ -77,32 +75,18 @@ const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
  * X-Forwarded-For itself, unlike Express's `trust proxy` setting (see
  * server/index.js), which only affects Express's own req.ip.
  *
- * CF-Connecting-IP takes priority when present: this deployment's zone is
- * proxied through Cloudflare, which sets that header itself at the edge to
- * the real client IP (overwriting, not appending — unlike X-Forwarded-For,
- * which a client could otherwise write multiple values into). When it's
- * absent (e.g. local dev without the tunnel, or a future non-Cloudflare
- * deployment), fall back to the old logic:
- *
- * Mirrors Express's `trust proxy: 'loopback'` semantics: only honor
- * X-Forwarded-For when the immediate peer is itself loopback, so a client
- * that could reach this port directly (bypassing the proxy) cannot spoof its
- * own X-Forwarded-For to dodge the per-IP room quota.
+ * The actual CF-Connecting-IP / X-Forwarded-For / loopback logic lives in
+ * ../utils/get-client-ip.js's resolveClientIp() — shared with the
+ * express-rate-limit instances in server/routes/*.js, which need the exact
+ * same resolution for a plain Express `req` (see getClientIpFromReq there).
  *
  * @param {import('socket.io').Socket} socket
  * @returns {string|undefined}
  */
 function getClientIp(socket) {
   const headers = socket.handshake && socket.handshake.headers;
-  const cfConnectingIp = headers && headers['cf-connecting-ip'];
-  if (cfConnectingIp) return cfConnectingIp;
-
   const remote = socket.handshake && socket.handshake.address;
-  if (LOOPBACK_ADDRESSES.has(remote)) {
-    const forwarded = headers && headers['x-forwarded-for'];
-    if (forwarded) return forwarded.split(',')[0].trim();
-  }
-  return remote;
+  return resolveClientIp(headers, remote);
 }
 
 /**
