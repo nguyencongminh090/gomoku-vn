@@ -18,7 +18,10 @@ const BCRYPT_ROUNDS = 12; // matches config.js BCRYPT_ROUNDS used by createUser
 const DB_PATH      = path.join(__dirname, '..', 'db', 'gomoku.db');
 const BACKUP_DIR   = path.join(__dirname, '..', 'db', 'backups');
 const LOG_PATH     = path.join(BACKUP_DIR, 'admin.log');
-const VALID_TABLES = ['users', 'games', 'player_games'];
+const VALID_TABLES = [
+  'users', 'games', 'player_games',
+  'tournaments', 'tournament_players', 'tournament_rounds', 'tournament_pairings', 'tournament_games',
+];
 
 // ---------------------------------------------------------------------------
 // Arg parsing
@@ -101,6 +104,17 @@ function askUsername(message) {
   const choices = listUsernames();
   if (choices.length === 0) return askInput(message);
   return autocomplete({ name: 'value', message, limit: 10, choices });
+}
+
+function listTournamentLabels() {
+  return db.prepare('SELECT id, name, status FROM tournaments ORDER BY created_at DESC').all()
+    .map((t) => `${t.id} — ${t.name} (${t.status})`);
+}
+
+function askTournamentId(message) {
+  const choices = listTournamentLabels();
+  if (choices.length === 0) return askInput(message);
+  return autocomplete({ name: 'value', message, limit: 10, choices }).then((v) => v.split(' — ')[0]);
 }
 
 async function confirmAction(flags, previewLines) {
@@ -202,6 +216,67 @@ async function handleDeleteGame(flags) {
   const rowsAffected = 1 + linkCount;
   logAction({ command: 'delete-game', flags, rowsAffected, backupPath });
   console.log(`Deleted game ${game.id}. player_games removed: ${linkCount}.`);
+  console.log(`Backup: ${backupPath}`);
+}
+
+async function handleDeleteTournament(flags) {
+  if (!flags.id) {
+    throw new Error('delete-tournament requires --id=<tournamentId>');
+  }
+  const tournament = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(flags.id);
+  if (!tournament) {
+    console.log('No matching tournament found.');
+    return;
+  }
+
+  const gamesCount = db.prepare(
+    'SELECT COUNT(*) as count FROM tournament_games WHERE tournament_id = ?'
+  ).get(tournament.id).count;
+  const pairingsCount = db.prepare(
+    'SELECT COUNT(*) as count FROM tournament_pairings WHERE tournament_id = ?'
+  ).get(tournament.id).count;
+  const roundsCount = db.prepare(
+    'SELECT COUNT(*) as count FROM tournament_rounds WHERE tournament_id = ?'
+  ).get(tournament.id).count;
+  const playersCount = db.prepare(
+    'SELECT COUNT(*) as count FROM tournament_players WHERE tournament_id = ?'
+  ).get(tournament.id).count;
+
+  const preview = [
+    `About to delete tournament: ${tournament.name} (id=${tournament.id}, format=${tournament.format}, status=${tournament.status})`,
+    `  - tournament_games rows to remove: ${gamesCount}`,
+    `  - tournament_pairings rows to remove: ${pairingsCount}`,
+    `  - tournament_rounds rows to remove: ${roundsCount}`,
+    `  - tournament_players rows to remove: ${playersCount}`,
+  ];
+
+  if (!(await confirmAction(flags, preview))) {
+    console.log('Aborted.');
+    return;
+  }
+
+  const backupPath = backupDatabase();
+
+  // Deletion order matters — foreign_keys=ON (db/database.js), so children
+  // go before parents: tournament_games references both tournament_pairings
+  // and tournament_players; tournament_pairings references tournament_rounds
+  // and tournament_players; tournament_rounds/tournament_players reference
+  // tournaments itself.
+  const run = db.transaction(() => {
+    db.prepare('DELETE FROM tournament_games WHERE tournament_id = ?').run(tournament.id);
+    db.prepare('DELETE FROM tournament_pairings WHERE tournament_id = ?').run(tournament.id);
+    db.prepare('DELETE FROM tournament_rounds WHERE tournament_id = ?').run(tournament.id);
+    db.prepare('DELETE FROM tournament_players WHERE tournament_id = ?').run(tournament.id);
+    db.prepare('DELETE FROM tournaments WHERE id = ?').run(tournament.id);
+  });
+  run();
+
+  const rowsAffected = 1 + gamesCount + pairingsCount + roundsCount + playersCount;
+  logAction({ command: 'delete-tournament', flags, rowsAffected, backupPath });
+  console.log(
+    `Deleted tournament ${tournament.name}. Pairings: ${pairingsCount}, rounds: ${roundsCount}, ` +
+    `players: ${playersCount}, games: ${gamesCount}.`
+  );
   console.log(`Backup: ${backupPath}`);
 }
 
@@ -411,6 +486,64 @@ const TABLE_VIEWS = {
     columns: ['Username', 'Game ID', 'Opponent', 'Winner', 'Ended'],
     toRow: (r) => [r.username, r.game_id, r.opponent, r.winner || '-', r.ended_at || '-'],
   },
+  tournaments: {
+    countSql: 'SELECT COUNT(*) as count FROM tournaments',
+    pageSql: `
+      SELECT id, name, format, organizer_name, status, created_at, started_at, completed_at
+      FROM tournaments ORDER BY created_at DESC LIMIT ? OFFSET ?
+    `,
+    columns: ['ID', 'Name', 'Format', 'Organizer', 'Status', 'Created', 'Started', 'Completed'],
+    toRow: (t) => [
+      t.id, t.name, t.format, t.organizer_name || '(guest)', t.status,
+      t.created_at, t.started_at || '-', t.completed_at || '-',
+    ],
+  },
+  tournament_players: {
+    countSql: 'SELECT COUNT(*) as count FROM tournament_players',
+    pageSql: `
+      SELECT entry_id, tournament_id, player_id, display_name, final_rank, withdrawn, registered_at
+      FROM tournament_players ORDER BY registered_at DESC LIMIT ? OFFSET ?
+    `,
+    columns: ['Entry ID', 'Tournament ID', 'Player ID', 'Display Name', 'Rank', 'Withdrawn', 'Registered'],
+    toRow: (p) => [
+      p.entry_id, p.tournament_id, p.player_id || '(guest)', p.display_name,
+      p.final_rank ?? '-', p.withdrawn ? 'yes' : 'no', p.registered_at,
+    ],
+  },
+  tournament_rounds: {
+    countSql: 'SELECT COUNT(*) as count FROM tournament_rounds',
+    pageSql: `
+      SELECT id, tournament_id, round_index, bracket_side
+      FROM tournament_rounds ORDER BY tournament_id, round_index LIMIT ? OFFSET ?
+    `,
+    columns: ['Round ID', 'Tournament ID', 'Index', 'Bracket Side'],
+    toRow: (r) => [r.id, r.tournament_id, r.round_index, r.bracket_side || '-'],
+  },
+  tournament_pairings: {
+    countSql: 'SELECT COUNT(*) as count FROM tournament_pairings',
+    pageSql: `
+      SELECT id, tournament_id, player1_entry_id, player2_entry_id, state, paired_at, ended_at
+      FROM tournament_pairings ORDER BY paired_at DESC LIMIT ? OFFSET ?
+    `,
+    columns: ['Pairing ID', 'Tournament ID', 'Player1', 'Player2', 'State', 'Paired At', 'Ended At'],
+    toRow: (p) => [
+      p.id, p.tournament_id, p.player1_entry_id, p.player2_entry_id || '(bye)',
+      p.state, p.paired_at, p.ended_at || '-',
+    ],
+  },
+  tournament_games: {
+    countSql: 'SELECT COUNT(*) as count FROM tournament_games',
+    pageSql: `
+      SELECT id, tournament_id, pairing_id, game_index, black_player_name, white_player_name,
+             winner, reason, ended_at
+      FROM tournament_games ORDER BY started_at DESC LIMIT ? OFFSET ?
+    `,
+    columns: ['ID', 'Tournament ID', 'Pairing ID', 'Idx', 'Black', 'White', 'Winner', 'Reason', 'Ended'],
+    toRow: (g) => [
+      g.id, g.tournament_id, g.pairing_id, g.game_index, g.black_player_name, g.white_player_name,
+      g.winner || '-', g.reason || '-', g.ended_at || '-',
+    ],
+  },
 };
 
 async function handleViewTable(flags) {
@@ -493,6 +626,7 @@ async function handleDbOverview() {
 const commandHandlers = {
   'delete-user': handleDeleteUser,
   'delete-game': handleDeleteGame,
+  'delete-tournament': handleDeleteTournament,
   'purge-games': handlePurgeGames,
   'truncate-table': handleTruncateTable,
   'set-password': handleSetPassword,
@@ -511,6 +645,7 @@ const MENU = [
   { name: 'db-overview', message: 'db-overview      — show DB stats' },
   { name: 'delete-user', message: 'delete-user      — remove a user (destructive)' },
   { name: 'delete-game', message: 'delete-game      — remove a game (destructive)' },
+  { name: 'delete-tournament', message: 'delete-tournament — remove a tournament + cascade (destructive)' },
   { name: 'purge-games', message: 'purge-games      — bulk-delete old games (destructive)' },
   { name: 'truncate-table', message: 'truncate-table   — wipe a table (destructive)' },
   { name: 'set-password', message: 'set-password     — reset a user\'s password' },
@@ -535,6 +670,10 @@ async function promptFlags(command) {
     }
     case 'delete-game': {
       flags.id = await askInput('Game ID: ');
+      break;
+    }
+    case 'delete-tournament': {
+      flags.id = await askTournamentId('Tournament: ');
       break;
     }
     case 'purge-games': {
