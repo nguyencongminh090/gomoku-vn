@@ -295,6 +295,51 @@ describe('Google OAuth — configured', () => {
     }));
   });
 
+  test('TODO.md #94: losing the create race (SQLITE_CONSTRAINT_UNIQUE) retries via getUserByOAuthId instead of failing', async () => {
+    let calls = 0;
+    db.getUserByOAuthId.mockImplementation(() => {
+      calls += 1;
+      // 1st call: the initial "does this account exist yet?" check — no.
+      // 2nd call: after losing the race, re-read the winner's row.
+      if (calls === 1) return undefined;
+      return {
+        id: 'winner-id', username: 'alice_ab12cd', display_name: 'Alice Nguyen',
+        oauth_provider: 'google', oauth_id: 'google-sub-1',
+      };
+    });
+    const constraintErr = new Error('UNIQUE constraint failed: users.oauth_provider, users.oauth_id');
+    constraintErr.code = 'SQLITE_CONSTRAINT_UNIQUE';
+    db.createUser.mockImplementationOnce(() => { throw constraintErr; });
+
+    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+
+    expect(res.status).toBe(302);
+    const location = res.headers.get('location');
+    expect(location).toMatch(/^\/oauth-complete\.html#/);
+    const user = JSON.parse(decodeURIComponent(location.split('#')[1]));
+    expect(user.userId).toBe('winner-id');
+    expect(db.updateLastLogin).toHaveBeenCalledWith('winner-id', expect.any(String));
+  });
+
+  test('TODO.md #94: a constraint error with no winner row to re-read still falls through to oauth_failed', async () => {
+    const constraintErr = new Error('UNIQUE constraint failed: users.oauth_provider, users.oauth_id');
+    constraintErr.code = 'SQLITE_CONSTRAINT_UNIQUE';
+    db.createUser.mockImplementationOnce(() => { throw constraintErr; });
+    // getUserByOAuthId stays mocked to always return undefined (default from beforeEach).
+
+    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+
+    expect(res.headers.get('location')).toBe('/login.html?error=oauth_failed');
+  });
+
+  test('TODO.md #94: a non-constraint createUser error still falls through to oauth_failed (not silently swallowed)', async () => {
+    db.createUser.mockImplementationOnce(() => { throw new Error('disk I/O error'); });
+
+    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+
+    expect(res.headers.get('location')).toBe('/login.html?error=oauth_failed');
+  });
+
   test('generateOAuthUsername retries when its first candidate is already taken', async () => {
     let calls = 0;
     db.getUserByUsername.mockImplementation(() => {

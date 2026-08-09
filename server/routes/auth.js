@@ -501,17 +501,31 @@ router.get('/google/callback', async (req, res) => {
       // constant-time-comparable — it is never compared against anything.
       const passwordHash = await bcrypt.hash(crypto.randomBytes(32).toString('hex'), config.BCRYPT_ROUNDS);
 
-      db.createUser({
-        id: userId,
-        username,
-        passwordHash,
-        displayName,
-        createdAt: now,
-        oauthProvider: 'google',
-        oauthId: payload.sub,
-      });
-      user = db.getUserById(userId);
-      logger.info(`[Auth] Created account via Google OAuth: ${username} (${userId})`);
+      // TOCTOU race (TODO.md #94): the getUserByOAuthId check above and this
+      // insert straddle the `await bcrypt.hash()` above, so two concurrent
+      // callbacks for the same brand-new Google account can both reach here.
+      // idx_users_oauth is a UNIQUE index (database.js), so the loser throws
+      // SQLITE_CONSTRAINT_UNIQUE here instead of silently creating a second
+      // row — re-read the row the winner just created and continue with that
+      // instead of falling through to the outer catch's oauth_failed error.
+      try {
+        db.createUser({
+          id: userId,
+          username,
+          passwordHash,
+          displayName,
+          createdAt: now,
+          oauthProvider: 'google',
+          oauthId: payload.sub,
+        });
+        user = db.getUserById(userId);
+        logger.info(`[Auth] Created account via Google OAuth: ${username} (${userId})`);
+      } catch (err) {
+        if (err.code !== 'SQLITE_CONSTRAINT_UNIQUE' && err.code !== 'SQLITE_CONSTRAINT') throw err;
+        user = db.getUserByOAuthId('google', payload.sub);
+        if (!user) throw err;
+        logger.warn(`[Auth] Google OAuth callback: lost create race for sub ${payload.sub}, reusing winner's account (${user.id})`);
+      }
     }
 
     db.updateLastLogin(user.id, new Date().toISOString());

@@ -273,6 +273,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#92.** `authLimiter` (`server/routes/auth.js`) dùng `req.ip` mặc định của `express-rate-limit` — đằng sau Cloudflare Tunnel mọi client thật đều gộp thành 1 "IP" quan sát được (peer TCP luôn là loopback), chia sẻ chung đúng 1 ngân sách 20 request/15 phút thay vì mỗi người 1 ngân sách; thêm `server/utils/get-client-ip.js` tái dùng logic CF-Connecting-IP đã có ở #44, gắn `keyGenerator` vào `authLimiter` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B92-auth-rate-limit-shared-ip-behind-tunnel.md)
 - **#93.** `gamesLimiter`/`tournamentGamesLimiter` có đúng lỗi IP-gộp y hệt #92 (cùng thiếu `keyGenerator`) — chưa sửa, mức độ thấp hơn nhiều (ngưỡng 300 req/15 phút so với 20 của auth), không có báo cáo người dùng cụ thể `[Model: Sonnet 5]` — [chi tiết](docs/todo/B93-games-tournamentgames-rate-limit-same-ip-bug.md)
 
+### Nguồn: yêu cầu người dùng — "Review Database Design for OAuth. Review Security with OAuth." (2026-08-09)
+- ✅ **#94.** `users.oauth_provider`/`oauth_id` (#91) chỉ có index thường (`idx_users_oauth`), không `UNIQUE` — kết hợp 1 khoảng hở TOCTOU thật ở `GET /google/callback` (có `await bcrypt.hash()` xen giữa lúc kiểm tra `getUserByOAuthId()` và lúc `createUser()`), 2 request gần-đồng-thời cho cùng 1 tài khoản Google MỚI có thể tạo ra 2 dòng `users` khác `id` nhưng cùng `(oauth_provider, oauth_id)` — lần đăng nhập sau đó có thể "rơi" vào 1 trong 2 dòng tuỳ SQLite trả về, gây nhầm lẫn định danh (không phải account-takeover); đã sửa: `idx_users_oauth` nâng `UNIQUE` (migration tự dò trùng trước, không tự xoá dữ liệu thật), `GET /google/callback` bắt riêng lỗi constraint rồi đọc lại dòng bên thắng thay vì `oauth_failed`; test SQLite thật (không mock DB) + test route — unit test 1015/1015 pass `[Model: Sonnet 5]` — [chi tiết](docs/todo/B94-oauth-duplicate-account-race-missing-unique-constraint.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

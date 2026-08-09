@@ -62,16 +62,46 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
 
 // Same additive-migration need as above, for oauth_provider/oauth_id
 // (TODO.md #91) — a db file created before Google login is missing these
-// two columns. idx_users_oauth is created unconditionally (IF NOT EXISTS is
-// itself idempotent) since an index add never needs the same guard a column
-// add does.
+// two columns.
 const userColumns = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
 if (userColumns.length > 0 && !userColumns.includes('oauth_provider')) {
   db.exec('ALTER TABLE users ADD COLUMN oauth_provider TEXT');
   db.exec('ALTER TABLE users ADD COLUMN oauth_id TEXT');
   logger.info('[DB] Migrated users: added oauth_provider/oauth_id columns (TODO.md #91)');
 }
-db.exec('CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id)');
+
+// idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
+// race in the /google/callback handler free to insert two `users` rows for
+// the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a
+// UNIQUE INDEX closes that at the DB layer. NULL <> NULL under SQL's rules
+// (SQLite included), so password accounts — which store NULL in both
+// columns — never collide with each other under this constraint.
+//
+// SQLite has no ALTER INDEX, so an existing plain index must be dropped and
+// recreated as UNIQUE — but CREATE UNIQUE INDEX throws immediately if any
+// duplicate pair already exists, which would stop the server from booting.
+// If this race was ever actually hit in production, silently deleting the
+// "loser" row would be destructive to real account data — not something to
+// do unattended (see docs/instruction/B94-*.md's "Phạm vi KHÔNG làm"). So:
+// detect duplicates first, and only install the UNIQUE index when none
+// exist; otherwise leave the old plain index in place and log loudly so a
+// human decides how to dedupe before the constraint can be added.
+const duplicateOauthPairs = db.prepare(
+  `SELECT oauth_provider, oauth_id, COUNT(*) AS n FROM users
+   WHERE oauth_provider IS NOT NULL AND oauth_id IS NOT NULL
+   GROUP BY oauth_provider, oauth_id HAVING COUNT(*) > 1`
+).all();
+if (duplicateOauthPairs.length > 0) {
+  logger.error(
+    `[DB] Found ${duplicateOauthPairs.length} duplicate (oauth_provider, oauth_id) pair(s) in users ` +
+    '— skipping UNIQUE index upgrade (TODO.md #94). Dedupe these rows manually, then restart the ' +
+    `server: ${JSON.stringify(duplicateOauthPairs)}`
+  );
+  db.exec('CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id)');
+} else {
+  db.exec('DROP INDEX IF EXISTS idx_users_oauth');
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id)');
+}
 
 // Periodic WAL checkpoint to prevent unbounded growth
 setInterval(() => {

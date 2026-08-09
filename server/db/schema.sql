@@ -29,9 +29,11 @@ CREATE TABLE IF NOT EXISTS users (
 -- and CREATE INDEX IF NOT EXISTS is not itself conditional on the columns
 -- existing — it would throw before database.js's ALTER TABLE migration
 -- (which runs after this file's exec()) ever got a chance to add them.
--- database.js creates this index unconditionally, AFTER that migration,
--- which is what actually makes this safe for both a fresh DB and an
--- existing one. Do not re-add it here.
+-- database.js creates this index (as UNIQUE, since TODO.md #94 — closes a
+-- TOCTOU race in /google/callback that could otherwise insert two rows for
+-- the same (oauth_provider, oauth_id)) unconditionally, AFTER that
+-- migration, which is what actually makes this safe for both a fresh DB and
+-- an existing one. Do not re-add it here.
 
 -- Sessions — server-side session store (TODO.md #68, features/jwt-httponly-cookie/)
 --
