@@ -199,7 +199,7 @@
 .match-clock.is-active { border-color: var(--c-brand); background: var(--c-brand-light); }
 .match-clock__name { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; }
 .match-clock__time { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink); }
-.match-clock__time.is-low { color: var(--c-error, #EF4444); }
+.match-clock__time.is-low { color: var(--c-error, #EF4444); animation: timer-pulse 0.6s ease-in-out infinite alternate; }
 .match-stone-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 .match-stone-dot--black { background: #1a1a1a; }
 .match-stone-dot--white { background: #f5f5f5; border: 1px solid #999; }
