@@ -263,6 +263,10 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: phát hiện phụ khi cài `jest-environment-jsdom` cho #88's unit test (2026-08-09)
 - ✅ **#89.** `npm audit` báo 3 lỗ hổng high-severity ở dependency gián tiếp, có từ trước (không phải do gói mới thêm): `js-yaml` (qua `jest`), `nanoid` (qua `vite`, cả 2 chỉ devDependency, rủi ro thấp), và `socket.io-parser` (qua `socket.io` — dependency PRODUCTION thật, DoS "memory exhaustion", đáng ưu tiên hơn 2 cái kia) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B89-npm-audit-3-high-severity-transitive.md)
 
+### Nguồn: báo cáo người dùng khi xác minh thủ công OAuth (nhánh `feature/oauth-login`, chưa merge) qua Cloudflare Tunnel — "Too many requests... It just affect same IP? My phone cannot log out" (2026-08-09)
+- ✅ **#92.** `authLimiter` (`server/routes/auth.js`) dùng `req.ip` mặc định của `express-rate-limit` — đằng sau Cloudflare Tunnel mọi client thật đều gộp thành 1 "IP" quan sát được (peer TCP luôn là loopback), chia sẻ chung đúng 1 ngân sách 20 request/15 phút thay vì mỗi người 1 ngân sách; thêm `server/utils/get-client-ip.js` tái dùng logic CF-Connecting-IP đã có ở #44, gắn `keyGenerator` vào `authLimiter` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B92-auth-rate-limit-shared-ip-behind-tunnel.md)
+- **#93.** `gamesLimiter`/`tournamentGamesLimiter` có đúng lỗi IP-gộp y hệt #92 (cùng thiếu `keyGenerator`) — chưa sửa, mức độ thấp hơn nhiều (ngưỡng 300 req/15 phút so với 20 của auth), không có báo cáo người dùng cụ thể `[Model: Sonnet 5]` — [chi tiết](docs/todo/B93-games-tournamentgames-rate-limit-same-ip-bug.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
