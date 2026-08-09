@@ -64,4 +64,23 @@ Xem hướng dẫn chi tiết: [docs/instruction/B87-live-matches-broadcast-khon
 
 ## Trạng thái
 
-Chưa làm.
+✅ ĐÃ XONG.
+
+- **Server:** `server/socket/handlers/TournamentMatchHandler.js` — `broadcastLiveMatchesUpdate`
+  giờ coalesce theo khuôn mẫu `setImmediate`-batch của `_queuePairingChanged` (2 biến module-level
+  `_liveMatchesUpdateTimer`/`_lastLiveMatchesBroadcast`, không cần `Map`/`WeakMap` theo tournamentId
+  vì đây là danh sách toàn cục, chỉ 1 `io` per process) + skip nếu `JSON.stringify(matches)` không
+  đổi so với lần broadcast gần nhất. Vòng lặp `forceCancelMatch` mỗi pairing khi huỷ giải đấu
+  (`TournamentHandler.js:236-238`) tự động chỉ còn 1 emit vì tất cả lời gọi nằm trong cùng 1 tick
+  đồng bộ, guard `if (_liveMatchesUpdateTimer) return` chặn các lần lên lịch thừa. Export thêm
+  `broadcastLiveMatchesUpdate` (trước đây private) để test trực tiếp được, cùng khuôn mẫu
+  `listLiveMatches` đã export sẵn.
+- **Không đổi:** `startMatch()`/kết thúc ván vẫn gọi trực tiếp như cũ (không cần sửa, tần suất gọi
+  ở đó không phải vấn đề); không đổi shape payload `live_matches:list` (`{ matches: [...] }`) nên
+  không cần đụng client (`client/js/tournaments.js`); không tối ưu độ phức tạp
+  O(tổng ván live) của `listLiveMatches()`/`_getSpectators()` (ngoài phạm vi, xem instruction.md).
+- **Test:** `server/tests/TournamentMatchHandler.test.js` (4 test mới, describe
+  `broadcastLiveMatchesUpdate throttle + diff (TODO.md #87)`): 1 sự kiện đơn lẻ vẫn flush ngay
+  tick kế tiếp; vòng lặp `forceCancelMatch` cho 3 pairing của cùng giải đấu (đúng hình dạng
+  `tournament_cancelled` thật) chỉ còn 1 broadcast thay vì 3; flush không đổi nội dung bị skip;
+  flush đổi nội dung thật vẫn được gửi lại. `npm test`: 970/970 pass (đã bao gồm 4 test mới).

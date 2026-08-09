@@ -322,9 +322,28 @@ function listLiveMatches(io) {
   return list.slice(0, MAX_LIVE_MATCHES);
 }
 
-/** Push the current live-matches snapshot to everyone with the browser open. */
+// Coalesce + diff (TODO.md #87) — mirrors TournamentHandler.js's
+// _queuePairingChanged: several broadcastLiveMatchesUpdate() calls in the
+// same synchronous tick (e.g. forceCancelMatch looping over every live
+// pairing of a cancelled tournament) collapse into a single setImmediate
+// flush, and the flush is skipped entirely if the resulting list is byte-
+// for-byte identical to what was last actually broadcast. Only one `io` per
+// process, so module-level state (no per-io Map/WeakMap needed) — same
+// simplification _pairingPatchQueues/_pairingPatchTimers already make.
+let _liveMatchesUpdateTimer = null;
+let _lastLiveMatchesBroadcast = null;
+
+/** Push the current live-matches snapshot to everyone with the browser open (coalesced, diffed). */
 function broadcastLiveMatchesUpdate(io) {
-  io.to(LIVE_MATCHES_ROOM).emit('live_matches:list', { matches: listLiveMatches(io) });
+  if (_liveMatchesUpdateTimer) return;
+  _liveMatchesUpdateTimer = setImmediate(() => {
+    _liveMatchesUpdateTimer = null;
+    const matches = listLiveMatches(io);
+    const serialized = JSON.stringify(matches);
+    if (serialized === _lastLiveMatchesBroadcast) return;
+    _lastLiveMatchesBroadcast = serialized;
+    io.to(LIVE_MATCHES_ROOM).emit('live_matches:list', { matches });
+  });
 }
 
 /**
@@ -923,4 +942,7 @@ function register(io, socket) {
   });
 }
 
-module.exports = { register, startMatch, resyncOnConnect, matchRoom, forceCancelMatch, listLiveMatches };
+module.exports = {
+  register, startMatch, resyncOnConnect, matchRoom, forceCancelMatch, listLiveMatches,
+  broadcastLiveMatchesUpdate,
+};

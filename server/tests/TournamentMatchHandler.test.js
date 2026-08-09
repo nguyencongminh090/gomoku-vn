@@ -1327,3 +1327,155 @@ describe('TournamentMatchHandler — listLiveMatches', () => {
     expect(matches[0].spectatorCount).toBe(1);
   });
 });
+
+// ---------------------------------------------------------------------------
+// broadcastLiveMatchesUpdate throttle + diff (TODO.md #87)
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — broadcastLiveMatchesUpdate throttle + diff (TODO.md #87)', () => {
+  const LIVE_MATCHES_ROOM = 'live-matches-lobby';
+
+  // Earlier tests elsewhere in this file call startMatch() (which schedules
+  // broadcastLiveMatchesUpdate's setImmediate) without ever flushing it —
+  // they don't care about the live-matches broadcast. Fake timers aren't
+  // reset between tests, so a stale pending immediate (bound to a PREVIOUS
+  // test's `io`) can still be sitting in the queue when this block starts.
+  // Drain it before every test here so `_liveMatchesUpdateTimer`'s guard
+  // starts clear, or the first startMatch()/forceCancelMatch() call in a
+  // test would silently no-op against that stale scheduling instead of
+  // queuing its own.
+  beforeEach(() => {
+    jest.advanceTimersByTime(0);
+  });
+
+  function makeEntry(n) {
+    return { entryId: `e${n}`, userId: `u${n}`, displayName: `Player ${n}`, isGuest: false };
+  }
+
+  function liveMatchesEmits(io) {
+    return (io._toEmitted[LIVE_MATCHES_ROOM] || []).filter((e) => e.event === 'live_matches:list');
+  }
+
+  /**
+   * `_lastLiveMatchesBroadcast` (the skip-if-unchanged snapshot) is
+   * module-level and persists across every test in this file — a fixture
+   * with the same ids as the shared `setupTournamentAndPairing()` default
+   * ('t1'/'p1'/'e1'/'e2') would serialize identically to whatever an
+   * earlier test in the suite already broadcast (fake timers freeze
+   * `Date.now()`, so even `startedAt` matches), and get silently skipped.
+   * Every test below uses its own uniquely-idd tournament/pairing so it
+   * can never collide with that leftover state.
+   */
+  function setupUniqueTournamentAndPairing(suffix) {
+    const entry1 = { entryId: `e-${suffix}-1`, userId: `u-${suffix}-1`, displayName: `P1-${suffix}`, isGuest: false };
+    const entry2 = { entryId: `e-${suffix}-2`, userId: `u-${suffix}-2`, displayName: `P2-${suffix}`, isGuest: false };
+    const tournament = {
+      tournamentId: `t-${suffix}`,
+      name: `Tournament ${suffix}`,
+      ruleSet: ruleSet(),
+      entries: new Map([[entry1.entryId, entry1], [entry2.entryId, entry2]]),
+    };
+    const pairing = {
+      pairingId: `p-${suffix}`, player1EntryId: entry1.entryId, player2EntryId: entry2.entryId, state: 'InProgress',
+      games: [], seriesScore: null,
+    };
+    mockTournamentManager.getTournament.mockReturnValue(tournament);
+    mockTournamentManager.getPairing.mockReturnValue(pairing);
+    return { tournament, pairing, entry1, entry2 };
+  }
+
+  test('a single match-lifecycle event still flushes live_matches:list on the very next tick (no perceptible delay)', () => {
+    setupUniqueTournamentAndPairing('solo');
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't-solo', 'p-solo');
+
+    expect(liveMatchesEmits(io)).toHaveLength(0);
+    jest.advanceTimersByTime(0);
+    expect(liveMatchesEmits(io)).toHaveLength(1);
+    expect(liveMatchesEmits(io)[0].data.matches).toHaveLength(1);
+  });
+
+  test('forceCancelMatch looped over every live pairing of one tournament (real tournament_cancelled shape, TournamentHandler.js) collapses into a single broadcast', () => {
+    const entries = [1, 2, 3, 4, 5, 6].map(makeEntry);
+    const tournament = {
+      tournamentId: 't1',
+      name: 'Cascade Tournament',
+      ruleSet: ruleSet(),
+      entries: new Map(entries.map((e) => [e.entryId, e])),
+    };
+    const pairings = {
+      pA: { pairingId: 'pA', player1EntryId: 'e1', player2EntryId: 'e2', state: 'InProgress', games: [], seriesScore: null },
+      pB: { pairingId: 'pB', player1EntryId: 'e3', player2EntryId: 'e4', state: 'InProgress', games: [], seriesScore: null },
+      pC: { pairingId: 'pC', player1EntryId: 'e5', player2EntryId: 'e6', state: 'InProgress', games: [], seriesScore: null },
+    };
+    mockTournamentManager.getTournament.mockReturnValue(tournament);
+    mockTournamentManager.getPairing.mockImplementation((pairingId) => pairings[pairingId] || null);
+
+    const io = makeIo();
+    for (const pairingId of ['pA', 'pB', 'pC']) {
+      TournamentMatchHandler.startMatch(io, 't1', pairingId);
+      jest.advanceTimersByTime(0); // flush each start's own broadcast so it doesn't count toward the cascade below
+    }
+    io._toEmitted[LIVE_MATCHES_ROOM] = [];
+
+    // Mirrors TournamentHandler.js's tournament_cancelled listener exactly:
+    // loop over every live pairing of the cancelled tournament, calling
+    // forceCancelMatch once per pairing, all synchronously in one tick.
+    for (const pairingId of ['pA', 'pB', 'pC']) {
+      TournamentMatchHandler.forceCancelMatch(io, 't1', pairingId);
+    }
+    jest.advanceTimersByTime(0);
+
+    const cascadeEmits = liveMatchesEmits(io);
+    expect(cascadeEmits).toHaveLength(1); // not 3
+    expect(cascadeEmits[0].data.matches).toEqual([]); // all 3 pairings cancelled
+  });
+
+  test('a flush whose resulting list is unchanged from the last broadcast is skipped', () => {
+    setupUniqueTournamentAndPairing('unchanged');
+    const io = makeIo();
+
+    TournamentMatchHandler.startMatch(io, 't-unchanged', 'p-unchanged');
+    jest.advanceTimersByTime(0);
+    expect(liveMatchesEmits(io)).toHaveLength(1);
+
+    // Nothing about the live-matches list actually changed since the last
+    // broadcast — a second, separate flush with identical underlying state
+    // must not re-send it.
+    TournamentMatchHandler.broadcastLiveMatchesUpdate(io);
+    jest.advanceTimersByTime(0);
+    expect(liveMatchesEmits(io)).toHaveLength(1);
+  });
+
+  test('a flush whose resulting list genuinely changed is sent again', () => {
+    const { tournament: tournament1, pairing: pairing1 } = setupUniqueTournamentAndPairing('changedA');
+    const entry3 = { entryId: 'e-changedB-1', userId: 'u-changedB-1', displayName: 'P1-changedB', isGuest: false };
+    const entry4 = { entryId: 'e-changedB-2', userId: 'u-changedB-2', displayName: 'P2-changedB', isGuest: false };
+    const tournament2 = {
+      tournamentId: 't-changedB',
+      name: 'Tournament changedB',
+      ruleSet: ruleSet(),
+      entries: new Map([[entry3.entryId, entry3], [entry4.entryId, entry4]]),
+    };
+    const pairing2 = {
+      pairingId: 'p-changedB', player1EntryId: entry3.entryId, player2EntryId: entry4.entryId, state: 'InProgress',
+      games: [], seriesScore: null,
+    };
+    mockTournamentManager.getTournament.mockImplementation(
+      (tournamentId) => (tournamentId === 't-changedB' ? tournament2 : tournament1)
+    );
+    mockTournamentManager.getPairing.mockImplementation(
+      (pairingId) => (pairingId === 'p-changedB' ? pairing2 : pairing1)
+    );
+
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't-changedA', 'p-changedA');
+    jest.advanceTimersByTime(0);
+    expect(liveMatchesEmits(io)).toHaveLength(1);
+
+    TournamentMatchHandler.startMatch(io, 't-changedB', 'p-changedB');
+    jest.advanceTimersByTime(0);
+    expect(liveMatchesEmits(io)).toHaveLength(2);
+  });
+});
