@@ -136,6 +136,38 @@ function broadcastTournamentDetail(io, tournament) {
 }
 
 // ---------------------------------------------------------------------------
+// Register/unregister detail batching — mirrors _queuePairingChanged below:
+// a burst of near-simultaneous register/unregister calls (typical right
+// before a tournament's start time) each triggered their own full
+// broadcastTournamentDetail call. setImmediate coalesces only broadcasts
+// queued within the current synchronous burst, so a single isolated
+// register/unregister still flushes on the very next tick — no perceptible
+// added latency for the common single-user case (TODO.md #83).
+// tournament_started/completed/cancelled (init(), below) call
+// broadcastTournamentDetail directly and are deliberately NOT routed through
+// this queue — those events are rare/singular, not caused by concurrent user
+// actions, and debouncing them would only delay an already-important update.
+// ---------------------------------------------------------------------------
+
+const _tournamentDetailQueue = new Map(); // tournamentId -> tournament
+const _tournamentDetailTimers = new Map(); // tournamentId -> Immediate
+
+function _queueTournamentDetailUpdate(io, tournament) {
+  const tournamentId = tournament.tournamentId;
+  _tournamentDetailQueue.set(tournamentId, tournament);
+
+  if (_tournamentDetailTimers.has(tournamentId)) return;
+  const immediate = setImmediate(() => {
+    _tournamentDetailTimers.delete(tournamentId);
+    const pending = _tournamentDetailQueue.get(tournamentId);
+    _tournamentDetailQueue.delete(tournamentId);
+    if (!pending) return;
+    broadcastTournamentDetail(io, pending);
+  });
+  _tournamentDetailTimers.set(tournamentId, immediate);
+}
+
+// ---------------------------------------------------------------------------
 // Pairing-changed batching — 'pairing_changed' can fire several times back to
 // back in the SAME synchronous pass (round-advance creating a whole new
 // round's pairings, a deadline-sweep tick resolving several overdue pairings,
@@ -286,7 +318,7 @@ function register(io, socket) {
 
     socket.join(tournamentRoom(payload.tournamentId));
     socket.emit('tournament:registered', { tournamentId: payload.tournamentId, entryId: result.entryId });
-    broadcastTournamentDetail(io, result.tournament);
+    _queueTournamentDetailUpdate(io, result.tournament);
     broadcastTournamentListUpdate(io);
   });
 
@@ -305,7 +337,7 @@ function register(io, socket) {
 
     socket.emit('tournament:unregistered', { tournamentId: payload.tournamentId });
     socket.leave(tournamentRoom(payload.tournamentId));
-    broadcastTournamentDetail(io, result.tournament);
+    _queueTournamentDetailUpdate(io, result.tournament);
     broadcastTournamentListUpdate(io);
   });
 

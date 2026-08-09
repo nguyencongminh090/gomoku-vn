@@ -200,6 +200,41 @@ describe('TournamentHandler — tournament:register', () => {
     expect(sockEmit(socket, 'tournament:error').data.code).toBe('ALREADY_REGISTERED');
     expect(socket.join).not.toHaveBeenCalled();
   });
+
+  // TODO.md #83 — register/unregister no longer broadcast
+  // tournament:updated synchronously; they queue it via setImmediate so a
+  // burst of near-simultaneous calls for the same tournament collapses into
+  // one broadcast (mirrors _queuePairingChanged's existing pattern).
+  test('a single register still flushes tournament:updated on the very next tick (no perceptible delay)', () => {
+    const tournament = { tournamentId: 'treg-solo', status: 'draft' };
+    mockTournamentManager.registerPlayer.mockReturnValue({ tournament, entryId: 'e1' });
+    const io = makeIo();
+    const socket = makeSocket('p1', 'Player 1');
+    TournamentHandler.register(io, socket);
+
+    fire(socket, 'tournament:register', { tournamentId: 'treg-solo' });
+
+    expect(io._toEmitted['tournament:treg-solo']).toBeUndefined();
+    jest.runAllTimers();
+    expect(io._toEmitted['tournament:treg-solo']).toHaveLength(1);
+    expect(io._toEmitted['tournament:treg-solo'][0].event).toBe('tournament:updated');
+  });
+
+  test('several registers for the same tournament in one synchronous burst collapse into one broadcast', () => {
+    const tournament = { tournamentId: 'treg-burst', status: 'draft' };
+    mockTournamentManager.registerPlayer.mockReturnValue({ tournament, entryId: 'e1' });
+    const io = makeIo();
+    const socketA = makeSocket('pA', 'Player A');
+    const socketB = makeSocket('pB', 'Player B');
+    TournamentHandler.register(io, socketA);
+    TournamentHandler.register(io, socketB);
+
+    fire(socketA, 'tournament:register', { tournamentId: 'treg-burst' });
+    fire(socketB, 'tournament:register', { tournamentId: 'treg-burst' });
+    jest.runAllTimers();
+
+    expect(io._toEmitted['tournament:treg-burst']).toHaveLength(1);
+  });
 });
 
 describe('TournamentHandler — tournament:unregister', () => {
@@ -224,6 +259,22 @@ describe('TournamentHandler — tournament:unregister', () => {
     fire(socket, 'tournament:unregister', { tournamentId: 't1' });
 
     expect(sockEmit(socket, 'tournament:error').data.code).toBe('NOT_REGISTERED');
+  });
+
+  // TODO.md #83 — same setImmediate-queued broadcast as tournament:register.
+  test('a register immediately followed by an unregister for the same tournament still collapses into one broadcast', () => {
+    const tournament = { tournamentId: 'tmix-burst', status: 'draft' };
+    mockTournamentManager.registerPlayer.mockReturnValue({ tournament, entryId: 'e1' });
+    mockTournamentManager.unregisterPlayer.mockReturnValue({ tournament });
+    const io = makeIo();
+    const socket = makeSocket('p1', 'Player 1');
+    TournamentHandler.register(io, socket);
+
+    fire(socket, 'tournament:register', { tournamentId: 'tmix-burst' });
+    fire(socket, 'tournament:unregister', { tournamentId: 'tmix-burst' });
+    jest.runAllTimers();
+
+    expect(io._toEmitted['tournament:tmix-burst']).toHaveLength(1);
   });
 });
 
