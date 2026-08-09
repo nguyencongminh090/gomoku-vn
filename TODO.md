@@ -257,6 +257,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng — "Check Broadcast, throtte in Tournament. Make sure it smooth" (2026-08-09)
 - ✅ **#87.** `broadcastLiveMatchesUpdate` (Live Matches Browser, #60) là broadcast tournament duy nhất không debounce/diff — mỗi lần gọi tính lại toàn bộ `tournamentGameMap` rồi emit lại nguyên danh sách; huỷ 1 giải đấu có N ván đang live bắn N lần tính toán + N emit toàn phòng liên tiếp (qua vòng lặp `forceCancelMatch` mỗi pairing) thay vì gộp 1 lần — các broadcast tournament khác (list, detail, pairings) đều đã debounce/diff `[Model: Sonnet 5]` — [chi tiết](docs/todo/B87-live-matches-broadcast-khong-throttle-diff.md)
 
+### Nguồn: báo cáo người dùng — "Guest/audience View Tournament room cannot escape. Backend lock Player (who playing) but also lock viewers escape." (2026-08-09)
+- ✅ **#88.** Khán giả/guest xem trận giải đấu bị khoá nút "Quay lại chi tiết giải đấu" y hệt 2 người chơi thật — `setLeaveLocked(true)` (`client/js/tournament-match.js`, 3 nơi gọi) không kiểm tra `myPlayer()`, khoá đồng loạt mọi socket trong room bất kể vai trò, dù mục đích gốc chỉ nhằm chống người CHƠI rời giữa series `[Model: Sonnet 5]` — [chi tiết](docs/todo/B88-tournament-match-khan-gia-bi-khoa-nut-quay-lai.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

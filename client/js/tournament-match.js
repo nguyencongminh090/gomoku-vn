@@ -60,7 +60,12 @@ document.getElementById('match-result-back').href = `tournament.html?id=${encode
 // waiting on series check-in) — released once a final result overlay shows
 // (single-game pairing decided, or series decided). Prevents a player from
 // wandering off mid-series the way the old "back to tournament to check in"
-// link on the between-games overlay used to require.
+// link on the between-games overlay used to require. Only ever locked for
+// the two actual players (see the `myPlayer()`-gated call sites below) —
+// spectators/guests watching are never locked (TODO.md #88). No default lock
+// here at module load: `myPlayer()` needs `gameState`, which only arrives
+// with the first `tmatch:init` below, so that handler is the first point
+// that can tell player and spectator apart.
 function setLeaveLocked(locked) {
   backToTournamentLink.classList.toggle('detail-back--disabled', locked);
   backToTournamentLink.setAttribute('aria-disabled', locked ? 'true' : 'false');
@@ -68,7 +73,6 @@ function setLeaveLocked(locked) {
 backToTournamentLink.addEventListener('click', (e) => {
   if (backToTournamentLink.classList.contains('detail-back--disabled')) e.preventDefault();
 });
-setLeaveLocked(true);
 
 // ── Element refs ─────────────────────────────────────────────────────────
 const statusBanner = document.getElementById('status-banner');
@@ -131,7 +135,7 @@ client.on('tmatch:init', (data) => {
   seriesInfo = data.series || null;
   const mp = myPlayer();
   myColor = mp ? mp.color : null;
-  setLeaveLocked(true); // pairing active again — see showResultOverlay for the release point
+  setLeaveLocked(!!mp); // pairing active again, players only (TODO.md #88) — see showResultOverlay for the release point
 
   // A new game just (re)started (initial start, reconnect, or the next game
   // in a series) — any draw/time-request prompt from a PREVIOUS game no
@@ -776,7 +780,7 @@ function showSeriesTransition(result) {
   }
 
   seriesTransitionOverlay.classList.add('visible');
-  setLeaveLocked(true); // still mid-series — see showResultOverlay for the release point
+  setLeaveLocked(!!mp); // still mid-series, players only (TODO.md #88) — see showResultOverlay for the release point
 }
 
 function hideSeriesTransition() {
