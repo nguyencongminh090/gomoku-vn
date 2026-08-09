@@ -154,8 +154,38 @@ client.on('tmatch:init', (data) => {
   renderTimePrompt();
 });
 
+// TODO.md #86 — TEMPORARY instrumentation, not a permanent fix. Measures
+// click→ack latency (delta from client.emit('tmatch:move') to the matching
+// 'tmatch:moved' echo) plus transport type and tab visibility at click time,
+// to find out whether the reported ~1s click delay is a transport-layer
+// issue (background-tab throttle, network hiccup, Cloudflare Tunnel
+// fallback to polling) — see docs/instruction/B86-*.md. Remove this block
+// (and pendingMoveInstrumentation) once a real measurement has been
+// captured, unless a decision is made to keep it as permanent logging.
+let pendingMoveInstrumentation = null;
+
 client.on('tmatch:moved', (data) => {
   if (!gameState || data.pairingId !== pairingId) return;
+
+  if (pendingMoveInstrumentation
+      && pendingMoveInstrumentation.x === data.x
+      && pendingMoveInstrumentation.y === data.y
+      && pendingMoveInstrumentation.color === data.color) {
+    const delta = performance.now() - pendingMoveInstrumentation.t0;
+    if (delta > 300) {
+      console.warn('[B86 instrumentation] slow click→ack', {
+        deltaMs: Math.round(delta),
+        transportAtClick: pendingMoveInstrumentation.transport,
+        transportNow: client.socket && client.socket.io && client.socket.io.engine
+          ? client.socket.io.engine.transport.name : 'unknown',
+        tabHiddenAtClick: pendingMoveInstrumentation.hidden,
+        tabHiddenNow: document.visibilityState !== 'visible',
+        x: data.x, y: data.y,
+      });
+    }
+    pendingMoveInstrumentation = null;
+  }
+
   const colorVal = data.color === 'BLACK' ? 1 : 2;
   gameState.board[data.y][data.x] = colorVal;
   gameState.currentTurn = data.nextTurn;
@@ -295,6 +325,16 @@ function initBoard() {
         return;
       }
       if (gameState.status === 'ongoing') {
+        // TODO.md #86 instrumentation — see the matching block on
+        // 'tmatch:moved' above for what this measures and why.
+        pendingMoveInstrumentation = {
+          x, y,
+          color: myColor === 1 ? 'BLACK' : 'WHITE',
+          t0: performance.now(),
+          transport: client.socket && client.socket.io && client.socket.io.engine
+            ? client.socket.io.engine.transport.name : 'unknown',
+          hidden: document.visibilityState !== 'visible',
+        };
         client.emit('tmatch:move', { tournamentId, pairingId, x, y });
       }
     },
