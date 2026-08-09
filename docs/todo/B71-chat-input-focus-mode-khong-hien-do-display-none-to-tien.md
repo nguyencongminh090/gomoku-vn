@@ -39,4 +39,30 @@ Chọn 1 trong 2 hướng (không phải CSS-only, cần chạm HTML hoặc JS):
 
 ## Trạng thái
 
-Chưa làm.
+✅ ĐÃ XONG (đóng "không phải bug", 2026-08-09) — verify lại bằng browser thật, không tái hiện.
+
+**Kiểm tra tương thích (compatibility check) trước khi làm:** đọc `client/js/room.js:127-141` phát
+hiện `btnFocus` click handler đã gọi `document.body.appendChild(chatInputWrapper)` **trước khi**
+(cùng lúc với) toggle class `.room--focus` lên `<body>` — tức phần tử đã được JS re-parent ra khỏi
+`.panel-right-shell` (tổ tiên `display:none`) và trở thành con trực tiếp của `<body>` ngay khi bật
+focus-mode, nên rule CSS `.room--focus .panel-right-shell { display:none }` không còn ảnh hưởng tới
+nó nữa. `git log -S` xác nhận đoạn `document.body.appendChild(chatInputWrapper)` có từ Initial
+commit (29061ad, 2026-07-10) và chưa từng bị xoá/đổi — tức logic re-parent này đã tồn tại **trước**
+cả thời điểm bug được báo cáo (2026-08-08).
+
+**Verify thực tế bằng Playwright** (guest login qua UI thật → `room.html` → click `#btn-focus`,
+không cần 2 người chơi vì handler không phụ thuộc game state):
+- Trước khi bật: `#chat-input-wrapper` là con của `.chat-panel`, rect `342×49`, hiển thị bình thường.
+- Sau khi bật: parent đổi thành `BODY`, rect `400×47` tại `(440, 588)`, `display: flex` — **hiển thị
+  đầy đủ, không phải `{0,0,0,0}` như báo cáo gốc mô tả**. Screenshot xác nhận ô chat pill nổi đúng vị
+  trí phía dưới bàn cờ.
+- Tắt focus-mode: parent trả về đúng `.chat-panel`, rect bình thường trở lại.
+- `client/tournament-match.html` (được instruction.md nêu là nơi cần kiểm tra thêm): không có
+  `#btn-focus`/`room--focus` nào cả — tính năng focus-mode không tồn tại ở trang này nên không áp
+  dụng.
+
+**Kết luận:** báo cáo gốc không tái hiện được trên code hiện tại. Có thể do khi verify #70
+(2026-08-08), Playwright test khi đó không thực sự trigger qua `#btn-focus.click()` (vd. chỉ set
+class trực tiếp qua `classList.add` mà bỏ qua bước re-parent trong handler), dẫn tới kết quả giả
+(false positive). Không cần sửa gì thêm — đóng theo quy tắc "Security findings: verify against
+current code before filing" (áp dụng tương tự cho bug report nói chung) trong `CLAUDE.md`.
