@@ -172,7 +172,7 @@ function renderGameTable(games) {
         <td><strong>${escapeHtml(g.black_player_name)}</strong></td>
         <td>${escapeHtml(g.white_player_name)}</td>
         <td><span class="${resultClass}">${resultText}</span></td>
-        <td><button class="btn-replay" onclick="openReplay('${g.id}')" type="button">${t('history.btn_view')}</button></td>
+        <td><button class="btn-replay" data-action="openReplay" data-arg="${escapeAttr(g.id)}" type="button">${t('history.btn_view')}</button></td>
       </tr>
     `;
   }
@@ -184,15 +184,15 @@ function renderGameTable(games) {
 function renderPagination(p) {
   if (p.totalPages <= 1) { paginationEl.innerHTML = ''; return; }
 
-  let html = `<button ${p.page <= 1 ? 'disabled' : ''} onclick="loadGames(${p.page - 1})">‹</button>`;
+  let html = `<button ${p.page <= 1 ? 'disabled' : ''} data-action="loadGames" data-arg="${p.page - 1}" data-arg-type="number">‹</button>`;
   for (let i = 1; i <= p.totalPages; i++) {
     if (p.totalPages > 7 && Math.abs(i - p.page) > 2 && i !== 1 && i !== p.totalPages) {
       if (i === 2 || i === p.totalPages - 1) html += '<button disabled>…</button>';
       continue;
     }
-    html += `<button class="${i === p.page ? 'active' : ''}" onclick="loadGames(${i})">${i}</button>`;
+    html += `<button class="${i === p.page ? 'active' : ''}" data-action="loadGames" data-arg="${i}" data-arg-type="number">${i}</button>`;
   }
-  html += `<button ${p.page >= p.totalPages ? 'disabled' : ''} onclick="loadGames(${p.page + 1})">›</button>`;
+  html += `<button ${p.page >= p.totalPages ? 'disabled' : ''} data-action="loadGames" data-arg="${p.page + 1}" data-arg-type="number">›</button>`;
   paginationEl.innerHTML = html;
 }
 
@@ -211,9 +211,14 @@ function renderReplayInfo(game) {
   replayMeta.textContent = `${game.board_size}×${game.board_size} | ${ruleStr} | ${formatTime(game.ended_at)}`;
 }
 
-async function openReplay(gameId) {
+// `source` — 'tournament' fetches a tournament game (TODO.md #78, separate
+// from the casual `games` table) instead of a casual one; same response
+// shape either way (GET /api/tournament-games/:id mirrors GET /api/games/:id)
+// so everything below this point needs no branching.
+async function openReplay(gameId, source) {
   try {
-    const res = await fetch(`/api/games/${gameId}`);
+    const endpoint = source === 'tournament' ? `/api/tournament-games/${gameId}` : `/api/games/${gameId}`;
+    const res = await fetch(endpoint);
     const data = await res.json();
 
     if (!res.ok || !data.game) {
@@ -239,7 +244,9 @@ async function openReplay(gameId) {
     viewReplay.style.display = '';
 
     // Update URL for sharing
-    history.replaceState(null, '', `history.html?id=${gameId}`);
+    history.replaceState(null, '', source === 'tournament'
+      ? `history.html?id=${gameId}&source=tournament`
+      : `history.html?id=${gameId}`);
 
     // Reset analysis mode. Pro opens straight into it (analysis is the reason a
     // power user opens a replay at all); Lite/Default start closed but can toggle it.
@@ -274,6 +281,12 @@ async function openReplay(gameId) {
 }
 
 function closeReplay() {
+  // A tournament-sourced replay (TODO.md #78) has no casual list to go back
+  // to — "back" means the tournament it came from, not history.html's list.
+  if (replayGameData && replayGameData.tournament_id) {
+    window.location.href = `tournament.html?id=${encodeURIComponent(replayGameData.tournament_id)}`;
+    return;
+  }
   stopAutoPlay();
   setAnalysisMode(false);
   viewReplay.style.display = 'none';
@@ -561,6 +574,8 @@ function formatTime(isoStr) {
   }
 }
 
+const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);
+
 function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = str || '';
@@ -606,7 +621,11 @@ applyReplayMode();
 
 const urlParams = new URLSearchParams(window.location.search);
 const urlGameId = urlParams.get('id');
-if (urlGameId) {
+const urlSource = urlParams.get('source');
+if (urlGameId && urlSource === 'tournament') {
+  // No casual list to show for a tournament-sourced deep link (TODO.md #78).
+  openReplay(urlGameId, 'tournament');
+} else if (urlGameId) {
   loadGames(1);
   openReplay(urlGameId);
 } else {

@@ -37,4 +37,51 @@
       trong `server/tests/`, giữ lại vĩnh viễn, không xoá sau khi xác nhận
       pass.
 
+## Trạng thái: đã xong (phát hiện 2026-08-06 — mục index bị lỗi thời)
+
+Khi rà lại mục #48 này, phát hiện toàn bộ tính năng đã được triển khai đầy đủ và
+merge vào `dev` từ trước — mục index trong `TODO.md` chỉ đơn giản chưa được cập
+nhật để phản ánh việc đó (khác với #50, vốn đã có bước "docs: mark done" riêng).
+Không có code mới nào được viết trong lượt rà soát này; đây thuần là sửa tài
+liệu tracking cho khớp thực tế.
+
+Bằng chứng — 6 phase triển khai đầy đủ, mỗi phase một/nhiều commit trên các
+nhánh `feature/tournament-server`, `feature/tables-tournaments-mockup`,
+`feature/tournament-client`, `feature/tournament-detail-mockup` (tất cả off
+`dev`, đã merge):
+
+1. `91d547d` — Phase 1: DB schema (`tournaments`, `tournament_players`,
+   `tournament_rounds`, `tournament_pairings`) + `TournamentManager` CRUD core.
+2. `1cd59d8` — Phase 2: thuật toán ghép cặp/bracket (Swiss, Round robin,
+   Double Elimination) + tiebreak Buchholz/Sonneborn-Berger
+   (`server/managers/tournament/pairing/*`, `standings.js`).
+3. `4b01367` — Phase 3: state machine vòng đời trận đấu
+   (`PairingLifecycle.js`, đúng state diagram trong
+   `features/tournament/diagram/`) + deadline sweep.
+4. `f7bfd5b` — Phase 4: lớp socket handler (`TournamentHandler.js` —
+   `tournament:*`, `TournamentMatchHandler.js` — `tmatch:*`), tách biệt hoàn
+   toàn khỏi `GameHandler`/`RoomHandler` theo đúng ràng buộc kiến trúc trong
+   `user_story.md`, dùng `tournamentState.js` riêng (không dùng chung
+   `state.js` của phòng chơi thường).
+5. `e0983b9` — Phase 5: nối UI mockup vào `client/index.html` +
+   `client/js/lobby.js` thật (tab switcher Bàn chơi/Giải đấu), điều khiển bởi
+   `client/js/tournaments.js` mới.
+6. `d29a921`/`c4389e3` — Phase 6: trang chi tiết giải đấu
+   (`client/tournament.html` + `tournament-detail.js`), luồng lịch thi đấu
+   tự-thoả-thuận, và trang thi đấu trực tiếp (`client/tournament-match.html` +
+   `tournament-match.js`) — dùng lại `TimerManager` hiện có (một instance mới
+   mỗi pairing, lưu trong `tournamentTimerMap` riêng của
+   `tournamentState.js`) đúng theo quyết định #7 trong `planning.md`.
+
+Việc dọn hiệu năng sau đó (`bd68585`, `bd9ae5c` — diff/patch thay vì gửi lại
+toàn bộ danh sách) và tính năng mở rộng #50 (chuỗi nhiều ván) đã được theo dõi
+riêng, không thuộc phạm vi #48.
+
+**Xác minh tại thời điểm rà soát (2026-08-06):** `npm test` — 34 test suite,
+806 test, toàn bộ pass (bao gồm `PairingLifecycle.test.js`,
+`TournamentManager.test.js`, `TournamentHandler.test.js`,
+`TournamentMatchHandler.test.js`, `pairing/swiss.test.js`,
+`pairing/roundRobin.test.js`, `pairing/doubleElim.test.js`,
+`pairing/standings.test.js`, `tournamentDeadlineSweep.test.js`, `series.test.js`).
+
 ---

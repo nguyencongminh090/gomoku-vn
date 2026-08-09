@@ -1,0 +1,285 @@
+/* =============================================================================
+   tournament.css — Tournament detail / pairing-scheduling / match-play pages
+   (client/tournament.html, client/tournament-match.html)
+
+   Ported from the approved static mockup (client/tournament-detail-mockup.html,
+   branch feature/tournament-detail-mockup) once Phase 6 wired it to the real
+   server — see TODO.md #48 / instruction.md B48. Kept as its own file (not
+   folded into lobby.css) the same way room.css/game.css are split out from
+   it — this is a distinct page, not a lobby component.
+   ============================================================================= */
+
+/* ── Detail header ─────────────────────────────────────────────────────── */
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--c-ink-2);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+.detail-back:hover { color: var(--c-brand); }
+.detail-back--disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.detail-header__name { font-size: 26px; font-weight: 800; color: var(--c-ink); letter-spacing: -0.02em; }
+.detail-header__meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.detail-header__meta .ph { font-size: 14px; }
+.detail-meta-item { font-size: 13px; color: var(--c-ink-2); display: flex; align-items: center; gap: 5px; }
+
+/* ── "Your turn" banner ───────────────────────────────────────────────── */
+.action-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--c-brand-light);
+  border: 1px solid var(--c-brand);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.action-banner__icon {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--c-brand); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.action-banner__title { font-size: 14px; font-weight: 700; color: var(--c-ink); }
+.action-banner__sub { font-size: 13px; color: var(--c-ink-2); margin-top: 2px; }
+.action-banner__spacer { flex: 1; }
+
+/* ── Sub tabs (Pairings / Standings) ──────────────────────────────────── */
+.sub-tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--c-border); }
+.sub-tabs__btn {
+  appearance: none; background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 14px; font-weight: 600; color: var(--c-ink-2);
+  min-height: 40px; padding: 0 4px; margin-right: 20px;
+  display: inline-flex; align-items: center; gap: 6px;
+  border-bottom: 2px solid transparent; transition: color .15s ease, border-color .15s ease;
+}
+.sub-tabs__btn:hover { color: var(--c-ink); }
+.sub-tabs__btn.is-active { color: var(--c-brand); border-bottom-color: var(--c-brand); }
+.sub-tab-panel { display: none; }
+.sub-tab-panel.is-active { display: block; }
+
+/* ── Standings table ──────────────────────────────────────────────────── */
+.standings-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.standings-table th {
+  text-align: left; padding: 10px 12px; font-size: 12px; font-weight: 700;
+  color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--c-border);
+}
+.standings-table td { padding: 10px 12px; border-bottom: 1px solid var(--c-border-light); color: var(--c-ink); }
+.standings-table tr:last-child td { border-bottom: none; }
+.standings-table tr.is-me { background: var(--c-brand-light); }
+.standings-table .rank-cell { font-weight: 700; width: 36px; }
+.standings-table .name-cell { font-weight: 600; }
+.standings-table .num-cell { text-align: right; font-variant-numeric: tabular-nums; color: var(--c-ink-2); }
+
+/* ── Games history pagination (TODO.md #84) ──────────────────────────── */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+.pagination button {
+  padding: 6px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  color: var(--c-ink-2);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.pagination button:hover:not(:disabled) { background: var(--c-surface-2); }
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+.pagination button.active { background: var(--c-brand); color: #fff; border-color: var(--c-brand); }
+
+/* ── Cross table (Round Robin — TODO.md #64) ──────────────────────────── */
+.cross-table-wrap { overflow-x: auto; }
+.cross-table { border-collapse: collapse; font-size: 12px; min-width: max-content; }
+.cross-table th, .cross-table td {
+  border: 1px solid var(--c-border-light); padding: 6px 10px; text-align: center;
+  white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.cross-table thead th {
+  background: var(--c-surface-2); font-size: 11px; font-weight: 700; color: var(--c-ink-3);
+  text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--c-border);
+}
+.cross-table th.cross-table__name-col, .cross-table td.cross-table__name-col {
+  text-align: left; font-weight: 600; color: var(--c-ink);
+  position: sticky; left: 0; background: var(--c-surface); z-index: 1;
+}
+.cross-table tr.is-me td, .cross-table tr.is-me th { background: var(--c-brand-light); }
+.cross-table th.cross-table__total, .cross-table td.cross-table__total { font-weight: 700; color: var(--c-ink); }
+.cross-table .cross-table__diag { color: var(--c-border); }
+.cross-table .cross-table__empty { color: var(--c-border); }
+.cross-table .cross-table__win { color: var(--c-success); font-weight: 700; }
+.cross-table .cross-table__loss { color: var(--c-ink-3); }
+.cross-table .cross-table__live { color: var(--c-brand); font-weight: 700; }
+.cross-table tr.is-champion td, .cross-table tr.is-champion th { background: var(--c-accent-light); }
+.cross-table tr.is-runner-up td, .cross-table tr.is-runner-up th { background: var(--c-surface-2); }
+.cross-table .cross-table__trophy { margin-right: 4px; font-size: 13px; }
+.cross-table .cross-table__trophy--champion { color: var(--c-accent); }
+.cross-table .cross-table__trophy--runner-up { color: var(--c-ink-3); }
+
+/* ── Pairing list / cards ─────────────────────────────────────────────── */
+.round-group { margin-bottom: 20px; }
+.round-group__title { font-size: 13px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 10px; padding: 0 16px; }
+.pairing-list { display: flex; flex-direction: column; gap: 10px; padding: 0 16px; }
+.pairing-card {
+  border: 1px solid var(--c-border); border-radius: 12px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.pairing-card.is-me { border-color: var(--c-brand); box-shadow: 0 0 0 1px var(--c-brand) inset; }
+.pairing-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.pairing-card__players { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--c-ink); }
+.pairing-card__vs { font-size: 12px; font-weight: 600; color: var(--c-ink-3); }
+.pairing-card__you { color: var(--c-brand); }
+.state-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+}
+.state-pill--negotiating { background: var(--c-surface-2); color: var(--c-ink-2); }
+.state-pill--reported { background: var(--c-warning-bg); color: var(--c-warning); }
+.state-pill--disputed { background: var(--c-error-bg, #FEF2F2); color: var(--c-error, #EF4444); }
+.state-pill--ready { background: var(--c-success-bg); color: var(--c-success); }
+.state-pill--inprogress { background: var(--c-brand-light); color: var(--c-brand); }
+.state-pill--completed { background: var(--c-surface-2); color: var(--c-ink-3); }
+.state-pill--walkover { background: var(--c-warning-bg); color: var(--c-warning); }
+
+.pairing-card__meta { font-size: 12px; color: var(--c-ink-3); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pairing-card__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.pairing-card__actions .btn, .pairing-card__actions .btn-secondary { padding: 8px 14px; font-size: 13px; }
+.pairing-card__result { font-size: 13px; font-weight: 600; color: var(--c-ink-2); }
+.pairing-card__result .win { color: var(--c-success); }
+
+.organizer-tools {
+  border-top: 1px dashed var(--c-border); margin-top: 4px; padding-top: 10px;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.organizer-tools__label {
+  font-size: 11px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase;
+  letter-spacing: 0.03em; display: flex; align-items: center; gap: 4px; margin-right: 4px;
+}
+.organizer-tools .btn-secondary { padding: 6px 10px; font-size: 12px; }
+.organizer-tools .btn-secondary--danger { color: var(--c-error, #EF4444); border-color: var(--c-error, #EF4444); }
+
+/* ── Bracket (Double Elimination) ─────────────────────────────────────── */
+.bracket-wrap { overflow-x: auto; padding: 20px 16px; }
+.bracket { display: flex; gap: 40px; min-width: max-content; }
+.bracket-round { display: flex; flex-direction: column; justify-content: space-around; gap: 24px; min-width: 180px; }
+.bracket-round__label { font-size: 11px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; text-align: center; margin-bottom: 4px; }
+.bracket-match { border: 1px solid var(--c-border); border-radius: 10px; overflow: hidden; font-size: 12px; }
+.bracket-match__slot { padding: 8px 10px; display: flex; justify-content: space-between; gap: 8px; background: var(--c-surface); }
+.bracket-match__slot:first-child { border-bottom: 1px solid var(--c-border-light); }
+.bracket-match__slot.is-winner { font-weight: 700; color: var(--c-success); background: var(--c-success-bg); }
+.bracket-match__slot.is-tbd { color: var(--c-ink-3); font-style: italic; }
+.bracket-section-title { font-size: 13px; font-weight: 700; color: var(--c-ink-2); padding: 0 16px; margin: 8px 0; }
+
+/* ── Modal extras (base .modal-overlay/.modal/.setting-row from main.css) ── */
+.dispute-notice {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: var(--c-warning-bg); color: var(--c-warning);
+  border-radius: 10px; padding: 12px 14px; font-size: 13px; margin-bottom: 4px;
+}
+
+/* TODO.md #52 (full refactor, per user request "Make as Room, user get used
+   to is better"): the match-play screen used to be a bespoke .match-shell
+   grid that had to independently re-solve every layout problem room.css's
+   .room grid already solves (2-col synced height, mobile stacking, dead
+   space). It now reuses room.css's .room/.board-area-shell/.board-area/
+   .panel-right-shell/.panel-right/.panel-players/.slot-card/.score-panel/
+   .sidebar-tabs/.tab-content classes directly (see tournament-match.html) —
+   this file only adds what's genuinely match-specific: the header strip
+   above .room, the clocks bar, and small static-player-card tweaks. */
+.match-page-header {
+  width: 100%;
+  max-width: 1400px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding-inline: clamp(6px, 2.5vw, 16px);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.match-clocks { display: flex; gap: 12px; width: 100%; max-width: 480px; margin-bottom: 16px; }
+.match-clock { flex: 1; border: 1px solid var(--c-border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
+.match-clock.is-active { border-color: var(--c-brand); background: var(--c-brand-light); }
+.match-clock__name { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; }
+.match-clock__time { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink); }
+.match-clock__time.is-low { color: var(--c-error, #EF4444); animation: timer-pulse 0.6s ease-in-out infinite alternate; }
+.match-stone-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.match-stone-dot--black { background: #1a1a1a; }
+.match-stone-dot--white { background: #f5f5f5; border: 1px solid #999; }
+
+/* No max-width here: let BoardRenderer.resize() (board.js) size the canvas
+   the same way it does on room.html, up to its own ~860px desktop cap —
+   `.board-canvas-wrap` (game.css) already supplies overflow:hidden. A fixed
+   640px cap here fought that JS-computed size and made the tournament board
+   noticeably smaller/inconsistent than the casual-room board. */
+.match-board-canvas-wrap { width: 100%; display: flex; justify-content: center; }
+#match-canvas { touch-action: none; }
+
+/* Layout comes from .game-controls (game.css, shared with room.html) now —
+   .match-actions only needs to stay addressable for the mobile bleed-cancel
+   rule below. */
+
+@media (max-width: 768px) {
+  /* .board-area-shell bleeds edge-to-edge on mobile (room.css: width:calc(100%
+     + 32px); margin-left:-16px), which is correct for the board itself but
+     was also stretching .match-clocks/.match-actions (siblings inside the
+     same shell) past the real viewport edge, overflowing the page
+     horizontally (measured bodyScrollWidth 406px vs. clientWidth 390px).
+     Cancel the inherited bleed for just these two header-like children. */
+  .match-clocks, .match-actions { align-self: flex-start; width: calc(100% - 32px); margin-left: 16px; }
+}
+
+.move-list { max-height: 320px; overflow-y: auto; font-size: 12px; }
+.move-list__row { display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 6px; }
+.move-list__row:nth-child(odd) { background: var(--c-surface-2); }
+
+/* .slot-card is normally clickable (room.html: sit down/stand up) — here the
+   pairing already fixed who's playing, so drop the pointer affordance and
+   center the static name/color-dot content instead. */
+.room #slot-1, .room #slot-2 { cursor: default; text-align: center; }
+.room .slot-card__label { display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+
+.swap2-banner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--c-brand-light); border: 1px solid var(--c-brand);
+  border-radius: 12px; padding: 10px 14px; width: 100%; max-width: 480px; font-size: 13px;
+}
+.swap2-banner__actions { display: flex; gap: 8px; margin-left: auto; }
+.swap2-banner__actions .btn-secondary, .swap2-banner__actions .btn { padding: 6px 12px; font-size: 12px; }
+
+.match-result-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+  display: none; align-items: center; justify-content: center; z-index: 200;
+}
+.match-result-overlay.visible { display: flex; }
+.match-result-card {
+  background: var(--c-surface); border-radius: 16px; padding: 28px 32px;
+  text-align: center; max-width: 360px; box-shadow: var(--shadow);
+}
+.match-result-card__icon { font-size: 40px; margin-bottom: 8px; }
+.match-result-card__title { font-size: 18px; font-weight: 800; color: var(--c-ink); margin-bottom: 6px; }
+.match-result-card__sub { font-size: 13px; color: var(--c-ink-2); margin-bottom: 18px; }
+
+@media (max-width: 640px) {
+  .pairing-list, .round-group__title { padding-left: 8px; padding-right: 8px; }
+}

@@ -15,6 +15,13 @@
   align-items: start;
 }
 
+/* Pages that reuse .lobby-layout for its centered/max-width column but never
+   render a .lobby-sidebar (tournament.html — TODO.md #56 item 2) — without
+   this, the reserved 260px column just sits empty as dead space. */
+.lobby-layout--single {
+  grid-template-columns: 1fr;
+}
+
 /* ── Main lobby column ────────────────────────────────────────────────────── */
 .lobby {
   width: 100%;
@@ -90,7 +97,7 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 20px var(--c-brand-light);
 }
-.btn-create:active { transform: translateY(0) scale(0.96); }
+.btn-create:active { transform: translateY(0) scale(0.96) !important; }
 .btn-create i { 
   display: flex;
   align-items: center;
@@ -130,8 +137,41 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
-.btn-secondary:active { transform: translateY(0) scale(0.96); }
+.btn-secondary:active { transform: translateY(0) scale(0.96) !important; }
 .btn-secondary i { width: 18px; height: 18px; flex-shrink: 0; }
+
+/* ── Generic brand-filled pill button (TODO.md #73) ──────────────────────────
+   .btn/.btn-confirm previously had no base rule outside .modal__actions
+   (see below), so every use elsewhere (tournament cards, pairing rows,
+   match-result overlays) fell back to the browser's default button chrome.
+   This is the shared look; scoped rules (.pairing-card__actions .btn,
+   .tournament-card__actions .btn, .modal__actions .btn, ...) still override
+   sizing/width on top of it. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: var(--font);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all var(--duration-normal) var(--ease-spring);
+  text-decoration: none;
+}
+.btn-confirm {
+  background: var(--c-brand);
+  color: #FFFFFF;
+  box-shadow: var(--shadow-sm);
+}
+.btn-confirm:hover {
+  background: var(--c-brand-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--c-brand-light);
+}
+.btn-confirm:active { transform: translateY(0) scale(0.96) !important; }
 
 /* ── Room List ────────────────────────────────────────────────────────────── */
 .room-list {
@@ -348,7 +388,7 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 16px var(--c-brand-light);
 }
-.btn-join:active { transform: translateY(0) scale(0.96); }
+.btn-join:active { transform: translateY(0) scale(0.96) !important; }
 
 /* ── Create Room Modal ────────────────────────────────────────────────────── */
 .modal-overlay {
@@ -419,7 +459,7 @@
   transition: all var(--duration-fast) var(--ease-spring);
 }
 .modal__close:hover { background: var(--c-border); color: var(--c-ink); transform: scale(1.05); }
-.modal__close:active { transform: scale(0.95); }
+.modal__close:active { transform: scale(0.95) !important; }
 
 .modal__body { 
   padding: 32px; 
@@ -629,7 +669,7 @@
   transform: translateY(-2px);
   box-shadow: 0 8px 24px var(--c-brand-light);
 }
-.modal__actions .btn-confirm:active { transform: translateY(0) scale(0.96); }
+.modal__actions .btn-confirm:active { transform: translateY(0) scale(0.96) !important; }
 
 /* ── Online Users Sidebar Panel ──────────────────────────────────────────── */
 .online-panel {
@@ -790,3 +830,245 @@
 
   .modal { max-width: calc(100vw - 32px); }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Tables & Tournaments — section tabs, tournament cards, filter row.
+ * Moved here verbatim from the approved static mockup
+ * (client/tables-tournaments-mockup.html, feature/tables-tournaments-mockup)
+ * once Phase 5 wired it into the real lobby — see TODO.md #48 / instruction.md B48.
+ * ────────────────────────────────────────────────────────────────────────── */
+
+.section-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--c-border);
+}
+.section-tabs__btn {
+  appearance: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  /* min-height 44px keeps this a valid touch target on mobile, per
+     touch-target-size guideline, without changing desktop density. */
+  min-height: 44px;
+  padding: 0 4px;
+  margin-right: 24px;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  transition: color .15s ease, border-color .15s ease;
+}
+.section-tabs__btn:hover { color: var(--c-ink); }
+.section-tabs__btn:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.section-tabs__btn.is-active {
+  color: var(--c-brand);
+  border-bottom-color: var(--c-brand);
+}
+.section-tabs__btn .ph { margin-right: 6px; font-size: 16px; vertical-align: -2px; }
+
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; }
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* .filter-row and .tournament-grid are siblings directly inside .ui-core,
+     which (main.css's Double-Bezel Architecture) carries no padding of its
+     own — .tournament-grid supplies its own 16px, but .filter-row had none,
+     so the pills sat flush against the card's top/left border. */
+  padding: 16px 16px 0;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .filter-row { padding: 12px 8px 0; }
+}
+.filter-pill {
+  appearance: none;
+  background: var(--c-surface-2);
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 8px 14px;
+  min-height: 36px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+}
+.filter-pill:hover { background: var(--c-border-light); }
+.filter-pill:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
+}
+.filter-pill.is-active {
+  background: var(--c-brand-light);
+  color: var(--c-brand);
+  border-color: var(--c-brand);
+}
+.filter-spacer { flex: 1; }
+.filter-select {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.filter-select:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
+}
+
+.tournament-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px;
+}
+.tournament-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: box-shadow .15s ease, transform .15s ease;
+  cursor: pointer;
+}
+.tournament-card:hover {
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+.tournament-card:focus-visible {
+  outline: 2px solid var(--c-brand);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tournament-card,
+  .section-tabs__btn,
+  .filter-pill {
+    transition: none;
+  }
+  .tournament-card:hover { transform: none; }
+}
+@media (max-width: 480px) {
+  /* Filter pills and select need the full 44px touch target on small
+     screens even though 36px reads fine at desktop pointer precision. */
+  .filter-pill, .filter-select { min-height: 44px; }
+}
+.tournament-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.tournament-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-ink);
+  line-height: 1.3;
+}
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.badge--format {
+  background: var(--c-surface-2);
+  color: var(--c-ink-2);
+}
+.badge--live {
+  background: var(--c-success-bg);
+  color: var(--c-success);
+}
+.badge--upcoming {
+  background: var(--c-warning-bg);
+  color: var(--c-warning);
+}
+.badge--done {
+  background: var(--c-surface-2);
+  color: var(--c-ink-3);
+}
+.tournament-card__meta {
+  font-size: 13px;
+  color: var(--c-ink-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tournament-card__meta .ph { font-size: 14px; }
+.tournament-card__status {
+  margin-top: 2px;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border-light);
+}
+.tournament-card__status--your-turn { color: var(--c-brand); }
+.tournament-card__status--waiting { color: var(--c-ink-3); font-weight: 600; }
+.tournament-card__status--registered { color: var(--c-success); }
+.tournament-card__actions { display: flex; gap: 8px; margin-top: 2px; }
+.tournament-card__actions .btn, .tournament-card__actions .btn-secondary { flex: 1; }
+
+.empty-tournaments {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  text-align: center;
+}
+.empty-tournaments .room-list__empty-text { margin-top: 14px; }
+
+@media (max-width: 640px) {
+  .tournament-grid { padding: 8px; gap: 12px; }
+  .tournament-card { padding: 12px; }
+}
+
+/* ── Live matches browser (TODO.md #60) ─────────────────────────────────── */
+.live-matches-panel {
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 16px; width: 100%; box-sizing: border-box;
+}
+.live-matches-panel__header {
+  display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
+  color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px;
+}
+.live-matches-panel__header .ph { color: var(--c-error, #EF4444); font-size: 15px; }
+.live-matches-panel__list { display: flex; flex-direction: column; gap: 8px; }
+.live-match-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--c-border-light); border-radius: 10px;
+  background: var(--c-surface-2); cursor: pointer; transition: border-color 0.15s;
+  flex-wrap: wrap;
+}
+.live-match-row:hover { border-color: var(--c-brand); }
+.live-match-row__players { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.live-match-row__vs { font-size: 11px; font-weight: 600; color: var(--c-ink-3); }
+.live-match-row__meta { font-size: 11px; color: var(--c-ink-3); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.live-match-row__meta .ph { font-size: 12px; }
+.live-match-row__tournament { font-size: 11px; color: var(--c-ink-2); width: 100%; }

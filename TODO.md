@@ -11,31 +11,45 @@ Quy ước: file này tách làm 2 phần.
 Khi có báo cáo mới, mục nào không sửa được bằng code → thêm vào Phần A; mục nào
 sửa được → thêm vào Phần B, dưới một heading nguồn riêng (giữ nguyên theo report).
 
+**Model đề xuất** (đánh giá 2026-08-08, xem lý do đầy đủ trong hội thoại lưu ở
+`docs/fix-log.md` cùng ngày nếu cần tra lại): mỗi mục còn mở dưới đây có gắn
+`[Model: <tên>]`. Đây là gợi ý dựa trên bản chất việc — đo đạc thuần túy/không
+cần quyết định → Haiku 4.5; implement có phạm vi rõ ràng theo đúng quy tắc repo
+→ Sonnet 5; quyết định kiến trúc/bảo mật có đánh đổi thật hoặc chẩn đoán nguyên
+nhân gốc nhiều vòng dễ tự nhiễu (xem rule "Root-cause diagnosis" trong
+`CLAUDE.md`) → Opus 5. **Nhắc khi bắt đầu làm:** đọc lại gợi ý này lúc thật sự
+bấm vào làm task, không lúc ghi việc — bản chất việc có thể đã đổi (vd. một
+quyết định kiến trúc có thể đã thu hẹp phạm vi sau khi bàn thêm với người
+dùng), và danh sách model khả dụng cũng có thể đã đổi theo thời gian.
+
 ---
 
 
 ## Phần A — Không sửa được bằng code
 
 ### Nguồn: `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
-- **#1.** TLS/HTTPS trước app (review 3.0) — Nghiêm trọng nếu đang chạy HTTP trần — [chi tiết](docs/todo/A01-tls-https-truoc-app-review-3-0-nghiem-trong-neu-dang-chay.md)
-- **#2.** Xác nhận biến môi trường khi deploy thật — [chi tiết](docs/todo/A02-xac-nhan-bien-moi-truong-khi-deploy-that.md)
-- **#3.** `npm install` không chạy được trên Node 24 tại máy đánh giá — [chi tiết](docs/todo/A03-npm-install-khong-chay-duoc-tren-node-24-tai-may-danh-gia.md)
-- **#4.** Kiểm chứng thật cho các mục "CHƯA ĐO ĐƯỢC" trong review — [chi tiết](docs/todo/A04-kiem-chung-that-cho-cac-muc-chua-do-duoc-trong-review.md)
+- ✅ **#1.** TLS/HTTPS trước app (review 3.0) — Nghiêm trọng nếu đang chạy HTTP trần — [chi tiết](docs/todo/A01-tls-https-truoc-app-review-3-0-nghiem-trong-neu-dang-chay.md)
+- **#2.** Xác nhận biến môi trường khi deploy thật `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A02-xac-nhan-bien-moi-truong-khi-deploy-that.md)
+- **#3.** `npm install` không chạy được trên Node 24 tại máy đánh giá `[Model: Sonnet 5]` — [chi tiết](docs/todo/A03-npm-install-khong-chay-duoc-tren-node-24-tai-may-danh-gia.md)
+- **#4.** Kiểm chứng thật cho các mục "CHƯA ĐO ĐƯỢC" trong review `[Model: Sonnet 5]` — [chi tiết](docs/todo/A04-kiem-chung-that-cho-cac-muc-chua-do-duoc-trong-review.md)
 
 ### Nguồn: stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
-- **#6.** Quyết định kiến trúc khi cần scale quá 1 tiến trình — [chi tiết](docs/todo/A06-quyet-dinh-kien-truc-khi-can-scale-qua-1-tien-trinh.md)
+- **#6.** Quyết định kiến trúc khi cần scale quá 1 tiến trình `[Model: Opus 5]` — [chi tiết](docs/todo/A06-quyet-dinh-kien-truc-khi-can-scale-qua-1-tien-trinh.md)
 - ✅ **#7.** Đo lại bằng harness đa tiến trình (hoặc máy thứ 2) — [chi tiết](docs/todo/A07-do-lai-bang-harness-da-tien-trinh-hoac-may-thu-2.md)
-- **#8.** Chưa có cách quan sát heap/GC của server đang chạy — [chi tiết](docs/todo/A08-chua-co-cach-quan-sat-heap-gc-cua-server-dang-chay.md)
+- **#8.** Chưa có cách quan sát heap/GC của server đang chạy `[Model: Sonnet 5]` — [chi tiết](docs/todo/A08-chua-co-cach-quan-sat-heap-gc-cua-server-dang-chay.md)
 
 ### Nguồn: security review toàn bộ codebase (2026-08-03, yêu cầu người dùng "Does my website safe?")
-- **#9.** Audit an ninh toàn bộ server + client — không phải diff, không có PR đang mở — [chi tiết](docs/todo/A09-audit-an-ninh-toan-bo-server-client-khong-phai-diff-khong.md)
+- **#9.** Audit an ninh toàn bộ server + client — không phải diff, không có PR đang mở `[Model: Opus 5]` — [chi tiết](docs/todo/A09-audit-an-ninh-toan-bo-server-client-khong-phai-diff-khong.md)
 
 ### Nguồn: kiểm chứng bản sửa (commit `3da53dd`, đo lại 2026-08-01)
-- **#5.** Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ — [chi tiết](docs/todo/A05-muc-3-8-vong-doi-mat-khau-can-noi-dung-day-du.md)
+- **#5.** Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A05-muc-3-8-vong-doi-mat-khau-can-noi-dung-day-du.md)
 
 ### Nguồn: `gomoku-vn-review(1).md` vòng 3, mục 12.6 (kiểm chứng 2026-08-02)
 - ✅ **#10.** Hành vi thật của `cloudflared` với `X-Forwarded-For` do client tự gửi — [chi tiết](docs/todo/A10-hanh-vi-that-cua-cloudflared-voi-x-forwarded-for-do-client.md)
-- **#11.** Hành vi khi bật `permessage-deflate` — [chi tiết](docs/todo/A11-hanh-vi-khi-bat-permessage-deflate.md)
+- **#11.** Hành vi khi bật `permessage-deflate` `[Model: Sonnet 5]` — [chi tiết](docs/todo/A11-hanh-vi-khi-bat-permessage-deflate.md)
+
+### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
+- **#67.** Xác minh HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không (claim của audit gốc sai — Helmet đã bật HSTS mặc định, cần đo thật trên deploy) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 
 ## Phần B — Sửa được bằng code, đang chờ làm
 
@@ -99,7 +113,7 @@ khi tái hiện được vấn đề** — thứ tự đúng là đo/chẩn đo�
 ### Nguồn: truy nguyên trần kết nối (2026-08-02, xem `docs/stress-test-report.md` §10)
 - ✅ **#27.** Hàng đợi accept TCP tràn — mất 12-14% kết nối ở burst lớn — [chi tiết](docs/todo/B27-hang-doi-accept-tcp-tran-mat-12-14-ket-noi-o-burst-lon.md)
 - ✅ **#28.** Thứ tự transport `websocket` trước `polling` — đã đo, CỐ Ý CHƯA ÁP DỤNG — [chi tiết](docs/todo/B28-thu-tu-transport-websocket-truoc-polling-da-do-co-y-chua-ap.md)
-- **#29.** Trần >6000 người vẫn chưa quy được nguyên nhân — sau khi sửa backlog, — [chi tiết](docs/todo/B29-tran-6000-nguoi-van-chua-quy-duoc-nguyen-nhan-sau-khi-sua.md)
+- **#29.** Trần >6000 người vẫn chưa quy được nguyên nhân — sau khi sửa backlog, `[Model: Opus 5]` — [chi tiết](docs/todo/B29-tran-6000-nguoi-van-chua-quy-duoc-nguyen-nhan-sau-khi-sua.md)
 
 ### Nguồn: yêu cầu người dùng, dựa trên số liệu stress test (2026-08-03)
 - ✅ **#31.** Nâng `MAX_ROOMS`/`MAX_USERS_PER_ROOM` — có dư địa kỹ thuật, người dùng — [chi tiết](docs/todo/B31-nang-max-rooms-max-users-per-room-co-du-dia-ky-thuat-nguoi.md)
@@ -141,17 +155,113 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#45.** Text không dịch / hardcode tiếng Việt khi ở chế độ English — [chi tiết](docs/todo/B45-text-khong-dich-hardcode-tieng-viet-khi-o-che-do-english.md)
 
 ### Nguồn: phát hiện phụ khi làm #45 (2026-08-04)
-- **#46.** `login.js` nút ẩn/hiện mật khẩu — fallback hardcode tiếng Việt vì thiếu khoá i18n — [chi tiết](docs/todo/B46-login-js-nut-an-hien-mat-khau-fallback-hardcode-tieng.md)
+- ✅ **#46.** `login.js` nút ẩn/hiện mật khẩu — fallback hardcode tiếng Việt vì thiếu khoá i18n — [chi tiết](docs/todo/B46-login-js-nut-an-hien-mat-khau-fallback-hardcode-tieng.md)
 - ✅ **#47.** Thông báo mất-kết-nối/kết-nối-lại hiện trùng lặp (server chat:message + client tự dịch) — [chi tiết](docs/todo/B47-thong-bao-mat-ket-noi-ket-noi-lai-hien-trung-lap-server.md)
 
 ### Nguồn: yêu cầu người dùng — thảo luận + blueprint UI cho tính năng Tournament (2026-08-04)
-- **#48.** Triển khai đầy đủ tính năng Tournament (Tables & Tournaments) từ mockup — [chi tiết](docs/todo/B48-trien-khai-tinh-nang-tournament-tu-mockup-tables-tournaments.md)
+- ✅ **#48.** Triển khai đầy đủ tính năng Tournament (Tables & Tournaments) từ mockup — [chi tiết](docs/todo/B48-trien-khai-tinh-nang-tournament-tu-mockup-tables-tournaments.md)
 
 ### Nguồn: báo cáo người dùng — bàn cờ trận đấu giải đấu quá nhỏ, kèm ảnh chụp màn hình (2026-08-06)
-- **#49.** Bàn cờ trong trận đấu giải đấu (tournament match) quá nhỏ, thiếu nhất quán với phòng chơi thường — cả Mobile lẫn PC — [chi tiết](docs/todo/B49-ban-co-trong-tran-dau-giai-dau-qua-nho-thieu-nhat-quan.md)
+- ✅ **#49.** Bàn cờ trong trận đấu giải đấu (tournament match) quá nhỏ, thiếu nhất quán với phòng chơi thường — cả Mobile lẫn PC — [chi tiết](docs/todo/B49-ban-co-trong-tran-dau-giai-dau-qua-nho-thieu-nhat-quan.md)
 
 ### Nguồn: yêu cầu người dùng — thảo luận qua `features/tournament-match-series/` (2026-08-06)
-- **#50.** Cho phép một cặp đấu (pairing) chơi nhiều ván (game series: số ván cố định hoặc race-to-margin) thay vì chỉ một ván — [chi tiết](docs/todo/B50-cho-phep-mot-cap-dau-choi-nhieu-van-thay-vi-mot-van.md)
+- ✅ **#50.** Cho phép một cặp đấu (pairing) chơi nhiều ván (game series: số ván cố định hoặc race-to-margin) thay vì chỉ một ván — [chi tiết](docs/todo/B50-cho-phep-mot-cap-dau-choi-nhieu-van-thay-vi-mot-van.md)
+
+### Nguồn: báo cáo người dùng — "đăng nhập thiết bị khác" đá nhầm dù chỉ mở 1 tab (2026-08-06)
+- ✅ **#51.** Quy tắc bump `?v=N` trong CLAUDE.md bỏ sót cross-module import — `tournaments.js` load `lobby.js` 2 lần, mở 2 kết nối socket.io — [chi tiết](docs/todo/B51-cache-bust-quy-tac-bo-sot-cross-module-import.md)
+
+### Nguồn: báo cáo người dùng kèm ảnh chụp thật — xác nhận #49/#50 hoạt động đúng nhưng UX tổng thể vẫn kém (2026-08-07)
+- ✅ **#52.** Trang trận đấu giải đấu (`tournament-match.html`) UX kém dù bàn cờ đã to hơn — mất cân bằng bố cục, khoảng trắng chết lớn, cả PC lẫn Mobile — [chi tiết](docs/todo/B52-trang-tran-dau-giai-dau-ux-kem-du-bang-co-da-to-mat-can-bang.md)
+
+### Nguồn: báo cáo người dùng — "Organizer cannot set race-to-margin or sub-game" (2026-08-07)
+- ✅ **#53.** Modal "Tạo giải đấu" thiếu hẳn UI để chọn series mode (race-to-margin/số ván cố định) — backend đã hỗ trợ đầy đủ nhưng frontend chưa có input nào — [chi tiết](docs/todo/B53-modal-tao-giai-dau-thieu-ui-chon-series-mode.md)
+
+### Nguồn: báo cáo người dùng — 2 vấn đề UX trận đấu/điều hướng giải đấu (2026-08-07)
+- ✅ **#54.** "Quay lại danh sách giải đấu" từ trang chi tiết giải đấu luôn về tab "Bàn chơi" thay vì tab "Giải đấu" — [chi tiết](docs/todo/B54-quay-lai-tu-chi-tiet-giai-dau-ve-lobby-mat-tab-giai-dau.md)
+- ✅ **#55.** Trận đấu giải đấu không áp dụng/đồng bộ click mode từ Cài đặt — khác hành vi với phòng chơi thường — [chi tiết](docs/todo/B55-tran-dau-giai-dau-khong-ap-dung-dong-bo-click-mode-tu-settings.md)
+
+### Nguồn: phát hiện phụ khi làm #52 (2026-08-07)
+- ✅ **#56.** Mobile: nội dung tab (Nước đi/Trò chuyện/Khán giả) co về ~0 chiều cao ở `tournament-match.html` (mục 1 đã sửa, mục 2 `tournament.html` còn mở) — [chi tiết](docs/todo/B56-tournament-match-mobile-tab-content-collapse-va-lobby-layout.md)
+
+### Nguồn: yêu cầu người dùng, giữa lúc làm #52 full-refactor (2026-08-07)
+- ✅ **#57.** Trận đấu giải đấu chỉ có Đầu hàng — thêm Cầu hoà (Draw) và Xin cộng giờ (Time Request) như phòng chơi thường — [chi tiết](docs/todo/B57-tournament-match-them-draw-offer-va-time-request-nhu-phong-thuong.md)
+
+### Nguồn: báo cáo người dùng, ngay sau đợt full-refactor #52/#55/#56 (2026-08-07)
+- ✅ **#58.** Trận đấu giải đấu không có kiểu bàn cờ "Đá" (Stone) — luôn hiện "Giấy" (Paper) — [chi tiết](docs/todo/B58-tournament-match-thieu-board-display-mode-stone.md)
+
+### Nguồn: yêu cầu người dùng — thảo luận qua `features/tournament-cancel/` và `features/tournament-live-matches-browser/` (2026-08-07)
+- ✅ **#59.** Organizer huỷ giải đấu bất cứ lúc nào — [chi tiết](docs/todo/B59-to-chuc-huy-giai-dau-bat-cu-luc-nao.md)
+- ✅ **#60.** Khách (visitor) xem trận đấu giải đấu — qua "Live Matches Browser" mới (yêu cầu xem trận đã hoạt động sẵn, phần mới là bảng khám phá) — [chi tiết](docs/todo/B60-khach-xem-tran-dau-giai-dau-qua-live-matches-browser.md)
+
+### Nguồn: review nhanh UI desktop theo yêu cầu người dùng (2026-08-07)
+- ✅ **#61.** Trận đấu giải đấu (PC): khối `.match-clocks` nằm quá sát/thiếu khoảng cách dọc với dòng `#match-meta` phía trên — [chi tiết](docs/todo/B61-match-clocks-qua-sat-detail-header-meta-tournament-match-pc.md)
+
+### Nguồn: yêu cầu người dùng — nhận xét luồng series (2026-08-08)
+- ✅ **#62.** Check-in "Sẵn sàng" giữa các ván trong series bắt quay lại trang giải đấu — nên tái dùng Start Modal, giữ người chơi ở lại `tournament-match.html` — [chi tiết](docs/todo/B62-series-ready-checkin-tai-cho-trong-tournament-match-thay-vi-quay-lai-trang.md)
+
+### Nguồn: báo cáo người dùng — "Final score in standing tables is wrong and not match" (2026-08-08)
+- ✅ **#63.** Round Robin: bảng Standings tính 1 điểm/pairing thắng, không cộng dồn điểm thật của series (VD thắng 3.5-0.5 chỉ hiện 1-0) — đối chiếu luật Swiss/FIDE thật: **không phải bug**, đóng — [chi tiết](docs/todo/B63-standings-score-nen-cong-don-tung-van-thay-vi-1-diem-moi-pairing.md)
+- ✅ **#64.** Round Robin: thay bảng Standings dạng danh sách bằng Cross Table (bảng chéo) hiện tỉ số thật từng cặp đấu — hiển thị, không đổi cách tính rank — [chi tiết](docs/todo/B64-round-robin-cross-table-thay-danh-sach-standings.md)
+
+### Nguồn: security review Network trong Developer Tools (2026-08-08)
+✅ **#65.** CSP + third-party script — bảo vệ JWT bearer đang ở `localStorage` — [chi tiết](docs/todo/B65-csp-va-third-party-script-bao-ve-jwt-localstorage.md)
+
+### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
+- ✅ **#66.** Thiếu `Cache-Control: no-store` trên response `/api/auth/*` — JWT có thể bị cache `[Model: Sonnet 5]` — [chi tiết](docs/todo/B66-cache-control-no-store-tren-response-api-auth.md)
+- ✅ **#68.** Chuyển JWT từ `localStorage` sang phiên mờ phía server + `HttpOnly` cookie — kèm thu hồi phiên được (revocation) và kiểm `Origin` chống CSWSH `[Model: Opus 5]` — [chi tiết](docs/todo/B68-can-nhac-chuyen-jwt-tu-localstorage-sang-httponly-cookie.md)
+- ✅ **#69.** Tự host Google Fonts + audio assets — giảm rò rỉ IP người dùng cho bên thứ ba `[Model: Sonnet 5]` — [chi tiết](docs/todo/B69-tu-host-google-fonts-va-audio-de-giam-ro-ri-ip-nguoi-dung.md)
+
+### Nguồn: yêu cầu người dùng — audit style nút bấm toàn client (2026-08-08)
+- ✅ **#70.** Style nút bấm (button) không nhất quán toàn `client/` — màu xanh lá cũ còn sót, `--c-danger` chưa định nghĩa, nút chat focus-mode khác bản thường, `.btn-kick`/`.draw-prompt` hardcode màu, rule `:active` cục bộ bị `!important` toàn cục đè `[Model: Sonnet 5]` — [chi tiết](docs/todo/B70-button-style-khong-nhat-quan-toan-client.md)
+
+### Nguồn: phát hiện trong lúc verify #70 bằng browser thật (2026-08-08)
+- ✅ **#71.** ~~Ô nhập chat ở focus-mode (`#chat-input-wrapper`) hoàn toàn không hiện ra được~~ — đã kiểm tra lại bằng browser thật (2026-08-09): không tái hiện, đóng "không phải bug" (đã có JS re-parent sẵn từ Initial commit) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B71-chat-input-focus-mode-khong-hien-do-display-none-to-tien.md)
+
+### Nguồn: báo cáo người dùng — "User cannot change Display (Paper/Stone) It auto get back." (2026-08-08)
+- ✅ **#72.** Toàn bộ tab Cài đặt trong phòng (Paper/Stone + board size + luật thắng + Wall/Portal + Swap2 + timer) không lưu được — 18 chỗ `onchange="fn()"` inline bị CSP `scriptSrcAttr:'none'` (TODO.md #65) chặn câm lặng, radio bật lại giá trị cũ ở lần re-render kế tiếp `[Model: Sonnet 5]` — [chi tiết](docs/todo/B72-room-settings-tab-onchange-blocked-boi-csp.md)
+
+### Nguồn: báo cáo người dùng — "User in Tournament room cannot set Display (Paper/Stone) and no sound" (2026-08-08)
+- ✅ **#74.** `tournament-match.html` không có tab "Cài đặt"/UI nào để đổi Display (Paper/Stone) giữa trận (cố ý từ B50, comment xác nhận), và hoàn toàn không có âm thanh — thiếu cả `<script audio-manager.js>` lẫn lời gọi `playMoveSound`/`playWinSound`/... mà `room-socket.js` có cho phòng thường `[Model: Sonnet 5]` — [chi tiết](docs/todo/B74-tournament-match-thieu-am-thanh-va-doi-display-mode.md)
+
+### Nguồn: báo cáo người dùng kèm ảnh chụp — nút bấm trang giải đấu trông như mặc định trình duyệt (2026-08-08)
+- ✅ **#73.** `.btn`/`.btn-confirm` không có rule base (unscoped) nào áp dụng được ngoài `.modal__actions` — nút "Bắt đầu"/"Xem cặp đấu"/"Báo giờ"/"Sẵn sàng" trên trang giải đấu render bằng UA stylesheet mặc định của trình duyệt; phát hiện ngoài phạm vi #70 vì verify của #70 không chụp trang giải đấu `[Model: Sonnet 5]` — [chi tiết](docs/todo/B73-nut-btn-btn-confirm-khong-co-base-style-ngoai-modal.md)
+
+### Nguồn: báo cáo người dùng kèm ảnh chụp Cross Table thật (2026-08-08)
+- ✅ **#75.** Cross Table (Round Robin, #64) chưa sắp theo hạng + chưa highlight Vô địch/Á quân khi giải kết thúc `[Model: Sonnet 5]` — [chi tiết](docs/todo/B75-cross-table-sap-xep-theo-hang-va-highlight-champion.md)
+
+### Nguồn: báo cáo người dùng — luồng Sẵn sàng → Vào trận gây sai lệch thời gian giữa 2 người chơi (2026-08-08)
+- ✅ **#76.** Đồng hồ trận đấu start server-side ngay khi cả 2 "Sẵn sàng", nhưng client bắt bấm thêm nút "Vào trận" thủ công — ai bấm sau bị trừ giờ oan; nên tự động vào trận khi cả 2 đã sẵn sàng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B76-ready-auto-vao-tran-thay-vi-doi-bam-nut-enter.md)
+
+### Nguồn: người dùng hỏi "Nó có lưu database ko" (2026-08-08)
+- ✅ **#77.** Tournament đã ghi SQLite ở mọi transition nhưng `TournamentManager` chưa từng đọc lại — restart server xoá sạch mọi giải đấu khỏi bộ nhớ dù dữ liệu vẫn còn trong `gomoku.db`; thêm `loadTournamentsFromDb()` reload đầy đủ `[Model: Sonnet 5]` — [chi tiết](docs/todo/B77-tournament-du-lieu-song-sot-qua-restart-server.md)
+
+### Nguồn: yêu cầu người dùng trực tiếp (2026-08-08)
+- ✅ **#78.** Ván đấu tournament chưa từng lưu move history đầy đủ — `pairing.moves` bị ghi đè mỗi ván mới trong 1 series, không có replay UI nào; thêm bảng `tournament_games` (1 hàng/ván, tách khỏi `games` thường) + tab "Lịch sử ván đấu" + tái dùng replay viewer có sẵn `[Model: Sonnet 5]` — [chi tiết](docs/todo/B78-tournament-games-history-luu-tung-van-dau-rieng.md)
+
+### Nguồn: báo cáo người dùng — "Time sometimes run on wrong sides" (2026-08-09)
+- ✅ **#79.** Đồng hồ trận đấu giải đấu đôi khi hiện sai bên — `renderHeader()` gán panel `clock-black-name`/`clock-white-name` theo vị trí mảng `players[0]`/`[1]` cố định, trong khi màu quân thực tế đổi theo Swap2 choice (trong 1 ván) hoặc theo xoay seat mỗi ván trong series (từ ván 2 trở đi) — không phải bug reconnect `[Model: Sonnet 5]` — [chi tiết](docs/todo/B79-tournament-match-timer-hien-sai-ben.md)
+
+### Nguồn: báo cáo người dùng — "no time alert for 10s left in tournament room" (2026-08-09)
+- ✅ **#80.** Đồng hồ trận đấu giải đấu thiếu hiệu ứng nhấp nháy khi còn ≤10s — đổi màu đỏ + beep đã có sẵn từ #74, nhưng thiếu animation `timer-pulse` mà phòng thường có, khiến cảnh báo "nhẹ" hơn hẳn và dễ bị bỏ lỡ `[Model: Sonnet 5]` — [chi tiết](docs/todo/B80-tournament-match-thieu-hieu-ung-nhap-nhay-canh-bao-het-gio.md)
+
+### Nguồn: báo cáo người dùng — "moving in tournament (navigate, comein/out...) sometimes slow" (2026-08-09), điều tra qua [docs/tournament-navigation-latency-report.md](docs/tournament-navigation-latency-report.md)
+- ✅ **#81.** Vào trận giải đấu (`goToMatch`) dùng full page reload — mỗi lần đóng/mở socket lại trả giá 1 lượt session-lookup SQLite đồng bộ (blocking event loop) ở handshake; đã đo ở quy mô thực tế (bench-session-lookup.js mở rộng): p50/p99 chỉ đơn vị-chục µs, **không phải bottleneck**, đóng — không sửa `[Model: Sonnet 5]` — [chi tiết](docs/todo/B81-tournament-navigate-full-page-reload-session-lookup-blocking.md)
+- ✅ **#82.** Đăng ký/hủy đăng ký giải đấu ở client bắn thêm 1 round-trip `tournament:get` thừa — server đã tự broadcast `tournament:updated` đầy đủ dữ liệu, round-trip thêm chỉ cộng dồn độ trễ mạng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B82-tournament-register-thua-round-trip-tournament-get.md)
+- ✅ **#83.** Broadcast khi đăng ký/hủy đăng ký không debounce (khác `_queuePairingChanged` đã có cho pairing) — mỗi thao tác bắn 2 broadcast toàn phòng + diff `JSON.stringify` từng entry, cộng dồn khi nhiều người join/leave gần đồng thời `[Model: Sonnet 5]` — [chi tiết](docs/todo/B83-tournament-register-broadcast-khong-debounce.md)
+- ✅ **#84.** Tab "Lịch sử ván đấu" giải đấu: `getTournamentGames()` không `LIMIT`/phân trang, client render toàn bộ bảng bằng `innerHTML` đồng bộ — giật UI khi chuyển tab với giải đấu nhiều ván `[Model: Sonnet 5]` — [chi tiết](docs/todo/B84-tournament-games-history-khong-phan-trang.md)
+- ✅ **#85.** `savePairing()` ghi SQLite đồng bộ mỗi lần pairing đổi trạng thái, `JSON.stringify` lại toàn bộ `games`/`moves` mỗi lần — **đã đo (2026-08-09), không phải bottleneck** (dưới 0.3ms kể cả worst-case 20×20/99 ván), đóng không sửa `[Model: Sonnet 5]` — [chi tiết](docs/todo/B85-save-pairing-ghi-dong-bo-json-blob-tang-dan.md)
+
+### Nguồn: báo cáo người dùng — "user click on board but delay for 1s (low latency) it sometimes happen, but after refresh, it work fast again" (2026-08-09)
+- ✅ **#86.** Trận đấu giải đấu: click bàn cờ thỉnh thoảng trễ ~1s trước khi quân xuất hiện, refresh trang thì lại nhanh — đã loại trừ trùng lặp listener canvas, rò rỉ listener banner/prompt, ghi DB đồng bộ trên đường đi 1 nước cờ, và tải server (p99 5.35ms, 0 nước ≥300ms — [báo cáo](docs/tournament-20-player-latency-test-report.md)); **đã thêm instrumentation client-side** (delta click→ack, transport, tab visibility) nhưng **không tái hiện lại được** — đóng theo đúng nhánh dự phòng của instruction.md, giữ instrumentation lại vĩnh viễn (chi phí thấp, là công cụ duy nhất bắt được lần tái phát tiếp theo) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B86-tournament-match-board-click-doi-khi-tre-1s-refresh-het.md)
+
+### Nguồn: yêu cầu người dùng — "Check Broadcast, throtte in Tournament. Make sure it smooth" (2026-08-09)
+- ✅ **#87.** `broadcastLiveMatchesUpdate` (Live Matches Browser, #60) là broadcast tournament duy nhất không debounce/diff — mỗi lần gọi tính lại toàn bộ `tournamentGameMap` rồi emit lại nguyên danh sách; huỷ 1 giải đấu có N ván đang live bắn N lần tính toán + N emit toàn phòng liên tiếp (qua vòng lặp `forceCancelMatch` mỗi pairing) thay vì gộp 1 lần — các broadcast tournament khác (list, detail, pairings) đều đã debounce/diff `[Model: Sonnet 5]` — [chi tiết](docs/todo/B87-live-matches-broadcast-khong-throttle-diff.md)
+
+### Nguồn: báo cáo người dùng — "Guest/audience View Tournament room cannot escape. Backend lock Player (who playing) but also lock viewers escape." (2026-08-09)
+- ✅ **#88.** Khán giả/guest xem trận giải đấu bị khoá nút "Quay lại chi tiết giải đấu" y hệt 2 người chơi thật — `setLeaveLocked(true)` (`client/js/tournament-match.js`, 3 nơi gọi) không kiểm tra `myPlayer()`, khoá đồng loạt mọi socket trong room bất kể vai trò, dù mục đích gốc chỉ nhằm chống người CHƠI rời giữa series `[Model: Sonnet 5]` — [chi tiết](docs/todo/B88-tournament-match-khan-gia-bi-khoa-nut-quay-lai.md)
+
+### Nguồn: phát hiện phụ khi cài `jest-environment-jsdom` cho #88's unit test (2026-08-09)
+- ✅ **#89.** `npm audit` báo 3 lỗ hổng high-severity ở dependency gián tiếp, có từ trước (không phải do gói mới thêm): `js-yaml` (qua `jest`), `nanoid` (qua `vite`, cả 2 chỉ devDependency, rủi ro thấp), và `socket.io-parser` (qua `socket.io` — dependency PRODUCTION thật, DoS "memory exhaustion", đáng ưu tiên hơn 2 cái kia) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B89-npm-audit-3-high-severity-transitive.md)
 
 ---
 

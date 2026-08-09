@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Trận đấu giải đấu</title>
+  <meta name="description" content="Play3CR — Trận đấu trong giải đấu Caro trực tuyến." />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=95" />
+  <link rel="stylesheet" href="css/lobby.css?v=95" />
+  <link rel="stylesheet" href="css/room.css?v=95" />
+  <link rel="stylesheet" href="css/game.css?v=95" />
+  <link rel="stylesheet" href="css/tournament.css?v=95" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=95" />
+  <script src="js/theme-preload.js?v=95"></script>
+  <!-- Manrope (self-hosted, TODO.md #69) -->
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=95">
+  <script src="js/ui-mode-preload.js?v=95"></script>
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=95" />
+  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=95" />
+</head>
+<body>
+
+<div id="status-banner" class="status-banner" aria-live="polite"></div>
+
+<nav class="topnav" role="navigation" aria-label="Điều hướng chính">
+  <a href="index.html" class="topnav__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
+    <span class="topnav__title">Play3CR</span>
+  </a>
+  <div class="topnav__right">
+    <span id="nav-user" class="topnav__user"></span>
+    <span id="nav-badge" class="topnav__badge"></span>
+  </div>
+</nav>
+
+<div class="match-page-header">
+  <a href="#" id="back-to-tournament" class="detail-back"><i class="ph ph-arrow-left"></i><span data-i18n="tmatch.back">Quay lại chi tiết giải đấu</span></a>
+
+  <div class="detail-header">
+    <div>
+      <div class="detail-header__name" id="match-title">—</div>
+      <div class="detail-header__meta" id="match-meta"></div>
+    </div>
+  </div>
+
+  <div id="swap2-banner-slot"></div>
+</div>
+
+<!-- Reuses room.html's proven .room 2-col synced-height grid (TODO.md #52)
+     instead of a bespoke .match-shell — same classes room.css already styles
+     and tests (desktop/tablet/mobile breakpoints), so this page gets the
+     same layout guarantees room.html has instead of a parallel, easier-to-
+     drift implementation. See docs/instruction/B52-*.md's full-refactor note. -->
+<main class="room" role="main">
+
+  <section class="board-area-shell" id="board-area-shell">
+    <div class="match-clocks">
+      <div class="match-clock" id="clock-black">
+        <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--black"></span><span id="clock-black-name">—</span></span>
+        <span class="match-clock__time" id="clock-black-time">--:--</span>
+      </div>
+      <div class="match-clock" id="clock-white">
+        <span class="match-clock__name"><span class="match-stone-dot match-stone-dot--white"></span><span id="clock-white-name">—</span></span>
+        <span class="match-clock__time" id="clock-white-time">--:--</span>
+      </div>
+    </div>
+
+    <div class="board-area" id="board-area">
+      <div class="board-canvas-wrap match-board-canvas-wrap" id="board-wrap">
+        <canvas id="match-canvas"></canvas>
+      </div>
+    </div>
+
+    <!-- Reuses room.html's .game-controls/.btn-game classes (game.css) instead
+         of the old .btn/.btn-cancel modal-button classes, which visually
+         didn't match the rest of the app's in-game action buttons. -->
+    <div class="game-controls match-actions" id="match-actions" style="display:none;">
+      <button class="btn-game btn-game--resign" type="button" id="btn-resign" data-i18n="tmatch.btn_resign">Đầu hàng</button>
+      <button class="btn-game btn-game--draw" type="button" id="btn-draw" data-i18n="game.btn_draw">Đề nghị hoà</button>
+      <button class="btn-game btn-game--time" type="button" id="btn-time" data-i18n="game.btn_time">Xin thêm giờ</button>
+    </div>
+    <div id="draw-prompt-area"></div>
+    <div id="time-prompt-area"></div>
+  </section>
+
+  <aside class="panel-right-shell">
+    <div class="panel-right">
+
+      <!-- Players (static — no sit/stand, the pairing already fixed who's
+           playing) + series score table (TODO.md #52/#55 note: "Room.html
+           has score count, you can use it" — reuses .score-panel/.score-table
+           rather than the old inline meta-line score text). -->
+      <div class="panel-players">
+        <div class="players-row">
+          <div class="slot-card" id="slot-1">
+            <div class="slot-card__label"><span class="match-stone-dot match-stone-dot--black"></span></div>
+            <div class="slot-card__name" id="slot-1-name">—</div>
+          </div>
+          <div class="players-vs">VS</div>
+          <div class="slot-card" id="slot-2">
+            <div class="slot-card__label"><span class="match-stone-dot match-stone-dot--white"></span></div>
+            <div class="slot-card__name" id="slot-2-name">—</div>
+          </div>
+        </div>
+        <div class="score-panel" id="score-panel" style="display:none;">
+          <div class="score-panel__title" id="score-panel-title" data-i18n="tmatch.score_title">Bảng điểm</div>
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th data-i18n="room.th_name">Tên</th>
+                <th data-i18n="tmatch.th_score">Điểm</th>
+              </tr>
+            </thead>
+            <tbody id="score-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tabs: Move history | Chat | Spectators — the chat/spectators tabs
+           are ported from room.html's component chrome (TODO.md #50 step 7,
+           decision 9: UI/CSS reuse only, NOT routed through RoomHandler —
+           see server/socket/handlers/TournamentMatchHandler.js's
+           tmatch:chat_message/tmatch:presence, its own parallel mechanism
+           scoped to the match's own Socket.io room). -->
+      <div class="sidebar-tabs">
+        <button class="tab-btn tab-btn--active" data-tab="tab-moves" data-i18n="tmatch.tab_moves">Nước đi</button>
+        <button class="tab-btn" data-tab="tab-chat" data-i18n="room.tab_chat">Trò chuyện</button>
+        <button class="tab-btn" data-tab="tab-users" data-i18n="room.tab_spectators">Khán giả</button>
+      </div>
+
+      <div class="tab-content tab-content--active" id="tab-moves">
+        <div class="move-list" id="move-list" style="padding:10px 14px;"></div>
+      </div>
+
+      <div class="tab-content" id="tab-chat">
+        <div class="chat-panel">
+          <div class="chat-messages" id="chat-messages"></div>
+          <div class="chat-input" id="chat-input-wrapper">
+            <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
+              maxlength="500" autocomplete="off" />
+            <button id="btn-send" type="button" data-i18n="room.btn_send">Gửi</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-users">
+        <div id="users-panel" class="users-panel">
+          <ul id="users-list" class="users-list"></ul>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+</main>
+
+<div class="match-result-overlay" id="match-result-overlay">
+  <div class="match-result-card">
+    <i class="match-result-card__icon ph-bold ph-flag-checkered" id="match-result-icon"></i>
+    <div class="match-result-card__title" id="match-result-title"></div>
+    <div class="match-result-card__sub" id="match-result-sub"></div>
+    <a class="btn btn-confirm" id="match-result-back" href="#" data-i18n="tmatch.back_to_tournament">Quay lại giải đấu</a>
+  </div>
+</div>
+
+<!-- Between-games transition (TODO.md #50 — a game inside a series ended but
+     the pairing isn't decided yet). Same visual treatment as the final
+     result overlay, and auto-hides once the next game's tmatch:init arrives.
+     TODO.md #62: check-in for the next game happens right here (a "Sẵn sàng"
+     button emitting the same tournament:ready event tournament-detail.js
+     uses) instead of sending players back to the tournament page — the
+     server-side Ready<->InProgress state machine (PairingLifecycle.js) is
+     unchanged, this only adds a second UI entry point into it. -->
+<div class="match-result-overlay" id="series-transition-overlay">
+  <div class="match-result-card">
+    <i class="match-result-card__icon ph-bold ph-flag-checkered" id="series-transition-icon"></i>
+    <div class="match-result-card__title" id="series-transition-title"></div>
+    <div class="match-result-card__sub" id="series-transition-sub"></div>
+    <button class="btn btn-confirm" id="series-transition-ready-btn" type="button" data-i18n="tmatch.series_ready_btn">Sẵn sàng</button>
+    <div class="start-modal__waiting" id="series-transition-waiting" style="display:none;"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<!-- TODO.md #74: tournament matches never loaded this, so had no move/win/
+     lose/timer sound at all despite tournament-match.js calling audioManager
+     the same way room-socket.js does. -->
+<script src="js/audio-manager.js?v=95"></script>
+<script type="module" src="js/tournament-match-entry.js?v=95"></script>
+</body>
+</html>

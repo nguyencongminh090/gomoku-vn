@@ -1,5 +1,10 @@
 # Phần A #1. TLS/HTTPS trước app (review 3.0) — Nghiêm trọng nếu đang chạy HTTP trần
 
+**Trạng thái:** ✅ đã xong (2026-08-02) — xem chi tiết bên dưới. Đánh dấu lại
+2026-08-08 để đồng bộ với `TODO.md` (index trước đó thiếu `✅` dù mục này đã
+xong từ lâu — sync bug theo rule "Index/detail sync" trong `CLAUDE.md`, không
+phải thay đổi nội dung).
+
 **Nguồn:** `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
 
 

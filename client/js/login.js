@@ -7,7 +7,8 @@
  *   - Tab switching (Đăng nhập / Đăng ký)
  *   - Client-side field validation with Vietnamese messages
  *   - API calls to /api/auth/{login,register,guest}
- *   - Store JWT in localStorage, redirect to index.html on success
+ *   - Start a session (the server sets an HttpOnly cookie), redirect to
+ *     index.html on success
  */
 
 // ---------------------------------------------------------------------------
@@ -19,16 +20,19 @@ const API_BASE = '';   // Same origin
 // Redirect if already logged in
 // ---------------------------------------------------------------------------
 (function checkExistingSession() {
-  const token = localStorage.getItem('gvn_token');
-  // A kicked tab no longer wipes the shared gvn_token (see socket-client.js —
-  // it's shared across all tabs, and clearing it here would falsely log out
-  // sibling tabs). So this tab's own token may still be present even though
-  // it just got kicked; skip the auto-bounce in that one case so the
-  // kicked-notice below actually gets a chance to render instead of
-  // silently reconnecting (and immediately re-kicking whichever tab is
-  // still active).
-  if (token && !sessionStorage.getItem('gvn_kicked_notice')) {
-    // Quick sanity check — don't bother decoding, server will reject if expired
+  // A kicked tab no longer wipes the shared profile cache (see
+  // socket-client.js — localStorage is shared across all tabs, and clearing it
+  // here would falsely log out sibling tabs). So this tab may still look
+  // signed in even though it was just kicked; skip the auto-bounce in that one
+  // case so the kicked-notice below gets a chance to render instead of
+  // silently reconnecting (and immediately re-kicking whichever tab is still
+  // active).
+  //
+  // Since TODO.md #68 this cannot check the credential itself — it is an
+  // HttpOnly cookie. Bouncing to index.html on a believed session is safe
+  // regardless: if the cookie is dead, the socket handshake there rejects it
+  // and sends the user straight back here.
+  if (window.GvnSession.hasBelievedSession() && !sessionStorage.getItem('gvn_kicked_notice')) {
     window.location.replace('index.html');
   }
 })();
@@ -135,6 +139,9 @@ async function apiPost(endpoint, body) {
   const res = await fetch(`${API_BASE}/api/auth/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    // The session arrives as a Set-Cookie header, so the response's cookie
+    // must actually be accepted and stored (TODO.md #68).
+    credentials: 'same-origin',
     body: JSON.stringify(body),
   });
   const data = await res.json();
@@ -162,11 +169,15 @@ function errorMessage(data, fallbackKey) {
 }
 
 // ---------------------------------------------------------------------------
-// Save JWT and redirect to lobby
+// Redirect to lobby.
+//
+// There is nothing to save here any more (TODO.md #68): the credential went
+// into an HttpOnly cookie the server set on this response, which JavaScript
+// cannot see. All that gets cached is the non-secret profile the UI paints
+// with, and even that is re-asserted by the server on every socket connect.
 // ---------------------------------------------------------------------------
-function onAuthSuccess(token, displayName) {
-  localStorage.setItem('gvn_token', token);
-  localStorage.setItem('gvn_display_name', displayName);
+function onAuthSuccess(data) {
+  if (data && data.user) window.GvnSession.setUser(data.user);
   window.location.replace('index.html');
 }
 
@@ -238,7 +249,7 @@ formLogin.addEventListener('submit', async (e) => {
     });
 
     if (ok) {
-      onAuthSuccess(data.token, data.displayName);
+      onAuthSuccess(data);
     } else {
       showAlert(errorMessage(data, 'login.err_login_fail'));
     }
@@ -264,7 +275,7 @@ formRegister.addEventListener('submit', async (e) => {
     });
 
     if (ok) {
-      onAuthSuccess(data.token, data.displayName);
+      onAuthSuccess(data);
     } else {
       showAlert(errorMessage(data, 'login.err_register_fail'));
     }
@@ -281,7 +292,7 @@ btnGuest.addEventListener('click', async () => {
   try {
     const { ok, data } = await apiPost('guest', {});
     if (ok) {
-      onAuthSuccess(data.token, data.displayName);
+      onAuthSuccess(data);
     } else {
       showAlert(errorMessage(data, 'login.err_guest_fail'));
     }
@@ -351,7 +362,7 @@ window.togglePassword = function(btn) {
         <line x1="1" y1="1" x2="23" y2="23"></line>
       </svg>
     `;
-    btn.setAttribute('aria-label', t('login.hide_password') || 'Ẩn mật khẩu');
+    btn.setAttribute('aria-label', t('login.hide_password'));
   } else {
     btn.innerHTML = `
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
@@ -359,6 +370,6 @@ window.togglePassword = function(btn) {
         <circle cx="12" cy="12" r="3"></circle>
       </svg>
     `;
-    btn.setAttribute('aria-label', t('login.show_password') || 'Hiện mật khẩu');
+    btn.setAttribute('aria-label', t('login.show_password'));
   }
 };

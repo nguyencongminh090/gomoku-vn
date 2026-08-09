@@ -940,12 +940,23 @@ class BoardRenderer {
     const br2 = 2;
     const GAP = 1;
 
-    // WCAG-derived neutral palette — theme-aware, sourced from --board-wall-*
+    // WCAG-derived neutral palette. Paper/caro mode stays theme-aware
+    // (sourced from --board-wall-*, unchanged). Stone mode uses its own
+    // fixed warm-stone palette instead — the cool neutral gray from the
+    // theme vars read as foreign against the locked kaya-wood background,
+    // so this is solved the same way the wood tone itself was: contrast(
+    // L_board, L_x) = C against the locked board's relative luminance
+    // (#b58a40 → 0.2837), same warm hue family as the board (28° vs the
+    // board's 38°) but desaturated toward stone. Darker tones step up in
+    // target contrast (mortar 4.5:1, dark 3.8:1, base 3.0:1 — grout reads
+    // darkest, brick body lightest of the three) and the highlight is
+    // solved in the *lighter* direction (1.8:1) as a subtle stone sheen.
     const theme = this._theme;
-    const BLOCK_MORTAR = `rgb(${theme.wallMortarRgb})`;
-    const BLOCK_DARK   = `rgb(${theme.wallDarkRgb})`;
-    const BLOCK_BASE   = `rgb(${theme.wallBaseRgb})`;
-    const BLOCK_LIGHT  = `rgb(${theme.wallLightRgb})`;
+    const isStone = this.displayMode === 'stone';
+    const BLOCK_MORTAR = isStone ? '#2f2a26' : `rgb(${theme.wallMortarRgb})`;
+    const BLOCK_DARK   = isStone ? '#3b3631' : `rgb(${theme.wallDarkRgb})`;
+    const BLOCK_BASE   = isStone ? '#4c453e' : `rgb(${theme.wallBaseRgb})`;
+    const BLOCK_LIGHT  = isStone ? '#c9c3bd' : `rgb(${theme.wallLightRgb})`;
 
     const PALETTE = [
       BLOCK_DARK, BLOCK_DARK, BLOCK_DARK,

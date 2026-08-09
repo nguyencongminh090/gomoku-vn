@@ -13,6 +13,34 @@
 - **Append:** write one new detail file, then add one new line/row to the matching index. Never re-open or edit an existing detail file's content when adding unrelated history (this is what makes `docs/fix-log.md`'s append-only rule, below, cheap to honor: a new fix is a new file, not an edit to a shared one).
 - This changes *where* content lives, not the rules governing it — the "read the matching `instruction.md` entry", "`docs/fix-log.md` is append-only", and "`TODO.md`/`instruction.md` pairing" rules below still apply verbatim, just resolved through the index → detail-file indirection.
 
+## Index/detail sync: status markers move together, in one edit
+
+`TODO.md` marks a finished item with a leading `✅` on its index line; the matching
+`docs/todo/<CODE>-<slug>.md` detail file marks the same fact with its own `**Trạng thái:** ✅ ĐÃ
+XONG` (or `✅ đã xong`) line plus the implementation/test summary. These two markers describe the
+same underlying fact and must never be updated one without the other:
+
+- **Finishing a task = one edit that touches both files.** Write the detail file's `Trạng thái`
+  line (with the summary, test results, verification notes) *and* prefix the corresponding index
+  line in `TODO.md` with `✅ ` in the same turn. Neither file is "the real one" — an index line
+  without a matching detail-file status, or a detail file marked done with no `✅` in the index, is
+  a drift bug, not a style choice.
+- **Before telling the user a task is/isn't done, read both** — the index line's `✅` and the
+  detail file's `Trạng thái` — rather than trusting either alone. If they disagree, that's a
+  sync bug to fix (bring the index in line with the detail file's actual status, since the detail
+  file carries the evidence — test output, verification notes — the index line doesn't), not
+  something to silently pick a side on.
+- **Quick consistency check across all items:**
+  ```
+  grep -oP '^\- (✅ )?\*\*#\S+' TODO.md
+  grep -rl '✅ ĐÃ XONG\|✅ đã xong' docs/todo/
+  ```
+  Cross-reference the two: every detail file with a done marker should have a `✅`-prefixed index
+  line, and vice versa. Run this after any batch status update, not just after a single item.
+- This applies to `TODO.md` ↔ `docs/todo/*.md`. `instruction.md` ↔ `docs/instruction/*.md` doesn't
+  carry a done/not-done marker (it's execution guidance, not a status tracker), so nothing to sync
+  there beyond the existing "read the matching entry before implementing" rule.
+
 ## Cache-busting version bump
 
 All CSS and JS assets are cache-busted with a shared `?v=N` query string. This appears in two kinds of places, and **both must be covered by every bump** — a rule that only names one of them (as this section used to) will keep missing the other:
@@ -51,6 +79,9 @@ When fixing a reported bug or issue:
 - **Merge to `main` only once the fix is verified** (tests green, matches the guidance in `instruction.md` for that item if any exists). Use a regular merge commit (not squash, not rebase) so the branch's commit stays traceable back to the fix.
 - **After merging, delete the branch** (`git branch -d fix/...`) unless told to keep it around for further review.
 - This applies to actual code fixes. Doc-only updates (`TODO.md`/`docs/todo/*.md`, `instruction.md`/`docs/instruction/*.md`, `CLAUDE.md`, `docs/fix-log.md`/`docs/fix-log/*.md` entries written on their own) can still go straight to `main`, same as before — they aren't code changes that need isolated testing on a branch.
+- **Exception: a fix for code that only exists on `dev`** (i.e. the buggy code was introduced by a `feature/*` branch already merged into `dev` but not yet merged into `main`) **branches off `dev` and merges back into `dev`, not `main`** — branching off `main` would have nothing to fix, since `main` never had the buggy code in the first place. Naming/one-commit/delete-after-merge conventions are unchanged, only the base/target branch flips from `main` to `dev`. Precedent: `fix/tournament-match-board-size` (TODO.md #49, commit `b31bc78`/merge `fb1cc6c`) fixed a CSS bug in `tournament-match.html`, which at the time existed only on `dev` (from the still-unmerged B48 tournament feature).
+- **Exception: a fix whose `TODO.md`/`instruction.md` tracking entry only exists on `dev`** (even when the underlying code bug is identical on both branches) **also branches off `dev` and merges back into `dev`, not `main`.** `main`'s `TODO.md`/`instruction.md` lag `dev`'s significantly (as of 2026-08-08, `main`'s `TODO.md` stops around #50 while `dev`'s is past #66) — doc-only commits are *allowed* to go straight to `main` per the bullet above, but in practice haven't been kept in sync every time, so don't assume a tracked item's index/detail files exist on `main` just because the rule says they're allowed to. **Check first**: `git show main:TODO.md | grep '#<N>'` (or the equivalent `docs/todo/<CODE>-*.md` path) before picking the base branch. If the entry is missing on `main`, branch off `dev` instead — branching off `main` would implement the code fix correctly but leave the index line/detail-file status update with nowhere to land. Precedent: `fix/auth-cache-control-no-store` (TODO.md #66) — `server/routes/auth.js` had the identical bug on both branches, but `#66`'s tracking docs existed only on `dev`.
+- **`main` is branch-protected on GitHub as of 2026-08-08**: PRs required to merge (even for admins), force-push and branch deletion disabled. A local `git push origin main` (or pushing a local merge commit directly) **will be rejected** — merging a `fix/*` branch (or a `dev` → `main` checkpoint merge) now requires `gh pr create --base main --head <branch>` followed by `gh pr merge --merge` (regular merge, not squash/rebase, matching the "regular merge commit" convention above) once the PR is confirmed with the user. `dev` itself is **not** protected — `feature/*` → `dev` and `fix/*` → `dev` merges are unaffected and still use a local merge commit as described elsewhere in this section.
 
 ## Git workflow: `dev` branch for new features (as of 2026-08-04)
 
@@ -60,9 +91,45 @@ Bugfixes keep using the `fix/<slug>` workflow above unchanged (short-lived branc
 - **Each new feature idea gets its own `feature/<short-kebab-slug>` branch, branched off `dev`** (not off `main`) — e.g. `feature/spectator-mode`. Multiple `feature/*` branches can be in flight at once; they don't need to merge together or in any particular order.
 - **A `feature/*` branch merges into `dev` only when that specific idea is working/ready.** Use a regular merge commit (not squash, not rebase), same as the `fix/*` convention. Other `feature/*` branches are unaffected by this — that's the point of keeping them separate.
 - **An abandoned or shelved idea's branch is just left alone or deleted** — since `dev` never saw it, nothing needs to be reverted or cleaned up elsewhere.
-- **`dev` merges into `main` periodically**, as a deliberate checkpoint (e.g. once a batch of features is stable and tested), not automatically on every feature merge. This keeps `main` deployable at all times.
+- **`dev` merges into `main` periodically**, as a deliberate checkpoint (e.g. once a batch of features is stable and tested), not automatically on every feature merge. This keeps `main` deployable at all times. Since `main` is branch-protected (see the "one fix, one branch, one commit" section above), this checkpoint merge goes through a PR (`gh pr create --base main --head dev` + `gh pr merge --merge`), not a local push.
 - **After a `feature/*` branch merges into `dev`, delete it** (`git branch -d feature/...`), same as the `fix/*` cleanup rule, unless told to keep it for further review.
 - New feature work discovered mid-conversation still follows the "New requirements/tasks: stack, don't perform directly" rule below — record it in `TODO.md`/`instruction.md` first unless the user explicitly asks to implement it now, at which point it starts life as a `feature/*` branch off `dev` per this rule.
+
+## Concurrent sessions sharing the repo: check `git stash list` before assuming lost work
+
+The user may run multiple Claude Code sessions against this repo at once (e.g. one fixing a bug
+while another builds a feature in an isolated `git worktree`). Setting up a new session's worktree
+briefly touches the *main* checkout's `HEAD` — if another session has uncommitted edits sitting there
+at that exact moment, they can vanish from the working tree mid-task.
+
+Precedent (2026-08-08, TODO.md #74): mid-implementation, `grep`/`git diff` suddenly came up empty for
+code just written. `git reflog` showed an unexplained `checkout`/`reset` pair. The instinctive read —
+"a destructive `git reset --hard` from nowhere wiped my work" — was wrong and led to redoing the
+entire edit from scratch before checking further. The actual cause, found afterward: a second,
+concurrent session was being moved into its own `git worktree` (`git worktree list` showed it, on its
+own branch, in a separate path), and something stashed the first session's dirty working tree
+(`git stash list` → `stash@{0}`, labeled `wip: <branch> before switching for <other task>`) rather
+than destroying it. The reflog's `reset: moving to HEAD` line is exactly what `git stash` produces —
+easy to misread as `reset --hard` if you don't check the stash list first.
+
+**If uncommitted edits appear to have vanished mid-task** (a file you just wrote no longer contains
+the change, `git status`/`git diff` shows less than expected):
+- **Run `git stash list` before redoing anything.** If the missing edits are there, `git stash show
+  -p stash@{N}` to confirm content, then `git stash pop` (or apply and drop once merged) instead of
+  retyping the work.
+- **Run `git worktree list` and `git reflog`** to understand whether a concurrent session's worktree
+  setup caused it — a `checkout`/`reset` pair around the loss, paired with a branch you don't
+  recognize appearing in `git branch -vv` (marked `+`, pointing at a path outside this repo's own
+  directory), is the signature of this scenario specifically, not of a destructive command this
+  session ran.
+- **After recovering (or redoing) the work, drop the now-superseded stash entry** once it's confirmed
+  merged/committed, rather than leaving stale stashes to accumulate and confuse future recovery
+  attempts — but confirm with the user first per the general "ask before destructive-ish actions"
+  rule, since a stash isn't code but is still work product.
+- **This is not corruption.** `git fsck` after such an incident is a reasonable sanity check (verifies
+  no commit objects are actually damaged) but is not itself evidence anything went wrong — repos
+  normally carry unreachable objects from ordinary history rework (rebases, amends, `filter-branch`),
+  and a large `git fsck --unreachable` count on its own means nothing.
 
 ## `features/<slug>/`: pre-implementation feature discussion folders
 
@@ -103,6 +170,55 @@ When the user raises a new requirement, feature request, or task during a conver
 - **Only perform the task directly if the user explicitly requires it now** (e.g. "do this now", "implement this", "fix it" — a direct ask for action rather than just describing a problem or idea).
 - This is about triage of new work, not about re-litigating tasks already in progress or already explicitly assigned in the current turn.
 
+## Security findings: verify against current code before filing
+
+When triaging a security report (an audit, pentest note, CVE, or similar external write-up — not a
+bug the user reproduced themselves) into `TODO.md`/`instruction.md` per the "New requirements/tasks"
+rule above:
+
+- **Verify each claimed finding against the current code/config before filing it** — don't transcribe
+  the report's claims as fact. Reports can be stale or simply wrong about what the code does.
+  Precedent: `network_security_audit.md` (2026-08-08) claimed Helmet has no HSTS header by default;
+  it does — the report was wrong, and the filed item (`TODO.md` #67) was rewritten to say so and to
+  ask for a real measurement, not to blindly implement the report's suggested fix.
+- **Check whether a prior review already covered or explicitly ruled out the same finding** (e.g. a
+  `docs/todo/<CODE>-*.md` "Ngoài phạm vi" section) before filing it again as new work — link back to
+  that entry instead of duplicating it.
+- **A finding that turns out to be a deliberate, already-documented design tradeoff gets closed as
+  such, not filed as new work** — same precedent as `#63` (Standings score, closed "không phải bug"
+  after checking against real Swiss/FIDE rules).
+
+## Root-cause diagnosis: check the layer below the symptom before calling a bug fixed
+
+`docs/fix-log.md`'s history has a recurring shape: an early fix patches the layer where the symptom
+is *visible* (a UI overlay, a debounce timer, a policy header), ships, and then the same bug
+resurfaces from the layer where it actually *lives* (proxy/infra, wire payload shape, build
+artifact, module resolution) — sometimes 2-6 iterations later. Confirmed precedents already in the
+fix-log:
+
+- Chat XSS: 3 rounds before the fix landed on "escape on the wire, decode only at the `textContent`
+  render site" (`docs/fix-log/2026-08-02-todo-15-follow-up-carved-out-of-the.md`) — the first fix
+  addressed encoding, not where/how the escaped text got displayed.
+- Room/IP quota: 6 rounds before finding `socket.handshake.address` is always `127.0.0.1` behind the
+  Cloudflare Tunnel — see [[A67]]/`§44` and `getClientIp()` reading `CF-Connecting-IP`. Early fixes
+  patched the room UI, not the IP the quota logic was actually reading.
+- CSP/production build: CSP headers landed correct, then a follow-up found `dist/` itself was stale
+  and still shipping the vulnerable HTML (TODO.md #65 "production build gaps" follow-up) — the fix
+  was correct in `client/`, but nothing verified the *built* artifact matched.
+- `?v=N` cache-busting: this is exactly why the "Cache-busting version bump" rule above lists ES
+  cross-imports as a separate bullet — the first version of that rule only named entry files, and
+  the same duplicate-module bug shipped twice before the rule (and its verification grep) covered
+  every import site.
+
+When a fix's symptom keeps recurring after being "fixed," or a fix touches only the layer where the
+bug is *observed* (client rendering, a timing knob, a config flag) without touching the layer that
+*produces* the value being observed (server logic, wire format, infra/proxy behavior, the actual
+built/deployed artifact) — treat that as a signal the root cause hasn't been found yet, not as a
+reason to add another patch on the same layer. Trace the value back to where it originates before
+writing the fix, and verify the fix against production-shaped conditions (behind the real proxy,
+against the real build output) when the layer in question could plausibly differ between dev and
+prod — not just against local dev behavior.
+
 ## Writing comprehensive test cases
 
 When writing unit tests for a fix or feature (per the "Bug-fix workflow" rule above), don't stop at one obvious happy-path test — build coverage deliberately:
@@ -117,6 +233,39 @@ When writing unit tests for a fix or feature (per the "Bug-fix workflow" rule ab
 
 This is additive to, not a replacement for, the existing rule that every unit test written to verify a fix stays permanently in the suite.
 
+## Feature completion checklist: test both layers, verify UX before calling it "done"
+
+Extends the "Writing comprehensive test cases" rule above from bug fixes to full feature
+development. A feature is not "done" just because its backend unit tests are green. Precedent:
+B50 (tournament match series) shipped marked "Trạng thái: đã xong" with 806 passing backend tests,
+then generated four follow-up bug reports (`TODO.md` #52-#55) — the organizer-facing config UI was
+never built (#53), a client-side setting was never wired into the feature (#55), the overall layout
+was never reviewed as a whole (#52), and a navigation link lost tab context (#54). All four were
+gaps a backend-only test pass structurally cannot catch. Prevent this recurrence on every feature
+that touches both `server/` and `client/`:
+
+- **Verify both layers, not just the one with test infrastructure.** Backend (`server/`) gets Jest
+  unit tests per "Writing comprehensive test cases" above. Frontend (`client/`) currently has no
+  automated test runner — that does not mean skip it: verify the frontend by actually driving the
+  feature in a real browser (via the `run` skill, or manual Playwright per the e2e/db-safety rules
+  below) end-to-end, starting from the entry point a real user would use (a form, a button, a
+  settings panel) through to the visible result. Server-side test output alone is not frontend
+  verification, even when the frontend code loads without console errors.
+- **Check that every user-facing control the feature's design calls for actually exists in the
+  DOM/UI**, not just that the backend accepts the data it would send. (Exactly what #53 missed: the
+  backend fully accepted `seriesMode`, but no input for it was ever added to the create-tournament
+  modal, so nothing could ever send it.)
+- **Assess the user flow's complexity before calling a feature done**: how many steps/clicks does a
+  real user take, is the flow easy to follow or does it assume the user already understands
+  internals, and does a setting configured elsewhere (e.g. the global Settings panel) actually carry
+  through into this feature's screens the way a user would expect (exactly what #55 missed — the
+  click-mode setting saves correctly but silently never applied inside the tournament match screen).
+  Prefer running the `ux-audit` skill (or an equivalent live walkthrough covering both desktop and
+  mobile) as part of finishing a feature, not only after a user reports confusion.
+- This checklist gates marking a feature's tracked-work entry (`docs/todo/<CODE>-*.md`) as
+  "Trạng thái: đã xong" — do not mark a feature done off backend test output alone when it has a
+  `client/` surface.
+
 ## Playwright/e2e testing: never run against the real user database
 
 `server/db/database.js`'s `DB_PATH` is hardcoded to `server/db/gomoku.db` — there is no `NODE_ENV`/env-var override, so simply running `node server/index.js` (as Playwright's `baseURL` expects a live server at `localhost:3000`) reads and writes the same database file a real deployment or the user's own local dev session uses. Guest game sessions completing a game (resign, draw, timeout, five-in-a-row) call `database.saveGame()` and *do* persist rows there.
@@ -130,6 +279,82 @@ Whenever you need a real running server for Playwright (`npx playwright test`, `
 5. **Always kill every server process you started for this**, even ones from earlier failed attempts — a leftover `node server/index.js` left running against the real db defeats the whole point of steps 1-3.
 
 This applies any time you start `server/index.js` yourself for verification. It does not apply to `npm test` (Jest unit tests already mock or use in-memory SQLite, never this file) or to a server the user themselves is already running for their own dev/deployment use — never restart or interfere with a server process you didn't start.
+
+## Playwright browser binaries: never run `npx playwright install` speculatively
+
+The machine's Playwright browser binaries live at `~/.local/share/ms-playwright/` (not the
+library's built-in default of `~/.cache/ms-playwright/`), pinned there via
+`PLAYWRIGHT_BROWSERS_PATH` set in both `~/.bashrc` and, as of 2026-08-09, system-wide in
+`/etc/environment`.
+
+**Correction (2026-08-09, same day): `/etc/environment` does NOT reliably reach an
+already-running agent/tool shell.** `/etc/environment` is read by PAM at *session start* (login,
+new SSH connection, fresh terminal after reboot) — a shell process that was already running
+before the file was added (e.g. this harness's persistent Bash tool shell, or a VSCode-extension
+-hosted terminal opened earlier) keeps whatever environment it started with and never re-reads
+`/etc/environment` later. Confirmed same-day: `echo $PLAYWRIGHT_BROWSERS_PATH` came back empty in
+the actual Bash tool shell despite the file being correctly set, and `chromium.launch()` failed
+looking in the wrong (`~/.cache/...`) path as a result. **Don't assume propagation — verify it in
+the shell you're about to use, every time**, and don't treat "the user restarted/rebooted since"
+as a substitute for checking: `echo $PLAYWRIGHT_BROWSERS_PATH` right before the command that needs
+it.
+
+**Never run `npx playwright install` (or `install chromium`/`firefox`/`webkit`) as a defensive or
+"just in case" step before an e2e run.** Precedent (2026-08-09): an agent ran it speculatively
+before a Playwright session in an environment where `PLAYWRIGHT_BROWSERS_PATH` hadn't propagated
+yet (pre-`/etc/environment` fix), so Playwright silently fell back to its built-in default path
+and downloaded a full second copy of chromium/headless_shell/ffmpeg (~656MB) into
+`~/.cache/ms-playwright/`, duplicating what already existed at the correct location. That stray
+copy was found and deleted (`rm -rf ~/.cache/ms-playwright`) after the fact.
+
+- **Check first, don't install first**: `ls ~/.local/share/ms-playwright/` (or
+  `npx playwright install --dry-run chromium` if unsure) to confirm the browser revision your
+  `@playwright/test` version needs is already present, before ever invoking `install`.
+- If a binary genuinely is missing, confirm `echo $PLAYWRIGHT_BROWSERS_PATH` resolves to
+  `~/.local/share/ms-playwright` in the actual shell that will run `install` before running it —
+  do not assume env propagation, since non-interactive/non-login shells (`bash -c "..."`, which is
+  how tool-invoked commands typically run) do not source `~/.bashrc` at all, only
+  `/etc/environment` reaches them (and only after the shell's session/login was started after the
+  var was added).
+- If `~/.cache/ms-playwright/` ever reappears, that's the signal this happened again — investigate
+  which shell/tool bypassed `PLAYWRIGHT_BROWSERS_PATH` rather than just deleting it silently.
+- **If `$PLAYWRIGHT_BROWSERS_PATH` is empty in the shell you're about to run Playwright in, do
+  NOT run `npx playwright install` to "fix" it and do NOT ask the user to reboot.** Just prefix
+  the one command that needs it: `PLAYWRIGHT_BROWSERS_PATH=/home/ngmint/.local/share/ms-playwright
+  node your-script.js`. This is a one-command workaround, not a system fix — it doesn't change the
+  shell's persisted environment, so check again (`echo $PLAYWRIGHT_BROWSERS_PATH`) at the start of
+  a *different* session before assuming it carried over. A reboot (or any fresh login/terminal
+  session started after `/etc/environment` was set) does fix it permanently for that new session,
+  but is the user's call to do, never something to request or wait on mid-task — the prefix
+  workaround is always available and unblocks the current task immediately.
+
+## Playwright/e2e: authenticated pages need the real login UI flow, not just an API cookie
+
+`client/js/session.js`'s `requireAuth()` (called at the top of every page that needs a session,
+e.g. `tournament.html`) does not trust the session cookie alone — the cookie is HttpOnly and
+therefore unreadable client-side, so `requireAuth()` instead checks a `gvn_user` flag in
+`localStorage`, which is only ever set by the login page's own JS (`client/js/login.js`) after a
+successful login/guest click, via `onAuthSuccess()`. **A Playwright script that logs a guest in via
+a raw `context.request.post('/api/auth/guest')` call gets a valid cookie in the browser context,
+but `localStorage.gvn_user` is still unset — every `requireAuth()`-gated page will `location.replace`
+straight to `login.html`, even though the cookie itself is perfectly valid.**
+
+Drive the actual UI instead: `page.goto('/login.html')` → `page.click('#btn-guest')` (or fill+submit
+the real login form for a registered account) → wait for the redirect away from the login page →
+*then* navigate to the page under test. This is also the more faithful test regardless (it's what a
+real user does), and it's the same amount of code as the raw-API shortcut once you factor in the
+`localStorage` gap.
+
+**Seeding data for a page like this beyond what the UI can practically create** (e.g. 20+ rows to
+prove pagination, which nobody creates by hand through the UI): drive the *real* create/register/
+start flow once via a small `socket.io-client` script (not the browser) to get real, FK-valid ids
+(tournament id, pairing id, entry ids — `tournament_games` has `foreign_keys = ON` enforced FKs
+into `tournaments`/`tournament_pairings`/`tournament_players`), then bulk-insert the remaining rows
+directly via `sqlite3`/`python3 sqlite3` using those real ids. Trying to fabricate a whole
+tournament/pairing/entry graph by hand to satisfy the FKs (to skip the socket step) is much more
+work and easy to get subtly wrong against `TournamentManager._hydrateTournament()`'s expectations;
+letting the real server generate the parent rows and only bulk-seeding the leaf table is far less
+fragile. Precedent: TODO.md #84 (games-history pagination) verification, 2026-08-09.
 
 ## Short/underspecified prompts: enhance, confirm, then execute
 

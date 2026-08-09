@@ -52,3 +52,38 @@ người dùng báo cáo dù không cùng file:
   live server + trận đấu thật để screenshot.
 - Xem `docs/instruction/B49-...md` để biết hướng tiếp cận đề xuất và ranh giới không
   nên đụng.
+
+## Trạng thái: đã xong (2026-08-06)
+
+Áp dụng 2 phần đề xuất trong `instruction.md` (bỏ `max-width: 640px`, đồng bộ breakpoint
+900px→768px). Kiểm chứng bằng trình duyệt thật (bắt buộc theo `instruction.md`) — dựng
+một trận đấu giải đấu thật end-to-end qua `socket.io-client` (tạo giải đấu → đăng ký 2
+guest → start → report/confirm/ready → `InProgress`), rồi mở `tournament-match.html`
+thật bằng Playwright/Chromium với token phiên hợp lệ — phát hiện 2 phần sửa trên **chưa
+đủ**: bàn cờ vẫn cố định ~246×246px ở cả 1440px lẫn 800px.
+
+Nguyên nhân gốc thứ 3, quan trọng hơn 2 điểm đã nêu: `.board-area-shell` là con trực
+tiếp của `.match-board-wrap` (`display:flex; flex-direction:column; align-items:center`).
+Ở `room.html`, `.board-area-shell` tương đương lại là grid item của `.room`
+(`display:grid`), có `align-self:stretch` mặc định nên nhận đủ chiều rộng cột để
+`resize()` tính toán. Trong `.match-board-wrap`, `align-items:center` khiến
+`.board-area-shell` co lại theo kích thước nội dung (kích thước canvas mặc định rất
+nhỏ) — `resize()` đọc lại `clientWidth` nhỏ đó và bàn cờ giữ nguyên nhỏ bất kể màn hình
+rộng bao nhiêu. Sửa bằng một rule phạm vi hẹp:
+`.match-board-wrap > .board-area-shell { align-self: stretch; width: 100%; }` (không
+đụng `align-items` chung của `.match-board-wrap` để `.match-clocks`/`.match-actions`
+vẫn được căn giữa như cũ).
+
+Kết quả đo được (canvas trước → sau, cùng trận đấu thật):
+- Desktop 1440px: 246px → **492px**
+- Tablet 800px: 246px → **408px**
+- Mobile 390px: 382px → 358px (đã đúng theo width từ trước, thay đổi nhỏ do đồng bộ
+  breakpoint)
+- Quét 769/800/850/900px: 377/408/458/508px — không còn khoảng trống/gãy layout.
+
+Không đụng `board.js`'s `resize()` (đúng ranh giới trong `instruction.md`) và không gộp
+sửa mục 3 (cột phải 300px vs `clamp(...)`) vì không đụng chung dòng CSS nào với 3 thay
+đổi trên. Không viết unit test (bug CSS/layout thuần, không có hạ tầng test layout —
+đúng theo `instruction.md`). `npm test`: 806/806 pass (không đổi, chỉ sửa CSS). Bump
+cache-bust `?v=63 → ?v=64`. Chi tiết đầy đủ:
+[docs/fix-log/2026-08-06-todo-49-tournament-match-board-too-small.md](../fix-log/2026-08-06-todo-49-tournament-match-board-too-small.md).

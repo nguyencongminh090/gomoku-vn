@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Tables &amp; Tournaments (mockup)</title>
+  <meta name="description" content="Front-end mockup only — not wired to the server. Static preview of the Tables &amp; Tournaments lobby redesign." />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- Reuses the real app's stylesheets so the mockup matches production tokens/components exactly. -->
+  <link rel="stylesheet" href="css/main.css?v=61" />
+  <link rel="stylesheet" href="css/lobby.css?v=61" />
+  <script>
+    (function() {
+      var storedTheme = localStorage.getItem('theme');
+      document.documentElement.setAttribute('data-theme', storedTheme ? storedTheme : 'light');
+    })();
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    /* ── Mockup-only styles: tab switcher, tournament cards, filter row ──── */
+    /* Not part of the shared client/css/ bundle — this page is a standalone
+       design preview, so these rules stay scoped here rather than bumping
+       the site-wide ?v= cache version for an unshipped prototype. */
+
+    .mock-banner {
+      background: var(--c-accent-light);
+      color: var(--c-ink);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 12px;
+    }
+
+    .section-tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .section-tabs__btn {
+      appearance: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--c-ink-2);
+      /* min-height 44px keeps this a valid touch target on mobile, per
+         touch-target-size guideline, without changing desktop density. */
+      min-height: 44px;
+      padding: 0 4px;
+      margin-right: 24px;
+      display: inline-flex;
+      align-items: center;
+      border-bottom: 2px solid transparent;
+      transition: color .15s ease, border-color .15s ease;
+    }
+    .section-tabs__btn:hover { color: var(--c-ink); }
+    .section-tabs__btn:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+    .section-tabs__btn.is-active {
+      color: var(--c-brand);
+      border-bottom-color: var(--c-brand);
+    }
+    .section-tabs__btn .ph { margin-right: 6px; font-size: 16px; vertical-align: -2px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.is-active { display: block; }
+
+    .filter-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filter-pill {
+      appearance: none;
+      background: var(--c-surface-2);
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 8px 14px;
+      min-height: 36px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-ink-2);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+    .filter-pill:hover { background: var(--c-border-light); }
+    .filter-pill:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
+    }
+    .filter-pill.is-active {
+      background: var(--c-brand-light);
+      color: var(--c-brand);
+      border-color: var(--c-brand);
+    }
+    .filter-spacer { flex: 1; }
+    .filter-select {
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--c-ink-2);
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      min-height: 36px;
+      cursor: pointer;
+    }
+    .filter-select:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
+    }
+
+    .tournament-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+      padding: 16px;
+    }
+    .tournament-card {
+      background: var(--c-surface);
+      border: 1px solid var(--c-border);
+      border-radius: 14px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: box-shadow .15s ease, transform .15s ease;
+      cursor: pointer;
+    }
+    .tournament-card:hover {
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+    .tournament-card:focus-visible {
+      outline: 2px solid var(--c-brand);
+      outline-offset: 2px;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .tournament-card,
+      .section-tabs__btn,
+      .filter-pill {
+        transition: none;
+      }
+      .tournament-card:hover { transform: none; }
+    }
+    @media (max-width: 480px) {
+      /* Filter pills and select need the full 44px touch target on small
+         screens even though 36px reads fine at desktop pointer precision. */
+      .filter-pill, .filter-select { min-height: 44px; }
+    }
+    .tournament-card__top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .tournament-card__name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--c-ink);
+      line-height: 1.3;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .badge--format {
+      background: var(--c-surface-2);
+      color: var(--c-ink-2);
+    }
+    .badge--live {
+      background: var(--c-success-bg);
+      color: var(--c-success);
+    }
+    .badge--upcoming {
+      background: var(--c-warning-bg);
+      color: var(--c-warning);
+    }
+    .badge--done {
+      background: var(--c-surface-2);
+      color: var(--c-ink-3);
+    }
+    .tournament-card__meta {
+      font-size: 13px;
+      color: var(--c-ink-2);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tournament-card__meta .ph { font-size: 14px; }
+    .tournament-card__status {
+      margin-top: 2px;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 10px;
+      border-top: 1px solid var(--c-border-light);
+    }
+    .tournament-card__status--your-turn { color: var(--c-brand); }
+    .tournament-card__status--waiting { color: var(--c-ink-3); font-weight: 600; }
+    .tournament-card__status--registered { color: var(--c-success); }
+
+    .empty-tournaments {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 64px 24px;
+      text-align: center;
+    }
+    .empty-tournaments .room-list__empty-text { margin-top: 14px; }
+  </style>
+</head>
+<body>
+
+<div class="mock-banner">
+  Front-end mockup only — static preview, not wired to the server. Branch: feature/tables-tournaments-mockup
+</div>
+
+<!-- ── Top Nav (identical to production) ───────────────────────────────── -->
+<nav class="topnav" role="navigation" aria-label="Điều hướng chính">
+  <a href="index.html" class="topnav__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
+    <span class="topnav__title">Play3CR</span>
+  </a>
+  <div class="topnav__right">
+    <span class="topnav__user">GrimLark</span>
+    <span class="topnav__badge">KHÁCH</span>
+  </div>
+</nav>
+
+<div class="lobby-layout">
+
+<main class="lobby" role="main">
+
+  <!-- ── Section switcher: Bàn chơi | Giải đấu ─────────────────────────── -->
+  <div class="section-tabs" role="tablist" aria-label="Chuyển đổi Bàn chơi / Giải đấu">
+    <button class="section-tabs__btn is-active" role="tab" aria-selected="true" data-tab="tables">
+      <i class="ph ph-grid-four"></i>Bàn chơi
+    </button>
+    <button class="section-tabs__btn" role="tab" aria-selected="false" data-tab="tournaments">
+      <i class="ph ph-trophy"></i>Giải đấu
+    </button>
+  </div>
+
+  <!-- ══════════════════════════ TAB: Bàn chơi (Tables) ══════════════════ -->
+  <div class="tab-panel is-active" id="panel-tables">
+    <div class="lobby__header">
+      <h1>
+        <span class="lobby__title">Danh sách phòng</span>
+        <span class="lobby__count">— 0</span>
+        <span class="lobby__count" style="margin-left:8px; color:var(--c-brand);">— 2 đang online</span>
+      </h1>
+      <div style="display:flex; gap:8px;">
+        <a href="history.html" class="btn-secondary" style="text-decoration:none;">
+          <i class="ph ph-clock-counter-clockwise" style="font-size: 16px;"></i>
+          <span>Lịch sử</span>
+        </a>
+        <button class="btn-create" type="button">
+          <i class="ph ph-plus-circle" style="font-size: 18px;"></i>
+          <span>Tạo phòng</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="ui-shell" style="width:100%;">
+      <div class="ui-core">
+        <div class="room-list">
+          <div class="room-list__empty">
+            <div class="room-list__empty-icon">
+              <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="56" height="56" rx="14" fill="var(--c-surface-2)"/>
+                <line x1="14" y1="14" x2="14" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="22" y1="14" x2="22" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="30" y1="14" x2="30" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="38" y1="14" x2="38" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="14" y1="14" x2="42" y2="14" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="14" y1="22" x2="42" y2="22" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="14" y1="30" x2="42" y2="30" stroke="var(--c-border)" stroke-width="1.5"/>
+                <line x1="14" y1="38" x2="42" y2="38" stroke="var(--c-border)" stroke-width="1.5"/>
+                <circle cx="22" cy="22" r="5.5" fill="var(--c-ink-2)"/>
+                <circle cx="30" cy="30" r="5.5" fill="var(--c-surface)" stroke="var(--c-border)" stroke-width="1.5"/>
+                <circle cx="38" cy="22" r="5.5" fill="var(--c-brand)" opacity="0.7"/>
+              </svg>
+            </div>
+            <span class="room-list__empty-text">Chưa có phòng nào.</span>
+            <span class="room-list__empty-sub">Hãy tạo phòng mới để bắt đầu!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ TAB: Giải đấu (Tournaments) ═════════════ -->
+  <div class="tab-panel" id="panel-tournaments">
+    <div class="lobby__header">
+      <h1>
+        <span class="lobby__title">Giải đấu</span>
+        <span class="lobby__count" style="color:var(--c-brand);">— 1 đang diễn ra</span>
+      </h1>
+      <div style="display:flex; gap:8px;">
+        <a href="#" class="btn-secondary" style="text-decoration:none;">
+          <i class="ph ph-clock-counter-clockwise" style="font-size: 16px;"></i>
+          <span>Lịch sử</span>
+        </a>
+        <button class="btn-create" type="button">
+          <i class="ph ph-plus-circle" style="font-size: 18px;"></i>
+          <span>Tạo giải đấu</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="ui-shell" style="width:100%;">
+      <div class="ui-core">
+
+        <div class="filter-row">
+          <button class="filter-pill is-active">Tất cả</button>
+          <button class="filter-pill">Sắp diễn ra</button>
+          <button class="filter-pill">Đang diễn ra</button>
+          <button class="filter-pill">Đã kết thúc</button>
+          <div class="filter-spacer"></div>
+          <select class="filter-select" aria-label="Lọc theo thể thức">
+            <option>Mọi thể thức</option>
+            <option>Swiss system</option>
+            <option>Round robin</option>
+            <option>Double Elimination</option>
+          </select>
+        </div>
+
+        <div class="tournament-grid">
+
+          <div class="tournament-card" tabindex="0" role="link" aria-label="Mùa hè 2026, thể thức Swiss, đang diễn ra, đến lượt bạn báo lịch thi đấu">
+            <div class="tournament-card__top">
+              <span class="tournament-card__name">Mùa hè 2026</span>
+              <span class="badge badge--format">Swiss</span>
+            </div>
+            <span class="badge badge--live" style="width:fit-content;">Đang diễn ra</span>
+            <div class="tournament-card__meta"><i class="ph ph-users-three"></i>8 / 16 người chơi</div>
+            <div class="tournament-card__meta"><i class="ph ph-user-circle"></i>Tổ chức bởi GrimLark</div>
+            <div class="tournament-card__status tournament-card__status--your-turn">
+              <i class="ph ph-hourglass-medium"></i>Đến lượt bạn — báo lịch thi đấu
+            </div>
+          </div>
+
+          <div class="tournament-card" tabindex="0" role="link" aria-label="Cúp tốc chiến, thể thức Double Elimination, sắp diễn ra, đã đăng ký">
+            <div class="tournament-card__top">
+              <span class="tournament-card__name">Cúp tốc chiến</span>
+              <span class="badge badge--format">Double Elim.</span>
+            </div>
+            <span class="badge badge--upcoming" style="width:fit-content;">Sắp diễn ra</span>
+            <div class="tournament-card__meta"><i class="ph ph-users-three"></i>4 / 8 người chơi</div>
+            <div class="tournament-card__meta"><i class="ph ph-user-circle"></i>Tổ chức bởi SlimFish</div>
+            <div class="tournament-card__status tournament-card__status--registered">
+              <i class="ph ph-check-circle"></i>Đã đăng ký
+            </div>
+          </div>
+
+          <div class="tournament-card" tabindex="0" role="link" aria-label="Giải giao hữu số 3, thể thức Round robin, đã kết thúc, hạng 3">
+            <div class="tournament-card__top">
+              <span class="tournament-card__name">Giải giao hữu #3</span>
+              <span class="badge badge--format">Round robin</span>
+            </div>
+            <span class="badge badge--done" style="width:fit-content;">Đã kết thúc</span>
+            <div class="tournament-card__meta"><i class="ph ph-users-three"></i>6 / 6 người chơi</div>
+            <div class="tournament-card__meta"><i class="ph ph-user-circle"></i>Tổ chức bởi GrimLark</div>
+            <div class="tournament-card__status tournament-card__status--waiting">
+              <i class="ph ph-medal"></i>Hạng 3
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Empty-state variant, for reference — hidden by default in this mockup -->
+    <!--
+    <div class="empty-tournaments">
+      <span class="room-list__empty-text">Chưa có giải đấu nào.</span>
+      <span class="room-list__empty-sub">Hãy tạo giải đấu mới để bắt đầu!</span>
+    </div>
+    -->
+  </div>
+
+</main>
+
+<!-- ── Online Users Sidebar (identical to production, persists across tabs) ── -->
+<aside class="lobby-sidebar">
+  <div class="online-panel">
+    <div class="online-panel__header">
+      <span class="online-panel__dot"></span>
+      <span class="online-panel__title">Đang online</span>
+      <span class="online-panel__count">2</span>
+      <span class="online-panel__arrow">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </span>
+    </div>
+    <div class="online-panel__body open">
+      <ul class="online-panel__list">
+        <li><span class="online-panel__dot"></span>GrimLark</li>
+        <li><span class="online-panel__dot"></span>SlimFish</li>
+      </ul>
+    </div>
+  </div>
+</aside>
+
+</div>
+
+<script>
+  // Mockup-only tab switching — no server calls, purely for design review.
+  document.querySelectorAll('.section-tabs__btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.section-tabs__btn').forEach(function(b) {
+        b.classList.remove('is-active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      btn.classList.add('is-active');
+      btn.setAttribute('aria-selected', 'true');
+
+      var target = btn.getAttribute('data-tab');
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('is-active'); });
+      document.getElementById('panel-' + target).classList.add('is-active');
+    });
+  });
+
+  document.querySelectorAll('.filter-pill').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.filter-pill').forEach(function(b) { b.classList.remove('is-active'); });
+      btn.classList.add('is-active');
+    });
+  });
+</script>
+</body>
+</html>

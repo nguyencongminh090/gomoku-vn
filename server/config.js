@@ -107,9 +107,25 @@ if (process.env.NODE_ENV !== 'test' && JWT_SECRET === 'gomokuvn-dev-secret-chang
     "  JWT_SECRET=$(node -e \"console.log(require('crypto').randomBytes(48).toString('base64url'))\") npm start"
   );
 }
+// JWT is no longer the session credential (TODO.md #68 — sessions now live in
+// the `sessions` table, browser holds an opaque id). These two remain ONLY for
+// the time-boxed migration path: POST /api/auth/upgrade-session still verifies
+// a legacy token issued before the switch, and verifySocketToken still accepts
+// one during the transition window. Delete both, and the jsonwebtoken
+// dependency on the auth path, once the window closes (see
+// features/jwt-httponly-cookie/planning.md step 12).
 const JWT_EXPIRY  = '7d';
 const JWT_GUEST_EXPIRY = '24h';
 const BCRYPT_ROUNDS = 12;
+
+// --- Sessions (TODO.md #68) ---
+// Same lifetimes the JWTs had, so the switch changes the mechanism without
+// silently changing how long people stay signed in.
+const SESSION_TTL_MS       = 7 * 24 * 60 * 60 * 1000;  // 7 days  — registered users
+const SESSION_GUEST_TTL_MS = 24 * 60 * 60 * 1000;      // 24 hours — guests
+const SESSION_COOKIE_NAME  = 'gvn_session';
+// Expired rows do not disappear on their own the way an expired JWT does.
+const SESSION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;      // hourly
 
 // --- Guest name generation ---
 // All words 3-5 letters so combined name is 4-8 letters total.
@@ -143,6 +159,25 @@ const LISTEN_BACKLOG = parseInt(process.env.LISTEN_BACKLOG, 10) || 4096;
 const MAX_EVENTS_PER_SECOND = 50; // Socket flood protection
 const FLOOD_DISCONNECT_STREAK = 5; // Consecutive over-limit 1s windows before force-disconnect
 
+// --- Tournament (features/tournament/, TODO.md #48) ---
+const TOURNAMENT_FORMATS = ['swiss', 'round_robin', 'double_elim'];
+// Per-match scheduling deadline (decision 2 in features/tournament/planning.md):
+// counted from when a pairing is announced, not per-round/per-tournament.
+// 48h gives a same-day-negotiate, next-day-play window without forcing same-day
+// play — a real "self-dealt" World-Blitz-Cup-style pair needs room to find a
+// mutually free slot. Organizer-configurable per tournament via ruleSet.
+const DEFAULT_SCHEDULING_WINDOW_MS = parseInt(process.env.TOURNAMENT_SCHEDULING_WINDOW_MS, 10) || 48 * 60 * 60 * 1000;
+// Only one tiebreak method is implemented (decision 9) — kept as a ruleSet
+// field, not a hardcoded constant, so a future format-specific override has
+// somewhere to live without a schema change.
+const DEFAULT_TIEBREAK_RULE = 'buchholz_sonneborn_berger';
+// Deadline-sweep cadence (design answer (b) in the Phase 1-6 plan): mirrors
+// RoomManager's IDLE_SCAN_INTERVAL_MS pattern — one setInterval scanning a
+// Map of only currently-pending deadlines, not one timer per pairing. 10s is
+// tight enough that a missed deadline resolves promptly, loose enough to be
+// cheap even with many concurrent tournaments.
+const TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS = parseInt(process.env.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS, 10) || 10_000;
+
 module.exports = {
   MAX_ROOMS,
   MAX_ROOMS_PER_IP,
@@ -174,6 +209,10 @@ module.exports = {
   JWT_SECRET,
   JWT_EXPIRY,
   JWT_GUEST_EXPIRY,
+  SESSION_TTL_MS,
+  SESSION_GUEST_TTL_MS,
+  SESSION_COOKIE_NAME,
+  SESSION_SWEEP_INTERVAL_MS,
   BCRYPT_ROUNDS,
   GUEST_NAME_ADJECTIVES,
   GUEST_NAME_NOUNS,
@@ -181,4 +220,8 @@ module.exports = {
   LISTEN_BACKLOG,
   MAX_EVENTS_PER_SECOND,
   FLOOD_DISCONNECT_STREAK,
+  TOURNAMENT_FORMATS,
+  DEFAULT_SCHEDULING_WINDOW_MS,
+  DEFAULT_TIEBREAK_RULE,
+  TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS,
 };

@@ -23,6 +23,15 @@ jest.mock('../db/database', () => ({
   getUserById: jest.fn(),
   createUser: jest.fn(),
   updateLastLogin: jest.fn(),
+  // Session helpers — the auth routes start a server-side session on success
+  // since TODO.md #68, so these must exist even for tests that only care
+  // about validation or headers.
+  createSession: jest.fn(),
+  getSessionById: jest.fn(),
+  revokeSession: jest.fn(() => ({ changes: 1 })),
+  revokeSessionsForUser: jest.fn(() => ({ changes: 0 })),
+  touchSession: jest.fn(),
+  deleteExpiredSessions: jest.fn(() => ({ changes: 0 })),
 }));
 
 jest.mock('../utils/logger', () => ({

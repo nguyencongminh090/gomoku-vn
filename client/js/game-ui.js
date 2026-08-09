@@ -253,9 +253,9 @@
 
     const timeDisabled = st.timeRequestPending ? 'disabled' : '';
     el.innerHTML = `
-      <button class="btn-game btn-game--resign" onclick="doResign()">${t('game.btn_resign')}</button>
-      <button class="btn-game btn-game--draw"   onclick="doDrawOffer()">${t('game.btn_draw')}</button>
-      <button class="btn-game btn-game--time"   onclick="doRequestTime()" ${timeDisabled}>
+      <button class="btn-game btn-game--resign" data-action="doResign">${t('game.btn_resign')}</button>
+      <button class="btn-game btn-game--draw"   data-action="doDrawOffer">${t('game.btn_draw')}</button>
+      <button class="btn-game btn-game--time"   data-action="doRequestTime" ${timeDisabled}>
         ${t('game.btn_time')}
       </button>
     `;
@@ -319,17 +319,17 @@
     } else if (phase === 'p2choice' && isSecond) {
       html = `
         <div class="swap2-choice">
-          <button class="btn-game" onclick="swap2Choose('white')">${t('game.swap2_go_white')}</button>
-          <button class="btn-game" onclick="swap2Choose('black')">${t('game.swap2_go_black')}</button>
-          <button class="btn-game" onclick="swap2Choose('place')">${t('game.swap2_place_two_more')}</button>
+          <button class="btn-game" data-action="swap2Choose" data-arg="white">${t('game.swap2_go_white')}</button>
+          <button class="btn-game" data-action="swap2Choose" data-arg="black">${t('game.swap2_go_black')}</button>
+          <button class="btn-game" data-action="swap2Choose" data-arg="place">${t('game.swap2_place_two_more')}</button>
         </div>`;
     } else if (phase === 'p2choice' && !isSecond) {
       html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing')}</div>`;
     } else if (phase === 'p1choice' && isFirst) {
       html = `
         <div class="swap2-choice">
-          <button class="btn-game" onclick="swap2Choose('black')">${t('game.swap2_choose_black')}</button>
-          <button class="btn-game" onclick="swap2Choose('white')">${t('game.swap2_choose_white')}</button>
+          <button class="btn-game" data-action="swap2Choose" data-arg="black">${t('game.swap2_choose_black')}</button>
+          <button class="btn-game" data-action="swap2Choose" data-arg="white">${t('game.swap2_choose_white')}</button>
         </div>`;
     } else if (phase === 'p1choice' && !isFirst) {
       html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing_color')}</div>`;
@@ -358,8 +358,8 @@
       <div class="draw-prompt">
         <span>${t('game.draw_offer', { name: _esc(st.drawOfferPending.fromName || t('game.opponent_generic')) })}</span>
         <div class="draw-prompt__actions">
-          <button class="btn-draw-action btn-draw-accept"  onclick="doDrawAccept()">${t('game.btn_accept')}</button>
-          <button class="btn-draw-action btn-draw-decline" onclick="doDrawDecline()">${t('game.btn_decline')}</button>
+          <button class="btn-draw-action btn-draw-accept"  data-action="doDrawAccept">${t('game.btn_accept')}</button>
+          <button class="btn-draw-action btn-draw-decline" data-action="doDrawDecline">${t('game.btn_decline')}</button>
         </div>
       </div>
     `;
@@ -386,8 +386,8 @@
       <div class="draw-prompt">
         <span>${t('game.time_offer', { name: _esc(st.timeRequestPending.fromName || ''), bonus: st.timeRequestPending.bonus || 10 })}</span>
         <div class="draw-prompt__actions">
-          <button class="btn-draw-action btn-draw-accept"  onclick="doTimeAccept()">${t('game.btn_accept')}</button>
-          <button class="btn-draw-action btn-draw-decline" onclick="doTimeDecline()">${t('game.btn_decline')}</button>
+          <button class="btn-draw-action btn-draw-accept"  data-action="doTimeAccept">${t('game.btn_accept')}</button>
+          <button class="btn-draw-action btn-draw-decline" data-action="doTimeDecline">${t('game.btn_decline')}</button>
         </div>
       </div>
     `;

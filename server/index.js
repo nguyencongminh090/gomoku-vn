@@ -19,12 +19,16 @@ const { Server }   = require('socket.io');
 const path         = require('path');
 
 const config         = require('./config');
+const { cspDirectives } = require('./config/csp');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
+const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
+const sessionManager = require('./managers/SessionManager');
+const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
 
 // ---------------------------------------------------------------------------
@@ -44,10 +48,14 @@ const app = express();
 // or the per-IP room quota.
 app.set('trust proxy', 'loopback');
 
-// Security headers. CSP is left off for now — the client ships inline
-// <script>/style="" (theme/mode-init IIFEs, run before first paint) that
-// helmet's default CSP would block; see docs/fix-log.md for the verification.
-app.use(helmet({ contentSecurityPolicy: false }));
+// Security headers, CSP enforced (TODO.md #65 — was `contentSecurityPolicy:
+// false` because the client used to ship inline <script> IIFEs and a
+// non-pinned https://unpkg.com script; both are gone now, see
+// docs/fix-log.md). Directives live in ./config/csp.js so the policy itself
+// is unit-testable (server/tests/csp.test.js) without booting this server.
+app.use(helmet({
+  contentSecurityPolicy: { directives: cspDirectives },
+}));
 
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
@@ -62,6 +70,7 @@ app.use(express.static(clientPath));
 // REST API routes
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
+app.use('/api', tournamentGamesRouter);
 
 // Catch-all: serve login page for unknown routes (SPA-style fallback)
 app.get('*', (req, res) => {
@@ -94,8 +103,19 @@ const io = new Server(server, {
 // Apply JWT auth middleware to ALL socket connections
 io.use(verifySocketToken);
 
+// Rebuild live/historical tournament state from SQLite (TODO.md #77) —
+// before socketHandler.init() so every handler sees a warm state from the
+// first connection, not an empty one that fills in only as new mutations
+// happen.
+tournamentManager.loadTournamentsFromDb();
+
 // Wire up event handlers
 socketHandler.init(io);
+
+// Expired session rows do not clean themselves up the way an expired JWT did
+// (TODO.md #68) — sweep once at startup, then hourly.
+sessionManager.sweepExpiredSessions();
+setInterval(() => sessionManager.sweepExpiredSessions(), config.SESSION_SWEEP_INTERVAL_MS).unref();
 
 // ---------------------------------------------------------------------------
 // Start

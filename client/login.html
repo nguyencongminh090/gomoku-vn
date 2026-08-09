@@ -5,27 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Đăng nhập</title>
   <meta name="description" content="Đăng nhập vào Play3CR — nền tảng chơi Caro trực tuyến với luật Wall và Portal." />
-  <!-- Google Fonts: Manrope (project-wide design token) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Manrope (self-hosted, TODO.md #69) -->
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=95" />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=57" />
-  <link rel="stylesheet" href="css/login.css?v=57" />
+  <link rel="stylesheet" href="css/main.css?v=95" />
+  <link rel="stylesheet" href="css/login.css?v=95" />
 
   
-  <script>
-    // UI mode (lite | default | pro) — applied before first paint on every page
-    // so mode-dependent layout is correct on first load, not just in the lobby.
-    (function() {
-      var m;
-      try { m = localStorage.getItem('gvn_ui_mode'); } catch (e) { m = null; }
-      var mode = (m === 'lite' || m === 'default' || m === 'pro') ? m : 'lite';
-      document.documentElement.setAttribute('data-ui-mode', mode);
-    })();
-  </script>
+  <script src="js/ui-mode-preload.js?v=95"></script>
   <!-- Phosphor Icons -->
-  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=95" />
+  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=95" />
 
 </head>
 <body>
@@ -87,10 +77,10 @@
         
         <!-- Tabs -->
         <nav class="tabs" role="tablist" aria-label="Chế độ đăng nhập">
-          <button id="tab-login" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-login" onclick="switchTab('login')" data-i18n="login.tab_login">
+          <button id="tab-login" class="tab-btn active" role="tab" aria-selected="true" aria-controls="panel-login" data-action="switchTab" data-arg="login" data-i18n="login.tab_login">
             Đăng nhập
           </button>
-          <button id="tab-register" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-register" onclick="switchTab('register')" data-i18n="login.tab_register">
+          <button id="tab-register" class="tab-btn" role="tab" aria-selected="false" aria-controls="panel-register" data-action="switchTab" data-arg="register" data-i18n="login.tab_register">
             Đăng ký
           </button>
         </nav>
@@ -110,7 +100,7 @@
               <label for="login-password" data-i18n="login.password">Mật khẩu</label>
               <div class="input-wrapper">
                 <input id="login-password" type="password" name="password" data-i18n-placeholder="login.ph_password" placeholder="Nhập mật khẩu" autocomplete="current-password" required />
-                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" onclick="togglePassword(this)">
+                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" data-action="togglePassword" data-action-self>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
@@ -149,7 +139,7 @@
               <label for="reg-password" data-i18n="login.password">Mật khẩu</label>
               <div class="input-wrapper">
                 <input id="reg-password" type="password" name="password" data-i18n-placeholder="login.ph_reg_pass" placeholder="Ít nhất 6 ký tự" autocomplete="new-password" required />
-                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" onclick="togglePassword(this)">
+                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" data-action="togglePassword" data-action-self>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
@@ -162,7 +152,7 @@
               <label for="reg-confirm" data-i18n="login.confirm_pass">Xác nhận mật khẩu</label>
               <div class="input-wrapper">
                 <input id="reg-confirm" type="password" name="confirmPassword" data-i18n-placeholder="login.ph_confirm" placeholder="Nhập lại mật khẩu" autocomplete="new-password" required />
-                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" onclick="togglePassword(this)">
+                <button type="button" class="password-toggle" aria-label="Hiện mật khẩu" tabindex="-1" data-action="togglePassword" data-action-self>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-eye">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
@@ -208,6 +198,7 @@
 </div>
 
   <!-- Application Scripts via Vite entry point -->
-  <script type="module" src="js/login-entry.js?v=57"></script>
+  <script src="js/action-delegate.js?v=95"></script>
+  <script type="module" src="js/login-entry.js?v=95"></script>
 </body>
 </html>

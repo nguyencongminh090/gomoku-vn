@@ -40,6 +40,13 @@ jest.mock('../socket/handlers/DisconnectHandler', () => ({
   cancelSpectatorGrace: jest.fn(() => false),
   handleDisconnect: jest.fn(),
 }));
+// Mocked like every other domain handler above — otherwise each of this
+// file's many init(io) calls would re-register real listeners on the
+// TournamentManager singleton's EventEmitter (unlike RoomManager, which is
+// itself mocked so its .on() calls are no-ops), tripping Node's
+// MaxListenersExceededWarning.
+jest.mock('../socket/handlers/TournamentHandler', () => ({ init: jest.fn(), register: jest.fn() }));
+jest.mock('../socket/handlers/TournamentMatchHandler', () => ({ register: jest.fn(), resyncOnConnect: jest.fn() }));
 jest.mock('../managers/ChatHandler', () => ({ cleanupUser: jest.fn() }));
 
 const { sessions, ONLINE_USERS_DEBOUNCE_MS } = require('../socket/state');

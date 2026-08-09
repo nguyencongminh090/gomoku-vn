@@ -23,6 +23,13 @@
  * decodes entities in the attribute value *before* the JavaScript is parsed,
  * so a lone `&#39;` becomes a real `'` in the JS source and closes the string
  * literal early — the exact injection the escaping was meant to prevent.
+ *
+ * As of B65 (CSP hardening) the codebase no longer has any inline
+ * `onclick="..."` handlers — see js/action-delegate.js, which dispatches
+ * data-action/data-arg attributes instead. Plain HTML attribute values
+ * (data-arg="${escapeAttr(x)}") only need escapeAttr; escapeJsString stays
+ * here as the correct tool if an inline-handler-attribute pattern is ever
+ * reintroduced, but has no current call site.
  */
 
 (function (root, factory) {

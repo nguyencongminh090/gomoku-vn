@@ -59,8 +59,7 @@
   // Escaping lives in escape-utils.js (a pure, Node-testable module imported by
   // room-entry.js before this file). These are thin aliases so the call sites
   // below read the same as before.
-  const escapeAttr     = (str) => global.EscapeUtils.escapeAttr(str);
-  const escapeJsString = (str) => global.EscapeUtils.escapeJsString(str);
+  const escapeAttr = (str) => global.EscapeUtils.escapeAttr(str);
 
   // ── Main render entry ─────────────────────────────────────────────────────
 
@@ -111,7 +110,7 @@
       const canSit = st.mySlot === null && st.roomData.state !== 'playing';
       contentEl.innerHTML = `
         <div class="slot-card__empty ${canSit ? 'slot-card__clickable' : ''}"
-             ${canSit ? `onclick="sitDown(${slotNum})"` : ''}
+             ${canSit ? `data-action="sitDown" data-arg="${slotNum}" data-arg-type="number"` : ''}
              title="${canSit ? t('room.click_to_sit') : ''}">
           #${slotNum}
         </div>
@@ -124,7 +123,7 @@
       ? '<span class="slot-card__role slot-card__role--host">Chủ phòng</span>'
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<span class="slot-card__stand" onclick="event.stopPropagation(); standUp();" title="Rời vị trí">✕</span>`
+      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí">✕</span>`
       : '';
 
     contentEl.innerHTML = `
@@ -318,9 +317,9 @@
       <div class="setting-row">
         <span class="setting-label">${t('settings.display')}</span>
         <div class="pill-group">
-          <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${st.boardDisplayMode === 'paper' ? 'checked' : ''} onchange="updateLocalSettings()" />
+          <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${st.boardDisplayMode === 'paper' ? 'checked' : ''} data-change-action="updateLocalSettings" />
           <label for="bdm-paper">${t('settings.display_paper')}</label>
-          <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${st.boardDisplayMode === 'stone' ? 'checked' : ''} onchange="updateLocalSettings()" />
+          <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${st.boardDisplayMode === 'stone' ? 'checked' : ''} data-change-action="updateLocalSettings" />
           <label for="bdm-stone">${t('settings.display_stone')}</label>
         </div>
       </div>
@@ -336,23 +335,23 @@
         <div class="setting-row">
           <span class="setting-label">${t('modal.board_size')}</span>
           <div class="pill-group">
-            <input type="radio" name="r-boardSize" id="r-bs-15" value="15" ${s.boardSize === 15 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-15" value="15" ${s.boardSize === 15 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-15">15×15</label>
-            <input type="radio" name="r-boardSize" id="r-bs-17" value="17" ${s.boardSize === 17 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-17" value="17" ${s.boardSize === 17 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-17">17×17</label>
-            <input type="radio" name="r-boardSize" id="r-bs-19" value="19" ${s.boardSize === 19 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-19" value="19" ${s.boardSize === 19 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-19">19×19</label>
-            <input type="radio" name="r-boardSize" id="r-bs-20" value="20" ${s.boardSize === 20 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-boardSize" id="r-bs-20" value="20" ${s.boardSize === 20 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-bs-20">20×20</label>
           </div>
         </div>
         <div class="setting-row">
           <div class="pill-group">
-            <input type="radio" name="r-winRule" id="r-wr-freestyle" value="freestyle" ${s.winningRule === 'freestyle' || !s.winningRule ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-winRule" id="r-wr-freestyle" value="freestyle" ${s.winningRule === 'freestyle' || !s.winningRule ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-wr-freestyle">${t('rule.freestyle')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-standard" value="standard" ${s.winningRule === 'standard' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-winRule" id="r-wr-standard" value="standard" ${s.winningRule === 'standard' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-wr-standard">${t('rule.standard')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-caro" value="caro" ${s.winningRule === 'caro' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-winRule" id="r-wr-caro" value="caro" ${s.winningRule === 'caro' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-wr-caro">${t('rule.caro')}</label>
           </div>
         </div>
@@ -360,48 +359,48 @@
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_wall')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-wall" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} onchange="updateSettings()" />
+              <input type="checkbox" id="r-wall" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_portal')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-portal" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} onchange="updateSettings()" />
+              <input type="checkbox" id="r-portal" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
         </div>
         <div class="setting-row">
           <div class="pill-group">
-            <input type="radio" name="r-openRule" id="r-or-none" value="none" ${!s.ruleSwap2 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-openRule" id="r-or-none" value="none" ${!s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-or-none">${t('rule.none')}</label>
-            <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-or-swap2">Swap2</label>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">${t('modal.timer_mode')}</span>
           <div class="pill-group">
-            <input type="radio" name="r-timerMode" id="r-tm-move" value="per_move" ${s.timerMode === 'per_move' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-timerMode" id="r-tm-move" value="per_move" ${s.timerMode === 'per_move' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-tm-move">${t('modal.per_move')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-game" value="per_game" ${s.timerMode === 'per_game' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-timerMode" id="r-tm-game" value="per_game" ${s.timerMode === 'per_game' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-tm-game">${t('modal.per_game')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-blitz" value="blitz" ${s.timerMode === 'blitz' ? 'checked' : ''} onchange="updateSettings()" />
+            <input type="radio" name="r-timerMode" id="r-tm-blitz" value="blitz" ${s.timerMode === 'blitz' ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-tm-blitz">${t('modal.blitz')}</label>
           </div>
         </div>
         <div class="setting-row">
           <span class="setting-label">${t('modal.time_label')}</span>
           <div class="timer-input">
-            <input type="number" id="r-timer" value="${s.timerSeconds}" min="5" max="3600" step="5" onchange="updateSettings()" />
+            <input type="number" id="r-timer" value="${s.timerSeconds}" min="5" max="3600" step="5" data-change-action="updateSettings" />
             <span class="unit">${t('modal.time_unit')}</span>
           </div>
         </div>
         <div class="setting-row" style="${s.timerMode === 'blitz' ? '' : 'opacity:0.45;'}">
           <span class="setting-label">${t('modal.time_plus')}</span>
           <div class="timer-input">
-            <input type="number" id="r-timer-increment" value="${s.timerIncrementSeconds || 0}" min="0" max="600" step="1" ${s.timerMode === 'blitz' ? '' : 'disabled'} onchange="updateSettings()" />
+            <input type="number" id="r-timer-increment" value="${s.timerIncrementSeconds || 0}" min="0" max="600" step="1" ${s.timerMode === 'blitz' ? '' : 'disabled'} data-change-action="updateSettings" />
             <span class="unit">${t('modal.time_unit')}</span>
           </div>
         </div>
@@ -477,7 +476,7 @@
     let html = '';
     for (const g of guests) {
       const kickBtn = (st.myRole === 'host' && g.userId !== st.myUser.userId && st.roomData.state !== 'playing')
-        ? `<button class="btn-kick" onclick="kickUser('${escapeAttr(escapeJsString(g.userId))}')">Mời ra</button>`
+        ? `<button class="btn-kick" data-action="kickUser" data-arg="${escapeAttr(g.userId)}">Mời ra</button>`
         : '';
       const hostBadge = g.role === 'host'
         ? ' <span class="slot-card__role slot-card__role--host">CP</span>'
@@ -561,6 +560,23 @@
     const st = S();
     st.clickMode = e.detail.mode;
     if (st.boardRenderer) st.boardRenderer.clickMode = st.clickMode;
+  });
+
+  // ── Display-mode change listener (TODO.md #74) ──────────────────────────
+  // Board display (Paper/Stone) can now also be changed from the global
+  // Settings panel (settings-panel.js), not just this room's own Settings
+  // tab (updateLocalSettings above) — apply it to the live board immediately
+  // either way, same pattern as clickmodechange.
+  window.addEventListener('displaymodechange', (e) => {
+    const st = S();
+    st.boardDisplayMode = e.detail.mode;
+    if (st.boardRenderer) {
+      st.boardRenderer.setState({
+        displayMode:  st.boardDisplayMode,
+        moveHistory:  st.gameState ? (st.gameState.moveHistory || []) : [],
+        lastMove:     st.gameState ? st.gameState.lastMove : null,
+      });
+    }
   });
 
   // ── Global onclick shims ──────────────────────────────────────────────────
