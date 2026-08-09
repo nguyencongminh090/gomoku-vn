@@ -53,9 +53,13 @@ Xem hướng dẫn chi tiết: [docs/instruction/B88-khan-gia-bi-khoa-nut-quay-l
   còn đúng 1 version qua grep).
 - **Không đổi:** phía server — đã xác nhận không có cơ chế khoá điều hướng nào ở server/`beforeunload`,
   đây thuần là link bị disable phía client.
-- **Test:** `client/js/` không có hạ tầng unit test — không thêm test tự động thường trực; xác
-  minh qua đọc code (gate tái dùng đúng pattern `mp`/`myPlayer()` đã hoạt động đúng ở
-  `showResultOverlay`/`showSeriesTransition` cùng file). `npm test`: 970/970 pass (không đổi gì
-  phía server nên không có regression). Không chạy live browser/Playwright walkthrough cho fix
-  này — nêu rõ thay vì bỏ qua âm thầm.
-- Chi tiết đầy đủ: [docs/fix-log/2026-08-09-todo-88-tournament-match-spectator-leave-lock.md](../fix-log/2026-08-09-todo-88-tournament-match-spectator-leave-lock.md).
+- **Test (follow-up, 2026-08-09 12:45):** ban đầu `client/js/` không có hạ tầng unit test nên chỉ
+  xác minh qua đọc code — sau đó thêm thật theo yêu cầu người dùng "Add Unit-test". Cài
+  `jest-environment-jsdom` (devDependency mới), viết
+  `client/tests/tournament-match-leave-lock.test.js` (unit test client-side đầu tiên của repo) —
+  7 case, DOM fixture là `<body>` thật của `tournament-match.html` (không phải mock tay), stub tối
+  thiểu `window.GvnSession`/`SocketClient`/`BoardRenderer`/`t`. Đã xác nhận test thật sự bắt được
+  regression qua mutation test (copy tạm, revert fix, đúng 4/7 case fail — không sửa file gốc, đã
+  xoá bản copy). `npm test`: 977/977 pass (41 suite, +7 test mới, không regression).
+- Chi tiết đầy đủ: [docs/fix-log/2026-08-09-todo-88-tournament-match-spectator-leave-lock.md](../fix-log/2026-08-09-todo-88-tournament-match-spectator-leave-lock.md),
+  follow-up: [docs/fix-log/2026-08-09-todo-88-followup-unit-test.md](../fix-log/2026-08-09-todo-88-followup-unit-test.md).
