@@ -241,6 +241,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng — "Time sometimes run on wrong sides" (2026-08-09)
 - ✅ **#79.** Đồng hồ trận đấu giải đấu đôi khi hiện sai bên — `renderHeader()` gán panel `clock-black-name`/`clock-white-name` theo vị trí mảng `players[0]`/`[1]` cố định, trong khi màu quân thực tế đổi theo Swap2 choice (trong 1 ván) hoặc theo xoay seat mỗi ván trong series (từ ván 2 trở đi) — không phải bug reconnect `[Model: Sonnet 5]` — [chi tiết](docs/todo/B79-tournament-match-timer-hien-sai-ben.md)
 
+### Nguồn: báo cáo người dùng — "no time alert for 10s left in tournament room" (2026-08-09)
+- ✅ **#80.** Đồng hồ trận đấu giải đấu thiếu hiệu ứng nhấp nháy khi còn ≤10s — đổi màu đỏ + beep đã có sẵn từ #74, nhưng thiếu animation `timer-pulse` mà phòng thường có, khiến cảnh báo "nhẹ" hơn hẳn và dễ bị bỏ lỡ `[Model: Sonnet 5]` — [chi tiết](docs/todo/B80-tournament-match-thieu-hieu-ung-nhap-nhay-canh-bao-het-gio.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
