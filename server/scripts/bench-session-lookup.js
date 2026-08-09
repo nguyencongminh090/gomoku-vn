@@ -27,6 +27,15 @@ const BURST_SIZES  = [100, 1000, 6000];
 const TABLE_SIZES  = [1_000, 100_000];
 const WARMUP       = 5_000;
 
+// TODO.md #81: the [100, 1000, 6000] / [1k, 100k] scenario above models the
+// #28/#29 stress-test ceiling, not the goToMatch()-reload burst under
+// investigation here. That burst is bounded by how many players in ONE
+// tournament click "vao tran" near-simultaneously when a round opens, at a
+// sessions-table size close to this deployment's actual row count (18 rows
+// live as of 2026-08-09) rather than the 100k stress figure.
+const REALISTIC_BURST_SIZES = [8, 16, 32, 64];
+const REALISTIC_TABLE_SIZES = [20, 100, 500];
+
 // Disk-backed with WAL, matching db/database.js — NOT `:memory:`. An
 // in-memory database would flatter the result by removing the page cache and
 // WAL behaviour that production actually has. Written to a throwaway temp
@@ -113,3 +122,44 @@ for (const rows of TABLE_SIZES) {
 
 console.log('Read as: "total" is how long the event loop is blocked if the whole');
 console.log('burst arrives at once — the worst case, since real connections arrive spread out.');
+
+console.log('\n\n=== Realistic scale (TODO.md #81 — goToMatch() full-reload burst) ===');
+console.log('Sessions-table size close to actual current row count; burst = players');
+console.log('in one tournament round clicking "vao tran" near-simultaneously, not the');
+console.log('#28/#29 6000-connection stress ceiling.\n');
+
+for (const rows of REALISTIC_TABLE_SIZES) {
+  const ids = seed(rows);
+
+  for (let i = 0; i < WARMUP; i++) select.get(ids[i % ids.length]);
+
+  console.log(`── sessions table: ${rows.toLocaleString()} rows ──`);
+
+  for (const burst of REALISTIC_BURST_SIZES) {
+    const samples = new Float64Array(burst);
+
+    const wall0 = process.hrtime.bigint();
+    for (let i = 0; i < burst; i++) {
+      const id = ids[(i * 7919) % ids.length];
+      const t0 = process.hrtime.bigint();
+      const row = select.get(id);
+      touch.run(row.last_seen_at, id);
+      samples[i] = Number(process.hrtime.bigint() - t0) / 1000;
+    }
+    const wallMs = Number(process.hrtime.bigint() - wall0) / 1e6;
+
+    const sorted = Array.from(samples).sort((a, b) => a - b);
+    console.log(
+      `  burst ${String(burst).padStart(5)}: ` +
+      `total ${wallMs.toFixed(1).padStart(7)} ms  |  ` +
+      `p50 ${percentile(sorted, 0.5).toFixed(1).padStart(6)} µs  ` +
+      `p99 ${percentile(sorted, 0.99).toFixed(1).padStart(7)} µs  ` +
+      `max ${sorted[sorted.length - 1].toFixed(1).padStart(8)} µs`
+    );
+  }
+  console.log();
+}
+
+console.log('Read as: "total" here is the worst case where every click in a round');
+console.log('lands on the same event-loop tick — real clicks spread over seconds,');
+console.log('so actual added latency per user is closer to this burst\'s p50/p99.');
