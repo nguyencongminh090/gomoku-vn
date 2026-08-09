@@ -261,7 +261,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#88.** Khán giả/guest xem trận giải đấu bị khoá nút "Quay lại chi tiết giải đấu" y hệt 2 người chơi thật — `setLeaveLocked(true)` (`client/js/tournament-match.js`, 3 nơi gọi) không kiểm tra `myPlayer()`, khoá đồng loạt mọi socket trong room bất kể vai trò, dù mục đích gốc chỉ nhằm chống người CHƠI rời giữa series `[Model: Sonnet 5]` — [chi tiết](docs/todo/B88-tournament-match-khan-gia-bi-khoa-nut-quay-lai.md)
 
 ### Nguồn: phát hiện phụ khi cài `jest-environment-jsdom` cho #88's unit test (2026-08-09)
-- **#89.** `npm audit` báo 3 lỗ hổng high-severity ở dependency gián tiếp, có từ trước (không phải do gói mới thêm): `js-yaml` (qua `jest`), `nanoid` (qua `vite`, cả 2 chỉ devDependency, rủi ro thấp), và `socket.io-parser` (qua `socket.io` — dependency PRODUCTION thật, DoS "memory exhaustion", đáng ưu tiên hơn 2 cái kia) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B89-npm-audit-3-high-severity-transitive.md)
+- ✅ **#89.** `npm audit` báo 3 lỗ hổng high-severity ở dependency gián tiếp, có từ trước (không phải do gói mới thêm): `js-yaml` (qua `jest`), `nanoid` (qua `vite`, cả 2 chỉ devDependency, rủi ro thấp), và `socket.io-parser` (qua `socket.io` — dependency PRODUCTION thật, DoS "memory exhaustion", đáng ưu tiên hơn 2 cái kia) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B89-npm-audit-3-high-severity-transitive.md)
 
 ---
 
