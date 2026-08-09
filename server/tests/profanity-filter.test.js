@@ -237,6 +237,34 @@ describe('filterMessage — false-positive resistance', () => {
   });
 });
 
+describe('filterMessage — fuzzy/classifier stages disabled (exact-match only)', () => {
+  test('a near-miss typo one edit away from a dictionary word is no longer masked', () => {
+    // "shiy" is edit-distance 1 from "shit" — previously eligible for a
+    // fuzzy match (classifierSaysReal was the only thing that could reject
+    // it). Both the fuzzy scoring and the classifier reject-stage are now
+    // off, so this never becomes a candidate match at all.
+    expect(pf.filterMessage('shiy happens')).toBe('shiy happens');
+  });
+
+  test('a near-miss typo of a Vietnamese word one edit away is no longer masked', () => {
+    // "lônn" collapses to "lôn" via the tight/repeat-collapse form, which is
+    // still edit-distance 1 from the tone-aware dictionary entry "lồn" (tone
+    // differs) — exercises the tone-aware fuzzy path being off too.
+    expect(pf.filterMessage('lônn quá')).toBe('lônn quá');
+  });
+
+  test('repeat-collapse normalization ("duplicate") still exact-matches the dictionary', () => {
+    // "shiit" has no direct dictionary entry, but its repeat-collapsed
+    // ("tight") form "shit" does — this is the normalize+dictionary path
+    // that stays on.
+    expect(pf.filterMessage('shiit happens')).toBe('***** happens');
+  });
+
+  test('an exact dictionary word is still masked with fuzzy/classifier off', () => {
+    expect(pf.filterMessage('fuck this')).toBe('**** this');
+  });
+});
+
 describe('filterMessage — edge cases', () => {
   test('passes through a clean message unchanged', () => {
     const text = 'chess is a great game, want to play?';
