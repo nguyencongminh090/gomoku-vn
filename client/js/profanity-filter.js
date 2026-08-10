@@ -798,39 +798,25 @@
         if (claimedTokens[t]) return; // overlaps an already-matched span
       }
 
-      // Multi-word spans (n>=2) require an exact match — fuzzy edit-distance
-      // over concatenated common words (e.g. "con" + "cua") false-positives
-      // constantly in Vietnamese, which uses short classifier words heavily.
-      var isMultiWord = hi > lo;
-      var allowFuzzy = !isMultiWord;
-
+      // Fuzzy edit-distance scoring (the distance-scale stage) and the
+      // classifier reject-stage (SVM) are both disabled — exact dictionary
+      // match only, against the normalized (leet-mapped, diacritic-stripped,
+      // repeat-collapsed) forms. Product decision: the fuzzy stages were
+      // over-blocking ordinary text.
       var hit;
       if (cand.hasDiacritics) {
-        // Token(s) already carry proper Vietnamese accents — score with the
-        // tone-aware distance (see toneAwareDistanceBounded) rather than
-        // plain Levenshtein, so a tone-only difference ("buổi" vs "buồi")
-        // never counts as a match while genuine typos still can.
-        hit = scoreToneAware(cand.accentedGlued, dict.toneAware, threshold, allowFuzzy);
+        hit = scoreToneAware(cand.accentedGlued, dict.toneAware, threshold, false);
         if (!hit.matched && cand.accentedSpaced !== cand.accentedGlued) {
           hit = scoreToneAware(cand.accentedSpaced, dict.toneAware, threshold, false);
         }
       } else {
-        hit = scoreCandidate(cand.basicGlued, dict.stripped, threshold, allowFuzzy);
-        if (!hit.matched) hit = scoreCandidate(cand.tightGlued, dict.stripped, threshold, allowFuzzy);
+        hit = scoreCandidate(cand.basicGlued, dict.stripped, threshold, false);
+        if (!hit.matched) hit = scoreCandidate(cand.tightGlued, dict.stripped, threshold, false);
         if (!hit.matched && cand.basicSpaced !== cand.basicGlued) {
           hit = scoreCandidate(cand.basicSpaced, dict.stripped, threshold, false);
         }
       }
       if (!hit.matched) return;
-
-      // Classifier reject-stage: only for fuzzy (non-exact) single-token
-      // matches — exact dictionary hits are ground truth and always stand.
-      // This can only IMPROVE precision (it removes matches, never adds
-      // any), so it's safe to layer on top of the existing rule thresholds.
-      if (hit.distance > 0 && !isMultiWord) {
-        var candidateWord = cand.hasDiacritics ? cand.accentedGlued : cand.basicGlued;
-        if (classifierSaysReal(candidateWord)) return;
-      }
 
       for (t = lo; t <= hi; t++) claimedTokens[t] = true;
       matchedSpans.push([cand.start, cand.end]);
