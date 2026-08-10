@@ -589,7 +589,19 @@ router.get('/google/callback', async (req, res) => {
           oauthProvider: 'google',
           oauthId: payload.sub,
         });
-        user = db.getUserById(userId);
+        // TODO.md #102: no re-read here, unlike the race-loser branch below —
+        // better-sqlite3 is synchronous and nothing else touches this row
+        // between the insert above and here, so every field is already known
+        // from this scope. The race-loser branch DOES need to re-read: it
+        // lost, so this scope's values are not what actually landed in the row.
+        user = {
+          id: userId,
+          username,
+          display_name: displayName,
+          created_at: now,
+          oauth_provider: 'google',
+          oauth_id: payload.sub,
+        };
         logger.info(`[Auth] Created account via Google OAuth: ${username} (${userId})`);
       } catch (err) {
         if (err.code !== 'SQLITE_CONSTRAINT_UNIQUE' && err.code !== 'SQLITE_CONSTRAINT') throw err;

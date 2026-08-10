@@ -284,7 +284,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#99.** `login.js`'s `checkExistingSession()` redirect chạy trước khi kịp hiện banner lỗi OAuth — người dùng đã đăng nhập thử Google lần 2 bị lỗi sẽ không thấy được thông báo vì sao `[Model: Sonnet 5]` — [chi tiết](docs/todo/B99-login-js-existing-session-hides-oauth-error-banner.md)
 - ✅ **#100.** Migration `idx_users_oauth` (#94) chạy lại toàn bộ dò-trùng + `DROP`/`CREATE INDEX` mỗi lần server khởi động thay vì gate như 4 migration khác trong cùng file — tốn tài nguyên vô ích khi đã ở trạng thái ổn định `[Model: Haiku 4.5]` — [chi tiết](docs/todo/B100-oauth-index-migration-reruns-every-boot.md)
 - ✅ **#101.** Cookie `gvn_oauth_state` tự viết tay `httpOnly`/`sameSite`/`secure`/`path` thay vì tái dùng `baseCookieOptions()` của `session-cookie.js`; `clearCookie` cũng thiếu vài thuộc tính `clearSessionCookie()` luôn truyền đủ — rủi ro drift nếu chính sách cookie đổi sau này `[Model: Sonnet 5]` — [chi tiết](docs/todo/B101-oauth-state-cookie-duplicates-session-cookie-helper.md)
-- **#102.** `login.js`'s `onAuthSuccess()` và `oauth-complete.js` viết lại gần y hệt logic "lưu user + chuyển hướng lobby"; kèm 2 điểm kém hiệu quả nhỏ (SELECT thừa sau INSERT khi tạo user Google mới, thêm 1 vòng round-trip trang qua `oauth-complete.html`) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/B102-oauth-client-duplication-and-minor-inefficiency.md)
+- ✅ **#102.** `login.js`'s `onAuthSuccess()` và `oauth-complete.js` viết lại gần y hệt logic "lưu user + chuyển hướng lobby"; kèm 2 điểm kém hiệu quả nhỏ (SELECT thừa sau INSERT khi tạo user Google mới, thêm 1 vòng round-trip trang qua `oauth-complete.html`) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/B102-oauth-client-duplication-and-minor-inefficiency.md)
 
 ---
 
