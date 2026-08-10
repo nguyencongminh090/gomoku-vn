@@ -1,6 +1,21 @@
 # #96 — `GET /google/callback` không idempotent khi request bị lặp lại (retry/replay)
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG
+
+## Đã sửa (2026-08-10, nhánh `fix/oauth-callback-idempotent` → `dev`)
+
+Khi state cookie không tồn tại (đã bị 1 request khác dùng và xoá, hoặc thật sự sai/hết hạn) NHƯNG
+`code`/`state` vẫn đúng định dạng, thêm 1 kiểm tra trước khi kết luận lỗi: đọc session cookie hiện có
+qua `readSessionIdFromHeader()`, xác nhận qua `sessionManager.getValidSession()` — nếu hợp lệ, coi đây
+là request trùng của 1 flow đã hoàn tất thành công trước đó, redirect thẳng `/index.html` thay vì
+`error=oauth_state`. Không có session hợp lệ → vẫn báo lỗi như cũ (không nới lỏng CSRF check).
+
+Không đổi cách `googleClient.getToken()` đổi `code` lấy token (đúng phạm vi KHÔNG làm trong hướng dẫn)
+— chỉ xử lý đúng khi phát hiện được dấu hiệu "đã xử lý xong ở request khác".
+
+Test: 2 test mới trong `server/tests/auth-google-oauth.test.js` — (1) không cookie state + không session
+hợp lệ vẫn báo lỗi như cũ, (2) không cookie state + có session hợp lệ → redirect `/index.html`, không
+gọi `getToken`/`createSession`. `npm test`: 1039/1039 pass.
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).

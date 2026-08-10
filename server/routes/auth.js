@@ -495,6 +495,24 @@ router.get('/google/callback', async (req, res) => {
   if (cookieName) res.clearCookie(cookieName, { path: OAUTH_STATE_COOKIE_PATH });
 
   if (!code || typeof code !== 'string' || !stateValid || !hasStateCookie) {
+    // A missing state cookie has two very different causes that look
+    // identical here: genuine CSRF/expiry, or this exact request being a
+    // duplicate (network retry, or Back/Forward) of one that already
+    // completed — the winning request already consumed and cleared this same
+    // cookie (TODO.md #96). Google's `code` is single-use, so a duplicate
+    // would otherwise hit `invalid_grant` below and redirect to
+    // error=oauth_failed even though the user already has a valid session
+    // from the first request. Detect that specific case — code/state look
+    // fine, cookie is just already gone, AND this request already carries a
+    // valid session cookie — and land on the signed-in destination instead of
+    // an error a user who is, in fact, already logged in should never see.
+    if (code && typeof code === 'string' && stateValid) {
+      const existingSessionId = readSessionIdFromHeader(req.headers.cookie);
+      if (existingSessionId && sessionManager.getValidSession(existingSessionId)) {
+        logger.info('[Auth] Google OAuth callback: state cookie already consumed but a valid session exists — treating as a duplicate request, not an error');
+        return res.redirect('/index.html');
+      }
+    }
     logger.warn('[Auth] Google OAuth callback: missing/mismatched state');
     return res.redirect('/login.html?error=oauth_state');
   }

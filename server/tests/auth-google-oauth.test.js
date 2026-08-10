@@ -221,6 +221,30 @@ describe('Google OAuth — configured', () => {
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
   });
 
+  test('TODO.md #96: no state cookie but no valid session either → still login.html?error=oauth_state (not silently treated as a duplicate)', async () => {
+    db.getSessionById.mockReturnValue(undefined);
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: 'gvn_session=some-id' });
+    expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
+  });
+
+  test('TODO.md #96: duplicate callback (state cookie already consumed by a first request) with a valid session present → redirects to index.html, not an error', async () => {
+    db.getSessionById.mockReturnValue({
+      id: 'sess-1',
+      user_id: 'existing-user-1',
+      display_name: 'Alice Nguyen',
+      is_guest: 0,
+      revoked_at: null,
+      expires_at: new Date(Date.now() + 60_000).toISOString(),
+    });
+
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: 'gvn_session=sess-1' });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/index.html');
+    expect(mockGetToken).not.toHaveBeenCalled();
+    expect(db.createSession).not.toHaveBeenCalled();
+  });
+
   test('callback with a malformed state query param → login.html?error=oauth_state (never used to build a cookie name)', async () => {
     const res = await callback('?code=abc&state=not-hex-at-all', { cookie: rightStateCookie() });
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
