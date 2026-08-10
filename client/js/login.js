@@ -51,6 +51,20 @@ if (sessionStorage.getItem('gvn_kicked_notice')) {
   showAlert(t('login.session_kicked'));
 }
 
+// ---------------------------------------------------------------------------
+// Show a notice if we were redirected here after a failed Google OAuth
+// attempt (TODO.md #91 — GET /api/auth/google/callback redirects to
+// login.html?error=... on state mismatch or a Google/verification failure,
+// since that route is a browser navigation and cannot return JSON like the
+// AJAX auth calls below). history.replaceState strips the param so a page
+// refresh doesn't re-show the alert.
+// ---------------------------------------------------------------------------
+if (new URLSearchParams(window.location.search).get('error') === 'oauth_failed' ||
+    new URLSearchParams(window.location.search).get('error') === 'oauth_state') {
+  showAlert(t('login.err_oauth_fail'));
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
 // Login form
 const formLogin      = document.getElementById('form-login');
 const loginUsername  = document.getElementById('login-username');

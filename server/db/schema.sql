@@ -4,14 +4,36 @@
 -- =============================================================================
 
 -- Users — persistent accounts
+--
+-- oauth_provider/oauth_id (TODO.md #91): an OAuth-created account still gets
+-- a real password_hash (a random, never-shared bcrypt hash) so the NOT NULL
+-- constraint doesn't need loosening — it authenticates via Google only, the
+-- hash is simply unreachable through POST /login. username is likewise
+-- still generated (see generateOAuthUsername in routes/auth.js) so every
+-- row keeps the same UNIQUE NOT NULL shape regardless of how it was created.
 CREATE TABLE IF NOT EXISTS users (
   id           TEXT PRIMARY KEY,       -- UUID v4
   username     TEXT UNIQUE NOT NULL,   -- login handle (3-20 chars)
   password_hash TEXT NOT NULL,         -- bcrypt hash (cost 12)
   display_name TEXT NOT NULL,          -- shown in-game
   created_at   TEXT NOT NULL,          -- ISO 8601 timestamp
-  last_login_at TEXT                   -- ISO 8601 timestamp, null until first login
+  last_login_at TEXT,                  -- ISO 8601 timestamp, null until first login
+  oauth_provider TEXT,                 -- 'google', null for password accounts
+  oauth_id       TEXT                  -- provider's stable subject id, null for password accounts
 );
+
+-- Lookup by (provider, id) is how the OAuth callback finds a returning user.
+-- NOT created here — a fresh DB gets oauth_provider/oauth_id from the CREATE
+-- TABLE above, but this same schema.sql also runs unconditionally against an
+-- EXISTING pre-#91 DB (whose users table lacks those columns) every startup,
+-- and CREATE INDEX IF NOT EXISTS is not itself conditional on the columns
+-- existing — it would throw before database.js's ALTER TABLE migration
+-- (which runs after this file's exec()) ever got a chance to add them.
+-- database.js creates this index (as UNIQUE, since TODO.md #94 — closes a
+-- TOCTOU race in /google/callback that could otherwise insert two rows for
+-- the same (oauth_provider, oauth_id)) unconditionally, AFTER that
+-- migration, which is what actually makes this safe for both a fresh DB and
+-- an existing one. Do not re-add it here.
 
 -- Sessions — server-side session store (TODO.md #68, features/jwt-httponly-cookie/)
 --
