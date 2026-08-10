@@ -146,3 +146,68 @@ describe('idx_users_oauth — existing DB with a duplicate pair already present'
     expect(idx.sql).toMatch(/CREATE UNIQUE INDEX/i);
   });
 });
+
+// TODO.md #100: once idx_users_oauth is UNIQUE and stable, every later boot
+// used to re-run the GROUP BY duplicate scan + DROP/CREATE INDEX anyway —
+// unlike every other migration block in this file, which reduces to a single
+// PRAGMA once its target column/index already exists. This guards the
+// steady-state boot path specifically.
+describe('idx_users_oauth — already UNIQUE (steady state, TODO.md #100)', () => {
+  let tmpFile;
+
+  beforeAll(() => {
+    tmpFile = path.join(os.tmpdir(), `gvn-oauth-steady-test-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
+
+    // Seed a DB already at the target state: UNIQUE index, no duplicates.
+    const seed = new RealDatabase(tmpFile);
+    seed.exec(`
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL,
+        display_name TEXT NOT NULL, created_at TEXT NOT NULL, last_login_at TEXT,
+        oauth_provider TEXT, oauth_id TEXT
+      );
+      CREATE UNIQUE INDEX idx_users_oauth ON users(oauth_provider, oauth_id);
+    `);
+    seed.prepare(
+      `INSERT INTO users (id, username, password_hash, display_name, created_at, oauth_provider, oauth_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run('steady-1', 'alice_c', 'h', 'Alice', 'now', 'google', 'steady-sub');
+    seed.close();
+  });
+
+  afterAll(() => {
+    for (const suffix of ['', '-wal', '-shm']) {
+      try { fs.unlinkSync(tmpFile + suffix); } catch { /* not present */ }
+    }
+  });
+
+  test('boot does not run the duplicate-scan query (GROUP BY) when the index is already unique', () => {
+    jest.resetModules();
+    const realDb = new RealDatabase(tmpFile);
+    const prepareSpy = jest.spyOn(realDb, 'prepare');
+    jest.doMock('better-sqlite3', () => function MockedDatabase() {
+      return realDb;
+    });
+    jest.doMock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+    require('../db/database');
+
+    const groupByCalls = prepareSpy.mock.calls.filter(([sql]) => /GROUP BY/i.test(sql));
+    expect(groupByCalls).toHaveLength(0);
+
+    realDb.close();
+  });
+
+  test('the index is still UNIQUE afterwards (self-healing guard did not downgrade it)', () => {
+    jest.resetModules();
+    jest.doMock('better-sqlite3', () => function MockedDatabase() {
+      return new RealDatabase(tmpFile);
+    });
+    jest.doMock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+    const reloaded = require('../db/database');
+
+    const idx = reloaded.db.prepare(
+      "SELECT sql FROM sqlite_master WHERE type='index' AND name='idx_users_oauth'"
+    ).get();
+    expect(idx.sql).toMatch(/CREATE UNIQUE INDEX/i);
+  });
+});
