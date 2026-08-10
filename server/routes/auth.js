@@ -170,6 +170,32 @@ function isValidDisplayName(d) {
   return !DISPLAY_NAME_FORBIDDEN.test(trimmed);
 }
 
+/**
+ * Turn a Google profile's `name` into a usable display name (TODO.md #97),
+ * or null if nothing usable is left.
+ *
+ * `isValidDisplayName()` above REJECTS a name outright the moment it contains
+ * any forbidden character — right for the register form (a human typed it and
+ * can be told to fix it), wrong here: nobody can "fix" what Google's account
+ * profile says, and real names commonly carry one of these characters
+ * (apostrophes — "O'Brien" — or "&", e.g. "Marks & Co"). Falling back to a
+ * random guest name for those accounts silently threw away a good display
+ * name instead of accepting the harmless part of it.
+ *
+ * So this strips exactly the forbidden set instead of rejecting on sight,
+ * then re-validates the length of what's left — a name that becomes empty or
+ * too short after stripping (e.g. was nothing but forbidden characters) still
+ * has no usable name, and the caller falls back to generateGuestName() same
+ * as before. Only used for the OAuth branch; isValidDisplayName() keeps its
+ * reject-on-sight behavior for the register form unchanged.
+ */
+function sanitizeOAuthDisplayName(name) {
+  if (typeof name !== 'string') return null;
+  const stripped = name.replace(new RegExp(DISPLAY_NAME_FORBIDDEN, 'g'), '').trim();
+  if (stripped.length < 2 || stripped.length > 24) return null;
+  return stripped;
+}
+
 /** Validate password: minimum 6 characters. */
 function isValidPassword(p) {
   return typeof p === 'string' && p.length >= 6;
@@ -532,7 +558,7 @@ router.get('/google/callback', async (req, res) => {
       const userId = uuidv4();
       const now = new Date().toISOString();
       const username = generateOAuthUsername(payload.email);
-      const displayName = isValidDisplayName(payload.name) ? payload.name.trim() : generateGuestName();
+      const displayName = sanitizeOAuthDisplayName(payload.name) || generateGuestName();
       // A real, unusable bcrypt hash — this account only ever authenticates
       // via Google, but password_hash stays NOT NULL for every row (see
       // schema.sql's comment on this table). Generated fresh per account,

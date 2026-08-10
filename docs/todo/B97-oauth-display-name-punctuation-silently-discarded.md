@@ -1,6 +1,19 @@
 # #97 — Tên hiển thị Google có dấu câu bị âm thầm thay bằng tên khách ngẫu nhiên
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG
+
+## Đã sửa (2026-08-10, nhánh `fix/oauth-display-name-sanitize` → `dev`)
+
+Thêm `sanitizeOAuthDisplayName(name)` riêng cho nhánh OAuth (`server/routes/auth.js`) — loại bỏ đúng
+tập ký tự `DISPLAY_NAME_FORBIDDEN` (`<>&"'` + control chars) khỏi `payload.name`, trim khoảng trắng
+thừa, rồi validate lại độ dài phần còn lại (2-24 ký tự); nếu rỗng/quá ngắn sau khi strip mới rơi về
+`generateGuestName()`. `isValidDisplayName()` GIỮ NGUYÊN không đổi — vẫn dùng reject-on-sight cho form
+đăng ký username/password (người dùng tự gõ, có thể sửa lại), chỉ nhánh OAuth (không ai "sửa" được tên
+Google) mới strip-thay-vì-reject.
+
+Test: 4 test mới trong `server/tests/auth-google-oauth.test.js` — `O'Brien` → `OBrien`, `Marks & Co` →
+`Marks  Co`, `"Quoted" Name` → `Quoted Name`, và tên chỉ toàn ký tự bị chặn vẫn rơi về tên ngẫu nhiên
+đúng như cũ. `npm test`: 1043/1043 pass.
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).
