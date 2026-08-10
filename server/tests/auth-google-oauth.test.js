@@ -161,7 +161,14 @@ describe('Google OAuth — configured', () => {
     { headers, redirect: 'manual' }
   );
 
-  test('redirects to the Google consent URL with an HttpOnly state cookie', async () => {
+  // A valid-shaped state (matches OAUTH_STATE_RE — 32 lowercase hex chars,
+  // same as crypto.randomBytes(16).toString('hex')) with its matching
+  // per-flow cookie name (TODO.md #95), for tests that don't need a real
+  // GET /google round trip.
+  const RIGHT_STATE = 'a'.repeat(32);
+  const rightStateCookie = () => `gvn_oauth_state_${RIGHT_STATE}=1`;
+
+  test('redirects to the Google consent URL with a per-flow HttpOnly state cookie', async () => {
     const res = await fetch(`${baseUrl}/api/auth/google`, { redirect: 'manual' });
 
     expect(res.status).toBe(302);
@@ -171,14 +178,37 @@ describe('Google OAuth — configured', () => {
       state: expect.any(String),
     }));
 
+    const state = mockGenerateAuthUrl.mock.calls[0][0].state;
     const cookie = parseSetCookie(res.headers.get('set-cookie'));
-    expect(cookie.name).toBe('gvn_oauth_state');
+    expect(cookie.name).toBe(`gvn_oauth_state_${state}`);
     expect(cookie.attrs.httponly).toBe(true);
     expect(cookie.attrs.path).toBe('/api/auth/google');
   });
 
+  test('TODO.md #95: two concurrent /google requests (2 tabs) each get their own cookie, and both callbacks succeed', async () => {
+    const res1 = await fetch(`${baseUrl}/api/auth/google`, { redirect: 'manual' });
+    const state1 = mockGenerateAuthUrl.mock.calls[0][0].state;
+    const cookie1 = parseSetCookie(res1.headers.get('set-cookie'));
+
+    const res2 = await fetch(`${baseUrl}/api/auth/google`, { redirect: 'manual' });
+    const state2 = mockGenerateAuthUrl.mock.calls[1][0].state;
+    const cookie2 = parseSetCookie(res2.headers.get('set-cookie'));
+
+    expect(cookie1.name).not.toBe(cookie2.name);
+
+    // Flow 1's callback completes first, using only its own cookie.
+    const cb1 = await callback(`?code=code1&state=${state1}`, { cookie: `${cookie1.name}=${cookie1.value}` });
+    expect(cb1.headers.get('location')).toMatch(/^\/oauth-complete\.html#/);
+
+    // Flow 2's callback, arriving after, still succeeds — its own cookie was
+    // never touched by flow 1's request.
+    db.getUserByOAuthId.mockReturnValueOnce(undefined);
+    const cb2 = await callback(`?code=code2&state=${state2}`, { cookie: `${cookie2.name}=${cookie2.value}` });
+    expect(cb2.headers.get('location')).toMatch(/^\/oauth-complete\.html#/);
+  });
+
   test('callback with mismatched state → login.html?error=oauth_state, nothing touched', async () => {
-    const res = await callback('?code=abc&state=wrong', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${'b'.repeat(32)}`, { cookie: rightStateCookie() });
 
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
@@ -187,17 +217,22 @@ describe('Google OAuth — configured', () => {
   });
 
   test('callback with no state cookie at all → login.html?error=oauth_state', async () => {
-    const res = await callback('?code=abc&state=right');
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`);
+    expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
+  });
+
+  test('callback with a malformed state query param → login.html?error=oauth_state (never used to build a cookie name)', async () => {
+    const res = await callback('?code=abc&state=not-hex-at-all', { cookie: rightStateCookie() });
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
   });
 
   test('callback missing the code param → login.html?error=oauth_state', async () => {
-    const res = await callback('?state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_state');
   });
 
   test('new Google account: created, session started, redirects to oauth-complete.html#<user>', async () => {
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(res.status).toBe(302);
     const location = res.headers.get('location');
@@ -222,7 +257,7 @@ describe('Google OAuth — configured', () => {
       getPayload: () => ({ sub: 'google-sub-3', email: 'x@example.com', email_verified: true, name: '' }),
     });
 
-    await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     const created = db.createUser.mock.calls[0][0];
     expect(created.displayName.length).toBeGreaterThanOrEqual(2);
@@ -237,7 +272,7 @@ describe('Google OAuth — configured', () => {
       oauth_id: 'google-sub-1',
     });
 
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(db.createUser).not.toHaveBeenCalled();
     expect(db.updateLastLogin).toHaveBeenCalledWith('existing-user-1', expect.any(String));
@@ -250,7 +285,7 @@ describe('Google OAuth — configured', () => {
       getPayload: () => ({ sub: 'google-sub-2', email: 'bob@example.com', email_verified: false }),
     });
 
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_failed');
     expect(db.createUser).not.toHaveBeenCalled();
@@ -259,7 +294,7 @@ describe('Google OAuth — configured', () => {
   test('a Google/network failure redirects to error, rather than throwing', async () => {
     mockGetToken.mockRejectedValueOnce(new Error('network down'));
 
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(res.status).toBe(302);
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_failed');
@@ -283,10 +318,10 @@ describe('Google OAuth — configured', () => {
   });
 
   test('/google/callback derives redirect_uri from the request Host, not a fixed value', async () => {
-    const res = await rawGet(baseUrl, '/api/auth/google/callback?code=abc&state=right', {
+    const res = await rawGet(baseUrl, `/api/auth/google/callback?code=abc&state=${RIGHT_STATE}`, {
       Host: 'play3cr.dpdns.org',
       'X-Forwarded-Proto': 'https',
-      Cookie: 'gvn_oauth_state=right',
+      Cookie: rightStateCookie(),
     });
 
     expect(res.statusCode).toBe(302);
@@ -311,7 +346,7 @@ describe('Google OAuth — configured', () => {
     constraintErr.code = 'SQLITE_CONSTRAINT_UNIQUE';
     db.createUser.mockImplementationOnce(() => { throw constraintErr; });
 
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(res.status).toBe(302);
     const location = res.headers.get('location');
@@ -327,7 +362,7 @@ describe('Google OAuth — configured', () => {
     db.createUser.mockImplementationOnce(() => { throw constraintErr; });
     // getUserByOAuthId stays mocked to always return undefined (default from beforeEach).
 
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_failed');
   });
@@ -335,7 +370,7 @@ describe('Google OAuth — configured', () => {
   test('TODO.md #94: a non-constraint createUser error still falls through to oauth_failed (not silently swallowed)', async () => {
     db.createUser.mockImplementationOnce(() => { throw new Error('disk I/O error'); });
 
-    const res = await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    const res = await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(res.headers.get('location')).toBe('/login.html?error=oauth_failed');
   });
@@ -347,7 +382,7 @@ describe('Google OAuth — configured', () => {
       return calls === 1 ? { id: 'someone-else' } : undefined;
     });
 
-    await callback('?code=abc&state=right', { cookie: 'gvn_oauth_state=right' });
+    await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
 
     expect(db.getUserByUsername).toHaveBeenCalledTimes(2);
   });

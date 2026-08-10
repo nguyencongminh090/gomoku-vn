@@ -99,8 +99,30 @@ function googleCallbackUrl(req) {
 // Scoped to /api/auth/google (not '/') so it never rides along on ordinary
 // requests. Separate from the session cookie entirely — it authenticates
 // nothing about who the user is, only that this browser started this flow.
-const OAUTH_STATE_COOKIE = 'gvn_oauth_state';
+//
+// The cookie NAME embeds the state value itself (TODO.md #95) rather than
+// being fixed — two /google requests from the same browser (2 tabs, or a
+// double-click before the first consent screen loads) used to write the same
+// fixed-name cookie and overwrite each other's state, so whichever flow's
+// callback ran first would read the OTHER flow's state and fail with a false
+// "oauth_state" error, then clear the cookie the second flow still needed.
+// Naming each cookie after its own state value gives concurrent flows
+// disjoint cookies — no shared slot to collide over — while keeping exactly
+// the same security property: the callback only succeeds if a cookie named
+// after the query string's `state` value is present, i.e. this exact browser
+// is the one GET /google set it for.
+const OAUTH_STATE_COOKIE_PREFIX = 'gvn_oauth_state_';
 const OAUTH_STATE_COOKIE_PATH = '/api/auth/google';
+// Matches exactly what `crypto.randomBytes(16).toString('hex')` below
+// produces. The callback uses this to reject a malformed `state` query param
+// BEFORE using it to build a cookie name to look up — an attacker-controlled
+// query string must never flow unvalidated into a cookie-name lookup.
+const OAUTH_STATE_RE = /^[a-f0-9]{32}$/;
+
+/** The per-flow cookie name for a given state value. */
+function oauthStateCookieName(state) {
+  return OAUTH_STATE_COOKIE_PREFIX + state;
+}
 
 // A fixed, real bcrypt hash compared against when the submitted username does
 // not exist, so that branch costs the same as a wrong-password branch instead
@@ -432,7 +454,7 @@ router.get('/google', (req, res) => {
   }
 
   const state = crypto.randomBytes(16).toString('hex');
-  res.cookie(OAUTH_STATE_COOKIE, state, {
+  res.cookie(oauthStateCookieName(state), '1', {
     httpOnly: true,
     sameSite: 'lax',
     secure: isSecureRequest(req),
@@ -467,10 +489,12 @@ router.get('/google/callback', async (req, res) => {
 
   // CSRF check first, before anything else touches the DB or Google's API.
   const { code, state } = req.query;
-  const expectedState = parseCookies(req.headers.cookie)[OAUTH_STATE_COOKIE];
-  res.clearCookie(OAUTH_STATE_COOKIE, { path: OAUTH_STATE_COOKIE_PATH });
+  const stateValid = typeof state === 'string' && OAUTH_STATE_RE.test(state);
+  const cookieName = stateValid ? oauthStateCookieName(state) : null;
+  const hasStateCookie = !!(cookieName && Object.prototype.hasOwnProperty.call(parseCookies(req.headers.cookie), cookieName));
+  if (cookieName) res.clearCookie(cookieName, { path: OAUTH_STATE_COOKIE_PATH });
 
-  if (!code || typeof code !== 'string' || !state || !expectedState || state !== expectedState) {
+  if (!code || typeof code !== 'string' || !stateValid || !hasStateCookie) {
     logger.warn('[Auth] Google OAuth callback: missing/mismatched state');
     return res.redirect('/login.html?error=oauth_state');
   }
