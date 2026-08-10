@@ -1,6 +1,19 @@
 # #99 — `login.js` chuyển hướng session có sẵn trước khi kịp hiện banner lỗi OAuth
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG
+
+## Đã sửa (2026-08-10, nhánh `fix/login-oauth-error-banner` → `dev`)
+
+`checkExistingSession()` (`client/js/login.js`) giờ kiểm tra thêm `new URLSearchParams(...).has('error')`
+TRƯỚC khi quyết định `location.replace('index.html')` — có `error=` trong URL thì bỏ qua redirect,
+để đoạn code hiện banner lỗi (chạy sau) có cơ hội render. Không có `error=` (trường hợp phổ biến
+nhất): hành vi y hệt cũ, tự động redirect. Không đổi `hasBelievedSession()`/logic đọc session.
+
+Test: `client/tests/login-oauth-error-banner.test.js` (mới, dùng jest-environment-jsdom + markup thật
+từ `login.html`, theo đúng khuôn mẫu `tournament-match-leave-lock.test.js`) — 5 case: không session +
+không lỗi (không đổi), có session + không lỗi (vẫn redirect như cũ), có session + `oauth_state` (không
+redirect, hiện banner), có session + `oauth_not_configured` (hiện đúng banner riêng của #98), không
+session + `oauth_failed` (không đổi, đã đúng từ trước). `npm test`: 1048/1048 pass.
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).

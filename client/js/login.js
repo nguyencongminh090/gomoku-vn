@@ -28,11 +28,21 @@ const API_BASE = '';   // Same origin
   // silently reconnecting (and immediately re-kicking whichever tab is still
   // active).
   //
+  // Same reasoning applies to an `error=oauth_*` query param (TODO.md #99):
+  // a user who already has a session and tries linking/switching a Google
+  // account again would otherwise get bounced to index.html before the error
+  // banner below ever has a chance to render — the redirect fires
+  // synchronously, well before that later code runs. Not bouncing here loses
+  // nothing for the common case (no error param, by far the most common
+  // visit to this page) and only changes behavior for someone who is already
+  // signed in AND just had an OAuth attempt fail.
+  //
   // Since TODO.md #68 this cannot check the credential itself — it is an
   // HttpOnly cookie. Bouncing to index.html on a believed session is safe
   // regardless: if the cookie is dead, the socket handshake there rejects it
   // and sends the user straight back here.
-  if (window.GvnSession.hasBelievedSession() && !sessionStorage.getItem('gvn_kicked_notice')) {
+  const hasOAuthError = new URLSearchParams(window.location.search).has('error');
+  if (window.GvnSession.hasBelievedSession() && !sessionStorage.getItem('gvn_kicked_notice') && !hasOAuthError) {
     window.location.replace('index.html');
   }
 })();
