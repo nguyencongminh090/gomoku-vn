@@ -263,6 +263,22 @@ describe('filterMessage — fuzzy/classifier stages disabled (exact-match only)'
   test('an exact dictionary word is still masked with fuzzy/classifier off', () => {
     expect(pf.filterMessage('fuck this')).toBe('**** this');
   });
+
+  // User report (2026-08-10, after this fix already landed on main/dev):
+  // this branch had been cut from dev before the fix synced over, so the
+  // reporter still hit the old fuzzy-matching behavior. Regression coverage
+  // for the exact words named in that report, plus the rest of the same
+  // rime families ("kick"/"clock"/"lock" etc. all sat at edit-distance 1
+  // from "dick"/"cock"/"fuck" under the old fuzzy scoring) — none of these
+  // are covered by the generic near-miss cases above.
+  test.each([
+    'kick', 'rick', 'deck', 'nick',
+    'clock', 'sock', 'lock', 'dock', 'mock',
+    'buck', 'luck', 'duck', 'tuck', 'muck', 'suck',
+    "let's kick him from the room",
+  ])('leaves %j unchanged (common word, previously a fuzzy false positive)', (text) => {
+    expect(pf.filterMessage(text)).toBe(text);
+  });
 });
 
 describe('filterMessage — edge cases', () => {
