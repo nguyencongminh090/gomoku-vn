@@ -1,6 +1,19 @@
 # #100 — Migration `idx_users_oauth` chạy lại toàn bộ dò-trùng + rebuild mỗi lần khởi động
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG
+
+## Đã sửa (2026-08-10, nhánh `fix/oauth-index-migration-guard` → `dev`)
+
+Thêm guard `PRAGMA index_list('users')` trước khối dò-trùng (`server/db/database.js`) — tìm entry
+`idx_users_oauth`, kiểm cột `unique` = 1. Nếu index đã tồn tại VÀ đã unique, bỏ qua hoàn toàn khối
+`GROUP BY` dò-trùng + `DROP`/`CREATE INDEX`, khớp đúng khuôn mẫu `if (!columns.includes(...))` của
+các migration khác trong file. Vẫn giữ nguyên hành vi self-healing khi index còn plain hoặc chưa tồn
+tại — nhánh dò-trùng cũ chạy y hệt trước.
+
+Test: thêm describe block mới `idx_users_oauth — already UNIQUE (steady state)` trong
+`server/tests/oauth-unique-constraint.test.js` — (1) seed DB đã có index UNIQUE sẵn, spy
+`db.prepare()`, xác nhận KHÔNG có lệnh gọi nào chứa `GROUP BY` khi khởi động lại; (2) xác nhận index
+vẫn UNIQUE sau đó (guard không hạ cấp nhầm). `npm test`: 1050/1050 pass.
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).
