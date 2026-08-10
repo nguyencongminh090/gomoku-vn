@@ -58,11 +58,21 @@ if (sessionStorage.getItem('gvn_kicked_notice')) {
 // since that route is a browser navigation and cannot return JSON like the
 // AJAX auth calls below). history.replaceState strips the param so a page
 // refresh doesn't re-show the alert.
+//
+// oauth_not_configured (TODO.md #98) gets its own message, distinct from
+// oauth_failed/oauth_state — those two imply "something went wrong with your
+// attempt, try again"; this one means the feature isn't set up on this
+// server at all, which is not the user's fault and retrying won't help.
 // ---------------------------------------------------------------------------
-if (new URLSearchParams(window.location.search).get('error') === 'oauth_failed' ||
-    new URLSearchParams(window.location.search).get('error') === 'oauth_state') {
-  showAlert(t('login.err_oauth_fail'));
-  window.history.replaceState({}, '', window.location.pathname);
+{
+  const oauthError = new URLSearchParams(window.location.search).get('error');
+  if (oauthError === 'oauth_failed' || oauthError === 'oauth_state') {
+    showAlert(t('login.err_oauth_fail'));
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (oauthError === 'oauth_not_configured') {
+    showAlert(t('login.err_oauth_not_configured'));
+    window.history.replaceState({}, '', window.location.pathname);
+  }
 }
 
 // Login form

@@ -111,17 +111,21 @@ describe('Google OAuth — not configured (no env vars)', () => {
     if (server) await new Promise((resolve) => server.close(resolve));
   });
 
-  test('GET /api/auth/google → 503 OAUTH_NOT_CONFIGURED, no redirect', async () => {
+  // TODO.md #98: both routes used to disagree on how they reported "not
+  // configured" — /google returned raw JSON, /google/callback returned plain
+  // text — dumping the browser outside login.html's styled error UI that
+  // every OTHER OAuth failure uses. Both now redirect the same way.
+  test('GET /api/auth/google → redirects to login.html?error=oauth_not_configured', async () => {
     const res = await fetch(`${baseUrl}/api/auth/google`, { redirect: 'manual' });
-    expect(res.status).toBe(503);
-    const body = await res.json();
-    expect(body.code).toBe('OAUTH_NOT_CONFIGURED');
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/login.html?error=oauth_not_configured');
   });
 
-  test('GET /api/auth/google/callback → 503, no session created', async () => {
+  test('GET /api/auth/google/callback → redirects to login.html?error=oauth_not_configured, no session created', async () => {
     const db = require('../db/database');
-    const res = await fetch(`${baseUrl}/api/auth/google/callback?code=abc&state=xyz`);
-    expect(res.status).toBe(503);
+    const res = await fetch(`${baseUrl}/api/auth/google/callback?code=abc&state=xyz`, { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/login.html?error=oauth_not_configured');
     expect(db.createSession).not.toHaveBeenCalled();
   });
 });

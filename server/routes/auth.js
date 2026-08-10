@@ -473,10 +473,14 @@ router.post('/upgrade-session', (req, res, next) => {
 // ---------------------------------------------------------------------------
 router.get('/google', (req, res) => {
   if (!googleClient) {
-    return res.status(503).json({
-      error: 'Đăng nhập Google chưa được cấu hình trên máy chủ này.',
-      code: 'OAUTH_NOT_CONFIGURED',
-    });
+    // TODO.md #98: this route is reached via <a href>, the same full-page
+    // navigation as /google/callback below — a JSON body here (the old
+    // behavior) dumps raw, unstyled JSON in the browser with no way back
+    // except the Back button, unlike every other OAuth failure, which lands
+    // on login.html's own styled error banner. Route both through the same
+    // place instead, with a message that says "not available" rather than
+    // "try again" — this isn't something retrying fixes.
+    return res.redirect('/login.html?error=oauth_not_configured');
   }
 
   const state = crypto.randomBytes(16).toString('hex');
@@ -507,7 +511,9 @@ router.get('/google', (req, res) => {
 // ---------------------------------------------------------------------------
 router.get('/google/callback', async (req, res) => {
   if (!googleClient) {
-    return res.status(503).send('Đăng nhập Google chưa được cấu hình trên máy chủ này.');
+    // Kept consistent with /google above (TODO.md #98) — same redirect, same
+    // error code, same styled banner on login.html.
+    return res.redirect('/login.html?error=oauth_not_configured');
   }
 
   // CSRF check first, before anything else touches the DB or Google's API.
