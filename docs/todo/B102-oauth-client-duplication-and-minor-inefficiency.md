@@ -1,6 +1,26 @@
 # #102 — Trùng logic "lưu user + chuyển hướng lobby" + 2 điểm kém hiệu quả nhỏ trên đường OAuth
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG (Phần 1 + 2; Phần 3 cố ý KHÔNG làm)
+
+## Đã sửa (2026-08-10, nhánh `fix/oauth-client-duplication` → `dev`)
+
+**Phần 1 (trùng logic):** thêm `GvnSession.completeLogin(user)` (`client/js/session.js`) — gộp
+`setUser(user)` + `location.replace('index.html')`. `login.js`'s `onAuthSuccess(data)` và
+`oauth-complete.js`'s nhánh thành công giờ cùng gọi hàm này thay vì viết tay riêng từng nơi.
+
+**Phần 2 (SELECT thừa):** bỏ `db.getUserById(userId)` ngay sau `db.createUser()` ở nhánh tài khoản
+Google mới (`server/routes/auth.js`) — dựng object `user` trực tiếp từ các field đã có sẵn trong scope.
+Nhánh race-loser (đọc lại qua `getUserByOAuthId`) GIỮ NGUYÊN không đổi — nhánh đó thật sự cần đọc lại vì
+đã thua race, giá trị trong scope không phải giá trị thật sự nằm trong DB.
+
+**Phần 3 (bỏ `oauth-complete.html`):** KHÔNG làm — theo đúng "Phạm vi KHÔNG làm" trong hướng dẫn, đây
+là phần rủi ro cao hơn 2 phần trên (đụng `index-entry.js`) và không bắt buộc làm cùng lúc; để lại cho
+lần sau nếu thấy cần thiết.
+
+Test: `client/tests/session-complete-login.test.js` (mới) — `completeLogin()` cache đúng + redirect,
+kể cả trường hợp `user` falsy. `server/tests/auth-google-oauth.test.js` — 1 test mới xác nhận
+`db.getUserById` không còn được gọi ở nhánh tạo tài khoản mới. Bump `?v=100`→`?v=101`.
+`npm test`: 1053/1053 pass.
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).

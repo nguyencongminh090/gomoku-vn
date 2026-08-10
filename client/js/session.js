@@ -62,6 +62,22 @@
   }
 
   /**
+   * Commit a freshly-authenticated identity and hand off to the lobby.
+   *
+   * login.js's onAuthSuccess() (username/password/guest) and
+   * oauth-complete.js's success branch (Google OAuth, TODO.md #91) used to
+   * each write this same two-line sequence by hand (TODO.md #102) — caching
+   * the profile then bouncing to index.html. A future change to what happens
+   * right after login (a redirect param, a first-login analytics event) only
+   * ever landed in whichever of the two call sites someone remembered to
+   * edit; this is the one place both now call.
+   */
+  function completeLogin(user) {
+    if (user) setUser(user);
+    global.location.replace('index.html');
+  }
+
+  /**
    * Drop the local profile cache.
    *
    * This does NOT end the session — only the server can, by revoking the row
@@ -207,6 +223,7 @@
     getUser,
     setUser,
     clearUser,
+    completeLogin,
     requireAuth,
     hasBelievedSession,
     legacyToken,

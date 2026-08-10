@@ -280,6 +280,11 @@ describe('Google OAuth — configured', () => {
     expect(user.isGuest).toBe(false);
   });
 
+  test('TODO.md #102: creating a new Google account does not re-read the row it just inserted', async () => {
+    await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
+    expect(db.getUserById).not.toHaveBeenCalled();
+  });
+
   test('a Google profile with no usable display name falls back to a generated one', async () => {
     mockVerifyIdToken.mockResolvedValueOnce({
       getPayload: () => ({ sub: 'google-sub-3', email: 'x@example.com', email_verified: true, name: '' }),

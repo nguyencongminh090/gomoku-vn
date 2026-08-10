@@ -211,8 +211,7 @@ function errorMessage(data, fallbackKey) {
 // with, and even that is re-asserted by the server on every socket connect.
 // ---------------------------------------------------------------------------
 function onAuthSuccess(data) {
-  if (data && data.user) window.GvnSession.setUser(data.user);
-  window.location.replace('index.html');
+  window.GvnSession.completeLogin(data && data.user);
 }
 
 // ---------------------------------------------------------------------------
