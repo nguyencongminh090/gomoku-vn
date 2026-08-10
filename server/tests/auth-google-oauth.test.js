@@ -287,6 +287,37 @@ describe('Google OAuth — configured', () => {
     expect(created.displayName.length).toBeGreaterThanOrEqual(2);
   });
 
+  // TODO.md #97: real Google names commonly contain a punctuation character
+  // isValidDisplayName() forbids outright (apostrophes, "&"). These used to
+  // silently discard the whole name and fall back to a random guest name;
+  // the fix strips just the forbidden characters and keeps the rest.
+  test.each([
+    ["O'Brien", 'OBrien'],
+    ['Marks & Co', 'Marks  Co'],
+    ['"Quoted" Name', 'Quoted Name'],
+  ])('TODO.md #97: Google name %j is sanitized to %j, not discarded', async (rawName, expected) => {
+    mockVerifyIdToken.mockResolvedValueOnce({
+      getPayload: () => ({ sub: 'google-sub-punct', email: 'p@example.com', email_verified: true, name: rawName }),
+    });
+
+    await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
+
+    const created = db.createUser.mock.calls[0][0];
+    expect(created.displayName).toBe(expected);
+  });
+
+  test('TODO.md #97: a Google name that is ONLY forbidden characters still falls back to a generated name', async () => {
+    mockVerifyIdToken.mockResolvedValueOnce({
+      getPayload: () => ({ sub: 'google-sub-onlypunct', email: 'q@example.com', email_verified: true, name: '<>&"\'' }),
+    });
+
+    await callback(`?code=abc&state=${RIGHT_STATE}`, { cookie: rightStateCookie() });
+
+    const created = db.createUser.mock.calls[0][0];
+    expect(created.displayName.length).toBeGreaterThanOrEqual(2);
+    expect(created.displayName).not.toMatch(/[<>&"']/);
+  });
+
   test('returning Google user (existing oauth_id): no new account, last_login updated', async () => {
     db.getUserByOAuthId.mockReturnValue({
       id: 'existing-user-1',
