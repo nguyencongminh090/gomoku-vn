@@ -1,6 +1,20 @@
 # #98 — Lỗi "OAuth chưa cấu hình" không nhất quán, thoát khỏi UI lỗi đăng nhập có style
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG
+
+## Đã sửa (2026-08-10, nhánh `fix/oauth-not-configured-ui` → `dev`)
+
+Cả `GET /google` và `GET /google/callback` giờ cùng `res.redirect('/login.html?error=oauth_not_configured')`
+khi `!googleClient` (`server/routes/auth.js`), thay vì 1 route trả JSON trực tiếp, 1 route trả text
+thuần. Thêm key i18n riêng `login.err_oauth_not_configured` (`client/js/i18n.js`, cả `vi`/`en`) — nội
+dung khác `err_oauth_fail`/`oauth_state` ("chưa sẵn sàng, dùng cách khác hoặc thử lại sau" thay vì
+"thử lại đi"). `client/js/login.js` đọc `error=oauth_not_configured` riêng, hiện đúng banner đó.
+
+Bump cache-bust `?v=98` → `?v=99` (đổi `i18n.js`/`login.js`), xác nhận đúng 1 version qua
+`grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup`.
+
+Test: cập nhật 2 test cũ trong `server/tests/auth-google-oauth.test.js` (kỳ vọng cũ: 503 JSON/text) →
+kỳ vọng mới (302 redirect `login.html?error=oauth_not_configured`). `npm test`: 1043/1043 pass.
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).
