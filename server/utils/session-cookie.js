@@ -39,13 +39,18 @@ function isSecureRequest(req) {
   return !!(req && req.secure);
 }
 
-/** Attributes shared by set and clear — they MUST match or the clear no-ops. */
-function baseCookieOptions(req) {
+/**
+ * Attributes shared by set and clear — they MUST match or the clear no-ops.
+ * @param {string} [path='/'] override for a cookie scoped narrower than the
+ *   session cookie (e.g. auth.js's OAuth state cookie, scoped to
+ *   /api/auth/google — see its own comment for why).
+ */
+function baseCookieOptions(req, path = '/') {
   return {
     httpOnly: true,
     sameSite: 'lax',
     secure: isSecureRequest(req),
-    path: '/',
+    path,
   };
 }
 
@@ -110,6 +115,7 @@ function readSessionIdFromHeader(cookieHeader) {
 
 module.exports = {
   isSecureRequest,
+  baseCookieOptions,
   setSessionCookie,
   clearSessionCookie,
   parseCookies,

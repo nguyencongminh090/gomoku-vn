@@ -1,6 +1,22 @@
 # #101 — Cookie state OAuth tự viết tay flags thay vì tái dùng `session-cookie.js`
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG
+
+## Đã sửa (2026-08-10, nhánh `fix/oauth-state-cookie-reuse-helper` → `dev`)
+
+`baseCookieOptions(req)` (`server/utils/session-cookie.js`) nhận thêm 1 tham số `path` tuỳ chọn
+(mặc định `'/'` như cũ) thay vì hardcode. Cookie state OAuth (`server/routes/auth.js`) giờ gọi
+`baseCookieOptions(req, OAUTH_STATE_COOKIE_PATH)` cho CẢ set (`res.cookie(...)`) lẫn clear
+(`res.clearCookie(...)`) — 1 nguồn sự thật duy nhất cho `httpOnly`/`sameSite`/`secure`/`path`, thay vì
+viết tay lặp lại. Giữ nguyên `maxAge` riêng cho state cookie (TTL ngắn hơn session cookie, không có
+trong `baseCookieOptions`). Không đổi giá trị hiện tại của bất kỳ flag nào, chỉ đổi cách viết.
+
+Phát hiện thêm trong lúc sửa: `baseCookieOptions` chưa từng có trong `module.exports` của
+`session-cookie.js` — chỉ dùng nội bộ file đó trước giờ; export nó ra để `auth.js` gọi được.
+
+Test: `npm test` — 1039/1039 pass (không cần test mới riêng, hành vi cookie set/clear đã có test bao
+phủ ở `server/tests/auth-google-oauth.test.js` từ #95/#96, các test đó tiếp tục pass nguyên vẹn sau khi
+đổi cách viết — xác nhận flag không đổi).
 
 Phát hiện qua `/code-review` (8 agent song song) trên nhánh `feature/oauth-login` trước khi merge
 vào `dev`, theo yêu cầu người dùng "Review OAuth feature safe to merge to dev" (2026-08-10).

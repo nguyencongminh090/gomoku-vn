@@ -66,7 +66,7 @@ const db      = require('../db/database');
 const config  = require('../config');
 const logger  = require('../utils/logger');
 const sessionManager = require('../managers/SessionManager');
-const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader, isSecureRequest, parseCookies } = require('../utils/session-cookie');
+const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader, baseCookieOptions, parseCookies } = require('../utils/session-cookie');
 
 // Built once at module load, null when Google OAuth isn't configured for this
 // environment (see config.js — GOOGLE_CLIENT_ID/SECRET are optional, unlike
@@ -455,10 +455,7 @@ router.get('/google', (req, res) => {
 
   const state = crypto.randomBytes(16).toString('hex');
   res.cookie(oauthStateCookieName(state), '1', {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: isSecureRequest(req),
-    path: OAUTH_STATE_COOKIE_PATH,
+    ...baseCookieOptions(req, OAUTH_STATE_COOKIE_PATH),
     maxAge: 5 * 60 * 1000, // 5 minutes — plenty for a consent-screen round trip
   });
 
@@ -492,7 +489,7 @@ router.get('/google/callback', async (req, res) => {
   const stateValid = typeof state === 'string' && OAUTH_STATE_RE.test(state);
   const cookieName = stateValid ? oauthStateCookieName(state) : null;
   const hasStateCookie = !!(cookieName && Object.prototype.hasOwnProperty.call(parseCookies(req.headers.cookie), cookieName));
-  if (cookieName) res.clearCookie(cookieName, { path: OAUTH_STATE_COOKIE_PATH });
+  if (cookieName) res.clearCookie(cookieName, baseCookieOptions(req, OAUTH_STATE_COOKIE_PATH));
 
   if (!code || typeof code !== 'string' || !stateValid || !hasStateCookie) {
     // A missing state cookie has two very different causes that look
