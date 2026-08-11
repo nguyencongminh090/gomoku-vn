@@ -197,6 +197,106 @@ describe('GameEngine — First-move zone', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 3b. WALL rule — P1's 2nd move must be Chebyshev distance >= 4 from their 1st (TODO.md #103)
+// ---------------------------------------------------------------------------
+describe('GameEngine — WALL rule: P1 2nd move min Chebyshev distance', () => {
+  test('rejects when Chebyshev distance is 3 (boundary, just under threshold)', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 8, 5); // dx=3, dy=0 → Chebyshev 3
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('WALL_SECOND_MOVE_MIN_DISTANCE');
+    expect(g.board[5][8]).toBe(0); // move must not have been applied
+  });
+
+  test('accepts when Chebyshev distance is exactly 4 (boundary, threshold)', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 9, 5); // dx=4, dy=0 → Chebyshev 4
+    expect(r.error).toBeUndefined();
+  });
+
+  test('accepts when Chebyshev distance is 5 (just over threshold)', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 10, 5); // dx=5, dy=0 → Chebyshev 5
+    expect(r.error).toBeUndefined();
+  });
+
+  test('accepts a large Chebyshev distance (no upper cap for ">= 4")', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 0, y: 0 }] });
+    g.makeMove(P1, 0, 0);
+    g.makeMove(P2, 5, 5);
+    const r = g.makeMove(P1, 14, 0); // dx=14, dy=0 → Chebyshev 14
+    expect(r.error).toBeUndefined();
+  });
+
+  test('uses Chebyshev (not Manhattan): diagonal dx=2,dy=2 (Manhattan 4, Chebyshev 2) is rejected', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 7, 7); // dx=2, dy=2 → Manhattan 4, Chebyshev 2
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('WALL_SECOND_MOVE_MIN_DISTANCE');
+  });
+
+  test('accepts a diagonal move with Chebyshev distance exactly 4 (dx=4, dy=4)', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 9, 9); // dx=4, dy=4 → Chebyshev 4
+    expect(r.error).toBeUndefined();
+  });
+
+  test('measures distance symmetrically (2nd move up/left of the 1st also counts)', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 10, y: 10 }] });
+    g.makeMove(P1, 10, 10);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 6, 10); // dx=-4, dy=0 → Chebyshev 4
+    expect(r.error).toBeUndefined();
+  });
+
+  test('does not restrict P2 — only "player 1" (players[0]) is constrained', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0); // P2's 1st move
+    g.makeMove(P1, 9, 5); // P1's 2nd move, valid (Chebyshev 4)
+    const r = g.makeMove(P2, 1, 0); // P2's 2nd move, Chebyshev 1 from their 1st — should be unrestricted
+    expect(r.error).toBeUndefined();
+  });
+
+  test('does not apply when WALL mode is off (no walls)', () => {
+    const g = makeGame({ walls: [], firstMoveZones: [] });
+    g.makeMove(P1, 5, 5);
+    g.makeMove(P2, 0, 0);
+    const r = g.makeMove(P1, 6, 5); // Chebyshev 1 — would be rejected under WALL mode
+    expect(r.error).toBeUndefined();
+  });
+
+  test('does not restrict P1\'s 3rd+ move — only applies to the 2nd move', () => {
+    const walls = [{ x: 14, y: 14 }];
+    const g = makeGame({ walls, firstMoveZones: [{ x: 5, y: 5 }] });
+    g.makeMove(P1, 5, 5); // P1 1st move
+    g.makeMove(P2, 0, 0); // P2 1st move
+    g.makeMove(P1, 9, 5); // P1 2nd move, valid (Chebyshev 4)
+    g.makeMove(P2, 1, 0); // P2 2nd move
+    const r = g.makeMove(P1, 6, 5); // P1 3rd move, Chebyshev 1 from 1st move — unrestricted
+    expect(r.error).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 4. Win detection
 // ---------------------------------------------------------------------------
 describe('GameEngine — Win detection (freestyle)', () => {
