@@ -185,6 +185,24 @@ class GameEngine {
     const color = player.color === 'BLACK' ? BLACK : WHITE;
     const colorStr = player.color;
 
+    // WALL rule: player 1's 2nd move must be Chebyshev distance >= 4 from their 1st move
+    // (Chebyshev = max(|dx|, |dy|), i.e. king-move distance covering all 8 directions).
+    // (only when WALL is enabled; does not apply during Swap2 opening, which blocks
+    // normal moves via makeMove entirely — see check at the top of this method).
+    if (this.walls.length > 0 && userId === this.players[0].userId) {
+      const player1Moves = this.moveHistory.filter(m => m.color === colorStr);
+      if (player1Moves.length === 1) {
+        const first = player1Moves[0];
+        const dist = Math.max(Math.abs(x - first.x), Math.abs(y - first.y));
+        if (dist < 4) {
+          return {
+            error: 'Nước thứ 2 phải cách nước đầu tiên khoảng cách Chebyshev tối thiểu 4.',
+            code: 'WALL_SECOND_MOVE_MIN_DISTANCE',
+          };
+        }
+      }
+    }
+
     // Place stone
     this.board[y][x] = color;
     this.moveCount++;
