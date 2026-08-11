@@ -1,6 +1,15 @@
 # #106 — `Cache-Control: max-age=0` ép revalidate mọi asset dù đã có sẵn cơ chế `?v=N` — nghi là nguyên nhân CHÍNH của "sometime lag"
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ⏳ đã cài đặt (2026-08-12, nhánh `fix/static-cache-control`) — **chưa đóng**, còn
+thiếu bước đo bắt buộc qua Cloudflare
+
+Đã thêm `server/config/staticCache.js` (`*.html` → `no-cache`, còn lại →
+`public, max-age=31536000, immutable`), nối vào `express.static` và vào nhánh SPA catch-all; 17
+unit test mới, `npm test` 1087/1087 xanh. **Chưa** đánh dấu ✅ vì bước xác minh 2 và 3 trong
+instruction (origin thật + `cf-cache-status` phải chuyển `REVALIDATED` → `HIT`) cần người dùng khởi
+động lại server thật — CLAUDE.md cấm can thiệp vào tiến trình server mình không tự khởi động, và
+`DB_PATH` hardcode nên không dựng được bản thứ hai. Chi tiết + baseline để so sánh:
+[docs/fix-log/2026-08-12-todo-106-static-cache-control.md](../fix-log/2026-08-12-todo-106-static-cache-control.md).
 
 `server/index.js:68` gọi `express.static(clientPath)` **không truyền option nào**. Mặc định của
 Express là `maxAge: 0`, nên mọi asset tĩnh trả về:
