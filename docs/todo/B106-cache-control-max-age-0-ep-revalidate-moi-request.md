@@ -1,15 +1,19 @@
 # #106 — `Cache-Control: max-age=0` ép revalidate mọi asset dù đã có sẵn cơ chế `?v=N` — nghi là nguyên nhân CHÍNH của "sometime lag"
 
-**Trạng thái:** ⏳ đã cài đặt (2026-08-12, nhánh `fix/static-cache-control`) — **chưa đóng**, còn
-thiếu bước đo bắt buộc qua Cloudflare
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-12, nhánh `fix/static-cache-control`) — đã đo đủ 3 tầng
 
 Đã thêm `server/config/staticCache.js` (`*.html` → `no-cache`, còn lại →
 `public, max-age=31536000, immutable`), nối vào `express.static` và vào nhánh SPA catch-all; 17
-unit test mới, `npm test` 1087/1087 xanh. **Chưa** đánh dấu ✅ vì bước xác minh 2 và 3 trong
-instruction (origin thật + `cf-cache-status` phải chuyển `REVALIDATED` → `HIT`) cần người dùng khởi
-động lại server thật — CLAUDE.md cấm can thiệp vào tiến trình server mình không tự khởi động, và
-`DB_PATH` hardcode nên không dựng được bản thứ hai. Chi tiết + baseline để so sánh:
-[docs/fix-log/2026-08-12-todo-106-static-cache-control.md](../fix-log/2026-08-12-todo-106-static-cache-control.md).
+unit test mới, `npm test` 1087/1087 xanh.
+
+Xác minh đầy đủ sau khi người dùng dừng server và cho phép tự chạy (DB thật đã được dời sang bên
+rồi khôi phục, md5 khớp): origin trả `immutable` cho asset / `no-cache` cho `.html` / `no-store` cho
+`/api/auth/*` (#66 còn nguyên); qua Cloudflare `REVALIDATED` → **`HIT`**; trong trình duyệt thật,
+lần vào lại đi từ **25 request revalidate xuống 0** (0 KB qua mạng). `index.html` vẫn `DYNAMIC` là
+đúng thiết kế. **Chưa kết luận được là đã xoá triệu chứng "sometime lag"** — cả 2 lần đo TTFB trong
+phiên đều không tái hiện đỉnh ~1s của baseline; liên hệ #86 vẫn để mở. Chi tiết:
+[docs/fix-log/2026-08-12-todo-106-static-cache-control.md](../fix-log/2026-08-12-todo-106-static-cache-control.md)
+· [xác minh](../fix-log/2026-08-12-todo-106-verification-through-cloudflare.md).
 
 `server/index.js:68` gọi `express.static(clientPath)` **không truyền option nào**. Mặc định của
 Express là `maxAge: 0`, nên mọi asset tĩnh trả về:
