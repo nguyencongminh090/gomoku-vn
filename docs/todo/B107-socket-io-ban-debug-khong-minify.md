@@ -1,6 +1,14 @@
 # #107 — Cả 4 trang nạp bản socket.io **debug chưa minify** (156 KB) thay vì `socket.io.min.js` (47 KB)
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-12, nhánh `fix/socket-io-min-js`)
+
+Đã đổi đủ 4 chỗ sang `socket.io.min.js` (155 836 B → 46 822 B, −109 014 B/trang). Không thêm `?v=`
+vào URL này và không bump `?v=N` (chỉ đụng `client/*.html`, không đụng `client/css|js/` — quy tắc
+cache-busting không kích hoạt; grep kiểm tra vẫn ra đúng một giá trị `?v=103`). Không có unit test
+(thay đổi thuần client HTML, repo chưa có runner cho tầng này). Xác minh bằng trình duyệt thật qua
+domain (phải qua domain vì `CORS_ORIGIN` chỉ cho phép origin thật): socket kết nối qua WebSocket,
+danh sách online có dữ liệu, chỉ `.min.js` được yêu cầu, không lỗi console từ mã repo. Chi tiết:
+[docs/fix-log/2026-08-12-todo-107-socket-io-min-js.md](../fix-log/2026-08-12-todo-107-socket-io-min-js.md).
 
 Cả 4 trang dùng socket.io đều tham chiếu `/socket.io/socket.io.js`:
 
