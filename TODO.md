@@ -289,6 +289,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng — luật WALL mới cho nước thứ 2 (2026-08-11)
 - ✅ **#103.** Luật WALL: nước thứ 2 của người chơi 1 phải đặt cách nước thứ 1 của họ khoảng cách **Chebyshev ≥ 4** (đã làm rõ: dùng Chebyshev = max(|dx|, |dy|), không phải Manhattan; ngưỡng xác nhận là ≥ 4) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B103-wall-rule-nuoc-thu-2-manhattan-khoang-cach-4.md)
 
+### Nguồn: báo cáo người dùng — mobile: chạm bảng cờ làm chatbox active & trang tự cuộn (2026-08-11)
+- ✅ **#104.** `board.js`'s `_onTouchEnd` gọi `e.preventDefault()` SAU guard sớm-thoát (`!interactive || !isMyTurn || !onCellClick`) nên khi KHÔNG phải lượt người chơi (lượt đối thủ, trước ván, khán giả) `preventDefault()` không chạy — trình duyệt phát sinh synthetic `click` ~300ms sau `touchend` (có thể focus nhầm `#chat-input`) và có thể cuộn trang nếu ngón tay hơi di chuyển; kèm `.board-canvas-wrap canvas` (room) thiếu `touch-action: none` mà `#match-canvas` (tournament) đã có, khiến trình duyệt có thể bắt đầu cuộn trước khi JS kịp chạy dù `preventDefault()` có gọi `[Model: Sonnet 5]` — [chi tiết](docs/todo/B104-mobile-chatbox-active-va-scroll-khi-tap-board.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

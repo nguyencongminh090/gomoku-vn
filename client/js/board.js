@@ -325,8 +325,8 @@ class BoardRenderer {
   }
 
   _onTouchEnd(e) {
-    if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
     e.preventDefault();
+    if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
     const touch = e.changedTouches[0];
     const rect = this.canvas.getBoundingClientRect();
     const w = this.cssSize || this.canvas.width;
