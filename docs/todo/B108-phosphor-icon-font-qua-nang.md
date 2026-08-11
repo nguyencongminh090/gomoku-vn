@@ -1,6 +1,19 @@
 # #108 — Font icon Phosphor quá nặng: 2 weight × (CSS 1530 icon + woff2 ~150 KB) cho 45 icon thực dùng, kèm `font-display: block`
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ⏳ (a) + (c) ✅ ĐÃ XONG (2026-08-12, nhánh `fix/phosphor-bold-font-display`) · (b)
+cố ý CHƯA LÀM, khuyến nghị đóng
+
+- **(a)** Bỏ link `bold/style.css` ở `client/index.html` và `client/login.html` — **chỉ 2 trang,
+  không phải 3**: bảng bên dưới ghi `tournament.html` dùng 0 icon bold là **sai**, vì nó nạp
+  `tournament-detail.js:342` vốn sinh `<i class="ph-bold ph-hourglass-medium">` từ JS. Tiết kiệm
+  235 813 B/trang trên 2 trang đó.
+- **(c)** `font-display: block` → `swap` ở cả `regular/` và `bold/`.
+- **(b)** không làm: `client/js/tournament-match.js:721,760` ghép tên icon động
+  (`` `ph-bold ${iconClass}` ``), nên tập icon thực dùng không suy ra được từ grep tĩnh — đúng chế
+  độ hỏng im lặng mà instruction cảnh báo. Theo "không chắc 100% thì không làm", đề nghị đóng (b).
+- Bump `?v=103` → `?v=104`. Xác minh từng icon trên 6 trang × 2 viewport bằng Chromium thật:
+  không phần tử `.ph-*` nào rơi về font fallback hay mất glyph. Chi tiết:
+  [docs/fix-log/2026-08-12-todo-108-phosphor-bold-font-display.md](../fix-log/2026-08-12-todo-108-phosphor-bold-font-display.md).
 
 Ba vấn đề chồng lên nhau ở cùng một chỗ (font icon Phosphor), nên gộp làm một mục — sửa riêng lẻ
 từng cái là lãng phí vì đều cần đụng cùng bộ file `client/vendor/phosphor/`.
