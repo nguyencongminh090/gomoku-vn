@@ -1,7 +1,8 @@
 # #108 — Font icon Phosphor quá nặng: 2 weight × (CSS 1530 icon + woff2 ~150 KB) cho 45 icon thực dùng, kèm `font-display: block`
 
-**Trạng thái:** ⏳ (a) + (c) ✅ ĐÃ XONG (2026-08-12, nhánh `fix/phosphor-bold-font-display`) · (b)
-cố ý CHƯA LÀM, khuyến nghị đóng
+**Trạng thái:** ⏳ làm một phần — (a) + (c) đã làm (2026-08-12, nhánh
+`fix/phosphor-bold-font-display`) · (b) cố ý CHƯA LÀM, khuyến nghị đóng. Chưa đánh dấu ✅ ở
+`TODO.md` vì mục này còn phần (b) chưa quyết.
 
 - **(a)** Bỏ link `bold/style.css` ở `client/index.html` và `client/login.html` — **chỉ 2 trang,
   không phải 3**: bảng bên dưới ghi `tournament.html` dùng 0 icon bold là **sai**, vì nó nạp
