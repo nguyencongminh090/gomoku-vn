@@ -20,6 +20,7 @@ const path         = require('path');
 
 const config         = require('./config');
 const { cspDirectives } = require('./config/csp');
+const { staticOptions, REVALIDATE } = require('./config/staticCache');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -64,8 +65,11 @@ const clientPath = process.env.NODE_ENV === 'production'
   ? path.join(__dirname, '..', 'dist')
   : path.join(__dirname, '..', 'client');
 
-// Serve client static files
-app.use(express.static(clientPath));
+// Serve client static files. Cache policy (assets immutable, HTML always
+// revalidated) lives in ./config/staticCache so it is unit-testable without
+// booting this server — see TODO.md #106 for why the express.static default
+// (`public, max-age=0`) was actively harmful here.
+app.use(express.static(clientPath, staticOptions));
 
 // REST API routes
 app.use('/api/auth', authRouter);
@@ -76,6 +80,9 @@ app.use('/api', tournamentGamesRouter);
 app.get('*', (req, res) => {
   // If not an API request, redirect to login
   if (!req.path.startsWith('/api')) {
+    // Same policy as express.static gives HTML — this path bypasses its
+    // setHeaders hook, so set it explicitly (TODO.md #106).
+    res.setHeader('Cache-Control', REVALIDATE);
     res.sendFile(path.join(clientPath, 'login.html'));
     return;
   }
