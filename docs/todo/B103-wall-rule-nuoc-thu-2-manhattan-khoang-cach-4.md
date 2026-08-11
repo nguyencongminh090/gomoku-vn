@@ -2,6 +2,11 @@
 
 **Trạng thái:** ✅ ĐÃ XONG (2026-08-11)
 
+**Addendum (2026-08-12):** merge ban đầu chỉ đổi `server/`, quên thêm i18n key
+`err.wall_second_move_min_distance` cho mã lỗi `WALL_SECOND_MOVE_MIN_DISTANCE` —
+client hiện chuỗi khoá thô thay vì thông báo dịch. Đã vá, xem
+[fix-log](../fix-log/2026-08-12-todo-103-followup-wall-second-move-i18n-key.md).
+
 ## Yêu cầu người dùng (2026-08-11)
 
 > Nước thứ 2 của người chơi 1 phải đặt cách nước thứ 1 của họ đúng khoảng cách Manhattan = 4 (hoặc
