@@ -1,6 +1,44 @@
 # #109 — Production đang chạy ở chế độ dev: `NODE_ENV` không hề được đặt nên phục vụ `client/` thô, và `dist/` thì đã cũ 4 ngày
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-12, nhánh `fix/remove-stale-dist-branch`) — **giải bằng cách
+XOÁ cái bẫy, không phải bằng cách dựng bước build**
+
+Người dùng đã chọn phương án này sau khi được trình bày cả 3 lựa chọn (xoá `dist/` + bỏ nhánh /
+dựng bước build có kiểm chứng / chỉ ghi tài liệu).
+
+**Deviation có chủ ý so với instruction:** `docs/instruction/B109-*.md` ghi rõ "**Không xoá `dist/`
+khỏi repo, không đổi `outDir`**". Đây là quyết định của người dùng sau khi cân nhắc đánh đổi, nên
+ghi lại thay vì im lặng đi chệch (đúng quy tắc CLAUDE.md). Lý do phương án này thắng:
+
+- Lợi ích còn lại của bundle là **giảm số request** — nhưng #105 (gzip) + #106/#111 (cache) đã
+  khiến **lần vào lại tải 0 byte / 0 request**, nên gần như không còn gì để giành.
+- Thêm bước build là thêm một thứ **phải nhớ**; bỏ hẳn nhánh thì **không còn bản sao thứ hai của
+  client để lệch pha**. Đúng tinh thần "sửa quy trình, không sửa biến env" mà chính instruction
+  đặt ra — chỉ khác ở chỗ sửa bằng cách loại bỏ.
+
+**Đã làm:**
+
+- `server/index.js`: `clientPath` giờ luôn là `client/`, bỏ hẳn nhánh
+  `NODE_ENV === 'production' ? '../dist' : '../client'`.
+- Xoá thư mục `dist/` cục bộ (3.0 MB, 43 file). Lưu ý: `dist/` **không** được git theo dõi (nằm
+  trong `.gitignore`), nên đây chỉ là dọn artifact build cục bộ, tái tạo được bằng `npm run build`
+  — không phải xoá lịch sử hay code.
+- `README.md`: cập nhật phần khởi động, ghi rõ server luôn phục vụ `client/` và output của
+  `npm run build` hiện **không được dùng**.
+- 4 unit test mới (`server/tests/client-path.test.js`) chặn việc ai đó thêm lại nhánh
+  env-conditional — đây là loại "tối ưu" nghe rất hợp lý và sẽ dựng lại đúng cái bẫy này.
+
+**Xác minh:** khởi động server **với `NODE_ENV=production`** (đúng trường hợp trước đây phục vụ
+`dist/` cũ) → `/`, `/index.html`, `/js/i18n.js`, `/vendor/socket.io/socket.io.min.js` đều `200`,
+và `index.html` trả về có `src="/vendor/socket.io/socket.io.min.js"` — tức đúng `client/` hiện tại
+đã gồm #111, không phải bundle cũ. `npm test` **1118/1118 xanh**. DB thật dời sang bên rồi khôi
+phục, `md5sum -c` OK.
+
+**Còn để mở, không tự quyết:** `npm run build` + `vite.config.js` + devDependency `vite` vẫn còn
+nhưng không ai phục vụ output nữa. Cố ý **không** xoá vì nằm ngoài phạm vi người dùng đã chốt —
+nếu muốn dọn nốt thì mở mục riêng.
+
+Chi tiết: [docs/fix-log/2026-08-12-todo-109-remove-stale-dist-branch.md](../fix-log/2026-08-12-todo-109-remove-stale-dist-branch.md).
 
 `server/index.js:63-66` chọn thư mục tĩnh theo `NODE_ENV`:
 
