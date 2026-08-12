@@ -100,13 +100,17 @@ body.zen-lobby .ui-core {
 }
 
 /* ── Header ───────────────────────────────────────────────────────────── */
-body.zen-lobby .lobby__title { font-weight: 700; }
+body.zen-lobby .lobby__title { font-weight: 700; font-size: 22px; }
 body.zen-lobby .lobby__count {
-  border-radius: 999px;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  color: var(--c-ink-3);
+  font-weight: 600;
   /* room-count/online-count are dynamic, real-time text (e.g. "−2 đang
-     online") — without this they can break mid-phrase inside the pill
-     when the header runs out of horizontal room (see the .lobby__header
-     rule below for the other half of this fix). */
+     online") — without this they can break mid-phrase when the header
+     runs out of horizontal room (see the .lobby__header rule below for
+     the other half of this fix). */
   white-space: nowrap;
 }
 body.zen-lobby .lobby__header {
@@ -125,76 +129,152 @@ body.zen-lobby .lobby__header h1 {
   row-gap: 6px;
 }
 
-/* ── Section tabs: already underline-style in lobby.css — just quiet the color ── */
-body.zen-lobby .section-tabs { border-bottom-color: var(--c-border); }
-body.zen-lobby .section-tabs__btn.is-active { border-bottom-color: var(--c-ink); }
+/* ── Section tabs: plain text, no icons/underline — matches the mockup's
+   quiet tab row (bold ink = active, muted gray = inactive, no chrome). ── */
+body.zen-lobby .section-tabs { border-bottom: none; margin-bottom: 28px; gap: 24px; }
+body.zen-lobby .section-tabs__btn {
+  border-bottom: none;
+  min-height: auto;
+  padding: 0;
+  margin-right: 0;
+  font-size: 14px;
+  color: var(--c-ink-3);
+}
+body.zen-lobby .section-tabs__btn.is-active {
+  color: var(--c-ink);
+  font-weight: 800;
+  border-bottom: none;
+}
+body.zen-lobby .section-tabs__btn:hover { color: var(--c-ink-2); }
+body.zen-lobby .section-tabs__btn .ph { display: none; }
 
-/* ── Buttons: flat ink, no shadow/lift ───────────────────────────────────── */
+/* ── Buttons: plain text+icon links instead of pill/solid chrome — matches
+   the mockup's "Lịch sử" / "Tạo phòng" treatment (no button box at all). ── */
 body.zen-lobby .btn-create,
-body.zen-lobby .btn-secondary,
+body.zen-lobby .btn-secondary {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: var(--c-ink) !important;
+  padding: 0;
+  border-radius: 0;
+  font-weight: 700;
+  gap: 8px;
+}
+body.zen-lobby .btn-secondary { color: var(--c-ink-2) !important; }
+body.zen-lobby .btn-create:hover,
+body.zen-lobby .btn-secondary:hover {
+  transform: none;
+  box-shadow: none;
+  opacity: 0.65;
+  background: transparent !important;
+}
+body.zen-lobby .btn-create i {
+  width: auto;
+  height: auto;
+  background: transparent;
+  font-size: 16px !important;
+}
+body.zen-lobby .btn-create:hover i { transform: none; }
+body.zen-lobby .lobby__header > div { gap: 24px !important; align-items: center; }
+
 body.zen-lobby .btn,
 body.zen-lobby .btn-confirm,
 body.zen-lobby .modal__actions .btn {
   box-shadow: none !important;
 }
-body.zen-lobby .btn-create:hover,
-body.zen-lobby .btn-secondary:hover,
 body.zen-lobby .btn-confirm:hover,
 body.zen-lobby .modal__actions .btn-confirm:hover {
   transform: none;
   box-shadow: none;
 }
-body.zen-lobby .btn-secondary {
-  background: transparent;
-}
-body.zen-lobby .btn-secondary:hover { background: var(--c-surface-2); }
 
-/* ── Room list: borderless flowing rows instead of shadowed cards ───────── */
+/* ── Room list: borderless flowing rows, one state bullet per row ───────── */
 body.zen-lobby .room-card {
-  padding: 22px 0;
+  padding: 20px 0;
   gap: 20px;
   border-bottom: 1px solid var(--c-border-light);
 }
 body.zen-lobby .room-card:hover { background: transparent; }
-body.zen-lobby .room-card__title { font-size: 16px; font-weight: 700; }
+body.zen-lobby .room-card__title { font-size: 15px; font-weight: 600; }
 
+/* Single leading state dot per row (filled = playing, hollow = waiting/idle),
+   read off the state-badge variant lobby.js already renders — no JS change,
+   this only adds a decorative pseudo-element keyed off the existing class. */
+body.zen-lobby .room-card {
+  position: relative;
+}
+body.zen-lobby .room-card::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--c-ink-3);
+  order: -1;
+}
+body.zen-lobby .room-card:has(.state-badge--playing)::before {
+  background: var(--c-ink);
+}
+body.zen-lobby .room-card:has(.state-badge--waiting)::before {
+  background: transparent;
+  border: 1.5px solid var(--c-ink-2);
+}
+
+/* Badges/chips flatten to plain inline text — no border, no pill background —
+   the leading row bullet above is now the only "chip" affordance. */
 body.zen-lobby .state-badge,
 body.zen-lobby .rule-chip,
 body.zen-lobby .rule-tag,
 body.zen-lobby .badge {
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
-  border: 1px solid var(--c-border);
-  color: var(--c-ink-2);
+  border: none;
+  padding: 0;
+  color: var(--c-ink-3);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
 }
 body.zen-lobby .state-badge--playing,
 body.zen-lobby .badge--live {
   color: var(--c-ink);
-  border-color: var(--c-ink);
 }
 body.zen-lobby .rule-chip--custom {
-  color: var(--c-ink);
-  border-color: var(--c-ink);
+  color: var(--c-ink-2);
 }
 body.zen-lobby .rule-tag--wall,
 body.zen-lobby .rule-tag--portal,
 body.zen-lobby .rule-tag--swap2,
 body.zen-lobby .rule-tag--win {
-  color: var(--c-ink-2);
+  color: var(--c-ink-3);
+}
+/* Chips sit in their own row below the meta line (room-card__chips) — add a
+   visible separator since removing the pill background also removed the
+   only thing that used to separate adjacent chips. */
+body.zen-lobby .room-card__chips { gap: 10px; }
+body.zen-lobby .room-card__chips > * + *::before {
+  content: '·';
+  margin-right: 10px;
+  color: var(--c-ink-3);
 }
 
 body.zen-lobby .btn-join {
-  border-radius: 999px;
+  border-radius: 0;
   background: transparent;
-  border: 1px solid var(--c-ink);
+  border: none;
   color: var(--c-ink);
+  font-weight: 700;
+  padding: 8px 0;
 }
 body.zen-lobby .btn-join:hover {
-  background: var(--c-ink);
-  color: #FFFFFF;
+  background: transparent;
+  color: var(--c-ink);
+  opacity: 0.6;
   transform: none;
   box-shadow: none;
 }
+body.zen-lobby .btn-join:disabled { color: var(--c-ink-3); }
 
 /* ── Modal: thin border instead of heavy shadow/gradient bezel ──────────── */
 body.zen-lobby .modal {
@@ -217,12 +297,25 @@ body.zen-lobby .online-panel {
 }
 body.zen-lobby .online-panel__header { padding: 0 0 14px; border-bottom: 1px solid var(--c-border); }
 body.zen-lobby .online-panel__header:hover { background: transparent; }
+body.zen-lobby .online-panel__title {
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--c-ink-3);
+}
 body.zen-lobby .online-panel__dot {
   background: var(--c-ink);
   box-shadow: none;
   animation: none;
 }
-body.zen-lobby .online-panel__count { border-radius: 999px; }
+body.zen-lobby .online-panel__count {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  color: var(--c-ink-3);
+  font-weight: 600;
+}
 body.zen-lobby .online-panel__list { border-top: none; padding-top: 6px; }
 body.zen-lobby .online-panel__list li { padding: 9px 0; }
 body.zen-lobby .online-panel__list li:hover { background: transparent; color: var(--c-ink-2); }
