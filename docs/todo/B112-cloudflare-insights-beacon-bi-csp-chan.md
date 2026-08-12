@@ -70,8 +70,9 @@ Ghi chú kỹ thuật nếu sau này có ai định dùng wildcard: `https://*.c
 **không** khớp domain gốc `cloudflareinsights.com` — vẫn phải liệt kê riêng host gốc, nên wildcard
 còn không gọn hơn cách hiện tại.
 
-**✅ ĐÃ xác minh end-to-end trên domain thật** (2026-08-12, sau khi người dùng restart server) —
-Chromium thật trên `https://play3cr.dpdns.org`:
+## ✅ Xác minh end-to-end trên domain thật (sau khi người dùng restart server)
+
+2026-08-12, Chromium thật trên `https://play3cr.dpdns.org`:
 
 | | Trước | Sau |
 |---|---|---|
@@ -88,6 +89,10 @@ trả 404). Nghĩa là mục `connect-src https://cloudflareinsights.com` **hi�
 nó phủ nhánh dự phòng trong script và được **cố ý giữ lại** (host pin chính xác, khỏi phải sửa CSP
 nếu Cloudflare đổi cấu hình chèn). Chi tiết:
 [docs/fix-log/2026-08-12-xac-minh-112-end-to-end-sau-restart.md](../fix-log/2026-08-12-xac-minh-112-end-to-end-sau-restart.md).
+
+---
+
+# Bối cảnh gốc (ghi lúc mới phát hiện, giữ nguyên để tra cứu)
 
 Phát hiện khi xác minh nhóm #105-#111 qua domain thật bằng Chromium (2026-08-12). **Không liên
 quan tới nhóm fix đó** — đã kiểm chứng là có sẵn từ trước.
