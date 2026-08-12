@@ -1,6 +1,32 @@
 # #105 — Server không có compression middleware: mọi asset text gửi nguyên si, phí 70-87% băng thông
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-12, nhánh `fix/compression-middleware`)
+
+Thêm `compression` vào `dependencies` và `app.use(compression())` ở `server/index.js` — đặt
+**trước** `express.static` và mọi route (mount sau thì middleware không còn bọc được response đã
+ghi). Giữ nguyên mặc định: `level: 6` (bảng gzip -9 trong file này chỉ là trần lợi ích, không phải
+đề xuất cấu hình) và bộ lọc `compressible` sẵn có.
+
+**Đo trên server thật** (bản tạm cổng 3001, DB thật dời sang bên rồi khôi phục, `md5sum -c` OK,
+12 users / 64 games nguyên vẹn) — trang sảnh, 25 request:
+
+| | Bytes |
+|---|---|
+| trước (không nén) | 570 164 B |
+| sau (trên dây) | **290 728 B** |
+| tiết kiệm | **279 436 B (−49,0%)** |
+
+Từng file: `phosphor/regular/style.css` −84%, `index.html` −80%, `lobby.css` −79%, `i18n.js` −75%.
+`manrope-latin.woff2` **không** bị nén lại (đúng như mong đợi, bộ lọc `compressible` tự bỏ qua).
+`/api/auth/me` vẫn `no-store` (#66 nguyên vẹn), asset vẫn `immutable` / `*.html` vẫn `no-cache`
+(#106 nguyên vẹn).
+
+14 unit test mới (`server/tests/compression.test.js`), `npm test` **1101/1101 xanh** (trước 1087).
+Test gồm cả 3 assert *wiring* đọc source `server/index.js` (đã lọc bỏ dòng comment) để bắt trường
+hợp ai đó xoá/đảo thứ tự `app.use(compression())` — đã kiểm chứng bằng cách comment tạm dòng đó:
+2 test đỏ đúng như thiết kế, rồi khôi phục.
+
+Chi tiết: [docs/fix-log/2026-08-12-todo-105-compression-middleware.md](../fix-log/2026-08-12-todo-105-compression-middleware.md).
 
 `server/index.js` không `app.use(compression())` ở bất kỳ đâu, và `compression` cũng không có trong
 `package.json` (`dependencies` chỉ có `bcrypt`, `better-sqlite3`, `enquirer`, `express`,
