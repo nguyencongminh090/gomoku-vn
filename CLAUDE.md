@@ -95,6 +95,103 @@ Bugfixes keep using the `fix/<slug>` workflow above unchanged (short-lived branc
 - **After a `feature/*` branch merges into `dev`, delete it** (`git branch -d feature/...`), same as the `fix/*` cleanup rule, unless told to keep it for further review.
 - New feature work discovered mid-conversation still follows the "New requirements/tasks: stack, don't perform directly" rule below — record it in `TODO.md`/`instruction.md` first unless the user explicitly asks to implement it now, at which point it starts life as a `feature/*` branch off `dev` per this rule.
 
+## Git workflow: `ui/<style>` branches for parallel UI layout design exploration
+
+When the user wants multiple competing UI/layout designs explored side by side (e.g. "try style A
+vs style B for this screen") before picking one, use a separate structure from both `fix/*` and
+`feature/*` so the candidate designs never interfere with each other or with in-flight feature work:
+
+- **Each design candidate gets its own `ui/<short-kebab-slug>` branch, branched off `dev`** (not
+  off `main`) — e.g. `ui/style_a`, `ui/style_b`. Multiple `ui/*` branches can be in flight at once
+  for the same screen; they are independent iteration lines, each committing its own progression
+  (`commit → commit → ... → final`) exactly as sketched in the task example.
+- **Backend is locked on every `ui/*` branch: no `server/` changes.** These branches exist purely
+  to compare presentation-layer design candidates, so scope is limited to the UI layer —
+  `client/*.html`, `client/css/`, `client/js/` (UI-facing modules only, not introducing new
+  server-dependent behavior). If a design candidate seems to need a `server/` change (a new
+  endpoint, a changed response shape) to work, that's a signal that change belongs in a
+  `feature/*` branch instead, filed separately per the "New requirements/tasks" rule — do not fold
+  it into a `ui/*` branch.
+- **DO NOT TOUCH the board/stones design on any `ui/*` branch.** The game board's rendering,
+  layout, and interaction logic — `client/js/board.js` in full (grid/canvas drawing, stone
+  placement/animation such as `_drawStonePiece`, touch/click handlers like `_onTouchEnd`) and the
+  board-specific rules inside `client/css/game.css` (board grid, cell sizing, stone appearance) —
+  is locked, same spirit as the backend lock above. `ui/*` branches compare layout/chrome around
+  the board (panels, controls, page structure, colors/typography elsewhere on the screen), not the
+  board itself. If a design candidate genuinely requires a board/stone visual change, that's out of
+  scope for `ui/*` — raise it with the user explicitly and, if approved, track it as its own
+  `feature/*` work per the "New requirements/tasks" rule rather than folding it into a style
+  candidate.
+- **No `ui/*` branch merges into `dev` on its own.** They stay parallel, independent branches until
+  the user explicitly picks a winner. There is no default order or timeline for that decision —
+  wait for the user to choose, don't merge speculatively because a candidate "looks done."
+- **Once the user chooses a winner**, merge only that one `ui/<style>` branch into `dev` with a
+  regular merge commit (not squash, not rebase), same convention as `fix/*`/`feature/*`. Follow the
+  "Cache-busting version bump" rule if the merge brings in `client/css/`/`client/js/` changes not
+  already reflected in `dev`'s current `?v=N`.
+- **After the winning branch merges, delete every `ui/<style>` branch for that round** — the winner
+  (now merged, so the branch itself is redundant) and every losing candidate alike. Same cleanup
+  convention as `fix/*`/`feature/*` unless the user says to keep one for reference.
+- `ui/*` branches are a design-comparison mechanism, not a substitute for `features/<slug>/`
+  discussion folders — if the competing styles represent genuinely different feature scope (not
+  just visual/layout variants of the same screen), work the decision through a
+  `features/<slug>/planning.md` first per that rule, then spin up `ui/*` branches for the shortlisted
+  visual candidates once scope is settled.
+
+## Git workflow: a `fix/*` branch merged to `main` must also land on `dev`
+
+Precedent (2026-08-12): `fix/focus-mode-bottom-gap` (TODO-untracked CSS fix, PR #5) branched off
+`main` and merged straight back into `main` — correctly, per the standard `fix/*` workflow, since
+the bug existed on `main` too. But it was **never merged into `dev`**. `dev` kept moving (58 commits,
+including its own independent `?v=N` bumps up to 104) while unaware `main` now had an extra commit
+`dev` didn't. When the next scheduled `dev`→`main` checkpoint merge (PR #6) was opened, it failed
+with 14 real merge conflicts — 10 files purely on the `?v=N` cache-bust number (`dev` at 104 vs
+`main` at 97, since `main`'s side had bumped independently for the same fix), plus `docs/fix-log.md`'s
+append point and one test file. None of this was caused by bad code — it was two branches' histories
+silently drifting apart because a fix landed on only one of them.
+
+- **Whenever a `fix/*` branch merges into `main`, also merge it into `dev`** (`git checkout dev &&
+  git merge fix/<slug>`, or re-open the same fix as a `fix/*`-off-`dev` merge if `dev` needs a
+  differently-shaped patch) — in the same session, immediately after the `main` merge, not "later"
+  or "at the next checkpoint." Treat "merged to `main`" and "merged to `dev`" as two separate,
+  equally-required steps for any fix whose underlying bug exists on both branches (the common case —
+  see the existing "fix for code that only exists on `dev`" exception above for when it doesn't
+  apply).
+- **This includes the `?v=N` cache-bust number.** If `main`'s side of the fix touched
+  `client/css/`/`client/js/`, it bumped `?v=N` using `main`'s own last-known number — which is
+  usually stale by the time it reaches `dev`, since `dev` has kept bumping independently. Syncing the
+  fix into `dev` right away, and re-bumping to `dev`'s next number there, keeps the two branches'
+  version counters from drifting apart in a way only a full merge conflict surfaces later.
+- **If you skip this and the divergence is only caught at the next checkpoint merge**, resolving it
+  is still mechanical, not risky, as long as you diagnose it as a divergence rather than real logic
+  conflict: for a pure `?v=N` conflict, keep `dev`'s (usually higher, more complete) side of each
+  file and re-bump the whole repo to `max(dev, main) + 1` per the "Cache-busting version bump" rule
+  above (verify with that rule's `grep` command afterward — it must show exactly one number); for a
+  `docs/fix-log.md` conflict, keep both branches' rows (append-only applies across the merge too — do
+  not let one branch's row silently drop the other's), inserting the losing side's unique rows in
+  chronological order by timestamp; for a test-file conflict, keep whichever side added new test
+  cases (usually both add different ones — keep both, don't let a conflict resolution accidentally
+  delete a kept test, which would violate the "never discard a test case" rule above). Always re-run
+  `npm test` after resolving before committing the merge.
+
+## Git workflow: check `dev`↔`main` divergence before opening a checkpoint-merge PR
+
+Before running `gh pr create --base main --head dev` for a periodic checkpoint merge, check whether
+`main` has moved independently of `dev` first — don't find out from a failed `gh pr merge`:
+
+```
+git fetch origin
+git log origin/dev..origin/main --oneline   # commits on main that dev doesn't have
+```
+
+If this is empty, the PR will merge cleanly (a true fast-forward-shaped merge). If it's **not**
+empty, `main` has commits `dev` lacks (see the precedent above for how this happens) — merge
+`origin/main` into local `dev` first, resolve conflicts, push `dev`, and only then open/merge the
+PR. Opening the PR anyway and discovering the conflict via `gh pr merge`'s failure is not wrong, but
+checking first avoids doing the divergence diagnosis under the pressure of a half-open PR, and makes
+it obvious up front whether the fix is a one-line resolve or something that needs the user's input
+before proceeding.
+
 ## Concurrent sessions sharing the repo: check `git stash list` before assuming lost work
 
 The user may run multiple Claude Code sessions against this repo at once (e.g. one fixing a bug
@@ -355,6 +452,42 @@ tournament/pairing/entry graph by hand to satisfy the FKs (to skip the socket st
 work and easy to get subtly wrong against `TournamentManager._hydrateTournament()`'s expectations;
 letting the real server generate the parent rows and only bulk-seeding the leaf table is far less
 fragile. Precedent: TODO.md #84 (games-history pagination) verification, 2026-08-09.
+
+## Implementing a mockup: restructure the layout, don't just re-skin it
+
+Precedent (2026-08-12, `ui/zen-minimal`): the first implementation pass took the chosen mockup
+(`client/lobby-bw-zen-mockup.html`) and applied it to the real lobby by writing a token-override
+stylesheet on top of `lobby.css`'s *existing* structure — redefining `--c-brand`/`--c-border`/etc.,
+flattening shadows, hiding icons. Tests passed, the page rendered without errors, and it still
+wasn't the mockup: the real screen kept a two-column grid with a sticky sidebar card, `.ui-shell`/
+`.ui-core` bezel, pill buttons, and a badge/chip cluster — none of which exist in the mockup, which
+is a single 640px column of borderless rows with text-link actions. Grayscale-and-flatten made the
+old design monochrome; it did not make it the new design. The fix (same branch, later commit) threw
+out the override-only stylesheet and rebuilt the DOM and layout to match the mockup's actual
+structure, keeping only the mockup's own scoping discipline (a body class, so shared files like
+`lobby.css`/`main.css` stay untouched for other screens).
+
+**Before treating a mockup implementation as done, diff structure, not just palette:**
+
+- **Compare DOM shape, not just colors.** Open the mockup and the real screen side by side and ask:
+  is this the same number of columns? The same container nesting (card-in-a-card vs. flat)? The
+  same control affordance (button vs. text link, badge vs. plain text)? If the mockup and the
+  current markup disagree on any of these, a CSS override cannot close the gap — the markup has to
+  change too.
+- **A "restyle" that never touches the `.html` file is a signal to double-check**, not a shortcut
+  worth taking. Token/chrome overrides are the right tool when the mockup *is* the same structure in
+  a new palette; they are the wrong tool when the mockup is a different structure. Tell the two apart
+  before choosing the approach, not after implementing.
+- **Re-derive the underlying data flow, not just the shape.** Elements the mockup collapses,
+  relocates, or renders differently from production (e.g. a sidebar becoming a line of prose, a
+  count-pill header becoming a sentence) usually need the *feature* re-derived, not merely visual
+  parity — check what real data currently drives that element in `client/js/`, then decide how it
+  maps onto the mockup's shape, rather than copying the mockup's placeholder text verbatim into
+  production (ask the user before adopting a mockup's exact wording if it reads as informal for the
+  live product's actual language/tone, since a mockup's copy is only a suggestion).
+- **Verify by rendering both**, not by reading both. The `design-workflow` skill's Stage 5 live
+  review (real browser, real data, desktop + mobile) is what actually catches structural drift —
+  screenshots of the live implementation next to the mockup, not a read-through of the diff.
 
 ## Short/underspecified prompts: enhance, confirm, then execute
 
