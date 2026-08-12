@@ -21,7 +21,7 @@ const path         = require('path');
 
 const config         = require('./config');
 const { cspDirectives } = require('./config/csp');
-const { staticOptions, REVALIDATE } = require('./config/staticCache');
+const { staticOptions, socketIoClientOptions, REVALIDATE } = require('./config/staticCache');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -87,6 +87,31 @@ app.use(express.json());
 const clientPath = process.env.NODE_ENV === 'production' 
   ? path.join(__dirname, '..', 'dist')
   : path.join(__dirname, '..', 'client');
+
+// Serve the socket.io browser client ourselves (TODO.md #111).
+//
+// socket.io ships its own handler for this file, but hardcodes
+// `Cache-Control: public, max-age=0` (socket.io/dist/index.js) with no option
+// to change it — so after #106 made every other asset immutable, this was the
+// only asset still costing an origin round-trip on every page load, on all
+// four pages. A 304 is still a full round-trip through the tunnel, which is
+// exactly the latency #106 was about.
+//
+// It has to be served from a path OUTSIDE `/socket.io/`: engine.io claims
+// that entire prefix at the HTTP-server level (it intercepts before Express
+// is ever reached, and answers 400 for anything it doesn't recognise), so
+// neither an Express route nor an express.static mount under `/socket.io/`
+// can take effect. Verified empirically — see docs/fix-log for #111.
+//
+// socket.io's own `serveClient` is left ENABLED on purpose: the old
+// `/socket.io/socket.io.min.js` URL keeps working, so any HTML still
+// referencing it (a stale dist/ build — see TODO.md #109 — or a cached page)
+// degrades to the previous behaviour instead of breaking with no global `io`.
+const socketIoClientPath = path.join(
+  path.dirname(require.resolve('socket.io/package.json')),
+  'client-dist'
+);
+app.use('/vendor/socket.io', express.static(socketIoClientPath, socketIoClientOptions));
 
 // Serve client static files. Cache policy (assets immutable, HTML always
 // revalidated) lives in ./config/staticCache so it is unit-testable without
