@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Phòng chơi (Style 5: Zen Drawer, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Room layout Style 5 (Zen Panel Drawer) synced to the Zen Minimal lobby language." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/bold/style.css" />
+<style>
+  :root {
+    --paper: #FFFFFF;
+    --ink: #1C1C1C;
+    --ink-2: #7A7A7A;
+    --ink-3: #B8B8B8;
+    --line: rgba(28,28,28,0.09);
+    --font: 'Manrope', system-ui, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font); font-weight: 400; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  .mock-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: var(--ink); color: var(--paper); text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; }
+
+  .app { height: 100vh; padding-top: 36px; display: flex; flex-direction: column; }
+
+  /* ── Thin top strip: both players, inline, nothing else ── */
+  .strip { display: flex; align-items: center; justify-content: space-between; padding: 18px 40px; border-bottom: 1px solid var(--line); }
+  .strip__brand { display: flex; align-items: center; gap: 10px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+  .strip__brand img { width: 16px; height: 16px; opacity: 0.8; }
+  .strip__match { display: flex; align-items: center; gap: 14px; font-size: 13px; }
+  .strip__player { display: flex; align-items: center; gap: 8px; }
+  .strip__mono { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--ink-3); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+  .strip__player--active .strip__mono { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .strip__player--active .strip__name { font-weight: 700; }
+  .strip__name { color: var(--ink-2); }
+  .strip__clock { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .strip__vs { font-size: 10px; color: var(--ink-3); font-weight: 700; }
+  .strip__leave { background: none; border: none; cursor: pointer; color: var(--ink-2); font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+  /* ── Board fills nearly everything ── */
+  .stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; }
+  .board-frame { height: min(100%, 82vw); aspect-ratio: 1; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; margin: 24px; }
+  .board-placeholder { text-align: center; color: var(--ink-3); }
+  .board-placeholder i { font-size: 42px; display: block; margin-bottom: 14px; opacity: 0.55; }
+  .board-placeholder__text { font-size: 13px; font-weight: 500; }
+
+  /* ── Slim vertical icon rail, flush to the right edge ── */
+  .edge-rail { position: absolute; top: 0; right: 0; bottom: 0; width: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; border-left: 1px solid var(--line); }
+  .edge-rail button { background: none; border: none; cursor: pointer; color: var(--ink-3); font-size: 18px; padding: 4px; }
+  .edge-rail button.is-active { color: var(--ink); }
+
+  /* ── Drawer slides over the board's right edge, shown open ── */
+  .drawer { position: absolute; top: 0; right: 56px; bottom: 0; width: 320px; background: var(--paper); border-left: 1px solid var(--line); box-shadow: -24px 0 48px -32px rgba(0,0,0,0.18); padding: 28px; display: flex; flex-direction: column; }
+  .drawer__title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 20px; }
+  .chat-messages { flex: 1; }
+  .chat-msg { font-size: 12.5px; line-height: 1.8; }
+  .chat-msg b { color: var(--ink); }
+  .chat-msg span { color: var(--ink-2); }
+  .chat-input { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .chat-input input { flex: 1; border: none; font-family: var(--font); font-size: 12.5px; background: none; outline: none; }
+  .chat-input input::placeholder { color: var(--ink-3); }
+  .chat-input button { background: none; border: none; font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--ink); cursor: pointer; }
+
+  .note { position: absolute; bottom: 24px; left: 24px; font-size: 11px; color: var(--ink-3); max-width: 260px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE 5 — Zen Panel Drawer · room mockup, synced to Zen Minimal, not wired to the app</div>
+
+<div class="app">
+  <div class="strip">
+    <div class="strip__brand"><img src="assets/brand/logo-mark.svg" alt="" /> Play3CR · #84213</div>
+    <div class="strip__match">
+      <div class="strip__player strip__player--active">
+        <div class="strip__mono">Q</div>
+        <span class="strip__name">quangquy</span>
+        <span class="strip__clock">00:42</span>
+      </div>
+      <span class="strip__vs">VS</span>
+      <div class="strip__player">
+        <span class="strip__clock" style="color:var(--ink-3); font-weight:600;">01:58</span>
+        <span class="strip__name">hoang_anh</span>
+        <div class="strip__mono">H</div>
+      </div>
+    </div>
+    <button class="strip__leave"><i class="ph-bold ph-sign-out"></i> Rời phòng</button>
+  </div>
+
+  <div class="stage">
+    <div class="board-frame">
+      <div class="board-placeholder">
+        <i class="ph ph-checkerboard"></i>
+        <div class="board-placeholder__text">Chờ người chơi ngồi vào và sẵn sàng...</div>
+      </div>
+    </div>
+
+    <div class="drawer">
+      <div class="drawer__title">Trò chuyện</div>
+      <div class="chat-messages">
+        <div class="chat-msg"><b>hoang_anh:</b> <span>gg ván trước :)</span></div>
+        <div class="chat-msg"><b>quangquy:</b> <span>chuẩn bị thua tiếp nè</span></div>
+        <div class="chat-msg"><b>hoang_anh:</b> <span>thử xem</span></div>
+      </div>
+      <div class="chat-input">
+        <input type="text" placeholder="Nhập tin nhắn..." />
+        <button>Gửi</button>
+      </div>
+    </div>
+
+    <div class="edge-rail">
+      <button class="is-active" aria-label="Trò chuyện"><i class="ph-bold ph-chat-circle"></i></button>
+      <button aria-label="Khán giả"><i class="ph ph-eye"></i></button>
+      <button aria-label="Bảng điểm"><i class="ph ph-trophy"></i></button>
+      <button aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+    </div>
+
+    <div class="note">Bàn cờ chiếm gần trọn khung hình; dải icon mảnh bên phải mở drawer khi cần — đóng lại thì bàn cờ lấy hết chỗ.</div>
+  </div>
+</div>
+</body>
+</html>

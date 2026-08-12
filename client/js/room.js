@@ -106,13 +106,35 @@ const tabBtns     = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const chatMessages = document.getElementById('chat-messages');
 
+// zen-room's drawer defaults open on desktop (see room-zen.css), but at
+// mobile widths the open drawer (~90vw) leaves almost no room for the
+// board — default it collapsed there instead, same width room.css's own
+// mobile breakpoint already uses. No-op outside room-zen.css.
+if (document.body.classList.contains('zen-room') && window.matchMedia('(max-width: 768px)').matches) {
+  document.body.classList.add('zen-drawer-collapsed');
+}
+
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
+    // Re-clicking the already-active tab toggles the zen-room drawer
+    // collapsed/open instead of doing nothing; switching to a different tab
+    // always re-opens it. .zen-drawer-collapsed has no matching CSS outside
+    // room-zen.css, so this is a no-op on other skins.
+    const alreadyActive = btn.classList.contains('tab-btn--active');
+    const collapsedNow = document.body.classList.contains('zen-drawer-collapsed');
+
     tabBtns.forEach(b => b.classList.remove('tab-btn--active'));
     tabContents.forEach(c => c.classList.remove('tab-content--active'));
     btn.classList.add('tab-btn--active');
     const tabId = btn.getAttribute('data-tab');
     document.getElementById(tabId).classList.add('tab-content--active');
+
+    if (alreadyActive) {
+      document.body.classList.toggle('zen-drawer-collapsed', !collapsedNow);
+    } else {
+      document.body.classList.remove('zen-drawer-collapsed');
+    }
+
     if (tabId === 'tab-chat') chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 });
