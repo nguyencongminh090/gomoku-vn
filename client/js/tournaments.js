@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client } from './lobby.js?v=106';
+import { client, setHeroTab, setHeroTournamentCount } from './lobby.js?v=107';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -43,7 +43,6 @@ const tabTables        = document.getElementById('tab-tables');
 const tabTournaments    = document.getElementById('tab-tournaments');
 const panelTables       = document.getElementById('panel-tables');
 const panelTournaments  = document.getElementById('panel-tournaments');
-const tournamentCountEl = document.getElementById('tournament-count');
 const tournamentListEl  = document.getElementById('tournament-list');
 const btnCreateTournament = document.getElementById('btn-create-tournament');
 const modalOverlay  = document.getElementById('modal-create-tournament');
@@ -88,6 +87,9 @@ function activateTab(name) {
   tabTournaments.setAttribute('aria-selected', String(!isTables));
   panelTables.classList.toggle('is-active', isTables);
   panelTournaments.classList.toggle('is-active', !isTables);
+  // The hero sentence above the tabs is shared by both panels — lobby.js owns
+  // it and swaps the copy when the tab changes (Zen Minimal layout).
+  setHeroTab(isTables ? 'tables' : 'tournaments');
 }
 
 tabTables.addEventListener('click', () => activateTab('tables'));
@@ -218,12 +220,10 @@ function renderTournamentList() {
   if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
   if (activeFormatFilter) tournaments = tournaments.filter((t) => t.format === activeFormatFilter);
 
-  const liveCount = Array.from(tournamentMap.values()).filter((t) => t.status === 'active').length;
-  // .lobby__count (shared with #room-count) always renders a visible pill
-  // background — an empty string still shows as a small blank badge, so the
-  // element itself has to be hidden, not just emptied.
-  tournamentCountEl.style.display = liveCount > 0 ? '' : 'none';
-  tournamentCountEl.textContent = liveCount > 0 ? t('tournaments.count_live', { n: liveCount }) : '';
+  // The old #tournament-count pill is gone with the Zen header — the total
+  // now reads in the shared hero sentence instead. Counted before the
+  // filters are applied, so the sentence describes the tab, not the filter.
+  setHeroTournamentCount(tournamentMap.size);
 
   if (tournaments.length === 0) {
     tournamentListEl.innerHTML = `
@@ -286,13 +286,15 @@ function renderCard(tournament, index) {
   const badge = statusBadge(tournament.status);
   const animDelay = (index * 0.05).toFixed(2);
 
+  // Your own relationship to this tournament — the one segment worth setting
+  // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<div class="tournament-card__status tournament-card__status--registered"><i class="ph ph-crown-simple"></i>${t('tournaments.status_organizer')}</div>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><i class="ph ph-crown-simple"></i>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<div class="tournament-card__status tournament-card__status--registered"><i class="ph ph-check-circle"></i>${t('tournaments.status_registered')}</div>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><i class="ph ph-check-circle"></i>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<div class="tournament-card__status tournament-card__status--waiting"><i class="ph ph-user-plus"></i>${t('tournaments.status_open')}</div>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><i class="ph ph-user-plus"></i>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
@@ -317,17 +319,23 @@ function renderCard(tournament, index) {
   }
   const actions = actionButtons ? `<div class="tournament-card__actions">${actionButtons}</div>` : '';
 
+  // One row, one meta line — the same shape the room list uses, so the two
+  // tabs read as one screen. Every field the stacked card carried is still
+  // here, middot-joined instead of stacked (each segment escaped on its own).
+  const meta = [
+    formatLabel(tournament.format),
+    badge.label,
+    `${tournament.playerCount} ${t('tournaments.players_suffix')}`,
+    t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') }),
+  ].join(' · ');
+
   return `
     <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}" data-open-detail="${escapeAttr(tournament.tournamentId)}" tabindex="0" role="link" aria-label="${escapeAttr(tournament.name)}">
       <div class="tournament-card__top">
         <span class="tournament-card__name">${escapeHtml(tournament.name)}</span>
-        <span class="badge badge--format">${formatLabel(tournament.format)}</span>
+        ${actions}
       </div>
-      <span class="badge ${badge.cls}" style="width:fit-content;">${badge.label}</span>
-      <div class="tournament-card__meta"><i class="ph ph-users-three"></i>${tournament.playerCount} ${t('tournaments.players_suffix')}</div>
-      <div class="tournament-card__meta"><i class="ph ph-user-circle"></i>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</div>
-      ${statusLine}
-      ${actions}
+      <div class="tournament-card__meta">${meta}${statusLine ? ` · ${statusLine}` : ''}</div>
     </div>
   `;
 }

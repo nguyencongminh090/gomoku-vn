@@ -1,19 +1,21 @@
 /* =============================================================================
-   lobby-zen.css — "Zen Minimal" restyle for the lobby screen only
-   Design-workflow Stage 4 (ui/zen-minimal), chosen from 10 mockup directions.
+   lobby-zen.css — "Zen Minimal" lobby (design-workflow Stage 4, ui/zen-minimal)
 
-   Scoping: every rule here is written under `body.zen-lobby` so it can only
-   ever affect index.html (the only page whose <body> carries that class).
-   lobby.css/main.css are shared by room.html/tournament*.html — this file
-   overrides them for the lobby only rather than editing those shared rules,
-   so the other screens keep their current look untouched.
+   This is the lobby's *layout* stylesheet, not a skin on top of the old one.
+   The first pass on this branch only redefined tokens and flattened chrome on
+   top of lobby.css's card/sidebar structure, which left the old shapes intact
+   (pill buttons, bezelled card, two-column grid) — the design read as the old
+   lobby wearing grayscale. This file instead re-lays-out the screen to match
+   client/lobby-bw-zen-mockup.html: one 640px column of paper, text-link
+   actions, borderless list rows, and the online list as a line of prose.
 
-   Where possible this redefines the shared CSS custom properties (--c-brand,
-   --shadow, --bg-glass, ...) rather than re-declaring every component rule —
-   since lobby.css/main.css components already read those tokens via var(),
-   most of the flattened/desaturated look falls out of the token redefinition
-   for free. Only rules using *literal* values (hardcoded border-radius,
-   backdrop-filter, literal background colors) need explicit overrides below.
+   Scoping: every rule is written under `body.zen-lobby`, a class only
+   index.html carries — lobby.css/main.css stay shared with room.html and the
+   tournament pages, which keep their current look. Anything still structural
+   in those files (grid columns, card padding) is neutralised here rather than
+   edited there.
+
+   The board/stones and all of server/ are untouched, per the ui/* locks.
    ============================================================================= */
 
 body.zen-lobby {
@@ -21,12 +23,12 @@ body.zen-lobby {
   --c-bg:           #FFFFFF;
   --c-surface:      #FFFFFF;
   --c-surface-2:    #F7F7F5;
-  --c-border:       rgba(28,28,28,0.10);
+  --c-border:       rgba(28,28,28,0.09);
   --c-border-light: rgba(28,28,28,0.06);
 
   --c-ink:          #1C1C1C;
   --c-ink-2:        #7A7A7A;
-  --c-ink-3:        #B0B0B0;
+  --c-ink-3:        #B8B8B8;
 
   --c-brand:        #1C1C1C;
   --c-brand-dark:   #000000;
@@ -35,7 +37,7 @@ body.zen-lobby {
   --c-accent:       #1C1C1C;
   --c-accent-light: rgba(28,28,28,0.06);
 
-  --c-state-idle:    #B0B0B0;
+  --c-state-idle:    #B8B8B8;
   --c-state-playing: #1C1C1C;
   --c-state-waiting: #7A7A7A;
 
@@ -47,299 +49,491 @@ body.zen-lobby {
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.14);
   --shadow-glass: none;
   --shadow-glass-inset: none;
+
+  --zen-col: 640px;
+
+  background: var(--c-bg);
+  color: var(--c-ink);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── Top bar: flat and borderless instead of the floating glass pill ────── */
+/* ══ Top bar ══════════════════════════════════════════════════════════════
+   Not a floating pill and not sticky — it sits on the paper as a first line
+   of text, aligned to the same 640px column as everything below it. */
 body.zen-lobby .topnav {
-  border-radius: 0;
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: auto;
+  max-width: var(--zen-col);
+  margin: 0 auto;
+  padding: 48px 24px 0;
+  background: none;
   border: none;
-  border-bottom: 1px solid var(--c-border);
+  border-radius: 0;
+  box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
-  margin: 0 0 40px;
-  max-width: none;
-  top: 0;
-  box-shadow: none;
-  padding: 0 32px;
 }
-@media (max-width: 768px) {
-  body.zen-lobby .topnav { padding: 0 16px; margin-bottom: 24px; }
-}
-body.zen-lobby .topnav__btn {
-  box-shadow: none;
-  border-radius: 50%;
-}
-body.zen-lobby .topnav__btn:hover { transform: none; box-shadow: none; background: var(--c-surface-2); }
-body.zen-lobby .topnav__badge { border-radius: 999px; }
-
-/* ── Page shell: no double-bezel card, content sits straight on paper ─────
-   Note: does NOT shrink .lobby-layout's max-width. The mockup's narrow
-   single-column feel assumed no persistent sidebar and short sample text;
-   production keeps the two-column grid (room list + sticky online sidebar)
-   and real dynamic counts (room-count/online-count pills), which need the
-   original 1160px to avoid the header row running out of room — see the
-   header wrap-safety rules below for what that squeeze broke. */
-body.zen-lobby .lobby { padding-left: 32px; padding-right: 32px; }
-@media (max-width: 768px) {
-  body.zen-lobby .lobby { padding-left: 16px; padding-right: 16px; }
-}
-
-body.zen-lobby .ui-shell {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 0;
-  box-shadow: none;
-}
-body.zen-lobby .ui-core {
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
-}
-
-/* ── Header ───────────────────────────────────────────────────────────── */
-body.zen-lobby .lobby__title { font-weight: 700; font-size: 22px; }
-body.zen-lobby .lobby__count {
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
-  color: var(--c-ink-3);
+body.zen-lobby .topnav__brand { gap: 10px; }
+body.zen-lobby .topnav__logo { width: 18px; height: 18px; opacity: 0.8; border-radius: 0; }
+body.zen-lobby .topnav__title {
+  font-size: 13px;
   font-weight: 600;
-  /* room-count/online-count are dynamic, real-time text (e.g. "−2 đang
-     online") — without this they can break mid-phrase when the header
-     runs out of horizontal room (see the .lobby__header rule below for
-     the other half of this fix). */
+  letter-spacing: 0.02em;
+  color: var(--c-ink-2);
+}
+body.zen-lobby .topnav__right { gap: 20px; }
+body.zen-lobby .topnav__user,
+body.zen-lobby .topnav__online {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--c-ink-3);
   white-space: nowrap;
 }
-body.zen-lobby .lobby__header {
-  /* h1 (title + count pills) and the action-button group are flex
-     siblings with no wrap fallback in lobby.css — at narrower widths (or
-     with long dynamic counts) they were forced onto one line and the
-     count pill's own text wrapped instead. Let the whole header reflow
-     in two rows before that happens. */
-  flex-wrap: wrap;
-  row-gap: 12px;
-}
-body.zen-lobby .lobby__header h1 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  row-gap: 6px;
-}
-
-/* ── Section tabs: plain text, no icons/underline — matches the mockup's
-   quiet tab row (bold ink = active, muted gray = inactive, no chrome). ── */
-body.zen-lobby .section-tabs { border-bottom: none; margin-bottom: 28px; gap: 24px; }
-body.zen-lobby .section-tabs__btn {
-  border-bottom: none;
-  min-height: auto;
+body.zen-lobby .topnav__badge {
+  background: none;
+  border: none;
   padding: 0;
-  margin-right: 0;
-  font-size: 14px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--c-ink-3);
+  text-transform: lowercase;
+  letter-spacing: 0;
 }
-body.zen-lobby .section-tabs__btn.is-active {
-  color: var(--c-ink);
-  font-weight: 800;
-  border-bottom: none;
-}
-body.zen-lobby .section-tabs__btn:hover { color: var(--c-ink-2); }
-body.zen-lobby .section-tabs__btn .ph { display: none; }
-
-/* ── Buttons: plain text+icon links instead of pill/solid chrome — matches
-   the mockup's "Lịch sử" / "Tạo phòng" treatment (no button box at all). ── */
-body.zen-lobby .btn-create,
-body.zen-lobby .btn-secondary {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  color: var(--c-ink) !important;
-  padding: 0;
-  border-radius: 0;
-  font-weight: 700;
-  gap: 8px;
-}
-body.zen-lobby .btn-secondary { color: var(--c-ink-2) !important; }
-body.zen-lobby .btn-create:hover,
-body.zen-lobby .btn-secondary:hover {
-  transform: none;
-  box-shadow: none;
-  opacity: 0.65;
-  background: transparent !important;
-}
-body.zen-lobby .btn-create i {
+/* The settings button settings-panel.js injects here — bare glyph, no pill. */
+body.zen-lobby .topnav__btn {
   width: auto;
   height: auto;
-  background: transparent;
-  font-size: 16px !important;
-}
-body.zen-lobby .btn-create:hover i { transform: none; }
-body.zen-lobby .lobby__header > div { gap: 24px !important; align-items: center; }
-
-body.zen-lobby .btn,
-body.zen-lobby .btn-confirm,
-body.zen-lobby .modal__actions .btn {
-  box-shadow: none !important;
-}
-body.zen-lobby .btn-confirm:hover,
-body.zen-lobby .modal__actions .btn-confirm:hover {
-  transform: none;
+  padding: 4px;
+  background: none;
+  border: none;
+  border-radius: 0;
   box-shadow: none;
+  color: var(--c-ink-2);
+  font-size: 16px;
+}
+body.zen-lobby .topnav__btn:hover {
+  background: none;
+  box-shadow: none;
+  transform: none;
+  color: var(--c-ink);
+}
+body.zen-lobby .topnav__btn:active { transform: none; }
+
+/* ══ Page shell ═══════════════════════════════════════════════════════════ */
+body.zen-lobby .lobby-layout {
+  display: block;          /* was: two-column grid + 260px sidebar rail */
+  max-width: none;
+  margin: 0;
+}
+body.zen-lobby .lobby {
+  max-width: var(--zen-col);
+  margin: 0 auto;
+  padding: 60px 24px 100px;
 }
 
-/* ── Room list: borderless flowing rows, one state bullet per row ───────── */
-body.zen-lobby .room-card {
-  padding: 20px 0;
-  gap: 20px;
-  border-bottom: 1px solid var(--c-border-light);
+/* ══ Hero ═════════════════════════════════════════════════════════════════ */
+body.zen-lobby .zen-hero { margin-bottom: 44px; }
+body.zen-lobby .zen-hero__eyebrow {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--c-ink-3);
 }
-body.zen-lobby .room-card:hover { background: transparent; }
-body.zen-lobby .room-card__title { font-size: 15px; font-weight: 600; }
+body.zen-lobby .zen-hero__title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 300;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--c-ink);
+}
+body.zen-lobby .zen-hero__title b { font-weight: 700; }
 
-/* Single leading state dot per row (filled = playing, hollow = waiting/idle),
-   read off the state-badge variant lobby.js already renders — no JS change,
-   this only adds a decorative pseudo-element keyed off the existing class. */
-body.zen-lobby .room-card {
-  position: relative;
+/* ══ Tabs ═════════════════════════════════════════════════════════════════
+   Plain words. No icons, no underline, no rail — weight carries the state. */
+body.zen-lobby .section-tabs {
+  display: flex;
+  gap: 28px;
+  margin: 0 0 48px;
+  border-bottom: none;
 }
-body.zen-lobby .room-card::before {
-  content: '';
+body.zen-lobby .section-tabs__btn {
+  padding: 0;
+  margin: 0;
+  min-height: auto;
+  border: none;
+  border-bottom: none;
+  background: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--c-ink-3);
+  transition: color 0.2s var(--ease-out, ease);
+}
+body.zen-lobby .section-tabs__btn .ph { display: none; }
+body.zen-lobby .section-tabs__btn:hover { color: var(--c-ink-2); }
+body.zen-lobby .section-tabs__btn.is-active {
+  color: var(--c-ink);
+  font-weight: 700;
+  border-bottom: none;
+}
+
+/* ══ Section actions ══════════════════════════════════════════════════════
+   "Lịch sử" / "Tạo phòng" are text links with a glyph, never buttons. */
+body.zen-lobby .section-actions {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 40px;
+}
+body.zen-lobby .link-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  text-decoration: none;
+  transition: color 0.2s var(--ease-out, ease), opacity 0.2s var(--ease-out, ease);
+}
+body.zen-lobby .link-action i { font-size: 15px; }
+body.zen-lobby .link-action:hover { color: var(--c-ink); }
+body.zen-lobby .link-action--primary { color: var(--c-ink); }
+body.zen-lobby .link-action--primary:hover { opacity: 0.6; }
+
+/* ══ Room list ════════════════════════════════════════════════════════════
+   Rows, not cards: a state bullet, the name over one meta line, and a text
+   action on the right. The only rule is the hairline between rows. */
+body.zen-lobby .room-list { display: flex; flex-direction: column; }
+
+body.zen-lobby .room-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0;
+  border-bottom: 1px solid var(--c-border);
+}
+body.zen-lobby .room-row__bullet {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
   background: var(--c-ink-3);
-  order: -1;
 }
-body.zen-lobby .room-card:has(.state-badge--playing)::before {
-  background: var(--c-ink);
-}
-body.zen-lobby .room-card:has(.state-badge--waiting)::before {
+/* Filled ink = a game is running; hollow = both seats taken but not started;
+   plain gray = open seat. Same three states the old badge spelled out. */
+body.zen-lobby .room-row__bullet--playing { background: var(--c-ink); }
+body.zen-lobby .room-row__bullet--ready {
   background: transparent;
   border: 1.5px solid var(--c-ink-2);
 }
-
-/* Badges/chips flatten to plain inline text — no border, no pill background —
-   the leading row bullet above is now the only "chip" affordance. */
-body.zen-lobby .state-badge,
-body.zen-lobby .rule-chip,
-body.zen-lobby .rule-tag,
-body.zen-lobby .badge {
-  border-radius: 0;
-  background: transparent;
-  border: none;
-  padding: 0;
-  color: var(--c-ink-3);
-  font-weight: 600;
-  text-transform: none;
-  letter-spacing: normal;
-}
-body.zen-lobby .state-badge--playing,
-body.zen-lobby .badge--live {
+body.zen-lobby .room-row__body { flex: 1; min-width: 0; }
+body.zen-lobby .room-row__name {
+  font-size: 15px;
+  font-weight: 500;
   color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-body.zen-lobby .rule-chip--custom {
+body.zen-lobby .room-row__meta {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--c-ink-3);
+  /* A long host name must never push this line under the action on the
+     right — it truncates instead, same as the name above it. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+body.zen-lobby .room-row__action {
+  flex-shrink: 0;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  transition: color 0.2s var(--ease-out, ease);
+}
+body.zen-lobby .room-row__action:hover { color: var(--c-ink); }
+
+/* Empty states read as another paragraph on the page, not as a centered
+   placeholder card — everything else in this column is flush left. */
+body.zen-lobby .room-list__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 40px 0;
+  background: none;
+  border: none;
+  text-align: left;
+}
+body.zen-lobby .room-list__empty-text { font-size: 15px; font-weight: 500; color: var(--c-ink-2); }
+body.zen-lobby .room-list__empty-sub { font-size: 12.5px; color: var(--c-ink-3); }
+
+/* ══ Online line ══════════════════════════════════════════════════════════
+   Replaces the sticky sidebar panel: who is here, read as a sentence. */
+body.zen-lobby .online-line {
+  margin-top: 56px;
+  font-size: 12.5px;
+  line-height: 1.9;
+  color: var(--c-ink-3);
+}
+body.zen-lobby .online-line__title {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
   color: var(--c-ink-2);
 }
-body.zen-lobby .rule-tag--wall,
-body.zen-lobby .rule-tag--portal,
-body.zen-lobby .rule-tag--swap2,
-body.zen-lobby .rule-tag--win {
-  color: var(--c-ink-3);
-}
-/* Chips sit in their own row below the meta line (room-card__chips) — add a
-   visible separator since removing the pill background also removed the
-   only thing that used to separate adjacent chips. */
-body.zen-lobby .room-card__chips { gap: 10px; }
-body.zen-lobby .room-card__chips > * + *::before {
-  content: '·';
-  margin-right: 10px;
-  color: var(--c-ink-3);
-}
+body.zen-lobby .online-line b { font-weight: 500; color: var(--c-ink); }
 
-body.zen-lobby .btn-join {
-  border-radius: 0;
-  background: transparent;
+/* ══ Tournaments tab ══════════════════════════════════════════════════════
+   Same list language as the rooms. The filters and the live-matches panel
+   are kept (they carry real function the mockup never modelled) but lose
+   their boxes — text filters and hairline rows. */
+body.zen-lobby .filter-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0;
+  margin-bottom: 8px;
+  background: none;
   border: none;
+}
+body.zen-lobby .filter-pill {
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--c-ink-3);
+}
+body.zen-lobby .filter-pill:hover { background: none; color: var(--c-ink-2); }
+body.zen-lobby .filter-pill.is-active {
+  background: none;
   color: var(--c-ink);
   font-weight: 700;
-  padding: 8px 0;
 }
-body.zen-lobby .btn-join:hover {
-  background: transparent;
-  color: var(--c-ink);
-  opacity: 0.6;
-  transform: none;
+body.zen-lobby .filter-select {
+  padding: 4px 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--c-ink-2);
+}
+
+body.zen-lobby .tournament-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;               /* was inset from the column by lobby.css */
+}
+body.zen-lobby .tournament-card {
+  padding: 20px 0;
+  gap: 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  border-radius: 0;
   box-shadow: none;
 }
-body.zen-lobby .btn-join:disabled { color: var(--c-ink-3); }
-
-/* ── Modal: thin border instead of heavy shadow/gradient bezel ──────────── */
-body.zen-lobby .modal {
-  border-radius: 14px;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--c-border);
+body.zen-lobby .tournament-card:hover {
+  background: none;
+  border-color: var(--c-border);
+  box-shadow: none;
+  transform: none;
 }
-body.zen-lobby .modal__close { border-radius: 50%; box-shadow: none; }
-body.zen-lobby .pill-group { border-radius: 999px; }
-body.zen-lobby .pill-group label { border-radius: 999px; }
-body.zen-lobby .pill-group input:checked + label { box-shadow: none; border: 1px solid var(--c-border); }
-body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-light); }
+body.zen-lobby .tournament-card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+}
+body.zen-lobby .tournament-card__name { font-size: 15px; font-weight: 500; }
+/* lobby.css makes this a flex row (it used to hold an icon + one fact). It is
+   now a sentence, and flex would turn each child into its own column — so it
+   goes back to being a plain text block. */
+body.zen-lobby .tournament-card__meta {
+  display: block;
+  font-size: 12.5px;
+  color: var(--c-ink-3);
+}
+body.zen-lobby .tournament-card__status {
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--c-ink-3);
+}
+body.zen-lobby .tournament-card__meta i,
+body.zen-lobby .tournament-card__status i { font-size: 13px; }
+/* The row is already delimited by its own bottom hairline — an inner rule
+   above the status line just fragments it. */
+body.zen-lobby .tournament-card__status {
+  display: inline-flex;   /* it is a segment of the meta line now, not a row */
+  padding-top: 0;
+  border-top: none;
+  font-size: inherit;
+  font-weight: 600;
+  color: var(--c-ink-2);
+}
 
-/* ── Online sidebar: plain list, no card box ─────────────────────────────── */
-body.zen-lobby .online-panel {
-  background: transparent;
+/* The row's own actions read like the room list's "Tham gia" — text, right
+   aligned, no pill. This is the one place the old design still shipped a
+   full-width black button inside an otherwise flat row. */
+body.zen-lobby .tournament-card__actions {
+  flex-shrink: 0;
+  justify-content: flex-end;
+  gap: 20px;
+  margin: 0;
+  padding-top: 0;
+  border-top: none;
+}
+body.zen-lobby .tournament-card__actions .btn,
+body.zen-lobby .tournament-card__actions .btn-confirm,
+body.zen-lobby .tournament-card__actions .btn-secondary {
+  flex: 0 0 auto;
+  width: auto;
+  padding: 0;
+  background: none !important;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--c-ink) !important;
+}
+body.zen-lobby .tournament-card__actions .btn-secondary { color: var(--c-ink-2) !important; }
+body.zen-lobby .tournament-card__actions .btn-secondary--danger { color: var(--c-ink-2) !important; }
+body.zen-lobby .tournament-card__actions .btn:hover,
+body.zen-lobby .tournament-card__actions .btn-secondary:hover {
+  opacity: 0.6;
+  background: none !important;
+  transform: none;
+}
+
+body.zen-lobby .live-matches-panel {
+  padding: 0 0 8px;
+  background: none;
   border: none;
   border-radius: 0;
   box-shadow: none;
 }
-body.zen-lobby .online-panel__header { padding: 0 0 14px; border-bottom: 1px solid var(--c-border); }
-body.zen-lobby .online-panel__header:hover { background: transparent; }
-body.zen-lobby .online-panel__title {
-  font-size: 12px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--c-ink-3);
-}
-body.zen-lobby .online-panel__dot {
-  background: var(--c-ink);
-  box-shadow: none;
-  animation: none;
-}
-body.zen-lobby .online-panel__count {
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
-  color: var(--c-ink-3);
+body.zen-lobby .live-matches-panel__header {
+  padding: 0 0 12px;
+  background: none;
+  border: none;
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--c-ink-3);
 }
-body.zen-lobby .online-panel__list { border-top: none; padding-top: 6px; }
-body.zen-lobby .online-panel__list li { padding: 9px 0; }
-body.zen-lobby .online-panel__list li:hover { background: transparent; color: var(--c-ink-2); }
-body.zen-lobby .online-panel__list li::before { background: var(--c-ink-3); }
+body.zen-lobby .live-match-row {
+  padding: 14px 0;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  border-radius: 0;
+}
+body.zen-lobby .live-match-row:hover { background: none; border-color: var(--c-ink-3); }
 
-/* ── Tournaments tab: flat filter pills + quiet cards ────────────────────── */
-body.zen-lobby .filter-pill {
-  border-radius: 999px;
-  background: transparent;
+body.zen-lobby .empty-tournaments {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  padding: 40px 0;
+  background: none;
+  border: none;
+  text-align: left;
+}
+body.zen-lobby .empty-tournaments .room-list__empty-text { margin-top: 0; }
+
+/* Badges/chips inside tournament rows flatten to plain inline text. */
+body.zen-lobby .badge,
+body.zen-lobby .state-badge,
+body.zen-lobby .rule-chip,
+body.zen-lobby .rule-tag {
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--c-ink-3);
+}
+body.zen-lobby .badge--live { color: var(--c-ink); }
+
+/* ══ Buttons that remain real buttons (modals only) ═══════════════════════ */
+body.zen-lobby .btn,
+body.zen-lobby .btn-confirm,
+body.zen-lobby .btn-secondary { box-shadow: none !important; }
+body.zen-lobby .btn-confirm:hover,
+body.zen-lobby .btn-secondary:hover { transform: none; box-shadow: none; }
+
+body.zen-lobby .modal {
+  border: 1px solid var(--c-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+}
+body.zen-lobby .modal__close { box-shadow: none; }
+body.zen-lobby .pill-group input:checked + label {
+  box-shadow: none;
   border: 1px solid var(--c-border);
 }
-body.zen-lobby .filter-pill.is-active {
-  background: var(--c-ink);
-  color: #FFFFFF;
-  border-color: var(--c-ink);
-}
-body.zen-lobby .filter-select { border-radius: 6px; }
+body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-light); }
 
-body.zen-lobby .tournament-card {
-  border-radius: 10px;
-  box-shadow: none;
+/* ══ Responsive ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  body.zen-lobby .topnav { padding: 28px 20px 0; gap: 16px; }
+  body.zen-lobby .topnav__title { display: inline; }
+  body.zen-lobby .topnav__brand { flex-shrink: 0; }
+  body.zen-lobby .topnav__right { gap: 14px; min-width: 0; }
+  body.zen-lobby .lobby { padding: 40px 20px 80px; }
+  body.zen-lobby .zen-hero { margin-bottom: 32px; }
+  body.zen-lobby .zen-hero__title { font-size: 26px; }
+  body.zen-lobby .section-tabs { margin-bottom: 32px; }
+  body.zen-lobby .section-actions { margin-bottom: 28px; }
+  body.zen-lobby .online-line { margin-top: 40px; }
 }
-body.zen-lobby .tournament-card:hover { box-shadow: none; transform: none; border-color: var(--c-ink-3); }
+@media (max-width: 480px) {
+  /* The top bar gives way in a fixed order: the wordmark first (the logo mark
+     still identifies the site), then the guest badge. The name, the online
+     count and the settings glyph are what actually get used at this width. */
+  body.zen-lobby .topnav__title { display: none; }
+  body.zen-lobby .topnav__badge { display: none; }
+  body.zen-lobby .topnav__user { max-width: 110px; overflow: hidden; text-overflow: ellipsis; }
+  body.zen-lobby .zen-hero__title { font-size: 23px; }
+  body.zen-lobby .filter-row { flex-wrap: wrap; gap: 14px; }
 
-body.zen-lobby .live-matches-panel { border-radius: 10px; box-shadow: none; }
-body.zen-lobby .live-match-row { border-radius: 6px; background: transparent; border-color: var(--c-border); }
-body.zen-lobby .live-match-row:hover { border-color: var(--c-ink); }
+  /* Narrow enough that the meta line has to wrap — let it wrap as prose
+     under the name instead of squeezing itself beside the action. */
+  body.zen-lobby .room-row__meta { white-space: normal; }
+  body.zen-lobby .tournament-card__meta { line-height: 1.6; }
+  /* An inline-flex span wraps as one indivisible block, which leaves a ragged
+     second column mid-sentence — plain inline lets it wrap as prose. */
+  body.zen-lobby .tournament-card__status { display: inline; }
+  body.zen-lobby .tournament-card__status i { display: none; }
+}

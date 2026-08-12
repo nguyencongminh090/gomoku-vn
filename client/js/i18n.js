@@ -88,6 +88,14 @@ const TRANSLATIONS = {
     'lobby.online_title': 'Đang online',
     'lobby.loading': 'Đang tải...',
     'lobby.online_count_badge': '— {n} đang online',
+    'lobby.online_count_nav': '{n} đang online',
+    'lobby.online_more': 'và {n} người khác.',
+    'lobby.eyebrow_tables': 'Sảnh chờ',
+    'lobby.eyebrow_tournaments': 'Giải đấu',
+    'lobby.hero_rooms': 'Hiện có {n} bàn chơi đang mở.',
+    'lobby.hero_rooms_empty': 'Chưa có bàn chơi nào đang mở.',
+    'lobby.hero_tournaments': 'Hiện có {n} giải đấu.',
+    'lobby.hero_tournaments_empty': 'Chưa có giải đấu nào.',
     'lobby.no_one_online': 'Không có ai online',
 
     // ── Tables & Tournaments tabs ──────────────────────────────
@@ -670,6 +678,14 @@ const TRANSLATIONS = {
     'lobby.online_title': 'Online',
     'lobby.loading': 'Loading...',
     'lobby.online_count_badge': '— {n} online',
+    'lobby.online_count_nav': '{n} online',
+    'lobby.online_more': 'and {n} others.',
+    'lobby.eyebrow_tables': 'Lobby',
+    'lobby.eyebrow_tournaments': 'Tournaments',
+    'lobby.hero_rooms': 'There are {n} open tables.',
+    'lobby.hero_rooms_empty': 'No open tables right now.',
+    'lobby.hero_tournaments': 'There are {n} tournaments.',
+    'lobby.hero_tournaments_empty': 'No tournaments yet.',
     'lobby.no_one_online': 'No one online',
 
     // ── Tables & Tournaments tabs ──────────────────────────────
