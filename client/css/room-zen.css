@@ -1,0 +1,377 @@
+/* =============================================================================
+   room-zen.css — "Zen Panel Drawer" room layout (design-workflow Stage 4,
+   ui/room-zen-drawer)
+
+   Real implementation of client/room-zen-drawer-mockup.html Style 5, synced to
+   the same monochrome ink/paper language already shipped for the lobby
+   (client/css/lobby-zen.css, ui/zen-minimal): flat surfaces, hairline
+   dividers, no shadows/pills, Manrope, no shadows.
+
+   Core idea: the board takes almost the whole viewport. Everything else
+   (players, score, chat, spectators, settings) lives in .panel-right-shell,
+   which becomes a fixed drawer pinned to the right edge. .sidebar-tabs is
+   restyled as a vertical icon rail that stays visible at the drawer's right
+   edge whether the drawer is open or collapsed — collapsing only shrinks the
+   drawer's *width* (position:fixed; right:0 keeps the right edge, and
+   therefore the rail, pinned in place while the content column grows/shrinks
+   to its left). See room.js's tabBtns click handler for the open/collapse
+   toggle (re-clicking the active tab collapses).
+
+   Adaptation from the mockup: the mockup showed the drawer collapsed by
+   default (chromeless-first). The real room page needs the ready/seat
+   buttons inside .panel-players visible before a match starts, so here the
+   drawer defaults to OPEN and only collapses on explicit user action —
+   collapsing is an on-demand way to reclaim board space, not the resting
+   state. Everything else about Style 5 (full-bleed board, pinned icon rail,
+   sliding drawer) is unchanged.
+
+   Scoping: every rule is written under `body.zen-room`, a class only
+   room.html carries — room.css/game.css/main.css stay shared with the
+   lobby/tournament pages, which keep their current look. The board rendering
+   itself (client/js/board.js, and the board grid/cell/stone rules in
+   client/css/game.css) is never touched here, per the ui/* board lock.
+   ============================================================================= */
+
+body.zen-room {
+  --paper:  #FFFFFF;
+  --ink:    #1C1C1C;
+  --ink-2:  #7A7A7A;
+  --ink-3:  #B8B8B8;
+  --line:   rgba(28,28,28,0.09);
+  --ease:   cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Flatten every var()-based rule in main.css/room.css/settings-panel.css
+     that this subtree still inherits (buttons, borders, surfaces). */
+  --c-bg:           #FFFFFF;
+  --c-surface:      #FFFFFF;
+  --c-surface-2:    #F7F7F5;
+  --c-border:       rgba(28,28,28,0.09);
+  --c-border-light: rgba(28,28,28,0.06);
+
+  --c-ink:   #1C1C1C;
+  --c-ink-2: #7A7A7A;
+  --c-ink-3: #B8B8B8;
+
+  --c-brand:       #1C1C1C;
+  --c-brand-dark:  #000000;
+  --c-brand-light: rgba(28,28,28,0.06);
+
+  --bg-glass:       #FFFFFF;
+  --bg-glass-heavy: #FFFFFF;
+
+  --shadow-sm: none;
+  --shadow:    none;
+  --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.14);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
+
+  --zen-topnav-h: 60px;
+  --zen-rail-w: 56px;
+  --zen-drawer-w: min(340px, 92vw);
+
+  background: var(--paper);
+  color: var(--ink);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══ Top bar ══════════════════════════════════════════════════════════════
+   A thin static strip, not a floating pill — brand/room id left, leave
+   action right. */
+body.zen-room .topnav {
+  position: static;
+  height: var(--zen-topnav-h);
+  padding: 0 24px;
+  margin: 0;
+  max-width: none;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+body.zen-room .topnav__brand { gap: 10px; }
+body.zen-room .topnav__logo { border-radius: 0; opacity: 0.8; }
+body.zen-room .topnav__title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ink-2);
+}
+body.zen-room .topnav__right { gap: 18px; }
+body.zen-room .topnav__user,
+body.zen-room .topnav__room-id {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+body.zen-room .topnav__btn {
+  width: auto;
+  height: auto;
+  padding: 4px;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--ink-2);
+  font-size: 13px;
+  gap: 6px;
+}
+body.zen-room .topnav__btn:hover {
+  background: none;
+  box-shadow: none;
+  transform: none;
+  color: var(--ink);
+}
+body.zen-room .topnav__btn:active { transform: none; }
+
+/* ══ Room shell ═══════════════════════════════════════════════════════════
+   Single column — the drawer is fixed/out-of-flow, so the grid no longer
+   needs to reserve a side column for it. */
+body.zen-room .room {
+  display: block;
+  max-width: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* ══ Board area — full-bleed, flat frame ═════════════════════════════════ */
+body.zen-room .board-area-shell {
+  height: calc(100vh - var(--zen-topnav-h));
+  padding: 40px var(--zen-drawer-w) 40px 40px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  transition: padding-right 0.35s var(--ease);
+}
+body.zen-room.zen-drawer-collapsed .board-area-shell {
+  padding-right: var(--zen-rail-w);
+}
+body.zen-room .board-area {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+body.zen-room .board-area:hover { box-shadow: none; }
+body.zen-room .board-area-inner {
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.zen-room .board-placeholder__icon { opacity: 0.55; }
+
+/* ══ Right drawer ═════════════════════════════════════════════════════════
+   Fixed to the right edge. Width transitions between the full drawer and
+   just the rail — right:0 keeps the rail pinned in place either way. */
+body.zen-room .panel-right-shell {
+  position: fixed;
+  top: var(--zen-topnav-h);
+  right: 0;
+  bottom: 0;
+  left: auto;
+  width: var(--zen-drawer-w);
+  height: auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  border: none;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  z-index: 15;
+  transition: width 0.35s var(--ease);
+  /* .panel-right is wider than the shell once collapsed — flex-end keeps
+     it pinned to the shell's right edge, so shrinking the shell clips the
+     players/content column off its *left* side while the rail (the
+     rightmost part of .panel-right) stays visible. Without this the
+     browser anchors the overflowing child to the left by default, which
+     clips the rail itself instead. */
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+}
+body.zen-room.zen-drawer-collapsed .panel-right-shell {
+  width: var(--zen-rail-w);
+}
+
+body.zen-room .panel-right {
+  height: 100%;
+  width: calc(var(--zen-drawer-w) - 1px);
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr var(--zen-rail-w);
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "players rail"
+    "content rail";
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ══ Players / score (drawer content, left column) ═══════════════════════ */
+body.zen-room .panel-players {
+  grid-area: players;
+  padding: 24px 20px 16px;
+  background: none;
+  border-bottom: 1px solid var(--line);
+}
+body.zen-room .players-row { gap: 10px; margin-bottom: 12px; }
+body.zen-room .slot-card {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  padding: 10px;
+}
+body.zen-room .slot-card--active {
+  border-color: var(--ink);
+  box-shadow: none;
+}
+body.zen-room .slot-card__label,
+body.zen-room .slot-card__empty { color: var(--ink-3); }
+body.zen-room .slot-card__name { color: var(--ink); }
+body.zen-room .players-vs {
+  background: none;
+  border: 1px solid var(--line);
+  box-shadow: none;
+  color: var(--ink-3);
+}
+body.zen-room .slot-card__role--host {
+  background: none;
+  color: var(--ink-2);
+}
+body.zen-room .slot-card__role--guest-badge {
+  background: none;
+  color: var(--ink-3);
+}
+body.zen-room .btn-slot {
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--ink-2);
+}
+body.zen-room .btn-slot:hover {
+  background: none;
+  border-color: var(--ink);
+  color: var(--ink);
+  transform: none;
+}
+body.zen-room .score-panel { border-top: 1px solid var(--line); }
+body.zen-room .score-table th,
+body.zen-room .score-table td { color: var(--ink-2); }
+body.zen-room .score-table td:first-child { color: var(--ink); }
+
+/* ══ Icon rail (right column, always visible) ═════════════════════════════
+   This is the persistent part of the drawer — the tab buttons themselves,
+   restyled as a vertical icon rail. */
+body.zen-room .sidebar-tabs {
+  grid-area: rail;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 26px;
+  padding: 0;
+  background: none;
+  border-left: 1px solid var(--line);
+}
+body.zen-room .tab-btn {
+  flex: none;
+  width: auto;
+  padding: 4px;
+  background: none;
+  border-radius: 0;
+  color: var(--ink-3);
+  transition: color 0.2s var(--ease);
+}
+body.zen-room .tab-btn:hover { background: none; color: var(--ink-2); }
+body.zen-room .tab-btn--active {
+  background: none;
+  box-shadow: none;
+  color: var(--ink);
+}
+body.zen-room .tab-btn > i {
+  display: block;
+  font-size: 18px;
+}
+/* Label stays in the accessibility tree (screen readers, find-in-page) but
+   is visually hidden — the rail is icon-only. */
+body.zen-room .tab-btn__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ══ Tab content (drawer content, left column) ═══════════════════════════ */
+body.zen-room .tab-content {
+  grid-area: content;
+  min-height: 0;
+  padding: 4px 20px 20px;
+}
+body.zen-room .chat-panel { height: 100%; }
+body.zen-room .chat-messages { padding: 0; }
+body.zen-room .chat-message,
+body.zen-room .chat-msg { font-size: 12.5px; }
+body.zen-room #chat-input-wrapper {
+  border-top: 1px solid var(--line);
+  background: none;
+  padding: 14px 0 0;
+}
+body.zen-room #chat-input-wrapper input {
+  background: none;
+  border: none;
+  font-size: 13px;
+}
+body.zen-room #chat-input-wrapper button {
+  background: none;
+  color: var(--ink);
+  font-weight: 700;
+}
+body.zen-room .users-panel,
+body.zen-room .users-list { background: none; }
+body.zen-room .settings-panel__body { padding: 4px 0; }
+
+/* ══ Compact mobile players strip ═════════════════════════════════════════
+   Shown by the base room.css at ≤768px above the board; flattened to match
+   the zen hairline language instead of the default bordered card. */
+body.zen-room .players-strip {
+  border: none;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+}
+
+/* ══ Responsive ═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  body.zen-room .topnav { padding: 0 16px; }
+  body.zen-room .topnav__title { display: none; }
+  body.zen-room .board-area-shell {
+    height: auto;
+    min-height: calc(100vh - var(--zen-topnav-h) - 120px);
+    /* Counteract room.css's own ≤768px full-bleed rule (width: calc(100% +
+       32px); margin-left: -16px) — that bleed hack was built for the old
+       edge-to-edge mobile board, but here it makes the shell 32px wider
+       than the viewport and throws off the padding-right math below. */
+    width: 100%;
+    margin-left: 0;
+    padding: 16px var(--zen-drawer-w) 16px 16px;
+  }
+  body.zen-room.zen-drawer-collapsed .board-area-shell {
+    padding-right: var(--zen-rail-w);
+  }
+  body.zen-room .sidebar-tabs { gap: 22px; }
+}
