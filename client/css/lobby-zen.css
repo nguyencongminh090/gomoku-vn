@@ -1,0 +1,225 @@
+/* =============================================================================
+   lobby-zen.css — "Zen Minimal" restyle for the lobby screen only
+   Design-workflow Stage 4 (ui/zen-minimal), chosen from 10 mockup directions.
+
+   Scoping: every rule here is written under `body.zen-lobby` so it can only
+   ever affect index.html (the only page whose <body> carries that class).
+   lobby.css/main.css are shared by room.html/tournament*.html — this file
+   overrides them for the lobby only rather than editing those shared rules,
+   so the other screens keep their current look untouched.
+
+   Where possible this redefines the shared CSS custom properties (--c-brand,
+   --shadow, --bg-glass, ...) rather than re-declaring every component rule —
+   since lobby.css/main.css components already read those tokens via var(),
+   most of the flattened/desaturated look falls out of the token redefinition
+   for free. Only rules using *literal* values (hardcoded border-radius,
+   backdrop-filter, literal background colors) need explicit overrides below.
+   ============================================================================= */
+
+body.zen-lobby {
+  /* ── Token overrides (cascade to every var()-based rule in this subtree) ── */
+  --c-bg:           #FFFFFF;
+  --c-surface:      #FFFFFF;
+  --c-surface-2:    #F7F7F5;
+  --c-border:       rgba(28,28,28,0.10);
+  --c-border-light: rgba(28,28,28,0.06);
+
+  --c-ink:          #1C1C1C;
+  --c-ink-2:        #7A7A7A;
+  --c-ink-3:        #B0B0B0;
+
+  --c-brand:        #1C1C1C;
+  --c-brand-dark:   #000000;
+  --c-brand-light:  rgba(28,28,28,0.06);
+
+  --c-accent:       #1C1C1C;
+  --c-accent-light: rgba(28,28,28,0.06);
+
+  --c-state-idle:    #B0B0B0;
+  --c-state-playing: #1C1C1C;
+  --c-state-waiting: #7A7A7A;
+
+  --bg-glass:       #FFFFFF;
+  --bg-glass-heavy: #FFFFFF;
+
+  --shadow-sm:  none;
+  --shadow:     none;
+  --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.14);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
+}
+
+/* ── Top bar: flat and borderless instead of the floating glass pill ────── */
+body.zen-lobby .topnav {
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  margin: 0 0 40px;
+  max-width: none;
+  top: 0;
+  box-shadow: none;
+  padding: 0 32px;
+}
+@media (max-width: 768px) {
+  body.zen-lobby .topnav { padding: 0 16px; margin-bottom: 24px; }
+}
+body.zen-lobby .topnav__btn {
+  box-shadow: none;
+  border-radius: 50%;
+}
+body.zen-lobby .topnav__btn:hover { transform: none; box-shadow: none; background: var(--c-surface-2); }
+body.zen-lobby .topnav__badge { border-radius: 999px; }
+
+/* ── Page shell: no double-bezel card, content sits straight on paper ───── */
+body.zen-lobby .lobby-layout { max-width: 900px; }
+body.zen-lobby .lobby { padding-left: 32px; padding-right: 32px; }
+@media (max-width: 768px) {
+  body.zen-lobby .lobby { padding-left: 16px; padding-right: 16px; }
+}
+
+body.zen-lobby .ui-shell {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+}
+body.zen-lobby .ui-core {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* ── Header ───────────────────────────────────────────────────────────── */
+body.zen-lobby .lobby__title { font-weight: 700; }
+body.zen-lobby .lobby__count { border-radius: 999px; }
+
+/* ── Section tabs: already underline-style in lobby.css — just quiet the color ── */
+body.zen-lobby .section-tabs { border-bottom-color: var(--c-border); }
+body.zen-lobby .section-tabs__btn.is-active { border-bottom-color: var(--c-ink); }
+
+/* ── Buttons: flat ink, no shadow/lift ───────────────────────────────────── */
+body.zen-lobby .btn-create,
+body.zen-lobby .btn-secondary,
+body.zen-lobby .btn,
+body.zen-lobby .btn-confirm,
+body.zen-lobby .modal__actions .btn {
+  box-shadow: none !important;
+}
+body.zen-lobby .btn-create:hover,
+body.zen-lobby .btn-secondary:hover,
+body.zen-lobby .btn-confirm:hover,
+body.zen-lobby .modal__actions .btn-confirm:hover {
+  transform: none;
+  box-shadow: none;
+}
+body.zen-lobby .btn-secondary {
+  background: transparent;
+}
+body.zen-lobby .btn-secondary:hover { background: var(--c-surface-2); }
+
+/* ── Room list: borderless flowing rows instead of shadowed cards ───────── */
+body.zen-lobby .room-card {
+  padding: 22px 0;
+  gap: 20px;
+  border-bottom: 1px solid var(--c-border-light);
+}
+body.zen-lobby .room-card:hover { background: transparent; }
+body.zen-lobby .room-card__title { font-size: 16px; font-weight: 700; }
+
+body.zen-lobby .state-badge,
+body.zen-lobby .rule-chip,
+body.zen-lobby .rule-tag,
+body.zen-lobby .badge {
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+  color: var(--c-ink-2);
+}
+body.zen-lobby .state-badge--playing,
+body.zen-lobby .badge--live {
+  color: var(--c-ink);
+  border-color: var(--c-ink);
+}
+body.zen-lobby .rule-chip--custom {
+  color: var(--c-ink);
+  border-color: var(--c-ink);
+}
+body.zen-lobby .rule-tag--wall,
+body.zen-lobby .rule-tag--portal,
+body.zen-lobby .rule-tag--swap2,
+body.zen-lobby .rule-tag--win {
+  color: var(--c-ink-2);
+}
+
+body.zen-lobby .btn-join {
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--c-ink);
+  color: var(--c-ink);
+}
+body.zen-lobby .btn-join:hover {
+  background: var(--c-ink);
+  color: #FFFFFF;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ── Modal: thin border instead of heavy shadow/gradient bezel ──────────── */
+body.zen-lobby .modal {
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--c-border);
+}
+body.zen-lobby .modal__close { border-radius: 50%; box-shadow: none; }
+body.zen-lobby .pill-group { border-radius: 999px; }
+body.zen-lobby .pill-group label { border-radius: 999px; }
+body.zen-lobby .pill-group input:checked + label { box-shadow: none; border: 1px solid var(--c-border); }
+body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-light); }
+
+/* ── Online sidebar: plain list, no card box ─────────────────────────────── */
+body.zen-lobby .online-panel {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+body.zen-lobby .online-panel__header { padding: 0 0 14px; border-bottom: 1px solid var(--c-border); }
+body.zen-lobby .online-panel__header:hover { background: transparent; }
+body.zen-lobby .online-panel__dot {
+  background: var(--c-ink);
+  box-shadow: none;
+  animation: none;
+}
+body.zen-lobby .online-panel__count { border-radius: 999px; }
+body.zen-lobby .online-panel__list { border-top: none; padding-top: 6px; }
+body.zen-lobby .online-panel__list li { padding: 9px 0; }
+body.zen-lobby .online-panel__list li:hover { background: transparent; color: var(--c-ink-2); }
+body.zen-lobby .online-panel__list li::before { background: var(--c-ink-3); }
+
+/* ── Tournaments tab: flat filter pills + quiet cards ────────────────────── */
+body.zen-lobby .filter-pill {
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid var(--c-border);
+}
+body.zen-lobby .filter-pill.is-active {
+  background: var(--c-ink);
+  color: #FFFFFF;
+  border-color: var(--c-ink);
+}
+body.zen-lobby .filter-select { border-radius: 6px; }
+
+body.zen-lobby .tournament-card {
+  border-radius: 10px;
+  box-shadow: none;
+}
+body.zen-lobby .tournament-card:hover { box-shadow: none; transform: none; border-color: var(--c-ink-3); }
+
+body.zen-lobby .live-matches-panel { border-radius: 10px; box-shadow: none; }
+body.zen-lobby .live-match-row { border-radius: 6px; background: transparent; border-color: var(--c-border); }
+body.zen-lobby .live-match-row:hover { border-color: var(--c-ink); }
