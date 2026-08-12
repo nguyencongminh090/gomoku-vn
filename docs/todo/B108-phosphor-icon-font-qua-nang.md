@@ -1,8 +1,16 @@
 # #108 — Font icon Phosphor quá nặng: 2 weight × (CSS 1530 icon + woff2 ~150 KB) cho 45 icon thực dùng, kèm `font-display: block`
 
-**Trạng thái:** ⏳ làm một phần — (a) + (c) đã làm (2026-08-12, nhánh
-`fix/phosphor-bold-font-display`) · (b) cố ý CHƯA LÀM, khuyến nghị đóng. Chưa đánh dấu ✅ ở
-`TODO.md` vì mục này còn phần (b) chưa quyết.
+**Trạng thái:** ✅ ĐÃ ĐÓNG (2026-08-12) — (a) + (c) đã làm (nhánh
+`fix/phosphor-bold-font-display`) · **(b) người dùng chốt KHÔNG làm, đóng hẳn**, không phải "chờ
+quyết định" nữa.
+
+**Lý do đóng (b) thay vì để mở:** tên icon bị ghép động ở `client/js/tournament-match.js:721,760`
+(`` `ph-bold ${iconClass}` ``), nên không có cách nào suy ra đầy đủ tập icon thực dùng bằng grep
+tĩnh — con số 45 chỉ là **cận dưới đo được**, không phải tổng thật. Subset trên cơ sở đó có nguy
+cơ hỏng âm thầm: một icon bị bỏ sót sẽ biến mất không dấu vết, không lỗi console, không fail test.
+Đúng tinh thần "không chắc 100% thì không làm" trong CLAUDE.md. Nếu sau này muốn làm lại, phải bắt
+đầu bằng việc bịt lỗ grep-tĩnh đó trước (xem instruction), không phải chạy thẳng công cụ subset
+trên con số 45 hiện tại.
 
 - **(a)** Bỏ link `bold/style.css` ở `client/index.html` và `client/login.html` — **chỉ 2 trang,
   không phải 3**: bảng bên dưới ghi `tournament.html` dùng 0 icon bold là **sai**, vì nó nạp
