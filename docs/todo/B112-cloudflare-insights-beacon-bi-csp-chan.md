@@ -70,10 +70,24 @@ Ghi chú kỹ thuật nếu sau này có ai định dùng wildcard: `https://*.c
 **không** khớp domain gốc `cloudflareinsights.com` — vẫn phải liệt kê riêng host gốc, nên wildcard
 còn không gọn hơn cách hiện tại.
 
-**CHƯA xác minh được end-to-end (cần người dùng khởi động lại server):** beacon chỉ được Cloudflare
-chèn trên domain thật, mà domain thật đang trỏ vào tiến trình server **đang chạy cấu hình CSP cũ**.
-Sau khi restart, kiểm bằng Chromium thật trên `https://play3cr.dpdns.org`: **3 lỗi CSP/lần tải phải
-thành 0**, và Web Analytics trên dashboard bắt đầu có dữ liệu (thường trễ vài phút).
+**✅ ĐÃ xác minh end-to-end trên domain thật** (2026-08-12, sau khi người dùng restart server) —
+Chromium thật trên `https://play3cr.dpdns.org`:
+
+| | Trước | Sau |
+|---|---|---|
+| Lỗi CSP mỗi lần tải trang | 3 | **0** |
+| `beacon.min.js` | bị chặn | **HTTP 200** |
+| `window.__cfBeacon` | — | `object` (đã khởi tạo) |
+
+Không hồi quy #105-#111: WebSocket kết nối, online count = 1, lần đầu 27 resource / 204 266 B.
+
+**Beacon thực tế gửi số liệu về `/cdn-cgi/rum` trên CHÍNH domain mình** (300 B) — đúng **trường
+hợp thứ 3** đã dự đoán ở mục trên, do Cloudflare cấu hình `send.to` là đường dẫn tương đối.
+Endpoint này Cloudflare xử lý ở biên, **không bao giờ tới server** (`localhost:3000/cdn-cgi/rum`
+trả 404). Nghĩa là mục `connect-src https://cloudflareinsights.com` **hiện không được dùng tới**;
+nó phủ nhánh dự phòng trong script và được **cố ý giữ lại** (host pin chính xác, khỏi phải sửa CSP
+nếu Cloudflare đổi cấu hình chèn). Chi tiết:
+[docs/fix-log/2026-08-12-xac-minh-112-end-to-end-sau-restart.md](../fix-log/2026-08-12-xac-minh-112-end-to-end-sau-restart.md).
 
 Phát hiện khi xác minh nhóm #105-#111 qua domain thật bằng Chromium (2026-08-12). **Không liên
 quan tới nhóm fix đó** — đã kiểm chứng là có sẵn từ trước.
