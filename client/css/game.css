@@ -515,8 +515,10 @@
   border-radius: 0;
   border: none;
   box-shadow: none;
-  /* Leave space at the bottom for fixed chat input + focus button */
-  padding-bottom: 140px;
+  /* Leave space at the bottom for fixed chat input + focus button (both now
+     hug bottom:20px, ~47px tall — see #chat-input-wrapper below — so this
+     only needs to clear that, not the old, far larger dead zone). */
+  padding-bottom: 80px;
   box-sizing: border-box;
 }
 
@@ -550,7 +552,11 @@
 /* Chat input in focus mode */
 .room--focus #chat-input-wrapper {
   position: fixed;
-  bottom: 85px; /* Moved up to not overlap game controls and btn-focus */
+  /* Hugs the bottom edge alongside .btn-focus (also bottom:20px) instead of
+     floating with a large dead gap above it — the two used to sit ~65px
+     apart for no reason, wasting vertical budget the board could use
+     instead (see board.js resize()'s bottomReserve, which mirrors this). */
+  bottom: 20px;
   left: 50%;
   transform: translateX(-50%);
   width: 400px;
@@ -665,9 +671,9 @@
 }
 
 .room--focus .float-messages {
-  /* Sit fully ABOVE the fixed chat input (bottom:85px, ~50px tall) so chat
+  /* Sit fully ABOVE the fixed chat input (bottom:20px, ~47px tall) so chat
      toasts stack upward from above it and never cover the chat box. */
-  bottom: 145px;
+  bottom: 78px;
   z-index: 650;
 }
 
