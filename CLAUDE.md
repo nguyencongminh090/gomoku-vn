@@ -105,6 +105,19 @@ vs style B for this screen") before picking one, use a separate structure from b
   off `main`) — e.g. `ui/style_a`, `ui/style_b`. Multiple `ui/*` branches can be in flight at once
   for the same screen; they are independent iteration lines, each committing its own progression
   (`commit → commit → ... → final`) exactly as sketched in the task example.
+- **A branch is per named design *direction*, not per screen.** If a direction (e.g. "Zen Minimal")
+  spans multiple screens (lobby, room, tournament…), every screen's implementation of that same
+  direction lives on the *same* `ui/<direction>` branch — one branch keeps accumulating commits as
+  each screen gets its zen treatment, it does not fork into `ui/<direction>` for one screen and
+  `ui/<direction>-<screen>` for another. Splitting a single direction across screen-scoped branches
+  means every branch is a half-finished product (one screen restyled, the rest still on the old
+  look) until someone remembers to merge them back together — confirmed 2026-08-12: `ui/zen-minimal`
+  (lobby) and `ui/room-zen-drawer` (room), both off `dev`, were meant to be the same "Zen Minimal"
+  effort but were branched separately, so neither branch alone showed a coherent product (new
+  lobby/old room vs. new room/old lobby) until they were merged back into one (`ui/zen-minimal`,
+  merge commit `c87ab75`). Only *competing candidates for the same screen* (`ui/style_a` vs
+  `ui/style_b` racing to restyle one page) get separate branches — a single direction rolling out
+  screen-by-screen does not.
 - **Backend is locked on every `ui/*` branch: no `server/` changes.** These branches exist purely
   to compare presentation-layer design candidates, so scope is limited to the UI layer —
   `client/*.html`, `client/css/`, `client/js/` (UI-facing modules only, not introducing new
