@@ -12,6 +12,7 @@
  *   6. Start listening
  */
 
+const compression  = require('compression');
 const express      = require('express');
 const helmet       = require('helmet');
 const http         = require('http');
@@ -57,6 +58,28 @@ app.set('trust proxy', 'loopback');
 app.use(helmet({
   contentSecurityPolicy: { directives: cspDirectives },
 }));
+
+// Compress text responses (TODO.md #105). Must be mounted BEFORE the static
+// handler and the routes below: compression works by wrapping res.write/end,
+// so anything that already wrote its response higher up would go out
+// uncompressed.
+//
+// Scope note, so nobody "completes" this later by mistake: Cloudflare already
+// applies Brotli at the edge, so end users were never receiving these assets
+// uncompressed. What this fixes is the origin→CF hop — which rides the home
+// connection's *upload* path through the tunnel, the narrowest link in the
+// chain — plus direct-to-origin access (dev, Playwright, manual curl), where
+// there is no CF to compress anything. Measured on the lobby page: 327 486 B
+// of css/js/html left the origin uncompressed, 79 018 B after gzip (-76%).
+//
+// Defaults are kept deliberately: level 6 (not 9 — the gzip -9 table in
+// TODO.md #105 measures the ceiling of the benefit, it is not a proposed
+// setting), and the built-in `compressible` content-type filter, which
+// already skips .woff2/.ttf/images — re-compressing compressed bytes burns
+// CPU and can grow the payload. socket.io's WebSocket `perMessageDeflate` is
+// a separate mechanism and is explicitly out of scope here (it costs CPU per
+// move and affects realtime latency — see TODO.md #86/#20).
+app.use(compression());
 
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
