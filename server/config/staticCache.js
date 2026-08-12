@@ -30,6 +30,28 @@ const IMMUTABLE = 'public, max-age=31536000, immutable';
 const REVALIDATE = 'no-cache';
 
 /**
+ * Cache policy for the socket.io browser client (TODO.md #111).
+ *
+ * Deliberately NOT `IMMUTABLE`, and deliberately a separate export rather
+ * than a path exception inside setStaticCacheHeaders() below: that function's
+ * contract is "assets under client/, all of which carry a `?v=N`", and the
+ * socket.io client satisfies neither half.
+ *
+ * `immutable` is only safe because `?v=N` gives changed content a new URL.
+ * This file is served from node_modules at a fixed URL with no `?v=N` (see
+ * CLAUDE.md's #107 guidance — the version scheme deliberately does not cover
+ * it), so its content changes on `npm update socket.io` while its URL does
+ * not. Pinning it for a year would leave browsers running an old client
+ * against a new server — which fails as "connects fine, but a few events
+ * silently never fire", the worst kind of bug to chase.
+ *
+ * One day is the compromise: it removes the per-page-load revalidation
+ * round-trip that motivated #111, and any version skew self-heals within 24h
+ * without anyone having to remember a cache-busting step.
+ */
+const SOCKET_IO_CLIENT = 'public, max-age=86400';
+
+/**
  * setHeaders hook for express.static.
  * @param {import('http').ServerResponse} res
  * @param {string} filePath absolute path of the file being served
@@ -44,4 +66,19 @@ function setStaticCacheHeaders(res, filePath) {
 
 const staticOptions = { setHeaders: setStaticCacheHeaders };
 
-module.exports = { staticOptions, setStaticCacheHeaders, IMMUTABLE, REVALIDATE };
+/** express.static options for the socket.io client mount (TODO.md #111). */
+const socketIoClientOptions = {
+  setHeaders(res) {
+    res.setHeader('Cache-Control', SOCKET_IO_CLIENT);
+  },
+  index: false,
+};
+
+module.exports = {
+  staticOptions,
+  setStaticCacheHeaders,
+  socketIoClientOptions,
+  IMMUTABLE,
+  REVALIDATE,
+  SOCKET_IO_CLIENT,
+};
