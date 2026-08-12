@@ -84,9 +84,23 @@ app.use(compression());
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
 
-const clientPath = process.env.NODE_ENV === 'production' 
-  ? path.join(__dirname, '..', 'dist')
-  : path.join(__dirname, '..', 'client');
+// `client/` is what ships, in every environment (TODO.md #109).
+//
+// This used to switch to `dist/` under NODE_ENV=production. The switch was a
+// silent trap: nothing guaranteed `dist/` had been rebuilt, so turning
+// production mode on served whatever the last `vite build` happened to
+// produce. It was measured 4 days stale, missing #103, #104, the whole
+// #95-#102 OAuth work, and then #107/#108/#111 — i.e. enabling it would have
+// *reverted* shipped fixes while looking like a performance improvement.
+// That is exactly how TODO.md #65 shipped a known-vulnerable HTML file to
+// production after the fix had already landed in `client/`.
+//
+// The bundle's remaining advantage was fewer requests, and that has largely
+// been overtaken: #105 gzips every text asset, and #106/#111 make a repeat
+// visit transfer 0 bytes. Removing the branch outright beats adding a build
+// step someone has to remember, because there is no longer a second copy of
+// the client that can drift out of date.
+const clientPath = path.join(__dirname, '..', 'client');
 
 // Serve the socket.io browser client ourselves (TODO.md #111).
 //

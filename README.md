@@ -78,17 +78,21 @@ To run the server without file watching:
 npm run dev:stable
 ```
 
-To build the client for production:
-
-```bash
-npm run build
-```
-
-To start the production server (it serves `client/` in development and `dist/` once `NODE_ENV=production`):
+To start the server:
 
 ```bash
 npm start
 ```
+
+The server serves `client/` directly, in every environment. It no longer
+switches to a bundled `dist/` under `NODE_ENV=production` (TODO.md #109): the
+switch silently served whatever the last `vite build` produced, which was
+measured 4 days stale and would have reverted already-shipped fixes. Static
+text responses are gzipped (#105) and cached (#106/#111), so a repeat visit
+transfers 0 bytes — which is where the bundle's benefit had gone anyway.
+
+`npm run build` (vite) still exists, but nothing serves its output; treat it
+as unused unless a bundling story is deliberately reintroduced.
 
 ## Testing
 
