@@ -145,9 +145,11 @@ class BoardRenderer {
       // The shell element sits behind in normal flow and reports wrong dimensions —
       // always use raw viewport dimensions here.
       // Reserve: 10px top padding + 20px top gap + tbH + gcH + 18px controls margin
-      //        + 140px bottom strip (fixed chat + focus-btn)
+      //        + 80px bottom strip (fixed chat + focus-btn, both hugging
+      //        bottom:20px — see .room--focus .board-area's padding-bottom
+      //        in game.css, which this mirrors)
       const topReserve = 10 + 20 + tbH + 18;
-      const bottomReserve = gcH + 18 + 140;
+      const bottomReserve = gcH + 18 + 80;
       boardAreaH = window.innerHeight - topReserve - bottomReserve;
       // Side padding: 10px each side in the CSS
       maxVw = window.innerWidth - 20;
