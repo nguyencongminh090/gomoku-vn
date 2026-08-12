@@ -153,6 +153,7 @@
   max-width: 100%;
   height: auto;
   cursor: crosshair;
+  touch-action: none;
 }
 
 @media (max-width: 768px) {

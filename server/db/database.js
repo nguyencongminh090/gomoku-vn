@@ -60,6 +60,63 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
   logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
 }
 
+// Same additive-migration need as above, for oauth_provider/oauth_id
+// (TODO.md #91) — a db file created before Google login is missing these
+// two columns.
+const userColumns = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+if (userColumns.length > 0 && !userColumns.includes('oauth_provider')) {
+  db.exec('ALTER TABLE users ADD COLUMN oauth_provider TEXT');
+  db.exec('ALTER TABLE users ADD COLUMN oauth_id TEXT');
+  logger.info('[DB] Migrated users: added oauth_provider/oauth_id columns (TODO.md #91)');
+}
+
+// idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
+// race in the /google/callback handler free to insert two `users` rows for
+// the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a
+// UNIQUE INDEX closes that at the DB layer. NULL <> NULL under SQL's rules
+// (SQLite included), so password accounts — which store NULL in both
+// columns — never collide with each other under this constraint.
+//
+// SQLite has no ALTER INDEX, so an existing plain index must be dropped and
+// recreated as UNIQUE — but CREATE UNIQUE INDEX throws immediately if any
+// duplicate pair already exists, which would stop the server from booting.
+// If this race was ever actually hit in production, silently deleting the
+// "loser" row would be destructive to real account data — not something to
+// do unattended (see docs/instruction/B94-*.md's "Phạm vi KHÔNG làm"). So:
+// detect duplicates first, and only install the UNIQUE index when none
+// exist; otherwise leave the old plain index in place and log loudly so a
+// human decides how to dedupe before the constraint can be added.
+// TODO.md #100: unlike every other migration block above, this one used to
+// run its full duplicate scan + DROP/CREATE INDEX on EVERY boot forever, even
+// once the index was already UNIQUE and nothing had changed since — the
+// other blocks all gate on "does the target state already exist?" and reduce
+// to a single cheap PRAGMA once migrated. Do the same here: skip straight
+// past the scan when idx_users_oauth already exists AND is already unique.
+// Self-healing is preserved — if it's still the old plain index (or missing
+// entirely), the scan-and-upgrade path below still runs exactly as before,
+// so a human who dedupes rows and restarts still gets the upgrade attempted
+// on the very next boot.
+const existingOauthIndex = db.prepare("PRAGMA index_list('users')").all()
+  .find((idx) => idx.name === 'idx_users_oauth');
+if (!existingOauthIndex || !existingOauthIndex.unique) {
+  const duplicateOauthPairs = db.prepare(
+    `SELECT oauth_provider, oauth_id, COUNT(*) AS n FROM users
+     WHERE oauth_provider IS NOT NULL AND oauth_id IS NOT NULL
+     GROUP BY oauth_provider, oauth_id HAVING COUNT(*) > 1`
+  ).all();
+  if (duplicateOauthPairs.length > 0) {
+    logger.error(
+      `[DB] Found ${duplicateOauthPairs.length} duplicate (oauth_provider, oauth_id) pair(s) in users ` +
+      '— skipping UNIQUE index upgrade (TODO.md #94). Dedupe these rows manually, then restart the ' +
+      `server: ${JSON.stringify(duplicateOauthPairs)}`
+    );
+    db.exec('CREATE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id)');
+  } else {
+    db.exec('DROP INDEX IF EXISTS idx_users_oauth');
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id)');
+  }
+}
+
 // Periodic WAL checkpoint to prevent unbounded growth
 setInterval(() => {
   try {
@@ -77,14 +134,14 @@ logger.info('[DB] SQLite initialized at', DB_PATH);
 
 /**
  * Insert a new user.
- * @param {{ id, username, passwordHash, displayName, createdAt }} user
+ * @param {{ id, username, passwordHash, displayName, createdAt, oauthProvider?, oauthId? }} user
  */
-function createUser({ id, username, passwordHash, displayName, createdAt }) {
+function createUser({ id, username, passwordHash, displayName, createdAt, oauthProvider = null, oauthId = null }) {
   const stmt = db.prepare(
-    `INSERT INTO users (id, username, password_hash, display_name, created_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO users (id, username, password_hash, display_name, created_at, oauth_provider, oauth_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
-  return stmt.run(id, username, passwordHash, displayName, createdAt);
+  return stmt.run(id, username, passwordHash, displayName, createdAt, oauthProvider, oauthId);
 }
 
 /**
@@ -94,6 +151,16 @@ function createUser({ id, username, passwordHash, displayName, createdAt }) {
  */
 function getUserByUsername(username) {
   return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+}
+
+/**
+ * Look up a user by OAuth provider + subject id (TODO.md #91).
+ * @param {string} provider e.g. 'google'
+ * @param {string} oauthId provider's stable subject id
+ * @returns {{ id, username, password_hash, display_name, created_at, oauth_provider, oauth_id } | undefined}
+ */
+function getUserByOAuthId(provider, oauthId) {
+  return db.prepare('SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?').get(provider, oauthId);
 }
 
 /**
@@ -773,6 +840,7 @@ module.exports = {
   db,
   createUser,
   getUserByUsername,
+  getUserByOAuthId,
   getUserById,
   updateLastLogin,
   createSession,

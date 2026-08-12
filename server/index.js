@@ -12,6 +12,7 @@
  *   6. Start listening
  */
 
+const compression  = require('compression');
 const express      = require('express');
 const helmet       = require('helmet');
 const http         = require('http');
@@ -20,6 +21,7 @@ const path         = require('path');
 
 const config         = require('./config');
 const { cspDirectives } = require('./config/csp');
+const { staticOptions, socketIoClientOptions, REVALIDATE } = require('./config/staticCache');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -57,15 +59,79 @@ app.use(helmet({
   contentSecurityPolicy: { directives: cspDirectives },
 }));
 
+// Compress text responses (TODO.md #105). Must be mounted BEFORE the static
+// handler and the routes below: compression works by wrapping res.write/end,
+// so anything that already wrote its response higher up would go out
+// uncompressed.
+//
+// Scope note, so nobody "completes" this later by mistake: Cloudflare already
+// applies Brotli at the edge, so end users were never receiving these assets
+// uncompressed. What this fixes is the origin→CF hop — which rides the home
+// connection's *upload* path through the tunnel, the narrowest link in the
+// chain — plus direct-to-origin access (dev, Playwright, manual curl), where
+// there is no CF to compress anything. Measured on the lobby page: 327 486 B
+// of css/js/html left the origin uncompressed, 79 018 B after gzip (-76%).
+//
+// Defaults are kept deliberately: level 6 (not 9 — the gzip -9 table in
+// TODO.md #105 measures the ceiling of the benefit, it is not a proposed
+// setting), and the built-in `compressible` content-type filter, which
+// already skips .woff2/.ttf/images — re-compressing compressed bytes burns
+// CPU and can grow the payload. socket.io's WebSocket `perMessageDeflate` is
+// a separate mechanism and is explicitly out of scope here (it costs CPU per
+// move and affects realtime latency — see TODO.md #86/#20).
+app.use(compression());
+
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
 
-const clientPath = process.env.NODE_ENV === 'production' 
-  ? path.join(__dirname, '..', 'dist')
-  : path.join(__dirname, '..', 'client');
+// `client/` is what ships, in every environment (TODO.md #109).
+//
+// This used to switch to `dist/` under NODE_ENV=production. The switch was a
+// silent trap: nothing guaranteed `dist/` had been rebuilt, so turning
+// production mode on served whatever the last `vite build` happened to
+// produce. It was measured 4 days stale, missing #103, #104, the whole
+// #95-#102 OAuth work, and then #107/#108/#111 — i.e. enabling it would have
+// *reverted* shipped fixes while looking like a performance improvement.
+// That is exactly how TODO.md #65 shipped a known-vulnerable HTML file to
+// production after the fix had already landed in `client/`.
+//
+// The bundle's remaining advantage was fewer requests, and that has largely
+// been overtaken: #105 gzips every text asset, and #106/#111 make a repeat
+// visit transfer 0 bytes. Removing the branch outright beats adding a build
+// step someone has to remember, because there is no longer a second copy of
+// the client that can drift out of date.
+const clientPath = path.join(__dirname, '..', 'client');
 
-// Serve client static files
-app.use(express.static(clientPath));
+// Serve the socket.io browser client ourselves (TODO.md #111).
+//
+// socket.io ships its own handler for this file, but hardcodes
+// `Cache-Control: public, max-age=0` (socket.io/dist/index.js) with no option
+// to change it — so after #106 made every other asset immutable, this was the
+// only asset still costing an origin round-trip on every page load, on all
+// four pages. A 304 is still a full round-trip through the tunnel, which is
+// exactly the latency #106 was about.
+//
+// It has to be served from a path OUTSIDE `/socket.io/`: engine.io claims
+// that entire prefix at the HTTP-server level (it intercepts before Express
+// is ever reached, and answers 400 for anything it doesn't recognise), so
+// neither an Express route nor an express.static mount under `/socket.io/`
+// can take effect. Verified empirically — see docs/fix-log for #111.
+//
+// socket.io's own `serveClient` is left ENABLED on purpose: the old
+// `/socket.io/socket.io.min.js` URL keeps working, so any HTML still
+// referencing it (a stale dist/ build — see TODO.md #109 — or a cached page)
+// degrades to the previous behaviour instead of breaking with no global `io`.
+const socketIoClientPath = path.join(
+  path.dirname(require.resolve('socket.io/package.json')),
+  'client-dist'
+);
+app.use('/vendor/socket.io', express.static(socketIoClientPath, socketIoClientOptions));
+
+// Serve client static files. Cache policy (assets immutable, HTML always
+// revalidated) lives in ./config/staticCache so it is unit-testable without
+// booting this server — see TODO.md #106 for why the express.static default
+// (`public, max-age=0`) was actively harmful here.
+app.use(express.static(clientPath, staticOptions));
 
 // REST API routes
 app.use('/api/auth', authRouter);
@@ -76,6 +142,9 @@ app.use('/api', tournamentGamesRouter);
 app.get('*', (req, res) => {
   // If not an API request, redirect to login
   if (!req.path.startsWith('/api')) {
+    // Same policy as express.static gives HTML — this path bypasses its
+    // setHeaders hook, so set it explicitly (TODO.md #106).
+    res.setHeader('Cache-Control', REVALIDATE);
     res.sendFile(path.join(clientPath, 'login.html'));
     return;
   }
