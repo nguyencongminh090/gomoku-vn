@@ -42,6 +42,34 @@ từ origin lạ, **không phải CSP**. Bằng chứng: khi CSP chặn thật, 
 inline/eval/wildcard" + pin nội dung chính xác ở khối #112 — tức vẫn chặn đúng lớp hồi quy mà #65
 nhắm tới, không phải nới lỏng test cho dễ qua.
 
+## Đã cân nhắc và BÁC BỎ: nới rộng hơn nữa (2026-08-12)
+
+Người dùng có đề xuất "fully allow beacon". **Đã phân tích lại rồi quyết định GIỮ NGUYÊN pin chính
+xác** — không phải vì thận trọng chung chung, mà vì đo được là **không còn gì để mở**.
+
+Toàn bộ bề mặt request của beacon chỉ có 3 trường hợp, và cả 3 đã được phép sẵn:
+
+| Việc | Được phép nhờ |
+|---|---|
+| tải script từ `static.cloudflareinsights.com` | `script-src` ✅ |
+| gửi số liệu tới `cloudflareinsights.com/cdn-cgi/rum` | `connect-src` ✅ |
+| gửi số liệu tới đường dẫn tương đối trên chính domain của mình | `'self'` ✅ |
+
+Trường hợp thứ 3 tìm ra khi soi chỗ **duy nhất** trong `beacon.min.js` có dựng host động:
+
+```js
+window.location.origin ? window.location.origin : `${location.protocol}://${location.host}`
+```
+
+Đây là beacon đọc origin **của chính trang đang chạy**, chỉ dùng khi Cloudflare cấu hình
+`send.to` là đường dẫn tương đối (bắt đầu bằng `/`) — tức gửi về chính domain mình, `'self'` đã
+phủ. **Không có trường hợp thứ 4.** Nới thêm chỉ cấp quyền mà beacon không dùng tới, đổi lại là
+mất đúng thứ #65 dựng lên để bảo vệ (chặn script lạ đọc JWT trong `localStorage`).
+
+Ghi chú kỹ thuật nếu sau này có ai định dùng wildcard: `https://*.cloudflareinsights.com`
+**không** khớp domain gốc `cloudflareinsights.com` — vẫn phải liệt kê riêng host gốc, nên wildcard
+còn không gọn hơn cách hiện tại.
+
 **CHƯA xác minh được end-to-end (cần người dùng khởi động lại server):** beacon chỉ được Cloudflare
 chèn trên domain thật, mà domain thật đang trỏ vào tiến trình server **đang chạy cấu hình CSP cũ**.
 Sau khi restart, kiểm bằng Chromium thật trên `https://play3cr.dpdns.org`: **3 lỗi CSP/lần tải phải
