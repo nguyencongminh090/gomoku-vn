@@ -72,8 +72,13 @@ body.zen-lobby .topnav__btn {
 body.zen-lobby .topnav__btn:hover { transform: none; box-shadow: none; background: var(--c-surface-2); }
 body.zen-lobby .topnav__badge { border-radius: 999px; }
 
-/* ── Page shell: no double-bezel card, content sits straight on paper ───── */
-body.zen-lobby .lobby-layout { max-width: 900px; }
+/* ── Page shell: no double-bezel card, content sits straight on paper ─────
+   Note: does NOT shrink .lobby-layout's max-width. The mockup's narrow
+   single-column feel assumed no persistent sidebar and short sample text;
+   production keeps the two-column grid (room list + sticky online sidebar)
+   and real dynamic counts (room-count/online-count pills), which need the
+   original 1160px to avoid the header row running out of room — see the
+   header wrap-safety rules below for what that squeeze broke. */
 body.zen-lobby .lobby { padding-left: 32px; padding-right: 32px; }
 @media (max-width: 768px) {
   body.zen-lobby .lobby { padding-left: 16px; padding-right: 16px; }
@@ -96,7 +101,29 @@ body.zen-lobby .ui-core {
 
 /* ── Header ───────────────────────────────────────────────────────────── */
 body.zen-lobby .lobby__title { font-weight: 700; }
-body.zen-lobby .lobby__count { border-radius: 999px; }
+body.zen-lobby .lobby__count {
+  border-radius: 999px;
+  /* room-count/online-count are dynamic, real-time text (e.g. "−2 đang
+     online") — without this they can break mid-phrase inside the pill
+     when the header runs out of horizontal room (see the .lobby__header
+     rule below for the other half of this fix). */
+  white-space: nowrap;
+}
+body.zen-lobby .lobby__header {
+  /* h1 (title + count pills) and the action-button group are flex
+     siblings with no wrap fallback in lobby.css — at narrower widths (or
+     with long dynamic counts) they were forced onto one line and the
+     count pill's own text wrapped instead. Let the whole header reflow
+     in two rows before that happens. */
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+body.zen-lobby .lobby__header h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  row-gap: 6px;
+}
 
 /* ── Section tabs: already underline-style in lobby.css — just quiet the color ── */
 body.zen-lobby .section-tabs { border-bottom-color: var(--c-border); }
