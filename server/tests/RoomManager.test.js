@@ -428,14 +428,6 @@ describe('every room:updated emit site', () => {
   // (GameHandler.js): it had 2 of its own broadcastRoomUpdate call sites
   // (allReady / not-allReady branches), now folded into the same room:ready
   // flow (RoomHandler.js) that a first game start already used.
-  //
-  // Count rose 15 → 21 with the slot-status presence feature (green/gray/
-  // red/orange dots): a new room:presence handler (RoomHandler.js) plus 5
-  // more broadcasts so presence changes ('disconnected' at each grace start,
-  // 'active' at each reconnect path) actually reach other room members —
-  // SocketHandler.js's plain reconnect, DisconnectHandler.js's
-  // startEmptyRoomGrace/startSpectatorGrace/startDisconnectGrace, and the
-  // cancelDisconnectGrace "other player still away" branch.
   const SOCKET_DIR = path.join(__dirname, '..', 'socket');
 
   function jsFilesUnder(dir) {
@@ -469,8 +461,8 @@ describe('every room:updated emit site', () => {
     expect(emitSites[0].file).toBe('state.js');
   });
 
-  test('all 21 sites are still accounted for, now via broadcastRoomUpdate', () => {
-    expect(callSites).toHaveLength(21);
+  test('all 15 sites are still accounted for, now via broadcastRoomUpdate', () => {
+    expect(callSites).toHaveLength(15);
   });
 
   test('passes { settings: true } at exactly the one settings-change site', () => {
@@ -479,7 +471,7 @@ describe('every room:updated emit site', () => {
     expect(withSettings).toHaveLength(1);
     expect(withSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
 
-    expect(callSites.length - withSettings.length).toBe(20);
+    expect(callSites.length - withSettings.length).toBe(14);
   });
 });
 
@@ -533,79 +525,6 @@ describe('RoomManager — kickUser while a game is interrupted', () => {
 
     expect(result.error).toBeUndefined();
     expect(room.users.has('guest')).toBe(false);
-  });
-});
-
-describe('RoomManager — setPresence (slot status dots)', () => {
-  beforeEach(() => {
-    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
-    roomManager.rooms.clear();
-    roomManager.userRoomMap.clear();
-  });
-
-  function roomWithOne() {
-    const { room } = roomManager.createRoom(
-      { userId: 'host', displayName: 'Host', isGuest: false, ip: '198.51.100.1' }
-    );
-    return room;
-  }
-
-  test('a newly created room entry defaults to active presence', () => {
-    const room = roomWithOne();
-    expect(room.users.get('host').presence).toBe('active');
-  });
-
-  test('a newly joined room entry defaults to active presence', () => {
-    const room = roomWithOne();
-    roomManager.joinRoom({ userId: 'guest', displayName: 'Guest', isGuest: true }, room.roomId);
-    expect(room.users.get('guest').presence).toBe('active');
-  });
-
-  test('reports away when the client says the tab went hidden', () => {
-    const room = roomWithOne();
-    const result = roomManager.setPresence('host', 'away');
-
-    expect(result.error).toBeUndefined();
-    expect(room.users.get('host').presence).toBe('away');
-  });
-
-  test('reports back to active when the tab becomes visible again', () => {
-    const room = roomWithOne();
-    roomManager.setPresence('host', 'away');
-
-    roomManager.setPresence('host', 'active');
-
-    expect(room.users.get('host').presence).toBe('active');
-  });
-
-  test('an unrecognized presence value falls back to active rather than erroring', () => {
-    // The socket handler passes payload.presence through largely unvalidated —
-    // this is the defensive floor for a malformed/garbage client payload.
-    const room = roomWithOne();
-    const result = roomManager.setPresence('host', 'not-a-real-state');
-
-    expect(result.error).toBeUndefined();
-    expect(room.users.get('host').presence).toBe('active');
-  });
-
-  test('a user not in any room reports NOT_IN_ROOM instead of throwing', () => {
-    const result = roomManager.setPresence('nobody', 'away');
-    expect(result.error).toBeTruthy();
-    expect(result.code).toBe('NOT_IN_ROOM');
-  });
-
-  test('server-authoritative disconnected presence cannot be overwritten by a client presence event', () => {
-    // Guards the race this method exists to prevent: a stray/delayed
-    // 'room:presence' event arriving from a socket that has since actually
-    // dropped (grace period in progress) must not paper over the orange dot
-    // with green/gray — DisconnectHandler.js owns clearing 'disconnected'.
-    const room = roomWithOne();
-    room.users.get('host').presence = 'disconnected';
-
-    const result = roomManager.setPresence('host', 'active');
-
-    expect(result.error).toBeUndefined();
-    expect(room.users.get('host').presence).toBe('disconnected');
   });
 });
 

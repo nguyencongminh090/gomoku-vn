@@ -125,16 +125,6 @@ function register(io, socket) {
     broadcastLobbyUpdate(io);
   });
 
-  // Client-reported tab-visibility state (Page Visibility API) — drives the
-  // "leaved site" (away) status dot on the slot cards. Silent on error: this
-  // fires often (every tab switch) and isn't worth surfacing a toast for a
-  // stale/out-of-room event.
-  socket.on('room:presence', (payload = {}) => {
-    const result = roomManager.setPresence(user.userId, payload.presence);
-    if (result.error) return;
-    broadcastRoomUpdate(io, result.room);
-  });
-
   socket.on('room:settings', (payload = {}) => {
     const result = roomManager.updateSettings(user.userId, payload.settings || {});
     if (result.error) {

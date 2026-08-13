@@ -394,9 +394,7 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     const io = makeIo();
     init(io);
 
-    mockRoomManager.getRoomByUser.mockReturnValueOnce({
-      roomId: 'r1', gameState: null, users: new Map([['u1', { userId: 'u1', presence: 'active' }]]),
-    });
+    mockRoomManager.getRoomByUser.mockReturnValueOnce({ roomId: 'r1', gameState: null });
     mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'r1' }));
 
     const a = makeSocket(io, 'sockA', 'u1', 'Alice', RECONNECT);

@@ -154,7 +154,6 @@ class RoomManager extends EventEmitter {
       isGuest: userInfo.isGuest,
       slot: null,     // null = guest/spectator, 1 or 2 = player slot
       ready: false,
-      presence: 'active',   // 'active' | 'away' | 'disconnected' — see setPresence()
     };
 
     room.users.set(userInfo.userId, userEntry);
@@ -206,7 +205,6 @@ class RoomManager extends EventEmitter {
       isGuest: userInfo.isGuest,
       slot: null,
       ready: false,
-      presence: 'active',
     };
 
     room.users.set(userInfo.userId, userEntry);
@@ -352,33 +350,6 @@ class RoomManager extends EventEmitter {
     this.resetReadyPair(room);
 
     logger.info(`[RoomManager] ${user.displayName} stood up in room ${room.roomId}`);
-    return { room };
-  }
-
-  // ---------------------------------------------------------------------------
-  // Presence (client-reported tab visibility)
-  // ---------------------------------------------------------------------------
-
-  /**
-   * Update a user's client-reported presence ('active' | 'away'). Distinct
-   * from 'disconnected', which is server-authoritative (set by the grace
-   * period logic in DisconnectHandler.js when the socket itself drops) — a
-   * stray/delayed client presence event must never overwrite that, so this
-   * is a no-op while a disconnect grace is in effect. The grace logic clears
-   * 'disconnected' back to 'active' itself once the socket reconnects.
-   *
-   * @param {string} userId
-   * @param {'active'|'away'} presence
-   * @returns {{ room: object } | { error: string }}
-   */
-  setPresence(userId, presence) {
-    const room = this._getUserRoom(userId);
-    if (!room) return { error: 'Bạn chưa vào phòng nào.', code: 'NOT_IN_ROOM' };
-
-    const user = room.users.get(userId);
-    if (user.presence === 'disconnected') return { room };
-
-    user.presence = presence === 'away' ? 'away' : 'active';
     return { room };
   }
 
@@ -675,7 +646,6 @@ class RoomManager extends EventEmitter {
         isGuest: u.isGuest,
         slot: u.slot,
         ready: u.ready,
-        presence: u.presence || 'active',
         role: this.getUserRole(room, u.userId),
       });
     }
