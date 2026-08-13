@@ -275,6 +275,14 @@
 .ready-dot--ready {
   background: var(--c-success);
 }
+/* Tab open but not the visible/active one ("leaved site") */
+.ready-dot--away {
+  background: var(--c-error);
+}
+/* Socket actually dropped — reconnect grace period running */
+.ready-dot--disconnected {
+  background: var(--c-warning);
+}
 
 .ready-text {
   font-size: 10px;
@@ -285,6 +293,12 @@
 }
 .ready-text--ready {
   color: var(--c-success);
+}
+.ready-text--away {
+  color: var(--c-error);
+}
+.ready-text--disconnected {
+  color: var(--c-warning);
 }
 
 .slot-card__role {
