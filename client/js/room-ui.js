@@ -101,13 +101,19 @@
 
   // ── Slot status (name + a single 4-state dot) ───────────────────────────────
 
-  // Green (ready) and gray (not ready) are the existing ready/not-ready
-  // states. Red ('away') and orange ('disconnected') are presence states
-  // reported by the server (see RoomManager.setPresence / DisconnectHandler.js)
-  // — 'disconnected' (socket actually dropped, grace period running) always
+  // Active/Inactive reflect whether THIS PLAYER's game has actually started
+  // (room.state === 'playing'), not the pre-game `ready` checkbox — `ready`
+  // resets to false the instant a game starts (see GameHandler.js's
+  // startGame()), so using it here made the dot fall back to "not ready" the
+  // moment play began (TODO.md #114). `ready` still exists and is read
+  // elsewhere (the Start-modal ready window) — it's just not a status-dot
+  // signal any more.
+  // Red ('disconnected') and amber ('away') are presence states reported by
+  // the server (see RoomManager.setPresence / DisconnectHandler.js) —
+  // 'disconnected' (socket actually dropped, grace period running) always
   // wins over 'away' (tab still open, just not the active/visible one) which
-  // always wins over the ready/not-ready pair, since a player who isn't even
-  // present can't meaningfully be "ready".
+  // always wins over the Active/Inactive pair, since a player who isn't even
+  // present can't meaningfully be "playing".
   function playerStatusInfo(player) {
     if (player.presence === 'disconnected') {
       return { modifier: '--disconnected', label: t('room.status_disconnected') };
@@ -115,10 +121,10 @@
     if (player.presence === 'away') {
       return { modifier: '--away', label: t('room.status_away') };
     }
-    if (player.ready) {
-      return { modifier: '--ready', label: t('room.ready') };
+    if (S().roomData.state === 'playing') {
+      return { modifier: '--active', label: t('room.status_active') };
     }
-    return { modifier: '', label: t('room.not_ready') };
+    return { modifier: '', label: t('room.status_waiting') };
   }
 
   // Symbol only, no visible text — a colored dot is the whole status display

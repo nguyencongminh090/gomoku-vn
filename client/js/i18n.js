@@ -352,8 +352,8 @@ const TRANSLATIONS = {
 
     // ── Room dynamic text ─────────────────────────────────────
     'room.slot_empty': 'Trống',
-    'room.not_ready': 'Chưa sẵn sàng',
-    'room.ready': 'Sẵn sàng',
+    'room.status_active': 'Đang chơi',
+    'room.status_waiting': 'Đang chờ',
     'room.empty_slot': 'Trống',
     'room.click_to_sit': 'Nhấn để ngồi vào',
     'room.host': 'Chủ phòng',
@@ -944,8 +944,8 @@ const TRANSLATIONS = {
 
     // ── Room dynamic text ─────────────────────────────────────
     'room.slot_empty': 'Empty',
-    'room.not_ready': 'Not ready',
-    'room.ready': 'Ready',
+    'room.status_active': 'Playing',
+    'room.status_waiting': 'Waiting',
     'room.empty_slot': 'Empty',
     'room.click_to_sit': 'Click to sit',
     'room.host': 'Host',

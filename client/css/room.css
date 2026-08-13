@@ -274,16 +274,19 @@
   background: var(--c-border);
   flex-shrink: 0;
 }
-.ready-dot--ready {
+/* Game in progress for this player ("Đang chơi") */
+.ready-dot--active {
   background: var(--c-success);
 }
-/* Tab open but not the visible/active one ("leaved site") */
+/* Tab open but not the visible/active one ("leaved site") — amber, milder
+   than Disconnect: the player is still reachable, just not looking. */
 .ready-dot--away {
-  background: var(--c-error);
-}
-/* Socket actually dropped — reconnect grace period running */
-.ready-dot--disconnected {
   background: var(--c-warning);
+}
+/* Socket actually dropped — reconnect grace period running. Red: most
+   severe of the 4 states, the connection is genuinely gone. */
+.ready-dot--disconnected {
+  background: var(--c-error);
 }
 
 .slot-card__role {
