@@ -99,6 +99,36 @@
     }
   }
 
+  // ── Slot status (name + a single 4-state dot) ───────────────────────────────
+
+  // Green (ready) and gray (not ready) are the existing ready/not-ready
+  // states. Red ('away') and orange ('disconnected') are presence states
+  // reported by the server (see RoomManager.setPresence / DisconnectHandler.js)
+  // — 'disconnected' (socket actually dropped, grace period running) always
+  // wins over 'away' (tab still open, just not the active/visible one) which
+  // always wins over the ready/not-ready pair, since a player who isn't even
+  // present can't meaningfully be "ready".
+  function playerStatusInfo(player) {
+    if (player.presence === 'disconnected') {
+      return { modifier: '--disconnected', label: t('room.status_disconnected') };
+    }
+    if (player.presence === 'away') {
+      return { modifier: '--away', label: t('room.status_away') };
+    }
+    if (player.ready) {
+      return { modifier: '--ready', label: t('room.ready') };
+    }
+    return { modifier: '', label: t('room.not_ready') };
+  }
+
+  function renderStatusDot(player) {
+    const status = playerStatusInfo(player);
+    return `
+      <span class="ready-dot ready-dot${status.modifier}"></span>
+      <span class="ready-text ready-text${status.modifier}">${status.label}</span>
+    `;
+  }
+
   // ── Slot rendering ────────────────────────────────────────────────────────
 
   function renderSlot(slotNum, contentEl, cardEl) {
@@ -132,10 +162,7 @@
         ${standBtn}
       </div>
       <div class="slot-card__status">
-        <span class="ready-dot ready-dot${player.ready ? '--ready' : ''}"></span>
-        <span class="ready-text ready-text${player.ready ? '--ready' : ''}">
-          ${player.ready ? t('room.ready') : t('room.not_ready')}
-        </span>
+        ${renderStatusDot(player)}
         ${roleBadge}
       </div>
     `;
@@ -169,10 +196,7 @@
         <div class="players-strip__slot">
           <span class="players-strip__num">#${slotNum}</span>
           <span class="players-strip__name">${escapeHtml(player.displayName)}</span>
-          <span class="ready-dot ready-dot${player.ready ? '--ready' : ''}"></span>
-          <span class="ready-text ready-text${player.ready ? '--ready' : ''}">
-            ${player.ready ? t('room.ready') : t('room.not_ready')}
-          </span>
+          ${renderStatusDot(player)}
         </div>
       `;
     }
