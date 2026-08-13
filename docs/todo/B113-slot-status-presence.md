@@ -1,6 +1,6 @@
 # #113 — Slot Status (trạng thái hiện diện người chơi trong slot)
 
-**Trạng thái:** ✅ ĐÃ XONG (2026-08-13)
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-13, cả phần presence gốc lẫn bổ sung)
 
 ## Yêu cầu
 
@@ -80,3 +80,33 @@ bộ nhớ). Cũng lỡ `rm` trúng 1 file backup DB có track trong git
 Không có thiệt hại lâu dài, nhưng ghi lại làm bài học: không dùng `pkill -f`
 theo pattern rộng, không dùng `rm` với glob gần file có track git mà chưa
 `git status` kiểm trước.
+
+## Bổ sung 2026-08-13 (yêu cầu người dùng) — ĐÃ LÀM
+
+1. **Không dùng chữ** (vd "Chưa sẵn sàng", "Sẵn sàng", "Đang rời trang", "Mất
+   kết nối") ở slot — chỉ dùng ký hiệu (circle hoặc bar) tô màu theo trạng
+   thái. Mục đích: tối ưu không gian hiển thị, giảm nhiễu thị giác.
+2. **Không ghi "Chủ phòng" ở slot** — bỏ role badge khỏi slot card.
+
+**Triển khai:** `client/js/room-ui.js` — `renderStatusDot()` (dùng chung cho
+slot card + mobile players-strip) bỏ hẳn `<span class="ready-text">`, chỉ còn
+1 `<span class="ready-dot ...">` — nhãn cũ ("Sẵn sàng"/"Chưa sẵn sàng"/"Đang
+rời trang"/"Mất kết nối") chuyển sang `title` + `aria-label` (`role="img"`)
+trên chính dot thay vì xoá hẳn, để giữ đường thoát cho hover/screen reader.
+`renderSlot()` bỏ hẳn biến `roleBadge`/dòng render "Chủ phòng" — **chỉ ở slot
+card**, không đụng badge "CP" tương tự ở `renderUsersList()` (danh sách người
+xem, khác class dùng chung `.slot-card__role--host` nhưng là UI khác, ngoài
+phạm vi yêu cầu). CSS (`client/css/room.css`): xoá hẳn `.ready-text`/4 biến
+thể màu (không còn nơi nào dùng), tăng `.ready-dot` từ 7px → 9px vì giờ là
+tín hiệu trạng thái DUY NHẤT, cần dễ nhìn hơn. Cache-bust `?v=` 106 → 107.
+
+**Test & xác minh:** không có test infra cho `client/js/` (đúng hiện trạng
+repo, không viết test throwaway); `npm test` 1131/1131 (không đổi, thay đổi
+thuần client). Xác minh trực tiếp bằng Playwright qua server cục bộ riêng
+(worktree + DB + `.env`/`CORS_ORIGIN` riêng, dọn dẹp bằng kill theo PID cụ thể
+— không lặp lại lỗi `pkill -f` trước đó): tạo phòng, ngồi vào slot với vai trò
+host, đọc HTML thực tế của `#slot-1-content` — xác nhận không còn
+`slot-card__role`/"Chủ phòng" trong markup, không còn `<span class="ready-text`,
+chỉ 1 `<span class="ready-dot ...">` với `title`/`aria-label` = "Chưa sẵn
+sàng" đúng nhãn.
+
