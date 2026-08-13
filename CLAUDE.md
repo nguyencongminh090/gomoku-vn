@@ -205,6 +205,44 @@ checking first avoids doing the divergence diagnosis under the pressure of a hal
 it obvious up front whether the fix is a one-line resolve or something that needs the user's input
 before proceeding.
 
+## Git workflow: revert-as-diagnostic doesn't need a fresh `?v=N` every cycle
+
+Precedent (2026-08-13, `ui/zen-minimal`): user reported the zen room's board/chatbox "looked old"
+right after a `dev` merge. To isolate the cause, the merge was reverted (`git revert -m 1 <merge>`),
+tested, found NOT to be the cause (proven via isolated Playwright renders of the exact working tree —
+content was correct in both the pre- and post-revert states), then un-reverted
+(`git revert <the-revert>`) to restore the feature. Each of these three git operations correctly
+followed the "Cache-busting version bump" rule's conflict-resolution procedure (pick one side,
+re-bump to a fresh single value, verify with the grep command) — but doing this 3 times in one
+sitting made `?v=N` jump 108→110→109→118 within about twenty minutes. That non-monotonic-looking
+jump is what actually made the user keep doubting whether their browser was serving stale content,
+even after `curl`-ing the live server proved the served bytes were already correct at every step.
+
+The existing "fix/\* branch merged to main must also land on dev" rule's `max(dev, main) + 1`
+procedure was written for divergence accumulating across *days* between two long-lived branches — it
+says nothing about repeating that cycle several times *within one debugging session* on a single
+branch, which is a different situation with a different right answer:
+
+- **Verify server-served bytes with `curl` before concluding it's a caching problem at all.**
+  `curl -s <url>/css/whatever.css | grep <the-rule-you-just-changed>` isolates the server/file layer
+  from the browser layer in one command, with zero ambiguity — this is what actually resolved this
+  incident (proving the code was correct throughout), not the repeated version bumps. Reach for this
+  *before* reaching for a version bump when a user reports "still looks old" after a change you're
+  confident is correct.
+- **When reverting a merge purely as a diagnostic step** (not a genuine rollback — you expect to
+  likely re-apply it once the hypothesis is tested one way or the other): the plain single-value
+  repo-wide bump from the "Cache-busting version bump" rule is sufficient. You don't need to invent a
+  brand-new highest-ever number "just to be safe" at every single step — a real new number for
+  content that has genuinely changed is already enough for the browser to fetch it fresh. Jumping to
+  an arbitrary far-higher number (e.g. 109→117, skipping 110-116) to "guarantee" freshness is a valid
+  move once you have *concrete evidence* of an actual caching problem, but shouldn't be the default
+  reflex the first time a user says something still looks wrong.
+- **A `?v=N` sequence that looks non-monotonic to the human watching along is itself confusing
+  evidence**, independent of whether the content is actually correct. If a revert/re-revert cycle is
+  underway, say so plainly when reporting the new number ("this dropped back to 109 because the
+  revert removed <feature>, not because anything broke") rather than letting the user infer meaning
+  from the raw number sequence alone.
+
 ## Concurrent sessions sharing the repo: check `git stash list` before assuming lost work
 
 The user may run multiple Claude Code sessions against this repo at once (e.g. one fixing a bug
