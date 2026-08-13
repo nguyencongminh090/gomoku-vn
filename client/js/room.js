@@ -106,12 +106,24 @@ const tabBtns     = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const chatMessages = document.getElementById('chat-messages');
 
-// zen-room's drawer defaults open on desktop (see room-zen.css), but at
-// mobile widths the open drawer (~90vw) leaves almost no room for the
-// board — default it collapsed there instead, same width room.css's own
-// mobile breakpoint already uses. No-op outside room-zen.css.
-if (document.body.classList.contains('zen-room') && window.matchMedia('(max-width: 768px)').matches) {
-  document.body.classList.add('zen-drawer-collapsed');
+// zen-room's panel defaults OPEN at every width, because the seat/ready
+// buttons inside .panel-players are the first thing a player needs and they
+// live in it. On a phone the panel is a bottom sheet (room-zen.css ≤768px)
+// rather than a side drawer, so "open" costs board height, not board width —
+// and room-socket.js collapses it down to the tab bar as soon as game:init
+// arrives, i.e. exactly when the board starts mattering more than the panel.
+
+// Re-measures the board against the shell's new content box while the drawer
+// animates. Called by the tab handler below; kept here so both the mid-flight
+// and the settled measurement share one definition.
+function refitBoardAfterDrawer() {
+  const refit = () => {
+    const st = window.RoomState;
+    if (st && st.boardRenderer) st.boardRenderer.resize();
+  };
+  requestAnimationFrame(refit);
+  setTimeout(refit, 180);
+  setTimeout(refit, 400);   // just past the 0.35s transition
 }
 
 tabBtns.forEach(btn => {
@@ -134,6 +146,15 @@ tabBtns.forEach(btn => {
     } else {
       document.body.classList.remove('zen-drawer-collapsed');
     }
+
+    // Opening/collapsing the desktop drawer changes .board-area-shell's
+    // padding-right, i.e. the board's entire width budget — but nothing fires
+    // a window resize, so without this the canvas keeps its old size and is
+    // either cropped by .board-canvas-wrap's overflow:hidden (drawer opened)
+    // or leaves the reclaimed space empty (drawer collapsed). Re-fit once the
+    // 0.35s padding transition has settled, and once on the way there so the
+    // board doesn't visibly jump only at the end.
+    if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
 
     if (tabId === 'tab-chat') chatMessages.scrollTop = chatMessages.scrollHeight;
   });

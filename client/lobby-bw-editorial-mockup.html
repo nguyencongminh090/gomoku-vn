@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Sảnh (Style A: Editorial Ink, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Static preview of the design-workflow Style A (Editorial Ink) black & white lobby direction." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<style>
+  :root {
+    --c-bg:        #F7F7F5;
+    --c-surface:   #FFFFFF;
+    --c-surface-2: #F1F1EF;
+    --c-border:    rgba(17,17,17,0.10);
+    --c-border-strong: rgba(17,17,17,0.20);
+    --c-ink:       #111111;
+    --c-ink-2:     #5A5A5A;
+    --c-ink-3:     #9A9A9A;
+    --radius-sm: 6px;
+    --radius: 10px;
+    --font: 'Manrope', system-ui, -apple-system, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; background: var(--c-bg); color: var(--c-ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; }
+
+  .mock-banner { background: var(--c-ink); color: #fff; text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; }
+  .mock-banner a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ── Flat top bar (replaces floating glass pill) ─────────────────────── */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 32px; height: 64px;
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar__brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+  .topbar__logo { width: 24px; height: 24px; display: block; }
+  .topbar__title { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+  .topbar__right { display: flex; align-items: center; gap: 20px; }
+  .topbar__user { font-size: 14px; font-weight: 600; color: var(--c-ink-2); }
+  .topbar__badge {
+    font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+    padding: 3px 9px; border: 1px solid var(--c-border-strong); border-radius: 999px;
+    color: var(--c-ink-2);
+  }
+  .topbar__icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--c-border-strong); background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: var(--c-ink); font-size: 16px;
+    transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+  }
+  .topbar__icon-btn:hover { background: var(--c-surface-2); }
+  .topbar__icon-btn:active { transform: scale(0.94); }
+
+  /* ── Page ─────────────────────────────────────────────────────────────── */
+  .page { max-width: 1160px; margin: 0 auto; padding: 40px 32px 80px; display: grid; grid-template-columns: 1fr 280px; gap: 48px; }
+  @media (max-width: 900px) { .page { grid-template-columns: 1fr; } }
+
+  /* ── Underline tabs ───────────────────────────────────────────────────── */
+  .tabs { display: flex; gap: 32px; border-bottom: 1px solid var(--c-border); margin-bottom: 32px; }
+  .tab {
+    background: none; border: none; cursor: pointer; font-family: var(--font);
+    font-size: 15px; font-weight: 700; color: var(--c-ink-3);
+    padding: 0 0 14px; display: flex; align-items: center; gap: 8px;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+    transition: color 0.2s var(--ease);
+  }
+  .tab.is-active { color: var(--c-ink); border-bottom-color: var(--c-ink); }
+  .tab:hover:not(.is-active) { color: var(--c-ink-2); }
+
+  /* ── Section header ───────────────────────────────────────────────────── */
+  .section-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+  .section-header h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .section-header .count { font-weight: 500; color: var(--c-ink-3); font-size: 18px; margin-left: 6px; }
+  .section-actions { display: flex; gap: 10px; }
+  .btn { font-family: var(--font); font-size: 14px; font-weight: 700; border-radius: var(--radius-sm); padding: 10px 18px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s var(--ease); }
+  .btn-ghost { background: transparent; border: 1px solid var(--c-border-strong); color: var(--c-ink); text-decoration: none; }
+  .btn-ghost:hover { background: var(--c-surface-2); }
+  .btn-solid { background: var(--c-ink); border: 1px solid var(--c-ink); color: #fff; }
+  .btn-solid:hover { background: #000; }
+
+  /* ── Room listing (editorial rows, not cards) ────────────────────────── */
+  .room-list { border-top: 1px solid var(--c-border); }
+  .room-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    padding: 20px 4px; border-bottom: 1px solid var(--c-border);
+    transition: background 0.2s var(--ease);
+  }
+  .room-row:hover { background: var(--c-surface-2); }
+  .room-row__main { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .room-row__name { font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
+  .room-row__meta { font-size: 13px; color: var(--c-ink-2); display: flex; align-items: center; gap: 6px; }
+  .room-row__meta .dot { color: var(--c-ink-3); }
+  .room-row__tags { display: flex; align-items: center; gap: 20px; flex-shrink: 0; }
+  .tag { font-size: 12px; font-weight: 700; color: var(--c-ink-2); white-space: nowrap; }
+  .state {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+    color: var(--c-ink-2); text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .state__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
+  .state--waiting .state__dot { background: var(--c-ink); }
+  .state--playing .state__dot { border: 1.5px solid var(--c-ink); background: transparent; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .btn-join {
+    font-family: var(--font); font-size: 13px; font-weight: 700; border-radius: 999px;
+    padding: 8px 20px; border: 1px solid var(--c-ink); background: transparent; color: var(--c-ink);
+    cursor: pointer; transition: all 0.2s var(--ease); flex-shrink: 0;
+  }
+  .btn-join:hover { background: var(--c-ink); color: #fff; }
+  .btn-join:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn-join:disabled:hover { background: transparent; color: var(--c-ink); }
+
+  /* ── Sidebar ──────────────────────────────────────────────────────────── */
+  .sidebar-panel { border-top: 1px solid var(--c-border-strong); padding-top: 20px; }
+  .sidebar-panel__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .sidebar-panel__title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--c-ink-3); }
+  .sidebar-panel__count { font-size: 11px; font-weight: 700; color: var(--c-ink-2); }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--c-border); font-size: 13px; font-weight: 600; }
+  .user-row__dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink); flex-shrink: 0; }
+  .user-row__name { color: var(--c-ink); }
+  .user-row__status { margin-left: auto; font-size: 11px; color: var(--c-ink-3); font-weight: 500; }
+
+  /* ── Tournament tab (lightweight) ────────────────────────────────────── */
+  .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; border-top: 1px solid var(--c-border); padding-top: 24px; }
+  .t-card { border: 1px solid var(--c-border-strong); border-radius: var(--radius); padding: 18px; }
+  .t-card__title { font-weight: 800; font-size: 15px; margin-bottom: 8px; }
+  .t-card__meta { font-size: 12px; color: var(--c-ink-2); font-weight: 600; }
+
+  .tab-panel { display: none; }
+  .tab-panel.is-active { display: block; }
+
+  /* ── Responsive ───────────────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .topbar { padding: 0 16px; height: 56px; }
+    .topbar__title { display: none; }
+    .topbar__right { gap: 10px; }
+    .topbar__user { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .page { padding: 24px 16px 56px; }
+    .section-header h1 { font-size: 21px; }
+    .room-row { flex-wrap: wrap; row-gap: 12px; }
+    .room-row__main { flex: 1 1 100%; }
+    .room-row__tags { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="mock-banner">STYLE A — Editorial Ink · design-workflow mockup, not wired to the app · <a href="lobby-bw-ledger-mockup.html">switch to Style B (Board Ledger)</a></div>
+
+<nav class="topbar">
+  <a href="#" class="topbar__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" class="topbar__logo" />
+    <span class="topbar__title">Play3CR</span>
+  </a>
+  <div class="topbar__right">
+    <span class="topbar__user">quangquy</span>
+    <span class="topbar__badge">42 online</span>
+    <button class="topbar__icon-btn" aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+  </div>
+</nav>
+
+<div class="page">
+  <main>
+    <div class="tabs">
+      <button class="tab is-active"><i class="ph ph-grid-four"></i> Bàn chơi</button>
+      <button class="tab"><i class="ph ph-trophy"></i> Giải đấu</button>
+    </div>
+
+    <div class="tab-panel is-active">
+      <div class="section-header">
+        <h1>Danh sách phòng<span class="count">(6)</span></h1>
+        <div class="section-actions">
+          <a href="#" class="btn btn-ghost"><i class="ph ph-clock-counter-clockwise"></i> Lịch sử</a>
+          <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo phòng</button>
+        </div>
+      </div>
+
+      <div class="room-list">
+        <div class="room-row">
+          <div class="room-row__main">
+            <span class="room-row__name">Phòng của Minh</span>
+            <span class="room-row__meta">minh_nguyen <span class="dot">·</span> 1/2 người <span class="dot">·</span> #A3F9</span>
+          </div>
+          <div class="room-row__tags">
+            <span class="tag">Tự do · 17×17</span>
+            <span class="state state--waiting"><span class="state__dot"></span>Chờ</span>
+          </div>
+          <button class="btn-join">Vào</button>
+        </div>
+
+        <div class="room-row">
+          <div class="room-row__main">
+            <span class="room-row__name">Đấu trường Caro VN</span>
+            <span class="room-row__meta">hoang_anh <span class="dot">·</span> 2/2 người <span class="dot">·</span> #7K2P</span>
+          </div>
+          <div class="room-row__tags">
+            <span class="tag">Chuẩn · Wall · 19×19</span>
+            <span class="state state--playing"><span class="state__dot"></span>Đang chơi</span>
+          </div>
+          <button class="btn-join" disabled>Đầy</button>
+        </div>
+
+        <div class="room-row">
+          <div class="room-row__main">
+            <span class="room-row__name">gomoku_pro_99</span>
+            <span class="room-row__meta">gomoku_pro_99 <span class="dot">·</span> 1/2 người <span class="dot">·</span> #Q1DX</span>
+          </div>
+          <div class="room-row__tags">
+            <span class="tag">Caro · Swap2 · 15×15</span>
+            <span class="state state--waiting"><span class="state__dot"></span>Chờ</span>
+          </div>
+          <button class="btn-join">Vào</button>
+        </div>
+
+        <div class="room-row">
+          <div class="room-row__main">
+            <span class="room-row__name">Blitz nhanh gọn</span>
+            <span class="room-row__meta">thao_ly <span class="dot">·</span> 2/2 người <span class="dot">·</span> #M8V3</span>
+          </div>
+          <div class="room-row__tags">
+            <span class="tag">Tự do · Blitz · 17×17</span>
+            <span class="state state--playing"><span class="state__dot"></span>Đang chơi</span>
+          </div>
+          <button class="btn-join" disabled>Đầy</button>
+        </div>
+
+        <div class="room-row">
+          <div class="room-row__main">
+            <span class="room-row__name">Phòng học sinh</span>
+            <span class="room-row__meta">tuan_kiet <span class="dot">·</span> 1/2 người <span class="dot">·</span> #Z0LR</span>
+          </div>
+          <div class="room-row__tags">
+            <span class="tag">Portal · 20×20</span>
+            <span class="state state--waiting"><span class="state__dot"></span>Chờ</span>
+          </div>
+          <button class="btn-join">Vào</button>
+        </div>
+
+        <div class="room-row">
+          <div class="room-row__main">
+            <span class="room-row__name">Rank thử thách</span>
+            <span class="room-row__meta">bao_chau <span class="dot">·</span> 1/2 người <span class="dot">·</span> #9WFE</span>
+          </div>
+          <div class="room-row__tags">
+            <span class="tag">Chuẩn · 15×15</span>
+            <span class="state state--waiting"><span class="state__dot"></span>Chờ</span>
+          </div>
+          <button class="btn-join">Vào</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel">
+      <div class="section-header">
+        <h1>Giải đấu<span class="count">(3)</span></h1>
+        <div class="section-actions">
+          <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo giải đấu</button>
+        </div>
+      </div>
+      <div class="t-grid">
+        <div class="t-card"><div class="t-card__title">Play3CR Championship #4</div><div class="t-card__meta">Swiss · 16 người · Đang diễn ra</div></div>
+        <div class="t-card"><div class="t-card__title">Giao lưu cuối tuần</div><div class="t-card__meta">Round robin · 8 người · Sắp diễn ra</div></div>
+        <div class="t-card"><div class="t-card__title">Cúp mùa hè</div><div class="t-card__meta">Double elim · 32 người · Đã kết thúc</div></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="sidebar-panel">
+    <div class="sidebar-panel__header">
+      <span class="sidebar-panel__title">Đang online</span>
+      <span class="sidebar-panel__count">42</span>
+    </div>
+    <div class="user-row"><span class="user-row__dot"></span><span class="user-row__name">minh_nguyen</span><span class="user-row__status">Trong sảnh</span></div>
+    <div class="user-row"><span class="user-row__dot"></span><span class="user-row__name">hoang_anh</span><span class="user-row__status">Đang chơi</span></div>
+    <div class="user-row"><span class="user-row__dot"></span><span class="user-row__name">gomoku_pro_99</span><span class="user-row__status">Trong sảnh</span></div>
+    <div class="user-row"><span class="user-row__dot"></span><span class="user-row__name">thao_ly</span><span class="user-row__status">Đang chơi</span></div>
+    <div class="user-row"><span class="user-row__dot"></span><span class="user-row__name">tuan_kiet</span><span class="user-row__status">Trong sảnh</span></div>
+    <div class="user-row"><span class="user-row__dot"></span><span class="user-row__name">bao_chau</span><span class="user-row__status">Trong sảnh</span></div>
+  </aside>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('is-active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      document.querySelectorAll('.tab-panel')[i].classList.add('is-active');
+    });
+  });
+</script>
+</body>
+</html>

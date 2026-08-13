@@ -1,7 +1,7 @@
-import './session.js?v=109';
-import './i18n.js?v=109';
-import './ui-mode.js?v=109';
-import './settings-panel.js?v=109';
-import './socket-client.js?v=109';
-import './board.js?v=109';
-import './tournament-match.js?v=109';
+import './session.js?v=118';
+import './i18n.js?v=118';
+import './ui-mode.js?v=118';
+import './settings-panel.js?v=118';
+import './socket-client.js?v=118';
+import './board.js?v=118';
+import './tournament-match.js?v=118';

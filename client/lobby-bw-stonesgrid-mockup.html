@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Sảnh (Style C: Go Stones Grid, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Static preview of the design-workflow Style C (Go Stones Grid) black & white lobby direction." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<style>
+  :root {
+    --paper: #F5F4F0;
+    --surface: #FFFFFF;
+    --ink: #111111;
+    --ink-2: #5C5C5C;
+    --ink-3: #9A9A94;
+    --line: rgba(17,17,17,0.14);
+    --dot: rgba(17,17,17,0.16);
+    --font: 'Manrope', system-ui, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mock-banner { background: var(--ink); color: #fff; text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; }
+  .mock-banner a { color: #fff; }
+
+  body {
+    background-image: radial-gradient(var(--dot) 1.4px, transparent 1.4px);
+    background-size: 28px 28px;
+  }
+
+  .topbar { display: flex; flex-direction: column; align-items: center; padding: 36px 24px 0; }
+  .topbar__brand { display: flex; align-items: center; gap: 10px; }
+  .topbar__logo { width: 26px; height: 26px; }
+  .topbar__title { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; }
+  .topbar__right { display: flex; align-items: center; gap: 14px; margin-top: 14px; font-size: 13px; color: var(--ink-2); font-weight: 600; }
+  .stone-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); display: inline-block; }
+  .topbar__icon-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: var(--surface);
+    display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink);
+  }
+
+  .tabs-wrap { display: flex; justify-content: center; margin: 28px 0 40px; }
+  .tabs { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 5px; gap: 4px; }
+  .tab {
+    border: none; background: transparent; font-family: var(--font); font-size: 13.5px; font-weight: 700;
+    padding: 9px 22px; border-radius: 999px; cursor: pointer; color: var(--ink-2);
+    display: flex; align-items: center; gap: 8px; transition: all 0.25s var(--ease);
+  }
+  .tab.is-active { background: var(--ink); color: #fff; }
+
+  .page { max-width: 1180px; margin: 0 auto; padding: 0 32px 100px; }
+  .section-header { text-align: center; margin-bottom: 36px; }
+  .section-header h1 { font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-3); }
+  .section-header .count { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; display: block; margin-top: 6px; }
+  .section-actions { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+  .btn { font-family: var(--font); font-size: 13px; font-weight: 700; border-radius: 999px; padding: 10px 20px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); transition: all 0.2s var(--ease); text-decoration: none; color: var(--ink); }
+  .btn-ghost { background: var(--surface); }
+  .btn-ghost:hover { border-color: var(--ink); }
+  .btn-solid { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn-solid:hover { background: #000; }
+
+  /* ── Stone grid ───────────────────────────────────────────────────────── */
+  .stone-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 22px; }
+  .stone-card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 26px 22px;
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;
+    transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease);
+  }
+  .stone-card:hover { transform: translateY(-4px); box-shadow: 0 16px 32px -12px rgba(17,17,17,0.16); }
+  .stone-icon {
+    width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 -4px 6px rgba(255,255,255,0.15), inset 0 3px 4px rgba(0,0,0,0.25);
+  }
+  .stone-icon--black { background: radial-gradient(circle at 35% 30%, #3a3a3a, #0a0a0a 70%); }
+  .stone-icon--white { background: radial-gradient(circle at 35% 30%, #ffffff, #e2e2e2 70%); border: 1px solid var(--line); box-shadow: inset 0 -3px 5px rgba(0,0,0,0.08); }
+  .stone-icon i { font-size: 18px; color: #fff; }
+  .stone-icon--white i { color: var(--ink); }
+  .stone-card__name { font-weight: 800; font-size: 15px; letter-spacing: -0.01em; }
+  .stone-card__host { font-size: 12.5px; color: var(--ink-2); }
+  .stone-card__tags { font-size: 11px; color: var(--ink-3); font-weight: 600; letter-spacing: 0.02em; }
+  .stone-card__state { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-2); }
+  .btn-join {
+    margin-top: 6px; font-family: var(--font); font-size: 12.5px; font-weight: 700; border-radius: 999px;
+    padding: 8px 22px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer;
+    transition: all 0.2s var(--ease); width: 100%;
+  }
+  .btn-join:hover { background: var(--ink); color: #fff; }
+  .btn-join:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Online cluster ───────────────────────────────────────────────────── */
+  .online-cluster { margin-top: 60px; text-align: center; }
+  .online-cluster__title { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 18px; }
+  .cluster { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; max-width: 640px; margin: 0 auto; }
+  .cluster-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .cluster-item__dot {
+    width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #3a3a3a, #0a0a0a 70%);
+    display: flex; align-items: center; justify-content: center; color: #fff; font-size: 11px; font-weight: 800;
+  }
+  .cluster-item__dot.is-idle { background: radial-gradient(circle at 35% 30%, #ffffff, #e2e2e2 70%); border: 1px solid var(--line); color: var(--ink); }
+  .cluster-item__name { font-size: 10.5px; color: var(--ink-3); font-weight: 600; }
+
+  .tab-panel { display: none; }
+  .tab-panel.is-active { display: block; }
+  .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
+  .t-card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 20px; text-align: left; }
+  .t-card__title { font-weight: 800; font-size: 15px; margin-bottom: 6px; }
+  .t-card__meta { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 18px 72px; }
+    .stone-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+    .stone-card { padding: 18px 12px; border-radius: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE C — Go Stones Grid · design-workflow mockup, not wired to the app</div>
+
+<nav class="topbar">
+  <a href="#" class="topbar__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" class="topbar__logo" />
+    <span class="topbar__title">Play3CR</span>
+  </a>
+  <div class="topbar__right">
+    <span><span class="stone-dot"></span> quangquy</span>
+    <span>42 online</span>
+    <button class="topbar__icon-btn" aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+  </div>
+</nav>
+
+<div class="tabs-wrap">
+  <div class="tabs">
+    <button class="tab is-active"><i class="ph ph-grid-four"></i> Bàn chơi</button>
+    <button class="tab"><i class="ph ph-trophy"></i> Giải đấu</button>
+  </div>
+</div>
+
+<div class="page">
+  <div class="tab-panel is-active">
+    <div class="section-header">
+      <h1>Danh sách phòng</h1>
+      <span class="count">6</span>
+      <div class="section-actions">
+        <a href="#" class="btn btn-ghost"><i class="ph ph-clock-counter-clockwise"></i> Lịch sử</a>
+        <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo phòng</button>
+      </div>
+    </div>
+
+    <div class="stone-grid">
+      <div class="stone-card">
+        <div class="stone-icon stone-icon--white"><i class="ph ph-hourglass"></i></div>
+        <div class="stone-card__name">Phòng của Minh</div>
+        <div class="stone-card__host">minh_nguyen · #A3F9</div>
+        <div class="stone-card__tags">Tự do · 17×17</div>
+        <div class="stone-card__state">1/2 · Chờ</div>
+        <button class="btn-join">Vào</button>
+      </div>
+      <div class="stone-card">
+        <div class="stone-icon stone-icon--black"><i class="ph ph-play"></i></div>
+        <div class="stone-card__name">Đấu trường Caro VN</div>
+        <div class="stone-card__host">hoang_anh · #7K2P</div>
+        <div class="stone-card__tags">Chuẩn · Wall · 19×19</div>
+        <div class="stone-card__state">2/2 · Đang chơi</div>
+        <button class="btn-join" disabled>Đầy</button>
+      </div>
+      <div class="stone-card">
+        <div class="stone-icon stone-icon--white"><i class="ph ph-hourglass"></i></div>
+        <div class="stone-card__name">gomoku_pro_99</div>
+        <div class="stone-card__host">gomoku_pro_99 · #Q1DX</div>
+        <div class="stone-card__tags">Caro · Swap2 · 15×15</div>
+        <div class="stone-card__state">1/2 · Chờ</div>
+        <button class="btn-join">Vào</button>
+      </div>
+      <div class="stone-card">
+        <div class="stone-icon stone-icon--black"><i class="ph ph-play"></i></div>
+        <div class="stone-card__name">Blitz nhanh gọn</div>
+        <div class="stone-card__host">thao_ly · #M8V3</div>
+        <div class="stone-card__tags">Tự do · Blitz · 17×17</div>
+        <div class="stone-card__state">2/2 · Đang chơi</div>
+        <button class="btn-join" disabled>Đầy</button>
+      </div>
+      <div class="stone-card">
+        <div class="stone-icon stone-icon--white"><i class="ph ph-hourglass"></i></div>
+        <div class="stone-card__name">Phòng học sinh</div>
+        <div class="stone-card__host">tuan_kiet · #Z0LR</div>
+        <div class="stone-card__tags">Portal · 20×20</div>
+        <div class="stone-card__state">1/2 · Chờ</div>
+        <button class="btn-join">Vào</button>
+      </div>
+      <div class="stone-card">
+        <div class="stone-icon stone-icon--white"><i class="ph ph-hourglass"></i></div>
+        <div class="stone-card__name">Rank thử thách</div>
+        <div class="stone-card__host">bao_chau · #9WFE</div>
+        <div class="stone-card__tags">Chuẩn · 15×15</div>
+        <div class="stone-card__state">1/2 · Chờ</div>
+        <button class="btn-join">Vào</button>
+      </div>
+    </div>
+
+    <div class="online-cluster">
+      <div class="online-cluster__title">Đang online · 42</div>
+      <div class="cluster">
+        <div class="cluster-item"><div class="cluster-item__dot">MN</div><span class="cluster-item__name">minh_nguyen</span></div>
+        <div class="cluster-item"><div class="cluster-item__dot is-idle">HA</div><span class="cluster-item__name">hoang_anh</span></div>
+        <div class="cluster-item"><div class="cluster-item__dot">GP</div><span class="cluster-item__name">gomoku_pro</span></div>
+        <div class="cluster-item"><div class="cluster-item__dot is-idle">TL</div><span class="cluster-item__name">thao_ly</span></div>
+        <div class="cluster-item"><div class="cluster-item__dot">TK</div><span class="cluster-item__name">tuan_kiet</span></div>
+        <div class="cluster-item"><div class="cluster-item__dot is-idle">BC</div><span class="cluster-item__name">bao_chau</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel">
+    <div class="section-header">
+      <h1>Giải đấu</h1>
+      <span class="count">3</span>
+      <div class="section-actions">
+        <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo giải đấu</button>
+      </div>
+    </div>
+    <div class="t-grid">
+      <div class="t-card"><div class="t-card__title">Play3CR Championship #4</div><div class="t-card__meta">Swiss · 16 người · Đang diễn ra</div></div>
+      <div class="t-card"><div class="t-card__title">Giao lưu cuối tuần</div><div class="t-card__meta">Round robin · 8 người · Sắp diễn ra</div></div>
+      <div class="t-card"><div class="t-card__title">Cúp mùa hè</div><div class="t-card__meta">Double elim · 32 người · Đã kết thúc</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('is-active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      document.querySelectorAll('.tab-panel')[i].classList.add('is-active');
+    });
+  });
+</script>
+</body>
+</html>

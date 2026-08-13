@@ -158,12 +158,51 @@ class BoardRenderer {
       // height: calc(100vh - 76px) on desktop.
       const boardAreaShell = document.querySelector('.board-area-shell');
       const boardAreaEl = document.querySelector('.board-area');
+
+      // clientWidth/clientHeight include the element's own padding, so a shell
+      // that pads itself (the zen room reserves its right side for the drawer
+      // and its bottom for the mobile tab bar) reports a box far larger than
+      // the space the board may actually occupy. Sizing the canvas off that
+      // raw number makes it overflow .board-canvas-wrap, whose overflow:hidden
+      // then crops the right/bottom edge — the board reads as squashed or
+      // off-centre even though the canvas itself is still square. Always
+      // measure the shell's *content* box.
+      const shellStyle = boardAreaShell ? getComputedStyle(boardAreaShell) : null;
+      const padX = shellStyle
+        ? (parseFloat(shellStyle.paddingLeft) || 0) + (parseFloat(shellStyle.paddingRight) || 0)
+        : 0;
+      const padY = shellStyle
+        ? (parseFloat(shellStyle.paddingTop) || 0) + (parseFloat(shellStyle.paddingBottom) || 0)
+        : 0;
+
       boardAreaH = boardAreaShell
-        ? boardAreaShell.clientHeight
+        ? boardAreaShell.clientHeight - padY
         : (boardAreaEl ? boardAreaEl.clientHeight : (window.innerHeight - 76));
-      // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar +
-      // controls + controls margin (12) + safety (8)
-      boardAreaH = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8;
+
+      const zenRoom = document.body.classList.contains('zen-room');
+      if (zenRoom) {
+        // Zen's .board-area/.board-area-inner carry no padding or border of
+        // their own (see room-zen.css) — the only real overhead left is the
+        // 1px-top + 1px-bottom hairline on .board-canvas-wrap itself, plus
+        // each *visible* sibling's own reserved margin (turn-bar's
+        // margin-bottom, game-controls' margin-top — both 10px in
+        // room-zen.css). Both collapse to 0 while hidden/empty
+        // (turn-bar: display:none pre-game; game-controls: :empty pre-game,
+        // via room-zen.css), so only add the 10px when there's real height
+        // (tbH/gcH) behind it — otherwise this would over-subtract 10px of
+        // margin that isn't actually being rendered, artificially shrinking
+        // the board pre-game for no visible reason. The old flat
+        // "-14-16-12-8" below is the default (non-zen) Double-Bezel card's
+        // padding/border budget, which zen no longer has.
+        const canvasWrapBorder = 2;
+        const turnBarMargin = tbH > 0 ? 10 : 0;
+        const controlsMargin = gcH > 0 ? 10 : 0;
+        boardAreaH = boardAreaH - canvasWrapBorder - tbH - turnBarMargin - gcH - controlsMargin;
+      } else {
+        // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar +
+        // controls + controls margin (12) + safety (8)
+        boardAreaH = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8;
+      }
       // On mobile (<=768px), .board-area-shell bleeds full-bleed via CSS
       // (width: calc(100% + 32px); margin-left: -16px; padding: 0) to reclaim
       // the .room padding-inline. That +32/-16 math assumes a fixed 16px
@@ -176,23 +215,52 @@ class BoardRenderer {
       // desktop the shell still has its own padding/border (~32px) to
       // subtract, and no viewport-bleed trick is in play.
       const mobileWidth = window.innerWidth <= 768;
-      const shellWidth = boardAreaShell
+      const shellWidth = (boardAreaShell
         ? boardAreaShell.clientWidth
-        : (boardAreaEl ? boardAreaEl.clientWidth : parent.clientWidth);
+        : (boardAreaEl ? boardAreaEl.clientWidth : parent.clientWidth)) - padX;
       maxVw = mobileWidth
         ? Math.min(shellWidth - 8, window.innerWidth - 8)
         : shellWidth - 32;
+
+      // Mobile normally has no height budget to read (the shell is
+      // height:auto, so its box is whatever the board already made it) —
+      // derive one from the viewport instead: everything above the shell
+      // (top bar, players strip) plus the shell's own bottom padding, which
+      // is what reserves room for the zen bottom tab bar. Without this the
+      // board is sized purely by width and a tall board pushes the controls
+      // under the fold on short screens.
+      // Scoped to the zen room: it is the only layout that reserves fixed
+      // chrome (the bottom tab bar) below the board on a phone, and the only
+      // one whose shell padding makes this measurable. Other skins keep the
+      // width-driven behaviour they were tuned against.
+      if (mobileWidth && boardAreaShell && document.body.classList.contains('zen-room')) {
+        // Document-relative, not viewport-relative: measured mid-scroll the
+        // raw rect.top would shrink (or go negative) and hand the board a
+        // budget that changes with the scroll position.
+        const shellTop = Math.max(
+          boardAreaShell.getBoundingClientRect().top + window.scrollY, 0);
+        const viewportBudget =
+          window.innerHeight - shellTop - padY - tbH - gcH - 14 - 16 - 12 - 8;
+        if (viewportBudget > 0) boardAreaH = viewportBudget;
+      }
     }
 
     // Single-column layout (mobile, <=768px) has auto-height board-area in normal
-    // mode, so height budget collapses — drive by width instead.
+    // mode, so height budget collapses — drive by width instead. The zen room
+    // is the exception: the branch above gives it a real viewport-derived
+    // height budget, so it fits both axes.
     // Focus mode always uses the viewport budget calculated above.
-    const singleColumn = window.innerWidth <= 768;
+    const singleColumn = window.innerWidth <= 768
+      && !document.body.classList.contains('zen-room');
     let rawSize = (singleColumn && !focusMode)
       ? maxVw
       : Math.min(maxVw, boardAreaH);
-    // Cap to 860px to prevent the board looking comically large on big screens
-    rawSize = Math.min(rawSize, 860);
+    // Cap so the board never looks comically large on a big screen. The zen
+    // room is built around "the board is the page" and reserves the rest of
+    // the viewport for a single fixed drawer, so it gets a higher ceiling than
+    // the default two-column skin.
+    const zenRoom = document.body.classList.contains('zen-room');
+    rawSize = Math.min(rawSize, zenRoom ? 1100 : 860);
     const s = Math.max(rawSize, 200); // usable minimum
 
     // Support High-DPI screens. Some Android WebViews/browsers under-report

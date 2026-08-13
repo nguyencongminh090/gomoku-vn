@@ -181,6 +181,17 @@
     const btnFocus = document.getElementById('btn-focus');
     if (btnFocus) btnFocus.style.display = 'flex';
 
+    // Phone: the zen panel is a bottom sheet covering the lower half of the
+    // screen. It has to stay open before the game (that is where the seat and
+    // ready buttons live), but the moment play starts the board is what
+    // matters — slide it down to the tab bar. The player can pull it back up
+    // from any rail icon. No-op on desktop, where the drawer sits beside the
+    // board rather than over it, and on non-zen skins.
+    if (document.body.classList.contains('zen-room')
+        && window.matchMedia('(max-width: 768px)').matches) {
+      document.body.classList.add('zen-drawer-collapsed');
+    }
+
     if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
       GameUI.initBoard();
       GameUI.renderSwap2();
