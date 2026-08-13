@@ -136,6 +136,12 @@ function startEmptyRoomGrace(io, room, user) {
   const existing = emptyRoomGraceTimers.get(user.userId);
   if (existing) clearTimeout(existing.timeout);
 
+  const roomUser = room.users.get(user.userId);
+  if (roomUser) {
+    roomUser.presence = 'disconnected';
+    broadcastRoomUpdate(io, room);
+  }
+
   const timeout = setTimeout(() => {
     emptyRoomGraceTimers.delete(user.userId);
     finalizeNormalLeave(io, roomId, user, roomManager.leaveRoom(user.userId));
@@ -184,6 +190,12 @@ function startSpectatorGrace(io, room, user) {
 
   const existing = spectatorGraceTimers.get(user.userId);
   if (existing) clearTimeout(existing.timeout);
+
+  const roomUser = room.users.get(user.userId);
+  if (roomUser) {
+    roomUser.presence = 'disconnected';
+    broadcastRoomUpdate(io, room);
+  }
 
   const timeout = setTimeout(() => {
     spectatorGraceTimers.delete(user.userId);
@@ -247,6 +259,9 @@ function startDisconnectGrace(io, room, user) {
 
   room.state = 'interrupted';
 
+  const roomUser = room.users.get(user.userId);
+  if (roomUser) roomUser.presence = 'disconnected';
+
   // No server-side chat:message here — the client's own game:interrupted
   // handler (room-socket.js) already shows this same announcement via
   // ChatUI.appendSystemMessage(t('room.disconnected', ...)) + a toast.
@@ -257,6 +272,7 @@ function startDisconnectGrace(io, room, user) {
     playerName: user.displayName,
     secondsLeft: graceSec,
   });
+  broadcastRoomUpdate(io, room);
 
   let remaining = graceSec;
   const countdown = setInterval(() => {
@@ -330,6 +346,9 @@ function cancelDisconnectGrace(io, socket) {
   clearInterval(entry.countdown);
   disconnectTimers.delete(user.userId);
 
+  const roomUser = room.users.get(user.userId);
+  if (roomUser) roomUser.presence = 'active';
+
   socket.join(entry.roomId);
 
   // If another player of this room is still within their own grace window,
@@ -349,6 +368,7 @@ function cancelDisconnectGrace(io, socket) {
       timestamp: Date.now(), isSystem: true,
     });
     logger.info(`[Disconnect] ${user.displayName} reconnected to room ${entry.roomId} but another player is still in grace — not resuming yet`);
+    broadcastRoomUpdate(io, room);
     return true;
   }
 
