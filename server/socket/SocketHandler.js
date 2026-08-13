@@ -24,6 +24,7 @@ const {
   sessions,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
+  broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
 } = require('./state');
@@ -199,6 +200,18 @@ function init(io) {
       const existingRoom = roomManager.getRoomByUser(user.userId);
       if (existingRoom) {
         socket.join(existingRoom.roomId);
+
+        // A fresh connection replacing one lost during an empty-room/spectator
+        // grace window (see DisconnectHandler.js) left this user's own entry
+        // marked 'disconnected' — clear it now that they're actually back, and
+        // tell the room's other occupants before this reconnecter's own
+        // `room:joined` payload is built, so it reflects 'active' too.
+        const reconnectedUser = existingRoom.users.get(user.userId);
+        if (reconnectedUser && reconnectedUser.presence === 'disconnected') {
+          reconnectedUser.presence = 'active';
+          broadcastRoomUpdate(io, existingRoom);
+        }
+
         const payload = roomManager.serializeRoom(existingRoom);
         if (existingRoom.gameState) {
           payload.gameState = existingRoom.gameState.serialize();

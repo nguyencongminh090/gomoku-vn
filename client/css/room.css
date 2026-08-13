@@ -265,9 +265,11 @@
   flex-wrap: wrap;
 }
 
+/* Sole status indicator (no text label) — sized up slightly from the old
+   7px accent dot since it now carries the full meaning on its own. */
 .ready-dot {
-  width: 7px;
-  height: 7px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--c-border);
   flex-shrink: 0;
@@ -275,16 +277,13 @@
 .ready-dot--ready {
   background: var(--c-success);
 }
-
-.ready-text {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  color: var(--c-ink-3);
+/* Tab open but not the visible/active one ("leaved site") */
+.ready-dot--away {
+  background: var(--c-error);
 }
-.ready-text--ready {
-  color: var(--c-success);
+/* Socket actually dropped — reconnect grace period running */
+.ready-dot--disconnected {
+  background: var(--c-warning);
 }
 
 .slot-card__role {
@@ -730,8 +729,6 @@
     font-weight: 400;
     color: var(--c-ink-3);
   }
-
-  .players-strip .ready-text { flex: 0 0 auto; font-size: 11px; }
 
   .board-area-shell {
     order: 1;

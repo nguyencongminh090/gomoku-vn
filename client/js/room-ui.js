@@ -99,6 +99,37 @@
     }
   }
 
+  // ── Slot status (name + a single 4-state dot) ───────────────────────────────
+
+  // Green (ready) and gray (not ready) are the existing ready/not-ready
+  // states. Red ('away') and orange ('disconnected') are presence states
+  // reported by the server (see RoomManager.setPresence / DisconnectHandler.js)
+  // — 'disconnected' (socket actually dropped, grace period running) always
+  // wins over 'away' (tab still open, just not the active/visible one) which
+  // always wins over the ready/not-ready pair, since a player who isn't even
+  // present can't meaningfully be "ready".
+  function playerStatusInfo(player) {
+    if (player.presence === 'disconnected') {
+      return { modifier: '--disconnected', label: t('room.status_disconnected') };
+    }
+    if (player.presence === 'away') {
+      return { modifier: '--away', label: t('room.status_away') };
+    }
+    if (player.ready) {
+      return { modifier: '--ready', label: t('room.ready') };
+    }
+    return { modifier: '', label: t('room.not_ready') };
+  }
+
+  // Symbol only, no visible text — a colored dot is the whole status display
+  // (space/noise tradeoff the user asked for explicitly). The label still
+  // exists for hover (title) and screen readers (aria-label), just not as
+  // rendered text.
+  function renderStatusDot(player) {
+    const status = playerStatusInfo(player);
+    return `<span class="ready-dot ready-dot${status.modifier}" role="img" aria-label="${escapeAttr(status.label)}" title="${escapeAttr(status.label)}"></span>`;
+  }
+
   // ── Slot rendering ────────────────────────────────────────────────────────
 
   function renderSlot(slotNum, contentEl, cardEl) {
@@ -119,9 +150,6 @@
     }
 
     const isMe = player.userId === st.myUser.userId;
-    const roleBadge = player.role === 'host'
-      ? '<span class="slot-card__role slot-card__role--host">Chủ phòng</span>'
-      : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
       ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí">✕</span>`
       : '';
@@ -132,11 +160,7 @@
         ${standBtn}
       </div>
       <div class="slot-card__status">
-        <span class="ready-dot ready-dot${player.ready ? '--ready' : ''}"></span>
-        <span class="ready-text ready-text${player.ready ? '--ready' : ''}">
-          ${player.ready ? t('room.ready') : t('room.not_ready')}
-        </span>
-        ${roleBadge}
+        ${renderStatusDot(player)}
       </div>
     `;
   }
@@ -169,10 +193,7 @@
         <div class="players-strip__slot">
           <span class="players-strip__num">#${slotNum}</span>
           <span class="players-strip__name">${escapeHtml(player.displayName)}</span>
-          <span class="ready-dot ready-dot${player.ready ? '--ready' : ''}"></span>
-          <span class="ready-text ready-text${player.ready ? '--ready' : ''}">
-            ${player.ready ? t('room.ready') : t('room.not_ready')}
-          </span>
+          ${renderStatusDot(player)}
         </div>
       `;
     }
