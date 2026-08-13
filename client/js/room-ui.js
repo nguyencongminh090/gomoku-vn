@@ -121,12 +121,13 @@
     return { modifier: '', label: t('room.not_ready') };
   }
 
+  // Symbol only, no visible text — a colored dot is the whole status display
+  // (space/noise tradeoff the user asked for explicitly). The label still
+  // exists for hover (title) and screen readers (aria-label), just not as
+  // rendered text.
   function renderStatusDot(player) {
     const status = playerStatusInfo(player);
-    return `
-      <span class="ready-dot ready-dot${status.modifier}"></span>
-      <span class="ready-text ready-text${status.modifier}">${status.label}</span>
-    `;
+    return `<span class="ready-dot ready-dot${status.modifier}" role="img" aria-label="${escapeAttr(status.label)}" title="${escapeAttr(status.label)}"></span>`;
   }
 
   // ── Slot rendering ────────────────────────────────────────────────────────
@@ -149,9 +150,6 @@
     }
 
     const isMe = player.userId === st.myUser.userId;
-    const roleBadge = player.role === 'host'
-      ? '<span class="slot-card__role slot-card__role--host">Chủ phòng</span>'
-      : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
       ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí">✕</span>`
       : '';
@@ -163,7 +161,6 @@
       </div>
       <div class="slot-card__status">
         ${renderStatusDot(player)}
-        ${roleBadge}
       </div>
     `;
   }

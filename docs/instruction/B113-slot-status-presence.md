@@ -1,4 +1,4 @@
-## B113. (Đã làm) Slot Status — 4 trạng thái hiện diện người chơi
+## B113. (Chưa xong — bổ sung 2026-08-13) Slot Status — 4 trạng thái hiện diện người chơi
 
 Yêu cầu người dùng qua chat, làm rõ bằng hỏi lại (không phải báo cáo/audit có
 sẵn): slot hiển thị Tên + trạng thái màu — xanh lá (sẵn sàng, đã có), xám
@@ -54,6 +54,22 @@ chạy trên port khác không do agent khởi động (đã xảy ra, xem
 dọn `server/db/gomoku.db*` bằng `rm` glob rủi ro trúng file backup có track
 git nằm cùng thư mục (`gomoku.db.bak-pre-migration-*`) — liệt kê từng file cụ
 thể thay vì dùng glob, hoặc `git status` trước khi `rm`.
+
+## Bổ sung 2026-08-13: bỏ chữ, bỏ badge chủ phòng
+
+Sau khi phần presence xong, người dùng yêu cầu 2 việc thuần UI (client-only,
+**không cần** đụng `server/` lần này, nên có thể làm ngay trên nhánh
+`feature/*` mới off `dev` mà không cần lo backend-lock):
+
+1. **Bỏ text trạng thái, chỉ giữ ký hiệu màu** — mục đích nêu rõ là tối ưu
+   không gian + giảm nhiễu, không phải yêu cầu a11y. Vẫn phải giữ đường thoát
+   cho accessibility (không im lặng bỏ hẳn thông tin): chuyển label hiện có
+   sang `title`/`aria-label` trên chính dot thay vì xoá hẳn — người dùng chỉ
+   nói "không dùng chữ" (ý là không hiển thị chữ trên UI), không nói "không
+   cần mô tả trạng thái cho screen reader/hover".
+2. **Bỏ badge "Chủ phòng" khỏi slot** — chỉ ở `renderSlot()`/slot card. Không
+   tự ý mở rộng sang danh sách người dùng chung (`renderUsersList`) hay nơi
+   khác — yêu cầu chỉ nói "ở slot".
 
 Nguồn: yêu cầu người dùng qua chat (làm rõ 2 lượt hỏi), 2026-08-13 — TODO.md
 #113 — [chi tiết](docs/todo/B113-slot-status-presence.md)
