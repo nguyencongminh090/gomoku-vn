@@ -1,7 +1,19 @@
 node_modules/
 .venv/
 .agents/
-.claude/
+# .claude/ is shared via source control (project skills), except personal/local bits:
+.claude/settings.local.json
+# Most .claude/skills/* entries are symlinks into .agents/ (Antigravity IDE's local, gitignored
+# skill store) and would be dangling for anyone who clones without that store — ignore all of them
+# except the real gomoku-vn-specific skill directories, which are worth sharing via git.
+.claude/skills/*
+!.claude/skills/git-workflow/
+!.claude/skills/git-workflow/**
+!.claude/skills/playwright-e2e-safety/
+!.claude/skills/playwright-e2e-safety/**
+!.claude/skills/design-workflow/
+!.claude/skills/design-workflow/**
+CLAUDE.md.bak
 .DS_Store
 .env
 *.db
