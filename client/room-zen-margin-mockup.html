@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Phòng chơi (Style 4: Zen Margin Notes, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Room layout Style 4 (Zen Margin Notes) synced to the Zen Minimal lobby language." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/bold/style.css" />
+<style>
+  :root {
+    --paper: #FFFFFF;
+    --ink: #1C1C1C;
+    --ink-2: #7A7A7A;
+    --ink-3: #B8B8B8;
+    --line: rgba(28,28,28,0.09);
+    --font: 'Manrope', system-ui, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font); font-weight: 400; -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mock-banner { background: var(--ink); color: var(--paper); text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 24px 40px; border-bottom: 1px solid var(--line); }
+  .topbar__brand { display: flex; align-items: center; gap: 10px; }
+  .topbar__logo { width: 18px; height: 18px; opacity: 0.8; }
+  .topbar__title { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-2); }
+  .topbar__room { font-size: 12.5px; font-weight: 500; color: var(--ink-3); margin-left: 18px; padding-left: 18px; border-left: 1px solid var(--line); }
+  .topbar__right { display: flex; align-items: center; gap: 18px; }
+  .topbar__right button { background: none; border: none; cursor: pointer; color: var(--ink-2); font-size: 16px; padding: 4px; }
+
+  /* ── Manuscript grid: narrow margin / page / narrow margin ── */
+  .manuscript { display: grid; grid-template-columns: 220px 1fr 220px; gap: 48px; max-width: 1180px; margin: 0 auto; padding: 56px 40px 100px; align-items: start; }
+
+  .margin { padding-top: 8px; }
+  .margin__label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-3); margin-bottom: 16px; }
+  .margin--right .margin__label { text-align: right; }
+
+  .marg-player { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .margin--right .marg-player { flex-direction: row-reverse; }
+  .marg-player__mono { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--ink-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .marg-player--active .marg-player__mono { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .marg-player__name { font-size: 13px; font-weight: 600; }
+  .marg-player__meta { font-size: 11.5px; color: var(--ink-3); text-align: right; }
+  .margin--left .marg-player__meta { text-align: left; }
+  .marg-clock { font-size: 20px; font-weight: 300; margin: 14px 0 28px; }
+  .margin--right .marg-clock { text-align: right; }
+
+  .marg-notes { border-top: 1px solid var(--line); padding-top: 16px; }
+  .chat-msg { font-size: 12px; line-height: 1.8; color: var(--ink-2); }
+  .margin--right .chat-msg { text-align: right; }
+  .chat-msg b { color: var(--ink); }
+  .chat-input { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); margin-top: 14px; padding-top: 12px; }
+  .margin--right .chat-input { flex-direction: row-reverse; }
+  .chat-input input { flex: 1; min-width: 0; border: none; font-family: var(--font); font-size: 12px; background: none; outline: none; }
+  .margin--right .chat-input input { text-align: right; }
+  .chat-input input::placeholder { color: var(--ink-3); }
+  .chat-input button { background: none; border: none; font-family: var(--font); font-size: 11.5px; font-weight: 700; color: var(--ink); cursor: pointer; flex-shrink: 0; }
+
+  .spect-list { font-size: 12px; color: var(--ink-3); line-height: 2; }
+  .margin--right .spect-list { text-align: right; }
+
+  /* ── Center page: the board itself ── */
+  .page-col { display: flex; flex-direction: column; align-items: center; }
+  .board-frame { width: 100%; max-width: 620px; aspect-ratio: 1; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+  .board-placeholder { text-align: center; color: var(--ink-3); }
+  .board-placeholder i { font-size: 40px; display: block; margin-bottom: 14px; opacity: 0.6; }
+  .board-placeholder__text { font-size: 13px; font-weight: 500; }
+  .page-caption { margin-top: 18px; font-size: 12px; color: var(--ink-3); }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE 4 — Zen Margin Notes · room mockup, synced to Zen Minimal, not wired to the app</div>
+
+<nav class="topbar">
+  <div class="topbar__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" class="topbar__logo" />
+    <span class="topbar__title">Play3CR</span>
+    <span class="topbar__room">#84213</span>
+  </div>
+  <div class="topbar__right">
+    <button aria-label="Tập trung"><i class="ph ph-corners-out"></i></button>
+    <button aria-label="Rời phòng"><i class="ph ph-sign-out"></i></button>
+  </div>
+</nav>
+
+<div class="manuscript">
+  <!-- Left margin: player 1 + chat, read like annotations beside a page -->
+  <aside class="margin margin--left">
+    <div class="margin__label">Người chơi</div>
+    <div class="marg-player marg-player--active">
+      <div class="marg-player__mono">Q</div>
+      <div>
+        <div class="marg-player__name">quangquy</div>
+        <div class="marg-player__meta">Đen · 1200</div>
+      </div>
+    </div>
+    <div class="marg-clock">00:42</div>
+
+    <div class="margin__label">Trò chuyện</div>
+    <div class="marg-notes">
+      <div class="chat-msg"><b>hoang_anh:</b> gg ván trước :)</div>
+      <div class="chat-msg" style="margin-top:8px;"><b>quangquy:</b> chuẩn bị thua tiếp nè</div>
+      <div class="chat-input">
+        <input type="text" placeholder="Nhập tin nhắn..." />
+        <button>Gửi</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Center: the page itself -->
+  <div class="page-col">
+    <div class="board-frame">
+      <div class="board-placeholder">
+        <i class="ph ph-checkerboard"></i>
+        <div class="board-placeholder__text">Chờ người chơi ngồi vào và sẵn sàng...</div>
+      </div>
+    </div>
+    <div class="page-caption">Bàn #84213 · Chuẩn, Wall · 19×19</div>
+  </div>
+
+  <!-- Right margin: player 2 + spectators/settings -->
+  <aside class="margin margin--right">
+    <div class="margin__label">Đối thủ</div>
+    <div class="marg-player">
+      <div class="marg-player__mono">H</div>
+      <div>
+        <div class="marg-player__name">hoang_anh</div>
+        <div class="marg-player__meta">Trắng · 1180</div>
+      </div>
+    </div>
+    <div class="marg-clock">01:58</div>
+
+    <div class="margin__label">Khán giả · 4</div>
+    <div class="spect-list">
+      minh_nguyen<br />
+      tuan_kiet<br />
+      bao_chau<br />
+      thao_ly
+    </div>
+  </aside>
+</div>
+</body>
+</html>

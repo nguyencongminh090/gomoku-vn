@@ -45,8 +45,9 @@ export const client = new SocketClient();
 const statusBanner  = document.getElementById('status-banner');
 const navUser       = document.getElementById('nav-user');
 const navBadge      = document.getElementById('nav-badge');
-const roomCount     = document.getElementById('room-count');
 const roomListEl    = document.getElementById('room-list');
+const heroEyebrow   = document.getElementById('hero-eyebrow');
+const heroTitle     = document.getElementById('hero-title');
 const btnCreate     = document.getElementById('btn-create');
 const modalOverlay  = document.getElementById('modal-create');
 const modalClose    = document.getElementById('modal-close');
@@ -56,7 +57,6 @@ const btnQuickMatch = document.getElementById('btn-quick-match');
 const btnUseLast    = document.getElementById('btn-use-last');
 const modalAdvancedToggle = document.getElementById('modal-advanced-toggle');
 let currentRooms = [];
-let currentOnlineCount = 0; // cached from the last lobby:online_users, for langchange re-render
 
 // Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
 function uiMode() {
@@ -104,7 +104,53 @@ let roomMap = new Map();
 function renderFromMap() {
   currentRooms = Array.from(roomMap.values());
   renderRoomList(currentRooms);
+  renderHero();
 }
+
+// ---------------------------------------------------------------------------
+// Hero line
+// ---------------------------------------------------------------------------
+// One sentence above the tabs, stating what is actually on the screen — it
+// replaced the old "Danh sách phòng (N)" header plus its count pills. Which
+// sentence depends on the active tab, so tournaments.js drives it through the
+// two exports below rather than owning a hero of its own.
+
+let heroTab = 'tables';          // 'tables' | 'tournaments'
+let heroTournamentCount = 0;
+
+function renderHero() {
+  if (!heroTitle) return;
+  const tournaments = heroTab === 'tournaments';
+  const n = tournaments ? heroTournamentCount : currentRooms.length;
+
+  heroEyebrow.textContent = t(tournaments ? 'lobby.eyebrow_tournaments' : 'lobby.eyebrow_tables');
+
+  if (n === 0) {
+    heroTitle.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
+    return;
+  }
+  // Both templates carry a single `{n}`, which is filled with a bolded count.
+  // The template is a translator-authored constant and `n` is a number, so no
+  // user-controlled text ever reaches this innerHTML.
+  const key = tournaments ? 'lobby.hero_tournaments' : 'lobby.hero_rooms';
+  heroTitle.innerHTML = t(key, { n: `<b>${n}</b>` });
+}
+
+/** Called by tournaments.js on tab switch, so the hero follows the tab. */
+export function setHeroTab(tab) {
+  heroTab = tab;
+  renderHero();
+}
+
+/** Called by tournaments.js whenever its list changes. */
+export function setHeroTournamentCount(count) {
+  heroTournamentCount = count;
+  if (heroTab === 'tournaments') renderHero();
+}
+
+// Paint the empty-state sentence immediately rather than leaving the hero
+// blank until the first lobby:update lands.
+renderHero();
 
 // Full snapshot — sent once on subscribe, and again on every reconnect, since
 // the client re-subscribes. Replaces the local map wholesale.
@@ -124,60 +170,53 @@ client.on('lobby:patch', (data) => {
   renderFromMap();
 });
 
-// ── Online Users Panel ──────────────────────────────────────────────────────
+// ── Online Users ────────────────────────────────────────────────────────────
+// The sticky sidebar panel is gone (Zen Minimal single column): who is here is
+// now the count in the top bar plus one line of prose under the room list.
 const onlineCountEl     = document.getElementById('online-count');
-const onlinePanelCount  = document.getElementById('online-panel-count');
-const onlinePanelToggle = document.getElementById('online-panel-toggle');
-const onlinePanelBody   = document.getElementById('online-panel-body');
-const onlineUserList    = document.getElementById('online-user-list');
+const onlineLineEl      = document.getElementById('online-line');
+const onlineLineCountEl = document.getElementById('online-line-count');
+const onlineLineNamesEl = document.getElementById('online-line-names');
 
-// Toggle panel open/close — suppressed in Lite, which shows the count only.
-if (onlinePanelToggle) {
-  onlinePanelToggle.addEventListener('click', () => {
-    if (uiMode() === 'lite') return;
-    onlinePanelToggle.classList.toggle('open');
-    onlinePanelBody.classList.toggle('open');
-  });
+// How many names the line spells out before it summarises the rest. Lite keeps
+// the line short; Pro names everyone rather than trailing off.
+function onlineNameLimit() {
+  const mode = uiMode();
+  if (mode === 'pro') return Infinity;
+  return mode === 'lite' ? 6 : 12;
 }
 
-// Lite collapses the online panel to a bare "N online" count: no expandable
-// list, no click-to-expand affordance. The `online-panel--lite` class drops the
-// chevron and the pointer/hover affordances via CSS.
-function applyOnlinePanelMode() {
-  const panel = document.getElementById('online-panel');
-  if (!panel) return;
-  const lite = uiMode() === 'lite';
-  panel.classList.toggle('online-panel--lite', lite);
-  if (lite) {
-    onlinePanelToggle.classList.remove('open');
-    onlinePanelBody.classList.remove('open');
+let currentOnlineUsers = [];
+
+function renderOnlineLine() {
+  if (!onlineLineEl) return;
+  const users = currentOnlineUsers;
+  const count = users.length;
+
+  if (onlineCountEl) onlineCountEl.textContent = t('lobby.online_count_nav', { n: count });
+  if (onlineLineCountEl) onlineLineCountEl.textContent = count;
+
+  onlineLineEl.hidden = false;
+  if (count === 0) {
+    onlineLineNamesEl.textContent = t('lobby.no_one_online');
+    return;
   }
+
+  const limit  = onlineNameLimit();
+  const shown  = users.slice(0, limit);
+  const hidden = count - shown.length;
+  // Own name set in ink so you can find yourself in the line at a glance.
+  const parts = shown.map((name) => (
+    name === userInfo.displayName ? `<b>${escapeHtml(name)}</b>` : escapeHtml(name)
+  ));
+  let html = parts.join(', ');
+  html += hidden > 0 ? ` ${t('lobby.online_more', { n: hidden })}` : '.';
+  onlineLineNamesEl.innerHTML = html;
 }
-applyOnlinePanelMode();
 
 client.on('lobby:online_users', (users) => {
-  const count = users.length;
-  currentOnlineCount = count;
-
-  // Update header badge
-  if (onlineCountEl) {
-    onlineCountEl.textContent = t('lobby.online_count_badge', { n: count });
-  }
-  if (onlinePanelCount) {
-    onlinePanelCount.textContent = count;
-  }
-
-  // Render user list
-  if (onlineUserList) {
-    if (count === 0) {
-      onlineUserList.innerHTML = `<li style="color:var(--c-ink-3);font-style:italic;">${t('lobby.no_one_online')}</li>`;
-    } else {
-      onlineUserList.innerHTML = users.map((name, i) => {
-        const animDelay = (i * 0.05).toFixed(2);
-        return `<li class="animate-fade-up" style="animation-delay: ${animDelay}s">${escapeHtml(name)}</li>`;
-      }).join('');
-    }
-  }
+  currentOnlineUsers = users;
+  renderOnlineLine();
 });
 
 client.on('room:error', (data) => {
@@ -195,33 +234,14 @@ client.on('room:joined', (data) => {
 // Room List Rendering
 // ---------------------------------------------------------------------------
 
+// Zen Minimal renders a room as a *row*, not a card: a state bullet, the room
+// name, one meta line reading "host · 1/2 · rules", and a text action. The
+// state that used to be spelled out in a badge is carried by the bullet; the
+// full label stays available as the row's title attribute.
 function renderRoomList(rooms) {
-  // .lobby__count always renders a visible pill background — an empty
-  // string still shows as a small blank badge, so hide the element itself
-  // rather than just emptying its text (same fix as tournaments.js's
-  // #tournament-count).
-  roomCount.style.display = rooms.length > 0 ? '' : 'none';
-  roomCount.textContent = rooms.length > 0 ? `(${rooms.length})` : '';
-
   if (rooms.length === 0) {
     roomListEl.innerHTML = `
       <div class="room-list__empty">
-        <div class="room-list__empty-icon">
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <rect width="56" height="56" rx="14" fill="var(--c-surface-2)"/>
-            <line x1="14" y1="14" x2="14" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="22" y1="14" x2="22" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="30" y1="14" x2="30" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="38" y1="14" x2="38" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="14" x2="42" y2="14" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="22" x2="42" y2="22" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="30" x2="42" y2="30" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="38" x2="42" y2="38" stroke="var(--c-border)" stroke-width="1.5"/>
-            <circle cx="22" cy="22" r="5.5" fill="var(--c-ink-2)"/>
-            <circle cx="30" cy="30" r="5.5" fill="var(--c-surface)" stroke="var(--c-border)" stroke-width="1.5"/>
-            <circle cx="38" cy="22" r="5.5" fill="var(--c-brand)" opacity="0.7"/>
-          </svg>
-        </div>
         <span class="room-list__empty-text">${t('lobby.no_rooms')}</span>
         <span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>
       </div>
@@ -229,32 +249,21 @@ function renderRoomList(rooms) {
     return;
   }
 
-  let html = '<div class="room-cards">';
-
+  let html = '';
   let i = 0;
   for (const room of rooms) {
-    const stateLabel = getStateLabel(room.state, room.playerCount);
-    const stateClass = getStateClass(room.state, room.playerCount);
-    const ruleChip   = buildRuleChip(room);
+    const stateLabel  = getStateLabel(room.state, room.playerCount);
+    const bulletClass = getBulletClass(room.state, room.playerCount);
+    const animDelay   = (i * 0.04).toFixed(2);
 
-    const animDelay = (i * 0.05).toFixed(2);
     html += `
-      <div class="room-card animate-fade-up" data-room-id="${escapeAttr(room.roomId)}" style="animation-delay: ${animDelay}s">
-        <div class="room-card__body">
-          <div class="room-card__title">${escapeHtml(room.roomName || room.roomId)}</div>
-          <div class="room-card__meta">
-            <span class="room-card__host">${escapeHtml(room.hostName)}</span>
-            <span class="room-card__dot" aria-hidden="true">·</span>
-            <span class="player-count ${room.playerCount >= 2 ? 'player-count--full' : 'player-count--open'}">${room.playerCount}/2</span>
-            <span class="room-card__dot" aria-hidden="true">·</span>
-            <span class="room-card__id">${escapeHtml(room.roomId)}</span>
-          </div>
-          <div class="room-card__chips">
-            <span class="state-badge ${stateClass}">${stateLabel}</span>
-            ${ruleChip}
-          </div>
+      <div class="room-row animate-fade-up" data-room-id="${escapeAttr(room.roomId)}" style="animation-delay: ${animDelay}s">
+        <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
+        <div class="room-row__body">
+          <div class="room-row__name">${escapeHtml(room.roomName || room.roomId)}</div>
+          <div class="room-row__meta">${buildRoomMeta(room)}</div>
         </div>
-        <button class="btn-join" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
+        <button class="room-row__action" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
           ${t('lobby.btn_join')}
         </button>
       </div>
@@ -262,7 +271,6 @@ function renderRoomList(rooms) {
     i++;
   }
 
-  html += '</div>';
   roomListEl.innerHTML = html;
 }
 
@@ -273,53 +281,57 @@ function getStateLabel(state, playerCount) {
   return t('lobby.state_waiting');
 }
 
-function getStateClass(state, playerCount) {
-  if (state === 'playing') return 'state-badge--playing';
-  if (playerCount >= 2) return 'state-badge--waiting';
-  return 'state-badge--idle';
+function getBulletClass(state, playerCount) {
+  if (state === 'playing') return 'room-row__bullet--playing';
+  if (playerCount >= 2) return 'room-row__bullet--ready';
+  return 'room-row__bullet--waiting';
 }
 
-// Lite/Default: one plain-language summary chip instead of the jargon tag
-// cluster (Wall / Portal / Swap2 / Caro).
-// Pro: the full tag breakdown, restoring the detail Default collapses.
-function buildRuleChip(room) {
-  if (uiMode() === 'pro') return buildRuleTags(room);
-
-  const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
-    || (room.winningRule || 'freestyle') !== 'freestyle';
-  const label = isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard');
-  const cls   = isCustom ? 'rule-chip rule-chip--custom' : 'rule-chip';
-  return `<span class="${cls}">${label} · ${room.boardSize}×${room.boardSize}</span>`;
+// The single meta line under the room name: middot-joined segments, escaped
+// individually so a room/host name can never inject markup through the join.
+function buildRoomMeta(room) {
+  const parts = [
+    escapeHtml(room.hostName),
+    `${room.playerCount}/2`,
+  ];
+  if (uiMode() === 'pro') parts.push(escapeHtml(room.roomId));
+  parts.push(buildRuleSummary(room));
+  return parts.join(' · ');
 }
 
-// Pro-mode tag breakdown. Rendered as individual `.rule-tag`s inside the same
-// `.room-card` chip row — the row wraps, so this never reintroduces the
-// table-cell wrapping bug the card layout was built to fix.
-function buildRuleTags(room) {
-  let tags = `<span class="rule-tag rule-tag--size">${room.boardSize}×${room.boardSize}</span>`;
-  if (room.ruleWall)   tags += `<span class="rule-tag rule-tag--wall">${t('modal.rule_wall')}</span>`;
-  if (room.rulePortal) tags += `<span class="rule-tag rule-tag--portal">${t('modal.rule_portal')}</span>`;
-  if (room.ruleSwap2)  tags += '<span class="rule-tag rule-tag--swap2">Swap2</span>';
+// Lite/Default: one plain-language summary instead of the jargon cluster
+// (Wall / Portal / Swap2 / Caro).
+// Pro: the full breakdown, restoring the detail Default collapses.
+function buildRuleSummary(room) {
+  const size = `${room.boardSize}×${room.boardSize}`;
+  if (uiMode() !== 'pro') {
+    const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
+      || (room.winningRule || 'freestyle') !== 'freestyle';
+    return `${isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard')} · ${size}`;
+  }
+
+  const tags = [size];
+  if (room.ruleWall)   tags.push(t('modal.rule_wall'));
+  if (room.rulePortal) tags.push(t('modal.rule_portal'));
+  if (room.ruleSwap2)  tags.push('Swap2');
   const win = room.winningRule || 'freestyle';
-  if (win === 'standard') tags += `<span class="rule-tag rule-tag--win">${t('rule.standard')}</span>`;
-  if (win === 'caro')     tags += `<span class="rule-tag rule-tag--win">${t('rule.caro')}</span>`;
-  if (win === 'freestyle') tags += `<span class="rule-tag">${t('rule.freestyle')}</span>`;
-  return tags;
+  if (win === 'standard')  tags.push(t('rule.standard'));
+  if (win === 'caro')      tags.push(t('rule.caro'));
+  if (win === 'freestyle') tags.push(t('rule.freestyle'));
+  return tags.join(' · ');
 }
 
 window.addEventListener('langchange', () => {
   renderRoomList(currentRooms);
-  if (onlineCountEl) {
-    onlineCountEl.textContent = t('lobby.online_count_badge', { n: currentOnlineCount });
-  }
-  if (onlineUserList && currentOnlineCount === 0) {
-    onlineUserList.innerHTML = `<li style="color:var(--c-ink-3);font-style:italic;">${t('lobby.no_one_online')}</li>`;
-  }
+  renderHero();
+  renderOnlineLine();
 });
 
 window.addEventListener('uimodechange', () => {
+  // Both the room meta line and how many names the online line spells out are
+  // mode-dependent (see buildRuleSummary/onlineNameLimit).
   renderRoomList(currentRooms);
-  applyOnlinePanelMode();
+  renderOnlineLine();
   applyModalMode();
 });
 

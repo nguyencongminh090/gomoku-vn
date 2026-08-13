@@ -37,6 +37,19 @@
     processRoomIntent();
   }
 
+  // ── Presence (slot status dot: leave-site vs disconnected) ─────────────────
+
+  // Page Visibility API — tab hidden (switched away/minimized) while the
+  // socket itself stays connected, distinct from an actual socket drop
+  // (which the server marks 'disconnected' on its own, see
+  // DisconnectHandler.js). Only meaningful once actually in a room; the
+  // server-side setPresence() is a safe no-op otherwise, but skipping here
+  // avoids emitting on every lobby/login tab-switch too.
+  document.addEventListener('visibilitychange', () => {
+    if (!S().roomData) return;
+    client.emit('room:presence', { presence: document.hidden ? 'away' : 'active' });
+  });
+
   // ── Room state events ─────────────────────────────────────────────────────
 
   // See the #room-entry-overlay comment in room.html — visible by default,
@@ -72,6 +85,11 @@
       }
     }
     RoomUI.updateUI();
+
+    // Cover the rare case of joining/reconnecting with the tab already
+    // hidden (e.g. it was backgrounded through the whole page load) — the
+    // visibilitychange listener above only fires on a state *change*.
+    if (document.hidden) client.emit('room:presence', { presence: 'away' });
   });
 
   client.on('room:updated', (data) => {
@@ -162,6 +180,17 @@
 
     const btnFocus = document.getElementById('btn-focus');
     if (btnFocus) btnFocus.style.display = 'flex';
+
+    // Phone: the zen panel is a bottom sheet covering the lower half of the
+    // screen. It has to stay open before the game (that is where the seat and
+    // ready buttons live), but the moment play starts the board is what
+    // matters — slide it down to the tab bar. The player can pull it back up
+    // from any rail icon. No-op on desktop, where the drawer sits beside the
+    // board rather than over it, and on non-zen skins.
+    if (document.body.classList.contains('zen-room')
+        && window.matchMedia('(max-width: 768px)').matches) {
+      document.body.classList.add('zen-drawer-collapsed');
+    }
 
     if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
       GameUI.initBoard();

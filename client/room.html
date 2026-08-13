@@ -7,22 +7,23 @@
   <title>Play3CR — Phòng chơi</title>
   <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=105" />
-  <link rel="stylesheet" href="css/lobby.css?v=105" />
-  <link rel="stylesheet" href="css/room.css?v=105" />
-  <link rel="stylesheet" href="css/game.css?v=105" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=105" />
+  <link rel="stylesheet" href="css/main.css?v=118" />
+  <link rel="stylesheet" href="css/lobby.css?v=118" />
+  <link rel="stylesheet" href="css/room.css?v=118" />
+  <link rel="stylesheet" href="css/room-zen.css?v=118" />
+  <link rel="stylesheet" href="css/game.css?v=118" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=118" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=105">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=118">
 
-  <script src="js/ui-mode-preload.js?v=105"></script>
+  <script src="js/ui-mode-preload.js?v=118"></script>
   <!-- Phosphor Icons -->
-  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=105" />
-  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=105" />
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=118" />
+  <link rel="stylesheet" href="vendor/phosphor/bold/style.css?v=118" />
 
 </head>
 
-<body>
+<body class="zen-room">
 
   <!-- Shown by default (no JS toggle needed to appear) until room:joined or
        room:error arrives, so a rejected room:create/room:join (e.g. hitting
@@ -125,9 +126,18 @@
 
       <!-- Tabs: Chat | Spectators | Settings -->
       <div class="sidebar-tabs">
-        <button class="tab-btn tab-btn--active" data-tab="tab-chat" data-i18n="room.tab_chat">Trò chuyện</button>
-        <button class="tab-btn" data-tab="tab-users" data-i18n="room.tab_spectators">Khán giả</button>
-        <button class="tab-btn" data-tab="tab-settings" data-i18n="room.tab_settings">Cài đặt</button>
+        <button class="tab-btn tab-btn--active" data-tab="tab-chat">
+          <i class="ph-bold ph-chat-circle" aria-hidden="true"></i>
+          <span class="tab-btn__label" data-i18n="room.tab_chat">Trò chuyện</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-users">
+          <i class="ph ph-eye" aria-hidden="true"></i>
+          <span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-settings">
+          <i class="ph ph-gear-six" aria-hidden="true"></i>
+          <span class="tab-btn__label" data-i18n="room.tab_settings">Cài đặt</span>
+        </button>
       </div>
 
       <div class="tab-content tab-content--active" id="tab-chat">
@@ -169,12 +179,12 @@
   <!-- Socket.io CDN -->
   <script src="/vendor/socket.io/socket.io.min.js"></script>
   <!-- Application Scripts via Vite entry point -->
-  <script src="js/escape-utils.js?v=105"></script>
-  <script src="js/audio-manager.js?v=105"></script>
-  <script src="js/profanity-classifier-model.js?v=105"></script>
-  <script src="js/profanity-filter.js?v=105"></script>
-  <script src="js/action-delegate.js?v=105"></script>
-  <script type="module" src="js/room-entry.js?v=105"></script>
+  <script src="js/escape-utils.js?v=118"></script>
+  <script src="js/audio-manager.js?v=118"></script>
+  <script src="js/profanity-classifier-model.js?v=118"></script>
+  <script src="js/profanity-filter.js?v=118"></script>
+  <script src="js/action-delegate.js?v=118"></script>
+  <script type="module" src="js/room-entry.js?v=118"></script>
 </body>
 
 </html>

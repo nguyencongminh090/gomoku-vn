@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Phòng chơi (Style 3: Zen Focus, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Room layout Style 3 (Zen Focus) synced to the Zen Minimal lobby language." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/bold/style.css" />
+<style>
+  :root {
+    --paper: #FFFFFF;
+    --ink: #1C1C1C;
+    --ink-2: #7A7A7A;
+    --ink-3: #B8B8B8;
+    --line: rgba(28,28,28,0.09);
+    --font: 'Manrope', system-ui, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font); font-weight: 400; -webkit-font-smoothing: antialiased; overflow: hidden; }
+  a { color: inherit; text-decoration: none; }
+  .mock-banner { position: fixed; top: 0; left: 0; right: 0; z-index: 20; background: var(--ink); color: var(--paper); text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; }
+
+  .stage { height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; padding-top: 36px; }
+
+  .board-frame { width: min(74vh, 82vw); aspect-ratio: 1; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; }
+  .board-placeholder { text-align: center; color: var(--ink-3); }
+  .board-placeholder i { font-size: 44px; display: block; margin-bottom: 14px; opacity: 0.55; }
+  .board-placeholder__text { font-size: 13px; font-weight: 500; }
+
+  /* ── Corner HUD: identity + clock only, nothing else on screen ── */
+  .hud { position: fixed; display: flex; align-items: center; gap: 10px; font-size: 12.5px; }
+  .hud__mono { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--ink-3); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; }
+  .hud--tl { top: 60px; left: 36px; }
+  .hud--tl .hud__mono { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+  .hud--tr { top: 60px; right: 36px; flex-direction: row-reverse; }
+  .hud__name { font-weight: 600; }
+  .hud__clock { font-weight: 700; color: var(--ink); }
+  .hud__clock--dim { color: var(--ink-3); font-weight: 500; }
+
+  /* ── Bottom-right icon rail: everything else lives one tap away ── */
+  .rail { position: fixed; bottom: 32px; right: 32px; display: flex; flex-direction: column; gap: 18px; align-items: center; }
+  .rail button { background: none; border: none; cursor: pointer; color: var(--ink-3); font-size: 19px; padding: 4px; transition: color 0.2s var(--ease); }
+  .rail button:hover, .rail button.is-active { color: var(--ink); }
+  .rail__leave { color: var(--ink-2) !important; margin-top: 6px; padding-top: 14px; border-top: 1px solid var(--line); }
+
+  /* ── Expanded chat drawer, shown open to illustrate the interaction ── */
+  .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: 300px; background: var(--paper); border-left: 1px solid var(--line); padding: 60px 28px 28px; display: flex; flex-direction: column; box-shadow: -24px 0 48px -32px rgba(0,0,0,0.16); }
+  .drawer__label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); margin-bottom: 20px; }
+  .chat-messages { flex: 1; }
+  .chat-msg { font-size: 12.5px; line-height: 1.8; }
+  .chat-msg b { color: var(--ink); }
+  .chat-msg span { color: var(--ink-2); }
+  .chat-input { display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .chat-input input { flex: 1; border: none; font-family: var(--font); font-size: 12.5px; background: none; outline: none; }
+  .chat-input input::placeholder { color: var(--ink-3); }
+  .chat-input button { background: none; border: none; font-family: var(--font); font-size: 12px; font-weight: 700; color: var(--ink); cursor: pointer; }
+
+  .hint { position: fixed; bottom: 32px; left: 36px; font-size: 11px; color: var(--ink-3); max-width: 220px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE 3 — Zen Focus · room mockup, synced to Zen Minimal, not wired to the app</div>
+
+<div class="stage">
+  <div class="board-frame">
+    <div class="board-placeholder">
+      <i class="ph ph-checkerboard"></i>
+      <div class="board-placeholder__text">Chờ người chơi ngồi vào và sẵn sàng...</div>
+    </div>
+  </div>
+</div>
+
+<div class="hud hud--tl">
+  <div class="hud__mono">Q</div>
+  <div>
+    <div class="hud__name">quangquy</div>
+    <div class="hud__clock">00:42</div>
+  </div>
+</div>
+<div class="hud hud--tr">
+  <div class="hud__mono">H</div>
+  <div style="text-align:right;">
+    <div class="hud__name">hoang_anh</div>
+    <div class="hud__clock hud__clock--dim">01:58</div>
+  </div>
+</div>
+
+<div class="rail">
+  <button aria-label="Trò chuyện" class="is-active"><i class="ph-bold ph-chat-circle"></i></button>
+  <button aria-label="Khán giả"><i class="ph ph-eye"></i></button>
+  <button aria-label="Bảng điểm"><i class="ph ph-trophy"></i></button>
+  <button aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+  <button aria-label="Rời phòng" class="rail__leave"><i class="ph-bold ph-sign-out"></i></button>
+</div>
+
+<div class="hint">Rê chuột ra khỏi bàn cờ, mọi chi tiết mờ đi — chỉ còn bàn, hai mốc thời gian, và dải icon để mở nhanh khi cần.</div>
+
+<!-- Drawer shown open here to demonstrate the tap-to-expand state -->
+<div class="drawer">
+  <div class="drawer__label">Trò chuyện</div>
+  <div class="chat-messages">
+    <div class="chat-msg"><b>hoang_anh:</b> <span>gg ván trước :)</span></div>
+    <div class="chat-msg"><b>quangquy:</b> <span>chuẩn bị thua tiếp nè</span></div>
+    <div class="chat-msg"><b>hoang_anh:</b> <span>thử xem</span></div>
+  </div>
+  <div class="chat-input">
+    <input type="text" placeholder="Nhập tin nhắn..." />
+    <button>Gửi</button>
+  </div>
+</div>
+</body>
+</html>

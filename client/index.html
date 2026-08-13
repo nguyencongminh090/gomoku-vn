@@ -6,32 +6,36 @@
   <title>Play3CR — Sảnh</title>
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=105" />
-  <link rel="stylesheet" href="css/lobby.css?v=105" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=105" />
-  <script src="js/theme-preload.js?v=105"></script>
+  <link rel="stylesheet" href="css/main.css?v=118" />
+  <link rel="stylesheet" href="css/lobby.css?v=118" />
+  <link rel="stylesheet" href="css/lobby-zen.css?v=118" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=118" />
+  <script src="js/theme-preload.js?v=118"></script>
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=105">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=118">
 
-  <script src="js/ui-mode-preload.js?v=105"></script>
+  <script src="js/ui-mode-preload.js?v=118"></script>
   <!-- Phosphor Icons -->
-  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=105" />
+  <link rel="stylesheet" href="vendor/phosphor/regular/style.css?v=118" />
 
 </head>
-<body>
+<body class="zen-lobby">
 
 <!-- ── Connection Status Banner ─────────────────────────────────────────── -->
 <div id="status-banner" class="status-banner" aria-live="polite"></div>
 
 <!-- ── Top Nav ──────────────────────────────────────────────────────────── -->
+<!-- Zen Minimal: a quiet single line — brand left, identity + online count +
+     the settings icon right. No pill, no glass, no badge chrome. -->
 <nav class="topnav animate-fade-up delay-1" role="navigation" aria-label="Điều hướng chính">
   <a href="index.html" class="topnav__brand">
-    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
+    <img src="assets/brand/logo-mark.svg" alt="" width="18" height="18" class="topnav__logo" />
     <span class="topnav__title">Play3CR</span>
   </a>
   <div class="topnav__right">
     <span id="nav-user" class="topnav__user"></span>
     <span id="nav-badge" class="topnav__badge"></span>
+    <span id="online-count" class="topnav__online"></span>
     <!-- The Settings icon button is injected here by settings-panel.js. It
          consolidates what used to be 4 separate icons (UI density, theme,
          language, logout) into one entry point. -->
@@ -39,9 +43,17 @@
 </nav>
 
 <!-- ── Lobby Content ───────────────────────────────────────────────────── -->
-<div class="lobby-layout">
+<!-- Single narrow column (no sidebar): the online list now renders as the
+     inline text line at the foot of the tables panel, per the Zen mockup. -->
+<div class="lobby-layout lobby-layout--single">
 
 <main class="lobby" role="main">
+
+  <!-- ── Hero: eyebrow + one live sentence, written by lobby.js ─────────── -->
+  <header class="zen-hero animate-fade-up delay-1">
+    <span class="zen-hero__eyebrow" id="hero-eyebrow" data-i18n="lobby.eyebrow_tables">Sảnh chờ</span>
+    <h1 class="zen-hero__title" id="hero-title"></h1>
+  </header>
 
   <!-- ── Section switcher: Bàn chơi | Giải đấu ─────────────────────────── -->
   <div class="section-tabs animate-fade-up delay-2" role="tablist" aria-label="Chuyển đổi Bàn chơi / Giải đấu">
@@ -55,71 +67,42 @@
 
   <!-- ══════════════════════════ TAB: Bàn chơi (Tables) ══════════════════ -->
   <div class="tab-panel is-active" id="panel-tables">
-    <div class="lobby__header">
-      <h1>
-        <span class="lobby__title" data-i18n="lobby.room_list">Danh sách phòng</span>
-        <span id="room-count" class="lobby__count"></span>
-        <span id="online-count" class="lobby__count" style="margin-left:8px; cursor:help; color:var(--c-brand);" data-i18n-title="lobby.loading" title="Đang tải..."></span>
-      </h1>
-      <div style="display:flex; gap:8px;">
-        <a href="history.html" class="btn-secondary" style="text-decoration:none;">
-          <i class="ph ph-clock-counter-clockwise" style="font-size: 16px;"></i>
-          <span data-i18n="lobby.history">Lịch sử</span>
-        </a>
-        <button id="btn-create" class="btn-create" type="button">
-          <i class="ph ph-plus-circle" style="font-size: 18px;"></i>
-          <span data-i18n="lobby.btn_create">Tạo phòng</span>
-        </button>
-      </div>
+    <div class="section-actions">
+      <a href="history.html" class="link-action">
+        <i class="ph ph-clock-counter-clockwise"></i>
+        <span data-i18n="lobby.history">Lịch sử</span>
+      </a>
+      <button id="btn-create" class="link-action link-action--primary" type="button">
+        <i class="ph ph-plus-circle"></i>
+        <span data-i18n="lobby.btn_create">Tạo phòng</span>
+      </button>
     </div>
 
     <!-- Room list container -->
-    <div class="ui-shell" style="width:100%;">
-      <div class="ui-core">
-        <div id="room-list" class="room-list">
+    <div id="room-list" class="room-list">
       <div class="room-list__empty">
-        <div class="room-list__empty-icon">
-          <!-- Gomoku board SVG icon -->
-          <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <rect width="56" height="56" rx="14" fill="var(--c-surface-2)"/>
-            <!-- Grid lines -->
-            <line x1="14" y1="14" x2="14" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="22" y1="14" x2="22" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="30" y1="14" x2="30" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="38" y1="14" x2="38" y2="42" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="14" x2="42" y2="14" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="22" x2="42" y2="22" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="30" x2="42" y2="30" stroke="var(--c-border)" stroke-width="1.5"/>
-            <line x1="14" y1="38" x2="42" y2="38" stroke="var(--c-border)" stroke-width="1.5"/>
-            <!-- Black stone -->
-            <circle cx="22" cy="22" r="5.5" fill="var(--c-ink-2)"/>
-            <!-- White stone -->
-            <circle cx="30" cy="30" r="5.5" fill="var(--c-surface)" stroke="var(--c-border)" stroke-width="1.5"/>
-            <!-- Winning stone -->
-            <circle cx="38" cy="22" r="5.5" fill="var(--c-brand)" opacity="0.7"/>
-          </svg>
-        </div>
         <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
         <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
       </div>
     </div>
-      </div>
+
+    <!-- Online users — the mockup's flowing text line, replacing the old
+         sticky sidebar panel. Written by lobby.js on lobby:online_users. -->
+    <div class="online-line" id="online-line" hidden>
+      <span class="online-line__title">
+        <span data-i18n="lobby.online_title">Đang online</span> · <span id="online-line-count">0</span>
+      </span>
+      <span class="online-line__names" id="online-line-names"></span>
     </div>
   </div>
 
   <!-- ══════════════════════════ TAB: Giải đấu (Tournaments) ═════════════ -->
   <div class="tab-panel" id="panel-tournaments">
-    <div class="lobby__header">
-      <h1>
-        <span class="lobby__title" data-i18n="tournaments.title">Giải đấu</span>
-        <span id="tournament-count" class="lobby__count"></span>
-      </h1>
-      <div style="display:flex; gap:8px;">
-        <button id="btn-create-tournament" class="btn-create" type="button">
-          <i class="ph ph-plus-circle" style="font-size: 18px;"></i>
-          <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
-        </button>
-      </div>
+    <div class="section-actions">
+      <button id="btn-create-tournament" class="link-action link-action--primary" type="button">
+        <i class="ph ph-plus-circle"></i>
+        <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
+      </button>
     </div>
 
     <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
@@ -130,47 +113,24 @@
       <div id="live-matches-list" class="live-matches-panel__list"></div>
     </div>
 
-    <div class="ui-shell" style="width:100%;">
-      <div class="ui-core">
-
-        <div class="filter-row">
-          <button class="filter-pill is-active" data-filter="all" data-i18n="tournaments.filter_all">Tất cả</button>
-          <button class="filter-pill" data-filter="draft" data-i18n="tournaments.filter_upcoming">Sắp diễn ra</button>
-          <button class="filter-pill" data-filter="active" data-i18n="tournaments.filter_active">Đang diễn ra</button>
-          <button class="filter-pill" data-filter="completed" data-i18n="tournaments.filter_done">Đã kết thúc</button>
-          <div class="filter-spacer"></div>
-          <select id="tournament-format-filter" class="filter-select" aria-label="Lọc theo thể thức" data-i18n-aria="tournaments.filter_format_aria">
-            <option value="" data-i18n="tournaments.filter_format_all">Mọi thể thức</option>
-            <option value="swiss" data-i18n="tournaments.format_swiss">Swiss system</option>
-            <option value="round_robin" data-i18n="tournaments.format_round_robin">Round robin</option>
-            <option value="double_elim" data-i18n="tournaments.format_double_elim">Double Elimination</option>
-          </select>
-        </div>
-
-        <div id="tournament-list" class="tournament-grid"></div>
-
-      </div>
+    <div class="filter-row">
+      <button class="filter-pill is-active" data-filter="all" data-i18n="tournaments.filter_all">Tất cả</button>
+      <button class="filter-pill" data-filter="draft" data-i18n="tournaments.filter_upcoming">Sắp diễn ra</button>
+      <button class="filter-pill" data-filter="active" data-i18n="tournaments.filter_active">Đang diễn ra</button>
+      <button class="filter-pill" data-filter="completed" data-i18n="tournaments.filter_done">Đã kết thúc</button>
+      <div class="filter-spacer"></div>
+      <select id="tournament-format-filter" class="filter-select" aria-label="Lọc theo thể thức" data-i18n-aria="tournaments.filter_format_aria">
+        <option value="" data-i18n="tournaments.filter_format_all">Mọi thể thức</option>
+        <option value="swiss" data-i18n="tournaments.format_swiss">Swiss system</option>
+        <option value="round_robin" data-i18n="tournaments.format_round_robin">Round robin</option>
+        <option value="double_elim" data-i18n="tournaments.format_double_elim">Double Elimination</option>
+      </select>
     </div>
+
+    <div id="tournament-list" class="tournament-grid"></div>
   </div>
 
 </main>
-
-<!-- ── Online Users Sidebar ──────────────────────────────────────────────── -->
-<aside class="lobby-sidebar animate-fade-up delay-4">
-  <div id="online-panel" class="online-panel">
-    <div class="online-panel__header" id="online-panel-toggle">
-      <span class="online-panel__dot"></span>
-      <span class="online-panel__title" data-i18n="lobby.online_title">Đang online</span>
-      <span id="online-panel-count" class="online-panel__count">0</span>
-      <span class="online-panel__arrow">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </span>
-    </div>
-    <div id="online-panel-body" class="online-panel__body">
-      <ul id="online-user-list" class="online-panel__list"></ul>
-    </div>
-  </div>
-</aside>
 
 </div>
 
@@ -475,10 +435,9 @@
 
 <!-- Socket.io CDN -->
 <script src="/vendor/socket.io/socket.io.min.js"></script>
-<script src="js/escape-utils.js?v=105"></script>
-<script src="js/audio-manager.js?v=105"></script>
-<script src="js/action-delegate.js?v=105"></script>
-<script type="module" src="js/index-entry.js?v=105"></script>
-<script src="js/online-panel-preload.js?v=105"></script>
+<script src="js/escape-utils.js?v=118"></script>
+<script src="js/audio-manager.js?v=118"></script>
+<script src="js/action-delegate.js?v=118"></script>
+<script type="module" src="js/index-entry.js?v=118"></script>
 </body>
 </html>

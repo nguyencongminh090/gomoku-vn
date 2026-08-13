@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Sảnh (Style G: Blueprint Schematic, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Static preview of the design-workflow Style G (Blueprint Schematic) black & white lobby direction." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<style>
+  :root {
+    --paper: #FCFCFB;
+    --surface: #FFFFFF;
+    --ink: #0F0F0F;
+    --ink-2: #55565A;
+    --ink-3: #9698A0;
+    --line: rgba(15,15,15,0.16);
+    --grid: rgba(15,15,15,0.06);
+    --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    --font: 'Manrope', system-ui, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  body {
+    background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .mock-banner { background: var(--ink); color: var(--paper); text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; font-family: var(--mono); }
+  .mock-banner a { color: var(--paper); }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; border-bottom: 1px solid var(--line); }
+  .topbar__brand { display: flex; align-items: center; gap: 10px; }
+  .topbar__title { font-family: var(--mono); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+  .topbar__title::after { content: ' / REV.01'; color: var(--ink-3); font-weight: 400; }
+  .topbar__right { display: flex; align-items: center; gap: 16px; font-family: var(--mono); font-size: 11px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; }
+  .topbar__icon-btn { width: 30px; height: 30px; border: 1px solid var(--line); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); }
+
+  .page { max-width: 1140px; margin: 0 auto; padding: 30px 28px 90px; position: relative; }
+
+  .label {
+    font-family: var(--mono); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-3); display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+  }
+  .label::before { content: '+'; }
+
+  .tabs { display: flex; gap: 0; margin-bottom: 26px; border: 1px solid var(--ink); width: max-content; }
+  .tab { background: transparent; border: none; border-right: 1px solid var(--ink); cursor: pointer; font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 9px 18px; color: var(--ink-2); }
+  .tab:last-child { border-right: none; }
+  .tab.is-active { background: var(--ink); color: var(--paper); }
+
+  .panel-frame { border: 1px solid var(--line); padding: 24px; position: relative; margin-bottom: 30px; }
+  .panel-frame::before, .panel-frame::after,
+  .panel-frame .c2, .panel-frame .c3 { content: ''; position: absolute; width: 10px; height: 10px; border: 1px solid var(--ink); }
+  .panel-frame::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+  .panel-frame::after { top: -1px; right: -1px; border-left: none; border-bottom: none; }
+  .panel-frame .c2 { bottom: -1px; left: -1px; border-right: none; border-top: none; }
+  .panel-frame .c3 { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+  .section-title { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 18px; }
+  .section-title h1 { font-family: var(--mono); font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; }
+  .section-title .count { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
+  .section-actions { display: flex; gap: 10px; margin-bottom: 22px; }
+  .btn { font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--ink); color: var(--ink); background: transparent; text-decoration: none; transition: all 0.15s var(--ease); }
+  .btn:hover { background: var(--grid); }
+  .btn-solid { background: var(--ink); color: var(--paper); }
+  .btn-solid:hover { background: #000; }
+
+  .schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 18px; }
+  .schema-card { border: 1px dashed var(--line); padding: 16px; position: relative; }
+  .schema-card__id { position: absolute; top: 8px; right: 10px; font-family: var(--mono); font-size: 9px; color: var(--ink-3); }
+  .schema-card__name { font-weight: 800; font-size: 15px; margin-bottom: 8px; padding-right: 50px; }
+  .schema-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: var(--ink-2); padding: 3px 0; border-bottom: 1px dotted var(--line); }
+  .schema-row:last-of-type { border-bottom: none; }
+  .schema-row .k { color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.04em; }
+  .schema-row .v { color: var(--ink); font-weight: 600; }
+  .btn-join { width: 100%; margin-top: 12px; font-family: var(--mono); font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 8px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; transition: all 0.15s var(--ease); }
+  .btn-join:hover { background: var(--ink); color: var(--paper); }
+  .btn-join:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .online-annot { margin-top: 8px; }
+  .online-annot__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .online-annot__item { border: 1px dashed var(--line); padding: 8px 10px; font-family: var(--mono); font-size: 11px; display: flex; justify-content: space-between; color: var(--ink-2); }
+  .online-annot__item .name { color: var(--ink); font-weight: 700; }
+
+  .tab-panel { display: none; }
+  .tab-panel.is-active { display: block; }
+  .t-schema-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 18px; }
+  .t-schema-card { border: 1px dashed var(--line); padding: 16px; }
+  .t-schema-card__name { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+  .t-schema-card__meta { font-family: var(--mono); font-size: 11px; color: var(--ink-2); }
+
+  @media (max-width: 640px) {
+    .page { padding: 22px 16px 70px; }
+    .schema-grid, .t-schema-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE G — Blueprint Schematic · design-workflow mockup, not wired to the app</div>
+
+<nav class="topbar">
+  <div class="topbar__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" width="20" height="20" />
+    <span class="topbar__title">Play3CR — Lobby.schema</span>
+  </div>
+  <div class="topbar__right">
+    <span>user: quangquy</span>
+    <span>online: 42</span>
+    <button class="topbar__icon-btn" aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="tabs">
+    <button class="tab is-active">01 · BÀN CHƠI</button>
+    <button class="tab">02 · GIẢI ĐẤU</button>
+  </div>
+
+  <div class="tab-panel is-active">
+    <div class="panel-frame">
+      <span class="c2"></span><span class="c3"></span>
+      <div class="label">Danh sách phòng — module: room-list</div>
+      <div class="section-title"><h1>Bàn chơi đang mở</h1><span class="count">COUNT=6</span></div>
+      <div class="section-actions">
+        <a href="#" class="btn"><i class="ph ph-clock-counter-clockwise"></i> Lịch sử</a>
+        <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo phòng</button>
+      </div>
+
+      <div class="schema-grid">
+        <div class="schema-card"><span class="schema-card__id">#A3F9</span>
+          <div class="schema-card__name">Phòng của Minh</div>
+          <div class="schema-row"><span class="k">host</span><span class="v">minh_nguyen</span></div>
+          <div class="schema-row"><span class="k">players</span><span class="v">1/2</span></div>
+          <div class="schema-row"><span class="k">rule</span><span class="v">Tự do · 17×17</span></div>
+          <div class="schema-row"><span class="k">state</span><span class="v">CHỜ</span></div>
+          <button class="btn-join">Vào</button>
+        </div>
+        <div class="schema-card"><span class="schema-card__id">#7K2P</span>
+          <div class="schema-card__name">Đấu trường Caro VN</div>
+          <div class="schema-row"><span class="k">host</span><span class="v">hoang_anh</span></div>
+          <div class="schema-row"><span class="k">players</span><span class="v">2/2</span></div>
+          <div class="schema-row"><span class="k">rule</span><span class="v">Chuẩn · Wall · 19×19</span></div>
+          <div class="schema-row"><span class="k">state</span><span class="v">ĐANG CHƠI</span></div>
+          <button class="btn-join" disabled>Đầy</button>
+        </div>
+        <div class="schema-card"><span class="schema-card__id">#Q1DX</span>
+          <div class="schema-card__name">gomoku_pro_99</div>
+          <div class="schema-row"><span class="k">host</span><span class="v">gomoku_pro_99</span></div>
+          <div class="schema-row"><span class="k">players</span><span class="v">1/2</span></div>
+          <div class="schema-row"><span class="k">rule</span><span class="v">Caro · Swap2 · 15×15</span></div>
+          <div class="schema-row"><span class="k">state</span><span class="v">CHỜ</span></div>
+          <button class="btn-join">Vào</button>
+        </div>
+        <div class="schema-card"><span class="schema-card__id">#M8V3</span>
+          <div class="schema-card__name">Blitz nhanh gọn</div>
+          <div class="schema-row"><span class="k">host</span><span class="v">thao_ly</span></div>
+          <div class="schema-row"><span class="k">players</span><span class="v">2/2</span></div>
+          <div class="schema-row"><span class="k">rule</span><span class="v">Tự do · Blitz · 17×17</span></div>
+          <div class="schema-row"><span class="k">state</span><span class="v">ĐANG CHƠI</span></div>
+          <button class="btn-join" disabled>Đầy</button>
+        </div>
+        <div class="schema-card"><span class="schema-card__id">#Z0LR</span>
+          <div class="schema-card__name">Phòng học sinh</div>
+          <div class="schema-row"><span class="k">host</span><span class="v">tuan_kiet</span></div>
+          <div class="schema-row"><span class="k">players</span><span class="v">1/2</span></div>
+          <div class="schema-row"><span class="k">rule</span><span class="v">Portal · 20×20</span></div>
+          <div class="schema-row"><span class="k">state</span><span class="v">CHỜ</span></div>
+          <button class="btn-join">Vào</button>
+        </div>
+        <div class="schema-card"><span class="schema-card__id">#9WFE</span>
+          <div class="schema-card__name">Rank thử thách</div>
+          <div class="schema-row"><span class="k">host</span><span class="v">bao_chau</span></div>
+          <div class="schema-row"><span class="k">players</span><span class="v">1/2</span></div>
+          <div class="schema-row"><span class="k">rule</span><span class="v">Chuẩn · 15×15</span></div>
+          <div class="schema-row"><span class="k">state</span><span class="v">CHỜ</span></div>
+          <button class="btn-join">Vào</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-frame online-annot">
+      <span class="c2"></span><span class="c3"></span>
+      <div class="label">Đang online — module: presence</div>
+      <div class="online-annot__grid">
+        <div class="online-annot__item"><span class="name">minh_nguyen</span><span>sảnh</span></div>
+        <div class="online-annot__item"><span class="name">hoang_anh</span><span>chơi</span></div>
+        <div class="online-annot__item"><span class="name">gomoku_pro_99</span><span>sảnh</span></div>
+        <div class="online-annot__item"><span class="name">thao_ly</span><span>chơi</span></div>
+        <div class="online-annot__item"><span class="name">tuan_kiet</span><span>sảnh</span></div>
+        <div class="online-annot__item"><span class="name">bao_chau</span><span>sảnh</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel">
+    <div class="panel-frame">
+      <span class="c2"></span><span class="c3"></span>
+      <div class="label">Giải đấu — module: tournaments</div>
+      <div class="section-title"><h1>Giải đấu</h1><span class="count">COUNT=3</span></div>
+      <div class="section-actions">
+        <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo giải đấu</button>
+      </div>
+      <div class="t-schema-grid">
+        <div class="t-schema-card"><div class="t-schema-card__name">Play3CR Championship #4</div><div class="t-schema-card__meta">SWISS · 16 · ACTIVE</div></div>
+        <div class="t-schema-card"><div class="t-schema-card__name">Giao lưu cuối tuần</div><div class="t-schema-card__meta">ROUND-ROBIN · 8 · UPCOMING</div></div>
+        <div class="t-schema-card"><div class="t-schema-card__name">Cúp mùa hè</div><div class="t-schema-card__meta">DOUBLE-ELIM · 32 · DONE</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('is-active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      document.querySelectorAll('.tab-panel')[i].classList.add('is-active');
+    });
+  });
+</script>
+</body>
+</html>

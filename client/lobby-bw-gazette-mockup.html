@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Sảnh (Style F: Newspaper Gazette, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Static preview of the design-workflow Style F (Newspaper Gazette) black & white lobby direction." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<style>
+  :root {
+    --paper: #F7F5EF;
+    --surface: #FFFFFE;
+    --ink: #171512;
+    --ink-2: #5A564C;
+    --ink-3: #96917F;
+    --line: rgba(23,21,18,0.22);
+    --line-soft: rgba(23,21,18,0.12);
+    --font: 'Manrope', system-ui, sans-serif;
+    --font-display: Georgia, 'Times New Roman', serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mock-banner { background: var(--ink); color: var(--paper); text-align: center; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; padding: 8px 12px; }
+  .mock-banner a { color: var(--paper); }
+
+  .masthead { max-width: 1080px; margin: 0 auto; padding: 30px 24px 0; text-align: center; }
+  .masthead__meta { display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+  .masthead__title {
+    font-family: var(--font-display); font-weight: 700; font-size: clamp(38px, 6vw, 64px);
+    letter-spacing: -0.01em; padding: 14px 0 6px; text-transform: uppercase;
+  }
+  .masthead__sub { font-size: 12.5px; font-style: italic; color: var(--ink-2); font-family: var(--font-display); padding-bottom: 14px; }
+  .masthead__rule { border: none; border-top: 3px double var(--ink); margin: 0; }
+  .masthead__rule2 { border: none; border-top: 1px solid var(--line); margin-top: 4px; }
+
+  .toolbar { max-width: 1080px; margin: 0 auto; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); }
+  .toolbar__tabs { display: flex; gap: 22px; }
+  .tab { background: none; border: none; cursor: pointer; font-family: var(--font); font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-3); padding: 4px 0; border-bottom: 2px solid transparent; }
+  .tab.is-active { color: var(--ink); border-bottom-color: var(--ink); }
+  .toolbar__right { display: flex; align-items: center; gap: 14px; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .toolbar__icon-btn { width: 28px; height: 28px; border: 1px solid var(--line); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); }
+
+  .page { max-width: 1080px; margin: 0 auto; padding: 30px 24px 90px; }
+  .section-title { font-family: var(--font-display); font-weight: 700; font-size: 26px; border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 6px; display: flex; align-items: baseline; justify-content: space-between; }
+  .section-title .count { font-size: 14px; font-weight: 400; font-style: italic; color: var(--ink-2); }
+  .section-actions { display: flex; gap: 10px; margin: 16px 0 26px; }
+  .btn { font-family: var(--font); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ink); color: var(--ink); background: transparent; text-decoration: none; transition: all 0.15s var(--ease); }
+  .btn:hover { background: var(--line-soft); }
+  .btn-solid { background: var(--ink); color: var(--paper); }
+  .btn-solid:hover { background: #000; }
+
+  .columns { column-count: 2; column-gap: 40px; column-rule: 1px solid var(--line); }
+  @media (max-width: 720px) { .columns { column-count: 1; } }
+  .listing { break-inside: avoid; padding: 16px 0; border-bottom: 1px solid var(--line-soft); }
+  .listing__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .listing__name { font-family: var(--font-display); font-weight: 700; font-size: 16.5px; }
+  .listing__state { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); flex-shrink: 0; }
+  .listing__body { font-size: 12.5px; color: var(--ink-2); margin-top: 4px; line-height: 1.5; }
+  .listing__body b { color: var(--ink); }
+  .listing__foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .listing__id { font-size: 11px; color: var(--ink-3); font-style: italic; font-family: var(--font-display); }
+  .btn-join { font-family: var(--font); font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 5px 14px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; transition: all 0.15s var(--ease); }
+  .btn-join:hover { background: var(--ink); color: var(--paper); }
+  .btn-join:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .sidebar-classified { margin-top: 40px; border: 1px solid var(--ink); padding: 18px 20px; }
+  .sidebar-classified__title { font-family: var(--font-display); font-weight: 700; font-size: 15px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .sidebar-classified__list { columns: 3; column-gap: 20px; font-size: 12px; color: var(--ink-2); line-height: 2; }
+  @media (max-width: 640px) { .sidebar-classified__list { columns: 2; } }
+
+  .tab-panel { display: none; }
+  .tab-panel.is-active { display: block; }
+  .t-listing { padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
+  .t-listing__title { font-family: var(--font-display); font-weight: 700; font-size: 17px; }
+  .t-listing__meta { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE F — Newspaper Gazette · design-workflow mockup, not wired to the app</div>
+
+<div class="masthead">
+  <div class="masthead__meta"><span>Sảnh chờ trực tuyến</span><span>42 người online</span></div>
+  <div class="masthead__title">Play3CR Gazette</div>
+  <div class="masthead__sub">“Mỗi nước đi là một dòng tin”</div>
+</div>
+<hr class="masthead__rule" />
+<hr class="masthead__rule2" />
+
+<div class="toolbar">
+  <div class="toolbar__tabs">
+    <button class="tab is-active">Bàn chơi</button>
+    <button class="tab">Giải đấu</button>
+  </div>
+  <div class="toolbar__right">
+    <span>quangquy</span>
+    <button class="toolbar__icon-btn" aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+  </div>
+</div>
+
+<div class="page">
+  <div class="tab-panel is-active">
+    <div class="section-title">Danh sách phòng <span class="count">6 tin đăng</span></div>
+    <div class="section-actions">
+      <a href="#" class="btn"><i class="ph ph-clock-counter-clockwise"></i> Lịch sử</a>
+      <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo phòng</button>
+    </div>
+
+    <div class="columns">
+      <div class="listing">
+        <div class="listing__head"><span class="listing__name">Phòng của Minh</span><span class="listing__state">Chờ</span></div>
+        <div class="listing__body">Chủ phòng <b>minh_nguyen</b>. 1/2 người chơi. Luật tự do, bàn 17×17. Đang chờ đối thủ tham gia.</div>
+        <div class="listing__foot"><span class="listing__id">#A3F9</span><button class="btn-join">Vào</button></div>
+      </div>
+      <div class="listing">
+        <div class="listing__head"><span class="listing__name">Đấu trường Caro VN</span><span class="listing__state">Đang chơi</span></div>
+        <div class="listing__body">Chủ phòng <b>hoang_anh</b>. 2/2 người chơi. Luật chuẩn có tường, bàn 19×19.</div>
+        <div class="listing__foot"><span class="listing__id">#7K2P</span><button class="btn-join" disabled>Đầy</button></div>
+      </div>
+      <div class="listing">
+        <div class="listing__head"><span class="listing__name">gomoku_pro_99</span><span class="listing__state">Chờ</span></div>
+        <div class="listing__body">Chủ phòng <b>gomoku_pro_99</b>. 1/2 người chơi. Luật caro, mở đầu Swap2, bàn 15×15.</div>
+        <div class="listing__foot"><span class="listing__id">#Q1DX</span><button class="btn-join">Vào</button></div>
+      </div>
+      <div class="listing">
+        <div class="listing__head"><span class="listing__name">Blitz nhanh gọn</span><span class="listing__state">Đang chơi</span></div>
+        <div class="listing__body">Chủ phòng <b>thao_ly</b>. 2/2 người chơi. Chế độ Blitz, bàn 17×17.</div>
+        <div class="listing__foot"><span class="listing__id">#M8V3</span><button class="btn-join" disabled>Đầy</button></div>
+      </div>
+      <div class="listing">
+        <div class="listing__head"><span class="listing__name">Phòng học sinh</span><span class="listing__state">Chờ</span></div>
+        <div class="listing__body">Chủ phòng <b>tuan_kiet</b>. 1/2 người chơi. Có cổng dịch chuyển, bàn 20×20.</div>
+        <div class="listing__foot"><span class="listing__id">#Z0LR</span><button class="btn-join">Vào</button></div>
+      </div>
+      <div class="listing">
+        <div class="listing__head"><span class="listing__name">Rank thử thách</span><span class="listing__state">Chờ</span></div>
+        <div class="listing__body">Chủ phòng <b>bao_chau</b>. 1/2 người chơi. Luật chuẩn, bàn 15×15.</div>
+        <div class="listing__foot"><span class="listing__id">#9WFE</span><button class="btn-join">Vào</button></div>
+      </div>
+    </div>
+
+    <div class="sidebar-classified">
+      <div class="sidebar-classified__title">Rao vặt — Đang online (42)</div>
+      <div class="sidebar-classified__list">
+        <div>minh_nguyen</div><div>hoang_anh</div><div>gomoku_pro_99</div>
+        <div>thao_ly</div><div>tuan_kiet</div><div>bao_chau</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel">
+    <div class="section-title">Giải đấu <span class="count">3 tin đăng</span></div>
+    <div class="section-actions">
+      <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> Tạo giải đấu</button>
+    </div>
+    <div class="t-listing"><div class="t-listing__title">Play3CR Championship #4</div><div class="t-listing__meta">Swiss · 16 người · Đang diễn ra</div></div>
+    <div class="t-listing"><div class="t-listing__title">Giao lưu cuối tuần</div><div class="t-listing__meta">Round robin · 8 người · Sắp diễn ra</div></div>
+    <div class="t-listing"><div class="t-listing__title">Cúp mùa hè</div><div class="t-listing__meta">Double elim · 32 người · Đã kết thúc</div></div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('is-active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      document.querySelectorAll('.tab-panel')[i].classList.add('is-active');
+    });
+  });
+</script>
+</body>
+</html>

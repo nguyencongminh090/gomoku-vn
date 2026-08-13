@@ -106,13 +106,56 @@ const tabBtns     = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const chatMessages = document.getElementById('chat-messages');
 
+// zen-room's panel defaults OPEN at every width, because the seat/ready
+// buttons inside .panel-players are the first thing a player needs and they
+// live in it. On a phone the panel is a bottom sheet (room-zen.css ≤768px)
+// rather than a side drawer, so "open" costs board height, not board width —
+// and room-socket.js collapses it down to the tab bar as soon as game:init
+// arrives, i.e. exactly when the board starts mattering more than the panel.
+
+// Re-measures the board against the shell's new content box while the drawer
+// animates. Called by the tab handler below; kept here so both the mid-flight
+// and the settled measurement share one definition.
+function refitBoardAfterDrawer() {
+  const refit = () => {
+    const st = window.RoomState;
+    if (st && st.boardRenderer) st.boardRenderer.resize();
+  };
+  requestAnimationFrame(refit);
+  setTimeout(refit, 180);
+  setTimeout(refit, 400);   // just past the 0.35s transition
+}
+
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
+    // Re-clicking the already-active tab toggles the zen-room drawer
+    // collapsed/open instead of doing nothing; switching to a different tab
+    // always re-opens it. .zen-drawer-collapsed has no matching CSS outside
+    // room-zen.css, so this is a no-op on other skins.
+    const alreadyActive = btn.classList.contains('tab-btn--active');
+    const collapsedNow = document.body.classList.contains('zen-drawer-collapsed');
+
     tabBtns.forEach(b => b.classList.remove('tab-btn--active'));
     tabContents.forEach(c => c.classList.remove('tab-content--active'));
     btn.classList.add('tab-btn--active');
     const tabId = btn.getAttribute('data-tab');
     document.getElementById(tabId).classList.add('tab-content--active');
+
+    if (alreadyActive) {
+      document.body.classList.toggle('zen-drawer-collapsed', !collapsedNow);
+    } else {
+      document.body.classList.remove('zen-drawer-collapsed');
+    }
+
+    // Opening/collapsing the desktop drawer changes .board-area-shell's
+    // padding-right, i.e. the board's entire width budget — but nothing fires
+    // a window resize, so without this the canvas keeps its old size and is
+    // either cropped by .board-canvas-wrap's overflow:hidden (drawer opened)
+    // or leaves the reclaimed space empty (drawer collapsed). Re-fit once the
+    // 0.35s padding transition has settled, and once on the way there so the
+    // board doesn't visibly jump only at the end.
+    if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
+
     if (tabId === 'tab-chat') chatMessages.scrollTop = chatMessages.scrollHeight;
   });
 });

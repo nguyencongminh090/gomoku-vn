@@ -238,6 +238,15 @@
 
   // ── Game control buttons ──────────────────────────────────────────────────
 
+  // #game-controls is empty (no buttons) whenever there's no ongoing game —
+  // in zen, an empty #game-controls collapses to 0 height (see
+  // .game-controls:empty in room-zen.css) so the board can grow into that
+  // space pre-game instead of it sitting reserved-but-unused. That means the
+  // board's real available height budget changes the moment this function's
+  // innerHTML flips between empty and populated, so board.js resize() has
+  // to be re-run right after — same pattern setTurnBarVisible() already
+  // uses for the same reason (a toggling sibling that changes the layout
+  // budget board.js measures).
   function renderGameControls() {
     const st = S();
     const el = document.getElementById('game-controls');
@@ -248,6 +257,7 @@
     if (!st.gameState || st.gameState.status !== 'ongoing' || !myPlayer) {
       el.innerHTML = '';
       renderDrawPrompt();
+      requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
       return;
     }
 
@@ -262,6 +272,7 @@
 
     renderDrawPrompt();
     renderTimePrompt();
+    requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
   }
 
   // ── Swap2 opening UI ──────────────────────────────────────────────────────
@@ -335,6 +346,9 @@
       html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing_color')}</div>`;
     }
     el.innerHTML = html;
+    // Same empty/populated-height concern as renderGameControls() above —
+    // swap2 also writes directly into #game-controls.
+    requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
   }
 
   // ── Draw offer prompt ─────────────────────────────────────────────────────

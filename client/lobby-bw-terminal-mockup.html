@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Play3CR — Sảnh (Style E: Terminal Console, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server or real data. Static preview of the design-workflow Style E (Terminal Console) black & white lobby direction." />
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css" />
+<link rel="stylesheet" href="vendor/phosphor/regular/style.css" />
+<style>
+  :root {
+    --bg: #0A0A0A;
+    --surface: #121212;
+    --ink: #EDEDED;
+    --ink-2: #9A9A9A;
+    --ink-3: #5C5C5C;
+    --line: rgba(237,237,237,0.14);
+    --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+    --font: 'Manrope', system-ui, sans-serif;
+    --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100vh; background: var(--bg); color: var(--ink); font-family: var(--mono); -webkit-font-smoothing: antialiased; }
+  a { color: inherit; text-decoration: none; }
+  .mock-banner { background: var(--ink); color: var(--bg); text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; padding: 8px 12px; font-family: var(--font); }
+  .mock-banner a { color: var(--bg); }
+
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 14px 26px; border-bottom: 1px solid var(--line); }
+  .topbar__brand { display: flex; align-items: center; gap: 10px; }
+  .topbar__logo { width: 20px; height: 20px; filter: invert(1); }
+  .topbar__title { font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+  .topbar__title::before { content: '~/'; color: var(--ink-3); }
+  .topbar__right { display: flex; align-items: center; gap: 18px; font-size: 12px; color: var(--ink-2); }
+  .topbar__right .cursor { display: inline-block; width: 7px; height: 13px; background: var(--ink); margin-left: 2px; animation: blink 1s step-end infinite; vertical-align: middle; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .topbar__icon-btn { width: 30px; height: 30px; border: 1px solid var(--line); background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--ink); }
+
+  .page { max-width: 980px; margin: 0 auto; padding: 30px 26px 90px; }
+  .prompt-line { color: var(--ink-2); font-size: 13px; margin-bottom: 4px; }
+  .prompt-line .prompt-sym { color: var(--ink); }
+  .cmd-out { font-size: 13px; color: var(--ink-3); margin-bottom: 26px; }
+
+  .tabs { display: flex; gap: 2px; margin-bottom: 22px; }
+  .tab {
+    background: transparent; border: 1px solid var(--line); color: var(--ink-2); font-family: var(--mono);
+    font-size: 12px; font-weight: 600; padding: 8px 16px; cursor: pointer; transition: all 0.15s var(--ease);
+  }
+  .tab.is-active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .tab:hover:not(.is-active) { border-color: var(--ink-2); color: var(--ink); }
+
+  .section-actions { display: flex; gap: 10px; margin-bottom: 18px; }
+  .btn { font-family: var(--mono); font-size: 12px; font-weight: 700; padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: transparent; color: var(--ink); text-decoration: none; transition: all 0.15s var(--ease); }
+  .btn:hover { border-color: var(--ink); }
+  .btn-solid { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .btn-solid:hover { background: #fff; }
+
+  table.console-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .console-table thead th { text-align: left; color: var(--ink-3); font-weight: 600; padding: 0 10px 8px; border-bottom: 1px solid var(--line); text-transform: lowercase; }
+  .console-table tbody td { padding: 10px 10px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+  .console-table tbody tr:hover { background: var(--surface); }
+  .console-table tbody tr:hover td { color: var(--ink); }
+  .col-name { color: var(--ink); font-weight: 700; }
+  .col-name .id { color: var(--ink-3); font-weight: 400; }
+  .state-tag { display: inline-flex; align-items: center; gap: 6px; }
+  .state-tag::before { content: '●'; font-size: 8px; color: var(--ink-3); }
+  .state-tag.waiting::before { content: '○'; color: var(--ink-2); }
+  .state-tag.playing::before { color: var(--ink); animation: blink 1s step-end infinite; }
+  .row-btn {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; padding: 5px 12px; border: 1px solid var(--line);
+    background: transparent; color: var(--ink-2); cursor: pointer; transition: all 0.15s var(--ease);
+  }
+  .row-btn:hover { border-color: var(--ink); color: var(--ink); }
+  .row-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .online-block { margin-top: 40px; font-size: 12.5px; }
+  .online-block__title { color: var(--ink-3); margin-bottom: 10px; }
+  .online-row { display: flex; gap: 10px; padding: 4px 0; color: var(--ink-2); }
+  .online-row .u { color: var(--ink); min-width: 130px; }
+  .online-row .s { color: var(--ink-3); }
+
+  .tab-panel { display: none; }
+  .tab-panel.is-active { display: block; }
+  .t-line { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .t-line .name { color: var(--ink); font-weight: 700; }
+  .t-line .meta { color: var(--ink-3); }
+
+  @media (max-width: 640px) {
+    .topbar { padding: 12px 16px; flex-wrap: wrap; row-gap: 8px; }
+    .topbar__right { gap: 12px; font-size: 11px; }
+    .topbar__right .user-label { display: none; }
+    .page { padding: 22px 16px 64px; }
+    .console-table thead { display: none; }
+    .console-table, .console-table tbody, .console-table tr, .console-table td { display: block; width: 100%; }
+    .console-table tbody tr { padding: 10px 0; border-bottom: 1px solid var(--line); }
+    .console-table tbody td { border-bottom: none; padding: 2px 0; }
+  }
+</style>
+</head>
+<body>
+<div class="mock-banner">STYLE E — Terminal Console · design-workflow mockup, not wired to the app</div>
+
+<nav class="topbar">
+  <div class="topbar__brand">
+    <img src="assets/brand/logo-mark.svg" alt="" class="topbar__logo" />
+    <span class="topbar__title">play3cr<span class="cursor"></span></span>
+  </div>
+  <div class="topbar__right">
+    <span><span class="user-label">user: </span>quangquy</span>
+    <span>online: 42</span>
+    <button class="topbar__icon-btn" aria-label="Cài đặt"><i class="ph ph-gear-six"></i></button>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="prompt-line"><span class="prompt-sym">$</span> lobby --list-rooms</div>
+  <div class="cmd-out">// 6 phòng đang mở · cập nhật theo thời gian thực</div>
+
+  <div class="tabs">
+    <button class="tab is-active">[1] bàn-chơi</button>
+    <button class="tab">[2] giải-đấu</button>
+  </div>
+
+  <div class="tab-panel is-active">
+    <div class="section-actions">
+      <a href="#" class="btn"><i class="ph ph-clock-counter-clockwise"></i> lịch-sử</a>
+      <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> tạo-phòng</button>
+    </div>
+
+    <table class="console-table">
+      <thead><tr><th>phòng</th><th>chủ</th><th>người</th><th>luật</th><th>trạng-thái</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="col-name">Phòng của Minh <span class="id">#A3F9</span></td>
+          <td>minh_nguyen</td><td>1/2</td><td>Tự do · 17×17</td>
+          <td><span class="state-tag waiting">chờ</span></td>
+          <td><button class="row-btn">vào</button></td>
+        </tr>
+        <tr>
+          <td class="col-name">Đấu trường Caro VN <span class="id">#7K2P</span></td>
+          <td>hoang_anh</td><td>2/2</td><td>Chuẩn · Wall · 19×19</td>
+          <td><span class="state-tag playing">chơi</span></td>
+          <td><button class="row-btn" disabled>đầy</button></td>
+        </tr>
+        <tr>
+          <td class="col-name">gomoku_pro_99 <span class="id">#Q1DX</span></td>
+          <td>gomoku_pro_99</td><td>1/2</td><td>Caro · Swap2 · 15×15</td>
+          <td><span class="state-tag waiting">chờ</span></td>
+          <td><button class="row-btn">vào</button></td>
+        </tr>
+        <tr>
+          <td class="col-name">Blitz nhanh gọn <span class="id">#M8V3</span></td>
+          <td>thao_ly</td><td>2/2</td><td>Tự do · Blitz · 17×17</td>
+          <td><span class="state-tag playing">chơi</span></td>
+          <td><button class="row-btn" disabled>đầy</button></td>
+        </tr>
+        <tr>
+          <td class="col-name">Phòng học sinh <span class="id">#Z0LR</span></td>
+          <td>tuan_kiet</td><td>1/2</td><td>Portal · 20×20</td>
+          <td><span class="state-tag waiting">chờ</span></td>
+          <td><button class="row-btn">vào</button></td>
+        </tr>
+        <tr>
+          <td class="col-name">Rank thử thách <span class="id">#9WFE</span></td>
+          <td>bao_chau</td><td>1/2</td><td>Chuẩn · 15×15</td>
+          <td><span class="state-tag waiting">chờ</span></td>
+          <td><button class="row-btn">vào</button></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="online-block">
+      <div class="online-block__title">$ users --online</div>
+      <div class="online-row"><span class="u">minh_nguyen</span><span class="s">// sảnh</span></div>
+      <div class="online-row"><span class="u">hoang_anh</span><span class="s">// đang chơi</span></div>
+      <div class="online-row"><span class="u">gomoku_pro_99</span><span class="s">// sảnh</span></div>
+      <div class="online-row"><span class="u">thao_ly</span><span class="s">// đang chơi</span></div>
+      <div class="online-row"><span class="u">tuan_kiet</span><span class="s">// sảnh</span></div>
+      <div class="online-row"><span class="u">bao_chau</span><span class="s">// sảnh</span></div>
+    </div>
+  </div>
+
+  <div class="tab-panel">
+    <div class="section-actions">
+      <button class="btn btn-solid"><i class="ph ph-plus-circle"></i> tạo-giải-đấu</button>
+    </div>
+    <div class="t-line"><span class="name">Play3CR Championship #4</span><span class="meta">Swiss · 16 người · đang diễn ra</span></div>
+    <div class="t-line"><span class="name">Giao lưu cuối tuần</span><span class="meta">Round robin · 8 người · sắp diễn ra</span></div>
+    <div class="t-line"><span class="name">Cúp mùa hè</span><span class="meta">Double elim · 32 người · đã kết thúc</span></div>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.tab').forEach((btn, i) => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('is-active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('is-active'));
+      btn.classList.add('is-active');
+      document.querySelectorAll('.tab-panel')[i].classList.add('is-active');
+    });
+  });
+</script>
+</body>
+</html>
