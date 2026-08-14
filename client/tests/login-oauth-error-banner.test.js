@@ -1,5 +1,6 @@
 /**
  * TODO.md #99 / docs/todo/B99-login-js-existing-session-hides-oauth-error-banner.md
+ * TODO.md #119 / docs/todo/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md
  *
  * client/js/login.js's checkExistingSession() IIFE runs at module load and
  * synchronously bounces the browser to index.html whenever it believes there
@@ -9,6 +10,13 @@
  * link/switch a Google account) — before this fix, the redirect fired before
  * the error-banner code later in the file ever ran, so the user was bounced
  * straight to index.html with no explanation why the Google attempt failed.
+ *
+ * #119 (this suite's newer cases): the same bounce also fired for a GUEST
+ * session, which meant Settings' "Create account" link (an <a href="login.html">)
+ * never actually let a guest reach the register form — they bounced straight
+ * back before they could see it. Fixed by reading GvnSession.getUser().isGuest
+ * and skipping the bounce for guests; non-guest sessions keep the original
+ * behavior.
  *
  * client/js/ has no test runner wired to `npm test` for most files (see
  * CLAUDE.md's "Bug-fix workflow" note) — this follows the jest-environment-jsdom
@@ -37,11 +45,12 @@ const BODY_HTML = (() => {
  * jest-mockable window.location so checkExistingSession()'s redirect can be
  * observed without jsdom's "not implemented: navigation" noise.
  */
-function setupPage({ believedSession, search }) {
+function setupPage({ believedSession, search, isGuest = false }) {
   document.body.innerHTML = BODY_HTML;
 
   window.GvnSession = {
     hasBelievedSession: jest.fn(() => believedSession),
+    getUser: jest.fn(() => believedSession ? { userId: 'u1', displayName: 'X', isGuest } : null),
     setUser: jest.fn(),
   };
   window.t = jest.fn((key) => key);
@@ -104,5 +113,29 @@ describe('login.js OAuth error banner vs existing-session redirect (TODO.md #99)
 
     expect(window.location.replace).not.toHaveBeenCalled();
     expect(alertBanner().textContent).toBe('login.err_oauth_fail');
+  });
+});
+
+describe('login.js does not bounce a guest session (TODO.md #119)', () => {
+  test('guest session, no error param: does NOT redirect, so the register form stays reachable', () => {
+    setupPage({ believedSession: true, search: '', isGuest: true });
+    loadLoginModule();
+
+    expect(window.location.replace).not.toHaveBeenCalled();
+  });
+
+  test('non-guest session, no error param: still redirects to index.html (regression check)', () => {
+    setupPage({ believedSession: true, search: '', isGuest: false });
+    loadLoginModule();
+
+    expect(window.location.replace).toHaveBeenCalledWith('index.html');
+  });
+
+  test('guest session + error=oauth_state: still shows the error banner, still no redirect', () => {
+    setupPage({ believedSession: true, search: '?error=oauth_state', isGuest: true });
+    loadLoginModule();
+
+    expect(window.location.replace).not.toHaveBeenCalled();
+    expect(alertBanner().classList.contains('visible')).toBe(true);
   });
 });

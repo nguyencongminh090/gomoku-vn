@@ -1,6 +1,6 @@
 # #119 — Guest bấm "Create account" trong Settings không vào được form đăng ký
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ Đã sửa.
 
 ## Nguồn
 
@@ -15,9 +15,9 @@ Trong panel Settings toàn cục (`client/js/settings-panel.js`), khi tài kho�
 sang `login.html`, nhưng người dùng bị bật ngược lại `index.html` ngay lập tức — không bao giờ thấy
 được form đăng ký. Chỉ khi **Log out** trước (xoá session) thì vào `login.html` mới ở lại được.
 
-## Nguyên nhân gốc (đã xác nhận qua đọc code, chưa sửa)
+## Nguyên nhân gốc
 
-`client/js/login.js:22-48`, IIFE `checkExistingSession()`:
+`client/js/login.js:22-48` (trước khi sửa), IIFE `checkExistingSession()`:
 
 ```js
 const hasOAuthError = new URLSearchParams(window.location.search).has('error');
@@ -27,36 +27,50 @@ if (window.GvnSession.hasBelievedSession() && !sessionStorage.getItem('gvn_kicke
 ```
 
 `hasBelievedSession()` (`client/js/session.js:112-114`) chỉ trả về `!!(getUser() || legacyToken())`
-— **không phân biệt session guest với session thật**. Một guest luôn có `getUser()` khác null (đó
-là cách toàn bộ app biết họ đang "đăng nhập" như guest), nên điều kiện này luôn đúng với guest →
-`login.html` tự bounce về `index.html` trước khi form đăng ký kịp render, bất kể người dùng bấm vào
-từ đâu.
+— không phân biệt session guest với session thật. Một guest luôn có `getUser()` khác null, nên điều
+kiện này luôn đúng với guest → `login.html` tự bounce về `index.html` trước khi form đăng ký kịp
+render, bất kể người dùng bấm vào từ đâu.
 
-Đây chính xác là lớp gây ra triệu chứng ("bấm Create Account không có tác dụng") — nút
-`<a href="login.html">` trong `settings-panel.js` hoàn toàn đúng, không phải nơi cần sửa; layer thật
-sự cần sửa là guard này trong `login.js` (đúng tinh thần "Root-cause diagnosis" trong `CLAUDE.md` —
-không vá ở lớp triệu chứng).
+Nút `<a href="login.html">` trong `settings-panel.js` đã đúng — lớp thật sự cần sửa là guard
+`checkExistingSession()` trong `login.js`.
 
-## Vì sao chưa sửa ngay
+## Sửa đã áp dụng (2026-08-14, `fix/guest-create-account-bounce` off `main`)
 
-Người dùng chọn "File to TODO/instruction" khi được hỏi (2026-08-14) thay vì fix ngay.
+`client/js/login.js:22-53` — đọc thêm `GvnSession.getUser()` và bỏ qua bounce khi session hiện tại
+là guest:
 
-## Đánh giá hiệu quả / an toàn (sơ bộ, chưa làm)
+```js
+const cachedUser = window.GvnSession.getUser();
+const isGuestSession = !!(cachedUser && cachedUser.isGuest);
+if (window.GvnSession.hasBelievedSession() && !isGuestSession && !sessionStorage.getItem('gvn_kicked_notice') && !hasOAuthError) {
+  window.location.replace('index.html');
+}
+```
 
-- **Mức độ:** trung bình — guest hoàn toàn không tự tạo được tài khoản qua đường tắt trong Settings,
-  phải tự nhớ ra bước log out trước. Không mất dữ liệu, không phải lỗi bảo mật, nhưng là một UX dead
-  end thực sự (đã có báo cáo người dùng cụ thể).
-- **Hướng sửa dự kiến khi làm:** phân biệt guest session với session thật ngay tại
-  `checkExistingSession()` — chỉ auto-bounce khi `hasBelievedSession()` đúng **và** người dùng không
-  phải guest (cần đọc thêm field `isGuest` từ `GvnSession.getUser()`, tương tự cách
-  `settings-panel.js:256,264,273` đã dùng `userInfo.isGuest`). Cân nhắc: guest bấm "Create account"
-  cần vào được `login.html` và thấy tab đăng ký, KHÔNG được tự động đăng xuất guest session hiện tại
-  (mất phòng đang chơi nếu có) — hành vi log out chỉ nên xảy ra khi họ thật sự submit form đăng ký
-  thành công (`onAuthSuccess` đã ghi đè session cũ bằng session mới).
-- Chi tiết cách làm: [docs/instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md](../instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md).
+Session thật (`isGuest: false`) vẫn bị bounce như cũ — hành vi mong muốn, tránh flash form đăng
+nhập cho người đã đăng nhập. Không log out guest session hiện tại — `checkExistingSession()` chỉ
+quyết định có redirect hay không, không đụng session; guest chỉ thật sự chuyển sang tài khoản mới
+khi `onAuthSuccess()` (`login.js`) → `GvnSession.completeLogin()` chạy sau khi submit thành công.
 
-## Trạng thái test
+**Đã kiểm tra các nơi khác gọi `hasBelievedSession()`** (`socket-client.js:39` và
+`session.js:127-128`, cả hai đều là page-guard cho trang cần đăng nhập — bounce KHỎI trang khi
+**không** có session) — không cần sửa, vì hướng ngược lại: guest vẫn hợp lệ ở những trang đó (guest
+được phép dùng `index.html`/`room.html`), nên logic hiện tại đã đúng cho cả 2 nơi này.
 
-Chưa viết — chưa sửa. Khi sửa: không có Jest cho `client/js/` (theo rule "Bug-fix workflow" trong
-`CLAUDE.md`), verify bằng browser thật (`run` skill hoặc `playwright-e2e-safety`) — vào phòng làm
-guest, mở Settings, bấm Create account, xác nhận form đăng ký hiển thị và ở lại `login.html`.
+## Đánh giá hiệu quả / an toàn
+
+**Mức độ rủi ro thấp:** chỉ thêm 1 điều kiện đọc field `isGuest` đã có sẵn trên object trả về từ
+`GvnSession.getUser()` (dùng ở nhiều nơi khác, ví dụ `settings-panel.js:256,264,273`) — không đổi
+cấu trúc `GvnSession`, không đụng luồng OAuth, không đổi nút "Create account" trong
+`settings-panel.js`.
+
+## Trạng thái unit test
+
+`client/tests/login-oauth-error-banner.test.js` (đã có sẵn cho TODO.md #99, mở rộng cho #119) —
+thêm mock `GvnSession.getUser()`, describe block mới `'login.js does not bounce a guest session
+(TODO.md #119)'` (3 test case): guest session không bị redirect; non-guest vẫn bị redirect như cũ
+(regression); guest + `error=oauth_state` vẫn không redirect và vẫn hiện banner lỗi OAuth.
+
+`npm test`: 1139/1139 pass (8/8 trong suite `login-oauth-error-banner.test.js`, gồm 3 test mới).
+
+Xem thêm: [docs/instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md](../instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md).
