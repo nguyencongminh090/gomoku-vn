@@ -64,6 +64,33 @@ describe('RoomManager — idle scan cadence', () => {
   });
 });
 
+// ── Default room name ────────────────────────────────────────────────────
+
+describe('RoomManager — default room name', () => {
+  let seq = 0;
+
+  function user() {
+    seq++;
+    return { userId: `dn-u${seq}`, displayName: `User${seq}`, isGuest: false };
+  }
+
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  test('with no custom roomName, the default is "#<roomId>", not the host name', () => {
+    const { room } = roomManager.createRoom(user());
+    expect(room.roomName).toBe(`#${room.roomId}`);
+  });
+
+  test('a custom roomName is kept as-is, not overridden by the default', () => {
+    const { room } = roomManager.createRoom(user(), { roomName: 'Tên tuỳ chỉnh' });
+    expect(room.roomName).toBe('Tên tuỳ chỉnh');
+  });
+});
+
 // ── Per-IP room quota ──────────────────────────────────────────────────────
 
 describe('RoomManager — per-IP room quota', () => {
