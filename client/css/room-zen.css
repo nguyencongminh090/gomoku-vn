@@ -697,6 +697,17 @@ body.zen-room .users-panel { padding: 12px 0; }
 body.zen-room .users-list li { padding: 8px 0; border-bottom: 1px solid var(--c-border-light); }
 body.zen-room .users-list li:last-child { border-bottom: none; }
 
+/* Score is now its own tab (#tab-score, B116) instead of living inline under
+   .panel-players — .tab-content already carries the 20px horizontal + 4px
+   top padding, so the score-panel override that gives other skins their own
+   padding/border-top (client/css/room.css) would double up here; zero it out
+   like the users-panel/settings-panel__body pattern above. */
+body.zen-room #tab-score .score-panel {
+  margin-top: 0;
+  padding: 0;
+  border-top: none;
+}
+
 /* ══ #2 Settings tab ══════════════════════════════════════════════════════
    The settings tab is the one place the old design language survived intact:
    9999px radio pills on a grey track, 24px iOS toggles with a drop shadow,

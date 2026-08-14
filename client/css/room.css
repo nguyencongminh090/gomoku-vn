@@ -344,11 +344,22 @@
   border-color: var(--c-error);
   background: var(--c-error-bg);
 }
-/* ── Score Panel (integrated inside panel-players) ───────────────────────── */
+/* ── Score Panel ───────────────────────────────────────────────────────────
+   Base rule (border-top/margin-top) still serves tournament-match.html,
+   where .score-panel remains inline inside .panel-players — see
+   client/tournament-match.html. room.html's copy now lives in its own tab
+   (#tab-score, B116) instead, so it gets its own padding/no-border override
+   below rather than changing the shared base rule. */
 .score-panel {
   border-top: 1px solid var(--c-border-light);
   padding-top: 8px;
   margin-top: 8px;
+}
+
+#tab-score .score-panel {
+  border-top: none;
+  margin-top: 0;
+  padding: 10px 14px 14px;
 }
 
 .score-panel__title {
