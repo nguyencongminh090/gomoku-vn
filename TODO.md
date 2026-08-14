@@ -337,6 +337,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   Chromium (seed 4 phòng, đổi đúng 1 phòng → chỉ phòng đó bị đụng DOM, `#room-list` không rebuild
   toàn bộ) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B117-lobby-render-lai-toan-bo-khi-patch.md)
 
+### Nguồn: báo cáo người dùng kèm ảnh chụp Safari iOS thật — "UI sometimes become unstable and distort/wrong responsive" (2026-08-14)
+- ✅ **#118.** Bàn cờ (`room.html`) thỉnh thoảng méo/lệch trên mobile — sửa phòng ngừa: `.board-area-shell` thêm `height: 100dvh` (fallback `100vh`), `window resize` listener ở `game-ui.js` gate qua `requestAnimationFrame`; **chưa tái hiện được** do không có thiết bị Safari iOS, người dùng chốt sửa phòng ngừa và xác nhận sau khi deploy. **ĐÃ LÀM 2026-08-14** (`fix/mobile-board-resize-dvh` off `main`): `.board-area-shell` (`room.css:59`, `room-zen.css:302`) thêm dòng `height: calc(100dvh - ...)` sau dòng `100vh` gốc; `game-ui.js:113-125` gate resize handler qua `requestAnimationFrame` + cờ `_boardResizePending`; `?v=` 120→121 `[Model: Sonnet 5]` — [chi tiết](docs/todo/B118-ban-co-mobile-meo-lech-khong-on-dinh-do-resize-khong-throttle.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

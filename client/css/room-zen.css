@@ -300,6 +300,7 @@ body.zen-room .room {
    the board and the viewport. Keep it thin. */
 body.zen-room .board-area-shell {
   height: calc(100vh - var(--zen-topnav-h));
+  height: calc(100dvh - var(--zen-topnav-h));
   padding: var(--zen-board-gutter);
   padding-right: calc(var(--zen-drawer-w) + var(--zen-board-gutter));
   margin: 0;
