@@ -174,6 +174,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   dùng gốc xác nhận sau khi deploy — nếu vẫn còn lỗi, quay lại hướng `visualViewport` API (báo cáo
   người dùng kèm ảnh Safari iOS thật, TODO.md #118) — [chi
   tiết](docs/instruction/B118-ban-co-mobile-meo-lech-khong-on-dinh-do-resize-khong-throttle.md)
+- **B119.** (Đã làm) Guest bấm "Create account" trong Settings không vào được form đăng ký — sửa
+  đúng lớp gốc `client/js/login.js` `checkExistingSession()`, KHÔNG sửa nút `<a href="login.html">`
+  trong `settings-panel.js` (đã đúng); thêm điều kiện chỉ auto-bounce về `index.html` khi có session
+  thật (đọc field `isGuest` từ `GvnSession.getUser()`, KHÔNG bounce guest); không tự ý log out guest
+  session hiện tại; đã kiểm tra `socket-client.js:39`/`session.js:127-131`'s `hasBelievedSession()`
+  khác — không cần sửa, hướng ngược lại (page-guard cho trang cần đăng nhập, guest vẫn hợp lệ ở đó);
+  3 test mới trong `login-oauth-error-banner.test.js` (báo cáo người dùng kèm ảnh Settings, TODO.md
+  #119) — [chi tiết](docs/instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md)
 - **B121.** (Đã làm) Tên phòng mặc định → `#<roomID>` — sửa `RoomManager.js:130`:
   `` `#${roomId}` `` (tái dùng biến `roomId` đã sinh ở dòng 129, không sinh mã mới); chỉ đổi nhánh
   mặc định, giữ nguyên nhánh người dùng tự đặt tên; đã rà `client/js/lobby.js:260,304` — không cần

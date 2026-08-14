@@ -41,8 +41,16 @@ const API_BASE = '';   // Same origin
   // HttpOnly cookie. Bouncing to index.html on a believed session is safe
   // regardless: if the cookie is dead, the socket handshake there rejects it
   // and sends the user straight back here.
+  //
+  // A guest session must NOT trigger this bounce (TODO.md #119): a guest is
+  // the one identity that legitimately needs to reach this page (Settings'
+  // "Create account" link navigates here precisely so a guest can register).
+  // Bouncing them straight back to index.html made that link do nothing.
+  // Real (non-guest) sessions keep the original bounce.
   const hasOAuthError = new URLSearchParams(window.location.search).has('error');
-  if (window.GvnSession.hasBelievedSession() && !sessionStorage.getItem('gvn_kicked_notice') && !hasOAuthError) {
+  const cachedUser = window.GvnSession.getUser();
+  const isGuestSession = !!(cachedUser && cachedUser.isGuest);
+  if (window.GvnSession.hasBelievedSession() && !isGuestSession && !sessionStorage.getItem('gvn_kicked_notice') && !hasOAuthError) {
     window.location.replace('index.html');
   }
 })();
