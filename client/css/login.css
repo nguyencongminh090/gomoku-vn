@@ -50,6 +50,15 @@ html, body {
   width: 100%;
 }
 
+/* ── Language switcher mount point (TODO.md #120) ─────────────────────────── */
+.login-lang-switch-row {
+  width: 100%;
+  max-width: 440px; /* matches .login-shell so the button aligns to its right edge */
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .split-left {
   flex: 1;
   background: var(--c-surface);

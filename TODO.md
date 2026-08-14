@@ -354,10 +354,15 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md)
 
 ### Nguồn: báo cáo người dùng — "Login page should have Language Toggle (Vietnamese/English)" (2026-08-14)
-- **#120.** `login.html` không có nút đổi ngôn ngữ — không phải tính năng chưa xây: `i18n.js`'s
-  auto-init đã có sẵn logic mount `createLangSwitcher()` vào `.card__logo`, nhưng bản redesign hiện
-  tại của `login.html` (`page-split`/`login-shell`) không còn phần tử nào mang class đó, nên switcher
-  âm thầm không bao giờ được tạo. Chưa sửa, người dùng chọn ghi vào TODO thay vì fix ngay
+- ✅ **#120.** `login.html` không có nút đổi ngôn ngữ — không phải tính năng chưa xây: `i18n.js`'s
+  auto-init đã có sẵn logic mount `createLangSwitcher()`, nhưng nhắm vào `.card__logo`, class thuộc
+  bản layout login cũ mà redesign `page-split`/`login-shell` không còn mang theo. **ĐÃ LÀM
+  2026-08-14** (`fix/login-language-toggle` off `main`): thêm mount point mới
+  `.login-lang-switch-row` trong `login.html` + CSS căn phải trong `login.css`; đổi đúng 1 dòng
+  selector trong `i18n.js` sang mount point mới, không viết lại cơ chế switcher; xác minh bằng
+  Playwright thật (desktop + mobile 390×844, đổi ngôn ngữ đúng toàn trang, round-trip đúng, không
+  tràn ngang trên mobile) qua static server cục bộ, không đụng `server/index.js`/database thật; 4
+  test mới trong `login-lang-switch-mount.test.js` (jsdom), `npm test` 1143/1143; `?v=` 122→123
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B120-login-html-thieu-language-toggle-do-selector-cu-hong.md)
 
 ### Nguồn: báo cáo người dùng — "Scope: Room. Replace room name (default): 'phòng của ...' -> ID (#...)" (2026-08-14)
