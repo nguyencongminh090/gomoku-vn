@@ -343,6 +343,27 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng kèm ảnh chụp Safari iOS thật — "UI sometimes become unstable and distort/wrong responsive" (2026-08-14)
 - ✅ **#118.** Bàn cờ (`room.html`) thỉnh thoảng méo/lệch trên mobile — sửa phòng ngừa: `.board-area-shell` thêm `height: 100dvh` (fallback `100vh`), `window resize` listener ở `game-ui.js` gate qua `requestAnimationFrame`; **chưa tái hiện được** do không có thiết bị Safari iOS, người dùng chốt sửa phòng ngừa và xác nhận sau khi deploy. **ĐÃ LÀM 2026-08-14** (`fix/mobile-board-resize-dvh` off `main`): `.board-area-shell` (`room.css:59`, `room-zen.css:302`) thêm dòng `height: calc(100dvh - ...)` sau dòng `100vh` gốc; `game-ui.js:113-125` gate resize handler qua `requestAnimationFrame` + cờ `_boardResizePending`; `?v=` 120→121 `[Model: Sonnet 5]` — [chi tiết](docs/todo/B118-ban-co-mobile-meo-lech-khong-on-dinh-do-resize-khong-throttle.md)
 
+### Nguồn: báo cáo người dùng kèm ảnh chụp modal Settings — "guest user report they cannot create account by click Create Account in Settings. He must log out and create account outside." (2026-08-14)
+- **#119.** Guest bấm "Create account" trong Settings (`settings-panel.js`, `<a href="login.html">`)
+  bị `login.html`'s `checkExistingSession()` tự bounce ngược về `index.html` ngay lập tức, vì
+  `hasBelievedSession()` không phân biệt session guest với session thật — chỉ log out trước mới vào
+  được form đăng ký. Chưa sửa, người dùng chọn ghi vào TODO thay vì fix ngay `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md)
+
+### Nguồn: báo cáo người dùng — "Login page should have Language Toggle (Vietnamese/English)" (2026-08-14)
+- **#120.** `login.html` không có nút đổi ngôn ngữ — không phải tính năng chưa xây: `i18n.js`'s
+  auto-init đã có sẵn logic mount `createLangSwitcher()` vào `.card__logo`, nhưng bản redesign hiện
+  tại của `login.html` (`page-split`/`login-shell`) không còn phần tử nào mang class đó, nên switcher
+  âm thầm không bao giờ được tạo. Chưa sửa, người dùng chọn ghi vào TODO thay vì fix ngay
+  `[Model: Sonnet 5]` — [chi tiết](docs/todo/B120-login-html-thieu-language-toggle-do-selector-cu-hong.md)
+
+### Nguồn: báo cáo người dùng — "Scope: Room. Replace room name (default): 'phòng của ...' -> ID (#...)" (2026-08-14)
+- **#121.** Tên phòng mặc định (`RoomManager.js:130`, `Phòng của ${displayName}` khi không đặt tên
+  tuỳ chỉnh) đổi thành `#<roomID>` (ví dụ `#A3F`) — không chữ "Phòng", không tên host; tái dùng
+  `roomId` đã sinh sẵn ở dòng trên, không sinh thêm giá trị mới. Chưa sửa, người dùng chọn ghi vào
+  TODO và tự chốt định dạng `#<roomID>` thay vì 2 gợi ý ban đầu `[Model: Sonnet 5]` — [chi
+  tiết](docs/todo/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

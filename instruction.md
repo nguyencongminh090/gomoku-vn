@@ -175,3 +175,28 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   dùng gốc xác nhận sau khi deploy — nếu vẫn còn lỗi, quay lại hướng `visualViewport` API (báo cáo
   người dùng kèm ảnh Safari iOS thật, TODO.md #118) — [chi
   tiết](docs/instruction/B118-ban-co-mobile-meo-lech-khong-on-dinh-do-resize-khong-throttle.md)
+- **B119.** (Chưa làm) Guest bấm "Create account" trong Settings không vào được form đăng ký — sửa
+  đúng lớp gốc `client/js/login.js:22-48` `checkExistingSession()`, KHÔNG sửa nút
+  `<a href="login.html">` trong `settings-panel.js` (đã đúng); thêm điều kiện chỉ auto-bounce về
+  `index.html` khi có session thật (đọc field `isGuest` từ `GvnSession.getUser()`, KHÔNG bounce
+  guest); không tự ý log out guest session hiện tại khi họ ghé `login.html` — chỉ session mới ghi đè
+  session cũ khi `onAuthSuccess()` thật sự chạy; kiểm tra thêm các nơi khác gọi
+  `hasBelievedSession()` (`socket-client.js`, `session.js`) có cần cùng phân biệt guest/non-guest
+  không, tránh sửa nửa vời (báo cáo người dùng kèm ảnh Settings, TODO.md #119) — [chi
+  tiết](docs/instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md)
+- **B120.** (Chưa làm) Login page thiếu Language Toggle — KHÔNG viết lại `createLangSwitcher()`/
+  `setLanguage()`/`getLanguage()` (`i18n.js`, đã hoàn chỉnh); chỉ (1) thêm 1 phần tử mount point mới
+  trong `login.html` (gần `<nav class="tabs">` hoặc góc panel, xem `login.css` trước để không phá bố
+  cục `page-split` 2 cột) và (2) sửa đúng dòng `i18n.js:1338`
+  `document.querySelector('.card__logo')` sang selector mới — nguyên nhân gốc là selector cũ lệch
+  sau redesign login page, không phải tính năng chưa từng có; `grep -rn "card__logo" client/` trước
+  khi đổi để chắc không có HTML khác đang chờ cùng selector; bump `?v=N` theo rule cache-busting nếu
+  đụng `client/css/`/`client/js/` (báo cáo người dùng trực tiếp, TODO.md #120) — [chi
+  tiết](docs/instruction/B120-login-html-thieu-language-toggle-do-selector-cu-hong.md)
+- **B121.** (Chưa làm) Tên phòng mặc định → `#<roomID>` — sửa đúng `RoomManager.js:130`:
+  `` `#${roomId}` `` (tái dùng biến `roomId` đã sinh ở dòng 129, KHÔNG sinh mã mới); chỉ đổi nhánh
+  mặc định, giữ nguyên nhánh người dùng tự đặt tên; rà `client/js/lobby.js:260,304` và mọi nơi khác
+  hiển thị `room.roomName` để chắc format mới hiển thị đúng; KHÔNG đụng `_generateRoomId()` hay
+  logic route/join bằng `roomId` — thuần đổi nhãn hiển thị; định dạng đã chốt trực tiếp với người
+  dùng là `#<roomID>` không chữ "Phòng" (báo cáo người dùng, TODO.md #121) — [chi
+  tiết](docs/instruction/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
