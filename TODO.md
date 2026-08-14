@@ -358,11 +358,12 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B120-login-html-thieu-language-toggle-do-selector-cu-hong.md)
 
 ### Nguồn: báo cáo người dùng — "Scope: Room. Replace room name (default): 'phòng của ...' -> ID (#...)" (2026-08-14)
-- **#121.** Tên phòng mặc định (`RoomManager.js:130`, `Phòng của ${displayName}` khi không đặt tên
-  tuỳ chỉnh) đổi thành `#<roomID>` (ví dụ `#A3F`) — không chữ "Phòng", không tên host; tái dùng
-  `roomId` đã sinh sẵn ở dòng trên, không sinh thêm giá trị mới. Chưa sửa, người dùng chọn ghi vào
-  TODO và tự chốt định dạng `#<roomID>` thay vì 2 gợi ý ban đầu `[Model: Sonnet 5]` — [chi
-  tiết](docs/todo/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
+- ✅ **#121.** Tên phòng mặc định (`RoomManager.js:130`, `Phòng của ${displayName}` khi không đặt tên
+  tuỳ chỉnh) đổi thành `#<roomID>` (ví dụ `#A3F`) — không chữ "Phòng", không tên host. **ĐÃ LÀM
+  2026-08-14** (`fix/room-default-name-id` off `main`): tái dùng `roomId` đã sinh sẵn ở dòng trên,
+  không sinh thêm giá trị mới; nhánh tự đặt tên giữ nguyên; 2 test mới trong
+  `RoomManager.test.js` (`'RoomManager — default room name'`), `npm test` 1136/1136 `[Model: Sonnet
+  5]` — [chi tiết](docs/todo/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
 
 ---
 

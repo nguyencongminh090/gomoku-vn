@@ -193,10 +193,10 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   khi đổi để chắc không có HTML khác đang chờ cùng selector; bump `?v=N` theo rule cache-busting nếu
   đụng `client/css/`/`client/js/` (báo cáo người dùng trực tiếp, TODO.md #120) — [chi
   tiết](docs/instruction/B120-login-html-thieu-language-toggle-do-selector-cu-hong.md)
-- **B121.** (Chưa làm) Tên phòng mặc định → `#<roomID>` — sửa đúng `RoomManager.js:130`:
-  `` `#${roomId}` `` (tái dùng biến `roomId` đã sinh ở dòng 129, KHÔNG sinh mã mới); chỉ đổi nhánh
-  mặc định, giữ nguyên nhánh người dùng tự đặt tên; rà `client/js/lobby.js:260,304` và mọi nơi khác
-  hiển thị `room.roomName` để chắc format mới hiển thị đúng; KHÔNG đụng `_generateRoomId()` hay
-  logic route/join bằng `roomId` — thuần đổi nhãn hiển thị; định dạng đã chốt trực tiếp với người
-  dùng là `#<roomID>` không chữ "Phòng" (báo cáo người dùng, TODO.md #121) — [chi
+- **B121.** (Đã làm) Tên phòng mặc định → `#<roomID>` — sửa `RoomManager.js:130`:
+  `` `#${roomId}` `` (tái dùng biến `roomId` đã sinh ở dòng 129, không sinh mã mới); chỉ đổi nhánh
+  mặc định, giữ nguyên nhánh người dùng tự đặt tên; đã rà `client/js/lobby.js:260,304` — không cần
+  sửa gì thêm phía client; không đụng `_generateRoomId()` hay logic route/join bằng `roomId`; định
+  dạng đã chốt trực tiếp với người dùng là `#<roomID>` không chữ "Phòng"; 2 test mới trong
+  `RoomManager.test.js` (báo cáo người dùng, TODO.md #121) — [chi
   tiết](docs/instruction/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
