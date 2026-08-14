@@ -313,6 +313,19 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng qua chat — "Viewer in room when disconnect and reconnect cannot come back room where they left" (2026-08-14)
 - ✅ **#115.** Viewer hiện bị `startSpectatorGrace()` giới hạn 30s (`SPECTATOR_GRACE_MS`) giống hệt seated-player-khi-ván-chưa-`ongoing` — người dùng xác nhận thời gian mất kết nối thực tế dài hơn 30s và chốt yêu cầu: role **Viewer** (chưa ngồi ghế, `slot === null`) phải reconnect quay lại đúng phòng được **bất kỳ lúc nào**, không giới hạn thời gian, MIỄN LÀ phòng còn tồn tại; nếu phòng đã bị huỷ thì về sảnh chờ như hành vi `ROOM_GONE` sẵn có; player ngồi ghế khi ván chưa `ongoing` vẫn giữ nguyên 30s như cũ (không phải Viewer nữa dù ván chưa chạy); **đã chốt (2026-08-14): không cần cơ chế dọn "viewer ma" nào thêm** — Viewer bỏ đi vĩnh viễn nằm lại `room.users` tới khi phòng tự huỷ theo cơ chế sẵn có là tác dụng phụ được chấp nhận; **ĐÃ LÀM 2026-08-14** (`fix/viewer-reconnect-unlimited` off `main`): tách nhánh cuối `handleDisconnect()` theo `slot` — Viewer chỉ set `presence = 'disconnected'` + broadcast, không set timeout; seated player chưa vào ván giữ nguyên `startSpectatorGrace`; không đụng `RoomManager.joinRoom()`/`startDisconnectGrace`/`startEmptyRoomGrace`; 3 test mới + cập nhật đếm call-site inventory (B113) 21→22, `npm test` 1134/1134 `[Model: Sonnet 5]` — [chi tiết](docs/todo/B115-viewer-reconnect-khong-gioi-han-thoi-gian.md)
 
+### Nguồn: báo cáo người dùng qua chat — "Lobby load (display table) a bit slow when multi player" (2026-08-14)
+- ✅ **#117.** Lobby (`client/js/lobby.js`) render lại **toàn bộ** danh sách phòng (`renderRoomList`
+  qua `innerHTML`) mỗi khi nhận `lobby:patch`, dù server đã gửi diff `{ upserts, removed }` —
+  chi phí render tăng theo tổng số phòng × tần suất sự kiện, không phải theo số phòng thực sự đổi;
+  càng nhiều người/phòng đồng thời càng lộ rõ. **ĐÃ LÀM 2026-08-14** (`fix/lobby-render-full-list-
+  on-patch` off `main`): thêm `applyLobbyPatch()`/`updateRoomRowNode()`/`buildRoomRowHtml()` — áp
+  `upserts`/`removed` trực tiếp lên DOM hiện có qua `data-room-id`, chỉ fallback full-render khi
+  vượt biên rỗng↔không-rỗng; `renderRoomList()` giữ nguyên cho full-snapshot/`langchange`/
+  `uimodechange`; `?v=` 118→119; không có Jest cho `client/js/`, xác minh bằng 1 spec Playwright
+  mới giữ lại (`e2e/lobby-patch-incremental-render.spec.ts`) — `MutationObserver` thật trên
+  Chromium (seed 4 phòng, đổi đúng 1 phòng → chỉ phòng đó bị đụng DOM, `#room-list` không rebuild
+  toàn bộ) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B117-lobby-render-lai-toan-bo-khi-patch.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
