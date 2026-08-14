@@ -40,7 +40,6 @@
   const settingsBody   = document.getElementById('settings-body');
   const usersPanel     = document.getElementById('users-panel');
   const usersList      = document.getElementById('users-list');
-  const scorePanel     = document.getElementById('score-panel');
   const scoreBody      = document.getElementById('score-body');
 
   // ── Utilities ─────────────────────────────────────────────────────────────
@@ -519,24 +518,31 @@
     const rawSt = st.roomData.scoreTable || {};
     const seatedPlayers = st.roomData.users.filter(u => u.slot === 1 || u.slot === 2);
 
-    if (seatedPlayers.length === 0 && Object.keys(rawSt).length === 0) {
-      scorePanel.style.display = 'none';
-      return;
-    }
+    // Score panel lives in its own tab (not fixed above the tabs — B116);
+    // same "hide the tab button until there's something to show, and bounce
+    // off it if it was active when it disappears" rule already used for
+    // tab-users above.
+    let hasData = !(seatedPlayers.length === 0 && Object.keys(rawSt).length === 0);
 
     // Lite waits for a result to exist — an all-zero scoreboard tells a casual
     // player nothing. Default/Pro keep the existing "visible once seated" rule.
-    if (uiMode() === 'lite') {
+    if (hasData && uiMode() === 'lite') {
       const hasResult = Object.values(rawSt).some(
         e => (e.win || 0) + (e.loss || 0) + (e.draw || 0) > 0
       );
-      if (!hasResult) {
-        scorePanel.style.display = 'none';
-        return;
+      hasData = hasResult;
+    }
+
+    const tabBtn = document.querySelector('.tab-btn[data-tab="tab-score"]');
+    if (tabBtn) {
+      tabBtn.style.display = hasData ? '' : 'none';
+      if (!hasData && tabBtn.classList.contains('tab-btn--active')) {
+        const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
+        if (chatBtn) chatBtn.click();
       }
     }
 
-    scorePanel.style.display = '';
+    if (!hasData) return;
 
     const combined = { ...rawSt };
     for (const p of seatedPlayers) {
