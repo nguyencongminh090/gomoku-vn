@@ -164,10 +164,14 @@ client.on('lobby:update', (data) => {
 // with the same id inside one debounce window ends up present, not missing.
 // Both operations are idempotent: re-applying an entry already held, or
 // removing an id never held, changes nothing.
+//
+// Applied incrementally to the existing DOM (B117) instead of going through
+// renderFromMap()/renderRoomList(): a busy lobby fires many small patches, and
+// rebuilding every row's innerHTML — plus replaying every row's entrance
+// animation — on each one scales with the *total* room count instead of the
+// (usually 1-2) rooms that actually changed.
 client.on('lobby:patch', (data) => {
-  for (const roomId of data.removed || []) roomMap.delete(roomId);
-  for (const room of data.upserts || []) roomMap.set(room.roomId, room);
-  renderFromMap();
+  applyLobbyPatch(data);
 });
 
 // ── Online Users ────────────────────────────────────────────────────────────
@@ -238,6 +242,34 @@ client.on('room:joined', (data) => {
 // name, one meta line reading "host · 1/2 · rules", and a text action. The
 // state that used to be spelled out in a badge is carried by the bullet; the
 // full label stays available as the row's title attribute.
+// Builds one row's markup. `animate` staggers the entrance animation by
+// `delayIndex` (used for a full render); a row created for a single new
+// arrival via a patch passes delayIndex 0. An in-place update (existing room,
+// changed fields) never calls this — see updateRoomRowNode — so it never
+// replays the entrance animation.
+function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
+  const stateLabel  = getStateLabel(room.state, room.playerCount);
+  const bulletClass = getBulletClass(room.state, room.playerCount);
+  const animClass = animate ? ' animate-fade-up' : '';
+  const animStyle = animate ? ` style="animation-delay: ${(delayIndex * 0.04).toFixed(2)}s"` : '';
+
+  return `
+    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}"${animStyle}>
+      <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
+      <div class="room-row__body">
+        <div class="room-row__name">${escapeHtml(room.roomName || room.roomId)}</div>
+        <div class="room-row__meta">${buildRoomMeta(room)}</div>
+      </div>
+      <button class="room-row__action" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
+        ${t('lobby.btn_join')}
+      </button>
+    </div>
+  `;
+}
+
+// Full rebuild — used for the initial/reconnect snapshot (lobby:update) and
+// for langchange/uimodechange, where every row's text genuinely needs to be
+// redone. NOT used for lobby:patch — see applyLobbyPatch below.
 function renderRoomList(rooms) {
   if (rooms.length === 0) {
     roomListEl.innerHTML = `
@@ -252,26 +284,75 @@ function renderRoomList(rooms) {
   let html = '';
   let i = 0;
   for (const room of rooms) {
-    const stateLabel  = getStateLabel(room.state, room.playerCount);
-    const bulletClass = getBulletClass(room.state, room.playerCount);
-    const animDelay   = (i * 0.04).toFixed(2);
-
-    html += `
-      <div class="room-row animate-fade-up" data-room-id="${escapeAttr(room.roomId)}" style="animation-delay: ${animDelay}s">
-        <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
-        <div class="room-row__body">
-          <div class="room-row__name">${escapeHtml(room.roomName || room.roomId)}</div>
-          <div class="room-row__meta">${buildRoomMeta(room)}</div>
-        </div>
-        <button class="room-row__action" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
-          ${t('lobby.btn_join')}
-        </button>
-      </div>
-    `;
+    html += buildRoomRowHtml(room, { animate: true, delayIndex: i });
     i++;
   }
 
   roomListEl.innerHTML = html;
+}
+
+// Update an existing row's content in place — no DOM node replacement, no
+// entrance-animation replay.
+function updateRoomRowNode(node, room) {
+  const stateLabel  = getStateLabel(room.state, room.playerCount);
+  const bulletClass = getBulletClass(room.state, room.playerCount);
+
+  const bullet = node.querySelector('.room-row__bullet');
+  bullet.className = `room-row__bullet ${bulletClass}`;
+  bullet.title = stateLabel;
+
+  node.querySelector('.room-row__name').textContent = room.roomName || room.roomId;
+  node.querySelector('.room-row__meta').innerHTML = buildRoomMeta(room);
+
+  const action = node.querySelector('.room-row__action');
+  if (action) action.dataset.arg = room.roomId;
+}
+
+// Apply a `lobby:patch` ({ upserts, removed }) to `roomMap` and the DOM
+// incrementally: only the rows that actually changed are touched, instead of
+// rebuilding the whole list (B117 — a busy lobby was re-rendering every room
+// on every patch, scaling with total room count instead of changed-room
+// count). Crossing the empty <-> non-empty boundary changes the DOM's overall
+// shape (empty-state markup vs. row list), so that one edge still falls back
+// to a full render — it happens at most once per transition, not per patch.
+function applyLobbyPatch(patch) {
+  const removed = patch.removed || [];
+  const upserts = patch.upserts || [];
+
+  const wasEmpty = currentRooms.length === 0;
+
+  for (const roomId of removed) roomMap.delete(roomId);
+  for (const room of upserts) roomMap.set(room.roomId, room);
+  currentRooms = Array.from(roomMap.values());
+
+  if (wasEmpty || currentRooms.length === 0) {
+    renderRoomList(currentRooms);
+    renderHero();
+    return;
+  }
+
+  const nodesByRoomId = new Map();
+  for (const node of roomListEl.children) {
+    if (node.dataset && node.dataset.roomId) nodesByRoomId.set(node.dataset.roomId, node);
+  }
+
+  for (const roomId of removed) {
+    const node = nodesByRoomId.get(roomId);
+    if (node) node.remove();
+  }
+
+  for (const room of upserts) {
+    const existing = nodesByRoomId.get(room.roomId);
+    if (existing) {
+      updateRoomRowNode(existing, room);
+    } else {
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = buildRoomRowHtml(room, { animate: true });
+      roomListEl.appendChild(wrapper.firstElementChild);
+    }
+  }
+
+  renderHero();
 }
 
 function getStateLabel(state, playerCount) {
