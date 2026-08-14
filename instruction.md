@@ -164,3 +164,13 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   có, không phải script tạm) — `MutationObserver` thật trên Chromium xác nhận chỉ đúng 1 phòng bị
   đụng DOM khi 1 phòng đổi giữa nhiều phòng khác (báo cáo người dùng qua chat, TODO.md #117) —
   [chi tiết](docs/instruction/B117-lobby-render-lai-toan-bo-khi-patch.md)
+- **B118.** (Đã làm, sửa phòng ngừa) Bàn cờ mobile méo/lệch — nghi vấn `100vh` (không `dvh`) ở
+  `.board-area-shell` + `window resize` listener không throttle ở `game-ui.js:113-114`; **không có
+  thiết bị Safari iOS để tái hiện**, người dùng chốt sửa phòng ngừa ngay thay vì chờ; đọc tiền lệ
+  `docs/fix-log/2026-08-13-zen-room-board-sizing-and-chat-input.md` (bug canvas không vuông cùng
+  cụm code) và B90 (tiền lệ bỏ resize tự động vì gây scroll ngoài ý muốn) trước khi code; liệt kê
+  toàn bộ điểm gọi `BoardRenderer.resize()` trước khi thêm debounce; KHÔNG đụng
+  `tournament-match.js`/`tournament-match.html` (báo cáo gốc chỉ có ảnh `room.html`); cần người
+  dùng gốc xác nhận sau khi deploy — nếu vẫn còn lỗi, quay lại hướng `visualViewport` API (báo cáo
+  người dùng kèm ảnh Safari iOS thật, TODO.md #118) — [chi
+  tiết](docs/instruction/B118-ban-co-mobile-meo-lech-khong-on-dinh-do-resize-khong-throttle.md)

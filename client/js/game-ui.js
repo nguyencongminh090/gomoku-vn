@@ -110,7 +110,19 @@
         },
       });
 
-      window._boardResizeHandler = () => { if (S().boardRenderer) S().boardRenderer.resize(); };
+      // rAF-gated: mobile Safari fires several 'resize' events in quick
+      // succession while its address bar shows/hides during scroll, and an
+      // unthrottled resize() reading window dimensions mid-animation can bake
+      // a transient viewport size into the canvas until the next event fires.
+      window._boardResizePending = false;
+      window._boardResizeHandler = () => {
+        if (window._boardResizePending) return;
+        window._boardResizePending = true;
+        requestAnimationFrame(() => {
+          window._boardResizePending = false;
+          if (S().boardRenderer) S().boardRenderer.resize();
+        });
+      };
       window.addEventListener('resize', window._boardResizeHandler);
     }
 
