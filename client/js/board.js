@@ -132,7 +132,6 @@ class BoardRenderer {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const focusMode = document.body.classList.contains('room--focus');
     const turnBarEl = document.getElementById('turn-bar');
     const controlsEl = document.getElementById('game-controls');
     const tbH = turnBarEl ? (turnBarEl.offsetHeight || 0) : 0;
@@ -140,20 +139,7 @@ class BoardRenderer {
 
     let boardAreaH, maxVw;
 
-    if (focusMode) {
-      // In focus mode .board-area is position:fixed filling the entire viewport.
-      // The shell element sits behind in normal flow and reports wrong dimensions —
-      // always use raw viewport dimensions here.
-      // Reserve: 10px top padding + 20px top gap + tbH + gcH + 18px controls margin
-      //        + 80px bottom strip (fixed chat + focus-btn, both hugging
-      //        bottom:20px — see .room--focus .board-area's padding-bottom
-      //        in game.css, which this mirrors)
-      const topReserve = 10 + 20 + tbH + 18;
-      const bottomReserve = gcH + 18 + 80;
-      boardAreaH = window.innerHeight - topReserve - bottomReserve;
-      // Side padding: 10px each side in the CSS
-      maxVw = window.innerWidth - 20;
-    } else {
+    {
       // Normal layout: derive from the shell element which has
       // height: calc(100vh - 76px) on desktop.
       const boardAreaShell = document.querySelector('.board-area-shell');
@@ -249,10 +235,9 @@ class BoardRenderer {
     // mode, so height budget collapses — drive by width instead. The zen room
     // is the exception: the branch above gives it a real viewport-derived
     // height budget, so it fits both axes.
-    // Focus mode always uses the viewport budget calculated above.
     const singleColumn = window.innerWidth <= 768
       && !document.body.classList.contains('zen-room');
-    let rawSize = (singleColumn && !focusMode)
+    let rawSize = singleColumn
       ? maxVw
       : Math.min(maxVw, boardAreaH);
     // Cap so the board never looks comically large on a big screen. The zen

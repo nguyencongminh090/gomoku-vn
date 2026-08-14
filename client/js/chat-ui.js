@@ -73,8 +73,10 @@
     chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
-    // Also show as float message during a game (non-system messages only)
-    if (S().gameState && !msg.isSystem) {
+    // Also show as a float toast (non-system messages only) — always, not
+    // just mid-game, so a message sent from the mobile quick chat bar while
+    // the sheet is collapsed pre-game still surfaces to the sender/others.
+    if (!msg.isSystem) {
       showFloatMessage(msg);
     }
   }

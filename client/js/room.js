@@ -9,7 +9,6 @@
  *   2. Declaring and initializing window.RoomState (the shared state singleton)
  *   3. Exposing window.RoomClient (the SocketClient wrapper)
  *   4. Setting up stable DOM event listeners (tabs, leave, chat input, overlay)
- *   5. Focus mode toggle + keyboard shortcuts
  *
  * All domain logic has been extracted to:
  *   chat-ui.js    — appendChatMessage, showFloatMessage, showToast
@@ -30,8 +29,8 @@
  *   [ ] Not confirming within 15s for the 3rd time vacates that seat (toast
  *       shown to that player); misses 1-2 just reset both to not-ready
  *   [ ] Settings change emitted correctly (host only)
- *   [ ] Chat send on Enter and button click
- *   [ ] Focus mode toggle (F key, button click, Escape)
+ *   [ ] Chat send on Enter and button click (both the in-tab input and the
+ *       mobile quick chat bar)
  *   [ ] Start modal reappears (no separate rematch flow) once a game ends
  */
 
@@ -88,9 +87,6 @@ window.RoomState = {
 
   // Board renderer instance (created by game-ui.js)
   boardRenderer: null,
-
-  // Focus mode
-  focusMode: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -160,44 +156,7 @@ tabBtns.forEach(btn => {
   });
 });
 
-// ---------------------------------------------------------------------------
-// Focus mode
-// ---------------------------------------------------------------------------
-const btnFocus        = document.getElementById('btn-focus');
-const chatInputWrapper = document.getElementById('chat-input-wrapper');
-const tabChat         = document.getElementById('tab-chat');
-
-btnFocus.addEventListener('click', () => {
-  const st = window.RoomState;
-  st.focusMode = !st.focusMode;
-  document.body.classList.toggle('room--focus', st.focusMode);
-
-  if (st.focusMode) {
-    document.body.appendChild(chatInputWrapper);
-  } else {
-    if (tabChat) tabChat.querySelector('.chat-panel').appendChild(chatInputWrapper);
-  }
-
-  if (st.boardRenderer) {
-    setTimeout(() => st.boardRenderer.resize(), 50);
-  }
-});
-
-// Keyboard shortcuts
 const chatInput = document.getElementById('chat-input');
-document.addEventListener('keydown', (e) => {
-  if (document.activeElement === chatInput) return;
-  if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-  const st = window.RoomState;
-  if ((e.key === 'f' || e.key === 'F') && st.gameState && st.gameState.status === 'ongoing') {
-    e.preventDefault();
-    btnFocus.click();
-  } else if (e.key === 'Escape' && st.focusMode) {
-    e.preventDefault();
-    btnFocus.click();
-  }
-});
 
 // ---------------------------------------------------------------------------
 // Leave room
@@ -216,19 +175,40 @@ btnLeave.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 const btnSend = document.getElementById('btn-send');
 
-function sendChat() {
-  const text = chatInput.value.trim();
+// Shared by both the in-tab chat input and the mobile quick chat bar
+// (#quick-chat-input/#quick-chat-send below) — same emit, same optimistic
+// filter pass, just reading from/clearing whichever input element sent it.
+function sendChatFrom(inputEl) {
+  const text = inputEl.value.trim();
   if (!text) return;
   // Optimistic client-side pass — purely cosmetic UX; the server's own
   // filterMessage() pass in ChatHandler.handleMessage is authoritative for
   // what other participants actually receive.
   const filtered = window.ProfanityFilter ? window.ProfanityFilter.filterMessage(text) : text;
   window.RoomClient.emit('chat:message', { text: filtered });
-  chatInput.value = '';
+  inputEl.value = '';
 }
+
+function sendChat() { sendChatFrom(chatInput); }
 
 btnSend.addEventListener('click', sendChat);
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChat();
 });
+
+// ---------------------------------------------------------------------------
+// Quick chat bar (mobile) — a second, always-visible input pinned to the
+// bottom of the viewport (room-zen.css), separate from #chat-input-wrapper
+// so the tab's full chat history/input never moves in the DOM. Same
+// sendChatFrom() path, just a different input element.
+// ---------------------------------------------------------------------------
+const quickChatInput = document.getElementById('quick-chat-input');
+const quickChatSend  = document.getElementById('quick-chat-send');
+if (quickChatInput && quickChatSend) {
+  const sendQuickChat = () => sendChatFrom(quickChatInput);
+  quickChatSend.addEventListener('click', sendQuickChat);
+  quickChatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendQuickChat();
+  });
+}
 

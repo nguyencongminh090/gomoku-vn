@@ -28,7 +28,6 @@
 
   // ── DOM refs (stable refs set on first initBoard call) ────────────────────
   const boardArea = document.getElementById('board-area');
-  const btnFocus  = document.getElementById('btn-focus');
 
   // ── Time formatting ───────────────────────────────────────────────────────
 

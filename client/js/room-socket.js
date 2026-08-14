@@ -178,9 +178,6 @@
     st.drawOfferPending = null;
     st.timeRequestPending = null;
 
-    const btnFocus = document.getElementById('btn-focus');
-    if (btnFocus) btnFocus.style.display = 'flex';
-
     // Phone: the zen panel is a bottom sheet covering the lower half of the
     // screen. It has to stay open before the game (that is where the seat and
     // ready buttons live), but the moment play starts the board is what
@@ -350,18 +347,6 @@
     }
     st.drawOfferPending = null;
     GameUI.renderDrawPrompt();
-
-    const btnFocus = document.getElementById('btn-focus');
-    if (btnFocus) btnFocus.style.display = 'none';
-
-    // Exit focus mode on game end
-    if (st.focusMode) {
-      st.focusMode = false;
-      document.body.classList.remove('room--focus');
-      const tabChat = document.getElementById('tab-chat');
-      const chatInputWrapper = document.getElementById('chat-input-wrapper');
-      if (tabChat && chatInputWrapper) tabChat.querySelector('.chat-panel').appendChild(chatInputWrapper);
-    }
 
     // No more win/lose/draw modal (instruction.md §B36 removed
     // #game-overlay) — the board's own win highlight (board.js
