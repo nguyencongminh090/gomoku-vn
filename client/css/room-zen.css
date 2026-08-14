@@ -264,25 +264,6 @@ body.zen-room #chat-input-wrapper button:hover {
 body.zen-room .btn-kick:active,
 body.zen-room #chat-input-wrapper button:active { transform: none !important; }
 
-/* Focus toggle — a hairline square that sits on the paper, not a brand FAB. */
-body.zen-room .btn-focus {
-  width: 38px;
-  height: 38px;
-  border-radius: 0;
-  border: 1px solid var(--line);
-  background: var(--paper);
-  color: var(--ink-2);
-  box-shadow: none;
-}
-body.zen-room .btn-focus:hover {
-  transform: none;
-  background: var(--paper);
-  border-color: var(--ink);
-  color: var(--ink);
-}
-body.zen-room .btn-focus:active { transform: none !important; opacity: 0.7; }
-body.zen-room .btn-focus i { font-size: 18px !important; }
-
 /* ══ Room shell ═══════════════════════════════════════════════════════════
    Single column — the drawer is fixed/out-of-flow, so the grid no longer
    needs to reserve a side column for it. */
@@ -344,8 +325,7 @@ body.zen-room .board-area:hover { box-shadow: none; }
    width:100% of an ancestor that is itself auto-width (.board-area, above)
    has nothing definite to resolve against, so the shrink-wrap collapses to
    whatever space the flex layout hands it rather than the canvas's real
-   size. This is the same width:auto pattern game.css's own .room--focus
-   override already uses on this element, for the identical reason. Height
+   size. Height
    stays 100%, now safe/non-circular since .board-area (its parent) has a
    definite height per the comment above — with justify-content:center, this
    is what actually centers the turn-bar/canvas/controls cluster within the
@@ -959,8 +939,8 @@ body.zen-room .players-strip {
     border-left: none;
     border-top: 1px solid var(--line);
     background: var(--paper);
-    /* Above .btn-focus (600) and .float-messages (550) — the sheet is the
-       frontmost surface once opened. */
+    /* Above .quick-chat-bar (650) and .float-messages (550) — the sheet is
+       the frontmost surface once opened, automatically covering both. */
     z-index: 700;
     transition: transform 0.35s var(--ease);
   }
@@ -1009,31 +989,59 @@ body.zen-room .players-strip {
   body.zen-room .chat-messages { max-height: none; }
 
   /* Keep the floating chrome clear of the bottom bar. */
-  body.zen-room .btn-focus { bottom: calc(var(--zen-bar-h) + 14px); right: 14px; }
-  body.zen-room .float-messages { bottom: calc(var(--zen-bar-h) + 14px); }
+  body.zen-room .float-messages { bottom: calc(var(--zen-bar-h) + 58px); }
+
+  /* ══ Quick chat bar ═══════════════════════════════════════════════════
+     A second, always-reachable message input pinned above the icon rail —
+     independent from #chat-input-wrapper, which stays put inside the Chat
+     tab/sheet for full history (design-workflow follow-up, 2026-08-14:
+     mobile chat required opening the sheet just to type). Same z-index
+     tier as the old focus-mode chrome it replaces (below 700, the sheet's
+     own z-index) so the sheet — the frontmost surface once opened — covers
+     the quick bar automatically; no manual show/hide class needed, it just
+     re-appears once the sheet collapses back to the rail. Available to
+     every role (player or spectator), not gated to an in-game state. */
+  body.zen-room .quick-chat-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(var(--zen-bar-h) + 10px);
+    z-index: 650;
+    padding: 6px 8px 6px 16px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: var(--shadow-lg);
+  }
+  body.zen-room .quick-chat-bar input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    font: inherit;
+    color: var(--ink);
+  }
+  body.zen-room .quick-chat-bar button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--paper);
+    cursor: pointer;
+  }
+  body.zen-room .quick-chat-bar button:active { transform: scale(0.92); }
+  body.zen-room .quick-chat-bar button i { font-size: 15px; }
 }
 
-/* ══ Focus mode ═══════════════════════════════════════════════════════════
-   game.css already hides .panel-right-shell here and re-parents the chat
-   input to <body> as a floating bar (room.js). That bar's own styling in
-   game.css loses the cascade to the zen #chat-input-wrapper rules above
-   (id + two classes beats one class + id), so it has to be restated in zen
-   terms — otherwise the input floats over the board with no surface at all.
-   With the sheet gone, the board also reclaims the bottom-bar reservation. */
-body.zen-room.room--focus #chat-input-wrapper {
-  padding: 8px 14px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: 0;
-  box-shadow: var(--shadow-lg);
-}
-body.zen-room.room--focus #chat-input-wrapper button {
-  padding: 0;
-  background: none;
-  border-radius: 0;
-  color: var(--ink);
-}
-@media (max-width: 768px) {
-  body.zen-room.room--focus .board-area-shell { padding-bottom: 10px; }
-  body.zen-room.room--focus .btn-focus { bottom: 20px; }
-}
+/* Hidden on desktop — the drawer's own chat input is already reachable
+   there without covering the board, so the quick bar has nothing to add. */
+.quick-chat-bar { display: none; }
