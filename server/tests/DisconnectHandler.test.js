@@ -463,6 +463,77 @@ describe('DisconnectHandler — spectator grace period', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Viewer (slot === null) reconnect with no time limit — TODO.md #115
+// ---------------------------------------------------------------------------
+describe('DisconnectHandler — viewer (slot === null) unlimited reconnect', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockState.disconnectTimers.clear();
+    mockState.spectatorGraceTimers.clear();
+    mockState.timerMap.clear();
+    jest.clearAllMocks();
+  });
+  afterEach(() => jest.useRealTimers());
+
+  function roomWithViewer() {
+    return {
+      roomId: 'room1',
+      gameState: null,
+      users: new Map([
+        ['u1', { userId: 'u1', displayName: 'Alice', slot: null, presence: 'active' }],
+        ['u2', { userId: 'u2', displayName: 'Bob', slot: 1, presence: 'active' }],
+      ]),
+    };
+  }
+
+  test('viewer disconnect sets presence=disconnected and starts no grace timer', () => {
+    const io = makeIo();
+    const room = roomWithViewer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+
+    expect(room.users.get('u1').presence).toBe('disconnected');
+    expect(mockState.spectatorGraceTimers.has('u1')).toBe(false);
+    expect(mockState.disconnectTimers.has('u1')).toBe(false);
+    expect(mockState.broadcastRoomUpdate).toHaveBeenCalledWith(io, room);
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
+  });
+
+  test('viewer stays in room.users well past SPECTATOR_GRACE_MS — no eviction, ever', () => {
+    const io = makeIo();
+    const room = roomWithViewer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+
+    jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS * 100);
+
+    expect(room.users.has('u1')).toBe(true);
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
+  });
+
+  test('control case: a seated player (slot 1|2) whose game is not ongoing still gets evicted after 30s, unchanged', () => {
+    const io = makeIo();
+    const room = roomWithViewer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+    mockRoomManager.leaveRoom.mockReturnValue({ room: { roomId: 'room1', users: new Map() }, destroyed: false });
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u2', 'Bob'));
+
+    expect(mockState.spectatorGraceTimers.has('u2')).toBe(true);
+
+    jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
+
+    expect(mockState.spectatorGraceTimers.has('u2')).toBe(false);
+    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u2');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Both players in grace at once (restores the test discarded when backend
 // fix #4 was made — see docs/fix-log.md)
 // ---------------------------------------------------------------------------
