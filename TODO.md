@@ -310,6 +310,20 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: báo cáo người dùng qua chat — "User status is not track, start game reset to inactive" (2026-08-13)
 - ✅ **#114.** Slot dot (#113) dùng `player.ready` làm nhánh mặc định — `startGame()` set `ready = false` cho cả 2 người chơi khi ván bắt đầu nên dot rớt về màu "chưa sẵn sàng" ngay lúc ván chạy, nhìn như trạng thái reset sai; đã hỏi lại 3 vòng chốt thiết kế: Active/Inactive **không phải** idle-timer mà lấy thẳng từ `room.state === 'playing'` (game đã bắt đầu hay chưa), phạm vi CHỈ 2 slot người chơi, Leave/Disconnect giữ nguyên trigger `presence` như #113, đảo màu Leave↔Disconnect theo quy ước semaphore chuẩn (xanh/xám/cam/đỏ tăng dần mức nghiêm trọng); **ĐÃ LÀM 2026-08-13** (`feature/slot-status-active-inactive` off `dev`): 4 test mới + `npm test` 1135/1135, xác minh Playwright 2 trình duyệt thật (dot đổi đúng màu/nhãn khi bắt đầu ván và khi rời tab), màu thực tế đọc qua `getComputedStyle` khớp bảng đã chốt `[Model: Sonnet 5]` — [chi tiết](docs/todo/B114-slot-status-active-inactive-thay-ready.md)
 
+### Nguồn: báo cáo người dùng qua chat kèm ảnh chụp màn hình mobile — "Score Board took space of Chat Box on phone" (2026-08-14)
+- ✅ **#116.** Trang phòng chơi (`client/room.html`) trên mobile: `.score-panel` (bảng điểm Thắng/Bại/Hoà)
+  nằm cố định phía trên khối tabs, luôn hiển thị đè lên không gian của tab Chat (mặc định active),
+  khiến khung chat co lại chỉ còn ~2 dòng trước khi phải cuộn; đề xuất của người dùng: tách Bảng điểm
+  ra tab riêng thay vì hiển thị cố định. **SỬA PHẠM VI 2026-08-14**: bản ghi đầu tiên trỏ nhầm vào
+  `client/tournament-match.html` (2 trang dùng cấu trúc gần giống hệt) — đã sửa lại đúng `room.html`/
+  `room-ui.js`. **ĐÃ LÀM 2026-08-14** (người dùng chọn qua hỏi lại: tab riêng, áp dụng mọi kích thước
+  màn hình, chỉ `room.html`): score-panel chuyển vào tab-content `#tab-score` mới (icon `ph-trophy`,
+  i18n `room.tab_score`), `renderScoreTable()` đổi sang ẩn/hiện nút tab thay vì panel, CSS scoped
+  riêng cho `room.html`/`room-zen.css` không đụng `tournament-match.html`; `?v=` 119→120; `npm test`
+  1138/1138; xác minh Playwright thật 2 guest, mobile 390×844 — tab điểm ẩn tới khi có kết quả, đúng
+  cột T/Th/H sau khi đầu hàng, chat giữ nguyên chiều cao đầy đủ `[Model: Sonnet 5]` — `tournament-match.html`
+  **chưa sửa** (người dùng chọn "chỉ room trước") — [chi tiết](docs/todo/B116-tournament-match-scoreboard-lan-chiem-mobile-chat.md)
+
 ### Nguồn: báo cáo người dùng qua chat — "Viewer in room when disconnect and reconnect cannot come back room where they left" (2026-08-14)
 - ✅ **#115.** Viewer hiện bị `startSpectatorGrace()` giới hạn 30s (`SPECTATOR_GRACE_MS`) giống hệt seated-player-khi-ván-chưa-`ongoing` — người dùng xác nhận thời gian mất kết nối thực tế dài hơn 30s và chốt yêu cầu: role **Viewer** (chưa ngồi ghế, `slot === null`) phải reconnect quay lại đúng phòng được **bất kỳ lúc nào**, không giới hạn thời gian, MIỄN LÀ phòng còn tồn tại; nếu phòng đã bị huỷ thì về sảnh chờ như hành vi `ROOM_GONE` sẵn có; player ngồi ghế khi ván chưa `ongoing` vẫn giữ nguyên 30s như cũ (không phải Viewer nữa dù ván chưa chạy); **đã chốt (2026-08-14): không cần cơ chế dọn "viewer ma" nào thêm** — Viewer bỏ đi vĩnh viễn nằm lại `room.users` tới khi phòng tự huỷ theo cơ chế sẵn có là tác dụng phụ được chấp nhận; **ĐÃ LÀM 2026-08-14** (`fix/viewer-reconnect-unlimited` off `main`): tách nhánh cuối `handleDisconnect()` theo `slot` — Viewer chỉ set `presence = 'disconnected'` + broadcast, không set timeout; seated player chưa vào ván giữ nguyên `startSpectatorGrace`; không đụng `RoomManager.joinRoom()`/`startDisconnectGrace`/`startEmptyRoomGrace`; 3 test mới + cập nhật đếm call-site inventory (B113) 21→22, `npm test` 1134/1134 `[Model: Sonnet 5]` — [chi tiết](docs/todo/B115-viewer-reconnect-khong-gioi-han-thoi-gian.md)
 
