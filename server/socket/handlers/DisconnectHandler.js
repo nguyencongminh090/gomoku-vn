@@ -68,13 +68,28 @@ function handleDisconnect(io, socket) {
     return;
   }
 
-  // Guest/spectator, or a seated player whose game isn't 'ongoing' yet, with
-  // other people still in the room: give them a bounded window to reconnect
-  // too, instead of evicting them the instant the socket drops. Without this,
-  // a brief network blip (screen lock, wifi handoff) permanently removed them
-  // from room.users/userRoomMap, and their reconnect then hit the "room no
-  // longer exists" branch in SocketHandler.js even though the room was still
-  // alive with the other occupant(s) in it. See TODO.md #39 / instruction.md §39.
+  // A seated player whose game isn't 'ongoing' yet, with other people still
+  // in the room: give them a bounded window to reconnect too, instead of
+  // evicting them the instant the socket drops. Without this, a brief
+  // network blip (screen lock, wifi handoff) permanently removed them from
+  // room.users/userRoomMap, and their reconnect then hit the "room no longer
+  // exists" branch in SocketHandler.js even though the room was still alive
+  // with the other occupant(s) in it. See TODO.md #39 / instruction.md §39.
+  //
+  // A real viewer (slot === null, never sat down) instead gets no timeout at
+  // all: mark them disconnected and leave them in room.users indefinitely —
+  // RoomManager.joinRoom() already treats "still in room.users" as a valid
+  // reconnect regardless of elapsed time, so they can rejoin the same room
+  // whenever they come back, as long as the room itself hasn't been
+  // destroyed (ROOM_GONE otherwise). See TODO.md #115 / instruction.md §115.
+  const roomUser = room.users.get(user.userId);
+  if (roomUser && roomUser.slot === null) {
+    roomUser.presence = 'disconnected';
+    broadcastRoomUpdate(io, room);
+    logger.info(`[Disconnect] Viewer ${user.displayName} disconnected in room ${roomId} — no grace timeout, stays in room.users indefinitely`);
+    return;
+  }
+
   startSpectatorGrace(io, room, user);
 }
 
