@@ -307,6 +307,19 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng qua chat — "Slot: Display info: 1. Name 2. Status (màu theo trạng thái) + Site track" (2026-08-13)
 - ✅ **#113.** Slot card chỉ có 2 trạng thái (xanh lá sẵn sàng / xám chưa sẵn sàng), không phân biệt được người chơi có thật sự đang ở trang hay không; yêu cầu thêm đỏ ("leave site" — tab mở nhưng không active, Page Visibility API) và cam ("disconnected" — mất kết nối thật, server-side); **ĐÃ LÀM 2026-08-13** (`feature/room-slot-presence-status` off `dev`, vì đụng `server/` nên không đi qua `ui/*` đang mở): field `presence` mới trên room user + `RoomManager.setPresence()` (client chỉ set active/away, no-op nếu đang `disconnected` — chống race với grace period); `DisconnectHandler.js`/`SocketHandler.js` set/clear `disconnected` ở cả 6 điểm start/cancel-grace; client lắng nghe `visibilitychange`, gộp UI vào `playerStatusInfo()`/`renderStatusDot()` dùng chung slot card + mobile strip; 7 test mới + xác minh trực tiếp bằng Playwright 2 trình duyệt thật (ẩn tab → đỏ, đóng tab → cam, đều xác nhận trên DOM), `npm test` 1131/1131 `[Model: Sonnet 5]` — đã merge vào `dev`, **chưa** có trên `main` hay `ui/zen-minimal` (sẽ tự có khi nhánh đó merge vào `dev`) ; **BỔ SUNG 2026-08-13, ĐÃ LÀM**: (1) bỏ chữ trạng thái ("Chưa sẵn sàng"/...) — chỉ còn 1 dot màu (7px→9px), nhãn cũ chuyển sang `title`/`aria-label` (không mất a11y); (2) bỏ badge "Chủ phòng" khỏi slot card (badge "CP" ở danh sách người xem không đụng, khác phạm vi); CSS `.ready-text` xoá hẳn (không còn nơi dùng); `?v=` 106→107; xác minh lại bằng Playwright trên markup thật — [chi tiết](docs/todo/B113-slot-status-presence.md)
 
+### Nguồn: báo cáo người dùng qua chat — "Lobby load (display table) a bit slow when multi player" (2026-08-14)
+- ✅ **#117.** Lobby (`client/js/lobby.js`) render lại **toàn bộ** danh sách phòng (`renderRoomList`
+  qua `innerHTML`) mỗi khi nhận `lobby:patch`, dù server đã gửi diff `{ upserts, removed }` —
+  chi phí render tăng theo tổng số phòng × tần suất sự kiện, không phải theo số phòng thực sự đổi;
+  càng nhiều người/phòng đồng thời càng lộ rõ. **ĐÃ LÀM 2026-08-14** (`fix/lobby-render-full-list-
+  on-patch` off `main`): thêm `applyLobbyPatch()`/`updateRoomRowNode()`/`buildRoomRowHtml()` — áp
+  `upserts`/`removed` trực tiếp lên DOM hiện có qua `data-room-id`, chỉ fallback full-render khi
+  vượt biên rỗng↔không-rỗng; `renderRoomList()` giữ nguyên cho full-snapshot/`langchange`/
+  `uimodechange`; `?v=` 118→119; không có Jest cho `client/js/`, xác minh bằng 1 spec Playwright
+  mới giữ lại (`e2e/lobby-patch-incremental-render.spec.ts`) — `MutationObserver` thật trên
+  Chromium (seed 4 phòng, đổi đúng 1 phòng → chỉ phòng đó bị đụng DOM, `#room-list` không rebuild
+  toàn bộ) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B117-lobby-render-lai-toan-bo-khi-patch.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
