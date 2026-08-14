@@ -182,6 +182,16 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   khác — không cần sửa, hướng ngược lại (page-guard cho trang cần đăng nhập, guest vẫn hợp lệ ở đó);
   3 test mới trong `login-oauth-error-banner.test.js` (báo cáo người dùng kèm ảnh Settings, TODO.md
   #119) — [chi tiết](docs/instruction/B119-guest-khong-tao-duoc-tai-khoan-tu-nut-create-account.md)
+- **B120.** (Đã làm) Login page thiếu Language Toggle — KHÔNG viết lại `createLangSwitcher()`/
+  `setLanguage()`/`getLanguage()` (`i18n.js`, đã hoàn chỉnh); thêm mount point mới
+  `.login-lang-switch-row` trong `login.html` (trong `.split-right`, trên `.login-shell`) + CSS căn
+  phải khớp `max-width: 440px` của `.login-shell` trong `login.css`; đổi đúng dòng `i18n.js:1340`
+  `document.querySelector('.card__logo')` sang selector mới; đã `grep -rn "card__logo" client/`
+  trước khi đổi — không có HTML nào khác chờ selector cũ; không đụng `.card__logo .lang-switch`
+  (CSS chết trong `main.css`, để nguyên); xác minh bằng Playwright thật (desktop + mobile 390×844)
+  qua static server cục bộ thay vì `server/index.js` (trang login không cần backend để test riêng
+  switcher này, tránh mọi rủi ro đụng database thật); `?v=` 122→123 (báo cáo người dùng trực tiếp,
+  TODO.md #120) — [chi tiết](docs/instruction/B120-login-html-thieu-language-toggle-do-selector-cu-hong.md)
 - **B121.** (Đã làm) Tên phòng mặc định → `#<roomID>` — sửa `RoomManager.js:130`:
   `` `#${roomId}` `` (tái dùng biến `roomId` đã sinh ở dòng 129, không sinh mã mới); chỉ đổi nhánh
   mặc định, giữ nguyên nhánh người dùng tự đặt tên; đã rà `client/js/lobby.js:260,304` — không cần

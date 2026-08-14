@@ -1337,9 +1337,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Login page has no header/Settings panel yet, so it keeps its own
   // standalone switcher. On authenticated pages, language now lives inside
   // the global Settings panel (see settings-panel.js) instead of a topnav pill.
-  const cardLogo = document.querySelector('.card__logo');
-  if (cardLogo) {
-    createLangSwitcher(cardLogo);
+  //
+  // Mount point used to be `.card__logo`, from an older login page layout.
+  // The current page-split/login-shell redesign never carried that class
+  // over, so this silently stopped mounting anything (TODO.md #120) — fixed
+  // by pointing at the dedicated `.login-lang-switch-row` container login.html
+  // now ships instead.
+  const langSwitchMount = document.querySelector('.login-lang-switch-row');
+  if (langSwitchMount) {
+    createLangSwitcher(langSwitchMount);
   }
 });
 
