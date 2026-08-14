@@ -174,3 +174,10 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   dùng gốc xác nhận sau khi deploy — nếu vẫn còn lỗi, quay lại hướng `visualViewport` API (báo cáo
   người dùng kèm ảnh Safari iOS thật, TODO.md #118) — [chi
   tiết](docs/instruction/B118-ban-co-mobile-meo-lech-khong-on-dinh-do-resize-khong-throttle.md)
+- **B121.** (Đã làm) Tên phòng mặc định → `#<roomID>` — sửa `RoomManager.js:130`:
+  `` `#${roomId}` `` (tái dùng biến `roomId` đã sinh ở dòng 129, không sinh mã mới); chỉ đổi nhánh
+  mặc định, giữ nguyên nhánh người dùng tự đặt tên; đã rà `client/js/lobby.js:260,304` — không cần
+  sửa gì thêm phía client; không đụng `_generateRoomId()` hay logic route/join bằng `roomId`; định
+  dạng đã chốt trực tiếp với người dùng là `#<roomID>` không chữ "Phòng"; 2 test mới trong
+  `RoomManager.test.js` (báo cáo người dùng, TODO.md #121) — [chi
+  tiết](docs/instruction/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
