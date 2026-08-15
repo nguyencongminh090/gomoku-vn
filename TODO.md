@@ -51,6 +51,9 @@ dùng), và danh sách model khả dụng cũng có thể đã đổi theo thờ
 ### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
 - **#67.** Xác minh HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không (claim của audit gốc sai — Helmet đã bật HSTS mặc định, cần đo thật trên deploy) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 
+### Nguồn: `gomoku-vn-review-2026-08-14.md` vòng 4, mục 13.9b (2026-08-14, đối chiếu code 2026-08-15)
+- **#125.** Cloudflare xoá `ETag` của HTML khi tự nén lại — cần bật "Respect Strong ETags" trên dashboard Cloudflare để khôi phục; không hỏng gì hiện tại (`If-Modified-Since` vẫn trả 304), không gấp `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A125-cloudflare-respect-strong-etags-cho-html.md)
+
 ## Phần B — Sửa được bằng code, đang chờ làm
 
 ### Nguồn: `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
@@ -372,6 +375,13 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   không sinh thêm giá trị mới; nhánh tự đặt tên giữ nguyên; 2 test mới trong
   `RoomManager.test.js` (`'RoomManager — default room name'`), `npm test` 1136/1136 `[Model: Sonnet
   5]` — [chi tiết](docs/todo/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
+
+### Nguồn: `gomoku-vn-review-2026-08-14.md` vòng 4 (2026-08-14, đối chiếu code + xác nhận thêm từ người dùng 2026-08-15)
+- **#122.** `client/room.html:202` nạp `profanity-classifier-model.js` (53 KB, 18 971 B nén) đồng bộ, chặn parser, dù classifier đã bị tắt theo quyết định sản phẩm (`profanity-filter.js:801-804`) và đã chứng minh không đổi output nào (54 chuỗi thử, 2 VM context) — bỏ hẳn thẻ `<script>` này `[Model: Haiku 4.5]` — [chi tiết](docs/todo/B122-bo-profanity-classifier-model-khoi-room-html.md)
+- **#123.** Thêm `<link rel="preload" as="font">` cho `Phosphor.woff2`/`Phosphor-Bold.woff2` — người dùng tự xác nhận trực tiếp: "đôi lúc mạng chậm, những icon này (Settings, history, create) load chậm hơn các element khác", khớp cơ chế `font-display: swap` + font bị phát hiện muộn qua CSSOM `[Model: Sonnet 5]` — [chi tiết](docs/todo/B123-preload-font-phosphor-woff2-giam-do-tre-hien-thi-icon.md)
+- **#124.** `server/utils/get-client-ip.js:48` nhánh fallback `X-Forwarded-For` lấy phần tử **đầu** (`split(',')[0]`, dễ giả mạo nhất) thay vì phần tử **cuối** — mức độ thấp vì traffic thật qua Cloudflare luôn có `CF-Connecting-IP` nên nhánh này không bị chạm tới trên đường đi thực tế, nhưng vẫn nên sửa cho đúng `[Model: Sonnet 5]` — [chi tiết](docs/todo/B124-getclientip-xff-lay-phan-tu-cuoi-thay-vi-dau.md)
+- **#126.** ⚠️ (làm SAU CÙNG, cần cách ly nghiêm ngặt — người dùng dùng Cloudflare Tunnel forward localhost thật ra domain `play3cr.dpdns.org`, không có môi trường tách biệt) Thêm `modulepreload` cho 11 ES module (`room.html`) / 7 module (`index.html`) đang nằm sau rào cản parse — đo lường bắt buộc qua HTTP/2 domain thật (không phải localhost), lặp ≥7 lần lấy min/median, kèm test canh hint↔import không lệch để tránh bẫy tải file 2 lần âm thầm `[Model: Sonnet 5]` — [chi tiết](docs/todo/B126-modulepreload-cho-es-module-do-tren-domain-that-qua-tunnel.md)
+- **#127.** ⚠️ (làm SAU CÙNG, cùng nhóm STRICT với #126) Gộp CSS theo trang — bỏ `lobby.css` thừa khỏi `room.html` (nạp theo lịch sử tách file, không theo trang) — cần grep xác nhận không class nào của `lobby.css` đang thật sự dùng ở `room.html` trước khi bỏ, xác minh bằng trình duyệt thật (không chỉ đoán) vì dễ vỡ layout âm thầm `[Model: Sonnet 5]` — [chi tiết](docs/todo/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
 
 ---
 

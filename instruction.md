@@ -200,3 +200,30 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   dạng đã chốt trực tiếp với người dùng là `#<roomID>` không chữ "Phòng"; 2 test mới trong
   `RoomManager.test.js` (báo cáo người dùng, TODO.md #121) — [chi
   tiết](docs/instruction/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
+- **A125.** Cấu hình dashboard Cloudflare, không sửa code — không đụng `server/index.js` (ETag
+  origin đã đúng). Bật "Respect Strong ETags" nếu người dùng có quyền truy cập, không gấp (review
+  vòng 4 mục 13.9b, TODO.md #125) — [chi tiết](docs/instruction/A125-cloudflare-respect-strong-etags-cho-html.md)
+- **B122.** (Chưa làm) Chỉ xoá đúng 1 dòng `<script>` `profanity-classifier-model.js` khỏi
+  `room.html:202`, không đụng file JS; bump `?v=`; xác minh thủ công bằng DevTools Network + thử
+  chat vì không có Jest cho HTML client (review vòng 4 mục 13.5, TODO.md #122) — [chi
+  tiết](docs/instruction/B122-bo-profanity-classifier-model-khoi-room-html.md)
+- **B123.** (Chưa làm) `<link rel="preload" as="font">` — số lượng phải khớp đúng weight mỗi trang
+  đang nạp (`room`/`tournament`/`tournament-match`/`history` cần cả regular+bold, `index`/`login`
+  chỉ regular sau B108(a)); không preload thừa; `crossorigin` bắt buộc (yêu cầu người dùng, xác
+  nhận trực tiếp icon vào muộn trên mạng chậm, TODO.md #123) — [chi
+  tiết](docs/instruction/B123-preload-font-phosphor-woff2-giam-do-tre-hien-thi-icon.md)
+- **B124.** (Chưa làm) Đổi `forwarded.split(',')[0].trim()` → `.pop().trim()` ở
+  `get-client-ip.js:48`, đúng 1 dòng, không đụng nhánh `CF-Connecting-IP`/điều kiện loopback; thêm
+  case multi-value XFF vào `get-client-ip.test.js` (review vòng 4 mục 13.11, nuance mới hơn B44,
+  TODO.md #124) — [chi tiết](docs/instruction/B124-getclientip-xff-lay-phan-tu-cuoi-thay-vi-dau.md)
+- **B126.** (Chưa làm, làm SAU CÙNG — STRICT) ⚠️ Người dùng dùng Cloudflare Tunnel forward localhost
+  thật ra domain thật, không có staging tách biệt — bắt buộc: branch riêng, không sửa bản đang phục
+  vụ tunnel lúc có người chơi thật, đo qua HTTP/2 domain thật ≥7 lần lấy min/median (không
+  localhost — bẫy vcaro), viết test canh hint↔import không lệch để tránh tải file 2 lần âm thầm
+  (review vòng 4 mục 13.6, TODO.md #126) — [chi
+  tiết](docs/instruction/B126-modulepreload-cho-es-module-do-tren-domain-that-qua-tunnel.md)
+- **B127.** (Chưa làm, làm SAU CÙNG — STRICT, cùng nhóm với B126) Grep xác nhận class nào của
+  `lobby.css` thật sự dùng ở `room.html` trước khi bỏ `<link>`; xác minh bằng trình duyệt thật đủ 4
+  tab + 2 viewport theo khuôn mẫu B108/B116/B118, không chỉ đoán; không đổi CSS token đã LOCKED
+  (review vòng 4 mục 13.7, TODO.md #127) — [chi
+  tiết](docs/instruction/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
