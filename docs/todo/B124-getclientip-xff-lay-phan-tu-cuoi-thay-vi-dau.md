@@ -1,6 +1,14 @@
 # #124 — `get-client-ip.js` fallback XFF nên lấy phần tử CUỐI, không phải đầu
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ Đã sửa (2026-08-15)
+
+Đổi `forwarded.split(',')[0].trim()` → `forwarded.split(',').pop().trim()` tại
+`server/utils/get-client-ip.js:48`, đúng 1 dòng, giữ nguyên ưu tiên `CF-Connecting-IP` và điều kiện
+chỉ tin XFF khi peer loopback. Thêm case mới trong `server/tests/get-client-ip.test.js`
+(`X-Forwarded-For: "1.1.1.1, 10.0.0.5"` → kỳ vọng `"10.0.0.5"`) và cập nhật 2 case cũ dùng XFF nhiều
+giá trị (trước đó kỳ vọng phần tử đầu) sang kỳ vọng phần tử cuối. `get-client-ip.test.js` +
+`LobbyHandler.test.js` (dùng chung `getClientIp`, chỉ có case XFF 1 giá trị nên không bị ảnh hưởng)
+— 29/29 pass.
 
 **Nguồn:** review vòng 4 (`gomoku-vn-review-2026-08-14.md` mục 13.11/13.12 #6) — nuance mới hơn
 `#44` (B44 chỉ thêm ưu tiên đọc `CF-Connecting-IP`, chưa sửa thứ tự lấy phần tử trong nhánh

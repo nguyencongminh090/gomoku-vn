@@ -212,7 +212,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   chỉ regular sau B108(a)); không preload thừa; `crossorigin` bắt buộc (yêu cầu người dùng, xác
   nhận trực tiếp icon vào muộn trên mạng chậm, TODO.md #123) — [chi
   tiết](docs/instruction/B123-preload-font-phosphor-woff2-giam-do-tre-hien-thi-icon.md)
-- **B124.** (Chưa làm) Đổi `forwarded.split(',')[0].trim()` → `.pop().trim()` ở
+- **B124.** (Đã làm) Đổi `forwarded.split(',')[0].trim()` → `.pop().trim()` ở
   `get-client-ip.js:48`, đúng 1 dòng, không đụng nhánh `CF-Connecting-IP`/điều kiện loopback; thêm
   case multi-value XFF vào `get-client-ip.test.js` (review vòng 4 mục 13.11, nuance mới hơn B44,
   TODO.md #124) — [chi tiết](docs/instruction/B124-getclientip-xff-lay-phan-tu-cuoi-thay-vi-dau.md)

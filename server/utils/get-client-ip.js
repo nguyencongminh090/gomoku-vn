@@ -45,7 +45,7 @@ function resolveClientIp(headers, remoteAddress) {
 
   if (LOOPBACK_ADDRESSES.has(remoteAddress)) {
     const forwarded = headers && headers['x-forwarded-for'];
-    if (forwarded) return forwarded.split(',')[0].trim();
+    if (forwarded) return forwarded.split(',').pop().trim();
   }
   return remoteAddress;
 }
