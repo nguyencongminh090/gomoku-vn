@@ -36,7 +36,12 @@ describe('getClientIp()', () => {
 
   test('falls back to X-Forwarded-For when peer is loopback (IPv4) and no CF header', () => {
     const socket = makeSocket('127.0.0.1', { 'x-forwarded-for': '198.51.100.5, 10.0.0.1' });
-    expect(getClientIp(socket)).toBe('198.51.100.5');
+    expect(getClientIp(socket)).toBe('10.0.0.1');
+  });
+
+  test('uses the LAST element of X-Forwarded-For, not the first (client-spoofable)', () => {
+    const socket = makeSocket('127.0.0.1', { 'x-forwarded-for': '1.1.1.1, 10.0.0.5' });
+    expect(getClientIp(socket)).toBe('10.0.0.5');
   });
 
   test('falls back to X-Forwarded-For when peer is loopback (IPv6 ::1) and no CF header', () => {
@@ -77,7 +82,7 @@ describe('getClientIpFromReq() — express-rate-limit keyGenerator (TODO.md #92)
     // connects to the Node process over loopback, so req.socket.remoteAddress
     // is 127.0.0.1 for every visitor regardless of their real IP.
     const req = makeReq('127.0.0.1', { 'x-forwarded-for': '198.51.100.5, 10.0.0.1' });
-    expect(getClientIpFromReq(req)).toBe('198.51.100.5');
+    expect(getClientIpFromReq(req)).toBe('10.0.0.1');
   });
 
   test('ignores X-Forwarded-For and returns the raw peer when peer is not loopback', () => {
