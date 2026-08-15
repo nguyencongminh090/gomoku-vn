@@ -66,6 +66,10 @@ function register(io, socket) {
     }
 
     const engine = room.gameState;
+    // Captured before makeMove(), which auto-cancels the mover's own
+    // pending undo offer (GameEngine.js) — the client needs to know so it
+    // can clear a stale accept/decline prompt (TODO.md #128).
+    const hadOwnUndoOffer = !!(engine.undoOffer && engine.undoOffer.from === user.userId);
     const result = engine.makeMove(user.userId, x, y);
     if (result.error) {
       socket.emit('game:error', { message: result.error, code: result.code });
@@ -83,6 +87,7 @@ function register(io, socket) {
       moveCount: engine.moveCount,
       timer: timer ? timer.getTimers() : null,
     };
+    if (hadOwnUndoOffer) movePayload.undoCancelled = true;
 
     if (result.won || result.draw) {
       movePayload.gameOver = true;
@@ -142,14 +147,16 @@ function register(io, socket) {
     }
 
     const engine = room.gameState;
+    const hadOwnUndoOffer = !!(engine.undoOffer && engine.undoOffer.from === user.userId);
     const r = engine.placeOpeningStone(user.userId, x, y);
     if (r.error) {
       socket.emit('game:error', { message: r.error, code: r.code });
       return;
     }
 
-    io.to(room.roomId).emit('game:swap2_state',
-      buildSwap2State(engine, { x: r.x, y: r.y, color: r.color }, r.nextColor));
+    const swap2State = buildSwap2State(engine, { x: r.x, y: r.y, color: r.color }, r.nextColor);
+    if (hadOwnUndoOffer) swap2State.undoCancelled = true;
+    io.to(room.roomId).emit('game:swap2_state', swap2State);
 
     // Phase boundary (place3 → p2choice, or place2 → p1choice) hands the turn
     // to the other placeholder player — sync the timer to match.
@@ -174,6 +181,7 @@ function register(io, socket) {
     }
 
     const engine = room.gameState;
+    const hadOwnUndoOffer = !!(engine.undoOffer && engine.undoOffer.from === user.userId);
     const r = engine.swap2Choice(user.userId, payload.choice);
     if (r.error) {
       socket.emit('game:error', { message: r.error, code: r.code });
@@ -191,7 +199,9 @@ function register(io, socket) {
         const whitePlayer = engine.players.find(p => p.color === 'WHITE');
         timer.remapForSwap2(blackPlayer.userId, whitePlayer.userId);
       }
-      io.to(room.roomId).emit('game:swap2_state', buildSwap2State(engine, null, null));
+      const swap2State = buildSwap2State(engine, null, null);
+      if (hadOwnUndoOffer) swap2State.undoCancelled = true;
+      io.to(room.roomId).emit('game:swap2_state', swap2State);
 
       if (timer) io.to(room.roomId).emit('timer:sync', timer.getSync());
 
@@ -203,7 +213,9 @@ function register(io, socket) {
         timestamp: Date.now(), isSystem: true,
       });
     } else {
-      io.to(room.roomId).emit('game:swap2_state', buildSwap2State(engine, null, r.nextColor));
+      const swap2State = buildSwap2State(engine, null, r.nextColor);
+      if (hadOwnUndoOffer) swap2State.undoCancelled = true;
+      io.to(room.roomId).emit('game:swap2_state', swap2State);
     }
 
     room.lastActivity = Date.now();
@@ -302,6 +314,106 @@ function register(io, socket) {
       from: null, fromId: null,
       text: `${user.displayName} từ chối hoà.`,
       code: 'GAME_DRAW_DECLINED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
+  });
+
+  // ── game:undo_request ────────────────────────────────────────────────────
+  // TODO.md #128 / docs/instruction/B128-*.md. Unlike draw offers, Undo
+  // doesn't block gameplay — both players may keep moving while a request
+  // is pending (GameEngine handles the non-blocking/auto-cancel rules).
+
+  socket.on('game:undo_request', () => {
+    const room = roomManager.getRoomByUser(user.userId);
+    if (!room || !room.gameState) {
+      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_GAME' });
+      return;
+    }
+
+    const result = room.gameState.requestUndo(user.userId);
+    if (result.error) {
+      socket.emit('game:error', { message: result.error, code: result.code });
+      return;
+    }
+
+    io.to(room.roomId).emit('game:undo_offered', { from: user.userId, fromName: user.displayName });
+    io.to(room.roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} xin đi lại.`,
+      code: 'GAME_UNDO_REQUESTED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
+  });
+
+  // ── game:undo_accept ─────────────────────────────────────────────────────
+
+  socket.on('game:undo_accept', () => {
+    const room = roomManager.getRoomByUser(user.userId);
+    if (!room || !room.gameState) return;
+
+    const engine = room.gameState;
+    const requesterId = engine.undoOffer ? engine.undoOffer.from : null;
+    const result = engine.acceptUndo(user.userId);
+    if (result.error) {
+      socket.emit('game:error', { message: result.error, code: result.code });
+      return;
+    }
+
+    const timer = timerMap.get(room.roomId);
+
+    if (result.mode === 'opening') {
+      if (timer) {
+        // Reversing the choice that assigned final colors — remap the
+        // timer's black/white slots back to the firstPlayerId/secondPlayerId
+        // placeholders used throughout the opening (mirrors the forward
+        // remapForSwap2() call in the game:swap2_choice handler above).
+        if (engine.colorsAssigned === false) {
+          timer.remapForSwap2(engine.firstPlayerId, engine.secondPlayerId);
+        }
+        timer.switchTurn(result.currentTurn === engine.secondPlayerId ? 'white' : 'black');
+        io.to(room.roomId).emit('timer:sync', timer.getSync());
+      }
+      io.to(room.roomId).emit('game:swap2_state', buildSwap2State(engine, null, result.nextColor));
+    } else {
+      if (timer) {
+        const requesterPlayer = engine.players.find(p => p.userId === requesterId);
+        const requesterColor = requesterPlayer && requesterPlayer.color === 'BLACK' ? 'black' : 'white';
+        timer.switchTurn(requesterColor);
+        io.to(room.roomId).emit('timer:sync', timer.getSync());
+      }
+      io.to(room.roomId).emit('game:undo_applied', {
+        cleared: result.cleared,
+        currentTurn: result.currentTurn,
+        moveCount: result.moveCount,
+      });
+    }
+
+    io.to(room.roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} đồng ý đi lại.`,
+      code: 'GAME_UNDO_ACCEPTED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
+    room.lastActivity = Date.now();
+  });
+
+  // ── game:undo_decline ────────────────────────────────────────────────────
+
+  socket.on('game:undo_decline', () => {
+    const room = roomManager.getRoomByUser(user.userId);
+    if (!room || !room.gameState) return;
+
+    const result = room.gameState.declineUndo(user.userId);
+    if (result.error) {
+      socket.emit('game:error', { message: result.error, code: result.code });
+      return;
+    }
+
+    io.to(room.roomId).emit('game:undo_declined', { by: user.userId });
+    io.to(room.roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} từ chối đi lại.`,
+      code: 'GAME_UNDO_DECLINED', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
   });

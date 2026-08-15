@@ -86,6 +86,7 @@
           <div class="game-controls" id="game-controls"></div>
           <div id="draw-prompt-area"></div>
           <div id="time-prompt-area"></div>
+          <div id="undo-prompt-area"></div>
         </div>
       `;
 
@@ -273,16 +274,21 @@
     }
 
     const timeDisabled = st.timeRequestPending ? 'disabled' : '';
+    const undoDisabled = st.undoOfferPending ? 'disabled' : '';
     el.innerHTML = `
       <button class="btn-game btn-game--resign" data-action="doResign">${t('game.btn_resign')}</button>
       <button class="btn-game btn-game--draw"   data-action="doDrawOffer">${t('game.btn_draw')}</button>
       <button class="btn-game btn-game--time"   data-action="doRequestTime" ${timeDisabled}>
         ${t('game.btn_time')}
       </button>
+      <button class="btn-game btn-game--undo"   data-action="doUndoRequest" ${undoDisabled}>
+        ${t('game.btn_undo')}
+      </button>
     `;
 
     renderDrawPrompt();
     renderTimePrompt();
+    renderUndoPrompt();
     requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
   }
 
@@ -326,6 +332,7 @@
 
     renderDrawPrompt();
     renderTimePrompt();
+    renderUndoPrompt();
 
     const el = document.getElementById('game-controls');
     if (!el) return;
@@ -356,6 +363,20 @@
     } else if (phase === 'p1choice' && !isFirst) {
       html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing_color')}</div>`;
     }
+    // Undo is available to either player throughout the opening, regardless
+    // of whose turn it is to place/choose (TODO.md #128) — appended after
+    // the phase-specific hint/buttons above, not a replacement for them.
+    // Wrapped in its own full-width row: #game-controls is a non-wrapping
+    // flex row on desktop, and .swap2-hint/.swap2-choice above already
+    // claim width:100% of it, so the undo button needs its own row rather
+    // than fighting them for space on the same one.
+    const undoDisabled = st.undoOfferPending ? 'disabled' : '';
+    html += `
+      <div class="swap2-undo-row">
+        <button class="btn-game btn-game--undo" data-action="doUndoRequest" ${undoDisabled}>
+          ${t('game.btn_undo')}
+        </button>
+      </div>`;
     el.innerHTML = html;
     // Same empty/populated-height concern as renderGameControls() above —
     // swap2 also writes directly into #game-controls.
@@ -418,6 +439,34 @@
     `;
   }
 
+  // ── Undo request prompt ───────────────────────────────────────────────────
+
+  function renderUndoPrompt() {
+    const st = S();
+    const el = document.getElementById('undo-prompt-area');
+    if (!el) return;
+
+    if (!st.undoOfferPending || !st.gameState || st.gameState.status !== 'ongoing') {
+      el.innerHTML = '';
+      return;
+    }
+
+    if (st.undoOfferPending.from === st.myUser.userId) {
+      el.innerHTML = `<div class="draw-prompt">${t('game.undo_waiting')}</div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="draw-prompt">
+        <span>${t('game.undo_offer', { name: _esc(st.undoOfferPending.fromName || t('game.opponent_generic')) })}</span>
+        <div class="draw-prompt__actions">
+          <button class="btn-draw-action btn-draw-accept"  data-action="doUndoAccept">${t('game.btn_accept')}</button>
+          <button class="btn-draw-action btn-draw-decline" data-action="doUndoDecline">${t('game.btn_decline')}</button>
+        </div>
+      </div>
+    `;
+  }
+
   // ── Escape helper ─────────────────────────────────────────────────────────
   function _esc(str) {
     const d = document.createElement('div');
@@ -436,10 +485,13 @@
   global.doRequestTime = () => { if (!S().timeRequestPending) global.RoomClient.emit('game:request_time'); };
   global.doTimeAccept  = () => global.RoomClient.emit('game:time_accept');
   global.doTimeDecline = () => global.RoomClient.emit('game:time_decline');
+  global.doUndoRequest = () => { if (!S().undoOfferPending) global.RoomClient.emit('game:undo_request'); };
+  global.doUndoAccept  = () => global.RoomClient.emit('game:undo_accept');
+  global.doUndoDecline = () => global.RoomClient.emit('game:undo_decline');
   global.swap2Choose   = (c) => global.RoomClient.emit('game:swap2_choice', { choice: c });
 
   // ── Lang change listener ──────────────────────────────────────────────────
-  // Swap2/draw/time prompts are built as raw innerHTML strings (not
+  // Swap2/draw/time/undo prompts are built as raw innerHTML strings (not
   // data-i18n), so applyI18n() alone can't re-translate them — re-run their
   // render functions on language switch instead.
   window.addEventListener('langchange', () => {
@@ -460,6 +512,7 @@
     renderSwap2,
     renderDrawPrompt,
     renderTimePrompt,
+    renderUndoPrompt,
   };
 
 })(window);

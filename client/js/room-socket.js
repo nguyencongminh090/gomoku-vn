@@ -75,6 +75,11 @@
     if (data.gameState) {
       st.gameState = data.gameState;
       st.timerValues = data.timer || st.timerValues;
+      // A pending undo request must still be visible to a reconnecting
+      // opponent (TODO.md #128 decision #7/#8) — GameEngine.serialize()
+      // carries it as gameState.undoOffer; renderSwap2()/updateBoardState()
+      // below both call GameUI.renderUndoPrompt() internally.
+      st.undoOfferPending = data.gameState.undoOffer || null;
       applyTimerSync(data.timerSync);
       if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
         GameUI.initBoard();
@@ -177,6 +182,7 @@
     applyTimerSync(data.timerSync);
     st.drawOfferPending = null;
     st.timeRequestPending = null;
+    st.undoOfferPending = data.undoOffer || null;
 
     // Phone: the zen panel is a bottom sheet covering the lower half of the
     // screen. It has to stay open before the game (that is where the seat and
@@ -207,6 +213,13 @@
       st.drawOfferPending = null;
       GameUI.renderDrawPrompt();
     }
+    // The mover's own pending undo request auto-cancels when they continue
+    // playing instead of waiting (TODO.md #128 decision #9) — the server
+    // flags it on this same broadcast rather than a separate event.
+    if (data.undoCancelled) {
+      st.undoOfferPending = null;
+      GameUI.renderUndoPrompt();
+    }
 
     const colorVal = data.color === 'BLACK' ? 1 : 2;
     st.gameState.board[data.y][data.x] = colorVal;
@@ -231,6 +244,11 @@
   client.on('game:swap2_state', (data) => {
     const st = S();
     if (!st.gameState) return;
+
+    if (data.undoCancelled) {
+      st.undoOfferPending = null;
+      GameUI.renderUndoPrompt();
+    }
 
     st.gameState.board = data.board;
     st.gameState.currentTurn = data.currentTurn;
@@ -347,6 +365,8 @@
     }
     st.drawOfferPending = null;
     GameUI.renderDrawPrompt();
+    st.undoOfferPending = null;
+    GameUI.renderUndoPrompt();
 
     // No more win/lose/draw modal (instruction.md §B36 removed
     // #game-overlay) — the board's own win highlight (board.js
@@ -390,6 +410,38 @@
   client.on('game:draw_declined', () => {
     S().drawOfferPending = null;
     GameUI.renderDrawPrompt();
+  });
+
+  client.on('game:undo_offered', (data) => {
+    S().undoOfferPending = data;
+    GameUI.renderUndoPrompt();
+  });
+
+  client.on('game:undo_declined', () => {
+    S().undoOfferPending = null;
+    GameUI.renderUndoPrompt();
+  });
+
+  // Play-mode accept only — an opening-mode accept arrives as a
+  // game:swap2_state resync instead (reuses the existing Swap2 render path).
+  client.on('game:undo_applied', (data) => {
+    const st = S();
+    if (!st.gameState) return;
+
+    st.undoOfferPending = null;
+
+    for (const cell of data.cleared) {
+      st.gameState.board[cell.y][cell.x] = 0;
+    }
+    st.gameState.currentTurn = data.currentTurn;
+    st.gameState.moveCount = data.moveCount;
+    if (st.gameState.moveHistory) {
+      st.gameState.moveHistory = st.gameState.moveHistory.slice(0, data.moveCount);
+    }
+
+    GameUI.renderUndoPrompt();
+    GameUI.updateBoardState();
+    RoomUI.updateUI();
   });
 
   client.on('game:interrupted', (data) => {

@@ -18,7 +18,7 @@ const P1 = 'player-black';
 const P2 = 'player-white';
 
 /** Create a standard 15×15 game with no walls/portals. */
-function makeGame({ boardSize = 15, winningRule = 'freestyle', walls = [], portals = [], firstMoveZones = [] } = {}) {
+function makeGame({ boardSize = 15, winningRule = 'freestyle', walls = [], portals = [], firstMoveZones = [], ruleSwap2 = false } = {}) {
   return new GameEngine({
     roomId: 'test-room',
     boardSize,
@@ -30,7 +30,13 @@ function makeGame({ boardSize = 15, winningRule = 'freestyle', walls = [], porta
     portals,
     firstMoveZones,
     winningRule,
+    ruleSwap2,
   });
+}
+
+/** Create a Swap2 game. players[0] (P1) is always firstPlayerId, P2 secondPlayerId. */
+function makeSwap2Game(opts = {}) {
+  return makeGame({ ...opts, ruleSwap2: true });
 }
 
 /**
@@ -622,5 +628,300 @@ describe('GameEngine — Caro rule', () => {
     g2.moveHistory = [];
     const checkWin = g2._checkWin(4, 5, 1); // black at x=4,y=5 with whites at both ends
     expect(checkWin).toBeNull(); // blocked on left (x=0) and should be null for caro
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 12. Undo — play mode (TODO.md #128)
+// ---------------------------------------------------------------------------
+describe('GameEngine — Undo (play mode)', () => {
+  test('requestUndo rejected when requester has not moved yet', () => {
+    const g = makeGame();
+    const r = g.requestUndo(P1);
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('NO_MOVE_TO_UNDO');
+  });
+
+  test('requestUndo sets undoOffer, mode "play", while opponent has not replied yet', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    const r = g.requestUndo(P1);
+    expect(r.requested).toBe(true);
+    expect(r.mode).toBe('play');
+    expect(g.undoOffer).toMatchObject({ from: P1, mode: 'play' });
+  });
+
+  test('cannot request when one is already pending', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.requestUndo(P1);
+    const r = g.requestUndo(P2);
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('UNDO_OFFER_PENDING');
+  });
+
+  test('non-player cannot request undo', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    const r = g.requestUndo('outsider');
+    expect(r.error).toBeTruthy();
+  });
+
+  test('accept rolls back exactly 1 move when opponent has not replied yet', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.requestUndo(P1);
+    const r = g.acceptUndo(P2);
+    expect(r.accepted).toBe(true);
+    expect(r.mode).toBe('play');
+    expect(r.cleared).toEqual([{ x: 7, y: 7 }]);
+    expect(g.board[7][7]).toBe(0);
+    expect(g.moveHistory).toHaveLength(0);
+    expect(g.moveCount).toBe(0);
+    expect(g.currentTurn).toBe(P1);
+  });
+
+  test('accept rolls back 2 moves (full round) once opponent has replied', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.makeMove(P2, 8, 8);
+    g.requestUndo(P1);
+    const r = g.acceptUndo(P2);
+    expect(r.cleared).toEqual(expect.arrayContaining([{ x: 7, y: 7 }, { x: 8, y: 8 }]));
+    expect(r.cleared).toHaveLength(2);
+    expect(g.board[7][7]).toBe(0);
+    expect(g.board[8][8]).toBe(0);
+    expect(g.moveHistory).toHaveLength(0);
+    expect(g.currentTurn).toBe(P1);
+  });
+
+  test('requester cannot accept their own undo offer', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.requestUndo(P1);
+    const r = g.acceptUndo(P1);
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('CANNOT_SELF_ACCEPT');
+  });
+
+  test('requester cannot decline their own undo offer', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.requestUndo(P1);
+    const r = g.declineUndo(P1);
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('CANNOT_SELF_DECLINE');
+  });
+
+  test('declineUndo clears the offer without changing board/turn', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.requestUndo(P1);
+    const r = g.declineUndo(P2);
+    expect(r.declined).toBe(true);
+    expect(g.undoOffer).toBeNull();
+    expect(g.board[7][7]).toBe(1);
+    expect(g.currentTurn).toBe(P2);
+  });
+
+  test('opponent replying while a request is pending does NOT cancel it, and accept still resolves correctly', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);      // P1's move — targetIndex snapshotted here
+    g.requestUndo(P1);         // 0 replies yet
+    g.makeMove(P2, 8, 8);      // opponent replies while pending — must NOT cancel
+    expect(g.undoOffer).toMatchObject({ from: P1, mode: 'play' });
+    const r = g.acceptUndo(P2);
+    expect(r.cleared).toHaveLength(2); // rolls back both, per the frozen targetIndex
+    expect(g.moveHistory).toHaveLength(0);
+    expect(g.currentTurn).toBe(P1);
+  });
+
+  test("requester's own next move auto-cancels their pending request", () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.makeMove(P2, 8, 8);
+    g.requestUndo(P1);
+    expect(g.undoOffer).not.toBeNull();
+    g.makeMove(P1, 0, 0); // requester continues instead of waiting
+    expect(g.undoOffer).toBeNull();
+    // Board reflects normal play — nothing was rolled back.
+    expect(g.board[7][7]).toBe(1);
+    expect(g.board[8][8]).toBe(2);
+    expect(g.board[0][0]).toBe(1);
+  });
+
+  test('serialize() includes undoOffer', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.requestUndo(P1);
+    const s = g.serialize();
+    expect(s.undoOffer).toMatchObject({ from: P1, mode: 'play' });
+  });
+
+  test('cannot request undo on a finished game', () => {
+    const g = makeGame();
+    g.makeMove(P1, 7, 7);
+    g.status = 'finished';
+    const r = g.requestUndo(P1);
+    expect(r.error).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 13. Undo — Swap2 opening mode (TODO.md #128)
+// ---------------------------------------------------------------------------
+describe('GameEngine — Undo (Swap2 opening mode)', () => {
+  test('requestUndo rejected when nothing has been placed yet', () => {
+    const g = makeSwap2Game();
+    const r = g.requestUndo(P1);
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('NO_MOVE_TO_UNDO');
+  });
+
+  test('either the placer or the non-placing opponent may request during place3, removing exactly 1 stone', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1); // P1 (firstPlayerId) places stone 1/3
+    // P2 (secondPlayerId) has placed nothing yet, but may still ask.
+    const req = g.requestUndo(P2);
+    expect(req.requested).toBe(true);
+    expect(req.mode).toBe('opening');
+    const r = g.acceptUndo(P1);
+    expect(r.accepted).toBe(true);
+    expect(r.mode).toBe('opening');
+    expect(r.cleared).toEqual([{ x: 1, y: 1 }]);
+    expect(g.board[1][1]).toBe(0);
+    expect(g.openingPhase).toBe('place3');
+    expect(g.currentTurn).toBe(P1);
+    expect(g._phaseStones).toHaveLength(0);
+  });
+
+  test('undo after place3 completes (now at p2choice) removes the 3rd stone, reverting to place3', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.placeOpeningStone(P1, 2, 2);
+    g.placeOpeningStone(P1, 3, 3); // completes place3 → p2choice, turn = P2
+    expect(g.openingPhase).toBe('p2choice');
+
+    g.requestUndo(P2);
+    const r = g.acceptUndo(P1);
+    expect(r.cleared).toEqual([{ x: 3, y: 3 }]);
+    expect(g.board[3][3]).toBe(0);
+    expect(g.board[2][2]).not.toBe(0); // earlier stones untouched
+    expect(g.openingPhase).toBe('place3');
+    expect(g.currentTurn).toBe(P1);
+    expect(g._phaseStones).toHaveLength(2);
+  });
+
+  test('undo of the "place" choice at p2choice (0 stones placed in place2 yet) reverts to p2choice, not place3', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.placeOpeningStone(P1, 2, 2);
+    g.placeOpeningStone(P1, 3, 3); // → p2choice
+    g.swap2Choice(P2, 'place');    // → place2, 0 stones placed yet
+    expect(g.openingPhase).toBe('place2');
+
+    g.requestUndo(P1);
+    const r = g.acceptUndo(P2);
+    expect(r.cleared).toEqual([]); // no stone to clear — only the choice is undone
+    expect(g.openingPhase).toBe('p2choice');
+    expect(g.currentTurn).toBe(P2);
+  });
+
+  test('undo of the final color choice (0 real play moves yet) un-assigns colors and reopens the choice phase', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.placeOpeningStone(P1, 2, 2);
+    g.placeOpeningStone(P1, 3, 3); // → p2choice
+    g.swap2Choice(P2, 'white');    // P2 takes white → play begins, 0 real moves
+    expect(g.openingPhase).toBe('play');
+    expect(g.players[0].color).toBe('BLACK');
+
+    const req = g.requestUndo(P1);
+    expect(req.mode).toBe('opening'); // still opening-mode: zero real play moves
+    const r = g.acceptUndo(P2);
+    expect(r.mode).toBe('opening');
+    expect(r.openingPhase).toBe('p2choice');
+    expect(r.colorsAssigned).toBe(false);
+    expect(g.openingPhase).toBe('p2choice');
+    expect(g.players[0].color).toBeNull();
+    expect(g.players[1].color).toBeNull();
+    expect(g.playPhaseStartIndex).toBeNull();
+  });
+
+  test('once a real play move exists, a player with no play-phase move of their own is rejected (does not fall back into opening)', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.placeOpeningStone(P1, 2, 2);
+    g.placeOpeningStone(P1, 3, 3); // → p2choice
+    g.swap2Choice(P2, 'white');    // P1=BLACK, P2=WHITE, play begins, currentTurn = WHITE (P2)
+    g.makeMove(P2, 10, 10);        // WHITE's first real move
+
+    // BLACK (P1) has made 0 real play moves yet.
+    const r = g.requestUndo(P1);
+    expect(r.error).toBeTruthy();
+    expect(r.code).toBe('NO_MOVE_TO_UNDO');
+  });
+
+  test('after a real play move, undo behaves like normal play and cannot reach back into the opening', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.placeOpeningStone(P1, 2, 2);
+    g.placeOpeningStone(P1, 3, 3);
+    g.swap2Choice(P2, 'white'); // P1=BLACK, P2=WHITE, currentTurn=P2
+    g.makeMove(P2, 10, 10);     // WHITE's real move
+
+    const req = g.requestUndo(P2);
+    expect(req.mode).toBe('play');
+    const r = g.acceptUndo(P1);
+    expect(r.mode).toBe('play');
+    expect(r.cleared).toEqual([{ x: 10, y: 10 }]);
+    expect(g.board[10][10]).toBe(0);
+    // Opening stones from before the play boundary must be untouched.
+    expect(g.board[1][1]).not.toBe(0);
+    expect(g.board[2][2]).not.toBe(0);
+    expect(g.board[3][3]).not.toBe(0);
+  });
+
+  test('opponent continuing to place stones while a request is pending does not cancel it', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1); // 1/3
+    g.requestUndo(P2);             // P2 asks while P1 is mid-place3
+    g.placeOpeningStone(P1, 2, 2); // P1 (not the requester) keeps placing — must not cancel
+    g.placeOpeningStone(P1, 3, 3); // → p2choice
+    expect(g.undoOffer).toMatchObject({ from: P2, mode: 'opening' });
+    const r = g.acceptUndo(P1);
+    // Dynamic resolution: accept always targets the CURRENT most-recent
+    // action, i.e. the 3rd stone (the phase-completing one), not the 1st.
+    expect(r.cleared).toEqual([{ x: 3, y: 3 }]);
+    expect(g.openingPhase).toBe('place3');
+  });
+
+  test("requester's own next opening action auto-cancels their pending request", () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.requestUndo(P1);
+    expect(g.undoOffer).not.toBeNull();
+    g.placeOpeningStone(P1, 2, 2); // requester keeps placing instead of waiting
+    expect(g.undoOffer).toBeNull();
+    expect(g.board[1][1]).not.toBe(0);
+    expect(g.board[2][2]).not.toBe(0);
+  });
+
+  test('stacked undos walk back through multiple opening actions one at a time', () => {
+    const g = makeSwap2Game();
+    g.placeOpeningStone(P1, 1, 1);
+    g.placeOpeningStone(P1, 2, 2);
+    g.placeOpeningStone(P1, 3, 3); // → p2choice
+    g.swap2Choice(P2, 'white');    // → play, 0 real moves
+
+    g.requestUndo(P1);
+    g.acceptUndo(P2); // undo #1: back to p2choice
+    expect(g.openingPhase).toBe('p2choice');
+
+    g.requestUndo(P1);
+    g.acceptUndo(P2); // undo #2: removes 3rd stone, back to place3
+    expect(g.openingPhase).toBe('place3');
+    expect(g.board[3][3]).toBe(0);
+    expect(g.board[2][2]).not.toBe(0);
   });
 });
