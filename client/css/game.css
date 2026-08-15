@@ -267,6 +267,19 @@
   color: #fff;
 }
 
+/* Undo is appended after the phase-specific hint/choice above (TODO.md
+   #128) — its own full-width row so it doesn't compete with them for
+   space on #game-controls' non-wrapping desktop flex row. */
+.swap2-undo-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+.swap2-undo-row .btn-game--undo {
+  flex: 0 1 200px;
+}
+
 /* ─── Draw Prompt ───────────────────────────────────────────────── */
 
 .draw-prompt {
@@ -559,6 +572,26 @@
 }
 
 .btn-game--time:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Undo Button (TODO.md #128)
+   ========================================================================== */
+
+.btn-game--undo {
+  border-color: #8e44ad;
+  color: #8e44ad;
+  background: transparent;
+}
+
+.btn-game--undo:hover {
+  background: #8e44ad;
+  color: #fff;
+}
+
+.btn-game--undo:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

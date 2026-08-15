@@ -1,6 +1,39 @@
 # #128 — Thêm tính năng Undo (hoàn tác nước đi) trong `room.html`
 
-**Trạng thái:** chưa làm.
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-15, `feature/undo` off `dev`).
+
+Triển khai đủ theo 9 quyết định đã chốt + thuật toán `targetIndex`/khai cuộc ở
+`docs/instruction/B128-*.md`:
+- `GameEngine.js`: `requestUndo`/`acceptUndo`/`declineUndo`, thuật toán rollback `targetIndex`
+  (chốt lúc gửi yêu cầu, không tính lại lúc accept), auto-cancel có điều kiện (chỉ khi chính người
+  yêu cầu đi tiếp) trong cả `makeMove()`/`placeOpeningStone()`/`swap2Choice()`, snapshot-stack
+  (`openingSnapshots`) cho luật khai cuộc "lùi 1 hành động", `playPhaseStartIndex` làm ranh giới
+  cứng giữa khai cuộc và chơi thường, thêm `undoOffer` vào `serialize()`.
+- `GameHandler.js`: `game:undo_request`/`game:undo_accept`/`game:undo_decline` +
+  `game:undo_applied` (payload xoá ô, khác `game:moved`) cho chế độ `play`; tái dùng
+  `game:swap2_state` cho chế độ `opening` (không cần payload mới); `movePayload.undoCancelled`/
+  `swap2State.undoCancelled` báo cho client biết khi auto-cancel xảy ra; timer:
+  `timer.switchTurn()` cho cả 2 chế độ, `timer.remapForSwap2()` gọi lại để đảo ngược khi
+  colorsAssigned true→false.
+- Client (`game-ui.js`/`room-socket.js`/`i18n.js`/`game.css`): nút "Xin đi lại" (cả trong
+  `renderGameControls()` và `renderSwap2()`), `#undo-prompt-area` + `renderUndoPrompt()`, xử lý
+  `undoCancelled` để tự xoá prompt cũ, reconnect hiện lại đúng yêu cầu đang chờ qua
+  `gameState.undoOffer` (`room:joined`/`game:init`).
+
+**Test:** 23 unit test mới trong `server/tests/GameEngine.test.js` (13 chế độ `play`, 10 chế độ
+`opening`/Swap2 — bao phủ cả trường hợp xin lúc đối thủ chưa đáp trả, xin sau khi đã đáp trả, xin
+xuyên phase con, xin xuyên ranh giới `play`, stacked undo, auto-cancel có điều kiện, reject khi chưa
+có nước). `npm test` 1185/1185. Xác minh trực tiếp bằng Playwright thật (`e2e/undo.spec.ts`, 6 test,
+2 trình duyệt thật, server cô lập cổng 3901 + db tạm — không đụng server/db thật đang có người chơi
+thật) — cả 6 test pass: xin lúc chưa đáp trả (xoá 1 nước), xin sau khi đáp trả (xoá 2 nước), từ
+chối, đối thủ đi tiếp không huỷ yêu cầu, người xin tự đi tiếp auto-cancel, khai cuộc Swap2 (đối thủ
+không đặt quân vẫn xin được, xoá đúng 1 quân).
+
+**Giới hạn đã biết, chưa xác minh bằng Playwright thật:** trường hợp hẹp "hủy đúng lựa chọn màu cuối
+cùng đóng khai cuộc" (đảo ngược `timer.remapForSwap2()`) chỉ có unit test ở tầng `GameEngine`
+(đúng `openingPhase`/`colorsAssigned`/board), **chưa** xác minh riêng hành vi đồng hồ thật qua trình
+duyệt cho đúng case này — rủi ro thấp (case rất hẹp: phải hủy ngay tức khắc sau lựa chọn cuối, trước
+khi có nước cờ thật nào), nhưng nên lưu ý nếu có báo lỗi liên quan đồng hồ sau khi hủy chọn màu.
 
 **Nguồn:** yêu cầu người dùng, 2026-08-15 ("Scope: Room. Add Undo function."). Đã thảo luận đầy đủ
 qua `features/undo/` (`user_story.md` + `planning.md`, 9 quyết định thiết kế đã chốt qua 2 vòng hỏi
