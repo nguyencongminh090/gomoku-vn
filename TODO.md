@@ -383,6 +383,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#126.** Thêm `modulepreload` cho 11 ES module (`room.html`) / 7 module (`index.html`) đang nằm sau rào cản parse — đo lường bắt buộc qua HTTP/2 domain thật (không phải localhost), lặp ≥7 lần lấy min/median, kèm test canh hint↔import không lệch để tránh bẫy tải file 2 lần âm thầm; **ĐÃ LÀM 2026-08-15**: hint khớp đúng import thật + test drift + bump `?v=128`, đo qua `play3cr.dpdns.org` (Playwright, login/tạo phòng thật) xác nhận **0 double-load**, nhưng chưa xác định được số mili-giây tiết kiệm cụ thể (nằm trong nhiễu đo/phương pháp) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B126-modulepreload-cho-es-module-do-tren-domain-that-qua-tunnel.md)
 - **#127.** ⚠️ (làm SAU CÙNG, cùng nhóm STRICT với #126) Gộp CSS theo trang — bỏ `lobby.css` thừa khỏi `room.html` (nạp theo lịch sử tách file, không theo trang) — cần grep xác nhận không class nào của `lobby.css` đang thật sự dùng ở `room.html` trước khi bỏ, xác minh bằng trình duyệt thật (không chỉ đoán) vì dễ vỡ layout âm thầm `[Model: Sonnet 5]` — [chi tiết](docs/todo/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
 
+### Nguồn: yêu cầu người dùng — thảo luận qua `features/undo/` (2026-08-15)
+- **#128.** Thêm tính năng Undo (hoàn tác nước đi) trong `room.html` — đối thủ phải đồng ý, không giới hạn số lần, quy tắc lõi "đi lại về đúng lượt người yêu cầu" (xoá 1 nước nếu đối thủ chưa đáp trả, xoá cả 2 nếu đã đáp trả), vẫn cho phép trong khai cuộc Swap2 (chưa thiết kế cơ chế cụ thể), chỉ khôi phục đồng hồ chế độ `per_move`, yêu cầu đang chờ phải hiện lại khi đối phương reconnect, không chặn luồng chơi (chỉ tự huỷ khi chính người yêu cầu đi tiếp) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B128-them-tinh-nang-undo-hoan-tac-nuoc-di-o-room-html.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

@@ -227,3 +227,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   tab + 2 viewport theo khuôn mẫu B108/B116/B118, không chỉ đoán; không đổi CSS token đã LOCKED
   (review vòng 4 mục 13.7, TODO.md #127) — [chi
   tiết](docs/instruction/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
+- **B128.** (Chưa làm) Undo trong `room.html`, thảo luận qua `features/undo/`. Thuật toán lõi bắt
+  buộc: snapshot `targetIndex` (nước gần nhất của người yêu cầu trong `moveHistory`) **lúc gửi yêu
+  cầu**, không tính lại lúc accept; auto-cancel `undoOffer` chỉ khi **chính người yêu cầu** đi thêm
+  nước, **không** unconditional như `drawOffer` (`GameEngine.js:216`); phải thêm `undoOffer` vào
+  `GameEngine.serialize()` (hiện `drawOffer` không có trong đó — khoảng trống có sẵn, không phải đã
+  có sẵn cơ chế để tái dùng) để reconnect thấy lại yêu cầu đang chờ; giai đoạn Swap2
+  (`openingPhase !== 'play'`) vẫn phải hỗ trợ nhưng **chưa có thuật toán** — thiết kế riêng lúc
+  triển khai, đừng tự suy diễn rồi code luôn; chỉ khôi phục đồng hồ `per_move` (không cần
+  `TimerManager` code mới, chỉ gọi `switchTurn`), `blitz`/`per_game` không trả lại thời gian; không
+  giới hạn số lần; không áp dụng cho trận đấu giải đấu (yêu cầu người dùng, TODO.md #128) — [chi
+  tiết](docs/instruction/B128-them-tinh-nang-undo-hoan-tac-nuoc-di-o-room-html.md)
