@@ -1,6 +1,20 @@
 # #126 — Thêm `modulepreload` cho ES module — ⚠️ đo trên domain thật qua Cloudflare Tunnel, cần cách ly nghiêm ngặt
 
-**Trạng thái:** chưa làm — **làm SAU CÙNG**, sau #122/#123/#124/#125 và mọi việc khác đang mở.
+**Trạng thái:** ✅ Đã đo — **ĐÃ LÀM 2026-08-15**: hint `modulepreload` thêm đúng 11/7 module khớp
+chính xác import thật của `room-entry.js`/`index-entry.js` (file + `?v=`), bump `?v=127`→`?v=128`
+toàn repo (verify grep còn đúng 1 giá trị), test canh drift
+(`client/tests/modulepreload-hints-match-entry-imports.test.js`) xác nhận bắt được lỗi thật khi thử
+xoá 1 hint, `npm test` 1156/1156 pass. Đo qua domain thật `play3cr.dpdns.org` (Playwright, guest
+login UI thật + 1 phòng thật tạo qua UI, 7 lần/trang): **bẫy double-load KHÔNG xảy ra** — 0 module
+tải trùng qua mọi lần chạy sau khi sửa cách đo cho login thật (lần đo đầu sai vì chưa login, vô tình
+bắt được redirect index→login, không phải bug thật). Số mili-giây tiết kiệm cụ thể **CHƯA xác định
+được** — chênh lệch trước/sau nằm trong nhiễu đo (`index.html`: trước min/median 1308/1378ms, sau
+1236/1415ms), và phép đo `room.html` "trước" bị nhiễu bởi lỗi phương pháp riêng (dùng lại 1
+phòng/session cho nhiều lần chạy liên tiếp gây redirect rejoin ở 2/7 lần, không phải bug của code).
+Rủi ro chính mà mục này tồn tại để phòng (double-load âm thầm) đã được loại trừ; phần đo mili-giây
+để ngỏ, có thể làm lại sau với phương pháp cô lập hơn (đo riêng thời điểm module cuối load xong thay
+vì `networkidle` — vốn còn tính cả thời gian ổn định kết nối socket.io) nếu cần con số chính xác.
+`[Model: Sonnet 5]`
 
 **Nguồn:** review vòng 4 (`gomoku-vn-review-2026-08-14.md` mục 13.6/13.12 #4).
 
