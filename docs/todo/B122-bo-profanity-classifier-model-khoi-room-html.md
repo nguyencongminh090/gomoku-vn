@@ -1,6 +1,16 @@
 # #122 — Bỏ `profanity-classifier-model.js` (53 KB) khỏi `room.html` — script chết, chặn parser
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-15) — xoá thẻ `<script src="js/profanity-classifier-model.js?v=125">`
+khỏi `client/room.html:202`, giữ nguyên `client/js/profanity-classifier-model.js` (file) và
+`client/js/profanity-filter.js` không đổi. Bump `?v=125` → `?v=126` toàn bộ `client/*.html` +
+`client/js/*.js` (trừ mockup) — `grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup` ra
+đúng 1 giá trị `?v=126`. Xác minh thủ công trên server dev đang chạy (không đụng db thật, không
+restart server của người dùng): Playwright vào `room.html` thật, bắt network requests — 0 request
+`profanity-classifier-model.js` trong 102 request tổng, 0 console error. Không tự động hoá được
+việc gửi chat qua UI (phòng quick-match chờ người chơi thứ 2, overlay chặn click) nên xác minh logic
+lọc bậy bằng cách `require()` trực tiếp `client/js/profanity-filter.js` (module CommonJS/UMD không
+đổi) và chạy lại các chuỗi thử tiêu biểu (sạch, có dấu, không dấu, leetspeak, cụm dễ dính oan) —
+kết quả khớp hành vi cũ, không có Jest cho client HTML nên không có test tự động mới.
 
 **Nguồn:** `gomoku-vn-review-2026-08-14.md` vòng 4, mục 13.5 (đã xác minh lại với code hiện tại
 2026-08-15 — xem hội thoại review file này).
