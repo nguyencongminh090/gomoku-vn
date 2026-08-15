@@ -1,6 +1,12 @@
 # #123 — Thêm `<link rel="preload" as="font">` cho woff2 Phosphor — icon vào muộn trên mạng chậm
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ ĐÃ XONG — thêm `<link rel="preload">` cho `Phosphor.woff2`/`Phosphor-Bold.woff2`
+đúng số weight từng trang (index/login: chỉ regular; room/tournament/tournament-match/history: cả
+2), đặt trước `<link rel="stylesheet">` phosphor tương ứng trong cả 6 trang; bump `?v=126` →
+`?v=127` toàn bộ `client/*.html` + `client/js/*.js` (trừ 2 mockup đóng băng), verify bằng grep —
+còn đúng 1 giá trị `?v=` duy nhất. `npm test` 1148/1148. Chưa verify DevTools Network/Console thủ
+công trên mạng chậm thật (xem ghi chú xác minh bên dưới) — đường dẫn href đã đối chiếu khớp file
+thật trên đĩa (`vendor/phosphor/regular/Phosphor.woff2`, `vendor/phosphor/bold/Phosphor-Bold.woff2`).
 
 **Nguồn:** review vòng 4 (`gomoku-vn-review-2026-08-14.md` mục 13.4/13.9) + xác nhận trực tiếp từ
 người dùng trong hội thoại 2026-08-15: *"đôi lúc mạng chậm, những icon này (Settings, history,
