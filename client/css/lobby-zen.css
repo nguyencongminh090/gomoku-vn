@@ -176,7 +176,7 @@ body.zen-lobby .section-tabs__btn {
   color: var(--c-ink-3);
   transition: color 0.2s var(--ease-out, ease);
 }
-body.zen-lobby .section-tabs__btn .ph { display: none; }
+body.zen-lobby .section-tabs__btn .icon { display: none; }
 body.zen-lobby .section-tabs__btn:hover { color: var(--c-ink-2); }
 body.zen-lobby .section-tabs__btn.is-active {
   color: var(--c-ink);

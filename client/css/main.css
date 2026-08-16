@@ -107,6 +107,20 @@ input, button, textarea, select { font-family: inherit; }
   --space-8:  64px;
 }
 
+/* ── Icons (SVG sprite, TODO.md #129 — replaces Phosphor icon font) ────────
+   Sized in `em` so it inherits the font-icon convention: any selector that
+   used to set `font-size` on `.ph`/`.ph-bold` keeps working unchanged on
+   `.icon`, since 1em resolves against the element's own font-size either
+   way. */
+.icon {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  vertical-align: -0.125em;
+  flex-shrink: 0;
+}
+
 /* ── Entry Animations ────────────────────────────────────────────────────── */
 @keyframes fadeUp {
   0% { opacity: 0; transform: translateY(24px); filter: blur(4px); }

@@ -238,3 +238,9 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `TimerManager` code mới, chỉ gọi `switchTurn`), `blitz`/`per_game` không trả lại thời gian; không
   giới hạn số lần; không áp dụng cho trận đấu giải đấu (yêu cầu người dùng, TODO.md #128) — [chi
   tiết](docs/instruction/B128-them-tinh-nang-undo-hoan-tac-nuoc-di-o-room-html.md)
+- **B129.** (Chưa làm) Override quyết định "không làm" của B108 — Giai đoạn 1 (audit runtime đầy
+  đủ tập icon, kể cả class ghép động trong `tournament-match.js:721,760`) **bắt buộc xong trước**
+  Giai đoạn 2 (build SVG sprite + thay markup); không xoá file font Phosphor gốc; gate hoàn thành
+  bằng kiểm tra khách quan "0 phần tử `.ph-*` còn sót" sau migrate, không phải "nhìn qua thấy ổn"
+  (yêu cầu người dùng sau phân tích HAR, TODO.md #129) — [chi
+  tiết](docs/instruction/B129-svg-icon-thay-phosphor-audit-truoc-khi-lam.md)

@@ -386,6 +386,15 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng — thảo luận qua `features/undo/` (2026-08-15)
 - ✅ **#128.** Thêm tính năng Undo (hoàn tác nước đi) trong `room.html` — đối thủ phải đồng ý, không giới hạn số lần, quy tắc lõi "đi lại về đúng lượt người yêu cầu" (xoá 1 nước nếu đối thủ chưa đáp trả, xoá cả 2 nếu đã đáp trả), vẫn cho phép trong khai cuộc Swap2, chỉ khôi phục đồng hồ chế độ `per_move`, yêu cầu đang chờ hiện lại khi đối phương reconnect, không chặn luồng chơi (chỉ tự huỷ khi chính người yêu cầu đi tiếp). **ĐÃ LÀM 2026-08-15** (`feature/undo` off `dev`): 23 unit test mới (`GameEngine.test.js`, `play` + Swap2 opening), `npm test` 1185/1185; xác minh trực tiếp bằng Playwright thật 2 trình duyệt (`e2e/undo.spec.ts`, 6 test, server cô lập cổng riêng + db tạm, không đụng server/db thật đang có người chơi); `?v=128→129` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B128-them-tinh-nang-undo-hoan-tac-nuoc-di-o-room-html.md)
 
+### Nguồn: phân tích HAR báo cáo "site chậm" (người dùng ở Mỹ, 2026-08-17) — câu hỏi trực tiếp về Phosphor/SVG
+- ✅ **#129.** Thay font icon Phosphor bằng SVG sprite — **override quyết định "không làm" của #108**
+  (người dùng chủ động yêu cầu sau khi được báo rõ lý do cũ); audit runtime (Playwright, 11 icon,
+  hội tụ đúng tập static) + grep tĩnh mở rộng (46 icon/53→43 tổ hợp thật) trước khi build, đúng quy
+  trình đã đặt ra. **ĐÃ LÀM 2026-08-17**: migrate 63 chỗ `<i class="ph...">` sang `<svg><use>` +
+  sprite ngoài (không inline — quyết định lúc làm, xem chi tiết), 297 KB font → ~7 KB gzip sprite,
+  giữ nguyên file font gốc để rollback, `npm test` 1185/1185, xác minh 0 symbol thiếu qua Playwright
+  thật trên 5 trang `[Model: Sonnet 5]` — [chi tiết](docs/todo/B129-svg-icon-thay-phosphor-audit-truoc-khi-lam.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

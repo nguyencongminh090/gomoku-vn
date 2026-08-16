@@ -33,7 +33,7 @@
 }
 .detail-header__name { font-size: 26px; font-weight: 800; color: var(--c-ink); letter-spacing: -0.02em; }
 .detail-header__meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
-.detail-header__meta .ph { font-size: 14px; }
+.detail-header__meta .icon { font-size: 14px; }
 .detail-meta-item { font-size: 13px; color: var(--c-ink-2); display: flex; align-items: center; gap: 5px; }
 
 /* ── "Your turn" banner ───────────────────────────────────────────────── */
