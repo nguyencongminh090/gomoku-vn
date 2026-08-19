@@ -97,12 +97,33 @@ lại tunnel register.
 
 **Hạ ưu tiên sau khi đọc log** — mục này không còn là "sửa lỗi", chỉ còn là bảo trì:
 
-1. Nâng `cloudflared` 2026.7.3 → 2026.8.2 (log tự cảnh báo outdated). Không gấp.
+1. Nâng `cloudflared` 2026.7.3 → 2026.8.2 (log tự cảnh báo outdated). **2026-08-19: binary 2026.8.2
+   đã tải + verify (`--version` khớp, sha256 `fcfb02b5…`), chờ bước cài vì cần `sudo` có mật khẩu —
+   agent không hỏi mật khẩu, người dùng tự chạy.** Baseline trước khi nâng đã ghi bên dưới.
+
+   **Baseline 2026-08-19 23:5x (uptime 3d02h, trước khi nâng):**
+   `registerConnection=19`, `quic_client_closed_connections=16`,
+   `dropped_packets{initial,key_unavailable}=2560`, `lost_packets{timeout}=5/4/4/2`,
+   `ha_connections=4`, `total_requests=1588`. Sau khi nâng, đọc lại đúng 4 chỉ số này để so **theo
+   tỉ lệ trên đơn vị thời gian**, không so số tuyệt đối (bộ đếm reset về 0 khi restart).
+
+   Lưu ý: có **hai** binary, `/usr/bin/cloudflared` (systemd `ExecStart` dùng cái này) và
+   `/usr/local/bin/cloudflared` (`which` tìm thấy cái này) — cả hai đều 2026.7.3. Thay cả hai cho
+   khỏi lệch phiên bản về sau.
 2. **Không** đổi sang `--protocol http2` chỉ vì con số 19 — đã chứng minh đó là đóng bình thường
    phía edge. Chỉ cân nhắc nếu sau này thấy `Application error` với mã **khác 0x0**, hoặc thấy đứt
    **cả 4** connection cùng lúc, hoặc đứt trùng đúng thời điểm người chơi báo rớt.
-3. Phụ: host đang dùng **3.2 GB swap, chỉ còn ~1 GB RAM trống** (không phải do Node, RSS 113 MB) —
-   áp lực bộ nhớ này có thể gây spike độ trễ cho chính `cloudflared`. Tìm tiến trình đang chiếm RAM.
+3. ~~Phụ: áp lực bộ nhớ có thể gây spike độ trễ cho `cloudflared`~~ — **ĐÃ ĐO 2026-08-19, GIẢ
+   THUYẾT SAI, đóng mục này.** Đo `VmSwap` trực tiếp từng tiến trình:
+
+   | Tiến trình | RSS | Swap |
+   |---|---|---|
+   | `cloudflared` (pid 1590) | 47.9 MB | **2.6 MB** |
+   | `node server/index.js` (pid 37274) | 118.4 MB | **14.4 MB** |
+
+   Cả hai gần như không bị swap ⇒ áp lực bộ nhớ **không chạm tới** đường phục vụ. 3.3 GB swap là
+   của desktop: Firefox ~4.5 GB RSS, Antigravity IDE ~3.2 GB, KDE ~1.7 GB, node/claude ~2.0 GB.
+   Không có việc gì cần làm cho server; muốn lấy lại RAM thì đóng bớt tab/IDE, thuần desktop.
 
 ## Đánh giá hiệu quả / an toàn (sơ bộ, chưa làm)
 
