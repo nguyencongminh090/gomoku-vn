@@ -2,7 +2,7 @@
 
 **Trạng thái:** ✅ Đã sửa — **ĐÃ LÀM 2026-08-19** (`fix/socket-io-connect-timeout` off `dev`).
 
-Thêm `timeout: 8000` vào `io({...})` trong `client/js/socket-client.js` (đúng 1 dòng cấu hình + comment
+**Retune 2026-08-19 22:04: `8000` → `12000`** sau khi đo phân bố thật (xem cuối mục). Thêm `timeout` vào `io({...})` trong `client/js/socket-client.js` (đúng 1 dòng cấu hình + comment
 dẫn số đo), giữ nguyên thứ tự transport websocket-first và mọi tham số `reconnection*`. `?v=130→131`
 trên 17 file, grep còn đúng 1 giá trị.
 
@@ -70,3 +70,26 @@ Giảm `timeout` xuống 8 s cũng **thu hẹp** cửa sổ này (8 s thay vì 2
   tracking mà chưa kiểm tra. `client/tests/` đã tồn tại sẵn với 9 file jsdom test chạy trong
   `npm test`. Đã viết test thật (8 case) thay vì bỏ qua. Ghi lại đây làm bài học: kiểm `ls
   client/tests/` trước khi kết luận một tầng "không có test".
+
+## Retune 2026-08-19 22:04 — `8000` → `12000`
+
+Người dùng dán console log có 2 cặp `Firefox can't establish a connection to … wss://…`. Đo lại từ
+máy chủ mới lộ ra rằng **giá trị 8000 là sai**, không chỉ chưa tối ưu:
+
+- `mtr -n -r -c 30 1.1.1.1`: hop 1-5 (router nhà, modem, mạng truy nhập ISP) **0% loss**; từ hop 8
+  (`10.255.10.25`) trở đi **16.7% loss** liên tục. Ping router 0% / 1.5 ms, Wi-Fi −56 dBm ⇒ **không
+  phải Wi-Fi, không phải tunnel, không phải code** — mất gói nằm trong mạng nhà mạng.
+- `curl -w %{time_connect}` tới Google/GitHub/Cloudflare/site: 45 ms **hoặc** 3.1 / 4.1 / 5.2 / 7.6 /
+  11.7 s, với **mọi** đích ⇒ bậc thang SYN retransmit.
+- 12 lần bắt tay WebSocket qua Cloudflare: 1921 … 7948 ms, median **5074 ms**, max thành công
+  **7948 ms**.
+
+⇒ 8000 (hiệu chỉnh trên **một** mẫu HAR 2.9 s) nằm đúng trên đỉnh phân bố thành công. 12000 vượt hẳn
+bậc 7 s kể cả jitter, vẫn bỏ cuộc trước bậc 15 s.
+
+Cũng phát hiện **biên test cũ rỗng một nửa**: `expect(timeout).toBeGreaterThan(7948)` vẫn cho 8000
+lọt (thừa đúng 52 ms) — tức test không bắt được chính lỗi vừa sửa. Đã nâng lên `>10000`.
+
+Đo lại đường thất bại: **12 115 ms** (8000 → 8122 ms; mặc định → 20 120 ms). Luồng bình thường
+connect **767 ms**, `io._timeout = 12000`, 0 console error. `?v=131→132`.
+[fix-log](../fix-log/2026-08-19-todo-131-retune-timeout-12s.md)

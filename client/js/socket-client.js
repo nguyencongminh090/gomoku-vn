@@ -86,12 +86,25 @@ class SocketClient {
       // connected in 2.9 s. Total: ~24 s staring at "Đang kết nối…", 20 of them
       // spent waiting on an attempt that was already dead.
       //
-      // 8 s is ~2.7× the slowest handshake actually observed through the tunnel
-      // (2.9 s; a healthy one is ~200 ms, cf. `room.html` at wait=149 ms), so it
-      // does not cut short an attempt that would have succeeded — it only stops
-      // paying 20 s for one that would not. This does NOT fix the packet loss
-      // itself, which is on a leg the server has no control over.
-      timeout: 8000,
+      // 12 s comes from measuring the real distribution rather than that one
+      // HAR sample. `mtr` from the origin host found ~17% packet loss starting
+      // at the ISP's 8th hop (hops 1-5, home router and modem included, are
+      // clean), and 12 WebSocket handshakes through Cloudflare under it landed
+      // at 1.9 / 3.4 / 3.4 / 3.7 / 4.5 / 5.1 / 5.7 / 6.4 / 7.8 / 7.9 / 7.9 s.
+      //
+      // Those cluster on the SYN-retransmit ladder — 1 s, 3 s, 7 s, then 15 s —
+      // because a handshake needs both the SYN and the SYN-ACK to survive. So
+      // the useful thresholds are the gaps in that ladder, not round numbers:
+      // 12 s clears every attempt that gets through by the 7 s rung (measured
+      // max 7 948 ms) with room for jitter, and still gives up well before the
+      // 15 s rung, where waiting is strictly worse than retrying. An earlier
+      // revision of this line used 8 s, calibrated on the single 2.9 s sample
+      // in the HAR; that sits directly on top of the observed success
+      // distribution and would cut short attempts that were about to land.
+      //
+      // This does NOT fix the packet loss itself — that is upstream of the
+      // premises, on a leg neither the server nor the client controls.
+      timeout: 12000,
     });
 
     // ── Connection lifecycle ──────────────────────────────────────────

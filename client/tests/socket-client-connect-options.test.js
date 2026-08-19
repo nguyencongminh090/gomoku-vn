@@ -9,6 +9,11 @@
  * the client waited out the full 20 s, and the retry then connected in 2.9 s.
  * ~24 s on "Đang kết nối…", 20 of them spent on an attempt already dead.
  *
+ * The value was retuned 8 000 → 12 000 ms once the real distribution was
+ * measured (`mtr`: ~17% loss from the ISP's 8th hop; 12 handshakes spanning
+ * 1.9–7.948 s). 8 000 sat on top of that distribution and would have cut short
+ * attempts that were about to succeed.
+ *
  * This guards the whole connect-options object, not just `timeout`, because
  * every field in it is a measured decision that a later edit could quietly
  * undo — `transports` being websocket-first in particular is load-test output
@@ -76,16 +81,24 @@ describe('SocketClient connect options (TODO #131)', () => {
 
   // ── The fix itself ────────────────────────────────────────────────────────
   test('passes an explicit connect timeout instead of inheriting the 20 s default', () => {
-    expect(options.timeout).toBe(8000);
+    expect(options.timeout).toBe(12000);
   });
 
-  test('timeout leaves headroom over the slowest handshake actually observed (2.9 s)', () => {
-    // Below ~3 s would start cutting short attempts that do succeed through
-    // the tunnel; at/above 20 s the fix is undone. Guards the intent, not just
-    // the literal number, so a future retune has to stay inside the measured
-    // envelope.
-    expect(options.timeout).toBeGreaterThan(2900);
-    expect(options.timeout).toBeLessThan(20000);
+  test('timeout sits in the gap between the 7 s and 15 s SYN-retransmit rungs', () => {
+    // Guards the intent rather than the literal number, so a future retune has
+    // to stay inside the measured envelope. 12 handshakes through Cloudflare
+    // under ~17% upstream packet loss landed between 1.9 s and 7.948 s, and
+    // they cluster on the SYN-retransmit ladder (1 s, 3 s, 7 s, 15 s).
+    //
+    // Lower bound is 10 000, not the observed 7 948 ms max: clearing the
+    // measurement by a hairline is not headroom, and 7 948 ms was itself the
+    // largest of only 12 samples. The first revision of this fix used 8 000 ms
+    // — 52 ms of margin — and that is exactly the mistake this bound exists to
+    // catch, so it has to fail that value rather than squeak past it.
+    // Upper bound is the 15 s rung: past it, waiting beats retrying no more,
+    // and at 20 000 ms the fix is undone entirely.
+    expect(options.timeout).toBeGreaterThan(10000);
+    expect(options.timeout).toBeLessThan(15000);
   });
 
   // ── Everything the fix must NOT have disturbed ────────────────────────────
@@ -116,7 +129,7 @@ describe('SocketClient connect options (TODO #131)', () => {
   test('a leftover pre-#68 localStorage token still rides along as auth.token', () => {
     const { options: withLegacy } = constructAndCaptureOptions({ legacyToken: 'legacy-jwt' });
     expect(withLegacy.auth).toEqual({ token: 'legacy-jwt' });
-    expect(withLegacy.timeout).toBe(8000);
+    expect(withLegacy.timeout).toBe(12000);
   });
 
   test('no believed session → redirects to login without opening a socket at all', () => {
