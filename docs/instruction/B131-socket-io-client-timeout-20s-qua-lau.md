@@ -32,14 +32,23 @@ Hướng dẫn thực thi cho TODO.md #131 (chưa làm).
 
 ## Xác minh
 
-- **Không có test tự động cho `client/js/`** trong repo này — nói thẳng điều đó trong summary thay
-  vì im lặng bỏ qua (quy tắc `CLAUDE.md`). `npm test` vẫn phải chạy để chắc không vỡ gì phía server.
+- ~~Không có test tự động cho `client/js/`~~ — **sai, đã sửa lại**: `client/tests/` có sẵn 9 file
+  jsdom test chạy trong `npm test`. Viết test ở đó (mẫu: `room-slot-status-active-inactive.test.js`
+  — `window.eval(source)` với `io`/`GvnSession` stub). Kiểm chứng test không rỗng bằng cách bỏ bản
+  sửa ra và xác nhận nó fail.
 - Xác minh bằng trình duyệt thật: mở `room.html`, DevTools → Network, xác nhận vẫn kết nối bình
   thường và banner "Đang kết nối…" biến mất như cũ.
-- Muốn xác minh đúng *hành vi mới* (retry sau 8 s thay vì 20 s) thì phải mô phỏng mất kết nối lần
-  đầu — ví dụ chặn tạm host ở tầng mạng rồi mở lại — và đo bằng đồng hồ. Nếu không mô phỏng được,
-  ghi rõ "chưa xác minh được đường thất bại" thay vì tuyên bố đã xác minh.
-- Nếu dùng Playwright: theo `playwright-e2e-safety` skill — không chạm database thật.
+- Đường thất bại **mô phỏng được** bằng `context.routeWebSocket('**/socket.io/**', () => {})` —
+  Playwright nuốt handshake, tái tạo đúng kiểu WS#1 trong HAR (transport được chấp nhận nhưng gói
+  OPEN của engine.io không bao giờ tới) — rồi đo tới `connect_error` đầu tiên. Đã đo: 20 120 ms
+  (không sửa) → 8 122 ms (có sửa).
+- Playwright: theo `playwright-e2e-safety` skill. `DB_PATH` trong `server/db/database.js:18` là
+  **hard-code**, không có env override ⇒ đổi cổng thôi **không** đủ để tách DB. Cách đã dùng: copy
+  `client/ server/ package.json .env` sang scratchpad (loại `*.db`), symlink `node_modules`, đặt
+  `PORT`/`CORS_ORIGIN` riêng — instance tự tạo DB mới trong scratchpad.
+- **Lưu ý môi trường:** server thật serve trực tiếp từ `client/` trong chính checkout này, nên sửa
+  file client là live ngay với người chơi; branch không cô lập được. Bump `?v=` cùng lúc với sửa file
+  để trạng thái phát ra luôn nhất quán.
 
 ## Phạm vi KHÔNG làm
 

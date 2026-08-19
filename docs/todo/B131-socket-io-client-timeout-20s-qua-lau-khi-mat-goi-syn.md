@@ -1,6 +1,19 @@
 # #131 — `timeout` mặc định 20 s của socket.io-client quá lâu khi lần kết nối đầu bị mất gói
 
-**Trạng thái:** chưa làm.
+**Trạng thái:** ✅ Đã sửa — **ĐÃ LÀM 2026-08-19** (`fix/socket-io-connect-timeout` off `dev`).
+
+Thêm `timeout: 8000` vào `io({...})` trong `client/js/socket-client.js` (đúng 1 dòng cấu hình + comment
+dẫn số đo), giữ nguyên thứ tự transport websocket-first và mọi tham số `reconnection*`. `?v=130→131`
+trên 17 file, grep còn đúng 1 giá trị.
+
+- **8 test mới** `client/tests/socket-client-connect-options.test.js`; `npm test` **1193/1193**
+  (trước: 1185). Đã kiểm chứng test không rỗng: bỏ bản sửa ra thì **4/8 fail**.
+- **Đo được cả đường thất bại** trên instance cô lập (copy repo + DB tạm + cổng 3111, không đụng
+  DB/server thật đang có người chơi), mô phỏng đúng kiểu WS#1 trong HAR bằng `ctx.routeWebSocket`
+  nuốt handshake: **20 120 ms → 8 122 ms**, tiết kiệm **~12,0 giây**.
+- Luồng thật guest → tạo phòng → `room.html`: connect **839 ms**, `io._timeout = 8000` (socket.io
+  thật sự nhận option), transport `websocket`, banner không kẹt, **0 console error**.
+- Chi tiết: [fix-log](../fix-log/2026-08-19-todo-131-socket-io-connect-timeout.md).
 
 **Nguồn:** cùng phân tích HAR với #130 (`play3cr.dpdns.org_Archive [26-08-19 20-49-17].har`,
 `room.html?id=#JGY`, 2026-08-19 20:47:48 +07). Đây là phần **duy nhất** cải thiện được bằng code
@@ -53,5 +66,7 @@ Giảm `timeout` xuống 8 s cũng **thu hẹp** cửa sổ này (8 s thay vì 2
 - **An toàn:** thấp rủi ro — 1 dòng cấu hình client. Rủi ro duy nhất: nếu có người chơi ở mạng thật
   sự tệ hơn mẫu đo (handshake > 8 s), họ sẽ retry sớm hơn thay vì chờ — vẫn đúng hành vi mong muốn
   vì `reconnectionAttempts: Infinity` đã bật sẵn.
-- **Test:** `client/js/` hiện **không có hạ tầng test tự động** trong repo này, nên không viết được
-  unit test cho thay đổi này — phải xác minh bằng trình duyệt thật (xem file instruction).
+- **Test:** ~~`client/js/` không có hạ tầng test tự động~~ — **tuyên bố này SAI**, viết lúc ghi
+  tracking mà chưa kiểm tra. `client/tests/` đã tồn tại sẵn với 9 file jsdom test chạy trong
+  `npm test`. Đã viết test thật (8 case) thay vì bỏ qua. Ghi lại đây làm bài học: kiểm `ls
+  client/tests/` trước khi kết luận một tầng "không có test".

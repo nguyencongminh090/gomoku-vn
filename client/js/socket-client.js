@@ -76,6 +76,22 @@ class SocketClient {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      // How long one connection *attempt* may hang before it is abandoned and
+      // the reconnect loop above takes over. socket.io's default is 20 000 ms,
+      // which is the entire user-visible cost when the first attempt dies:
+      // measured in a HAR from a real player (TODO.md #131, 2026-08-19), the
+      // first WebSocket sat unanswered — `blocked=44 616 ms, connect=7 196 ms`,
+      // the SYN-retransmit signature of packet loss on the browser↔Cloudflare
+      // edge leg — the client waited out the full 20 s, and the retry then
+      // connected in 2.9 s. Total: ~24 s staring at "Đang kết nối…", 20 of them
+      // spent waiting on an attempt that was already dead.
+      //
+      // 8 s is ~2.7× the slowest handshake actually observed through the tunnel
+      // (2.9 s; a healthy one is ~200 ms, cf. `room.html` at wait=149 ms), so it
+      // does not cut short an attempt that would have succeeded — it only stops
+      // paying 20 s for one that would not. This does NOT fix the packet loss
+      // itself, which is on a leg the server has no control over.
+      timeout: 8000,
     });
 
     // ── Connection lifecycle ──────────────────────────────────────────
