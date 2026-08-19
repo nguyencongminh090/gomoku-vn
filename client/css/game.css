@@ -629,25 +629,48 @@
     white-space: nowrap;
   }
 
-  /* Controls must shrink to fit the row, not overflow off-screen. Width is
-     inset by the same 32px .board-area-shell over-bleeds by, so the row
+  /* Row is inset by the same 32px .board-area-shell over-bleeds by, so it
      lands flush with the true viewport edges — matching the canvas above
-     it — instead of bleeding past the screen like the shell itself does. */
+     it — instead of bleeding past the screen like the shell itself does.
+     Buttons no longer wrap to a second row (TODO.md #132): with 4 buttons,
+     wrapping pushed a lone full-width button onto its own row, costing
+     vertical space on short phones. Instead the row scrolls horizontally
+     like a slider, scoped to this element only — the page itself never
+     scrolls. The last button is deliberately left un-shrunk so it clips at
+     the edge when there's overflow, signalling "more to the right" without
+     a separate gradient/affordance element. */
   .game-controls {
     width: calc(100% - 32px);
     max-width: 100%;
     margin: 10px auto 0 auto;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    /* Base rule (desktop) sets justify-content: center — harmless there
+       since it never overflows, but on a scrollable overflowing flex row
+       it centers the flex line and splits the overflow across BOTH ends.
+       scrollLeft can't go negative, so the left half becomes permanently
+       unreachable (first button rendered pre-clipped, no way to scroll to
+       it) — must be flex-start here so scrollLeft: 0 shows the true start
+       and everything is reachable by scrolling right. */
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .game-controls::-webkit-scrollbar {
+    display: none;
   }
 
   .btn-game {
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: 92px;
     min-height: 44px;
-    flex: 1 1 30%;
     font-size: 12px;
-    padding: 10px 6px;
+    padding: 10px 10px;
     letter-spacing: 0.3px;
+    scroll-snap-align: start;
   }
 
   /* Chat messages height in mobile panel */

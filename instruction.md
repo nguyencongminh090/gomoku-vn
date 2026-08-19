@@ -246,3 +246,20 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   (yêu cầu người dùng sau phân tích HAR, TODO.md #129) — [chi
   tiết](docs/instruction/B129-svg-icon-thay-phosphor-audit-truoc-khi-lam.md)
 - **B131.** (Chưa làm) `timeout: 8000` cho `io({...})` trong `client/js/socket-client.js` — đúng 1 dòng; **giữ nguyên** `transports: ['websocket','polling']` + `tryAllTransports` (đã đo, comment tại chỗ) dù websocket là thứ chậm trong HAR — mất gói ở tầng TCP/SYN nên polling-first dính y hệt; giữ nguyên mọi tham số `reconnection*`; không sửa eviction/`session:kicked` ở `SocketHandler.js` "cho chắc"; bump `?v=130→131` toàn bộ và verify bằng grep; `client/js/` không có test tự động — nói rõ điều đó thay vì bỏ qua im lặng (TODO.md #131) — [chi tiết](docs/instruction/B131-socket-io-client-timeout-20s-qua-lau.md)
+- **B132.** (Chưa làm) `.game-controls`/`.btn-game` trong `client/css/game.css`, block `@media
+  (max-width: 768px)` quanh dòng 636-651 — bỏ `flex-wrap: wrap`, chuyển sang `overflow-x: auto` +
+  `scroll-snap-type: x proximity` scoped đúng `#game-controls`, không đụng `.room`/ancestor nào khác
+  (yêu cầu người dùng: "chỉ cuộn khối chứa button, không cuộn cả trang"); nút không co ép
+  (`flex: 0 0 auto; min-width` đủ chứa text ngắn nhất), nút cuối cố ý không set width bằng nhau để
+  tự cắt hụt làm gợi ý còn nội dung khi tràn — không thêm gradient/overlay riêng; **bẫy đã gặp lúc
+  làm thật**: `.game-controls` base rule (desktop, dòng ~181-190) có `justify-content: center` —
+  trên container overflow có thể cuộn, `center` làm trình duyệt cắt nội dung **đối xứng cả 2 đầu**
+  ngay tại `scrollLeft: 0`, khiến nút đầu tiên bị pre-clip và **không cách nào cuộn tới được**
+  (`scrollLeft` không âm được) — phải override `justify-content: flex-start` riêng cho breakpoint
+  mobile; không đụng `room-zen.css` (zen skin không set `flex-wrap` riêng nên thừa hưởng rule này,
+  không cần sửa thêm chỗ khác) nhưng vẫn phải verify bằng DOM thật với `body.zen-room` vì đó là skin
+  mặc định của `room.html`; verify bắt buộc bằng Playwright đo `getBoundingClientRect()` ở cả
+  `scrollLeft: 0` và `scrollLeft: max` (không chỉ nhìn ảnh chụp) để xác nhận nút đầu/cuối đều tới
+  được trọn vẹn, cộng `window.scrollY` không đổi khi cuộn container; bump `?v=N` toàn bộ và verify
+  bằng grep (TODO.md #132) — [chi
+  tiết](docs/instruction/B132-game-controls-cuon-ngang-1-hang-thay-vi-wrap-2-hang.md)
