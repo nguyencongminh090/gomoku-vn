@@ -37,6 +37,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **A6.** Kiến trúc scale quá 1 tiến trình (từ stress test 2026-08-02) — [chi tiết](docs/instruction/A6-kien-truc-scale-qua-1-tien-trinh-tu-stress-test-2026-08-02.md)
 - **A7.** Đo lại tải bằng harness đa tiến trình (từ stress test 2026-08-02) — [chi tiết](docs/instruction/A7-do-lai-tai-bang-harness-da-tien-trinh-tu-stress-test-2026.md)
 - **A8.** Quan sát heap/GC của server đang chạy (từ stress test 2026-08-02) — [chi tiết](docs/instruction/A8-quan-sat-heap-gc-cua-server-dang-chay-tu-stress-test-2026.md)
+- **A130.** Tunnel `cloudflared` — **đã điều tra xong, không phải lỗi**; giữ file làm bản ghi âm tính để chặn điều tra lặp. Bài học phương pháp: metrics chỉ nói *bao nhiêu lần*, `journalctl -u cloudflared` mới nói *vì sao / lúc nào* — đọc log trước khi kết luận. KHÔNG đổi `--protocol http2` dựa trên số lần re-register (TODO.md #130) — [chi tiết](docs/instruction/A130-cloudflared-quic-flap-chuyen-sang-protocol-http2.md)
 
 ## Phần B (sửa bằng code) — hướng dẫn cho từng mục
 - **B1.** Restart-hang else branch (review 5.1) — [chi tiết](docs/instruction/B1-restart-hang-else-branch-review-5-1.md)
@@ -244,3 +245,4 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   bằng kiểm tra khách quan "0 phần tử `.ph-*` còn sót" sau migrate, không phải "nhìn qua thấy ổn"
   (yêu cầu người dùng sau phân tích HAR, TODO.md #129) — [chi
   tiết](docs/instruction/B129-svg-icon-thay-phosphor-audit-truoc-khi-lam.md)
+- **B131.** (Chưa làm) `timeout: 8000` cho `io({...})` trong `client/js/socket-client.js` — đúng 1 dòng; **giữ nguyên** `transports: ['websocket','polling']` + `tryAllTransports` (đã đo, comment tại chỗ) dù websocket là thứ chậm trong HAR — mất gói ở tầng TCP/SYN nên polling-first dính y hệt; giữ nguyên mọi tham số `reconnection*`; không sửa eviction/`session:kicked` ở `SocketHandler.js` "cho chắc"; bump `?v=130→131` toàn bộ và verify bằng grep; `client/js/` không có test tự động — nói rõ điều đó thay vì bỏ qua im lặng (TODO.md #131) — [chi tiết](docs/instruction/B131-socket-io-client-timeout-20s-qua-lau.md)

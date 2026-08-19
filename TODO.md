@@ -54,6 +54,9 @@ dùng), và danh sách model khả dụng cũng có thể đã đổi theo thờ
 ### Nguồn: `gomoku-vn-review-2026-08-14.md` vòng 4, mục 13.9b (2026-08-14, đối chiếu code 2026-08-15)
 - **#125.** Cloudflare xoá `ETag` của HTML khi tự nén lại — cần bật "Respect Strong ETags" trên dashboard Cloudflare để khôi phục; không hỏng gì hiện tại (`If-Modified-Since` vẫn trả 304), không gấp `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A125-cloudflare-respect-strong-etags-cho-html.md)
 
+### Nguồn: phân tích 2 file HAR + log/metrics `cloudflared` — "connection looks slow, CPU ran for 2 day" (2026-08-19)
+- ✅ **#130.** Tunnel `cloudflared` re-register 19 lần / 3 ngày — **điều tra xong 2026-08-19, KHÔNG phải lỗi và không phải nguyên nhân site chậm**: log cho thấy toàn bộ là `Application error 0x0 (remote)` = Cloudflare edge chủ động đóng bình thường, mỗi lần chỉ 1/4 connection, nối lại 1–14 s, lần gần nhất cách thời điểm chụp HAR 12 tiếng; con số 19 chỉ là bộ đếm tích luỹ theo uptime, không phải hệ quả của "chạy lâu". Origin Node cũng nhàn rỗi (10 s CPU / 2,6 ngày, `cfOrigin;dur=63`). Nguyên nhân thật của 24 s chờ nằm ở chặng trình duyệt ↔ Cloudflare edge (mất gói SYN, `connect=7196ms`) + `timeout` 20 s phía client (#131). Còn lại: nâng `cloudflared` 2026.7.3→2026.8.2, không gấp `[Model: Opus 5]` — [chi tiết](docs/todo/A130-cloudflared-quic-flap-chuyen-sang-protocol-http2.md)
+
 ## Phần B — Sửa được bằng code, đang chờ làm
 
 ### Nguồn: `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
@@ -394,6 +397,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   sprite ngoài (không inline — quyết định lúc làm, xem chi tiết), 297 KB font → ~7 KB gzip sprite,
   giữ nguyên file font gốc để rollback, `npm test` 1185/1185, xác minh 0 symbol thiếu qua Playwright
   thật trên 5 trang `[Model: Sonnet 5]` — [chi tiết](docs/todo/B129-svg-icon-thay-phosphor-audit-truoc-khi-lam.md)
+
+### Nguồn: phân tích 2 file HAR người dùng cung cấp — "connection looks slow" (2026-08-19), phần sửa được bằng code
+- **#131.** `client/js/socket-client.js` không đặt `timeout` nên dùng mặc định 20 000 ms của socket.io-client — trong HAR, lần handshake đầu chết vì mất gói SYN, người chơi chờ đủ 20 s rồi lần thử lại chỉ mất 2.9 s là xong (tổng ~24 s treo ở "Đang kết nối…"); đặt `timeout: 8000` + bump `?v=130→131` toàn bộ. Chỉ là giảm thiệt hại, nguyên nhân gốc là #130; `client/js/` chưa có hạ tầng test tự động nên phải xác minh bằng trình duyệt thật `[Model: Opus 5]` — [chi tiết](docs/todo/B131-socket-io-client-timeout-20s-qua-lau-khi-mat-goi-syn.md)
 
 ---
 
