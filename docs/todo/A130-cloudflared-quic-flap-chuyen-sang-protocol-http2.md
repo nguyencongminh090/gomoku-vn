@@ -97,9 +97,8 @@ lại tunnel register.
 
 **Hạ ưu tiên sau khi đọc log** — mục này không còn là "sửa lỗi", chỉ còn là bảo trì:
 
-1. Nâng `cloudflared` 2026.7.3 → 2026.8.2 (log tự cảnh báo outdated). **2026-08-19: binary 2026.8.2
-   đã tải + verify (`--version` khớp, sha256 `fcfb02b5…`), chờ bước cài vì cần `sudo` có mật khẩu —
-   agent không hỏi mật khẩu, người dùng tự chạy.** Baseline trước khi nâng đã ghi bên dưới.
+1. Nâng `cloudflared` 2026.7.3 → 2026.8.2 (log tự cảnh báo outdated). **✅ ĐÃ LÀM 2026-08-19 23:56** (người dùng tự chạy phần
+   `sudo`; agent tải + verify binary và xác minh sau khi cài). Baseline trước khi nâng đã ghi bên dưới.
 
    **Baseline 2026-08-19 23:5x (uptime 3d02h, trước khi nâng):**
    `registerConnection=19`, `quic_client_closed_connections=16`,
@@ -140,3 +139,39 @@ lại tunnel register.
 HAR của Firefox không lưu WebSocket frame (`_webSocketMessages` không có), nên **không đo được độ
 trễ nước đi trong ván** từ 2 file này. Nếu cần con số đó phải đo phía server hoặc chụp lại có bật
 ghi frame — đừng suy ra từ HAR hiện tại.
+
+## Kết quả nâng `cloudflared` — 2026-08-19 23:56
+
+Cài `2026.7.3` → `2026.8.2` trên **cả hai** đường dẫn (`/usr/bin`, `/usr/local/bin`), backup
+`/usr/bin/cloudflared.2026.7.3.bak` còn nguyên để rollback. Restart lúc lobby trống.
+
+Xác minh ngay sau restart:
+
+| Kiểm tra | Kết quả |
+|---|---|
+| `--version` cả 2 binary | `2026.8.2 (built 2026-08-14)` |
+| `systemctl is-active` | `active`, MainPID mới 571356 |
+| Đăng ký lại tunnel | **4/4 connection trong 3 giây** (23:56:33→36), sin15/sin21/sin14/sin20 |
+| `/ready` | `{"status":200,"readyConnections":4}` |
+| `registerConnection` | 4 (baseline sạch, bộ đếm reset) |
+| Site qua tunnel | HTTP 200, tcp=56 ms, tls=120 ms, ttfb=253 ms |
+| `node server/index.js` | **không restart**, uptime liên tục 2d18h — đúng phạm vi "KHÔNG làm" |
+
+### ⚠️ Không quy công cho bản nâng — mạng đã tự hồi phục cùng lúc
+
+Đo lại 12 lần bắt tay WebSocket sau khi nâng: **12/12 thành công, median 256 ms, max 1293 ms**
+(trước: 11/12, median 5074 ms, max 7948 ms). Nhìn qua tưởng bản nâng có công.
+
+**Không phải.** Kiểm tra tầng dưới ngay sau đó: `mtr -c 30 1.1.1.1` giờ **0% loss toàn tuyến**, và
+TCP connect tới Google/GitHub/Cloudflare đều đều 35–55 ms, không còn bậc SYN retransmit nào. Tức
+**đợt mất gói ~17% của nhà mạng đã tự hết** trong khoảng 22:00→23:56, cùng cửa sổ với lần nâng.
+
+⇒ Cải thiện là do **mạng hồi phục**, không phải do `cloudflared` mới. Bản nâng đúng như dự đoán ban
+đầu: **bảo trì thuần, hiệu quả ~0** với triệu chứng đã báo cáo. Ghi lại để lần sau không ai đọc cặp
+số 5074→256 rồi kết luận sai nhân quả.
+
+### Hệ quả cho TODO.md #131
+
+Đợt mất gói là **tạm thời** (giờ cao điểm tối), không phải hỏng cố định của nhà mạng. Muốn khiếu nại
+ISP thì phải đo lại đúng khung giờ đó, không đo lúc mạng đang tốt. `timeout: 12000` vẫn giữ nguyên —
+nó chỉ có tác dụng lúc mạng xấu, đúng lúc cần, và vô hại lúc mạng tốt (bắt tay 240–1293 ms).
