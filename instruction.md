@@ -336,3 +336,11 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   tư cho class đang là tâm điểm #134/#136 và nuốt lựa chọn thủ công của người dùng. Verify bằng
   **chạm thật** `page.click('#start-modal-btn')`; `el.click()` qua `evaluate` bỏ qua hit-testing nên
   pass giả — [chi tiết](docs/instruction/B139-mobile-nut-bat-dau-bi-bottom-sheet-che.md)
+- **B141.** Tách bạch hai phần: đua `?id=` là **bug thật của spec**, sửa một dòng
+  (`waitForURL(/room\.html\?id=/)`), không cần hỏi; còn `authLimiter` 20/15 phút và
+  `MAX_ROOMS_PER_IP=3` **không phải bug** mà là chống lạm dụng có chủ đích (`docs/todo/B07-*.md`) —
+  chốt cách nới **chỉ cho harness** với người dùng trước, đừng hạ ngưỡng mặc định. Đừng thay
+  `waitForURL` bằng `waitForTimeout` (che cuộc đua, không loại bỏ). Khi một spec e2e fail, khởi động
+  lại server (store limiter nằm trong bộ nhớ) rồi chạy **riêng** spec đó trước khi kết luận hồi quy —
+  [chi tiết](docs/instruction/B141-e2e-flaky-room-url-race-va-rate-limit.md)
+

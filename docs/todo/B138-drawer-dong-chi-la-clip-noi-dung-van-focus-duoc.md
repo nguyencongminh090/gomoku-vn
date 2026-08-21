@@ -1,6 +1,6 @@
 # #138 — Drawer "đóng" chỉ là cắt xén: nội dung vẫn nằm trong tab-order và accessibility tree
 
-**Trạng thái:** ⏳ Chưa làm.
+**Trạng thái:** ✅ Đã sửa (2026-08-22).
 
 **Nguồn:** quan sát thứ 2 của người dùng khi reopen #134 (2026-08-21): *"khi collapse (thu gọn)
 sidebar vào, dùng developer tool vẫn thấy được khung chat, ..."* — kèm ảnh DevTools highlight
@@ -71,3 +71,53 @@ btn-settings → 4× .btn-game → #start-modal-btn → 3× .tab-btn [rail]
 Người dùng bàn phím gõ được vào một ô chat hoàn toàn không nhìn thấy. Rail vẫn focus được (đúng, phải
 giữ nguyên). Đã kiểm tra thêm: phần bị cắt nằm ở phía inline-start nên trình duyệt **không** cuộn tới
 được ⇒ focus vào đó **không** làm rail xê dịch — loại bỏ khả năng đây là nguồn của #136.
+
+---
+
+## Bản sửa — 2026-08-22
+
+`inert` là thuộc tính DOM nên chỉ đặt được từ JS. Thay vì thêm lời gọi rải rác ở **cả 3** nơi đổi
+class (đúng loại "nguồn sự thật thứ tư" mà `docs/instruction/B138-*.md` cảnh báo), gom lại thành
+**một người ghi duy nhất** trong `client/js/room.js`:
+
+```js
+function syncDrawerInert() { /* .panel-players + mọi .tab-content ← inert */ }
+function setDrawerCollapsed(collapsed) {
+  document.body.classList.toggle('zen-drawer-collapsed', collapsed);
+  syncDrawerInert();
+}
+window.RoomDrawer = { setCollapsed: setDrawerCollapsed, syncInert: syncDrawerInert };
+```
+
+Cả 3 nơi đều đi qua hàm này: handler breakpoint (#134), handler click tab (#136), và
+`room-socket.js` (tự thu gọn trên mobile khi `game:init`). Class và `inert` không thể lệch pha vì
+chúng được ghi trong cùng một hàm.
+
+**Ràng buộc đã giữ đúng:**
+
+- `.sidebar-tabs` (rail) **không bao giờ** `inert` — có test riêng khẳng định điều này ở cả 3 lần
+  đổi trạng thái liên tiếp.
+- Chỉ đặt `inert` khi có **cả** `zen-room` **và** `zen-drawer-collapsed`: ngoài zen skin class này
+  không có CSS tương ứng nên nội dung vẫn hiện, làm nó `inert` sẽ giấu nội dung người dùng đang thấy.
+- Không gate theo media query ⇒ mobile (sheet `translateY` ra ngoài màn hình) được xử lý y hệt.
+- Focus đang nằm trong vùng sắp thành `inert` được trả về **nút rail của đúng tab đang mở** trước
+  khi thuộc tính rơi xuống, không để rơi về `<body>`.
+- Không đụng `overflow:hidden` / `justify-content:flex-end` / chiều rộng `.panel-right` — cơ chế
+  hình ảnh giữ nguyên, #138 chỉ bổ sung nửa ngữ nghĩa còn thiếu.
+
+### Đo bằng Playwright (instance cô lập, đi Tab thật từ `#btn-leave`)
+
+| Viewport | Trước | Sau |
+|---|---|---|
+| desktop 1440×900 | **2 điểm dừng vô hình**: `INPUT#chat-input`, `BUTTON#btn-send` | **0** |
+| mobile 393×727 | **2 điểm dừng vô hình**: `INPUT#chat-input`, `BUTTON#btn-send` | **0** |
+
+Rail vẫn đi tới được bằng Tab ở cả hai (bắt buộc — là cách duy nhất mở lại drawer), và trên mobile
+`#quick-chat-input`/`#quick-chat-send` vẫn nằm trong tab-order (chúng cố ý nằm ngoài
+`.panel-right-shell`). Mở lại drawer: `inert` được gỡ, gõ và gửi chat thật thành công, 0 console
+error. §B36 kiểm lại trực tiếp trên bản đã sửa (desktop + mobile): lúc start-modal hiện thì drawer
+đang **mở** ⇒ không có gì `inert`, ghế đứng dậy và chat đều hoạt động.
+
+14 test jsdom mới `client/tests/room-drawer-inert.test.js` (bảng quyết định class × phần tử, rail
+không bao giờ `inert`, cả 3 nơi ghi class, trao trả focus). `npm test` 1227/1227. `?v=` 142→143 —
+[fix-log](../fix-log/2026-08-22-todo-138-drawer-inert-when-collapsed.md)

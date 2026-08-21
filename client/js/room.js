@@ -122,6 +122,62 @@ function refitBoardAfterDrawer() {
   setTimeout(refit, 400);   // just past the 0.35s transition
 }
 
+// Collapsing the drawer is a purely VISUAL clip: .panel-right-shell shrinks to
+// the rail width while .panel-right keeps its full width inside it, so
+// overflow:hidden cuts the content off at the inline-start edge and
+// justify-content:flex-end leaves the rail showing (room-zen.css — deliberate,
+// it avoids reflowing the text every time the drawer animates). Nothing in that
+// removes the clipped content from the page: measured with Playwright, Tab from
+// the topnav still walked into #chat-input and #btn-send while they were
+// invisible, and a screen reader still read the whole closed drawer
+// (TODO.md #138).
+//
+// `inert` is the missing half — a DOM attribute, not a style, so it can only be
+// applied from here. Applied to the content columns only: .sidebar-tabs (the
+// rail) must stay focusable, since its buttons are the sole way to open the
+// drawer again. Mobile ≤768px uses the same class with a different mechanism
+// (transform:translateY on the sheet), so the content is off-screen rather than
+// clipped — same semantics needed, hence no media-query gate here.
+const DRAWER_CONTENT_SELECTOR = '.panel-right .panel-players, .panel-right .tab-content';
+
+function syncDrawerInert() {
+  // .zen-drawer-collapsed has no matching CSS outside room-zen.css, so on other
+  // skins the content is fully visible and must never be made inert.
+  const hide = document.body.classList.contains('zen-room')
+            && document.body.classList.contains('zen-drawer-collapsed');
+  const regions = document.querySelectorAll(DRAWER_CONTENT_SELECTOR);
+
+  // Making the element holding focus inert drops focus to <body>, which strands
+  // a keyboard user with no position in the page. Hand it to the rail button
+  // for the tab they were on — the one control that stays reachable — before
+  // the attribute lands.
+  if (hide) {
+    const active = document.activeElement;
+    for (const region of regions) {
+      if (active && region.contains(active)) {
+        const rail = document.querySelector('.tab-btn--active') || document.querySelector('.tab-btn');
+        if (rail) rail.focus();
+        break;
+      }
+    }
+  }
+
+  regions.forEach(region => { region.inert = hide; });
+}
+
+// The single writer for .zen-drawer-collapsed. #136 was caused by two code
+// paths disagreeing about the drawer's state; `inert` has to stay in step with
+// the class from all three places that move it (the breakpoint handler and the
+// tab click below, plus room-socket.js's mobile auto-collapse on game:init), so
+// they all go through here rather than each remembering to sync afterwards.
+function setDrawerCollapsed(collapsed) {
+  document.body.classList.toggle('zen-drawer-collapsed', collapsed);
+  syncDrawerInert();
+}
+
+window.RoomDrawer = { setCollapsed: setDrawerCollapsed, syncInert: syncDrawerInert };
+syncDrawerInert();   // match whatever state the document loaded in
+
 // room-socket.js's game:init handler auto-collapses the drawer with a
 // one-time `matchMedia('(max-width: 768px)').matches` check — nothing else
 // ever undoes that, so if the viewport happened to be narrow for even a
@@ -134,7 +190,7 @@ function refitBoardAfterDrawer() {
 const drawerBreakpoint = window.matchMedia('(max-width: 768px)');
 drawerBreakpoint.addEventListener('change', (e) => {
   if (!e.matches && document.body.classList.contains('zen-drawer-collapsed')) {
-    document.body.classList.remove('zen-drawer-collapsed');
+    setDrawerCollapsed(false);
     if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
   }
 });
@@ -195,9 +251,9 @@ if (!document.body.dataset.roomTabsBound) {
       // always re-opens it. .zen-drawer-collapsed has no matching CSS outside
       // room-zen.css, so this is a no-op on other skins.
       if (alreadyActive) {
-        document.body.classList.toggle('zen-drawer-collapsed', !collapsedNow);
+        setDrawerCollapsed(!collapsedNow);
       } else {
-        document.body.classList.remove('zen-drawer-collapsed');
+        setDrawerCollapsed(false);
       }
 
       // Opening/collapsing the desktop drawer changes .board-area-shell's
