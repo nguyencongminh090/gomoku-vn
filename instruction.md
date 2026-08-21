@@ -263,3 +263,12 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   được trọn vẹn, cộng `window.scrollY` không đổi khi cuộn container; bump `?v=N` toàn bộ và verify
   bằng grep (TODO.md #132) — [chi
   tiết](docs/instruction/B132-game-controls-cuon-ngang-1-hang-thay-vi-wrap-2-hang.md)
+- **B133.** (Chưa làm) 2 phần độc lập. (1) Grid line nhạt — `board.js:586-588`, chỉ đổi alpha
+  nhánh `else` (không phải `stone`), **chờ người dùng tự chốt số** trước khi sửa, đừng tự chọn. (2)
+  Bàn cờ nhỏ mobile — `resize()` dòng 203-231: trước khi đổi số phải đo thực tế xem 4 số hạng
+  `14+16+12+8` (budget skin non-zen) có bị double-count với `padY` đã trừ riêng trong nhánh zen room
+  hay không (nghi vấn, chưa xác nhận); không xoá trắng toàn bộ safety margin, chỉ bớt phần trùng;
+  không đụng nhánh `singleColumn` non-zen. Cả 2 phần: `client/js/` không có test tự động — verify
+  bằng Playwright/DevTools thật trên viewport hẹp, không chỉ nhìn ảnh; bump `?v=N` nếu sửa
+  `board.js`/`room-zen.css` (TODO.md #133) — [chi
+  tiết](docs/instruction/B133-mobile-grid-line-nhat-va-ban-co-nho.md)

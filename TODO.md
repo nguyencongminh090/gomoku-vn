@@ -404,6 +404,12 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng — phản hồi trực tiếp trên chụp màn hình phòng chơi iPhone (2026-08-19)
 - ✅ **#132.** `#game-controls` (4 nút Đầu hàng/Đề nghị hoà/Xin thêm giờ/Xin đi lại) `flex-wrap: wrap` trên mobile khiến nút thứ 4 rớt xuống hàng riêng full-width, tốn chiều cao dọc trên điện thoại nhỏ — người dùng đề xuất trực tiếp: gộp 1 hàng cố định, cho cuộn ngang cục bộ trong khối nút (không cuộn cả trang), kiểu slider. **ĐÃ LÀM 2026-08-19**: `client/css/game.css` mobile breakpoint đổi `flex-wrap: wrap` → `nowrap` + `overflow-x: auto` + `scroll-snap-type: x proximity`, nút không co ép (`flex: 0 0 auto; min-width: 92px`), nút cuối cố ý cắt hụt khi tràn để gợi ý còn nội dung; Playwright phát hiện và sửa 1 bug thật lúc verify: `justify-content: center` kế thừa từ rule desktop khiến overflow bị cắt **đối xứng cả 2 đầu** ở `scrollLeft: 0` (nút đầu bị pre-clip, không cách nào cuộn tới) — thêm `justify-content: flex-start` cho đúng breakpoint mobile; xác minh bằng Playwright trên instance cô lập (copy repo + DB tạm + cổng 3111, không đụng server/DB thật đang có người chơi) qua trang test tĩnh load đúng CSS thật, đo `getBoundingClientRect()` ở `scrollLeft: 0` và `scrollLeft: max` xác nhận nút đầu/cuối đều tới được trọn vẹn + `window.scrollY` không đổi khi cuộn container (đúng yêu cầu "chỉ cuộn khối nút"); `?v=132→133` `[Model: Opus 5]` — [chi tiết](docs/todo/B132-game-controls-cuon-ngang-1-hang-thay-vi-wrap-2-hang.md)
 
+### Nguồn: báo cáo trực tiếp người dùng qua chụp màn hình mobile (2026-08-21)
+- **#133.** Mobile: đường kẻ bàn cờ (`board.js:586-588`, alpha 0.22 chế độ standard/caro) nhạt màu
+  + bàn cờ nhỏ do padding tích luỹ qua nhiều lớp trong `resize()` (nghi vấn double-count 50px safety
+  budget của skin non-zen bị tái dùng trong nhánh zen room, `board.js:228-229`) — người dùng tự chốt
+  giá trị alpha mới sau khi tự kiểm tra UI, chưa sửa `[Model: Sonnet 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
