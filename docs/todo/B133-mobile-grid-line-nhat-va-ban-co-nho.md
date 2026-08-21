@@ -4,10 +4,12 @@
 small" / "đường kẻ (grid) trong bàn nhạt màu và bàn cờ nhỏ") kèm ảnh so sánh desktop (bàn cờ tràn
 viền tốt) và devtools element inspector.
 
-**Trạng thái:** ✅ Đã sửa 2026-08-21 (`fix/mobile-board-grid-and-size` off `main`). Grid line alpha
-0.22→0.4 — **chưa phải giá trị người dùng tự chốt**, người dùng nói sẽ tự kiểm tra UI và có thể yêu
-cầu chỉnh tiếp. Bàn cờ mobile: xác nhận double-count 48px và sửa, đo được +18% kích thước trên
-viewport height-bound. Chi tiết đo đạc:
+**Trạng thái:** ✅ Đã sửa 2026-08-21, **2 vòng** (`fix/mobile-board-grid-and-size` off `main`).
+Vòng 1: grid line alpha 0.22→0.4 (người dùng đã xem trên máy thật và **xác nhận màu đạt**) + trục
+dọc `viewportBudget` bỏ double-count 48px. Vòng 2 (sau khi người dùng đo trên điện thoại thật, thấy
+canvas 476 / shell 500): trục **ngang** còn 24px — side padding 8px/bên trong `room-zen.css` mobile
++ `- 8` thừa trong `maxVw` của `board.js`; đã bỏ cả hai cho zen mobile, bàn cờ nay tràn sát mép
+(390 viewport → wrap 0–390). Chi tiết đo đạc:
 [fix-log](../fix-log/2026-08-21-todo-133-mobile-grid-line-board-size.md).
 
 ## #133. Hai vấn đề riêng biệt, cùng do layer khác nhau gây ra
@@ -45,9 +47,27 @@ Người dùng tự nhận định đúng hướng: "Bàn cờ nhỏ do padding 
     + ... + safety (8)"), bị tái dùng nguyên trong nhánh tính `viewportBudget` cho zen room dù zen
     đã tự trừ padding thật (`padY`) ở số hạng ngay trước.
 
-**Đã sửa:** thay `- 14 - 16 - 12 - 8` bằng đúng overhead zen-specific đã tính ở nhánh phía trên
-(`canvasWrapBorder=2` + `turnBarMargin`/`controlsMargin` = 10px mỗi cái *chỉ khi* phần tử đó có
+**Đã sửa (vòng 1):** thay `- 14 - 16 - 12 - 8` bằng đúng overhead zen-specific đã tính ở nhánh phía
+trên (`canvasWrapBorder=2` + `turnBarMargin`/`controlsMargin` = 10px mỗi cái *chỉ khi* phần tử đó có
 chiều cao thật). Xác nhận double-count đúng 48px qua đo Playwright — xem fix-log.
+
+### 2b. Vòng 2 — trục NGANG vẫn còn 24px (người dùng đo trên máy thật, 2026-08-21)
+
+Vòng 1 chỉ chạm trục **dọc** (`viewportBudget`). Người dùng xác nhận lại trên điện thoại thật kèm số
+đo DevTools: `.board-area-shell` 500px nhưng `#game-canvas` chỉ 476px — **24px, 12px mỗi bên**. Hai
+nguồn, cả hai đều nằm trên trục ngang:
+
+- `room-zen.css` mobile: `.board-area-shell { padding: 10px 8px ... }` + rule
+  `.zen-drawer-collapsed .board-area-shell { padding-right: 8px }` (trạng thái **mặc định**) → 16px.
+- `board.js`'s `maxVw`: `Math.min(shellWidth - 8, window.innerWidth - 8)` → 8px nữa.
+  Số `- 8` này có lý do thật cho skin **non-zen** (bình luận tại chỗ: chống overshoot của mẹo
+  full-bleed `width: calc(100% + 32px); margin-left: -16px` trong `room.css`), nhưng
+  `room-zen.css` mobile **huỷ đúng mẹo đó** (`width: 100%; margin-left: 0`) nên với zen nó chỉ là
+  mất trắng 8px. 16 + 8 = 24, khớp chính xác số người dùng đo.
+
+**Đã sửa (vòng 2):** side padding mobile 8px→0 (cả rule gốc lẫn override `.zen-drawer-collapsed`);
+`maxVw` tách nhánh — zen mobile dùng `Math.min(shellWidth, window.innerWidth) - 2` (chỉ trừ hairline
+2px của `.board-canvas-wrap`, khớp `canvasWrapBorder` trục dọc), non-zen mobile **giữ nguyên** `- 8`.
 
 ## Không thuộc phạm vi B133 (không tự mở rộng)
 

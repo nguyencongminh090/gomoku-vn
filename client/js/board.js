@@ -214,13 +214,26 @@ class BoardRenderer {
       // directly so the board can never be wider than the viewport. On
       // desktop the shell still has its own padding/border (~32px) to
       // subtract, and no viewport-bleed trick is in play.
+      // The zen room is the exception to the -8: room-zen.css's mobile rule
+      // explicitly cancels that bleed (width: 100%; margin-left: 0), so the
+      // overshoot it guards against cannot happen here, and the 8px is pure
+      // lost board width on the axis where a phone has least to spare. The
+      // Math.min clamp still stands as the real guard. Only the 1px-left +
+      // 1px-right hairline on .board-canvas-wrap has to come off, matching
+      // canvasWrapBorder on the height axis above — without it the wrap ends
+      // up 2px wider than the viewport and its right border is clipped by
+      // main.css's overflow-x: hidden.
       const mobileWidth = window.innerWidth <= 768;
       const shellWidth = (boardAreaShell
         ? boardAreaShell.clientWidth
         : (boardAreaEl ? boardAreaEl.clientWidth : parent.clientWidth)) - padX;
-      maxVw = mobileWidth
-        ? Math.min(shellWidth - 8, window.innerWidth - 8)
-        : shellWidth - 32;
+      if (mobileWidth) {
+        maxVw = zenRoom
+          ? Math.min(shellWidth, window.innerWidth) - 2
+          : Math.min(shellWidth - 8, window.innerWidth - 8);
+      } else {
+        maxVw = shellWidth - 32;
+      }
 
       // Mobile normally has no height budget to read (the shell is
       // height:auto, so its box is whatever the board already made it) —
