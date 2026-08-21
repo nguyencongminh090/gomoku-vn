@@ -457,6 +457,54 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `npm test` 1197/1197 (không đổi — thuần CSS). `?v=138→139`
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B135-svg-icon-migration-orphaned-css-selectors.md)
 
+### Nguồn: người dùng đính chính #134 + đọc lại code base (2026-08-21)
+- ⏳ **#136.** (Reopen #134) Người dùng đính chính: mô tả ở #134 chỉ là **một phần**, không phải mô
+  tả tổng quát — hiện tượng thật là **drawer bị thu vào rail đúng lúc modal hiện lên**, và ảnh chụp
+  DevTools cho thấy `body.zen-drawer-collapsed` ở viewport ~933px CSS (`#board-area-shell` đo
+  `933×773`), tức **trên** breakpoint 768px nên `game:init` không thể là nơi thêm class. Bản sửa
+  #134 vẫn đúng cho đường vào của nó, không bị đảo. Chỉ có 3 nơi đụng class này
+  (`room-socket.js:193-196`, `room.js:135-140`, `room.js:139-172`); `renderStartModal()` không chạm
+  `body.className` ⇒ modal không phải nhân quả trực tiếp. Giả thuyết chính: **click tổng hợp**
+  `chatBtn.click()` ở `room-ui.js:488-495`/`544-549` chạy vào nhánh `toggle('zen-drawer-collapsed')`
+  của handler tab. **ĐÃ ĐO 2026-08-21** (Playwright, server cô lập cổng 3100/DB riêng, không đụng DB
+  thật): **không tái hiện được trên code hiện tại** — Chromium 1440×900 + Firefox 933×773, đủ vòng
+  đời trận (ngồi ghế → modal → bắt đầu → đầu hàng → modal về → tái đấu), `.panel-right-shell` giữ
+  nguyên 340px suốt **445 frame** lấy mẫu bằng `requestAnimationFrame`, không kẹt cũng không thụt
+  thoáng qua; nghi phạm `chatBtn.click()` bắt được thật (`isTrusted=false`) nhưng rơi vào nhánh
+  `remove`, **bị loại**. Thí nghiệm đối chứng chỉ bỏ đúng đoạn vá #134 thì tái hiện **khớp hoàn toàn**
+  ảnh chụp của người dùng (`zen-drawer-collapsed` kẹt ở 933px, shell còn 56px) ⇒ ảnh là hành vi của
+  **code trước bản vá**; production đã phục vụ bản có vá (`curl .../room.js?v=139 | grep -c
+  drawerBreakpoint` → 2). **Chờ người dùng hard-refresh xác nhận** — [chi
+  tiết](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
+- ⏳ **#137.** `#start-modal` (`position:absolute; inset:0; z-index:50`, `game.css:412-426`) neo vào
+  `.board-area-shell` — trong zen shell này chiếm trọn chiều rộng viewport (chỗ của drawer chỉ là
+  `padding-right`, `room-zen.css:282-292`) ⇒ lớp phủ modal **đè lên drawer** (z50 > z15 của
+  `.panel-right-shell`, `.board-area-shell` không tạo stacking context) và **thẻ modal căn theo tâm
+  viewport thay vì tâm bàn cờ** (đo trên ảnh 1920px: bàn cờ tâm ≈791px, thẻ ≈960px, lệch ~170px =
+  nửa `--zen-drawer-w`). **ĐÃ TÁI HIỆN 2026-08-21** (Playwright, Chromium 1440×900): lớp phủ
+  `x=0,w=1440` chồng **đúng 340px = 100%** chiều rộng drawer; tâm thẻ modal `x=720` vs tâm canvas
+  `x=550` ⇒ **lệch 170px**, đúng bằng nửa `--zen-drawer-w` như dự đoán — [chi
+  tiết](docs/todo/B137-start-modal-phu-tron-viewport-de-len-drawer.md)
+- ⏳ **#138.** Drawer "đóng" chỉ là **cắt xén** (`overflow:hidden` trên shell, `.panel-right` vẫn
+  rộng nguyên, `justify-content:flex-end` giữ rail lại) — đúng thiết kế, giải thích việc DevTools
+  vẫn thấy khung chat. Nhưng thiếu nửa còn lại: không `inert`/`aria-hidden` ⇒ ô chat, nút Gửi,
+  `.btn-kick` vẫn nhận focus bằng Tab và vẫn được trình đọc màn hình đọc khi drawer đã đóng. **ĐÃ
+  TÁI HIỆN 2026-08-21**: đi Tab từ `#btn-leave` thì focus lọt vào `INPUT#chat-input` rồi
+  `BUTTON#btn-send` — cả hai nằm ngoài shell đã co (x=1121/1349 vs shell x=1384), không `inert`,
+  không `aria-hidden` — [chi tiết](docs/todo/B138-drawer-dong-chi-la-clip-noi-dung-van-focus-duoc.md)
+- ⏳ **#139.** 📵 **BLOCKER (mobile)** — nút "Bắt đầu" của start-modal bị bottom sheet che hoàn toàn,
+  người chơi trên điện thoại **không vào được trận**. Đo trên `devices['Pixel 5']` (393×727): thẻ
+  modal bị sheet che **183/210px = 87%**, phần tử nhận click ở tâm nút là `DIV.players-row` **bên
+  trong drawer**, `page.click('#start-modal-btn')` **timeout**. Gốc: `.start-modal` `z-index:50`
+  (`game.css:412-426`) vs `.panel-right-shell` `z-index:700` ở nhánh ≤768px
+  (`room-zen.css:934-952`) — hai quyết định đúng riêng lẻ, chưa ai xét chung. `#start-modal-btn` là
+  **lối duy nhất** để bấm Bắt đầu (grep `confirmStart` toàn repo) — [chi
+  tiết](docs/todo/B139-mobile-nut-bat-dau-bi-bottom-sheet-che.md)
+- ⏳ **#140.** `main` **không có** bản vá #134 (`git show main:client/js/room.js | grep -c
+  drawerBreakpoint` → 0) dù `docs/todo/B134-*.md` ghi nhánh `fix/*` off `main` và có PR #18 đã merge;
+  `dev` và production thì có. Cần đối chiếu quy trình merge theo `git-workflow`, rà xem các fix
+  `main`-based gần đây có cùng tình trạng không — [chi tiết](docs/todo/B140-main-thieu-ban-va-134.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

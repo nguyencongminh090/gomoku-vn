@@ -306,3 +306,33 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   dùng xác nhận sau hard-refresh: hết "zoom"** — giả thuyết cache đúng, 2 việc độc lập, cả hai đều
   đã đóng (TODO.md #135) — [chi
   tiết](docs/instruction/B135-svg-icon-migration-orphaned-css-selectors.md)
+- **B136.** (Reopen #134) **Không vá thêm một lớp nữa ở nơi triệu chứng hiện ra** — #134 đã là một
+  vòng vá như vậy (`CLAUDE.md` → "Root-cause diagnosis"). Bắt buộc có **stack trace thật** trỏ vào
+  nơi thêm `zen-drawer-collapsed` trước khi viết fix: `MutationObserver` trên
+  `document.body`/`attributeFilter:['class']` + `console.trace()`, chạy bằng Playwright. Giữ nguyên:
+  bản sửa #134 (`room.js:135-140`), breakpoint 768px, cơ chế width/overflow-clip/flex-end của
+  `.panel-right-shell`. Nghi phạm số 1 là `chatBtn.click()` tổng hợp (`room-ui.js:488-495` và
+  `544-549`) đi vào nhánh `toggle()` của handler tab (`room.js:158`) — nếu xác nhận, hướng sửa đúng
+  là **tách ý định khỏi sự kiện DOM** (hàm `activateTab(id)` dùng chung, click tổng hợp gọi hàm đó
+  chứ không giả lập click), không phải thêm cờ chống-toggle — [chi
+  tiết](docs/instruction/B136-drawer-thut-vao-khi-modal-hien-len.md)
+- **B137.** **Không** chuyển `#start-modal` thành con của `#board-area`: `GameUI.initBoard()` ghi đè
+  `innerHTML` của `#board-area` trọn gói ở lần render đầu, modal sẽ bị xoá mất — lý do này đã ghi
+  sẵn trong comment `client/room.html:89` và `client/css/room.css:54-56`, đừng phát hiện lại bằng
+  cách làm hỏng. Hướng an toàn: giữ nguyên anchor, chỉnh vùng phủ trong `room-zen.css` để tôn trọng
+  `padding-right` của shell. Không đụng `.game-overlay` (`#room-entry-overlay` dùng chung class đó,
+  §B36). Đo trước/sau bằng Playwright: tâm thẻ modal vs tâm canvas, ở cả 2 trạng thái drawer × 2
+  viewport — [chi tiết](docs/instruction/B137-start-modal-phu-tron-viewport-de-len-drawer.md)
+- **B138.** `inert` là **thuộc tính DOM**, không set được bằng CSS ⇒ phải móc vào **cả 3** nơi đổi
+  `zen-drawer-collapsed` (danh sách trong `docs/todo/B136-*.md`), nếu không sẽ sinh ra nguồn sự thật
+  thứ tư lệch pha. Tuyệt đối **không** đặt `inert`/`aria-hidden` lên `.sidebar-tabs` — rail là cách
+  duy nhất mở lại drawer. Nhớ nhánh mobile ≤768px: cùng class nhưng cơ chế là
+  `transform: translateY()` trên sheet (`room-zen.css:934-958`), nội dung cũng nằm ngoài màn hình và
+  cần cùng cách xử lý — [chi tiết](docs/instruction/B138-drawer-dong-chi-la-clip-noi-dung-van-focus-duoc.md)
+- **B139.** Giữ `pointer-events: none` trên `.start-modal` (§B36) — sửa **thang z-index**, đừng đổi
+  mô hình click. Thang mobile hiện có (comment `room-zen.css:944-951`): sheet 700 > quick-chat-bar
+  650 > float-messages 550; nâng `.start-modal` phải lên **trên 700** và ghi vào đúng comment đó.
+  **Không** dùng phương án "modal hiện thì tự thêm `zen-drawer-collapsed`" — tạo nguồn sự thật thứ
+  tư cho class đang là tâm điểm #134/#136 và nuốt lựa chọn thủ công của người dùng. Verify bằng
+  **chạm thật** `page.click('#start-modal-btn')`; `el.click()` qua `evaluate` bỏ qua hit-testing nên
+  pass giả — [chi tiết](docs/instruction/B139-mobile-nut-bat-dau-bi-bottom-sheet-che.md)
