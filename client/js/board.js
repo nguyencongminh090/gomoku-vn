@@ -881,8 +881,8 @@ class BoardRenderer {
     const g = this.geo;
     const { px, py } = this._cellToPixel(x, y);
 
-    // Diagonal cross — 60% visual extent
-    const arm = g.cellSize * 0.22;
+    // Diagonal cross — ~70% visual extent
+    const arm = g.cellSize * 0.28;
     const lw = Math.max(g.cellSize * 0.14, 2.5);
 
     ctx.strokeStyle = `rgb(${this._theme.inkRgb})`; // Theme-aware ink (slate-900 light / slate-50 dark)
@@ -976,8 +976,8 @@ class BoardRenderer {
     const g = this.geo;
     const { px, py } = this._cellToPixel(x, y);
 
-    // Circle — 60% visual extent
-    const radius = g.cellSize * 0.24;
+    // Circle — ~74% visual extent
+    const radius = g.cellSize * 0.30;
     const lw = Math.max(g.cellSize * 0.14, 2.5);
 
     // White fill (no fill, just red ink outline for elegant paper look)

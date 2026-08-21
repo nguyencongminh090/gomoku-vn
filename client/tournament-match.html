@@ -6,16 +6,16 @@
   <title>Play3CR — Trận đấu giải đấu</title>
   <meta name="description" content="Play3CR — Trận đấu trong giải đấu Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=134" />
-  <link rel="stylesheet" href="css/lobby.css?v=134" />
-  <link rel="stylesheet" href="css/room.css?v=134" />
-  <link rel="stylesheet" href="css/game.css?v=134" />
-  <link rel="stylesheet" href="css/tournament.css?v=134" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=134" />
-  <script src="js/theme-preload.js?v=134"></script>
+  <link rel="stylesheet" href="css/main.css?v=136" />
+  <link rel="stylesheet" href="css/lobby.css?v=136" />
+  <link rel="stylesheet" href="css/room.css?v=136" />
+  <link rel="stylesheet" href="css/game.css?v=136" />
+  <link rel="stylesheet" href="css/tournament.css?v=136" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=136" />
+  <script src="js/theme-preload.js?v=136"></script>
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=134">
-  <script src="js/ui-mode-preload.js?v=134"></script>
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=136">
+  <script src="js/ui-mode-preload.js?v=136"></script>
 </head>
 <body>
 
@@ -33,7 +33,7 @@
 </nav>
 
 <div class="match-page-header">
-  <a href="#" id="back-to-tournament" class="detail-back"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=134#ph-regular-arrow-left"></use></svg><span data-i18n="tmatch.back">Quay lại chi tiết giải đấu</span></a>
+  <a href="#" id="back-to-tournament" class="detail-back"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=136#ph-regular-arrow-left"></use></svg><span data-i18n="tmatch.back">Quay lại chi tiết giải đấu</span></a>
 
   <div class="detail-header">
     <div>
@@ -154,7 +154,7 @@
 
 <div class="match-result-overlay" id="match-result-overlay">
   <div class="match-result-card">
-    <svg class="icon match-result-card__icon" id="match-result-icon"><use href="assets/icons/phosphor-sprite.svg?v=134#ph-bold-flag-checkered"></use></svg>
+    <svg class="icon match-result-card__icon" id="match-result-icon"><use href="assets/icons/phosphor-sprite.svg?v=136#ph-bold-flag-checkered"></use></svg>
     <div class="match-result-card__title" id="match-result-title"></div>
     <div class="match-result-card__sub" id="match-result-sub"></div>
     <a class="btn btn-confirm" id="match-result-back" href="#" data-i18n="tmatch.back_to_tournament">Quay lại giải đấu</a>
@@ -171,7 +171,7 @@
      unchanged, this only adds a second UI entry point into it. -->
 <div class="match-result-overlay" id="series-transition-overlay">
   <div class="match-result-card">
-    <svg class="icon match-result-card__icon" id="series-transition-icon"><use href="assets/icons/phosphor-sprite.svg?v=134#ph-bold-flag-checkered"></use></svg>
+    <svg class="icon match-result-card__icon" id="series-transition-icon"><use href="assets/icons/phosphor-sprite.svg?v=136#ph-bold-flag-checkered"></use></svg>
     <div class="match-result-card__title" id="series-transition-title"></div>
     <div class="match-result-card__sub" id="series-transition-sub"></div>
     <button class="btn btn-confirm" id="series-transition-ready-btn" type="button" data-i18n="tmatch.series_ready_btn">Sẵn sàng</button>
@@ -183,7 +183,7 @@
 <!-- TODO.md #74: tournament matches never loaded this, so had no move/win/
      lose/timer sound at all despite tournament-match.js calling audioManager
      the same way room-socket.js does. -->
-<script src="js/audio-manager.js?v=134"></script>
-<script type="module" src="js/tournament-match-entry.js?v=134"></script>
+<script src="js/audio-manager.js?v=136"></script>
+<script type="module" src="js/tournament-match-entry.js?v=136"></script>
 </body>
 </html>
