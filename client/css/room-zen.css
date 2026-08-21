@@ -915,14 +915,21 @@ body.zen-room .players-strip {
      (width: calc(100% + 32px); margin-left: -16px) to reclaim .room's old
      padding — .room has no padding here, so the bleed would just push the
      board off-screen. */
+  /* Side padding is 0, not 8px: the desktop rule sets --zen-board-gutter to
+     0 so the board bleeds to the frame edge, and mobile — where horizontal
+     space is scarcest — is where that matters most. 8px per side cost 16px
+     of board width for a margin no other zen surface has (.players-strip
+     and .topnav supply their own inner padding; the board's own hairline on
+     .board-canvas-wrap is the edge treatment). Reported 2026-08-21 with a
+     measurement: shell 500 → canvas 476. */
   body.zen-room .board-area-shell {
     height: auto;
     width: 100%;
     margin-left: 0;
-    padding: 10px 8px calc(var(--zen-bar-h) + 10px);
+    padding: 10px 0 calc(var(--zen-bar-h) + 10px);
   }
   body.zen-room.zen-drawer-collapsed .board-area-shell {
-    padding-right: 8px;
+    padding-right: 0;
   }
   /* The desktop rule makes .board-area/-inner height:100% of the shell so
      the frame always exactly matches the shell's height (see the comments

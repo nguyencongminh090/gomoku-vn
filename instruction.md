@@ -199,3 +199,12 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   dạng đã chốt trực tiếp với người dùng là `#<roomID>` không chữ "Phòng"; 2 test mới trong
   `RoomManager.test.js` (báo cáo người dùng, TODO.md #121) — [chi
   tiết](docs/instruction/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
+- **B133.** (Đã làm) 2 phần độc lập trong `client/js/board.js`. (1) Grid line nhạt (dòng 586-588) —
+  alpha nhánh `else` 0.22→0.4, giữ nguyên nhánh `stone`; **chưa phải giá trị người dùng tự chốt**.
+  (2) Bàn cờ nhỏ mobile — `resize()`'s `viewportBudget` (nhánh `zenRoom && mobileWidth`): thay budget
+  non-zen cứng `14+16+12+8=50px` (double-count, xem bình luận tại chỗ) bằng overhead zen thật
+  (`canvasWrapBorder`+`turnBarMargin`+`controlsMargin`, tính lại inline vì biến gốc scope trong nhánh
+  khác); xác nhận qua đo +48px trên viewport height-bound (375×520). `client/js/` không test tự
+  động — verify bằng Playwright trên instance cô lập (copy repo + DB tạm + cổng 3111 +
+  `CORS_ORIGIN` riêng); `?v=123→124` (báo cáo người dùng qua chụp mobile, TODO.md #133) — [chi
+  tiết](docs/instruction/B133-mobile-grid-line-nhat-va-ban-co-nho.md)

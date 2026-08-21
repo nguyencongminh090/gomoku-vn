@@ -214,13 +214,26 @@ class BoardRenderer {
       // directly so the board can never be wider than the viewport. On
       // desktop the shell still has its own padding/border (~32px) to
       // subtract, and no viewport-bleed trick is in play.
+      // The zen room is the exception to the -8: room-zen.css's mobile rule
+      // explicitly cancels that bleed (width: 100%; margin-left: 0), so the
+      // overshoot it guards against cannot happen here, and the 8px is pure
+      // lost board width on the axis where a phone has least to spare. The
+      // Math.min clamp still stands as the real guard. Only the 1px-left +
+      // 1px-right hairline on .board-canvas-wrap has to come off, matching
+      // canvasWrapBorder on the height axis above — without it the wrap ends
+      // up 2px wider than the viewport and its right border is clipped by
+      // main.css's overflow-x: hidden.
       const mobileWidth = window.innerWidth <= 768;
       const shellWidth = (boardAreaShell
         ? boardAreaShell.clientWidth
         : (boardAreaEl ? boardAreaEl.clientWidth : parent.clientWidth)) - padX;
-      maxVw = mobileWidth
-        ? Math.min(shellWidth - 8, window.innerWidth - 8)
-        : shellWidth - 32;
+      if (mobileWidth) {
+        maxVw = zenRoom
+          ? Math.min(shellWidth, window.innerWidth) - 2
+          : Math.min(shellWidth - 8, window.innerWidth - 8);
+      } else {
+        maxVw = shellWidth - 32;
+      }
 
       // Mobile normally has no height budget to read (the shell is
       // height:auto, so its box is whatever the board already made it) —
@@ -239,8 +252,18 @@ class BoardRenderer {
         // budget that changes with the scroll position.
         const shellTop = Math.max(
           boardAreaShell.getBoundingClientRect().top + window.scrollY, 0);
-        const viewportBudget =
-          window.innerHeight - shellTop - padY - tbH - gcH - 14 - 16 - 12 - 8;
+        // Overhead here must match the zen-room overhead computed above
+        // (canvasWrapBorder/turnBarMargin/controlsMargin, lines ~197-200) —
+        // this used to subtract a flat "14 - 16 - 12 - 8" instead, which per
+        // the comment on that block is the *non-zen* Double-Bezel card's
+        // padding/border budget. Zen has none of that; reusing it here
+        // double-subtracted ~28-48px of real board space on every mobile
+        // zen-room resize, on top of tbH/gcH already accounted for.
+        const canvasWrapBorder = 2;
+        const turnBarMargin = tbH > 0 ? 10 : 0;
+        const controlsMargin = gcH > 0 ? 10 : 0;
+        const viewportBudget = window.innerHeight - shellTop - padY
+          - tbH - turnBarMargin - gcH - controlsMargin - canvasWrapBorder;
         if (viewportBudget > 0) boardAreaH = viewportBudget;
       }
     }
@@ -600,7 +623,7 @@ class BoardRenderer {
     // real goban lines are inked in dark lacquer, not a light overlay)
     ctx.strokeStyle = this.displayMode === 'stone'
       ? 'rgba(34, 28, 17, 0.55)'
-      : `rgba(${this._theme.accentRgb}, 0.22)`;
+      : `rgba(${this._theme.accentRgb}, 0.55)`;
     // Snap to the physical device-pixel grid and stroke exactly 1px wide so
     // hairlines stay crisp at any devicePixelRatio, including the fractional
     // ratios (2.625, 3.5, ...) common on Android phones.
@@ -624,7 +647,7 @@ class BoardRenderer {
     // Board border (thicker and slightly darker)
     ctx.strokeStyle = this.displayMode === 'stone'
       ? 'rgba(0, 0, 0, 0.25)'
-      : `rgba(${this._theme.accentRgb}, 0.4)`;
+      : `rgba(${this._theme.accentRgb}, 0.65)`;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(g.originX, g.originY, gridW, gridH);
   }
