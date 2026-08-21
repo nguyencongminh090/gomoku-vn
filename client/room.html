@@ -7,30 +7,30 @@
   <title>Play3CR — Phòng chơi</title>
   <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=137" />
-  <link rel="stylesheet" href="css/lobby.css?v=137" />
-  <link rel="stylesheet" href="css/room.css?v=137" />
-  <link rel="stylesheet" href="css/room-zen.css?v=137" />
-  <link rel="stylesheet" href="css/game.css?v=137" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=137" />
+  <link rel="stylesheet" href="css/main.css?v=138" />
+  <link rel="stylesheet" href="css/lobby.css?v=138" />
+  <link rel="stylesheet" href="css/room.css?v=138" />
+  <link rel="stylesheet" href="css/room-zen.css?v=138" />
+  <link rel="stylesheet" href="css/game.css?v=138" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=138" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=137">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=138">
 
-  <script src="js/ui-mode-preload.js?v=137"></script>
+  <script src="js/ui-mode-preload.js?v=138"></script>
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/room-entry.js's import list -->
-  <link rel="modulepreload" href="js/session.js?v=137" />
-  <link rel="modulepreload" href="js/i18n.js?v=137" />
-  <link rel="modulepreload" href="js/ui-mode.js?v=137" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=137" />
-  <link rel="modulepreload" href="js/socket-client.js?v=137" />
-  <link rel="modulepreload" href="js/board.js?v=137" />
-  <link rel="modulepreload" href="js/room.js?v=137" />
-  <link rel="modulepreload" href="js/chat-ui.js?v=137" />
-  <link rel="modulepreload" href="js/room-ui.js?v=137" />
-  <link rel="modulepreload" href="js/game-ui.js?v=137" />
-  <link rel="modulepreload" href="js/room-socket.js?v=137" />
+  <link rel="modulepreload" href="js/session.js?v=138" />
+  <link rel="modulepreload" href="js/i18n.js?v=138" />
+  <link rel="modulepreload" href="js/ui-mode.js?v=138" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=138" />
+  <link rel="modulepreload" href="js/socket-client.js?v=138" />
+  <link rel="modulepreload" href="js/board.js?v=138" />
+  <link rel="modulepreload" href="js/room.js?v=138" />
+  <link rel="modulepreload" href="js/chat-ui.js?v=138" />
+  <link rel="modulepreload" href="js/room-ui.js?v=138" />
+  <link rel="modulepreload" href="js/game-ui.js?v=138" />
+  <link rel="modulepreload" href="js/room-socket.js?v=138" />
 
 </head>
 
@@ -60,7 +60,7 @@
     <div class="topnav__right">
       <span id="room-id-nav" class="topnav__user topnav__room-id"></span>
       <button id="btn-leave" class="topnav__btn" type="button" data-i18n-title="nav.leave" title="Rời phòng">
-        <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-bold-sign-out"></use></svg>
+        <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-bold-sign-out"></use></svg>
         <span data-i18n="nav.leave" class="hide-on-mobile">Rời phòng</span>
       </button>
     </div>
@@ -76,7 +76,7 @@
     <section class="board-area-shell" id="board-area-shell">
       <div class="board-area" id="board-area">
         <div class="board-placeholder">
-          <div class="board-placeholder__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-regular-checkerboard"></use></svg></div>
+          <div class="board-placeholder__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-regular-checkerboard"></use></svg></div>
           <div class="board-placeholder__text" data-i18n="room.placeholder">Chờ người chơi ngồi vào và sẵn sàng...</div>
         </div>
       </div>
@@ -88,7 +88,7 @@
            replaces #board-area's innerHTML wholesale on first render. -->
       <div class="start-modal" id="start-modal">
         <div class="start-modal__card">
-          <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-bold-play-circle"></use></svg></div>
+          <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-bold-play-circle"></use></svg></div>
           <div class="start-modal__title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
           <div class="start-modal__countdown" id="start-modal-countdown-wrap" style="display:none;">
             <span data-i18n="start_modal.countdown_label">Còn</span>
@@ -128,19 +128,19 @@
            when active, same show/hide-when-empty rule as tab-users below. -->
       <div class="sidebar-tabs">
         <button class="tab-btn tab-btn--active" data-tab="tab-chat">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-bold-chat-circle"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-bold-chat-circle"></use></svg>
           <span class="tab-btn__label" data-i18n="room.tab_chat">Trò chuyện</span>
         </button>
         <button class="tab-btn" data-tab="tab-score">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-regular-trophy"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-regular-trophy"></use></svg>
           <span class="tab-btn__label" data-i18n="room.tab_score">Bảng điểm</span>
         </button>
         <button class="tab-btn" data-tab="tab-users">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-regular-eye"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-regular-eye"></use></svg>
           <span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span>
         </button>
         <button class="tab-btn" data-tab="tab-settings">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-regular-gear-six"></use></svg>
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-regular-gear-six"></use></svg>
           <span class="tab-btn__label" data-i18n="room.tab_settings">Cài đặt</span>
         </button>
       </div>
@@ -201,18 +201,18 @@
     <input type="text" id="quick-chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
       maxlength="500" autocomplete="off" />
     <button id="quick-chat-send" type="button" data-i18n-title="room.btn_send" title="Gửi" aria-label="Gửi">
-      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=137#ph-bold-paper-plane-tilt"></use></svg>
+      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=138#ph-bold-paper-plane-tilt"></use></svg>
     </button>
   </div>
 
   <!-- Socket.io CDN -->
   <script src="/vendor/socket.io/socket.io.min.js"></script>
   <!-- Application Scripts via Vite entry point -->
-  <script src="js/escape-utils.js?v=137"></script>
-  <script src="js/audio-manager.js?v=137"></script>
-  <script src="js/profanity-filter.js?v=137"></script>
-  <script src="js/action-delegate.js?v=137"></script>
-  <script type="module" src="js/room-entry.js?v=137"></script>
+  <script src="js/escape-utils.js?v=138"></script>
+  <script src="js/audio-manager.js?v=138"></script>
+  <script src="js/profanity-filter.js?v=138"></script>
+  <script src="js/action-delegate.js?v=138"></script>
+  <script type="module" src="js/room-entry.js?v=138"></script>
 </body>
 
 </html>
