@@ -967,7 +967,9 @@ body.zen-room .players-strip {
     border-top: 1px solid var(--line);
     background: var(--paper);
     /* Above .btn-focus (600) and .float-messages (550) — the sheet is the
-       frontmost surface once opened. */
+       frontmost surface once opened. One deliberate exception above it:
+       #start-modal at 750 (see the rule at the end of this block) — the
+       sheet must never cover the only way into a match. */
     z-index: 700;
     transition: transform 0.35s var(--ease);
   }
@@ -1018,6 +1020,41 @@ body.zen-room .players-strip {
   /* Keep the floating chrome clear of the bottom bar. */
   body.zen-room .btn-focus { bottom: calc(var(--zen-bar-h) + 14px); right: 14px; }
   body.zen-room .float-messages { bottom: calc(var(--zen-bar-h) + 14px); }
+
+  /* Start modal vs the sheet (TODO.md #139).
+     game.css gives .start-modal z-index 50 — deliberately low, because on
+     desktop it only has to sit over the board and must not block the drawer
+     (§B36). Here the drawer is a bottom sheet at z-index 700 that covers the
+     lower ~62vh, and it is OPEN before a match starts (that is where the seat
+     and ready controls live). The modal's "Bắt đầu" button is the ONLY way
+     into a match — grep confirms #start-modal-btn is the single
+     `confirmStart` call site — and it was landing underneath the sheet:
+     measured on a 393×727 phone, 183 of the card's 210px were covered and a
+     real tap never reached the button.
+
+     Two independent changes fix it, both needed:
+     - 750 puts the card above the sheet, so a tap always reaches it even on a
+       viewport too short for the two to fit side by side.
+     - Re-anchoring the overlay to the free strip between the topnav and the
+       sheet keeps the card clear of the sheet whenever there is room, so the
+       sheet's rail and seat controls stay visible and tappable — which is the
+       whole point of §B36's non-blocking modal. `max()` keeps the strip
+       usable on very short viewports (there the card overlaps again, and the
+       z-index above is what saves the tap).
+     .start-modal itself keeps pointer-events:none (only the card catches
+     clicks), so raising it does not steal taps from anything around it. */
+  body.zen-room .start-modal {
+    position: fixed;
+    inset: var(--zen-topnav-h) 0 auto 0;
+    height: max(180px, calc(100vh - var(--zen-topnav-h) - var(--zen-sheet-h)));
+    height: max(180px, calc(100dvh - var(--zen-topnav-h) - var(--zen-sheet-h)));
+    z-index: 750;
+  }
+  /* Sheet collapsed to its bar: the strip grows to match. */
+  body.zen-room.zen-drawer-collapsed .start-modal {
+    height: max(180px, calc(100vh - var(--zen-topnav-h) - var(--zen-bar-h)));
+    height: max(180px, calc(100dvh - var(--zen-topnav-h) - var(--zen-bar-h)));
+  }
 }
 
 /* ══ Focus mode ═══════════════════════════════════════════════════════════
