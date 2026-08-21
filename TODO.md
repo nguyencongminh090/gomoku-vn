@@ -370,6 +370,19 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `RoomManager.test.js` (`'RoomManager — default room name'`), `npm test` 1136/1136 `[Model: Sonnet
   5]` — [chi tiết](docs/todo/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
 
+### Nguồn: báo cáo trực tiếp người dùng qua chụp màn hình mobile (2026-08-21)
+- ✅ **#133.** Mobile: đường kẻ bàn cờ (`board.js:586-588`, alpha 0.22 chế độ standard/caro) nhạt màu
+  + bàn cờ nhỏ do padding tích luỹ qua nhiều lớp trong `resize()` (double-count 50px safety budget
+  của skin non-zen bị tái dùng trong nhánh zen room mobile, `board.js:228-229` gốc). **ĐÃ LÀM
+  2026-08-21** (`fix/mobile-board-grid-and-size` off `main`): alpha grid line 0.22→0.4 (nhánh
+  standard/caro, chưa phải giá trị người dùng tự chốt — người dùng nói sẽ tự kiểm tra UI); thay
+  budget non-zen cứng `14+16+12+8=50px` trong `viewportBudget` bằng overhead zen thật
+  (`canvasWrapBorder`+`turnBarMargin`+`controlsMargin`, đã dùng đúng ở nhánh phía trên); xác nhận
+  oversubtract đúng 48px qua Playwright trên viewport height-bound (375×520: bàn cờ 263.4px→311.4px,
+  +18%) trên instance cô lập (copy repo + DB tạm + cổng 3111, không đụng server/DB thật); `client/js/`
+  không có test tự động, verify hoàn toàn qua đo kích thước canvas + screenshot thật; `?v=123→124`
+  `[Model: Sonnet 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
