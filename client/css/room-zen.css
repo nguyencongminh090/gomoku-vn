@@ -389,7 +389,39 @@ body.zen-room .game-controls { max-width: none; }
    board correctly shrinks back down the moment buttons actually appear. */
 body.zen-room .game-controls:empty { min-height: 0; margin-top: 0; }
 
-/* Start modal — a sheet of paper over the board, not a floating card. */
+/* Start modal — a sheet of paper over the board, not a floating card.
+
+   The overlay is anchored to .board-area-shell (game.css: position:absolute;
+   inset:0) and must NOT be re-anchored to #board-area — GameUI.initBoard()
+   overwrites that element's innerHTML wholesale on first render and would
+   delete the modal (see the comments in room.html and room.css).
+
+   But `inset: 0` resolves against the shell's PADDING box, and in zen the
+   drawer's space is only the shell's padding-right (the shell itself spans
+   the whole viewport — zen sets .room to display:block, there is no grid
+   column). So the overlay used to stretch across the drawer too, with two
+   consequences (TODO.md #137): its z-index 50 sat above .panel-right-shell's
+   15 (the shell has position:relative but z-index:auto, so it creates no
+   stacking context and the two compare directly in the root) — harmless only
+   because the overlay is pointer-events:none, and a landmine for anyone who
+   later adds a backdrop; and `justify-content:center` centred the card on the
+   VIEWPORT rather than on the board — measured 170px off at 1440px wide,
+   exactly half of --zen-drawer-w.
+
+   Matching the shell's own padding on both sides makes the overlay coincide
+   with the shell's content box — i.e. the board's box — so the card centres on
+   the board and stops reaching into the drawer at all. Fixing the covered area
+   is the root cause; the z-index stays at game.css's 50 on purpose (lowering
+   it would only mask the overlap). ≤768px overrides both of these — see the
+   mobile block near the end of this file, where the drawer is a bottom sheet
+   and the overlay is re-anchored vertically instead (TODO.md #139). */
+body.zen-room .start-modal {
+  inset: 0 calc(var(--zen-drawer-w) + var(--zen-board-gutter)) 0 var(--zen-board-gutter);
+  transition: inset 0.35s var(--ease);
+}
+body.zen-room.zen-drawer-collapsed .start-modal {
+  inset: 0 calc(var(--zen-rail-w) + var(--zen-board-gutter)) 0 var(--zen-board-gutter);
+}
 body.zen-room .start-modal__card {
   background: var(--paper);
   border: 1px solid var(--line);
@@ -1080,8 +1112,14 @@ body.zen-room .players-strip {
     height: max(180px, calc(100dvh - var(--zen-topnav-h) - var(--zen-sheet-h)));
     z-index: 750;
   }
-  /* Sheet collapsed to its bar: the strip grows to match. */
+  /* Sheet collapsed to its bar: the strip grows to match.
+     `inset` is repeated here on purpose: the desktop collapsed rule
+     (body.zen-room.zen-drawer-collapsed .start-modal, TODO.md #137) is one
+     class more specific than the mobile rule right above, so without this
+     line its drawer-width inset would win here and pull the overlay off the
+     sheet's free strip. */
   body.zen-room.zen-drawer-collapsed .start-modal {
+    inset: var(--zen-topnav-h) 0 auto 0;
     height: max(180px, calc(100vh - var(--zen-topnav-h) - var(--zen-bar-h)));
     height: max(180px, calc(100dvh - var(--zen-topnav-h) - var(--zen-bar-h)));
   }

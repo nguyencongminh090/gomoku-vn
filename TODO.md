@@ -486,15 +486,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   trình duyệt thật cả 3 cử chỉ + API ở 2 trạng thái drawer, `npm test` **1213/1213**, `?v=140→141`
   `[Model: Opus 5]`. Phần "chờ hard-refresh" của vòng 1 vẫn còn giá trị nhưng không còn chặn: bản sửa
   vòng 2 độc lập với nó — [chi tiết](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
-- ⏳ **#137.** `#start-modal` (`position:absolute; inset:0; z-index:50`, `game.css:412-426`) neo vào
+- ✅ **#137.** `#start-modal` (`position:absolute; inset:0; z-index:50`, `game.css:412-426`) neo vào
   `.board-area-shell` — trong zen shell này chiếm trọn chiều rộng viewport (chỗ của drawer chỉ là
   `padding-right`, `room-zen.css:282-292`) ⇒ lớp phủ modal **đè lên drawer** (z50 > z15 của
   `.panel-right-shell`, `.board-area-shell` không tạo stacking context) và **thẻ modal căn theo tâm
-  viewport thay vì tâm bàn cờ** (đo trên ảnh 1920px: bàn cờ tâm ≈791px, thẻ ≈960px, lệch ~170px =
-  nửa `--zen-drawer-w`). **ĐÃ TÁI HIỆN 2026-08-21** (Playwright, Chromium 1440×900): lớp phủ
-  `x=0,w=1440` chồng **đúng 340px = 100%** chiều rộng drawer; tâm thẻ modal `x=720` vs tâm canvas
-  `x=550` ⇒ **lệch 170px**, đúng bằng nửa `--zen-drawer-w` như dự đoán — [chi
-  tiết](docs/todo/B137-start-modal-phu-tron-viewport-de-len-drawer.md)
+  viewport thay vì tâm bàn cờ**. **ĐÃ TÁI HIỆN 2026-08-21** (Playwright, Chromium 1440×900): lớp phủ
+  `x=0,w=1440` chồng đúng **340px = 100%** chiều rộng drawer; tâm thẻ `x=720` vs tâm canvas `x=550`
+  ⇒ lệch **170px**, đúng nửa `--zen-drawer-w`. **ĐÃ SỬA 2026-08-22:** cho lớp phủ tôn trọng
+  `padding` của shell (trùng content box = hộp bàn cờ) trong `room-zen.css`, **giữ nguyên anchor**
+  (không chuyển sang `#board-area` vì `GameUI.initBoard()` ghi đè `innerHTML`) và **giữ nguyên
+  `z-index:50`** (hạ nó chỉ che triệu chứng). Thêm 1 dòng `inset` vào rule collapsed của nhánh mobile
+  ≤768px vì rule desktop collapsed đặc hiệu hơn 1 class ⇒ sẽ rò xuống điện thoại (kiểm chứng: bỏ ra
+  → fail 393 vs 337 = bề rộng rail). Đo lại trên instance cô lập: chồng lấn **340→0** / **56→0**,
+  lệch tâm **170→0** / **28→0**; mobile không đổi một pixel (đúng thiết kế #139). 4 test mới
+  `e2e/start-modal-board-centering.spec.ts` (bỏ bản sửa ra → 2 test desktop fail), §B36
+  `start-modal-non-blocking` vẫn 2/2 pass, `npm test` **1213/1213**, `?v=141→142`
+  `[Model: Opus 5]` — [chi tiết](docs/todo/B137-start-modal-phu-tron-viewport-de-len-drawer.md)
 - ⏳ **#138.** Drawer "đóng" chỉ là **cắt xén** (`overflow:hidden` trên shell, `.panel-right` vẫn
   rộng nguyên, `justify-content:flex-end` giữ rail lại) — đúng thiết kế, giải thích việc DevTools
   vẫn thấy khung chat. Nhưng thiếu nửa còn lại: không `inert`/`aria-hidden` ⇒ ô chat, nút Gửi,
