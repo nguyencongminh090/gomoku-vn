@@ -474,8 +474,18 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `remove`, **bị loại**. Thí nghiệm đối chứng chỉ bỏ đúng đoạn vá #134 thì tái hiện **khớp hoàn toàn**
   ảnh chụp của người dùng (`zen-drawer-collapsed` kẹt ở 933px, shell còn 56px) ⇒ ảnh là hành vi của
   **code trước bản vá**; production đã phục vụ bản có vá (`curl .../room.js?v=139 | grep -c
-  drawerBreakpoint` → 2). **Chờ người dùng hard-refresh xác nhận** — [chi
-  tiết](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
+  drawerBreakpoint` → 2). **ĐÃ SỬA TIẾP 2026-08-21** (`fix/tab-activation-vs-drawer-toggle` off
+  `dev` — mục #136 chỉ có trên `dev`): săn tiếp tìm ra **đường thứ hai, tái hiện được** — một `?v=`
+  cũ trên cross-import làm trình duyệt nạp **module instance thứ hai** của `room.js`; hai bản
+  listener biến một cú **đổi tab bình thường** thành collapse ở **mọi viewport** (bản 1 gỡ class +
+  set active, bản 2 thấy `alreadyActive=true` nên toggle đóng) — khớp cả 3 dấu hiệu của báo cáo gốc.
+  Sửa tầng gốc: tách `activateTab()` + `window.RoomTabs.activate` (không bao giờ chạm
+  `zen-drawer-collapsed`), handler click đọc ý định **trước** khi mutate, binding guard
+  `body.dataset.roomTabsBound`, và 2 chỗ `chatBtn.click()` tổng hợp trong `room-ui.js` chuyển sang
+  gọi ý định trực tiếp. 9 test mới (gồm 2 test nạp module 2 lần; bỏ bản sửa ra → 7/9 fail), verify
+  trình duyệt thật cả 3 cử chỉ + API ở 2 trạng thái drawer, `npm test` **1213/1213**, `?v=140→141`
+  `[Model: Opus 5]`. Phần "chờ hard-refresh" của vòng 1 vẫn còn giá trị nhưng không còn chặn: bản sửa
+  vòng 2 độc lập với nó — [chi tiết](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
 - ⏳ **#137.** `#start-modal` (`position:absolute; inset:0; z-index:50`, `game.css:412-426`) neo vào
   `.board-area-shell` — trong zen shell này chiếm trọn chiều rộng viewport (chỗ của drawer chỉ là
   `padding-right`, `room-zen.css:282-292`) ⇒ lớp phủ modal **đè lên drawer** (z50 > z15 của

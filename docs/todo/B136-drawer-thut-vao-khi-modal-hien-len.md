@@ -1,6 +1,6 @@
 # #136 — (Reopen #134) Drawer zen bị thu vào rail đúng lúc modal hiện lên, ở viewport desktop
 
-**Trạng thái:** ⏳ Chưa làm — đang xác định nguyên nhân gốc.
+**Trạng thái:** ✅ Đã sửa — 2026-08-21 (`fix/tab-activation-vs-drawer-toggle` off `dev`). Xem "Vòng 2" ở cuối file.
 
 **Nguồn:** người dùng đính chính mô tả của `TODO.md` #134 (2026-08-21), kèm 6 ảnh chụp
 `play3cr.dpdns.org/room.html?id=%23%23ATS` (có ảnh DevTools). Nguyên văn: *"Khi modal (start/...)
@@ -108,3 +108,56 @@ vào khác.
 **Lưu ý phát hiện phụ:** nhánh `main` **chưa** có bản vá #134 (`git show main:client/js/room.js |
 grep -c drawerBreakpoint` → `0`), dù `docs/todo/B134-*.md` ghi nhánh `fix/*` off `main`. Production
 đang chạy nội dung `dev`. Cần đối chiếu lại quy trình merge — xem `TODO.md` #140.
+
+
+---
+
+## Vòng 2 — 2026-08-21: tìm ra đường thứ hai, **tái hiện được**, và đã sửa
+
+**Trạng thái:** ✅ Đã sửa.
+
+Vòng 1 kết luận đúng rằng ảnh chụp của người dùng là hành vi code trước bản vá #134, và loại được
+nghi phạm `chatBtn.click()` ở các kịch bản đã thử. Nhưng "không tái hiện được" chưa phải "không có
+lỗi" — săn tiếp theo đúng `docs/instruction/B136-*.md` (mở rộng instrument thay vì đoán) thì ra
+đường thứ hai, và đường này **tái hiện được**.
+
+### Nguyên nhân đã tái hiện — bind trùng listener
+
+Một `?v=` cũ sót trên bất kỳ cross-import nào làm trình duyệt phân giải **module instance thứ hai**
+của `room.js` và chạy lại top-level — đúng cái bẫy `CLAUDE.md` mô tả (đã ship 2 lần dưới dạng socket
+trùng). Hai bản listener biến một cú **đổi tab bình thường** thành collapse:
+
+1. bản 1: `alreadyActive=false` → `remove('zen-drawer-collapsed')`, set nút thành active;
+2. bản 2: giờ đọc `alreadyActive=`**`true`** (vì bản 1 vừa set) → `toggle(...)` → **drawer đóng lại**.
+
+Ở **mọi viewport**, không cần người dùng làm gì bất thường — khớp cả 3 dấu hiệu của báo cáo gốc
+(desktop rộng, "thỉnh thoảng", không ai bấm gì lạ). Test `room-tab-activation-drawer.test.js` dựng
+lại đúng cơ chế này bằng `jest.resetModules()` + `require` lần hai: bỏ bản sửa ra thì test đó **fail**.
+
+Quan sát phụ trên trình duyệt thật: nạp `room.js` lần hai còn làm phiên bị **đá về `login.html`**
+(socket trùng) — bẫy này gây hại rộng hơn phạm vi #136, thêm một lý do để chặn bằng binding guard.
+
+### Bản sửa
+
+1. `room.js`: tách `activateTab(tabId)` thuần đổi tab, **không bao giờ** chạm `zen-drawer-collapsed`;
+   công bố `window.RoomTabs.activate`. Handler click đọc ý định (`alreadyActive`, `collapsedNow`)
+   **trước** khi mutate.
+2. `room.js`: binding guard `document.body.dataset.roomTabsBound` — một listener cho mỗi document,
+   dù module bị đánh giá mấy lần.
+3. `room-ui.js`: hai chỗ bounce gọi `activateChatTab()` → `window.RoomTabs.activate('tab-chat')`,
+   bỏ `chatBtn.click()` tổng hợp (vẫn giữ fallback click nếu thứ tự load đổi).
+
+### Verify
+
+- **Unit (jsdom)**: 9 test, gồm 2 test nạp module hai lần. Bỏ bản sửa ra → **7/9 fail**.
+- **Trình duyệt thật** (server cô lập, DB riêng): đổi tab khác → drawer mở (shell 340px); bấm lại
+  tab đang mở → collapse (56px); bấm nữa → mở lại (340px); gọi thẳng
+  `window.RoomTabs.activate('tab-chat')` ở **cả hai** trạng thái drawer → tab đổi đúng, `collapsed`
+  và shell width **không đổi** (56→56, 340→340); `body.dataset.roomTabsBound === "1"`.
+- `npm test` **1213/1213** (trước 1204). `?v=140→141`.
+
+### Ngoài phạm vi (ghi ra, không lặng lẽ sửa)
+
+`client/js/tournament-match.js` cũng có code tab riêng (`tabContents.forEach(...)`, dòng ~869) —
+trang khác, không có zen drawer, không nằm trong báo cáo. Nếu sau này trang đó có drawer thì áp cùng
+mô hình `activateTab`.
