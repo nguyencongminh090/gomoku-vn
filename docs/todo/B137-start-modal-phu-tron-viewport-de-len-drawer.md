@@ -1,6 +1,6 @@
 # #137 — `#start-modal` phủ trọn chiều rộng viewport: đè lên drawer và thẻ modal lệch tâm bàn cờ
 
-**Trạng thái:** ⏳ Chưa làm.
+**Trạng thái:** ✅ Đã sửa (2026-08-22).
 
 **Nguồn:** đọc code khi điều tra reopen #134 (2026-08-21), khớp với ảnh chụp full-screen 1920×1080
 của người dùng.
@@ -63,3 +63,36 @@ Hit-test giữa vùng drawer trả về `DIV.slot-card` ⇒ `pointer-events: non
 vẫn bấm được. Tác hại hiện tại thuần thị giác (thẻ modal lệch khỏi tâm bàn cờ 170px) + rủi ro tương
 lai (ai thêm backdrop cho `.start-modal` sẽ che luôn drawer). Ở trạng thái drawer collapsed, lệch
 tâm giảm còn 28px (tâm thẻ 720 vs tâm canvas 692) — cùng một nguyên nhân, đúng bằng nửa rail.
+
+---
+
+## Bản sửa — 2026-08-22
+
+`client/css/room-zen.css`, giữ nguyên anchor `.board-area-shell` (đúng theo
+`docs/instruction/B137-*.md`): cho lớp phủ tôn trọng đúng `padding` của shell nên nó trùng
+**content box** = hộp bàn cờ.
+
+```css
+body.zen-room .start-modal {
+  inset: 0 calc(var(--zen-drawer-w) + var(--zen-board-gutter)) 0 var(--zen-board-gutter);
+  transition: inset 0.35s var(--ease);
+}
+body.zen-room.zen-drawer-collapsed .start-modal {
+  inset: 0 calc(var(--zen-rail-w) + var(--zen-board-gutter)) 0 var(--zen-board-gutter);
+}
+```
+
+`z-index` giữ nguyên **50** — thu vùng phủ là sửa tầng gốc, hạ `z-index` chỉ che triệu chứng. Nhánh
+mobile ≤768px thêm 1 dòng `inset: var(--zen-topnav-h) 0 auto 0;` vào rule collapsed, vì rule desktop
+collapsed đặc hiệu hơn 1 class và nếu không sẽ rò `inset` theo bề rộng rail xuống điện thoại.
+
+| Tổ hợp | Chồng lấn ngang lớp phủ × drawer | Lệch tâm thẻ vs canvas |
+|---|---|---|
+| desktop 1440×900, drawer mở | 340px → **0** | 170px → **0** |
+| desktop 1440×900, collapsed | 56px → **0** | 28px → **0** |
+| mobile 393×727, sheet mở | 393 → 393 (thiết kế #139) | dy −159 → −159 |
+| mobile 393×727, collapsed | 393 → 393 (thiết kế #139) | dy 39.4 → 39.4 |
+
+4 test mới `e2e/start-modal-board-centering.spec.ts` (bỏ bản sửa ra → 2 test desktop fail; bỏ riêng
+dòng `inset` mobile → test mobile collapsed fail 393 vs 337). `npm test` 1213/1213. `?v=` 141→142 —
+[fix-log](../fix-log/2026-08-22-todo-137-start-modal-overlay-respects-drawer.md)
