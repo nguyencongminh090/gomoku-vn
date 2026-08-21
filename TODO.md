@@ -502,13 +502,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `e2e/start-modal-board-centering.spec.ts` (bỏ bản sửa ra → 2 test desktop fail), §B36
   `start-modal-non-blocking` vẫn 2/2 pass, `npm test` **1213/1213**, `?v=141→142`
   `[Model: Opus 5]` — [chi tiết](docs/todo/B137-start-modal-phu-tron-viewport-de-len-drawer.md)
-- ⏳ **#138.** Drawer "đóng" chỉ là **cắt xén** (`overflow:hidden` trên shell, `.panel-right` vẫn
+- ✅ **#138.** Drawer "đóng" chỉ là **cắt xén** (`overflow:hidden` trên shell, `.panel-right` vẫn
   rộng nguyên, `justify-content:flex-end` giữ rail lại) — đúng thiết kế, giải thích việc DevTools
-  vẫn thấy khung chat. Nhưng thiếu nửa còn lại: không `inert`/`aria-hidden` ⇒ ô chat, nút Gửi,
-  `.btn-kick` vẫn nhận focus bằng Tab và vẫn được trình đọc màn hình đọc khi drawer đã đóng. **ĐÃ
-  TÁI HIỆN 2026-08-21**: đi Tab từ `#btn-leave` thì focus lọt vào `INPUT#chat-input` rồi
-  `BUTTON#btn-send` — cả hai nằm ngoài shell đã co (x=1121/1349 vs shell x=1384), không `inert`,
-  không `aria-hidden` — [chi tiết](docs/todo/B138-drawer-dong-chi-la-clip-noi-dung-van-focus-duoc.md)
+  vẫn thấy khung chat. Nhưng thiếu nửa còn lại: không `inert`/`aria-hidden` ⇒ ô chat, nút Gửi vẫn
+  nhận focus bằng Tab và vẫn được trình đọc màn hình đọc khi drawer đã đóng. **ĐÃ TÁI HIỆN
+  2026-08-21**: đi Tab từ `#btn-leave` thì focus lọt vào `INPUT#chat-input` rồi `BUTTON#btn-send`.
+  **ĐÃ SỬA 2026-08-22:** gom việc đổi class thành **một người ghi duy nhất** `setDrawerCollapsed()`
+  trong `room.js` (kèm `syncDrawerInert()`), cả 3 nơi đổi class đều đi qua đó ⇒ class và `inert`
+  không thể lệch pha (tránh đúng "nguồn sự thật thứ tư" mà §B138 cảnh báo). Chỉ `.panel-players` +
+  các `.tab-content` bị `inert`, **không bao giờ** `.sidebar-tabs` (rail là cách duy nhất mở lại);
+  chỉ áp dụng khi có cả `zen-room` lẫn `zen-drawer-collapsed`; không gate theo media query nên mobile
+  (sheet `translateY`) được xử lý y hệt; focus trong vùng sắp `inert` được trả về nút rail của đúng
+  tab đang mở. Đo Playwright (Tab thật, instance cô lập): điểm dừng vô hình **2 → 0** ở cả desktop
+  1440×900 lẫn mobile 393×727, rail vẫn Tab tới được, quick-chat-bar mobile vẫn trong tab-order; mở
+  lại drawer thì gõ/gửi chat thật OK, 0 console error; §B36 kiểm lại trực tiếp vẫn đúng. 14 test mới
+  `client/tests/room-drawer-inert.test.js`, `npm test` **1227/1227**, `?v=142→143` `[Model: Opus 5]`
+  — [chi tiết](docs/todo/B138-drawer-dong-chi-la-clip-noi-dung-van-focus-duoc.md)
 - ✅ **#139.** 📵 **BLOCKER (mobile)** — nút "Bắt đầu" của start-modal bị bottom sheet che hoàn toàn,
   người chơi trên điện thoại **không vào được trận**. Đo trên `devices['Pixel 5']` (393×727): thẻ
   modal bị sheet che **183/210px = 87%**, phần tử nhận click ở tâm nút là `DIV.players-row` **bên
@@ -538,6 +547,17 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `npm test` 1204/1204. Đã đính chính câu ghi sai trong hồ sơ #139 bằng một dòng `docs/fix-log.md`
   mới (append-only, không sửa dòng cũ) `[Model: Opus 5]` — [chi
   tiết](docs/todo/B140-main-thieu-ban-va-134.md)
+- ⏳ **#141.** `e2e/start-modal-non-blocking.spec.ts` **flaky sẵn** (fail cả trên `HEAD` chưa có bản
+  sửa #137/#138, trên server mới tinh — không phải hồi quy): nó chờ `waitForURL(/room\.html/)` rồi
+  đọc ngay `searchParams.get('id')`, nhưng `?id=` chỉ gắn vào URL **một nhịp sau** ⇒ thua cuộc đua
+  thì `roomId` là `null`, người chơi B vào `/room.html?id=` rỗng và bị đá về lobby. Đã quan sát trực
+  tiếp `A.page.url()` trả về `/room.html` không query. Sửa: `waitForURL(/room\.html\?id=/)` (dạng
+  `e2e/start-modal-board-centering.spec.ts` đang dùng, không flaky), quét luôn các spec khác dùng
+  cùng mẫu. Kèm theo, **không phải bug sản phẩm** nhưng làm mọi lần chạy e2e khó đọc và đã 2 lần gây
+  chẩn đoán nhầm "hồi quy": `authLimiter` 20 req/15 phút/IP (`server/routes/auth.js`) và
+  `MAX_ROOMS_PER_IP` mặc định 3 (`server/config.js`) — cần chốt cách nới **chỉ cho harness** trước
+  khi làm, tuyệt đối không hạ ngưỡng production — [chi
+  tiết](docs/todo/B141-e2e-flaky-room-url-race-va-rate-limit.md)
 
 ---
 

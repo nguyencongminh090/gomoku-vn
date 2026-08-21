@@ -190,9 +190,12 @@
     // matters — slide it down to the tab bar. The player can pull it back up
     // from any rail icon. No-op on desktop, where the drawer sits beside the
     // board rather than over it, and on non-zen skins.
+    // Through RoomDrawer, not classList directly: the class alone leaves the
+    // sheet's content focusable and screen-reader-visible while it is off
+    // screen (TODO.md #138). room.js owns that pairing and loads first.
     if (document.body.classList.contains('zen-room')
         && window.matchMedia('(max-width: 768px)').matches) {
-      document.body.classList.add('zen-drawer-collapsed');
+      window.RoomDrawer.setCollapsed(true);
     }
 
     if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
