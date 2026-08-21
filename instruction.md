@@ -208,3 +208,16 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   động — verify bằng Playwright trên instance cô lập (copy repo + DB tạm + cổng 3111 +
   `CORS_ORIGIN` riêng); `?v=123→124` (báo cáo người dùng qua chụp mobile, TODO.md #133) — [chi
   tiết](docs/instruction/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
+- **B134.** (Đã làm) Nguyên nhân: `client/js/room-socket.js`'s `game:init` check
+  `matchMedia('(max-width: 768px)')` một lần duy nhất rồi thêm `zen-drawer-collapsed` — không có
+  chỗ nào gỡ class khi viewport rộng lại (bẫy một chiều, xác nhận bằng người dùng tái hiện kèm
+  DevTools: `body.zen-drawer-collapsed` kẹt ở viewport 1920×935). Sửa: thêm
+  `matchMedia(...).addEventListener('change', ...)` trong `client/js/room.js` ngay sau
+  `refitBoardAfterDrawer()` — **chỉ gỡ** class khi `!e.matches` (viewport hết hẹp), không bao giờ
+  tự thêm (auto-collapse mobile vẫn là việc riêng của `game:init`, không đổi); không đổi breakpoint
+  768px hay cơ chế co giãn width/overflow-clip/flex-end hiện có của `.panel-right-shell`
+  (`room-zen.css:408-455`, cố ý tránh reflow chữ). 4 test mới
+  `client/tests/room-zen-drawer-collapsed-recovery.test.js` (decision table đủ 4 tổ hợp class
+  có/không × viewport hẹp/rộng; kiểm chứng không rỗng bằng `git stash` chỉ `room.js` → đúng 1/4
+  fail), `npm test` 1147/1147. `?v=135→136` (báo cáo người dùng kèm ảnh chụp PC + DevTools, TODO.md
+  #134) — [chi tiết](docs/instruction/B134-sidebar-tab-thut-vao-trong-khi-redraw.md)

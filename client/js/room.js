@@ -126,6 +126,23 @@ function refitBoardAfterDrawer() {
   setTimeout(refit, 400);   // just past the 0.35s transition
 }
 
+// room-socket.js's game:init handler auto-collapses the drawer with a
+// one-time `matchMedia('(max-width: 768px)').matches` check — nothing else
+// ever undoes that, so if the viewport happened to be narrow for even a
+// moment right when a match started (e.g. a briefly docked DevTools panel,
+// a window mid-resize) the drawer stays collapsed forever afterward, even
+// once the window is genuinely wide again (TODO.md #134). This only clears
+// the stuck state once the viewport is provably no longer narrow; it never
+// sets zen-drawer-collapsed itself, so the mobile auto-collapse and the
+// manual tab-click toggle below are both untouched.
+const drawerBreakpoint = window.matchMedia('(max-width: 768px)');
+drawerBreakpoint.addEventListener('change', (e) => {
+  if (!e.matches && document.body.classList.contains('zen-drawer-collapsed')) {
+    document.body.classList.remove('zen-drawer-collapsed');
+    if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
+  }
+});
+
 tabBtns.forEach(btn => {
   btn.addEventListener('click', () => {
     // Re-clicking the already-active tab toggles the zen-room drawer
