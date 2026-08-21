@@ -511,10 +511,16 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   **1150/1150** trên nhánh fix; `?v=135→136` trên nhánh, re-bump `139→140` khi merge vào `dev`
   theo `max(dev,main)+1` `[Model: Opus 5]` — [chi
   tiết](docs/todo/B139-mobile-nut-bat-dau-bi-bottom-sheet-che.md)
-- ⏳ **#140.** `main` **không có** bản vá #134 (`git show main:client/js/room.js | grep -c
-  drawerBreakpoint` → 0) dù `docs/todo/B134-*.md` ghi nhánh `fix/*` off `main` và có PR #18 đã merge;
-  `dev` và production thì có. Cần đối chiếu quy trình merge theo `git-workflow`, rà xem các fix
-  `main`-based gần đây có cùng tình trạng không — [chi tiết](docs/todo/B140-main-thieu-ban-va-134.md)
+- ✅ **#140.** ~~`main` không có bản vá #134~~ — **BÁO ĐỘNG GIẢ, lỗi đo của tôi. ĐÃ ĐÓNG
+  2026-08-21.** `origin/main` có đủ bản vá #134 lẫn file test của nó (`git show
+  origin/main:client/js/room.js | grep -c drawerBreakpoint` → 2; PR #18 MERGED, merge commit
+  `8580ae8`). Nguyên nhân: `main` **cục bộ** đứng sau `origin/main` 4 commit và tôi đọc nó mà
+  **không `git fetch` trước**. Đã sửa: `main` cục bộ fast-forward về `fd911b0`; checkpoint merge
+  `origin/main`→`dev` (chỉ xung đột `?v=` 138 vs 140, giải theo `dev`, **không bump 141** vì
+  `git diff` toàn bộ `client/` trước/sau merge là **rỗng** — không byte nội dung nào đổi);
+  `npm test` 1204/1204. Đã đính chính câu ghi sai trong hồ sơ #139 bằng một dòng `docs/fix-log.md`
+  mới (append-only, không sửa dòng cũ) `[Model: Opus 5]` — [chi
+  tiết](docs/todo/B140-main-thieu-ban-va-134.md)
 
 ---
 
