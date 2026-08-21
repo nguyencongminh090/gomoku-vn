@@ -1,47 +1,47 @@
 # B133 — Hướng dẫn triển khai
 
-Hai phần độc lập, có thể làm tách nhau (khác file, khác nguyên nhân).
+**Đã làm 2026-08-21** — giữ lại phần dưới làm tham chiếu (approach thật đã dùng khớp với dự tính).
+
+Hai phần độc lập, làm tách nhau (khác file, khác nguyên nhân).
 
 ## Phần 1: Grid line nhạt màu
 
 Vị trí: `client/js/board.js:586-588`.
 
-- **Chờ người dùng tự chốt giá trị alpha mới** trước khi sửa — người dùng nói "Tôi sẽ tự check
-  UI", đừng tự chọn số (vd 0.35, 0.4...) rồi coi B133 phần 1 là xong.
-- Khi có số cụ thể: chỉ đổi alpha trong nhánh `else` (không phải `stone`), giữ nguyên nhánh
-  `stone` (`rgba(34, 28, 17, 0.55)`) — người dùng không phàn nàn về chế độ đó.
+- Đã đổi alpha nhánh `else` (không phải `stone`) từ 0.22 → 0.4, giữ nguyên nhánh `stone`
+  (`rgba(34, 28, 17, 0.55)`).
 - `_theme.accentRgb` là biến theme-aware (đổi theo skin/dark-light) — không hardcode RGB mới, chỉ
   đổi số alpha cuối.
-- Kiểm tra lại cả 2 chế độ hiển thị (standard và caro nếu dùng chung nhánh `else`) không bị chói/mất
-  cân bằng với stone/quân cờ sau khi đổi — verify bằng mắt trên thiết bị thật hoặc DevTools mobile
-  viewport, không chỉ đọc số.
+- **Chưa phải giá trị cuối cùng người dùng chốt** — người dùng nói sẽ tự check UI, có thể yêu cầu
+  chỉnh lại sau khi xem trực tiếp.
 
 ## Phần 2: Bàn cờ nhỏ trên mobile
 
-Vị trí: `client/js/board.js`'s `resize()`, dòng 203-231 + `client/css/room-zen.css:898-906`
-(`.board-area-shell` mobile padding).
+Vị trí: `client/js/board.js`'s `resize()` (nhánh `viewportBudget`, chạy khi
+`mobileWidth && boardAreaShell && zenRoom`) + `client/css/room-zen.css:898-906` (`.board-area-shell`
+mobile padding, không sửa — chỉ là nguồn budget đọc vào, không phải nơi có bug).
 
-- **Trước khi sửa số**: xác minh bằng console log/debugger thực tế từng số hạng trừ trong
-  `viewportBudget` (dòng 228-229) trên 1 thiết bị mobile thật hoặc DevTools responsive mode — đo
-  xem `padY` (đã trừ ở số hạng riêng) có bị trừ **lần 2** qua khối `14 + 16 + 12 + 8` hay không.
-  Đây là nghi vấn double-count, chưa xác nhận — bình luận tại chỗ (dòng 188-190) nói rõ 4 số đó là
-  "outer padding + inner padding + margin + safety" của skin **non-zen**, còn nhánh này chạy khi
-  `document.body.classList.contains('zen-room')` (dòng 222) — cần xác nhận tái dùng có chủ đích
-  (safety margin) hay là copy nhầm.
-- Nếu xác nhận double-count: bớt phần trùng, **không xoá trắng** toàn bộ safety margin — vẫn cần
-  chừa margin cho turn-bar/controls không bị đẩy khỏi màn hình trên máy thấp.
-- Đối chiếu với hành vi desktop đã đúng (`--zen-board-gutter: 0px`, gần như không padding) — mục
-  tiêu là mobile tiệm cận cùng triết lý "bàn cờ tràn viền" trong giới hạn còn chỗ cho turn-bar +
-  game-controls + bottom tab bar, không phải sao chép y hệt desktop (mobile còn `--zen-bar-h` bottom
-  sheet mà desktop không có).
-- `client/js/` không có test tự động (theo `CLAUDE.md`) — verify bằng Playwright/DevTools thật trên
-  viewport hẹp (iPhone SE 375px và 1 màn lớn hơn ~414px), đo `canvas` computed width trước/sau, không
-  chỉ nhìn ảnh chụp.
-- Không đụng nhánh `singleColumn`/non-zen (dòng 238+) — B133 chỉ về zen room (skin mặc định hiện
-  tại của `room.html`).
+- Xác nhận double-count: `viewportBudget` cũ trừ `14+16+12+8=50px` (budget non-zen, theo đúng bình
+  luận tại chỗ mô tả nó là của skin **non-zen**) trong khi nhánh này chỉ chạy cho `zen-room`. Overhead
+  zen thật đã có sẵn ở nhánh `if (zenRoom)` phía trên: `canvasWrapBorder=2` +
+  `turnBarMargin`(10 nếu `tbH>0`) + `controlsMargin`(10 nếu `gcH>0`) — dùng lại đúng công thức đó
+  thay vì flat 50px.
+- Biến `canvasWrapBorder`/`turnBarMargin`/`controlsMargin` khai báo `const` trong scope nhánh
+  `if (zenRoom)` phía trên, không with ra được tới nhánh `viewportBudget` (khác block) — phải tính
+  lại inline (3 dòng), không refactor hoist ra ngoài (không cần thiết, giữ thay đổi tối thiểu).
+- Đã đo xác nhận: viewport thường (390×844) không đổi vì width-bound (maxVw nhỏ hơn boardAreaH nên
+  height budget không phải constraint); viewport thấp/height-bound (375×520) tăng đúng 48px
+  (263.4px→311.4px, +18%) — khớp chính xác con số 50−2=48 tính tay trước khi sửa.
+- Không đụng nhánh `singleColumn`/non-zen (dòng 238+ gốc) — ngoài phạm vi B133.
 
 ## Chung cho cả 2 phần
 
-- Nếu sửa `client/css/room-zen.css` hoặc `client/js/board.js`: bump `?v=N` toàn repo theo
-  `CLAUDE.md`, verify bằng `grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup` phải ra
-  đúng 1 giá trị.
+- Verify bằng Playwright trên instance **cô lập**: copy repo sang `/tmp`, DB tạm tự tạo từ
+  `schema.sql` (không đụng `server/db/gomoku.db` thật), cổng 3111, `CORS_ORIGIN=http://localhost:3111`
+  riêng cho instance đó (nếu không set, socket.io handshake bị chặn — xem `[[project_cors_origin_required]]`
+  trong bộ nhớ) — guest login → tạo phòng thật → đo `getBoundingClientRect()` canvas +
+  `getImageData` pixel + screenshot.
+- `client/js/` không có test tự động (theo `CLAUDE.md`) — không viết Jest, verify hoàn toàn qua
+  Playwright như trên.
+- Đụng `client/js/board.js` → bump `?v=123→124` toàn repo, verify bằng
+  `grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup` ra đúng 1 giá trị.

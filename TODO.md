@@ -405,10 +405,21 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#132.** `#game-controls` (4 nút Đầu hàng/Đề nghị hoà/Xin thêm giờ/Xin đi lại) `flex-wrap: wrap` trên mobile khiến nút thứ 4 rớt xuống hàng riêng full-width, tốn chiều cao dọc trên điện thoại nhỏ — người dùng đề xuất trực tiếp: gộp 1 hàng cố định, cho cuộn ngang cục bộ trong khối nút (không cuộn cả trang), kiểu slider. **ĐÃ LÀM 2026-08-19**: `client/css/game.css` mobile breakpoint đổi `flex-wrap: wrap` → `nowrap` + `overflow-x: auto` + `scroll-snap-type: x proximity`, nút không co ép (`flex: 0 0 auto; min-width: 92px`), nút cuối cố ý cắt hụt khi tràn để gợi ý còn nội dung; Playwright phát hiện và sửa 1 bug thật lúc verify: `justify-content: center` kế thừa từ rule desktop khiến overflow bị cắt **đối xứng cả 2 đầu** ở `scrollLeft: 0` (nút đầu bị pre-clip, không cách nào cuộn tới) — thêm `justify-content: flex-start` cho đúng breakpoint mobile; xác minh bằng Playwright trên instance cô lập (copy repo + DB tạm + cổng 3111, không đụng server/DB thật đang có người chơi) qua trang test tĩnh load đúng CSS thật, đo `getBoundingClientRect()` ở `scrollLeft: 0` và `scrollLeft: max` xác nhận nút đầu/cuối đều tới được trọn vẹn + `window.scrollY` không đổi khi cuộn container (đúng yêu cầu "chỉ cuộn khối nút"); `?v=132→133` `[Model: Opus 5]` — [chi tiết](docs/todo/B132-game-controls-cuon-ngang-1-hang-thay-vi-wrap-2-hang.md)
 
 ### Nguồn: báo cáo trực tiếp người dùng qua chụp màn hình mobile (2026-08-21)
-- **#133.** Mobile: đường kẻ bàn cờ (`board.js:586-588`, alpha 0.22 chế độ standard/caro) nhạt màu
-  + bàn cờ nhỏ do padding tích luỹ qua nhiều lớp trong `resize()` (nghi vấn double-count 50px safety
-  budget của skin non-zen bị tái dùng trong nhánh zen room, `board.js:228-229`) — người dùng tự chốt
-  giá trị alpha mới sau khi tự kiểm tra UI, chưa sửa `[Model: Sonnet 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
+- ✅ **#133.** Mobile: đường kẻ bàn cờ (`board.js`, alpha 0.22 chế độ standard/caro) nhạt màu + bàn
+  cờ nhỏ trên cả 2 trục do padding/budget tích luỹ qua nhiều lớp trong `resize()`/`room-zen.css`
+  mobile. **ĐÃ LÀM 2026-08-21, 3 vòng** (`fix/mobile-board-grid-and-size` off `main`, merge vào
+  `dev`): (1) grid alpha 0.22→0.4→**0.55** (người dùng xác nhận trên máy thật rồi yêu cầu đậm thêm),
+  border cùng chỗ 0.4→0.65 để giữ đúng thứ bậc "border đậm hơn grid"; (2) trục dọc `viewportBudget`
+  (zen mobile) bỏ double-count 50px budget non-zen, dùng đúng overhead zen thật
+  (`canvasWrapBorder`+`turnBarMargin`+`controlsMargin`) — xác nhận +48px trên viewport height-bound
+  (375×520: 263.4px→311.4px); (3) trục ngang — người dùng đo trên điện thoại thật thấy canvas 476 /
+  shell 500 (24px) — bỏ side padding 8px/bên trong `room-zen.css` mobile + `- 8` thừa trong `maxVw`
+  (chỉ với zen; non-zen giữ nguyên vì mẹo full-bleed của `room.css` vẫn cần nó), bàn cờ nay tràn sát
+  mép (390 viewport → wrap 0–390, đo Playwright, `scrollWidth === innerWidth`, 0 console error).
+  Xác minh toàn bộ trên instance cô lập (copy repo + DB tạm + cổng 3111 + `CORS_ORIGIN` riêng, không
+  đụng server/DB thật); `client/js/` không test tự động, verify qua đo kích thước canvas +
+  screenshot thật + xác nhận trực tiếp của người dùng trên máy thật. `npm test` 1143/1143,
+  `?v=123→126` `[Model: Sonnet 5 / Opus 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
 
 ---
 

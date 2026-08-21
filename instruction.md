@@ -263,12 +263,19 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   được trọn vẹn, cộng `window.scrollY` không đổi khi cuộn container; bump `?v=N` toàn bộ và verify
   bằng grep (TODO.md #132) — [chi
   tiết](docs/instruction/B132-game-controls-cuon-ngang-1-hang-thay-vi-wrap-2-hang.md)
-- **B133.** (Chưa làm) 2 phần độc lập. (1) Grid line nhạt — `board.js:586-588`, chỉ đổi alpha
-  nhánh `else` (không phải `stone`), **chờ người dùng tự chốt số** trước khi sửa, đừng tự chọn. (2)
-  Bàn cờ nhỏ mobile — `resize()` dòng 203-231: trước khi đổi số phải đo thực tế xem 4 số hạng
-  `14+16+12+8` (budget skin non-zen) có bị double-count với `padY` đã trừ riêng trong nhánh zen room
-  hay không (nghi vấn, chưa xác nhận); không xoá trắng toàn bộ safety margin, chỉ bớt phần trùng;
-  không đụng nhánh `singleColumn` non-zen. Cả 2 phần: `client/js/` không có test tự động — verify
-  bằng Playwright/DevTools thật trên viewport hẹp, không chỉ nhìn ảnh; bump `?v=N` nếu sửa
-  `board.js`/`room-zen.css` (TODO.md #133) — [chi
+- **B133.** (Đã làm, 3 vòng) `client/js/board.js` + `client/css/room-zen.css` mobile. (1) Grid
+  alpha 0.22→0.4→**0.55** (vòng 3: người dùng "Line still add more weight, need darker grid" sau khi
+  xem 0.4 trên máy thật); border cùng chỗ (0.4, chưa từng đụng) nâng theo 0.65 để giữ đúng thứ bậc
+  "border đậm hơn grid". (2) Trục dọc — `viewportBudget` (nhánh `zenRoom && mobileWidth`): thay
+  budget non-zen cứng `14+16+12+8=50px` (double-count) bằng overhead zen thật
+  (`canvasWrapBorder`+`turnBarMargin`+`controlsMargin`, tính lại inline vì biến gốc scope trong
+  nhánh khác); xác nhận qua đo +48px trên viewport height-bound (375×520). (3) Trục ngang (vòng 2,
+  người dùng đo trên điện thoại thật: canvas 476 / shell 500) — bỏ side padding 8px/bên trong
+  `room-zen.css` mobile (cả rule gốc lẫn override `.zen-drawer-collapsed`) + tách nhánh `maxVw`: zen
+  bỏ `- 8` thừa (mẹo full-bleed của `room.css` mà `- 8` chống overshoot không áp dụng cho zen —
+  `room-zen.css` mobile đã huỷ mẹo đó), chỉ trừ 2px hairline `.board-canvas-wrap`; non-zen giữ
+  nguyên `- 8`. `client/js/` không test tự động — verify bằng Playwright trên instance cô lập (copy
+  repo + DB tạm + cổng 3111 + `CORS_ORIGIN` riêng) mỗi vòng, cộng xác nhận trực tiếp của người dùng
+  trên máy thật cho cả màu lẫn kích thước; `?v=123→126` (báo cáo người dùng qua chụp mobile, TODO.md
+  #133) — [chi
   tiết](docs/instruction/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
