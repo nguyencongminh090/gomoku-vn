@@ -623,7 +623,7 @@ class BoardRenderer {
     // real goban lines are inked in dark lacquer, not a light overlay)
     ctx.strokeStyle = this.displayMode === 'stone'
       ? 'rgba(34, 28, 17, 0.55)'
-      : `rgba(${this._theme.accentRgb}, 0.4)`;
+      : `rgba(${this._theme.accentRgb}, 0.55)`;
     // Snap to the physical device-pixel grid and stroke exactly 1px wide so
     // hairlines stay crisp at any devicePixelRatio, including the fractional
     // ratios (2.625, 3.5, ...) common on Android phones.
@@ -647,7 +647,7 @@ class BoardRenderer {
     // Board border (thicker and slightly darker)
     ctx.strokeStyle = this.displayMode === 'stone'
       ? 'rgba(0, 0, 0, 0.25)'
-      : `rgba(${this._theme.accentRgb}, 0.4)`;
+      : `rgba(${this._theme.accentRgb}, 0.65)`;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(g.originX, g.originY, gridW, gridH);
   }

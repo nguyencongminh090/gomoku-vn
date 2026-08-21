@@ -4,12 +4,14 @@
 small" / "đường kẻ (grid) trong bàn nhạt màu và bàn cờ nhỏ") kèm ảnh so sánh desktop (bàn cờ tràn
 viền tốt) và devtools element inspector.
 
-**Trạng thái:** ✅ Đã sửa 2026-08-21, **2 vòng** (`fix/mobile-board-grid-and-size` off `main`).
-Vòng 1: grid line alpha 0.22→0.4 (người dùng đã xem trên máy thật và **xác nhận màu đạt**) + trục
-dọc `viewportBudget` bỏ double-count 48px. Vòng 2 (sau khi người dùng đo trên điện thoại thật, thấy
-canvas 476 / shell 500): trục **ngang** còn 24px — side padding 8px/bên trong `room-zen.css` mobile
-+ `- 8` thừa trong `maxVw` của `board.js`; đã bỏ cả hai cho zen mobile, bàn cờ nay tràn sát mép
-(390 viewport → wrap 0–390). Chi tiết đo đạc:
+**Trạng thái:** ✅ Đã sửa 2026-08-21, **3 vòng** (`fix/mobile-board-grid-and-size` off `main`).
+Vòng 1: grid line alpha 0.22→0.4 + trục dọc `viewportBudget` bỏ double-count 48px. Vòng 2 (người
+dùng đo trên điện thoại thật, thấy canvas 476 / shell 500): trục **ngang** còn 24px — side padding
+8px/bên trong `room-zen.css` mobile + `- 8` thừa trong `maxVw` của `board.js`; đã bỏ cả hai cho zen
+mobile, bàn cờ nay tràn sát mép (390 viewport → wrap 0–390). Vòng 3 (người dùng: "Line still add
+more weight, need darker grid" sau khi xem 0.4 trên máy thật): alpha 0.4→**0.55**; border nâng
+theo 0.4→**0.65** để giữ đúng thứ bậc "border đậm hơn grid" mà comment gốc mô tả (trước vòng 3, cả
+hai đã trùng 0.4, mất phân cấp). Chi tiết đo đạc:
 [fix-log](../fix-log/2026-08-21-todo-133-mobile-grid-line-board-size.md).
 
 ## #133. Hai vấn đề riêng biệt, cùng do layer khác nhau gây ra
