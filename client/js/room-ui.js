@@ -49,6 +49,18 @@
     return document.documentElement.getAttribute('data-ui-mode') || 'lite';
   }
 
+  // Bounce the user back to the Chat tab when the tab they are on disappears.
+  // window.RoomTabs is published by room.js, which room-entry.js loads before
+  // this file; the click fallback only matters if that order ever changes.
+  function activateChatTab() {
+    if (window.RoomTabs && typeof window.RoomTabs.activate === 'function') {
+      window.RoomTabs.activate('tab-chat');
+      return;
+    }
+    const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
+    if (chatBtn) chatBtn.click();
+  }
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
@@ -486,10 +498,12 @@
     if (tabBtn) {
       const hideTab = uiMode() === 'lite' && guests.length === 0;
       tabBtn.style.display = hideTab ? 'none' : '';
-      // Don't strand the user on a tab that just disappeared.
+      // Don't strand the user on a tab that just disappeared. Say "show the
+      // chat tab", not "pretend the user clicked the chat button": the click
+      // handler in room.js also owns the zen drawer's collapse toggle, and a
+      // synthetic click walked straight into it (TODO.md #136).
       if (hideTab && tabBtn.classList.contains('tab-btn--active')) {
-        const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
-        if (chatBtn) chatBtn.click();
+        activateChatTab();
       }
     }
 
@@ -543,8 +557,7 @@
     if (tabBtn) {
       tabBtn.style.display = hasData ? '' : 'none';
       if (!hasData && tabBtn.classList.contains('tab-btn--active')) {
-        const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
-        if (chatBtn) chatBtn.click();
+        activateChatTab();   // same intent-not-event rule as above (#136)
       }
     }
 

@@ -139,39 +139,78 @@ drawerBreakpoint.addEventListener('change', (e) => {
   }
 });
 
-tabBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    // Re-clicking the already-active tab toggles the zen-room drawer
-    // collapsed/open instead of doing nothing; switching to a different tab
-    // always re-opens it. .zen-drawer-collapsed has no matching CSS outside
-    // room-zen.css, so this is a no-op on other skins.
-    const alreadyActive = btn.classList.contains('tab-btn--active');
-    const collapsedNow = document.body.classList.contains('zen-drawer-collapsed');
+// Switching tab and collapsing the drawer are two different intentions that
+// used to share one code path (TODO.md #136). Everything that only *shows a
+// tab* lives here and deliberately never touches zen-drawer-collapsed, so
+// programmatic callers can't move the drawer as a side effect: room-ui.js
+// bounces the user off a tab whose button just disappeared, and it used to do
+// that by synthesising `chatBtn.click()` — a fake DOM event that re-entered
+// the drawer branch below with `alreadyActive` computed from whatever the DOM
+// happened to say at that moment. Expressing the intent directly removes that
+// whole class of accident instead of adding a flag to detect it.
+function activateTab(tabId) {
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+  const content = document.getElementById(tabId);
+  if (!btn || !content) return;
 
-    tabBtns.forEach(b => b.classList.remove('tab-btn--active'));
-    tabContents.forEach(c => c.classList.remove('tab-content--active'));
-    btn.classList.add('tab-btn--active');
-    const tabId = btn.getAttribute('data-tab');
-    document.getElementById(tabId).classList.add('tab-content--active');
+  tabBtns.forEach(b => b.classList.remove('tab-btn--active'));
+  tabContents.forEach(c => c.classList.remove('tab-content--active'));
+  btn.classList.add('tab-btn--active');
+  content.classList.add('tab-content--active');
 
-    if (alreadyActive) {
-      document.body.classList.toggle('zen-drawer-collapsed', !collapsedNow);
-    } else {
-      document.body.classList.remove('zen-drawer-collapsed');
-    }
+  if (tabId === 'tab-chat' && chatMessages) {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
 
-    // Opening/collapsing the desktop drawer changes .board-area-shell's
-    // padding-right, i.e. the board's entire width budget — but nothing fires
-    // a window resize, so without this the canvas keeps its old size and is
-    // either cropped by .board-canvas-wrap's overflow:hidden (drawer opened)
-    // or leaves the reclaimed space empty (drawer collapsed). Re-fit once the
-    // 0.35s padding transition has settled, and once on the way there so the
-    // board doesn't visibly jump only at the end.
-    if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
+// room-ui.js's renderUsersList()/renderScoreTable() call this when the tab the
+// user is standing on is about to be hidden.
+window.RoomTabs = { activate: activateTab };
 
-    if (tabId === 'tab-chat') chatMessages.scrollTop = chatMessages.scrollHeight;
+// Binding guard. A stale `?v=` on any cross-import makes the browser resolve a
+// second module instance of this file and re-run its top level (the hazard
+// CLAUDE.md's cache-busting rule documents, already shipped twice as a
+// duplicate socket). Two copies of the listener below would turn an ordinary
+// "switch to another tab" click into a collapse: the first copy removes the
+// class and marks the button active, then the second copy — now seeing
+// `alreadyActive === true` — toggles the drawer shut, at any viewport width.
+// Confirmed live: injecting a second room.js instance also gets the tab kicked
+// back to login by the duplicate socket. One binding per document, whatever
+// the module graph does.
+if (!document.body.dataset.roomTabsBound) {
+  document.body.dataset.roomTabsBound = '1';
+
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Read the intent BEFORE mutating anything, so the decision can't be
+      // taken from state this handler itself just wrote.
+      const alreadyActive = btn.classList.contains('tab-btn--active');
+      const collapsedNow = document.body.classList.contains('zen-drawer-collapsed');
+      const tabId = btn.getAttribute('data-tab');
+
+      activateTab(tabId);
+
+      // Re-clicking the already-active tab toggles the zen-room drawer
+      // collapsed/open instead of doing nothing; switching to a different tab
+      // always re-opens it. .zen-drawer-collapsed has no matching CSS outside
+      // room-zen.css, so this is a no-op on other skins.
+      if (alreadyActive) {
+        document.body.classList.toggle('zen-drawer-collapsed', !collapsedNow);
+      } else {
+        document.body.classList.remove('zen-drawer-collapsed');
+      }
+
+      // Opening/collapsing the desktop drawer changes .board-area-shell's
+      // padding-right, i.e. the board's entire width budget — but nothing fires
+      // a window resize, so without this the canvas keeps its old size and is
+      // either cropped by .board-canvas-wrap's overflow:hidden (drawer opened)
+      // or leaves the reclaimed space empty (drawer collapsed). Re-fit once the
+      // 0.35s padding transition has settled, and once on the way there so the
+      // board doesn't visibly jump only at the end.
+      if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
+    });
   });
-});
+}
 
 const chatInput = document.getElementById('chat-input');
 
