@@ -259,8 +259,8 @@
   transition: all 0.15s;
   line-height: 1;
 }
-.replay__back-btn i,
-.replay__analysis-btn i {
+.replay__back-btn .icon,
+.replay__analysis-btn .icon {
   font-size: 15px;
 }
 .replay__back-btn:hover,
@@ -563,8 +563,8 @@
     padding: 0;
     justify-content: center;
   }
-  .replay__back-btn i,
-  .replay__analysis-btn i {
+  .replay__back-btn .icon,
+  .replay__analysis-btn .icon {
     font-size: 17px;
   }
 

@@ -422,7 +422,7 @@
 
 /* Icon markup added for the zen-room icon rail (see room-zen.css) — hidden
    here so the default room skin keeps its plain text tabs unchanged. */
-.tab-btn > i { display: none; }
+.tab-btn > .icon { display: none; }
 
 .tab-btn:hover {
   color: var(--c-ink);

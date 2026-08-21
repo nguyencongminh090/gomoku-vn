@@ -574,7 +574,7 @@ body.zen-room .tab-btn--active {
   box-shadow: none;
   color: var(--ink);
 }
-body.zen-room .tab-btn > i {
+body.zen-room .tab-btn > .icon {
   display: block;
   font-size: 18px;
 }
@@ -987,7 +987,7 @@ body.zen-room .players-strip {
     align-items: center;
     justify-content: center;
   }
-  body.zen-room .tab-btn > i { font-size: 20px; }
+  body.zen-room .tab-btn > .icon { font-size: 20px; }
 
   body.zen-room .panel-players { padding: 14px 16px 12px; }
   body.zen-room .tab-content { padding: 4px 16px 16px; }
@@ -1046,7 +1046,7 @@ body.zen-room .players-strip {
     cursor: pointer;
   }
   body.zen-room .quick-chat-bar button:active { transform: scale(0.92); }
-  body.zen-room .quick-chat-bar button i { font-size: 15px; }
+  body.zen-room .quick-chat-bar button .icon { font-size: 15px; }
 }
 
 /* Hidden on desktop — the drawer's own chat input is already reachable

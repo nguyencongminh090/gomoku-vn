@@ -295,3 +295,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   có/không × viewport hẹp/rộng; kiểm chứng không rỗng bằng `git stash` chỉ `room.js` → đúng 1/4
   fail), `npm test` 1147/1147. `?v=135→136` (báo cáo người dùng kèm ảnh chụp PC + DevTools, TODO.md
   #134) — [chi tiết](docs/instruction/B134-sidebar-tab-thut-vao-trong-khi-redraw.md)
+- **B135.** (Đã làm) `i`→`.icon` thuần selector, **không đổi** giá trị font-size/display nào khác,
+  6 vị trí trong `lobby-zen.css`/`room.css`/`room-zen.css`/`history.css` (danh sách đầy đủ trong
+  `docs/todo/B135-*.md`). Cố ý **không đụng** `lobby.css`'s `.btn-create i`/`.btn-secondary i` — CSS
+  chết từ trước #129, không phần tử thật nào dùng class đó với icon. Bug chỉ tồn tại trên `dev`
+  (main chưa merge #129) — nhánh `fix/*` off `dev`, merge lại `dev`, không đụng `main`. **Quan
+  trọng: đo Playwright xác nhận bug thật (13px→15px) nhưng KHÔNG khớp độ lớn "zoom" trong ảnh chụp
+  gốc của người dùng** — đo lại trên production thật trước khi deploy cho kết quả đúng 15px sẵn,
+  nghi ngờ report gốc là cache trình duyệt/CDN thời điểm đang bump `?v=` liên tục, không phải bug
+  code dài hạn; **chưa được người dùng xác nhận lại sau hard-refresh** — đừng đóng mục coi như đã
+  giải quyết report gốc chỉ vì tìm được 1 bug thật khác trong lúc điều tra (TODO.md #135) — [chi
+  tiết](docs/instruction/B135-svg-icon-migration-orphaned-css-selectors.md)

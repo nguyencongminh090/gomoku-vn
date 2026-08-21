@@ -208,7 +208,7 @@ body.zen-lobby .link-action {
   text-decoration: none;
   transition: color 0.2s var(--ease-out, ease), opacity 0.2s var(--ease-out, ease);
 }
-body.zen-lobby .link-action i { font-size: 15px; }
+body.zen-lobby .link-action .icon { font-size: 15px; }
 body.zen-lobby .link-action:hover { color: var(--c-ink); }
 body.zen-lobby .link-action--primary { color: var(--c-ink); }
 body.zen-lobby .link-action--primary:hover { opacity: 0.6; }
@@ -384,8 +384,8 @@ body.zen-lobby .tournament-card__status {
   font-size: 12.5px;
   color: var(--c-ink-3);
 }
-body.zen-lobby .tournament-card__meta i,
-body.zen-lobby .tournament-card__status i { font-size: 13px; }
+body.zen-lobby .tournament-card__meta .icon,
+body.zen-lobby .tournament-card__status .icon { font-size: 13px; }
 /* The row is already delimited by its own bottom hairline — an inner rule
    above the status line just fragments it. */
 body.zen-lobby .tournament-card__status {
@@ -535,5 +535,5 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
   /* An inline-flex span wraps as one indivisible block, which leaves a ragged
      second column mid-sentence — plain inline lets it wrap as prose. */
   body.zen-lobby .tournament-card__status { display: inline; }
-  body.zen-lobby .tournament-card__status i { display: none; }
+  body.zen-lobby .tournament-card__status .icon { display: none; }
 }
