@@ -383,6 +383,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   không có test tự động, verify hoàn toàn qua đo kích thước canvas + screenshot thật; `?v=123→124`
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
 
+### Nguồn: báo cáo trực tiếp người dùng kèm ảnh chụp màn hình PC (2026-08-21)
+- ✅ **#134.** Sidebar-tab (icon rail zen-skin) đôi khi "thụt vào trong" với hiệu ứng chồng ảnh khi
+  redraw, nhất là ngay sau khi kết thúc ván. Người dùng tự tái hiện lại kèm ảnh chụp DevTools xác
+  nhận `body.zen-drawer-collapsed` kẹt ở viewport 1920×935 — không phải mobile. **ĐÃ LÀM
+  2026-08-21** (`fix/sidebar-drawer-collapsed-stuck` off `main`): nguyên nhân là
+  `client/js/room-socket.js`'s `game:init` handler check `matchMedia('(max-width: 768px)')` một
+  lần duy nhất rồi thêm `zen-drawer-collapsed`, không có chỗ nào gỡ class khi viewport rộng lại
+  (bẫy một chiều — xác nhận bằng grep toàn bộ `client/js/*.js`, không có listener nào khác đụng
+  class này). Thêm `matchMedia(...).addEventListener('change', ...)` trong `client/js/room.js`
+  ngay sau `refitBoardAfterDrawer()` — chỉ **gỡ** class khi viewport hết hẹp, không bao giờ tự
+  thêm (auto-collapse trên mobile vẫn là việc riêng của `game:init`, không đổi breakpoint hay cơ
+  chế co giãn CSS hiện có của `.panel-right-shell`). 4 test mới
+  `client/tests/room-zen-drawer-collapsed-recovery.test.js` (kiểm chứng không rỗng: bỏ bản sửa ra
+  thì đúng 1/4 fail), `npm test` 1147/1147 (trước: 1143). `?v=135→136` `[Model: Sonnet 5]` — [chi
+  tiết](docs/todo/B134-sidebar-tab-thut-vao-trong-khi-redraw.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
