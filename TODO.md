@@ -492,13 +492,24 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   TÁI HIỆN 2026-08-21**: đi Tab từ `#btn-leave` thì focus lọt vào `INPUT#chat-input` rồi
   `BUTTON#btn-send` — cả hai nằm ngoài shell đã co (x=1121/1349 vs shell x=1384), không `inert`,
   không `aria-hidden` — [chi tiết](docs/todo/B138-drawer-dong-chi-la-clip-noi-dung-van-focus-duoc.md)
-- ⏳ **#139.** 📵 **BLOCKER (mobile)** — nút "Bắt đầu" của start-modal bị bottom sheet che hoàn toàn,
+- ✅ **#139.** 📵 **BLOCKER (mobile)** — nút "Bắt đầu" của start-modal bị bottom sheet che hoàn toàn,
   người chơi trên điện thoại **không vào được trận**. Đo trên `devices['Pixel 5']` (393×727): thẻ
   modal bị sheet che **183/210px = 87%**, phần tử nhận click ở tâm nút là `DIV.players-row` **bên
   trong drawer**, `page.click('#start-modal-btn')` **timeout**. Gốc: `.start-modal` `z-index:50`
   (`game.css:412-426`) vs `.panel-right-shell` `z-index:700` ở nhánh ≤768px
   (`room-zen.css:934-952`) — hai quyết định đúng riêng lẻ, chưa ai xét chung. `#start-modal-btn` là
-  **lối duy nhất** để bấm Bắt đầu (grep `confirmStart` toàn repo) — [chi
+  **lối duy nhất** để bấm Bắt đầu (grep `confirmStart` toàn repo). **ĐÃ LÀM 2026-08-21**
+  (`fix/mobile-start-modal-behind-sheet` off `main`, đã merge vào `dev`; PR vào `main` **chờ người
+  dùng xác nhận**): thuần CSS trong nhánh ≤768px của `room-zen.css` — `z-index: 750` (trên sheet)
+  **cộng** neo lớp phủ vào dải trống giữa topnav và sheet (`position: fixed` +
+  `height: max(180px, calc(100dvh - topnav - sheet-h))`, biến thể `--zen-bar-h` khi sheet thu), nhờ
+  đó thẻ modal không đè sheet khi còn chỗ nên rail/ghế ngồi vẫn bấm được (§B36). **Không** dùng cách
+  tự thêm `zen-drawer-collapsed` khi modal hiện (sẽ thành nguồn sự thật thứ tư cho class tâm điểm
+  #134/#136). Verify bằng **chạm thật** `page.click()` ở 6 viewport: Pixel 5 phần bị che
+  **183px→0px**, iPhone 12 / 360×560 / 700×600 / tablet / desktop đều vào được trận. 7 test mới
+  `client/tests/room-zen-start-modal-above-sheet.test.js` (bỏ bản sửa ra → 5/7 fail), `npm test`
+  **1150/1150** trên nhánh fix; `?v=135→136` trên nhánh, re-bump `139→140` khi merge vào `dev`
+  theo `max(dev,main)+1` `[Model: Opus 5]` — [chi
   tiết](docs/todo/B139-mobile-nut-bat-dau-bi-bottom-sheet-che.md)
 - ⏳ **#140.** `main` **không có** bản vá #134 (`git show main:client/js/room.js | grep -c
   drawerBreakpoint` → 0) dù `docs/todo/B134-*.md` ghi nhánh `fix/*` off `main` và có PR #18 đã merge;

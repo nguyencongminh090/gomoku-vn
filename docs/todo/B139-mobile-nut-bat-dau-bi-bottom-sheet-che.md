@@ -1,6 +1,6 @@
 # #139 — 📵 Trên điện thoại, nút "Bắt đầu" của start-modal bị bottom sheet che hoàn toàn — không vào được trận
 
-**Trạng thái:** ⏳ Chưa làm — **mức độ: chặn đường (blocker)**.
+**Trạng thái:** ✅ Đã sửa — **ĐÃ LÀM 2026-08-21** (`fix/mobile-start-modal-behind-sheet` off `main`, đã merge `dev`; PR vào `main` chờ người dùng xác nhận).
 
 **Nguồn:** phát hiện tình cờ khi tái hiện #136 bằng Playwright (2026-08-21) — bước thu viewport
 xuống 700px làm click vào `#start-modal-btn` timeout với thông báo
@@ -53,3 +53,41 @@ nguồn sự thật mới cho `zen-drawer-collapsed`). Xem `docs/instruction/B13
 Phải verify lại **bằng chạm thật** (`page.click`, không phải `el.click()` bằng JS) trên ít nhất 2
 profile điện thoại + 1 tablet, và kiểm tra không làm hỏng: `.quick-chat-bar`, `.float-messages`, và
 sheet vẫn phủ đúng những thứ nó phải phủ.
+
+
+---
+
+## Bản sửa (đã làm) — 2026-08-21
+
+Thuần CSS, trong nhánh ≤768px của `client/css/room-zen.css`, hai vế đi cùng nhau:
+
+1. `z-index: 750` — trên sheet (700), đảm bảo chạm tới nút kể cả khi màn hình quá thấp để hai thứ
+   nằm rời nhau.
+2. Neo lớp phủ vào dải trống giữa topnav và sheet: `position: fixed`,
+   `inset: var(--zen-topnav-h) 0 auto 0`, `height: max(180px, calc(100dvh - topnav - sheet-h))`
+   (+ biến thể `--zen-bar-h` khi sheet đã thu). Khi còn chỗ thì thẻ modal **không đè** sheet, rail
+   và ghế ngồi vẫn bấm được — đúng tinh thần §B36.
+
+Chỉ nâng z-index là **chưa đủ**: bản thử đầu (750 + `align-items: flex-start`) chạm được nút nhưng
+vẫn đè sheet 79px và che tâm rail. Đã bác phương án tự thêm `zen-drawer-collapsed` khi modal hiện
+(đúng ràng buộc trong `docs/instruction/B139-*.md`).
+
+### Verify — chạm thật, không phải `el.click()`
+
+| Viewport | thẻ bị sheet che | rail còn bấm được | chạm thật |
+|---|---|---|---|
+| Pixel 5 393×727 | **0px** (trước: 183px) | ✅ | ✅ vào trận |
+| iPhone 12 390×664 | 9px | ✅ | ✅ |
+| short phone 360×560 | 43px | ❌ (chấp nhận: đúng ca `max(180px,…)` + z-index gánh) | ✅ |
+| narrow 700×600 | 27px | ✅ | ✅ |
+| tablet 820×1180 / desktop 1440×900 | n/a (layout desktop, z vẫn 50/15) | ✅ | ✅ |
+
+Đo lại lần nữa **sau khi merge vào `dev`** (nơi có `.quick-chat-bar` z-650 thay `.btn-focus`): kết
+quả không đổi.
+
+### Test
+
+`client/tests/room-zen-start-modal-above-sheet.test.js` — 7 test: thang z-index so với
+sheet/quick-chat-bar/float-messages (đọc số thật từ stylesheet, không hardcode), neo dải trống,
+§B36 `pointer-events`, desktop không đổi. Kiểm chứng không rỗng: bỏ bản sửa ra → **5/7 fail**.
+`npm test` **1150/1150** trên nhánh fix (baseline `main` 1143 + 7).
