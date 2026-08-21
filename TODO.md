@@ -419,7 +419,10 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   Xác minh toàn bộ trên instance cô lập (copy repo + DB tạm + cổng 3111 + `CORS_ORIGIN` riêng, không
   đụng server/DB thật); `client/js/` không test tự động, verify qua đo kích thước canvas +
   screenshot thật + xác nhận trực tiếp của người dùng trên máy thật. `npm test` 1143/1143,
-  `?v=123→126` `[Model: Sonnet 5 / Opus 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
+  `?v=123→126` trên nhánh fix, **vòng 4** sau merge vào `dev`: merge trước đó giữ nguyên `?v=133`
+  (nhầm — theo quy tắc `git-workflow` phải re-bump lên `max(dev,main)+1` vì nội dung file đã đổi
+  thật, không chỉ giữ số cũ), sửa lại `?v=133→134` `[Model: Sonnet 5 / Opus 5]` — [chi
+  tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
 
 ---
 

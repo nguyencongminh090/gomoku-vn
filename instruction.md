@@ -276,6 +276,9 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `room-zen.css` mobile đã huỷ mẹo đó), chỉ trừ 2px hairline `.board-canvas-wrap`; non-zen giữ
   nguyên `- 8`. `client/js/` không test tự động — verify bằng Playwright trên instance cô lập (copy
   repo + DB tạm + cổng 3111 + `CORS_ORIGIN` riêng) mỗi vòng, cộng xác nhận trực tiếp của người dùng
-  trên máy thật cho cả màu lẫn kích thước; `?v=123→126` (báo cáo người dùng qua chụp mobile, TODO.md
+  trên máy thật cho cả màu lẫn kích thước; `?v=123→126` trên nhánh fix. **Vòng 4** (sau merge vào
+  `dev`): merge giữ nguyên `?v=133` cũ thay vì re-bump — sai theo quy tắc `git-workflow`
+  ("max(dev,main)+1" khi nội dung file thật sự đổi lúc merge, không chỉ giữ số hiện có dù đã cao
+  hơn nhánh fix); sửa lại `?v=133→134` (báo cáo người dùng qua chụp mobile, TODO.md
   #133) — [chi
   tiết](docs/instruction/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
