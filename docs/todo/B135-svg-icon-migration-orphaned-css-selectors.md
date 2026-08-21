@@ -1,7 +1,7 @@
 # #135 — SVG icon migration (#129) để sót nhiều CSS selector nhắm `i` (thẻ font-icon cũ), khiến icon co sai kích thước
 
-**Trạng thái:** ✅ Đã sửa (một phần thật, một phần chưa xác nhận đúng nguyên nhân báo cáo gốc) —
-**ĐÃ LÀM 2026-08-21** (`fix/svg-icon-migration-orphaned-selectors` off `dev`).
+**Trạng thái:** ✅ Đã sửa + đã xác nhận — **ĐÃ LÀM 2026-08-21** (`fix/svg-icon-migration-orphaned-selectors`
+off `dev`). Người dùng xác nhận sau hard-refresh: hết hiện tượng "zoom" ("done").
 
 ## Bối cảnh — vì sao mục này tồn tại
 
@@ -28,23 +28,22 @@ cha** thay vì giá trị đã chốt.
 - Đây là **bug chỉ tồn tại trên `dev`**: `main` chưa merge #129 nên vẫn dùng `<i class="ph ...">`
   thật, các rule cũ trên `main` vẫn khớp đúng — không có bug này trên `main`.
 
-## ⚠️ Chưa xác nhận khớp đúng độ lớn báo cáo gốc — đọc trước khi coi mục này là "đã xong" hoàn toàn
+## Độ lớn báo cáo gốc — ĐÃ XÁC NHẬN 2026-08-21: cache tạm thời, không phải bug code
 
 Đo trực tiếp trên **production thật** (`play3cr.dpdns.org`, đăng nhập khách qua UI thật, không chạm
 DB) **ngay lúc vừa sửa xong, trước khi deploy bản sửa này**: icon đo được **đã đúng `15×15px`**,
-**không hề to bất thường như ảnh chụp gốc của người dùng**. Tức là:
+**không hề to bất thường như ảnh chụp gốc của người dùng**. Kết luận tại thời điểm đó:
 
 - Bug orphaned-selector có thật (đo được `13px` so với `15px` dự kiến trên bản dựng tĩnh cô lập) —
-  **nhưng chênh lệch 2px không thể tạo ra hiện tượng "zoom" to như ảnh chụp gốc**.
-- Nguyên nhân thật của ảnh chụp gốc **nhiều khả năng là cache trình duyệt/CDN không đồng bộ tại thời
-  điểm chụp** (đúng lúc đang bump `?v=136→137→138` liên tục trong phiên làm việc trước đó — xem
-  `[[feedback_verify_cache_before_deep_debug]]` trong bộ nhớ) — **không phải bug code lâu dài**, vì
-  nếu là bug code thì phải tái hiện được ngay cả SAU KHI cache đã ổn định, mà thực tế đo lúc này lại
-  không tái hiện được.
-- **Chưa hỏi lại người dùng xác nhận** liệu hard-refresh (Ctrl+Shift+R) trên máy họ có còn thấy icon
-  to hay không sau khi sự kiện bump `?v=` liên tục đã qua. Nếu vẫn to sau hard-refresh, quay lại điều
-  tra — đừng coi bản sửa CSS này là đã giải quyết đúng report gốc chỉ vì nó sửa được một bug thật
-  khác tìm thấy trong lúc điều tra.
+  **nhưng chênh lệch 2px không thể tự nó tạo ra hiện tượng "zoom" to như ảnh chụp gốc**.
+- Nghi ngờ chính: cache trình duyệt/CDN không đồng bộ tại thời điểm chụp (đúng lúc đang bump
+  `?v=136→137→138` liên tục trong phiên làm việc trước đó — xem
+  `[[feedback_verify_cache_before_deep_debug]]` trong bộ nhớ), không phải bug code lâu dài.
+
+**Người dùng xác nhận sau khi hard-refresh (Ctrl+Shift+R): icon không còn to bất thường ("done").**
+Giả thuyết cache tạm thời đúng — không có bug code nào khác đang ẩn giấu đằng sau report gốc. Bản
+sửa 6 selector mồ côi ở trên vẫn giữ nguyên giá trị (bug thật, dù nhỏ, đúng theo audit gap của #129),
+chỉ là **không phải nguyên nhân của ảnh chụp gốc** — hai việc độc lập, cả hai đều đã đóng.
 
 ## Danh sách 6 vị trí đã sửa (`i` → `.icon`)
 

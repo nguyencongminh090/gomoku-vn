@@ -448,12 +448,13 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   merge #129 nên không dính). Sửa 6 vị trí (`i`→`.icon`): `lobby-zen.css` (`.link-action`,
   `.tournament-card__status`/`__meta`), `room.css`+`room-zen.css` (`.tab-btn`,
   `.quick-chat-bar button`), `history.css` (`.replay__back-btn`/`.replay__analysis-btn`). Đo bằng
-  Playwright trên bản dựng tĩnh cô lập xác nhận đúng hướng (13px→15px, `.link-action .icon`).
-  **⚠️ Chưa xác nhận khớp đúng độ lớn "zoom" trong ảnh chụp gốc** — đo lại trên production thật
-  (đăng nhập khách qua UI thật, chỉ đo không đụng DB) **ngay lúc chưa deploy bản sửa** đã cho
-  `15×15px` đúng, không hề to như báo cáo — nghi ngờ chính là cache trình duyệt/CDN không đồng bộ
-  tại thời điểm chụp (đúng lúc đang bump `?v=` liên tục), không phải bug code dài hạn; **cần người
-  dùng xác nhận lại sau hard-refresh**. `npm test` 1197/1197 (không đổi — thuần CSS). `?v=138→139`
+  Playwright trên bản dựng tĩnh cô lập xác nhận đúng hướng (13px→15px, `.link-action .icon`). Đo
+  lại trên production thật (đăng nhập khách qua UI thật, chỉ đo không đụng DB) **ngay lúc chưa
+  deploy bản sửa** đã cho `15×15px` đúng, không hề to như báo cáo — nghi ngờ chính là cache trình
+  duyệt/CDN không đồng bộ tại thời điểm chụp (đúng lúc đang bump `?v=` liên tục), không phải bug
+  code dài hạn. **Người dùng xác nhận sau hard-refresh: hết hiện tượng "zoom"** — giả thuyết cache
+  tạm thời đúng, bản sửa CSS vẫn giữ nguyên (bug thật dù nhỏ) nhưng độc lập với report gốc.
+  `npm test` 1197/1197 (không đổi — thuần CSS). `?v=138→139`
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B135-svg-icon-migration-orphaned-css-selectors.md)
 
 ---

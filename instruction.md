@@ -299,10 +299,10 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   6 vị trí trong `lobby-zen.css`/`room.css`/`room-zen.css`/`history.css` (danh sách đầy đủ trong
   `docs/todo/B135-*.md`). Cố ý **không đụng** `lobby.css`'s `.btn-create i`/`.btn-secondary i` — CSS
   chết từ trước #129, không phần tử thật nào dùng class đó với icon. Bug chỉ tồn tại trên `dev`
-  (main chưa merge #129) — nhánh `fix/*` off `dev`, merge lại `dev`, không đụng `main`. **Quan
-  trọng: đo Playwright xác nhận bug thật (13px→15px) nhưng KHÔNG khớp độ lớn "zoom" trong ảnh chụp
-  gốc của người dùng** — đo lại trên production thật trước khi deploy cho kết quả đúng 15px sẵn,
-  nghi ngờ report gốc là cache trình duyệt/CDN thời điểm đang bump `?v=` liên tục, không phải bug
-  code dài hạn; **chưa được người dùng xác nhận lại sau hard-refresh** — đừng đóng mục coi như đã
-  giải quyết report gốc chỉ vì tìm được 1 bug thật khác trong lúc điều tra (TODO.md #135) — [chi
+  (main chưa merge #129) — nhánh `fix/*` off `dev`, merge lại `dev`, không đụng `main`. Đo Playwright
+  xác nhận bug thật (13px→15px) nhưng KHÔNG khớp độ lớn "zoom" trong ảnh chụp gốc của người dùng —
+  đo lại trên production thật trước khi deploy cho kết quả đúng 15px sẵn, nghi ngờ report gốc là
+  cache trình duyệt/CDN thời điểm đang bump `?v=` liên tục, không phải bug code dài hạn. **Người
+  dùng xác nhận sau hard-refresh: hết "zoom"** — giả thuyết cache đúng, 2 việc độc lập, cả hai đều
+  đã đóng (TODO.md #135) — [chi
   tiết](docs/instruction/B135-svg-icon-migration-orphaned-css-selectors.md)
