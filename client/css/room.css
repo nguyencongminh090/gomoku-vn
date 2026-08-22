@@ -173,7 +173,6 @@
 
 /* ── Player Slot Cards ───────────────────────────────────────────────────────── */
 .slot-card {
-  position: relative;
   flex: 1;
   background: var(--c-surface-2);
   border: 1px solid var(--c-border-light);
@@ -234,32 +233,31 @@
 .slot-card__header {
   display: flex;
   align-items: center;
-  /* Room for .slot-card__stand (TODO.md #143): it's pulled out of this row via
-     position: absolute (top-right corner of .slot-card) so the name gets the
-     row's full width instead of splitting it with a 32px+gap touch target —
-     that split is what squeezed the seat's own name down to ~3 chars while
-     the other seat (no stand button) read fine. Applied to both seats' header
-     uniformly so a seated player's name starts at the same height whether or
-     not their own seat has the button. */
-  padding-top: 18px;
+  justify-content: space-between;
+  gap: 6px;
 }
 
 .slot-card__stand {
-  position: absolute;
-  top: 0;
-  right: 0;
   cursor: pointer;
   font-size: 12px;
   color: var(--c-ink-3);
-  padding: 6px 8px;
-  min-height: 32px;
-  min-width: 32px;
+  padding: 3px 5px;
+  /* TODO.md #143: kept inline with the name (user preference — the corner
+     position: absolute placement read as visually disjointed) but shrunk
+     from 32px to the WCAG 2.2 AA "target size (minimum)" floor of 24px, to
+     give the name back some of the width the button was eating. Verified
+     with a real touch tap (Playwright touch-enabled mobile emulation) that
+     standing up still fires reliably at this size — don't shrink further,
+     24px is the accessibility floor, not an arbitrary number. */
+  min-height: 24px;
+  min-width: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 4px;
   transition: all 0.2s;
   line-height: 1;
+  flex-shrink: 0;
 }
 
 .slot-card__stand:hover {

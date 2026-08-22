@@ -583,12 +583,18 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 - ✅ **#143.** Sau #142, ở **ghế của chính mình** nút `✕` (`.slot-card__stand`, `min-width:32px` +
   `gap:6px`) chỉ chừa ~70px cho tên trong thẻ ~117px ⇒ hiển thị `Ngu…`, trong khi ghế đối thủ (không
   có nút) hiển thị `Trần Hoàn…`. Bất đối xứng và ghế của mình lại đọc được ít nhất. Không phải lỗi do
-  #142 gây ra — #142 chỉ làm nó lộ đúng bản chất thay vì để layout vỡ. **(Người dùng chọn hướng qua
-  AskUserQuestion)** Đưa `✕` ra khỏi dòng tên bằng `position: absolute` vào góc trên thẻ (chỗ dòng
-  nhãn `#1`/`#2` gần trống); `.slot-card__header` thêm `padding-top` đều cho cả hai ghế để tên không
-  lệch chiều cao. Giữ nguyên ngưỡng chạm `32px` của `✕`. Test mới
-  `e2e/slot-card-stand-name-symmetry.spec.ts` (2 viewport, xác nhận fail đúng bug trước sửa), `npm
-  test` **1230/1230**, `?v=144→145` — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
+  #142 gây ra — #142 chỉ làm nó lộ đúng bản chất thay vì để layout vỡ. **Vòng 1** (chọn qua
+  `AskUserQuestion`): đưa `✕` ra khỏi dòng tên bằng `position: absolute` vào góc trên thẻ — full
+  parity (40px→78px) nhưng người dùng xem trực tiếp, phản hồi kiểu **inline cũ đẹp/thu hút mắt
+  hơn**, kiểu góc-thẻ mới **làm slot trông rời rạc**. **Vòng 2** (chọn lại qua `AskUserQuestion`):
+  quay về inline, **hạ `min-width/min-height` 32px→24px** (sàn WCAG 2.2 AA "target size minimum",
+  không phải số tuỳ ý) thay vì giữ nguyên 32px hay revert hoàn toàn. Cải thiện 40px→48px (không full
+  parity — đúng tradeoff đã chấp nhận). **Kiểm chứng chạm thật** trên `devices['Pixel 5']`
+  (`hasTouch`/`isMobile`, không chỉ đo desktop) — đứng dậy thành công ở 24px. Test
+  `e2e/slot-card-stand-inline-touch-target.spec.ts` (viết lại từ bản vòng 1, vì assertion "full
+  parity" cũ sẽ luôn sai với quyết định mới): đo 24px + không chồng lấp, cộng kịch bản chạm thật.
+  `e2e/drawer-rail-not-displaced.spec.ts` (#142) vẫn 2/2 pass. `npm test` **1230/1230**,
+  `?v=144→145→146` — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
 
 ---
 
