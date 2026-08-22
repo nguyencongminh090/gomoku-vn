@@ -364,3 +364,49 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   chung 5 trang nên mọi rule phải khoá trong `body.zen-room` + media mobile. `client/js/board.js`
   đang bị khoá: nếu buộc phải sửa thì dừng và hỏi. Đo bắt buộc trên **cả** Pixel 5 lẫn iPhone SE —
   [chi tiết](docs/instruction/B144-an-topnav-tren-mobile-phong-choi.md)
+- **B145.** Rủi ro số một là **hai instance socket** — #51 đã từng gây đúng vậy (`?v=` lệch ⇒
+  `lobby.js` chạy 2 lần ⇒ 2 kết nối ⇒ bị server đá với "đăng nhập ở thiết bị khác"). Bản sửa này
+  **cố ý** tách chỗ tạo socket khỏi chỗ dùng socket, tức tự tạo ra đúng điều kiện đó: khởi tạo sớm
+  phải idempotent, `SocketClient` phải **nhận lại** socket chứ không gọi `io()` lần hai, và nghiệm
+  thu là **đếm được đúng 1 kết nối**, không phải "trang chạy được". Bump `?v=N` đầy đủ (`grep -rn
+  "?v=" client/*.html client/js/*.js | grep -v mockup` ra đúng 1 giá trị) — thiếu một chỗ vừa gây
+  bug cache vừa tái hiện chính bug trên. Làm `index.html` **trước**, đo, rồi mới nhân ra 3 trang
+  còn lại (`room.js` dùng `window.RoomClient`, `lobby.js` dùng `export const` — khác nhau, đừng
+  giả định đồng nhất). Không đụng `requireAuth()` (guard cố ý lạc quan), không đụng thứ tự transport
+  / `reconnection*` / `timeout: 12000` (đã hiệu chỉnh bằng số đo ở #28/#29 và #131). Khi đo, báo cáo
+  khoảng cách **`navigationStart` → socket `connect`**, KHÔNG phải `entry.time` của WebSocket — 543 ms
+  không phải thứ mục này làm giảm, báo nhầm mốc sẽ trông như bản sửa vô tác dụng; và phải đo **qua
+  domain thật** (trên localhost `connect` ≈ 0 ms). `client/tests/` **có** hạ tầng jsdom thật —
+  #131 đã ghi lại bài học khẳng định nhầm điều ngược lại — [chi tiết](docs/instruction/B145-socket-mo-qua-muon-trong-doi-trang.md)
+- **B146.** **Đo trước, đừng tin #81**: bench cũ đo đường ĐỌC, mục này là lệnh GHI — mở rộng
+  `bench-session-lookup.js` đo `db.touchSession` riêng, gồm cả lúc WAL đang tranh chấp. Nếu vẫn là
+  µs thì **đóng như tradeoff đã đo**, đừng sửa cho có. Mặc định là hướng 1 (gọi sau `next()` /
+  `setImmediate`); hướng 2 (chỉ ghi khi `last_seen` cũ hơn N phút) **đổi ngữ nghĩa của cột** ⇒ phải
+  grep ai đang đọc nó và phải hỏi người dùng — đừng "tiện tay" làm cả hai. Bẫy: giữ nguyên
+  `try/catch` bên trong `touchSession()` khi chuyển ra `setImmediate` — exception trong callback
+  **không** bị `try/catch` ở call site bắt, nó rơi thẳng xuống `uncaughtException`. Không sắp xếp
+  lại logic auth: nhánh "cookie chết thì KHÔNG rơi xuống legacy JWT" là chống hồi sinh session đã
+  thu hồi; `getValidSession()` phải ở nguyên trên đường tới hạn (đó là xác thực thật, không phải
+  bookkeeping) — [chi tiết](docs/instruction/B146-touchsession-ghi-sqlite-dong-bo-chan-truoc-101.md)
+- **B147.** **Dừng và hỏi người dùng trước khi viết code** — không phải "bật một cờ". Ba vùng nguy
+  hiểm: (1) `auth.reconnect` — phải trả lời được "socket.io có còn đặt cờ này trên đường recovery
+  không?" bằng cách đọc `node_modules` + dựng thử, KHÔNG suy từ tài liệu; nếu không thì mọi lần rớt
+  mạng sẽ đá người chơi về login, hồi quy nặng hơn lợi ích. (2) `skipMiddlewares: true` bỏ qua **cả**
+  `verifySocketToken` lẫn chống flood ⇒ session đã **thu hồi sẽ sống lại**, phá đúng cái #68 xây —
+  để `false`, muốn middleware rẻ hơn thì làm #146. (3) `maxDisconnectionDuration` phải chọn **đối
+  chiếu với** các hằng grace hiện có (`SPECTATOR_GRACE_MS`…, #115 vừa chỉnh), không copy "2 phút" từ
+  tài liệu; tuyệt đối không `Infinity`. Mượn bài học Discord: test cả đường **phục hồi thất bại ⇒
+  kết nối mới hoàn toàn**, đừng chỉ test đường thành công. Test bắt buộc phủ **cả hai** kịch bản dễ
+  lẫn: cùng-tab-rớt-rồi-về (không kick) **và** thiết-bị-thứ-hai-thật (vẫn kick, session cũ vẫn bị thu
+  hồi ở DB) — [chi tiết](docs/instruction/B147-chua-bat-connectionstaterecovery.md)
+- **B148.** Đây là code **chống lạm dụng**, không phải code tiện ích — không giữ được hành vi tương
+  đương thì **đừng làm**, nợ này chưa gây thiệt hại nào quan sát được. Ngữ nghĩa có **hai** tầng,
+  đừng gộp: chặn mềm trong cửa sổ (nuốt event + `RATE_LIMITED` **đúng 1 lần/cửa sổ** qua
+  `warnedThisWindow`) và ngắt cứng theo `violationStreak` — tầng 2 là **theo cửa sổ thời gian rời
+  rạc**, token bucket thuần không có khái niệm đó, phải viết ra định nghĩa tương đương trong summary
+  thay vì để ngầm. Không có mốc cửa sổ thì `RATE_LIMITED` sẽ bắn mỗi event bị chặn — biến cảnh báo
+  thành chính cái flood nó chống. `socket.onevent` đang bị ghi đè ở đây trong khi `socket.on` bị bọc
+  ở chỗ khác (`RAW_PAYLOAD_EVENTS`) — hai lớp chồng nhau, hỏng `this` hoặc thứ tự gọi sẽ vỡ lớp kia.
+  Không đổi `MAX_EVENTS_PER_SECOND` / `FLOOD_DISCONNECT_STREAK` (quyết định sản phẩm, phải hỏi).
+  Không dựng được phép đo tải thật (`test-load.js`, §10) thì nói thẳng là lợi ích **định tính** —
+  đừng bịa số — [chi tiết](docs/instruction/B148-setinterval-moi-socket-trong-flood-middleware.md)

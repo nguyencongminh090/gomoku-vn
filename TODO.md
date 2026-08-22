@@ -616,6 +616,54 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   visible), `npm test` **1230/1230**, `?v=147→148→149` `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B144-an-topnav-tren-mobile-phong-choi.md)
 
+### Nguồn: phân tích HAR `play3cr.dpdns.org_Archive [26-08-22 19-20-59].har` — người dùng hỏi vì sao entry `wss://.../socket.io/` dài nhất, kèm tra cứu chuẩn ngành "Big Site xử lý thế nào?" (2026-08-22)
+- **#145.** Entry WebSocket dài **543 ms** nhưng đó là 3 thứ cộng lại, và phần lớn nhất **không**
+  nằm trong entry: **462 ms trôi qua trước khi socket được mở**. `client/index.html:449` nạp
+  `index-entry.js` bằng `type="module"` ở cuối `<body>` ⇒ defer ⇒ `io()` chỉ chạy ở **cuối** đồ thị
+  module (`index-entry → … → lobby.js:40 new SocketClient()`), dù `_connect()` không cần DOM/CSS/i18n
+  — chỉ cần global `io` + một lần đọc `localStorage`. Riêng **220 ms** là phía client sau khi HTML
+  đã về (`52.579` → `52.799`). Vì sảnh phụ thuộc **100%** vào socket để có dữ liệu đầu (danh sách
+  phòng, `session:me`, online count), ~1005 ms đó là **màn hình trống thật**, không phải tài nguyên
+  phụ tải chậm ở nền. Sửa: khởi tạo socket sớm (đưa `socket.io.min.js` + đoạn khởi tạo lên `<head>`,
+  `SocketClient` **nhận lại** socket thay vì gọi `io()` lần hai) ⇒ 321 ms TCP+TLS chạy **song song**
+  với parse HTML thay vì nối tiếp, ước tính **−200…−250 ms**. Chuẩn ngành xác nhận đây là cách duy
+  nhất còn lại: đề xuất WHATWG `preconnect` cho `wss://` đã **closed as not planned**, và
+  Figma/Slack đều thiết kế để socket **rời khỏi critical path** (fetch state ban đầu qua HTTP, socket
+  chỉ nhận delta). **Đã loại trừ, đừng đi lại:** `preconnect`/`dns-prefetch` (vô ích với `wss`);
+  321 ms `connect` (mất gói SYN client↔edge, cùng nguyên nhân #131, không sửa được bằng code);
+  RFC 8441/9220 (**đính chính**: trình duyệt CÓ hỗ trợ, CDN thì không — HAR chứng minh: Firefox 153
+  xin `HTTP/1.1` Upgrade tới **IP edge khác** dù trang chính chạy HTTP/3) `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B145-socket-mo-qua-muon-trong-doi-trang.md)
+- **#146.** `server/middleware/auth.js` `verifySocketToken()` gọi `sessionManager.touchSession()` —
+  một lệnh **GHI SQLite đồng bộ** (better-sqlite3, chặn event loop, commit WAL) — **trước** `next()`,
+  tức response 101 của **mọi** handshake phải chờ nó xong. Đây là bookkeeping `last_seen` thuần tuý.
+  Thành phần `wait: 145 ms` trong HAR. **#81 không phủ mục này**: bench đó chỉ đo đường ĐỌC
+  (`getValidSession`), không đo lệnh ghi — đừng dùng #81 để đóng lại lần nữa mà không đo đúng lệnh.
+  Chuẩn ngành: auth ở handshake phải rẻ, không chạm datastore (Slack lấy token qua HTTP trước;
+  socket.io còn có hẳn `skipMiddlewares` với đúng lý do này). Giá trị thật nằm ở **p99 khi burst** —
+  ghi đồng bộ phạt *tất cả* kết nối đang chờ, không riêng kết nối gây ra nó `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B146-touchsession-ghi-sqlite-dong-bo-chan-truoc-101.md)
+- **#147.** `server/index.js:165` dựng `new Server(server, { cors })` — **chưa bật**
+  `connectionStateRecovery`. Mỗi lần rớt transport, người chơi trả giá toàn bộ đường vào lại (321 ms
+  TCP+TLS + 145 ms auth + eviction + rejoin) và mất hẳn event xảy ra trong lúc rớt. Đáng cân nhắc vì
+  **#131 đã đo được ~17% mất gói** ở hop 8 nhà mạng — đúng môi trường tính năng này sinh ra để phục
+  vụ. Chuẩn ngành: Discord có `RESUME` + `resume_gateway_url` + `session_id`, huỷ session sau ~5
+  phút, và bắt client **leo thang RESUME → IDENTIFY** khi thất bại lặp; socket.io có tương đương
+  (`maxDisconnectionDuration`, khuyến nghị ~2 phút, **không** `Infinity`). **CAO RỦI RO, phải chốt
+  với người dùng trước khi code**: đụng thẳng vùng single-device eviction + cờ `auth.reconnect`
+  (chỗ đã sinh ra "đăng nhập ở thiết bị khác" giả) và 3 loại grace period mà #115 vừa chỉnh;
+  `skipMiddlewares: true` sẽ làm **session đã thu hồi sống lại**, phá đúng cái #68 xây `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B147-chua-bat-connectionstaterecovery.md)
+- **#148.** `server/socket/SocketHandler.js` middleware chống flood tạo **một `setInterval(1s)` cho
+  MỖI socket**; ở quy mô §10 stress test (6000 kết nối) là 6000 timer đánh thức event loop mỗi giây,
+  phạt tất cả mọi người vì Node chỉ có một event loop. Cleanup **đúng** (`clearInterval` trong
+  `disconnect`) ⇒ không rò rỉ, thuần tuý là chi phí thường trực. Sửa: token bucket **tính lười**
+  (`tokens` + `lastRefillMs`, nạp lại theo thời gian trôi ở mỗi `onevent`), không cần timer nào.
+  **Ưu tiên thấp** — nợ scale, HAR này (1 kết nối) hoàn toàn không thấy được. Cẩn thận: đây là code
+  chống lạm dụng, và `violationStreak`/`FLOOD_DISCONNECT_STREAK` là ngữ nghĩa **theo cửa sổ thời
+  gian**, **không** map 1-1 sang token bucket `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B148-setinterval-moi-socket-trong-flood-middleware.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
