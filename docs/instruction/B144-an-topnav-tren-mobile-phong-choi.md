@@ -23,8 +23,12 @@ Dữ kiện để tư vấn khi hỏi:
   sửa tầng sinh ra con số.
 - **Không được ẩn mất lối thoát.** Nút rời phòng và mã phòng `#TCP` hiện **chỉ tồn tại** trong
   topnav; bottom bar không có. Nếu ẩn nav mặc định thì phải chuyển hai thứ này đi đâu đó luôn hiện
-  (bottom bar còn chỗ, và nút cài đặt trong topnav vốn đã **trùng** với `tab-settings` ở bottom bar
-  → có thể bỏ bớt bản trùng).
+  (bottom bar còn chỗ). **Đính chính (đã làm xong mới phát hiện):** nút cài đặt trong topnav
+  (`#btn-settings`, chèn động bởi `settings-panel.js`, không nằm tĩnh trong `room.html` nên dễ bị bỏ
+  sót khi đọc code) **không trùng** với `tab-settings` ở bottom bar — đây là 2 phạm vi khác nhau:
+  `#btn-settings` = Cài đặt chung (theme/ngôn ngữ/mật độ/hiển thị bàn/tài khoản, dùng chung mọi
+  trang), `tab-settings` = cài đặt riêng **ván đấu** (cỡ bàn, luật thắng, wall/portal, chỉ host).
+  Đừng bỏ bớt cái nào — giữ cả hai.
 - **`.topnav` dùng chung 5 trang** (`index`, `history`, `room`, `tournament`, `tournament-match`).
   Mọi rule mới phải nằm trong `body.zen-room` + `@media (max-width: 768px)`. Một rule trần trên
   `.topnav` sẽ rò sang sảnh chờ và giải đấu.
