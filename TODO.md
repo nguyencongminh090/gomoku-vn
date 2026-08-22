@@ -665,7 +665,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   hôm nay. Tách phát hiện đó sang **#149** (địa lôi, chưa sửa, không cấp bách) thay vì gộp vào đây
   `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B146-touchsession-ghi-sqlite-dong-bo-chan-truoc-101.md)
-- **#147.** `server/index.js:165` dựng `new Server(server, { cors })` — **chưa bật**
+- ✅ **#147.** `server/index.js:165` dựng `new Server(server, { cors })` — **chưa bật**
   `connectionStateRecovery`. Mỗi lần rớt transport, người chơi trả giá toàn bộ đường vào lại (321 ms
   TCP+TLS + 145 ms auth + eviction + rejoin) và mất hẳn event xảy ra trong lúc rớt. Đáng cân nhắc vì
   **#131 đã đo được ~17% mất gói** ở hop 8 nhà mạng — đúng môi trường tính năng này sinh ra để phục
@@ -674,7 +674,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   (`maxDisconnectionDuration`, khuyến nghị ~2 phút, **không** `Infinity`). **CAO RỦI RO, phải chốt
   với người dùng trước khi code**: đụng thẳng vùng single-device eviction + cờ `auth.reconnect`
   (chỗ đã sinh ra "đăng nhập ở thiết bị khác" giả) và 3 loại grace period mà #115 vừa chỉnh;
-  `skipMiddlewares: true` sẽ làm **session đã thu hồi sống lại**, phá đúng cái #68 xây `[Model: Opus 5]` —
+  `skipMiddlewares: true` sẽ làm **session đã thu hồi sống lại**, phá đúng cái #68 xây.
+  **ĐÃ ĐIỀU TRA 2026-08-22 → ĐÓNG, KHÔNG LÀM** (người dùng chốt qua `AskUserQuestion` sau khi xem số
+  liệu). Đọc `node_modules` thật thay vì suy từ tài liệu, 4 phát hiện: (1) `skipMiddlewares` **mặc
+  định là `true`** (`index.js:106-111`) và `namespace.js:214-219` gọi thẳng `_doConnect` bỏ qua
+  `io.use()`; socket phục hồi chỉ khôi phục `id`/`pid`/`rooms`/`data`/`missedPackets` — **không** có
+  `socket.user` (thuộc tính riêng của ta) ⇒ bật "trần" thì `io.on('connection')` gọi `user.displayName`
+  trên `undefined` = **TypeError mọi kết nối phục hồi**, cộng session thu hồi sống lại; (2) tin tốt:
+  `auth.reconnect` **CÓ** sống sót (`socket.io-client/socket.js:443` merge `{pid,offset}` với auth của
+  user) nên `isOwnReconnect` vẫn đúng — làm được an toàn, chỉ là không đáng; (3) **lợi ích ~0**: app đã
+  re-gửi TOÀN BỘ state mỗi lần reconnect (`serializeRoom` + `gameState.serialize()` + `timer.getTimers()`
+  + `timerSync`) nên replay gói tin là thừa, và `missedPackets` bắn **trước** `room:joined` nên với
+  event không idempotent (`game:ended`, `room:destroyed`) là phát lại modal cũ; (4) lợi ích thật **duy
+  nhất** là chat bị lỡ (`ChatHandler` không lưu lịch sử) — tách thành **#150**, giải quyết trực tiếp
+  bằng buffer chat, không đụng tầng socket.io. **Đính chính**: dòng "mất hẳn event xảy ra trong lúc
+  rớt" khi mới ghi mục này là **quá rộng** — chỉ chat mất, room/game/timer đều được dựng lại đầy đủ
+  `[Model: Opus 5]` —
   [chi tiết](docs/todo/B147-chua-bat-connectionstaterecovery.md)
 - **#148.** `server/socket/SocketHandler.js` middleware chống flood tạo **một `setInterval(1s)` cho
   MỖI socket**; ở quy mô §10 stress test (6000 kết nối) là 6000 timer đánh thức event loop mỗi giây,
@@ -696,6 +711,18 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   writes to DB happen ONLY when a game ends"). Chỉ ghi lại làm địa lôi: nếu tương lai có ai thêm
   worker thread hoặc process phụ mở `gomoku.db`, đọc mục này trước khi làm vậy `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)
+- **#150.** Phát sinh khi điều tra #147: `ChatHandler.js` **không lưu lịch sử** tin nhắn (chỉ
+  `io.to(roomId).emit`), và `serializeRoom()` cũng không trả về chat ⇒ mọi tin nhắn gửi trong lúc một
+  người rớt mạng **mất hẳn** với người đó. `room:joined` dựng lại đầy đủ room/game/timer nhưng không
+  có chat — không lỗi, không log, không dấu hiệu UI nào; chỉ người bị rớt mới thấy lỗ hổng trong cuộc
+  trò chuyện. Đáng chú ý vì **#131 đo được ~17% mất gói** ở hop nhà mạng ⇒ rớt ngắn là chuyện thường.
+  Đề xuất: giữ **N tin gần nhất mỗi phòng** trong bộ nhớ (không cần SQLite), gửi kèm `room:joined` —
+  đây là hướng người dùng chọn khi đóng #147. **Chưa chốt, hỏi trước khi làm**: không ai báo cáo
+  triệu chứng này (tìm thấy khi đối chiếu, không phải từ người dùng thật) ⇒ hỏi xem chat có được dùng
+  đủ nhiều để đáng vá. Ràng buộc lớn nhất: `room:joined` phục vụ **cả** người quay lại **lẫn** người
+  vào lần đầu — nhét buffer vô điều kiện là cho người lạ đọc chat trước khi họ vào phòng, đó là quyết
+  định quyền riêng tư chứ không phải kỹ thuật `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B150-chat-mat-han-khi-nguoi-choi-rot-mang.md)
 
 ---
 

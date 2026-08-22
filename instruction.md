@@ -418,3 +418,15 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   lại nếu một thay đổi khác trong tương lai thực sự thêm connection thứ hai — lúc đó đọc lại số đo
   trong `docs/todo/B149-*.md` trước, đừng đo lại từ đầu, và viết test đi kèm chính lúc thêm connection
   đó — [chi tiết](docs/instruction/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)
+- **B150.** **Hỏi trước khi làm: cái này có đáng làm không?** Không ai báo cáo triệu chứng — nó được
+  tìm thấy khi điều tra #147. Một tính năng không ai thiếu là chi phí bảo trì thuần tuý. Ranh giới
+  quan trọng nhất: `room:joined` phục vụ **cả** người quay lại **lẫn** người vào phòng lần đầu ⇒ nhét
+  buffer chat vô điều kiện = cho người lạ đọc cuộc trò chuyện trước khi họ vào. Đó là quyết định
+  quyền riêng tư/sản phẩm, **chốt với người dùng, đừng tự chọn** (công cụ phân biệt đã có sẵn: cờ
+  `handshake.auth.reconnect` và nhánh `existingRoom`). **Đừng** nhét chat vào `serializeRoom()` —
+  `room:updated` bắn rất thường xuyên và `serializeRoomUpdate` cố ý bỏ `settings` để tiết kiệm băng
+  thông (đo được 163 B/2073 B, nhân theo bình phương số người); chat chỉ đi kèm `room:joined`. **Đừng**
+  lưu chat xuống SQLite (không cần sống qua restart). Giới hạn N phải ép ở **chỗ ghi**, không phải chỗ
+  đọc — mảng không giới hạn trong state của room là rò rỉ bộ nhớ. Kiểm bằng grep xem chat phòng giải
+  đấu (`tournament-match`) có đi chung đường không, đừng giả định —
+  [chi tiết](docs/instruction/B150-chat-mat-han-khi-nguoi-choi-rot-mang.md)
