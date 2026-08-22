@@ -6,25 +6,25 @@
   <title>Play3CR — Sảnh</title>
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=144" />
-  <link rel="stylesheet" href="css/lobby.css?v=144" />
-  <link rel="stylesheet" href="css/lobby-zen.css?v=144" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=144" />
-  <script src="js/theme-preload.js?v=144"></script>
+  <link rel="stylesheet" href="css/main.css?v=145" />
+  <link rel="stylesheet" href="css/lobby.css?v=145" />
+  <link rel="stylesheet" href="css/lobby-zen.css?v=145" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=145" />
+  <script src="js/theme-preload.js?v=145"></script>
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=144">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=145">
 
-  <script src="js/ui-mode-preload.js?v=144"></script>
+  <script src="js/ui-mode-preload.js?v=145"></script>
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/session.js?v=144" />
-  <link rel="modulepreload" href="js/i18n.js?v=144" />
-  <link rel="modulepreload" href="js/ui-mode.js?v=144" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=144" />
-  <link rel="modulepreload" href="js/socket-client.js?v=144" />
-  <link rel="modulepreload" href="js/lobby.js?v=144" />
-  <link rel="modulepreload" href="js/tournaments.js?v=144" />
+  <link rel="modulepreload" href="js/session.js?v=145" />
+  <link rel="modulepreload" href="js/i18n.js?v=145" />
+  <link rel="modulepreload" href="js/ui-mode.js?v=145" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=145" />
+  <link rel="modulepreload" href="js/socket-client.js?v=145" />
+  <link rel="modulepreload" href="js/lobby.js?v=145" />
+  <link rel="modulepreload" href="js/tournaments.js?v=145" />
 
 </head>
 <body class="zen-lobby">
@@ -66,10 +66,10 @@
   <!-- ── Section switcher: Bàn chơi | Giải đấu ─────────────────────────── -->
   <div class="section-tabs animate-fade-up delay-2" role="tablist" aria-label="Chuyển đổi Bàn chơi / Giải đấu">
     <button class="section-tabs__btn is-active" role="tab" aria-selected="true" id="tab-tables" data-tab="tables">
-      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=144#ph-regular-grid-four"></use></svg><span data-i18n="tabs.tables">Bàn chơi</span>
+      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=145#ph-regular-grid-four"></use></svg><span data-i18n="tabs.tables">Bàn chơi</span>
     </button>
     <button class="section-tabs__btn" role="tab" aria-selected="false" id="tab-tournaments" data-tab="tournaments">
-      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=144#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span>
+      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=145#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span>
     </button>
   </div>
 
@@ -77,11 +77,11 @@
   <div class="tab-panel is-active" id="panel-tables">
     <div class="section-actions">
       <a href="history.html" class="link-action">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=144#ph-regular-clock-counter-clockwise"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=145#ph-regular-clock-counter-clockwise"></use></svg>
         <span data-i18n="lobby.history">Lịch sử</span>
       </a>
       <button id="btn-create" class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=144#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=145#ph-regular-plus-circle"></use></svg>
         <span data-i18n="lobby.btn_create">Tạo phòng</span>
       </button>
     </div>
@@ -108,14 +108,14 @@
   <div class="tab-panel" id="panel-tournaments">
     <div class="section-actions">
       <button id="btn-create-tournament" class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=144#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=145#ph-regular-plus-circle"></use></svg>
         <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
       </button>
     </div>
 
     <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
       <div class="live-matches-panel__header">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=144#ph-regular-broadcast"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=145#ph-regular-broadcast"></use></svg>
         <span data-i18n="live_matches.title">Trận đang diễn ra</span>
       </div>
       <div id="live-matches-list" class="live-matches-panel__list"></div>
@@ -443,9 +443,9 @@
 
 <!-- Socket.io CDN -->
 <script src="/vendor/socket.io/socket.io.min.js"></script>
-<script src="js/escape-utils.js?v=144"></script>
-<script src="js/audio-manager.js?v=144"></script>
-<script src="js/action-delegate.js?v=144"></script>
-<script type="module" src="js/index-entry.js?v=144"></script>
+<script src="js/escape-utils.js?v=145"></script>
+<script src="js/audio-manager.js?v=145"></script>
+<script src="js/action-delegate.js?v=145"></script>
+<script type="module" src="js/index-entry.js?v=145"></script>
 </body>
 </html>

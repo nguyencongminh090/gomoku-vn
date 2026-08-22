@@ -173,6 +173,7 @@
 
 /* ── Player Slot Cards ───────────────────────────────────────────────────────── */
 .slot-card {
+  position: relative;
   flex: 1;
   background: var(--c-surface-2);
   border: 1px solid var(--c-border-light);
@@ -233,11 +234,20 @@
 .slot-card__header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  /* Room for .slot-card__stand (TODO.md #143): it's pulled out of this row via
+     position: absolute (top-right corner of .slot-card) so the name gets the
+     row's full width instead of splitting it with a 32px+gap touch target —
+     that split is what squeezed the seat's own name down to ~3 chars while
+     the other seat (no stand button) read fine. Applied to both seats' header
+     uniformly so a seated player's name starts at the same height whether or
+     not their own seat has the button. */
+  padding-top: 18px;
 }
 
 .slot-card__stand {
+  position: absolute;
+  top: 0;
+  right: 0;
   cursor: pointer;
   font-size: 12px;
   color: var(--c-ink-3);
@@ -250,7 +260,6 @@
   border-radius: 4px;
   transition: all 0.2s;
   line-height: 1;
-  flex-shrink: 0;
 }
 
 .slot-card__stand:hover {
