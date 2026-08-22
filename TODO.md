@@ -649,14 +649,21 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `index-entry.js` 7→5 trong test #126, `npm test` **1245/1245**, `?v=149→150`. Phạm vi cố ý chỉ
   `index.html` `[Model: Opus 5]` —
   [chi tiết](docs/todo/B145-socket-mo-qua-muon-trong-doi-trang.md)
-- **#146.** `server/middleware/auth.js` `verifySocketToken()` gọi `sessionManager.touchSession()` —
+- ✅ **#146.** `server/middleware/auth.js` `verifySocketToken()` gọi `sessionManager.touchSession()` —
   một lệnh **GHI SQLite đồng bộ** (better-sqlite3, chặn event loop, commit WAL) — **trước** `next()`,
   tức response 101 của **mọi** handshake phải chờ nó xong. Đây là bookkeeping `last_seen` thuần tuý.
   Thành phần `wait: 145 ms` trong HAR. **#81 không phủ mục này**: bench đó chỉ đo đường ĐỌC
   (`getValidSession`), không đo lệnh ghi — đừng dùng #81 để đóng lại lần nữa mà không đo đúng lệnh.
   Chuẩn ngành: auth ở handshake phải rẻ, không chạm datastore (Slack lấy token qua HTTP trước;
   socket.io còn có hẳn `skipMiddlewares` với đúng lý do này). Giá trị thật nằm ở **p99 khi burst** —
-  ghi đồng bộ phạt *tất cả* kết nối đang chờ, không riêng kết nối gây ra nó `[Model: Opus 5]` —
+  ghi đồng bộ phạt *tất cả* kết nối đang chờ, không riêng kết nối gây ra nó. **ĐÃ ĐO 2026-08-22,
+  ĐÓNG (không sửa)**: mở rộng `bench-session-lookup.js` — `touchSession()` cô lập (không kèm read)
+  cùng bậc µs với lệnh đọc (p50 5-6 µs, p99 dưới 20 µs ở 500 dòng/burst 64) ⇒ không có lợi ích đo
+  được để đánh đổi lấy sửa code. Đo thêm dưới **tranh chấp WAL thật** (connection thứ hai giữ khoá
+  ghi): **20/20 lệnh block 5006 ms rồi ném `SQLITE_BUSY`** — không phải µs, nhưng grep xác nhận
+  `database.js` là connection SQLite **duy nhất** trong production ⇒ kịch bản này không reachable
+  hôm nay. Tách phát hiện đó sang **#149** (địa lôi, chưa sửa, không cấp bách) thay vì gộp vào đây
+  `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B146-touchsession-ghi-sqlite-dong-bo-chan-truoc-101.md)
 - **#147.** `server/index.js:165` dựng `new Server(server, { cors })` — **chưa bật**
   `connectionStateRecovery`. Mỗi lần rớt transport, người chơi trả giá toàn bộ đường vào lại (321 ms
@@ -678,6 +685,17 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   chống lạm dụng, và `violationStreak`/`FLOOD_DISCONNECT_STREAK` là ngữ nghĩa **theo cửa sổ thời
   gian**, **không** map 1-1 sang token bucket `[Model: Opus 5]` —
   [chi tiết](docs/todo/B148-setinterval-moi-socket-trong-flood-middleware.md)
+- **#149.** Phát sinh khi đo #146: `db.pragma('busy_timeout')` mặc định của better-sqlite3 là
+  **5000 ms**. Đo được: nếu một connection thứ hai từng mở cùng `gomoku.db` và giữ khoá ghi
+  (`BEGIN IMMEDIATE` chưa commit), **mọi** `touch.run()` trên connection chính sẽ **block đúng
+  5006 ms rồi ném `SQLITE_BUSY`** — 20 lệnh liên tiếp tốn tổng **100 124 ms**. `touchSession()` đã
+  có `try/catch` nên không crash, nhưng chặn event loop 5s/lần phạt *mọi* kết nối khác đang chờ, không
+  riêng kết nối gây ra nó. **Không cấp bách, không sửa**: grep xác nhận `server/db/database.js` là
+  connection SQLite **duy nhất** trong toàn bộ production code — kịch bản kích hoạt (2 connection
+  cùng ghi) không reachable trong kiến trúc hiện tại (single-process, `better-sqlite3` đồng bộ, "All
+  writes to DB happen ONLY when a game ends"). Chỉ ghi lại làm địa lôi: nếu tương lai có ai thêm
+  worker thread hoặc process phụ mở `gomoku.db`, đọc mục này trước khi làm vậy `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)
 
 ---
 

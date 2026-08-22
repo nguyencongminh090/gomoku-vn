@@ -410,3 +410,11 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   Không đổi `MAX_EVENTS_PER_SECOND` / `FLOOD_DISCONNECT_STREAK` (quyết định sản phẩm, phải hỏi).
   Không dựng được phép đo tải thật (`test-load.js`, §10) thì nói thẳng là lợi ích **định tính** —
   đừng bịa số — [chi tiết](docs/instruction/B148-setinterval-moi-socket-trong-flood-middleware.md)
+- **B149.** **Không "sửa cho có".** Kịch bản (2 connection tới `gomoku.db`) không reachable trong
+  kiến trúc hiện tại (`grep -rn "new Database(" server/` ra đúng 1 chỗ) — đừng thêm `busy_timeout`
+  thấp hơn, retry logic, hay connection pool "để an toàn"; mỗi lớp phòng thủ thêm vào là một chỗ có
+  thể sai mà không ai test được vì không dựng nổi kịch bản kích hoạt thật. **Không viết test** cho
+  mục này — test cho một bug không reachable là test giả, pass mãi mãi mà không bảo vệ gì. Chỉ quay
+  lại nếu một thay đổi khác trong tương lai thực sự thêm connection thứ hai — lúc đó đọc lại số đo
+  trong `docs/todo/B149-*.md` trước, đừng đo lại từ đầu, và viết test đi kèm chính lúc thêm connection
+  đó — [chi tiết](docs/instruction/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)

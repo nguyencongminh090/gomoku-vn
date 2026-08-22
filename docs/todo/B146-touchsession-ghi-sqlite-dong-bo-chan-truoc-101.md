@@ -1,6 +1,8 @@
 # #146 — `touchSession()` ghi SQLite đồng bộ **chắn trước** response 101 của mọi handshake
 
-**Trạng thái:** chưa làm.
+**Trạng thái:** ✅ Đã đo — **ĐÃ ĐO 2026-08-22, ĐÓNG (không sửa)**. Kết quả bench cho thấy lệnh ghi
+cô lập cũng chỉ đơn vị µs, cùng bậc với lệnh đọc mà #81 đã đo và đóng trước đó — không có lợi ích đo
+được để đánh đổi lấy thay đổi code. Chi tiết đo ở cuối file.
 
 **Nguồn:** cùng phân tích HAR với #145 (`play3cr.dpdns.org_Archive [26-08-22 19-20-59].har`,
 2026-08-22) — thành phần `wait: 145 ms` của entry WebSocket. Kèm đối chiếu chuẩn ngành.
@@ -56,13 +58,42 @@ Hướng 1 rẻ và an toàn hơn; chỉ chọn 2 nếu đo được rằng tầ
   là một trong các dấu hiệu handshake chậm ở quy mô lớn.
   ([piehost](https://piehost.com/websocket/performance-and-scalability))
 
-## Đánh giá hiệu quả / an toàn (sơ bộ, chưa đo)
+## Đo (2026-08-22) — kết luận: đóng, không sửa
 
-- **Hiệu quả:** p50 có thể chỉ vài ms. Giá trị thật nằm ở **p99 khi có burst** — SQLite ghi đồng bộ
-  chặn event loop nên nó phạt **tất cả** kết nối đang chờ, không chỉ kết nối gây ra nó. Phải đo
-  trước khi khẳng định con số.
-- **An toàn:** rủi ro thấp. `touchSession()` đã tự nuốt lỗi (`try/catch` + `logger.warn`) với lý do
-  "một lệnh ghi bookkeeping hỏng không được làm vỡ một phiên hợp lệ" — đúng tinh thần của việc đẩy
-  nó ra khỏi đường tới hạn.
-- **Test:** có hạ tầng thật (`server/tests/**/*.test.js`) ⇒ **bắt buộc viết test**, không được bỏ
-  qua.
+Theo đúng chỉ dẫn của `docs/instruction/B146-*.md` ("Đo trước, đừng tin #81"): mở rộng
+`server/scripts/bench-session-lookup.js` với 2 phần mới, tách rời khỏi phần cũ (read+write gộp).
+
+**Phần 1 — `touchSession()` cô lập** (cùng lưới `REALISTIC_TABLE_SIZES` × `REALISTIC_BURST_SIZES`
+của #81, không kèm `select.get()`):
+
+```
+── sessions table: 500 rows ──
+  burst     8: total     0.1 ms  |  p50    6.5 µs  p99    18.8 µs  max     18.8 µs
+  burst    16: total     0.1 ms  |  p50    5.9 µs  p99     6.6 µs  max      6.6 µs
+  burst    32: total     0.2 ms  |  p50    5.1 µs  p99     7.2 µs  max      7.2 µs
+  burst    64: total     0.3 ms  |  p50    5.3 µs  p99     8.3 µs  max      8.3 µs
+```
+
+Cùng bậc với con số đọc mà #81 đã đo (p50 ~5-6 µs, p99 dưới 20 µs). Chi phí **riêng** của lệnh ghi so
+với lệnh đọc là không đáng kể — cả hai đều là truy vấn theo khoá chính trên bảng nhỏ.
+
+**Phần 2 — dưới tranh chấp WAL thật (connection thứ hai giữ khoá ghi)**: **20/20 lệnh block đúng
+~5006 ms rồi ném `SQLITE_BUSY`** (busy_timeout mặc định của better-sqlite3 = 5000 ms). Đây **không**
+phải µs — nhưng grep xác nhận `server/db/database.js` là **connection SQLite duy nhất** trong toàn
+bộ production code, nên kịch bản kích hoạt (2 connection cùng ghi) **không reachable** trong kiến
+trúc hiện tại. Tách riêng thành **#149** (chưa sửa, không cấp bách, chỉ ghi lại làm địa lôi) thay vì
+gộp vào mục này — đúng rule "call those out separately" của `CLAUDE.md`, vì nó là một phát hiện khác
+với những gì #146 đặt ra ban đầu.
+
+**Kết luận theo đúng điều kiện instruction đã đặt ra trước**: dưới kịch bản **reachable** (không có
+tranh chấp — tức mọi handshake thật hôm nay), chi phí là µs. ⇒ **đóng như tradeoff đã đo**, không
+sửa `verifySocketToken`/`touchSession`. Không viết test cho một thay đổi không được thực hiện.
+
+## Đánh giá hiệu quả / an toàn (đã đo)
+
+- **Hiệu quả nếu sửa:** không đo được — chi phí hiện tại (µs) đã dưới ngưỡng đáng kể so với 321 ms
+  TCP+TLS hay 145 ms `wait` tổng của cùng entry HAR. Đẩy nó ra khỏi đường tới hạn sẽ không thu hẹp
+  được phần `wait: 145 ms` một cách có thể đo được.
+- **An toàn nếu không sửa:** cao — không đổi hành vi, không rủi ro. Địa lôi WAL-busy 5s được tách
+  sang #149, giữ nguyên trạng thái theo dõi.
+- **Test:** không áp dụng — không có thay đổi code để test.

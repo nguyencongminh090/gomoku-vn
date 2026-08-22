@@ -163,3 +163,106 @@ for (const rows of REALISTIC_TABLE_SIZES) {
 console.log('Read as: "total" here is the worst case where every click in a round');
 console.log('lands on the same event-loop tick — real clicks spread over seconds,');
 console.log('so actual added latency per user is closer to this burst\'s p50/p99.');
+
+// -----------------------------------------------------------------------------
+// TODO.md #146: touchSession() ALONE — isolating the write from the read
+// -----------------------------------------------------------------------------
+//
+// Everything above times select.get() + touch.run() together, as one sample —
+// that is what a handshake actually does, but it means #81's "µs, not a
+// bottleneck" conclusion was never a statement about the write in isolation.
+// verifySocketToken() calls getValidSession() (a read) unconditionally, then
+// touchSession() (a write) only in the success path — so the write's own cost
+// is the marginal cost of #146's fix, not the combined number #81 measured.
+//
+// Second question: does the write ever have to wait on SQLite's write lock?
+// This process holds the only connection to gomoku.db in production (see
+// db/database.js's header comment — "Uses better-sqlite3 ... intentional for
+// simplicity"), so there is no concurrent writer today and WAL contention on
+// touchSession is not a reachable scenario as the codebase is currently
+// architected. The section below opens a SECOND connection to the same file
+// and deliberately holds its write lock, to bound what touchSession would
+// cost IF that ever changed (a background worker, a second process) — not to
+// simulate anything that happens today.
+console.log('\n\n=== touchSession() in isolation (TODO.md #146) ===');
+console.log('Same burst/table-size grids as above, write only — no select.get() paired in.\n');
+
+for (const rows of REALISTIC_TABLE_SIZES) {
+  const ids = seed(rows);
+  const now = new Date().toISOString();
+
+  for (let i = 0; i < WARMUP; i++) touch.run(now, ids[i % ids.length]);
+
+  console.log(`── sessions table: ${rows.toLocaleString()} rows ──`);
+
+  for (const burst of REALISTIC_BURST_SIZES) {
+    const samples = new Float64Array(burst);
+
+    const wall0 = process.hrtime.bigint();
+    for (let i = 0; i < burst; i++) {
+      const id = ids[(i * 7919) % ids.length];
+      const t0 = process.hrtime.bigint();
+      touch.run(new Date().toISOString(), id);
+      samples[i] = Number(process.hrtime.bigint() - t0) / 1000; // µs
+    }
+    const wallMs = Number(process.hrtime.bigint() - wall0) / 1e6;
+
+    const sorted = Array.from(samples).sort((a, b) => a - b);
+    console.log(
+      `  burst ${String(burst).padStart(5)}: ` +
+      `total ${wallMs.toFixed(1).padStart(7)} ms  |  ` +
+      `p50 ${percentile(sorted, 0.5).toFixed(1).padStart(6)} µs  ` +
+      `p99 ${percentile(sorted, 0.99).toFixed(1).padStart(7)} µs  ` +
+      `max ${sorted[sorted.length - 1].toFixed(1).padStart(8)} µs`
+    );
+  }
+  console.log();
+}
+
+// -----------------------------------------------------------------------------
+// touchSession() while a second connection holds the write lock
+// -----------------------------------------------------------------------------
+console.log('=== touchSession() with a concurrent writer holding the WAL write lock ===');
+console.log(`better-sqlite3 default busy_timeout: ${db.pragma('busy_timeout', { simple: true })} ms `
+  + '— how long a blocked write retries before throwing SQLITE_BUSY.');
+console.log('Second connection opens the SAME file and holds BEGIN IMMEDIATE (i.e. the write');
+console.log('lock) for the whole burst below, so every touch.run() call here must wait.\n');
+
+{
+  const ids = seed(200);
+  const contender = new Database(DB_FILE);
+  contender.pragma('journal_mode = WAL');
+  contender.exec('BEGIN IMMEDIATE');
+
+  const burst = 20;
+  const samples = new Float64Array(burst);
+  let threw = 0;
+  const wall0 = process.hrtime.bigint();
+  for (let i = 0; i < burst; i++) {
+    const id = ids[i % ids.length];
+    const t0 = process.hrtime.bigint();
+    try {
+      touch.run(new Date().toISOString(), id);
+    } catch (err) {
+      threw++;
+    }
+    samples[i] = Number(process.hrtime.bigint() - t0) / 1000; // µs
+  }
+  const wallMs = Number(process.hrtime.bigint() - wall0) / 1e6;
+  contender.exec('COMMIT');
+  contender.close();
+
+  const sorted = Array.from(samples).sort((a, b) => a - b);
+  console.log(
+    `  burst ${String(burst).padStart(5)}: ` +
+    `total ${wallMs.toFixed(1).padStart(7)} ms  |  ` +
+    `p50 ${percentile(sorted, 0.5).toFixed(1).padStart(6)} µs  ` +
+    `p99 ${percentile(sorted, 0.99).toFixed(1).padStart(7)} µs  ` +
+    `max ${sorted[sorted.length - 1].toFixed(1).padStart(8)} µs  ` +
+    `SQLITE_BUSY thrown: ${threw}/${burst}`
+  );
+  console.log(
+    '\nNot a scenario this codebase can hit today (one process, one connection to gomoku.db)\n'
+    + '— this bounds the worst case if that architecture assumption ever changes.'
+  );
+}
