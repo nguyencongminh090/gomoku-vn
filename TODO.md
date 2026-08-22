@@ -580,12 +580,15 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `e2e/drawer-rail-not-displaced.spec.ts` dùng **tài khoản thật tên 23 ký tự** (bỏ bản sửa ra → 2/2
   fail), `npm test` **1227/1227**, `?v=143→144` `[Model: Opus 5]` — [chi
   tiết](docs/todo/B142-grid-track-1fr-day-rail-ra-khoi-drawer.md)
-- ⏳ **#143.** Sau #142, ở **ghế của chính mình** nút `✕` (`.slot-card__stand`, `min-width:32px` +
+- ✅ **#143.** Sau #142, ở **ghế của chính mình** nút `✕` (`.slot-card__stand`, `min-width:32px` +
   `gap:6px`) chỉ chừa ~70px cho tên trong thẻ ~117px ⇒ hiển thị `Ngu…`, trong khi ghế đối thủ (không
   có nút) hiển thị `Trần Hoàn…`. Bất đối xứng và ghế của mình lại đọc được ít nhất. Không phải lỗi do
-  #142 gây ra — #142 chỉ làm nó lộ đúng bản chất thay vì để layout vỡ. Hướng (chưa chốt): đưa `✕` ra
-  khỏi dòng tên, hoặc hạ `min-width` 32px (**cẩn thận**: đó là ngưỡng vùng chạm mobile), hoặc cho tên
-  xuống 2 dòng — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
+  #142 gây ra — #142 chỉ làm nó lộ đúng bản chất thay vì để layout vỡ. **(Người dùng chọn hướng qua
+  AskUserQuestion)** Đưa `✕` ra khỏi dòng tên bằng `position: absolute` vào góc trên thẻ (chỗ dòng
+  nhãn `#1`/`#2` gần trống); `.slot-card__header` thêm `padding-top` đều cho cả hai ghế để tên không
+  lệch chiều cao. Giữ nguyên ngưỡng chạm `32px` của `✕`. Test mới
+  `e2e/slot-card-stand-name-symmetry.spec.ts` (2 viewport, xác nhận fail đúng bug trước sửa), `npm
+  test` **1230/1230**, `?v=144→145` — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
 
 ---
 
