@@ -1,6 +1,13 @@
 # #148 — Middleware chống flood tạo **một `setInterval(1s)` cho MỖI socket** (nợ khả năng mở rộng)
 
-**Trạng thái:** chưa làm. Ưu tiên thấp — nợ scale, **không** phải vấn đề latency của HAR hiện tại.
+**Trạng thái:** ✅ Đã sửa (2026-08-22, nhánh `fix/flood-window-lazy-no-timer`) — timer-per-socket đã
+được thay bằng cuộn cửa sổ **tính lười** trong `onevent`; giữ nguyên mô hình cửa sổ 1 giây rời rạc và
+cả hai tầng (chặn mềm + ngắt theo streak), ngưỡng không đổi. Test 8 → **20** case, `npm test`
+**1256/1256**. **Đính chính phần "Vấn đề" bên dưới:** phép đo cho thấy tiền đề "6000 timer đánh thức
+event loop mỗi giây" là **sai** — Node gom timer cùng thời lượng vào một danh sách, nên event-loop
+delay và CPU ở 0/1000/6000 timer 1s **không phân biệt được** (dưới ngưỡng nhiễu). Lợi ích đo được duy
+nhất là bộ nhớ: 286 B/socket, +1.64 MiB ở 6000 kết nối. Chi tiết số đo + định nghĩa tương đương:
+[fix-log](../fix-log/2026-08-22-todo-148-flood-window-lazy-no-timer.md).
 
 **Nguồn:** đọc code trong lúc phân tích HAR #145 (2026-08-22). Không phải do HAR chỉ ra — HAR chỉ
 có 1 kết nối nên hoàn toàn không thấy được vấn đề này.

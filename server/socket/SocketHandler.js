@@ -64,24 +64,63 @@ function init(io) {
   });
 
   // Socket event flood-protection middleware
+  //
+  // The window ticker is evaluated *lazily*, on the events themselves, rather
+  // than from a per-socket setInterval(1s) (TODO.md #148): one timer per
+  // connection means N timers waking the single event loop every second at
+  // idle, which taxes every player rather than just the flooder.
+  //
+  // The two-layer semantics are unchanged — discrete 1s windows, a soft
+  // in-window block (swallow the event, one RATE_LIMITED per window) and a
+  // hard disconnect after FLOOD_DISCONNECT_STREAK consecutive over-limit
+  // windows. Only *when* a boundary is evaluated moves: a boundary can only
+  // change anything if events happened, and a socket that has gone silent has
+  // no events to count, so a silent window's verdict ("clean, reset streak")
+  // is the same whether it is computed at the boundary or on the next event.
+  // The one behavioural difference: a socket that floods its final streak
+  // window and then goes permanently silent is disconnected on its next event
+  // instead of at the boundary. While silent it costs nothing and every event
+  // it sent past the limit was already swallowed, so nothing it could do in
+  // that gap is un-punished.
   io.use((socket, next) => {
+    const WINDOW_MS = 1000;
+    let windowStart = Date.now();
     let eventCount = 0;
     let warnedThisWindow = false;
     let violationStreak = 0;
-    const resetInterval = setInterval(() => {
+
+    /**
+     * Close out every window boundary that has passed since the last event and
+     * open the current one. Returns true if the socket was disconnected, in
+     * which case the caller must drop the event.
+     */
+    const rollWindows = (now) => {
+      const elapsed = Math.floor((now - windowStart) / WINDOW_MS);
+      if (elapsed < 1) return false;
+      // Only the most recently opened window ever recorded events; any further
+      // elapsed window passed with the socket silent, by construction.
       if (eventCount > config.MAX_EVENTS_PER_SECOND) {
         violationStreak++;
         if (violationStreak >= config.FLOOD_DISCONNECT_STREAK) {
           socket.disconnect(true);
+          return true;
         }
       } else {
         violationStreak = 0;
       }
+      // A silent window is a clean window, so any gap breaks the streak.
+      if (elapsed > 1) violationStreak = 0;
+      // Advance on the original 1s grid, exactly where the interval would have
+      // put it, instead of restarting the window at `now`.
+      windowStart += elapsed * WINDOW_MS;
       eventCount = 0;
       warnedThisWindow = false;
-    }, 1000);
+      return false;
+    };
+
     const origEmit = socket.onevent;
     socket.onevent = function(packet) {
+      if (rollWindows(Date.now())) return;
       eventCount++;
       if (eventCount > config.MAX_EVENTS_PER_SECOND) {
         if (!warnedThisWindow) {
@@ -92,7 +131,6 @@ function init(io) {
       }
       origEmit.call(this, packet);
     };
-    socket.on('disconnect', () => clearInterval(resetInterval));
     next();
   });
 

@@ -691,14 +691,20 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   rớt" khi mới ghi mục này là **quá rộng** — chỉ chat mất, room/game/timer đều được dựng lại đầy đủ
   `[Model: Opus 5]` —
   [chi tiết](docs/todo/B147-chua-bat-connectionstaterecovery.md)
-- **#148.** `server/socket/SocketHandler.js` middleware chống flood tạo **một `setInterval(1s)` cho
+- ✅ **#148.** `server/socket/SocketHandler.js` middleware chống flood tạo **một `setInterval(1s)` cho
   MỖI socket**; ở quy mô §10 stress test (6000 kết nối) là 6000 timer đánh thức event loop mỗi giây,
   phạt tất cả mọi người vì Node chỉ có một event loop. Cleanup **đúng** (`clearInterval` trong
   `disconnect`) ⇒ không rò rỉ, thuần tuý là chi phí thường trực. Sửa: token bucket **tính lười**
   (`tokens` + `lastRefillMs`, nạp lại theo thời gian trôi ở mỗi `onevent`), không cần timer nào.
   **Ưu tiên thấp** — nợ scale, HAR này (1 kết nối) hoàn toàn không thấy được. Cẩn thận: đây là code
   chống lạm dụng, và `violationStreak`/`FLOOD_DISCONNECT_STREAK` là ngữ nghĩa **theo cửa sổ thời
-  gian**, **không** map 1-1 sang token bucket `[Model: Opus 5]` —
+  gian**, **không** map 1-1 sang token bucket. **Đã sửa 2026-08-22** (`fix/flood-window-lazy-no-timer`):
+  giữ nguyên cửa sổ 1 giây rời rạc + cả hai tầng, chỉ dời **thời điểm tính** biên vào `onevent`
+  (`rollWindows`) — không dùng token bucket thuần, đúng cảnh báo trong instruction. Ngưỡng không đổi,
+  test 8→**20** case, `npm test` **1256/1256**. **Đính chính tiền đề của chính mục này**: đo được cho
+  thấy 0/1000/6000 timer 1s **không** khác nhau về event-loop delay hay CPU (Node gom timer cùng thời
+  lượng vào một danh sách) — lợi ích thật chỉ là bộ nhớ, 286 B/socket (+1.64 MiB ở 6000)
+  `[Model: Opus 5]` —
   [chi tiết](docs/todo/B148-setinterval-moi-socket-trong-flood-middleware.md)
 - **#149.** Phát sinh khi đo #146: `db.pragma('busy_timeout')` mặc định của better-sqlite3 là
   **5000 ms**. Đo được: nếu một connection thứ hai từng mở cùng `gomoku.db` và giữ khoá ghi
