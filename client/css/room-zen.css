@@ -950,7 +950,7 @@ body.zen-room .players-strip__turn { color: var(--ink); }
   body.zen-room .topnav { padding: 0 16px; }
   body.zen-room .topnav__title { display: none; }
 
-  body.zen-room .players-strip { margin: 0; padding: 8px 14px; }
+  body.zen-room .players-strip { margin: 0; padding: 6px 14px; }
 
   /* Board: full width, no side drawer to dodge, only the bottom bar. The
      base room.css mobile rule bleeds this shell 32px wider than its column

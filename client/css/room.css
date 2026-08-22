@@ -715,7 +715,7 @@
     flex-direction: column;
     gap: 2px;
     margin: 8px 12px 0;
-    padding: 8px 10px;
+    padding: 6px 10px;
     border: 1px solid var(--c-border);
     border-radius: 12px;
     background: var(--c-surface);
@@ -815,14 +815,20 @@
   /* Remaining-time bar. Only rendered while a game is running, so the strip
      keeps its pre-game height exactly as it was and the board loses nothing
      before the match starts. */
+  /* Geometry here is a measured budget, not taste. Measured on iPhone SE
+     (375x667), where the board is height-bound rather than width-bound: every
+     pixel this strip takes comes straight off the canvas. At 3px tall with
+     3px/5px margins the strip ran 82px in-game and the board fell 318 -> 300.
+     Trimmed to 2px with a single 1px top margin (the strip's own 2px flex gap
+     supplies the separation below), which is what brings the board back.
+     Re-measure before growing any of these three numbers again. */
   .players-strip__track {
-    height: 3px;
-    margin: 3px 0 5px;
+    height: 2px;
+    margin: 1px 0 0;
     border-radius: 2px;
     background: var(--strip-track);
     overflow: hidden;
   }
-  .players-strip__track:last-child { margin-bottom: 0; }
 
   .players-strip__fill {
     display: block;
