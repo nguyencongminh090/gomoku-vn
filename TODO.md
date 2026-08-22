@@ -711,7 +711,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   writes to DB happen ONLY when a game ends"). Chỉ ghi lại làm địa lôi: nếu tương lai có ai thêm
   worker thread hoặc process phụ mở `gomoku.db`, đọc mục này trước khi làm vậy `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)
-- **#150.** Phát sinh khi điều tra #147: `ChatHandler.js` **không lưu lịch sử** tin nhắn (chỉ
+- ✅ **#150.** Phát sinh khi điều tra #147: `ChatHandler.js` **không lưu lịch sử** tin nhắn (chỉ
   `io.to(roomId).emit`), và `serializeRoom()` cũng không trả về chat ⇒ mọi tin nhắn gửi trong lúc một
   người rớt mạng **mất hẳn** với người đó. `room:joined` dựng lại đầy đủ room/game/timer nhưng không
   có chat — không lỗi, không log, không dấu hiệu UI nào; chỉ người bị rớt mới thấy lỗ hổng trong cuộc
@@ -721,7 +721,18 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   triệu chứng này (tìm thấy khi đối chiếu, không phải từ người dùng thật) ⇒ hỏi xem chat có được dùng
   đủ nhiều để đáng vá. Ràng buộc lớn nhất: `room:joined` phục vụ **cả** người quay lại **lẫn** người
   vào lần đầu — nhét buffer vô điều kiện là cho người lạ đọc chat trước khi họ vào phòng, đó là quyết
-  định quyền riêng tư chứ không phải kỹ thuật `[Model: Opus 5]` —
+  định quyền riêng tư chứ không phải kỹ thuật. **ĐÃ ĐÓNG 2026-08-22, KHÔNG LÀM** — hỏi người dùng
+  qua `AskUserQuestion` (chỉ-người-quay-lại vs mọi-người-vào-phòng), trả lời: *"có vẻ không đáng
+  làm"*. Đúng câu hỏi mà instruction đặt lên đầu; không ai báo cáo triệu chứng, và một tính năng
+  không ai thiếu là chi phí bảo trì thuần tuý. **Giữ lại 3 dữ kiện điều tra** cho ai đụng
+  `chat:message` sau này: (1) đây là kênh **dùng chung** — ~30 chỗ emit thông báo hệ thống
+  (`GameHandler` 18, `RoomHandler` 4, `DisconnectHandler` 4, `state.js` 2, `LobbyHandler` 1,
+  `TournamentMatchHandler` 7) phân biệt bằng `isSystem: true` + `code` + `vars`, chat người chơi thì
+  không có; phát lại thông báo hệ thống là sai ngữ nghĩa ("X đã mất kết nối" phát lại cho chính X);
+  (2) chat phòng giải đấu là **cơ chế riêng** (`tmatch:chat_message`, bản cài đặt tự chứa ở
+  `tournament-match.js:791`), không đi chung đường ⇒ phạm vi hẹp hơn đã lo; (3) `chat-ui.js:77-81`
+  bắn **float toast cho mọi tin không phải hệ thống** ⇒ nạp buffer N tin qua `appendChatMessage()` sẽ
+  bắn N toast cùng lúc. Không thay đổi code nào `[Model: Opus 5]` —
   [chi tiết](docs/todo/B150-chat-mat-han-khi-nguoi-choi-rot-mang.md)
 
 ---

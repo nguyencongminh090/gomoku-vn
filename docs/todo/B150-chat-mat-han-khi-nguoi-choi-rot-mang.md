@@ -1,6 +1,12 @@
 # #150 — Tin nhắn chat gửi trong lúc một người rớt mạng bị **mất hẳn** với người đó
 
-**Trạng thái:** chưa làm.
+**Trạng thái:** ✅ Đã đóng — **KHÔNG LÀM 2026-08-22**, người dùng chốt "có vẻ không đáng làm" sau khi
+xem phạm vi thật qua `AskUserQuestion`. Đây đúng là câu hỏi mà `docs/instruction/B150-*.md` đặt lên
+đầu ("Hỏi trước khi làm: cái này có đáng làm không?") — không ai báo cáo triệu chứng, mục này do tôi
+tìm thấy khi điều tra #147, và một tính năng không ai thiếu là chi phí bảo trì thuần tuý.
+
+Phần điều tra bên dưới **giữ lại** vì nó chứa 3 dữ kiện về kiến trúc chat mà bất kỳ ai đụng vào
+`chat:message` sau này đều cần — xem "## Điều tra 2026-08-22".
 
 **Nguồn:** phát hiện khi điều tra #147 (2026-08-22). Không phải người dùng báo — không có báo cáo
 nào về triệu chứng này; đây là khoảng trống tìm thấy khi đối chiếu xem
@@ -59,3 +65,43 @@ dùng đã chốt đóng #147 vì đúng lý do này.
 - **Test:** `server/tests/` có hạ tầng thật ⇒ bắt buộc. Phải phủ: buffer không vượt quá N; người
   *quay lại* nhận được tin bị lỡ; và (tuỳ quyết định ở trên) người *vào lần đầu* nhận đúng cái được
   phép nhận.
+
+---
+
+## Điều tra 2026-08-22 — 3 dữ kiện về kiến trúc chat, giữ lại dù mục này đã đóng
+
+Điều tra chạy **trước** khi hỏi người dùng (phần kỹ thuật không cần chốt gì). Kết quả không dùng để
+implement nữa, nhưng cả 3 đều là thứ dễ hiểu sai và tốn công đào lại.
+
+### 1. `chat:message` là kênh DÙNG CHUNG cho 2 loại nội dung khác hẳn nhau
+
+Không chỉ chat của người chơi. Grep ra **~30 chỗ emit** `chat:message` ngoài `managers/ChatHandler.js`:
+`GameHandler.js` (18 chỗ), `RoomHandler.js` (4), `DisconnectHandler.js` (4), `state.js` (2),
+`LobbyHandler.js` (1), `TournamentMatchHandler.js` (7). Tất cả đều là **thông báo hệ thống**
+("X đã vào phòng", "Ván đấu hoà do bàn cờ đã đầy", "X đã mất kết nối"…).
+
+Có discriminator sạch: thông báo hệ thống mang `isSystem: true` + `code` + `vars` và `from: null`;
+chat thật của người chơi (`managers/ChatHandler.js:126`) có `from: user.displayName`, `fromId`, và
+**không** có `isSystem`.
+
+⇒ Nếu sau này có ai làm buffer chat: **chỉ buffer tin của người chơi**. Phát lại thông báo hệ thống
+là sai về ngữ nghĩa — chúng là *sự kiện* mô tả state mà `room:joined` đã dựng lại đầy đủ rồi, và
+phát lại "X đã mất kết nối" cho chính X sau khi X kết nối lại thì vô nghĩa.
+
+### 2. Chat phòng giải đấu là cơ chế RIÊNG, không đi chung đường
+
+`docs/instruction/B150-*.md` bắt kiểm bằng grep, đừng giả định. Kết quả: `tournament-match.html:122`
+nói thẳng — chat ở đó dùng `tmatch:chat_message`/`tmatch:presence`, "its own parallel mechanism", và
+`client/js/tournament-match.js:791` là bản cài đặt tự chứa chứ không dùng lại `chat-ui.js`.
+⇒ Phạm vi #150 nếu làm sẽ chỉ là phòng thường, không phải gấp đôi như đã lo.
+
+### 3. Phát lại chat sẽ bắn N toast nổi cùng lúc
+
+`client/js/chat-ui.js:77-81`: `appendChatMessage()` gọi `showFloatMessage(msg)` cho **mọi** tin
+không phải hệ thống — cố ý ("always, not just mid-game"). Nạp một buffer N tin qua đường này = N
+toast nổi bắn ra một lúc ngay khi vào phòng. ⇒ đường phát lại bắt buộc phải append **không** kèm
+float toast, tức không dùng lại thẳng `appendChatMessage()` như hiện có.
+
+### Không có thay đổi code nào
+
+Điều tra thuần đọc. `server/` và `client/` không bị đụng.
