@@ -357,4 +357,10 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   thì phải kiểm chứng bằng chạm thật trên viewport điện thoại. Tuyệt đối **không** gỡ
   `minmax(0, 1fr)` của #142 để "trả chỗ cho tên" (tái phát #142). Giữ ellipsis làm dự phòng dù chọn
   hướng nào — [chi tiết](docs/instruction/B143-nut-dung-day-bop-ten-nguoi-choi.md)
-
+- **B144.** Chốt phương án tương tác (vuốt / nút `V`) bằng `AskUserQuestion` **trước** khi code —
+  người dùng chưa chọn. `--zen-topnav-h` là biến hình học chịu lực (11 chỗ `calc()` +
+  `board.js` `shellTop`), ẩn nav mà không xử lý chúng chỉ đổi 60px chrome thành 60px khoảng trống.
+  Không được ẩn mất **nút rời phòng** và **mã phòng** — hai thứ này chỉ có ở topnav. `.topnav` dùng
+  chung 5 trang nên mọi rule phải khoá trong `body.zen-room` + media mobile. `client/js/board.js`
+  đang bị khoá: nếu buộc phải sửa thì dừng và hỏi. Đo bắt buộc trên **cả** Pixel 5 lẫn iPhone SE —
+  [chi tiết](docs/instruction/B144-an-topnav-tren-mobile-phong-choi.md)
