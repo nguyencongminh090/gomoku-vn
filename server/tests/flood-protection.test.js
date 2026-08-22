@@ -11,6 +11,12 @@
  *
  * The middleware is not exported, so it is captured the way it is registered:
  * init(io) calls io.use(fn), and this grabs that fn.
+ *
+ * Since TODO.md #148 the 1s window is rolled lazily on the events themselves
+ * instead of by a per-socket setInterval, so `advanceTimersByTime` here only
+ * moves the (faked) clock — a boundary is settled by the next event that
+ * arrives after it, which is why the streak tests below poke the socket once
+ * after advancing.
  */
 
 const MAX_EVENTS_PER_SECOND = 5;
@@ -138,6 +144,75 @@ describe('flood protection — warning amplification', () => {
   });
 });
 
+describe('flood protection — the MAX_EVENTS_PER_SECOND boundary', () => {
+  test.each([
+    ['one under the limit', MAX_EVENTS_PER_SECOND - 1, MAX_EVENTS_PER_SECOND - 1, 0],
+    ['exactly at the limit', MAX_EVENTS_PER_SECOND, MAX_EVENTS_PER_SECOND, 0],
+    ['one over the limit', MAX_EVENTS_PER_SECOND + 1, MAX_EVENTS_PER_SECOND, 1],
+  ])('%s: %i events → %i delivered, %i warnings', (_label, sent, delivered, warned) => {
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    send(socket, sent);
+
+    expect(socket.delivered).toHaveLength(delivered);
+    expect(warnings(socket)).toHaveLength(warned);
+    expect(socket.disconnected).toBe(false);
+  });
+
+  test('the warning carries the RATE_LIMITED code the client switches on', () => {
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    send(socket, MAX_EVENTS_PER_SECOND + 1);
+
+    expect(warnings(socket)[0].data).toMatchObject({ code: 'RATE_LIMITED' });
+  });
+
+  test('a burst spread across two windows is not throttled at all', () => {
+    // MAX per window, twice — the counter must reset on the boundary even
+    // though no timer fires any more.
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    send(socket, MAX_EVENTS_PER_SECOND);
+    jest.advanceTimersByTime(1000);
+    send(socket, MAX_EVENTS_PER_SECOND);
+
+    expect(socket.delivered).toHaveLength(MAX_EVENTS_PER_SECOND * 2);
+    expect(warnings(socket)).toHaveLength(0);
+  });
+
+  test('the window does not roll a millisecond early', () => {
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    send(socket, MAX_EVENTS_PER_SECOND);
+    jest.advanceTimersByTime(999);
+    send(socket, 1);
+
+    expect(socket.delivered).toHaveLength(MAX_EVENTS_PER_SECOND);
+    expect(warnings(socket)).toHaveLength(1);
+  });
+
+  test('the packet reaches the original onevent unchanged, with `this` intact', () => {
+    // The middleware wraps socket.onevent while SocketHandler wraps socket.on
+    // elsewhere; breaking `this` or the packet here would break that layer in
+    // a way that is hard to trace back.
+    const socket = makeSocket();
+    const packet = { data: ['room:sit', { seat: 1 }] };
+    let seenThis = null;
+    socket.onevent = function(p) { seenThis = this; this.delivered.push(p); };
+    middleware(socket, jest.fn());
+
+    socket.onevent(packet);
+
+    expect(socket.delivered).toEqual([packet]);
+    expect(socket.delivered[0]).toBe(packet);
+    expect(seenThis).toBe(socket);
+  });
+});
+
 describe('flood protection — repeat offenders', () => {
   test('consecutive flooded windows eventually force a disconnect', () => {
     const socket = makeSocket();
@@ -147,8 +222,55 @@ describe('flood protection — repeat offenders', () => {
       send(socket, MAX_EVENTS_PER_SECOND + 5);
       jest.advanceTimersByTime(1000);
     }
+    send(socket, 1); // settles the final boundary
 
     expect(socket.disconnected).toBe(true);
+  });
+
+  test('one window short of the streak does not disconnect', () => {
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    for (let window = 0; window < FLOOD_DISCONNECT_STREAK - 1; window++) {
+      send(socket, MAX_EVENTS_PER_SECOND + 5);
+      jest.advanceTimersByTime(1000);
+    }
+    send(socket, 1);
+
+    expect(socket.disconnected).toBe(false);
+  });
+
+  test('the event that trips the disconnect is not delivered', () => {
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    for (let window = 0; window < FLOOD_DISCONNECT_STREAK; window++) {
+      send(socket, MAX_EVENTS_PER_SECOND + 5);
+      jest.advanceTimersByTime(1000);
+    }
+    const deliveredBefore = socket.delivered.length;
+    send(socket, 1);
+
+    expect(socket.disconnected).toBe(true);
+    expect(socket.delivered).toHaveLength(deliveredBefore);
+  });
+
+  test('windows the socket sat out silently break the streak', () => {
+    // The lazy roll must charge only the window that actually recorded events
+    // and treat every window skipped in between as clean.
+    const socket = makeSocket();
+    middleware(socket, jest.fn());
+
+    for (let window = 0; window < FLOOD_DISCONNECT_STREAK - 1; window++) {
+      send(socket, MAX_EVENTS_PER_SECOND + 5);
+      jest.advanceTimersByTime(1000);
+    }
+    jest.advanceTimersByTime(10 * 1000); // silent
+    send(socket, MAX_EVENTS_PER_SECOND + 5);
+    jest.advanceTimersByTime(1000);
+    send(socket, 1);
+
+    expect(socket.disconnected).toBe(false);
   });
 
   test('a clean window resets the streak, so non-consecutive floods do not disconnect', () => {
@@ -161,6 +283,7 @@ describe('flood protection — repeat offenders', () => {
     jest.advanceTimersByTime(1000);
     send(socket, MAX_EVENTS_PER_SECOND + 5);   // flooded window 2
     jest.advanceTimersByTime(1000);
+    send(socket, 1);
 
     expect(socket.disconnected).toBe(false);
   });
@@ -173,6 +296,7 @@ describe('flood protection — repeat offenders', () => {
       send(socket, MAX_EVENTS_PER_SECOND);
       jest.advanceTimersByTime(1000);
     }
+    send(socket, 1);
 
     expect(socket.disconnected).toBe(false);
   });
@@ -186,14 +310,40 @@ describe('flood protection — repeat offenders', () => {
     expect(next).toHaveBeenCalledTimes(1);
   });
 
-  test('the window interval is cleared when the socket disconnects', () => {
-    const socket = makeSocket();
-    middleware(socket, jest.fn());
-    const clearSpy = jest.spyOn(global, 'clearInterval');
+  test('a connection leaves no timer behind to clean up', () => {
+    // TODO.md #148: the per-socket setInterval is gone, so there is nothing a
+    // disconnect handler could forget to clear. Guards against a future
+    // "optimisation" quietly reintroducing a timer (or leaking one).
+    const before = jest.getTimerCount();
 
-    for (const cb of socket._listeners['disconnect'] || []) cb();
+    const sockets = [];
+    for (let i = 0; i < 10; i++) {
+      const socket = makeSocket();
+      middleware(socket, jest.fn());
+      send(socket, MAX_EVENTS_PER_SECOND + 5);
+      sockets.push(socket);
+    }
 
-    expect(clearSpy).toHaveBeenCalled();
-    clearSpy.mockRestore();
+    expect(jest.getTimerCount()).toBe(before);
+    expect(sockets.every(s => s.delivered.length === MAX_EVENTS_PER_SECOND)).toBe(true);
+  });
+
+  test('per-socket window state is not shared between connections', () => {
+    const flooder = makeSocket();
+    const innocent = makeSocket();
+    middleware(flooder, jest.fn());
+    middleware(innocent, jest.fn());
+
+    for (let window = 0; window < FLOOD_DISCONNECT_STREAK; window++) {
+      send(flooder, MAX_EVENTS_PER_SECOND + 5);
+      send(innocent, 1);
+      jest.advanceTimersByTime(1000);
+    }
+    send(flooder, 1);
+    send(innocent, 1);
+
+    expect(flooder.disconnected).toBe(true);
+    expect(innocent.disconnected).toBe(false);
+    expect(warnings(innocent)).toHaveLength(0);
   });
 });
