@@ -343,4 +343,18 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `waitForURL` bằng `waitForTimeout` (che cuộc đua, không loại bỏ). Khi một spec e2e fail, khởi động
   lại server (store limiter nằm trong bộ nhớ) rồi chạy **riêng** spec đó trước khi kết luận hồi quy —
   [chi tiết](docs/instruction/B141-e2e-flaky-room-url-race-va-rate-limit.md)
+- **B142.** `1fr` == `minmax(auto, 1fr)`; cái `auto` là **min-content của grid item**, và trong một
+  grid **rộng cố định** có track cỡ cố định bên cạnh, nội dung dài sẽ **đẩy track cố định ra ngoài
+  container** chứ không tự cắt ⇒ phải là `minmax(0, 1fr)`. `min-width: 0` **không** thay thế được
+  (chỉ hạ ngưỡng co của flex item, không hạ min-content nội tại) — `.slot-card` đã có sẵn mà vẫn
+  lỗi, đừng đi lại đường đó. **Bẫy kiểm chứng: tài khoản khách KHÔNG tái hiện được** (tên tự sinh
+  cho min-content 277px < track 283px) — phải đăng ký tài khoản thật tên dài (2–24 ký tự,
+  `isValidDisplayName`). Đo bằng `getBoundingClientRect()` của `.sidebar-tabs` so với
+  `.panel-right-shell`, đừng tin `getComputedStyle().gridTemplateColumns` một mình. Không đụng
+  `overflow:hidden`/`flex-end`/width cố định (§B138 — cắt xén là chủ ý) và không đụng nhánh mobile
+  ≤768px — [chi tiết](docs/instruction/B142-grid-track-1fr-day-rail-ra-khoi-drawer.md)
+- **B143.** `min-width/min-height: 32px` của `.slot-card__stand` là **ngưỡng vùng chạm mobile** — hạ
+  thì phải kiểm chứng bằng chạm thật trên viewport điện thoại. Tuyệt đối **không** gỡ
+  `minmax(0, 1fr)` của #142 để "trả chỗ cho tên" (tái phát #142). Giữ ellipsis làm dự phòng dù chọn
+  hướng nào — [chi tiết](docs/instruction/B143-nut-dung-day-bop-ten-nguoi-choi.md)
 
