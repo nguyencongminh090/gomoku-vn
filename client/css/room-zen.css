@@ -923,7 +923,22 @@ body.zen-room .players-strip {
   border-bottom: 1px solid var(--line);
   border-radius: 0;
   background: none;
+
+  /* Zen's --c-brand is #1C1C1C, so inheriting room.css's `--strip-fill:
+     var(--c-brand)` would already be monochrome — it is restated explicitly
+     because that is a coincidence of the flattening block at the top of this
+     file, not a promise. --strip-fill-low stays red on purpose: game.css:102
+     already renders zen's low-time clock red today, so the urgency colour is
+     an existing exception to the monochrome rule, not one introduced here. */
+  --strip-track: var(--line);
+  --strip-fill:  var(--ink);
 }
+
+/* Hairlines, not rounded capsules — same reason every other zen surface drops
+   its radius. */
+body.zen-room .players-strip__track,
+body.zen-room .players-strip__fill { border-radius: 0; }
+body.zen-room .players-strip__turn { color: var(--ink); }
 
 /* ══ #5 Mobile: the drawer becomes a bottom sheet ═════════════════════════
    Rationale at the top of this file. Collapsed, only .sidebar-tabs (now a
@@ -970,11 +985,11 @@ body.zen-room .players-strip {
   body.zen-room .board-area,
   body.zen-room .board-area-inner { height: auto; }
   body.zen-room .board-area-inner { padding: 0; }
-  body.zen-room .turn-bar {
-    width: 100%;
-    margin: 0 0 8px;
-    padding: 0 2px 6px;
-  }
+  /* zen's mobile .turn-bar sizing rule lived here — removed, not overridden:
+     game.css hides the bar entirely at this breakpoint now and .players-strip
+     carries the clocks instead. board.js's zen mobile height budget reads
+     tbH from that same element, so it measures 0 here and hands the ~44px the
+     bar used to occupy back to the board. */
   body.zen-room .game-controls { width: 100%; margin: 8px 0 0; }
 
   /* The sheet itself */
