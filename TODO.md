@@ -547,16 +547,20 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `npm test` 1204/1204. Đã đính chính câu ghi sai trong hồ sơ #139 bằng một dòng `docs/fix-log.md`
   mới (append-only, không sửa dòng cũ) `[Model: Opus 5]` — [chi
   tiết](docs/todo/B140-main-thieu-ban-va-134.md)
-- ⏳ **#141.** `e2e/start-modal-non-blocking.spec.ts` **flaky sẵn** (fail cả trên `HEAD` chưa có bản
+- ✅ **#141.** `e2e/start-modal-non-blocking.spec.ts` **flaky sẵn** (fail cả trên `HEAD` chưa có bản
   sửa #137/#138, trên server mới tinh — không phải hồi quy): nó chờ `waitForURL(/room\.html/)` rồi
   đọc ngay `searchParams.get('id')`, nhưng `?id=` chỉ gắn vào URL **một nhịp sau** ⇒ thua cuộc đua
-  thì `roomId` là `null`, người chơi B vào `/room.html?id=` rỗng và bị đá về lobby. Đã quan sát trực
-  tiếp `A.page.url()` trả về `/room.html` không query. Sửa: `waitForURL(/room\.html\?id=/)` (dạng
-  `e2e/start-modal-board-centering.spec.ts` đang dùng, không flaky), quét luôn các spec khác dùng
-  cùng mẫu. Kèm theo, **không phải bug sản phẩm** nhưng làm mọi lần chạy e2e khó đọc và đã 2 lần gây
-  chẩn đoán nhầm "hồi quy": `authLimiter` 20 req/15 phút/IP (`server/routes/auth.js`) và
-  `MAX_ROOMS_PER_IP` mặc định 3 (`server/config.js`) — cần chốt cách nới **chỉ cho harness** trước
-  khi làm, tuyệt đối không hạ ngưỡng production — [chi
+  thì `roomId` là `null`, người chơi B vào `/room.html?id=` rỗng và bị đá về lobby. **Phần 1 (đua
+  `?id=`) đã sửa**: `waitForURL(/room\.html\?id=/)` (dạng `e2e/start-modal-board-centering.spec.ts`
+  đang dùng, không flaky) áp cho 13 file cùng mẫu; verify qua server throwaway 3111,
+  `start-modal-non-blocking.spec.ts` chromium+firefox 4/4 pass (từng timeout 100%), 12/13 spec khác
+  pass riêng lẻ — 1 fail (`security-boundary.spec.ts` `AUTH_REQUIRED`) tái hiện y hệt trên bản trước
+  sửa, không liên quan. Kèm theo, **không phải bug sản phẩm** nhưng làm mọi lần chạy e2e khó đọc và
+  đã 2 lần gây chẩn đoán nhầm "hồi quy": `authLimiter` 20 req/15 phút/IP (`server/routes/auth.js`) và
+  `MAX_ROOMS_PER_IP` mặc định 3 (`server/config.js`). **Phần 2 đã sửa**: người dùng chọn env override
+  chỉ cho harness (cùng khuôn `MAX_ROOMS_PER_IP`) — `AUTH_LIMITER_MAX` mới trong `server/config.js`,
+  nối vào `authLimiter`; mặc định vẫn 20 khi không set biến, production không đổi. 3 test mới
+  `server/tests/auth-limiter-config.test.js`, `npm test` **1230/1230** — [chi
   tiết](docs/todo/B141-e2e-flaky-room-url-race-va-rate-limit.md)
 - ✅ **#142.** **(Người dùng khoanh đúng nguyên nhân)** `.panel-right` là grid **rộng cố định**
   339px với `grid-template-columns: 1fr var(--zen-rail-w)`. `1fr` == `minmax(auto, 1fr)`, và cái

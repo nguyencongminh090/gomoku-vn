@@ -60,7 +60,7 @@ test.describe('Swap2 opening', () => {
     await A.page.click('#modal-advanced-toggle');
     await A.page.locator('label[for="or-swap2"]').click();
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html/, { timeout: 15000 });
+    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');
