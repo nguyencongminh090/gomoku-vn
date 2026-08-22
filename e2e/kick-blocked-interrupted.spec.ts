@@ -45,7 +45,7 @@ test.describe('Kick blocked during interrupted state', () => {
       if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await B.page.click('#btn-quick-match');
-    await B.page.waitForURL(/room\.html/, { timeout: 15000 });
+    await B.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
     const roomId = new URL(B.page.url()).searchParams.get('id');
 
     const A = await makeGuest(browser, 'PlayerA');
