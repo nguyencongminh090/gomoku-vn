@@ -558,6 +558,30 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `MAX_ROOMS_PER_IP` mặc định 3 (`server/config.js`) — cần chốt cách nới **chỉ cho harness** trước
   khi làm, tuyệt đối không hạ ngưỡng production — [chi
   tiết](docs/todo/B141-e2e-flaky-room-url-race-va-rate-limit.md)
+- ✅ **#142.** **(Người dùng khoanh đúng nguyên nhân)** `.panel-right` là grid **rộng cố định**
+  339px với `grid-template-columns: 1fr var(--zen-rail-w)`. `1fr` == `minmax(auto, 1fr)`, và cái
+  `auto` đó là **min-content của `.panel-players`** — track từ chối co xuống dưới nó. `.slot-card__name`
+  mang `white-space: nowrap` nên min-content = **trọn bề rộng tên**; `min-width: 0` (đã có sẵn trên
+  `.slot-card`) **không** hạ được min-content nội tại mà grid dùng để size track. ⇒ khi cả 2 ghế có
+  người tên dài, cột nội dung phình vượt 339px và **đẩy track rail 56px ra ngoài mép phải**, bị
+  `overflow:hidden` cắt. Đây là nguyên nhân của **cả hai** triệu chứng báo nhiều vòng trước: rail
+  "dịch sang phải / mất padding", **và** "đường đôi khi collapse" (viền rail lệch khỏi viền shell vài
+  px). Đo (1920×995): tên ~13 ký tự → track `326px`, rail tràn **43px**, còn thấy **12.8px** (khớp
+  DevTools người dùng `21 × 935`); tên 23 ký tự → track `474px`, tràn **191px**, rail **mất hẳn**.
+  **Lý do 4 vòng trước không tái hiện được:** tài khoản khách tên tự sinh ngắn cho min-content 277px
+  < track 283px nên không tràn. Sửa: `grid-template-columns: minmax(0, 1fr) var(--zen-rail-w)` —
+  ghim sàn về 0 để hình học drawer độc lập với nội dung (đúng thứ tác giả đã làm cho
+  `grid-template-rows` ngay dòng dưới); tên cắt ellipsis, rail không bao giờ dịch. Nhánh mobile
+  ≤768px không dính (đã có `grid-template-columns: 100%`). 2 test mới
+  `e2e/drawer-rail-not-displaced.spec.ts` dùng **tài khoản thật tên 23 ký tự** (bỏ bản sửa ra → 2/2
+  fail), `npm test` **1227/1227**, `?v=143→144` `[Model: Opus 5]` — [chi
+  tiết](docs/todo/B142-grid-track-1fr-day-rail-ra-khoi-drawer.md)
+- ⏳ **#143.** Sau #142, ở **ghế của chính mình** nút `✕` (`.slot-card__stand`, `min-width:32px` +
+  `gap:6px`) chỉ chừa ~70px cho tên trong thẻ ~117px ⇒ hiển thị `Ngu…`, trong khi ghế đối thủ (không
+  có nút) hiển thị `Trần Hoàn…`. Bất đối xứng và ghế của mình lại đọc được ít nhất. Không phải lỗi do
+  #142 gây ra — #142 chỉ làm nó lộ đúng bản chất thay vì để layout vỡ. Hướng (chưa chốt): đưa `✕` ra
+  khỏi dòng tên, hoặc hạ `min-width` 32px (**cẩn thận**: đó là ngưỡng vùng chạm mobile), hoặc cho tên
+  xuống 2 dòng — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
 
 ---
 

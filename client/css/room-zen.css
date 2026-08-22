@@ -475,7 +475,22 @@ body.zen-room .panel-right {
   width: calc(var(--zen-drawer-w) - 1px);
   flex: none;
   display: grid;
-  grid-template-columns: 1fr var(--zen-rail-w);
+  /* minmax(0, …) and not a bare 1fr: `1fr` means `minmax(auto, 1fr)`, and that
+     `auto` floor is the min-content width of whatever sits in the column —
+     which the track then refuses to shrink below. .slot-card__name carries
+     `white-space: nowrap`, so its min-content is the FULL name; `min-width: 0`
+     only lets a flex item shrink, it does not lower the intrinsic min-content
+     a grid track sizes against. Once both seats fill, the column outgrew this
+     element's fixed width and pushed the fixed-width rail track out the right
+     edge, where .panel-right-shell's overflow:hidden clipped it — measured at
+     1920px with 23-char names: track 283px → 474px, rail displaced 191px and
+     gone entirely; with ~13-char names, 43px displaced and 13px of rail left
+     (TODO.md #142). Collapsed, the same displacement lands the rail's own
+     border-left a few px off the shell's, which is the "double line".
+     Pinning the floor at 0 makes the drawer's geometry independent of its
+     content: names ellipsise, the rail never moves. The row axis below
+     already does this — the column axis was the half that got missed. */
+  grid-template-columns: minmax(0, 1fr) var(--zen-rail-w);
   grid-template-rows: auto minmax(0, 1fr);
   grid-template-areas:
     "players rail"
