@@ -228,6 +228,14 @@
       tbBlack.classList.toggle('turn-bar__active', isBlackTurn && st.gameState.status === 'ongoing');
       tbWhite.classList.toggle('turn-bar__active', !isBlackTurn && st.gameState.status === 'ongoing');
     }
+
+    // The turn bar above is display:none at ≤768px; there the mobile players
+    // strip carries the clocks instead. Repaint it from here rather than from
+    // a second interval so both surfaces stay on the one tick path
+    // room-socket.js already drives (tickLocal → GameUI.renderTimers).
+    if (global.RoomUI && typeof global.RoomUI.updateStripTimers === 'function') {
+      global.RoomUI.updateStripTimers();
+    }
   }
 
   // ── Turn label ────────────────────────────────────────────────────────────

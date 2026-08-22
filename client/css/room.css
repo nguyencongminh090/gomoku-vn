@@ -715,11 +715,17 @@
     flex-direction: column;
     gap: 2px;
     margin: 8px 12px 0;
-    padding: 8px 10px;
+    padding: 6px 10px;
     border: 1px solid var(--c-border);
     border-radius: 12px;
     background: var(--c-surface);
     font-size: 13px;
+
+    /* Derived from the palette rather than hard-coded so both themes and the
+       zen skin's monochrome override (room-zen.css) follow automatically. */
+    --strip-track:    var(--c-border);
+    --strip-fill:     var(--c-brand);
+    --strip-fill-low: var(--c-error);
   }
   .players-strip--hidden { display: none; }
 
@@ -736,7 +742,43 @@
     font-size: 11px;
     font-weight: 700;
     color: var(--c-ink-3);
+    font-variant-numeric: tabular-nums;
   }
+
+  /* Stone the player is holding. Fixed 12px box in all three states so the
+     row's geometry does not shift when Swap2 finally assigns colours and
+     '--none' flips to '--black'/'--white'. */
+  .players-strip__stone {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-sizing: border-box;
+  }
+  .players-strip__stone--none {
+    border: 1px dashed var(--c-ink-3);
+    background: none;
+  }
+  .players-strip__stone--black {
+    background: radial-gradient(circle at 30% 30%, #555, #111);
+  }
+  .players-strip__stone--white {
+    background: radial-gradient(circle at 30% 30%, #fff, #ddd);
+    border: 1px solid rgba(0,0,0,0.18);
+  }
+
+  /* Whose turn it is. visibility (not display) so the hidden copy still holds
+     its 9px column open — otherwise the waiting player's name would sit 9px
+     left of the active player's and the pair would jitter on every turn. */
+  .players-strip__turn {
+    flex: 0 0 auto;
+    width: 9px;
+    font-size: 9px;
+    line-height: 1;
+    color: var(--c-brand);
+    visibility: hidden;
+  }
+  .players-strip__slot--turn .players-strip__turn { visibility: visible; }
 
   .players-strip__name {
     flex: 1 1 auto;
@@ -750,6 +792,63 @@
   .players-strip__slot--empty .players-strip__name {
     font-weight: 400;
     color: var(--c-ink-3);
+  }
+
+  /* tabular-nums is load-bearing: the name beside this is flex:1, so digits of
+     unequal width would resize this column and nudge the name every second. */
+  .players-strip__time {
+    flex: 0 0 auto;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--c-ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .players-strip__time--low {
+    color: var(--strip-fill-low);
+    animation: strip-timer-pulse 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes strip-timer-pulse {
+    from { opacity: 1; }
+    to   { opacity: 0.4; }
+  }
+
+  /* Remaining-time bar. Only rendered while a game is running, so the strip
+     keeps its pre-game height exactly as it was and the board loses nothing
+     before the match starts. */
+  /* Geometry here is a measured budget, not taste. Measured on iPhone SE
+     (375x667), where the board is height-bound rather than width-bound: every
+     pixel this strip takes comes straight off the canvas. At 3px tall with
+     3px/5px margins the strip ran 82px in-game and the board fell 318 -> 300.
+     Trimmed to 2px with a single 1px top margin (the strip's own 2px flex gap
+     supplies the separation below), which is what brings the board back.
+     Re-measure before growing any of these three numbers again. */
+  .players-strip__track {
+    height: 2px;
+    margin: 1px 0 0;
+    border-radius: 2px;
+    background: var(--strip-track);
+    overflow: hidden;
+  }
+
+  .players-strip__fill {
+    display: block;
+    height: 100%;
+    width: calc(var(--pct, 0) * 1%);
+    background: var(--strip-fill);
+    border-radius: inherit;
+    /* Not for smoothing the 1s tick (a stepped bar is the agreed behaviour) —
+       it is so a blitz increment slides the bar back out instead of snapping. */
+    transition: width 1s linear;
+  }
+  .players-strip__fill--low { background: var(--strip-fill-low); }
+
+  /* Only one clock actually runs; dimming the other stops the pair from
+     reading as two live countdowns. */
+  .players-strip__track--idle .players-strip__fill { opacity: 0.35; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .players-strip__fill { transition: none; }
+    .players-strip__time--low { animation: none; }
   }
 
   .board-area-shell {

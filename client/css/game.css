@@ -157,10 +157,9 @@
 }
 
 @media (max-width: 768px) {
-  .turn-bar {
-    width: calc(100% - 32px);
-    margin: 0 auto 10px auto;
-  }
+  /* .turn-bar's mobile width/margin rule lived here. It is gone rather than
+     kept-but-overridden: the bar is display:none below (see the block near the
+     end of this file), so anything sizing it at this width is dead code. */
   /* .game-controls's width here used to be dead CSS: the unconditional
      base rule at ~L177 (width: 100%) sits later in the file and won the
      cascade regardless of viewport, so the controls silently inherited
@@ -601,32 +600,16 @@
    ========================================================================== */
 
 @media (max-width: 768px) {
-  /* Compact turn bar on small screens — must fit viewport width */
+  /* The turn bar does not exist on phones any more. Its three jobs — names,
+     clocks, whose-turn — moved into .players-strip above the board
+     (room.css), which shows them one row per seat instead of mirrored around
+     a centre label. The mirrored layout is what forced .turn-bar__name down
+     to a 48px cap here, i.e. roughly four characters before the ellipsis.
+     Kept intact for desktop, where the bar is unchanged.
+     display:none, not visibility:hidden — board.js reads this element's
+     offsetHeight for the board's height budget and must measure a true 0. */
   .turn-bar {
-    min-width: unset;
-    max-width: 100%;
-    gap: 4px;
-    padding: 6px 8px;
-    font-size: 12px;
-  }
-
-  .turn-bar__name {
-    max-width: 48px;
-  }
-
-  .turn-bar__timer {
-    font-size: 14px;
-    min-width: 28px;
-  }
-
-  .game-info__turn {
-    font-size: 11px;
-    padding: 2px 6px;
-    min-width: 0;
-    max-width: 92px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: none;
   }
 
   /* Row is inset by the same 32px .board-area-shell over-bleeds by, so it
