@@ -597,17 +597,23 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `?v=144→145→146` — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
 
 ### Nguồn: báo cáo trực tiếp người dùng kèm ảnh chụp Android — "Thanh Panel này tốn quá nhiều space, có thể ẩn đi?" (2026-08-22)
-- **#144.** `<nav class="topnav">` cao **60px cố định** trên zen mobile (`--zen-topnav-h`), luôn hiện,
-  chứa logo + mã phòng + rời phòng + cài đặt. Trên iPhone SE 375×667 đó là **9% chiều cao viewport**
-  — dư địa lớn nhất còn lại của màn hình phòng chơi, gấp 20 lần khoản 3px mà #143 phải cân não.
-  Người dùng đề xuất 2 hướng (vuốt xuống / nút `V`), **chưa chọn**. Không phải một dòng CSS:
-  `--zen-topnav-h` là **biến hình học chịu lực**, 11 chỗ trong `room-zen.css` tính `calc()` từ nó và
-  `board.js` `resize()` lấy ngân sách qua `shellTop` nên đã gián tiếp cộng chiều cao nav — ẩn nav mà
-  không xử lý các `calc()` đó thì board **không** đòi lại được 60px, chỉ đổi chrome thành khoảng
-  trống. Hai chặn UX: nút **rời phòng** và **mã phòng** hiện chỉ tồn tại trong topnav (bottom bar
-  không có), còn nút cài đặt thì trùng với `tab-settings`; và vuốt-từ-mép-trên đụng pull-to-refresh.
-  Bài học #143 áp dụng nguyên: Pixel 5 board bị giới hạn bởi chiều rộng nên nhiều khả năng lợi ích
-  bằng 0 ở đó, phải đo cả hai viewport `[Model: Sonnet 5]` —
+- ✅ **#144.** `<nav class="topnav">` cao **60px cố định** trên zen mobile (`--zen-topnav-h`), luôn
+  hiện, chứa logo + mã phòng + rời phòng + cài đặt. Trên iPhone SE 375×667 đó là **9% chiều cao
+  viewport**. `--zen-topnav-h` là **biến hình học chịu lực** (11 chỗ `calc()` khác trong
+  `room-zen.css` + `board.js` đọc gián tiếp qua `shellTop`) — hỏi hướng tương tác qua
+  `AskUserQuestion` trước khi code (chọn nút `V`, không phải vuốt — tránh pull-to-refresh không
+  kiểm chứng được ở môi trường này). **Đo bắt buộc trước khi kết luận** (server throwaway, không
+  đụng DB thật): canvas board **không đổi 1px** khi bật/tắt nav ở CẢ Pixel 5 lẫn iPhone SE 375×667
+  (chỉ ~2.6px trên iPhone SE 320×568 đời cũ) — sai giả định ban đầu "iPhone SE lợi thật vì bị giới
+  hạn chiều cao"; board rộng-giới hạn (width-bound) trên mọi viewport điện thoại thực tế. Hỏi lại
+  người dùng với số đo thật: **giữ làm tính năng gọn giao diện** (đúng yêu cầu gốc), không phải làm
+  board to hơn. Cho xem bản nút `V`, người dùng phản hồi **bỏ nút V**, chỉ giữ thanh tối giản
+  luôn-nhỏ: rời phòng (trái) + mã phòng (giữa) + cài đặt chung (phải, phát hiện được chèn **động**
+  bởi `settings-panel.js` lúc đọc code — **không trùng** `tab-settings` như nhận định ban đầu, đã
+  đính chính trong chi tiết), logo bỏ hẳn trên mobile. `--zen-topnav-h: 28px` cố định (bỏ JS toggle),
+  `.topnav__right` dùng `order` tường minh dàn 3 nút trái/giữa/phải bất kể thứ tự chèn DOM. Test
+  `e2e/topnav-minimal-mobile.spec.ts` (2 viewport, kiểm tra rời phòng **hoạt động thật** không chỉ
+  visible), `npm test` **1230/1230**, `?v=147→148→149` `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B144-an-topnav-tren-mobile-phong-choi.md)
 
 ---

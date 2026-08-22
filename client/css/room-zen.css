@@ -950,6 +950,40 @@ body.zen-room .players-strip__turn { color: var(--ink); }
   body.zen-room .topnav { padding: 0 16px; }
   body.zen-room .topnav__title { display: none; }
 
+  /* TODO.md #144: .topnav's 60px was the largest remaining chrome cost on a
+     phone room screen — but measured (Pixel 5 393×727, iPhone SE 375×667,
+     both in-game): collapsing it doesn't grow the board at all on either
+     (canvas size identical before/after; the board is width-bound on every
+     phone viewport tested, not height-bound as first assumed). The freed
+     height becomes blank space below .game-controls, not board. Kept
+     anyway as a pure decluttering change (the original ask was "this bar
+     takes too much space", not "make the board bigger") — permanently
+     minimal, no expand/collapse toggle: brand/logo drops for good, only
+     leave + room code + the global settings icon (#btn-settings, injected
+     by settings-panel.js) remain, spread across the row.
+     Overriding --zen-topnav-h itself (not just .topnav's own height) is
+     still the point even without a toggle: 11 other calc()s in this file
+     read that variable, and board.js's resize() indirectly reads it too
+     (via .board-area-shell's measured top) — so they all get the smaller
+     budget for free, no board.js edit (that file is locked — see
+     design-workflow). */
+  body.zen-room {
+    --zen-topnav-h: 28px;
+  }
+  body.zen-room .topnav__brand { display: none; }
+  body.zen-room .topnav__right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  /* Explicit order, independent of DOM position — #btn-settings is appended
+     to .topnav__right at runtime by settings-panel.js, after #room-id-nav
+     and #btn-leave already in the markup. */
+  body.zen-room #btn-leave { order: 1; }
+  body.zen-room #room-id-nav { order: 2; }
+  body.zen-room #btn-settings { order: 3; }
+
   body.zen-room .players-strip { margin: 0; padding: 6px 14px; }
 
   /* Board: full width, no side drawer to dodge, only the bottom bar. The
