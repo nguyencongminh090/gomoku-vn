@@ -31,6 +31,33 @@ class SocketClient {
     this._connect();
   }
 
+  /**
+   * The page's one and only SocketClient (TODO.md #145).
+   *
+   * There is exactly one connection per page, and this is the single place
+   * that fact is enforced. Both callers go through it: `socket-early.js`
+   * (which runs in `<head>` to get the handshake started while the HTML is
+   * still parsing) and the page controller that actually uses the socket
+   * (`lobby.js`), whichever reaches it first.
+   *
+   * Why it has to be a choke point rather than a convention: opening a second
+   * socket.io connection from the same page trips the server's
+   * single-device-per-token eviction, and the victim is the page itself —
+   * it kicks the player to login with "đăng nhập ở một thiết bị khác". That
+   * is not hypothetical, it shipped once already (TODO.md #51, where a stale
+   * `?v=` made `lobby.js` evaluate twice). #145 deliberately separates
+   * *creating* the socket from *using* it, which is the same shape of hazard,
+   * so the guard lives here where neither caller can bypass it.
+   *
+   * @returns {SocketClient}
+   */
+  static shared() {
+    if (!window.__gvnSharedClient) {
+      window.__gvnSharedClient = new SocketClient();
+    }
+    return window.__gvnSharedClient;
+  }
+
   // ---------------------------------------------------------------------------
   // Connection
   // ---------------------------------------------------------------------------
@@ -204,6 +231,11 @@ class SocketClient {
     this._listeners = [];
     this.socket.disconnect();
     this.socket = null;
+    // Release the shared slot too (TODO.md #145). Every caller of destroy()
+    // navigates away immediately, so this is belt-and-braces — but a stale
+    // dead client sitting in `shared()` would be handed to the next caller
+    // with `this.socket === null`, failing silently instead of reconnecting.
+    if (window.__gvnSharedClient === this) window.__gvnSharedClient = null;
   }
 
   /**

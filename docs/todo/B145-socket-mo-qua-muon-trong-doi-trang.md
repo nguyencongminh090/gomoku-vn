@@ -1,6 +1,33 @@
 # #145 — Socket.io chỉ được mở ở cuối đồ thị module: mất trắng ~220-460 ms trước khi bắt tay bắt đầu
 
-**Trạng thái:** chưa làm.
+**Trạng thái:** ✅ Đã sửa — **ĐÃ LÀM 2026-08-22** (`fix/socket-early-connect` off `dev`).
+
+`client/js/socket-early.js` (mới) chạy như script cổ điển trong `<head>` và gọi
+`SocketClient.shared()` — static mới trong `socket-client.js`, là **một chỗ duy nhất** giữ tính
+idempotent (`destroy()` nhả slot). Bốn script (`socket.io.min.js`, `session.js`, `socket-client.js`,
+`socket-early.js`) chuyển lên đầu `<head>`, **TRÊN mọi `<link rel="stylesheet">`** — script cổ điển
+đặt sau một stylesheet link sẽ chờ stylesheet đó tải xong mới chạy, để trôi xuống dưới CSS là trả
+lại toàn bộ khoản tiết kiệm mà không có gì hỏng để nhận ra. `session.js`/`socket-client.js` gỡ khỏi
+import của `index-entry.js` + 2 hint `modulepreload` (để lại là nạp file 2 lần = đường #51).
+`lobby.js:40` `new SocketClient()` → `SocketClient.shared()`. Object option `io({...})` **không
+đụng** ⇒ 8 test của #131 pass nguyên. `?v=149→150` (184 chỗ, grep ra đúng 1 giá trị).
+
+- **15 test mới** `client/tests/socket-early-connect.test.js`; `npm test` **1245/1245** (trước
+  1230). Kiểm chứng không rỗng bằng mutation test trên **bản sao ở thư mục tạm**: revert 4 file
+  nguồn về HEAD ⇒ **13/15 fail** (2 case còn pass là bất biến vốn đã đúng, giữ làm regression guard).
+- **Đo trên 2 instance cô lập** (copy repo + DB rỗng + cổng 3111/3112; server thật cổng 3000 và
+  `server/db/gomoku.db` thật không bị đụng). Mốc `navigationStart` → WS opened, median 7 lần:
+  **36.9 ms → 13.8 ms**; WS constructed 28.1 → 10.7 ms; FCP **44 → 24 ms**; đúng **1 kết nối
+  WS/trang**; 0 console error; luồng khách→tạo phòng→`room.html`→reload→rời phòng giống hệt nhau
+  trên cả 2 instance, không bị đá về login.
+- **Rủi ro tôi nêu trước khi đo đã bị số đo bác bỏ**: 4 script đồng bộ vào `<head>` có thể phạt
+  first paint — thực tế FCP *cải thiện*, nhiều khả năng vì đồ thị module phải fetch/eval ít hơn.
+- **Giới hạn của số đo**: localhost, nên nó chứng minh **thứ tự** đã đổi và các bất biến còn nguyên,
+  **không** chứng minh biên độ trên domain thật (ở đó cái được đẩy song song là 321 ms TCP+TLS, chứ
+  không phải ~3 ms). Trần cứng vẫn là 242 ms của `index.html`.
+- **Phạm vi cố ý chỉ `index.html`** — `room.html`/`tournament-*.html` vẫn dựng client từ entry
+  module; `shared()` hoạt động đúng ở cả hai kiểu và có test riêng cho đường không có script `<head>`.
+- Chi tiết: [fix-log](../fix-log/2026-08-22-todo-145-socket-mo-som-trong-head.md).
 
 **Nguồn:** phân tích HAR `play3cr.dpdns.org_Archive [26-08-22 19-20-59].har` (trang `index.html`,
 2026-08-22 19:20:52 +07) — người dùng hỏi vì sao entry `wss://play3cr.dpdns.org/socket.io/` có

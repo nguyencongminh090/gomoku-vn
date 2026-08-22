@@ -617,7 +617,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   [chi tiết](docs/todo/B144-an-topnav-tren-mobile-phong-choi.md)
 
 ### Nguồn: phân tích HAR `play3cr.dpdns.org_Archive [26-08-22 19-20-59].har` — người dùng hỏi vì sao entry `wss://.../socket.io/` dài nhất, kèm tra cứu chuẩn ngành "Big Site xử lý thế nào?" (2026-08-22)
-- **#145.** Entry WebSocket dài **543 ms** nhưng đó là 3 thứ cộng lại, và phần lớn nhất **không**
+- ✅ **#145.** Entry WebSocket dài **543 ms** nhưng đó là 3 thứ cộng lại, và phần lớn nhất **không**
   nằm trong entry: **462 ms trôi qua trước khi socket được mở**. `client/index.html:449` nạp
   `index-entry.js` bằng `type="module"` ở cuối `<body>` ⇒ defer ⇒ `io()` chỉ chạy ở **cuối** đồ thị
   module (`index-entry → … → lobby.js:40 new SocketClient()`), dù `_connect()` không cần DOM/CSS/i18n
@@ -632,7 +632,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   chỉ nhận delta). **Đã loại trừ, đừng đi lại:** `preconnect`/`dns-prefetch` (vô ích với `wss`);
   321 ms `connect` (mất gói SYN client↔edge, cùng nguyên nhân #131, không sửa được bằng code);
   RFC 8441/9220 (**đính chính**: trình duyệt CÓ hỗ trợ, CDN thì không — HAR chứng minh: Firefox 153
-  xin `HTTP/1.1` Upgrade tới **IP edge khác** dù trang chính chạy HTTP/3) `[Model: Opus 5]` —
+  xin `HTTP/1.1` Upgrade tới **IP edge khác** dù trang chính chạy HTTP/3). **ĐÃ LÀM 2026-08-22**
+  (`fix/socket-early-connect` off `dev`): `socket-early.js` mới chạy trong `<head>` gọi
+  `SocketClient.shared()` (static mới, **một chỗ duy nhất** giữ idempotent, `destroy()` nhả slot);
+  4 script lên đầu `<head>` **TRÊN mọi `<link rel="stylesheet">`** — script cổ điển đặt sau stylesheet
+  sẽ chờ stylesheet đó tải xong, để trôi xuống dưới CSS là trả lại sạch khoản tiết kiệm mà không có
+  gì hỏng để nhận ra; gỡ `session.js`/`socket-client.js` khỏi import `index-entry.js` + 2 hint
+  `modulepreload` (để lại là nạp file 2 lần = đúng đường #51); `lobby.js` `new` → `shared()`; object
+  option `io({...})` **không đụng** ⇒ 8 test #131 pass nguyên. Đo trên 2 instance cô lập (3111/3112,
+  DB rỗng riêng, **không** đụng server/DB thật), mốc `navigationStart` → WS opened, median 7 lần:
+  **36.9 → 13.8 ms**; FCP **44 → 24 ms** — rủi ro "4 script đồng bộ vào `<head>` phạt first paint"
+  tôi nêu ra trước khi đo đã bị chính số đo bác bỏ; đúng **1 kết nối WS/trang**, 0 console error,
+  luồng khách→tạo phòng→room→reload→rời phòng giống hệt trên cả 2 instance, không bị đá về login.
+  **Localhost nên chỉ chứng minh thứ tự đã đổi, KHÔNG chứng minh biên độ trên domain thật.** 15 test
+  mới (mutation trên bản sao ở thư mục tạm: revert 4 file nguồn ⇒ 13/15 fail), cập nhật hằng số import
+  `index-entry.js` 7→5 trong test #126, `npm test` **1245/1245**, `?v=149→150`. Phạm vi cố ý chỉ
+  `index.html` `[Model: Opus 5]` —
   [chi tiết](docs/todo/B145-socket-mo-qua-muon-trong-doi-trang.md)
 - **#146.** `server/middleware/auth.js` `verifySocketToken()` gọi `sessionManager.touchSession()` —
   một lệnh **GHI SQLite đồng bộ** (better-sqlite3, chặn event loop, commit WAL) — **trước** `next()`,

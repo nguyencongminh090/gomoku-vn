@@ -49,9 +49,17 @@ function asSortedKeys(entries) {
   return entries.map((e) => `${e.file}@${e.version}`).sort();
 }
 
+// index-entry.js dropped from 7 imports to 5 in TODO.md #145: session.js and
+// socket-client.js became classic <head> scripts on index.html so the socket
+// handshake can start during parsing. Both sides were removed together (the
+// hint/import parity tests below are what prove that), and the two files must
+// NOT come back as module imports — importing a file that a <script> tag has
+// already run evaluates it a second time, which is the #51 duplicate-socket
+// bug. That direction is guarded in client/tests/socket-early-connect.test.js.
+// room-entry.js is untouched: #145 is index.html-only for now.
 describe.each([
   ['room.html', 'room-entry.js', 11],
-  ['index.html', 'index-entry.js', 7],
+  ['index.html', 'index-entry.js', 5],
 ])('%s modulepreload hints vs %s imports (TODO.md #126)', (htmlFile, entryFile, expectedCount) => {
   test(`entry file has exactly ${expectedCount} static imports (sanity check on the count itself)`, () => {
     const imports = extractEntryImports(entryFile);
