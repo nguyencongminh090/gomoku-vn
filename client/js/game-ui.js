@@ -64,9 +64,30 @@
    *   timeout #1   → resend, same moveId, so the server can recognise it as
    *                  the same action if the first one did land
    *   timeout #2   → stop, ask for a full resync, tell the player
+   *
+   * Optimistic render (TODO.md #153): a faded, dashed-ring stone is drawn at
+   * (x,y) immediately, before any of the above — the mover no longer waits
+   * out a round trip to see their own move, which was the whole cost #153
+   * was filed to remove. It is a pure visual overlay (BoardRenderer.
+   * optimisticStone), never written into gameState.board, so a rejected move
+   * rolls back for free: clearing the overlay IS the rollback.
+   *
+   * Deliberately NOT cleared here on ack {ok}. The server sends the
+   * `game:moved` broadcast before the ack (same connection, so it's ordered
+   * ahead), and that broadcast is what writes the confirmed stone into
+   * gameState.board — clearing the overlay only once that write has actually
+   * happened (see room-socket.js's game:moved handler) avoids a one-frame
+   * flash of an empty cell in the rare case where this move's own broadcast
+   * was itself redirected into a resync by the receive-side gap check (an
+   * earlier, unrelated broadcast this client had missed).
    */
   function sendMove(x, y) {
     const moveId = newMoveId();
+    const st = S();
+    const myPlayer = st.gameState && st.gameState.players.find(p => p.userId === st.myUser.userId);
+    if (st.boardRenderer && myPlayer) {
+      st.boardRenderer.setOptimisticStone({ x, y, color: myPlayer.color });
+    }
 
     const attempt = (isRetry) => {
       global.RoomClient.emitAck('game:move', { x, y, moveId }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
@@ -79,15 +100,22 @@
           if (!gs || gs.status !== 'ongoing') return;
 
           if (!isRetry) {
+            if (S().boardRenderer) S().boardRenderer.markOptimisticWarning();
             moveNotice(t('room.move_retrying'));
             attempt(true);
           } else {
             moveNotice(t('room.move_failed'));
             if (global.RoomSocket) global.RoomSocket.requestResync();
+            // The pending stone stays up (still showing its 'warning' look)
+            // until game:resync's answer lands as room:joined and clears it
+            // along with rebuilding the whole board — see room-socket.js.
+            // Clearing it here instead would guess at an outcome the server
+            // hasn't actually confirmed yet.
           }
           return;
         }
         if (res && res.error) {
+          if (S().boardRenderer) S().boardRenderer.setOptimisticStone(null);
           moveNotice(`⚠ ${global.RoomSocket ? global.RoomSocket.serverMessage(res) : res.error}`);
         }
       });
@@ -172,6 +200,13 @@
             return;
           }
           if (gs && gs.status === 'ongoing') {
+            // One in-flight move at a time (TODO.md #153): `isMyTurn` in
+            // board.js doesn't flip false until gameState.currentTurn changes,
+            // which only happens once this move is confirmed — so without this
+            // guard a second click during the round trip would start a second
+            // optimistic stone and clobber the first one (BoardRenderer only
+            // tracks one).
+            if (S().boardRenderer && S().boardRenderer.optimisticStone) return;
             sendMove(x, y);
           }
         },

@@ -71,6 +71,12 @@ class BoardRenderer {
     // Double-tap: pending cell awaiting confirmation
     this._pendingCell = null;
 
+    // Optimistic (not-yet-confirmed) stone for the player's own in-flight
+    // move (TODO.md #153) — { x, y, color, warning } or null. Separate from
+    // `this.board`: the confirmed board only ever changes from server data,
+    // this is a purely visual overlay the caller (GameUI.sendMove) drives.
+    this.optimisticStone = null;
+
     // Bind events
     this.canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
     this.canvas.addEventListener('mouseleave', () => this._onMouseLeave());
@@ -101,6 +107,30 @@ class BoardRenderer {
       wallBaseRgb: read('--board-wall-base-rgb', '138, 138, 138'),
       wallLightRgb: read('--board-wall-light-rgb', '176, 176, 176'),
     };
+  }
+
+  /**
+   * Show a not-yet-confirmed stone for the player's own move (TODO.md #153).
+   * Pass `null` to clear it. Deliberately not part of `setState()` — it is
+   * driven by the move's ack/timeout lifecycle in GameUI.sendMove, not by
+   * gameState snapshots, and must survive calls to setState() that don't
+   * mention it (e.g. a resize-triggered geometry recompute).
+   */
+  setOptimisticStone(stone) {
+    this.optimisticStone = stone;
+    this._draw();
+  }
+
+  /**
+   * Flip the pending stone to its "still trying" look after the first ack
+   * timeout (GameUI.sendMove's retry), without moving it. No-op if it was
+   * already cleared out from under this call — a real race, since the
+   * retry's timer and an incoming game:moved run independently.
+   */
+  markOptimisticWarning() {
+    if (!this.optimisticStone) return;
+    this.optimisticStone = Object.assign({}, this.optimisticStone, { warning: true });
+    this._draw();
   }
 
   /** Update board state and redraw. */
@@ -504,6 +534,13 @@ class BoardRenderer {
       }
     }
 
+    // 5b. This player's own in-flight move, drawn on top of the confirmed
+    // board (TODO.md #153) — faded + dashed so it never reads as placed.
+    if (this.optimisticStone) {
+      const { x, y, color, warning } = this.optimisticStone;
+      this._drawOptimisticStone(x, y, color, !!warning);
+    }
+
     if (this.displayMode === 'stone' && this.lastMove) {
       this._drawStoneLastMoveMarker(this.lastMove.x, this.lastMove.y);
     }
@@ -801,6 +838,43 @@ class BoardRenderer {
   }
 
   /** Draw pending cell: semi-transparent preview stone + green pulsing ring. */
+  /**
+   * The mover's own stone before the server has confirmed it (TODO.md #153).
+   * Deliberately distinct from a confirmed stone — half-opacity piece plus a
+   * dashed ring — so a player can never mistake "sent" for "landed"; that
+   * distinction is also what makes the rollback on a rejected move (just
+   * `setOptimisticStone(null)`, nothing was ever written to `this.board`)
+   * read as "never happened" instead of a stone visibly vanishing.
+   * `warning` (set after the first ack timeout, GameUI.sendMove's retry)
+   * swaps the ring from green to amber — same shape, different confidence.
+   */
+  _drawOptimisticStone(x, y, color, warning) {
+    const ctx = this.ctx;
+    const g = this.geo;
+    const { px, py } = this._cellToPixel(x, y);
+
+    ctx.save();
+    ctx.globalAlpha = 0.5;
+    if (this.displayMode === 'stone') {
+      this._drawStonePiece(x, y, color);
+    } else if (color === 'BLACK') {
+      this._drawBlackPiece(x, y);
+    } else {
+      this._drawWhitePiece(x, y);
+    }
+    ctx.restore();
+
+    const ringRgb = warning ? '196, 130, 40' : this._theme.pendingRgb;
+    ctx.save();
+    ctx.setLineDash([Math.max(g.cellSize * 0.09, 2), Math.max(g.cellSize * 0.06, 1.5)]);
+    ctx.strokeStyle = `rgba(${ringRgb}, 0.9)`;
+    ctx.lineWidth = Math.max(g.cellSize * 0.05, 1.5);
+    ctx.beginPath();
+    ctx.arc(px, py, g.cellSize * 0.42, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   _drawPendingHighlight(x, y) {
     const ctx = this.ctx;
     const g = this.geo;

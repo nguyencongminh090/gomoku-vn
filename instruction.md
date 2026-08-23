@@ -467,7 +467,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   happy path không chứng minh được gì. `client/tests/` **đã có** test infra (`CLAUDE.md` ghi ngược lại
   là thông tin cũ). Bump `?v=N`. Branch off **`main`** (bug có trên cả 2 nhánh) (báo cáo người chơi TQ,
   TODO.md #152) — [chi tiết](docs/instruction/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md)
-- **B153.** (Chưa làm) **⚠️ KHÔNG implement trước khi #152 xong** — optimistic thiếu ack biến freeze
+- **B153.** (✅ Đã làm 2026-08-24 — cùng branch `fix/game-move-ack-timeout-resync` off `dev`, commit
+  riêng; chi tiết ở `docs/fix-log/2026-08-24-todo-153-optimistic-render.md`. Lệch có chủ đích so với
+  hướng dẫn dưới đây: overlay hoà giải theo `game:moved` khớp toạ độ, **không phải** ack — ack `{ok}`
+  không tự gỡ overlay (lý do: tránh flash-rỗng nếu chính broadcast của nước đó bị gap-check #152 chuyển
+  hướng sang resync); thêm chặn "1 nước đang bay" ở `onCellClick` (không có trong bảng gốc, cần thiết vì
+  `isMyTurn` phía `board.js` không tự tắt cho tới khi có xác nhận). Không ép được đo RTT mô phỏng cho
+  phần xác nhận-từ-server bằng CDP (giới hạn Chromium: không throttle WebSocket đã mở) — đã nói thẳng
+  theo tiền lệ #126, không báo khống số đo.) **⚠️ KHÔNG implement trước khi #152 xong** — optimistic thiếu ack biến freeze
   thành *âm thầm*: người chơi thấy quân hiện ra, tưởng đã đi, nhưng server chưa nhận; họ ngồi chờ đối
   thủ trong ván mà lượt vẫn thuộc về mình. Hồi quy thật, tệ hơn hiện trạng. **Đừng nhân bản logic
   `GameEngine` sang client** — chỉ kiểm tối thiểu (đúng lượt + ô trống + trong bàn + không phải tường),
