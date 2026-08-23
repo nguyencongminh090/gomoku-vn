@@ -755,6 +755,41 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)
 
+### Nguồn: báo cáo người chơi ở Trung Quốc — "Mỗi khi nhấn nước đi: lag; ~0.5s mới xuất hiện. Đôi lúc freeze." (2026-08-23)
+- **#152.** `game:move` gửi bằng **bare emit không có ack** (`client/js/game-ui.js:108`;
+  `SocketClient.emit()` không hỗ trợ ack ở bất kỳ đâu) — nếu gói đi **hoặc** gói `game:moved` về bị
+  rớt **trong khi socket vẫn "connected"**, client chờ vô thời hạn: không timeout, không retry, không
+  phản hồi UI ⇒ **bàn cờ đứng hẳn, người chơi phải F5**. Cơ chế resync sẵn có (`SocketHandler.js:233-266`
+  tự đẩy `room:joined` kèm full `gameState`) **chỉ kích hoạt khi có disconnect→reconnect thật**, nên
+  không cứu được kịch bản rớt gói im lặng — đúng kiểu nhiễu mà GFW tạo ra (drop chọn lọc ~180s, không
+  chặn cứng). Cần: ack hai chiều (`.timeout(5000).emit()`, per-emit) + **`moveId` uuid do client sinh
+  để dedupe** (chống double-apply khi retry) + sự kiện `game:resync` chủ động + **phát hiện gap qua
+  `moveCount` ở phía nhận**. Gap detection là **lỗ hổng đối xứng dễ bỏ sót**: ack chỉ bảo vệ *người
+  đi*, còn gói `game:moved` broadcast tới *đối thủ* rớt thì hiện không ai phát hiện — A chờ B, B chờ
+  A, deadlock cả hai; `moveCount` đã có sẵn trong payload nhưng `room-socket.js:230` đang **ghi đè
+  mù** không so sánh (cách Lichess/Gambetta xử lý cùng bài toán). **Đã loại trừ**: đường
+  `game:move` không có debounce/ghi đĩa đồng bộ, `_checkWin` chỉ quét 4 hướng ⇒ độ trễ KHÔNG đến từ
+  tính toán server. **Đã bác bỏ 2 hướng (2026-08-24, đối chiếu chuẩn ngành + đọc source thư viện)**:
+  (a) dedupe theo "nước đi cuối + đúng người gửi" — hỏng khi đối thủ kịp đi chen vào giữa lúc gói
+  gửi-lại về trễ, dedupe theo *vị trí lịch sử* thay vì *danh tính hành động*; (b) bật option `retries`
+  toàn cục của socket.io — `socket.js:252/359/360` cho thấy nó áp cho **mọi** emit, tự nhét ack vào
+  mọi packet, và hàng đợi tuần tự gây **head-of-line blocking**; với 1 socket dùng chung toàn trang
+  (#145) thì chat sẽ bị gửi 4 lần. **Khuyến nghị `[Model: Opus 5 — Medium]`** khi implement: chế độ
+  hỏng của task này là *tự nghĩ ra giải pháp nghe hợp lý nhưng sai* (đúng 2 bẫy đã dính ở trên), cộng
+  reasoning idempotency/concurrency + verify bằng mô phỏng mất gói `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md)
+- **#153.** Client **không render lạc quan**: `onCellClick` (`client/js/game-ui.js:97-110`) chỉ emit,
+  không vẽ gì; quân chỉ hiện khi server broadcast `game:moved` về (`client/js/room-socket.js:211-245`)
+  — nên **người tự đặt quân cũng phải trả trọn 1 round-trip mới thấy quân của chính mình** (~0.5s đo
+  được). Đã xác minh **không có độ trễ giả nào trong code** (`setState()`→`_draw()` đồng bộ, bàn cờ là
+  `<canvas>` nên không có CSS transition per-stone) ⇒ toàn bộ là RTT thật, chỉ bị lộ 100% ra UI. Cần
+  vẽ quân "pending" ngay khi click rồi hoà giải theo ack/`game:moved`/timeout. **⚠️ Phụ thuộc #152 —
+  KHÔNG ship trước #152**: optimistic mà thiếu ack sẽ biến freeze thành *âm thầm* (người chơi tưởng
+  nước đi thành công trong khi server chưa nhận), tệ hơn hiện trạng. **Khuyến nghị `[Model: Sonnet 5 —
+  High]`** khi implement: task mang tính cơ học (Command pattern, 3 đường kết thúc + ranh giới
+  Swap2/portal đã liệt kê đủ), cần *tuân thủ* chứ không cần *phát hiện* `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B153-optimistic-render-quan-co-cua-chinh-minh.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

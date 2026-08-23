@@ -441,3 +441,45 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   có test infra cho `client/js/`, nói rõ trong summary. Verify bắt buộc trên thiết bị/emulation có
   touch thật, không chỉ đọc code —
   [chi tiết](docs/instruction/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)
+- **B152.** (Chưa làm) **Làm TRƯỚC #153** (xem lý do ở B153). Thêm **method mới** có ack+timeout vào
+  `SocketClient`, **đừng sửa `emit()` hiện có** (nhiều call site). **Guard `typeof ack === 'function'`
+  bắt buộc** — client cũ còn trong cache `?v=` vẫn gửi bare emit, không guard sẽ throw trong handler và
+  hỏng ván của họ (lỗi ship được mà máy dev không bao giờ thấy). Idempotency **chốt `moveId` uuid do
+  client sinh** (chuẩn ngành — Socket.IO docs/Stripe/Gambetta đều vậy), server giữ tập đã xử lý theo
+  ván, dọn ở `handleGameEnd`; **retry phải gửi lại đúng `moveId` cũ**. ⚠️ **Hai hướng đã bác bỏ, đừng
+  khôi phục**: (a) dedupe theo "nước đi cuối" — hỏng khi đối thủ đi chen vào giữa lúc gói gửi-lại về
+  trễ; (b) option `retries` toàn cục của socket.io — đọc source 4.8.3 (`socket.js:252/359/360`,
+  `_drainQueue :392-407`) thấy nó áp cho **mọi** emit + tự nhét ack + hàng đợi tuần tự gây
+  **head-of-line blocking**; 1 socket dùng chung toàn trang (#145) ⇒ chat bị gửi 4 lần. Dùng
+  `.timeout(5000).emit()` **per-emit** (`socket.js:735`/`:291`) + tự viết đúng 1 lần retry. Emit
+  `game:moved` **trước**, `ack` **sau** (hai đường độc lập). `game:resync` phải **tái dùng** logic dựng
+  state của `room:joined` (`SocketHandler.js:233-266`), đừng viết lại. **Retry CHỈ khi timeout, không
+  bao giờ khi ack trả `{error}`**; máy trạng thái 6 bước ở `docs/todo/B152-*.md` mục 4 là bản chốt
+  (ngân sách xấu nhất 10s = 2×5s rồi resync). **Gap detection `moveCount`** (mục 5) có bẫy **resync vô
+  hạn** — `moveCount` bị set lại bởi cả `game:init`/`room:joined`/`game:swap2_state`/undo, nên gap check
+  chỉ áp cho delta tuần tự của `game:moved`, mọi đường nạp-state-đầy-đủ phải **reset baseline**. Chuỗi
+  UI mới bắt buộc vào **cả `vi` lẫn `en`** trong `i18n.js`, đừng hardcode tiếng Việt. **Đừng đụng** debounce
+  `broadcastRoomUpdate` (đường phòng/sảnh, tách biệt hoàn toàn), **đừng siết `pingInterval`/`pingTimeout`**
+  (cố ý ngoài phạm vi — rủi ro false disconnect trên chính mạng mất gói này, tiền lệ #131 chọn sai
+  ngưỡng vì calibrate trên 1 mẫu), **đừng mở rộng ack sang event khác** (`room:sit`, `chat:message`…) —
+  ghi TODO riêng nếu thấy. Timeout 5000ms là số khởi điểm, chỉnh thì phải dựa trên phân bố RTT đo được.
+  Verify bắt buộc: Chromium thật, instance **cô lập**, và **mô phỏng mất gói** để test đường freeze —
+  happy path không chứng minh được gì. `client/tests/` **đã có** test infra (`CLAUDE.md` ghi ngược lại
+  là thông tin cũ). Bump `?v=N`. Branch off **`main`** (bug có trên cả 2 nhánh) (báo cáo người chơi TQ,
+  TODO.md #152) — [chi tiết](docs/instruction/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md)
+- **B153.** (Chưa làm) **⚠️ KHÔNG implement trước khi #152 xong** — optimistic thiếu ack biến freeze
+  thành *âm thầm*: người chơi thấy quân hiện ra, tưởng đã đi, nhưng server chưa nhận; họ ngồi chờ đối
+  thủ trong ván mà lượt vẫn thuộc về mình. Hồi quy thật, tệ hơn hiện trạng. **Đừng nhân bản logic
+  `GameEngine` sang client** — chỉ kiểm tối thiểu (đúng lượt + ô trống + trong bàn + không phải tường),
+  **tuyệt đối không** nhân bản `_checkWin`. **Loại trừ Swap2 opening**: `GameHandler.js:714-741` khởi
+  tạo với `color: null`, màu chỉ resolve sau `swap2Choice` ⇒ client không biết vẽ quân đen hay trắng,
+  giữ nguyên chờ-server, đừng "đoán" màu. **Xác minh luật portal trước khi code** — nếu portal relocate
+  quân thì optimistic vẽ sai chỗ, phải tắt khi `rulePortal` bật; code hiện tại *gợi ý* `movePayload`
+  giữ nguyên `x,y` nhưng **chưa kiểm chứng, đừng tin**. Quân pending phải **nhìn khác** quân xác nhận
+  (bán trong suốt/nét đứt) — trung thực + rollback đỡ giật. Xử lý đủ **ba** đường kết thúc (ack ok /
+  ack error / timeout), thiếu đường nào cũng để pending mắc kẹt. `game:moved` là broadcast cho cả phòng
+  kể cả người vừa đi — **hoà giải, đừng lọc bỏ**. Đã trace xong: không có timer/CSS transition ẩn nào,
+  đừng đi tìm. Verify phải có **network throttling ~500ms RTT** (localhost ~0ms sẽ khiến optimistic
+  trông như không làm gì) và **đo lại độ trễ trước/sau**; không đo được thì nói thẳng (tiền lệ #126).
+  Bump `?v=N` (gộp đợt với #152 thì bump **một lần**) (báo cáo người chơi TQ, TODO.md #153) —
+  [chi tiết](docs/instruction/B153-optimistic-render-quan-co-cua-chinh-minh.md)
