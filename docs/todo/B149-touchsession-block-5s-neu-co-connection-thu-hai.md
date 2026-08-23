@@ -1,8 +1,11 @@
 # #149 — Nếu `gomoku.db` từng có connection thứ hai, `touchSession()` sẽ block **5 giây/lần** rồi ném lỗi
 
-**Trạng thái:** chưa làm. **Không cấp bách** — kịch bản kích hoạt hiện **không tồn tại** trong kiến
-trúc hiện tại. Ghi lại làm địa lôi cho tương lai, theo rule "call those out separately" của
-`CLAUDE.md` khi xử lý #146.
+**Trạng thái:** ✅ Đã đóng — **KHÔNG LÀM**, giữ nguyên làm địa lôi. **Không cấp bách** — kịch bản kích
+hoạt hiện **không tồn tại** trong kiến trúc hiện tại. Ghi lại làm địa lôi cho tương lai, theo rule
+"call those out separately" của `CLAUDE.md` khi xử lý #146. **Đóng 2026-08-22** theo xác nhận của
+người dùng ("okay, close 149") — không sửa `busy_timeout`/retry/connection pool, không viết test giả
+cho kịch bản không reachable, đúng như `docs/instruction/B149-*.md` đã đặt ra. Mục này vẫn ở đây làm
+tripwire: đọc lại trước khi ai đó thêm connection thứ hai tới `gomoku.db`.
 
 **Nguồn:** phát hiện khi đo bench cho #146 (2026-08-22) — `server/scripts/bench-session-lookup.js`,
 phần "touchSession() with a concurrent writer holding the WAL write lock".

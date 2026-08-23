@@ -706,7 +706,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   lượng vào một danh sách) — lợi ích thật chỉ là bộ nhớ, 286 B/socket (+1.64 MiB ở 6000)
   `[Model: Opus 5]` —
   [chi tiết](docs/todo/B148-setinterval-moi-socket-trong-flood-middleware.md)
-- **#149.** Phát sinh khi đo #146: `db.pragma('busy_timeout')` mặc định của better-sqlite3 là
+- ✅ **#149.** Phát sinh khi đo #146: `db.pragma('busy_timeout')` mặc định của better-sqlite3 là
   **5000 ms**. Đo được: nếu một connection thứ hai từng mở cùng `gomoku.db` và giữ khoá ghi
   (`BEGIN IMMEDIATE` chưa commit), **mọi** `touch.run()` trên connection chính sẽ **block đúng
   5006 ms rồi ném `SQLITE_BUSY`** — 20 lệnh liên tiếp tốn tổng **100 124 ms**. `touchSession()` đã
@@ -715,7 +715,8 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   connection SQLite **duy nhất** trong toàn bộ production code — kịch bản kích hoạt (2 connection
   cùng ghi) không reachable trong kiến trúc hiện tại (single-process, `better-sqlite3` đồng bộ, "All
   writes to DB happen ONLY when a game ends"). Chỉ ghi lại làm địa lôi: nếu tương lai có ai thêm
-  worker thread hoặc process phụ mở `gomoku.db`, đọc mục này trước khi làm vậy `[Model: Sonnet 5]` —
+  worker thread hoặc process phụ mở `gomoku.db`, đọc mục này trước khi làm vậy. **ĐÃ ĐÓNG 2026-08-22**
+  theo yêu cầu người dùng — không sửa, giữ nguyên làm tripwire `[Model: Sonnet 5]` —
   [chi tiết](docs/todo/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)
 - ✅ **#150.** Phát sinh khi điều tra #147: `ChatHandler.js` **không lưu lịch sử** tin nhắn (chỉ
   `io.to(roomId).emit`), và `serializeRoom()` cũng không trả về chat ⇒ mọi tin nhắn gửi trong lúc một
