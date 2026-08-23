@@ -756,7 +756,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   [chi tiết](docs/todo/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)
 
 ### Nguồn: báo cáo người chơi ở Trung Quốc — "Mỗi khi nhấn nước đi: lag; ~0.5s mới xuất hiện. Đôi lúc freeze." (2026-08-23)
-- **#152.** `game:move` gửi bằng **bare emit không có ack** (`client/js/game-ui.js:108`;
+- ✅ **#152.** `game:move` gửi bằng **bare emit không có ack** (`client/js/game-ui.js:108`;
   `SocketClient.emit()` không hỗ trợ ack ở bất kỳ đâu) — nếu gói đi **hoặc** gói `game:moved` về bị
   rớt **trong khi socket vẫn "connected"**, client chờ vô thời hạn: không timeout, không retry, không
   phản hồi UI ⇒ **bàn cờ đứng hẳn, người chơi phải F5**. Cơ chế resync sẵn có (`SocketHandler.js:233-266`
@@ -777,7 +777,14 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   (#145) thì chat sẽ bị gửi 4 lần. **Khuyến nghị `[Model: Opus 5 — Medium]`** khi implement: chế độ
   hỏng của task này là *tự nghĩ ra giải pháp nghe hợp lý nhưng sai* (đúng 2 bẫy đã dính ở trên), cộng
   reasoning idempotency/concurrency + verify bằng mô phỏng mất gói `[Model: Opus 5]` —
-  [chi tiết](docs/todo/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md)
+  [chi tiết](docs/todo/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md) — **ĐÃ XONG
+  2026-08-24**: ack 2 chiều (`.timeout(5000)`, method mới `SocketClient.emitAck`, không đụng `emit()`),
+  dedupe `moveId` uuid trong `room._moveAcks` (dọn ở `handleGameEnd`), sự kiện `game:resync` tái dùng
+  `buildRoomStatePayload()` chung với `room:joined`, gap detection `moveCount` phía nhận, i18n `vi`+`en`.
+  33 unit test mới (16 server + 17 client), bỏ fix ra thì **26/33 fail**; `npm test` 1289/1289. Verify
+  Playwright trên instance cô lập (cổng 3199, DB tạm) với mô phỏng rớt gói thật —
+  `e2e/game-move-ack-resync.spec.ts`. `?v=151→152`. **Phần còn thiếu đã tách thành #154** (gap
+  detection không phá được deadlock 2 người luân phiên)
 - **#153.** Client **không render lạc quan**: `onCellClick` (`client/js/game-ui.js:97-110`) chỉ emit,
   không vẽ gì; quân chỉ hiện khi server broadcast `game:moved` về (`client/js/room-socket.js:211-245`)
   — nên **người tự đặt quân cũng phải trả trọn 1 round-trip mới thấy quân của chính mình** (~0.5s đo
@@ -789,6 +796,19 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   High]`** khi implement: task mang tính cơ học (Command pattern, 3 đường kết thúc + ranh giới
   Swap2/portal đã liệt kê đủ), cần *tuân thủ* chứ không cần *phát hiện* `[Model: Opus 5]` —
   [chi tiết](docs/todo/B153-optimistic-render-quan-co-cua-chinh-minh.md)
+
+### Nguồn: phát sinh khi thực thi #152 (2026-08-24)
+- **#154.** Gap detection của #152 (`room-socket.js`, `game:moved` so `moveCount`) **không phá được
+  deadlock 2 người** ở đúng kịch bản mà `docs/todo/B152-*.md` mục 5 mô tả: nó chỉ kích hoạt khi có
+  **một `game:moved` tiếp theo** tới nơi, mà với 2 người luân phiên nghiêm ngặt gói đó **chính là**
+  nước người kẹt đang chờ. Đã kiểm chứng không có sự kiện đánh thức nào khác — `TimerManager` tick
+  thuần server-side (`TimerManager.js:11/68`), không broadcast định kỳ, đồng hồ chỉ đi kèm chính gói
+  `game:moved` đã rớt. Mục 5 **vẫn phải giữ** (cứu khán giả và mọi luồng không luân phiên — đã verify
+  Playwright); đây là phần còn thiếu. Chặn trên hiện có: người kẹt thua giờ, không treo vĩnh viễn.
+  Hướng cần cân nhắc: watchdog theo lượt phía client gọi `game:resync` (primitive #152 đã dựng) —
+  **phải đo ngưỡng trước, đừng chọn số tròn** (#131). **Khuyến nghị `[Model: Opus 5]`**: chọn ngưỡng
+  sai gây resync ồn ào ở mọi ván nghĩ lâu —
+  [chi tiết](docs/todo/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md)
 
 ---
 

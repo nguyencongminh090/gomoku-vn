@@ -38,6 +38,7 @@ const {
   broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
+  buildRoomStatePayload,
 } = require('../state');
 
 /**
@@ -51,17 +52,48 @@ function register(io, socket) {
 
   // ── game:move ────────────────────────────────────────────────────────────
 
-  socket.on('game:move', (payload = {}) => {
+  socket.on('game:move', (payload = {}, ack) => {
+    // `ack` is undefined for any client still running the pre-#152 bundle —
+    // a bare `emit('game:move', {x,y})` passes no callback, and calling
+    // undefined here would throw inside the handler and break that player's
+    // game. That window stays open for as long as a stale `?v=` is cached,
+    // so this guard is load-bearing, not defensive.
+    const hasAck = typeof ack === 'function';
+    // With an ack the rejection travels back on the ack itself; emitting
+    // game:error too would show the same refusal twice in the chat log.
+    const fail = (message, code) => {
+      if (hasAck) ack({ error: message, code });
+      else socket.emit('game:error', { message, code });
+    };
+
     const room = roomManager.getRoomByUser(user.userId);
     if (!room || !room.gameState) {
-      socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_GAME' });
+      fail('Không có ván đấu đang diễn ra.', 'NO_ACTIVE_GAME');
+      return;
+    }
+
+    // Idempotency key, client-generated (TODO.md #152). The dangerous case is
+    // a move that *reached* the server and was applied, whose ack was lost on
+    // the way back: the client times out and retries, and without this the
+    // retry comes back as CELL_OCCUPIED — an error for a move that actually
+    // succeeded. Keyed on the identity of the action rather than on matching
+    // its content against the last move in history, because history position
+    // shifts the moment the opponent slips a move in between.
+    const moveId = typeof payload.moveId === 'string' && payload.moveId ? payload.moveId : null;
+    if (moveId && room._moveAcks && room._moveAcks.has(moveId)) {
+      const prev = room._moveAcks.get(moveId);
+      // Replay to the retrying socket only. The opponent already received the
+      // original broadcast; re-broadcasting would hand them a moveCount that
+      // has gone backwards, which their gap check reads as a desync.
+      socket.emit('game:moved', prev);
+      if (hasAck) ack({ ok: true, moveCount: prev.moveCount, duplicate: true });
       return;
     }
 
     const x = parseInt(payload.x, 10);
     const y = parseInt(payload.y, 10);
     if (isNaN(x) || isNaN(y)) {
-      socket.emit('game:error', { message: 'Toạ độ không hợp lệ.', code: 'INVALID_COORDS' });
+      fail('Toạ độ không hợp lệ.', 'INVALID_COORDS');
       return;
     }
 
@@ -72,7 +104,7 @@ function register(io, socket) {
     const hadOwnUndoOffer = !!(engine.undoOffer && engine.undoOffer.from === user.userId);
     const result = engine.makeMove(user.userId, x, y);
     if (result.error) {
-      socket.emit('game:error', { message: result.error, code: result.code });
+      fail(result.error, result.code);
       return;
     }
 
@@ -105,7 +137,21 @@ function register(io, socket) {
       }
     }
 
+    // Remember this move under its idempotency key before answering, so a
+    // retry arriving while the ack is still in flight replays instead of
+    // being treated as a new move. Only successful moves are recorded, which
+    // bounds the map at one entry per move of the game; handleGameEnd() drops
+    // it so a new game never inherits the previous game's ids.
+    if (moveId) {
+      if (!room._moveAcks) room._moveAcks = new Map();
+      room._moveAcks.set(moveId, movePayload);
+    }
+
+    // Broadcast first, ack second: if the ack is the packet that gets lost,
+    // the mover still has the game:moved path to learn its move landed. Two
+    // independent routes, so losing one is survivable.
     io.to(room.roomId).emit('game:moved', movePayload);
+    if (hasAck) ack({ ok: true, moveCount: movePayload.moveCount });
     room.lastActivity = Date.now();
 
     if (result.won || result.draw) {
@@ -128,6 +174,26 @@ function register(io, socket) {
         });
       }
     }
+  });
+
+  // ── game:resync ──────────────────────────────────────────────────────────
+
+  // Client-pull recovery (TODO.md #152). Every other resync path in the app
+  // is server-push and only fires on a real disconnect→reconnect; selective
+  // packet loss that drops a game:move or a game:moved without killing the
+  // socket triggers none of them, and the board then sits frozen forever with
+  // no way out but F5. This is the escape hatch: the client asks for the
+  // authoritative state whenever it can tell it has fallen behind.
+  //
+  // Deliberately re-emits `room:joined` with the very same payload the
+  // reconnect path builds (buildRoomStatePayload), so there is exactly one
+  // state-rebuild path on the client instead of two that can drift.
+  socket.on('game:resync', () => {
+    const room = roomManager.getRoomByUser(user.userId);
+    // Not in a room: nothing to resync, and nothing to fail loudly about
+    // either — a stale timer firing after the player left is expected.
+    if (!room) return;
+    socket.emit('room:joined', buildRoomStatePayload(room));
   });
 
   // ── game:swap2_place ─────────────────────────────────────────────────────
@@ -859,6 +925,9 @@ function handleGameEnd(io, room, opts = {}) {
   room.state = 'idle';
   room.gameState = null;
   room._timeRequestPending = null;
+  // Idempotency keys are scoped to a single game (TODO.md #152) — a fresh
+  // game must not resolve a moveId against the finished one's move payload.
+  room._moveAcks = null;
   room.readyDeadline = null;
   room.readyMissCount = 0;
   for (const [, u] of room.users) u.ready = false;

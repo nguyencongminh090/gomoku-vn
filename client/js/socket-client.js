@@ -222,6 +222,39 @@ class SocketClient {
     this.socket.emit(event, data);
   }
 
+  /**
+   * Emit an event and wait for the server's ack, with a per-emit deadline.
+   *
+   * A separate method rather than a change to `emit()` above: every other
+   * call site in the app fires and forgets, and giving them all ack semantics
+   * is exactly the failure mode described below.
+   *
+   * `.timeout(ms)` sets the deadline for this one emit (socket.io-client
+   * stores it in that emit's own `flags`), which is why it is safe here.
+   * Socket.io also has a connection-level `retries` option that looks like
+   * the ready-made version of this — it is not, and must not be enabled:
+   * it applies to *every* emit regardless of whether an ack was asked for,
+   * auto-attaches an ack callback to each one, and drains its queue strictly
+   * one packet at a time. On this app's single shared page-wide socket that
+   * means every fire-and-forget event (chat:message, room:sit, room:ready…)
+   * would be resent `retries + 1` times because no handler acks them, and a
+   * single unacked event would head-of-line block every event behind it,
+   * game:move included. Verified against socket.io-client 4.8.3 source.
+   *
+   * @param {string}   event
+   * @param {*}        data
+   * @param {number}   timeoutMs  deadline for the ack
+   * @param {Function} cb         err-first: `(err, response)`; `err` set means
+   *                              the deadline passed with no ack
+   */
+  emitAck(event, data, timeoutMs, cb) {
+    if (!this.socket) {
+      cb(new Error('SOCKET_CLOSED'));
+      return;
+    }
+    this.socket.timeout(timeoutMs).emit(event, data, cb);
+  }
+
   /** Remove all registered listeners and disconnect. */
   destroy() {
     if (!this.socket) return;

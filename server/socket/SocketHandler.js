@@ -27,6 +27,7 @@ const {
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
+  buildRoomStatePayload,
 } = require('./state');
 
 const LobbyHandler      = require('./handlers/LobbyHandler');
@@ -250,18 +251,9 @@ function init(io) {
           broadcastRoomUpdate(io, existingRoom);
         }
 
-        const payload = roomManager.serializeRoom(existingRoom);
-        if (existingRoom.gameState) {
-          payload.gameState = existingRoom.gameState.serialize();
-          const timer = timerMap.get(existingRoom.roomId);
-          if (timer) {
-            payload.timer = timer.getTimers();
-            // Reconnecting mid-game: hand over the deadline too, so the local
-            // countdown restarts in step with the server instead of freezing.
-            payload.timerSync = timer.getSync();
-          }
-        }
-        socket.emit('room:joined', payload);
+        // Shared with game:resync (TODO.md #152) so both rebuild paths hand
+        // the client byte-identical state — see buildRoomStatePayload().
+        socket.emit('room:joined', buildRoomStatePayload(existingRoom));
         logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
       } else if (socket.handshake && socket.handshake.auth && socket.handshake.auth.reconnect) {
         // Room state lives in memory only, so a server restart (or an idle

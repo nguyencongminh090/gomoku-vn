@@ -441,7 +441,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   có test infra cho `client/js/`, nói rõ trong summary. Verify bắt buộc trên thiết bị/emulation có
   touch thật, không chỉ đọc code —
   [chi tiết](docs/instruction/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)
-- **B152.** (Chưa làm) **Làm TRƯỚC #153** (xem lý do ở B153). Thêm **method mới** có ack+timeout vào
+- **B152.** (✅ Đã làm 2026-08-24 — `fix/game-move-ack-timeout-resync` off `dev`; chi tiết thực thi ở `docs/fix-log/2026-08-24-todo-152-game-move-ack-retry-resync.md`. Lệch có chủ đích so với hướng dẫn dưới đây: branch off `dev` chứ không `main` vì mục tracking `#152` chỉ có trên `dev` — ngoại lệ tracking-docs-only-on-dev của skill `git-workflow`; và replay `movePayload` khi trùng `moveId` chỉ gửi cho socket gửi lại, không broadcast, vì broadcast lại sẽ cho đối thủ `moveCount` lùi và kích hoạt gap check giả. Phần còn thiếu của gap detection tách thành **#154**.) **Làm TRƯỚC #153** (xem lý do ở B153). Thêm **method mới** có ack+timeout vào
   `SocketClient`, **đừng sửa `emit()` hiện có** (nhiều call site). **Guard `typeof ack === 'function'`
   bắt buộc** — client cũ còn trong cache `?v=` vẫn gửi bare emit, không guard sẽ throw trong handler và
   hỏng ván của họ (lỗi ship được mà máy dev không bao giờ thấy). Idempotency **chốt `moveId` uuid do
@@ -483,3 +483,13 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   trông như không làm gì) và **đo lại độ trễ trước/sau**; không đo được thì nói thẳng (tiền lệ #126).
   Bump `?v=N` (gộp đợt với #152 thì bump **một lần**) (báo cáo người chơi TQ, TODO.md #153) —
   [chi tiết](docs/instruction/B153-optimistic-render-quan-co-cua-chinh-minh.md)
+- **B154.** (Chưa làm) Phần còn thiếu của gap detection #152. **Đọc `docs/fix-log/2026-08-24-todo-152-*.md`
+  phần "Hạn chế đã phát hiện" trước** — đã xác minh xong rằng hệ thống hiện không có broadcast định kỳ
+  nào để làm sự kiện đánh thức (`TimerManager` tick thuần server-side), **đừng điều tra lại**. **Đừng
+  sửa gap detection hiện có** (nó đúng, có test, và bẫy resync-vô-hạn là thật) và **đừng dựng đường
+  resync mới** — `game:resync` + `buildRoomStatePayload()` đã có. Nếu làm watchdog theo lượt: **đo
+  ngưỡng trước, đừng chọn số tròn** (#131), và watchdog phải tự huỷ ở mọi đường đổi state (kết thúc
+  ván, undo, Swap2, rời phòng) nếu không sẽ có resync mồ côi. Hạ tầng test đã có cả hai tầng, và
+  `e2e/game-move-ack-resync.spec.ts` đã có sẵn cách mô phỏng mất gói (vá `Socket#packet`) — tái dùng.
+  Đụng `client/` ⇒ bump `?v=N` (TODO.md #154) —
+  [chi tiết](docs/instruction/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md)
