@@ -29,6 +29,73 @@
   // ── DOM refs (stable refs set on first initBoard call) ────────────────────
   const boardArea = document.getElementById('board-area');
 
+  // ── Move sending: ack, timeout, one retry, then resync (TODO.md #152) ─────
+
+  // How long to wait for the server's ack before assuming the packet was lost.
+  // ~10x the ~0.5 s RTT measured for the affected players, so ordinary latency
+  // never trips it. Worst case a player waits 2 x this (one retry) before the
+  // resync path kicks in — changing it changes that number too.
+  const MOVE_ACK_TIMEOUT_MS = 5000;
+
+  /** Idempotency key for one move attempt; reused verbatim across the retry. */
+  function newMoveId() {
+    if (global.crypto && typeof global.crypto.randomUUID === 'function') {
+      return global.crypto.randomUUID();
+    }
+    return `m-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function moveNotice(text) {
+    if (global.ChatUI) global.ChatUI.appendSystemMessage(text);
+  }
+
+  /**
+   * Send a move and see it through to a definite outcome.
+   *
+   * Before #152 this was a bare `emit('game:move', {x,y})`: if either that
+   * packet or the `game:moved` broadcast answering it was dropped while the
+   * socket stayed up, nothing on either side noticed. The stone never
+   * appeared, no error, no spinner, and the only way out was F5.
+   *
+   *   ack {ok}     → done
+   *   ack {error}  → show the reason, done. Never retried: the server saw the
+   *                  move and refused it on purpose, so resending earns the
+   *                  same refusal and makes the player wait for it.
+   *   timeout #1   → resend, same moveId, so the server can recognise it as
+   *                  the same action if the first one did land
+   *   timeout #2   → stop, ask for a full resync, tell the player
+   */
+  function sendMove(x, y) {
+    const moveId = newMoveId();
+
+    const attempt = (isRetry) => {
+      global.RoomClient.emitAck('game:move', { x, y, moveId }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
+        if (err) {
+          // The game may have ended while this attempt was outstanding (the
+          // move itself could have been the winning one, with only its ack
+          // lost). Retrying then just earns a NO_ACTIVE_GAME error for a move
+          // that in fact won.
+          const gs = S().gameState;
+          if (!gs || gs.status !== 'ongoing') return;
+
+          if (!isRetry) {
+            moveNotice(t('room.move_retrying'));
+            attempt(true);
+          } else {
+            moveNotice(t('room.move_failed'));
+            if (global.RoomSocket) global.RoomSocket.requestResync();
+          }
+          return;
+        }
+        if (res && res.error) {
+          moveNotice(`⚠ ${global.RoomSocket ? global.RoomSocket.serverMessage(res) : res.error}`);
+        }
+      });
+    };
+
+    attempt(false);
+  }
+
   // ── Time formatting ───────────────────────────────────────────────────────
 
   function formatTime(seconds) {
@@ -105,7 +172,7 @@
             return;
           }
           if (gs && gs.status === 'ongoing') {
-            global.RoomClient.emit('game:move', { x, y });
+            sendMove(x, y);
           }
         },
       });
@@ -512,6 +579,9 @@
   // ── Public API ────────────────────────────────────────────────────────────
   global.GameUI = {
     initBoard,
+    // Exported for its regression test (TODO.md #152); the board's own click
+    // handler calls the local binding directly.
+    sendMove,
     setTurnBarVisible,
     updateBoardState,
     renderTimers,

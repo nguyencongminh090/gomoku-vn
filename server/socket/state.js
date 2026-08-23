@@ -514,6 +514,34 @@ function handleReadyWindowTimeout(io, roomId) {
   }
 }
 
+/**
+ * Build the full room-state payload the client rebuilds a room page from.
+ *
+ * This is the payload `room:joined` carries — room metadata plus, when a game
+ * is running, the serialized engine state and the timer's current values and
+ * deadline. It lives here rather than inline in SocketHandler because
+ * `game:resync` (TODO.md #152) needs to hand out *exactly* the same thing:
+ * two independently written state-rebuild paths would drift apart, and the
+ * client only has one handler that knows how to consume it.
+ *
+ * @param {object} room
+ * @returns {object} payload suitable for `socket.emit('room:joined', ...)`
+ */
+function buildRoomStatePayload(room) {
+  const payload = roomManager.serializeRoom(room);
+  if (room.gameState) {
+    payload.gameState = room.gameState.serialize();
+    const timer = timerMap.get(room.roomId);
+    if (timer) {
+      payload.timer = timer.getTimers();
+      // Hand over the deadline too, so the local countdown restarts in step
+      // with the server instead of freezing.
+      payload.timerSync = timer.getSync();
+    }
+  }
+  return payload;
+}
+
 module.exports = {
   ONLINE_USERS_DEBOUNCE_MS,
   timerMap,
@@ -533,5 +561,6 @@ module.exports = {
   cleanupRoomTimer,
   cleanupReadyTimer,
   clearReadyState,
+  buildRoomStatePayload,
   handleReadyClick,
 };

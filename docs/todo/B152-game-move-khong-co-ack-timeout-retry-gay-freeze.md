@@ -1,6 +1,19 @@
 # B152 — `game:move` không có ack/timeout/retry: mất gói im lặng ⇒ bàn cờ đứng vĩnh viễn
 
-**Trạng thái:** Chưa làm
+**Trạng thái:** ✅ Đã sửa (2026-08-24) — `fix/game-move-ack-timeout-resync` off `dev`
+
+Đã làm đủ mục 1-5. 33 unit test mới giữ lại (`server/tests/game-move-ack-resync.test.js` 16 case,
+`client/tests/game-move-ack-retry-resync.test.js` 17 case); bỏ bản sửa ra thì **26/33 fail**;
+`npm test` **1289/1289**. Verify thật bằng Playwright trên instance cô lập (cổng 3199, DB tạm dựng
+từ `schema.sql`, không đụng DB/server thật) với mô phỏng rớt gói ở tầng dây —
+`e2e/game-move-ack-resync.spec.ts`, giữ lại trong repo. `?v=151→152`.
+
+**Còn thiếu, đã tách thành #154:** gap detection ở mục 5 chỉ kích hoạt khi có một `game:moved` *tiếp
+theo* tới nơi, nên **không** phá được deadlock 2 người luân phiên nghiêm ngặt mô tả ở chính mục 5 —
+gói tiếp theo đó chính là nước người kẹt đang chờ. Mục 5 vẫn có giá trị cho khán giả và mọi luồng
+không luân phiên (đã verify). Chi tiết ở `docs/todo/B154-*.md`.
+
+Chi tiết thực thi: `docs/fix-log/2026-08-24-todo-152-game-move-ack-retry-resync.md`.
 
 **Severity:** High (ván đấu hỏng hẳn, không tự phục hồi, người chơi phải F5)
 **Platform:** Mọi nền tảng — biểu hiện rõ nhất trên mạng mất gói (người chơi TQ báo cáo, mạng di

@@ -27,6 +27,20 @@
     return (data && data.message) || '';
   }
 
+  /**
+   * Ask the server to re-send this room's authoritative state (TODO.md #152).
+   *
+   * The answer comes back as an ordinary `room:joined`, so it lands in the
+   * handler below that already knows how to rebuild the board from scratch —
+   * there is deliberately no second rebuild path to keep in sync.
+   *
+   * Called from two places: `GameUI.sendMove` when a move never gets acked,
+   * and the gap check in `game:moved` when a broadcast is missed.
+   */
+  function requestResync() {
+    client.emit('game:resync');
+  }
+
   // ── Connection ────────────────────────────────────────────────────────────
 
   client.on('connect', () => {
@@ -211,6 +225,35 @@
   client.on('game:moved', (data) => {
     const st = S();
     if (!st.gameState) return;
+
+    // Receive-side loss detection (TODO.md #152). The ack path protects the
+    // player who *made* the move; this protects the one waiting for it. If a
+    // game:moved broadcast is dropped, the opponent keeps showing the old
+    // board and believes it is not their turn, while the mover waits for a
+    // reply that is never coming — both sides frozen, neither with a timeout
+    // to break out of it.
+    //
+    // `moveCount` is a sequence number that has been on the wire all along
+    // and was simply assigned over without ever being compared. A move-delta
+    // is only safe to apply on top of the exact state it was computed from.
+    //
+    // Only this handler may gap-check. Every other path that touches
+    // moveCount (game:init, room:joined, game:swap2_state, game:undo_applied)
+    // loads whole state rather than a delta and so *sets* the baseline — if
+    // one of them went through this branch, the resync it triggered would
+    // arrive as full state, read as another jump, and resync forever.
+    if (typeof data.moveCount === 'number') {
+      const expected = st.gameState.moveCount + 1;
+      if (data.moveCount <= st.gameState.moveCount) {
+        // Already applied — the server replaying a move for a retried
+        // moveId. Applying it again would double-push into moveHistory.
+        return;
+      }
+      if (data.moveCount > expected) {
+        requestResync();
+        return;
+      }
+    }
 
     if (st.drawOfferPending) {
       st.drawOfferPending = null;
@@ -494,5 +537,10 @@
       }
     }
   }
+
+  // Exposed for game-ui.js's move state machine (TODO.md #152) — it needs the
+  // same server-error rendering and the same resync entry point this module
+  // uses, and duplicating either would let them drift.
+  global.RoomSocket = { serverMessage, requestResync };
 
 })(window);
