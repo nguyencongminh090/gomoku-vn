@@ -61,15 +61,33 @@ bump is usually stale by the time it reaches `dev`.
 
 If divergence is only caught later at a checkpoint merge, it's mechanical to resolve, not risky:
 - `?v=N` conflicts: keep `dev`'s side per file, re-bump the whole repo to `max(dev, main) + 1`,
-  verify with the cache-bust grep in `CLAUDE.md`.
+  verify with the cache-bust grep in `CLAUDE.md`. **The `+ 1` is not optional, even when the branch
+  you're merging *into* the other already has a higher counter than the branch you're merging
+  *from*.** The trap: comparing the incoming branch's own max to the target's current number and
+  concluding "target is already higher, no bump needed" — that skips the `+1` and leaves the
+  now-changed file content sitting under a `?v=N` URL that was already in use (and likely already
+  cached by real clients) for the *old* content. Always compute `max(dev, main) + 1` fresh, never
+  just "whichever side's number is bigger."
 - `docs/fix-log.md` conflicts: keep both branches' rows (append-only survives merges too), insert
   the losing side's unique rows in chronological order by timestamp.
 - Test-file conflicts: keep whichever side added new cases — usually both did; keep both, never let
   conflict resolution silently drop a kept test.
 - Always re-run `npm test` after resolving, before committing the merge.
 
+This applies regardless of merge direction — including the reverse order (merge into `dev` first,
+open the `main` PR after), which the user may explicitly ask for instead of the default.
+
 (Precedent 2026-08-12: `fix/focus-mode-bottom-gap` merged to `main` only; the next `dev`↔`main`
 checkpoint PR then hit 14 conflicts, 10 of them pure `?v=N` drift.)
+
+(Precedent 2026-08-21: `fix/mobile-board-grid-and-size` off `main` was at `?v=126`; merging it into
+`dev` — which was already at `?v=133` from unrelated work — kept `133` unchanged on the reasoning
+"126 < 133, dev's number already covers it." `board.js`/`room-zen.css` had real content changes in
+that merge, so `?v=133` now pointed at different bytes than it had a moment earlier — the exact
+stale-cache bug this rule exists to prevent. Caught only because the user noticed the live site
+still looked unfixed after deploy and asked "v?= should be 134?". Fixed with a follow-up bump to
+`134` on both branches. The lesson: **`max(dev, main) + 1`, always compute it, never reason from
+"which side's number already looks big enough."**)
 
 ## Before opening a `dev`→`main` checkpoint-merge PR, check divergence first
 
