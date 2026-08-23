@@ -742,6 +742,19 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   bắn N toast cùng lúc. Không thay đổi code nào `[Model: Opus 5]` —
   [chi tiết](docs/todo/B150-chat-mat-han-khi-nguoi-choi-rot-mang.md)
 
+### Nguồn: báo cáo người dùng — mobile: quick-chat-input giữ focus sau khi bấm lại bàn cờ (2026-08-22)
+- ✅ **#151.** `#quick-chat-input` (`room.js:317-325`, skin `zen-room` mobile) chỉ có listener gửi tin
+  (`click`/Enter), không có gì gỡ focus khi người dùng bấm lại bàn cờ — input giữ focus, khiến trình
+  duyệt tự cuộn màn hình để giữ nó trong khung nhìn. Khác chiều với B104 (đã đóng — B104 là bàn cờ vô
+  tình *tạo* focus cho chat qua ghost click, B151 là chat *giữ* focus không được gỡ), không phải trùng
+  lặp. **Đã sửa 2026-08-22**: thêm `pointerdown` trên `#board-area-shell` tự `blur()` khi
+  `quickChatInput` đang giữ focus; đã rà soát toàn bộ input khác trong `client/`, xác nhận không có
+  widget nào khác cùng lỗi (`#chat-input` được `.panel-right-shell` che kín bàn cờ khi mở, không thể
+  tái hiện). Verify bằng Playwright thật (mobile viewport, guest login + tạo phòng qua UI thật, giả
+  lập tap bàn cờ) xác nhận focus được gỡ đúng; `npm test` 1256/1256 pass. Bump `?v=151`
+  `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

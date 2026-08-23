@@ -430,3 +430,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   đọc — mảng không giới hạn trong state của room là rò rỉ bộ nhớ. Kiểm bằng grep xem chat phòng giải
   đấu (`tournament-match`) có đi chung đường không, đừng giả định —
   [chi tiết](docs/instruction/B150-chat-mat-han-khi-nguoi-choi-rot-mang.md)
+- **B151.** **Đừng nhầm với B104** — B104 là bàn cờ vô tình *tạo* focus cho chat, B151 là chat *giữ*
+  focus không được gỡ; sửa cái này không tự sửa cái kia, verify cả hai. Gỡ focus bằng
+  `pointerdown`/`touchstart` trên vùng bàn cờ (không dùng `click`, tới muộn ~300ms trên mobile — bài
+  học từ B104), chỉ `blur()` khi `quickChatInput` đang là `document.activeElement`. Đừng để logic blur
+  can thiệp vào luồng gửi tin (`sendChatFrom()` tự lo trim/xoá value). Phạm vi đúng theo báo cáo gốc là
+  "bấm bàn cờ" — đừng tự mở rộng sang "bấm bất kỳ đâu ngoài quick-chat-bar" mà không hỏi lại. Hiện
+  tượng "màn hình tự cuộn" là giả thuyết (trình duyệt giữ phần tử focus trong khung nhìn), chưa đo
+  bằng thiết bị thật — nếu còn cuộn sau khi thêm blur, đào tiếp root cause thay vì coi đã xong. Không
+  có test infra cho `client/js/`, nói rõ trong summary. Verify bắt buộc trên thiết bị/emulation có
+  touch thật, không chỉ đọc code —
+  [chi tiết](docs/instruction/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)

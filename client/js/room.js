@@ -322,5 +322,17 @@ if (quickChatInput && quickChatSend) {
   quickChatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendQuickChat();
   });
+
+  // Nothing else ever released focus from this input (TODO.md #151) — once a
+  // mobile user tapped it, it stayed document.activeElement even after they
+  // tapped back onto the board, so the browser kept re-scrolling the page to
+  // hold it above the on-screen keyboard. #board-area-shell is a stable
+  // container GameUI never replaces wholesale, unlike #board-area itself.
+  const boardAreaShell = document.getElementById('board-area-shell');
+  if (boardAreaShell) {
+    boardAreaShell.addEventListener('pointerdown', () => {
+      if (document.activeElement === quickChatInput) quickChatInput.blur();
+    });
+  }
 }
 
