@@ -78,6 +78,13 @@
     const st = S();
     st.roomData = data;
 
+    // Clear any not-yet-confirmed stone from a move still in flight
+    // (TODO.md #153). This fires on first join too (boardRenderer doesn't
+    // exist yet — no-op) and on every game:resync answer, which is exactly
+    // where a pending overlay needs to give way to the authoritative board
+    // this payload is about to (re)draw.
+    if (st.boardRenderer) st.boardRenderer.setOptimisticStone(null);
+
     // Update URL so the room link is shareable
     const url = new URL(window.location);
     if (url.searchParams.get('id') !== data.roomId) {
@@ -253,6 +260,18 @@
         requestResync();
         return;
       }
+    }
+
+    // Confirm this player's own optimistic stone (TODO.md #153) now that its
+    // real board write is about to happen below — matching by cell is safe
+    // here (not just at handler entry) because we've only just confirmed
+    // this delta is the next one being applied, not a stale replay or a
+    // gap-redirected one. An opponent's move landing here simply won't match
+    // this player's own pending cell, so this is a no-op for them.
+    if (st.boardRenderer && st.boardRenderer.optimisticStone
+        && st.boardRenderer.optimisticStone.x === data.x
+        && st.boardRenderer.optimisticStone.y === data.y) {
+      st.boardRenderer.setOptimisticStone(null);
     }
 
     if (st.drawOfferPending) {

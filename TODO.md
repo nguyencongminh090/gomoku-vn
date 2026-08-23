@@ -785,7 +785,7 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   Playwright trên instance cô lập (cổng 3199, DB tạm) với mô phỏng rớt gói thật —
   `e2e/game-move-ack-resync.spec.ts`. `?v=151→152`. **Phần còn thiếu đã tách thành #154** (gap
   detection không phá được deadlock 2 người luân phiên)
-- **#153.** Client **không render lạc quan**: `onCellClick` (`client/js/game-ui.js:97-110`) chỉ emit,
+- ✅ **#153.** Client **không render lạc quan**: `onCellClick` (`client/js/game-ui.js:97-110`) chỉ emit,
   không vẽ gì; quân chỉ hiện khi server broadcast `game:moved` về (`client/js/room-socket.js:211-245`)
   — nên **người tự đặt quân cũng phải trả trọn 1 round-trip mới thấy quân của chính mình** (~0.5s đo
   được). Đã xác minh **không có độ trễ giả nào trong code** (`setState()`→`_draw()` đồng bộ, bàn cờ là
@@ -795,7 +795,27 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   nước đi thành công trong khi server chưa nhận), tệ hơn hiện trạng. **Khuyến nghị `[Model: Sonnet 5 —
   High]`** khi implement: task mang tính cơ học (Command pattern, 3 đường kết thúc + ranh giới
   Swap2/portal đã liệt kê đủ), cần *tuân thủ* chứ không cần *phát hiện* `[Model: Opus 5]` —
-  [chi tiết](docs/todo/B153-optimistic-render-quan-co-cua-chinh-minh.md)
+  [chi tiết](docs/todo/B153-optimistic-render-quan-co-cua-chinh-minh.md) — **ĐÃ XONG 2026-08-24**:
+  `BoardRenderer.optimisticStone` (overlay riêng, không đụng `this.board`) vẽ bán trong suốt + viền nét
+  đứt ngay khi click, hoà giải qua `game:moved` khớp toạ độ (không phải ack — xem lý do trong code:
+  broadcast luôn tới trước ack cùng kết nối, và tránh flash-rỗng khi gap-check #152 chuyển hướng chính
+  broadcast đó sang resync); ack `error` gỡ pending (rollback miễn phí vì `gameState.board` chưa từng bị
+  ghi); timeout lần 1 chuyển "warning" (vòng vàng); timeout lần 2 + `room:joined` (bất kỳ nguyên nhân,
+  kể cả resync) luôn dọn overlay. Đã xác minh portal **không** dịch chuyển quân (`GameEngine.makeMove`
+  ghi thẳng `board[y][x]`, ô portal còn bị chặn đặt quân) nên optimistic an toàn với `rulePortal`. Thêm
+  chặn "một nước đang bay tại một thời điểm" (click thứ 2 trong lúc chờ bị bỏ qua) — `board.js`'s
+  `isMyTurn` không tự tắt cho tới khi xác nhận nên cần chặn riêng. 29 test mới (13 server+client
+  BoardRenderer + 16 GameUI/room-socket), bỏ fix ra thì **20/29 fail**; `npm test` 1318/1318. Verify
+  Playwright trên instance cô lập (cổng 3198). **Đo trễ cảm nhận**: quân pending hiện trong
+  ~35-45ms (đảm bảo bằng kiến trúc — `sendMove()` gọi `setOptimisticStone()` trước `emitAck()`, không
+  phụ thuộc mạng). **Không ép được RTT mô phỏng cho phần xác nhận từ server**: đã thử CDP
+  `Network.emulateNetworkConditions` (latency 250ms) theo đúng yêu cầu, cả áp giữa ván lẫn áp **trước
+  khi socket kết nối** — không có tác dụng lên WebSocket đã/đang mở; xác nhận bằng cách throttle
+  `fetch()` dưới **cùng lệnh CDP** trên cùng trang, đo đúng ~262ms cho latency=250ms cấu hình, chứng tỏ
+  cơ chế CDP hoạt động nhưng **không phủ khung dữ liệu WebSocket** (giới hạn đã biết của Chromium/CDP,
+  không phải lỗi của test hay của app). Ghi thẳng theo tiền lệ #126 thay vì báo khống số đo — xem
+  "HONESTY NOTE" trong `e2e/game-optimistic-render.spec.ts`. Rollback verify bằng lỗi thật (vi phạm
+  vùng nước-đầu-tường, không giả lập). `?v=152→153`.
 
 ### Nguồn: phát sinh khi thực thi #152 (2026-08-24)
 - **#154.** Gap detection của #152 (`room-socket.js`, `game:moved` so `moveCount`) **không phá được
