@@ -117,6 +117,16 @@
         if (res && res.error) {
           if (S().boardRenderer) S().boardRenderer.setOptimisticStone(null);
           moveNotice(`⚠ ${global.RoomSocket ? global.RoomSocket.serverMessage(res) : res.error}`);
+          return;
+        }
+        // Accepted. The server broadcasts `game:moved` before it acks, so that
+        // broadcast should already be in hand — if it isn't, it was dropped on
+        // its own and nothing else would ever notice: the retry path above only
+        // runs on a *missing ack*, and the one we are holding arrived fine.
+        // Left unguarded this is the second deadlock variant in
+        // docs/todo/B154-*.md, with the pending stone stuck for good.
+        if (global.RoomSocket && global.RoomSocket.armMoveConfirmWatchdog) {
+          global.RoomSocket.armMoveConfirmWatchdog();
         }
       });
     };

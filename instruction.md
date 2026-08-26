@@ -490,7 +490,13 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   trông như không làm gì) và **đo lại độ trễ trước/sau**; không đo được thì nói thẳng (tiền lệ #126).
   Bump `?v=N` (gộp đợt với #152 thì bump **một lần**) (báo cáo người chơi TQ, TODO.md #153) —
   [chi tiết](docs/instruction/B153-optimistic-render-quan-co-cua-chinh-minh.md)
-- **B154.** (Chưa làm) Phần còn thiếu của gap detection #152. **Đọc `docs/fix-log/2026-08-24-todo-152-*.md`
+- **B154.** (✅ Đã làm 2026-08-26 — `fix/turn-watchdog-resync-deadlock` off `dev`; chi tiết ở
+  `docs/fix-log/2026-08-26-todo-154-turn-watchdog-resync.md`. **Lệch có chủ đích so với hướng dẫn
+  dưới đây**: chỗ này viết "cả hai phía dùng chung một ngưỡng N", nhưng hai phía khác bản chất — phía
+  chờ đối thủ bị chặn bởi *thời gian nghĩ* (α × đồng hồ, đo được), phía vừa gửi bị chặn bởi *RTT*
+  (2500ms, vì broadcast luôn được ghi vào socket trước ack); ép chung một N sẽ để quân pending kẹt cả
+  một lượt đồng hồ. Vẫn chung `game:resync`, chung bộ huỷ, chung chỗ arm. Và: watchdog **chỉ arm khi
+  tin rằng không phải lượt mình** — arm luôn sẽ resync mỗi lần tự nghĩ lâu.) Phần còn thiếu của gap detection #152. **Đọc `docs/fix-log/2026-08-24-todo-152-*.md`
   phần "Hạn chế đã phát hiện" trước** — đã xác minh xong rằng hệ thống hiện không có broadcast định kỳ
   nào để làm sự kiện đánh thức (`TimerManager` tick thuần server-side), **đừng điều tra lại**. **Đừng
   sửa gap detection hiện có** (nó đúng, có test, và bẫy resync-vô-hạn là thật) và **đừng dựng đường
