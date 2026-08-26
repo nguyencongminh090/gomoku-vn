@@ -30,6 +30,24 @@ nó chỉ không có gì để kích hoạt trong kịch bản 2 người luân 
    phải xoá watchdog, nếu không sẽ có resync mồ côi bắn sau khi ván đã xong.
 3. **Đụng `client/` ⇒ bump `?v=N` toàn repo** (cả cross-import trong `client/js/*.js`).
 
+## Phạm vi mở rộng, phát hiện khi đánh giá #155 (2026-08-26)
+
+`docs/todo/B154-*.md` mục "Biến thể thứ hai" mô tả một case đối xứng: **chính người vừa đi** cũng có
+thể kẹt nếu ack thành công nhưng gói `game:moved` broadcast cho họ bị rớt độc lập — không có timeout
+nào kích hoạt retry (retry chỉ chạy khi ack timeout). Khi implement watchdog theo lượt, **thiết kế
+cho cả hai phía dùng chung một cơ chế** thay vì chỉ phía "đang chờ đối thủ":
+
+- Phía chờ đối thủ (kịch bản gốc): tin rằng đang là lượt đối thủ mà quá N giây không có `game:moved`
+  → `game:resync`.
+- Phía vừa gửi (biến thể mới): có `optimisticStone`/(sau #155) `predictedTurn` đang active mà quá N
+  giây không có `game:moved` khớp toạ độ xác nhận nó → cùng `game:resync`.
+
+Cả hai đều dùng chung ngưỡng N và chung lệnh gọi `game:resync` — không cần hai cơ chế riêng, chỉ khác
+điều kiện kích hoạt. Nếu #155 được làm **trước** #154, `sendMove` trong `game-ui.js` cần tự có một
+timeout ngắn tối thiểu cho riêng case "ack ok nhưng chưa thấy game:moved của chính mình" (không đợi
+watchdog tổng quát của #154), để `predictedTurn` không kẹt vô thời hạn — ghi rõ trong
+`docs/instruction/B155-*.md`.
+
 ## Test
 
 Hạ tầng đã có sẵn cho cả hai tầng — `server/tests/` (Jest) và `client/tests/` (Jest + jsdom, xem

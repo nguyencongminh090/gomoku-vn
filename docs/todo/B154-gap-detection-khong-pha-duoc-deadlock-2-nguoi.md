@@ -31,6 +31,25 @@ Mục 5 **vẫn hữu ích** và phải giữ: nó cứu mọi client nhận đ�
 bằng Playwright trong `e2e/game-move-ack-resync.spec.ts`) và mọi luồng không luân phiên nghiêm ngặt.
 Đây là phần còn thiếu, không phải lỗi của mục 5.
 
+### Biến thể thứ hai, phát hiện khi đánh giá #155 (2026-08-26): chính người gửi cũng có thể kẹt
+
+Đọc `GameHandler.js:82-91`: nếu **ack bị rớt**, client timeout → retry cùng `moveId` → server nhận
+diện trùng và **replay `game:moved` trực tiếp cho đúng socket đó** (không qua broadcast lại) — nên
+case "ack rớt" đã có đường tự phục hồi, không phải lo.
+
+Nhưng nếu **ack thành công** (client nhận `{ok}` bình thường) mà chính gói `game:moved` broadcast
+cho **người vừa đi** lại rớt độc lập (2 gói khác nhau trên cùng kết nối, rớt độc lập được — đúng mô
+hình rớt gói chọn lọc của GFW mà #152/#154 đang giả định) — thì **không có gì kích hoạt retry** (retry
+chỉ chạy khi ack timeout, xem `game-ui.js` `sendMove`), nên `optimisticStone` (#153) không bao giờ
+được reconcile. Đây là cùng lớp bug với deadlock ở trên (mất gói không có sự kiện đánh thức), chỉ
+khác ở **phía nào bị kẹt** — người nhận (mô tả gốc ở trên) hay chính người gửi (biến thể này).
+
+Với #153 một mình, hậu quả nhẹ: quân pending kẹt mãi ở dạng mờ/viền nét đứt — khó chịu nhưng không
+sai lệch. Với #155 (`docs/todo/B155-*.md` — nâng optimistic thành Full CSP, thêm overlay
+`predictedTurn` cho turn-bar/đồng hồ), hậu quả nặng hơn: turn-bar + đồng hồ đối thủ cũng kẹt mãi ở
+trạng thái dự đoán, không có tín hiệu gì báo cho người chơi — im lặng hơn, nên **ưu tiên xử lý biến
+thể này cùng đợt với #154 gốc**, hoặc chốt trước khi #155 được coi là an toàn để ship.
+
 ## Chặn trên hiện có
 
 Người kẹt vẫn đang là lượt đi trên server nên đồng hồ chạy hết và họ **thua giờ**. Không treo vĩnh
@@ -51,5 +70,10 @@ rủi ro false disconnect trên chính mạng mất gói của nhóm người d�
 ## Liên quan
 
 - **#152** — `docs/todo/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md`. Chiều "người đi"
-  đã xong (ack + timeout + retry + resync); đây là phần còn lại của chiều "người nhận".
+  đã xong (ack + timeout + retry + resync); đây là phần còn lại của chiều "người nhận" (và, theo
+  biến thể mới phát hiện ở trên, một khe hở còn sót của chính chiều "người đi" trong case ack-ok-
+  nhưng-broadcast-rớt).
+- **#155** — `docs/todo/B155-full-csp-am-thanh-luot-di-tuc-thi-0ms.md`. Không xung đột code (khác
+  tầng: #154 là phát hiện mất gói, #155 là cảm nhận độ trễ) nhưng biến thể thứ hai ở trên làm hậu quả
+  của #154 chưa-làm nặng hơn sau khi #155 ship — xem instruction.md B155 phần "Rủi ro còn sót".
 - `game:resync` (primitive do #152 dựng) là thứ mọi hướng ở trên sẽ dùng lại — không cần dựng mới.

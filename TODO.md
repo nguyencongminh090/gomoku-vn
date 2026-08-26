@@ -827,8 +827,32 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   Playwright); đây là phần còn thiếu. Chặn trên hiện có: người kẹt thua giờ, không treo vĩnh viễn.
   Hướng cần cân nhắc: watchdog theo lượt phía client gọi `game:resync` (primitive #152 đã dựng) —
   **phải đo ngưỡng trước, đừng chọn số tròn** (#131). **Khuyến nghị `[Model: Opus 5]`**: chọn ngưỡng
-  sai gây resync ồn ào ở mọi ván nghĩ lâu —
+  sai gây resync ồn ào ở mọi ván nghĩ lâu. **Cập nhật 2026-08-26 (rà soát #155)**: có biến thể thứ
+  hai — chính người vừa đi cũng kẹt nếu ack ok nhưng broadcast xác nhận cho họ rớt độc lập; #155
+  (Full CSP) làm hậu quả nặng hơn (turn-bar/đồng hồ kẹt dự đoán, không chỉ quân mờ) —
   [chi tiết](docs/todo/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md)
+
+### Nguồn: người dùng đưa spec kỹ thuật bên ngoài để đánh giá (phong cách Zero-Perceived-Latency
+Lichess/Chess.com), nối tiếp #153 (2026-08-26)
+- **#155.** #153 (✅ đã xong) mới che được phần **thị giác** của round-trip: quân pending vẫn bán
+  trong suốt/viền nét đứt, còn **âm thanh đặt quân** và **turn-bar/đồng hồ đối thủ** vẫn đợi trọn
+  `game:moved` broadcast về mới đổi — người tự đặt quân vẫn nghe/thấy lượt chuyển trễ đúng 1 RTT dù
+  quân đã hiện. Cần nâng thành Full CSP: quân predicted solid 100% (không phân biệt được với quân
+  thật — đánh đổi UX người dùng đã chấp nhận, bù bằng local pre-check chặn sớm case chắc chắn sai:
+  ô đã có quân / sai lượt / game không `ongoing`), âm thanh phát ngay lúc click (khử trùng lặp khi
+  `game:moved` xác nhận về), và overlay **mới tách biệt khỏi `gameState`** (`predictedTurn`, cùng
+  nguyên lý với `optimisticStone` — không bao giờ ghi vào state xác thực) để turn-bar + đồng hồ đối
+  thủ chuyển ngay và **chạy đếm ngược sống** (quyết định người dùng, chấp nhận việc số có thể nhảy
+  nhẹ về đúng số server khi xác nhận). Rollback (ack lỗi / timeout-2-lần → resync / `game:ended` đua
+  với ack đang bay) chỉ cần tắt cờ overlay — không viết logic khôi phục riêng, vì `gameState` gốc
+  chưa từng bị đổi. **Loại khỏi phạm vi**: phần network/transport (`perMessageDeflate`,
+  `TCP_NODELAY`) trong spec gốc — đó là tối ưu tầng mạng thật, không phải cải thiện cảm nhận, và
+  `perMessageDeflate` là cấu hình toàn socket dùng chung (#145), tắt sẽ ảnh hưởng chat/room list, cần
+  đánh giá riêng nếu muốn làm. **Khuyến nghị `[Model: Sonnet 5 — High]`**: cơ học tương tự #153
+  (đã có overlay pattern để theo), điểm rủi ro nhất là thiết kế `predictedTurn` không được rò vào
+  `gameState`. **Không đóng #154 khi làm việc này** — #154 chưa xong để lại khe hở khiến overlay của
+  #155 có thể kẹt vô thời hạn im lặng, xem "Rủi ro còn sót" trong `docs/instruction/B155-*.md` —
+  [chi tiết](docs/todo/B155-full-csp-am-thanh-luot-di-tuc-thi-0ms.md)
 
 ---
 

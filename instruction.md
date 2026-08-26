@@ -500,3 +500,27 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `e2e/game-move-ack-resync.spec.ts` đã có sẵn cách mô phỏng mất gói (vá `Socket#packet`) — tái dùng.
   Đụng `client/` ⇒ bump `?v=N` (TODO.md #154) —
   [chi tiết](docs/instruction/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md)
+- **B155.** (Chưa làm) Nối tiếp #153 — nâng optimistic render thành Full CSP. Đọc
+  `features/full-csp-zero-latency/planning.md` trước (thảo luận thiết kế đã resolved với người dùng).
+  `board.js`: `_drawOptimisticStone` bỏ `globalAlpha 0.5` + viền nét đứt, vẽ solid như quân thật;
+  giữ `warning` field nhưng chỉ hiện dấu hiệu rất nhẹ, đừng phá "indistinguishable". `game-ui.js`
+  `sendMove`: phát `audioManager.playMoveSound(false)` ngay sau `setOptimisticStone`, trước
+  `emitAck`. Thêm field **mới** `predictedTurn` sống cạnh `boardRenderer` trong `RoomState` — **tuyệt
+  đối không gán `gameState.currentTurn`/`timerValues`**; `updateBoardState()`/`renderTimers()` đọc
+  `predictedTurn.active` để render turn-bar/đồng hồ đối thủ, đếm ngược sống từ snapshot thật tại thời
+  điểm click (`Date.now() - switchedAtLocalTs`). Rollback (ack lỗi, timeout-lần-2→resync,
+  `game:ended` đua) = tắt cờ + gọi lại `updateBoardState()`, **không viết logic khôi phục riêng** —
+  nếu thấy cần khôi phục nghĩa là đã lỡ ghi vào `gameState`, dừng lại tìm chỗ đó.
+  `room-socket.js` `game:moved`: khử âm thanh nếu là nước mình + khớp `optimisticStone` (đối
+  thủ/spectator không đổi); thứ tự bắt buộc — ghi `gameState` từ payload → gỡ `optimisticStone` →
+  tắt `predictedTurn` → `updateBoardState()` (đảo bước 3 lên trước sẽ lộ 1 frame timer sai).
+  `game:ended`: gỡ overlay + dừng timer **trước** khi áp kết quả. Local pre-check ở `onCellClick`:
+  chỉ 3 điều (ô trống, đúng lượt, `status === 'ongoing'`) từ dữ liệu client **đã có sẵn** — **đừng**
+  thêm check tường/portal (client không có dữ liệu hình học đó, không được nhân bản `GameEngine`).
+  Test theo ma trận 13 case ở `planning.md` Q3 (không chỉ case xong — cả rollback/dedup/local-block/
+  đối thủ-không-đổi/double-click), dùng lại stub có sẵn trong
+  `client/tests/game-optimistic-render.test.js`. **Ngoài phạm vi cố ý**: không đụng
+  `server/socket/SocketHandler.js`/transport config (`perMessageDeflate`, `TCP_NODELAY` — tối ưu
+  mạng thật, không phải cảm nhận, và ảnh hưởng cả chat/room list nếu đổi toàn socket); không đổi
+  `click` → `pointerdown` trong task này. Đụng `client/` ⇒ bump `?v=N` (đánh giá spec bên ngoài,
+  TODO.md #155) — [chi tiết](docs/instruction/B155-full-csp-am-thanh-luot-di-tuc-thi-0ms.md)
