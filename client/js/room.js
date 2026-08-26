@@ -75,6 +75,14 @@ window.RoomState = {
   drawOfferPending:  null,   // { from, fromName } | null
   timeRequestPending:null,   // { from, fromName, bonus } | null
 
+  // Predicted turn-switch overlay (TODO.md #155 — Full CSP). Render-only,
+  // symmetric to boardRenderer.optimisticStone: sendMove() sets it so the
+  // turn-bar/timer flip to the opponent with 0ms perceived latency, but it
+  // never writes gameState.currentTurn/timerValues — those stay the real,
+  // server-confirmed values, so a rollback is just active:false, never a
+  // hand-written "restore".
+  predictedTurn: { active: false, forColor: null, snapshotTimerValues: null, switchedAtLocalTs: null },
+
   // Board preferences (persisted to localStorage)
   boardDisplayMode: (() => {
     const v = localStorage.getItem('play3cr_board_display') || 'paper';

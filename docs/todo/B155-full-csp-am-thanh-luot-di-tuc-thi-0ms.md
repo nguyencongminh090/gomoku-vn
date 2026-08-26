@@ -1,6 +1,19 @@
 # B155 — Full Client-Side Prediction: âm thanh + turn-bar/timer tức thì 0ms (nối tiếp #153)
 
-**Trạng thái:** Chưa làm — phụ thuộc #153 (đã xong), không phụ thuộc gì khác đang mở
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-26, `feature/full-csp-zero-latency` off `dev`, `?v=155`). Quân
+predicted solid 100% (`board.js` `_drawOptimisticStone`), âm thanh tức thì + khử trùng lặp
+(`game-ui.js` `sendMove`, `room-socket.js` `game:moved`), `predictedTurn` overlay mới (`RoomState`,
+sibling của `boardRenderer`, không ghi `gameState`) cho turn-bar/đồng hồ đối thủ đếm ngược sống, local
+pre-check tối thiểu ở `onCellClick`. Rollback qua mọi đường (ack lỗi, timeout→resync, `game:ended`
+đua) chỉ tắt cờ — dùng lại nguyên lý #153. 27 test mới/mở rộng theo ma trận 13 case ở
+`features/full-csp-zero-latency/planning.md` Q3, `npm test` 1356/1356 xanh. Verify thủ công bằng
+Playwright 2 người thật (không phải chỉ unit test): xác nhận cả nhánh confirm (di chuyển hợp lệ, quân
+solid + turn-bar đổi ngay khi click, snap đúng khi `game:moved` về) và nhánh rollback (di chuyển bị
+server từ chối — luật "nước đầu cạnh tường" — quân + turn-bar tự phục hồi đúng, không cần logic khôi
+phục riêng). Hai chỗ lệch nhỏ so với văn bản `instruction.md` gốc (xem chi tiết trong đó): (1) local
+pre-check so `gameState.currentTurn` với `myUser.userId` (đúng theo field thật, không phải so màu
+như bản nháp ghi), (2) `predictedTurn.snapshotTimerValues` lấy từ `RoomState.timerValues` (đúng field
+thật giữ đồng hồ) chứ không phải `gameState.timerValues` (field đó không tồn tại).
 
 **Severity:** Low/Medium (cải thiện cảm nhận độ trễ, không phải bug — #153 đã che phần lớn RTT rồi)
 **Platform:** Mọi nền tảng — nặng tỉ lệ thuận với RTT, rõ nhất trên kết nối 150-200ms (báo cáo gốc:
@@ -68,6 +81,14 @@ overlay riêng quân cờ.
 - **Thiết kế lại toàn bộ input listener sang `pointerdown`/`mousedown`** thay `click` — chấp nhận về
   nguyên tắc nhưng cần test kỹ trên mobile/touch (dễ đặt nhầm ô khi lướt tay) trước khi đổi hành vi
   click hiện có trên toàn bàn cờ; xem thêm cảnh báo ở `instruction.md`.
+- **Phát hiện khi làm (không có trong spec gốc, chưa làm)**: mobile players-strip (`room-ui.js`
+  `renderStripPlayer`'s `isTurn`/`players-strip__track--idle`, và `updateStripTimers()`'s per-second
+  numeric repaint) đọc thẳng `gameState.currentTurn`/`timerValues`, không đọc `predictedTurn` —
+  `instruction.md` B155 chỉ nêu `game-ui.js`'s `updateBoardState()`/`renderTimers()` (desktop turn-bar),
+  không nhắc bề mặt ≤768px này. Kết quả: ở mobile, turn/countdown của người vừa đi vẫn đợi trọn RTT
+  y hệt trước #155, trong khi desktop đã tức thì — bất nhất giữa hai bề mặt của cùng một tính năng.
+  Không sửa trong task này (đúng scope đã ghi trong `instruction.md`); nếu muốn đồng bộ, ghi TODO
+  riêng đọc `predictedTurn` tại hai điểm trên, cùng nguyên lý không ghi `gameState`.
 
 ---
 

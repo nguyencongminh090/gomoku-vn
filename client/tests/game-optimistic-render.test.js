@@ -63,7 +63,20 @@ function makeBoardRendererStub() {
 }
 
 function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRenderer = true } = {}) {
-  document.body.innerHTML = '<div id="board-area"></div><div id="chat-messages"></div>';
+  // The turn-bar/timer elements are included directly (rather than only via
+  // initBoard()'s template, which is stubbed out below) because sendMove()
+  // and room-socket.js's rollback/confirm paths call the real renderTimers()/
+  // renderTurnLabel() straight from game-ui.js's own closure — a same-module
+  // call the `window.GameUI.xxx = jest.fn()` stubs further down can't
+  // intercept, only cross-module callers (room-socket.js) go through those.
+  document.body.innerHTML = `
+    <div id="board-area"></div><div id="chat-messages"></div>
+    <div id="turn-bar">
+      <div id="tb-black"><span id="tb-black-timer"></span></div>
+      <div id="turn-label"></div>
+      <div id="tb-white"><span id="tb-white-timer"></span></div>
+    </div>
+  `;
 
   const client = makeClientStub();
   window.RoomClient = client;
@@ -76,6 +89,12 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
   };
 
   window.RoomUI = { updateUI: jest.fn() };
+  window.audioManager = {
+    playMoveSound: jest.fn(),
+    playWinSound: jest.fn(),
+    playLoseSound: jest.fn(),
+    playTimerTickSound: jest.fn(),
+  };
 
   const boardRenderer = withBoardRenderer ? makeBoardRendererStub() : null;
 
@@ -83,6 +102,8 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
     myUser: { userId: 'me' },
     roomData: { roomId: 'r1' },
     boardRenderer,
+    timerValues: { black: 60, white: 60 },
+    predictedTurn: { active: false, forColor: null, snapshotTimerValues: null, switchedAtLocalTs: null },
     gameState: {
       status: gameStatus,
       moveCount,
@@ -235,15 +256,22 @@ describe('onCellClick — one in-flight move at a time', () => {
     onCellClick(3, 4);
     expect(client.ackCalls).toHaveLength(1);
     expect(boardRenderer.optimisticStone).toEqual({ x: 3, y: 4, color: 'BLACK' });
+    // TODO.md #155: the pair set by the first click only.
+    expect(window.RoomState.predictedTurn).toMatchObject({ active: true, forColor: 'WHITE' });
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledTimes(1);
 
     onCellClick(7, 7); // second click, same in-flight window
     expect(client.ackCalls).toHaveLength(1);              // no second emit
     expect(boardRenderer.optimisticStone.x).toBe(3);       // original stone untouched
+    // Case 13 (planning.md Q3): no second sound, no re-snapshotting the
+    // already-active predictedTurn overlay.
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledTimes(1);
 
     // Once resolved, clicking again works normally.
     boardRenderer.setOptimisticStone(null);
     onCellClick(7, 7);
     expect(client.ackCalls).toHaveLength(2);
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -292,6 +320,52 @@ describe('game:moved — confirms or leaves the optimistic stone alone', () => {
     expect(boardRenderer.optimisticStone).toBeNull();
     expect(() => client.listeners['game:moved'](moved(1, 2, 6))).not.toThrow();
   });
+
+  // Own move played at moved(x,y,...): color 'WHITE' with 'me' as WHITE below.
+  test('confirming our own pending move does NOT replay the sound already played at click (TODO.md #155)', () => {
+    const { client, boardRenderer, st } = loadRoomModules({ moveCount: 5 });
+    st.gameState.players = [{ userId: 'me', color: 'WHITE' }, { userId: 'them', color: 'BLACK' }];
+    boardRenderer.setOptimisticStone({ x: 1, y: 2, color: 'WHITE' });
+    window.audioManager.playMoveSound.mockClear();
+
+    client.listeners['game:moved'](moved(1, 2, 6)); // matches the pending cell
+
+    expect(window.audioManager.playMoveSound).not.toHaveBeenCalled();
+    expect(st.predictedTurn.active).toBe(false);
+  });
+
+  test('an opponent move always plays its sound, unaffected by any pending state of ours', () => {
+    const { client, boardRenderer } = loadRoomModules({ moveCount: 5 });
+    boardRenderer.setOptimisticStone({ x: 1, y: 2, color: 'BLACK' }); // our own unrelated pending move
+    window.audioManager.playMoveSound.mockClear();
+
+    client.listeners['game:moved'](moved(9, 9, 6)); // opponent's cell, color WHITE, 'me' is BLACK
+
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledWith(true);
+  });
+
+  test('a spectator (no matching player entry) always hears the normal move sound', () => {
+    const { client, st } = loadRoomModules({ moveCount: 5 });
+    st.gameState.players = [{ userId: 'p1', color: 'BLACK' }, { userId: 'p2', color: 'WHITE' }];
+    window.audioManager.playMoveSound.mockClear();
+
+    client.listeners['game:moved'](moved(9, 9, 6));
+
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledWith(true);
+  });
+
+  test('confirming clears predictedTurn and the next render uses the server timer, not the predicted countdown', () => {
+    const { client, boardRenderer, st } = loadRoomModules({ moveCount: 5 });
+    boardRenderer.setOptimisticStone({ x: 1, y: 2, color: 'BLACK' });
+    st.predictedTurn = { active: true, forColor: 'WHITE', snapshotTimerValues: { black: 60, white: 60 }, switchedAtLocalTs: Date.now() - 5000 };
+
+    client.listeners['game:moved'](moved(1, 2, 6, { timer: { black: 58, white: 60 } }));
+
+    expect(st.predictedTurn.active).toBe(false);
+    // The server's number (58), not "60 minus 5s elapsed" (55) the predicted
+    // countdown would have shown — snap, not compound (planning.md Q2 step 5).
+    expect(st.timerValues).toEqual({ black: 58, white: 60 });
+  });
 });
 
 describe('room:joined — always clears any pending optimistic stone', () => {
@@ -304,17 +378,178 @@ describe('room:joined — always clears any pending optimistic stone', () => {
   });
 
   test('a resync answer clears a stone left over from a doubly-timed-out move', () => {
-    const { boardRenderer, client } = loadRoomModules();
+    const { boardRenderer, client, st } = loadRoomModules();
     boardRenderer.setOptimisticStone({ x: 1, y: 2, color: 'BLACK', warning: true });
+    st.predictedTurn = { active: true, forColor: 'WHITE', snapshotTimerValues: { black: 60, white: 60 }, switchedAtLocalTs: Date.now() };
 
     client.listeners['room:joined']({ roomId: 'r1', users: [], gameState: baseGameState() });
 
     expect(boardRenderer.optimisticStone).toBeNull();
+    // TODO.md #155 case 6: predictedTurn never outlives optimisticStone —
+    // a full resync rebuild must clear both together.
+    expect(st.predictedTurn.active).toBe(false);
   });
 
   test('the very first room:joined (no boardRenderer yet) does not throw', () => {
     const { client } = loadRoomModules({ withBoardRenderer: false });
     expect(() => client.listeners['room:joined']({ roomId: 'r1', users: [], gameState: baseGameState() }))
       .not.toThrow();
+  });
+});
+
+// ── TODO.md #155 — Full CSP: sound + predictedTurn overlay ──────────────────
+// Case numbers below refer to the 13-case matrix in
+// features/full-csp-zero-latency/planning.md Q3.
+
+describe('GameUI.sendMove — Full CSP sound + predictedTurn (case 1)', () => {
+  test('the move sound plays at click time, before any ack has resolved', () => {
+    const { client } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4);
+
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledTimes(1);
+    expect(window.audioManager.playMoveSound).toHaveBeenCalledWith(false);
+    expect(client.ackCalls).toHaveLength(1); // sound didn't wait on this
+  });
+
+  test('predictedTurn flips the turn-bar highlight and label to the opponent immediately', () => {
+    const { st } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4);
+
+    expect(st.predictedTurn.active).toBe(true);
+    expect(st.predictedTurn.forColor).toBe('WHITE'); // me = BLACK
+    expect(document.getElementById('tb-white').classList.contains('turn-bar__active')).toBe(true);
+    expect(document.getElementById('tb-black').classList.contains('turn-bar__active')).toBe(false);
+    expect(document.getElementById('turn-label').textContent).toBe(window.t('game.opponent_turn'));
+  });
+
+  test('the mover\'s own clock freezes at its click-time value while predicted; the opponent\'s ticks down', () => {
+    const { st } = loadRoomModules();
+    st.timerValues = { black: 42, white: 55 };
+
+    const realNow = Date.now;
+    let now = 1_000_000;
+    Date.now = () => now;
+    try {
+      window.GameUI.sendMove(3, 4); // me = BLACK, opponent = WHITE
+      now += 3000; // 3s of "real" elapsed time
+      window.GameUI.renderTimers();
+
+      expect(document.getElementById('tb-black-timer').textContent).toBe('42'); // frozen
+      expect(document.getElementById('tb-white-timer').textContent).toBe('52'); // 55 - 3
+    } finally {
+      Date.now = realNow;
+    }
+  });
+});
+
+describe('GameUI.sendMove — ack error rolls predictedTurn back too (cases 2-4)', () => {
+  test('an ack error reverts the turn-bar to the real (unchanged) turn, not the predicted one', () => {
+    const { client, st } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4);
+    expect(st.predictedTurn.active).toBe(true);
+
+    client.respond(0, { error: 'Ô này đã có quân.', code: 'CELL_OCCUPIED' });
+
+    expect(st.predictedTurn.active).toBe(false);
+    // gameState.currentTurn was never touched — still 'me' (BLACK) — so the
+    // real updateBoardState() this rollback triggers renders BLACK active.
+    expect(document.getElementById('tb-black').classList.contains('turn-bar__active')).toBe(true);
+    expect(document.getElementById('tb-white').classList.contains('turn-bar__active')).toBe(false);
+    expect(document.getElementById('turn-label').textContent).toBe(window.t('game.your_turn'));
+  });
+});
+
+describe('GameUI.sendMove — retry keeps predictedTurn active, same lifecycle as optimisticStone (cases 5-6)', () => {
+  test('a first ack timeout (retry) leaves predictedTurn active', () => {
+    const { client, st } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4);
+    client.timeout(0);
+
+    expect(st.predictedTurn.active).toBe(true);
+  });
+
+  test('a second ack timeout (→ resync) still leaves predictedTurn active — room:joined clears it, not this', () => {
+    const { client, st } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4);
+    client.timeout(0);
+    client.timeout(1);
+
+    expect(st.predictedTurn.active).toBe(true);
+  });
+});
+
+describe('game:ended racing a pending move clears both overlays (cases 7-8)', () => {
+  test('our own win arriving while our move is still unacked clears optimisticStone + predictedTurn', () => {
+    const { client, boardRenderer, st } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4); // ack never resolves — still "in flight"
+    expect(boardRenderer.optimisticStone).not.toBeNull();
+    expect(st.predictedTurn.active).toBe(true);
+    window.audioManager.playMoveSound.mockClear();
+
+    client.listeners['game:ended']({ result: { winner: 'me' } });
+
+    expect(boardRenderer.optimisticStone).toBeNull();
+    expect(st.predictedTurn.active).toBe(false);
+    expect(window.audioManager.playWinSound).toHaveBeenCalledTimes(1);
+    expect(window.audioManager.playMoveSound).not.toHaveBeenCalled(); // no extra move sound from the race
+  });
+
+  test('an opponent-timeout loss arriving while our move is still unacked also clears our overlays', () => {
+    const { client, boardRenderer, st } = loadRoomModules();
+
+    window.GameUI.sendMove(3, 4);
+
+    client.listeners['game:ended']({ result: { winner: 'them' } });
+
+    expect(boardRenderer.optimisticStone).toBeNull();
+    expect(st.predictedTurn.active).toBe(false);
+    expect(window.audioManager.playLoseSound).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('onCellClick — local pre-check blocks provably-illegal clicks before sendMove (cases 9-10)', () => {
+  function wireOnCellClick(boardRenderer, realInitBoard) {
+    let onCellClick;
+    window.BoardRenderer = function (canvas, opts) { onCellClick = opts.onCellClick; return boardRenderer; };
+    realInitBoard();
+    return onCellClick;
+  }
+
+  test('a click on an already-occupied cell never predicts, never sends, never plays a sound', () => {
+    const { client, boardRenderer, realInitBoard, st } = loadRoomModules();
+    window.RoomState.roomData = { roomId: 'r1', settings: { boardSize: 15 } };
+    Object.assign(st.gameState, { boardSize: 15, walls: [], portals: [], firstMoveZones: [] });
+    window.RoomState.boardRenderer = null;
+    st.gameState.board[4][3] = 1; // (x=3, y=4) already occupied
+
+    const onCellClick = wireOnCellClick(boardRenderer, realInitBoard);
+    onCellClick(3, 4);
+
+    expect(client.ackCalls).toHaveLength(0);
+    expect(boardRenderer.optimisticStone).toBeNull();
+    expect(st.predictedTurn.active).toBe(false);
+    expect(window.audioManager.playMoveSound).not.toHaveBeenCalled();
+  });
+
+  test('a click when it is not our turn never predicts, never sends', () => {
+    const { client, boardRenderer, realInitBoard, st } = loadRoomModules();
+    window.RoomState.roomData = { roomId: 'r1', settings: { boardSize: 15 } };
+    Object.assign(st.gameState, { boardSize: 15, walls: [], portals: [], firstMoveZones: [] });
+    window.RoomState.boardRenderer = null;
+    st.gameState.currentTurn = 'them';
+
+    const onCellClick = wireOnCellClick(boardRenderer, realInitBoard);
+    onCellClick(3, 4);
+
+    expect(client.ackCalls).toHaveLength(0);
+    expect(boardRenderer.optimisticStone).toBeNull();
+    expect(st.predictedTurn.active).toBe(false);
+    expect(window.audioManager.playMoveSound).not.toHaveBeenCalled();
   });
 });

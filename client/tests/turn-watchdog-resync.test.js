@@ -119,6 +119,7 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5 } = {}) {
     roomData: { roomId: 'r1' },
     boardRenderer,
     timerValues: { black: 60, white: 60 },
+    predictedTurn: { active: false, forColor: null, snapshotTimerValues: null, switchedAtLocalTs: null },
     gameState: {
       status: gameStatus,
       moveCount,

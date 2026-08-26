@@ -84,6 +84,10 @@
     // where a pending overlay needs to give way to the authoritative board
     // this payload is about to (re)draw.
     if (st.boardRenderer) st.boardRenderer.setOptimisticStone(null);
+    // predictedTurn always travels with optimisticStone (TODO.md #155) — a
+    // full resync answer is exactly the kind of authoritative reload that
+    // must never leave it stranded active.
+    st.predictedTurn.active = false;
     // Authoritative state is being (re)loaded below, including from this
     // module's own game:resync — nothing pending survives it (TODO.md #154).
     // The turn watchdog re-arms through applyTimerSync further down.
@@ -275,9 +279,15 @@
     // this delta is the next one being applied, not a stale replay or a
     // gap-redirected one. An opponent's move landing here simply won't match
     // this player's own pending cell, so this is a no-op for them.
+    // Captured before clearing below — the sound-dedup check further down
+    // needs to know whether THIS broadcast is the one that just confirmed
+    // our own pending move, and optimisticStone won't say so any more once
+    // it's been nulled.
+    let confirmedOwnPendingMove = false;
     if (st.boardRenderer && st.boardRenderer.optimisticStone
         && st.boardRenderer.optimisticStone.x === data.x
         && st.boardRenderer.optimisticStone.y === data.y) {
+      confirmedOwnPendingMove = true;
       st.boardRenderer.setOptimisticStone(null);
       // This is the confirmation the move-confirm watchdog (TODO.md #154) was
       // waiting for.
@@ -311,9 +321,22 @@
     if (data.gameOver) st.gameState.status = 'finished';
     if (data.result) st.gameState.result = data.result;
 
+    // predictedTurn snaps to the just-written server values above rather
+    // than surviving the flip (TODO.md #155) — letting the local countdown
+    // "win" would compound drift over a long game, since it started at click
+    // time while the server's clock started at server-processing time.
+    st.predictedTurn.active = false;
+
     if (global.audioManager) {
       const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
-      global.audioManager.playMoveSound(!myPlayer || myPlayer.color !== data.color);
+      const isOpponent = !myPlayer || myPlayer.color !== data.color;
+      // Our own move already played its sound at click time (TODO.md #155,
+      // GameUI.sendMove) — replaying it here on confirmation would double it.
+      // Opponent/spectator moves (isOpponent) are never predicted locally, so
+      // they always play here, unaffected.
+      if (isOpponent || !confirmedOwnPendingMove) {
+        global.audioManager.playMoveSound(isOpponent);
+      }
     }
 
     // applyTimerSync above re-arms the watchdog, but only when this broadcast
@@ -628,6 +651,14 @@
 
   client.on('game:ended', (data) => {
     const st = S();
+    // The "ended while an ack is still in flight" race (TODO.md #155): a
+    // pending move's own optimisticStone/predictedTurn can never get its
+    // game:moved confirmation once the game is already over (an ack landing
+    // after this is just ignored, nothing left to reconcile). Cleared here,
+    // before the result below is applied, rather than left to time out via
+    // the move-confirm watchdog into a game that no longer exists.
+    if (st.boardRenderer) st.boardRenderer.setOptimisticStone(null);
+    st.predictedTurn.active = false;
     stopLocalTimer();   // the clock is over; the final values stay on screen
     // No clock left to reason about — anything still pending here would be an
     // orphaned resync fired into a finished game (TODO.md #154).
@@ -638,6 +669,10 @@
       st.gameState.status = 'finished';
       if (data.result) st.gameState.result = data.result;
     }
+    // Repaints the board (dropping the now-cleared overlays) and the
+    // turn-bar/timer (which RoomUI.updateUI() below never touches) against
+    // the finished status just written above.
+    GameUI.updateBoardState();
     st.drawOfferPending = null;
     GameUI.renderDrawPrompt();
     st.undoOfferPending = null;

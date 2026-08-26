@@ -506,7 +506,11 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `e2e/game-move-ack-resync.spec.ts` đã có sẵn cách mô phỏng mất gói (vá `Socket#packet`) — tái dùng.
   Đụng `client/` ⇒ bump `?v=N` (TODO.md #154) —
   [chi tiết](docs/instruction/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md)
-- **B155.** (Chưa làm) Nối tiếp #153 — nâng optimistic render thành Full CSP. Đọc
+- **B155.** (✅ Đã làm 2026-08-26 — `feature/full-csp-zero-latency` off `dev`, `?v=155`. **Lệch có
+  chủ đích so với hướng dẫn dưới đây**: mục 2b nói snapshot lấy từ `gameState.timerValues` — field đó
+  không tồn tại, đồng hồ thật nằm ở `RoomState.timerValues` (top-level, xem `room.js`); mục 4 so
+  `gameState.currentTurn === myPlayer.color` — field đó giữ `userId`, không phải màu, nên pre-check
+  thật so với `myUser.userId`. Cả hai đã sửa theo field thật, không theo văn bản gốc.) Nối tiếp #153 — nâng optimistic render thành Full CSP. Đọc
   `features/full-csp-zero-latency/planning.md` trước (thảo luận thiết kế đã resolved với người dùng).
   `board.js`: `_drawOptimisticStone` bỏ `globalAlpha 0.5` + viền nét đứt, vẽ solid như quân thật;
   giữ `warning` field nhưng chỉ hiện dấu hiệu rất nhẹ, đừng phá "indistinguishable". `game-ui.js`
