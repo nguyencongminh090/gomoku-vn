@@ -439,7 +439,14 @@ function register(io, socket) {
         timer.switchTurn(result.currentTurn === engine.secondPlayerId ? 'white' : 'black');
         io.to(room.roomId).emit('timer:sync', timer.getSync());
       }
-      io.to(room.roomId).emit('game:swap2_state', buildSwap2State(engine, null, result.nextColor));
+      const swap2State = buildSwap2State(engine, null, result.nextColor);
+      // Reuse the client's existing undoCancelled-clears-the-popup path
+      // (room-socket.js game:swap2_state handler) — without this flag the
+      // accepted offer never gets a signal to clear, and the undo popup
+      // stays stuck forever even though the rollback itself applied
+      // correctly (TODO.md #156).
+      swap2State.undoCancelled = true;
+      io.to(room.roomId).emit('game:swap2_state', swap2State);
     } else {
       if (timer) {
         const requesterPlayer = engine.players.find(p => p.userId === requesterId);
