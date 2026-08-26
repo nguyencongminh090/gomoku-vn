@@ -875,6 +875,22 @@ Lichess/Chess.com), nối tiếp #153 (2026-08-26)
   #155 có thể kẹt vô thời hạn im lặng, xem "Rủi ro còn sót" trong `docs/instruction/B155-*.md` —
   [chi tiết](docs/todo/B155-full-csp-am-thanh-luot-di-tuc-thi-0ms.md)
 
+### Nguồn: báo cáo người dùng — "Scope: Room, Game playing, Undo, Swap2. At Phase Opening of Swap2,
+user request Undo, on accept, mechanics work well but the display of popup is always appear."
+(2026-08-27)
+- ✅ **#156.** (Đã sửa 2026-08-27 — `fix/swap2-opening-undo-popup-not-cleared` off `dev`.) Swap2
+  Opening: chấp nhận Undo xong, popup xin đi lại không biến mất. Đã xác minh bằng CodeGraph + đọc
+  code: nhánh `mode === 'opening'` trong `game:undo_accept` handler (`GameHandler.js:430-442`) chỉ
+  emit `game:swap2_state`, và `buildSwap2State()` không gắn `undoCancelled` — client chỉ xoá
+  `undoOfferPending` khi thấy cờ đó (`room-socket.js:355-358`), khi `game:undo_applied` (nhánh
+  `play`), hoặc khi `game:undo_declined` — không đường nào khớp nhánh opening-accept, nên popup treo
+  vĩnh viễn dù rollback board/lượt/màu vẫn đúng. Sửa: gắn `swap2State.undoCancelled = true` trên
+  object trả về tại đúng 1 call site đó, không sửa `buildSwap2State()` dùng chung. 2 test mới trong
+  `server/tests/GameHandler.test.js` (mock `acceptUndo`, xác nhận bằng mutation-kill thủ công: tắt
+  dòng sửa thì test mới fail đúng như mô tả bug), `npm test` 1358/1358. Không đụng `client/` ⇒ không
+  cần bump `?v=N` —
+  [chi tiết](docs/todo/B156-swap2-opening-undo-accept-popup-khong-bien-mat.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

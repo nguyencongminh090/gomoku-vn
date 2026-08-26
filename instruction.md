@@ -534,3 +534,10 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   mạng thật, không phải cảm nhận, và ảnh hưởng cả chat/room list nếu đổi toàn socket); không đổi
   `click` → `pointerdown` trong task này. Đụng `client/` ⇒ bump `?v=N` (đánh giá spec bên ngoài,
   TODO.md #155) — [chi tiết](docs/instruction/B155-full-csp-am-thanh-luot-di-tuc-thi-0ms.md)
+- **B156.** Sửa ở `GameHandler.js:442` (nhánh `mode === 'opening'` trong `game:undo_accept`) — sau
+  `buildSwap2State(...)`, gắn `undoCancelled: true` lên object trả về trước khi emit, tái dùng cờ
+  client đã có sẵn ở `room-socket.js:355-358`. **Đừng sửa `buildSwap2State()` dùng chung** — hàm đó
+  còn gọi ở move handler/swap2_choice handler cho mục đích khác. Không đụng nhánh `play` (đã đúng,
+  đã emit `game:undo_applied`) hay `declineUndo` (đã đúng). Chỉ bump `?v=N` nếu cách làm cuối cùng có
+  đụng file trong `client/js/` (TODO.md #156) —
+  [chi tiết](docs/instruction/B156-swap2-opening-undo-accept-popup-khong-bien-mat.md)
