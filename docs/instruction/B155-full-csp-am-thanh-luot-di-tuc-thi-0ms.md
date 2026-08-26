@@ -97,7 +97,7 @@ Không chỉ thêm test cho case xong (case 1) — **case 2-4 (các loại lỗi
 `makeBoardRendererStub`/`makeClientStub` đã có sẵn trong `client/tests/game-optimistic-render.test.js`
 (xem file, đừng viết lại stub mới).
 
-## 6. Rủi ro còn sót — phụ thuộc #154 (chưa làm)
+## 6. Rủi ro còn sót — phụ thuộc #154 (✅ đã làm 2026-08-26, đọc phần chốt cuối mục)
 
 Phát hiện khi rà #154 vs #155 (2026-08-26), xem `docs/todo/B154-*.md` mục "Biến thể thứ hai": nếu
 ack `game:move` thành công nhưng chính gói `game:moved` broadcast lại cho **người vừa đi** bị rớt độc
@@ -116,6 +116,20 @@ lập (2 gói khác nhau, rớt độc lập được — đúng mô hình mất
   `game:resync` (primitive #152 đã có), y hệt đường resync-lần-2 hiện có. Không làm việc này thì
   #155 có một chế độ hỏng im lặng chưa từng tồn tại ở #153 (quân mờ kẹt còn nhìn thấy được sự bất
   thường; turn-bar/đồng hồ dự đoán kẹt thì không).
+
+**Chốt (2026-08-26, sau khi #154 xong): nhánh thứ nhất đã thành hiện thực — B155 KHÔNG cần dựng
+thêm gì cho case này.** #154 đã có sẵn đúng cơ chế nhánh 2 mô tả: `armMoveConfirmWatchdog()` trong
+`client/js/room-socket.js` (xuất qua `global.RoomSocket`), `sendMove` gọi nó ở nhánh ack `{ok}`, hết
+`MOVE_CONFIRM_TIMEOUT_MS` (2500ms) mà `optimisticStone` chưa được `game:moved` khớp toạ độ xác nhận
+thì gọi `game:resync`. Ngưỡng không phải số tròn chọn bừa: broadcast được ghi vào socket **trước**
+ack (cùng kết nối ⇒ có thứ tự), nên cầm được ack mà chưa thấy broadcast nghĩa là nó đã rớt — cửa sổ
+này chỉ để hấp thụ jank main-thread.
+
+**Việc của B155 ở mục này thu lại còn đúng một điều**: khi thêm `predictedTurn`, phải để nó **tắt
+theo cùng một tín hiệu** đang tắt `optimisticStone` (`game:moved` khớp toạ độ, và mọi đường nạp state
+đầy đủ), chứ đừng dựng vòng đời riêng — nếu `predictedTurn` sống lâu hơn `optimisticStone` thì
+watchdog trên sẽ dọn quân nhưng bỏ lại turn-bar kẹt, tức đúng chế độ hỏng im lặng mà mục này lo, chỉ
+khác chỗ biểu hiện.
 
 ## 7. Việc KHÔNG làm (nhắc lại từ `docs/todo/B155-*.md`)
 

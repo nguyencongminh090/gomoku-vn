@@ -818,7 +818,13 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   vùng nước-đầu-tường, không giả lập). `?v=152→153`.
 
 ### Nguồn: phát sinh khi thực thi #152 (2026-08-24)
-- **#154.** Gap detection của #152 (`room-socket.js`, `game:moved` so `moveCount`) **không phá được
+- ✅ **#154.** (Đã sửa 2026-08-26 — `fix/turn-watchdog-resync-deadlock` off `dev`. Watchdog theo lượt
+  bắn ở **phân số α=0,75 của đồng hồ đang theo dõi** → `game:resync`; ngưỡng **đo từ 334 ván /
+  9.429 khoảng lặng thật** chứ không chọn số tròn. Bản nháp đầu dùng "deadline trôi qua trong im
+  lặng" — đúng logic nhưng **tới muộn hơn chính cú thua giờ của người kẹt**, Playwright bắt được
+  (thua giờ giây 14,8, watchdog hẹn giây 21); phân số sửa đúng chỗ đó. Biến thể thứ hai bịt bằng
+  move-confirm watchdog 2500ms. 24 test mới, `npm test` 1342/1342, verify e2e 2 người không ai bấm
+  gì. `?v=153→154`.) Gap detection của #152 (`room-socket.js`, `game:moved` so `moveCount`) **không phá được
   deadlock 2 người** ở đúng kịch bản mà `docs/todo/B152-*.md` mục 5 mô tả: nó chỉ kích hoạt khi có
   **một `game:moved` tiếp theo** tới nơi, mà với 2 người luân phiên nghiêm ngặt gói đó **chính là**
   nước người kẹt đang chờ. Đã kiểm chứng không có sự kiện đánh thức nào khác — `TimerManager` tick

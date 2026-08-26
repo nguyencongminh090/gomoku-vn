@@ -1,6 +1,25 @@
 # B154 — Gap detection của #152 không phá được deadlock 2 người khi rớt `game:moved`
 
-**Trạng thái:** Chưa làm
+**Trạng thái:** ✅ Đã sửa (2026-08-26) — `fix/turn-watchdog-resync-deadlock` off `dev`
+
+Watchdog theo lượt phía client, bắn ở **phân số α = 0,75 của đồng hồ đang theo dõi** rồi gọi
+`game:resync` (primitive #152, không dựng đường mới). Cả hai biến thể mô tả dưới đây đều đã bịt:
+biến thể gốc bằng watchdog này, biến thể thứ hai bằng move-confirm watchdog 2500ms.
+
+**Ngưỡng đã đo, không chọn cảm tính** (#131): 334 ván / 9.429 khoảng lặng thật từ `games.moves` —
+p50 5,0s · p90 24,8s · p99 50,4s · p99.9 83,5s. Hằng số phẳng 15s sẽ bắn ở **75% số ván**.
+
+⚠ **Bản nháp đầu dùng "deadline trôi qua trong im lặng" — đúng logic nhưng tới muộn hơn chính cú
+thua giờ của người kẹt, và Playwright bắt được** (thua giờ ở giây 14,8, watchdog hẹn ở giây 21). Lý
+do và cách phân số sửa nó nằm ở comment trong `client/js/room-socket.js` và trong fix log — đọc
+trước nếu định chỉnh ngưỡng.
+
+24 unit test mới (`client/tests/turn-watchdog-resync.test.js`), bỏ fix ra thì 9/22 fail;
+`npm test` **1342/1342**. Verify thật bằng Playwright trên instance cô lập —
+`e2e/turn-watchdog-resync.spec.ts`, đúng "ca bắt buộc" của instruction (2 người, 1 gói rớt, không ai
+bấm gì). `?v=153→154`.
+
+Chi tiết thực thi: `docs/fix-log/2026-08-26-todo-154-turn-watchdog-resync.md`.
 
 **Severity:** Medium (không tự phục hồi, nhưng có chặn trên: người kẹt thua giờ thay vì treo vĩnh viễn)
 **Platform:** Mọi nền tảng, mạng mất gói

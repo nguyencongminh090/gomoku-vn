@@ -77,6 +77,11 @@ overlay riêng quân cờ.
   `optimisticStone`, B155 nâng cấp trực tiếp trên đó.
 - **#152** (`docs/todo/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md`) — `moveId`
   idempotency + ack/timeout/retry/resync, **giữ nguyên không đổi**.
+- **#154 — ✅ đã sửa 2026-08-26, rủi ro dưới đây đã được bịt.** `armMoveConfirmWatchdog()` (2500ms
+  sau ack `{ok}`, chưa thấy `game:moved` khớp toạ độ ⇒ `game:resync`) chính là cơ chế mà mục này đòi
+  hỏi, nên B155 dùng chung chứ không dựng thêm; việc còn lại chỉ là cho `predictedTurn` tắt theo đúng
+  tín hiệu đang tắt `optimisticStone` — xem mục 6 phần "Chốt" trong `docs/instruction/B155-*.md`.
+  Văn bản gốc giữ nguyên bên dưới làm bối cảnh.
 - **#154** (`docs/todo/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md`) — **không xung đột
   code** (khác tầng: #154 phát hiện mất gói, #155 cảm nhận độ trễ), nhưng có phụ thuộc rủi ro thật:
   #154 chưa làm ⇒ nếu ack thành công mà chính gói `game:moved` xác nhận nước đi của người vừa đi bị
