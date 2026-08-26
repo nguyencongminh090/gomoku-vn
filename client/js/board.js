@@ -839,14 +839,18 @@ class BoardRenderer {
 
   /** Draw pending cell: semi-transparent preview stone + green pulsing ring. */
   /**
-   * The mover's own stone before the server has confirmed it (TODO.md #153).
-   * Deliberately distinct from a confirmed stone — half-opacity piece plus a
-   * dashed ring — so a player can never mistake "sent" for "landed"; that
-   * distinction is also what makes the rollback on a rejected move (just
-   * `setOptimisticStone(null)`, nothing was ever written to `this.board`)
-   * read as "never happened" instead of a stone visibly vanishing.
+   * The mover's own stone before the server has confirmed it (TODO.md #153,
+   * upgraded to solid/indistinguishable by #155's Full CSP). Drawn through
+   * the exact same per-mode piece routine a confirmed stone uses, at full
+   * opacity, with no ring — a player cannot tell "sent" from "landed" by eye,
+   * the UX tradeoff #155 was filed to accept. Rollback on a rejected move
+   * (just `setOptimisticStone(null)`, nothing was ever written to
+   * `this.board`) still reads as "never happened" instead of a stone visibly
+   * vanishing, same as before.
    * `warning` (set after the first ack timeout, GameUI.sendMove's retry)
-   * swaps the ring from green to amber — same shape, different confidence.
+   * still needs a signal — a player retrying blind is worse than one who
+   * knows — so it adds a thin solid ring instead of reappearing as the old
+   * dashed one, deliberately faint enough not to undo "indistinguishable".
    */
   _drawOptimisticStone(x, y, color, warning) {
     const ctx = this.ctx;
@@ -854,7 +858,6 @@ class BoardRenderer {
     const { px, py } = this._cellToPixel(x, y);
 
     ctx.save();
-    ctx.globalAlpha = 0.5;
     if (this.displayMode === 'stone') {
       this._drawStonePiece(x, y, color);
     } else if (color === 'BLACK') {
@@ -864,15 +867,15 @@ class BoardRenderer {
     }
     ctx.restore();
 
-    const ringRgb = warning ? '196, 130, 40' : this._theme.pendingRgb;
-    ctx.save();
-    ctx.setLineDash([Math.max(g.cellSize * 0.09, 2), Math.max(g.cellSize * 0.06, 1.5)]);
-    ctx.strokeStyle = `rgba(${ringRgb}, 0.9)`;
-    ctx.lineWidth = Math.max(g.cellSize * 0.05, 1.5);
-    ctx.beginPath();
-    ctx.arc(px, py, g.cellSize * 0.42, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+    if (warning) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(196, 130, 40, 0.9)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(px, py, g.cellSize * 0.42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   _drawPendingHighlight(x, y) {

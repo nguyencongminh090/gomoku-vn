@@ -65,12 +65,19 @@
    *                  the same action if the first one did land
    *   timeout #2   → stop, ask for a full resync, tell the player
    *
-   * Optimistic render (TODO.md #153): a faded, dashed-ring stone is drawn at
-   * (x,y) immediately, before any of the above — the mover no longer waits
-   * out a round trip to see their own move, which was the whole cost #153
-   * was filed to remove. It is a pure visual overlay (BoardRenderer.
+   * Optimistic render (TODO.md #153, upgraded to Full CSP by #155): a solid,
+   * indistinguishable-from-real stone is drawn at (x,y) immediately, before
+   * any of the above — the mover no longer waits out a round trip to see
+   * their own move. It is a pure visual overlay (BoardRenderer.
    * optimisticStone), never written into gameState.board, so a rejected move
-   * rolls back for free: clearing the overlay IS the rollback.
+   * rolls back for free: clearing the overlay IS the rollback. #155 adds two
+   * more predictions alongside it, same discipline: the move sound plays
+   * immediately instead of waiting for game:moved, and `predictedTurn`
+   * (RoomState, sibling of boardRenderer — never gameState itself) flips the
+   * turn-bar/opponent timer to look switched right away. Clearing
+   * `predictedTurn.active` is the entire rollback for that piece too,
+   * because gameState.currentTurn/timerValues are never touched — the next
+   * updateBoardState() call renders the real values automatically.
    *
    * Deliberately NOT cleared here on ack {ok}. The server sends the
    * `game:moved` broadcast before the ack (same connection, so it's ordered
@@ -87,6 +94,18 @@
     const myPlayer = st.gameState && st.gameState.players.find(p => p.userId === st.myUser.userId);
     if (st.boardRenderer && myPlayer) {
       st.boardRenderer.setOptimisticStone({ x, y, color: myPlayer.color });
+      // Immediate, not waiting on network (TODO.md #155) — this is always
+      // our own move, never the opponent's, so `false` is not a placeholder.
+      if (global.audioManager) global.audioManager.playMoveSound(false);
+      // predictedTurn always travels with optimisticStone — never one
+      // without the other, so the move-confirm watchdog and the rollback
+      // paths below only ever need to flip a single pair together.
+      st.predictedTurn.active = true;
+      st.predictedTurn.forColor = myPlayer.color === 'BLACK' ? 'WHITE' : 'BLACK';
+      st.predictedTurn.snapshotTimerValues = Object.assign({}, st.timerValues);
+      st.predictedTurn.switchedAtLocalTs = Date.now();
+      renderTimers();
+      renderTurnLabel();
     }
 
     const attempt = (isRetry) => {
@@ -116,6 +135,14 @@
         }
         if (res && res.error) {
           if (S().boardRenderer) S().boardRenderer.setOptimisticStone(null);
+          // gameState.currentTurn/timerValues were never touched, so clearing
+          // the flag and re-rendering just the turn-bar/timer (the only two
+          // things predictedTurn affects) is the whole rollback (TODO.md
+          // #155) — same "clearing the overlay IS the rollback" property as
+          // the stone.
+          S().predictedTurn.active = false;
+          renderTimers();
+          renderTurnLabel();
           moveNotice(`⚠ ${global.RoomSocket ? global.RoomSocket.serverMessage(res) : res.error}`);
           return;
         }
@@ -210,6 +237,13 @@
             return;
           }
           if (gs && gs.status === 'ongoing') {
+            // Local pre-check (TODO.md #155 Q1) — cheap, early-exit only,
+            // strictly bounded to what the client already authoritatively
+            // has (board/currentTurn/status). Not a new validation layer:
+            // anything past this (walls, portals, swap2 phase rules) stays
+            // server-only and still rejects via the ack rollback path.
+            if (gs.board[y] && gs.board[y][x] !== 0) return;
+            if (gs.currentTurn !== st.myUser.userId) return;
             // One in-flight move at a time (TODO.md #153): `isMyTurn` in
             // board.js doesn't flip false until gameState.currentTurn changes,
             // which only happens once this move is confirmed — so without this
@@ -318,10 +352,31 @@
     const wTimerEl = document.getElementById('tb-white-timer');
     if (!bTimerEl || !wTimerEl) return;
 
-    bTimerEl.textContent = formatTime(st.timerValues.black);
-    wTimerEl.textContent = formatTime(st.timerValues.white);
-    bTimerEl.classList.toggle('turn-bar__timer--low', st.timerValues.black <= 10);
-    wTimerEl.classList.toggle('turn-bar__timer--low', st.timerValues.white <= 10);
+    // predictedTurn (TODO.md #155): while a move is in flight, render the
+    // clocks as if the turn already switched — the mover's own clock frozen
+    // at its click-time value (not the still-ticking real one; the server
+    // hasn't flipped `currentTurn` yet), the opponent's counting down live
+    // from that same snapshot. Never reads/writes gameState.timerValues
+    // itself, so the instant this clears the very next tick shows the real,
+    // server-confirmed numbers again — no separate "restore" needed.
+    const pt = st.predictedTurn;
+    let blackVal = st.timerValues.black;
+    let whiteVal = st.timerValues.white;
+    if (pt && pt.active && pt.snapshotTimerValues) {
+      const elapsed = (Date.now() - pt.switchedAtLocalTs) / 1000;
+      if (pt.forColor === 'BLACK') {
+        blackVal = Math.max(0, pt.snapshotTimerValues.black - elapsed);
+        whiteVal = pt.snapshotTimerValues.white;
+      } else {
+        whiteVal = Math.max(0, pt.snapshotTimerValues.white - elapsed);
+        blackVal = pt.snapshotTimerValues.black;
+      }
+    }
+
+    bTimerEl.textContent = formatTime(blackVal);
+    wTimerEl.textContent = formatTime(whiteVal);
+    bTimerEl.classList.toggle('turn-bar__timer--low', blackVal <= 10);
+    wTimerEl.classList.toggle('turn-bar__timer--low', whiteVal <= 10);
 
     const tbBlack = document.getElementById('tb-black');
     const tbWhite = document.getElementById('tb-white');
@@ -331,7 +386,9 @@
       // for firstPlayerId/secondPlayerId instead (instruction.md §B37).
       const swap2 = st.gameState.swap2;
       let isBlackTurn;
-      if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
+      if (pt && pt.active) {
+        isBlackTurn = pt.forColor === 'BLACK';
+      } else if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
         isBlackTurn = st.gameState.currentTurn === swap2.firstPlayerId;
       } else {
         const blackP = st.gameState.players.find(p => p.color === 'BLACK');
@@ -363,7 +420,13 @@
       return;
     }
 
-    const isMyTurn = st.gameState.currentTurn === st.myUser.userId;
+    // predictedTurn is only ever set by our own sendMove(), so while it's
+    // active it is by definition never our turn — this is the mover's own
+    // screen the instant after they moved (TODO.md #155). Keeps this label
+    // in sync with the turn-bar highlight in renderTimers() above instead of
+    // contradicting it for one RTT.
+    const pt = st.predictedTurn;
+    const isMyTurn = (pt && pt.active) ? false : st.gameState.currentTurn === st.myUser.userId;
     el.textContent = isMyTurn ? t('game.your_turn') : t('game.opponent_turn');
     el.classList.toggle('game-info__turn--mine', isMyTurn);
   }

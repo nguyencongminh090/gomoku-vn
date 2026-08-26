@@ -840,7 +840,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 
 ### Nguồn: người dùng đưa spec kỹ thuật bên ngoài để đánh giá (phong cách Zero-Perceived-Latency
 Lichess/Chess.com), nối tiếp #153 (2026-08-26)
-- **#155.** #153 (✅ đã xong) mới che được phần **thị giác** của round-trip: quân pending vẫn bán
+- ✅ **#155.** (Đã xong 2026-08-26 — `feature/full-csp-zero-latency` off `dev`. `_drawOptimisticStone`
+  vẽ solid 100%, không còn viền nét đứt (chỉ còn viền mảnh 1px khi `warning`); `predictedTurn`
+  overlay mới trong `RoomState` — sibling của `boardRenderer`, không bao giờ ghi `gameState.currentTurn`/
+  `timerValues` — cho turn-bar + đồng hồ đối thủ đếm ngược sống ngay từ lúc click; âm thanh phát tại
+  `sendMove` trước `emitAck`, khử trùng lặp ở `game:moved` bằng cờ khớp toạ độ chụp trước khi
+  `setOptimisticStone(null)`. Rollback (ack lỗi, `game:ended` đua, resync) chỉ tắt cờ + gọi lại
+  `renderTimers()`/`renderTurnLabel()` — không viết logic khôi phục riêng, đúng nguyên lý #153. Local
+  pre-check ở `onCellClick` (ô trống, đúng lượt) theo `gameState.currentTurn` (userId, không phải màu
+  như spec nháp ghi) — dùng `st.timerValues` (RoomState-level) làm nguồn snapshot, không phải
+  `gameState.timerValues` như bản nháp instruction.md. 27 test mới/mở rộng (`board-optimistic-stone.
+  test.js`, `game-optimistic-render.test.js`) theo ma trận 13 case, `npm test` 1356/1356. Verify e2e
+  Playwright 2 người thật: rollback (ack lỗi tường) và confirm (moveCount tăng) đều đúng — turn-bar/
+  nhãn lượt/quân cờ solid đổi ngay khi click, snap về đúng khi `game:moved` về. **Ngoài phạm vi
+  (chưa làm, ghi riêng nếu cần)**: mobile players-strip (`room-ui.js` `renderStripPlayer`/
+  `updateStripTimers`) không đọc `predictedTurn` — chỉ desktop turn-bar được nâng cấp, spec B155 gốc
+  không nhắc tới bề mặt này. `?v=154→155`.) #153 (✅ đã xong) mới che được phần **thị giác** của round-trip: quân pending vẫn bán
   trong suốt/viền nét đứt, còn **âm thanh đặt quân** và **turn-bar/đồng hồ đối thủ** vẫn đợi trọn
   `game:moved` broadcast về mới đổi — người tự đặt quân vẫn nghe/thấy lượt chuyển trễ đúng 1 RTT dù
   quân đã hiện. Cần nâng thành Full CSP: quân predicted solid 100% (không phân biệt được với quân

@@ -38,7 +38,10 @@ function loadBoardRenderer() {
  * matching stub. Property sets (fillStyle, lineWidth, ...) just store.
  */
 function makeFakeCtx() {
-  const store = {};
+  // globalAlpha seeded at the real Canvas2D default (1) — a piece-drawing
+  // test needs to tell "never touched" from "touched" as a real number, not
+  // as this proxy's auto-vivified jest.fn() for an untouched property.
+  const store = { globalAlpha: 1 };
   return new Proxy({}, {
     get(_target, prop) {
       if (prop === 'createRadialGradient') {
@@ -166,7 +169,7 @@ describe('BoardRenderer#_drawOptimisticStone — visual dispatch', () => {
     expect(renderer._drawBlackPiece).not.toHaveBeenCalled();
   });
 
-  test('draws at reduced opacity so it never reads as a confirmed stone', () => {
+  test('draws at full opacity — indistinguishable from a confirmed stone (TODO.md #155)', () => {
     const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
     const ctx = makeFakeCtx();
     renderer.ctx = ctx;
@@ -175,11 +178,12 @@ describe('BoardRenderer#_drawOptimisticStone — visual dispatch', () => {
 
     renderer._drawOptimisticStone(1, 1, 'BLACK', false);
 
-    expect(alphaDuringPieceDraw).toBeLessThan(1);
-    expect(alphaDuringPieceDraw).toBeGreaterThan(0);
+    // _drawOptimisticStone no longer touches globalAlpha at all — the piece
+    // draw sees the same default(1) a confirmed stone would.
+    expect(alphaDuringPieceDraw).toBe(1);
   });
 
-  test('the ring is drawn dashed, not solid — the "unconfirmed" cue', () => {
+  test('the normal (non-warning) case draws no ring at all — nothing to tell it apart from a real stone', () => {
     const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
     const ctx = makeFakeCtx();
     renderer.ctx = ctx;
@@ -187,27 +191,24 @@ describe('BoardRenderer#_drawOptimisticStone — visual dispatch', () => {
 
     renderer._drawOptimisticStone(1, 1, 'BLACK', false);
 
-    expect(ctx.setLineDash).toHaveBeenCalled();
-    const dashPattern = ctx.setLineDash.mock.calls[0][0];
-    expect(Array.isArray(dashPattern)).toBe(true);
-    expect(dashPattern.length).toBeGreaterThan(0);
-    expect(dashPattern.every((n) => n > 0)).toBe(true);
+    expect(ctx.setLineDash).not.toHaveBeenCalled();
+    expect(ctx.arc).not.toHaveBeenCalled();
+    expect(ctx.stroke).not.toHaveBeenCalled();
   });
 
-  test('warning=true switches the ring color from the normal (green) pending color', () => {
+  test('warning=true draws a thin SOLID ring (retry cue), not the old dashed one', () => {
     const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
     const ctx = makeFakeCtx();
     renderer.ctx = ctx;
     renderer._drawBlackPiece = jest.fn();
-
-    renderer._drawOptimisticStone(1, 1, 'BLACK', false);
-    const normalColor = ctx.strokeStyle;
 
     renderer._drawOptimisticStone(1, 1, 'BLACK', true);
-    const warningColor = ctx.strokeStyle;
 
-    expect(normalColor).toContain(renderer._theme.pendingRgb);
-    expect(warningColor).not.toBe(normalColor);
+    expect(ctx.setLineDash).not.toHaveBeenCalled(); // solid, not dashed
+    expect(ctx.arc).toHaveBeenCalled();
+    expect(ctx.stroke).toHaveBeenCalled();
+    expect(ctx.lineWidth).toBeLessThanOrEqual(1.5); // deliberately faint
+    expect(ctx.strokeStyle).toContain('196, 130, 40'); // the amber warning color
   });
 });
 

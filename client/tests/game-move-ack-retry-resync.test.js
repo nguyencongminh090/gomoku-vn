@@ -74,6 +74,8 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5 } = {}) {
   window.RoomState = {
     myUser: { userId: 'me' },
     roomData: { roomId: 'r1' },
+    timerValues: { black: 60, white: 60 },
+    predictedTurn: { active: false, forColor: null, snapshotTimerValues: null, switchedAtLocalTs: null },
     gameState: {
       status: gameStatus,
       moveCount,
