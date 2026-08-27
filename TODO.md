@@ -925,6 +925,15 @@ truthful." (2026-08-27)
   `renderOnlineLine`, `SocketHandler.test.js`). Không lưu DB, ô nhập 1 dòng như phòng, guest được
   chat (có cờ tắt). `[Model: Sonnet 5]` — [chi tiết](docs/todo/B159-private-chat-1-1-sanh.md)
 
+### Nguồn: yêu cầu người dùng "Implement Dark UI Mode" → sau audit, người dùng quyết định GỠ BỎ Dark UI (2026-08-27)
+- ⏳ **#160.** Gỡ bỏ **hoàn toàn** Dark UI Mode. Audit cho thấy dark mode gần như vô hiệu ở các màn
+  hình chính (zen skin flatten token về light "per ui/* locks" → Sảnh + Phòng luôn light;
+  `theme-preload.js` thiếu ở 4/7 trang gồm cả `room.html`); hoàn thiện đàng hoàng phải đụng ui/*
+  locks nên người dùng chọn gỡ. Việc: xoá `theme-preload.js` + 3 `<script>` ref; gỡ hàng chọn
+  Sáng/Tối + `getTheme`/`setTheme` trong `settings-panel.js`; xoá 6 key `gset.theme*` i18n vi/en;
+  xoá khối `[data-theme="dark"]` trong `main.css` + `room.css` (giữ token `--board-*` dưới `:root`);
+  gỡ `_themeObserver` trong `board.js`; bump `?v=N` toàn `client/`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B160-go-bo-dark-ui-mode.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

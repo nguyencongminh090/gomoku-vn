@@ -580,3 +580,15 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   bump `?v=N` toàn `client/`. Notification chỉ qua nút "Bật thông báo" — không xin quyền tự động.
   Không lưu DB. Không đánh dấu xong nếu chưa verify frontend trên browser thật —
   [chi tiết](docs/instruction/B159-private-chat-1-1-sanh.md)
+- **B160.** Gỡ bỏ hoàn toàn Dark UI Mode (người dùng quyết định gỡ, không hoàn thiện). Xoá code
+  chết theo thứ tự: (1) xoá `client/js/theme-preload.js` + 3 `<script>` ref trong `index.html`/
+  `tournament.html`/`tournament-match.html`. (2) `settings-panel.js`: gỡ `getTheme`/`setTheme` +
+  `themeRow` (dòng 54-61, 168-178), `group(appearance, [densityRow])` chỉ còn density. (3) `i18n.js`:
+  xoá `gset.theme`/`_light`/`_dark` cả vi (453-455) và en (1083-1085). (4) `main.css`: `:root,
+  [data-theme="light"]` → `:root`; xoá khối `[data-theme="dark"]` (139-187) + `.ui-shell` (487-489);
+  **giữ token `--board-*`**. (5) `room.css`: xoá 4 rule `[data-theme="dark"]` (37-52). (6) `board.js`:
+  gỡ `_themeObserver` (87-92), giữ `_readBoardTheme()`. (7) bỏ qua `localStorage['theme']` cũ (quyết
+  định có ý thức). (8) bump `?v=N` toàn `client/` + grep verify. KHÔNG sửa `docs/todo/B70`/`B73`
+  (append-only — chỉ ghi chú). KHÔNG đụng board-lock. Verify `npm test` + browser thật mọi trang
+  (không FOUC, không console error, panel Cài đặt đúng) + `git grep` xác nhận sạch —
+  [chi tiết](docs/instruction/B160-go-bo-dark-ui-mode.md)
