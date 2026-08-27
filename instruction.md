@@ -541,3 +541,11 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   đã emit `game:undo_applied`) hay `declineUndo` (đã đúng). Chỉ bump `?v=N` nếu cách làm cuối cùng có
   đụng file trong `client/js/` (TODO.md #156) —
   [chi tiết](docs/instruction/B156-swap2-opening-undo-accept-popup-khong-bien-mat.md)
+- **B158.** Sửa `RoomManager.listRooms()` (`server/managers/RoomManager.js:614-638`), đổi
+  `userCount: room.users.size` thành đếm có điều kiện theo `presence`. **Phải hỏi người dùng trước**
+  giữa 2 công thức: (A) chỉ loại viewer (`slot === null`) đã `disconnected`, giữ nguyên player đang
+  trong grace; hay (B) loại mọi user `disconnected` bất kể `slot`. Không đụng `room.users`/
+  `userRoomMap`/logic reconnect (#115) — chỉ đổi công thức đếm hiển thị. Thêm test cho
+  `server/tests/RoomManager.test.js` (đã có test `listRooms()`/`userCount` — kiểm tra file hiện tại
+  trước để tránh trùng case) —
+  [chi tiết](docs/instruction/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)

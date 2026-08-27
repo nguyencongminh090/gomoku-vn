@@ -891,6 +891,14 @@ user request Undo, on accept, mechanics work well but the display of popup is al
   cần bump `?v=N` —
   [chi tiết](docs/todo/B156-swap2-opening-undo-accept-popup-khong-bien-mat.md)
 
+### Nguồn: báo cáo người dùng — "Scope: Room, User Connect (Player, Viewer), Online List,
+Reconnection. User out of room but tab-user still display them name in room... but the list must be
+truthful." (2026-08-27)
+- **#158.** Phát hiện thêm khi điều tra #157: `RoomManager.listRooms()`'s `userCount:
+  room.users.size` (`server/managers/RoomManager.js:614-638`) đếm luôn viewer-ma vẫn còn trong
+  `room.users` do #115 — số người hiển thị trên thẻ phòng ở sảnh chờ cao hơn thực tế. Cần chốt công
+  thức đếm với người dùng trước khi sửa (xem `docs/instruction/B158-*.md`) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
