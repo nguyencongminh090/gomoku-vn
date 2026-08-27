@@ -1,6 +1,14 @@
 # #158 — Số người trong phòng ở sảnh (`userCount`) đếm luôn viewer-ma đã rời đi từ lâu
 
-**Trạng thái:** chưa làm
+**Trạng thái:** ✅ Đã sửa (2026-08-27 — `fix/lobby-usercount-exclude-ghost-viewers` off `main`)
+
+Người dùng chốt công thức **(A)**: `listRooms()` bỏ qua user có `slot === null && presence ===
+'disconnected'` khi đếm `userCount`; seated player disconnected (grace) vẫn tính. Sửa vòng lặp thay
+`room.users.size` trong `RoomManager.listRooms()`, không đụng `room.users`/`userRoomMap`/reconnect
+(#115). 5 test mới trong `server/tests/RoomManager.test.js` (describe "listRooms userCount vs. ghost
+viewers"); mutation-kill: tắt dòng lọc → 2/5 fail. `npm test` 1367/1367. Không đụng `client/` ⇒
+không bump `?v=N`. Chi tiết:
+[docs/fix-log/2026-08-27-todo-158-lobby-usercount-ghost-viewers.md](../fix-log/2026-08-27-todo-158-lobby-usercount-ghost-viewers.md).
 
 **Nguồn:** báo cáo người dùng — cùng nguồn #157 (2026-08-27), phát hiện thêm khi đọc
 `RoomManager.listRooms()` trong lúc điều tra #157.
