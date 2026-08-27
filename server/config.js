@@ -104,6 +104,13 @@ const PORTAL_RETRY_LIMIT    = 100;
 const CHAT_RATE_LIMIT       = 5;    // Max messages per window
 const CHAT_RATE_WINDOW_MS   = 3000; // Window duration
 
+// --- Private (1-on-1 lobby) chat — #159 ---
+// Deliberately separate constants from the room-chat limits above: the two
+// flows are tuned independently and sharing CHAT_RATE_LIMIT would couple them.
+const PRIVATE_CHAT_RATE_LIMIT     = 5;    // Max private messages per window per user
+const PRIVATE_CHAT_RATE_WINDOW_MS = 3000; // Window duration
+const PRIVATE_CHAT_ALLOW_GUESTS   = true; // When false, guests can neither send nor receive private chat
+
 // --- Authentication ---
 const JWT_SECRET  = process.env.JWT_SECRET || 'gomokuvn-dev-secret-change-in-production';
 if (process.env.NODE_ENV !== 'test' && JWT_SECRET === 'gomokuvn-dev-secret-change-in-production') {
@@ -230,6 +237,9 @@ module.exports = {
   PORTAL_RETRY_LIMIT,
   CHAT_RATE_LIMIT,
   CHAT_RATE_WINDOW_MS,
+  PRIVATE_CHAT_RATE_LIMIT,
+  PRIVATE_CHAT_RATE_WINDOW_MS,
+  PRIVATE_CHAT_ALLOW_GUESTS,
   JWT_SECRET,
   JWT_EXPIRY,
   JWT_GUEST_EXPIRY,

@@ -917,7 +917,7 @@ truthful." (2026-08-27)
   1367/1367. Không đụng `client/` ⇒ không bump `?v=N` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
 
 ### Nguồn: yêu cầu người dùng — spec đầy đủ tính năng Chat riêng 1-1 ở Sảnh, chốt scope qua hỏi–đáp (2026-08-27)
-- **#159.** Chat riêng 1-1 giữa người dùng online ở Sảnh (`index.html`): cửa sổ nổi ≤3 neo góc dưới-phải,
+- ✅ **#159.** Chat riêng 1-1 giữa người dùng online ở Sảnh (`index.html`): cửa sổ nổi ≤3 neo góc dưới-phải,
   modal danh sách online + tìm kiếm, phím tắt `Ctrl/⌘+K`, chime Web Audio + nhấp nháy tiêu đề tab +
   Notification (qua nút "Bật thông báo"), i18n vi/en. Backend `PrivateChatHandler.js` (emit thẳng tới
   socket, không broadcast; rate-limit 5/3s; escape XSS + profanity mask; `activePeers`). Đổi shape

@@ -63,9 +63,24 @@ const sessions = new Map();
 // Helper functions
 // ---------------------------------------------------------------------------
 
-/** Return a sorted array of online display names for lobby broadcast. */
+/**
+ * Return the online users for lobby broadcast, sorted by display name.
+ *
+ * Shape: `[{ userId, displayName, isGuest }]`. This used to be a bare
+ * `string[]` of display names; Private Chat (#159) needs the userId to route a
+ * `private_message:send` and the guest flag to badge the row, and the
+ * online-users channel is the natural carrier since it already fans the full
+ * list to every lobby socket. `sessions` is `Map<userId, socket>` so
+ * `s.user` already holds all three fields.
+ */
 function getOnlineUsersList() {
-  return Array.from(sessions.values()).map(s => s.user.displayName).sort();
+  return Array.from(sessions.values())
+    .map(s => ({
+      userId: s.user.userId,
+      displayName: s.user.displayName,
+      isGuest: !!s.user.isGuest,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 /**

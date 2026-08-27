@@ -537,3 +537,217 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
   body.zen-lobby .tournament-card__status { display: inline; }
   body.zen-lobby .tournament-card__status .icon { display: none; }
 }
+
+/* ══ Private chat (#159) ══════════════════════════════════════════════════ */
+.online-line__more-btn {
+  margin-left: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--c-brand);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* ── Online-users modal ── */
+#modal-online-users .modal { max-width: 420px; }
+#modal-online-users .modal__header { align-items: center; gap: 10px; }
+.online-users-notif-btn {
+  margin-left: auto;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border-light);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--c-ink);
+  cursor: pointer;
+}
+.online-users-notif-btn:disabled { opacity: 0.55; cursor: default; }
+.online-users-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.online-users-search {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--c-border-light);
+  border-radius: 8px;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  font: inherit;
+}
+.online-users-search-shortcut {
+  font-size: 11px;
+  color: var(--c-ink-3);
+  border: 1px solid var(--c-border-light);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.online-users-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.online-users-list__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--c-border-light);
+}
+.online-users-list__name { color: var(--c-ink); font-size: 14px; }
+.online-users-list__chat-btn {
+  background: var(--c-brand);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.online-users-list__empty { color: var(--c-ink-3); padding: 16px 4px; text-align: center; }
+
+/* ── Floating chat windows ── */
+#private-chat-container {
+  position: fixed;
+  right: 16px;
+  bottom: 0;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 12px;
+  z-index: 2500;
+  pointer-events: none;
+}
+.pm-window {
+  pointer-events: auto;
+  width: 300px;
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.pm-window--collapsed { height: auto; }
+.pm-window--collapsed .pm-window__log,
+.pm-window--collapsed .pm-notice,
+.pm-window--collapsed .pm-input-row { display: none; }
+.pm-window__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--c-surface-2);
+  border-bottom: 1px solid var(--c-border-light);
+  cursor: pointer;
+}
+.pm-window__collapse { display: none; }
+.pm-window__name { font-weight: 600; font-size: 14px; color: var(--c-ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-window__status { font-size: 11px; color: #2e9e5b; }
+.pm-window__status.is-offline { color: var(--c-ink-3); }
+.pm-window__close {
+  background: none;
+  border: none;
+  color: var(--c-ink-2);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.pm-window__log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pm-msg { display: flex; }
+.pm-msg--self { justify-content: flex-end; }
+.pm-msg__bubble {
+  max-width: 78%;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.pm-msg--self .pm-msg__bubble { background: var(--c-brand); color: #fff; }
+.pm-notice {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--c-ink-3);
+  background: var(--c-surface-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pm-notice[hidden] { display: none; }
+.pm-notice::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-ink-3);
+}
+.pm-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--c-border-light);
+}
+.pm-input {
+  flex: 1;
+  border: 1px solid var(--c-border-light);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+}
+.pm-input:disabled { opacity: 0.5; }
+.pm-send-btn {
+  background: var(--c-brand);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.pm-send-btn:disabled { opacity: 0.5; cursor: default; }
+
+@media (max-width: 640px) {
+  #private-chat-container {
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 0;
+  }
+  .pm-window {
+    width: 100%;
+    border-radius: 0;
+  }
+  /* Only the newest (last-appended → visually topmost via column-reverse? no —
+     column: last child is bottom). Keep the last window full, collapse the
+     rest to their header bar. */
+  .pm-window:not(:last-child) { height: auto; }
+  .pm-window:not(:last-child) .pm-window__log,
+  .pm-window:not(:last-child) .pm-notice,
+  .pm-window:not(:last-child) .pm-input-row { display: none; }
+}
