@@ -221,3 +221,18 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   có/không × viewport hẹp/rộng; kiểm chứng không rỗng bằng `git stash` chỉ `room.js` → đúng 1/4
   fail), `npm test` 1147/1147. `?v=135→136` (báo cáo người dùng kèm ảnh chụp PC + DevTools, TODO.md
   #134) — [chi tiết](docs/instruction/B134-sidebar-tab-thut-vao-trong-khi-redraw.md)
+- **B157.** (Đã làm) Sửa `renderUsersList()` trong `client/js/room-ui.js` — nhánh mới gọi lại
+  `renderStatusDot()` (đã dùng cho player ngồi ghế, cùng file) cho guest có `presence ===
+  'disconnected'`/`'away'`, không hiện chấm nào khi guest bình thường (giữ nguyên nguyên tắc giảm
+  nhiễu của `renderStatusDot`). Bọc `user-name`+chấm trong `.user-name-group` mới thay vì thả thẳng
+  chấm là con thứ 3 của `<li>` — `.users-list li` dùng `justify-content: space-between` cho đúng 2
+  cột (tên | nút mời ra), thêm 1 con nữa sẽ phá bố cục đó. **Không đụng** `TODO.md #115` (viewer-ma
+  nằm lại `room.users` vô thời hạn — hành vi đã chốt) hay bất kỳ file `server/` nào — dữ liệu
+  `presence` server gửi đã đúng sẵn từ #113/#115, đây thuần là fix hiển thị phía client. Bug có trên
+  cả `main` (đã xác nhận bằng `git show main:client/js/room-ui.js`, không phải hành vi riêng của
+  `dev`) ⇒ branch `fix/viewer-list-presence-indicator` off `main`, theo đúng tiền lệ B92. `client/js/`
+  CÓ hạ tầng test jsdom (tiền lệ B134's `room-zen-drawer-collapsed-recovery.test.js`) — viết 4 test
+  mới `client/tests/room-ui-viewer-presence-dot.test.js` thay vì bỏ qua; nạp `escape-utils.js` thủ
+  công qua `window.EscapeUtils = require(...)` trước `room-ui.js` vì UMD export không tự gắn vào
+  `global` khi chạy dưới Jest/CommonJS (khác nhánh browser). `?v=138→139` (báo cáo người dùng, TODO.md
+  #157) — [chi tiết](docs/instruction/B157-viewer-list-khong-hien-thi-trang-thai-mat-ket-noi.md)
