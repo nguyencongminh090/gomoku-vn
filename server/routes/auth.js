@@ -35,6 +35,7 @@ const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
+const { clientInfoFromReq } = require('../utils/geo');
 const { OAuth2Client } = require('google-auth-library');
 const config  = require('../config');
 
@@ -76,6 +77,12 @@ const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader, baseCooki
 const googleClient = (config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET)
   ? new OAuth2Client(config.GOOGLE_CLIENT_ID, config.GOOGLE_CLIENT_SECRET)
   : null;
+
+/** `{ ip, geo }` for an auth log line — spread into the fields bag. */
+function clientLoc(req) {
+  const { ip, geo } = clientInfoFromReq(req);
+  return { ip, geo };
+}
 
 /**
  * The OAuth callback URL for THIS request's own origin, not a fixed config
@@ -324,7 +331,7 @@ router.post('/register', async (req, res, next) => {
       isGuest: false,
     });
 
-    logger.info(`[Auth] Registered user: ${username} (${userId})`);
+    logger.info('[Auth] Registered user', { username, uid: userId, ...clientLoc(req) });
     return res.status(201).json(body);
 
   } catch (err) {
@@ -369,7 +376,7 @@ router.post('/login', async (req, res, next) => {
       isGuest: false,
     });
 
-    logger.info(`[Auth] Login: ${username}`);
+    logger.info('[Auth] Login', { username, uid: user.id, ...clientLoc(req) });
     return res.json(body);
 
   } catch (err) {
@@ -393,7 +400,7 @@ router.post('/guest', (req, res, next) => {
       isGuest: true,
     });
 
-    logger.info(`[Auth] Guest session: ${displayName} (${guestId})`);
+    logger.info('[Auth] Guest session', { user: displayName, uid: guestId, ...clientLoc(req) });
     return res.json(body);
 
   } catch (err) {
@@ -561,7 +568,7 @@ router.get('/google/callback', async (req, res) => {
         return res.redirect('/index.html');
       }
     }
-    logger.warn('[Auth] Google OAuth callback: missing/mismatched state');
+    logger.warn('[Auth] Google OAuth callback: missing/mismatched state', clientLoc(req));
     return res.redirect('/login.html?error=oauth_state');
   }
 
@@ -621,7 +628,7 @@ router.get('/google/callback', async (req, res) => {
           oauth_provider: 'google',
           oauth_id: payload.sub,
         };
-        logger.info(`[Auth] Created account via Google OAuth: ${username} (${userId})`);
+        logger.info('[Auth] Created account via Google OAuth', { username, uid: userId, ...clientLoc(req) });
       } catch (err) {
         if (err.code !== 'SQLITE_CONSTRAINT_UNIQUE' && err.code !== 'SQLITE_CONSTRAINT') throw err;
         user = db.getUserByOAuthId('google', payload.sub);
@@ -638,7 +645,7 @@ router.get('/google/callback', async (req, res) => {
       isGuest: false,
     });
 
-    logger.info(`[Auth] Google login: ${user.username} (${user.id})`);
+    logger.info('[Auth] Google login', { username: user.username, uid: user.id, ...clientLoc(req) });
     const userPayload = encodeURIComponent(JSON.stringify(body.user));
     return res.redirect(`/oauth-complete.html#${userPayload}`);
 

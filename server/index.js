@@ -27,6 +27,7 @@ const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
+const { accessLog } = require('./middleware/accessLog');
 const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
 const sessionManager = require('./managers/SessionManager');
@@ -83,6 +84,11 @@ app.use(compression());
 
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
+
+// Opt-in HTTP access log (LOG_HTTP=true) — one line per request, with the
+// Cloudflare-resolved client IP + geo. Mounted before static/routes so it
+// covers every response. No-op with zero overhead when disabled.
+app.use(accessLog);
 
 // `client/` is what ships, in every environment (TODO.md #109).
 //

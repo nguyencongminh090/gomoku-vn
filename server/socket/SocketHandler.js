@@ -16,6 +16,7 @@
  */
 
 const logger             = require('../utils/logger');
+const { clientInfoFromSocket } = require('../utils/geo');
 const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
@@ -138,7 +139,10 @@ function init(io) {
 
   io.on('connection', (socket) => {
     const user = socket.user;
-    logger.info(`[Socket] Connected: ${user.displayName} (${user.userId}) sid=${socket.id}`);
+    const { ip, geo } = clientInfoFromSocket(socket);
+    logger.info('[Socket] Connected', {
+      user: user.displayName, uid: user.userId, sid: socket.id, ip, geo,
+    });
 
     // ── Single-device-per-token enforcement ─────────────────────────────────
     // Exactly one live session per userId is allowed. The `sessions` map IS
@@ -291,7 +295,9 @@ function init(io) {
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {
-      logger.info(`[Socket] Disconnected: ${user.displayName} (${user.userId}) reason=${reason}`);
+      logger.info('[Socket] Disconnected', {
+        user: user.displayName, uid: user.userId, sid: socket.id, ip, geo, reason,
+      });
 
       // Only clear the session entry if it still points at THIS socket — a
       // kicked/stale socket's disconnect must not erase the newer session

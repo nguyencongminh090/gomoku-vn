@@ -960,6 +960,18 @@ truthful." (2026-08-27)
   khỏi `config.js`. Vẫn dùng chung làm fallback tên OAuth. 13 test mới `guest-name.test.js` (SQLite
   in-memory), `npm test` 1413/1413. Server-only ⇒ không bump `?v=N`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B163-guest-name-guest-plus-4-digits.md)
 
+### Nguồn: yêu cầu người dùng — cải thiện log server (2026-08-28)
+- ✅ **#164.** (Đã xong 2026-08-28 — `feature/server-log-logfmt-geoip` off `dev`.) `logger` xuất
+  được **logfmt** (`ts=<ISO> level=info msg="..." k=v`, quote/escape khi có dấu cách/`=`/`"`) qua
+  `LOG_FORMAT=pretty|logfmt|auto` — `auto` giữ bản màu người-đọc khi chạy trong terminal. Đối số
+  cuối là plain object → structured fields; chữ ký `debug/info/warn/error` giữ nguyên (không sửa
+  ~91 call site). `server/utils/geo.js` mới: nhãn geo từ **header Cloudflare** (`CF-IPCountry`,
+  tuỳ chọn city/region/asn — KHÔNG thêm package GeoIP), `formatGeo` → `local`/`-`/`VN`/`VN/Hanoi`.
+  Gắn `{ip, geo}` vào log socket connect/disconnect, `[Auth]` login/register/guest/google, và 4
+  warn handshake bị từ chối. `server/middleware/accessLog.js` mới: access-log HTTP 1 dòng/response,
+  **tắt mặc định**, bật bằng `LOG_HTTP=true`. Test mới `geo.test.js` + `logger.test.js`; `npm test`
+  1452/1452. Server-only ⇒ không bump `?v=N`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B164-server-log-logfmt-va-ip-geo.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

@@ -619,3 +619,13 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `GUEST_NAME_NOUNS`; xoá khỏi `config.js` chỉ khi không còn nơi dùng. KHÔNG bump `?v=N`, KHÔNG đụng
   `isValidDisplayName`/đường register. Test Jest: regex `^guest\d{4}$`, nhánh padStart số < 1000 —
   [chi tiết](docs/instruction/B163-guest-name-guest-plus-4-digits.md)
+- **B164.** `server/utils/logger.js`: thêm `LOG_FORMAT=pretty|logfmt|auto` (auto = pretty khi
+  `stdout.isTTY`); đối số cuối là plain object → structured fields `k=v` (logfmt-quote space/`=`/`"`);
+  giữ nguyên chữ ký `debug/info/warn/error` để không sửa ~91 call site. `server/utils/geo.js` (mới):
+  CHỈ đọc header Cloudflare (`CF-IPCountry` + tuỳ chọn city/region/asn), KHÔNG thêm dependency
+  GeoIP — dev không qua CF thì `geo=-`/`local`; đổi sang MaxMind sau chỉ cần sửa 1 module này.
+  `server/middleware/accessLog.js` (mới): tắt mặc định, bật `LOG_HTTP=true`, mount sau
+  `express.json()`. Wire `{ip,geo}` vào SocketHandler connect/disconnect + `middleware/auth.js` 4
+  warn + `routes/auth.js` login/register/guest/google. KHÔNG bump `?v=N`. Pitfall: sửa
+  `SocketHandler.test.js` case "reason không bị coerce" sang đọc fields bag. Test mới
+  `geo.test.js` + `logger.test.js` — [chi tiết](docs/instruction/B164-server-log-logfmt-va-ip-geo.md)
