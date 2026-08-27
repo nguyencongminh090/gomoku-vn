@@ -541,6 +541,22 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   đã emit `game:undo_applied`) hay `declineUndo` (đã đúng). Chỉ bump `?v=N` nếu cách làm cuối cùng có
   đụng file trong `client/js/` (TODO.md #156) —
   [chi tiết](docs/instruction/B156-swap2-opening-undo-accept-popup-khong-bien-mat.md)
+- **B157.** (Đã làm) Sửa `renderUsersList()` trong `client/js/room-ui.js` — nhánh mới gọi lại
+  `renderStatusDot()` (đã dùng cho player ngồi ghế, cùng file) cho guest có `presence ===
+  'disconnected'`/`'away'`, không hiện chấm nào khi guest bình thường (giữ nguyên nguyên tắc giảm
+  nhiễu của `renderStatusDot`). Bọc `user-name`+chấm trong `.user-name-group` mới thay vì thả thẳng
+  chấm là con thứ 3 của `<li>` — `.users-list li` dùng `justify-content: space-between` cho đúng 2
+  cột (tên | nút mời ra), thêm 1 con nữa sẽ phá bố cục đó. **Không đụng** `TODO.md #115` (viewer-ma
+  nằm lại `room.users` vô thời hạn — hành vi đã chốt) hay bất kỳ file `server/` nào — dữ liệu
+  `presence` server gửi đã đúng sẵn từ #113/#115, đây thuần là fix hiển thị phía client. Bug có trên
+  cả `main` (đã xác nhận bằng `git show main:client/js/room-ui.js`, không phải hành vi riêng của
+  `dev`) ⇒ branch `fix/viewer-list-presence-indicator` off `main`, theo đúng tiền lệ B92. `client/js/`
+  CÓ hạ tầng test jsdom (tiền lệ B134's `room-zen-drawer-collapsed-recovery.test.js`) — viết 4 test
+  mới `client/tests/room-ui-viewer-presence-dot.test.js` thay vì bỏ qua; nạp `escape-utils.js` thủ
+  công qua `window.EscapeUtils = require(...)` trước `room-ui.js` vì UMD export không tự gắn vào
+  `global` khi chạy dưới Jest/CommonJS (khác nhánh browser). `?v=138→139` trên `main`; merge vào
+  `dev` re-bump theo `max(dev,main)+1` thành `155→156` (báo cáo người dùng, TODO.md #157) — [chi
+  tiết](docs/instruction/B157-viewer-list-khong-hien-thi-trang-thai-mat-ket-noi.md)
 - **B158.** Sửa `RoomManager.listRooms()` (`server/managers/RoomManager.js:614-638`), đổi
   `userCount: room.users.size` thành đếm có điều kiện theo `presence`. **Phải hỏi người dùng trước**
   giữa 2 công thức: (A) chỉ loại viewer (`slot === null`) đã `disconnected`, giữ nguyên player đang

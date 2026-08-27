@@ -656,9 +656,20 @@
       const hostBadge = g.role === 'host'
         ? ' <span class="slot-card__role slot-card__role--host">CP</span>'
         : '';
+      // Only render a dot for the non-default presence states — a normally
+      // connected guest stays unmarked (same noise tradeoff as renderStatusDot
+      // above). Without this, a viewer whose socket dropped (no reconnect
+      // timeout for viewers — TODO.md #115) looked identical to one actually
+      // present, since the server-side `presence` field wasn't read here at all.
+      const statusDot = (g.presence === 'disconnected' || g.presence === 'away')
+        ? renderStatusDot(g)
+        : '';
       html += `
         <li>
-          <span class="user-name">${escapeHtml(g.displayName)}${hostBadge}</span>
+          <span class="user-name-group">
+            <span class="user-name">${escapeHtml(g.displayName)}${hostBadge}</span>
+            ${statusDot}
+          </span>
           ${kickBtn}
         </li>
       `;
