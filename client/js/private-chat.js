@@ -16,7 +16,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=158';
+import { client } from './lobby.js?v=159';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -118,15 +118,28 @@ function renderNotifButton() {
   const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'denied';
   notifBtn.hidden = (typeof Notification === 'undefined');
   notifBtn.title = '';
+
+  const label = notifBtn.querySelector('.online-users-notif-btn__label');
+  const iconUse = notifBtn.querySelector('.icon use');
+  const setIcon = (id) => {
+    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=159#' + id);
+  };
+
   if (perm === 'granted') {
-    notifBtn.textContent = t('private_chat.notif_enabled');
+    if (label) label.textContent = t('private_chat.notif_enabled');
+    setIcon('ph-regular-bell');
+    notifBtn.dataset.state = 'on';
     notifBtn.disabled = true;
   } else if (perm === 'denied') {
-    notifBtn.textContent = t('private_chat.notif_blocked');
-    notifBtn.disabled = true;
+    if (label) label.textContent = t('private_chat.notif_blocked');
+    setIcon('ph-regular-bell-slash');
+    notifBtn.dataset.state = 'blocked';
     notifBtn.title = t('private_chat.notif_blocked');
+    notifBtn.disabled = true;
   } else {
-    notifBtn.textContent = t('private_chat.notif_enable');
+    if (label) label.textContent = t('private_chat.notif_enable');
+    setIcon('ph-regular-bell');
+    notifBtn.dataset.state = 'default';
     notifBtn.disabled = false;
   }
 }
@@ -179,10 +192,10 @@ function appendMessage(userId, msg, isSelf) {
 function buildWindow(userId, name) {
   const root = document.createElement('div');
   root.className = 'pm-window';
-  root.dataset.userId = userId;
+  root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=158#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=159#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
       <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}">✕</button>
@@ -193,7 +206,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=158#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=159#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -218,7 +231,10 @@ function buildWindow(userId, name) {
   };
   w.sendBtn.addEventListener('click', send);
   w.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); send(); } });
-  root.querySelector('.pm-window__close').addEventListener('click', () => closeChat(userId));
+  root.querySelector('.pm-window__close').addEventListener('click', (e) => {
+    e.stopPropagation();
+    closeChat(userId);
+  });
   root.querySelector('.pm-window__header').addEventListener('click', (e) => {
     if (e.target.closest('.pm-window__close') || e.target.closest('.pm-input-row')) return;
     root.classList.toggle('pm-window--collapsed');
@@ -260,10 +276,29 @@ function closeChat(userId) {
 // Online-users modal
 // ---------------------------------------------------------------------------
 
+/** Two-letter initials for the avatar circle. */
+function initials(name) {
+  const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+/** Deterministic hue (0–359) from a string, for the avatar background. */
+function hueOf(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 360;
+  return h;
+}
+
 function renderModalList() {
   if (!modalList) return;
   const q = (modalSearch.value || '').trim().toLowerCase();
   const rows = onlineUsers.filter(u => !q || u.displayName.toLowerCase().includes(q));
+
+  const countEl = document.getElementById('online-users-count');
+  if (countEl) countEl.textContent = String(onlineUsers.length);
+
   modalList.innerHTML = '';
 
   if (rows.length === 0) {
@@ -275,20 +310,54 @@ function renderModalList() {
   }
 
   for (const u of rows) {
+    const isSelf = u.userId === me.userId;
     const li = document.createElement('li');
-    li.className = 'online-users-list__row';
+    li.className = 'online-users-list__row' + (isSelf ? ' is-self' : '');
+
+    const avatar = document.createElement('span');
+    avatar.className = 'online-users-list__avatar';
+    avatar.style.setProperty('--h', hueOf(u.userId || u.displayName));
+    avatar.textContent = initials(u.displayName);
+    li.appendChild(avatar);
+
+    const nameWrap = document.createElement('span');
+    nameWrap.className = 'online-users-list__name-wrap';
     const nameSpan = document.createElement('span');
     nameSpan.className = 'online-users-list__name';
-    nameSpan.textContent = u.displayName + (u.userId === me.userId ? ' ' + t('private_chat.you') : '');
-    li.appendChild(nameSpan);
+    nameSpan.textContent = u.displayName;
+    nameWrap.appendChild(nameSpan);
+    if (isSelf) {
+      const you = document.createElement('span');
+      you.className = 'online-users-list__tag';
+      you.textContent = t('private_chat.you');
+      nameWrap.appendChild(you);
+    } else if (u.isGuest) {
+      const g = document.createElement('span');
+      g.className = 'online-users-list__tag';
+      g.textContent = t('nav.guest_badge');
+      nameWrap.appendChild(g);
+    }
+    const meta = document.createElement('span');
+    meta.className = 'online-users-list__meta';
+    meta.textContent = t('private_chat.status_in_lobby');
+    nameWrap.appendChild(meta);
+    li.appendChild(nameWrap);
 
-    if (u.userId !== me.userId) {
+    if (!isSelf) {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'online-users-list__chat-btn';
-      btn.textContent = t('private_chat.btn_chat');
-      btn.addEventListener('click', () => { openChat(u.userId); closeModal(); });
+      btn.title = t('private_chat.btn_chat');
+      btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=159#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
+      // The whole row (except its own controls) opens the chat.
+      const open = () => { openChat(u.userId); closeModal(); };
+      btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
+      li.addEventListener('click', open);
+      li.setAttribute('role', 'button');
+      li.tabIndex = 0;
+      li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
     }
     modalList.appendChild(li);
   }
@@ -398,20 +467,25 @@ function init() {
     if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal();
   });
 
-  // Delegated interaction on the lobby online line: a name opens a chat, the
-  // "…and N others" affordance opens the full modal. Both are role="button"
-  // spans so keyboard (Enter/Space) works too.
+  // Delegated interaction on the lobby online line ONLY: a name opens a chat,
+  // the "…and N others" affordance opens the full modal. Scoped to
+  // #online-line-names so it can never match the [data-peer-id] on a chat
+  // window root (that collision reopened a window the moment its ✕ was
+  // clicked). Both targets are role="button" spans → keyboard works too.
+  const onlineLine = document.getElementById('online-line-names');
   const onlineLineAction = (e) => {
     const el = e.target.closest && e.target.closest('[data-user-id], [data-open-users]');
-    if (!el) return;
+    if (!el || !onlineLine || !onlineLine.contains(el)) return;
     if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     if (el.hasAttribute('data-open-users')) { openModal(); return; }
     const uid = el.getAttribute('data-user-id');
     if (uid) openChat(uid);
   };
-  document.addEventListener('click', onlineLineAction);
-  document.addEventListener('keydown', onlineLineAction);
+  if (onlineLine) {
+    onlineLine.addEventListener('click', onlineLineAction);
+    onlineLine.addEventListener('keydown', onlineLineAction);
+  }
 
   const restoreFocus = () => { if (!tabHidden()) clearTitleFlash(); };
   window.addEventListener('focus', restoreFocus);
