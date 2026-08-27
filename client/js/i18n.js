@@ -290,19 +290,16 @@ const TRANSLATIONS = {
     'tmatch.score_title_race_to_margin': 'Bảng điểm — Đấu tới {target} điểm',
     'tmatch.th_score': 'Điểm',
 
-    // ── UI mode (lite / default / pro) ────────────────────────
+    // ── UI mode (lite / default) ──────────────────────────────
     'mode.title': 'Chế độ giao diện',
     'mode.lite': 'Gọn',
     'mode.default': 'Mặc định',
-    'mode.pro': 'Chuyên sâu',
     'mode.lite_desc': 'Tối giản cho người mới',
-    'mode.default_desc': 'Cân bằng giữa gọn và đầy đủ',
-    'mode.pro_desc': 'Hiển thị đầy đủ chi tiết',
+    'mode.default_desc': 'Hiển thị đầy đủ chi tiết',
 
     // ── Create room modal (mode-dependent) ────────────────────
     'modal.quick_match': 'Tạo nhanh',
     'modal.advanced': 'Tuỳ chọn nâng cao',
-    'modal.use_last': 'Dùng cài đặt lần trước',
 
     // ── Guest settings summary (Lite) ─────────────────────────
     'settings.summary': '{board}, luật {rules}, {timer}',
@@ -918,19 +915,16 @@ const TRANSLATIONS = {
     'tmatch.th_score': 'Score',
 
     // ── Create room modal ─────────────────────────────────────
-    // ── UI mode (lite / default / pro) ────────────────────────
+    // ── UI mode (lite / default) ──────────────────────────────
     'mode.title': 'Interface mode',
     'mode.lite': 'Lite',
     'mode.default': 'Default',
-    'mode.pro': 'Pro',
     'mode.lite_desc': 'Simplified for new players',
-    'mode.default_desc': 'Balanced between simple and complete',
-    'mode.pro_desc': 'Full detail for power users',
+    'mode.default_desc': 'Full detail for power users',
 
     // ── Create room modal (mode-dependent) ────────────────────
     'modal.quick_match': 'Quick match',
     'modal.advanced': 'Advanced options',
-    'modal.use_last': 'Use last settings',
 
     // ── Guest settings summary (Lite) ─────────────────────────
     'settings.summary': '{board}, {rules} rules, {timer}',

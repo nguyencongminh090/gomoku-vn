@@ -46,9 +46,10 @@
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 
-  // Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
+  // Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
+  // 'pro' → 'default' normalisation lives in exactly one place.
   function uiMode() {
-    return document.documentElement.getAttribute('data-ui-mode') || 'lite';
+    return (global.getUiMode && global.getUiMode()) || 'lite';
   }
 
   // Bounce the user back to the Chat tab when the tab they are on disappears.
