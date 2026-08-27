@@ -907,10 +907,14 @@ truthful." (2026-08-27)
   3/4 fail), `npm test` 1151/1151. `?v=138→139` trên `main`; merge vào `dev` re-bump theo
   `max(dev,main)+1` thành `155→156` (giữ nguyên `?v=` phía `dev` trong xung đột thuần số phiên bản,
   rồi bump lại toàn repo) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B157-viewer-list-khong-hien-thi-trang-thai-mat-ket-noi.md)
-- **#158.** Phát hiện thêm khi điều tra #157: `RoomManager.listRooms()`'s `userCount:
-  room.users.size` (`server/managers/RoomManager.js:614-638`) đếm luôn viewer-ma vẫn còn trong
-  `room.users` do #115 — số người hiển thị trên thẻ phòng ở sảnh chờ cao hơn thực tế. Cần chốt công
-  thức đếm với người dùng trước khi sửa (xem `docs/instruction/B158-*.md`) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
+- ✅ **#158.** (Đã sửa 2026-08-27 — `fix/lobby-usercount-exclude-ghost-viewers` off `main`.) Phát
+  hiện thêm khi điều tra #157: `RoomManager.listRooms()`'s `userCount: room.users.size`
+  (`server/managers/RoomManager.js`) đếm luôn viewer-ma vẫn còn trong `room.users` do #115 — số
+  người hiển thị trên thẻ phòng ở sảnh chờ cao hơn thực tế. Người dùng chốt công thức **(A)**: chỉ
+  loại viewer `slot === null && presence === 'disconnected'`; seated player disconnected trong grace
+  vẫn tính. Vòng lặp thay `room.users.size` trong `listRooms()`, không đụng `room.users`/reconnect
+  (#115). 5 test mới `RoomManager.test.js` (mutation-kill: 2/5 fail khi tắt dòng lọc), `npm test`
+  1367/1367. Không đụng `client/` ⇒ không bump `?v=N` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
 
 ### Nguồn: yêu cầu người dùng — spec đầy đủ tính năng Chat riêng 1-1 ở Sảnh, chốt scope qua hỏi–đáp (2026-08-27)
 - **#159.** Chat riêng 1-1 giữa người dùng online ở Sảnh (`index.html`): cửa sổ nổi ≤3 neo góc dưới-phải,

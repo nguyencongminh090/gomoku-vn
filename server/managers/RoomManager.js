@@ -617,12 +617,24 @@ class RoomManager extends EventEmitter {
       const hostUser = room.users.get(room.host);
       const playerCount = this._countPlayers(room);
 
+      // Ghost viewers: a spectator (slot === null) whose socket dropped has no
+      // cleanup timeout (see TODO.md #115) — they linger in room.users forever
+      // while any other occupant keeps the room alive. Exclude them from the
+      // lobby head-count so the room-card number reflects who's actually there.
+      // Seated players marked 'disconnected' during grace still count — they're
+      // mid-reconnect, not gone (TODO.md #158).
+      let userCount = 0;
+      for (const [, u] of room.users) {
+        if (u.slot === null && u.presence === 'disconnected') continue;
+        userCount++;
+      }
+
       list.push({
         roomId: room.roomId,
         roomName: room.roomName,
         hostName: hostUser ? hostUser.displayName : '—',
         playerCount,                     // 0, 1, or 2 seated players
-        userCount: room.users.size,      // Total people in room
+        userCount,                       // People in room, minus ghost viewers
         state: room.state,
         boardSize: room.settings.boardSize,
         ruleWall: room.settings.ruleWall,

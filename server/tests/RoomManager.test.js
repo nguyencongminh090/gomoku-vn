@@ -825,3 +825,66 @@ describe('config — idle scan interval', () => {
     expect(realConfig.IDLE_SCAN_INTERVAL_MS).toBeLessThan(realConfig.IDLE_TIMEOUT_MS);
   });
 });
+
+// ── listRooms userCount excludes ghost viewers (TODO.md #158) ─────────────
+// A disconnected spectator (slot === null) has no cleanup timeout and lingers
+// in room.users indefinitely; it must not inflate the lobby room-card count.
+// A disconnected seated player (in grace, mid-reconnect) still counts.
+
+describe('RoomManager — listRooms userCount vs. ghost viewers (TODO.md #158)', () => {
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  function makeRoom() {
+    const { room } = roomManager.createRoom(
+      { userId: 'host', displayName: 'Host', isGuest: false, ip: '198.51.100.50' }
+    );
+    return room;
+  }
+
+  function listedCount(roomId) {
+    return roomManager.listRooms().find((r) => r.roomId === roomId).userCount;
+  }
+
+  test('all-active room counts everyone', () => {
+    const room = makeRoom();
+    roomManager.joinRoom({ userId: 'p1', displayName: 'P1', isGuest: false }, room.roomId);
+    roomManager.joinRoom({ userId: 'v1', displayName: 'V1', isGuest: true }, room.roomId);
+    expect(listedCount(room.roomId)).toBe(3);
+  });
+
+  test('a disconnected viewer is excluded from the count', () => {
+    const room = makeRoom();
+    roomManager.joinRoom({ userId: 'v1', displayName: 'V1', isGuest: true }, room.roomId);
+    room.users.get('v1').presence = 'disconnected';
+    expect(listedCount(room.roomId)).toBe(1); // host only
+  });
+
+  test('an away viewer still counts (only disconnected is a ghost)', () => {
+    const room = makeRoom();
+    roomManager.joinRoom({ userId: 'v1', displayName: 'V1', isGuest: true }, room.roomId);
+    room.users.get('v1').presence = 'away';
+    expect(listedCount(room.roomId)).toBe(2);
+  });
+
+  test('a disconnected seated player still counts (grace / mid-reconnect)', () => {
+    const room = makeRoom();
+    roomManager.joinRoom({ userId: 'p1', displayName: 'P1', isGuest: false }, room.roomId);
+    roomManager.sitDown('p1', 1);
+    room.users.get('p1').presence = 'disconnected';
+    expect(listedCount(room.roomId)).toBe(2);
+  });
+
+  test('multiple ghost viewers are all excluded', () => {
+    const room = makeRoom();
+    for (const id of ['v1', 'v2', 'v3']) {
+      roomManager.joinRoom({ userId: id, displayName: id, isGuest: true }, room.roomId);
+      room.users.get(id).presence = 'disconnected';
+    }
+    roomManager.joinRoom({ userId: 'v4', displayName: 'V4', isGuest: true }, room.roomId);
+    expect(listedCount(room.roomId)).toBe(2); // host + active v4
+  });
+});
