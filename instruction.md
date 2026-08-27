@@ -604,3 +604,9 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   board-locks, KHÔNG đụng backend, KHÔNG sửa fix-log phase-2 (append-only). Client chưa có test tự
   động → verify browser thật (gồm test thủ công `gvn_ui_mode='pro'` → phải thành Default) —
   [chi tiết](docs/instruction/B161-gop-2-che-do-ui-lite-default-bo-pro.md)
+- **B162.** CHỈ sửa CSS `.score-table` (`room.css` ~369–387): thêm `border-right` cho
+  `th:not(:last-child)`/`td:not(:last-child)` — KHÔNG viền ngoài. `border-collapse: collapse` đang
+  bật nên phải dùng `:not(:last-child)` để không tạo khung. Đối chiếu `room-zen.css:559+` (dùng
+  token zen) + mobile `room.css:913`. Không đụng `renderScoreTable`/`room.html`. Bump `?v=N` toàn
+  `client/` + grep verify 1 giá trị; verify browser thật (thường + zen + mobile) —
+  [chi tiết](docs/instruction/B162-score-table-thieu-duong-ke-cot-kho-doc.md)
