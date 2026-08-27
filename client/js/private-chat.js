@@ -16,7 +16,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=159';
+import { client } from './lobby.js?v=160';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -35,7 +35,14 @@ const windows = new Map();
 const order = [];
 
 let onlineUsers = [];               // [{ userId, displayName, isGuest }]
-let me = { userId: null, displayName: '' };
+
+// Live view of the current user. `session:me` can arrive AFTER this module
+// runs (see lobby.js), so a value captured once at init would stay null —
+// read it fresh every time instead.
+const me = {
+  get userId()      { const u = window.GvnSession && window.GvnSession.getUser(); return u ? u.userId : null; },
+  get displayName() { const u = window.GvnSession && window.GvnSession.getUser(); return u ? u.displayName : ''; },
+};
 
 let originalTitle = document.title;
 let flashTimer = null;
@@ -122,7 +129,7 @@ function renderNotifButton() {
   const label = notifBtn.querySelector('.online-users-notif-btn__label');
   const iconUse = notifBtn.querySelector('.icon use');
   const setIcon = (id) => {
-    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=159#' + id);
+    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=160#' + id);
   };
 
   if (perm === 'granted') {
@@ -195,7 +202,7 @@ function buildWindow(userId, name) {
   root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=159#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=160#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
       <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}">✕</button>
@@ -206,7 +213,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=159#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=160#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -349,7 +356,7 @@ function renderModalList() {
       btn.className = 'online-users-list__chat-btn';
       btn.title = t('private_chat.btn_chat');
       btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
-      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=159#ph-bold-chat-circle"></use></svg>';
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=160#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
       // The whole row (except its own controls) opens the chat.
       const open = () => { openChat(u.userId); closeModal(); };
@@ -448,9 +455,6 @@ function init() {
 
   originalTitle = document.title;
 
-  const sessionUser = window.GvnSession && window.GvnSession.getUser();
-  if (sessionUser) me = { userId: sessionUser.userId, displayName: sessionUser.displayName };
-
   const closeBtn = document.getElementById('modal-online-users-close');
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
@@ -459,13 +463,33 @@ function init() {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') requestNotifPermission();
   });
 
+  // Ctrl/⌘-K toggles the modal. Registered in the capture phase and keyed on
+  // e.code as well as e.key so a stray browser default or a layout quirk
+  // can't swallow it.
   window.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+    const isK = e.code === 'KeyK' || e.key === 'k' || e.key === 'K';
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && isK) {
       e.preventDefault();
       toggleModal();
+      return;
     }
     if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal();
-  });
+  }, true);
+
+  // The "Đang online · N" label is always present — make it the discoverable,
+  // click-anywhere way into the online-users list (Ctrl/⌘-K stays as the
+  // shortcut). Without this, a lobby with only a handful of people online has
+  // no visible affordance at all.
+  const onlineTitle = document.querySelector('#online-line .online-line__title');
+  if (onlineTitle) {
+    onlineTitle.setAttribute('role', 'button');
+    onlineTitle.setAttribute('tabindex', '0');
+    onlineTitle.classList.add('online-line__title--action');
+    onlineTitle.addEventListener('click', openModal);
+    onlineTitle.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(); }
+    });
+  }
 
   // Delegated interaction on the lobby online line ONLY: a name opens a chat,
   // the "…and N others" affordance opens the full modal. Scoped to

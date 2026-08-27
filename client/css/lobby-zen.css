@@ -302,6 +302,13 @@ body.zen-lobby .online-line__title {
   font-weight: 600;
   color: var(--c-ink-2);
 }
+body.zen-lobby .online-line__title--action {
+  cursor: pointer;
+  width: fit-content;
+  border-radius: 4px;
+  outline-offset: 2px;
+}
+body.zen-lobby .online-line__title--action:hover { color: var(--c-ink); text-decoration: underline; }
 body.zen-lobby .online-line b { font-weight: 500; color: var(--c-ink); }
 
 /* ══ Tournaments tab ══════════════════════════════════════════════════════
