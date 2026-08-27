@@ -565,3 +565,18 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   `server/tests/RoomManager.test.js` (đã có test `listRooms()`/`userCount` — kiểm tra file hiện tại
   trước để tránh trùng case) —
   [chi tiết](docs/instruction/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
+- **B159.** Chat riêng 1-1 ở Sảnh. Thứ tự: (1) đổi shape `getOnlineUsersList()` (`state.js:67`) →
+  `[{userId, displayName, isGuest}]`, sửa `lobby.js` `renderOnlineLine()`, test mới
+  `state-online-users.test.js` — **không** thêm delta cho `lobby:online_users` (cố tình full-state +
+  debounce 1500ms, fix #41). (2) `server/socket/handlers/PrivateChatHandler.js` mới: `register` +
+  `cleanupUser`, tái dùng `sanitize`/`profanityFilter` từ `managers/ChatHandler.js`, hằng số riêng
+  `PRIVATE_CHAT_RATE_LIMIT=5`/`_WINDOW_MS=3000`, `messageId = crypto.randomUUID()` echo cả 2 phía,
+  `activePeers` Map, emit **thẳng tới socket** (không `io.to`/`broadcast`/`io.emit`). Đăng ký ở
+  `SocketHandler.js` (~286) + cleanup ở nhánh `disconnect` (~297). Thêm file vào `SERVER_FILES` của
+  `error-codes-i18n-consistency.test.js`. (3) i18n `private_chat.*` + `err.*` vi/en, key phẳng có
+  dấu chấm. (4) `private-chat.js` (ES module, thêm vào `index-entry.js`), `audio-manager.js`
+  `playMessageSound()` (UMD, không thêm vào entry), markup + CSS trong `lobby-zen.css`. **Ô nhập 1
+  dòng như phòng** (`client/room.html:151-154` + `room.js:319-323`), Enter gửi, không textarea. (5)
+  bump `?v=N` toàn `client/`. Notification chỉ qua nút "Bật thông báo" — không xin quyền tự động.
+  Không lưu DB. Không đánh dấu xong nếu chưa verify frontend trên browser thật —
+  [chi tiết](docs/instruction/B159-private-chat-1-1-sanh.md)

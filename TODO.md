@@ -912,6 +912,15 @@ truthful." (2026-08-27)
   `room.users` do #115 — số người hiển thị trên thẻ phòng ở sảnh chờ cao hơn thực tế. Cần chốt công
   thức đếm với người dùng trước khi sửa (xem `docs/instruction/B158-*.md`) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
 
+### Nguồn: yêu cầu người dùng — spec đầy đủ tính năng Chat riêng 1-1 ở Sảnh, chốt scope qua hỏi–đáp (2026-08-27)
+- **#159.** Chat riêng 1-1 giữa người dùng online ở Sảnh (`index.html`): cửa sổ nổi ≤3 neo góc dưới-phải,
+  modal danh sách online + tìm kiếm, phím tắt `Ctrl/⌘+K`, chime Web Audio + nhấp nháy tiêu đề tab +
+  Notification (qua nút "Bật thông báo"), i18n vi/en. Backend `PrivateChatHandler.js` (emit thẳng tới
+  socket, không broadcast; rate-limit 5/3s; escape XSS + profanity mask; `activePeers`). Đổi shape
+  `getOnlineUsersList()` → `[{userId, displayName, isGuest}]` (blast radius: `lobby.js`
+  `renderOnlineLine`, `SocketHandler.test.js`). Không lưu DB, ô nhập 1 dòng như phòng, guest được
+  chat (có cờ tắt). `[Model: Sonnet 5]` — [chi tiết](docs/todo/B159-private-chat-1-1-sanh.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
