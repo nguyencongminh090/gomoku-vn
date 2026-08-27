@@ -211,6 +211,24 @@ function getSessionById(id) {
 }
 
 /**
+ * Is there a live (not revoked, not expired) GUEST session already using this
+ * display name? Used to keep the `guestNNNN` names handed out to guests
+ * distinct among guests currently around (TODO.md #163). Guest-only on purpose:
+ * a registered user may legitimately have picked "guest1234" as their display
+ * name, and that must not block the generator forever.
+ * @param {string} displayName
+ * @param {string} now ISO timestamp to compare expiry against
+ * @returns {boolean}
+ */
+function hasLiveGuestSessionWithDisplayName(displayName, now) {
+  return !!db.prepare(
+    `SELECT 1 FROM sessions
+     WHERE display_name = ? AND is_guest = 1 AND revoked_at IS NULL AND expires_at > ?
+     LIMIT 1`
+  ).get(displayName, now);
+}
+
+/**
  * Mark one session revoked. Idempotent: an already-revoked session keeps its
  * ORIGINAL revoked_at, so re-revoking never rewrites when it first happened.
  */
@@ -845,6 +863,7 @@ module.exports = {
   updateLastLogin,
   createSession,
   getSessionById,
+  hasLiveGuestSessionWithDisplayName,
   revokeSession,
   revokeSessionsForUser,
   touchSession,

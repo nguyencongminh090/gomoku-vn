@@ -157,20 +157,8 @@ const SESSION_COOKIE_NAME  = 'gvn_session';
 // Expired rows do not disappear on their own the way an expired JWT does.
 const SESSION_SWEEP_INTERVAL_MS = 60 * 60 * 1000;      // hourly
 
-// --- Guest name generation ---
-// All words 3-5 letters so combined name is 4-8 letters total.
-const GUEST_NAME_ADJECTIVES = [
-  'Red', 'Blue', 'Bold', 'Dark', 'Fast', 'Free', 'Grim', 'Iron',
-  'Jade', 'Kind', 'Lone', 'Neon', 'Pale', 'Pure', 'Sage', 'Slim',
-  'Soft', 'Teal', 'True', 'Wild',
-];
-const GUEST_NAME_NOUNS = [
-  'Bear', 'Bird', 'Buck', 'Bull', 'Colt', 'Crow', 'Deer', 'Dove',
-  'Duck', 'Elk',  'Fish', 'Flea', 'Fly',  'Fox',  'Gnu',  'Hawk',
-  'Ibis', 'Kite', 'Lamb', 'Lark', 'Lion', 'Lynx', 'Mink', 'Mole',
-  'Moth', 'Mule', 'Newt', 'Puma', 'Rook', 'Slug', 'Swan', 'Toad',
-  'Vole', 'Wolf', 'Wren', 'Yak',
-];
+// Guest name generation moved into auth.js (TODO.md #163) — names are now
+// `guest` + 4 digits, so the adjective/noun word lists are gone.
 
 // --- HTTP ---
 const HTTP_PORT = process.env.PORT || 3000;
@@ -250,8 +238,6 @@ module.exports = {
   SESSION_COOKIE_NAME,
   SESSION_SWEEP_INTERVAL_MS,
   BCRYPT_ROUNDS,
-  GUEST_NAME_ADJECTIVES,
-  GUEST_NAME_NOUNS,
   HTTP_PORT,
   LISTEN_BACKLOG,
   MAX_EVENTS_PER_SECOND,

@@ -32,6 +32,7 @@ jest.mock('../db/database', () => ({
   updateLastLogin: jest.fn(),
   createSession: jest.fn(),
   getSessionById: jest.fn(),
+  hasLiveGuestSessionWithDisplayName: jest.fn(() => false),
   revokeSession: jest.fn(() => ({ changes: 1 })),
   revokeSessionsForUser: jest.fn(() => ({ changes: 0 })),
   touchSession: jest.fn(),
