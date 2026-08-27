@@ -1,6 +1,45 @@
 # #160 — Gỡ bỏ hoàn toàn Dark UI Mode
 
-**Trạng thái:** ⏳ Chưa làm — chờ implement
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-28, nhánh `feature/remove-dark-ui` off `dev`)
+
+## Đã làm
+
+Gỡ toàn bộ hạ tầng dark theo đúng 9 mục dưới:
+- Xoá `client/js/theme-preload.js` + 3 `<script>` ref (`index.html`, `tournament.html`,
+  `tournament-match.html`).
+- `settings-panel.js`: xoá `getTheme()`/`setTheme()`, xoá `themeRow`/`themeLabel`,
+  `group(appearance, [densityRow])` chỉ còn density. Cập nhật 2 comment lạc (dòng đầu file + comment
+  trong `openPanel`).
+- `i18n.js`: xoá `gset.theme` / `_light` / `_dark` cả block vi và en.
+- `main.css`: `:root, [data-theme="light"]` → `:root`; xoá khối `[data-theme="dark"]` (49 dòng) +
+  `[data-theme="dark"] .ui-shell`. Giữ nguyên mọi token `--board-*` và token khác dưới `:root`.
+- `room.css`: xoá 4 rule `[data-theme="dark"] .board-area/.panel-right-shell/.board-area-shell/
+  .panel-players`.
+- `board.js`: gỡ `_themeObserver` (MutationObserver trên `data-theme`) + comment; giữ
+  `_readBoardTheme()` (vẫn đọc `--board-*` từ `:root`).
+- `localStorage['theme']` cũ: bỏ qua, không migration (quyết định có ý thức — không ai đọc sau khi
+  `theme-preload.js` bị xoá).
+- `server/tests/compression.test.js`: test "tiny responses below threshold" trước dùng
+  `/js/theme-preload.js` (đã xoá) → chuyển sang `/js/ui-mode-preload.js` (~399 B, vẫn dưới ngưỡng
+  1 KB).
+- Bump `?v=160 → ?v=161` toàn `client/` (HTML + mọi `import` trong `client/js/*.js`). Grep verify:
+  đúng 1 giá trị `?v=161`.
+- `docs/todo/B70` / `B73` có nhắc "test light/dark mode" trong tiêu chí verify — **không sửa** (rule
+  append-only); người làm B70/B73 sau này bỏ phần dark.
+
+## Test / verify
+
+- Test mới `client/tests/settings-panel-no-theme-row.test.js` (5 case, jsdom): panel mở không throw
+  + render overlay; không còn label/segment theme; nhóm Appearance vẫn có control mật độ UI
+  (`mode.lite/default/pro`); mở panel không bao giờ ghi `localStorage['theme']`; `window.setTheme`/
+  `getTheme` không tồn tại.
+- `npm test`: **1389/1389 pass** (73 suite). Trước khi sửa `compression.test.js` thì 1 test fail
+  đúng như dự đoán (404 cho `theme-preload.js` đã xoá) — xác nhận test bắt được.
+- Browser thật (Playwright, guest login, db thật đã move aside + restore, 315 games nguyên vẹn):
+  - Sảnh (`index.html`): `<html>` không còn attr `data-theme`, nền trắng, không FOUC, 0 console
+    error/warning. Panel Cài đặt mở: nhóm "Giao diện" chỉ còn "Mật độ hiển thị".
+  - Phòng (`room.html`, tạo qua "Tạo nhanh"): `data-theme` = null, nền trắng, không FOUC, 0 console
+    error/warning. Panel Cài đặt: không còn hàng theme (ảnh `room-settings.png`).
 
 **Nguồn:** yêu cầu người dùng "Implement Dark UI Mode" (2026-08-27) → sau khi audit cho thấy dark
 mode gần như vô hiệu trên các màn hình chính (xem phần "Bối cảnh" bên dưới), người dùng **quyết

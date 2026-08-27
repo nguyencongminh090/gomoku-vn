@@ -4,8 +4,8 @@
  * settings-panel.js — Global Settings entry point, shared by every
  * authenticated page (index.html, room.html, history.html).
  *
- * Replaces what used to be four separate topnav icon buttons (UI density,
- * theme, language, logout) with a single gear icon that opens one panel.
+ * Replaces what used to be separate topnav icon buttons (UI density,
+ * language, logout) with a single gear icon that opens one panel.
  * Consolidates logic that was previously split across inline page scripts,
  * ui-mode.js's switcher UI, and i18n.js's createLangSwitcher, and adds a
  * Sound toggle + default placement-mode control that had no UI anywhere
@@ -48,16 +48,6 @@
       btn.disabled = false;
       btn.textContent = T('gset.btn_logout_failed');
     }
-  }
-
-  // ── Theme ───────────────────────────────────────────────────────────────
-  function getTheme() {
-    return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
-  }
-
-  function setTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    try { localStorage.setItem('theme', theme); } catch (e) { /* private mode */ }
   }
 
   // ── Sound ───────────────────────────────────────────────────────────────
@@ -165,19 +155,7 @@
     const body = document.createElement('div');
     body.className = 'gset-panel__body';
 
-    // Appearance: theme + UI density
-    const themeRow = document.createElement('div');
-    themeRow.className = 'gset-row';
-    const themeLabel = document.createElement('span');
-    themeLabel.className = 'gset-row__label';
-    themeLabel.textContent = T('gset.theme');
-    themeRow.appendChild(themeLabel);
-    themeRow.appendChild(segment(
-      [['light', T('gset.theme_light')], ['dark', T('gset.theme_dark')]],
-      getTheme(),
-      (value) => { setTheme(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
-    ));
-
+    // Appearance: UI density
     const densityRow = document.createElement('div');
     densityRow.className = 'gset-row';
     const densityLabel = document.createElement('span');
@@ -190,7 +168,7 @@
       (value) => { if (global.setUiMode) global.setUiMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
     ));
 
-    body.appendChild(group(T('gset.appearance'), [themeRow, densityRow]));
+    body.appendChild(group(T('gset.appearance'), [densityRow]));
 
     // Language
     const langRow = document.createElement('div');
@@ -337,7 +315,7 @@
   function openPanel() {
     if (!overlayEl) overlayEl = buildOverlay();
     // Refresh content each time so it reflects state changed elsewhere
-    // (e.g. theme toggled via OS preference, mode changed on another tab).
+    // (e.g. UI density or language changed on another tab).
     overlayEl.querySelector('.gset-panel__title').textContent = T('gset.title');
     renderInto(overlayEl.querySelector('.gset-panel__body'));
     overlayEl.classList.add('visible');
@@ -356,7 +334,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=160#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=161#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }
