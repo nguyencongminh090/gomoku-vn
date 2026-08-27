@@ -665,6 +665,12 @@
   justify-content: space-between;
 }
 .users-list li .user-name { font-weight: 500; }
+.users-list li .user-name-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
 
 .btn-kick {
   padding: 2px 6px;

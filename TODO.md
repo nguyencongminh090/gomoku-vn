@@ -399,6 +399,22 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   thì đúng 1/4 fail), `npm test` 1147/1147 (trước: 1143). `?v=135→136` `[Model: Sonnet 5]` — [chi
   tiết](docs/todo/B134-sidebar-tab-thut-vao-trong-khi-redraw.md)
 
+### Nguồn: báo cáo người dùng — "Scope: Room, User Connect (Player, Viewer), Online List,
+Reconnection. User out of room but tab-user still display them name in room... but the list must be
+truthful." (2026-08-27)
+- ✅ **#157.** Danh sách khán giả (`tab-users`, `renderUsersList()` trong `client/js/room-ui.js`)
+  không đọc field `presence` — viewer đã mất kết nối (không có timeout dọn dẹp, xem #115) hiển thị
+  y hệt viewer đang online. **ĐÃ LÀM 2026-08-27** (`fix/viewer-list-presence-indicator` off `main`):
+  thêm nhánh trong `renderUsersList()` gọi lại `renderStatusDot()` (đã dùng sẵn cho player ngồi ghế,
+  cùng file) khi `g.presence` là `'disconnected'`/`'away'`; guest ở trạng thái bình thường không
+  hiện chấm nào (cùng nguyên tắc giảm nhiễu thị giác đã áp dụng cho player). Bọc tên+chấm trong
+  `.user-name-group` mới (CSS `room.css`) để không phá layout `space-between` 2 cột (tên | nút mời
+  ra) sẵn có. Không đụng `TODO.md #115` (viewer-ma nằm lại `room.users` vô thời hạn — hành vi đã
+  chốt) hay bất kỳ file server nào — thuần fix hiển thị dựa trên dữ liệu server đã đúng sẵn. 4 test
+  mới `client/tests/room-ui-viewer-presence-dot.test.js` (kiểm chứng không rỗng: bỏ bản sửa ra thì
+  3/4 fail), `npm test` 1151/1151. `?v=138→139` `[Model: Sonnet 5]` — [chi
+  tiết](docs/todo/B157-viewer-list-khong-hien-thi-trang-thai-mat-ket-noi.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
