@@ -539,17 +539,17 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
 }
 
 /* ══ Private chat (#159) ══════════════════════════════════════════════════ */
-.online-line__more-btn {
-  margin-left: 8px;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--c-brand);
-  font: inherit;
-  font-size: 13px;
-  text-decoration: underline;
+/* Online names in the lobby line: plain ink text, not link-blue. Only the
+   pointer + hover underline hint that they're interactive (click → private
+   chat; the "…and N others" span → online-users modal). */
+.online-line__names .online-name {
+  color: inherit;
   cursor: pointer;
+  border-radius: 3px;
+  outline-offset: 2px;
 }
+.online-line__names .online-name:hover { text-decoration: underline; }
+.online-line__names .online-line__more { color: var(--c-ink-2); }
 
 /* ── Online-users modal ── */
 #modal-online-users .modal { max-width: 420px; }
@@ -654,17 +654,21 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
   cursor: pointer;
 }
 .pm-window__collapse { display: none; }
+.pm-window__icon { font-size: 15px; color: var(--c-ink-2); flex-shrink: 0; }
 .pm-window__name { font-weight: 600; font-size: 14px; color: var(--c-ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pm-window__status { font-size: 11px; color: #2e9e5b; }
 .pm-window__status.is-offline { color: var(--c-ink-3); }
 .pm-window__close {
   background: none;
   border: none;
-  color: var(--c-ink-2);
+  color: var(--c-ink-3);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
+  padding: 2px 4px;
+  border-radius: 5px;
 }
+.pm-window__close:hover { color: var(--c-ink); background: var(--c-border-light); }
 .pm-window__log {
   flex: 1;
   overflow-y: auto;
@@ -722,15 +726,21 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
 }
 .pm-input:disabled { opacity: 0.5; }
 .pm-send-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--c-brand);
   color: #fff;
   border: none;
   border-radius: 8px;
-  padding: 7px 14px;
-  font-size: 13px;
+  font-size: 15px;
   cursor: pointer;
 }
-.pm-send-btn:disabled { opacity: 0.5; cursor: default; }
+.pm-send-btn .icon { width: 1em; height: 1em; }
+.pm-send-btn:disabled { opacity: 0.4; cursor: default; }
 
 @media (max-width: 640px) {
   #private-chat-container {

@@ -16,7 +16,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=157';
+import { client } from './lobby.js?v=158';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -43,7 +43,7 @@ let unread = 0;
 let lastFlashSender = '';
 let socketConnected = true;
 
-let container, modal, modalList, modalSearch, modalShortcut, notifBtn, openModalBtn;
+let container, modal, modalList, modalSearch, modalShortcut, notifBtn;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -182,7 +182,7 @@ function buildWindow(userId, name) {
   root.dataset.userId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <button type="button" class="pm-window__collapse" aria-hidden="true"></button>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=158#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
       <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}">✕</button>
@@ -192,7 +192,9 @@ function buildWindow(userId, name) {
     <div class="chat-input pm-input-row">
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
-      <button type="button" class="pm-send-btn">${E().escapeAttr(t('private_chat.btn_send'))}</button>
+      <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=158#ph-bold-paper-plane-tilt"></use></svg>
+      </button>
     </div>`;
 
   root.querySelector('.pm-window__name').textContent = name;
@@ -359,7 +361,8 @@ function applyLang() {
   }
   for (const [userId, w] of windows) {
     w.input.placeholder = t('private_chat.ph_input');
-    w.sendBtn.textContent = t('private_chat.btn_send');
+    w.sendBtn.title = t('private_chat.btn_send');
+    w.sendBtn.setAttribute('aria-label', t('private_chat.btn_send'));
     updateWindowStatus(userId);
   }
   if (modal && modal.classList.contains('visible')) renderModalList();
@@ -372,7 +375,6 @@ function init() {
   modalSearch    = document.getElementById('online-users-search');
   modalShortcut  = document.querySelector('.online-users-search-shortcut');
   notifBtn       = document.getElementById('btn-notif-enable');
-  openModalBtn   = document.getElementById('btn-online-users');
   if (!container || !modal) return;
 
   originalTitle = document.title;
@@ -380,7 +382,6 @@ function init() {
   const sessionUser = window.GvnSession && window.GvnSession.getUser();
   if (sessionUser) me = { userId: sessionUser.userId, displayName: sessionUser.displayName };
 
-  if (openModalBtn) openModalBtn.addEventListener('click', openModal);
   const closeBtn = document.getElementById('modal-online-users-close');
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
@@ -397,14 +398,20 @@ function init() {
     if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal();
   });
 
-  // Delegated click on an online name in the lobby prose line.
-  document.addEventListener('click', (e) => {
-    const link = e.target.closest && e.target.closest('.online-name-link');
-    if (!link) return;
+  // Delegated interaction on the lobby online line: a name opens a chat, the
+  // "…and N others" affordance opens the full modal. Both are role="button"
+  // spans so keyboard (Enter/Space) works too.
+  const onlineLineAction = (e) => {
+    const el = e.target.closest && e.target.closest('[data-user-id], [data-open-users]');
+    if (!el) return;
+    if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
-    const uid = link.getAttribute('data-user-id');
+    if (el.hasAttribute('data-open-users')) { openModal(); return; }
+    const uid = el.getAttribute('data-user-id');
     if (uid) openChat(uid);
-  });
+  };
+  document.addEventListener('click', onlineLineAction);
+  document.addEventListener('keydown', onlineLineAction);
 
   const restoreFocus = () => { if (!tabHidden()) clearTitleFlash(); };
   window.addEventListener('focus', restoreFocus);

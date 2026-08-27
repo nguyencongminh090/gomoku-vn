@@ -218,14 +218,22 @@ function renderOnlineLine() {
   // Own name set in ink so you can find yourself in the line at a glance.
   // Each user is `{ userId, displayName, isGuest }` (see server state.js
   // getOnlineUsersList) — a click on a name opens a private chat (#159).
+  // Names render as plain ink text (not link-blue); the `.online-name` class
+  // just gives a pointer cursor + hover underline.
   const parts = shown.map((u) => {
     const name = escapeHtml(u.displayName);
-    const inner = u.displayName === userInfo.displayName ? `<b>${name}</b>` : name;
-    if (u.userId === userInfo.userId) return inner;
-    return `<a href="#" class="online-name-link" data-user-id="${escapeHtml(u.userId)}">${inner}</a>`;
+    if (u.userId === userInfo.userId) {
+      return u.displayName === userInfo.displayName ? `<b>${name}</b>` : name;
+    }
+    return `<span class="online-name" role="button" tabindex="0" data-user-id="${escapeHtml(u.userId)}">${name}</span>`;
   });
   let html = parts.join(', ');
-  html += hidden > 0 ? ` ${t('lobby.online_more', { n: hidden })}` : '.';
+  // Only when the line actually had to truncate do we offer a "…and N others"
+  // affordance — clicking it opens the full online-users modal (#159). No
+  // permanent button when everyone already fits.
+  html += hidden > 0
+    ? ` <span class="online-name online-line__more" role="button" tabindex="0" data-open-users>${escapeHtml(t('lobby.online_more', { n: hidden }))}</span>`
+    : '.';
   onlineLineNamesEl.innerHTML = html;
 }
 
