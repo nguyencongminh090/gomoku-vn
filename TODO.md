@@ -951,6 +951,15 @@ truthful." (2026-08-27)
   **không** thêm viền ngoài; đối chiếu bản zen (`room-zen.css`) + mobile. Thuần CSS, bump `?v=N`
   toàn `client/`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B162-score-table-thieu-duong-ke-cot-kho-doc.md)
 
+### Nguồn: yêu cầu người dùng — đổi định dạng tên hiển thị của khách (2026-08-28)
+- ✅ **#163.** (Đã xong 2026-08-28 — `feature/guest-name-numeric` off `dev`.) `generateGuestName()`
+  (`server/routes/auth.js`) đổi từ tính-từ+danh-từ (`WildFox`) sang `guest` + 4 chữ số
+  (`crypto.randomInt`, dẫn 0 giữ nguyên → luôn 9 ký tự). Re-roll ≤20 lần khi trùng tên guest **còn
+  sống** (helper `db.hasLiveGuestSessionWithDisplayName` + `SessionManager.isGuestDisplayNameInUse`;
+  user thật trùng tên không chặn), hết lượt trả candidate cuối. Xoá `GUEST_NAME_ADJECTIVES/_NOUNS`
+  khỏi `config.js`. Vẫn dùng chung làm fallback tên OAuth. 13 test mới `guest-name.test.js` (SQLite
+  in-memory), `npm test` 1413/1413. Server-only ⇒ không bump `?v=N`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B163-guest-name-guest-plus-4-digits.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

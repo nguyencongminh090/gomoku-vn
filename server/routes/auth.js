@@ -23,7 +23,7 @@
  *   [ ] Register with short username (<3) → 400
  *   [ ] Login with correct password → Set-Cookie
  *   [ ] Login with wrong password → 401 + Vietnamese error
- *   [ ] Guest → isGuest: true and a 4-8 letter displayName
+ *   [ ] Guest → isGuest: true and a `guest` + 4-digit displayName
  *   [ ] Logout → session unusable afterwards, not merely cookie-cleared
  */
 
@@ -242,14 +242,33 @@ function generateOAuthUsername(seed) {
   return candidate;
 }
 
-/** Generate a random guest display name (4-8 letters). */
+// How many times generateGuestName() re-rolls on a collision before giving up
+// and returning the last candidate anyway. The name space is 10,000 wide and
+// only live guest sessions count toward a collision, so hitting this limit
+// needs thousands of guests online at once — at which point a rare duplicate
+// display name is harmless (guestId, not the name, is the identity).
+const GUEST_NAME_MAX_TRIES = 20;
+
+/**
+ * Generate a guest display name of the form `guest` + 4 digits, e.g.
+ * "guest0473" (TODO.md #163). Leading zeros are kept so the name is always
+ * exactly 9 characters.
+ *
+ * Re-rolls if the name is already held by another live guest session, so two
+ * guests online together don't usually share a name. This is best-effort only:
+ * the check sees the sessions table, not sockets, and after GUEST_NAME_MAX_TRIES
+ * it returns the last candidate regardless.
+ *
+ * Also used as the fallback name for an OAuth sign-in whose profile has no
+ * usable name — a `guestNNNN` string there is fine, it just isn't guest-only.
+ */
 function generateGuestName() {
-  const adj  = config.GUEST_NAME_ADJECTIVES;
-  const noun = config.GUEST_NAME_NOUNS;
-  const a = adj[Math.floor(Math.random() * adj.length)];
-  const n = noun[Math.floor(Math.random() * noun.length)];
-  // e.g. "WildFox" (3+3=6), "NeonBear" (4+4=8)
-  return a + n;
+  let candidate;
+  for (let i = 0; i < GUEST_NAME_MAX_TRIES; i++) {
+    candidate = 'guest' + String(crypto.randomInt(0, 10000)).padStart(4, '0');
+    if (!sessionManager.isGuestDisplayNameInUse(candidate)) return candidate;
+  }
+  return candidate;
 }
 
 // ---------------------------------------------------------------------------

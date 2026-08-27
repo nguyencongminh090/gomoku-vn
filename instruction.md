@@ -610,3 +610,12 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   token zen) + mobile `room.css:913`. Không đụng `renderScoreTable`/`room.html`. Bump `?v=N` toàn
   `client/` + grep verify 1 giá trị; verify browser thật (thường + zen + mobile) —
   [chi tiết](docs/instruction/B162-score-table-thieu-duong-ke-cot-kho-doc.md)
+- **B163.** Viết lại `generateGuestName()` (`server/routes/auth.js:246`) → `'guest' +
+  String(crypto.randomInt(0,10000)).padStart(4,'0')`. Giữ vòng `do…while` kiểm trùng với
+  `displayName` khách đang online (tận dụng shape mới của `getOnlineUsersList()` từ B159), `LIMIT`
+  nhỏ ~20, hết lượt vẫn trả candidate cuối; nếu không có tra cứu đồng bộ rẻ trong route thì ghi rõ
+  best-effort trong summary, đừng dựng hạ tầng. Pitfall: hàm còn là fallback OAuth ở ~dòng 567 —
+  mặc định dùng chung định dạng mới, hỏi trước nếu muốn tách. Grep `GUEST_NAME_ADJECTIVES`/
+  `GUEST_NAME_NOUNS`; xoá khỏi `config.js` chỉ khi không còn nơi dùng. KHÔNG bump `?v=N`, KHÔNG đụng
+  `isValidDisplayName`/đường register. Test Jest: regex `^guest\d{4}$`, nhánh padStart số < 1000 —
+  [chi tiết](docs/instruction/B163-guest-name-guest-plus-4-digits.md)
