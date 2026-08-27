@@ -16,7 +16,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=162';
+import { client } from './lobby.js?v=163';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -129,7 +129,7 @@ function renderNotifButton() {
   const label = notifBtn.querySelector('.online-users-notif-btn__label');
   const iconUse = notifBtn.querySelector('.icon use');
   const setIcon = (id) => {
-    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=162#' + id);
+    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=163#' + id);
   };
 
   if (perm === 'granted') {
@@ -202,7 +202,7 @@ function buildWindow(userId, name) {
   root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=162#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=163#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
       <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}">✕</button>
@@ -213,7 +213,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=162#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=163#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -356,7 +356,7 @@ function renderModalList() {
       btn.className = 'online-users-list__chat-btn';
       btn.title = t('private_chat.btn_chat');
       btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
-      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=162#ph-bold-chat-circle"></use></svg>';
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=163#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
       // The whole row (except its own controls) opens the chat.
       const open = () => { openChat(u.userId); closeModal(); };

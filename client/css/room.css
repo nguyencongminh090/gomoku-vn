@@ -376,15 +376,20 @@
   font-weight: 600;
   font-size: 10px;
   color: var(--c-ink-3);
-  padding: 2px 4px;
+  padding: 3px 8px;
   text-transform: uppercase;
+  border-bottom: 1px solid var(--c-border-light);
 }
 .score-table th:first-child { text-align: left; }
 .score-table td {
-  padding: 2px 4px;
+  padding: 3px 8px;
   text-align: center;
 }
 .score-table td:first-child { text-align: left; font-weight: 500; }
+/* Column gridlines only — no outer border (border-collapse would otherwise
+   render the first/last edge as a frame, hence :not(:last-child)). */
+.score-table th:not(:last-child),
+.score-table td:not(:last-child) { border-right: 1px solid var(--c-border-light); }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────── */
 .sidebar-tabs {

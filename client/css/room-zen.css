@@ -581,6 +581,14 @@ body.zen-room .score-table td {
   border-bottom: 1px solid var(--c-border-light);
 }
 body.zen-room .score-table tr:last-child td { border-bottom: none; }
+/* Column gridlines (match the default room score table — B162). */
+body.zen-room .score-table th:not(:last-child),
+body.zen-room .score-table td:not(:last-child) {
+  border-right: 1px solid var(--c-border-light);
+  padding-right: 12px;
+}
+body.zen-room .score-table th:not(:first-child),
+body.zen-room .score-table td:not(:first-child) { padding-left: 12px; }
 body.zen-room .score-table td:first-child {
   text-align: left;
   font-weight: 500;
