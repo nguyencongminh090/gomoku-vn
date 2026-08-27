@@ -84,15 +84,9 @@ class BoardRenderer {
     // Touch support for mobile
     this.canvas.addEventListener('touchend', (e) => this._onTouchEnd(e));
 
-    // The app's data-theme toggle (settings-panel.js) fires no change event,
-    // so redraw directly when it flips — the canvas's paper/caro colors are
-    // sourced from --board-* CSS custom properties and won't repaint on
-    // their own the way DOM elements do.
-    this._themeObserver = new MutationObserver(() => this._draw());
-    this._themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
   }
 
-  /** Resolve --board-* custom properties for the current theme (paper/caro mode only). */
+  /** Resolve --board-* custom properties (paper/caro mode only). */
   _readBoardTheme() {
     const cs = getComputedStyle(document.documentElement);
     const read = (name, fallback) => (cs.getPropertyValue(name) || '').trim() || fallback;

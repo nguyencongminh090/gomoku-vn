@@ -139,9 +139,9 @@ describe('compression edge cases', () => {
   });
 
   test('tiny responses below the size threshold are left alone', async () => {
-    // compression's default threshold is 1 KB; theme-preload.js is ~163 B.
+    // compression's default threshold is 1 KB; ui-mode-preload.js is ~399 B.
     // Compressing payloads this small typically makes them bigger.
-    const res = await rawGet('/js/theme-preload.js', GZIP);
+    const res = await rawGet('/js/ui-mode-preload.js', GZIP);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-encoding']).toBeUndefined();

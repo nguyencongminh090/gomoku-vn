@@ -450,9 +450,6 @@ const TRANSLATIONS = {
     // ── Global Settings panel (header) ────────────────────────
     'gset.title': 'Cài đặt',
     'gset.appearance': 'Giao diện',
-    'gset.theme': 'Chủ đề',
-    'gset.theme_light': 'Sáng',
-    'gset.theme_dark': 'Tối',
     'gset.density': 'Mật độ hiển thị',
     'gset.language': 'Ngôn ngữ',
     'gset.lang_vi': 'Tiếng Việt',
@@ -1080,9 +1077,6 @@ const TRANSLATIONS = {
     // ── Global Settings panel (header) ────────────────────────
     'gset.title': 'Settings',
     'gset.appearance': 'Appearance',
-    'gset.theme': 'Theme',
-    'gset.theme_light': 'Light',
-    'gset.theme_dark': 'Dark',
     'gset.density': 'Display density',
     'gset.language': 'Language',
     'gset.lang_vi': 'Vietnamese',
