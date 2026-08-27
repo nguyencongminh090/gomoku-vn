@@ -25,6 +25,15 @@ bump toàn `client/` theo rule CLAUDE.md.
 **Unit test:** client-side chưa có hạ tầng test tự động → verify bằng browser
 thật (tab Bảng điểm, bản thường + zen + mobile).
 
-**Trạng thái:** chưa làm.
+**Trạng thái:** ✅ Đã sửa (2026-08-28, `fix/score-table-column-grid` → `dev`).
+- `client/css/room.css` `.score-table`: thêm `border-bottom` dưới `th` (tách
+  header) + `border-right` cho `th/td:not(:last-child)` (kẻ dọc giữa cột, không
+  viền ngoài); padding ô 2×4px → 3×8px cho chữ thoáng khỏi đường kẻ.
+- `client/css/room-zen.css`: thêm cùng bộ `border-right` + `padding-right/left`
+  12px giữa các cột cho đồng bộ (bản zen vốn đã có kẻ ngang theo hàng).
+- Bump `?v=162` → `?v=163` toàn `client/`; grep xác nhận 1 giá trị.
+- Verify: harness tĩnh nạp `room.css` thật + markup `.score-table`, screenshot
+  Chromium 420px — cột tách rõ, header có gạch chân, không có khung ngoài do
+  bảng tạo. Client chưa có test tự động (đã nêu trong CLAUDE.md).
 
 `[Model: Sonnet 5]`

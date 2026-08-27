@@ -946,7 +946,7 @@ truthful." (2026-08-27)
   `?v=N` toàn `client/`. Verify browser thật (client chưa có test tự động). `[Model: Sonnet 5]` — [chi tiết](docs/todo/B161-gop-2-che-do-ui-lite-default-bo-pro.md)
 
 ### Nguồn: báo cáo người dùng — Score Board khó đọc vì thiếu đường kẻ cột (2026-08-28)
-- **#162.** `.score-table` (tab Bảng điểm) không có đường kẻ cột nào → các cột dính vào nhau, khó
+- ✅ **#162.** (Đã sửa 2026-08-28 — `fix/score-table-column-grid` off `dev`.) `.score-table` (tab Bảng điểm) không có đường kẻ cột nào → các cột dính vào nhau, khó
   đọc. Thêm lưới **theo cột** (`border-right` cho `th`/`td` trừ `:last-child`) trong `room.css`,
   **không** thêm viền ngoài; đối chiếu bản zen (`room-zen.css`) + mobile. Thuần CSS, bump `?v=N`
   toàn `client/`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B162-score-table-thieu-duong-ke-cot-kho-doc.md)
