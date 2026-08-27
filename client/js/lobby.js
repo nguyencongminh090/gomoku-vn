@@ -216,9 +216,14 @@ function renderOnlineLine() {
   const shown  = users.slice(0, limit);
   const hidden = count - shown.length;
   // Own name set in ink so you can find yourself in the line at a glance.
-  const parts = shown.map((name) => (
-    name === userInfo.displayName ? `<b>${escapeHtml(name)}</b>` : escapeHtml(name)
-  ));
+  // Each user is `{ userId, displayName, isGuest }` (see server state.js
+  // getOnlineUsersList) — a click on a name opens a private chat (#159).
+  const parts = shown.map((u) => {
+    const name = escapeHtml(u.displayName);
+    const inner = u.displayName === userInfo.displayName ? `<b>${name}</b>` : name;
+    if (u.userId === userInfo.userId) return inner;
+    return `<a href="#" class="online-name-link" data-user-id="${escapeHtml(u.userId)}">${inner}</a>`;
+  });
   let html = parts.join(', ');
   html += hidden > 0 ? ` ${t('lobby.online_more', { n: hidden })}` : '.';
   onlineLineNamesEl.innerHTML = html;
@@ -227,6 +232,10 @@ function renderOnlineLine() {
 client.on('lobby:online_users', (users) => {
   currentOnlineUsers = users;
   renderOnlineLine();
+  // Feed the private-chat module (#159) — it owns the online-users modal and
+  // per-window presence. Safe if it hasn't finished init yet: it also reads
+  // GvnSession directly and this event re-fires on every presence change.
+  if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users);
 });
 
 client.on('room:error', (data) => {

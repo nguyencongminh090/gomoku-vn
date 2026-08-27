@@ -1,6 +1,45 @@
 # #159 — Chat riêng 1-1 giữa người dùng online ở Sảnh (private message), kèm âm thanh, cảnh báo tab nền, phím tắt và i18n
 
-**Trạng thái:** ⏳ Chưa làm — đã chốt scope với người dùng (2026-08-27), chờ implement.
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-27, nhánh `feature/private-chat`).
+
+**Backend:** `server/socket/handlers/PrivateChatHandler.js` mới — `private_message:send` →
+validate (MISSING_RECIPIENT / CANNOT_CHAT_SELF / GUEST_CHAT_DISABLED) → `sanitize` (escape `<`/`>`) →
+`profanityFilter.filterMessage` → truncate 500 → rate-limit sliding-window 5/3s
+(`PRIVATE_CHAT_RATE_LIMITED`) → `sessions.has` (`RECIPIENT_OFFLINE`) → emit thẳng
+`private_message:receive` cho **đúng 2 socket** (người nhận + echo người gửi, cùng `messageId` do
+`crypto.randomUUID()`, thêm `conversationWith` để client key đúng cửa sổ). `activePeers` Map báo
+`user:status`/`user:disconnected` cho partner khi disconnect (bỏ qua nếu user còn session khác).
+Đăng ký + cleanup trong `SocketHandler.js`. Config: `PRIVATE_CHAT_RATE_LIMIT`/
+`_RATE_WINDOW_MS`/`_ALLOW_GUESTS` riêng.
+
+**Shape `getOnlineUsersList()`** → `[{userId, displayName, isGuest}]` sort theo displayName.
+Blast radius đã sửa: `lobby.js renderOnlineLine` (đọc `.displayName`, bọc tên online thành
+`<a.online-name-link data-user-id>` để click-to-chat), forward vào `PrivateChat.updateOnlineUsers`.
+
+**Client:** `client/js/private-chat.js` mới (ES module, `import` trong `index-entry.js`, thêm
+modulepreload hint) — tiling ≤3 cửa sổ nổi (mở cái thứ 4 đẩy [0]), collapse header, `.pm-notice`
+disable input khi peer offline / socket rớt, nhấp nháy `document.title` 1.2s khi
+`document.hidden || !document.hasFocus()` + khôi phục khi focus, `Notification` khi `granted`, nút
+"Bật thông báo" theo `Notification.permission`, phím tắt `Ctrl/⌘+K` toggle modal + focus search,
+modal `#modal-online-users` + search client-side, `langchange` cập nhật placeholder/nút/modal.
+`audio-manager.js` thêm `playMessageSound()` (dual-tone E5→A5). CSS `.pm-*` / `.online-users-*` trong
+`lobby-zen.css` + `@media (max-width:640px)` full-width bottom sheet.
+
+**i18n:** block `private_chat.*` + 5 key `err.*` cả `vi` lẫn `en`;
+`PrivateChatHandler.js` thêm vào `SERVER_FILES` của `error-codes-i18n-consistency.test.js`.
+
+**Test:** `npm test` xanh 1384/1384 → **1400+** (thêm `PrivateChatHandler.test.js` 13 ca:
+gửi hợp lệ + không rò sang bên thứ 3, tự-chat, thiếu recipient, offline, rate-limit boundary 5/6 +
+window slide, XSS escape, profanity mask, truncate 500/501, empty ignore, guest cờ tắt 2 chiều,
+`cleanupUser` báo/không báo partner; `state-online-users.test.js` 4 ca shape/sort/isGuest;
+`modulepreload-hints-match-entry-imports` count 5→6).
+
+**Verify frontend (browser thật, 2 guest, Playwright):** modal mở qua nút + `Ctrl/⌘+K` + click tên;
+gửi → tới đúng người nhận + echo, `<b>` giữ nguyên literal, profanity `****`; cửa sổ tự mở phía
+người nhận; reply 2 chiều; disconnect → "Offline" + input disabled; nhấp nháy tiêu đề + khôi phục;
+`langchange` đổi placeholder/nút; mobile 390px full-width. Console error = 0.
+Chưa e2e được (headless): chime âm thanh, `Notification` hệ thống thật, nút xin quyền `granted`
+(logic có guard, xác minh bằng đọc mã).
 
 **Nguồn:** yêu cầu người dùng — spec đầy đủ "Implement a 1-on-1 Real-time Private Chat feature
 for online users in the Lobby" (2026-08-27), rà soát + định vị scope bằng CodeGraph/đọc code, chốt

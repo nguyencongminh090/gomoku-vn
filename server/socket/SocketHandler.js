@@ -34,6 +34,7 @@ const LobbyHandler      = require('./handlers/LobbyHandler');
 const RoomHandler       = require('./handlers/RoomHandler');
 const GameHandler       = require('./handlers/GameHandler');
 const ChatHandler       = require('./handlers/ChatHandler');
+const PrivateChatHandler = require('./handlers/PrivateChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
@@ -284,6 +285,7 @@ function init(io) {
     RoomHandler.register(io, socket);
     GameHandler.register(io, socket);
     ChatHandler.register(io, socket);
+    PrivateChatHandler.register(io, socket);
     TournamentHandler.register(io, socket);
     TournamentMatchHandler.register(io, socket);
 
@@ -304,6 +306,7 @@ function init(io) {
       // Clean up user's chat state
       const chatManager = require('../managers/ChatHandler');
       chatManager.cleanupUser(user.userId);
+      PrivateChatHandler.cleanupUser(io, user.userId);
     });
 
     // ── Per-socket error handler ──────────────────────────────────────────

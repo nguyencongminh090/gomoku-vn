@@ -37,6 +37,7 @@ const SERVER_FILES = [
   'server/socket/handlers/RoomHandler.js',
   'server/socket/handlers/LobbyHandler.js',
   'server/socket/handlers/ChatHandler.js',
+  'server/socket/handlers/PrivateChatHandler.js',
   'server/socket/handlers/DisconnectHandler.js',
   'server/socket/SocketHandler.js',
   'server/socket/state.js',
