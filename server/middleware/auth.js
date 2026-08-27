@@ -17,6 +17,7 @@
 const jwt    = require('jsonwebtoken');
 const config = require('../config');
 const logger = require('../utils/logger');
+const { clientInfoFromSocket } = require('../utils/geo');
 const sessionManager = require('../managers/SessionManager');
 const { readSessionIdFromHeader } = require('../utils/session-cookie');
 
@@ -102,9 +103,10 @@ function isAllowedOrigin(origin) {
  * run JS could then supply auth.token themselves.
  */
 function verifySocketToken(socket, next) {
+  const { ip, geo } = clientInfoFromSocket(socket);
   const origin = socket.handshake.headers && socket.handshake.headers.origin;
   if (!isAllowedOrigin(origin)) {
-    logger.warn('[Auth] Socket handshake rejected, bad origin:', origin);
+    logger.warn('[Auth] Socket handshake rejected: bad origin', { origin, ip, geo });
     return next(new Error('AUTH_ORIGIN'));
   }
 
@@ -122,14 +124,14 @@ function verifySocketToken(socket, next) {
     // A cookie was presented and it is dead (revoked, expired, unknown).
     // Do NOT fall through to the legacy token: falling through is exactly how
     // a revoked session would come back to life.
-    logger.warn('[Auth] Socket rejected: session cookie not valid');
+    logger.warn('[Auth] Socket rejected: session cookie not valid', { ip, geo });
     return next(new Error('AUTH_INVALID'));
   }
 
   // ── Legacy JWT fallback — migration window only ────────────────────────
   const legacyToken = socket.handshake.auth && socket.handshake.auth.token;
   if (!legacyToken) {
-    logger.warn('[Auth] Socket connection without session');
+    logger.warn('[Auth] Socket connection without session', { ip, geo });
     return next(new Error('AUTH_REQUIRED'));
   }
 
@@ -143,7 +145,7 @@ function verifySocketToken(socket, next) {
     };
     return next();
   } catch (err) {
-    logger.warn('[Auth] Socket invalid legacy token:', err.message);
+    logger.warn('[Auth] Socket invalid legacy token', { err: err.message, ip, geo });
     return next(new Error('AUTH_INVALID'));
   }
 }
