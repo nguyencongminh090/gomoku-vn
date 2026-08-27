@@ -592,3 +592,15 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   (append-only — chỉ ghi chú). KHÔNG đụng board-lock. Verify `npm test` + browser thật mọi trang
   (không FOUC, không console error, panel Cài đặt đúng) + `git grep` xác nhận sạch —
   [chi tiết](docs/instruction/B160-go-bo-dark-ui-mode.md)
+- **B161.** Gộp Density Mode về Lite + Default, bỏ Pro. Sửa `ui-mode.js` trước (`MODES` còn 2 phần
+  tử; `getUiMode` + `ui-mode-preload.js` map `'pro'`→`'default'` và ghi đè localStorage 1 lần —
+  **điểm dễ sai nhất: không map thì Pro user tụt về Lite**). Chuyển hóa nhánh: `=== 'pro'` giữ
+  thông tin có ích → `=== 'default'` (tag luật đầy đủ, replay auto-Analysis); `=== 'pro'` chỉ là
+  noise → xóa (roomId meta phòng, `Infinity` tên online, nút "Use last settings"/`modal--pro`);
+  `!== 'pro'` → `=== 'lite'`. Dọn: gộp 4 bản `uiMode()` cục bộ → `getUiMode`, xóa `applyReplayMode()`
+  rỗng (kiểm HTML nút analysis có `display` hợp lệ trước), xóa `.online-panel--lite*` mồ côi
+  `lobby.css:760-767`, segment `settings-panel.js` còn 2, xóa i18n `mode.pro*` vi/en. Lite giữ
+  nguyên hành vi hiện tại. Bump `?v=N` toàn `client/` + grep verify 1 giá trị. KHÔNG đụng ui/*
+  board-locks, KHÔNG đụng backend, KHÔNG sửa fix-log phase-2 (append-only). Client chưa có test tự
+  động → verify browser thật (gồm test thủ công `gvn_ui_mode='pro'` → phải thành Default) —
+  [chi tiết](docs/instruction/B161-gop-2-che-do-ui-lite-default-bo-pro.md)

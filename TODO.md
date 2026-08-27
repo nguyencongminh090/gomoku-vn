@@ -934,6 +934,17 @@ truthful." (2026-08-27)
   xoá khối `[data-theme="dark"]` trong `main.css` + `room.css` (giữ token `--board-*` dưới `:root`);
   gỡ `_themeObserver` trong `board.js`; bump `?v=N` toàn `client/`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B160-go-bo-dark-ui-mode.md)
 
+### Nguồn: yêu cầu người dùng — sau review khác biệt 3 chế độ Density Mode, quyết định bỏ Pro (2026-08-28)
+- **#161.** Gộp `data-ui-mode` về **2 chế độ: Lite + Default**, bỏ hẳn Pro. Lite giữ nguyên (setup
+  tối giản cho user mới: Quick match, ép preset mặc định 17×17+Wall, luật nâng cao trong "Advanced"
+  đóng). Xử lý các hành vi Pro-only: bỏ `roomId` ở meta phòng sảnh + bỏ liệt kê `Infinity` tên
+  online + bỏ nút "Use last settings"/`modal--pro`; chuyển sang Default: bảng tag luật đầy đủ +
+  replay mở thẳng Analysis. Dọn: gộp 4 bản `uiMode()` trùng → `getUiMode` từ `ui-mode.js`, xóa
+  `applyReplayMode()` rỗng, xóa selector mồ côi `.online-panel--lite*`, segment Cài đặt còn 2 nút,
+  xóa i18n `mode.pro*` vi/en. **Di trú bắt buộc**: map `localStorage['gvn_ui_mode']='pro'` →
+  `'default'` trong `ui-mode.js` + `ui-mode-preload.js` (không thì Pro user tụt về Lite). Bump
+  `?v=N` toàn `client/`. Verify browser thật (client chưa có test tự động). `[Model: Sonnet 5]` — [chi tiết](docs/todo/B161-gop-2-che-do-ui-lite-default-bo-pro.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng
