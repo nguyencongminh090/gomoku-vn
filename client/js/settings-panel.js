@@ -163,7 +163,7 @@
     densityLabel.textContent = T('gset.density');
     densityRow.appendChild(densityLabel);
     densityRow.appendChild(segment(
-      [['lite', T('mode.lite')], ['default', T('mode.default')], ['pro', T('mode.pro')]],
+      [['lite', T('mode.lite')], ['default', T('mode.default')]],
       global.getUiMode ? global.getUiMode() : 'lite',
       (value) => { if (global.setUiMode) global.setUiMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
     ));
@@ -334,7 +334,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=161#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=162#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }

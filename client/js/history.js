@@ -248,10 +248,10 @@ async function openReplay(gameId, source) {
       ? `history.html?id=${gameId}&source=tournament`
       : `history.html?id=${gameId}`);
 
-    // Reset analysis mode. Pro opens straight into it (analysis is the reason a
-    // power user opens a replay at all); Lite/Default start closed but can toggle it.
-    applyReplayMode();
-    setAnalysisMode(uiMode() === 'pro');
+    // Reset analysis mode. Default opens straight into it (analysis is the
+    // reason a power user opens a replay at all); Lite starts closed but can
+    // toggle it.
+    setAnalysisMode(uiMode() === 'default');
 
     // Init board renderer (once)
     if (!boardRenderer) {
@@ -344,16 +344,14 @@ function countMainLine(node) {
 // Analysis Mode
 // ---------------------------------------------------------------------------
 
-// Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
+// Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
+// 'pro' → 'default' normalisation lives in exactly one place.
 function uiMode() {
-  return document.documentElement.getAttribute('data-ui-mode') || 'lite';
+  return (window.getUiMode && window.getUiMode()) || 'lite';
 }
 
-// Analysis is available in every UI mode; only the default entry state
-// (auto-opened in Pro, closed otherwise) differs — see openReplay().
-function applyReplayMode() {
-  if (btnAnalysis) btnAnalysis.style.display = '';
-}
+// Analysis is available in every UI mode; only the entry state differs
+// (auto-opened in Default, closed in Lite) — see openReplay().
 
 function setAnalysisMode(on) {
   analysisMode = on;
@@ -442,7 +440,7 @@ function startAutoPlay() {
   if (!moveTree) return;
   if (moveTree.currentNode.isLeaf) moveTree.goToStart();
   
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=161#ph-bold-pause"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=162#ph-bold-pause"></use></svg>';
   btnPlay.classList.add('playing');
   autoPlayTimer = setInterval(() => {
     if (!moveTree.goForward()) {
@@ -455,7 +453,7 @@ function startAutoPlay() {
 
 function stopAutoPlay() {
   if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=161#ph-bold-play"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=162#ph-bold-play"></use></svg>';
   btnPlay.classList.remove('playing');
 }
 
@@ -602,11 +600,9 @@ window.addEventListener('langchange', () => {
 // UI mode change listener — re-gate the replay view without a reload
 // ---------------------------------------------------------------------------
 window.addEventListener('uimodechange', () => {
-  applyReplayMode();
-  // Pro entering mid-replay should switch straight into analysis.
+  // Switching to Default mid-replay should switch straight into analysis.
   if (replayGameData) {
-    const mode = uiMode();
-    if (mode === 'pro' && !analysisMode) setAnalysisMode(true);
+    if (uiMode() === 'default' && !analysisMode) setAnalysisMode(true);
     requestAnimationFrame(() => {
       if (boardRenderer) boardRenderer.resize();
       syncBoardToTree();
@@ -617,8 +613,6 @@ window.addEventListener('uimodechange', () => {
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
-applyReplayMode();
-
 const urlParams = new URLSearchParams(window.location.search);
 const urlGameId = urlParams.get('id');
 const urlSource = urlParams.get('source');

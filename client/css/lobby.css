@@ -578,9 +578,7 @@
 
 /* Modal actions */
 /* ── Create-room modal: UI-mode affordances ───────────────────────────────── */
-/* Quick match (Lite) and the Advanced disclosure are hidden unless Lite is on;
-   Use-last-settings (Pro) is toggled by JS since it also depends on whether
-   anything has actually been remembered. */
+/* Quick match and the Advanced disclosure are hidden unless Lite is on. */
 .modal__quick,
 .modal__advanced-toggle { display: none; }
 
@@ -618,7 +616,7 @@
 }
 .modal__advanced-toggle[aria-expanded="true"] .modal__advanced-arrow { transform: rotate(180deg); }
 
-/* Collapsed only in Lite — Default/Pro keep the form flat and always open. */
+/* Collapsed only in Lite — Default keeps the form flat and always open. */
 .modal--lite .modal__advanced {
   max-height: 0;
   overflow: hidden;
@@ -634,12 +632,6 @@
    which submits the edited form rather than the remembered preset — returns. */
 .modal--lite .modal__actions .btn-confirm { display: none; }
 .modal--lite .modal__advanced.open ~ .modal__actions .btn-confirm { display: block; }
-
-.modal__use-last {
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 12px;
-}
 
 .modal__actions { display: flex; gap: 16px; margin-top: 40px; }
 .modal__actions .btn {
@@ -753,18 +745,6 @@
   max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
-
-/* Lite: bare "N online" count — no list, no expand affordance at any width.
-   Selectors are deliberately over-specific so they win over both the desktop
-   sidebar fallback above and the ≤900px overrides further down. */
-.online-panel.online-panel--lite .online-panel__body,
-.online-panel.online-panel--lite .online-panel__body.open {
-  max-height: 0;
-  overflow: hidden;
-}
-.online-panel.online-panel--lite .online-panel__arrow { display: none; }
-.online-panel.online-panel--lite .online-panel__header { cursor: default; }
-.online-panel.online-panel--lite .online-panel__header:hover { background: transparent; }
 
 .online-panel__list {
   list-style: none;

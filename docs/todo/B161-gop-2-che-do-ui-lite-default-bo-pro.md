@@ -3,7 +3,30 @@
 **Nguồn:** yêu cầu người dùng (2026-08-28) — sau khi review khác biệt 3 chế độ, người dùng
 quyết định bỏ Pro, chỉ giữ Lite + Default.
 
-**Trạng thái:** ⏳ Chưa làm
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-28 — `feature/ui-mode-two-modes` off `dev`)
+
+Đã làm đúng kế hoạch. `ui-mode.js` `MODES=['lite','default']` + `normalizeMode()` map
+`'pro'`→`'default'`; `ui-mode-preload.js` ghi đè `localStorage['gvn_ui_mode']` một lần khi gặp
+`'pro'`. Các nhánh Pro-only: `roomId` meta phòng + `Infinity` tên online + nút "Use last settings"
+(+ `#btn-use-last`, CSS `.modal__use-last`, i18n `modal.use_last`, class `modal--pro`) đã bỏ hẳn;
+bảng tag luật đầy đủ + replay auto-Analysis chuyển sang Default (`=== 'default'`). Gộp 3 bản
+`uiMode()` cục bộ (lobby/room-ui/history) thành wrapper mỏng gọi `window.getUiMode()` — chuẩn hoá
+mode ở đúng 1 nơi. Xoá `applyReplayMode()` (no-op: nút `#btn-analysis` hiện tĩnh, CSS
+`display:inline-flex`) + 3 call site. Xoá `.online-panel--lite*` mồ côi `lobby.css`. Segment Cài
+đặt còn 2 nút; xoá i18n `mode.pro`/`mode.pro_desc` vi+en, gộp `mode.default_desc` = "Hiển thị đầy
+đủ chi tiết" / "Full detail for power users". `?v=161→162` toàn `client/` (grep verify: 1 giá trị).
+
+**Test:** cập nhật `client/tests/settings-panel-no-theme-row.test.js` (segment không còn `mode.pro`)
++ file mới `client/tests/ui-mode-two-modes.test.js` (16 assertion: MODES 2 phần tử, `getUiMode`
+normalize `'pro'`→`'default'` không tụt về `'lite'`, `setUiMode('pro')` bị từ chối, `uimodechange`
+chỉ bắn khi đổi thật, preload migrate `'pro'` + ghi đè localStorage). `npm test` **1400/1400**.
+
+**Verify browser thật** (server dev :3000, guest login qua UICthật, Playwright): mode mặc định
+`lite`; segment chỉ Gọn/Mặc định; đổi sang Default → attr+localStorage+getUiMode đều `default`;
+modal Default = form phẳng, `#modal-confirm` hiện (flex), không có `#btn-use-last`; modal Lite =
+Quick match hiện + Advanced đóng + ép preset 17×17+Wall, `#modal-confirm` ẩn tới khi mở Advanced;
+set `localStorage['gvn_ui_mode']='pro'` + reload → thành `default` (attr + localStorage), **không
+tụt về Lite**; history.html mở ở Default. **0 lỗi/cảnh báo console** trên mọi luồng.
 
 ## Mục tiêu
 

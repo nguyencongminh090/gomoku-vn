@@ -935,7 +935,7 @@ truthful." (2026-08-27)
   gỡ `_themeObserver` trong `board.js`; bump `?v=N` toàn `client/`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B160-go-bo-dark-ui-mode.md)
 
 ### Nguồn: yêu cầu người dùng — sau review khác biệt 3 chế độ Density Mode, quyết định bỏ Pro (2026-08-28)
-- **#161.** Gộp `data-ui-mode` về **2 chế độ: Lite + Default**, bỏ hẳn Pro. Lite giữ nguyên (setup
+- ✅ **#161.** (Đã xong 2026-08-28 — `feature/ui-mode-two-modes` off `dev`.) Gộp `data-ui-mode` về **2 chế độ: Lite + Default**, bỏ hẳn Pro. Lite giữ nguyên (setup
   tối giản cho user mới: Quick match, ép preset mặc định 17×17+Wall, luật nâng cao trong "Advanced"
   đóng). Xử lý các hành vi Pro-only: bỏ `roomId` ở meta phòng sảnh + bỏ liệt kê `Infinity` tên
   online + bỏ nút "Use last settings"/`modal--pro`; chuyển sang Default: bảng tag luật đầy đủ +
