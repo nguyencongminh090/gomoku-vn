@@ -157,10 +157,9 @@
 }
 
 @media (max-width: 768px) {
-  .turn-bar {
-    width: calc(100% - 32px);
-    margin: 0 auto 10px auto;
-  }
+  /* .turn-bar's mobile width/margin rule lived here. It is gone rather than
+     kept-but-overridden: the bar is display:none below (see the block near the
+     end of this file), so anything sizing it at this width is dead code. */
   /* .game-controls's width here used to be dead CSS: the unconditional
      base rule at ~L177 (width: 100%) sits later in the file and won the
      cascade regardless of viewport, so the controls silently inherited
@@ -265,6 +264,19 @@
 .swap2-choice .btn-game:hover {
   background: var(--c-brand);
   color: #fff;
+}
+
+/* Undo is appended after the phase-specific hint/choice above (TODO.md
+   #128) — its own full-width row so it doesn't compete with them for
+   space on #game-controls' non-wrapping desktop flex row. */
+.swap2-undo-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+.swap2-undo-row .btn-game--undo {
+  flex: 0 1 200px;
 }
 
 /* ─── Draw Prompt ───────────────────────────────────────────────── */
@@ -493,143 +505,6 @@
 }
 
 /* ==========================================================================
-   Focus Mode — Fullscreen board + clock only
-   ========================================================================== */
-
-.room--focus .topnav,
-.room--focus .panel-right-shell {
-  display: none !important;
-}
-
-.room--focus .board-area {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  background: var(--c-bg, #F0EBE3);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  /* Turn-bar at top, board + controls in the centre, bottom space for chat */
-  justify-content: center;
-  padding: 10px 10px 0;
-  border-radius: 0;
-  border: none;
-  box-shadow: none;
-  /* Leave space at the bottom for fixed chat input + focus button (both now
-     hug bottom:20px, ~47px tall — see #chat-input-wrapper below — so this
-     only needs to clear that, not the old, far larger dead zone). */
-  padding-bottom: 80px;
-  box-sizing: border-box;
-}
-
-/* The inner card should shrink to its content, not stretch full height */
-.room--focus .board-area-inner {
-  height: auto;
-  flex: 0 0 auto;
-  width: auto;   /* shrink to the board's natural square width */
-  max-width: calc(100vw - 20px);
-  border-radius: 16px;
-  overflow: visible; /* allow turn-bar to breathe above */
-}
-
-/* The turn-bar lives inside .board-area-inner — give it a small top margin */
-.room--focus .turn-bar {
-  margin-bottom: 8px;
-}
-
-/* Controls below board */
-.room--focus .game-controls {
-  margin-top: 10px;
-}
-
-.room--focus .board-canvas-wrap {
-  /* Size is driven by the JS resize() budget, CSS just prevents overflow */
-  max-height: none;
-  max-width: 100%;
-  overflow: visible;
-}
-
-/* Chat input in focus mode */
-.room--focus #chat-input-wrapper {
-  position: fixed;
-  /* Hugs the bottom edge alongside .btn-focus (also bottom:20px) instead of
-     floating with a large dead gap above it — the two used to sit ~65px
-     apart for no reason, wasting vertical budget the board could use
-     instead (see board.js resize()'s bottomReserve, which mirrors this). */
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 400px;
-  max-width: 90vw;
-  z-index: 600;
-  display: flex;
-  background: var(--c-surface);
-  border-radius: 20px;
-  box-shadow: var(--shadow);
-  padding: 6px 12px;
-}
-
-.room--focus #chat-input-wrapper input {
-  border: none;
-  background: transparent;
-  outline: none;
-  flex: 1;
-  min-width: 0; /* Prevents overflow of the Gửi button on narrow screens */
-}
-
-.room--focus #chat-input-wrapper button {
-  background: var(--c-brand);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius);
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  font-family: var(--font);
-  cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
-  letter-spacing: 0.02em;
-}
-
-.room--focus #chat-input-wrapper button:hover {
-  background: var(--c-brand-dark);
-  transform: translateY(-1px);
-}
-
-.room--focus #chat-input-wrapper button:active {
-  transform: scale(0.96) !important;
-}
-
-/* Focus toggle button */
-.btn-focus {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 600;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: none;
-  background: var(--c-brand);
-  color: #fff;
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s, background 0.2s;
-}
-
-.btn-focus:hover {
-  transform: scale(1.1);
-  background: var(--c-brand-dark);
-}
-
-.btn-focus:active {
-  transform: scale(0.95) !important;
-}
-
-/* ==========================================================================
    Float Messages — Stacking chat toasts over board
    ========================================================================== */
 
@@ -670,13 +545,6 @@
   margin-right: 4px;
 }
 
-.room--focus .float-messages {
-  /* Sit fully ABOVE the fixed chat input (bottom:20px, ~47px tall) so chat
-     toasts stack upward from above it and never cover the chat box. */
-  bottom: 78px;
-  z-index: 650;
-}
-
 @keyframes float-msg-in {
   from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -708,57 +576,84 @@
 }
 
 /* ==========================================================================
+   Undo Button (TODO.md #128)
+   ========================================================================== */
+
+.btn-game--undo {
+  border-color: #8e44ad;
+  color: #8e44ad;
+  background: transparent;
+}
+
+.btn-game--undo:hover {
+  background: #8e44ad;
+  color: #fff;
+}
+
+.btn-game--undo:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
    Mobile Responsive Layout
    ========================================================================== */
 
 @media (max-width: 768px) {
-  /* Compact turn bar on small screens — must fit viewport width */
+  /* The turn bar does not exist on phones any more. Its three jobs — names,
+     clocks, whose-turn — moved into .players-strip above the board
+     (room.css), which shows them one row per seat instead of mirrored around
+     a centre label. The mirrored layout is what forced .turn-bar__name down
+     to a 48px cap here, i.e. roughly four characters before the ellipsis.
+     Kept intact for desktop, where the bar is unchanged.
+     display:none, not visibility:hidden — board.js reads this element's
+     offsetHeight for the board's height budget and must measure a true 0. */
   .turn-bar {
-    min-width: unset;
-    max-width: 100%;
-    gap: 4px;
-    padding: 6px 8px;
-    font-size: 12px;
+    display: none;
   }
 
-  .turn-bar__name {
-    max-width: 48px;
-  }
-
-  .turn-bar__timer {
-    font-size: 14px;
-    min-width: 28px;
-  }
-
-  .game-info__turn {
-    font-size: 11px;
-    padding: 2px 6px;
-    min-width: 0;
-    max-width: 92px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  /* Controls must shrink to fit the row, not overflow off-screen. Width is
-     inset by the same 32px .board-area-shell over-bleeds by, so the row
+  /* Row is inset by the same 32px .board-area-shell over-bleeds by, so it
      lands flush with the true viewport edges — matching the canvas above
-     it — instead of bleeding past the screen like the shell itself does. */
+     it — instead of bleeding past the screen like the shell itself does.
+     Buttons no longer wrap to a second row (TODO.md #132): with 4 buttons,
+     wrapping pushed a lone full-width button onto its own row, costing
+     vertical space on short phones. Instead the row scrolls horizontally
+     like a slider, scoped to this element only — the page itself never
+     scrolls. The last button is deliberately left un-shrunk so it clips at
+     the edge when there's overflow, signalling "more to the right" without
+     a separate gradient/affordance element. */
   .game-controls {
     width: calc(100% - 32px);
     max-width: 100%;
     margin: 10px auto 0 auto;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    /* Base rule (desktop) sets justify-content: center — harmless there
+       since it never overflows, but on a scrollable overflowing flex row
+       it centers the flex line and splits the overflow across BOTH ends.
+       scrollLeft can't go negative, so the left half becomes permanently
+       unreachable (first button rendered pre-clipped, no way to scroll to
+       it) — must be flex-start here so scrollLeft: 0 shows the true start
+       and everything is reachable by scrolling right. */
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .game-controls::-webkit-scrollbar {
+    display: none;
   }
 
   .btn-game {
-    min-width: 0;
+    flex: 0 0 auto;
+    min-width: 92px;
     min-height: 44px;
-    flex: 1 1 30%;
     font-size: 12px;
-    padding: 10px 6px;
+    padding: 10px 10px;
     letter-spacing: 0.3px;
+    scroll-snap-align: start;
   }
 
   /* Chat messages height in mobile panel */

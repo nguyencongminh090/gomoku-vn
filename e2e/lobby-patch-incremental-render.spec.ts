@@ -33,7 +33,7 @@ test.describe('Lobby patch incremental render (B117)', () => {
       await page.goto('/index.html');
       await page.click('#btn-create');
       await page.click('#btn-quick-match');
-      await page.waitForURL(/room\.html/, { timeout: 15000 });
+      await page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
       seeders.push({ ctx, page });
     }
 

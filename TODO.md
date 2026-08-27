@@ -51,6 +51,12 @@ dùng), và danh sách model khả dụng cũng có thể đã đổi theo thờ
 ### Nguồn: audit an ninh network qua DevTools — báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
 - **#67.** Xác minh HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không (claim của audit gốc sai — Helmet đã bật HSTS mặc định, cần đo thật trên deploy) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 
+### Nguồn: `gomoku-vn-review-2026-08-14.md` vòng 4, mục 13.9b (2026-08-14, đối chiếu code 2026-08-15)
+- **#125.** Cloudflare xoá `ETag` của HTML khi tự nén lại — cần bật "Respect Strong ETags" trên dashboard Cloudflare để khôi phục; không hỏng gì hiện tại (`If-Modified-Since` vẫn trả 304), không gấp `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A125-cloudflare-respect-strong-etags-cho-html.md)
+
+### Nguồn: phân tích 2 file HAR + log/metrics `cloudflared` — "connection looks slow, CPU ran for 2 day" (2026-08-19)
+- ✅ **#130.** Tunnel `cloudflared` re-register 19 lần / 3 ngày — **điều tra xong 2026-08-19, KHÔNG phải lỗi và không phải nguyên nhân site chậm**: log cho thấy toàn bộ là `Application error 0x0 (remote)` = Cloudflare edge chủ động đóng bình thường, mỗi lần chỉ 1/4 connection, nối lại 1–14 s, lần gần nhất cách thời điểm chụp HAR 12 tiếng; con số 19 chỉ là bộ đếm tích luỹ theo uptime, không phải hệ quả của "chạy lâu". Origin Node cũng nhàn rỗi (10 s CPU / 2,6 ngày, `cfOrigin;dur=63`). Nguyên nhân thật của 24 s chờ nằm ở chặng trình duyệt ↔ Cloudflare edge (mất gói SYN, `connect=7196ms`) + `timeout` 20 s phía client (#131). **ĐÃ NÂNG `cloudflared` 2026.7.3→2026.8.2 lúc 2026-08-19 23:56** (4/4 connection đăng ký lại trong 3 s, `/ready` 200, site 200, **không** restart server game). Đo lại bắt tay WS: 12/12, median 256 ms (trước 11/12, median 5074 ms) — **nhưng không quy công cho bản nâng**: `mtr` ngay sau đó cho 0% loss toàn tuyến, tức đợt mất gói ISP đã tự hết cùng cửa sổ thời gian ⇒ cải thiện là do mạng hồi phục, bản nâng đúng là bảo trì thuần hiệu quả ~0 `[Model: Opus 5]` — [chi tiết](docs/todo/A130-cloudflared-quic-flap-chuyen-sang-protocol-http2.md)
+
 ## Phần B — Sửa được bằng code, đang chờ làm
 
 ### Nguồn: `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
@@ -307,6 +313,9 @@ confidence ≥ 8/10) trước khi đưa vào đây.
 ### Nguồn: yêu cầu người dùng qua chat — "Slot: Display info: 1. Name 2. Status (màu theo trạng thái) + Site track" (2026-08-13)
 - ✅ **#113.** Slot card chỉ có 2 trạng thái (xanh lá sẵn sàng / xám chưa sẵn sàng), không phân biệt được người chơi có thật sự đang ở trang hay không; yêu cầu thêm đỏ ("leave site" — tab mở nhưng không active, Page Visibility API) và cam ("disconnected" — mất kết nối thật, server-side); **ĐÃ LÀM 2026-08-13** (`feature/room-slot-presence-status` off `dev`, vì đụng `server/` nên không đi qua `ui/*` đang mở): field `presence` mới trên room user + `RoomManager.setPresence()` (client chỉ set active/away, no-op nếu đang `disconnected` — chống race với grace period); `DisconnectHandler.js`/`SocketHandler.js` set/clear `disconnected` ở cả 6 điểm start/cancel-grace; client lắng nghe `visibilitychange`, gộp UI vào `playerStatusInfo()`/`renderStatusDot()` dùng chung slot card + mobile strip; 7 test mới + xác minh trực tiếp bằng Playwright 2 trình duyệt thật (ẩn tab → đỏ, đóng tab → cam, đều xác nhận trên DOM), `npm test` 1131/1131 `[Model: Sonnet 5]` — đã merge vào `dev`, **chưa** có trên `main` hay `ui/zen-minimal` (sẽ tự có khi nhánh đó merge vào `dev`) ; **BỔ SUNG 2026-08-13, ĐÃ LÀM**: (1) bỏ chữ trạng thái ("Chưa sẵn sàng"/...) — chỉ còn 1 dot màu (7px→9px), nhãn cũ chuyển sang `title`/`aria-label` (không mất a11y); (2) bỏ badge "Chủ phòng" khỏi slot card (badge "CP" ở danh sách người xem không đụng, khác phạm vi); CSS `.ready-text` xoá hẳn (không còn nơi dùng); `?v=` 106→107; xác minh lại bằng Playwright trên markup thật — [chi tiết](docs/todo/B113-slot-status-presence.md)
 
+### Nguồn: báo cáo người dùng qua chat — "User status is not track, start game reset to inactive" (2026-08-13)
+- ✅ **#114.** Slot dot (#113) dùng `player.ready` làm nhánh mặc định — `startGame()` set `ready = false` cho cả 2 người chơi khi ván bắt đầu nên dot rớt về màu "chưa sẵn sàng" ngay lúc ván chạy, nhìn như trạng thái reset sai; đã hỏi lại 3 vòng chốt thiết kế: Active/Inactive **không phải** idle-timer mà lấy thẳng từ `room.state === 'playing'` (game đã bắt đầu hay chưa), phạm vi CHỈ 2 slot người chơi, Leave/Disconnect giữ nguyên trigger `presence` như #113, đảo màu Leave↔Disconnect theo quy ước semaphore chuẩn (xanh/xám/cam/đỏ tăng dần mức nghiêm trọng); **ĐÃ LÀM 2026-08-13** (`feature/slot-status-active-inactive` off `dev`): 4 test mới + `npm test` 1135/1135, xác minh Playwright 2 trình duyệt thật (dot đổi đúng màu/nhãn khi bắt đầu ván và khi rời tab), màu thực tế đọc qua `getComputedStyle` khớp bảng đã chốt `[Model: Sonnet 5]` — [chi tiết](docs/todo/B114-slot-status-active-inactive-thay-ready.md)
+
 ### Nguồn: báo cáo người dùng qua chat kèm ảnh chụp màn hình mobile — "Score Board took space of Chat Box on phone" (2026-08-14)
 - ✅ **#116.** Trang phòng chơi (`client/room.html`) trên mobile: `.score-panel` (bảng điểm Thắng/Bại/Hoà)
   nằm cố định phía trên khối tabs, luôn hiển thị đè lên không gian của tab Chat (mặc định active),
@@ -370,18 +379,50 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   `RoomManager.test.js` (`'RoomManager — default room name'`), `npm test` 1136/1136 `[Model: Sonnet
   5]` — [chi tiết](docs/todo/B121-doi-ten-phong-mac-dinh-sang-id-phong.md)
 
+### Nguồn: `gomoku-vn-review-2026-08-14.md` vòng 4 (2026-08-14, đối chiếu code + xác nhận thêm từ người dùng 2026-08-15)
+- ✅ **#122.** `client/room.html:202` nạp `profanity-classifier-model.js` (53 KB, 18 971 B nén) đồng bộ, chặn parser, dù classifier đã bị tắt theo quyết định sản phẩm (`profanity-filter.js:801-804`) và đã chứng minh không đổi output nào (54 chuỗi thử, 2 VM context) — bỏ hẳn thẻ `<script>` này `[Model: Haiku 4.5]` — [chi tiết](docs/todo/B122-bo-profanity-classifier-model-khoi-room-html.md)
+- ✅ **#123.** Thêm `<link rel="preload" as="font">` cho `Phosphor.woff2`/`Phosphor-Bold.woff2` — người dùng tự xác nhận trực tiếp: "đôi lúc mạng chậm, những icon này (Settings, history, create) load chậm hơn các element khác", khớp cơ chế `font-display: swap` + font bị phát hiện muộn qua CSSOM; **ĐÃ LÀM 2026-08-15**: preload đúng số weight/trang trên cả 6 trang thật, bump `?v=126`→`?v=127` toàn bộ (verify grep còn đúng 1 giá trị), chưa verify DevTools thủ công trên mạng chậm thật `[Model: Sonnet 5]` — [chi tiết](docs/todo/B123-preload-font-phosphor-woff2-giam-do-tre-hien-thi-icon.md)
+- ✅ **#124.** `server/utils/get-client-ip.js:48` nhánh fallback `X-Forwarded-For` lấy phần tử **đầu** (`split(',')[0]`, dễ giả mạo nhất) thay vì phần tử **cuối** — mức độ thấp vì traffic thật qua Cloudflare luôn có `CF-Connecting-IP` nên nhánh này không bị chạm tới trên đường đi thực tế, nhưng vẫn nên sửa cho đúng; **ĐÃ LÀM 2026-08-15**: đổi `split(',')[0].trim()` → `split(',').pop().trim()`, đúng 1 dòng, không đụng ưu tiên `CF-Connecting-IP`/điều kiện loopback; thêm case mới trong `get-client-ip.test.js` và cập nhật 2 case cũ có nhiều giá trị XFF sang kỳ vọng phần tử cuối; `get-client-ip.test.js` + `LobbyHandler.test.js` 29/29 pass `[Model: Sonnet 5]` — [chi tiết](docs/todo/B124-getclientip-xff-lay-phan-tu-cuoi-thay-vi-dau.md)
+- ✅ **#126.** Thêm `modulepreload` cho 11 ES module (`room.html`) / 7 module (`index.html`) đang nằm sau rào cản parse — đo lường bắt buộc qua HTTP/2 domain thật (không phải localhost), lặp ≥7 lần lấy min/median, kèm test canh hint↔import không lệch để tránh bẫy tải file 2 lần âm thầm; **ĐÃ LÀM 2026-08-15**: hint khớp đúng import thật + test drift + bump `?v=128`, đo qua `play3cr.dpdns.org` (Playwright, login/tạo phòng thật) xác nhận **0 double-load**, nhưng chưa xác định được số mili-giây tiết kiệm cụ thể (nằm trong nhiễu đo/phương pháp) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B126-modulepreload-cho-es-module-do-tren-domain-that-qua-tunnel.md)
+- **#127.** ⚠️ (làm SAU CÙNG, cùng nhóm STRICT với #126) Gộp CSS theo trang — bỏ `lobby.css` thừa khỏi `room.html` (nạp theo lịch sử tách file, không theo trang) — cần grep xác nhận không class nào của `lobby.css` đang thật sự dùng ở `room.html` trước khi bỏ, xác minh bằng trình duyệt thật (không chỉ đoán) vì dễ vỡ layout âm thầm `[Model: Sonnet 5]` — [chi tiết](docs/todo/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
+
+### Nguồn: yêu cầu người dùng — thảo luận qua `features/undo/` (2026-08-15)
+- ✅ **#128.** Thêm tính năng Undo (hoàn tác nước đi) trong `room.html` — đối thủ phải đồng ý, không giới hạn số lần, quy tắc lõi "đi lại về đúng lượt người yêu cầu" (xoá 1 nước nếu đối thủ chưa đáp trả, xoá cả 2 nếu đã đáp trả), vẫn cho phép trong khai cuộc Swap2, chỉ khôi phục đồng hồ chế độ `per_move`, yêu cầu đang chờ hiện lại khi đối phương reconnect, không chặn luồng chơi (chỉ tự huỷ khi chính người yêu cầu đi tiếp). **ĐÃ LÀM 2026-08-15** (`feature/undo` off `dev`): 23 unit test mới (`GameEngine.test.js`, `play` + Swap2 opening), `npm test` 1185/1185; xác minh trực tiếp bằng Playwright thật 2 trình duyệt (`e2e/undo.spec.ts`, 6 test, server cô lập cổng riêng + db tạm, không đụng server/db thật đang có người chơi); `?v=128→129` `[Model: Sonnet 5]` — [chi tiết](docs/todo/B128-them-tinh-nang-undo-hoan-tac-nuoc-di-o-room-html.md)
+
+### Nguồn: phân tích HAR báo cáo "site chậm" (người dùng ở Mỹ, 2026-08-17) — câu hỏi trực tiếp về Phosphor/SVG
+- ✅ **#129.** Thay font icon Phosphor bằng SVG sprite — **override quyết định "không làm" của #108**
+  (người dùng chủ động yêu cầu sau khi được báo rõ lý do cũ); audit runtime (Playwright, 11 icon,
+  hội tụ đúng tập static) + grep tĩnh mở rộng (46 icon/53→43 tổ hợp thật) trước khi build, đúng quy
+  trình đã đặt ra. **ĐÃ LÀM 2026-08-17**: migrate 63 chỗ `<i class="ph...">` sang `<svg><use>` +
+  sprite ngoài (không inline — quyết định lúc làm, xem chi tiết), 297 KB font → ~7 KB gzip sprite,
+  giữ nguyên file font gốc để rollback, `npm test` 1185/1185, xác minh 0 symbol thiếu qua Playwright
+  thật trên 5 trang `[Model: Sonnet 5]` — [chi tiết](docs/todo/B129-svg-icon-thay-phosphor-audit-truoc-khi-lam.md)
+
+### Nguồn: phân tích 2 file HAR người dùng cung cấp — "connection looks slow" (2026-08-19), phần sửa được bằng code
+- ✅ **#131.** `client/js/socket-client.js` không đặt `timeout` nên dùng mặc định 20 000 ms của socket.io-client — trong HAR, lần handshake đầu chết vì mất gói SYN (chặng trình duyệt ↔ Cloudflare edge), người chơi chờ đủ 20 s rồi lần thử lại chỉ mất 2.9 s là xong (tổng ~24 s treo ở "Đang kết nối…"). **ĐÃ LÀM 2026-08-19** (`fix/socket-io-connect-timeout` off `dev`): thêm `timeout` đúng 1 dòng (**retune 8000→12000** cùng ngày sau khi đo phân bố thật: `mtr` cho thấy ~17% mất gói từ hop 8 của nhà mạng, 12 lần bắt tay WS trải 1.9–7.948 s ⇒ 8000 nằm trên đỉnh phân bố, sẽ cắt nhầm), giữ nguyên transport websocket-first + mọi tham số `reconnection*`; 8 test mới `client/tests/socket-client-connect-options.test.js` (kiểm chứng không rỗng: bỏ bản sửa ra thì 4/8 fail), `npm test` 1193/1193; xác minh Playwright trên instance **cô lập** (copy repo + DB tạm + cổng 3111, không đụng DB/server thật đang có người chơi) — luồng guest→tạo phòng→`room.html` connect 839 ms, `io._timeout=8000`, 0 console error, và **đo được cả đường thất bại**: 20 120 ms → **12 115 ms**; `?v=130→132`. Là **giảm thiệt hại**, nguyên nhân gốc (mất gói client↔edge) không sửa được bằng code `[Model: Opus 5]` — [chi tiết](docs/todo/B131-socket-io-client-timeout-20s-qua-lau-khi-mat-goi-syn.md)
+
+### Nguồn: yêu cầu người dùng — phản hồi trực tiếp trên chụp màn hình phòng chơi iPhone (2026-08-19)
+- ✅ **#132.** `#game-controls` (4 nút Đầu hàng/Đề nghị hoà/Xin thêm giờ/Xin đi lại) `flex-wrap: wrap` trên mobile khiến nút thứ 4 rớt xuống hàng riêng full-width, tốn chiều cao dọc trên điện thoại nhỏ — người dùng đề xuất trực tiếp: gộp 1 hàng cố định, cho cuộn ngang cục bộ trong khối nút (không cuộn cả trang), kiểu slider. **ĐÃ LÀM 2026-08-19**: `client/css/game.css` mobile breakpoint đổi `flex-wrap: wrap` → `nowrap` + `overflow-x: auto` + `scroll-snap-type: x proximity`, nút không co ép (`flex: 0 0 auto; min-width: 92px`), nút cuối cố ý cắt hụt khi tràn để gợi ý còn nội dung; Playwright phát hiện và sửa 1 bug thật lúc verify: `justify-content: center` kế thừa từ rule desktop khiến overflow bị cắt **đối xứng cả 2 đầu** ở `scrollLeft: 0` (nút đầu bị pre-clip, không cách nào cuộn tới) — thêm `justify-content: flex-start` cho đúng breakpoint mobile; xác minh bằng Playwright trên instance cô lập (copy repo + DB tạm + cổng 3111, không đụng server/DB thật đang có người chơi) qua trang test tĩnh load đúng CSS thật, đo `getBoundingClientRect()` ở `scrollLeft: 0` và `scrollLeft: max` xác nhận nút đầu/cuối đều tới được trọn vẹn + `window.scrollY` không đổi khi cuộn container (đúng yêu cầu "chỉ cuộn khối nút"); `?v=132→133` `[Model: Opus 5]` — [chi tiết](docs/todo/B132-game-controls-cuon-ngang-1-hang-thay-vi-wrap-2-hang.md)
+
 ### Nguồn: báo cáo trực tiếp người dùng qua chụp màn hình mobile (2026-08-21)
-- ✅ **#133.** Mobile: đường kẻ bàn cờ (`board.js:586-588`, alpha 0.22 chế độ standard/caro) nhạt màu
-  + bàn cờ nhỏ do padding tích luỹ qua nhiều lớp trong `resize()` (double-count 50px safety budget
-  của skin non-zen bị tái dùng trong nhánh zen room mobile, `board.js:228-229` gốc). **ĐÃ LÀM
-  2026-08-21** (`fix/mobile-board-grid-and-size` off `main`): alpha grid line 0.22→0.4 (nhánh
-  standard/caro, chưa phải giá trị người dùng tự chốt — người dùng nói sẽ tự kiểm tra UI); thay
-  budget non-zen cứng `14+16+12+8=50px` trong `viewportBudget` bằng overhead zen thật
-  (`canvasWrapBorder`+`turnBarMargin`+`controlsMargin`, đã dùng đúng ở nhánh phía trên); xác nhận
-  oversubtract đúng 48px qua Playwright trên viewport height-bound (375×520: bàn cờ 263.4px→311.4px,
-  +18%) trên instance cô lập (copy repo + DB tạm + cổng 3111, không đụng server/DB thật); `client/js/`
-  không có test tự động, verify hoàn toàn qua đo kích thước canvas + screenshot thật; `?v=123→124`
-  `[Model: Sonnet 5]` — [chi tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
+- ✅ **#133.** Mobile: đường kẻ bàn cờ (`board.js`, alpha 0.22 chế độ standard/caro) nhạt màu + bàn
+  cờ nhỏ trên cả 2 trục do padding/budget tích luỹ qua nhiều lớp trong `resize()`/`room-zen.css`
+  mobile. **ĐÃ LÀM 2026-08-21, 3 vòng** (`fix/mobile-board-grid-and-size` off `main`, merge vào
+  `dev`): (1) grid alpha 0.22→0.4→**0.55** (người dùng xác nhận trên máy thật rồi yêu cầu đậm thêm),
+  border cùng chỗ 0.4→0.65 để giữ đúng thứ bậc "border đậm hơn grid"; (2) trục dọc `viewportBudget`
+  (zen mobile) bỏ double-count 50px budget non-zen, dùng đúng overhead zen thật
+  (`canvasWrapBorder`+`turnBarMargin`+`controlsMargin`) — xác nhận +48px trên viewport height-bound
+  (375×520: 263.4px→311.4px); (3) trục ngang — người dùng đo trên điện thoại thật thấy canvas 476 /
+  shell 500 (24px) — bỏ side padding 8px/bên trong `room-zen.css` mobile + `- 8` thừa trong `maxVw`
+  (chỉ với zen; non-zen giữ nguyên vì mẹo full-bleed của `room.css` vẫn cần nó), bàn cờ nay tràn sát
+  mép (390 viewport → wrap 0–390, đo Playwright, `scrollWidth === innerWidth`, 0 console error).
+  Xác minh toàn bộ trên instance cô lập (copy repo + DB tạm + cổng 3111 + `CORS_ORIGIN` riêng, không
+  đụng server/DB thật); `client/js/` không test tự động, verify qua đo kích thước canvas +
+  screenshot thật + xác nhận trực tiếp của người dùng trên máy thật. `npm test` 1143/1143,
+  `?v=123→126` trên nhánh fix, **vòng 4** sau merge vào `dev`: merge trước đó giữ nguyên `?v=133`
+  (nhầm — theo quy tắc `git-workflow` phải re-bump lên `max(dev,main)+1` vì nội dung file đã đổi
+  thật, không chỉ giữ số cũ), sửa lại `?v=133→134` `[Model: Sonnet 5 / Opus 5]` — [chi
+  tiết](docs/todo/B133-mobile-grid-line-nhat-va-ban-co-nho.md)
 
 ### Nguồn: báo cáo trực tiếp người dùng kèm ảnh chụp màn hình PC (2026-08-21)
 - ✅ **#134.** Sidebar-tab (icon rail zen-skin) đôi khi "thụt vào trong" với hiệu ứng chồng ảnh khi
@@ -399,6 +440,457 @@ confidence ≥ 8/10) trước khi đưa vào đây.
   thì đúng 1/4 fail), `npm test` 1147/1147 (trước: 1143). `?v=135→136` `[Model: Sonnet 5]` — [chi
   tiết](docs/todo/B134-sidebar-tab-thut-vao-trong-khi-redraw.md)
 
+### Nguồn: báo cáo người dùng — icon "zoom" bất thường trên sảnh chờ, kèm ảnh chụp (2026-08-21)
+- ✅ **#135.** Điều tra icon to bất thường tìm ra `TODO.md #129` (migrate `<i class="ph...">` →
+  `<svg class="icon">`) để sót nhiều CSS selector vẫn nhắm thẳng thẻ `i` cũ (không còn khớp markup
+  thật), khiến icon rơi về kế thừa font-size từ cha thay vì rule riêng. **ĐÃ LÀM 2026-08-21**
+  (`fix/svg-icon-migration-orphaned-selectors` off `dev` — bug chỉ tồn tại trên `dev`, `main` chưa
+  merge #129 nên không dính). Sửa 6 vị trí (`i`→`.icon`): `lobby-zen.css` (`.link-action`,
+  `.tournament-card__status`/`__meta`), `room.css`+`room-zen.css` (`.tab-btn`,
+  `.quick-chat-bar button`), `history.css` (`.replay__back-btn`/`.replay__analysis-btn`). Đo bằng
+  Playwright trên bản dựng tĩnh cô lập xác nhận đúng hướng (13px→15px, `.link-action .icon`). Đo
+  lại trên production thật (đăng nhập khách qua UI thật, chỉ đo không đụng DB) **ngay lúc chưa
+  deploy bản sửa** đã cho `15×15px` đúng, không hề to như báo cáo — nghi ngờ chính là cache trình
+  duyệt/CDN không đồng bộ tại thời điểm chụp (đúng lúc đang bump `?v=` liên tục), không phải bug
+  code dài hạn. **Người dùng xác nhận sau hard-refresh: hết hiện tượng "zoom"** — giả thuyết cache
+  tạm thời đúng, bản sửa CSS vẫn giữ nguyên (bug thật dù nhỏ) nhưng độc lập với report gốc.
+  `npm test` 1197/1197 (không đổi — thuần CSS). `?v=138→139`
+  `[Model: Sonnet 5]` — [chi tiết](docs/todo/B135-svg-icon-migration-orphaned-css-selectors.md)
+
+### Nguồn: người dùng đính chính #134 + đọc lại code base (2026-08-21)
+- ⏳ **#136.** (Reopen #134) Người dùng đính chính: mô tả ở #134 chỉ là **một phần**, không phải mô
+  tả tổng quát — hiện tượng thật là **drawer bị thu vào rail đúng lúc modal hiện lên**, và ảnh chụp
+  DevTools cho thấy `body.zen-drawer-collapsed` ở viewport ~933px CSS (`#board-area-shell` đo
+  `933×773`), tức **trên** breakpoint 768px nên `game:init` không thể là nơi thêm class. Bản sửa
+  #134 vẫn đúng cho đường vào của nó, không bị đảo. Chỉ có 3 nơi đụng class này
+  (`room-socket.js:193-196`, `room.js:135-140`, `room.js:139-172`); `renderStartModal()` không chạm
+  `body.className` ⇒ modal không phải nhân quả trực tiếp. Giả thuyết chính: **click tổng hợp**
+  `chatBtn.click()` ở `room-ui.js:488-495`/`544-549` chạy vào nhánh `toggle('zen-drawer-collapsed')`
+  của handler tab. **ĐÃ ĐO 2026-08-21** (Playwright, server cô lập cổng 3100/DB riêng, không đụng DB
+  thật): **không tái hiện được trên code hiện tại** — Chromium 1440×900 + Firefox 933×773, đủ vòng
+  đời trận (ngồi ghế → modal → bắt đầu → đầu hàng → modal về → tái đấu), `.panel-right-shell` giữ
+  nguyên 340px suốt **445 frame** lấy mẫu bằng `requestAnimationFrame`, không kẹt cũng không thụt
+  thoáng qua; nghi phạm `chatBtn.click()` bắt được thật (`isTrusted=false`) nhưng rơi vào nhánh
+  `remove`, **bị loại**. Thí nghiệm đối chứng chỉ bỏ đúng đoạn vá #134 thì tái hiện **khớp hoàn toàn**
+  ảnh chụp của người dùng (`zen-drawer-collapsed` kẹt ở 933px, shell còn 56px) ⇒ ảnh là hành vi của
+  **code trước bản vá**; production đã phục vụ bản có vá (`curl .../room.js?v=139 | grep -c
+  drawerBreakpoint` → 2). **ĐÃ SỬA TIẾP 2026-08-21** (`fix/tab-activation-vs-drawer-toggle` off
+  `dev` — mục #136 chỉ có trên `dev`): săn tiếp tìm ra **đường thứ hai, tái hiện được** — một `?v=`
+  cũ trên cross-import làm trình duyệt nạp **module instance thứ hai** của `room.js`; hai bản
+  listener biến một cú **đổi tab bình thường** thành collapse ở **mọi viewport** (bản 1 gỡ class +
+  set active, bản 2 thấy `alreadyActive=true` nên toggle đóng) — khớp cả 3 dấu hiệu của báo cáo gốc.
+  Sửa tầng gốc: tách `activateTab()` + `window.RoomTabs.activate` (không bao giờ chạm
+  `zen-drawer-collapsed`), handler click đọc ý định **trước** khi mutate, binding guard
+  `body.dataset.roomTabsBound`, và 2 chỗ `chatBtn.click()` tổng hợp trong `room-ui.js` chuyển sang
+  gọi ý định trực tiếp. 9 test mới (gồm 2 test nạp module 2 lần; bỏ bản sửa ra → 7/9 fail), verify
+  trình duyệt thật cả 3 cử chỉ + API ở 2 trạng thái drawer, `npm test` **1213/1213**, `?v=140→141`
+  `[Model: Opus 5]`. Phần "chờ hard-refresh" của vòng 1 vẫn còn giá trị nhưng không còn chặn: bản sửa
+  vòng 2 độc lập với nó — [chi tiết](docs/todo/B136-drawer-thut-vao-khi-modal-hien-len.md)
+- ✅ **#137.** `#start-modal` (`position:absolute; inset:0; z-index:50`, `game.css:412-426`) neo vào
+  `.board-area-shell` — trong zen shell này chiếm trọn chiều rộng viewport (chỗ của drawer chỉ là
+  `padding-right`, `room-zen.css:282-292`) ⇒ lớp phủ modal **đè lên drawer** (z50 > z15 của
+  `.panel-right-shell`, `.board-area-shell` không tạo stacking context) và **thẻ modal căn theo tâm
+  viewport thay vì tâm bàn cờ**. **ĐÃ TÁI HIỆN 2026-08-21** (Playwright, Chromium 1440×900): lớp phủ
+  `x=0,w=1440` chồng đúng **340px = 100%** chiều rộng drawer; tâm thẻ `x=720` vs tâm canvas `x=550`
+  ⇒ lệch **170px**, đúng nửa `--zen-drawer-w`. **ĐÃ SỬA 2026-08-22:** cho lớp phủ tôn trọng
+  `padding` của shell (trùng content box = hộp bàn cờ) trong `room-zen.css`, **giữ nguyên anchor**
+  (không chuyển sang `#board-area` vì `GameUI.initBoard()` ghi đè `innerHTML`) và **giữ nguyên
+  `z-index:50`** (hạ nó chỉ che triệu chứng). Thêm 1 dòng `inset` vào rule collapsed của nhánh mobile
+  ≤768px vì rule desktop collapsed đặc hiệu hơn 1 class ⇒ sẽ rò xuống điện thoại (kiểm chứng: bỏ ra
+  → fail 393 vs 337 = bề rộng rail). Đo lại trên instance cô lập: chồng lấn **340→0** / **56→0**,
+  lệch tâm **170→0** / **28→0**; mobile không đổi một pixel (đúng thiết kế #139). 4 test mới
+  `e2e/start-modal-board-centering.spec.ts` (bỏ bản sửa ra → 2 test desktop fail), §B36
+  `start-modal-non-blocking` vẫn 2/2 pass, `npm test` **1213/1213**, `?v=141→142`
+  `[Model: Opus 5]` — [chi tiết](docs/todo/B137-start-modal-phu-tron-viewport-de-len-drawer.md)
+- ✅ **#138.** Drawer "đóng" chỉ là **cắt xén** (`overflow:hidden` trên shell, `.panel-right` vẫn
+  rộng nguyên, `justify-content:flex-end` giữ rail lại) — đúng thiết kế, giải thích việc DevTools
+  vẫn thấy khung chat. Nhưng thiếu nửa còn lại: không `inert`/`aria-hidden` ⇒ ô chat, nút Gửi vẫn
+  nhận focus bằng Tab và vẫn được trình đọc màn hình đọc khi drawer đã đóng. **ĐÃ TÁI HIỆN
+  2026-08-21**: đi Tab từ `#btn-leave` thì focus lọt vào `INPUT#chat-input` rồi `BUTTON#btn-send`.
+  **ĐÃ SỬA 2026-08-22:** gom việc đổi class thành **một người ghi duy nhất** `setDrawerCollapsed()`
+  trong `room.js` (kèm `syncDrawerInert()`), cả 3 nơi đổi class đều đi qua đó ⇒ class và `inert`
+  không thể lệch pha (tránh đúng "nguồn sự thật thứ tư" mà §B138 cảnh báo). Chỉ `.panel-players` +
+  các `.tab-content` bị `inert`, **không bao giờ** `.sidebar-tabs` (rail là cách duy nhất mở lại);
+  chỉ áp dụng khi có cả `zen-room` lẫn `zen-drawer-collapsed`; không gate theo media query nên mobile
+  (sheet `translateY`) được xử lý y hệt; focus trong vùng sắp `inert` được trả về nút rail của đúng
+  tab đang mở. Đo Playwright (Tab thật, instance cô lập): điểm dừng vô hình **2 → 0** ở cả desktop
+  1440×900 lẫn mobile 393×727, rail vẫn Tab tới được, quick-chat-bar mobile vẫn trong tab-order; mở
+  lại drawer thì gõ/gửi chat thật OK, 0 console error; §B36 kiểm lại trực tiếp vẫn đúng. 14 test mới
+  `client/tests/room-drawer-inert.test.js`, `npm test` **1227/1227**, `?v=142→143` `[Model: Opus 5]`
+  — [chi tiết](docs/todo/B138-drawer-dong-chi-la-clip-noi-dung-van-focus-duoc.md)
+- ✅ **#139.** 📵 **BLOCKER (mobile)** — nút "Bắt đầu" của start-modal bị bottom sheet che hoàn toàn,
+  người chơi trên điện thoại **không vào được trận**. Đo trên `devices['Pixel 5']` (393×727): thẻ
+  modal bị sheet che **183/210px = 87%**, phần tử nhận click ở tâm nút là `DIV.players-row` **bên
+  trong drawer**, `page.click('#start-modal-btn')` **timeout**. Gốc: `.start-modal` `z-index:50`
+  (`game.css:412-426`) vs `.panel-right-shell` `z-index:700` ở nhánh ≤768px
+  (`room-zen.css:934-952`) — hai quyết định đúng riêng lẻ, chưa ai xét chung. `#start-modal-btn` là
+  **lối duy nhất** để bấm Bắt đầu (grep `confirmStart` toàn repo). **ĐÃ LÀM 2026-08-21**
+  (`fix/mobile-start-modal-behind-sheet` off `main`, đã merge vào `dev`; PR vào `main` **chờ người
+  dùng xác nhận**): thuần CSS trong nhánh ≤768px của `room-zen.css` — `z-index: 750` (trên sheet)
+  **cộng** neo lớp phủ vào dải trống giữa topnav và sheet (`position: fixed` +
+  `height: max(180px, calc(100dvh - topnav - sheet-h))`, biến thể `--zen-bar-h` khi sheet thu), nhờ
+  đó thẻ modal không đè sheet khi còn chỗ nên rail/ghế ngồi vẫn bấm được (§B36). **Không** dùng cách
+  tự thêm `zen-drawer-collapsed` khi modal hiện (sẽ thành nguồn sự thật thứ tư cho class tâm điểm
+  #134/#136). Verify bằng **chạm thật** `page.click()` ở 6 viewport: Pixel 5 phần bị che
+  **183px→0px**, iPhone 12 / 360×560 / 700×600 / tablet / desktop đều vào được trận. 7 test mới
+  `client/tests/room-zen-start-modal-above-sheet.test.js` (bỏ bản sửa ra → 5/7 fail), `npm test`
+  **1150/1150** trên nhánh fix; `?v=135→136` trên nhánh, re-bump `139→140` khi merge vào `dev`
+  theo `max(dev,main)+1` `[Model: Opus 5]` — [chi
+  tiết](docs/todo/B139-mobile-nut-bat-dau-bi-bottom-sheet-che.md)
+- ✅ **#140.** ~~`main` không có bản vá #134~~ — **BÁO ĐỘNG GIẢ, lỗi đo của tôi. ĐÃ ĐÓNG
+  2026-08-21.** `origin/main` có đủ bản vá #134 lẫn file test của nó (`git show
+  origin/main:client/js/room.js | grep -c drawerBreakpoint` → 2; PR #18 MERGED, merge commit
+  `8580ae8`). Nguyên nhân: `main` **cục bộ** đứng sau `origin/main` 4 commit và tôi đọc nó mà
+  **không `git fetch` trước**. Đã sửa: `main` cục bộ fast-forward về `fd911b0`; checkpoint merge
+  `origin/main`→`dev` (chỉ xung đột `?v=` 138 vs 140, giải theo `dev`, **không bump 141** vì
+  `git diff` toàn bộ `client/` trước/sau merge là **rỗng** — không byte nội dung nào đổi);
+  `npm test` 1204/1204. Đã đính chính câu ghi sai trong hồ sơ #139 bằng một dòng `docs/fix-log.md`
+  mới (append-only, không sửa dòng cũ) `[Model: Opus 5]` — [chi
+  tiết](docs/todo/B140-main-thieu-ban-va-134.md)
+- ✅ **#141.** `e2e/start-modal-non-blocking.spec.ts` **flaky sẵn** (fail cả trên `HEAD` chưa có bản
+  sửa #137/#138, trên server mới tinh — không phải hồi quy): nó chờ `waitForURL(/room\.html/)` rồi
+  đọc ngay `searchParams.get('id')`, nhưng `?id=` chỉ gắn vào URL **một nhịp sau** ⇒ thua cuộc đua
+  thì `roomId` là `null`, người chơi B vào `/room.html?id=` rỗng và bị đá về lobby. **Phần 1 (đua
+  `?id=`) đã sửa**: `waitForURL(/room\.html\?id=/)` (dạng `e2e/start-modal-board-centering.spec.ts`
+  đang dùng, không flaky) áp cho 13 file cùng mẫu; verify qua server throwaway 3111,
+  `start-modal-non-blocking.spec.ts` chromium+firefox 4/4 pass (từng timeout 100%), 12/13 spec khác
+  pass riêng lẻ — 1 fail (`security-boundary.spec.ts` `AUTH_REQUIRED`) tái hiện y hệt trên bản trước
+  sửa, không liên quan. Kèm theo, **không phải bug sản phẩm** nhưng làm mọi lần chạy e2e khó đọc và
+  đã 2 lần gây chẩn đoán nhầm "hồi quy": `authLimiter` 20 req/15 phút/IP (`server/routes/auth.js`) và
+  `MAX_ROOMS_PER_IP` mặc định 3 (`server/config.js`). **Phần 2 đã sửa**: người dùng chọn env override
+  chỉ cho harness (cùng khuôn `MAX_ROOMS_PER_IP`) — `AUTH_LIMITER_MAX` mới trong `server/config.js`,
+  nối vào `authLimiter`; mặc định vẫn 20 khi không set biến, production không đổi. 3 test mới
+  `server/tests/auth-limiter-config.test.js`, `npm test` **1230/1230** — [chi
+  tiết](docs/todo/B141-e2e-flaky-room-url-race-va-rate-limit.md)
+- ✅ **#142.** **(Người dùng khoanh đúng nguyên nhân)** `.panel-right` là grid **rộng cố định**
+  339px với `grid-template-columns: 1fr var(--zen-rail-w)`. `1fr` == `minmax(auto, 1fr)`, và cái
+  `auto` đó là **min-content của `.panel-players`** — track từ chối co xuống dưới nó. `.slot-card__name`
+  mang `white-space: nowrap` nên min-content = **trọn bề rộng tên**; `min-width: 0` (đã có sẵn trên
+  `.slot-card`) **không** hạ được min-content nội tại mà grid dùng để size track. ⇒ khi cả 2 ghế có
+  người tên dài, cột nội dung phình vượt 339px và **đẩy track rail 56px ra ngoài mép phải**, bị
+  `overflow:hidden` cắt. Đây là nguyên nhân của **cả hai** triệu chứng báo nhiều vòng trước: rail
+  "dịch sang phải / mất padding", **và** "đường đôi khi collapse" (viền rail lệch khỏi viền shell vài
+  px). Đo (1920×995): tên ~13 ký tự → track `326px`, rail tràn **43px**, còn thấy **12.8px** (khớp
+  DevTools người dùng `21 × 935`); tên 23 ký tự → track `474px`, tràn **191px**, rail **mất hẳn**.
+  **Lý do 4 vòng trước không tái hiện được:** tài khoản khách tên tự sinh ngắn cho min-content 277px
+  < track 283px nên không tràn. Sửa: `grid-template-columns: minmax(0, 1fr) var(--zen-rail-w)` —
+  ghim sàn về 0 để hình học drawer độc lập với nội dung (đúng thứ tác giả đã làm cho
+  `grid-template-rows` ngay dòng dưới); tên cắt ellipsis, rail không bao giờ dịch. Nhánh mobile
+  ≤768px không dính (đã có `grid-template-columns: 100%`). 2 test mới
+  `e2e/drawer-rail-not-displaced.spec.ts` dùng **tài khoản thật tên 23 ký tự** (bỏ bản sửa ra → 2/2
+  fail), `npm test` **1227/1227**, `?v=143→144` `[Model: Opus 5]` — [chi
+  tiết](docs/todo/B142-grid-track-1fr-day-rail-ra-khoi-drawer.md)
+- ✅ **#143.** Sau #142, ở **ghế của chính mình** nút `✕` (`.slot-card__stand`, `min-width:32px` +
+  `gap:6px`) chỉ chừa ~70px cho tên trong thẻ ~117px ⇒ hiển thị `Ngu…`, trong khi ghế đối thủ (không
+  có nút) hiển thị `Trần Hoàn…`. Bất đối xứng và ghế của mình lại đọc được ít nhất. Không phải lỗi do
+  #142 gây ra — #142 chỉ làm nó lộ đúng bản chất thay vì để layout vỡ. **Vòng 1** (chọn qua
+  `AskUserQuestion`): đưa `✕` ra khỏi dòng tên bằng `position: absolute` vào góc trên thẻ — full
+  parity (40px→78px) nhưng người dùng xem trực tiếp, phản hồi kiểu **inline cũ đẹp/thu hút mắt
+  hơn**, kiểu góc-thẻ mới **làm slot trông rời rạc**. **Vòng 2** (chọn lại qua `AskUserQuestion`):
+  quay về inline, **hạ `min-width/min-height` 32px→24px** (sàn WCAG 2.2 AA "target size minimum",
+  không phải số tuỳ ý) thay vì giữ nguyên 32px hay revert hoàn toàn. Cải thiện 40px→48px (không full
+  parity — đúng tradeoff đã chấp nhận). **Kiểm chứng chạm thật** trên `devices['Pixel 5']`
+  (`hasTouch`/`isMobile`, không chỉ đo desktop) — đứng dậy thành công ở 24px. Test
+  `e2e/slot-card-stand-inline-touch-target.spec.ts` (viết lại từ bản vòng 1, vì assertion "full
+  parity" cũ sẽ luôn sai với quyết định mới): đo 24px + không chồng lấp, cộng kịch bản chạm thật.
+  `e2e/drawer-rail-not-displaced.spec.ts` (#142) vẫn 2/2 pass. `npm test` **1230/1230**,
+  `?v=144→145→146` — [chi tiết](docs/todo/B143-nut-dung-day-bop-ten-nguoi-choi.md)
+
+### Nguồn: báo cáo trực tiếp người dùng kèm ảnh chụp Android — "Thanh Panel này tốn quá nhiều space, có thể ẩn đi?" (2026-08-22)
+- ✅ **#144.** `<nav class="topnav">` cao **60px cố định** trên zen mobile (`--zen-topnav-h`), luôn
+  hiện, chứa logo + mã phòng + rời phòng + cài đặt. Trên iPhone SE 375×667 đó là **9% chiều cao
+  viewport**. `--zen-topnav-h` là **biến hình học chịu lực** (11 chỗ `calc()` khác trong
+  `room-zen.css` + `board.js` đọc gián tiếp qua `shellTop`) — hỏi hướng tương tác qua
+  `AskUserQuestion` trước khi code (chọn nút `V`, không phải vuốt — tránh pull-to-refresh không
+  kiểm chứng được ở môi trường này). **Đo bắt buộc trước khi kết luận** (server throwaway, không
+  đụng DB thật): canvas board **không đổi 1px** khi bật/tắt nav ở CẢ Pixel 5 lẫn iPhone SE 375×667
+  (chỉ ~2.6px trên iPhone SE 320×568 đời cũ) — sai giả định ban đầu "iPhone SE lợi thật vì bị giới
+  hạn chiều cao"; board rộng-giới hạn (width-bound) trên mọi viewport điện thoại thực tế. Hỏi lại
+  người dùng với số đo thật: **giữ làm tính năng gọn giao diện** (đúng yêu cầu gốc), không phải làm
+  board to hơn. Cho xem bản nút `V`, người dùng phản hồi **bỏ nút V**, chỉ giữ thanh tối giản
+  luôn-nhỏ: rời phòng (trái) + mã phòng (giữa) + cài đặt chung (phải, phát hiện được chèn **động**
+  bởi `settings-panel.js` lúc đọc code — **không trùng** `tab-settings` như nhận định ban đầu, đã
+  đính chính trong chi tiết), logo bỏ hẳn trên mobile. `--zen-topnav-h: 28px` cố định (bỏ JS toggle),
+  `.topnav__right` dùng `order` tường minh dàn 3 nút trái/giữa/phải bất kể thứ tự chèn DOM. Test
+  `e2e/topnav-minimal-mobile.spec.ts` (2 viewport, kiểm tra rời phòng **hoạt động thật** không chỉ
+  visible), `npm test` **1230/1230**, `?v=147→148→149` `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B144-an-topnav-tren-mobile-phong-choi.md)
+
+### Nguồn: phân tích HAR `play3cr.dpdns.org_Archive [26-08-22 19-20-59].har` — người dùng hỏi vì sao entry `wss://.../socket.io/` dài nhất, kèm tra cứu chuẩn ngành "Big Site xử lý thế nào?" (2026-08-22)
+- ✅ **#145.** Entry WebSocket dài **543 ms** nhưng đó là 3 thứ cộng lại, và phần lớn nhất **không**
+  nằm trong entry: **462 ms trôi qua trước khi socket được mở**. `client/index.html:449` nạp
+  `index-entry.js` bằng `type="module"` ở cuối `<body>` ⇒ defer ⇒ `io()` chỉ chạy ở **cuối** đồ thị
+  module (`index-entry → … → lobby.js:40 new SocketClient()`), dù `_connect()` không cần DOM/CSS/i18n
+  — chỉ cần global `io` + một lần đọc `localStorage`. Riêng **220 ms** là phía client sau khi HTML
+  đã về (`52.579` → `52.799`). Vì sảnh phụ thuộc **100%** vào socket để có dữ liệu đầu (danh sách
+  phòng, `session:me`, online count), ~1005 ms đó là **màn hình trống thật**, không phải tài nguyên
+  phụ tải chậm ở nền. Sửa: khởi tạo socket sớm (đưa `socket.io.min.js` + đoạn khởi tạo lên `<head>`,
+  `SocketClient` **nhận lại** socket thay vì gọi `io()` lần hai) ⇒ 321 ms TCP+TLS chạy **song song**
+  với parse HTML thay vì nối tiếp, ước tính **−200…−250 ms**. Chuẩn ngành xác nhận đây là cách duy
+  nhất còn lại: đề xuất WHATWG `preconnect` cho `wss://` đã **closed as not planned**, và
+  Figma/Slack đều thiết kế để socket **rời khỏi critical path** (fetch state ban đầu qua HTTP, socket
+  chỉ nhận delta). **Đã loại trừ, đừng đi lại:** `preconnect`/`dns-prefetch` (vô ích với `wss`);
+  321 ms `connect` (mất gói SYN client↔edge, cùng nguyên nhân #131, không sửa được bằng code);
+  RFC 8441/9220 (**đính chính**: trình duyệt CÓ hỗ trợ, CDN thì không — HAR chứng minh: Firefox 153
+  xin `HTTP/1.1` Upgrade tới **IP edge khác** dù trang chính chạy HTTP/3). **ĐÃ LÀM 2026-08-22**
+  (`fix/socket-early-connect` off `dev`): `socket-early.js` mới chạy trong `<head>` gọi
+  `SocketClient.shared()` (static mới, **một chỗ duy nhất** giữ idempotent, `destroy()` nhả slot);
+  4 script lên đầu `<head>` **TRÊN mọi `<link rel="stylesheet">`** — script cổ điển đặt sau stylesheet
+  sẽ chờ stylesheet đó tải xong, để trôi xuống dưới CSS là trả lại sạch khoản tiết kiệm mà không có
+  gì hỏng để nhận ra; gỡ `session.js`/`socket-client.js` khỏi import `index-entry.js` + 2 hint
+  `modulepreload` (để lại là nạp file 2 lần = đúng đường #51); `lobby.js` `new` → `shared()`; object
+  option `io({...})` **không đụng** ⇒ 8 test #131 pass nguyên. Đo trên 2 instance cô lập (3111/3112,
+  DB rỗng riêng, **không** đụng server/DB thật), mốc `navigationStart` → WS opened, median 7 lần:
+  **36.9 → 13.8 ms**; FCP **44 → 24 ms** — rủi ro "4 script đồng bộ vào `<head>` phạt first paint"
+  tôi nêu ra trước khi đo đã bị chính số đo bác bỏ; đúng **1 kết nối WS/trang**, 0 console error,
+  luồng khách→tạo phòng→room→reload→rời phòng giống hệt trên cả 2 instance, không bị đá về login.
+  **Localhost nên chỉ chứng minh thứ tự đã đổi, KHÔNG chứng minh biên độ trên domain thật.** 15 test
+  mới (mutation trên bản sao ở thư mục tạm: revert 4 file nguồn ⇒ 13/15 fail), cập nhật hằng số import
+  `index-entry.js` 7→5 trong test #126, `npm test` **1245/1245**, `?v=149→150`. Phạm vi cố ý chỉ
+  `index.html` `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B145-socket-mo-qua-muon-trong-doi-trang.md)
+- ✅ **#146.** `server/middleware/auth.js` `verifySocketToken()` gọi `sessionManager.touchSession()` —
+  một lệnh **GHI SQLite đồng bộ** (better-sqlite3, chặn event loop, commit WAL) — **trước** `next()`,
+  tức response 101 của **mọi** handshake phải chờ nó xong. Đây là bookkeeping `last_seen` thuần tuý.
+  Thành phần `wait: 145 ms` trong HAR. **#81 không phủ mục này**: bench đó chỉ đo đường ĐỌC
+  (`getValidSession`), không đo lệnh ghi — đừng dùng #81 để đóng lại lần nữa mà không đo đúng lệnh.
+  Chuẩn ngành: auth ở handshake phải rẻ, không chạm datastore (Slack lấy token qua HTTP trước;
+  socket.io còn có hẳn `skipMiddlewares` với đúng lý do này). Giá trị thật nằm ở **p99 khi burst** —
+  ghi đồng bộ phạt *tất cả* kết nối đang chờ, không riêng kết nối gây ra nó. **ĐÃ ĐO 2026-08-22,
+  ĐÓNG (không sửa)**: mở rộng `bench-session-lookup.js` — `touchSession()` cô lập (không kèm read)
+  cùng bậc µs với lệnh đọc (p50 5-6 µs, p99 dưới 20 µs ở 500 dòng/burst 64) ⇒ không có lợi ích đo
+  được để đánh đổi lấy sửa code. Đo thêm dưới **tranh chấp WAL thật** (connection thứ hai giữ khoá
+  ghi): **20/20 lệnh block 5006 ms rồi ném `SQLITE_BUSY`** — không phải µs, nhưng grep xác nhận
+  `database.js` là connection SQLite **duy nhất** trong production ⇒ kịch bản này không reachable
+  hôm nay. Tách phát hiện đó sang **#149** (địa lôi, chưa sửa, không cấp bách) thay vì gộp vào đây
+  `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B146-touchsession-ghi-sqlite-dong-bo-chan-truoc-101.md)
+- ✅ **#147.** `server/index.js:165` dựng `new Server(server, { cors })` — **chưa bật**
+  `connectionStateRecovery`. Mỗi lần rớt transport, người chơi trả giá toàn bộ đường vào lại (321 ms
+  TCP+TLS + 145 ms auth + eviction + rejoin) và mất hẳn event xảy ra trong lúc rớt. Đáng cân nhắc vì
+  **#131 đã đo được ~17% mất gói** ở hop 8 nhà mạng — đúng môi trường tính năng này sinh ra để phục
+  vụ. Chuẩn ngành: Discord có `RESUME` + `resume_gateway_url` + `session_id`, huỷ session sau ~5
+  phút, và bắt client **leo thang RESUME → IDENTIFY** khi thất bại lặp; socket.io có tương đương
+  (`maxDisconnectionDuration`, khuyến nghị ~2 phút, **không** `Infinity`). **CAO RỦI RO, phải chốt
+  với người dùng trước khi code**: đụng thẳng vùng single-device eviction + cờ `auth.reconnect`
+  (chỗ đã sinh ra "đăng nhập ở thiết bị khác" giả) và 3 loại grace period mà #115 vừa chỉnh;
+  `skipMiddlewares: true` sẽ làm **session đã thu hồi sống lại**, phá đúng cái #68 xây.
+  **ĐÃ ĐIỀU TRA 2026-08-22 → ĐÓNG, KHÔNG LÀM** (người dùng chốt qua `AskUserQuestion` sau khi xem số
+  liệu). Đọc `node_modules` thật thay vì suy từ tài liệu, 4 phát hiện: (1) `skipMiddlewares` **mặc
+  định là `true`** (`index.js:106-111`) và `namespace.js:214-219` gọi thẳng `_doConnect` bỏ qua
+  `io.use()`; socket phục hồi chỉ khôi phục `id`/`pid`/`rooms`/`data`/`missedPackets` — **không** có
+  `socket.user` (thuộc tính riêng của ta) ⇒ bật "trần" thì `io.on('connection')` gọi `user.displayName`
+  trên `undefined` = **TypeError mọi kết nối phục hồi**, cộng session thu hồi sống lại; (2) tin tốt:
+  `auth.reconnect` **CÓ** sống sót (`socket.io-client/socket.js:443` merge `{pid,offset}` với auth của
+  user) nên `isOwnReconnect` vẫn đúng — làm được an toàn, chỉ là không đáng; (3) **lợi ích ~0**: app đã
+  re-gửi TOÀN BỘ state mỗi lần reconnect (`serializeRoom` + `gameState.serialize()` + `timer.getTimers()`
+  + `timerSync`) nên replay gói tin là thừa, và `missedPackets` bắn **trước** `room:joined` nên với
+  event không idempotent (`game:ended`, `room:destroyed`) là phát lại modal cũ; (4) lợi ích thật **duy
+  nhất** là chat bị lỡ (`ChatHandler` không lưu lịch sử) — tách thành **#150**, giải quyết trực tiếp
+  bằng buffer chat, không đụng tầng socket.io. **Đính chính**: dòng "mất hẳn event xảy ra trong lúc
+  rớt" khi mới ghi mục này là **quá rộng** — chỉ chat mất, room/game/timer đều được dựng lại đầy đủ
+  `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B147-chua-bat-connectionstaterecovery.md)
+- ✅ **#148.** `server/socket/SocketHandler.js` middleware chống flood tạo **một `setInterval(1s)` cho
+  MỖI socket**; ở quy mô §10 stress test (6000 kết nối) là 6000 timer đánh thức event loop mỗi giây,
+  phạt tất cả mọi người vì Node chỉ có một event loop. Cleanup **đúng** (`clearInterval` trong
+  `disconnect`) ⇒ không rò rỉ, thuần tuý là chi phí thường trực. Sửa: token bucket **tính lười**
+  (`tokens` + `lastRefillMs`, nạp lại theo thời gian trôi ở mỗi `onevent`), không cần timer nào.
+  **Ưu tiên thấp** — nợ scale, HAR này (1 kết nối) hoàn toàn không thấy được. Cẩn thận: đây là code
+  chống lạm dụng, và `violationStreak`/`FLOOD_DISCONNECT_STREAK` là ngữ nghĩa **theo cửa sổ thời
+  gian**, **không** map 1-1 sang token bucket. **Đã sửa 2026-08-22** (`fix/flood-window-lazy-no-timer`):
+  giữ nguyên cửa sổ 1 giây rời rạc + cả hai tầng, chỉ dời **thời điểm tính** biên vào `onevent`
+  (`rollWindows`) — không dùng token bucket thuần, đúng cảnh báo trong instruction. Ngưỡng không đổi,
+  test 8→**20** case, `npm test` **1256/1256**. **Đính chính tiền đề của chính mục này**: đo được cho
+  thấy 0/1000/6000 timer 1s **không** khác nhau về event-loop delay hay CPU (Node gom timer cùng thời
+  lượng vào một danh sách) — lợi ích thật chỉ là bộ nhớ, 286 B/socket (+1.64 MiB ở 6000)
+  `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B148-setinterval-moi-socket-trong-flood-middleware.md)
+- ✅ **#149.** Phát sinh khi đo #146: `db.pragma('busy_timeout')` mặc định của better-sqlite3 là
+  **5000 ms**. Đo được: nếu một connection thứ hai từng mở cùng `gomoku.db` và giữ khoá ghi
+  (`BEGIN IMMEDIATE` chưa commit), **mọi** `touch.run()` trên connection chính sẽ **block đúng
+  5006 ms rồi ném `SQLITE_BUSY`** — 20 lệnh liên tiếp tốn tổng **100 124 ms**. `touchSession()` đã
+  có `try/catch` nên không crash, nhưng chặn event loop 5s/lần phạt *mọi* kết nối khác đang chờ, không
+  riêng kết nối gây ra nó. **Không cấp bách, không sửa**: grep xác nhận `server/db/database.js` là
+  connection SQLite **duy nhất** trong toàn bộ production code — kịch bản kích hoạt (2 connection
+  cùng ghi) không reachable trong kiến trúc hiện tại (single-process, `better-sqlite3` đồng bộ, "All
+  writes to DB happen ONLY when a game ends"). Chỉ ghi lại làm địa lôi: nếu tương lai có ai thêm
+  worker thread hoặc process phụ mở `gomoku.db`, đọc mục này trước khi làm vậy. **ĐÃ ĐÓNG 2026-08-22**
+  theo yêu cầu người dùng — không sửa, giữ nguyên làm tripwire `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B149-touchsession-block-5s-neu-co-connection-thu-hai.md)
+- ✅ **#150.** Phát sinh khi điều tra #147: `ChatHandler.js` **không lưu lịch sử** tin nhắn (chỉ
+  `io.to(roomId).emit`), và `serializeRoom()` cũng không trả về chat ⇒ mọi tin nhắn gửi trong lúc một
+  người rớt mạng **mất hẳn** với người đó. `room:joined` dựng lại đầy đủ room/game/timer nhưng không
+  có chat — không lỗi, không log, không dấu hiệu UI nào; chỉ người bị rớt mới thấy lỗ hổng trong cuộc
+  trò chuyện. Đáng chú ý vì **#131 đo được ~17% mất gói** ở hop nhà mạng ⇒ rớt ngắn là chuyện thường.
+  Đề xuất: giữ **N tin gần nhất mỗi phòng** trong bộ nhớ (không cần SQLite), gửi kèm `room:joined` —
+  đây là hướng người dùng chọn khi đóng #147. **Chưa chốt, hỏi trước khi làm**: không ai báo cáo
+  triệu chứng này (tìm thấy khi đối chiếu, không phải từ người dùng thật) ⇒ hỏi xem chat có được dùng
+  đủ nhiều để đáng vá. Ràng buộc lớn nhất: `room:joined` phục vụ **cả** người quay lại **lẫn** người
+  vào lần đầu — nhét buffer vô điều kiện là cho người lạ đọc chat trước khi họ vào phòng, đó là quyết
+  định quyền riêng tư chứ không phải kỹ thuật. **ĐÃ ĐÓNG 2026-08-22, KHÔNG LÀM** — hỏi người dùng
+  qua `AskUserQuestion` (chỉ-người-quay-lại vs mọi-người-vào-phòng), trả lời: *"có vẻ không đáng
+  làm"*. Đúng câu hỏi mà instruction đặt lên đầu; không ai báo cáo triệu chứng, và một tính năng
+  không ai thiếu là chi phí bảo trì thuần tuý. **Giữ lại 3 dữ kiện điều tra** cho ai đụng
+  `chat:message` sau này: (1) đây là kênh **dùng chung** — ~30 chỗ emit thông báo hệ thống
+  (`GameHandler` 18, `RoomHandler` 4, `DisconnectHandler` 4, `state.js` 2, `LobbyHandler` 1,
+  `TournamentMatchHandler` 7) phân biệt bằng `isSystem: true` + `code` + `vars`, chat người chơi thì
+  không có; phát lại thông báo hệ thống là sai ngữ nghĩa ("X đã mất kết nối" phát lại cho chính X);
+  (2) chat phòng giải đấu là **cơ chế riêng** (`tmatch:chat_message`, bản cài đặt tự chứa ở
+  `tournament-match.js:791`), không đi chung đường ⇒ phạm vi hẹp hơn đã lo; (3) `chat-ui.js:77-81`
+  bắn **float toast cho mọi tin không phải hệ thống** ⇒ nạp buffer N tin qua `appendChatMessage()` sẽ
+  bắn N toast cùng lúc. Không thay đổi code nào `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B150-chat-mat-han-khi-nguoi-choi-rot-mang.md)
+
+### Nguồn: báo cáo người dùng — mobile: quick-chat-input giữ focus sau khi bấm lại bàn cờ (2026-08-22)
+- ✅ **#151.** `#quick-chat-input` (`room.js:317-325`, skin `zen-room` mobile) chỉ có listener gửi tin
+  (`click`/Enter), không có gì gỡ focus khi người dùng bấm lại bàn cờ — input giữ focus, khiến trình
+  duyệt tự cuộn màn hình để giữ nó trong khung nhìn. Khác chiều với B104 (đã đóng — B104 là bàn cờ vô
+  tình *tạo* focus cho chat qua ghost click, B151 là chat *giữ* focus không được gỡ), không phải trùng
+  lặp. **Đã sửa 2026-08-22**: thêm `pointerdown` trên `#board-area-shell` tự `blur()` khi
+  `quickChatInput` đang giữ focus; đã rà soát toàn bộ input khác trong `client/`, xác nhận không có
+  widget nào khác cùng lỗi (`#chat-input` được `.panel-right-shell` che kín bàn cờ khi mở, không thể
+  tái hiện). Verify bằng Playwright thật (mobile viewport, guest login + tạo phòng qua UI thật, giả
+  lập tap bàn cờ) xác nhận focus được gỡ đúng; `npm test` 1256/1256 pass. Bump `?v=151`
+  `[Model: Sonnet 5]` —
+  [chi tiết](docs/todo/B151-quick-chat-input-giu-focus-sau-khi-tap-board.md)
+
+### Nguồn: báo cáo người chơi ở Trung Quốc — "Mỗi khi nhấn nước đi: lag; ~0.5s mới xuất hiện. Đôi lúc freeze." (2026-08-23)
+- ✅ **#152.** `game:move` gửi bằng **bare emit không có ack** (`client/js/game-ui.js:108`;
+  `SocketClient.emit()` không hỗ trợ ack ở bất kỳ đâu) — nếu gói đi **hoặc** gói `game:moved` về bị
+  rớt **trong khi socket vẫn "connected"**, client chờ vô thời hạn: không timeout, không retry, không
+  phản hồi UI ⇒ **bàn cờ đứng hẳn, người chơi phải F5**. Cơ chế resync sẵn có (`SocketHandler.js:233-266`
+  tự đẩy `room:joined` kèm full `gameState`) **chỉ kích hoạt khi có disconnect→reconnect thật**, nên
+  không cứu được kịch bản rớt gói im lặng — đúng kiểu nhiễu mà GFW tạo ra (drop chọn lọc ~180s, không
+  chặn cứng). Cần: ack hai chiều (`.timeout(5000).emit()`, per-emit) + **`moveId` uuid do client sinh
+  để dedupe** (chống double-apply khi retry) + sự kiện `game:resync` chủ động + **phát hiện gap qua
+  `moveCount` ở phía nhận**. Gap detection là **lỗ hổng đối xứng dễ bỏ sót**: ack chỉ bảo vệ *người
+  đi*, còn gói `game:moved` broadcast tới *đối thủ* rớt thì hiện không ai phát hiện — A chờ B, B chờ
+  A, deadlock cả hai; `moveCount` đã có sẵn trong payload nhưng `room-socket.js:230` đang **ghi đè
+  mù** không so sánh (cách Lichess/Gambetta xử lý cùng bài toán). **Đã loại trừ**: đường
+  `game:move` không có debounce/ghi đĩa đồng bộ, `_checkWin` chỉ quét 4 hướng ⇒ độ trễ KHÔNG đến từ
+  tính toán server. **Đã bác bỏ 2 hướng (2026-08-24, đối chiếu chuẩn ngành + đọc source thư viện)**:
+  (a) dedupe theo "nước đi cuối + đúng người gửi" — hỏng khi đối thủ kịp đi chen vào giữa lúc gói
+  gửi-lại về trễ, dedupe theo *vị trí lịch sử* thay vì *danh tính hành động*; (b) bật option `retries`
+  toàn cục của socket.io — `socket.js:252/359/360` cho thấy nó áp cho **mọi** emit, tự nhét ack vào
+  mọi packet, và hàng đợi tuần tự gây **head-of-line blocking**; với 1 socket dùng chung toàn trang
+  (#145) thì chat sẽ bị gửi 4 lần. **Khuyến nghị `[Model: Opus 5 — Medium]`** khi implement: chế độ
+  hỏng của task này là *tự nghĩ ra giải pháp nghe hợp lý nhưng sai* (đúng 2 bẫy đã dính ở trên), cộng
+  reasoning idempotency/concurrency + verify bằng mô phỏng mất gói `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B152-game-move-khong-co-ack-timeout-retry-gay-freeze.md) — **ĐÃ XONG
+  2026-08-24**: ack 2 chiều (`.timeout(5000)`, method mới `SocketClient.emitAck`, không đụng `emit()`),
+  dedupe `moveId` uuid trong `room._moveAcks` (dọn ở `handleGameEnd`), sự kiện `game:resync` tái dùng
+  `buildRoomStatePayload()` chung với `room:joined`, gap detection `moveCount` phía nhận, i18n `vi`+`en`.
+  33 unit test mới (16 server + 17 client), bỏ fix ra thì **26/33 fail**; `npm test` 1289/1289. Verify
+  Playwright trên instance cô lập (cổng 3199, DB tạm) với mô phỏng rớt gói thật —
+  `e2e/game-move-ack-resync.spec.ts`. `?v=151→152`. **Phần còn thiếu đã tách thành #154** (gap
+  detection không phá được deadlock 2 người luân phiên)
+- ✅ **#153.** Client **không render lạc quan**: `onCellClick` (`client/js/game-ui.js:97-110`) chỉ emit,
+  không vẽ gì; quân chỉ hiện khi server broadcast `game:moved` về (`client/js/room-socket.js:211-245`)
+  — nên **người tự đặt quân cũng phải trả trọn 1 round-trip mới thấy quân của chính mình** (~0.5s đo
+  được). Đã xác minh **không có độ trễ giả nào trong code** (`setState()`→`_draw()` đồng bộ, bàn cờ là
+  `<canvas>` nên không có CSS transition per-stone) ⇒ toàn bộ là RTT thật, chỉ bị lộ 100% ra UI. Cần
+  vẽ quân "pending" ngay khi click rồi hoà giải theo ack/`game:moved`/timeout. **⚠️ Phụ thuộc #152 —
+  KHÔNG ship trước #152**: optimistic mà thiếu ack sẽ biến freeze thành *âm thầm* (người chơi tưởng
+  nước đi thành công trong khi server chưa nhận), tệ hơn hiện trạng. **Khuyến nghị `[Model: Sonnet 5 —
+  High]`** khi implement: task mang tính cơ học (Command pattern, 3 đường kết thúc + ranh giới
+  Swap2/portal đã liệt kê đủ), cần *tuân thủ* chứ không cần *phát hiện* `[Model: Opus 5]` —
+  [chi tiết](docs/todo/B153-optimistic-render-quan-co-cua-chinh-minh.md) — **ĐÃ XONG 2026-08-24**:
+  `BoardRenderer.optimisticStone` (overlay riêng, không đụng `this.board`) vẽ bán trong suốt + viền nét
+  đứt ngay khi click, hoà giải qua `game:moved` khớp toạ độ (không phải ack — xem lý do trong code:
+  broadcast luôn tới trước ack cùng kết nối, và tránh flash-rỗng khi gap-check #152 chuyển hướng chính
+  broadcast đó sang resync); ack `error` gỡ pending (rollback miễn phí vì `gameState.board` chưa từng bị
+  ghi); timeout lần 1 chuyển "warning" (vòng vàng); timeout lần 2 + `room:joined` (bất kỳ nguyên nhân,
+  kể cả resync) luôn dọn overlay. Đã xác minh portal **không** dịch chuyển quân (`GameEngine.makeMove`
+  ghi thẳng `board[y][x]`, ô portal còn bị chặn đặt quân) nên optimistic an toàn với `rulePortal`. Thêm
+  chặn "một nước đang bay tại một thời điểm" (click thứ 2 trong lúc chờ bị bỏ qua) — `board.js`'s
+  `isMyTurn` không tự tắt cho tới khi xác nhận nên cần chặn riêng. 29 test mới (13 server+client
+  BoardRenderer + 16 GameUI/room-socket), bỏ fix ra thì **20/29 fail**; `npm test` 1318/1318. Verify
+  Playwright trên instance cô lập (cổng 3198). **Đo trễ cảm nhận**: quân pending hiện trong
+  ~35-45ms (đảm bảo bằng kiến trúc — `sendMove()` gọi `setOptimisticStone()` trước `emitAck()`, không
+  phụ thuộc mạng). **Không ép được RTT mô phỏng cho phần xác nhận từ server**: đã thử CDP
+  `Network.emulateNetworkConditions` (latency 250ms) theo đúng yêu cầu, cả áp giữa ván lẫn áp **trước
+  khi socket kết nối** — không có tác dụng lên WebSocket đã/đang mở; xác nhận bằng cách throttle
+  `fetch()` dưới **cùng lệnh CDP** trên cùng trang, đo đúng ~262ms cho latency=250ms cấu hình, chứng tỏ
+  cơ chế CDP hoạt động nhưng **không phủ khung dữ liệu WebSocket** (giới hạn đã biết của Chromium/CDP,
+  không phải lỗi của test hay của app). Ghi thẳng theo tiền lệ #126 thay vì báo khống số đo — xem
+  "HONESTY NOTE" trong `e2e/game-optimistic-render.spec.ts`. Rollback verify bằng lỗi thật (vi phạm
+  vùng nước-đầu-tường, không giả lập). `?v=152→153`.
+
+### Nguồn: phát sinh khi thực thi #152 (2026-08-24)
+- ✅ **#154.** (Đã sửa 2026-08-26 — `fix/turn-watchdog-resync-deadlock` off `dev`. Watchdog theo lượt
+  bắn ở **phân số α=0,75 của đồng hồ đang theo dõi** → `game:resync`; ngưỡng **đo từ 334 ván /
+  9.429 khoảng lặng thật** chứ không chọn số tròn. Bản nháp đầu dùng "deadline trôi qua trong im
+  lặng" — đúng logic nhưng **tới muộn hơn chính cú thua giờ của người kẹt**, Playwright bắt được
+  (thua giờ giây 14,8, watchdog hẹn giây 21); phân số sửa đúng chỗ đó. Biến thể thứ hai bịt bằng
+  move-confirm watchdog 2500ms. 24 test mới, `npm test` 1342/1342, verify e2e 2 người không ai bấm
+  gì. `?v=153→154`.) Gap detection của #152 (`room-socket.js`, `game:moved` so `moveCount`) **không phá được
+  deadlock 2 người** ở đúng kịch bản mà `docs/todo/B152-*.md` mục 5 mô tả: nó chỉ kích hoạt khi có
+  **một `game:moved` tiếp theo** tới nơi, mà với 2 người luân phiên nghiêm ngặt gói đó **chính là**
+  nước người kẹt đang chờ. Đã kiểm chứng không có sự kiện đánh thức nào khác — `TimerManager` tick
+  thuần server-side (`TimerManager.js:11/68`), không broadcast định kỳ, đồng hồ chỉ đi kèm chính gói
+  `game:moved` đã rớt. Mục 5 **vẫn phải giữ** (cứu khán giả và mọi luồng không luân phiên — đã verify
+  Playwright); đây là phần còn thiếu. Chặn trên hiện có: người kẹt thua giờ, không treo vĩnh viễn.
+  Hướng cần cân nhắc: watchdog theo lượt phía client gọi `game:resync` (primitive #152 đã dựng) —
+  **phải đo ngưỡng trước, đừng chọn số tròn** (#131). **Khuyến nghị `[Model: Opus 5]`**: chọn ngưỡng
+  sai gây resync ồn ào ở mọi ván nghĩ lâu. **Cập nhật 2026-08-26 (rà soát #155)**: có biến thể thứ
+  hai — chính người vừa đi cũng kẹt nếu ack ok nhưng broadcast xác nhận cho họ rớt độc lập; #155
+  (Full CSP) làm hậu quả nặng hơn (turn-bar/đồng hồ kẹt dự đoán, không chỉ quân mờ) —
+  [chi tiết](docs/todo/B154-gap-detection-khong-pha-duoc-deadlock-2-nguoi.md)
+
+### Nguồn: người dùng đưa spec kỹ thuật bên ngoài để đánh giá (phong cách Zero-Perceived-Latency
+Lichess/Chess.com), nối tiếp #153 (2026-08-26)
+- ✅ **#155.** (Đã xong 2026-08-26 — `feature/full-csp-zero-latency` off `dev`. `_drawOptimisticStone`
+  vẽ solid 100%, không còn viền nét đứt (chỉ còn viền mảnh 1px khi `warning`); `predictedTurn`
+  overlay mới trong `RoomState` — sibling của `boardRenderer`, không bao giờ ghi `gameState.currentTurn`/
+  `timerValues` — cho turn-bar + đồng hồ đối thủ đếm ngược sống ngay từ lúc click; âm thanh phát tại
+  `sendMove` trước `emitAck`, khử trùng lặp ở `game:moved` bằng cờ khớp toạ độ chụp trước khi
+  `setOptimisticStone(null)`. Rollback (ack lỗi, `game:ended` đua, resync) chỉ tắt cờ + gọi lại
+  `renderTimers()`/`renderTurnLabel()` — không viết logic khôi phục riêng, đúng nguyên lý #153. Local
+  pre-check ở `onCellClick` (ô trống, đúng lượt) theo `gameState.currentTurn` (userId, không phải màu
+  như spec nháp ghi) — dùng `st.timerValues` (RoomState-level) làm nguồn snapshot, không phải
+  `gameState.timerValues` như bản nháp instruction.md. 27 test mới/mở rộng (`board-optimistic-stone.
+  test.js`, `game-optimistic-render.test.js`) theo ma trận 13 case, `npm test` 1356/1356. Verify e2e
+  Playwright 2 người thật: rollback (ack lỗi tường) và confirm (moveCount tăng) đều đúng — turn-bar/
+  nhãn lượt/quân cờ solid đổi ngay khi click, snap về đúng khi `game:moved` về. **Ngoài phạm vi
+  (chưa làm, ghi riêng nếu cần)**: mobile players-strip (`room-ui.js` `renderStripPlayer`/
+  `updateStripTimers`) không đọc `predictedTurn` — chỉ desktop turn-bar được nâng cấp, spec B155 gốc
+  không nhắc tới bề mặt này. `?v=154→155`.) #153 (✅ đã xong) mới che được phần **thị giác** của round-trip: quân pending vẫn bán
+  trong suốt/viền nét đứt, còn **âm thanh đặt quân** và **turn-bar/đồng hồ đối thủ** vẫn đợi trọn
+  `game:moved` broadcast về mới đổi — người tự đặt quân vẫn nghe/thấy lượt chuyển trễ đúng 1 RTT dù
+  quân đã hiện. Cần nâng thành Full CSP: quân predicted solid 100% (không phân biệt được với quân
+  thật — đánh đổi UX người dùng đã chấp nhận, bù bằng local pre-check chặn sớm case chắc chắn sai:
+  ô đã có quân / sai lượt / game không `ongoing`), âm thanh phát ngay lúc click (khử trùng lặp khi
+  `game:moved` xác nhận về), và overlay **mới tách biệt khỏi `gameState`** (`predictedTurn`, cùng
+  nguyên lý với `optimisticStone` — không bao giờ ghi vào state xác thực) để turn-bar + đồng hồ đối
+  thủ chuyển ngay và **chạy đếm ngược sống** (quyết định người dùng, chấp nhận việc số có thể nhảy
+  nhẹ về đúng số server khi xác nhận). Rollback (ack lỗi / timeout-2-lần → resync / `game:ended` đua
+  với ack đang bay) chỉ cần tắt cờ overlay — không viết logic khôi phục riêng, vì `gameState` gốc
+  chưa từng bị đổi. **Loại khỏi phạm vi**: phần network/transport (`perMessageDeflate`,
+  `TCP_NODELAY`) trong spec gốc — đó là tối ưu tầng mạng thật, không phải cải thiện cảm nhận, và
+  `perMessageDeflate` là cấu hình toàn socket dùng chung (#145), tắt sẽ ảnh hưởng chat/room list, cần
+  đánh giá riêng nếu muốn làm. **Khuyến nghị `[Model: Sonnet 5 — High]`**: cơ học tương tự #153
+  (đã có overlay pattern để theo), điểm rủi ro nhất là thiết kế `predictedTurn` không được rò vào
+  `gameState`. **Không đóng #154 khi làm việc này** — #154 chưa xong để lại khe hở khiến overlay của
+  #155 có thể kẹt vô thời hạn im lặng, xem "Rủi ro còn sót" trong `docs/instruction/B155-*.md` —
+  [chi tiết](docs/todo/B155-full-csp-am-thanh-luot-di-tuc-thi-0ms.md)
+
+### Nguồn: báo cáo người dùng — "Scope: Room, Game playing, Undo, Swap2. At Phase Opening of Swap2,
+user request Undo, on accept, mechanics work well but the display of popup is always appear."
+(2026-08-27)
+- ✅ **#156.** (Đã sửa 2026-08-27 — `fix/swap2-opening-undo-popup-not-cleared` off `dev`.) Swap2
+  Opening: chấp nhận Undo xong, popup xin đi lại không biến mất. Đã xác minh bằng CodeGraph + đọc
+  code: nhánh `mode === 'opening'` trong `game:undo_accept` handler (`GameHandler.js:430-442`) chỉ
+  emit `game:swap2_state`, và `buildSwap2State()` không gắn `undoCancelled` — client chỉ xoá
+  `undoOfferPending` khi thấy cờ đó (`room-socket.js:355-358`), khi `game:undo_applied` (nhánh
+  `play`), hoặc khi `game:undo_declined` — không đường nào khớp nhánh opening-accept, nên popup treo
+  vĩnh viễn dù rollback board/lượt/màu vẫn đúng. Sửa: gắn `swap2State.undoCancelled = true` trên
+  object trả về tại đúng 1 call site đó, không sửa `buildSwap2State()` dùng chung. 2 test mới trong
+  `server/tests/GameHandler.test.js` (mock `acceptUndo`, xác nhận bằng mutation-kill thủ công: tắt
+  dòng sửa thì test mới fail đúng như mô tả bug), `npm test` 1358/1358. Không đụng `client/` ⇒ không
+  cần bump `?v=N` —
+  [chi tiết](docs/todo/B156-swap2-opening-undo-accept-popup-khong-bien-mat.md)
+
 ### Nguồn: báo cáo người dùng — "Scope: Room, User Connect (Player, Viewer), Online List,
 Reconnection. User out of room but tab-user still display them name in room... but the list must be
 truthful." (2026-08-27)
@@ -412,8 +904,13 @@ truthful." (2026-08-27)
   ra) sẵn có. Không đụng `TODO.md #115` (viewer-ma nằm lại `room.users` vô thời hạn — hành vi đã
   chốt) hay bất kỳ file server nào — thuần fix hiển thị dựa trên dữ liệu server đã đúng sẵn. 4 test
   mới `client/tests/room-ui-viewer-presence-dot.test.js` (kiểm chứng không rỗng: bỏ bản sửa ra thì
-  3/4 fail), `npm test` 1151/1151. `?v=138→139` `[Model: Sonnet 5]` — [chi
-  tiết](docs/todo/B157-viewer-list-khong-hien-thi-trang-thai-mat-ket-noi.md)
+  3/4 fail), `npm test` 1151/1151. `?v=138→139` trên `main`; merge vào `dev` re-bump theo
+  `max(dev,main)+1` thành `155→156` (giữ nguyên `?v=` phía `dev` trong xung đột thuần số phiên bản,
+  rồi bump lại toàn repo) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B157-viewer-list-khong-hien-thi-trang-thai-mat-ket-noi.md)
+- **#158.** Phát hiện thêm khi điều tra #157: `RoomManager.listRooms()`'s `userCount:
+  room.users.size` (`server/managers/RoomManager.js:614-638`) đếm luôn viewer-ma vẫn còn trong
+  `room.users` do #115 — số người hiển thị trên thẻ phòng ở sảnh chờ cao hơn thực tế. Cần chốt công
+  thức đếm với người dùng trước khi sửa (xem `docs/instruction/B158-*.md`) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B158-loi-phong-o-sanh-dem-ca-viewer-ma.md)
 
 ---
 

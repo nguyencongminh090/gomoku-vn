@@ -36,6 +36,7 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { OAuth2Client } = require('google-auth-library');
+const config  = require('../config');
 
 const router  = express.Router();
 
@@ -50,7 +51,7 @@ const router  = express.Router();
 // limit entirely.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: config.AUTH_LIMITER_MAX,
   keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || ''),
 });
 router.use(authLimiter);
@@ -63,7 +64,6 @@ router.use((req, res, next) => {
   next();
 });
 const db      = require('../db/database');
-const config  = require('../config');
 const logger  = require('../utils/logger');
 const sessionManager = require('../managers/SessionManager');
 const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader, baseCookieOptions, parseCookies } = require('../utils/session-cookie');

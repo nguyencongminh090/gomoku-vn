@@ -15,6 +15,8 @@
  *   RoomUI.renderScoreTable()
  *   RoomUI.renderStartModal() — Start-modal ready window (both seated; 15s
  *     countdown only once one player clicks Start — see instruction.md §B36)
+ *   RoomUI.updateStripTimers() — per-second clock/bar repaint for the mobile
+ *     players strip; called from GameUI.renderTimers(), not on its own timer
  *   window.sitDown(slot)     — onclick shim
  *   window.standUp()         — onclick shim
  *   window.confirmStart()    — onclick shim (Start modal)
@@ -47,6 +49,18 @@
   // Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
   function uiMode() {
     return document.documentElement.getAttribute('data-ui-mode') || 'lite';
+  }
+
+  // Bounce the user back to the Chat tab when the tab they are on disappears.
+  // window.RoomTabs is published by room.js, which room-entry.js loads before
+  // this file; the click fallback only matters if that order ever changes.
+  function activateChatTab() {
+    if (window.RoomTabs && typeof window.RoomTabs.activate === 'function') {
+      window.RoomTabs.activate('tab-chat');
+      return;
+    }
+    const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
+    if (chatBtn) chatBtn.click();
   }
 
   function escapeHtml(str) {
@@ -100,13 +114,19 @@
 
   // ── Slot status (name + a single 4-state dot) ───────────────────────────────
 
-  // Green (ready) and gray (not ready) are the existing ready/not-ready
-  // states. Red ('away') and orange ('disconnected') are presence states
-  // reported by the server (see RoomManager.setPresence / DisconnectHandler.js)
-  // — 'disconnected' (socket actually dropped, grace period running) always
+  // Active/Inactive reflect whether THIS PLAYER's game has actually started
+  // (room.state === 'playing'), not the pre-game `ready` checkbox — `ready`
+  // resets to false the instant a game starts (see GameHandler.js's
+  // startGame()), so using it here made the dot fall back to "not ready" the
+  // moment play began (TODO.md #114). `ready` still exists and is read
+  // elsewhere (the Start-modal ready window) — it's just not a status-dot
+  // signal any more.
+  // Red ('disconnected') and amber ('away') are presence states reported by
+  // the server (see RoomManager.setPresence / DisconnectHandler.js) —
+  // 'disconnected' (socket actually dropped, grace period running) always
   // wins over 'away' (tab still open, just not the active/visible one) which
-  // always wins over the ready/not-ready pair, since a player who isn't even
-  // present can't meaningfully be "ready".
+  // always wins over the Active/Inactive pair, since a player who isn't even
+  // present can't meaningfully be "playing".
   function playerStatusInfo(player) {
     if (player.presence === 'disconnected') {
       return { modifier: '--disconnected', label: t('room.status_disconnected') };
@@ -114,10 +134,10 @@
     if (player.presence === 'away') {
       return { modifier: '--away', label: t('room.status_away') };
     }
-    if (player.ready) {
-      return { modifier: '--ready', label: t('room.ready') };
+    if (S().roomData.state === 'playing') {
+      return { modifier: '--active', label: t('room.status_active') };
     }
-    return { modifier: '', label: t('room.not_ready') };
+    return { modifier: '', label: t('room.status_waiting') };
   }
 
   // Symbol only, no visible text — a colored dot is the whole status display
@@ -168,13 +188,22 @@
 
   // On phones the right panel — including both slot cards — sits below a
   // viewport-tall board, so this one-line-per-player strip surfaces "who am I
-  // playing, are they ready" without scrolling past the board. Hidden once a
-  // game starts: the turn bar right above the board then carries both names.
+  // playing, are they ready" without scrolling past the board.
+  //
+  // It no longer hides once a game starts. It used to, because the turn bar
+  // right above the board then carried both names — but the turn bar is now
+  // display:none at ≤768px (game.css) and this strip absorbed its job: clock,
+  // whose-turn marker and stone colour all live here on mobile. Desktop is
+  // untouched; there the strip is still display:none and the turn bar still
+  // renders exactly as before.
   function renderPlayersStrip() {
     if (!playersStrip) return;
     const st = S();
 
-    playersStrip.classList.toggle('players-strip--hidden', !!st.gameState);
+    // Height changes when the clock rows appear/disappear, and board.js sizes
+    // the canvas against the space left below this element — measure across
+    // the rebuild and only pay for a re-layout when it actually moved.
+    const heightBefore = playersStrip.offsetHeight;
 
     let html = '';
     for (const slotNum of [1, 2]) {
@@ -183,20 +212,144 @@
         html += `
           <div class="players-strip__slot players-strip__slot--empty">
             <span class="players-strip__num">#${slotNum}</span>
+            <span class="players-strip__stone players-strip__stone--none"></span>
+            <span class="players-strip__turn" aria-hidden="true">▶</span>
             <span class="players-strip__name">${t('room.slot_empty')}</span>
           </div>
         `;
         continue;
       }
-      html += `
-        <div class="players-strip__slot">
-          <span class="players-strip__num">#${slotNum}</span>
-          <span class="players-strip__name">${escapeHtml(player.displayName)}</span>
-          ${renderStatusDot(player)}
-        </div>
-      `;
+      html += renderStripPlayer(player, slotNum);
     }
     playersStrip.innerHTML = html;
+    updateStripTimers();
+
+    if (playersStrip.offsetHeight !== heightBefore) {
+      requestAnimationFrame(() => {
+        if (S().boardRenderer) S().boardRenderer.resize();
+      });
+    }
+  }
+
+  // One seated player: identity row, plus a clock row when a game is running.
+  function renderStripPlayer(player, slotNum) {
+    const st = S();
+    const clock = playerClock(player);
+    const live = !!st.gameState && clock.key !== null;
+
+    const isTurn = live
+      && st.gameState.status === 'ongoing'
+      && st.gameState.currentTurn === player.userId;
+
+    const row = `
+      <div class="players-strip__slot ${isTurn ? 'players-strip__slot--turn' : ''}"
+           data-strip-slot="${slotNum}">
+        <span class="players-strip__num">#${slotNum}</span>
+        <span class="players-strip__stone players-strip__stone--${clock.stone}"></span>
+        <span class="players-strip__turn" aria-hidden="true">▶</span>
+        <span class="players-strip__name">${escapeHtml(player.displayName)}</span>
+        ${live ? `<span class="players-strip__time" data-strip-time="${clock.key}"></span>` : ''}
+        ${renderStatusDot(player)}
+      </div>
+    `;
+
+    if (!live) return row;
+
+    // Separate element rather than a border/background on the row itself: the
+    // fill has to be able to span the strip's full width independently of the
+    // row's own padding, and an <span> child is what lets width animate.
+    const track = `
+      <div class="players-strip__track ${isTurn ? '' : 'players-strip__track--idle'}"
+           data-strip-track="${clock.key}">
+        <span class="players-strip__fill" style="--pct:0"></span>
+      </div>
+    `;
+    return row + track;
+  }
+
+  // Which of the two server clocks ('black'/'white') is this player's, and
+  // which stone to draw for them.
+  //
+  // The two answers deliberately come apart during a Swap2 opening. The clocks
+  // are keyed by firstPlayerId/secondPlayerId as placeholders well before
+  // `player.color` is filled in — the same placeholder rule game-ui.js's
+  // renderTimers() follows (instruction.md §B37) — so whose clock is whose is
+  // already known while what colour they will end up holding is not. The stone
+  // stays on the neutral '--none' ring for that window instead of guessing a
+  // colour that Swap2 may well hand to the other player.
+  function playerClock(player) {
+    const gs = S().gameState;
+    if (!gs) return { key: null, stone: 'none' };
+
+    const gp = gs.players.find(p => p.userId === player.userId);
+    if (gp && gp.color) {
+      const key = gp.color === 'BLACK' ? 'black' : 'white';
+      return { key, stone: key };
+    }
+
+    const swap2 = gs.swap2;
+    if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
+      if (player.userId === swap2.firstPlayerId)  return { key: 'black', stone: 'none' };
+      if (player.userId === swap2.secondPlayerId) return { key: 'white', stone: 'none' };
+    }
+    return { key: null, stone: 'none' };
+  }
+
+  // Remaining time as 0-100% of the room's configured base time.
+  //
+  // Clamped at 100 deliberately: in blitz the per-move increment can push a
+  // clock past its own starting value (120s left on a 60s base), and an
+  // unclamped bar would render wider than its track. The clamp is the agreed
+  // behaviour, not a rounding guard — the bar saturates and the numeric clock
+  // beside it carries the real surplus.
+  function timePct(remaining) {
+    const settings = (S().roomData || {}).settings || {};
+    const base = Number(settings.timerSeconds) || 0;
+    if (!base) return 0;
+    return Math.max(0, Math.min(100, (remaining / base) * 100));
+  }
+
+  // Always 'M:SS'. game-ui.js's formatTime() drops to bare seconds under a
+  // minute, which is fine in the turn bar's fixed-width cell but not here: the
+  // clock column sits next to a flex:1 name, so a string that shrinks from
+  // "1:00" to "53" would resize the column and shove the name sideways.
+  function formatStripTime(seconds) {
+    if (seconds < 0) seconds = 0;
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, '0')}`;
+  }
+
+  // Per-second repaint. Deliberately mutates the existing nodes instead of
+  // re-running renderPlayersStrip(): rebuilding innerHTML every second would
+  // restart the fill's width transition (so it could never animate), and would
+  // throw away and recreate both rows 60 times a minute for a two-character
+  // text change. Called from GameUI.renderTimers(), which is the single tick
+  // path room-socket.js drives — this adds no interval of its own.
+  function updateStripTimers() {
+    if (!playersStrip) return;
+    const st = S();
+    if (!st.gameState) return;
+
+    for (const key of ['black', 'white']) {
+      const remaining = Number((st.timerValues || {})[key]) || 0;
+      const low = remaining <= 10;
+
+      const timeEl = playersStrip.querySelector(`[data-strip-time="${key}"]`);
+      if (timeEl) {
+        timeEl.textContent = formatStripTime(remaining);
+        timeEl.classList.toggle('players-strip__time--low', low);
+      }
+
+      const trackEl = playersStrip.querySelector(`[data-strip-track="${key}"]`);
+      if (trackEl) {
+        const fillEl = trackEl.firstElementChild;
+        if (fillEl) {
+          fillEl.style.setProperty('--pct', String(timePct(remaining)));
+          fillEl.classList.toggle('players-strip__fill--low', low);
+        }
+      }
+    }
   }
 
   // ── Action buttons ────────────────────────────────────────────────────────
@@ -480,10 +633,12 @@
     if (tabBtn) {
       const hideTab = uiMode() === 'lite' && guests.length === 0;
       tabBtn.style.display = hideTab ? 'none' : '';
-      // Don't strand the user on a tab that just disappeared.
+      // Don't strand the user on a tab that just disappeared. Say "show the
+      // chat tab", not "pretend the user clicked the chat button": the click
+      // handler in room.js also owns the zen drawer's collapse toggle, and a
+      // synthetic click walked straight into it (TODO.md #136).
       if (hideTab && tabBtn.classList.contains('tab-btn--active')) {
-        const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
-        if (chatBtn) chatBtn.click();
+        activateChatTab();
       }
     }
 
@@ -548,8 +703,7 @@
     if (tabBtn) {
       tabBtn.style.display = hasData ? '' : 'none';
       if (!hasData && tabBtn.classList.contains('tab-btn--active')) {
-        const chatBtn = document.querySelector('.tab-btn[data-tab="tab-chat"]');
-        if (chatBtn) chatBtn.click();
+        activateChatTab();   // same intent-not-event rule as above (#136)
       }
     }
 
@@ -689,6 +843,7 @@
     renderUsersList,
     renderScoreTable,
     renderStartModal,
+    updateStripTimers,
   };
 
 })(window);

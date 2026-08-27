@@ -71,6 +71,12 @@ class BoardRenderer {
     // Double-tap: pending cell awaiting confirmation
     this._pendingCell = null;
 
+    // Optimistic (not-yet-confirmed) stone for the player's own in-flight
+    // move (TODO.md #153) — { x, y, color, warning } or null. Separate from
+    // `this.board`: the confirmed board only ever changes from server data,
+    // this is a purely visual overlay the caller (GameUI.sendMove) drives.
+    this.optimisticStone = null;
+
     // Bind events
     this.canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
     this.canvas.addEventListener('mouseleave', () => this._onMouseLeave());
@@ -103,6 +109,30 @@ class BoardRenderer {
     };
   }
 
+  /**
+   * Show a not-yet-confirmed stone for the player's own move (TODO.md #153).
+   * Pass `null` to clear it. Deliberately not part of `setState()` — it is
+   * driven by the move's ack/timeout lifecycle in GameUI.sendMove, not by
+   * gameState snapshots, and must survive calls to setState() that don't
+   * mention it (e.g. a resize-triggered geometry recompute).
+   */
+  setOptimisticStone(stone) {
+    this.optimisticStone = stone;
+    this._draw();
+  }
+
+  /**
+   * Flip the pending stone to its "still trying" look after the first ack
+   * timeout (GameUI.sendMove's retry), without moving it. No-op if it was
+   * already cleared out from under this call — a real race, since the
+   * retry's timer and an incoming game:moved run independently.
+   */
+  markOptimisticWarning() {
+    if (!this.optimisticStone) return;
+    this.optimisticStone = Object.assign({}, this.optimisticStone, { warning: true });
+    this._draw();
+  }
+
   /** Update board state and redraw. */
   setState(s) {
     const prevBoardSize = this.boardSize;
@@ -132,7 +162,6 @@ class BoardRenderer {
     const parent = this.canvas.parentElement;
     if (!parent) return;
 
-    const focusMode = document.body.classList.contains('room--focus');
     const turnBarEl = document.getElementById('turn-bar');
     const controlsEl = document.getElementById('game-controls');
     const tbH = turnBarEl ? (turnBarEl.offsetHeight || 0) : 0;
@@ -140,20 +169,7 @@ class BoardRenderer {
 
     let boardAreaH, maxVw;
 
-    if (focusMode) {
-      // In focus mode .board-area is position:fixed filling the entire viewport.
-      // The shell element sits behind in normal flow and reports wrong dimensions —
-      // always use raw viewport dimensions here.
-      // Reserve: 10px top padding + 20px top gap + tbH + gcH + 18px controls margin
-      //        + 80px bottom strip (fixed chat + focus-btn, both hugging
-      //        bottom:20px — see .room--focus .board-area's padding-bottom
-      //        in game.css, which this mirrors)
-      const topReserve = 10 + 20 + tbH + 18;
-      const bottomReserve = gcH + 18 + 80;
-      boardAreaH = window.innerHeight - topReserve - bottomReserve;
-      // Side padding: 10px each side in the CSS
-      maxVw = window.innerWidth - 20;
-    } else {
+    {
       // Normal layout: derive from the shell element which has
       // height: calc(100vh - 76px) on desktop.
       const boardAreaShell = document.querySelector('.board-area-shell');
@@ -272,10 +288,9 @@ class BoardRenderer {
     // mode, so height budget collapses — drive by width instead. The zen room
     // is the exception: the branch above gives it a real viewport-derived
     // height budget, so it fits both axes.
-    // Focus mode always uses the viewport budget calculated above.
     const singleColumn = window.innerWidth <= 768
       && !document.body.classList.contains('zen-room');
-    let rawSize = (singleColumn && !focusMode)
+    let rawSize = singleColumn
       ? maxVw
       : Math.min(maxVw, boardAreaH);
     // Cap so the board never looks comically large on a big screen. The zen
@@ -517,6 +532,13 @@ class BoardRenderer {
           else if (val === -2) this._drawPortal(x, y);
         }
       }
+    }
+
+    // 5b. This player's own in-flight move, drawn on top of the confirmed
+    // board (TODO.md #153) — faded + dashed so it never reads as placed.
+    if (this.optimisticStone) {
+      const { x, y, color, warning } = this.optimisticStone;
+      this._drawOptimisticStone(x, y, color, !!warning);
     }
 
     if (this.displayMode === 'stone' && this.lastMove) {
@@ -816,6 +838,46 @@ class BoardRenderer {
   }
 
   /** Draw pending cell: semi-transparent preview stone + green pulsing ring. */
+  /**
+   * The mover's own stone before the server has confirmed it (TODO.md #153,
+   * upgraded to solid/indistinguishable by #155's Full CSP). Drawn through
+   * the exact same per-mode piece routine a confirmed stone uses, at full
+   * opacity, with no ring — a player cannot tell "sent" from "landed" by eye,
+   * the UX tradeoff #155 was filed to accept. Rollback on a rejected move
+   * (just `setOptimisticStone(null)`, nothing was ever written to
+   * `this.board`) still reads as "never happened" instead of a stone visibly
+   * vanishing, same as before.
+   * `warning` (set after the first ack timeout, GameUI.sendMove's retry)
+   * still needs a signal — a player retrying blind is worse than one who
+   * knows — so it adds a thin solid ring instead of reappearing as the old
+   * dashed one, deliberately faint enough not to undo "indistinguishable".
+   */
+  _drawOptimisticStone(x, y, color, warning) {
+    const ctx = this.ctx;
+    const g = this.geo;
+    const { px, py } = this._cellToPixel(x, y);
+
+    ctx.save();
+    if (this.displayMode === 'stone') {
+      this._drawStonePiece(x, y, color);
+    } else if (color === 'BLACK') {
+      this._drawBlackPiece(x, y);
+    } else {
+      this._drawWhitePiece(x, y);
+    }
+    ctx.restore();
+
+    if (warning) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(196, 130, 40, 0.9)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(px, py, g.cellSize * 0.42, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
   _drawPendingHighlight(x, y) {
     const ctx = this.ctx;
     const g = this.geo;

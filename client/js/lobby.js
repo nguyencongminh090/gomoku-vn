@@ -37,7 +37,13 @@
 // Exported so tournaments.js can reuse this exact connection instead of
 // opening a second socket.io connection from the same page (which would
 // also self-evict via the server's single-device-per-token enforcement).
-export const client = new SocketClient();
+//
+// `shared()` rather than `new` since #145: index.html now creates this client
+// in <head> (socket-early.js) so the handshake overlaps HTML parsing instead
+// of queueing behind the whole module graph. By the time this line runs the
+// socket is normally already connecting, and `shared()` hands back that same
+// client. `new` here would open a second connection and kick the player.
+export const client = SocketClient.shared();
 
 // ---------------------------------------------------------------------------
 // Element refs

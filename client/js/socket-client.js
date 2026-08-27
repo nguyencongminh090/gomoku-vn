@@ -31,6 +31,33 @@ class SocketClient {
     this._connect();
   }
 
+  /**
+   * The page's one and only SocketClient (TODO.md #145).
+   *
+   * There is exactly one connection per page, and this is the single place
+   * that fact is enforced. Both callers go through it: `socket-early.js`
+   * (which runs in `<head>` to get the handshake started while the HTML is
+   * still parsing) and the page controller that actually uses the socket
+   * (`lobby.js`), whichever reaches it first.
+   *
+   * Why it has to be a choke point rather than a convention: opening a second
+   * socket.io connection from the same page trips the server's
+   * single-device-per-token eviction, and the victim is the page itself —
+   * it kicks the player to login with "đăng nhập ở một thiết bị khác". That
+   * is not hypothetical, it shipped once already (TODO.md #51, where a stale
+   * `?v=` made `lobby.js` evaluate twice). #145 deliberately separates
+   * *creating* the socket from *using* it, which is the same shape of hazard,
+   * so the guard lives here where neither caller can bypass it.
+   *
+   * @returns {SocketClient}
+   */
+  static shared() {
+    if (!window.__gvnSharedClient) {
+      window.__gvnSharedClient = new SocketClient();
+    }
+    return window.__gvnSharedClient;
+  }
+
   // ---------------------------------------------------------------------------
   // Connection
   // ---------------------------------------------------------------------------
@@ -76,6 +103,35 @@ class SocketClient {
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
+      // How long one connection *attempt* may hang before it is abandoned and
+      // the reconnect loop above takes over. socket.io's default is 20 000 ms,
+      // which is the entire user-visible cost when the first attempt dies:
+      // measured in a HAR from a real player (TODO.md #131, 2026-08-19), the
+      // first WebSocket sat unanswered — `blocked=44 616 ms, connect=7 196 ms`,
+      // the SYN-retransmit signature of packet loss on the browser↔Cloudflare
+      // edge leg — the client waited out the full 20 s, and the retry then
+      // connected in 2.9 s. Total: ~24 s staring at "Đang kết nối…", 20 of them
+      // spent waiting on an attempt that was already dead.
+      //
+      // 12 s comes from measuring the real distribution rather than that one
+      // HAR sample. `mtr` from the origin host found ~17% packet loss starting
+      // at the ISP's 8th hop (hops 1-5, home router and modem included, are
+      // clean), and 12 WebSocket handshakes through Cloudflare under it landed
+      // at 1.9 / 3.4 / 3.4 / 3.7 / 4.5 / 5.1 / 5.7 / 6.4 / 7.8 / 7.9 / 7.9 s.
+      //
+      // Those cluster on the SYN-retransmit ladder — 1 s, 3 s, 7 s, then 15 s —
+      // because a handshake needs both the SYN and the SYN-ACK to survive. So
+      // the useful thresholds are the gaps in that ladder, not round numbers:
+      // 12 s clears every attempt that gets through by the 7 s rung (measured
+      // max 7 948 ms) with room for jitter, and still gives up well before the
+      // 15 s rung, where waiting is strictly worse than retrying. An earlier
+      // revision of this line used 8 s, calibrated on the single 2.9 s sample
+      // in the HAR; that sits directly on top of the observed success
+      // distribution and would cut short attempts that were about to land.
+      //
+      // This does NOT fix the packet loss itself — that is upstream of the
+      // premises, on a leg neither the server nor the client controls.
+      timeout: 12000,
     });
 
     // ── Connection lifecycle ──────────────────────────────────────────
@@ -166,6 +222,39 @@ class SocketClient {
     this.socket.emit(event, data);
   }
 
+  /**
+   * Emit an event and wait for the server's ack, with a per-emit deadline.
+   *
+   * A separate method rather than a change to `emit()` above: every other
+   * call site in the app fires and forgets, and giving them all ack semantics
+   * is exactly the failure mode described below.
+   *
+   * `.timeout(ms)` sets the deadline for this one emit (socket.io-client
+   * stores it in that emit's own `flags`), which is why it is safe here.
+   * Socket.io also has a connection-level `retries` option that looks like
+   * the ready-made version of this — it is not, and must not be enabled:
+   * it applies to *every* emit regardless of whether an ack was asked for,
+   * auto-attaches an ack callback to each one, and drains its queue strictly
+   * one packet at a time. On this app's single shared page-wide socket that
+   * means every fire-and-forget event (chat:message, room:sit, room:ready…)
+   * would be resent `retries + 1` times because no handler acks them, and a
+   * single unacked event would head-of-line block every event behind it,
+   * game:move included. Verified against socket.io-client 4.8.3 source.
+   *
+   * @param {string}   event
+   * @param {*}        data
+   * @param {number}   timeoutMs  deadline for the ack
+   * @param {Function} cb         err-first: `(err, response)`; `err` set means
+   *                              the deadline passed with no ack
+   */
+  emitAck(event, data, timeoutMs, cb) {
+    if (!this.socket) {
+      cb(new Error('SOCKET_CLOSED'));
+      return;
+    }
+    this.socket.timeout(timeoutMs).emit(event, data, cb);
+  }
+
   /** Remove all registered listeners and disconnect. */
   destroy() {
     if (!this.socket) return;
@@ -175,6 +264,11 @@ class SocketClient {
     this._listeners = [];
     this.socket.disconnect();
     this.socket = null;
+    // Release the shared slot too (TODO.md #145). Every caller of destroy()
+    // navigates away immediately, so this is belt-and-braces — but a stale
+    // dead client sitting in `shared()` would be handed to the next caller
+    // with `this.socket === null`, failing silently instead of reconnecting.
+    if (window.__gvnSharedClient === this) window.__gvnSharedClient = null;
   }
 
   /**

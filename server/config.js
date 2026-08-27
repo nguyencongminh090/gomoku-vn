@@ -47,6 +47,13 @@ const MAX_ROOMS_PER_IP      = parseInt(process.env.MAX_ROOMS_PER_IP, 10) || 3;
 // instruction.md §43.
 const MAX_GRACE_ROOMS_PER_IP = parseInt(process.env.MAX_GRACE_ROOMS_PER_IP, 10) || 3;
 const MAX_USERS_PER_ROOM    = parseInt(process.env.MAX_USERS_PER_ROOM, 10) || 40; // 2 players + 38 guests
+
+// --- Auth rate limit ---
+// `authLimiter` in server/routes/auth.js — 20 req/15min/IP by default, same
+// override pattern as MAX_ROOMS_PER_IP above (TODO.md #141): lets the e2e
+// harness raise the budget for a run without touching this tracked file.
+// Unset in production — 20 is what actually ships (instruction.md §B141).
+const AUTH_LIMITER_MAX      = parseInt(process.env.AUTH_LIMITER_MAX, 10) || 20;
 const IDLE_TIMEOUT_MS       = 600_000; // 10 minutes
 const IDLE_SCAN_INTERVAL_MS = 60_000;  // How often rooms are scanned against IDLE_TIMEOUT_MS
 
@@ -199,6 +206,7 @@ module.exports = {
   MAX_ROOMS_PER_IP,
   MAX_GRACE_ROOMS_PER_IP,
   MAX_USERS_PER_ROOM,
+  AUTH_LIMITER_MAX,
   IDLE_TIMEOUT_MS,
   IDLE_SCAN_INTERVAL_MS,
   DISCONNECT_GRACE_MS,

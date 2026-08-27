@@ -356,7 +356,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<i class="ph ph-gear-six" style="font-size: 20px;"></i>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=156#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }

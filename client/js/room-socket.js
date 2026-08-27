@@ -27,6 +27,20 @@
     return (data && data.message) || '';
   }
 
+  /**
+   * Ask the server to re-send this room's authoritative state (TODO.md #152).
+   *
+   * The answer comes back as an ordinary `room:joined`, so it lands in the
+   * handler below that already knows how to rebuild the board from scratch —
+   * there is deliberately no second rebuild path to keep in sync.
+   *
+   * Called from two places: `GameUI.sendMove` when a move never gets acked,
+   * and the gap check in `game:moved` when a broadcast is missed.
+   */
+  function requestResync() {
+    client.emit('game:resync');
+  }
+
   // ── Connection ────────────────────────────────────────────────────────────
 
   client.on('connect', () => {
@@ -64,6 +78,21 @@
     const st = S();
     st.roomData = data;
 
+    // Clear any not-yet-confirmed stone from a move still in flight
+    // (TODO.md #153). This fires on first join too (boardRenderer doesn't
+    // exist yet — no-op) and on every game:resync answer, which is exactly
+    // where a pending overlay needs to give way to the authoritative board
+    // this payload is about to (re)draw.
+    if (st.boardRenderer) st.boardRenderer.setOptimisticStone(null);
+    // predictedTurn always travels with optimisticStone (TODO.md #155) — a
+    // full resync answer is exactly the kind of authoritative reload that
+    // must never leave it stranded active.
+    st.predictedTurn.active = false;
+    // Authoritative state is being (re)loaded below, including from this
+    // module's own game:resync — nothing pending survives it (TODO.md #154).
+    // The turn watchdog re-arms through applyTimerSync further down.
+    cancelMoveConfirmWatchdog();
+
     // Update URL so the room link is shareable
     const url = new URL(window.location);
     if (url.searchParams.get('id') !== data.roomId) {
@@ -75,6 +104,11 @@
     if (data.gameState) {
       st.gameState = data.gameState;
       st.timerValues = data.timer || st.timerValues;
+      // A pending undo request must still be visible to a reconnecting
+      // opponent (TODO.md #128 decision #7/#8) — GameEngine.serialize()
+      // carries it as gameState.undoOffer; renderSwap2()/updateBoardState()
+      // below both call GameUI.renderUndoPrompt() internally.
+      st.undoOfferPending = data.gameState.undoOffer || null;
       applyTimerSync(data.timerSync);
       if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
         GameUI.initBoard();
@@ -131,6 +165,8 @@
   });
 
   client.on('room:left', () => {
+    cancelTurnWatchdog();
+    cancelMoveConfirmWatchdog();
     window.location.href = 'index.html';
   });
 
@@ -174,12 +210,11 @@
     const st = S();
     st.gameState = data;
     st.timerValues = data.timer || { black: data.timerSeconds || 60, white: data.timerSeconds || 60 };
+    cancelMoveConfirmWatchdog();   // fresh game, nothing of ours in flight (#154)
     applyTimerSync(data.timerSync);
     st.drawOfferPending = null;
     st.timeRequestPending = null;
-
-    const btnFocus = document.getElementById('btn-focus');
-    if (btnFocus) btnFocus.style.display = 'flex';
+    st.undoOfferPending = data.undoOffer || null;
 
     // Phone: the zen panel is a bottom sheet covering the lower half of the
     // screen. It has to stay open before the game (that is where the seat and
@@ -187,9 +222,12 @@
     // matters — slide it down to the tab bar. The player can pull it back up
     // from any rail icon. No-op on desktop, where the drawer sits beside the
     // board rather than over it, and on non-zen skins.
+    // Through RoomDrawer, not classList directly: the class alone leaves the
+    // sheet's content focusable and screen-reader-visible while it is off
+    // screen (TODO.md #138). room.js owns that pairing and loads first.
     if (document.body.classList.contains('zen-room')
         && window.matchMedia('(max-width: 768px)').matches) {
-      document.body.classList.add('zen-drawer-collapsed');
+      window.RoomDrawer.setCollapsed(true);
     }
 
     if (st.gameState.swap2 && st.gameState.swap2.enabled && st.gameState.swap2.openingPhase !== 'play') {
@@ -206,9 +244,70 @@
     const st = S();
     if (!st.gameState) return;
 
+    // Receive-side loss detection (TODO.md #152). The ack path protects the
+    // player who *made* the move; this protects the one waiting for it. If a
+    // game:moved broadcast is dropped, the opponent keeps showing the old
+    // board and believes it is not their turn, while the mover waits for a
+    // reply that is never coming — both sides frozen, neither with a timeout
+    // to break out of it.
+    //
+    // `moveCount` is a sequence number that has been on the wire all along
+    // and was simply assigned over without ever being compared. A move-delta
+    // is only safe to apply on top of the exact state it was computed from.
+    //
+    // Only this handler may gap-check. Every other path that touches
+    // moveCount (game:init, room:joined, game:swap2_state, game:undo_applied)
+    // loads whole state rather than a delta and so *sets* the baseline — if
+    // one of them went through this branch, the resync it triggered would
+    // arrive as full state, read as another jump, and resync forever.
+    if (typeof data.moveCount === 'number') {
+      const expected = st.gameState.moveCount + 1;
+      if (data.moveCount <= st.gameState.moveCount) {
+        // Already applied — the server replaying a move for a retried
+        // moveId. Applying it again would double-push into moveHistory.
+        return;
+      }
+      if (data.moveCount > expected) {
+        requestResync();
+        return;
+      }
+    }
+
+    // Confirm this player's own optimistic stone (TODO.md #153) now that its
+    // real board write is about to happen below — matching by cell is safe
+    // here (not just at handler entry) because we've only just confirmed
+    // this delta is the next one being applied, not a stale replay or a
+    // gap-redirected one. An opponent's move landing here simply won't match
+    // this player's own pending cell, so this is a no-op for them.
+    // Captured before clearing below — the sound-dedup check further down
+    // needs to know whether THIS broadcast is the one that just confirmed
+    // our own pending move, and optimisticStone won't say so any more once
+    // it's been nulled.
+    let confirmedOwnPendingMove = false;
+    if (st.boardRenderer && st.boardRenderer.optimisticStone
+        && st.boardRenderer.optimisticStone.x === data.x
+        && st.boardRenderer.optimisticStone.y === data.y) {
+      confirmedOwnPendingMove = true;
+      st.boardRenderer.setOptimisticStone(null);
+      // This is the confirmation the move-confirm watchdog (TODO.md #154) was
+      // waiting for.
+      cancelMoveConfirmWatchdog();
+    }
+
+    // Real progress — whatever the watchdog was backing off from is resolved.
+    consecutiveFires = 0;
+    lastFireSignature = null;
+
     if (st.drawOfferPending) {
       st.drawOfferPending = null;
       GameUI.renderDrawPrompt();
+    }
+    // The mover's own pending undo request auto-cancels when they continue
+    // playing instead of waiting (TODO.md #128 decision #9) — the server
+    // flags it on this same broadcast rather than a separate event.
+    if (data.undoCancelled) {
+      st.undoOfferPending = null;
+      GameUI.renderUndoPrompt();
     }
 
     const colorVal = data.color === 'BLACK' ? 1 : 2;
@@ -222,10 +321,28 @@
     if (data.gameOver) st.gameState.status = 'finished';
     if (data.result) st.gameState.result = data.result;
 
+    // predictedTurn snaps to the just-written server values above rather
+    // than surviving the flip (TODO.md #155) — letting the local countdown
+    // "win" would compound drift over a long game, since it started at click
+    // time while the server's clock started at server-processing time.
+    st.predictedTurn.active = false;
+
     if (global.audioManager) {
       const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
-      global.audioManager.playMoveSound(!myPlayer || myPlayer.color !== data.color);
+      const isOpponent = !myPlayer || myPlayer.color !== data.color;
+      // Our own move already played its sound at click time (TODO.md #155,
+      // GameUI.sendMove) — replaying it here on confirmation would double it.
+      // Opponent/spectator moves (isOpponent) are never predicted locally, so
+      // they always play here, unaffected.
+      if (isOpponent || !confirmedOwnPendingMove) {
+        global.audioManager.playMoveSound(isOpponent);
+      }
     }
+
+    // applyTimerSync above re-arms the watchdog, but only when this broadcast
+    // actually carried a timerSync — arm unconditionally so a payload without
+    // one can't leave the turn silently unguarded.
+    armTurnWatchdog();
 
     GameUI.updateBoardState();
     RoomUI.updateUI();
@@ -235,6 +352,11 @@
     const st = S();
     if (!st.gameState) return;
 
+    if (data.undoCancelled) {
+      st.undoOfferPending = null;
+      GameUI.renderUndoPrompt();
+    }
+
     st.gameState.board = data.board;
     st.gameState.currentTurn = data.currentTurn;
     st.gameState.moveCount = data.moveCount;
@@ -243,6 +365,14 @@
     st.gameState.players = data.players;
     st.gameState._nextColor = data.nextColor;
     if (data.lastStone) st.gameState._lastStone = data.lastStone;
+
+    // Full-state load on a path that carries no timerSync — re-evaluate the
+    // watchdog against the turn this just installed instead of leaving it
+    // pointed at the previous one (TODO.md #154).
+    cancelMoveConfirmWatchdog();
+    consecutiveFires = 0;
+    lastFireSignature = null;
+    armTurnWatchdog();
 
     if (st.gameState.swap2.openingPhase !== 'play') {
       GameUI.renderSwap2();
@@ -336,32 +466,217 @@
     if (sync.running && sync.deadline) {
       localTimer = setInterval(tickLocal, 1000);
     }
+
+    // Every discontinuous clock change funnels through here (game start, each
+    // move, bonus time, pause, resume) — which makes this the one place the
+    // desync watchdog below has to be re-armed from, rather than a re-arm
+    // sprinkled over each of those handlers separately.
+    armTurnWatchdog();
   }
 
   client.on('timer:sync', applyTimerSync);
 
+  // ── Desync watchdog (TODO.md #154) ────────────────────────────────────────
+  //
+  // #152's gap check only fires when a *later* `game:moved` arrives to compare
+  // moveCount against. With two players alternating strictly, that later packet
+  // IS the move the stuck side is waiting for, so it never comes and the gap
+  // check has nothing to trigger on. There is no periodic broadcast to act as a
+  // wake-up either — TimerManager ticks purely server-side (TimerManager.js:11)
+  // and the clock rides along on the very `game:moved` that was dropped.
+  //
+  // The wake-up this needs was already on the wire: `timerSync.deadline`, the
+  // server-clock instant at which the player we believe is on move flags. What
+  // it must NOT do is wait for that deadline to pass.
+  //
+  // ⚠ The obvious design — "the watched clock ran out and no game:ended came,
+  // so our view is provably stale" — is sound logic that arrives too late to
+  // be worth anything, and an e2e run caught it doing exactly that. Writing D
+  // for the deadline we are watching and T for the clock length:
+  //
+  //     D  = t0 + T          t0 = when the opponent's clock started
+  //     F  = t1 + T          t1 = when the opponent actually moved, t1 > t0
+  //                          F  = when OUR clock flags, server-side, because
+  //                               it started the moment they moved
+  //
+  // Being stuck means the server has us on move, so we are running out of time
+  // at F — and F > D always. Firing at D + grace therefore races our own
+  // flag-fall and loses it whenever the opponent moved within `grace` of their
+  // clock starting. Measured in the browser: opponent moved instantly, the
+  // stuck player was timed out and lost the game 14.8s in, watchdog due at 21s.
+  // The status quo this whole item exists to remove is "the stuck player loses
+  // on time", so a watchdog that fires after that has fixed nothing.
+  //
+  // Firing at a FRACTION of the watched clock inverts that for free: t0 + αT
+  // with α < 1 is strictly before D, hence strictly before F, no matter how
+  // fast the opponent moved. The rescue margin is (1-α)T + the opponent's
+  // think time, and it can never go negative.
+  //
+  // α = 0.75 against the measured distribution — 9,429 real inter-move gaps
+  // across 334 completed games, from the server-side Date.now() stamps in
+  // `games.moves`:
+  //
+  //   p50 5.0s · p90 24.8s · p99 50.4s · p99.5 54.9s · p99.9 83.5s · max 184.3s
+  //
+  // At the default per_move/60s control (server/config.js) that fires at 45s,
+  // which 1.8% of real gaps exceed — 25% of games would spend one spurious
+  // resync — and it leaves the stuck player at least 15s of their own clock to
+  // actually move once recovered. Note how badly a flat constant does on this
+  // same data, which is why one isn't used (#131's lesson): 15s would have
+  // fired in 75% of those games, 30s in 50%.
+  //
+  // A spurious fire is deliberately cheap: `game:resync` answers as an ordinary
+  // room:joined, and initBoard() only rebuilds DOM when there is no renderer
+  // yet, so an unchanged answer costs one canvas repaint and nothing visible.
+  // It also says nothing to the player, for the same reason — a notice fired on
+  // a long think would be worse noise than the resync it is announcing.
+  const WAIT_FRACTION = 0.75;
+
+  // Ceiling for controls whose clock is minutes long (per_game/blitz), so those
+  // don't sit deadlocked for a quarter of an hour. p99.9 of the same measured
+  // distribution — 9 of 9,429 gaps (0.1%) sit above it.
+  const WAIT_CEILING_MS = 83500;
+
+  // Floor for the first check of a turn, so a clock already down to its last
+  // seconds doesn't schedule a fire for a few hundred ms from now.
+  const WATCHDOG_MIN_MS = 3000;
+
+  // A move's `game:moved` is written to our own socket BEFORE its ack (see
+  // GameHandler: io.to(room).emit then ack, same connection, so it is ordered
+  // ahead). Once the ack is in hand the broadcast has therefore either already
+  // arrived or been dropped — this window only absorbs main-thread jank, so it
+  // is half of #152's ack timeout rather than another full round-trip's worth.
+  const MOVE_CONFIRM_TIMEOUT_MS = 2500;
+
+  // Rate limit, not a detection threshold: no matter what the deadline says,
+  // never re-check sooner than this, and back off while nothing changes. This
+  // is what makes a resync loop impossible when the deadline is *already* in
+  // the past at arming time (a resync answer that lands after the clock it
+  // describes has expired) — the same class of trap as #152's bug 7.
+  const WATCHDOG_FLOOR_MS = 15000;
+  const WATCHDOG_MAX_BACKOFF = 5;   // floor doubles at most this many times
+
+  let turnWatchdog = null;
+  let moveConfirmWatchdog = null;
+  let lastFireSignature = null;
+  let consecutiveFires = 0;
+
+  /** What the watchdog last resynced on, to notice a resync that changed nothing. */
+  function stateSignature() {
+    const gs = S().gameState;
+    if (!gs) return 'none';
+    return `${gs.moveCount}|${gs.currentTurn}|${activeDeadline}`;
+  }
+
+  function cancelTurnWatchdog() {
+    if (turnWatchdog) { clearTimeout(turnWatchdog); turnWatchdog = null; }
+  }
+
+  function cancelMoveConfirmWatchdog() {
+    if (moveConfirmWatchdog) { clearTimeout(moveConfirmWatchdog); moveConfirmWatchdog = null; }
+  }
+
+  function onTurnWatchdogFire() {
+    turnWatchdog = null;
+    const gs = S().gameState;
+    // Re-checked here, not just at arming time: every path that ends or
+    // suspends a game (game:ended, resign, undo, Swap2, interruption, leaving)
+    // can land while this is pending, and an orphaned resync firing into a
+    // finished game is the failure mode docs/instruction/B154-*.md calls out.
+    if (!gs || gs.status !== 'ongoing') return;
+
+    const sig = stateSignature();
+    consecutiveFires = (sig === lastFireSignature) ? consecutiveFires + 1 : 1;
+    lastFireSignature = sig;
+
+    requestResync();
+    // Re-arm rather than waiting for the answer to do it: if the resync answer
+    // is itself lost, nothing else would ever schedule another check and the
+    // client would be stranded exactly as before. The backoff above keeps that
+    // retry from becoming a loop.
+    armTurnWatchdog();
+  }
+
+  function armTurnWatchdog() {
+    cancelTurnWatchdog();
+    const st = S();
+    const gs = st.gameState;
+    if (!gs || gs.status !== 'ongoing') return;
+    // No deadline means no clock is running — game not started, or paused for
+    // disconnect grace (getSync sends running:false, deadline:null). Nothing to
+    // measure against, and a paused game is not a deadlock.
+    if (activeDeadline === null) return;
+    // Only while waiting for someone else's move. Believing it is our own turn
+    // and being wrong is the *other* variant (ack OK, own broadcast dropped),
+    // and that one already has two faster answers: the move-confirm watchdog
+    // below, and #152's gap check firing the moment the opponent replies. Left
+    // armed here it would instead resync us for thinking too long on our own
+    // turn — a false positive on every deep think, and the one case where the
+    // player is definitely not stuck. Spectators have no turn and stay armed,
+    // which is right: they have no ack path at all.
+    if (gs.currentTurn === st.myUser.userId) return;
+
+    const untilDeadline = activeDeadline - serverNow();
+    const delay = Math.min(untilDeadline * WAIT_FRACTION, WAIT_CEILING_MS);
+    // Repeats are rate-limited instead of fraction-based: once we have fired on
+    // a state that then didn't change, the fraction would only shrink toward
+    // zero and spin.
+    const floor = consecutiveFires
+      ? WATCHDOG_FLOOR_MS * Math.pow(2, Math.min(consecutiveFires - 1, WATCHDOG_MAX_BACKOFF))
+      : WATCHDOG_MIN_MS;
+    turnWatchdog = setTimeout(onTurnWatchdogFire, Math.max(floor, delay));
+  }
+
+  /**
+   * Arm the fast path for "my ack came back OK but my own move never did"
+   * (the second variant in docs/todo/B154-*.md). Called by GameUI.sendMove.
+   *
+   * The turn watchdog above already catches this case, but only once the stale
+   * clock runs out — up to a full move allowance of a stone stuck in its
+   * pending look, and (once #155 lands) of a turn bar stuck on a predicted
+   * turn. This bounds it to one confirmation window instead.
+   */
+  function armMoveConfirmWatchdog() {
+    cancelMoveConfirmWatchdog();
+    moveConfirmWatchdog = setTimeout(() => {
+      moveConfirmWatchdog = null;
+      const st = S();
+      if (!st.gameState || st.gameState.status !== 'ongoing') return;
+      // The stone is cleared by the game:moved that confirms it, so a stone
+      // still pending here means that broadcast never landed.
+      if (!st.boardRenderer || !st.boardRenderer.optimisticStone) return;
+      requestResync();
+    }, MOVE_CONFIRM_TIMEOUT_MS);
+  }
+
   client.on('game:ended', (data) => {
     const st = S();
+    // The "ended while an ack is still in flight" race (TODO.md #155): a
+    // pending move's own optimisticStone/predictedTurn can never get its
+    // game:moved confirmation once the game is already over (an ack landing
+    // after this is just ignored, nothing left to reconcile). Cleared here,
+    // before the result below is applied, rather than left to time out via
+    // the move-confirm watchdog into a game that no longer exists.
+    if (st.boardRenderer) st.boardRenderer.setOptimisticStone(null);
+    st.predictedTurn.active = false;
     stopLocalTimer();   // the clock is over; the final values stay on screen
+    // No clock left to reason about — anything still pending here would be an
+    // orphaned resync fired into a finished game (TODO.md #154).
+    cancelTurnWatchdog();
+    cancelMoveConfirmWatchdog();
     if (data.scoreTable && st.roomData) st.roomData.scoreTable = data.scoreTable;
     if (st.gameState) {
       st.gameState.status = 'finished';
       if (data.result) st.gameState.result = data.result;
     }
+    // Repaints the board (dropping the now-cleared overlays) and the
+    // turn-bar/timer (which RoomUI.updateUI() below never touches) against
+    // the finished status just written above.
+    GameUI.updateBoardState();
     st.drawOfferPending = null;
     GameUI.renderDrawPrompt();
-
-    const btnFocus = document.getElementById('btn-focus');
-    if (btnFocus) btnFocus.style.display = 'none';
-
-    // Exit focus mode on game end
-    if (st.focusMode) {
-      st.focusMode = false;
-      document.body.classList.remove('room--focus');
-      const tabChat = document.getElementById('tab-chat');
-      const chatInputWrapper = document.getElementById('chat-input-wrapper');
-      if (tabChat && chatInputWrapper) tabChat.querySelector('.chat-panel').appendChild(chatInputWrapper);
-    }
+    st.undoOfferPending = null;
+    GameUI.renderUndoPrompt();
 
     // No more win/lose/draw modal (instruction.md §B36 removed
     // #game-overlay) — the board's own win highlight (board.js
@@ -407,15 +722,62 @@
     GameUI.renderDrawPrompt();
   });
 
+  client.on('game:undo_offered', (data) => {
+    S().undoOfferPending = data;
+    GameUI.renderUndoPrompt();
+  });
+
+  client.on('game:undo_declined', () => {
+    S().undoOfferPending = null;
+    GameUI.renderUndoPrompt();
+  });
+
+  // Play-mode accept only — an opening-mode accept arrives as a
+  // game:swap2_state resync instead (reuses the existing Swap2 render path).
+  client.on('game:undo_applied', (data) => {
+    const st = S();
+    if (!st.gameState) return;
+
+    st.undoOfferPending = null;
+
+    for (const cell of data.cleared) {
+      st.gameState.board[cell.y][cell.x] = 0;
+    }
+    st.gameState.currentTurn = data.currentTurn;
+    st.gameState.moveCount = data.moveCount;
+    if (st.gameState.moveHistory) {
+      st.gameState.moveHistory = st.gameState.moveHistory.slice(0, data.moveCount);
+    }
+
+    // As in game:swap2_state above — the turn moved without a timerSync, so the
+    // watchdog has to be re-pointed at it (TODO.md #154).
+    cancelMoveConfirmWatchdog();
+    consecutiveFires = 0;
+    lastFireSignature = null;
+    armTurnWatchdog();
+
+    GameUI.renderUndoPrompt();
+    GameUI.updateBoardState();
+    RoomUI.updateUI();
+  });
+
   client.on('game:interrupted', (data) => {
     ChatUI.appendSystemMessage(t('room.disconnected', { name: data.playerName, seconds: data.secondsLeft }));
     if (S().gameState) S().gameState.status = 'interrupted';
+    // Not 'ongoing' any more, and the server pauses the clock — no deadlock to
+    // detect while a player is inside disconnect grace (TODO.md #154).
+    cancelTurnWatchdog();
+    cancelMoveConfirmWatchdog();
     GameUI.updateBoardState();
   });
 
   client.on('game:resumed', () => {
     ChatUI.appendSystemMessage(t('room.reconnected'));
     if (S().gameState) S().gameState.status = 'ongoing';
+    // Back to 'ongoing', so the watchdog can guard again. The server's resume
+    // sends a fresh timer:sync of its own; this only covers the case of that
+    // sync arriving before this event (TODO.md #154).
+    armTurnWatchdog();
     GameUI.updateBoardState();
   });
 
@@ -454,5 +816,10 @@
       }
     }
   }
+
+  // Exposed for game-ui.js's move state machine (TODO.md #152) — it needs the
+  // same server-error rendering and the same resync entry point this module
+  // uses, and duplicating either would let them drift.
+  global.RoomSocket = { serverMessage, requestResync, armMoveConfirmWatchdog };
 
 })(window);

@@ -34,7 +34,7 @@ test.describe('Start Modal does not block the board/seats/chat underneath', () =
       if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html/, { timeout: 15000 });
+    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');
@@ -67,7 +67,7 @@ test.describe('Start Modal does not block the board/seats/chat underneath', () =
       if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html/, { timeout: 15000 });
+    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');

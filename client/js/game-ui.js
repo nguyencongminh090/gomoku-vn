@@ -28,7 +28,138 @@
 
   // ── DOM refs (stable refs set on first initBoard call) ────────────────────
   const boardArea = document.getElementById('board-area');
-  const btnFocus  = document.getElementById('btn-focus');
+
+  // ── Move sending: ack, timeout, one retry, then resync (TODO.md #152) ─────
+
+  // How long to wait for the server's ack before assuming the packet was lost.
+  // ~10x the ~0.5 s RTT measured for the affected players, so ordinary latency
+  // never trips it. Worst case a player waits 2 x this (one retry) before the
+  // resync path kicks in — changing it changes that number too.
+  const MOVE_ACK_TIMEOUT_MS = 5000;
+
+  /** Idempotency key for one move attempt; reused verbatim across the retry. */
+  function newMoveId() {
+    if (global.crypto && typeof global.crypto.randomUUID === 'function') {
+      return global.crypto.randomUUID();
+    }
+    return `m-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function moveNotice(text) {
+    if (global.ChatUI) global.ChatUI.appendSystemMessage(text);
+  }
+
+  /**
+   * Send a move and see it through to a definite outcome.
+   *
+   * Before #152 this was a bare `emit('game:move', {x,y})`: if either that
+   * packet or the `game:moved` broadcast answering it was dropped while the
+   * socket stayed up, nothing on either side noticed. The stone never
+   * appeared, no error, no spinner, and the only way out was F5.
+   *
+   *   ack {ok}     → done
+   *   ack {error}  → show the reason, done. Never retried: the server saw the
+   *                  move and refused it on purpose, so resending earns the
+   *                  same refusal and makes the player wait for it.
+   *   timeout #1   → resend, same moveId, so the server can recognise it as
+   *                  the same action if the first one did land
+   *   timeout #2   → stop, ask for a full resync, tell the player
+   *
+   * Optimistic render (TODO.md #153, upgraded to Full CSP by #155): a solid,
+   * indistinguishable-from-real stone is drawn at (x,y) immediately, before
+   * any of the above — the mover no longer waits out a round trip to see
+   * their own move. It is a pure visual overlay (BoardRenderer.
+   * optimisticStone), never written into gameState.board, so a rejected move
+   * rolls back for free: clearing the overlay IS the rollback. #155 adds two
+   * more predictions alongside it, same discipline: the move sound plays
+   * immediately instead of waiting for game:moved, and `predictedTurn`
+   * (RoomState, sibling of boardRenderer — never gameState itself) flips the
+   * turn-bar/opponent timer to look switched right away. Clearing
+   * `predictedTurn.active` is the entire rollback for that piece too,
+   * because gameState.currentTurn/timerValues are never touched — the next
+   * updateBoardState() call renders the real values automatically.
+   *
+   * Deliberately NOT cleared here on ack {ok}. The server sends the
+   * `game:moved` broadcast before the ack (same connection, so it's ordered
+   * ahead), and that broadcast is what writes the confirmed stone into
+   * gameState.board — clearing the overlay only once that write has actually
+   * happened (see room-socket.js's game:moved handler) avoids a one-frame
+   * flash of an empty cell in the rare case where this move's own broadcast
+   * was itself redirected into a resync by the receive-side gap check (an
+   * earlier, unrelated broadcast this client had missed).
+   */
+  function sendMove(x, y) {
+    const moveId = newMoveId();
+    const st = S();
+    const myPlayer = st.gameState && st.gameState.players.find(p => p.userId === st.myUser.userId);
+    if (st.boardRenderer && myPlayer) {
+      st.boardRenderer.setOptimisticStone({ x, y, color: myPlayer.color });
+      // Immediate, not waiting on network (TODO.md #155) — this is always
+      // our own move, never the opponent's, so `false` is not a placeholder.
+      if (global.audioManager) global.audioManager.playMoveSound(false);
+      // predictedTurn always travels with optimisticStone — never one
+      // without the other, so the move-confirm watchdog and the rollback
+      // paths below only ever need to flip a single pair together.
+      st.predictedTurn.active = true;
+      st.predictedTurn.forColor = myPlayer.color === 'BLACK' ? 'WHITE' : 'BLACK';
+      st.predictedTurn.snapshotTimerValues = Object.assign({}, st.timerValues);
+      st.predictedTurn.switchedAtLocalTs = Date.now();
+      renderTimers();
+      renderTurnLabel();
+    }
+
+    const attempt = (isRetry) => {
+      global.RoomClient.emitAck('game:move', { x, y, moveId }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
+        if (err) {
+          // The game may have ended while this attempt was outstanding (the
+          // move itself could have been the winning one, with only its ack
+          // lost). Retrying then just earns a NO_ACTIVE_GAME error for a move
+          // that in fact won.
+          const gs = S().gameState;
+          if (!gs || gs.status !== 'ongoing') return;
+
+          if (!isRetry) {
+            if (S().boardRenderer) S().boardRenderer.markOptimisticWarning();
+            moveNotice(t('room.move_retrying'));
+            attempt(true);
+          } else {
+            moveNotice(t('room.move_failed'));
+            if (global.RoomSocket) global.RoomSocket.requestResync();
+            // The pending stone stays up (still showing its 'warning' look)
+            // until game:resync's answer lands as room:joined and clears it
+            // along with rebuilding the whole board — see room-socket.js.
+            // Clearing it here instead would guess at an outcome the server
+            // hasn't actually confirmed yet.
+          }
+          return;
+        }
+        if (res && res.error) {
+          if (S().boardRenderer) S().boardRenderer.setOptimisticStone(null);
+          // gameState.currentTurn/timerValues were never touched, so clearing
+          // the flag and re-rendering just the turn-bar/timer (the only two
+          // things predictedTurn affects) is the whole rollback (TODO.md
+          // #155) — same "clearing the overlay IS the rollback" property as
+          // the stone.
+          S().predictedTurn.active = false;
+          renderTimers();
+          renderTurnLabel();
+          moveNotice(`⚠ ${global.RoomSocket ? global.RoomSocket.serverMessage(res) : res.error}`);
+          return;
+        }
+        // Accepted. The server broadcasts `game:moved` before it acks, so that
+        // broadcast should already be in hand — if it isn't, it was dropped on
+        // its own and nothing else would ever notice: the retry path above only
+        // runs on a *missing ack*, and the one we are holding arrived fine.
+        // Left unguarded this is the second deadlock variant in
+        // docs/todo/B154-*.md, with the pending stone stuck for good.
+        if (global.RoomSocket && global.RoomSocket.armMoveConfirmWatchdog) {
+          global.RoomSocket.armMoveConfirmWatchdog();
+        }
+      });
+    };
+
+    attempt(false);
+  }
 
   // ── Time formatting ───────────────────────────────────────────────────────
 
@@ -87,6 +218,7 @@
           <div class="game-controls" id="game-controls"></div>
           <div id="draw-prompt-area"></div>
           <div id="time-prompt-area"></div>
+          <div id="undo-prompt-area"></div>
         </div>
       `;
 
@@ -105,7 +237,21 @@
             return;
           }
           if (gs && gs.status === 'ongoing') {
-            global.RoomClient.emit('game:move', { x, y });
+            // Local pre-check (TODO.md #155 Q1) — cheap, early-exit only,
+            // strictly bounded to what the client already authoritatively
+            // has (board/currentTurn/status). Not a new validation layer:
+            // anything past this (walls, portals, swap2 phase rules) stays
+            // server-only and still rejects via the ack rollback path.
+            if (gs.board[y] && gs.board[y][x] !== 0) return;
+            if (gs.currentTurn !== st.myUser.userId) return;
+            // One in-flight move at a time (TODO.md #153): `isMyTurn` in
+            // board.js doesn't flip false until gameState.currentTurn changes,
+            // which only happens once this move is confirmed — so without this
+            // guard a second click during the round trip would start a second
+            // optimistic stone and clobber the first one (BoardRenderer only
+            // tracks one).
+            if (S().boardRenderer && S().boardRenderer.optimisticStone) return;
+            sendMove(x, y);
           }
         },
       });
@@ -206,10 +352,31 @@
     const wTimerEl = document.getElementById('tb-white-timer');
     if (!bTimerEl || !wTimerEl) return;
 
-    bTimerEl.textContent = formatTime(st.timerValues.black);
-    wTimerEl.textContent = formatTime(st.timerValues.white);
-    bTimerEl.classList.toggle('turn-bar__timer--low', st.timerValues.black <= 10);
-    wTimerEl.classList.toggle('turn-bar__timer--low', st.timerValues.white <= 10);
+    // predictedTurn (TODO.md #155): while a move is in flight, render the
+    // clocks as if the turn already switched — the mover's own clock frozen
+    // at its click-time value (not the still-ticking real one; the server
+    // hasn't flipped `currentTurn` yet), the opponent's counting down live
+    // from that same snapshot. Never reads/writes gameState.timerValues
+    // itself, so the instant this clears the very next tick shows the real,
+    // server-confirmed numbers again — no separate "restore" needed.
+    const pt = st.predictedTurn;
+    let blackVal = st.timerValues.black;
+    let whiteVal = st.timerValues.white;
+    if (pt && pt.active && pt.snapshotTimerValues) {
+      const elapsed = (Date.now() - pt.switchedAtLocalTs) / 1000;
+      if (pt.forColor === 'BLACK') {
+        blackVal = Math.max(0, pt.snapshotTimerValues.black - elapsed);
+        whiteVal = pt.snapshotTimerValues.white;
+      } else {
+        whiteVal = Math.max(0, pt.snapshotTimerValues.white - elapsed);
+        blackVal = pt.snapshotTimerValues.black;
+      }
+    }
+
+    bTimerEl.textContent = formatTime(blackVal);
+    wTimerEl.textContent = formatTime(whiteVal);
+    bTimerEl.classList.toggle('turn-bar__timer--low', blackVal <= 10);
+    wTimerEl.classList.toggle('turn-bar__timer--low', whiteVal <= 10);
 
     const tbBlack = document.getElementById('tb-black');
     const tbWhite = document.getElementById('tb-white');
@@ -219,7 +386,9 @@
       // for firstPlayerId/secondPlayerId instead (instruction.md §B37).
       const swap2 = st.gameState.swap2;
       let isBlackTurn;
-      if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
+      if (pt && pt.active) {
+        isBlackTurn = pt.forColor === 'BLACK';
+      } else if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
         isBlackTurn = st.gameState.currentTurn === swap2.firstPlayerId;
       } else {
         const blackP = st.gameState.players.find(p => p.color === 'BLACK');
@@ -227,6 +396,14 @@
       }
       tbBlack.classList.toggle('turn-bar__active', isBlackTurn && st.gameState.status === 'ongoing');
       tbWhite.classList.toggle('turn-bar__active', !isBlackTurn && st.gameState.status === 'ongoing');
+    }
+
+    // The turn bar above is display:none at ≤768px; there the mobile players
+    // strip carries the clocks instead. Repaint it from here rather than from
+    // a second interval so both surfaces stay on the one tick path
+    // room-socket.js already drives (tickLocal → GameUI.renderTimers).
+    if (global.RoomUI && typeof global.RoomUI.updateStripTimers === 'function') {
+      global.RoomUI.updateStripTimers();
     }
   }
 
@@ -243,7 +420,13 @@
       return;
     }
 
-    const isMyTurn = st.gameState.currentTurn === st.myUser.userId;
+    // predictedTurn is only ever set by our own sendMove(), so while it's
+    // active it is by definition never our turn — this is the mover's own
+    // screen the instant after they moved (TODO.md #155). Keeps this label
+    // in sync with the turn-bar highlight in renderTimers() above instead of
+    // contradicting it for one RTT.
+    const pt = st.predictedTurn;
+    const isMyTurn = (pt && pt.active) ? false : st.gameState.currentTurn === st.myUser.userId;
     el.textContent = isMyTurn ? t('game.your_turn') : t('game.opponent_turn');
     el.classList.toggle('game-info__turn--mine', isMyTurn);
   }
@@ -274,16 +457,21 @@
     }
 
     const timeDisabled = st.timeRequestPending ? 'disabled' : '';
+    const undoDisabled = st.undoOfferPending ? 'disabled' : '';
     el.innerHTML = `
       <button class="btn-game btn-game--resign" data-action="doResign">${t('game.btn_resign')}</button>
       <button class="btn-game btn-game--draw"   data-action="doDrawOffer">${t('game.btn_draw')}</button>
       <button class="btn-game btn-game--time"   data-action="doRequestTime" ${timeDisabled}>
         ${t('game.btn_time')}
       </button>
+      <button class="btn-game btn-game--undo"   data-action="doUndoRequest" ${undoDisabled}>
+        ${t('game.btn_undo')}
+      </button>
     `;
 
     renderDrawPrompt();
     renderTimePrompt();
+    renderUndoPrompt();
     requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
   }
 
@@ -327,6 +515,7 @@
 
     renderDrawPrompt();
     renderTimePrompt();
+    renderUndoPrompt();
 
     const el = document.getElementById('game-controls');
     if (!el) return;
@@ -357,6 +546,20 @@
     } else if (phase === 'p1choice' && !isFirst) {
       html = `<div class="swap2-hint">${t('game.swap2_opponent_choosing_color')}</div>`;
     }
+    // Undo is available to either player throughout the opening, regardless
+    // of whose turn it is to place/choose (TODO.md #128) — appended after
+    // the phase-specific hint/buttons above, not a replacement for them.
+    // Wrapped in its own full-width row: #game-controls is a non-wrapping
+    // flex row on desktop, and .swap2-hint/.swap2-choice above already
+    // claim width:100% of it, so the undo button needs its own row rather
+    // than fighting them for space on the same one.
+    const undoDisabled = st.undoOfferPending ? 'disabled' : '';
+    html += `
+      <div class="swap2-undo-row">
+        <button class="btn-game btn-game--undo" data-action="doUndoRequest" ${undoDisabled}>
+          ${t('game.btn_undo')}
+        </button>
+      </div>`;
     el.innerHTML = html;
     // Same empty/populated-height concern as renderGameControls() above —
     // swap2 also writes directly into #game-controls.
@@ -419,6 +622,34 @@
     `;
   }
 
+  // ── Undo request prompt ───────────────────────────────────────────────────
+
+  function renderUndoPrompt() {
+    const st = S();
+    const el = document.getElementById('undo-prompt-area');
+    if (!el) return;
+
+    if (!st.undoOfferPending || !st.gameState || st.gameState.status !== 'ongoing') {
+      el.innerHTML = '';
+      return;
+    }
+
+    if (st.undoOfferPending.from === st.myUser.userId) {
+      el.innerHTML = `<div class="draw-prompt">${t('game.undo_waiting')}</div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="draw-prompt">
+        <span>${t('game.undo_offer', { name: _esc(st.undoOfferPending.fromName || t('game.opponent_generic')) })}</span>
+        <div class="draw-prompt__actions">
+          <button class="btn-draw-action btn-draw-accept"  data-action="doUndoAccept">${t('game.btn_accept')}</button>
+          <button class="btn-draw-action btn-draw-decline" data-action="doUndoDecline">${t('game.btn_decline')}</button>
+        </div>
+      </div>
+    `;
+  }
+
   // ── Escape helper ─────────────────────────────────────────────────────────
   function _esc(str) {
     const d = document.createElement('div');
@@ -437,10 +668,13 @@
   global.doRequestTime = () => { if (!S().timeRequestPending) global.RoomClient.emit('game:request_time'); };
   global.doTimeAccept  = () => global.RoomClient.emit('game:time_accept');
   global.doTimeDecline = () => global.RoomClient.emit('game:time_decline');
+  global.doUndoRequest = () => { if (!S().undoOfferPending) global.RoomClient.emit('game:undo_request'); };
+  global.doUndoAccept  = () => global.RoomClient.emit('game:undo_accept');
+  global.doUndoDecline = () => global.RoomClient.emit('game:undo_decline');
   global.swap2Choose   = (c) => global.RoomClient.emit('game:swap2_choice', { choice: c });
 
   // ── Lang change listener ──────────────────────────────────────────────────
-  // Swap2/draw/time prompts are built as raw innerHTML strings (not
+  // Swap2/draw/time/undo prompts are built as raw innerHTML strings (not
   // data-i18n), so applyI18n() alone can't re-translate them — re-run their
   // render functions on language switch instead.
   window.addEventListener('langchange', () => {
@@ -453,6 +687,9 @@
   // ── Public API ────────────────────────────────────────────────────────────
   global.GameUI = {
     initBoard,
+    // Exported for its regression test (TODO.md #152); the board's own click
+    // handler calls the local binding directly.
+    sendMove,
     setTurnBarVisible,
     updateBoardState,
     renderTimers,
@@ -461,6 +698,7 @@
     renderSwap2,
     renderDrawPrompt,
     renderTimePrompt,
+    renderUndoPrompt,
   };
 
 })(window);

@@ -110,6 +110,7 @@ class GameEngine {
     this.status      = 'ongoing'; // 'ongoing' | 'finished'
     this.result      = null;      // { winner, reason }
     this.drawOffer   = null;      // { from: userId } or null
+    this.undoOffer   = null;      // { from: userId, mode: 'play', targetIndex } | { from: userId, mode: 'opening' } | null
 
     // Swap2 opening state machine.
     // When enabled, colors are NOT yet assigned and the opening drives turn order.
@@ -123,10 +124,23 @@ class GameEngine {
       this.currentTurn      = this.firstPlayerId;
       this.openingStones    = [];
       this._phaseStones     = [];
+      // Set once _assignColors() runs (real play begins) — the moveHistory
+      // index boundary before which Undo treats every action (stone or
+      // choice) as part of the opening's "step back 1 atomic action" rule,
+      // and at/after which Undo uses the normal play rule instead. null
+      // while still mid-opening.
+      this.playPhaseStartIndex = null;
     } else {
       this.openingPhase   = 'play';
       this.colorsAssigned = true;
+      this.playPhaseStartIndex = 0;
     }
+
+    // Stack of opening-state snapshots, one pushed immediately before each
+    // atomic opening action (a stone placement or a Swap2 choice) mutates
+    // state — see requestUndo()/_applyOpeningUndo(). Always empty for
+    // non-Swap2 games.
+    this.openingSnapshots = [];
 
     logger.info(`[GameEngine] Game ${this.gameId} created for room ${this.roomId}`);
   }
@@ -201,6 +215,13 @@ class GameEngine {
           };
         }
       }
+    }
+
+    // Undo requests don't block gameplay, but the requester continuing to
+    // play instead of waiting auto-cancels their own pending request — the
+    // opponent moving does NOT cancel it (see docs/instruction/B128-*.md).
+    if (this.undoOffer && this.undoOffer.from === userId) {
+      this.undoOffer = null;
     }
 
     // Place stone
@@ -285,6 +306,8 @@ class GameEngine {
     const color = seq[idx];
     const colorStr = color === BLACK ? 'BLACK' : 'WHITE';
 
+    this._beginOpeningAction(userId);
+
     // Place the stone
     this.board[y][x] = color;
     this.moveCount++;
@@ -348,6 +371,7 @@ class GameEngine {
       if (choice !== 'white' && choice !== 'black' && choice !== 'place') {
         return { error: 'Lựa chọn không hợp lệ.', code: 'INVALID_CHOICE' };
       }
+      this._beginOpeningAction(userId);
       if (choice === 'white') {
         // P2 takes white, P1 black.
         this._assignColors('BLACK', 'WHITE');
@@ -372,6 +396,7 @@ class GameEngine {
       if (choice !== 'black' && choice !== 'white') {
         return { error: 'Lựa chọn không hợp lệ.', code: 'INVALID_CHOICE' };
       }
+      this._beginOpeningAction(userId);
       if (choice === 'black') {
         this._assignColors('BLACK', 'WHITE');
       } else {
@@ -381,6 +406,36 @@ class GameEngine {
     }
 
     return { error: 'Không trong giai đoạn lựa chọn.', code: 'NOT_IN_CHOICE_PHASE' };
+  }
+
+  /**
+   * Snapshot opening state, then auto-cancel the requester's own pending
+   * undo offer — called as the first step of every atomic opening action
+   * (a stone placement or a Swap2 choice), before that action mutates any
+   * state. See requestUndo()/_applyOpeningUndo() and
+   * docs/instruction/B128-*.md.
+   *
+   * @param {string} userId — the player performing this atomic action
+   */
+  _beginOpeningAction(userId) {
+    if (this.undoOffer && this.undoOffer.from === userId) {
+      this.undoOffer = null;
+    }
+    this.openingSnapshots.push(this._snapshotOpeningState());
+  }
+
+  /** @returns {object} a restorable snapshot of pre-mutation opening state. */
+  _snapshotOpeningState() {
+    return {
+      moveHistoryLength: this.moveHistory.length,
+      openingPhase: this.openingPhase,
+      currentTurn: this.currentTurn,
+      phaseStones: [...this._phaseStones],
+      openingStones: [...this.openingStones],
+      colorsAssigned: this.colorsAssigned,
+      player0Color: this.players[0].color,
+      player1Color: this.players[1].color,
+    };
   }
 
   /**
@@ -395,6 +450,7 @@ class GameEngine {
     this.players[1].color = secondColor;
     this.colorsAssigned   = true;
     this.openingPhase     = 'play';
+    this.playPhaseStartIndex = this.moveHistory.length;
     this.currentTurn      = this.players.find(p => p.color === 'WHITE').userId;
   }
 
@@ -489,6 +545,177 @@ class GameEngine {
   }
 
   // ---------------------------------------------------------------------------
+  // Undo (TODO.md #128 / docs/instruction/B128-*.md)
+  //
+  // Two modes, chosen automatically by requestUndo() based on whether any
+  // real "play"-phase move exists yet:
+  //   - 'play': rolls back to right before the requester's own last move
+  //     (their move alone, or their move + the opponent's reply if one
+  //     followed) — targetIndex is snapshotted at request time so a reply
+  //     made while the request is pending still resolves correctly.
+  //   - 'opening': while still inside the Swap2 opening (or immediately
+  //     after it ends with zero real moves played), each accepted request
+  //     steps back exactly one atomic action (a stone placement or a
+  //     choice) — resolved dynamically against openingSnapshots at ACCEPT
+  //     time, not frozen at request time, since the rule isn't anchored to
+  //     "whose action" the way 'play' mode is.
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Request an undo. Either player may request, at any time, unlimited
+   * times (gated only by the opponent's approval each time).
+   *
+   * @param {string} userId
+   * @returns {{ error?: string, requested?: boolean, mode?: 'play'|'opening' }}
+   */
+  requestUndo(userId) {
+    if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
+
+    const player = this.players.find(p => p.userId === userId);
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
+
+    if (this.undoOffer) return { error: 'Đã có lời đề nghị đi lại đang chờ.', code: 'UNDO_OFFER_PENDING' };
+
+    // No real play move exists yet (either still mid-opening, or just past
+    // it) — opening mode: step back exactly one atomic action.
+    const zeroRealPlayMoves =
+      this.playPhaseStartIndex === null || this.moveHistory.length === this.playPhaseStartIndex;
+
+    if (zeroRealPlayMoves) {
+      if (this.openingSnapshots.length === 0) {
+        return { error: 'Chưa có nước nào để đi lại.', code: 'NO_MOVE_TO_UNDO' };
+      }
+      this.undoOffer = { from: userId, mode: 'opening' };
+      return { requested: true, mode: 'opening' };
+    }
+
+    // Play mode — find the requester's own last move at/after the play boundary.
+    const colorStr = player.color;
+    let targetIndex = -1;
+    for (let i = this.moveHistory.length - 1; i >= this.playPhaseStartIndex; i--) {
+      if (this.moveHistory[i].color === colorStr) { targetIndex = i; break; }
+    }
+    if (targetIndex === -1) {
+      return { error: 'Bạn chưa đi nước nào để đi lại.', code: 'NO_MOVE_TO_UNDO' };
+    }
+    this.undoOffer = { from: userId, mode: 'play', targetIndex };
+    return { requested: true, mode: 'play' };
+  }
+
+  /**
+   * Accept a pending undo request. Only the opponent can accept.
+   *
+   * @param {string} userId
+   * @returns {{ error?: string, accepted?: boolean, mode?: 'play'|'opening',
+   *            cleared?: Array<{x:number,y:number}>, currentTurn?: string,
+   *            moveCount?: number, openingPhase?: string, colorsAssigned?: boolean }}
+   */
+  acceptUndo(userId) {
+    if (this.status !== 'ongoing') return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
+
+    const player = this.players.find(p => p.userId === userId);
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
+
+    if (!this.undoOffer) return { error: 'Không có lời đề nghị đi lại nào.', code: 'NO_UNDO_OFFER' };
+    if (this.undoOffer.from === userId) return { error: 'Bạn không thể tự chấp nhận.', code: 'CANNOT_SELF_ACCEPT' };
+
+    const offer = this.undoOffer;
+    this.undoOffer = null;
+
+    if (offer.mode === 'opening') {
+      return this._applyOpeningUndo();
+    }
+    return this._applyPlayUndo(offer.from, offer.targetIndex);
+  }
+
+  /**
+   * Decline a pending undo request.
+   *
+   * @param {string} userId
+   * @returns {{ error?: string, declined?: boolean }}
+   */
+  declineUndo(userId) {
+    const player = this.players.find(p => p.userId === userId);
+    if (!player) return { error: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' };
+
+    if (!this.undoOffer) return { error: 'Không có lời đề nghị đi lại nào.', code: 'NO_UNDO_OFFER' };
+    if (this.undoOffer.from === userId) return { error: 'Bạn không thể tự từ chối.', code: 'CANNOT_SELF_DECLINE' };
+
+    this.undoOffer = null;
+    return { declined: true };
+  }
+
+  /**
+   * Roll back to right before `targetIndex` in moveHistory (removing it and
+   * anything after — at most 2 entries, per requestUndo()'s invariant),
+   * landing on the requester's turn.
+   *
+   * @param {string} requesterId
+   * @param {number} targetIndex
+   */
+  _applyPlayUndo(requesterId, targetIndex) {
+    const cleared = [];
+    while (this.moveHistory.length > targetIndex) {
+      const removed = this.moveHistory.pop();
+      this.board[removed.y][removed.x] = EMPTY;
+      cleared.push({ x: removed.x, y: removed.y });
+    }
+    this.moveCount = this.moveHistory.length;
+    this.currentTurn = requesterId;
+
+    logger.info(`[GameEngine] Game ${this.gameId}: undo accepted (play), rolled back ${cleared.length} move(s)`);
+    return {
+      accepted: true, mode: 'play', cleared,
+      currentTurn: this.currentTurn, moveCount: this.moveCount,
+    };
+  }
+
+  /**
+   * Pop and restore the most recent opening snapshot — reversing exactly
+   * one atomic opening action (a stone placement or a Swap2 choice).
+   * Always lands back in an opening sub-phase (never 'play'): every
+   * snapshot was taken before a mutation that only runs while
+   * `openingPhase !== 'play'`.
+   */
+  _applyOpeningUndo() {
+    const snapshot = this.openingSnapshots.pop();
+    const cleared = [];
+    while (this.moveHistory.length > snapshot.moveHistoryLength) {
+      const removed = this.moveHistory.pop();
+      this.board[removed.y][removed.x] = EMPTY;
+      cleared.push({ x: removed.x, y: removed.y });
+    }
+    this.moveCount = this.moveHistory.length;
+    this.openingPhase = snapshot.openingPhase;
+    this.currentTurn = snapshot.currentTurn;
+    this._phaseStones = snapshot.phaseStones;
+    this.openingStones = snapshot.openingStones;
+    this.colorsAssigned = snapshot.colorsAssigned;
+    this.players[0].color = snapshot.player0Color;
+    this.players[1].color = snapshot.player1Color;
+    this.playPhaseStartIndex = null;
+
+    // Color of the next stone to place, if we landed back in a placement
+    // sub-phase — mirrors placeOpeningStone()'s own nextColor calculation,
+    // exposed here so callers (GameHandler) don't need to reach into
+    // _phaseStones directly.
+    let nextColor = null;
+    if (this.openingPhase === 'place3' || this.openingPhase === 'place2') {
+      const seq = this.openingPhase === 'place3' ? PLACE3 : PLACE2;
+      const next = seq[this._phaseStones.length];
+      nextColor = next === BLACK ? 'BLACK' : 'WHITE';
+    }
+
+    logger.info(`[GameEngine] Game ${this.gameId}: undo accepted (opening), reverted to phase ${this.openingPhase}`);
+    return {
+      accepted: true, mode: 'opening', cleared,
+      currentTurn: this.currentTurn, moveCount: this.moveCount,
+      openingPhase: this.openingPhase, colorsAssigned: this.colorsAssigned,
+      nextColor,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Timeout
   // ---------------------------------------------------------------------------
 
@@ -531,6 +758,7 @@ class GameEngine {
       moveCount: this.moveCount,
       status: this.status,
       result: this.result,
+      undoOffer: this.undoOffer,
       swap2: {
         enabled: this.ruleSwap2 === true,
         openingPhase: this.openingPhase,
