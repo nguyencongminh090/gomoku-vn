@@ -985,10 +985,18 @@ truthful." (2026-08-27)
   bằng số — cơ chế chắc + cách bù an toàn kể cả khi `d` nhỏ. Mục 4 (easing) + `tournament-match.js`
   cố ý hoãn; bước ~`d` còn lại (chân tải-lên nước đi) là phần #167. Bump `?v=163→164`. Test: +13 case
   `game-optimistic-render.test.js`, `npm test` 1465/1465. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B165-timer-nhay-do-transit-delay-predictedturn-desktop.md)
-- ⬜ **#166.** Port cơ chế bù trễ + `predictedTurn` của #165 xuống **mobile players-strip**
-  (`room-ui.js` `updateStripTimers`/`renderStripPlayer` đọc thẳng `gameState.currentTurn`/
-  `timerValues`, không đọc `predictedTurn` — đã ghi trong #155 "Ngoài phạm vi"). **Phụ thuộc #165**,
-  làm sau khi #165 chốt cơ chế; chỉ nhân bản, không tự thiết kế. Bump `?v=N`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B166-port-co-che-bu-tre-timer-sang-mobile-players-strip.md)
+- ✅ **#166.** (Đã sửa 2026-08-28 — `fix/timer-delay-mobile-players-strip` off `dev`.) Port cơ chế
+  bù trễ + `predictedTurn` của #165 xuống **mobile players-strip**. Gốc: `room-ui.js`
+  `updateStripTimers`/`renderStripPlayer` đọc thẳng `gameState.currentTurn`/`timerValues`, không đọc
+  `predictedTurn` (đã ghi trong #155 "Ngoài phạm vi"). Sửa: tách 2 helper chung
+  `GameUI.effectiveTimerValues()` + `GameUI.effectiveTurnColor()` (overlay `predictedTurn` #155 +
+  luật placeholder Swap2 §B37; bù trễ #165 đã nằm sẵn trong `st.timerValues` do `tickLocal`/
+  `applyTimerSync` ghi) — `renderTimers` desktop và `updateStripTimers`/`renderStripPlayer` mobile
+  cùng gọi đúng 1 cặp helper này nên không thể lệch số. `updateStripTimers` cũng chuyển marker
+  turn/idle trên đường tick mỗi giây (không chỉ lúc rebuild) để strip lật sang đối thủ ngay khi
+  nước đi in-flight. `predictedTurn` chỉ render-only, không ghi `gameState`. Không đụng desktop
+  turn-bar behaviour. Bump `?v=164→165`. Test: +6 case `room-ui-strip-predicted-turn.test.js`,
+  `npm test` 1471/1471. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B166-port-co-che-bu-tre-timer-sang-mobile-players-strip.md)
 - ⬜ **#167.** (Khảo sát) Server-side lag compensation cho `game:move` — server đo transit của chính
   nước đi rồi *hoàn* bounded vào đồng hồ (kiểu Lichess `lag`). **ĐO trước** (rule #131): nếu #165 đã
   làm người chơi hết phàn nàn thì đóng. Nếu làm: server vẫn là nguồn timeout duy nhất, `refund =

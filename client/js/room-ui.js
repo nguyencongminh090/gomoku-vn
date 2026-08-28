@@ -15,6 +15,7 @@
  *   RoomUI.renderScoreTable()
  *   RoomUI.renderStartModal() — Start-modal ready window (both seated; 15s
  *     countdown only once one player clicks Start — see instruction.md §B36)
+ *   RoomUI.renderPlayersStrip() — full rebuild of the mobile players strip
  *   RoomUI.updateStripTimers() — per-second clock/bar repaint for the mobile
  *     players strip; called from GameUI.renderTimers(), not on its own timer
  *   window.sitDown(slot)     — onclick shim
@@ -232,15 +233,40 @@
     }
   }
 
+  // #155/#165/#166 — the strip's clock numbers and whose-turn marker must be
+  // computed the exact same way the desktop turn bar computes them, or the
+  // two surfaces of one feature drift apart on a laggy link. Both formulas
+  // live in game-ui.js; these thin wrappers just tolerate it not being
+  // loaded yet (module load order) by degrading to the raw authoritative
+  // state, which is what the strip did before #166 anyway.
+  function stripTimerValues() {
+    if (global.GameUI && typeof global.GameUI.effectiveTimerValues === 'function') {
+      return global.GameUI.effectiveTimerValues();
+    }
+    return S().timerValues || { black: 0, white: 0 };
+  }
+  function stripTurnColor() {
+    if (global.GameUI && typeof global.GameUI.effectiveTurnColor === 'function') {
+      return global.GameUI.effectiveTurnColor();
+    }
+    return null;
+  }
+
   // One seated player: identity row, plus a clock row when a game is running.
   function renderStripPlayer(player, slotNum) {
     const st = S();
     const clock = playerClock(player);
     const live = !!st.gameState && clock.key !== null;
 
-    const isTurn = live
-      && st.gameState.status === 'ongoing'
-      && st.gameState.currentTurn === player.userId;
+    // predictedTurn overlay (#155) + Swap2 placeholder rule live in
+    // GameUI.effectiveTurnColor(); share it so the strip flips to the
+    // opponent the instant our move is in flight, same as the desktop turn
+    // bar (instruction.md #166). Falls back to authoritative currentTurn if
+    // game-ui.js somehow isn't loaded yet.
+    const turnColor = stripTurnColor();
+    const isTurn = live && (turnColor
+      ? turnColor === clock.key.toUpperCase()
+      : (st.gameState.status === 'ongoing' && st.gameState.currentTurn === player.userId));
 
     const row = `
       <div class="players-strip__slot ${isTurn ? 'players-strip__slot--turn' : ''}"
@@ -332,8 +358,13 @@
     const st = S();
     if (!st.gameState) return;
 
+    // Same overlaid values (#155 predictedTurn) + transit compensation (#165)
+    // the desktop turn bar paints — see stripTimerValues/GameUI.
+    const vals = stripTimerValues();
+    const turnColor = stripTurnColor();
+
     for (const key of ['black', 'white']) {
-      const remaining = Number((st.timerValues || {})[key]) || 0;
+      const remaining = Number(vals[key]) || 0;
       const low = remaining <= 10;
 
       const timeEl = playersStrip.querySelector(`[data-strip-time="${key}"]`);
@@ -348,6 +379,20 @@
         if (fillEl) {
           fillEl.style.setProperty('--pct', String(timePct(remaining)));
           fillEl.classList.toggle('players-strip__fill--low', low);
+        }
+
+        // predictedTurn can flip whose turn it is between full strip
+        // rebuilds, so move the turn/idle markers here on the per-second
+        // path too — the mover's row must drop its highlight and the
+        // opponent's must gain it the instant our move goes in flight
+        // (instruction.md #166), not one RTT later.
+        if (turnColor) {
+          const isTurn = turnColor === key.toUpperCase();
+          trackEl.classList.toggle('players-strip__track--idle', !isTurn);
+          const rowEl = trackEl.previousElementSibling;
+          if (rowEl && rowEl.classList.contains('players-strip__slot')) {
+            rowEl.classList.toggle('players-strip__slot--turn', isTurn);
+          }
         }
       }
     }
@@ -844,6 +889,7 @@
     renderUsersList,
     renderScoreTable,
     renderStartModal,
+    renderPlayersStrip,
     updateStripTimers,
   };
 
