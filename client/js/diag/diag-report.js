@@ -81,6 +81,13 @@
   /**
    * Jitter, in ms. Judged against the same 1s tick: swing beyond a quarter
    * tick makes the compensated display visibly unsteady.
+   *
+   * #169 (the hysteresis + monotonic clamp on the room's displayed clock) took
+   * the worst of that unsteadiness away — a quarter-tick swing no longer flips
+   * the shave or bounces the number. The band is kept because jitter this high
+   * is still a real signal of link quality the maintainer wants to see, and
+   * the residual "clock briefly holds after a spike" is real; it is just no
+   * longer alarming. Revisit the threshold once more high-jitter samples exist.
    */
   const JITTER_YELLOW_MS = 100;
   const JITTER_RED_MS = 250;

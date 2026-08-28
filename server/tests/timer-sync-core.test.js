@@ -138,6 +138,63 @@ describe('displayShaveSec — whole-second shave applied at sync time', () => {
   });
 });
 
+describe('displayShaveSec — hysteresis around the rounding boundary (#169)', () => {
+  // The #169 bug: on a jittery link the half-RTT EMA oscillates across a .5s
+  // boundary, so `Math.round` flipped the shave 0↔1 on every sync and the
+  // displayed clock stuttered a whole second each move. Passing the previous
+  // whole-second step in lets the core hold it through a dead zone of
+  // ±(0.5 + SHAVE_HYSTERESIS_SEC) — a quarter of the room's 1000ms tick either
+  // side of the plain rounding point.
+
+  test('SHAVE_HYSTERESIS_SEC is a quarter of the room tick', () => {
+    expect(core.SHAVE_HYSTERESIS_SEC).toBe(0.25);
+  });
+
+  test('with no previous step it rounds plainly — the single-arg call is unchanged', () => {
+    expect(core.displayShaveSec(500)).toBe(1);
+    expect(core.displayShaveSec(499)).toBe(0);
+    expect(core.displayShaveSec(500, undefined)).toBe(1);
+    expect(core.displayShaveSec(500, NaN)).toBe(1);
+  });
+
+  test('holds the previous step through the dead zone', () => {
+    // prev 0: 0.50s rounds to 1 plainly, but 0.50 ≤ 0.75 so it holds 0.
+    expect(core.displayShaveSec(500, 0)).toBe(0);
+    expect(core.displayShaveSec(740, 0)).toBe(0);   // 0.74 ≤ 0.75
+    // prev 1: 0.40s rounds to 0 plainly; |0.40 − 1| = 0.60 ≤ 0.75 so it holds 1.
+    expect(core.displayShaveSec(600, 1)).toBe(1);
+    expect(core.displayShaveSec(400, 1)).toBe(1);
+    expect(core.displayShaveSec(260, 1)).toBe(1);   // |0.26 − 1| = 0.74 ≤ 0.75
+  });
+
+  test('steps up only once the target is decisively past the previous step', () => {
+    expect(core.displayShaveSec(760, 0)).toBe(1);   // 0.76 > 0.75
+    expect(core.displayShaveSec(1800, 1)).toBe(2);  // |1.8 − 1| = 0.8 > 0.75
+  });
+
+  test('steps down only once the target falls decisively below the previous step', () => {
+    expect(core.displayShaveSec(240, 1)).toBe(0);   // |0.24 − 1| = 0.76 > 0.75
+    expect(core.displayShaveSec(1190, 2)).toBe(1);  // |1.19 − 2| = 0.81 > 0.75
+  });
+
+  test('a large change snaps the whole way, not one step per call', () => {
+    expect(core.displayShaveSec(2900, 0)).toBe(3);
+    expect(core.displayShaveSec(0, 3)).toBe(0);
+  });
+
+  test('still honours the 8s clamp when a previous step is supplied', () => {
+    expect(core.displayShaveSec(60000, 7)).toBe(8);
+  });
+
+  test('an estimate parked on the 500ms boundary no longer flip-flops', () => {
+    let shave = 0;
+    for (const halfRtt of [450, 550, 480, 520, 500, 540, 460, 510]) {
+      shave = core.displayShaveSec(halfRtt, shave);
+      expect(shave).toBe(0);
+    }
+  });
+});
+
 describe('clockOffsetMs — skew between the server clock and this device', () => {
   test('positive when our device runs behind the server', () => {
     expect(core.clockOffsetMs(1_000_500, 1_000_000)).toBe(500);
@@ -210,6 +267,10 @@ describe('room-parity: the extracted maths reproduces the pre-#168 expressions',
   });
 
   test('displayShaveSec matches the old Math.round(transitDelaySec())', () => {
+    // The SINGLE-arg call is still byte-for-byte the pre-#168 expression. #169
+    // added an optional second argument (the previous whole-second step) that
+    // engages hysteresis; that path deliberately diverges from a plain round
+    // and is covered in its own describe block above, not here.
     for (const halfRtt of [0, 400, 500, 1499, 1500, 8000, 30000]) {
       expect(core.displayShaveSec(halfRtt)).toBe(Math.round(oldTransitDelaySec(halfRtt)));
     }

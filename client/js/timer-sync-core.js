@@ -80,6 +80,20 @@
   const TRANSIT_CLAMP_MS = 8000;
 
   /**
+   * Hysteresis half-width for the whole-second display shave (#169), in
+   * seconds. A quarter of the room's 1000ms tick — the same "quarter tick"
+   * unit `diag-report.js` bands jitter against, and derived the same way (from
+   * the tick, not from any one measured sample).
+   *
+   * `displayShaveSec` rounds a fractional transit delay to whole seconds. On a
+   * jittery link the half-RTT EMA oscillates across a .5s rounding point, so a
+   * plain `Math.round` flipped the shave 0↔1 on every sync and the displayed
+   * clock stuttered a whole second each move. With this dead zone the shave
+   * only changes step once the estimate is `0.5 + this` past the current step.
+   */
+  const SHAVE_HYSTERESIS_SEC = 0.25;
+
+  /**
    * Fold one measured move round-trip into the rolling half-RTT estimate.
    *
    * Half the RTT is the estimate of the one-way delay a `timer:sync` packet
@@ -133,11 +147,27 @@
    * first paint after a sync already shows the compensated number instead of
    * flashing the uncompensated one for up to a second (#165).
    *
-   * @param {number} halfRttMs Current half-RTT estimate.
+   * Pass `prevShaveSec` — the whole-second step this function last returned —
+   * to engage the #169 hysteresis: the step then holds through a dead zone of
+   * `0.5 + SHAVE_HYSTERESIS_SEC` either side of it, so a half-RTT EMA jittering
+   * across a rounding point stops flipping the shave (and the clock) every
+   * sync. Omit it (or pass a non-finite value) for the original plain round —
+   * that single-argument form is byte-for-byte the pre-#168 expression and is
+   * what the diagnostic page's room-parity checks still compare against.
+   *
+   * @param {number} halfRttMs    Current half-RTT estimate.
+   * @param {number} [prevShaveSec] The step last shown; enables hysteresis.
    * @returns {number} Whole seconds to subtract from the active player's value.
    */
-  function displayShaveSec(halfRttMs) {
-    return Math.round(transitDelaySec(halfRttMs));
+  function displayShaveSec(halfRttMs, prevShaveSec) {
+    const target = transitDelaySec(halfRttMs);
+    if (!Number.isFinite(prevShaveSec)) return Math.round(target);
+    // Only re-round once the estimate is decisively into the next band;
+    // otherwise keep showing the step we already committed to.
+    if (Math.abs(target - prevShaveSec) > 0.5 + SHAVE_HYSTERESIS_SEC) {
+      return Math.round(target);
+    }
+    return prevShaveSec;
   }
 
   /**
@@ -163,6 +193,7 @@
     RTT_SAMPLE_MAX_MS: RTT_SAMPLE_MAX_MS,
     EMA_ALPHA: EMA_ALPHA,
     TRANSIT_CLAMP_MS: TRANSIT_CLAMP_MS,
+    SHAVE_HYSTERESIS_SEC: SHAVE_HYSTERESIS_SEC,
     halfRttEma: halfRttEma,
     transitDelaySec: transitDelaySec,
     compensatedRemainingSec: compensatedRemainingSec,

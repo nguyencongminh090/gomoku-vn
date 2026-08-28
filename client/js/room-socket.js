@@ -427,9 +427,40 @@
   let activeDeadline = null;  // server-clock ms when the active player hits 0
   let activeColor = null;     // 'black' | 'white'
 
+  // #169 — keep the displayed clock steady on a jittery link.
+  let lastShaveSec = 0;          // the whole-second shave last applied — feeds displayShaveSec's hysteresis
+  let clampSec = null;           // highest whole-second value we'll show for the active clock this turn
+  let clampColor = null;         // which colour clampSec belongs to
+
+  // A sync whose deadline is more than this further out than the previous one
+  // means the server granted time (bonus / admin add-time); anything smaller
+  // is ordinary sync-to-sync drift or a reordered packet. Well below the
+  // smallest real grant, well above packet jitter.
+  const TIME_GRANTED_MARGIN_MS = 2000;
+
   /** Our best estimate of the server's clock right now. */
   function serverNow() {
     return Date.now() + clockOffsetMs;
+  }
+
+  /**
+   * #169 — the active player's displayed clock never ticks UP within a turn.
+   * A jitter-driven shave flip or a reordered `timer:sync` can only ever be
+   * absorbed downward; the number cannot bounce back up. The reset points
+   * (turn change, unpause, granted time) clear `clampSec` before this runs, so
+   * a legitimately higher value starts a fresh monotonic run.
+   *
+   * Trade-off (documented in docs/todo/B169-*.md): after a real RTT spike the
+   * clock can hold for a second or two while wall-time catches back up. That
+   * reads as a hiccup; the bounce it replaces read as "the game is broken".
+   */
+  function clampActiveDisplay(color, computedSec) {
+    if (color === clampColor && clampSec !== null) {
+      computedSec = Math.min(computedSec, clampSec);
+    }
+    clampSec = computedSec;
+    clampColor = color;
+    return computedSec;
   }
 
   function stopLocalTimer() {
@@ -462,8 +493,8 @@
     const st = S();
     if (activeDeadline === null || !activeColor) return;
 
-    const remaining = global.TimerSyncCore.compensatedRemainingSec(
-      activeDeadline, serverNow(), st && st.halfRttMs);
+    const remaining = clampActiveDisplay(activeColor, global.TimerSyncCore.compensatedRemainingSec(
+      activeDeadline, serverNow(), st && st.halfRttMs));
     st.timerValues = Object.assign({}, st.timerValues, { [activeColor]: remaining });
     GameUI.renderTimers();
 
@@ -498,11 +529,29 @@
     // the per-second ticks below — otherwise the first paint after every sync
     // (the one right after our own move, when the player is looking straight
     // at the clock) flashes the uncompensated number for up to a second
-    // before tickLocal corrects it. #165.
-    const shave = sync.running ? global.TimerSyncCore.displayShaveSec(st && st.halfRttMs) : 0;
+    // before tickLocal corrects it. #165. The previous step is fed back in so
+    // a jittery estimate stops flipping it (#169).
+    const shave = sync.running
+      ? global.TimerSyncCore.displayShaveSec(st && st.halfRttMs, lastShaveSec)
+      : 0;
+    lastShaveSec = shave;
+
+    // #169 — decide whether this sync starts a fresh monotonic run for the
+    // active clock. It does on a turn change, on unpause, or when the server
+    // pushed the deadline out (bonus / add-time); otherwise the clamp carries
+    // over so the number can only continue downward.
+    const rawActive = sync.activeColor === 'black' ? sync.black : sync.white;
+    const sameColor = sync.activeColor === clampColor;
+    const timeGranted = sameColor && activeDeadline !== null && Number.isFinite(sync.deadline)
+      && sync.deadline > activeDeadline + TIME_GRANTED_MARGIN_MS;
+    if (!sync.running || !sameColor || timeGranted) clampSec = null;
+
+    const activeShown = sync.running
+      ? clampActiveDisplay(sync.activeColor, Math.max(0, rawActive - shave))
+      : Math.max(0, rawActive);
     st.timerValues = {
-      black: sync.activeColor === 'black' ? Math.max(0, sync.black - shave) : sync.black,
-      white: sync.activeColor === 'white' ? Math.max(0, sync.white - shave) : sync.white,
+      black: sync.activeColor === 'black' ? activeShown : sync.black,
+      white: sync.activeColor === 'white' ? activeShown : sync.white,
     };
     activeColor = sync.activeColor;
     activeDeadline = sync.deadline;
@@ -514,8 +563,8 @@
     let timerDebug = false;
     try { timerDebug = localStorage.getItem('gvn_timer_debug') === '1'; } catch { /* storage blocked */ }
     if (timerDebug) {
-      console.info('[timer:sync] rawOffsetMs=%d halfRttMs=%d shaveSec=%d activeColor=%s',
-        Math.round(clockOffsetMs), Math.round(st.halfRttMs || 0), shave, sync.activeColor);
+      console.info('[timer:sync] rawOffsetMs=%d halfRttMs=%d shaveSec=%d clampSec=%s activeColor=%s',
+        Math.round(clockOffsetMs), Math.round(st.halfRttMs || 0), shave, String(clampSec), sync.activeColor);
     }
 
     stopLocalTimer();
