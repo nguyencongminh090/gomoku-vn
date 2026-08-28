@@ -786,3 +786,115 @@ describe('#165 — returning to the foreground pulls a fresh clock sync', () => 
     expect(client.plainEmits.filter(e => e.event === 'game:resync')).toHaveLength(1);
   });
 });
+
+// ── TODO.md #169 — the displayed clock must not stutter or bounce ───────────
+//
+// On a high-jitter link (measured: 200ms jitter on the China 3G /diag sample,
+// vs 2-16ms on every VN sample) two display-only effects made the clock look
+// broken:
+//   1. displayShaveSec's Math.round flipped 0↔1 as the half-RTT EMA crossed
+//      500ms, so the active clock "started" each turn a second high or low.
+//   2. applyTimerSync wrote st.timerValues straight, so a fresh sync could
+//      snap the visible number back UP mid-turn.
+// The server clock is untouched — this is purely what the player sees.
+describe('#169 — clock does not stutter or bounce on a high-jitter link', () => {
+  const realNow = Date.now;
+  afterEach(() => { Date.now = realNow; });
+
+  function syncAt(now, over) {
+    return Object.assign({
+      black: 60, white: 30, activeColor: 'white', running: true,
+      serverTime: now, deadline: now + 30000,
+    }, over);
+  }
+
+  test('a half-RTT EMA parked on the 500ms boundary gives a smooth 1-per-sync countdown', () => {
+    const { client } = loadRoomModules();
+    let now = 1_000_000;
+    Date.now = () => now;
+
+    const shown = [];
+    let whiteSecs = 30;
+    // Each sync: the EMA wobbles either side of 500ms, white legitimately has
+    // one second less. Pre-#169 the shave alternated 0/1 and the displayed
+    // value went 30, 28, 28, 26… — a visible 2-then-0 stutter every move.
+    for (const halfRtt of [460, 540, 480, 520, 500, 470, 530]) {
+      window.RoomState.halfRttMs = halfRtt;
+      client.listeners['timer:sync'](syncAt(now, { white: whiteSecs, deadline: now + whiteSecs * 1000 }));
+      shown.push(Number(document.getElementById('tb-white-timer').textContent));
+      now += 1000;
+      whiteSecs -= 1;
+    }
+    for (let i = 1; i < shown.length; i++) {
+      expect(shown[i - 1] - shown[i]).toBe(1);
+    }
+  });
+
+  test('a delayed sync carrying a stale-high reading never bounces the visible clock up', () => {
+    const { client } = loadRoomModules();
+    let now = 2_000_000;
+    Date.now = () => now;
+    window.RoomState.halfRttMs = 0;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 18, deadline: now + 18000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('18');
+
+    // 3s pass; a reordered sync from 2s ago arrives — same turn, same deadline,
+    // reporting white: 17 (higher than the ~15 the local countdown now shows).
+    now += 3000;
+    window.RoomSocket.refreshLocalTimer();
+    const midTick = Number(document.getElementById('tb-white-timer').textContent);
+    client.listeners['timer:sync'](syncAt(now - 2000, { white: 17, deadline: (now - 2000) + 17000 }));
+    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(midTick);
+  });
+
+  test('a turn change resets the clamp — the opponent gets their full fresh clock', () => {
+    const { client } = loadRoomModules();
+    let now = 3_000_000;
+    Date.now = () => now;
+    window.RoomState.halfRttMs = 200;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 5, activeColor: 'white', deadline: now + 5000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('5');
+
+    now += 1000;
+    client.listeners['timer:sync'](syncAt(now, { black: 60, white: 5, activeColor: 'black', deadline: now + 60000 }));
+    expect(document.getElementById('tb-black-timer').textContent).toBe('1:00');
+  });
+
+  test('bonus time (the deadline is pushed out) resets the clamp so the grant shows immediately', () => {
+    const { client } = loadRoomModules();
+    let now = 4_000_000;
+    Date.now = () => now;
+    window.RoomState.halfRttMs = 0;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 10, activeColor: 'white', deadline: now + 10000 }));
+    now += 2000;
+    window.RoomSocket.refreshLocalTimer();
+    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(10);
+
+    // Admin adds 30s: same turn, same colour, deadline jumps 30s further out.
+    client.listeners['timer:sync'](syncAt(now, { white: 38, activeColor: 'white', deadline: now + 38000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('38');
+  });
+
+  test('the shave flipping 1→0 mid-turn does not jump the clock up (only down is allowed)', () => {
+    const { client } = loadRoomModules();
+    let now = 5_000_000;
+    Date.now = () => now;
+
+    // First sync: half-RTT 900 → shave 1, white 20 shown as 19.
+    window.RoomState.halfRttMs = 900;
+    client.listeners['timer:sync'](syncAt(now, { white: 20, deadline: now + 20000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('19');
+
+    // Same turn, 1s later, EMA drops to 300 → without hysteresis shave would be
+    // 0 and the opening value would be 19 again (bounce from 18-ish back up).
+    now += 1000;
+    window.RoomState.halfRttMs = 300;
+    window.RoomSocket.refreshLocalTimer();
+    const beforeSync = Number(document.getElementById('tb-white-timer').textContent);
+    client.listeners['timer:sync'](syncAt(now, { white: 19, deadline: now + 19000 }));
+    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(beforeSync);
+  });
+});

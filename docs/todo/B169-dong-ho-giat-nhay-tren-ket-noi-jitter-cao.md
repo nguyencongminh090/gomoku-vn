@@ -5,7 +5,18 @@
 > touch tournament for now", commit `fa2529d`). Số được cấp lại cho mục này. Không có liên quan nội
 > dung giữa hai mục.
 
-**Trạng thái:** ⬜ CHƯA LÀM
+**Trạng thái:** ✅ Đã sửa (2026-08-28 — `fix/timer-clock-display-jitter` off `dev`, merge `dev`).
+A1 hysteresis (`displayShaveSec` + `SHAVE_HYSTERESIS_SEC = 0.25` = ¼ tick) + A3 kẹp đơn điệu
+(`clampActiveDisplay` ở `tickLocal` + `applyTimerSync`, reset ở đổi lượt / unpause / bonus). Client
+-only; `activeDeadline`/`serverNow`/`clockOffsetMs`/`armTurnWatchdog`/server/`tournament-match.js`
+không đổi. Mobile strip tự hưởng qua `GameUI.effectiveTimerValues()` (#166). Dải đệm 250 ms dẫn xuất
+từ tick phòng (giống `diag-report.js`), **provisional** — revisit khi có thêm mẫu jitter cao.
+`npm test` 1844/1844 (+13: 9 `timer-sync-core.test.js`, 5 `game-optimistic-render.test.js`).
+`?v=169→170`. Fix-log 2026-08-28 21:11.
+
+**Đánh đổi (chấp nhận):** kẹp đơn điệu ở `tickLocal` ⇒ sau một spike RTT thật, đồng hồ có thể giữ
+nguyên 1–2 giây trong lúc wall-time đuổi kịp rồi chạy tiếp. Đọc như một cú hiccup — khác hẳn cú nhảy
+ngược mà nó thay thế. Không bao giờ hiển thị **ít hơn** giá trị server-đã-bù (giữ nguyên tắc #165).
 
 **Severity:** Medium — không mất dữ liệu, không sai giờ thật (server vẫn là nguồn chân lý), nhưng là
 triệu chứng "trông như hỏng" rõ nhất mà người chơi RTT cao thực sự nhìn thấy.

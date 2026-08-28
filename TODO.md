@@ -1044,18 +1044,23 @@ truthful." (2026-08-27)
   gộp task). Client mới ⇒ bump `?v=N`. — [chi tiết](docs/todo/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
 
 ### Nguồn: phân tích 5 mẫu `/diag` (#168) đầu tiên — `server/data/diag-results/2026-08-28.jsonl`, gồm 1 lượt người chơi TQ trên 3G (2026-08-28)
-- ⬜ **#169.** Đồng hồ **giật/nhảy ~1 giây** trên kết nối jitter cao — bug **hiển thị**, giờ thật trên
-  server vẫn đúng. Bằng chứng: lượt CN/3g đo **jitter 199,6ms** (4 lượt VN cùng ngày: 1,7–15,9ms),
-  half-RTT dao động 376↔906ms. Gốc, cả 3 đều thuần hiển thị: (a) `displayShaveSec()` =
-  `Math.round(transitDelaySec)` làm tròn cứng ở mốc 500ms ⇒ shave **lật 0↔1 giây** khi EMA đi qua mốc;
-  (b) `compensatedRemainingSec()` cũng `Math.round` ⇒ cùng hiệu ứng biên trên đường `tickLocal`;
-  (c) `applyTimerSync` ghi thẳng `st.timerValues` ⇒ giá trị hiển thị **được phép tăng ngược**, mỗi
-  nước là một lần snap tới/lùi ~1,5s. `EMA_ALPHA=0.5` (cố ý nặng) khuếch đại cả ba. Sửa (client-only,
-  nối tiếp #165/#166): **A1** hysteresis ở ranh giới làm tròn (state ở `room-socket.js`, giữ
-  `timer-sync-core.js` thuần) + **A3** kẹp đơn điệu trong lượt (chỉ giảm; reset khi đổi lượt / hết
-  pause / `addTime`). Dải đệm phải dẫn xuất từ jitter đo được — hiện **chỉ 1 mẫu dải cao**, cân nhắc
-  chờ thêm mẫu. KHÔNG đụng `activeDeadline`/`serverNow`/watchdog/server/`tournament-match.js`.
-  Ngoài phạm vi: bàn cờ "dính" ~1s (RTT 3G vật lý, không sửa được). Client-side ⇒ bump `?v=N` —
+- ✅ **#169.** (Đã sửa 2026-08-28 — `fix/timer-clock-display-jitter` off `dev`.) Đồng hồ **giật/nhảy
+  ~1 giây** trên kết nối jitter cao — bug **hiển thị**, giờ thật trên server vẫn đúng. Bằng chứng:
+  lượt CN/3g đo **jitter 199,6ms** (4 lượt VN cùng ngày: 1,7–15,9ms), half-RTT dao động 376↔906ms.
+  Gốc: (a) `displayShaveSec()` `Math.round` cứng ở mốc 500ms ⇒ shave **lật 0↔1** khi EMA qua mốc,
+  đồng hồ "khởi động" mỗi lượt cao/thấp 1 giây; (b) `applyTimerSync` ghi thẳng `st.timerValues` ⇒
+  giá trị hiển thị **tăng ngược** khi sync mới về. Sửa (client-only, nối #165/#166): **A1** hysteresis
+  — `SHAVE_HYSTERESIS_SEC = 0.25` (¼ tick 1000ms, dẫn xuất từ granularity tick giống `diag-report.js`,
+  **không** từ mẫu CN — provisional), `displayShaveSec(halfRttMs, prevShaveSec?)` (gọi 1 tham số y
+  nguyên biểu thức tiền-#168 → parity `/diag` không đổi; gọi 2 tham số giữ bậc tới khi `|target−prev|
+  > 0.75`). **A3** `clampActiveDisplay()` ở **cả** `tickLocal` + `applyTimerSync` — đồng hồ đang chạy
+  không nhảy LÊN trong lượt; reset ở đổi lượt / unpause / server đẩy deadline ra xa (bonus/add-time,
+  `> activeDeadline + 2000ms`). Mobile strip tự hưởng qua `GameUI.effectiveTimerValues()` (#166).
+  KHÔNG đụng `activeDeadline`/`serverNow`/`clockOffsetMs`/watchdog/server/`tournament-match.js`.
+  **Đánh đổi:** sau spike RTT thật, đồng hồ có thể giữ 1–2 giây rồi chạy tiếp (hiccup, không nhảy
+  ngược); không bao giờ hiển thị ít hơn giá trị server-đã-bù (#165). Ngoài phạm vi: bàn cờ "dính" ~1s
+  (RTT vật lý), giờ thật bị trừ transit (#167). `?v=169→170`. Test: +9 `timer-sync-core.test.js`,
+  +5 `game-optimistic-render.test.js`, `npm test` **1844/1844**. Fix-log 2026-08-28 21:11 —
   [chi tiết](docs/todo/B169-dong-ho-giat-nhay-tren-ket-noi-jitter-cao.md)
 - ⬜ **#170.** `client/js/room-ui.js:464` đếm ngược `readyDeadline` bằng
   `Math.ceil((deadline - Date.now()) / 1000)` — `deadline` là mốc **đồng hồ server**, `Date.now()` là
