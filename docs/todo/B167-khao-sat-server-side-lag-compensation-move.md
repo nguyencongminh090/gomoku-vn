@@ -1,7 +1,8 @@
 # B167 — (Khảo sát) Server-side lag compensation cho `game:move`
 
-**Trạng thái:** ⬜ ĐANG KHẢO SÁT — **harness đo (Bước 1) đã dựng 2026-08-28; chờ mẫu production.
-Chưa động vào công thức tính giờ.**
+**Trạng thái:** ⬜ ĐANG KHẢO SÁT — **harness đo (Bước 1) đã dựng 2026-08-28; đã có 5 mẫu `/diag` đầu
+tiên (xem "Kết quả đo lần 2"), trong đó 1 mẫu RTT cao thật. Chưa động vào công thức tính giờ.**
+**Chặn Bước 2: OQ1 (nguồn đo half-RTT server-side mỗi nước) chưa có lời giải.**
 
 **Kênh lấy mẫu Bước 1 (đã dựng, 2026-08-28):** trang chẩn đoán **#168** — `docs/todo/B168-*.md`, code
 ở `server/socket/diag-namespace.js` + `server/socket/diag-session.js` + `client/diagnostic.html`.
@@ -86,6 +87,55 @@ hạn 0–60000.
 - Cũng sửa: `half_rtt_ms=`/`client_half_rtt_ms=` rỗng → **bỏ hẳn key** khi chưa đo được (dễ đếm
   coverage khi phân tích).
 
+### Kết quả đo lần 2 — mẫu `/diag` production, 5 lượt (2026-08-28)
+
+Nguồn: `server/data/diag-results/2026-08-28.jsonl`, 5 dòng, đều `assetVersion 168`.
+
+| # | geo / mạng | half-RTT p50 / p90 | `spentFloorMs` p50 | `moveConfirm` p50 | `timerHandoff` p50 | verdict (C/K/S) |
+|---|---|---|---|---|---|---|
+| 1 | VN / 4g | 54 / 65 | 448 | 112 | 111 | 🟢🟢🟢 |
+| 2 | VN / 4g | 58 / 89 | 238 | 119 | 118 | 🟢🟢🟢 |
+| 3 | VN / — | 53 / 56 | 145 | 105 | 104 | 🟢🟢🟢 |
+| 4 | VN / — | 52 / 54 | 606 | 104 | 103 | 🟢🟢🟢 |
+| 5 | **CN / 3g** | **376 / 659** | **1375** | 891 | 750 | 🔴🔴🟡 |
+
+**Ba kết luận cho quyết định #167:**
+
+1. **Chặng bàn giao c→s→c KHÔNG phải thủ phạm — loại bỏ được một giả thuyết.** Ở cả 5 lượt
+   `timerHandoffMs ≈ moveConfirmMs` (chênh 1–3 ms). `diag:timer` phản ánh nước bot quay về gần như
+   cùng lúc với ack ⇒ không có chi phí bàn giao *thêm* ngoài RTT của chính ack. (Lượt 5 có
+   `handoff.p50` 750 < `confirm.p50` 891, nghịch với 4 lượt kia — nhưng với jitter ~200 ms và chỉ 14
+   nước, p50 hai chuỗi lấy mẫu các nước khác nhau. Là nhiễu do N nhỏ, **không** phải bằng chứng bàn
+   giao nhanh hơn ack.)
+2. **Điều kiện sang Bước 2 đã được thoả về mặt số đo.** Tiêu chí Bước 1 ghi "RTT cỡ 150–300ms+ ⇒ sang
+   Bước 2". Lượt 5 đo half-RTT p50 **376 ms**, p90 **659 ms**. `spentFloorMs.p50 = 1375 ms` bị tính
+   cho *mỗi* nước dù người chơi bấm gần như tức thì và bot trả lời ngay — trong đó ~750 ms là transit
+   thuần. Qua 14 nước ≈ **~19 giây** bị trừ mà người chơi không thực sự "tiêu".
+   **Nhưng:** mới **1 mẫu duy nhất** ở dải cao, và **chưa có phàn nàn trực tiếp kèm số đo** từ chính
+   người chơi đó (trường `feedback` rỗng). Tiêu chí gốc là "RTT cao **và** người chơi phàn nàn bị
+   trừ giờ" — vế sau chưa có. **Chưa đủ để tự động mở Bước 2.**
+3. **Lệch đồng hồ máy khách là vector độc lập, không thuộc #167.** Lượt 5 đo `clockOffsetMs.p50 =
+   −8407,75 ms`. Phòng chơi đã bù qua `serverNow()`; chỗ chưa bù tách thành **#170**. Không gộp vào
+   đây — #167 là giờ thật phía server, #170 là hiển thị phía client.
+
+### Hai câu hỏi mở phải chốt TRƯỚC khi viết code Bước 2
+
+- **OQ1 — Server đo `measuredHalfRTT` mỗi nước bằng cách nào?** Spec Bước 2 yêu cầu đo **server-side**,
+  không tin số client khai. Nhưng đo lần 1 đã chứng minh nguồn được chỉ định (engine.io ping/pong)
+  phủ **3/17 nước** vì `pingInterval = 25s`, và hạ nó là bẫy #147/#152. `client_half_rtt_ms` (`crtt`)
+  chỉ được dùng để đối chiếu. ⇒ **Chưa có nguồn hợp lệ để nuôi công thức refund.** Phải quyết một
+  hướng trước: (a) server đóng dấu timestamp vào ack `game:move` và tự đo vòng về server-side; (b)
+  một probe nhẹ riêng theo đúng kiểu `diag:ping`/`diag:pong` của #168 (đã chạy được, phủ mỗi ~500ms);
+  hay (c) hướng khác. **Không có OQ1 thì Bước 2 không thể bắt đầu.**
+- **OQ2 — `HARD_CAP ≈ 250ms` có còn đúng không?** Con số 250 dẫn xuất từ giả định "dân số bị ảnh
+  hưởng ~500 ms round trip" (chú thích `MOVE_ACK_TIMEOUT_MS`, #152/#165). Số đo thật đầu tiên: half-RTT
+  p50 **376**, p90 **659** ⇒ cap 250 ms vẫn để lại ~130–400 ms/nước bị trừ oan. Theo rule "đừng chọn
+  số tròn", **cần thêm vài lượt `/diag` từ người chơi Mỹ/TQ** rồi mới hiệu chuẩn lại, thay vì nâng cap
+  theo cảm tính từ 1 điểm dữ liệu.
+
+**Trạng thái sau lần đo 2: vẫn ĐANG KHẢO SÁT.** Hành động tiếp theo là *thu thêm mẫu* + chốt OQ1,
+không phải viết code.
+
 ## Bước 2 — Nếu làm: spec bắt buộc (an toàn)
 
 **Server vẫn là nguồn chân lý duy nhất cho timeout.** `clientTs` chỉ để cross-check, KHÔNG vào công
@@ -111,4 +161,8 @@ client khai thay vì đo**.
 - **#165** — tiền đề; phần hiển thị. B167 là phần "giờ thật", tách hẳn (khác tầng, khác rủi ro).
 - **#10 / TimerManager** — `getSync`/`applyMove`; điểm chèn refund là trong `startTimerForGame`
   `onTimeout`-path và `switchTurn` của `TimerManager`.
+- **#169** — cùng dữ liệu `/diag`, nhưng là tầng **hiển thị** (đồng hồ giật/nhảy do jitter). Làm được
+  ngay, không phụ thuộc #167. Nếu #169 làm người chơi hết phàn nàn thì áp lực làm Bước 2 giảm hẳn —
+  giống hệt vai trò #165 đã đóng ở lần trước.
+- **#170** — lệch đồng hồ máy khách (`Date.now()` thô ở `readyDeadline`). Tách riêng, không phải #167.
 - Rule CLAUDE.md "Security findings: verify against current code" + "Root-cause diagnosis".
