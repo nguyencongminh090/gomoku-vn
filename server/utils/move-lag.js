@@ -96,17 +96,35 @@ function spentMs(turnStartNs, recvNs) {
  * silently does nothing when the harness is off or there is no turn-start mark.
  *
  * @param {import('socket.io').Socket} socket
- * @param {{roomId:string, userId:string, mode:string, recvNs:bigint}} ctx
+ * @param {{roomId:string, userId:string, mode:string, recvNs:bigint,
+ *          clientHalfRttMs?:number}} ctx — `clientHalfRttMs` is the mover's own
+ *          rolling half-RTT estimate (from #165), carried purely for
+ *          cross-check against the server's engine.io ping/pong reading;
+ *          never an input to any timeout calculation
  */
-function logMove(socket, { roomId, userId, mode, recvNs }) {
+function logMove(socket, { roomId, userId, mode, recvNs, clientHalfRttMs }) {
   if (!moveLagEnabled()) return;
   const spent = spentMs(turnStarts.get(roomId), recvNs);
   if (spent === null) return;
 
+  // `undefined` (not null) so the logger omits the key entirely rather than
+  // emitting a bare `half_rtt_ms=` — the engine.io ping/pong only yields a
+  // reading once per pingInterval (~25s), so on a short game most moves have
+  // no server-measured RTT yet. An absent key parses more cleanly than an
+  // empty value when tallying coverage.
   const half = socket && socket.data && typeof socket.data.moveLagHalfRttMs === 'number'
     ? Math.round(socket.data.moveLagHalfRttMs)
-    : null;
+    : undefined;
   const info = socket ? clientInfoFromSocket(socket) : { ip: '-', geo: '-' };
+
+  // Client-reported, so sanitize hard: a finite non-negative number in a sane
+  // range, else drop it. This value is logged for comparison only.
+  const clientHalf = typeof clientHalfRttMs === 'number'
+    && Number.isFinite(clientHalfRttMs)
+    && clientHalfRttMs >= 0
+    && clientHalfRttMs <= 60000
+    ? Math.round(clientHalfRttMs)
+    : undefined;
 
   logger.info('[MoveLag]', {
     room: roomId,
@@ -114,6 +132,7 @@ function logMove(socket, { roomId, userId, mode, recvNs }) {
     mode: mode || '-',
     spent_ms: Math.round(spent),
     half_rtt_ms: half,
+    client_half_rtt_ms: clientHalf,
     ip: info.ip,
     geo: info.geo,
   });

@@ -134,7 +134,12 @@
 
     const attempt = (isRetry) => {
       const sentAt = Date.now();
-      global.RoomClient.emitAck('game:move', { x, y, moveId }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
+      // TEMP (TODO.md #167): ride the client's rolling half-RTT estimate along
+      // for CROSS-CHECK only — the server logs it beside its own (sparse)
+      // engine.io ping/pong reading and never feeds it into any timeout math.
+      // Omitted until the first ack has produced an estimate.
+      const crtt = S().halfRttMs > 0 ? Math.round(S().halfRttMs) : undefined;
+      global.RoomClient.emitAck('game:move', { x, y, moveId, crtt }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
         // Any real server reply — accept or reject — is a full round trip on
         // the live game path; feed it to the transit-delay estimate (TODO.md
         // #165). A timeout (`err`) is not a measurement: the clock we read is
