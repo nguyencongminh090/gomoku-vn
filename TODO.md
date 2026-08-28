@@ -997,11 +997,16 @@ truthful." (2026-08-27)
   nước đi in-flight. `predictedTurn` chỉ render-only, không ghi `gameState`. Không đụng desktop
   turn-bar behaviour. Bump `?v=164→165`. Test: +6 case `room-ui-strip-predicted-turn.test.js`,
   `npm test` 1471/1471. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B166-port-co-che-bu-tre-timer-sang-mobile-players-strip.md)
-- ⬜ **#167.** (Khảo sát) Server-side lag compensation cho `game:move` — server đo transit của chính
-  nước đi rồi *hoàn* bounded vào đồng hồ (kiểu Lichess `lag`). **ĐO trước** (rule #131): nếu #165 đã
-  làm người chơi hết phàn nàn thì đóng. Nếu làm: server vẫn là nguồn timeout duy nhất, `refund =
-  min(measuredHalfRTT, HARD_CAP≈250ms, lag-budget/ván)`, đo lag **server-side** không tin client
-  khai, `clientTs` chỉ cross-check (`Date.now()` client là wall-clock). `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+- ⬜ **#167.** (Khảo sát — ĐANG ĐO) Server-side lag compensation cho `game:move` — server đo transit
+  của chính nước đi rồi *hoàn* bounded vào đồng hồ (kiểu Lichess `lag`). **ĐO trước** (rule #131): nếu
+  #165 đã làm người chơi hết phàn nàn thì đóng. Nếu làm: server vẫn là nguồn timeout duy nhất,
+  `refund = min(measuredHalfRTT, HARD_CAP≈250ms, lag-budget/ván)`, đo lag **server-side** không tin
+  client khai, `clientTs` chỉ cross-check (`Date.now()` client là wall-clock). **Bước 1 — harness đo
+  đã dựng** (`feature/move-lag-measurement` off `dev`, 2026-08-28): `server/utils/move-lag.js`, bật
+  bằng `LOG_MOVE_LAG=true`, mỗi nước đi log `[MoveLag] spent_ms half_rtt_ms mode ip geo` (mốc
+  monotonic `process.hrtime`; half-RTT từ engine.io ping/pong server-side). Server-only ⇒ không bump
+  `?v=N`. Test: +26 case `move-lag.test.js`, `npm test` 1497/1497. Chờ mẫu production để quyết
+  Bước 2 / đóng. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 
 ---
 
