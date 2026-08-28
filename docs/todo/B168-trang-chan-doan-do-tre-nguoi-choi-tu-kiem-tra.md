@@ -1,8 +1,38 @@
 # B168 — Trang chẩn đoán độ trễ (người chơi tự đo, không cần vào ván thật)
 
-**Trạng thái:** ⬜ CHƯA LÀM — đã chốt thiết kế qua `features/diagnostic-latency-page/`
-(user_story.md + planning.md + 4 sơ đồ), tất cả open question đã giải
-(2026-08-28). Sẵn sàng thực thi theo `docs/instruction/B168-*.md`.
+**Trạng thái:** ✅ ĐÃ XONG (2026-08-28) — 8 bước tuần tự trên `feature/diag-latency-page`
+off `dev`, mỗi bước 1 commit, `npm test` xanh giữa các bước (**1831/1831**, +320 so với
+1510 trước #168). Verify **cả 2 tầng**: client live trong bước 5 (Playwright desktop+mobile),
+backend cô lập trong bước 8. Chờ merge vào `dev` theo `git-workflow`.
+
+**Đã dựng:**
+- `client/js/timer-sync-core.js` (tách nguyên si khỏi `room-socket.js`/`game-ui.js`, 1 sai
+  lệch có chủ đích: bỏ đọc `Date.now()` 2 lần — xem header file). Test parity + conformance.
+- `server/socket/diag-namespace.js` + `server/utils/diag-results.js` + `server/socket/diag-session.js`
+  — `/diag` cô lập hoàn toàn (không `io.use`, không `nsp.use()`, limiter riêng 5/IP/giờ tính
+  lúc **start**), JSONL nguồn chân lý + prune 90 ngày, `GameEngine`/`TimerManager` thật/phiên.
+- `client/js/diag/{latency-probe-session,diag-probe-session,diag-report,diag-board,diag-entry}.js`
+  + `client/diagnostic.html` + `client/css/diag.css` — Zen Minimal, VN/EN, ngưỡng verdict
+  **suy ra** từ tick phòng 1000ms + RTT ~500ms đã đo (#152/#165), không phải số tròn tuỳ hứng.
+- `.claude/rules/diagnostic-page-sync.md` path-scoped.
+- Docs #167 cập nhật = kênh lấy mẫu Bước 1 (spec an toàn không đổi, không gộp task).
+- `?v=166→168` toàn repo (167 là bump trung gian bước 1).
+
+**Khoảng trống test client (ghi rõ theo yêu cầu):** module thuần đủ test Node
+(`timer-sync-core` / `latency-probe-session` / `diag-probe-session` / `diag-report`) +
+`diag-i18n-coverage` / `diag-sprite-icons` jsdom. **`diag-entry.js` (state machine 4 màn +
+vòng đời socket) và `diag-board.js` (dựng `BoardRenderer`, cần canvas) KHÔNG có test tự
+động** — chỉ verify bằng Playwright thật. Harness jsdom cho `diag-entry.js` (stub socket,
+như các suite phòng) là follow-up hiển nhiên nếu trang có thêm logic.
+
+**Tách riêng:** [B169](B169-tournament-match-dung-chung-timer-sync-core.md) — `tournament-match.js`
+giữ bản sao đồng hồ, cùng lỗi `Date.now()` 2 lần; nằm trong §"Ngoài phạm vi" của #168.
+
+Fix-log: [2026-08-28-todo-168-diagnostic-latency-page.md](../fix-log/2026-08-28-todo-168-diagnostic-latency-page.md).
+
+---
+
+### Thiết kế gốc (đã chốt qua `features/diagnostic-latency-page/`)
 
 **Severity:** Low (công cụ đo, không sửa bug). **Đòn bẩy cao:** gỡ điểm nghẽn "chờ mẫu
 production" của #167 và lấp HONESTY NOTE của #165 (`d` production chưa đo được bằng số).

@@ -1016,7 +1016,11 @@ truthful." (2026-08-27)
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 
 ### Nguồn: đề xuất người dùng qua thảo luận architect — "trang cho user tự test latency/speed mà không phải chơi ván thật" (2026-08-28)
-- ⬜ **#168.** Trang chẩn đoán độ trễ tại URL **không công khai** `/diag` — người chơi RTT cao
+- ✅ **#168.** **Trạng thái: ĐÃ XONG (2026-08-28)** — 8 bước trên `feature/diag-latency-page` off
+  `dev`, `npm test` 1831/1831, verify cả 2 tầng (client live bước 5, backend cô lập bước 8), chờ
+  merge vào `dev`. Khoảng trống test: `diag-entry.js` + `diag-board.js` chỉ verify Playwright thật.
+  `?v=166→168`. Tách [B169](docs/todo/B169-tournament-match-dung-chung-timer-sync-core.md).
+  Fix-log 2026-08-28. — Trang chẩn đoán độ trễ tại URL **không công khai** `/diag` — người chơi RTT cao
   (Mỹ+VPN #165, TQ #155) tự đo **latency** (half-RTT p50/p90/p99/jitter, lệch đồng hồ + drift, mất
   gói), **board + action** (click→optimistic, click→server xác nhận), **timer tick c→s→c** (nước
   mình → `TimerManager` thật → bot `GameEngine` đi ngẫu nhiên tức thì → `timer:tick` về). Không đăng
