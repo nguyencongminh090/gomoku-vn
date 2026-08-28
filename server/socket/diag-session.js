@@ -231,6 +231,11 @@ class DiagSession {
       status: this.engine.status,
       result: this.engine.result,
       moveCount: this.engine.moveCount,
+      // Reported back so it reaches the JSONL, which OQ4 makes the source of
+      // truth — the [DiagResult move] log line alone is explicitly the thing
+      // we do NOT rely on. This travels server -> client only; nothing the
+      // client says about time is ever read back (R2/#167).
+      spentMs: spentMs === null ? undefined : Math.round(spentMs * 1000) / 1000,
     };
   }
 

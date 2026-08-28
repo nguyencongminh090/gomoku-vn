@@ -273,6 +273,16 @@ describe('playerMove — validation and the spent_ms measurement', () => {
     expect(call[1].spent_ms).toBeCloseTo(250, 0);
   });
 
+  test('spentMs is returned to the client so it reaches the JSONL, not just the log', () => {
+    // OQ4 makes the JSONL the source of truth; the [DiagResult move] line is
+    // explicitly the thing we do not rely on. Without this the documented
+    // spentFloorMs field would always be absent.
+    const s = makeSession();
+    s.start();
+    const res = s.playerMove(5, 5, s._turnStartNs + 120_000_000n);
+    expect(res.spentMs).toBeCloseTo(120, 0);
+  });
+
   test('the turn-start mark resets each move, so spent_ms is per-move not cumulative', () => {
     const s = makeSession();
     s.start();

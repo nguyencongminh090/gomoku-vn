@@ -6,13 +6,13 @@
   <title>Play3CR — Lịch sử ván đấu</title>
   <meta name="description" content="Xem lại và phát lại các ván Caro đã chơi trên Play3CR." id="meta-description" />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=167" />
-  <link rel="stylesheet" href="css/history.css?v=167" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=167" />
+  <link rel="stylesheet" href="css/main.css?v=168" />
+  <link rel="stylesheet" href="css/history.css?v=168" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=168" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=167">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=168">
 
-  <script src="js/ui-mode-preload.js?v=167"></script>
+  <script src="js/ui-mode-preload.js?v=168"></script>
   <!-- Phosphor Icons -->
 
 </head>
@@ -26,7 +26,7 @@
   </a>
   <div class="topnav__right">
     <a href="index.html" class="topnav__btn" style="text-decoration:none;" data-i18n-title="nav.lobby" title="Sảnh">
-      <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-house"></use></svg>
+      <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-house"></use></svg>
       <span class="hide-on-mobile" data-i18n="nav.lobby">Sảnh</span>
     </a>
   </div>
@@ -95,11 +95,11 @@
   <div id="view-replay" class="replay" style="display:none;">
     <div class="replay__top-bar">
       <button id="replay-back" class="replay__back-btn" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-arrow-left"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-arrow-left"></use></svg>
         <span data-i18n="history.btn_back">Quay lại</span>
       </button>
       <button id="btn-analysis" class="replay__analysis-btn" type="button" data-i18n-title="history.btn_analysis_title" title="Bật/tắt chế độ phân tích">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-flow-arrow"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-flow-arrow"></use></svg>
         <span data-i18n="history.btn_analysis">Phân tích</span>
       </button>
     </div>
@@ -121,12 +121,12 @@
           <canvas id="replay-canvas"></canvas>
         </div>
         <div class="replay__controls">
-          <button id="btn-first" class="replay__btn" type="button" data-i18n-title="history.btn_first_title" title="Đầu tiên"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-skip-back"></use></svg></button>
-          <button id="btn-prev" class="replay__btn" type="button" data-i18n-title="history.btn_prev_title" title="Lùi 1 nước"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-caret-left"></use></svg></button>
+          <button id="btn-first" class="replay__btn" type="button" data-i18n-title="history.btn_first_title" title="Đầu tiên"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-skip-back"></use></svg></button>
+          <button id="btn-prev" class="replay__btn" type="button" data-i18n-title="history.btn_prev_title" title="Lùi 1 nước"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-caret-left"></use></svg></button>
           <span id="move-counter" class="replay__counter">0 / 0</span>
-          <button id="btn-next" class="replay__btn" type="button" data-i18n-title="history.btn_next_title" title="Tiến 1 nước"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-caret-right"></use></svg></button>
-          <button id="btn-last" class="replay__btn" type="button" data-i18n-title="history.btn_last_title" title="Cuối cùng"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-skip-forward"></use></svg></button>
-          <button id="btn-play" class="replay__btn" type="button" data-i18n-title="history.btn_play_title" title="Tự động phát"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-play"></use></svg></button>
+          <button id="btn-next" class="replay__btn" type="button" data-i18n-title="history.btn_next_title" title="Tiến 1 nước"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-caret-right"></use></svg></button>
+          <button id="btn-last" class="replay__btn" type="button" data-i18n-title="history.btn_last_title" title="Cuối cùng"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-skip-forward"></use></svg></button>
+          <button id="btn-play" class="replay__btn" type="button" data-i18n-title="history.btn_play_title" title="Tự động phát"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-play"></use></svg></button>
         </div>
       </div>
 
@@ -134,7 +134,7 @@
       <div id="tree-panel" class="replay__tree-panel" style="display:none;">
         <div class="tree-panel__header">
           <span class="tree-panel__title" data-i18n="history.tree_title">Cây nước đi</span>
-          <button id="btn-delete-branch" class="tree-panel__action" type="button" data-i18n-title="history.btn_delete_branch_title" title="Xoá nhánh hiện tại"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=167#ph-bold-trash"></use></svg></button>
+          <button id="btn-delete-branch" class="tree-panel__action" type="button" data-i18n-title="history.btn_delete_branch_title" title="Xoá nhánh hiện tại"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=168#ph-bold-trash"></use></svg></button>
         </div>
         <div id="tree-container" class="tree-panel__body"></div>
       </div>
@@ -144,15 +144,15 @@
 </main>
 
 <!-- Scripts -->
-<script src="js/i18n.js?v=167"></script>
-<script src="js/ui-mode.js?v=167"></script>
-<script src="js/audio-manager.js?v=167"></script>
-<script src="js/settings-panel.js?v=167"></script>
-<script src="js/board.js?v=167"></script>
-<script src="js/move-tree.js?v=167"></script>
-<script src="js/escape-utils.js?v=167"></script>
-<script src="js/tree-view.js?v=167"></script>
-<script src="js/action-delegate.js?v=167"></script>
-<script src="js/history.js?v=167"></script>
+<script src="js/i18n.js?v=168"></script>
+<script src="js/ui-mode.js?v=168"></script>
+<script src="js/audio-manager.js?v=168"></script>
+<script src="js/settings-panel.js?v=168"></script>
+<script src="js/board.js?v=168"></script>
+<script src="js/move-tree.js?v=168"></script>
+<script src="js/escape-utils.js?v=168"></script>
+<script src="js/tree-view.js?v=168"></script>
+<script src="js/action-delegate.js?v=168"></script>
+<script src="js/history.js?v=168"></script>
 </body>
 </html>
