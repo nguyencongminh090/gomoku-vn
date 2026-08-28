@@ -32,6 +32,7 @@ const WallGenerator   = require('../../generators/WallGenerator');
 const PortalGenerator = require('../../generators/PortalGenerator');
 const database        = require('../../db/database');
 const config          = require('../../config');
+const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #167 measurement harness
 const {
   timerMap,
   broadcastLobbyUpdate,
@@ -50,9 +51,17 @@ const {
 function register(io, socket) {
   const user = socket.user;
 
+  // TEMP (TODO.md #167): server-side half-RTT probe on this socket's engine.io
+  // connection. No-op unless LOG_MOVE_LAG is set.
+  moveLag.attachHalfRttProbe(socket);
+
   // ── game:move ────────────────────────────────────────────────────────────
 
   socket.on('game:move', (payload = {}, ack) => {
+    // TEMP (TODO.md #167): monotonic mark for when this move packet was
+    // received, taken before any validation so it reflects arrival, not
+    // processing.
+    const moveRecvNs = process.hrtime.bigint();
     // `ack` is undefined for any client still running the pre-#152 bundle —
     // a bare `emit('game:move', {x,y})` passes no callback, and calling
     // undefined here would throw inside the handler and break that player's
@@ -109,6 +118,18 @@ function register(io, socket) {
     }
 
     const timer = timerMap.get(room.roomId);
+
+    // TEMP (TODO.md #167): log how long the mover's clock actually ran on the
+    // server for this accepted move, vs. this socket's measured half-RTT.
+    // Reads the turn-start mark set below (or at game start); no-op unless
+    // LOG_MOVE_LAG is set.
+    moveLag.logMove(socket, {
+      roomId: room.roomId,
+      userId: user.userId,
+      mode: timer ? timer.mode : (room.settings && room.settings.timerMode),
+      recvNs: moveRecvNs,
+    });
+
     // Delta only — the client applies {x,y,color} to its local board cell
     // (client/js/room-socket.js game:moved handler) rather than receiving a
     // full board resync on every move.
@@ -129,6 +150,7 @@ function register(io, socket) {
         const np = room.gameState.players.find(p => p.userId === result.nextTurn);
         const nextColor = np && np.color === 'BLACK' ? 'black' : 'white';
         timer.switchTurn(nextColor);
+        moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
         movePayload.timer = timer.getTimers();
         // Ride along on the move rather than sending a separate timer event:
         // the turn switch is exactly when the clock changes, so this costs no
@@ -230,6 +252,7 @@ function register(io, socket) {
       const timer = timerMap.get(room.roomId);
       if (timer) {
         timer.switchTurn(r.currentTurn === engine.secondPlayerId ? 'white' : 'black');
+        moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
         io.to(room.roomId).emit('timer:sync', timer.getSync());
       }
     }
@@ -437,6 +460,7 @@ function register(io, socket) {
           timer.remapForSwap2(engine.firstPlayerId, engine.secondPlayerId);
         }
         timer.switchTurn(result.currentTurn === engine.secondPlayerId ? 'white' : 'black');
+        moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
         io.to(room.roomId).emit('timer:sync', timer.getSync());
       }
       const swap2State = buildSwap2State(engine, null, result.nextColor);
@@ -452,6 +476,7 @@ function register(io, socket) {
         const requesterPlayer = engine.players.find(p => p.userId === requesterId);
         const requesterColor = requesterPlayer && requesterPlayer.color === 'BLACK' ? 'black' : 'white';
         timer.switchTurn(requesterColor);
+        moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
         io.to(room.roomId).emit('timer:sync', timer.getSync());
       }
       io.to(room.roomId).emit('game:undo_applied', {
@@ -687,6 +712,7 @@ function startTimerForGame(io, room, engine, idOverride) {
 
   timerMap.set(roomId, timer);
   timer.start();
+  moveLag.markTurnStart(roomId); // TEMP — TODO.md #167
   // First sync of the game — the client starts its own countdown from here.
   io.to(roomId).emit('timer:sync', timer.getSync());
   return timer;
@@ -883,6 +909,7 @@ function handleGameEnd(io, room, opts = {}) {
 
   cleanupRoomTimer(roomId);
   cleanupReadyTimer(roomId);
+  moveLag.clearRoom(roomId); // TEMP — TODO.md #167
 
   if (engine && engine.result && !noScore) {
     const { winner } = engine.result;
