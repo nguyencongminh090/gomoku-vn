@@ -19,11 +19,12 @@ don't duplicate them here:
 All CSS/JS assets share one `?v=N` query string. **Both** of these must be covered by every bump:
 
 - Every `client/*.html` file's `<link>`/`<script>` tags.
-- **Every ES-module `import '...?v=N'` statement inside every file in `client/js/*.js`** — not just
-  the `*-entry.js` files. Non-entry modules import each other with their own `?v=N`-suffixed
-  specifier, and the browser resolves each distinct query string as a **separate module instance** —
-  a stale `?v=` on one cross-import silently re-executes that module's top-level code a second time
-  (this shipped a duplicate-socket bug twice for exactly this reason).
+- **Every ES-module `import '...?v=N'` statement inside every file under `client/js/`, including
+  subdirectories** (e.g. `client/js/diag/`) — not just the `*-entry.js` files, and not just the top
+  level. Non-entry modules import each other with their own `?v=N`-suffixed specifier, and the
+  browser resolves each distinct query string as a **separate module instance** — a stale `?v=` on
+  one cross-import silently re-executes that module's top-level code a second time (this shipped a
+  duplicate-socket bug twice for exactly this reason).
 - Exception: `client/tournament-detail-mockup.html` and `client/tables-tournaments-mockup.html`
   intentionally stay pinned to an old, frozen version — never bump these.
 
@@ -34,10 +35,15 @@ duplicate-module-execution bug with no visible symptom until it manifests as som
 
 Verify the bump is complete with:
 ```
-grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup
+grep -rn "?v=" client/*.html client/js/ | grep -v mockup | grep -o "?v=[0-9]*" | sort -u
 ```
 Must show exactly **one** distinct `?v=N` value. Two or more means a file was missed — this grep is
 the actual completion check, not eyeballing individual files.
+
+Note the trailing `client/js/` (a directory, recursed by `-r`) rather than the older
+`client/js/*.js`: that glob does **not** descend into subdirectories, so once `client/js/diag/`
+existed it would have reported "exactly one value" while a whole folder sat un-bumped — the precise
+failure this check exists to catch.
 
 ## Bug-fix workflow: scope discipline and unit tests
 
