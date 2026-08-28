@@ -61,8 +61,12 @@ update the header comment to say *why* it now diverges rather than leaving it lo
 
 ## Not covered here
 
-- `tournament-match.js`'s own clock copy — that is **B169** (stack, not part of #168; see
-  `docs/todo/B169-*.md`). It does not yet call `timer-sync-core.js`.
+- `tournament-match.js`'s own clock copy. After the step-1 extraction it is the only remaining
+  hand-written copy of this maths (`room-socket.js`/`game-ui.js` now call the core), and its
+  `applyTimerSync()` still does the two-`Date.now()` read the core fixed. Left alone deliberately —
+  the user's standing decision (2026-08-28: "do not touch tournament for now"). No task tracks it;
+  if you touch the tournament clock for another reason, that is the moment to also route it through
+  `timer-sync-core.js`.
 - The `/diag` namespace's isolation guarantees (no auth middleware, own limiter, no room registry) —
   those are asserted in `server/tests/diag-namespace.test.js`, not something a room-timer change
   touches.

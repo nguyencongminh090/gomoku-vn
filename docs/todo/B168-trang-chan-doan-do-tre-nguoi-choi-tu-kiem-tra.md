@@ -25,9 +25,6 @@ vòng đời socket) và `diag-board.js` (dựng `BoardRenderer`, cần canvas) 
 động** — chỉ verify bằng Playwright thật. Harness jsdom cho `diag-entry.js` (stub socket,
 như các suite phòng) là follow-up hiển nhiên nếu trang có thêm logic.
 
-**Tách riêng:** [B169](B169-tournament-match-dung-chung-timer-sync-core.md) — `tournament-match.js`
-giữ bản sao đồng hồ, cùng lỗi `Date.now()` 2 lần; nằm trong §"Ngoài phạm vi" của #168.
-
 Fix-log: [2026-08-28-todo-168-diagnostic-latency-page.md](../fix-log/2026-08-28-todo-168-diagnostic-latency-page.md).
 
 ---
@@ -93,7 +90,11 @@ Trang này là **kênh lấy mẫu Bước 1 chính thức** cho #167 — không
 ## Ngoài phạm vi
 
 - Turn-watchdog / resync (#152/#154) — trang chỉ đo, không test độ bền.
-- `tournament-match.js` — không đụng (đã hoãn ở #165/#166).
+- `tournament-match.js` — không đụng (đã hoãn ở #165/#166). Sau Bước 1, đây là bản sao **duy
+  nhất còn lại** của maths đồng hồ (`room-socket.js`/`game-ui.js` đã gọi `timer-sync-core.js`),
+  và `applyTimerSync()` của nó vẫn đọc `Date.now()` 2 lần (nhánh dự phòng ra `-1` thay vì `0`, 1ms
+  skew ảo). **Biết nhưng cố ý không đụng** — người dùng chốt 2026-08-28 "do not touch tournament
+  for now" (từng stack thành B169, nay gỡ). Không có task; nếu revisit thì tạo mục mới.
 - Diagnostic trong phòng xếp hạng thật (`RoomProbeSession`) — chỉ chừa seam.
 - UI xem kết quả — script đọc `server/scripts/diag-results.js` là đủ.
 
