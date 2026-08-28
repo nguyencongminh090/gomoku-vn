@@ -3,12 +3,18 @@
 **Trạng thái:** ⬜ ĐANG KHẢO SÁT — **harness đo (Bước 1) đã dựng 2026-08-28; chờ mẫu production.
 Chưa động vào công thức tính giờ.**
 
-**Kênh lấy mẫu Bước 1 (bổ sung, 2026-08-28):** trang chẩn đoán **#168** (`features/diagnostic-latency-page/`,
-`docs/todo/B168-*.md`) — URL `/diag` không công khai, maintainer gửi trực tiếp cho người chơi Mỹ/TQ.
-Đo dedicated (không phụ thuộc engine.io ping/pong thưa) + đường solo board với `TimerManager` thật
-ghi `spent_ms` vs half-RTT mỗi nước. **Không gộp task:** #167 vẫn là quyết định "có làm bounded
-refund không"; #168 là dụng cụ đo. Spec an toàn dưới đây (server là nguồn timeout duy nhất, clientTs
-chỉ cross-check) **không đổi**.
+**Kênh lấy mẫu Bước 1 (đã dựng, 2026-08-28):** trang chẩn đoán **#168** — `docs/todo/B168-*.md`, code
+ở `server/socket/diag-namespace.js` + `server/socket/diag-session.js` + `client/diagnostic.html`.
+URL `/diag` không công khai (không link ở nav/lobby/footer); maintainer gửi trực tiếp cho người chơi
+Mỹ/TQ. Mỗi lần người chơi gửi → **1 dòng JSONL** `server/data/diag-results/YYYY-MM-DD.jsonl` (nguồn
+chân lý) + **1 dòng** logfmt `msg="[DiagResult]"` (tiện grep, không phụ thuộc). Đường solo board
+dùng `GameEngine` + `TimerManager` **thật** (mode `per_game`), ghi thêm `msg="[DiagResult move]"`
+mỗi nước với `spent_ms` (mốc monotonic) + `black_s`/`white_s`. So `spent_ms` sàn (nước think-time ~0)
+với half-RTT: cỡ-drift → #165 đủ, đóng B167; cỡ-RTT thật → Bước 2.
+
+**Không gộp task:** #167 vẫn là quyết định "có làm bounded refund không"; #168 là dụng cụ đo. Spec an
+toàn dưới đây (server là nguồn timeout duy nhất, clientTs chỉ cross-check) **không đổi** — trang #168
+chỉ *đo và hiển thị*, không có giá trị client nào của nó vào công thức tính giờ.
 
 **Severity:** Low — B165 đã xử lý phần *hiển thị* (người chơi hết thấy nhảy). B167 chỉ thêm phần
 *công bằng giờ thật*: người chơi không bị trừ giây cho quãng nước đi kẹt trên đường mạng.

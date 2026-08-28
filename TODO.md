@@ -1009,7 +1009,10 @@ truthful." (2026-08-27)
   lần 1 (game #S83) chỉ phủ 3/17 nước ⇒ bổ sung `client_half_rtt_ms` = `RoomState.halfRttMs` (#165,
   EMA mỗi nước) gửi kèm payload `crtt`, **chỉ đối chiếu**, sanitize cứng server-side, không vào công
   thức. Client-side ⇒ bump `?v=165→166`. Test: +13 case, `npm test` 1510/1510. Chờ mẫu production
-  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. **Kênh lấy mẫu Bước 1: trang chẩn đoán #168.**
+  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. **Kênh lấy mẫu Bước 1 đã dựng: trang chẩn đoán #168**
+  (`/diag`, không công khai) — maintainer gửi URL, người chơi tự chạy ~60s, kết quả về
+  `server/data/diag-results/*.jsonl` + dòng `[DiagResult]`; đường solo `TimerManager` thật ghi
+  `spent_ms` mỗi nước. Không gộp task, spec an toàn không đổi.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 
 ### Nguồn: đề xuất người dùng qua thảo luận architect — "trang cho user tự test latency/speed mà không phải chơi ván thật" (2026-08-28)

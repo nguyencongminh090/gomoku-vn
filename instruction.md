@@ -649,7 +649,9 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   production. Nếu B165 đã đủ → đóng "không cần". Nếu làm: clamp `refund` (test case đầu tiên:
   `clientTs = turnStart` → refund vẫn ≤ HARD_CAP), lag-budget/ván, đo lag server-side, `clientTs`
   chỉ cross-check. Điểm chèn: method mới trên `TimerManager`, không rải logic ra `GameHandler`.
-  KHÔNG siết `pingInterval`/`pingTimeout` toàn cục (bẫy #147/#152). Cân nhắc bỏ refund cho `per_move` —
+  KHÔNG siết `pingInterval`/`pingTimeout` toàn cục (bẫy #147/#152). Cân nhắc bỏ refund cho `per_move`.
+  Kênh lấy mẫu Bước 1 đã có thêm trang #168 (`/diag`) — đọc `server/data/diag-results/*.jsonl`; spec
+  Bước 2 không đổi vì #168 (trang chỉ đo, `clientTs` vẫn chỉ cross-check) —
   [chi tiết](docs/instruction/B167-khao-sat-server-side-lag-compensation-move.md)
 - **B168.** Không phải task khảo sát — open question đã chốt hết ở `features/diagnostic-latency-page/`.
   Theo đúng 8 bước tuần tự ở `docs/instruction/B168-*.md`, mỗi bước 1 commit. **Bước 1 (tách

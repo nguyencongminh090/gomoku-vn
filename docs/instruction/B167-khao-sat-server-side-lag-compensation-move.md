@@ -10,11 +10,16 @@
 - Phân tích: phần mất mát là do transit delay (giây, B165 xử lý) hay do RTT thật người chơi phải trả
   (chục–trăm ms)?
 - **Nếu B165 đã làm người chơi hết phàn nàn → đóng B167 "Đã đóng: không cần".**
-- **Kênh lấy mẫu (2026-08-28):** ngoài harness `LOG_MOVE_LAG`, dùng trang chẩn đoán **#168**
-  (`/diag`) — gửi URL cho người chơi Mỹ/TQ tự chạy. `[DiagResult]` + đường solo `[DiagResult move]`
-  cung cấp `spent_ms` vs half-RTT trên `TimerManager` thật. So phần lẻ giây của `spent_ms` với RTT:
-  RTT vài chục ms + `spent_ms` sát số nguyên giây → drift → đóng B167; RTT 150–300ms+ và người chơi
-  phàn nàn bị trừ giờ → Bước 2.
+- **Kênh lấy mẫu (đã dựng 2026-08-28):** ngoài harness `LOG_MOVE_LAG` (production, cần deploy), dùng
+  trang chẩn đoán **#168** (`/diag`, không công khai) — gửi URL cho người chơi Mỹ/TQ tự chạy, không
+  cần deploy gì thêm. Đọc kết quả từ `server/data/diag-results/*.jsonl` (nguồn chân lý — mỗi lần gửi
+  1 dòng, gồm `run.halfRttMs` p50/p90/p99, `run.spentFloorMs`, `run.timerHandoffMs`, `geo`, `ip`,
+  `feedback`) hoặc `grep '\[DiagResult\]' <log>`. Đường solo ghi thêm `[DiagResult move]` mỗi nước
+  với `spent_ms` (mốc monotonic, `process.hrtime`) trên `TimerManager` thật `per_game`. So `spent_ms`
+  sàn với half-RTT: RTT vài chục ms + `spent_ms` sát số nguyên giây → drift → đóng B167; RTT
+  150–300ms+ và người chơi phàn nàn bị trừ giờ → Bước 2.
+- **Spec Bước 2 dưới đây không đổi vì #168.** Trang chẩn đoán chỉ đo; không có timestamp/half-RTT
+  client nào của nó vào công thức timeout. Nếu Bước 2 được làm, `clientTs` vẫn chỉ cross-check.
 
 ## Bước 2 — Chỉ khi số đo + người dùng đồng ý
 
