@@ -1,5 +1,5 @@
 import { defineConfig } from 'vite';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 
 // Vite's HTML transform only bundles <script type="module"> and
@@ -40,7 +40,13 @@ function copyClassicScripts() {
       const destDir = resolve(__dirname, 'dist/js');
       mkdirSync(destDir, { recursive: true });
       for (const file of findClassicScripts()) {
-        cpSync(resolve(__dirname, 'client/js', file), resolve(destDir, file));
+        // `file` may contain a subdirectory (e.g. `diag/diag-entry.js` — see
+        // client/diagnostic.html). cpSync does NOT create missing parents, so
+        // without this the copy throws for anything below js/ and the page
+        // 404s in production only — the same dev/prod split as TODO.md #65.
+        const dest = resolve(destDir, file);
+        mkdirSync(dirname(dest), { recursive: true });
+        cpSync(resolve(__dirname, 'client/js', file), dest);
       }
     },
   };
@@ -59,7 +65,10 @@ export default defineConfig({
         room: resolve(__dirname, 'client/room.html'),
         history: resolve(__dirname, 'client/history.html'),
         tournament: resolve(__dirname, 'client/tournament.html'),
-        tournamentMatch: resolve(__dirname, 'client/tournament-match.html')
+        tournamentMatch: resolve(__dirname, 'client/tournament-match.html'),
+        // Unlisted diagnostic page (TODO.md #168). Listed here only so the
+        // build emits it — nothing links to it (user_story.md R7).
+        diagnostic: resolve(__dirname, 'client/diagnostic.html')
       }
     }
   },

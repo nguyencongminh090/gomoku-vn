@@ -15,6 +15,10 @@ node_modules/
 !.claude/skills/design-workflow/**
 CLAUDE.md.bak
 .DS_Store
+# Submitted diagnostic runs (TODO.md #168) — real players' IPs, geo labels and
+# free-text feedback. Source of truth for the #167 sample, 90-day retention,
+# never committed.
+server/data/diag-results/
 .env
 *.db
 *.db-shm

@@ -446,11 +446,15 @@
    * that much further than the reading the packet carried. Only ever
    * subtracted from a *displayed* value — activeDeadline and serverNow() keep
    * pure skew semantics so armTurnWatchdog's math below is unaffected.
+   *
+   * The maths itself lives in `timer-sync-core.js` (TODO.md #168): the
+   * diagnostic page has to report exactly the clock this room runs, and a
+   * second hand-copied implementation would drift from it within one fix.
+   * This wrapper only supplies the RoomState reading.
    */
   function transitDelaySec() {
     const st = S();
-    const halfRtt = st && st.halfRttMs ? st.halfRttMs : 0;
-    return Math.min(halfRtt, 8000) / 1000;
+    return global.TimerSyncCore.transitDelaySec(st && st.halfRttMs);
   }
 
   /** Recompute the active player's remaining seconds and repaint. */
@@ -458,7 +462,8 @@
     const st = S();
     if (activeDeadline === null || !activeColor) return;
 
-    const remaining = Math.max(0, Math.round((activeDeadline - serverNow()) / 1000 - transitDelaySec()));
+    const remaining = global.TimerSyncCore.compensatedRemainingSec(
+      activeDeadline, serverNow(), st && st.halfRttMs);
     st.timerValues = Object.assign({}, st.timerValues, { [activeColor]: remaining });
     GameUI.renderTimers();
 
@@ -485,14 +490,16 @@
     if (!sync) return;
     const st = S();
 
-    clockOffsetMs = (sync.serverTime || Date.now()) - Date.now();
+    // One `Date.now()` reading feeds both halves of the subtraction (it used
+    // to be read twice, a millisecond apart) — same value, no double read.
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(sync.serverTime, Date.now());
 
     // Shave transit delay off the active player's opening value too, not just
     // the per-second ticks below — otherwise the first paint after every sync
     // (the one right after our own move, when the player is looking straight
     // at the clock) flashes the uncompensated number for up to a second
     // before tickLocal corrects it. #165.
-    const shave = sync.running ? Math.round(transitDelaySec()) : 0;
+    const shave = sync.running ? global.TimerSyncCore.displayShaveSec(st && st.halfRttMs) : 0;
     st.timerValues = {
       black: sync.activeColor === 'black' ? Math.max(0, sync.black - shave) : sync.black,
       white: sync.activeColor === 'white' ? Math.max(0, sync.white - shave) : sync.white,

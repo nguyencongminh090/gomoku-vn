@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Kiểm tra kết nối</title>
+  <!-- UNLISTED (user_story.md R7): the maintainer sends this link directly to a
+       player who reported timer trouble. No nav/lobby/footer links point here,
+       and search engines are told to stay away. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=169">
+  <link rel="stylesheet" href="css/diag.css?v=169" />
+</head>
+
+<body class="diag">
+
+  <div class="diag-shell">
+
+    <header class="diag-head">
+      <a class="diag-brand" href="index.html">
+        <img src="assets/brand/logo-mark.svg" alt="" width="26" height="26" />
+        <span>Play3CR</span>
+      </a>
+      <button type="button" id="diag-lang" class="diag-lang">EN</button>
+    </header>
+
+    <!-- ── 1. Intro ─────────────────────────────────────────────────────── -->
+    <section class="diag-screen is-active" id="screen-intro">
+      <h1 class="diag-title" data-i18n="diag.intro_title">Kiểm tra kết nối của bạn</h1>
+      <p class="diag-lede" data-i18n="diag.intro_lede">
+        Bài kiểm tra mất khoảng một phút. Bạn chỉ cần đặt quân cờ như khi chơi bình thường —
+        chúng tôi sẽ đo tốc độ kết nối giữa máy bạn và máy chủ.
+      </p>
+      <button type="button" id="btn-start" class="diag-btn">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-bold-play-circle"></use></svg>
+        <span data-i18n="diag.btn_start">Bắt đầu</span>
+      </button>
+      <div class="diag-note diag-note--error" id="intro-error" hidden>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-warning"></use></svg>
+        <span id="intro-error-text"></span>
+      </div>
+    </section>
+
+    <!-- ── 2. Running ───────────────────────────────────────────────────── -->
+    <section class="diag-screen" id="screen-run">
+      <div class="diag-run-head">
+        <div class="diag-clock" id="diag-clock">—</div>
+        <div class="diag-hint" data-i18n="diag.run_hint">Đặt quân vào bàn cờ cho tới khi đủ</div>
+      </div>
+
+      <div class="diag-board-wrap" id="diag-board-wrap">
+        <canvas id="diag-canvas"></canvas>
+      </div>
+
+      <div class="diag-progress">
+        <div class="diag-rail-row" id="rail-moves">
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-checkerboard"></use></svg>
+          <div class="diag-rail"><div class="diag-rail__fill" id="fill-moves"></div></div>
+          <span class="diag-count" id="count-moves">0/8</span>
+        </div>
+        <div class="diag-rail-row" id="rail-probes">
+          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-broadcast"></use></svg>
+          <div class="diag-rail"><div class="diag-rail__fill" id="fill-probes"></div></div>
+          <span class="diag-count" id="count-probes">0/30</span>
+        </div>
+      </div>
+
+      <button type="button" id="btn-finish" class="diag-btn diag-btn--quiet">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-bold-flag-checkered"></use></svg>
+        <span data-i18n="diag.btn_finish">Xem kết quả</span>
+      </button>
+    </section>
+
+    <!-- ── 3. Results ───────────────────────────────────────────────────── -->
+    <section class="diag-screen" id="screen-result">
+      <h1 class="diag-title" data-i18n="diag.result_title">Kết quả</h1>
+
+      <div class="diag-verdicts" id="diag-verdicts"></div>
+
+      <!-- Shown only when the run stopped short of both thresholds. The
+           reporter on the worst connection is the most likely to stop early
+           and the most valuable to hear from, so a partial run is submitted
+           and labelled rather than blocked. -->
+      <div class="diag-partial" id="diag-partial" hidden>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-warning"></use></svg>
+        <span data-i18n="diag.partial_note">Bài kiểm tra chưa chạy hết. Bạn vẫn có thể gửi — chúng tôi sẽ biết đây là kết quả rút gọn.</span>
+      </div>
+
+      <div class="diag-field">
+        <label class="diag-label" for="diag-name" data-i18n="diag.name_label">Tên hiển thị của bạn trong game</label>
+        <input type="text" id="diag-name" class="diag-input" maxlength="40" autocomplete="off"
+               data-i18n-placeholder="diag.name_ph" placeholder="Ví dụ: guest1234" />
+      </div>
+
+      <div class="diag-field">
+        <label class="diag-label" for="diag-feedback">
+          <span data-i18n="diag.feedback_label">Bạn gặp vấn đề gì?</span>
+          <span class="diag-optional" data-i18n="diag.optional">(không bắt buộc)</span>
+        </label>
+        <textarea id="diag-feedback" class="diag-textarea" maxlength="500"
+                  data-i18n-placeholder="diag.feedback_ph"
+                  placeholder="Ví dụ: đồng hồ của tôi tụt mất mấy giây mỗi nước"></textarea>
+      </div>
+
+      <div class="diag-consent">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-eye"></use></svg>
+        <span data-i18n="diag.consent">Khi gửi, kết quả đo cùng địa chỉ IP, khu vực và loại trình duyệt của bạn sẽ được lưu lại tối đa 90 ngày để đội ngũ kỹ thuật phân tích.</span>
+      </div>
+
+      <button type="button" id="btn-submit" class="diag-btn">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-bold-paper-plane-tilt"></use></svg>
+        <span data-i18n="diag.btn_submit">Gửi kết quả</span>
+      </button>
+
+      <div class="diag-note diag-note--error" id="submit-error" hidden>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-warning"></use></svg>
+        <span id="submit-error-text"></span>
+      </div>
+
+      <details class="diag-details">
+        <summary data-i18n="diag.details_summary">Số liệu kỹ thuật</summary>
+        <dl class="diag-detail-grid" id="diag-detail-grid"></dl>
+      </details>
+    </section>
+
+    <!-- ── 4. Sent ──────────────────────────────────────────────────────── -->
+    <section class="diag-screen" id="screen-done">
+      <div class="diag-done">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=169#ph-regular-check-circle"></use></svg>
+        <h1 class="diag-title" data-i18n="diag.done_title">Đã gửi. Cảm ơn bạn!</h1>
+        <p class="diag-lede" data-i18n="diag.done_lede">
+          Đội ngũ kỹ thuật đã nhận được kết quả của bạn.
+        </p>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/vendor/socket.io/socket.io.min.js"></script>
+  <!-- Classic scripts, not entry-module imports: these are UMD files and
+       Vite's commonjs plugin would lazily wrap them, leaving the globals unset
+       in a production build (the #65 trap, same reason room.html loads
+       escape-utils.js this way). vite.config.js's scanner copies classic
+       <script src="js/..."> tags into dist/ automatically. -->
+  <script src="js/i18n.js?v=169"></script>
+  <script src="js/board.js?v=169"></script>
+  <script src="js/timer-sync-core.js?v=169"></script>
+  <script src="js/diag/latency-probe-session.js?v=169"></script>
+  <script src="js/diag/diag-probe-session.js?v=169"></script>
+  <script src="js/diag/diag-report.js?v=169"></script>
+  <script src="js/diag/diag-board.js?v=169"></script>
+  <script src="js/diag/diag-entry.js?v=169"></script>
+</body>
+
+</html>

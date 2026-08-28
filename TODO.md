@@ -1009,11 +1009,26 @@ truthful." (2026-08-27)
   lần 1 (game #S83) chỉ phủ 3/17 nước ⇒ bổ sung `client_half_rtt_ms` = `RoomState.halfRttMs` (#165,
   EMA mỗi nước) gửi kèm payload `crtt`, **chỉ đối chiếu**, sanitize cứng server-side, không vào công
   thức. Client-side ⇒ bump `?v=165→166`. Test: +13 case, `npm test` 1510/1510. Chờ mẫu production
-  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. **Kênh lấy mẫu Bước 1: trang chẩn đoán #168.**
+  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. **Kênh lấy mẫu Bước 1 đã dựng: trang chẩn đoán #168**
+  (`/diag`, không công khai) — maintainer gửi URL, người chơi tự chạy ~60s, kết quả về
+  `server/data/diag-results/*.jsonl` + dòng `[DiagResult]`; đường solo `TimerManager` thật ghi
+  `spent_ms` mỗi nước. Không gộp task, spec an toàn không đổi. **Đo lần 2 (2026-08-28, 5 mẫu `/diag`
+  đầu tiên):** ở cả 5 lượt `timerHandoffMs ≈ moveConfirmMs` (chênh 1–3ms) ⇒ **chặng bàn giao c→s→c
+  không thêm chi phí ngoài RTT của ack — loại 1 giả thuyết**. Lượt CN/3g đo half-RTT p50 **376** /
+  p90 **659**ms, `spentFloorMs.p50` **1375**ms (≈750ms transit thuần mỗi nước, ~19s/14 nước) ⇒ đạt
+  ngưỡng số của Bước 2, **nhưng** mới 1 mẫu dải cao và `feedback` rỗng (chưa có vế "người chơi phàn
+  nàn") ⇒ **vẫn ĐANG KHẢO SÁT**. **2 câu hỏi mở chặn Bước 2:** `OQ1` chưa có nguồn đo half-RTT
+  server-side mỗi nước hợp lệ (engine.io ping 25s phủ 3/17 nước, `crtt` chỉ cross-check) — **không
+  có OQ1 thì không bắt đầu Bước 2**; `OQ2` `HARD_CAP≈250ms` cần thêm mẫu để hiệu chuẩn, không nâng
+  theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
+  khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 
 ### Nguồn: đề xuất người dùng qua thảo luận architect — "trang cho user tự test latency/speed mà không phải chơi ván thật" (2026-08-28)
-- ⬜ **#168.** Trang chẩn đoán độ trễ tại URL **không công khai** `/diag` — người chơi RTT cao
+- ✅ **#168.** **Trạng thái: ĐÃ XONG (2026-08-28)** — 8 bước trên `feature/diag-latency-page` off
+  `dev`, `npm test` 1831/1831, verify cả 2 tầng (client live bước 5, backend cô lập bước 8), chờ
+  merge vào `dev`. Khoảng trống test: `diag-entry.js` + `diag-board.js` chỉ verify Playwright thật.
+  `?v=166→169`. Fix-log 2026-08-28. — Trang chẩn đoán độ trễ tại URL **không công khai** `/diag` — người chơi RTT cao
   (Mỹ+VPN #165, TQ #155) tự đo **latency** (half-RTT p50/p90/p99/jitter, lệch đồng hồ + drift, mất
   gói), **board + action** (click→optimistic, click→server xác nhận), **timer tick c→s→c** (nước
   mình → `TimerManager` thật → bot `GameEngine` đi ngẫu nhiên tức thì → `timer:tick` về). Không đăng
@@ -1027,6 +1042,34 @@ truthful." (2026-08-27)
   ngày) + dòng logfmt `[DiagResult]`. UI Zen Minimal, icon thay chữ, desktop+mobile, VN/EN. Rule
   path-scoped `.claude/rules/diagnostic-page-sync.md`. **Là kênh lấy mẫu Bước 1 của #167** (không
   gộp task). Client mới ⇒ bump `?v=N`. — [chi tiết](docs/todo/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
+
+### Nguồn: phân tích 5 mẫu `/diag` (#168) đầu tiên — `server/data/diag-results/2026-08-28.jsonl`, gồm 1 lượt người chơi TQ trên 3G (2026-08-28)
+- ⬜ **#169.** Đồng hồ **giật/nhảy ~1 giây** trên kết nối jitter cao — bug **hiển thị**, giờ thật trên
+  server vẫn đúng. Bằng chứng: lượt CN/3g đo **jitter 199,6ms** (4 lượt VN cùng ngày: 1,7–15,9ms),
+  half-RTT dao động 376↔906ms. Gốc, cả 3 đều thuần hiển thị: (a) `displayShaveSec()` =
+  `Math.round(transitDelaySec)` làm tròn cứng ở mốc 500ms ⇒ shave **lật 0↔1 giây** khi EMA đi qua mốc;
+  (b) `compensatedRemainingSec()` cũng `Math.round` ⇒ cùng hiệu ứng biên trên đường `tickLocal`;
+  (c) `applyTimerSync` ghi thẳng `st.timerValues` ⇒ giá trị hiển thị **được phép tăng ngược**, mỗi
+  nước là một lần snap tới/lùi ~1,5s. `EMA_ALPHA=0.5` (cố ý nặng) khuếch đại cả ba. Sửa (client-only,
+  nối tiếp #165/#166): **A1** hysteresis ở ranh giới làm tròn (state ở `room-socket.js`, giữ
+  `timer-sync-core.js` thuần) + **A3** kẹp đơn điệu trong lượt (chỉ giảm; reset khi đổi lượt / hết
+  pause / `addTime`). Dải đệm phải dẫn xuất từ jitter đo được — hiện **chỉ 1 mẫu dải cao**, cân nhắc
+  chờ thêm mẫu. KHÔNG đụng `activeDeadline`/`serverNow`/watchdog/server/`tournament-match.js`.
+  Ngoài phạm vi: bàn cờ "dính" ~1s (RTT 3G vật lý, không sửa được). Client-side ⇒ bump `?v=N` —
+  [chi tiết](docs/todo/B169-dong-ho-giat-nhay-tren-ket-noi-jitter-cao.md)
+- ⬜ **#170.** `client/js/room-ui.js:464` đếm ngược `readyDeadline` bằng
+  `Math.ceil((deadline - Date.now()) / 1000)` — `deadline` là mốc **đồng hồ server**, `Date.now()` là
+  đồng hồ máy khách ⇒ **sai đúng bằng `clockOffsetMs`**. Đo được **−8407,75ms** trên máy người chơi TQ
+  (đã trừ bù ½RTT ⇒ là lệch đồng hồ hệ thống thật, drift chỉ −37,4ms/phút nên ổn định) ⇒ với máy đó bộ
+  đếm sai **8 giây**. Phòng chơi đã có `serverNow()` (`room-socket.js:431`, cập nhật mỗi `timer:sync`)
+  nhưng **không nằm trong `global.RoomSocket`** nên `room-ui.js` không gọi được. Sửa: xuất `serverNow`
+  (xuất **hàm**, không xuất giá trị offset) + dùng ở call site, có fallback `Date.now()`. **Bẫy:**
+  `readyDeadline` chạy *trước* ván đầu ⇒ rất có thể `clockOffsetMs` còn `0` lúc đó — phải kiểm thực tế,
+  đừng ship phần vỏ. Đã rà và loại: `game-ui.js:414/140/151` (local−local, đúng),
+  `room-socket.js:336`/`chat-ui.js:85` (dấu thời gian cục bộ), `session.js:47` (hạn tính bằng giờ).
+  Ngoài phạm vi: `tournament-detail.js:199` (làm tròn theo giờ, 8s không đổi chữ số nào),
+  `tournament-match.js` (quyết định người dùng 2026-08-28). Client-side ⇒ bump `?v=N` —
+  [chi tiết](docs/todo/B170-ready-deadline-countdown-dung-date-now-tho.md)
 
 ---
 

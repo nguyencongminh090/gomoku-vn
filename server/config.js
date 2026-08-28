@@ -196,6 +196,35 @@ const DEFAULT_TIEBREAK_RULE = 'buchholz_sonneborn_berger';
 // cheap even with many concurrent tournaments.
 const TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS = parseInt(process.env.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS, 10) || 10_000;
 
+// --- Diagnostic latency page (/diag) — TODO.md #168 ---
+// An UNLISTED, UNAUTHENTICATED namespace a reporting player is sent directly,
+// so that the high-latency players behind #155/#165 can measure their own
+// connection without playing a ranked game. Every limit below is this
+// namespace's own: it deliberately shares nothing with the main socket's
+// rate-limiter or room quotas (see server/socket/diag-namespace.js).
+//
+// 5 runs/IP/hour, counted when a run STARTS, not when it is submitted —
+// counting on submit would let someone run the probe a hundred times and
+// simply never press send.
+const DIAG_RUNS_PER_IP        = parseInt(process.env.DIAG_RUNS_PER_IP, 10) || 5;
+const DIAG_RUN_WINDOW_MS      = parseInt(process.env.DIAG_RUN_WINDOW_MS, 10) || 60 * 60 * 1000;
+// Hard cap on a submitted result, measured on the JSON text. The legitimate
+// payload is ~1-2 KB; this is headroom, not a target.
+const DIAG_MAX_PAYLOAD_BYTES  = parseInt(process.env.DIAG_MAX_PAYLOAD_BYTES, 10) || 8 * 1024;
+const DIAG_MAX_NAME_LEN       = parseInt(process.env.DIAG_MAX_NAME_LEN, 10) || 40;
+const DIAG_MAX_FEEDBACK_LEN   = parseInt(process.env.DIAG_MAX_FEEDBACK_LEN, 10) || 500;
+// Privacy retention (R6): JSONL files older than this are deleted. Pruning
+// runs on write — a server that records nothing for 90 days keeps its old
+// files, which is accepted rather than adding a cron for it.
+const DIAG_RETENTION_DAYS     = parseInt(process.env.DIAG_RETENTION_DAYS, 10) || 90;
+// Where the JSONL lives. Overridable so tests never touch the real folder.
+const DIAG_RESULTS_DIR        = process.env.DIAG_RESULTS_DIR || null;
+// Per-game clock for the solo measurement board. Deliberately NOT
+// DEFAULT_TIMER_SECONDS: a ~60s run against a 60s per-game budget would time
+// out mid-measurement and end the session before enough samples exist. Sized
+// to outlast a full run with room to spare.
+const DIAG_TIMER_SECONDS      = parseInt(process.env.DIAG_TIMER_SECONDS, 10) || 300;
+
 module.exports = {
   MAX_ROOMS,
   MAX_ROOMS_PER_IP,
@@ -246,4 +275,12 @@ module.exports = {
   DEFAULT_SCHEDULING_WINDOW_MS,
   DEFAULT_TIEBREAK_RULE,
   TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS,
+  DIAG_RUNS_PER_IP,
+  DIAG_RUN_WINDOW_MS,
+  DIAG_MAX_PAYLOAD_BYTES,
+  DIAG_MAX_NAME_LEN,
+  DIAG_MAX_FEEDBACK_LEN,
+  DIAG_RETENTION_DAYS,
+  DIAG_RESULTS_DIR,
+  DIAG_TIMER_SECONDS,
 };

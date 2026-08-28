@@ -1,0 +1,406 @@
+/**
+ * diag.css — the unlisted diagnostic latency page (TODO.md #168 step 5).
+ *
+ * Zen Minimal: paper ground, ink text, no cards, no shadows, no chrome. The
+ * page is for a stressed non-technical person who was sent a link by a
+ * maintainer, so every screen shows one thing and one action.
+ *
+ * Tokens mirror room-zen.css deliberately rather than importing it — this
+ * page loads none of the room's stylesheets, and duplicating four custom
+ * properties is cheaper than pulling in a room layout it would then have to
+ * override. If the Zen palette changes, both move together (see
+ * .claude/rules/diagnostic-page-sync.md).
+ */
+
+:root {
+  --paper: #FFFFFF;
+  --ink: #1C1C1C;
+  --ink-2: #7A7A7A;
+  --ink-3: #B8B8B8;
+  --rule: #ECECEC;
+
+  --diag-green: #2E7D46;
+  --diag-yellow: #B8860B;
+  --diag-red: #C0392B;
+
+  /* Two widths on purpose: a narrow reading column for the intro / results /
+     form screens, and a wider shell so the running screen's board is not
+     boxed to ~480px on a desktop viewport with room to spare (report
+     2026-08-28: "board is small, desktop only"). BoardRenderer.resize() sizes
+     the canvas at parent width − 32px, so the board lands ~32px inside
+     whatever .diag-board-wrap gets. */
+  --diag-read-w: 500px;
+  --diag-shell-w: 700px;
+  --diag-gap: 28px;
+}
+
+* { box-sizing: border-box; }
+
+body.diag {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+.diag-shell {
+  max-width: var(--diag-shell-w);
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+/* The reading screens keep a comfortable line length; the running screen
+   (board-focused) uses the full shell width. The header spans the full width
+   too, so the logo aligns with the board's left edge rather than floating in
+   from a narrower column. */
+#screen-intro,
+#screen-result,
+#screen-done {
+  max-width: var(--diag-read-w);
+  margin-inline: auto;
+}
+
+/* ── Header: brand mark + language, nothing else ────────────────────────── */
+
+.diag-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 48px;
+}
+
+.diag-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.diag-brand img { display: block; }
+
+.diag-lang {
+  border: 1px solid var(--rule);
+  background: transparent;
+  color: var(--ink-2);
+  border-radius: 999px;
+  padding: 5px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.diag-lang:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ── Screens: exactly one visible at a time ─────────────────────────────── */
+
+.diag-screen { display: none; }
+.diag-screen.is-active { display: block; }
+
+.diag-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  margin: 0 0 12px;
+}
+
+.diag-lede {
+  color: var(--ink-2);
+  margin: 0 0 var(--diag-gap);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────── */
+
+.diag-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 15px 22px;
+  border: 1px solid var(--ink);
+  border-radius: 10px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+
+.diag-btn:hover { opacity: .86; }
+
+.diag-btn[disabled] {
+  background: var(--paper);
+  color: var(--ink-3);
+  border-color: var(--rule);
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.diag-btn--quiet {
+  background: transparent;
+  color: var(--ink-2);
+  border-color: var(--rule);
+  font-weight: 600;
+}
+
+.diag-btn--quiet:hover { border-color: var(--ink); color: var(--ink); }
+
+.diag-btn .icon { width: 20px; height: 20px; fill: currentColor; }
+
+/* ── Running screen ─────────────────────────────────────────────────────── */
+
+.diag-run-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.diag-clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.diag-hint {
+  color: var(--ink-2);
+  font-size: 14px;
+  text-align: right;
+}
+
+.diag-board-wrap {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  margin-bottom: 20px;
+  /* The canvas sizes itself off this box (BoardRenderer.resize) — give it a
+     definite square rather than letting it chase the page height. */
+}
+
+.diag-board-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+
+/* Progress: two rails, because the run has two independent stop conditions
+   and a single bar would misrepresent which one is holding it back. */
+.diag-progress { display: grid; gap: 14px; margin-bottom: 22px; }
+
+.diag-rail-row {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.diag-rail-row .icon { width: 18px; height: 18px; fill: var(--ink-3); }
+
+.diag-rail {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--rule);
+  overflow: hidden;
+}
+
+.diag-rail__fill {
+  height: 100%;
+  width: 0%;
+  background: var(--ink);
+  border-radius: 999px;
+  transition: width .3s ease;
+}
+
+.diag-rail-row.is-done .icon { fill: var(--diag-green); }
+.diag-rail-row.is-done .diag-rail__fill { background: var(--diag-green); }
+
+.diag-count { font-variant-numeric: tabular-nums; }
+
+/* ── Results ────────────────────────────────────────────────────────────── */
+
+.diag-verdicts {
+  display: grid;
+  gap: 4px;
+  margin-bottom: var(--diag-gap);
+}
+
+.diag-verdict {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 16px;
+  align-items: start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.diag-verdict:last-child { border-bottom: 0; }
+
+.diag-verdict .icon { width: 28px; height: 28px; }
+.diag-verdict.v-green  .icon { fill: var(--diag-green); }
+.diag-verdict.v-yellow .icon { fill: var(--diag-yellow); }
+.diag-verdict.v-red    .icon { fill: var(--diag-red); }
+.diag-verdict.v-none   .icon { fill: var(--ink-3); }
+
+.diag-verdict__label {
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.diag-verdict__msg { color: var(--ink-2); font-size: 15px; }
+
+.diag-partial {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  color: var(--ink-2);
+  font-size: 14px;
+  margin-bottom: var(--diag-gap);
+}
+
+.diag-partial .icon { width: 18px; height: 18px; fill: var(--diag-yellow); flex: none; margin-top: 2px; }
+
+/* ── Form ───────────────────────────────────────────────────────────────── */
+
+.diag-field { margin-bottom: 18px; }
+
+.diag-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.diag-input,
+.diag-textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.diag-input:focus,
+.diag-textarea:focus {
+  outline: none;
+  border-color: var(--ink);
+}
+
+.diag-textarea { resize: vertical; min-height: 88px; }
+
+.diag-optional { color: var(--ink-3); font-weight: 600; }
+
+.diag-consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.diag-consent .icon { width: 16px; height: 16px; fill: var(--ink-3); flex: none; margin-top: 3px; }
+
+/* ── Collapsed raw figures ──────────────────────────────────────────────── */
+
+.diag-details {
+  margin-top: var(--diag-gap);
+  border-top: 1px solid var(--rule);
+  padding-top: 16px;
+}
+
+.diag-details > summary {
+  cursor: pointer;
+  color: var(--ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  list-style: none;
+}
+
+.diag-details > summary::-webkit-details-marker { display: none; }
+.diag-details > summary::before { content: '+ '; }
+.diag-details[open] > summary::before { content: '– '; }
+
+.diag-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 16px;
+  margin-top: 14px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.diag-detail-grid dt { color: var(--ink-2); }
+.diag-detail-grid dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+/* ── Status / errors ────────────────────────────────────────────────────── */
+
+.diag-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  margin-top: 16px;
+}
+
+.diag-note[hidden] { display: none; }
+.diag-note--error { background: #FDF2F1; color: var(--diag-red); }
+.diag-note--ok { background: #F1F8F3; color: var(--diag-green); }
+.diag-note .icon { width: 18px; height: 18px; fill: currentColor; flex: none; margin-top: 2px; }
+
+.diag-done {
+  text-align: center;
+  padding: 40px 0;
+}
+
+.diag-done .icon {
+  width: 56px;
+  height: 56px;
+  fill: var(--diag-green);
+  margin-bottom: 16px;
+}
+
+/* ── Mobile ─────────────────────────────────────────────────────────────── */
+
+@media (max-width: 560px) {
+  .diag-shell { padding: 24px 18px 48px; }
+  .diag-head { margin-bottom: 32px; }
+  .diag-title { font-size: 22px; }
+  .diag-clock { font-size: 26px; }
+  .diag-hint { font-size: 13px; }
+  .diag-run-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .diag-hint { text-align: left; }
+}
+
+/* Respect a reduced-motion preference — the rails are the only animation. */
+@media (prefers-reduced-motion: reduce) {
+  .diag-rail__fill { transition: none; }
+}

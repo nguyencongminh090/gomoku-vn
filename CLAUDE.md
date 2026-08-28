@@ -13,17 +13,23 @@ don't duplicate them here:
   `docs/fix-log.md` and their `docs/*/` detail files) → `.claude/rules/tracking-files.md`
   (path-scoped: loads automatically when you read/edit any of those files). A `Stop` hook
   (`scripts/check-tracking-sync.js`) enforces the sync part automatically — see that rule file.
+- **Diagnostic page ↔ room clock coupling** (`TimerManager.js`, `room-socket.js`, `game-ui.js`,
+  `timer-sync-core.js`, `client/js/diag/**`, the `/diag` namespace) → `.claude/rules/
+  diagnostic-page-sync.md` (path-scoped). Load before changing how the room's clock works — the
+  `/diag` page (TODO.md #168) reports the exact quantities the room acts on, and three couplings
+  drift with no test failure.
 
 ## Cache-busting version bump
 
 All CSS/JS assets share one `?v=N` query string. **Both** of these must be covered by every bump:
 
 - Every `client/*.html` file's `<link>`/`<script>` tags.
-- **Every ES-module `import '...?v=N'` statement inside every file in `client/js/*.js`** — not just
-  the `*-entry.js` files. Non-entry modules import each other with their own `?v=N`-suffixed
-  specifier, and the browser resolves each distinct query string as a **separate module instance** —
-  a stale `?v=` on one cross-import silently re-executes that module's top-level code a second time
-  (this shipped a duplicate-socket bug twice for exactly this reason).
+- **Every ES-module `import '...?v=N'` statement inside every file under `client/js/`, including
+  subdirectories** (e.g. `client/js/diag/`) — not just the `*-entry.js` files, and not just the top
+  level. Non-entry modules import each other with their own `?v=N`-suffixed specifier, and the
+  browser resolves each distinct query string as a **separate module instance** — a stale `?v=` on
+  one cross-import silently re-executes that module's top-level code a second time (this shipped a
+  duplicate-socket bug twice for exactly this reason).
 - Exception: `client/tournament-detail-mockup.html` and `client/tables-tournaments-mockup.html`
   intentionally stay pinned to an old, frozen version — never bump these.
 
@@ -34,18 +40,38 @@ duplicate-module-execution bug with no visible symptom until it manifests as som
 
 Verify the bump is complete with:
 ```
-grep -rn "?v=" client/*.html client/js/*.js | grep -v mockup
+grep -rn "?v=" client/*.html client/js/ | grep -v mockup | grep -o "?v=[0-9]*" | sort -u
 ```
 Must show exactly **one** distinct `?v=N` value. Two or more means a file was missed — this grep is
 the actual completion check, not eyeballing individual files.
+
+Note the trailing `client/js/` (a directory, recursed by `-r`) rather than the older
+`client/js/*.js`: that glob does **not** descend into subdirectories, so once `client/js/diag/`
+existed it would have reported "exactly one value" while a whole folder sat un-bumped — the precise
+failure this check exists to catch.
 
 ## Bug-fix workflow: scope discipline and unit tests
 
 - **Base the fix strictly on what was provided.** Don't silently extend a fix to cover speculative
   scenarios beyond the reported bug/finding — call those out separately (e.g. in `TODO.md`) instead.
 - **Write a unit test for the fix whenever the affected code has, or can reasonably get, real
-  coverage** (server-side Jest, `server/tests/**/*.test.js`). If the area has no test infrastructure
-  (e.g. client-side `client/js/` currently has none), say so explicitly rather than skipping silently.
+  coverage.** Two suites exist, both run by `npm test`:
+  - `server/tests/**/*.test.js` — Node-environment Jest. Also the right home for a *pure*
+    `client/js/` module with no DOM (`escape-utils.js`, `profanity-filter.js`,
+    `timer-sync-core.js` are UMD-wrapped precisely so they can be `require()`d here).
+  - `client/tests/**/*.test.js` — **jsdom** Jest (`@jest-environment jsdom` in the file header).
+    Loads a client module's real source with `readFileSync` + `window.eval` against a stubbed
+    `RoomState`/socket, so DOM-touching code *is* testable. As of 2026-08-28: 23 suites, 224
+    tests, covering `board.js`, `game-ui.js`, `room-socket.js`, `room-ui.js`, `socket-client.js`,
+    `i18n.js`, `timer-sync-core.js` and the entry modules — roughly a third of `client/js/`.
+  So "client-side code can't be unit-tested here" is **not** true and is not an acceptable reason
+  to skip a test. Check `client/tests/` for a suite that already loads the module you're changing
+  and add to it. Only if the area genuinely resists both harnesses (canvas pixel output, real
+  network timing, CSS layout) say so explicitly rather than skipping silently.
+  - **A module newly `eval`'d by a client suite must be added to that suite's load order**, in the
+    same order `*.html` loads it. Precedent 2026-08-28 (#168): extracting `timer-sync-core.js` and
+    refactoring `room-socket.js`/`game-ui.js` to call it broke 38 tests across three suites until
+    each was given the new module — that breakage is the harness working, not noise to route around.
 - **Never discard a test case after writing it.** It's the permanent regression guard, not a
   one-time proof — don't write it, run it once, then delete it.
 - **Before implementing any `TODO.md` task, read the matching `instruction.md` entry.** `TODO.md`
@@ -131,9 +157,16 @@ shipped with 806 passing backend tests and generated four client-side follow-up 
 feature touching both `server/` and `client/`:
 
 - **Verify both layers.** Backend gets Jest tests per "Writing comprehensive test cases" above.
-  Frontend has no automated runner — that doesn't mean skip it: drive the feature in a real browser
-  (the `run` skill, or `playwright-e2e-safety`-compliant Playwright) end-to-end from the entry point
-  a real user would use. Server-side test output alone is not frontend verification.
+  Frontend gets *both* of the following — they catch different things, neither substitutes for the
+  other:
+  - a `client/tests/` jsdom suite for the module's logic (see the bug-fix section above — this
+    harness exists and is the cheap, permanent regression guard), and
+  - a real-browser pass (the `run` skill, or `playwright-e2e-safety`-compliant Playwright) driven
+    end-to-end from the entry point a real user would use. jsdom stubs the socket, the canvas and
+    layout, so it cannot see a script that never loaded, a production-only build wrapper, a CSP
+    refusal, or a control that renders offscreen.
+
+  Server-side test output alone is not frontend verification, and neither is a green jsdom suite.
 - **Check every user-facing control the design calls for actually exists in the DOM/UI**, not just
   that the backend accepts the data it would send.
 - **Assess the real user flow's complexity** — step count, whether it assumes internals the user

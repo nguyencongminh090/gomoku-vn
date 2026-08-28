@@ -649,7 +649,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   production. Nếu B165 đã đủ → đóng "không cần". Nếu làm: clamp `refund` (test case đầu tiên:
   `clientTs = turnStart` → refund vẫn ≤ HARD_CAP), lag-budget/ván, đo lag server-side, `clientTs`
   chỉ cross-check. Điểm chèn: method mới trên `TimerManager`, không rải logic ra `GameHandler`.
-  KHÔNG siết `pingInterval`/`pingTimeout` toàn cục (bẫy #147/#152). Cân nhắc bỏ refund cho `per_move` —
+  KHÔNG siết `pingInterval`/`pingTimeout` toàn cục (bẫy #147/#152). Cân nhắc bỏ refund cho `per_move`.
+  Kênh lấy mẫu Bước 1 đã có thêm trang #168 (`/diag`) — đọc `server/data/diag-results/*.jsonl`; spec
+  Bước 2 không đổi vì #168 (trang chỉ đo, `clientTs` vẫn chỉ cross-check). **Sau mẫu lần 2
+  (2026-08-28):** đã loại giả thuyết bàn giao c→s→c (`timerHandoff ≈ moveConfirm` cả 5 lượt) —
+  **đừng đi tối ưu đường bàn giao**. **OQ1 chặn cứng Bước 2**: chưa có nguồn đo half-RTT server-side
+  mỗi nước hợp lệ — dừng và chốt với người dùng trước khi code (hướng đáng cân nhắc: mượn cơ chế
+  `diag:ping`/`diag:pong` của #168, nhưng phải hỏi vì thêm message type vào phòng chơi). **OQ2**:
+  đừng vội nâng `HARD_CAP` theo 1 điểm dữ liệu. Muốn giảm khó chịu ngay → làm **#169** thay vì #167 —
   [chi tiết](docs/instruction/B167-khao-sat-server-side-lag-compensation-move.md)
 - **B168.** Không phải task khảo sát — open question đã chốt hết ở `features/diagnostic-latency-page/`.
   Theo đúng 8 bước tuần tự ở `docs/instruction/B168-*.md`, mỗi bước 1 commit. **Bước 1 (tách
@@ -661,3 +668,26 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   ghi rõ nguồn. KHÔNG siết `pingInterval` (probe là message type riêng). Cập nhật B167 docs ở bước
   7, không gộp task. Verify e2e instance cô lập —
   [chi tiết](docs/instruction/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
+- **B169.** Ranh giới cứng: **chỉ đường hiển thị** — `activeDeadline`/`serverNow()`/`clockOffsetMs`/
+  `armTurnWatchdog` không đổi (ranh giới #165; header `timer-sync-core.js`: "None of this ever decides
+  a timeout"). Không đụng server (#167), không đụng `tournament-match.js`. Sửa ở `timer-sync-core.js`
+  + call site `room-socket.js`; mobile strip tự hưởng qua `GameUI.effectiveTimerValues()` (#166) —
+  **đừng** viết logic thứ hai ở `room-ui.js`. **Giữ `timer-sync-core.js` thuần**: hysteresis cần bậc
+  trước đó ⇒ truyền vào (`displayShaveSec(halfRttMs, prevShaveSec)`), state ở `room-socket.js` (module
+  này bị `require()` chung nhiều test). Kẹp đơn điệu phải reset ở đổi lượt / hết pause / `addTime` —
+  viết bảng quyết định trước khi code, quên là đồng hồ "kẹt". Test jsdom phải **bơm chuỗi `halfRttMs`
+  nhiễu** (376/906/376/659…) rồi assert dãy hiển thị đơn điệu + không đổi bậc quá 1 lần, không phải
+  "không throw". **Cập nhật khối "room-parity" của `timer-sync-core.test.js`** theo ý định mới (rule
+  diagnostic-page-sync mục a) và đọc kỹ `timer-sync-conformance.test.js` nếu đỏ, đừng nới test. Số dải
+  đệm phải dẫn xuất từ jitter đo được — hỏi người dùng trước khi tự chốt với 1 mẫu. Bump `?v=N` +
+  grep verify (gồm `client/js/diag/`) — [chi tiết](docs/instruction/B169-dong-ho-giat-nhay-tren-ket-noi-jitter-cao.md)
+- **B170.** Xuất `serverNow` **dạng hàm** từ `global.RoomSocket` (xuất giá trị `clockOffsetMs` là sai —
+  bị chụp cứng lúc đọc), rồi dùng ở `room-ui.js:464`; **bắt buộc fallback** `Date.now()` khi
+  `RoomSocket` chưa gắn — hành vi lúc chưa có offset phải giống hệt hôm nay. **Bẫy chính:**
+  `readyDeadline` chạy *trước* `timer:sync` đầu tiên ⇒ rất có thể `clockOffsetMs` vẫn `0` đúng lúc bộ
+  đếm này chạy — **kiểm tra thực tế trước khi kết luận đã sửa**, nếu đúng thì sửa call site là chưa đủ
+  và phải hỏi người dùng (lấy offset sớm hơn, hay chấp nhận + ghi rõ giới hạn). Đừng lặng lẽ ship phần
+  vỏ (rule "Root-cause diagnosis"). Không đổi `timer-sync-core.js` — ngữ nghĩa `clockOffsetMs` (skew +
+  transit, cố ý gộp) giữ nguyên. Test jsdom: offset `0` / **−8400** (số đo thật) / dương / `RoomSocket`
+  chưa tồn tại; biên `deadline == serverNow()` → 0, quá hạn → kẹp 0. Bump `?v=N` —
+  [chi tiết](docs/instruction/B170-ready-deadline-countdown-dung-date-now-tho.md)
