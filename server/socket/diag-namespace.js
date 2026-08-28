@@ -43,6 +43,7 @@ const logger = require('../utils/logger');
 const config = require('../config');
 const { clientInfoFromSocket } = require('../utils/geo');
 const diagResults = require('../utils/diag-results');
+const { DiagSession } = require('./diag-session');
 
 const NAMESPACE = '/diag';
 
@@ -104,11 +105,12 @@ class RunLimiter {
  * Attach the `/diag` namespace.
  *
  * @param {import('socket.io').Server} io
- * @param {{limiter?: RunLimiter}} [deps] test seam
+ * @param {{limiter?: RunLimiter, createSession?: function}} [deps] test seam
  * @returns {import('socket.io').Namespace}
  */
 function register(io, deps = {}) {
   const limiter = deps.limiter || new RunLimiter();
+  const createSession = deps.createSession || ((opts) => new DiagSession(opts));
   const nsp = io.of(NAMESPACE);
 
   // Deliberately no nsp.use(...) — see the header. Auth, the room registry and
@@ -126,9 +128,22 @@ function register(io, deps = {}) {
      * This socket's single active run. One at a time (R5): a second
      * `diag:start` on the same socket is refused rather than silently
      * replacing the first, so a client bug cannot burn the IP's whole quota.
-     * @type {null | {startedAt: number, pings: number}}
+     * @type {null | {startedAt: number, pings: number, session: DiagSession}}
      */
     let run = null;
+
+    /**
+     * The one teardown path. Every exit — disconnect, timeout, game over,
+     * error — funnels through here, because a DiagSession that is dropped
+     * without `destroy()` leaves its TimerManager's 1s interval running for
+     * the life of the process.
+     */
+    const endRun = (reason) => {
+      if (!run) return;
+      if (run.session) run.session.destroy();
+      logger.info('[Diag] Run ended', { sid: socket.id, ip, geo, reason });
+      run = null;
+    };
 
     logger.info('[Diag] Connected', { sid: socket.id, ip, geo });
 
@@ -151,9 +166,54 @@ function register(io, deps = {}) {
         });
         return;
       }
-      run = { startedAt: Date.now(), pings: 0 };
+      // A REAL GameEngine + TimerManager, one instance per run, registered
+      // nowhere global (no RoomManager, no state.js timerMap) so nothing can
+      // observe it from the authenticated app and nothing outlives this socket.
+      const session = createSession({
+        sessionId: socket.id,
+        meta: { ip, geo },
+        onTimerSync: (sync) => socket.emit('diag:timer', sync),
+        onTimeout: (loserId) => {
+          socket.emit('diag:ended', { reason: 'timeout', loserId });
+          endRun('timeout');
+        },
+      });
+      run = { startedAt: Date.now(), pings: 0, session };
+      session.start();
+
       logger.info('[Diag] Run started', { sid: socket.id, ip, geo, remaining: verdict.remaining });
-      reply({ ok: true, serverTime: Date.now() });
+      reply({ ok: true, serverTime: Date.now(), game: session.serialize() });
+    });
+
+    // ── Solo board move ────────────────────────────────────────────────────
+    //
+    // The whole point of the run: the player's move goes into a real
+    // TimerManager, the bot answers instantly so the clock hands back, and
+    // the ack + the `diag:timer` that follows are what the client times.
+    socket.on('diag:move', (payload, ack) => {
+      const reply = typeof ack === 'function' ? ack : () => {};
+      // Stamp the arrival monotonically BEFORE any work, so spent_ms measures
+      // the network and the player's think time, not our own handling.
+      const recvNs = process.hrtime.bigint();
+
+      if (!run || !run.session) {
+        reply({ error: 'No test is running.', code: 'DIAG_NO_RUN' });
+        return;
+      }
+      const x = payload && Number.isInteger(payload.x) ? payload.x : null;
+      const y = payload && Number.isInteger(payload.y) ? payload.y : null;
+      if (x === null || y === null) {
+        reply({ error: 'Invalid move.', code: 'DIAG_BAD_MOVE' });
+        return;
+      }
+
+      const res = run.session.playerMove(x, y, recvNs);
+      reply(res);
+
+      if (res.ok && res.status === 'finished') {
+        socket.emit('diag:ended', { reason: 'game_over', result: res.result });
+        endRun('game_over');
+      }
     });
 
     // ── Transport probe ────────────────────────────────────────────────────
@@ -211,9 +271,7 @@ function register(io, deps = {}) {
     });
 
     socket.on('disconnect', (reason) => {
-      // Step 3 attaches a real GameEngine/TimerManager per run and MUST tear
-      // it down here — a leaked TimerManager keeps firing forever.
-      run = null;
+      endRun(`disconnect:${reason}`);
       logger.info('[Diag] Disconnected', { sid: socket.id, ip, geo, reason });
     });
 

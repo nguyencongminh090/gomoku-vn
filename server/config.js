@@ -219,6 +219,11 @@ const DIAG_MAX_FEEDBACK_LEN   = parseInt(process.env.DIAG_MAX_FEEDBACK_LEN, 10) 
 const DIAG_RETENTION_DAYS     = parseInt(process.env.DIAG_RETENTION_DAYS, 10) || 90;
 // Where the JSONL lives. Overridable so tests never touch the real folder.
 const DIAG_RESULTS_DIR        = process.env.DIAG_RESULTS_DIR || null;
+// Per-game clock for the solo measurement board. Deliberately NOT
+// DEFAULT_TIMER_SECONDS: a ~60s run against a 60s per-game budget would time
+// out mid-measurement and end the session before enough samples exist. Sized
+// to outlast a full run with room to spare.
+const DIAG_TIMER_SECONDS      = parseInt(process.env.DIAG_TIMER_SECONDS, 10) || 300;
 
 module.exports = {
   MAX_ROOMS,
@@ -277,4 +282,5 @@ module.exports = {
   DIAG_MAX_FEEDBACK_LEN,
   DIAG_RETENTION_DAYS,
   DIAG_RESULTS_DIR,
+  DIAG_TIMER_SECONDS,
 };

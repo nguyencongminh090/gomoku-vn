@@ -33,10 +33,17 @@ const { register, RunLimiter, NAMESPACE } = require('../socket/diag-namespace');
 // Fakes
 // ---------------------------------------------------------------------------
 
+/**
+ * Every socket built here is tracked so afterEach can fire its `disconnect`.
+ * A started run owns a REAL TimerManager (a 1s setInterval); leaving one
+ * behind hangs the whole worker rather than failing a test.
+ */
+let openSockets = [];
+
 function makeSocket({ ip = '1.2.3.4', ua = 'UA/1.0', id = 'sock-1' } = {}) {
   const handlers = new Map();
   const emitted = [];
-  return {
+  const socket = {
     id,
     handshake: {
       headers: { 'user-agent': ua, 'cf-connecting-ip': ip, 'cf-ipcountry': 'US' },
@@ -50,6 +57,8 @@ function makeSocket({ ip = '1.2.3.4', ua = 'UA/1.0', id = 'sock-1' } = {}) {
     _emitted: emitted,
     _last(event) { return [...emitted].reverse().find((e) => e.event === event); },
   };
+  openSockets.push(socket);
+  return socket;
 }
 
 function makeIo() {
@@ -94,6 +103,17 @@ function ack() {
 }
 
 beforeEach(() => jest.clearAllMocks());
+
+afterEach(() => {
+  // Tear every run down through the namespace's own disconnect path, which
+  // is also a small extra proof that endRun() really releases the timer.
+  for (const s of openSockets) {
+    if (s._has('disconnect')) {
+      try { s._fire('disconnect', 'test cleanup'); } catch { /* already gone */ }
+    }
+  }
+  openSockets = [];
+});
 
 // ---------------------------------------------------------------------------
 
@@ -411,13 +431,174 @@ describe('diag:submit', () => {
   });
 });
 
-describe('lifecycle', () => {
-  test('registers exactly the four expected events', () => {
+describe('diag:move — the solo board (step 3)', () => {
+  const started = () => {
     const io = makeIo();
     const { socket } = connect(io);
-    for (const e of ['diag:start', 'diag:ping', 'diag:submit', 'disconnect', 'error']) {
+    const a = ack();
+    socket._fire('diag:start', {}, a);
+    return { socket, start: a.reply() };
+  };
+
+  test('diag:start hands back a board to paint', () => {
+    const { start } = started();
+    expect(start.game).toMatchObject({
+      playerColor: 'BLACK', currentTurn: 'diag-player', moveCount: 0, status: 'ongoing',
+    });
+    expect(start.game.timer.running).toBe(true);
+  });
+
+  test('a legal move is applied and answered by the bot', () => {
+    const { socket } = started();
+    const a = ack();
+    socket._fire('diag:move', { x: 5, y: 5 }, a);
+    const res = a.reply();
+    expect(res.ok).toBe(true);
+    expect(res.moves).toHaveLength(2);
+    expect(res.timer.activeColor).toBe('black');
+  });
+
+  test('emits diag:timer so the client can time the handoff', () => {
+    const { socket } = started();
+    socket._fire('diag:move', { x: 5, y: 5 }, ack());
+    expect(socket._last('diag:timer')).toBeDefined();
+    expect(socket._last('diag:timer').payload.running).toBe(true);
+  });
+
+  test('a move before any run is refused', () => {
+    const io = makeIo();
+    const { socket } = connect(io);
+    const a = ack();
+    socket._fire('diag:move', { x: 1, y: 1 }, a);
+    expect(a.reply()).toMatchObject({ code: 'DIAG_NO_RUN' });
+  });
+
+  test.each([
+    ['a missing payload', undefined],
+    ['no coordinates', {}],
+    ['non-integer coordinates', { x: 1.5, y: 2 }],
+    ['string coordinates', { x: '1', y: '2' }],
+    ['NaN', { x: NaN, y: NaN }],
+    ['null coordinates', { x: null, y: null }],
+  ])('%s is refused as a bad move, never crashed on', (_label, payload) => {
+    const { socket } = started();
+    const a = ack();
+    expect(() => socket._fire('diag:move', payload, a)).not.toThrow();
+    expect(a.reply()).toMatchObject({ code: 'DIAG_BAD_MOVE' });
+  });
+
+  test('an illegal move reports the engine\'s own refusal code', () => {
+    const { socket } = started();
+    socket._fire('diag:move', { x: 5, y: 5 }, ack());
+    const a = ack();
+    socket._fire('diag:move', { x: 5, y: 5 }, a);
+    expect(a.reply()).toMatchObject({ code: 'CELL_OCCUPIED' });
+  });
+
+  test('the game ending emits diag:ended and tears the run down', () => {
+    // Uses the createSession seam rather than trying to steer a random bot
+    // into a real five-in-a-row: the behaviour under test is the namespace's
+    // reaction to a finished game, not the engine's win detection (which
+    // GameEngine.test.js already covers).
+    const destroy = jest.fn();
+    const io = makeIo();
+    const nsp = register(io, {
+      createSession: () => ({
+        start: () => ({ running: true }),
+        serialize: () => ({ status: 'ongoing' }),
+        playerMove: () => ({
+          ok: true, moves: [], timer: {}, status: 'finished',
+          result: { winner: 'diag-player', reason: 'win' },
+        }),
+        destroy,
+      }),
+    });
+    const socket = makeSocket();
+    nsp._onConnection(socket);
+    socket._fire('diag:start', {}, ack());
+    socket._fire('diag:move', { x: 0, y: 0 }, ack());
+
+    expect(socket._last('diag:ended').payload).toMatchObject({
+      reason: 'game_over', result: { reason: 'win' },
+    });
+    expect(destroy).toHaveBeenCalledTimes(1);
+
+    // The run is gone, so a further move is refused.
+    const a = ack();
+    socket._fire('diag:move', { x: 1, y: 1 }, a);
+    expect(a.reply()).toMatchObject({ code: 'DIAG_NO_RUN' });
+  });
+
+  test('a server-side timeout emits diag:ended and tears the run down', () => {
+    const destroy = jest.fn();
+    let fireTimeout;
+    const io = makeIo();
+    const nsp = register(io, {
+      createSession: (opts) => {
+        fireTimeout = () => opts.onTimeout('diag-player');
+        return {
+          start: () => ({ running: true }),
+          serialize: () => ({ status: 'ongoing' }),
+          playerMove: () => ({ ok: true, moves: [], timer: {}, status: 'ongoing' }),
+          destroy,
+        };
+      },
+    });
+    const socket = makeSocket();
+    nsp._onConnection(socket);
+    socket._fire('diag:start', {}, ack());
+
+    fireTimeout();
+
+    expect(socket._last('diag:ended').payload).toMatchObject({
+      reason: 'timeout', loserId: 'diag-player',
+    });
+    expect(destroy).toHaveBeenCalledTimes(1);
+  });
+
+  test('the session receives the socket id and resolved ip/geo for its log line', () => {
+    const io = makeIo();
+    const seen = [];
+    const nsp = register(io, {
+      createSession: (opts) => {
+        seen.push(opts);
+        return { start: () => ({}), serialize: () => ({}), playerMove: () => ({}), destroy() {} };
+      },
+    });
+    const socket = makeSocket({ id: 'abc', ip: '203.0.113.5' });
+    nsp._onConnection(socket);
+    socket._fire('diag:start', {}, ack());
+    expect(seen[0]).toMatchObject({ sessionId: 'abc', meta: { ip: '203.0.113.5', geo: 'US' } });
+  });
+});
+
+describe('lifecycle', () => {
+  test('registers exactly the expected events', () => {
+    const io = makeIo();
+    const { socket } = connect(io);
+    for (const e of ['diag:start', 'diag:ping', 'diag:move', 'diag:submit', 'disconnect', 'error']) {
       expect(socket._has(e)).toBe(true);
     }
+  });
+
+  test('disconnect destroys the session — no TimerManager interval survives', () => {
+    // A leaked TimerManager holds a 1s setInterval for the life of the
+    // process. This is the guard for that, and it is why endRun() is the
+    // single teardown path.
+    const io = makeIo();
+    const { socket } = connect(io);
+    const a = ack();
+    socket._fire('diag:start', {}, a);
+    expect(a.reply().ok).toBe(true);
+
+    const before = process._getActiveHandles().length;
+    socket._fire('disconnect', 'transport close');
+    expect(process._getActiveHandles().length).toBeLessThanOrEqual(before);
+
+    // And the run really is gone, not merely stopped.
+    const a2 = ack();
+    socket._fire('diag:move', { x: 1, y: 1 }, a2);
+    expect(a2.reply()).toMatchObject({ code: 'DIAG_NO_RUN' });
   });
 
   test('disconnect clears the run so a reconnecting socket can start again', () => {
