@@ -10,6 +10,11 @@
 - Phân tích: phần mất mát là do transit delay (giây, B165 xử lý) hay do RTT thật người chơi phải trả
   (chục–trăm ms)?
 - **Nếu B165 đã làm người chơi hết phàn nàn → đóng B167 "Đã đóng: không cần".**
+- **Kênh lấy mẫu (2026-08-28):** ngoài harness `LOG_MOVE_LAG`, dùng trang chẩn đoán **#168**
+  (`/diag`) — gửi URL cho người chơi Mỹ/TQ tự chạy. `[DiagResult]` + đường solo `[DiagResult move]`
+  cung cấp `spent_ms` vs half-RTT trên `TimerManager` thật. So phần lẻ giây của `spent_ms` với RTT:
+  RTT vài chục ms + `spent_ms` sát số nguyên giây → drift → đóng B167; RTT 150–300ms+ và người chơi
+  phàn nàn bị trừ giờ → Bước 2.
 
 ## Bước 2 — Chỉ khi số đo + người dùng đồng ý
 

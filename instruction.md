@@ -651,3 +651,13 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   chỉ cross-check. Điểm chèn: method mới trên `TimerManager`, không rải logic ra `GameHandler`.
   KHÔNG siết `pingInterval`/`pingTimeout` toàn cục (bẫy #147/#152). Cân nhắc bỏ refund cho `per_move` —
   [chi tiết](docs/instruction/B167-khao-sat-server-side-lag-compensation-move.md)
+- **B168.** Không phải task khảo sát — open question đã chốt hết ở `features/diagnostic-latency-page/`.
+  Theo đúng 8 bước tuần tự ở `docs/instruction/B168-*.md`, mỗi bước 1 commit. **Bước 1 (tách
+  `timer-sync-core.js`) rủi ro nhất** — extraction phải == biểu thức cũ từng token, test conformance
+  bắt buộc, verify đồng hồ phòng chơi không đổi hành vi trong trình duyệt thật. `/diag` không chạm
+  auth middleware, `GameEngine`/`TimerManager` mỗi phiên 1 instance huỷ khi disconnect, không đăng
+  ký `RoomManager`. Đếm rate-limit lúc vào Warmup không phải lúc gửi. Sanitize control char ở
+  `name`/`feedback` trước `JSON.stringify`. Ngưỡng verdict lấy từ phân bố đã đo (#154) hoặc mẫu đầu,
+  ghi rõ nguồn. KHÔNG siết `pingInterval` (probe là message type riêng). Cập nhật B167 docs ở bước
+  7, không gộp task. Verify e2e instance cô lập —
+  [chi tiết](docs/instruction/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)

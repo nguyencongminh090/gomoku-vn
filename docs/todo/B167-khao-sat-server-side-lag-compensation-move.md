@@ -3,6 +3,13 @@
 **Trạng thái:** ⬜ ĐANG KHẢO SÁT — **harness đo (Bước 1) đã dựng 2026-08-28; chờ mẫu production.
 Chưa động vào công thức tính giờ.**
 
+**Kênh lấy mẫu Bước 1 (bổ sung, 2026-08-28):** trang chẩn đoán **#168** (`features/diagnostic-latency-page/`,
+`docs/todo/B168-*.md`) — URL `/diag` không công khai, maintainer gửi trực tiếp cho người chơi Mỹ/TQ.
+Đo dedicated (không phụ thuộc engine.io ping/pong thưa) + đường solo board với `TimerManager` thật
+ghi `spent_ms` vs half-RTT mỗi nước. **Không gộp task:** #167 vẫn là quyết định "có làm bounded
+refund không"; #168 là dụng cụ đo. Spec an toàn dưới đây (server là nguồn timeout duy nhất, clientTs
+chỉ cross-check) **không đổi**.
+
 **Severity:** Low — B165 đã xử lý phần *hiển thị* (người chơi hết thấy nhảy). B167 chỉ thêm phần
 *công bằng giờ thật*: người chơi không bị trừ giây cho quãng nước đi kẹt trên đường mạng.
 **Platform:** Mọi nền tảng, rõ nhất ở kết nối 150–300ms+ (báo cáo gốc: người chơi TQ #155, người

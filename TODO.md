@@ -1009,7 +1009,24 @@ truthful." (2026-08-27)
   lần 1 (game #S83) chỉ phủ 3/17 nước ⇒ bổ sung `client_half_rtt_ms` = `RoomState.halfRttMs` (#165,
   EMA mỗi nước) gửi kèm payload `crtt`, **chỉ đối chiếu**, sanitize cứng server-side, không vào công
   thức. Client-side ⇒ bump `?v=165→166`. Test: +13 case, `npm test` 1510/1510. Chờ mẫu production
-  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. **Kênh lấy mẫu Bước 1: trang chẩn đoán #168.**
+  `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+
+### Nguồn: đề xuất người dùng qua thảo luận architect — "trang cho user tự test latency/speed mà không phải chơi ván thật" (2026-08-28)
+- ⬜ **#168.** Trang chẩn đoán độ trễ tại URL **không công khai** `/diag` — người chơi RTT cao
+  (Mỹ+VPN #165, TQ #155) tự đo **latency** (half-RTT p50/p90/p99/jitter, lệch đồng hồ + drift, mất
+  gói), **board + action** (click→optimistic, click→server xác nhận), **timer tick c→s→c** (nước
+  mình → `TimerManager` thật → bot `GameEngine` đi ngẫu nhiên tức thì → `timer:tick` về). Không đăng
+  nhập; namespace `/diag` riêng bỏ qua auth middleware, cô lập khỏi state đã xác thực + rate-limiter
+  chính; limiter riêng **5 lượt/IP/giờ**. Server dựng `GameEngine` + `TimerManager` **thật** mỗi
+  phiên, mode hard-code `per_game`. Client: tách `client/js/timer-sync-core.js` thuần khỏi
+  `room-socket.js`/`game-ui.js` (extraction, không đổi logic, test conformance) + lớp
+  `LatencyProbeSession` → `DiagProbeSession`; board dùng `BoardRenderer`/`optimisticStone` #153
+  thật. Kết quả → verdict + icon (không bảng ms) cho người không rành kỹ thuật; gõ tên + feedback
+  văn bản tuỳ chọn → gửi. Lưu **JSONL** `server/data/diag-results/*.jsonl` (nguồn chân lý, prune 90
+  ngày) + dòng logfmt `[DiagResult]`. UI Zen Minimal, icon thay chữ, desktop+mobile, VN/EN. Rule
+  path-scoped `.claude/rules/diagnostic-page-sync.md`. **Là kênh lấy mẫu Bước 1 của #167** (không
+  gộp task). Client mới ⇒ bump `?v=N`. — [chi tiết](docs/todo/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
 
 ---
 
