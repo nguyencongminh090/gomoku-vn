@@ -57,12 +57,16 @@
    * behind the server. An exponential moving average (α=0.5) so a single
    * outlier can't wipe the clock; ignored entirely above ~30s (that isn't
    * latency, it's a stall) and the consumer clamps to 8s regardless.
+   *
+   * The average itself lives in `timer-sync-core.js` (TODO.md #168) so the
+   * diagnostic page reports the same estimate the room acts on; `null` back
+   * means the sample was rejected, and RoomState is then left untouched.
    */
   function recordMoveRtt(rttMs) {
-    if (!(rttMs >= 0) || rttMs > 30000) return;
     const st = S();
-    const half = rttMs / 2;
-    st.halfRttMs = st.halfRttMs ? Math.round(st.halfRttMs * 0.5 + half * 0.5) : Math.round(half);
+    const next = global.TimerSyncCore.halfRttEma(st.halfRttMs, rttMs);
+    if (next === null) return;
+    st.halfRttMs = next;
   }
 
   /**

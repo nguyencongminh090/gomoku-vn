@@ -26,6 +26,10 @@ const JS = (name) => fs.readFileSync(path.join(__dirname, '..', 'js', name), 'ut
 const GAME_UI_SOURCE     = JS('game-ui.js');
 const ROOM_SOCKET_SOURCE = JS('room-socket.js');
 const I18N_SOURCE        = JS('i18n.js');
+// Shared clock maths both room modules call into (TODO.md #168). room.html
+// loads it as a classic script before the module entry; evaluating it first
+// here reproduces that order.
+const TIMER_SYNC_CORE_SOURCE = JS('timer-sync-core.js');
 
 function makeClientStub() {
   return {
@@ -118,6 +122,7 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
     },
   };
 
+  window.eval(TIMER_SYNC_CORE_SOURCE);
   window.eval(I18N_SOURCE);
   window.eval(GAME_UI_SOURCE);
   // Kept aside for the one test that needs the real onCellClick wiring
