@@ -62,7 +62,25 @@
   document.addEventListener('visibilitychange', () => {
     if (!S().roomData) return;
     client.emit('room:presence', { presence: document.hidden ? 'away' : 'active' });
+    if (!document.hidden) resyncClockOnReturn();
   });
+
+  // A backgrounded tab throttles setInterval, so the local countdown drifts
+  // while hidden and `timer:sync` broadcasts received meanwhile were applied
+  // against a stalled main thread. On the way back to the foreground, pull a
+  // fresh authoritative sync rather than trusting the stale local state
+  // (TODO.md #165). `focus` and `visibilitychange` both fire on tab return in
+  // most browsers; the 1s guard collapses the pair into one resync.
+  let lastReturnResyncTs = 0;
+  function resyncClockOnReturn() {
+    const gs = S().gameState;
+    if (!gs || gs.status !== 'ongoing') return;
+    const now = Date.now();
+    if (now - lastReturnResyncTs < 1000) return;
+    lastReturnResyncTs = now;
+    requestResync();
+  }
+  window.addEventListener('focus', resyncClockOnReturn);
 
   // ── Room state events ─────────────────────────────────────────────────────
 
@@ -421,12 +439,26 @@
     }
   }
 
+  /**
+   * How much of the displayed clock to shave off for packet transit (#165).
+   * Half the last measured move round-trip, clamped: a one-way `timer:sync`
+   * took roughly this long to reach us, so the server clock has already run
+   * that much further than the reading the packet carried. Only ever
+   * subtracted from a *displayed* value — activeDeadline and serverNow() keep
+   * pure skew semantics so armTurnWatchdog's math below is unaffected.
+   */
+  function transitDelaySec() {
+    const st = S();
+    const halfRtt = st && st.halfRttMs ? st.halfRttMs : 0;
+    return Math.min(halfRtt, 8000) / 1000;
+  }
+
   /** Recompute the active player's remaining seconds and repaint. */
   function tickLocal() {
     const st = S();
     if (activeDeadline === null || !activeColor) return;
 
-    const remaining = Math.max(0, Math.round((activeDeadline - serverNow()) / 1000));
+    const remaining = Math.max(0, Math.round((activeDeadline - serverNow()) / 1000 - transitDelaySec()));
     st.timerValues = Object.assign({}, st.timerValues, { [activeColor]: remaining });
     GameUI.renderTimers();
 
@@ -454,9 +486,30 @@
     const st = S();
 
     clockOffsetMs = (sync.serverTime || Date.now()) - Date.now();
-    st.timerValues = { black: sync.black, white: sync.white };
+
+    // Shave transit delay off the active player's opening value too, not just
+    // the per-second ticks below — otherwise the first paint after every sync
+    // (the one right after our own move, when the player is looking straight
+    // at the clock) flashes the uncompensated number for up to a second
+    // before tickLocal corrects it. #165.
+    const shave = sync.running ? Math.round(transitDelaySec()) : 0;
+    st.timerValues = {
+      black: sync.activeColor === 'black' ? Math.max(0, sync.black - shave) : sync.black,
+      white: sync.activeColor === 'white' ? Math.max(0, sync.white - shave) : sync.white,
+    };
     activeColor = sync.activeColor;
     activeDeadline = sync.deadline;
+
+    // Diagnostic for #165: `rawOffsetMs` is clock skew + one-way transit
+    // delay combined; a gap between it and a plausible skew (a few hundred ms
+    // at most) is the transit delay this compensation removes. Off unless a
+    // reporter sets localStorage.gvn_timer_debug = '1' in DevTools.
+    let timerDebug = false;
+    try { timerDebug = localStorage.getItem('gvn_timer_debug') === '1'; } catch { /* storage blocked */ }
+    if (timerDebug) {
+      console.info('[timer:sync] rawOffsetMs=%d halfRttMs=%d shaveSec=%d activeColor=%s',
+        Math.round(clockOffsetMs), Math.round(st.halfRttMs || 0), shave, sync.activeColor);
+    }
 
     stopLocalTimer();
     GameUI.renderTimers();
@@ -820,6 +873,6 @@
   // Exposed for game-ui.js's move state machine (TODO.md #152) — it needs the
   // same server-error rendering and the same resync entry point this module
   // uses, and duplicating either would let them drift.
-  global.RoomSocket = { serverMessage, requestResync, armMoveConfirmWatchdog };
+  global.RoomSocket = { serverMessage, requestResync, armMoveConfirmWatchdog, refreshLocalTimer: tickLocal };
 
 })(window);
