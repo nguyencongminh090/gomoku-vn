@@ -1028,6 +1028,17 @@ truthful." (2026-08-27)
   path-scoped `.claude/rules/diagnostic-page-sync.md`. **Là kênh lấy mẫu Bước 1 của #167** (không
   gộp task). Client mới ⇒ bump `?v=N`. — [chi tiết](docs/todo/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
 
+- **B169. `tournament-match.js` dùng chung `timer-sync-core.js`** — Sau B168 Bước 1, phòng chơi
+  thường đã gọi `client/js/timer-sync-core.js`; `tournament-match.js` là bản sao **duy nhất còn
+  lại** của cùng maths đồng hồ. Kèm 1 lỗi thật: `applyTimerSync()` tính
+  `(sync.serverTime || Date.now()) - Date.now()` — đọc đồng hồ hệ thống 2 lần, nên nhánh dự phòng
+  cho `-1` thay vì đúng `0` (1ms skew ảo áp vào mọi `serverNow()` tới lần sync sau). `tickLocal()`
+  cũng thiếu phần bù transit-delay #165/#166 mà phòng thường có. Tách riêng khỏi B168 vì
+  `tournament-match.js` nằm trong §"Ngoài phạm vi" của B168 (hoãn từ #165/#166). **Có 1 câu hỏi
+  phải chốt trước khi code** (chỉ sửa offset, hay mang cả cơ chế đo RTT sang) — xem
+  `instruction.md` B169. Client sửa ⇒ bump `?v=N`. —
+  [chi tiết](docs/todo/B169-tournament-match-dung-chung-timer-sync-core.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

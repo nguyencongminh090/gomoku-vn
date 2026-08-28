@@ -214,4 +214,31 @@ describe('room-parity: the extracted maths reproduces the pre-#168 expressions',
       expect(core.displayShaveSec(halfRtt)).toBe(Math.round(oldTransitDelaySec(halfRtt)));
     }
   });
+
+  test('clockOffsetMs matches the old expression whenever serverTime is present', () => {
+    const localNow = 1_700_000_000_000;
+    for (const skew of [-5000, -1, 0, 1, 250, 5000]) {
+      const serverTime = localNow + skew;
+      // Old shape, with the second Date.now() standing in as `localNow` —
+      // identical here because this branch never reaches the fallback.
+      expect(core.clockOffsetMs(serverTime, localNow))
+        .toBe((serverTime || localNow) - localNow);
+    }
+  });
+
+  test('DIVERGENCE: a missing serverTime is exactly 0, where the old double read could drift', () => {
+    // Old: `(sync.serverTime || Date.now()) - Date.now()` — two readings, so
+    // the fallback could produce -1ms of phantom skew that then biased every
+    // serverNow() until the next sync. One reading makes it exactly 0.
+    // See the header of timer-sync-core.js.
+    const oldDoubleRead = (serverTime) => (serverTime || Date.now()) - Date.now();
+
+    for (const missing of [undefined, null, 0, NaN, '']) {
+      expect(core.clockOffsetMs(missing, Date.now())).toBe(0);
+      // Not asserting the old function's value (it is timing-dependent by
+      // construction — that is the defect); only that ours cannot be negative.
+      expect(core.clockOffsetMs(missing, Date.now())).not.toBeLessThan(0);
+      expect(Number.isNaN(oldDoubleRead(missing))).toBe(false); // sanity: same shape
+    }
+  });
 });

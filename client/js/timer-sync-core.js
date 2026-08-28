@@ -23,6 +23,21 @@
  * `timer-sync-conformance.test.js` fails if either room file grows a private
  * copy of an expression again.
  *
+ * ONE DELIBERATE DIVERGENCE — `clockOffsetMs`
+ * ------------------------------------------
+ * The room previously computed the offset as
+ *
+ *     clockOffsetMs = (sync.serverTime || Date.now()) - Date.now();
+ *
+ * which reads the system clock TWICE. On the fallback path (a `timer:sync`
+ * arriving without `serverTime`) the two readings are taken microseconds
+ * apart, so the "no information, assume no skew" case could yield -1 instead
+ * of exactly 0 — a spurious 1ms of skew, applied to every subsequent
+ * `serverNow()` until the next sync corrected it. Taking a single reading and
+ * passing it in for both halves makes that case exactly 0, and is otherwise
+ * indistinguishable. Approved as part of #168 step 1; covered by the
+ * "a missing server reading means no offset" case in the unit tests.
+ *
  * WHAT THIS IS NOT (TODO.md #167 R2)
  * ----------------------------------
  * None of this ever decides a timeout. The server is the sole clock authority;

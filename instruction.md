@@ -661,3 +661,14 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   ghi rõ nguồn. KHÔNG siết `pingInterval` (probe là message type riêng). Cập nhật B167 docs ở bước
   7, không gộp task. Verify e2e instance cô lập —
   [chi tiết](docs/instruction/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
+- **B169.** Task cơ học **nhưng dừng hỏi người dùng trước khi viết code**: trang giải đấu không đo
+  half-RTT, nên phải chốt (a) chỉ sửa `clockOffsetMs`, truyền `0` cho half-RTT (đề xuất mặc định,
+  rủi ro ~0) hay (b) mang cả cơ chế đo RTT sang (đổi hành vi thật). Chỉ đụng phần đồng hồ của
+  `tournament-match.js` — phần còn lại hoãn từ #165/#166 có lý do. `timer-sync-core.js` là
+  extraction đã đóng băng: cần biểu thức mới thì **thêm hàm mới**, không sửa hàm phòng thường đang
+  chạy. Nạp bằng thẻ `<script>` cổ điển trong `tournament-match.html`, KHÔNG `import` trong entry
+  (bẫy UMD/Vite #65). `applyTimerSync()` và `tickLocal()` phải sửa **cùng nhau** (lệch 1 nhịp sau
+  mỗi sync = đúng lỗi nháy #165). File dùng biến module-scope riêng, không phải `RoomState` —
+  đừng copy nguyên si lời gọi từ `room-socket.js`. Kiểm tra cả ván 2 của series. Thêm file vào
+  `timer-sync-conformance.test.js` —
+  [chi tiết](docs/instruction/B169-tournament-match-dung-chung-timer-sync-core.md)
