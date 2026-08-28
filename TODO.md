@@ -972,6 +972,29 @@ truthful." (2026-08-27)
   **tắt mặc định**, bật bằng `LOG_HTTP=true`. Test mới `geo.test.js` + `logger.test.js`; `npm test`
   1452/1452. Server-only ⇒ không bump `?v=N`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B164-server-log-logfmt-va-ip-geo.md)
 
+### Nguồn: báo cáo người dùng (desktop + VPN, ở Mỹ) — "click nhanh nhờ CSP #155 nhưng sau khi click đồng hồ nhảy 13s→10s" (2026-08-28)
+- ✅ **#165.** (Đã sửa 2026-08-28 — `fix/timer-transit-delay-compensation` off `dev`.) Đồng hồ "nhảy"
+  khi `predictedTurn` (#155) kết thúc, trên kết nối trễ cao. Gốc: `getSync()` gắn `serverTime` khử
+  **lệch đồng hồ** nhưng **không khử transit delay** của gói `timer:sync` — client luôn hiển thị dư
+  đúng `d` giây (one-way delay). Sửa (client-only, server không đổi): đo half-RTT từ **ack của
+  `game:move`** (`io.engine` ping/pong không dùng được ở socket.io-client 4.8.3 — heartbeat do server
+  khởi xướng), trừ khỏi **giá trị hiển thị** trong `tickLocal` + `applyTimerSync` (KHÔNG trừ khỏi
+  `activeDeadline`/`serverNow` → watchdog không đổi); `refreshLocalTimer()` trước khi chụp
+  `snapshotTimerValues`; `requestResync()` khi `visibilitychange`/`focus`. Log chẩn đoán:
+  `localStorage.gvn_timer_debug='1'`. **HONESTY NOTE:** `d` production của người báo cáo chưa đo được
+  bằng số — cơ chế chắc + cách bù an toàn kể cả khi `d` nhỏ. Mục 4 (easing) + `tournament-match.js`
+  cố ý hoãn; bước ~`d` còn lại (chân tải-lên nước đi) là phần #167. Bump `?v=163→164`. Test: +13 case
+  `game-optimistic-render.test.js`, `npm test` 1465/1465. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B165-timer-nhay-do-transit-delay-predictedturn-desktop.md)
+- ⬜ **#166.** Port cơ chế bù trễ + `predictedTurn` của #165 xuống **mobile players-strip**
+  (`room-ui.js` `updateStripTimers`/`renderStripPlayer` đọc thẳng `gameState.currentTurn`/
+  `timerValues`, không đọc `predictedTurn` — đã ghi trong #155 "Ngoài phạm vi"). **Phụ thuộc #165**,
+  làm sau khi #165 chốt cơ chế; chỉ nhân bản, không tự thiết kế. Bump `?v=N`. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B166-port-co-che-bu-tre-timer-sang-mobile-players-strip.md)
+- ⬜ **#167.** (Khảo sát) Server-side lag compensation cho `game:move` — server đo transit của chính
+  nước đi rồi *hoàn* bounded vào đồng hồ (kiểu Lichess `lag`). **ĐO trước** (rule #131): nếu #165 đã
+  làm người chơi hết phàn nàn thì đóng. Nếu làm: server vẫn là nguồn timeout duy nhất, `refund =
+  min(measuredHalfRTT, HARD_CAP≈250ms, lag-budget/ván)`, đo lag **server-side** không tin client
+  khai, `clientTs` chỉ cross-check (`Date.now()` client là wall-clock). `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+
 ---
 
 <!-- Khi nhận báo cáo mới: thêm heading "### Nguồn: <tên báo cáo>" dưới đúng

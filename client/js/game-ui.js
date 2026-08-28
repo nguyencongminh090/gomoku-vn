@@ -50,6 +50,22 @@
   }
 
   /**
+   * Fold one measured move round-trip into RoomState.halfRttMs (TODO.md #165).
+   *
+   * Half the RTT is our estimate of the one-way delay a `timer:sync` packet
+   * spends in flight — the amount the displayed clock would otherwise run
+   * behind the server. An exponential moving average (α=0.5) so a single
+   * outlier can't wipe the clock; ignored entirely above ~30s (that isn't
+   * latency, it's a stall) and the consumer clamps to 8s regardless.
+   */
+  function recordMoveRtt(rttMs) {
+    if (!(rttMs >= 0) || rttMs > 30000) return;
+    const st = S();
+    const half = rttMs / 2;
+    st.halfRttMs = st.halfRttMs ? Math.round(st.halfRttMs * 0.5 + half * 0.5) : Math.round(half);
+  }
+
+  /**
    * Send a move and see it through to a definite outcome.
    *
    * Before #152 this was a bare `emit('game:move', {x,y})`: if either that
@@ -102,6 +118,14 @@
       // paths below only ever need to flip a single pair together.
       st.predictedTurn.active = true;
       st.predictedTurn.forColor = myPlayer.color === 'BLACK' ? 'WHITE' : 'BLACK';
+      // Freeze the deadline-derived value, not whatever the last 1s interval
+      // happened to write — main-thread jank or a throttled background tab can
+      // leave st.timerValues a second or two stale, and the snapshot would
+      // then carry that staleness for the whole in-flight window (TODO.md
+      // #165). refreshLocalTimer() is room-socket.js's own tickLocal.
+      if (global.RoomSocket && global.RoomSocket.refreshLocalTimer) {
+        global.RoomSocket.refreshLocalTimer();
+      }
       st.predictedTurn.snapshotTimerValues = Object.assign({}, st.timerValues);
       st.predictedTurn.switchedAtLocalTs = Date.now();
       renderTimers();
@@ -109,7 +133,13 @@
     }
 
     const attempt = (isRetry) => {
+      const sentAt = Date.now();
       global.RoomClient.emitAck('game:move', { x, y, moveId }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
+        // Any real server reply — accept or reject — is a full round trip on
+        // the live game path; feed it to the transit-delay estimate (TODO.md
+        // #165). A timeout (`err`) is not a measurement: the clock we read is
+        // MOVE_ACK_TIMEOUT_MS, not the network.
+        if (!err) recordMoveRtt(Date.now() - sentAt);
         if (err) {
           // The game may have ended while this attempt was outstanding (the
           // move itself could have been the winning one, with only its ack

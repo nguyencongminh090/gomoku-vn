@@ -629,3 +629,25 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   warn + `routes/auth.js` login/register/guest/google. KHÔNG bump `?v=N`. Pitfall: sửa
   `SocketHandler.test.js` case "reason không bị coerce" sang đọc fields bag. Test mới
   `geo.test.js` + `logger.test.js` — [chi tiết](docs/instruction/B164-server-log-logfmt-va-ip-geo.md)
+- **B165.** ĐO `d` (one-way delay) thật trước khi chọn cách bù — nếu chỉ ~50ms thì cú nhảy 3s có
+  nguồn khác, dừng lại điều tra. Bù transit delay **phía client**: đọc RTT từ `io.engine` ping/pong
+  sẵn có (tránh dựng ping mới), trừ half-RTT khỏi `activeDeadline`/`remaining` trong
+  `room-socket.js` `applyTimerSync`/`tickLocal`. Gọi `tickLocal()` ngay trước
+  `snapshotTimerValues = Object.assign(...)` ở `game-ui.js` `sendMove`. Listener `visibilitychange`
+  (dòng 62) + `window focus` → re-apply `lastSync`. **KHÔNG** đụng `TimerManager`/`getSync` (server
+  đang đúng — sửa server là B167). **KHÔNG** map sang "client gửi timestamp" (bề mặt bảo mật — B167).
+  Kiểm `armTurnWatchdog` không false-positive nếu trừ half-RTT khỏi `activeDeadline`. `tournament-match.js`
+  có bản sao timer — chỉ phòng thường, ghi TODO riêng nếu muốn đồng bộ. Bump `?v=N` + grep verify.
+  Test: mock `halfRttMs` lớn trong `game-optimistic-render.test.js` — [chi tiết](docs/instruction/B165-timer-nhay-do-transit-delay-predictedturn-desktop.md)
+- **B166.** Tiên quyết: B165 xong + cơ chế bù trễ đã chốt — viết chi tiết hàm SAU đó, đừng đoán.
+  Chỉ nhân bản cơ chế B165 xuống `renderStripPlayer` (`room-ui.js:236`) + `updateStripTimers()`
+  (`room-ui.js:330`); `predictedTurn` render-only, không ghi `gameState`. Tách helper chung cho công
+  thức giá trị đồng hồ để mobile/desktop không lệch nhau. Không đụng desktop turn-bar. Bump `?v=N` —
+  [chi tiết](docs/instruction/B166-port-co-che-bu-tre-timer-sang-mobile-players-strip.md)
+- **B167.** Task KHẢO SÁT — dừng và hỏi người dùng sau bước ĐO trước khi viết code. Đo
+  `serverRecv − turnStart` (monotonic `process.hrtime`) vs `measuredHalfRTT` server-side trên
+  production. Nếu B165 đã đủ → đóng "không cần". Nếu làm: clamp `refund` (test case đầu tiên:
+  `clientTs = turnStart` → refund vẫn ≤ HARD_CAP), lag-budget/ván, đo lag server-side, `clientTs`
+  chỉ cross-check. Điểm chèn: method mới trên `TimerManager`, không rải logic ra `GameHandler`.
+  KHÔNG siết `pingInterval`/`pingTimeout` toàn cục (bẫy #147/#152). Cân nhắc bỏ refund cho `per_move` —
+  [chi tiết](docs/instruction/B167-khao-sat-server-side-lag-compensation-move.md)
