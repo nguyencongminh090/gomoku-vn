@@ -87,6 +87,7 @@ server/
   "id": "uuid-v4",
   "ts": "2026-08-28T09:30:00.000Z",
   "name": "sanitized, <=40 chars, no control chars",
+  "feedback": "optional free text, sanitized, <=500 chars",
   "ip": "1.2.3.4",
   "geo": "US",
   "ua": "Mozilla/5.0 ...",
@@ -132,21 +133,23 @@ solo move path logging `spent_ms` vs half-RTT per move against a real `TimerMana
 
 ## Open questions
 
-- **OQ1 — Bot legality source.** Reuse `server/managers/GameEngine.js` for legal-move
-  generation in the `/diag` solo session (true fidelity, but pulls GameEngine into an
-  unauthenticated namespace), or a minimal standalone "any empty cell" picker (simpler,
-  isolated, but not rule-accurate for portal/wall variants)? Default variant only, or let
-  the player pick a mode? — *needs decision before formalization.*
-- **OQ2 — Which timer modes.** Offer `per_game` / `blitz` / `per_move` selection, or hard-
-  code one representative mode (e.g. `per_move` 60 s, the reported-bug default)? More modes
-  = more coverage but more UI for a non-tech user (conflicts R8/"best for non-tech").
-- **OQ3 — Name uniqueness / matching.** Player types a free-text name. Do we also capture a
-  short "what went wrong" free-text field (one line, sanitized) so the submission carries
-  the complaint, or keep it pure-numbers? Privacy line already covers stored text.
-- **OQ4 — `[DiagResult]` vs JSONL as source of truth.** Both are written. If the prod log
-  pipeline already aggregates logfmt, is the JSONL file redundant, or is it the primary
-  and the log line the convenience? (Affects whether `data/diag-results/` needs the prune
-  job or just the log retention.)
+- **OQ1 — Bot legality source. RESOLVED 2026-08-28: reuse `server/managers/GameEngine.js`.**
+  The `/diag` solo session instantiates a real `GameEngine` (blast radius: 5 callers today,
+  all in `GameHandler`/`TournamentMatchHandler` — adding a 3rd, isolated call site). Bot
+  picks a random legal move from the engine. **Default variant only** (no portal/wall
+  toggles in the diag UI — R8 non-tech).
+- **OQ2 — Which timer modes. RESOLVED 2026-08-28: hard-code `per_game` (the app default).**
+  No mode selector in the diag UI. Note: the original US/China reports ran under
+  `per_move`/`per_game` defaults; `per_game` keeps the clock running across the whole run
+  which is what the c→s→c handoff measurement wants anyway.
+- **OQ3 — Free-text feedback. RESOLVED 2026-08-28: yes, collect it.** One multi-line
+  "what went wrong / what feels off" field on the results screen, optional, sanitized
+  (strip control chars, cap ~500 chars), stored as `feedback` in the JSONL line. Covered
+  by the existing consent notice.
+- **OQ4 — JSONL vs `[DiagResult]` primacy. RESOLVED 2026-08-28: JSONL is the source of
+  truth.** `server/data/diag-results/YYYY-MM-DD.jsonl` is primary; the `[DiagResult]`
+  logfmt line stays as a convenience for the existing grep pipeline but is not relied on.
+  The 90-day prune job on `diag-results.js` is therefore required (not optional).
 - **OQ5 — Asset version / cache.** New `client/css` + `client/js` files → `?v=N` bump
   across the whole repo per CLAUDE.md. Confirm the diagnostic page participates in the
   shared `?v=N` (yes by default; the mockup exception doesn't apply).
