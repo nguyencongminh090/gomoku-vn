@@ -146,7 +146,7 @@ describe('logMove()', () => {
     expect(logger.info).not.toHaveBeenCalled();
   });
 
-  test('enabled with a mark: emits one [MoveLag] line with spent_ms + null half_rtt_ms', () => {
+  test('enabled with a mark: emits one [MoveLag] line with spent_ms; half_rtt_ms key omitted when unmeasured', () => {
     loadFresh(true);
     const start = 10_000_000_000n;
     moveLag._turnStarts.set('room-1', start);
@@ -161,8 +161,10 @@ describe('logMove()', () => {
       user: 'u1',
       mode: 'per_game',
       spent_ms: 4500,
-      half_rtt_ms: null,
     });
+    // undefined (not null) so the logger drops the key rather than printing `half_rtt_ms=`
+    expect(fields.half_rtt_ms).toBeUndefined();
+    expect(Object.prototype.hasOwnProperty.call(fields, 'half_rtt_ms')).toBe(true);
   });
 
   test('enabled: half_rtt_ms is carried through from socket.data (rounded)', () => {
@@ -184,6 +186,55 @@ describe('logMove()', () => {
       roomId: 'room-1', userId: 'u1', mode: undefined, recvNs: 1_000_000_001n,
     });
     expect(logger.info.mock.calls[0][1].mode).toBe('-');
+  });
+
+  describe('client_half_rtt_ms (cross-check value, hard-sanitized)', () => {
+    beforeEach(() => {
+      loadFresh(true);
+      moveLag._turnStarts.set('room-1', 1n);
+    });
+
+    function logWithCrtt(clientHalfRttMs) {
+      moveLag.logMove(fakeSocket(), {
+        roomId: 'room-1', userId: 'u1', mode: 'per_game',
+        recvNs: 1_000_000_001n, clientHalfRttMs,
+      });
+      return logger.info.mock.calls[0][1];
+    }
+
+    test.each([
+      [180, 180],
+      [180.6, 181],
+      [0, 0],
+      [60000, 60000],
+    ])('accepts %p → %p', (input, expected) => {
+      expect(logWithCrtt(input).client_half_rtt_ms).toBe(expected);
+    });
+
+    test.each([
+      ['undefined', undefined],
+      ['negative', -5],
+      ['over 60s ceiling', 60001],
+      ['NaN', NaN],
+      ['Infinity', Infinity],
+      ['a string', '200'],
+    ])('rejects %s → key omitted', (_label, input) => {
+      const fields = logWithCrtt(input);
+      expect(fields.client_half_rtt_ms).toBeUndefined();
+    });
+
+    test('server half_rtt_ms and client_half_rtt_ms are independent fields', () => {
+      const socket = fakeSocket();
+      socket.data.moveLagHalfRttMs = 90;
+      moveLag.logMove(socket, {
+        roomId: 'room-1', userId: 'u1', mode: 'per_game',
+        recvNs: 1_000_000_001n, clientHalfRttMs: 175,
+      });
+      expect(logger.info.mock.calls[0][1]).toMatchObject({
+        half_rtt_ms: 90,
+        client_half_rtt_ms: 175,
+      });
+    });
   });
 });
 

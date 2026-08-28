@@ -128,6 +128,7 @@ function register(io, socket) {
       userId: user.userId,
       mode: timer ? timer.mode : (room.settings && room.settings.timerMode),
       recvNs: moveRecvNs,
+      clientHalfRttMs: payload.crtt, // #167 cross-check only — never a timeout input
     });
 
     // Delta only — the client applies {x,y,color} to its local board cell

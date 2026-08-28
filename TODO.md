@@ -1002,11 +1002,14 @@ truthful." (2026-08-27)
   #165 đã làm người chơi hết phàn nàn thì đóng. Nếu làm: server vẫn là nguồn timeout duy nhất,
   `refund = min(measuredHalfRTT, HARD_CAP≈250ms, lag-budget/ván)`, đo lag **server-side** không tin
   client khai, `clientTs` chỉ cross-check (`Date.now()` client là wall-clock). **Bước 1 — harness đo
-  đã dựng** (`feature/move-lag-measurement` off `dev`, 2026-08-28): `server/utils/move-lag.js`, bật
-  bằng `LOG_MOVE_LAG=true`, mỗi nước đi log `[MoveLag] spent_ms half_rtt_ms mode ip geo` (mốc
-  monotonic `process.hrtime`; half-RTT từ engine.io ping/pong server-side). Server-only ⇒ không bump
-  `?v=N`. Test: +26 case `move-lag.test.js`, `npm test` 1497/1497. Chờ mẫu production để quyết
-  Bước 2 / đóng. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+  đã dựng** (`feature/move-lag-measurement` + `feature/move-lag-client-rtt` off `dev`, 2026-08-28):
+  `server/utils/move-lag.js`, bật bằng `LOG_MOVE_LAG=true`, mỗi nước đi log
+  `[MoveLag] spent_ms half_rtt_ms client_half_rtt_ms mode ip geo`. `half_rtt_ms` = engine.io
+  ping/pong server-side — **quá thưa** (1 lần/25s, không hạ `pingInterval` được: bẫy #147/#152), đo
+  lần 1 (game #S83) chỉ phủ 3/17 nước ⇒ bổ sung `client_half_rtt_ms` = `RoomState.halfRttMs` (#165,
+  EMA mỗi nước) gửi kèm payload `crtt`, **chỉ đối chiếu**, sanitize cứng server-side, không vào công
+  thức. Client-side ⇒ bump `?v=165→166`. Test: +13 case, `npm test` 1510/1510. Chờ mẫu production
+  (người chơi Mỹ/TQ) để quyết Bước 2 / đóng. `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 
 ---
 
