@@ -13,6 +13,11 @@ don't duplicate them here:
   `docs/fix-log.md` and their `docs/*/` detail files) → `.claude/rules/tracking-files.md`
   (path-scoped: loads automatically when you read/edit any of those files). A `Stop` hook
   (`scripts/check-tracking-sync.js`) enforces the sync part automatically — see that rule file.
+- **Diagnostic page ↔ room clock coupling** (`TimerManager.js`, `room-socket.js`, `game-ui.js`,
+  `timer-sync-core.js`, `client/js/diag/**`, the `/diag` namespace) → `.claude/rules/
+  diagnostic-page-sync.md` (path-scoped). Load before changing how the room's clock works — the
+  `/diag` page (TODO.md #168) reports the exact quantities the room acts on, and three couplings
+  drift with no test failure.
 
 ## Cache-busting version bump
 
