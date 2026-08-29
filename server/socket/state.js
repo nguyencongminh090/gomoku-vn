@@ -295,8 +295,8 @@ function _diffRoomUsers(roomId, users) {
  * instead of always going out whole, and only included at all when something
  * in it actually changed. `scoreTable` (the other array-shaped, room-size-
  * scaling field) gets the same treatment. The remaining scalar fields
- * (roomName, hostId, hostName, state, readyDeadline, readyMissCount) are cheap regardless of
- * room size, so they're just always included — diffing them individually
+ * (roomName, hostId, hostName, state, readyDeadline, serverTime, readyMissCount) are cheap
+ * regardless of room size, so they're just always included — diffing them individually
  * would add complexity without addressing the O(n²) this exists to remove.
  *
  * @param {import('socket.io').Server} io
@@ -317,6 +317,11 @@ function _emitRoomUpdate(io, room, opts = {}) {
     hostName: full.hostName,
     state: full.state,
     readyDeadline: full.readyDeadline,
+    // Fresh server-clock stamp at emit time — the client anchors its ready-phase
+    // countdown to this (see docs/todo/B170-*.md). Stamped here rather than read
+    // from `full` so it reflects when the packet actually leaves, and `_emitRoomUpdate`
+    // builds its payload field-by-field rather than spreading `full`.
+    serverTime: Date.now(),
     readyMissCount: full.readyMissCount,
   };
   if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };

@@ -1,9 +1,24 @@
 # B170 — Đếm ngược `readyDeadline` dùng `Date.now()` thô, sai đúng bằng lệch đồng hồ máy khách
 
-**Trạng thái:** ⬜ CHƯA LÀM — **rà xác minh 2026-08-29: quick-fix trong `instruction.md` (đổi
-`Date.now()`→`serverNow()`) đã bị loại — là no-op vì `clockOffsetMs` còn `0` ở giai đoạn sẵn sàng.**
-Cần chốt Phương án A (thêm field `serverTime`, đụng `server/`) hay B (chấp nhận + ghi giới hạn) —
-xem "Cách sửa thật" bên dưới. Người dùng 2026-08-29: để dành, mở hội thoại riêng để làm.
+**Trạng thái:** ✅ Đã sửa 2026-08-29 (nhánh `fix/ready-deadline-server-clock` → `dev`) — **Phương án A**
+(người dùng chốt 2026-08-29). Server đóng dấu `serverTime: Date.now()` cạnh `readyDeadline` trong
+payload `room:joined` (`RoomManager.serializeRoom`) và `room:updated` (`state.js _emitRoomUpdate`);
+`room-socket.js` gộp mốc đó vào `clockOffsetMs` bằng đúng công thức `TimerSyncCore.clockOffsetMs` mà
+`timer:sync` dùng (`syncClockFromServerTime`), nên offset đã có ngay từ `room:joined` — trước mọi
+`timer:sync`. `room-socket.js` xuất `serverNow` **dạng hàm** trên `global.RoomSocket`; `room-ui.js`
+`renderStartModal()` đếm ngược bằng `serverNow()` với fallback `Date.now()` khi `RoomSocket` chưa gắn.
+Không đụng `timer-sync-core.js` (ngữ nghĩa `clockOffsetMs` = skew + transit giữ nguyên), không đụng
+`tournament-*`. `?v=170→171`. Test: +6 `room-socket-server-clock-ready-phase.test.js`,
++8 `room-start-modal-countdown-server-clock.test.js`, +2 server (`RoomManager.test.js` /
+`room-update-delta.test.js`); `npm test` **1860/1860**.
+
+<details><summary>Bối cảnh trước khi sửa (rà xác minh 2026-08-29)</summary>
+
+Quick-fix trong `instruction.md` (đổi `Date.now()`→`serverNow()` đơn thuần) đã bị loại — là no-op vì
+`clockOffsetMs` còn `0` ở giai đoạn sẵn sàng. Đã chốt **Phương án A** (thêm field `serverTime`, đụng
+`server/`) thay vì B (chấp nhận + ghi giới hạn) vì chỉ A sửa được đúng lượt đo `wbcplayer` −8,4s ở
+màn sẵn sàng.
+</details>
 
 **Severity:** Medium — sai số bằng đúng độ lệch đồng hồ hệ thống của người chơi. Bình thường vài chục
 ms (vô hại), nhưng đã đo được **−8,4 giây** trên một máy thật ⇒ với máy đó, bộ đếm ngược "sẵn sàng"
@@ -49,7 +64,7 @@ READY_WINDOW_MS` (`server/socket/state.js:487`) và gửi trong room-update payl
 đúng kiểu "phần vỏ" mà `instruction.md` cảnh báo. Fix thật cần một mốc server trong giai đoạn sẵn
 sàng. Xem "Cách sửa thật" bên dưới.
 
-### Cách sửa thật (cần quyết định — đụng `server/`)
+### Cách sửa thật — **Phương án A đã chọn & triển khai 2026-08-29** (xem khối Trạng thái ở đầu file)
 
 **Phương án A (khuyến nghị):** server đóng dấu `serverTime: Date.now()` **cạnh** `readyDeadline`
 trong room payload — `server/socket/state.js` (delta, ~dòng 319) + `server/managers/RoomManager.js`

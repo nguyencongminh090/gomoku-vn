@@ -1083,19 +1083,22 @@ truthful." (2026-08-27)
   (RTT vật lý), giờ thật bị trừ transit (#167). `?v=169→170`. Test: +9 `timer-sync-core.test.js`,
   +5 `game-optimistic-render.test.js`, `npm test` **1844/1844**. Fix-log 2026-08-28 21:11 —
   [chi tiết](docs/todo/B169-dong-ho-giat-nhay-tren-ket-noi-jitter-cao.md)
-- ⬜ **#170.** `client/js/room-ui.js:464` đếm ngược `readyDeadline` bằng
+- ✅ **#170.** `client/js/room-ui.js` đếm ngược `readyDeadline` bằng
   `Math.ceil((deadline - Date.now()) / 1000)` — `deadline` là mốc **đồng hồ server**, `Date.now()` là
   đồng hồ máy khách ⇒ **sai đúng bằng `clockOffsetMs`**. Đo được **−8407,75ms** trên máy người chơi TQ
   (đã trừ bù ½RTT ⇒ là lệch đồng hồ hệ thống thật, drift chỉ −37,4ms/phút nên ổn định) ⇒ với máy đó bộ
-  đếm sai **8 giây**. Phòng chơi đã có `serverNow()` (`room-socket.js:431`, cập nhật mỗi `timer:sync`)
-  nhưng **không nằm trong `global.RoomSocket`** nên `room-ui.js` không gọi được. Sửa: xuất `serverNow`
-  (xuất **hàm**, không xuất giá trị offset) + dùng ở call site, có fallback `Date.now()`. **Bẫy:**
-  `readyDeadline` chạy *trước* ván đầu ⇒ rất có thể `clockOffsetMs` còn `0` lúc đó — phải kiểm thực tế,
-  đừng ship phần vỏ. Đã rà và loại: `game-ui.js:414/140/151` (local−local, đúng),
-  `room-socket.js:336`/`chat-ui.js:85` (dấu thời gian cục bộ), `session.js:47` (hạn tính bằng giờ).
-  Ngoài phạm vi: `tournament-detail.js:199` (làm tròn theo giờ, 8s không đổi chữ số nào),
-  `tournament-match.js` (quyết định người dùng 2026-08-28). Client-side ⇒ bump `?v=N` —
-  [chi tiết](docs/todo/B170-ready-deadline-countdown-dung-date-now-tho.md)
+  đếm sai **8 giây**. **Trạng thái:** ✅ Đã sửa 2026-08-29 (`fix/ready-deadline-server-clock` → `dev`) —
+  **Phương án A** (người dùng chốt): server đóng dấu `serverTime: Date.now()` cạnh `readyDeadline`
+  trong payload `room:joined` + `room:updated`; `room-socket.js` gộp vào `clockOffsetMs` bằng đúng
+  công thức `TimerSyncCore.clockOffsetMs` của `timer:sync` (`syncClockFromServerTime`) ⇒ offset có
+  ngay từ `room:joined`, trước mọi `timer:sync` (bẫy "phần vỏ" đã né). Xuất `serverNow` **dạng hàm**
+  trên `global.RoomSocket`; `renderStartModal()` dùng `serverNow()` + fallback `Date.now()`. Không
+  đụng `timer-sync-core.js` / `tournament-*`. Đã rà và loại: `game-ui.js:414/140/151` (local−local),
+  `room-socket.js:336`/`chat-ui.js:85` (dấu thời gian cục bộ), `session.js:47` (hạn tính bằng giờ),
+  `tournament-detail.js:199` (làm tròn theo giờ), `tournament-match.js` (quyết định người dùng
+  2026-08-28). `?v=170→171`. Test: +16 (`room-socket-server-clock-ready-phase` +6,
+  `room-start-modal-countdown-server-clock` +8, server +2), `npm test` **1860/1860**. Fix-log
+  2026-08-29 — [chi tiết](docs/todo/B170-ready-deadline-countdown-dung-date-now-tho.md)
 
 ---
 

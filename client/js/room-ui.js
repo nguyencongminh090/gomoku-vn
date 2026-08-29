@@ -47,6 +47,16 @@
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 
+  // Best estimate of the server's clock. room-socket.js owns the offset (it
+  // updates on every timer:sync AND every room:joined/room:updated, so it is
+  // populated during the ready phase too — TODO.md #170). Falls back to the
+  // local clock when room-socket.js has not finished loading, which is exactly
+  // the pre-#170 behaviour.
+  function serverNow() {
+    const rs = global.RoomSocket;
+    return (rs && typeof rs.serverNow === 'function') ? rs.serverNow() : Date.now();
+  }
+
   // Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
   // 'pro' → 'default' normalisation lives in exactly one place.
   function uiMode() {
@@ -461,7 +471,7 @@
     if (countdownWrap) countdownWrap.style.display = '';
 
     const tick = () => {
-      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      const remaining = Math.max(0, Math.ceil((deadline - serverNow()) / 1000));
       if (countdownEl) countdownEl.textContent = String(remaining);
     };
     tick();
