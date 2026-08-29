@@ -57,6 +57,27 @@ dùng), và danh sách model khả dụng cũng có thể đã đổi theo thờ
 ### Nguồn: phân tích 2 file HAR + log/metrics `cloudflared` — "connection looks slow, CPU ran for 2 day" (2026-08-19)
 - ✅ **#130.** Tunnel `cloudflared` re-register 19 lần / 3 ngày — **điều tra xong 2026-08-19, KHÔNG phải lỗi và không phải nguyên nhân site chậm**: log cho thấy toàn bộ là `Application error 0x0 (remote)` = Cloudflare edge chủ động đóng bình thường, mỗi lần chỉ 1/4 connection, nối lại 1–14 s, lần gần nhất cách thời điểm chụp HAR 12 tiếng; con số 19 chỉ là bộ đếm tích luỹ theo uptime, không phải hệ quả của "chạy lâu". Origin Node cũng nhàn rỗi (10 s CPU / 2,6 ngày, `cfOrigin;dur=63`). Nguyên nhân thật của 24 s chờ nằm ở chặng trình duyệt ↔ Cloudflare edge (mất gói SYN, `connect=7196ms`) + `timeout` 20 s phía client (#131). **ĐÃ NÂNG `cloudflared` 2026.7.3→2026.8.2 lúc 2026-08-19 23:56** (4/4 connection đăng ký lại trong 3 s, `/ready` 200, site 200, **không** restart server game). Đo lại bắt tay WS: 12/12, median 256 ms (trước 11/12, median 5074 ms) — **nhưng không quy công cho bản nâng**: `mtr` ngay sau đó cho 0% loss toàn tuyến, tức đợt mất gói ISP đã tự hết cùng cửa sổ thời gian ⇒ cải thiện là do mạng hồi phục, bản nâng đúng là bảo trì thuần hiệu quả ~0 `[Model: Opus 5]` — [chi tiết](docs/todo/A130-cloudflared-quic-flap-chuyen-sang-protocol-http2.md)
 
+### Nguồn: người dùng hỏi — "Cloudflare Tunnel & domain `.dpdns.org` có làm chậm tốc độ truy cập / timer (#165–#170) của user CN / US (VPN) không? Site khác nhanh hơn" (2026-08-29)
+- ✅ **#171.** (Khảo sát hạ tầng — **không sửa bằng code game**) **Đã đo 2026-08-29, hoãn triển khai
+  theo quyết định người dùng — đánh đổi có chủ đích.** Người dùng pre-revenue, không thẻ tín dụng ⇒
+  không VPS trả phí, không free-tier (Oracle/AWS/GCP đều cần thẻ); giữ nguyên setup, xem lại khi có
+  nhiều người chơi / ngân sách. Phần *cảm giác* lag xử lý qua #167 + #169 ($0). Tunnel `cloudflared` +
+  gói Cloudflare free + origin tự-host có phạt *nền* mọi phiên CN/US không. Khác #130 (đã loại trừ
+  *tunnel flap* cho một sự cố cụ thể) — đây là câu hỏi kiến trúc. **Đo lần 1 (phía origin, link sạch, 2026-08-29):**
+  origin = laptop HP tại nhà trên **Viettel ADSL** (`115.76.51.2`), `cloudflared` QUIC → **SIN**.
+  `curl` từ chính box: localhost TTFB **~2ms** vs qua tunnel **p50 263 / p90 297 / max 635ms**
+  (spread 409ms ở điều kiện tốt nhất). Bóc tách: **~130–150ms đuôi cố định** là quãng `SIN edge →
+  argotunnel → cloudflared (chạy trên box VN qua ADSL) → localhost → về` — **giống hệt cho mọi user
+  bất kể ở đâu** vì neo vào chỗ `cloudflared` sống. Tunnel **nhân đôi** chặng ADSL chứ không tiết
+  kiệm. → **Kết luận sơ bộ mạnh:** chuyển origin sang VPS Singapore (IP public sau proxy CF, bỏ
+  tunnel) bỏ được nguyên khối ~130ms/round-trip + jitter ADSL cho **mọi** user; Argo Smart Routing
+  **không** đụng đuôi này nên lợi ích nhỏ. Distance floor CN/US↔SIN + GFW không đổi. `.dpdns.org`
+  không phải yếu tố tốc độ. **Mở lại khi:** nhiều người chơi CN/US phàn nàn kèm số đo (không chỉ 1
+  mẫu `/diag`), hoặc có ngân sách ~$5/th VPS SIN, hoặc có thẻ mở Oracle Always Free (ARM SIN, $0).
+  Khi mở lại bắt đầu từ Biến thể B (VPS SIN + giữ tunnel, cùng token, **không sửa code**); nếu chọn
+  bỏ tunnel thì kiểm lại `getClientIp` (#44/#124), `trust proxy`, `CORS_ORIGIN`, HSTS (#67)
+  `[Model: Opus 5]` — [chi tiết](docs/todo/A171-tunnel-cf-free-tier-phat-nguoi-choi-cn-us.md)
+
 ## Phần B — Sửa được bằng code, đang chờ làm
 
 ### Nguồn: `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)

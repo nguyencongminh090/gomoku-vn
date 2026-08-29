@@ -38,6 +38,7 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
 - **A7.** Đo lại tải bằng harness đa tiến trình (từ stress test 2026-08-02) — [chi tiết](docs/instruction/A7-do-lai-tai-bang-harness-da-tien-trinh-tu-stress-test-2026.md)
 - **A8.** Quan sát heap/GC của server đang chạy (từ stress test 2026-08-02) — [chi tiết](docs/instruction/A8-quan-sat-heap-gc-cua-server-dang-chay-tu-stress-test-2026.md)
 - **A130.** Tunnel `cloudflared` — **đã điều tra xong, không phải lỗi**; giữ file làm bản ghi âm tính để chặn điều tra lặp. Bài học phương pháp: metrics chỉ nói *bao nhiêu lần*, `journalctl -u cloudflared` mới nói *vì sao / lúc nào* — đọc log trước khi kết luận. KHÔNG đổi `--protocol http2` dựa trên số lần re-register (TODO.md #130) — [chi tiết](docs/instruction/A130-cloudflared-quic-flap-chuyen-sang-protocol-http2.md)
+- **A171.** **ĐÃ ĐÓNG 2026-08-29 — đã đo, hoãn theo quyết định người dùng (đánh đổi có chủ đích, không ngân sách / không thẻ tín dụng).** Nguyên nhân rõ: đuôi cố định ~140 ms + jitter vì `cloudflared` chạy trên ADSL dân dụng VN, neo vào chỗ nó sống ⇒ mọi user gánh bất kể vị trí. **Không mở lại** trừ khi: nhiều mẫu `/diag` CN/US phàn nàn (không chỉ 1), hoặc có ngân sách VPS SIN, hoặc có thẻ mở Oracle Always Free. Khi mở lại: Biến thể B (VPS SIN + giữ tunnel cùng token, **không sửa code**); nếu bỏ tunnel mới cần kiểm `getClientIp`/`trust proxy`/`CORS_ORIGIN`/HSTS + firewall origin theo dải IP Cloudflare. Việc $0 thay thế cho phần *cảm giác* lag: #167 + #169. KHÔNG đụng code game / socket.io server / `?v=` / `tournament-match.js` — [chi tiết](docs/instruction/A171-tunnel-cf-free-tier-phat-nguoi-choi-cn-us.md)
 
 ## Phần B (sửa bằng code) — hướng dẫn cho từng mục
 - **B1.** Restart-hang else branch (review 5.1) — [chi tiết](docs/instruction/B1-restart-hang-else-branch-review-5-1.md)
@@ -681,13 +682,17 @@ làm một mục trong `TODO.md`, đọc đúng mục tương ứng ở đây tr
   diagnostic-page-sync mục a) và đọc kỹ `timer-sync-conformance.test.js` nếu đỏ, đừng nới test. Số dải
   đệm phải dẫn xuất từ jitter đo được — hỏi người dùng trước khi tự chốt với 1 mẫu. Bump `?v=N` +
   grep verify (gồm `client/js/diag/`) — [chi tiết](docs/instruction/B169-dong-ho-giat-nhay-tren-ket-noi-jitter-cao.md)
-- **B170.** Xuất `serverNow` **dạng hàm** từ `global.RoomSocket` (xuất giá trị `clockOffsetMs` là sai —
-  bị chụp cứng lúc đọc), rồi dùng ở `room-ui.js:464`; **bắt buộc fallback** `Date.now()` khi
-  `RoomSocket` chưa gắn — hành vi lúc chưa có offset phải giống hệt hôm nay. **Bẫy chính:**
-  `readyDeadline` chạy *trước* `timer:sync` đầu tiên ⇒ rất có thể `clockOffsetMs` vẫn `0` đúng lúc bộ
-  đếm này chạy — **kiểm tra thực tế trước khi kết luận đã sửa**, nếu đúng thì sửa call site là chưa đủ
-  và phải hỏi người dùng (lấy offset sớm hơn, hay chấp nhận + ghi rõ giới hạn). Đừng lặng lẽ ship phần
-  vỏ (rule "Root-cause diagnosis"). Không đổi `timer-sync-core.js` — ngữ nghĩa `clockOffsetMs` (skew +
+- **B170.** **Rà 2026-08-29: bẫy chính ĐÃ XÁC NHẬN LÀ THẬT** — `clockOffsetMs` chỉ gán ở
+  `applyTimerSync` (`room-socket.js:526`, chạy khi có `timer:sync` = ván đã bắt đầu); bộ đếm
+  `readyDeadline` chạy *trước* đó nên `clockOffsetMs` còn `0`. Server (`state.js:487`) gửi
+  `readyDeadline` **không kèm `serverTime`** ⇒ client không có mốc server nào ở giai đoạn này. **Đổi
+  `Date.now()`→`serverNow()` ở call site là NO-OP** — đừng làm rồi tưởng đã xong. Fix thật: **Phương
+  án A** (khuyến nghị) server thêm `serverTime: Date.now()` cạnh `readyDeadline` trong payload
+  (`state.js` delta + `RoomManager.js` full + cập nhật `room-update-delta.test.js` / `RoomManager.test.js`),
+  client tính offset từ đó; **Phương án B** chấp nhận + ghi giới hạn, chỉ sửa call site cho *sau*
+  `timer:sync`. Người dùng 2026-08-29: **để dành, làm ở hội thoại riêng.** Khi làm, vẫn: xuất
+  `serverNow` **dạng hàm** từ `global.RoomSocket`, **fallback** `Date.now()` khi `RoomSocket` chưa
+  gắn (hành vi giống hệt hôm nay). Đừng lặng lẽ ship phần vỏ (rule "Root-cause diagnosis"). Không đổi `timer-sync-core.js` — ngữ nghĩa `clockOffsetMs` (skew +
   transit, cố ý gộp) giữ nguyên. Test jsdom: offset `0` / **−8400** (số đo thật) / dương / `RoomSocket`
   chưa tồn tại; biên `deadline == serverNow()` → 0, quá hạn → kẹp 0. Bump `?v=N` —
   [chi tiết](docs/instruction/B170-ready-deadline-countdown-dung-date-now-tho.md)

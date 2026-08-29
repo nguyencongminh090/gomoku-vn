@@ -1,6 +1,9 @@
 # B170 — Đếm ngược `readyDeadline` dùng `Date.now()` thô, sai đúng bằng lệch đồng hồ máy khách
 
-**Trạng thái:** ⬜ CHƯA LÀM
+**Trạng thái:** ⬜ CHƯA LÀM — **rà xác minh 2026-08-29: quick-fix trong `instruction.md` (đổi
+`Date.now()`→`serverNow()`) đã bị loại — là no-op vì `clockOffsetMs` còn `0` ở giai đoạn sẵn sàng.**
+Cần chốt Phương án A (thêm field `serverTime`, đụng `server/`) hay B (chấp nhận + ghi giới hạn) —
+xem "Cách sửa thật" bên dưới. Người dùng 2026-08-29: để dành, mở hội thoại riêng để làm.
 
 **Severity:** Medium — sai số bằng đúng độ lệch đồng hồ hệ thống của người chơi. Bình thường vài chục
 ms (vô hại), nhưng đã đo được **−8,4 giây** trên một máy thật ⇒ với máy đó, bộ đếm ngược "sẵn sàng"
@@ -33,6 +36,33 @@ cập nhật lại ở **mỗi** `timer:sync`. Vấn đề thuần cơ học: `s
 nằm trong `global.RoomSocket`** (`room-socket.js:~700`: `{ serverMessage, requestResync,
 armMoveConfirmWatchdog, refreshLocalTimer }`), nên `room-ui.js` không gọi được và đã dùng `Date.now()`
 thô.
+
+### Xác minh 2026-08-29 — bẫy "phần vỏ" đã được xác nhận LÀ THẬT
+
+`clockOffsetMs` **chỉ** được gán ở `applyTimerSync` (`room-socket.js:526`), chạy khi có `timer:sync`
+— tức **chỉ khi ván đã bắt đầu**. Bộ đếm `readyDeadline` chạy ở **giai đoạn sẵn sàng, trước ván
+đầu** ⇒ lúc nó chạy `clockOffsetMs` **vẫn là `0`**. Server đặt `room.readyDeadline = Date.now() +
+READY_WINDOW_MS` (`server/socket/state.js:487`) và gửi trong room-update payload **không kèm
+`serverTime`**. ⇒ Client **không có mốc đồng hồ server nào** trong giai đoạn này.
+
+**Kết luận:** đổi `Date.now()` → `serverNow()` ở call site là **no-op** (cộng offset `0`) — sẽ ship
+đúng kiểu "phần vỏ" mà `instruction.md` cảnh báo. Fix thật cần một mốc server trong giai đoạn sẵn
+sàng. Xem "Cách sửa thật" bên dưới.
+
+### Cách sửa thật (cần quyết định — đụng `server/`)
+
+**Phương án A (khuyến nghị):** server đóng dấu `serverTime: Date.now()` **cạnh** `readyDeadline`
+trong room payload — `server/socket/state.js` (delta, ~dòng 319) + `server/managers/RoomManager.js`
+(full, ~dòng 703). Client nhận được thì tính `offset = serverTime − Date.now()` và dùng cho bộ đếm.
+Cùng khuôn mẫu `timer:sync`, thêm đúng 1 field. Phải cập nhật `server/tests/room-update-delta.test.js`
+(assert shape payload) + `RoomManager.test.js`.
+
+**Phương án B:** chấp nhận, ghi rõ giới hạn "bộ đếm sẵn sàng có thể lệch bằng skew đồng hồ máy khách
+cho tới `timer:sync` đầu tiên" và chỉ sửa call site để *sau khi ván chạy* thì đúng. Rẻ hơn, không
+đụng server, nhưng không sửa được đúng lượt đo `wbcplayer` (−8,4 s ngay ở màn sẵn sàng).
+
+**KHÔNG** dựng cơ chế đồng bộ đồng hồ mới / message type mới — `clockOffsetMs` + 1 field `serverTime`
+là đủ.
 
 ## Điểm được rà soát nhưng KHÔNG phải lỗi
 
