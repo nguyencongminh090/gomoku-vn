@@ -237,6 +237,22 @@ describe('broadcastRoomUpdate — scalar fields and settings', () => {
     expect(payload.readyDeadline).toBe(null);
   });
 
+  test('serverTime is stamped fresh on every emit, even when nothing else changed (TODO.md #170)', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    const before = Date.now();
+    flush(io, { roomId: 'r1' });
+    io.emitted.length = 0;
+    flush(io, { roomId: 'r1' }); // identical state again
+    const after = Date.now();
+
+    const payload = lastPayload(io);
+    expect(typeof payload.serverTime).toBe('number');
+    expect(payload.serverTime).toBeGreaterThanOrEqual(before);
+    expect(payload.serverTime).toBeLessThanOrEqual(after);
+  });
+
   test('settings is omitted unless explicitly requested', () => {
     const io = makeIo();
     currentFullState = fullState();

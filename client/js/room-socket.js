@@ -95,6 +95,7 @@
     hideEntryOverlay();
     const st = S();
     st.roomData = data;
+    syncClockFromServerTime(data.serverTime);
 
     // Clear any not-yet-confirmed stone from a move still in flight
     // (TODO.md #153). This fires on first join too (boardRenderer doesn't
@@ -157,6 +158,7 @@
     // a wholesale replace.
     const { users: usersPatch, ...rest } = data;
     st.roomData = Object.assign({}, st.roomData, rest);
+    syncClockFromServerTime(data.serverTime);
 
     // `users` is a patch — { upserts, removed } — not the full array, so it
     // has to be folded into the existing list by userId rather than assigned
@@ -441,6 +443,25 @@
   /** Our best estimate of the server's clock right now. */
   function serverNow() {
     return Date.now() + clockOffsetMs;
+  }
+
+  /**
+   * Update `clockOffsetMs` from a bare server-clock stamp carried on a non-timer
+   * packet (`room:joined` / `room:updated` both carry `serverTime`, see
+   * docs/todo/B170-*.md). `timer:sync` only exists once a game is running, so
+   * without this the offset stays 0 through the whole ready phase and the
+   * Start-modal countdown (`RoomUI`, which reads `serverNow()`) is wrong by the
+   * client's wall-clock skew — measured at -8.4s on one real player's machine.
+   *
+   * Same formula as `applyTimerSync` (via the shared `TimerSyncCore` core, so
+   * the two can't drift) and the same "pure skew, transit not folded in"
+   * semantics: `serverNow()` feeds the turn watchdog, which must not move with a
+   * display shave. A missing/NaN stamp is ignored — the offset keeps its last
+   * value, or 0 if none yet, which is exactly today's behaviour.
+   */
+  function syncClockFromServerTime(serverTime) {
+    if (typeof serverTime !== 'number' || !isFinite(serverTime)) return;
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(serverTime, Date.now());
   }
 
   /**
@@ -929,6 +950,16 @@
   // Exposed for game-ui.js's move state machine (TODO.md #152) — it needs the
   // same server-error rendering and the same resync entry point this module
   // uses, and duplicating either would let them drift.
-  global.RoomSocket = { serverMessage, requestResync, armMoveConfirmWatchdog, refreshLocalTimer: tickLocal };
+  //
+  // `serverNow` is exposed as a FUNCTION, not the offset value, so callers
+  // (room-ui.js's Start-modal countdown, TODO.md #170) always read the latest
+  // offset rather than one captured at wiring time. Callers must still guard
+  // `global.RoomSocket && global.RoomSocket.serverNow` and fall back to
+  // `Date.now()` — this assignment runs at end of module load, after room-ui.js
+  // may have already needed it.
+  global.RoomSocket = {
+    serverMessage, requestResync, armMoveConfirmWatchdog,
+    refreshLocalTimer: tickLocal, serverNow,
+  };
 
 })(window);
