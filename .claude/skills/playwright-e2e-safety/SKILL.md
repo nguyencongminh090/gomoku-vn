@@ -46,7 +46,7 @@ echo $PLAYWRIGHT_BROWSERS_PATH
   manually. If `~/.cache/ms-playwright/` ever reappears, that's the signal it happened again.
 - **If the var is empty in the shell you're about to use, don't install and don't ask the user to
   reboot** — just prefix the one command that needs it:
-  `PLAYWRIGHT_BROWSERS_PATH=/home/ngmint/.local/share/ms-playwright node your-script.js`. This is a
+  `PLAYWRIGHT_BROWSERS_PATH="$HOME/.local/share/ms-playwright" node your-script.js`. This is a
   one-command workaround, not a persistent fix — check again in any *different* session.
 
 ## Authenticated pages need the real login UI flow, not just an API cookie

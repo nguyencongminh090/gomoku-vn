@@ -18,7 +18,7 @@ the family that matches the work before creating a branch.
 | UI design candidate | `ui/<direction>` | `dev` | `dev`, only the chosen winner | One branch per *direction*, not per screen — see below |
 
 **Exception — fix for code/tracking-docs that only exist on `dev`:** if the buggy code, or the
-tracking entry (`TODO.md`/`instruction.md`), was introduced by a `feature/*` branch already merged
+tracking entry (`TODO.md`), was introduced by a `feature/*` branch already merged
 into `dev` but not `main`, branch `fix/*` off `dev` and merge back into `dev`, not `main`. Check
 first: `git show main:TODO.md | grep '#<N>'` — if the entry is missing on `main`, use `dev`.
 Precedents: `fix/tournament-match-board-size` (code-only-on-dev), `fix/auth-cache-control-no-store`
@@ -49,7 +49,7 @@ main` will be rejected. Merging into `main` (a `fix/*` branch, or a `dev`→`mai
 `gh pr create --base main --head <branch>` then `gh pr merge --merge`, confirmed with the user first.
 `dev` itself is not protected — `feature/*`/`fix/*` → `dev` still use a local merge commit.
 
-Doc-only changes (`TODO.md`, `instruction.md`, `CLAUDE.md`, `docs/fix-log.md` and their detail
+Doc-only changes (`TODO.md`, `docs/todo/*`, `CLAUDE.md`, `docs/fix-log.md` and their detail
 files) can go straight to `main` — they don't need branch isolation.
 
 ## A `fix/*` merged to `main` must also land on `dev` — same session
@@ -61,7 +61,7 @@ bump is usually stale by the time it reaches `dev`.
 
 If divergence is only caught later at a checkpoint merge, it's mechanical to resolve, not risky:
 - `?v=N` conflicts: keep `dev`'s side per file, re-bump the whole repo to `max(dev, main) + 1`,
-  verify with the cache-bust grep in `CLAUDE.md`. **The `+ 1` is not optional, even when the branch
+  verify with `node scripts/cache-bust.js` (and set via `--set N`). **The `+ 1` is not optional, even when the branch
   you're merging *into* the other already has a higher counter than the branch you're merging
   *from*.** The trap: comparing the incoming branch's own max to the target's current number and
   concluding "target is already higher, no bump needed" — that skips the `+1` and leaves the
@@ -100,7 +100,7 @@ Empty → PR merges cleanly. Non-empty → merge `origin/main` into local `dev` 
 
 ## Reverting a merge purely as a diagnostic (not a real rollback)
 
-A plain single-value repo-wide `?v=N` bump (per `CLAUDE.md`'s cache-busting rule) is enough at each
+A plain single-value repo-wide `?v=N` bump (per `.claude/rules/cache-busting.md`) is enough at each
 step of a revert → test → re-revert cycle — don't invent an arbitrarily-higher number "just to be
 safe" each time; that produces a non-monotonic-looking sequence that itself reads as suspicious to
 the user even when every step served correct bytes. Verify with `curl -s <url>/path | grep <rule>`
