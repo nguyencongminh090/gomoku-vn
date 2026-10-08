@@ -6,6 +6,8 @@ compatibility: claude-code-only
 
 # Design workflow
 
+**Knowledge to ground decisions:** `docs/knowledge/ui-ux/INDEX.md` (read the index, then only the matched note) — e.g. `vpick-choosing-style` / `vpick-style-by-site-type` when proposing style directions, `vbase-*` for color/type/spacing, `ux-responsive-mobile-first` + `a11y-wcag-essentials` for review. Cite the note path in the design brief when it drove a choice.
+
 A fixed sequence of stages for taking a UI idea from "this doesn't feel right" to a merged design,
 used any time a screen in this project gets redesigned or newly built. The point of this skill is
 to remove ambiguity: at each stage the agent knows exactly what to produce and what to ask the user,
@@ -19,7 +21,7 @@ work that leads up to using them.
 ## Locked boundaries (apply at every stage, no exceptions)
 
 - **Backend is out of scope.** No `server/` changes at any stage of this workflow. If a candidate
-  design seems to need one, stop and flag it — see "New requirements/tasks" in `CLAUDE.md`.
+  design seems to need one, stop and flag it — see rule 1 in `CLAUDE.md`.
 - **Board/stones are out of scope.** `client/js/board.js` and the board-specific rules in
   `client/css/game.css` (grid, cell sizing, stone rendering/animation, touch/click handlers) are
   never touched by this workflow. Every stage below compares layout/chrome *around* the board, not
@@ -41,7 +43,7 @@ Before any visual work, ask the user the following, using `AskUserQuestion` wher
 genuinely open decisions (don't ask questions you can already answer from the codebase or prior
 conversation):
 
-1. **Which screen/flow** is this for? (exact file(s) — e.g. `client/lobby.html`, `client/room.html`)
+1. **Which screen/flow** is this for? (exact file(s) — e.g. `client/index.html` (lobby), `client/room.html`)
 2. **What's wrong with the current one?** Get the concrete complaint (e.g. "doesn't fit a Gomoku
    site") turned into specifics: too generic/SaaS-like? wrong mood? wrong information density?
    colors/typography clash with a board-game feel?
@@ -50,7 +52,7 @@ conversation):
    wood-grain board textures, ink/brush stroke accents) — whatever the user has in mind, even
    loosely.
 4. **How many style directions** to explore in parallel (default 2, per the `ui/style_a`/`ui/style_b`
-   convention already in `CLAUDE.md` — confirm if the user wants more).
+   convention (`.claude/rules/testing.md`) — confirm if the user wants more).
 5. **Any hard constraints beyond the standing locks** (e.g. must keep a specific layout region,
    must support a specific screen size first)?
 
@@ -67,7 +69,7 @@ redirect, before any code exists.
 
 If the redesign is broad enough to represent new feature scope (not just a visual reskin — e.g. it
 implies new interactions, not just new styling), stop and route it through a `features/<slug>/`
-discussion folder per `CLAUDE.md` instead of continuing this workflow directly.
+discussion folder per `.claude/rules/design-intake.md` instead of continuing this workflow directly.
 
 ## Stage 3 — Mockup candidates
 
@@ -84,7 +86,7 @@ Once mockups are approved (or skipped by user preference), implement each direct
 - Respect the backend and board/stones locks (see above) on every branch.
 - Commit incrementally within each branch (`commit → commit → ... → final`) rather than one giant
   commit — this keeps each direction's history reviewable on its own.
-- Bump `?v=N` cache-busting per `CLAUDE.md`'s rule whenever `client/css/`/`client/js/` changes,
+- Bump `?v=N` cache-busting per `.claude/rules/cache-busting.md` whenever `client/css/`/`client/js/` changes,
   independently on each branch.
 
 **Restructure the layout to match the mockup — don't just re-skin the existing structure.** A
@@ -107,7 +109,7 @@ made it monochrome, not the new design. Fixed by rebuilding the DOM to match, sa
 ## Stage 5 — Live review
 
 For each `ui/<style>` branch, verify it live before presenting it to the user — per the "Feature
-completion checklist" rule in `CLAUDE.md`, a mockup or code review is not sufficient:
+completion checklist" in `.claude/rules/testing.md`, a mockup or code review is not sufficient:
 
 - Run the branch via the `run` skill (or manually start the dev server) and actually view the
   screen in a browser.
@@ -126,14 +128,14 @@ user's call per the standing `ui/*` rule that "no `ui/*` branch merges into `dev
 
 ## Stage 7 — Merge & cleanup
 
-Once the user picks a winner, follow `CLAUDE.md`'s `ui/<style>` merge steps exactly:
+Once the user picks a winner, follow the `git-workflow` skill's `ui/<style>` merge steps exactly:
 
 1. Merge only the winning branch into `dev` with a regular merge commit.
 2. Resolve/confirm `?v=N` is consistent across the whole repo post-merge (the verification grep in
-   `CLAUDE.md`'s "Cache-busting version bump" section).
+   `.claude/rules/cache-busting.md`).
 3. Delete every `ui/<style>` branch from that round, winner included, unless the user asks to keep
    one for reference.
-4. If the change touches a tracked `TODO.md`/`instruction.md` item, update it per the index/detail
+4. If the change touches a tracked `TODO.md` item, update it per the index/detail
    sync rule.
 
 ## What this skill does not do

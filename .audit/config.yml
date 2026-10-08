@@ -1,0 +1,3 @@
+# Allowlist for ux-audit. Empty on purpose: no known noise has been verified yet.
+console_allow: []
+network_allow: []
