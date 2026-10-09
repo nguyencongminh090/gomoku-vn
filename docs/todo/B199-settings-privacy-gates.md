@@ -1,5 +1,5 @@
 # B199 — R5: Settings page + privacy gates (country/city, who may DM/challenge/friend-request, hide online, badges, win streak)
-**Status:** OPEN — todo only, not started (written 2026-10-09 from `dev` 7f74264)
+**Status:** OPEN — all 6 slices implemented + merged on `dev` 2026-10-09 (`?v=204`); awaiting user review. Real-browser pass was no-DB only (settings + profile at 1280/390, faked API, 0 console errors) — not yet run against the real server/DB.
 **Area:** server (users migration, routes/profile.js, FriendService, ChallengeService, DmService, rankings) + client (new `settings.html`/`settings.js`, profile badges)
 **From:** features/platform/planning.md § Release 2 (R5); B198 Decided #3 (privacy gate deferred here); B191 items 2–3   **Depends:** B198 (done)
 
