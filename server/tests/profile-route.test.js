@@ -192,6 +192,14 @@ describe('profile read + privacy', () => {
     expect(me.privacy).toMatchObject({ country: 'VN', whoCanDm: 'friends', hideOnline: true });
     expect((await req('GET', '/api/profile/alice')).json.privacy).toBeUndefined();
     expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.whoCanDm).toBe('everyone');
+    // hideOnline reaches the live presence list
+    const st = require('../socket/state');
+    st.sessions.set(UID, { user: { userId: UID, displayName: 'Alice', isGuest: false } });
+    await put({ hideOnline: true });
+    expect(st.getOnlineUsersList().map((u) => u.userId)).not.toContain(UID);
+    await put({ hideOnline: false });
+    expect(st.getOnlineUsersList().map((u) => u.userId)).toContain(UID);
+    st.sessions.delete(UID);
   });
 
   it('GET exposes what the viewer may do (`can`) — members only, never for self or anonymous (#199)', async () => {

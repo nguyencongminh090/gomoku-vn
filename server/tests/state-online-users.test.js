@@ -47,4 +47,15 @@ describe('getOnlineUsersList()', () => {
     expect(byId.g1.isGuest).toBe(true);
     expect(byId.m1.isGuest).toBe(false);
   });
+
+  test('hide-online members are left out of the list but stay in sessions; unhiding restores them (#199)', () => {
+    const { setHideOnline } = require('../socket/state');
+    sessions.set('u1', fakeSocket('u1', 'Alice', false));
+    sessions.set('u2', fakeSocket('u2', 'Bob', false));
+    setHideOnline('u1', true);
+    expect(getOnlineUsersList().map(u => u.userId)).toEqual(['u2']);
+    expect(sessions.has('u1')).toBe(true);
+    setHideOnline('u1', false);
+    expect(getOnlineUsersList().map(u => u.userId)).toEqual(['u1', 'u2']);
+  });
 });

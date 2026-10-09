@@ -21,11 +21,13 @@ const { clientInfoFromSocket } = require('../utils/geo');
 const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
+const database           = require('../db/database');
 const {
   timerMap,
   sessions,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
+  setHideOnline,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
@@ -253,6 +255,10 @@ function init(io) {
 
     // Track this connection as the user's active session (see eviction above)
     const wasOnline = sessions.has(user.userId);
+    if (!user.isGuest) {
+      const prof = database.getProfileById(user.userId);
+      setHideOnline(user.userId, !!(prof && prof.hide_online));
+    }
     sessions.set(user.userId, socket);
     if (!wasOnline) {
       broadcastOnlineUsers(io);

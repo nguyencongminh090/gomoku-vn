@@ -169,6 +169,7 @@ router.put('/', verifyToken, requireMember, writeLimiter, express.json({ limit: 
       patch.hide_online = b.hideOnline;
     }
     database.updateProfile(req.user.userId, patch);
+    if (patch.hide_online !== undefined) require('../socket/state').setHideOnline(req.user.userId, patch.hide_online);
     res.json({ ok: true });
   } catch (err) {
     next(err);
