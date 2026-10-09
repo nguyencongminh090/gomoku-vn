@@ -46,6 +46,7 @@ body.pshell:not(.zen-lobby) .lobby, body.pshell .history { max-width: 1180px; pa
   .pnav__brand { flex: 1; }
   .pnav__right { gap: 8px; }
   .pbell { position: static; }
+  .pnav__mode { min-width: 40px; min-height: 40px; align-items: center; justify-content: center; }
   .pbell__panel { position: fixed; left: 12px; right: 12px; top: 62px; width: auto; max-width: none; }
   .pnav__links, .pnav__me span.pnav__name { display: none; }
   .ptabbar { display: flex; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--c-bg); border-top: 1px solid var(--c-border); }

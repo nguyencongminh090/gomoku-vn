@@ -7,6 +7,7 @@
  * GET  /api/dm/:username?before=<id>    thread page, oldest → newest {with, messages, hasMore}
  * POST /api/dm/:username   {text}       send → the stored message
  * POST /api/dm/:username/read           mark their messages read → {unread}
+ * GET  /api/dm/id/:userId  ·  POST /api/dm/id/:userId/read   same, addressed by user id (lobby chat windows)
  * Text is returned in wire form (angle brackets escaped); clients decode at render.
  */
 
@@ -38,6 +39,17 @@ const h = (fn) => (req, res, next) => {
 router.get('/', h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ conversations: svc.conversations(req.user.userId) });
+}));
+
+// By user id (lobby chat windows know ids, not usernames). Registered first; "/id/x" has two segments so it never shadows a username.
+router.get('/id/:userId', h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const before = parseInt(req.query.before, 10);
+  res.json(svc.historyById(req.user.userId, req.params.userId, Number.isInteger(before) ? before : undefined));
+}));
+
+router.post('/id/:userId/read', h((req, res) => {
+  res.json({ unread: svc.markReadById(req.user.userId, req.params.userId) });
 }));
 
 router.get('/:username', h((req, res) => {

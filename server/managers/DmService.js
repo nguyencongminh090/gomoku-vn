@@ -105,7 +105,17 @@ function conversations(userId) {
 
 /** A page of the thread, oldest → newest; `before` = message id to page back from. */
 function history(userId, username, before) {
-  const other = findUser(username);
+  return historyWith(userId, findUser(username), before);
+}
+
+/** Same, addressed by user id (lobby chat windows only know ids). */
+function historyById(userId, otherId, before) {
+  const other = database.getUserById(String(otherId));
+  if (!other) throw new DmError('USER_NOT_FOUND', 404, 'Không tìm thấy người chơi.');
+  return historyWith(userId, other, before);
+}
+
+function historyWith(userId, other, before) {
   const key = convKey(userId, other.id);
   const b = Number.isInteger(before) ? before : Number.MAX_SAFE_INTEGER;
   const rows = db().prepare('SELECT * FROM direct_messages WHERE conv_key = ? AND id < ? ORDER BY id DESC LIMIT ?').all(key, b, PAGE + 1);
@@ -118,7 +128,16 @@ function history(userId, username, before) {
 
 /** Mark everything the other person sent me as read; clears their bell entry. */
 function markRead(userId, username) {
-  const other = findUser(username);
+  return markReadFrom(userId, findUser(username));
+}
+
+function markReadById(userId, otherId) {
+  const other = database.getUserById(String(otherId));
+  if (!other) throw new DmError('USER_NOT_FOUND', 404, 'Không tìm thấy người chơi.');
+  return markReadFrom(userId, other);
+}
+
+function markReadFrom(userId, other) {
   db().prepare('UPDATE direct_messages SET read_at = ? WHERE recipient_id = ? AND sender_id = ? AND read_at IS NULL')
     .run(new Date().toISOString(), userId, other.id);
   notifications.drop(userId, 'dm', other.id);
@@ -129,4 +148,4 @@ const unreadTotal = (userId) => db().prepare(
   'SELECT COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL'
 ).get(userId).n;
 
-module.exports = { DmError, DM_KEEP, PAGE, setHooks, isMember, save, send, conversations, history, markRead, unreadTotal };
+module.exports = { DmError, DM_KEEP, PAGE, setHooks, isMember, save, send, conversations, history, historyById, markRead, markReadById, unreadTotal };
