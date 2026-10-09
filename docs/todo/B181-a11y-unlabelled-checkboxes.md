@@ -1,5 +1,5 @@
 # B181 — Unlabelled checkboxes (axe Critical) in create-room modal and room settings
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-09 (branch `fix/a11y-checkbox-names`) — aria-labels + jsdom test; axe re-run in real browser still pending.
 **Area:** client/index.html (`#rule-wall`, `#rule-portal`… in `#modal-create`), room settings tab markup in client/room.html / room-ui.js
 **From:** B179 axe pass 2026-10-09 (`docs/audits/2026-10-09/arena-axe-result.json`)   **Depends:** —
 

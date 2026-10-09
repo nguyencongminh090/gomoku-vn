@@ -128,6 +128,7 @@
     toggle.className = 'gset-toggle';
     const input = document.createElement('input');
     input.type = 'checkbox';
+    input.setAttribute('aria-label', labelText);
     input.checked = checked;
     input.addEventListener('change', () => onChange(input.checked));
     const slider = document.createElement('span');
@@ -348,7 +349,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=174#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=175#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }

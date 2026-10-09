@@ -588,14 +588,14 @@
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_wall')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-wall" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
+              <input type="checkbox" id="r-wall" aria-label="${t('modal.rule_wall')}" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_portal')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-portal" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
+              <input type="checkbox" id="r-portal" aria-label="${t('modal.rule_portal')}" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
