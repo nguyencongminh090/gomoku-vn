@@ -20,13 +20,13 @@ Mockup "Cài đặt — Hồ sơ & riêng tư" has no page: profile edits live i
 ## Traps
 - Guests have no prefs (members only), same as friends/DMs.
 - Gate re-check at accept time for challenges/friend-accept if the target changed prefs in between? Decide: gate applies at **send** only; already-pending items stay valid.
-- A user who sets `nobody` still receives replies in an existing DM thread? Decide in Q2 (default: gate applies per send, so replies from the other side are also gated by the recipient's own setting).
+- DM gate is per send and applies to both sides: a reply is gated by the recipient's own setting.
 - `RoomManager.test.js` counts `broadcastRoomUpdate(io` sites (24) — don't add any.
 - Bump `?v=N` everywhere; `node scripts/cache-bust.js` must print one value.
-## Open questions (ask before slice 2/6)
-1. Friends-only for DMs: do existing accepted friends only count, or also anyone I already have a thread with?
-2. Final badge list + thresholds; is streak counted over rated games only?
-3. Country list source: static ISO list in client (vi/en names) vs free text.
+## Decided (user, 2026-10-09)
+1. "Friends only" DM = accepted friends only; an old thread with a non-friend cannot be continued.
+2. Badges (Top 500, 1000 wins, …) and win streak count **rated games only**.
+3. Country = static ISO-3166 list in the client (vi/en names), stored as alpha-2.
 ## Why this way
 Server-side gates because REST/sockets are reachable without the UI; `hide_history`/`hide_bio` precedent (#177) = per-user columns on `users`. Knowledge: check `docs/knowledge/INDEX.md` privacy rows before slice 2.
 ## Done when
