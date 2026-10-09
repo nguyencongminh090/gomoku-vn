@@ -87,7 +87,9 @@ const userInfo = {
   get displayName() { const u = window.GvnSession.getUser(); return u ? u.displayName : ''; },
   get isGuest()     { const u = window.GvnSession.getUser(); return !!(u && u.isGuest); },
 };
-if (userInfo.signedIn) {
+// Site-wide Arena header (B193); it owns the user chip the old topnav showed.
+if (window.PlatformShell) window.PlatformShell.build('lobby');
+if (userInfo.signedIn && navUser && navBadge) {
   navUser.textContent = userInfo.displayName;
   navBadge.textContent = userInfo.isGuest ? t('nav.guest_badge') : '';
   navBadge.style.display = userInfo.isGuest ? '' : 'none';
