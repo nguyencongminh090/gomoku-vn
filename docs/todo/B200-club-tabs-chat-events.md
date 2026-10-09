@@ -33,3 +33,6 @@
 Tabs first = zero backend risk and unblocks the layout; chat/events are new tables only (additive). Polling matches the Social page precedent (B198). Check `docs/knowledge/INDEX.md` (realtime, moderation/UGC rows) before slice 3.
 ## Done when
 - Per slice: backend tests (access matrix: guest / non-member / pending / member / officer / owner) + jsdom + real-browser pass (copy repo to scratchpad, own DB :3100, `playwright-e2e-safety`); `?v=N` bumped; DONE entry.
+## Slice 1 notes (2026-10-10, `feature/200-club-tabs`, uncommitted)
+- `club.html` → tablist (Tổng quan / Thành viên / Bảng xếp hạng) + 3 panels; `#tab=<name>` in the URL, arrow keys, unknown tab → overview, tab kept across data reloads. Overview = staff + manage/pending (staff only); Members = name/role/kick-promote-transfer (`#cb-members-body`); Board = rank/name/rating with category chips (`#cb-body`, no role column anymore). No endpoint changes. `?v=205`.
+- Tests: clubs-pages (+6, 4 adapted to the new ids). Real-browser: no-DB static pass at 1280/390 (faked API, 0 console errors, no horizontal scroll); not yet on the real server. Overview has no "Sắp tới" yet (slice 2).
