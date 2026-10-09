@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Cài đặt</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=202" />
+  <link rel="stylesheet" href="css/tokens.css?v=202" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=202" />
+  <link rel="stylesheet" href="css/platform.css?v=202" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=202" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=202">
+
+  <script src="js/ui-mode-preload.js?v=202"></script>
+  <script src="js/skin-preload.js?v=202"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <div class="pintro">
+    <h1 data-i18n="settings.title">Hồ sơ &amp; riêng tư</h1>
+    <p id="st-status" class="pnote" role="status"></p>
+  </div>
+
+  <div id="st-content" hidden>
+    <section class="ppanel" style="margin-bottom:20px">
+      <h2 class="ph2" data-i18n="settings.profile">Hồ sơ</h2>
+      <div class="pform__row">
+        <span id="st-avatar"></span>
+        <label class="pbtn" for="st-file" data-i18n="profile.avatar_upload">Đổi ảnh đại diện</label>
+        <input type="file" id="st-file" accept="image/jpeg,image/png,image/webp" hidden />
+        <button type="button" class="pbtn pbtn--ghost" id="st-avatar-remove" data-i18n="profile.avatar_remove">Xoá ảnh</button>
+      </div>
+      <p class="pnote" data-i18n="profile.avatar_hint">JPEG, PNG hoặc WebP, tối đa 2 MB. Ảnh được thu nhỏ còn 256×256.</p>
+      <form id="st-form" class="pform">
+        <label for="st-bio" data-i18n="profile.bio_label">Giới thiệu (tối đa 280 ký tự)</label>
+        <textarea id="st-bio" maxlength="280" rows="3"></textarea>
+        <label for="st-country" data-i18n="settings.country">Quốc gia</label>
+        <select id="st-country"></select>
+        <label for="st-city" data-i18n="settings.city">Thành phố</label>
+        <input id="st-city" maxlength="40" autocomplete="off" />
+
+        <h2 class="ph2 ph2--gap" data-i18n="settings.privacy">Riêng tư</h2>
+        <label class="pcheck"><input type="checkbox" id="st-hide-history" /> <span data-i18n="profile.hide_history">Ẩn lịch sử ván đấu với người khác</span></label>
+        <label class="pcheck"><input type="checkbox" id="st-hide-bio" /> <span data-i18n="profile.hide_bio">Ẩn giới thiệu với người khác</span></label>
+        <label class="pcheck"><input type="checkbox" id="st-hide-online" /> <span data-i18n="settings.hide_online">Ẩn trạng thái trực tuyến</span></label>
+        <label for="st-dm" data-i18n="settings.who_dm">Ai được nhắn tin cho tôi</label>
+        <select id="st-dm" data-aud="whoCanDm"></select>
+        <label for="st-challenge" data-i18n="settings.who_challenge">Ai được thách đấu tôi</label>
+        <select id="st-challenge" data-aud="whoCanChallenge"></select>
+        <label for="st-friend" data-i18n="settings.who_friend">Ai được gửi lời mời kết bạn</label>
+        <select id="st-friend" data-aud="whoCanFriend"></select>
+
+        <div class="pform__row">
+          <button type="submit" class="pbtn pbtn--primary" data-i18n="profile.save">Lưu</button>
+          <button type="button" class="pbtn pbtn--ghost" id="st-cancel" data-i18n="settings.cancel">Huỷ</button>
+          <a id="st-profile-link" class="pbtn pbtn--ghost" href="/" data-i18n="settings.view_profile">Xem hồ sơ</a>
+          <span id="st-saved" class="pnote" role="status"></span>
+        </div>
+      </form>
+    </section>
+  </div>
+</main>
+
+<script src="js/i18n.js?v=202"></script>
+<script src="js/ui-mode.js?v=202"></script>
+<script src="js/session.js?v=202"></script>
+<script src="js/audio-manager.js?v=202"></script>
+<script src="js/settings-panel.js?v=202"></script>
+<script src="js/platform-shell.js?v=202"></script>
+<script src="js/countries.js?v=202"></script>
+<script src="js/settings.js?v=202"></script>
+</body>
+</html>

@@ -67,6 +67,7 @@ export default defineConfig({
         rankings: resolve(__dirname, 'client/rankings.html'),
         social: resolve(__dirname, 'client/social.html'),
         profile: resolve(__dirname, 'client/profile.html'),
+        settings: resolve(__dirname, 'client/settings.html'),
         clubs: resolve(__dirname, 'client/clubs.html'),
         club: resolve(__dirname, 'client/club.html'),
         tournament: resolve(__dirname, 'client/tournament.html'),

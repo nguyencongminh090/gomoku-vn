@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Hồ sơ</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=201" />
-  <link rel="stylesheet" href="css/tokens.css?v=201" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=201" />
-  <link rel="stylesheet" href="css/platform.css?v=201" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=201" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=201">
+  <link rel="stylesheet" href="css/main.css?v=202" />
+  <link rel="stylesheet" href="css/tokens.css?v=202" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=202" />
+  <link rel="stylesheet" href="css/platform.css?v=202" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=202" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=202">
 
-  <script src="js/ui-mode-preload.js?v=201"></script>
-  <script src="js/skin-preload.js?v=201"></script>
+  <script src="js/ui-mode-preload.js?v=202"></script>
+  <script src="js/skin-preload.js?v=202"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -32,7 +32,7 @@
         <p class="pnote" id="pf-joined"></p>
         <div class="pactions" id="pf-social" hidden></div>
         <div class="pactions" id="pf-actions" hidden>
-          <button type="button" class="pbtn pbtn--ghost" id="pf-edit-btn" data-i18n="profile.edit_btn">Chỉnh sửa</button>
+          <a class="pbtn pbtn--ghost" id="pf-edit-btn" href="/settings.html" data-i18n="profile.edit_btn">Chỉnh sửa</a>
         </div>
       </div>
       <dl class="pstats" id="pf-stats"></dl>
@@ -61,36 +61,17 @@
           <div id="pf-clubs" class="prows"></div>
         </div>
 
-        <section id="pf-edit" hidden>
-          <h2 class="ph2 ph2--gap" data-i18n="profile.edit">Chỉnh sửa hồ sơ</h2>
-          <div class="pform__row">
-            <label class="pbtn" for="pf-file" data-i18n="profile.avatar_upload">Đổi ảnh đại diện</label>
-            <input type="file" id="pf-file" accept="image/jpeg,image/png,image/webp" hidden />
-            <button type="button" class="pbtn pbtn--ghost" id="pf-avatar-remove" data-i18n="profile.avatar_remove">Xoá ảnh</button>
-          </div>
-          <p class="pnote" data-i18n="profile.avatar_hint">JPEG, PNG hoặc WebP, tối đa 2 MB. Ảnh được thu nhỏ còn 256×256.</p>
-          <form id="pf-form" class="pform">
-            <label for="pf-bio-input" data-i18n="profile.bio_label">Giới thiệu (tối đa 280 ký tự)</label>
-            <textarea id="pf-bio-input" maxlength="280" rows="3"></textarea>
-            <label class="pcheck"><input type="checkbox" id="pf-hide-history" /> <span data-i18n="profile.hide_history">Ẩn lịch sử ván đấu với người khác</span></label>
-            <label class="pcheck"><input type="checkbox" id="pf-hide-bio" /> <span data-i18n="profile.hide_bio">Ẩn giới thiệu với người khác</span></label>
-            <div class="pform__row">
-              <button type="submit" class="pbtn pbtn--primary" data-i18n="profile.save">Lưu</button>
-              <span id="pf-saved" class="pnote" role="status"></span>
-            </div>
-          </form>
-        </section>
       </aside>
     </div>
   </div>
 </main>
 
-<script src="js/i18n.js?v=201"></script>
-<script src="js/ui-mode.js?v=201"></script>
-<script src="js/session.js?v=201"></script>
-<script src="js/audio-manager.js?v=201"></script>
-<script src="js/settings-panel.js?v=201"></script>
-<script src="js/platform-shell.js?v=201"></script>
-<script src="js/profile.js?v=201"></script>
+<script src="js/i18n.js?v=202"></script>
+<script src="js/ui-mode.js?v=202"></script>
+<script src="js/session.js?v=202"></script>
+<script src="js/audio-manager.js?v=202"></script>
+<script src="js/settings-panel.js?v=202"></script>
+<script src="js/platform-shell.js?v=202"></script>
+<script src="js/profile.js?v=202"></script>
 </body>
 </html>

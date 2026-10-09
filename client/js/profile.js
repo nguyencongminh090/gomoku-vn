@@ -1,8 +1,8 @@
 /**
  * profile.js — /u/<username> page (#177).
  *
- * GET /api/profile/:username renders the page; the owner also gets the edit
- * panel (bio, privacy flags, avatar upload/remove). All user-supplied text goes
+ * GET /api/profile/:username renders the page; the owner gets an "edit" link to
+ * /settings.html (settings.js owns editing since #199). All user-supplied text goes
  * through textContent; the avatar is a same-origin image URL.
  */
 
@@ -102,12 +102,6 @@
       return a;
     }));
 
-    $('pf-edit').hidden = !p.isSelf;
-    if (p.isSelf) {
-      $('pf-bio-input').value = p.bio || '';
-      $('pf-hide-history').checked = !!(p.privacy && p.privacy.hideHistory);
-      $('pf-hide-bio').checked = !!(p.privacy && p.privacy.hideBio);
-    }
     $('pf-content').hidden = false;
     drawChart(p);
   }
@@ -271,47 +265,8 @@
     }
   }
 
-  async function save(ev) {
-    ev.preventDefault();
-    const res = await fetch('/api/profile', {
-      method: 'PUT',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bio: $('pf-bio-input').value,
-        hideHistory: $('pf-hide-history').checked,
-        hideBio: $('pf-hide-bio').checked,
-      }),
-    });
-    $('pf-saved').textContent = res.ok ? t('profile.saved') : t('profile.error');
-    if (res.ok) load();
-  }
-
-  async function upload(ev) {
-    const file = ev.target.files[0];
-    ev.target.value = '';
-    if (!file) return;
-    const res = await fetch('/api/profile/avatar', {
-      method: 'POST',
-      credentials: 'same-origin',
-      headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      body: file,
-    });
-    if (res.ok) setAvatar((await res.json()).avatarUrl, $('pf-name').textContent);
-    else $('pf-saved').textContent = t('profile.avatar_error');
-  }
-
-  async function removeAvatar() {
-    const res = await fetch('/api/profile/avatar', { method: 'DELETE', credentials: 'same-origin' });
-    if (res.ok) setAvatar(null, $('pf-name').textContent);
-  }
-
   document.addEventListener('DOMContentLoaded', () => {
     SHELL().build(null);
-    $('pf-edit-btn').addEventListener('click', () => $('pf-edit').scrollIntoView({ behavior: 'smooth' }));
-    $('pf-form').addEventListener('submit', save);
-    $('pf-file').addEventListener('change', upload);
-    $('pf-avatar-remove').addEventListener('click', removeAvatar);
     load();
   });
 })();

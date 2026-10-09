@@ -42,3 +42,7 @@ Server-side gates because REST/sockets are reachable without the UI; `hide_histo
 ## Slice 3 notes (2026-10-09, `feature/199-hide-online`)
 - Presence is only exposed via the lobby online list (`lobby:online_users`), not REST. `state.setHideOnline(userId, bool)` keeps an in-memory `hiddenOnline` set (loaded at socket connect, updated live by `PUT /api/profile`, re-broadcasts the list); `getOnlineUsersList` skips them. Hidden users stay connected and fully functional; they also no longer see themselves in the list.
 - Not hidden: room membership/spectator lists and a hidden user's own DM live-push (they are delivered normally). Tests: state-online-users (+1), profile-route (+assert).
+## Slice 4 notes (2026-10-09, `feature/199-settings-page`)
+- `client/settings.html` + `js/settings.js` + `js/countries.js` (ISO alpha-2 codes; names from `Intl.DisplayNames` in the UI language). REST only. Friend-request audience offers everyone/nobody only. Registered in `vite.config.js`.
+- The old in-page edit panel on `/u/<name>` was removed; "Chỉnh sửa" now links to `/settings.html`. Display-name editing is NOT included (no endpoint exists; needs uniqueness/profanity rules — separate item if wanted).
+- Tests: `settings-page.test.js` (6), profile-page (+can, edit link). `?v=202`. Real-browser pass: see end-of-#199 note.
