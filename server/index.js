@@ -27,6 +27,7 @@ const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
 const rankingsRouter = require('./routes/rankings');
 const profileRouter  = require('./routes/profile');
+const clubsRouter    = require('./routes/clubs');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
@@ -147,8 +148,15 @@ app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api/rankings', rankingsRouter);
 app.use('/api/profile', profileRouter);
+app.use('/api/clubs', clubsRouter);
 
 // Public profile page: /u/<username> — same HTML for every name; profile.js reads the path.
+// Club pages: /clubs.html (discover) and /c/<slug> (one club).
+app.get('/c/:slug', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'club.html'));
+});
+
 app.get('/u/:username', (req, res) => {
   res.setHeader('Cache-Control', REVALIDATE);
   res.sendFile(path.join(clientPath, 'profile.html'));

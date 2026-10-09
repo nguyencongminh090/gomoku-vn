@@ -1,0 +1,13 @@
+/* clubs.css — clubs list + club page (#178). Builds on profile.css / rankings.css classes. */
+.clubs__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+.clubs__bar input { font: inherit; padding: 6px 10px; color: var(--c-ink); background: var(--c-field); border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+.clubs__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.clubs__sub { margin-top: 18px !important; }
+.clubs__badge { font-size: 11px; padding: 2px 8px; color: var(--c-ink-2); border: 1px solid var(--c-border); border-radius: 999px; white-space: nowrap; }
+.clubs__row-main { flex: 1; min-width: 0; }
+.clubs__row-main small { display: block; color: var(--c-ink-3); font-size: 12px; overflow-wrap: anywhere; }
+.profile input:not([type="checkbox"]):not([type="file"]):not([type="search"]), .profile select {
+  font: inherit; padding: 6px 10px; color: var(--c-ink); background: var(--c-field);
+  border: 1px solid var(--c-border); border-radius: var(--radius-lg);
+}
+.clubs__mini { padding: 2px 8px; font-size: 12px; }

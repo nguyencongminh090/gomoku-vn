@@ -82,6 +82,16 @@
       list.appendChild(li);
     }
 
+    const clubs = p.clubs || [];
+    $('pf-clubs-panel').hidden = clubs.length === 0;
+    $('pf-clubs').replaceChildren(...clubs.map((c) => {
+      const li = document.createElement('li');
+      const a = el('a', c.name);
+      a.href = '/c/' + encodeURIComponent(c.slug);
+      li.append(a, el('span', t('clubs.role_' + c.role), 'profile__res'));
+      return li;
+    }));
+
     $('pf-edit').hidden = !p.isSelf;
     if (p.isSelf) {
       $('pf-bio-input').value = p.bio || '';
