@@ -58,9 +58,10 @@ function asSortedKeys(entries) {
 // bug. That direction is guarded in client/tests/socket-early-connect.test.js.
 // room-entry.js is untouched: #145 is index.html-only for now.
 // #159 then added private-chat.js as a 6th index-entry import (+ its hint).
+// B193 added platform-shell.js (site-wide Arena header) as the 7th.
 describe.each([
   ['room.html', 'room-entry.js', 11],
-  ['index.html', 'index-entry.js', 6],
+  ['index.html', 'index-entry.js', 7],
 ])('%s modulepreload hints vs %s imports (TODO.md #126)', (htmlFile, entryFile, expectedCount) => {
   test(`entry file has exactly ${expectedCount} static imports (sanity check on the count itself)`, () => {
     const imports = extractEntryImports(entryFile);

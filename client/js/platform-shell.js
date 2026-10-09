@@ -1,6 +1,6 @@
 /**
- * platform-shell.js — Arena top nav + mobile tab bar for the platform pages
- * (rankings, profile, clubs; #189). Mirrors client/platform-arena-mockup.html:
+ * platform-shell.js — Arena top nav + mobile tab bar, one header site-wide
+ * (rankings, profile, clubs #189; lobby, history, tournament B193). Mirrors client/platform-arena-mockup.html:
  * sticky nav with link row, light/dark toggle, user chip; bottom tabs on mobile.
  *
  * Needs, in order: i18n.js, ui-mode.js, session.js. Builds DOM with
@@ -13,12 +13,40 @@
 (function () {
   const t = (key) => (typeof window.t === 'function' ? window.t(key) : key);
   const SPRITE = '/assets/icons/phosphor-sprite.svg';
+  // Mockup nav, minus screens with no page yet ("Phòng" arrives with R2's dashboard).
   const ITEMS = [
-    { id: 'lobby', href: '/index.html', icon: 'ph-bold-house', key: 'shell.lobby' },
-    { id: 'rankings', href: '/rankings.html', icon: 'ph-bold-trophy', key: 'lobby.rankings' },
-    { id: 'clubs', href: '/clubs.html', icon: 'ph-regular-users-three', key: 'lobby.clubs' },
-    { id: 'history', href: '/history.html', icon: 'ph-regular-clock-counter-clockwise', key: 'lobby.history' },
+    { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
+    { id: 'tournaments', href: '/index.html#tournaments', key: 'tabs.tournaments' },
+    { id: 'rankings', href: '/rankings.html', key: 'lobby.rankings' },
+    { id: 'clubs', href: '/clubs.html', key: 'lobby.clubs' },
+    { id: 'learn', href: '/history.html', key: 'shell.learn' },
   ];
+  const TABS = [
+    { id: 'lobby', href: '/index.html', icon: 'ph-bold-house', key: 'shell.lobby' },
+    { id: 'rankings', href: '/rankings.html', icon: 'ph-regular-ranking', key: 'lobby.rankings' },
+    { id: 'tournaments', href: '/index.html#tournaments', icon: 'ph-regular-trophy', key: 'shell.tournaments_short' },
+    { id: 'clubs', href: '/clubs.html', icon: 'ph-regular-users-three', key: 'shell.clubs_short' },
+    { id: 'me', href: '/login.html', icon: 'ph-regular-user-circle', key: 'shell.me' },
+  ];
+  const CATS = ['caro', 'standard', 'freestyle'];
+
+  /** The member's most-played rating, e.g. "Caro VN 1612"; '' when unrated. */
+  function bestRating(ratings) {
+    let best = null;
+    for (const c of CATS) {
+      const r = ratings && ratings[c];
+      if (r && (!best || r.games > best.r.games)) best = { c, r };
+    }
+    return best ? t('rankings.cat_' + best.c) + ' ' + Math.round(best.r.rating) : '';
+  }
+
+  function link(it, active, label) {
+    const a = el('a', label);
+    a.href = it.href;
+    a.dataset.tab = it.id;
+    if (it.id === active) { a.className = 'is-active'; a.setAttribute('aria-current', 'page'); }
+    return a;
+  }
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -59,12 +87,7 @@
 
     const links = el('nav', undefined, 'pnav__links');
     links.setAttribute('aria-label', t('shell.nav'));
-    for (const it of ITEMS) {
-      const a = el('a', t(it.key));
-      a.href = it.href;
-      if (it.id === active) { a.className = 'is-active'; a.setAttribute('aria-current', 'page'); }
-      links.appendChild(a);
-    }
+    for (const it of ITEMS) links.appendChild(link(it, active, t(it.key)));
 
     const right = el('div', undefined, 'pnav__right');
     const mode = el('button', undefined, 'pnav__mode');
@@ -90,12 +113,21 @@
       me.href = '#';
       const av = el('span', initials(user.displayName), 'pav');
       const name = el('span', undefined, 'pnav__name');
-      name.append(user.displayName);
+      const rating = el('small');
+      name.append(user.displayName, rating);
       me.append(av, name);
       right.appendChild(me);
       fetch('/api/rankings/me', { credentials: 'same-origin' })
         .then((r) => (r.ok ? r.json() : null))
-        .then((m) => { if (m && m.username) me.href = '/u/' + encodeURIComponent(m.username); })
+        .then((m) => {
+          if (!m) return;
+          rating.textContent = bestRating(m.ratings);
+          if (m.username) {
+            me.href = '/u/' + encodeURIComponent(m.username);
+            const tab = document.querySelector('.ptabbar a[data-tab="me"]');
+            if (tab) tab.setAttribute('href', me.getAttribute('href'));
+          }
+        })
         .catch(() => { /* chip stays inert */ });
     } else {
       const login = el('a', t('shell.login'), 'pnav__login');
@@ -107,14 +139,23 @@
 
     const tabbar = el('nav', undefined, 'ptabbar');
     tabbar.setAttribute('aria-label', t('shell.nav_mobile'));
-    for (const it of ITEMS) {
-      const a = el('a');
-      a.href = it.href;
-      if (it.id === active) { a.className = 'is-active'; a.setAttribute('aria-current', 'page'); }
+    for (const it of TABS) {
+      const a = link(it, active);
+      if (it.id === 'me' && user && !user.isGuest) a.href = '#'; // set to /u/<name> once /me answers
       a.append(icon(it.icon), el('span', t(it.key)));
       tabbar.appendChild(a);
     }
     host.append(nav, tabbar);
+    document.body.classList.add('pshell');
+  }
+
+  /** Move the active marker without rebuilding (lobby's Chơi ↔ Giải đấu tab switch). */
+  function setActive(active) {
+    document.querySelectorAll('.pnav__links a, .ptabbar a').forEach((a) => {
+      const on = a.dataset.tab === active;
+      a.classList.toggle('is-active', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
   }
 
   /** Avatar circle: image if the member has one, else initials. cls e.g. 'pav--xl pav--sq'. */
@@ -125,5 +166,5 @@
     return a;
   }
 
-  window.PlatformShell = { build, initials, avatar };
+  window.PlatformShell = { build, setActive, initials, avatar };
 })();

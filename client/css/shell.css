@@ -85,7 +85,7 @@ body.zen-room .topnav__btn:hover { background: var(--c-fill); }
 @media (max-width: 860px) { .topnav { padding: 0 14px; margin-bottom: 16px; } }
 
 /* ── Lobby page frame ───────────────────────────────────────────────────── */
-body.zen-lobby { --zen-col: 960px; }
+body.zen-lobby { --zen-col: 1180px; }   /* = .papp on the platform pages (B193) */
 body.zen-lobby .lobby { padding: 28px 24px 80px; }
 body.zen-lobby .zen-hero { margin-bottom: 20px; }
 body.zen-lobby .zen-hero__eyebrow { display: none; }
@@ -155,3 +155,13 @@ body .gset-segment, body .gset-segment__opt { border-radius: var(--radius); }
 .topnav__links a:hover { color: var(--c-ink); }
 .topnav__links a.is-active { background: var(--c-fill); color: var(--c-strong); font-weight: 700; }
 @media (max-width: 860px) { .topnav__links { display: none; } }
+
+/* ── Lobby on the site-wide Arena shell (B193) ──────────────────────────────
+   Same 1180px frame as rankings/profile/clubs (.papp) and the mockup's .bar row:
+   tabs left, the active tab's create action right. */
+body.zen-lobby .lobby-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+body.zen-lobby .lobby-bar .section-tabs { margin: 0; }
+body.zen-lobby .lobby-bar__actions { display: flex; gap: 10px; }
+body.zen-lobby .lobby-bar__actions .link-action { font-size: 13px; font-weight: 600; }
+/* .link-action's display:inline-flex beats the bare [hidden] attribute. */
+body.zen-lobby .lobby-bar__actions [hidden] { display: none; }

@@ -13,21 +13,6 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 /* Settings panel (B192): Arena 5px radius — shell.css carries this on lobby/room, platform pages do not load shell.css. */
 .pl .gset-btn, .pl .gset-segment, .pl .gset-segment__opt { border-radius: var(--radius); }
 
-/* ── Top nav ─────────────────────────────────────────────────────────────── */
-.pnav { display: flex; align-items: center; gap: 28px; position: sticky; top: 0; z-index: 10; height: 56px; padding: 0 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
-.pnav__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
-.pnav__links { display: flex; gap: 4px; flex: 1; }
-.pnav__links a { padding: 8px 12px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; color: var(--c-ink-3); }
-.pnav__links a:hover { color: var(--c-ink); }
-.pnav__links a.is-active { background: var(--c-fill); color: var(--c-strong); font-weight: 700; }
-.pnav__right { display: flex; align-items: center; gap: 14px; }
-.pnav__mode { cursor: pointer; display: inline-flex; padding: 8px; border: 0; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink); }
-.pnav__me { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
-.pnav__me small { display: block; font-size: 11px; font-weight: 400; color: var(--c-ink-3); }
-.pnav__login { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: var(--radius); background: var(--c-brand); color: var(--c-on-brand) !important; }
-
-.ptabbar { display: none; }
-
 /* ── Page frame ──────────────────────────────────────────────────────────── */
 .papp { max-width: 1180px; margin: 0 auto; padding: 28px 24px 96px; }
 .pintro { margin-bottom: 22px; }
@@ -58,7 +43,6 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .pstats dt { order: 2; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--c-ink-3); }
 
 /* ── Avatar ──────────────────────────────────────────────────────────────── */
-.pav { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--c-surface-2) center / cover no-repeat; color: var(--c-ink); font-size: 11px; font-weight: 700; letter-spacing: .04em; vertical-align: middle; overflow: hidden; }
 .pav--sm { width: 28px; height: 28px; font-size: 10px; }
 .pav--xl { width: 88px; height: 88px; font-size: 26px; }
 .pav--sq { border-radius: var(--radius-lg); background-color: var(--c-brand); color: var(--c-on-brand); }
@@ -127,9 +111,6 @@ a.prow:hover { background: var(--c-hover); }
 
 /* ── Mobile ──────────────────────────────────────────────────────────────── */
 @media (max-width: 860px) {
-  .pnav { padding: 0 14px; }
-  .pnav__brand { flex: 1; }
-  .pnav__links, .pnav__me span.pnav__name { display: none; }
   .papp { padding: 16px 12px 96px; }
   .psplit { grid-template-columns: 1fr; gap: 16px; }
   .pcards { grid-template-columns: repeat(2, 1fr); }
@@ -138,8 +119,4 @@ a.prow:hover { background: var(--c-hover); }
   .phead h1 { font-size: 22px; }
   .pav--xl { width: 64px; height: 64px; font-size: 20px; }
   .ppanel { padding: 14px; }
-  .ptabbar { display: flex; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--c-bg); border-top: 1px solid var(--c-border); }
-  .ptabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; padding: 6px 0; font-size: 10.5px; color: var(--c-ink-3); }
-  .ptabbar a.is-active { color: var(--c-strong); font-weight: 700; }
-  .ptabbar svg { width: 22px; height: 22px; }
 }

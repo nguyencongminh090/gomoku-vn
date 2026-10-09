@@ -1,5 +1,6 @@
 /**
  * TODO.md #189 — platform shell (Arena nav + tab bar) and the `hidden` guard.
+ * B193 — same shell site-wide: mockup nav items, rating on the user chip, Tôi tab, setActive().
  *
  * @jest-environment jsdom
  */
@@ -11,23 +12,67 @@ const path = require('path');
 
 const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
 
-function boot(user) {
+function boot(user, me = { username: 'zed' }, active = 'clubs') {
   jest.resetModules();
   document.body.innerHTML = '<div id="pl-shell"></div>';
+  document.body.className = '';
   window.t = (k) => k;
   window.GvnSession = { getUser: () => user };
-  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ username: 'zed' }) }));
+  global.fetch = jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(me) }));
   require('../js/platform-shell.js');
-  window.PlatformShell.build('clubs');
+  window.PlatformShell.build(active);
 }
+const flush = () => new Promise((r) => setTimeout(r, 0));
+const MEMBER = { userId: 'u', isGuest: false, displayName: 'Zed' };
 
 describe('platform shell', () => {
   it('builds nav + tab bar with the active page marked in both', () => {
     boot(null);
     const active = [...document.querySelectorAll('.is-active')].map((a) => a.getAttribute('href'));
     expect(active).toEqual(['/clubs.html', '/clubs.html']);
-    expect(document.querySelectorAll('.pnav__links a')).toHaveLength(4);
-    expect(document.querySelectorAll('.ptabbar a')).toHaveLength(4);
+    expect([...document.querySelectorAll('.pnav__links a')].map((a) => a.dataset.tab))
+      .toEqual(['lobby', 'tournaments', 'rankings', 'clubs', 'learn']);
+    expect([...document.querySelectorAll('.ptabbar a')].map((a) => a.dataset.tab))
+      .toEqual(['lobby', 'rankings', 'tournaments', 'clubs', 'me']);
+    expect(document.querySelector('.pnav__links a[data-tab="tournaments"]').getAttribute('href')).toBe('/index.html#tournaments');
+    expect(document.body.classList.contains('pshell')).toBe(true);
+  });
+
+  it('signed-out → Tôi tab goes to login', () => {
+    boot(null);
+    expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/login.html');
+  });
+
+  it('member → Tôi tab and chip point at /u/<username>; chip shows the most-played rating', async () => {
+    boot(MEMBER, { username: 'zed', ratings: {
+      freestyle: { rating: 1700.4, games: 3 }, caro: { rating: 1612.2, games: 80 }, standard: { rating: 1500, games: 20 } } });
+    expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('#');
+    await flush();
+    expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/u/zed');
+    expect(document.querySelector('.pnav__me small').textContent).toBe('rankings.cat_caro 1612');
+  });
+
+  it('member with no rated games → empty rating line; /me failure → chip stays inert', async () => {
+    boot(MEMBER, { username: 'zed', ratings: {} });
+    await flush();
+    expect(document.querySelector('.pnav__me small').textContent).toBe('');
+    boot(MEMBER);
+    global.fetch = jest.fn(() => Promise.reject(new Error('net')));
+    window.PlatformShell.build('clubs');
+    await flush();
+    expect(document.querySelector('.pnav__me').getAttribute('href')).toBe('#');
+  });
+
+  it('setActive() moves the marker in nav and tab bar without rebuilding', () => {
+    boot(null, undefined, 'lobby');
+    const nav = document.querySelector('.pnav');
+    window.PlatformShell.setActive('tournaments');
+    expect(document.querySelector('.pnav')).toBe(nav);
+    const on = [...document.querySelectorAll('.is-active')].map((a) => a.dataset.tab);
+    expect(on).toEqual(['tournaments', 'tournaments']);
+    expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(2);
+    window.PlatformShell.setActive('learn'); // nav-only item: tab bar shows none
+    expect([...document.querySelectorAll('.is-active')].map((a) => a.dataset.tab)).toEqual(['learn']);
   });
 
   it('signed-out → login link, no network call', () => {
