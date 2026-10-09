@@ -77,6 +77,16 @@ if (gameColumns.length > 0 && !gameColumns.includes('ranked')) {
   logger.info('[DB] Migrated games: added ranked column (TODO.md #175)');
 }
 
+// Profile fields (TODO.md #177): bio, avatar version (0 = no avatar; bumped per
+// upload so the URL cache-busts), and the two privacy opt-outs.
+if (userColumns.length > 0 && !userColumns.includes('bio')) {
+  db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''");
+  db.exec('ALTER TABLE users ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE users ADD COLUMN hide_history INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE users ADD COLUMN hide_bio INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated users: added bio/avatar_v/hide_history/hide_bio columns (TODO.md #177)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a
@@ -876,7 +886,7 @@ const RANKING_MIN_GAMES = 20;
  */
 function getRankings(category, limit, offset) {
   return db.prepare(`
-    SELECT r.user_id, u.display_name, r.rating, r.rd, r.games
+    SELECT r.user_id, u.username, u.display_name, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ?
     ORDER BY r.rating DESC, r.user_id
@@ -907,12 +917,65 @@ function getUserRanking(userId, category) {
   return { ...row, rank };
 }
 
+// ---------------------------------------------------------------------------
+// Profiles (#177)
+// ---------------------------------------------------------------------------
+
+const PROFILE_COLS = 'id, username, display_name, created_at, bio, avatar_v, hide_history, hide_bio';
+
+function getProfileByUsername(username) {
+  return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE username = ? COLLATE NOCASE`).get(username);
+}
+
+/** @param {{bio?:string, hide_history?:boolean, hide_bio?:boolean}} f */
+function updateProfile(userId, f) {
+  const sets = [], params = [];
+  if (typeof f.bio === 'string') { sets.push('bio = ?'); params.push(f.bio); }
+  if (typeof f.hide_history === 'boolean') { sets.push('hide_history = ?'); params.push(f.hide_history ? 1 : 0); }
+  if (typeof f.hide_bio === 'boolean') { sets.push('hide_bio = ?'); params.push(f.hide_bio ? 1 : 0); }
+  if (!sets.length) return;
+  db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params, userId);
+}
+
+/** Set (bump) or clear (0) the avatar version; returns the new version. */
+function setAvatarVersion(userId, clear) {
+  db.prepare('UPDATE users SET avatar_v = ? WHERE id = ?')
+    .run(clear ? 0 : Date.now() % 2147483647, userId);
+  return db.prepare('SELECT avatar_v FROM users WHERE id = ?').get(userId).avatar_v;
+}
+
+/** Aggregate record for a user's finished games. */
+function getUserGameStats(userId) {
+  return db.prepare(`
+    SELECT COUNT(*) AS games,
+           SUM(CASE WHEN winner = 'draw' THEN 1 ELSE 0 END) AS draws,
+           SUM(CASE WHEN (winner = 'BLACK' AND black_player_id = @id)
+                      OR (winner = 'WHITE' AND white_player_id = @id) THEN 1 ELSE 0 END) AS wins
+    FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
+  `).get({ id: userId });
+}
+
+function getUserRecentGames(userId, limit) {
+  return db.prepare(`
+    SELECT id, black_player_id, black_player_name, white_player_name, winner, ended_at
+    FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
+    ORDER BY ended_at DESC LIMIT @limit
+  `).all({ id: userId, limit });
+}
+
 module.exports = {
   db,
   createUser,
   getUserByUsername,
   getUserByOAuthId,
   getUserById,
+  getProfileByUsername,
+  updateProfile,
+  setAvatarVersion,
+  getUserGameStats,
+  getUserRecentGames,
   updateLastLogin,
   createSession,
   getSessionById,

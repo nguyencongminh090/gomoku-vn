@@ -56,6 +56,7 @@ router.get('/', (req, res, next) => {
       const players = database.getRankings(category, limit, offset).map((r, i) => ({
         rank: offset + i + 1,
         userId: r.user_id,
+        username: r.username,
         displayName: r.display_name,
         rating: Math.round(r.rating),
         games: r.games,
