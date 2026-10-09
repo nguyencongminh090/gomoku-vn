@@ -63,7 +63,11 @@ function handleDisconnect(io, socket) {
   // navigation (e.g. index.html -> room.html right after room:create) rather
   // than a real abandonment — see EMPTY_ROOM_GRACE_MS in config.js. Give them
   // a bounded window to reconnect before actually leaving/destroying.
-  if (room.users.size === 1) {
+  // "Only occupant" means only *connected* one: occupants already marked
+  // 'disconnected' (ghost viewers, users in their own grace) don't keep the
+  // room alive — counting them left a room of ghosts alive until the 10-min
+  // idle sweep (TODO.md #186).
+  if (!hasOtherConnectedUser(room, user.userId)) {
     startEmptyRoomGrace(io, room, user);
     return;
   }
@@ -91,6 +95,38 @@ function handleDisconnect(io, socket) {
   }
 
   startSpectatorGrace(io, room, user);
+}
+
+/** True if anyone other than `userId` in the room is still connected. */
+function hasOtherConnectedUser(room, userId) {
+  for (const [id, u] of room.users) {
+    if (id !== userId && u.presence !== 'disconnected') return true;
+  }
+  return false;
+}
+
+/**
+ * After a grace-expiry leave: if nobody left in the room is connected and none
+ * of them is still inside a grace window, the rest are ghost viewers (#115:
+ * no timeout of their own) — remove them so the room is destroyed instead of
+ * lingering in the lobby and holding its creator's room quota (TODO.md #186).
+ * A ghost viewer who comes back later gets ROOM_GONE, as for any closed room.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {string} roomId
+ */
+function reapGhostRoom(io, roomId) {
+  const room = roomManager.getRoom(roomId);
+  if (!room || !room.users || room.users.size === 0) return;
+  if (room.gameState && room.gameState.status === 'ongoing') return;
+  for (const [id, u] of room.users) {
+    if (u.presence !== 'disconnected') return;
+    if (emptyRoomGraceTimers.has(id) || spectatorGraceTimers.has(id) || disconnectTimers.has(id)) return;
+  }
+  for (const [id, u] of [...room.users]) {
+    finalizeNormalLeave(io, roomId, u, roomManager.leaveRoom(id));
+  }
+  logger.info(`[Disconnect] Room ${roomId}: only disconnected viewers left — removed them`);
 }
 
 /**
@@ -159,8 +195,10 @@ function startEmptyRoomGrace(io, room, user) {
 
   const timeout = setTimeout(() => {
     emptyRoomGraceTimers.delete(user.userId);
-    finalizeNormalLeave(io, roomId, user, roomManager.leaveRoom(user.userId));
+    const result = roomManager.leaveRoom(user.userId);
+    finalizeNormalLeave(io, roomId, user, result);
     logger.info(`[Disconnect] Empty-room grace expired for ${user.displayName}, room ${roomId} — left for real`);
+    if (result && !result.destroyed && result.room) reapGhostRoom(io, roomId);
   }, config.EMPTY_ROOM_GRACE_MS);
 
   emptyRoomGraceTimers.set(user.userId, { timeout, roomId });
@@ -214,8 +252,10 @@ function startSpectatorGrace(io, room, user) {
 
   const timeout = setTimeout(() => {
     spectatorGraceTimers.delete(user.userId);
-    finalizeNormalLeave(io, roomId, user, roomManager.leaveRoom(user.userId));
+    const result = roomManager.leaveRoom(user.userId);
+    finalizeNormalLeave(io, roomId, user, result);
     logger.info(`[Disconnect] Spectator grace expired for ${user.displayName}, room ${roomId} — left for real`);
+    if (result && !result.destroyed && result.room) reapGhostRoom(io, roomId);
   }, config.SPECTATOR_GRACE_MS);
 
   spectatorGraceTimers.set(user.userId, { timeout, roomId });

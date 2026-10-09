@@ -1,5 +1,5 @@
 # B186 — room whose occupants are all disconnected viewers is never destroyed (until idle sweep)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-09 — grace on last connected user + ghost reap on expiry ([fix-log](../fix-log/2026-10-09-todo-186-ghost-viewer-room-cleanup.md))
 **Area:** server/socket/handlers/DisconnectHandler.js (handleDisconnect), RoomManager idle sweep
 **From:** #185 e2e diagnosis, 2026-10-09   **Depends:** —
 

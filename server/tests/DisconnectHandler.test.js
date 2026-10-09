@@ -534,6 +534,135 @@ describe('DisconnectHandler — viewer (slot === null) unlimited reconnect', () 
 });
 
 // ---------------------------------------------------------------------------
+// TODO.md #186 — a room whose occupants are all disconnected viewers must not
+// outlive its last connected user's empty-room grace. leaveRoom here mutates
+// the room like the real one (remove user, destroy when empty).
+// ---------------------------------------------------------------------------
+describe('DisconnectHandler — room of disconnected viewers (TODO.md #186)', () => {
+  let rooms;
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockState.disconnectTimers.clear();
+    mockState.emptyRoomGraceTimers.clear();
+    mockState.spectatorGraceTimers.clear();
+    mockState.timerMap.clear();
+    jest.clearAllMocks();
+    rooms = new Map();
+    mockRoomManager.getRoomIdByUser.mockImplementation((id) => {
+      for (const r of rooms.values()) if (r.users.has(id)) return r.roomId;
+      return null;
+    });
+    mockRoomManager.getRoom.mockImplementation((id) => rooms.get(id) || null);
+    mockRoomManager.leaveRoom.mockImplementation((id) => {
+      const room = [...rooms.values()].find(r => r.users.has(id));
+      if (!room) return { room: null, destroyed: false, hostTransferred: false };
+      room.users.delete(id);
+      if (room.users.size === 0) {
+        rooms.delete(room.roomId);
+        return { room, destroyed: true, hostTransferred: false };
+      }
+      return { room, destroyed: false, hostTransferred: false };
+    });
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+    mockRoomManager.getRoomIdByUser.mockReset();
+    mockRoomManager.getRoom.mockReset();
+    mockRoomManager.leaveRoom.mockReset()
+      .mockReturnValue({ room: null, destroyed: false, hostTransferred: false });
+  });
+
+  function addRoom(users) {
+    const room = {
+      roomId: 'room1',
+      gameState: null,
+      users: new Map(users.map(u => [u.userId, { presence: 'active', ...u }])),
+    };
+    rooms.set(room.roomId, room);
+    return room;
+  }
+
+  test('host (never seated) + joining viewer both disconnect -> room destroyed after the empty-room grace', () => {
+    const io = makeIo();
+    addRoom([
+      { userId: 'host', displayName: 'Host', slot: null },
+      { userId: 'v2', displayName: 'Viewer', slot: null },
+    ]);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('v2', 'Viewer'));
+    // First out with someone still connected: #115 viewer path, no timer.
+    expect(mockState.emptyRoomGraceTimers.has('v2')).toBe(false);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('host', 'Host'));
+    // Last connected occupant: the ghost viewer must not count as company.
+    expect(mockState.emptyRoomGraceTimers.has('host')).toBe(true);
+
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+
+    expect(rooms.has('room1')).toBe(false);
+    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('host');
+    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('v2');
+    expect(mockState.broadcastLobbyUpdate).toHaveBeenCalled();
+  });
+
+  test('a ghost viewer who comes back before the grace expires keeps the room alive', () => {
+    const io = makeIo();
+    const room = addRoom([
+      { userId: 'host', displayName: 'Host', slot: null },
+      { userId: 'v2', displayName: 'Viewer', slot: null },
+    ]);
+    DisconnectHandler.handleDisconnect(io, makeSocket('v2', 'Viewer'));
+    DisconnectHandler.handleDisconnect(io, makeSocket('host', 'Host'));
+
+    room.users.get('v2').presence = 'active'; // SocketHandler's rejoin path
+
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+
+    expect(rooms.has('room1')).toBe(true);
+    expect([...room.users.keys()]).toEqual(['v2']);
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('v2');
+  });
+
+  test('an occupant still inside its own spectator grace is not reaped early; its expiry finishes the room', () => {
+    const io = makeIo();
+    addRoom([
+      { userId: 'p1', displayName: 'Seated', slot: 1 },
+      { userId: 'v2', displayName: 'Viewer', slot: null },
+      { userId: 'v3', displayName: 'Ghost', slot: null, presence: 'disconnected' },
+    ]);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('p1', 'Seated'));
+    expect(mockState.spectatorGraceTimers.has('p1')).toBe(true);
+    DisconnectHandler.handleDisconnect(io, makeSocket('v2', 'Viewer'));
+    expect(mockState.emptyRoomGraceTimers.has('v2')).toBe(true);
+
+    expect(config.SPECTATOR_GRACE_MS).toBeGreaterThan(config.EMPTY_ROOM_GRACE_MS);
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+    // v2 left; p1 is still mid-grace, so neither p1 nor the ghost is touched.
+    expect(rooms.get('room1').users.has('p1')).toBe(true);
+    expect(rooms.get('room1').users.has('v3')).toBe(true);
+
+    jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
+    expect(rooms.has('room1')).toBe(false);
+  });
+
+  test('an ongoing game is never reaped by this path', () => {
+    const io = makeIo();
+    const room = addRoom([
+      { userId: 'v2', displayName: 'Viewer', slot: null },
+      { userId: 'v3', displayName: 'Ghost', slot: null, presence: 'disconnected' },
+    ]);
+    room.gameState = { status: 'ongoing', players: [] };
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('v2', 'Viewer'));
+    jest.advanceTimersByTime(config.EMPTY_ROOM_GRACE_MS);
+
+    expect(room.users.has('v3')).toBe(true);
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('v3');
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Both players in grace at once (restores the test discarded when backend
 // fix #4 was made — see docs/fix-log.md)
 // ---------------------------------------------------------------------------
