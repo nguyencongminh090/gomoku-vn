@@ -1,5 +1,5 @@
 # B174 — Storage/scale decision for thousands of users
-**Status:** OPEN (blocked)
+**Status:** ✅ DONE 2026-10-09 — decision: keep SQLite (WAL) + async rating-write queue + synchronous=NORMAL; numbers in features/platform/planning.md Q8
 **Area:** server/db, docs/knowledge
 **From:** features/platform, 2026-10-09   **Depends:** B172 (can run parallel)
 
