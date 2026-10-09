@@ -893,7 +893,7 @@ const RANKING_MIN_GAMES = 20;
  */
 function getRankings(category, limit, offset) {
   return db.prepare(`
-    SELECT r.user_id, u.username, u.display_name, r.rating, r.rd, r.games
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ?
     ORDER BY r.rating DESC, r.user_id

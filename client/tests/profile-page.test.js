@@ -29,6 +29,7 @@ async function boot(profile, status = 200) {
   document.body.innerHTML = BODY_HTML;
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
   global.fetch = jest.fn(() => Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(profile) }));
+  require('../js/platform-shell.js');
   require('../js/profile.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await flush(); await flush();
@@ -41,9 +42,10 @@ describe('profile page', () => {
     expect(document.getElementById('pf-name').textContent).toBe(PROFILE.displayName);
     expect(document.querySelector('#pf-name img')).toBeNull();
     expect(document.getElementById('pf-bio').querySelector('b')).toBeNull();
-    expect(document.querySelectorAll('.profile__card')).toHaveLength(1);
-    expect(document.querySelectorAll('#pf-recent li')).toHaveLength(1);
+    expect(document.querySelectorAll('.pcard')).toHaveLength(1);
+    expect(document.querySelectorAll('#pf-recent .prow')).toHaveLength(1);
     expect(document.getElementById('pf-edit').hidden).toBe(true);
+    expect(document.getElementById('pf-actions').hidden).toBe(true);
   });
 
   it('shows the history-private note when stats are withheld', async () => {

@@ -30,6 +30,7 @@ async function boot(fetchImpl) {
   document.body.innerHTML = BODY_HTML;
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
   global.fetch = jest.fn(fetchImpl);
+  require('../js/platform-shell.js');
   require('../js/rankings.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await flush(); await flush();
@@ -42,18 +43,18 @@ describe('rankings page', () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const rows = document.querySelectorAll('#rk-body tr');
     expect(rows).toHaveLength(2);
-    expect(rows[0].children[1].textContent).toBe('<b>Bob</b>');
+    expect(rows[0].querySelector('a').textContent).toBe('<b>Bob</b>');
     expect(rows[0].querySelector('b')).toBeNull();
     expect(rows[1].classList.contains('is-me')).toBe(true);
     expect(rows[1].querySelector('a').getAttribute('href')).toBe('/u/alice');
-    expect(rows[1].querySelector('.rankings__prov')).not.toBeNull();
+    expect(rows[1].querySelector('.ptbl__prov')).not.toBeNull();
     expect(document.getElementById('rk-mine').textContent).toContain('#2');
   });
 
   it('works logged out (me → 401) and switches category via tab', async () => {
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
     expect(document.getElementById('rk-mine').textContent).toBe('');
-    document.querySelectorAll('.rankings__tab')[2].click();
+    document.querySelectorAll('.pchip')[2].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('category=caro');
   });

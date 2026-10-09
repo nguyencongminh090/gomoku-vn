@@ -42,76 +42,91 @@
   }
 
   function mini(label, fn) {
-    const b = el('button', label, 'profile__btn clubs__mini');
+    const b = el('button', label, 'pbtn pbtn--sm');
     b.type = 'button';
     b.onclick = async () => { if (await fn()) load(); };
     return b;
   }
 
+  function userRow(username, displayName, avatarUrl, meta) {
+    const a = el('a', undefined, 'prow');
+    a.href = '/u/' + encodeURIComponent(username);
+    const body = el('div', undefined, 'prow__body');
+    body.append(el('div', displayName, 'prow__t'));
+    if (meta) body.append(el('div', meta, 'prow__m'));
+    a.append(window.PlatformShell.avatar(avatarUrl, displayName, 'pav--sm'), body);
+    return a;
+  }
+
   function render(c) {
     state.club = c;
     document.title = 'Play3CR — ' + c.name;
+    $('cb-avatar').replaceWith(Object.assign(window.PlatformShell.avatar(null, c.name, 'pav--xl pav--sq'), { id: 'cb-avatar' }));
     $('cb-name').textContent = c.name;
+    $('cb-policy-badge').textContent = t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short');
     $('cb-desc').textContent = c.description;
-    $('cb-meta').textContent = [
-      t('clubs.members', { n: c.members }),
-      c.avgRating ? t('clubs.avg', { n: c.avgRating }) : null,
-      t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short'),
-    ].filter(Boolean).join(' · ');
+
+    const stats = $('cb-stats');
+    stats.replaceChildren();
+    for (const [label, v] of [['clubs.members_stat', String(c.members)], ['clubs.avg_stat', c.avgRating ? String(c.avgRating) : '—']]) {
+      const d = document.createElement('div');
+      d.append(el('dt', t(label)), el('dd', v));
+      stats.appendChild(d);
+    }
 
     const role = c.myRole;
     const staff = role === 'owner' || role === 'officer';
-    const join = $('cb-join');
-    join.hidden = !!role;
-    join.textContent = t(c.joinPolicy === 'open' ? 'clubs.join' : 'clubs.request');
+    $('cb-join').hidden = !!role;
+    $('cb-join').textContent = t(c.joinPolicy === 'open' ? 'clubs.join' : 'clubs.request');
     $('cb-leave').hidden = !role || role === 'owner';
     $('cb-leave').textContent = role === 'pending' ? t('clubs.cancel_request') : t('clubs.leave');
     $('cb-delete').hidden = role !== 'owner';
+
+    $('cb-staff').replaceChildren(...c.leaderboard.filter((m) => m.role !== 'member')
+      .map((m) => userRow(m.username, m.displayName, m.avatarUrl, t('clubs.role_' + m.role))));
 
     $('cb-manage').hidden = !staff;
     if (staff) {
       $('cb-desc-input').value = c.description;
       $('cb-policy').value = c.joinPolicy;
       $('cb-policy').hidden = $('cb-policy-label').hidden = role !== 'owner';
-      $('cb-pending').replaceChildren(...(c.pending || []).map((p) => {
-        const li = document.createElement('li');
-        const a = el('a', p.displayName);
-        a.href = '/u/' + encodeURIComponent(p.username);
-        li.append(a,
+      const pending = c.pending || [];
+      $('cb-pending').replaceChildren(...(pending.length ? pending.map((p) => {
+        const row = userRow(p.username, p.displayName, null);
+        row.append(
           mini(t('clubs.approve'), () => act('POST', '/members/' + encodeURIComponent(p.username) + '/approve')),
           mini(t('clubs.reject'), () => act('DELETE', '/members/' + encodeURIComponent(p.username))));
-        return li;
-      }));
-      if (!(c.pending || []).length) $('cb-pending').replaceChildren(el('li', t('clubs.no_pending'), 'profile__note'));
+        return row;
+      }) : [el('p', t('clubs.no_pending'), 'pnote')]));
     }
 
     $('cb-actions-th').hidden = !staff;
     $('cb-body').replaceChildren(...c.leaderboard.map((m) => {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
-      const a = el('a', m.displayName);
-      a.href = '/u/' + encodeURIComponent(m.username);
-      name.append(a);
-      const rating = el('td', m.rating == null ? '—' : String(m.rating), 'num');
-      tr.append(el('td', String(m.rank)), name, el('td', t('clubs.role_' + m.role)), rating);
+      const link = el('a', m.displayName);
+      link.href = '/u/' + encodeURIComponent(m.username);
+      name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
+      tr.append(el('td', String(m.rank)), name, el('td', t('clubs.role_' + m.role)),
+        el('td', m.rating == null ? '—' : String(m.rating), 'num'));
       if (staff) {
         const td = document.createElement('td');
+        td.className = 'num';
         const enc = encodeURIComponent(m.username);
         const canKick = m.role !== 'owner' && (role === 'owner' || m.role === 'member');
         if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
         if (role === 'owner' && m.role !== 'owner') {
-          td.append(mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
+          td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
             () => act('PUT', '/members/' + enc + '/role', { role: m.role === 'officer' ? 'member' : 'officer' })));
-          td.append(mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
+          td.append(' ', mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
         }
         tr.append(td);
       }
       return tr;
     }));
 
-    const tabs = $('cb-tabs');
-    tabs.replaceChildren(...CATEGORIES.map((cat) => {
-      const b = el('button', t('rankings.cat_' + cat), 'rankings__tab');
+    $('cb-tabs').replaceChildren(...CATEGORIES.map((cat) => {
+      const b = el('button', t('rankings.cat_' + cat), 'pchip');
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', String(cat === state.category));
@@ -134,6 +149,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    window.PlatformShell.build('clubs');
     $('cb-join').onclick = async () => { if (await act('POST', '/join')) load(); };
     $('cb-leave').onclick = async () => { if (await act('POST', '/leave', null, 'clubs.confirm_leave')) load(); };
     $('cb-delete').onclick = async () => { if (await act('DELETE', '', null, 'clubs.confirm_delete')) location.href = '/clubs.html'; };

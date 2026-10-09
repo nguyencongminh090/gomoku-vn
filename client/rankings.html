@@ -2,45 +2,32 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
+  <!-- Some of these pages are served at /u/<x> or /c/<x>: root-relative base keeps css/js/assets working. -->
+  <base href="/" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Bảng xếp hạng</title>
-  <meta name="description" content="Bảng xếp hạng Glicko-2 theo thể loại trên Play3CR." id="meta-description" />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=181" />
-  <link rel="stylesheet" href="css/tokens.css?v=181" />
-  <link rel="stylesheet" href="css/rankings.css?v=181" />
-  <link rel="stylesheet" href="css/shell.css?v=181" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=181" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=181">
+  <link rel="stylesheet" href="css/main.css?v=184" />
+  <link rel="stylesheet" href="css/tokens.css?v=184" />
+  <link rel="stylesheet" href="css/platform.css?v=184" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=184">
 
-  <script src="js/ui-mode-preload.js?v=181"></script>
-  <script src="js/skin-preload.js?v=181"></script>
+  <script src="js/ui-mode-preload.js?v=184"></script>
+  <script src="js/skin-preload.js?v=184"></script>
 </head>
-<body>
+<body class="pl">
+<div id="pl-shell"></div>
 
-<nav class="topnav" aria-label="Main navigation">
-  <a href="index.html" class="topnav__brand" aria-label="Play3CR">
-    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
-    <span class="topnav__title">Play3CR</span>
-  </a>
-  <div class="topnav__right">
-    <a href="index.html" class="topnav__btn" style="text-decoration:none;" data-i18n-title="nav.lobby" title="Sảnh">
-      <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=181#ph-bold-house"></use></svg>
-      <span class="hide-on-mobile" data-i18n="nav.lobby">Sảnh</span>
-    </a>
-  </div>
-</nav>
-
-<main class="rankings" role="main">
-  <div class="rankings__header">
+<main class="papp" role="main">
+  <div class="pintro">
     <h1 data-i18n="rankings.h1">Bảng xếp hạng</h1>
-    <span id="rk-total" class="rankings__count"></span>
+    <p id="rk-total" class="muted small"></p>
   </div>
 
-  <div id="rk-tabs" class="rankings__tabs" role="tablist" aria-label="Thể loại"></div>
+  <div id="rk-tabs" class="pchips" role="tablist" aria-label="Thể loại"></div>
 
-  <div class="rankings__tblwrap">
-    <table class="rankings__tbl" aria-live="polite">
+  <div class="ptbl-wrap">
+    <table class="ptbl" aria-live="polite">
       <thead>
         <tr>
           <th scope="col">#</th>
@@ -52,17 +39,17 @@
       <tbody id="rk-body"></tbody>
     </table>
   </div>
-  <p id="rk-empty" class="rankings__note" hidden></p>
-  <p id="rk-mine" class="rankings__note"></p>
-  <p class="rankings__note" id="rk-footnote"></p>
+  <p id="rk-empty" class="pnote" hidden></p>
+  <p id="rk-mine" class="pnote"></p>
+  <p class="pnote" id="rk-footnote"></p>
 
-  <div id="rk-pager" class="rankings__pager"></div>
+  <div id="rk-pager" class="ppager"></div>
 </main>
 
-<script src="js/i18n.js?v=181"></script>
-<script src="js/ui-mode.js?v=181"></script>
-<script src="js/audio-manager.js?v=181"></script>
-<script src="js/settings-panel.js?v=181"></script>
-<script src="js/rankings.js?v=181"></script>
+<script src="js/i18n.js?v=184"></script>
+<script src="js/ui-mode.js?v=184"></script>
+<script src="js/session.js?v=184"></script>
+<script src="js/platform-shell.js?v=184"></script>
+<script src="js/rankings.js?v=184"></script>
 </body>
 </html>
