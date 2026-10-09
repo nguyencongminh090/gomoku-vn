@@ -193,3 +193,21 @@ describe('profile clubs', () => {
     expect((await req('GET', '/api/profile/bob')).json.clubs).toEqual([]);
   });
 });
+
+describe('ui skin preference', () => {
+  const put = (body, cookie = UID) => req('PUT', '/api/profile', { cookie, type: 'application/json', body: JSON.stringify(body) });
+
+  it('defaults to arena, saves a valid skin, rejects unknown ones', async () => {
+    expect((await req('GET', '/api/profile/prefs', { cookie: UID })).json.uiSkin).toBe('arena');
+    expect((await put({ uiSkin: 'zen' })).status).toBe(200);
+    expect((await req('GET', '/api/profile/prefs', { cookie: UID })).json.uiSkin).toBe('zen');
+    expect((await put({ uiSkin: 'neon' })).json.code).toBe('SKIN_INVALID');
+    expect((await req('GET', '/api/profile/prefs', { cookie: UID })).json.uiSkin).toBe('zen');
+  });
+
+  it('is per user and needs a member session; "prefs" is not read as a username', async () => {
+    expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.uiSkin).toBe('arena');
+    expect((await req('GET', '/api/profile/prefs')).status).toBe(401);
+    expect((await req('GET', '/api/profile/prefs', { cookie: 'guest' })).status).toBe(403);
+  });
+});

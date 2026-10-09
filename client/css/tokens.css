@@ -7,7 +7,7 @@
 
    Axes (set on <html> by ui-mode-preload.js before first paint, changed by
    ui-mode.js → setColorMode()):
-     data-skin  "arena"  (future: "zen", "bento" — colour + radius tokens only)
+     data-skin  "arena" (default) | "zen" | "bento" — colour + radius tokens only
      data-mode  "dark" (default) | "light"
 
    NOT here (locked): --board-* tokens stay in main.css and are identical in
@@ -33,8 +33,8 @@
   --c-brand-light:  rgba(98,153,36,0.16);
   --c-on-brand:     #ffffff;
 
-  --c-accent:       #d85000;
-  --c-accent-light: rgba(216,80,0,0.16);
+  --c-accent:       #ee6a20;   /* text/border only; was #d85000 = 3.7:1 on surface, now 4.95:1 (#180) */
+  --c-accent-light: rgba(238,106,32,0.16);
 
   --c-error:        #ef6a6a;
   --c-error-bg:     rgba(239,106,106,0.12);
@@ -110,4 +110,186 @@
 
   --shadow:     0 1px 3px rgba(0,0,0,0.10);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.22);
+}
+
+
+/* ── Selectable skins (#180) — colour + radius tokens only; each block defines the
+   FULL token set so nothing leaks from the arena blocks above. Dark block has
+   specificity (0,2,0) like arena-light, so it must stay AFTER it; light blocks
+   are (0,3,0). Contrast: client/tests/skin-contrast.test.js. ───────────────── */
+
+/* Zen — monochrome, 2px corners (mockup: platform-zen-mockup.html), dark mode */
+:root[data-skin="zen"] {
+  color-scheme: dark;
+  --c-bg: #121212;
+  --c-surface: #1b1b1b;
+  --c-surface-2: #242424;
+  --c-border: rgba(255,255,255,0.12);
+  --c-border-light: rgba(255,255,255,0.07);
+  --c-ink: #ececec;
+  --c-ink-2: #a8a8a8;
+  --c-ink-3: #949494;
+  --c-brand: #ececec;
+  --c-brand-dark: #ffffff;
+  --c-brand-text: #ececec;
+  --c-brand-light: rgba(236,236,236,0.10);
+  --c-on-brand: #121212;
+  --c-accent: #f08a4b;
+  --c-accent-light: rgba(240,138,75,0.16);
+  --c-error: #ef6a6a;
+  --c-error-bg: rgba(239,106,106,0.12);
+  --c-success: #8bc34a;
+  --c-success-bg: rgba(139,195,74,0.12);
+  --c-warning: #f2a33a;
+  --c-warning-bg: rgba(242,163,58,0.12);
+  --c-state-idle: #8a8a8a;
+  --c-state-playing: #8bc34a;
+  --c-state-waiting: #f2a33a;
+  --c-fill: rgba(255,255,255,0.06);
+  --c-hover: rgba(255,255,255,0.04);
+  --c-strong: #ffffff;
+  --c-field: #121212;
+  --c-scrim: rgba(0,0,0,0.65);
+  --bg-glass: #1b1b1b;
+  --bg-glass-heavy: #1b1b1b;
+  --radius: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 4px;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.6);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
+}
+
+/* Zen, light mode */
+:root[data-skin="zen"][data-mode="light"] {
+  color-scheme: light;
+  --c-bg: #f7f7f5;
+  --c-surface: #ffffff;
+  --c-surface-2: #f1f1ef;
+  --c-border: rgba(28,28,28,0.14);
+  --c-border-light: rgba(28,28,28,0.08);
+  --c-ink: #1c1c1c;
+  --c-ink-2: #565656;
+  --c-ink-3: #666666;
+  --c-brand: #1c1c1c;
+  --c-brand-dark: #000000;
+  --c-brand-text: #1c1c1c;
+  --c-brand-light: rgba(28,28,28,0.07);
+  --c-on-brand: #ffffff;
+  --c-accent: #a63d00;
+  --c-accent-light: rgba(194,71,0,0.10);
+  --c-error: #c62828;
+  --c-error-bg: rgba(198,40,40,0.08);
+  --c-success: #276a2b;
+  --c-success-bg: rgba(46,125,50,0.08);
+  --c-warning: #8f5500;
+  --c-warning-bg: rgba(178,106,0,0.08);
+  --c-state-idle: #7d7d7d;
+  --c-state-playing: #2e7d32;
+  --c-state-waiting: #a35f00;
+  --c-fill: rgba(0,0,0,0.04);
+  --c-hover: rgba(0,0,0,0.03);
+  --c-strong: #000000;
+  --c-field: #f1f1ef;
+  --c-scrim: rgba(0,0,0,0.4);
+  --bg-glass: #ffffff;
+  --bg-glass-heavy: #ffffff;
+  --radius: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 4px;
+  --shadow-sm: none;
+  --shadow: none;
+  --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.2);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
+}
+
+/* Bento — indigo + amber, large rounded tiles (mockup: platform-bento-mockup.html), dark mode */
+:root[data-skin="bento"] {
+  color-scheme: dark;
+  --c-bg: #14151c;
+  --c-surface: #1e202b;
+  --c-surface-2: #282b39;
+  --c-border: rgba(255,255,255,0.10);
+  --c-border-light: rgba(255,255,255,0.06);
+  --c-ink: #e9eaf2;
+  --c-ink-2: #aeb2c4;
+  --c-ink-3: #9a9eb2;
+  --c-brand: #5a52e0;
+  --c-brand-dark: #4a43c4;
+  --c-brand-text: #a5a0ff;
+  --c-brand-light: rgba(129,122,255,0.18);
+  --c-on-brand: #ffffff;
+  --c-accent: #fbbf24;
+  --c-accent-light: rgba(251,191,36,0.16);
+  --c-error: #ff8585;
+  --c-error-bg: rgba(255,133,133,0.12);
+  --c-success: #7ddc8f;
+  --c-success-bg: rgba(125,220,143,0.12);
+  --c-warning: #f5b84a;
+  --c-warning-bg: rgba(245,184,74,0.12);
+  --c-state-idle: #8a8ea2;
+  --c-state-playing: #7ddc8f;
+  --c-state-waiting: #f5b84a;
+  --c-fill: rgba(255,255,255,0.06);
+  --c-hover: rgba(255,255,255,0.045);
+  --c-strong: #ffffff;
+  --c-field: #14151c;
+  --c-scrim: rgba(0,0,0,0.6);
+  --bg-glass: #1e202b;
+  --bg-glass-heavy: #1e202b;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
+  --shadow-sm: none;
+  --shadow: 0 6px 18px rgba(0,0,0,0.35);
+  --shadow-lg: 0 28px 56px -16px rgba(0,0,0,0.6);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
+}
+
+/* Bento, light mode */
+:root[data-skin="bento"][data-mode="light"] {
+  color-scheme: light;
+  --c-bg: #f2efe9;
+  --c-surface: #ffffff;
+  --c-surface-2: #f7f5f0;
+  --c-border: rgba(31,36,51,0.12);
+  --c-border-light: rgba(31,36,51,0.07);
+  --c-ink: #1f2433;
+  --c-ink-2: #52596d;
+  --c-ink-3: #626a7e;
+  --c-brand: #4f46e5;
+  --c-brand-dark: #4338ca;
+  --c-brand-text: #4338ca;
+  --c-brand-light: rgba(79,70,229,0.10);
+  --c-on-brand: #ffffff;
+  --c-accent: #a8500a;
+  --c-accent-light: rgba(245,158,11,0.16);
+  --c-error: #c62828;
+  --c-error-bg: rgba(198,40,40,0.08);
+  --c-success: #276a2b;
+  --c-success-bg: rgba(46,125,50,0.08);
+  --c-warning: #8f5500;
+  --c-warning-bg: rgba(178,106,0,0.08);
+  --c-state-idle: #7d8294;
+  --c-state-playing: #2e7d32;
+  --c-state-waiting: #a35f00;
+  --c-fill: rgba(31,36,51,0.05);
+  --c-hover: rgba(31,36,51,0.035);
+  --c-strong: #000000;
+  --c-field: #f7f5f0;
+  --c-scrim: rgba(31,36,51,0.45);
+  --bg-glass: #ffffff;
+  --bg-glass-heavy: #ffffff;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 26px;
+  --shadow-sm: none;
+  --shadow: 0 4px 14px rgba(31,36,51,0.08);
+  --shadow-lg: 0 28px 56px -16px rgba(31,36,51,0.22);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
 }

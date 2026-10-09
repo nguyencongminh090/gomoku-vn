@@ -87,6 +87,13 @@ if (userColumns.length > 0 && !userColumns.includes('bio')) {
   logger.info('[DB] Migrated users: added bio/avatar_v/hide_history/hide_bio columns (TODO.md #177)');
 }
 
+// Selected UI skin (TODO.md #180); the cookie is authoritative on a device,
+// this column carries the choice to a new one.
+if (userColumns.length > 0 && !userColumns.includes('ui_skin')) {
+  db.exec("ALTER TABLE users ADD COLUMN ui_skin TEXT NOT NULL DEFAULT 'arena'");
+  logger.info('[DB] Migrated users: added ui_skin column (TODO.md #180)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a
@@ -923,13 +930,19 @@ function getUserRanking(userId, category) {
 
 const PROFILE_COLS = 'id, username, display_name, created_at, bio, avatar_v, hide_history, hide_bio';
 
+function getUiSkin(userId) {
+  const r = db.prepare('SELECT ui_skin FROM users WHERE id = ?').get(userId);
+  return r ? r.ui_skin : null;
+}
+
 function getProfileByUsername(username) {
   return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE username = ? COLLATE NOCASE`).get(username);
 }
 
-/** @param {{bio?:string, hide_history?:boolean, hide_bio?:boolean}} f */
+/** @param {{bio?:string, hide_history?:boolean, hide_bio?:boolean, ui_skin?:string}} f */
 function updateProfile(userId, f) {
   const sets = [], params = [];
+  if (typeof f.ui_skin === 'string') { sets.push('ui_skin = ?'); params.push(f.ui_skin); }
   if (typeof f.bio === 'string') { sets.push('bio = ?'); params.push(f.bio); }
   if (typeof f.hide_history === 'boolean') { sets.push('hide_history = ?'); params.push(f.hide_history ? 1 : 0); }
   if (typeof f.hide_bio === 'boolean') { sets.push('hide_bio = ?'); params.push(f.hide_bio ? 1 : 0); }
@@ -972,6 +985,7 @@ module.exports = {
   getUserByOAuthId,
   getUserById,
   getProfileByUsername,
+  getUiSkin,
   updateProfile,
   setAvatarVersion,
   getUserGameStats,
