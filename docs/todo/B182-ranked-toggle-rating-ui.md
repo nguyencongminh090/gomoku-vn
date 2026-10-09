@@ -1,5 +1,5 @@
 # B182 — Room Ranked toggle + rating delta display
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-09 — toggle in host room settings + own rating line in room log; client/tests/ranked-toggle-rating-ui.test.js; real-browser pass (2 registered users, isolated DB copy); ?v=176
 **Area:** client/js (room settings, game-end UI), i18n
 **From:** B175 follow-up, 2026-10-09   **Depends:** B175 ✅
 
@@ -21,3 +21,10 @@ toggle and ignores the event — every eligible game between members is ranked, 
 
 ## Done when
 - Toggle round-trips; delta shown to both players; tests green.
+
+## Result
+- `room-ui.js`: `#r-ranked` toggle in the host's room settings (default ON; disabled + hint while a guest is *seated*; spectator guests don't count); `updateSettings` sends `ranked`.
+- `room-socket.js`: `rating:update` → own line via `ChatUI.appendSystemMessage` ("Điểm Tự do: 1200 → 1362 (+162) · tạm tính"); spectators ignored.
+- Not in the create-room modal (scope = room settings); new rooms default ON server-side.
+- Real browser (isolated copy of repo, port 3123): toggle visible to host only, round-trips to the other client; resign → both see their delta; toggle off → 2nd game adds no line. No page errors.
+- Gap: delta is a chat/toast line, not a dedicated result card — fine until #176/#177 give ratings a home.

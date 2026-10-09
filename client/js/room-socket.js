@@ -216,6 +216,24 @@
     ChatUI.appendChatMessage(msg);
   });
 
+  // Rating change after a ranked game (TODO.md #182). Everyone in the room
+  // gets the same payload; each client shows only its own line.
+  client.on('rating:update', (data) => {
+    const st = S();
+    const me = data && Array.isArray(data.players) && st.myUser
+      ? data.players.find((p) => p.userId === st.myUser.userId)
+      : null;
+    if (!me) return;
+    const sign = me.delta > 0 ? '+' : me.delta < 0 ? '−' : '±';
+    ChatUI.appendSystemMessage(t('sys.rating_update', {
+      category: t('rule.' + data.category),
+      before: me.before,
+      after: me.after,
+      delta: sign + Math.abs(me.delta),
+      provisional: me.provisional ? ' ' + t('sys.rating_provisional') : '',
+    }));
+  });
+
   client.on('chat:error', (data) => {
     ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
   });

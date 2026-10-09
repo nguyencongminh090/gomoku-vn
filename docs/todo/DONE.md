@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#182.** Room: Ranked toggle in settings + show `rating:update` deltas after a game `[Model: Sonnet 5]` — [detail](docs/todo/B182-ranked-toggle-rating-ui.md)
 - ✅ **#175.** Platform: Glicko-2 rating engine + game→rating hook `[Model: Opus 5]` — [detail](docs/todo/B175-rating-engine.md)
 - ✅ **#174.** Platform: storage/scale decision for thousands of users `[Model: Opus 5]` — [detail](docs/todo/B174-storage-scale-decision.md)
 - ✅ **#181.** a11y: unlabelled checkboxes in create-room modal + room settings (axe Critical) `[Model: Sonnet 5]` — [detail](docs/todo/B181-a11y-unlabelled-checkboxes.md)

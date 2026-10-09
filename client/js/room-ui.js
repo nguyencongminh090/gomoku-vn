@@ -560,6 +560,9 @@
     const s = st.roomData.settings;
 
     if (st.myRole === 'host' && st.roomData.state !== 'playing') {
+      // A seated guest can't be rated (server no-ops), so the toggle is shown
+      // disabled with its stored value rather than hidden (TODO.md #182).
+      const rankedBlocked = st.roomData.users.some(u => u.slot !== null && u.isGuest);
       const roomRows = `
         <div class="setting-row">
           <span class="setting-label">${t('modal.board_size')}</span>
@@ -606,6 +609,15 @@
             <label for="r-or-none">${t('rule.none')}</label>
             <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
             <label for="r-or-swap2">Swap2</label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="toggle-row" ${rankedBlocked ? 'style="opacity:0.45"' : ''}>
+            <span class="toggle-name">${t('room.ranked')}${rankedBlocked ? ` <small>(${t('room.ranked_guest_hint')})</small>` : ''}</span>
+            <label class="toggle-switch">
+              <input type="checkbox" id="r-ranked" aria-label="${t('room.ranked')}" ${s.ranked !== false ? 'checked' : ''} ${rankedBlocked ? 'disabled' : ''} data-change-action="updateSettings" />
+              <span class="toggle-slider"></span>
+            </label>
           </div>
         </div>
         <div class="setting-row">
@@ -853,6 +865,7 @@
     const timerIncrementEl = document.getElementById('r-timer-increment');
     const wallEl           = document.getElementById('r-wall');
     const portalEl         = document.getElementById('r-portal');
+    const rankedEl         = document.getElementById('r-ranked');
 
     if (!boardSizeEl || !timerModeEl) return;
 
@@ -865,6 +878,7 @@
         ruleWall:              wallEl   ? wallEl.checked   : false,
         rulePortal:            portalEl ? portalEl.checked : false,
         ruleSwap2:             (document.querySelector('input[name="r-openRule"]:checked') || {}).value === 'swap2',
+        ranked:                rankedEl ? rankedEl.checked : true,
         timerMode,
         timerSeconds:          timerEl          ? (parseInt(timerEl.value, 10) || 60)          : 60,
         // Increment only takes effect in blitz mode (TimerManager.applyMove) —
