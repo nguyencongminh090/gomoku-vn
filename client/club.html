@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Câu lạc bộ</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=204" />
-  <link rel="stylesheet" href="css/tokens.css?v=204" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=204" />
-  <link rel="stylesheet" href="css/platform.css?v=204" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=204" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=204">
+  <link rel="stylesheet" href="css/main.css?v=205" />
+  <link rel="stylesheet" href="css/tokens.css?v=205" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=205" />
+  <link rel="stylesheet" href="css/platform.css?v=205" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=205" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=205">
 
-  <script src="js/ui-mode-preload.js?v=204"></script>
-  <script src="js/skin-preload.js?v=204"></script>
+  <script src="js/ui-mode-preload.js?v=205"></script>
+  <script src="js/skin-preload.js?v=205"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -39,26 +39,15 @@
       <dl class="pstats" id="cb-stats"></dl>
     </header>
 
-    <div class="psplit">
-      <div>
-        <h2 class="ph2" data-i18n="clubs.board">Bảng xếp hạng CLB</h2>
-        <div id="cb-tabs" class="pchips" role="tablist"></div>
-        <div class="ptbl-wrap">
-          <table class="ptbl">
-            <thead><tr>
-              <th scope="col">#</th>
-              <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
-              <th scope="col" data-i18n="clubs.col_role">Vai trò</th>
-              <th scope="col" class="num" data-i18n="rankings.col_rating">Rating</th>
-              <th scope="col" id="cb-actions-th"></th>
-            </tr></thead>
-            <tbody id="cb-body"></tbody>
-          </table>
-        </div>
-      </div>
+    <div class="ptabs" id="cb-tablist" role="tablist">
+      <button type="button" class="ptab" role="tab" id="cb-tab-overview" data-tab="overview" aria-controls="cb-panel-overview" data-i18n="clubs.tab_overview">Tổng quan</button>
+      <button type="button" class="ptab" role="tab" id="cb-tab-members" data-tab="members" aria-controls="cb-panel-members" data-i18n="clubs.tab_members">Thành viên</button>
+      <button type="button" class="ptab" role="tab" id="cb-tab-board" data-tab="board" aria-controls="cb-panel-board" data-i18n="clubs.tab_board">Bảng xếp hạng</button>
+    </div>
 
-      <aside>
-        <section class="ppanel" style="margin-bottom:20px">
+    <section id="cb-panel-overview" role="tabpanel" aria-labelledby="cb-tab-overview" class="cb-panel">
+      <div class="psplit">
+        <section class="ppanel">
           <h2 class="ph2" data-i18n="profile.members_admin">Ban quản trị</h2>
           <div id="cb-staff" class="prows"></div>
         </section>
@@ -78,17 +67,45 @@
           <h2 class="ph2 ph2--gap" data-i18n="clubs.pending">Yêu cầu tham gia</h2>
           <div id="cb-pending" class="prows"></div>
         </section>
-      </aside>
-    </div>
+      </div>
+    </section>
+
+    <section id="cb-panel-members" role="tabpanel" aria-labelledby="cb-tab-members" class="cb-panel" hidden>
+      <div class="ptbl-wrap">
+        <table class="ptbl">
+          <thead><tr>
+            <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
+            <th scope="col" data-i18n="clubs.col_role">Vai trò</th>
+            <th scope="col" id="cb-actions-th"></th>
+          </tr></thead>
+          <tbody id="cb-members-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="cb-panel-board" role="tabpanel" aria-labelledby="cb-tab-board" class="cb-panel" hidden>
+      <h2 class="ph2" data-i18n="clubs.board">Bảng xếp hạng CLB</h2>
+      <div id="cb-tabs" class="pchips" role="tablist"></div>
+      <div class="ptbl-wrap">
+        <table class="ptbl">
+          <thead><tr>
+            <th scope="col">#</th>
+            <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
+            <th scope="col" class="num" data-i18n="rankings.col_rating">Rating</th>
+          </tr></thead>
+          <tbody id="cb-body"></tbody>
+        </table>
+      </div>
+    </section>
   </div>
 </main>
 
-<script src="js/i18n.js?v=204"></script>
-<script src="js/ui-mode.js?v=204"></script>
-<script src="js/session.js?v=204"></script>
-<script src="js/audio-manager.js?v=204"></script>
-<script src="js/settings-panel.js?v=204"></script>
-<script src="js/platform-shell.js?v=204"></script>
-<script src="js/club.js?v=204"></script>
+<script src="js/i18n.js?v=205"></script>
+<script src="js/ui-mode.js?v=205"></script>
+<script src="js/session.js?v=205"></script>
+<script src="js/audio-manager.js?v=205"></script>
+<script src="js/settings-panel.js?v=205"></script>
+<script src="js/platform-shell.js?v=205"></script>
+<script src="js/club.js?v=205"></script>
 </body>
 </html>

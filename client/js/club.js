@@ -58,6 +58,24 @@
     return a;
   }
 
+  const TABS = ['overview', 'members', 'board'];
+  /** Active tab from `#tab=<name>`; unknown/missing → overview. */
+  function currentTab() {
+    const m = /(?:^|[#&])tab=([a-z]+)/.exec(location.hash);
+    return m && TABS.includes(m[1]) ? m[1] : TABS[0];
+  }
+
+  function showTab(name, { updateHash = false } = {}) {
+    for (const tab of TABS) {
+      const on = tab === name;
+      $('cb-panel-' + tab).hidden = !on;
+      const btn = $('cb-tab-' + tab);
+      btn.setAttribute('aria-selected', String(on));
+      btn.tabIndex = on ? 0 : -1;
+    }
+    if (updateHash && currentTab() !== name) history.replaceState(null, '', '#tab=' + name);
+  }
+
   function render(c) {
     state.club = c;
     document.title = 'Play3CR — ' + c.name;
@@ -101,14 +119,13 @@
     }
 
     $('cb-actions-th').hidden = !staff;
-    $('cb-body').replaceChildren(...c.leaderboard.map((m) => {
+    $('cb-members-body').replaceChildren(...c.leaderboard.map((m) => {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
       const link = el('a', m.displayName);
       link.href = '/u/' + encodeURIComponent(m.username);
       name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
-      tr.append(el('td', String(m.rank)), name, el('td', t('clubs.role_' + m.role)),
-        el('td', m.rating == null ? '—' : String(m.rating), 'num'));
+      tr.append(name, el('td', t('clubs.role_' + m.role)));
       if (staff) {
         const td = document.createElement('td');
         td.className = 'num';
@@ -124,6 +141,15 @@
       }
       return tr;
     }));
+    $('cb-body').replaceChildren(...c.leaderboard.map((m) => {
+      const tr = document.createElement('tr');
+      const name = document.createElement('td');
+      const link = el('a', m.displayName);
+      link.href = '/u/' + encodeURIComponent(m.username);
+      name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
+      tr.append(el('td', String(m.rank)), name, el('td', m.rating == null ? '—' : String(m.rating), 'num'));
+      return tr;
+    }));
 
     $('cb-tabs').replaceChildren(...CATEGORIES.map((cat) => {
       const b = el('button', t('rankings.cat_' + cat), 'pchip');
@@ -134,6 +160,7 @@
       return b;
     }));
     $('cb-content').hidden = false;
+    showTab(currentTab());
   }
 
   async function load() {
@@ -159,6 +186,19 @@
       if (state.club.myRole === 'owner') body.joinPolicy = $('cb-policy').value;
       if (await act('PUT', '', body)) load();
     };
+    for (const tab of TABS) {
+      $('cb-tab-' + tab).addEventListener('click', () => showTab(tab, { updateHash: true }));
+    }
+    // Arrow keys move between tabs (WAI-ARIA tabs pattern).
+    $('cb-tablist').addEventListener('keydown', (ev) => {
+      const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      const next = TABS[(TABS.indexOf(currentTab()) + d + TABS.length) % TABS.length];
+      showTab(next, { updateHash: true });
+      $('cb-tab-' + next).focus();
+      ev.preventDefault();
+    });
+    window.addEventListener('hashchange', () => showTab(currentTab()));
     load();
   });
 })();
