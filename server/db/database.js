@@ -905,7 +905,7 @@ const RANKING_MIN_GAMES = 20;
  */
 function getRankings(category, limit, offset) {
   return db.prepare(`
-    SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ?
     ORDER BY r.rating DESC, r.user_id
@@ -918,7 +918,7 @@ function getRankingsAmong(category, userIds, limit, offset) {
   if (!userIds.length) return [];
   const marks = userIds.map(() => '?').join(',');
   return db.prepare(`
-    SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ? AND r.user_id IN (${marks})
     ORDER BY r.rating DESC, r.user_id
@@ -931,6 +931,22 @@ function countRankingsAmong(category, userIds) {
   const marks = userIds.map(() => '?').join(',');
   return db.prepare(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${marks})`)
     .get(category, RANKING_MIN_GAMES, ...userIds).n;
+}
+
+/** Rankings of members who set `country` (alpha-2); rank is within that country. */
+function getRankingsByCountry(category, country, limit, offset) {
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND u.country = ?
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, country, limit, offset);
+}
+
+function countRankingsByCountry(category, country) {
+  return db.prepare('SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id WHERE r.category = ? AND r.games >= ? AND u.country = ?')
+    .get(category, RANKING_MIN_GAMES, country).n;
 }
 
 function getRankingCount(category) {
@@ -1125,6 +1141,8 @@ module.exports = {
   getRankings,
   getRankingCount,
   getRankingsAmong,
+  getRankingsByCountry,
+  countRankingsByCountry,
   countRankingsAmong,
   getUserRanking,
   getRatingDeltas7,

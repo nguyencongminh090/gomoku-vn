@@ -97,6 +97,14 @@ describe('profile page', () => {
     expect([...box.querySelectorAll('.pnote')].map((n) => n.textContent)).toEqual(['privacy.no_friend', 'privacy.no_challenge', 'privacy.no_dm']);
   });
 
+  it('shows city and country next to the join date, as text', async () => {
+    require('../js/countries.js');
+    await boot({ ...PROFILE, country: 'VN', city: '<b>Hà Nội</b>' });
+    const text = document.getElementById('pf-joined').textContent;
+    expect(text).toContain('<b>Hà Nội</b>, ');
+    expect(document.querySelector('#pf-joined b')).toBeNull();
+  });
+
   describe('friend button', () => {
     const labels = () => [...document.querySelectorAll('#pf-social > button')].map((b) => b.textContent).filter((l) => l !== 'challenge.btn');
 

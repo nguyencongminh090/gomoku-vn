@@ -34,6 +34,9 @@
     $('pf-joined').textContent = t('profile.joined', {
       date: new Date(p.createdAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' }),
     });
+    const country = p.country && window.Countries ? window.Countries.name(p.country, document.documentElement.lang || 'vi') : '';
+    const where = [p.city, country].filter(Boolean).join(', ');
+    if (where) $('pf-joined').textContent += ' · ' + where;
     setAvatar(p.avatarUrl, p.displayName);
 
     const bio = $('pf-bio');

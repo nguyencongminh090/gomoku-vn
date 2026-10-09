@@ -89,7 +89,7 @@ describe('rankings page', () => {
   it('works logged out (me → 401) and switches category via tab', async () => {
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
     expect(document.getElementById('rk-mine').textContent).toBe('');
-    document.querySelectorAll('.pchip')[2].click();
+    [...document.querySelectorAll('.pchip')].find((c) => c.textContent === 'rankings.cat_caro').click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('category=caro');
   });
@@ -97,14 +97,34 @@ describe('rankings page', () => {
   it('members get a Bạn bè scope chip that re-queries with scope=friends; guests/logged-out do not', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const chips = [...document.querySelectorAll('.pchip')];
-    expect(chips.map((c) => c.textContent).slice(0, 2)).toEqual(['rankings.scope_all', 'rankings.scope_friends']);
-    chips[1].click();
+    expect(chips.map((c) => c.textContent).slice(0, 3)).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends']);
+    chips[2].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('scope=friends');
     expect(location.search).toContain('scope=friends');
 
     await boot((url) => (url.includes('/me') ? ok({ ...ME, userId: null }) : ok(PAGE)));
     expect([...document.querySelectorAll('.pchip')].some((c) => c.textContent === 'rankings.scope_friends')).toBe(false);
+  });
+
+  it('everyone (even logged out) gets a Việt Nam scope chip that re-queries with scope=vn', async () => {
+    await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
+    const chips = [...document.querySelectorAll('.pchip')];
+    expect(chips.slice(0, 2).map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn']);
+    chips[1].click();
+    await flush();
+    expect(global.fetch.mock.calls.pop()[0]).toContain('scope=vn');
+    expect(location.search).toContain('scope=vn');
+  });
+
+  it('renders the Khu vực cell as text: city, country name; — when unset', async () => {
+    require('../js/countries.js');
+    const page = { ...PAGE, players: [{ ...PAGE.players[0], city: '<i>HN</i>', country: 'VN' }, { ...PAGE.players[0], userId: 'x', username: 'x', city: '', country: '' }] };
+    await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(page)));
+    const cells = [...document.querySelectorAll('.ptbl__region')].map((c) => c.textContent);
+    expect(cells[0].startsWith('<i>HN</i>, ')).toBe(true);
+    expect(cells[1]).toBe('—');
+    expect(document.querySelector('.ptbl__region i')).toBeNull();
   });
 
   it('shows the empty state', async () => {

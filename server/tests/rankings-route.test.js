@@ -162,3 +162,33 @@ describe('phase 2 (#190): search, 7-day change, club column', () => {
     expect([plain, searched]).toEqual([3, 1]);
   });
 });
+
+describe('region (#199)', () => {
+  const setRegion = (id, country, city) => database.db.prepare('UPDATE users SET country = ?, city = ? WHERE id = ?').run(country, city, id);
+  beforeAll(() => { setRegion('u1', 'VN', 'Hà Nội'); setRegion('u2', 'US', 'Austin'); setRegion('u4', 'VN', ''); });
+
+  it('rows carry country + city (empty strings when unset)', async () => {
+    const { body } = await get('/api/rankings?category=freestyle');
+    const by = Object.fromEntries(body.players.map((p) => [p.userId, p]));
+    expect(by.u1).toMatchObject({ country: 'VN', city: 'Hà Nội' });
+    expect(by.u3).toMatchObject({ country: '', city: '' });
+  });
+
+  it('scope=vn lists only Vietnamese members above the games threshold, ranked within the country', async () => {
+    const { body } = await get('/api/rankings?category=freestyle&scope=vn');
+    expect(body.scope).toBe('vn');
+    expect(body.players.map((p) => [p.userId, p.rank])).toEqual([['u1', 1]]); // u4 is VN but has 19 games
+    expect(body.pagination.total).toBe(1);
+  });
+
+  it('scope=vn is public (no login) and does not leak into the unscoped cache', async () => {
+    await get('/api/rankings?category=freestyle&scope=vn');
+    const all = (await get('/api/rankings?category=freestyle')).body;
+    expect(all.scope).toBe('all');
+    expect(all.pagination.total).toBe(3);
+  });
+
+  it('unknown scope falls back to everyone', async () => {
+    expect((await get('/api/rankings?category=freestyle&scope=zz')).body.scope).toBe('all');
+  });
+});

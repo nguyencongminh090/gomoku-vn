@@ -5,6 +5,7 @@
  *
  * GET /api/rankings?category=&page=&limit=&q=  — public, paginated, cached ~30 s; q = name search
  *                                                (rows keep their true rank), rows carry delta7 + club
+ *   scope=vn      → only members whose country is VN (public, cached like `all`; `q` is ignored)
  *   scope=friends → only the caller's friends + the caller (private, never cached; 401 when logged out)
  * GET /api/rankings/me                      — the caller's rank in every category
  *
@@ -53,9 +54,10 @@ router.get('/', (req, res, next) => {
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 30) : '';
     const friendsScope = req.query.scope === 'friends';
+    const countryScope = req.query.scope === 'vn' ? 'VN' : null;
     const viewerId = friendsScope ? optionalUserId(req) : null;
     if (friendsScope && !viewerId) return res.status(401).json({ error: 'Cần đăng nhập.', code: 'AUTH_REQUIRED' });
-    const key = `${category}:${page}:${limit}:${q}`;
+    const key = `${category}:${page}:${limit}:${q}:${countryScope || ''}`;
 
     let body = friendsScope ? null : cacheGet(key);
     if (!body) {
@@ -63,7 +65,10 @@ router.get('/', (req, res, next) => {
       const circle = friendsScope ? [viewerId, ...friendService.friendIds(viewerId)] : null;
       let total;
       let rows;
-      if (friendsScope) {
+      if (countryScope) {
+        total = database.countRankingsByCountry(category, countryScope);
+        rows = database.getRankingsByCountry(category, countryScope, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+      } else if (friendsScope) {
         total = database.countRankingsAmong(category, circle);
         rows = database.getRankingsAmong(category, circle, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
       } else {
@@ -86,11 +91,13 @@ router.get('/', (req, res, next) => {
         provisional: r.rd > PROVISIONAL_RD,
         delta7: Math.round(deltas.get(r.user_id) || 0),
         club: clubs.get(r.user_id) || null,
+        country: r.country || '',
+        city: r.city || '',
       }));
       body = {
         category,
         q,
-        scope: friendsScope ? 'friends' : 'all',
+        scope: friendsScope ? 'friends' : countryScope ? 'vn' : 'all',
         minGames: database.RANKING_MIN_GAMES,
         players,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
