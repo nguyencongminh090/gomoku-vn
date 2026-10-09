@@ -11,6 +11,7 @@
  *   - handlers/DisconnectHandler.js — disconnect grace period
  *   - handlers/TournamentHandler.js      — tournament:* (create/register/pairing scheduling)
  *   - handlers/TournamentMatchHandler.js — tmatch:* (a pairing's live GameEngine)
+ *   - handlers/MatchHandler.js           — match:* (quick-match queue, B197)
  *
  * No event names or payload structures are changed by this refactor.
  */
@@ -39,6 +40,7 @@ const PrivateChatHandler = require('./handlers/PrivateChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
+const MatchHandler           = require('./handlers/MatchHandler');
 
 /**
  * Initialize the Socket.io event handler.
@@ -292,6 +294,7 @@ function init(io) {
     PrivateChatHandler.register(io, socket);
     TournamentHandler.register(io, socket);
     TournamentMatchHandler.register(io, socket);
+    MatchHandler.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {
