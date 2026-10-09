@@ -296,3 +296,49 @@ describe('rating history (#190)', () => {
     database.db.prepare('UPDATE users SET hide_history = 0 WHERE id = ?').run(OTHER);
   });
 });
+
+describe('streak + badges from rated games (#199)', () => {
+  const CAROL = '33333333-3333-4333-8333-333333333333';
+  const DAVE = '44444444-4444-4444-8444-444444444444';
+  let n = 0;
+  // winner: 'BLACK' = carol wins (she plays black), 'WHITE' = dave wins
+  const game = (winner, { ranked = 1, ended = true } = {}) => {
+    n++;
+    const at = new Date(Date.UTC(2026, 9, 1, 0, n)).toISOString();
+    database.db.prepare(
+      `INSERT INTO games (id, room_id, black_player_id, white_player_id, black_player_name, white_player_name, winner, reason, board_size, started_at, ended_at, ranked)
+       VALUES (?, '#R', ?, ?, 'carol', 'dave', ?, 'normal', 15, ?, ?, ?)`
+    ).run('rg' + n, CAROL, DAVE, winner, at, ended ? at : null, ranked);
+  };
+  const profile = async (as) => (await req('GET', '/api/profile/carol', as ? { cookie: as } : {})).json;
+
+  beforeAll(() => {
+    for (const [id, name] of [[CAROL, 'carol'], [DAVE, 'dave']]) {
+      database.db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, 'x', ?, ?)").run(id, name, name, NOW);
+    }
+    // oldest → newest: W W L W W W, plus noise that must not count: an unranked win, an unfinished ranked game, a ranked draw is below
+    game('BLACK'); game('BLACK'); game('WHITE'); game('BLACK'); game('BLACK'); game('BLACK');
+    game('BLACK', { ranked: 0 });              // unranked win (even newer) is ignored
+    game('BLACK', { ended: false });           // unfinished is ignored
+  });
+
+  it('counts only finished rated games: current 3, best 3, first_win badge', async () => {
+    const p = await profile();
+    expect(p.streak).toEqual({ current: 3, best: 3 });
+    expect(p.badges).toEqual(['first_win']);
+  });
+
+  it('a newer rated draw ends the current streak but not the best', async () => {
+    game('draw');
+    expect((await profile()).streak).toEqual({ current: 0, best: 3 });
+  });
+
+  it('hide_history withholds streak + win badges from others, not from the owner', async () => {
+    database.db.prepare('UPDATE users SET hide_history = 1 WHERE id = ?').run(CAROL);
+    const other = await profile(DAVE);
+    expect(other.streak).toBeNull();
+    expect(other.badges).toEqual([]);
+    expect((await profile(CAROL)).streak).toMatchObject({ best: 3 });
+    expect((await profile(CAROL)).badges).toEqual(['first_win']);
+  });
+});

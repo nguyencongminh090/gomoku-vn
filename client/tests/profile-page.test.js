@@ -105,6 +105,18 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-joined b')).toBeNull();
   });
 
+  it('renders badges and the win streak; nothing when there are none', async () => {
+    await boot({ ...PROFILE, badges: ['first_win', 'top_500'], streak: { current: 2, best: 5 } });
+    expect([...document.querySelectorAll('#pf-badges .pbadge')].map((b) => b.textContent)).toEqual(['badge.first_win', 'badge.top_500']);
+    expect(document.getElementById('pf-badges').hidden).toBe(false);
+    expect(document.getElementById('pf-stats').textContent).toContain('profile.streak_val{"cur":2,"best":5}');
+    await boot({ ...PROFILE, badges: [], streak: { current: 0, best: 0 } });
+    expect(document.getElementById('pf-badges').hidden).toBe(true);
+    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.streak');
+    await boot({ ...PROFILE, streak: null });
+    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.streak');
+  });
+
   describe('friend button', () => {
     const labels = () => [...document.querySelectorAll('#pf-social > button')].map((b) => b.textContent).filter((l) => l !== 'challenge.btn');
 

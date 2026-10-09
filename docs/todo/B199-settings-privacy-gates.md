@@ -49,3 +49,6 @@ Server-side gates because REST/sockets are reachable without the UI; `hide_histo
 ## Slice 5 notes (2026-10-09, `feature/199-location`)
 - `GET /api/rankings?scope=vn` (public, cached per key, ranks within the country, `q` ignored) + `country`/`city` on every row; chip "Việt Nam" for everyone; table column "Khu vực" (city, country name via `Intl.DisplayNames`). Profile header shows "joined · city, country". `GET /api/profile/:username` now includes `country`/`city` publicly (the user opted in by setting them).
 - Tests: rankings-route (+4), rankings-page (+2, 2 adapted for the new chip order), profile-page (+1). `?v=203`.
+## Slice 6 notes (2026-10-09, `feature/199-badges`)
+- `managers/Achievements.js` (pure): badges `first_win`, `wins_100`, `wins_1000` (rated wins), `top_500`, `top_10` (best rank over all categories; listed from `ratings`' `rank`), streak over the newest 1000 finished RATED games (loss or draw ends it). Computed on every `GET /api/profile/:username`: +2 cheap queries. Win-based badges + streak follow `hide_history` (null/hidden for others); rank badges are public.
+- Client: badge pills (`#pf-badges`) + "Chuỗi thắng" in the stats row. Tests: achievements (21), profile-route (+3), profile-page (+1). `?v=204`.

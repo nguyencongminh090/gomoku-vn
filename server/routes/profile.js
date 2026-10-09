@@ -27,6 +27,7 @@ const { optionalUserId } = require('../utils/optional-user');
 const clubService = require('../managers/ClubService');
 const friendService = require('../managers/FriendService');
 const privacyGate = require('../managers/PrivacyGate');
+const achievements = require('../managers/Achievements');
 const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES, PROVISIONAL_RD } = require('../managers/RatingService');
@@ -238,6 +239,15 @@ router.get('/:username', (req, res, next) => {
       });
     }
 
+    // Rated-games streak + badges (#199). Win-based parts follow hide_history; rank badges are public.
+    const ranks = ratings.map((r) => r.rank).filter((r) => r != null);
+    const bestRank = ranks.length ? Math.min(...ranks) : null;
+    const streak = showHistory ? achievements.streaks(database.getUserRankedResults(user.id, achievements.STREAK_WINDOW)) : null;
+    const badges = achievements.badges(
+      { rankedWins: showHistory ? database.countUserRankedWins(user.id) : 0, bestRank },
+      { showHistory }
+    );
+
     const body = {
       username: user.username,
       displayName: user.display_name,
@@ -248,6 +258,8 @@ router.get('/:username', (req, res, next) => {
       city: user.city || '',
       ratings,
       stats,
+      streak,
+      badges,
       recent,
       clubs: clubService.clubsOfUser(user.id),
       isSelf,
