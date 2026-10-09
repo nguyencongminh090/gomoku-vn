@@ -1,0 +1,55 @@
+/* rankings.css — leaderboard page (#176). Tokens only; skin-swappable. */
+.rankings {
+  width: 100%;
+  max-width: 860px;
+  box-sizing: border-box;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  padding-inline: clamp(12px, 4vw, 20px);
+}
+.rankings__header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px; }
+.rankings__header h1 { font-size: 18px; font-weight: 700; color: var(--c-ink); margin: 0; }
+.rankings__count { font-size: 13px; color: var(--c-ink-3); }
+
+.rankings__tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.rankings__tab {
+  padding: 6px 14px;
+  font: inherit; font-size: 13px; font-weight: 600;
+  color: var(--c-ink-2);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.rankings__tab:hover { background: var(--c-hover); }
+.rankings__tab[aria-selected="true"] {
+  color: var(--c-on-brand); background: var(--c-brand); border-color: var(--c-brand);
+}
+
+.rankings__tblwrap {
+  overflow-x: auto;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+}
+.rankings__tbl { width: 100%; border-collapse: collapse; font-size: 14px; color: var(--c-ink); }
+.rankings__tbl th {
+  padding: 10px 12px; text-align: left;
+  font-size: 11px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--c-ink-3); border-bottom: 1px solid var(--c-border);
+}
+.rankings__tbl td { padding: 10px 12px; border-bottom: 1px solid var(--c-border-light); }
+.rankings__tbl tr:last-child td { border-bottom: 0; }
+.rankings__tbl .num { text-align: right; font-variant-numeric: tabular-nums; }
+.rankings__tbl tr.is-me td { background: var(--c-brand-light); }
+.rankings__prov { color: var(--c-ink-3); font-size: 12px; margin-left: 2px; }
+
+.rankings__note { margin: 12px 2px 0; font-size: 12px; color: var(--c-ink-3); }
+.rankings__note b { color: var(--c-ink); }
+
+.rankings__pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; font-size: 13px; color: var(--c-ink-2); }
+.rankings__pager button {
+  padding: 6px 14px; font: inherit; color: var(--c-ink);
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); cursor: pointer;
+}
+.rankings__pager button:disabled { opacity: .45; cursor: default; }

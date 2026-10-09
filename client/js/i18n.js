@@ -495,6 +495,25 @@ const TRANSLATIONS = {
     'sys.player_reconnected_resumed': '{name} đã kết nối lại! Ván đấu tiếp tục.',
     'sys.ready_miss_kicked': '{name} không bấm Bắt đầu kịp thời (lần 3/3) nên bị rời khỏi vị trí.',
     'sys.ready_miss_retry': 'Chưa đủ 2 người bấm Bắt đầu kịp thời (lần {count}/3). Hãy bấm lại.',
+    // ── Rankings page (#176) ───────────────────────────────────
+    'rankings.title': 'Play3CR — Bảng xếp hạng',
+    'rankings.meta_description': 'Bảng xếp hạng Glicko-2 theo thể loại trên Play3CR.',
+    'rankings.h1': 'Bảng xếp hạng',
+    'rankings.col_player': 'Người chơi',
+    'rankings.col_rating': 'Rating',
+    'rankings.col_games': 'Ván',
+    'rankings.cat_freestyle': 'Free-style',
+    'rankings.cat_standard': 'Standard',
+    'rankings.cat_caro': 'Caro VN',
+    'rankings.total': '{n} người chơi',
+    'rankings.you': 'Bạn: hạng',
+    'rankings.not_ranked': 'Bạn mới có {games} ván xếp hạng — cần ≥ {min} ván để vào bảng.',
+    'rankings.empty': 'Chưa có ai đủ {min} ván xếp hạng ở thể loại này.',
+    'rankings.footnote': 'Glicko-2 · cần ≥ {min} ván xếp hạng để vào bảng · dấu ? = rating còn tạm thời.',
+    'rankings.error': 'Không tải được bảng xếp hạng.',
+    'rankings.prev': 'Trước',
+    'rankings.next': 'Sau',
+    'lobby.rankings': 'Xếp hạng',
     // ── History page ───────────────────────────────────────────
     'history.title': 'Play3CR — Lịch sử ván đấu',
     'history.meta_description': 'Xem lại và phát lại các ván Caro đã chơi trên Play3CR.',
@@ -1184,6 +1203,25 @@ const TRANSLATIONS = {
     'sys.ready_miss_kicked': '{name} did not click Start in time (3/3), so they were removed from their seat.',
     'sys.ready_miss_retry': 'Not enough players clicked Start in time (attempt {count}/3). Please click again.',
     // ── History page ────────────────────────────────────────────
+    // ── Rankings page (#176) ───────────────────────────────────
+    'rankings.title': 'Play3CR — Rankings',
+    'rankings.meta_description': 'Glicko-2 leaderboards per variant on Play3CR.',
+    'rankings.h1': 'Rankings',
+    'rankings.col_player': 'Player',
+    'rankings.col_rating': 'Rating',
+    'rankings.col_games': 'Games',
+    'rankings.cat_freestyle': 'Free-style',
+    'rankings.cat_standard': 'Standard',
+    'rankings.cat_caro': 'Caro VN',
+    'rankings.total': '{n} players',
+    'rankings.you': 'You: rank',
+    'rankings.not_ranked': 'You have {games} ranked games — {min}+ needed to appear on the board.',
+    'rankings.empty': 'Nobody has {min} ranked games in this category yet.',
+    'rankings.footnote': 'Glicko-2 · {min}+ ranked games to appear · ? = provisional rating.',
+    'rankings.error': 'Could not load the rankings.',
+    'rankings.prev': 'Prev',
+    'rankings.next': 'Next',
+    'lobby.rankings': 'Rankings',
     'history.title': 'Play3CR — Match History',
     'history.meta_description': 'Review and replay your past Gomoku games on Play3CR.',
     'history.h1': 'Match History',
@@ -1477,6 +1515,10 @@ function updatePageTitle() {
     document.title = t('login.title');
   } else if (path.includes('room')) {
     document.title = t('room.title');
+  } else if (path.includes('rankings')) {
+    document.title = t('rankings.title');
+    const meta = document.getElementById('meta-description');
+    if (meta) meta.setAttribute('content', t('rankings.meta_description'));
   } else if (path.includes('history')) {
     document.title = t('history.title');
     const meta = document.getElementById('meta-description');
