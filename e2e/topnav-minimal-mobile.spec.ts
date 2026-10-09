@@ -45,9 +45,9 @@ async function register(browser: Browser, contextOptions: any, username: string,
 
 test.describe('room topnav is a minimal always-on bar on zen mobile (TODO.md #144)', () => {
   for (const { name, opts } of VIEWPORTS) {
-    // FIXME(TODO.md #184): control sits 2.5px above the nav box on both phone
-    // viewports since the #173 app shell; layout question, not auth. Re-enable once #184 is decided.
-    test.fixme(`${name}: topnav stays minimal-height with leave/room-code/settings reachable`, async ({ browser }) => {
+    // TODO.md #184: shell.css's 8px .topnav__btn padding (#173) once made these
+    // controls 32/36px in the 28px bar, overflowing it — the box checks below catch that.
+    test(`${name}: topnav stays minimal-height with leave/room-code/settings reachable`, async ({ browser }) => {
       test.setTimeout(60_000);
       const stamp = Date.now().toString().slice(-6);
 

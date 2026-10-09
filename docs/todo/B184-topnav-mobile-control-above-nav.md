@@ -1,5 +1,5 @@
 # B184 — mobile room topnav: a control starts 2.5px above the nav box
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-09 — real overflow (shell.css 8px btn padding vs 28px bar); 4px on mobile, spec un-fixme'd + green ([fix-log](../fix-log/2026-10-09-todo-184-topnav-mobile-btn-overflow.md))
 **Area:** client/css (room topnav / app shell), e2e/topnav-minimal-mobile.spec.ts
 **From:** #183 e2e re-run, 2026-10-09   **Depends:** —
 
