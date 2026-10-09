@@ -318,7 +318,7 @@
 }
 .rule-chip--custom {
   background: var(--c-brand-light);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   border-color: transparent;
 }
 
@@ -342,7 +342,7 @@
   border-color: transparent;
 }
 .rule-tag--portal {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-brand-light);
   border-color: transparent;
 }
@@ -375,7 +375,7 @@
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-brand-light);
   border: 1px solid transparent;
   border-radius: 9999px;
@@ -713,7 +713,7 @@
 .online-panel__count {
   font-size: 11px;
   font-weight: 700;
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-brand-light);
   border-radius: 10px;
   padding: 2px 8px;
@@ -850,7 +850,7 @@
   border-radius: 4px;
 }
 .section-tabs__btn.is-active {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   border-bottom-color: var(--c-brand);
 }
 .section-tabs__btn .icon { margin-right: 6px; font-size: 16px; vertical-align: -2px; }
@@ -895,7 +895,7 @@
 }
 .filter-pill.is-active {
   background: var(--c-brand-light);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   border-color: var(--c-brand);
 }
 .filter-spacer { flex: 1; }
@@ -1008,7 +1008,7 @@
   padding-top: 10px;
   border-top: 1px solid var(--c-border-light);
 }
-.tournament-card__status--your-turn { color: var(--c-brand); }
+.tournament-card__status--your-turn { color: var(--c-brand-text); }
 .tournament-card__status--waiting { color: var(--c-ink-3); font-weight: 600; }
 .tournament-card__status--registered { color: var(--c-success); }
 .tournament-card__actions { display: flex; gap: 8px; margin-top: 2px; }

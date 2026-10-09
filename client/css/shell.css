@@ -36,6 +36,48 @@ body.zen-room .topnav__btn { border-radius: var(--radius); padding: 8px; }
 body.zen-lobby .topnav__btn:hover,
 body.zen-room .topnav__btn:hover { background: var(--c-fill); }
 
+/* ── Top bar on every other page (history, tournament, tournament-match) ──
+   Same bar as lobby/room; those two keep their own, more specific rules above. */
+.topnav {
+  position: sticky;
+  top: 0;
+  height: 56px;
+  max-width: none;
+  margin: 0 0 24px;
+  padding: 0 24px;
+  background: var(--c-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.topnav__logo { width: 20px; height: 20px; border-radius: var(--radius); }
+.topnav__title { font-size: 14px; font-weight: 700; letter-spacing: 0; }
+.topnav__user { font-size: 12.5px; font-weight: 500; }
+.topnav__badge {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  color: var(--c-ink-3);
+}
+.topnav__btn {
+  padding: 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.topnav__btn:hover { background: var(--c-fill); transform: none; box-shadow: none; }
+@media (max-width: 860px) { .topnav { padding: 0 14px; margin-bottom: 16px; } }
+
 /* ── Lobby page frame ───────────────────────────────────────────────────── */
 body.zen-lobby { --zen-col: 960px; }
 body.zen-lobby .lobby { padding: 28px 24px 80px; }

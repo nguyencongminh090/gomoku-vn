@@ -88,5 +88,5 @@ in the detail file / fix-log).
 - **#177.** Platform: profile page + avatar upload (blocked on #173,#174) `[Model: Sonnet 5]` — [detail](docs/todo/B177-profile-avatar.md)
 - **#178.** Platform: clubs (blocked on #173,#175) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
 
-- **#179.** Platform: Arena top bar on history/tournament/tournament-match pages + `ux-audit` pass over lobby/room `[Model: Sonnet 5]` — [detail](docs/todo/B179-arena-shell-remaining-pages.md)
 - **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
+- **#181.** a11y: unlabelled checkboxes in create-room modal + room settings (axe Critical) `[Model: Sonnet 5]` — [detail](docs/todo/B181-a11y-unlabelled-checkboxes.md)

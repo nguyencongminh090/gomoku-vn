@@ -20,7 +20,7 @@
   font-weight: 600;
   margin-bottom: 12px;
 }
-.detail-back:hover { color: var(--c-brand); }
+.detail-back:hover { color: var(--c-brand-text); }
 .detail-back--disabled { opacity: 0.5; pointer-events: none; cursor: not-allowed; }
 
 .detail-header {
@@ -68,7 +68,7 @@
   border-bottom: 2px solid transparent; transition: color .15s ease, border-color .15s ease;
 }
 .sub-tabs__btn:hover { color: var(--c-ink); }
-.sub-tabs__btn.is-active { color: var(--c-brand); border-bottom-color: var(--c-brand); }
+.sub-tabs__btn.is-active { color: var(--c-brand-text); border-bottom-color: var(--c-brand); }
 .sub-tab-panel { display: none; }
 .sub-tab-panel.is-active { display: block; }
 
@@ -130,7 +130,7 @@
 .cross-table .cross-table__empty { color: var(--c-border); }
 .cross-table .cross-table__win { color: var(--c-success); font-weight: 700; }
 .cross-table .cross-table__loss { color: var(--c-ink-3); }
-.cross-table .cross-table__live { color: var(--c-brand); font-weight: 700; }
+.cross-table .cross-table__live { color: var(--c-brand-text); font-weight: 700; }
 .cross-table tr.is-champion td, .cross-table tr.is-champion th { background: var(--c-accent-light); }
 .cross-table tr.is-runner-up td, .cross-table tr.is-runner-up th { background: var(--c-surface-2); }
 .cross-table .cross-table__trophy { margin-right: 4px; font-size: 13px; }
@@ -149,7 +149,7 @@
 .pairing-card__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .pairing-card__players { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--c-ink); }
 .pairing-card__vs { font-size: 12px; font-weight: 600; color: var(--c-ink-3); }
-.pairing-card__you { color: var(--c-brand); }
+.pairing-card__you { color: var(--c-brand-text); }
 .state-pill {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap;
@@ -158,7 +158,7 @@
 .state-pill--reported { background: var(--c-warning-bg); color: var(--c-warning); }
 .state-pill--disputed { background: var(--c-error-bg, #FEF2F2); color: var(--c-error, #EF4444); }
 .state-pill--ready { background: var(--c-success-bg); color: var(--c-success); }
-.state-pill--inprogress { background: var(--c-brand-light); color: var(--c-brand); }
+.state-pill--inprogress { background: var(--c-brand-light); color: var(--c-brand-text); }
 .state-pill--completed { background: var(--c-surface-2); color: var(--c-ink-3); }
 .state-pill--walkover { background: var(--c-warning-bg); color: var(--c-warning); }
 

@@ -211,7 +211,7 @@
 
 .slot-card__clickable:hover {
   background: rgba(42, 107, 95, 0.1);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
 }
 
 .slot-card__header {
@@ -323,7 +323,7 @@
 .btn-slot:hover {
   background: var(--c-brand-light);
   border-color: var(--c-brand);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   transform: translateY(-1px);
 }
 .btn-slot:active {
@@ -426,7 +426,7 @@
 }
 
 .tab-btn--active {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-surface);
   box-shadow:
     0 1px 3px rgba(0,0,0,0.07),
@@ -590,7 +590,7 @@
 }
 
 .chat-msg--other .chat-msg__name {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
 }
 
 .chat-msg__text {
@@ -770,7 +770,7 @@
     width: 9px;
     font-size: 9px;
     line-height: 1;
-    color: var(--c-brand);
+    color: var(--c-brand-text);
     visibility: hidden;
   }
   .players-strip__slot--turn .players-strip__turn { visibility: visible; }
