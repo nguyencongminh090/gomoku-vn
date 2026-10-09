@@ -52,6 +52,25 @@ function init(io) {
   // TournamentHandler.js's header for why this is init(), not register().
   TournamentHandler.init(io);
 
+  // Friend challenges (#198): a seated pair is redirected on whichever sockets are live;
+  // socket-less pages rejoin by user id when room.html connects.
+  require('../managers/ChallengeService').setHooks({
+    isOnline: (userId) => sessions.has(userId),
+    onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
+    onSeated: (room, userIds) => {
+      const payload = roomManager.serializeRoom(room);
+      for (const uid of userIds) {
+        const s = sessions.get(uid);
+        if (!s) continue;
+        s.leave('lobby');
+        s.join(room.roomId);
+        s.emit('room:joined', payload);
+      }
+      broadcastRoomUpdate(io, room);
+      broadcastLobbyUpdate(io);
+    },
+  });
+
   // Live push for the bell (#198): one socket per user lives in `sessions`.
   require('../managers/NotificationService').setEmitter((userId, event, payload) => {
     const s = sessions.get(userId);

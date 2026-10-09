@@ -509,8 +509,8 @@ describe('every room:updated emit site', () => {
     expect(emitSites[0].file).toBe('state.js');
   });
 
-  test('all 22 sites are still accounted for, now via broadcastRoomUpdate', () => {
-    expect(callSites).toHaveLength(22);
+  test('all 24 sites are still accounted for, now via broadcastRoomUpdate (22 + 2 in the SocketHandler challenge hooks, #198)', () => {
+    expect(callSites).toHaveLength(24);
   });
 
   test('passes { settings: true } at exactly the one settings-change site', () => {
@@ -519,7 +519,7 @@ describe('every room:updated emit site', () => {
     expect(withSettings).toHaveLength(1);
     expect(withSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
 
-    expect(callSites.length - withSettings.length).toBe(21);
+    expect(callSites.length - withSettings.length).toBe(23);
   });
 });
 

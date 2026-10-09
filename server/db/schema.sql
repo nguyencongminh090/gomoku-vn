@@ -289,7 +289,7 @@ CREATE INDEX IF NOT EXISTS idx_friendships_b ON friendships(user_b);
 CREATE TABLE IF NOT EXISTS notifications (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id     TEXT NOT NULL REFERENCES users(id),
-  type        TEXT NOT NULL,          -- friend_request | friend_accepted | challenge | dm
+  type        TEXT NOT NULL,          -- friend_request | friend_accepted | challenge | challenge_accepted | dm
   actor_id    TEXT,                   -- who caused it (dedupe / cancel key)
   payload     TEXT NOT NULL DEFAULT '{}',
   read_at     TEXT,

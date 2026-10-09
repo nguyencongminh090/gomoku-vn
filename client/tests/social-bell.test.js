@@ -103,6 +103,12 @@ describe('bell', () => {
     expect(items()).toHaveLength(1); // same id is not duplicated
   });
 
+  it('challenge_accepted links straight to the room', async () => {
+    boot({ routes: { 'GET /api/notifications': () => json({ unread: 1, items: [{ ...N(9, 'challenge_accepted'), payload: { from: { username: 'bob', displayName: 'Bob' }, roomId: 'r 1' } }] }), 'GET /api/rankings/me': () => json({ ratings: {} }) } });
+    await tick();
+    expect(items()[0].getAttribute('href')).toBe('/room.html?id=r%201');
+  });
+
   it('polls every 60 s', async () => {
     boot({ routes: { 'GET /api/notifications': () => json(list), 'GET /api/rankings/me': () => json({ ratings: {} }) } });
     await tick();
@@ -131,6 +137,52 @@ describe('social page', () => {
     expect(labels('sc-friends')).toEqual(['friends.remove']);
     expect(labels('sc-outgoing')).toEqual(['friends.cancel']);
     expect(document.querySelector('#sc-friends a').getAttribute('href')).toBe('/u/bob');
+  });
+
+  describe('challenges', () => {
+    const CH = {
+      incoming: [{ id: 'c1', rule: 'caro', time: '3+2', rated: true, from: P('cat') }],
+      outgoing: [{ id: 'c2', rule: 'freestyle', time: '1+0', rated: false, to: P('dan') }],
+    };
+    const base = { 'GET /api/friends': () => json({ friends: [], incoming: [], outgoing: [] }) };
+
+    it('lists incoming and outgoing with rule · clock · rated, and the right buttons', async () => {
+      await bootPage({ ...base, 'GET /api/challenges': () => json(CH) });
+      const rows = [...document.querySelectorAll('#sc-challenges .prow')];
+      expect(rows).toHaveLength(2);
+      expect(rows[0].textContent).toContain('rankings.cat_caro · 3+2 · challenge.rated');
+      expect([...rows[0].querySelectorAll('button')].map((b) => b.textContent)).toEqual(['challenge.accept', 'friends.decline']);
+      expect(rows[1].textContent).toContain('rankings.cat_freestyle · 1+0');
+      expect(rows[1].textContent).not.toContain('challenge.rated');
+      expect([...rows[1].querySelectorAll('button')].map((b) => b.textContent)).toEqual(['friends.cancel']);
+    });
+
+    it('empty → note; decline calls DELETE and refreshes; accept goes to the room', async () => {
+      let state = CH;
+      let navigated;
+      await bootPage({
+        ...base,
+        'GET /api/challenges': () => json(state),
+        'DELETE /api/challenges/c1': () => { state = { incoming: [], outgoing: CH.outgoing }; return json({ ok: true }); },
+        'POST /api/challenges/c1/accept': () => json({ roomId: 'r 1' }),
+      });
+      const decline = [...document.querySelectorAll('#sc-challenges button')].find((b) => b.textContent === 'friends.decline');
+      decline.click();
+      await tick();
+      expect(document.querySelectorAll('#sc-challenges .prow')).toHaveLength(1);
+      state = { incoming: [], outgoing: [] };
+      jest.advanceTimersByTime(10000);
+      await tick();
+      expect(document.querySelector('#sc-challenges .pnote').textContent).toBe('social.none_challenges');
+    });
+
+    it('accept posts to /accept (target room id is url-encoded)', async () => {
+      await bootPage({ ...base, 'GET /api/challenges': () => json(CH), 'POST /api/challenges/c1/accept': () => json({ roomId: 'r 1' }) });
+      const accept = [...document.querySelectorAll('#sc-challenges button')].find((b) => b.textContent === 'challenge.accept');
+      accept.click();
+      await tick();
+      expect(global.fetch.mock.calls.some((c) => c[0] === '/api/challenges/c1/accept' && c[1].method === 'POST')).toBe(true);
+    });
   });
 
   it('accept hits /accept then reloads the lists', async () => {
