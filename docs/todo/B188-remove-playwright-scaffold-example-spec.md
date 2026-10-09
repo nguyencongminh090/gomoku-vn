@@ -1,5 +1,5 @@
 # B188 — tests/example.spec.ts is the Playwright scaffold and needs the internet
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-09 — scaffold deleted, testMatch narrowed to e2e/** ([fix-log](../fix-log/2026-10-09-todo-188-remove-playwright-scaffold.md))
 **Area:** tests/example.spec.ts, playwright.config.ts (testMatch includes tests/**)
 **From:** #185 5x full-suite verification, 2026-10-09 (run 2: both cases timed out on page.goto playwright.dev)   **Depends:** —
 
