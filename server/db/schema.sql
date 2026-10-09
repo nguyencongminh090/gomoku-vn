@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS games (
   walls              TEXT,            -- JSON array of {x, y}
   portals            TEXT,            -- JSON array of {a:{x,y}, b:{x,y}}
   started_at         TEXT NOT NULL,
-  ended_at           TEXT
+  ended_at           TEXT,
+  ranked             INTEGER NOT NULL DEFAULT 0    -- 1 = queued for rating (TODO.md #175)
 );
 
 -- Player → Game join table (enables per-player history lookup)
@@ -208,3 +209,41 @@ CREATE INDEX IF NOT EXISTS idx_tournament_pairings_tournament_id ON tournament_p
 CREATE INDEX IF NOT EXISTS idx_tournament_pairings_state ON tournament_pairings(state);
 CREATE INDEX IF NOT EXISTS idx_tournament_games_tournament_id ON tournament_games(tournament_id);
 CREATE INDEX IF NOT EXISTS idx_tournament_games_pairing_id ON tournament_games(pairing_id);
+
+-- =============================================================================
+-- Ratings (features/platform, TODO.md #175)
+--
+-- Glicko-2, one pool per `category` = winning rule ('freestyle' | 'standard' |
+-- 'caro'); wall/portal/swap2 games rate in their winning rule's pool and there
+-- is no speed split (planning.md Q3/Q4). Members only — guests never get a row.
+-- rating_history.game_id has no FK on purpose: rating writes run on an async
+-- queue after saveGame, and a failed game insert must not roll back a batch.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS ratings (
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  category    TEXT NOT NULL,
+  rating      REAL NOT NULL,
+  rd          REAL NOT NULL,
+  volatility  REAL NOT NULL,
+  games       INTEGER NOT NULL DEFAULT 0,
+  updated_at  TEXT NOT NULL,
+  PRIMARY KEY (user_id, category)
+);
+
+CREATE TABLE IF NOT EXISTS rating_history (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id        TEXT NOT NULL REFERENCES users(id),
+  category       TEXT NOT NULL,
+  game_id        TEXT NOT NULL,
+  opponent_id    TEXT NOT NULL,
+  score          REAL NOT NULL,        -- 1 win | 0.5 draw | 0 loss
+  rating_before  REAL NOT NULL,
+  rating_after   REAL NOT NULL,
+  rd_before      REAL NOT NULL,
+  rd_after       REAL NOT NULL,
+  created_at     TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ratings_category_rating ON ratings(category, rating DESC);
+CREATE INDEX IF NOT EXISTS idx_rating_history_user ON rating_history(user_id, category, id DESC);
