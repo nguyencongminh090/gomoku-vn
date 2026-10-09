@@ -31,6 +31,7 @@ const TimerManager    = require('../../managers/TimerManager');
 const WallGenerator   = require('../../generators/WallGenerator');
 const PortalGenerator = require('../../generators/PortalGenerator');
 const database        = require('../../db/database');
+const RatingService   = require('../../managers/RatingService');
 const config          = require('../../config');
 const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #167 measurement harness
 const {
@@ -823,6 +824,9 @@ function startGame(io, room) {
       winningRule: settings.winningRule,
       ruleSwap2: true,
     });
+    // Snapshot at start: the Ranked toggle can't change mid-game (updateSettings
+    // refuses while playing), but the game end must not depend on that.
+    engine.ranked = settings.ranked !== false;
 
     room.gameState = engine;
     room.state = 'playing';
@@ -868,6 +872,7 @@ function startGame(io, room) {
     walls, portals, firstMoveZones,
     winningRule: settings.winningRule,
   });
+  engine.ranked = settings.ranked !== false;
 
   room.gameState = engine;
   room.state = 'playing';
@@ -930,16 +935,24 @@ function handleGameEnd(io, room, opts = {}) {
 
   // Persist game to SQLite
   if (engine && engine.result && !noScore) {
+    const players = engine.players.map(p => ({
+      id: p.userId,
+      name: p.displayName,
+      color: p.color,
+      isGuest: p.isGuest,
+    }));
+    const rated = RatingService.isRatedGame({
+      ranked: engine.ranked === true,
+      winningRule: engine.settings && engine.settings.winningRule,
+      players,
+      result: engine.result,
+    });
+    let saved = false;
     try {
       database.saveGame({
         gameId: engine.gameId,
         roomId: engine.roomId,
-        players: engine.players.map(p => ({
-          id: p.userId,
-          name: p.displayName,
-          color: p.color,
-          isGuest: p.isGuest,
-        })),
+        players,
         result: engine.result,
         boardSize: engine.boardSize,
         ruleWall: engine.walls.length > 0,
@@ -951,9 +964,24 @@ function handleGameEnd(io, room, opts = {}) {
           ? new Date(engine.moveHistory[0].timestamp).toISOString()
           : new Date().toISOString(),
         endedAt: new Date().toISOString(),
+        ranked: rated,
       });
+      saved = true;
     } catch (err) {
       logger.warn('[Game] Failed to persist game:', err.message);
+    }
+
+    // Rating (TODO.md #175): queued, written off this handler's tick; casual
+    // and guest games are a no-op. Skipped if the game row didn't persist, so
+    // rating_history never points at a game that doesn't exist.
+    if (rated && saved) {
+      RatingService.recordGame({
+        gameId: engine.gameId,
+        ranked: true,
+        winningRule: engine.settings.winningRule,
+        players,
+        result: engine.result,
+      }, (deltas) => io.to(roomId).emit('rating:update', deltas));
     }
   }
 

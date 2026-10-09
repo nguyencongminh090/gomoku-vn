@@ -75,9 +75,9 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
-- **#175.** Platform: Glicko-2 rating engine + game→rating hook (blocked on #174) `[Model: Opus 5]` — [detail](docs/todo/B175-rating-engine.md)
-- **#176.** Platform: rankings/leaderboard page (blocked on #173,#175) `[Model: Sonnet 5]` — [detail](docs/todo/B176-rankings-page.md)
+- **#176.** Platform: rankings/leaderboard page (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B176-rankings-page.md)
 - **#177.** Platform: profile page + avatar upload (blocked on #173,#174) `[Model: Sonnet 5]` — [detail](docs/todo/B177-profile-avatar.md)
-- **#178.** Platform: clubs (blocked on #173,#175) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
+- **#178.** Platform: clubs (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
+- **#182.** Room: Ranked toggle in settings + show `rating:update` deltas after a game `[Model: Sonnet 5]` — [detail](docs/todo/B182-ranked-toggle-rating-ui.md)
 
 - **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)

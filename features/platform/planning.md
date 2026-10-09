@@ -13,8 +13,8 @@ Source: [user_story](user_story.md).
 ## Open questions
 1. Visual style: pick one of the existing lobby mockups (Zen/Ledger/Editorial/…) as the platform look, or new direction? (answer via mockup review)
 2. Avatar storage: local disk vs Cloudflare R2? Upload limits, moderation of images.
-3. Rating: Glicko-2 vs Elo; initial rating/RD; provisional threshold; do tournament games affect rating?
-4. Variants × speeds list for the rating matrix (which variants/time controls get separate ratings).
+3. ~~Rating~~ **Resolved 2026-10-09 (#175):** Glicko-2, start 1200 / RD 350 / vol 0.06, tau 0.5, provisional while RD > 110. Ranked = room toggle (default on), both players members; tournament games unrated.
+4. ~~Rating matrix~~ **Resolved 2026-10-09 (#175):** one pool per winning rule (freestyle / standard / caro); wall/portal/swap2 games rate in their rule's pool; **no speed split** (per_move / per_game / blitz share the pool).
 5. Club: open vs invite-only; max members; who may create (rating/age gate?); club roles.
 6. Profile privacy defaults; public game history or opt-out?
 7. i18n now (VI/EN) or VI-only?

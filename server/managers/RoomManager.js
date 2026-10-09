@@ -785,6 +785,9 @@ class RoomManager extends EventEmitter {
     s.ruleSwap2       = settings.ruleSwap2 === true;
     if (s.ruleSwap2) { s.ruleWall = false; s.rulePortal = false; }
 
+    // Ranked toggle (TODO.md #175): default ON; only an explicit false makes it casual.
+    s.ranked = settings.ranked !== false;
+
     s.timerMode = (settings.timerMode === 'per_move' || settings.timerMode === 'per_game' || settings.timerMode === 'blitz')
       ? settings.timerMode
       : config.DEFAULT_TIMER_MODE;
