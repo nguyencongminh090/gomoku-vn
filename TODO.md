@@ -78,6 +78,5 @@ in the detail file / fix-log).
 - **#176.** Platform: rankings/leaderboard page (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B176-rankings-page.md)
 - **#177.** Platform: profile page + avatar upload (blocked on #173,#174) `[Model: Sonnet 5]` — [detail](docs/todo/B177-profile-avatar.md)
 - **#178.** Platform: clubs (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
-- **#182.** Room: Ranked toggle in settings + show `rating:update` deltas after a game `[Model: Sonnet 5]` — [detail](docs/todo/B182-ranked-toggle-rating-ui.md)
 
 - **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
