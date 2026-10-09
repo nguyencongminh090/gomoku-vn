@@ -13,6 +13,8 @@
 
 const express  = require('express');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const { getClientIpFromReq } = require('../utils/get-client-ip');
 const database = require('../db/database');
 
 const router = express.Router();
@@ -20,7 +22,14 @@ const router = express.Router();
 // Same shape as routes/games.js's gamesLimiter — public/unauthenticated,
 // same rationale (spectators/history browsing legitimately means many
 // requests).
-const tournamentGamesLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+// keyGenerator: default key is req.ip, which behind the Cloudflare Tunnel is the
+// tunnel's loopback peer for every visitor (one shared budget) — same fix as
+// auth.js's authLimiter (#92), see utils/get-client-ip.js.
+const tournamentGamesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || ''),
+});
 router.use(tournamentGamesLimiter);
 
 // ---------------------------------------------------------------------------
