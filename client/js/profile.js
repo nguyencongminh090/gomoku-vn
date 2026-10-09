@@ -56,6 +56,16 @@
       }
     }
 
+    const badgeBox = $('pf-badges');
+    badgeBox.replaceChildren();
+    for (const id of p.badges || []) badgeBox.appendChild(el('span', t('badge.' + id), 'pbadge'));
+    badgeBox.hidden = !badgeBox.childElementCount;
+    if (p.streak && (p.streak.best > 0)) {
+      const d = document.createElement('div');
+      d.append(el('dt', t('profile.streak')), el('dd', t('profile.streak_val', { cur: p.streak.current, best: p.streak.best })));
+      stats.appendChild(d);
+    }
+
     const cards = $('pf-ratings');
     cards.replaceChildren();
     if (!p.ratings.length) cards.appendChild(el('p', t('profile.no_ratings'), 'pnote'));

@@ -1027,6 +1027,26 @@ function getUserGameStats(userId) {
   `).get({ id: userId });
 }
 
+/** Newest-first outcomes ('win'|'loss'|'draw') of the user's finished RATED games with a decided result. */
+function getUserRankedResults(userId, limit) {
+  return db.prepare(`
+    SELECT winner, black_player_id FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ranked = 1 AND ended_at IS NOT NULL AND winner IS NOT NULL
+    ORDER BY ended_at DESC LIMIT @limit
+  `).all({ id: userId, limit }).map((g) => {
+    if (g.winner === 'draw') return 'draw';
+    return (g.winner === 'BLACK') === (g.black_player_id === userId) ? 'win' : 'loss';
+  });
+}
+
+function countUserRankedWins(userId) {
+  return db.prepare(`
+    SELECT COUNT(*) AS n FROM games
+    WHERE ranked = 1 AND ended_at IS NOT NULL
+      AND ((winner = 'BLACK' AND black_player_id = @id) OR (winner = 'WHITE' AND white_player_id = @id))
+  `).get({ id: userId }).n;
+}
+
 function getUserRecentGames(userId, limit) {
   return db.prepare(`
     SELECT id, black_player_id, black_player_name, white_player_name, winner, ended_at
@@ -1141,6 +1161,8 @@ module.exports = {
   getRankings,
   getRankingCount,
   getRankingsAmong,
+  getUserRankedResults,
+  countUserRankedWins,
   getRankingsByCountry,
   countRankingsByCountry,
   countRankingsAmong,
