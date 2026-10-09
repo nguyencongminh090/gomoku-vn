@@ -49,4 +49,25 @@
   global.getUiMode = getUiMode;
   global.setUiMode = setUiMode;
 
+  // ── Colour mode (dark | light), B173 ─────────────────────────────────────
+  // data-mode on <html>, set before first paint by skin-preload.js. Persisted
+  // in cookie `gvn_mode` (primary) + localStorage['gvn_color_mode'] (fallback).
+  const COLOR_KEY = 'gvn_color_mode';
+  const COLOR_MODES = ['dark', 'light'];
+
+  function getColorMode() {
+    return document.documentElement.getAttribute('data-mode') === 'light' ? 'light' : 'dark';
+  }
+
+  function setColorMode(mode) {
+    if (!COLOR_MODES.includes(mode) || mode === getColorMode()) return;
+    document.documentElement.setAttribute('data-mode', mode);
+    try { document.cookie = 'gvn_mode=' + mode + '; Path=/; Max-Age=31536000; SameSite=Lax'; } catch (e) { /* ignore */ }
+    try { localStorage.setItem(COLOR_KEY, mode); } catch (e) { /* private mode */ }
+    global.dispatchEvent(new CustomEvent('colormodechange', { detail: { mode } }));
+  }
+
+  global.getColorMode = getColorMode;
+  global.setColorMode = setColorMode;
+
 })(window);
