@@ -12,6 +12,7 @@
 
 const database = require('../db/database');
 const notifications = require('./NotificationService');
+const privacyGate = require('./PrivacyGate');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -79,6 +80,9 @@ function request(me, username) {
       throw new FriendError('FRIEND_LIMIT', 409, 'Danh sách bạn bè đã đầy.');
     }
     if (row) { accept(row); return 'friends'; } // crossed requests (notified after the transaction)
+    // Only a NEW request is gated; answering a crossed one (above) is always fine.
+    // 'friends' can never hold for a stranger, so for this action it behaves like 'nobody'.
+    if (!privacyGate.allowed(me, other.id, 'friend')) throw new FriendError('FRIEND_REQUEST_NOT_ALLOWED', 403, 'Người này không nhận lời mời kết bạn.');
     const out = db().prepare("SELECT COUNT(*) AS n FROM friendships WHERE status = 'pending' AND requested_by = ?").get(me).n;
     if (out >= MAX_OUTGOING) throw new FriendError('TOO_MANY_REQUESTS', 429, 'Quá nhiều lời mời đang chờ.');
     const [x, y] = pair(me, other.id);

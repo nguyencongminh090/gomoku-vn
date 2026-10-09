@@ -14,6 +14,7 @@
 const database = require('../db/database');
 const notifications = require('./NotificationService');
 const dmText = require('./DmText');
+const privacyGate = require('./PrivacyGate');
 
 const DM_KEEP = 500;
 const PAGE = 30;
@@ -73,6 +74,7 @@ function save(fromId, toId, text, { notify = false } = {}) {
 function send(fromId, username, raw) {
   const to = findUser(username);
   if (to.id === fromId) throw new DmError('CANNOT_CHAT_SELF', 400, 'Không thể nhắn cho chính mình.');
+  if (!privacyGate.allowed(fromId, to.id, 'dm')) throw new DmError('DM_NOT_ALLOWED', 403, 'Người này không nhận tin nhắn từ bạn.');
   const text = dmText.clean(raw);
   if (!text) throw new DmError('EMPTY_MESSAGE', 400, 'Tin nhắn trống.');
   if (dmText.isRateLimited(fromId)) throw new DmError('PRIVATE_CHAT_RATE_LIMITED', 429, 'Bạn nhắn quá nhanh.');

@@ -19,6 +19,7 @@ const roomManager = require('./RoomManager');
 const notifications = require('./NotificationService');
 const { seatPair } = require('./PairRoom');
 const { RULES, PRESETS } = require('./MatchQueue');
+const privacyGate = require('./PrivacyGate');
 
 const TTL_MS = 2 * 60 * 1000;
 const MAX_OUTGOING = 5;
@@ -58,6 +59,7 @@ function send(fromId, username, { rule, time, rated } = {}) {
   const target = database.getUserByUsername(String(username || '').slice(0, 40));
   if (!target) throw new ChallengeError('USER_NOT_FOUND', 404, 'Không tìm thấy người chơi.');
   if (target.id === fromId) throw new ChallengeError('CANNOT_CHALLENGE_SELF', 400, 'Không thể tự thách đấu.');
+  if (!privacyGate.allowed(fromId, target.id, 'challenge')) throw new ChallengeError('CHALLENGE_NOT_ALLOWED', 403, 'Người này không nhận thách đấu từ bạn.');
   if (!RULES.includes(rule)) throw new ChallengeError('BAD_RULE', 400, 'Luật không hợp lệ.');
   if (!PRESETS[time]) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
   for (const c of [...pending.values()]) if (c.from === fromId && c.to === target.id) remove(c); // re-send replaces

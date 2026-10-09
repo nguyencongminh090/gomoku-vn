@@ -136,7 +136,8 @@
         box.append(mk('friends.accept', 'POST', base + '/accept', 'pbtn--primary'), mk('friends.decline', 'DELETE', base, 'pbtn--ghost'));
         break;
       default:
-        box.append(mk('friends.add', 'POST', base, 'pbtn--primary'));
+        if (!p.can || p.can.friend) box.append(mk('friends.add', 'POST', base, 'pbtn--primary'));
+        else box.append(el('span', t('privacy.no_friend'), 'pnote'));
     }
     challengeControls(p, box);
   }
@@ -188,7 +189,11 @@
     });
     const msg = el('a', t('dm.btn'), 'pbtn');
     msg.href = '/social.html#dm=' + encodeURIComponent(p.username);
-    box.append(open, msg, form);
+    const can = p.can || { dm: true, challenge: true };
+    if (can.challenge) box.append(open, form);
+    else box.append(el('span', t('privacy.no_challenge'), 'pnote'));
+    if (can.dm) box.append(msg);
+    else box.append(el('span', t('privacy.no_dm'), 'pnote'));
   }
 
   async function friendAction(p, method, path, btn) {

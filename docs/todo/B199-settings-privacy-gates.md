@@ -35,3 +35,7 @@ Server-side gates because REST/sockets are reachable without the UI; `hide_histo
 - Columns added by the inline `PRAGMA table_info` migration in `database.js` (the #177/#180 pattern), not a numbered SQL file. `country` is only format-checked (`^[A-Z]{2}$`); the ISO list lives in the client (slice 4).
 - `PUT /api/profile` + `GET /api/profile/prefs` + self-only `privacy` on `GET /api/profile/:username`; new codes `COUNTRY_INVALID`, `CITY_INVALID`, `AUDIENCE_INVALID`. Gates are stored but not enforced yet (slice 2).
 - Tests: `profile-route.test.js` (+1); full `npm test` 2298 green. Not tested: migration on a populated pre-existing DB.
+## Slice 2 notes (2026-10-09, `feature/199-gates`)
+- `managers/PrivacyGate.allowed(from, to, 'dm'|'challenge'|'friend')` (lazy-requires FriendService: circular). Enforced in `DmService.send`, DM socket path (`DM_NOT_ALLOWED`, i18n `err.dm_not_allowed`), `ChallengeService.send` (`CHALLENGE_NOT_ALLOWED`), `FriendService.request` (`FRIEND_REQUEST_NOT_ALLOWED`; only a NEW request is gated, a crossed one still completes; `friends` acts as `nobody` for friend requests).
+- `GET /api/profile/:username` → `can {dm,challenge,friend}` for member viewers (not self/anonymous); profile.js hides the buttons and shows a note. Tests: `privacy-gates.test.js` (13) + profile-route (+1). `?v=201`.
+- Not covered: jsdom for the profile.js `can` branch; real-browser pass (do together with slice 4 settings page).
