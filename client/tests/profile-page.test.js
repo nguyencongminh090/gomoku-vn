@@ -74,7 +74,6 @@ describe('profile page', () => {
     expect(document.getElementById('pf-bio').querySelector('b')).toBeNull();
     expect(document.querySelectorAll('.pcard')).toHaveLength(1);
     expect(document.querySelectorAll('#pf-recent .prow')).toHaveLength(1);
-    expect(document.getElementById('pf-edit').hidden).toBe(true);
     expect(document.getElementById('pf-actions').hidden).toBe(true);
   });
 
@@ -84,11 +83,18 @@ describe('profile page', () => {
     expect(document.getElementById('pf-stats').children).toHaveLength(0);
   });
 
-  it('shows the edit panel only for the owner, prefilled', async () => {
-    await boot({ ...PROFILE, isSelf: true, privacy: { hideHistory: true, hideBio: false } });
-    expect(document.getElementById('pf-edit').hidden).toBe(false);
-    expect(document.getElementById('pf-bio-input').value).toBe('hi <b>there</b>');
-    expect(document.getElementById('pf-hide-history').checked).toBe(true);
+  it('shows the edit link (to /settings.html) only for the owner', async () => {
+    await boot({ ...PROFILE, isSelf: true });
+    expect(document.getElementById('pf-actions').hidden).toBe(false);
+    expect(document.getElementById('pf-edit-btn').getAttribute('href')).toBe('/settings.html');
+  });
+
+  it('hides challenge / message / friend controls the target does not accept (#199)', async () => {
+    await boot({ ...PROFILE, friendship: 'none', can: { dm: false, challenge: false, friend: false } });
+    const box = document.getElementById('pf-social');
+    expect(box.querySelectorAll('button')).toHaveLength(0);
+    expect(box.querySelector('a')).toBeNull();
+    expect([...box.querySelectorAll('.pnote')].map((n) => n.textContent)).toEqual(['privacy.no_friend', 'privacy.no_challenge', 'privacy.no_dm']);
   });
 
   describe('friend button', () => {
