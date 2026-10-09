@@ -11,7 +11,7 @@
  * home screen is visible. All text goes in via textContent.
  */
 
-import { setHeroTab } from './lobby.js?v=191';
+import { setHeroTab } from './lobby.js?v=192';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -63,12 +63,25 @@ export function showScreen(name) {
 
 // ── Formatting ──────────────────────────────────────────────────────────────
 
-/** "Caro VN · 5+3" from a room's rule/timer fields; parts that are unknown are dropped. */
+/** "10" for whole minutes, else "90s". */
+function clockAmount(sec) {
+  return sec % 60 === 0 ? String(sec / 60) : sec + 's';
+}
+
+/**
+ * "Caro VN · 5+3" from a room's rule/timer fields; unknown parts are dropped.
+ * Only blitz carries an increment (TimerManager.applyMove) — per_game is a bare total (B196).
+ */
 export function ruleLine(r) {
   const parts = [];
   if (r.winningRule) parts.push(t('rankings.cat_' + r.winningRule));
-  if (r.timerMode === 'per_game' && r.timerSeconds) parts.push(Math.round(r.timerSeconds / 60) + '+' + (r.timerIncrementSeconds || 0));
-  else if (r.timerMode === 'per_move' && r.timerSeconds) parts.push(t('home.per_move', { s: r.timerSeconds }));
+  if (r.timerSeconds) {
+    if (r.timerMode === 'blitz') parts.push(clockAmount(r.timerSeconds) + '+' + (r.timerIncrementSeconds || 0));
+    else if (r.timerMode === 'per_game') {
+      parts.push(r.timerSeconds % 60 === 0 ? t('home.per_game', { m: r.timerSeconds / 60 }) : t('home.per_game_s', { s: r.timerSeconds }));
+    }
+    else if (r.timerMode === 'per_move') parts.push(t('home.per_move', { s: r.timerSeconds }));
+  }
   return parts.join(' · ');
 }
 
