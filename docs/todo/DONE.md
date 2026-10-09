@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#192.** Settings panel unstyled on rankings/profile/clubs/club (missing settings-panel.css, B190 regression) `[Model: Haiku 4.5]` — [detail](docs/todo/B192-settings-panel-unstyled-on-platform-pages.md)
 - ✅ **#190.** Arena phase 2: rating history (7-day change, profile chart), rankings search + club column, club rank, site nav links — [detail](docs/todo/B190-platform-pages-phase2-data.md)
 - ✅ **#189.** Platform pages (rankings/profile/clubs) match Arena mockup (phase 1) + `hidden` buttons bug — [detail](docs/todo/B189-platform-pages-match-arena-mockup.md)
 - ✅ **#180.** Platform: selectable skins A Zen / D Bento on the token layer — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
