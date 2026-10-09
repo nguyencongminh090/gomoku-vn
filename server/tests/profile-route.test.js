@@ -194,6 +194,15 @@ describe('profile read + privacy', () => {
     expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.whoCanDm).toBe('everyone');
   });
 
+  it('GET exposes what the viewer may do (`can`) — members only, never for self or anonymous (#199)', async () => {
+    const get = (cookie) => req('GET', '/api/profile/alice', cookie ? { cookie } : {});
+    await req('PUT', '/api/profile', { cookie: UID, type: 'application/json', body: JSON.stringify({ whoCanDm: 'nobody', whoCanChallenge: 'friends', whoCanFriend: 'everyone' }) });
+    expect((await get(OTHER)).json.can).toEqual({ dm: false, challenge: false, friend: true });
+    expect((await get(UID)).json.can).toBeUndefined();
+    expect((await get()).json.can).toBeUndefined();
+    await req('PUT', '/api/profile', { cookie: UID, type: 'application/json', body: JSON.stringify({ whoCanDm: 'everyone', whoCanChallenge: 'everyone', whoCanFriend: 'everyone' }) });
+  });
+
   it('PUT requires a member session', async () => {
     expect((await req('PUT', '/api/profile', { type: 'application/json', body: '{}' })).status).toBe(401);
     expect((await req('PUT', '/api/profile', { cookie: 'guest', type: 'application/json', body: '{}' })).status).toBe(403);

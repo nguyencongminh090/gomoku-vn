@@ -25,6 +25,7 @@ const crypto = require('crypto');
 const config = require('../../config');
 const logger = require('../../utils/logger');
 const dmText = require('../../managers/DmText');
+const privacyGate = require('../../managers/PrivacyGate');
 const { sessions } = require('../state');
 
 /**
@@ -78,6 +79,7 @@ function register(io, socket) {
     // (they get a bell notification); guests keep the ephemeral online-only behaviour.
     const persist = !!(store && !user.isGuest && store.isMember(toUserId));
     if (!recipientSocket && !persist) return fail('RECIPIENT_OFFLINE');
+    if (persist && !privacyGate.allowed(user.userId, toUserId, 'dm')) return fail('DM_NOT_ALLOWED');
 
     let messageId = crypto.randomUUID();
     let timestamp = Date.now();

@@ -26,6 +26,7 @@ const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { optionalUserId } = require('../utils/optional-user');
 const clubService = require('../managers/ClubService');
 const friendService = require('../managers/FriendService');
+const privacyGate = require('../managers/PrivacyGate');
 const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES, PROVISIONAL_RD } = require('../managers/RatingService');
@@ -249,6 +250,14 @@ router.get('/:username', (req, res, next) => {
       isSelf,
       friendship: friendService.statusBetween(viewerId, user.id),
     };
+    // What the viewer may do to this user (members only; the server re-checks on every action).
+    if (viewerId && !isSelf) {
+      body.can = {
+        dm: privacyGate.allowed(viewerId, user.id, 'dm'),
+        challenge: privacyGate.allowed(viewerId, user.id, 'challenge'),
+        friend: body.friendship !== 'none' || privacyGate.allowed(viewerId, user.id, 'friend'),
+      };
+    }
     if (isSelf) body.privacy = privacyOf(user);
     res.set('Cache-Control', 'no-store');
     res.json(body);
