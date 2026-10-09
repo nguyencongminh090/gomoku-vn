@@ -74,6 +74,7 @@ describe('GET /api/rankings', () => {
     const { body } = await get('/api/rankings?category=freestyle');
     expect(body.players.map((p) => [p.rank, p.displayName])).toEqual([[1, 'Bob'], [2, 'Alice'], [3, 'Cara']]);
     expect(body.players[2].provisional).toBe(true);
+    expect(body.players[0].username).toBe('u2');
     expect(body.pagination.total).toBe(3);
     expect(body.players[0]).not.toHaveProperty('rd');
   });

@@ -16,8 +16,8 @@ const BODY_HTML = fs.readFileSync(path.join(__dirname, '..', 'rankings.html'), '
 const PAGE = {
   category: 'freestyle', minGames: 20,
   players: [
-    { rank: 1, userId: 'u2', displayName: '<b>Bob</b>', rating: 1800, games: 25, provisional: false },
-    { rank: 2, userId: 'u1', displayName: 'Alice', rating: 1700, games: 30, provisional: true },
+    { rank: 1, userId: 'u2', username: 'bob', displayName: '<b>Bob</b>', rating: 1800, games: 25, provisional: false },
+    { rank: 2, userId: 'u1', username: 'alice', displayName: 'Alice', rating: 1700, games: 30, provisional: true },
   ],
   pagination: { page: 1, limit: 50, total: 2, totalPages: 1 },
 };
@@ -45,6 +45,7 @@ describe('rankings page', () => {
     expect(rows[0].children[1].textContent).toBe('<b>Bob</b>');
     expect(rows[0].querySelector('b')).toBeNull();
     expect(rows[1].classList.contains('is-me')).toBe(true);
+    expect(rows[1].querySelector('a').getAttribute('href')).toBe('/u/alice');
     expect(rows[1].querySelector('.rankings__prov')).not.toBeNull();
     expect(document.getElementById('rk-mine').textContent).toContain('#2');
   });

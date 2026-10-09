@@ -12,11 +12,11 @@ Source: [user_story](user_story.md).
 
 ## Open questions
 1. Visual style: pick one of the existing lobby mockups (Zen/Ledger/Editorial/…) as the platform look, or new direction? (answer via mockup review)
-2. Avatar storage: local disk vs Cloudflare R2? Upload limits, moderation of images.
+2. ~~Avatar storage~~ **Resolved 2026-10-09 (#177):** local disk, re-encoded 256² WebP ≤ 30 KB (~6–12 KB typical), 2 MB input cap, JPEG/PNG/WebP only; no moderation queue yet.
 3. ~~Rating~~ **Resolved 2026-10-09 (#175):** Glicko-2, start 1200 / RD 350 / vol 0.06, tau 0.5, provisional while RD > 110. Ranked = room toggle (default on), both players members; tournament games unrated.
 4. ~~Rating matrix~~ **Resolved 2026-10-09 (#175):** one pool per winning rule (freestyle / standard / caro); wall/portal/swap2 games rate in their rule's pool; **no speed split** (per_move / per_game / blitz share the pool).
 5. Club: open vs invite-only; max members; who may create (rating/age gate?); club roles.
-6. Profile privacy defaults; public game history or opt-out?
+6. ~~Profile privacy~~ **Resolved 2026-10-09 (#177):** public by default; per-user opt-outs hide game history and bio.
 7. i18n now (VI/EN) or VI-only?
 8. ~~SQLite at thousands?~~ **Resolved 2026-10-09 (#174): KEEP SQLite (WAL) + 3 limits; no Postgres now.**
    Measured (synthetic, `better-sqlite3`, real schema + `ratings`/`rating_history` tables, 1 tx per game end = games row + 2 player_games + 2 rating updates + 2 history rows; 3 categories, ext4 SSD):

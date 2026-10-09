@@ -67,7 +67,10 @@
     for (const p of data.players) {
       const tr = document.createElement('tr');
       if (state.mine && p.userId === state.mine.userId) tr.className = 'is-me';
-      const name = el('td', p.displayName);
+      const name = document.createElement('td');
+      const link = el('a', p.displayName);
+      link.href = '/u/' + encodeURIComponent(p.username);
+      name.appendChild(link);
       const rating = el('td', String(p.rating), 'num');
       if (p.provisional) rating.appendChild(el('span', '?', 'rankings__prov'));
       tr.append(el('td', String(p.rank)), name, rating, el('td', String(p.games), 'num'));

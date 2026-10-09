@@ -65,6 +65,7 @@ export default defineConfig({
         room: resolve(__dirname, 'client/room.html'),
         history: resolve(__dirname, 'client/history.html'),
         rankings: resolve(__dirname, 'client/rankings.html'),
+        profile: resolve(__dirname, 'client/profile.html'),
         tournament: resolve(__dirname, 'client/tournament.html'),
         tournamentMatch: resolve(__dirname, 'client/tournament-match.html'),
         // Unlisted diagnostic page (TODO.md #168). Listed here only so the
