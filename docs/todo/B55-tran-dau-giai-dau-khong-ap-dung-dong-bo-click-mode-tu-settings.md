@@ -1,5 +1,7 @@
 # #55. Trận đấu giải đấu không áp dụng/đồng bộ click mode từ Cài đặt — khác hành vi với phòng chơi thường
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng, 2026-08-07 — "Inside of Tournament-room, user cannot set UI as Room,
 Click mode not work / not sync with user settings."
 

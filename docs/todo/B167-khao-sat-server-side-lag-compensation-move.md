@@ -1,5 +1,7 @@
 # B167 — (Khảo sát) Server-side lag compensation cho `game:move`
 
+**Status:** ✅ CLOSED 2026-10-09 — user decision: survey closed, no change to the clock formula. Measurement harness and /diag samples stay as history.
+
 **Trạng thái:** ⬜ ĐANG KHẢO SÁT — **harness đo (Bước 1) đã dựng 2026-08-28; đã có 5 mẫu `/diag` đầu
 tiên (xem "Kết quả đo lần 2"), trong đó 1 mẫu RTT cao thật. Chưa động vào công thức tính giờ.**
 **Chặn Bước 2: OQ1 (nguồn đo half-RTT server-side mỗi nước) chưa có lời giải.**

@@ -1,5 +1,7 @@
 # #136 — (Reopen #134) Drawer zen bị thu vào rail đúng lúc modal hiện lên, ở viewport desktop
 
+**Status:** ✅ FIXED 2026-08-21 (already fixed per "Vòng 2" in this file); index was stale — closed 2026-10-09.
+
 **Trạng thái:** ✅ Đã sửa — 2026-08-21 (`fix/tab-activation-vs-drawer-toggle` off `dev`). Xem "Vòng 2" ở cuối file.
 
 **Nguồn:** người dùng đính chính mô tả của `TODO.md` #134 (2026-08-21), kèm 6 ảnh chụp

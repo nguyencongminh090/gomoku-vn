@@ -27,8 +27,8 @@ const DONE_PATH = path.join(TODO_DIR, 'DONE.md');
 const INDEX_LINE = /^-\s*(✅\s*)?\*\*#\S+\.\*\*.*\(docs\/todo\/([A-Za-z0-9§]+)(?:-[^)]+)?\.md\)/;
 // Canonical + accepted-legacy completion verbs (see .claude/rules/tracking-files.md
 // for which one new entries should use going forward).
-const DONE_VERBS = ['DONE', 'FIXED', 'CLOSED', 'VERIFIED', 'ĐÃ XONG', 'đã xong', 'Đã sửa', 'đã sửa', 'Đã đóng', 'đã đóng', 'ĐÃ ĐÓNG', 'Đã đo', 'đã đo'];
-const DONE_VERB_RE = new RegExp(DONE_VERBS.map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+const DONE_VERBS = ['DONE', 'FIXED', 'CLOSED', 'VERIFIED', 'ĐÃ XONG', 'đã xong', 'Đã sửa', 'đã sửa', 'Đã đóng', 'đã đóng', 'ĐÃ ĐÓNG', 'Đã đo', 'đã đo', 'Đã quyết định', 'Đã xác nhận', 'Đã xác minh', 'Đã loại', 'Đã hoàn'];
+const DONE_VERB_RE = new RegExp(DONE_VERBS.map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi'); // case-insensitive: legacy files use ĐÃ SỬA / ĐÃ ĐO (all caps)
 
 // Block-aware: an item may span several lines (legacy long entries); the detail link is usually on
 // the last one, so join indented continuation lines before matching.

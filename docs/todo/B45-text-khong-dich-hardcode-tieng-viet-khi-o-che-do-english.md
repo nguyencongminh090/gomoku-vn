@@ -1,5 +1,7 @@
 ## #45. Text không dịch / hardcode tiếng Việt khi ở chế độ English
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng — "Text not fully English on English mode" (2026-08-04).
 
 **Đánh giá hiệu quả/an toàn:** không phải bug an toàn, là bug UX/i18n rõ ràng

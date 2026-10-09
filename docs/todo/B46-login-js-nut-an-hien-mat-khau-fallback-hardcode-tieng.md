@@ -1,5 +1,7 @@
 ## #46. `login.js` nút ẩn/hiện mật khẩu — fallback hardcode tiếng Việt vì thiếu khoá i18n
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** phát hiện phụ khi làm #45 (2026-08-04) — không nằm trong danh sách
 phát hiện gốc của #45, ghi riêng theo rule "scope discipline".
 

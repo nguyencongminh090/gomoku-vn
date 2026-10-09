@@ -1,5 +1,7 @@
 # #58. Trận đấu giải đấu không có kiểu bàn cờ "Đá" (Stone) — luôn hiện "Giấy" (Paper)
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng, 2026-08-07, ngay sau đợt full-refactor #52/#55/#56: "Board Style need
 to be recover in tournament too. It seems do not have Stone Board".
 

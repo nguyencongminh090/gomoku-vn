@@ -1,5 +1,7 @@
 # #50. Cho phép một cặp đấu (pairing) chơi nhiều ván (game series) thay vì chỉ một ván
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** yêu cầu người dùng, 2026-08-06. Đã thảo luận đầy đủ qua
 `features/tournament-match-series/` (user_story.md + planning.md) trước khi ghi vào đây, theo quy
 tắc "features/<slug>/" trong `CLAUDE.md`.

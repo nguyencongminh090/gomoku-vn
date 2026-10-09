@@ -3,6 +3,15 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#174.** Platform: storage/scale decision for thousands of users `[Model: Opus 5]` — [detail](docs/todo/B174-storage-scale-decision.md)
+- ✅ **#181.** a11y: unlabelled checkboxes in create-room modal + room settings (axe Critical) `[Model: Sonnet 5]` — [detail](docs/todo/B181-a11y-unlabelled-checkboxes.md)
+- ✅ **#136.** (Reopen #134) Người dùng đính chính: mô tả ở #134 chỉ là **một phần**, không phải mô
+- ✅ **#167.** (Khảo sát — ĐANG ĐO) Server-side lag compensation cho `game:move` — server đo transit
+- ✅ **#93.** `gamesLimiter`/`tournamentGamesLimiter` có đúng lỗi IP-gộp y hệt #92 (cùng thiếu `keyGenerator`) — chưa sửa, mức độ thấp hơn nhiều (ngưỡng 300 req/15 phút so với 20 của auth), không có báo cáo người dùng cụ thể `[Model: Sonnet 5]` — [chi tiết](docs/todo/B93-games-tournamentgames-rate-limit-same-ip-bug.md)
+- ✅ **#5.** Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A05-muc-3-8-vong-doi-mat-khau-can-noi-dung-day-du.md)
+- ✅ **#6.** Quyết định kiến trúc khi cần scale quá 1 tiến trình `[Model: Opus 5]` — [chi tiết](docs/todo/A06-quyet-dinh-kien-truc-khi-can-scale-qua-1-tien-trinh.md)
+- ✅ **#8.** Chưa có cách quan sát heap/GC của server đang chạy `[Model: Sonnet 5]` — [chi tiết](docs/todo/A08-chua-co-cach-quan-sat-heap-gc-cua-server-dang-chay.md)
+- ✅ **#11.** Hành vi khi bật `permessage-deflate` `[Model: Sonnet 5]` — [chi tiết](docs/todo/A11-hanh-vi-khi-bat-permessage-deflate.md)
 - ✅ **#179.** Platform: Arena top bar on all pages + scoped axe pass (contrast fixes) — [detail](docs/todo/B179-arena-shell-remaining-pages.md)
 - ✅ **#173.** Platform: design tokens (Arena dark/light) + shell on lobby/room, colour-mode switch — [detail](docs/todo/B173-design-tokens-app-shell.md)
 - ✅ **#172.** Platform: design brief + UI demo mockups — Arena (dark/light) chosen as default skin, A/D optional — [detail](docs/todo/B172-platform-design-brief-ui-demo.md)

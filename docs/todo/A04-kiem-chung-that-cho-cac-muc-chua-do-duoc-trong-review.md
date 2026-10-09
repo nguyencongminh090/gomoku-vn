@@ -1,5 +1,9 @@
 # Phần A #4. Kiểm chứng thật cho các mục "CHƯA ĐO ĐƯỢC" trong review
 
+**Status update 2026-10-09:** scope trimmed — timing attack already measured; remaining: half-open socket (2 real machines + iptables DROP) and room:updated at exactly 20 users.
+
+**Recheck 2026-10-09 (code only):** MAX_USERS_PER_ROOM is now 40 (config.js:49), not 20 — the room:updated measurement point is the new cap (40); half-open socket item unchanged.
+
 **Nguồn:** `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
 
 

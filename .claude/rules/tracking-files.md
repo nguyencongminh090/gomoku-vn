@@ -47,8 +47,9 @@ node scripts/track.js log 5      # last 5 fix-log rows
   VERIFIED <date> …`; the `TODO.md` line is *moved* to the top of `docs/todo/DONE.md` prefixed `✅`.
   Evidence (tests, `?v=` bump, measurements) goes in the detail file / fix-log.
   A `Stop` hook (`scripts/check-tracking-sync.js`) blocks the turn if a newly-✅ item's detail file has
-  no marker; `node scripts/check-tracking-sync.js --full` audits the whole backlog (31 legacy
-  mismatches as of 2026-10-08 — pre-existing debt, don't relax the check).
+  no marker; `node scripts/check-tracking-sync.js --full` audits the whole backlog (0 mismatches
+  since 2026-10-09: marker match is case-insensitive; 17 legacy files backfilled). Use the canonical
+  `**Status:** ✅ DONE|FIXED|CLOSED|VERIFIED` line so the check can find it.
 - **Fix-log:** each fix = one new `docs/fix-log/<date>-<slug>.md` (template) + one row
   `| timestamp | ≤160-char summary | [detail](path) |`. **Append-only** — never edit/reword/reorder/
   delete an existing row or file; a wrong entry gets a new correcting entry. Timestamp = real write

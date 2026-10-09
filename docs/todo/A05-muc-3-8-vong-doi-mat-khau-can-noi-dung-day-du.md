@@ -1,5 +1,7 @@
 # Phần A #5. Mục 3.8 "vòng đời mật khẩu" — cần nội dung đầy đủ
 
+**Status:** ✅ CLOSED 2026-10-09 — no actionable content (waited on review text never supplied). A JWT-revocation idea may return under platform auth.
+
 **Nguồn:** kiểm chứng bản sửa (commit `3da53dd`, đo lại 2026-08-01)
 
 

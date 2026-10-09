@@ -1,5 +1,7 @@
 # #61. Trận đấu giải đấu (PC): khối `.match-clocks` nằm quá sát/thiếu khoảng cách với dòng `#match-meta` phía trên
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** review nhanh UI desktop theo yêu cầu người dùng (không kèm bug report gốc), 2026-08-07.
 
 ## Hiện trạng quan sát được

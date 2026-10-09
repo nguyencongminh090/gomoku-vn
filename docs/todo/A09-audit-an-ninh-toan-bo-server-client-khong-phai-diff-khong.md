@@ -1,5 +1,9 @@
 # Phần A #9. Audit an ninh toàn bộ server + client — không phải diff, không có PR đang mở
 
+**Status update 2026-10-09:** rescoped — 2026-08-03 audit had no HIGH/MEDIUM. Re-run AFTER #177 (avatar upload/profile) and #175-#178; focus on upload, profile, club authz.
+
+**Recheck 2026-10-09 (code only):** the displayName defense-in-depth gap noted here is closed (#32 DONE). Remaining reason to re-run: new platform surfaces (upload, profile, clubs).
+
 **Nguồn:** security review toàn bộ codebase (2026-08-03, yêu cầu người dùng "Does my website safe?")
 
 
