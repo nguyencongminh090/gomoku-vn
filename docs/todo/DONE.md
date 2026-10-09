@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#199.** R5: Settings page + privacy gates (DM/challenge/friend-request, hide online), country/city, badges + win streak — [B199](B199-settings-privacy-gates.md)
 - ✅ **#193.** R1: Arena shell on lobby/history/tournament (one header site-wide) `[Model: Sonnet 5.5]` — [detail](docs/todo/B193-arena-shell-lobby-history-tournament.md)
 - ✅ **#195.** R2: Chơi home dashboard (my game, today, live boards) + Phòng screen `[Model: Sonnet 5.5]` — [detail](docs/todo/B195-home-dashboard.md)
 - ✅ **#197.** R3: quick match queue (rule × time × rated) on the Chơi dashboard `[Model: Sonnet 5.5]` — [detail](docs/todo/B197-quick-match.md)
