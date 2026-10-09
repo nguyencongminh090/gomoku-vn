@@ -72,6 +72,16 @@ window.RoomState = {
   // Game
   gameState:         null,   // from game:init / room:joined.gameState
   timerValues:       { black: 0, white: 0 },
+
+  // Half of the last measured move round-trip, in ms (TODO.md #165). The
+  // server stamps `timer:sync` with its clock reading, but that packet then
+  // spends ~d ms in flight before we read it, so our clock offset ends up d
+  // ms short and the displayed clock runs d ms behind — invisible at d≈20ms,
+  // a visible 1–3s over-count on a lossy/VPN link. We subtract this estimate
+  // of d from the *displayed* remaining only (never activeDeadline/serverNow,
+  // so the desync watchdog is untouched). Measured from game:move acks — a
+  // real round trip on the exact path that matters, no extra packets.
+  halfRttMs:         0,
   drawOfferPending:  null,   // { from, fromName } | null
   timeRequestPending:null,   // { from, fromName, bonus } | null
 

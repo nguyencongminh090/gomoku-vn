@@ -2,8 +2,8 @@
 'use strict';
 
 // Enforces the "Index/detail sync" rule from .claude/rules/tracking-files.md:
-// every item TODO.md marks with a leading ✅ must have a matching completion
-// marker in its docs/todo/<CODE>-<slug>.md detail file.
+// every item marked with a leading ✅ (in TODO.md open list or docs/todo/DONE.md)
+// must have a matching completion marker in its docs/todo/<CODE>-<slug>.md file.
 //
 // Modes:
 //   (default)  "diff" mode — only checks items newly marked ✅ since the last
@@ -22,17 +22,25 @@ const { execSync } = require('child_process');
 const ROOT = path.resolve(__dirname, '..');
 const TODO_PATH = path.join(ROOT, 'TODO.md');
 const TODO_DIR = path.join(ROOT, 'docs', 'todo');
+const DONE_PATH = path.join(TODO_DIR, 'DONE.md');
 
-const INDEX_LINE = /^-\s*(✅\s*)?\*\*#\S+\.\*\*.*\(docs\/todo\/([A-Za-z0-9§]+)-[^)]+\.md\)/;
+const INDEX_LINE = /^-\s*(✅\s*)?\*\*#\S+\.\*\*.*\(docs\/todo\/([A-Za-z0-9§]+)(?:-[^)]+)?\.md\)/;
 // Canonical + accepted-legacy completion verbs (see .claude/rules/tracking-files.md
 // for which one new entries should use going forward).
-const DONE_VERBS = ['ĐÃ XONG', 'đã xong', 'Đã sửa', 'đã sửa', 'Đã đóng', 'đã đóng', 'ĐÃ ĐÓNG', 'Đã đo', 'đã đo'];
-const DONE_VERB_RE = new RegExp(DONE_VERBS.map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+const DONE_VERBS = ['DONE', 'FIXED', 'CLOSED', 'VERIFIED', 'ĐÃ XONG', 'đã xong', 'Đã sửa', 'đã sửa', 'Đã đóng', 'đã đóng', 'ĐÃ ĐÓNG', 'Đã đo', 'đã đo', 'Đã quyết định', 'Đã xác nhận', 'Đã xác minh', 'Đã loại', 'Đã hoàn'];
+const DONE_VERB_RE = new RegExp(DONE_VERBS.map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'gi'); // case-insensitive: legacy files use ĐÃ SỬA / ĐÃ ĐO (all caps)
 
+// Block-aware: an item may span several lines (legacy long entries); the detail link is usually on
+// the last one, so join indented continuation lines before matching.
 function parseIndex(content) {
   const items = new Map();
-  for (const rawLine of content.split('\n')) {
-    const m = INDEX_LINE.exec(rawLine.trim());
+  const blocks = [];
+  for (const line of content.split('\n')) {
+    if (/^-\s/.test(line)) blocks.push(line.trim());
+    else if (blocks.length && /^\s+\S/.test(line)) blocks[blocks.length - 1] += ' ' + line.trim();
+  }
+  for (const b of blocks) {
+    const m = INDEX_LINE.exec(b);
     if (m) items.set(m[2], Boolean(m[1]));
   }
   return items;
@@ -62,12 +70,16 @@ function findMismatches(items) {
   return mismatches;
 }
 
-function gitShowHeadTodo() {
+function gitShowHead(file) {
   try {
-    return execSync('git show HEAD:TODO.md', { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return execSync(`git show HEAD:${file}`, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
   } catch (e) {
-    return null; // no commit yet, or TODO.md not tracked at HEAD
+    return null; // not tracked at HEAD
   }
+}
+
+function readIfExists(p) {
+  return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : '';
 }
 
 function readHookStdin() {
@@ -93,15 +105,14 @@ function main() {
   }
 
   if (!fs.existsSync(TODO_PATH)) process.exit(0);
-  const current = fs.readFileSync(TODO_PATH, 'utf8');
-  const currentItems = parseIndex(current);
+  const currentItems = parseIndex(readIfExists(TODO_PATH) + '\n' + readIfExists(DONE_PATH));
 
   let itemsToCheck = currentItems;
 
   if (!isFull) {
-    const head = gitShowHeadTodo();
-    if (head === null) process.exit(0); // no safe baseline — fail open, don't block
-    const headItems = parseIndex(head);
+    const headTodo = gitShowHead('TODO.md');
+    if (headTodo === null) process.exit(0); // no safe baseline — fail open, don't block
+    const headItems = parseIndex(headTodo + '\n' + (gitShowHead('docs/todo/DONE.md') || ''));
     itemsToCheck = new Map();
     for (const [code, done] of currentItems) {
       const wasDone = headItems.get(code) || false;
@@ -121,14 +132,12 @@ function main() {
         hookEventName: 'Stop',
         permissionDecision: 'deny',
         permissionDecisionReason:
-          `TODO.md marks these item(s) as newly ✅ done, but their docs/todo/<CODE>-*.md ` +
-          `detail file has no matching completion marker (per .claude/rules/tracking-files.md ` +
-          `"Index/detail sync" rule): ${list}. Add a "**Trạng thái:** ✅ <ĐÃ XONG|Đã sửa|Đã đóng|Đã đo>" ` +
-          `line (with summary/test notes) to each detail file before finishing this turn — or, if ` +
-          `the item was marked ✅ prematurely, remove the ✅ from TODO.md instead.`,
+          `Newly ✅ item(s) lack a completion marker in docs/todo/<CODE>-*.md ` +
+          `(.claude/rules/tracking-files.md): ${list}. Add "**Status:** ✅ <DONE|FIXED|CLOSED|VERIFIED>" ` +
+          `+ a short summary/test note to each detail file now — or drop the ✅ if it was premature.`,
       },
       systemMessage:
-        `Tracking-sync check blocked stop: ${mismatches.length} item(s) newly marked ✅ in TODO.md ` +
+        `Tracking-sync check blocked stop: ${mismatches.length} newly ✅ item(s) ` +
         `missing a detail-file status marker (${mismatches.map((m) => m.code).join(', ')}).`,
     };
     process.stdout.write(JSON.stringify(response));

@@ -23,7 +23,7 @@
  *   [ ] Register with short username (<3) → 400
  *   [ ] Login with correct password → Set-Cookie
  *   [ ] Login with wrong password → 401 + Vietnamese error
- *   [ ] Guest → isGuest: true and a 4-8 letter displayName
+ *   [ ] Guest → isGuest: true and a `guest` + 4-digit displayName
  *   [ ] Logout → session unusable afterwards, not merely cookie-cleared
  */
 
@@ -35,6 +35,7 @@ const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
+const { clientInfoFromReq } = require('../utils/geo');
 const { OAuth2Client } = require('google-auth-library');
 const config  = require('../config');
 
@@ -76,6 +77,12 @@ const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader, baseCooki
 const googleClient = (config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET)
   ? new OAuth2Client(config.GOOGLE_CLIENT_ID, config.GOOGLE_CLIENT_SECRET)
   : null;
+
+/** `{ ip, geo }` for an auth log line — spread into the fields bag. */
+function clientLoc(req) {
+  const { ip, geo } = clientInfoFromReq(req);
+  return { ip, geo };
+}
 
 /**
  * The OAuth callback URL for THIS request's own origin, not a fixed config
@@ -242,14 +249,33 @@ function generateOAuthUsername(seed) {
   return candidate;
 }
 
-/** Generate a random guest display name (4-8 letters). */
+// How many times generateGuestName() re-rolls on a collision before giving up
+// and returning the last candidate anyway. The name space is 10,000 wide and
+// only live guest sessions count toward a collision, so hitting this limit
+// needs thousands of guests online at once — at which point a rare duplicate
+// display name is harmless (guestId, not the name, is the identity).
+const GUEST_NAME_MAX_TRIES = 20;
+
+/**
+ * Generate a guest display name of the form `guest` + 4 digits, e.g.
+ * "guest0473" (TODO.md #163). Leading zeros are kept so the name is always
+ * exactly 9 characters.
+ *
+ * Re-rolls if the name is already held by another live guest session, so two
+ * guests online together don't usually share a name. This is best-effort only:
+ * the check sees the sessions table, not sockets, and after GUEST_NAME_MAX_TRIES
+ * it returns the last candidate regardless.
+ *
+ * Also used as the fallback name for an OAuth sign-in whose profile has no
+ * usable name — a `guestNNNN` string there is fine, it just isn't guest-only.
+ */
 function generateGuestName() {
-  const adj  = config.GUEST_NAME_ADJECTIVES;
-  const noun = config.GUEST_NAME_NOUNS;
-  const a = adj[Math.floor(Math.random() * adj.length)];
-  const n = noun[Math.floor(Math.random() * noun.length)];
-  // e.g. "WildFox" (3+3=6), "NeonBear" (4+4=8)
-  return a + n;
+  let candidate;
+  for (let i = 0; i < GUEST_NAME_MAX_TRIES; i++) {
+    candidate = 'guest' + String(crypto.randomInt(0, 10000)).padStart(4, '0');
+    if (!sessionManager.isGuestDisplayNameInUse(candidate)) return candidate;
+  }
+  return candidate;
 }
 
 // ---------------------------------------------------------------------------
@@ -305,7 +331,7 @@ router.post('/register', async (req, res, next) => {
       isGuest: false,
     });
 
-    logger.info(`[Auth] Registered user: ${username} (${userId})`);
+    logger.info('[Auth] Registered user', { username, uid: userId, ...clientLoc(req) });
     return res.status(201).json(body);
 
   } catch (err) {
@@ -350,7 +376,7 @@ router.post('/login', async (req, res, next) => {
       isGuest: false,
     });
 
-    logger.info(`[Auth] Login: ${username}`);
+    logger.info('[Auth] Login', { username, uid: user.id, ...clientLoc(req) });
     return res.json(body);
 
   } catch (err) {
@@ -374,7 +400,7 @@ router.post('/guest', (req, res, next) => {
       isGuest: true,
     });
 
-    logger.info(`[Auth] Guest session: ${displayName} (${guestId})`);
+    logger.info('[Auth] Guest session', { user: displayName, uid: guestId, ...clientLoc(req) });
     return res.json(body);
 
   } catch (err) {
@@ -542,7 +568,7 @@ router.get('/google/callback', async (req, res) => {
         return res.redirect('/index.html');
       }
     }
-    logger.warn('[Auth] Google OAuth callback: missing/mismatched state');
+    logger.warn('[Auth] Google OAuth callback: missing/mismatched state', clientLoc(req));
     return res.redirect('/login.html?error=oauth_state');
   }
 
@@ -602,7 +628,7 @@ router.get('/google/callback', async (req, res) => {
           oauth_provider: 'google',
           oauth_id: payload.sub,
         };
-        logger.info(`[Auth] Created account via Google OAuth: ${username} (${userId})`);
+        logger.info('[Auth] Created account via Google OAuth', { username, uid: userId, ...clientLoc(req) });
       } catch (err) {
         if (err.code !== 'SQLITE_CONSTRAINT_UNIQUE' && err.code !== 'SQLITE_CONSTRAINT') throw err;
         user = db.getUserByOAuthId('google', payload.sub);
@@ -619,7 +645,7 @@ router.get('/google/callback', async (req, res) => {
       isGuest: false,
     });
 
-    logger.info(`[Auth] Google login: ${user.username} (${user.id})`);
+    logger.info('[Auth] Google login', { username: user.username, uid: user.id, ...clientLoc(req) });
     const userPayload = encodeURIComponent(JSON.stringify(body.user));
     return res.redirect(`/oauth-complete.html#${userPayload}`);
 

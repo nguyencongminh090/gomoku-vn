@@ -1,5 +1,7 @@
 # Phần B #24. Chưa kiểm flood protection có báo nhầm dưới tải cao hay không
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 
 

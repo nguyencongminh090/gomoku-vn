@@ -1,4 +1,4 @@
-import { test, expect, Page, Browser } from '@playwright/test';
+import { test, expect, Page, Browser } from './helpers/fixtures';
 
 /**
  * TODO.md #142 — `.panel-right` is a fixed-width grid whose column track was

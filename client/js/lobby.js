@@ -60,13 +60,13 @@ const modalClose    = document.getElementById('modal-close');
 const modalCancel   = document.getElementById('modal-cancel');
 const modalConfirm  = document.getElementById('modal-confirm');
 const btnQuickMatch = document.getElementById('btn-quick-match');
-const btnUseLast    = document.getElementById('btn-use-last');
 const modalAdvancedToggle = document.getElementById('modal-advanced-toggle');
 let currentRooms = [];
 
-// Current UI mode — 'lite' | 'default' | 'pro' (see client/js/ui-mode.js)
+// Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
+// 'pro' → 'default' normalisation lives in exactly one place.
 function uiMode() {
-  return document.documentElement.getAttribute('data-ui-mode') || 'lite';
+  return (window.getUiMode && window.getUiMode()) || 'lite';
 }
 
 // ---------------------------------------------------------------------------
@@ -189,11 +189,9 @@ const onlineLineCountEl = document.getElementById('online-line-count');
 const onlineLineNamesEl = document.getElementById('online-line-names');
 
 // How many names the line spells out before it summarises the rest. Lite keeps
-// the line short; Pro names everyone rather than trailing off.
+// the line short; Default names more before trailing off.
 function onlineNameLimit() {
-  const mode = uiMode();
-  if (mode === 'pro') return Infinity;
-  return mode === 'lite' ? 6 : 12;
+  return uiMode() === 'lite' ? 6 : 12;
 }
 
 let currentOnlineUsers = [];
@@ -216,17 +214,34 @@ function renderOnlineLine() {
   const shown  = users.slice(0, limit);
   const hidden = count - shown.length;
   // Own name set in ink so you can find yourself in the line at a glance.
-  const parts = shown.map((name) => (
-    name === userInfo.displayName ? `<b>${escapeHtml(name)}</b>` : escapeHtml(name)
-  ));
+  // Each user is `{ userId, displayName, isGuest }` (see server state.js
+  // getOnlineUsersList) — a click on a name opens a private chat (#159).
+  // Names render as plain ink text (not link-blue); the `.online-name` class
+  // just gives a pointer cursor + hover underline.
+  const parts = shown.map((u) => {
+    const name = escapeHtml(u.displayName);
+    if (u.userId === userInfo.userId) {
+      return u.displayName === userInfo.displayName ? `<b>${name}</b>` : name;
+    }
+    return `<span class="online-name" role="button" tabindex="0" data-user-id="${escapeHtml(u.userId)}">${name}</span>`;
+  });
   let html = parts.join(', ');
-  html += hidden > 0 ? ` ${t('lobby.online_more', { n: hidden })}` : '.';
+  // Only when the line actually had to truncate do we offer a "…and N others"
+  // affordance — clicking it opens the full online-users modal (#159). No
+  // permanent button when everyone already fits.
+  html += hidden > 0
+    ? ` <span class="online-name online-line__more" role="button" tabindex="0" data-open-users>${escapeHtml(t('lobby.online_more', { n: hidden }))}</span>`
+    : '.';
   onlineLineNamesEl.innerHTML = html;
 }
 
 client.on('lobby:online_users', (users) => {
   currentOnlineUsers = users;
   renderOnlineLine();
+  // Feed the private-chat module (#159) — it owns the online-users modal and
+  // per-window presence. Safe if it hasn't finished init yet: it also reads
+  // GvnSession directly and this event re-fires on every presence change.
+  if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users);
 });
 
 client.on('room:error', (data) => {
@@ -380,18 +395,17 @@ function buildRoomMeta(room) {
   const parts = [
     escapeHtml(room.hostName),
     `${room.playerCount}/2`,
+    buildRuleSummary(room),
   ];
-  if (uiMode() === 'pro') parts.push(escapeHtml(room.roomId));
-  parts.push(buildRuleSummary(room));
   return parts.join(' · ');
 }
 
-// Lite/Default: one plain-language summary instead of the jargon cluster
+// Lite: one plain-language summary instead of the jargon cluster
 // (Wall / Portal / Swap2 / Caro).
-// Pro: the full breakdown, restoring the detail Default collapses.
+// Default: the full breakdown.
 function buildRuleSummary(room) {
   const size = `${room.boardSize}×${room.boardSize}`;
-  if (uiMode() !== 'pro') {
+  if (uiMode() === 'lite') {
     const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
       || (room.winningRule || 'freestyle') !== 'freestyle';
     return `${isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard')} · ${size}`;
@@ -439,15 +453,14 @@ window.joinRoom = function(roomId) {
 function openModal() {
   if (uiMode() === 'lite') {
     // Lite is a one-click, low-decision path — always start from the fixed
-    // Lite preset rather than recalling last-used settings (that recall is
-    // a Pro-only affordance via "Use last settings"). The user can still
+    // Lite preset rather than recalling last-used settings. The user can still
     // open Advanced and tweak before hitting Quick Match/Confirm.
     applySettingsToForm(LITE_DEFAULT_SETTINGS);
   } else {
     const last = loadLastSettings();
     if (last) applySettingsToForm(last); // so Quick match/Confirm reflect the real form state
   }
-  applyModalMode(); // re-checks last-used settings, which may have appeared since
+  applyModalMode();
   modalOverlay.classList.add('visible');
 }
 
@@ -522,7 +535,7 @@ function saveLastSettings(settings) {
   } catch (e) { /* private mode — remembering is best-effort */ }
 }
 
-// Push a settings object back into the form controls (Pro "use last settings").
+// Push a settings object back into the form controls.
 function applySettingsToForm(s) {
   const check = (sel) => { const el = document.querySelector(sel); if (el) el.checked = true; };
   check(`input[name="boardSize"][value="${s.boardSize}"]`);
@@ -563,35 +576,23 @@ btnQuickMatch.addEventListener('click', () => {
   submitCreate(readFormSettings());
 });
 
-// Pro: "Use last settings" — refill the form, leaving the user free to tweak.
-btnUseLast.addEventListener('click', () => {
-  const last = loadLastSettings();
-  if (last) applySettingsToForm(last);
-});
-
 // ── Modal mode gating ───────────────────────────────────────────────────────
 
-// Lite  → Quick match primary, everything else behind a closed "Advanced".
-// Default → unchanged flat form.
-// Pro   → flat form plus a "Use last settings" affordance (only once something
-//         has actually been remembered).
+// Lite    → Quick match primary, everything else behind a closed "Advanced".
+// Default → flat form, pre-filled with last-used settings on open.
 function applyModalMode() {
-  const mode = uiMode();
   const advanced = document.getElementById('modal-advanced');
   const toggle   = document.getElementById('modal-advanced-toggle');
   if (!advanced || !toggle) return;
 
-  const lite = mode === 'lite';
+  const lite = uiMode() === 'lite';
   modalOverlay.classList.toggle('modal--lite', lite);
-  modalOverlay.classList.toggle('modal--pro', mode === 'pro');
 
-  // Advanced disclosure exists only in Lite; other modes show the form flat.
+  // Advanced disclosure exists only in Lite; Default shows the form flat.
   if (lite) {
     advanced.classList.remove('open');
     toggle.setAttribute('aria-expanded', 'false');
   }
-
-  btnUseLast.style.display = (mode === 'pro' && loadLastSettings()) ? '' : 'none';
 }
 
 modalAdvancedToggle.addEventListener('click', () => {

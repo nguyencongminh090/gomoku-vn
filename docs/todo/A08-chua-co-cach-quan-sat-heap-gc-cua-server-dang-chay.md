@@ -1,5 +1,7 @@
 # Phần A #8. Chưa có cách quan sát heap/GC của server đang chạy
 
+**Status:** ✅ CLOSED 2026-10-09 — the concrete question (GC vs p95/p99 tail) was answered in #20 via --trace-gc. Reopen from #174 profiling if deeper heap observation is needed.
+
 **Nguồn:** stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 
 

@@ -1,5 +1,7 @@
 # #49. Bàn cờ trong trận đấu giải đấu (tournament match) quá nhỏ, kích thước không nhất quán với phòng chơi thường — cả Mobile lẫn PC
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng kèm ảnh chụp màn hình, 2026-08-06.
 
 ## Hiện trạng đã xác nhận (đọc code, chưa sửa)

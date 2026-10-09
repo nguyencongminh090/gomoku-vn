@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * TEST-MATRIX.md rows 24-27 — GameEngine.makeMove's validation guards
@@ -15,33 +16,34 @@ import { test, expect, Page } from '@playwright/test';
 async function makeGuest(browser: any, actor: string) {
   const ctx = await browser.newContext();
   const page: Page = await ctx.newPage();
-  const res = await page.request.post('/api/auth/guest');
-  expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-  const { token, displayName } = await res.json();
-  await ctx.addInitScript(([t, d]) => {
-    localStorage.setItem('gvn_token', t as string);
-    localStorage.setItem('gvn_display_name', d as string);
-  }, [token, displayName]);
+  const { displayName } = await authAsGuest(ctx, page);
   return { ctx, page, actor, displayName };
 }
 
-/** Emit game:move via the page's own RoomClient and resolve with either the error or the accepted move data. */
+/**
+ * Emit game:move via the page's own RoomClient and resolve with that emit's
+ * own ack: `{ error }` if rejected, `{ moved }` if accepted (TODO.md #185).
+ * Not the game:moved/game:error broadcasts: game:moved goes to the whole
+ * room, so the opponent's copy of the previous move could land after this
+ * call's listener attached and be mistaken for this move's answer.
+ */
 async function emitMove(page: Page, x: number, y: number) {
   return page.evaluate(([mx, my]) => {
     return new Promise((resolve) => {
-      const client = (window as any).RoomClient;
-      const onError = (d: any) => { cleanup(); resolve({ error: d.message }); };
-      const onMoved = (d: any) => { cleanup(); resolve({ moved: d }); };
-      function cleanup() {
-        client.socket.off('game:error', onError);
-        client.socket.off('game:moved', onMoved);
-      }
-      client.on('game:error', onError);
-      client.on('game:moved', onMoved);
-      client.emit('game:move', { x: mx, y: my });
-      setTimeout(() => { cleanup(); resolve({ timedOut: true }); }, 5000);
+      (window as any).RoomClient.emitAck('game:move', { x: mx, y: my }, 5000, (err: any, res: any) => {
+        if (err) resolve({ timedOut: true });
+        else if (res && res.error) resolve({ error: res.error });
+        else resolve({ moved: res });
+      });
     });
   }, [x, y]);
+}
+
+/** Wait until both players' local state has applied `n` moves. */
+async function waitMoveCount(pages: Page[], n: number) {
+  for (const p of pages) {
+    await p.waitForFunction((c) => (window as any).RoomState.gameState.moveCount === c, n, { timeout: 10000 });
+  }
 }
 
 test.describe('Move validation', () => {
@@ -92,6 +94,7 @@ test.describe('Move validation', () => {
     // 2) BLACK makes a legitimate move at (5,5).
     const legit = await emitMove(black.page, 5, 5);
     expect((legit as any).moved).toBeTruthy();
+    await waitMoveCount([A.page, B.page], 1);
 
     // 3) Occupied cell: WHITE's turn now — try (5,5) again, already taken.
     const occupied = await emitMove(white.page, 5, 5);
@@ -102,6 +105,7 @@ test.describe('Move validation', () => {
     // 4) WHITE makes a legitimate move elsewhere so it's BLACK's turn again.
     const legit2 = await emitMove(white.page, 6, 6);
     expect((legit2 as any).moved).toBeTruthy();
+    await waitMoveCount([A.page, B.page], 2);
 
     // 5) Out-of-bounds: BLACK's turn — negative coordinate, unreachable via
     //    the real canvas UI but must still be rejected server-side.

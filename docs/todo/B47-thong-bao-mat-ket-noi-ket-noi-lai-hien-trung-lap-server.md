@@ -1,5 +1,7 @@
 ## #47. Thông báo mất-kết-nối/kết-nối-lại hiện trùng lặp (server chat:message + client tự dịch)
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** phát hiện phụ khi làm follow-up #45 (2026-08-04) — không nằm trong
 yêu cầu gốc, ghi riêng theo rule "scope discipline".
 

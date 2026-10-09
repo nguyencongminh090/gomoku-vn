@@ -92,6 +92,44 @@ beforeEach(() => {
 });
 
 describe('broadcastRoomUpdate — users delta', () => {
+  // TODO.md #187: a joiner's list comes from room:joined (full state), not
+  // from a delta. If someone leaves inside the same debounce window as that
+  // join, before any room:updated ever carried them, the diff baseline never
+  // had them, so their removal was never sent and the joiner kept a stale
+  // entry (seen as two host badges after a host handover).
+  test('a user present at a broadcast call but gone by the flush is still sent in `removed`', () => {
+    const io = makeIo();
+    const room = { roomId: 'r187', users: new Map([['host-1', {}], ['guest-1', {}]]) };
+
+    broadcastRoomUpdate(io, room);           // guest-1 joined: host-1 + guest-1
+    room.users.delete('host-1');             // host leaves within the same 80ms window
+    broadcastRoomUpdate(io, room);
+    currentFullState = fullState({
+      hostId: 'guest-1',
+      users: [user('guest-1', { role: 'host' })],
+    });
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+
+    const payload = lastPayload(io);
+    expect(payload.users.upserts.map(u => u.userId)).toEqual(['guest-1']);
+    expect(payload.users.removed).toEqual(['host-1']);
+    clearRoomUpdateSnapshot('r187');
+  });
+
+  test('the seen-set is per debounce window: a later flush does not re-send an old removal', () => {
+    const io = makeIo();
+    const room = { roomId: 'r187b', users: new Map([['host-1', {}], ['guest-1', {}]]) };
+    broadcastRoomUpdate(io, room);
+    room.users.delete('host-1');
+    currentFullState = fullState({ hostId: 'guest-1', users: [user('guest-1', { role: 'host' })] });
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+
+    io.emitted.length = 0;
+    flush(io, room);                          // nothing changed since
+    expect(lastPayload(io)).not.toHaveProperty('users');
+    clearRoomUpdateSnapshot('r187b');
+  });
+
   test('first broadcast for a room upserts every current user, with no removed', () => {
     const io = makeIo();
     currentFullState = fullState({
@@ -235,6 +273,22 @@ describe('broadcastRoomUpdate — scalar fields and settings', () => {
     expect(payload.hostName).toBe('Host');
     expect(payload.state).toBe('idle');
     expect(payload.readyDeadline).toBe(null);
+  });
+
+  test('serverTime is stamped fresh on every emit, even when nothing else changed (TODO.md #170)', () => {
+    const io = makeIo();
+    currentFullState = fullState();
+
+    const before = Date.now();
+    flush(io, { roomId: 'r1' });
+    io.emitted.length = 0;
+    flush(io, { roomId: 'r1' }); // identical state again
+    const after = Date.now();
+
+    const payload = lastPayload(io);
+    expect(typeof payload.serverTime).toBe('number');
+    expect(payload.serverTime).toBeGreaterThanOrEqual(before);
+    expect(payload.serverTime).toBeLessThanOrEqual(after);
   });
 
   test('settings is omitted unless explicitly requested', () => {

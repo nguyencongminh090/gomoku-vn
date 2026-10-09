@@ -2,6 +2,8 @@
 
 **Nguồn:** `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
 
+**Recheck 2026-10-09 (code only):** still valid: no .nvmrc/.node-version, engines only >=18, no CI node pin.
+
 
 #### 3. `npm install` không chạy được trên Node 24 tại máy đánh giá
 

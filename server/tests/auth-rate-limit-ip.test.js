@@ -18,6 +18,7 @@ jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: j
 jest.mock('../db/database', () => ({
   createSession: jest.fn(() => {}),
   getSessionById: jest.fn(),
+  hasLiveGuestSessionWithDisplayName: jest.fn(() => false),
   revokeSession: jest.fn(() => ({ changes: 1 })),
   revokeSessionsForUser: jest.fn(() => ({ changes: 0 })),
   touchSession: jest.fn(),

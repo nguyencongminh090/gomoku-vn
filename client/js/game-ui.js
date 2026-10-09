@@ -50,6 +50,26 @@
   }
 
   /**
+   * Fold one measured move round-trip into RoomState.halfRttMs (TODO.md #165).
+   *
+   * Half the RTT is our estimate of the one-way delay a `timer:sync` packet
+   * spends in flight — the amount the displayed clock would otherwise run
+   * behind the server. An exponential moving average (α=0.5) so a single
+   * outlier can't wipe the clock; ignored entirely above ~30s (that isn't
+   * latency, it's a stall) and the consumer clamps to 8s regardless.
+   *
+   * The average itself lives in `timer-sync-core.js` (TODO.md #168) so the
+   * diagnostic page reports the same estimate the room acts on; `null` back
+   * means the sample was rejected, and RoomState is then left untouched.
+   */
+  function recordMoveRtt(rttMs) {
+    const st = S();
+    const next = global.TimerSyncCore.halfRttEma(st.halfRttMs, rttMs);
+    if (next === null) return;
+    st.halfRttMs = next;
+  }
+
+  /**
    * Send a move and see it through to a definite outcome.
    *
    * Before #152 this was a bare `emit('game:move', {x,y})`: if either that
@@ -102,6 +122,14 @@
       // paths below only ever need to flip a single pair together.
       st.predictedTurn.active = true;
       st.predictedTurn.forColor = myPlayer.color === 'BLACK' ? 'WHITE' : 'BLACK';
+      // Freeze the deadline-derived value, not whatever the last 1s interval
+      // happened to write — main-thread jank or a throttled background tab can
+      // leave st.timerValues a second or two stale, and the snapshot would
+      // then carry that staleness for the whole in-flight window (TODO.md
+      // #165). refreshLocalTimer() is room-socket.js's own tickLocal.
+      if (global.RoomSocket && global.RoomSocket.refreshLocalTimer) {
+        global.RoomSocket.refreshLocalTimer();
+      }
       st.predictedTurn.snapshotTimerValues = Object.assign({}, st.timerValues);
       st.predictedTurn.switchedAtLocalTs = Date.now();
       renderTimers();
@@ -109,7 +137,18 @@
     }
 
     const attempt = (isRetry) => {
-      global.RoomClient.emitAck('game:move', { x, y, moveId }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
+      const sentAt = Date.now();
+      // TEMP (TODO.md #167): ride the client's rolling half-RTT estimate along
+      // for CROSS-CHECK only — the server logs it beside its own (sparse)
+      // engine.io ping/pong reading and never feeds it into any timeout math.
+      // Omitted until the first ack has produced an estimate.
+      const crtt = S().halfRttMs > 0 ? Math.round(S().halfRttMs) : undefined;
+      global.RoomClient.emitAck('game:move', { x, y, moveId, crtt }, MOVE_ACK_TIMEOUT_MS, (err, res) => {
+        // Any real server reply — accept or reject — is a full round trip on
+        // the live game path; feed it to the transit-delay estimate (TODO.md
+        // #165). A timeout (`err`) is not a measurement: the clock we read is
+        // MOVE_ACK_TIMEOUT_MS, not the network.
+        if (!err) recordMoveRtt(Date.now() - sentAt);
         if (err) {
           // The game may have ended while this attempt was outstanding (the
           // move itself could have been the winning one, with only its ack
@@ -346,32 +385,75 @@
 
   // ── Timer rendering ───────────────────────────────────────────────────────
 
+  /**
+   * The black/white clock values the UI should paint right now, as a
+   * `{ black, white }` pair (TODO.md #155, #165).
+   *
+   * `st.timerValues` already carries the #165 transit-delay compensation —
+   * room-socket.js's tickLocal/applyTimerSync shave it before writing there,
+   * so anything reading this helper inherits it for free.
+   *
+   * On top of that, while our own move is in flight `predictedTurn` overlays
+   * the pair: the mover's own clock frozen at its click-time value (the
+   * server hasn't flipped `currentTurn` yet, so the real one is still
+   * ticking for them), the opponent's counting down live from that same
+   * snapshot. Never reads/writes gameState.timerValues itself, so the instant
+   * predictedTurn clears the next paint shows the real server numbers again —
+   * no separate "restore" needed.
+   *
+   * Shared verbatim by the desktop turn bar (renderTimers) and the mobile
+   * players-strip (RoomUI.updateStripTimers) so the two surfaces of the same
+   * feature can never show different numbers (instruction.md #166).
+   */
+  function effectiveTimerValues() {
+    const st = S();
+    const pt = st.predictedTurn;
+    let black = st.timerValues.black;
+    let white = st.timerValues.white;
+    if (pt && pt.active && pt.snapshotTimerValues) {
+      const elapsed = (Date.now() - pt.switchedAtLocalTs) / 1000;
+      if (pt.forColor === 'BLACK') {
+        black = Math.max(0, pt.snapshotTimerValues.black - elapsed);
+        white = pt.snapshotTimerValues.white;
+      } else {
+        white = Math.max(0, pt.snapshotTimerValues.white - elapsed);
+        black = pt.snapshotTimerValues.black;
+      }
+    }
+    return { black, white };
+  }
+
+  /**
+   * Which colour the clock/turn UI should treat as "to move" right now —
+   * `'BLACK' | 'WHITE' | null` (null = no ongoing game / not resolvable).
+   *
+   * `predictedTurn` overrides while our move is in flight (TODO.md #155);
+   * otherwise it's the authoritative `currentTurn`, with the Swap2-opening
+   * placeholder rule (instruction.md §B37) applied the same way renderTimers
+   * has always applied it. Shared with the mobile players-strip (#166).
+   */
+  function effectiveTurnColor() {
+    const st = S();
+    if (!st.gameState || st.gameState.status !== 'ongoing') return null;
+
+    const pt = st.predictedTurn;
+    if (pt && pt.active) return pt.forColor;
+
+    const swap2 = st.gameState.swap2;
+    if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
+      return st.gameState.currentTurn === swap2.firstPlayerId ? 'BLACK' : 'WHITE';
+    }
+    const blackP = st.gameState.players.find(p => p.color === 'BLACK');
+    return st.gameState.currentTurn === (blackP ? blackP.userId : null) ? 'BLACK' : 'WHITE';
+  }
+
   function renderTimers() {
     const st = S();
     const bTimerEl = document.getElementById('tb-black-timer');
     const wTimerEl = document.getElementById('tb-white-timer');
     if (!bTimerEl || !wTimerEl) return;
 
-    // predictedTurn (TODO.md #155): while a move is in flight, render the
-    // clocks as if the turn already switched — the mover's own clock frozen
-    // at its click-time value (not the still-ticking real one; the server
-    // hasn't flipped `currentTurn` yet), the opponent's counting down live
-    // from that same snapshot. Never reads/writes gameState.timerValues
-    // itself, so the instant this clears the very next tick shows the real,
-    // server-confirmed numbers again — no separate "restore" needed.
-    const pt = st.predictedTurn;
-    let blackVal = st.timerValues.black;
-    let whiteVal = st.timerValues.white;
-    if (pt && pt.active && pt.snapshotTimerValues) {
-      const elapsed = (Date.now() - pt.switchedAtLocalTs) / 1000;
-      if (pt.forColor === 'BLACK') {
-        blackVal = Math.max(0, pt.snapshotTimerValues.black - elapsed);
-        whiteVal = pt.snapshotTimerValues.white;
-      } else {
-        whiteVal = Math.max(0, pt.snapshotTimerValues.white - elapsed);
-        blackVal = pt.snapshotTimerValues.black;
-      }
-    }
+    const { black: blackVal, white: whiteVal } = effectiveTimerValues();
 
     bTimerEl.textContent = formatTime(blackVal);
     wTimerEl.textContent = formatTime(whiteVal);
@@ -381,21 +463,12 @@
     const tbBlack = document.getElementById('tb-black');
     const tbWhite = document.getElementById('tb-white');
     if (tbBlack && tbWhite && st.gameState) {
-      // During Swap2's opening phases, colors aren't assigned yet
-      // (`player.color` is null) — the black/white slots are placeholders
-      // for firstPlayerId/secondPlayerId instead (instruction.md §B37).
-      const swap2 = st.gameState.swap2;
-      let isBlackTurn;
-      if (pt && pt.active) {
-        isBlackTurn = pt.forColor === 'BLACK';
-      } else if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
-        isBlackTurn = st.gameState.currentTurn === swap2.firstPlayerId;
-      } else {
-        const blackP = st.gameState.players.find(p => p.color === 'BLACK');
-        isBlackTurn = st.gameState.currentTurn === (blackP ? blackP.userId : null);
-      }
-      tbBlack.classList.toggle('turn-bar__active', isBlackTurn && st.gameState.status === 'ongoing');
-      tbWhite.classList.toggle('turn-bar__active', !isBlackTurn && st.gameState.status === 'ongoing');
+      // predictedTurn override + Swap2-opening placeholder rule
+      // (instruction.md §B37) both live in effectiveTurnColor() now, shared
+      // with the mobile strip.
+      const turnColor = effectiveTurnColor();
+      tbBlack.classList.toggle('turn-bar__active', turnColor === 'BLACK');
+      tbWhite.classList.toggle('turn-bar__active', turnColor === 'WHITE');
     }
 
     // The turn bar above is display:none at ≤768px; there the mobile players
@@ -693,6 +766,10 @@
     setTurnBarVisible,
     updateBoardState,
     renderTimers,
+    // Shared with RoomUI.updateStripTimers so the mobile players-strip applies
+    // the exact same predictedTurn overlay + transit compensation (#155/#166).
+    effectiveTimerValues,
+    effectiveTurnColor,
     renderTurnLabel,
     renderGameControls,
     renderSwap2,

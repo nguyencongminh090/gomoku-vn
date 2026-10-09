@@ -70,6 +70,13 @@ if (userColumns.length > 0 && !userColumns.includes('oauth_provider')) {
   logger.info('[DB] Migrated users: added oauth_provider/oauth_id columns (TODO.md #91)');
 }
 
+// Same additive-migration need as above, for games.ranked (TODO.md #175).
+const gameColumns = db.prepare("PRAGMA table_info(games)").all().map((c) => c.name);
+if (gameColumns.length > 0 && !gameColumns.includes('ranked')) {
+  db.exec('ALTER TABLE games ADD COLUMN ranked INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated games: added ranked column (TODO.md #175)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a
@@ -211,6 +218,24 @@ function getSessionById(id) {
 }
 
 /**
+ * Is there a live (not revoked, not expired) GUEST session already using this
+ * display name? Used to keep the `guestNNNN` names handed out to guests
+ * distinct among guests currently around (TODO.md #163). Guest-only on purpose:
+ * a registered user may legitimately have picked "guest1234" as their display
+ * name, and that must not block the generator forever.
+ * @param {string} displayName
+ * @param {string} now ISO timestamp to compare expiry against
+ * @returns {boolean}
+ */
+function hasLiveGuestSessionWithDisplayName(displayName, now) {
+  return !!db.prepare(
+    `SELECT 1 FROM sessions
+     WHERE display_name = ? AND is_guest = 1 AND revoked_at IS NULL AND expires_at > ?
+     LIMIT 1`
+  ).get(displayName, now);
+}
+
+/**
  * Mark one session revoked. Idempotent: an already-revoked session keeps its
  * ORIGINAL revoked_at, so re-revoking never rewrites when it first happened.
  */
@@ -269,9 +294,9 @@ function saveGame(game) {
       (id, room_id, black_player_id, white_player_id,
        black_player_name, white_player_name,
        winner, reason, board_size, rule_wall, rule_portal,
-       moves, walls, portals, started_at, ended_at)
+       moves, walls, portals, started_at, ended_at, ranked)
     VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertPlayerGame = db.prepare(
@@ -312,7 +337,8 @@ function saveGame(game) {
       JSON.stringify(game.walls),
       JSON.stringify(game.portals),
       game.startedAt,
-      game.endedAt
+      game.endedAt,
+      game.ranked ? 1 : 0
     );
 
     // Link registered players to game for history lookup
@@ -845,6 +871,7 @@ module.exports = {
   updateLastLogin,
   createSession,
   getSessionById,
+  hasLiveGuestSessionWithDisplayName,
   revokeSession,
   revokeSessionsForUser,
   touchSession,

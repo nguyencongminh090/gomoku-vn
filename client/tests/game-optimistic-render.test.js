@@ -26,6 +26,10 @@ const JS = (name) => fs.readFileSync(path.join(__dirname, '..', 'js', name), 'ut
 const GAME_UI_SOURCE     = JS('game-ui.js');
 const ROOM_SOCKET_SOURCE = JS('room-socket.js');
 const I18N_SOURCE        = JS('i18n.js');
+// Shared clock maths both room modules call into (TODO.md #168). room.html
+// loads it as a classic script before the module entry; evaluating it first
+// here reproduces that order.
+const TIMER_SYNC_CORE_SOURCE = JS('timer-sync-core.js');
 
 function makeClientStub() {
   return {
@@ -103,6 +107,7 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
     roomData: { roomId: 'r1' },
     boardRenderer,
     timerValues: { black: 60, white: 60 },
+    halfRttMs: 0,
     predictedTurn: { active: false, forColor: null, snapshotTimerValues: null, switchedAtLocalTs: null },
     gameState: {
       status: gameStatus,
@@ -117,6 +122,7 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
     },
   };
 
+  window.eval(TIMER_SYNC_CORE_SOURCE);
   window.eval(I18N_SOURCE);
   window.eval(GAME_UI_SOURCE);
   // Kept aside for the one test that needs the real onCellClick wiring
@@ -551,5 +557,344 @@ describe('onCellClick — local pre-check blocks provably-illegal clicks before 
     expect(boardRenderer.optimisticStone).toBeNull();
     expect(st.predictedTurn.active).toBe(false);
     expect(window.audioManager.playMoveSound).not.toHaveBeenCalled();
+  });
+});
+
+// ── TODO.md #165 — transit-delay compensation on the local clock ────────────
+//
+// `timer:sync` carries the server's clock reading, but the packet then spends
+// ~d ms in flight, so the client's countdown ends up d seconds behind the
+// server ("displayed − true = +d", constant). Invisible at d≈20ms; a visible
+// 1–3s over-count for the desktop+VPN reporter. The fix subtracts an estimate
+// of d (half the last measured move round-trip) from the *displayed* value —
+// never from activeDeadline/serverNow(), so the desync watchdog is untouched.
+// The residual step of ~d that remains when the mover's own move lands (its
+// upload leg, which the client can't see until the ack) is deliberately left
+// to #167 (server-side lag refund); see docs/todo/B165-*.md "Ngoài phạm vi".
+
+describe('#165 — timer:sync applies transit-delay compensation', () => {
+  const realNow = Date.now;
+  afterEach(() => { Date.now = realNow; });
+
+  function syncAt(now, over) {
+    // A sync whose serverTime is `d` ms in the past — i.e. it spent d in
+    // flight — with a self-consistent deadline for `whiteSecs` on white's
+    // clock. Mirrors what a lossy link actually delivers.
+    return Object.assign({
+      black: 60, white: 30, activeColor: 'white', running: true,
+      serverTime: now, deadline: now + 30000,
+    }, over);
+  }
+
+  test('the active clock is shown d seconds lower; the idle clock is untouched', () => {
+    const { client } = loadRoomModules();
+    window.RoomState.halfRttMs = 3000;
+    const now = 1_000_000;
+    Date.now = () => now;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 13, deadline: now + 13000 }));
+
+    expect(document.getElementById('tb-white-timer').textContent).toBe('10'); // 13 − 3
+    expect(document.getElementById('tb-black-timer').textContent).toBe('1:00'); // idle, raw
+  });
+
+  test('the shave persists as the clock ticks down (not just the first paint)', () => {
+    const { client } = loadRoomModules();
+    window.RoomState.halfRttMs = 2000;
+    let now = 5_000_000;
+    Date.now = () => now;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 30, deadline: now + 30000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('28'); // 30 − 2
+
+    now += 5000;
+    window.RoomSocket.refreshLocalTimer();
+    expect(document.getElementById('tb-white-timer').textContent).toBe('23'); // 25 − 2
+  });
+
+  test('a paused sync (running:false) is never shaved — the frozen value is exact', () => {
+    const { client } = loadRoomModules();
+    window.RoomState.halfRttMs = 3000;
+    const now = 2_000_000;
+    Date.now = () => now;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 13, running: false, deadline: null }));
+
+    expect(document.getElementById('tb-white-timer').textContent).toBe('13');
+  });
+
+  test('with no RTT sample yet (halfRttMs 0) the clock is unchanged from before the fix', () => {
+    const { client } = loadRoomModules();
+    const now = 3_000_000;
+    Date.now = () => now;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 13, deadline: now + 13000 }));
+
+    expect(document.getElementById('tb-white-timer').textContent).toBe('13');
+  });
+});
+
+describe('#165 — predictedTurn snapshot is taken from the deadline, not a stale interval write', () => {
+  const realNow = Date.now;
+  afterEach(() => { Date.now = realNow; });
+
+  test('sendMove re-derives the clock before freezing it, ignoring a stale timerValues', () => {
+    const { client, st } = loadRoomModules();
+    st.gameState.players = [{ userId: 'me', color: 'WHITE' }, { userId: 'them', color: 'BLACK' }];
+    st.gameState.currentTurn = 'me';
+    st.halfRttMs = 3000;
+    const now = 1_000_000;
+    Date.now = () => now;
+
+    client.listeners['timer:sync']({
+      black: 60, white: 13, activeColor: 'white', running: true,
+      serverTime: now, deadline: now + 13000,
+    });
+
+    // Simulate a background-throttled tab: the 1s interval left a stale, wrong
+    // value in timerValues. The snapshot must NOT trust it.
+    st.timerValues = { black: 60, white: 99 };
+
+    window.GameUI.sendMove(3, 4);
+
+    expect(st.predictedTurn.snapshotTimerValues.white).toBe(10); // 13 − 3, re-derived
+  });
+
+  test('compensation shrinks the clock jump seen when predictedTurn clears', () => {
+    function run(halfRttMs) {
+      const { client, st } = loadRoomModules();
+      st.gameState.players = [{ userId: 'me', color: 'WHITE' }, { userId: 'them', color: 'BLACK' }];
+      st.gameState.currentTurn = 'me';
+      st.halfRttMs = halfRttMs;
+
+      let now = 1_000_000;
+      const realNow = Date.now;
+      Date.now = () => now;
+      try {
+        // Pre-move sync: sent 3s ago (d = 3s in flight), white has 13s left.
+        client.listeners['timer:sync']({
+          black: 60, white: 13, activeColor: 'white', running: true,
+          serverTime: now - 3000, deadline: now - 3000 + 13000,
+        });
+        window.GameUI.sendMove(3, 4);
+        const shown = Number(document.getElementById('tb-white-timer').textContent);
+
+        // Move reaches the server, turn switches, post-move sync comes back —
+        // by now the server has charged white for the pre-move transit + the
+        // move's upload leg (~6s total).
+        now += 6000;
+        client.listeners['game:moved']({
+          x: 3, y: 4, color: 'WHITE', nextTurn: 'them', moveCount: 6,
+          timer: { black: 60, white: 7 },
+          timerSync: {
+            black: 60, white: 7, activeColor: 'black', running: true,
+            serverTime: now - 3000, deadline: now - 3000 + 60000,
+          },
+        });
+        // updateBoardState() (stubbed here) is what repaints the clocks after
+        // game:moved in production; call the real renderer directly.
+        window.GameUI.renderTimers();
+        const after = Number(document.getElementById('tb-white-timer').textContent);
+        return Math.abs(shown - after);
+      } finally { Date.now = realNow; }
+    }
+
+    const jumpUncompensated = run(0);
+    const jumpCompensated = run(3000);
+    expect(jumpCompensated).toBeLessThan(jumpUncompensated);
+    // Uncompensated: 13 → 7 (≈2d). Compensated: 10 → 7 (≈d, the residual
+    // move-upload leg #167 owns).
+    expect(jumpUncompensated).toBe(6);
+    expect(jumpCompensated).toBe(3);
+  });
+});
+
+describe('#165 — RTT is measured from game:move acks', () => {
+  const realNow = Date.now;
+  afterEach(() => { Date.now = realNow; });
+
+  test('a resolved ack folds half its round-trip into halfRttMs (EMA)', () => {
+    const { client, st } = loadRoomModules();
+    let now = 1000;
+    Date.now = () => now;
+
+    window.GameUI.sendMove(3, 4);
+    now = 5000;                       // 4s round trip
+    client.respond(0, { ok: true, moveCount: 6 });
+    expect(st.halfRttMs).toBe(2000);  // first sample: 4000 / 2
+
+    window.GameUI.sendMove(5, 5);
+    now = 13000;                      // 8s round trip
+    client.respond(1, { ok: true, moveCount: 7 });
+    expect(st.halfRttMs).toBe(3000);  // EMA: 2000·0.5 + 4000·0.5
+  });
+
+  test('a rejected move still measures — it is a full round trip', () => {
+    const { client, st } = loadRoomModules();
+    let now = 1000;
+    Date.now = () => now;
+
+    window.GameUI.sendMove(3, 4);
+    now = 3000;
+    client.respond(0, { error: 'Ô này đã có quân.', code: 'CELL_OCCUPIED' });
+
+    expect(st.halfRttMs).toBe(1000);
+  });
+
+  test('an ack timeout is NOT a measurement (the clock read is the timeout, not the network)', () => {
+    const { client, st } = loadRoomModules();
+    let now = 1000;
+    Date.now = () => now;
+
+    window.GameUI.sendMove(3, 4);
+    now = 20000;
+    client.timeout(0);               // → retry, no measurement
+
+    expect(st.halfRttMs).toBe(0);
+  });
+
+  test('an absurd sample (>30s) is discarded, not folded in', () => {
+    const { client, st } = loadRoomModules();
+    let now = 1000;
+    Date.now = () => now;
+
+    window.GameUI.sendMove(3, 4);
+    now = 40000;
+    client.respond(0, { ok: true, moveCount: 6 });
+
+    expect(st.halfRttMs).toBe(0);
+  });
+});
+
+describe('#165 — returning to the foreground pulls a fresh clock sync', () => {
+  test('window focus during an ongoing game requests a resync', () => {
+    const { client } = loadRoomModules();
+    window.dispatchEvent(new Event('focus'));
+    expect(client.plainEmits.filter(e => e.event === 'game:resync')).toHaveLength(1);
+  });
+
+  test('focus after the game has ended does not', () => {
+    const { client } = loadRoomModules({ gameStatus: 'finished' });
+    window.dispatchEvent(new Event('focus'));
+    expect(client.plainEmits.filter(e => e.event === 'game:resync')).toHaveLength(0);
+  });
+
+  test('focus + visibilitychange firing together (tab return) resync only once', () => {
+    const { client } = loadRoomModules();
+    window.dispatchEvent(new Event('focus'));
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(client.plainEmits.filter(e => e.event === 'game:resync')).toHaveLength(1);
+  });
+});
+
+// ── TODO.md #169 — the displayed clock must not stutter or bounce ───────────
+//
+// On a high-jitter link (measured: 200ms jitter on the China 3G /diag sample,
+// vs 2-16ms on every VN sample) two display-only effects made the clock look
+// broken:
+//   1. displayShaveSec's Math.round flipped 0↔1 as the half-RTT EMA crossed
+//      500ms, so the active clock "started" each turn a second high or low.
+//   2. applyTimerSync wrote st.timerValues straight, so a fresh sync could
+//      snap the visible number back UP mid-turn.
+// The server clock is untouched — this is purely what the player sees.
+describe('#169 — clock does not stutter or bounce on a high-jitter link', () => {
+  const realNow = Date.now;
+  afterEach(() => { Date.now = realNow; });
+
+  function syncAt(now, over) {
+    return Object.assign({
+      black: 60, white: 30, activeColor: 'white', running: true,
+      serverTime: now, deadline: now + 30000,
+    }, over);
+  }
+
+  test('a half-RTT EMA parked on the 500ms boundary gives a smooth 1-per-sync countdown', () => {
+    const { client } = loadRoomModules();
+    let now = 1_000_000;
+    Date.now = () => now;
+
+    const shown = [];
+    let whiteSecs = 30;
+    // Each sync: the EMA wobbles either side of 500ms, white legitimately has
+    // one second less. Pre-#169 the shave alternated 0/1 and the displayed
+    // value went 30, 28, 28, 26… — a visible 2-then-0 stutter every move.
+    for (const halfRtt of [460, 540, 480, 520, 500, 470, 530]) {
+      window.RoomState.halfRttMs = halfRtt;
+      client.listeners['timer:sync'](syncAt(now, { white: whiteSecs, deadline: now + whiteSecs * 1000 }));
+      shown.push(Number(document.getElementById('tb-white-timer').textContent));
+      now += 1000;
+      whiteSecs -= 1;
+    }
+    for (let i = 1; i < shown.length; i++) {
+      expect(shown[i - 1] - shown[i]).toBe(1);
+    }
+  });
+
+  test('a delayed sync carrying a stale-high reading never bounces the visible clock up', () => {
+    const { client } = loadRoomModules();
+    let now = 2_000_000;
+    Date.now = () => now;
+    window.RoomState.halfRttMs = 0;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 18, deadline: now + 18000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('18');
+
+    // 3s pass; a reordered sync from 2s ago arrives — same turn, same deadline,
+    // reporting white: 17 (higher than the ~15 the local countdown now shows).
+    now += 3000;
+    window.RoomSocket.refreshLocalTimer();
+    const midTick = Number(document.getElementById('tb-white-timer').textContent);
+    client.listeners['timer:sync'](syncAt(now - 2000, { white: 17, deadline: (now - 2000) + 17000 }));
+    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(midTick);
+  });
+
+  test('a turn change resets the clamp — the opponent gets their full fresh clock', () => {
+    const { client } = loadRoomModules();
+    let now = 3_000_000;
+    Date.now = () => now;
+    window.RoomState.halfRttMs = 200;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 5, activeColor: 'white', deadline: now + 5000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('5');
+
+    now += 1000;
+    client.listeners['timer:sync'](syncAt(now, { black: 60, white: 5, activeColor: 'black', deadline: now + 60000 }));
+    expect(document.getElementById('tb-black-timer').textContent).toBe('1:00');
+  });
+
+  test('bonus time (the deadline is pushed out) resets the clamp so the grant shows immediately', () => {
+    const { client } = loadRoomModules();
+    let now = 4_000_000;
+    Date.now = () => now;
+    window.RoomState.halfRttMs = 0;
+
+    client.listeners['timer:sync'](syncAt(now, { white: 10, activeColor: 'white', deadline: now + 10000 }));
+    now += 2000;
+    window.RoomSocket.refreshLocalTimer();
+    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(10);
+
+    // Admin adds 30s: same turn, same colour, deadline jumps 30s further out.
+    client.listeners['timer:sync'](syncAt(now, { white: 38, activeColor: 'white', deadline: now + 38000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('38');
+  });
+
+  test('the shave flipping 1→0 mid-turn does not jump the clock up (only down is allowed)', () => {
+    const { client } = loadRoomModules();
+    let now = 5_000_000;
+    Date.now = () => now;
+
+    // First sync: half-RTT 900 → shave 1, white 20 shown as 19.
+    window.RoomState.halfRttMs = 900;
+    client.listeners['timer:sync'](syncAt(now, { white: 20, deadline: now + 20000 }));
+    expect(document.getElementById('tb-white-timer').textContent).toBe('19');
+
+    // Same turn, 1s later, EMA drops to 300 → without hysteresis shave would be
+    // 0 and the opening value would be 19 again (bounce from 18-ish back up).
+    now += 1000;
+    window.RoomState.halfRttMs = 300;
+    window.RoomSocket.refreshLocalTimer();
+    const beforeSync = Number(document.getElementById('tb-white-timer').textContent);
+    client.listeners['timer:sync'](syncAt(now, { white: 19, deadline: now + 19000 }));
+    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(beforeSync);
   });
 });

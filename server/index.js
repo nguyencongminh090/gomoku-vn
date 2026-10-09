@@ -27,8 +27,10 @@ const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
+const { accessLog } = require('./middleware/accessLog');
 const { errorHandler } = require('./middleware/errorHandler');
 const socketHandler  = require('./socket/SocketHandler');
+const diagNamespace  = require('./socket/diag-namespace');
 const sessionManager = require('./managers/SessionManager');
 const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
@@ -83,6 +85,11 @@ app.use(compression());
 
 // Parse JSON bodies for REST endpoints
 app.use(express.json());
+
+// Opt-in HTTP access log (LOG_HTTP=true) — one line per request, with the
+// Cloudflare-resolved client IP + geo. Mounted before static/routes so it
+// covers every response. No-op with zero overhead when disabled.
+app.use(accessLog);
 
 // `client/` is what ships, in every environment (TODO.md #109).
 //
@@ -180,6 +187,13 @@ tournamentManager.loadTournamentsFromDb();
 
 // Wire up event handlers
 socketHandler.init(io);
+
+// The unlisted diagnostic namespace (TODO.md #168). Registered AFTER
+// `io.use(verifySocketToken)` above and deliberately unaffected by it —
+// `io.use` binds to the main namespace only, which is what lets `/diag` be
+// unauthenticated without loosening anything for real players. It brings its
+// own per-IP limiter; see server/socket/diag-namespace.js.
+diagNamespace.register(io);
 
 // Expired session rows do not clean themselves up the way an expired JWT did
 // (TODO.md #68) — sweep once at startup, then hourly.

@@ -62,7 +62,25 @@
   document.addEventListener('visibilitychange', () => {
     if (!S().roomData) return;
     client.emit('room:presence', { presence: document.hidden ? 'away' : 'active' });
+    if (!document.hidden) resyncClockOnReturn();
   });
+
+  // A backgrounded tab throttles setInterval, so the local countdown drifts
+  // while hidden and `timer:sync` broadcasts received meanwhile were applied
+  // against a stalled main thread. On the way back to the foreground, pull a
+  // fresh authoritative sync rather than trusting the stale local state
+  // (TODO.md #165). `focus` and `visibilitychange` both fire on tab return in
+  // most browsers; the 1s guard collapses the pair into one resync.
+  let lastReturnResyncTs = 0;
+  function resyncClockOnReturn() {
+    const gs = S().gameState;
+    if (!gs || gs.status !== 'ongoing') return;
+    const now = Date.now();
+    if (now - lastReturnResyncTs < 1000) return;
+    lastReturnResyncTs = now;
+    requestResync();
+  }
+  window.addEventListener('focus', resyncClockOnReturn);
 
   // ── Room state events ─────────────────────────────────────────────────────
 
@@ -77,6 +95,7 @@
     hideEntryOverlay();
     const st = S();
     st.roomData = data;
+    syncClockFromServerTime(data.serverTime);
 
     // Clear any not-yet-confirmed stone from a move still in flight
     // (TODO.md #153). This fires on first join too (boardRenderer doesn't
@@ -139,6 +158,7 @@
     // a wholesale replace.
     const { users: usersPatch, ...rest } = data;
     st.roomData = Object.assign({}, st.roomData, rest);
+    syncClockFromServerTime(data.serverTime);
 
     // `users` is a patch — { upserts, removed } — not the full array, so it
     // has to be folded into the existing list by userId rather than assigned
@@ -194,6 +214,24 @@
 
   client.on('chat:message', (msg) => {
     ChatUI.appendChatMessage(msg);
+  });
+
+  // Rating change after a ranked game (TODO.md #182). Everyone in the room
+  // gets the same payload; each client shows only its own line.
+  client.on('rating:update', (data) => {
+    const st = S();
+    const me = data && Array.isArray(data.players) && st.myUser
+      ? data.players.find((p) => p.userId === st.myUser.userId)
+      : null;
+    if (!me) return;
+    const sign = me.delta > 0 ? '+' : me.delta < 0 ? '−' : '±';
+    ChatUI.appendSystemMessage(t('sys.rating_update', {
+      category: t('rule.' + data.category),
+      before: me.before,
+      after: me.after,
+      delta: sign + Math.abs(me.delta),
+      provisional: me.provisional ? ' ' + t('sys.rating_provisional') : '',
+    }));
   });
 
   client.on('chat:error', (data) => {
@@ -409,9 +447,59 @@
   let activeDeadline = null;  // server-clock ms when the active player hits 0
   let activeColor = null;     // 'black' | 'white'
 
+  // #169 — keep the displayed clock steady on a jittery link.
+  let lastShaveSec = 0;          // the whole-second shave last applied — feeds displayShaveSec's hysteresis
+  let clampSec = null;           // highest whole-second value we'll show for the active clock this turn
+  let clampColor = null;         // which colour clampSec belongs to
+
+  // A sync whose deadline is more than this further out than the previous one
+  // means the server granted time (bonus / admin add-time); anything smaller
+  // is ordinary sync-to-sync drift or a reordered packet. Well below the
+  // smallest real grant, well above packet jitter.
+  const TIME_GRANTED_MARGIN_MS = 2000;
+
   /** Our best estimate of the server's clock right now. */
   function serverNow() {
     return Date.now() + clockOffsetMs;
+  }
+
+  /**
+   * Update `clockOffsetMs` from a bare server-clock stamp carried on a non-timer
+   * packet (`room:joined` / `room:updated` both carry `serverTime`, see
+   * docs/todo/B170-*.md). `timer:sync` only exists once a game is running, so
+   * without this the offset stays 0 through the whole ready phase and the
+   * Start-modal countdown (`RoomUI`, which reads `serverNow()`) is wrong by the
+   * client's wall-clock skew — measured at -8.4s on one real player's machine.
+   *
+   * Same formula as `applyTimerSync` (via the shared `TimerSyncCore` core, so
+   * the two can't drift) and the same "pure skew, transit not folded in"
+   * semantics: `serverNow()` feeds the turn watchdog, which must not move with a
+   * display shave. A missing/NaN stamp is ignored — the offset keeps its last
+   * value, or 0 if none yet, which is exactly today's behaviour.
+   */
+  function syncClockFromServerTime(serverTime) {
+    if (typeof serverTime !== 'number' || !isFinite(serverTime)) return;
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(serverTime, Date.now());
+  }
+
+  /**
+   * #169 — the active player's displayed clock never ticks UP within a turn.
+   * A jitter-driven shave flip or a reordered `timer:sync` can only ever be
+   * absorbed downward; the number cannot bounce back up. The reset points
+   * (turn change, unpause, granted time) clear `clampSec` before this runs, so
+   * a legitimately higher value starts a fresh monotonic run.
+   *
+   * Trade-off (documented in docs/todo/B169-*.md): after a real RTT spike the
+   * clock can hold for a second or two while wall-time catches back up. That
+   * reads as a hiccup; the bounce it replaces read as "the game is broken".
+   */
+  function clampActiveDisplay(color, computedSec) {
+    if (color === clampColor && clampSec !== null) {
+      computedSec = Math.min(computedSec, clampSec);
+    }
+    clampSec = computedSec;
+    clampColor = color;
+    return computedSec;
   }
 
   function stopLocalTimer() {
@@ -421,12 +509,31 @@
     }
   }
 
+  /**
+   * How much of the displayed clock to shave off for packet transit (#165).
+   * Half the last measured move round-trip, clamped: a one-way `timer:sync`
+   * took roughly this long to reach us, so the server clock has already run
+   * that much further than the reading the packet carried. Only ever
+   * subtracted from a *displayed* value — activeDeadline and serverNow() keep
+   * pure skew semantics so armTurnWatchdog's math below is unaffected.
+   *
+   * The maths itself lives in `timer-sync-core.js` (TODO.md #168): the
+   * diagnostic page has to report exactly the clock this room runs, and a
+   * second hand-copied implementation would drift from it within one fix.
+   * This wrapper only supplies the RoomState reading.
+   */
+  function transitDelaySec() {
+    const st = S();
+    return global.TimerSyncCore.transitDelaySec(st && st.halfRttMs);
+  }
+
   /** Recompute the active player's remaining seconds and repaint. */
   function tickLocal() {
     const st = S();
     if (activeDeadline === null || !activeColor) return;
 
-    const remaining = Math.max(0, Math.round((activeDeadline - serverNow()) / 1000));
+    const remaining = clampActiveDisplay(activeColor, global.TimerSyncCore.compensatedRemainingSec(
+      activeDeadline, serverNow(), st && st.halfRttMs));
     st.timerValues = Object.assign({}, st.timerValues, { [activeColor]: remaining });
     GameUI.renderTimers();
 
@@ -453,10 +560,51 @@
     if (!sync) return;
     const st = S();
 
-    clockOffsetMs = (sync.serverTime || Date.now()) - Date.now();
-    st.timerValues = { black: sync.black, white: sync.white };
+    // One `Date.now()` reading feeds both halves of the subtraction (it used
+    // to be read twice, a millisecond apart) — same value, no double read.
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(sync.serverTime, Date.now());
+
+    // Shave transit delay off the active player's opening value too, not just
+    // the per-second ticks below — otherwise the first paint after every sync
+    // (the one right after our own move, when the player is looking straight
+    // at the clock) flashes the uncompensated number for up to a second
+    // before tickLocal corrects it. #165. The previous step is fed back in so
+    // a jittery estimate stops flipping it (#169).
+    const shave = sync.running
+      ? global.TimerSyncCore.displayShaveSec(st && st.halfRttMs, lastShaveSec)
+      : 0;
+    lastShaveSec = shave;
+
+    // #169 — decide whether this sync starts a fresh monotonic run for the
+    // active clock. It does on a turn change, on unpause, or when the server
+    // pushed the deadline out (bonus / add-time); otherwise the clamp carries
+    // over so the number can only continue downward.
+    const rawActive = sync.activeColor === 'black' ? sync.black : sync.white;
+    const sameColor = sync.activeColor === clampColor;
+    const timeGranted = sameColor && activeDeadline !== null && Number.isFinite(sync.deadline)
+      && sync.deadline > activeDeadline + TIME_GRANTED_MARGIN_MS;
+    if (!sync.running || !sameColor || timeGranted) clampSec = null;
+
+    const activeShown = sync.running
+      ? clampActiveDisplay(sync.activeColor, Math.max(0, rawActive - shave))
+      : Math.max(0, rawActive);
+    st.timerValues = {
+      black: sync.activeColor === 'black' ? activeShown : sync.black,
+      white: sync.activeColor === 'white' ? activeShown : sync.white,
+    };
     activeColor = sync.activeColor;
     activeDeadline = sync.deadline;
+
+    // Diagnostic for #165: `rawOffsetMs` is clock skew + one-way transit
+    // delay combined; a gap between it and a plausible skew (a few hundred ms
+    // at most) is the transit delay this compensation removes. Off unless a
+    // reporter sets localStorage.gvn_timer_debug = '1' in DevTools.
+    let timerDebug = false;
+    try { timerDebug = localStorage.getItem('gvn_timer_debug') === '1'; } catch { /* storage blocked */ }
+    if (timerDebug) {
+      console.info('[timer:sync] rawOffsetMs=%d halfRttMs=%d shaveSec=%d clampSec=%s activeColor=%s',
+        Math.round(clockOffsetMs), Math.round(st.halfRttMs || 0), shave, String(clampSec), sync.activeColor);
+    }
 
     stopLocalTimer();
     GameUI.renderTimers();
@@ -820,6 +968,16 @@
   // Exposed for game-ui.js's move state machine (TODO.md #152) — it needs the
   // same server-error rendering and the same resync entry point this module
   // uses, and duplicating either would let them drift.
-  global.RoomSocket = { serverMessage, requestResync, armMoveConfirmWatchdog };
+  //
+  // `serverNow` is exposed as a FUNCTION, not the offset value, so callers
+  // (room-ui.js's Start-modal countdown, TODO.md #170) always read the latest
+  // offset rather than one captured at wiring time. Callers must still guard
+  // `global.RoomSocket && global.RoomSocket.serverNow` and fall back to
+  // `Date.now()` — this assignment runs at end of module load, after room-ui.js
+  // may have already needed it.
+  global.RoomSocket = {
+    serverMessage, requestResync, armMoveConfirmWatchdog,
+    refreshLocalTimer: tickLocal, serverNow,
+  };
 
 })(window);

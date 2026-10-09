@@ -1,4 +1,5 @@
-import { test, expect, devices, Page, BrowserContext } from '@playwright/test';
+import { test, expect, devices, Page, BrowserContext } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * ui/strip-clock-mobile — .players-strip thay .turn-bar ở ≤768px.
@@ -31,14 +32,7 @@ test.describe('mobile players-strip carries the clocks', () => {
       const ctx = await browser.newContext({ ...PHONE });
       made.push(ctx);
       const page = await ctx.newPage();
-      const res = await page.request.post('/api/auth/guest');
-      expect(res.ok(), 'guest auth should succeed').toBeTruthy();
-      const { token, displayName } = await res.json();
-      await ctx.addInitScript(([t, d]) => {
-        localStorage.setItem('gvn_token', t as string);
-        localStorage.setItem('gvn_display_name', d as string);
-        localStorage.setItem('gomoku_click_mode', 'single');
-      }, [token, displayName]);
+      const { displayName } = await authAsGuest(ctx, page, 'guest', { singleTap: true });
       return page;
     }
 

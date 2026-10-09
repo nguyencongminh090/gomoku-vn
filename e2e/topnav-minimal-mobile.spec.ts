@@ -1,4 +1,4 @@
-import { test, expect, Page, Browser, devices } from '@playwright/test';
+import { test, expect, Page, Browser, devices } from './helpers/fixtures';
 
 /**
  * TODO.md #144 — `.topnav` was a fixed 60px on zen mobile (`--zen-topnav-h`),
@@ -45,6 +45,8 @@ async function register(browser: Browser, contextOptions: any, username: string,
 
 test.describe('room topnav is a minimal always-on bar on zen mobile (TODO.md #144)', () => {
   for (const { name, opts } of VIEWPORTS) {
+    // TODO.md #184: shell.css's 8px .topnav__btn padding (#173) once made these
+    // controls 32/36px in the 28px bar, overflowing it — the box checks below catch that.
     test(`${name}: topnav stays minimal-height with leave/room-code/settings reachable`, async ({ browser }) => {
       test.setTimeout(60_000);
       const stamp = Date.now().toString().slice(-6);

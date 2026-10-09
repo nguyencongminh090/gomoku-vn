@@ -1,5 +1,7 @@
 # Phần A #6. Quyết định kiến trúc khi cần scale quá 1 tiến trình
 
+**Status:** ✅ CLOSED 2026-10-09 — folded into #174 (storage/scale decision). Measured ~12% of one core at 2000 players; not a perf need now.
+
 **Nguồn:** stress test khả năng chịu tải (2026-08-02, xem `docs/stress-test-report.md`)
 
 

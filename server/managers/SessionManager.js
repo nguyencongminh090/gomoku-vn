@@ -139,6 +139,18 @@ function revokeOtherSessionsForUser(userId, exceptSessionId) {
   return res.changes || 0;
 }
 
+/**
+ * Whether a `guestNNNN` display name is currently taken by another live guest
+ * session (TODO.md #163). Best-effort uniqueness only — a guest that is offline
+ * but still inside its 24h TTL still counts, a guest whose session expired does
+ * not. Never considers registered users.
+ * @param {string} displayName
+ * @returns {boolean}
+ */
+function isGuestDisplayNameInUse(displayName) {
+  return db.hasLiveGuestSessionWithDisplayName(displayName, new Date().toISOString());
+}
+
 /** Refresh last_seen_at. Observability only — never gates validity. */
 function touchSession(sessionId) {
   try {
@@ -170,6 +182,7 @@ module.exports = {
   generateSessionId,
   createSession,
   getValidSession,
+  isGuestDisplayNameInUse,
   revokeSession,
   revokeOtherSessionsForUser,
   touchSession,

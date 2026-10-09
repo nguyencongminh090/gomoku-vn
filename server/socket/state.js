@@ -63,9 +63,24 @@ const sessions = new Map();
 // Helper functions
 // ---------------------------------------------------------------------------
 
-/** Return a sorted array of online display names for lobby broadcast. */
+/**
+ * Return the online users for lobby broadcast, sorted by display name.
+ *
+ * Shape: `[{ userId, displayName, isGuest }]`. This used to be a bare
+ * `string[]` of display names; Private Chat (#159) needs the userId to route a
+ * `private_message:send` and the guest flag to badge the row, and the
+ * online-users channel is the natural carrier since it already fans the full
+ * list to every lobby socket. `sessions` is `Map<userId, socket>` so
+ * `s.user` already holds all three fields.
+ */
 function getOnlineUsersList() {
-  return Array.from(sessions.values()).map(s => s.user.displayName).sort();
+  return Array.from(sessions.values())
+    .map(s => ({
+      userId: s.user.userId,
+      displayName: s.user.displayName,
+      isGuest: !!s.user.isGuest,
+    }))
+    .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
 /**
@@ -248,7 +263,7 @@ const _roomScoreTableSnapshots = new Map();
  *
  * @returns {{ upserts: object[], removed: string[] }}
  */
-function _diffRoomUsers(roomId, users) {
+function _diffRoomUsers(roomId, users, seenUserIds) {
   const previous = _roomUserSnapshots.get(roomId) || new Map();
   const next = new Map();
   const upserts = [];
@@ -259,8 +274,17 @@ function _diffRoomUsers(roomId, users) {
     if (previous.get(user.userId) !== serialized) upserts.push(user);
   }
 
+  // Removal candidates are everyone the last broadcast carried PLUS everyone
+  // present at a broadcastRoomUpdate() call in this debounce window. The
+  // second set matters because a joiner's list comes from `room:joined` (full
+  // state), not from a delta: someone who leaves inside the same window as
+  // that join was never in `previous`, so without it their removal was never
+  // sent and the joiner kept a stale entry (TODO.md #187, two host badges).
+  // Removing an id a client never held is a no-op on the client.
   const removed = [];
-  for (const userId of previous.keys()) {
+  const candidates = new Set(previous.keys());
+  for (const userId of seenUserIds || []) candidates.add(userId);
+  for (const userId of candidates) {
     if (!next.has(userId)) removed.push(userId);
   }
 
@@ -280,8 +304,8 @@ function _diffRoomUsers(roomId, users) {
  * instead of always going out whole, and only included at all when something
  * in it actually changed. `scoreTable` (the other array-shaped, room-size-
  * scaling field) gets the same treatment. The remaining scalar fields
- * (roomName, hostId, hostName, state, readyDeadline, readyMissCount) are cheap regardless of
- * room size, so they're just always included — diffing them individually
+ * (roomName, hostId, hostName, state, readyDeadline, serverTime, readyMissCount) are cheap
+ * regardless of room size, so they're just always included — diffing them individually
  * would add complexity without addressing the O(n²) this exists to remove.
  *
  * @param {import('socket.io').Server} io
@@ -290,7 +314,7 @@ function _diffRoomUsers(roomId, users) {
  */
 function _emitRoomUpdate(io, room, opts = {}) {
   const full = roomManager.serializeRoomUpdate(room);
-  const { upserts, removed } = _diffRoomUsers(room.roomId, full.users);
+  const { upserts, removed } = _diffRoomUsers(room.roomId, full.users, opts.seenUserIds);
 
   const scoreTableJson = JSON.stringify(full.scoreTable);
   const scoreTableChanged = _roomScoreTableSnapshots.get(room.roomId) !== scoreTableJson;
@@ -302,6 +326,11 @@ function _emitRoomUpdate(io, room, opts = {}) {
     hostName: full.hostName,
     state: full.state,
     readyDeadline: full.readyDeadline,
+    // Fresh server-clock stamp at emit time — the client anchors its ready-phase
+    // countdown to this (see docs/todo/B170-*.md). Stamped here rather than read
+    // from `full` so it reflects when the packet actually leaves, and `_emitRoomUpdate`
+    // builds its payload field-by-field rather than spreading `full`.
+    serverTime: Date.now(),
     readyMissCount: full.readyMissCount,
   };
   if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };
@@ -351,7 +380,7 @@ function _flushRoomUpdate(roomId) {
   const room = roomManager.getRoom(roomId);
   if (!room) return; // destroyed before this burst's debounce window elapsed
 
-  _emitRoomUpdate(pending.io, room, { settings: pending.settings });
+  _emitRoomUpdate(pending.io, room, { settings: pending.settings, seenUserIds: pending.seenUserIds });
 }
 
 /**
@@ -372,9 +401,13 @@ function _flushRoomUpdate(roomId) {
 function broadcastRoomUpdate(io, room, opts = {}) {
   const roomId = room.roomId;
   const existing = _roomUpdatePending.get(roomId);
+  // Everyone in the room at any call this window — see _diffRoomUsers (#187).
+  const seenUserIds = existing ? existing.seenUserIds : new Set();
+  if (room.users) for (const userId of room.users.keys()) seenUserIds.add(userId);
   _roomUpdatePending.set(roomId, {
     io,
     settings: !!(opts.settings || (existing && existing.settings)),
+    seenUserIds,
   });
 
   if (_roomUpdateTimers.has(roomId)) return; // a flush is already scheduled for this burst

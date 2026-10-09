@@ -19,37 +19,7 @@
    ============================================================================= */
 
 body.zen-lobby {
-  /* ── Token overrides (cascade to every var()-based rule in this subtree) ── */
-  --c-bg:           #FFFFFF;
-  --c-surface:      #FFFFFF;
-  --c-surface-2:    #F7F7F5;
-  --c-border:       rgba(28,28,28,0.09);
-  --c-border-light: rgba(28,28,28,0.06);
-
-  --c-ink:          #1C1C1C;
-  --c-ink-2:        #7A7A7A;
-  --c-ink-3:        #B8B8B8;
-
-  --c-brand:        #1C1C1C;
-  --c-brand-dark:   #000000;
-  --c-brand-light:  rgba(28,28,28,0.06);
-
-  --c-accent:       #1C1C1C;
-  --c-accent-light: rgba(28,28,28,0.06);
-
-  --c-state-idle:    #B8B8B8;
-  --c-state-playing: #1C1C1C;
-  --c-state-waiting: #7A7A7A;
-
-  --bg-glass:       #FFFFFF;
-  --bg-glass-heavy: #FFFFFF;
-
-  --shadow-sm:  none;
-  --shadow:     none;
-  --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.14);
-  --shadow-glass: none;
-  --shadow-glass-inset: none;
-
+  /* Colour/radius tokens now come from css/tokens.css (mode-aware). */
   --zen-col: 640px;
 
   background: var(--c-bg);
@@ -302,6 +272,13 @@ body.zen-lobby .online-line__title {
   font-weight: 600;
   color: var(--c-ink-2);
 }
+body.zen-lobby .online-line__title--action {
+  cursor: pointer;
+  width: fit-content;
+  border-radius: 4px;
+  outline-offset: 2px;
+}
+body.zen-lobby .online-line__title--action:hover { color: var(--c-ink); text-decoration: underline; }
 body.zen-lobby .online-line b { font-weight: 500; color: var(--c-ink); }
 
 /* ══ Tournaments tab ══════════════════════════════════════════════════════
@@ -536,4 +513,360 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
      second column mid-sentence — plain inline lets it wrap as prose. */
   body.zen-lobby .tournament-card__status { display: inline; }
   body.zen-lobby .tournament-card__status .icon { display: none; }
+}
+
+/* ══ Private chat (#159) ══════════════════════════════════════════════════ */
+/* Online names in the lobby line: plain ink text, not link-blue. Only the
+   pointer + hover underline hint that they're interactive (click → private
+   chat; the "…and N others" span → online-users modal). */
+.online-line__names .online-name {
+  color: inherit;
+  cursor: pointer;
+  border-radius: 3px;
+  outline-offset: 2px;
+}
+.online-line__names .online-name:hover { text-decoration: underline; }
+.online-line__names .online-line__more { color: var(--c-ink-2); }
+
+/* ── Online-users modal (Zen Minimal) ── */
+#modal-online-users .modal { max-width: 400px; }
+#modal-online-users .modal__header { align-items: center; }
+.online-users-modal__title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.online-users-modal__title-wrap .icon { font-size: 18px; color: var(--c-ink-2); flex-shrink: 0; }
+.online-users-modal__title-wrap .modal__title { margin: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.online-users-modal__count {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--c-ink-2);
+  background: var(--c-surface-2);
+  border-radius: 999px;
+  padding: 1px 8px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.online-users-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.online-users-search__icon {
+  position: absolute;
+  left: 12px;
+  font-size: 16px;
+  color: var(--c-ink-3);
+  pointer-events: none;
+}
+.online-users-search {
+  flex: 1;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid var(--c-border-light);
+  border-radius: 10px;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.online-users-search:focus {
+  outline: none;
+  border-color: var(--c-ink-3);
+  box-shadow: 0 0 0 3px var(--c-brand-light);
+  background: var(--c-surface);
+}
+.online-users-search-shortcut {
+  position: absolute;
+  right: 10px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--c-ink-3);
+  border: 1px solid var(--c-border-light);
+  border-radius: 5px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  background: var(--c-surface);
+}
+.online-users-search:focus ~ .online-users-search-shortcut { display: none; }
+
+.online-users-list {
+  list-style: none;
+  margin: 0 -8px;
+  padding: 0;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.online-users-list__row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.online-users-list__row:hover { background: var(--c-surface-2); }
+.online-users-list__row:focus-visible { outline: 2px solid var(--c-brand); outline-offset: -2px; }
+.online-users-list__row.is-self { cursor: default; }
+.online-users-list__row.is-self:hover { background: none; }
+
+.online-users-list__avatar {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: hsl(var(--h, 220), 42%, 34%);
+  background: hsl(var(--h, 220), 46%, 92%);
+}
+
+.online-users-list__name-wrap {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: start;
+  align-items: baseline;
+  gap: 0 6px;
+}
+.online-users-list__name {
+  grid-column: 1;
+  color: var(--c-ink);
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.online-users-list__tag {
+  grid-column: 2;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--c-ink-3);
+  border: 1px solid var(--c-border-light);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.online-users-list__meta {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--c-success);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.online-users-list__meta::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.online-users-list__chat-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--c-ink-3);
+  font-size: 17px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 100ms ease, color 100ms ease, background 100ms ease;
+}
+.online-users-list__row:hover .online-users-list__chat-btn,
+.online-users-list__row:focus-within .online-users-list__chat-btn { opacity: 1; }
+.online-users-list__chat-btn:hover { color: var(--c-on-brand); background: var(--c-brand); }
+@media (hover: none) {
+  .online-users-list__chat-btn { opacity: 1; color: var(--c-ink-2); }
+}
+
+.online-users-list__empty { color: var(--c-ink-3); padding: 28px 4px; text-align: center; font-size: 13px; }
+
+.online-users-notif-btn {
+  margin-top: 14px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border-light);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+  font-size: 13px;
+  color: var(--c-ink);
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.online-users-notif-btn .icon { font-size: 16px; color: var(--c-ink-2); }
+.online-users-notif-btn:not(:disabled):hover { background: var(--c-brand-light); }
+.online-users-notif-btn:disabled { cursor: default; color: var(--c-ink-3); }
+.online-users-notif-btn[data-state="on"] .icon { color: var(--c-success); }
+.online-users-notif-btn[data-state="blocked"] .icon { color: var(--c-ink-3); }
+
+/* ── Floating chat windows ── */
+#private-chat-container {
+  position: fixed;
+  right: 16px;
+  bottom: 0;
+  display: flex;
+  flex-direction: row-reverse;
+  align-items: flex-end;
+  gap: 12px;
+  z-index: 2500;
+  pointer-events: none;
+}
+.pm-window {
+  pointer-events: auto;
+  width: 300px;
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-light);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.pm-window--collapsed { height: auto; }
+.pm-window--collapsed .pm-window__log,
+.pm-window--collapsed .pm-notice,
+.pm-window--collapsed .pm-input-row { display: none; }
+.pm-window__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  background: var(--c-surface-2);
+  border-bottom: 1px solid var(--c-border-light);
+  cursor: pointer;
+}
+.pm-window__collapse { display: none; }
+.pm-window__icon { font-size: 15px; color: var(--c-ink-2); flex-shrink: 0; }
+.pm-window__name { font-weight: 600; font-size: 14px; color: var(--c-ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-window__status { font-size: 11px; color: var(--c-success); }
+.pm-window__status.is-offline { color: var(--c-ink-3); }
+.pm-window__close {
+  background: none;
+  border: none;
+  color: var(--c-ink-3);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 5px;
+}
+.pm-window__close:hover { color: var(--c-ink); background: var(--c-border-light); }
+.pm-window__log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.pm-msg { display: flex; }
+.pm-msg--self { justify-content: flex-end; }
+.pm-msg__bubble {
+  max-width: 78%;
+  padding: 6px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.pm-msg--self .pm-msg__bubble { background: var(--c-brand); color: var(--c-on-brand); }
+.pm-notice {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--c-ink-3);
+  background: var(--c-surface-2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.pm-notice[hidden] { display: none; }
+.pm-notice::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-ink-3);
+}
+.pm-input-row {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--c-border-light);
+}
+.pm-input {
+  flex: 1;
+  border: 1px solid var(--c-border-light);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 13px;
+  background: var(--c-surface-2);
+  color: var(--c-ink);
+}
+.pm-input:disabled { opacity: 0.5; }
+.pm-send-btn {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-brand);
+  color: var(--c-on-brand);
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.pm-send-btn .icon { width: 1em; height: 1em; }
+.pm-send-btn:disabled { opacity: 0.4; cursor: default; }
+
+@media (max-width: 640px) {
+  #private-chat-container {
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    gap: 0;
+  }
+  .pm-window {
+    width: 100%;
+    border-radius: 0;
+  }
+  /* Only the newest (last-appended → visually topmost via column-reverse? no —
+     column: last child is bottom). Keep the last window full, collapse the
+     rest to their header bar. */
+  .pm-window:not(:last-child) { height: auto; }
+  .pm-window:not(:last-child) .pm-window__log,
+  .pm-window:not(:last-child) .pm-notice,
+  .pm-window:not(:last-child) .pm-input-row { display: none; }
 }

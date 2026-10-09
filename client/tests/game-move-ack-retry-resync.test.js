@@ -27,6 +27,10 @@ const JS = (name) => fs.readFileSync(path.join(__dirname, '..', 'js', name), 'ut
 const GAME_UI_SOURCE     = JS('game-ui.js');
 const ROOM_SOCKET_SOURCE = JS('room-socket.js');
 const I18N_SOURCE        = JS('i18n.js');
+// Shared clock maths both room modules call into (TODO.md #168). room.html
+// loads it as a classic script before the module entry; evaluating it first
+// here reproduces that order.
+const TIMER_SYNC_CORE_SOURCE = JS('timer-sync-core.js');
 
 /**
  * A RoomClient stub that parks every `emitAck` call instead of answering it,
@@ -90,6 +94,7 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5 } = {}) {
   };
 
   // i18n.js provides `t()` as a global, which both modules call directly.
+  window.eval(TIMER_SYNC_CORE_SOURCE);
   window.eval(I18N_SOURCE);
   window.eval(GAME_UI_SOURCE);
   // GameUI's board renderer is never constructed here (no canvas), so the
@@ -136,6 +141,24 @@ describe('GameUI.sendMove — ack, timeout, one retry, then resync', () => {
     window.GameUI.sendMove(2, 2);
 
     expect(client.ackCalls[0].data.moveId).not.toBe(client.ackCalls[1].data.moveId);
+  });
+
+  // TEMP (TODO.md #167): the move payload carries the client's rolling half-RTT
+  // estimate for server-side cross-check logging only.
+  test('no `crtt` field until an ack has produced a half-RTT estimate', () => {
+    const { client } = loadRoomModules();
+    window.GameUI.sendMove(3, 4);
+    expect(client.ackCalls[0].data.crtt).toBeUndefined();
+  });
+
+  test('`crtt` carries the rounded RoomState.halfRttMs once known, on first attempt and retry', () => {
+    const { client, st } = loadRoomModules();
+    st.halfRttMs = 173.6;
+    window.GameUI.sendMove(3, 4);
+    expect(client.ackCalls[0].data.crtt).toBe(174);
+
+    client.timeout(0);
+    expect(client.ackCalls[1].data.crtt).toBe(174);
   });
 
   test('a second timeout stops retrying and asks for a resync', () => {

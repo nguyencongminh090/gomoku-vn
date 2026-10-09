@@ -1,5 +1,7 @@
 # #53. Modal "Tạo giải đấu" thiếu hẳn UI để chọn series mode (race-to-margin / số ván cố định) — tổ chức không cách nào set được dù backend đã hỗ trợ đầy đủ
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng, 2026-08-07 — "Organizer cannot set race-to-margin or sub-game. Check
 Backend & front-end?"
 

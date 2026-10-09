@@ -181,8 +181,12 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     fireDisconnect(a, 'ping timeout');
 
     const disconnectLog = logger.info.mock.calls.find(call => call[0].includes('[Socket] Disconnected'));
-    expect(disconnectLog[0]).toContain('reason=ping timeout');
-    expect(disconnectLog[0]).not.toContain('[object Object]');
+    // The reason now rides in the structured fields bag (logger.js logfmt
+    // support), still as a raw string — never coerced to an object/[object Object].
+    const fields = disconnectLog[disconnectLog.length - 1];
+    expect(typeof fields).toBe('object');
+    expect(fields.reason).toBe('ping timeout');
+    expect(JSON.stringify(disconnectLog)).not.toContain('[object Object]');
   });
 
   test("the kicked socket's later disconnect does not erase the new session's online presence", () => {

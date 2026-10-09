@@ -1,0 +1,363 @@
+{
+ "manifest": [
+  "04:36:07.295 host room created http://localhost:3000/room.html?id=%23TP5",
+  "04:36:09.864 axe login dark-1280: 0 violations (0 crit/serious)",
+  "04:36:09.987 guest login clicked dark-1280",
+  "04:36:12.025 axe lobby dark-1280: 0 violations (0 crit/serious)",
+  "04:36:12.571 typed room name dark-1280",
+  "04:36:12.770 axe lobby-modal dark-1280: 1 violations (1 crit/serious)",
+  "04:36:14.958 axe history.html dark-1280: 0 violations (0 crit/serious)",
+  "04:36:16.768 axe tournament.html?id=demo dark-1280: 1 violations (0 crit/serious)",
+  "04:36:18.335 rows 1",
+  "04:36:21.417 axe room dark-1280: 1 violations (0 crit/serious)",
+  "04:36:22.120 axe room-settings dark-1280: 1 violations (1 crit/serious)",
+  "04:36:22.123 console dark-1280: 1 [\"DIALOG alert: Giải đấu không tồn tại.\"]; net4xx/5xx: []",
+  "04:36:24.660 axe login dark-390: 0 violations (0 crit/serious)",
+  "04:36:24.751 guest login clicked dark-390",
+  "04:36:26.772 axe lobby dark-390: 0 violations (0 crit/serious)",
+  "04:36:27.320 typed room name dark-390",
+  "04:36:27.467 axe lobby-modal dark-390: 1 violations (1 crit/serious)",
+  "04:36:29.630 axe history.html dark-390: 0 violations (0 crit/serious)",
+  "04:36:31.436 axe tournament.html?id=demo dark-390: 1 violations (0 crit/serious)",
+  "04:36:32.997 rows 1",
+  "04:36:36.082 axe room dark-390: 2 violations (0 crit/serious)",
+  "04:36:36.789 axe room-settings dark-390: 2 violations (1 crit/serious)",
+  "04:36:36.791 console dark-390: 1 [\"DIALOG alert: Giải đấu không tồn tại.\"]; net4xx/5xx: []",
+  "04:36:39.359 axe login light-1280: 0 violations (0 crit/serious)",
+  "04:36:39.466 guest login clicked light-1280",
+  "04:36:41.493 axe lobby light-1280: 0 violations (0 crit/serious)",
+  "04:36:42.062 typed room name light-1280",
+  "04:36:42.281 axe lobby-modal light-1280: 1 violations (1 crit/serious)",
+  "04:36:44.491 axe history.html light-1280: 0 violations (0 crit/serious)",
+  "04:36:46.290 axe tournament.html?id=demo light-1280: 1 violations (0 crit/serious)",
+  "04:36:47.844 rows 1",
+  "04:36:50.938 axe room light-1280: 1 violations (0 crit/serious)",
+  "04:36:51.637 axe room-settings light-1280: 1 violations (1 crit/serious)",
+  "04:36:51.640 console light-1280: 1 [\"DIALOG alert: Giải đấu không tồn tại.\"]; net4xx/5xx: []",
+  "04:36:54.190 axe login light-390: 0 violations (0 crit/serious)",
+  "04:36:54.281 guest login clicked light-390",
+  "04:36:56.300 axe lobby light-390: 0 violations (0 crit/serious)",
+  "04:36:56.845 typed room name light-390",
+  "04:36:56.997 axe lobby-modal light-390: 1 violations (1 crit/serious)",
+  "04:36:59.159 axe history.html light-390: 0 violations (0 crit/serious)",
+  "04:37:00.939 axe tournament.html?id=demo light-390: 1 violations (0 crit/serious)",
+  "04:37:02.504 rows 1",
+  "04:37:05.557 axe room light-390: 2 violations (0 crit/serious)",
+  "04:37:06.251 axe room-settings light-390: 2 violations (1 crit/serious)",
+  "04:37:06.253 console light-390: 1 [\"DIALOG alert: Giải đấu không tồn tại.\"]; net4xx/5xx: []"
+ ],
+ "findings": [
+  {
+   "label": "login dark-1280",
+   "violations": []
+  },
+  {
+   "label": "lobby dark-1280",
+   "violations": []
+  },
+  {
+   "label": "lobby-modal dark-1280",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 2,
+     "sel": [
+      "#rule-wall",
+      "#rule-portal"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    }
+   ]
+  },
+  {
+   "label": "history.html dark-1280",
+   "violations": []
+  },
+  {
+   "label": "tournament.html?id=demo dark-1280",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    }
+   ]
+  },
+  {
+   "label": "room dark-1280",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    }
+   ]
+  },
+  {
+   "label": "room-settings dark-1280",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 1,
+     "sel": [
+      "input[type=\"checkbox\"]"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    }
+   ]
+  },
+  {
+   "label": "login dark-390",
+   "violations": []
+  },
+  {
+   "label": "lobby dark-390",
+   "violations": []
+  },
+  {
+   "label": "lobby-modal dark-390",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 2,
+     "sel": [
+      "#rule-wall",
+      "#rule-portal"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    }
+   ]
+  },
+  {
+   "label": "history.html dark-390",
+   "violations": []
+  },
+  {
+   "label": "tournament.html?id=demo dark-390",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    }
+   ]
+  },
+  {
+   "label": "room dark-390",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    },
+    {
+     "id": "region",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "#quick-chat-input"
+     ],
+     "msg": "Some page content is not contained by landmarks"
+    }
+   ]
+  },
+  {
+   "label": "room-settings dark-390",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 1,
+     "sel": [
+      "input[type=\"checkbox\"]"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    },
+    {
+     "id": "region",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "#quick-chat-input"
+     ],
+     "msg": "Some page content is not contained by landmarks"
+    }
+   ]
+  },
+  {
+   "label": "login light-1280",
+   "violations": []
+  },
+  {
+   "label": "lobby light-1280",
+   "violations": []
+  },
+  {
+   "label": "lobby-modal light-1280",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 2,
+     "sel": [
+      "#rule-wall",
+      "#rule-portal"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    }
+   ]
+  },
+  {
+   "label": "history.html light-1280",
+   "violations": []
+  },
+  {
+   "label": "tournament.html?id=demo light-1280",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    }
+   ]
+  },
+  {
+   "label": "room light-1280",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    }
+   ]
+  },
+  {
+   "label": "room-settings light-1280",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 1,
+     "sel": [
+      "input[type=\"checkbox\"]"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    }
+   ]
+  },
+  {
+   "label": "login light-390",
+   "violations": []
+  },
+  {
+   "label": "lobby light-390",
+   "violations": []
+  },
+  {
+   "label": "lobby-modal light-390",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 2,
+     "sel": [
+      "#rule-wall",
+      "#rule-portal"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    }
+   ]
+  },
+  {
+   "label": "history.html light-390",
+   "violations": []
+  },
+  {
+   "label": "tournament.html?id=demo light-390",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    }
+   ]
+  },
+  {
+   "label": "room light-390",
+   "violations": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "html"
+     ],
+     "msg": "Page must have a level-one heading"
+    },
+    {
+     "id": "region",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "#quick-chat-input"
+     ],
+     "msg": "Some page content is not contained by landmarks"
+    }
+   ]
+  },
+  {
+   "label": "room-settings light-390",
+   "violations": [
+    {
+     "id": "label",
+     "impact": "critical",
+     "n": 1,
+     "sel": [
+      "input[type=\"checkbox\"]"
+     ],
+     "msg": "Element does not have an implicit (wrapped) <label>"
+    },
+    {
+     "id": "region",
+     "impact": "moderate",
+     "n": 1,
+     "sel": [
+      "#quick-chat-input"
+     ],
+     "msg": "Some page content is not contained by landmarks"
+    }
+   ]
+  }
+ ]
+}

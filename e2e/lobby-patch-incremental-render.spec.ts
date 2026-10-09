@@ -1,4 +1,6 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
+import { waitForEmptyLobby } from './helpers/lobby';
 
 /**
  * TODO.md #117 — a busy lobby (many concurrent rooms/players) used to feel
@@ -12,23 +14,19 @@ import { test, expect, Page } from '@playwright/test';
 async function makeGuest(browser: any, actor: string) {
   const ctx = await browser.newContext();
   const page: Page = await ctx.newPage();
-  const res = await page.request.post('/api/auth/guest');
-  expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-  const { token, displayName } = await res.json();
-  await ctx.addInitScript(([t, d]) => {
-    localStorage.setItem('gvn_token', t as string);
-    localStorage.setItem('gvn_display_name', d as string);
-  }, [token, displayName]);
+  const { displayName } = await authAsGuest(ctx, page);
   return { ctx, page, actor, displayName };
 }
 
 test.describe('Lobby patch incremental render (B117)', () => {
   test('a single-room lobby:patch only touches that room\'s DOM row', async ({ browser }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(150_000);
+    await waitForEmptyLobby(browser); // quota must be free: see helpers/lobby.ts
 
-    // Seed a handful of rooms so the list is non-trivial.
+    // Seed a few rooms so the list is non-trivial. Three is the most one IP may
+    // own (MAX_ROOMS_PER_IP = 3, server/config.js); a 4th create is refused.
     const seeders: { ctx: any; page: Page }[] = [];
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 3; i++) {
       const { ctx, page } = await makeGuest(browser, `Seeder${i}`);
       await page.goto('/index.html');
       await page.click('#btn-create');
@@ -40,8 +38,19 @@ test.describe('Lobby patch incremental render (B117)', () => {
     // Observer: open the lobby and attach a MutationObserver on #room-list
     // BEFORE anything else changes.
     const { ctx: obsCtx, page: obs } = await makeGuest(browser, 'Observer');
+    // The last seeder's own room:create schedules a lobby:patch (debounced
+    // 300ms, server/socket/state.js). The observer's snapshot can land inside
+    // that window, and the patch then re-applies that seeder's row after the
+    // observer attaches, which looked like a stray touch (TODO.md #185).
+    // Wait until the lobby has been quiet for well over one debounce window.
+    let lastLobbyFrameAt = Date.now();
+    obs.on('websocket', (ws) => ws.on('framereceived', (f) => {
+      if (String(f.payload).includes('"lobby:')) lastLobbyFrameAt = Date.now();
+    }));
     await obs.goto('/index.html');
     await expect(obs.locator('.room-row').first()).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => Date.now() - lastLobbyFrameAt, { timeout: 10000, intervals: [100] })
+      .toBeGreaterThan(1000);
     const initialRowCount = await obs.locator('.room-row').count();
     expect(initialRowCount).toBeGreaterThan(0);
 

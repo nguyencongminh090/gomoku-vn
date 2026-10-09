@@ -242,7 +242,7 @@
   text-align: center;
   font-size: 14px;
   font-weight: 600;
-  color: #4d4d4d;
+  color: var(--c-ink-2);
   padding: 10px 8px;
 }
 
@@ -257,7 +257,7 @@
    buttons needs an explicit accent color since border uses currentColor. */
 .swap2-choice .btn-game {
   border-color: var(--c-brand);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: transparent;
 }
 
@@ -441,7 +441,7 @@
   font-size: 36px;
   line-height: 1;
   margin-bottom: 10px;
-  color: var(--c-brand);
+  color: var(--c-brand-text);
 }
 
 .start-modal__title {
@@ -461,7 +461,7 @@
 
 #start-modal-countdown {
   font-weight: 700;
-  color: var(--c-brand);
+  color: var(--c-brand-text);
 }
 
 .start-modal__divider {

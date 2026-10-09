@@ -10,6 +10,8 @@
 
 const express  = require('express');
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const { getClientIpFromReq } = require('../utils/get-client-ip');
 const database = require('../db/database');
 
 const router = express.Router();
@@ -19,7 +21,14 @@ const router = express.Router();
 // authLimiter, with a higher ceiling because browsing history legitimately
 // means many more requests than logging in does (one per page + one per
 // replay opened).
-const gamesLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+// keyGenerator: default key is req.ip, which behind the Cloudflare Tunnel is the
+// tunnel's loopback peer for every visitor (one shared budget) — same fix as
+// auth.js's authLimiter (#92), see utils/get-client-ip.js.
+const gamesLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || ''),
+});
 router.use(gamesLimiter);
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

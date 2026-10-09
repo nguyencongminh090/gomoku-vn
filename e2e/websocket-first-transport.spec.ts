@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * TODO #28: socket.io's default transport order (['polling', 'websocket'])
@@ -12,12 +13,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('websocket-first transport', () => {
   test('a normal connection opens a WebSocket immediately, without a polling handshake first', async ({ page, context }) => {
-    const res = await page.request.post('/api/auth/guest');
-    const { token, displayName } = await res.json();
-    await context.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [token, displayName]);
+    const { displayName } = await authAsGuest(context, page);
 
     const pollingHandshakes: string[] = [];
     page.on('request', (req) => {

@@ -1,0 +1,149 @@
+/* =============================================================================
+   shell.css — Arena app shell (B173): top bar, page frame, panel, tabs,
+   buttons-as-actions. Loaded AFTER lobby-zen.css / room-zen.css, which still
+   own the screen-specific layout; this file replaces their "Zen" chrome
+   (bare text bar, 640px column, text-link actions) with the platform look from
+   client/platform-arena-mockup.html. Colours/radius come from css/tokens.css,
+   so every rule here is mode-aware. Board/stones are untouched.
+   ============================================================================= */
+
+/* ── Top bar (lobby + room) ─────────────────────────────────────────────── */
+body.zen-lobby .topnav,
+body.zen-room .topnav {
+  background: var(--c-surface);
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+}
+body.zen-lobby .topnav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 56px;
+  max-width: none;
+  margin: 0;
+  padding: 0 24px;
+}
+body.zen-lobby .topnav__logo,
+body.zen-room .topnav__logo { opacity: 1; border-radius: var(--radius); }
+:root[data-mode="dark"] .topnav__logo { filter: invert(1); }
+body.zen-lobby .topnav__title,
+body.zen-room .topnav__title { color: var(--c-ink); font-weight: 700; font-size: 14px; }
+body.zen-lobby .topnav__user,
+body.zen-lobby .topnav__online,
+body.zen-room .topnav__user { color: var(--c-ink-2); }
+body.zen-lobby .topnav__btn,
+body.zen-room .topnav__btn { border-radius: var(--radius); padding: 8px; }
+body.zen-lobby .topnav__btn:hover,
+body.zen-room .topnav__btn:hover { background: var(--c-fill); }
+/* TODO #184: the zen-room phone bar is 28px (--zen-topnav-h, #144). 8px padding
+   made the leave/gear buttons 32/36px, overflowing the bar and the viewport top.
+   Back to room-zen.css's 4px there (24/28px boxes). */
+@media (max-width: 768px) {
+  body.zen-room .topnav__btn { padding: 4px; }
+}
+
+/* ── Top bar on every other page (history, tournament, tournament-match) ──
+   Same bar as lobby/room; those two keep their own, more specific rules above. */
+.topnav {
+  position: sticky;
+  top: 0;
+  height: 56px;
+  max-width: none;
+  margin: 0 0 24px;
+  padding: 0 24px;
+  background: var(--c-surface);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  border-bottom: 1px solid var(--c-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.topnav__logo { width: 20px; height: 20px; border-radius: var(--radius); }
+.topnav__title { font-size: 14px; font-weight: 700; letter-spacing: 0; }
+.topnav__user { font-size: 12.5px; font-weight: 500; }
+.topnav__badge {
+  padding: 0;
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: lowercase;
+  color: var(--c-ink-3);
+}
+.topnav__btn {
+  padding: 8px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+.topnav__btn:hover { background: var(--c-fill); transform: none; box-shadow: none; }
+@media (max-width: 860px) { .topnav { padding: 0 14px; margin-bottom: 16px; } }
+
+/* ── Lobby page frame ───────────────────────────────────────────────────── */
+body.zen-lobby { --zen-col: 960px; }
+body.zen-lobby .lobby { padding: 28px 24px 80px; }
+body.zen-lobby .zen-hero { margin-bottom: 20px; }
+body.zen-lobby .zen-hero__eyebrow { display: none; }
+body.zen-lobby .zen-hero__title { font-size: 22px; font-weight: 700; letter-spacing: 0; }
+
+/* Panels: the tab body is one card. */
+body.zen-lobby .tab-panel {
+  background: var(--c-surface);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+:root[data-mode="light"] body.zen-lobby .tab-panel { box-shadow: var(--shadow); }
+
+/* Tabs: underline in the accent colour. */
+body.zen-lobby .section-tabs { gap: 24px; margin: 0 0 20px; }
+body.zen-lobby .section-tabs__btn {
+  padding: 6px 0;
+  min-height: 36px;
+  border-bottom: 2px solid transparent;
+  font-size: 13.5px;
+}
+body.zen-lobby .section-tabs__btn.is-active { border-bottom: 2px solid var(--c-brand); color: var(--c-ink); }
+
+/* Section actions: primary action is a filled button, the rest ghost buttons. */
+body.zen-lobby .section-actions { gap: 10px; margin-bottom: 16px; justify-content: flex-end; }
+body.zen-lobby .link-action {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--c-fill);
+  color: var(--c-ink);
+  min-height: 38px;
+}
+body.zen-lobby .link-action:hover { background: var(--c-border); color: var(--c-ink); }
+body.zen-lobby .link-action--primary { background: var(--c-brand); color: var(--c-on-brand); }
+body.zen-lobby .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); opacity: 1; }
+
+/* Rows: tighter, with a hover wash. */
+body.zen-lobby .room-row { padding: 14px 8px; border-radius: var(--radius); }
+body.zen-lobby .room-row:hover { background: var(--c-hover); }
+body.zen-lobby .room-row__bullet--playing { background: var(--c-brand); }
+body.zen-lobby .room-row__action {
+  padding: 7px 14px;
+  border-radius: var(--radius);
+  background: var(--c-fill);
+  color: var(--c-ink);
+}
+body.zen-lobby .room-row__action:hover:not(:disabled) { background: var(--c-brand); color: var(--c-on-brand); }
+body.zen-lobby .room-row__action:disabled { color: var(--c-ink-3); }
+
+@media (max-width: 860px) {
+  body.zen-lobby .topnav { padding: 0 14px; }
+  body.zen-lobby .lobby { padding: 16px 12px 80px; }
+  body.zen-lobby .tab-panel { padding: 14px; }
+}
+
+/* ── Shared components: Arena radius (pills → 5px) on every page ───────── */
+body .btn, body .btn-create, body .btn-secondary, body .btn-join,
+body .modal__actions .btn, body .modal__quick, body .gset-btn,
+body .state-badge, body .rule-chip, body .lobby__count, body .toast,
+body .pill-group, body .pill-group label,
+body .gset-segment, body .gset-segment__opt { border-radius: var(--radius); }

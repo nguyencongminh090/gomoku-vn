@@ -1,5 +1,7 @@
 # B153 — Client không render lạc quan: người tự đặt quân phải chờ trọn 1 round-trip mới thấy quân mình
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Trạng thái:** Chưa làm — **phụ thuộc #152, không được ship trước #152** (lý do ở mục "Quan hệ phụ
 thuộc" bên dưới)
 

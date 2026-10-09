@@ -1,5 +1,7 @@
 # #127 — Gộp CSS theo trang (bỏ `lobby.css` thừa ở `room.html`) — ⚠️ đo/xác minh trên domain thật, cần cách ly nghiêm ngặt
 
+**Status update 2026-10-09:** DEFERRED until after #180 (skins). Arena tokens/shell changed the cascade; room.html still loads lobby.css (as do 5 other pages) — redo the class grep then. Do not start before #180.
+
 **Trạng thái:** chưa làm — **làm SAU CÙNG**, cùng nhóm STRICT với #126, sau #122/#123/#124/#125.
 
 **Nguồn:** review vòng 4 (`gomoku-vn-review-2026-08-14.md` mục 13.7/13.12 #5).

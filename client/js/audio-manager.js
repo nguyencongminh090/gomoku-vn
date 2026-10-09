@@ -261,6 +261,35 @@ class AudioManager {
         osc.start(now);
         osc.stop(now + 0.03);
     }
+
+    /**
+     * Synthesizes a short dual-tone "message received" chime (E5 → A5).
+     * Used by Private Chat (#159) when an incoming message arrives, including
+     * while the tab is hidden. Respects volume + mute like the other sounds.
+     */
+    playMessageSound() {
+        if (this.isMuted) return;
+        this._ensureActive();
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(659.25, now);           // E5
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.5 * this.volume, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.35);
+    }
 }
 
 // Export singleton instance globally or for ES6 modules

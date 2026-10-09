@@ -1,5 +1,7 @@
 # Phần A #10. Hành vi thật của `cloudflared` với `X-Forwarded-For` do client tự gửi
 
+**Status:** ✅ CLOSED (legacy backfill 2026-10-09) — moved to Part B #44 (see body); marker added so check-tracking-sync is accurate.
+
 **Nguồn:** `gomoku-vn-review(1).md` vòng 3, mục 12.6 (kiểm chứng 2026-08-02)
 
 

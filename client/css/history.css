@@ -190,7 +190,7 @@
 }
 
 .game-table tr:last-child td { border-bottom: none; }
-.game-table tr:hover td { background: rgba(0,0,0,0.02); }
+.game-table tr:hover td { background: var(--c-hover); }
 
 .game-table .result-win { color: #16a34a; font-weight: 600; }
 .game-table .result-draw { color: var(--c-ink-3); font-weight: 600; }
@@ -200,7 +200,7 @@
   font-size: 12px;
   font-weight: 600;
   font-family: var(--font);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: transparent;
   border: 1px solid var(--c-brand);
   border-radius: var(--radius);
@@ -299,11 +299,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.replay__player--black { color: #222; }
-.replay__player--white { color: #888; }
+.replay__player--black { color: var(--c-ink); }
+.replay__player--white { color: var(--c-ink-3); }
 .replay__vs { font-size: 12px; color: var(--c-ink-3); font-weight: 400; }
 
-.replay__result { font-size: 14px; font-weight: 600; color: var(--c-brand); margin-bottom: 4px; }
+.replay__result { font-size: 14px; font-weight: 600; color: var(--c-brand-text); margin-bottom: 4px; }
 .replay__meta { font-size: 12px; color: var(--c-ink-3); }
 
 /* ── Replay Body — Board + Tree side by side ─────────────────────────────── */
@@ -487,10 +487,10 @@
 }
 
 .tv-node--black {
-  border-left: 3px solid #333;
+  border-left: 3px solid var(--c-ink);
 }
 .tv-node--white {
-  border-left: 3px solid #bbb;
+  border-left: 3px solid var(--c-ink-3);
 }
 
 .tv-node--var {

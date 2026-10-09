@@ -1,5 +1,7 @@
 # #56. Phát hiện phụ khi làm #52: `tournament-match.html` Mobile tab-content (Nước đi/Trò chuyện/Khán giả) co về ~0 chiều cao; `tournament.html`/khả năng cùng lỗi `.lobby-layout` phantom sidebar column
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Cập nhật 2026-08-07 (fix-log `2026-08-07-todo-52-full-room-refactor.md`):** Mục 1 (mobile
 tab-content co về ~0 chiều cao) **đã được sửa** — không phải sửa riêng, mà là hệ quả tự động của
 việc #52 chuyển sang full-refactor (tái dùng nguyên khối `.room`/`.panel-right-shell`/`.panel-right`

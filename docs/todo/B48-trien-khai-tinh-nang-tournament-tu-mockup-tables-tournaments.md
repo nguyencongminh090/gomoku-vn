@@ -1,5 +1,7 @@
 # Phần B #48. Triển khai tính năng Tournament (Tables & Tournaments) từ mockup
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** yêu cầu người dùng — thảo luận + blueprint UI cho tính năng Tournament (2026-08-04)
 
 48. **Triển khai đầy đủ tính năng Tournament** — hiện mới có (1) tài liệu thảo

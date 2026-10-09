@@ -1,6 +1,8 @@
 # #93 — `gamesLimiter`/`tournamentGamesLimiter` có đúng lỗi IP-gộp y hệt #92, chưa sửa
 
-**Trạng thái:** chưa làm
+**Status:** ✅ FIXED 2026-10-09 — commit 5c668f2 (merge aefef39). Test: server/tests/games-rate-limit-ip.test.js; fix-log docs/fix-log/2026-10-09-todo-93-games-limiter-client-ip.md
+
+**Recheck 2026-10-09 (code only):** still valid: gamesLimiter (games.js:22) and tournamentGamesLimiter (tournamentGames.js:23) have no keyGenerator. Do before #176 (rankings will raise /api/games traffic).
 
 Phát hiện phụ khi sửa #92 (`authLimiter` gộp mọi client thành 1 IP đằng sau Cloudflare Tunnel, vì
 dùng `req.ip` mặc định của `express-rate-limit` thay vì đọc CF-Connecting-IP). Cùng nguyên nhân gốc

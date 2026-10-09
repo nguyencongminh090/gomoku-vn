@@ -318,7 +318,7 @@
 }
 .rule-chip--custom {
   background: var(--c-brand-light);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   border-color: transparent;
 }
 
@@ -342,7 +342,7 @@
   border-color: transparent;
 }
 .rule-tag--portal {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-brand-light);
   border-color: transparent;
 }
@@ -375,7 +375,7 @@
   font-size: 13px;
   font-weight: 700;
   font-family: var(--font);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-brand-light);
   border: 1px solid transparent;
   border-radius: 9999px;
@@ -505,7 +505,7 @@
   user-select: none;
 }
 .pill-group input:not(:checked) + label:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--c-hover);
   color: var(--c-ink);
 }
 .pill-group label:active {
@@ -578,9 +578,7 @@
 
 /* Modal actions */
 /* ── Create-room modal: UI-mode affordances ───────────────────────────────── */
-/* Quick match (Lite) and the Advanced disclosure are hidden unless Lite is on;
-   Use-last-settings (Pro) is toggled by JS since it also depends on whether
-   anything has actually been remembered. */
+/* Quick match and the Advanced disclosure are hidden unless Lite is on. */
 .modal__quick,
 .modal__advanced-toggle { display: none; }
 
@@ -618,7 +616,7 @@
 }
 .modal__advanced-toggle[aria-expanded="true"] .modal__advanced-arrow { transform: rotate(180deg); }
 
-/* Collapsed only in Lite — Default/Pro keep the form flat and always open. */
+/* Collapsed only in Lite — Default keeps the form flat and always open. */
 .modal--lite .modal__advanced {
   max-height: 0;
   overflow: hidden;
@@ -634,12 +632,6 @@
    which submits the edited form rather than the remembered preset — returns. */
 .modal--lite .modal__actions .btn-confirm { display: none; }
 .modal--lite .modal__advanced.open ~ .modal__actions .btn-confirm { display: block; }
-
-.modal__use-last {
-  width: 100%;
-  justify-content: center;
-  margin-bottom: 12px;
-}
 
 .modal__actions { display: flex; gap: 16px; margin-top: 40px; }
 .modal__actions .btn {
@@ -721,7 +713,7 @@
 .online-panel__count {
   font-size: 11px;
   font-weight: 700;
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-brand-light);
   border-radius: 10px;
   padding: 2px 8px;
@@ -753,18 +745,6 @@
   max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
-
-/* Lite: bare "N online" count — no list, no expand affordance at any width.
-   Selectors are deliberately over-specific so they win over both the desktop
-   sidebar fallback above and the ≤900px overrides further down. */
-.online-panel.online-panel--lite .online-panel__body,
-.online-panel.online-panel--lite .online-panel__body.open {
-  max-height: 0;
-  overflow: hidden;
-}
-.online-panel.online-panel--lite .online-panel__arrow { display: none; }
-.online-panel.online-panel--lite .online-panel__header { cursor: default; }
-.online-panel.online-panel--lite .online-panel__header:hover { background: transparent; }
 
 .online-panel__list {
   list-style: none;
@@ -870,7 +850,7 @@
   border-radius: 4px;
 }
 .section-tabs__btn.is-active {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   border-bottom-color: var(--c-brand);
 }
 .section-tabs__btn .icon { margin-right: 6px; font-size: 16px; vertical-align: -2px; }
@@ -915,7 +895,7 @@
 }
 .filter-pill.is-active {
   background: var(--c-brand-light);
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   border-color: var(--c-brand);
 }
 .filter-spacer { flex: 1; }
@@ -1028,7 +1008,7 @@
   padding-top: 10px;
   border-top: 1px solid var(--c-border-light);
 }
-.tournament-card__status--your-turn { color: var(--c-brand); }
+.tournament-card__status--your-turn { color: var(--c-brand-text); }
 .tournament-card__status--waiting { color: var(--c-ink-3); font-weight: 600; }
 .tournament-card__status--registered { color: var(--c-success); }
 .tournament-card__actions { display: flex; gap: 8px; margin-top: 2px; }

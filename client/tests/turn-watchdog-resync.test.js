@@ -46,6 +46,10 @@ const JS = (name) => fs.readFileSync(path.join(__dirname, '..', 'js', name), 'ut
 const GAME_UI_SOURCE     = JS('game-ui.js');
 const ROOM_SOCKET_SOURCE = JS('room-socket.js');
 const I18N_SOURCE        = JS('i18n.js');
+// Shared clock maths both room modules call into (TODO.md #168). room.html
+// loads it as a classic script before the module entry; evaluating it first
+// here reproduces that order.
+const TIMER_SYNC_CORE_SOURCE = JS('timer-sync-core.js');
 
 // Mirrors of the constants in room-socket.js. Deliberately re-stated rather
 // than imported: if someone edits the threshold, these tests should fail and
@@ -133,6 +137,7 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5 } = {}) {
     },
   };
 
+  window.eval(TIMER_SYNC_CORE_SOURCE);
   window.eval(I18N_SOURCE);
   window.eval(GAME_UI_SOURCE);
   window.GameUI.updateBoardState = jest.fn();

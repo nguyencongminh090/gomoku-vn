@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * TEST-MATRIX.md row 3/4 — Wall rule: the first move of the game must land in
@@ -14,14 +15,7 @@ import { test, expect, Page } from '@playwright/test';
 async function makeGuest(browser: any, actor: string) {
   const ctx = await browser.newContext();
   const page: Page = await ctx.newPage();
-  const res = await page.request.post('/api/auth/guest');
-  expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-  const { token, displayName } = await res.json();
-  await ctx.addInitScript(([t, d]) => {
-    localStorage.setItem('gvn_token', t as string);
-    localStorage.setItem('gvn_display_name', d as string);
-    localStorage.setItem('gomoku_click_mode', 'single');
-  }, [token, displayName]);
+  const { displayName } = await authAsGuest(ctx, page, 'guest', { singleTap: true });
   return { ctx, page, actor, displayName };
 }
 

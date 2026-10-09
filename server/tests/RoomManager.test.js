@@ -411,14 +411,27 @@ describe('RoomManager — serializeRoomUpdate', () => {
     const full = roomManager.serializeRoom(room);
     const update = roomManager.serializeRoomUpdate(room);
 
-    const { settings, ...fullWithoutSettings } = full;
-    expect(update).toEqual(fullWithoutSettings);
+    // serverTime is a fresh Date.now() per call (TODO.md #170), so the two
+    // snapshots can legitimately differ by a millisecond — compare everything else.
+    const { settings, serverTime: _fst, ...fullWithoutSettings } = full;
+    const { serverTime: _ust, ...updateRest } = update;
+    expect(updateRest).toEqual(fullWithoutSettings);
     // Everything the room screen re-renders on each update is still present.
     expect(update.users).toBeDefined();
     expect(update.state).toBeDefined();
     expect(update.scoreTable).toBeDefined();
     expect(update.hostId).toBeDefined();
     expect(update.readyDeadline !== undefined).toBe(true);
+  });
+
+  test('carries a server-clock stamp (serverTime) for client ready-phase clock sync', () => {
+    const before = Date.now();
+    const update = roomManager.serializeRoomUpdate(makeRoom());
+    const after = Date.now();
+
+    expect(typeof update.serverTime).toBe('number');
+    expect(update.serverTime).toBeGreaterThanOrEqual(before);
+    expect(update.serverTime).toBeLessThanOrEqual(after);
   });
 
   test('does not mutate the room, so the next room:joined still has settings', () => {

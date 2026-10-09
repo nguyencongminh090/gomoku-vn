@@ -7,7 +7,7 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 input, button, textarea, select { font-family: inherit; }
 
-:root, [data-theme="light"] {
+:root {
   /* ── Color Palette (Light) ─────────────────────────────────────────────── */
   --c-bg:          #F9F9FB;
   --c-surface:     #FFFFFF;
@@ -135,56 +135,6 @@ input, button, textarea, select { font-family: inherit; }
 .delay-3 { animation-delay: 0.15s; }
 .delay-4 { animation-delay: 0.2s; }
 .delay-5 { animation-delay: 0.25s; }
-
-[data-theme="dark"] {
-  /* ── Color Palette (Dark) ──────────────────────────────────────────────── */
-  --c-bg:          #09090B;
-  --c-surface:     #18181B;
-  --c-surface-2:   #27272A;
-  --c-border:      #3F3F46;
-  --c-border-light:#27272A;
-
-  --c-ink:         #F8FAFC;
-  --c-ink-2:       #94A3B8;
-  --c-ink-3:       #64748B;
-
-  --c-brand:       #6366F1;
-  --c-brand-dark:  #4F46E5;
-  --c-brand-light: rgba(99, 102, 241, 0.15);
-
-  --c-accent:      #FBBF24;
-  --c-accent-light:rgba(251, 191, 36, 0.15);
-
-  --c-error:       #F87171;
-  --c-error-bg:    rgba(248, 113, 113, 0.15);
-  --c-success:     #34D399;
-  --c-success-bg:  rgba(52, 211, 153, 0.15);
-  --c-warning:     #FBBF24;
-  --c-warning-bg:  rgba(251, 191, 36, 0.15);
-
-  --c-state-idle:    #94A3B8;
-  --c-state-playing: #34D399;
-  --c-state-waiting: #FBBF24;
-
-  --bg-glass:      rgba(24, 24, 27, 0.7);
-  --bg-glass-heavy:rgba(24, 24, 27, 0.9);
-
-  --board-bg:          #262626;
-  --board-accent-rgb:  150, 168, 214;
-  --board-ink-rgb:     147, 197, 253;
-  --board-pending-rgb: 134, 196, 158;
-  --board-highlight-rgb: 255, 234, 0;
-  --board-wall-mortar-rgb: 48, 48, 48;
-  --board-wall-dark-rgb:   140, 140, 140;
-  --board-wall-base-rgb:   168, 168, 168;
-  --board-wall-light-rgb:  200, 200, 200;
-
-  --shadow-sm:  0 2px 8px -2px rgba(0,0,0,0.6), 0 1px 2px -1px rgba(0,0,0,0.8);
-  --shadow:     0 12px 24px -4px rgba(0,0,0,0.6), 0 4px 12px -2px rgba(0,0,0,0.8);
-  --shadow-lg:  0 32px 64px -12px rgba(0,0,0,0.8), 0 16px 32px -8px rgba(0,0,0,0.9);
-  --shadow-glass: inset 0 1px 0 rgba(255,255,255,0.06);
-  --shadow-glass-inset: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 12px rgba(0,0,0,0.4);
-}
 
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -482,8 +432,4 @@ button:not(:disabled):active,
   box-shadow: var(--shadow-glass-inset);
   border: 1px solid var(--c-border);
   overflow: hidden;
-}
-
-[data-theme="dark"] .ui-shell {
-  background: rgba(255, 255, 255, 0.02);
 }

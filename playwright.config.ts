@@ -13,17 +13,19 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: '.',
-  testMatch: ['e2e/**/*.spec.ts', 'tests/**/*.spec.ts'],
+  testMatch: ['e2e/**/*.spec.ts'],
   /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  // One worker: every spec creates rooms/guests from the same IP, so parallel
+  // workers trip MAX_ROOMS_PER_IP and the auth limiter (TODO.md #183, e2e/README.md).
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: [['list'], ['html', { open: 'never' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
@@ -37,7 +39,15 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Escape hatch when the installed browser revision differs from what this
+        // Playwright version expects and `playwright install` is off-limits
+        // (playwright-e2e-safety skill): PW_CHROMIUM_PATH=/path/to/chrome
+        ...(process.env.PW_CHROMIUM_PATH
+          ? { launchOptions: { executablePath: process.env.PW_CHROMIUM_PATH } }
+          : {}),
+      },
     },
 
     {

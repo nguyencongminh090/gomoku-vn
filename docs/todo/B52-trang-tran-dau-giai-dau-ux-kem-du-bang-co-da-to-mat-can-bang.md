@@ -1,5 +1,7 @@
 # #52. Trang trận đấu giải đấu (`tournament-match.html`) UX kém dù bàn cờ đã to hơn — mất cân bằng bố cục, cả PC lẫn Mobile
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng kèm ảnh chụp màn hình thật (trận `WildMink vs WildBull`, có tường/Wall
 rule), 2026-08-07 — sau khi đã xác nhận riêng 2 việc: (1) fix bàn cờ nhỏ TODO.md #49 đã hoạt động
 đúng trên `dev` (không phải do cache trình duyệt), (2) tab Trò chuyện của TODO.md #50 hoạt động

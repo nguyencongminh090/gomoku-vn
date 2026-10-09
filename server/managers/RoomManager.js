@@ -701,6 +701,12 @@ class RoomManager extends EventEmitter {
       users,
       state: room.state,
       readyDeadline: room.readyDeadline,
+      // Server-clock stamp taken as this payload is built, so the client can
+      // derive its clock offset during the ready phase — before the first
+      // `timer:sync` (which only fires once a game is running) exists to set it.
+      // Paired with `readyDeadline`, which is a bare server-clock epoch. See
+      // docs/todo/B170-*.md.
+      serverTime: Date.now(),
       readyMissCount: room.readyMissCount || 0,
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
@@ -778,6 +784,9 @@ class RoomManager extends EventEmitter {
     // Opening rule. Swap2 is played on a plain board, so it disables board setup.
     s.ruleSwap2       = settings.ruleSwap2 === true;
     if (s.ruleSwap2) { s.ruleWall = false; s.rulePortal = false; }
+
+    // Ranked toggle (TODO.md #175): default ON; only an explicit false makes it casual.
+    s.ranked = settings.ranked !== false;
 
     s.timerMode = (settings.timerMode === 'per_move' || settings.timerMode === 'per_game' || settings.timerMode === 'blitz')
       ? settings.timerMode

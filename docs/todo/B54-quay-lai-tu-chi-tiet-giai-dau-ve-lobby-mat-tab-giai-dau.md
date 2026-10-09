@@ -1,5 +1,7 @@
 # #54. "Quay lại danh sách giải đấu" từ trang chi tiết giải đấu luôn về tab "Bàn chơi", mất ngữ cảnh tab "Giải đấu"
 
+**Status:** ✅ DONE (legacy backfill 2026-10-09) — index marks it done (see DONE.md / fix-log); marker added so check-tracking-sync is accurate. Older "not done yet" wording below is stale history.
+
 **Nguồn:** báo cáo người dùng, 2026-08-07 — "Quay lại giải đấu/... return to lobby (tables tab)".
 
 ## Nguyên nhân đã xác nhận (đọc code, chưa sửa)
