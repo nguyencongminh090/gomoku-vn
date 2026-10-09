@@ -294,6 +294,7 @@
     overlay.id = 'gset-overlay';
     overlay.setAttribute('role', 'dialog');
     overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', T('gset.title'));
 
     const panel = document.createElement('div');
     panel.className = 'gset-panel';
@@ -347,7 +348,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=172#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=174#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }

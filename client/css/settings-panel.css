@@ -114,7 +114,7 @@
 }
 .gset-segment__opt:hover { color: var(--c-ink); }
 .gset-segment__opt.is-active {
-  color: var(--c-brand);
+  color: var(--c-brand-text);
   background: var(--c-surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
