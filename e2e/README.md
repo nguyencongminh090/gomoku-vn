@@ -30,7 +30,8 @@ Read the `playwright-e2e-safety` skill first. The server has **no DB path overri
   shell. Kill by PID.
 
 ## Known state (2026-10-09)
-Chromium, fresh DB, recipe above: ~50-52 of 56 pass. `topnav-minimal-mobile` re-enabled (#184);
-`lobby-patch-incremental-render`, `game-optimistic-render`, `move-validation` are flaky -> TODO #185.
+Chromium, fresh DB, recipe above: 54-56 of 56 pass (5 runs; #187 room-lifecycle, #188 scaffold needs internet). **Restart the server between suite runs**:
+`lobby-patch-incremental-render` leaves a room of disconnected viewers that the server keeps for 10 min
+(TODO #186), so a second run against the same server times out in `waitForEmptyLobby()`.
 `kick-blocked-interrupted` deliberately leaves an "interrupted" room for 60 s; specs that need the whole quota
 call `waitForEmptyLobby()`.

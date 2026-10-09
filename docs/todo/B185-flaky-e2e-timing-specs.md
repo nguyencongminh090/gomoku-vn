@@ -1,5 +1,5 @@
 # B185 — flaky e2e specs (timing-sensitive assertions)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-09 — all 3 were spec races, fixed in the specs; app bug -> #186, other flakes -> #187/#188 ([fix-log](../fix-log/2026-10-09-todo-185-flaky-e2e-spec-races.md))
 **Area:** e2e/lobby-patch-incremental-render.spec.ts, game-optimistic-render.spec.ts, move-validation.spec.ts
 **From:** #183 re-runs, 2026-10-09   **Depends:** B183 ✅
 
