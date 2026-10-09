@@ -35,6 +35,12 @@ body.zen-lobby .topnav__btn,
 body.zen-room .topnav__btn { border-radius: var(--radius); padding: 8px; }
 body.zen-lobby .topnav__btn:hover,
 body.zen-room .topnav__btn:hover { background: var(--c-fill); }
+/* TODO #184: the zen-room phone bar is 28px (--zen-topnav-h, #144). 8px padding
+   made the leave/gear buttons 32/36px, overflowing the bar and the viewport top.
+   Back to room-zen.css's 4px there (24/28px boxes). */
+@media (max-width: 768px) {
+  body.zen-room .topnav__btn { padding: 4px; }
+}
 
 /* ── Top bar on every other page (history, tournament, tournament-match) ──
    Same bar as lobby/room; those two keep their own, more specific rules above. */
