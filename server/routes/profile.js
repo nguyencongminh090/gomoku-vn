@@ -4,7 +4,8 @@
  * profile.js — public profile + avatar (#177).
  *
  * GET    /api/profile/:username       — public profile (privacy opt-outs honoured)
- * PUT    /api/profile                 — edit own bio / privacy flags
+ * PUT    /api/profile                 — edit own bio / privacy flags / uiSkin
+ * GET    /api/profile/prefs           — own UI preferences (uiSkin)
  * POST   /api/profile/avatar          — upload (raw image body), re-encoded to WebP
  * DELETE /api/profile/avatar          — remove
  * GET    /api/profile/avatar/:id.webp — serve (immutable; URL carries ?v=)
@@ -35,6 +36,7 @@ const AVATAR_QUALITY_STEPS = [70, 55, 40, 25];
 const MAX_INPUT_PIXELS = 24e6;
 const BIO_MAX = 280;
 const ALLOWED_FORMATS = new Set(['jpeg', 'png', 'webp']);
+const SKINS = ['arena', 'zen', 'bento'];
 const UUID_RE = /^[0-9a-f-]{36}$/i;
 
 const router = express.Router();
@@ -122,6 +124,10 @@ router.put('/', verifyToken, requireMember, writeLimiter, express.json({ limit: 
       }
       patch.bio = b.bio.trim();
     }
+    if (b.uiSkin !== undefined) {
+      if (!SKINS.includes(b.uiSkin)) return res.status(400).json({ error: 'Giao diện không hợp lệ.', code: 'SKIN_INVALID' });
+      patch.ui_skin = b.uiSkin;
+    }
     for (const k of ['hideHistory', 'hideBio']) {
       if (b[k] === undefined) continue;
       if (typeof b[k] !== 'boolean') return res.status(400).json({ error: 'Giá trị không hợp lệ.', code: 'PRIVACY_INVALID' });
@@ -129,6 +135,16 @@ router.put('/', verifyToken, requireMember, writeLimiter, express.json({ limit: 
     }
     database.updateProfile(req.user.userId, patch);
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Own preferences (device-independent UI settings). Static path before /:username.
+router.get('/prefs', verifyToken, requireMember, (req, res, next) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0] });
   } catch (err) {
     next(err);
   }

@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#180.** Platform: selectable skins A Zen / D Bento on the token layer — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
 - ✅ **#178.** Platform: clubs — [detail](docs/todo/B178-clubs.md)
 - ✅ **#177.** Platform: profile page + avatar upload — [detail](docs/todo/B177-profile-avatar.md)
 - ✅ **#176.** Platform: rankings/leaderboard page — [detail](docs/todo/B176-rankings-page.md)
