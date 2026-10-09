@@ -95,6 +95,28 @@ const confirmedStoneAt = (p: Player, x: number, y: number) =>
 const moveCount = (p: Player) =>
   p.page.evaluate(() => (window as any).RoomState.gameState.moveCount);
 
+/**
+ * Record every setOptimisticStone() call inside the page, with the wall-clock
+ * time and moveCount at that instant (TODO.md #185). Reading optimisticStone
+ * after click() returns raced the localhost ack, which can clear it first.
+ */
+const recordOptimisticSets = (p: Player) =>
+  p.page.evaluate(() => {
+    const br = (window as any).RoomState.boardRenderer;
+    const orig = br.setOptimisticStone.bind(br);
+    (window as any).__optimisticSets = [];
+    br.setOptimisticStone = (stone: any) => {
+      (window as any).__optimisticSets.push({
+        stone: stone && { ...stone },
+        at: Date.now(),
+        moveCount: (window as any).RoomState.gameState.moveCount,
+      });
+      orig(stone);
+    };
+  });
+const firstOptimisticSet = (p: Player) =>
+  p.page.evaluate(() => (window as any).__optimisticSets[0]);
+
 /** Create + join a 2-player room through the real UI, Wall rule off, and start the game. */
 async function setUpGame(browser: any, guestFactory: typeof makeGuest): Promise<[Player, Player]> {
   const A = await guestFactory(browser, 'PlayerA');
@@ -139,11 +161,13 @@ test.describe('optimistic render for the mover\'s own stone (TODO.md #153)', () 
     const white = colorA === 'BLACK' ? B : A;
 
     // Immediate visibility: the ghost appears before the server can possibly
-    // have answered, even on localhost's near-zero RTT — polling would pass
-    // trivially there, so assert it synchronously right after the click.
+    // have answered: recorded in-page with moveCount at that instant (TODO.md #185).
+    await recordOptimisticSets(black);
     await clickCell(black, 5, 5);
-    const stoneRightAfterClick = await optimisticStone(black);
-    expect(stoneRightAfterClick).toEqual({ x: 5, y: 5, color: 'BLACK' });
+    const firstSet = await firstOptimisticSet(black);
+    expect(firstSet, 'the click must set an optimistic stone').toBeTruthy();
+    expect(firstSet.stone).toEqual({ x: 5, y: 5, color: 'BLACK' });
+    expect(firstSet.moveCount, 'drawn before the server confirmed the move').toBe(0);
 
     await expect.poll(() => confirmedStoneAt(white, 5, 5), { timeout: 15000 }).toBe(1);
     await expect.poll(() => optimisticStone(black), { timeout: 15000 }).toBeNull();
@@ -173,13 +197,18 @@ test.describe('optimistic render for the mover\'s own stone (TODO.md #153)', () 
     const mv = eColor === 'BLACK' ? E : F;
     const ob = eColor === 'BLACK' ? F : E;
 
+    await recordOptimisticSets(mv);
     const tClick = Date.now();
     await clickCell(mv, 5, 5);
-    // Poll on the OPTIMISTIC field specifically — this is what the fix draws
-    // immediately; it must already be set well before a 500ms RTT could have
-    // elapsed.
-    await expect.poll(() => optimisticStone(mv), { timeout: 2000 }).toEqual({ x: 5, y: 5, color: eColor });
-    const tOptimistic = Date.now();
+    // The OPTIMISTIC stone specifically — what the fix draws immediately. Read
+    // from the in-page record, not by polling optimisticStone: the WS isn't
+    // really throttled (see the honesty note), so the ack may clear it before
+    // the first poll (TODO.md #185).
+    const firstSet = await firstOptimisticSet(mv);
+    expect(firstSet, 'the click must set an optimistic stone').toBeTruthy();
+    expect(firstSet.stone).toEqual({ x: 5, y: 5, color: eColor });
+    expect(firstSet.moveCount, 'drawn before the server confirmed the move').toBe(0);
+    const tOptimistic = firstSet.at;
 
     await expect.poll(() => confirmedStoneAt(ob, 5, 5), { timeout: 15000 }).toBe(eColor === 'BLACK' ? 1 : 2);
     const tConfirmed = Date.now();

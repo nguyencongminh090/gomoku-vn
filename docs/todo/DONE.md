@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#185.** Flaky e2e specs: lobby-patch, game-optimistic-render, move-validation (found by #183) `[Model: Sonnet 5]` — [detail](docs/todo/B185-flaky-e2e-timing-specs.md)
 - ✅ **#184.** Mobile room topnav: a control starts 2.5px above the nav box (found by #183; 2 e2e cases `fixme`) `[Model: Sonnet 5]` — [detail](docs/todo/B184-topnav-mobile-control-above-nav.md)
 - ✅ **#183.** e2e suite: replace stale legacy-token auth helpers, document localhost run recipe `[Model: Sonnet 5]` — [detail](docs/todo/B183-e2e-suite-auth-and-env.md)
 - ✅ **#182.** Room: Ranked toggle in settings + show `rating:update` deltas after a game `[Model: Sonnet 5]` — [detail](docs/todo/B182-ranked-toggle-rating-ui.md)

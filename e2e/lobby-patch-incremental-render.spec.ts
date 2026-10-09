@@ -38,8 +38,19 @@ test.describe('Lobby patch incremental render (B117)', () => {
     // Observer: open the lobby and attach a MutationObserver on #room-list
     // BEFORE anything else changes.
     const { ctx: obsCtx, page: obs } = await makeGuest(browser, 'Observer');
+    // The last seeder's own room:create schedules a lobby:patch (debounced
+    // 300ms, server/socket/state.js). The observer's snapshot can land inside
+    // that window, and the patch then re-applies that seeder's row after the
+    // observer attaches, which looked like a stray touch (TODO.md #185).
+    // Wait until the lobby has been quiet for well over one debounce window.
+    let lastLobbyFrameAt = Date.now();
+    obs.on('websocket', (ws) => ws.on('framereceived', (f) => {
+      if (String(f.payload).includes('"lobby:')) lastLobbyFrameAt = Date.now();
+    }));
     await obs.goto('/index.html');
     await expect(obs.locator('.room-row').first()).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => Date.now() - lastLobbyFrameAt, { timeout: 10000, intervals: [100] })
+      .toBeGreaterThan(1000);
     const initialRowCount = await obs.locator('.room-row').count();
     expect(initialRowCount).toBeGreaterThan(0);
 
