@@ -177,6 +177,23 @@ describe('profile read + privacy', () => {
     expect(other.stats).toBeNull();
   });
 
+  it('PUT validates and stores location + audience gates; defaults are permissive (#199)', async () => {
+    const put = (body) => req('PUT', '/api/profile', { cookie: UID, type: 'application/json', body: JSON.stringify(body) });
+    const prefs = async () => (await req('GET', '/api/profile/prefs', { cookie: UID })).json;
+    expect(await prefs()).toMatchObject({ country: '', city: '', whoCanDm: 'everyone', whoCanChallenge: 'everyone', whoCanFriend: 'everyone', hideOnline: false });
+    for (const bad of [{ country: 'vn' }, { country: 'VNM' }, { country: 5 }, { city: 'x'.repeat(41) }, { city: '<b>' }, { city: 'a\nb' },
+      { whoCanDm: 'all' }, { whoCanChallenge: true }, { whoCanFriend: '' }, { hideOnline: 'yes' }]) {
+      expect((await put(bad)).status).toBe(400);
+    }
+    expect((await put({ city: 'x'.repeat(40), country: '' })).status).toBe(200);
+    expect((await put({ country: 'VN', city: ' Hà Nội ', whoCanDm: 'friends', whoCanChallenge: 'nobody', whoCanFriend: 'friends', hideOnline: true })).status).toBe(200);
+    expect(await prefs()).toMatchObject({ country: 'VN', city: 'Hà Nội', whoCanDm: 'friends', whoCanChallenge: 'nobody', whoCanFriend: 'friends', hideOnline: true });
+    const me = (await req('GET', '/api/profile/alice', { cookie: UID })).json;
+    expect(me.privacy).toMatchObject({ country: 'VN', whoCanDm: 'friends', hideOnline: true });
+    expect((await req('GET', '/api/profile/alice')).json.privacy).toBeUndefined();
+    expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.whoCanDm).toBe('everyone');
+  });
+
   it('PUT requires a member session', async () => {
     expect((await req('PUT', '/api/profile', { type: 'application/json', body: '{}' })).status).toBe(401);
     expect((await req('PUT', '/api/profile', { cookie: 'guest', type: 'application/json', body: '{}' })).status).toBe(403);

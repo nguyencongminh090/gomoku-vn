@@ -31,3 +31,7 @@ Mockup "Cài đặt — Hồ sơ & riêng tư" has no page: profile edits live i
 Server-side gates because REST/sockets are reachable without the UI; `hide_history`/`hide_bio` precedent (#177) = per-user columns on `users`. Knowledge: check `docs/knowledge/INDEX.md` privacy rows before slice 2.
 ## Done when
 - Per slice: backend tests (each gate allow/deny, enum validation) + jsdom + real-browser pass (sandbox DB :3100, `playwright-e2e-safety`); `?v=N` bumped; fix-log/DONE entries.
+## Slice 1 notes (2026-10-09, `feature/199-settings-privacy`)
+- Columns added by the inline `PRAGMA table_info` migration in `database.js` (the #177/#180 pattern), not a numbered SQL file. `country` is only format-checked (`^[A-Z]{2}$`); the ISO list lives in the client (slice 4).
+- `PUT /api/profile` + `GET /api/profile/prefs` + self-only `privacy` on `GET /api/profile/:username`; new codes `COUNTRY_INVALID`, `CITY_INVALID`, `AUDIENCE_INVALID`. Gates are stored but not enforced yet (slice 2).
+- Tests: `profile-route.test.js` (+1); full `npm test` 2298 green. Not tested: migration on a populated pre-existing DB.
