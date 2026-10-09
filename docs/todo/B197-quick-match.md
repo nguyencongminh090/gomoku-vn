@@ -1,5 +1,5 @@
 # B197 — R3: quick match queue (Ghép trận nhanh)
-**Status:** OPEN — implemented 2026-10-09 on `feature/197-quick-match` (uncommitted, stacked on fix/196); unit + jsdom + real-server pass (sandbox :3100) done; awaiting user review
+**Status:** ✅ DONE 2026-10-09 — merged to dev (774a4ea), unit + jsdom + real-server pass
 **Area:** server (MatchQueue + socket handler) + client (home screen panel)
 **From:** features/platform/planning.md § Release 2 (R3), decisions 2–3
 
