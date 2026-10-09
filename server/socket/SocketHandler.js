@@ -71,6 +71,11 @@ function init(io) {
     },
   });
 
+  // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
+  const DmService = require('../managers/DmService');
+  DmService.setHooks({ isOnline: (userId) => sessions.has(userId) });
+  PrivateChatHandler.setStore(DmService);
+
   // Live push for the bell (#198): one socket per user lives in `sessions`.
   require('../managers/NotificationService').setEmitter((userId, event, payload) => {
     const s = sessions.get(userId);

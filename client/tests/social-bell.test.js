@@ -185,6 +185,96 @@ describe('social page', () => {
     });
   });
 
+  describe('direct messages', () => {
+    const base = { 'GET /api/friends': () => json({ friends: [], incoming: [], outgoing: [] }), 'GET /api/challenges': () => json({ incoming: [], outgoing: [] }) };
+    const CONV = [{ with: P('bob'), last: { text: 'hi &lt;b&gt;', mine: false, at: '2026-10-09T00:00:00Z' }, unread: 2 }];
+    const THREAD = { with: P('bob'), hasMore: false, messages: [{ id: 1, mine: false, text: '&lt;b&gt;boo&lt;/b&gt; hi', at: '2026-10-09T00:00:00Z', read: false }] };
+
+    beforeEach(() => { window.EscapeUtils = require('../js/escape-utils.js'); location.hash = ''; });
+
+    it('lists conversations (decoded text, unread badge) and opens one: thread as text, marks read', async () => {
+      let convs = CONV;
+      const reads = [];
+      await bootPage({
+        ...base,
+        'GET /api/dm': () => json({ conversations: convs }),
+        'GET /api/dm/bob': () => json(THREAD),
+        'POST /api/dm/bob/read': () => { reads.push(1); convs = [{ ...CONV[0], unread: 0 }]; return json({ unread: 0 }); },
+      });
+      const row = document.querySelector('#dm-list .pdm__conv');
+      expect(row.textContent).toContain('hi <b>');
+      expect(row.querySelector('.pdm__unread').textContent).toBe('2');
+      row.click();
+      await tick();
+      expect(document.getElementById('dm-thread').hidden).toBe(false);
+      const msg = document.querySelector('#dm-log .pdm__msg');
+      expect(msg.textContent).toBe('<b>boo</b> hi');
+      expect(msg.querySelector('b')).toBeNull();
+      expect(reads).toHaveLength(1);
+      expect(document.querySelector('#dm-list .pdm__unread')).toBeNull();
+      expect(location.hash).toBe('#dm=bob');
+    });
+
+    it('#dm=<username> deep link (from the bell / profile button) opens that thread', async () => {
+      location.hash = '#dm=bob';
+      await bootPage({ ...base, 'GET /api/dm': () => json({ conversations: [] }), 'GET /api/dm/bob': () => json(THREAD), 'POST /api/dm/bob/read': () => json({ unread: 0 }) });
+      expect(document.getElementById('dm-with').textContent).toBe('BOB');
+      expect(document.getElementById('dm-with').getAttribute('href')).toBe('/u/bob');
+      expect(document.querySelectorAll('#dm-log .pdm__msg')).toHaveLength(1);
+    });
+
+    it('send posts the text, appends it as "mine" and clears the input; failure keeps the text and says so', async () => {
+      const sent = [];
+      let fail = false;
+      await bootPage({
+        ...base,
+        'GET /api/dm': () => json({ conversations: [] }),
+        'GET /api/dm/bob': () => json({ ...THREAD, messages: [] }),
+        'POST /api/dm/bob': (o) => { sent.push(JSON.parse(o.body)); return fail ? json({}, 429) : json({ id: 7, mine: true, text: 'yo', at: '2026-10-09T00:00:00Z', read: false }, 201); },
+      });
+      location.hash = '#dm=bob';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      await tick();
+      const input = document.getElementById('dm-input');
+      input.value = ' yo ';
+      document.getElementById('dm-form').dispatchEvent(new Event('submit', { cancelable: true }));
+      await tick();
+      expect(sent).toEqual([{ text: 'yo' }]);
+      expect(input.value).toBe('');
+      expect(document.querySelector('#dm-log .pdm__msg--mine').textContent).toBe('yo');
+      fail = true;
+      input.value = 'again';
+      document.getElementById('dm-form').dispatchEvent(new Event('submit', { cancelable: true }));
+      await tick();
+      expect(input.value).toBe('again');
+      expect(document.getElementById('dm-note').textContent).toBe('social.dm_slow');
+      expect(document.querySelectorAll('#dm-log .pdm__msg')).toHaveLength(1);
+    });
+
+    it('polling appends only newer messages; empty text is never sent', async () => {
+      let msgs = THREAD.messages;
+      const posts = [];
+      await bootPage({
+        ...base,
+        'GET /api/dm': () => json({ conversations: [] }),
+        'GET /api/dm/bob': () => json({ ...THREAD, messages: msgs }),
+        'POST /api/dm/bob/read': () => json({ unread: 0 }),
+        'POST /api/dm/bob': (o) => { posts.push(o); return json({}, 500); },
+      });
+      location.hash = '#dm=bob';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      await tick();
+      msgs = [...THREAD.messages, { id: 2, mine: true, text: 'later', at: '2026-10-09T00:00:01Z', read: false }];
+      jest.advanceTimersByTime(5000);
+      await tick();
+      expect([...document.querySelectorAll('#dm-log .pdm__msg')].map((m) => m.textContent)).toEqual(['<b>boo</b> hi', 'later']);
+      document.getElementById('dm-input').value = '   ';
+      document.getElementById('dm-form').dispatchEvent(new Event('submit', { cancelable: true }));
+      await tick();
+      expect(posts).toHaveLength(0);
+    });
+  });
+
   it('accept hits /accept then reloads the lists', async () => {
     let state = friends;
     await bootPage({

@@ -139,6 +139,11 @@ describe('profile page', () => {
       });
     });
 
+    it('Nhắn tin links to the DM thread on the social page', async () => {
+      await boot({ ...PROFILE, friendship: 'none' });
+      expect(document.querySelector('#pf-social a.pbtn').getAttribute('href')).toBe('/social.html#dm=alice');
+    });
+
     it('is hidden on your own profile', async () => {
       await boot({ ...PROFILE, isSelf: true, friendship: 'self' });
       expect(document.getElementById('pf-social').hidden).toBe(true);

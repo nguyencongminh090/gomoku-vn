@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#198.** R4: friends, challenges, notifications (bell), persisted DMs — 4 slices — [B198](docs/todo/B198-social-friends-challenges-dms.md)
 - ✅ **#196.** Dashboard clock label showed an increment for per_game (B195 regression) `[Model: Haiku 4.5]` — [detail](docs/todo/B196-dashboard-clock-label.md)
 - ✅ **#192.** Settings panel unstyled on rankings/profile/clubs/club (missing settings-panel.css, B190 regression) `[Model: Haiku 4.5]` — [detail](docs/todo/B192-settings-panel-unstyled-on-platform-pages.md)
 - ✅ **#190.** Arena phase 2: rating history (7-day change, profile chart), rankings search + club column, club rank, site nav links — [detail](docs/todo/B190-platform-pages-phase2-data.md)

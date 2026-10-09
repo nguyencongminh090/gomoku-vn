@@ -1,5 +1,5 @@
 # B198 — R4: friends, challenges, notifications (bell), persisted DMs
-**Status:** OPEN — slices 1–2 merged on dev; slice 3 (challenges via REST + PairRoom, accept → seated room) done 2026-10-09 on `feature/198-challenges`; slice 4 (DMs) pending.
+**Status:** ✅ DONE 2026-10-09 — all 4 slices on `dev` (friends, notifications/bell, challenges, persisted DMs); backend tests + jsdom + real-browser passes per slice (sandbox :3100).
 **Area:** server (schema + new migration, FriendHandler, ChallengeHandler, NotificationService, PrivateChatHandler persistence) + client (profile buttons, Social screen, bell in Arena header)
 **From:** features/platform/planning.md § Release 2 (R4); folds B191 item 1 (+ item 4 "CLB của tôi" is NOT in R4)   **Depends:** B197 (queue/room-create reuse), B159 (ephemeral DM)
 
@@ -28,3 +28,6 @@ Profile buttons Thách đấu / Kết bạn / Nhắn tin and the Social screen (
 ## Slice 3 notes (2026-10-09)
 - Challenges are REST (`/api/challenges`), not sockets: a second socket from the same user evicts the first (one live session per user), so profile/social pages must stay socket-less. Accept seats both by user id via `PairRoom.seatPair` (shared with B197); `room.html` rejoins on connect, live sockets get `room:joined` through `ChallengeService.setHooks`. A seated user who never connects is released after 90 s.
 - In-memory (2 min TTL, lost on restart → accept answers 404 CHALLENGE_GONE); the persisted part is the `challenge` / `challenge_accepted` notification.
+## Slice 4 notes (2026-10-09)
+- `direct_messages` (wire-form text, newest 500 per conversation kept), `DmService` + `/api/dm`; `DmText` = the shared sanitize/cap/profanity/rate-limit pipeline. `PrivateChatHandler` persists member↔member through an injected store (guests stay ephemeral); an offline recipient is no longer `RECIPIENT_OFFLINE` for members — one `dm` bell entry per sender.
+- The Social page polls (5 s) because it must stay socket-less (one live socket per user). Lobby floating windows are unchanged and do not preload history — follow-up if wanted. Privacy gates (who may DM/challenge) are R5.
