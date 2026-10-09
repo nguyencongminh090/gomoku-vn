@@ -901,6 +901,26 @@ function getRankings(category, limit, offset) {
   `).all(category, RANKING_MIN_GAMES, limit, offset);
 }
 
+/** Rankings restricted to `userIds` (friends + self); rank is within that set. */
+function getRankingsAmong(category, userIds, limit, offset) {
+  if (!userIds.length) return [];
+  const marks = userIds.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND r.user_id IN (${marks})
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, ...userIds, limit, offset);
+}
+
+function countRankingsAmong(category, userIds) {
+  if (!userIds.length) return 0;
+  const marks = userIds.map(() => '?').join(',');
+  return db.prepare(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${marks})`)
+    .get(category, RANKING_MIN_GAMES, ...userIds).n;
+}
+
 function getRankingCount(category) {
   return db.prepare('SELECT COUNT(*) AS count FROM ratings WHERE category = ? AND games >= ?')
     .get(category, RANKING_MIN_GAMES).count;
@@ -1081,6 +1101,8 @@ module.exports = {
   RANKING_MIN_GAMES,
   getRankings,
   getRankingCount,
+  getRankingsAmong,
+  countRankingsAmong,
   getUserRanking,
   getRatingDeltas7,
   getPrimaryClubs,

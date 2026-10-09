@@ -25,6 +25,7 @@
     category: CATEGORIES.includes(params.get('category')) ? params.get('category') : CATEGORIES[0],
     page: Math.max(1, parseInt(params.get('page'), 10) || 1),
     q: (params.get('q') || '').slice(0, 30),
+    scope: params.get('scope') === 'friends' ? 'friends' : 'all',
     mine: null,
   };
 
@@ -37,6 +38,20 @@
 
   function renderTabs() {
     tabsEl.replaceChildren();
+    if (state.mine && state.mine.userId) {
+      for (const sc of ['all', 'friends']) {
+        const b = el('button', t('rankings.scope_' + sc), 'pchip');
+        b.type = 'button';
+        b.setAttribute('aria-pressed', String(sc === state.scope));
+        b.addEventListener('click', () => {
+          if (sc === state.scope) return;
+          state.scope = sc;
+          state.page = 1;
+          load();
+        });
+        tabsEl.appendChild(b);
+      }
+    }
     for (const c of CATEGORIES) {
       const b = el('button', t('rankings.cat_' + c), 'pchip');
       b.type = 'button';
@@ -87,7 +102,8 @@
       bodyEl.appendChild(tr);
     }
     emptyEl.hidden = data.players.length > 0;
-    emptyEl.textContent = state.q ? t('rankings.no_match', { q: state.q }) : t('rankings.empty', { min: data.minGames });
+    emptyEl.textContent = state.q ? t('rankings.no_match', { q: state.q })
+      : state.scope === 'friends' ? t('rankings.friends_empty', { min: data.minGames }) : t('rankings.empty', { min: data.minGames });
     totalEl.textContent = t('rankings.total', { n: data.pagination.total });
     footEl.textContent = t('rankings.footnote', { min: data.minGames });
   }
@@ -107,9 +123,9 @@
 
   async function load() {
     renderTabs();
-    history.replaceState(null, '', '?category=' + state.category + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+    history.replaceState(null, '', '?category=' + state.category + (state.scope === 'friends' ? '&scope=friends' : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
     try {
-      const res = await fetch('/api/rankings?category=' + state.category + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+      const res = await fetch('/api/rankings?category=' + state.category + (state.scope === 'friends' ? '&scope=friends' : '') + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       renderRows(data);

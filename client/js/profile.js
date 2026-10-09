@@ -40,6 +40,7 @@
     if (p.bio) bio.textContent = p.bio;
     else bio.textContent = p.isSelf && p.privacy && p.privacy.hideBio ? t('profile.bio_hidden') : (p.bio === null ? '' : t('profile.no_bio'));
     $('pf-actions').hidden = !p.isSelf;
+    renderSocial(p);
 
     const stats = $('pf-stats');
     stats.replaceChildren();
@@ -109,6 +110,48 @@
     }
     $('pf-content').hidden = false;
     drawChart(p);
+  }
+
+  /** Friend button(s) on someone else's profile; state comes from p.friendship. */
+  function renderSocial(p) {
+    const box = $('pf-social');
+    box.replaceChildren();
+    box.hidden = p.isSelf;
+    if (p.isSelf) return;
+    const mk = (key, method, path, cls) => {
+      const b = el('button', t(key), 'pbtn' + (cls ? ' ' + cls : ''));
+      b.type = 'button';
+      b.addEventListener('click', () => friendAction(p, method, path, b));
+      return b;
+    };
+    const base = '/api/friends/' + encodeURIComponent(p.username);
+    switch (p.friendship) {
+      case 'friends':
+        box.append(el('span', t('friends.is_friend'), 'pnote'), mk('friends.remove', 'DELETE', base, 'pbtn--ghost'));
+        break;
+      case 'outgoing':
+        box.append(el('span', t('friends.sent'), 'pnote'), mk('friends.cancel', 'DELETE', base, 'pbtn--ghost'));
+        break;
+      case 'incoming':
+        box.append(mk('friends.accept', 'POST', base + '/accept', 'pbtn--primary'), mk('friends.decline', 'DELETE', base, 'pbtn--ghost'));
+        break;
+      default:
+        box.append(mk('friends.add', 'POST', base, 'pbtn--primary'));
+    }
+  }
+
+  async function friendAction(p, method, path, btn) {
+    btn.disabled = true;
+    try {
+      const res = await fetch(path, { method, credentials: 'same-origin' });
+      if (res.status === 401) { location.href = '/login.html'; return; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      p.friendship = (await res.json()).status;
+      renderSocial(p);
+    } catch (_) {
+      btn.disabled = false;
+      $('pf-status').textContent = t('friends.error');
+    }
   }
 
   const chart = { category: null, days: 90 };
