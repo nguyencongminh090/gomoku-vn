@@ -26,6 +26,7 @@ const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
 const rankingsRouter = require('./routes/rankings');
+const homeRouter = require('./routes/home');
 const profileRouter  = require('./routes/profile');
 const clubsRouter    = require('./routes/clubs');
 const tournamentGamesRouter = require('./routes/tournamentGames');
@@ -147,6 +148,7 @@ app.use(express.static(clientPath, staticOptions));
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
 app.use('/api/rankings', rankingsRouter);
+app.use('/api/home', homeRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/clubs', clubsRouter);
 
