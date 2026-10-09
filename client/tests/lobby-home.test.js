@@ -104,7 +104,7 @@ describe('screens ↔ hash ↔ shell nav', () => {
 describe('dashboard rendering', () => {
   const DATA = {
     myGame: { roomId: 'R1', roomName: 'x', state: 'playing', opponent: '<img src=x onerror=alert(1)>', myTurn: true,
-      winningRule: 'caro', timerMode: 'per_game', timerSeconds: 300, timerIncrementSeconds: 3 },
+      winningRule: 'caro', timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 },
     myMatches: [{ tournamentId: 't 1', tournamentName: 'Sat', pairingId: 'p', roundIndex: 2, opponent: 'Bob', state: 'Ready' }],
     tournaments: [
       { tournamentId: 't1', name: 'Sat', format: 'swiss', status: 'active', playerCount: 64, registered: true },
@@ -183,8 +183,13 @@ describe('dashboard rendering', () => {
 });
 
 describe('ruleLine()', () => {
+  // B196: only blitz carries an increment (TimerManager); per_game is a bare total.
   it.each([
-    [{ winningRule: 'caro', timerMode: 'per_game', timerSeconds: 600, timerIncrementSeconds: 0 }, 'rankings.cat_caro · 10+0'],
+    [{ winningRule: 'caro', timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 }, 'rankings.cat_caro · 5+3'],
+    [{ winningRule: 'caro', timerMode: 'blitz', timerSeconds: 600, timerIncrementSeconds: 0 }, 'rankings.cat_caro · 10+0'],
+    [{ winningRule: 'caro', timerMode: 'blitz', timerSeconds: 30, timerIncrementSeconds: 2 }, 'rankings.cat_caro · 30s+2'],
+    [{ winningRule: 'caro', timerMode: 'per_game', timerSeconds: 600, timerIncrementSeconds: 5 }, 'rankings.cat_caro · home.per_game{"m":10}'],
+    [{ winningRule: 'caro', timerMode: 'per_game', timerSeconds: 90 }, 'rankings.cat_caro · home.per_game_s{"s":90}'],
     [{ winningRule: 'standard', timerMode: 'per_move', timerSeconds: 20 }, 'rankings.cat_standard · home.per_move{"s":20}'],
     [{ winningRule: 'freestyle', timerMode: 'none' }, 'rankings.cat_freestyle'],
     [{}, ''],
