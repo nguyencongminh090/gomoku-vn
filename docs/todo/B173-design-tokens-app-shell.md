@@ -18,7 +18,7 @@ Pages share no design system; platform needs one look. Decided: default skin **C
 - Bump `?v=N` everywhere (rules/cache-busting.md); clock work → diagnostic-page-sync rule if room UI touches it.
 
 ## Why this way
-`docs/knowledge/ui-ux/` (ux-design-systems, fe-css-architecture); planning Q9 still open on skin persistence — resolve at pickup.
+`docs/knowledge/ui-ux/` (ux-design-systems, fe-css-architecture); planning Q9 resolved 2026-10-09: skin = colour+radius tokens only; cookie-first persistence (server sets `data-skin`/`data-mode`); default dark; single shared board, contrast-checked per skin.
 
 ## Done when
 - Lobby + room render in Arena dark and light; `node scripts/cache-bust.js` one value; `npm test` green; real-browser pass desktop + mobile.

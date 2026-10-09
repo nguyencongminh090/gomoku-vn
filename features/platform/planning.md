@@ -20,7 +20,7 @@ Source: [user_story](user_story.md).
 7. i18n now (VI/EN) or VI-only?
 8. SQLite OK at thousands (WAL, one writer) for rating history + leaderboards, or plan Postgres? Needs measurement.
 
-9. Multi-skin: one default skin vs equal skins? Skin = colour tokens only, or also layout/density? Persist in `users.ui_skin` + cookie for guests? Board/stone look per skin? CSP-safe no-flash apply (see `features/full-csp-zero-latency`)?
+9. ~~Multi-skin~~ **Resolved 2026-10-09:** skin = colour + radius tokens only (no density/layout change); persist cookie first (server emits `data-skin`/`data-mode` in HTML, no flash, CSP-safe), `users.ui_skin` synced later in #177; default mode dark; one shared board for all skins (contrast-checked per skin, board/stone rules untouched).
 
 ## Sequencing (each step = own todo, model per CLAUDE.md)
 1. **B172 design brief + UI demo** (shell, profile, rankings, club) → user review. ← only step actionable now.
