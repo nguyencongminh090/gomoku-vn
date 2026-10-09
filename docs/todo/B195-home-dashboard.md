@@ -1,5 +1,5 @@
 # B195 — R2: "Chơi" home dashboard + "Phòng" screen (existing data only)
-**Status:** OPEN — implemented 2026-10-09 on `feature/195-home-dashboard` (uncommitted); jsdom + backend tests + real-server pass (sandbox :3100) done; awaiting user review
+**Status:** ✅ DONE 2026-10-09 — merged to dev (4fac51f), jsdom + backend + real-server pass
 **Area:** server (1 read route) + client (index.html screens)
 **From:** features/platform/planning.md § Release 2 (R2); "Phòng" nav deferred from R1 (decision 5)
 

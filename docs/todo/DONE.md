@@ -3,6 +3,9 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#193.** R1: Arena shell on lobby/history/tournament (one header site-wide) `[Model: Sonnet 5.5]` — [detail](docs/todo/B193-arena-shell-lobby-history-tournament.md)
+- ✅ **#195.** R2: Chơi home dashboard (my game, today, live boards) + Phòng screen `[Model: Sonnet 5.5]` — [detail](docs/todo/B195-home-dashboard.md)
+- ✅ **#197.** R3: quick match queue (rule × time × rated) on the Chơi dashboard `[Model: Sonnet 5.5]` — [detail](docs/todo/B197-quick-match.md)
 - ✅ **#198.** R4: friends, challenges, notifications (bell), persisted DMs — 4 slices — [B198](docs/todo/B198-social-friends-challenges-dms.md)
 - ✅ **#196.** Dashboard clock label showed an increment for per_game (B195 regression) `[Model: Haiku 4.5]` — [detail](docs/todo/B196-dashboard-clock-label.md)
 - ✅ **#192.** Settings panel unstyled on rankings/profile/clubs/club (missing settings-panel.css, B190 regression) `[Model: Haiku 4.5]` — [detail](docs/todo/B192-settings-panel-unstyled-on-platform-pages.md)

@@ -1,5 +1,5 @@
 # B193 — R1: Arena shell on lobby, history, tournament detail
-**Status:** OPEN — merged to dev 2026-10-09; real-server pass done with B195 (sandbox :3100); awaiting user sign-off
+**Status:** ✅ DONE 2026-10-09 — merged to dev (a28cced), real-server pass with B195
 **Area:** client (html/css/js) — no server
 **From:** features/platform/planning.md § Release 2 (R1) + user report 2026-10-09 "tab index không đồng nhất UI"
 
