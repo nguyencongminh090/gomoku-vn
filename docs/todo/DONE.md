@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#172.** Platform: design brief + UI demo mockups — Arena (dark/light) chosen as default skin, A/D optional — [detail](docs/todo/B172-platform-design-brief-ui-demo.md)
 - ✅ **#1.** TLS/HTTPS trước app (review 3.0) — Nghiêm trọng nếu đang chạy HTTP trần — [A01](docs/todo/A01-tls-https-truoc-app-review-3-0-nghiem-trong-neu-dang-chay.md)
 - ✅ **#7.** Đo lại bằng harness đa tiến trình (hoặc máy thứ 2) — [A07](docs/todo/A07-do-lai-bang-harness-da-tien-trinh-hoac-may-thu-2.md)
 - ✅ **#10.** Hành vi thật của `cloudflared` với `X-Forwarded-For` do client tự gửi — [A10](docs/todo/A10-hanh-vi-that-cua-cloudflared-voi-x-forwarded-for-do-client.md)

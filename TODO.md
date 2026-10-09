@@ -82,3 +82,9 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
+- **#173.** Platform: design tokens (skin-swappable, Arena dark/light default) + shared app shell `[Model: Sonnet 5]` — [detail](docs/todo/B173-design-tokens-app-shell.md)
+- **#174.** Platform: storage/scale decision for thousands of users `[Model: Opus 5]` — [detail](docs/todo/B174-storage-scale-decision.md)
+- **#175.** Platform: Glicko-2 rating engine + game→rating hook (blocked on #174) `[Model: Opus 5]` — [detail](docs/todo/B175-rating-engine.md)
+- **#176.** Platform: rankings/leaderboard page (blocked on #173,#175) `[Model: Sonnet 5]` — [detail](docs/todo/B176-rankings-page.md)
+- **#177.** Platform: profile page + avatar upload (blocked on #173,#174) `[Model: Sonnet 5]` — [detail](docs/todo/B177-profile-avatar.md)
+- **#178.** Platform: clubs (blocked on #173,#175) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
