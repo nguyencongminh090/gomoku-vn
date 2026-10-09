@@ -80,6 +80,5 @@ in the detail file / fix-log).
 - **#178.** Platform: clubs (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
 
 - **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
-- **#186.** Room of only disconnected viewers is never destroyed (lingers in lobby + holds IP quota until 10-min idle sweep) `[Model: Sonnet 5]` — [detail](docs/todo/B186-room-of-disconnected-viewers-never-destroyed.md)
 - **#187.** e2e room-lifecycle: two host badges after the host leaves (1 in 5 full runs) `[Model: Sonnet 5]` — [detail](docs/todo/B187-room-lifecycle-two-host-badges.md)
 - **#188.** Remove the Playwright scaffold `tests/example.spec.ts` (hits playwright.dev) `[Model: Haiku 5]` — [detail](docs/todo/B188-remove-playwright-scaffold-example-spec.md)
