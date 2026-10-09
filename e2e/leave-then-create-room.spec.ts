@@ -1,4 +1,6 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
+import { waitForEmptyLobby } from './helpers/lobby';
 
 /**
  * Repro + regression test for a reported bug: "Start -> play -> Leave ->
@@ -44,18 +46,13 @@ import { test, expect, Page } from '@playwright/test';
 
 test.describe('leave then create room — per-IP room quota', () => {
   test('repeatedly leaving a room the guest stays in exhausts the per-IP create quota', async ({ browser }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
+    await waitForEmptyLobby(browser); // quota must be free: see helpers/lobby.ts
 
     async function makeGuest(actor: string) {
       const ctx = await browser.newContext();
       const page = await ctx.newPage();
-      const res = await page.request.post('/api/auth/guest');
-      expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-      const { token, displayName } = await res.json();
-      await ctx.addInitScript(([t, d]) => {
-        localStorage.setItem('gvn_token', t as string);
-        localStorage.setItem('gvn_display_name', d as string);
-      }, [token, displayName]);
+      const { displayName } = await authAsGuest(ctx, page);
       return { ctx, page, actor, displayName };
     }
 
@@ -107,7 +104,7 @@ test.describe('leave then create room — per-IP room quota', () => {
     await host.page.goto('/index.html');
     await expect(host.page.locator('#btn-create')).toBeVisible();
     await host.page.waitForTimeout(1500); // let lobby:subscribe's snapshot land
-    const preCreateCards = await host.page.locator('.room-card').allTextContents();
+    const preCreateCards = await host.page.locator('.room-row').allTextContents();
     console.log(`[before cycle 4 create] lobby shows ${preCreateCards.length} room card(s): ${JSON.stringify(preCreateCards)}`);
     await host.page.click('#btn-create');
     await host.page.click('#btn-quick-match');
@@ -142,7 +139,7 @@ test.describe('leave then create room — per-IP room quota', () => {
     // still connected) should be visible.
     await host.page.waitForTimeout(2000); // let lobby:subscribe's snapshot land
     const roomListHtml = await host.page.locator('#room-list').innerHTML();
-    const roomCardCount = await host.page.locator('.room-card').count();
+    const roomCardCount = await host.page.locator('.room-row').count();
     console.log(`[lobby after bounce] room cards visible: ${roomCardCount}`);
     console.log(`[lobby after bounce] #room-list innerHTML snippet: ${roomListHtml.slice(0, 500)}`);
 

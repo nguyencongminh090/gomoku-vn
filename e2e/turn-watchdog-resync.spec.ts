@@ -1,4 +1,4 @@
-import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { test, expect, Page, BrowserContext } from './helpers/fixtures';
 
 /**
  * TODO.md #154 — the two-player deadlock #152's gap check could not break.

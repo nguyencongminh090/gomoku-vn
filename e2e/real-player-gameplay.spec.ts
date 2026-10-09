@@ -1,6 +1,7 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
 import fs from 'fs';
 import path from 'path';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * Full end-to-end simulation of two real players using the product through
@@ -74,19 +75,14 @@ test.describe('real-player gameplay simulation', () => {
       const page = await ctx.newPage();
       wireDiagnostics(page, actor);
 
-      const res = await page.request.post('/api/auth/guest');
-      expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-      const { token, displayName } = await res.json();
-
-      await ctx.addInitScript(([t, d]) => {
-        localStorage.setItem('gvn_token', t as string);
-        localStorage.setItem('gvn_display_name', d as string);
+      const { displayName } = await authAsGuest(ctx, page, actor);
+      await ctx.addInitScript(() => {
         // Single-tap placement — the default double-tap-confirm mode exists to
         // protect against fat-finger mis-clicks on touch devices; a scripted
         // click is precise, so this just removes an unnecessary extra click
         // per move without touching any server-side behavior.
         localStorage.setItem('gomoku_click_mode', 'single');
-      }, [token, displayName]);
+      });
 
       record(actor, 'guest_auth_ok', { displayName });
       return { ctx, page, actor, displayName };

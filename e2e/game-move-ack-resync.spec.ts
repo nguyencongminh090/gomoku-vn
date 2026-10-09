@@ -1,4 +1,4 @@
-import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { test, expect, Page, BrowserContext } from './helpers/fixtures';
 
 /**
  * TODO.md #152 — `game:move` recovers from a silently dropped packet.

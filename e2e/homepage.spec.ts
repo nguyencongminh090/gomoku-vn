@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
 
 /**
  * Smoke test: an anonymous visitor hitting the site root.

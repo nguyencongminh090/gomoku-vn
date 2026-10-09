@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#183.** e2e suite: replace stale legacy-token auth helpers, document localhost run recipe `[Model: Sonnet 5]` — [detail](docs/todo/B183-e2e-suite-auth-and-env.md)
 - ✅ **#182.** Room: Ranked toggle in settings + show `rating:update` deltas after a game `[Model: Sonnet 5]` — [detail](docs/todo/B182-ranked-toggle-rating-ui.md)
 - ✅ **#175.** Platform: Glicko-2 rating engine + game→rating hook `[Model: Opus 5]` — [detail](docs/todo/B175-rating-engine.md)
 - ✅ **#174.** Platform: storage/scale decision for thousands of users `[Model: Opus 5]` — [detail](docs/todo/B174-storage-scale-decision.md)

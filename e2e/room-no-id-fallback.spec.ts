@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * Regression test for TODO.md #40 / instruction.md §40: pasting/typing a bare
@@ -18,13 +19,7 @@ test.describe('room.html with no ?id= and no room intent', () => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
-    const res = await page.request.post('/api/auth/guest');
-    expect(res.ok()).toBeTruthy();
-    const { token, displayName } = await res.json();
-    await ctx.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [token, displayName]);
+    const { displayName } = await authAsGuest(ctx, page);
 
     // Bare room.html, no query string, no sessionStorage intent (fresh page).
     await page.goto('/room.html');
@@ -39,12 +34,7 @@ test.describe('room.html with no ?id= and no room intent', () => {
     // must keep working exactly as before.
     const hostCtx = await browser.newContext();
     const hostPage = await hostCtx.newPage();
-    const hostRes = await hostPage.request.post('/api/auth/guest');
-    const hostAuth = await hostRes.json();
-    await hostCtx.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [hostAuth.token, hostAuth.displayName]);
+    await authAsGuest(hostCtx, hostPage, 'host');
 
     await hostPage.goto('/index.html');
     await hostPage.click('#btn-create');
@@ -63,12 +53,7 @@ test.describe('room.html with no ?id= and no room intent', () => {
 
     const guestCtx = await browser.newContext();
     const guestPage = await guestCtx.newPage();
-    const guestRes = await guestPage.request.post('/api/auth/guest');
-    const guestAuth = await guestRes.json();
-    await guestCtx.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [guestAuth.token, guestAuth.displayName]);
+    await authAsGuest(guestCtx, guestPage, 'guest');
 
     await guestPage.goto(`/room.html?id=${encodeURIComponent(roomId)}`);
     await expect(guestPage.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });

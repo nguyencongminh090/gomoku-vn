@@ -1,4 +1,4 @@
-import { test, expect, Page, Browser } from '@playwright/test';
+import { test, expect, Page, Browser } from './helpers/fixtures';
 
 /**
  * TODO.md #137 — `#start-modal` is anchored to `.board-area-shell`

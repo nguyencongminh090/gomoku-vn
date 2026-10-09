@@ -1,5 +1,5 @@
 # B183 — e2e suite: stale auth helpers + localhost env
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-09 — suite went 6 passed/40 failed -> 50-52 passed of 56; remaining: 2 `fixme` (#184), 3 flaky (#185)
 **Area:** e2e/*.spec.ts (31 files), playwright.config.ts, e2e/TEST-MATRIX.md
 **From:** #182 verification run, 2026-10-09   **Depends:** —
 
@@ -30,3 +30,11 @@
 
 ## Done when
 - `npm run test:e2e` is green (or each skip documented) on a fresh DB with the recipe above.
+
+## Result
+- `e2e/helpers/auth.ts`: `authAsGuest` / `authAsMember` / `seedSession` / `singleTapPlacement` (cookie session + `gvn_user`); 22 specs migrated. Raw-socket probe in security-boundary now sends the session cookie.
+- `e2e/helpers/fixtures.ts`: drop-in `test` whose contexts `room:leave` before closing, so finished specs stop eating the per-IP room quota (Playwright closes browser-made contexts before fixture teardown, so it hooks `ctx.close()`); `dropConnection()` opts out for kick-blocked-interrupted. `e2e/helpers/lobby.ts`: `waitForEmptyLobby()` for the two quota-sensitive specs.
+- Stale specs fixed: `.room-card` -> `.room-row`; lobby-patch seeds 3 rooms (cap is 3).
+- `playwright.config.ts`: workers 1, non-opening HTML report, `PW_CHROMIUM_PATH` escape hatch. `e2e/README.md`: run recipe.
+- Trap hit while migrating: my first regex dropped `gomoku_click_mode=single` from 4 specs (clicks then need a confirm tap) — restored via `singleTap` option.
+- Still open: #184 (topnav-minimal-mobile, 2 cases `fixme`), #185 (3 flaky). Not measured: whether the suite passed before #68 (no baseline run).
