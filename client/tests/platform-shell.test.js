@@ -59,6 +59,18 @@ describe('platform shell', () => {
     expect(window.setColorMode).toHaveBeenCalledWith('light');
   });
 
+  it('adds a Settings gear only when the settings panel is loaded; it opens it', () => {
+    boot(null);
+    expect(document.querySelectorAll('.pnav__mode')).toHaveLength(1);
+    window.openSettingsPanel = jest.fn();
+    window.PlatformShell.build('clubs');
+    const buttons = document.querySelectorAll('.pnav__mode');
+    expect(buttons).toHaveLength(2);
+    buttons[1].click();
+    expect(window.openSettingsPanel).toHaveBeenCalled();
+    delete window.openSettingsPanel;
+  });
+
   it('avatar(): image when present, initials otherwise', () => {
     boot(null);
     expect(window.PlatformShell.avatar(null, 'minh', 'pav--xl').textContent).toBe('MI');

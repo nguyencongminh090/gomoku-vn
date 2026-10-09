@@ -116,3 +116,49 @@ describe('GET /api/rankings/me', () => {
     expect(g.ratings).toEqual({});
   });
 });
+
+describe('phase 2 (#190): search, 7-day change, club column', () => {
+  const hist = (uid, cat, before, after, daysAgo) => database.db.prepare(
+    `INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at)
+     VALUES (?, ?, 'g', 'x', 1, ?, ?, 80, 80, ?)`
+  ).run(uid, cat, before, after, new Date(Date.now() - daysAgo * 86400000).toISOString());
+
+  beforeAll(() => {
+    hist('u2', 'freestyle', 1780, 1800, 1);   // counts
+    hist('u2', 'freestyle', 1800, 1790, 3);   // counts → net +10
+    hist('u2', 'freestyle', 1500, 1780, 10);  // outside 7 days
+    hist('u1', 'freestyle', 1710, 1700, 2);   // -10
+    database.db.prepare("INSERT INTO clubs (id, slug, name, description, join_policy, owner_id, created_at) VALUES ('c1', 'k1', 'K One', '', 'open', 'u1', ?)").run(NOW);
+    database.db.prepare("INSERT INTO club_members VALUES ('c1', 'u1', 'owner', ?)").run(NOW);
+    database.db.prepare("INSERT INTO club_members VALUES ('c1', 'u3', 'pending', ?)").run(NOW);
+  });
+
+  it('rows carry the net 7-day change and the first confirmed club', async () => {
+    const { body } = await get('/api/rankings?category=freestyle');
+    const by = Object.fromEntries(body.players.map((p) => [p.username, p]));
+    expect(by.u2.delta7).toBe(10);
+    expect(by.u1.delta7).toBe(-10);
+    expect(by.u3.delta7).toBe(0);
+    expect(by.u1.club).toEqual({ slug: 'k1', name: 'K One' });
+    expect(by.u3.club).toBeNull(); // pending request is not membership
+  });
+
+  it('search matches username or display name, keeps the true rank, counts only matches', async () => {
+    const r = (await get('/api/rankings?category=freestyle&q=ali')).body;
+    expect(r.players.map((p) => [p.rank, p.displayName])).toEqual([[2, 'Alice']]);
+    expect(r.pagination.total).toBe(1);
+    expect((await get('/api/rankings?category=freestyle&q=U3')).body.players.map((p) => p.username)).toEqual(['u3']);
+  });
+
+  it('search hides players under the games threshold and escapes LIKE wildcards', async () => {
+    expect((await get('/api/rankings?category=freestyle&q=dan')).body.players).toEqual([]);
+    expect((await get('/api/rankings?category=freestyle&q=%25')).body.players).toEqual([]);
+    expect((await get('/api/rankings?category=freestyle&q=_')).body.players).toEqual([]);
+  });
+
+  it('search results are cached per query, not shared with the plain list', async () => {
+    const plain = (await get('/api/rankings?category=freestyle')).body.players.length;
+    const searched = (await get('/api/rankings?category=freestyle&q=bob')).body.players.length;
+    expect([plain, searched]).toEqual([3, 1]);
+  });
+});

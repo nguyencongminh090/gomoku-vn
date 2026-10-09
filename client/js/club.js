@@ -68,7 +68,7 @@
 
     const stats = $('cb-stats');
     stats.replaceChildren();
-    for (const [label, v] of [['clubs.members_stat', String(c.members)], ['clubs.avg_stat', c.avgRating ? String(c.avgRating) : '—']]) {
+    for (const [label, v] of [['clubs.members_stat', String(c.members)], ['clubs.avg_stat', c.avgRating ? String(c.avgRating) : '—'], ['clubs.rank_stat', c.rank ? '#' + c.rank : '—']]) {
       const d = document.createElement('div');
       d.append(el('dt', t(label)), el('dd', v));
       stats.appendChild(d);

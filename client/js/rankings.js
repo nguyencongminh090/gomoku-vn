@@ -24,6 +24,7 @@
   const state = {
     category: CATEGORIES.includes(params.get('category')) ? params.get('category') : CATEGORIES[0],
     page: Math.max(1, parseInt(params.get('page'), 10) || 1),
+    q: (params.get('q') || '').slice(0, 30),
     mine: null,
   };
 
@@ -73,11 +74,20 @@
       name.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm'), link);
       const rating = el('td', String(p.rating), 'num');
       if (p.provisional) rating.appendChild(el('span', '?', 'ptbl__prov'));
-      tr.append(el('td', String(p.rank)), name, rating, el('td', String(p.games), 'num'));
+      const delta = el('td', p.delta7 > 0 ? '+' + p.delta7 : String(p.delta7), 'num' + (p.delta7 > 0 ? ' up' : p.delta7 < 0 ? ' dn' : ''));
+      const club = document.createElement('td');
+      if (p.club) {
+        const ca = el('a', p.club.name);
+        ca.href = '/c/' + encodeURIComponent(p.club.slug);
+        club.appendChild(ca);
+      } else {
+        club.textContent = '—';
+      }
+      tr.append(el('td', String(p.rank)), name, rating, delta, club, el('td', String(p.games), 'num'));
       bodyEl.appendChild(tr);
     }
     emptyEl.hidden = data.players.length > 0;
-    emptyEl.textContent = t('rankings.empty', { min: data.minGames });
+    emptyEl.textContent = state.q ? t('rankings.no_match', { q: state.q }) : t('rankings.empty', { min: data.minGames });
     totalEl.textContent = t('rankings.total', { n: data.pagination.total });
     footEl.textContent = t('rankings.footnote', { min: data.minGames });
   }
@@ -97,9 +107,9 @@
 
   async function load() {
     renderTabs();
-    history.replaceState(null, '', '?category=' + state.category + (state.page > 1 ? '&page=' + state.page : ''));
+    history.replaceState(null, '', '?category=' + state.category + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
     try {
-      const res = await fetch('/api/rankings?category=' + state.category + '&page=' + state.page);
+      const res = await fetch('/api/rankings?category=' + state.category + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       renderRows(data);
@@ -113,6 +123,13 @@
 
   async function init() {
     window.PlatformShell.build('rankings');
+    const qEl = document.getElementById('rk-q');
+    qEl.value = state.q;
+    let timer;
+    qEl.addEventListener('input', () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { state.q = qEl.value.trim().slice(0, 30); state.page = 1; load(); }, 250);
+    });
     try {
       const res = await fetch('/api/rankings/me', { credentials: 'same-origin' });
       if (res.ok) state.mine = await res.json();

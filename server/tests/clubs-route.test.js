@@ -217,3 +217,29 @@ describe('reads', () => {
     expect((await call('GET', '/api/clubs/rated-club')).status).toBe(404);
   });
 });
+
+describe('club rank (#190)', () => {
+  const rate = (user, rating, games) => db.prepare("INSERT OR REPLACE INTO ratings (user_id, category, rating, rd, volatility, games, updated_at) VALUES (?, 'caro', ?, 80, 0.06, ?, ?)").run(U[user], rating, games, NOW);
+
+  it('ranks clubs by average rating of ranked members; unranked clubs have no rank', async () => {
+    addUser('r1'); addUser('r2'); addUser('r3');
+    await create('r1', 'Rank Alpha');
+    await create('r2', 'Rank Beta');
+    await create('r3', 'Rank Gamma');
+    rate('r1', 1600, 30);
+    rate('r2', 1800, 30);
+    rate('r3', 2500, 3); // under the threshold → Gamma has no ranked member
+
+    const beta = (await call('GET', '/api/clubs/rank-beta?category=caro')).body;
+    const alpha = (await call('GET', '/api/clubs/rank-alpha?category=caro')).body;
+    const gamma = (await call('GET', '/api/clubs/rank-gamma?category=caro')).body;
+    expect([beta.rank, alpha.rank, gamma.rank]).toEqual([1, 2, null]);
+
+    const list = (await call('GET', '/api/clubs?q=rank&category=caro')).body.clubs;
+    expect(Object.fromEntries(list.map((c) => [c.slug, c.rank]))).toEqual({ 'rank-alpha': 2, 'rank-beta': 1, 'rank-gamma': null });
+  });
+
+  it('rank is per category', async () => {
+    expect((await call('GET', '/api/clubs/rank-beta?category=freestyle')).body.rank).toBeNull();
+  });
+});

@@ -31,8 +31,9 @@
     const meta = t('clubs.members', { n: c.members }) + (c.avgRating ? ' · ' + t('clubs.avg', { n: c.avgRating }) : '') +
       (c.description ? ' · ' + c.description : '');
     body.append(el('div', meta, 'prow__m'));
-    a.append(window.PlatformShell.avatar(null, c.name, 'pav--sm pav--sq'), body,
-      el('span', t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short'), 'pbadge'));
+    a.append(window.PlatformShell.avatar(null, c.name, 'pav--sm pav--sq'), body);
+    if (c.rank) a.append(el('span', t('clubs.rank_badge', { n: c.rank }), 'pbadge'));
+    a.append(el('span', t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short'), 'pbadge'));
     return a;
   }
 

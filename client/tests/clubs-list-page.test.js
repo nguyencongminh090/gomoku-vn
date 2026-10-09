@@ -23,7 +23,7 @@ describe('clubs list page', () => {
     window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
     global.fetch = jest.fn((url) => (url.includes('/mine')
       ? Promise.resolve({ ok: false, status: 401 })
-      : ok({ clubs: [{ slug: 'a-b', name: '<b>X</b>', description: '', joinPolicy: 'open', members: 3, avgRating: null }], pagination: { page: 1, totalPages: 1 } })));
+      : ok({ clubs: [{ slug: 'a-b', name: '<b>X</b>', description: '', joinPolicy: 'open', members: 3, avgRating: null, rank: 2 }], pagination: { page: 1, totalPages: 1 } })));
   require('../js/platform-shell.js');
     require('../js/clubs.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
@@ -31,6 +31,7 @@ describe('clubs list page', () => {
     const a = document.querySelector('#cl-list .prow .prow__t');
     expect(a.textContent).toBe('<b>X</b>');
     expect(a.closest('a').getAttribute('href')).toBe('/c/a-b');
+    expect(document.querySelector('#cl-list .pbadge').textContent).toBe('clubs.rank_badge{"n":2}');
     expect(document.getElementById('cl-create-panel').hidden).toBe(true);
     expect(document.getElementById('cl-create-toggle').hidden).toBe(true);
     expect(document.querySelectorAll('#cl-tabs .ptab')).toHaveLength(1);

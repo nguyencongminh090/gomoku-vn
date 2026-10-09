@@ -147,3 +147,11 @@ body .modal__actions .btn, body .modal__quick, body .gset-btn,
 body .state-badge, body .rule-chip, body .lobby__count, body .toast,
 body .pill-group, body .pill-group label,
 body .gset-segment, body .gset-segment__opt { border-radius: var(--radius); }
+
+/* ── Site links in the top bar (lobby, history) — same row as the platform pages' .pnav__links (#190).
+   The room keeps its bare bar on purpose: leaving mid-game by a stray click is not a navigation to offer. */
+.topnav__links { display: flex; gap: 4px; flex: 1; margin-left: 20px; }
+.topnav__links a { padding: 8px 12px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; color: var(--c-ink-3); text-decoration: none; }
+.topnav__links a:hover { color: var(--c-ink); }
+.topnav__links a.is-active { background: var(--c-fill); color: var(--c-strong); font-weight: 700; }
+@media (max-width: 860px) { .topnav__links { display: none; } }

@@ -211,3 +211,54 @@ describe('ui skin preference', () => {
     expect((await req('GET', '/api/profile/prefs', { cookie: 'guest' })).status).toBe(403);
   });
 });
+
+describe('rating history (#190)', () => {
+  const hist = (uid, cat, before, after, daysAgo) => database.db.prepare(
+    `INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at)
+     VALUES (?, ?, 'g', 'x', 1, ?, ?, 80, 80, ?)`
+  ).run(uid, cat, before, after, new Date(Date.now() - daysAgo * 86400000).toISOString());
+
+  beforeAll(() => {
+    database.db.prepare("INSERT INTO ratings (user_id, category, rating, rd, volatility, games, updated_at) VALUES (?, 'caro', 1620, 80, 0.06, 25, ?)").run(OTHER, NOW);
+    hist(OTHER, 'caro', 1500, 1530, 40);   // in 90 days, outside 7
+    hist(OTHER, 'caro', 1530, 1600, 5);    // +70 this week
+    hist(OTHER, 'caro', 1600, 1620, 1);    // +20 → +90
+    hist(OTHER, 'caro', 1400, 1700, 200);  // peak outside the window, still all-time
+  });
+
+  it('profile ratings carry the weekly change', async () => {
+    const r = (await req('GET', '/api/profile/bob')).json.ratings.find((x) => x.category === 'caro');
+    expect(r.delta7).toBe(90);
+  });
+
+  it('returns the curve oldest-first starting from the pre-game rating, plus all-time peak', async () => {
+    const r = (await req('GET', '/api/profile/bob/rating-history?category=caro&days=90')).json;
+    expect(r.points.map((p) => p.rating)).toEqual([1500, 1530, 1600, 1620]);
+    expect(r.peak).toBe(1700);
+    expect(r.hidden).toBe(false);
+  });
+
+  it('days is clamped and unknown category falls back; empty history is an empty curve', async () => {
+    expect((await req('GET', '/api/profile/bob/rating-history?category=nope&days=99999')).json.days).toBe(365);
+    const none = (await req('GET', '/api/profile/alice/rating-history?category=caro')).json;
+    expect(none.points).toEqual([]);
+    expect((await req('GET', '/api/profile/nobody/rating-history')).status).toBe(404);
+  });
+
+  it('thins long histories to at most 120 points', async () => {
+    const ins = database.db.prepare(`INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at) VALUES (?, 'freestyle', 'g', 'x', 1, 1500, 1501, 80, 80, ?)`);
+    database.db.transaction(() => { for (let i = 0; i < 400; i++) ins.run(OTHER, new Date(Date.now() - 3600000).toISOString()); })();
+    expect((await req('GET', '/api/profile/bob/rating-history?category=freestyle')).json.points.length).toBe(120);
+  });
+
+  it('hide_history withholds both the curve and weekly change from others, not from the owner', async () => {
+    database.db.prepare('UPDATE users SET hide_history = 1 WHERE id = ?').run(OTHER);
+    const pub = (await req('GET', '/api/profile/bob/rating-history?category=caro')).json;
+    expect(pub).toMatchObject({ hidden: true, points: [], peak: null });
+    expect((await req('GET', '/api/profile/bob')).json.ratings.find((x) => x.category === 'caro').delta7).toBeNull();
+    const own = (await req('GET', '/api/profile/bob/rating-history?category=caro', { cookie: OTHER })).json;
+    expect(own.hidden).toBe(false);
+    expect(own.points.length).toBeGreaterThan(0);
+    database.db.prepare('UPDATE users SET hide_history = 0 WHERE id = ?').run(OTHER);
+  });
+});

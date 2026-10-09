@@ -978,6 +978,81 @@ function getUserRecentGames(userId, limit) {
   `).all({ id: userId, limit });
 }
 
+// ---------------------------------------------------------------------------
+// Rankings phase 2 (#190): 7-day change, name search, primary club, rating series
+// ---------------------------------------------------------------------------
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Net rating change over the last 7 days per user (users with no games are absent). @returns {Map<string, number>} */
+function getRatingDeltas7(category, userIds) {
+  const out = new Map();
+  if (!userIds.length) return out;
+  const since = new Date(Date.now() - 7 * DAY_MS).toISOString();
+  const rows = db.prepare(`
+    SELECT user_id, SUM(rating_after - rating_before) AS d FROM rating_history
+    WHERE category = ? AND created_at >= ? AND user_id IN (${userIds.map(() => '?').join(',')})
+    GROUP BY user_id`).all(category, since, ...userIds);
+  for (const r of rows) out.set(r.user_id, r.d);
+  return out;
+}
+
+/** Each user's earliest-joined confirmed club. @returns {Map<string, {slug:string, name:string}>} */
+function getPrimaryClubs(userIds) {
+  const out = new Map();
+  if (!userIds.length) return out;
+  const rows = db.prepare(`
+    SELECT m.user_id, c.slug, c.name FROM club_members m JOIN clubs c ON c.id = m.club_id
+    WHERE m.role != 'pending' AND m.user_id IN (${userIds.map(() => '?').join(',')})
+    ORDER BY m.joined_at, c.slug`).all(...userIds);
+  for (const r of rows) if (!out.has(r.user_id)) out.set(r.user_id, { slug: r.slug, name: r.name });
+  return out;
+}
+
+const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
+
+/**
+ * Leaderboard rows whose username or display name contains q — each keeps its
+ * TRUE global rank (window function), so searching doesn't renumber players.
+ */
+function searchRankings(category, q, limit, offset) {
+  return db.prepare(`
+    SELECT * FROM (
+      SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games,
+             ROW_NUMBER() OVER (ORDER BY r.rating DESC, r.user_id) AS rank
+      FROM ratings r JOIN users u ON u.id = r.user_id
+      WHERE r.category = ? AND r.games >= ?
+    ) WHERE username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\'
+    ORDER BY rank LIMIT ? OFFSET ?`)
+    .all(category, RANKING_MIN_GAMES, likeEscape(q), likeEscape(q), limit, offset);
+}
+
+function countSearchRankings(category, q) {
+  return db.prepare(`
+    SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND (u.username LIKE ? ESCAPE '\\' OR u.display_name LIKE ? ESCAPE '\\')`)
+    .get(category, RANKING_MIN_GAMES, likeEscape(q), likeEscape(q)).n;
+}
+
+/**
+ * A user's rating after each game over the last `days` days, oldest first,
+ * thinned to ≤ maxPoints, plus the all-time peak. The first point is the rating
+ * *before* the first game in the window so a one-game history still draws a line.
+ */
+function getRatingSeries(userId, category, days, maxPoints = 120) {
+  const since = new Date(Date.now() - days * DAY_MS).toISOString();
+  const rows = db.prepare(`
+    SELECT created_at AS t, rating_before AS b, rating_after AS a FROM rating_history
+    WHERE user_id = ? AND category = ? AND created_at >= ? ORDER BY id`).all(userId, category, since);
+  let points = rows.length ? [{ t: rows[0].t, rating: Math.round(rows[0].b) }, ...rows.map((r) => ({ t: r.t, rating: Math.round(r.a) }))] : [];
+  if (points.length > maxPoints) {
+    const step = (points.length - 1) / (maxPoints - 1);
+    points = Array.from({ length: maxPoints }, (_, i) => points[Math.round(i * step)]);
+  }
+  const peak = db.prepare('SELECT MAX(rating_after) AS m FROM rating_history WHERE user_id = ? AND category = ?').get(userId, category).m;
+  return { points, peak: peak == null ? null : Math.round(peak) };
+}
+
 module.exports = {
   db,
   createUser,
@@ -1007,6 +1082,11 @@ module.exports = {
   getRankings,
   getRankingCount,
   getUserRanking,
+  getRatingDeltas7,
+  getPrimaryClubs,
+  searchRankings,
+  countSearchRankings,
+  getRatingSeries,
   getGameStatsByDate,
   getGameStatsByResult,
   createTournament,
