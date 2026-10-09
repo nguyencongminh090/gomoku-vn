@@ -123,11 +123,23 @@ function renderFromMap() {
 // sentence depends on the active tab, so tournaments.js drives it through the
 // two exports below rather than owning a hero of its own.
 
-let heroTab = 'tables';          // 'tables' | 'tournaments'
+let heroTab = 'tables';          // 'home' | 'tables' | 'tournaments'
 let heroTournamentCount = 0;
+
+/** Home greeting, "Chào <b>name</b>, …": the name is user text, so it goes in as a text node. */
+function renderGreeting() {
+  heroEyebrow.textContent = t('home.eyebrow');
+  const name = userInfo.signedIn ? userInfo.displayName : '';
+  if (!name) { heroTitle.textContent = t('home.greeting_anon'); return; }
+  const [before, after = ''] = t('home.greeting', { name: '\u0000' }).split('\u0000');
+  const b = document.createElement('b');
+  b.textContent = name;
+  heroTitle.replaceChildren(before, b, after);
+}
 
 function renderHero() {
   if (!heroTitle) return;
+  if (heroTab === 'home') { renderGreeting(); return; }
   const tournaments = heroTab === 'tournaments';
   const n = tournaments ? heroTournamentCount : currentRooms.length;
 
@@ -144,7 +156,7 @@ function renderHero() {
   heroTitle.innerHTML = t(key, { n: `<b>${n}</b>` });
 }
 
-/** Called by tournaments.js on tab switch, so the hero follows the tab. */
+/** Called by lobby-home.js on screen switch, so the hero follows the screen. */
 export function setHeroTab(tab) {
   heroTab = tab;
   renderHero();

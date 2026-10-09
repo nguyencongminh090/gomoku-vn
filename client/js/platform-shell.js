@@ -13,9 +13,10 @@
 (function () {
   const t = (key) => (typeof window.t === 'function' ? window.t(key) : key);
   const SPRITE = '/assets/icons/phosphor-sprite.svg';
-  // Mockup nav, minus screens with no page yet ("Phòng" arrives with R2's dashboard).
+  // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
+    { id: 'rooms', href: '/index.html#rooms', key: 'shell.rooms' },
     { id: 'tournaments', href: '/index.html#tournaments', key: 'tabs.tournaments' },
     { id: 'rankings', href: '/rankings.html', key: 'lobby.rankings' },
     { id: 'clubs', href: '/clubs.html', key: 'lobby.clubs' },

@@ -156,12 +156,30 @@ body .gset-segment, body .gset-segment__opt { border-radius: var(--radius); }
 .topnav__links a.is-active { background: var(--c-fill); color: var(--c-strong); font-weight: 700; }
 @media (max-width: 860px) { .topnav__links { display: none; } }
 
-/* ── Lobby on the site-wide Arena shell (B193) ──────────────────────────────
-   Same 1180px frame as rankings/profile/clubs (.papp) and the mockup's .bar row:
-   tabs left, the active tab's create action right. */
-body.zen-lobby .lobby-bar { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
-body.zen-lobby .lobby-bar .section-tabs { margin: 0; }
+/* ── Lobby on the site-wide Arena shell (B193, B195) ────────────────────────
+   Same 1180px frame as rankings/profile/clubs (.papp); hero row = the mockup's
+   .bar: sentence left, the active screen's create action right. */
+body.zen-lobby .lobby-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 body.zen-lobby .lobby-bar__actions { display: flex; gap: 10px; }
 body.zen-lobby .lobby-bar__actions .link-action { font-size: 13px; font-weight: 600; }
 /* .link-action's display:inline-flex beats the bare [hidden] attribute. */
 body.zen-lobby .lobby-bar__actions [hidden] { display: none; }
+
+/* ── "Chơi" dashboard (B195) — platform.css .psplit/.ppanel/.prow + these ── */
+body.zen-lobby .hrow { width: 100%; text-align: left; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; cursor: pointer; }
+body.zen-lobby .hrow:hover { background: var(--c-hover); }
+body.zen-lobby .hrow .prow__act { color: var(--c-ink-2); }
+body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
+body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
+body.zen-lobby .hbullet.on { background: var(--c-brand); }
+body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 4px; margin: 0; }
+body.zen-lobby .hlives { display: flex; flex-direction: column; gap: 16px; }
+body.zen-lobby .hlive { display: flex; align-items: center; gap: 14px; width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+body.zen-lobby .hlive:hover .hlive__t > span:first-child { text-decoration: underline; }
+body.zen-lobby .hlive__t { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+/* Mini board: the real board's paper surface (--board-* in main.css), not a new look. */
+body.zen-lobby .hmini { flex: none; width: 96px; height: 96px; border-radius: 4px; background: var(--board-bg); }
+body.zen-lobby .hmini line { stroke: rgba(var(--board-accent-rgb), .28); stroke-width: .6; }
+body.zen-lobby .hmini .sb { fill: #111; }
+body.zen-lobby .hmini .sw { fill: #fff; stroke: #111; stroke-width: .6; }
+body.zen-lobby .hmini .last { fill: var(--c-warning); }

@@ -31,7 +31,7 @@ describe('platform shell', () => {
     const active = [...document.querySelectorAll('.is-active')].map((a) => a.getAttribute('href'));
     expect(active).toEqual(['/clubs.html', '/clubs.html']);
     expect([...document.querySelectorAll('.pnav__links a')].map((a) => a.dataset.tab))
-      .toEqual(['lobby', 'tournaments', 'rankings', 'clubs', 'learn']);
+      .toEqual(['lobby', 'rooms', 'tournaments', 'rankings', 'clubs', 'learn']);
     expect([...document.querySelectorAll('.ptabbar a')].map((a) => a.dataset.tab))
       .toEqual(['lobby', 'rankings', 'tournaments', 'clubs', 'me']);
     expect(document.querySelector('.pnav__links a[data-tab="tournaments"]').getAttribute('href')).toBe('/index.html#tournaments');

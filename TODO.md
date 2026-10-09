@@ -78,3 +78,4 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#193.** R1: Arena shell on lobby/history/tournament (one header site-wide) `[Model: Sonnet 5.5]` — [detail](docs/todo/B193-arena-shell-lobby-history-tournament.md)
 - **#194.** `vite build` fails: copy-classic-scripts matches a `<script src="js/...">` inside an HTML comment (diagnostic.html) `[Model: Haiku 4.5]` — [detail](docs/todo/B194-vite-build-fails-on-diagnostic-comment.md)
+- **#195.** R2: Chơi home dashboard (my game, today, live boards) + Phòng screen `[Model: Sonnet 5.5]` — [detail](docs/todo/B195-home-dashboard.md)

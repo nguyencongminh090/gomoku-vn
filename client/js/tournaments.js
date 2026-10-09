@@ -34,15 +34,11 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTab, setHeroTournamentCount } from './lobby.js?v=190';
+import { client, setHeroTournamentCount } from './lobby.js?v=191';
 
 // ---------------------------------------------------------------------------
 // Element refs
 // ---------------------------------------------------------------------------
-const tabTables        = document.getElementById('tab-tables');
-const tabTournaments    = document.getElementById('tab-tournaments');
-const panelTables       = document.getElementById('panel-tables');
-const panelTournaments  = document.getElementById('panel-tournaments');
 const tournamentListEl  = document.getElementById('tournament-list');
 const btnCreateTournament = document.getElementById('btn-create-tournament');
 const modalOverlay  = document.getElementById('modal-create-tournament');
@@ -75,49 +71,7 @@ let tournamentMap = new Map(); // tournamentId → summary (see TournamentManage
 let activeStatusFilter = 'all'; // 'all' | 'draft' | 'active' | 'completed'
 let activeFormatFilter = '';    // '' | 'swiss' | 'round_robin' | 'double_elim'
 
-// ---------------------------------------------------------------------------
-// Tab switching
-// ---------------------------------------------------------------------------
-
-function activateTab(name) {
-  const isTables = name === 'tables';
-  tabTables.classList.toggle('is-active', isTables);
-  tabTables.setAttribute('aria-selected', String(isTables));
-  tabTournaments.classList.toggle('is-active', !isTables);
-  tabTournaments.setAttribute('aria-selected', String(!isTables));
-  panelTables.classList.toggle('is-active', isTables);
-  panelTournaments.classList.toggle('is-active', !isTables);
-  // One action slot in the bar: the active tab's create button (B193).
-  const btnCreateRoom = document.getElementById('btn-create');
-  if (btnCreateRoom) btnCreateRoom.hidden = !isTables;
-  btnCreateTournament.hidden = isTables;
-  // The hero sentence above the tabs is shared by both panels — lobby.js owns
-  // it and swaps the copy when the tab changes (Zen Minimal layout).
-  setHeroTab(isTables ? 'tables' : 'tournaments');
-  // The shell's "Giải đấu" link is /index.html#tournaments: keep hash + nav marker in step.
-  if (window.PlatformShell) window.PlatformShell.setActive(isTables ? 'lobby' : 'tournaments');
-  const hash = isTables ? '' : '#tournaments';
-  if (location.hash !== hash) history.replaceState(null, '', location.pathname + location.search + hash);
-}
-
-tabTables.addEventListener('click', () => activateTab('tables'));
-tabTournaments.addEventListener('click', () => activateTab('tournaments'));
-
-// Honor `?tab=tournaments` so links back from the tournament detail page
-// (tournament.html's "Quay lại danh sách giải đấu") land on the right tab
-// instead of always falling back to the markup's default "Bàn chơi" tab.
-const requestedTab = new URLSearchParams(location.search).get('tab');
-if (requestedTab === 'tournaments') {
-  history.replaceState(null, '', location.pathname);
-  activateTab('tournaments');
-} else if (location.hash === '#tournaments') {
-  activateTab('tournaments');
-}
-// Shell nav links (Chơi = /index.html, Giải đấu = /index.html#tournaments) clicked while already here.
-window.addEventListener('hashchange', () => activateTab(location.hash === '#tournaments' ? 'tournaments' : 'tables'));
-document.querySelectorAll('#pl-shell a[data-tab="lobby"]').forEach((a) => a.addEventListener('click', (e) => {
-  if (location.pathname.endsWith('/index.html') || location.pathname === '/') { e.preventDefault(); activateTab('tables'); }
-}));
+// Screen switching (Chơi / Phòng / Giải đấu) lives in lobby-home.js (B195).
 
 // ---------------------------------------------------------------------------
 // Subscribe to the tournament list (unconditionally on load, same as
@@ -178,7 +132,7 @@ function renderLiveMatchRow(match) {
   const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
   const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
   const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
-    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=190#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=191#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
     : '';
   return `
     <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
@@ -186,7 +140,7 @@ function renderLiveMatchRow(match) {
       <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
       <div class="live-match-row__meta">
         ${gameIndexLabel}
-        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=190#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=191#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
       </div>
     </div>
   `;
@@ -305,11 +259,11 @@ function renderCard(tournament, index) {
   // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=190#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=191#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=190#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=191#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=190#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=191#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
