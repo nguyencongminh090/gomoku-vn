@@ -80,4 +80,3 @@ in the detail file / fix-log).
 - **#178.** Platform: clubs (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
 
 - **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
-- **#188.** Remove the Playwright scaffold `tests/example.spec.ts` (hits playwright.dev) `[Model: Haiku 5]` — [detail](docs/todo/B188-remove-playwright-scaffold-example-spec.md)
