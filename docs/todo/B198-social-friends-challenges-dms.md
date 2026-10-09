@@ -1,5 +1,5 @@
 # B198 — R4: friends, challenges, notifications (bell), persisted DMs
-**Status:** OPEN — slice 1 (friends) implemented 2026-10-09 on `feature/198-social` (uncommitted); unit + jsdom + real-server pass done, awaiting review. Slices 2–4 not started.
+**Status:** OPEN — slice 1 (friends) merged on dev; slice 2 (notifications + bell + social page) done 2026-10-09 on `feature/198-notifications`; slices 3–4 pending.
 **Area:** server (schema + new migration, FriendHandler, ChallengeHandler, NotificationService, PrivateChatHandler persistence) + client (profile buttons, Social screen, bell in Arena header)
 **From:** features/platform/planning.md § Release 2 (R4); folds B191 item 1 (+ item 4 "CLB của tôi" is NOT in R4)   **Depends:** B197 (queue/room-create reuse), B159 (ephemeral DM)
 

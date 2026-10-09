@@ -6,12 +6,14 @@
  * Needs, in order: i18n.js, ui-mode.js, session.js. Builds DOM with
  * textContent only. The user chip is a member-only extra: it asks
  * /api/rankings/me for the username (guests / signed-out never call it).
+ * Members also get the notification bell (#198): /api/notifications polled every
+ * 60 s while visible, plus live `notify:new` via PlatformShell.pushNotification.
  */
 
 'use strict';
 
 (function () {
-  const t = (key) => (typeof window.t === 'function' ? window.t(key) : key);
+  const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const SPRITE = '/assets/icons/phosphor-sprite.svg';
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
@@ -72,6 +74,98 @@
     return String(name || '?').trim().slice(0, 2).toUpperCase();
   }
 
+  // ── Notification bell (#198 slice 2) ──
+  const bell = { items: [], unread: 0, btn: null, badge: null, panel: null };
+
+  function notifTarget(n) {
+    const from = n.payload && n.payload.from;
+    if (n.type === 'friend_accepted' && from) return '/u/' + encodeURIComponent(from.username);
+    if (n.type === 'dm' && from) return '/social.html#dm=' + encodeURIComponent(from.username);
+    return '/social.html';
+  }
+
+  function renderBell() {
+    if (!bell.btn) return;
+    bell.badge.textContent = bell.unread > 99 ? '99+' : String(bell.unread);
+    bell.badge.hidden = bell.unread === 0;
+    bell.btn.setAttribute('aria-label', t('notif.title') + (bell.unread ? ' (' + bell.unread + ')' : ''));
+    bell.panel.replaceChildren();
+    const head = el('div', undefined, 'pbell__head');
+    const readAll = el('button', t('notif.read_all'), 'pbell__link');
+    readAll.type = 'button';
+    readAll.disabled = bell.unread === 0;
+    readAll.addEventListener('click', () => markRead(null));
+    head.append(el('b', t('notif.title')), readAll);
+    bell.panel.appendChild(head);
+    if (!bell.items.length) bell.panel.appendChild(el('p', t('notif.empty'), 'pbell__empty'));
+    for (const n of bell.items.slice(0, 8)) {
+      const name = n.payload && n.payload.from ? n.payload.from.displayName : '';
+      const a = el('a', t('notif.' + n.type, { name }), 'pbell__item' + (n.read ? '' : ' is-unread'));
+      a.href = notifTarget(n);
+      a.addEventListener('click', () => { if (!n.read) markRead(n.id); });
+      bell.panel.appendChild(a);
+    }
+    const all = el('a', t('notif.open_social'), 'pbell__all');
+    all.href = '/social.html';
+    bell.panel.appendChild(all);
+  }
+
+  function markRead(id) {
+    fetch('/api/notifications/read', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(id == null ? {} : { id }),
+    }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d) return;
+      bell.items.forEach((n) => { if (id == null || n.id === id) n.read = true; });
+      bell.unread = d.unread;
+      renderBell();
+    }).catch(() => { /* next poll fixes it */ });
+  }
+
+  function refreshBell() {
+    if (document.hidden) return Promise.resolve();
+    return fetch('/api/notifications', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); } })
+      .catch(() => { /* offline: keep what we have */ });
+  }
+
+  /** Live push from the socket (`notify:new`): put it on top without a refetch. */
+  function pushNotification(n) {
+    if (!bell.btn || !n) return;
+    bell.items = [n].concat(bell.items.filter((x) => x.id !== n.id));
+    bell.unread = typeof n.unread === 'number' ? n.unread : bell.unread + 1;
+    renderBell();
+  }
+
+  function mountBell(right) {
+    const wrap = el('div', undefined, 'pbell');
+    const btn = el('button', undefined, 'pnav__mode pbell__btn');
+    btn.type = 'button';
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.appendChild(icon('ph-regular-bell'));
+    const badge = el('span', '0', 'pbell__badge');
+    badge.hidden = true;
+    btn.appendChild(badge);
+    const panel = el('div', undefined, 'pbell__panel');
+    panel.hidden = true;
+    const toggle = (open) => {
+      panel.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      if (open) refreshBell();
+    };
+    btn.addEventListener('click', (e) => { e.stopPropagation(); toggle(panel.hidden); });
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) toggle(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !panel.hidden) { toggle(false); btn.focus(); } });
+    wrap.append(btn, panel);
+    right.appendChild(wrap);
+    Object.assign(bell, { btn, badge, panel });
+    renderBell();
+    refreshBell();
+    if (!bell.timer) bell.timer = setInterval(refreshBell, 60000);
+  }
+
   function build(active) {
     const host = document.getElementById('pl-shell');
     if (!host) return;
@@ -98,6 +192,8 @@
     mode.addEventListener('click', () => {
       if (window.setColorMode && window.getColorMode) window.setColorMode(window.getColorMode() === 'light' ? 'dark' : 'light');
     });
+    const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    if (user && !user.isGuest) mountBell(right);
     right.appendChild(mode);
     if (typeof window.openSettingsPanel === 'function') {
       const gear = el('button', undefined, 'pnav__mode');
@@ -108,7 +204,6 @@
       right.appendChild(gear);
     }
 
-    const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
     if (user && !user.isGuest) {
       const me = el('a', undefined, 'pnav__me');
       me.href = '#';
@@ -167,5 +262,5 @@
     return a;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar };
+  window.PlatformShell = { build, setActive, initials, avatar, pushNotification };
 })();

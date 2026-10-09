@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Some of these pages are served at /u/<x> or /c/<x>: root-relative base keeps css/js/assets working. -->
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Bạn bè</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=196" />
+  <link rel="stylesheet" href="css/tokens.css?v=196" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=196" />
+  <link rel="stylesheet" href="css/platform.css?v=196" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=196" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=196">
+
+  <script src="js/ui-mode-preload.js?v=196"></script>
+  <script src="js/skin-preload.js?v=196"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <div class="pintro">
+    <h1 data-i18n="social.title">Bạn bè &amp; tin nhắn</h1>
+    <p id="sc-status" class="muted small" role="status"></p>
+  </div>
+
+  <div class="psplit">
+    <div>
+      <section class="ppanel" style="margin-bottom:20px">
+        <h2 class="ph2" data-i18n="social.incoming">Lời mời kết bạn</h2>
+        <div id="sc-incoming" class="prows"></div>
+      </section>
+      <section class="ppanel">
+        <h2 class="ph2" data-i18n="social.friends">Bạn bè</h2>
+        <div id="sc-friends" class="prows"></div>
+      </section>
+    </div>
+    <aside class="ppanel">
+      <h2 class="ph2" data-i18n="social.outgoing">Đã gửi lời mời</h2>
+      <div id="sc-outgoing" class="prows"></div>
+    </aside>
+  </div>
+</main>
+
+<script src="js/i18n.js?v=196"></script>
+<script src="js/ui-mode.js?v=196"></script>
+<script src="js/session.js?v=196"></script>
+<script src="js/audio-manager.js?v=196"></script>
+<script src="js/settings-panel.js?v=196"></script>
+<script src="js/platform-shell.js?v=196"></script>
+<script src="js/social.js?v=196"></script>
+</body>
+</html>

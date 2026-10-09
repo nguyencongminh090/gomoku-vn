@@ -30,6 +30,7 @@ const homeRouter = require('./routes/home');
 const profileRouter  = require('./routes/profile');
 const clubsRouter    = require('./routes/clubs');
 const friendsRouter  = require('./routes/friends');
+const notificationsRouter = require('./routes/notifications');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
@@ -153,6 +154,7 @@ app.use('/api/home', homeRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/clubs', clubsRouter);
 app.use('/api/friends', friendsRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Public profile page: /u/<username> — same HTML for every name; profile.js reads the path.
 // Club pages: /clubs.html (discover) and /c/<slug> (one club).

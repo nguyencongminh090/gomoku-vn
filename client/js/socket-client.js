@@ -197,6 +197,11 @@ class SocketClient {
     //
     // Since #68 the server also revokes the session row before sending this,
     // so the eviction survives a reconnect instead of being undone by one.
+    // Bell (#198): pages that mount the Arena shell show it live.
+    this.socket.on('notify:new', (n) => {
+      if (window.PlatformShell && window.PlatformShell.pushNotification) window.PlatformShell.pushNotification(n);
+    });
+
     this.socket.on('session:kicked', () => {
       sessionStorage.setItem('gvn_kicked_notice', '1');
       this.destroy();

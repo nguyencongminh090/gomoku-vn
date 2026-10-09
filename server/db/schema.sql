@@ -284,3 +284,16 @@ CREATE TABLE IF NOT EXISTS friendships (
 );
 
 CREATE INDEX IF NOT EXISTS idx_friendships_b ON friendships(user_b);
+
+-- Notifications (TODO.md #198 slice 2). payload = small JSON ({from:{username,displayName}, ...}).
+CREATE TABLE IF NOT EXISTS notifications (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  type        TEXT NOT NULL,          -- friend_request | friend_accepted | challenge | dm
+  actor_id    TEXT,                   -- who caused it (dedupe / cancel key)
+  payload     TEXT NOT NULL DEFAULT '{}',
+  read_at     TEXT,
+  created_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id);

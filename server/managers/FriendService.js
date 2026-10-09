@@ -11,6 +11,7 @@
  */
 
 const database = require('../db/database');
+const notifications = require('./NotificationService');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -55,17 +56,29 @@ function accept(row) {
   db().prepare("UPDATE friendships SET status = 'accepted' WHERE user_a = ? AND user_b = ?").run(row.user_a, row.user_b);
 }
 
+const actor = (id) => {
+  const u = database.getUserById(id);
+  return { username: u.username, displayName: u.display_name };
+};
+
+/** `accepter` said yes: tell the other side, and clear the request notification the accepter held. */
+function notifyAccepted(accepter, otherId) {
+  notifications.drop(accepter, 'friend_request', otherId);
+  notifications.drop(otherId, 'friend_request', accepter);
+  notifications.push(otherId, 'friend_accepted', accepter, { from: actor(accepter) });
+}
+
 function request(me, username) {
   const other = findUser(username);
   if (other.id === me) throw new FriendError('CANNOT_FRIEND_SELF', 400, 'Không thể kết bạn với chính mình.');
-  return db().transaction(() => {
+  const result = db().transaction(() => {
     const row = getRow(me, other.id);
     if (row && row.status === 'accepted') throw new FriendError('ALREADY_FRIENDS', 409, 'Đã là bạn bè.');
     if (row && row.requested_by === me) throw new FriendError('REQUEST_PENDING', 409, 'Đã gửi lời mời.');
     if (countFriends(me) >= MAX_FRIENDS || countFriends(other.id) >= MAX_FRIENDS) {
       throw new FriendError('FRIEND_LIMIT', 409, 'Danh sách bạn bè đã đầy.');
     }
-    if (row) { accept(row); return 'friends'; } // crossed requests
+    if (row) { accept(row); return 'friends'; } // crossed requests (notified after the transaction)
     const out = db().prepare("SELECT COUNT(*) AS n FROM friendships WHERE status = 'pending' AND requested_by = ?").get(me).n;
     if (out >= MAX_OUTGOING) throw new FriendError('TOO_MANY_REQUESTS', 429, 'Quá nhiều lời mời đang chờ.');
     const [x, y] = pair(me, other.id);
@@ -73,11 +86,14 @@ function request(me, username) {
       .run(x, y, me, 'pending', new Date().toISOString());
     return 'outgoing';
   })();
+  if (result === 'outgoing') notifications.push(other.id, 'friend_request', me, { from: actor(me) });
+  else notifyAccepted(me, other.id); // crossed requests
+  return result;
 }
 
 function acceptRequest(me, username) {
   const other = findUser(username);
-  return db().transaction(() => {
+  const result = db().transaction(() => {
     const row = getRow(me, other.id);
     if (!row || row.status !== 'pending' || row.requested_by === me) {
       throw new FriendError('NO_REQUEST', 404, 'Không có lời mời để chấp nhận.');
@@ -88,6 +104,8 @@ function acceptRequest(me, username) {
     accept(row);
     return 'friends';
   })();
+  notifyAccepted(me, other.id);
+  return result;
 }
 
 /** Cancel my request, decline theirs, or unfriend. Idempotent. */
@@ -95,6 +113,9 @@ function remove(me, username) {
   const other = findUser(username);
   const [x, y] = pair(me, other.id);
   db().prepare('DELETE FROM friendships WHERE user_a = ? AND user_b = ?').run(x, y);
+  // A cancelled / declined request must not linger in anyone's bell.
+  notifications.drop(other.id, 'friend_request', me);
+  notifications.drop(me, 'friend_request', other.id);
   return 'none';
 }
 
