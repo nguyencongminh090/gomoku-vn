@@ -505,7 +505,7 @@
   user-select: none;
 }
 .pill-group input:not(:checked) + label:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--c-hover);
   color: var(--c-ink);
 }
 .pill-group label:active {

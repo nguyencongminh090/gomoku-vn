@@ -168,7 +168,20 @@
       (value) => { if (global.setUiMode) global.setUiMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
     ));
 
-    body.appendChild(group(T('gset.appearance'), [densityRow]));
+    // Appearance: colour mode (dark | light) — B173
+    const modeRow = document.createElement('div');
+    modeRow.className = 'gset-row';
+    const modeLabel = document.createElement('span');
+    modeLabel.className = 'gset-row__label';
+    modeLabel.textContent = T('gset.color_mode');
+    modeRow.appendChild(modeLabel);
+    modeRow.appendChild(segment(
+      [['dark', T('gset.mode_dark')], ['light', T('gset.mode_light')]],
+      global.getColorMode ? global.getColorMode() : 'dark',
+      (value) => { if (global.setColorMode) global.setColorMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
+    ));
+
+    body.appendChild(group(T('gset.appearance'), [modeRow, densityRow]));
 
     // Language
     const langRow = document.createElement('div');
@@ -334,7 +347,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=171#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=172#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }

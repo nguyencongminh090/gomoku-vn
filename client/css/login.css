@@ -8,23 +8,8 @@
 input, button, textarea, select { font-family: inherit; }
 
 :root {
-  /* Soft Structuralism Palette */
-  --c-bg:          #F8F9FA;   /* crisp light grey */
-  --c-surface:     #FFFFFF;   /* pure white */
-  --c-border:      rgba(0,0,0,0.06); 
-  --c-border-strong: rgba(0,0,0,0.12);
-  --c-ink:         #111111;   /* almost black */
-  --c-ink-2:       #555555;   /* secondary text */
-  --c-ink-3:       #999999;   /* placeholder / hint */
-
-  /* Brand */
-  --c-brand:       #2A6B5F;   
-  --c-brand-dark:  #1A453D;
-
-  /* Status */
-  --c-error:       #E11D48;
-  --c-error-bg:    #FFF1F2;
-  --c-success:     #10B981;
+  /* Colours come from css/tokens.css (mode-aware); login-only aliases below. */
+  --c-border-strong: var(--c-border);
 
   /* Typography */
   --font:          'Manrope', system-ui, -apple-system, sans-serif;
@@ -285,8 +270,8 @@ html, body {
 .field input::placeholder { color: var(--c-ink-3); font-weight: 400; }
 .field input:focus {
   border-color: var(--c-brand);
-  background: #FFFFFF;
-  box-shadow: 0 0 0 4px rgba(42, 107, 95, 0.1);
+  background: var(--c-field);
+  box-shadow: 0 0 0 4px var(--c-brand-light);
 }
 .field input.error {
   border-color: var(--c-error);
@@ -385,13 +370,13 @@ html, body {
 }
 
 .btn-primary {
-  background: var(--c-ink);
+  background: var(--c-brand);
   color: #FFFFFF;
   margin-top: 12px;
   box-shadow: var(--shadow-sm);
 }
 .btn-primary:hover {
-  background: var(--c-brand);
+  background: var(--c-brand-dark);
 }
 
 .btn-primary:hover .btn-icon-wrapper {
@@ -435,7 +420,7 @@ html, body {
 
 .btn-guest:hover .btn-icon-wrapper {
   transform: translateX(-2px) scale(1.05);
-  background: #EAEAEA;
+  background: var(--c-fill);
 }
 .btn-guest:hover .btn-icon {
   transform: translate(2px, -1px);
@@ -482,7 +467,7 @@ html, body {
 }
 
 .alert-success {
-  background: #ECFDF5;
+  background: var(--c-success-bg);
   color: var(--c-success);
   border: 1px solid rgba(16, 185, 129, 0.2);
 }

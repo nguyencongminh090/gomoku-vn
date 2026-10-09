@@ -43,37 +43,13 @@
    ============================================================================= */
 
 body.zen-room {
-  --paper:  #FFFFFF;
-  --ink:    #1C1C1C;
-  --ink-2:  #7A7A7A;
-  --ink-3:  #B8B8B8;
-  --line:   rgba(28,28,28,0.09);
+  /* Local aliases onto the platform tokens (css/tokens.css) — mode-aware. */
+  --paper:  var(--c-bg);
+  --ink:    var(--c-ink);
+  --ink-2:  var(--c-ink-2);
+  --ink-3:  var(--c-ink-3);
+  --line:   var(--c-border);
   --ease:   cubic-bezier(0.32, 0.72, 0, 1);
-
-  /* Flatten every var()-based rule in main.css/room.css/settings-panel.css
-     that this subtree still inherits (buttons, borders, surfaces). */
-  --c-bg:           #FFFFFF;
-  --c-surface:      #FFFFFF;
-  --c-surface-2:    #F7F7F5;
-  --c-border:       rgba(28,28,28,0.09);
-  --c-border-light: rgba(28,28,28,0.06);
-
-  --c-ink:   #1C1C1C;
-  --c-ink-2: #7A7A7A;
-  --c-ink-3: #B8B8B8;
-
-  --c-brand:       #1C1C1C;
-  --c-brand-dark:  #000000;
-  --c-brand-light: rgba(28,28,28,0.06);
-
-  --bg-glass:       #FFFFFF;
-  --bg-glass-heavy: #FFFFFF;
-
-  --shadow-sm: none;
-  --shadow:    none;
-  --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.14);
-  --shadow-glass: none;
-  --shadow-glass-inset: none;
 
   --zen-topnav-h: 60px;
   --zen-rail-w: 56px;
@@ -212,18 +188,18 @@ body.zen-room .btn-secondary:hover {
 body.zen-room .btn-primary,
 body.zen-room .btn-confirm,
 body.zen-room .gset-btn--primary {
-  background: var(--ink);
-  border: 1px solid var(--ink);
-  color: var(--paper);
+  background: var(--c-brand);
+  border: 1px solid var(--c-brand);
+  color: var(--c-on-brand);
   font-size: 13px;
   font-weight: 700;
 }
 body.zen-room .btn-primary:hover,
 body.zen-room .btn-confirm:hover,
 body.zen-room .gset-btn--primary:hover {
-  background: #000;
-  border-color: #000;
-  color: var(--paper);
+  background: var(--c-brand-dark);
+  border-color: var(--c-brand-dark);
+  color: var(--c-on-brand);
 }
 
 /* Destructive reads as ink too — the label already says what it does, and a

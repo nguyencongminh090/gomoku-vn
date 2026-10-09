@@ -1,5 +1,5 @@
 # B173 — Design tokens (skin-swappable) + shared app shell
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-09 (branch `ui/arena-tokens`, not yet merged to dev — awaiting user review) — Arena dark+light tokens, shell on lobby+room, colour-mode switch in Settings. Not done: Arena top bar on history/tournament pages (#179), skins A/D (#180), tool-measured contrast, `ux-audit`.
 **Area:** client/css, client/*.html, client/js/settings-panel.js, client/js/session.js
 **From:** features/platform, B172 outcome 2026-10-09   **Depends:** — (B172 done)
 
@@ -22,3 +22,10 @@ Pages share no design system; platform needs one look. Decided: default skin **C
 
 ## Done when
 - Lobby + room render in Arena dark and light; `node scripts/cache-bust.js` one value; `npm test` green; real-browser pass desktop + mobile.
+
+## Evidence (2026-10-09)
+- New: `css/tokens.css` (dark default, `[data-mode=light]`), `css/shell.css`, `js/skin-preload.js`; `ui-mode.js` get/setColorMode (cookie `gvn_mode` + localStorage); Settings "Chế độ màu" row; zen token blocks removed from lobby-zen/room-zen; login.css own palette removed.
+- Tests: `client/tests/color-mode.test.js` (preload, setColorMode, settings row); `npm test` 91 suites / 1870 green; `?v=172` single value.
+- Real browser (Chrome, fresh throwaway DB, real DB restored + checksum-verified): login/lobby/room/history/tournament in dark+light, desktop+mobile, no console errors, mode survives reload.
+- Deviation from todo step 4: no server-emitted `data-*` — the blocking `skin-preload.js` reads the cookie before paint (same pattern as ui-mode-preload; no HTML templating exists).
+- Reverses #160 (Dark UI removed 2026-08-28) on explicit user request 2026-10-09; `settings-panel-no-theme-row.test.js` still passes (new keys are `gset.color_mode`, not `gset.theme*`).

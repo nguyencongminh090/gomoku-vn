@@ -1,0 +1,111 @@
+/* =============================================================================
+   tokens.css — platform design tokens (B173, features/platform)
+
+   Skin "arena" (default; mockup: client/platform-arena-mockup.html) in two
+   colour modes. Loaded right AFTER main.css so these :root values replace
+   main.css's light palette; every page rule keeps reading the same --c-* names.
+
+   Axes (set on <html> by ui-mode-preload.js before first paint, changed by
+   ui-mode.js → setColorMode()):
+     data-skin  "arena"  (future: "zen", "bento" — colour + radius tokens only)
+     data-mode  "dark" (default) | "light"
+
+   NOT here (locked): --board-* tokens stay in main.css and are identical in
+   both modes — the board is one shared light-paper surface on every skin.
+   ============================================================================= */
+
+:root {
+  color-scheme: dark;
+
+  --c-bg:           #161512;
+  --c-surface:      #262421;
+  --c-surface-2:    #2f2d29;
+  --c-border:       rgba(255,255,255,0.10);
+  --c-border-light: rgba(255,255,255,0.06);
+
+  --c-ink:          #e8e6e1;
+  --c-ink-2:        #a8a49b;
+  --c-ink-3:        #8a867c;
+
+  --c-brand:        #629924;
+  --c-brand-dark:   #4f7d1c;
+  --c-brand-light:  rgba(98,153,36,0.16);
+  --c-on-brand:     #ffffff;
+
+  --c-accent:       #d85000;
+  --c-accent-light: rgba(216,80,0,0.16);
+
+  --c-error:        #ef6a6a;
+  --c-error-bg:     rgba(239,106,106,0.12);
+  --c-success:      #8bc34a;
+  --c-success-bg:   rgba(139,195,74,0.12);
+  --c-warning:      #f2a33a;
+  --c-warning-bg:   rgba(242,163,58,0.12);
+
+  --c-state-idle:    #8a867c;
+  --c-state-playing: #8bc34a;
+  --c-state-waiting: #f2a33a;
+
+  /* Fills/hover that must flip with the mode (white-on-dark vs black-on-light) */
+  --c-fill:         rgba(255,255,255,0.06);
+  --c-hover:        rgba(255,255,255,0.04);
+  --c-strong:       #ffffff;
+  --c-field:        #161512;
+  --c-scrim:        rgba(0,0,0,0.6);
+
+  --bg-glass:       #262421;
+  --bg-glass-heavy: #262421;
+
+  --radius:     5px;
+  --radius-lg:  8px;
+  --radius-xl:  12px;
+  --shadow-sm:  none;
+  --shadow:     0 2px 8px rgba(0,0,0,0.35);
+  --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.6);
+  --shadow-glass: none;
+  --shadow-glass-inset: none;
+}
+
+:root[data-mode="light"] {
+  color-scheme: light;
+
+  --c-bg:           #ecebe8;
+  --c-surface:      #ffffff;
+  --c-surface-2:    #f4f3f0;
+  --c-border:       rgba(0,0,0,0.12);
+  --c-border-light: rgba(0,0,0,0.07);
+
+  --c-ink:          #2b2926;
+  --c-ink-2:        #5f5b52;
+  --c-ink-3:        #6f6a62;
+
+  --c-brand:        #4d7c1f;
+  --c-brand-dark:   #3d6418;
+  --c-brand-light:  rgba(77,124,31,0.10);
+
+  --c-accent:       #c24700;
+  --c-accent-light: rgba(194,71,0,0.10);
+
+  --c-error:        #c62828;
+  --c-error-bg:     rgba(198,40,40,0.08);
+  --c-success:      #2e7d32;
+  --c-success-bg:   rgba(46,125,50,0.08);
+  --c-warning:      #b26a00;
+  --c-warning-bg:   rgba(178,106,0,0.08);
+
+  --c-state-idle:    #8a857b;
+  --c-state-playing: #2e7d32;
+  --c-state-waiting: #b26a00;
+
+  --c-fill:         rgba(0,0,0,0.05);
+  --c-hover:        rgba(0,0,0,0.035);
+  --c-strong:       #000000;
+  --c-field:        #f4f3f0;
+  --c-scrim:        rgba(0,0,0,0.45);
+
+  --bg-glass:       #ffffff;
+  --bg-glass-heavy: #ffffff;
+
+  --shadow:     0 1px 3px rgba(0,0,0,0.10);
+  --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.22);
+}
