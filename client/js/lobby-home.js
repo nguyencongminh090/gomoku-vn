@@ -8,10 +8,12 @@
  * Legacy `?tab=tournaments` (tournament.html's back link) still lands on tournaments.
  *
  * Dashboard data: GET /api/home (server/routes/home.js), polled while the
- * home screen is visible. All text goes in via textContent.
+ * home screen is visible. Quick match (B197): match:* socket events
+ * (server/socket/handlers/MatchHandler.js); a pair arrives as room:joined,
+ * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { setHeroTab } from './lobby.js?v=192';
+import { client, setHeroTab } from './lobby.js?v=193';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -208,6 +210,115 @@ function stopPolling() {
   pollTimer = null;
 }
 
+// ── Quick match (B197) ──────────────────────────────────────────────────────
+
+const QM_RULES = ['freestyle', 'standard', 'caro'];
+const QM_TIMES = ['1+0', '3+2', '5+3', '10+0'];
+const QM_KEY = 'gvn_quickmatch';
+const qm = { rule: 'caro', time: '5+3', searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
+let qmTimer = null;
+
+try {
+  const saved = JSON.parse(localStorage.getItem(QM_KEY) || 'null');
+  if (saved && QM_RULES.includes(saved.rule)) qm.rule = saved.rule;
+  if (saved && QM_TIMES.includes(saved.time)) qm.time = saved.time;
+} catch { /* per-viewer convenience only */ }
+
+function isMember() {
+  const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+  return !!(u && !u.isGuest);
+}
+
+function chipRow(id, values, current, label, onPick) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.replaceChildren();
+  for (const v of values) {
+    const b = el('button', label(v), 'pchip' + (v === current ? ' is-active' : ''));
+    b.type = 'button';
+    b.disabled = qm.searching;
+    b.setAttribute('aria-pressed', String(v === current));
+    b.addEventListener('click', () => onPick(v));
+    box.appendChild(b);
+  }
+}
+
+function elapsed() {
+  const s = Math.max(0, Math.floor((Date.now() - qm.startedAt) / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+export function renderQuickMatch() {
+  const pick = (k) => (v) => {
+    qm[k] = v;
+    qm.error = '';
+    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time })); } catch { /* ignore */ }
+    renderQuickMatch();
+  };
+  chipRow('qm-rule', QM_RULES, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
+  chipRow('qm-time', QM_TIMES, qm.time, (v) => v, pick('time'));
+
+  const acts = document.getElementById('qm-actions');
+  const line = document.getElementById('qm-line');
+  if (!acts || !line) return;
+  acts.replaceChildren();
+  const btn = (key, cls, fn) => {
+    const b = el('button', t(key), 'link-action' + (cls ? ' ' + cls : ''));
+    b.type = 'button';
+    b.addEventListener('click', fn);
+    acts.appendChild(b);
+    return b;
+  };
+  if (qm.searching) {
+    btn('qm.cancel', '', cancelSearch);
+    line.textContent = t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() })
+      + (qm.inBucket > 1 ? ' · ' + t('qm.in_queue', { n: qm.inBucket }) : '');
+  } else {
+    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true));
+    btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
+    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time })
+      + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));
+  }
+}
+
+function startSearch(rated) {
+  qm.error = '';
+  qm.rated = rated;
+  client.emit('match:join', { rule: qm.rule, time: qm.time, rated });
+}
+
+function cancelSearch() {
+  client.emit('match:leave');
+}
+
+function setSearching(on) {
+  if (on && !qm.searching) qm.startedAt = Date.now();
+  qm.searching = on;
+  if (qmTimer) clearInterval(qmTimer);
+  qmTimer = on ? setInterval(renderQuickMatch, 1000) : null;
+  renderQuickMatch();
+}
+
+client.on('match:status', (st) => {
+  if (st && st.waiting) {
+    qm.inBucket = st.inBucket || 0;
+    if (typeof st.rated === 'boolean') qm.rated = st.rated;
+    setSearching(true);
+  } else {
+    setSearching(false);
+  }
+});
+client.on('match:error', (e) => {
+  qm.error = e && e.code ? t('err.' + e.code.toLowerCase()) : (e && e.message) || '';
+  setSearching(false);
+});
+client.on('match:found', () => {
+  // room:joined follows and lobby.js navigates; stop the ticking line meanwhile.
+  if (qmTimer) clearInterval(qmTimer);
+  const line = document.getElementById('qm-line');
+  if (line) line.textContent = t('qm.found');
+});
+
 // ── Wiring ──────────────────────────────────────────────────────────────────
 
 window.addEventListener('hashchange', () => showScreen(screenFromLocation()));
@@ -215,6 +326,7 @@ window.addEventListener('hashchange', () => showScreen(screenFromLocation()));
 document.querySelectorAll('#pl-shell a[data-tab="lobby"]').forEach((a) => a.addEventListener('click', (e) => {
   if (location.pathname.endsWith('/index.html') || location.pathname === '/') { e.preventDefault(); showScreen('home'); }
 }));
-window.addEventListener('langchange', () => { if (lastData) renderHome(lastData); });
+window.addEventListener('langchange', () => { if (lastData) renderHome(lastData); renderQuickMatch(); });
 
+renderQuickMatch();
 showScreen(screenFromLocation());

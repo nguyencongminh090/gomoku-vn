@@ -60,7 +60,7 @@ B191 items fold into R4–R6.
 
 ### Decided (user, 2026-10-09)
 1. ~~Order~~ R1 → R8 in sequence (UI first, then backend features).
-2. ~~Time chips~~ add a Fischer increment clock mode (min + sec/move) for 1+0/3+2/5+3/10+0; **drop Thư tín** (correspondence).
+2. ~~Time chips~~ Fischer = the existing `blitz` mode (found 2026-10-09, no new clock mode needed) for 1+0/3+2/5+3/10+0; **drop Thư tín** (correspondence).
 3. ~~Rule chips~~ use real rules Free-style / Standard / Caro VN; no Renju.
 4. ~~Engine~~ eval bar + move-quality labels = **placeholder** in R7 for now. Later source: user project `/run/media/ngmint/Data/Programming/Programming/HTML/GomokuBoardSite/` (engine work).
 5. ~~"Phòng" nav item in R1~~ deferred to R2 (user 2026-10-09): until Chơi becomes the dashboard, both would open the same room list.

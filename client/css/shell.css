@@ -183,3 +183,7 @@ body.zen-lobby .hmini line { stroke: rgba(var(--board-accent-rgb), .28); stroke-
 body.zen-lobby .hmini .sb { fill: #111; }
 body.zen-lobby .hmini .sw { fill: #fff; stroke: #111; stroke-width: .6; }
 body.zen-lobby .hmini .last { fill: var(--c-warning); }
+/* Quick match panel (B197): chips lock while searching. */
+body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
+body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }
+body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }

@@ -1,6 +1,7 @@
 /**
  * B195 — lobby screens (Chơi / Phòng / Giải đấu) and the "Chơi" dashboard (lobby-home.js).
  * Replaces B193's tab-sync suite: the shell nav's hashes now pick one of three screens.
+ * B197 — quick match panel (match:* socket events).
  *
  * @jest-environment jsdom
  */
@@ -15,20 +16,26 @@ const BODY = read('index.html').match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replac
 const SHELL = read('js/platform-shell.js');
 // ES module → classic script: swap the lobby.js import for a stub, expose the exports.
 const HOME = read('js/lobby-home.js')
-  .replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { setHeroTab } = window.__lobbyStub;\n')
+  .replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { client, setHeroTab } = window.__lobbyStub;\n')
   .replace(/^export (function|async function) (\w+)/gm, (m, kw, name) => `window.__home = window.__home || {}; window.__home.${name} = ${name};\n${kw} ${name}`);
 
 const EMPTY = { myGame: null, myMatches: [], tournaments: [], live: [] };
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-async function boot(url = '/index.html', data = EMPTY, user = null) {
+async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
   jest.useRealTimers();
   window.history.replaceState(null, '', url);
   document.body.innerHTML = BODY;
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
   window.GvnSession = { getUser: () => user };
   window.joinRoom = jest.fn();
-  window.__lobbyStub = { setHeroTab: jest.fn() };
+  const handlers = {};
+  window.__lobbyStub = {
+    setHeroTab: jest.fn(),
+    client: { emitted: [], on(ev, fn) { handlers[ev] = fn; }, emit(ev, d) { this.emitted.push([ev, d]); }, fire(ev, d) { handlers[ev](d); } },
+  };
+  try { localStorage.clear(); } catch { /* ignore */ }
+  if (opts.saved) localStorage.setItem('gvn_quickmatch', JSON.stringify(opts.saved));
   window.__home = {};
   global.fetch = jest.fn((u) => Promise.resolve(String(u).startsWith('/api/home')
     ? { ok: true, json: () => Promise.resolve(data) }
@@ -196,5 +203,78 @@ describe('ruleLine()', () => {
   ])('%j → %s', async (r, out) => {
     await boot('/index.html#rooms');
     expect(window.__home.ruleLine(r)).toBe(out);
+  });
+});
+
+describe('quick match panel (B197)', () => {
+  const MEMBER = { userId: 'u1', isGuest: false, displayName: 'Me' };
+  const GUEST = { userId: 'g1', isGuest: true, displayName: 'G' };
+  const client = () => window.__lobbyStub.client;
+  const chips = (id) => [...document.querySelectorAll('#' + id + ' .pchip')];
+  const pressed = (id) => chips(id).filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent);
+  const buttons = () => [...document.querySelectorAll('#qm-actions button')].map((b) => b.textContent);
+
+  it('member: 3 rule chips, 4 time chips, Caro VN · 5+3 by default, rated + casual buttons', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    expect(chips('qm-rule').map((b) => b.textContent)).toEqual(['rankings.cat_freestyle', 'rankings.cat_standard', 'rankings.cat_caro']);
+    expect(chips('qm-time').map((b) => b.textContent)).toEqual(['1+0', '3+2', '5+3', '10+0']);
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
+    expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
+  });
+
+  it('guest: casual only, with the reason in the status line', async () => {
+    await boot('/index.html', EMPTY, GUEST);
+    expect(buttons()).toEqual(['qm.find_casual']);
+    expect(document.getElementById('qm-line').textContent).toContain('qm.guest_casual_only');
+  });
+
+  it('picking chips changes the request and is remembered; a saved choice is restored', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    chips('qm-rule')[0].click();
+    chips('qm-time')[0].click();
+    document.querySelectorAll('#qm-actions button')[0].click();
+    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true }]);
+    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0' });
+    await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'standard', time: '10+0' } });
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_standard'], ['10+0']]);
+  });
+
+  it('a bogus saved choice falls back to the defaults', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'renju', time: '2+1' } });
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
+  });
+
+  it('searching: chips lock, Cancel only, elapsed + queue count; cancel emits match:leave', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    client().fire('match:status', { waiting: true, inBucket: 3, rated: true });
+    expect(chips('qm-rule').every((b) => b.disabled)).toBe(true);
+    expect(buttons()).toEqual(['qm.cancel']);
+    expect(document.getElementById('qm-line').textContent).toBe('qm.searching_rated{"t":"0:00"} · qm.in_queue{"n":3}');
+    document.querySelector('#qm-actions button').click();
+    expect(client().emitted.pop()).toEqual(['match:leave', undefined]);
+    client().fire('match:status', { waiting: false });
+    expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
+    expect(chips('qm-rule').some((b) => b.disabled)).toBe(false);
+  });
+
+  it('alone in the bucket → no queue count', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    client().fire('match:status', { waiting: true, inBucket: 1, rated: false });
+    expect(document.getElementById('qm-line').textContent).toBe('qm.searching_casual{"t":"0:00"}');
+  });
+
+  it('match:error shows the translated code and unlocks', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    client().fire('match:status', { waiting: true, inBucket: 1 });
+    client().fire('match:error', { code: 'ALREADY_IN_ANOTHER_ROOM', message: 'x' });
+    expect(document.getElementById('qm-line').textContent).toBe('err.already_in_another_room');
+    expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
+  });
+
+  it('match:found → "entering the room" (lobby.js follows room:joined)', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    client().fire('match:status', { waiting: true, inBucket: 2 });
+    client().fire('match:found', { roomId: 'R' });
+    expect(document.getElementById('qm-line').textContent).toBe('qm.found');
   });
 });

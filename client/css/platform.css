@@ -57,7 +57,7 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .pactions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 0; }
 .pchips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .pchip { min-height: 34px; padding: 6px 14px; font-size: 13px; cursor: pointer; border: 0; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); }
-.pchip[aria-selected="true"] { background: var(--c-brand); color: var(--c-on-brand); }
+.pchip[aria-selected="true"], .pchip[aria-pressed="true"] { background: var(--c-brand); color: var(--c-on-brand); }
 .ptabs { display: flex; flex-wrap: wrap; gap: 24px; }
 .ptab { min-height: 32px; padding: 4px 0; font-size: 13px; font-weight: 500; cursor: pointer; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--c-ink-3); }
 .ptab[aria-selected="true"] { color: var(--c-strong); font-weight: 700; border-bottom-color: var(--c-brand-text); }
