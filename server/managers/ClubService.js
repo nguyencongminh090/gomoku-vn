@@ -209,21 +209,40 @@ function avgRatingSql() {
            WHERE m.club_id = c.id AND m.role != 'pending' AND r.category = ? AND r.games >= ?)`;
 }
 
+/**
+ * "Hạng CLB": clubs ordered by the average rating of their ranked members
+ * (≥ RANKING_MIN_GAMES games) in a category; clubs with no ranked member have no
+ * rank. Ties → more members, then slug.
+ * @returns {Map<string, number>} club id → 1-based rank
+ */
+function clubRanks(category) {
+  const rows = db().prepare(`
+    SELECT c.id, c.slug, AVG(r.rating) AS avg,
+           (SELECT COUNT(*) FROM club_members x WHERE x.club_id = c.id AND x.role != 'pending') AS members
+    FROM clubs c
+    JOIN club_members m ON m.club_id = c.id AND m.role != 'pending'
+    JOIN ratings r ON r.user_id = m.user_id AND r.category = ? AND r.games >= ?
+    GROUP BY c.id
+    ORDER BY avg DESC, members DESC, c.slug`).all(category, database.RANKING_MIN_GAMES);
+  return new Map(rows.map((r, i) => [r.id, i + 1]));
+}
+
 /** Discover list: newest/biggest first, optional name search. */
 function listClubs({ q, page, limit, category }) {
   const where = q ? "WHERE c.name LIKE ? ESCAPE '\\'" : '';
   const like = q ? [`%${q.replace(/[\\%_]/g, '\\$&')}%`] : [];
   const total = db().prepare(`SELECT COUNT(*) AS n FROM clubs c ${where}`).get(...like).n;
   const rows = db().prepare(`
-    SELECT c.slug, c.name, c.description, c.join_policy,
+    SELECT c.id, c.slug, c.name, c.description, c.join_policy,
            (SELECT COUNT(*) FROM club_members m WHERE m.club_id = c.id AND m.role != 'pending') AS members,
            ${avgRatingSql()} AS avg_rating
     FROM clubs c ${where}
     ORDER BY members DESC, c.created_at DESC
     LIMIT ? OFFSET ?`).all(category, database.RANKING_MIN_GAMES, ...like, limit, (page - 1) * limit);
+  const ranks = clubRanks(category);
   return { total, clubs: rows.map((r) => ({
     slug: r.slug, name: r.name, description: r.description, joinPolicy: r.join_policy,
-    members: r.members, avgRating: r.avg_rating,
+    members: r.members, avgRating: r.avg_rating, rank: ranks.get(r.id) || null,
   })) };
 }
 
@@ -245,6 +264,7 @@ function getClubDetail(slug, viewerId, category) {
     slug: club.slug, name: club.name, description: club.description, joinPolicy: club.join_policy,
     createdAt: club.created_at, category,
     members: rows.length,
+    rank: clubRanks(category).get(club.id) || null,
     avgRating: avgRows.length ? Math.round(avgRows.reduce((s, r) => s + r.rating, 0) / avgRows.length) : null,
     myRole,
     leaderboard: rows.map((r, i) => ({

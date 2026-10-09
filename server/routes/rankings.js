@@ -3,7 +3,8 @@
 /**
  * rankings.js — REST API for the leaderboards (#176).
  *
- * GET /api/rankings?category=&page=&limit=  — public, paginated, cached ~30 s
+ * GET /api/rankings?category=&page=&limit=&q=  — public, paginated, cached ~30 s; q = name search
+ *                                                (rows keep their true rank), rows carry delta7 + club
  * GET /api/rankings/me                      — the caller's rank in every category
  *
  * Categories are RatingService.CATEGORIES (the winning rule); ratings are
@@ -47,14 +48,21 @@ router.get('/', (req, res, next) => {
     const category = CATEGORIES.includes(req.query.category) ? req.query.category : CATEGORIES[0];
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
-    const key = `${category}:${page}:${limit}`;
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 30) : '';
+    const key = `${category}:${page}:${limit}:${q}`;
 
     let body = cacheGet(key);
     if (!body) {
       const offset = (page - 1) * limit;
-      const total = database.getRankingCount(category);
-      const players = database.getRankings(category, limit, offset).map((r, i) => ({
-        rank: offset + i + 1,
+      const total = q ? database.countSearchRankings(category, q) : database.getRankingCount(category);
+      const rows = q
+        ? database.searchRankings(category, q, limit, offset)
+        : database.getRankings(category, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+      const ids = rows.map((r) => r.user_id);
+      const deltas = database.getRatingDeltas7(category, ids);
+      const clubs = database.getPrimaryClubs(ids);
+      const players = rows.map((r) => ({
+        rank: r.rank,
         userId: r.user_id,
         username: r.username,
         avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.user_id}.webp?v=${r.avatar_v}` : null,
@@ -62,9 +70,12 @@ router.get('/', (req, res, next) => {
         rating: Math.round(r.rating),
         games: r.games,
         provisional: r.rd > PROVISIONAL_RD,
+        delta7: Math.round(deltas.get(r.user_id) || 0),
+        club: clubs.get(r.user_id) || null,
       }));
       body = {
         category,
+        q,
         minGames: database.RANKING_MIN_GAMES,
         players,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },

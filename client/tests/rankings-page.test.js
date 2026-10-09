@@ -16,8 +16,8 @@ const BODY_HTML = fs.readFileSync(path.join(__dirname, '..', 'rankings.html'), '
 const PAGE = {
   category: 'freestyle', minGames: 20,
   players: [
-    { rank: 1, userId: 'u2', username: 'bob', displayName: '<b>Bob</b>', rating: 1800, games: 25, provisional: false },
-    { rank: 2, userId: 'u1', username: 'alice', displayName: 'Alice', rating: 1700, games: 30, provisional: true },
+    { rank: 1, userId: 'u2', username: 'bob', displayName: '<b>Bob</b>', rating: 1800, games: 25, provisional: false, delta7: 12, club: { slug: 'k-1', name: '<i>K1</i>' } },
+    { rank: 2, userId: 'u1', username: 'alice', displayName: 'Alice', rating: 1700, games: 30, provisional: true, delta7: -5, club: null },
   ],
   pagination: { page: 1, limit: 50, total: 2, totalPages: 1 },
 };
@@ -25,7 +25,14 @@ const ME = { userId: 'u1', minGames: 20, ratings: { freestyle: { rank: 2, rating
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+// rankings.js registers a DOMContentLoaded handler on every require; drop the previous
+// boots' handlers so each test sees exactly one page instance.
+const handlers = [];
+const realAdd = document.addEventListener.bind(document);
+document.addEventListener = (type, fn, ...rest) => { if (type === 'DOMContentLoaded') handlers.push(fn); return realAdd(type, fn, ...rest); };
+
 async function boot(fetchImpl) {
+  handlers.splice(0).forEach((fn) => document.removeEventListener('DOMContentLoaded', fn));
   jest.resetModules();
   document.body.innerHTML = BODY_HTML;
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
@@ -49,6 +56,34 @@ describe('rankings page', () => {
     expect(rows[1].querySelector('a').getAttribute('href')).toBe('/u/alice');
     expect(rows[1].querySelector('.ptbl__prov')).not.toBeNull();
     expect(document.getElementById('rk-mine').textContent).toContain('#2');
+  });
+
+  it('shows the 7-day change (signed, coloured) and the club link; no club → dash', async () => {
+    await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+    const [bob, alice] = document.querySelectorAll('#rk-body tr');
+    expect(bob.children[3].textContent).toBe('+12');
+    expect(bob.children[3].classList.contains('up')).toBe(true);
+    expect(alice.children[3].textContent).toBe('-5');
+    expect(alice.children[3].classList.contains('dn')).toBe(true);
+    const club = bob.children[4].querySelector('a');
+    expect(club.textContent).toBe('<i>K1</i>');
+    expect(club.querySelector('i')).toBeNull();
+    expect(club.getAttribute('href')).toBe('/c/k-1');
+    expect(alice.children[4].textContent).toBe('—');
+  });
+
+  it('typing in the search box re-queries with q (debounced) and resets to page 1', async () => {
+    await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+    const input = document.getElementById('rk-q');
+    input.value = '  ali ';
+    input.dispatchEvent(new Event('input'));
+    input.value = 'alice';
+    input.dispatchEvent(new Event('input'));
+    await new Promise((r) => setTimeout(r, 330)); // real debounce window
+    const calls = global.fetch.mock.calls.map((c) => c[0]).filter((u) => u.includes('/api/rankings?'));
+    expect(calls).toHaveLength(2); // initial + ONE debounced search
+    expect(calls[1]).toContain('q=alice');
+    expect(calls[1]).toContain('page=1');
   });
 
   it('works logged out (me → 401) and switches category via tab', async () => {

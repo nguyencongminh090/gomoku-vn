@@ -1,5 +1,5 @@
 # B190 — Arena mockup features that need new data (B189 phase 2)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-09 (branch `feature/190-platform-phase2`, uncommitted) — built the parts that need no new feature: rankings 7-day change + club column + name search (`?q=`, true ranks via window fn); profile rating chart (`/api/profile/:u/rating-history`) + weekly change on cards, both behind hide_history; club rank ("Hạng CLB": avg rating of ranked members per category) in club header + list badge; site links row in lobby+history top bars; Settings gear on platform pages; ?v=188. Tests: rankings-route, profile-route, clubs-route, client rankings/profile/clubs/shell. Verified by screenshots (desktop dark+light, mobile dark; faked API). NOT done → B191.
 **Area:** server/routes, schema, client/js/{rankings,profile,club}.js
 **From:** B189 phase 1, 2026-10-09   **Depends:** B189
 

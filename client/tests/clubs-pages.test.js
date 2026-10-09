@@ -14,7 +14,7 @@ const body = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
   .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
 
 const CLUB = {
-  slug: 'caro', name: '<i>Caro</i>', description: 'desc', joinPolicy: 'invite', members: 2, avgRating: 1500, myRole: null, category: 'freestyle',
+  slug: 'caro', name: '<i>Caro</i>', description: 'desc', joinPolicy: 'invite', members: 2, avgRating: 1500, rank: 3, myRole: null, category: 'freestyle',
   leaderboard: [
     { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
     { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0 },
@@ -42,6 +42,7 @@ describe('club page', () => {
     expect(document.querySelector('#cb-name i')).toBeNull();
     expect(document.getElementById('cb-join').hidden).toBe(false);
     expect(document.getElementById('cb-join').textContent).toBe('clubs.request');
+    expect([...document.querySelectorAll('#cb-stats dd')].map((d) => d.textContent)).toEqual(['2', '1500', '#3']);
     expect(document.getElementById('cb-manage').hidden).toBe(true);
     expect(document.querySelectorAll('#cb-body tr')).toHaveLength(2);
     expect(document.querySelectorAll('#cb-body tr')[1].children[3].textContent).toBe('—');

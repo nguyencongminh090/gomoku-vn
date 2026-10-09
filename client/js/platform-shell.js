@@ -75,6 +75,14 @@
       if (window.setColorMode && window.getColorMode) window.setColorMode(window.getColorMode() === 'light' ? 'dark' : 'light');
     });
     right.appendChild(mode);
+    if (typeof window.openSettingsPanel === 'function') {
+      const gear = el('button', undefined, 'pnav__mode');
+      gear.type = 'button';
+      gear.setAttribute('aria-label', t('gset.title'));
+      gear.appendChild(icon('ph-regular-gear-six'));
+      gear.addEventListener('click', () => window.openSettingsPanel());
+      right.appendChild(gear);
+    }
 
     const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
     if (user && !user.isGuest) {

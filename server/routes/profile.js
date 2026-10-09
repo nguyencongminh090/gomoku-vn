@@ -8,6 +8,7 @@
  * GET    /api/profile/prefs           — own UI preferences (uiSkin)
  * POST   /api/profile/avatar          — upload (raw image body), re-encoded to WebP
  * DELETE /api/profile/avatar          — remove
+ * GET    /api/profile/:username/rating-history?category=&days= — rating curve (privacy-aware)
  * GET    /api/profile/avatar/:id.webp — serve (immutable; URL carries ?v=)
  *
  * Avatars are never stored as uploaded: sharp decodes, rotates, centre-crops to
@@ -150,6 +151,23 @@ router.get('/prefs', verifyToken, requireMember, (req, res, next) => {
   }
 });
 
+// Rating curve for the profile chart. Same privacy switch as the game list.
+router.get('/:username/rating-history', (req, res, next) => {
+  try {
+    const user = database.getProfileByUsername(String(req.params.username).slice(0, 40));
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' });
+    const category = CATEGORIES.includes(req.query.category) ? req.query.category : CATEGORIES[0];
+    const days = Math.min(365, Math.max(7, parseInt(req.query.days, 10) || 90));
+    res.set('Cache-Control', 'no-store');
+    if (user.hide_history && optionalUserId(req) !== user.id) {
+      return res.json({ category, days, hidden: true, points: [], peak: null });
+    }
+    res.json({ category, days, hidden: false, ...database.getRatingSeries(user.id, category, days) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.get('/:username', (req, res, next) => {
   try {
     const user = database.getProfileByUsername(String(req.params.username).slice(0, 40));
@@ -162,7 +180,11 @@ router.get('/:username', (req, res, next) => {
     for (const category of CATEGORIES) {
       const r = database.getUserRanking(user.id, category);
       if (r) {
-        ratings.push({ category, rating: Math.round(r.rating), rank: r.rank, games: r.games, provisional: r.rd > PROVISIONAL_RD });
+        ratings.push({
+          category, rating: Math.round(r.rating), rank: r.rank, games: r.games, provisional: r.rd > PROVISIONAL_RD,
+          // Recent activity is part of the game history the owner may hide.
+          delta7: showHistory ? Math.round(database.getRatingDeltas7(category, [user.id]).get(user.id) || 0) : null,
+        });
       }
     }
 

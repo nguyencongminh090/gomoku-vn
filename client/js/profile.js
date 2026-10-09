@@ -64,6 +64,9 @@
         el('b', String(r.rating) + (r.provisional ? '?' : '')),
         el('small', r.rank ? t('profile.rank', { rank: r.rank }) : t('profile.unranked', { games: r.games }))
       );
+      if (r.delta7 != null) {
+        card.appendChild(el('small', t('profile.delta_week', { n: r.delta7 > 0 ? '+' + r.delta7 : String(r.delta7) }), r.delta7 > 0 ? 'up' : r.delta7 < 0 ? 'dn' : ''));
+      }
       cards.appendChild(card);
     }
 
@@ -105,6 +108,55 @@
       $('pf-hide-bio').checked = !!(p.privacy && p.privacy.hideBio);
     }
     $('pf-content').hidden = false;
+    drawChart(p);
+  }
+
+  const chart = { category: null, days: 90 };
+
+  /** Rating curve for one variant; chips switch between the variants the player has rated. */
+  async function drawChart(p) {
+    const cats = CATEGORIES.filter((c) => p.ratings.some((r) => r.category === c));
+    const tabs = $('pf-chart-tabs');
+    const svg = $('pf-chart');
+    const note = $('pf-chart-note');
+    tabs.replaceChildren();
+    svg.setAttribute('hidden', ''); // SVG elements have no .hidden property — use the attribute
+    note.textContent = '';
+    $('pf-chart-title').textContent = t('profile.chart_title', { cat: '' }).replace(/\s*·\s*$/, '');
+    if (!cats.length) { note.textContent = t('profile.no_ratings'); return; }
+    if (!cats.includes(chart.category)) chart.category = cats[0];
+    $('pf-chart-title').textContent = t('profile.chart_title', { cat: t('rankings.cat_' + chart.category) });
+    tabs.replaceChildren(...cats.map((c) => {
+      const b = el('button', t('rankings.cat_' + c), 'pchip');
+      b.type = 'button';
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-selected', String(c === chart.category));
+      b.onclick = () => { chart.category = c; drawChart(p); };
+      return b;
+    }));
+    let h;
+    try {
+      const res = await fetch('/api/profile/' + encodeURIComponent(username) + '/rating-history?category=' + chart.category + '&days=' + chart.days, { credentials: 'same-origin' });
+      if (!res.ok) return;
+      h = await res.json();
+    } catch (_) { return; }
+    if (!h || !Array.isArray(h.points)) return;
+    if (h.hidden) { note.textContent = t('profile.chart_hidden'); return; }
+    if (h.points.length < 2) { note.textContent = t('profile.chart_empty', { days: chart.days }); return; }
+    const vals = h.points.map((x) => x.rating);
+    const lo = Math.min(...vals);
+    const span = Math.max(...vals) - lo || 1;
+    const coords = vals.map((v, i) => (i / (vals.length - 1)) * 400 + ',' + (110 - ((v - lo) / span) * 100)).join(' ');
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', coords);
+    line.setAttribute('fill', 'none');
+    line.setAttribute('stroke', 'currentColor');
+    line.setAttribute('stroke-width', '1.6');
+    line.setAttribute('vector-effect', 'non-scaling-stroke');
+    svg.replaceChildren(line);
+    svg.setAttribute('aria-label', t('profile.chart_title', { cat: t('rankings.cat_' + chart.category) }));
+    svg.removeAttribute('hidden');
+    note.textContent = t('profile.chart_caption', { days: chart.days, peak: h.peak });
   }
 
   async function load() {
