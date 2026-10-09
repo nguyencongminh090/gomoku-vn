@@ -16,7 +16,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=198';
+import { client } from './lobby.js?v=200';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -41,6 +41,7 @@ let onlineUsers = [];               // [{ userId, displayName, isGuest }]
 // read it fresh every time instead.
 const me = {
   get userId()      { const u = window.GvnSession && window.GvnSession.getUser(); return u ? u.userId : null; },
+  get isGuest()     { const u = window.GvnSession && window.GvnSession.getUser(); return !u || !!u.isGuest; },
   get displayName() { const u = window.GvnSession && window.GvnSession.getUser(); return u ? u.displayName : ''; },
 };
 
@@ -129,7 +130,7 @@ function renderNotifButton() {
   const label = notifBtn.querySelector('.online-users-notif-btn__label');
   const iconUse = notifBtn.querySelector('.icon use');
   const setIcon = (id) => {
-    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=198#' + id);
+    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=200#' + id);
   };
 
   if (perm === 'granted') {
@@ -179,6 +180,16 @@ function updateWindowStatus(userId) {
     : t('private_chat.status_offline');
 }
 
+function messageRow(msg, isSelf) {
+  const row = document.createElement('div');
+  row.className = 'pm-msg' + (isSelf ? ' pm-msg--self' : '');
+  const bubble = document.createElement('span');
+  bubble.className = 'pm-msg__bubble';
+  bubble.textContent = decode(msg.text);
+  row.appendChild(bubble);
+  return row;
+}
+
 function appendMessage(userId, msg, isSelf) {
   const w = windows.get(userId);
   if (!w) return;
@@ -186,14 +197,39 @@ function appendMessage(userId, msg, isSelf) {
     if (w.seen.has(msg.messageId)) return;
     w.seen.add(msg.messageId);
   }
-  const row = document.createElement('div');
-  row.className = 'pm-msg' + (isSelf ? ' pm-msg--self' : '');
-  const bubble = document.createElement('span');
-  bubble.className = 'pm-msg__bubble';
-  bubble.textContent = decode(msg.text);
-  row.appendChild(bubble);
-  w.log.appendChild(row);
+  w.log.appendChild(messageRow(msg, isSelf));
   w.log.scrollTop = w.log.scrollHeight;
+}
+
+/**
+ * Saved conversation (#198): members' messages persist, so a freshly opened window
+ * shows the last page of history. Older rows go in FRONT of anything already live,
+ * and ids already seen (a live message that raced the fetch) are skipped.
+ * Guests / non-members just get a 403/404 and keep the empty window.
+ */
+async function loadHistory(userId) {
+  if (me.isGuest) return;
+  try {
+    const res = await fetch('/api/dm/id/' + encodeURIComponent(userId), { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const { messages } = await res.json();
+    const w = windows.get(userId);
+    if (!w) return;
+    const rows = [];
+    for (const m of messages) {
+      const id = String(m.id);
+      if (w.seen.has(id)) continue;
+      w.seen.add(id);
+      rows.push(messageRow({ text: m.text }, m.mine));
+    }
+    if (rows.length) {
+      w.log.prepend(...rows);
+      w.log.scrollTop = w.log.scrollHeight;
+    }
+    if (messages.some((m) => !m.mine && !m.read)) {
+      fetch('/api/dm/id/' + encodeURIComponent(userId) + '/read', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+    }
+  } catch (_) { /* offline: the window works live-only, as before */ }
 }
 
 function buildWindow(userId, name) {
@@ -202,7 +238,7 @@ function buildWindow(userId, name) {
   root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=198#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=200#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
       <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}">✕</button>
@@ -213,7 +249,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=198#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=200#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -268,6 +304,7 @@ function openChat(userId) {
   container.appendChild(w.root);
   updateWindowStatus(userId);
   w.input.focus();
+  loadHistory(userId);
 }
 
 function closeChat(userId) {
@@ -356,7 +393,7 @@ function renderModalList() {
       btn.className = 'online-users-list__chat-btn';
       btn.title = t('private_chat.btn_chat');
       btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
-      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=198#ph-bold-chat-circle"></use></svg>';
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=200#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
       // The whole row (except its own controls) opens the chat.
       const open = () => { openChat(u.userId); closeModal(); };

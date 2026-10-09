@@ -142,3 +142,4 @@ a.prow:hover { background: var(--c-hover); }
 .pdm__form { display: flex; gap: 8px; }
 .pdm__form input { flex: 1; min-width: 0; min-height: 38px; padding: 6px 12px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 13.5px; }
 @media (max-width: 860px) { .pdm__grid { grid-template-columns: 1fr; } .pdm__list { max-height: 220px; } }
+@media (max-width: 860px) { .pbtn--sm { min-height: 38px; padding: 6px 12px; } }

@@ -31,3 +31,4 @@ Profile buttons Thách đấu / Kết bạn / Nhắn tin and the Social screen (
 ## Slice 4 notes (2026-10-09)
 - `direct_messages` (wire-form text, newest 500 per conversation kept), `DmService` + `/api/dm`; `DmText` = the shared sanitize/cap/profanity/rate-limit pipeline. `PrivateChatHandler` persists member↔member through an injected store (guests stay ephemeral); an offline recipient is no longer `RECIPIENT_OFFLINE` for members — one `dm` bell entry per sender.
 - The Social page polls (5 s) because it must stay socket-less (one live socket per user). Lobby floating windows are unchanged and do not preload history — follow-up if wanted. Privacy gates (who may DM/challenge) are R5.
+- Follow-up done 2026-10-09 (`feature/198-dm-polish`): lobby floating windows load the saved thread via `/api/dm/id/:userId` (history in front of live, deduped by id, marks read); mobile (390px) pass on bell + Social + DMs → tap targets raised to 38–40px. Privacy gates remain R5.

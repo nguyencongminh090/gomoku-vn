@@ -145,6 +145,20 @@ describe('REST send / thread', () => {
   });
 });
 
+describe('by-id endpoints (lobby chat windows)', () => {
+  it('thread and read work by user id; unknown id is 404; guests 403', async () => {
+    await post('ann', 'bob', 'hey');
+    const t = (await call('GET', `/api/dm/id/${U.ann}`, 'bob')).body;
+    expect(t.with.username).toBe('ann');
+    expect(t.messages.map((m) => [m.mine, m.text, m.read])).toEqual([[false, 'hey', false]]);
+    expect((await call('POST', `/api/dm/id/${U.ann}/read`, 'bob')).body.unread).toBe(0);
+    expect((await call('GET', `/api/dm/id/${U.ann}`, 'bob')).body.messages[0].read).toBe(true);
+    expect(bellTypes(U.bob)).toEqual([]);
+    expect((await call('GET', '/api/dm/id/nobody-id', 'bob')).status).toBe(404);
+    expect((await call('GET', `/api/dm/id/${U.ann}`, 'guest')).status).toBe(403);
+  });
+});
+
 describe('unread, conversations, bell', () => {
   it('offline recipient: unread count + one bell entry per sender (replaced, not stacked); live push when online', async () => {
     await post('ann', 'bob', 'one');
