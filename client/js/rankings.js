@@ -25,7 +25,7 @@
     category: CATEGORIES.includes(params.get('category')) ? params.get('category') : CATEGORIES[0],
     page: Math.max(1, parseInt(params.get('page'), 10) || 1),
     q: (params.get('q') || '').slice(0, 30),
-    scope: params.get('scope') === 'friends' ? 'friends' : 'all',
+    scope: ['friends', 'vn'].includes(params.get('scope')) ? params.get('scope') : 'all',
     mine: null,
   };
 
@@ -38,8 +38,8 @@
 
   function renderTabs() {
     tabsEl.replaceChildren();
-    if (state.mine && state.mine.userId) {
-      for (const sc of ['all', 'friends']) {
+    {
+      for (const sc of state.mine && state.mine.userId ? ['all', 'vn', 'friends'] : ['all', 'vn']) {
         const b = el('button', t('rankings.scope_' + sc), 'pchip');
         b.type = 'button';
         b.setAttribute('aria-pressed', String(sc === state.scope));
@@ -78,6 +78,12 @@
     }
   }
 
+  /** "Hà Nội, Việt Nam" / "Việt Nam" / "—": city is free text (textContent only), country name from Intl. */
+  function regionText(p) {
+    const country = p.country && window.Countries ? window.Countries.name(p.country, document.documentElement.lang || 'vi') : '';
+    return [p.city, country].filter(Boolean).join(', ') || '—';
+  }
+
   function renderRows(data) {
     bodyEl.replaceChildren();
     for (const p of data.players) {
@@ -98,12 +104,13 @@
       } else {
         club.textContent = '—';
       }
-      tr.append(el('td', String(p.rank)), name, rating, delta, club, el('td', String(p.games), 'num'));
+      tr.append(el('td', String(p.rank)), name, rating, delta, club, el('td', regionText(p), 'ptbl__region'), el('td', String(p.games), 'num'));
       bodyEl.appendChild(tr);
     }
     emptyEl.hidden = data.players.length > 0;
     emptyEl.textContent = state.q ? t('rankings.no_match', { q: state.q })
-      : state.scope === 'friends' ? t('rankings.friends_empty', { min: data.minGames }) : t('rankings.empty', { min: data.minGames });
+      : state.scope === 'friends' ? t('rankings.friends_empty', { min: data.minGames })
+      : state.scope === 'vn' ? t('rankings.vn_empty', { min: data.minGames }) : t('rankings.empty', { min: data.minGames });
     totalEl.textContent = t('rankings.total', { n: data.pagination.total });
     footEl.textContent = t('rankings.footnote', { min: data.minGames });
   }
@@ -123,9 +130,9 @@
 
   async function load() {
     renderTabs();
-    history.replaceState(null, '', '?category=' + state.category + (state.scope === 'friends' ? '&scope=friends' : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+    history.replaceState(null, '', '?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
     try {
-      const res = await fetch('/api/rankings?category=' + state.category + (state.scope === 'friends' ? '&scope=friends' : '') + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+      const res = await fetch('/api/rankings?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       renderRows(data);

@@ -244,6 +244,8 @@ router.get('/:username', (req, res, next) => {
       createdAt: user.created_at,
       avatarUrl: avatarUrl(user),
       bio: isSelf || !user.hide_bio ? user.bio : null,
+      country: user.country || '',
+      city: user.city || '',
       ratings,
       stats,
       recent,

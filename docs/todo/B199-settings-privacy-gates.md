@@ -46,3 +46,6 @@ Server-side gates because REST/sockets are reachable without the UI; `hide_histo
 - `client/settings.html` + `js/settings.js` + `js/countries.js` (ISO alpha-2 codes; names from `Intl.DisplayNames` in the UI language). REST only. Friend-request audience offers everyone/nobody only. Registered in `vite.config.js`.
 - The old in-page edit panel on `/u/<name>` was removed; "Chỉnh sửa" now links to `/settings.html`. Display-name editing is NOT included (no endpoint exists; needs uniqueness/profanity rules — separate item if wanted).
 - Tests: `settings-page.test.js` (6), profile-page (+can, edit link). `?v=202`. Real-browser pass: see end-of-#199 note.
+## Slice 5 notes (2026-10-09, `feature/199-location`)
+- `GET /api/rankings?scope=vn` (public, cached per key, ranks within the country, `q` ignored) + `country`/`city` on every row; chip "Việt Nam" for everyone; table column "Khu vực" (city, country name via `Intl.DisplayNames`). Profile header shows "joined · city, country". `GET /api/profile/:username` now includes `country`/`city` publicly (the user opted in by setting them).
+- Tests: rankings-route (+4), rankings-page (+2, 2 adapted for the new chip order), profile-page (+1). `?v=203`.
