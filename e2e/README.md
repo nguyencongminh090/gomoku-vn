@@ -30,7 +30,7 @@ Read the `playwright-e2e-safety` skill first. The server has **no DB path overri
   shell. Kill by PID.
 
 ## Known state (2026-10-09)
-Chromium, fresh DB, recipe above: 54-56 of 56 pass (5 runs; #187 room-lifecycle, #188 scaffold needs internet). Back-to-back runs against one server work
+Chromium, fresh DB, recipe above: 54-56 of 56 pass (5 runs; failures were #187 room-lifecycle, now fixed, and #188 scaffold needs internet). Back-to-back runs against one server work
 again: a room left with only dropped connections now closes after `EMPTY_ROOM_GRACE_MS` (20 s, #186).
 `kick-blocked-interrupted` deliberately leaves an "interrupted" room for 60 s; specs that need the whole quota
 call `waitForEmptyLobby()`.

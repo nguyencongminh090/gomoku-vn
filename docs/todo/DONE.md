@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#187.** e2e room-lifecycle: two host badges after the host leaves (1 in 5 full runs) `[Model: Sonnet 5]` — [detail](docs/todo/B187-room-lifecycle-two-host-badges.md)
 - ✅ **#186.** Room of only disconnected viewers is never destroyed (lingers in lobby + holds IP quota until 10-min idle sweep) `[Model: Sonnet 5]` — [detail](docs/todo/B186-room-of-disconnected-viewers-never-destroyed.md)
 - ✅ **#185.** Flaky e2e specs: lobby-patch, game-optimistic-render, move-validation (found by #183) `[Model: Sonnet 5]` — [detail](docs/todo/B185-flaky-e2e-timing-specs.md)
 - ✅ **#184.** Mobile room topnav: a control starts 2.5px above the nav box (found by #183; 2 e2e cases `fixme`) `[Model: Sonnet 5]` — [detail](docs/todo/B184-topnav-mobile-control-above-nav.md)

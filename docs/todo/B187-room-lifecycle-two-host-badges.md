@@ -1,5 +1,5 @@
 # B187 — room-lifecycle: two host badges after host leaves (1 in 5 full runs)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-09 — app race in room:updated delta; removals now include users seen this window ([fix-log](../fix-log/2026-10-09-todo-187-room-update-join-leave-race.md))
 **Area:** e2e/room-lifecycle.spec.ts:96, client users-list render (room-socket room:updated delta), RoomManager host transfer
 **From:** #185 5x full-suite verification, 2026-10-09 (run 5)   **Depends:** —
 
