@@ -57,6 +57,7 @@ router.get('/', (req, res, next) => {
         rank: offset + i + 1,
         userId: r.user_id,
         username: r.username,
+        avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.user_id}.webp?v=${r.avatar_v}` : null,
         displayName: r.display_name,
         rating: Math.round(r.rating),
         games: r.games,
@@ -95,7 +96,8 @@ router.get('/me', verifyToken, (req, res, next) => {
       }
     }
     res.set('Cache-Control', 'no-store');
-    res.json({ userId: userId || null, minGames: database.RANKING_MIN_GAMES, ratings: mine });
+    const me = userId ? database.getUserById(userId) : null;
+    res.json({ userId: userId || null, username: me ? me.username : null, minGames: database.RANKING_MIN_GAMES, ratings: mine });
   } catch (err) {
     return next(err);
   }

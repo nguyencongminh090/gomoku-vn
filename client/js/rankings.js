@@ -37,7 +37,7 @@
   function renderTabs() {
     tabsEl.replaceChildren();
     for (const c of CATEGORIES) {
-      const b = el('button', t('rankings.cat_' + c), 'rankings__tab');
+      const b = el('button', t('rankings.cat_' + c), 'pchip');
       b.type = 'button';
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', String(c === state.category));
@@ -70,9 +70,9 @@
       const name = document.createElement('td');
       const link = el('a', p.displayName);
       link.href = '/u/' + encodeURIComponent(p.username);
-      name.appendChild(link);
+      name.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm'), link);
       const rating = el('td', String(p.rating), 'num');
-      if (p.provisional) rating.appendChild(el('span', '?', 'rankings__prov'));
+      if (p.provisional) rating.appendChild(el('span', '?', 'ptbl__prov'));
       tr.append(el('td', String(p.rank)), name, rating, el('td', String(p.games), 'num'));
       bodyEl.appendChild(tr);
     }
@@ -85,8 +85,8 @@
   function renderPager(pg) {
     pagerEl.replaceChildren();
     if (pg.totalPages <= 1) return;
-    const prev = el('button', t('rankings.prev'));
-    const next = el('button', t('rankings.next'));
+    const prev = el('button', t('rankings.prev'), 'pbtn');
+    const next = el('button', t('rankings.next'), 'pbtn');
     prev.type = next.type = 'button';
     prev.disabled = pg.page <= 1;
     next.disabled = pg.page >= pg.totalPages;
@@ -112,6 +112,7 @@
   }
 
   async function init() {
+    window.PlatformShell.build('rankings');
     try {
       const res = await fetch('/api/rankings/me', { credentials: 'same-origin' });
       if (res.ok) state.mine = await res.json();

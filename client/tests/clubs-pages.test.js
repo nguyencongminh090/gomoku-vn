@@ -28,6 +28,7 @@ async function bootClub(club) {
   document.body.innerHTML = body('club.html');
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
   global.fetch = jest.fn(() => ok(club));
+  require('../js/platform-shell.js');
   require('../js/club.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await flush(); await flush();
@@ -55,7 +56,7 @@ describe('club page', () => {
     const memRow = document.querySelectorAll('#cb-body tr')[1];
     expect(memRow.querySelectorAll('button')).toHaveLength(3); // kick, promote, transfer
     expect(document.querySelectorAll('#cb-body tr')[0].querySelectorAll('button')).toHaveLength(0);
-    expect(document.querySelectorAll('#cb-pending li button')).toHaveLength(2);
+    expect(document.querySelectorAll('#cb-pending button')).toHaveLength(2);
   });
 
   it('officer can kick members but cannot change roles', async () => {

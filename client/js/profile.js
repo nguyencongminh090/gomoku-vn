@@ -22,39 +22,43 @@
     return n;
   }
 
+  const SHELL = () => window.PlatformShell;
+
   function setAvatar(url, name) {
-    const a = $('pf-avatar');
-    a.textContent = url ? '' : (name || '?').slice(0, 2).toUpperCase();
-    a.style.backgroundImage = url ? 'url("' + url + '")' : '';
+    $('pf-avatar').replaceWith(Object.assign(SHELL().avatar(url, name, 'pav--xl'), { id: 'pf-avatar' }));
   }
 
   function render(p) {
     document.title = 'Play3CR — ' + p.displayName;
     $('pf-name').textContent = p.displayName;
-    $('pf-joined').textContent = t('profile.joined', { date: new Date(p.createdAt).toLocaleDateString() });
+    $('pf-joined').textContent = t('profile.joined', {
+      date: new Date(p.createdAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' }),
+    });
     setAvatar(p.avatarUrl, p.displayName);
 
     const bio = $('pf-bio');
     if (p.bio) bio.textContent = p.bio;
     else bio.textContent = p.isSelf && p.privacy && p.privacy.hideBio ? t('profile.bio_hidden') : (p.bio === null ? '' : t('profile.no_bio'));
+    $('pf-actions').hidden = !p.isSelf;
 
     const stats = $('pf-stats');
     stats.replaceChildren();
     if (p.stats) {
-      for (const [k, v] of [['games', p.stats.games], ['wins', p.stats.wins], ['draws', p.stats.draws]]) {
+      const pct = p.stats.games ? Math.round((p.stats.wins / p.stats.games) * 100) + '%' : '—';
+      for (const [label, v] of [['stats_games', String(p.stats.games)], ['win_rate', pct], ['stats_draws', String(p.stats.draws)]]) {
         const d = document.createElement('div');
-        d.append(el('dt', t('profile.stats_' + k)), el('dd', String(v)));
+        d.append(el('dt', t('profile.' + label)), el('dd', v));
         stats.appendChild(d);
       }
     }
 
     const cards = $('pf-ratings');
     cards.replaceChildren();
-    if (!p.ratings.length) cards.appendChild(el('p', t('profile.no_ratings'), 'profile__note'));
+    if (!p.ratings.length) cards.appendChild(el('p', t('profile.no_ratings'), 'pnote'));
     for (const c of CATEGORIES) {
       const r = p.ratings.find((x) => x.category === c);
       if (!r) continue;
-      const card = el('div', undefined, 'profile__card');
+      const card = el('div', undefined, 'pcard');
       card.append(
         el('span', t('rankings.cat_' + c)),
         el('b', String(r.rating) + (r.provisional ? '?' : '')),
@@ -75,21 +79,23 @@
       note.textContent = t('profile.no_recent');
     }
     for (const g of p.recent) {
-      const li = document.createElement('li');
-      const a = el('a', 'vs ' + g.opponent);
+      const a = el('a', undefined, 'prow');
       a.href = 'history.html?id=' + encodeURIComponent(g.id);
-      li.append(el('span', t('profile.' + g.result), 'profile__res profile__res--' + g.result), a);
-      list.appendChild(li);
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', t('profile.' + g.result) + ' vs ' + g.opponent, 'prow__t'));
+      a.append(el('span', undefined, 'pdot' + (g.result === 'win' ? ' pdot--on' : g.result === 'loss' ? ' pdot--loss' : '')), body);
+      list.appendChild(a);
     }
 
     const clubs = p.clubs || [];
     $('pf-clubs-panel').hidden = clubs.length === 0;
     $('pf-clubs').replaceChildren(...clubs.map((c) => {
-      const li = document.createElement('li');
-      const a = el('a', c.name);
+      const a = el('a', undefined, 'prow');
       a.href = '/c/' + encodeURIComponent(c.slug);
-      li.append(a, el('span', t('clubs.role_' + c.role), 'profile__res'));
-      return li;
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', c.name, 'prow__t'), el('div', t('clubs.role_' + c.role) + ' · ' + t('clubs.members', { n: c.members }), 'prow__m'));
+      a.append(SHELL().avatar(null, c.name, 'pav--sm pav--sq'), body);
+      return a;
     }));
 
     $('pf-edit').hidden = !p.isSelf;
@@ -150,6 +156,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    SHELL().build(null);
+    $('pf-edit-btn').addEventListener('click', () => $('pf-edit').scrollIntoView({ behavior: 'smooth' }));
     $('pf-form').addEventListener('submit', save);
     $('pf-file').addEventListener('change', upload);
     $('pf-avatar-remove').addEventListener('click', removeAvatar);

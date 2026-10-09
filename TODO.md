@@ -75,4 +75,4 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
-
+- **#190.** Arena mockup features needing new data (rating chart, 7-day delta, club rank, search/scopes, badges) `[Model: Sonnet 5]` — [detail](docs/todo/B190-platform-pages-phase2-data.md)

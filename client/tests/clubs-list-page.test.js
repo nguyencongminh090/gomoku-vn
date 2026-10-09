@@ -24,12 +24,15 @@ describe('clubs list page', () => {
     global.fetch = jest.fn((url) => (url.includes('/mine')
       ? Promise.resolve({ ok: false, status: 401 })
       : ok({ clubs: [{ slug: 'a-b', name: '<b>X</b>', description: '', joinPolicy: 'open', members: 3, avgRating: null }], pagination: { page: 1, totalPages: 1 } })));
+  require('../js/platform-shell.js');
     require('../js/clubs.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     await flush(); await flush();
-    const a = document.querySelector('#cl-list a');
+    const a = document.querySelector('#cl-list .prow .prow__t');
     expect(a.textContent).toBe('<b>X</b>');
-    expect(a.getAttribute('href')).toBe('/c/a-b');
+    expect(a.closest('a').getAttribute('href')).toBe('/c/a-b');
     expect(document.getElementById('cl-create-panel').hidden).toBe(true);
+    expect(document.getElementById('cl-create-toggle').hidden).toBe(true);
+    expect(document.querySelectorAll('#cl-tabs .ptab')).toHaveLength(1);
   });
 });

@@ -8,7 +8,7 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
-  const state = { page: 1, q: '' };
+  const state = { page: 1, q: '', tab: 'discover' };
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -24,16 +24,16 @@
   }
 
   function row(c) {
-    const li = document.createElement('li');
-    const main = el('div', undefined, 'clubs__row-main');
-    const a = el('a', c.name);
+    const a = el('a', undefined, 'prow');
     a.href = '/c/' + encodeURIComponent(c.slug);
-    main.append(a);
-    const meta = t('clubs.members', { n: c.members }) + (c.avgRating ? ' · ' + t('clubs.avg', { n: c.avgRating }) : '');
-    main.append(el('small', meta));
-    if (c.description) main.append(el('small', c.description));
-    li.append(main, el('span', t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short'), 'clubs__badge'));
-    return li;
+    const body = el('div', undefined, 'prow__body');
+    body.append(el('div', c.name, 'prow__t'));
+    const meta = t('clubs.members', { n: c.members }) + (c.avgRating ? ' · ' + t('clubs.avg', { n: c.avgRating }) : '') +
+      (c.description ? ' · ' + c.description : '');
+    body.append(el('div', meta, 'prow__m'));
+    a.append(window.PlatformShell.avatar(null, c.name, 'pav--sm pav--sq'), body,
+      el('span', t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short'), 'pbadge'));
+    return a;
   }
 
   async function loadList() {
@@ -48,8 +48,8 @@
     pager.replaceChildren();
     const pg = data.pagination;
     if (pg.totalPages > 1) {
-      const prev = el('button', t('rankings.prev'));
-      const next = el('button', t('rankings.next'));
+      const prev = el('button', t('rankings.prev'), 'pbtn');
+      const next = el('button', t('rankings.next'), 'pbtn');
       prev.type = next.type = 'button';
       prev.disabled = pg.page <= 1;
       next.disabled = pg.page >= pg.totalPages;
@@ -59,19 +59,42 @@
     }
   }
 
+  function showTab(tab) {
+    state.tab = tab;
+    $('cl-tabs').querySelectorAll('.ptab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+    $('cl-list').hidden = $('cl-pager').hidden = tab !== 'discover';
+    $('cl-mine').hidden = tab !== 'mine';
+    $('cl-q').closest('.psearch').hidden = tab !== 'discover';
+  }
+
+  function renderTabs(loggedIn) {
+    const tabs = [['discover', t('clubs.tab_discover')]];
+    if (loggedIn) tabs.push(['mine', t('clubs.tab_mine')]);
+    $('cl-tabs').replaceChildren(...tabs.map(([id, label]) => {
+      const b = el('button', label, 'ptab');
+      b.type = 'button';
+      b.dataset.tab = id;
+      b.setAttribute('role', 'tab');
+      b.onclick = () => showTab(id);
+      return b;
+    }));
+    showTab('discover');
+  }
+
   async function loadMine() {
     const res = await fetch('/api/clubs/mine', { credentials: 'same-origin' });
-    if (!res.ok) return; // logged out: discover only
+    if (!res.ok) { renderTabs(false); return; } // logged out: discover only
     const { clubs } = await res.json();
-    $('cl-create-panel').hidden = false;
-    $('cl-mine-panel').hidden = clubs.length === 0;
-    $('cl-mine').replaceChildren(...clubs.map((c) => {
-      const li = document.createElement('li');
-      const a = el('a', c.name);
+    renderTabs(true);
+    $('cl-create-toggle').hidden = false;
+    $('cl-mine').replaceChildren(...(clubs.length ? clubs.map((c) => {
+      const a = el('a', undefined, 'prow');
       a.href = '/c/' + encodeURIComponent(c.slug);
-      li.append(a, el('span', t('clubs.role_' + c.role), 'clubs__badge'));
-      return li;
-    }));
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', c.name, 'prow__t'), el('div', t('clubs.members', { n: c.members }), 'prow__m'));
+      a.append(window.PlatformShell.avatar(null, c.name, 'pav--sm pav--sq'), body, el('span', t('clubs.role_' + c.role), 'pbadge'));
+      return a;
+    }) : [el('p', t('clubs.no_mine'), 'pnote')]));
   }
 
   async function create(ev) {
@@ -92,7 +115,10 @@
       clearTimeout(timer);
       timer = setTimeout(() => { state.q = e.target.value.trim(); state.page = 1; loadList(); }, 250);
     });
+    window.PlatformShell.build('clubs');
+    $('cl-create-toggle').addEventListener('click', () => { $('cl-create-panel').hidden = !$('cl-create-panel').hidden; });
     $('cl-form').addEventListener('submit', create);
+    renderTabs(false);
     loadMine();
     loadList();
   });
