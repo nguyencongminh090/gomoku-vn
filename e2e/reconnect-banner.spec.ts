@@ -1,4 +1,5 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * TODO #14: socket-client.js bound 'reconnect_attempt'/'reconnect' on the
@@ -11,12 +12,7 @@ import { test, expect } from '@playwright/test';
 test.describe('reconnect status banner', () => {
   test('advances through reconnecting text and clears on reconnect', async ({ page, context }) => {
     test.setTimeout(90000);
-    const res = await page.request.post('/api/auth/guest');
-    const { token, displayName } = await res.json();
-    await context.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [token, displayName]);
+    const { displayName } = await authAsGuest(context, page);
 
     await page.goto('/index.html');
     const banner = page.locator('#status-banner');

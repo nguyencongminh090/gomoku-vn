@@ -1,4 +1,4 @@
-import { test, expect, Page, Browser, devices } from '@playwright/test';
+import { test, expect, Page, Browser, devices } from './helpers/fixtures';
 
 /**
  * TODO.md #143 — the `✕` stand button (own seat only, `.slot-card__stand`)

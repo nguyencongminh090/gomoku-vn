@@ -1,5 +1,6 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
 import { io as ioClient } from 'socket.io-client';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * TEST-MATRIX.md rows 19, 21 — authorization boundary (a user with no
@@ -19,13 +20,7 @@ import { io as ioClient } from 'socket.io-client';
 async function makeGuest(browser: any, actor: string) {
   const ctx = await browser.newContext();
   const page: Page = await ctx.newPage();
-  const res = await page.request.post('/api/auth/guest');
-  expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-  const { token, displayName } = await res.json();
-  await ctx.addInitScript(([t, d]) => {
-    localStorage.setItem('gvn_token', t as string);
-    localStorage.setItem('gvn_display_name', d as string);
-  }, [token, displayName]);
+  const { displayName } = await authAsGuest(ctx, page);
   return { ctx, page, actor, displayName };
 }
 
@@ -57,9 +52,14 @@ test.describe('Security boundary', () => {
     // the evaluate() context mid-flight. A real attacker wouldn't necessarily
     // go through this app's browser UI at all, so this is also the more
     // realistic shape for the probe.
-    const outsiderAuth = await fetch(new URL('/api/auth/guest', A.page.url()).origin + '/api/auth/guest', { method: 'POST' })
-      .then((r) => r.json());
-    const outsiderSocket = ioClient(new URL(A.page.url()).origin, { auth: { token: outsiderAuth.token } });
+    // Auth is the session cookie (#68), which a non-browser client carries by
+    // hand: take it off the guest response's Set-Cookie and send it as a header.
+    const outsiderRes = await fetch(new URL(A.page.url()).origin + '/api/auth/guest', { method: 'POST' });
+    expect(outsiderRes.ok).toBeTruthy();
+    const outsiderCookie = (outsiderRes.headers.getSetCookie?.() ?? [])
+      .map((c) => c.split(';')[0]).join('; ');
+    expect(outsiderCookie, 'guest auth sets a session cookie').toBeTruthy();
+    const outsiderSocket = ioClient(new URL(A.page.url()).origin, { extraHeaders: { cookie: outsiderCookie } });
     await new Promise<void>((resolve, reject) => {
       outsiderSocket.on('connect', () => resolve());
       outsiderSocket.on('connect_error', reject);

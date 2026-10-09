@@ -1,4 +1,4 @@
-import { test, expect, Page, BrowserContext } from '@playwright/test';
+import { test, expect, Page, BrowserContext } from './helpers/fixtures';
 
 /**
  * TODO.md #153 — optimistic render for the mover's own stone.

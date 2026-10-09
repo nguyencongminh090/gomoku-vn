@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './helpers/fixtures';
 import { io as ioClient, Socket } from 'socket.io-client';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';

@@ -80,4 +80,5 @@ in the detail file / fix-log).
 - **#178.** Platform: clubs (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
 
 - **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
-- **#183.** e2e suite: replace stale legacy-token auth helpers, document localhost run recipe `[Model: Sonnet 5]` — [detail](docs/todo/B183-e2e-suite-auth-and-env.md)
+- **#184.** Mobile room topnav: a control starts 2.5px above the nav box (found by #183; 2 e2e cases `fixme`) `[Model: Sonnet 5]` — [detail](docs/todo/B184-topnav-mobile-control-above-nav.md)
+- **#185.** Flaky e2e specs: lobby-patch, game-optimistic-render, move-validation (found by #183) `[Model: Sonnet 5]` — [detail](docs/todo/B185-flaky-e2e-timing-specs.md)

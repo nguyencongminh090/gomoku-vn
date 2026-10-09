@@ -1,4 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
+import { authAsMember, seedSession } from './helpers/auth';
 
 /**
  * TEST-MATRIX.md row 20 — single-session-per-user enforcement. When a second
@@ -24,20 +25,8 @@ test.describe('Session eviction', () => {
     const ctxA = await browser.newContext();
     const pageA: Page = await ctxA.newPage();
 
-    const username = `qauser_${Date.now().toString(36)}`;
-    const password = 'testpass123';
-    const displayName = 'SessionTestUser';
+    const { username, password, displayName } = await authAsMember(ctxA, pageA, 'qauser');
 
-    const registerRes = await pageA.request.post('/api/auth/register', {
-      data: { username, password, displayName },
-    });
-    expect(registerRes.ok(), 'register should succeed').toBeTruthy();
-    const { token: tokenA } = await registerRes.json();
-
-    await ctxA.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [tokenA, displayName]);
     await pageA.goto('/index.html');
     await expect(pageA.locator('#btn-create')).toBeVisible({ timeout: 15000 });
     // Give the lobby socket a moment to actually establish. Unlike room.html
@@ -46,19 +35,16 @@ test.describe('Session eviction', () => {
     // there's no state to wait on directly here.
     await pageA.waitForTimeout(1500);
 
-    // Second login with the same credentials — a fresh JWT, same userId.
-    const loginRes = await pageA.request.post('/api/auth/login', {
+    // Second login with the same credentials from a separate browser context
+    // (own cookie jar) — a fresh session, same userId. Logging in through
+    // pageA.request would overwrite A's own cookie instead.
+    const ctxB = await browser.newContext();
+    const pageB: Page = await ctxB.newPage();
+    const loginRes = await pageB.request.post('/api/auth/login', {
       data: { username, password },
     });
     expect(loginRes.ok(), 'login with the same credentials should succeed').toBeTruthy();
-    const { token: tokenB } = await loginRes.json();
-
-    const ctxB = await browser.newContext();
-    const pageB: Page = await ctxB.newPage();
-    await ctxB.addInitScript(([t, d]) => {
-      localStorage.setItem('gvn_token', t as string);
-      localStorage.setItem('gvn_display_name', d as string);
-    }, [tokenB, displayName]);
+    await seedSession(ctxB, (await loginRes.json()).user);
     await pageB.goto('/index.html');
     await expect(pageB.locator('#btn-create')).toBeVisible({ timeout: 15000 });
 

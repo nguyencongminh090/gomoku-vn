@@ -1,4 +1,6 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './helpers/fixtures';
+import { dropConnection } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
 
 /**
  * TEST-MATRIX.md row 18 — kicking a user is blocked while the room is
@@ -22,13 +24,7 @@ import { test, expect, Page } from '@playwright/test';
 async function makeGuest(browser: any, actor: string) {
   const ctx = await browser.newContext();
   const page: Page = await ctx.newPage();
-  const res = await page.request.post('/api/auth/guest');
-  expect(res.ok(), `${actor} guest auth should succeed`).toBeTruthy();
-  const { token, displayName } = await res.json();
-  await ctx.addInitScript(([t, d]) => {
-    localStorage.setItem('gvn_token', t as string);
-    localStorage.setItem('gvn_display_name', d as string);
-  }, [token, displayName]);
+  const { displayName } = await authAsGuest(ctx, page);
   return { ctx, page, actor, displayName };
 }
 
@@ -64,7 +60,7 @@ test.describe('Kick blocked during interrupted state', () => {
     // A disconnects mid-game (closing the context drops the socket) —
     // DisconnectHandler.startDisconnectGrace flips room.state to
     // 'interrupted' and starts the grace-period clock.
-    await A.ctx.close();
+    await dropConnection(A.ctx);
 
     // The server sets room.state = 'interrupted' immediately but only pushes
     // it to clients via 'game:interrupted' (client/js/room-socket.js updates
