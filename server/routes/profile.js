@@ -21,8 +21,8 @@ const sharp = require('sharp');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
-const { readSessionIdFromHeader } = require('../utils/session-cookie');
-const sessionManager = require('../managers/SessionManager');
+const { optionalUserId } = require('../utils/optional-user');
+const clubService = require('../managers/ClubService');
 const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES, PROVISIONAL_RD } = require('../managers/RatingService');
@@ -49,13 +49,6 @@ function avatarFile(userId) {
 
 function avatarUrl(user) {
   return user.avatar_v ? `/api/profile/avatar/${user.id}.webp?v=${user.avatar_v}` : null;
-}
-
-/** Session user id, or null — never rejects (the profile page is public). */
-function optionalUserId(req) {
-  const sid = readSessionIdFromHeader(req.headers.cookie);
-  const session = sid ? sessionManager.getValidSession(sid) : null;
-  return (session && session.userId) || null;
 }
 
 function requireMember(req, res, next) {
@@ -179,6 +172,7 @@ router.get('/:username', (req, res, next) => {
       ratings,
       stats,
       recent,
+      clubs: clubService.clubsOfUser(user.id),
       isSelf,
     };
     if (isSelf) body.privacy = { hideHistory: !!user.hide_history, hideBio: !!user.hide_bio };

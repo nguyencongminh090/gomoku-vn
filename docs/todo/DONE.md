@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#178.** Platform: clubs — [detail](docs/todo/B178-clubs.md)
 - ✅ **#177.** Platform: profile page + avatar upload — [detail](docs/todo/B177-profile-avatar.md)
 - ✅ **#176.** Platform: rankings/leaderboard page — [detail](docs/todo/B176-rankings-page.md)
 - ✅ **#188.** Remove the Playwright scaffold `tests/example.spec.ts` (hits playwright.dev) `[Model: Haiku 5]` — [detail](docs/todo/B188-remove-playwright-scaffold-example-spec.md)

@@ -66,6 +66,8 @@ export default defineConfig({
         history: resolve(__dirname, 'client/history.html'),
         rankings: resolve(__dirname, 'client/rankings.html'),
         profile: resolve(__dirname, 'client/profile.html'),
+        clubs: resolve(__dirname, 'client/clubs.html'),
+        club: resolve(__dirname, 'client/club.html'),
         tournament: resolve(__dirname, 'client/tournament.html'),
         tournamentMatch: resolve(__dirname, 'client/tournament-match.html'),
         // Unlisted diagnostic page (TODO.md #168). Listed here only so the

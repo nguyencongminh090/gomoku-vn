@@ -247,3 +247,26 @@ CREATE TABLE IF NOT EXISTS rating_history (
 
 CREATE INDEX IF NOT EXISTS idx_ratings_category_rating ON ratings(category, rating DESC);
 CREATE INDEX IF NOT EXISTS idx_rating_history_user ON rating_history(user_id, category, id DESC);
+
+-- Clubs (TODO.md #178). slug = URL form of the name (UNIQUE, so also enforces
+-- unique names). role: owner | officer | member | pending (join request on an
+-- 'invite' club). Exactly one 'owner' row per club (ClubService enforces it).
+CREATE TABLE IF NOT EXISTS clubs (
+  id           TEXT PRIMARY KEY,                 -- UUID v4
+  slug         TEXT UNIQUE NOT NULL,
+  name         TEXT NOT NULL,
+  description  TEXT NOT NULL DEFAULT '',
+  join_policy  TEXT NOT NULL DEFAULT 'open',     -- 'open' | 'invite'
+  owner_id     TEXT NOT NULL REFERENCES users(id),
+  created_at   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS club_members (
+  club_id    TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  role       TEXT NOT NULL,
+  joined_at  TEXT NOT NULL,
+  PRIMARY KEY (club_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_club_members_user ON club_members(user_id);
