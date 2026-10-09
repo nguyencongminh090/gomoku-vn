@@ -297,3 +297,19 @@ CREATE TABLE IF NOT EXISTS notifications (
 );
 
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, id);
+
+-- Direct messages (TODO.md #198 slice 4): member ↔ member, text stored in wire form
+-- (angle brackets escaped, profanity masked). conv_key = the two user ids sorted, joined by '|'.
+-- read_at is the recipient's read stamp. Newest DM_KEEP per conversation are kept.
+CREATE TABLE IF NOT EXISTS direct_messages (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  conv_key    TEXT NOT NULL,
+  sender_id   TEXT NOT NULL REFERENCES users(id),
+  recipient_id TEXT NOT NULL REFERENCES users(id),
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  read_at     TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_dm_conv ON direct_messages(conv_key, id);
+CREATE INDEX IF NOT EXISTS idx_dm_unread ON direct_messages(recipient_id, read_at);

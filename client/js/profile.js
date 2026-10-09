@@ -186,7 +186,9 @@
         go.disabled = false;
       }
     });
-    box.append(open, form);
+    const msg = el('a', t('dm.btn'), 'pbtn');
+    msg.href = '/social.html#dm=' + encodeURIComponent(p.username);
+    box.append(open, msg, form);
   }
 
   async function friendAction(p, method, path, btn) {

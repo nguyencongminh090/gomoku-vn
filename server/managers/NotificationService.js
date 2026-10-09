@@ -17,6 +17,11 @@ const TYPES = ['friend_request', 'friend_accepted', 'challenge', 'challenge_acce
 let emitter = () => {};
 const db = () => database.db;
 
+/** Live event to a user's socket if they have one (best-effort). */
+function emitTo(userId, event, payload) {
+  try { emitter(userId, event, payload); } catch (_) { /* best-effort */ }
+}
+
 /** @param {(userId: string, event: string, payload: object) => void} fn */
 function setEmitter(fn) {
   emitter = typeof fn === 'function' ? fn : () => {};
@@ -70,4 +75,4 @@ function markRead(userId, id) {
   return unreadCount(userId);
 }
 
-module.exports = { MAX_PER_USER, TYPES, setEmitter, push, drop, list, markRead, unreadCount };
+module.exports = { MAX_PER_USER, TYPES, emitTo, setEmitter, push, drop, list, markRead, unreadCount };
