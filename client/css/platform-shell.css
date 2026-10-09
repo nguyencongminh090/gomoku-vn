@@ -17,6 +17,21 @@
 .pnav__me small { display: block; font-size: 11px; font-weight: 400; color: var(--c-ink-3); }
 .pnav__login { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: var(--radius); background: var(--c-brand); color: var(--c-on-brand) !important; }
 
+/* ── Notification bell (#198) ── */
+.pbell { position: relative; }
+.pbell__btn { position: relative; }
+.pbell__badge { position: absolute; top: -4px; right: -4px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--c-brand); color: var(--c-on-brand); font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }
+.pbell__badge[hidden], .pbell__panel[hidden] { display: none; }
+.pbell__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 320px; max-width: calc(100vw - 24px); padding: 8px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.pbell__head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px; font-size: 13px; }
+.pbell__link { border: 0; background: none; cursor: pointer; font-size: 12px; color: var(--c-ink-2); }
+.pbell__link:disabled { opacity: .4; cursor: default; }
+.pbell__item { display: block; padding: 10px 8px; border-radius: var(--radius); font-size: 13px; color: var(--c-ink-2); }
+.pbell__item.is-unread { color: var(--c-strong); font-weight: 600; background: var(--c-fill); }
+.pbell__item:hover { background: var(--c-fill); }
+.pbell__empty { margin: 0; padding: 14px 8px; font-size: 13px; color: var(--c-ink-3); }
+.pbell__all { display: block; padding: 8px; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--c-ink-2); }
+
 .ptabbar { display: none; }
 
 .pav { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--c-surface-2) center / cover no-repeat; color: var(--c-ink); font-size: 11px; font-weight: 700; letter-spacing: .04em; vertical-align: middle; overflow: hidden; }
@@ -29,6 +44,9 @@ body.pshell:not(.zen-lobby) .lobby, body.pshell .history { max-width: 1180px; pa
 @media (max-width: 860px) {
   .pnav { padding: 0 14px; }
   .pnav__brand { flex: 1; }
+  .pnav__right { gap: 8px; }
+  .pbell { position: static; }
+  .pbell__panel { position: fixed; left: 12px; right: 12px; top: 62px; width: auto; max-width: none; }
   .pnav__links, .pnav__me span.pnav__name { display: none; }
   .ptabbar { display: flex; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--c-bg); border-top: 1px solid var(--c-border); }
   .ptabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; padding: 6px 0; font-size: 10.5px; color: var(--c-ink-3); }

@@ -65,6 +65,7 @@ export default defineConfig({
         room: resolve(__dirname, 'client/room.html'),
         history: resolve(__dirname, 'client/history.html'),
         rankings: resolve(__dirname, 'client/rankings.html'),
+        social: resolve(__dirname, 'client/social.html'),
         profile: resolve(__dirname, 'client/profile.html'),
         clubs: resolve(__dirname, 'client/clubs.html'),
         club: resolve(__dirname, 'client/club.html'),

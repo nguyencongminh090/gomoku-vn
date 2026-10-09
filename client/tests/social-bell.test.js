@@ -1,0 +1,154 @@
+/**
+ * #198 slice 2 — notification bell in the Arena shell + the Bạn bè & tin nhắn page.
+ *
+ * @jest-environment jsdom
+ * @jest-environment-options {"url": "http://localhost/social.html"}
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+const bodyOf = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8')
+  .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
+
+const flush = () => Promise.resolve(); // microtasks only: fake timers are on
+const N = (id, type, read = false) => ({ id, type, read, payload: { from: { username: 'ann', displayName: '<b>Ann</b>' } }, createdAt: 'x' });
+const json = (body, status = 200) => Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) });
+
+function boot({ user = { userId: 'u1', displayName: 'Me', isGuest: false }, routes }) {
+  jest.resetModules();
+  jest.useFakeTimers({ doNotFake: ['nextTick'] });
+  document.body.innerHTML = '<div id="pl-shell"></div>' + bodyOf('social.html');
+  window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
+  window.GvnSession = { getUser: () => user };
+  global.fetch = jest.fn((url, opts) => {
+    const key = (opts && opts.method ? opts.method : 'GET') + ' ' + url;
+    for (const [pat, fn] of Object.entries(routes)) if (key === pat) return fn(opts);
+    return json({}, 404);
+  });
+  require('../js/platform-shell.js');
+  window.PlatformShell.build('social');
+}
+const tick = async () => { for (let i = 0; i < 30; i++) await flush(); };
+const badge = () => document.querySelector('.pbell__badge');
+const items = () => [...document.querySelectorAll('.pbell__item')];
+
+afterEach(() => { jest.useRealTimers(); });
+
+describe('bell', () => {
+  const list = { unread: 2, items: [N(2, 'friend_request'), N(1, 'friend_accepted', true)] };
+
+  it('members get a bell with the unread badge; items render as text and link to their target', async () => {
+    boot({ routes: { 'GET /api/notifications': () => json(list), 'GET /api/rankings/me': () => json({ ratings: {} }) } });
+    await tick();
+    expect(badge().hidden).toBe(false);
+    expect(badge().textContent).toBe('2');
+    expect(items().map((a) => a.textContent)).toEqual(['notif.friend_request{"name":"<b>Ann</b>"}', 'notif.friend_accepted{"name":"<b>Ann</b>"}']);
+    expect(document.querySelector('.pbell__item b')).toBeNull();
+    expect(items()[0].getAttribute('href')).toBe('/social.html');
+    expect(items()[1].getAttribute('href')).toBe('/u/ann');
+    expect(items()[0].classList.contains('is-unread')).toBe(true);
+    expect(items()[1].classList.contains('is-unread')).toBe(false);
+  });
+
+  it('guests and signed-out visitors get no bell and no notification fetch', async () => {
+    boot({ user: { userId: null, displayName: 'G', isGuest: true }, routes: {} });
+    await tick();
+    expect(document.querySelector('.pbell')).toBeNull();
+    expect(global.fetch.mock.calls.some((c) => String(c[0]).includes('/api/notifications'))).toBe(false);
+  });
+
+  it('button toggles the panel (aria-expanded) and Escape closes it', async () => {
+    boot({ routes: { 'GET /api/notifications': () => json(list), 'GET /api/rankings/me': () => json({ ratings: {} }) } });
+    await tick();
+    const btn = document.querySelector('.pbell__btn');
+    const panel = document.querySelector('.pbell__panel');
+    expect(panel.hidden).toBe(true);
+    btn.click();
+    expect(panel.hidden).toBe(false);
+    expect(btn.getAttribute('aria-expanded')).toBe('true');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(panel.hidden).toBe(true);
+  });
+
+  it('clicking an unread item marks just it read; "mark all" sends no id', async () => {
+    const reads = [];
+    boot({ routes: {
+      'GET /api/notifications': () => json(list),
+      'GET /api/rankings/me': () => json({ ratings: {} }),
+      'POST /api/notifications/read': (o) => { const b = JSON.parse(o.body); reads.push(b); return json({ unread: b.id ? 1 : 0 }); },
+    } });
+    await tick();
+    items()[0].addEventListener('click', (e) => e.preventDefault());
+    items()[0].click();
+    await tick();
+    expect(reads).toEqual([{ id: 2 }]);
+    expect(badge().textContent).toBe('1');
+    document.querySelector('.pbell__link').click();
+    await tick();
+    expect(reads[1]).toEqual({});
+    expect(badge().hidden).toBe(true);
+  });
+
+  it('live push adds on top and uses the server unread count', async () => {
+    boot({ routes: { 'GET /api/notifications': () => json({ unread: 0, items: [] }), 'GET /api/rankings/me': () => json({ ratings: {} }) } });
+    await tick();
+    expect(document.querySelector('.pbell__empty')).not.toBeNull();
+    window.PlatformShell.pushNotification({ ...N(5, 'dm'), unread: 3 });
+    expect(badge().textContent).toBe('3');
+    expect(items()[0].getAttribute('href')).toBe('/social.html#dm=ann');
+    window.PlatformShell.pushNotification({ ...N(5, 'dm'), unread: 3 });
+    expect(items()).toHaveLength(1); // same id is not duplicated
+  });
+
+  it('polls every 60 s', async () => {
+    boot({ routes: { 'GET /api/notifications': () => json(list), 'GET /api/rankings/me': () => json({ ratings: {} }) } });
+    await tick();
+    const n0 = global.fetch.mock.calls.filter((c) => c[0] === '/api/notifications').length;
+    jest.advanceTimersByTime(60000);
+    await tick();
+    expect(global.fetch.mock.calls.filter((c) => c[0] === '/api/notifications').length).toBe(n0 + 1);
+  });
+});
+
+describe('social page', () => {
+  const P = (u) => ({ username: u, displayName: u.toUpperCase(), avatarUrl: null });
+  const friends = { friends: [P('bob')], incoming: [P('cat')], outgoing: [P('dan')] };
+
+  async function bootPage(routes) {
+    boot({ user: { userId: 'u1', displayName: 'Me', isGuest: false }, routes: { 'GET /api/notifications': () => json({ unread: 0, items: [] }), 'GET /api/rankings/me': () => json({ ratings: {} }), ...routes } });
+    require('../js/social.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    await tick();
+  }
+  const labels = (id) => [...document.querySelectorAll('#' + id + ' button')].map((b) => b.textContent);
+
+  it('lists incoming / friends / outgoing with their actions', async () => {
+    await bootPage({ 'GET /api/friends': () => json(friends) });
+    expect(labels('sc-incoming')).toEqual(['friends.accept', 'friends.decline']);
+    expect(labels('sc-friends')).toEqual(['friends.remove']);
+    expect(labels('sc-outgoing')).toEqual(['friends.cancel']);
+    expect(document.querySelector('#sc-friends a').getAttribute('href')).toBe('/u/bob');
+  });
+
+  it('accept hits /accept then reloads the lists', async () => {
+    let state = friends;
+    await bootPage({
+      'GET /api/friends': () => json(state),
+      'POST /api/friends/cat/accept': () => { state = { friends: [P('bob'), P('cat')], incoming: [], outgoing: [P('dan')] }; return json({ status: 'friends' }); },
+    });
+    document.querySelector('#sc-incoming button').click();
+    await tick();
+    expect(document.querySelectorAll('#sc-friends .prow')).toHaveLength(2);
+    expect(document.querySelector('#sc-incoming .pnote').textContent).toBe('social.none_incoming');
+  });
+
+  it('guest (403) sees the sign-in note; server error shows the error note', async () => {
+    await bootPage({ 'GET /api/friends': () => json({}, 403) });
+    expect(document.getElementById('sc-status').textContent).toBe('social.guest');
+    await bootPage({ 'GET /api/friends': () => json({}, 500) });
+    expect(document.getElementById('sc-status').textContent).toBe('social.error');
+  });
+});

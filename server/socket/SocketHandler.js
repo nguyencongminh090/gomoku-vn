@@ -52,6 +52,12 @@ function init(io) {
   // TournamentHandler.js's header for why this is init(), not register().
   TournamentHandler.init(io);
 
+  // Live push for the bell (#198): one socket per user lives in `sessions`.
+  require('../managers/NotificationService').setEmitter((userId, event, payload) => {
+    const s = sessions.get(userId);
+    if (s) s.emit(event, payload);
+  });
+
   // Listen for idle room destructions and clean up
   roomManager.on('room_destroyed', (roomId) => {
     io.to(roomId).emit('room:destroyed', { message: 'Phòng đã tự động đóng do quá lâu không có hoạt động.', code: 'ROOM_AUTO_CLOSED' });
