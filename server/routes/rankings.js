@@ -5,6 +5,7 @@
  *
  * GET /api/rankings?category=&page=&limit=&q=  — public, paginated, cached ~30 s; q = name search
  *                                                (rows keep their true rank), rows carry delta7 + club
+ *   scope=friends → only the caller's friends + the caller (private, never cached; 401 when logged out)
  * GET /api/rankings/me                      — the caller's rank in every category
  *
  * Categories are RatingService.CATEGORIES (the winning rule); ratings are
@@ -16,6 +17,8 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const database = require('../db/database');
+const friendService = require('../managers/FriendService');
+const { optionalUserId } = require('../utils/optional-user');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES, PROVISIONAL_RD } = require('../managers/RatingService');
 
@@ -49,15 +52,26 @@ router.get('/', (req, res, next) => {
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
     const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 30) : '';
+    const friendsScope = req.query.scope === 'friends';
+    const viewerId = friendsScope ? optionalUserId(req) : null;
+    if (friendsScope && !viewerId) return res.status(401).json({ error: 'Cần đăng nhập.', code: 'AUTH_REQUIRED' });
     const key = `${category}:${page}:${limit}:${q}`;
 
-    let body = cacheGet(key);
+    let body = friendsScope ? null : cacheGet(key);
     if (!body) {
       const offset = (page - 1) * limit;
-      const total = q ? database.countSearchRankings(category, q) : database.getRankingCount(category);
-      const rows = q
-        ? database.searchRankings(category, q, limit, offset)
-        : database.getRankings(category, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+      const circle = friendsScope ? [viewerId, ...friendService.friendIds(viewerId)] : null;
+      let total;
+      let rows;
+      if (friendsScope) {
+        total = database.countRankingsAmong(category, circle);
+        rows = database.getRankingsAmong(category, circle, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+      } else {
+        total = q ? database.countSearchRankings(category, q) : database.getRankingCount(category);
+        rows = q
+          ? database.searchRankings(category, q, limit, offset)
+          : database.getRankings(category, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+      }
       const ids = rows.map((r) => r.user_id);
       const deltas = database.getRatingDeltas7(category, ids);
       const clubs = database.getPrimaryClubs(ids);
@@ -76,11 +90,12 @@ router.get('/', (req, res, next) => {
       body = {
         category,
         q,
+        scope: friendsScope ? 'friends' : 'all',
         minGames: database.RANKING_MIN_GAMES,
         players,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       };
-      cacheSet(key, body);
+      if (!friendsScope) cacheSet(key, body);
     }
     res.json(body);
   } catch (err) {

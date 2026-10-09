@@ -91,6 +91,47 @@ describe('profile page', () => {
     expect(document.getElementById('pf-hide-history').checked).toBe(true);
   });
 
+  describe('friend button', () => {
+    const labels = () => [...document.querySelectorAll('#pf-social button')].map((b) => b.textContent);
+
+    it.each([
+      ['none', ['friends.add']],
+      ['outgoing', ['friends.cancel']],
+      ['incoming', ['friends.accept', 'friends.decline']],
+      ['friends', ['friends.remove']],
+    ])('state %s shows %j', async (friendship, expected) => {
+      await boot({ ...PROFILE, friendship });
+      expect(document.getElementById('pf-social').hidden).toBe(false);
+      expect(labels()).toEqual(expected);
+    });
+
+    it('is hidden on your own profile', async () => {
+      await boot({ ...PROFILE, isSelf: true, friendship: 'self' });
+      expect(document.getElementById('pf-social').hidden).toBe(true);
+    });
+
+    it('click sends the request and flips to the returned state', async () => {
+      await boot({ ...PROFILE, friendship: 'none' });
+      const base = global.fetch;
+      global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ status: 'outgoing' }) }));
+      document.querySelector('#pf-social button').click();
+      await flush(); await flush();
+      expect(global.fetch).toHaveBeenCalledWith('/api/friends/alice', expect.objectContaining({ method: 'POST' }));
+      expect(labels()).toEqual(['friends.cancel']);
+      global.fetch = base;
+    });
+
+    it('accept posts to /accept; failure re-enables the button and reports', async () => {
+      await boot({ ...PROFILE, friendship: 'incoming' });
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
+      document.querySelector('#pf-social button').click();
+      await flush(); await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/friends/alice/accept');
+      expect(document.querySelector('#pf-social button').disabled).toBe(false);
+      expect(document.getElementById('pf-status').textContent).toBe('friends.error');
+    });
+  });
+
   it('shows a not-found message', async () => {
     await boot(null, 404);
     expect(document.getElementById('pf-status').textContent).toBe('profile.not_found');

@@ -270,3 +270,17 @@ CREATE TABLE IF NOT EXISTS club_members (
 );
 
 CREATE INDEX IF NOT EXISTS idx_club_members_user ON club_members(user_id);
+
+-- Friends (TODO.md #198). One row per pair, canonical order user_a < user_b.
+-- status 'pending' = requested_by asked the other; 'accepted' = mutual friends.
+CREATE TABLE IF NOT EXISTS friendships (
+  user_a        TEXT NOT NULL REFERENCES users(id),
+  user_b        TEXT NOT NULL REFERENCES users(id),
+  requested_by  TEXT NOT NULL REFERENCES users(id),
+  status        TEXT NOT NULL DEFAULT 'pending',   -- 'pending' | 'accepted'
+  created_at    TEXT NOT NULL,
+  PRIMARY KEY (user_a, user_b),
+  CHECK (user_a < user_b)
+);
+
+CREATE INDEX IF NOT EXISTS idx_friendships_b ON friendships(user_b);

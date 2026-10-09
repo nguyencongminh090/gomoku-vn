@@ -25,6 +25,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { optionalUserId } = require('../utils/optional-user');
 const clubService = require('../managers/ClubService');
+const friendService = require('../managers/FriendService');
 const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES, PROVISIONAL_RD } = require('../managers/RatingService');
@@ -173,7 +174,8 @@ router.get('/:username', (req, res, next) => {
     const user = database.getProfileByUsername(String(req.params.username).slice(0, 40));
     if (!user) return res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' });
 
-    const isSelf = optionalUserId(req) === user.id;
+    const viewerId = optionalUserId(req);
+    const isSelf = viewerId === user.id;
     const showHistory = isSelf || !user.hide_history;
 
     const ratings = [];
@@ -212,6 +214,7 @@ router.get('/:username', (req, res, next) => {
       recent,
       clubs: clubService.clubsOfUser(user.id),
       isSelf,
+      friendship: friendService.statusBetween(viewerId, user.id),
     };
     if (isSelf) body.privacy = { hideHistory: !!user.hide_history, hideBio: !!user.hide_bio };
     res.set('Cache-Control', 'no-store');
