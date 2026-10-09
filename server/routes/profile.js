@@ -116,6 +116,16 @@ router.delete('/avatar', verifyToken, requireMember, writeLimiter, (req, res, ne
   }
 });
 
+const CITY_MAX = 40;
+const AUDIENCES = ['everyone', 'friends', 'nobody'];
+function privacyOf(u) {
+  return {
+    hideHistory: !!u.hide_history, hideBio: !!u.hide_bio, hideOnline: !!u.hide_online,
+    country: u.country, city: u.city,
+    whoCanDm: u.who_can_dm, whoCanChallenge: u.who_can_challenge, whoCanFriend: u.who_can_friend,
+  };
+}
+
 router.put('/', verifyToken, requireMember, writeLimiter, express.json({ limit: '4kb' }), (req, res, next) => {
   try {
     const b = req.body || {};
@@ -135,6 +145,28 @@ router.put('/', verifyToken, requireMember, writeLimiter, express.json({ limit: 
       if (typeof b[k] !== 'boolean') return res.status(400).json({ error: 'Giá trị không hợp lệ.', code: 'PRIVACY_INVALID' });
       patch[k === 'hideHistory' ? 'hide_history' : 'hide_bio'] = b[k];
     }
+    if (b.country !== undefined) {
+      if (typeof b.country !== 'string' || !/^([A-Z]{2})?$/.test(b.country)) {
+        return res.status(400).json({ error: 'Quốc gia không hợp lệ.', code: 'COUNTRY_INVALID' });
+      }
+      patch.country = b.country;
+    }
+    if (b.city !== undefined) {
+      // eslint-disable-next-line no-control-regex
+      if (typeof b.city !== 'string' || b.city.trim().length > CITY_MAX || /[\u0000-\u001f<>]/.test(b.city)) {
+        return res.status(400).json({ error: `Thành phố tối đa ${CITY_MAX} ký tự.`, code: 'CITY_INVALID' });
+      }
+      patch.city = b.city.trim();
+    }
+    for (const [k, col] of [['whoCanDm', 'who_can_dm'], ['whoCanChallenge', 'who_can_challenge'], ['whoCanFriend', 'who_can_friend']]) {
+      if (b[k] === undefined) continue;
+      if (!AUDIENCES.includes(b[k])) return res.status(400).json({ error: 'Giá trị không hợp lệ.', code: 'AUDIENCE_INVALID' });
+      patch[col] = b[k];
+    }
+    if (b.hideOnline !== undefined) {
+      if (typeof b.hideOnline !== 'boolean') return res.status(400).json({ error: 'Giá trị không hợp lệ.', code: 'PRIVACY_INVALID' });
+      patch.hide_online = b.hideOnline;
+    }
     database.updateProfile(req.user.userId, patch);
     res.json({ ok: true });
   } catch (err) {
@@ -146,7 +178,8 @@ router.put('/', verifyToken, requireMember, writeLimiter, express.json({ limit: 
 router.get('/prefs', verifyToken, requireMember, (req, res, next) => {
   try {
     res.set('Cache-Control', 'no-store');
-    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0] });
+    const u = database.getProfileById(req.user.userId);
+    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0], ...(u ? privacyOf(u) : {}) });
   } catch (err) {
     next(err);
   }
@@ -216,7 +249,7 @@ router.get('/:username', (req, res, next) => {
       isSelf,
       friendship: friendService.statusBetween(viewerId, user.id),
     };
-    if (isSelf) body.privacy = { hideHistory: !!user.hide_history, hideBio: !!user.hide_bio };
+    if (isSelf) body.privacy = privacyOf(user);
     res.set('Cache-Control', 'no-store');
     res.json(body);
   } catch (err) {

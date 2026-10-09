@@ -94,6 +94,18 @@ if (userColumns.length > 0 && !userColumns.includes('ui_skin')) {
   logger.info('[DB] Migrated users: added ui_skin column (TODO.md #180)');
 }
 
+// Settings + privacy gates (TODO.md #199): location, who may DM / challenge /
+// friend-request (everyone|friends|nobody), and hide-online.
+if (userColumns.length > 0 && !userColumns.includes('who_can_dm')) {
+  db.exec("ALTER TABLE users ADD COLUMN country TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE users ADD COLUMN city TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE users ADD COLUMN who_can_dm TEXT NOT NULL DEFAULT 'everyone'");
+  db.exec("ALTER TABLE users ADD COLUMN who_can_challenge TEXT NOT NULL DEFAULT 'everyone'");
+  db.exec("ALTER TABLE users ADD COLUMN who_can_friend TEXT NOT NULL DEFAULT 'everyone'");
+  db.exec('ALTER TABLE users ADD COLUMN hide_online INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated users: added country/city/who_can_*/hide_online columns (TODO.md #199)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a
@@ -948,11 +960,15 @@ function getUserRanking(userId, category) {
 // Profiles (#177)
 // ---------------------------------------------------------------------------
 
-const PROFILE_COLS = 'id, username, display_name, created_at, bio, avatar_v, hide_history, hide_bio';
+const PROFILE_COLS = 'id, username, display_name, created_at, bio, avatar_v, hide_history, hide_bio, country, city, who_can_dm, who_can_challenge, who_can_friend, hide_online';
 
 function getUiSkin(userId) {
   const r = db.prepare('SELECT ui_skin FROM users WHERE id = ?').get(userId);
   return r ? r.ui_skin : null;
+}
+
+function getProfileById(id) {
+  return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE id = ?`).get(id);
 }
 
 function getProfileByUsername(username) {
@@ -966,6 +982,12 @@ function updateProfile(userId, f) {
   if (typeof f.bio === 'string') { sets.push('bio = ?'); params.push(f.bio); }
   if (typeof f.hide_history === 'boolean') { sets.push('hide_history = ?'); params.push(f.hide_history ? 1 : 0); }
   if (typeof f.hide_bio === 'boolean') { sets.push('hide_bio = ?'); params.push(f.hide_bio ? 1 : 0); }
+  if (typeof f.country === 'string') { sets.push('country = ?'); params.push(f.country); }
+  if (typeof f.city === 'string') { sets.push('city = ?'); params.push(f.city); }
+  for (const k of ['who_can_dm', 'who_can_challenge', 'who_can_friend']) {
+    if (typeof f[k] === 'string') { sets.push(`${k} = ?`); params.push(f[k]); }
+  }
+  if (typeof f.hide_online === 'boolean') { sets.push('hide_online = ?'); params.push(f.hide_online ? 1 : 0); }
   if (!sets.length) return;
   db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params, userId);
 }
@@ -1080,6 +1102,7 @@ module.exports = {
   getUserByOAuthId,
   getUserById,
   getProfileByUsername,
+  getProfileById,
   getUiSkin,
   updateProfile,
   setAvatarVersion,
