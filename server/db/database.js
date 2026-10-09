@@ -862,6 +862,51 @@ function getTournamentGameById(id) {
   return row;
 }
 
+// ---------------------------------------------------------------------------
+// Rankings (#176) — read-only views over `ratings` + `users`
+// ---------------------------------------------------------------------------
+
+/** Min rated games before a player appears on a leaderboard (Arena mockup: "≥ 20"). */
+const RANKING_MIN_GAMES = 20;
+
+/**
+ * One page of a category's leaderboard, best rating first.
+ * Ties break on user_id so pages never overlap or skip rows.
+ * @returns {Array<{user_id:string, display_name:string, rating:number, rd:number, games:number}>}
+ */
+function getRankings(category, limit, offset) {
+  return db.prepare(`
+    SELECT r.user_id, u.display_name, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ?
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, limit, offset);
+}
+
+function getRankingCount(category) {
+  return db.prepare('SELECT COUNT(*) AS count FROM ratings WHERE category = ? AND games >= ?')
+    .get(category, RANKING_MIN_GAMES).count;
+}
+
+/**
+ * A user's own standing in a category: their row plus 1-based rank (null while
+ * under RANKING_MIN_GAMES), or null if they have no rating there.
+ */
+function getUserRanking(userId, category) {
+  const row = db.prepare('SELECT rating, rd, games FROM ratings WHERE user_id = ? AND category = ?')
+    .get(userId, category);
+  if (!row) return null;
+  let rank = null;
+  if (row.games >= RANKING_MIN_GAMES) {
+    rank = 1 + db.prepare(`
+      SELECT COUNT(*) AS n FROM ratings
+      WHERE category = ? AND games >= ? AND (rating > ? OR (rating = ? AND user_id < ?))
+    `).get(category, RANKING_MIN_GAMES, row.rating, row.rating, userId).n;
+  }
+  return { ...row, rank };
+}
+
 module.exports = {
   db,
   createUser,
@@ -881,6 +926,10 @@ module.exports = {
   getRecentGames,
   getGameById,
   getGameCount,
+  RANKING_MIN_GAMES,
+  getRankings,
+  getRankingCount,
+  getUserRanking,
   getGameStatsByDate,
   getGameStatsByResult,
   createTournament,

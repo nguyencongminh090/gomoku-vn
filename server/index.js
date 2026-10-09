@@ -25,6 +25,7 @@ const { staticOptions, socketIoClientOptions, REVALIDATE } = require('./config/s
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
+const rankingsRouter = require('./routes/rankings');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
@@ -143,6 +144,7 @@ app.use(express.static(clientPath, staticOptions));
 // REST API routes
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
+app.use('/api/rankings', rankingsRouter);
 app.use('/api', tournamentGamesRouter);
 
 // Catch-all: serve login page for unknown routes (SPA-style fallback)

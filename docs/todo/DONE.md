@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#176.** Platform: rankings/leaderboard page — [detail](docs/todo/B176-rankings-page.md)
 - ✅ **#188.** Remove the Playwright scaffold `tests/example.spec.ts` (hits playwright.dev) `[Model: Haiku 5]` — [detail](docs/todo/B188-remove-playwright-scaffold-example-spec.md)
 - ✅ **#187.** e2e room-lifecycle: two host badges after the host leaves (1 in 5 full runs) `[Model: Sonnet 5]` — [detail](docs/todo/B187-room-lifecycle-two-host-badges.md)
 - ✅ **#186.** Room of only disconnected viewers is never destroyed (lingers in lobby + holds IP quota until 10-min idle sweep) `[Model: Sonnet 5]` — [detail](docs/todo/B186-room-of-disconnected-viewers-never-destroyed.md)
