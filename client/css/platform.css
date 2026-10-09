@@ -120,3 +120,9 @@ a.prow:hover { background: var(--c-hover); }
   .pav--xl { width: 64px; height: 64px; font-size: 20px; }
   .ppanel { padding: 14px; }
 }
+
+/* Challenge form on a profile (#198 slice 3) */
+.pchallenge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-basis: 100%; }
+.pchallenge[hidden] { display: none; }
+.pchallenge select { min-height: 38px; padding: 6px 10px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 13px; }
+.pchallenge__rated { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--c-ink-2); }

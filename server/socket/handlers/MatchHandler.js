@@ -17,6 +17,7 @@
 
 const logger = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
+const { seatPair } = require('../../managers/PairRoom');
 const database = require('../../db/database');
 const { MatchQueue, PRESETS } = require('../../managers/MatchQueue');
 const {
@@ -67,22 +68,12 @@ function makeRoom(a, b) {
     return null;
   }
   const settings = { ...PRESETS[a.time], winningRule: a.rule, ranked: a.rated, roomName: `${a.time} · ${a.displayName} vs ${b.displayName}` };
-  const created = roomManager.createRoom({ userId: a.userId, displayName: a.displayName, isGuest: a.isGuest, ip: getClientIp(sa) }, settings);
-  if (created.error) {
-    for (const s of [sa, sb]) s.emit('match:error', { message: created.error, code: created.code });
+  const seated = seatPair(roomManager, a, b, settings, getClientIp(sa));
+  if (seated.error) {
+    for (const s of [sa, sb]) s.emit('match:error', { message: seated.error, code: seated.code });
     return null;
   }
-  const room = created.room;
-  const joined = roomManager.joinRoom({ userId: b.userId, displayName: b.displayName, isGuest: b.isGuest }, room.roomId);
-  const seatA = roomManager.sitDown(a.userId, 1);
-  const seatB = joined.error ? joined : roomManager.sitDown(b.userId, 2);
-  if (joined.error || seatA.error || seatB.error) {
-    logger.warn('[Match] seating failed', { roomId: room.roomId, code: (joined.error ? joined : seatA.error ? seatA : seatB).code });
-    if (!joined.error) roomManager.leaveRoom(b.userId);
-    roomManager.leaveRoom(a.userId); // last one out destroys the room
-    for (const s of [sa, sb]) s.emit('match:error', { message: 'Không ghép được phòng, hãy thử lại.', code: 'MATCH_ROOM_FAILED' });
-    return null;
-  }
+  const room = seated.room;
   for (const s of [sa, sb]) {
     s.leave(LOBBY_ROOM);
     s.join(room.roomId);

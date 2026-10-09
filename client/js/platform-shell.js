@@ -80,6 +80,7 @@
   function notifTarget(n) {
     const from = n.payload && n.payload.from;
     if (n.type === 'friend_accepted' && from) return '/u/' + encodeURIComponent(from.username);
+    if (n.type === 'challenge_accepted' && n.payload && n.payload.roomId) return '/room.html?id=' + encodeURIComponent(n.payload.roomId);
     if (n.type === 'dm' && from) return '/social.html#dm=' + encodeURIComponent(from.username);
     return '/social.html';
   }

@@ -138,6 +138,55 @@
       default:
         box.append(mk('friends.add', 'POST', base, 'pbtn--primary'));
     }
+    challengeControls(p, box);
+  }
+
+  const RULES = ['freestyle', 'standard', 'caro'];
+  const TIMES = ['1+0', '3+2', '5+3', '10+0'];
+
+  /** "Thách đấu" button + inline form (rule × clock × rated); POST /api/challenges. */
+  function challengeControls(p, box) {
+    const open = el('button', t('challenge.btn'), 'pbtn');
+    open.type = 'button';
+    const form = el('form', undefined, 'pchallenge');
+    form.hidden = true;
+    const pick = (name, values, label) => {
+      const sel = el('select');
+      sel.name = name;
+      sel.setAttribute('aria-label', t(label));
+      for (const v of values) sel.appendChild(Object.assign(el('option', name === 'rule' ? t('rankings.cat_' + v) : v), { value: v }));
+      return sel;
+    };
+    const rule = pick('rule', RULES, 'challenge.rule');
+    const time = pick('time', TIMES, 'challenge.time');
+    const ratedLabel = el('label', undefined, 'pchallenge__rated');
+    const rated = el('input');
+    rated.type = 'checkbox';
+    ratedLabel.append(rated, ' ' + t('challenge.rated'));
+    const go = el('button', t('challenge.send'), 'pbtn pbtn--primary');
+    go.type = 'submit';
+    const note = el('span', '', 'pnote');
+    form.append(rule, time, ratedLabel, go, note);
+    open.addEventListener('click', () => { form.hidden = !form.hidden; });
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      go.disabled = true;
+      try {
+        const res = await fetch('/api/challenges', {
+          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ to: p.username, rule: rule.value, time: time.value, rated: rated.checked }),
+        });
+        if (res.status === 401) { location.href = '/login.html'; return; }
+        if (res.status === 403) { note.textContent = t('challenge.members_only'); return; }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        note.textContent = t('challenge.sent');
+      } catch (_) {
+        note.textContent = t('friends.error');
+      } finally {
+        go.disabled = false;
+      }
+    });
+    box.append(open, form);
   }
 
   async function friendAction(p, method, path, btn) {

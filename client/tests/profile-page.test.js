@@ -92,7 +92,7 @@ describe('profile page', () => {
   });
 
   describe('friend button', () => {
-    const labels = () => [...document.querySelectorAll('#pf-social button')].map((b) => b.textContent);
+    const labels = () => [...document.querySelectorAll('#pf-social > button')].map((b) => b.textContent).filter((l) => l !== 'challenge.btn');
 
     it.each([
       ['none', ['friends.add']],
@@ -105,6 +105,40 @@ describe('profile page', () => {
       expect(labels()).toEqual(expected);
     });
 
+    describe('challenge', () => {
+      const submit = async (fetchImpl) => {
+        await boot({ ...PROFILE, friendship: 'none' });
+        global.fetch = jest.fn(fetchImpl);
+        const form = document.querySelector('#pf-social form');
+        expect(form.hidden).toBe(true);
+        [...document.querySelectorAll('#pf-social > button')].find((b) => b.textContent === 'challenge.btn').click();
+        expect(form.hidden).toBe(false);
+        form.querySelector('[name=rule]').value = 'standard';
+        form.querySelector('[name=time]').value = '5+3';
+        form.querySelector('input[type=checkbox]').checked = true;
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+        await flush(); await flush();
+        return form;
+      };
+
+      it('offers the three rules and the four clocks; submit posts the choice to /api/challenges', async () => {
+        const form = await submit(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({}) }));
+        expect([...form.querySelectorAll('[name=rule] option')].map((o) => o.value)).toEqual(['freestyle', 'standard', 'caro']);
+        expect([...form.querySelectorAll('[name=time] option')].map((o) => o.value)).toEqual(['1+0', '3+2', '5+3', '10+0']);
+        const [url, opts] = global.fetch.mock.calls[0];
+        expect(url).toBe('/api/challenges');
+        expect(JSON.parse(opts.body)).toEqual({ to: 'alice', rule: 'standard', time: '5+3', rated: true });
+        expect(form.querySelector('.pnote').textContent).toBe('challenge.sent');
+      });
+
+      it('guest (403) is told members only; server error shows the generic error', async () => {
+        let form = await submit(() => Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) }));
+        expect(form.querySelector('.pnote').textContent).toBe('challenge.members_only');
+        form = await submit(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
+        expect(form.querySelector('.pnote').textContent).toBe('friends.error');
+      });
+    });
+
     it('is hidden on your own profile', async () => {
       await boot({ ...PROFILE, isSelf: true, friendship: 'self' });
       expect(document.getElementById('pf-social').hidden).toBe(true);
@@ -114,7 +148,7 @@ describe('profile page', () => {
       await boot({ ...PROFILE, friendship: 'none' });
       const base = global.fetch;
       global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ status: 'outgoing' }) }));
-      document.querySelector('#pf-social button').click();
+      document.querySelector('#pf-social > button').click();
       await flush(); await flush();
       expect(global.fetch).toHaveBeenCalledWith('/api/friends/alice', expect.objectContaining({ method: 'POST' }));
       expect(labels()).toEqual(['friends.cancel']);
@@ -124,10 +158,10 @@ describe('profile page', () => {
     it('accept posts to /accept; failure re-enables the button and reports', async () => {
       await boot({ ...PROFILE, friendship: 'incoming' });
       global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
-      document.querySelector('#pf-social button').click();
+      document.querySelector('#pf-social > button').click();
       await flush(); await flush();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/friends/alice/accept');
-      expect(document.querySelector('#pf-social button').disabled).toBe(false);
+      expect(document.querySelector('#pf-social > button').disabled).toBe(false);
       expect(document.getElementById('pf-status').textContent).toBe('friends.error');
     });
   });
