@@ -292,6 +292,15 @@ describe('quick-match waiting count (B210)', () => {
     expect(line()).not.toContain('qm.in_queue');
   });
 
+  it('"ước tính N giây" shows only when the server sent an estimate for the selected rule|time', async () => {
+    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'caro|5+3': 8, 'caro|1+0': 2 } }, MEMBER2);
+    await flush();
+    expect(line()).toContain('qm.eta{"s":8}');
+    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'standard|10+0': 8 } }, MEMBER2);
+    await flush();
+    expect(line()).not.toContain('qm.eta');
+  });
+
   it('changing the chip re-reads the count for the new rule|time', async () => {
     await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2);
     await flush();

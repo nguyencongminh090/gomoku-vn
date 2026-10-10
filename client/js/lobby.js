@@ -256,6 +256,14 @@ function renderOnlineLine() {
   onlineLineNamesEl.innerHTML = html;
 }
 
+document.querySelectorAll('#room-tabs [data-room-tab]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    roomTab = btn.dataset.roomTab;
+    document.querySelectorAll('#room-tabs [data-room-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+    renderRoomList(currentRooms);
+  });
+});
+
 client.on('lobby:online_users', (users) => {
   currentOnlineUsers = users;
   renderOnlineLine();
@@ -309,15 +317,28 @@ function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
   `;
 }
 
+// Mockup tabs Phòng / Bàn / Quan sát (B210c) — filters over the one room list, not room kinds:
+// all = every room, open = a table waiting for an opponent (can join to play), watch = a game in
+// progress or a full table (spectate) — open and watch partition the list. The Map/patch plumbing is untouched; only what is drawn is filtered.
+let roomTab = 'all'; // 'all' | 'open' | 'watch'
+const ROOM_TAB_EMPTY = { all: 'lobby.no_rooms', open: 'lobby.no_tables', watch: 'lobby.no_watch' };
+function roomMatchesTab(room) {
+  if (roomTab === 'open') return room.state !== 'playing' && room.playerCount < 2;
+  if (roomTab === 'watch') return room.state === 'playing' || room.playerCount >= 2; // nothing left to sit in
+  return true;
+}
+
 // Full rebuild — used for the initial/reconnect snapshot (lobby:update) and
 // for langchange/uimodechange, where every row's text genuinely needs to be
 // redone. NOT used for lobby:patch — see applyLobbyPatch below.
-function renderRoomList(rooms) {
+function renderRoomList(allRooms) {
+  const rooms = allRooms.filter(roomMatchesTab);
   if (rooms.length === 0) {
+    const sub = roomTab === 'all' ? `<span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>` : '';
     roomListEl.innerHTML = `
       <div class="room-list__empty">
-        <span class="room-list__empty-text">${t('lobby.no_rooms')}</span>
-        <span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>
+        <span class="room-list__empty-text">${t(ROOM_TAB_EMPTY[roomTab])}</span>
+        ${sub}
       </div>
     `;
     return;
@@ -367,7 +388,8 @@ function applyLobbyPatch(patch) {
   for (const room of upserts) roomMap.set(room.roomId, room);
   currentRooms = Array.from(roomMap.values());
 
-  if (wasEmpty || currentRooms.length === 0) {
+  // A filtered tab can gain/lose rows on any patch (a room fills, a game starts), so it re-renders in full.
+  if (wasEmpty || currentRooms.length === 0 || roomTab !== 'all') {
     renderRoomList(currentRooms);
     renderHero();
     return;

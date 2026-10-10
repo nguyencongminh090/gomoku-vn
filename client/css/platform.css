@@ -222,4 +222,12 @@ a.prow:hover { background: var(--c-hover); }
 .psplit .pdm__list { max-height: 260px; }
 .prow__t.is-unread { font-weight: 700; }
 .ptab__n { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--c-ink-3); }
+/* Admin "Tất cả báo cáo" table (B210c): Loại · Đối tượng · Người báo · Thời gian · Xem xét */
+.ptable-wrap { overflow-x: auto; }
+.ptable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ptable th { text-align: left; padding: 8px 12px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--c-ink-3); border-bottom: 1px solid var(--c-border); white-space: nowrap; }
+.ptable td { overflow-wrap: anywhere; padding: 10px 12px; border-bottom: 1px solid var(--c-border-light); color: var(--c-ink-2); vertical-align: middle; }
+.ptable tbody tr:last-child td { border-bottom: 0; }
+.ptable tbody tr:hover { background: var(--c-hover); }
+@media (max-width: 600px) { .ptable th:nth-child(4), .ptable td:nth-child(4) { display: none; } .ptable th, .ptable td { padding-left: 8px; padding-right: 8px; } }
 .psplit--solo { grid-template-columns: minmax(0, 1fr); }

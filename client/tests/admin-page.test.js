@@ -27,6 +27,7 @@ window.addEventListener = (type, fn, ...rest) => { if (type === 'hashchange') ha
 const ME = {
   member: { role: 'member', permissions: [] },
   moderator: { role: 'moderator', permissions: ['puzzle.review', 'forum.moderate', 'admin.access'] },
+  cheatOnly: { role: 'moderator', permissions: ['cheat.review'] },
   puzzleOnly: { role: 'moderator', permissions: ['puzzle.review'] },
 };
 
@@ -40,11 +41,23 @@ async function boot(me, status = 200, hash = '', failFetch = false) {
   window.PlatformShell = { build: jest.fn() };
   window.PuzzlesReview = { init: jest.fn() };
   window.ForumReports = { init: jest.fn() };
+  window.AdminReports = { init: jest.fn() };
   global.fetch = jest.fn(() => failFetch ? Promise.reject(new Error('down')) : Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(me) }));
   require('../js/admin.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await settle();
 }
+
+describe('admin shell — Tất cả báo cáo tab (B210c)', () => {
+  it('shown for forum.moderate or cheat.review (any-of), hidden for puzzle-only staff', async () => {
+    await boot(ME.moderator);
+    expect($('adm-tab-reports').hidden).toBe(false);
+    await boot(ME.cheatOnly);
+    expect($('adm-tab-reports').hidden).toBe(false);
+    await boot(ME.puzzleOnly);
+    expect($('adm-tab-reports').hidden).toBe(true);
+  });
+});
 
 describe('admin shell', () => {
   it('highlights no nav item (admin is not the Learn section)', async () => {
@@ -108,6 +121,7 @@ describe('admin shell', () => {
     window.PlatformShell = { build: jest.fn() };
     window.PuzzlesReview = { init: jest.fn() };
     window.ForumReports = { init: jest.fn() };
+  window.AdminReports = { init: jest.fn() };
     global.fetch = jest.fn((url) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body(url)) }));
     require('../js/admin.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));

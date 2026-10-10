@@ -161,4 +161,4 @@ function _reset() {
   tickCount = 0;
 }
 
-module.exports = { register, queueCounts: () => queue.counts(), _queue: queue, _tick: tick, _reset };
+module.exports = { register, queueCounts: () => queue.counts(), queueEstimates: () => queue.estimates(), _queue: queue, _tick: tick, _reset };
