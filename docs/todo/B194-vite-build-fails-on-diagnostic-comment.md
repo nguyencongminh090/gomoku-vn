@@ -1,5 +1,5 @@
 # B194 — `vite build` fails: copy-classic-scripts reads a comment in diagnostic.html
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-10 — scanner now strips HTML comments (scripts/classic-scripts.js); `vite build` passes, every classic script present in dist/js. `--outDir` still ignored by the plugin (not changed).
 **Area:** build (`vite.config.js`), `client/diagnostic.html`
 **From:** found 2026-10-09 while checking B193's bundle; fails on `dev` HEAD too (not caused by B193)
 

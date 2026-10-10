@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve, dirname } from 'path';
-import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
+import { cpSync, mkdirSync } from 'fs';
+import { findClassicScripts as scanClassicScripts } from './scripts/classic-scripts.js';
 
 // Vite's HTML transform only bundles <script type="module"> and
 // <link rel="stylesheet"> — every classic (non-module) <script src="js/...">
@@ -20,18 +21,8 @@ import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 // added to a page and someone forgets to also add it here (this is exactly
 // how profanity-filter.js/profanity-classifier-model.js 404'd in production
 // the first time this plugin was written — TODO.md #65 fix-log).
-function findClassicScripts() {
-  const clientDir = resolve(__dirname, 'client');
-  const files = new Set();
-  for (const htmlFile of readdirSync(clientDir)) {
-    if (!htmlFile.endsWith('.html') || htmlFile.includes('mockup')) continue;
-    const html = readFileSync(resolve(clientDir, htmlFile), 'utf8');
-    for (const match of html.matchAll(/<script\s+src="js\/([^"?]+)(?:\?[^"]*)?"(?![^>]*type="module")[^>]*>/g)) {
-      files.add(match[1]);
-    }
-  }
-  return [...files];
-}
+// Scanner: scripts/classic-scripts.js (CommonJS so Jest can test it; ignores HTML comments, #194).
+const findClassicScripts = () => scanClassicScripts(resolve(__dirname, 'client'));
 
 function copyClassicScripts() {
   return {
