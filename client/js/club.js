@@ -13,6 +13,7 @@
   const CATEGORIES = ['freestyle', 'standard', 'caro'];
   const state = { category: CATEGORIES[0], club: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
   const CHAT_POLL_MS = 8000;
+  const OVERVIEW_ROWS = 10;
   const CHAT_PAGE = 50;
 
   function el(tag, text, cls) {
@@ -61,21 +62,26 @@
   }
 
   const TABS = ['overview', 'members', 'tournaments', 'board', 'chat'];
+  // 'manage' is a panel without a tab: staff reach it from the header Quản lý button (mockup), #tab=manage works too.
+  const PANELS = [...TABS, 'manage'];
   const visibleTabs = () => TABS.filter((tab) => !$('cb-tab-' + tab).hidden);
   /** Active tab from `#tab=<name>`; unknown/missing/hidden (chat for non-members) → overview. */
   function currentTab() {
     const m = /(?:^|[#&])tab=([a-z]+)/.exec(location.hash);
+    if (m && m[1] === 'manage' && isStaff()) return 'manage';
     return m && visibleTabs().includes(m[1]) ? m[1] : TABS[0];
   }
 
   function showTab(name, { updateHash = false } = {}) {
+    state.shown = name;
+    for (const panel of PANELS) $('cb-panel-' + panel).hidden = panel !== name;
     for (const tab of TABS) {
       const on = tab === name;
-      $('cb-panel-' + tab).hidden = !on;
       const btn = $('cb-tab-' + tab);
       btn.setAttribute('aria-selected', String(on));
-      btn.tabIndex = on ? 0 : -1;
+      btn.tabIndex = on || (name === 'manage' && tab === TABS[0]) ? 0 : -1;
     }
+    $('cb-manage-btn').setAttribute('aria-pressed', String(name === 'manage'));
     if (updateHash && currentTab() !== name) history.replaceState(null, '', '#tab=' + name);
     if (name === 'chat') openChat();
   }
@@ -171,6 +177,7 @@
     $('cb-leave').hidden = !role || role === 'owner';
     $('cb-leave').textContent = role === 'pending' ? t('clubs.cancel_request') : t('clubs.leave');
     $('cb-delete').hidden = role !== 'owner';
+    $('cb-manage-btn').hidden = !staff;
 
     $('cb-staff').replaceChildren(...c.leaderboard.filter((m) => m.role !== 'member')
       .map((m) => userRow(m.username, m.displayName, m.avatarUrl, t('clubs.role_' + m.role))));
@@ -234,7 +241,7 @@
       }
       return tr;
     }));
-    $('cb-body').replaceChildren(...c.leaderboard.map((m) => {
+    const boardRow = (m) => {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
       const link = el('a', m.displayName);
@@ -242,7 +249,11 @@
       name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
       tr.append(el('td', String(m.rank)), name, el('td', m.rating == null ? '—' : String(m.rating), 'num'));
       return tr;
-    }));
+    };
+    $('cb-body').replaceChildren(...c.leaderboard.map(boardRow));
+    // Tổng quan (mockup): the same ranking table, top of the list; the full board + rule chips stay in their tab.
+    $('cb-ov-title').textContent = t('clubs.board') + ' · ' + t('rankings.cat_' + state.category);
+    $('cb-ov-body').replaceChildren(...c.leaderboard.slice(0, OVERVIEW_ROWS).map(boardRow));
 
     $('cb-tabs').replaceChildren(...CATEGORIES.map((cat) => {
       const b = el('button', t('rankings.cat_' + cat), 'pchip');
@@ -274,6 +285,7 @@
     window.PlatformShell.build('clubs');
     $('cb-join').onclick = async () => { if (await act('POST', '/join')) load(); };
     $('cb-leave').onclick = async () => { if (await act('POST', '/leave', null, 'clubs.confirm_leave')) load(); };
+    $('cb-manage-btn').onclick = () => showTab(state.shown === 'manage' ? 'overview' : 'manage', { updateHash: true });
     $('cb-delete').onclick = async () => { if (await act('DELETE', '', null, 'clubs.confirm_delete')) location.href = '/clubs.html'; };
     $('cb-form').onsubmit = async (ev) => {
       ev.preventDefault();

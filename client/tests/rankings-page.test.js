@@ -61,15 +61,26 @@ describe('rankings page', () => {
   it('shows the 7-day change (signed, coloured) and the club link; no club → dash', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const [bob, alice] = document.querySelectorAll('#rk-body tr');
-    expect(bob.children[3].textContent).toBe('+12');
-    expect(bob.children[3].classList.contains('up')).toBe(true);
-    expect(alice.children[3].textContent).toBe('-5');
-    expect(alice.children[3].classList.contains('dn')).toBe(true);
-    const club = bob.children[4].querySelector('a');
+    expect(bob.children[4].textContent).toBe('+12');
+    expect(bob.children[4].classList.contains('up')).toBe(true);
+    expect(alice.children[4].textContent).toBe('-5');
+    expect(alice.children[4].classList.contains('dn')).toBe(true);
+    const club = bob.children[5].querySelector('a');
     expect(club.textContent).toBe('<i>K1</i>');
     expect(club.querySelector('i')).toBeNull();
     expect(club.getAttribute('href')).toBe('/c/k-1');
-    expect(alice.children[4].textContent).toBe('—');
+    expect(alice.children[5].textContent).toBe('—');
+  });
+
+  it('columns follow the mockup: # · Người chơi · Khu vực · Rating · 7 ngày · CLB · Ván (Ván dropped on mobile)', async () => {
+    await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+    const th = [...document.querySelectorAll('thead th')];
+    expect(th.map((x) => x.getAttribute('data-i18n') || x.textContent)).toEqual(['#', 'rankings.col_player', 'rankings.col_region', 'rankings.col_rating', 'rankings.col_delta', 'rankings.col_club', 'rankings.col_games']);
+    const [bob] = document.querySelectorAll('#rk-body tr');
+    expect(bob.children).toHaveLength(7);
+    expect(bob.children[3].classList.contains('num')).toBe(true); // rating
+    expect(bob.children[6].classList.contains('ptbl__games')).toBe(true);
+    expect(th[6].classList.contains('ptbl__games')).toBe(true);
   });
 
   it('typing in the search box re-queries with q (debounced) and resets to page 1', async () => {
@@ -131,5 +142,11 @@ describe('rankings page', () => {
   it('shows the empty state', async () => {
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false }) : ok({ ...PAGE, players: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } })));
     expect(document.getElementById('rk-empty').hidden).toBe(false);
+    expect(document.getElementById('rk-wrap').hidden).toBe(true); // mockup draws no empty table card
+  });
+
+  it('the table card shows again once there are rows', async () => {
+    await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+    expect(document.getElementById('rk-wrap').hidden).toBe(false);
   });
 });

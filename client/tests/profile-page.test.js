@@ -89,6 +89,13 @@ describe('profile page', () => {
     expect(document.getElementById('pf-edit-btn').getAttribute('href')).toBe('/settings.html');
   });
 
+  it('Tôi is the active mobile tab on the viewer\'s own profile only', async () => {
+    await boot({ ...PROFILE, isSelf: true });
+    expect(document.querySelector('.ptabbar a.is-active').dataset.tab).toBe('me');
+    await boot({ ...PROFILE, isSelf: false });
+    expect(document.querySelector('.ptabbar a.is-active')).toBeNull();
+  });
+
   it('hides challenge / message / friend controls the target does not accept (#199)', async () => {
     await boot({ ...PROFILE, friendship: 'none', can: { dm: false, challenge: false, friend: false } });
     const box = document.getElementById('pf-social');

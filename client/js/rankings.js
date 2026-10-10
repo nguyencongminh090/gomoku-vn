@@ -107,10 +107,12 @@
       } else {
         club.textContent = '—';
       }
-      tr.append(el('td', String(p.rank)), name, rating, delta, club, el('td', regionText(p), 'ptbl__region'), el('td', String(p.games), 'num'));
+      // Mockup order: # · Người chơi · Khu vực · Rating · 7 ngày · CLB (+ Ván, dropped on mobile)
+      tr.append(el('td', String(p.rank)), name, el('td', regionText(p), 'ptbl__region'), rating, delta, club, el('td', String(p.games), 'num ptbl__games'));
       bodyEl.appendChild(tr);
     }
     emptyEl.hidden = data.players.length > 0;
+    document.getElementById('rk-wrap').hidden = data.players.length === 0; // mockup has no empty table card
     emptyEl.textContent = state.q ? t('rankings.no_match', { q: state.q })
       : state.scope === 'friends' ? t('rankings.friends_empty', { min: data.minGames })
       : state.scope === 'vn' ? t('rankings.vn_empty', { min: data.minGames }) : t('rankings.empty', { min: data.minGames });
