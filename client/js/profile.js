@@ -23,8 +23,9 @@
   }
 
   const SHELL = () => window.PlatformShell;
-  /** Leading sprite icon on an action button (B212). */
-  const withIcon = (node, name) => { node.prepend(SHELL().icon(name)); return node; };
+  /** Leading sprite icon on an action button (B212); profile actions all carry one (B213). */
+  const BADGE_ICONS = { first_win: 'ph-regular-flag-checkered', wins_100: 'ph-regular-medal', wins_1000: 'ph-regular-medal', top_500: 'ph-regular-trophy', top_10: 'ph-regular-trophy' };
+  const withIcon = (node, name) => { if (name) node.prepend(SHELL().icon(name)); return node; };
 
   function setAvatar(url, name) {
     $('pf-avatar').replaceWith(Object.assign(SHELL().avatar(url, name, 'pav--xl'), { id: 'pf-avatar' }));
@@ -33,12 +34,11 @@
   function render(p) {
     document.title = 'Play3CR — ' + p.displayName;
     $('pf-name').textContent = p.displayName;
-    $('pf-joined').textContent = t('profile.joined', {
-      date: new Date(p.createdAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' }),
-    });
     const country = p.country && window.Countries ? window.Countries.name(p.country, document.documentElement.lang || 'vi') : '';
     const where = [p.city, country].filter(Boolean).join(', ');
-    if (where) $('pf-joined').textContent += ' · ' + where;
+    const joined = t('profile.joined', { date: new Date(p.createdAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' }) });
+    $('pf-joined').replaceChildren(withIcon(el('span', joined), 'ph-regular-calendar'),
+      ...(where ? [withIcon(el('span', where), 'ph-regular-map-pin')] : []));
     setAvatar(p.avatarUrl, p.displayName);
 
     const bio = $('pf-bio');
@@ -61,12 +61,15 @@
 
     const badgeBox = $('pf-badges');
     badgeBox.replaceChildren();
-    for (const id of p.badges || []) badgeBox.appendChild(el('span', t('badge.' + id), 'pbadge'));
+    for (const id of p.badges || []) badgeBox.appendChild(withIcon(el('span', t('badge.' + id), 'pbadge'), BADGE_ICONS[id] || 'ph-regular-medal'));
     badgeBox.hidden = !badgeBox.childElementCount;
     if (p.streak && (p.streak.best > 0)) {
-      const d = document.createElement('div');
-      d.append(el('dt', t('profile.streak')), el('dd', t('profile.streak_val', { cur: p.streak.current, best: p.streak.best })));
-      stats.appendChild(d);
+      // Two plain numbers, not "3 (cao nhất 4)" — that wrapped under its label on phones (B213).
+      for (const [label, v] of [['streak', p.streak.current], ['streak_best', p.streak.best]]) {
+        const d = document.createElement('div');
+        d.append(el('dt', t('profile.' + label)), el('dd', String(v)));
+        stats.appendChild(d);
+      }
     }
     // Puzzle record (7b): public, shown once the member has solved anything.
     if (p.puzzles && p.puzzles.solved > 0) {
@@ -139,8 +142,8 @@
     const body = el('div', undefined, 'prow__body');
     const when = g.endedAt ? new Date(g.endedAt).toLocaleDateString(document.documentElement.lang || undefined) : '';
     body.append(el('div', t('profile.' + g.result) + ' vs ' + g.opponent, 'prow__t'));
-    if (when) body.append(el('div', when, 'prow__m'));
     a.append(el('span', undefined, 'pdot' + (g.result === 'win' ? ' pdot--on' : g.result === 'loss' ? ' pdot--loss' : '')), body);
+    if (when) a.append(el('span', when, 'prow__m')); // one line per game: date on the right (B213)
     return a;
   }
 
@@ -163,8 +166,8 @@
     box.replaceChildren();
     box.hidden = p.isSelf;
     if (p.isSelf) return;
-    const mk = (key, method, path, cls) => {
-      const b = el('button', t(key), 'pbtn' + (cls ? ' ' + cls : ''));
+    const mk = (key, method, path, cls, iconName) => {
+      const b = withIcon(el('button', t(key), 'pbtn' + (cls ? ' ' + cls : '')), iconName);
       b.type = 'button';
       b.addEventListener('click', () => friendAction(p, method, path, b));
       return b;
@@ -172,16 +175,16 @@
     const base = '/api/friends/' + encodeURIComponent(p.username);
     switch (p.friendship) {
       case 'friends':
-        box.append(el('span', t('friends.is_friend'), 'pnote'), mk('friends.remove', 'DELETE', base, 'pbtn--ghost'));
+        box.append(el('span', t('friends.is_friend'), 'pnote'), mk('friends.remove', 'DELETE', base, 'pbtn--ghost', 'ph-regular-user-minus'));
         break;
       case 'outgoing':
-        box.append(el('span', t('friends.sent'), 'pnote'), mk('friends.cancel', 'DELETE', base, 'pbtn--ghost'));
+        box.append(el('span', t('friends.sent'), 'pnote'), mk('friends.cancel', 'DELETE', base, 'pbtn--ghost', 'ph-regular-x'));
         break;
       case 'incoming':
-        box.append(mk('friends.accept', 'POST', base + '/accept', 'pbtn--primary'), mk('friends.decline', 'DELETE', base, 'pbtn--ghost'));
+        box.append(mk('friends.accept', 'POST', base + '/accept', 'pbtn--primary', 'ph-regular-check'), mk('friends.decline', 'DELETE', base, 'pbtn--ghost', 'ph-regular-x'));
         break;
       default:
-        if (!p.can || p.can.friend) box.append(withIcon(mk('friends.add', 'POST', base, 'pbtn--primary'), 'ph-regular-user-plus'));
+        if (!p.can || p.can.friend) box.append(mk('friends.add', 'POST', base, 'pbtn--primary', 'ph-regular-user-plus'));
         else box.append(el('span', t('privacy.no_friend'), 'pnote'));
     }
     challengeControls(p, box);
@@ -209,7 +212,7 @@
     const rated = el('input');
     rated.type = 'checkbox';
     ratedLabel.append(rated, ' ' + t('challenge.rated'));
-    const go = el('button', t('challenge.send'), 'pbtn pbtn--primary');
+    const go = withIcon(el('button', t('challenge.send'), 'pbtn pbtn--primary'), 'ph-regular-paper-plane-tilt');
     go.type = 'submit';
     const note = el('span', '', 'pnote');
     form.append(rule, time, ratedLabel, go, note);
@@ -235,10 +238,12 @@
     const msg = withIcon(el('a', t('dm.btn'), 'pbtn'), 'ph-regular-chat-circle');
     msg.href = '/social.html#dm=' + encodeURIComponent(p.username);
     const can = p.can || { dm: true, challenge: true };
-    if (can.challenge) box.append(open, form);
+    if (can.challenge) box.append(open);
     else box.append(el('span', t('privacy.no_challenge'), 'pnote'));
     if (can.dm) box.append(msg);
     else box.append(el('span', t('privacy.no_dm'), 'pnote'));
+    // Last, so opening it drops a full-width row under the buttons instead of pushing Nhắn tin down (B213).
+    if (can.challenge) box.append(form);
   }
 
   async function friendAction(p, method, path, btn) {

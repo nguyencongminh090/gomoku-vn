@@ -75,7 +75,6 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .psearch { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--radius); background: var(--c-fill); }
 .psearch__icon { color: var(--c-ink-3); }
 .psearch input { width: 180px; border: 0; background: none; outline: 0; font-size: 13px; }
-.pbadge { padding: 2px 10px; font-size: 11.5px; white-space: nowrap; color: var(--c-ink-2); background: var(--c-fill); border-radius: 999px; }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
 .ptbl-wrap { overflow-x: auto; padding: 4px 16px 8px; background: var(--c-surface); border-radius: var(--radius-lg); }
@@ -156,7 +155,8 @@ a.prow:hover { background: var(--c-hover); }
 .pdm__form input { flex: 1; min-width: 0; min-height: 38px; padding: 6px 12px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 13.5px; }
 @media (max-width: 860px) { .pdm__grid { grid-template-columns: 1fr; } .pdm__list { max-height: 220px; } }
 @media (max-width: 860px) { .pbtn--sm { min-height: 38px; padding: 6px 12px; } }
-.pbadge { display: inline-block; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); border: 1px solid var(--c-border); }
+/* One .pbadge rule (B213: a second, overridden pill rule used to sit near .ptabs; its nowrap is kept here). */
+.pbadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); border: 1px solid var(--c-border); }
 
 /* ── Settings page (B211): 4 underline tabs in one 720px column; icon-first controls ── */
 .pset { max-width: 720px; }
@@ -236,3 +236,46 @@ a.prow:hover { background: var(--c-hover); }
 .ptable tbody tr:hover { background: var(--c-hover); }
 @media (max-width: 600px) { .ptable th:nth-child(4), .ptable td:nth-child(4) { display: none; } .ptable th, .ptable td { padding-left: 8px; padding-right: 8px; } }
 .psplit--solo { grid-template-columns: minmax(0, 1fr); }
+
+/* ── Profile page (B213) ─────────────────────────────────────────────────────
+   One icon size (16px, badges 14px), type scale 11 (uppercase labels) / 12 (meta) / 13 (controls) / 14 (body),
+   spacing from --space-* (4px scale). Scoped to .pprofile: phead/pstats/prow are shared with club/social pages. */
+.pprofile .pbtn .icon, .pmeta .icon { width: 16px; height: 16px; }
+.pprofile .pbadge .icon { width: 14px; height: 14px; }
+.pprofile .phead { gap: var(--space-5); margin-bottom: var(--space-5); }
+.pprofile .phead__bio { margin-top: var(--space-1); font-size: 14px; }
+.pmeta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-2) 0 0; font-size: 12px; }
+.pmeta span { display: inline-flex; align-items: center; gap: 6px; }
+.pbadges { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.pbadges[hidden] { display: none; }
+.pprofile .pactions { gap: var(--space-2); margin-top: var(--space-4); }
+.pprofile .pchallenge { margin-top: var(--space-1); }
+.pprofile .pstats { gap: var(--space-5); }
+.pprofile .ph2 { margin-bottom: var(--space-3); }
+.pprofile .pcards { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+.pprofile .pcard { padding: var(--space-4); }
+.pprofile .pcard span { font-size: 11px; }
+.pprofile .psplit, .pcol { gap: var(--space-5); }
+.pcol { display: flex; flex-direction: column; min-width: 0; }
+.pprofile .pnote { font-size: 12px; }
+.pprofile .prow { gap: var(--space-3); padding: var(--space-3) var(--space-1); }
+.pprofile .prow__t { font-size: 14px; }
+.pprofile .prow__m { margin-top: 0; font-size: 12px; }
+.pprofile #pf-recent .prow__m { flex: none; }
+.pprofile .pform__row { margin-top: var(--space-3); }
+@media (max-width: 860px) {
+  /* 3 columns: up to 7 stats (games, win %, draws, streak, best, puzzles) wrap as 3+3+1 without orphaned long labels. */
+  .pprofile .phead .pstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+  .pprofile .pstats dt { letter-spacing: .06em; }
+  /* Avatar + name share the top row; bio, meta, badges, actions and stats take the full width below (B213) —
+     in the 1fr text column next to the avatar the three action buttons stacked one per row. */
+  .pprofile .phead > div { display: contents; }
+  .pprofile .phead h1 { align-self: center; }
+  .pprofile .phead > div > :not(h1) { grid-column: 1 / -1; }
+  .pprofile .phead__bio, .pprofile .pmeta, .pprofile .pbadges { margin-top: 0; }
+  .pprofile .pactions { margin-top: var(--space-1); }
+  .pprofile .pcards { grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+  .pprofile .pcard { padding: var(--space-3); }
+  .pprofile .pcard b { font-size: 22px; }
+  .pprofile .psplit, .pcol { gap: var(--space-4); }
+}
