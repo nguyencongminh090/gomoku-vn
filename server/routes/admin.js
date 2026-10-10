@@ -6,6 +6,12 @@
  * the caller may see.
  *
  * GET /api/admin/me   → { role, permissions: ['puzzle.review', ...] }   (members, any role)
+ *
+ * User management (R8 8b, #206; perm user.manage = admin only, checked in AdminUserService):
+ * GET  /api/admin/users?q=&page=        search/list users
+ * GET  /api/admin/users/:id             user + 1-hop change graph {user, nodes, edges}
+ * POST /api/admin/users/:id/role        {role}
+ * POST /api/admin/users/:id/lock        {locked: bool, reason}
  */
 
 const express = require('express');
@@ -14,6 +20,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { verifyToken } = require('../middleware/auth');
 const roles = require('../utils/roles');
+const svc = require('../managers/AdminUserService');
 
 const router = express.Router();
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || '') }));
@@ -24,5 +31,37 @@ router.get('/me', verifyToken, (req, res) => {
   if (!userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
   res.json({ role: roles.roleOf(userId), permissions: roles.permissionsOf(userId) });
 });
+
+const write = [verifyToken, rateLimit({ windowMs: 60 * 60 * 1000, max: 300, keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || '') }), express.json({ limit: '8kb' })];
+
+/** Wrap a handler: AdminUserError → its status/code, anything else → errorHandler. Guests are not users. */
+const h = (fn) => (req, res, next) => {
+  try {
+    if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
+    fn(req, res);
+  } catch (err) {
+    if (err instanceof svc.AdminUserError) return res.status(err.status).json({ error: err.message, code: err.code });
+    next(err);
+  }
+};
+
+router.get('/users', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.listUsers(req.user.userId, req.query));
+}));
+
+router.get('/users/:id', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.getUser(req.user.userId, req.params.id));
+}));
+
+router.post('/users/:id/role', ...write, h((req, res) => {
+  res.json({ user: svc.setRole(req.user.userId, req.params.id, (req.body || {}).role) });
+}));
+
+router.post('/users/:id/lock', ...write, h((req, res) => {
+  const { locked, reason } = req.body || {};
+  res.json({ user: svc.setLocked(req.user.userId, req.params.id, locked === true, reason) });
+}));
 
 module.exports = router;

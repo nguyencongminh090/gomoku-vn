@@ -368,6 +368,11 @@ router.post('/login', async (req, res, next) => {
       });
     }
 
+    // Only after the password matched, so a stranger cannot probe which accounts are locked (#206).
+    if (user.locked_at) {
+      return res.status(403).json({ error: 'Tài khoản đã bị khoá.', code: 'ACCOUNT_LOCKED' });
+    }
+
     db.updateLastLogin(user.id, new Date().toISOString());
 
     const body = startSession(req, res, {
@@ -636,6 +641,8 @@ router.get('/google/callback', async (req, res) => {
         logger.warn(`[Auth] Google OAuth callback: lost create race for sub ${payload.sub}, reusing winner's account (${user.id})`);
       }
     }
+
+    if (user.locked_at) return res.redirect('/login.html?error=account_locked');
 
     db.updateLastLogin(user.id, new Date().toISOString());
 

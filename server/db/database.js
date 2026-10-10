@@ -127,6 +127,12 @@ if (userColumns.length > 0 && !userColumns.includes('role')) {
   logger.info('[DB] Migrated users: added role column (TODO.md #205)');
 }
 
+// Account lock (TODO.md #206, R8 8b): NULL = active, else ISO time it was locked.
+if (userColumns.length > 0 && !userColumns.includes('locked_at')) {
+  db.exec('ALTER TABLE users ADD COLUMN locked_at TEXT');
+  logger.info('[DB] Migrated users: added locked_at column (TODO.md #206)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a

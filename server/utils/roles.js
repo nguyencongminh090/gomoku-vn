@@ -14,6 +14,7 @@ const PERMISSIONS = {
   'puzzle.review': ['moderator', 'admin'],
   'forum.moderate': ['moderator', 'admin'],
   'admin.access': ['moderator', 'admin'],
+  'user.manage': ['admin'],
 };
 
 /** The user's role; 'member' for an unknown/missing id or an unrecognised stored value. */

@@ -87,6 +87,9 @@ if (sessionStorage.getItem('gvn_kicked_notice')) {
   if (oauthError === 'oauth_failed' || oauthError === 'oauth_state') {
     showAlert(t('login.err_oauth_fail'));
     window.history.replaceState({}, '', window.location.pathname);
+  } else if (oauthError === 'account_locked') {
+    showAlert(t('login.err_account_locked'));
+    window.history.replaceState({}, '', window.location.pathname);
   } else if (oauthError === 'oauth_not_configured') {
     showAlert(t('login.err_oauth_not_configured'));
     window.history.replaceState({}, '', window.location.pathname);
@@ -203,6 +206,7 @@ const ERROR_CODE_KEYS = {
   USERNAME_TAKEN: 'login.err_username_taken',
   MISSING_CREDENTIALS: 'login.err_missing_credentials',
   INVALID_CREDENTIALS: 'login.err_invalid_credentials',
+  ACCOUNT_LOCKED: 'login.err_account_locked',
 };
 
 function errorMessage(data, fallbackKey) {

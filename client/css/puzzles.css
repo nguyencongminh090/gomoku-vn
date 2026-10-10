@@ -48,3 +48,18 @@
 @media (max-width: 800px) {
   .pz-review { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Admin users tab (#206): change graph + history */
+.us-graph { width: 100%; max-width: 420px; height: auto; background: var(--c-fill); border-radius: var(--radius); }
+.us-graph .us-edge { stroke-width: 1.5; fill: none; }
+.us-graph .us-edge--role_set { stroke: var(--c-brand); }
+.us-graph .us-edge--lock { stroke: #e5484d; }
+.us-graph .us-edge--unlock { stroke: #3e9b4f; }
+.us-graph .us-node { fill: var(--c-fill-2, var(--c-fill)); stroke: var(--c-ink-2); stroke-width: 1.5; cursor: pointer; }
+.us-graph .us-node--self { stroke: var(--c-brand); stroke-width: 3; }
+.us-graph text { fill: var(--c-ink); font-size: 9px; text-anchor: middle; pointer-events: none; }
+.us-history { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.us-row.is-active { outline: 2px solid var(--c-brand); }
+.us-row { flex-wrap: wrap; gap: 4px 8px; min-width: 0; text-align: left; }
+#us-detail { min-width: 0; }
+#us-detail h3 { margin: 18px 0 8px; font-size: 14px; }
