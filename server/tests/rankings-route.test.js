@@ -111,6 +111,13 @@ describe('GET /api/rankings/me', () => {
     expect(d.ratings.freestyle.rank).toBeNull();
   });
 
+  it('returns the caller avatar URL (nav chip) only when one is set', async () => {
+    expect((await get('/api/rankings/me', { 'x-test-user': 'u1' })).body.avatarUrl).toBeNull();
+    database.db.prepare('UPDATE users SET avatar_v = 3 WHERE id = ?').run('u1');
+    expect((await get('/api/rankings/me', { 'x-test-user': 'u1' })).body.avatarUrl).toBe('/api/profile/avatar/u1.webp?v=3');
+    database.db.prepare('UPDATE users SET avatar_v = 0 WHERE id = ?').run('u1');
+  });
+
   it('returns nothing for a guest session', async () => {
     const g = (await get('/api/rankings/me', { 'x-test-user': '' })).body;
     expect(g.ratings).toEqual({});
