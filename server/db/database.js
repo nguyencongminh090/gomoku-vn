@@ -119,6 +119,14 @@ if (userColumns.length > 0 && !userColumns.includes('is_admin')) {
   logger.info('[DB] Migrated users: added is_admin column (TODO.md #203)');
 }
 
+// Staff roles (TODO.md #205, R8): replaces the bare is_admin flag. is_admin stays as a dead column
+// (SQLite DROP COLUMN buys nothing); admins are carried over once.
+if (userColumns.length > 0 && !userColumns.includes('role')) {
+  db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'");
+  if (userColumns.includes('is_admin')) db.exec("UPDATE users SET role = 'admin' WHERE is_admin = 1");
+  logger.info('[DB] Migrated users: added role column (TODO.md #205)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a

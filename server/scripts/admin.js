@@ -385,25 +385,28 @@ async function handleSetPassword(flags) {
   console.log(`Password updated for user ${user.username}.`);
 }
 
-/** Grant or revoke the puzzle-reviewer flag (TODO.md #203): set-admin --username=<u> [--off] */
-async function handleSetAdmin(flags) {
+/** Set a user's staff role (TODO.md #205): set-role --username=<u> --role=member|moderator|admin */
+async function handleSetRole(flags) {
   if (!flags.id && !flags.username) {
-    throw new Error('set-admin requires --id=<userId> or --username=<username>');
+    throw new Error('set-role requires --id=<userId> or --username=<username>');
+  }
+  const ROLES = ['member', 'moderator', 'admin'];
+  if (!ROLES.includes(flags.role)) {
+    throw new Error('set-role requires --role=' + ROLES.join('|'));
   }
   const user = findUser(flags);
   if (!user) {
     console.log('No matching user found.');
     return;
   }
-  const grant = !flags.off;
-  const preview = [`About to ${grant ? 'GRANT' : 'REVOKE'} admin (puzzle review) for user: ${user.username} (id=${user.id})`];
+  const preview = [`About to set role ${flags.role} for user: ${user.username} (id=${user.id})`];
   if (!(await confirmAction(flags, preview))) {
     console.log('Aborted.');
     return;
   }
-  db.prepare('UPDATE users SET is_admin = ? WHERE id = ?').run(grant ? 1 : 0, user.id);
-  logAction({ command: 'set-admin', flags, rowsAffected: 1 });
-  console.log(`${user.username} is now ${grant ? 'an admin' : 'no longer an admin'}.`);
+  db.prepare('UPDATE users SET role = ? WHERE id = ?').run(flags.role, user.id);
+  logAction({ command: 'set-role', flags, rowsAffected: 1 });
+  console.log(`${user.username} is now ${flags.role}.`);
 }
 
 // ---------------------------------------------------------------------------
@@ -651,7 +654,7 @@ const commandHandlers = {
   'purge-games': handlePurgeGames,
   'truncate-table': handleTruncateTable,
   'set-password': handleSetPassword,
-  'set-admin': handleSetAdmin,
+  'set-role': handleSetRole,
   'list-users': handleListUsers,
   'view-table': handleViewTable,
   'db-overview': handleDbOverview,
@@ -671,7 +674,7 @@ const MENU = [
   { name: 'purge-games', message: 'purge-games      — bulk-delete old games (destructive)' },
   { name: 'truncate-table', message: 'truncate-table   — wipe a table (destructive)' },
   { name: 'set-password', message: 'set-password     — reset a user\'s password' },
-  { name: 'set-admin', message: 'set-admin        — grant/revoke puzzle-review admin' },
+  { name: 'set-role', message: 'set-role         — set staff role (member|moderator|admin)' },
   { name: 'exit', message: 'exit' },
 ];
 
@@ -679,13 +682,16 @@ async function promptFlags(command) {
   const flags = {};
   switch (command) {
     case 'delete-user':
-    case 'set-admin':
+    case 'set-role':
     case 'set-password': {
       const method = await askSelect('Look up user by', ['username (autocomplete)', 'user ID']);
       if (method.startsWith('username')) {
         flags.username = await askUsername('Username: ');
       } else {
         flags.id = await askInput('User ID: ');
+      }
+      if (command === 'set-role') {
+        flags.role = await askSelect('Role', ['member', 'moderator', 'admin']);
       }
       if (command === 'set-password') {
         flags.password = await askPassword('New password: ');

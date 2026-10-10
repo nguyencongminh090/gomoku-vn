@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Quản trị</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=222" />
+  <link rel="stylesheet" href="css/tokens.css?v=222" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=222" />
+  <link rel="stylesheet" href="css/platform.css?v=222" />
+  <link rel="stylesheet" href="css/puzzles.css?v=222" />
+  <link rel="stylesheet" href="css/forum.css?v=222" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=222" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=222">
+
+  <script src="js/ui-mode-preload.js?v=222"></script>
+  <script src="js/skin-preload.js?v=222"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <div class="pintro">
+    <h1 data-i18n="admin.h1">Quản trị</h1>
+    <p id="adm-role" class="muted small"></p>
+  </div>
+  <p id="adm-msg" class="pnote" hidden></p>
+  <div id="adm-tabs" class="pchips" role="tablist" hidden>
+    <button type="button" role="tab" id="adm-tab-puzzles" class="pchip" data-tab="puzzles" data-perm="puzzle.review" hidden data-i18n="admin.tab_puzzles">Duyệt puzzle</button>
+    <button type="button" role="tab" id="adm-tab-forum" class="pchip" data-tab="forum" data-perm="forum.moderate" hidden data-i18n="admin.tab_forum">Báo cáo diễn đàn</button>
+  </div>
+
+  <section id="adm-puzzles" role="tabpanel" hidden>
+    <p id="rv-total" class="muted small"></p>
+    <p id="rv-msg" class="pnote" hidden></p>
+    <div id="rv-view" class="pz-review" hidden>
+      <div id="rv-list" class="prows"></div>
+      <div id="rv-detail" class="pz-solve" hidden>
+        <div class="pz-solve__board ppanel"><canvas id="rv-canvas"></canvas></div>
+        <div class="pz-solve__side ppanel">
+          <h2 id="rv-title" class="pz-title"></h2>
+          <div id="rv-meta" class="pz-meta"></div>
+          <p id="rv-prompt" class="pz-prompt"></p>
+          <p id="rv-dup" class="pnote" hidden></p>
+          <p class="muted small" data-i18n="puzzles.rv_answers">Đáp án (bấm để xem trên bàn)</p>
+          <div id="rv-answers" class="pz-moves"></div>
+          <form id="rv-form" class="pform">
+            <label for="rv-level" data-i18n="puzzles.f_level">Level</label>
+            <select id="rv-level"></select>
+            <label for="rv-note" data-i18n="puzzles.rv_note">Ghi chú (bắt buộc khi từ chối)</label>
+            <textarea id="rv-note" rows="2" maxlength="200"></textarea>
+            <p id="rv-result" class="pz-result" role="status" hidden></p>
+            <div class="pactions">
+              <button type="button" id="rv-approve" class="pbtn pbtn--primary" data-i18n="puzzles.approve">Duyệt</button>
+              <button type="button" id="rv-reject" class="pbtn pbtn--ghost" data-i18n="puzzles.reject">Từ chối</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="adm-forum" role="tabpanel" hidden>
+    <p id="rp-total" class="muted small"></p>
+    <p id="rp-msg" class="pnote" hidden></p>
+    <div id="rp-list" class="prows" aria-live="polite"></div>
+    <div id="rp-pager" class="ppager"></div>
+  </section>
+</main>
+
+<script src="js/i18n.js?v=222"></script>
+<script src="js/ui-mode.js?v=222"></script>
+<script src="js/session.js?v=222"></script>
+<script src="js/audio-manager.js?v=222"></script>
+<script src="js/settings-panel.js?v=222"></script>
+<script src="js/platform-shell.js?v=222"></script>
+<script src="js/coords.js?v=222"></script>
+<script src="js/board.js?v=222"></script>
+<script src="js/puzzle-board.js?v=222"></script>
+<script src="js/forum-common.js?v=222"></script>
+<script src="js/puzzles-review.js?v=222"></script>
+<script src="js/forum-reports.js?v=222"></script>
+<script src="js/admin.js?v=222"></script>
+</body>
+</html>

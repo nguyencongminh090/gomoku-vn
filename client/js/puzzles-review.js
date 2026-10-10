@@ -1,5 +1,6 @@
 /**
- * puzzles-review.js — admin review queue (#203 7a-3), page /puzzles/review.
+ * puzzles-review.js — puzzle review queue (#203 7a-3), a tab of /admin (R8 #205; /puzzles/review redirects there).
+ * Exposes window.PuzzlesReview.init(); admin.js calls it when the tab is first shown.
  * GET /api/puzzles/review (403 PUZZLE_FORBIDDEN for non-admins — the server is the gate, this
  * page only reports it), POST /api/puzzles/:id/review {decision, level, note}. Shows each
  * pending puzzle's board with its accepted answer lines (click to preview) and how many other
@@ -113,8 +114,11 @@
     }
   }
 
+  let started = false;
+
   async function init() {
-    window.PlatformShell.build('learn');
+    if (started) return;
+    started = true;
     const msg = $('rv-msg');
     const sel = $('rv-level');
     for (const l of LEVELS) { const o = el('option', t('puzzles.level_' + l)); o.value = l; sel.appendChild(o); }
@@ -133,5 +137,5 @@
     window.addEventListener('resize', () => { if (renderer) { renderer.resize(); draw(); } });
   }
 
-  document.addEventListener('DOMContentLoaded', init);
+  window.PuzzlesReview = { init };
 })();
