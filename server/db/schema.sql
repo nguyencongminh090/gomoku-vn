@@ -130,7 +130,8 @@ CREATE TABLE IF NOT EXISTS tournaments (
   started_at    TEXT,                    -- ISO 8601 timestamp, null until startTournament()
   completed_at  TEXT,                    -- ISO 8601 timestamp, null until final round ends
   cancelled_at  TEXT,                    -- ISO 8601 timestamp, null unless cancelTournament() (TODO.md #59)
-  cancel_reason TEXT                     -- optional freeform organizer note, null unless cancelled
+  cancel_reason TEXT,                    -- optional freeform organizer note, null unless cancelled
+  club_id       TEXT REFERENCES clubs(id) ON DELETE SET NULL -- club-hosted tournament (TODO.md #200 slice 4), else null
 );
 
 -- Tournament players — one row per registered entry (guest-tolerant, like games.*_player_id)

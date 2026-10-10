@@ -14,7 +14,7 @@ const body = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
   .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
 
 const CLUB = {
-  slug: 'caro', name: '<i>Caro</i>', description: 'desc', joinPolicy: 'invite', members: 2, avgRating: 1500, rank: 3, myRole: null, category: 'freestyle', events: [],
+  slug: 'caro', name: '<i>Caro</i>', description: 'desc', joinPolicy: 'invite', members: 2, avgRating: 1500, rank: 3, myRole: null, category: 'freestyle', events: [], tournaments: [],
   leaderboard: [
     { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
     { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0 },
@@ -258,6 +258,40 @@ describe('club page', () => {
       tab().click();
       await flush(); await flush();
       expect(document.getElementById('cb-chat-older').hidden).toBe(false);
+    });
+  });
+
+  describe('club tournaments (#200 slice 4)', () => {
+    const TOURS = [
+      { id: 't<1>', name: '<b>Cup</b>', format: 'swiss', status: 'draft', createdAt: '2026-10-10T10:00:00.000Z', startedAt: null, players: 3 },
+      { id: 't2', name: 'Done', format: 'swiss', status: 'completed', createdAt: '2026-09-01T10:00:00.000Z', startedAt: '2026-09-02T10:00:00.000Z', players: 8 },
+    ];
+    beforeEach(() => { location.hash = ''; sessionStorage.clear(); });
+
+    it('shows the empty note; lists tournaments as text links with status and players', async () => {
+      await bootClub(CLUB);
+      expect(document.getElementById('cb-tournaments').textContent).toBe('clubs.no_tournaments');
+      await bootClub({ ...CLUB, tournaments: TOURS });
+      const rows = document.querySelectorAll('#cb-tournaments a.prow');
+      expect(rows).toHaveLength(2);
+      expect(rows[0].querySelector('.prow__t').textContent).toBe('<b>Cup</b>');
+      expect(rows[0].querySelector('b')).toBeNull();
+      expect(rows[0].getAttribute('href')).toBe('/tournament.html?id=t%3C1%3E');
+      expect(rows[0].querySelector('.prow__m').textContent).toContain('clubs.tstatus_draft');
+      expect(rows[0].querySelector('.prow__m').textContent).toContain('3 clubs.tplayers');
+    });
+
+    it('create button is staff-only and hands the club slug over via sessionStorage', async () => {
+      for (const role of [null, 'member']) {
+        await bootClub({ ...CLUB, myRole: role });
+        expect(document.getElementById('cb-tournament-new').hidden).toBe(true);
+      }
+      await bootClub({ ...CLUB, myRole: 'officer' });
+      expect(document.getElementById('cb-tournament-new').hidden).toBe(false);
+      const quiet = jest.spyOn(console, 'error').mockImplementation(() => {}); // jsdom: navigation not implemented
+      document.getElementById('cb-tournament-new').click();
+      quiet.mockRestore();
+      expect(sessionStorage.getItem('gvn_club_tournament')).toBe('caro');
     });
   });
 });

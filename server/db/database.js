@@ -60,6 +60,12 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
   logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
 }
 
+// Club-hosted tournaments (TODO.md #200 slice 4): nullable FK, SET NULL when the club is deleted.
+if (tournamentColumns.length > 0 && !tournamentColumns.includes('club_id')) {
+  db.exec('ALTER TABLE tournaments ADD COLUMN club_id TEXT REFERENCES clubs(id) ON DELETE SET NULL');
+  logger.info('[DB] Migrated tournaments: added club_id column (TODO.md #200)');
+}
+
 // Same additive-migration need as above, for oauth_provider/oauth_id
 // (TODO.md #91) — a db file created before Google login is missing these
 // two columns.
@@ -600,12 +606,12 @@ function getGameStatsByResult(filters = {}) {
  * after a reload, when there's no live `organizerInfo` to fall back on.
  * @param {{ id, name, format, organizerId, organizerName, ruleSet, createdAt }} tournament
  */
-function createTournament({ id, name, format, organizerId, organizerName, ruleSet, createdAt }) {
+function createTournament({ id, name, format, organizerId, organizerName, ruleSet, createdAt, clubId = null }) {
   const stmt = db.prepare(
-    `INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'draft', ?)`
+    `INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at, club_id)
+     VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)`
   );
-  return stmt.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt);
+  return stmt.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt, clubId);
 }
 
 /**

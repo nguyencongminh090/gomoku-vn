@@ -13,37 +13,37 @@
        socket-early.js needs `io` and `SocketClient`, socket-client.js needs
        `GvnSession`. See client/js/socket-early.js for the measurement. -->
   <script src="/vendor/socket.io/socket.io.min.js"></script>
-  <script src="js/session.js?v=209"></script>
-  <script src="js/socket-client.js?v=209"></script>
-  <script src="js/socket-early.js?v=209"></script>
+  <script src="js/session.js?v=211"></script>
+  <script src="js/socket-client.js?v=211"></script>
+  <script src="js/socket-early.js?v=211"></script>
 
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=209" />
-  <link rel="stylesheet" href="css/tokens.css?v=209" />
-  <link rel="stylesheet" href="css/lobby.css?v=209" />
-  <link rel="stylesheet" href="css/lobby-zen.css?v=209" />
-  <link rel="stylesheet" href="css/shell.css?v=209" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=209" />
-  <link rel="stylesheet" href="css/platform.css?v=209" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=209" />
+  <link rel="stylesheet" href="css/main.css?v=211" />
+  <link rel="stylesheet" href="css/tokens.css?v=211" />
+  <link rel="stylesheet" href="css/lobby.css?v=211" />
+  <link rel="stylesheet" href="css/lobby-zen.css?v=211" />
+  <link rel="stylesheet" href="css/shell.css?v=211" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=211" />
+  <link rel="stylesheet" href="css/platform.css?v=211" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=211" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=209">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=211">
 
-  <script src="js/ui-mode-preload.js?v=209"></script>
+  <script src="js/ui-mode-preload.js?v=211"></script>
 
-  <script src="js/skin-preload.js?v=209"></script>
+  <script src="js/skin-preload.js?v=211"></script>
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=209" />
-  <link rel="modulepreload" href="js/ui-mode.js?v=209" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=209" />
-  <link rel="modulepreload" href="js/platform-shell.js?v=209" />
-  <link rel="modulepreload" href="js/lobby.js?v=209" />
-  <link rel="modulepreload" href="js/private-chat.js?v=209" />
-  <link rel="modulepreload" href="js/tournaments.js?v=209" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=209" />
+  <link rel="modulepreload" href="js/i18n.js?v=211" />
+  <link rel="modulepreload" href="js/ui-mode.js?v=211" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=211" />
+  <link rel="modulepreload" href="js/platform-shell.js?v=211" />
+  <link rel="modulepreload" href="js/lobby.js?v=211" />
+  <link rel="modulepreload" href="js/private-chat.js?v=211" />
+  <link rel="modulepreload" href="js/tournaments.js?v=211" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=211" />
 
 </head>
 <body class="zen-lobby">
@@ -69,11 +69,11 @@
     </div>
     <div class="lobby-bar__actions" id="lobby-bar">
       <button id="btn-create" class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=209#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-regular-plus-circle"></use></svg>
         <span data-i18n="lobby.btn_create">Tạo phòng</span>
       </button>
       <button id="btn-create-tournament" hidden class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=209#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-regular-plus-circle"></use></svg>
         <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
       </button>
     </div>
@@ -123,7 +123,7 @@
   <div class="tab-panel" id="panel-tournaments">
     <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
       <div class="live-matches-panel__header">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=209#ph-regular-broadcast"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-regular-broadcast"></use></svg>
         <span data-i18n="live_matches.title">Trận đang diễn ra</span>
       </div>
       <div id="live-matches-list" class="live-matches-panel__list"></div>
@@ -285,6 +285,7 @@
       <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng">✕</button>
     </div>
     <div class="modal__body">
+      <p id="tournament-club-note" class="pnote" hidden></p>
 
       <!-- Tournament name -->
       <div class="setting-row">
@@ -453,7 +454,7 @@
   <div class="modal online-users-modal">
     <div class="modal__header">
       <span class="online-users-modal__title-wrap">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=209#ph-regular-users-three"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-regular-users-three"></use></svg>
         <h2 id="modal-online-users-title" class="modal__title" data-i18n="private_chat.modal_title">Danh sách người dùng online</h2>
         <span id="online-users-count" class="online-users-modal__count">0</span>
       </span>
@@ -461,14 +462,14 @@
     </div>
     <div class="modal__body">
       <div class="online-users-search-wrap">
-        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=209#ph-regular-magnifying-glass"></use></svg>
+        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-regular-magnifying-glass"></use></svg>
         <input type="text" id="online-users-search" class="online-users-search" autocomplete="off"
                data-i18n-placeholder="private_chat.modal_search_ph" placeholder="Tìm kiếm người dùng..." />
         <kbd class="online-users-search-shortcut"></kbd>
       </div>
       <ul id="online-users-list" class="online-users-list"></ul>
       <button type="button" id="btn-notif-enable" class="online-users-notif-btn">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=209#ph-regular-bell"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-regular-bell"></use></svg>
         <span class="online-users-notif-btn__label" data-i18n="private_chat.notif_enable">Bật thông báo</span>
       </button>
     </div>
@@ -477,9 +478,9 @@
 
 <!-- Socket.io CDN -->
 <!-- socket.io.min.js now loads in <head> (TODO.md #145) -->
-<script src="js/escape-utils.js?v=209"></script>
-<script src="js/audio-manager.js?v=209"></script>
-<script src="js/action-delegate.js?v=209"></script>
-<script type="module" src="js/index-entry.js?v=209"></script>
+<script src="js/escape-utils.js?v=211"></script>
+<script src="js/audio-manager.js?v=211"></script>
+<script src="js/action-delegate.js?v=211"></script>
+<script type="module" src="js/index-entry.js?v=211"></script>
 </body>
 </html>

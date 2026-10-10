@@ -39,6 +39,7 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .ph2 { margin: 0 0 14px; font-size: 14px; font-weight: 700; letter-spacing: .02em; color: var(--c-ink); }
 .ph2--gap { margin-top: 28px; }
 .pnote { margin: 12px 0 0; font-size: 12.5px; color: var(--c-ink-2); }
+#tournament-club-note { margin: 0 0 14px; }
 .pnote b { color: var(--c-ink); }
 
 /* ── Header card (profile / club) ────────────────────────────────────────── */

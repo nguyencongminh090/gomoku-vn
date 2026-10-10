@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Câu lạc bộ</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=209" />
-  <link rel="stylesheet" href="css/tokens.css?v=209" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=209" />
-  <link rel="stylesheet" href="css/platform.css?v=209" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=209" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=209">
+  <link rel="stylesheet" href="css/main.css?v=211" />
+  <link rel="stylesheet" href="css/tokens.css?v=211" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=211" />
+  <link rel="stylesheet" href="css/platform.css?v=211" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=211" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=211">
 
-  <script src="js/ui-mode-preload.js?v=209"></script>
-  <script src="js/skin-preload.js?v=209"></script>
+  <script src="js/ui-mode-preload.js?v=211"></script>
+  <script src="js/skin-preload.js?v=211"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -42,6 +42,7 @@
     <div class="ptabs" id="cb-tablist" role="tablist">
       <button type="button" class="ptab" role="tab" id="cb-tab-overview" data-tab="overview" aria-controls="cb-panel-overview" data-i18n="clubs.tab_overview">Tổng quan</button>
       <button type="button" class="ptab" role="tab" id="cb-tab-members" data-tab="members" aria-controls="cb-panel-members" data-i18n="clubs.tab_members">Thành viên</button>
+      <button type="button" class="ptab" role="tab" id="cb-tab-tournaments" data-tab="tournaments" aria-controls="cb-panel-tournaments" data-i18n="clubs.tab_tournaments">Giải của CLB</button>
       <button type="button" class="ptab" role="tab" id="cb-tab-board" data-tab="board" aria-controls="cb-panel-board" data-i18n="clubs.tab_board">Bảng xếp hạng</button>
       <button type="button" class="ptab" role="tab" id="cb-tab-chat" data-tab="chat" aria-controls="cb-panel-chat" data-i18n="clubs.tab_chat" hidden>Trò chuyện</button>
     </div>
@@ -97,6 +98,14 @@
       </div>
     </section>
 
+    <section id="cb-panel-tournaments" role="tabpanel" aria-labelledby="cb-tab-tournaments" class="cb-panel" hidden>
+      <section class="ppanel">
+        <h2 class="ph2" data-i18n="clubs.tab_tournaments">Giải của CLB</h2>
+        <div id="cb-tournaments" class="prows"></div>
+        <div class="pform__row"><button type="button" class="pbtn pbtn--primary" id="cb-tournament-new" data-i18n="clubs.tournament_new" hidden>Tạo giải của CLB</button></div>
+      </section>
+    </section>
+
     <section id="cb-panel-board" role="tabpanel" aria-labelledby="cb-tab-board" class="cb-panel" hidden>
       <h2 class="ph2" data-i18n="clubs.board">Bảng xếp hạng CLB</h2>
       <div id="cb-tabs" class="pchips" role="tablist"></div>
@@ -126,13 +135,13 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=209"></script>
-<script src="js/escape-utils.js?v=209"></script>
-<script src="js/ui-mode.js?v=209"></script>
-<script src="js/session.js?v=209"></script>
-<script src="js/audio-manager.js?v=209"></script>
-<script src="js/settings-panel.js?v=209"></script>
-<script src="js/platform-shell.js?v=209"></script>
-<script src="js/club.js?v=209"></script>
+<script src="js/i18n.js?v=211"></script>
+<script src="js/escape-utils.js?v=211"></script>
+<script src="js/ui-mode.js?v=211"></script>
+<script src="js/session.js?v=211"></script>
+<script src="js/audio-manager.js?v=211"></script>
+<script src="js/settings-panel.js?v=211"></script>
+<script src="js/platform-shell.js?v=211"></script>
+<script src="js/club.js?v=211"></script>
 </body>
 </html>
