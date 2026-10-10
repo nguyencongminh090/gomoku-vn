@@ -1,7 +1,7 @@
 # Learn — replay state
 ```mermaid
 stateDiagram-v2
-  [*] --> Idle: open /learn
+  [*] --> Idle: open replay (from a profile history row)
   Idle --> Loading: pick game (history list / link)
   Loading --> Replaying: GET /api/games/:id ok
   Loading --> Error: 404 / network
