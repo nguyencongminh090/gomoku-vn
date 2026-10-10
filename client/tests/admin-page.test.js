@@ -47,6 +47,11 @@ async function boot(me, status = 200, hash = '', failFetch = false) {
 }
 
 describe('admin shell', () => {
+  it('highlights no nav item (admin is not the Learn section)', async () => {
+    await boot(ME.moderator);
+    expect(window.PlatformShell.build).toHaveBeenCalledWith('admin');
+  });
+
   it('a member sees the forbidden message and no tabs', async () => {
     await boot(ME.member);
     expect($('adm-msg').hidden).toBe(false);

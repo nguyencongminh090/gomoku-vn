@@ -53,6 +53,7 @@ const navUser       = document.getElementById('nav-user');
 const navBadge      = document.getElementById('nav-badge');
 const roomListEl    = document.getElementById('room-list');
 const heroEyebrow   = document.getElementById('hero-eyebrow');
+const heroSub       = document.getElementById('hero-sub');
 const heroTitle     = document.getElementById('hero-title');
 const btnCreate     = document.getElementById('btn-create');
 const modalOverlay  = document.getElementById('modal-create');
@@ -118,8 +119,10 @@ function renderFromMap() {
 // ---------------------------------------------------------------------------
 // Hero line
 // ---------------------------------------------------------------------------
-// One sentence above the tabs, stating what is actually on the screen — it
-// replaced the old "Danh sách phòng (N)" header plus its count pills. Which
+// A fixed screen title (H1, as in the Arena mockup) plus one live sentence under it, stating
+// what is actually on the screen — it replaced the old "Danh sách phòng (N)" header plus its
+// count pills. (The sentence used to BE the H1, so an empty lobby read "Chưa có bàn chơi nào
+// đang mở." as the page title, #209/B210.) Which
 // sentence depends on the active tab, so tournaments.js drives it through the
 // two exports below rather than owning a hero of its own.
 
@@ -129,6 +132,7 @@ let heroTournamentCount = 0;
 /** Home greeting, "Chào <b>name</b>, …": the name is user text, so it goes in as a text node. */
 function renderGreeting() {
   heroEyebrow.textContent = t('home.eyebrow');
+  if (heroSub) heroSub.hidden = true;
   const name = userInfo.signedIn ? userInfo.displayName : '';
   if (!name) { heroTitle.textContent = t('home.greeting_anon'); return; }
   const [before, after = ''] = t('home.greeting', { name: '\u0000' }).split('\u0000');
@@ -145,15 +149,18 @@ function renderHero() {
 
   heroEyebrow.textContent = t(tournaments ? 'lobby.eyebrow_tournaments' : 'lobby.eyebrow_tables');
 
+  heroTitle.textContent = t(tournaments ? 'lobby.title_tournaments' : 'lobby.title_rooms');
+  if (!heroSub) return;
+  heroSub.hidden = false;
   if (n === 0) {
-    heroTitle.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
+    heroSub.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
     return;
   }
   // Both templates carry a single `{n}`, which is filled with a bolded count.
   // The template is a translator-authored constant and `n` is a number, so no
   // user-controlled text ever reaches this innerHTML.
   const key = tournaments ? 'lobby.hero_tournaments' : 'lobby.hero_rooms';
-  heroTitle.innerHTML = t(key, { n: `<b>${n}</b>` });
+  heroSub.innerHTML = t(key, { n: `<b>${n}</b>` });
 }
 
 /** Called by lobby-home.js on screen switch, so the hero follows the screen. */

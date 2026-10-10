@@ -94,23 +94,24 @@ describe('rankings page', () => {
     expect(global.fetch.mock.calls.pop()[0]).toContain('category=caro');
   });
 
-  it('members get a Bạn bè scope chip that re-queries with scope=friends; guests/logged-out do not', async () => {
+  it('members get a Bạn bè scope tab that re-queries with scope=friends; guests/logged-out do not', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
-    const chips = [...document.querySelectorAll('.pchip')];
-    expect(chips.map((c) => c.textContent).slice(0, 3)).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends']);
+    const chips = [...document.querySelectorAll('#rk-scope .ptab')];
+    expect(chips.map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends']);
+    expect(chips[0].getAttribute('aria-selected')).toBe('true');
     chips[2].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('scope=friends');
     expect(location.search).toContain('scope=friends');
 
     await boot((url) => (url.includes('/me') ? ok({ ...ME, userId: null }) : ok(PAGE)));
-    expect([...document.querySelectorAll('.pchip')].some((c) => c.textContent === 'rankings.scope_friends')).toBe(false);
+    expect([...document.querySelectorAll('.ptab')].some((c) => c.textContent === 'rankings.scope_friends')).toBe(false);
   });
 
-  it('everyone (even logged out) gets a Việt Nam scope chip that re-queries with scope=vn', async () => {
+  it('everyone (even logged out) gets a Việt Nam scope tab that re-queries with scope=vn', async () => {
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
-    const chips = [...document.querySelectorAll('.pchip')];
-    expect(chips.slice(0, 2).map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn']);
+    const chips = [...document.querySelectorAll('#rk-scope .ptab')];
+    expect(chips.map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn']);
     chips[1].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('scope=vn');
