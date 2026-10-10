@@ -14,6 +14,7 @@ const PERMISSIONS = {
   'puzzle.review': ['moderator', 'admin'],
   'forum.moderate': ['moderator', 'admin'],
   'admin.access': ['moderator', 'admin'],
+  'cheat.review': ['moderator', 'admin'],
   'user.manage': ['admin'],
 };
 
