@@ -30,3 +30,6 @@ Measured at 1280: mockup 34×34 mode · 29×30 bell · 130×34 me. Real 32×32 b
 
 ## Done when
 - Re-shot pair (real vs mockup, 1280+390, dark+light) shows the right cluster matching; `?v` bumped; shell jsdom tests updated.
+
+## Update 2026-10-10 (B211)
+Gear left the nav (items 2 and 6 resolved): Settings is a page, entry = user-chip menu; mobile nav = mode + bell + avatar. Chip now shows the avatar and a ▾ menu.

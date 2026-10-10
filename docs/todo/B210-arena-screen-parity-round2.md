@@ -27,3 +27,6 @@
 
 ## Done when
 - Decisions on systemic 1–2 and the rooms/tournaments H1 bug; re-shot pairs match agreed targets.
+
+## Update 2026-10-10 (B211)
+Settings width/spacing and systemic 2 (Settings entry) resolved by B211: 720px card, 4 underline tabs, chip menu. Footer links from the mockup still not built (real pages have no footer).

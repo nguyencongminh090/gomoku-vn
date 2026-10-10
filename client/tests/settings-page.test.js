@@ -20,10 +20,11 @@ const PROFILE = {
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const $ = (id) => document.getElementById(id);
 
-async function boot({ me = { username: 'alice' }, meStatus = 200, putOk = true } = {}) {
+async function boot({ me = { username: 'alice' }, meStatus = 200, putOk = true, user } = {}) {
   jest.resetModules();
   document.body.innerHTML = BODY_HTML;
   window.t = (k) => k;
+  window.GvnSession = { getUser: () => user };
   global.fetch = jest.fn((url, opts) => {
     if (url === '/api/rankings/me') return Promise.resolve({ ok: meStatus === 200, status: meStatus, json: () => Promise.resolve(me) });
     if (opts && opts.method === 'PUT') return Promise.resolve({ ok: putOk, status: putOk ? 200 : 400, json: () => Promise.resolve({ ok: true }) });
@@ -97,5 +98,34 @@ describe('settings page', () => {
     await boot({ me: {}, meStatus: 200 });
     expect($('st-content').hidden).toBe(true);
     expect($('st-status').textContent).toBe('settings.members_only');
+  });
+
+  it('a guest session never calls the profile API (B211: guests only use the other tabs)', async () => {
+    await boot({ user: { userId: 'g', isGuest: true, displayName: 'G' } });
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect($('st-content').hidden).toBe(true);
+  });
+
+  it('avatar upload goes through the crop editor: the cropped blob is what gets POSTed; cancel uploads nothing', async () => {
+    await boot();
+    const blob = { type: 'image/webp', size: 10 };
+    window.AvatarCrop = { open: jest.fn(() => Promise.resolve(blob)) };
+    const chip = jest.spyOn(window.PlatformShell, 'setMyAvatar');
+    const input = $('st-file');
+    Object.defineProperty(input, 'files', { configurable: true, value: [{ name: 'big.png', type: 'image/png' }] });
+    global.fetch.mockClear();
+    input.dispatchEvent(new Event('change'));
+    await flush(); await flush();
+    const post = global.fetch.mock.calls.find((c) => c[0] === '/api/profile/avatar');
+    expect(post[1].method).toBe('POST');
+    expect(post[1].body).toBe(blob);
+    expect(post[1].headers['Content-Type']).toBe('image/webp');
+    expect(chip).toHaveBeenCalled(); // nav chip follows without a reload
+
+    window.AvatarCrop.open.mockResolvedValue(null); // (stale DOMContentLoaded handlers from earlier boots all fire, so not "Once")
+    global.fetch.mockClear();
+    input.dispatchEvent(new Event('change'));
+    await flush(); await flush();
+    expect(global.fetch.mock.calls.find((c) => c[0] === '/api/profile/avatar')).toBeUndefined();
   });
 });

@@ -362,7 +362,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=228#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=234#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }
@@ -370,5 +370,8 @@
   document.addEventListener('DOMContentLoaded', mountTrigger);
 
   global.openSettingsPanel = openPanel;
+
+  // The /settings.html page (B211) drives the same stores, so it shares these accessors instead of re-implementing them.
+  global.GvnSettings = { getClickMode, setClickMode, getDisplayMode, setDisplayMode, isSoundOn, setSoundOn };
 
 })(window);

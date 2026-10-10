@@ -22,6 +22,7 @@ function boot(user, me = { username: 'zed' }, active = 'clubs') {
   require('../js/platform-shell.js');
   window.PlatformShell.build(active);
 }
+const menuItems = () => [...document.querySelectorAll('.pnav__menu a')].map((a) => [a.getAttribute('href'), a.textContent]).filter((i) => !/admin/.test(i[0]));
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const MEMBER = { userId: 'u', isGuest: false, displayName: 'Zed' };
 
@@ -61,7 +62,7 @@ describe('platform shell', () => {
     global.fetch = jest.fn(() => Promise.reject(new Error('net')));
     window.PlatformShell.build('clubs');
     await flush();
-    expect(document.querySelector('.pnav__me').getAttribute('href')).toBe('#');
+    expect(document.querySelector('.pnav__item[role="menuitem"]').getAttribute('href')).toBe('#');
   });
 
   it('setActive() moves the marker in nav and tab bar without rebuilding', () => {
@@ -82,19 +83,82 @@ describe('platform shell', () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  it('guest session is treated as signed-out', () => {
+  it('guest → chip + menu (Cài đặt, Tạo tài khoản), no bell, no network call', () => {
     boot({ userId: 'g', isGuest: true, displayName: 'Guest' });
-    expect(document.querySelector('.pnav__login')).not.toBeNull();
+    expect(document.querySelector('.pnav__login')).toBeNull();
+    expect(document.querySelector('.pbell')).toBeNull();
     expect(global.fetch).not.toHaveBeenCalled();
+    expect(menuItems()).toEqual([['/settings.html', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
   });
 
-  it('member → user chip that links to /u/<username> once known; display name as text', async () => {
+  it('member → chip menu: profile link set once /me answers; display name as text', async () => {
     boot({ userId: 'u', isGuest: false, displayName: '<i>Zed</i>' });
-    await new Promise((r) => setTimeout(r, 0));
+    await flush();
     const me = document.querySelector('.pnav__me');
-    expect(me.getAttribute('href')).toBe('/u/zed');
     expect(me.textContent).toContain('<i>Zed</i>');
     expect(me.querySelector('i')).toBeNull();
+    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html']);
+  });
+
+  it('chip shows the member avatar once /me returns one; initials otherwise (and until then)', async () => {
+    boot(MEMBER, { username: 'zed', avatarUrl: '/api/profile/avatar/u.webp?v=2', ratings: {} });
+    const av = document.querySelector('.pnav__me .pav');
+    expect(av.textContent).toBe('ZE');
+    await flush();
+    expect(av.style.backgroundImage).toContain('/api/profile/avatar/u.webp?v=2');
+    expect(av.textContent).toBe('');
+    boot(MEMBER, { username: 'zed', avatarUrl: null, ratings: {} });
+    await flush();
+    expect(document.querySelector('.pnav__me .pav').textContent).toBe('ZE');
+  });
+
+  it('setMyAvatar() updates the chip at once (upload) and falls back to initials (remove); no-op without a chip', async () => {
+    boot(MEMBER, { username: 'zed', avatarUrl: null, ratings: {} });
+    await flush();
+    const av = document.querySelector('.pnav__me .pav');
+    window.PlatformShell.setMyAvatar('/api/profile/avatar/u.webp?v=9');
+    expect(av.style.backgroundImage).toContain('v=9');
+    expect(av.textContent).toBe('');
+    window.PlatformShell.setMyAvatar(null);
+    expect(av.style.backgroundImage).toBe('');
+    expect(av.textContent).toBe('ZE');
+    boot(null);
+    expect(() => window.PlatformShell.setMyAvatar('/x')).not.toThrow();
+  });
+
+  it('menu opens/closes on chip click, outside click and Escape; aria-expanded follows', () => {
+    boot(MEMBER);
+    const me = document.querySelector('.pnav__me');
+    const menu = document.querySelector('.pnav__menu');
+    expect(menu.hidden).toBe(true);
+    me.click();
+    expect(menu.hidden).toBe(false);
+    expect(me.getAttribute('aria-expanded')).toBe('true');
+    document.body.click();
+    expect(menu.hidden).toBe(true);
+    me.click();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(menu.hidden).toBe(true);
+    expect(me.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('Quản trị entry only appears for staff (admin.access), logout goes through GvnSession.logout', async () => {
+    boot(null);
+    window.GvnSession = { getUser: () => MEMBER, logout: jest.fn(() => Promise.resolve(false)) };
+    global.fetch = jest.fn((url) => Promise.resolve({ ok: true, json: () => Promise.resolve(
+      url === '/api/admin/me' ? { role: 'moderator', permissions: ['admin.access'] }
+        : url === '/api/notifications' ? { items: [], unread: 0 } : { username: 'zed' }) }));
+    window.PlatformShell.build('clubs');
+    expect(document.querySelector('.pnav__item--staff').hidden).toBe(true); // hidden until /api/admin/me answers
+    await flush();
+    const staff = document.querySelector('.pnav__item--staff');
+    expect(staff.hidden).toBe(false);
+    expect(staff.getAttribute('href')).toBe('/admin');
+    const out = [...document.querySelectorAll('.pnav__item')].find((n) => n.tagName === 'BUTTON');
+    out.click();
+    await flush();
+    expect(window.GvnSession.logout).toHaveBeenCalled();
+    expect(out.disabled).toBe(false); // failed logout leaves the user signed in and the button usable
   });
 
   it('mode button flips colour mode through ui-mode.js', () => {
@@ -106,28 +170,22 @@ describe('platform shell', () => {
   });
 
   it('right cluster follows the mockup order [mode][bell]…[me]; mode is a sun svg, not a text glyph', () => {
-    window.openSettingsPanel = jest.fn();
     boot(MEMBER, { username: 'zed', ratings: {} });
     const kids = [...document.querySelector('.pnav__right').children];
     expect(kids[0].classList.contains('pnav__mode')).toBe(true);
     expect(kids[1].classList.contains('pbell')).toBe(true);
-    expect(kids[kids.length - 1].classList.contains('pnav__me')).toBe(true);
+    expect(kids[kids.length - 1].classList.contains('pnav__acct')).toBe(true);
+    expect(kids).toHaveLength(3); // no gear: Settings is in the chip menu (B211)
     const mode = kids[0];
     expect(mode.textContent).toBe('');
     expect(mode.querySelector('svg circle')).not.toBeNull();
     expect(mode.querySelectorAll('svg line')).toHaveLength(8);
-    delete window.openSettingsPanel;
   });
 
-  it('adds a Settings gear only when the settings panel is loaded; it opens it', () => {
-    boot(null);
-    expect(document.querySelectorAll('.pnav__mode')).toHaveLength(1);
+  it('never adds a gear button even when the in-room settings panel is loaded', () => {
     window.openSettingsPanel = jest.fn();
-    window.PlatformShell.build('clubs');
-    const buttons = document.querySelectorAll('.pnav__mode');
-    expect(buttons).toHaveLength(2);
-    buttons[1].click();
-    expect(window.openSettingsPanel).toHaveBeenCalled();
+    boot(MEMBER);
+    expect(document.querySelectorAll('.pnav__mode')).toHaveLength(2); // mode + bell only
     delete window.openSettingsPanel;
   });
 
