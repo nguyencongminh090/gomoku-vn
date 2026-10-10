@@ -1,5 +1,5 @@
 # B200 — R6: club tabs, events ("Sắp tới"), club chat, club tournaments
-**Status:** OPEN — slice 1 (tabs) merged; slice 2 (events) implemented on `feature/200-club-events`, real-browser pass done 2026-10-10 (spacing fix: .cb-panel > .ppanel); awaiting review; slices 3–4 not started
+**Status:** OPEN — slices 1 (tabs), 2 (events) merged; slice 3 (chat) implemented on `feature/200-club-chat` + real-browser pass 2026-10-10, awaiting review; slice 4 not started
 **Area:** server (ClubService, new club_events + club_messages tables, routes/clubs.js, tournament link) + client (club.html/club.js tabs)
 **From:** features/platform/planning.md § Release 2 (R6); B191 item 5; mockup `data-screen="club"`   **Depends:** B178 (clubs), B198 (notifications), B199 (done)
 

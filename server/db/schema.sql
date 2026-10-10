@@ -285,6 +285,19 @@ CREATE TABLE IF NOT EXISTS club_events (
 
 CREATE INDEX IF NOT EXISTS idx_club_events_club ON club_events(club_id, starts_at);
 
+-- Club chat (TODO.md #200 slice 3). body = DmText.clean wire form (angle brackets
+-- escaped, profanity masked); decode at render. ClubService keeps the newest 200 per club.
+-- Leaving a club keeps one's old messages (sender_id has no cascade).
+CREATE TABLE IF NOT EXISTS club_messages (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  club_id     TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  sender_id   TEXT NOT NULL REFERENCES users(id),
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_club_messages_club ON club_messages(club_id, id);
+
 -- Friends (TODO.md #198). One row per pair, canonical order user_a < user_b.
 -- status 'pending' = requested_by asked the other; 'accepted' = mutual friends.
 CREATE TABLE IF NOT EXISTS friendships (

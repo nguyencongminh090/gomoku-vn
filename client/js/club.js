@@ -11,7 +11,9 @@
   const $ = (id) => document.getElementById(id);
   const slug = decodeURIComponent(location.pathname.replace(/^\/c\//, '').replace(/\/$/, ''));
   const CATEGORIES = ['freestyle', 'standard', 'caro'];
-  const state = { category: CATEGORIES[0], club: null };
+  const state = { category: CATEGORIES[0], club: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
+  const CHAT_POLL_MS = 8000;
+  const CHAT_PAGE = 50;
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -58,11 +60,12 @@
     return a;
   }
 
-  const TABS = ['overview', 'members', 'board'];
-  /** Active tab from `#tab=<name>`; unknown/missing → overview. */
+  const TABS = ['overview', 'members', 'board', 'chat'];
+  const visibleTabs = () => TABS.filter((tab) => !$('cb-tab-' + tab).hidden);
+  /** Active tab from `#tab=<name>`; unknown/missing/hidden (chat for non-members) → overview. */
   function currentTab() {
     const m = /(?:^|[#&])tab=([a-z]+)/.exec(location.hash);
-    return m && TABS.includes(m[1]) ? m[1] : TABS[0];
+    return m && visibleTabs().includes(m[1]) ? m[1] : TABS[0];
   }
 
   function showTab(name, { updateHash = false } = {}) {
@@ -74,7 +77,76 @@
       btn.tabIndex = on ? 0 : -1;
     }
     if (updateHash && currentTab() !== name) history.replaceState(null, '', '#tab=' + name);
+    if (name === 'chat') openChat();
   }
+
+  // --- club chat: REST polling only (a socket here would evict the lobby socket) ---
+  const isMember = () => !!state.club && ['owner', 'officer', 'member'].includes(state.club.myRole);
+  const isStaff = () => !!state.club && ['owner', 'officer'].includes(state.club.myRole);
+  const decode = (txt) => (window.EscapeUtils ? window.EscapeUtils.decodeChatText(txt) : txt);
+
+  function fmtWhen(iso) {
+    const d = new Date(iso);
+    const lang = document.documentElement.lang || undefined;
+    return d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) + ', ' + d.toLocaleDateString(lang, { day: '2-digit', month: '2-digit' });
+  }
+
+  function chatRow(m) {
+    const row = el('div', undefined, 'cb-chat__msg');
+    row.dataset.id = String(m.id);
+    const body = el('div', undefined, 'cb-chat__body');
+    body.append(
+      el('div', m.displayName + ' · ' + fmtWhen(m.createdAt), 'cb-chat__who'),
+      el('div', decode(m.text), 'cb-chat__text'));
+    row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), body);
+    if (isStaff()) {
+      row.append(mini(t('clubs.delete_message'), async () => {
+        const ok = await act('DELETE', '/messages/' + m.id, null, 'clubs.confirm_delete_message');
+        if (ok) { resetChat(); openChat(); }
+        return false;
+      }));
+    }
+    return row;
+  }
+
+  function resetChat() {
+    state.chat = { loaded: false, firstId: 0, lastId: 0, busy: false };
+    $('cb-chat-log').replaceChildren();
+  }
+
+  function syncChatChrome(pageFull) {
+    const n = $('cb-chat-log').children.length;
+    $('cb-chat-empty').hidden = n > 0;
+    if (pageFull !== undefined) $('cb-chat-older').hidden = !pageFull;
+  }
+
+  /** @param {'newest'|'older'|'newer'} mode */
+  async function fetchChat(mode) {
+    const c = state.chat;
+    if (c.busy || !isMember()) return;
+    c.busy = true;
+    try {
+      const q = mode === 'older' ? '?before=' + c.firstId : mode === 'newer' ? '?after=' + c.lastId : '';
+      const res = await fetch(base() + '/messages' + q, { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const { messages } = await res.json();
+      const log = $('cb-chat-log');
+      const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      if (messages.length) {
+        const rows = messages.map(chatRow);
+        if (mode === 'older') log.prepend(...rows); else log.append(...rows);
+        if (mode !== 'newer' || !c.firstId) c.firstId = messages[0].id;
+        if (mode !== 'older') c.lastId = messages[messages.length - 1].id;
+      }
+      if (mode === 'newest') { c.loaded = true; log.scrollTop = log.scrollHeight; } else if (mode === 'newer' && stick) log.scrollTop = log.scrollHeight;
+      syncChatChrome(mode === 'newer' ? undefined : messages.length >= CHAT_PAGE);
+    } catch (_) { /* next poll retries */ } finally { c.busy = false; }
+  }
+
+  function openChat() {
+    if (isMember() && !state.chat.loaded) fetchChat('newest');
+  }
+
 
   function render(c) {
     state.club = c;
@@ -169,6 +241,8 @@
       b.onclick = () => { state.category = cat; load(); };
       return b;
     }));
+    $('cb-tab-chat').hidden = !isMember();
+    if (!isMember() && state.chat.loaded) resetChat();
     $('cb-content').hidden = false;
     showTab(currentTab());
   }
@@ -212,11 +286,27 @@
     $('cb-tablist').addEventListener('keydown', (ev) => {
       const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
       if (!d) return;
-      const next = TABS[(TABS.indexOf(currentTab()) + d + TABS.length) % TABS.length];
+      const tabs = visibleTabs();
+      const next = tabs[(tabs.indexOf(currentTab()) + d + tabs.length) % tabs.length];
       showTab(next, { updateHash: true });
       $('cb-tab-' + next).focus();
       ev.preventDefault();
     });
+    $('cb-chat-older').onclick = () => fetchChat('older');
+    $('cb-chat-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const text = $('cb-chat-input').value.trim();
+      if (!text) return;
+      if (await act('POST', '/messages', { text })) {
+        $('cb-chat-input').value = '';
+        await fetchChat('newer');
+        const log = $('cb-chat-log');
+        log.scrollTop = log.scrollHeight;
+      }
+    };
+    setInterval(() => {
+      if (!document.hidden && currentTab() === 'chat' && state.chat.loaded) fetchChat('newer');
+    }, CHAT_POLL_MS);
     window.addEventListener('hashchange', () => showTab(currentTab()));
     load();
   });

@@ -39,6 +39,7 @@ async function bootClub(club) {
   document.body.innerHTML = body('club.html');
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
   global.fetch = jest.fn(() => ok(club));
+  window.EscapeUtils = require('../js/escape-utils.js');
   require('../js/platform-shell.js');
   require('../js/club.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
@@ -173,6 +174,90 @@ describe('club page', () => {
       const [url, opts] = global.fetch.mock.calls[0];
       expect(url).toBe('/api/clubs/caro/events');
       expect(JSON.parse(opts.body)).toEqual({ title: 'Giải tuần', startsAt: new Date('2030-01-02T20:00').toISOString() });
+    });
+  });
+
+  describe('chat (#200 slice 3)', () => {
+    const MSGS = [
+      { id: 7, text: 'hi &lt;b&gt;x&lt;/b&gt;', createdAt: '2026-10-10T10:00:00.000Z', mine: false, username: 'mem', displayName: 'Mem', avatarUrl: null },
+      { id: 8, text: 'second', createdAt: '2026-10-10T10:01:00.000Z', mine: true, username: 'own', displayName: 'Own', avatarUrl: null },
+    ];
+    const tab = () => document.getElementById('cb-tab-chat');
+    const log = () => document.getElementById('cb-chat-log');
+    // club JSON for everything except /messages
+    async function bootChat(role, msgs = MSGS) {
+      await bootClub({ ...CLUB, myRole: role });
+      global.fetch = jest.fn((url, opts) => (String(url).includes('/messages')
+        ? ok(opts && opts.method === 'POST' ? { id: 9 } : { messages: msgs })
+        : ok({ ...CLUB, myRole: role })));
+    }
+
+    beforeEach(() => { location.hash = ''; });
+
+    it('tab is hidden for non-members/pending and #tab=chat falls back to overview', async () => {
+      for (const role of [null, 'pending']) {
+        location.hash = '#tab=chat';
+        await bootClub({ ...CLUB, myRole: role });
+        expect(tab().hidden).toBe(true);
+        expect(document.getElementById('cb-panel-chat').hidden).toBe(true);
+        expect(document.getElementById('cb-panel-overview').hidden).toBe(false);
+      }
+    });
+
+    it('members get the tab; opening it loads messages once, rendered as decoded text', async () => {
+      await bootChat('member');
+      expect(tab().hidden).toBe(false);
+      tab().click();
+      await flush(); await flush();
+      expect(global.fetch.mock.calls.filter(([u]) => String(u).includes('/messages'))).toHaveLength(1);
+      expect([...document.querySelectorAll('.cb-chat__text')].map((n) => n.textContent)).toEqual(['hi <b>x</b>', 'second']);
+      expect(log().querySelector('b')).toBeNull();
+      expect(document.querySelectorAll('.cb-chat__msg button')).toHaveLength(0);
+      document.getElementById('cb-tab-members').click();
+      tab().click();
+      await flush();
+      expect(global.fetch.mock.calls.filter(([u]) => String(u).includes('/messages'))).toHaveLength(1);
+    });
+
+    it('staff see a delete button per message; delete sends DELETE then reloads', async () => {
+      await bootChat('officer');
+      tab().click();
+      await flush(); await flush();
+      expect(document.querySelectorAll('.cb-chat__msg button')).toHaveLength(2);
+      window.confirm = jest.fn(() => true);
+      global.fetch.mockClear();
+      document.querySelector('.cb-chat__msg button').click();
+      await flush(); await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/messages/7');
+      expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    });
+
+    it('send posts {text}, clears the input, then fetches only newer messages', async () => {
+      await bootChat('member');
+      tab().click();
+      await flush(); await flush();
+      global.fetch.mockClear();
+      document.getElementById('cb-chat-input').value = '  xin chào ';
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush(); await flush(); await flush();
+      const [post, poll] = global.fetch.mock.calls;
+      expect(post[0]).toBe('/api/clubs/caro/messages');
+      expect(JSON.parse(post[1].body)).toEqual({ text: 'xin chào' });
+      expect(poll[0]).toBe('/api/clubs/caro/messages?after=8');
+      expect(document.getElementById('cb-chat-input').value).toBe('');
+    });
+
+    it('empty chat shows the empty note; a full page offers older messages', async () => {
+      await bootChat('member', []);
+      tab().click();
+      await flush(); await flush();
+      expect(document.getElementById('cb-chat-empty').hidden).toBe(false);
+      expect(document.getElementById('cb-chat-older').hidden).toBe(true);
+      const full = Array.from({ length: 50 }, (_, k) => ({ ...MSGS[0], id: 100 + k }));
+      await bootChat('member', full);
+      tab().click();
+      await flush(); await flush();
+      expect(document.getElementById('cb-chat-older').hidden).toBe(false);
     });
   });
 });

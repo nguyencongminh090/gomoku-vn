@@ -15,6 +15,9 @@
  * PUT    /api/clubs/:slug/members/:username/role   {role: officer|member|owner}
  * POST   /api/clubs/:slug/events                   {title, startsAt} staff
  * DELETE /api/clubs/:slug/events/:id                staff
+ * GET    /api/clubs/:slug/messages?before=|after=   members only (polling)
+ * POST   /api/clubs/:slug/messages                  {text} members only
+ * DELETE /api/clubs/:slug/messages/:id              staff
  */
 
 const express = require('express');
@@ -116,6 +119,25 @@ router.post('/:slug/events', ...write, h((req, res) => {
 
 router.delete('/:slug/events/:id', ...write, h((req, res) => {
   svc.deleteEvent(req.user.userId, req.params.slug, req.params.id);
+  res.json({ ok: true });
+}));
+
+const readAuth = [verifyToken, (req, res, next) => {
+  if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được CLB.', code: 'GUEST_FORBIDDEN' });
+  next();
+}];
+
+router.get('/:slug/messages', ...readAuth, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ messages: svc.listMessages(req.user.userId, req.params.slug, req.query) });
+}));
+
+router.post('/:slug/messages', ...write, h((req, res) => {
+  res.status(201).json(svc.postMessage(req.user.userId, req.params.slug, (req.body || {}).text));
+}));
+
+router.delete('/:slug/messages/:id', ...write, h((req, res) => {
+  svc.deleteMessage(req.user.userId, req.params.slug, req.params.id);
   res.json({ ok: true });
 }));
 
