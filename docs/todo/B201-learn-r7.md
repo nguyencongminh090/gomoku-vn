@@ -1,5 +1,5 @@
 # B201 — R7: Learn = puzzles (tags + levels) + forum
-**Status:** OPEN — design decisions complete 2026-10-10 (see `features/learn/planning.md` "Decided"); next: split into slice todos (B202 profile history first, then puzzles 7a, profile stats 7b, forum 7c)
+**Status:** OPEN — B202 done, 7a = B203 written; — design decisions complete 2026-10-10 (see `features/learn/planning.md` "Decided"); next: split into slice todos (B202 profile history first, then puzzles 7a, profile stats 7b, forum 7c)
 **Area:** client (new learn page, history.js reuse) + server (openings/puzzles/game_notes tables, later)
 **From:** features/learn; `features/platform/planning.md` R7; mockup `data-screen="learn"`   **Depends:** B200 (done)
 

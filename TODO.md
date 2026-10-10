@@ -78,3 +78,4 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#194.** `vite build` fails: copy-classic-scripts matches a `<script src="js/...">` inside an HTML comment (diagnostic.html) `[Model: Haiku 4.5]` — [detail](docs/todo/B194-vite-build-fails-on-diagnostic-comment.md)
 - **#201.** R7: Learn = puzzles (tags + levels) + forum (design first) `[Model: Opus 5]` — [detail](docs/todo/B201-learn-r7.md)
+- **#203.** R7 7a: puzzles — member submissions, board editor, solve, admin review `[Model: Opus 5]` — [detail](docs/todo/B203-puzzles-7a.md)
