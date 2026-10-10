@@ -7,6 +7,7 @@
  *                                                (rows keep their true rank), rows carry delta7 + club
  *   scope=vn      → only members whose country is VN (public, cached like `all`; `q` is ignored)
  *   scope=friends → only the caller's friends + the caller (private, never cached; 401 when logged out)
+ *   scope=club    → only members of the caller's clubs (private like friends; no club → empty list)
  * GET /api/rankings/me                      — the caller's rank in every category
  *
  * Categories are RatingService.CATEGORIES (the winning rule); ratings are
@@ -55,11 +56,13 @@ router.get('/', (req, res, next) => {
     const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 30) : '';
     const friendsScope = req.query.scope === 'friends';
     const countryScope = req.query.scope === 'vn' ? 'VN' : null;
-    const viewerId = friendsScope ? optionalUserId(req) : null;
-    if (friendsScope && !viewerId) return res.status(401).json({ error: 'Cần đăng nhập.', code: 'AUTH_REQUIRED' });
+    const clubScope = req.query.scope === 'club';
+    const privateScope = friendsScope || clubScope;
+    const viewerId = privateScope ? optionalUserId(req) : null;
+    if (privateScope && !viewerId) return res.status(401).json({ error: 'Cần đăng nhập.', code: 'AUTH_REQUIRED' });
     const key = `${category}:${page}:${limit}:${q}:${countryScope || ''}`;
 
-    let body = friendsScope ? null : cacheGet(key);
+    let body = privateScope ? null : cacheGet(key);
     if (!body) {
       const offset = (page - 1) * limit;
       const circle = friendsScope ? [viewerId, ...friendService.friendIds(viewerId)] : null;
@@ -68,6 +71,9 @@ router.get('/', (req, res, next) => {
       if (countryScope) {
         total = database.countRankingsByCountry(category, countryScope);
         rows = database.getRankingsByCountry(category, countryScope, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+      } else if (clubScope) {
+        total = database.countRankingsInMyClubs(category, viewerId);
+        rows = database.getRankingsInMyClubs(category, viewerId, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
       } else if (friendsScope) {
         total = database.countRankingsAmong(category, circle);
         rows = database.getRankingsAmong(category, circle, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
@@ -97,12 +103,12 @@ router.get('/', (req, res, next) => {
       body = {
         category,
         q,
-        scope: friendsScope ? 'friends' : countryScope ? 'vn' : 'all',
+        scope: clubScope ? 'club' : friendsScope ? 'friends' : countryScope ? 'vn' : 'all',
         minGames: database.RANKING_MIN_GAMES,
         players,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
       };
-      if (!friendsScope) cacheSet(key, body);
+      if (!privateScope) cacheSet(key, body);
     }
     res.json(body);
   } catch (err) {
