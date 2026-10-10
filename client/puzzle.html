@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Served at /puzzle/<id>: root-relative base keeps css/js/assets working. -->
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Puzzle</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=216" />
+  <link rel="stylesheet" href="css/tokens.css?v=216" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=216" />
+  <link rel="stylesheet" href="css/platform.css?v=216" />
+  <link rel="stylesheet" href="css/puzzles.css?v=216" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=216" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=216">
+
+  <script src="js/ui-mode-preload.js?v=216"></script>
+  <script src="js/skin-preload.js?v=216"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <p><a href="/puzzles" class="muted small" data-i18n="puzzles.back">← Tất cả puzzle</a></p>
+  <div id="pz-error" class="pnote" hidden></div>
+
+  <div id="pz-view" class="pz-solve" hidden>
+    <div class="pz-solve__board ppanel">
+      <canvas id="pz-canvas"></canvas>
+    </div>
+
+    <div class="pz-solve__side ppanel">
+      <h1 id="pz-title" class="pz-title"></h1>
+      <div id="pz-meta" class="pz-meta"></div>
+      <p id="pz-prompt" class="pz-prompt"></p>
+      <p id="pz-turn" class="pz-turn"></p>
+
+      <div id="pz-moves" class="pz-moves" aria-live="polite"></div>
+      <form id="pz-form" class="pz-form" autocomplete="off">
+        <label class="muted small" for="pz-input" id="pz-input-label"></label>
+        <input id="pz-input" type="text" maxlength="200" spellcheck="false" data-i18n-placeholder="puzzles.input_ph" placeholder="H8, J9" />
+        <div class="pactions">
+          <button type="submit" id="pz-submit" class="pbtn pbtn--primary" data-i18n="puzzles.check">Kiểm tra</button>
+          <button type="button" id="pz-undo" class="pbtn pbtn--ghost" data-i18n="puzzles.undo">Bỏ nước cuối</button>
+          <button type="button" id="pz-clear" class="pbtn pbtn--ghost" data-i18n="puzzles.clear">Xoá hết</button>
+        </div>
+      </form>
+      <p id="pz-result" class="pz-result" role="status" hidden></p>
+      <p id="pz-login" class="pnote" hidden></p>
+      <div id="pz-next" class="pactions" hidden>
+        <a id="pz-next-link" class="pbtn pbtn--primary" href="/puzzles" data-i18n="puzzles.more">Puzzle khác</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="js/i18n.js?v=216"></script>
+<script src="js/ui-mode.js?v=216"></script>
+<script src="js/session.js?v=216"></script>
+<script src="js/audio-manager.js?v=216"></script>
+<script src="js/settings-panel.js?v=216"></script>
+<script src="js/platform-shell.js?v=216"></script>
+<script src="js/coords.js?v=216"></script>
+<script src="js/board.js?v=216"></script>
+<script src="js/puzzle.js?v=216"></script>
+</body>
+</html>

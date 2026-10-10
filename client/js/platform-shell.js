@@ -22,7 +22,7 @@
     { id: 'tournaments', href: '/index.html#tournaments', key: 'tabs.tournaments' },
     { id: 'rankings', href: '/rankings.html', key: 'lobby.rankings' },
     { id: 'clubs', href: '/clubs.html', key: 'lobby.clubs' },
-    { id: 'learn', href: '/history.html', key: 'shell.learn' },
+    { id: 'learn', href: '/puzzles', key: 'shell.learn' },
   ];
   const TABS = [
     { id: 'lobby', href: '/index.html', icon: 'ph-bold-house', key: 'shell.lobby' },

@@ -171,6 +171,16 @@ app.get('/c/:slug', (req, res) => {
   res.sendFile(path.join(clientPath, 'club.html'));
 });
 
+// Puzzles (B203 7a-2): /puzzles (list) and /puzzle/<id> (solve); puzzle.js reads the path.
+app.get('/puzzles', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'puzzles.html'));
+});
+app.get('/puzzle/:id', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'puzzle.html'));
+});
+
 // Replay page (B202): /replay/<gameId> — same HTML for every id; replay.js reads the path.
 app.get('/replay/:id', (req, res) => {
   res.setHeader('Cache-Control', REVALIDATE);
