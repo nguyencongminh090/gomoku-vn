@@ -40,6 +40,8 @@ async function boot({ user = { userId: 'u', isGuest: false, displayName: 'Z' }, 
 describe('"Của CLB" tournaments tab', () => {
   it('hidden until the viewer is known to belong to a club; shows only tournaments hosted by those clubs', async () => {
     await boot();
+    expect(cards()).toEqual(['a', 'c']); // default tab is Sắp tới (draft); the live cup 'b' is one click away
+    expect(document.querySelector('.filter-pill.is-active').dataset.filter).toBe('draft');
     expect(global.fetch).toHaveBeenCalledWith('/api/clubs/mine', expect.anything());
     expect(pill().hidden).toBe(false);
     pill().click();

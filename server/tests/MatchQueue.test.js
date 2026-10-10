@@ -152,4 +152,15 @@ describe('pairing', () => {
     q.join(entry('a'));
     expect(q.pair()).toEqual([]);
   });
+
+  it('estimates(): median recent wait per rule|time, hidden until 3 samples (B210)', () => {
+    const { q, advance } = queue();
+    const pairWaiting = (a, b, ms) => { q.join(entry(a)); advance(ms); q.join(entry(b)); q.pair(); };
+    pairWaiting('a', 'b', 4000); // waits 4s (a) and 0s→1s floor (b)
+    expect(q.estimates()).toEqual({}); // 2 samples
+    pairWaiting('c', 'd', 10000); // + 10s, 1s
+    const key = Object.keys(q.estimates())[0];
+    expect(q.estimates()[key]).toBe(4); // sorted [1,1,4,10] → index 2
+    expect(typeof key).toBe('string');
+  });
 });

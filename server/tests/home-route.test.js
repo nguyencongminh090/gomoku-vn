@@ -139,7 +139,7 @@ describe('buildHome — live', () => {
   });
 
   it('empty site → all empty', () => {
-    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], queue: {} });
+    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], queue: {}, queueEta: {} });
   });
 });
 
@@ -169,7 +169,7 @@ describe('GET /api/home', () => {
     const out = await get();
     expect(out.status).toBe(200);
     expect(out.cc).toBe('no-store');
-    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], queue: {} });
+    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], queue: {}, queueEta: {} });
     const name = require('../config').SESSION_COOKIE_NAME;
     expect((await get(name + '=good')).body.myGame).toMatchObject({ roomId: 'r1', roomName: 'Mine' });
     expect((await get(name + '=forged')).body.myGame).toBeNull();
