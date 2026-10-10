@@ -91,6 +91,47 @@ describe('settings page tabs', () => {
     expect(window.setLanguage).toHaveBeenCalledWith('en');
   });
 
+  it('#214 icon registry: theme row is circle-half (not the sun option again); density options are text, not icons', () => {
+    boot(MEMBER);
+    const rowIcon = (i) => $('p-look').querySelectorAll('.psrow')[i].querySelector(':scope > svg use').getAttribute('href').split('#')[1];
+    expect(rowIcon(1)).toBe('ph-regular-circle-half');
+    expect(rowIcon(3)).toBe('ph-regular-translate'); // globe is country's icon on the Hồ sơ tab
+    const density = [...$('p-look').querySelectorAll('.pseg')[2].querySelectorAll('button')];
+    expect(density.map((b) => b.textContent)).toEqual(['mode.default', 'mode.lite']);
+    expect(density.some((b) => b.querySelector('svg'))).toBe(false);
+  });
+
+  it('#214 icon registry on the Hồ sơ tab: one icon per concept', () => {
+    boot(MEMBER);
+    const iconIn = (sel) => document.querySelector(sel).querySelector('svg use').getAttribute('href').split('#')[1];
+    expect([
+      iconIn('label[for="st-country"]'), iconIn('label[for="st-city"]'), iconIn('#tab-look'), iconIn('#tab-game'),
+      iconIn('label[for="st-bio"]'),
+      iconIn('#st-avatar-remove'), iconIn('#st-cancel'), iconIn('#st-profile-link'),
+    ]).toEqual(['ph-regular-globe', 'ph-regular-map-pin', 'ph-regular-paint-brush', 'ph-regular-sliders-horizontal',
+      'ph-regular-quotes', 'ph-regular-trash', 'ph-regular-arrow-counter-clockwise', 'ph-regular-eye']);
+    // Button text lives in a span, so i18n can translate it without wiping the icon.
+    for (const id of ['st-avatar-remove', 'st-cancel', 'st-profile-link']) expect($(id).hasAttribute('data-i18n')).toBe(false);
+  });
+
+  it('#214 review: privacy toggles carry an icon; challenge is a boxing glove, not the sword', () => {
+    boot(MEMBER);
+    const iconOf = (el) => el.querySelector('svg use').getAttribute('href').split('#')[1];
+    expect(['st-hide-history', 'st-hide-bio', 'st-hide-online'].map((id) => iconOf($(id).closest('label'))))
+      .toEqual(['ph-regular-clock-counter-clockwise', 'ph-regular-quotes', 'ph-regular-user-circle-dashed']);
+    expect(iconOf(document.querySelector('label[for="st-challenge"]'))).toBe('ph-regular-boxing-glove');
+  });
+
+  it('#214 review: CSS sizes — tabs 20px icon / 14px text, privacy heading is sentence case with a 20px icon', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    const rule = (sel) => { const i = css.indexOf('\n' + sel + ' {'); return i < 0 ? '' : css.slice(i, css.indexOf('}', i)); };
+    expect(rule('.pset__tabs .ptab .icon')).toMatch(/width: var\(--icon-md\)/);
+    expect(rule('.pset__tabs .ptab')).toMatch(/font-size: 14px/);
+    expect(rule('.pset__h2')).not.toMatch(/uppercase/);
+    expect(rule('.pset__h2 .icon')).toMatch(/width: var\(--icon-md\)/);
+    expect(rule('.pset .pcheck > .icon')).toMatch(/width: var\(--icon-md\)/);
+  });
+
   it('Trò chơi: placement, board display and sound go through GvnSettings', () => {
     boot(GUEST);
     const segs = $('p-game').querySelectorAll('.pseg');

@@ -74,13 +74,15 @@
       row('swatches', t('settings.row_skin'), segment(
         [['arena', t('gset.skin_arena')], ['zen', t('gset.skin_zen')], ['bento', t('gset.skin_bento')]],
         call('getSkin') || 'arena', (v) => call('setSkin', v))),
-      row('sun', t('settings.row_mode'), segment(
+      // Row icon is the theme concept (circle-half), not a copy of the sun option inside it (#214).
+      row('circle-half', t('settings.row_mode'), segment(
         [['light', t('gset.mode_light'), 'sun'], ['dark', t('gset.mode_dark'), 'moon']],
         call('getColorMode') || 'dark', (v) => call('setColorMode', v))),
       row('rows', t('gset.density'), segment(
-        [['default', t('mode.default'), 'rows'], ['lite', t('mode.lite'), 'list-dashes']],
+        // Text, not rows / list-dashes icons: their meaning is not guessable (#214, iconography.md rule 4).
+        [['default', t('mode.default')], ['lite', t('mode.lite')]],
         call('getUiMode') || 'lite', (v) => call('setUiMode', v))),
-      row('globe', t('gset.language'), segment(
+      row('translate', t('gset.language'), segment(   // globe = country (Hồ sơ tab); one icon per concept (#214)
         [['vi', 'VI'], ['en', 'EN']], call('getLanguage') || 'vi', (v) => call('setLanguage', v))),
     );
   }
