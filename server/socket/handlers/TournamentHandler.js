@@ -287,7 +287,7 @@ function register(io, socket) {
   socket.on('tournament:create', (payload = {}) => {
     const result = tournamentManager.createTournament(
       { userId: user.userId, displayName: user.displayName, isGuest: user.isGuest },
-      { name: payload.name, format: payload.format, ruleSet: payload.ruleSet }
+      { name: payload.name, format: payload.format, ruleSet: payload.ruleSet, clubSlug: typeof payload.clubSlug === 'string' ? payload.clubSlug : undefined }
     );
 
     if (result.error) {

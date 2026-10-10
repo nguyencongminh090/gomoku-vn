@@ -294,6 +294,22 @@ function deleteEvent(userId, slug, eventId) {
   if (!r.changes) throw new ClubError('CLUB_EVENT_NOT_FOUND', 404, 'Không tìm thấy sự kiện.');
 }
 
+/** Club id if `userId` is its owner/officer, else throws. Used by the tournament flow. */
+function staffClubId(userId, slug) {
+  const club = getClub(slug);
+  requireStaff(club, userId);
+  return club.id;
+}
+
+/** The club's tournaments (all statuses — the tournament list is public too), newest first. */
+function clubTournaments(clubId) {
+  return db().prepare(`
+    SELECT t.id, t.name, t.format, t.status, t.created_at, t.started_at,
+           (SELECT COUNT(*) FROM tournament_players p WHERE p.tournament_id = t.id AND p.withdrawn = 0) AS players
+    FROM tournaments t WHERE t.club_id = ? ORDER BY t.created_at DESC, t.id LIMIT 50`).all(clubId)
+    .map((t) => ({ id: t.id, name: t.name, format: t.format, status: t.status, createdAt: t.created_at, startedAt: t.started_at, players: t.players }));
+}
+
 function requireMember(club, userId) {
   const role = roleOf(club.id, userId);
   if (!role || role === 'pending') throw new ClubError('CLUB_CHAT_MEMBERS_ONLY', 403, 'Chỉ thành viên mới dùng được trò chuyện.');
@@ -369,6 +385,7 @@ function getClubDetail(slug, viewerId, category) {
     avgRating: avgRows.length ? Math.round(avgRows.reduce((s, r) => s + r.rating, 0) / avgRows.length) : null,
     myRole,
     events: upcomingEvents(club.id),
+    tournaments: clubTournaments(club.id),
     leaderboard: rows.map((r, i) => ({
       rank: i + 1, username: r.username, displayName: r.display_name, role: r.role,
       avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.user_id}.webp?v=${r.avatar_v}` : null,
@@ -401,6 +418,6 @@ function userIdByUsername(username) {
 module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
   createClub, updateClub, deleteClub, join, leave, approve, remove, setRole,
-  createEvent, deleteEvent, listMessages, postMessage, deleteMessage,
+  createEvent, deleteEvent, staffClubId, listMessages, postMessage, deleteMessage,
   listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

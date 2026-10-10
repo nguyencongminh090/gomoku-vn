@@ -82,6 +82,52 @@ describe('TournamentManager — createTournament', () => {
     expect(error).toBeTruthy();
   });
 
+  describe('club-hosted (#200 slice 4)', () => {
+    const clubService = require('../managers/ClubService');
+    const clubIdOf = (tid) => database.db.prepare('SELECT club_id FROM tournaments WHERE id = ?').get(tid).club_id;
+    const countRows = () => database.db.prepare('SELECT COUNT(*) n FROM tournaments').get().n;
+
+    test('club owner and officer create one; club_id is stored', () => {
+      const owner = user();
+      const officer = user();
+      const { slug } = clubService.createClub(owner.userId, { name: 'Tourney Club' });
+      clubService.join(officer.userId, slug);
+      clubService.setRole(owner.userId, slug, officer.userId, 'officer');
+      const a = tournamentManager.createTournament(owner, { format: 'swiss', clubSlug: slug });
+      const b = tournamentManager.createTournament(officer, { format: 'swiss', clubSlug: slug });
+      expect(clubIdOf(a.tournament.tournamentId)).toBeTruthy();
+      expect(clubIdOf(b.tournament.tournamentId)).toBe(clubIdOf(a.tournament.tournamentId));
+    });
+
+    test('plain member, outsider, guest, unknown club are refused and nothing is stored', () => {
+      const owner = user();
+      const { slug } = clubService.createClub(owner.userId, { name: 'Closed Tourney Club' });
+      const member = user();
+      clubService.join(member.userId, slug);
+      const before = countRows();
+      for (const who of [member, user(), guest()]) {
+        expect(tournamentManager.createTournament(who, { format: 'swiss', clubSlug: slug }).code).toBe('TOURNAMENT_CLUB_FORBIDDEN');
+      }
+      expect(tournamentManager.createTournament(owner, { format: 'swiss', clubSlug: 'no-such-club' }).code).toBe('TOURNAMENT_CLUB_FORBIDDEN');
+      expect(countRows()).toBe(before);
+    });
+
+    test('without clubSlug club_id is null; club detail lists its tournaments; deleting the club keeps them', () => {
+      const owner = user();
+      const { slug } = clubService.createClub(owner.userId, { name: 'Listing Club' });
+      const plain = tournamentManager.createTournament(owner, { format: 'swiss' }).tournament;
+      const hosted = tournamentManager.createTournament(owner, { format: 'round_robin', name: 'Cup', clubSlug: slug }).tournament;
+      expect(clubIdOf(plain.tournamentId)).toBeNull();
+      const list = clubService.getClubDetail(slug, null).tournaments;
+      expect(list).toHaveLength(1);
+      expect(list[0]).toMatchObject({ id: hosted.tournamentId, name: 'Cup', format: 'round_robin', status: 'draft', players: 0 });
+      tournamentManager.registerPlayer(owner, hosted.tournamentId);
+      expect(clubService.getClubDetail(slug, null).tournaments[0].players).toBe(1);
+      clubService.deleteClub(owner.userId, slug);
+      expect(clubIdOf(hosted.tournamentId)).toBeNull();
+    });
+  });
+
   test('rejects a missing format', () => {
     const { error, code } = tournamentManager.createTournament(user(), {});
     expect(code).toBe('INVALID_FORMAT');

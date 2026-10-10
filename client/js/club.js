@@ -60,7 +60,7 @@
     return a;
   }
 
-  const TABS = ['overview', 'members', 'board', 'chat'];
+  const TABS = ['overview', 'members', 'tournaments', 'board', 'chat'];
   const visibleTabs = () => TABS.filter((tab) => !$('cb-tab-' + tab).hidden);
   /** Active tab from `#tab=<name>`; unknown/missing/hidden (chat for non-members) → overview. */
   function currentTab() {
@@ -185,6 +185,17 @@
       return row;
     }) : [el('p', t('clubs.no_events'), 'pnote')]));
 
+    $('cb-tournaments').replaceChildren(...(c.tournaments.length ? c.tournaments.map((x) => {
+      const a = el('a', undefined, 'prow');
+      a.href = '/tournament.html?id=' + encodeURIComponent(x.id);
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', x.name, 'prow__t'),
+        el('div', [t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(document.documentElement.lang || undefined)].join(' · '), 'prow__m'));
+      a.append(body);
+      return a;
+    }) : [el('p', t('clubs.no_tournaments'), 'pnote')]));
+    $('cb-tournament-new').hidden = !staff;
+
     $('cb-manage').hidden = !staff;
     if (staff) {
       $('cb-desc-input').value = c.description;
@@ -292,6 +303,11 @@
       $('cb-tab-' + next).focus();
       ev.preventDefault();
     });
+    // Hand the club to the tournament create modal (sessionStorage: lobby-home strips the query string).
+    $('cb-tournament-new').onclick = () => {
+      sessionStorage.setItem('gvn_club_tournament', slug);
+      location.href = '/index.html#tournaments';
+    };
     $('cb-chat-older').onclick = () => fetchChat('older');
     $('cb-chat-form').onsubmit = async (ev) => {
       ev.preventDefault();
