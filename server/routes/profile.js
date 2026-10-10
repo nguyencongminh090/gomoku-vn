@@ -25,6 +25,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { optionalUserId } = require('../utils/optional-user');
 const clubService = require('../managers/ClubService');
+const puzzleService = require('../managers/PuzzleService');
 const friendService = require('../managers/FriendService');
 const privacyGate = require('../managers/PrivacyGate');
 const achievements = require('../managers/Achievements');
@@ -284,6 +285,7 @@ router.get('/:username', (req, res, next) => {
       stats,
       streak,
       badges,
+      puzzles: puzzleService.statsFor(user.id), // public: solving is not part of the hideable game history
       recent,
       clubs: clubService.clubsOfUser(user.id),
       isSelf,
