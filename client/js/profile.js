@@ -23,6 +23,8 @@
   }
 
   const SHELL = () => window.PlatformShell;
+  /** Leading sprite icon on an action button (B212). */
+  const withIcon = (node, name) => { node.prepend(SHELL().icon(name)); return node; };
 
   function setAvatar(url, name) {
     $('pf-avatar').replaceWith(Object.assign(SHELL().avatar(url, name, 'pav--xl'), { id: 'pf-avatar' }));
@@ -179,7 +181,7 @@
         box.append(mk('friends.accept', 'POST', base + '/accept', 'pbtn--primary'), mk('friends.decline', 'DELETE', base, 'pbtn--ghost'));
         break;
       default:
-        if (!p.can || p.can.friend) box.append(mk('friends.add', 'POST', base, 'pbtn--primary'));
+        if (!p.can || p.can.friend) box.append(withIcon(mk('friends.add', 'POST', base, 'pbtn--primary'), 'ph-regular-user-plus'));
         else box.append(el('span', t('privacy.no_friend'), 'pnote'));
     }
     challengeControls(p, box);
@@ -190,7 +192,7 @@
 
   /** "Thách đấu" button + inline form (rule × clock × rated); POST /api/challenges. */
   function challengeControls(p, box) {
-    const open = el('button', t('challenge.btn'), 'pbtn');
+    const open = withIcon(el('button', t('challenge.btn'), 'pbtn'), 'ph-regular-sword');
     open.type = 'button';
     const form = el('form', undefined, 'pchallenge');
     form.hidden = true;
@@ -230,7 +232,7 @@
         go.disabled = false;
       }
     });
-    const msg = el('a', t('dm.btn'), 'pbtn');
+    const msg = withIcon(el('a', t('dm.btn'), 'pbtn'), 'ph-regular-chat-circle');
     msg.href = '/social.html#dm=' + encodeURIComponent(p.username);
     const can = p.can || { dm: true, challenge: true };
     if (can.challenge) box.append(open, form);

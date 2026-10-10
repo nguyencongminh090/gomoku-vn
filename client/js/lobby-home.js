@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=249';
+import { client, setHeroTab } from './lobby.js?v=250';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -302,8 +302,10 @@ export function renderQuickMatch() {
   const line = document.getElementById('qm-line');
   if (!acts || !line) return;
   acts.replaceChildren();
-  const btn = (key, cls, fn) => {
-    const b = el('button', t(key), 'link-action' + (cls ? ' ' + cls : ''));
+  // Leading sprite icon (B212; the Arena mockup puts ▶ on the rated search).
+  const withIcon = (node, name) => { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; };
+  const btn = (key, cls, fn, iconName) => {
+    const b = withIcon(el('button', t(key), 'link-action' + (cls ? ' ' + cls : '')), iconName);
     b.type = 'button';
     b.addEventListener('click', fn);
     acts.appendChild(b);
@@ -314,10 +316,10 @@ export function renderQuickMatch() {
     line.textContent = t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() })
       + (qm.inBucket > 1 ? ' · ' + t('qm.in_queue', { n: qm.inBucket }) : '');
   } else {
-    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true));
+    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
     btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
     if (isMember()) { // mockup: Thách đấu bạn bè → the social page, where friends are challenged
-      const a = el('a', t('qm.challenge_friend'), 'link-action');
+      const a = withIcon(el('a', t('qm.challenge_friend'), 'link-action'), 'ph-regular-sword');
       a.href = '/social.html';
       acts.appendChild(a);
     }

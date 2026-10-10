@@ -76,3 +76,4 @@ in the detail file / fix-log).
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
+- **#212.** Icon + label review: icons match meaning, shorter labels, named icon-only controls `[Model: Sonnet 5]` — [detail](docs/todo/B212-icon-label-review.md)
