@@ -1,5 +1,5 @@
 # B200 — R6: club tabs, events ("Sắp tới"), club chat, club tournaments
-**Status:** OPEN — slices 1–3 merged; slice 4 (club tournaments) implemented on `feature/200-club-tournaments` + real-browser pass 2026-10-10, awaiting review. After merge #200 is complete (club-vs-club stays in features/club-team-tournament)
+**Status:** ✅ DONE 2026-10-10 — all 4 slices merged to `dev` (bf775b4, 966b734, 4b3084b, e90c292), `?v=211`; club-vs-club stays parked in `features/club-team-tournament/`
 **Area:** server (ClubService, new club_events + club_messages tables, routes/clubs.js, tournament link) + client (club.html/club.js tabs)
 **From:** features/platform/planning.md § Release 2 (R6); B191 item 5; mockup `data-screen="club"`   **Depends:** B178 (clubs), B198 (notifications), B199 (done)
 
@@ -36,3 +36,9 @@ Tabs first = zero backend risk and unblocks the layout; chat/events are new tabl
 ## Slice 1 notes (2026-10-10, `feature/200-club-tabs`, uncommitted)
 - `club.html` → tablist (Tổng quan / Thành viên / Bảng xếp hạng) + 3 panels; `#tab=<name>` in the URL, arrow keys, unknown tab → overview, tab kept across data reloads. Overview = staff + manage/pending (staff only); Members = name/role/kick-promote-transfer (`#cb-members-body`); Board = rank/name/rating with category chips (`#cb-body`, no role column anymore). No endpoint changes. `?v=205`.
 - Tests: clubs-pages (+6, 4 adapted to the new ids). Real-browser: no-DB static pass at 1280/390 (faked API, 0 console errors, no horizontal scroll); not yet on the real server. Overview has no "Sắp tới" yet (slice 2).
+
+## Slices 2–4 notes (2026-10-10)
+- 2 events: `club_events`; staff POST/DELETE `/events`; upcoming (≤20) embedded in club detail as `events`. `kind` fixed to `event`.
+- 3 chat: `club_messages` (newest 200 kept); REST GET `?before|after`/POST/DELETE `/messages`, members only (code `CLUB_CHAT_MEMBERS_ONLY`, not `CLUB_NOT_MEMBER`, which kick/role also use); polling 8 s, no socket; shares the DM rate limit (`DmText.isRateLimited`).
+- 4 tournaments: nullable `tournaments.club_id` (SET NULL; inline migration); `tournament:create {clubSlug}` → owner/officer only (`TOURNAMENT_CLUB_FORBIDDEN`); club detail `tournaments` (≤50, all statuses). Create handoff via `sessionStorage.gvn_club_tournament` — `lobby-home.js` strips `location.search`.
+- Verified: `npm test` 2379 green; real-browser pass per slice (own DB :3100). NOT verified: light mode, Firefox/WebKit, `dist/` build (#194), registering players into a club tournament in a browser.
