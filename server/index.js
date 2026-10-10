@@ -176,6 +176,13 @@ app.get('/puzzles', (req, res) => {
   res.setHeader('Cache-Control', REVALIDATE);
   res.sendFile(path.join(clientPath, 'puzzles.html'));
 });
+// Authoring pages (7a-3): static paths, so they never collide with /puzzle/:id.
+for (const [route, file] of [['/puzzles/new', 'puzzle-editor.html'], ['/puzzles/mine', 'puzzles-mine.html'], ['/puzzles/review', 'puzzles-review.html']]) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', REVALIDATE);
+    res.sendFile(path.join(clientPath, file));
+  });
+}
 app.get('/puzzle/:id', (req, res) => {
   res.setHeader('Cache-Control', REVALIDATE);
   res.sendFile(path.join(clientPath, 'puzzle.html'));

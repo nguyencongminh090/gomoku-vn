@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Đăng puzzle</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=219" />
+  <link rel="stylesheet" href="css/tokens.css?v=219" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=219" />
+  <link rel="stylesheet" href="css/platform.css?v=219" />
+  <link rel="stylesheet" href="css/puzzles.css?v=219" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=219" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=219">
+
+  <script src="js/ui-mode-preload.js?v=219"></script>
+  <script src="js/skin-preload.js?v=219"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <p><a href="/puzzles/mine" class="muted small" data-i18n="puzzles.mine_back">← Puzzle của tôi</a></p>
+  <div class="pintro"><h1 id="ed-h1" data-i18n="puzzles.editor_h1">Đăng puzzle</h1></div>
+  <p id="ed-error" class="pnote" hidden></p>
+
+  <div id="ed-view" class="pz-solve" hidden>
+    <div class="pz-solve__board ppanel"><canvas id="ed-canvas"></canvas></div>
+
+    <form id="ed-form" class="pform ppanel pz-editor" autocomplete="off">
+      <div class="pchips" id="ed-tools" role="group" data-i18n-aria="puzzles.tool_group" aria-label="Công cụ"></div>
+      <p id="ed-count" class="muted small"></p>
+
+      <label for="ed-title" data-i18n="puzzles.f_title">Tiêu đề</label>
+      <input id="ed-title" maxlength="60" required />
+      <label for="ed-prompt" data-i18n="puzzles.f_prompt">Đề bài</label>
+      <textarea id="ed-prompt" rows="2" maxlength="280"></textarea>
+
+      <div class="pform__row">
+        <div><label for="ed-rule" data-i18n="puzzles.filter_rule">Luật</label><br><select id="ed-rule"></select></div>
+        <div><label for="ed-size" data-i18n="puzzles.f_size">Cỡ bàn</label><br><select id="ed-size"></select></div>
+        <div><label for="ed-tomove" data-i18n="puzzles.f_tomove">Bên đi</label><br><select id="ed-tomove"></select></div>
+        <div><label for="ed-level" data-i18n="puzzles.f_level">Level đề xuất</label><br><select id="ed-level"></select></div>
+      </div>
+
+      <label for="ed-mode" data-i18n="puzzles.f_mode">Kiểu đáp án</label>
+      <select id="ed-mode"></select>
+
+      <label data-i18n="puzzles.f_tags">Chủ đề (tối đa 3)</label>
+      <div id="ed-tags" class="pchips"></div>
+
+      <label data-i18n="puzzles.f_answers">Đáp án chấp nhận</label>
+      <p class="muted small" id="ed-answers-help"></p>
+      <div id="ed-answers" class="pz-answers"></div>
+      <button type="button" id="ed-add-answer" class="pbtn pbtn--ghost pbtn--sm" data-i18n="puzzles.add_answer">+ Thêm đáp án</button>
+
+      <p id="ed-edit-note" class="pnote" hidden data-i18n="puzzles.edit_requeue">Sửa puzzle sẽ đưa nó về trạng thái chờ duyệt.</p>
+      <p id="ed-result" class="pz-result" role="status" hidden></p>
+      <div class="pactions"><button type="submit" id="ed-submit" class="pbtn pbtn--primary" data-i18n="puzzles.submit">Gửi duyệt</button></div>
+    </form>
+  </div>
+</main>
+
+<script src="js/i18n.js?v=219"></script>
+<script src="js/ui-mode.js?v=219"></script>
+<script src="js/session.js?v=219"></script>
+<script src="js/audio-manager.js?v=219"></script>
+<script src="js/settings-panel.js?v=219"></script>
+<script src="js/platform-shell.js?v=219"></script>
+<script src="js/coords.js?v=219"></script>
+<script src="js/board.js?v=219"></script>
+<script src="js/puzzle-board.js?v=219"></script>
+<script src="js/puzzle-editor.js?v=219"></script>
+</body>
+</html>

@@ -43,24 +43,7 @@
   const apiError = (data, fallback) => (data && data.code ? t('err.' + data.code.toLowerCase()) : fallback);
 
   function drawBoard() {
-    const size = puzzle.boardSize;
-    const board = Array.from({ length: size }, () => new Array(size).fill(0));
-    for (const s of puzzle.stones) board[s.y][s.x] = s.color === 'BLACK' ? 1 : 2;
-    const mine = puzzle.toMove === 'BLACK' ? 1 : 2;
-    for (const m of moves) board[m.y][m.x] = mine;
-    renderer.setState({
-      boardSize: size,
-      board,
-      walls: [],
-      portals: [],
-      lastMove: moves.length ? moves[moves.length - 1] : null,
-      winLine: null,
-      firstMoveZones: [],
-      showZones: false,
-      interactive: !solved,
-      isMyTurn: !solved,
-      myColor: puzzle.toMove,
-    });
+    renderer.setState(window.PuzzleBoard.state(puzzle.boardSize, puzzle.stones, puzzle.toMove, moves, { interactive: !solved }));
   }
 
   function renderMoves() {
