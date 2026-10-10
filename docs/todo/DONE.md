@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#202.** Profile: per-user game history, retire /history.html `[Model: Sonnet 5.5]` — [detail](docs/todo/B202-profile-game-history.md)
 - ✅ **#200.** R6: club tabs, events (Sắp tới), club chat, club tournaments `[Model: Opus 5]` — [detail](docs/todo/B200-club-tabs-chat-events.md)
 - ✅ **#199.** R5: Settings page + privacy gates (DM/challenge/friend-request, hide online), country/city, badges + win streak — [B199](B199-settings-privacy-gates.md)
 - ✅ **#193.** R1: Arena shell on lobby/history/tournament (one header site-wide) `[Model: Sonnet 5.5]` — [detail](docs/todo/B193-arena-shell-lobby-history-tournament.md)

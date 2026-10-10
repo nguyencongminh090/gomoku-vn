@@ -188,6 +188,35 @@ router.get('/prefs', verifyToken, requireMember, (req, res, next) => {
   }
 });
 
+const GAMES_PAGE = 10;
+
+/** One finished game as the profile history shows it, from `userId`'s point of view. */
+function gameRow(g, userId) {
+  const black = g.black_player_id === userId;
+  const result = g.winner === 'draw' ? 'draw'
+    : (g.winner === 'BLACK') === black && (g.winner === 'BLACK' || g.winner === 'WHITE') ? 'win' : 'loss';
+  return { id: g.id, opponent: black ? g.white_player_name : g.black_player_name, result, endedAt: g.ended_at };
+}
+
+// Paginated game history for the profile (B202). Same privacy switch as the profile's game list:
+// hidden → only the owner sees it.
+router.get('/:username/games', (req, res, next) => {
+  try {
+    const user = database.getProfileByUsername(String(req.params.username).slice(0, 40));
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' });
+    res.set('Cache-Control', 'no-store');
+    if (user.hide_history && optionalUserId(req) !== user.id) {
+      return res.status(403).json({ error: 'Người chơi ẩn lịch sử ván.', code: 'HISTORY_HIDDEN' });
+    }
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const total = database.getUserGameStats(user.id).games;
+    const games = database.getUserRecentGames(user.id, GAMES_PAGE, (page - 1) * GAMES_PAGE).map((g) => gameRow(g, user.id));
+    res.json({ games, pagination: { page, limit: GAMES_PAGE, total, totalPages: Math.ceil(total / GAMES_PAGE) } });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Rating curve for the profile chart. Same privacy switch as the game list.
 router.get('/:username/rating-history', (req, res, next) => {
   try {
@@ -231,12 +260,7 @@ router.get('/:username', (req, res, next) => {
     if (showHistory) {
       const s = database.getUserGameStats(user.id);
       stats = { games: s.games, wins: s.wins || 0, draws: s.draws || 0 };
-      recent = database.getUserRecentGames(user.id, 10).map((g) => {
-        const black = g.black_player_id === user.id;
-        const result = g.winner === 'draw' ? 'draw'
-          : (g.winner === 'BLACK') === black && (g.winner === 'BLACK' || g.winner === 'WHITE') ? 'win' : 'loss';
-        return { id: g.id, opponent: black ? g.white_player_name : g.black_player_name, result, endedAt: g.ended_at };
-      });
+      recent = database.getUserRecentGames(user.id, GAMES_PAGE).map((g) => gameRow(g, user.id));
     }
 
     // Rated-games streak + badges (#199). Win-based parts follow hide_history; rank badges are public.

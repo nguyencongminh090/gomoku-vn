@@ -10,7 +10,7 @@ import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 // breaking every page that uses one (theme/ui-mode preload IIFEs run
 // pre-paint on purpose — converting them to modules would defer them and
 // reintroduce the flash-of-unstyled-content they exist to prevent — plus
-// history.html's whole non-entry.js script chain, plus the UMD modules like
+// replay.html's whole non-entry.js script chain, plus the UMD modules like
 // escape-utils.js/audio-manager.js/profanity-*.js that self-attach to a
 // global and would otherwise get silently lazy-wrapped by Vite's commonjs
 // plugin and never run — see the comment in client/js/room-entry.js).
@@ -63,7 +63,7 @@ export default defineConfig({
         main: resolve(__dirname, 'client/index.html'),
         login: resolve(__dirname, 'client/login.html'),
         room: resolve(__dirname, 'client/room.html'),
-        history: resolve(__dirname, 'client/history.html'),
+        replay: resolve(__dirname, 'client/replay.html'),
         rankings: resolve(__dirname, 'client/rankings.html'),
         social: resolve(__dirname, 'client/social.html'),
         profile: resolve(__dirname, 'client/profile.html'),

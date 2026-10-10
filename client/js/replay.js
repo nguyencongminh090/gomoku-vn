@@ -1,13 +1,14 @@
 /**
- * history.js — Game History & Replay Viewer with Tree Analysis.
+ * replay.js — Replay viewer with tree analysis, at /replay/<gameId> (B202; was history.js).
  *
  * Features:
- *   - Paginated game list from /api/games
  *   - Replay viewer with step-through controls
  *   - Analysis mode: click board to add variations
  *   - Tree panel: visual move tree with click navigation
- *   - URL sharing via ?id=gameId
+ *   - Shareable URL: /replay/<gameId> (?source=tournament for a tournament game)
  *   - Keyboard shortcuts
+ *
+ * The game list moved to the profile (B202); the global history is a separate site later.
  *
  * Reuses: BoardRenderer (board.js), MoveTree (move-tree.js), TreeView (tree-view.js)
  */
@@ -17,24 +18,7 @@
 // ---------------------------------------------------------------------------
 // Element refs
 // ---------------------------------------------------------------------------
-const viewList     = document.getElementById('view-list');
 const viewReplay   = document.getElementById('view-replay');
-const gameListEl   = document.getElementById('game-list');
-const gameTotalEl  = document.getElementById('game-total');
-const paginationEl = document.getElementById('pagination');
-
-// Search/filter elements
-const searchForm   = document.getElementById('history-search');
-const searchPlayer = document.getElementById('search-player');
-const searchFrom   = document.getElementById('search-from');
-const searchTo     = document.getElementById('search-to');
-const searchResult = document.getElementById('search-result');
-const searchReset  = document.getElementById('search-reset');
-const statsEl      = document.getElementById('history-stats');
-const statsTotalEl = document.getElementById('stats-total');
-const statsWinEl   = document.getElementById('stats-win');
-const statsDrawEl  = document.getElementById('stats-draw');
-const statsByDateEl = document.getElementById('stats-by-date');
 
 // Replay elements
 const replayBlack   = document.getElementById('replay-black');
@@ -57,144 +41,14 @@ const btnDeleteBranch = document.getElementById('btn-delete-branch');
 // ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
-let currentPage = 1;
 let boardRenderer = null;
 let autoPlayTimer = null;
-let currentFilters = {}; // { player?, from?, to?, result? } — read from the search form
 
 // Tree-based state
 let moveTree = null;      // MoveTree instance
 let treeView = null;      // TreeView instance
 let analysisMode = false;
 let replayGameData = null; // Raw game data for info display
-
-// Cached from the last successful loadGames() response, so a language switch
-// can re-render translated text (table headers, result labels) without
-// re-fetching from the server (TODO #45).
-let lastGamesList = [];
-let lastPagination = null;
-
-// ---------------------------------------------------------------------------
-// Build a query string from currentFilters + pagination
-// ---------------------------------------------------------------------------
-function buildFilterParams(extra = {}) {
-  const params = new URLSearchParams(extra);
-  if (currentFilters.player) params.set('player', currentFilters.player);
-  if (currentFilters.from)   params.set('from', currentFilters.from);
-  if (currentFilters.to)     params.set('to', currentFilters.to);
-  if (currentFilters.result) params.set('result', currentFilters.result);
-  return params;
-}
-
-// ---------------------------------------------------------------------------
-// Load game list
-// ---------------------------------------------------------------------------
-async function loadGames(page = 1) {
-  currentPage = page;
-  try {
-    const params = buildFilterParams({ page: String(page), limit: '15' });
-    const res = await fetch(`/api/games?${params.toString()}`);
-    const data = await res.json();
-
-    if (!res.ok) {
-      const msg = data.code ? t('err.' + data.code.toLowerCase()) : (data.error || t('history.load_error'));
-      gameListEl.innerHTML = `<div class="game-list__empty">${t('history.err_prefix', { msg })}</div>`;
-      return;
-    }
-
-    const { games, pagination } = data;
-    lastGamesList = games;
-    lastPagination = pagination;
-    gameTotalEl.textContent = t('history.game_count', { n: pagination.total });
-
-    if (games.length === 0) {
-      gameListEl.innerHTML = `<div class="game-list__empty">${t('history.no_match')}</div>`;
-      paginationEl.innerHTML = '';
-    } else {
-      renderGameTable(games);
-      renderPagination(pagination);
-    }
-
-    loadStats();
-  } catch {
-    gameListEl.innerHTML = `<div class="game-list__empty">${t('history.network_error')}</div>`;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Load aggregate stats (count by date, count by result) for current filters
-// ---------------------------------------------------------------------------
-async function loadStats() {
-  try {
-    const params = buildFilterParams();
-    const res = await fetch(`/api/games/stats?${params.toString()}`);
-    if (!res.ok) { statsEl.style.display = 'none'; return; }
-
-    const { byDate, byResult } = await res.json();
-
-    statsTotalEl.textContent = byResult.total;
-    statsWinEl.textContent = byResult.win;
-    statsDrawEl.textContent = byResult.draw;
-
-    statsByDateEl.innerHTML = byDate.slice(0, 14).map(row =>
-      `<span class="history-stats__date-row"><span>${escapeHtml(row.date)}</span><span>${row.count}</span></span>`
-    ).join('');
-
-    statsEl.style.display = '';
-  } catch {
-    statsEl.style.display = 'none';
-  }
-}
-
-function renderGameTable(games) {
-  let html = `
-    <table class="game-table">
-      <thead>
-        <tr>
-          <th>${t('history.th_time')}</th>
-          <th>${t('history.th_black')}</th>
-          <th>${t('history.th_white')}</th>
-          <th>${t('history.th_result')}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-  `;
-
-  for (const g of games) {
-    const time = formatTime(g.ended_at || g.started_at);
-    const resultText = getResultText(g);
-    const resultClass = g.winner === 'draw' ? 'result-draw' : 'result-win';
-
-    html += `
-      <tr>
-        <td style="font-size:12px; color:var(--c-ink-3);">${time}</td>
-        <td><strong>${escapeHtml(g.black_player_name)}</strong></td>
-        <td>${escapeHtml(g.white_player_name)}</td>
-        <td><span class="${resultClass}">${resultText}</span></td>
-        <td><button class="btn-replay" data-action="openReplay" data-arg="${escapeAttr(g.id)}" type="button">${t('history.btn_view')}</button></td>
-      </tr>
-    `;
-  }
-
-  html += '</tbody></table>';
-  gameListEl.innerHTML = html;
-}
-
-function renderPagination(p) {
-  if (p.totalPages <= 1) { paginationEl.innerHTML = ''; return; }
-
-  let html = `<button ${p.page <= 1 ? 'disabled' : ''} data-action="loadGames" data-arg="${p.page - 1}" data-arg-type="number">‹</button>`;
-  for (let i = 1; i <= p.totalPages; i++) {
-    if (p.totalPages > 7 && Math.abs(i - p.page) > 2 && i !== 1 && i !== p.totalPages) {
-      if (i === 2 || i === p.totalPages - 1) html += '<button disabled>…</button>';
-      continue;
-    }
-    html += `<button class="${i === p.page ? 'active' : ''}" data-action="loadGames" data-arg="${i}" data-arg-type="number">${i}</button>`;
-  }
-  html += `<button ${p.page >= p.totalPages ? 'disabled' : ''} data-action="loadGames" data-arg="${p.page + 1}" data-arg-type="number">›</button>`;
-  paginationEl.innerHTML = html;
-}
 
 // ---------------------------------------------------------------------------
 // Replay viewer
@@ -239,14 +93,8 @@ async function openReplay(gameId, source) {
     // Fill info
     renderReplayInfo(game);
 
-    // Switch view FIRST (so parent has dimensions when we call resize)
-    viewList.style.display = 'none';
+    // Show the view FIRST (so parent has dimensions when we call resize)
     viewReplay.style.display = '';
-
-    // Update URL for sharing
-    history.replaceState(null, '', source === 'tournament'
-      ? `history.html?id=${gameId}&source=tournament`
-      : `history.html?id=${gameId}`);
 
     // Reset analysis mode. Default opens straight into it (analysis is the
     // reason a power user opens a replay at all); Lite starts closed but can
@@ -281,19 +129,16 @@ async function openReplay(gameId, source) {
 }
 
 function closeReplay() {
-  // A tournament-sourced replay (TODO.md #78) has no casual list to go back
-  // to — "back" means the tournament it came from, not history.html's list.
+  // A tournament-sourced replay (TODO.md #78) goes back to the tournament it came from.
   if (replayGameData && replayGameData.tournament_id) {
     window.location.href = `tournament.html?id=${encodeURIComponent(replayGameData.tournament_id)}`;
     return;
   }
   stopAutoPlay();
-  setAnalysisMode(false);
-  viewReplay.style.display = 'none';
-  viewList.style.display = '';
-  moveTree = null;
-  replayGameData = null;
-  history.replaceState(null, '', 'history.html');
+  // Back to wherever the viewer came from (usually a profile's game history); a direct visit (a new
+  // tab, no history entry to return to) goes home. document.referrer is empty here (no-referrer policy).
+  if (window.history.length > 1) window.history.back();
+  else window.location.href = '/';
 }
 
 // ---------------------------------------------------------------------------
@@ -440,7 +285,7 @@ function startAutoPlay() {
   if (!moveTree) return;
   if (moveTree.currentNode.isLeaf) moveTree.goToStart();
   
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-bold-pause"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=213#ph-bold-pause"></use></svg>';
   btnPlay.classList.add('playing');
   autoPlayTimer = setInterval(() => {
     if (!moveTree.goForward()) {
@@ -453,7 +298,7 @@ function startAutoPlay() {
 
 function stopAutoPlay() {
   if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=211#ph-bold-play"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=213#ph-bold-play"></use></svg>';
   btnPlay.classList.remove('playing');
 }
 
@@ -506,37 +351,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---------------------------------------------------------------------------
-// Search form
-// ---------------------------------------------------------------------------
-searchForm.addEventListener('submit', (e) => {
-  e.preventDefault();
-  currentFilters = {
-    player: searchPlayer.value.trim(),
-    from:   searchFrom.value,
-    to:     searchTo.value,
-    result: searchResult.value,
-  };
-  loadGames(1);
-});
-
-searchReset.addEventListener('click', () => {
-  searchForm.reset();
-  currentFilters = {};
-  loadGames(1);
-});
-
-// Expose for inline onclick
-window.openReplay = openReplay;
-window.loadGames  = loadGames;
-
-// ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
-function getResultText(g) {
-  if (!g.winner || g.winner === 'draw') return t('history.result_draw');
-  return g.winner_name ? t('history.x_won', { name: g.winner_name }) : t('history.someone_won');
-}
-
 function getResultTextFull(g) {
   const reasonMap = {
     normal: t('history.reason_normal'),
@@ -572,28 +388,12 @@ function formatTime(isoStr) {
   }
 }
 
-const escapeAttr = (str) => globalThis.EscapeUtils.escapeAttr(str);
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str || '';
-  return div.innerHTML;
-}
-
 // ---------------------------------------------------------------------------
 // Lang change listener — re-render text this page builds outside data-i18n
-// (table headers, result labels, replay meta) without a re-fetch (TODO #45).
+// (result label, replay meta) without a re-fetch (TODO #45).
 // ---------------------------------------------------------------------------
 window.addEventListener('langchange', () => {
-  if (viewReplay.style.display !== 'none' && replayGameData) {
-    renderReplayInfo(replayGameData);
-  } else if (lastGamesList.length > 0) {
-    renderGameTable(lastGamesList);
-    if (lastPagination) {
-      gameTotalEl.textContent = t('history.game_count', { n: lastPagination.total });
-      renderPagination(lastPagination);
-    }
-  }
+  if (replayGameData) renderReplayInfo(replayGameData);
 });
 
 // ---------------------------------------------------------------------------
@@ -613,17 +413,11 @@ window.addEventListener('uimodechange', () => {
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
-// Site-wide Arena header (B193): history is the "Học" tab.
+// Site-wide Arena header (B193): the replay lives under the "Học" tab.
 if (window.PlatformShell) window.PlatformShell.build('learn');
-const urlParams = new URLSearchParams(window.location.search);
-const urlGameId = urlParams.get('id');
-const urlSource = urlParams.get('source');
-if (urlGameId && urlSource === 'tournament') {
-  // No casual list to show for a tournament-sourced deep link (TODO.md #78).
-  openReplay(urlGameId, 'tournament');
-} else if (urlGameId) {
-  loadGames(1);
-  openReplay(urlGameId);
+const urlGameId = decodeURIComponent((/^\/replay\/([^/?#]+)/.exec(window.location.pathname) || [])[1] || '');
+if (urlGameId) {
+  openReplay(urlGameId, new URLSearchParams(window.location.search).get('source') === 'tournament' ? 'tournament' : undefined);
 } else {
-  loadGames(1);
+  window.location.href = '/';
 }

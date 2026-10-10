@@ -10,6 +10,9 @@ User direction 2026-10-10: Learn has 2 parts — puzzles (classified by tag + le
 1. ~~Resolve open questions~~ done 2026-10-10; write one todo per slice from the decided list.
 2. One todo + `feature/*` branch per slice (7a puzzles, 7b profile puzzle stats, 7c forum; 7d replay restyle, 7e engine later), `design-workflow` for the UI.
 
+## Added 2026-10-10
+- Puzzle authoring needs a board editor (user: "Thêm editor table để author có thể tạo puzzle") — part of slice 7a; see `features/learn/planning.md`.
+
 ## Don't
 - No code before the questions are answered. No fake eval numbers. Don't touch board/stones or fork `history.js`.
 

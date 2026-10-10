@@ -1053,13 +1053,13 @@ function countUserRankedWins(userId) {
   `).get({ id: userId }).n;
 }
 
-function getUserRecentGames(userId, limit) {
+function getUserRecentGames(userId, limit, offset = 0) {
   return db.prepare(`
     SELECT id, black_player_id, black_player_name, white_player_name, winner, ended_at
     FROM games
     WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
-    ORDER BY ended_at DESC LIMIT @limit
-  `).all({ id: userId, limit });
+    ORDER BY ended_at DESC, id LIMIT @limit OFFSET @offset
+  `).all({ id: userId, limit, offset });
 }
 
 // ---------------------------------------------------------------------------

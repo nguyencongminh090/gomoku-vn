@@ -42,6 +42,8 @@ const diagNamespace  = require('./socket/diag-namespace');
 const sessionManager = require('./managers/SessionManager');
 const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
+const database       = require('./db/database');
+const { optionalUserId } = require('./utils/optional-user');
 
 // ---------------------------------------------------------------------------
 // Express
@@ -165,6 +167,26 @@ app.use('/api/dm', dmRouter);
 app.get('/c/:slug', (req, res) => {
   res.setHeader('Cache-Control', REVALIDATE);
   res.sendFile(path.join(clientPath, 'club.html'));
+});
+
+// Replay page (B202): /replay/<gameId> — same HTML for every id; replay.js reads the path.
+app.get('/replay/:id', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'replay.html'));
+});
+
+// Retired global history page (B202): old shared links keep working. `?id=` → the replay;
+// otherwise the visitor's own profile history, or the login page. The file itself is gone, so
+// express.static falls through to this route.
+app.get('/history.html', (req, res) => {
+  const id = typeof req.query.id === 'string' ? req.query.id.slice(0, 64) : '';
+  if (id) {
+    const source = req.query.source === 'tournament' ? '?source=tournament' : '';
+    return res.redirect(302, `/replay/${encodeURIComponent(id)}${source}`);
+  }
+  const me = optionalUserId(req);
+  const user = me ? database.getUserById(me) : null;
+  res.redirect(302, user ? `/u/${encodeURIComponent(user.username)}#games` : '/login.html');
 });
 
 app.get('/u/:username', (req, res) => {

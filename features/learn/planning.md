@@ -16,7 +16,7 @@ Status: **direction set by user 2026-10-10; not authorization to implement.** Si
 - Openings library: not mentioned → **parked** (re-ask before building).
 
 ## Existing pieces
-- Replay viewer + move tree: `client/js/history.js`, `move-tree.js`, `tree-view.js`, `history.html` (old shell). Data: `games.moves` JSON; `GET /api/games/:id`, `GET /api/games`.
+- Replay viewer + move tree: `client/js/replay.js`, `move-tree.js`, `tree-view.js`, `replay.html`. Data: `games.moves` JSON; `GET /api/games/:id`, `GET /api/games`.
 - Profile page: `client/js/profile.js`, `GET /api/profile/...` (stats, badges #199).
 - Mockup: Arena `data-screen="learn"` (tabs there are superseded above).
 
@@ -38,6 +38,10 @@ Status: **direction set by user 2026-10-10; not authorization to implement.** Si
 - **Anti-abuse:** ≤ 5 pending puzzles per user; duplicate position (hash) is flagged to the reviewer, not hard-blocked.
 - **Forum v1:** categories + threads/replies; guests read-only; plain text only via `DmText.clean` (no markdown/images); staff delete; report button → R8 Admin queue.
 - **Reward:** counter + level only — no puzzle rating/XP in v1.
+
+## Added mid-session 2026-10-10 (user, verbatim): "Thêm editor table để author có thể tạo puzzle"
+- Puzzle slice 7a needs a **board editor** for authors: place black/white stones (and walls/portals if the chosen rule uses them) on the board, choose side to move, enter accepted answers (sequence or final-move; letter or numeric coords), pick tags/level/rule, preview, then submit to the review queue. Reuse `board.js` (locked rendering) + `MoveTree`; validate the position (legal under the chosen rule, answer actually wins) before submit.
+- Not built yet; open details (editor UX, validation depth, "test solve" before submit) belong to the 7a slice todo.
 
 ## Open questions
 None blocking. Left for the slice todos: exact tag list and level names, forum category list, report-queue shape (with R8), puzzle submission form UX, and which slice goes first (recommended: B202 → puzzles → profile stats → forum).
