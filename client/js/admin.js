@@ -27,7 +27,7 @@
   }
 
   async function init() {
-    window.PlatformShell.build('learn');
+    window.PlatformShell.build('admin'); // no nav item of its own (mockup highlights none)
     let me;
     try {
       const res = await fetch('/api/admin/me', { credentials: 'same-origin' });

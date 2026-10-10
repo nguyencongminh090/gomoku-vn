@@ -12,7 +12,8 @@
   const CATEGORIES = ['freestyle', 'standard', 'caro'];
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
 
-  const tabsEl = document.getElementById('rk-tabs');
+  const tabsEl = document.getElementById('rk-tabs');     // rule chips (filter)
+  const scopeEl = document.getElementById('rk-scope');   // scope = underline tabs
   const bodyEl = document.getElementById('rk-body');
   const totalEl = document.getElementById('rk-total');
   const emptyEl = document.getElementById('rk-empty');
@@ -38,18 +39,20 @@
 
   function renderTabs() {
     tabsEl.replaceChildren();
+    scopeEl.replaceChildren();
     {
       for (const sc of state.mine && state.mine.userId ? ['all', 'vn', 'friends'] : ['all', 'vn']) {
-        const b = el('button', t('rankings.scope_' + sc), 'pchip');
+        const b = el('button', t('rankings.scope_' + sc), 'ptab');
         b.type = 'button';
-        b.setAttribute('aria-pressed', String(sc === state.scope));
+        b.setAttribute('role', 'tab');
+        b.setAttribute('aria-selected', String(sc === state.scope));
         b.addEventListener('click', () => {
           if (sc === state.scope) return;
           state.scope = sc;
           state.page = 1;
           load();
         });
-        tabsEl.appendChild(b);
+        scopeEl.appendChild(b);
       }
     }
     for (const c of CATEGORIES) {

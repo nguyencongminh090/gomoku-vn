@@ -58,6 +58,34 @@
     return n;
   }
 
+  /** Sun glyph for the colour-mode button (the sprite has no sun/moon): ring + 8 rays, stroke-drawn. */
+  function sunIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('class', 'icon');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('viewBox', '0 0 256 256');
+    svg.setAttribute('aria-hidden', 'true');
+    const g = document.createElementNS(ns, 'g');
+    g.setAttribute('fill', 'none');
+    g.setAttribute('stroke', 'currentColor');
+    g.setAttribute('stroke-width', '16');
+    g.setAttribute('stroke-linecap', 'round');
+    const ring = document.createElementNS(ns, 'circle');
+    ring.setAttribute('cx', '128'); ring.setAttribute('cy', '128'); ring.setAttribute('r', '56');
+    g.appendChild(ring);
+    for (let i = 0; i < 8; i++) {
+      const a = (i * Math.PI) / 4;
+      const ray = document.createElementNS(ns, 'line');
+      ray.setAttribute('x1', (128 + 84 * Math.cos(a)).toFixed(1)); ray.setAttribute('y1', (128 + 84 * Math.sin(a)).toFixed(1));
+      ray.setAttribute('x2', (128 + 104 * Math.cos(a)).toFixed(1)); ray.setAttribute('y2', (128 + 104 * Math.sin(a)).toFixed(1));
+      g.appendChild(ray);
+    }
+    svg.appendChild(g);
+    return svg;
+  }
+
   function icon(name) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'icon');
@@ -189,13 +217,14 @@
     const mode = el('button', undefined, 'pnav__mode');
     mode.type = 'button';
     mode.setAttribute('aria-label', t('shell.toggle_mode'));
-    mode.textContent = '\u25D0'; // ◐ — the sprite has no sun/moon glyph
+    mode.appendChild(sunIcon());
     mode.addEventListener('click', () => {
       if (window.setColorMode && window.getColorMode) window.setColorMode(window.getColorMode() === 'light' ? 'dark' : 'light');
     });
     const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
-    if (user && !user.isGuest) mountBell(right);
+    // Mockup order: [mode] [bell] [me]. The gear stays (just before the user chip) until B211 gives Settings a page.
     right.appendChild(mode);
+    if (user && !user.isGuest) mountBell(right);
     if (typeof window.openSettingsPanel === 'function') {
       const gear = el('button', undefined, 'pnav__mode');
       gear.type = 'button';
@@ -210,7 +239,7 @@
       me.href = '#';
       const av = el('span', initials(user.displayName), 'pav');
       const name = el('span', undefined, 'pnav__name');
-      const rating = el('small');
+      const rating = el('small', t('shell.unrated')); // mockup always shows a second line
       name.append(user.displayName, rating);
       me.append(av, name);
       right.appendChild(me);
@@ -218,7 +247,7 @@
         .then((r) => (r.ok ? r.json() : null))
         .then((m) => {
           if (!m) return;
-          rating.textContent = bestRating(m.ratings);
+          rating.textContent = bestRating(m.ratings) || t('shell.unrated');
           if (m.username) {
             me.href = '/u/' + encodeURIComponent(m.username);
             const tab = document.querySelector('.ptabbar a[data-tab="me"]');

@@ -52,10 +52,11 @@ describe('platform shell', () => {
     expect(document.querySelector('.pnav__me small').textContent).toBe('rankings.cat_caro 1612');
   });
 
-  it('member with no rated games → empty rating line; /me failure → chip stays inert', async () => {
+  it('member with no rated games → "unrated" second line (mockup always has one); /me failure → chip stays inert', async () => {
     boot(MEMBER, { username: 'zed', ratings: {} });
+    expect(document.querySelector('.pnav__me small').textContent).toBe('shell.unrated');
     await flush();
-    expect(document.querySelector('.pnav__me small').textContent).toBe('');
+    expect(document.querySelector('.pnav__me small').textContent).toBe('shell.unrated');
     boot(MEMBER);
     global.fetch = jest.fn(() => Promise.reject(new Error('net')));
     window.PlatformShell.build('clubs');
@@ -102,6 +103,20 @@ describe('platform shell', () => {
     window.setColorMode = jest.fn();
     document.querySelector('.pnav__mode').click();
     expect(window.setColorMode).toHaveBeenCalledWith('light');
+  });
+
+  it('right cluster follows the mockup order [mode][bell]…[me]; mode is a sun svg, not a text glyph', () => {
+    window.openSettingsPanel = jest.fn();
+    boot(MEMBER, { username: 'zed', ratings: {} });
+    const kids = [...document.querySelector('.pnav__right').children];
+    expect(kids[0].classList.contains('pnav__mode')).toBe(true);
+    expect(kids[1].classList.contains('pbell')).toBe(true);
+    expect(kids[kids.length - 1].classList.contains('pnav__me')).toBe(true);
+    const mode = kids[0];
+    expect(mode.textContent).toBe('');
+    expect(mode.querySelector('svg circle')).not.toBeNull();
+    expect(mode.querySelectorAll('svg line')).toHaveLength(8);
+    delete window.openSettingsPanel;
   });
 
   it('adds a Settings gear only when the settings panel is loaded; it opens it', () => {

@@ -870,3 +870,5 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
   .pm-window:not(:last-child) .pm-notice,
   .pm-window:not(:last-child) .pm-input-row { display: none; }
 }
+body.zen-lobby .zen-hero__sub { margin: 6px 0 0; font-size: 13px; color: var(--c-ink-3); }
+body.zen-lobby .zen-hero__sub[hidden] { display: none; }

@@ -1,7 +1,7 @@
 /* forum.css — forum list, thread, reports (#203 7c). Tokens only; classes are fm-*. */
 .fm-tabs { margin-bottom: 18px; }
-.fm-tabs .pchip { text-decoration: none; display: inline-flex; align-items: center; }
-.fm-tabs .pchip[aria-current="page"] { background: var(--c-brand); color: var(--c-on-brand); }
+.fm-tabs .ptab { text-decoration: none; display: inline-flex; align-items: center; }
+.fm-tabs .ptab[aria-current="page"] { color: var(--c-strong); font-weight: 700; border-bottom-color: var(--c-brand-text); }
 .fm-form { max-width: none; margin-bottom: 20px; }
 .fm-form textarea { min-height: 96px; }
 .fm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; text-decoration: none; color: var(--c-ink); }
