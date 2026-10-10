@@ -215,3 +215,10 @@ a.prow:hover { background: var(--c-hover); }
 .pcrop__actions { justify-content: flex-end; margin-top: 16px; }
 .psplit > aside { display: flex; flex-direction: column; gap: 20px; }
 .pbtn--ghost[aria-pressed="true"] { color: var(--c-strong); border-color: var(--c-ink-3); }
+
+/* ── Social (B210): two columns — Thông báo / thách đấu / lời mời | bạn bè + tin nhắn ── */
+.pcol { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.psplit .pdm__grid { grid-template-columns: 1fr; min-height: 0; }
+.psplit .pdm__list { max-height: 260px; }
+.prow__t.is-unread { font-weight: 700; }
+.ptab__n { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--c-ink-3); }

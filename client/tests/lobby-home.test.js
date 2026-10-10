@@ -278,3 +278,51 @@ describe('quick match panel (B197)', () => {
     expect(document.getElementById('qm-line').textContent).toBe('qm.found');
   });
 });
+
+describe('Vào bằng mã (Phòng screen, B210)', () => {
+  const $ = (id) => document.getElementById(id);
+  const submit = (value) => {
+    $('join-code').value = value;
+    $('join-code-form').dispatchEvent(new Event('submit', { cancelable: true }));
+  };
+
+  it('button lives on the Phòng screen only; the form is closed until it is pressed', async () => {
+    await boot('/index.html#rooms', EMPTY, null);
+    expect($('btn-join-code').hidden).toBe(false);
+    expect($('join-code-form').hidden).toBe(true);
+    $('btn-join-code').click();
+    expect($('join-code-form').hidden).toBe(false);
+    expect($('btn-join-code').getAttribute('aria-expanded')).toBe('true');
+    window.location.hash = '#tournaments';
+    window.dispatchEvent(new Event('hashchange'));
+    expect($('btn-join-code').hidden).toBe(true);
+    expect($('join-code-form').hidden).toBe(true);
+  });
+
+  it('parseRoomCode accepts "#a3f", "a3f", " A3F " and rejects ambiguous / wrong-length codes', async () => {
+    await boot('/index.html#rooms', EMPTY, null);
+    const { parseRoomCode } = window.__home;
+    expect(['#a3f', 'a3f', ' A3F ', '#A3F'].map(parseRoomCode)).toEqual(['#A3F', '#A3F', '#A3F', '#A3F']);
+    for (const bad of ['', 'A3', 'A3FF', 'A0F', 'A1F', 'AIF', 'AOF', '#', 'A F', null, undefined]) expect(parseRoomCode(bad)).toBeNull();
+  });
+
+  it('valid code joins that room; invalid code shows an error and joins nothing', async () => {
+    await boot('/index.html#rooms', EMPTY, null);
+    submit('a0f'); // 0 is never generated
+    expect(window.joinRoom).not.toHaveBeenCalled();
+    expect($('join-code-error').hidden).toBe(false);
+    expect($('join-code-error').textContent).toBe('lobby.join_code_invalid');
+    $('join-code').dispatchEvent(new Event('input'));
+    expect($('join-code-error').hidden).toBe(true);
+    submit('a3f');
+    expect(window.joinRoom).toHaveBeenCalledWith('#A3F');
+  });
+
+  it('home: "Thách đấu bạn bè" links to the social page for members, absent for guests', async () => {
+    await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Z' });
+    const link = [...$('qm-actions').querySelectorAll('a')].find((a) => a.textContent === 'qm.challenge_friend');
+    expect(link.getAttribute('href')).toBe('/social.html');
+    await boot('/index.html', EMPTY, { userId: 'g', isGuest: true, displayName: 'G' });
+    expect($('qm-actions').querySelector('a')).toBeNull();
+  });
+});

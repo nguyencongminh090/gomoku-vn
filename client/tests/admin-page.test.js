@@ -96,6 +96,30 @@ describe('admin shell', () => {
     expect(window.ForumReports.init).not.toHaveBeenCalled();
   });
 
+  it('tab labels carry the open-queue counts of the tabs the caller may see (mockup "Báo cáo (7)")', async () => {
+    const body = (url) => (url === '/api/admin/me' ? ME.moderator
+      : { pagination: { total: url.startsWith('/api/forum/reports') ? 7 : 3 } });
+    handlers.splice(0).forEach((fn) => document.removeEventListener('DOMContentLoaded', fn));
+    hashListeners.splice(0).forEach((fn) => window.removeEventListener('hashchange', fn));
+    jest.resetModules();
+    window.history.pushState({}, '', '/admin');
+    document.body.innerHTML = HTML;
+    window.t = (k) => k;
+    window.PlatformShell = { build: jest.fn() };
+    window.PuzzlesReview = { init: jest.fn() };
+    window.ForumReports = { init: jest.fn() };
+    global.fetch = jest.fn((url) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body(url)) }));
+    require('../js/admin.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    await settle();
+    expect($('adm-tab-puzzles').querySelector('.ptab__n').textContent).toBe(' (3)');
+    expect($('adm-tab-forum').querySelector('.ptab__n').textContent).toBe(' (7)');
+    expect($('adm-tab-cheat').querySelector('.ptab__n')).toBeNull(); // no cheat.review permission → not fetched
+    expect(global.fetch.mock.calls.map((c) => c[0])).not.toContain('/api/admin/cheat-reports?page=1');
+    expect($('adm-tab-puzzles').textContent).toBe('Duyệt puzzle (3)');
+    expect($('adm-tab-puzzles').querySelector('[data-i18n="admin.tab_puzzles"]')).not.toBeNull(); // label is its own span, so a language switch keeps the count
+  });
+
   it('a network failure reports an error instead of leaving a blank page', async () => {
     await boot(ME.member, 200, '', true);
     expect($('adm-msg').textContent).toBe('admin.error');

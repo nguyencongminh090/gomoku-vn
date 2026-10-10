@@ -11,6 +11,26 @@
   const $ = (id) => document.getElementById(id);
   const TABS = { puzzles: () => window.PuzzlesReview, forum: () => window.ForumReports, users: () => window.AdminUsers, cheat: () => window.AdminCheat };
 
+  // Open-queue counts on the tab labels (mockup: "Báo cáo (7) · Nghi gian lận (2)"). Users has no queue.
+  const COUNT_URL = { puzzles: '/api/puzzles/review', forum: '/api/forum/reports?page=1', cheat: '/api/admin/cheat-reports?page=1' };
+
+  function setCount(tab, n) {
+    let badge = tab.querySelector('.ptab__n');
+    if (!badge) { badge = document.createElement('span'); badge.className = 'ptab__n'; tab.appendChild(badge); }
+    badge.textContent = ' (' + n + ')';
+  }
+
+  function loadCounts(tabs) {
+    for (const b of tabs) {
+      const url = COUNT_URL[b.dataset.tab];
+      if (!url) continue;
+      fetch(url, { credentials: 'same-origin' })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => { if (d && d.pagination) setCount(b, d.pagination.total); })
+        .catch(() => { /* label stays plain */ });
+    }
+  }
+
   function show(name) {
     for (const key of Object.keys(TABS)) {
       const on = key === name;
@@ -44,6 +64,7 @@
       b.addEventListener('click', () => { location.hash = b.dataset.tab; });
     }
     $('adm-tabs').hidden = false;
+    loadCounts(allowed);
     const fromHash = () => {
       const want = location.hash.slice(1);
       show(allowed.some((b) => b.dataset.tab === want) ? want : allowed[0].dataset.tab);

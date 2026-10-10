@@ -124,7 +124,7 @@ body.zen-lobby .zen-hero__title {
   letter-spacing: -0.01em;
   color: var(--c-ink);
 }
-body.zen-lobby .zen-hero__title b { font-weight: 700; }
+body.zen-lobby .zen-hero__title b { font-weight: 800; }
 
 /* ══ Tabs ═════════════════════════════════════════════════════════════════
    Plain words. No icons, no underline, no rail — weight carries the state. */
@@ -261,7 +261,9 @@ body.zen-lobby .room-list__empty-sub { font-size: 12.5px; color: var(--c-ink-3);
 /* ══ Online line ══════════════════════════════════════════════════════════
    Replaces the sticky sidebar panel: who is here, read as a sentence. */
 body.zen-lobby .online-line {
-  margin-top: 56px;
+  margin-top: 32px;
+  padding-top: 18px;
+  border-top: 1px solid var(--c-border-light);
   font-size: 12.5px;
   line-height: 1.9;
   color: var(--c-ink-3);

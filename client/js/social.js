@@ -81,6 +81,22 @@
     return r;
   }
 
+  /** Thông báo (mockup): the bell's list, rendered as rows. Read state comes from the shell, so both stay in sync. */
+  function renderNotifs(items) {
+    const box = $('sc-notifs');
+    const N = window.PlatformShell.notifications;
+    box.replaceChildren(...(items.length ? items.slice(0, 20).map((n) => {
+      const a = el('a', undefined, 'prow');
+      a.href = N.target(n);
+      a.append(el('span', undefined, 'pdot' + (n.read ? '' : ' pdot--on')));
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', N.text(n), 'prow__t' + (n.read ? '' : ' is-unread')));
+      a.append(body);
+      a.addEventListener('click', () => { if (!n.read) N.markRead(n.id); });
+      return a;
+    }) : [el('p', t('notif.empty'), 'pnote')]));
+  }
+
   async function loadChallenges() {
     try {
       const res = await fetch('/api/challenges', { credentials: 'same-origin' });
@@ -239,6 +255,7 @@
     loadConvs().then(openFromHash);
     setInterval(() => { if (!document.hidden) { loadConvs(); refreshThread(); } }, 5000);
     window.PlatformShell.build('social');
+    window.PlatformShell.notifications.onChange(renderNotifs);
     load();
     setInterval(() => { if (!document.hidden) loadChallenges(); }, 10000);
   });

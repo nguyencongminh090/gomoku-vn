@@ -104,6 +104,15 @@
 
   // ── Notification bell (#198 slice 2) ──
   const bell = { items: [], unread: 0, btn: null, badge: null, panel: null };
+  const notifListeners = [];
+
+  /** The notifications page (social.js) shows the same list the bell holds — one fetch, one poll. */
+  const notifications = {
+    onChange(fn) { notifListeners.push(fn); fn(bell.items, bell.unread); },
+    text: (n) => t('notif.' + n.type, { name: n.payload && n.payload.from ? n.payload.from.displayName : '' }),
+    target: (n) => notifTarget(n),
+    markRead: (id) => markRead(id),
+  };
 
   function notifTarget(n) {
     const from = n.payload && n.payload.from;
@@ -114,6 +123,7 @@
   }
 
   function renderBell() {
+    for (const fn of notifListeners) fn(bell.items, bell.unread);
     if (!bell.btn) return;
     bell.badge.textContent = bell.unread > 99 ? '99+' : String(bell.unread);
     bell.badge.hidden = bell.unread === 0;
@@ -346,5 +356,5 @@
     return a;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, icon, pushNotification, setMyAvatar };
+  window.PlatformShell = { build, setActive, initials, avatar, icon, pushNotification, setMyAvatar, notifications };
 })();

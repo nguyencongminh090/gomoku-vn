@@ -139,6 +139,41 @@ describe('social page', () => {
     expect(document.querySelector('#sc-friends a').getAttribute('href')).toBe('/u/bob');
   });
 
+  describe('Thông báo list (B210)', () => {
+    const notifs = { unread: 1, items: [N(2, 'friend_request'), N(1, 'friend_accepted', true)] };
+    const rows = () => [...document.querySelectorAll('#sc-notifs .prow')];
+
+    it('renders the bell list as rows: text-only, unread dot + bold, links to the target', async () => {
+      await bootPage({ 'GET /api/friends': () => json(friends), 'GET /api/notifications': () => json(notifs) });
+      expect(rows().map((r) => r.textContent)).toEqual(['notif.friend_request{"name":"<b>Ann</b>"}', 'notif.friend_accepted{"name":"<b>Ann</b>"}']);
+      expect(document.querySelector('#sc-notifs b')).toBeNull();
+      expect(rows().map((r) => r.getAttribute('href'))).toEqual(['/social.html', '/u/ann']);
+      expect(rows()[0].querySelector('.pdot--on')).not.toBeNull();
+      expect(rows()[0].querySelector('.is-unread')).not.toBeNull();
+      expect(rows()[1].querySelector('.pdot--on')).toBeNull();
+    });
+
+    it('empty list → note; opening an unread row marks it read (bell badge follows)', async () => {
+      await bootPage({ 'GET /api/friends': () => json(friends) });
+      expect(document.querySelector('#sc-notifs .pnote').textContent).toBe('notif.empty');
+      const reads = [];
+      await bootPage({ 'GET /api/friends': () => json(friends), 'GET /api/notifications': () => json(notifs),
+        'POST /api/notifications/read': (o) => { reads.push(JSON.parse(o.body)); return json({ unread: 0 }); } });
+      rows()[0].addEventListener('click', (e) => e.preventDefault());
+      rows()[0].click();
+      await tick();
+      expect(reads).toEqual([{ id: 2 }]);
+      expect(rows()[0].querySelector('.pdot--on')).toBeNull();
+    });
+
+    it('layout: notifications + challenges + invites left; friends + messages right', async () => {
+      await bootPage({ 'GET /api/friends': () => json(friends) });
+      const [left, right] = document.querySelectorAll('.psplit > .pcol');
+      expect(['sc-notifs', 'sc-challenges', 'sc-incoming'].every((id) => left.contains(document.getElementById(id)))).toBe(true);
+      expect(['sc-friends', 'sc-outgoing', 'sc-dm'].every((id) => right.contains(document.getElementById(id)))).toBe(true);
+    });
+  });
+
   describe('challenges', () => {
     const CH = {
       incoming: [{ id: 'c1', rule: 'caro', time: '3+2', rated: true, from: P('cat') }],

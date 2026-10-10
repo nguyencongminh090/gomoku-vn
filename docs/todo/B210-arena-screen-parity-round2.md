@@ -1,5 +1,5 @@
 # B210 — Arena parity round 2: screens beyond the nav (home, rooms, tournaments, social, learn, settings, admin)
-**Status:** PARTIAL 2026-10-10 — fixed on `ui/arena-parity-nav-tabs` (uncommitted, ?v=228): Rooms/Tournaments H1 is now a fixed title ("Phòng & bàn chơi"/"Giải đấu") with the live sentence as a sub-line; Admin highlights no nav item; underline tabs on rankings scope, /puzzles+/forum switcher, /admin. Open: settings width/spacing, social layout, tournaments tabs/labels, home extras, rooms tabs/"Vào bằng mã", admin unified table, mobile+light re-check.
+**Status:** PARTIAL 2026-10-10 — second slice on `ui/arena-parity-b210` (uncommitted, ?v=239): social layout + Thông báo list, Vào bằng mã, Thách đấu bạn bè, admin tab counts. Open: tournaments tab labels/Của CLB, rooms tabs Phòng/Bàn/Quan sát, home queue-wait line (backend), admin unified table, populated-data check.
 **Area:** client/*.html + css/platform.css + the page scripts below; sibling of B209 (nav + rankings/profile/clubs)
 **From:** user 2026-10-10 "ngoài Nav, có UI nào chưa khớp không"   **Depends:** B209
 
@@ -30,3 +30,11 @@
 
 ## Update 2026-10-10 (B211)
 Settings width/spacing and systemic 2 (Settings entry) resolved by B211: 720px card, 4 underline tabs, chip menu. Footer links from the mockup still not built (real pages have no footer).
+
+## Built (2026-10-10, `ui/arena-parity-b210`)
+- Social: two columns — Thông báo (bell list, one fetch via `PlatformShell.notifications`) · Thách đấu · Lời mời | Bạn bè + Đã gửi · Tin nhắn; H1 "Thông báo, bạn bè & tin nhắn".
+- Rooms: **Vào bằng mã** (3-char code, `#A3F`, validated like RoomManager._generateRoomId, then `joinRoom`); online line separated by a divider. Home: **Thách đấu bạn bè** (→ /social.html, members only), greeting name weight 800.
+- Admin: open-queue counts on the Duyệt puzzle / Báo cáo diễn đàn / Gian lận tabs (label is its own span so a language switch keeps the count).
+- Re-checked mobile + light for home/rooms/tournaments/social: no layout break (shots viewed).
+## Not done
+- Tournaments tab labels ("Sắp tới", "Của CLB" needs a club filter on the list API) and "Tổ chức giải" wording (real already says "Tạo giải đấu"). Rooms tabs Phòng/Bàn/Quan sát (no such room kinds). Home "214 đang chờ · ước tính 8 giây" (needs queue stats from the server). Admin unified table (Loại/Đối tượng/Người báo…). Admin counts not browser-checked (needs a staff account); populated-data pass; Firefox/WebKit.
