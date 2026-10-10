@@ -112,7 +112,9 @@
     $('pf-more').hidden = !p.stats || p.stats.games <= p.recent.length;
 
     const clubs = p.clubs || [];
+    // The card itself (not an inner div) is what hides, and the grid drops its empty side column.
     $('pf-clubs-panel').hidden = clubs.length === 0;
+    $('pf-split').classList.toggle('psplit--solo', clubs.length === 0);
     $('pf-clubs').replaceChildren(...clubs.map((c) => {
       const a = el('a', undefined, 'prow');
       a.href = '/c/' + encodeURIComponent(c.slug);
