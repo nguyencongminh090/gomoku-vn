@@ -6,17 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Quản trị</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=225" />
-  <link rel="stylesheet" href="css/tokens.css?v=225" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=225" />
-  <link rel="stylesheet" href="css/platform.css?v=225" />
-  <link rel="stylesheet" href="css/puzzles.css?v=225" />
-  <link rel="stylesheet" href="css/forum.css?v=225" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=225" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=225">
+  <link rel="stylesheet" href="css/main.css?v=227" />
+  <link rel="stylesheet" href="css/tokens.css?v=227" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=227" />
+  <link rel="stylesheet" href="css/platform.css?v=227" />
+  <link rel="stylesheet" href="css/puzzles.css?v=227" />
+  <link rel="stylesheet" href="css/forum.css?v=227" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=227" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=227">
 
-  <script src="js/ui-mode-preload.js?v=225"></script>
-  <script src="js/skin-preload.js?v=225"></script>
+  <script src="js/ui-mode-preload.js?v=227"></script>
+  <script src="js/skin-preload.js?v=227"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -30,6 +30,7 @@
   <div id="adm-tabs" class="pchips" role="tablist" hidden>
     <button type="button" role="tab" id="adm-tab-puzzles" class="pchip" data-tab="puzzles" data-perm="puzzle.review" hidden data-i18n="admin.tab_puzzles">Duyệt puzzle</button>
     <button type="button" role="tab" id="adm-tab-forum" class="pchip" data-tab="forum" data-perm="forum.moderate" hidden data-i18n="admin.tab_forum">Báo cáo diễn đàn</button>
+    <button type="button" role="tab" id="adm-tab-cheat" class="pchip" data-tab="cheat" data-perm="cheat.review" hidden data-i18n="admin.tab_cheat">Gian lận</button>
     <button type="button" role="tab" id="adm-tab-users" class="pchip" data-tab="users" data-perm="user.manage" hidden data-i18n="admin.tab_users">Người dùng</button>
   </div>
 
@@ -69,6 +70,13 @@
     <div id="rp-list" class="prows" aria-live="polite"></div>
     <div id="rp-pager" class="ppager"></div>
   </section>
+  <section id="adm-cheat" role="tabpanel" hidden>
+    <p id="ch-total" class="muted small"></p>
+    <p id="ch-msg" class="pnote" hidden></p>
+    <div id="ch-list" class="prows" aria-live="polite"></div>
+    <div id="ch-pager" class="ppager"></div>
+  </section>
+
   <section id="adm-users" role="tabpanel" hidden>
     <form id="us-form" class="pform" role="search">
       <input id="us-q" type="search" maxlength="50" autocomplete="off" data-i18n-placeholder="admin.u_search" placeholder="Tìm theo tên đăng nhập / tên hiển thị" aria-label="Tìm người dùng" />
@@ -103,19 +111,20 @@
   </section>
 </main>
 
-<script src="js/i18n.js?v=225"></script>
-<script src="js/ui-mode.js?v=225"></script>
-<script src="js/session.js?v=225"></script>
-<script src="js/audio-manager.js?v=225"></script>
-<script src="js/settings-panel.js?v=225"></script>
-<script src="js/platform-shell.js?v=225"></script>
-<script src="js/coords.js?v=225"></script>
-<script src="js/board.js?v=225"></script>
-<script src="js/puzzle-board.js?v=225"></script>
-<script src="js/forum-common.js?v=225"></script>
-<script src="js/puzzles-review.js?v=225"></script>
-<script src="js/forum-reports.js?v=225"></script>
-<script src="js/admin-users.js?v=225"></script>
-<script src="js/admin.js?v=225"></script>
+<script src="js/i18n.js?v=227"></script>
+<script src="js/ui-mode.js?v=227"></script>
+<script src="js/session.js?v=227"></script>
+<script src="js/audio-manager.js?v=227"></script>
+<script src="js/settings-panel.js?v=227"></script>
+<script src="js/platform-shell.js?v=227"></script>
+<script src="js/coords.js?v=227"></script>
+<script src="js/board.js?v=227"></script>
+<script src="js/puzzle-board.js?v=227"></script>
+<script src="js/forum-common.js?v=227"></script>
+<script src="js/puzzles-review.js?v=227"></script>
+<script src="js/forum-reports.js?v=227"></script>
+<script src="js/admin-users.js?v=227"></script>
+<script src="js/admin-cheat.js?v=227"></script>
+<script src="js/admin.js?v=227"></script>
 </body>
 </html>

@@ -16,7 +16,7 @@ const db = () => database.db;
 const PAGE = 20;
 const EDGE_LIMIT = 50;
 const REASON_MAX = 200;
-const ACTIONS = ['role_set', 'lock', 'unlock', 'avatar_remove'];
+const ACTIONS = ['role_set', 'lock', 'unlock', 'avatar_remove', 'cheat_confirm'];
 
 class AdminUserError extends Error {
   constructor(code, status, message) {
@@ -131,4 +131,4 @@ function removeAvatar(adminId, id) {
   })();
 }
 
-module.exports = { AdminUserError, ACTIONS, REASON_MAX, listUsers, getUser, setRole, setLocked, removeAvatar };
+module.exports = { addEdge, AdminUserError, ACTIONS, REASON_MAX, listUsers, getUser, setRole, setLocked, removeAvatar };

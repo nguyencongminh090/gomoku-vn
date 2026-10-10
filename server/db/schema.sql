@@ -437,3 +437,20 @@ CREATE TABLE IF NOT EXISTS admin_edges (
 );
 CREATE INDEX IF NOT EXISTS idx_admin_edges_target ON admin_edges(target_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_admin_edges_actor ON admin_edges(actor_id, created_at);
+
+-- Cheat reports (TODO.md #208, R8): a member reports one side of a finished casual game; staff resolve.
+-- No FKs on purpose (history outlives deleted users/games).
+CREATE TABLE IF NOT EXISTS game_reports (
+  id           TEXT PRIMARY KEY,
+  game_id      TEXT NOT NULL,
+  reporter_id  TEXT NOT NULL,
+  accused_id   TEXT NOT NULL,
+  reason       TEXT NOT NULL,
+  created_at   TEXT NOT NULL,
+  resolved_at  TEXT,
+  resolved_by  TEXT,
+  resolution   TEXT,                    -- dismissed | confirmed
+  UNIQUE (reporter_id, game_id, accused_id)
+);
+CREATE INDEX IF NOT EXISTS idx_game_reports_open ON game_reports(resolved_at, created_at);
+CREATE INDEX IF NOT EXISTS idx_game_reports_accused ON game_reports(accused_id);

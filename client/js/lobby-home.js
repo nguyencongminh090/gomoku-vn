@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=225';
+import { client, setHeroTab } from './lobby.js?v=227';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
