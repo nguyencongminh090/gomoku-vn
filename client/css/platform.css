@@ -210,6 +210,9 @@ a.prow:hover { background: var(--c-hover); }
 .pcrop__view.is-drag { cursor: grabbing; }
 .pcrop__view canvas { display: block; width: 100%; height: 100%; }
 .pcrop__ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 999px rgba(0, 0, 0, .55), inset 0 0 0 2px var(--c-on-brand); pointer-events: none; }
+.pcrop__tools { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+.pcrop__rot { min-width: 44px; min-height: 44px; font-size: 20px; line-height: 1; cursor: pointer; color: var(--c-ink-2); background: var(--c-fill); border: 1px solid var(--c-border); border-radius: var(--radius); }
+.pcrop__rot:hover { background: var(--c-hover); }
 .pcrop__zoomrow { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 12px; font-weight: 600; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: .1em; }
 .pcrop__zoom { flex: 1; min-width: 0; accent-color: var(--c-brand); }
 .pcrop__actions { justify-content: flex-end; margin-top: 16px; }

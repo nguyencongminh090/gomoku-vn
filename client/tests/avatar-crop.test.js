@@ -67,6 +67,30 @@ describe('AvatarCrop.math', () => {
   });
 });
 
+describe('AvatarCrop.math.zoomAt (pinch)', () => {
+  const { math, VIEW } = load();
+
+  it('keeps the source point under (px, py) fixed while zooming', () => {
+    const st = math.zoom(math.init(1000, 1000), 2); // scrolled-in so there is room to pan
+    const [px, py] = [200, 80];
+    const srcX = (px - st.x) / st.s;
+    const srcY = (py - st.y) / st.s;
+    const z = math.zoomAt(st, 3, px, py);
+    expect((px - z.x) / z.s).toBeCloseTo(srcX);
+    expect((py - z.y) / z.s).toBeCloseTo(srcY);
+  });
+
+  it('zoom() is zoomAt() at the centre; level is bounded and the viewport stays covered', () => {
+    const st = math.init(600, 400);
+    expect(math.zoom(st, 2)).toEqual(math.zoomAt(st, 2, VIEW / 2, VIEW / 2));
+    const z = math.zoomAt(st, 99, 0, 0);
+    expect(math.level(z)).toBeCloseTo(4);
+    expect(z.x).toBeLessThanOrEqual(0);
+    expect(z.x + z.w * z.s).toBeGreaterThanOrEqual(VIEW - 1e-6);
+    expect(math.level(math.zoomAt(st, 0.1, 10, 10))).toBeCloseTo(1);
+  });
+});
+
 describe('AvatarCrop.open', () => {
   let drawn;
   let AC;
@@ -78,7 +102,7 @@ describe('AvatarCrop.open', () => {
     drawn = [];
     HTMLCanvasElement.prototype.getContext = function () {
       return {
-        fillRect() {}, set fillStyle(_) {}, set imageSmoothingQuality(_) {},
+        fillRect() {}, set fillStyle(_) {}, set imageSmoothingQuality(_) {}, translate() {}, rotate() {},
         drawImage: (...a) => drawn.push(a),
       };
     };
@@ -149,6 +173,67 @@ describe('AvatarCrop.open', () => {
     const last = drawn[drawn.length - 1];
     expect(last[3]).toBeCloseTo(200); // 2× zoom → half the source square
     expect(last[1]).toBeGreaterThan(200); // moved right of the original window start
+  });
+
+  const ptr = (type, id, x, y) => Object.assign(new Event(type, { bubbles: true }), { clientX: x, clientY: y, pointerId: id });
+
+  it('two-finger pinch zooms (spreading fingers shrinks the source window); lifting a finger stops it', async () => {
+    const p = start();
+    await tick();
+    const view = document.querySelector('.pcrop__view');
+    view.dispatchEvent(ptr('pointerdown', 1, 100, 140));
+    view.dispatchEvent(ptr('pointerdown', 2, 180, 140)); // 80 px apart
+    view.dispatchEvent(ptr('pointermove', 2, 260, 140)); // 160 px apart → 2×
+    view.dispatchEvent(ptr('pointerup', 2, 260, 140));
+    view.dispatchEvent(ptr('pointermove', 1, 100, 140)); // lone finger, no movement → no more change
+    document.querySelector('.pbtn--primary').click();
+    await p;
+    expect(drawn[drawn.length - 1][3]).toBeCloseTo(200, 0); // 400-px square at 1× → 200 at 2×
+  });
+
+  it('a single finger still drags the crop', async () => {
+    const p = start();
+    await tick();
+    const view = document.querySelector('.pcrop__view');
+    view.dispatchEvent(ptr('pointerdown', 1, 100, 100));
+    view.dispatchEvent(ptr('pointermove', 1, 70, 100));
+    view.dispatchEvent(ptr('pointerup', 1, 70, 100));
+    document.querySelector('.pbtn--primary').click();
+    await p;
+    expect(drawn[drawn.length - 1][1]).toBeGreaterThan(200);
+  });
+
+  it('rotate right turns the source 90° onto a canvas (800×400 → 400×800 → crop is its middle square); left undoes it', async () => {
+    const p = start();
+    await tick();
+    const [left, right] = document.querySelectorAll('.pcrop__rot');
+    expect([left.getAttribute('aria-label'), right.getAttribute('aria-label')]).toEqual(['avatar.rotate_left', 'avatar.rotate_right']);
+    right.click();
+    document.querySelector('.pbtn--primary').click();
+    await p;
+    const last = drawn[drawn.length - 1];
+    expect(last[0]).not.toBe(img.source);
+    expect([last[0].width, last[0].height]).toEqual([400, 800]);
+    expect(last.slice(1, 5).map((v) => Math.round(v) + 0)).toEqual([0, 200, 400, 400]);
+
+    const p2 = start();
+    await tick();
+    const [l2, r2] = document.querySelectorAll('.pcrop__rot');
+    r2.click();
+    l2.click();
+    document.querySelector('.pbtn--primary').click();
+    await p2;
+    expect([drawn[drawn.length - 1][0].width, drawn[drawn.length - 1][0].height]).toEqual([800, 400]);
+  });
+
+  it('R / Shift+R rotate only while the viewport has focus', async () => {
+    const p = start();
+    await tick();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true }));
+    document.querySelector('.pbtn--primary').click();
+    await p;
+    const last = drawn[drawn.length - 1];
+    expect([last[0].width, last[0].height]).toEqual([400, 800]);
   });
 
   it('too-large webp falls back to jpeg; unreadable file reports and resolves null', async () => {
