@@ -1,0 +1,21 @@
+/* forum.css — forum list, thread, reports (#203 7c). Tokens only; classes are fm-*. */
+.fm-tabs { margin-bottom: 18px; }
+.fm-tabs .pchip { text-decoration: none; display: inline-flex; align-items: center; }
+.fm-tabs .pchip[aria-current="page"] { background: var(--c-brand); color: var(--c-on-brand); }
+.fm-form { max-width: none; margin-bottom: 20px; }
+.fm-form textarea { min-height: 96px; }
+.fm-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; text-decoration: none; color: var(--c-ink); }
+.fm-row:hover, .fm-row:focus-visible { background: var(--c-fill); }
+.fm-row__title { flex: 1 1 280px; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.fm-row__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12.5px; color: var(--c-ink-2); }
+.fm-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.fm-op { margin-bottom: 20px; }
+.fm-text { margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
+.fm-h2 { margin: 0 0 12px; font-size: 16px; }
+.fm-posts { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
+.fm-post { padding: 14px 16px; background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.fm-post.is-deleted { opacity: .6; font-style: italic; }
+.fm-reportbox { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.fm-reportbox input { flex: 1 1 220px; min-height: 32px; padding: 4px 10px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); color: var(--c-ink); }
+.fm-report { flex-direction: column; align-items: stretch; gap: 6px; }
+.fm-report__excerpt { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; padding: 8px 10px; background: var(--c-fill); border-radius: var(--radius); }

@@ -383,3 +383,44 @@ CREATE TABLE IF NOT EXISTS puzzle_progress (
   solved_at  TEXT,                                 -- null until first correct answer
   PRIMARY KEY (user_id, puzzle_id)
 );
+
+-- Forum (TODO.md #203 7c, features/learn). Plain text only (rendered with textContent). Staff = users.is_admin.
+-- Deleting is soft (deleted = 1): the row stays so reports/ids keep resolving; readers never get the body.
+CREATE TABLE IF NOT EXISTS forum_threads (
+  id            TEXT PRIMARY KEY,                  -- UUID v4
+  category      TEXT NOT NULL,                     -- fixed list in ForumService.CATEGORIES
+  author_id     TEXT NOT NULL REFERENCES users(id),
+  title         TEXT NOT NULL,
+  body          TEXT NOT NULL,
+  created_at    TEXT NOT NULL,
+  last_post_at  TEXT NOT NULL,                     -- bumped by each reply (list order)
+  reply_count   INTEGER NOT NULL DEFAULT 0,        -- live (non-deleted) replies
+  deleted       INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_forum_threads_cat ON forum_threads(category, deleted, last_post_at);
+
+CREATE TABLE IF NOT EXISTS forum_posts (
+  id          TEXT PRIMARY KEY,
+  thread_id   TEXT NOT NULL REFERENCES forum_threads(id) ON DELETE CASCADE,
+  author_id   TEXT NOT NULL REFERENCES users(id),
+  body        TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  deleted     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_forum_posts_thread ON forum_posts(thread_id, created_at);
+
+CREATE TABLE IF NOT EXISTS forum_reports (
+  id           TEXT PRIMARY KEY,
+  target_type  TEXT NOT NULL,                      -- 'thread' | 'post'
+  target_id    TEXT NOT NULL,
+  thread_id    TEXT NOT NULL,                      -- where to find it (the thread itself for target_type 'thread')
+  reporter_id  TEXT NOT NULL REFERENCES users(id),
+  reason       TEXT NOT NULL,
+  created_at   TEXT NOT NULL,
+  resolved_at  TEXT,
+  UNIQUE (reporter_id, target_type, target_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_forum_reports_open ON forum_reports(resolved_at, created_at);

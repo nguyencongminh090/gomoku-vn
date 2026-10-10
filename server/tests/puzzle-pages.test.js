@@ -24,6 +24,21 @@ describe('puzzle pages wiring', () => {
     expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
   });
 
+  it.each([['/forum', 'forum.html'], ['/forum/t/:id', 'forum-thread.html'], ['/forum/reports', 'forum-reports.html']])('%s serves %s', (route, file) => {
+    expect(index).toContain(`['${route}', '${file}']`);
+    expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
+  });
+
+  it('the forum API is mounted', () => {
+    expect(index).toContain("app.use('/api/forum', forumRouter)");
+  });
+
+  it('every FORUM_* error code the service throws has a vi + en message', () => {
+    const codes = [...new Set(read('server', 'managers', 'ForumService.js').match(/'FORUM_[A-Z_]+'/g))].map((c) => 'err.' + c.slice(1, -1).toLowerCase());
+    const i18n = read('client', 'js', 'i18n.js');
+    for (const key of codes) expect(i18n.split(`'${key}'`).length - 1).toBeGreaterThanOrEqual(2);
+  });
+
   it('the Học nav item lands on /puzzles, not the profile', () => {
     expect(read('client', 'js', 'platform-shell.js')).toMatch(/id: 'learn', href: '\/puzzles'/);
   });

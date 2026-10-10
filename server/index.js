@@ -29,6 +29,7 @@ const rankingsRouter = require('./routes/rankings');
 const homeRouter = require('./routes/home');
 const profileRouter  = require('./routes/profile');
 const puzzlesRouter  = require('./routes/puzzles');
+const forumRouter    = require('./routes/forum');
 const clubsRouter    = require('./routes/clubs');
 const friendsRouter  = require('./routes/friends');
 const notificationsRouter = require('./routes/notifications');
@@ -159,6 +160,7 @@ app.use('/api/home', homeRouter);
 app.use('/api/profile', profileRouter);
 app.use('/api/clubs', clubsRouter);
 app.use('/api/puzzles', puzzlesRouter);
+app.use('/api/forum', forumRouter);
 app.use('/api/friends', friendsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/challenges', challengesRouter);
@@ -187,6 +189,14 @@ app.get('/puzzle/:id', (req, res) => {
   res.setHeader('Cache-Control', REVALIDATE);
   res.sendFile(path.join(clientPath, 'puzzle.html'));
 });
+
+// Forum (B203 7c): /forum (list + new thread), /forum/t/<id> (thread), /forum/reports (staff). Scripts read the path.
+for (const [route, file] of [['/forum', 'forum.html'], ['/forum/t/:id', 'forum-thread.html'], ['/forum/reports', 'forum-reports.html']]) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', REVALIDATE);
+    res.sendFile(path.join(clientPath, file));
+  });
+}
 
 // Replay page (B202): /replay/<gameId> — same HTML for every id; replay.js reads the path.
 app.get('/replay/:id', (req, res) => {

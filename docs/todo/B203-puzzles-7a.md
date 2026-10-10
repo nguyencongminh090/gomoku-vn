@@ -1,5 +1,5 @@
 # B203 — R7 slice 7a: puzzles (member submissions, board editor, solve, review)
-**Status:** OPEN — 7a-1..7a-3 + 7b (profile: puzzles solved + level; `PuzzleService.statsFor`, N=10 per exact level) done; 7b on `feature/203-puzzles-profile-stats`, uncommitted, awaiting review. Left: 7c forum
+**Status:** OPEN — 7a-1..7a-3 + 7b merged to dev; 7c forum (`/forum`, `/forum/t/<id>`, `/forum/reports`; ForumService + /api/forum; 4 fixed categories, reports + staff queue, soft delete) on `feature/204-forum`, uncommitted, awaiting review
 **Area:** server (puzzles/puzzle_tags/puzzle_progress, ClubService-style PuzzleService, routes/puzzles.js, users.is_admin) + client (puzzles list, solve page, editor, review page, shared coords module)
 **From:** `features/learn/planning.md` "Decided" (user 2026-10-10 incl. "Thêm editor table để author có thể tạo puzzle")   **Depends:** B202 (done), B201
 
@@ -34,3 +34,8 @@ Three branches keep each reviewable; server first so UI binds to a tested API. P
 - Error codes (client i18n comes with 7a-2): PUZZLE_TITLE_INVALID, _PROMPT_INVALID, _RULE_INVALID, _LEVEL_INVALID, _TAGS_INVALID, _STONES_INVALID, _ANSWER_INVALID, _PENDING_LIMIT, _NOT_FOUND, _FORBIDDEN, _NOT_PENDING, _DECISION_INVALID, _MOVES_INVALID.
 - Verified: `npm test` 2432 green (+47: coords, route access matrix); real server on own DB via curl (migration, set-admin, submit → approve → list → solve; non-admin review refused). No UI in this slice.
 - **User decisions 2026-10-10 (after asking):** board sizes **15, 17, 19, 20** (stored per puzzle; coords parse against the puzzle's size) and **no cap on answer count or answer length** (only the 128 KB request limit and "distinct empty cells" bound them). Replaces my earlier 15-only / 5×20 defaults.
+
+## 7c notes (2026-10-10)
+- User decisions (asked): 4 fixed categories `general|tactics|analysis|help` (const in `ForumService`); report button stores `forum_reports` + staff page `/forum/reports` (dismiss / remove content; staff = `users.is_admin`, R8 merges later); UI reuses the Arena `.papp/.prow/.ppanel` pattern (no design-workflow).
+- Plain text stored as typed (control chars stripped, profanity masked, newlines kept, 3+ blank lines → 2) and rendered with `textContent`; deliberately NOT `DmText.clean` (it HTML-escapes `<>` → readers would see `&lt;`, and caps at 500). Limits: title 100, body 4000, report reason 200. Throttle: 1 thread/min, 1 reply/10 s per member (in-memory). Soft delete: replies keep their slot, body never sent. Guests read-only; staff delete only (authors cannot delete their own).
+- Not built: edit own post, locked/pinned threads, search, per-user thread list, notifications for replies, author deleting own post, report-queue page 2+ shows 20 per page only via the pager.
