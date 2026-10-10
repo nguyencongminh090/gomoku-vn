@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=239';
+import { client, setHeroTournamentCount } from './lobby.js?v=241';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -132,7 +132,7 @@ function renderLiveMatchRow(match) {
   const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
   const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
   const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
-    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
     : '';
   return `
     <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
@@ -140,7 +140,7 @@ function renderLiveMatchRow(match) {
       <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
       <div class="live-match-row__meta">
         ${gameIndexLabel}
-        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
       </div>
     </div>
   `;
@@ -149,6 +149,22 @@ function renderLiveMatchRow(match) {
 // ---------------------------------------------------------------------------
 // Filters
 // ---------------------------------------------------------------------------
+
+// "Của CLB" (mockup): tournaments hosted by a club the viewer belongs to. Members only; the club
+// list is one REST call (the lobby socket carries the tournaments, not memberships).
+const myClubSlugs = new Set();
+const myClubsPill = document.getElementById('filter-my-clubs');
+if (myClubsPill && currentUser.signedIn) {
+  fetch('/api/clubs/mine', { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d || !d.clubs || !d.clubs.length) return;
+      d.clubs.forEach((c) => myClubSlugs.add(c.slug));
+      myClubsPill.hidden = false;
+      renderTournamentList();
+    })
+    .catch(() => { /* tab stays hidden */ });
+}
 
 document.querySelectorAll('#panel-tournaments .filter-pill').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -186,7 +202,8 @@ function statusBadge(status) {
 
 function renderTournamentList() {
   let tournaments = Array.from(tournamentMap.values());
-  if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
+  if (activeStatusFilter === 'mine_clubs') tournaments = tournaments.filter((t) => t.clubSlug && myClubSlugs.has(t.clubSlug));
+  else if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
   if (activeFormatFilter) tournaments = tournaments.filter((t) => t.format === activeFormatFilter);
 
   // The old #tournament-count pill is gone with the Zen header — the total
@@ -259,11 +276,11 @@ function renderCard(tournament, index) {
   // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
@@ -296,7 +313,8 @@ function renderCard(tournament, index) {
     badge.label,
     `${tournament.playerCount} ${t('tournaments.players_suffix')}`,
     t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') }),
-  ].join(' · ');
+    tournament.clubName ? t('tournaments.club_suffix', { name: escapeHtml(tournament.clubName) }) : '',
+  ].filter(Boolean).join(' · ');
 
   return `
     <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}" data-open-detail="${escapeAttr(tournament.tournamentId)}" tabindex="0" role="link" aria-label="${escapeAttr(tournament.name)}">

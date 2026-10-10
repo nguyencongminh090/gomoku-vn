@@ -121,11 +121,14 @@ function liveOf(rooms) {
   return out.sort((a, b) => b.viewers - a.viewers || b.stones.length - a.stones.length).slice(0, LIVE_LIMIT);
 }
 
+// Lazy: MatchHandler pulls in the socket layer, which this route (and its tests) should not load eagerly.
+const defaultQueueCounts = () => require('../socket/handlers/MatchHandler').queueCounts();
+
 /**
  * Build the dashboard payload. `user` is a session ({ userId, isGuest }) or null.
  * Managers are injected so tests can pass fakes.
  */
-function buildHome(user, rooms = roomManager, tm = tournamentManager) {
+function buildHome(user, rooms = roomManager, tm = tournamentManager, queueCounts = defaultQueueCounts) {
   const member = user && !user.isGuest ? user.userId : null;
   const seatedId = user ? user.userId : null; // guests can sit in casual rooms too
   return {
@@ -133,6 +136,7 @@ function buildHome(user, rooms = roomManager, tm = tournamentManager) {
     myMatches: member ? myMatchesOf(member, tm) : [],
     tournaments: tournamentsOf(member, tm),
     live: liveOf(rooms),
+    queue: queueCounts(), // { 'caro|5+3': n } — quick-match waiters per rule|time (B210)
   };
 }
 

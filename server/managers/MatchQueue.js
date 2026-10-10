@@ -66,6 +66,16 @@ class MatchQueue {
     return this.entries.size;
   }
 
+  /** 'rule|time' → people waiting (rated + casual together) — the lobby's "N đang chờ" line (B210). */
+  counts() {
+    const out = {};
+    for (const e of this.entries.values()) {
+      const k = `${e.rule}|${e.time}`;
+      out[k] = (out[k] || 0) + 1;
+    }
+    return out;
+  }
+
   countIn(entry) {
     const key = bucketKey(entry);
     let n = 0;

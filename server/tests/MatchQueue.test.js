@@ -33,6 +33,20 @@ describe('PRESETS / bucketKey', () => {
   });
 });
 
+describe('counts() (lobby "N đang chờ", B210)', () => {
+  it('groups waiters by rule|time, rated and casual together; empty queue → {}', () => {
+    const { q } = queue();
+    expect(q.counts()).toEqual({});
+    q.join(entry('a'));
+    q.join(entry('b', { rated: false }));
+    q.join(entry('c', { time: '3+2' }));
+    q.join(entry('d', { rule: 'standard' }));
+    expect(q.counts()).toEqual({ 'caro|5+3': 2, 'caro|3+2': 1, 'standard|5+3': 1 });
+    q.leave('b');
+    expect(q.counts()['caro|5+3']).toBe(1);
+  });
+});
+
 describe('join / leave', () => {
   it('validates rule, time and rated; guests cannot queue rated', () => {
     const { q } = queue();

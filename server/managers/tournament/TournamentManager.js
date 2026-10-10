@@ -1200,7 +1200,9 @@ class TournamentManager extends EventEmitter {
    */
   listTournaments() {
     const list = [];
+    const clubs = clubService.tournamentClubs();
     for (const [, tournament] of this.tournaments) {
+      const club = clubs.get(tournament.tournamentId) || null;
       list.push({
         tournamentId: tournament.tournamentId,
         name: tournament.name,
@@ -1209,6 +1211,9 @@ class TournamentManager extends EventEmitter {
         organizerName: tournament.organizerName,
         playerCount: tournament.entries.size,
         status: tournament.status,
+        // Club-hosted (#200): lets the lobby's "Của CLB" tab filter by the viewer's clubs (B210).
+        clubSlug: club ? club.slug : null,
+        clubName: club ? club.name : null,
         // Lets the lobby card show "you're registered"/"you organize this"
         // without a round-trip per card — the list summary otherwise has no
         // per-entry detail at all.
