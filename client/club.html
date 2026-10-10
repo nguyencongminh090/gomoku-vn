@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Câu lạc bộ</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=205" />
-  <link rel="stylesheet" href="css/tokens.css?v=205" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=205" />
-  <link rel="stylesheet" href="css/platform.css?v=205" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=205" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=205">
+  <link rel="stylesheet" href="css/main.css?v=207" />
+  <link rel="stylesheet" href="css/tokens.css?v=207" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=207" />
+  <link rel="stylesheet" href="css/platform.css?v=207" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=207" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=207">
 
-  <script src="js/ui-mode-preload.js?v=205"></script>
-  <script src="js/skin-preload.js?v=205"></script>
+  <script src="js/ui-mode-preload.js?v=207"></script>
+  <script src="js/skin-preload.js?v=207"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -46,6 +46,11 @@
     </div>
 
     <section id="cb-panel-overview" role="tabpanel" aria-labelledby="cb-tab-overview" class="cb-panel">
+      <section class="ppanel">
+        <h2 class="ph2" data-i18n="clubs.upcoming">Sắp tới</h2>
+        <div id="cb-events" class="prows"></div>
+      </section>
+
       <div class="psplit">
         <section class="ppanel">
           <h2 class="ph2" data-i18n="profile.members_admin">Ban quản trị</h2>
@@ -63,6 +68,14 @@
               <option value="invite" data-i18n="clubs.policy_invite">Theo lời mời — cần duyệt</option>
             </select>
             <div class="pform__row"><button type="submit" class="pbtn pbtn--primary" data-i18n="profile.save">Lưu</button></div>
+          </form>
+          <h2 class="ph2 ph2--gap" data-i18n="clubs.add_event">Thêm sự kiện</h2>
+          <form id="cb-event-form" class="pform">
+            <label for="cb-event-title" data-i18n="clubs.event_title">Tên sự kiện</label>
+            <input id="cb-event-title" type="text" maxlength="60" required>
+            <label for="cb-event-when" data-i18n="clubs.event_when">Thời gian</label>
+            <input id="cb-event-when" type="datetime-local" required>
+            <div class="pform__row"><button type="submit" class="pbtn pbtn--primary" data-i18n="clubs.add">Thêm</button></div>
           </form>
           <h2 class="ph2 ph2--gap" data-i18n="clubs.pending">Yêu cầu tham gia</h2>
           <div id="cb-pending" class="prows"></div>
@@ -100,12 +113,12 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=205"></script>
-<script src="js/ui-mode.js?v=205"></script>
-<script src="js/session.js?v=205"></script>
-<script src="js/audio-manager.js?v=205"></script>
-<script src="js/settings-panel.js?v=205"></script>
-<script src="js/platform-shell.js?v=205"></script>
-<script src="js/club.js?v=205"></script>
+<script src="js/i18n.js?v=207"></script>
+<script src="js/ui-mode.js?v=207"></script>
+<script src="js/session.js?v=207"></script>
+<script src="js/audio-manager.js?v=207"></script>
+<script src="js/settings-panel.js?v=207"></script>
+<script src="js/platform-shell.js?v=207"></script>
+<script src="js/club.js?v=207"></script>
 </body>
 </html>

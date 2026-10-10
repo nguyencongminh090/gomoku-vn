@@ -103,6 +103,16 @@
     $('cb-staff').replaceChildren(...c.leaderboard.filter((m) => m.role !== 'member')
       .map((m) => userRow(m.username, m.displayName, m.avatarUrl, t('clubs.role_' + m.role))));
 
+    $('cb-events').replaceChildren(...(c.events.length ? c.events.map((e) => {
+      const row = el('div', undefined, 'prow');
+      const body = el('div', undefined, 'prow__body');
+      body.append(el('div', e.title, 'prow__t'),
+        el('div', new Date(e.startsAt).toLocaleString(document.documentElement.lang || undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), 'prow__m'));
+      row.append(body);
+      if (staff) row.append(mini(t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
+      return row;
+    }) : [el('p', t('clubs.no_events'), 'pnote')]));
+
     $('cb-manage').hidden = !staff;
     if (staff) {
       $('cb-desc-input').value = c.description;
@@ -185,6 +195,15 @@
       const body = { description: $('cb-desc-input').value };
       if (state.club.myRole === 'owner') body.joinPolicy = $('cb-policy').value;
       if (await act('PUT', '', body)) load();
+    };
+    $('cb-event-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const when = new Date($('cb-event-when').value); // datetime-local = viewer's local time
+      if (Number.isNaN(when.getTime())) return;
+      if (await act('POST', '/events', { title: $('cb-event-title').value, startsAt: when.toISOString() })) {
+        $('cb-event-form').reset();
+        load();
+      }
     };
     for (const tab of TABS) {
       $('cb-tab-' + tab).addEventListener('click', () => showTab(tab, { updateHash: true }));

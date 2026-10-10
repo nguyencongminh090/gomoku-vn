@@ -243,3 +243,55 @@ describe('club rank (#190)', () => {
     expect((await call('GET', '/api/clubs/rank-beta?category=freestyle')).body.rank).toBeNull();
   });
 });
+
+describe('events (#200 slice 2)', () => {
+  const FUT = (h) => new Date(Date.now() + h * 3600e3).toISOString();
+  const ev = (slug, as, body) => call('POST', `/api/clubs/${slug}/events`, as, body);
+  const events = async (slug) => (await call('GET', `/api/clubs/${slug}`)).body.events;
+  const slug = 'ev-club';
+
+  beforeAll(async () => {
+    addUser('evown'); addUser('evoff'); addUser('evmem');
+    await create('evown', 'Ev Club');
+    await call('POST', `/api/clubs/${slug}/join`, 'evoff');
+    await call('POST', `/api/clubs/${slug}/join`, 'evmem');
+    await call('PUT', `/api/clubs/${slug}/members/evoff/role`, 'evown', { role: 'officer' });
+  });
+
+  it('staff create; list is public, soonest first', async () => {
+    expect((await ev(slug, 'evown', { title: 'Later', startsAt: FUT(48) })).status).toBe(201);
+    expect((await ev(slug, 'evoff', { title: '  Sooner  ', startsAt: FUT(24) })).status).toBe(201);
+    const list = await events(slug);
+    expect(list.map((e) => e.title)).toEqual(['Sooner', 'Later']);
+    expect(list[0]).toMatchObject({ kind: 'event' });
+  });
+
+  it('rejects members, logged-out, bad title, bad/past time', async () => {
+    expect((await ev(slug, 'evmem', { title: 'X', startsAt: FUT(1) })).body.code).toBe('CLUB_FORBIDDEN');
+    expect((await ev(slug, undefined, { title: 'X', startsAt: FUT(1) })).status).toBe(401);
+    expect((await ev(slug, 'evown', { title: '   ', startsAt: FUT(1) })).body.code).toBe('CLUB_EVENT_TITLE_INVALID');
+    expect((await ev(slug, 'evown', { title: 'x'.repeat(61), startsAt: FUT(1) })).body.code).toBe('CLUB_EVENT_TITLE_INVALID');
+    expect((await ev(slug, 'evown', { title: 'X', startsAt: 'nope' })).body.code).toBe('CLUB_EVENT_TIME_INVALID');
+    expect((await ev(slug, 'evown', { title: 'X', startsAt: FUT(-1) })).body.code).toBe('CLUB_EVENT_TIME_INVALID');
+  });
+
+  it('hides past events and caps upcoming at 20', async () => {
+    const club = db.prepare('SELECT id FROM clubs WHERE slug = ?').get(slug);
+    db.prepare("INSERT INTO club_events (id, club_id, title, starts_at, created_by, created_at) VALUES ('old', ?, 'Old', ?, ?, ?)")
+      .run(club.id, FUT(-5), U.evown, NOW);
+    expect((await events(slug)).some((e) => e.title === 'Old')).toBe(false);
+    for (let i = 0; i < 18; i++) await ev(slug, 'evown', { title: `E${i}`, startsAt: FUT(100 + i) });
+    expect((await ev(slug, 'evown', { title: 'Over', startsAt: FUT(300) })).body.code).toBe('CLUB_EVENT_LIMIT');
+  });
+
+  it('delete: staff only, scoped to the club; club delete cascades', async () => {
+    const [first] = await events(slug);
+    expect((await call('DELETE', `/api/clubs/${slug}/events/${first.id}`, 'evmem')).status).toBe(403);
+    await create('evmem', 'Other Club');
+    expect((await call('DELETE', `/api/clubs/other-club/events/${first.id}`, 'evmem')).body.code).toBe('CLUB_EVENT_NOT_FOUND');
+    expect((await call('DELETE', `/api/clubs/${slug}/events/${first.id}`, 'evoff')).status).toBe(200);
+    expect((await events(slug)).some((e) => e.id === first.id)).toBe(false);
+    await call('DELETE', `/api/clubs/${slug}`, 'evown');
+    expect(db.prepare('SELECT COUNT(*) n FROM club_events WHERE club_id = (SELECT id FROM clubs WHERE slug = ?) OR title = ?').get(slug, 'Old').n).toBe(0);
+  });
+});

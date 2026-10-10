@@ -14,7 +14,7 @@ const body = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
   .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
 
 const CLUB = {
-  slug: 'caro', name: '<i>Caro</i>', description: 'desc', joinPolicy: 'invite', members: 2, avgRating: 1500, rank: 3, myRole: null, category: 'freestyle',
+  slug: 'caro', name: '<i>Caro</i>', description: 'desc', joinPolicy: 'invite', members: 2, avgRating: 1500, rank: 3, myRole: null, category: 'freestyle', events: [],
   leaderboard: [
     { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
     { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0 },
@@ -138,6 +138,41 @@ describe('club page', () => {
       document.getElementById('cb-form').onsubmit(new Event('submit'));
       await flush(); await flush();
       expect(shown()).toEqual(['members']);
+    });
+  });
+
+  describe('events — Sắp tới (#200 slice 2)', () => {
+    const EVENTS = [{ id: 'e1', title: '<b>Giao hữu</b>', startsAt: '2026-12-01T13:00:00.000Z', kind: 'event' }];
+
+    it('shows the empty note, then events as text; members get no delete button', async () => {
+      await bootClub(CLUB);
+      expect(document.getElementById('cb-events').textContent).toBe('clubs.no_events');
+      await bootClub({ ...CLUB, myRole: 'member', events: EVENTS });
+      expect(document.querySelector('#cb-events .prow__t').textContent).toBe('<b>Giao hữu</b>');
+      expect(document.querySelector('#cb-events b')).toBeNull();
+      expect(document.querySelectorAll('#cb-events button')).toHaveLength(0);
+    });
+
+    it('staff delete sends DELETE /events/:id after confirm', async () => {
+      await bootClub({ ...CLUB, myRole: 'officer', events: EVENTS });
+      window.confirm = jest.fn(() => true);
+      global.fetch.mockClear();
+      document.querySelector('#cb-events button').click();
+      await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/events/e1');
+      expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    });
+
+    it('add form posts title + UTC ISO time', async () => {
+      await bootClub({ ...CLUB, myRole: 'owner' });
+      document.getElementById('cb-event-title').value = 'Giải tuần';
+      document.getElementById('cb-event-when').value = '2030-01-02T20:00';
+      global.fetch.mockClear();
+      document.getElementById('cb-event-form').onsubmit(new Event('submit'));
+      await flush();
+      const [url, opts] = global.fetch.mock.calls[0];
+      expect(url).toBe('/api/clubs/caro/events');
+      expect(JSON.parse(opts.body)).toEqual({ title: 'Giải tuần', startsAt: new Date('2030-01-02T20:00').toISOString() });
     });
   });
 });
