@@ -16,6 +16,8 @@ date: 2026-10-10 (#214)
 
 ## Rules
 1. **One set, one weight:** Phosphor **Regular**, from `client/assets/icons/phosphor-sprite.svg` (paths from `@phosphor-icons/core` v2).
+   Whole site since #214 Scope 2 (2026-10-10): Phosphor kept over switching (Lucide/Tabler give no gain for a 1-set sprite; switching = churn).
+   Kept as text on purpose: ⚠ in chat system lines, 💬 in document.title, ✕/○ replay names (X/O pieces), room ▶ turn marker (9px column).
    No emoji or text glyphs (⌕ ⏳ ✓) as icons. Bold/Fill only where an existing screen already uses them (room) — not on platform pages.
 2. **Size scale (CSS vars on `.pl`):** `--icon-sm: 16px` next to text ≤ 14px (buttons, badges, meta lines, links) ·
    `--icon-md: 20px` leading a row/field/toggle label and group titles, menu items, page tabs, icon-only toolbar buttons (nav bell, light/dark) and segment options ·
@@ -51,6 +53,10 @@ date: 2026-10-10 (#214)
 | Board display (paper / stone) | checkerboard | | Sound | speaker-high |
 | Game history | clock-counter-clockwise | | Online status (hide) | user-circle-dashed |
 | Tournament pairings | sword | | Live | broadcast |
+| Create / add | plus-circle | | Back (link to parent page) | arrow-left |
+| Rotate left / right | arrow-arc-left / arrow-arc-right | | Solved / correct | check-circle |
+| Black / white stone (editor tool) | fill-circle, fixed stone colours (.pz-stone--black/white) | | Erase | eraser |
+| Answer move | target | | Close (modal, window, stand up) | x (bold on lobby/room) |
 
 ## Don't
 - Don't scale icons with `1em` inside small text (that produced 11–13px icons).

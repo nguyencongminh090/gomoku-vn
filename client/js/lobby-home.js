@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=257';
+import { client, setHeroTab } from './lobby.js?v=259';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -26,6 +26,9 @@ const POLL_MS = 20000;
 let current = null;
 let pollTimer = null;
 let lastData = null;
+
+/** Leading sprite icon (B212, #214); a no-op before platform-shell.js has loaded. */
+function withIcon(node, name) { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; }
 
 function el(tag, text, cls) {
   const n = document.createElement(tag);
@@ -183,7 +186,7 @@ function renderMine(data) {
   }
   if (!box.children.length) {
     const empty = el('div', undefined, 'hempty');
-    const go = el('button', t('home.find_room'), 'link-action link-action--primary');
+    const go = withIcon(el('button', t('home.find_room'), 'link-action link-action--primary'), 'ph-regular-magnifying-glass');
     go.type = 'button';
     go.addEventListener('click', () => showScreen('rooms'));
     empty.append(el('p', t('home.no_games'), 'muted small'), go);
@@ -302,8 +305,6 @@ export function renderQuickMatch() {
   const line = document.getElementById('qm-line');
   if (!acts || !line) return;
   acts.replaceChildren();
-  // Leading sprite icon (B212; the Arena mockup puts ▶ on the rated search).
-  const withIcon = (node, name) => { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; };
   const btn = (key, cls, fn, iconName) => {
     const b = withIcon(el('button', t(key), 'link-action' + (cls ? ' ' + cls : '')), iconName);
     b.type = 'button';

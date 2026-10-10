@@ -187,7 +187,7 @@
 
     const isMe = player.userId === st.myUser.userId;
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí">✕</span>`
+      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=259#ph-bold-x"></use></svg></span>`
       : '';
 
     contentEl.innerHTML = `

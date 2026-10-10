@@ -137,16 +137,17 @@
       const zoomRow = el('label', undefined, 'pcrop__zoomrow');
       zoomRow.append(el('span', t('avatar.zoom')), zoom);
       const tools = el('div', undefined, 'pcrop__tools');
-      const rotBtn = (glyph, key) => {
-        const b = el('button', glyph, 'pcrop__rot');
+      const rotBtn = (icon, key) => {
+        const b = el('button', undefined, 'pcrop__rot');
+        if (window.PlatformShell && window.PlatformShell.icon) b.appendChild(window.PlatformShell.icon(icon));
         b.type = 'button';
         b.title = t(key);
         b.setAttribute('aria-label', t(key));
         tools.appendChild(b);
         return b;
       };
-      const rotL = rotBtn('↺', 'avatar.rotate_left');
-      const rotR = rotBtn('↻', 'avatar.rotate_right');
+      const rotL = rotBtn('ph-regular-arrow-arc-left', 'avatar.rotate_left');
+      const rotR = rotBtn('ph-regular-arrow-arc-right', 'avatar.rotate_right');
       const save = el('button', t('avatar.crop_save'), 'pbtn pbtn--primary');
       save.type = 'button';
       const cancel = el('button', t('avatar.crop_cancel'), 'pbtn pbtn--ghost');

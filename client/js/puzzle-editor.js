@@ -23,6 +23,8 @@
   const st = { size: 15, stones: new Map(), tool: 'BLACK', tags: new Set(), answers: [''], active: 0, editId: null };
   let renderer = null;
 
+  function withIcon(node, name) { if (window.PlatformShell && window.PlatformShell.icon) node.prepend(window.PlatformShell.icon(name)); return node; }
+
   function el(tag, text, cls) {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -81,8 +83,11 @@
   function renderTools() {
     const host = $('ed-tools');
     host.replaceChildren();
-    for (const [id, key] of [['BLACK', 'puzzles.tool_black'], ['WHITE', 'puzzles.tool_white'], ['ERASE', 'puzzles.tool_erase'], ['ANSWER', 'puzzles.tool_answer']]) {
-      const b = el('button', t(key), 'pchip');
+    // Stones as stones, eraser, target = mark the answer move (#214).
+    for (const [id, key, ic] of [['BLACK', 'puzzles.tool_black', 'ph-fill-circle'], ['WHITE', 'puzzles.tool_white', 'ph-fill-circle'], ['ERASE', 'puzzles.tool_erase', 'ph-regular-eraser'], ['ANSWER', 'puzzles.tool_answer', 'ph-regular-target']]) {
+      const b = withIcon(el('button', t(key), 'pchip'), ic);
+      // Stone icons keep the stone colour in every chip state (a currentColor disc read as white on the active chip).
+      if (id === 'BLACK' || id === 'WHITE') { const svg = b.querySelector('svg'); if (svg) svg.classList.add('pz-stone', 'pz-stone--' + id.toLowerCase()); }
       b.type = 'button';
       b.setAttribute('aria-pressed', String(st.tool === id));
       b.addEventListener('click', () => { st.tool = id; renderTools(); draw(); });
@@ -127,7 +132,7 @@
       input.addEventListener('input', () => { st.answers[i] = input.value; draw(); });
       row.appendChild(input);
       if (st.answers.length > 1) {
-        const del = el('button', '✕', 'pbtn pbtn--ghost pbtn--sm');
+        const del = withIcon(el('button', undefined, 'pbtn pbtn--ghost pbtn--sm'), 'ph-regular-trash');
         del.type = 'button';
         del.setAttribute('aria-label', t('puzzles.remove_answer'));
         del.addEventListener('click', () => { st.answers.splice(i, 1); st.active = Math.min(st.active, st.answers.length - 1); renderAnswers(); draw(); });
