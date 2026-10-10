@@ -9,7 +9,7 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
-  const TABS = { puzzles: () => window.PuzzlesReview, forum: () => window.ForumReports };
+  const TABS = { puzzles: () => window.PuzzlesReview, forum: () => window.ForumReports, users: () => window.AdminUsers };
 
   function show(name) {
     for (const key of Object.keys(TABS)) {

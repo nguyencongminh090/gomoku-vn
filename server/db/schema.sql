@@ -424,3 +424,16 @@ CREATE TABLE IF NOT EXISTS forum_reports (
 );
 
 CREATE INDEX IF NOT EXISTS idx_forum_reports_open ON forum_reports(resolved_at, created_at);
+
+-- Admin change graph (TODO.md #206, R8 8b): one directed edge per staff action, actor -> target.
+-- No FKs on purpose: the history must outlive a deleted user.
+CREATE TABLE IF NOT EXISTS admin_edges (
+  id          TEXT PRIMARY KEY,
+  actor_id    TEXT NOT NULL,
+  action      TEXT NOT NULL,           -- role_set | lock | unlock
+  target_id   TEXT NOT NULL,
+  detail      TEXT NOT NULL DEFAULT '{}',  -- JSON: {from,to} for role_set, {reason} for lock
+  created_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_edges_target ON admin_edges(target_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_admin_edges_actor ON admin_edges(actor_id, created_at);

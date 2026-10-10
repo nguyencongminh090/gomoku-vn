@@ -80,3 +80,4 @@ in the detail file / fix-log).
 - **#201.** R7: Learn = puzzles (tags + levels) + forum (design first) `[Model: Opus 5]` — [detail](docs/todo/B201-learn-r7.md)
 - **#203.** R7 7a: puzzles — member submissions, board editor, solve, admin review `[Model: Opus 5]` — [detail](docs/todo/B203-puzzles-7a.md)
 - **#205.** R8 8a: staff roles (member/moderator/admin) + `/admin` console merging puzzle review and forum reports `[Model: Sonnet 5]` — [detail](docs/todo/B205-admin-8a-roles-console.md)
+- **#206.** R8 8b: `/admin` Users tab — find, change role, lock; change log as a graph `[Model: Opus 5]` — [detail](docs/todo/B206-admin-8b-users-tab.md)

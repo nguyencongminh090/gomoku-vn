@@ -6,17 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Quản trị</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=222" />
-  <link rel="stylesheet" href="css/tokens.css?v=222" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=222" />
-  <link rel="stylesheet" href="css/platform.css?v=222" />
-  <link rel="stylesheet" href="css/puzzles.css?v=222" />
-  <link rel="stylesheet" href="css/forum.css?v=222" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=222" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=222">
+  <link rel="stylesheet" href="css/main.css?v=224" />
+  <link rel="stylesheet" href="css/tokens.css?v=224" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=224" />
+  <link rel="stylesheet" href="css/platform.css?v=224" />
+  <link rel="stylesheet" href="css/puzzles.css?v=224" />
+  <link rel="stylesheet" href="css/forum.css?v=224" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=224" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=224">
 
-  <script src="js/ui-mode-preload.js?v=222"></script>
-  <script src="js/skin-preload.js?v=222"></script>
+  <script src="js/ui-mode-preload.js?v=224"></script>
+  <script src="js/skin-preload.js?v=224"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -30,6 +30,7 @@
   <div id="adm-tabs" class="pchips" role="tablist" hidden>
     <button type="button" role="tab" id="adm-tab-puzzles" class="pchip" data-tab="puzzles" data-perm="puzzle.review" hidden data-i18n="admin.tab_puzzles">Duyệt puzzle</button>
     <button type="button" role="tab" id="adm-tab-forum" class="pchip" data-tab="forum" data-perm="forum.moderate" hidden data-i18n="admin.tab_forum">Báo cáo diễn đàn</button>
+    <button type="button" role="tab" id="adm-tab-users" class="pchip" data-tab="users" data-perm="user.manage" hidden data-i18n="admin.tab_users">Người dùng</button>
   </div>
 
   <section id="adm-puzzles" role="tabpanel" hidden>
@@ -68,20 +69,49 @@
     <div id="rp-list" class="prows" aria-live="polite"></div>
     <div id="rp-pager" class="ppager"></div>
   </section>
+  <section id="adm-users" role="tabpanel" hidden>
+    <form id="us-form" class="pform" role="search">
+      <input id="us-q" type="search" maxlength="50" autocomplete="off" data-i18n-placeholder="admin.u_search" placeholder="Tìm theo tên đăng nhập / tên hiển thị" aria-label="Tìm người dùng" />
+    </form>
+    <p id="us-msg" class="pnote" hidden></p>
+    <div class="pz-review">
+      <div>
+        <div id="us-list" class="prows" aria-live="polite"></div>
+        <div id="us-pager" class="ppager"></div>
+      </div>
+      <div id="us-detail" class="ppanel" hidden>
+        <h2 id="us-name" class="pz-title"></h2>
+        <p id="us-meta" class="muted small"></p>
+        <div class="pform">
+          <label for="us-role" data-i18n="admin.u_role">Vai trò</label>
+          <select id="us-role"></select>
+          <label for="us-reason" data-i18n="admin.u_reason">Lý do khoá (bắt buộc)</label>
+          <input id="us-reason" type="text" maxlength="200" />
+          <p id="us-result" class="pz-result" role="status" hidden></p>
+          <div class="pactions"><button type="button" id="us-lock" class="pbtn pbtn--ghost" data-i18n="admin.u_lock">Khoá tài khoản</button></div>
+        </div>
+        <h3 data-i18n="admin.u_graph">Đồ thị thay đổi</h3>
+        <svg id="us-graph" class="us-graph" viewBox="0 0 320 240" role="img" aria-label="Đồ thị thay đổi"></svg>
+        <h3 data-i18n="admin.u_history">Lịch sử thay đổi</h3>
+        <ol id="us-history" class="us-history"></ol>
+      </div>
+    </div>
+  </section>
 </main>
 
-<script src="js/i18n.js?v=222"></script>
-<script src="js/ui-mode.js?v=222"></script>
-<script src="js/session.js?v=222"></script>
-<script src="js/audio-manager.js?v=222"></script>
-<script src="js/settings-panel.js?v=222"></script>
-<script src="js/platform-shell.js?v=222"></script>
-<script src="js/coords.js?v=222"></script>
-<script src="js/board.js?v=222"></script>
-<script src="js/puzzle-board.js?v=222"></script>
-<script src="js/forum-common.js?v=222"></script>
-<script src="js/puzzles-review.js?v=222"></script>
-<script src="js/forum-reports.js?v=222"></script>
-<script src="js/admin.js?v=222"></script>
+<script src="js/i18n.js?v=224"></script>
+<script src="js/ui-mode.js?v=224"></script>
+<script src="js/session.js?v=224"></script>
+<script src="js/audio-manager.js?v=224"></script>
+<script src="js/settings-panel.js?v=224"></script>
+<script src="js/platform-shell.js?v=224"></script>
+<script src="js/coords.js?v=224"></script>
+<script src="js/board.js?v=224"></script>
+<script src="js/puzzle-board.js?v=224"></script>
+<script src="js/forum-common.js?v=224"></script>
+<script src="js/puzzles-review.js?v=224"></script>
+<script src="js/forum-reports.js?v=224"></script>
+<script src="js/admin-users.js?v=224"></script>
+<script src="js/admin.js?v=224"></script>
 </body>
 </html>

@@ -138,4 +138,11 @@ describe('login.js does not bounce a guest session (TODO.md #119)', () => {
     expect(window.location.replace).not.toHaveBeenCalled();
     expect(alertBanner().classList.contains('visible')).toBe(true);
   });
+
+  test('error=account_locked (Google login of a locked account): shows the locked message', () => {
+    setupPage({ believedSession: false, search: '?error=account_locked' });
+    loadLoginModule();
+
+    expect(alertBanner().textContent).toBe('login.err_account_locked');
+  });
 });

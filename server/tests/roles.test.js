@@ -83,7 +83,7 @@ describe('GET /api/admin/me', () => {
   it.each([
     ['mem', 'member', []],
     ['mod', 'moderator', ['puzzle.review', 'forum.moderate', 'admin.access']],
-    ['adm', 'admin', ['puzzle.review', 'forum.moderate', 'admin.access']],
+    ['adm', 'admin', ['puzzle.review', 'forum.moderate', 'admin.access', 'user.manage']],
   ])('%s → role %s', async (id, role, permissions) => {
     const r = await get('/api/admin/me', id);
     expect(r.status).toBe(200);
