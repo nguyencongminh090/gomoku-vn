@@ -95,14 +95,10 @@
       note.hidden = false;
       note.textContent = t('profile.no_recent');
     }
-    for (const g of p.recent) {
-      const a = el('a', undefined, 'prow');
-      a.href = 'history.html?id=' + encodeURIComponent(g.id);
-      const body = el('div', undefined, 'prow__body');
-      body.append(el('div', t('profile.' + g.result) + ' vs ' + g.opponent, 'prow__t'));
-      a.append(el('span', undefined, 'pdot' + (g.result === 'win' ? ' pdot--on' : g.result === 'loss' ? ' pdot--loss' : '')), body);
-      list.appendChild(a);
-    }
+    list.append(...p.recent.map(gameRow));
+    gamesPage = 1;
+    // Show the button only when more finished games exist than the first page carried.
+    $('pf-more').hidden = !p.stats || p.stats.games <= p.recent.length;
 
     const clubs = p.clubs || [];
     $('pf-clubs-panel').hidden = clubs.length === 0;
@@ -117,6 +113,33 @@
 
     $('pf-content').hidden = false;
     drawChart(p);
+    if (location.hash === '#games') $('pf-games').scrollIntoView();
+  }
+
+  let gamesPage = 1;
+
+  function gameRow(g) {
+    const a = el('a', undefined, 'prow');
+    a.href = '/replay/' + encodeURIComponent(g.id);
+    const body = el('div', undefined, 'prow__body');
+    const when = g.endedAt ? new Date(g.endedAt).toLocaleDateString(document.documentElement.lang || undefined) : '';
+    body.append(el('div', t('profile.' + g.result) + ' vs ' + g.opponent, 'prow__t'));
+    if (when) body.append(el('div', when, 'prow__m'));
+    a.append(el('span', undefined, 'pdot' + (g.result === 'win' ? ' pdot--on' : g.result === 'loss' ? ' pdot--loss' : '')), body);
+    return a;
+  }
+
+  async function loadMoreGames() {
+    const btn = $('pf-more');
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/profile/' + encodeURIComponent(username) + '/games?page=' + (gamesPage + 1), { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const { games, pagination } = await res.json();
+      $('pf-recent').append(...games.map(gameRow));
+      gamesPage = pagination.page;
+      btn.hidden = pagination.page >= pagination.totalPages;
+    } catch (_) { /* button stays; user can retry */ } finally { btn.disabled = false; }
   }
 
   /** Friend button(s) on someone else's profile; state comes from p.friendship. */
@@ -280,6 +303,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     SHELL().build(null);
+    $('pf-more').onclick = loadMoreGames;
     load();
   });
 })();

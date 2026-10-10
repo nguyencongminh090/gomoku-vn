@@ -342,3 +342,61 @@ describe('streak + badges from rated games (#199)', () => {
     expect((await profile(CAROL)).badges).toEqual(['first_win']);
   });
 });
+
+describe('game history list (B202)', () => {
+  const DAVE = '99999999-9999-4999-8999-999999999999';
+  const ins = () => database.db.prepare(
+    `INSERT INTO games (id, room_id, black_player_id, white_player_id, black_player_name, white_player_name, winner, reason, board_size, started_at, ended_at)
+     VALUES (?, '#H', ?, ?, ?, ?, ?, 'normal', 15, ?, ?)`);
+
+  beforeAll(() => {
+    database.db.prepare(`INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, 'histdave', 'x', 'histdave', ?)`).run(DAVE, NOW);
+    const add = ins();
+    // 23 finished games, newest = h22. Dave is black on even i (wins as BLACK), white on odd i.
+    for (let i = 0; i < 23; i++) {
+      const at = new Date(Date.parse(NOW) + i * 60000).toISOString();
+      const daveBlack = i % 2 === 0;
+      add.run(`h${i}`, daveBlack ? DAVE : OTHER, daveBlack ? OTHER : DAVE, daveBlack ? 'histdave' : 'bob', daveBlack ? 'bob' : 'histdave', i === 5 ? 'draw' : 'BLACK', at, at);
+    }
+    // Unfinished game never listed.
+    database.db.prepare(
+      `INSERT INTO games (id, room_id, black_player_id, white_player_id, black_player_name, white_player_name, board_size, started_at)
+       VALUES ('open1', '#H', ?, ?, 'histdave', 'bob', 15, ?)`).run(DAVE, OTHER, NOW);
+  });
+
+  it('pages newest-first, 10 per page, without overlap; total counts finished games only', async () => {
+    const p1 = (await req('GET', '/api/profile/histdave/games')).json;
+    expect(p1.pagination).toEqual({ page: 1, limit: 10, total: 23, totalPages: 3 });
+    expect(p1.games.map((g) => g.id)).toEqual(Array.from({ length: 10 }, (_, k) => `h${22 - k}`));
+    const p3 = (await req('GET', '/api/profile/histdave/games?page=3')).json;
+    expect(p3.games.map((g) => g.id)).toEqual(['h2', 'h1', 'h0']);
+    const all = [...p1.games, ...(await req('GET', '/api/profile/histdave/games?page=2')).json.games, ...p3.games].map((g) => g.id);
+    expect(new Set(all).size).toBe(23);
+    expect((await req('GET', '/api/profile/histdave/games?page=99')).json.games).toEqual([]);
+    expect((await req('GET', '/api/profile/histdave/games?page=-4')).json.pagination.page).toBe(1);
+  });
+
+  it('result and opponent are from the profile owner’s point of view', async () => {
+    const byId = Object.fromEntries((await req('GET', '/api/profile/histdave/games?page=3')).json.games.map((g) => [g.id, g]));
+    expect(byId.h0).toMatchObject({ opponent: 'bob', result: 'win' });   // dave black, BLACK won
+    expect(byId.h1).toMatchObject({ opponent: 'bob', result: 'loss' });  // dave white, BLACK won
+    const p = (await req('GET', '/api/profile/histdave/games?page=2')).json.games.find((g) => g.id === 'h5');
+    expect(p.result).toBe('draw');
+  });
+
+  it('profile payload carries the same first page via the shared row shape', async () => {
+    const prof = (await req('GET', '/api/profile/histdave')).json;
+    const p1 = (await req('GET', '/api/profile/histdave/games')).json.games;
+    expect(prof.recent).toEqual(p1);
+  });
+
+  it('hide_history: others get 403 HISTORY_HIDDEN, the owner still reads; unknown user 404', async () => {
+    database.db.prepare('UPDATE users SET hide_history = 1 WHERE id = ?').run(DAVE);
+    const other = await req('GET', '/api/profile/histdave/games', { cookie: OTHER });
+    expect([other.status, other.json.code]).toEqual([403, 'HISTORY_HIDDEN']);
+    expect((await req('GET', '/api/profile/histdave/games')).status).toBe(403);
+    expect((await req('GET', '/api/profile/histdave/games', { cookie: DAVE })).status).toBe(200);
+    database.db.prepare('UPDATE users SET hide_history = 0 WHERE id = ?').run(DAVE);
+    expect((await req('GET', '/api/profile/nobody/games')).json.code).toBe('PROFILE_NOT_FOUND');
+  });
+});

@@ -202,4 +202,27 @@ describe('profile page', () => {
     expect(document.getElementById('pf-status').textContent).toBe('profile.not_found');
     expect(document.getElementById('pf-content').hidden).toBe(true);
   });
+
+  describe('game history (B202)', () => {
+    it('rows link to /replay/<id>; "load more" is shown only when more games exist and appends the next page', async () => {
+      await boot({ ...PROFILE, stats: { games: 12, wins: 1, draws: 0 } });
+      expect(document.querySelector('#pf-recent a').getAttribute('href')).toBe('/replay/g1');
+      expect(document.getElementById('pf-more').hidden).toBe(false);
+      global.fetch.mockImplementation((u) => (String(u).includes('/games?page=2')
+        ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ games: [{ id: 'g2', opponent: 'cy', result: 'loss', endedAt: '2026-10-02T00:00:00.000Z' }], pagination: { page: 2, limit: 10, total: 12, totalPages: 2 } }) })
+        : Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) })));
+      document.getElementById('pf-more').click();
+      await new Promise((r) => setTimeout(r, 0)); await new Promise((r) => setTimeout(r, 0));
+      expect([...document.querySelectorAll('#pf-recent a')].map((a) => a.getAttribute('href'))).toEqual(['/replay/g1', '/replay/g2']);
+      expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/profile/alice/games?page=2');
+      expect(document.getElementById('pf-more').hidden).toBe(true);
+    });
+
+    it('no "load more" when the first page already holds every game or history is hidden', async () => {
+      await boot({ ...PROFILE, stats: { games: 1, wins: 1, draws: 0 } });
+      expect(document.getElementById('pf-more').hidden).toBe(true);
+      await boot({ ...PROFILE, stats: null, recent: [] });
+      expect(document.getElementById('pf-more').hidden).toBe(true);
+    });
+  });
 });
