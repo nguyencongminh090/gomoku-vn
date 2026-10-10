@@ -10,12 +10,13 @@ const crypto = require('crypto');
 const database = require('../db/database');
 const roles = require('../utils/roles');
 const sessions = require('./SessionManager');
+const avatarStore = require('../utils/avatar-store');
 
 const db = () => database.db;
 const PAGE = 20;
 const EDGE_LIMIT = 50;
 const REASON_MAX = 200;
-const ACTIONS = ['role_set', 'lock', 'unlock'];
+const ACTIONS = ['role_set', 'lock', 'unlock', 'avatar_remove'];
 
 class AdminUserError extends Error {
   constructor(code, status, message) {
@@ -35,9 +36,10 @@ const shape = (r) => ({
   id: r.id, username: r.username, displayName: r.display_name, role: ROLE(r.role),
   locked: !!r.locked_at, lockedAt: r.locked_at || null, createdAt: r.created_at, lastLoginAt: r.last_login_at || null,
   google: r.oauth_provider === 'google',
+  avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.id}.webp?v=${r.avatar_v}` : null,
 });
 const ROLE = (v) => (roles.ROLES.includes(v) ? v : 'member');
-const COLS = 'id, username, display_name, role, locked_at, created_at, last_login_at, oauth_provider';
+const COLS = 'id, username, display_name, role, locked_at, created_at, last_login_at, oauth_provider, avatar_v';
 
 function findUser(id) {
   const row = db().prepare(`SELECT ${COLS} FROM users WHERE id = ?`).get(String(id).slice(0, 64));
@@ -115,4 +117,18 @@ function setLocked(adminId, id, locked, reason) {
   return out;
 }
 
-module.exports = { AdminUserError, ACTIONS, REASON_MAX, listUsers, getUser, setRole, setLocked };
+/** Staff removal of a user's avatar: file + avatar_v cleared, one edge. Idempotent (no avatar → no edge). */
+function removeAvatar(adminId, id) {
+  requireManager(adminId);
+  return db().transaction(() => {
+    const user = findUser(id);
+    if (user.avatar_v) {
+      database.setAvatarVersion(user.id, true);
+      avatarStore.removeFile(user.id);
+      addEdge(adminId, 'avatar_remove', user.id, {});
+    }
+    return shape({ ...user, avatar_v: 0 });
+  })();
+}
+
+module.exports = { AdminUserError, ACTIONS, REASON_MAX, listUsers, getUser, setRole, setLocked, removeAvatar };

@@ -129,4 +129,36 @@ describe('users tab', () => {
     expect($('us-msg').textContent).toBe('err.admin_forbidden');
     expect(document.querySelectorAll('#us-list .us-row')).toHaveLength(0);
   });
+
+  it('shows the avatar with a remove button only when one exists; removing confirms then DELETEs', async () => {
+    let deleted = false;
+    window.confirm = jest.fn(() => true);
+    boot(routes({
+      'GET /api/admin/users/bob': () => ok(DETAIL('bob', { avatarUrl: '/api/profile/avatar/bob.webp?v=1' })),
+      'DELETE /api/admin/users/bob/avatar': () => { deleted = true; return ok({ user: U('bob') }); },
+    }));
+    await settle();
+    document.querySelectorAll('#us-list .us-row')[0].click();
+    await settle();
+    expect($('us-avatar').hidden).toBe(false);
+    expect($('us-avatar-img').getAttribute('src')).toBe('/api/profile/avatar/bob.webp?v=1');
+    $('us-avatar-remove').click();
+    await settle();
+    expect(window.confirm).toHaveBeenCalled();
+    expect(deleted).toBe(true);
+  });
+
+  it('declining the confirm sends nothing; no avatar → block hidden', async () => {
+    window.confirm = jest.fn(() => false);
+    boot(routes({ 'GET /api/admin/users/bob': () => ok(DETAIL('bob', { avatarUrl: '/a.webp?v=1' })), 'GET /api/admin/users/eve': () => ok(DETAIL('eve')) }));
+    await settle();
+    document.querySelectorAll('#us-list .us-row')[0].click();
+    await settle();
+    $('us-avatar-remove').click();
+    await settle();
+    expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'DELETE')).toBe(false);
+    document.querySelectorAll('#us-list .us-row')[1].click();
+    await settle();
+    expect($('us-avatar').hidden).toBe(true);
+  });
 });
