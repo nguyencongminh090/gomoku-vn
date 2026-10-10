@@ -1,5 +1,5 @@
 # B214 — Icon system for platform pages (size scale, labels, meaning) + apply to Settings/shell/profile
-**Status:** OPEN — built 2026-10-10 on `ui/icon-system` (`?v=257`), awaiting review
+**Status:** OPEN — built 2026-10-10 on `ui/icon-system` (`?v=259`), awaiting review
 **Area:** client/css/platform.css, client/css/platform-shell.css, client/settings.html, client/js/settings-page.js, phosphor-sprite.svg, docs/knowledge/ui-ux/iconography.md
 **From:** user 2026-10-10 "một số Icon quá nhỏ, icon chưa phù hợp với nội dung, chưa chuyên nghiệp … search/dùng skills/knowledge để phân tích và quyết định"   **Depends:** #212, #213
 
@@ -22,6 +22,12 @@ User: "tôi cần bộ Icon hiện đại, phù hợp nội dung cho toàn bộ 
 - Decide by research first (memory: design decisions by research): keep Phosphor Regular (already modern, 1 set) vs another
   set; check each concept fits content (5-second rule) and extend the registry in iconography.md; apply 16/20/24 scale site-wide.
 - Mockup HTML files (*-mockup.html) out of scope.
+- Plan (2026-10-10, measured 16 pages): stay on Phosphor (one set; switching = churn, no gain). (a) glyphs → sprite: ✕ close (index×3,
+  tournament×6, PM window, room stand-up) x; puzzle answer delete trash; ← back links arrow-left; crop ↺↻ arrow-arc-*;
+  puzzle ✓/🎉 check-circle; i18n 🔊🔇 dropped. (b) sizes: lobby/tournament/room 12–15px → 16, 18 → 20. (c) leading
+  icons on main actions only: create (forum/clubs/puzzles) plus-circle, Gửi duyệt paper-plane-tilt, Tìm phòng magnifying-glass,
+  puzzle tools circle/fill-circle/eraser/target. Kept as text: ⚠ in chat system lines (text + toast detection), 💬 in
+  document.title, ✕/○ replay names (X/O piece symbols), room ▶ turn marker (9px column, #143), filter chips (rule/time/difficulty/tags).
 ## Don't
 - (Scope 1 only) Lobby/room/tournament/diag CSS — now covered by Scope 2. Mobile save bar hidden under tab bar = bug → own fix item.
 ## Done when
@@ -30,5 +36,5 @@ User: "tôi cần bộ Icon hiện đại, phù hợp nội dung cho toàn bộ 
 Sources: NN/g Icon Usability, Material system icons, WCAG 2.2 SC 2.5.8 (verified at w3.org); SKILLS_TREE has no icon note.
 Rendered icons on 9 platform pages × 1280/390: sizes {16:134, 20:44, 24:45}, none < 16px, 0 console errors.
 Also: language row → translate (globe = country). 4 new tests fail on old code; `npm test` 2746. Not done: lobby/room/tournament/diag CSS (≈15 more sizes), #215 save bar.
-Review 2026-10-10: user "palette / grid-four chưa phù hợp" → Appearance paint-brush, game-settings tab sliders-horizontal, bio quotes (text-align-left read as menu ≡); `?v=255`, `npm test` 2746.
-Review 2: measured Settings (4 tabs, 1280/390): tabs 16→20 icon/13→14px text (16 + 12px gap ≤400px so 360px fits); nav bell/light-dark 16→20; "Riêng tư" 12px UPPERCASE→16px/600 sentence case, 20px lock; 3 privacy toggles get icons (clock-counter-clockwise / quotes / user-circle-dashed); challenge sword→boxing-glove (Settings, lobby, profile; tournament pairings keeps sword). After: Settings icons only 16 (buttons, caret) / 20 / 24 (mobile tab bar). `?v=257`, `npm test` 2749.
+Reviews 1–2 (Settings): appearance paint-brush, game tab sliders-horizontal, bio quotes; tabs 20/14px (16+12px gap ≤400px); nav icons 20; Riêng tư sentence case + toggle icons; challenge boxing-glove. Commits fa89448, a3e030c.
+Scope 2 built: glyph→sprite (✕ ×10, ← ×3, ↺↻, ✓, 🎉/🔊🔇 dropped, + Thêm), legacy 12–15/18px → 16/20, plus-circle/paper-plane/magnifier/stone/eraser/target on main actions. Measured 16 pages: icons only 16/20/24, 0 console errors; create-room modal x 20px closes. Not seen live: room stand-up x, PM window x, tournament modals, crop rotate. `?v=259`, `npm test` 2755.

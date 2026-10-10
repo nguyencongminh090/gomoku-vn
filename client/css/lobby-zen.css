@@ -178,7 +178,7 @@ body.zen-lobby .link-action {
   text-decoration: none;
   transition: color 0.2s var(--ease-out, ease), opacity 0.2s var(--ease-out, ease);
 }
-body.zen-lobby .link-action .icon { font-size: 15px; }
+body.zen-lobby .link-action .icon { font-size: 16px; }
 body.zen-lobby .link-action:hover { color: var(--c-ink); }
 body.zen-lobby .link-action--primary { color: var(--c-ink); }
 body.zen-lobby .link-action--primary:hover { opacity: 0.6; }
@@ -364,7 +364,7 @@ body.zen-lobby .tournament-card__status {
   color: var(--c-ink-3);
 }
 body.zen-lobby .tournament-card__meta .icon,
-body.zen-lobby .tournament-card__status .icon { font-size: 13px; }
+body.zen-lobby .tournament-card__status .icon { font-size: 16px; }
 /* The row is already delimited by its own bottom hairline — an inner rule
    above the status line just fragments it. */
 body.zen-lobby .tournament-card__status {
@@ -539,7 +539,7 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
   gap: 8px;
   min-width: 0;
 }
-.online-users-modal__title-wrap .icon { font-size: 18px; color: var(--c-ink-2); flex-shrink: 0; }
+.online-users-modal__title-wrap .icon { font-size: 20px; color: var(--c-ink-2); flex-shrink: 0; }
 .online-users-modal__title-wrap .modal__title { margin: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .online-users-modal__count {
   flex-shrink: 0;
@@ -850,7 +850,8 @@ body.zen-lobby .timer-input input:focus { box-shadow: 0 0 0 3px var(--c-brand-li
   font-size: 15px;
   cursor: pointer;
 }
-.pm-send-btn .icon { width: 1em; height: 1em; }
+.pm-send-btn .icon { width: 20px; height: 20px; }   /* #214: icon-only button = 20 */
+.pm-window__close .icon { width: 16px; height: 16px; display: block; }
 .pm-send-btn:disabled { opacity: 0.4; cursor: default; }
 
 @media (max-width: 640px) {

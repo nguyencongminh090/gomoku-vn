@@ -458,6 +458,7 @@
   border-radius: 50%;
   transition: all var(--duration-fast) var(--ease-spring);
 }
+.modal__close .icon { width: 20px; height: 20px; }   /* #214: sprite x replaces the ✕ glyph */
 .modal__close:hover { background: var(--c-border); color: var(--c-ink); transform: scale(1.05); }
 .modal__close:active { transform: scale(0.95) !important; }
 
@@ -997,7 +998,7 @@
   align-items: center;
   gap: 6px;
 }
-.tournament-card__meta .icon { font-size: 14px; }
+.tournament-card__meta .icon { font-size: 16px; }
 .tournament-card__status {
   margin-top: 2px;
   font-size: 13px;
@@ -1038,7 +1039,7 @@
   display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700;
   color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 10px;
 }
-.live-matches-panel__header .icon { color: var(--c-error, #EF4444); font-size: 15px; }
+.live-matches-panel__header .icon { color: var(--c-error, #EF4444); font-size: 16px; }
 .live-matches-panel__list { display: flex; flex-direction: column; gap: 8px; }
 .live-match-row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
@@ -1050,5 +1051,5 @@
 .live-match-row__players { font-size: 13px; font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .live-match-row__vs { font-size: 11px; font-weight: 600; color: var(--c-ink-3); }
 .live-match-row__meta { font-size: 11px; color: var(--c-ink-3); display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.live-match-row__meta .icon { font-size: 12px; }
+.live-match-row__meta .icon { font-size: 16px; }
 .live-match-row__tournament { font-size: 11px; color: var(--c-ink-2); width: 100%; }

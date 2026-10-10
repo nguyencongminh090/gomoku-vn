@@ -257,7 +257,9 @@ a.prow:hover { background: var(--c-hover); }
 /* ── Profile page (B213) ─────────────────────────────────────────────────────
    One icon size (16px, badges 14px), type scale 11 (uppercase labels) / 12 (meta) / 13 (controls) / 14 (body),
    spacing from --space-* (4px scale). Scoped to .pprofile: phead/pstats/prow are shared with club/social pages. */
-.pbtn .icon, .pbadge .icon, .pmeta .icon { flex: none; width: var(--icon-sm); height: var(--icon-sm); }   /* #214: all platform pages, not only profile */
+.pbtn .icon, .pbadge .icon, .pmeta .icon { flex: none; width: var(--icon-sm); height: var(--icon-sm); }
+.pchip .icon, .pback .icon { flex: none; width: var(--icon-sm); height: var(--icon-sm); }   /* #214 Scope 2: chip tools, back links */
+.pchip:has(.icon), .pback { display: inline-flex; align-items: center; gap: 6px; }   /* #214: all platform pages, not only profile */
 .pprofile .phead { gap: var(--space-5); margin-bottom: var(--space-5); }
 .pprofile .phead__bio { margin-top: var(--space-1); font-size: 14px; }
 .pmeta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-2) 0 0; font-size: 12px; }

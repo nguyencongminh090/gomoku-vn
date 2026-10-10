@@ -208,7 +208,7 @@ body.diag {
   color: var(--ink-2);
 }
 
-.diag-rail-row .icon { width: 18px; height: 18px; fill: var(--ink-3); }
+.diag-rail-row .icon { width: 20px; height: 20px; fill: var(--ink-3); }
 
 .diag-rail {
   height: 4px;
@@ -275,7 +275,7 @@ body.diag {
   margin-bottom: var(--diag-gap);
 }
 
-.diag-partial .icon { width: 18px; height: 18px; fill: var(--diag-yellow); flex: none; margin-top: 2px; }
+.diag-partial .icon { width: 20px; height: 20px; fill: var(--diag-yellow); flex: none; margin-top: 2px; }
 
 /* ── Form ───────────────────────────────────────────────────────────────── */
 
@@ -374,7 +374,7 @@ body.diag {
 .diag-note[hidden] { display: none; }
 .diag-note--error { background: #FDF2F1; color: var(--diag-red); }
 .diag-note--ok { background: #F1F8F3; color: var(--diag-green); }
-.diag-note .icon { width: 18px; height: 18px; fill: currentColor; flex: none; margin-top: 2px; }
+.diag-note .icon { width: 20px; height: 20px; fill: currentColor; flex: none; margin-top: 2px; }
 
 .diag-done {
   text-align: center;
