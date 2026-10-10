@@ -127,7 +127,7 @@ class RoomManager extends EventEmitter {
     }
 
     const roomId = this._generateRoomId();
-    const roomName = settings.roomName ? settings.roomName.slice(0, 30) : `#${roomId}`;
+    const roomName = settings.roomName ? settings.roomName.slice(0, 30) : roomId; // roomId already carries its '#' ("#A3F")
     const validatedSettings = this._validateSettings(settings);
 
     const room = {
