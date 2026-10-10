@@ -1,5 +1,5 @@
 # B209 — Arena parity: nav right cluster + leftovers vs platform-arena-mockup
-**Status:** PARTIAL 2026-10-10 — P1 items 1,3,4,5 fixed on `ui/arena-parity-nav-tabs` (uncommitted, ?v=228): order [mode][bell][gear][me], sun svg, bare bell + orange badge (dark ink for contrast), "Chưa xếp hạng" second line, rankings scope → underline tabs on their own row. Open: gear removal (B211), P1 item 6 (mobile 4 controls, follows gear), P2 leftovers (column order, hero stat, tab icons, club page).
+**Status:** ✅ DONE 2026-10-10 — P1 via B211 + earlier slice; P2 on `ui/arena-parity-b209` (uncommitted, ?v=236; awaiting "commit and merge to dev"). npm test 135 suites / 2650; real-browser pass (own-DB copy) rankings/club/profile at 1280+390 dark. Not done (needs backend / decided): see end of file.
 **Area:** client/js/platform-shell.js, client/css/platform-shell.css (+ rankings/profile/clubs/club pages for the P2 list)
 **From:** user 2026-10-10 "nav at user avt, notify, settings... does not match demo {pnav__right}"; review of #189   **Depends:** B189, B190, B193
 
@@ -33,3 +33,10 @@ Measured at 1280: mockup 34×34 mode · 29×30 bell · 130×34 me. Real 32×32 b
 
 ## Update 2026-10-10 (B211)
 Gear left the nav (items 2 and 6 resolved): Settings is a page, entry = user-chip menu; mobile nav = mode + bell + avatar. Chip now shows the avatar and a ▾ menu.
+
+## Built (2026-10-10, `ui/arena-parity-b209`)
+- Rankings: columns now # · Người chơi · Khu vực · Rating · 7 ngày · CLB · Ván; Ván hidden ≤860px (was clipped); empty state hides the table card (`#rk-wrap`). Scope tabs/chips split was already done.
+- Mobile tab bar: crown icon for Xếp hạng; Tôi active on the viewer's own profile (`setActive('me')`).
+- Club: Tổng quan = ranking table (top 10, current rule) + aside (Sắp tới, Ban quản trị); management moved to a Quản lý panel opened by a header **Quản lý** button (staff; no tab, `#tab=manage`, aria-pressed); Xoá CLB now in a "Vùng nguy hiểm" card inside it.
+## Not done
+- Profile hero "Chuỗi thắng" (win-streak not built, B191 — backend). Rankings scope "CLB của tôi" + speed chip row (decided in B189: 3 variants, no speed). Mobile rankings: CLB column scrolls off to the right (table is horizontally scrollable). Light mode / Firefox / WebKit not checked.

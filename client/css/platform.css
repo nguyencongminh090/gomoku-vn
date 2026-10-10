@@ -87,6 +87,7 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .ptbl .num { text-align: right; font-variant-numeric: tabular-nums; }
 .ptbl .pav { margin-right: 8px; }
 .ptbl a:hover { text-decoration: underline; }
+@media (max-width: 860px) { .ptbl__games { display: none; } }
 .ptbl__prov { margin-left: 2px; font-size: 12px; color: var(--c-ink-3); }
 
 /* ── Cards / rows ────────────────────────────────────────────────────────── */
@@ -212,3 +213,5 @@ a.prow:hover { background: var(--c-hover); }
 .pcrop__zoomrow { display: flex; align-items: center; gap: 12px; margin-top: 14px; font-size: 12px; font-weight: 600; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: .1em; }
 .pcrop__zoom { flex: 1; min-width: 0; accent-color: var(--c-brand); }
 .pcrop__actions { justify-content: flex-end; margin-top: 16px; }
+.psplit > aside { display: flex; flex-direction: column; gap: 20px; }
+.pbtn--ghost[aria-pressed="true"] { color: var(--c-strong); border-color: var(--c-ink-3); }

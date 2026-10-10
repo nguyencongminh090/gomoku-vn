@@ -109,6 +109,42 @@ describe('club page', () => {
       expect(selected()).toEqual(['board']);
     });
 
+    it('Tổng quan = ranking table (top rows) + aside with Sắp tới and Ban quản trị (mockup)', async () => {
+      await bootClub(CLUB);
+      const ov = document.getElementById('cb-panel-overview');
+      expect(ov.querySelectorAll('#cb-ov-body tr')).toHaveLength(2);
+      expect(ov.querySelector('aside #cb-events')).not.toBeNull();
+      expect(ov.querySelector('aside #cb-staff')).not.toBeNull();
+      expect(document.getElementById('cb-ov-title').textContent).toBe('clubs.board · rankings.cat_freestyle');
+      expect(ov.querySelectorAll('tbody button')).toHaveLength(0);
+    });
+
+    it('Quản lý button: staff only; toggles the manage panel, no tab selected while it is open; non-staff #tab=manage → overview', async () => {
+      await bootClub(CLUB);
+      expect(document.getElementById('cb-manage-btn').hidden).toBe(true);
+      location.hash = '#tab=manage';
+      await bootClub(CLUB);
+      expect(document.getElementById('cb-panel-manage').hidden).toBe(true);
+      expect(document.getElementById('cb-panel-overview').hidden).toBe(false);
+
+      location.hash = '';
+      await bootClub({ ...CLUB, myRole: 'officer' });
+      const btn = document.getElementById('cb-manage-btn');
+      expect(btn.hidden).toBe(false);
+      btn.click();
+      expect(document.getElementById('cb-panel-manage').hidden).toBe(false);
+      expect(document.getElementById('cb-panel-overview').hidden).toBe(true);
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      expect(selected()).toEqual([]);
+      expect(location.hash).toBe('#tab=manage');
+      click('members');
+      expect(document.getElementById('cb-panel-manage').hidden).toBe(true);
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+      btn.click();
+      btn.click(); // second press goes back to Tổng quan
+      expect(shown()).toEqual(['overview']);
+    });
+
     it('unknown #tab falls back to overview', async () => {
       location.hash = '#tab=chat';
       await bootClub(CLUB);
@@ -126,9 +162,11 @@ describe('club page', () => {
       expect(['overview', 'members', 'board'].map((n) => document.getElementById('cb-tab-' + n).tabIndex)).toEqual([-1, -1, 0]);
     });
 
-    it('staff tools live in Tổng quan, member management in Thành viên, ratings only in the board', async () => {
+    it('staff tools live in the Quản lý panel (not Tổng quan), member management in Thành viên, ratings only in the board', async () => {
       await bootClub({ ...CLUB, myRole: 'owner', pending: [] });
-      expect(document.getElementById('cb-panel-overview').contains(document.getElementById('cb-manage'))).toBe(true);
+      expect(document.getElementById('cb-panel-overview').contains(document.getElementById('cb-manage'))).toBe(false);
+      expect(document.getElementById('cb-panel-manage').contains(document.getElementById('cb-manage'))).toBe(true);
+      expect(document.getElementById('cb-panel-manage').contains(document.getElementById('cb-delete'))).toBe(true);
       expect(document.getElementById('cb-panel-members').querySelectorAll('button').length).toBeGreaterThan(0);
       expect(document.getElementById('cb-panel-board').querySelectorAll('tbody button')).toHaveLength(0);
     });

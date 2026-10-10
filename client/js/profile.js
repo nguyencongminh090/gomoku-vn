@@ -43,6 +43,7 @@
     if (p.bio) bio.textContent = p.bio;
     else bio.textContent = p.isSelf && p.privacy && p.privacy.hideBio ? t('profile.bio_hidden') : (p.bio === null ? '' : t('profile.no_bio'));
     $('pf-actions').hidden = !p.isSelf;
+    if (p.isSelf && SHELL().setActive) SHELL().setActive('me'); // mockup: Tôi is active on the viewer's own profile
     renderSocial(p);
 
     const stats = $('pf-stats');

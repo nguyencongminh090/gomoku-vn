@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#209.** Arena parity: nav right cluster (order, gear, mode glyph, bell badge, rating line) + page leftovers vs mockup `[Model: Sonnet 5]` — [detail](docs/todo/B209-arena-nav-right-and-page-parity.md)
 - ✅ **#211.** Settings as a platform page (replaces nav gear): profile+privacy, appearance, game, account tabs; entry via user-chip menu `[Model: Opus 5]` — [detail](docs/todo/B211-settings-page.md)
 - ✅ **#202.** Profile: per-user game history, retire /history.html `[Model: Sonnet 5.5]` — [detail](docs/todo/B202-profile-game-history.md)
 - ✅ **#200.** R6: club tabs, events (Sắp tới), club chat, club tournaments `[Model: Opus 5]` — [detail](docs/todo/B200-club-tabs-chat-events.md)
