@@ -24,6 +24,10 @@ jest.mock('../middleware/auth', () => ({
   },
 }));
 
+jest.mock('../utils/optional-user', () => ({
+  optionalUserId: (req) => req.headers['x-test-viewer'] || null,
+}));
+
 const express = require('express');
 const http = require('http');
 const database = require('../db/database');
@@ -197,5 +201,48 @@ describe('region (#199)', () => {
 
   it('unknown scope falls back to everyone', async () => {
     expect((await get('/api/rankings?category=freestyle&scope=zz')).body.scope).toBe('all');
+  });
+});
+
+describe('scope=club — "CLB của tôi" (B191)', () => {
+  const ins = (club, user, role) => database.db.prepare('INSERT OR REPLACE INTO club_members VALUES (?, ?, ?, ?)').run(club, user, role, NOW);
+  const asUser = (id) => ({ 'x-test-viewer': id });
+  const names = async (viewer) => (await get('/api/rankings?category=freestyle&scope=club', asUser(viewer))).body.players.map((p) => [p.rank, p.displayName]);
+
+  beforeAll(() => {
+    // c1 (from the phase-2 block): u1 owner, u3 pending. Add u2 as member; second club c2 with u4 + u5.
+    ins('c1', 'u2', 'member');
+    database.db.prepare("INSERT OR IGNORE INTO clubs (id, slug, name, description, join_policy, owner_id, created_at) VALUES ('c2', 'k2', 'K Two', '', 'open', 'u4', ?)").run(NOW);
+    ins('c2', 'u4', 'owner');
+    ins('c2', 'u3', 'member');
+  });
+
+  it('401 when logged out (private scope, like friends)', async () => {
+    const r = await get('/api/rankings?category=freestyle&scope=club');
+    expect(r.status).toBe(401);
+    expect(r.body.code).toBe('AUTH_REQUIRED');
+  });
+
+  it('lists only the viewer\'s club-mates + self above the games threshold, ranked within that set', async () => {
+    const r = await get('/api/rankings?category=freestyle&scope=club', asUser('u1'));
+    expect(r.body.scope).toBe('club');
+    expect(await names('u1')).toEqual([[1, 'Bob'], [2, 'Alice']]); // u3 only pending in c1; u4 is in another club
+    expect(r.body.pagination.total).toBe(2);
+  });
+
+  it('a pending request grants no circle: u3 is pending in c1 but a member of c2, so sees only c2 (u4 is under the threshold)', async () => {
+    expect(await names('u3')).toEqual([[1, 'Cara']]);
+  });
+
+  it('belonging to several clubs merges their members', async () => {
+    ins('c2', 'u1', 'member');
+    expect(await names('u1')).toEqual([[1, 'Bob'], [2, 'Alice'], [3, 'Cara']]);
+    database.db.prepare("DELETE FROM club_members WHERE club_id = 'c2' AND user_id = 'u1'").run();
+  });
+
+  it('a viewer in no club gets an empty list, and it is never served from the shared cache', async () => {
+    expect(await names('u9')).toEqual([]);
+    expect((await get('/api/rankings?category=freestyle')).body.players).toHaveLength(3); // unscoped list unaffected
+    expect(await names('u1')).toEqual([[1, 'Bob'], [2, 'Alice']]); // not Bob's/u9's cached body
   });
 });

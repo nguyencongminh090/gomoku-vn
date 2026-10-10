@@ -26,8 +26,9 @@
     category: CATEGORIES.includes(params.get('category')) ? params.get('category') : CATEGORIES[0],
     page: Math.max(1, parseInt(params.get('page'), 10) || 1),
     q: (params.get('q') || '').slice(0, 30),
-    scope: ['friends', 'vn'].includes(params.get('scope')) ? params.get('scope') : 'all',
+    scope: ['friends', 'vn', 'club'].includes(params.get('scope')) ? params.get('scope') : 'all',
     mine: null,
+    hasClub: false, // belongs to ≥ 1 club → "CLB của tôi" tab
   };
 
   function el(tag, text, cls) {
@@ -41,7 +42,7 @@
     tabsEl.replaceChildren();
     scopeEl.replaceChildren();
     {
-      for (const sc of state.mine && state.mine.userId ? ['all', 'vn', 'friends'] : ['all', 'vn']) {
+      for (const sc of state.mine && state.mine.userId ? ['all', 'vn', 'friends', ...(state.hasClub ? ['club'] : [])] : ['all', 'vn']) {
         const b = el('button', t('rankings.scope_' + sc), 'ptab');
         b.type = 'button';
         b.setAttribute('role', 'tab');
@@ -115,6 +116,7 @@
     document.getElementById('rk-wrap').hidden = data.players.length === 0; // mockup has no empty table card
     emptyEl.textContent = state.q ? t('rankings.no_match', { q: state.q })
       : state.scope === 'friends' ? t('rankings.friends_empty', { min: data.minGames })
+      : state.scope === 'club' ? t('rankings.club_empty', { min: data.minGames })
       : state.scope === 'vn' ? t('rankings.vn_empty', { min: data.minGames }) : t('rankings.empty', { min: data.minGames });
     totalEl.textContent = t('rankings.total', { n: data.pagination.total });
     footEl.textContent = t('rankings.footnote', { min: data.minGames });
@@ -162,6 +164,14 @@
       const res = await fetch('/api/rankings/me', { credentials: 'same-origin' });
       if (res.ok) state.mine = await res.json();
     } catch (_) { /* logged out / offline: no personal line */ }
+    if (state.mine && state.mine.userId) {
+      try {
+        const res = await fetch('/api/clubs/mine', { credentials: 'same-origin' });
+        const d = res.ok ? await res.json() : null;
+        state.hasClub = !!(d && d.clubs && d.clubs.length);
+      } catch (_) { /* no club tab */ }
+    }
+    if (state.scope === 'club' && !state.hasClub) state.scope = 'all'; // stale ?scope=club link
     load();
   }
 

@@ -119,6 +119,29 @@ describe('rankings page', () => {
     expect([...document.querySelectorAll('.ptab')].some((c) => c.textContent === 'rankings.scope_friends')).toBe(false);
   });
 
+  it('"CLB của tôi" tab appears only for members who belong to a club, and re-queries with scope=club', async () => {
+    const route = (clubs) => (url) => (url.includes('/me') ? ok(ME) : url.includes('/api/clubs/mine') ? ok({ clubs }) : ok(PAGE));
+    const labels = () => [...document.querySelectorAll('#rk-scope .ptab')].map((c) => c.textContent);
+    await boot(route([]));
+    expect(labels()).not.toContain('rankings.scope_club');
+    await boot(route([{ slug: 'k1', name: 'K1' }]));
+    expect(labels()).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends', 'rankings.scope_club']);
+    document.querySelectorAll('#rk-scope .ptab')[3].click();
+    await flush();
+    expect(global.fetch.mock.calls.pop()[0]).toContain('scope=club');
+    expect(location.search).toContain('scope=club');
+    // guests never ask for clubs
+    await boot((url) => (url.includes('/me') ? ok({ ...ME, userId: null }) : ok(PAGE)));
+    expect(global.fetch.mock.calls.some((c) => String(c[0]).includes('/api/clubs/mine'))).toBe(false);
+  });
+
+  it('a stale ?scope=club link without a club falls back to everyone', async () => {
+    window.history.replaceState(null, '', '/rankings.html?scope=club');
+    await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+    expect(global.fetch.mock.calls.pop()[0]).not.toContain('scope=');
+    window.history.replaceState(null, '', '/rankings.html');
+  });
+
   it('everyone (even logged out) gets a Việt Nam scope tab that re-queries with scope=vn', async () => {
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
     const chips = [...document.querySelectorAll('#rk-scope .ptab')];

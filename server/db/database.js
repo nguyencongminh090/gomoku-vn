@@ -960,6 +960,26 @@ function countRankingsAmong(category, userIds) {
     .get(category, RANKING_MIN_GAMES, ...userIds).n;
 }
 
+// Everyone in any club `viewerId` belongs to (pending requests don't count on either side), self included.
+const CLUB_CIRCLE_SQL = `SELECT m2.user_id FROM club_members m1 JOIN club_members m2 ON m2.club_id = m1.club_id
+  WHERE m1.user_id = ? AND m1.role != 'pending' AND m2.role != 'pending'`;
+
+/** Rankings restricted to the viewer's club-mates (B191 "CLB của tôi"); rank is within that set. */
+function getRankingsInMyClubs(category, viewerId, limit, offset) {
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND r.user_id IN (${CLUB_CIRCLE_SQL})
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, viewerId, limit, offset);
+}
+
+function countRankingsInMyClubs(category, viewerId) {
+  return db.prepare(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${CLUB_CIRCLE_SQL})`)
+    .get(category, RANKING_MIN_GAMES, viewerId).n;
+}
+
 /** Rankings of members who set `country` (alpha-2); rank is within that country. */
 function getRankingsByCountry(category, country, limit, offset) {
   return db.prepare(`
@@ -1191,6 +1211,8 @@ module.exports = {
   getUserRankedResults,
   countUserRankedWins,
   getRankingsByCountry,
+  getRankingsInMyClubs,
+  countRankingsInMyClubs,
   countRankingsByCountry,
   countRankingsAmong,
   getUserRanking,
