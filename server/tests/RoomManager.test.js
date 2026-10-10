@@ -80,9 +80,17 @@ describe('RoomManager — default room name', () => {
     roomManager.userRoomMap.clear();
   });
 
-  test('with no custom roomName, the default is "#<roomId>", not the host name', () => {
+  // The room ID already starts with '#', so the default name is the ID itself —
+  // prefixing another '#' showed "##A3F" in the room top bar and lobby list.
+  test('with no custom roomName, the default is the room ID "#A3F" (one "#"), not the host name', () => {
     const { room } = roomManager.createRoom(user());
-    expect(room.roomName).toBe(`#${room.roomId}`);
+    expect(room.roomName).toBe(room.roomId);
+    expect(room.roomName).toMatch(/^#[A-Z2-9]{3}$/);
+  });
+
+  test('an empty custom roomName falls back to the room ID too', () => {
+    const { room } = roomManager.createRoom(user(), { roomName: '' });
+    expect(room.roomName).toBe(room.roomId);
   });
 
   test('a custom roomName is kept as-is, not overridden by the default', () => {
