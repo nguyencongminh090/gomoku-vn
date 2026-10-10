@@ -220,6 +220,10 @@ describe('quick match panel (B197)', () => {
     expect(chips('qm-time').map((b) => b.textContent)).toEqual(['1+0', '3+2', '5+3', '10+0']);
     expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
     expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
+    // B212: ▶ on the rated search (Arena mockup), sword on "challenge a friend" — same icon as on profiles.
+    const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
+    expect(iconOf(document.getElementById('qm-actions').querySelector('button'))).toBe('ph-regular-play');
+    expect(iconOf(document.getElementById('qm-actions').querySelector('a'))).toBe('ph-regular-sword');
   });
 
   it('guest: casual only, with the reason in the status line', async () => {

@@ -168,6 +168,15 @@ describe('profile page', () => {
       expect(labels()).toEqual(expected);
     });
 
+    it('action buttons lead with an icon that matches them (B212)', async () => {
+      await boot({ ...PROFILE, friendship: 'none' });
+      const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
+      const byText = (sel, txt) => [...document.querySelectorAll(sel)].find((n) => n.textContent === txt);
+      expect(iconOf(byText('#pf-social > button', 'friends.add'))).toBe('ph-regular-user-plus');
+      expect(iconOf(byText('#pf-social > button', 'challenge.btn'))).toBe('ph-regular-sword');
+      expect(iconOf(byText('#pf-social > a', 'dm.btn'))).toBe('ph-regular-chat-circle');
+    });
+
     describe('challenge', () => {
       const submit = async (fetchImpl) => {
         await boot({ ...PROFILE, friendship: 'none' });
