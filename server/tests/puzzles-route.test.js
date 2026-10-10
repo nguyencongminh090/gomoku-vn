@@ -35,11 +35,11 @@ const db = database.db;
 const U = {};
 let server, base;
 
-function addUser(name, admin = 0) {
+function addUser(name, role = 'member') {
   const id = `${name}-id`;
   U[name] = id;
-  db.prepare(`INSERT INTO users (id, username, password_hash, display_name, created_at, is_admin) VALUES (?, ?, 'x', ?, ?, ?)`)
-    .run(id, name, name.toUpperCase(), NOW, admin);
+  db.prepare(`INSERT INTO users (id, username, password_hash, display_name, created_at, role) VALUES (?, ?, 'x', ?, ?, ?)`)
+    .run(id, name, name.toUpperCase(), NOW, role);
 }
 
 function call(method, urlPath, as, body) {
@@ -76,7 +76,7 @@ const good = (over = {}) => ({
 
 beforeAll(async () => {
   ['author', 'other', 'solver'].forEach((n) => addUser(n));
-  addUser('boss', 1);
+  addUser('boss', 'admin');
   const app = express();
   app.use('/api/puzzles', puzzlesRouter);
   server = http.createServer(app);

@@ -34,10 +34,10 @@ const db = database.db;
 const U = {};
 let server, base;
 
-function addUser(name, admin = 0) {
+function addUser(name, role = 'member') {
   U[name] = `${name}-id`;
-  db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at, is_admin) VALUES (?, ?, 'x', ?, ?, ?)")
-    .run(U[name], name, name.toUpperCase(), NOW, admin);
+  db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at, role) VALUES (?, ?, 'x', ?, ?, ?)")
+    .run(U[name], name, name.toUpperCase(), NOW, role);
 }
 
 function call(method, urlPath, as, body) {
@@ -72,7 +72,7 @@ async function mkThread(as = 'alice', over) {
 
 beforeAll(async () => {
   ['alice', 'bob'].forEach((n) => addUser(n));
-  addUser('boss', 1);
+  addUser('boss', 'admin');
   const app = express();
   app.use('/api/forum', forumRouter);
   server = http.createServer(app);

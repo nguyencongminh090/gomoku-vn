@@ -12,7 +12,7 @@ const path = require('path');
 
 const body = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
   .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
-const HTML = { list: body('forum.html'), thread: body('forum-thread.html'), reports: body('forum-reports.html') };
+const HTML = { list: body('forum.html'), thread: body('forum-thread.html'), reports: body('admin.html') };
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const settle = async () => { for (let i = 0; i < 6; i++) await flush(); };
@@ -36,6 +36,7 @@ function boot(page, script, fetchImpl, url) {
   window.alert = jest.fn();
   require('../js/forum-common.js');
   require(script);
+  if (window.ForumReports) window.ForumReports.init(); // a tab of /admin: admin.js starts it
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const calls = (frag, method) => global.fetch.mock.calls.filter(([u, o]) => u.includes(frag) && (!method || (o && o.method) === method));

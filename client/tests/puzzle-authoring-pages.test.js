@@ -12,7 +12,7 @@ const path = require('path');
 
 const body = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8')
   .match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
-const HTML = { editor: body('puzzle-editor.html'), mine: body('puzzles-mine.html'), review: body('puzzles-review.html') };
+const HTML = { editor: body('puzzle-editor.html'), mine: body('puzzles-mine.html'), review: body('admin.html') };
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 const settle = async () => { for (let i = 0; i < 6; i++) await flush(); };
@@ -41,6 +41,7 @@ function boot(page, script, fetchImpl) {
   window.PuzzleBoard = require('../js/puzzle-board.js');
   global.fetch = jest.fn(fetchImpl);
   require(script);
+  if (window.PuzzlesReview) window.PuzzlesReview.init(); // a tab of /admin: admin.js starts it
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const $ = (id) => document.getElementById(id);

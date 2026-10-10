@@ -16,6 +16,7 @@
 
 const crypto = require('crypto');
 const database = require('../db/database');
+const roles = require('../utils/roles');
 const dmText = require('./DmText');
 const coords = require('../../client/js/coords');
 
@@ -46,7 +47,8 @@ class PuzzleError extends Error {
 }
 const bad = (code, message) => new PuzzleError(code, 400, message);
 
-const isAdmin = (userId) => !!userId && !!db().prepare('SELECT is_admin FROM users WHERE id = ?').get(userId)?.is_admin;
+/** May review puzzles (moderator or admin, R8). */
+const isAdmin = (userId) => roles.can(userId, 'puzzle.review');
 
 /** A cell given as {x,y} or as text ("H8", "122") → {x,y} on a size×size board, else null. */
 function toCell(c, size) {

@@ -1,5 +1,6 @@
 /**
- * forum-reports.js — staff report queue (#203 7c), page /forum/reports.
+ * forum-reports.js — staff report queue (#203 7c), a tab of /admin (R8 #205; /forum/reports redirects there).
+ * Exposes window.ForumReports.init(); admin.js calls it when the tab is first shown.
  * GET /api/forum/reports (403 for non-staff: the server is the gate), POST /reports/:id/resolve {remove}.
  */
 
@@ -58,5 +59,6 @@
     }
   }
 
-  document.addEventListener('DOMContentLoaded', () => { window.PlatformShell.build('learn'); load(); });
+  let started = false;
+  window.ForumReports = { init() { if (!started) { started = true; load(); } } };
 })();

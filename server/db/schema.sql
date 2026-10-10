@@ -384,7 +384,7 @@ CREATE TABLE IF NOT EXISTS puzzle_progress (
   PRIMARY KEY (user_id, puzzle_id)
 );
 
--- Forum (TODO.md #203 7c, features/learn). Plain text only (rendered with textContent). Staff = users.is_admin.
+-- Forum (TODO.md #203 7c, features/learn). Plain text only (rendered with textContent). Staff = users.role (moderator|admin).
 -- Deleting is soft (deleted = 1): the row stays so reports/ids keep resolving; readers never get the body.
 CREATE TABLE IF NOT EXISTS forum_threads (
   id            TEXT PRIMARY KEY,                  -- UUID v4

@@ -19,14 +19,23 @@ describe('puzzle pages wiring', () => {
     expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
   });
 
-  it.each([['/puzzles/new', 'puzzle-editor.html'], ['/puzzles/mine', 'puzzles-mine.html'], ['/puzzles/review', 'puzzles-review.html']])('%s serves %s', (route, file) => {
+  it.each([['/puzzles/new', 'puzzle-editor.html'], ['/puzzles/mine', 'puzzles-mine.html']])('%s serves %s', (route, file) => {
     expect(index).toContain(`['${route}', '${file}']`);
     expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
   });
 
-  it.each([['/forum', 'forum.html'], ['/forum/t/:id', 'forum-thread.html'], ['/forum/reports', 'forum-reports.html']])('%s serves %s', (route, file) => {
+  it.each([['/forum', 'forum.html'], ['/forum/t/:id', 'forum-thread.html']])('%s serves %s', (route, file) => {
     expect(index).toContain(`['${route}', '${file}']`);
     expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
+  });
+
+  it('/admin serves admin.html and the two old queue URLs redirect into its tabs', () => {
+    expect(index).toMatch(/app\.get\('\/admin'[\s\S]{0,200}'admin\.html'/);
+    expect(index).toContain("app.get('/puzzles/review', (req, res) => res.redirect(301, '/admin#puzzles'))");
+    expect(index).toContain("app.get('/forum/reports', (req, res) => res.redirect(301, '/admin#forum'))");
+    expect(index).toContain("app.use('/api/admin', adminRouter)");
+    expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', 'admin.html'))).toBe(true);
+    for (const gone of ['puzzles-review.html', 'forum-reports.html']) expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', gone))).toBe(false);
   });
 
   it('the forum API is mounted', () => {

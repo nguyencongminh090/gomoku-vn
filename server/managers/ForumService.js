@@ -5,7 +5,7 @@
  *
  * Plain text only: bodies are stored as typed (control characters stripped, profanity masked, newlines
  * kept) and the client renders them with textContent, so nothing is HTML-escaped here (escaping too
- * would show "&lt;" to readers). Guests read, members write, staff (`users.is_admin`) delete and
+ * would show "&lt;" to readers). Guests read, members write, staff (`users.role`) delete and
  * handle reports. Deleting is soft; readers get a "deleted" placeholder and never the body.
  *
  * Methods throw ForumError(code, status); routes translate it to JSON.
@@ -13,6 +13,7 @@
 
 const crypto = require('crypto');
 const database = require('../db/database');
+const roles = require('../utils/roles');
 const profanityFilter = require('../../client/js/profanity-filter');
 
 const db = () => database.db;
@@ -37,7 +38,8 @@ class ForumError extends Error {
 const bad = (code, message) => new ForumError(code, 400, message);
 const notFound = () => new ForumError('FORUM_NOT_FOUND', 404, 'Không tìm thấy bài viết.');
 
-const isAdmin = (userId) => !!userId && !!db().prepare('SELECT is_admin FROM users WHERE id = ?').get(userId)?.is_admin;
+/** May moderate the forum (moderator or admin, R8). */
+const isAdmin = (userId) => roles.can(userId, 'forum.moderate');
 
 /** Control chars out (newline/tab kept), CRLF → LF, 3+ blank lines → 2, trimmed, profanity masked. */
 function cleanText(raw) {

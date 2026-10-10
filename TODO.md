@@ -79,3 +79,4 @@ in the detail file / fix-log).
 - **#194.** `vite build` fails: copy-classic-scripts matches a `<script src="js/...">` inside an HTML comment (diagnostic.html) `[Model: Haiku 4.5]` — [detail](docs/todo/B194-vite-build-fails-on-diagnostic-comment.md)
 - **#201.** R7: Learn = puzzles (tags + levels) + forum (design first) `[Model: Opus 5]` — [detail](docs/todo/B201-learn-r7.md)
 - **#203.** R7 7a: puzzles — member submissions, board editor, solve, admin review `[Model: Opus 5]` — [detail](docs/todo/B203-puzzles-7a.md)
+- **#205.** R8 8a: staff roles (member/moderator/admin) + `/admin` console merging puzzle review and forum reports `[Model: Sonnet 5]` — [detail](docs/todo/B205-admin-8a-roles-console.md)
