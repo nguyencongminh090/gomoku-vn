@@ -223,7 +223,7 @@ describe('quick match panel (B197)', () => {
     // B212: ▶ on the rated search (Arena mockup), sword on "challenge a friend" — same icon as on profiles.
     const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
     expect(iconOf(document.getElementById('qm-actions').querySelector('button'))).toBe('ph-regular-play');
-    expect(iconOf(document.getElementById('qm-actions').querySelector('a'))).toBe('ph-regular-sword');
+    expect(iconOf(document.getElementById('qm-actions').querySelector('a'))).toBe('ph-regular-boxing-glove');
   });
 
   it('guest: casual only, with the reason in the status line', async () => {

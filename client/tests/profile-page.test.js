@@ -205,7 +205,7 @@ describe('profile page', () => {
       const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
       const byText = (sel, txt) => [...document.querySelectorAll(sel)].find((n) => n.textContent === txt);
       expect(iconOf(byText('#pf-social > button', 'friends.add'))).toBe('ph-regular-user-plus');
-      expect(iconOf(byText('#pf-social > button', 'challenge.btn'))).toBe('ph-regular-sword');
+      expect(iconOf(byText('#pf-social > button', 'challenge.btn'))).toBe('ph-regular-boxing-glove');
       expect(iconOf(byText('#pf-social > a', 'dm.btn'))).toBe('ph-regular-chat-circle');
     });
 

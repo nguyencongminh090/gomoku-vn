@@ -195,7 +195,7 @@
 
   /** "Thách đấu" button + inline form (rule × clock × rated); POST /api/challenges. */
   function challengeControls(p, box) {
-    const open = withIcon(el('button', t('challenge.btn'), 'pbtn'), 'ph-regular-sword');
+    const open = withIcon(el('button', t('challenge.btn'), 'pbtn'), 'ph-regular-boxing-glove');
     open.type = 'button';
     const form = el('form', undefined, 'pchallenge');
     form.hidden = true;

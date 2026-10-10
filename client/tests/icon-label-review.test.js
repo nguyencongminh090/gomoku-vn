@@ -73,10 +73,19 @@ describe('icon + label review (#212)', () => {
     expect(iconOf(doc.querySelector('label[for="st-bio"]'))).not.toBe(iconOf(doc.querySelector('label[for="st-dm"]')));
   });
 
-  test('settings: mobile icon-only tabs keep their label in the a11y tree (no display:none)', () => {
+  test('settings: tab labels stay visible on mobile (#214 supersedes the #212 visually-hidden labels)', () => {
     const css = read('css/platform.css');
-    expect(css).not.toMatch(/\.pset__tabs \.ptab\[aria-selected="false"\] span \{ display: none; \}/);
-    expect(css).toMatch(/\.pset__tabs \.ptab\[aria-selected="false"\] span \{[^}]*clip-path: inset\(50%\)/);
+    expect(css).not.toMatch(/\.pset__tabs \.ptab[^{]*span \{[^}]*(display: none|clip-path)/);
+  });
+
+  test('#214: no icon below 16px on platform pages (sizes come from --icon-sm/md/lg or ≥ 16px)', () => {
+    const small = [];
+    for (const file of ['css/platform.css', 'css/platform-shell.css']) {
+      for (const [, sel, body] of read(file).matchAll(/([^{}]*(?:\.icon|svg)[^{}]*)\{([^}]*)\}/g)) {
+        for (const [, px] of body.matchAll(/(?:^|[\s;])(?:width|height):\s*(\d+)px/g)) if (Number(px) < 16) small.push(file + ': ' + sel.trim() + ' ' + px + 'px');
+      }
+    }
+    expect(small).toEqual([]);
   });
 
   test.each(PAGES)('%s: every ✕ close button has an accessible name', (page) => {
