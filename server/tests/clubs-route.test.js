@@ -295,3 +295,82 @@ describe('events (#200 slice 2)', () => {
     expect(db.prepare('SELECT COUNT(*) n FROM club_events WHERE club_id = (SELECT id FROM clubs WHERE slug = ?) OR title = ?').get(slug, 'Old').n).toBe(0);
   });
 });
+
+describe('chat (#200 slice 3)', () => {
+  const DmText = require('../managers/DmText');
+  const slug = 'chat-club';
+  const post = (as, text) => call('POST', `/api/clubs/${slug}/messages`, as, { text });
+  const get = (as, q = '') => call('GET', `/api/clubs/${slug}/messages${q}`, as);
+  const send = async (as, text) => { DmText.forget(U[as]); return post(as, text); };
+
+  beforeAll(async () => {
+    ['chown', 'choff', 'chmem', 'chpend', 'chout'].forEach(addUser);
+    await create('chown', 'Chat Club', { joinPolicy: 'invite' });
+    for (const u of ['choff', 'chmem']) {
+      await call('POST', `/api/clubs/${slug}/join`, u);
+      await call('POST', `/api/clubs/${slug}/members/${u}/approve`, 'chown');
+    }
+    await call('PUT', `/api/clubs/${slug}/members/choff/role`, 'chown', { role: 'officer' });
+    await call('POST', `/api/clubs/${slug}/join`, 'chpend'); // stays pending
+  });
+
+  it('members post and read; text is cleaned wire form; mine flag per viewer', async () => {
+    expect((await send('chmem', 'hi <b>there</b>')).status).toBe(201);
+    const m = (await get('chown')).body.messages;
+    expect(m).toHaveLength(1);
+    expect(m[0]).toMatchObject({ text: 'hi &lt;b&gt;there&lt;/b&gt;', username: 'chmem', mine: false });
+    expect((await get('chmem')).body.messages[0].mine).toBe(true);
+  });
+
+  it('non-members, pending, guests, logged-out are refused (read and write)', async () => {
+    for (const as of ['chout', 'chpend']) {
+      expect((await get(as)).body.code).toBe('CLUB_CHAT_MEMBERS_ONLY');
+      expect((await post(as, 'x')).body.code).toBe('CLUB_CHAT_MEMBERS_ONLY');
+    }
+    expect((await get('guest')).status).toBe(403);
+    expect((await post('guest', 'x')).status).toBe(403);
+    expect((await get(undefined)).status).toBe(401);
+  });
+
+  it('rejects empty text and rate-limits bursts', async () => {
+    expect((await send('chmem', '   ')).body.code).toBe('CLUB_MESSAGE_EMPTY');
+    expect((await send('chmem', undefined)).body.code).toBe('CLUB_MESSAGE_EMPTY');
+    DmText.forget(U.chmem);
+    let last;
+    for (let i = 0; i < 7; i++) last = await post('chmem', `burst ${i}`);
+    expect(last.status).toBe(429);
+    expect(last.body.code).toBe('CLUB_CHAT_RATE_LIMITED');
+  });
+
+  it('paginates: newest page, before = older, after = newer; oldest→newest order', async () => {
+    const ids = (await get('chown')).body.messages.map((x) => x.id);
+    expect(ids).toEqual([...ids].sort((a, b) => a - b));
+    const newest = ids[ids.length - 1];
+    expect((await get('chown', `?before=${newest}`)).body.messages.every((x) => x.id < newest)).toBe(true);
+    expect((await get('chown', `?after=${ids[0]}`)).body.messages.map((x) => x.id)).toEqual(ids.slice(1));
+    expect((await get('chown', `?after=${newest}`)).body.messages).toEqual([]);
+  });
+
+  it('keeps only the newest 200 per club', async () => {
+    const club = db.prepare('SELECT id FROM clubs WHERE slug = ?').get(slug);
+    const ins = db.prepare('INSERT INTO club_messages (club_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)');
+    for (let i = 0; i < 205; i++) ins.run(club.id, U.chmem, `bulk ${i}`, NOW);
+    await send('chmem', 'trigger trim');
+    const n = db.prepare('SELECT COUNT(*) n FROM club_messages WHERE club_id = ?').get(club.id).n;
+    expect(n).toBe(200);
+    expect((await get('chown')).body.messages.at(-1).text).toBe('trigger trim');
+  });
+
+  it('delete: staff only, scoped to club; leaving keeps old messages; club delete cascades', async () => {
+    const last = (await get('chown')).body.messages.at(-1).id;
+    expect((await call('DELETE', `/api/clubs/${slug}/messages/${last}`, 'chmem')).body.code).toBe('CLUB_FORBIDDEN');
+    await create('chout', 'Other Chat');
+    expect((await call('DELETE', `/api/clubs/other-chat/messages/${last}`, 'chout')).body.code).toBe('CLUB_MESSAGE_NOT_FOUND');
+    expect((await call('DELETE', `/api/clubs/${slug}/messages/${last}`, 'choff')).status).toBe(200);
+    await call('POST', `/api/clubs/${slug}/leave`, 'chmem');
+    expect((await get('chown')).body.messages.some((x) => x.username === 'chmem')).toBe(true);
+    await call('DELETE', `/api/clubs/${slug}`, 'chown');
+    const club = db.prepare('SELECT COUNT(*) n FROM club_messages WHERE body LIKE ?').get('bulk%').n;
+    expect(club).toBe(0);
+  });
+});

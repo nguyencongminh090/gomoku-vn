@@ -14,6 +14,7 @@
 const crypto = require('crypto');
 const database = require('../db/database');
 const { CATEGORIES } = require('./RatingService');
+const dmText = require('./DmText');
 
 const MAX_MEMBERS = 500;
 const MAX_CLUBS_PER_USER = 3;
@@ -24,6 +25,8 @@ const DESC_MAX = 280;
 const POLICIES = ['open', 'invite'];
 const EVENT_TITLE_MAX = 60;
 const MAX_UPCOMING_EVENTS = 20;
+const CHAT_PAGE = 50;
+const CHAT_KEEP = 200;
 
 class ClubError extends Error {
   constructor(code, status, message) {
@@ -291,6 +294,60 @@ function deleteEvent(userId, slug, eventId) {
   if (!r.changes) throw new ClubError('CLUB_EVENT_NOT_FOUND', 404, 'Không tìm thấy sự kiện.');
 }
 
+function requireMember(club, userId) {
+  const role = roleOf(club.id, userId);
+  if (!role || role === 'pending') throw new ClubError('CLUB_CHAT_MEMBERS_ONLY', 403, 'Chỉ thành viên mới dùng được trò chuyện.');
+  return role;
+}
+
+const avatarOf = (id, v) => (v ? `/api/profile/avatar/${id}.webp?v=${v}` : null);
+
+/**
+ * Members only. No cursor → newest page; `before` → older page; `after` → newer
+ * (polling). Always returned oldest → newest.
+ */
+function listMessages(userId, slug, { before, after } = {}) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  const b = Number.parseInt(before, 10);
+  const a = Number.parseInt(after, 10);
+  let where = 'm.club_id = ?';
+  const args = [club.id];
+  let order = 'DESC';
+  if (a > 0) { where += ' AND m.id > ?'; args.push(a); order = 'ASC'; } else if (b > 0) { where += ' AND m.id < ?'; args.push(b); }
+  const rows = db().prepare(`
+    SELECT m.id, m.sender_id, m.body, m.created_at, u.username, u.display_name, u.avatar_v
+    FROM club_messages m JOIN users u ON u.id = m.sender_id
+    WHERE ${where} ORDER BY m.id ${order} LIMIT ?`).all(...args, CHAT_PAGE);
+  if (order === 'DESC') rows.reverse();
+  return rows.map((r) => ({
+    id: r.id, text: r.body, createdAt: r.created_at, mine: r.sender_id === userId,
+    username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.sender_id, r.avatar_v),
+  }));
+}
+
+function postMessage(userId, slug, text) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  const body = dmText.clean(typeof text === 'string' ? text : '');
+  if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
+  if (dmText.isRateLimited(userId)) throw new ClubError('CLUB_CHAT_RATE_LIMITED', 429, 'Bạn nhắn quá nhanh.');
+  return db().transaction(() => {
+    const { lastInsertRowid } = db().prepare('INSERT INTO club_messages (club_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)')
+      .run(club.id, userId, body, new Date().toISOString());
+    db().prepare(`DELETE FROM club_messages WHERE club_id = ? AND id <= (
+      SELECT id FROM club_messages WHERE club_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)`).run(club.id, club.id, CHAT_KEEP);
+    return { id: Number(lastInsertRowid) };
+  })();
+}
+
+function deleteMessage(userId, slug, messageId) {
+  const club = getClub(slug);
+  requireStaff(club, userId);
+  const r = db().prepare('DELETE FROM club_messages WHERE id = ? AND club_id = ?').run(Number.parseInt(messageId, 10) || 0, club.id);
+  if (!r.changes) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
+}
+
 function getClubDetail(slug, viewerId, category) {
   if (!CATEGORIES.includes(category)) category = CATEGORIES[0];
   const club = getClub(slug);
@@ -344,6 +401,6 @@ function userIdByUsername(username) {
 module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
   createClub, updateClub, deleteClub, join, leave, approve, remove, setRole,
-  createEvent, deleteEvent,
+  createEvent, deleteEvent, listMessages, postMessage, deleteMessage,
   listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };
