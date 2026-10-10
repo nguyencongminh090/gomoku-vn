@@ -42,7 +42,7 @@ describe('platform shell', () => {
   it('mobile tab bar: Xếp hạng uses the crown (mockup), not the podium', () => {
     boot(null);
     const use = document.querySelector('.ptabbar a[data-tab="rankings"] use').getAttribute('href');
-    expect(use).toBe('/assets/icons/phosphor-sprite.svg#ph-regular-crown-simple');
+    expect(use).toMatch(/^\/assets\/icons\/phosphor-sprite\.svg\?v=\d+#ph-regular-crown-simple$/);
   });
 
   it('signed-out → Tôi tab goes to login', () => {
