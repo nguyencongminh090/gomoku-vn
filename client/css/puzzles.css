@@ -28,3 +28,23 @@
 @media (max-width: 800px) {
   .pz-solve { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* ── editor / mine / review (7a-3) ─────────────────────────────────────────── */
+.pz-editor { max-width: none; }
+.pz-answers { display: flex; flex-direction: column; gap: 8px; }
+.pz-answers .pform__row { flex-wrap: nowrap; }
+.pz-answer { flex: 1 1 auto; min-width: 0; }
+.pz-answer.is-active { outline: 2px solid var(--c-brand); }
+.pz-mine { flex-wrap: wrap; justify-content: space-between; }
+.pz-mine__main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pz-mine__note { flex-basis: 100%; margin: 0; }
+.pz-st--approved { color: var(--c-brand-text); }
+.pz-st--rejected { color: var(--c-error); }
+.pz-review { display: grid; grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pz-review[hidden] { display: none; }
+.pz-rv-row { width: 100%; text-align: left; cursor: pointer; border: 0; background: none; color: var(--c-ink); font: inherit; flex-wrap: wrap; }
+.pz-rv-row.is-active { background: var(--c-fill); }
+.pz-dup { color: var(--c-error); }
+@media (max-width: 800px) {
+  .pz-review { grid-template-columns: minmax(0, 1fr); }
+}

@@ -19,6 +19,11 @@ describe('puzzle pages wiring', () => {
     expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
   });
 
+  it.each([['/puzzles/new', 'puzzle-editor.html'], ['/puzzles/mine', 'puzzles-mine.html'], ['/puzzles/review', 'puzzles-review.html']])('%s serves %s', (route, file) => {
+    expect(index).toContain(`['${route}', '${file}']`);
+    expect(fs.existsSync(path.join(__dirname, '..', '..', 'client', file))).toBe(true);
+  });
+
   it('the Học nav item lands on /puzzles, not the profile', () => {
     expect(read('client', 'js', 'platform-shell.js')).toMatch(/id: 'learn', href: '\/puzzles'/);
   });

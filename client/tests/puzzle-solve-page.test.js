@@ -44,7 +44,8 @@ function boot({ html, scripts, fetchImpl }) {
   };
   global.requestAnimationFrame = (fn) => fn();
   global.fetch = jest.fn(fetchImpl);
-  window.Coords = require('../js/coords.js'); // UMD: jest takes the CommonJS branch, a browser the global one
+  window.Coords = require('../js/coords.js');
+  window.PuzzleBoard = require('../js/puzzle-board.js'); // UMD: jest takes the CommonJS branch, a browser the global one
   scripts.forEach((s) => require(s));
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }

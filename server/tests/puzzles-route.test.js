@@ -95,6 +95,7 @@ describe('submit + validation', () => {
     const mine = (await call('GET', '/api/puzzles/mine', 'author')).body.puzzles;
     expect(mine).toHaveLength(1);
     expect(mine[0].answers).toEqual([[{ x: 6, y: 7 }], [{ x: 10, y: 7 }]]); // 'K8' = x 10, y 7
+    expect((await call('GET', '/api/puzzles/mine', 'author')).body.canReview).toBe(false);
     expect(mine[0].tags).toEqual(['three']);
   });
 

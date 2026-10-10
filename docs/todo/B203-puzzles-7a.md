@@ -1,5 +1,5 @@
 # B203 — R7 slice 7a: puzzles (member submissions, board editor, solve, review)
-**Status:** OPEN — 7a-1 (server + coords) merged to dev; 7a-2 (solve UI) implemented on `feature/203-puzzles-solve-ui`, uncommitted, awaiting review (jsdom only, no real-browser pass yet); 7a-3 (editor/mine/review page) not started
+**Status:** OPEN — 7a-1 + 7a-2 merged to dev; 7a-3 (editor `/puzzles/new[?id=]`, `/puzzles/mine`, `/puzzles/review`) implemented on `feature/203-puzzles-editor`, uncommitted, awaiting review; real-browser pass done (author → admin → solver). Left: 7b profile stats, 7c forum
 **Area:** server (puzzles/puzzle_tags/puzzle_progress, ClubService-style PuzzleService, routes/puzzles.js, users.is_admin) + client (puzzles list, solve page, editor, review page, shared coords module)
 **From:** `features/learn/planning.md` "Decided" (user 2026-10-10 incl. "Thêm editor table để author có thể tạo puzzle")   **Depends:** B202 (done), B201
 

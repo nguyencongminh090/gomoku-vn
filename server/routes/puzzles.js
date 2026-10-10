@@ -5,7 +5,7 @@
  *
  * GET    /api/puzzles?tag=&level=&rule=&page=   approved list (public)
  * GET    /api/puzzles/meta                      allowed rules / levels / tags
- * GET    /api/puzzles/mine                      my puzzles, all statuses (answers included)
+ * GET    /api/puzzles/mine                      my puzzles, all statuses (answers included) + canReview (is admin)
  * GET    /api/puzzles/review?page=              pending queue (admin)
  * POST   /api/puzzles                           submit (→ pending)
  * GET    /api/puzzles/:id                       one puzzle; answers only for author/admin
@@ -54,7 +54,7 @@ router.get('/', h((req, res) => {
 
 router.get('/mine', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ puzzles: svc.mine(req.user.userId) });
+  res.json({ puzzles: svc.mine(req.user.userId), canReview: svc.isAdmin(req.user.userId) });
 }));
 
 router.get('/review', ...member, h((req, res) => {
