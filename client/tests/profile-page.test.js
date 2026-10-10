@@ -77,6 +77,21 @@ describe('profile page', () => {
     expect(document.getElementById('pf-actions').hidden).toBe(true);
   });
 
+  it('no clubs → the whole clubs card (not just its contents) is hidden and the grid is one column; with clubs → card shown', async () => {
+    await boot({ ...PROFILE, clubs: [] });
+    const panel = document.getElementById('pf-clubs-panel');
+    expect(panel.hidden).toBe(true);
+    expect(panel.classList.contains('ppanel')).toBe(true); // the card chrome lives on the hidden element
+    expect(document.getElementById('pf-split').classList.contains('psplit--solo')).toBe(true);
+    await boot({ ...PROFILE });  // field absent behaves like none
+    expect(document.getElementById('pf-clubs-panel').hidden).toBe(true);
+    await boot({ ...PROFILE, clubs: [{ slug: 'hn', name: '<b>HN</b>', role: 'member', members: 3 }] });
+    expect(document.getElementById('pf-clubs-panel').hidden).toBe(false);
+    expect(document.getElementById('pf-split').classList.contains('psplit--solo')).toBe(false);
+    expect(document.querySelector('#pf-clubs a').getAttribute('href')).toBe('/c/hn');
+    expect(document.querySelector('#pf-clubs b')).toBeNull();
+  });
+
   it('shows the history-private note when stats are withheld', async () => {
     await boot({ ...PROFILE, stats: null, recent: [], bio: null });
     expect(document.getElementById('pf-recent-note').textContent).toBe('profile.history_hidden');

@@ -222,3 +222,4 @@ a.prow:hover { background: var(--c-hover); }
 .psplit .pdm__list { max-height: 260px; }
 .prow__t.is-unread { font-weight: 700; }
 .ptab__n { font-variant-numeric: tabular-nums; font-weight: 500; color: var(--c-ink-3); }
+.psplit--solo { grid-template-columns: minmax(0, 1fr); }
