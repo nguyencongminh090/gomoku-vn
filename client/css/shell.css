@@ -160,7 +160,7 @@ body .gset-segment, body .gset-segment__opt { border-radius: var(--radius); }
    Same 1180px frame as rankings/profile/clubs (.papp); hero row = the mockup's
    .bar: sentence left, the active screen's create action right. */
 body.zen-lobby .lobby-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-body.zen-lobby .lobby-bar__actions { display: flex; gap: 10px; }
+body.zen-lobby .lobby-bar__actions { display: flex; align-items: center; gap: 10px; }
 body.zen-lobby .lobby-bar__actions .link-action { font-size: 13px; font-weight: 600; }
 /* .link-action's display:inline-flex beats the bare [hidden] attribute. */
 body.zen-lobby .lobby-bar__actions [hidden] { display: none; }
@@ -187,3 +187,14 @@ body.zen-lobby .hmini .last { fill: var(--c-warning); }
 body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
 body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }
 body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
+
+/* Vào bằng mã (Phòng screen, B210): inline code field next to the create button */
+body.zen-lobby .join-code { position: relative; display: inline-flex; align-items: center; gap: 8px; }
+body.zen-lobby .join-code[hidden], body.zen-lobby .join-code__error[hidden] { display: none; }
+body.zen-lobby .join-code__input { width: 84px; min-height: 36px; padding: 6px 10px; text-transform: uppercase; letter-spacing: .12em; text-align: center; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); color: var(--c-ink); font: inherit; }
+body.zen-lobby .join-code__error { position: absolute; top: calc(100% + 4px); left: 0; white-space: nowrap; font-size: 12px; color: var(--c-error); }
+@media (max-width: 860px) {
+  body.zen-lobby .lobby-bar__actions { flex-wrap: wrap; }
+  body.zen-lobby .join-code { flex: 1 1 100%; flex-wrap: wrap; }
+  body.zen-lobby .join-code__error { position: static; flex-basis: 100%; white-space: normal; }
+}
