@@ -400,3 +400,42 @@ describe('game history list (B202)', () => {
     expect((await req('GET', '/api/profile/nobody/games')).json.code).toBe('PROFILE_NOT_FOUND');
   });
 });
+
+describe('puzzle record on the profile (#203 7b)', () => {
+  const PZ = '66666666-6666-4666-8666-666666666666';
+  const ins = (n, level, status) => database.db.prepare(
+    `INSERT INTO puzzles (id, author_id, title, prompt, rule, board_size, stones, to_move, mode, answers, level, status, position_hash, created_at, updated_at)
+     VALUES (?, ?, 't', '', 'freestyle', 15, '[]', 'BLACK', 'sequence', '[]', ?, ?, ?, ?, ?)`).run(n, OTHER, level, status, n, NOW, NOW);
+  const solve = (id, solvedAt) => database.db.prepare('INSERT INTO puzzle_progress (user_id, puzzle_id, attempts, solved_at) VALUES (?, ?, 1, ?)').run(PZ, id, solvedAt);
+
+  beforeAll(() => {
+    database.db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, 'pzuser', 'x', 'pzuser', ?)").run(PZ, NOW);
+  });
+
+  it('no puzzles: zeroed record, no level', async () => {
+    const p = (await req('GET', '/api/profile/pzuser')).json.puzzles;
+    expect(p).toEqual({ solved: 0, level: null, byLevel: { easy: 0, medium: 0, hard: 0, expert: 0 }, threshold: 10 });
+  });
+
+  it('counts only solved + approved puzzles; level = highest level with >= 10 of that level (boundary 9 vs 10)', async () => {
+    for (let i = 0; i < 10; i++) { ins('e' + i, 'easy', 'approved'); solve('e' + i, NOW); }
+    for (let i = 0; i < 9; i++) { ins('h' + i, 'hard', 'approved'); solve('h' + i, NOW); }
+    ins('x0', 'expert', 'approved'); solve('x0', NOW);          // 1 expert: below threshold
+    ins('p0', 'easy', 'pending'); solve('p0', NOW);             // not approved → ignored
+    ins('u0', 'easy', 'approved'); solve('u0', null);           // attempted, never solved → ignored
+    let p = (await req('GET', '/api/profile/pzuser')).json.puzzles;
+    expect(p.solved).toBe(20);
+    expect(p.byLevel).toEqual({ easy: 10, medium: 0, hard: 9, expert: 1 });
+    expect(p.level).toBe('easy');
+    ins('h9', 'hard', 'approved'); solve('h9', NOW);            // 10th hard → level rises
+    p = (await req('GET', '/api/profile/pzuser')).json.puzzles;
+    expect([p.level, p.byLevel.hard]).toEqual(['hard', 10]);
+  });
+
+  it('is public (guests see it) and independent of hide_history', async () => {
+    database.db.prepare('UPDATE users SET hide_history = 1 WHERE id = ?').run(PZ);
+    const p = (await req('GET', '/api/profile/pzuser', { cookie: OTHER })).json;
+    expect(p.stats).toBeNull();
+    expect(p.puzzles.solved).toBeGreaterThan(0);
+  });
+});

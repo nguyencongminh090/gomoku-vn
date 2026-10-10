@@ -31,6 +31,8 @@ const TITLE_MAX = 60;
 const PROMPT_MAX = 280;
 const NOTE_MAX = 200;
 const PAGE = 20;
+/** A member's puzzle level = the highest level at which they have solved at least this many (planning: N = 10). */
+const LEVEL_THRESHOLD = 10;
 
 const db = () => database.db;
 
@@ -308,7 +310,21 @@ function review(adminId, id, { decision, level, note } = {}) {
   })();
 }
 
+/**
+ * Public puzzle record for the profile (7b): solved count (approved puzzles only) and level.
+ * `level` is the highest LEVELS entry with >= LEVEL_THRESHOLD solved puzzles of exactly that level, else null.
+ */
+function statsFor(userId) {
+  const rows = db().prepare(`SELECT p.level, COUNT(*) AS n FROM puzzle_progress g JOIN puzzles p ON p.id = g.puzzle_id
+    WHERE g.user_id = ? AND g.solved_at IS NOT NULL AND p.status = 'approved' GROUP BY p.level`).all(userId);
+  const byLevel = Object.fromEntries(LEVELS.map((l) => [l, 0]));
+  for (const r of rows) byLevel[r.level] = r.n;
+  const level = [...LEVELS].reverse().find((l) => byLevel[l] >= LEVEL_THRESHOLD) || null;
+  return { solved: Object.values(byLevel).reduce((a, b) => a + b, 0), level, byLevel, threshold: LEVEL_THRESHOLD };
+}
+
 module.exports = {
+  statsFor, LEVEL_THRESHOLD,
   PuzzleError, RULES, LEVELS, TAGS, MODES, BOARD_SIZES, MAX_PENDING_PER_USER, isAdmin,
   createPuzzle, updatePuzzle, listApproved, getPuzzle, solve, mine, reviewQueue, review,
 };

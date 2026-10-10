@@ -105,6 +105,21 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-joined b')).toBeNull();
   });
 
+  it('shows puzzles solved + level once something is solved; level "—" with a hint until a level reaches the threshold', async () => {
+    await boot({ ...PROFILE, puzzles: { solved: 12, level: 'medium', byLevel: {}, threshold: 10 } });
+    const text = document.getElementById('pf-stats').textContent;
+    expect(text).toContain('profile.puzzles_solved12');
+    expect(text).toContain('profile.puzzles_levelpuzzles.level_medium');
+    await boot({ ...PROFILE, puzzles: { solved: 3, level: null, byLevel: {}, threshold: 10 } });
+    const dd = [...document.querySelectorAll('#pf-stats div')].find((d) => d.textContent.includes('profile.puzzles_level'));
+    expect(dd.querySelector('dd').textContent).toBe('—');
+    expect(dd.title).toBe('profile.puzzles_level_hint{"n":10}');
+    await boot({ ...PROFILE, puzzles: { solved: 0, level: null, byLevel: {}, threshold: 10 } });
+    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles');
+    await boot({ ...PROFILE });
+    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles');
+  });
+
   it('renders badges and the win streak; nothing when there are none', async () => {
     await boot({ ...PROFILE, badges: ['first_win', 'top_500'], streak: { current: 2, best: 5 } });
     expect([...document.querySelectorAll('#pf-badges .pbadge')].map((b) => b.textContent)).toEqual(['badge.first_win', 'badge.top_500']);
