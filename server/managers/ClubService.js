@@ -22,6 +22,8 @@ const NAME_MIN = 3;
 const NAME_MAX = 30;
 const DESC_MAX = 280;
 const POLICIES = ['open', 'invite'];
+const EVENT_TITLE_MAX = 60;
+const MAX_UPCOMING_EVENTS = 20;
 
 class ClubError extends Error {
   constructor(code, status, message) {
@@ -247,6 +249,48 @@ function listClubs({ q, page, limit, category }) {
 }
 
 /** Club page payload; pending requests are visible to staff only. */
+/** Upcoming events (starts_at >= now), soonest first, capped. */
+function upcomingEvents(clubId) {
+  return db().prepare(`
+    SELECT id, title, starts_at, kind FROM club_events
+    WHERE club_id = ? AND starts_at >= ? ORDER BY starts_at, id LIMIT ?`)
+    .all(clubId, new Date().toISOString(), MAX_UPCOMING_EVENTS)
+    .map((e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, kind: e.kind }));
+}
+
+function requireStaff(club, userId) {
+  if (!isStaff(roleOf(club.id, userId))) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
+}
+
+function createEvent(userId, slug, { title, startsAt }) {
+  return db().transaction(() => {
+    const club = getClub(slug);
+    requireStaff(club, userId);
+    const name = typeof title === 'string' ? title.trim() : '';
+    if (!name || name.length > EVENT_TITLE_MAX) {
+      throw new ClubError('CLUB_EVENT_TITLE_INVALID', 400, `Tên sự kiện dài 1–${EVENT_TITLE_MAX} ký tự.`);
+    }
+    const when = typeof startsAt === 'string' ? new Date(startsAt) : null;
+    if (!when || Number.isNaN(when.getTime()) || when.getTime() < Date.now()) {
+      throw new ClubError('CLUB_EVENT_TIME_INVALID', 400, 'Thời gian sự kiện phải ở tương lai.');
+    }
+    if (upcomingEvents(club.id).length >= MAX_UPCOMING_EVENTS) {
+      throw new ClubError('CLUB_EVENT_LIMIT', 409, `Tối đa ${MAX_UPCOMING_EVENTS} sự kiện sắp tới.`);
+    }
+    const id = crypto.randomUUID();
+    db().prepare('INSERT INTO club_events (id, club_id, title, starts_at, created_by, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, club.id, name, when.toISOString(), userId, new Date().toISOString());
+    return { id };
+  })();
+}
+
+function deleteEvent(userId, slug, eventId) {
+  const club = getClub(slug);
+  requireStaff(club, userId);
+  const r = db().prepare('DELETE FROM club_events WHERE id = ? AND club_id = ?').run(String(eventId).slice(0, 64), club.id);
+  if (!r.changes) throw new ClubError('CLUB_EVENT_NOT_FOUND', 404, 'Không tìm thấy sự kiện.');
+}
+
 function getClubDetail(slug, viewerId, category) {
   if (!CATEGORIES.includes(category)) category = CATEGORIES[0];
   const club = getClub(slug);
@@ -267,6 +311,7 @@ function getClubDetail(slug, viewerId, category) {
     rank: clubRanks(category).get(club.id) || null,
     avgRating: avgRows.length ? Math.round(avgRows.reduce((s, r) => s + r.rating, 0) / avgRows.length) : null,
     myRole,
+    events: upcomingEvents(club.id),
     leaderboard: rows.map((r, i) => ({
       rank: i + 1, username: r.username, displayName: r.display_name, role: r.role,
       avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.user_id}.webp?v=${r.avatar_v}` : null,
@@ -299,5 +344,6 @@ function userIdByUsername(username) {
 module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
   createClub, updateClub, deleteClub, join, leave, approve, remove, setRole,
+  createEvent, deleteEvent,
   listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

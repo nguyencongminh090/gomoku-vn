@@ -271,6 +271,20 @@ CREATE TABLE IF NOT EXISTS club_members (
 
 CREATE INDEX IF NOT EXISTS idx_club_members_user ON club_members(user_id);
 
+-- Club events, shown as "Sắp tới" on the club page (TODO.md #200 slice 2).
+-- starts_at = ISO UTC; kind is 'event' for now (reserved for later kinds).
+CREATE TABLE IF NOT EXISTS club_events (
+  id          TEXT PRIMARY KEY,                  -- UUID v4
+  club_id     TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  starts_at   TEXT NOT NULL,
+  kind        TEXT NOT NULL DEFAULT 'event',
+  created_by  TEXT NOT NULL REFERENCES users(id),
+  created_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_club_events_club ON club_events(club_id, starts_at);
+
 -- Friends (TODO.md #198). One row per pair, canonical order user_a < user_b.
 -- status 'pending' = requested_by asked the other; 'accepted' = mutual friends.
 CREATE TABLE IF NOT EXISTS friendships (

@@ -13,6 +13,8 @@
  * POST   /api/clubs/:slug/members/:username/approve
  * DELETE /api/clubs/:slug/members/:username        reject request / kick
  * PUT    /api/clubs/:slug/members/:username/role   {role: officer|member|owner}
+ * POST   /api/clubs/:slug/events                   {title, startsAt} staff
+ * DELETE /api/clubs/:slug/events/:id                staff
  */
 
 const express = require('express');
@@ -105,6 +107,15 @@ router.delete('/:slug/members/:username', ...write, h((req, res) => {
 
 router.put('/:slug/members/:username/role', ...write, h((req, res) => {
   svc.setRole(req.user.userId, req.params.slug, target(req), (req.body || {}).role);
+  res.json({ ok: true });
+}));
+
+router.post('/:slug/events', ...write, h((req, res) => {
+  res.status(201).json(svc.createEvent(req.user.userId, req.params.slug, req.body || {}));
+}));
+
+router.delete('/:slug/events/:id', ...write, h((req, res) => {
+  svc.deleteEvent(req.user.userId, req.params.slug, req.params.id);
   res.json({ ok: true });
 }));
 
