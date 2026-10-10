@@ -1,5 +1,5 @@
 # B203 — R7 slice 7a: puzzles (member submissions, board editor, solve, review)
-**Status:** OPEN — todo written 2026-10-10, not started; split into 3 branches (below)
+**Status:** OPEN — 7a-1 (server + coords) implemented on `feature/203-puzzles-server`, uncommitted, awaiting review; 7a-2 (solve UI), 7a-3 (editor/mine/review page) not started
 **Area:** server (puzzles/puzzle_tags/puzzle_progress, ClubService-style PuzzleService, routes/puzzles.js, users.is_admin) + client (puzzles list, solve page, editor, review page, shared coords module)
 **From:** `features/learn/planning.md` "Decided" (user 2026-10-10 incl. "Thêm editor table để author có thể tạo puzzle")   **Depends:** B202 (done), B201
 
@@ -27,3 +27,10 @@ Three branches keep each reviewable; server first so UI binds to a tested API. P
 
 ## Done when
 - Per branch: backend access-matrix tests (guest/member/author/admin; pending/approved/rejected), jsdom tests, real-browser pass (own DB). 7a done when a member can submit, an admin approves, another member solves it.
+
+## 7a-1 notes (2026-10-10)
+- `server/managers/PuzzleService.js` + `routes/puzzles.js` (`/api/puzzles`: meta, list, mine, review, submit, get, edit, solve, review decision); tables in `schema.sql`; `users.is_admin` inline migration; CLI `node server/scripts/admin.js set-admin --username=<u> [--off] [--yes]`; UMD `client/js/coords.js` (global `Coords`; `label/number/parse/parseList`).
+- Decisions made while building: stones must have black−white = 0 (BLACK to move) or 1 (WHITE to move); no existing five; list/detail never include answers except for author/admin; list omits stones; editing an approved puzzle → pending and clears its progress; guests can read but not solve (progress needs an account); levels `easy|medium|hard|expert`, tags `three|four_three|vcf|vct|defense|trap`.
+- Error codes (client i18n comes with 7a-2): PUZZLE_TITLE_INVALID, _PROMPT_INVALID, _RULE_INVALID, _LEVEL_INVALID, _TAGS_INVALID, _STONES_INVALID, _ANSWER_INVALID, _PENDING_LIMIT, _NOT_FOUND, _FORBIDDEN, _NOT_PENDING, _DECISION_INVALID, _MOVES_INVALID.
+- Verified: `npm test` 2432 green (+47: coords, route access matrix); real server on own DB via curl (migration, set-admin, submit → approve → list → solve; non-admin review refused). No UI in this slice.
+- **User decisions 2026-10-10 (after asking):** board sizes **15, 17, 19, 20** (stored per puzzle; coords parse against the puzzle's size) and **no cap on answer count or answer length** (only the 128 KB request limit and "distinct empty cells" bound them). Replaces my earlier 15-only / 5×20 defaults.

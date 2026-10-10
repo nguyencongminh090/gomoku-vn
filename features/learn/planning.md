@@ -31,7 +31,7 @@ Status: **direction set by user 2026-10-10; not authorization to implement.** Si
 | 7e | Engine eval | external, later |
 
 ## Decided 2026-10-10 (answers to the remaining questions)
-- **Rule/board per puzzle:** the author picks the rule (Free-style / Standard / Caro VN) — NOT Free-style-only; so the reviewer must validate legality under that rule, and puzzle rows store rule + board size (15×15 first). *(Differs from the recommended default.)*
+- **Rule/board per puzzle:** the author picks the rule (Free-style / Standard / Caro VN) — NOT Free-style-only; so the reviewer must validate legality under that rule, and puzzle rows store rule + board size (sizes 15/17/19/20 — user 2026-10-10; no cap on answers/moves). *(Differs from the recommended default.)*
 - **Tags:** fixed admin-managed list (mở ba, tứ ba, VCF, VCT, phòng thủ…), ≤ 3 per puzzle.
 - **Level:** author proposes, reviewer sets; user puzzle level = highest level with ≥ **N = 10** solved (constant).
 - **Review:** admins review; states pending → approved | rejected; editing an approved puzzle sends it back to pending.
