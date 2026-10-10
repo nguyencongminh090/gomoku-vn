@@ -112,6 +112,13 @@ if (userColumns.length > 0 && !userColumns.includes('who_can_dm')) {
   logger.info('[DB] Migrated users: added country/city/who_can_*/hide_online columns (TODO.md #199)');
 }
 
+// Reviewer flag for member-submitted puzzles (TODO.md #203). R8 Admin builds real roles later;
+// until then it is granted from the CLI (server/scripts/admin.js set-admin).
+if (userColumns.length > 0 && !userColumns.includes('is_admin')) {
+  db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated users: added is_admin column (TODO.md #203)');
+}
+
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
 // race in the /google/callback handler free to insert two `users` rows for
 // the same (oauth_provider, oauth_id) (TODO.md #94). Upgrading it to a

@@ -341,3 +341,45 @@ CREATE TABLE IF NOT EXISTS direct_messages (
 
 CREATE INDEX IF NOT EXISTS idx_dm_conv ON direct_messages(conv_key, id);
 CREATE INDEX IF NOT EXISTS idx_dm_unread ON direct_messages(recipient_id, read_at);
+
+-- Puzzles (TODO.md #203, features/learn). Members submit, admins review. stones = JSON
+-- [{x,y,color:'BLACK'|'WHITE'}] (y top-down); answers = JSON [[{x,y},...],...] — the SOLVER's
+-- moves only; any one matching answer solves it. mode 'final_move' = one decisive move.
+CREATE TABLE IF NOT EXISTS puzzles (
+  id            TEXT PRIMARY KEY,                  -- UUID v4
+  author_id     TEXT NOT NULL REFERENCES users(id),
+  title         TEXT NOT NULL,
+  prompt        TEXT NOT NULL DEFAULT '',
+  rule          TEXT NOT NULL,                     -- 'freestyle' | 'standard' | 'caro'
+  board_size    INTEGER NOT NULL,
+  stones        TEXT NOT NULL,
+  to_move       TEXT NOT NULL,                     -- 'BLACK' | 'WHITE'
+  mode          TEXT NOT NULL,                     -- 'sequence' | 'final_move'
+  answers       TEXT NOT NULL,
+  level         TEXT NOT NULL,                     -- author's proposal until a reviewer sets it
+  status        TEXT NOT NULL DEFAULT 'pending',   -- 'pending' | 'approved' | 'rejected'
+  position_hash TEXT NOT NULL,                     -- rule+size+to_move+stones, for duplicate flags
+  review_note   TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  reviewed_at   TEXT,
+  reviewed_by   TEXT REFERENCES users(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_puzzles_status ON puzzles(status, created_at);
+CREATE INDEX IF NOT EXISTS idx_puzzles_author ON puzzles(author_id);
+CREATE INDEX IF NOT EXISTS idx_puzzles_hash ON puzzles(position_hash);
+
+CREATE TABLE IF NOT EXISTS puzzle_tags (
+  puzzle_id  TEXT NOT NULL REFERENCES puzzles(id) ON DELETE CASCADE,
+  tag        TEXT NOT NULL,
+  PRIMARY KEY (puzzle_id, tag)
+);
+
+CREATE TABLE IF NOT EXISTS puzzle_progress (
+  user_id    TEXT NOT NULL REFERENCES users(id),
+  puzzle_id  TEXT NOT NULL REFERENCES puzzles(id) ON DELETE CASCADE,
+  attempts   INTEGER NOT NULL DEFAULT 0,
+  solved_at  TEXT,                                 -- null until first correct answer
+  PRIMARY KEY (user_id, puzzle_id)
+);
