@@ -1,5 +1,5 @@
 # B208 — R8: cheat reports (member reports a finished game → staff queue)
-**Status:** OPEN — implemented on `feature/208-cheat-reports`, uncommitted, awaiting review
+**Status:** ✅ DONE 2026-10-10 — reviewed: member reports a finished casual game from /replay (form → row; duplicate is a no-op), moderator sees it in the Gian lận tab and in the unified table, Confirm → `cheat_confirm` edge, report resolved, account NOT locked; member staff-API → 403; limits (10/24 h, reason 1–200, no guest/self/tournament) covered by cheat-reports.test.js. Note: the report form is also shown to the accused on their own game (server refuses CHEAT_SELF; harmless).
 **Area:** server (game_reports table, CheatReportService, POST /api/games/:id/report, /api/admin/cheat-reports*, perm cheat.review) + client (replay report form, /admin "Gian lận" tab)
 **From:** user 2026-10-10 "Làm tiếp cheat flags" (answer: members report games)   **Depends:** B205, B206
 

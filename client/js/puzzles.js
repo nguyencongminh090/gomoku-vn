@@ -28,6 +28,8 @@
     page: Math.max(1, parseInt(params.get('page'), 10) || 1),
   };
 
+  function withIcon(node, name) { if (window.PlatformShell && window.PlatformShell.icon) node.prepend(window.PlatformShell.icon(name)); return node; }
+
   function el(tag, text, cls) {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -57,7 +59,7 @@
       const a = el('a', undefined, 'pz-card' + (p.solved ? ' is-solved' : ''));
       a.href = '/puzzle/' + encodeURIComponent(p.id);
       const head = el('div', undefined, 'pz-card__head');
-      head.append(el('b', p.title), p.solved ? el('span', '✓ ' + t('puzzles.solved'), 'pbadge') : el('span', undefined));
+      head.append(el('b', p.title), p.solved ? withIcon(el('span', t('puzzles.solved'), 'pbadge'), 'ph-regular-check-circle') : el('span', undefined));
       const meta = el('div', undefined, 'pz-card__meta');
       meta.append(el('span', t('puzzles.level_' + p.level), 'pbadge pz-lv pz-lv--' + p.level),
         el('span', t('puzzles.rule_' + p.rule) + ' · ' + p.boardSize + '×' + p.boardSize, 'muted small'));

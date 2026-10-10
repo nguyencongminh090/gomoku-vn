@@ -146,7 +146,13 @@ describe('profile page', () => {
     await boot({ ...PROFILE, badges: ['first_win', 'top_500'], streak: { current: 2, best: 5 } });
     expect([...document.querySelectorAll('#pf-badges .pbadge')].map((b) => b.textContent)).toEqual(['badge.first_win', 'badge.top_500']);
     expect(document.getElementById('pf-badges').hidden).toBe(false);
-    expect(document.getElementById('pf-stats').textContent).toContain('profile.streak_val{"cur":2,"best":5}');
+    // B213: two plain stats instead of "2 (cao nhất 5)", which wrapped on phones.
+    const stat = (key) => [...document.querySelectorAll('#pf-stats > div')].find((d) => d.querySelector('dt').textContent === key);
+    expect(stat('profile.streak').querySelector('dd').textContent).toBe('2');
+    expect(stat('profile.streak_best').querySelector('dd').textContent).toBe('5');
+    // Badges sit in the header, each with an icon.
+    const badges = [...document.querySelectorAll('.phead #pf-badges .pbadge')];
+    expect(badges.map((b) => b.querySelector('use').getAttribute('href').split('#')[1])).toEqual(['ph-regular-flag-checkered', 'ph-regular-trophy']);
     await boot({ ...PROFILE, badges: [], streak: { current: 0, best: 0 } });
     expect(document.getElementById('pf-badges').hidden).toBe(true);
     expect(document.getElementById('pf-stats').textContent).not.toContain('profile.streak');
@@ -166,6 +172,41 @@ describe('profile page', () => {
       await boot({ ...PROFILE, friendship });
       expect(document.getElementById('pf-social').hidden).toBe(false);
       expect(labels()).toEqual(expected);
+    });
+
+    it.each([
+      ['none', [['friends.add', 'ph-regular-user-plus']]],
+      ['outgoing', [['friends.cancel', 'ph-regular-x']]],
+      ['incoming', [['friends.accept', 'ph-regular-check'], ['friends.decline', 'ph-regular-x']]],
+      ['friends', [['friends.remove', 'ph-regular-user-minus']]],
+    ])('state %s: every friend button carries its icon (B213)', async (friendship, expected) => {
+      await boot({ ...PROFILE, friendship });
+      const got = [...document.querySelectorAll('#pf-social > button')].filter((b) => b.textContent !== 'challenge.btn')
+        .map((b) => [b.textContent, b.querySelector('use').getAttribute('href').split('#')[1]]);
+      expect(got).toEqual(expected);
+    });
+
+    it('challenge form opens below the action row, not between Thách đấu and Nhắn tin (B213)', async () => {
+      await boot({ ...PROFILE, friendship: 'none' });
+      const kids = [...document.getElementById('pf-social').children];
+      expect(kids[kids.length - 1].tagName).toBe('FORM');
+      const send = kids[kids.length - 1].querySelector('button[type=submit]');
+      expect(send.querySelector('use').getAttribute('href')).toMatch(/#ph-regular-paper-plane-tilt$/);
+    });
+
+    it('meta line: joined date and place each lead with an icon (B213)', async () => {
+      await boot({ ...PROFILE, friendship: 'none', city: 'Hà Nội' });
+      const icons = [...document.querySelectorAll('#pf-joined > span use')].map((u) => u.getAttribute('href').split('#')[1]);
+      expect(icons).toEqual(['ph-regular-calendar', 'ph-regular-map-pin']);
+    });
+
+    it('action buttons lead with an icon that matches them (B212)', async () => {
+      await boot({ ...PROFILE, friendship: 'none' });
+      const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
+      const byText = (sel, txt) => [...document.querySelectorAll(sel)].find((n) => n.textContent === txt);
+      expect(iconOf(byText('#pf-social > button', 'friends.add'))).toBe('ph-regular-user-plus');
+      expect(iconOf(byText('#pf-social > button', 'challenge.btn'))).toBe('ph-regular-boxing-glove');
+      expect(iconOf(byText('#pf-social > a', 'dm.btn'))).toBe('ph-regular-chat-circle');
     });
 
     describe('challenge', () => {

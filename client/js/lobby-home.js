@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=248';
+import { client, setHeroTab } from './lobby.js?v=260';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -26,6 +26,9 @@ const POLL_MS = 20000;
 let current = null;
 let pollTimer = null;
 let lastData = null;
+
+/** Leading sprite icon (B212, #214); a no-op before platform-shell.js has loaded. */
+function withIcon(node, name) { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; }
 
 function el(tag, text, cls) {
   const n = document.createElement(tag);
@@ -183,7 +186,7 @@ function renderMine(data) {
   }
   if (!box.children.length) {
     const empty = el('div', undefined, 'hempty');
-    const go = el('button', t('home.find_room'), 'link-action link-action--primary');
+    const go = withIcon(el('button', t('home.find_room'), 'link-action link-action--primary'), 'ph-regular-magnifying-glass');
     go.type = 'button';
     go.addEventListener('click', () => showScreen('rooms'));
     empty.append(el('p', t('home.no_games'), 'muted small'), go);
@@ -302,8 +305,8 @@ export function renderQuickMatch() {
   const line = document.getElementById('qm-line');
   if (!acts || !line) return;
   acts.replaceChildren();
-  const btn = (key, cls, fn) => {
-    const b = el('button', t(key), 'link-action' + (cls ? ' ' + cls : ''));
+  const btn = (key, cls, fn, iconName) => {
+    const b = withIcon(el('button', t(key), 'link-action' + (cls ? ' ' + cls : '')), iconName);
     b.type = 'button';
     b.addEventListener('click', fn);
     acts.appendChild(b);
@@ -314,10 +317,10 @@ export function renderQuickMatch() {
     line.textContent = t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() })
       + (qm.inBucket > 1 ? ' · ' + t('qm.in_queue', { n: qm.inBucket }) : '');
   } else {
-    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true));
+    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
     btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
     if (isMember()) { // mockup: Thách đấu bạn bè → the social page, where friends are challenged
-      const a = el('a', t('qm.challenge_friend'), 'link-action');
+      const a = withIcon(el('a', t('qm.challenge_friend'), 'link-action'), 'ph-regular-boxing-glove');
       a.href = '/social.html';
       acts.appendChild(a);
     }

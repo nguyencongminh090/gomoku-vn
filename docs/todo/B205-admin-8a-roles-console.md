@@ -1,5 +1,5 @@
 # B205 — R8 slice 8a: staff roles + /admin console (puzzle review + forum reports)
-**Status:** OPEN — implemented on `feature/205-admin-roles`, uncommitted, awaiting review (real-browser pass pending)
+**Status:** ✅ DONE 2026-10-10 — reviewed against Scope/Done-when: roles + `/admin` console on `main` (PR #26); access-matrix/migration/jsdom tests green; real-browser pass as member (no tabs, staff APIs 403), moderator (puzzles/reports/forum/cheat tabs only; users/role/avatar APIs 403) and admin; old `/puzzles/review` + `/forum/reports` 301 to `/admin`; `set-role` CLI run for real on a DB copy (missing/invalid flags → exit 1, unknown user → "No matching user", answering n aborts, `--yes`/`--id` set member→moderator→admin→member, effect visible on a live session via /api/admin/me, each call appended to the audit log); the whole admin/report/avatar flow also passes in Firefox (same script as Chromium, 0 console errors); migration verified on pre-migration DB copies. Not done (as scoped): none.
 **Area:** server (utils/roles.js, routes/admin.js, users.role, PuzzleService/ForumService gates, scripts/admin.js set-role) + client (admin.html/js, puzzles-review.js, forum-reports.js)
 **From:** user 2026-10-10 "bắt đầu R8 Admin (gộp hàng chờ duyệt puzzle và báo cáo forum, thay cờ is_admin bằng role)"; scope chosen 8a   **Depends:** B203, B201
 

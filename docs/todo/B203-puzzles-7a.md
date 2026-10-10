@@ -1,5 +1,5 @@
 # B203 — R7 slice 7a: puzzles (member submissions, board editor, solve, review)
-**Status:** OPEN — 7a-1..7a-3 + 7b merged to dev; 7c forum (`/forum`, `/forum/t/<id>`, `/forum/reports`; ForumService + /api/forum; 4 fixed categories, reports + staff queue, soft delete) on `feature/204-forum`, uncommitted, awaiting review
+**Status:** ✅ DONE 2026-10-10 — 7a-1..7a-3 puzzles, 7b profile stats, 7c forum merged; on `main` via PR #26. Real-browser passes done per slice.
 **Area:** server (puzzles/puzzle_tags/puzzle_progress, ClubService-style PuzzleService, routes/puzzles.js, users.is_admin) + client (puzzles list, solve page, editor, review page, shared coords module)
 **From:** `features/learn/planning.md` "Decided" (user 2026-10-10 incl. "Thêm editor table để author có thể tạo puzzle")   **Depends:** B202 (done), B201
 

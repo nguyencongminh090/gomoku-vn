@@ -244,6 +244,7 @@
   flex-shrink: 0;
 }
 
+.slot-card__stand .icon { width: 16px; height: 16px; }   /* #214: sprite x replaces the ✕ glyph */
 .slot-card__stand:hover {
   color: #c0392b;
   background: rgba(192, 57, 43, 0.1);

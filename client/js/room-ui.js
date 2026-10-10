@@ -33,6 +33,7 @@
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const roomIdNav      = document.getElementById('room-id-nav');
+  const siteLinks      = document.getElementById('room-site-links');
   const slot1Content   = document.getElementById('slot-1-content');
   const slot2Content   = document.getElementById('slot-2-content');
   const slot1Card      = document.getElementById('slot-1');
@@ -110,6 +111,10 @@
     st.mySlot  = me ? me.slot  : null;
     st.isReady = me ? me.ready : false;
 
+    // Site links leave the room, so a seated player loses them mid-game (same
+    // condition as the Rời phòng confirm in room.js) — #191 item 6.
+    if (siteLinks) siteLinks.hidden = !!(st.gameState && st.gameState.status === 'ongoing' && st.mySlot !== null);
+
     renderSlot(1, slot1Content, slot1Card);
     renderSlot(2, slot2Content, slot2Card);
     renderPlayersStrip();
@@ -182,7 +187,7 @@
 
     const isMe = player.userId === st.myUser.userId;
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí">✕</span>`
+      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-x"></use></svg></span>`
       : '';
 
     contentEl.innerHTML = `

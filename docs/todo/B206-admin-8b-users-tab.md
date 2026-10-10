@@ -1,5 +1,5 @@
 # B206 — R8 slice 8b: /admin Users tab (find, change role, lock) + change graph
-**Status:** OPEN — implemented on `feature/206-admin-users`, uncommitted, awaiting review
+**Status:** ✅ DONE 2026-10-10 — reviewed: Users tab (search, role change, lock with reason, history list, SVG graph) works in a real browser as admin; self/admin protections → 400; locked account → 403 ACCOUNT_LOCKED at login (wrong password stays INVALID_CREDENTIALS); moderator → 403; live-socket-after-lock trap fixed (fix-log 2026-10-10-b206-lock-kicks-live-socket); migrations verified on DB copies.
 **Area:** server (admin_edges table, users.locked_at, AdminUserService, /api/admin/users*, auth lock checks, `user.manage` admin-only) + client (admin.html tab, admin-users.js)
 **From:** user 2026-10-10 "Làm tiếp tab quản lý người dùng. Tôi đề xuất Graph base, tổ chức các thay đổi của người dùng thành đồ thị graph." (answer: change log as a graph)   **Depends:** B205
 

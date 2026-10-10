@@ -1,5 +1,5 @@
 # B207 — R8: staff can remove a user's avatar
-**Status:** OPEN — implemented on `feature/207-admin-avatar-remove`, uncommitted, awaiting review
+**Status:** ✅ DONE 2026-10-10 — reviewed: admin-only (moderator DELETE → 403); real-browser: confirm dialog → `DELETE 200`, `avatar_v` → 0, block hidden, `avatar_remove` edge logged; idempotence (no avatar → no edge) covered in admin-users.test.js.
 **Area:** server (utils/avatar-store.js, AdminUserService.removeAvatar, DELETE /api/admin/users/:id/avatar) + client (admin Users tab)
 **From:** user 2026-10-10 "avatar không cần duyệt?" → chose post-moderation: "làm gỡ avatar"   **Depends:** B206
 

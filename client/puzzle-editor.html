@@ -6,22 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Đăng puzzle</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=248" />
-  <link rel="stylesheet" href="css/tokens.css?v=248" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=248" />
-  <link rel="stylesheet" href="css/platform.css?v=248" />
-  <link rel="stylesheet" href="css/puzzles.css?v=248" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=248" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=248">
+  <link rel="stylesheet" href="css/main.css?v=260" />
+  <link rel="stylesheet" href="css/tokens.css?v=260" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=260" />
+  <link rel="stylesheet" href="css/platform.css?v=260" />
+  <link rel="stylesheet" href="css/puzzles.css?v=260" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=260" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=260">
 
-  <script src="js/ui-mode-preload.js?v=248"></script>
-  <script src="js/skin-preload.js?v=248"></script>
+  <script src="js/ui-mode-preload.js?v=260"></script>
+  <script src="js/skin-preload.js?v=260"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
 
 <main class="papp" role="main">
-  <p><a href="/puzzles/mine" class="muted small" data-i18n="puzzles.mine_back">← Puzzle của tôi</a></p>
+  <p><a href="/puzzles/mine" class="muted small pback"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-arrow-left"></use></svg><span data-i18n="puzzles.mine_back">Puzzle của tôi</span></a></p>
   <div class="pintro"><h1 id="ed-h1" data-i18n="puzzles.editor_h1">Đăng puzzle</h1></div>
   <p id="ed-error" class="pnote" hidden></p>
 
@@ -53,24 +53,24 @@
       <label data-i18n="puzzles.f_answers">Đáp án chấp nhận</label>
       <p class="muted small" id="ed-answers-help"></p>
       <div id="ed-answers" class="pz-answers"></div>
-      <button type="button" id="ed-add-answer" class="pbtn pbtn--ghost pbtn--sm" data-i18n="puzzles.add_answer">+ Thêm đáp án</button>
+      <button type="button" id="ed-add-answer" class="pbtn pbtn--ghost pbtn--sm"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.add_answer">Thêm đáp án</span></button>
 
       <p id="ed-edit-note" class="pnote" hidden data-i18n="puzzles.edit_requeue">Sửa puzzle sẽ đưa nó về trạng thái chờ duyệt.</p>
       <p id="ed-result" class="pz-result" role="status" hidden></p>
-      <div class="pactions"><button type="submit" id="ed-submit" class="pbtn pbtn--primary" data-i18n="puzzles.submit">Gửi duyệt</button></div>
+      <div class="pactions"><button type="submit" id="ed-submit" class="pbtn pbtn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-paper-plane-tilt"></use></svg><span data-i18n="puzzles.submit">Gửi duyệt</span></button></div>
     </form>
   </div>
 </main>
 
-<script src="js/i18n.js?v=248"></script>
-<script src="js/ui-mode.js?v=248"></script>
-<script src="js/session.js?v=248"></script>
-<script src="js/audio-manager.js?v=248"></script>
-<script src="js/settings-panel.js?v=248"></script>
-<script src="js/platform-shell.js?v=248"></script>
-<script src="js/coords.js?v=248"></script>
-<script src="js/board.js?v=248"></script>
-<script src="js/puzzle-board.js?v=248"></script>
-<script src="js/puzzle-editor.js?v=248"></script>
+<script src="js/i18n.js?v=260"></script>
+<script src="js/ui-mode.js?v=260"></script>
+<script src="js/session.js?v=260"></script>
+<script src="js/audio-manager.js?v=260"></script>
+<script src="js/settings-panel.js?v=260"></script>
+<script src="js/platform-shell.js?v=260"></script>
+<script src="js/coords.js?v=260"></script>
+<script src="js/board.js?v=260"></script>
+<script src="js/puzzle-board.js?v=260"></script>
+<script src="js/puzzle-editor.js?v=260"></script>
 </body>
 </html>

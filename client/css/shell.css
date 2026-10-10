@@ -148,9 +148,10 @@ body .state-badge, body .rule-chip, body .lobby__count, body .toast,
 body .pill-group, body .pill-group label,
 body .gset-segment, body .gset-segment__opt { border-radius: var(--radius); }
 
-/* ── Site links in the top bar (lobby, history) — same row as the platform pages' .pnav__links (#190).
-   The room keeps its bare bar on purpose: leaving mid-game by a stray click is not a navigation to offer. */
+/* ── Site links in the top bar (room) — same row as the platform pages' .pnav__links (#190).
+   The room hides them ([hidden], set by room-ui.js) while you're seated in an ongoing game (#191 item 6). */
 .topnav__links { display: flex; gap: 4px; flex: 1; margin-left: 20px; }
+.topnav__links[hidden] { display: none; }
 .topnav__links a { padding: 8px 12px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; color: var(--c-ink-3); text-decoration: none; }
 .topnav__links a:hover { color: var(--c-ink); }
 .topnav__links a.is-active { background: var(--c-fill); color: var(--c-strong); font-weight: 700; }

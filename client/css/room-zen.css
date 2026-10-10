@@ -1129,7 +1129,7 @@ body.zen-room .players-strip__turn { color: var(--ink); }
     cursor: pointer;
   }
   body.zen-room .quick-chat-bar button:active { transform: scale(0.92); }
-  body.zen-room .quick-chat-bar button .icon { font-size: 15px; }
+  body.zen-room .quick-chat-bar button .icon { font-size: 16px; }
 
   /* Start modal vs the sheet (TODO.md #139).
      game.css gives .start-modal z-index 50 — deliberately low, because on

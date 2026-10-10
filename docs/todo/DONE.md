@@ -3,6 +3,12 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#208.** R8: cheat reports — member reports a finished game, staff queue tab, confirm logs graph edge `[Model: Sonnet 5]` — [detail](docs/todo/B208-cheat-reports.md)
+- ✅ **#207.** R8: staff remove a user avatar (Users tab, logged as graph edge) `[Model: Sonnet 5]` — [detail](docs/todo/B207-admin-avatar-remove.md)
+- ✅ **#206.** R8 8b: `/admin` Users tab — find, change role, lock; change log as a graph `[Model: Opus 5]` — [detail](docs/todo/B206-admin-8b-users-tab.md)
+- ✅ **#205.** R8 8a: staff roles (member/moderator/admin) + `/admin` console merging puzzle review and forum reports `[Model: Sonnet 5]` — [detail](docs/todo/B205-admin-8a-roles-console.md)
+- ✅ **#203.** R7 7a: puzzles — member submissions, board editor, solve, admin review `[Model: Opus 5]` — [detail](docs/todo/B203-puzzles-7a.md)
+- ✅ **#201.** R7: Learn = puzzles (tags + levels) + forum (design first) `[Model: Opus 5]` — [detail](docs/todo/B201-learn-r7.md)
 - ✅ **#194.** `vite build` fails: copy-classic-scripts matches a `<script src="js/...">` inside an HTML comment (diagnostic.html) `[Model: Haiku 4.5]` — [detail](docs/todo/B194-vite-build-fails-on-diagnostic-comment.md)
 - ✅ **#210.** Arena parity round 2: home/rooms/tournaments/social/settings/admin vs mockup (tabs-vs-chips rule, empty-state H1 bug, settings width, admin nav) `[Model: Sonnet 5]` — [detail](docs/todo/B210-arena-screen-parity-round2.md)
 - ✅ **#209.** Arena parity: nav right cluster (order, gear, mode glyph, bell badge, rating line) + page leftovers vs mockup `[Model: Sonnet 5]` — [detail](docs/todo/B209-arena-nav-right-and-page-parity.md)

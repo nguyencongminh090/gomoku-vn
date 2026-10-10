@@ -115,6 +115,7 @@
         solved = true;
         resultEl.className = 'pz-result is-right';
         resultEl.textContent = t('puzzles.correct');
+        if (window.PlatformShell && window.PlatformShell.icon) resultEl.prepend(window.PlatformShell.icon('ph-regular-check-circle'));
         $('pz-next').hidden = false;
         refresh();
         resultEl.hidden = false;

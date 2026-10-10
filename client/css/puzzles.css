@@ -22,6 +22,10 @@
 .pz-form input { min-height: 38px; padding: 6px 10px; font-size: 14px; border-radius: var(--radius); border: 1px solid var(--c-border); background: var(--c-fill); color: var(--c-ink); }
 .pz-result { margin: 12px 0 0; padding: 10px 14px; font-weight: 600; border-radius: var(--radius); background: var(--c-fill); }
 .pz-result[hidden] { display: none; }
+.pz-stone { stroke: var(--c-ink-3); stroke-width: 16px; }   /* thin ring so the stone shows on any chip */
+.pz-stone--black { fill: #141414; }
+.pz-stone--white { fill: #f4f4f2; }
+.pz-result .icon { width: 20px; height: 20px; margin-right: 8px; vertical-align: -4px; }
 .pz-result.is-right { color: var(--c-brand-text); }
 .pz-result.is-wrong { color: var(--c-error); }
 

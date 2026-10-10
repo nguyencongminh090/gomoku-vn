@@ -6,7 +6,9 @@
 
 [hidden] { display: none !important; }   /* a class's `display` must never defeat the attribute */
 
-body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 'Manrope', system-ui, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.5; min-height: 100vh; }
+body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 'Manrope', system-ui, sans-serif; -webkit-font-smoothing: antialiased; line-height: 1.5; min-height: 100vh; overflow-x: hidden; overflow-x: clip; }   /* #215: main.css hides overflow-x on body, which makes body a (non-scrolling) scroll container and kills every position:sticky; clip does not */
+/* Icon size scale (#214, docs/knowledge/ui-ux/iconography.md): nothing below 16px on platform pages. */
+.pl { --icon-sm: 16px; --icon-md: 20px; --icon-lg: 24px; --ptabbar-h: 68px; }   /* --ptabbar-h: mobile tab bar height, shared by the bar and anything sticky above it (#215) */
 .pl a { color: inherit; text-decoration: none; }
 .pl :where(button, input, textarea, select) { font: inherit; color: inherit; }   /* :where → zero specificity, component sizes win */
 .pl :focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
@@ -73,8 +75,8 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .ptab[aria-selected="true"] { color: var(--c-strong); font-weight: 700; border-bottom-color: var(--c-brand-text); }
 .pbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .psearch { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--radius); background: var(--c-fill); }
+.psearch__icon { color: var(--c-ink-3); }
 .psearch input { width: 180px; border: 0; background: none; outline: 0; font-size: 13px; }
-.pbadge { padding: 2px 10px; font-size: 11.5px; white-space: nowrap; color: var(--c-ink-2); background: var(--c-fill); border-radius: 999px; }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
 .ptbl-wrap { overflow-x: auto; padding: 4px 16px 8px; background: var(--c-surface); border-radius: var(--radius-lg); }
@@ -155,21 +157,37 @@ a.prow:hover { background: var(--c-hover); }
 .pdm__form input { flex: 1; min-width: 0; min-height: 38px; padding: 6px 12px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 13.5px; }
 @media (max-width: 860px) { .pdm__grid { grid-template-columns: 1fr; } .pdm__list { max-height: 220px; } }
 @media (max-width: 860px) { .pbtn--sm { min-height: 38px; padding: 6px 12px; } }
-.pbadge { display: inline-block; padding: 4px 12px; font-size: 12px; font-weight: 600; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); border: 1px solid var(--c-border); }
+/* One .pbadge rule (B213: a second, overridden pill rule used to sit near .ptabs; its nowrap is kept here). */
+.pbadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; font-size: 12px; font-weight: 600; white-space: nowrap; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); border: 1px solid var(--c-border); }
 
 /* ── Settings page (B211): 4 underline tabs in one 720px column; icon-first controls ── */
 .pset { max-width: 720px; }
 .pset__tabs { flex-wrap: nowrap; gap: 22px; overflow-x: auto; border-bottom: 1px solid var(--c-border); }
-.pset__tabs .ptab { display: inline-flex; align-items: center; gap: 7px; padding: 8px 0 10px; white-space: nowrap; margin-bottom: -1px; }
+.pset__tabs .ptab { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 14px; padding: 8px 0 10px; white-space: nowrap; margin-bottom: -1px; }
 .pset__panel { border-radius: 0 0 var(--radius-lg) var(--radius-lg); padding: 8px 22px 22px; }
 .pset .pform { max-width: none; }
-.pset .pform label:not(.pcheck) { display: flex; align-items: center; gap: 8px; }
-.pset__h2 { display: flex; align-items: center; gap: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .12em; color: var(--c-ink-3); }
+/* Field labels read like the rows on the other Settings tabs: 20px leading icon + 14px/600 sentence case (#214).
+   Label sits 8px above its field, 20px below the previous field (proximity). */
+.pset .pform { gap: var(--space-2); }
+.pset .pform label:not(.pcheck) { display: flex; align-items: center; gap: var(--space-2); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--c-ink); }
+.pset .pform label:not(.pcheck):not(:first-child) { margin-top: var(--space-3); }
+.pset .pform label:not(.pcheck) > .icon { width: var(--icon-md); height: var(--icon-md); color: var(--c-ink-3); }
+.pset__h2 { display: flex; align-items: center; gap: var(--space-2); font-size: 16px; font-weight: 600; letter-spacing: 0; color: var(--c-ink); }   /* #214 review: sentence case like the field labels, one step larger as a group title */
+.pset__h2 .icon { width: var(--icon-md); height: var(--icon-md); color: var(--c-ink-3); }
+/* Privacy is its own group: rule + space above, so its selects read as part of it (#214). */
+.pset .pform .pset__h2 { margin: var(--space-5) 0 0; padding-top: var(--space-5); border-top: 1px solid var(--c-border-light); }
+.pset__tabs .ptab .icon { width: var(--icon-md); height: var(--icon-md); }   /* tabs are navigation: 20px, like menu items */
+@media (max-width: 400px) {   /* 4 labelled tabs fit 360px: 16px icons, 12px gaps (row still scrolls below ~340px) */
+  .pset .pset__tabs { gap: var(--space-3); }   /* .pset: outranks the later 860px block */
+  .pset__tabs .ptab .icon { width: var(--icon-sm); height: var(--icon-sm); }
+}
 .pset__avatar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 16px 0; border-bottom: 1px solid var(--c-border-light); }
 .pset__avatar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .pset__avatar .pnote { flex-basis: 100%; margin: 0; }
 .pset__save { position: sticky; bottom: 0; padding: 14px 0 0; background: var(--c-surface); border-top: 1px solid var(--c-border-light); }
-.pset .pcheck { justify-content: space-between; flex-direction: row-reverse; padding: 6px 0; }
+.pset .pcheck { gap: var(--space-2); padding: 6px 0; }   /* icon · label · switch (markup order) */
+.pset .pcheck > span { flex: 1; }
+.pset .pcheck > .icon { flex: none; width: var(--icon-md); height: var(--icon-md); color: var(--c-ink-3); }
 .pset .pcheck input { appearance: none; position: relative; flex: none; width: 38px; height: 22px; margin: 0; border-radius: 11px; background: var(--c-fill); cursor: pointer; transition: background .15s; }
 .pset .pcheck input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--c-ink-2); transition: left .15s; }
 .pset .pcheck input:checked { background: var(--c-brand); }
@@ -177,13 +195,13 @@ a.prow:hover { background: var(--c-hover); }
 .pbtn--danger { background: none; border: 1px solid var(--c-error); color: var(--c-error); }
 .psrow { display: flex; align-items: center; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--c-border-light); }
 .psrow:last-child { border-bottom: 0; }
-.psrow > .icon { flex: none; width: 20px; height: 20px; color: var(--c-ink-3); }
+.psrow > .icon { flex: none; width: var(--icon-md); height: var(--icon-md); color: var(--c-ink-3); }
 .psrow__t { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .psrow__t small { display: block; margin-top: 1px; font-size: 12px; font-weight: 400; color: var(--c-ink-3); }
 .pseg { display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: var(--radius); background: var(--c-fill); }
 .pseg__opt { display: inline-flex; align-items: center; justify-content: center; min-width: 38px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 4px; background: none; cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--c-ink-3); }
 .pseg__opt.is-active { background: var(--c-surface); color: var(--c-strong); box-shadow: 0 0 0 1px var(--c-border); }
-.pseg__opt .icon { width: 17px; height: 17px; }
+.pseg__opt .icon { width: var(--icon-md); height: var(--icon-md); }
 .pswitch { position: relative; flex: none; width: 38px; height: 22px; }
 .pswitch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .pswitch span { position: absolute; inset: 0; border-radius: 11px; background: var(--c-fill); pointer-events: none; transition: background .15s; }
@@ -194,12 +212,13 @@ a.prow:hover { background: var(--c-hover); }
 @media (max-width: 860px) {
   .pset__panel { padding: 4px 16px 18px; }
   .pset__tabs { gap: 18px; }
-  .pset__tabs .ptab[aria-selected="false"] span { display: none; }
+  /* Labels stay visible on mobile (#214, NN/g: icons alone are rarely understood); the row scrolls if it must. */
+  .pset__tabs { gap: var(--space-4); }
   .psrow { flex-wrap: wrap; }
   .psrow__t { flex-basis: calc(100% - 40px); }
   .psrow .pseg, .psrow .pswitch, .psrow .pbtn { margin-left: 34px; }
   .psrow .pswitch { margin-left: auto; }
-  .pset__save { bottom: 60px; }
+  .pset__save { bottom: calc(var(--ptabbar-h) + env(safe-area-inset-bottom)); }
 }
 
 /* ── Avatar editor modal (B211 follow-up): drag/zoom a photo under a circular mask ── */
@@ -234,3 +253,47 @@ a.prow:hover { background: var(--c-hover); }
 .ptable tbody tr:hover { background: var(--c-hover); }
 @media (max-width: 600px) { .ptable th:nth-child(4), .ptable td:nth-child(4) { display: none; } .ptable th, .ptable td { padding-left: 8px; padding-right: 8px; } }
 .psplit--solo { grid-template-columns: minmax(0, 1fr); }
+
+/* ── Profile page (B213) ─────────────────────────────────────────────────────
+   One icon size (16px, badges 14px), type scale 11 (uppercase labels) / 12 (meta) / 13 (controls) / 14 (body),
+   spacing from --space-* (4px scale). Scoped to .pprofile: phead/pstats/prow are shared with club/social pages. */
+.pbtn .icon, .pbadge .icon, .pmeta .icon { flex: none; width: var(--icon-sm); height: var(--icon-sm); }
+.pchip .icon, .pback .icon { flex: none; width: var(--icon-sm); height: var(--icon-sm); }   /* #214 Scope 2: chip tools, back links */
+.pchip:has(.icon), .pback { display: inline-flex; align-items: center; gap: 6px; }   /* #214: all platform pages, not only profile */
+.pprofile .phead { gap: var(--space-5); margin-bottom: var(--space-5); }
+.pprofile .phead__bio { margin-top: var(--space-1); font-size: 14px; }
+.pmeta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin: var(--space-2) 0 0; font-size: 12px; }
+.pmeta span { display: inline-flex; align-items: center; gap: 6px; }
+.pbadges { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
+.pbadges[hidden] { display: none; }
+.pprofile .pactions { gap: var(--space-2); margin-top: var(--space-4); }
+.pprofile .pchallenge { margin-top: var(--space-1); }
+.pprofile .pstats { gap: var(--space-5); }
+.pprofile .ph2 { margin-bottom: var(--space-3); }
+.pprofile .pcards { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
+.pprofile .pcard { padding: var(--space-4); }
+.pprofile .pcard span { font-size: 11px; }
+.pprofile .psplit, .pcol { gap: var(--space-5); }
+.pcol { display: flex; flex-direction: column; min-width: 0; }
+.pprofile .pnote { font-size: 12px; }
+.pprofile .prow { gap: var(--space-3); padding: var(--space-3) var(--space-1); }
+.pprofile .prow__t { font-size: 14px; }
+.pprofile .prow__m { margin-top: 0; font-size: 12px; }
+.pprofile #pf-recent .prow__m { flex: none; }
+.pprofile .pform__row { margin-top: var(--space-3); }
+@media (max-width: 860px) {
+  /* 3 columns: up to 7 stats (games, win %, draws, streak, best, puzzles) wrap as 3+3+1 without orphaned long labels. */
+  .pprofile .phead .pstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); }
+  .pprofile .pstats dt { letter-spacing: .06em; }
+  /* Avatar + name share the top row; bio, meta, badges, actions and stats take the full width below (B213) —
+     in the 1fr text column next to the avatar the three action buttons stacked one per row. */
+  .pprofile .phead > div { display: contents; }
+  .pprofile .phead h1 { align-self: center; }
+  .pprofile .phead > div > :not(h1) { grid-column: 1 / -1; }
+  .pprofile .phead__bio, .pprofile .pmeta, .pprofile .pbadges { margin-top: 0; }
+  .pprofile .pactions { margin-top: var(--space-1); }
+  .pprofile .pcards { grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+  .pprofile .pcard { padding: var(--space-3); }
+  .pprofile .pcard b { font-size: 22px; }
+  .pprofile .psplit, .pcol { gap: var(--space-4); }
+}
