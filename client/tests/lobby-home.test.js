@@ -279,6 +279,27 @@ describe('quick match panel (B197)', () => {
   });
 });
 
+describe('quick-match waiting count (B210)', () => {
+  const MEMBER2 = { userId: 'u1', isGuest: false, displayName: 'Me' };
+  const line = () => document.getElementById('qm-line').textContent;
+
+  it('"N đang chờ" for the selected rule|time comes with /api/home; none waiting → no suffix', async () => {
+    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2);
+    await flush();
+    expect(line()).toContain('qm.in_queue{"n":214}');
+    await boot('/index.html', { ...EMPTY, queue: { 'standard|10+0': 9 } }, MEMBER2);
+    await flush();
+    expect(line()).not.toContain('qm.in_queue');
+  });
+
+  it('changing the chip re-reads the count for the new rule|time', async () => {
+    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2);
+    await flush();
+    [...document.querySelectorAll('#qm-time button')].find((b) => b.textContent === '1+0').click();
+    expect(line()).toContain('qm.in_queue{"n":3}');
+  });
+});
+
 describe('Vào bằng mã (Phòng screen, B210)', () => {
   const $ = (id) => document.getElementById(id);
   const submit = (value) => {

@@ -6,15 +6,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Cài đặt</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=239" />
-  <link rel="stylesheet" href="css/tokens.css?v=239" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=239" />
-  <link rel="stylesheet" href="css/platform.css?v=239" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=239" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=239">
+  <link rel="stylesheet" href="css/main.css?v=241" />
+  <link rel="stylesheet" href="css/tokens.css?v=241" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=241" />
+  <link rel="stylesheet" href="css/platform.css?v=241" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=241" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=241">
 
-  <script src="js/ui-mode-preload.js?v=239"></script>
-  <script src="js/skin-preload.js?v=239"></script>
+  <script src="js/ui-mode-preload.js?v=241"></script>
+  <script src="js/skin-preload.js?v=241"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -26,10 +26,10 @@
   </div>
 
   <div class="ptabs pset__tabs" role="tablist" id="st-tabs">
-    <button type="button" class="ptab" role="tab" id="tab-profile" data-p="profile" aria-controls="p-profile" aria-selected="true"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-user-circle"></use></svg><span data-i18n="settings.tab_profile">Hồ sơ</span></button>
-    <button type="button" class="ptab" role="tab" id="tab-look" data-p="look" aria-controls="p-look" aria-selected="false"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-palette"></use></svg><span data-i18n="settings.tab_look">Giao diện</span></button>
-    <button type="button" class="ptab" role="tab" id="tab-game" data-p="game" aria-controls="p-game" aria-selected="false"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-game-controller"></use></svg><span data-i18n="settings.tab_game">Trò chơi</span></button>
-    <button type="button" class="ptab" role="tab" id="tab-account" data-p="account" aria-controls="p-account" aria-selected="false"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-shield-check"></use></svg><span data-i18n="settings.tab_account">Tài khoản</span></button>
+    <button type="button" class="ptab" role="tab" id="tab-profile" data-p="profile" aria-controls="p-profile" aria-selected="true"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-user-circle"></use></svg><span data-i18n="settings.tab_profile">Hồ sơ</span></button>
+    <button type="button" class="ptab" role="tab" id="tab-look" data-p="look" aria-controls="p-look" aria-selected="false"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-palette"></use></svg><span data-i18n="settings.tab_look">Giao diện</span></button>
+    <button type="button" class="ptab" role="tab" id="tab-game" data-p="game" aria-controls="p-game" aria-selected="false"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-game-controller"></use></svg><span data-i18n="settings.tab_game">Trò chơi</span></button>
+    <button type="button" class="ptab" role="tab" id="tab-account" data-p="account" aria-controls="p-account" aria-selected="false"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-shield-check"></use></svg><span data-i18n="settings.tab_account">Tài khoản</span></button>
   </div>
 
   <section class="ppanel pset__panel" role="tabpanel" id="p-profile" aria-labelledby="tab-profile">
@@ -37,33 +37,33 @@
       <div class="pset__avatar">
         <span id="st-avatar"></span>
         <div class="pset__avatar-actions">
-          <label class="pbtn" for="st-file"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-camera"></use></svg><span data-i18n="profile.avatar_upload">Đổi ảnh đại diện</span></label>
+          <label class="pbtn" for="st-file"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-camera"></use></svg><span data-i18n="profile.avatar_upload">Đổi ảnh đại diện</span></label>
           <input type="file" id="st-file" accept="image/jpeg,image/png,image/webp" hidden />
           <button type="button" class="pbtn pbtn--ghost" id="st-avatar-remove" data-i18n="profile.avatar_remove">Xoá ảnh</button>
         </div>
         <p class="pnote" data-i18n="profile.avatar_hint">JPEG, PNG hoặc WebP, tối đa 2 MB. Ảnh được thu nhỏ còn 256×256.</p>
       </div>
       <form id="st-form" class="pform">
-        <label for="st-bio"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-text-align-left"></use></svg><span data-i18n="profile.bio_label">Giới thiệu (tối đa 280 ký tự)</span></label>
+        <label for="st-bio"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-text-align-left"></use></svg><span data-i18n="profile.bio_label">Giới thiệu (tối đa 280 ký tự)</span></label>
         <textarea id="st-bio" maxlength="280" rows="3"></textarea>
-        <label for="st-country"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-map-pin"></use></svg><span data-i18n="settings.country">Quốc gia</span></label>
+        <label for="st-country"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-map-pin"></use></svg><span data-i18n="settings.country">Quốc gia</span></label>
         <select id="st-country"></select>
-        <label for="st-city"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-map-pin"></use></svg><span data-i18n="settings.city">Thành phố</span></label>
+        <label for="st-city"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-map-pin"></use></svg><span data-i18n="settings.city">Thành phố</span></label>
         <input id="st-city" maxlength="40" autocomplete="off" />
 
-        <h2 class="ph2 ph2--gap pset__h2"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-lock"></use></svg><span data-i18n="settings.privacy">Riêng tư</span></h2>
+        <h2 class="ph2 ph2--gap pset__h2"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-lock"></use></svg><span data-i18n="settings.privacy">Riêng tư</span></h2>
         <label class="pcheck"><input type="checkbox" id="st-hide-history" /> <span data-i18n="profile.hide_history">Ẩn lịch sử ván đấu với người khác</span></label>
         <label class="pcheck"><input type="checkbox" id="st-hide-bio" /> <span data-i18n="profile.hide_bio">Ẩn giới thiệu với người khác</span></label>
         <label class="pcheck"><input type="checkbox" id="st-hide-online" /> <span data-i18n="settings.hide_online">Ẩn trạng thái trực tuyến</span></label>
-        <label for="st-dm"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-text-align-left"></use></svg><span data-i18n="settings.who_dm">Ai được nhắn tin cho tôi</span></label>
+        <label for="st-dm"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-text-align-left"></use></svg><span data-i18n="settings.who_dm">Ai được nhắn tin cho tôi</span></label>
         <select id="st-dm" data-aud="whoCanDm"></select>
-        <label for="st-challenge"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-sword"></use></svg><span data-i18n="settings.who_challenge">Ai được thách đấu tôi</span></label>
+        <label for="st-challenge"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-sword"></use></svg><span data-i18n="settings.who_challenge">Ai được thách đấu tôi</span></label>
         <select id="st-challenge" data-aud="whoCanChallenge"></select>
-        <label for="st-friend"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-user-plus"></use></svg><span data-i18n="settings.who_friend">Ai được gửi lời mời kết bạn</span></label>
+        <label for="st-friend"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-user-plus"></use></svg><span data-i18n="settings.who_friend">Ai được gửi lời mời kết bạn</span></label>
         <select id="st-friend" data-aud="whoCanFriend"></select>
 
         <div class="pform__row pset__save">
-          <button type="submit" class="pbtn pbtn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=239#ph-regular-check"></use></svg><span data-i18n="profile.save">Lưu</span></button>
+          <button type="submit" class="pbtn pbtn--primary"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=241#ph-regular-check"></use></svg><span data-i18n="profile.save">Lưu</span></button>
           <button type="button" class="pbtn pbtn--ghost" id="st-cancel" data-i18n="settings.cancel">Huỷ</button>
           <a id="st-profile-link" class="pbtn pbtn--ghost" href="/" data-i18n="settings.view_profile">Xem hồ sơ</a>
           <span id="st-saved" class="pnote" role="status"></span>
@@ -77,15 +77,15 @@
   <section class="ppanel pset__panel" role="tabpanel" id="p-account" aria-labelledby="tab-account" hidden></section>
 </main>
 
-<script src="js/i18n.js?v=239"></script>
-<script src="js/ui-mode.js?v=239"></script>
-<script src="js/session.js?v=239"></script>
-<script src="js/audio-manager.js?v=239"></script>
-<script src="js/settings-panel.js?v=239"></script>
-<script src="js/platform-shell.js?v=239"></script>
-<script src="js/countries.js?v=239"></script>
-<script src="js/avatar-crop.js?v=239"></script>
-<script src="js/settings.js?v=239"></script>
-<script src="js/settings-page.js?v=239"></script>
+<script src="js/i18n.js?v=241"></script>
+<script src="js/ui-mode.js?v=241"></script>
+<script src="js/session.js?v=241"></script>
+<script src="js/audio-manager.js?v=241"></script>
+<script src="js/settings-panel.js?v=241"></script>
+<script src="js/platform-shell.js?v=241"></script>
+<script src="js/countries.js?v=241"></script>
+<script src="js/avatar-crop.js?v=241"></script>
+<script src="js/settings.js?v=241"></script>
+<script src="js/settings-page.js?v=241"></script>
 </body>
 </html>

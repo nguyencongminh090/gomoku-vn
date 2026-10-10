@@ -509,6 +509,19 @@ describe('TournamentManager — listTournaments / serialization', () => {
     expect(summary.status).toBe('draft');
   });
 
+  test('listTournaments carries the hosting club (slug + name) for the lobby "Của CLB" tab; plain and deleted-club tournaments → null (B210)', () => {
+    const clubService = require('../managers/ClubService');
+    const owner = user();
+    const { slug } = clubService.createClub(owner.userId, { name: 'Lobby Tab Club' });
+    const hosted = tournamentManager.createTournament(owner, { format: 'swiss', clubSlug: slug }).tournament;
+    const plain = tournamentManager.createTournament(owner, { format: 'swiss' }).tournament;
+    const pick = (id) => tournamentManager.listTournaments().find((x) => x.tournamentId === id);
+    expect(pick(hosted.tournamentId)).toMatchObject({ clubSlug: slug, clubName: 'Lobby Tab Club' });
+    expect(pick(plain.tournamentId)).toMatchObject({ clubSlug: null, clubName: null });
+    clubService.deleteClub(owner.userId, slug);
+    expect(pick(hosted.tournamentId)).toMatchObject({ clubSlug: null, clubName: null });
+  });
+
   test('listTournaments includes organizerName and entryUserIds — the client-side lobby has no other way to show "you organize this"/"you\'re registered" without one round-trip per card', () => {
     const organizer = user({ displayName: 'GrimLark' });
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;

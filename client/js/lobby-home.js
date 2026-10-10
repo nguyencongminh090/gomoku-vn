@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=239';
+import { client, setHeroTab } from './lobby.js?v=241';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -227,6 +227,7 @@ export function renderHome(data) {
   renderMine(data);
   renderToday(data);
   renderLive(data);
+  renderQuickMatch(); // the "N đang chờ" count comes with /api/home
 }
 
 export async function loadHome() {
@@ -320,7 +321,9 @@ export function renderQuickMatch() {
       a.href = '/social.html';
       acts.appendChild(a);
     }
+    const waiting = lastData && lastData.queue ? lastData.queue[qm.rule + '|' + qm.time] || 0 : 0;
     line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time })
+      + (waiting ? ' · ' + t('qm.in_queue', { n: waiting }) : '')
       + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));
   }
 }

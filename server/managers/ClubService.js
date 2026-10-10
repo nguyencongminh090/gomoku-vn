@@ -301,6 +301,19 @@ function staffClubId(userId, slug) {
   return club.id;
 }
 
+/**
+ * tournamentId → {slug, name} for every club-hosted tournament, one query. The lobby tournament list
+ * shows/filters by it (B210); club_id is only in the DB (not on the in-memory tournament) and is NULLed
+ * when the club is deleted, so this is the single source of truth.
+ */
+function tournamentClubs() {
+  const map = new Map();
+  for (const r of db().prepare('SELECT t.id, c.slug, c.name FROM tournaments t JOIN clubs c ON c.id = t.club_id').all()) {
+    map.set(r.id, { slug: r.slug, name: r.name });
+  }
+  return map;
+}
+
 /** The club's tournaments (all statuses — the tournament list is public too), newest first. */
 function clubTournaments(clubId) {
   return db().prepare(`
@@ -418,6 +431,6 @@ function userIdByUsername(username) {
 module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
   createClub, updateClub, deleteClub, join, leave, approve, remove, setRole,
-  createEvent, deleteEvent, staffClubId, listMessages, postMessage, deleteMessage,
+  createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage,
   listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

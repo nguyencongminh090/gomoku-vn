@@ -1,5 +1,5 @@
 # B210 — Arena parity round 2: screens beyond the nav (home, rooms, tournaments, social, learn, settings, admin)
-**Status:** PARTIAL 2026-10-10 — second slice on `ui/arena-parity-b210` (uncommitted, ?v=239): social layout + Thông báo list, Vào bằng mã, Thách đấu bạn bè, admin tab counts. Open: tournaments tab labels/Của CLB, rooms tabs Phòng/Bàn/Quan sát, home queue-wait line (backend), admin unified table, populated-data check.
+**Status:** ✅ DONE 2026-10-10 — slice 1 + 2 merged on dev; slice 3 on `ui/arena-parity-b210b` (uncommitted, ?v=241): Của CLB tab, queue-wait count. npm test 136 suites / 2666. Items deliberately not built are listed under "Decided not to build" — reopen if wanted.
 **Area:** client/*.html + css/platform.css + the page scripts below; sibling of B209 (nav + rankings/profile/clubs)
 **From:** user 2026-10-10 "ngoài Nav, có UI nào chưa khớp không"   **Depends:** B209
 
@@ -38,3 +38,12 @@ Settings width/spacing and systemic 2 (Settings entry) resolved by B211: 720px c
 - Re-checked mobile + light for home/rooms/tournaments/social: no layout break (shots viewed).
 ## Not done
 - Tournaments tab labels ("Sắp tới", "Của CLB" needs a club filter on the list API) and "Tổ chức giải" wording (real already says "Tạo giải đấu"). Rooms tabs Phòng/Bàn/Quan sát (no such room kinds). Home "214 đang chờ · ước tính 8 giây" (needs queue stats from the server). Admin unified table (Loại/Đối tượng/Người báo…). Admin counts not browser-checked (needs a staff account); populated-data pass; Firefox/WebKit.
+
+## Built (slice 3, `ui/arena-parity-b210b`)
+- Tournaments: **Của CLB** tab (members who belong to a club; hidden otherwise) + club name on cards. Server: `listTournaments()` adds `clubSlug`/`clubName` via `ClubService.tournamentClubs()` (one JOIN query; `club_id` lives only in the DB and is NULLed on club delete, so it is not read off the in-memory tournament).
+- Home: "N người đang chờ" on the quick-match line for the selected rule|time. Server: `MatchQueue.counts()` → `GET /api/home` `queue` (lazy MatchHandler require). No "ước tính N giây": nothing measures it, so it is not invented.
+## Decided not to build (reopen on request)
+- Rooms tabs Phòng/Bàn/Quan sát: the product has one room kind; the mockup tabs have no data behind them.
+- Admin unified reports table: puzzles (board review) and users (graph) have their own detail views; the mockup table only fits forum + cheat reports. Tab counts shipped instead.
+- Tournaments tab set: kept "Tất cả" (+ Sắp diễn ra / Đang diễn ra / Đã kết thúc) rather than the mockup's default "Sắp tới", so active/finished cups stay one click away; button already reads "Tạo giải đấu".
+- Not checked: queue count with a real waiting player in the browser (jsdom + API shape only), Firefox/WebKit, populated-data pass beyond the seeded tournaments.
