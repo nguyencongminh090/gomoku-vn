@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Chủ đề</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=221" />
+  <link rel="stylesheet" href="css/tokens.css?v=221" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=221" />
+  <link rel="stylesheet" href="css/platform.css?v=221" />
+  <link rel="stylesheet" href="css/puzzles.css?v=221" />
+  <link rel="stylesheet" href="css/forum.css?v=221" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=221" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=221">
+
+  <script src="js/ui-mode-preload.js?v=221"></script>
+  <script src="js/skin-preload.js?v=221"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <p><a href="/forum" class="muted small" data-i18n="forum.back">← Diễn đàn</a></p>
+  <p id="th-error" class="pnote" hidden></p>
+
+  <article id="th-view" hidden>
+    <div class="ppanel fm-op">
+      <div class="fm-meta"><span id="th-cat" class="pbadge"></span><span id="th-author" class="muted small"></span><time id="th-time" class="muted small"></time></div>
+      <h1 id="th-title" class="pz-title"></h1>
+      <p id="th-body" class="fm-text"></p>
+      <div id="th-actions" class="pactions"></div>
+    </div>
+
+    <h2 id="th-replies-h" class="fm-h2"></h2>
+    <div id="th-posts" class="fm-posts" aria-live="polite"></div>
+    <div id="th-pager" class="ppager"></div>
+
+    <form id="th-form" class="pform ppanel fm-form" autocomplete="off" hidden>
+      <label for="th-reply" data-i18n="forum.f_reply">Trả lời</label>
+      <textarea id="th-reply" rows="4" maxlength="4000" required></textarea>
+      <p id="th-result" class="pz-result" role="status" hidden></p>
+      <div class="pactions"><button type="submit" id="th-submit" class="pbtn pbtn--primary" data-i18n="forum.send">Gửi</button></div>
+    </form>
+    <p id="th-login" class="pnote" hidden></p>
+  </article>
+</main>
+
+<script src="js/i18n.js?v=221"></script>
+<script src="js/ui-mode.js?v=221"></script>
+<script src="js/session.js?v=221"></script>
+<script src="js/audio-manager.js?v=221"></script>
+<script src="js/settings-panel.js?v=221"></script>
+<script src="js/platform-shell.js?v=221"></script>
+<script src="js/forum-common.js?v=221"></script>
+<script src="js/forum-thread.js?v=221"></script>
+</body>
+</html>
