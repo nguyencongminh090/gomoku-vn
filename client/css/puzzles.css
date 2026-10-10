@@ -63,3 +63,5 @@
 .us-row { flex-wrap: wrap; gap: 4px 8px; min-width: 0; text-align: left; }
 #us-detail { min-width: 0; }
 #us-detail h3 { margin: 18px 0 8px; font-size: 14px; }
+.us-avatar { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.us-avatar img { border-radius: 50%; object-fit: cover; background: var(--c-fill); }

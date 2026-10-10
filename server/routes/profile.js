@@ -33,7 +33,7 @@ const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES, PROVISIONAL_RD } = require('../managers/RatingService');
 
-const AVATAR_DIR = process.env.AVATAR_DIR || path.join(__dirname, '..', 'data', 'avatars');
+const { AVATAR_DIR, avatarFile, removeFile: removeAvatarFile } = require('../utils/avatar-store');
 const AVATAR_SIZE = 256;
 const AVATAR_MAX_INPUT = 2 * 1024 * 1024;
 const AVATAR_MAX_BYTES = 30 * 1024;
@@ -49,10 +49,6 @@ const router = express.Router();
 const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, keyGenerator });
-
-function avatarFile(userId) {
-  return path.join(AVATAR_DIR, `${userId}.webp`);
-}
 
 function avatarUrl(user) {
   return user.avatar_v ? `/api/profile/avatar/${user.id}.webp?v=${user.avatar_v}` : null;
@@ -111,7 +107,7 @@ router.post('/avatar', verifyToken, requireMember, writeLimiter,
 
 router.delete('/avatar', verifyToken, requireMember, writeLimiter, (req, res, next) => {
   try {
-    fs.rmSync(avatarFile(req.user.userId), { force: true });
+    removeAvatarFile(req.user.userId);
     database.setAvatarVersion(req.user.userId, true);
     res.json({ avatarUrl: null });
   } catch (err) {

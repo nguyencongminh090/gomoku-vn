@@ -1,7 +1,7 @@
 /**
  * admin-users.js — Users tab of /admin (R8 8b, #206). Admin-only: the API answers 403 otherwise.
  * GET /api/admin/users?q=&page=, GET /users/:id → {user, nodes, edges}, POST /users/:id/role,
- * POST /users/:id/lock. The change log is drawn as a radial graph (user in the centre, everyone
+ * POST /users/:id/lock, DELETE /users/:id/avatar. The change log is drawn as a radial graph (user in the centre, everyone
  * who changed them or whom they changed around it) plus a plain list. All names via textContent.
  * Exposes window.AdminUsers.init(); admin.js starts it when the tab is first shown.
  */
@@ -98,6 +98,8 @@
     $('us-detail').hidden = false;
     $('us-name').textContent = u.displayName;
     $('us-meta').textContent = u.username + (u.google ? ' · Google' : '') + (u.locked ? ' · ' + t('admin.u_locked') : '');
+    $('us-avatar').hidden = !u.avatarUrl;
+    if (u.avatarUrl) $('us-avatar-img').src = u.avatarUrl;
     $('us-role').value = u.role;
     $('us-lock').textContent = t(u.locked ? 'admin.u_unlock' : 'admin.u_lock');
     $('us-reason').hidden = $('us-reason').previousElementSibling.hidden = u.locked;
@@ -158,6 +160,10 @@
     sel.addEventListener('change', () => change(() => send('POST', '/api/admin/users/' + encodeURIComponent(current.user.id) + '/role', { role: sel.value })));
     $('us-lock').addEventListener('click', () => change(() => send('POST', '/api/admin/users/' + encodeURIComponent(current.user.id) + '/lock',
       { locked: !current.user.locked, reason: $('us-reason').value })));
+    $('us-avatar-remove').addEventListener('click', () => {
+      if (!window.confirm(t('admin.u_avatar_confirm'))) return;
+      change(() => send('DELETE', '/api/admin/users/' + encodeURIComponent(current.user.id) + '/avatar'));
+    });
     load();
   }
 

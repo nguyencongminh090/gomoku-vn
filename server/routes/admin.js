@@ -12,6 +12,7 @@
  * GET  /api/admin/users/:id             user + 1-hop change graph {user, nodes, edges}
  * POST /api/admin/users/:id/role        {role}
  * POST /api/admin/users/:id/lock        {locked: bool, reason}
+ * DELETE /api/admin/users/:id/avatar     remove their avatar (file + DB), logged as an edge
  */
 
 const express = require('express');
@@ -62,6 +63,10 @@ router.post('/users/:id/role', ...write, h((req, res) => {
 router.post('/users/:id/lock', ...write, h((req, res) => {
   const { locked, reason } = req.body || {};
   res.json({ user: svc.setLocked(req.user.userId, req.params.id, locked === true, reason) });
+}));
+
+router.delete('/users/:id/avatar', ...write, h((req, res) => {
+  res.json({ user: svc.removeAvatar(req.user.userId, req.params.id) });
 }));
 
 module.exports = router;

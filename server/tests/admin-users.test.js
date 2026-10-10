@@ -9,6 +9,10 @@ jest.mock('better-sqlite3', () => {
   const Actual = jest.requireActual('better-sqlite3');
   return function MockedDatabase() { return new Actual(':memory:'); };
 });
+const fs = require('fs');
+const os = require('os');
+const pathMod = require('path');
+process.env.AVATAR_DIR = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'adm-avatars-'));
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 jest.mock('../middleware/auth', () => ({
   verifyToken: (req, res, next) => {
@@ -53,7 +57,7 @@ const ROLES0 = { boss: 'admin', boss2: 'admin', mod: 'moderator', mem: 'member',
 beforeEach(() => {
   db.prepare('DELETE FROM admin_edges').run();
   db.prepare('DELETE FROM sessions').run();
-  for (const [id, r] of Object.entries(ROLES0)) db.prepare('UPDATE users SET role = ?, locked_at = NULL WHERE id = ?').run(r, id);
+  for (const [id, r] of Object.entries(ROLES0)) db.prepare('UPDATE users SET role = ?, locked_at = NULL, avatar_v = 0 WHERE id = ?').run(r, id);
 });
 
 describe('access matrix (admin only)', () => {
@@ -168,5 +172,49 @@ describe('change graph', () => {
   });
   it('unknown user → 404', async () => {
     expect((await call('GET', '/api/admin/users/nope', 'boss')).status).toBe(404);
+  });
+});
+
+describe('avatar removal', () => {
+  const file = (id) => pathMod.join(process.env.AVATAR_DIR, id + '.webp');
+  const give = (id) => { fs.writeFileSync(file(id), 'x'); db.prepare('UPDATE users SET avatar_v = 7 WHERE id = ?').run(id); };
+  const v = (id) => db.prepare('SELECT avatar_v FROM users WHERE id = ?').get(id).avatar_v;
+
+  it('detail exposes avatarUrl only when there is one', async () => {
+    expect((await call('GET', '/api/admin/users/bob', 'boss')).body.user.avatarUrl).toBeNull();
+    give('bob');
+    expect((await call('GET', '/api/admin/users/bob', 'boss')).body.user.avatarUrl).toBe('/api/profile/avatar/bob.webp?v=7');
+  });
+
+  it('deletes the file, clears avatar_v, logs one avatar_remove edge', async () => {
+    give('bob');
+    const r = await call('DELETE', '/api/admin/users/bob/avatar', 'boss');
+    expect(r.status).toBe(200);
+    expect(r.body.user.avatarUrl).toBeNull();
+    expect(fs.existsSync(file('bob'))).toBe(false);
+    expect(v('bob')).toBe(0);
+    const [e] = edges();
+    expect(e).toMatchObject({ action: 'avatar_remove', actor_id: 'boss', target_id: 'bob' });
+  });
+
+  it('is idempotent: no avatar → 200, no edge', async () => {
+    expect((await call('DELETE', '/api/admin/users/bob/avatar', 'boss')).status).toBe(200);
+    expect(edges()).toHaveLength(0);
+  });
+
+  it('only admins; others keep their avatar', async () => {
+    give('bob');
+    for (const as of ['mod', 'mem', 'guest']) expect((await call('DELETE', '/api/admin/users/bob/avatar', as)).status).toBe(403);
+    expect((await call('DELETE', '/api/admin/users/bob/avatar')).status).toBe(401);
+    expect(fs.existsSync(file('bob'))).toBe(true);
+    expect(v('bob')).toBe(7);
+    expect(edges()).toHaveLength(0);
+  });
+
+  it('unknown user → 404; a missing file with avatar_v set still clears the row', async () => {
+    expect((await call('DELETE', '/api/admin/users/nope/avatar', 'boss')).status).toBe(404);
+    db.prepare('UPDATE users SET avatar_v = 3 WHERE id = ?').run('bob');
+    expect((await call('DELETE', '/api/admin/users/bob/avatar', 'boss')).status).toBe(200);
+    expect(v('bob')).toBe(0);
   });
 });
