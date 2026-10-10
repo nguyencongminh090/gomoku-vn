@@ -130,7 +130,8 @@ router.get('/me', verifyToken, (req, res, next) => {
     }
     res.set('Cache-Control', 'no-store');
     const me = userId ? database.getUserById(userId) : null;
-    res.json({ userId: userId || null, username: me ? me.username : null, minGames: database.RANKING_MIN_GAMES, ratings: mine });
+    const avatarUrl = me && me.avatar_v ? `/api/profile/avatar/${me.id}.webp?v=${me.avatar_v}` : null; // nav chip (B211 follow-up)
+    res.json({ userId: userId || null, username: me ? me.username : null, avatarUrl, minGames: database.RANKING_MIN_GAMES, ratings: mine });
   } catch (err) {
     return next(err);
   }

@@ -4,8 +4,8 @@
  * sticky nav with link row, light/dark toggle, user chip; bottom tabs on mobile.
  *
  * Needs, in order: i18n.js, ui-mode.js, session.js. Builds DOM with
- * textContent only. The user chip is a member-only extra: it asks
- * /api/rankings/me for the username (guests / signed-out never call it).
+ * textContent only. The user chip (members and guests) opens a menu (B211: Hồ sơ · Cài đặt · Quản trị · Đăng xuất);
+ * for members it asks /api/rankings/me for the username and /api/admin/me for the staff entry (guests / signed-out never call them).
  * Members also get the notification bell (#198): /api/notifications polled every
  * 60 s while visible, plus live `notify:new` via PlatformShell.pushNotification.
  */
@@ -195,6 +195,88 @@
     if (!bell.timer) bell.timer = setInterval(refreshBell, 60000);
   }
 
+  const chip = { av: null, name: '' };
+
+  /** Show `url` (or initials when null) on the nav chip — called on load and right after an avatar change. */
+  function setMyAvatar(url) {
+    if (!chip.av) return;
+    chip.av.textContent = url ? '' : initials(chip.name);
+    chip.av.style.backgroundImage = url ? 'url("' + url + '")' : '';
+  }
+
+  /** User chip + dropdown (B211): Hồ sơ · Cài đặt · Quản trị (staff) · Đăng xuất; guests get Cài đặt · Tạo tài khoản. */
+  function mountAccount(right, user) {
+    const member = !user.isGuest;
+    const wrap = el('div', undefined, 'pnav__acct');
+    const me = el('button', undefined, 'pnav__me');
+    me.type = 'button';
+    me.setAttribute('aria-haspopup', 'true');
+    me.setAttribute('aria-expanded', 'false');
+    me.setAttribute('aria-label', t('shell.account_menu'));
+    const name = el('span', undefined, 'pnav__name');
+    const av = el('span', initials(user.displayName), 'pav');
+    chip.av = av;
+    chip.name = user.displayName;
+    const sub = el('small', member ? t('shell.unrated') : t('nav.guest_badge')); // mockup always shows a second line
+    name.append(user.displayName, sub);
+    me.append(av, name, icon('ph-regular-caret-down'));
+
+    const menu = el('div', undefined, 'pnav__menu');
+    menu.hidden = true;
+    menu.setAttribute('role', 'menu');
+    const item = (tag, iconName, label, href) => {
+      const n = el(tag, undefined, 'pnav__item');
+      if (href) n.href = href; else n.type = 'button';
+      n.setAttribute('role', 'menuitem');
+      n.append(icon(iconName), el('span', label));
+      return n;
+    };
+    const profile = member ? item('a', 'ph-regular-user-circle', t('shell.menu_profile'), '#') : null;
+    const admin = member ? item('a', 'ph-regular-shield-check', t('shell.menu_admin'), '/admin') : null;
+    if (admin) { admin.hidden = true; admin.classList.add('pnav__item--staff'); }
+    menu.append(...[profile, item('a', 'ph-regular-gear-six', t('gset.title'), '/settings.html'), admin, el('hr')].filter(Boolean));
+    if (member) {
+      const out = item('button', 'ph-regular-sign-out', t('gset.btn_logout'));
+      out.addEventListener('click', async () => {
+        out.disabled = true;
+        const ok = window.GvnSession && window.GvnSession.logout ? await window.GvnSession.logout() : false;
+        if (ok) window.location.replace('/login.html'); else out.disabled = false;
+      });
+      menu.appendChild(out);
+    } else {
+      menu.appendChild(item('a', 'ph-regular-user-plus', t('gset.btn_create_account'), '/login.html'));
+    }
+
+    const toggle = (open) => {
+      menu.hidden = !open;
+      me.setAttribute('aria-expanded', String(open));
+    };
+    me.addEventListener('click', (e) => { e.stopPropagation(); toggle(menu.hidden); });
+    document.addEventListener('click', (e) => { if (!wrap.contains(e.target)) toggle(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { toggle(false); me.focus(); } });
+    wrap.append(me, menu);
+    right.appendChild(wrap);
+    if (!member) return;
+
+    fetch('/api/rankings/me', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m) => {
+        if (!m) return;
+        sub.textContent = bestRating(m.ratings) || t('shell.unrated');
+        setMyAvatar(m.avatarUrl);
+        if (m.username) {
+          profile.href = '/u/' + encodeURIComponent(m.username);
+          const tab = document.querySelector('.ptabbar a[data-tab="me"]');
+          if (tab) tab.setAttribute('href', profile.getAttribute('href'));
+        }
+      })
+      .catch(() => { /* chip stays inert */ });
+    fetch('/api/admin/me', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => { if (a && Array.isArray(a.permissions) && a.permissions.includes('admin.access')) admin.hidden = false; })
+      .catch(() => { /* no staff entry */ });
+  }
+
   function build(active) {
     const host = document.getElementById('pl-shell');
     if (!host) return;
@@ -222,39 +304,11 @@
       if (window.setColorMode && window.getColorMode) window.setColorMode(window.getColorMode() === 'light' ? 'dark' : 'light');
     });
     const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
-    // Mockup order: [mode] [bell] [me]. The gear stays (just before the user chip) until B211 gives Settings a page.
+    // Mockup order: [mode] [bell] [me ▾]. Settings lives in the chip menu (B211), not a gear.
     right.appendChild(mode);
     if (user && !user.isGuest) mountBell(right);
-    if (typeof window.openSettingsPanel === 'function') {
-      const gear = el('button', undefined, 'pnav__mode');
-      gear.type = 'button';
-      gear.setAttribute('aria-label', t('gset.title'));
-      gear.appendChild(icon('ph-regular-gear-six'));
-      gear.addEventListener('click', () => window.openSettingsPanel());
-      right.appendChild(gear);
-    }
-
-    if (user && !user.isGuest) {
-      const me = el('a', undefined, 'pnav__me');
-      me.href = '#';
-      const av = el('span', initials(user.displayName), 'pav');
-      const name = el('span', undefined, 'pnav__name');
-      const rating = el('small', t('shell.unrated')); // mockup always shows a second line
-      name.append(user.displayName, rating);
-      me.append(av, name);
-      right.appendChild(me);
-      fetch('/api/rankings/me', { credentials: 'same-origin' })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((m) => {
-          if (!m) return;
-          rating.textContent = bestRating(m.ratings) || t('shell.unrated');
-          if (m.username) {
-            me.href = '/u/' + encodeURIComponent(m.username);
-            const tab = document.querySelector('.ptabbar a[data-tab="me"]');
-            if (tab) tab.setAttribute('href', me.getAttribute('href'));
-          }
-        })
-        .catch(() => { /* chip stays inert */ });
+    if (user) {
+      mountAccount(right, user);
     } else {
       const login = el('a', t('shell.login'), 'pnav__login');
       login.href = '/login.html';
@@ -292,5 +346,5 @@
     return a;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, pushNotification };
+  window.PlatformShell = { build, setActive, initials, avatar, icon, pushNotification, setMyAvatar };
 })();

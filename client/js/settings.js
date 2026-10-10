@@ -2,6 +2,7 @@
  * settings.js — /settings.html (#199): own profile + privacy. REST only (no socket: a second
  * live socket would evict the one in the lobby). Reads /api/rankings/me → /api/profile/:username
  * (isSelf gives bio, avatar and `privacy`), writes PUT /api/profile and the avatar endpoints.
+ * Profile tab only; Giao diện / Trò chơi / Tài khoản tabs live in settings-page.js (B211) and work for guests.
  * All text goes through textContent / option.textContent.
  */
 (function () {
@@ -34,6 +35,12 @@
     $('st-avatar').replaceWith(Object.assign(SHELL().avatar(url, name, 'pav--xl'), { id: 'st-avatar' }));
   }
 
+  // Uploading/removing is saved server-side at once, so the nav chip follows at once (no reload).
+  function avatarChanged(url) {
+    setAvatar(url, me.displayName);
+    if (SHELL().setMyAvatar) SHELL().setMyAvatar(url);
+  }
+
   function fill(p) {
     me = p;
     const pr = p.privacy || {};
@@ -53,6 +60,8 @@
 
   async function load() {
     const status = $('st-status');
+    const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    if (user && user.isGuest) return; // guests have no profile; settings-page.js hides that tab
     try {
       const who = await fetch('/api/rankings/me', { credentials: 'same-origin' });
       if (who.status === 401 || who.status === 403) { location.href = '/login.html'; return; }
@@ -91,20 +100,28 @@
     }
   }
 
+  // Crop/move editor first (avatar-crop.js); the server still re-encodes to 256×256 and enforces 2 MB.
   async function upload(ev) {
     const file = ev.target.files[0];
     ev.target.value = '';
     if (!file) return;
+    const out = $('st-saved');
+    out.textContent = '';
+    let body = file;
+    if (window.AvatarCrop) {
+      body = await window.AvatarCrop.open(file, { onError: (m) => { out.textContent = m; } });
+      if (!body) return;
+    }
     const res = await fetch('/api/profile/avatar', {
-      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file,
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': body.type || 'application/octet-stream' }, body,
     });
-    if (res.ok) setAvatar((await res.json()).avatarUrl, me.displayName);
-    else $('st-saved').textContent = t('profile.avatar_error');
+    if (res.ok) avatarChanged((await res.json()).avatarUrl);
+    else out.textContent = t('profile.avatar_error');
   }
 
   async function removeAvatar() {
     const res = await fetch('/api/profile/avatar', { method: 'DELETE', credentials: 'same-origin' });
-    if (res.ok) setAvatar(null, me.displayName);
+    if (res.ok) avatarChanged(null);
   }
 
   document.addEventListener('DOMContentLoaded', () => {

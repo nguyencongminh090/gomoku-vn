@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#211.** Settings as a platform page (replaces nav gear): profile+privacy, appearance, game, account tabs; entry via user-chip menu `[Model: Opus 5]` — [detail](docs/todo/B211-settings-page.md)
 - ✅ **#202.** Profile: per-user game history, retire /history.html `[Model: Sonnet 5.5]` — [detail](docs/todo/B202-profile-game-history.md)
 - ✅ **#200.** R6: club tabs, events (Sắp tới), club chat, club tournaments `[Model: Opus 5]` — [detail](docs/todo/B200-club-tabs-chat-events.md)
 - ✅ **#199.** R5: Settings page + privacy gates (DM/challenge/friend-request, hide online), country/city, badges + win streak — [B199](B199-settings-privacy-gates.md)
