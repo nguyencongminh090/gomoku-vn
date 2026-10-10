@@ -25,6 +25,17 @@ const { staticOptions, socketIoClientOptions, REVALIDATE } = require('./config/s
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
+const rankingsRouter = require('./routes/rankings');
+const homeRouter = require('./routes/home');
+const profileRouter  = require('./routes/profile');
+const puzzlesRouter  = require('./routes/puzzles');
+const forumRouter    = require('./routes/forum');
+const adminRouter    = require('./routes/admin');
+const clubsRouter    = require('./routes/clubs');
+const friendsRouter  = require('./routes/friends');
+const notificationsRouter = require('./routes/notifications');
+const challengesRouter = require('./routes/challenges');
+const dmRouter = require('./routes/dm');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
@@ -34,6 +45,8 @@ const diagNamespace  = require('./socket/diag-namespace');
 const sessionManager = require('./managers/SessionManager');
 const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
+const database       = require('./db/database');
+const { optionalUserId } = require('./utils/optional-user');
 
 // ---------------------------------------------------------------------------
 // Express
@@ -143,6 +156,81 @@ app.use(express.static(clientPath, staticOptions));
 // REST API routes
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
+app.use('/api/rankings', rankingsRouter);
+app.use('/api/home', homeRouter);
+app.use('/api/profile', profileRouter);
+app.use('/api/clubs', clubsRouter);
+app.use('/api/puzzles', puzzlesRouter);
+app.use('/api/forum', forumRouter);
+app.use('/api/admin', adminRouter);
+app.use('/api/friends', friendsRouter);
+app.use('/api/notifications', notificationsRouter);
+app.use('/api/challenges', challengesRouter);
+app.use('/api/dm', dmRouter);
+
+// Public profile page: /u/<username> — same HTML for every name; profile.js reads the path.
+// Club pages: /clubs.html (discover) and /c/<slug> (one club).
+app.get('/c/:slug', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'club.html'));
+});
+
+// Puzzles (B203 7a-2): /puzzles (list) and /puzzle/<id> (solve); puzzle.js reads the path.
+app.get('/puzzles', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'puzzles.html'));
+});
+// Authoring pages (7a-3): static paths, so they never collide with /puzzle/:id.
+for (const [route, file] of [['/puzzles/new', 'puzzle-editor.html'], ['/puzzles/mine', 'puzzles-mine.html']]) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', REVALIDATE);
+    res.sendFile(path.join(clientPath, file));
+  });
+}
+// Staff console (R8 #205): one page, tabs read the hash. The two old queue URLs redirect into it.
+app.get('/admin', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'admin.html'));
+});
+app.get('/puzzles/review', (req, res) => res.redirect(301, '/admin#puzzles'));
+app.get('/forum/reports', (req, res) => res.redirect(301, '/admin#forum'));
+app.get('/puzzle/:id', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'puzzle.html'));
+});
+
+// Forum (B203 7c): /forum (list + new thread), /forum/t/<id> (thread), /forum/reports (staff). Scripts read the path.
+for (const [route, file] of [['/forum', 'forum.html'], ['/forum/t/:id', 'forum-thread.html']]) {
+  app.get(route, (req, res) => {
+    res.setHeader('Cache-Control', REVALIDATE);
+    res.sendFile(path.join(clientPath, file));
+  });
+}
+
+// Replay page (B202): /replay/<gameId> — same HTML for every id; replay.js reads the path.
+app.get('/replay/:id', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'replay.html'));
+});
+
+// Retired global history page (B202): old shared links keep working. `?id=` → the replay;
+// otherwise the visitor's own profile history, or the login page. The file itself is gone, so
+// express.static falls through to this route.
+app.get('/history.html', (req, res) => {
+  const id = typeof req.query.id === 'string' ? req.query.id.slice(0, 64) : '';
+  if (id) {
+    const source = req.query.source === 'tournament' ? '?source=tournament' : '';
+    return res.redirect(302, `/replay/${encodeURIComponent(id)}${source}`);
+  }
+  const me = optionalUserId(req);
+  const user = me ? database.getUserById(me) : null;
+  res.redirect(302, user ? `/u/${encodeURIComponent(user.username)}#games` : '/login.html');
+});
+
+app.get('/u/:username', (req, res) => {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.sendFile(path.join(clientPath, 'profile.html'));
+});
 app.use('/api', tournamentGamesRouter);
 
 // Catch-all: serve login page for unknown routes (SPA-style fallback)

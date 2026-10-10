@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve, dirname } from 'path';
-import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
+import { cpSync, mkdirSync } from 'fs';
+import { findClassicScripts as scanClassicScripts } from './scripts/classic-scripts.js';
 
 // Vite's HTML transform only bundles <script type="module"> and
 // <link rel="stylesheet"> — every classic (non-module) <script src="js/...">
@@ -10,7 +11,7 @@ import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 // breaking every page that uses one (theme/ui-mode preload IIFEs run
 // pre-paint on purpose — converting them to modules would defer them and
 // reintroduce the flash-of-unstyled-content they exist to prevent — plus
-// history.html's whole non-entry.js script chain, plus the UMD modules like
+// replay.html's whole non-entry.js script chain, plus the UMD modules like
 // escape-utils.js/audio-manager.js/profanity-*.js that self-attach to a
 // global and would otherwise get silently lazy-wrapped by Vite's commonjs
 // plugin and never run — see the comment in client/js/room-entry.js).
@@ -20,18 +21,8 @@ import { cpSync, mkdirSync, readFileSync, readdirSync } from 'fs';
 // added to a page and someone forgets to also add it here (this is exactly
 // how profanity-filter.js/profanity-classifier-model.js 404'd in production
 // the first time this plugin was written — TODO.md #65 fix-log).
-function findClassicScripts() {
-  const clientDir = resolve(__dirname, 'client');
-  const files = new Set();
-  for (const htmlFile of readdirSync(clientDir)) {
-    if (!htmlFile.endsWith('.html') || htmlFile.includes('mockup')) continue;
-    const html = readFileSync(resolve(clientDir, htmlFile), 'utf8');
-    for (const match of html.matchAll(/<script\s+src="js\/([^"?]+)(?:\?[^"]*)?"(?![^>]*type="module")[^>]*>/g)) {
-      files.add(match[1]);
-    }
-  }
-  return [...files];
-}
+// Scanner: scripts/classic-scripts.js (CommonJS so Jest can test it; ignores HTML comments, #194).
+const findClassicScripts = () => scanClassicScripts(resolve(__dirname, 'client'));
 
 function copyClassicScripts() {
   return {
@@ -63,7 +54,13 @@ export default defineConfig({
         main: resolve(__dirname, 'client/index.html'),
         login: resolve(__dirname, 'client/login.html'),
         room: resolve(__dirname, 'client/room.html'),
-        history: resolve(__dirname, 'client/history.html'),
+        replay: resolve(__dirname, 'client/replay.html'),
+        rankings: resolve(__dirname, 'client/rankings.html'),
+        social: resolve(__dirname, 'client/social.html'),
+        profile: resolve(__dirname, 'client/profile.html'),
+        settings: resolve(__dirname, 'client/settings.html'),
+        clubs: resolve(__dirname, 'client/clubs.html'),
+        club: resolve(__dirname, 'client/club.html'),
         tournament: resolve(__dirname, 'client/tournament.html'),
         tournamentMatch: resolve(__dirname, 'client/tournament-match.html'),
         // Unlisted diagnostic page (TODO.md #168). Listed here only so the

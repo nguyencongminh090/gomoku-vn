@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Some of these pages are served at /u/<x> or /c/<x>: root-relative base keeps css/js/assets working. -->
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Hồ sơ</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=248" />
+  <link rel="stylesheet" href="css/tokens.css?v=248" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=248" />
+  <link rel="stylesheet" href="css/platform.css?v=248" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=248" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=248">
+
+  <script src="js/ui-mode-preload.js?v=248"></script>
+  <script src="js/skin-preload.js?v=248"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <p id="pf-status" class="pnote" role="status"></p>
+
+  <div id="pf-content" hidden>
+    <header class="phead">
+      <span id="pf-avatar"></span>
+      <div>
+        <h1 id="pf-name"></h1>
+        <p class="phead__bio" id="pf-bio"></p>
+        <p class="pnote" id="pf-joined"></p>
+        <div class="pactions" id="pf-social" hidden></div>
+        <div class="pactions" id="pf-actions" hidden>
+          <a class="pbtn pbtn--ghost" id="pf-edit-btn" href="/settings.html" data-i18n="profile.edit_btn">Chỉnh sửa</a>
+        </div>
+      </div>
+      <dl class="pstats" id="pf-stats"></dl>
+    </header>
+
+    <div id="pf-badges" class="pchips" hidden></div>
+
+    <h2 class="ph2" data-i18n="profile.ratings">Rating theo thể loại</h2>
+    <div id="pf-ratings" class="pcards"></div>
+
+    <div class="psplit" id="pf-split">
+      <div>
+       <div class="ppanel" style="margin-bottom:20px">
+        <h2 class="ph2" id="pf-chart-title"></h2>
+        <div id="pf-chart-tabs" class="pchips" role="tablist"></div>
+        <svg id="pf-chart" class="pchart" viewBox="0 0 400 120" preserveAspectRatio="none" role="img" hidden></svg>
+        <p id="pf-chart-note" class="pnote"></p>
+       </div>
+       <div class="ppanel" id="pf-games">
+        <h2 class="ph2" data-i18n="profile.recent">Lịch sử ván</h2>
+        <p id="pf-recent-note" class="pnote" hidden></p>
+        <div id="pf-recent" class="prows"></div>
+        <div class="pform__row"><button type="button" class="pbtn pbtn--sm" id="pf-more" data-i18n="profile.load_more" hidden>Xem thêm</button></div>
+       </div>
+      </div>
+      <aside class="ppanel" id="pf-clubs-panel" hidden>
+        <h2 class="ph2" data-i18n="profile.clubs">Câu lạc bộ</h2>
+        <div id="pf-clubs" class="prows"></div>
+      </aside>
+    </div>
+  </div>
+</main>
+
+<script src="js/i18n.js?v=248"></script>
+<script src="js/ui-mode.js?v=248"></script>
+<script src="js/session.js?v=248"></script>
+<script src="js/audio-manager.js?v=248"></script>
+<script src="js/settings-panel.js?v=248"></script>
+<script src="js/platform-shell.js?v=248"></script>
+<script src="js/countries.js?v=248"></script>
+<script src="js/profile.js?v=248"></script>
+</body>
+</html>

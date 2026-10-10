@@ -34,6 +34,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('../../config');
 const logger = require('../../utils/logger');
 const database = require('../../db/database');
+const clubService = require('../ClubService');
 const EventEmitter = require('events');
 
 const PairingLifecycle = require('./PairingLifecycle');
@@ -297,9 +298,20 @@ class TournamentManager extends EventEmitter {
    * @param {{ name?: string, format: string, ruleSet?: object }} options
    * @returns {{ tournament: object } | { error: string, code: string }}
    */
-  createTournament(organizerInfo, { name, format, ruleSet } = {}) {
+  createTournament(organizerInfo, { name, format, ruleSet, clubSlug } = {}) {
     if (!config.TOURNAMENT_FORMATS.includes(format)) {
       return { error: 'Thể thức giải đấu không hợp lệ.', code: 'INVALID_FORMAT' };
+    }
+
+    // Club-hosted (TODO.md #200 slice 4): only the club's owner/officer, never a guest.
+    let clubId = null;
+    if (clubSlug) {
+      try {
+        if (organizerInfo.isGuest) throw new Error('guest');
+        clubId = clubService.staffClubId(organizerInfo.userId, clubSlug);
+      } catch (_) {
+        return { error: 'Chỉ chủ nhiệm hoặc phó CLB mới tạo được giải của CLB.', code: 'TOURNAMENT_CLUB_FORBIDDEN' };
+      }
     }
 
     const tournamentId = uuidv4();
@@ -336,6 +348,7 @@ class TournamentManager extends EventEmitter {
       organizerName: organizerInfo.displayName,
       ruleSet: validatedRuleSet,
       createdAt,
+      clubId,
     });
 
     logger.info(`[TournamentManager] Tournament ${tournamentId} (${format}) created by ${organizerInfo.displayName}`);
@@ -1187,7 +1200,9 @@ class TournamentManager extends EventEmitter {
    */
   listTournaments() {
     const list = [];
+    const clubs = clubService.tournamentClubs();
     for (const [, tournament] of this.tournaments) {
+      const club = clubs.get(tournament.tournamentId) || null;
       list.push({
         tournamentId: tournament.tournamentId,
         name: tournament.name,
@@ -1196,6 +1211,9 @@ class TournamentManager extends EventEmitter {
         organizerName: tournament.organizerName,
         playerCount: tournament.entries.size,
         status: tournament.status,
+        // Club-hosted (#200): lets the lobby's "Của CLB" tab filter by the viewer's clubs (B210).
+        clubSlug: club ? club.slug : null,
+        clubName: club ? club.name : null,
         // Lets the lobby card show "you're registered"/"you organize this"
         // without a round-trip per card — the list summary otherwise has no
         // per-entry detail at all.

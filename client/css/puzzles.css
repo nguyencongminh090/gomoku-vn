@@ -1,0 +1,68 @@
+/* puzzles.css — puzzle list + solve page (#203 7a-2). Tokens only; layout classes are pz-*. */
+.pz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.pz-card { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; text-decoration: none; color: var(--c-ink); background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.pz-card:hover, .pz-card:focus-visible { outline: 2px solid var(--c-brand); }
+.pz-card.is-solved { opacity: .75; }
+.pz-card__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.pz-card__meta, .pz-card__tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+.pz-lv--easy { color: var(--c-brand-text); }
+.pz-lv--hard, .pz-lv--expert { font-weight: 700; }
+
+.pz-solve { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
+.pz-solve[hidden] { display: none; }
+.pz-solve__board { display: flex; justify-content: center; align-items: center; padding: 8px; overflow: hidden; }
+.pz-solve__board canvas { display: block; max-width: 100%; }
+.pz-title { margin: 0 0 8px; font-size: 22px; }
+.pz-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.pz-prompt { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pz-turn { margin: 0 0 14px; font-weight: 600; color: var(--c-strong); }
+.pz-moves { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; margin-bottom: 10px; }
+.pz-form { display: flex; flex-direction: column; gap: 8px; }
+.pz-form input { min-height: 38px; padding: 6px 10px; font-size: 14px; border-radius: var(--radius); border: 1px solid var(--c-border); background: var(--c-fill); color: var(--c-ink); }
+.pz-result { margin: 12px 0 0; padding: 10px 14px; font-weight: 600; border-radius: var(--radius); background: var(--c-fill); }
+.pz-result[hidden] { display: none; }
+.pz-result.is-right { color: var(--c-brand-text); }
+.pz-result.is-wrong { color: var(--c-error); }
+
+@media (max-width: 800px) {
+  .pz-solve { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── editor / mine / review (7a-3) ─────────────────────────────────────────── */
+.pz-editor { max-width: none; }
+.pz-answers { display: flex; flex-direction: column; gap: 8px; }
+.pz-answers .pform__row { flex-wrap: nowrap; }
+.pz-answer { flex: 1 1 auto; min-width: 0; }
+.pz-answer.is-active { outline: 2px solid var(--c-brand); }
+.pz-mine { flex-wrap: wrap; justify-content: space-between; }
+.pz-mine__main { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pz-mine__note { flex-basis: 100%; margin: 0; }
+.pz-st--approved { color: var(--c-brand-text); }
+.pz-st--rejected { color: var(--c-error); }
+.pz-review { display: grid; grid-template-columns: minmax(200px, 280px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pz-review[hidden] { display: none; }
+.pz-rv-row { width: 100%; text-align: left; cursor: pointer; border: 0; background: none; color: var(--c-ink); font: inherit; flex-wrap: wrap; }
+.pz-rv-row.is-active { background: var(--c-fill); }
+.pz-dup { color: var(--c-error); }
+@media (max-width: 800px) {
+  .pz-review { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Admin users tab (#206): change graph + history */
+.us-graph { width: 100%; max-width: 420px; height: auto; background: var(--c-fill); border-radius: var(--radius); }
+.us-graph .us-edge { stroke-width: 1.5; fill: none; }
+.us-graph .us-edge--role_set { stroke: var(--c-brand); }
+.us-graph .us-edge--lock { stroke: #e5484d; }
+.us-graph .us-edge--unlock { stroke: #3e9b4f; }
+.us-graph .us-node { fill: var(--c-fill-2, var(--c-fill)); stroke: var(--c-ink-2); stroke-width: 1.5; cursor: pointer; }
+.us-graph .us-node--self { stroke: var(--c-brand); stroke-width: 3; }
+.us-graph text { fill: var(--c-ink); font-size: 9px; text-anchor: middle; pointer-events: none; }
+.us-history { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.us-row.is-active { outline: 2px solid var(--c-brand); }
+.us-row { flex-wrap: wrap; gap: 4px 8px; min-width: 0; text-align: left; }
+#us-detail { min-width: 0; }
+#us-detail h3 { margin: 18px 0 8px; font-size: 14px; }
+.us-avatar { display: flex; align-items: center; gap: 12px; margin: 8px 0; }
+.us-avatar img { border-radius: 50%; object-fit: cover; background: var(--c-fill); }
+#adm-tabs { margin-bottom: 18px; }

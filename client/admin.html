@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Quản trị</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=248" />
+  <link rel="stylesheet" href="css/tokens.css?v=248" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=248" />
+  <link rel="stylesheet" href="css/platform.css?v=248" />
+  <link rel="stylesheet" href="css/puzzles.css?v=248" />
+  <link rel="stylesheet" href="css/forum.css?v=248" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=248" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=248">
+
+  <script src="js/ui-mode-preload.js?v=248"></script>
+  <script src="js/skin-preload.js?v=248"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <div class="pintro">
+    <h1 data-i18n="admin.h1">Quản trị</h1>
+    <p id="adm-role" class="muted small"></p>
+  </div>
+  <p id="adm-msg" class="pnote" hidden></p>
+  <div id="adm-tabs" class="ptabs" role="tablist" hidden>
+    <button type="button" role="tab" id="adm-tab-puzzles" class="ptab" data-tab="puzzles" data-perm="puzzle.review" hidden><span data-i18n="admin.tab_puzzles">Duyệt puzzle</span></button>
+    <button type="button" role="tab" id="adm-tab-reports" class="ptab" data-tab="reports" data-perm="forum.moderate cheat.review" hidden><span data-i18n="admin.tab_reports">Tất cả báo cáo</span></button>
+    <button type="button" role="tab" id="adm-tab-forum" class="ptab" data-tab="forum" data-perm="forum.moderate" hidden><span data-i18n="admin.tab_forum">Báo cáo diễn đàn</span></button>
+    <button type="button" role="tab" id="adm-tab-cheat" class="ptab" data-tab="cheat" data-perm="cheat.review" hidden><span data-i18n="admin.tab_cheat">Gian lận</span></button>
+    <button type="button" role="tab" id="adm-tab-users" class="ptab" data-tab="users" data-perm="user.manage" hidden><span data-i18n="admin.tab_users">Người dùng</span></button>
+  </div>
+
+  <section id="adm-puzzles" role="tabpanel" hidden>
+    <p id="rv-total" class="muted small"></p>
+    <p id="rv-msg" class="pnote" hidden></p>
+    <div id="rv-view" class="pz-review" hidden>
+      <div id="rv-list" class="prows"></div>
+      <div id="rv-detail" class="pz-solve" hidden>
+        <div class="pz-solve__board ppanel"><canvas id="rv-canvas"></canvas></div>
+        <div class="pz-solve__side ppanel">
+          <h2 id="rv-title" class="pz-title"></h2>
+          <div id="rv-meta" class="pz-meta"></div>
+          <p id="rv-prompt" class="pz-prompt"></p>
+          <p id="rv-dup" class="pnote" hidden></p>
+          <p class="muted small" data-i18n="puzzles.rv_answers">Đáp án (bấm để xem trên bàn)</p>
+          <div id="rv-answers" class="pz-moves"></div>
+          <form id="rv-form" class="pform">
+            <label for="rv-level" data-i18n="puzzles.f_level">Level</label>
+            <select id="rv-level"></select>
+            <label for="rv-note" data-i18n="puzzles.rv_note">Ghi chú (bắt buộc khi từ chối)</label>
+            <textarea id="rv-note" rows="2" maxlength="200"></textarea>
+            <p id="rv-result" class="pz-result" role="status" hidden></p>
+            <div class="pactions">
+              <button type="button" id="rv-approve" class="pbtn pbtn--primary" data-i18n="puzzles.approve">Duyệt</button>
+              <button type="button" id="rv-reject" class="pbtn pbtn--ghost" data-i18n="puzzles.reject">Từ chối</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="adm-reports" role="tabpanel" hidden>
+    <p id="rl-total" class="muted small"></p>
+    <p id="rl-msg" class="pnote" hidden></p>
+    <div id="rl-table" class="ptable-wrap" aria-live="polite"></div>
+  </section>
+
+  <section id="adm-forum" role="tabpanel" hidden>
+    <p id="rp-total" class="muted small"></p>
+    <p id="rp-msg" class="pnote" hidden></p>
+    <div id="rp-list" class="prows" aria-live="polite"></div>
+    <div id="rp-pager" class="ppager"></div>
+  </section>
+  <section id="adm-cheat" role="tabpanel" hidden>
+    <p id="ch-total" class="muted small"></p>
+    <p id="ch-msg" class="pnote" hidden></p>
+    <div id="ch-list" class="prows" aria-live="polite"></div>
+    <div id="ch-pager" class="ppager"></div>
+  </section>
+
+  <section id="adm-users" role="tabpanel" hidden>
+    <form id="us-form" class="pform" role="search">
+      <input id="us-q" type="search" maxlength="50" autocomplete="off" data-i18n-placeholder="admin.u_search" placeholder="Tìm theo tên đăng nhập / tên hiển thị" aria-label="Tìm người dùng" />
+    </form>
+    <p id="us-msg" class="pnote" hidden></p>
+    <div class="pz-review">
+      <div>
+        <div id="us-list" class="prows" aria-live="polite"></div>
+        <div id="us-pager" class="ppager"></div>
+      </div>
+      <div id="us-detail" class="ppanel" hidden>
+        <h2 id="us-name" class="pz-title"></h2>
+        <p id="us-meta" class="muted small"></p>
+        <div id="us-avatar" class="us-avatar" hidden>
+          <img id="us-avatar-img" width="64" height="64" alt="" />
+          <button type="button" id="us-avatar-remove" class="pbtn pbtn--ghost pbtn--sm" data-i18n="admin.u_avatar_remove">Gỡ avatar</button>
+        </div>
+        <div class="pform">
+          <label for="us-role" data-i18n="admin.u_role">Vai trò</label>
+          <select id="us-role"></select>
+          <label for="us-reason" data-i18n="admin.u_reason">Lý do khoá (bắt buộc)</label>
+          <input id="us-reason" type="text" maxlength="200" />
+          <p id="us-result" class="pz-result" role="status" hidden></p>
+          <div class="pactions"><button type="button" id="us-lock" class="pbtn pbtn--ghost" data-i18n="admin.u_lock">Khoá tài khoản</button></div>
+        </div>
+        <h3 data-i18n="admin.u_graph">Đồ thị thay đổi</h3>
+        <svg id="us-graph" class="us-graph" viewBox="0 0 320 240" role="img" aria-label="Đồ thị thay đổi"></svg>
+        <h3 data-i18n="admin.u_history">Lịch sử thay đổi</h3>
+        <ol id="us-history" class="us-history"></ol>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="js/i18n.js?v=248"></script>
+<script src="js/ui-mode.js?v=248"></script>
+<script src="js/session.js?v=248"></script>
+<script src="js/audio-manager.js?v=248"></script>
+<script src="js/settings-panel.js?v=248"></script>
+<script src="js/platform-shell.js?v=248"></script>
+<script src="js/coords.js?v=248"></script>
+<script src="js/board.js?v=248"></script>
+<script src="js/puzzle-board.js?v=248"></script>
+<script src="js/forum-common.js?v=248"></script>
+<script src="js/puzzles-review.js?v=248"></script>
+<script src="js/forum-reports.js?v=248"></script>
+<script src="js/admin-reports.js?v=248"></script>
+<script src="js/admin-users.js?v=248"></script>
+<script src="js/admin-cheat.js?v=248"></script>
+<script src="js/admin.js?v=248"></script>
+</body>
+</html>

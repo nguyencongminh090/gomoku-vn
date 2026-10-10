@@ -60,6 +60,12 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
   logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
 }
 
+// Club-hosted tournaments (TODO.md #200 slice 4): nullable FK, SET NULL when the club is deleted.
+if (tournamentColumns.length > 0 && !tournamentColumns.includes('club_id')) {
+  db.exec('ALTER TABLE tournaments ADD COLUMN club_id TEXT REFERENCES clubs(id) ON DELETE SET NULL');
+  logger.info('[DB] Migrated tournaments: added club_id column (TODO.md #200)');
+}
+
 // Same additive-migration need as above, for oauth_provider/oauth_id
 // (TODO.md #91) — a db file created before Google login is missing these
 // two columns.
@@ -75,6 +81,56 @@ const gameColumns = db.prepare("PRAGMA table_info(games)").all().map((c) => c.na
 if (gameColumns.length > 0 && !gameColumns.includes('ranked')) {
   db.exec('ALTER TABLE games ADD COLUMN ranked INTEGER NOT NULL DEFAULT 0');
   logger.info('[DB] Migrated games: added ranked column (TODO.md #175)');
+}
+
+// Profile fields (TODO.md #177): bio, avatar version (0 = no avatar; bumped per
+// upload so the URL cache-busts), and the two privacy opt-outs.
+if (userColumns.length > 0 && !userColumns.includes('bio')) {
+  db.exec("ALTER TABLE users ADD COLUMN bio TEXT NOT NULL DEFAULT ''");
+  db.exec('ALTER TABLE users ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE users ADD COLUMN hide_history INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE users ADD COLUMN hide_bio INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated users: added bio/avatar_v/hide_history/hide_bio columns (TODO.md #177)');
+}
+
+// Selected UI skin (TODO.md #180); the cookie is authoritative on a device,
+// this column carries the choice to a new one.
+if (userColumns.length > 0 && !userColumns.includes('ui_skin')) {
+  db.exec("ALTER TABLE users ADD COLUMN ui_skin TEXT NOT NULL DEFAULT 'arena'");
+  logger.info('[DB] Migrated users: added ui_skin column (TODO.md #180)');
+}
+
+// Settings + privacy gates (TODO.md #199): location, who may DM / challenge /
+// friend-request (everyone|friends|nobody), and hide-online.
+if (userColumns.length > 0 && !userColumns.includes('who_can_dm')) {
+  db.exec("ALTER TABLE users ADD COLUMN country TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE users ADD COLUMN city TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE users ADD COLUMN who_can_dm TEXT NOT NULL DEFAULT 'everyone'");
+  db.exec("ALTER TABLE users ADD COLUMN who_can_challenge TEXT NOT NULL DEFAULT 'everyone'");
+  db.exec("ALTER TABLE users ADD COLUMN who_can_friend TEXT NOT NULL DEFAULT 'everyone'");
+  db.exec('ALTER TABLE users ADD COLUMN hide_online INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated users: added country/city/who_can_*/hide_online columns (TODO.md #199)');
+}
+
+// Reviewer flag for member-submitted puzzles (TODO.md #203). R8 Admin builds real roles later;
+// until then it is granted from the CLI (server/scripts/admin.js set-admin).
+if (userColumns.length > 0 && !userColumns.includes('is_admin')) {
+  db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated users: added is_admin column (TODO.md #203)');
+}
+
+// Staff roles (TODO.md #205, R8): replaces the bare is_admin flag. is_admin stays as a dead column
+// (SQLite DROP COLUMN buys nothing); admins are carried over once.
+if (userColumns.length > 0 && !userColumns.includes('role')) {
+  db.exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'member'");
+  if (userColumns.includes('is_admin')) db.exec("UPDATE users SET role = 'admin' WHERE is_admin = 1");
+  logger.info('[DB] Migrated users: added role column (TODO.md #205)');
+}
+
+// Account lock (TODO.md #206, R8 8b): NULL = active, else ISO time it was locked.
+if (userColumns.length > 0 && !userColumns.includes('locked_at')) {
+  db.exec('ALTER TABLE users ADD COLUMN locked_at TEXT');
+  logger.info('[DB] Migrated users: added locked_at column (TODO.md #206)');
 }
 
 // idx_users_oauth started as a plain (non-unique) index, which left a TOCTOU
@@ -571,12 +627,12 @@ function getGameStatsByResult(filters = {}) {
  * after a reload, when there's no live `organizerInfo` to fall back on.
  * @param {{ id, name, format, organizerId, organizerName, ruleSet, createdAt }} tournament
  */
-function createTournament({ id, name, format, organizerId, organizerName, ruleSet, createdAt }) {
+function createTournament({ id, name, format, organizerId, organizerName, ruleSet, createdAt, clubId = null }) {
   const stmt = db.prepare(
-    `INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'draft', ?)`
+    `INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at, club_id)
+     VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)`
   );
-  return stmt.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt);
+  return stmt.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt, clubId);
 }
 
 /**
@@ -862,12 +918,279 @@ function getTournamentGameById(id) {
   return row;
 }
 
+// ---------------------------------------------------------------------------
+// Rankings (#176) — read-only views over `ratings` + `users`
+// ---------------------------------------------------------------------------
+
+/** Min rated games before a player appears on a leaderboard (Arena mockup: "≥ 20"). */
+const RANKING_MIN_GAMES = 20;
+
+/**
+ * One page of a category's leaderboard, best rating first.
+ * Ties break on user_id so pages never overlap or skip rows.
+ * @returns {Array<{user_id:string, display_name:string, rating:number, rd:number, games:number}>}
+ */
+function getRankings(category, limit, offset) {
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ?
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, limit, offset);
+}
+
+/** Rankings restricted to `userIds` (friends + self); rank is within that set. */
+function getRankingsAmong(category, userIds, limit, offset) {
+  if (!userIds.length) return [];
+  const marks = userIds.map(() => '?').join(',');
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND r.user_id IN (${marks})
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, ...userIds, limit, offset);
+}
+
+function countRankingsAmong(category, userIds) {
+  if (!userIds.length) return 0;
+  const marks = userIds.map(() => '?').join(',');
+  return db.prepare(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${marks})`)
+    .get(category, RANKING_MIN_GAMES, ...userIds).n;
+}
+
+// Everyone in any club `viewerId` belongs to (pending requests don't count on either side), self included.
+const CLUB_CIRCLE_SQL = `SELECT m2.user_id FROM club_members m1 JOIN club_members m2 ON m2.club_id = m1.club_id
+  WHERE m1.user_id = ? AND m1.role != 'pending' AND m2.role != 'pending'`;
+
+/** Rankings restricted to the viewer's club-mates (B191 "CLB của tôi"); rank is within that set. */
+function getRankingsInMyClubs(category, viewerId, limit, offset) {
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND r.user_id IN (${CLUB_CIRCLE_SQL})
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, viewerId, limit, offset);
+}
+
+function countRankingsInMyClubs(category, viewerId) {
+  return db.prepare(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${CLUB_CIRCLE_SQL})`)
+    .get(category, RANKING_MIN_GAMES, viewerId).n;
+}
+
+/** Rankings of members who set `country` (alpha-2); rank is within that country. */
+function getRankingsByCountry(category, country, limit, offset) {
+  return db.prepare(`
+    SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
+    FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND u.country = ?
+    ORDER BY r.rating DESC, r.user_id
+    LIMIT ? OFFSET ?
+  `).all(category, RANKING_MIN_GAMES, country, limit, offset);
+}
+
+function countRankingsByCountry(category, country) {
+  return db.prepare('SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id WHERE r.category = ? AND r.games >= ? AND u.country = ?')
+    .get(category, RANKING_MIN_GAMES, country).n;
+}
+
+function getRankingCount(category) {
+  return db.prepare('SELECT COUNT(*) AS count FROM ratings WHERE category = ? AND games >= ?')
+    .get(category, RANKING_MIN_GAMES).count;
+}
+
+/**
+ * A user's own standing in a category: their row plus 1-based rank (null while
+ * under RANKING_MIN_GAMES), or null if they have no rating there.
+ */
+function getUserRanking(userId, category) {
+  const row = db.prepare('SELECT rating, rd, games FROM ratings WHERE user_id = ? AND category = ?')
+    .get(userId, category);
+  if (!row) return null;
+  let rank = null;
+  if (row.games >= RANKING_MIN_GAMES) {
+    rank = 1 + db.prepare(`
+      SELECT COUNT(*) AS n FROM ratings
+      WHERE category = ? AND games >= ? AND (rating > ? OR (rating = ? AND user_id < ?))
+    `).get(category, RANKING_MIN_GAMES, row.rating, row.rating, userId).n;
+  }
+  return { ...row, rank };
+}
+
+// ---------------------------------------------------------------------------
+// Profiles (#177)
+// ---------------------------------------------------------------------------
+
+const PROFILE_COLS = 'id, username, display_name, created_at, bio, avatar_v, hide_history, hide_bio, country, city, who_can_dm, who_can_challenge, who_can_friend, hide_online';
+
+function getUiSkin(userId) {
+  const r = db.prepare('SELECT ui_skin FROM users WHERE id = ?').get(userId);
+  return r ? r.ui_skin : null;
+}
+
+function getProfileById(id) {
+  return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE id = ?`).get(id);
+}
+
+function getProfileByUsername(username) {
+  return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE username = ? COLLATE NOCASE`).get(username);
+}
+
+/** @param {{bio?:string, hide_history?:boolean, hide_bio?:boolean, ui_skin?:string}} f */
+function updateProfile(userId, f) {
+  const sets = [], params = [];
+  if (typeof f.ui_skin === 'string') { sets.push('ui_skin = ?'); params.push(f.ui_skin); }
+  if (typeof f.bio === 'string') { sets.push('bio = ?'); params.push(f.bio); }
+  if (typeof f.hide_history === 'boolean') { sets.push('hide_history = ?'); params.push(f.hide_history ? 1 : 0); }
+  if (typeof f.hide_bio === 'boolean') { sets.push('hide_bio = ?'); params.push(f.hide_bio ? 1 : 0); }
+  if (typeof f.country === 'string') { sets.push('country = ?'); params.push(f.country); }
+  if (typeof f.city === 'string') { sets.push('city = ?'); params.push(f.city); }
+  for (const k of ['who_can_dm', 'who_can_challenge', 'who_can_friend']) {
+    if (typeof f[k] === 'string') { sets.push(`${k} = ?`); params.push(f[k]); }
+  }
+  if (typeof f.hide_online === 'boolean') { sets.push('hide_online = ?'); params.push(f.hide_online ? 1 : 0); }
+  if (!sets.length) return;
+  db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params, userId);
+}
+
+/** Set (bump) or clear (0) the avatar version; returns the new version. */
+function setAvatarVersion(userId, clear) {
+  db.prepare('UPDATE users SET avatar_v = ? WHERE id = ?')
+    .run(clear ? 0 : Date.now() % 2147483647, userId);
+  return db.prepare('SELECT avatar_v FROM users WHERE id = ?').get(userId).avatar_v;
+}
+
+/** Aggregate record for a user's finished games. */
+function getUserGameStats(userId) {
+  return db.prepare(`
+    SELECT COUNT(*) AS games,
+           SUM(CASE WHEN winner = 'draw' THEN 1 ELSE 0 END) AS draws,
+           SUM(CASE WHEN (winner = 'BLACK' AND black_player_id = @id)
+                      OR (winner = 'WHITE' AND white_player_id = @id) THEN 1 ELSE 0 END) AS wins
+    FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
+  `).get({ id: userId });
+}
+
+/** Newest-first outcomes ('win'|'loss'|'draw') of the user's finished RATED games with a decided result. */
+function getUserRankedResults(userId, limit) {
+  return db.prepare(`
+    SELECT winner, black_player_id FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ranked = 1 AND ended_at IS NOT NULL AND winner IS NOT NULL
+    ORDER BY ended_at DESC LIMIT @limit
+  `).all({ id: userId, limit }).map((g) => {
+    if (g.winner === 'draw') return 'draw';
+    return (g.winner === 'BLACK') === (g.black_player_id === userId) ? 'win' : 'loss';
+  });
+}
+
+function countUserRankedWins(userId) {
+  return db.prepare(`
+    SELECT COUNT(*) AS n FROM games
+    WHERE ranked = 1 AND ended_at IS NOT NULL
+      AND ((winner = 'BLACK' AND black_player_id = @id) OR (winner = 'WHITE' AND white_player_id = @id))
+  `).get({ id: userId }).n;
+}
+
+function getUserRecentGames(userId, limit, offset = 0) {
+  return db.prepare(`
+    SELECT id, black_player_id, black_player_name, white_player_name, winner, ended_at
+    FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
+    ORDER BY ended_at DESC, id LIMIT @limit OFFSET @offset
+  `).all({ id: userId, limit, offset });
+}
+
+// ---------------------------------------------------------------------------
+// Rankings phase 2 (#190): 7-day change, name search, primary club, rating series
+// ---------------------------------------------------------------------------
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Net rating change over the last 7 days per user (users with no games are absent). @returns {Map<string, number>} */
+function getRatingDeltas7(category, userIds) {
+  const out = new Map();
+  if (!userIds.length) return out;
+  const since = new Date(Date.now() - 7 * DAY_MS).toISOString();
+  const rows = db.prepare(`
+    SELECT user_id, SUM(rating_after - rating_before) AS d FROM rating_history
+    WHERE category = ? AND created_at >= ? AND user_id IN (${userIds.map(() => '?').join(',')})
+    GROUP BY user_id`).all(category, since, ...userIds);
+  for (const r of rows) out.set(r.user_id, r.d);
+  return out;
+}
+
+/** Each user's earliest-joined confirmed club. @returns {Map<string, {slug:string, name:string}>} */
+function getPrimaryClubs(userIds) {
+  const out = new Map();
+  if (!userIds.length) return out;
+  const rows = db.prepare(`
+    SELECT m.user_id, c.slug, c.name FROM club_members m JOIN clubs c ON c.id = m.club_id
+    WHERE m.role != 'pending' AND m.user_id IN (${userIds.map(() => '?').join(',')})
+    ORDER BY m.joined_at, c.slug`).all(...userIds);
+  for (const r of rows) if (!out.has(r.user_id)) out.set(r.user_id, { slug: r.slug, name: r.name });
+  return out;
+}
+
+const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
+
+/**
+ * Leaderboard rows whose username or display name contains q — each keeps its
+ * TRUE global rank (window function), so searching doesn't renumber players.
+ */
+function searchRankings(category, q, limit, offset) {
+  return db.prepare(`
+    SELECT * FROM (
+      SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games,
+             ROW_NUMBER() OVER (ORDER BY r.rating DESC, r.user_id) AS rank
+      FROM ratings r JOIN users u ON u.id = r.user_id
+      WHERE r.category = ? AND r.games >= ?
+    ) WHERE username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\'
+    ORDER BY rank LIMIT ? OFFSET ?`)
+    .all(category, RANKING_MIN_GAMES, likeEscape(q), likeEscape(q), limit, offset);
+}
+
+function countSearchRankings(category, q) {
+  return db.prepare(`
+    SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id
+    WHERE r.category = ? AND r.games >= ? AND (u.username LIKE ? ESCAPE '\\' OR u.display_name LIKE ? ESCAPE '\\')`)
+    .get(category, RANKING_MIN_GAMES, likeEscape(q), likeEscape(q)).n;
+}
+
+/**
+ * A user's rating after each game over the last `days` days, oldest first,
+ * thinned to ≤ maxPoints, plus the all-time peak. The first point is the rating
+ * *before* the first game in the window so a one-game history still draws a line.
+ */
+function getRatingSeries(userId, category, days, maxPoints = 120) {
+  const since = new Date(Date.now() - days * DAY_MS).toISOString();
+  const rows = db.prepare(`
+    SELECT created_at AS t, rating_before AS b, rating_after AS a FROM rating_history
+    WHERE user_id = ? AND category = ? AND created_at >= ? ORDER BY id`).all(userId, category, since);
+  let points = rows.length ? [{ t: rows[0].t, rating: Math.round(rows[0].b) }, ...rows.map((r) => ({ t: r.t, rating: Math.round(r.a) }))] : [];
+  if (points.length > maxPoints) {
+    const step = (points.length - 1) / (maxPoints - 1);
+    points = Array.from({ length: maxPoints }, (_, i) => points[Math.round(i * step)]);
+  }
+  const peak = db.prepare('SELECT MAX(rating_after) AS m FROM rating_history WHERE user_id = ? AND category = ?').get(userId, category).m;
+  return { points, peak: peak == null ? null : Math.round(peak) };
+}
+
 module.exports = {
   db,
   createUser,
   getUserByUsername,
   getUserByOAuthId,
   getUserById,
+  getProfileByUsername,
+  getProfileById,
+  getUiSkin,
+  updateProfile,
+  setAvatarVersion,
+  getUserGameStats,
+  getUserRecentGames,
   updateLastLogin,
   createSession,
   getSessionById,
@@ -881,6 +1204,23 @@ module.exports = {
   getRecentGames,
   getGameById,
   getGameCount,
+  RANKING_MIN_GAMES,
+  getRankings,
+  getRankingCount,
+  getRankingsAmong,
+  getUserRankedResults,
+  countUserRankedWins,
+  getRankingsByCountry,
+  getRankingsInMyClubs,
+  countRankingsInMyClubs,
+  countRankingsByCountry,
+  countRankingsAmong,
+  getUserRanking,
+  getRatingDeltas7,
+  getPrimaryClubs,
+  searchRankings,
+  countSearchRankings,
+  getRatingSeries,
   getGameStatsByDate,
   getGameStatsByResult,
   createTournament,

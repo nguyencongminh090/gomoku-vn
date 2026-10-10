@@ -34,15 +34,11 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTab, setHeroTournamentCount } from './lobby.js?v=177';
+import { client, setHeroTournamentCount } from './lobby.js?v=248';
 
 // ---------------------------------------------------------------------------
 // Element refs
 // ---------------------------------------------------------------------------
-const tabTables        = document.getElementById('tab-tables');
-const tabTournaments    = document.getElementById('tab-tournaments');
-const panelTables       = document.getElementById('panel-tables');
-const panelTournaments  = document.getElementById('panel-tournaments');
 const tournamentListEl  = document.getElementById('tournament-list');
 const btnCreateTournament = document.getElementById('btn-create-tournament');
 const modalOverlay  = document.getElementById('modal-create-tournament');
@@ -72,37 +68,10 @@ const currentUser = {
 };
 
 let tournamentMap = new Map(); // tournamentId → summary (see TournamentManager.listTournaments)
-let activeStatusFilter = 'all'; // 'all' | 'draft' | 'active' | 'completed'
+let activeStatusFilter = 'draft'; // 'draft' (Sắp tới, default) | 'active' | 'completed' | 'all' | 'mine_clubs'
 let activeFormatFilter = '';    // '' | 'swiss' | 'round_robin' | 'double_elim'
 
-// ---------------------------------------------------------------------------
-// Tab switching
-// ---------------------------------------------------------------------------
-
-function activateTab(name) {
-  const isTables = name === 'tables';
-  tabTables.classList.toggle('is-active', isTables);
-  tabTables.setAttribute('aria-selected', String(isTables));
-  tabTournaments.classList.toggle('is-active', !isTables);
-  tabTournaments.setAttribute('aria-selected', String(!isTables));
-  panelTables.classList.toggle('is-active', isTables);
-  panelTournaments.classList.toggle('is-active', !isTables);
-  // The hero sentence above the tabs is shared by both panels — lobby.js owns
-  // it and swaps the copy when the tab changes (Zen Minimal layout).
-  setHeroTab(isTables ? 'tables' : 'tournaments');
-}
-
-tabTables.addEventListener('click', () => activateTab('tables'));
-tabTournaments.addEventListener('click', () => activateTab('tournaments'));
-
-// Honor `?tab=tournaments` so links back from the tournament detail page
-// (tournament.html's "Quay lại danh sách giải đấu") land on the right tab
-// instead of always falling back to the markup's default "Bàn chơi" tab.
-const requestedTab = new URLSearchParams(location.search).get('tab');
-if (requestedTab === 'tournaments') {
-  activateTab('tournaments');
-  history.replaceState(null, '', location.pathname);
-}
+// Screen switching (Chơi / Phòng / Giải đấu) lives in lobby-home.js (B195).
 
 // ---------------------------------------------------------------------------
 // Subscribe to the tournament list (unconditionally on load, same as
@@ -163,7 +132,7 @@ function renderLiveMatchRow(match) {
   const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
   const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
   const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
-    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=177#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=248#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
     : '';
   return `
     <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
@@ -171,7 +140,7 @@ function renderLiveMatchRow(match) {
       <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
       <div class="live-match-row__meta">
         ${gameIndexLabel}
-        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=177#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=248#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
       </div>
     </div>
   `;
@@ -180,6 +149,22 @@ function renderLiveMatchRow(match) {
 // ---------------------------------------------------------------------------
 // Filters
 // ---------------------------------------------------------------------------
+
+// "Của CLB" (mockup): tournaments hosted by a club the viewer belongs to. Members only; the club
+// list is one REST call (the lobby socket carries the tournaments, not memberships).
+const myClubSlugs = new Set();
+const myClubsPill = document.getElementById('filter-my-clubs');
+if (myClubsPill && currentUser.signedIn) {
+  fetch('/api/clubs/mine', { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d || !d.clubs || !d.clubs.length) return;
+      d.clubs.forEach((c) => myClubSlugs.add(c.slug));
+      myClubsPill.hidden = false;
+      renderTournamentList();
+    })
+    .catch(() => { /* tab stays hidden */ });
+}
 
 document.querySelectorAll('#panel-tournaments .filter-pill').forEach((btn) => {
   btn.addEventListener('click', () => {
@@ -217,7 +202,8 @@ function statusBadge(status) {
 
 function renderTournamentList() {
   let tournaments = Array.from(tournamentMap.values());
-  if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
+  if (activeStatusFilter === 'mine_clubs') tournaments = tournaments.filter((t) => t.clubSlug && myClubSlugs.has(t.clubSlug));
+  else if (activeStatusFilter !== 'all') tournaments = tournaments.filter((t) => t.status === activeStatusFilter);
   if (activeFormatFilter) tournaments = tournaments.filter((t) => t.format === activeFormatFilter);
 
   // The old #tournament-count pill is gone with the Zen header — the total
@@ -290,11 +276,11 @@ function renderCard(tournament, index) {
   // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=177#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=248#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=177#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=248#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=177#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=248#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
@@ -327,7 +313,8 @@ function renderCard(tournament, index) {
     badge.label,
     `${tournament.playerCount} ${t('tournaments.players_suffix')}`,
     t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') }),
-  ].join(' · ');
+    tournament.clubName ? t('tournaments.club_suffix', { name: escapeHtml(tournament.clubName) }) : '',
+  ].filter(Boolean).join(' · ');
 
   return `
     <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}" data-open-detail="${escapeAttr(tournament.tournamentId)}" tabindex="0" role="link" aria-label="${escapeAttr(tournament.name)}">
@@ -352,12 +339,28 @@ window.addEventListener('langchange', renderTournamentList);
 // Create Tournament Modal
 // ---------------------------------------------------------------------------
 
+// Set when the club page sent us here (TODO.md #200 slice 4); the server re-checks staff rights.
+let pendingClubSlug = null;
+const clubNote = document.getElementById('tournament-club-note');
+
 function openCreateModal() {
   modalOverlay.classList.add('visible');
 }
 function closeCreateModal() {
   modalOverlay.classList.remove('visible');
+  pendingClubSlug = null;
+  if (clubNote) clubNote.hidden = true;
 }
+
+try {
+  const slug = sessionStorage.getItem('gvn_club_tournament');
+  sessionStorage.removeItem('gvn_club_tournament');
+  if (slug) {
+    pendingClubSlug = slug;
+    if (clubNote) { clubNote.textContent = t('tournaments.club_note', { slug }); clubNote.hidden = false; }
+    openCreateModal();
+  }
+} catch (_) { /* storage blocked — plain create flow */ }
 
 btnCreateTournament.addEventListener('click', openCreateModal);
 modalClose.addEventListener('click', closeCreateModal);
@@ -428,6 +431,7 @@ modalConfirm.addEventListener('click', () => {
     name: name || undefined,
     format: readTournamentFormat(),
     ruleSet,
+    clubSlug: pendingClubSlug || undefined,
   });
   closeCreateModal();
 });

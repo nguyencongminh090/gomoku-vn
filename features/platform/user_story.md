@@ -23,3 +23,16 @@ Matchmaking/challenges · friends/follow/DMs/notifications · replay & analysis 
 - Board/stones design and backend locks stay untouched (CLAUDE.md rule 7).
 - Public scale ⇒ revisit storage (`docs/knowledge/` `data-storage-selection`) before building rating history/feeds.
 - One visual style for the whole platform, chosen from mockups via `design-workflow`.
+
+## Release 2 — full Arena mockup (user, 2026-10-09)
+User picked "everything as in `client/platform-arena-mockup.html`". Plan + open questions: [planning § Release 2](planning.md#release-2--full-arena-mockup).
+| Mockup screen | Stories |
+|---|---|
+| Shell | Every page (lobby, history, tournament, room top bar?) uses the Arena nav (Chơi/Phòng/Giải đấu/Xếp hạng/CLB/Học), bell, avatar + rating, mobile tabbar. |
+| Chơi (home) | Greeting; quick match (rule chips, time chips, rated/casual, challenge friend); my active games; "Hôm nay" (tournaments, daily puzzle, club events); live boards with viewer count. |
+| Phòng | Tabs Phòng/Bàn/Quan sát; create room; join by code. |
+| Giải đấu | Tabs Sắp tới/Đang diễn ra/Đã kết thúc/Của CLB; organize; Swiss standings table. |
+| Xã hội | Notifications; friends + online state; DMs (persisted). |
+| Học | Replay with move list/annotations, eval bar; puzzles; openings; game history. |
+| Cài đặt | Avatar, display name, bio, country/city, privacy (history, challenges from strangers, hide online). |
+| Quản trị | Reports, cheat suspicion, avatar review queue, users. |

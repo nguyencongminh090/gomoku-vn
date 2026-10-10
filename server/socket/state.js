@@ -64,6 +64,22 @@ const sessions = new Map();
 // ---------------------------------------------------------------------------
 
 /**
+ * Members who chose "hide online status" (#199). They stay connected and keep
+ * working normally, but are left out of the lobby online list that is fanned
+ * out to everyone. Kept in memory: set at connect from the DB, updated live by
+ * PUT /api/profile.
+ */
+const hiddenOnline = new Set();
+let _lastIo = null;
+
+/** @param {string} userId @param {boolean} hidden — re-broadcasts the list when the user is connected. */
+function setHideOnline(userId, hidden) {
+  const had = hiddenOnline.has(userId);
+  if (hidden) hiddenOnline.add(userId); else hiddenOnline.delete(userId);
+  if (had !== !!hidden && sessions.has(userId) && _lastIo) broadcastOnlineUsers(_lastIo);
+}
+
+/**
  * Return the online users for lobby broadcast, sorted by display name.
  *
  * Shape: `[{ userId, displayName, isGuest }]`. This used to be a bare
@@ -75,6 +91,7 @@ const sessions = new Map();
  */
 function getOnlineUsersList() {
   return Array.from(sessions.values())
+    .filter(s => !hiddenOnline.has(s.user.userId))
     .map(s => ({
       userId: s.user.userId,
       displayName: s.user.displayName,
@@ -228,6 +245,7 @@ function broadcastLobbyUpdate(io) {
  * @param {import('socket.io').Server} io
  */
 function broadcastOnlineUsers(io) {
+  _lastIo = io;
   if (_onlineUsersTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _onlineUsersTimers.delete(io);
@@ -584,6 +602,7 @@ module.exports = {
   readyTimers,
   sessions,
   getOnlineUsersList,
+  setHideOnline,
   getClientIp,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,

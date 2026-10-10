@@ -6,6 +6,7 @@
  * GET /api/games          — list recent games (paginated, filterable)
  * GET /api/games/stats    — aggregate counts (by date, by result) for the same filters
  * GET /api/games/:id      — get single game with full move data
+ * POST /api/games/:id/report — member reports a seat for cheating {side: BLACK|WHITE, reason} (#208)
  */
 
 const express  = require('express');
@@ -13,6 +14,8 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const database = require('../db/database');
+const { verifyToken } = require('../middleware/auth');
+const cheat = require('../managers/CheatReportService');
 
 const router = express.Router();
 
@@ -121,6 +124,22 @@ router.get('/:id', (req, res, next) => {
     res.json({ game });
   } catch (err) {
     return next(err);
+  }
+});
+
+const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || ''),
+});
+
+router.post('/:id/report', verifyToken, reportLimiter, express.json({ limit: '4kb' }), (req, res, next) => {
+  try {
+    if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
+    res.json(cheat.report(req.user.userId, req.params.id, req.body || {}));
+  } catch (err) {
+    if (err instanceof cheat.CheatReportError) return res.status(err.status).json({ error: err.message, code: err.code });
+    next(err);
   }
 });
 

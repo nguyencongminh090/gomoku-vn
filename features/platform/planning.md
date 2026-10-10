@@ -12,11 +12,11 @@ Source: [user_story](user_story.md).
 
 ## Open questions
 1. Visual style: pick one of the existing lobby mockups (Zen/Ledger/Editorial/…) as the platform look, or new direction? (answer via mockup review)
-2. Avatar storage: local disk vs Cloudflare R2? Upload limits, moderation of images.
+2. ~~Avatar storage~~ **Resolved 2026-10-09 (#177):** local disk, re-encoded 256² WebP ≤ 30 KB (~6–12 KB typical), 2 MB input cap, JPEG/PNG/WebP only; no moderation queue yet.
 3. ~~Rating~~ **Resolved 2026-10-09 (#175):** Glicko-2, start 1200 / RD 350 / vol 0.06, tau 0.5, provisional while RD > 110. Ranked = room toggle (default on), both players members; tournament games unrated.
 4. ~~Rating matrix~~ **Resolved 2026-10-09 (#175):** one pool per winning rule (freestyle / standard / caro); wall/portal/swap2 games rate in their rule's pool; **no speed split** (per_move / per_game / blitz share the pool).
-5. Club: open vs invite-only; max members; who may create (rating/age gate?); club roles.
-6. Profile privacy defaults; public game history or opt-out?
+5. ~~Club rules~~ **Resolved 2026-10-09 (#178):** open|invite per club (owner picks); any member may create; 500 members / 3 clubs per user; roles owner > officer > member.
+6. ~~Profile privacy~~ **Resolved 2026-10-09 (#177):** public by default; per-user opt-outs hide game history and bio.
 7. i18n now (VI/EN) or VI-only?
 8. ~~SQLite at thousands?~~ **Resolved 2026-10-09 (#174): KEEP SQLite (WAL) + 3 limits; no Postgres now.**
    Measured (synthetic, `better-sqlite3`, real schema + `ratings`/`rating_history` tables, 1 tx per game end = games row + 2 player_games + 2 rating updates + 2 history rows; 3 categories, ext4 SSD):
@@ -40,3 +40,30 @@ Source: [user_story](user_story.md).
 4. B175 rating engine + game→rating hook; B176 rankings page.
 5. B177 profile + avatar upload; B178 clubs.
 Steps 4–5 may reorder after Q2/Q3/Q8 are answered.
+
+## Release 2 — full Arena mockup
+Status: **open questions below; not authorization to implement.** Gap found 2026-10-09 by screenshot diff
+(mockup vs real, 1280 + 390, faked API): rankings/profile/clubs/club ≈ match; lobby, history, tournament,
+room use the old shell; everything in the table below has no backend.
+
+| # | Item | Backend | Size |
+|---|---|---|---|
+| R1 | Arena shell on lobby/history/tournament(+match); lobby → Chơi/Phòng/Giải đấu screens on existing data (user report 2026-10-09: lobby tab inconsistent with other tabs) | none | M |
+| R2 | Home: active games, "Hôm nay" (upcoming tournaments), live boards (mini board + viewers) | read endpoints | M |
+| R3 | Quick match queue (rule × time, rated/casual), est. wait | new queue + socket | L |
+| R4 | Friends, challenges, notifications (bell), persisted DMs (today: ephemeral #159) | schema + socket | L |
+| R5 | Settings page: country/city, privacy (strangers' challenges, hide online); badges + win streak | schema | M |
+| R6 | Club tabs: members, club tournaments, events, club chat, club-vs-club | schema | L |
+| R7 | Learn: replay restyle + annotations; puzzles; openings; eval bar (needs engine) | engine? content? | L |
+| R8 | Admin: reports, cheat flags, avatar review, users | schema + roles | L |
+B191 items fold into R4–R6.
+
+### Decided (user, 2026-10-09)
+1. ~~Order~~ R1 → R8 in sequence (UI first, then backend features).
+2. ~~Time chips~~ Fischer = the existing `blitz` mode (found 2026-10-09, no new clock mode needed) for 1+0/3+2/5+3/10+0; **drop Thư tín** (correspondence).
+3. ~~Rule chips~~ use real rules Free-style / Standard / Caro VN; no Renju.
+4. ~~Engine~~ eval bar + move-quality labels = **placeholder** in R7 for now. Later source: user project `/run/media/ngmint/Data/Programming/Programming/HTML/GomokuBoardSite/` (engine work).
+5. ~~"Phòng" nav item in R1~~ deferred to R2 (user 2026-10-09): until Chơi becomes the dashboard, both would open the same room list.
+### Open questions
+5. Puzzles/openings content source (hand-made, generated from games, imported)?
+6. Room top bar gets the full nav? (B191.6 said no — stray clicks mid-game.)

@@ -11,6 +11,7 @@
  *   - handlers/DisconnectHandler.js — disconnect grace period
  *   - handlers/TournamentHandler.js      — tournament:* (create/register/pairing scheduling)
  *   - handlers/TournamentMatchHandler.js — tmatch:* (a pairing's live GameEngine)
+ *   - handlers/MatchHandler.js           — match:* (quick-match queue, B197)
  *
  * No event names or payload structures are changed by this refactor.
  */
@@ -20,11 +21,13 @@ const { clientInfoFromSocket } = require('../utils/geo');
 const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
+const database           = require('../db/database');
 const {
   timerMap,
   sessions,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
+  setHideOnline,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
@@ -39,6 +42,7 @@ const PrivateChatHandler = require('./handlers/PrivateChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
+const MatchHandler           = require('./handlers/MatchHandler');
 
 /**
  * Initialize the Socket.io event handler.
@@ -49,6 +53,36 @@ function init(io) {
   // tournament_completed, pairing_changed) to broadcasts — see
   // TournamentHandler.js's header for why this is init(), not register().
   TournamentHandler.init(io);
+
+  // Friend challenges (#198): a seated pair is redirected on whichever sockets are live;
+  // socket-less pages rejoin by user id when room.html connects.
+  require('../managers/ChallengeService').setHooks({
+    isOnline: (userId) => sessions.has(userId),
+    onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
+    onSeated: (room, userIds) => {
+      const payload = roomManager.serializeRoom(room);
+      for (const uid of userIds) {
+        const s = sessions.get(uid);
+        if (!s) continue;
+        s.leave('lobby');
+        s.join(room.roomId);
+        s.emit('room:joined', payload);
+      }
+      broadcastRoomUpdate(io, room);
+      broadcastLobbyUpdate(io);
+    },
+  });
+
+  // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
+  const DmService = require('../managers/DmService');
+  DmService.setHooks({ isOnline: (userId) => sessions.has(userId) });
+  PrivateChatHandler.setStore(DmService);
+
+  // Live push for the bell (#198): one socket per user lives in `sessions`.
+  require('../managers/NotificationService').setEmitter((userId, event, payload) => {
+    const s = sessions.get(userId);
+    if (s) s.emit(event, payload);
+  });
 
   // Listen for idle room destructions and clean up
   roomManager.on('room_destroyed', (roomId) => {
@@ -221,6 +255,10 @@ function init(io) {
 
     // Track this connection as the user's active session (see eviction above)
     const wasOnline = sessions.has(user.userId);
+    if (!user.isGuest) {
+      const prof = database.getProfileById(user.userId);
+      setHideOnline(user.userId, !!(prof && prof.hide_online));
+    }
     sessions.set(user.userId, socket);
     if (!wasOnline) {
       broadcastOnlineUsers(io);
@@ -292,6 +330,7 @@ function init(io) {
     PrivateChatHandler.register(io, socket);
     TournamentHandler.register(io, socket);
     TournamentMatchHandler.register(io, socket);
+    MatchHandler.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {

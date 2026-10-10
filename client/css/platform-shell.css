@@ -1,0 +1,69 @@
+/* platform-shell.css — Arena top nav + mobile tab bar + avatar (B193). Loaded by every page that
+ * mounts js/platform-shell.js, with or without body.pl; resets are scoped to the shell so lobby/history
+ * styles are untouched. Page components stay in platform.css. */
+.pnav a, .ptabbar a { color: inherit; text-decoration: none; }
+.pnav :where(button), .ptabbar :where(button) { font: inherit; color: inherit; }
+
+/* ── Top nav ── */
+.pnav { display: flex; align-items: center; gap: 28px; position: sticky; top: 0; z-index: 10; height: 56px; padding: 0 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
+.pnav__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+.pnav__links { display: flex; gap: 4px; flex: 1; }
+.pnav__links a { padding: 8px 12px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; color: var(--c-ink-3); }
+.pnav__links a:hover { color: var(--c-ink); }
+.pnav__links a.is-active { background: var(--c-fill); color: var(--c-strong); font-weight: 700; }
+.pnav__right { display: flex; align-items: center; gap: 14px; }
+.pnav__mode { cursor: pointer; display: inline-flex; padding: 8px; border: 0; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink); }
+.pnav__acct { position: relative; }
+.pnav__me { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-size: 13px; font-weight: 600; line-height: 1.2; }
+.pnav__me > .icon { color: var(--c-ink-3); width: 13px; height: 13px; }
+.pnav__menu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 30; min-width: 210px; padding: 6px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.pnav__menu[hidden], .pnav__item[hidden] { display: none; }
+.pnav__menu hr { margin: 6px 0; border: 0; border-top: 1px solid var(--c-border); }
+.pnav__item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--radius); background: none; cursor: pointer; text-align: left; font-size: 13.5px; font-weight: 500; color: var(--c-ink); }
+.pnav__item:hover { background: var(--c-hover); }
+.pnav__item .icon { width: 18px; height: 18px; color: var(--c-ink-3); }
+.pnav__item--staff, .pnav__item--staff .icon { color: var(--c-accent); }
+.pnav__item:disabled { opacity: .5; cursor: default; }
+.pnav__me small { display: block; font-size: 11px; font-weight: 400; color: var(--c-ink-3); }
+.pnav__login { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: var(--radius); background: var(--c-brand); color: var(--c-on-brand) !important; }
+
+/* ── Notification bell (#198) ── */
+.pbell { position: relative; }
+.pbell__btn { position: relative; padding: 6px; background: none; }   /* mockup .icon-btn: bare icon, no fill */
+.pbell__btn:hover { background: var(--c-fill); }
+.pbell__badge { position: absolute; top: -4px; right: -4px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--c-accent); color: #1b1208; font-size: 10px; font-weight: 700; line-height: 16px; text-align: center; }   /* mockup: orange dot; dark ink keeps 4.5:1 on it */
+.pbell__badge[hidden], .pbell__panel[hidden] { display: none; }
+.pbell__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 320px; max-width: calc(100vw - 24px); padding: 8px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.pbell__head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px; font-size: 13px; }
+.pbell__link { border: 0; background: none; cursor: pointer; font-size: 12px; color: var(--c-ink-2); }
+.pbell__link:disabled { opacity: .4; cursor: default; }
+.pbell__item { display: block; padding: 10px 8px; border-radius: var(--radius); font-size: 13px; color: var(--c-ink-2); }
+.pbell__item.is-unread { color: var(--c-strong); font-weight: 600; background: var(--c-fill); }
+.pbell__item:hover { background: var(--c-fill); }
+.pbell__empty { margin: 0; padding: 14px 8px; font-size: 13px; color: var(--c-ink-3); }
+.pbell__all { display: block; padding: 8px; text-align: center; font-size: 12.5px; font-weight: 600; color: var(--c-ink-2); }
+
+.ptabbar { display: none; }
+
+.pav { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--c-surface-2) center / cover no-repeat; color: var(--c-ink); font-size: 11px; font-weight: 700; letter-spacing: .04em; vertical-align: middle; overflow: hidden; }
+
+/* ── Legacy page frames under the shell (lobby, history, tournament): same
+   1180px column and 28/24px gutters as .papp on the platform pages. ── */
+body.pshell:not(.zen-lobby) .lobby-layout { max-width: 1180px; }
+body.pshell:not(.zen-lobby) .lobby, body.pshell .history { max-width: 1180px; padding: 28px 24px 40px; }
+
+@media (max-width: 860px) {
+  .pnav { padding: 0 14px; }
+  .pnav__brand { flex: 1; }
+  .pnav__right { gap: 8px; }
+  .pbell { position: static; }
+  .pnav__mode { min-width: 40px; min-height: 40px; align-items: center; justify-content: center; }
+  .pbell__panel { position: fixed; left: 12px; right: 12px; top: 62px; width: auto; max-width: none; }
+  .pnav__links, .pnav__me span.pnav__name { display: none; }
+  .ptabbar { display: flex; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--c-bg); border-top: 1px solid var(--c-border); }
+  .ptabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; padding: 6px 0; font-size: 10.5px; color: var(--c-ink-3); }
+  .ptabbar a.is-active { color: var(--c-strong); font-weight: 700; }
+  .ptabbar svg { width: 22px; height: 22px; }
+  body.pshell { padding-bottom: 72px; }
+  body.pshell:not(.zen-lobby) .lobby, body.pshell .history { padding: 16px 12px 24px; }
+}

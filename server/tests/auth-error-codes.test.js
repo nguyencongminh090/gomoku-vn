@@ -157,4 +157,25 @@ describe('POST /api/auth/login — error codes', () => {
     expect(res.status).toBe(401);
     expect(body.code).toBe('INVALID_CREDENTIALS');
   });
+
+  test('locked account + correct password → 403 ACCOUNT_LOCKED, no session started (#206)', async () => {
+    require('bcrypt').compare.mockResolvedValueOnce(true);
+    db.getUserByUsername.mockReturnValue({
+      id: 'user-1', username: 'alice', password_hash: '$2b$12$x', display_name: 'Alice', locked_at: '2026-10-10T00:00:00.000Z',
+    });
+    const res = await login({ username: 'alice', password: 'secret123' });
+    expect(res.status).toBe(403);
+    expect((await res.json()).code).toBe('ACCOUNT_LOCKED');
+    expect(db.createSession).not.toHaveBeenCalled();
+    expect(db.updateLastLogin).not.toHaveBeenCalled();
+  });
+
+  test('locked account + WRONG password → plain INVALID_CREDENTIALS (lock status is not probeable)', async () => {
+    db.getUserByUsername.mockReturnValue({
+      id: 'user-1', username: 'alice', password_hash: '$2b$12$x', display_name: 'Alice', locked_at: '2026-10-10T00:00:00.000Z',
+    });
+    const res = await login({ username: 'alice', password: 'wrongpass' });
+    expect(res.status).toBe(401);
+    expect((await res.json()).code).toBe('INVALID_CREDENTIALS');
+  });
 });

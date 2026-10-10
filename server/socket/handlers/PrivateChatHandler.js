@@ -11,8 +11,10 @@
  *   user:status             {userId, status}  (server → chat partners on disconnect)
  *   user:disconnected       {userId}          (server → chat partners on disconnect)
  *
- * Ephemeral by design: no DB, no history. Messages are routed straight to the
- * two participant sockets — NEVER broadcast to `lobby` or any shared room.
+ * Ephemeral for guests (no DB, online-only). Member ↔ member messages are also
+ * persisted through the injected store (#198 slice 4, DmService). Messages are
+ * routed straight to the two participant sockets — NEVER broadcast to `lobby`
+ * or any shared room.
  *
  * Reuses server/managers/ChatHandler's `sanitize` (angle-bracket escaping) and
  * the shared profanity filter. Rate limiting mirrors that module's sliding
@@ -22,14 +24,9 @@
 const crypto = require('crypto');
 const config = require('../../config');
 const logger = require('../../utils/logger');
-const { sanitize } = require('../../managers/ChatHandler');
-const profanityFilter = require('../../../client/js/profanity-filter');
+const dmText = require('../../managers/DmText');
+const privacyGate = require('../../managers/PrivacyGate');
 const { sessions } = require('../state');
-
-const MAX_MESSAGE_LENGTH = 500;
-
-// Per-user sliding window: userId → [timestamp, ...]
-const rateLimitMap = new Map();
 
 /**
  * userId → Set<userId> of people this user currently has an open conversation
@@ -38,23 +35,9 @@ const rateLimitMap = new Map();
  */
 const activePeers = new Map();
 
-/**
- * @param {string} userId
- * @returns {boolean} true if this message should be BLOCKED
- */
-function isRateLimited(userId) {
-  const now = Date.now();
-  let timestamps = rateLimitMap.get(userId);
-  if (!timestamps) {
-    timestamps = [];
-    rateLimitMap.set(userId, timestamps);
-  }
-  const cutoff = now - config.PRIVATE_CHAT_RATE_WINDOW_MS;
-  while (timestamps.length > 0 && timestamps[0] < cutoff) timestamps.shift();
-  if (timestamps.length >= config.PRIVATE_CHAT_RATE_LIMIT) return true;
-  timestamps.push(now);
-  return false;
-}
+/** Persistence for member↔member messages (DmService); null = ephemeral only. Wired by SocketHandler. */
+let store = null;
+function setStore(s) { store = s; }
 
 function linkPeers(a, b) {
   if (!activePeers.has(a)) activePeers.set(a, new Set());
@@ -87,31 +70,36 @@ function register(io, socket) {
       return fail('GUEST_CHAT_DISABLED');
     }
 
-    const clean = sanitize(payload.text || '');
-    if (!clean) return; // silently ignore empty
+    const filtered = dmText.clean(payload.text);
+    if (!filtered) return; // silently ignore empty
 
-    const truncated = clean.length > MAX_MESSAGE_LENGTH
-      ? clean.slice(0, MAX_MESSAGE_LENGTH) + '…'
-      : clean;
-    const filtered = profanityFilter.filterMessage(truncated);
+    if (dmText.isRateLimited(user.userId)) return fail('PRIVATE_CHAT_RATE_LIMITED');
 
-    if (isRateLimited(user.userId)) return fail('PRIVATE_CHAT_RATE_LIMITED');
+    // #198: member → member messages are stored, so an offline recipient is fine
+    // (they get a bell notification); guests keep the ephemeral online-only behaviour.
+    const persist = !!(store && !user.isGuest && store.isMember(toUserId));
+    if (!recipientSocket && !persist) return fail('RECIPIENT_OFFLINE');
+    if (persist && !privacyGate.allowed(user.userId, toUserId, 'dm')) return fail('DM_NOT_ALLOWED');
 
-    if (!recipientSocket) return fail('RECIPIENT_OFFLINE');
-
-    const messageId = crypto.randomUUID();
+    let messageId = crypto.randomUUID();
+    let timestamp = Date.now();
+    if (persist) {
+      const saved = store.save(user.userId, toUserId, filtered, { notify: !recipientSocket });
+      messageId = String(saved.id);
+      timestamp = saved.createdAtMs;
+    }
     const base = {
       messageId,
       fromUserId: user.userId,
       fromUsername: user.displayName,
       text: filtered,
-      timestamp: Date.now(),
+      timestamp,
     };
 
     // `conversationWith` is the *other* participant from each recipient's point
     // of view, so the client can key the message into the right window without
     // guessing. Same messageId both ways (dedup + DOM key only).
-    recipientSocket.emit('private_message:receive', { ...base, conversationWith: user.userId });
+    if (recipientSocket) recipientSocket.emit('private_message:receive', { ...base, conversationWith: user.userId });
     socket.emit('private_message:receive', { ...base, conversationWith: toUserId }); // echo to sender
 
     linkPeers(user.userId, toUserId);
@@ -127,7 +115,7 @@ function register(io, socket) {
  * @param {string} userId
  */
 function cleanupUser(io, userId) {
-  rateLimitMap.delete(userId);
+  dmText.forget(userId);
 
   // A stale/kicked socket's disconnect fires this too; if the user still has a
   // live session (a newer socket replaced this one), they're not offline —
@@ -152,4 +140,4 @@ function cleanupUser(io, userId) {
   }
 }
 
-module.exports = { register, cleanupUser };
+module.exports = { register, cleanupUser, setStore };

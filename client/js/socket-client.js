@@ -197,8 +197,14 @@ class SocketClient {
     //
     // Since #68 the server also revokes the session row before sending this,
     // so the eviction survives a reconnect instead of being undone by one.
-    this.socket.on('session:kicked', () => {
-      sessionStorage.setItem('gvn_kicked_notice', '1');
+    // Bell (#198): pages that mount the Arena shell show it live.
+    this.socket.on('notify:new', (n) => {
+      if (window.PlatformShell && window.PlatformShell.pushNotification) window.PlatformShell.pushNotification(n);
+    });
+
+    this.socket.on('session:kicked', (info) => {
+      // '1' = signed in on another device; 'locked' = staff locked the account (login.js picks the wording)
+      sessionStorage.setItem('gvn_kicked_notice', info && info.code === 'ACCOUNT_LOCKED' ? 'locked' : '1');
       this.destroy();
       window.location.replace('login.html');
     });

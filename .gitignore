@@ -42,3 +42,4 @@ tools/profanity-training/data/
 
 # Playwright
 /playwright/.auth/
+server/data/avatars/

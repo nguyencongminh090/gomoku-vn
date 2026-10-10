@@ -53,6 +53,7 @@ const navUser       = document.getElementById('nav-user');
 const navBadge      = document.getElementById('nav-badge');
 const roomListEl    = document.getElementById('room-list');
 const heroEyebrow   = document.getElementById('hero-eyebrow');
+const heroSub       = document.getElementById('hero-sub');
 const heroTitle     = document.getElementById('hero-title');
 const btnCreate     = document.getElementById('btn-create');
 const modalOverlay  = document.getElementById('modal-create');
@@ -87,7 +88,9 @@ const userInfo = {
   get displayName() { const u = window.GvnSession.getUser(); return u ? u.displayName : ''; },
   get isGuest()     { const u = window.GvnSession.getUser(); return !!(u && u.isGuest); },
 };
-if (userInfo.signedIn) {
+// Site-wide Arena header (B193); it owns the user chip the old topnav showed.
+if (window.PlatformShell) window.PlatformShell.build('lobby');
+if (userInfo.signedIn && navUser && navBadge) {
   navUser.textContent = userInfo.displayName;
   navBadge.textContent = userInfo.isGuest ? t('nav.guest_badge') : '';
   navBadge.style.display = userInfo.isGuest ? '' : 'none';
@@ -116,33 +119,51 @@ function renderFromMap() {
 // ---------------------------------------------------------------------------
 // Hero line
 // ---------------------------------------------------------------------------
-// One sentence above the tabs, stating what is actually on the screen — it
-// replaced the old "Danh sách phòng (N)" header plus its count pills. Which
+// A fixed screen title (H1, as in the Arena mockup) plus one live sentence under it, stating
+// what is actually on the screen — it replaced the old "Danh sách phòng (N)" header plus its
+// count pills. (The sentence used to BE the H1, so an empty lobby read "Chưa có bàn chơi nào
+// đang mở." as the page title, #209/B210.) Which
 // sentence depends on the active tab, so tournaments.js drives it through the
 // two exports below rather than owning a hero of its own.
 
-let heroTab = 'tables';          // 'tables' | 'tournaments'
+let heroTab = 'tables';          // 'home' | 'tables' | 'tournaments'
 let heroTournamentCount = 0;
+
+/** Home greeting, "Chào <b>name</b>, …": the name is user text, so it goes in as a text node. */
+function renderGreeting() {
+  heroEyebrow.textContent = t('home.eyebrow');
+  if (heroSub) heroSub.hidden = true;
+  const name = userInfo.signedIn ? userInfo.displayName : '';
+  if (!name) { heroTitle.textContent = t('home.greeting_anon'); return; }
+  const [before, after = ''] = t('home.greeting', { name: '\u0000' }).split('\u0000');
+  const b = document.createElement('b');
+  b.textContent = name;
+  heroTitle.replaceChildren(before, b, after);
+}
 
 function renderHero() {
   if (!heroTitle) return;
+  if (heroTab === 'home') { renderGreeting(); return; }
   const tournaments = heroTab === 'tournaments';
   const n = tournaments ? heroTournamentCount : currentRooms.length;
 
   heroEyebrow.textContent = t(tournaments ? 'lobby.eyebrow_tournaments' : 'lobby.eyebrow_tables');
 
+  heroTitle.textContent = t(tournaments ? 'lobby.title_tournaments' : 'lobby.title_rooms');
+  if (!heroSub) return;
+  heroSub.hidden = false;
   if (n === 0) {
-    heroTitle.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
+    heroSub.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
     return;
   }
   // Both templates carry a single `{n}`, which is filled with a bolded count.
   // The template is a translator-authored constant and `n` is a number, so no
   // user-controlled text ever reaches this innerHTML.
   const key = tournaments ? 'lobby.hero_tournaments' : 'lobby.hero_rooms';
-  heroTitle.innerHTML = t(key, { n: `<b>${n}</b>` });
+  heroSub.innerHTML = t(key, { n: `<b>${n}</b>` });
 }
 
-/** Called by tournaments.js on tab switch, so the hero follows the tab. */
+/** Called by lobby-home.js on screen switch, so the hero follows the screen. */
 export function setHeroTab(tab) {
   heroTab = tab;
   renderHero();
@@ -235,6 +256,14 @@ function renderOnlineLine() {
   onlineLineNamesEl.innerHTML = html;
 }
 
+document.querySelectorAll('#room-tabs [data-room-tab]').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    roomTab = btn.dataset.roomTab;
+    document.querySelectorAll('#room-tabs [data-room-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
+    renderRoomList(currentRooms);
+  });
+});
+
 client.on('lobby:online_users', (users) => {
   currentOnlineUsers = users;
   renderOnlineLine();
@@ -288,15 +317,28 @@ function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
   `;
 }
 
+// Mockup tabs Phòng / Bàn / Quan sát (B210c) — filters over the one room list, not room kinds:
+// all = every room, open = a table waiting for an opponent (can join to play), watch = a game in
+// progress or a full table (spectate) — open and watch partition the list. The Map/patch plumbing is untouched; only what is drawn is filtered.
+let roomTab = 'all'; // 'all' | 'open' | 'watch'
+const ROOM_TAB_EMPTY = { all: 'lobby.no_rooms', open: 'lobby.no_tables', watch: 'lobby.no_watch' };
+function roomMatchesTab(room) {
+  if (roomTab === 'open') return room.state !== 'playing' && room.playerCount < 2;
+  if (roomTab === 'watch') return room.state === 'playing' || room.playerCount >= 2; // nothing left to sit in
+  return true;
+}
+
 // Full rebuild — used for the initial/reconnect snapshot (lobby:update) and
 // for langchange/uimodechange, where every row's text genuinely needs to be
 // redone. NOT used for lobby:patch — see applyLobbyPatch below.
-function renderRoomList(rooms) {
+function renderRoomList(allRooms) {
+  const rooms = allRooms.filter(roomMatchesTab);
   if (rooms.length === 0) {
+    const sub = roomTab === 'all' ? `<span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>` : '';
     roomListEl.innerHTML = `
       <div class="room-list__empty">
-        <span class="room-list__empty-text">${t('lobby.no_rooms')}</span>
-        <span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>
+        <span class="room-list__empty-text">${t(ROOM_TAB_EMPTY[roomTab])}</span>
+        ${sub}
       </div>
     `;
     return;
@@ -346,7 +388,8 @@ function applyLobbyPatch(patch) {
   for (const room of upserts) roomMap.set(room.roomId, room);
   currentRooms = Array.from(roomMap.values());
 
-  if (wasEmpty || currentRooms.length === 0) {
+  // A filtered tab can gain/lose rows on any patch (a room fills, a game starts), so it re-renders in full.
+  if (wasEmpty || currentRooms.length === 0 || roomTab !== 'all') {
     renderRoomList(currentRooms);
     renderHero();
     return;

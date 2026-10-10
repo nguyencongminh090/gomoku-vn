@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Some of these pages are served at /u/<x> or /c/<x>: root-relative base keeps css/js/assets working. -->
+  <base href="/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Bảng xếp hạng</title>
+  <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
+  <link rel="stylesheet" href="css/main.css?v=248" />
+  <link rel="stylesheet" href="css/tokens.css?v=248" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=248" />
+  <link rel="stylesheet" href="css/platform.css?v=248" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=248" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=248">
+
+  <script src="js/ui-mode-preload.js?v=248"></script>
+  <script src="js/skin-preload.js?v=248"></script>
+</head>
+<body class="pl">
+<div id="pl-shell"></div>
+
+<main class="papp" role="main">
+  <div class="pintro">
+    <h1 data-i18n="rankings.h1">Bảng xếp hạng</h1>
+    <p id="rk-total" class="muted small"></p>
+  </div>
+
+  <div id="rk-tabs" class="pchips" role="tablist" aria-label="Thể loại"></div>
+  <div class="pbar">
+    <div id="rk-scope" class="ptabs" role="tablist" aria-label="Phạm vi"></div>
+    <label class="psearch"><span class="muted small" aria-hidden="true">⌕</span>
+      <input type="search" id="rk-q" maxlength="30" data-i18n-placeholder="rankings.search_ph" placeholder="Tìm người chơi" aria-label="Tìm người chơi" /></label>
+  </div>
+
+  <div class="ptbl-wrap" id="rk-wrap">
+    <table class="ptbl" aria-live="polite">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
+          <th scope="col" data-i18n="rankings.col_region">Khu vực</th>
+          <th scope="col" class="num" data-i18n="rankings.col_rating">Rating</th>
+          <th scope="col" class="num" data-i18n="rankings.col_delta">7 ngày</th>
+          <th scope="col" data-i18n="rankings.col_club">CLB</th>
+          <th scope="col" class="num ptbl__games" data-i18n="rankings.col_games">Ván</th>
+        </tr>
+      </thead>
+      <tbody id="rk-body"></tbody>
+    </table>
+  </div>
+  <p id="rk-empty" class="pnote" hidden></p>
+  <p id="rk-mine" class="pnote"></p>
+  <p class="pnote" id="rk-footnote"></p>
+
+  <div id="rk-pager" class="ppager"></div>
+</main>
+
+<script src="js/i18n.js?v=248"></script>
+<script src="js/ui-mode.js?v=248"></script>
+<script src="js/session.js?v=248"></script>
+<script src="js/audio-manager.js?v=248"></script>
+<script src="js/settings-panel.js?v=248"></script>
+<script src="js/platform-shell.js?v=248"></script>
+<script src="js/countries.js?v=248"></script>
+<script src="js/rankings.js?v=248"></script>
+</body>
+</html>

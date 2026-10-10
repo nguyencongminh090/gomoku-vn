@@ -75,8 +75,10 @@ in the detail file / fix-log).
   theo 1 điểm dữ liệu. Việc tiếp theo là *thu thêm mẫu*, không phải viết code. Lệch đồng hồ máy
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
-- **#176.** Platform: rankings/leaderboard page (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B176-rankings-page.md)
-- **#177.** Platform: profile page + avatar upload (blocked on #173,#174) `[Model: Sonnet 5]` — [detail](docs/todo/B177-profile-avatar.md)
-- **#178.** Platform: clubs (blocked on #173) `[Model: Sonnet 5]` — [detail](docs/todo/B178-clubs.md)
-
-- **#180.** Platform: selectable skins A Zen / D Bento on the token layer (needs planning Q: users.ui_skin with #177) `[Model: Sonnet 5]` — [detail](docs/todo/B180-selectable-skins-zen-bento.md)
+- **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
+- **#201.** R7: Learn = puzzles (tags + levels) + forum (design first) `[Model: Opus 5]` — [detail](docs/todo/B201-learn-r7.md)
+- **#203.** R7 7a: puzzles — member submissions, board editor, solve, admin review `[Model: Opus 5]` — [detail](docs/todo/B203-puzzles-7a.md)
+- **#205.** R8 8a: staff roles (member/moderator/admin) + `/admin` console merging puzzle review and forum reports `[Model: Sonnet 5]` — [detail](docs/todo/B205-admin-8a-roles-console.md)
+- **#206.** R8 8b: `/admin` Users tab — find, change role, lock; change log as a graph `[Model: Opus 5]` — [detail](docs/todo/B206-admin-8b-users-tab.md)
+- **#207.** R8: staff remove a user avatar (Users tab, logged as graph edge) `[Model: Sonnet 5]` — [detail](docs/todo/B207-admin-avatar-remove.md)
+- **#208.** R8: cheat reports — member reports a finished game, staff queue tab, confirm logs graph edge `[Model: Sonnet 5]` — [detail](docs/todo/B208-cheat-reports.md)

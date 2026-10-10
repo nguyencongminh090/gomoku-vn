@@ -182,7 +182,20 @@
       (value) => { if (global.setColorMode) global.setColorMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
     ));
 
-    body.appendChild(group(T('gset.appearance'), [modeRow, densityRow]));
+    // Appearance: skin (arena | zen | bento) — #180
+    const skinRow = document.createElement('div');
+    skinRow.className = 'gset-row';
+    const skinLabel = document.createElement('span');
+    skinLabel.className = 'gset-row__label';
+    skinLabel.textContent = T('gset.skin');
+    skinRow.appendChild(skinLabel);
+    skinRow.appendChild(segment(
+      [['arena', T('gset.skin_arena')], ['zen', T('gset.skin_zen')], ['bento', T('gset.skin_bento')]],
+      global.getSkin ? global.getSkin() : 'arena',
+      (value) => { if (global.setSkin) global.setSkin(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
+    ));
+
+    body.appendChild(group(T('gset.appearance'), [skinRow, modeRow, densityRow]));
 
     // Language
     const langRow = document.createElement('div');
@@ -349,7 +362,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=177#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=248#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }
@@ -357,5 +370,8 @@
   document.addEventListener('DOMContentLoaded', mountTrigger);
 
   global.openSettingsPanel = openPanel;
+
+  // The /settings.html page (B211) drives the same stores, so it shares these accessors instead of re-implementing them.
+  global.GvnSettings = { getClickMode, setClickMode, getDisplayMode, setDisplayMode, isSoundOn, setSoundOn };
 
 })(window);
