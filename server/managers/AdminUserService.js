@@ -96,6 +96,18 @@ function setRole(adminId, id, role) {
   })();
 }
 
+/**
+ * Revoking sessions only stops the NEXT connect; an already-open socket keeps playing until it drops.
+ * Tell it why (the login page shows "account locked", not "signed in elsewhere") and close it.
+ * Lazy require: the socket layer pulls in RoomManager & co., which this service must not load eagerly.
+ */
+function kickLiveSocket(userId) {
+  const socket = require('../socket/state').sessions.get(userId);
+  if (!socket) return;
+  socket.emit('session:kicked', { message: 'Tài khoản đã bị khoá.', code: 'ACCOUNT_LOCKED' });
+  socket.disconnect(true);
+}
+
 function setLocked(adminId, id, locked, reason) {
   requireManager(adminId);
   const why = typeof reason === 'string' ? reason.trim() : '';
@@ -113,7 +125,10 @@ function setLocked(adminId, id, locked, reason) {
     }
     return shape(user);
   })();
-  if (locked) sessions.revokeOtherSessionsForUser(out.id); // evicts every live session (no exception)
+  if (locked) {
+    sessions.revokeOtherSessionsForUser(out.id); // evicts every live session (no exception)
+    kickLiveSocket(out.id); // ...and the socket that is still open on one of them (#206 trap)
+  }
   return out;
 }
 

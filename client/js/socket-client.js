@@ -202,8 +202,9 @@ class SocketClient {
       if (window.PlatformShell && window.PlatformShell.pushNotification) window.PlatformShell.pushNotification(n);
     });
 
-    this.socket.on('session:kicked', () => {
-      sessionStorage.setItem('gvn_kicked_notice', '1');
+    this.socket.on('session:kicked', (info) => {
+      // '1' = signed in on another device; 'locked' = staff locked the account (login.js picks the wording)
+      sessionStorage.setItem('gvn_kicked_notice', info && info.code === 'ACCOUNT_LOCKED' ? 'locked' : '1');
       this.destroy();
       window.location.replace('login.html');
     });

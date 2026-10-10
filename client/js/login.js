@@ -65,8 +65,9 @@ const alertBanner    = document.getElementById('alert-banner');
 // (server disconnected this session because the account signed in elsewhere)
 // ---------------------------------------------------------------------------
 if (sessionStorage.getItem('gvn_kicked_notice')) {
+  const why = sessionStorage.getItem('gvn_kicked_notice');
   sessionStorage.removeItem('gvn_kicked_notice');
-  showAlert(t('login.session_kicked'));
+  showAlert(t(why === 'locked' ? 'login.err_account_locked' : 'login.session_kicked'));
 }
 
 // ---------------------------------------------------------------------------

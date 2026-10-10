@@ -17,6 +17,6 @@ Roles are only granted via sqlite3/CLI; no way to find a user, lock an account, 
 - Rules: cannot change/lock yourself; cannot lock an admin (demote first); lock needs a reason (≤ 200).
 
 ## Traps
-- A live socket survives a lock until it reconnects (sessions revoked, sockets not kicked) — recorded, not built.
+- A live socket survived a lock (sessions revoked, socket not kicked) — fixed 2026-10-10, see fix-log 2026-10-10-b206-lock-kicks-live-socket.
 - LIKE wildcards in `q` must be escaped. Render names with `textContent`/SVG `<title>`.
 - Locked-account message must not reveal lock before password check (no account probing).
