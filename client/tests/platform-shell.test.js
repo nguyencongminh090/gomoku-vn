@@ -110,7 +110,7 @@ describe('platform shell', () => {
     const me = document.querySelector('.pnav__me');
     expect(me.textContent).toContain('<i>Zed</i>');
     expect(me.querySelector('i')).toBeNull();
-    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html']);
+    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/social.html', '/settings.html']); // #233: Bạn bè is reachable from the chip menu
   });
 
   it('chip shows the member avatar once /me returns one; initials otherwise (and until then)', async () => {

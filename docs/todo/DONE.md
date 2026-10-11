@@ -2,6 +2,9 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+- ✅ **#233.** Friends page discoverability (menu entry done; mobile tab + lobby hint deferred) `[Model: Sonnet 5]` — [detail](docs/todo/B233-friends-page-discoverability.md)
+- ✅ **#232.** Shareable Discord-style friend code (`name#tag`) `[Model: Opus 5]` — [detail](docs/todo/B232-shareable-friend-code-discord-style.md)
+- ✅ **#231.** Add friend by username / display name (search box on Bạn bè page) `[Model: Sonnet 5]` — [detail](docs/todo/B231-friend-search-by-username-name.md)
 - ✅ **#219.** Lobby room row: show Rated / Friendly (needs `ranked` in the lobby list payload) `[Model: Sonnet 5]` — [detail](docs/todo/B219-lobby-room-row-rated-friendly.md)
 - ✅ **#222.** Friend challenge: pick friend → full-rules modal → series → Swap Elo stake `[Model: Opus 5]` — [detail](docs/todo/B222-friend-challenge-full.md)
 - ✅ **#228.** Lobby/tournament lists freeze after socket reconnect (re-subscribe on connect) `[Model: Sonnet 5]` — [detail](docs/todo/B228-resubscribe-after-reconnect.md)
