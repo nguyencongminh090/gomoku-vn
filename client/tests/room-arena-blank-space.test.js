@@ -36,3 +36,10 @@ test('the panel toggle is sticky right under my card, and the panel clips withou
   expect(phone).toMatch(/body\.arena-room \.rpanel \{ overflow: clip; \}/);
   expect(phone).toMatch(/:has\(#chat-input:focus\) \.rpanel-toggle \{ position: relative; top: auto; \}/);
 });
+
+// user 2026-10-11: expanded panel releases the sticky stack (page scrolls: longer chat, easier Settings); minimized re-pins.
+test('expanded (aria-expanded=true) un-sticks cards + board and makes the panel a screen tall; the base sticky rules stay for minimized', () => {
+  expect(phone).toMatch(/:has\(#rpanel-toggle\[aria-expanded="true"\]\) \.board-area-shell[^{]*\{ position: relative; top: auto; \}/);
+  expect(phone).toMatch(/\.rpanel:not\(\.rpanel--min\) \{ flex: none; min-height: calc\(100dvh - var\(--nav-h\)\); \}/);
+  expect(phone).toMatch(/body\.arena-room \.board-area-shell \{ top: var\(--pcard-h\); z-index: 20; \}/);
+});

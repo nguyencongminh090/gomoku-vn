@@ -356,6 +356,14 @@ body.arena-room .rpanel-toggle { display: none; }
   body.arena-room:has(#chat-input:focus) .board-area-shell,
   body.arena-room:has(#chat-input:focus) .pcard--bottom,
   body.arena-room:has(#chat-input:focus) .rpanel-toggle { position: relative; top: auto; }
+  /* Expanded (user 2026-10-11): the stack is NOT pinned — the page scrolls so chat can be long and Settings easy
+     to edit; the panel is at least a screen tall. aria-expanded (set at click) drives it, so minimizing re-pins
+     at once. The ▼ bar still sticks, at the very top of the scroller. */
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .pcard--top,
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .board-area-shell,
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .pcard--bottom { position: relative; top: auto; }
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .rpanel-toggle { top: 0; }
+  body.arena-room .rpanel:not(.rpanel--min) { flex: none; min-height: calc(100dvh - var(--nav-h)); }
 }
 /* Every phone: the board never pushes the minimized bar off screen (iPhone 13 in Safari, 390×664: board 389px left
    the input 16px below the fold — #218 iOS check). Room for nav + 2 cards + tiles (52 + 2·5) + bar (28 + 49).
