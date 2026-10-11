@@ -87,6 +87,11 @@ const DEFAULT_TIMER_INCREMENT_SECONDS = 0;
 const TIME_REQUEST_BONUS    = 30;  // Seconds added per "Xin Time" request
 const TIME_REQUEST_FREE     = 3;   // Number of free "Xin Time" requests before needing permission
 
+// --- Friend challenge (#222) ---
+const CHALLENGE_SERIES_GAMES   = [1, 3, 5];        // best-of-N choices
+const SWAP_MIN_RATED_GAMES     = 20;               // both players, in the played category
+const SWAP_COOLDOWN_MS         = 24 * 60 * 60 * 1000; // per pair, any category
+
 // --- WALL mechanic ---
 const WALL_COUNT            = 3;
 const WALL_EDGE_MIN_DIST    = 4;   // Min distance from any board edge
@@ -243,6 +248,9 @@ module.exports = {
   DEFAULT_TIMER_INCREMENT_SECONDS,
   TIME_REQUEST_BONUS,
   TIME_REQUEST_FREE,
+  CHALLENGE_SERIES_GAMES,
+  SWAP_MIN_RATED_GAMES,
+  SWAP_COOLDOWN_MS,
   WALL_COUNT,
   WALL_EDGE_MIN_DIST,
   WALL_CENTER_ZONE,

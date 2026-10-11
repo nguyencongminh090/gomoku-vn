@@ -320,15 +320,13 @@ function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
   const animStyle = animate ? ` style="animation-delay: ${(delayIndex * 0.04).toFixed(2)}s"` : '';
 
   return `
-    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}"${animStyle}>
+    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}"
+         role="button" tabindex="0" aria-label="${escapeAttr(rowActionLabel(room))}"${animStyle}>
       <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
       <div class="room-row__body">
-        <div class="room-row__name">${escapeHtml(room.roomName || room.roomId)}</div>
+        <div class="room-row__name">${buildRoomPlayers(room)}</div>
         <div class="room-row__meta">${buildRoomMeta(room)}</div>
       </div>
-      <button class="room-row__action" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
-        ${t(canWatch(room) ? 'lobby.btn_watch' : 'lobby.btn_join')}
-      </button>
     </div>
   `;
 }
@@ -380,14 +378,33 @@ function updateRoomRowNode(node, room) {
   bullet.className = `room-row__bullet ${bulletClass}`;
   bullet.title = stateLabel;
 
-  node.querySelector('.room-row__name').textContent = room.roomName || room.roomId;
+  node.querySelector('.room-row__name').innerHTML = buildRoomPlayers(room);
   node.querySelector('.room-row__meta').innerHTML = buildRoomMeta(room);
+  node.setAttribute('aria-label', rowActionLabel(room));
+}
 
-  const action = node.querySelector('.room-row__action');
-  if (action) {
-    action.dataset.arg = room.roomId;
-    action.textContent = t(canWatch(room) ? 'lobby.btn_watch' : 'lobby.btn_join');
-  }
+// The whole ticket is the join/watch control (no button); keyboard users get Enter/Space.
+function rowActionLabel(room) {
+  return `${t(canWatch(room) ? 'lobby.btn_watch' : 'lobby.btn_join')}: ${room.roomName || room.roomId}`;
+}
+document.addEventListener('keydown', (e) => {
+  const row = e.target.closest && e.target.closest('.room-row[data-action]');
+  if (!row || e.target !== row || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  window.joinRoom(row.dataset.arg);
+});
+
+// Ticket title: both seated players (avatar + name), "A vs B"; an empty seat reads as a muted placeholder.
+// A room nobody sits in yet falls back to its own name.
+function buildRoomPlayers(room) {
+  const seats = Array.isArray(room.players) ? room.players : [null, null];
+  if (!seats[0] && !seats[1]) return escapeHtml(room.roomName || room.roomId);
+  const seat = (p) => {
+    if (!p) return `<span class="rplayer rplayer--empty">${escapeHtml(t('lobby.seat_empty'))}</span>`;
+    const av = window.PlatformShell ? window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--xs').outerHTML : '';
+    return `<span class="rplayer">${av}<span class="rplayer__name">${escapeHtml(p.displayName)}</span></span>`;
+  };
+  return `${seat(seats[0])}<span class="rvs">vs</span>${seat(seats[1])}`;
 }
 
 // Apply a `lobby:patch` ({ upserts, removed }) to `roomMap` and the DOM
@@ -451,16 +468,17 @@ function getBulletClass(state, playerCount) {
   return 'room-row__bullet--waiting';
 }
 
-// The single meta line under the room name: middot-joined segments, escaped
-// individually so a room/host name can never inject markup through the join.
+// The meta line under the players: room name as plain text, everything else a tag chip (.rtag).
+// Every dynamic piece goes through escapeHtml, so a room/host name can never inject markup.
 function buildRoomMeta(room) {
-  const parts = [
-    escapeHtml(room.hostName),
-    buildRuleSummary(room),
-    buildTimeSummary(room),
-    `${room.playerCount}/2`,
-  ].filter(Boolean);
-  return parts.join(' · ');
+  const tag = (text, mod = '') => `<span class="rtag${mod ? ' rtag--' + mod : ''}">${escapeHtml(text)}</span>`;
+  const time = buildTimeSummary(room);
+  return [
+    `<span class="room-row__host">${escapeHtml(room.roomName || room.roomId)}</span>`,
+    ...buildRuleTags(room).map((x) => tag(x)),
+    time ? tag(time) : '',
+    room.ranked === false ? tag(t('room.mode_friendly'), 'friendly') : tag(t('room.mode_rated'), 'rated'),
+  ].join('');
 }
 
 // A seat to sit in = "Vào"; a running game or a full table = "Quan sát" (same predicate as the Quan sát tab).
@@ -477,15 +495,15 @@ function buildTimeSummary(room) {
   return t('lobby.time_per_move', { s });
 }
 
-// Lite: one plain-language summary instead of the jargon cluster
+// Lite: one plain-language tag instead of the jargon cluster
 // (Wall / Portal / Swap2 / Caro).
 // Default: the full breakdown.
-function buildRuleSummary(room) {
+function buildRuleTags(room) {
   const size = `${room.boardSize}×${room.boardSize}`;
   if (uiMode() === 'lite') {
     const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
       || (room.winningRule || 'freestyle') !== 'freestyle';
-    return `${isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard')} · ${size}`;
+    return [isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard'), size];
   }
 
   const tags = [size];
@@ -496,7 +514,7 @@ function buildRuleSummary(room) {
   if (win === 'standard')  tags.push(t('rule.standard'));
   if (win === 'caro')      tags.push(t('rule.caro'));
   if (win === 'freestyle') tags.push(t('rule.freestyle'));
-  return tags.join(' · ');
+  return tags;
 }
 
 window.addEventListener('langchange', () => {

@@ -1021,6 +1021,19 @@ function getUserRanking(userId, category) {
   return { ...row, rank };
 }
 
+/** Rated games a user has played in a category (0 if unrated there). */
+function getRatedGames(userId, category) {
+  const row = db.prepare('SELECT games FROM ratings WHERE user_id = ? AND category = ?').get(userId, category);
+  return row ? row.games : 0;
+}
+
+/** ISO time of the pair's last applied Elo swap (#222), any category, or null. */
+function lastEloSwapAt(a, b) {
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  const row = db.prepare('SELECT created_at FROM elo_swaps WHERE user_lo = ? AND user_hi = ? ORDER BY created_at DESC LIMIT 1').get(lo, hi);
+  return row ? row.created_at : null;
+}
+
 // ---------------------------------------------------------------------------
 // Profiles (#177)
 // ---------------------------------------------------------------------------
@@ -1223,6 +1236,8 @@ module.exports = {
   searchRankings,
   countSearchRankings,
   getRatingSeries,
+  getRatedGames,
+  lastEloSwapAt,
   getGameStatsByDate,
   getGameStatsByResult,
   createTournament,

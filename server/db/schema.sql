@@ -249,6 +249,25 @@ CREATE TABLE IF NOT EXISTS rating_history (
 CREATE INDEX IF NOT EXISTS idx_ratings_category_rating ON ratings(category, rating DESC);
 CREATE INDEX IF NOT EXISTS idx_rating_history_user ON rating_history(user_id, category, id DESC);
 
+-- Swap Elo stake log (#222): one row per applied swap at a challenge series' end.
+-- user_lo/user_hi = the pair sorted, so the 24 h per-pair cooldown is one lookup.
+-- Written in the same transaction as the series' rating update (RatingService.rateSeries).
+CREATE TABLE IF NOT EXISTS elo_swaps (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  category       TEXT NOT NULL,
+  user_lo        TEXT NOT NULL REFERENCES users(id),
+  user_hi        TEXT NOT NULL REFERENCES users(id),
+  winner_id      TEXT NOT NULL,
+  loser_id       TEXT NOT NULL,
+  winner_before  REAL NOT NULL,
+  winner_after   REAL NOT NULL,
+  loser_before   REAL NOT NULL,
+  loser_after    REAL NOT NULL,
+  game_ids       TEXT NOT NULL,                   -- JSON array of the series' games
+  created_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_elo_swaps_pair ON elo_swaps(user_lo, user_hi, created_at DESC);
+
 -- Clubs (TODO.md #178). slug = URL form of the name (UNIQUE, so also enforces
 -- unique names). role: owner | officer | member | pending (join request on an
 -- 'invite' club). Exactly one 'owner' row per club (ClubService enforces it).
