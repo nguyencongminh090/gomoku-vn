@@ -7,7 +7,8 @@
  *   myGame     — the room the caller is seated in, if any
  *   myMatches  — the caller's open tournament pairings (not byes, not Completed)
  *   tournaments — up to 5 draft/active tournaments, with a `registered` flag
- *   live       — up to 3 playing rooms with the most spectators, stones included
+ *   live       — up to 3 playing rooms with the most spectators (names, rule, move count — no stones)
+ *   stats      — { online, playing, searching } site-wide counters (B223)
  *
  * Session is optional: guests / signed-out callers get `tournaments` + `live`.
  * Never sends other users' ids — names only.
@@ -24,7 +25,6 @@ const tournamentManager = require('../managers/tournament/TournamentManager');
 
 const LIVE_LIMIT = 3;
 const TOURNAMENT_LIMIT = 5;
-const MAX_STONES = 400; // > any board this site offers; caps the payload regardless
 
 function seatedPlayers(room) {
   return [...room.users.values()].filter((u) => u.slot === 1 || u.slot === 2);
@@ -114,30 +114,39 @@ function liveOf(rooms) {
       white: name('WHITE'),
       viewers,
       boardSize: engine.boardSize,
-      stones: (engine.moveHistory || []).slice(-MAX_STONES).map((m) => [m.x, m.y, m.color === 'WHITE' ? 2 : 1]),
+      moves: (engine.moveHistory || []).length,
       ...ruleOf(room),
     });
   }
-  return out.sort((a, b) => b.viewers - a.viewers || b.stones.length - a.stones.length).slice(0, LIVE_LIMIT);
+  return out.sort((a, b) => b.viewers - a.viewers || b.moves - a.moves).slice(0, LIVE_LIMIT);
+}
+
+function playingCount(rooms) {
+  let n = 0;
+  for (const room of rooms.rooms.values()) if (room.state === 'playing' && room.gameState) n++;
+  return n;
 }
 
 // Lazy: MatchHandler pulls in the socket layer, which this route (and its tests) should not load eagerly.
 const defaultQueueCounts = () => require('../socket/handlers/MatchHandler').queueCounts();
+const defaultOnline = () => require('../socket/state').getOnlineUsersList().length;
 const defaultQueueEta = () => require('../socket/handlers/MatchHandler').queueEstimates();
 
 /**
  * Build the dashboard payload. `user` is a session ({ userId, isGuest }) or null.
  * Managers are injected so tests can pass fakes.
  */
-function buildHome(user, rooms = roomManager, tm = tournamentManager, queueCounts = defaultQueueCounts, queueEta = defaultQueueEta) {
+function buildHome(user, rooms = roomManager, tm = tournamentManager, queueCounts = defaultQueueCounts, queueEta = defaultQueueEta, online = defaultOnline) {
   const member = user && !user.isGuest ? user.userId : null;
   const seatedId = user ? user.userId : null; // guests can sit in casual rooms too
+  const queue = queueCounts();
   return {
     myGame: seatedId ? myGameOf(seatedId, rooms) : null,
     myMatches: member ? myMatchesOf(member, tm) : [],
     tournaments: tournamentsOf(member, tm),
     live: liveOf(rooms),
-    queue: queueCounts(), // { 'caro|5+3': n } — quick-match waiters per rule|time (B210)
+    queue, // { 'caro|5+3': n } — quick-match waiters per rule|time (B210)
+    stats: { online: online(), playing: playingCount(rooms), searching: Object.values(queue).reduce((a, b) => a + b, 0) },
     queueEta: queueEta(), // { 'caro|5+3': seconds } — median recent wait, only with enough samples
   };
 }

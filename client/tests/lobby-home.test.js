@@ -117,7 +117,7 @@ describe('dashboard rendering', () => {
       { tournamentId: 't1', name: 'Sat', format: 'swiss', status: 'active', playerCount: 64, registered: true },
       { tournamentId: 't2', name: 'Oct', format: 'swiss', status: 'draft', playerCount: 3, registered: false },
     ],
-    live: [{ roomId: 'L1', black: 'kim', white: 'sak', viewers: 120, boardSize: 15, stones: [[7, 7, 1], [8, 8, 2], [99, 0, 1]],
+    live: [{ roomId: 'L1', black: 'kim', white: 'sak', viewers: 120, boardSize: 15, moves: 42,
       winningRule: 'freestyle', timerMode: 'per_move', timerSeconds: 30 }],
   };
 
@@ -147,21 +147,30 @@ describe('dashboard rendering', () => {
     expect(acts).toEqual(['home.registered', 'home.register']);
   });
 
-  it('live: mini board draws in-bounds stones only + last-move dot; click spectates', async () => {
+  it('live: text row (names, rule, moves, viewers), no SVG board; click spectates', async () => {
     await boot('/index.html', DATA);
-    const card = document.querySelector('#home-live .hlive');
-    expect(card.querySelectorAll('circle.sb')).toHaveLength(1);
-    expect(card.querySelectorAll('circle.sw')).toHaveLength(1);
-    expect(card.querySelectorAll('line')).toHaveLength(30);
+    const card = document.querySelector('#home-live .prow');
+    expect(document.querySelector('#home-live svg, #home-live circle')).toBeNull();
+    expect(card.textContent).toContain('home.live_vs{"a":"kim","b":"sak"}');
+    expect(card.textContent).toContain('home.moves{"n":42}');
     expect(card.textContent).toContain('home.viewers{"n":120}');
     expect(card.textContent).toContain('home.per_move{"s":30}');
     card.click();
     expect(window.joinRoom).toHaveBeenCalledWith('L1');
   });
 
+  it('stats strip shows online / playing / searching; hidden without stats', async () => {
+    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 } });
+    const strip = document.getElementById('home-stats');
+    expect(strip.hidden).toBe(false);
+    expect([...strip.querySelectorAll('.hstat__n')].map((n) => n.textContent)).toEqual(['12', '3', '2']);
+    await boot('/index.html', DATA);
+    expect(document.getElementById('home-stats').hidden).toBe(true);
+  });
+
   it('live card with no spectators omits the viewer count', async () => {
     await boot('/index.html', { ...EMPTY, live: [{ ...DATA.live[0], viewers: 0 }] });
-    expect(document.querySelector('#home-live .hlive').textContent).not.toContain('home.viewers');
+    expect(document.querySelector('#home-live .prow').textContent).not.toContain('home.viewers');
   });
 
   it('empty payload → empty states; "find a room" goes to the rooms screen', async () => {

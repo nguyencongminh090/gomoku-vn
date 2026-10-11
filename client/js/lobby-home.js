@@ -2,7 +2,7 @@
  * lobby-home.js — the lobby's three screens and the "Chơi" dashboard (B195, R2).
  *
  * Screens follow the hash the shared Arena nav links to:
- *   ''            → home   (#screen-home: my games, today, live boards)
+ *   ''            → home   (#screen-home: stats strip, my games, today, live games)
  *   '#rooms'      → rooms  (#panel-tables: the room list lobby.js renders)
  *   '#tournaments'→ tournaments (#panel-tournaments: tournaments.js)
  * Legacy `?tab=tournaments` (tournament.html's back link) still lands on tournaments.
@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=305';
+import { client, setHeroTab } from './lobby.js?v=306';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -26,6 +26,7 @@ const POLL_MS = 20000;
 let current = null;
 let pollTimer = null;
 let lastData = null;
+let lastJson = '';
 
 /** Leading sprite icon (B212, #214); a no-op before platform-shell.js has loaded. */
 function withIcon(node, name) { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; }
@@ -129,31 +130,6 @@ export function ruleLine(r) {
   return parts.join(' · ');
 }
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-function svg(tag, attrs) {
-  const n = document.createElementNS(SVG_NS, tag);
-  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
-  return n;
-}
-
-/** Small read-only board: grid + stones, last move marked. Not board.js (board/stones lock). */
-export function miniBoard(size, stones, px = 96) {
-  const n = Math.max(5, Math.min(30, size || 15));
-  const c = px / (n + 1);
-  const root = svg('svg', { viewBox: `0 0 ${px} ${px}`, class: 'hmini', role: 'img', 'aria-label': t('home.board_aria') });
-  for (let i = 1; i <= n; i++) {
-    root.appendChild(svg('line', { x1: c, y1: i * c, x2: n * c, y2: i * c }));
-    root.appendChild(svg('line', { x1: i * c, y1: c, x2: i * c, y2: n * c }));
-  }
-  for (const [x, y, col] of stones || []) {
-    if (x < 0 || y < 0 || x >= n || y >= n) continue;
-    root.appendChild(svg('circle', { cx: (x + 1) * c, cy: (y + 1) * c, r: c * 0.43, class: col === 2 ? 'sw' : 'sb' }));
-  }
-  const last = stones && stones[stones.length - 1];
-  if (last) root.appendChild(svg('circle', { cx: (last[0] + 1) * c, cy: (last[1] + 1) * c, r: c * 0.14, class: 'last' }));
-  return root;
-}
-
 function row(title, meta, action, onClick, bullet) {
   const r = el(onClick ? 'button' : 'div', undefined, 'prow hrow');
   if (onClick) { r.type = 'button'; r.addEventListener('click', onClick); }
@@ -208,25 +184,36 @@ function renderToday(data) {
   if (!box.children.length) box.appendChild(el('p', t('home.no_today'), 'muted small hempty'));
 }
 
+function renderStats(data) {
+  const box = document.getElementById('home-stats');
+  if (!box) return;
+  const st = data.stats;
+  box.hidden = !st;
+  if (!st) return;
+  box.replaceChildren();
+  for (const [key, n] of [['online', st.online], ['playing', st.playing], ['searching', st.searching]]) {
+    const item = el('div', undefined, 'hstat');
+    item.append(el('strong', String(n || 0), 'hstat__n'), el('span', t('home.stat_' + key), 'hstat__l muted small'));
+    box.appendChild(item);
+  }
+}
+
+/** Live games as text rows — no board drawing (B223: the old mini boards were the poll's main DOM cost). */
 function renderLive(data) {
   const box = document.getElementById('home-live');
   if (!box) return;
   box.replaceChildren();
   for (const g of data.live || []) {
-    const card = el('button', undefined, 'hlive');
-    card.type = 'button';
-    card.addEventListener('click', () => window.joinRoom(g.roomId));
-    const text = el('span', undefined, 'hlive__t');
-    text.append(el('span', t('home.live_vs', { a: g.black || '?', b: g.white || '?' })),
-      el('span', [ruleLine(g), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''].filter(Boolean).join(' · '), 'muted small'));
-    card.append(miniBoard(g.boardSize, g.stones), text);
-    box.appendChild(card);
+    const meta = [ruleLine(g), t('home.moves', { n: g.moves || 0 }), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''].filter(Boolean).join(' · ');
+    box.appendChild(row(t('home.live_vs', { a: g.black || '?', b: g.white || '?' }), meta, t('home.view'), () => window.joinRoom(g.roomId)));
   }
   if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
 }
 
 export function renderHome(data) {
   lastData = data;
+  lastJson = JSON.stringify(data);
+  renderStats(data);
   renderMine(data);
   renderToday(data);
   renderLive(data);
@@ -237,7 +224,8 @@ export async function loadHome() {
   try {
     const res = await fetch('/api/home', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(String(res.status));
-    renderHome(await res.json());
+    const data = await res.json();
+    if (JSON.stringify(data) !== lastJson) renderHome(data); // unchanged poll → no DOM rebuild
   } catch {
     if (!lastData) renderHome({ myGame: null, myMatches: [], tournaments: [], live: [] });
   }
