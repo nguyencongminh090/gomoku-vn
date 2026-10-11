@@ -7,7 +7,8 @@
  * time (opening a 4th evicts the oldest). Plus an "online users" modal with
  * client-side search and a Ctrl/⌘+K shortcut.
  *
- * Ephemeral: no history is persisted. Closing a window drops that conversation.
+ * Conversations are saved server-side for 3 days (#198, B220); closing a window only hides it.
+ * Clicking a name in the lobby opens a profile card (B220) with Add-friend + Message.
  *
  * Backend: server/socket/handlers/PrivateChatHandler.js
  *   emit  private_message:send    {toUserId, text}
@@ -16,7 +17,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=297';
+import { client } from './lobby.js?v=305';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -51,7 +52,7 @@ let unread = 0;
 let lastFlashSender = '';
 let socketConnected = true;
 
-let container, modal, modalList, modalSearch, modalShortcut, notifBtn;
+let container, modal, modalList, modalSearch, modalShortcut;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -121,43 +122,17 @@ function showNotification(fromUserId, senderName, text) {
   } catch (_) { /* Notification constructor can throw on some platforms */ }
 }
 
-function renderNotifButton() {
-  if (!notifBtn) return;
-  const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'denied';
-  notifBtn.hidden = (typeof Notification === 'undefined');
-  notifBtn.title = '';
-
-  const label = notifBtn.querySelector('.online-users-notif-btn__label');
-  const iconUse = notifBtn.querySelector('.icon use');
-  const setIcon = (id) => {
-    if (iconUse) iconUse.setAttribute('href', 'assets/icons/phosphor-sprite.svg?v=297#' + id);
-  };
-
-  if (perm === 'granted') {
-    if (label) label.textContent = t('private_chat.notif_enabled');
-    setIcon('ph-regular-bell');
-    notifBtn.dataset.state = 'on';
-    notifBtn.disabled = true;
-  } else if (perm === 'denied') {
-    if (label) label.textContent = t('private_chat.notif_blocked');
-    setIcon('ph-regular-bell-slash');
-    notifBtn.dataset.state = 'blocked';
-    notifBtn.title = t('private_chat.notif_blocked');
-    notifBtn.disabled = true;
-  } else {
-    if (label) label.textContent = t('private_chat.notif_enable');
-    setIcon('ph-regular-bell');
-    notifBtn.dataset.state = 'default';
-    notifBtn.disabled = false;
-  }
-}
-
-function requestNotifPermission() {
-  if (typeof Notification === 'undefined') return;
+/**
+ * Ask for desktop-notification permission once, at the moment the user starts a
+ * conversation (a user gesture, which browsers require). Never re-asks after a
+ * granted/denied answer, and never on page load.
+ */
+function askNotifPermission() {
+  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return;
   try {
-    const p = Notification.requestPermission(renderNotifButton);
-    if (p && typeof p.then === 'function') p.then(renderNotifButton).catch(() => {});
-  } catch (_) { /* legacy callback-only Safari already handled above */ }
+    const p = Notification.requestPermission();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch (_) { /* legacy browsers: ignore */ }
 }
 
 // ---------------------------------------------------------------------------
@@ -238,10 +213,10 @@ function buildWindow(userId, name) {
   root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=297#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=305#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
-      <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=297#ph-bold-x"></use></svg></button>
+      <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=305#ph-bold-x"></use></svg></button>
     </div>
     <div class="pm-window__log"></div>
     <div class="pm-notice" hidden></div>
@@ -249,7 +224,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=297#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=305#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -269,6 +244,7 @@ function buildWindow(userId, name) {
     const text = w.input.value.trim();
     if (!text || w.input.disabled) return;
     const filtered = window.ProfanityFilter ? window.ProfanityFilter.filterMessage(text) : text;
+    askNotifPermission();
     client.emit('private_message:send', { toUserId: userId, text: filtered });
     w.input.value = '';
   };
@@ -314,6 +290,156 @@ function closeChat(userId) {
   windows.delete(userId);
   const i = order.indexOf(userId);
   if (i !== -1) order.splice(i, 1);
+}
+
+// ---------------------------------------------------------------------------
+// Profile card (B220): click a name → who they are, add friend, message
+// ---------------------------------------------------------------------------
+
+let cardEl = null;
+let cardUserId = null;
+
+function cardNode(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+
+function closeCard() {
+  if (cardEl) cardEl.classList.remove('visible');
+  cardUserId = null;
+}
+
+function ensureCard() {
+  if (cardEl) return cardEl;
+  cardEl = cardNode('div', 'modal-overlay ucard-overlay');
+  cardEl.id = 'modal-user-card';
+  cardEl.setAttribute('role', 'dialog');
+  cardEl.setAttribute('aria-modal', 'true');
+  cardEl.addEventListener('click', (e) => { if (e.target === cardEl) closeCard(); });
+  document.body.appendChild(cardEl);
+  return cardEl;
+}
+
+/** Friend control for the card; state comes from card.friendship, the server re-checks every action. */
+function friendControls(card, reload) {
+  const box = cardNode('div', 'ucard__friend');
+  const base = '/api/friends/' + encodeURIComponent(card.username);
+  const mk = (key, method, path, ghost) => {
+    const b = cardNode('button', 'ucard__btn' + (ghost ? ' ucard__btn--ghost' : ''), t(key));
+    b.type = 'button';
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try {
+        const res = await fetch(path, { method, credentials: 'same-origin' });
+        if (!res.ok) throw new Error(String(res.status));
+        reload();
+      } catch (_) {
+        b.disabled = false;
+        box.appendChild(cardNode('span', 'ucard__note ucard__note--err', t('friends.error')));
+      }
+    });
+    return b;
+  };
+  switch (card.friendship) {
+    case 'friends':
+      box.append(cardNode('span', 'ucard__note', t('friends.is_friend')), mk('friends.remove', 'DELETE', base, true));
+      break;
+    case 'outgoing':
+      box.append(cardNode('span', 'ucard__note', t('friends.sent')), mk('friends.cancel', 'DELETE', base, true));
+      break;
+    case 'incoming':
+      box.append(mk('friends.accept', 'POST', base + '/accept', false), mk('friends.decline', 'DELETE', base, true));
+      break;
+    default:
+      if (!card.can || card.can.friend) box.appendChild(mk('friends.add', 'POST', base, false));
+      else box.appendChild(cardNode('span', 'ucard__note', t('privacy.no_friend')));
+  }
+  return box;
+}
+
+function renderCard(card, userId, fallbackName) {
+  const root = ensureCard();
+  root.replaceChildren();
+  const name = (card && card.displayName) || fallbackName || userId;
+  const box = cardNode('div', 'modal ucard');
+
+  const head = cardNode('div', 'modal__header');
+  head.appendChild(cardNode('h2', 'modal__title', t('card.title')));
+  const x = cardNode('button', 'modal__close');
+  x.type = 'button';
+  x.setAttribute('aria-label', t('card.close'));
+  x.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=305#ph-bold-x"></use></svg>';
+  x.addEventListener('click', closeCard);
+  head.appendChild(x);
+  box.appendChild(head);
+
+  const body = cardNode('div', 'modal__body ucard__body');
+  const who = cardNode('div', 'ucard__who');
+  const av = cardNode('span', 'online-users-list__avatar ucard__avatar');
+  av.style.setProperty('--h', hueOf(userId || name));
+  if (card && card.avatarUrl) {
+    const img = document.createElement('img');
+    img.src = card.avatarUrl;
+    img.alt = '';
+    av.appendChild(img);
+  } else {
+    av.textContent = initials(name);
+  }
+  who.appendChild(av);
+  const names = cardNode('div', 'ucard__names');
+  names.appendChild(cardNode('div', 'ucard__name', name));
+  names.appendChild(cardNode('div', 'ucard__sub', card ? '@' + card.username : t('nav.guest_badge')));
+  who.appendChild(names);
+  body.appendChild(who);
+
+  if (card) {
+    if (card.ratings && card.ratings.length) {
+      const rs = cardNode('div', 'ucard__ratings');
+      for (const r of card.ratings) {
+        const chip = cardNode('span', 'ucard__chip');
+        chip.append(cardNode('span', 'ucard__chip-k', t('rankings.cat_' + r.category)), cardNode('b', null, String(r.rating) + (r.provisional ? '?' : '')));
+        if (r.rank != null) chip.appendChild(cardNode('span', 'ucard__chip-r', '#' + r.rank));
+        rs.appendChild(chip);
+      }
+      body.appendChild(rs);
+    } else {
+      body.appendChild(cardNode('div', 'ucard__note', t('card.unrated')));
+    }
+    if (card.stats) body.appendChild(cardNode('div', 'ucard__note', t('card.stats', { games: card.stats.games, wins: card.stats.wins })));
+  }
+
+  const actions = cardNode('div', 'ucard__actions');
+  const isMember = !!card;
+  if (isMember && !card.isSelf && !me.isGuest) actions.appendChild(friendControls(card, () => showCard(userId, fallbackName)));
+  if (!card || !card.can || card.can.dm) {
+    const chat = cardNode('button', 'ucard__btn ucard__btn--primary', t('dm.btn'));
+    chat.type = 'button';
+    chat.addEventListener('click', () => { askNotifPermission(); closeCard(); closeModal(); openChat(userId); });
+    actions.appendChild(chat);
+  } else {
+    actions.appendChild(cardNode('span', 'ucard__note', t('privacy.no_dm')));
+  }
+  body.appendChild(actions);
+  if (isMember) body.appendChild(cardNode('div', 'ucard__hint', t('card.dm_kept')));
+  box.appendChild(body);
+  root.appendChild(box);
+  root.classList.add('visible');
+  const first = actions.querySelector('button');
+  if (first) first.focus();
+}
+
+async function showCard(userId, fallbackName) {
+  if (!userId || userId === me.userId) return;
+  cardUserId = userId;
+  let card = null;
+  try {
+    const res = await fetch('/api/profile/card/' + encodeURIComponent(userId), { credentials: 'same-origin' });
+    if (res.ok) card = await res.json();
+  } catch (_) { /* offline / error: fall back to the name-only card */ }
+  if (cardUserId !== userId) return; // closed or switched while loading
+  renderCard(card, userId, fallbackName || displayNameFor(userId));
 }
 
 // ---------------------------------------------------------------------------
@@ -393,12 +519,11 @@ function renderModalList() {
       btn.className = 'online-users-list__chat-btn';
       btn.title = t('private_chat.btn_chat');
       btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
-      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=297#ph-bold-chat-circle"></use></svg>';
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=305#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
-      // The whole row (except its own controls) opens the chat.
-      const open = () => { openChat(u.userId); closeModal(); };
-      btn.addEventListener('click', (e) => { e.stopPropagation(); open(); });
-      li.addEventListener('click', open);
+      // The chat button opens the chat directly; the rest of the row opens the profile card.
+      btn.addEventListener('click', (e) => { e.stopPropagation(); openChat(u.userId); closeModal(); });
+      li.addEventListener('click', () => { closeModal(); showCard(u.userId, u.displayName); });
       li.setAttribute('role', 'button');
       li.tabIndex = 0;
       li.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
@@ -411,7 +536,6 @@ function openModal() {
   if (!modal) return;
   modal.classList.add('visible');
   renderModalList();
-  renderNotifButton();
   modalSearch.focus();
   modalSearch.select();
 }
@@ -466,7 +590,6 @@ function handleIncoming(msg) {
 }
 
 function applyLang() {
-  renderNotifButton();
   if (modalSearch) modalSearch.placeholder = t('private_chat.modal_search_ph');
   if (modalShortcut) {
     const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform || '');
@@ -487,7 +610,6 @@ function init() {
   modalList      = document.getElementById('online-users-list');
   modalSearch    = document.getElementById('online-users-search');
   modalShortcut  = document.querySelector('.online-users-search-shortcut');
-  notifBtn       = document.getElementById('btn-notif-enable');
   if (!container || !modal) return;
 
   originalTitle = document.title;
@@ -496,9 +618,6 @@ function init() {
   if (closeBtn) closeBtn.addEventListener('click', closeModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
   modalSearch.addEventListener('input', renderModalList);
-  if (notifBtn) notifBtn.addEventListener('click', () => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') requestNotifPermission();
-  });
 
   // Ctrl/⌘-K toggles the modal. Registered in the capture phase and keyed on
   // e.code as well as e.key so a stray browser default or a layout quirk
@@ -510,6 +629,7 @@ function init() {
       toggleModal();
       return;
     }
+    if (e.key === 'Escape' && cardEl && cardEl.classList.contains('visible')) { closeCard(); return; }
     if (e.key === 'Escape' && modal.classList.contains('visible')) closeModal();
   }, true);
 
@@ -528,7 +648,7 @@ function init() {
     });
   }
 
-  // Delegated interaction on the lobby online line ONLY: a name opens a chat,
+  // Delegated interaction on the lobby online line ONLY: a name opens the profile card,
   // the "…and N others" affordance opens the full modal. Scoped to
   // #online-line-names so it can never match the [data-peer-id] on a chat
   // window root (that collision reopened a window the moment its ✕ was
@@ -541,7 +661,7 @@ function init() {
     e.preventDefault();
     if (el.hasAttribute('data-open-users')) { openModal(); return; }
     const uid = el.getAttribute('data-user-id');
-    if (uid) openChat(uid);
+    if (uid) showCard(uid);
   };
   if (onlineLine) {
     onlineLine.addEventListener('click', onlineLineAction);
@@ -580,4 +700,4 @@ if (document.readyState === 'loading') {
   init();
 }
 
-window.PrivateChat = { init, openChat, closeChat, openUsersModal: openModal, updateOnlineUsers };
+window.PrivateChat = { init, openChat, closeChat, showCard, closeCard, openUsersModal: openModal, updateOnlineUsers };

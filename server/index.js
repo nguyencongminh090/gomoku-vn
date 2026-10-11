@@ -287,6 +287,10 @@ diagNamespace.register(io);
 // (TODO.md #68) — sweep once at startup, then hourly.
 sessionManager.sweepExpiredSessions();
 setInterval(() => sessionManager.sweepExpiredSessions(), config.SESSION_SWEEP_INTERVAL_MS).unref();
+// B220: private chats expire after 3 days (reads also prune, throttled).
+const dmService = require('./managers/DmService');
+dmService.pruneExpired(Date.now(), true);
+setInterval(() => dmService.pruneExpired(Date.now(), true), 3600 * 1000).unref();
 
 // ---------------------------------------------------------------------------
 // Start
