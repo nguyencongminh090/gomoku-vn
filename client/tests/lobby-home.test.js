@@ -198,6 +198,71 @@ describe('dashboard rendering', () => {
   });
 });
 
+describe('news, forum, learn, about (#224)', () => {
+  const XSS = '<img src=x onerror=alert(1)>';
+  const FORUM = [
+    { id: 't 1', title: XSS, category: 'tactics', replyCount: 3, lastPostAt: '2026-10-10T00:00:00Z', author: 'Kim' },
+    { id: 't2', title: 'Two', category: 'general', replyCount: 0, lastPostAt: '2026-10-09T00:00:00Z', author: 'Sak' },
+  ];
+
+  it('news line: text via textContent, link only for same-site paths, hidden when null', async () => {
+    await boot('/index.html', { ...EMPTY, news: { id: 'n', body: XSS, link: '/forum/t/abc' } });
+    const box = document.getElementById('home-news');
+    expect(box.hidden).toBe(false);
+    expect(box.querySelector('img')).toBeNull();
+    const a = box.querySelector('a.hnews__line');
+    expect(a.getAttribute('href')).toBe('/forum/t/abc');
+    expect(a.querySelector('.hnews__body').textContent).toBe(XSS);
+
+    for (const link of ['//evil.example', 'javascript:alert(1)', 'https://x.example', null]) {
+      await boot('/index.html', { ...EMPTY, news: { id: 'n', body: 'Hi', link } });
+      expect(document.querySelector('#home-news a')).toBeNull();
+      expect(document.querySelector('#home-news p.hnews__line .hnews__body').textContent).toBe('Hi');
+    }
+    await boot('/index.html', { ...EMPTY, news: null });
+    expect(document.getElementById('home-news').hidden).toBe(true);
+    await boot('/index.html', EMPTY); // older payload without the key
+    expect(document.getElementById('home-news').hidden).toBe(true);
+  });
+
+  it('forum: up to the server-sent threads as rows (category, replies, author), escaped, + "see all" link', async () => {
+    await boot('/index.html', { ...EMPTY, forum: FORUM });
+    const rows = document.querySelectorAll('#home-forum .prow');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelector('.prow__t').textContent).toBe(XSS);
+    expect(document.querySelector('#home-forum img')).toBeNull();
+    expect(rows[0].querySelector('.prow__m').textContent).toBe('forum.cat_tactics · forum.replies{"n":3} · Kim');
+    expect(document.querySelector('#home-forum a.hmore').getAttribute('href')).toBe('/forum');
+    await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-forum .hempty').textContent).toBe('home.no_forum');
+    expect(document.querySelector('#home-forum a.hmore')).not.toBeNull();
+  });
+
+  it.each([
+    ['member', { total: 42, solved: 5 }, 'home.learn_total{"n":42} · home.learn_solved{"n":5}'],
+    ['guest', { total: 42, solved: null }, 'home.learn_total{"n":42}'],
+    ['member, none solved', { total: 42, solved: 0 }, 'home.learn_total{"n":42} · home.learn_solved{"n":0}'],
+    ['no puzzles yet', { total: 0, solved: 0 }, 'home.learn_none'],
+  ])('learn card: %s', async (_, learn, meta) => {
+    await boot('/index.html', { ...EMPTY, learn });
+    const row = document.querySelector('#home-learn .prow');
+    expect(row.querySelector('.prow__t').textContent).toBe('home.learn_title');
+    expect(row.querySelector('.prow__m').textContent).toBe(meta);
+  });
+
+  it('learn card absent without data (DB down / old payload)', async () => {
+    await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-learn').children).toHaveLength(0);
+  });
+
+  it.each([[true, false], [false, true], [undefined, true]])('about block: newcomer=%p → hidden=%p', async (newcomer, hidden) => {
+    await boot('/index.html', { ...EMPTY, newcomer });
+    const about = document.getElementById('home-about');
+    expect(about.hidden).toBe(hidden);
+    expect(about.querySelectorAll('dt')).toHaveLength(3); // Freestyle / Standard / Caro VN
+  });
+});
+
 describe('ruleLine()', () => {
   // B196: only blitz carries an increment (TimerManager); per_game is a bare total.
   it.each([

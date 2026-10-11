@@ -2,7 +2,7 @@
  * lobby-home.js — the lobby's three screens and the "Chơi" dashboard (B195, R2).
  *
  * Screens follow the hash the shared Arena nav links to:
- *   ''            → home   (#screen-home: stats strip, my games, today, live games)
+ *   ''            → home   (#screen-home: stats strip, news line, my games, learn, about, today, forum, live games)
  *   '#rooms'      → rooms  (#panel-tables: the room list lobby.js renders)
  *   '#tournaments'→ tournaments (#panel-tournaments: tournaments.js)
  * Legacy `?tab=tournaments` (tournament.html's back link) still lands on tournaments.
@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=312';
+import { client, setHeroTab } from './lobby.js?v=315';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -216,12 +216,64 @@ function renderLive(data) {
   if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
 }
 
+/** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
+const SAFE_LINK = /^\/(?![/\\])[^\s\\]*$/;
+
+/** One admin news line (#224) under the stats strip; a link makes the whole line clickable. */
+function renderNews(data) {
+  const box = document.getElementById('home-news');
+  if (!box) return;
+  const n = data.news;
+  box.replaceChildren();
+  box.hidden = !(n && n.body);
+  if (box.hidden) return;
+  const line = SAFE_LINK.test(n.link || '') ? el('a', undefined, 'hnews__line') : el('p', undefined, 'hnews__line');
+  if (line.tagName === 'A') line.href = n.link;
+  line.append(el('span', t('home.news'), 'hnews__tag'), el('span', n.body, 'hnews__body'));
+  if (line.tagName === 'A') line.appendChild(el('span', '›', 'hnews__go'));
+  box.appendChild(line);
+}
+
+function renderForum(data) {
+  const box = document.getElementById('home-forum');
+  if (!box) return;
+  box.replaceChildren();
+  for (const th of data.forum || []) {
+    const meta = [t('forum.cat_' + th.category), t('forum.replies', { n: th.replyCount || 0 }), th.author].filter(Boolean).join(' · ');
+    box.appendChild(row(th.title, meta, t('home.view'), () => { location.href = '/forum/t/' + encodeURIComponent(th.id); }));
+  }
+  if (!box.children.length) box.appendChild(el('p', t('home.no_forum'), 'muted small hempty'));
+  const all = withIcon(el('a', t('home.forum_all'), 'link-action hmore'), 'ph-regular-chat-circle');
+  all.href = '/forum';
+  box.appendChild(all);
+}
+
+function renderLearn(data) {
+  const box = document.getElementById('home-learn');
+  if (!box) return;
+  box.replaceChildren();
+  const l = data.learn;
+  if (!l) return;
+  const parts = [l.total ? t('home.learn_total', { n: l.total }) : t('home.learn_none')];
+  if (l.solved !== null && l.solved !== undefined && l.total) parts.push(t('home.learn_solved', { n: l.solved }));
+  box.appendChild(row(t('home.learn_title'), parts.join(' · '), t('home.view'), () => { location.href = '/puzzles'; }));
+}
+
+function renderAbout(data) {
+  const box = document.getElementById('home-about');
+  if (box) box.hidden = !data.newcomer;
+}
+
 export function renderHome(data) {
   lastData = data;
   lastJson = JSON.stringify(data);
   renderStats(data);
+  renderNews(data);
   renderMine(data);
+  renderLearn(data);
+  renderAbout(data);
   renderToday(data);
+  renderForum(data);
   renderLive(data);
   renderQuickMatch(); // the "N đang chờ" count comes with /api/home
 }
