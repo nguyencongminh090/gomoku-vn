@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=309';
+import { client, setHeroTournamentCount } from './lobby.js?v=310';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -103,6 +103,17 @@ client.on('tournament:error', (data) => {
 // ---------------------------------------------------------------------------
 client.emit('live_matches:subscribe');
 
+// B228: re-subscribe both lists after a reconnect (new server socket, no rooms). The disconnect gate
+// keeps the first connect from doubling the load-time emits.
+let tournamentsDropped = false;
+client.on('disconnect', () => { tournamentsDropped = true; });
+client.on('connect', () => {
+  if (!tournamentsDropped) return;
+  tournamentsDropped = false;
+  client.emit('tournament:subscribe');
+  client.emit('live_matches:subscribe');
+});
+
 client.on('live_matches:list', (data) => {
   renderLiveMatches(data.matches || []);
 });
@@ -132,7 +143,7 @@ function renderLiveMatchRow(match) {
   const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
   const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
   const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
-    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=309#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=310#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
     : '';
   return `
     <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
@@ -140,7 +151,7 @@ function renderLiveMatchRow(match) {
       <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
       <div class="live-match-row__meta">
         ${gameIndexLabel}
-        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=309#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=310#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
       </div>
     </div>
   `;
@@ -276,11 +287,11 @@ function renderCard(tournament, index) {
   // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=309#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=310#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=309#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=310#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=309#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=310#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
