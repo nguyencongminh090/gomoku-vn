@@ -4,6 +4,9 @@
 
 ## Problem
 Performance pass over everything the server sends clients: payload size, who receives what, how often, full-state vs delta, poll vs push. Dashboard (B225) is only the first case.
+Leads from #225 (code-read 2026-10-12, unmeasured): (a) `lobby:online_users` = full list to every lobby socket per change → O(n²) per burst;
+(b) `lobby.js` emits `lobby:subscribe` at load on every screen → dashboard/tournaments screens still get `lobby:patch` + online list;
+(c) lobby not re-subscribed after reconnect (see #227); (d) role-based filtering (admin/staff/guest), move/spectator, chat/DM/notify not yet looked at.
 ## Scope
 1. Inventory every socket event + HTTP poll: emitter, audience (all / room / user), frequency, payload shape and size, full vs delta. Output a table in `docs/notes/` or the feature folder.
 2. Measure the hot paths first: move broadcast, lobby room list (`broadcastLobbyUpdate`), `lobby:online_users` (full list to every lobby socket), lobby/user ticket, chat/DM, spectator joins.

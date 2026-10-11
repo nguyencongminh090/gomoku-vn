@@ -29,7 +29,11 @@ jest.mock('../utils/logger', () => ({
   error: jest.fn(),
 }));
 
+// B225: every lobby change also pokes the dashboard feed — its own timer, tested in home-feed.test.js.
+jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
+
 const { broadcastLobbyUpdate, sendLobbySnapshot } = require('../socket/state');
+const homeFeed = require('../socket/home-feed');
 
 const DEBOUNCE_MS = 300;
 
@@ -402,4 +406,11 @@ describe('lobby delta — client-side replay', () => {
 
     expect(Array.from(client.keys())).toEqual(['#AAA', '#BBB']);
   });
+});
+
+test('broadcastLobbyUpdate pokes the home feed (B225: playing count + live list)', () => {
+  homeFeed.scheduleHomeUpdate.mockClear();
+  const io = { to: () => ({ emit: () => {} }) };
+  broadcastLobbyUpdate(io);
+  expect(homeFeed.scheduleHomeUpdate).toHaveBeenCalledWith(io);
 });

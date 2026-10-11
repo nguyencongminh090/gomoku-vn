@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#225.** Dashboard realtime: pub/sub push for online/playing/searching, poll → 60 s fallback `[Model: Opus 5]` — [detail](docs/todo/B225-home-live-push.md)
 - ✅ **#223.** Dashboard: online/stats strip; live games as text rows (no board drawing) `[Model: Sonnet 5]` — [detail](docs/todo/B223-home-stats-live-no-board.md)
 - ✅ **#208.** R8: cheat reports — member reports a finished game, staff queue tab, confirm logs graph edge `[Model: Sonnet 5]` — [detail](docs/todo/B208-cheat-reports.md)
 - ✅ **#207.** R8: staff remove a user avatar (Users tab, logged as graph edge) `[Model: Sonnet 5]` — [detail](docs/todo/B207-admin-avatar-remove.md)

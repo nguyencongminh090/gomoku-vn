@@ -369,3 +369,60 @@ describe('Vào bằng mã (Phòng screen, B210)', () => {
     expect($('qm-actions').querySelector('a')).toBeNull();
   });
 });
+
+describe('live push (B225)', () => {
+  const subs = () => window.__lobbyStub.client.emitted.map(([ev]) => ev).filter((ev) => ev.startsWith('home:'));
+  const nums = () => [...document.querySelectorAll('#home-stats .hstat__n')].map((n) => n.textContent);
+  const setHidden = (v) => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); };
+  afterEach(() => { delete document.hidden; });
+
+  it('home screen subscribes once; leaving it unsubscribes; coming back resubscribes', async () => {
+    await boot('/index.html');
+    expect(subs()).toEqual(['home:subscribe']);
+    window.__home.showScreen('rooms');
+    window.__home.showScreen('tournaments');
+    window.__home.showScreen('home');
+    expect(subs()).toEqual(['home:subscribe', 'home:unsubscribe', 'home:subscribe']);
+  });
+
+  it('starting on #rooms never subscribes', async () => {
+    await boot('/index.html#rooms');
+    expect(subs()).toEqual([]);
+  });
+
+  it('home:stats redraws the strip with the pushed absolute values', async () => {
+    await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 } });
+    window.__lobbyStub.client.fire('home:stats', { online: 7, playing: 2, searching: 1 });
+    expect(nums()).toEqual(['7', '2', '1']);
+  });
+
+  it('home:live replaces the live rows; ignored off the home screen', async () => {
+    await boot('/index.html');
+    window.__lobbyStub.client.fire('home:live', [{ roomId: '#ABC', black: 'An', white: 'Binh', moves: 0, viewers: 0 }]);
+    expect(document.getElementById('home-live').textContent).toContain('"a":"An"');
+    window.__home.showScreen('rooms');
+    window.__lobbyStub.client.fire('home:live', []);
+    expect(document.getElementById('home-live').textContent).toContain('"a":"An"');
+  });
+
+  it('hidden tab unsubscribes; visible again resubscribes and refetches', async () => {
+    await boot('/index.html');
+    setHidden(true);
+    expect(subs()).toEqual(['home:subscribe', 'home:unsubscribe']);
+    fetch.mockClear();
+    setHidden(false);
+    expect(subs()).toEqual(['home:subscribe', 'home:unsubscribe', 'home:subscribe']);
+    expect(fetch).toHaveBeenCalledWith('/api/home', expect.anything());
+  });
+
+  it('socket reconnect resubscribes and refetches /api/home', async () => {
+    await boot('/index.html');
+    fetch.mockClear();
+    window.__lobbyStub.client.fire('connect'); // still subscribed → no-op
+    expect(subs()).toEqual(['home:subscribe']);
+    window.__lobbyStub.client.fire('disconnect');
+    window.__lobbyStub.client.fire('connect');
+    expect(subs()).toEqual(['home:subscribe', 'home:subscribe']);
+    expect(fetch).toHaveBeenCalledWith('/api/home', expect.anything());
+  });
+});

@@ -229,3 +229,4 @@
 | 2026-10-11 19:10 | untracked: Settings 'back to room' -> round floating button, room-only (?return= accepted only for /room paths; shell menu adds it only on /room) + tests. | [detail](docs/fix-log/2026-10-11-settings-return-to-room.md) |
 | 2026-10-11 19:30 | untracked: Settings floating back arrow same colour as its bg in Zen (.pl a colour:inherit out-specified it) -> .pl .pset__back uses --c-on-brand + test. | [detail](docs/fix-log/2026-10-11-settings-return-to-room.md) |
 | 2026-10-11 20:00 | untracked: Settings back-to-room button softer (translucent, blur, brand arrow) + draggable with edge snap, remembered position, transitions + tests. | [detail](docs/fix-log/2026-10-11-settings-return-to-room.md) |
+| 2026-10-12 02:54 | #225: dashboard push — socket room `home`, coalesced absolute home:stats + home:live on game start/end, resubscribe on reconnect/visible, poll 60 s + tests. | [detail](docs/fix-log/2026-10-12-b225-home-live-push.md) |

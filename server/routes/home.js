@@ -172,3 +172,5 @@ router.get('/', (req, res, next) => {
 
 module.exports = router;
 module.exports.buildHome = buildHome;
+module.exports.liveOf = liveOf; // B225: socket/home-feed.js pushes these between polls
+module.exports.playingCount = playingCount;

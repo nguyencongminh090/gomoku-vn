@@ -2,6 +2,7 @@
 **Area:** client/js/lobby-home.js, server/socket/state.js, server/socket/handlers/MatchHandler.js, room-state transitions (RoomManager/handlers), server/routes/home.js
 **From:** user 2026-10-12 — "số người online, ván chơi có vẻ không realtime và phụ thuộc vào refresh" · "server phát đi một event… chỉ cho những người đang ở dashboard? theo kiểu delta broadcast"   **Depends:** #223 (stats strip + text rows)
 **Design:** approved by user 2026-10-12, to be reviewed in detail when implementing.
+**Status:** ✅ DONE 2026-10-12 — `server/socket/home-feed.js` (room `home`, 1.5 s coalesced absolute `home:stats`, `home:live` only when the set of playing rooms changes); poll 60 s; resubscribe+refetch on reconnect / tab visible; `?v=307`. Real browser, 2 users + raw-socket guest: every change on A in 1.2–1.6 s, 0 refetches; SIGKILL restart → resync 2.2 s. Origin: socket handshake already refuses cross-site (`AUTH_ORIGIN`), payload is public anyway. Not run live: `home:live` on a real game start (unit-tested). Found: #227.
 
 ## Problem
 `#screen-home` polls `/api/home` every 20 s and skips while the tab is hidden → other clients see a new online user / game 0–20 s late (avg ~10 s). Part 2 is B226 (whole-codebase audit).
