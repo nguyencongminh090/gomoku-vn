@@ -7,38 +7,38 @@
   <title>Play3CR — Phòng chơi</title>
   <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=260" />
-  <link rel="stylesheet" href="css/tokens.css?v=260" />
-  <link rel="stylesheet" href="css/lobby.css?v=260" />
-  <link rel="stylesheet" href="css/room.css?v=260" />
-  <link rel="stylesheet" href="css/room-zen.css?v=260" />
-  <link rel="stylesheet" href="css/shell.css?v=260" />
-  <link rel="stylesheet" href="css/game.css?v=260" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=260" />
+  <link rel="stylesheet" href="css/main.css?v=288" />
+  <link rel="stylesheet" href="css/tokens.css?v=288" />
+  <link rel="stylesheet" href="css/lobby.css?v=288" />
+  <link rel="stylesheet" href="css/room.css?v=288" />
+  <link rel="stylesheet" href="css/shell.css?v=288" />
+  <link rel="stylesheet" href="css/game.css?v=288" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=288" />
+  <link rel="stylesheet" href="css/room-arena.css?v=288" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=260">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=288">
 
-  <script src="js/ui-mode-preload.js?v=260"></script>
+  <script src="js/ui-mode-preload.js?v=288"></script>
 
-  <script src="js/skin-preload.js?v=260"></script>
+  <script src="js/skin-preload.js?v=288"></script>
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/room-entry.js's import list -->
-  <link rel="modulepreload" href="js/session.js?v=260" />
-  <link rel="modulepreload" href="js/i18n.js?v=260" />
-  <link rel="modulepreload" href="js/ui-mode.js?v=260" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=260" />
-  <link rel="modulepreload" href="js/socket-client.js?v=260" />
-  <link rel="modulepreload" href="js/board.js?v=260" />
-  <link rel="modulepreload" href="js/room.js?v=260" />
-  <link rel="modulepreload" href="js/chat-ui.js?v=260" />
-  <link rel="modulepreload" href="js/room-ui.js?v=260" />
-  <link rel="modulepreload" href="js/game-ui.js?v=260" />
-  <link rel="modulepreload" href="js/room-socket.js?v=260" />
+  <link rel="modulepreload" href="js/session.js?v=288" />
+  <link rel="modulepreload" href="js/i18n.js?v=288" />
+  <link rel="modulepreload" href="js/ui-mode.js?v=288" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=288" />
+  <link rel="modulepreload" href="js/socket-client.js?v=288" />
+  <link rel="modulepreload" href="js/board.js?v=288" />
+  <link rel="modulepreload" href="js/room.js?v=288" />
+  <link rel="modulepreload" href="js/chat-ui.js?v=288" />
+  <link rel="modulepreload" href="js/room-ui.js?v=288" />
+  <link rel="modulepreload" href="js/game-ui.js?v=288" />
+  <link rel="modulepreload" href="js/room-socket.js?v=288" />
 
 </head>
 
-<body class="zen-room">
+<body class="arena-room">
 
   <!-- Shown by default (no JS toggle needed to appear) until room:joined or
        room:error arrives, so a rejected room:create/room:join (e.g. hitting
@@ -47,7 +47,7 @@
        real room data lands. See TODO.md #18 / instruction.md §B18. -->
   <div class="game-overlay visible" id="room-entry-overlay">
     <div class="game-overlay__card">
-      <div class="game-overlay__icon"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-hourglass"></use></svg></div>
+      <div class="game-overlay__icon"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-hourglass"></use></svg></div>
       <div class="game-overlay__result" data-i18n="room.entering">Đang vào phòng...</div>
     </div>
   </div>
@@ -72,36 +72,35 @@
     </nav>
     <div class="topnav__right">
       <span id="room-id-nav" class="topnav__user topnav__room-id"></span>
+      <span id="room-mode-badge" class="mode-badge" hidden></span>
       <button id="btn-leave" class="topnav__btn" type="button" data-i18n-title="nav.leave" title="Rời phòng">
-        <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-sign-out"></use></svg>
+        <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-bold-sign-out"></use></svg>
         <span data-i18n="nav.leave" class="hide-on-mobile">Rời phòng</span>
       </button>
     </div>
   </nav>
 
-  <!-- ── Room: 2-Column Layout ────────────────────────────────────────────── -->
+  <!-- ── Room (#216 "Arena Focus") ─────────────────────────────────────────
+       Desktop: board | rail [opponent card · tabs · actions · my card].
+       ≤768px: one column — opponent card, edge-to-edge board, my card,
+       actions, tabs. The rail uses display:contents there so its children
+       join the page column in that order (room-arena.css). -->
   <main class="room" role="main">
 
-    <!-- ── Compact "who's in this room" strip (mobile only, above the board) ── -->
-    <div id="players-strip" class="players-strip" aria-live="polite"></div>
-
-    <!-- ── Board Area (left, main column) ─────────────────────────────────── -->
     <section class="board-area-shell" id="board-area-shell">
       <div class="board-area" id="board-area">
         <div class="board-placeholder">
-          <div class="board-placeholder__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-checkerboard"></use></svg></div>
+          <div class="board-placeholder__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-checkerboard"></use></svg></div>
           <div class="board-placeholder__text" data-i18n="room.placeholder">Chờ người chơi ngồi vào và sẵn sàng...</div>
         </div>
       </div>
 
-      <!-- Start Modal (ready window) — centered over the board, not a
-           full-screen backdrop: only the card itself catches clicks, so the
-           seat's stand-up button and chat stay usable while this shows. Kept
-           as a sibling of #board-area (not a child) because GameUI.initBoard()
-           replaces #board-area's innerHTML wholesale on first render. -->
+      <!-- Start Modal (ready window) — centered over the board; only the card
+           catches clicks. Sibling of #board-area: GameUI.initBoard() replaces
+           #board-area's innerHTML on first render. -->
       <div class="start-modal" id="start-modal">
         <div class="start-modal__card">
-          <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-play-circle"></use></svg></div>
+          <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-bold-play-circle"></use></svg></div>
           <div class="start-modal__title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
           <div class="start-modal__countdown" id="start-modal-countdown-wrap" style="display:none;">
             <span data-i18n="start_modal.countdown_label">Còn</span>
@@ -114,124 +113,100 @@
       </div>
     </section>
 
-    <!-- ── Right Panel: Players + Tabs ────────────────────────────────────── -->
-    <aside class="panel-right-shell ui-shell">
-      <div class="panel-right ui-core">
+    <aside class="rail" aria-label="Ván đấu">
+      <!-- Player cards: the opponent on top, you at the bottom (a spectator
+           sees seat #2 on top, seat #1 at the bottom). RoomUI.renderPlayerCards. -->
+      <div class="pcard pcard--top" id="pcard-top" aria-live="polite"></div>
 
-      <!-- Players section (always visible, never hidden behind a tab) -->
-      <div class="panel-players">
-        <div class="players-row">
-          <div id="slot-1" class="slot-card">
-            <div class="slot-card__label">#1</div>
-            <div id="slot-1-content"></div>
-          </div>
-          <div class="players-vs">VS</div>
-          <div id="slot-2" class="slot-card">
-            <div class="slot-card__label">#2</div>
-            <div id="slot-2-content"></div>
-          </div>
+      <div class="rpanel">
+        <!-- Requests + confirm countdowns float over the top of the panel, never
+             over the board, clocks or actions. -->
+        <div class="gtoasts" id="game-toasts" aria-live="assertive">
+          <div id="draw-prompt-area"></div>
+          <div id="time-prompt-area"></div>
+          <div id="undo-prompt-area"></div>
+          <div id="confirm-prompt-area"></div>
         </div>
-        <div id="action-buttons" class="slot-actions"></div>
-      </div>
 
-      <!-- Tabs: Chat | Score | Spectators | Settings — score-panel used to sit
-           fixed above these tabs inside .panel-players, permanently eating
-           vertical space from whichever tab was open (mobile report: chat
-           collapsed to ~2 visible lines). It's now its own tab, rendered only
-           when active, same show/hide-when-empty rule as tab-users below. -->
-      <div class="sidebar-tabs">
-        <button class="tab-btn tab-btn--active" data-tab="tab-chat">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-chat-circle"></use></svg>
-          <span class="tab-btn__label" data-i18n="room.tab_chat">Trò chuyện</span>
-        </button>
-        <button class="tab-btn" data-tab="tab-score">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-trophy"></use></svg>
-          <span class="tab-btn__label" data-i18n="room.tab_score">Bảng điểm</span>
-        </button>
-        <button class="tab-btn" data-tab="tab-users">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-eye"></use></svg>
-          <span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span>
-        </button>
-        <button class="tab-btn" data-tab="tab-settings">
-          <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-gear-six"></use></svg>
-          <span class="tab-btn__label" data-i18n="room.tab_settings">Cài đặt</span>
-        </button>
-      </div>
+        <!-- Phones only (CSS): minimizes the panel to the quick chat bar -->
+        <button class="rpanel-toggle" id="rpanel-toggle" type="button" aria-expanded="false" aria-controls="tab-chat"><span class="rpanel-toggle__tri" aria-hidden="true"></span></button>
 
-      <div class="tab-content tab-content--active" id="tab-chat">
-        <div class="chat-panel">
-          <div class="chat-messages" id="chat-messages"></div>
-          <div class="chat-input" id="chat-input-wrapper">
-            <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
-              maxlength="500" autocomplete="off" />
-            <button id="btn-send" type="button" data-i18n="room.btn_send">Gửi</button>
+        <div class="sidebar-tabs" role="tablist">
+          <button class="tab-btn" data-tab="tab-moves" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-list-numbers"></use></svg><span class="tab-btn__label" data-i18n="room.tab_moves">Nước đi</span></button>
+          <button class="tab-btn tab-btn--active" data-tab="tab-chat" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-chat-circle"></use></svg><span class="tab-btn__label" data-i18n="room.tab_chat">Chat</span></button>
+          <button class="tab-btn" data-tab="tab-users" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-eye"></use></svg><span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span></button>
+          <button class="tab-btn" data-tab="tab-settings" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-gear-six"></use></svg><span class="tab-btn__label" data-i18n="room.tab_settings">Cài đặt</span></button>
+        </div>
+
+        <div class="tab-content" id="tab-moves">
+          <ol class="moves" id="moves-list"></ol>
+        </div>
+
+        <div class="tab-content tab-content--active" id="tab-chat">
+          <div class="chat-panel">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-input" id="chat-input-wrapper">
+              <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
+                maxlength="500" autocomplete="off" />
+              <button id="btn-send" type="button" data-i18n-title="room.btn_send" title="Gửi" aria-label="Gửi">
+                <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-bold-paper-plane-tilt"></use></svg>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="tab-content" id="tab-score">
-        <div class="score-panel" id="score-panel">
-          <div class="score-panel__title" data-i18n="room.score_title">Bảng điểm</div>
-          <table class="score-table">
-            <thead>
-              <tr>
-                <th data-i18n="room.th_name">Tên</th>
-                <th data-i18n="room.th_win">T</th>
-                <th data-i18n="room.th_loss">B</th>
-                <th data-i18n="room.th_draw">H</th>
-              </tr>
-            </thead>
-            <tbody id="score-body"></tbody>
-          </table>
+        <div class="tab-content" id="tab-users">
+          <div class="score-panel" id="score-panel">
+            <div class="score-panel__title" data-i18n="room.score_title">Bảng điểm</div>
+            <table class="score-table">
+              <thead>
+                <tr>
+                  <th data-i18n="room.th_name">Tên</th>
+                  <th data-i18n="room.th_win">T</th>
+                  <th data-i18n="room.th_loss">B</th>
+                  <th data-i18n="room.th_draw">H</th>
+                </tr>
+              </thead>
+              <tbody id="score-body"></tbody>
+            </table>
+          </div>
+          <div id="users-panel" class="users-panel">
+            <ul id="users-list" class="users-list"></ul>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-settings">
+          <div id="settings-panel" class="settings-panel">
+            <div class="settings-panel__body open" id="settings-body"></div>
+          </div>
         </div>
       </div>
 
-      <div class="tab-content" id="tab-users">
-        <div id="users-panel" class="users-panel">
-          <ul id="users-list" class="users-list"></ul>
-        </div>
-      </div>
+      <!-- Action tiles: Lùi · Xin time (Giao hữu only) · Cầu hoà · Đầu hàng.
+           GameUI.renderGameControls; empty (and hidden) outside your own game. -->
+      <div class="game-controls" id="game-controls"></div>
 
-      <div class="tab-content" id="tab-settings">
-        <div id="settings-panel" class="settings-panel">
-          <div class="settings-panel__body open" id="settings-body"></div>
-        </div>
-      </div>
-      
-      </div>
+      <div class="pcard pcard--bottom" id="pcard-bottom" aria-live="polite"></div>
     </aside>
   </main>
 
   <!-- Float Messages (appear on top of game board) -->
   <div id="float-messages" class="float-messages"></div>
 
-  <!-- Quick Chat Bar (mobile) — always-reachable message input pinned to
-       the bottom of the screen, separate from #chat-input-wrapper (which
-       stays inside the Chat tab for full history). Lives outside
-       .panel-right-shell so it isn't hidden along with the sheet when the
-       sheet collapses to its icon rail. Hidden on desktop via CSS. -->
-  <div class="quick-chat-bar" id="quick-chat-bar">
-    <input type="text" id="quick-chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
-      maxlength="500" autocomplete="off" />
-    <button id="quick-chat-send" type="button" data-i18n-title="room.btn_send" title="Gửi" aria-label="Gửi">
-      <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-paper-plane-tilt"></use></svg>
-    </button>
-  </div>
-
   <!-- Socket.io CDN -->
   <script src="/vendor/socket.io/socket.io.min.js"></script>
   <!-- Application Scripts via Vite entry point -->
-  <script src="js/escape-utils.js?v=260"></script>
+  <script src="js/escape-utils.js?v=288"></script>
   <!-- Clock maths shared with the diagnostic page (TODO.md #168). Classic
        script, not an entry import: it is a UMD module and Vite's commonjs
        plugin would lazily wrap it, leaving window.TimerSyncCore unset in a
        production build — the same trap escape-utils.js is loaded this way
        for (see room-entry.js's header comment). -->
-  <script src="js/timer-sync-core.js?v=260"></script>
-  <script src="js/audio-manager.js?v=260"></script>
-  <script src="js/profanity-filter.js?v=260"></script>
-  <script src="js/action-delegate.js?v=260"></script>
-  <script type="module" src="js/room-entry.js?v=260"></script>
+  <script src="js/timer-sync-core.js?v=288"></script>
+  <script src="js/audio-manager.js?v=288"></script>
+  <script src="js/profanity-filter.js?v=288"></script>
+  <script src="js/action-delegate.js?v=288"></script>
+  <script type="module" src="js/room-entry.js?v=288"></script>
 </body>
 
 </html>

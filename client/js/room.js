@@ -29,8 +29,7 @@
  *   [ ] Not confirming within 15s for the 3rd time vacates that seat (toast
  *       shown to that player); misses 1-2 just reset both to not-ready
  *   [ ] Settings change emitted correctly (host only)
- *   [ ] Chat send on Enter and button click (both the in-tab input and the
- *       mobile quick chat bar)
+ *   [ ] Chat send on Enter and button click
  *   [ ] Start modal reappears (no separate rematch flow) once a game ends
  */
 
@@ -93,7 +92,9 @@ window.RoomState = {
   // hand-written "restore".
   predictedTurn: { active: false, forColor: null, snapshotTimerValues: null, switchedAtLocalTs: null },
 
-  // Board preferences (persisted to localStorage)
+  // Board preferences (persisted to localStorage). The look itself (paper/stone,
+  // colours, coordinates) is window.BoardPrefs since #216; this mirror is kept
+  // for older readers.
   boardDisplayMode: (() => {
     const v = localStorage.getItem('play3cr_board_display') || 'paper';
     return ['paper', 'stone'].includes(v) ? v : 'paper';
@@ -120,108 +121,9 @@ const tabBtns     = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
 const chatMessages = document.getElementById('chat-messages');
 
-// zen-room's panel defaults OPEN at every width, because the seat/ready
-// buttons inside .panel-players are the first thing a player needs and they
-// live in it. On a phone the panel is a bottom sheet (room-zen.css ≤768px)
-// rather than a side drawer, so "open" costs board height, not board width —
-// and room-socket.js collapses it down to the tab bar as soon as game:init
-// arrives, i.e. exactly when the board starts mattering more than the panel.
-
-// Re-measures the board against the shell's new content box while the drawer
-// animates. Called by the tab handler below; kept here so both the mid-flight
-// and the settled measurement share one definition.
-function refitBoardAfterDrawer() {
-  const refit = () => {
-    const st = window.RoomState;
-    if (st && st.boardRenderer) st.boardRenderer.resize();
-  };
-  requestAnimationFrame(refit);
-  setTimeout(refit, 180);
-  setTimeout(refit, 400);   // just past the 0.35s transition
-}
-
-// Collapsing the drawer is a purely VISUAL clip: .panel-right-shell shrinks to
-// the rail width while .panel-right keeps its full width inside it, so
-// overflow:hidden cuts the content off at the inline-start edge and
-// justify-content:flex-end leaves the rail showing (room-zen.css — deliberate,
-// it avoids reflowing the text every time the drawer animates). Nothing in that
-// removes the clipped content from the page: measured with Playwright, Tab from
-// the topnav still walked into #chat-input and #btn-send while they were
-// invisible, and a screen reader still read the whole closed drawer
-// (TODO.md #138).
-//
-// `inert` is the missing half — a DOM attribute, not a style, so it can only be
-// applied from here. Applied to the content columns only: .sidebar-tabs (the
-// rail) must stay focusable, since its buttons are the sole way to open the
-// drawer again. Mobile ≤768px uses the same class with a different mechanism
-// (transform:translateY on the sheet), so the content is off-screen rather than
-// clipped — same semantics needed, hence no media-query gate here.
-const DRAWER_CONTENT_SELECTOR = '.panel-right .panel-players, .panel-right .tab-content';
-
-function syncDrawerInert() {
-  // .zen-drawer-collapsed has no matching CSS outside room-zen.css, so on other
-  // skins the content is fully visible and must never be made inert.
-  const hide = document.body.classList.contains('zen-room')
-            && document.body.classList.contains('zen-drawer-collapsed');
-  const regions = document.querySelectorAll(DRAWER_CONTENT_SELECTOR);
-
-  // Making the element holding focus inert drops focus to <body>, which strands
-  // a keyboard user with no position in the page. Hand it to the rail button
-  // for the tab they were on — the one control that stays reachable — before
-  // the attribute lands.
-  if (hide) {
-    const active = document.activeElement;
-    for (const region of regions) {
-      if (active && region.contains(active)) {
-        const rail = document.querySelector('.tab-btn--active') || document.querySelector('.tab-btn');
-        if (rail) rail.focus();
-        break;
-      }
-    }
-  }
-
-  regions.forEach(region => { region.inert = hide; });
-}
-
-// The single writer for .zen-drawer-collapsed. #136 was caused by two code
-// paths disagreeing about the drawer's state; `inert` has to stay in step with
-// the class from all three places that move it (the breakpoint handler and the
-// tab click below, plus room-socket.js's mobile auto-collapse on game:init), so
-// they all go through here rather than each remembering to sync afterwards.
-function setDrawerCollapsed(collapsed) {
-  document.body.classList.toggle('zen-drawer-collapsed', collapsed);
-  syncDrawerInert();
-}
-
-window.RoomDrawer = { setCollapsed: setDrawerCollapsed, syncInert: syncDrawerInert };
-syncDrawerInert();   // match whatever state the document loaded in
-
-// room-socket.js's game:init handler auto-collapses the drawer with a
-// one-time `matchMedia('(max-width: 768px)').matches` check — nothing else
-// ever undoes that, so if the viewport happened to be narrow for even a
-// moment right when a match started (e.g. a briefly docked DevTools panel,
-// a window mid-resize) the drawer stays collapsed forever afterward, even
-// once the window is genuinely wide again (TODO.md #134). This only clears
-// the stuck state once the viewport is provably no longer narrow; it never
-// sets zen-drawer-collapsed itself, so the mobile auto-collapse and the
-// manual tab-click toggle below are both untouched.
-const drawerBreakpoint = window.matchMedia('(max-width: 768px)');
-drawerBreakpoint.addEventListener('change', (e) => {
-  if (!e.matches && document.body.classList.contains('zen-drawer-collapsed')) {
-    setDrawerCollapsed(false);
-    if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
-  }
-});
-
-// Switching tab and collapsing the drawer are two different intentions that
-// used to share one code path (TODO.md #136). Everything that only *shows a
-// tab* lives here and deliberately never touches zen-drawer-collapsed, so
-// programmatic callers can't move the drawer as a side effect: room-ui.js
-// bounces the user off a tab whose button just disappeared, and it used to do
-// that by synthesising `chatBtn.click()` — a fake DOM event that re-entered
-// the drawer branch below with `alreadyActive` computed from whatever the DOM
-// happened to say at that moment. Expressing the intent directly removes that
-// whole class of accident instead of adding a flag to detect it.
+// Shows one rail tab. room-ui.js calls it (via RoomTabs) to move the user off
+// a tab whose button just disappeared. The zen drawer that tab clicks used to
+// collapse/expand is gone with the #216 layout.
 function activateTab(tabId) {
   const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
   const content = document.getElementById(tabId);
@@ -241,52 +143,102 @@ function activateTab(tabId) {
 // user is standing on is about to be hidden.
 window.RoomTabs = { activate: activateTab };
 
-// Binding guard. A stale `?v=` on any cross-import makes the browser resolve a
-// second module instance of this file and re-run its top level (the hazard
-// CLAUDE.md's cache-busting rule documents, already shipped twice as a
-// duplicate socket). Two copies of the listener below would turn an ordinary
-// "switch to another tab" click into a collapse: the first copy removes the
-// class and marks the button active, then the second copy — now seeing
-// `alreadyActive === true` — toggles the drawer shut, at any viewport width.
-// Confirmed live: injecting a second room.js instance also gets the tab kicked
-// back to login by the duplicate socket. One binding per document, whatever
-// the module graph does.
+// Binding guard: a stale `?v=` cross-import can re-run this module's top level
+// (the cache-busting hazard in CLAUDE.md); bind the tab clicks once per document.
 if (!document.body.dataset.roomTabsBound) {
   document.body.dataset.roomTabsBound = '1';
-
   tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      // Read the intent BEFORE mutating anything, so the decision can't be
-      // taken from state this handler itself just wrote.
-      const alreadyActive = btn.classList.contains('tab-btn--active');
-      const collapsedNow = document.body.classList.contains('zen-drawer-collapsed');
-      const tabId = btn.getAttribute('data-tab');
-
-      activateTab(tabId);
-
-      // Re-clicking the already-active tab toggles the zen-room drawer
-      // collapsed/open instead of doing nothing; switching to a different tab
-      // always re-opens it. .zen-drawer-collapsed has no matching CSS outside
-      // room-zen.css, so this is a no-op on other skins.
-      if (alreadyActive) {
-        setDrawerCollapsed(!collapsedNow);
-      } else {
-        setDrawerCollapsed(false);
-      }
-
-      // Opening/collapsing the desktop drawer changes .board-area-shell's
-      // padding-right, i.e. the board's entire width budget — but nothing fires
-      // a window resize, so without this the canvas keeps its old size and is
-      // either cropped by .board-canvas-wrap's overflow:hidden (drawer opened)
-      // or leaves the reclaimed space empty (drawer collapsed). Re-fit once the
-      // 0.35s padding transition has settled, and once on the way there so the
-      // board doesn't visibly jump only at the end.
-      if (document.body.classList.contains('zen-room')) refitBoardAfterDrawer();
-    });
+    btn.addEventListener('click', () => activateTab(btn.getAttribute('data-tab')));
   });
 }
 
 const chatInput = document.getElementById('chat-input');
+
+// #218: on phones the document never scrolls (.room is the scroller), so when the keyboard shrinks the viewport
+// nothing brings the chat field back into view on its own in browsers that resize the layout. Do it on every
+// viewport resize while the field is focused (also pans the visual viewport in browsers that only resize that).
+if (chatInput && !document.body.dataset.roomKeyboardBound) {
+  document.body.dataset.roomKeyboardBound = '1';
+  const keepChatInView = () => {
+    if (document.activeElement !== chatInput) return;
+    const bar = chatInput.closest('.chat-input') || chatInput;
+    if (typeof bar.scrollIntoView === 'function') bar.scrollIntoView({ block: 'end', inline: 'nearest' });
+  };
+  (window.visualViewport || window).addEventListener('resize', keepChatInView);
+}
+
+// ---------------------------------------------------------------------------
+// Phone panel: minimized (quick chat bar) <-> expanded (tabs + messages). #217
+// The toggle is display:none above 768px, so the class is harmless on desktop.
+// ---------------------------------------------------------------------------
+const PANEL_MIN_KEY = 'gvn_room_panel_min';
+const PANEL_ANIM_MS = 240;
+// Animate the panel height between the two states (FLIP: measure, switch, measure, play old → new). The panel
+// is a flex item (flex-basis 0 + min-height 360 when expanded), so flex-basis AND min/max-height are animated —
+// height alone is ignored/clamped. While it runs, the inner column is pinned at the EXPANDED layout and anchored
+// to the panel's bottom (justify-content:flex-end), so the input bar rides the bottom edge and never jumps out of
+// view; the overflow above is clipped. Expand switches the class first; collapse keeps the expanded content
+// until the end (lines fade out), then switches. Skipped on desktop (toggle hidden), for reduced motion, and
+// where Element.animate is missing.
+function animatePanelSwitch(panel, btn, min) {
+  const apply = () => panel.classList.toggle('rpanel--min', min);
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || typeof panel.animate !== 'function' || getComputedStyle(btn).display === 'none') { apply(); return; }
+  const from = panel.getBoundingClientRect().height; // mid-flight this is the animated size
+  if (panel._gvnAnim) panel._gvnAnim.cancel(); // its cleanup lands the previous target state
+  apply();
+  const to = panel.getBoundingClientRect().height;
+  if (!from || !to || Math.abs(from - to) < 1) return;
+  if (min) panel.classList.remove('rpanel--min'); // collapse: keep showing the expanded content while shrinking
+  const pane = [...panel.querySelectorAll('.tab-content')].find((el) => getComputedStyle(el).display !== 'none');
+  const kids = [...panel.children];
+  const paneH = pane ? pane.getBoundingClientRect().height : 0;
+  panel.style.justifyContent = 'flex-end';
+  kids.forEach((el) => { el.style.flexShrink = '0'; });
+  if (pane && paneH) pane.style.flex = '0 0 ' + paneH + 'px';
+  const opts = { duration: PANEL_ANIM_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' };
+  const anim = panel.animate([
+    { flexBasis: from + 'px', flexGrow: 0, flexShrink: 0, minHeight: from + 'px', maxHeight: from + 'px' },
+    { flexBasis: to + 'px', flexGrow: 0, flexShrink: 0, minHeight: to + 'px', maxHeight: to + 'px' },
+  ], opts);
+  panel._gvnAnim = anim;
+  const fade = panel.querySelectorAll(min ? '.chat-messages, .sidebar-tabs' : '.sidebar-tabs, .tab-content--active');
+  const fades = [...fade].map((el) => el.animate(min ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }], opts));
+  anim.onfinish = anim.oncancel = () => {
+    if (panel._gvnAnim !== anim) return;
+    panel._gvnAnim = null;
+    fades.forEach((a) => a.cancel());
+    panel.style.justifyContent = '';
+    kids.forEach((el) => { el.style.flexShrink = ''; });
+    if (pane) pane.style.flex = '';
+    apply();
+  };
+}
+function setPanelMinimized(min, animate) {
+  const panel = document.querySelector('.rpanel');
+  const btn = document.getElementById('rpanel-toggle');
+  if (!panel || !btn) return;
+  if (animate) animatePanelSwitch(panel, btn, min);
+  else panel.classList.toggle('rpanel--min', min);
+  btn.setAttribute('aria-expanded', String(!min));
+  const label = t(min ? 'room.panel_expand' : 'room.panel_collapse');
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  try { localStorage.setItem(PANEL_MIN_KEY, min ? '1' : '0'); } catch (_) { /* private mode */ }
+  if (!min && chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+if (!document.body.dataset.roomPanelToggleBound) {
+  document.body.dataset.roomPanelToggleBound = '1';
+  const toggle = document.getElementById('rpanel-toggle');
+  let stored = null;
+  try { stored = localStorage.getItem(PANEL_MIN_KEY); } catch (_) { /* ignore */ }
+  setPanelMinimized(stored !== '0'); // default: minimized — the board stays the focus
+  if (toggle) toggle.addEventListener('click', () => {
+    // aria-expanded, not the class: mid-collapse the class still says expanded until the animation ends
+    setPanelMinimized(toggle.getAttribute('aria-expanded') === 'true', true);
+  });
+}
+window.RoomPanel = { setMinimized: setPanelMinimized };
 
 // ---------------------------------------------------------------------------
 // Leave room
@@ -305,9 +257,6 @@ btnLeave.addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 const btnSend = document.getElementById('btn-send');
 
-// Shared by both the in-tab chat input and the mobile quick chat bar
-// (#quick-chat-input/#quick-chat-send below) — same emit, same optimistic
-// filter pass, just reading from/clearing whichever input element sent it.
 function sendChatFrom(inputEl) {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -325,32 +274,3 @@ btnSend.addEventListener('click', sendChat);
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChat();
 });
-
-// ---------------------------------------------------------------------------
-// Quick chat bar (mobile) — a second, always-visible input pinned to the
-// bottom of the viewport (room-zen.css), separate from #chat-input-wrapper
-// so the tab's full chat history/input never moves in the DOM. Same
-// sendChatFrom() path, just a different input element.
-// ---------------------------------------------------------------------------
-const quickChatInput = document.getElementById('quick-chat-input');
-const quickChatSend  = document.getElementById('quick-chat-send');
-if (quickChatInput && quickChatSend) {
-  const sendQuickChat = () => sendChatFrom(quickChatInput);
-  quickChatSend.addEventListener('click', sendQuickChat);
-  quickChatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') sendQuickChat();
-  });
-
-  // Nothing else ever released focus from this input (TODO.md #151) — once a
-  // mobile user tapped it, it stayed document.activeElement even after they
-  // tapped back onto the board, so the browser kept re-scrolling the page to
-  // hold it above the on-screen keyboard. #board-area-shell is a stable
-  // container GameUI never replaces wholesale, unlike #board-area itself.
-  const boardAreaShell = document.getElementById('board-area-shell');
-  if (boardAreaShell) {
-    boardAreaShell.addEventListener('pointerdown', () => {
-      if (document.activeElement === quickChatInput) quickChatInput.blur();
-    });
-  }
-}
-

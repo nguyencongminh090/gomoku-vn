@@ -25,6 +25,14 @@ const path = require('path');
 const JS = (name) => fs.readFileSync(path.join(__dirname, '..', 'js', name), 'utf8');
 const GAME_UI_SOURCE     = JS('game-ui.js');
 const ROOM_SOCKET_SOURCE = JS('room-socket.js');
+const ROOM_UI_SOURCE = JS('room-ui.js');
+
+// Clocks live on the player cards since #216 (RoomUI.updateCardClocks); the
+// opponent (WHITE) card is on top, mine (BLACK) at the bottom.
+const CARD = { black: 'pcard-bottom', white: 'pcard-top' };
+const clockText = (color) => document.querySelector('#' + CARD[color] + ' [data-clock-text]').textContent;
+const clockSecs = (color) => { const [m, sec] = clockText(color).split(':').map(Number); return m * 60 + sec; };
+const isTurnCard = (color) => document.getElementById(CARD[color]).classList.contains('pcard--turn');
 const I18N_SOURCE        = JS('i18n.js');
 // Shared clock maths both room modules call into (TODO.md #168). room.html
 // loads it as a classic script before the module entry; evaluating it first
@@ -67,19 +75,14 @@ function makeBoardRendererStub() {
 }
 
 function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRenderer = true } = {}) {
-  // The turn-bar/timer elements are included directly (rather than only via
-  // initBoard()'s template, which is stubbed out below) because sendMove()
-  // and room-socket.js's rollback/confirm paths call the real renderTimers()/
-  // renderTurnLabel() straight from game-ui.js's own closure — a same-module
-  // call the `window.GameUI.xxx = jest.fn()` stubs further down can't
-  // intercept, only cross-module callers (room-socket.js) go through those.
+  // The player cards' clock elements are included directly: sendMove() and
+  // room-socket.js's rollback/confirm paths call the real renderTimers()
+  // straight from game-ui.js's own closure, which paints them through the
+  // real RoomUI.updateCardClocks (loaded below).
   document.body.innerHTML = `
     <div id="board-area"></div><div id="chat-messages"></div>
-    <div id="turn-bar">
-      <div id="tb-black"><span id="tb-black-timer"></span></div>
-      <div id="turn-label"></div>
-      <div id="tb-white"><span id="tb-white-timer"></span></div>
-    </div>
+    <div class="pcard" id="pcard-top" data-clock="white"><div data-clock-text></div></div>
+    <div class="pcard" id="pcard-bottom" data-clock="black"><div data-clock-text></div></div>
   `;
 
   const client = makeClientStub();
@@ -92,7 +95,9 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
     showFloatMessage: jest.fn(),
   };
 
-  window.RoomUI = { updateUI: jest.fn() };
+  // Real card clock painter; everything else of RoomUI stays stubbed.
+  window.eval(ROOM_UI_SOURCE);
+  window.RoomUI = { updateUI: jest.fn(), renderPlayerCards: jest.fn(), updateCardClocks: window.RoomUI.updateCardClocks };
   window.audioManager = {
     playMoveSound: jest.fn(),
     playWinSound: jest.fn(),
@@ -418,16 +423,15 @@ describe('GameUI.sendMove — Full CSP sound + predictedTurn (case 1)', () => {
     expect(client.ackCalls).toHaveLength(1); // sound didn't wait on this
   });
 
-  test('predictedTurn flips the turn-bar highlight and label to the opponent immediately', () => {
+  test('predictedTurn flips the turn highlight (player cards) to the opponent immediately', () => {
     const { st } = loadRoomModules();
 
     window.GameUI.sendMove(3, 4);
 
     expect(st.predictedTurn.active).toBe(true);
     expect(st.predictedTurn.forColor).toBe('WHITE'); // me = BLACK
-    expect(document.getElementById('tb-white').classList.contains('turn-bar__active')).toBe(true);
-    expect(document.getElementById('tb-black').classList.contains('turn-bar__active')).toBe(false);
-    expect(document.getElementById('turn-label').textContent).toBe(window.t('game.opponent_turn'));
+    expect(isTurnCard('white')).toBe(true);
+    expect(isTurnCard('black')).toBe(false);
   });
 
   test('the mover\'s own clock freezes at its click-time value while predicted; the opponent\'s ticks down', () => {
@@ -442,8 +446,8 @@ describe('GameUI.sendMove — Full CSP sound + predictedTurn (case 1)', () => {
       now += 3000; // 3s of "real" elapsed time
       window.GameUI.renderTimers();
 
-      expect(document.getElementById('tb-black-timer').textContent).toBe('42'); // frozen
-      expect(document.getElementById('tb-white-timer').textContent).toBe('52'); // 55 - 3
+      expect(clockSecs('black')).toBe(42); // frozen
+      expect(clockSecs('white')).toBe(52); // 55 - 3
     } finally {
       Date.now = realNow;
     }
@@ -462,9 +466,8 @@ describe('GameUI.sendMove — ack error rolls predictedTurn back too (cases 2-4)
     expect(st.predictedTurn.active).toBe(false);
     // gameState.currentTurn was never touched — still 'me' (BLACK) — so the
     // real updateBoardState() this rollback triggers renders BLACK active.
-    expect(document.getElementById('tb-black').classList.contains('turn-bar__active')).toBe(true);
-    expect(document.getElementById('tb-white').classList.contains('turn-bar__active')).toBe(false);
-    expect(document.getElementById('turn-label').textContent).toBe(window.t('game.your_turn'));
+    expect(isTurnCard('black')).toBe(true);
+    expect(isTurnCard('white')).toBe(false);
   });
 });
 
@@ -594,8 +597,8 @@ describe('#165 — timer:sync applies transit-delay compensation', () => {
 
     client.listeners['timer:sync'](syncAt(now, { white: 13, deadline: now + 13000 }));
 
-    expect(document.getElementById('tb-white-timer').textContent).toBe('10'); // 13 − 3
-    expect(document.getElementById('tb-black-timer').textContent).toBe('1:00'); // idle, raw
+    expect(clockSecs('white')).toBe(10); // 13 − 3
+    expect(clockSecs('black')).toBe(60); // idle, raw
   });
 
   test('the shave persists as the clock ticks down (not just the first paint)', () => {
@@ -605,11 +608,11 @@ describe('#165 — timer:sync applies transit-delay compensation', () => {
     Date.now = () => now;
 
     client.listeners['timer:sync'](syncAt(now, { white: 30, deadline: now + 30000 }));
-    expect(document.getElementById('tb-white-timer').textContent).toBe('28'); // 30 − 2
+    expect(clockSecs('white')).toBe(28); // 30 − 2
 
     now += 5000;
     window.RoomSocket.refreshLocalTimer();
-    expect(document.getElementById('tb-white-timer').textContent).toBe('23'); // 25 − 2
+    expect(clockSecs('white')).toBe(23); // 25 − 2
   });
 
   test('a paused sync (running:false) is never shaved — the frozen value is exact', () => {
@@ -620,7 +623,7 @@ describe('#165 — timer:sync applies transit-delay compensation', () => {
 
     client.listeners['timer:sync'](syncAt(now, { white: 13, running: false, deadline: null }));
 
-    expect(document.getElementById('tb-white-timer').textContent).toBe('13');
+    expect(clockSecs('white')).toBe(13);
   });
 
   test('with no RTT sample yet (halfRttMs 0) the clock is unchanged from before the fix', () => {
@@ -630,7 +633,7 @@ describe('#165 — timer:sync applies transit-delay compensation', () => {
 
     client.listeners['timer:sync'](syncAt(now, { white: 13, deadline: now + 13000 }));
 
-    expect(document.getElementById('tb-white-timer').textContent).toBe('13');
+    expect(clockSecs('white')).toBe(13);
   });
 });
 
@@ -677,7 +680,7 @@ describe('#165 — predictedTurn snapshot is taken from the deadline, not a stal
           serverTime: now - 3000, deadline: now - 3000 + 13000,
         });
         window.GameUI.sendMove(3, 4);
-        const shown = Number(document.getElementById('tb-white-timer').textContent);
+        const shown = clockSecs('white');
 
         // Move reaches the server, turn switches, post-move sync comes back —
         // by now the server has charged white for the pre-move transit + the
@@ -694,7 +697,7 @@ describe('#165 — predictedTurn snapshot is taken from the deadline, not a stal
         // updateBoardState() (stubbed here) is what repaints the clocks after
         // game:moved in production; call the real renderer directly.
         window.GameUI.renderTimers();
-        const after = Number(document.getElementById('tb-white-timer').textContent);
+        const after = clockSecs('white');
         return Math.abs(shown - after);
       } finally { Date.now = realNow; }
     }
@@ -821,7 +824,7 @@ describe('#169 — clock does not stutter or bounce on a high-jitter link', () =
     for (const halfRtt of [460, 540, 480, 520, 500, 470, 530]) {
       window.RoomState.halfRttMs = halfRtt;
       client.listeners['timer:sync'](syncAt(now, { white: whiteSecs, deadline: now + whiteSecs * 1000 }));
-      shown.push(Number(document.getElementById('tb-white-timer').textContent));
+      shown.push(clockSecs('white'));
       now += 1000;
       whiteSecs -= 1;
     }
@@ -837,15 +840,15 @@ describe('#169 — clock does not stutter or bounce on a high-jitter link', () =
     window.RoomState.halfRttMs = 0;
 
     client.listeners['timer:sync'](syncAt(now, { white: 18, deadline: now + 18000 }));
-    expect(document.getElementById('tb-white-timer').textContent).toBe('18');
+    expect(clockSecs('white')).toBe(18);
 
     // 3s pass; a reordered sync from 2s ago arrives — same turn, same deadline,
     // reporting white: 17 (higher than the ~15 the local countdown now shows).
     now += 3000;
     window.RoomSocket.refreshLocalTimer();
-    const midTick = Number(document.getElementById('tb-white-timer').textContent);
+    const midTick = clockSecs('white');
     client.listeners['timer:sync'](syncAt(now - 2000, { white: 17, deadline: (now - 2000) + 17000 }));
-    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(midTick);
+    expect(clockSecs('white')).toBeLessThanOrEqual(midTick);
   });
 
   test('a turn change resets the clamp — the opponent gets their full fresh clock', () => {
@@ -855,11 +858,11 @@ describe('#169 — clock does not stutter or bounce on a high-jitter link', () =
     window.RoomState.halfRttMs = 200;
 
     client.listeners['timer:sync'](syncAt(now, { white: 5, activeColor: 'white', deadline: now + 5000 }));
-    expect(document.getElementById('tb-white-timer').textContent).toBe('5');
+    expect(clockSecs('white')).toBe(5);
 
     now += 1000;
     client.listeners['timer:sync'](syncAt(now, { black: 60, white: 5, activeColor: 'black', deadline: now + 60000 }));
-    expect(document.getElementById('tb-black-timer').textContent).toBe('1:00');
+    expect(clockSecs('black')).toBe(60);
   });
 
   test('bonus time (the deadline is pushed out) resets the clamp so the grant shows immediately', () => {
@@ -871,11 +874,11 @@ describe('#169 — clock does not stutter or bounce on a high-jitter link', () =
     client.listeners['timer:sync'](syncAt(now, { white: 10, activeColor: 'white', deadline: now + 10000 }));
     now += 2000;
     window.RoomSocket.refreshLocalTimer();
-    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(10);
+    expect(clockSecs('white')).toBeLessThanOrEqual(10);
 
     // Admin adds 30s: same turn, same colour, deadline jumps 30s further out.
     client.listeners['timer:sync'](syncAt(now, { white: 38, activeColor: 'white', deadline: now + 38000 }));
-    expect(document.getElementById('tb-white-timer').textContent).toBe('38');
+    expect(clockSecs('white')).toBe(38);
   });
 
   test('the shave flipping 1→0 mid-turn does not jump the clock up (only down is allowed)', () => {
@@ -886,15 +889,15 @@ describe('#169 — clock does not stutter or bounce on a high-jitter link', () =
     // First sync: half-RTT 900 → shave 1, white 20 shown as 19.
     window.RoomState.halfRttMs = 900;
     client.listeners['timer:sync'](syncAt(now, { white: 20, deadline: now + 20000 }));
-    expect(document.getElementById('tb-white-timer').textContent).toBe('19');
+    expect(clockSecs('white')).toBe(19);
 
     // Same turn, 1s later, EMA drops to 300 → without hysteresis shave would be
     // 0 and the opening value would be 19 again (bounce from 18-ish back up).
     now += 1000;
     window.RoomState.halfRttMs = 300;
     window.RoomSocket.refreshLocalTimer();
-    const beforeSync = Number(document.getElementById('tb-white-timer').textContent);
+    const beforeSync = clockSecs('white');
     client.listeners['timer:sync'](syncAt(now, { white: 19, deadline: now + 19000 }));
-    expect(Number(document.getElementById('tb-white-timer').textContent)).toBeLessThanOrEqual(beforeSync);
+    expect(clockSecs('white')).toBeLessThanOrEqual(beforeSync);
   });
 });

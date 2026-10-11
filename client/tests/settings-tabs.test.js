@@ -132,13 +132,12 @@ describe('settings page tabs', () => {
     expect(rule('.pset .pcheck > .icon')).toMatch(/width: var\(--icon-md\)/);
   });
 
-  it('Trò chơi: placement, board display and sound go through GvnSettings', () => {
+  it('Trò chơi: placement and sound go through GvnSettings; the board look moved to Giao diện (#216)', () => {
     boot(GUEST);
     const segs = $('p-game').querySelectorAll('.pseg');
+    expect(segs.length).toBe(1); // Paper/Stone now lives in Giao diện › Bàn cờ (settings-board.js)
     segs[0].querySelectorAll('button')[0].click();
     expect(window.GvnSettings.setClickMode).toHaveBeenCalledWith('single');
-    segs[1].querySelectorAll('button')[1].click();
-    expect(window.GvnSettings.setDisplayMode).toHaveBeenCalledWith('stone');
     const sound = $('p-game').querySelector('.pswitch input');
     sound.checked = false;
     sound.dispatchEvent(new Event('change'));

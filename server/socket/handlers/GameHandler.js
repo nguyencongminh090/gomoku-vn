@@ -420,6 +420,10 @@ function register(io, socket) {
       socket.emit('game:error', { message: 'Không có ván đấu đang diễn ra.', code: 'NO_ACTIVE_GAME' });
       return;
     }
+    if (room.gameState.isRated()) {
+      socket.emit('game:error', { message: 'Chỉ ván giao hữu (không tính điểm) mới được xin đi lại.', code: 'FRIENDLY_ONLY' });
+      return;
+    }
 
     const result = room.gameState.requestUndo(user.userId);
     if (result.error) {
@@ -531,6 +535,11 @@ function register(io, socket) {
     const player = engine.players.find(p => p.userId === user.userId);
     if (!player) {
       socket.emit('game:error', { message: 'Bạn không phải người chơi.', code: 'NOT_A_PLAYER' });
+      return;
+    }
+
+    if (room.gameState.isRated()) {
+      socket.emit('game:error', { message: 'Chỉ ván giao hữu (không tính điểm) mới được xin thêm thời gian.', code: 'FRIENDLY_ONLY' });
       return;
     }
 

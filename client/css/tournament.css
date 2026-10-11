@@ -233,7 +233,7 @@
    640px cap here fought that JS-computed size and made the tournament board
    noticeably smaller/inconsistent than the casual-room board. */
 .match-board-canvas-wrap { width: 100%; display: flex; justify-content: center; }
-#match-canvas { touch-action: none; }
+#match-canvas { touch-action: none; display: block; }
 
 /* Layout comes from .game-controls (game.css, shared with room.html) now —
    .match-actions only needs to stay addressable for the mobile bleed-cancel

@@ -7,7 +7,7 @@
  */
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=260'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=288'; // ?v=: /assets is immutable-cached
   const TABS = ['profile', 'look', 'game', 'account'];
   const S = () => window.GvnSettings || {};
 
@@ -85,6 +85,8 @@
       row('translate', t('gset.language'), segment(   // globe = country (Hồ sơ tab); one icon per concept (#214)
         [['vi', 'VI'], ['en', 'EN']], call('getLanguage') || 'vi', (v) => call('setLanguage', v))),
     );
+    // Board look (#216): the one editor of the look every board on the site uses.
+    if (window.SettingsBoard) window.SettingsBoard.mount(host);
   }
 
   function renderGame(host) {
@@ -93,9 +95,6 @@
       row('cursor-click', t('gset.click_mode_default'), segment(
         [['single', t('settings.click_single')], ['double', t('settings.click_double')]],
         g.getClickMode ? g.getClickMode() : 'double', (v) => g.setClickMode && g.setClickMode(v)), t('settings.row_click_hint')),
-      row('checkerboard', t('gset.display_mode'), segment(
-        [['paper', t('settings.display_paper')], ['stone', t('settings.display_stone')]],
-        g.getDisplayMode ? g.getDisplayMode() : 'paper', (v) => g.setDisplayMode && g.setDisplayMode(v))),
       row('speaker-high', t('settings.sound'), toggle(t('settings.sound'), g.isSoundOn ? g.isSoundOn() : true, (on) => g.setSoundOn && g.setSoundOn(on))),
     );
   }

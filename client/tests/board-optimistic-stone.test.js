@@ -8,10 +8,11 @@
  *
  * These tests cover BoardRenderer's half: the overlay is a field entirely
  * separate from `this.board` (driven by GameUI.sendMove's ack/timeout
- * lifecycle, not by gameState snapshots), it renders visibly differently
- * from a confirmed stone, and it dispatches through the same per-mode
- * piece-drawing code a confirmed stone uses so it never drifts from what
- * "a real stone" looks like.
+ * lifecycle, not by gameState snapshots), it looks exactly like a confirmed
+ * piece of the active look (#155), and only the retry warning adds a ring.
+ *
+ * Rewritten for the SVG renderer (#216): assertions read the SVG overlay
+ * layer instead of canvas calls.
  *
  * @jest-environment jsdom
  */
@@ -23,229 +24,125 @@ const path = require('path');
 
 const BOARD_JS_SOURCE = fs.readFileSync(path.join(__dirname, '..', 'js', 'board.js'), 'utf8');
 
-function loadBoardRenderer() {
+function load() {
   delete window.BoardRenderer;
+  delete window.BoardPrefs;
+  localStorage.clear();
   // eslint-disable-next-line no-eval
   window.eval(BOARD_JS_SOURCE);
   return window.BoardRenderer;
 }
 
-/**
- * A canvas 2D context that survives a full `_draw()` pass without needing to
- * hand-enumerate every method board.js happens to call: any method access
- * auto-vivifies into a no-op jest.fn(), and `createRadialGradient` (the one
- * call whose return value is actually used, via `.addColorStop()`) gets a
- * matching stub. Property sets (fillStyle, lineWidth, ...) just store.
- */
-function makeFakeCtx() {
-  // globalAlpha seeded at the real Canvas2D default (1) — a piece-drawing
-  // test needs to tell "never touched" from "touched" as a real number, not
-  // as this proxy's auto-vivified jest.fn() for an untouched property.
-  const store = { globalAlpha: 1 };
-  return new Proxy({}, {
-    get(_target, prop) {
-      if (prop === 'createRadialGradient') {
-        return () => ({ addColorStop: jest.fn() });
-      }
-      if (prop in store) return store[prop];
-      const fn = jest.fn();
-      store[prop] = fn;
-      return fn;
-    },
-    set(_target, prop, value) {
-      store[prop] = value;
-      return true;
-    },
-  });
+const empty = (n = 15) => Array.from({ length: n }, () => Array(n).fill(0));
+
+function makeRenderer(opts = {}) {
+  const BoardRenderer = load();
+  document.body.innerHTML = '<div id="wrap"><canvas id="board"></canvas></div>';
+  const r = new BoardRenderer(document.getElementById('board'), { boardSize: 15, onCellClick: jest.fn(), ...opts });
+  r.setState({ board: empty() });
+  return r;
 }
 
-function makeRenderer(BoardRenderer, opts = {}) {
-  document.body.innerHTML = '<canvas id="board"></canvas>';
-  const canvas = document.getElementById('board');
-  const renderer = new BoardRenderer(canvas, { boardSize: 15, onCellClick: jest.fn(), ...opts });
-  // Real geometry computation needs layout (offsetHeight etc.) jsdom doesn't
-  // provide; every other board test in this repo sidesteps it by driving
-  // internals directly rather than through resize() — same approach here.
-  renderer.geo = { cellSize: 30, originX: 10, originY: 10, boardSize: 15 };
-  renderer._theme = {
-    bg: '#fff', accentRgb: '0,0,0', inkRgb: '0,0,0', pendingRgb: '72, 135, 95',
-    highlightRgb: '255, 234, 0', wallMortarRgb: '0,0,0', wallDarkRgb: '0,0,0',
-    wallBaseRgb: '0,0,0', wallLightRgb: '0,0,0',
-  };
-  return renderer;
-}
+const overlay = (r) => r.svg.querySelector('.gboard__ov');
+const optimistic = (r) => overlay(r).querySelector('.gboard__optimistic');
 
 describe('BoardRenderer#setOptimisticStone / markOptimisticWarning', () => {
-  let BoardRenderer;
-  beforeEach(() => { BoardRenderer = loadBoardRenderer(); });
-
-  test('setOptimisticStone stores the stone and triggers an immediate redraw', () => {
-    const renderer = makeRenderer(BoardRenderer);
-    renderer._draw = jest.fn();
-
-    renderer.setOptimisticStone({ x: 3, y: 4, color: 'BLACK' });
-
-    expect(renderer.optimisticStone).toEqual({ x: 3, y: 4, color: 'BLACK' });
-    expect(renderer._draw).toHaveBeenCalledTimes(1);
+  test('a <canvas> is swapped in place for an <svg> keeping its id', () => {
+    const r = makeRenderer();
+    expect(r.svg.tagName.toLowerCase()).toBe('svg');
+    expect(document.getElementById('board')).toBe(r.svg);
+    expect(document.querySelector('canvas')).toBeNull();
   });
 
-  test('setOptimisticStone(null) clears it and still redraws (the rollback path)', () => {
-    const renderer = makeRenderer(BoardRenderer);
-    renderer.optimisticStone = { x: 1, y: 1, color: 'WHITE' };
-    renderer._draw = jest.fn();
+  test('setOptimisticStone stores the stone and draws it immediately', () => {
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 3, y: 4, color: 'BLACK' });
+    expect(r.optimisticStone).toEqual({ x: 3, y: 4, color: 'BLACK' });
+    const g = optimistic(r);
+    expect(g).not.toBeNull();
+    expect(g.getAttribute('data-x')).toBe('3');
+    expect(g.getAttribute('data-y')).toBe('4');
+  });
 
-    renderer.setOptimisticStone(null);
-
-    expect(renderer.optimisticStone).toBeNull();
-    expect(renderer._draw).toHaveBeenCalledTimes(1);
+  test('setOptimisticStone(null) clears it (the rollback path)', () => {
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 3, y: 4, color: 'BLACK' });
+    r.setOptimisticStone(null);
+    expect(r.optimisticStone).toBeNull();
+    expect(optimistic(r)).toBeNull();
   });
 
   test('markOptimisticWarning flips warning without moving the stone', () => {
-    const renderer = makeRenderer(BoardRenderer);
-    renderer.optimisticStone = { x: 2, y: 5, color: 'BLACK' };
-    renderer._draw = jest.fn();
-
-    renderer.markOptimisticWarning();
-
-    expect(renderer.optimisticStone).toEqual({ x: 2, y: 5, color: 'BLACK', warning: true });
-    expect(renderer._draw).toHaveBeenCalledTimes(1);
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 3, y: 4, color: 'WHITE' });
+    r.markOptimisticWarning();
+    expect(r.optimisticStone).toEqual({ x: 3, y: 4, color: 'WHITE', warning: true });
+    expect(optimistic(r).getAttribute('data-x')).toBe('3');
   });
 
   test('markOptimisticWarning is a no-op if the stone was already cleared', () => {
-    // Real race: the ack timer and an incoming game:moved run independently,
-    // so game:moved can clear the overlay a moment before the timeout fires.
-    const renderer = makeRenderer(BoardRenderer);
-    renderer.optimisticStone = null;
-    renderer._draw = jest.fn();
+    const r = makeRenderer();
+    r.markOptimisticWarning();
+    expect(r.optimisticStone).toBeNull();
+    expect(optimistic(r)).toBeNull();
+  });
 
-    renderer.markOptimisticWarning();
+  test('survives a setState() that does not mention it (e.g. a resize redraw)', () => {
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 1, y: 1, color: 'BLACK' });
+    r.setState({ isMyTurn: false });
+    expect(optimistic(r)).not.toBeNull();
+  });
 
-    expect(renderer.optimisticStone).toBeNull();
-    expect(renderer._draw).not.toHaveBeenCalled();
+  test('is never written into the confirmed board', () => {
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 2, y: 2, color: 'BLACK' });
+    expect(r.board[2][2]).toBe(0);
   });
 });
 
-describe('BoardRenderer#_drawOptimisticStone — visual dispatch', () => {
-  let BoardRenderer;
-  beforeEach(() => { BoardRenderer = loadBoardRenderer(); });
+describe('optimistic stone looks like a confirmed piece (#155)', () => {
+  // Draw the same move confirmed on a second board and compare the piece markup.
+  function confirmedMarkup(theme, value) {
+    const r = makeRenderer();
+    window.BoardPrefs.set({ theme });
+    const b = empty(); b[4][3] = value;
+    r.setState({ board: b });
+    // The piece is the only shape drawn after the coordinate texts for this cell.
+    return r.svg.innerHTML;
+  }
 
-  test('paper mode + BLACK draws the black piece, not white or the stone-mode piece', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    renderer.ctx = makeFakeCtx();
-    renderer._drawBlackPiece = jest.fn();
-    renderer._drawWhitePiece = jest.fn();
-    renderer._drawStonePiece = jest.fn();
-
-    renderer._drawOptimisticStone(3, 4, 'BLACK', false);
-
-    expect(renderer._drawBlackPiece).toHaveBeenCalledWith(3, 4);
-    expect(renderer._drawWhitePiece).not.toHaveBeenCalled();
-    expect(renderer._drawStonePiece).not.toHaveBeenCalled();
+  test.each([
+    ['paper', 'BLACK', 1],
+    ['paper', 'WHITE', 2],
+    ['stone', 'BLACK', 1],
+    ['stone', 'WHITE', 2],
+  ])('%s + %s: same shapes as the confirmed piece, no extra ring', (theme, color, value) => {
+    const confirmed = confirmedMarkup(theme, value);
+    const r = makeRenderer();
+    window.BoardPrefs.set({ theme });
+    r.setOptimisticStone({ x: 3, y: 4, color });
+    const inner = optimistic(r).innerHTML;
+    expect(inner.length).toBeGreaterThan(0);
+    expect(confirmed).toContain(inner); // identical markup exists in the confirmed render
+    expect(optimistic(r).querySelector('.gboard__warning')).toBeNull();
+    expect(optimistic(r).getAttribute('opacity')).toBeNull(); // full opacity
   });
 
-  test('paper mode + WHITE draws the white piece', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    renderer.ctx = makeFakeCtx();
-    renderer._drawBlackPiece = jest.fn();
-    renderer._drawWhitePiece = jest.fn();
-    renderer._drawStonePiece = jest.fn();
-
-    renderer._drawOptimisticStone(3, 4, 'WHITE', false);
-
-    expect(renderer._drawWhitePiece).toHaveBeenCalledWith(3, 4);
-    expect(renderer._drawBlackPiece).not.toHaveBeenCalled();
+  test('warning=true adds one thin solid ring (retry cue), not a dashed one', () => {
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 3, y: 4, color: 'BLACK', warning: true });
+    const ring = optimistic(r).querySelector('.gboard__warning');
+    expect(ring).not.toBeNull();
+    expect(ring.getAttribute('stroke-dasharray')).toBeNull();
   });
 
-  test('stone display mode dispatches through the shared _drawStonePiece instead', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'stone' });
-    renderer.ctx = makeFakeCtx();
-    renderer._drawBlackPiece = jest.fn();
-    renderer._drawWhitePiece = jest.fn();
-    renderer._drawStonePiece = jest.fn();
-
-    renderer._drawOptimisticStone(2, 2, 'BLACK', false);
-
-    expect(renderer._drawStonePiece).toHaveBeenCalledWith(2, 2, 'BLACK');
-    expect(renderer._drawBlackPiece).not.toHaveBeenCalled();
-  });
-
-  test('draws at full opacity — indistinguishable from a confirmed stone (TODO.md #155)', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    const ctx = makeFakeCtx();
-    renderer.ctx = ctx;
-    let alphaDuringPieceDraw = null;
-    renderer._drawBlackPiece = jest.fn(() => { alphaDuringPieceDraw = ctx.globalAlpha; });
-
-    renderer._drawOptimisticStone(1, 1, 'BLACK', false);
-
-    // _drawOptimisticStone no longer touches globalAlpha at all — the piece
-    // draw sees the same default(1) a confirmed stone would.
-    expect(alphaDuringPieceDraw).toBe(1);
-  });
-
-  test('the normal (non-warning) case draws no ring at all — nothing to tell it apart from a real stone', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    const ctx = makeFakeCtx();
-    renderer.ctx = ctx;
-    renderer._drawBlackPiece = jest.fn();
-
-    renderer._drawOptimisticStone(1, 1, 'BLACK', false);
-
-    expect(ctx.setLineDash).not.toHaveBeenCalled();
-    expect(ctx.arc).not.toHaveBeenCalled();
-    expect(ctx.stroke).not.toHaveBeenCalled();
-  });
-
-  test('warning=true draws a thin SOLID ring (retry cue), not the old dashed one', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    const ctx = makeFakeCtx();
-    renderer.ctx = ctx;
-    renderer._drawBlackPiece = jest.fn();
-
-    renderer._drawOptimisticStone(1, 1, 'BLACK', true);
-
-    expect(ctx.setLineDash).not.toHaveBeenCalled(); // solid, not dashed
-    expect(ctx.arc).toHaveBeenCalled();
-    expect(ctx.stroke).toHaveBeenCalled();
-    expect(ctx.lineWidth).toBeLessThanOrEqual(1.5); // deliberately faint
-    expect(ctx.strokeStyle).toContain('196, 130, 40'); // the amber warning color
-  });
-});
-
-describe('BoardRenderer#_draw — optimistic stone wiring', () => {
-  let BoardRenderer;
-  beforeEach(() => { BoardRenderer = loadBoardRenderer(); });
-
-  test('a set optimisticStone is drawn during a full _draw() pass', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    renderer.ctx = makeFakeCtx();
-    renderer.optimisticStone = { x: 5, y: 6, color: 'WHITE' };
-    renderer._drawOptimisticStone = jest.fn();
-
-    renderer._draw();
-
-    expect(renderer._drawOptimisticStone).toHaveBeenCalledWith(5, 6, 'WHITE', false);
-  });
-
-  test('warning flag is forwarded as the fourth argument', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    renderer.ctx = makeFakeCtx();
-    renderer.optimisticStone = { x: 5, y: 6, color: 'WHITE', warning: true };
-    renderer._drawOptimisticStone = jest.fn();
-
-    renderer._draw();
-
-    expect(renderer._drawOptimisticStone).toHaveBeenCalledWith(5, 6, 'WHITE', true);
-  });
-
-  test('no optimisticStone means no call at all — a confirmed board must never gain a phantom ring', () => {
-    const renderer = makeRenderer(BoardRenderer, { displayMode: 'paper' });
-    renderer.ctx = makeFakeCtx();
-    renderer.optimisticStone = null;
-    renderer._drawOptimisticStone = jest.fn();
-
-    renderer._draw();
-
-    expect(renderer._drawOptimisticStone).not.toHaveBeenCalled();
+  test('the look follows BoardPrefs live (boardprefschange)', () => {
+    const r = makeRenderer();
+    r.setOptimisticStone({ x: 3, y: 4, color: 'BLACK' });
+    expect(optimistic(r).innerHTML).toContain('<path');      // paper X
+    window.BoardPrefs.set({ theme: 'stone' });
+    expect(optimistic(r).innerHTML).toContain('<circle');    // stone
+    expect(optimistic(r).innerHTML).not.toContain('<path');
   });
 });

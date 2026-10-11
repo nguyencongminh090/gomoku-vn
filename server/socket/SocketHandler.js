@@ -22,6 +22,12 @@ const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
 const database           = require('../db/database');
+
+// Room payloads carry each member's avatar URL (null for guests / no avatar) — same shape as profile.js.
+roomManager.avatarLookup = (userId) => {
+  const u = database.getUserById(userId);
+  return u && u.avatar_v ? `/api/profile/avatar/${u.id}.webp?v=${u.avatar_v}` : null;
+};
 const {
   timerMap,
   sessions,

@@ -85,14 +85,18 @@
   // had no way to change it. Reads/writes the same 'play3cr_board_display'
   // key room-ui.js already uses, so this is one more writer of an existing
   // setting, not a second parallel one. ──
+  // Since #216 the look lives in window.BoardPrefs (board.js); the legacy key is
+  // kept in sync by it, so this still works on pages without board.js.
   function getDisplayMode() {
+    if (global.BoardPrefs) return global.BoardPrefs.get().theme;
     const v = localStorage.getItem('play3cr_board_display');
     return v === 'stone' ? 'stone' : 'paper';
   }
 
   function setDisplayMode(mode) {
     const value = mode === 'stone' ? 'stone' : 'paper';
-    try { localStorage.setItem('play3cr_board_display', value); } catch (e) { /* private mode */ }
+    if (global.BoardPrefs) global.BoardPrefs.set({ theme: value });
+    else try { localStorage.setItem('play3cr_board_display', value); } catch (e) { /* private mode */ }
     // Live-sync an already-open room/tournament-match board, same pattern as
     // 'clickmodechange' above.
     global.dispatchEvent(new CustomEvent('displaymodechange', { detail: { mode: value } }));
@@ -362,7 +366,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }
