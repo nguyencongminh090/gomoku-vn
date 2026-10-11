@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=290'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=294'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -241,9 +241,9 @@
       n.append(icon(iconName), el('span', label));
       return n;
     };
-    // Remember where the user was so Settings can offer a way back (a room in particular).
-    const settingsHref = () => (location.pathname === '/settings.html' ? '/settings.html'
-      : '/settings.html?return=' + encodeURIComponent(location.pathname + location.search));
+    // Opened from a room → Settings shows a floating "back to room" button; elsewhere it adds nothing.
+    const settingsHref = () => (/^\/room(\.html)?$/.test(location.pathname)
+      ? '/settings.html?return=' + encodeURIComponent(location.pathname + location.search) : '/settings.html');
     const profile = member ? item('a', 'ph-regular-user-circle', t('shell.menu_profile'), '#') : null;
     const admin = member ? item('a', 'ph-regular-shield-check', t('shell.menu_admin'), '/admin') : null;
     if (admin) { admin.hidden = true; admin.classList.add('pnav__item--staff'); }

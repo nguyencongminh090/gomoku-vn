@@ -184,6 +184,15 @@ a.prow:hover { background: var(--c-hover); }
 .pset__avatar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 16px 0; border-bottom: 1px solid var(--c-border-light); }
 .pset__avatar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .pset__avatar .pnote { flex-basis: 100%; margin: 0; }
+/* Floating "back to room" (only when Settings was opened from a room): above the sticky save bar, clear of the mobile tab bar. */
+.pl .pset__back { position: fixed; z-index: 30; right: 20px; bottom: 88px; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: color-mix(in srgb, var(--c-surface-2) 86%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); color: var(--c-brand); border: 1px solid var(--c-border); box-shadow: 0 6px 18px -6px rgba(0,0,0,.28); text-decoration: none; touch-action: none; user-select: none; cursor: grab; animation: pset-back-in .28s ease-out both; transition: transform .18s ease, box-shadow .18s ease, left .26s cubic-bezier(.2,.8,.2,1), top .26s cubic-bezier(.2,.8,.2,1); }
+.pl .pset__back .icon { width: 22px; height: 22px; }
+.pl .pset__back:hover { transform: scale(1.06); box-shadow: 0 8px 22px -6px rgba(0,0,0,.34); }
+.pl .pset__back:active { transform: scale(.96); }
+.pl .pset__back.is-dragging { cursor: grabbing; transition: none; transform: scale(1.08); box-shadow: 0 12px 28px -8px rgba(0,0,0,.4); }
+.pl .pset__back:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 3px; }
+@keyframes pset-back-in { from { opacity: 0; transform: scale(.7); } to { opacity: 1; transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .pl .pset__back { animation: none; transition: none; } }
 .pset__save { position: sticky; bottom: 0; padding: 14px 0 0; background: var(--c-surface); border-top: 1px solid var(--c-border-light); }
 .pset .pcheck { gap: var(--space-2); padding: 6px 0; }   /* icon · label · switch (markup order) */
 .pset .pcheck > span { flex: 1; }
@@ -219,6 +228,7 @@ a.prow:hover { background: var(--c-hover); }
   .psrow .pseg, .psrow .pswitch, .psrow .pbtn { margin-left: 34px; }
   .psrow .pswitch { margin-left: auto; }
   .pset__save { bottom: calc(var(--ptabbar-h) + env(safe-area-inset-bottom)); }
+  .pl .pset__back { right: 16px; bottom: calc(var(--ptabbar-h) + env(safe-area-inset-bottom) + 84px); }
 }
 
 /* ── Avatar editor modal (B211 follow-up): drag/zoom a photo under a circular mask ── */

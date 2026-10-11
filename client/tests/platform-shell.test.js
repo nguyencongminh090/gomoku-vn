@@ -94,7 +94,14 @@ describe('platform shell', () => {
     expect(document.querySelector('.pnav__login')).toBeNull();
     expect(document.querySelector('.pbell')).toBeNull();
     expect(global.fetch).not.toHaveBeenCalled();
-    expect(menuItems()).toEqual([['/settings.html?return=%2F', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
+    expect(menuItems()).toEqual([['/settings.html', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
+  });
+
+  it('Settings menu link carries ?return= only when opened from a room', () => {
+    window.history.replaceState(null, '', '/room.html?id=abc');
+    boot({ userId: 'g', isGuest: true, displayName: 'Guest' });
+    expect(menuItems()[0][0]).toBe('/settings.html?return=' + encodeURIComponent('/room.html?id=abc'));
+    window.history.replaceState(null, '', '/');
   });
 
   it('member → chip menu: profile link set once /me answers; display name as text', async () => {
@@ -103,7 +110,7 @@ describe('platform shell', () => {
     const me = document.querySelector('.pnav__me');
     expect(me.textContent).toContain('<i>Zed</i>');
     expect(me.querySelector('i')).toBeNull();
-    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html?return=%2F']);
+    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html']);
   });
 
   it('chip shows the member avatar once /me returns one; initials otherwise (and until then)', async () => {
