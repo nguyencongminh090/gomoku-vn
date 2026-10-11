@@ -80,4 +80,3 @@ in the detail file / fix-log).
 - **#222.** Friend challenge: pick friend → full-rules modal → series → Swap Elo stake `[Model: Opus 5]` — [detail](docs/todo/B222-friend-challenge-full.md)
 - **#224.** Dashboard: admin news (DB + admin edit) + top-3 forum, About, Learn/Puzzle card `[Model: Opus 5]` — [detail](docs/todo/B224-home-news-about-learn.md)
 - **#228.** Lobby/tournament lists freeze after socket reconnect (re-subscribe on connect) `[Model: Sonnet 5]` — [detail](docs/todo/B228-resubscribe-after-reconnect.md)
-- **#230.** `lobby:online_users`: snapshot once, then joined/left deltas `[Model: Opus 5]` — [detail](docs/todo/B230-online-users-delta.md)

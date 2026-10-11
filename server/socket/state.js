@@ -238,7 +238,70 @@ function broadcastLobbyUpdate(io) {
 }
 
 /**
- * Broadcast the current online-users list to the lobby (debounced).
+ * Per-io record of what lobby clients were last told about online users:
+ * userId → serialized entry. Same technique as `_lobbySnapshots` (#230).
+ */
+const _onlineSnapshots = new WeakMap();
+
+/**
+ * Per-io userIds handed out in a `sendOnlineSnapshot()` since the last flush.
+ * A user who joins and leaves inside one debounce window is never in the
+ * baseline, but a socket that subscribed in between holds them — so they are
+ * removal candidates too (the #187 trap, for the online list).
+ */
+const _onlineSnapshotSeen = new WeakMap();
+
+/**
+ * Compare the live online list against what lobby clients were last sent.
+ * @returns {{ joined: object[], left: string[] }}
+ */
+function _diffOnlineUsers(io) {
+  const previous = _onlineSnapshots.get(io) || new Map();
+  const next = new Map();
+  const joined = [];
+
+  for (const entry of getOnlineUsersList()) {
+    const serialized = JSON.stringify(entry);
+    next.set(entry.userId, serialized);
+    if (previous.get(entry.userId) !== serialized) joined.push(entry);
+  }
+
+  const candidates = new Set(previous.keys());
+  for (const userId of _onlineSnapshotSeen.get(io) || []) candidates.add(userId);
+  const left = [];
+  for (const userId of candidates) {
+    if (!next.has(userId)) left.push(userId);
+  }
+
+  _onlineSnapshots.set(io, next);
+  _onlineSnapshotSeen.delete(io);
+  return { joined, left };
+}
+
+/**
+ * Send the full online list to one socket (on `lobby:subscribe`), and seed the
+ * delta baseline. Every later `lobby:online_patch` is a delta against it.
+ */
+function sendOnlineSnapshot(io, socket) {
+  const users = getOnlineUsersList();
+  socket.emit('lobby:online_users', users);
+  if (!_onlineSnapshots.has(io)) {
+    const baseline = new Map();
+    for (const entry of users) baseline.set(entry.userId, JSON.stringify(entry));
+    _onlineSnapshots.set(io, baseline);
+  }
+  if (!_onlineSnapshotSeen.has(io)) _onlineSnapshotSeen.set(io, new Set());
+  const seen = _onlineSnapshotSeen.get(io);
+  for (const entry of users) seen.add(entry.userId);
+}
+
+/**
+ * Broadcast what changed in the online list to the lobby (debounced).
+ *
+ * Sends `lobby:online_patch` — `{ joined, left }` — instead of the whole list
+ * (#230: the full list per flush was O(n²) bytes). `joined` also carries
+ * entries whose fields changed. Both are idempotent on the client, and nothing
+ * is emitted when nothing changed.
  *
  * See ONLINE_USERS_DEBOUNCE_MS above for why this can't just emit
  * immediately on every call the way it used to.
@@ -251,7 +314,9 @@ function broadcastOnlineUsers(io) {
   if (_onlineUsersTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _onlineUsersTimers.delete(io);
-    io.to('lobby').emit('lobby:online_users', getOnlineUsersList());
+    const { joined, left } = _diffOnlineUsers(io);
+    if (joined.length === 0 && left.length === 0) return;
+    io.to('lobby').emit('lobby:online_patch', { joined, left });
   }, ONLINE_USERS_DEBOUNCE_MS);
   _onlineUsersTimers.set(io, timeout);
 }
@@ -611,6 +676,7 @@ module.exports = {
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   sendLobbySnapshot,
+  sendOnlineSnapshot,
   findSocketsByUserId,
   cleanupRoomTimer,
   cleanupReadyTimer,
