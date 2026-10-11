@@ -55,6 +55,9 @@ const navOn = () => [...document.querySelectorAll('#pl-shell .is-active')].map((
 
 afterEach(() => { window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling
 
+/** Ticket meta segments (separate spans — no "·"-joined strings in the DOM). */
+const segs = (row) => [...row.querySelectorAll('.hrow__meta > span')].map((x) => x.textContent);
+
 describe('screens ↔ hash ↔ shell nav', () => {
   it.each([
     ['/index.html', 'screen-home', [], ['lobby', 'lobby'], 'home'],
@@ -127,8 +130,8 @@ describe('dashboard rendering', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector('img')).toBeNull();
     expect(rows[0].querySelector('.prow__t').textContent)
-      .toBe('home.vs{"name":"<img src=x onerror=alert(1)>"} · rankings.cat_caro · 5+3');
-    expect(rows[0].querySelector('.prow__m').textContent).toBe('home.your_turn');
+      .toBe('home.vs{"name":"<img src=x onerror=alert(1)>"}');
+    expect(segs(rows[0])).toEqual(['rankings.cat_caro', '5+3', 'home.your_turn']);
     rows[0].click();
     expect(window.joinRoom).toHaveBeenCalledWith('R1');
   });
@@ -136,8 +139,8 @@ describe('dashboard rendering', () => {
   it('tournament match row: round is 1-based, state label, links to the tournament', async () => {
     await boot('/index.html', DATA);
     const row = document.querySelectorAll('#home-mine .prow')[1];
-    expect(row.querySelector('.prow__t').textContent).toBe('Sat · home.round{"n":3}');
-    expect(row.querySelector('.prow__m').textContent).toBe('home.vs{"name":"Bob"} · home.match_Ready');
+    expect(row.querySelector('.prow__t').textContent).toBe('Sat');
+    expect(segs(row)).toEqual(['home.round{"n":3}', 'home.vs{"name":"Bob"}', 'home.match_Ready']);
     expect(row.querySelector('.hbullet.on')).not.toBeNull();
   });
 
@@ -231,7 +234,7 @@ describe('news, forum, learn, about (#224)', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector('.prow__t').textContent).toBe(XSS);
     expect(document.querySelector('#home-forum img')).toBeNull();
-    expect(rows[0].querySelector('.prow__m').textContent).toBe('forum.cat_tactics · forum.replies{"n":3} · Kim');
+    expect(segs(rows[0])).toEqual(['forum.cat_tactics', 'forum.replies{"n":3}', 'Kim']);
     expect(document.querySelector('#home-forum a.hmore').getAttribute('href')).toBe('/forum');
     await boot('/index.html', EMPTY);
     expect(document.querySelector('#home-forum .hempty').textContent).toBe('home.no_forum');
@@ -247,7 +250,7 @@ describe('news, forum, learn, about (#224)', () => {
     await boot('/index.html', { ...EMPTY, learn });
     const row = document.querySelector('#home-learn .prow');
     expect(row.querySelector('.prow__t').textContent).toBe('home.learn_title');
-    expect(row.querySelector('.prow__m').textContent).toBe(meta);
+    expect(segs(row).join(' · ')).toBe(meta);
   });
 
   it('learn card absent without data (DB down / old payload)', async () => {
