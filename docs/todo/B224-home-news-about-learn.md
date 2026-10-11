@@ -13,7 +13,7 @@ Dashboard has no news, intro, or pointer to Puzzle/Learn; puzzle is desktop-only
 ## Done when
 - Backend tests (admin-only auth, 403 for non-admin), jsdom, real-browser pass desktop + phone; `?v=` bumped.
 
-**Status:** ⏳ built 2026-10-12 on `feature/224-home-news` (uncommitted, awaiting review); `?v=315`.
+**Status:** ✅ DONE 2026-10-12 — merged to dev in 22dc43d; `?v=315`.
 ## Result
 - DB `news` (schema.sql, CREATE IF NOT EXISTS) + `NewsService` (perm `news.manage` = admin only; one-line plain text ≤200; optional same-site `link`, `//`/`/\`/schemes rejected). `/api/admin/news` GET/POST/PUT/DELETE; admin tab "Tin tức" (`admin-news.js`).
 - `/api/home` + `news` (newest), `forum` (3 most recently active, titles only), `learn {total, solved}`, `newcomer` (guest or < 5 games). DB blocks are fail-soft: an error drops them, rest of the dashboard still served.

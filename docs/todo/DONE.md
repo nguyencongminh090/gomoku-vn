@@ -229,3 +229,4 @@ Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`
 - ✅ **#168.** Trạng thái: ĐÃ XONG (2026-08-28) — 8 bước trên `feature/diag-latency-page` off — [B168](docs/todo/B168-trang-chan-doan-do-tre-nguoi-choi-tu-kiem-tra.md)
 - ✅ **#169.** (Đã sửa 2026-08-28 — `fix/timer-clock-display-jitter` off `dev`.) Đồng hồ giật/nhảy — [B169](docs/todo/B169-dong-ho-giat-nhay-tren-ket-noi-jitter-cao.md)
 - ✅ **#170.** `client/js/room-ui.js` đếm ngược `readyDeadline` bằng — [B170](docs/todo/B170-ready-deadline-countdown-dung-date-now-tho.md)
+- ✅ **#224.** Dashboard: admin news (DB + admin edit) + top-3 forum, About, Learn/Puzzle card `[Model: Opus 5]` — [detail](docs/todo/B224-home-news-about-learn.md)
