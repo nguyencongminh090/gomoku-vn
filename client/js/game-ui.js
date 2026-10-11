@@ -487,7 +487,7 @@
   function tile(action, icon, labelKey, attrs = '') {
     const isArmed = armed && armed.action === action;
     return `<button class="act${isArmed ? ' act--confirm' : ''}" type="button" data-action="${action}" ${attrs}>
-      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-${icon}"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=296#ph-regular-${icon}"></use></svg>
       <span>${isArmed ? t('room.btn_confirm') : t(labelKey)}</span>
     </button>`;
   }
@@ -567,7 +567,7 @@
   // One toast row: icon, one line of text, optional countdown, optional buttons.
   function gtoast(icon, text, { danger = false, count = '', pct = null, actions = '' } = {}) {
     return `<div class="gtoast${danger ? ' gtoast--danger' : ''}" role="alert">
-      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-${icon}"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=296#ph-regular-${icon}"></use></svg>
       <span class="gtoast__t">${text}</span>
       ${count ? `<b class="gtoast__n">${count}</b>` : ''}
       ${actions}
@@ -576,8 +576,8 @@
   }
 
   function answerButtons(acceptAction, declineAction) {
-    return `<button class="gtoast__btn gtoast__btn--ok" type="button" data-action="${acceptAction}" title="${escAttr(t('game.btn_accept'))}" aria-label="${escAttr(t('game.btn_accept'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-check"></use></svg></button>
-      <button class="gtoast__btn" type="button" data-action="${declineAction}" title="${escAttr(t('game.btn_decline'))}" aria-label="${escAttr(t('game.btn_decline'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-x"></use></svg></button>`;
+    return `<button class="gtoast__btn gtoast__btn--ok" type="button" data-action="${acceptAction}" title="${escAttr(t('game.btn_accept'))}" aria-label="${escAttr(t('game.btn_accept'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=296#ph-regular-check"></use></svg></button>
+      <button class="gtoast__btn" type="button" data-action="${declineAction}" title="${escAttr(t('game.btn_decline'))}" aria-label="${escAttr(t('game.btn_decline'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=296#ph-regular-x"></use></svg></button>`;
   }
 
   // ── Swap2 opening UI ──────────────────────────────────────────────────────

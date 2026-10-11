@@ -322,6 +322,12 @@ const TRANSLATIONS = {
 
     // ── Create room modal ─────────────────────────────────────
     'modal.title': 'Tạo phòng mới',
+    'modal.mode': 'Chế độ',
+    'modal.mode_rated_desc': 'Tính điểm Elo, không đi lại',
+    'modal.mode_friendly_desc': 'Không tính điểm, được đi lại',
+    'modal.mode_guest_note': 'Có khách ngồi chơi thì ván tự thành giao hữu.',
+    'modal.win_rule': 'Luật thắng',
+    'modal.opening': 'Luật mở đầu',
     'modal.close': 'Đóng',
     'modal.room_name': 'Tên phòng',
     'modal.ph_room_name': 'Tùy chọn',
@@ -1653,6 +1659,12 @@ const TRANSLATIONS = {
     'settings.timer_blitz_low': '{n}s +{inc}s per move',
 
     'modal.title': 'Create new room',
+    'modal.mode': 'Mode',
+    'modal.mode_rated_desc': 'Counts toward rating, no undo',
+    'modal.mode_friendly_desc': 'No rating change, undo allowed',
+    'modal.mode_guest_note': 'If a guest takes a seat, the game becomes friendly.',
+    'modal.win_rule': 'Winning rule',
+    'modal.opening': 'Opening rule',
     'modal.close': 'Close',
     'modal.room_name': 'Room name',
     'modal.ph_room_name': 'Optional (auto-generated if empty)',
