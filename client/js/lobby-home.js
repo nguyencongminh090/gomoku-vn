@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=310';
+import { client, setHeroTab } from './lobby.js?v=311';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -30,6 +30,7 @@ let pollTimer = null;
 let lastData = null;
 let lastJson = '';
 let subscribed = false; // in the server's `home` socket room
+let lobbySubscribed = false; // in the server's `lobby` socket room (rooms screen only, B229)
 
 /** Leading sprite icon (B212, #214); a no-op before platform-shell.js has loaded. */
 function withIcon(node, name) { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; }
@@ -73,6 +74,7 @@ export function showScreen(name) {
   if (location.search || location.hash !== HASH[name]) history.replaceState(null, '', want);
   if (name === 'home') startPolling(); else stopPolling();
   setSubscribed(name === 'home' && !document.hidden);
+  setLobbySubscribed(name === 'rooms' && !document.hidden);
 }
 
 // ── Vào bằng mã (Phòng screen): type the 3-char room code, go straight to the room ──
@@ -253,6 +255,12 @@ function setSubscribed(on) {
   client.emit(on ? 'home:subscribe' : 'home:unsubscribe');
 }
 
+function setLobbySubscribed(on) {
+  if (on === lobbySubscribed) return;
+  lobbySubscribed = on;
+  client.emit(on ? 'lobby:subscribe' : 'lobby:unsubscribe'); // subscribe answers with a full snapshot
+}
+
 /** Merge one pushed field into the last /api/home payload and redraw only its section. */
 function applyPush(key, value, render) {
   if (current !== 'home') return;
@@ -264,8 +272,9 @@ function applyPush(key, value, render) {
 client.on('home:stats', (st) => applyPush('stats', st, renderStats));
 client.on('home:live', (live) => applyPush('live', Array.isArray(live) ? live : [], renderLive));
 // A reconnect is a fresh server socket outside every room: subscribe again and resync the rest.
-client.on('disconnect', () => { subscribed = false; });
+client.on('disconnect', () => { subscribed = false; lobbySubscribed = false; });
 client.on('connect', () => {
+  if (current === 'rooms' && !document.hidden) setLobbySubscribed(true);
   if (current !== 'home' || document.hidden || subscribed) return;
   setSubscribed(true);
   loadHome();
@@ -394,6 +403,7 @@ client.on('match:found', () => {
 window.addEventListener('hashchange', () => showScreen(screenFromLocation()));
 // Hidden tab: no pushes (the poll already skips); back to visible → resubscribe + catch up.
 document.addEventListener('visibilitychange', () => {
+  if (current === 'rooms') setLobbySubscribed(!document.hidden);
   if (current !== 'home') return;
   setSubscribed(!document.hidden);
   if (!document.hidden) loadHome();

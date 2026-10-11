@@ -1,5 +1,5 @@
 # B229 — index.html: subscribe to `lobby` only while the rooms screen is open
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-12 (uncommitted) — fix-log 2026-10-12-b229; transfer script not re-run
 **Area:** client/js/lobby.js (`client.emit('lobby:subscribe')` at load), client/js/lobby-home.js (`showScreen`, `setSubscribed`)
 **From:** audit #226 finding F2, 2026-10-12   **Depends:** — (coordinate with #228)
 

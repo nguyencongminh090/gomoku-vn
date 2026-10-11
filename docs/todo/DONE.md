@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#229.** index.html: subscribe to `lobby` only while the rooms screen is open `[Model: Sonnet 5]` — [detail](docs/todo/B229-lobby-subscribe-rooms-screen-only.md)
 - ✅ **#226.** Audit all server↔client transfer/broadcast (moves, lobby users, tickets…): inventory, measure, rank `[Model: Opus 5]` — [detail](docs/todo/B226-socket-transfer-audit.md)
 - ✅ **#212.** Icon + label review: icons match meaning, shorter labels, named icon-only controls `[Model: Sonnet 5]` — [detail](docs/todo/B212-icon-label-review.md)
 - ✅ **#213.** Profile: one icon system + layout/spacing/size pass `[Model: Sonnet 5]` — [detail](docs/todo/B213-profile-icons-layout.md)
