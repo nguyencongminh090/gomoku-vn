@@ -7,13 +7,15 @@
  *   '#tournaments'→ tournaments (#panel-tournaments: tournaments.js)
  * Legacy `?tab=tournaments` (tournament.html's back link) still lands on tournaments.
  *
- * Dashboard data: GET /api/home (server/routes/home.js), polled while the
- * home screen is visible. Quick match (B197): match:* socket events
+ * Dashboard data: GET /api/home (server/routes/home.js) on entering the home
+ * screen, then a 60 s fallback poll. Between polls the server pushes the stats
+ * strip and the live list (B225: home:subscribe → home:stats / home:live,
+ * server/socket/home-feed.js) — only while the home screen is shown and the tab visible. Quick match (B197): match:* socket events
  * (server/socket/handlers/MatchHandler.js); a pair arrives as room:joined,
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=306';
+import { client, setHeroTab } from './lobby.js?v=310';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -21,12 +23,13 @@ const HASH = { home: '', rooms: '#rooms', tournaments: '#tournaments' };
 const NAV = { home: 'lobby', rooms: 'rooms', tournaments: 'tournaments' };
 const ACTION = { rooms: ['btn-create', 'btn-join-code'], tournaments: ['btn-create-tournament'] };
 const ROOM_CODE = /^[A-HJ-NP-Z2-9]{3}$/; // RoomManager._generateRoomId: '#' + 3 chars, no I O 0 1
-const POLL_MS = 20000;
+const POLL_MS = 60000; // fallback only — stats + live list arrive by push (B225)
 
 let current = null;
 let pollTimer = null;
 let lastData = null;
 let lastJson = '';
+let subscribed = false; // in the server's `home` socket room
 
 /** Leading sprite icon (B212, #214); a no-op before platform-shell.js has loaded. */
 function withIcon(node, name) { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; }
@@ -69,6 +72,7 @@ export function showScreen(name) {
   const want = location.pathname + HASH[name];
   if (location.search || location.hash !== HASH[name]) history.replaceState(null, '', want);
   if (name === 'home') startPolling(); else stopPolling();
+  setSubscribed(name === 'home' && !document.hidden);
 }
 
 // ── Vào bằng mã (Phòng screen): type the 3-char room code, go straight to the room ──
@@ -241,6 +245,32 @@ function stopPolling() {
   pollTimer = null;
 }
 
+// ── Live push (B225) ────────────────────────────────────────────────────────
+
+function setSubscribed(on) {
+  if (on === subscribed) return;
+  subscribed = on;
+  client.emit(on ? 'home:subscribe' : 'home:unsubscribe');
+}
+
+/** Merge one pushed field into the last /api/home payload and redraw only its section. */
+function applyPush(key, value, render) {
+  if (current !== 'home') return;
+  lastData = { ...(lastData || { myGame: null, myMatches: [], tournaments: [], live: [] }), [key]: value };
+  lastJson = JSON.stringify(lastData);
+  render(lastData);
+}
+
+client.on('home:stats', (st) => applyPush('stats', st, renderStats));
+client.on('home:live', (live) => applyPush('live', Array.isArray(live) ? live : [], renderLive));
+// A reconnect is a fresh server socket outside every room: subscribe again and resync the rest.
+client.on('disconnect', () => { subscribed = false; });
+client.on('connect', () => {
+  if (current !== 'home' || document.hidden || subscribed) return;
+  setSubscribed(true);
+  loadHome();
+});
+
 // ── Quick match (B197) ──────────────────────────────────────────────────────
 
 const QM_RULES = ['freestyle', 'standard', 'caro'];
@@ -362,6 +392,12 @@ client.on('match:found', () => {
 // ── Wiring ──────────────────────────────────────────────────────────────────
 
 window.addEventListener('hashchange', () => showScreen(screenFromLocation()));
+// Hidden tab: no pushes (the poll already skips); back to visible → resubscribe + catch up.
+document.addEventListener('visibilitychange', () => {
+  if (current !== 'home') return;
+  setSubscribed(!document.hidden);
+  if (!document.hidden) loadHome();
+});
 // Shell "Chơi" link while already on the lobby: switch, don't reload.
 document.querySelectorAll('#pl-shell a[data-tab="lobby"]').forEach((a) => a.addEventListener('click', (e) => {
   if (location.pathname.endsWith('/index.html') || location.pathname === '/') { e.preventDefault(); showScreen('home'); }

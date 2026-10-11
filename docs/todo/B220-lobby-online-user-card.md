@@ -1,5 +1,5 @@
 # B220 — Lobby: click an online name → profile card (friend + private chat), DMs kept 3 days
-**Status:** BUILT 2026-10-12 on `feature/220-lobby-user-card` (uncommitted), awaiting review. Tests: user-card-dm-ttl (7) + user-card jsdom (10), npm test 2885 green; real-server pass (2 members: card → add friend → Nhắn tin → message arrives), ?v=304. Not checked: mobile 390px layout, light theme.
+**Status:** ✅ DONE 2026-10-12 — merged to `dev` (c700f39). Tests: user-card-dm-ttl (7) + user-card jsdom (10); real-server pass (card → add friend → message) incl. mobile 390 + light. Not checked: incoming-request state in a real browser.
 **Area:** server/routes/profile.js (card endpoint), server/managers/DmService.js (TTL), client/js/private-chat.js + user-card CSS, i18n vi/en
 **From:** user 2026-10-12   **Depends:** B198 (friends, DMs, windows)
 

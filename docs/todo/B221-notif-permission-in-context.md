@@ -1,5 +1,5 @@
 # B221 — Browser notification permission asked in context; Ctrl+K button removed
-**Status:** BUILT 2026-10-12 on `feature/220-lobby-user-card` (uncommitted, same branch as B220), awaiting review
+**Status:** ✅ DONE 2026-10-12 — merged to `dev` (c700f39). Tests: user-card-dm-ttl (7) + user-card jsdom; real-server pass incl. mobile 390 + light. Not verifiable headless: the real browser permission prompt.
 **Area:** client/js/private-chat.js, client/index.html, client/css/lobby-zen.css, client/js/i18n.js
 **From:** user 2026-10-12   **Depends:** B220
 

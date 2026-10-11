@@ -49,6 +49,7 @@ const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
 const MatchHandler           = require('./handlers/MatchHandler');
+const HomeFeed               = require('./home-feed');
 
 /**
  * Initialize the Socket.io event handler.
@@ -337,6 +338,7 @@ function init(io) {
     TournamentHandler.register(io, socket);
     TournamentMatchHandler.register(io, socket);
     MatchHandler.register(io, socket);
+    HomeFeed.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {

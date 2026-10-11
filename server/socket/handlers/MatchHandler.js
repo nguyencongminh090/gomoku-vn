@@ -25,6 +25,7 @@ const {
   broadcastRoomUpdate,
   getClientIp,
 } = require('../state');
+const { scheduleHomeUpdate } = require('../home-feed');
 
 const TICK_MS = 1000;
 const STATUS_EVERY_TICKS = 2;
@@ -140,6 +141,7 @@ function register(io, socket) {
       return;
     }
     socket.emit('match:status', status(result.entry));
+    scheduleHomeUpdate(io); // B225: searching count
     startTicker();
     tick(); // pair right away if someone is already waiting
   });
@@ -147,11 +149,12 @@ function register(io, socket) {
   socket.on('match:leave', () => {
     queue.leave(user.userId);
     socket.emit('match:status', { waiting: false });
+    scheduleHomeUpdate(io);
   });
 
   socket.on('disconnect', () => {
     const e = queue.get(user.userId);
-    if (e && e.socketId === socket.id) queue.leave(user.userId); // a newer tab's entry stays
+    if (e && e.socketId === socket.id) { queue.leave(user.userId); scheduleHomeUpdate(io); } // a newer tab's entry stays
   });
 }
 

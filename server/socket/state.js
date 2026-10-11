@@ -226,6 +226,7 @@ function sendLobbySnapshot(io, socket) {
  * full list every time regardless.
  */
 function broadcastLobbyUpdate(io) {
+  require('./home-feed').scheduleHomeUpdate(io); // B225: playing count + live list (lazy: home-feed requires this module)
   if (_lobbyUpdateTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _lobbyUpdateTimers.delete(io);
@@ -246,6 +247,7 @@ function broadcastLobbyUpdate(io) {
  */
 function broadcastOnlineUsers(io) {
   _lastIo = io;
+  require('./home-feed').scheduleHomeUpdate(io); // B225: online count
   if (_onlineUsersTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _onlineUsersTimers.delete(io);

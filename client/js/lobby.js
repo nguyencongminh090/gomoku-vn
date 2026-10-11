@@ -103,6 +103,15 @@ client.bindStatusBanner(statusBanner);
 // Subscribe to lobby updates
 // ---------------------------------------------------------------------------
 client.emit('lobby:subscribe');
+// B228: a reconnect is a new server socket in no rooms — subscribe again (snapshot comes back with it).
+// Gated on a prior disconnect so the first connect doesn't double the load-time emit.
+let lobbyDropped = false;
+client.on('disconnect', () => { lobbyDropped = true; });
+client.on('connect', () => {
+  if (!lobbyDropped) return;
+  lobbyDropped = false;
+  client.emit('lobby:subscribe');
+});
 
 // Local room map, keyed by roomId — the base that `lobby:patch` applies to.
 // A Map keeps insertion order and, importantly, keeps an updated entry in its
