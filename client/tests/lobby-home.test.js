@@ -429,7 +429,7 @@ describe('Vào bằng mã (Phòng screen, B210)', () => {
   it('home: "Thách đấu bạn bè" links to the social page for members, absent for guests', async () => {
     await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Z' });
     const link = [...$('qm-actions').querySelectorAll('a')].find((a) => a.textContent === 'qm.challenge_friend');
-    expect(link.getAttribute('href')).toBe('/social.html');
+    expect(link.getAttribute('href')).toBe('/social.html#challenge');
     await boot('/index.html', EMPTY, { userId: 'g', isGuest: true, displayName: 'G' });
     expect($('qm-actions').querySelector('a')).toBeNull();
   });

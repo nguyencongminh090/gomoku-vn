@@ -202,6 +202,101 @@ function rateGame(db, job) {
   return { gameId: job.gameId, category: job.category, players: out };
 }
 
+/** Winner of a series by games won: player id, or null on a tie / no games. */
+function seriesWinner(players, winners) {
+  const wins = players.map((p) => winners.filter((w) => w === p.id).length);
+  if (wins[0] === wins[1]) return null;
+  return wins[0] > wins[1] ? players[0].id : players[1].id;
+}
+
+/**
+ * Rate a friend-challenge series (#222) inside the caller's transaction: all of
+ * its games form ONE Glicko-2 rating period (Elo moves once, at series end), then
+ * the optional Swap Elo stake. The stake exchanges the two post-series ratings of
+ * this category only, and only when the series winner is the lower-rated one
+ * (a swap that lowers the winner is no stake). Tie → no swap. A pair swapped in
+ * the last SWAP_COOLDOWN_MS is re-checked here, so a race can't swap twice.
+ * @param {import('better-sqlite3').Database} db
+ * @param {{gameIds:string[], category, players:[{id},{id}], winners:string[], stake:'swap'|null, cooldownMs?:number}} job
+ *   winners[i] = player id | 'draw' for game i
+ * @returns {{gameId, category, players: Array, series: true, winnerId: string|null, swap: object|null}}
+ */
+function rateSeries(db, job) {
+  const now = new Date().toISOString();
+  const read = db.prepare('SELECT rating, rd, volatility, games FROM ratings WHERE user_id = ? AND category = ?');
+  const upsert = db.prepare(`
+    INSERT INTO ratings (user_id, category, rating, rd, volatility, games, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(user_id, category) DO UPDATE SET
+      rating = excluded.rating, rd = excluded.rd, volatility = excluded.volatility,
+      games = excluded.games, updated_at = excluded.updated_at
+  `);
+  const history = db.prepare(`
+    INSERT INTO rating_history
+      (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const [p1, p2] = job.players;
+  const lastGameId = job.gameIds[job.gameIds.length - 1];
+  const n = job.winners.length;
+  const scoreOf = (p, w) => (w === 'draw' ? 0.5 : w === p.id ? 1 : 0);
+  const total = (p) => job.winners.reduce((s, w) => s + scoreOf(p, w), 0);
+  const before = [p1, p2].map((p) => read.get(p.id, job.category)
+    || { rating: INITIAL_RATING, rd: INITIAL_RD, volatility: INITIAL_VOL, games: 0 });
+  const after = [
+    glicko2(before[0], job.winners.map((w) => ({ rating: before[1].rating, rd: before[1].rd, score: scoreOf(p1, w) }))),
+    glicko2(before[1], job.winners.map((w) => ({ rating: before[0].rating, rd: before[0].rd, score: scoreOf(p2, w) }))),
+  ];
+
+  const out = [];
+  [p1, p2].forEach((p, i) => {
+    const opp = i === 0 ? p2 : p1;
+    const b = before[i];
+    const a = after[i];
+    upsert.run(p.id, job.category, a.rating, a.rd, a.volatility, b.games + n, now);
+    // One history row per series; score = the series' average score.
+    history.run(p.id, job.category, lastGameId, opp.id, total(p) / n, b.rating, a.rating, b.rd, a.rd, now);
+    out.push({
+      userId: p.id,
+      before: Math.round(b.rating),
+      after: Math.round(a.rating),
+      delta: Math.round(a.rating) - Math.round(b.rating),
+      rd: Math.round(a.rd),
+      provisional: isProvisional(a.rd),
+    });
+  });
+
+  const winnerId = seriesWinner(job.players, job.winners);
+  let swap = null;
+  if (job.stake === 'swap' && winnerId) {
+    const wi = winnerId === p1.id ? 0 : 1;
+    const li = 1 - wi;
+    const w = after[wi];
+    const l = after[li];
+    const [lo, hi] = p1.id < p2.id ? [p1.id, p2.id] : [p2.id, p1.id];
+    const since = new Date(Date.now() - (job.cooldownMs || 0)).toISOString();
+    const recent = db.prepare('SELECT 1 FROM elo_swaps WHERE user_lo = ? AND user_hi = ? AND created_at > ? LIMIT 1').get(lo, hi, since);
+    if (!recent && w.rating < l.rating) {
+      const winner = job.players[wi];
+      const loser = job.players[li];
+      const setRating = db.prepare('UPDATE ratings SET rating = ?, updated_at = ? WHERE user_id = ? AND category = ?');
+      setRating.run(l.rating, now, winner.id, job.category);
+      setRating.run(w.rating, now, loser.id, job.category);
+      history.run(winner.id, job.category, lastGameId, loser.id, 1, w.rating, l.rating, w.rd, w.rd, now);
+      history.run(loser.id, job.category, lastGameId, winner.id, 0, l.rating, w.rating, l.rd, l.rd, now);
+      db.prepare(`
+        INSERT INTO elo_swaps (category, user_lo, user_hi, winner_id, loser_id, winner_before, winner_after, loser_before, loser_after, game_ids, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(job.category, lo, hi, winner.id, loser.id, w.rating, l.rating, l.rating, w.rating, JSON.stringify(job.gameIds), now);
+      swap = { winnerId: winner.id, loserId: loser.id, winnerAfter: Math.round(l.rating), loserAfter: Math.round(w.rating) };
+      for (const o of out) o.after = o.userId === winner.id ? swap.winnerAfter : swap.loserAfter;
+      for (const o of out) o.delta = o.after - o.before;
+    }
+  }
+  return { gameId: lastGameId, category: job.category, players: out, series: true, winnerId, swap };
+}
+
 // ---------------------------------------------------------------------------
 // Async queue
 // ---------------------------------------------------------------------------
@@ -218,7 +313,7 @@ function createRatingQueue(getDb, schedule = setImmediate) {
     const db = getDb();
     let results;
     try {
-      results = db.transaction(() => batch.map(({ job }) => rateGame(db, job)))();
+      results = db.transaction(() => batch.map(({ job }) => (job.series ? rateSeries(db, job) : rateGame(db, job))))();
     } catch (err) {
       logger.error(`[Rating] Batch of ${batch.length} failed, nothing written:`, err.message);
       return;
@@ -262,6 +357,18 @@ function recordGame(game, onDone, queue = defaultQueue) {
   return true;
 }
 
+/**
+ * Series-end hook (#222): queue one rating period for a finished challenge series.
+ * Caller decides it's rated (ranked room, rated rule, two members) and passes only
+ * games with a result.
+ * @param {{gameIds:string[], category, players:[{id},{id}], winners:string[], stake:'swap'|null, cooldownMs:number}} job
+ */
+function recordSeries(job, onDone, queue = defaultQueue) {
+  if (!job.gameIds.length) return false;
+  queue.enqueue({ ...job, series: true }, onDone);
+  return true;
+}
+
 module.exports = {
   CATEGORIES,
   INITIAL_RATING,
@@ -275,4 +382,7 @@ module.exports = {
   rateGame,
   createRatingQueue,
   recordGame,
+  rateSeries,
+  seriesWinner,
+  recordSeries,
 };

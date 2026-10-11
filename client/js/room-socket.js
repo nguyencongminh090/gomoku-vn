@@ -234,6 +234,32 @@
     }));
   });
 
+  // Friend-challenge series (#222): running score after each game, result (+ Elo swap) at the end.
+  // Payload = ChallengeSeries.view: { total, score: {userId: wins}, done, winnerId, reason, rating }.
+  function seriesScore(v) {
+    const st = S();
+    const users = (st.roomData && st.roomData.users) || [];
+    const name = (id) => { const u = users.find((x) => x.userId === id); return u ? u.displayName : '?'; };
+    const ids = Object.keys(v.score || {});
+    return { name, text: ids.map((id) => name(id) + ' ' + v.score[id]).join(' – ') };
+  }
+
+  client.on('series:update', (v) => {
+    if (!v || !v.score) return;
+    ChatUI.appendSystemMessage(t('series.status', { n: v.total, score: seriesScore(v).text }));
+  });
+
+  client.on('series:end', (v) => {
+    if (!v || !v.score) return;
+    const { name, text } = seriesScore(v);
+    if (v.reason === 'abandoned') ChatUI.appendSystemMessage(t('series.end_abandoned'));
+    ChatUI.appendSystemMessage(v.winnerId
+      ? t('series.end_win', { name: name(v.winnerId), score: text })
+      : t('series.end_tie', { score: text }));
+    const swap = v.rating && v.rating.swap;
+    if (swap) ChatUI.appendSystemMessage(t('series.swap', { name: name(swap.winnerId), r: swap.winnerAfter }));
+  });
+
   client.on('chat:error', (data) => {
     ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
   });

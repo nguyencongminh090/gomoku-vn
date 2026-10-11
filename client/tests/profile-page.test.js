@@ -33,6 +33,7 @@ async function boot(profile, status = 200) {
     ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(HISTORY) })
     : Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve(profile) })));
   require('../js/platform-shell.js');
+  require('../js/challenge-modal.js');
   require('../js/profile.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await flush(); await flush();
@@ -186,14 +187,6 @@ describe('profile page', () => {
       expect(got).toEqual(expected);
     });
 
-    it('challenge form opens below the action row, not between Thách đấu and Nhắn tin (B213)', async () => {
-      await boot({ ...PROFILE, friendship: 'none' });
-      const kids = [...document.getElementById('pf-social').children];
-      expect(kids[kids.length - 1].tagName).toBe('FORM');
-      const send = kids[kids.length - 1].querySelector('button[type=submit]');
-      expect(send.querySelector('use').getAttribute('href')).toMatch(/#ph-regular-paper-plane-tilt$/);
-    });
-
     it('meta line: joined date and place each lead with an icon (B213)', async () => {
       await boot({ ...PROFILE, friendship: 'none', city: 'Hà Nội' });
       const icons = [...document.querySelectorAll('#pf-joined > span use')].map((u) => u.getAttribute('href').split('#')[1]);
@@ -209,37 +202,38 @@ describe('profile page', () => {
       expect(iconOf(byText('#pf-social > a', 'dm.btn'))).toBe('ph-regular-chat-circle');
     });
 
-    describe('challenge', () => {
-      const submit = async (fetchImpl) => {
+    describe('challenge (#222: modal with the player preselected)', () => {
+      const openModal = async (fetchImpl) => {
         await boot({ ...PROFILE, friendship: 'none' });
         global.fetch = jest.fn(fetchImpl);
-        const form = document.querySelector('#pf-social form');
-        expect(form.hidden).toBe(true);
         [...document.querySelectorAll('#pf-social > button')].find((b) => b.textContent === 'challenge.btn').click();
-        expect(form.hidden).toBe(false);
-        form.querySelector('[name=rule]').value = 'standard';
-        form.querySelector('[name=time]').value = '5+3';
-        form.querySelector('input[type=checkbox]').checked = true;
-        form.dispatchEvent(new Event('submit', { cancelable: true }));
-        await flush(); await flush();
-        return form;
+        return document.querySelector('.pchal');
       };
 
-      it('offers the three rules and the four clocks; submit posts the choice to /api/challenges', async () => {
-        const form = await submit(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({}) }));
-        expect([...form.querySelectorAll('[name=rule] option')].map((o) => o.value)).toEqual(['freestyle', 'standard', 'caro']);
-        expect([...form.querySelectorAll('[name=time] option')].map((o) => o.value)).toEqual(['1+0', '3+2', '5+3', '10+0']);
+      it('skips the friend picker: settings for this player straight away, no GET /api/friends', async () => {
+        const m = await openModal(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({}) }));
+        expect(m.querySelector('#pchal-title').textContent).toBe('challenge.modal_title' + JSON.stringify({ name: PROFILE.displayName }));
+        expect(global.fetch).not.toHaveBeenCalled();
+        m.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+        await flush(); await flush();
         const [url, opts] = global.fetch.mock.calls[0];
         expect(url).toBe('/api/challenges');
-        expect(JSON.parse(opts.body)).toEqual({ to: 'alice', rule: 'standard', time: '5+3', rated: true });
-        expect(form.querySelector('.pnote').textContent).toBe('challenge.sent');
+        expect(JSON.parse(opts.body)).toMatchObject({ to: 'alice', games: 1, stake: 'none', settings: { boardSize: 17, ranked: true } });
+        expect(document.querySelector('.pchal')).toBeNull();
+        expect(document.querySelector('#pf-social > .pnote').textContent).toBe('challenge.sent');
       });
 
-      it('guest (403) is told members only; server error shows the generic error', async () => {
-        let form = await submit(() => Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) }));
-        expect(form.querySelector('.pnote').textContent).toBe('challenge.members_only');
-        form = await submit(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
-        expect(form.querySelector('.pnote').textContent).toBe('friends.error');
+      it('server refusal keeps the modal open and shows its message; 403 without one → members only', async () => {
+        let m = await openModal(() => Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ error: 'Hai bạn vừa đổi Elo' }) }));
+        m.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+        await flush(); await flush();
+        expect(m.querySelector('.pchal__status').textContent).toBe('Hai bạn vừa đổi Elo');
+        expect(document.querySelector('.pchal')).toBe(m);
+        m.remove();
+        m = await openModal(() => Promise.resolve({ ok: false, status: 403, json: () => Promise.resolve({}) }));
+        m.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+        await flush(); await flush();
+        expect(m.querySelector('.pchal__status').textContent).toBe('challenge.members_only');
       });
     });
 

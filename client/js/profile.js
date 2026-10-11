@@ -190,50 +190,17 @@
     challengeControls(p, box);
   }
 
-  const RULES = ['freestyle', 'standard', 'caro'];
-  const TIMES = ['1+0', '3+2', '5+3', '10+0'];
-
-  /** "Thách đấu" button + inline form (rule × clock × rated); POST /api/challenges. */
+  /** "Thách đấu" button → ChallengeModal with this player preselected (#222: full rules, series, stake). */
   function challengeControls(p, box) {
     const open = withIcon(el('button', t('challenge.btn'), 'pbtn'), 'ph-regular-boxing-glove');
     open.type = 'button';
-    const form = el('form', undefined, 'pchallenge');
-    form.hidden = true;
-    const pick = (name, values, label) => {
-      const sel = el('select');
-      sel.name = name;
-      sel.setAttribute('aria-label', t(label));
-      for (const v of values) sel.appendChild(Object.assign(el('option', name === 'rule' ? t('rankings.cat_' + v) : v), { value: v }));
-      return sel;
-    };
-    const rule = pick('rule', RULES, 'challenge.rule');
-    const time = pick('time', TIMES, 'challenge.time');
-    const ratedLabel = el('label', undefined, 'pchallenge__rated');
-    const rated = el('input');
-    rated.type = 'checkbox';
-    ratedLabel.append(rated, ' ' + t('challenge.rated'));
-    const go = withIcon(el('button', t('challenge.send'), 'pbtn pbtn--primary'), 'ph-regular-paper-plane-tilt');
-    go.type = 'submit';
     const note = el('span', '', 'pnote');
-    form.append(rule, time, ratedLabel, go, note);
-    open.addEventListener('click', () => { form.hidden = !form.hidden; });
-    form.addEventListener('submit', async (ev) => {
-      ev.preventDefault();
-      go.disabled = true;
-      try {
-        const res = await fetch('/api/challenges', {
-          method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ to: p.username, rule: rule.value, time: time.value, rated: rated.checked }),
-        });
-        if (res.status === 401) { location.href = '/login.html'; return; }
-        if (res.status === 403) { note.textContent = t('challenge.members_only'); return; }
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        note.textContent = t('challenge.sent');
-      } catch (_) {
-        note.textContent = t('friends.error');
-      } finally {
-        go.disabled = false;
-      }
+    open.addEventListener('click', () => {
+      note.textContent = '';
+      window.ChallengeModal.open({
+        to: { username: p.username, displayName: p.displayName, avatarUrl: p.avatarUrl },
+        onSent: () => { note.textContent = t('challenge.sent'); },
+      });
     });
     const msg = withIcon(el('a', t('dm.btn'), 'pbtn'), 'ph-regular-chat-circle');
     msg.href = '/social.html#dm=' + encodeURIComponent(p.username);
@@ -242,8 +209,7 @@
     else box.append(el('span', t('privacy.no_challenge'), 'pnote'));
     if (can.dm) box.append(msg);
     else box.append(el('span', t('privacy.no_dm'), 'pnote'));
-    // Last, so opening it drops a full-width row under the buttons instead of pushing Nhắn tin down (B213).
-    if (can.challenge) box.append(form);
+    if (can.challenge) box.append(note);
   }
 
   async function friendAction(p, method, path, btn) {

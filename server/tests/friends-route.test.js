@@ -89,6 +89,19 @@ describe('request / accept / remove', () => {
     expect((await call('GET', '/api/friends', 'bob')).body.friends.map((p) => p.username)).toEqual(['ann']);
   });
 
+  it('#222: friends carry visible presence from the hook (default offline); pending rows do not', async () => {
+    await call('POST', '/api/friends/bob', 'ann');
+    await call('POST', '/api/friends/ann/accept', 'bob');
+    await call('POST', '/api/friends/cat', 'ann');
+    expect((await call('GET', '/api/friends', 'ann')).body.friends).toEqual([expect.objectContaining({ username: 'bob', online: false })]);
+    svc.setHooks({ isOnline: (id) => id === 'bob-id' });
+    try {
+      const d = (await call('GET', '/api/friends', 'ann')).body;
+      expect(d.friends[0].online).toBe(true);
+      expect(d.outgoing[0]).not.toHaveProperty('online');
+    } finally { svc.setHooks({}); }
+  });
+
   it('crossed requests merge into one accepted row', async () => {
     await call('POST', '/api/friends/bob', 'ann');
     expect((await call('POST', '/api/friends/ann', 'bob')).body.status).toBe('friends');

@@ -1,6 +1,7 @@
 /**
  * social.js — Bạn bè & tin nhắn page (#198): challenges, friend requests, sent requests, friend list.
  * GET /api/challenges (polled 10 s) → accept goes straight to room.html?id=<roomId>.
+ * "Thách đấu bạn bè" button / #challenge deep link → ChallengeModal friend picker (#222).
  * Messages: /api/dm (conversation list + open thread polled every 5 s; #dm=<username> deep link).
  * GET /api/friends → {friends, incoming, outgoing}; actions POST/DELETE /api/friends/:username.
  * All user text through textContent.
@@ -54,7 +55,7 @@
     if (!people.length && emptyKey) box.appendChild(el('p', t(emptyKey), 'pnote'));
   }
 
-  const desc = (c) => t('rankings.cat_' + c.rule) + ' · ' + c.time + (c.rated ? ' · ' + t('challenge.rated') : '');
+  const desc = (c) => window.ChallengeModal.util.describe(c); // #222: full settings + series + stake
 
   async function challengeAct(method, path, btn) {
     btn.disabled = true;
@@ -72,6 +73,7 @@
   function challengeRow(c, who, buttons) {
     const r = row(who, []);
     r.querySelector('.prow__body').appendChild(el('div', desc(c), 'prow__m'));
+    if (c.stake === 'swap') r.classList.add('pchal__stake'); // the challenged must see the stake before accepting
     for (const [key, method, suffix, cls] of buttons) {
       const b = el('button', t(key), 'pbtn pbtn--sm' + (cls ? ' ' + cls : ''));
       b.type = 'button';
@@ -241,7 +243,12 @@
     }
   }
 
+  function openChallenge() {
+    window.ChallengeModal.open({ onSent: loadChallenges });
+  }
+
   function openFromHash() {
+    if (location.hash === '#challenge') { history.replaceState(null, '', location.pathname); openChallenge(); return; }
     const m = /^#dm=(.+)$/.exec(location.hash);
     if (!m) return;
     openThread(decodeURIComponent(m[1]));
@@ -251,6 +258,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     $('dm-form').addEventListener('submit', sendDm);
+    $('sc-challenge-new').addEventListener('click', openChallenge);
     window.addEventListener('hashchange', openFromHash);
     loadConvs().then(openFromHash);
     setInterval(() => { if (!document.hidden) { loadConvs(); refreshThread(); } }, 5000);

@@ -137,10 +137,6 @@ a.prow:hover { background: var(--c-hover); }
 }
 
 /* Challenge form on a profile (#198 slice 3) */
-.pchallenge { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-basis: 100%; }
-.pchallenge[hidden] { display: none; }
-.pchallenge select { min-height: 38px; padding: 6px 10px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: 13px; }
-.pchallenge__rated { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--c-ink-2); }
 
 /* Direct messages on the social page (#198 slice 4) */
 .pdm__grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; min-height: 320px; }
@@ -278,7 +274,6 @@ a.prow:hover { background: var(--c-hover); }
 .pbadges { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
 .pbadges[hidden] { display: none; }
 .pprofile .pactions { gap: var(--space-2); margin-top: var(--space-4); }
-.pprofile .pchallenge { margin-top: var(--space-1); }
 .pprofile .pstats { gap: var(--space-5); }
 .pprofile .ph2 { margin-bottom: var(--space-3); }
 .pprofile .pcards { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
@@ -339,3 +334,35 @@ a.prow:hover { background: var(--c-hover); }
   .pboard__board { max-width: 40vh; margin: 0 auto; }
   .pboard__toast { left: 8px; right: 8px; bottom: 76px; max-width: none; }
 }
+
+/* ── Friend challenge modal (#222): friend picker → create-room-parity settings ── */
+.pchal__dlg { max-width: 480px; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.pchal__search { width: 100%; min-height: 40px; padding: 8px 12px; font: inherit; font-size: 14px; color: var(--c-ink); border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); }
+.pchal__list { display: flex; flex-direction: column; max-height: 320px; overflow-y: auto; margin-top: var(--space-2); }
+.pchal__friend { width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; border-bottom: 1px solid var(--c-border-light); cursor: pointer; }
+.pchal__friend:hover, .pchal__friend:focus-visible { background: var(--c-hover); }
+.pchal__friend .prow__body { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.pchal__who { padding-top: 0; }
+.pchal__form { display: flex; flex-direction: column; gap: var(--space-3); }
+.pchal__row { display: flex; flex-direction: column; gap: 6px; }
+.pchal__label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-3); }
+.pchal__seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.pchal__seg label { position: relative; display: inline-flex; }
+.pchal__seg input[type="radio"] { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.pchal__seg input[type="radio"] + span { display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px; font-size: 13px; color: var(--c-ink-2); border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); }
+.pchal__seg input[type="radio"]:checked + span { color: var(--c-strong); border-color: var(--c-brand); background: var(--c-fill); font-weight: 600; }
+.pchal__seg input[type="radio"]:focus-visible + span { outline: 2px solid var(--c-brand); outline-offset: 2px; }
+.pchal__seg input[type="radio"]:disabled + span { opacity: .45; cursor: not-allowed; }
+.pchal__check { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; font-size: 13px; color: var(--c-ink-2); }
+.pchal__check:has(input:disabled) { opacity: .45; }
+.pchal__pair { flex-direction: column; gap: var(--space-3); }
+.pchal__num { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 6px 8px; }
+.pchal__num .pchal__label { grid-column: 1 / -1; }
+.pchal__num input { width: 100%; max-width: 120px; min-height: 36px; padding: 6px 10px; font: inherit; font-size: 14px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); color: var(--c-ink); }
+.pchal__num input:disabled { opacity: .45; }
+.pchal__hint[hidden] { display: none; }
+.pchal__status:empty { display: none; }
+.pchal__status { color: var(--c-error); }
+.pchal__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.pchal__head .ph2 { margin-bottom: 0; }
+.pchal__stake .prow__m { color: var(--c-strong); font-weight: 600; }
