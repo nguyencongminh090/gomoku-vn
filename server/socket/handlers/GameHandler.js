@@ -32,6 +32,7 @@ const WallGenerator   = require('../../generators/WallGenerator');
 const PortalGenerator = require('../../generators/PortalGenerator');
 const database        = require('../../db/database');
 const RatingService   = require('../../managers/RatingService');
+const ChallengeSeries = require('../../managers/ChallengeSeries');
 const config          = require('../../config');
 const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #167 measurement harness
 const {
@@ -942,6 +943,12 @@ function handleGameEnd(io, room, opts = {}) {
     }
   }
 
+  // Friend-challenge series (#222): games by anyone but the series pair end it.
+  const series = room.series && !room.series.done ? room.series : null;
+  const inSeries = !!(series && engine
+    && ChallengeSeries.isSeriesPair(series, engine.players.map((p) => p.userId)));
+  if (series && engine && !inSeries) finishSeries(io, room, 'abandoned');
+
   // Persist game to SQLite
   if (engine && engine.result && !noScore) {
     const players = engine.players.map(p => ({
@@ -983,7 +990,11 @@ function handleGameEnd(io, room, opts = {}) {
     // Rating (TODO.md #175): queued, written off this handler's tick; casual
     // and guest games are a no-op. Skipped if the game row didn't persist, so
     // rating_history never points at a game that doesn't exist.
-    if (rated && saved) {
+    // A series game is rated once, with the rest of the series, in finishSeries().
+    if (inSeries) {
+      ChallengeSeries.addGame(series, engine.gameId, engine.result.winner === 'draw' ? 'draw'
+        : engine.players.some((p) => p.userId === engine.result.winner) ? engine.result.winner : null);
+    } else if (rated && saved) {
       RatingService.recordGame({
         gameId: engine.gameId,
         ranked: true,
@@ -1004,8 +1015,28 @@ function handleGameEnd(io, room, opts = {}) {
   room.readyMissCount = 0;
   for (const [, u] of room.users) u.ready = false;
 
+  if (inSeries && ChallengeSeries.isDecided(series)) finishSeries(io, room, 'complete');
+  else if (inSeries) io.to(roomId).emit('series:update', ChallengeSeries.view(series));
+
   broadcastRoomUpdate(io, room);
   broadcastLobbyUpdate(io);
 }
 
-module.exports = { register, startGame, handleGameEnd };
+/**
+ * Close a room's challenge series (#222): queue its single rating period (+ Swap
+ * Elo stake) and tell the room. `series:end` carries the rating deltas/swap once
+ * the batch commits; an unrated series gets it at once. No-op if none is running.
+ * @param {'complete'|'abandoned'} reason
+ */
+function finishSeries(io, room, reason) {
+  const series = room.series;
+  if (!series || series.done) return;
+  const job = ChallengeSeries.finish(series, reason, { cooldownMs: config.SWAP_COOLDOWN_MS });
+  const emit = (rating) => io.to(room.roomId).emit('series:end', { ...ChallengeSeries.view(series), rating: rating || null });
+  if (!job || !RatingService.recordSeries(job, (res) => {
+    io.to(room.roomId).emit('rating:update', res);
+    emit(res);
+  })) emit(null);
+}
+
+module.exports = { register, startGame, handleGameEnd, finishSeries };

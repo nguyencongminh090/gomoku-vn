@@ -1,5 +1,5 @@
 # B222 — Friend challenge: pick friend, full rules modal, series, Swap Elo
-**Status:** OPEN
+**Status:** BUILT on feature/222-friend-challenge (uncommitted, awaiting review 2026-10-12) — swap applies only when the series winner is lower-rated; series Elo = one Glicko-2 period
 **Area:** server/managers/ChallengeService.js, challenges API route, rating code, client/js/profile.js (`challengeControls`), client/js/social.js, client/js/lobby.js (form reuse), notifications, i18n
 **From:** user 2026-10-12 + decisions via AskUserQuestion; design in `features/friend-challenge/`   **Depends:** —
 

@@ -79,6 +79,11 @@ function setHideOnline(userId, hidden) {
   if (had !== !!hidden && sessions.has(userId) && _lastIo) broadcastOnlineUsers(_lastIo);
 }
 
+/** Connected and not hiding it (#199) — what other members may be told (#222 friend picker). */
+function isVisiblyOnline(userId) {
+  return sessions.has(userId) && !hiddenOnline.has(userId);
+}
+
 /**
  * Return the online users for lobby broadcast, sorted by display name.
  *
@@ -670,6 +675,7 @@ module.exports = {
   sessions,
   getOnlineUsersList,
   setHideOnline,
+  isVisiblyOnline,
   getClientIp,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,

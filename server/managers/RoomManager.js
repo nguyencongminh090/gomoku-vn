@@ -36,6 +36,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
+const ChallengeSeries = require('./ChallengeSeries');
 
 /** Shared empty Set — default for createRoom's optional graceRoomIds param. */
 const EMPTY_SET = new Set();
@@ -251,6 +252,11 @@ class RoomManager extends EventEmitter {
     this.userRoomMap.delete(userId);
     room.lastActivity = Date.now();
 
+    // A series player walking out ends the friend-challenge series (#222).
+    if (room.series && !room.series.done && room.series.players.includes(userId)) {
+      this.emit('series_abandoned', room, userId);
+    }
+
     // If room is now empty → destroy
     if (room.users.size === 0) {
       this._destroyRoom(roomId);
@@ -403,6 +409,11 @@ class RoomManager extends EventEmitter {
 
     if (room.state === 'playing') {
       return { error: 'Không thể thay đổi cài đặt khi đang chơi.', code: 'CANNOT_CHANGE_SETTINGS_WHILE_PLAYING' };
+    }
+
+    // A friend-challenge series plays every game under the accepted terms (#222).
+    if (room.series && !room.series.done) {
+      return { error: 'Không thể đổi cài đặt giữa loạt thách đấu.', code: 'SERIES_SETTINGS_LOCKED' };
     }
 
     // Merge new settings with validation
@@ -720,6 +731,7 @@ class RoomManager extends EventEmitter {
       serverTime: Date.now(),
       readyMissCount: room.readyMissCount || 0,
       matchmade: !!room.matchmade,
+      series: ChallengeSeries.view(room.series),
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
     };

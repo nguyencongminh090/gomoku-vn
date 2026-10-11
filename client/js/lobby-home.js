@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=316';
+import { client, setHeroTab } from './lobby.js?v=319';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -398,9 +398,9 @@ export function renderQuickMatch() {
   } else {
     if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
     btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
-    if (isMember()) { // mockup: Thách đấu bạn bè → the social page, where friends are challenged
+    if (isMember()) { // mockup: Thách đấu bạn bè → the social page's friend picker (#222)
       const a = withIcon(el('a', t('qm.challenge_friend'), 'link-action'), 'ph-regular-boxing-glove');
-      a.href = '/social.html';
+      a.href = '/social.html#challenge';
       acts.appendChild(a);
     }
     const waiting = lastData && lastData.queue ? lastData.queue[qm.rule + '|' + qm.time] || 0 : 0;

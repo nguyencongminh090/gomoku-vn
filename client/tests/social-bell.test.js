@@ -125,6 +125,7 @@ describe('social page', () => {
 
   async function bootPage(routes) {
     boot({ user: { userId: 'u1', displayName: 'Me', isGuest: false }, routes: { 'GET /api/notifications': () => json({ unread: 0, items: [] }), 'GET /api/rankings/me': () => json({ ratings: {} }), ...routes } });
+    require('../js/challenge-modal.js');
     require('../js/social.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     await tick();
@@ -190,6 +191,28 @@ describe('social page', () => {
       expect(rows[1].textContent).toContain('rankings.cat_freestyle · 1+0');
       expect(rows[1].textContent).not.toContain('challenge.rated');
       expect([...rows[1].querySelectorAll('button')].map((b) => b.textContent)).toEqual(['friends.cancel']);
+    });
+
+    it('#222: full settings, series and stake in the row; a stake row is highlighted', async () => {
+      const settings = { boardSize: 19, winningRule: 'standard', ranked: true, ruleWall: false, rulePortal: true, ruleSwap2: false, timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 };
+      await bootPage({ ...base, 'GET /api/challenges': () => json({ incoming: [{ id: 'c3', rule: 'standard', rated: true, settings, games: 3, stake: 'swap', from: P('cat') }], outgoing: [] }) });
+      const row = document.querySelector('#sc-challenges .prow');
+      expect(row.querySelector('.prow__m').textContent).toBe(
+        'rankings.cat_standard · 19×19 · modal.rule_portal · 5\'+3s · challenge.best_of{"n":3} · challenge.rated · challenge.stake_swap');
+      expect(row.classList.contains('pchal__stake')).toBe(true);
+    });
+
+    it('#222: "Thách đấu bạn bè" and the #challenge deep link open the friend picker', async () => {
+      await bootPage({ ...base, 'GET /api/challenges': () => json({ incoming: [], outgoing: [] }) });
+      document.getElementById('sc-challenge-new').click();
+      await tick();
+      expect(document.querySelector('.pchal #pchal-title').textContent).toBe('challenge.pick_title');
+      document.querySelector('.pchal').remove();
+      window.location.hash = '#challenge';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+      await tick();
+      expect(document.querySelector('.pchal')).not.toBeNull();
+      expect(window.location.hash).toBe('');
     });
 
     it('empty → note; decline calls DELETE and refreshes; accept goes to the room', async () => {

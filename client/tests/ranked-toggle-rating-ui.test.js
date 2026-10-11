@@ -152,3 +152,40 @@ describe('rating:update → own delta in the room log', () => {
     expect(window.ChatUI.appendSystemMessage).not.toHaveBeenCalled();
   });
 });
+
+// ── room-socket: friend-challenge series (#222) ────────────────────────────
+
+describe('series:update / series:end → room log', () => {
+  const users = [{ userId: 'me', displayName: 'Me' }, { userId: 'bo', displayName: 'Bo' }];
+  const view = (over = {}) => ({ total: 3, score: { me: 1, bo: 0 }, done: false, winnerId: null, reason: null, ...over });
+  const msgs = () => window.ChatUI.appendSystemMessage.mock.calls.map((c) => c[0]);
+  const boot = () => {
+    const l = loadSocket();
+    window.setLanguage && window.setLanguage('en');
+    window.RoomState.roomData = { users };
+    return l;
+  };
+
+  test('running score after a game', () => {
+    boot()['series:update'](view());
+    expect(msgs()).toEqual(['3-game series: Me 1 – Bo 0']);
+  });
+
+  test('end: winner line, then the Elo swap line', () => {
+    boot()['series:end'](view({ done: true, winnerId: 'me', reason: 'complete', score: { me: 2, bo: 0 },
+      rating: { swap: { winnerId: 'me', loserId: 'bo', winnerAfter: 1712, loserAfter: 1301 } } }));
+    expect(msgs()).toEqual(['Me wins the series — Me 2 – Bo 0.', 'Elo swap: Me now 1712.']);
+  });
+
+  test('abandoned tie: stop note + tie line, no swap line', () => {
+    boot()['series:end'](view({ done: true, reason: 'abandoned', score: { me: 1, bo: 1 }, rating: { swap: null } }));
+    expect(msgs()).toEqual(['Series stopped: a player left the room.', 'Series tied — Me 1 – Bo 1.']);
+  });
+
+  test('malformed payload → nothing, no crash', () => {
+    const l = boot();
+    l['series:update'](null);
+    l['series:end']({});
+    expect(msgs()).toEqual([]);
+  });
+});

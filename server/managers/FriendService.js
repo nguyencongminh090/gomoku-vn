@@ -137,6 +137,10 @@ const person = (r) => ({
   avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.id}.webp?v=${r.avatar_v}` : null,
 });
 
+let isOnline = () => false;
+/** @param {{isOnline?: (userId: string) => boolean}} h  visible presence, for friends only (#222 picker) */
+function setHooks(h = {}) { isOnline = h.isOnline || (() => false); }
+
 function list(me) {
   const rows = db().prepare(`
     SELECT u.id, u.username, u.display_name, u.avatar_v, f.status, f.requested_by
@@ -146,7 +150,7 @@ function list(me) {
     ORDER BY u.display_name COLLATE NOCASE`).all(me, me, me);
   const out = { friends: [], incoming: [], outgoing: [] };
   for (const r of rows) {
-    if (r.status === 'accepted') out.friends.push(person(r));
+    if (r.status === 'accepted') out.friends.push({ ...person(r), online: !!isOnline(r.id) });
     else (r.requested_by === me ? out.outgoing : out.incoming).push(person(r));
   }
   return out;
@@ -154,5 +158,5 @@ function list(me) {
 
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
-  statusBetween, request, acceptRequest, remove, friendIds, list,
+  statusBetween, request, acceptRequest, remove, friendIds, list, setHooks,
 };

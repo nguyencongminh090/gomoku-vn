@@ -34,6 +34,7 @@ const {
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
   setHideOnline,
+  isVisiblyOnline,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
@@ -79,6 +80,16 @@ function init(io) {
       broadcastLobbyUpdate(io);
     },
   });
+
+  // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.
+  require('../managers/FriendService').setHooks({ isOnline: (userId) => isVisiblyOnline(userId) });
+
+  // A series player left the room → close the challenge series on what was played (#222).
+  // Re-init (tests) replaces the listener; stubbed RoomManagers without an emitter skip it.
+  if (typeof roomManager.removeAllListeners === 'function') {
+    roomManager.removeAllListeners('series_abandoned');
+    roomManager.on('series_abandoned', (room) => GameHandler.finishSeries(io, room, 'abandoned'));
+  }
 
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
   const DmService = require('../managers/DmService');
