@@ -119,27 +119,30 @@ describe('buildHome — tournaments', () => {
 });
 
 describe('buildHome — live', () => {
-  it('playing rooms only, top 3 by viewers, stones as [x,y,1|2], ghost viewers not counted, no user ids', () => {
+  it('playing rooms only, top 3 by viewers, move count (no stones), ghost viewers not counted, no user ids', () => {
     const mk = (id, viewers, moves) => room(id, [user('b' + id, 1), user('w' + id, 2),
       ...Array.from({ length: viewers }, (_, i) => user(id + 's' + i, null)), user(id + 'ghost', null, 'g', 'disconnected')],
     { state: 'playing', gameState: engine('b' + id, 'w' + id, moves, 'b' + id) });
     const rooms = [mk('a', 1, [[1, 1]]), mk('b', 5, [[2, 2], [3, 3]]), mk('c', 0, []), mk('d', 3, []), room('idle', [user('x', 1)])];
     const live = buildHome(null, roomsOf(rooms), EMPTY_TM).live;
     expect(live.map((l) => [l.roomId, l.viewers])).toEqual([['b', 5], ['d', 3], ['a', 1]]);
-    expect(live[0]).toMatchObject({ black: 'bb', white: 'wb', boardSize: 15, stones: [[2, 2, 1], [3, 3, 2]], winningRule: 'caro' });
+    expect(live[0]).toMatchObject({ black: 'bb', white: 'wb', boardSize: 15, moves: 2, winningRule: 'caro' });
     expect(JSON.stringify(live)).not.toMatch(/userId/);
   });
 
-  it('caps stones at 400 (latest kept)', () => {
-    const moves = Array.from({ length: 450 }, (_, i) => [i % 30, Math.floor(i / 30)]);
-    const r = room('r', [user('b', 1), user('w', 2)], { state: 'playing', gameState: engine('b', 'w', moves, 'b') });
-    const s = buildHome(null, roomsOf([r]), EMPTY_TM).live[0].stones;
-    expect(s).toHaveLength(400);
-    expect(s[399].slice(0, 2)).toEqual([449 % 30, 14]);
+  it('never sends stones', () => {
+    const r = room('r', [user('b', 1), user('w', 2)], { state: 'playing', gameState: engine('b', 'w', [[1, 1]], 'b') });
+    expect(buildHome(null, roomsOf([r]), EMPTY_TM).live[0]).not.toHaveProperty('stones');
+  });
+
+  it('stats: online, all playing rooms (not just top 3), searchers summed over buckets', () => {
+    const mk = (id) => room(id, [user('b' + id, 1), user('w' + id, 2)], { state: 'playing', gameState: engine('b' + id, 'w' + id, [], 'b' + id) });
+    const h = buildHome(null, roomsOf(['a', 'b', 'c', 'd', 'e'].map(mk)), EMPTY_TM, () => ({ 'caro|5+3': 2, 'caro|1+0': 1 }), () => ({}), () => 7);
+    expect(h.stats).toEqual({ online: 7, playing: 5, searching: 3 });
   });
 
   it('empty site → all empty', () => {
-    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], queue: {}, queueEta: {} });
+    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {} });
   });
 });
 
@@ -169,7 +172,7 @@ describe('GET /api/home', () => {
     const out = await get();
     expect(out.status).toBe(200);
     expect(out.cc).toBe('no-store');
-    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], queue: {}, queueEta: {} });
+    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {} });
     const name = require('../config').SESSION_COOKIE_NAME;
     expect((await get(name + '=good')).body.myGame).toMatchObject({ roomId: 'r1', roomName: 'Mine' });
     expect((await get(name + '=forged')).body.myGame).toBeNull();

@@ -86,3 +86,5 @@ in the detail file / fix-log).
 - **#219.** Lobby room row: show Rated / Friendly (needs `ranked` in the lobby list payload) `[Model: Sonnet 5]` — [detail](docs/todo/B219-lobby-room-row-rated-friendly.md)
 - **#220.** Lobby: click online name → profile card (friend + private chat); DMs kept 3 days `[Model: Sonnet 5]` — [detail](docs/todo/B220-lobby-online-user-card.md)
 - **#221.** Browser notification permission asked in context (Message click / first send); Ctrl+K "Bật thông báo" button removed `[Model: Sonnet 5]` — [detail](docs/todo/B221-notif-permission-in-context.md)
+- **#225.** Dashboard realtime: pub/sub push for online/playing/searching, poll → 60 s fallback `[Model: Opus 5]` — [detail](docs/todo/B225-home-live-push.md)
+- **#226.** Audit all server↔client transfer/broadcast (moves, lobby users, tickets…): inventory, measure, rank `[Model: Opus 5]` — [detail](docs/todo/B226-socket-transfer-audit.md)
