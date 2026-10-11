@@ -454,3 +454,15 @@ CREATE TABLE IF NOT EXISTS game_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_game_reports_open ON game_reports(resolved_at, created_at);
 CREATE INDEX IF NOT EXISTS idx_game_reports_accused ON game_reports(accused_id);
+
+-- Dashboard news (TODO.md #224): admin-written one-line announcements; the home page shows the newest.
+-- Plain text only (rendered with textContent). No FK on author: the item outlives a deleted admin.
+CREATE TABLE IF NOT EXISTS news (
+  id          TEXT PRIMARY KEY,
+  body        TEXT NOT NULL,
+  link        TEXT,                    -- optional same-site path ("/forum/…"), never an external URL
+  author_id   TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_news_created ON news(created_at);

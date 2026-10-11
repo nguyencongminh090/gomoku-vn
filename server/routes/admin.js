@@ -15,6 +15,12 @@
  * GET  /api/admin/cheat-reports?page=    open cheat reports (perm cheat.review: moderator+admin, #208)
  * POST /api/admin/cheat-reports/:id/resolve  {confirm: bool}
  * DELETE /api/admin/users/:id/avatar     remove their avatar (file + DB), logged as an edge
+ *
+ * Dashboard news (#224; perm news.manage = admin only, checked in NewsService):
+ * GET    /api/admin/news           newest 50
+ * POST   /api/admin/news           {body, link?}
+ * PUT    /api/admin/news/:id       {body, link?}
+ * DELETE /api/admin/news/:id
  */
 
 const express = require('express');
@@ -25,6 +31,7 @@ const { verifyToken } = require('../middleware/auth');
 const roles = require('../utils/roles');
 const svc = require('../managers/AdminUserService');
 const cheat = require('../managers/CheatReportService');
+const news = require('../managers/NewsService');
 
 const router = express.Router();
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || '') }));
@@ -44,7 +51,7 @@ const h = (fn) => (req, res, next) => {
     if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
     fn(req, res);
   } catch (err) {
-    if (err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError || err instanceof news.NewsError) return res.status(err.status).json({ error: err.message, code: err.code });
     next(err);
   }
 };
@@ -79,6 +86,23 @@ router.post('/cheat-reports/:id/resolve', ...write, h((req, res) => {
 
 router.delete('/users/:id/avatar', ...write, h((req, res) => {
   res.json({ user: svc.removeAvatar(req.user.userId, req.params.id) });
+}));
+
+router.get('/news', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(news.list(req.user.userId));
+}));
+
+router.post('/news', ...write, h((req, res) => {
+  res.status(201).json({ item: news.create(req.user.userId, req.body || {}) });
+}));
+
+router.put('/news/:id', ...write, h((req, res) => {
+  res.json({ item: news.update(req.user.userId, req.params.id, req.body || {}) });
+}));
+
+router.delete('/news/:id', ...write, h((req, res) => {
+  res.json(news.remove(req.user.userId, req.params.id));
 }));
 
 module.exports = router;

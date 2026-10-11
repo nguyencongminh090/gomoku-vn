@@ -142,7 +142,26 @@ describe('buildHome — live', () => {
   });
 
   it('empty site → all empty', () => {
-    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {} });
+    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {}, news: null, forum: [], learn: null, newcomer: true });
+  });
+});
+
+describe('content blocks (#224)', () => {
+  it('passes the injected news/forum/learn through and keys newcomer on the member id', () => {
+    const seen = [];
+    const content = (member) => { seen.push(member); return { news: { id: 'n1', body: 'Hi' }, forum: [], learn: { total: 3, solved: null }, newcomer: !member }; };
+    const h = buildHome(null, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0, content);
+    expect(h.news).toEqual({ id: 'n1', body: 'Hi' });
+    expect(h.newcomer).toBe(true);
+    buildHome({ userId: 'g1', isGuest: true }, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0, content);
+    buildHome(ME, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0, content);
+    expect(seen).toEqual([null, null, 'u1']); // guests are never members
+  });
+
+  it('DB unavailable → blocks empty, rest of the dashboard still served', () => {
+    // ../db/database is mocked as {} in this file, so the real reader throws.
+    const h = buildHome(ME, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0);
+    expect(h).toMatchObject({ news: null, forum: [], learn: null, newcomer: false, live: [] });
   });
 });
 
@@ -172,7 +191,7 @@ describe('GET /api/home', () => {
     const out = await get();
     expect(out.status).toBe(200);
     expect(out.cc).toBe('no-store');
-    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {} });
+    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {}, news: null, forum: [], learn: null, newcomer: true });
     const name = require('../config').SESSION_COOKIE_NAME;
     expect((await get(name + '=good')).body.myGame).toMatchObject({ roomId: 'r1', roomName: 'Mine' });
     expect((await get(name + '=forged')).body.myGame).toBeNull();

@@ -183,6 +183,19 @@ body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wra
 body.zen-lobby .hstats[hidden] { display: none; }
 body.zen-lobby .hstat { display: flex; align-items: baseline; gap: 8px; }
 body.zen-lobby .hstat__n { font-size: 22px; font-variant-numeric: tabular-nums; }
+/* #224: admin news line (full width under the stats), forum "see all", About rules list. */
+body.zen-lobby .hnews { grid-column: 1 / -1; }
+body.zen-lobby .hnews[hidden] { display: none; }
+body.zen-lobby .hnews__line { display: flex; align-items: center; gap: 12px; margin: 0; min-height: 44px; padding: 10px 16px; border-radius: var(--radius-lg); background: var(--c-surface); box-shadow: var(--shadow-sm); color: var(--c-ink); text-decoration: none; font-size: 14px; }
+body.zen-lobby a.hnews__line:hover { background: var(--c-hover); }
+body.zen-lobby .hnews__tag { flex: none; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c-brand); }
+body.zen-lobby .hnews__body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+body.zen-lobby .hnews__go { flex: none; color: var(--c-ink-2); font-size: 18px; line-height: 1; }
+body.zen-lobby .hmore { margin-top: 8px; }
+body.zen-lobby .habout__lead { margin: 0 0 10px; }
+body.zen-lobby .habout { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13.5px; }
+body.zen-lobby .habout dt { font-weight: 600; }
+body.zen-lobby .habout dd { margin: 0; color: var(--c-ink-2); }
 /* Quick match panel (B197): chips lock while searching. */
 body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
 body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }

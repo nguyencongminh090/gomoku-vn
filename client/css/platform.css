@@ -118,6 +118,7 @@ a.prow:hover { background: var(--c-hover); }
 .pform label { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); }
 .pform input:not([type="checkbox"]):not([type="file"]), .pform textarea, .pform select { padding: 10px 12px; font-size: 14px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); resize: vertical; }
 .pform .pcheck { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--c-ink); }
+.pform__hint { margin: 0; }
 .pform__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
 .ppager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 16px; font-size: 13px; color: var(--c-ink-2); }

@@ -12,3 +12,12 @@ Dashboard has no news, intro, or pointer to Puzzle/Learn; puzzle is desktop-only
 - Admin check server-side only (`isAdmin`), never client flag. Escape news text (no HTML).
 ## Done when
 - Backend tests (admin-only auth, 403 for non-admin), jsdom, real-browser pass desktop + phone; `?v=` bumped.
+
+**Status:** ⏳ built 2026-10-12 on `feature/224-home-news` (uncommitted, awaiting review); `?v=315`.
+## Result
+- DB `news` (schema.sql, CREATE IF NOT EXISTS) + `NewsService` (perm `news.manage` = admin only; one-line plain text ≤200; optional same-site `link`, `//`/`/\`/schemes rejected). `/api/admin/news` GET/POST/PUT/DELETE; admin tab "Tin tức" (`admin-news.js`).
+- `/api/home` + `news` (newest), `forum` (3 most recently active, titles only), `learn {total, solved}`, `newcomer` (guest or < 5 games). DB blocks are fail-soft: an error drops them, rest of the dashboard still served.
+- UI "Play-first" (user pick): news line under stats; left Quick match → My games → Learn → About (newcomers); right Today → Forum → Live. "dùng máy tính để giải" removed at user request (2026-10-12) — Learn card shows count/solved only.
+- "Top 3 forum" = most recent activity (forum's own sort), not most replies.
+- Also fixed the Jest-never-exits hang (WAL timer, see fix-log 2026-10-12 05:45).
+- Verified: `npm test` 160 suites / 2976; real browser (isolated copy, 1280 + 390): member POST → 403 NEWS_FORBIDDEN, admin publish via UI, news click → thread, no overflow, 0 console errors, guest sees About + total only.
