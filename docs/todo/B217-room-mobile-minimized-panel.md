@@ -1,5 +1,5 @@
 # B217 — Room mobile: minimizable bottom panel (actions + quick chat bar)
-**Status:** OPEN — implemented 2026-10-11 on ui/room-arena (uncommitted), awaiting user review. Default minimized; choice in localStorage `gvn_room_panel_min`; no unread dot (not built).
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: implemented 2026-10-11 on ui/room-arena (uncommitted), awaiting user review. Default minimized; choice in localStorage `gvn_room_panel_min`; no unread dot (not built).
 **Area:** client/css/room-arena.css (mobile block), client/js/room-ui.js, client/room.html, i18n
 **From:** user 2026-10-11 (suggestion, after #216 sticky board): "phần panel dưới chỉ hiện chức năng như (cầu hòa/đầu hàng) + thanh chatbar rút gọn (không có khung tin nhắn, chỉ có khung nhập (quick chat bar) + một mũi tên tam giác lên để expand (show toàn bộ), nếu minimize thì rút gọn display lại."   **Depends:** #216
 

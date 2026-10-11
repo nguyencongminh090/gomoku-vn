@@ -1,5 +1,5 @@
 # B212 — Icon + label review: icons that match their meaning, shorter labels
-**Status:** OPEN — built 2026-10-10 on `ui/icon-label-polish`, awaiting review
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: built 2026-10-10 on `ui/icon-label-polish`, awaiting review
 **Area:** client/assets/icons/phosphor-sprite.svg, client/*.html, client/js/{profile,lobby-home,i18n}.js, client/css/platform.css
 **From:** user 2026-10-10 "Review icon and improve icon … tránh việc sử dụng text quá dài"; audit = real-server scan of 13 pages × 1280/390   **Depends:** —
 

@@ -1,5 +1,5 @@
 # B213 — Profile: one icon system + layout/spacing/size pass
-**Status:** OPEN — built 2026-10-10 on `ui/profile-polish` (`?v=251`), awaiting review
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: built 2026-10-10 on `ui/profile-polish` (`?v=251`), awaiting review
 **Area:** client/profile.html, client/js/profile.js, client/css/platform.css, client/js/i18n.js, phosphor-sprite.svg
 **From:** user 2026-10-10 "Chuẩn hóa icon trong hồ sơ + xem xét layout, padding/margin, button size, text size <check css>"; measured on a seeded real-server copy   **Depends:** #212
 

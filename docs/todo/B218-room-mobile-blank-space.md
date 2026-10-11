@@ -1,5 +1,5 @@
 # B218 — Room mobile: blank space under the chat bar + page overscroll
-**Status:** OPEN — fixed 2026-10-11 on ui/room-arena (uncommitted, with #216/#217), `?v=280`, awaiting user review on a real phone.
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: fixed 2026-10-11 on ui/room-arena (uncommitted, with #216/#217), `?v=280`, awaiting user review on a real phone.
 **Area:** client/css/room-arena.css (mobile block + root overscroll)
 **From:** user 2026-10-11: "Review Room UI CSS for Layout… several blank space… Khi scroll, user có thể scroll quá tay để tạo ra khoảng trống… tập trung vào các lỗi tiềm năng trên Mobile."   **Depends:** #216, #217
 

@@ -1,5 +1,5 @@
 # B216 — Room redesign "Arena Focus" + SVG board + friendly-only undo/time
-**Status:** OPEN — implemented on `ui/room-arena` 2026-10-10, uncommitted, awaiting user review
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: implemented on `ui/room-arena` 2026-10-10, uncommitted, awaiting user review
 **Area:** client/room.html, client/css/room*.css, client/js/{board,game-ui,room-ui}.js, server/socket/handlers/GameHandler.js, i18n
 **From:** user 2026-10-10, [features/room-redesign](../../features/room-redesign/user_story.md)   **Depends:** —
 
