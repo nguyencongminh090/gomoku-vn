@@ -76,4 +76,3 @@ in the detail file / fix-log).
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
-- **#219.** Lobby room row: show Rated / Friendly (needs `ranked` in the lobby list payload) `[Model: Sonnet 5]` — [detail](docs/todo/B219-lobby-room-row-rated-friendly.md)
