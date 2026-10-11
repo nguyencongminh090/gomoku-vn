@@ -4,6 +4,7 @@
  * friends.js — REST API for friendships (#198 slice 1). Rules live in FriendService.
  *
  * GET    /api/friends                    {friends, incoming, outgoing}
+ * GET    /api/friends/search?q=          find players by username / display name (≥ 2 chars, ≤ 8 hits)
  * POST   /api/friends/:username          send a request (or accept a crossed one)
  * POST   /api/friends/:username/accept   accept their request
  * DELETE /api/friends/:username          cancel / decline / unfriend
@@ -39,6 +40,13 @@ const h = (fn) => (req, res, next) => {
 router.get('/', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(svc.list(req.user.userId));
+}));
+
+const searchLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, keyGenerator });
+
+router.get('/search', ...member, searchLimiter, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ results: svc.search(req.user.userId, req.query.q) });
 }));
 
 router.post('/:username', ...member, writeLimiter, h((req, res) => {

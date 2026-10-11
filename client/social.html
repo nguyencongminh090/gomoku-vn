@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Bạn bè</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=319" />
-  <link rel="stylesheet" href="css/tokens.css?v=319" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=319" />
-  <link rel="stylesheet" href="css/platform.css?v=319" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=319" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=319">
+  <link rel="stylesheet" href="css/main.css?v=320" />
+  <link rel="stylesheet" href="css/tokens.css?v=320" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=320" />
+  <link rel="stylesheet" href="css/platform.css?v=320" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=320" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=320">
 
-  <script src="js/ui-mode-preload.js?v=319"></script>
-  <script src="js/skin-preload.js?v=319"></script>
+  <script src="js/ui-mode-preload.js?v=320"></script>
+  <script src="js/skin-preload.js?v=320"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -46,7 +46,12 @@
     </div>
     <div class="pcol">
       <section class="ppanel">
-        <h2 class="ph2" data-i18n="social.friends">Bạn bè</h2>
+        <h2 class="ph2" data-i18n="social.add">Thêm bạn</h2>
+        <form id="sc-add" class="psearch" role="search" autocomplete="off">
+          <input id="sc-add-q" type="search" maxlength="40" aria-label="Thêm bạn" data-i18n-placeholder="social.add_ph" placeholder="Tên đăng nhập hoặc tên hiển thị" />
+        </form>
+        <div id="sc-add-results" class="prows" aria-live="polite"></div>
+        <h2 class="ph2 ph2--gap" data-i18n="social.friends">Bạn bè</h2>
         <div id="sc-friends" class="prows"></div>
         <h2 class="ph2 ph2--gap" data-i18n="social.outgoing">Đã gửi lời mời</h2>
         <div id="sc-outgoing" class="prows"></div>
@@ -71,14 +76,14 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=319"></script>
-<script src="js/escape-utils.js?v=319"></script>
-<script src="js/ui-mode.js?v=319"></script>
-<script src="js/session.js?v=319"></script>
-<script src="js/audio-manager.js?v=319"></script>
-<script src="js/settings-panel.js?v=319"></script>
-<script src="js/platform-shell.js?v=319"></script>
-<script src="js/challenge-modal.js?v=319"></script>
-<script src="js/social.js?v=319"></script>
+<script src="js/i18n.js?v=320"></script>
+<script src="js/escape-utils.js?v=320"></script>
+<script src="js/ui-mode.js?v=320"></script>
+<script src="js/session.js?v=320"></script>
+<script src="js/audio-manager.js?v=320"></script>
+<script src="js/settings-panel.js?v=320"></script>
+<script src="js/platform-shell.js?v=320"></script>
+<script src="js/challenge-modal.js?v=320"></script>
+<script src="js/social.js?v=320"></script>
 </body>
 </html>

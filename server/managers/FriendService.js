@@ -156,7 +156,31 @@ function list(me) {
   return out;
 }
 
+const SEARCH_MIN = 2;
+const SEARCH_LIMIT = 8;
+const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+
+/**
+ * Find players to add by username or display name (substring, case-insensitive).
+ * Exact username first. Each hit carries the relation to `me` and whether a NEW request
+ * would pass the recipient's privacy setting, so the UI can disable the button up front.
+ */
+function search(me, query) {
+  const q = String(query || '').trim().slice(0, 40);
+  if (q.length < SEARCH_MIN) return [];
+  const like = likeEscape(q);
+  const rows = db().prepare(`
+    SELECT id, username, display_name, avatar_v FROM users
+    WHERE id != ? AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')
+    ORDER BY (LOWER(username) = LOWER(?)) DESC, display_name COLLATE NOCASE LIMIT ?`)
+    .all(me, like, like, q, SEARCH_LIMIT);
+  return rows.map((r) => {
+    const status = statusBetween(me, r.id);
+    return { ...person(r), status, canRequest: status !== 'none' || privacyGate.allowed(me, r.id, 'friend') };
+  });
+}
+
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
-  statusBetween, request, acceptRequest, remove, friendIds, list, setHooks,
+  statusBetween, request, acceptRequest, remove, friendIds, list, search, setHooks,
 };

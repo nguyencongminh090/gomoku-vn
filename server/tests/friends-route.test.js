@@ -188,3 +188,40 @@ describe('profile.friendship', () => {
     expect((await call('GET', '/api/profile/ann', 'bob')).body.friendship).toBe('friends');
   });
 });
+
+describe('GET /api/friends/search (add by username / display name)', () => {
+  const names = async (q, as = 'ann') => (await call('GET', `/api/friends/search?q=${encodeURIComponent(q)}`, as)).body.results.map((p) => p.username);
+
+  it('matches username or display name case-insensitively, never returns me, needs ≥ 2 chars', async () => {
+    expect(await names('BO')).toEqual(['bob']);
+    expect(await names('an')).toEqual(['dan']); // ann excluded (me)
+    expect(await names('b')).toEqual([]);
+    expect(await names('')).toEqual([]);
+    expect(await names('zzz')).toEqual([]);
+  });
+
+  it('treats % and _ literally (no wildcard dump of every user)', async () => {
+    expect(await names('%%')).toEqual([]);
+    expect(await names('__')).toEqual([]);
+  });
+
+  it('reports the relation and honours the recipient\'s privacy setting', async () => {
+    await call('POST', '/api/friends/bob', 'ann');
+    db.prepare("UPDATE users SET who_can_friend = 'nobody' WHERE id = ?").run(U.cat);
+    const res = (await call('GET', '/api/friends/search?q=o', 'ann')).body.results;
+    expect(res).toEqual([]); // 1 char
+    const all = (await call('GET', '/api/friends/search?q=-id', 'ann')).body.results;
+    expect(all).toEqual([]); // ids are not searchable
+    const by = Object.fromEntries((await call('GET', '/api/friends/search?q=ca', 'ann')).body.results.map((p) => [p.username, p]));
+    expect(by.cat).toMatchObject({ status: 'none', canRequest: false });
+    const bob = (await call('GET', '/api/friends/search?q=bob', 'ann')).body.results[0];
+    expect(bob).toMatchObject({ status: 'outgoing', canRequest: true });
+    expect((await call('GET', '/api/friends/search?q=ann', 'bob')).body.results[0].status).toBe('incoming');
+    db.prepare("UPDATE users SET who_can_friend = 'everyone' WHERE id = ?").run(U.cat);
+  });
+
+  it('members only', async () => {
+    expect((await call('GET', '/api/friends/search?q=bob')).status).toBe(401);
+    expect((await call('GET', '/api/friends/search?q=bob', 'guest')).status).toBe(403);
+  });
+});
