@@ -180,14 +180,16 @@ if (!existingOauthIndex || !existingOauthIndex.unique) {
   }
 }
 
-// Periodic WAL checkpoint to prevent unbounded growth
-setInterval(() => {
+// Periodic WAL checkpoint to prevent unbounded growth. unref(): the HTTP server keeps the process
+// alive; this timer must not, or every script/test that loads the DB never exits on its own.
+const walTimer = setInterval(() => {
   try {
     db.pragma('wal_checkpoint(PASSIVE)');
   } catch (err) {
     logger.error('[DB] WAL checkpoint failed:', err);
   }
 }, 60 * 60 * 1000); // Every hour
+walTimer.unref();
 
 logger.info('[DB] SQLite initialized at', DB_PATH);
 
