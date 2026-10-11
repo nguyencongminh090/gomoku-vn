@@ -689,6 +689,7 @@ class RoomManager extends EventEmitter {
         ready: u.ready,
         presence: u.presence || 'active',
         role: this.getUserRole(room, u.userId),
+        avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
       });
     }
 
@@ -708,6 +709,7 @@ class RoomManager extends EventEmitter {
       // docs/todo/B170-*.md.
       serverTime: Date.now(),
       readyMissCount: room.readyMissCount || 0,
+      matchmade: !!room.matchmade,
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
     };

@@ -21,12 +21,8 @@ function loadRoomUI() {
   delete window.RoomUI;
   document.body.innerHTML = `
     <div id="room-id-nav"></div>
-    <div id="slot-1-content"></div>
-    <div id="slot-2-content"></div>
-    <div id="slot-1"></div>
-    <div id="slot-2"></div>
-    <div id="action-buttons"></div>
-    <div id="players-strip"></div>
+    <div id="pcard-top"></div>
+    <div id="pcard-bottom"></div>
     <div id="settings-panel"></div>
     <div id="settings-body"></div>
     <div id="users-panel"></div>
@@ -63,15 +59,14 @@ function dotModifierIn(contentEl) {
   return modifiers[0] || null; // null = no modifier (Inactive/waiting)
 }
 
-describe('playerStatusInfo via renderSlot (TODO #114)', () => {
+// Since #216 the seat lives on a player card; a spectator sees seat #1 at the bottom.
+describe('playerStatusInfo via the player cards (TODO #114)', () => {
   let RoomUI;
   let contentEl;
-  let cardEl;
 
   beforeEach(() => {
     RoomUI = loadRoomUI();
-    contentEl = document.getElementById('slot-1-content');
-    cardEl = document.getElementById('slot-1');
+    contentEl = document.getElementById('pcard-bottom');
   });
 
   test('room playing + ready=true (post-startGame reset) still shows Active, not Inactive', () => {
@@ -80,7 +75,7 @@ describe('playerStatusInfo via renderSlot (TODO #114)', () => {
       myUser: { userId: 'someone-else' },
       mySlot: null,
     };
-    RoomUI.renderSlot(1, contentEl, cardEl);
+    RoomUI.renderPlayerCards();
     expect(dotModifierIn(contentEl)).toBe('ready-dot--active');
   });
 
@@ -90,7 +85,7 @@ describe('playerStatusInfo via renderSlot (TODO #114)', () => {
       myUser: { userId: 'someone-else' },
       mySlot: null,
     };
-    RoomUI.renderSlot(1, contentEl, cardEl);
+    RoomUI.renderPlayerCards();
     expect(dotModifierIn(contentEl)).toBeNull();
   });
 
@@ -100,7 +95,7 @@ describe('playerStatusInfo via renderSlot (TODO #114)', () => {
       myUser: { userId: 'someone-else' },
       mySlot: null,
     };
-    RoomUI.renderSlot(1, contentEl, cardEl);
+    RoomUI.renderPlayerCards();
     expect(dotModifierIn(contentEl)).toBe('ready-dot--away');
   });
 
@@ -110,7 +105,7 @@ describe('playerStatusInfo via renderSlot (TODO #114)', () => {
       myUser: { userId: 'someone-else' },
       mySlot: null,
     };
-    RoomUI.renderSlot(1, contentEl, cardEl);
+    RoomUI.renderPlayerCards();
     expect(dotModifierIn(contentEl)).toBe('ready-dot--disconnected');
   });
 });

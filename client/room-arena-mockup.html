@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="vi" data-mode="dark"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Play3CR — Phòng (Arena Focus, mockup)</title>
+<meta name="description" content="Front-end mockup only — not wired to the server. #216 Room redesign: board + clock rail (desktop), opp bar / board / my bar / action bar (mobile).">
+<link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg">
+<link rel="stylesheet" href="vendor/fonts/manrope/style.css"><link rel="stylesheet" href="vendor/phosphor/regular/style.css">
+<style>
+:root{--bg:#161512;--surface:#262421;--surface-2:#2f2d29;--line:rgba(255,255,255,.10);--line-2:rgba(255,255,255,.06);
+--ink:#e8e6e1;--ink-2:#a8a49b;--ink-3:#9a968c;--brand:#4f7d1c;--brand-text:#8bc34a;--brand-light:rgba(98,153,36,.16);
+--warn:#f2a33a;--warn-bg:rgba(242,163,58,.12);--err:#ef6a6a;--err-bg:rgba(239,106,106,.12);--fill:rgba(255,255,255,.06);--hov:rgba(255,255,255,.04);
+--r:5px;--r2:8px;--font:'Manrope',system-ui,sans-serif;--nav-h:48px}
+:root[data-mode=light]{--bg:#ecebe8;--surface:#fff;--surface-2:#f4f3f0;--line:rgba(0,0,0,.12);--line-2:rgba(0,0,0,.07);--ink:#2b2926;--ink-2:#5f5b52;--ink-3:#66625a;
+--brand:#4d7c1f;--brand-text:#41701a;--brand-light:rgba(77,124,31,.10);--warn:#8f5500;--warn-bg:rgba(178,106,0,.08);--err:#c62828;--err-bg:rgba(198,40,40,.08);--fill:rgba(0,0,0,.05);--hov:rgba(0,0,0,.035)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;line-height:1.45}
+button,input{font:inherit;color:inherit}a{color:inherit;text-decoration:none}[hidden]{display:none!important}button{cursor:pointer}
+.ph{font-size:20px;line-height:1}.ph.sm{font-size:16px}
+:focus-visible{outline:2px solid var(--brand-text);outline-offset:2px}
+
+/* mock controls (not part of the design) */
+.mock{position:fixed;left:8px;bottom:8px;z-index:50;display:flex;gap:4px;flex-wrap:wrap;max-width:calc(100vw - 16px);font-size:11px;background:#000c;color:#fff;padding:6px;border-radius:6px}
+.mock button{background:#333;border:0;border-radius:4px;padding:4px 7px;color:#fff}.mock button.on{background:#4f7d1c}
+.mock.hide{display:none}
+
+/* nav */
+.nav{height:var(--nav-h);display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--surface);border-bottom:1px solid var(--line)}
+.nav__brand{display:flex;align-items:center;gap:8px;font-weight:800}.nav__brand img{width:24px;height:24px}
+.nav__room{display:flex;align-items:center;gap:8px;flex:1;min-width:0;font-size:13px;color:var(--ink-2)}
+.nav__room b{color:var(--ink);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:var(--r);background:var(--fill);color:var(--ink-2);white-space:nowrap}
+.badge--friendly{background:var(--brand-light);color:var(--brand-text)}
+.badge--rated{background:var(--warn-bg);color:var(--warn)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 12px;border-radius:var(--r);border:0;background:var(--fill);font-size:13px;font-weight:600;white-space:nowrap}
+.btn:hover{background:var(--line)}.btn--ghost{background:none;border:1px solid var(--line);color:var(--ink-2)}
+.btn--primary{background:var(--brand);color:#fff}.btn--primary:hover{background:#3f6516}
+.btn--danger{background:var(--err-bg);color:var(--err)}
+
+/* layout — desktop: board + 340px rail */
+.room{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;padding:16px;height:calc(100vh - var(--nav-h));height:calc(100dvh - var(--nav-h));max-width:1440px;margin:0 auto}
+.board-wrap{min-width:0;min-height:0;display:flex;align-items:center;justify-content:center;container-type:size}
+.board{display:block;width:min(100cqw,100cqh);height:min(100cqw,100cqh);border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.35);touch-action:none;user-select:none}
+.rail{display:flex;flex-direction:column;gap:8px;min-height:0}
+
+/* player card + clock */
+.pcard{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 12px;background:var(--surface);border-radius:var(--r2);border:2px solid transparent}
+.pcard__av{position:relative;width:40px;height:40px;border-radius:50%;background:#3a3733;display:grid;place-items:center;font-size:13px;font-weight:700}
+.pcard__piece{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px}
+.pcard__name{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard__meta{font-size:12.5px;color:var(--ink-3);display:flex;gap:8px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--brand-text);display:inline-block}
+.clock{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";font-size:32px;font-weight:700;letter-spacing:-.01em;padding:4px 12px;border-radius:var(--r);background:var(--fill);color:var(--ink-2);line-height:1.15;text-align:right;min-width:116px}
+.clock small{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:inherit;opacity:.85}
+/* running clock: fill + border + label (not colour alone) */
+.pcard.is-turn{border-color:var(--brand)}
+.pcard.is-turn .clock{background:var(--brand);color:#fff}
+.pcard.is-low .clock{background:var(--err);color:#fff}
+.pcard.is-low{border-color:var(--err)}
+
+
+/* center of rail: tabs panel */
+.panel{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--surface);border-radius:var(--r2);overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--line);flex-shrink:0}
+.tab{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;background:none;border:0;border-bottom:2px solid transparent;font-size:13px;font-weight:600;color:var(--ink-3)}
+.tab.is-active{color:var(--ink);border-bottom-color:var(--brand-text)}
+.tabpane{display:none;flex:1;min-height:0;overflow:auto;padding:12px}.tabpane.is-active{display:block}
+.moves{display:grid;grid-template-columns:36px 1fr 1fr;font-size:13.5px;font-variant-numeric:tabular-nums}
+.moves span{padding:4px 8px}.moves .n{color:var(--ink-3);background:var(--fill)}.moves .cur{background:var(--brand-light);color:var(--brand-text);font-weight:700}
+.chat{display:flex;flex-direction:column;gap:8px;font-size:13.5px}.chat b{font-weight:700}.chat .sys{color:var(--ink-3);font-size:12.5px}
+.chat-in{display:flex;gap:8px;padding:8px 12px;border-top:1px solid var(--line)}
+.chat-in input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:0 10px;min-height:36px}
+
+/* settings pane */
+.set h3{font-size:12px;font-weight:700;color:var(--ink-2);letter-spacing:.04em;text-transform:uppercase;margin:4px 0 8px}
+.set section{margin-bottom:16px}
+.seg{display:flex;gap:4px;background:var(--fill);padding:3px;border-radius:var(--r)}
+.seg button{flex:1;min-height:34px;border:0;background:none;border-radius:4px;font-size:13px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;justify-content:center;gap:6px}
+.seg button.on{background:var(--surface-2);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.swatches{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.sw{aspect-ratio:1;border-radius:var(--r);border:2px solid var(--line);position:relative;overflow:hidden;padding:0}
+.sw.on{border-color:var(--brand-text)}.sw svg{width:100%;height:100%;display:block}
+.sw span{position:absolute;inset:auto 0 0 0;font-size:10px;font-weight:700;background:#0008;color:#fff;padding:1px 0}
+.colors{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.color{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);min-height:36px}
+.color i{width:28px;height:28px;border-radius:var(--r);border:1px solid var(--line);flex-shrink:0}
+
+.linkrow{display:flex;align-items:center;gap:12px;padding:10px;border-radius:var(--r2);background:var(--fill);color:inherit;text-decoration:none}
+.linkrow:hover{background:var(--line)}.linkrow svg{width:40px;height:40px;border-radius:4px;flex-shrink:0}.linkrow span{flex:1;min-width:0}.linkrow b{display:block;font-size:14px}.linkrow small{color:var(--ink-3);font-size:12.5px}
+/* settings screen (Cài đặt › Giao diện › Bàn cờ) */
+.screen{display:none}.screen.is-active{display:block}
+.sp{max-width:1080px;margin:0 auto;padding:24px 16px}
+.sp h1{font-size:22px;font-weight:700;margin-bottom:14px}
+.sp__tabs{display:flex;overflow-x:auto;white-space:nowrap;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--line)}
+.sp__tabs span{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:14px;font-weight:600;color:var(--ink-3);border-bottom:2px solid transparent}
+.sp__tabs .on{color:var(--ink);border-bottom-color:var(--brand-text)}
+.sp__grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:20px;align-items:start}
+.sp__card{background:var(--surface);border-radius:var(--r2);padding:20px}
+.sp__pv{position:sticky;top:16px;background:var(--surface);border-radius:var(--r2);padding:16px}
+.sp__pv svg{width:100%;height:auto;display:block;border-radius:8px}
+.sp__pv p{font-size:12.5px;color:var(--ink-3);margin-top:8px}
+.sp .set section{margin-bottom:20px}
+@media (max-width:768px){.sp{padding:12px}.sp__grid{grid-template-columns:1fr}.sp__pv{order:-1;top:0;z-index:5;padding:8px}.sp__pv svg{max-height:38vh;width:auto;margin:0 auto}}
+/* request + actions (bottom of rail, right above my clock) */
+.actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:6px}
+.act{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;padding:0 4px;border:0;border-radius:var(--r2);background:var(--surface);font-size:13px;font-weight:600;color:var(--ink-2);white-space:nowrap}
+.act:hover{background:var(--surface-2);color:var(--ink)}
+.act.is-confirm{background:var(--err);color:#fff}
+/* game toast: floats over the top of the panel (never over board, clocks or actions) */
+.panel{position:relative}
+.gtoasts{position:absolute;left:8px;right:8px;top:52px;z-index:5;display:flex;flex-direction:column;gap:6px;pointer-events:none}.gtoasts>*{pointer-events:auto}
+.gtoast{position:relative;display:none;align-items:center;gap:10px;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r2);box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:14px;font-weight:600;overflow:hidden}
+.gtoast.show{display:flex}.gtoast>span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gtoast .ph{color:var(--warn)}.gtoast--danger .ph{color:var(--err)}
+.gtoast__n{font-variant-numeric:tabular-nums;font-size:13px;color:var(--ink-3);min-width:28px;text-align:right}
+.gtoast__bar{position:absolute;left:0;bottom:0;height:3px;background:var(--warn);width:var(--left,100%)}.gtoast--danger .gtoast__bar{background:var(--err)}
+.btn--icon{width:36px;padding:0}
+
+/* toast (quiet contrast notice) */
+.toast{position:fixed;right:16px;bottom:16px;z-index:40;max-width:360px;display:none;gap:10px;align-items:flex-start;padding:12px 14px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--r2);box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:13.5px}
+.toast.show{display:flex}.toast .ph{color:var(--warn)}.toast p{color:var(--ink-2);margin:2px 0 8px}
+.toast .chip{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin:0 4px;border:1px solid var(--line)}
+
+/* ── mobile ≤ 768: opp bar / edge-to-edge board / my bar / actions / panel ── */
+@media (max-width:768px){
+  :root{--nav-h:44px}
+  .nav{padding:0 10px;gap:10px}.nav__brand span,.nav .hide-m{display:none}
+  .room{display:flex;flex-direction:column;gap:0;padding:0;height:auto;max-width:none}
+  .rail{display:contents}
+  .pcard{order:1;border-radius:0;border-width:0 0 0 3px;padding:6px 10px;gap:10px}
+  .pcard--opp{order:1}.board-wrap{order:2}.pcard--me{order:3}.actions{order:5;padding:6px 8px}.panel{order:6;border-radius:0;min-height:320px;margin-top:2px}
+  .pcard__av{width:32px;height:32px;font-size:11px}.pcard__piece{width:16px;height:16px}
+  .pcard__name{font-size:14px}.pcard__meta{font-size:12px}
+  .clock{font-size:26px;min-width:96px;padding:2px 10px}
+  .clock small{display:none!important}
+  .pcard.is-turn{border-color:var(--brand)}
+  .board-wrap{container-type:normal}.board{border-radius:0;box-shadow:none;width:100vw;height:100vw}
+  .act{min-height:48px}
+  .toast{left:8px;right:8px;bottom:8px;max-width:none}
+}
+</style></head>
+<body>
+<nav class="nav">
+  <a class="nav__brand" href="index.html"><img src="assets/brand/logo-mark.svg" alt=""><span>Play3CR</span></a>
+  <div class="nav__room"><b>Phòng #4821 · Tự do 15×15</b><span class="badge badge--friendly" id="mode-badge"><i class="ph ph-handshake sm"></i>Giao hữu</span><span class="hide-m">· 10+5</span><span class="hide-m">· <i class="ph ph-eye sm"></i> 6</span></div>
+  <button class="btn btn--ghost" aria-label="Rời phòng"><i class="ph ph-sign-out sm"></i><span class="hide-m">Rời phòng</span></button>
+</nav>
+
+<div class="screen is-active" id="scr-room"><main class="room">
+  <section class="board-wrap" id="board-wrap"><svg class="board" id="board" role="img" aria-label="Bàn cờ 15×15"></svg></section>
+
+  <aside class="rail">
+    <div class="pcard pcard--opp" id="p-opp">
+      <div class="pcard__av">LT<svg class="pcard__piece" id="pc-opp" viewBox="0 0 40 40"></svg></div>
+      <div><div class="pcard__name">Lê Thanh Tùng</div><div class="pcard__meta"><span>1684</span><span class="dot" title="Trực tuyến" aria-label="Trực tuyến"></span></div></div>
+      <div class="clock"><span id="t-opp">07:42</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-tab="moves" role="tab"><i class="ph ph-list-numbers sm"></i>Nước đi</button>
+        <button class="tab" data-tab="chat" role="tab"><i class="ph ph-chat-circle sm"></i>Chat</button>
+        <button class="tab" data-tab="viewers" role="tab"><i class="ph ph-eye sm"></i>Khán giả</button>
+        <button class="tab" data-tab="settings" role="tab"><i class="ph ph-gear-six sm"></i>Cài đặt</button>
+      </div>
+      <div class="gtoasts" aria-live="assertive"><div class="gtoast" id="req" role="alert"><i class="ph ph-handshake"></i><span>Tùng xin cầu hoà</span><b class="gtoast__n">18s</b><button class="btn btn--primary btn--icon" aria-label="Đồng ý" title="Đồng ý"><i class="ph ph-check"></i></button><button class="btn btn--ghost btn--icon" aria-label="Từ chối" title="Từ chối"><i class="ph ph-x sm"></i></button><i class="gtoast__bar" style="--left:90%"></i></div>
+      <div class="gtoast gtoast--danger" id="rs" role="alert"><i class="ph ph-flag"></i><span>Bấm lần nữa để đầu hàng</span><b class="gtoast__n">3s</b><i class="gtoast__bar" style="--left:70%"></i></div></div>
+      <div class="tabpane is-active" id="tab-moves"><div class="moves" id="moves"></div></div>
+      <div class="tabpane" id="tab-chat">
+        <div class="chat">
+          <div class="sys">Ván 3 bắt đầu · Tùng cầm Đen</div>
+          <div><b>Tùng:</b> chơi nhanh nhé</div><div><b>Bạn:</b> ok 👍</div><div class="sys">Khán giả: Minh, Hà, +4</div>
+        </div>
+      </div>
+      <div class="tabpane" id="tab-viewers"><div class="chat"><div>Minh</div><div>Hà</div><div>Quang</div><div>Lan</div><div>Phúc</div><div>Vy</div></div></div>
+      <div class="tabpane set" id="tab-settings">
+        <section><h3>Luật phòng <small style="text-transform:none;font-weight:500">(chủ phòng, khi chưa chơi)</small></h3>
+          <div class="seg"><button>15×15</button><button class="on">17×17</button><button>19×19</button></div>
+          <div class="seg" style="margin-top:6px"><button class="on">Tự do</button><button>Chuẩn</button><button>Caro</button></div>
+          <div class="seg" style="margin-top:6px"><button class="on"><i class="ph ph-handshake sm"></i>Giao hữu</button><button><i class="ph ph-trophy sm"></i>Xếp hạng</button></div></section>
+        <section><h3>Bàn cờ của bạn</h3>
+          <a class="linkrow" href="#settings"><svg viewBox="0 0 40 40" id="mini-pv"></svg><span><b>Giao diện bàn cờ</b><small>Áp dụng cho mọi bàn cờ: phòng, giải, xem lại, puzzle</small></span><i class="ph ph-caret-right"></i></a></section>
+      </div>
+      <div class="chat-in" id="chat-in" hidden><input placeholder="Nhập tin nhắn…" aria-label="Tin nhắn"><button class="btn btn--primary" aria-label="Gửi"><i class="ph ph-paper-plane-tilt sm"></i></button></div>
+    </div>
+
+    <div class="actions" id="actions">
+      <button class="act" data-friendly title="Còn 3 lần"><i class="ph ph-arrow-counter-clockwise"></i>Lùi</button>
+      <button class="act" data-friendly title="+30s · còn 2 lần"><i class="ph ph-hourglass"></i>Xin time</button>
+      <button class="act" id="act-draw"><i class="ph ph-handshake"></i>Cầu hoà</button>
+      <button class="act" id="act-resign"><i class="ph ph-flag"></i>Đầu hàng</button>
+    </div>
+
+    <div class="pcard pcard--me is-turn" id="p-me">
+      <div class="pcard__av" style="background:#4f7d1c;color:#fff">BN<svg class="pcard__piece" id="pc-me" viewBox="0 0 40 40"></svg></div>
+      <div><div class="pcard__name">Nguyễn Minh</div><div class="pcard__meta"><span>1702</span><span class="dot" aria-label="Trực tuyến"></span></div></div>
+      <div class="clock"><span id="t-me">06:18</span></div>
+    </div>
+  </aside>
+</main></div>
+<div class="screen" id="scr-settings"><div class="sp">
+  <h1>Cài đặt</h1>
+  <div class="sp__tabs"><span><i class="ph ph-user-circle sm"></i>Hồ sơ</span><span class="on"><i class="ph ph-paint-brush sm"></i>Giao diện</span><span><i class="ph ph-sliders-horizontal sm"></i>Cài đặt</span><span><i class="ph ph-user-gear sm"></i>Tài khoản</span></div>
+  <div class="sp__grid">
+    <div class="sp__card set">
+      <section><h3>Kiểu bàn cờ</h3>
+        <div class="seg" id="seg-theme"><button data-v="paper" class="on">Giấy (X / O)</button><button data-v="stone">Đá (Đen / Trắng)</button></div></section>
+      <section><h3>Bảng màu</h3><div class="swatches" id="swatches"></div></section>
+      <section><h3>Màu tuỳ chỉnh</h3><div class="colors" id="colors"></div></section>
+      <section><h3>Toạ độ</h3>
+        <div class="seg" id="seg-coords"><button data-v="edge" class="on">Chữ + số ở mép</button><button data-v="cell">Số trong ô</button></div></section>
+      <section><h3>Hiển thị</h3>
+        <div class="seg"><button class="on">Đánh dấu nước cuối</button><button>Số thứ tự nước</button></div></section>
+    </div>
+    <aside class="sp__pv"><svg id="pv" role="img" aria-label="Xem trước bàn cờ"></svg><p>Xem trước · áp dụng ngay cho phòng, giải đấu, xem lại, puzzle và trình tạo puzzle.</p></aside>
+  </div>
+</div></div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i class="ph ph-warning"></i>
+  <div><b>Quân O khó nhìn trên nền này</b><p>Độ tương phản 1.9 : 1 (cần ≥ 3). Gợi ý <i class="chip" id="toast-chip"></i><code id="toast-hex"></code></p>
+    <button class="btn btn--primary">Dùng màu gợi ý</button> <button class="btn btn--ghost">Giữ nguyên</button></div>
+</div>
+
+<div class="mock" id="mock">
+  <button data-m="mode" class="on">Giao hữu</button><button data-m="rated">Xếp hạng</button>|
+  <button data-m="req">Lời đề nghị</button><button data-m="resign">Xác nhận đầu hàng</button><button data-m="low">Hết giờ &lt;10s</button><button data-m="toast">Toast WCAG</button>|
+  <button data-m="light">Sáng/Tối</button><button data-m="hide">Ẩn</button>
+</div>
+
+<script>
+// Board: port of GomokuBoardSite js/board.js geometry (paper = pieces in cells, stone = on intersections).
+const P = 40, f = n => Math.round(n * 10) / 10;
+const PRESETS = {
+  paper: [{ name: 'Trắng', bg: '#ffffff', grid: '#c9d3df', xColor: '#d6383a', oColor: '#2764d1' }, { name: 'Kem', bg: '#fbf8f1', grid: '#c3cedb', xColor: '#c8322f', oColor: '#1f5bc4' },
+    { name: 'Vở', bg: '#eef4ff', grid: '#94b3e0', xColor: '#c21d3a', oColor: '#1e3a8a' }, { name: 'Kraft', bg: '#e7d3ad', grid: '#b39463', xColor: '#9b1c1c', oColor: '#1f3b73' },
+    { name: 'Bảng', bg: '#22302a', grid: '#4d6a5d', xColor: '#ffd166', oColor: '#8ecdf5' }],
+  stone: [{ name: 'Kaya', bg: '#dcb35c', line: '#3a2a12' }, { name: 'Nhạt', bg: '#ecd8a4', line: '#4a3a1c' }, { name: 'Óc chó', bg: '#c38952', line: '#24160a' },
+    { name: 'Đá phiến', bg: '#9ea9ae', line: '#232d33' }, { name: 'Nỉ', bg: '#8fc19f', line: '#16301f' }],
+};
+const S = { theme: 'paper', coords: 'edge', paper: { ...PRESETS.paper[1] }, stone: { ...PRESETS.stone[0] }, pi: 1, si: 0 };
+const N = 15;
+const MOVES = [[7,7],[8,8],[8,6],[6,8],[9,5],[10,4],[7,6],[7,5],[6,6],[5,6],[9,6],[10,6],[8,7],[6,5],[8,5]];
+const LET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const lum = h => { const n = parseInt(h.slice(1), 16); return [(n>>16)&255,(n>>8)&255,n&255].map(c => { c/=255; return c<=.04045?c/12.92:((c+.055)/1.055)**2.4; }).reduce((a,c,i)=>a+c*[.2126,.7152,.0722][i],0); };
+const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x,y)+.05)/(Math.min(x,y)+.05); };
+let SUF = 'b';
+const defsFor = () => `<defs><radialGradient id="gB${SUF}" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#6e6e6e"/><stop offset=".35" stop-color="#262626"/><stop offset="1" stop-color="#050505"/></radialGradient>
+<radialGradient id="gW${SUF}" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#ececea"/><stop offset="1" stop-color="#b9b9b4"/></radialGradient>
+<linearGradient id="gS${SUF}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".14"/></linearGradient></defs>`;
+function piece(p, cx, cy) {
+  if (S.theme === 'stone') { const r = P * .46; return `<circle cx="${cx+1}" cy="${cy+2}" r="${r}" fill="#000" opacity=".28"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="url(#${p ? 'gW' : 'gB'}${SUF})"${p ? ' stroke="rgba(0,0,0,.22)"' : ''}/>`; }
+  const r = P * .28;
+  return p ? `<circle cx="${cx}" cy="${cy}" r="${P*.29}" fill="none" stroke="${S.paper.oColor}" stroke-width="3.6"/>`
+    : `<path d="M${f(cx-r)} ${f(cy-r)}L${f(cx+r)} ${f(cy+r)}M${f(cx+r)} ${f(cy-r)}L${f(cx-r)} ${f(cy+r)}" stroke="${S.paper.xColor}" stroke-width="3.6" stroke-linecap="round"/>`;
+}
+function spiral(n) { const a = new Array(n*n).fill(0), d = [[1,0],[0,1],[-1,0],[0,-1]]; let x = (n-1)>>1, y = x, k = 1; const put = () => { if (x>=0&&y>=0&&x<n&&y<n) a[y*n+x] = k++; }; put();
+  for (let len = 1, di = 0; k <= n*n; len++) for (let leg = 0; leg < 2; leg++, di = (di+1)%4) for (let i = 0; i < len; i++) { x += d[di][0]; y += d[di][1]; put(); } return a; }
+function drawBoard(svg, allowCompact) {
+  SUF = svg.id; const defs = defsFor();
+  const paper = S.theme === 'paper', edge = S.coords === 'edge';
+  const compact = allowCompact && matchMedia('(max-width:768px)').matches;
+  const m = compact ? (edge ? 26 : 2) : (edge ? 34 : 12), W = 2*m + N*P, c = i => m + (i + .5) * P;
+  const cut = compact && edge ? m - 2 : 0;
+  const bg = paper ? S.paper.bg : S.stone.bg, ink = lum(bg) > .18 ? 'rgba(0,0,0,' : 'rgba(255,255,255,';
+  svg.setAttribute('viewBox', `0 ${cut} ${W - cut} ${W - cut}`);
+  const o = [defs, `<rect width="${W}" height="${W}" fill="${bg}"/>`];
+  if (!paper) o.push(`<rect width="${W}" height="${W}" fill="url(#gS${SUF})"/>`);
+  const cnt = paper ? N + 1 : N, base = paper ? m : c(0), L = [];
+  for (let i = 0; i < cnt; i++) { const v = base + i*P, w = i === 0 || i === cnt-1 ? 2 : 1; L.push(`<line x1="${v}" y1="${base}" x2="${v}" y2="${base+(cnt-1)*P}" stroke-width="${w}"/><line x1="${base}" y1="${v}" x2="${base+(cnt-1)*P}" y2="${v}" stroke-width="${w}"/>`); }
+  o.push(`<g stroke="${paper ? S.paper.grid : S.stone.line}">${L.join('')}</g>`);
+  if (!paper) o.push(`<g fill="${S.stone.line}">${[[3,3],[3,11],[11,3],[11,11],[7,7]].map(([x,y]) => `<circle cx="${c(x)}" cy="${c(y)}" r="3.6"/>`).join('')}</g>`);
+  const t = [];
+  if (edge) { for (let i = 0; i < N; i++) { t.push(`<text x="${c(i)}" y="${W - m/2}">${LET[i]}</text><text x="${m/2}" y="${c(i)}">${N - i}</text>`); if (!compact) t.push(`<text x="${c(i)}" y="${m/2}">${LET[i]}</text><text x="${W - m/2}" y="${c(i)}">${N - i}</text>`); }
+    o.push(`<g fill="${ink}.7)" font-size="${compact ? 18 : 14}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="Manrope,sans-serif">${t.join('')}</g>`); }
+  else { const nums = spiral(N), occ = new Set(MOVES.map(([x,y]) => y*N+x)), u = [];
+    for (let k = 0; k < N*N; k++) if (!occ.has(k)) u.push(`<text x="${c(k%N)}" y="${c((k/N)|0)}">${nums[k]}</text>`);
+    o.push(`<g fill="${ink}.72)" font-size="${compact ? 16 : 12}" text-anchor="middle" dominant-baseline="central" font-family="Manrope,sans-serif"${paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`}>${u.join('')}</g>`); }
+  const last = MOVES[MOVES.length - 1];
+  if (paper) o.push(`<rect x="${m+last[0]*P+1}" y="${m+last[1]*P+1}" width="${P-2}" height="${P-2}" fill="${MOVES.length % 2 ? S.paper.xColor : S.paper.oColor}" opacity=".14"/>`);
+  MOVES.forEach(([x, y], i) => o.push(piece(i % 2, c(x), c(y))));
+  if (!paper) o.push(`<circle cx="${c(last[0])}" cy="${c(last[1])}" r="5" fill="#e0342f"/>`);
+  o.push(`<rect x="${m+9*P+3}" y="${m+4*P+3}" width="${P-6}" height="${P-6}" rx="4" fill="none" stroke="${paper ? S.paper.oColor : '#e0342f'}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`); // hover preview
+  svg.innerHTML = o.join('');
+}
+function render() {
+  drawBoard(document.getElementById('board'), true);
+  drawBoard(document.getElementById('pv'), false);
+  const th = S.theme === 'paper' ? S.paper : S.stone;
+  document.getElementById('mini-pv').innerHTML = prev(th, S.theme);
+  SUF = 'pc'; const defs = defsFor();
+  document.getElementById('pc-opp').innerHTML = defs + piece(0, 20, 20);
+  document.getElementById('pc-me').innerHTML = defs + piece(1, 20, 20);
+  swatches(); colors();
+}
+function prev(p, th) { const bg = p.bg; return `<svg viewBox="0 0 40 40"><rect width="40" height="40" fill="${bg}"/>${th === 'paper'
+  ? `<path d="M0 20H40M20 0V40" stroke="${p.grid}"/><path d="M5 5L15 15M15 5L5 15" stroke="${p.xColor}" stroke-width="3" stroke-linecap="round"/><circle cx="30" cy="30" r="6" fill="none" stroke="${p.oColor}" stroke-width="3"/>`
+  : `<path d="M10 0V40M30 0V40M0 10H40M0 30H40" stroke="${p.line}"/><circle cx="10" cy="10" r="7" fill="#151515"/><circle cx="30" cy="30" r="7" fill="#f4f4f0" stroke="#0003"/>`}</svg>`; }
+function swatches() { const th = S.theme, idx = th === 'paper' ? S.pi : S.si;
+  document.getElementById('swatches').innerHTML = PRESETS[th].map((p, i) => `<button class="sw${i === idx ? ' on' : ''}" data-i="${i}" aria-label="${p.name}">${prev(p, th)}<span>${p.name}</span></button>`).join(''); }
+function colors() { const p = S.theme === 'paper' ? S.paper : S.stone;
+  const rows = S.theme === 'paper' ? [['Nền', p.bg], ['Lưới', p.grid], ['Quân X', p.xColor], ['Quân O', p.oColor]] : [['Nền', p.bg], ['Đường kẻ', p.line]];
+  document.getElementById('colors').innerHTML = rows.map(([n, v]) => `<label class="color"><i style="background:${v}"></i>${n}<code style="margin-left:auto;font-size:12px;color:var(--ink-3)">${v}</code></label>`).join(''); }
+document.getElementById('moves').innerHTML = MOVES.reduce((h, [x, y], i) => h + (i % 2 ? '' : `<span class="n">${i/2+1}</span>`) + `<span${i === MOVES.length-1 ? ' class="cur"' : ''}>${LET[x]}${N - y}</span>`, '');
+document.addEventListener('click', e => {
+  const tab = e.target.closest('.tab'); if (tab) { document.querySelectorAll('.tab,.tabpane').forEach(el => el.classList.remove('is-active')); tab.classList.add('is-active'); document.getElementById('tab-' + tab.dataset.tab).classList.add('is-active'); document.getElementById('chat-in').hidden = tab.dataset.tab !== 'chat'; }
+  const seg = e.target.closest('#seg-theme button,#seg-coords button'); if (seg) { seg.parentElement.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === seg)); S[seg.parentElement.id === 'seg-theme' ? 'theme' : 'coords'] = seg.dataset.v; render(); }
+  const sw = e.target.closest('.sw'); if (sw) { const i = +sw.dataset.i; if (S.theme === 'paper') { S.pi = i; S.paper = { ...PRESETS.paper[i] }; } else { S.si = i; S.stone = { ...PRESETS.stone[i] }; } render(); }
+  if (e.target.closest('#act-resign')) { const b = document.getElementById('act-resign'); const on = !b.classList.contains('is-confirm'); b.classList.toggle('is-confirm', on); b.innerHTML = on ? '<i class="ph ph-flag"></i>Xác nhận' : '<i class="ph ph-flag"></i>Đầu hàng'; document.getElementById('rs').classList.toggle('show', on); }
+  const mk = e.target.closest('.mock button'); if (!mk) return; const m = mk.dataset.m;
+  if (m === 'mode' || m === 'rated') { const rated = m === 'rated'; document.querySelectorAll('.mock [data-m=mode],.mock [data-m=rated]').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+    document.querySelectorAll('[data-friendly]').forEach(b => b.hidden = rated); const bd = document.getElementById('mode-badge');
+    bd.className = 'badge ' + (rated ? 'badge--rated' : 'badge--friendly'); bd.innerHTML = rated ? '<i class="ph ph-trophy sm"></i>Xếp hạng' : '<i class="ph ph-handshake sm"></i>Giao hữu'; }
+  if (m === 'req') { mk.classList.toggle('on'); document.getElementById('req').classList.toggle('show'); }
+  if (m === 'resign') { mk.classList.toggle('on'); document.getElementById('act-resign').click(); }
+  if (m === 'low') { mk.classList.toggle('on'); const me = document.getElementById('p-me'); me.classList.toggle('is-low'); document.getElementById('t-me').textContent = me.classList.contains('is-low') ? '00:08' : '06:18'; }
+  if (m === 'toast') { mk.classList.toggle('on'); location.hash = '#settings'; S.paper.oColor = mk.classList.contains('on') ? '#9fc3f0' : PRESETS.paper[S.pi].oColor;
+    document.getElementById('toast-hex').textContent = '#1f5bc4'; document.getElementById('toast-chip').style.background = '#1f5bc4'; document.getElementById('toast').classList.toggle('show'); render(); }
+  if (m === 'light') { const r = document.documentElement; r.dataset.mode = r.dataset.mode === 'dark' ? 'light' : 'dark'; }
+  if (m === 'hide') document.getElementById('mock').classList.add('hide');
+});
+const q = new URLSearchParams(location.search);
+['req', 'resign', 'low', 'toast', 'rated', 'light'].forEach(k => { if (q.has(k)) document.querySelector(`.mock [data-m=${k}]`).click(); });
+if (q.has('theme')) S.theme = q.get('theme'); if (q.has('coords')) S.coords = q.get('coords');
+if (q.has('tab')) document.querySelector(`.tab[data-tab=${q.get('tab')}]`).click();
+if (q.has('nomock')) document.getElementById('mock').classList.add('hide');
+function route() { const st = location.hash === '#settings'; document.getElementById('scr-room').classList.toggle('is-active', !st); document.getElementById('scr-settings').classList.toggle('is-active', st); render(); }
+addEventListener('hashchange', route); route(); addEventListener('resize', render);
+</script>
+</body></html>

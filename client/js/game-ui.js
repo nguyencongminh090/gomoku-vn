@@ -209,16 +209,10 @@
     return m > 0 ? `${m}:${String(s).padStart(2, '0')}` : `${s}`;
   }
 
-  // ── Turn bar visibility ───────────────────────────────────────────────────
-
-  // The turn bar is display:none before a game starts so it reserves no layout
-  // height (it used to be visibility:hidden, leaving an empty strip above the
-  // board — costly on phones). board.js resize() reads its offsetHeight, so the
-  // board is re-measured whenever this toggles.
-  function setTurnBarVisible(visible) {
-    const tb = document.getElementById('turn-bar');
-    if (!tb) return;
-    tb.classList.toggle('turn-bar--hidden', !visible);
+  // ── Turn bar (retired, #216) ───────────────────────────────────────────────
+  // Names and clocks now live on the player cards (RoomUI.renderPlayerCards);
+  // kept as an export because room-socket.js calls it — re-fits the board.
+  function setTurnBarVisible() {
     requestAnimationFrame(() => {
       if (S().boardRenderer) S().boardRenderer.resize();
     });
@@ -232,32 +226,10 @@
     const boardSize = st.gameState ? st.gameState.boardSize : st.roomData.settings.boardSize;
 
     if (!st.boardRenderer) {
+      // Just the board: players, clocks, actions and requests live in the rail (#216).
       boardArea.innerHTML = `
-        <div class="board-area-inner">
-          <div class="turn-bar turn-bar--hidden" id="turn-bar">
-            <div class="turn-bar__player" id="tb-black">
-              <div class="turn-bar__info">
-                <span class="turn-bar__stone turn-bar__stone--black"></span>
-                <span class="turn-bar__name" id="tb-black-name"></span>
-              </div>
-              <span class="turn-bar__timer" id="tb-black-timer"></span>
-            </div>
-            <div class="game-info__turn" id="turn-label"></div>
-            <div class="turn-bar__player" id="tb-white">
-              <span class="turn-bar__timer" id="tb-white-timer"></span>
-              <div class="turn-bar__info turn-bar__info--right">
-                <span class="turn-bar__name" id="tb-white-name"></span>
-                <span class="turn-bar__stone turn-bar__stone--white"></span>
-              </div>
-            </div>
-          </div>
-          <div class="board-canvas-wrap" id="board-wrap">
-            <canvas id="game-canvas"></canvas>
-          </div>
-          <div class="game-controls" id="game-controls"></div>
-          <div id="draw-prompt-area"></div>
-          <div id="time-prompt-area"></div>
-          <div id="undo-prompt-area"></div>
+        <div class="board-canvas-wrap" id="board-wrap">
+          <canvas id="game-canvas"></canvas>
         </div>
       `;
 
@@ -318,9 +290,9 @@
         showZones: false, interactive: false, lastMove: null, myColor: null,
         displayMode: st.boardDisplayMode, moveHistory: [],
       });
-      setTurnBarVisible(false);
       const gc = document.getElementById('game-controls');
       if (gc) gc.innerHTML = '';
+      renderMoves();
     } else {
       const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
       const myColorStr = myPlayer ? myPlayer.color : null;
@@ -338,14 +310,8 @@
         moveHistory: st.gameState.moveHistory || [],
       });
 
-      const blackP  = st.gameState.players.find(p => p.color === 'BLACK');
-      const whiteP  = st.gameState.players.find(p => p.color === 'WHITE');
-      const bNameEl = document.getElementById('tb-black-name');
-      const wNameEl = document.getElementById('tb-white-name');
-      if (bNameEl) bNameEl.textContent = blackP ? blackP.displayName : '—';
-      if (wNameEl) wNameEl.textContent = whiteP ? whiteP.displayName : '—';
-
-      setTurnBarVisible(true);
+      if (global.RoomUI && global.RoomUI.renderPlayerCards) global.RoomUI.renderPlayerCards();
+      renderMoves();
     }
 
     requestAnimationFrame(() => {
@@ -381,6 +347,34 @@
     renderTimers();
     renderTurnLabel();
     renderGameControls();
+    renderMoves();
+  }
+
+  // ── Moves tab (#216) ──────────────────────────────────────────────────────
+  // Pairs per line (black · white) in edge coordinates (A1 bottom-left), newest highlighted.
+  function moveLabel(mv, n) {
+    return String.fromCharCode(65 + mv.x) + (n - mv.y);
+  }
+  function renderMoves() {
+    const el = document.getElementById('moves-list');
+    if (!el) return;
+    const st = S();
+    const gs = st.gameState;
+    const hist = (gs && gs.moveHistory) || [];
+    if (!hist.length) {
+      el.innerHTML = `<li class="moves__empty">${t('room.moves_empty')}</li>`;
+      return;
+    }
+    const n = gs.boardSize;
+    let html = '';
+    for (let i = 0; i < hist.length; i += 2) {
+      const a = hist[i], b = hist[i + 1];
+      const last = (j) => (j === hist.length - 1 ? ' class="moves__cur"' : '');
+      html += `<li><span class="moves__n">${i / 2 + 1}</span><span${last(i)}>${moveLabel(a, n)}</span><span${b ? last(i + 1) : ''}>${b ? moveLabel(b, n) : ''}</span></li>`;
+    }
+    el.innerHTML = html;
+    const pane = document.getElementById('tab-moves');
+    if (pane) pane.scrollTop = pane.scrollHeight;
   }
 
   // ── Timer rendering ───────────────────────────────────────────────────────
@@ -447,36 +441,11 @@
     return st.gameState.currentTurn === (blackP ? blackP.userId : null) ? 'BLACK' : 'WHITE';
   }
 
+  // Clocks are painted on the player cards (#216). The tick path is unchanged:
+  // room-socket.js tickLocal → GameUI.renderTimers → RoomUI.updateCardClocks.
   function renderTimers() {
-    const st = S();
-    const bTimerEl = document.getElementById('tb-black-timer');
-    const wTimerEl = document.getElementById('tb-white-timer');
-    if (!bTimerEl || !wTimerEl) return;
-
-    const { black: blackVal, white: whiteVal } = effectiveTimerValues();
-
-    bTimerEl.textContent = formatTime(blackVal);
-    wTimerEl.textContent = formatTime(whiteVal);
-    bTimerEl.classList.toggle('turn-bar__timer--low', blackVal <= 10);
-    wTimerEl.classList.toggle('turn-bar__timer--low', whiteVal <= 10);
-
-    const tbBlack = document.getElementById('tb-black');
-    const tbWhite = document.getElementById('tb-white');
-    if (tbBlack && tbWhite && st.gameState) {
-      // predictedTurn override + Swap2-opening placeholder rule
-      // (instruction.md §B37) both live in effectiveTurnColor() now, shared
-      // with the mobile strip.
-      const turnColor = effectiveTurnColor();
-      tbBlack.classList.toggle('turn-bar__active', turnColor === 'BLACK');
-      tbWhite.classList.toggle('turn-bar__active', turnColor === 'WHITE');
-    }
-
-    // The turn bar above is display:none at ≤768px; there the mobile players
-    // strip carries the clocks instead. Repaint it from here rather than from
-    // a second interval so both surfaces stay on the one tick path
-    // room-socket.js already drives (tickLocal → GameUI.renderTimers).
-    if (global.RoomUI && typeof global.RoomUI.updateStripTimers === 'function') {
-      global.RoomUI.updateStripTimers();
+    if (global.RoomUI && typeof global.RoomUI.updateCardClocks === 'function') {
+      global.RoomUI.updateCardClocks();
     }
   }
 
@@ -504,17 +473,25 @@
     el.classList.toggle('game-info__turn--mine', isMyTurn);
   }
 
-  // ── Game control buttons ──────────────────────────────────────────────────
+  // ── Action tiles (#216) ───────────────────────────────────────────────────
+  // Equal tiles, one short label each: Lùi · Xin time (friendly games only —
+  // the server refuses them when rated, FRIENDLY_ONLY) · Cầu hoà · Đầu hàng.
+  // Draw and resign take two taps: the first arms the tile and shows a 3 s
+  // countdown toast; a second tap inside it sends. #game-controls is empty
+  // outside your own ongoing game (hidden by CSS), and the board is re-fit
+  // whenever that flips because the rail/column height changes.
+  const CONFIRM_MS = 3000;
+  let armed = null;          // { action: 'resign'|'draw', until }
+  let armedTimer = null;
 
-  // #game-controls is empty (no buttons) whenever there's no ongoing game —
-  // in zen, an empty #game-controls collapses to 0 height (see
-  // .game-controls:empty in room-zen.css) so the board can grow into that
-  // space pre-game instead of it sitting reserved-but-unused. That means the
-  // board's real available height budget changes the moment this function's
-  // innerHTML flips between empty and populated, so board.js resize() has
-  // to be re-run right after — same pattern setTurnBarVisible() already
-  // uses for the same reason (a toggling sibling that changes the layout
-  // budget board.js measures).
+  function tile(action, icon, labelKey, attrs = '') {
+    const isArmed = armed && armed.action === action;
+    return `<button class="act${isArmed ? ' act--confirm' : ''}" type="button" data-action="${action}" ${attrs}>
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-${icon}"></use></svg>
+      <span>${isArmed ? t('room.btn_confirm') : t(labelKey)}</span>
+    </button>`;
+  }
+
   function renderGameControls() {
     const st = S();
     const el = document.getElementById('game-controls');
@@ -523,29 +500,84 @@
     const myPlayer = st.gameState ? st.gameState.players.find(p => p.userId === st.myUser.userId) : null;
 
     if (!st.gameState || st.gameState.status !== 'ongoing' || !myPlayer) {
+      disarm(false);
       el.innerHTML = '';
       renderDrawPrompt();
       requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
       return;
     }
 
-    const timeDisabled = st.timeRequestPending ? 'disabled' : '';
-    const undoDisabled = st.undoOfferPending ? 'disabled' : '';
-    el.innerHTML = `
-      <button class="btn-game btn-game--resign" data-action="doResign">${t('game.btn_resign')}</button>
-      <button class="btn-game btn-game--draw"   data-action="doDrawOffer">${t('game.btn_draw')}</button>
-      <button class="btn-game btn-game--time"   data-action="doRequestTime" ${timeDisabled}>
-        ${t('game.btn_time')}
-      </button>
-      <button class="btn-game btn-game--undo"   data-action="doUndoRequest" ${undoDisabled}>
-        ${t('game.btn_undo')}
-      </button>
-    `;
+    const friendly = st.gameState.rated !== true;
+    const timeTitle = escAttr(t('game.btn_time'));
+    const undoTitle = escAttr(t('game.btn_undo'));
+    el.innerHTML =
+      (friendly ? tile('doUndoRequest', 'arrow-counter-clockwise', 'room.act_undo',
+        `title="${undoTitle}" ${st.undoOfferPending ? 'disabled' : ''}`) : '') +
+      (friendly ? tile('doRequestTime', 'hourglass', 'room.act_time',
+        `title="${timeTitle}" ${st.timeRequestPending ? 'disabled' : ''}`) : '') +
+      tile('doDrawOffer', 'handshake', 'room.act_draw', st.drawOfferPending ? 'disabled' : '') +
+      tile('doResign', 'flag', 'room.act_resign');
 
     renderDrawPrompt();
     renderTimePrompt();
     renderUndoPrompt();
+    renderConfirmPrompt();
     requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
+  }
+
+  function escAttr(str) { return _esc(str).replace(/"/g, '&quot;'); }
+
+  function disarm(rerender = true) {
+    armed = null;
+    if (armedTimer) { clearInterval(armedTimer); armedTimer = null; }
+    if (rerender) renderGameControls();
+    else renderConfirmPrompt();
+  }
+
+  // First tap arms, second tap inside CONFIRM_MS returns true (send).
+  function confirmTap(action) {
+    if (armed && armed.action === action && Date.now() < armed.until) {
+      disarm();
+      return true;
+    }
+    if (armedTimer) clearInterval(armedTimer);
+    armed = { action, until: Date.now() + CONFIRM_MS };
+    armedTimer = setInterval(() => {
+      if (!armed || Date.now() >= armed.until) disarm();
+      else renderConfirmPrompt();
+    }, 250);
+    renderGameControls();
+    return false;
+  }
+
+  function renderConfirmPrompt() {
+    const el = document.getElementById('confirm-prompt-area');
+    if (!el) return;
+    if (!armed) { el.innerHTML = ''; return; }
+    const left = Math.max(0, armed.until - Date.now());
+    const key = armed.action === 'doResign' ? 'room.confirm_resign' : 'room.confirm_draw';
+    const icon = armed.action === 'doResign' ? 'flag' : 'handshake';
+    el.innerHTML = gtoast(icon, t(key), {
+      danger: armed.action === 'doResign',
+      count: `${Math.ceil(left / 1000)}s`,
+      pct: (left / CONFIRM_MS) * 100,
+    });
+  }
+
+  // One toast row: icon, one line of text, optional countdown, optional buttons.
+  function gtoast(icon, text, { danger = false, count = '', pct = null, actions = '' } = {}) {
+    return `<div class="gtoast${danger ? ' gtoast--danger' : ''}" role="alert">
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-${icon}"></use></svg>
+      <span class="gtoast__t">${text}</span>
+      ${count ? `<b class="gtoast__n">${count}</b>` : ''}
+      ${actions}
+      ${pct !== null ? `<i class="gtoast__bar" style="width:${Math.max(0, Math.min(100, pct)).toFixed(1)}%"></i>` : ''}
+    </div>`;
+  }
+
+  function answerButtons(acceptAction, declineAction) {
+    return `<button class="gtoast__btn gtoast__btn--ok" type="button" data-action="${acceptAction}" title="${escAttr(t('game.btn_accept'))}" aria-label="${escAttr(t('game.btn_accept'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-check"></use></svg></button>
+      <button class="gtoast__btn" type="button" data-action="${declineAction}" title="${escAttr(t('game.btn_decline'))}" aria-label="${escAttr(t('game.btn_decline'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=295#ph-regular-x"></use></svg></button>`;
   }
 
   // ── Swap2 opening UI ──────────────────────────────────────────────────────
@@ -577,13 +609,7 @@
     // Timer runs throughout the opening (instruction.md §B37) — keep the
     // turn bar visible instead of hiding it, and label the two slots by
     // firstPlayerId/secondPlayerId since `player.color` is still null.
-    setTurnBarVisible(true);
-    const bNameEl = document.getElementById('tb-black-name');
-    const wNameEl = document.getElementById('tb-white-name');
-    const firstP  = st.gameState.players.find(p => p.userId === st.gameState.swap2.firstPlayerId);
-    const secondP = st.gameState.players.find(p => p.userId === st.gameState.swap2.secondPlayerId);
-    if (bNameEl) bNameEl.textContent = firstP ? firstP.displayName : '—';
-    if (wNameEl) wNameEl.textContent = secondP ? secondP.displayName : '—';
+    if (global.RoomUI && global.RoomUI.renderPlayerCards) global.RoomUI.renderPlayerCards();
     renderTimers();
 
     renderDrawPrompt();
@@ -626,101 +652,48 @@
     // flex row on desktop, and .swap2-hint/.swap2-choice above already
     // claim width:100% of it, so the undo button needs its own row rather
     // than fighting them for space on the same one.
-    const undoDisabled = st.undoOfferPending ? 'disabled' : '';
-    html += `
-      <div class="swap2-undo-row">
-        <button class="btn-game btn-game--undo" data-action="doUndoRequest" ${undoDisabled}>
-          ${t('game.btn_undo')}
-        </button>
-      </div>`;
+    if (st.gameState.rated !== true) {
+      html += `<div class="swap2-undo-row">${tile('doUndoRequest', 'arrow-counter-clockwise', 'room.act_undo',
+        `title="${escAttr(t('game.btn_undo'))}" ${st.undoOfferPending ? 'disabled' : ''}`)}</div>`;
+    }
     el.innerHTML = html;
     // Same empty/populated-height concern as renderGameControls() above —
     // swap2 also writes directly into #game-controls.
     requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
   }
 
-  // ── Draw offer prompt ─────────────────────────────────────────────────────
+  // ── Requests as toasts (#216) ─────────────────────────────────────────────
+  // Over the top of the rail panel, never over the board/clocks/actions. The
+  // opponent's request carries ✓ / ✕; your own pending request is one quiet line.
+
+  function renderRequest(areaId, pending, icon, offerKey, offerVars, acceptAction, declineAction, waitingKey) {
+    const st = S();
+    const el = document.getElementById(areaId);
+    if (!el) return;
+    if (!pending || !st.gameState || st.gameState.status !== 'ongoing') { el.innerHTML = ''; return; }
+    if (pending.from === st.myUser.userId) {
+      el.innerHTML = gtoast(icon, t(waitingKey));
+      return;
+    }
+    el.innerHTML = gtoast(icon, t(offerKey, offerVars), { actions: answerButtons(acceptAction, declineAction) });
+  }
 
   function renderDrawPrompt() {
-    const st = S();
-    const el = document.getElementById('draw-prompt-area');
-    if (!el) return;
-
-    if (!st.drawOfferPending || !st.gameState || st.gameState.status !== 'ongoing') {
-      el.innerHTML = '';
-      return;
-    }
-
-    if (st.drawOfferPending.from === st.myUser.userId) {
-      el.innerHTML = `<div class="draw-prompt">${t('game.draw_waiting')}</div>`;
-      return;
-    }
-
-    el.innerHTML = `
-      <div class="draw-prompt">
-        <span>${t('game.draw_offer', { name: _esc(st.drawOfferPending.fromName || t('game.opponent_generic')) })}</span>
-        <div class="draw-prompt__actions">
-          <button class="btn-draw-action btn-draw-accept"  data-action="doDrawAccept">${t('game.btn_accept')}</button>
-          <button class="btn-draw-action btn-draw-decline" data-action="doDrawDecline">${t('game.btn_decline')}</button>
-        </div>
-      </div>
-    `;
+    const p = S().drawOfferPending;
+    renderRequest('draw-prompt-area', p, 'handshake', 'game.draw_offer',
+      { name: _esc((p && p.fromName) || t('game.opponent_generic')) }, 'doDrawAccept', 'doDrawDecline', 'game.draw_waiting');
   }
-
-  // ── Time request prompt ───────────────────────────────────────────────────
 
   function renderTimePrompt() {
-    const st = S();
-    const el = document.getElementById('time-prompt-area');
-    if (!el) return;
-
-    if (!st.timeRequestPending || !st.gameState || st.gameState.status !== 'ongoing') {
-      el.innerHTML = '';
-      return;
-    }
-
-    if (st.timeRequestPending.from === st.myUser.userId) {
-      el.innerHTML = `<div class="draw-prompt">${t('game.time_waiting')}</div>`;
-      return;
-    }
-
-    el.innerHTML = `
-      <div class="draw-prompt">
-        <span>${t('game.time_offer', { name: _esc(st.timeRequestPending.fromName || ''), bonus: st.timeRequestPending.bonus || 10 })}</span>
-        <div class="draw-prompt__actions">
-          <button class="btn-draw-action btn-draw-accept"  data-action="doTimeAccept">${t('game.btn_accept')}</button>
-          <button class="btn-draw-action btn-draw-decline" data-action="doTimeDecline">${t('game.btn_decline')}</button>
-        </div>
-      </div>
-    `;
+    const p = S().timeRequestPending;
+    renderRequest('time-prompt-area', p, 'hourglass', 'game.time_offer',
+      { name: _esc((p && p.fromName) || ''), bonus: (p && p.bonus) || 10 }, 'doTimeAccept', 'doTimeDecline', 'game.time_waiting');
   }
 
-  // ── Undo request prompt ───────────────────────────────────────────────────
-
   function renderUndoPrompt() {
-    const st = S();
-    const el = document.getElementById('undo-prompt-area');
-    if (!el) return;
-
-    if (!st.undoOfferPending || !st.gameState || st.gameState.status !== 'ongoing') {
-      el.innerHTML = '';
-      return;
-    }
-
-    if (st.undoOfferPending.from === st.myUser.userId) {
-      el.innerHTML = `<div class="draw-prompt">${t('game.undo_waiting')}</div>`;
-      return;
-    }
-
-    el.innerHTML = `
-      <div class="draw-prompt">
-        <span>${t('game.undo_offer', { name: _esc(st.undoOfferPending.fromName || t('game.opponent_generic')) })}</span>
-        <div class="draw-prompt__actions">
-          <button class="btn-draw-action btn-draw-accept"  data-action="doUndoAccept">${t('game.btn_accept')}</button>
-          <button class="btn-draw-action btn-draw-decline" data-action="doUndoDecline">${t('game.btn_decline')}</button>
-        </div>
-      </div>
-    `;
+    const p = S().undoOfferPending;
+    renderRequest('undo-prompt-area', p, 'arrow-counter-clockwise', 'game.undo_offer',
+      { name: _esc((p && p.fromName) || t('game.opponent_generic')) }, 'doUndoAccept', 'doUndoDecline', 'game.undo_waiting');
   }
 
   // ── Escape helper ─────────────────────────────────────────────────────────
@@ -732,10 +705,14 @@
 
   // ── Game action handlers (global onclick shims) ───────────────────────────
 
+  // Two-tap confirm instead of a blocking confirm() dialog (#216).
   global.doResign = function() {
-    if (confirm(t('game.confirm_resign'))) global.RoomClient.emit('game:resign');
+    if (confirmTap('doResign')) global.RoomClient.emit('game:resign');
   };
-  global.doDrawOffer   = () => global.RoomClient.emit('game:draw_offer');
+  global.doDrawOffer = function() {
+    if (S().drawOfferPending) return;
+    if (confirmTap('doDrawOffer')) global.RoomClient.emit('game:draw_offer');
+  };
   global.doDrawAccept  = () => global.RoomClient.emit('game:draw_accept');
   global.doDrawDecline = () => global.RoomClient.emit('game:draw_decline');
   global.doRequestTime = () => { if (!S().timeRequestPending) global.RoomClient.emit('game:request_time'); };
@@ -773,6 +750,7 @@
     renderTurnLabel,
     renderGameControls,
     renderSwap2,
+    renderMoves,
     renderDrawPrompt,
     renderTimePrompt,
     renderUndoPrompt,

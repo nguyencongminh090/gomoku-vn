@@ -332,7 +332,7 @@
   overflow: hidden;
 }
 
-.replay__board-area canvas {
+.replay__board-area .gboard {
   display: block;
 }
 

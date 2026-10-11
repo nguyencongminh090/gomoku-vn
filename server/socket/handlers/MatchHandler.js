@@ -74,6 +74,7 @@ function makeRoom(a, b) {
     return null;
   }
   const room = seated.room;
+  room.matchmade = true; // one game only: clients auto-ready, no Start modal / rematch
   for (const s of [sa, sb]) {
     s.leave(LOBBY_ROOM);
     s.join(room.roomId);

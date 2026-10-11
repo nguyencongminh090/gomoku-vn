@@ -117,16 +117,27 @@ function categoryFor(winningRule) {
 }
 
 /**
- * Should this finished game be rated?
- * @param {{ranked:boolean, winningRule:string, players:Array<{id,isGuest}>, result:object|null}} game
+ * Will this game count for rating once it ends? Same rules as isRatedGame minus
+ * the result: a ranked room, a rated rule and two distinct members. False is what
+ * the room UI calls "Giao hữu" (friendly), where undo and extra time are allowed (#216).
+ * @param {{ranked:boolean, winningRule:string, players:Array<{id,isGuest}>}} game
  */
-function isRatedGame(game) {
-  if (!game || game.ranked !== true || !game.result) return false;
+function isRatedSetup(game) {
+  if (!game || game.ranked !== true) return false;
   if (!categoryFor(game.winningRule)) return false;
   const ps = game.players || [];
   if (ps.length !== 2) return false;
   if (ps.some((p) => !p || !p.id || p.isGuest)) return false;
-  if (ps[0].id === ps[1].id) return false;
+  return ps[0].id !== ps[1].id;
+}
+
+/**
+ * Should this finished game be rated?
+ * @param {{ranked:boolean, winningRule:string, players:Array<{id,isGuest}>, result:object|null}} game
+ */
+function isRatedGame(game) {
+  if (!isRatedSetup(game) || !game.result) return false;
+  const ps = game.players;
   const w = game.result.winner;
   return w === 'draw' || w === ps[0].id || w === ps[1].id;
 }
@@ -259,6 +270,7 @@ module.exports = {
   PROVISIONAL_RD,
   glicko2,
   categoryFor,
+  isRatedSetup,
   isRatedGame,
   rateGame,
   createRatingQueue,

@@ -12,7 +12,7 @@
 .pz-solve { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); gap: 20px; align-items: start; }
 .pz-solve[hidden] { display: none; }
 .pz-solve__board { display: flex; justify-content: center; align-items: center; padding: 8px; overflow: hidden; }
-.pz-solve__board canvas { display: block; max-width: 100%; }
+.pz-solve__board .gboard { display: block; max-width: 100%; }
 .pz-title { margin: 0 0 8px; font-size: 22px; }
 .pz-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
 .pz-prompt { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }

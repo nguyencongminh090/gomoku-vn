@@ -188,7 +188,7 @@ body.diag {
      definite square rather than letting it chase the page height. */
 }
 
-.diag-board-wrap canvas {
+.diag-board-wrap .gboard {
   display: block;
   width: 100%;
   height: 100%;

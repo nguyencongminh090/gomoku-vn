@@ -148,7 +148,7 @@
   overflow: hidden;
 }
 
-.board-canvas-wrap canvas {
+.board-canvas-wrap .gboard {
   display: block;
   max-width: 100%;
   height: auto;
@@ -672,3 +672,7 @@
     padding: 5px 10px;
   }
 }
+
+/* Quick-match room after its single game: leave button becomes the call to action, label always visible. */
+#btn-leave.is-cta { background: var(--accent, #2f81f7); color: #fff; border-radius: var(--radius, 8px); padding: 8px 14px; }
+#btn-leave.is-cta .hide-on-mobile { display: inline; }

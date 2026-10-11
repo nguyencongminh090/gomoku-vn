@@ -97,6 +97,13 @@ describe('platform shell', () => {
     expect(menuItems()).toEqual([['/settings.html', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
   });
 
+  it('Settings menu link carries ?return= only when opened from a room', () => {
+    window.history.replaceState(null, '', '/room.html?id=abc');
+    boot({ userId: 'g', isGuest: true, displayName: 'Guest' });
+    expect(menuItems()[0][0]).toBe('/settings.html?return=' + encodeURIComponent('/room.html?id=abc'));
+    window.history.replaceState(null, '', '/');
+  });
+
   it('member → chip menu: profile link set once /me answers; display name as text', async () => {
     boot({ userId: 'u', isGuest: false, displayName: '<i>Zed</i>' });
     await flush();

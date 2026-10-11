@@ -1,0 +1,390 @@
+/* =============================================================================
+   room-arena.css — room layout "Arena Focus" (TODO.md #216,
+   mockup client/room-arena-mockup.html). Loaded after room.css/game.css;
+   every rule is scoped to body.arena-room so the shared components there
+   (chat, settings rows, score table, start modal) keep their base styles.
+
+   Desktop: [board | 340px rail]. The rail reads top→bottom as the board does:
+   opponent card (top edge) · tabs · action tiles · your card (bottom edge),
+   so each clock sits beside the edge of the board its player faces.
+   ≤768px: one column — opponent card, edge-to-edge board, your card, action
+   tiles in thumb reach, then the tabs (the rail is display:contents there).
+
+   Knowledge: docs/knowledge/mobile-layout-zen-ui.md (dvh fallback, minmax(0,1fr),
+   touch-action), SKILLS_TREE a11y notes via #216 (state not by colour only,
+   tabular clock digits, ≥44px touch targets, no modal over the board).
+   ============================================================================= */
+
+body.arena-room {
+  --rail-w: 340px;
+  --nav-h: 56px;
+}
+
+body.arena-room .topnav { margin-bottom: 0; }
+
+/* #218: no page rubber-band / Android stretch / pull-to-refresh — it showed empty space past the nav and the
+   chat bar, and a pull-to-refresh reloads the room mid-game. The viewport takes it from html, not body. */
+html:has(body.arena-room), body.arena-room { overscroll-behavior: none; }
+
+/* ── Mode badge (nav) ───────────────────────────────────────────────────── */
+body.arena-room .mode-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 8px; border-radius: var(--radius);
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+body.arena-room .mode-badge[hidden] { display: none; }
+body.arena-room .mode-badge .icon { width: 16px; height: 16px; }
+body.arena-room .mode-badge--friendly { background: var(--c-brand-light); color: var(--c-brand-text); }
+body.arena-room .mode-badge--rated { background: var(--c-warning-bg); color: var(--c-warning); }
+
+/* ── Grid ───────────────────────────────────────────────────────────────── */
+body.arena-room .room {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--rail-w);
+  gap: 16px;
+  max-width: 1480px;
+  padding: 16px;
+  height: calc(100vh - var(--nav-h));
+  height: calc(100dvh - var(--nav-h));
+  align-items: stretch;
+}
+
+body.arena-room .board-area-shell {
+  position: relative;
+  min-width: 0; min-height: 0;
+  height: auto;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  animation: none;
+}
+body.arena-room .board-area {
+  width: 100%; height: 100%;
+  padding: 0; border: 0; border-radius: 0;
+  background: none; box-shadow: none;
+}
+body.arena-room .board-area:hover { box-shadow: none; }
+body.arena-room .board-canvas-wrap {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+body.arena-room .gboard {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  cursor: pointer;
+  touch-action: none;
+}
+body.arena-room .board-placeholder { color: var(--c-ink-3); }
+
+/* ── Rail ───────────────────────────────────────────────────────────────── */
+body.arena-room .rail {
+  display: flex; flex-direction: column; gap: 8px;
+  min-width: 0; min-height: 0;
+}
+
+/* Player card: avatar · name/status · (stand up) · clock */
+body.arena-room .pcard {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center; gap: 12px;
+  min-height: 64px;
+  padding: 10px 12px;
+  background: var(--c-surface);
+  border: 2px solid transparent;
+  border-radius: var(--radius-lg);
+}
+body.arena-room .pcard--empty { grid-template-columns: auto 1fr; }
+body.arena-room .pcard__av {
+  position: relative;
+  width: 40px; height: 40px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--c-surface-2); color: var(--c-ink);
+  font-size: 13px; font-weight: 700;
+}
+body.arena-room .pcard__img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+body.arena-room .pcard__av--me { background: var(--c-brand); color: var(--c-on-brand); }
+body.arena-room .pcard__piece {
+  position: absolute; right: -5px; bottom: -5px;
+  width: 22px; height: 22px; border-radius: 6px;
+}
+body.arena-room .pcard__name { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.arena-room .pcard__meta { display: flex; align-items: center; gap: 8px; min-height: 16px; }
+body.arena-room .pcard__stand {
+  display: grid; place-items: center; width: 32px; height: 32px;
+  border: 1px solid var(--c-border); border-radius: var(--radius);
+  background: none; color: var(--c-ink-2); cursor: pointer;
+}
+body.arena-room .pcard__stand .icon { width: 16px; height: 16px; }
+body.arena-room .pcard__clock {
+  grid-column: 4;
+  min-width: 112px; padding: 4px 12px;
+  border-radius: var(--radius);
+  background: var(--c-fill); color: var(--c-ink-2);
+  font-size: 32px; font-weight: 700; line-height: 1.2; text-align: right;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum";
+}
+/* Running clock: filled + bordered card (not colour alone); low time: red. */
+body.arena-room .pcard--turn { border-color: var(--c-brand); }
+body.arena-room .pcard--turn .pcard__clock { background: var(--c-brand); color: var(--c-on-brand); }
+body.arena-room .pcard--low { border-color: var(--c-error); }
+body.arena-room .pcard--low .pcard__clock { background: var(--c-error); color: #fff; }
+body.arena-room .pcard__sit {
+  grid-column: 1 / -1;
+  min-height: 44px; border: 1px dashed var(--c-border); border-radius: var(--radius);
+  background: none; color: var(--c-brand-text); font: inherit; font-weight: 700; cursor: pointer;
+}
+body.arena-room .pcard__sit:hover { background: var(--c-brand-light); }
+body.arena-room .pcard__seat { font-size: 13px; font-weight: 700; color: var(--c-ink-3); }
+body.arena-room .pcard__empty { font-size: 14px; color: var(--c-ink-3); }
+
+/* Panel: tabs + content, with request toasts floating over its top */
+body.arena-room .rpanel {
+  position: relative;
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  background: var(--c-surface);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+body.arena-room .sidebar-tabs {
+  display: flex; gap: 0; padding: 0;
+  background: none; border-bottom: 1px solid var(--c-border);
+}
+body.arena-room .tab-btn {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 0 4px;
+  border-radius: 0; border-bottom: 2px solid transparent;
+  font-size: 13px; color: var(--c-ink-3);
+  box-shadow: none; background: none;
+}
+body.arena-room .tab-btn > .icon { display: inline-block; width: 16px; height: 16px; flex: none; }
+body.arena-room .tab-btn__label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.arena-room .tab-btn--active { color: var(--c-ink); border-bottom-color: var(--c-brand-text); background: none; box-shadow: none; }
+body.arena-room .tab-content { padding: 0; overflow: auto; }
+body.arena-room #tab-users, body.arena-room #tab-settings { padding: 12px; }
+
+body.arena-room .moves { list-style: none; margin: 0; padding: 8px 0; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+body.arena-room .moves li { display: grid; grid-template-columns: 40px 1fr 1fr; }
+body.arena-room .moves li > span { padding: 4px 10px; }
+body.arena-room .moves__n { color: var(--c-ink-3); background: var(--c-fill); text-align: right; }
+body.arena-room .moves__cur { background: var(--c-brand-light); color: var(--c-brand-text); font-weight: 700; }
+body.arena-room .moves__empty { display: block !important; padding: 12px; color: var(--c-ink-3); }
+
+body.arena-room .score-panel[hidden] { display: none; }
+body.arena-room .score-panel { margin-bottom: 12px; }
+
+/* Board look link (settings tab) */
+body.arena-room .board-look-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px; border-radius: var(--radius-lg);
+  background: var(--c-fill); color: inherit; text-decoration: none;
+}
+body.arena-room .board-look-link:hover { background: var(--c-hover); }
+body.arena-room .board-look-link__pv svg { display: block; width: 40px; height: 40px; border-radius: 4px; }
+body.arena-room .board-look-link__t { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+body.arena-room .board-look-link__t b { font-size: 14px; }
+body.arena-room .board-look-link__t small { font-size: 12.5px; color: var(--c-ink-3); }
+body.arena-room .board-look-link > .icon { width: 16px; height: 16px; color: var(--c-ink-3); }
+
+/* Toasts: requests + confirm countdowns, stacked over the panel top */
+body.arena-room .gtoasts {
+  position: absolute; left: 8px; right: 8px; top: 52px; z-index: 5;
+  display: flex; flex-direction: column; gap: 6px;
+  pointer-events: none;
+}
+body.arena-room .gtoasts > div:empty { display: none; }
+body.arena-room .gtoast {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px; font-weight: 600;
+  pointer-events: auto;
+}
+body.arena-room .gtoast > .icon { flex: none; width: 20px; height: 20px; color: var(--c-warning); }
+body.arena-room .gtoast--danger > .icon { color: var(--c-error); }
+body.arena-room .gtoast__t { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.arena-room .gtoast__n { font-size: 13px; color: var(--c-ink-3); font-variant-numeric: tabular-nums; }
+body.arena-room .gtoast__bar { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--c-warning); transition: width .25s linear; }
+body.arena-room .gtoast--danger .gtoast__bar { background: var(--c-error); }
+body.arena-room .gtoast__btn {
+  flex: none; display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: var(--radius);
+  border: 1px solid var(--c-border); background: none; color: var(--c-ink-2); cursor: pointer;
+}
+body.arena-room .gtoast__btn--ok { background: var(--c-brand); border-color: var(--c-brand); color: var(--c-on-brand); }
+body.arena-room .gtoast__btn .icon { width: 20px; height: 20px; }
+
+/* Action tiles: equal width, icon over one short label */
+body.arena-room .game-controls {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+  gap: 6px; margin: 0; padding: 0; flex-wrap: nowrap;
+  width: auto; max-width: none; overflow: visible; /* game.css caps it at 440px / calc(100% - 32px) */
+}
+body.arena-room .game-controls:empty { display: none; }
+body.arena-room .act {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-height: 52px; padding: 0 4px;
+  border: 0; border-radius: var(--radius-lg);
+  background: var(--c-surface); color: var(--c-ink-2);
+  font: inherit; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: pointer;
+}
+body.arena-room .act .icon { width: 20px; height: 20px; }
+body.arena-room .act:hover:not(:disabled) { background: var(--c-surface-2); color: var(--c-ink); }
+body.arena-room .act:disabled { opacity: .45; cursor: default; }
+body.arena-room .act--confirm, body.arena-room .act--confirm:hover:not(:disabled) { background: var(--c-error); color: #fff; }
+/* Swap2 rows reuse the tile area */
+body.arena-room .game-controls .swap2-hint,
+body.arena-room .game-controls .swap2-choice,
+body.arena-room .game-controls .swap2-undo-row { grid-column: 1 / -1; }
+body.arena-room .game-controls .swap2-hint { padding: 10px 12px; border-radius: var(--radius-lg); background: var(--c-surface); font-size: 13.5px; text-align: center; }
+body.arena-room .game-controls .swap2-choice { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
+body.arena-room .game-controls .swap2-choice .btn-game { min-height: 44px; }
+
+/* Above phones there is no minimized state: the toggle never shows (phone block re-enables it). */
+body.arena-room .rpanel-toggle { display: none; }
+
+/* ── Phones: one column, board edge to edge ─────────────────────────────── */
+@media (max-width: 768px) {
+  body.arena-room { --nav-h: 48px; }
+  body.arena-room .room {
+    display: flex; flex-direction: column;
+    gap: 0; padding: 0;
+    max-width: none;
+    /* App shell (user 2026-10-11 screenshots 10:57/10:58): the document never scrolls — .room is the scroller.
+       A document scroll made the phone browser hide its address/bottom bars (~90px); dvh grew, and after
+       minimizing (nothing left to scroll, bars stay hidden) all of it landed between the tiles and the chat
+       bar. Browsers only auto-hide their bars on a document scroll, so the viewport now stays put. */
+    height: calc(100vh - var(--nav-h));
+    height: calc(100dvh - var(--nav-h));
+    /* none, not contain: contain still lets .room itself bounce (iOS) / stretch (Android), showing a blank band
+       above the cards when pulling at the top — the #218 complaint. Lists still chain into it. */
+    overflow-y: auto; overscroll-behavior: none;
+  }
+  /* A fixed-height flex column would squeeze the cards/board/tiles instead of scrolling — only the panel flexes. */
+  body.arena-room .room > *, body.arena-room .rail > * { flex-shrink: 0; }
+  body.arena-room .rail { display: contents; }
+  body.arena-room .pcard--top { order: 1; }
+  body.arena-room .board-area-shell { order: 2; width: 100%; margin: 0; }
+  body.arena-room .pcard--bottom { order: 3; }
+  body.arena-room .game-controls { order: 4; padding: 5px 8px; width: 100%; margin: 0; } /* 5px: the minimized bar fits a 360×645 phone with no scroll */
+  /* Expanded fits the screen left under the tiles (flex:1 from the base rule; user 2026-10-11 "vừa khít màn
+     hình", was min 360px). 200px floor for short phones — there .room scrolls a little, the page never does. */
+  /* margin-top:auto in both states: flex-grow eats the free space when expanded (margin 0), and while room.js
+     animates the height the free space goes above the panel, so its bottom edge (the input) stays put. */
+  body.arena-room .rpanel { order: 5; min-height: 200px; flex-shrink: 1; border-radius: 0; margin-top: auto; }
+  /* #218: game.css caps phone chat at 180px (zen-era). Here the panel's leftover height belongs to the
+     messages; the cap left an empty band under the chat input (expanded, and minimized on tall phones). */
+  body.arena-room .chat-messages { max-height: none; min-height: 0; }
+  /* Few messages sit next to the input, not at the panel top (scrolled under the board → empty visible band).
+     margin-top:auto, not justify-content:flex-end — that one makes overflowed older lines unreachable. */
+  body.arena-room .chat-messages > :first-child { margin-top: auto; }
+
+  body.arena-room .pcard {
+    min-height: 52px; padding: 6px 10px; gap: 10px;
+    border-radius: 0; border-width: 0 0 0 3px;
+  }
+  body.arena-room .pcard__av { width: 32px; height: 32px; font-size: 11px; }
+  body.arena-room .pcard__piece { width: 18px; height: 18px; }
+  body.arena-room .pcard__name { font-size: 14px; }
+  body.arena-room .pcard__clock { font-size: 26px; min-width: 96px; padding: 2px 10px; }
+
+  body.arena-room .board-area, body.arena-room .board-canvas-wrap { height: auto; }
+  body.arena-room .gboard { border-radius: 0; box-shadow: none; }
+  body.arena-room .act { min-height: 52px; }
+  body.arena-room .start-modal { position: absolute; }
+
+  /* #217 minimized panel: only the quick chat bar + ▲ toggle; expanded = tabs + messages (▼) */
+  body.arena-room .rpanel-toggle {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; min-height: 28px; padding: 0; border: 0; cursor: pointer;
+    background: var(--c-surface-2); color: var(--c-ink-2);
+    /* Always reachable (user 2026-10-11): when .room scrolls the expanded panel up under the stack, the ▼ bar
+       sticks right under my card instead of leaving with the tabs. */
+    position: sticky; top: calc(2 * var(--pcard-h) + var(--board-h, 100vw)); z-index: 25;
+  }
+  /* overflow:hidden would make the panel the sticky toggle's scroll container (it never scrolls → no stick);
+     clip keeps the rounded/animated clipping without creating one. */
+  body.arena-room .rpanel { overflow: clip; }
+  body.arena-room .rpanel-toggle__tri {
+    width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent;
+    border-top: 0; border-bottom: 9px solid currentColor; /* ▲ */
+  }
+  /* aria-expanded (set at click), not the class (switches only when a collapse animation ends) → turns in sync */
+  body.arena-room .rpanel-toggle[aria-expanded="true"] .rpanel-toggle__tri { transform: rotate(180deg); } /* ▼ */
+  /* Minimized (user 2026-10-11): ▲ + the input bar only, no message lines. The panel docks at the screen bottom
+     (margin-top:auto) so the bar stays in thumb reach; on tall phones the leftover sits between the action tiles
+     and the bar. room.js animates the height between the two states (flex-basis + min-height, ~240ms). */
+  body.arena-room .rpanel--min { flex: none; min-height: 0; margin-top: auto; }
+  body.arena-room .rpanel--min .sidebar-tabs,
+  body.arena-room .rpanel--min .tab-content:not(#tab-chat),
+  body.arena-room .rpanel--min .chat-messages { display: none; }
+  body.arena-room .rpanel--min #tab-chat { display: flex; }
+  /* The input stays on the panel's bottom edge while the height animates (it doesn't ride the top edge). */
+  body.arena-room .rpanel--min .chat-panel { justify-content: flex-end; }
+  body.arena-room .rpanel-toggle__tri { transition: transform .24s cubic-bezier(.2, .8, .2, 1); }
+
+  /* Sticky stack: opponent card + board + my card stay put inside the .room scroller (nav sits above it);
+     tiles and the tab panel scroll underneath when they don't fit. --board-h is measured by room-ui.js
+     (RoomUI.trackBoardHeight). While the chat field is focused (keyboard up) the stack is released so the
+     field stays reachable. The document itself never scrolls (see .room), so body/html just clip. */
+  html:has(body.arena-room), body.arena-room { overflow: hidden; }
+  body.arena-room { --pcard-h: 52px; } /* --board-h is set on :root by room-ui.js */
+  body.arena-room .topnav {
+    position: sticky; top: 0; margin: 0; height: var(--nav-h); border-radius: 0; z-index: 1000;
+    /* main.css gives it a 24px backdrop blur + box-shadow + transition:all — a repaint on every scroll
+       frame on phones, and pointless over an opaque surface. */
+    backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; transition: none;
+  }
+  /* Chat/moves lists DO chain into .room (user 2026-10-11): once a list is at its start, the next swipe moves the
+     panel back down, so the tabs are reachable without hunting for a spot outside the list. (The old 'contain'
+     was against the board jumping when the document scrolled; the board is sticky inside .room now and .room
+     itself is none, so nothing reaches the document and it never bounces.) */
+  body.arena-room .pcard--top, body.arena-room .board-area-shell, body.arena-room .pcard--bottom {
+    position: sticky; background: var(--c-bg, #14130f);
+  }
+  body.arena-room .pcard--top { top: 0; z-index: 30; height: var(--pcard-h); box-sizing: border-box; }
+  body.arena-room .board-area-shell { top: var(--pcard-h); z-index: 20; }
+  body.arena-room .pcard--bottom {
+    top: calc(var(--pcard-h) + var(--board-h, 100vw)); z-index: 30; height: var(--pcard-h); box-sizing: border-box;
+  }
+  body.arena-room:has(#chat-input:focus) .pcard--top,
+  body.arena-room:has(#chat-input:focus) .board-area-shell,
+  body.arena-room:has(#chat-input:focus) .pcard--bottom,
+  body.arena-room:has(#chat-input:focus) .rpanel-toggle { position: relative; top: auto; }
+  /* Expanded (user 2026-10-11): the stack is NOT pinned — the page scrolls so chat can be long and Settings easy
+     to edit; the panel is at least a screen tall. aria-expanded (set at click) drives it, so minimizing re-pins
+     at once. The ▼ bar still sticks, at the very top of the scroller. */
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .pcard--top,
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .board-area-shell,
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .pcard--bottom { position: relative; top: auto; }
+  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .rpanel-toggle { top: 0; }
+  body.arena-room .rpanel:not(.rpanel--min) { flex: none; min-height: calc(100dvh - var(--nav-h)); }
+}
+/* Every phone: the board never pushes the minimized bar off screen (iPhone 13 in Safari, 390×664: board 389px left
+   the input 16px below the fold — #218 iOS check). Room for nav + 2 cards + tiles (52 + 2·5) + bar (28 + 49).
+   svh: measured with the browser bars shown, so it never resizes while they hide/show. */
+@media (max-width: 768px) {
+  body.arena-room { --tiles-h: 62px; --minbar-h: 77px; }
+  body.arena-room .board-area-shell .board-area {
+    width: min(100%, max(260px, calc(100svh - var(--nav-h) - 2 * var(--pcard-h) - var(--tiles-h) - var(--minbar-h))));
+  }
+}
+/* Only genuinely short screens (iPhone SE class) narrow the board further. svh, not dvh: the browser toolbar
+   collapsing while scrolling must not resize the board (user: small when idle, full once scrolled). */
+@media (prefers-reduced-motion: reduce) {
+  body.arena-room .rpanel-toggle__tri { transition: none; }
+}
+@media (max-width: 768px) and (max-height: 600px) {
+  body.arena-room .board-area-shell .board-area {
+    width: min(100%, max(260px, calc(100svh - var(--nav-h) - 2 * var(--pcard-h) - 200px)));
+  }
+}
+
+/* Chat input bar sits flush in the panel; the panel's own radius + overflow:hidden clip the corners
+   (room.css gave it a zen-era bottom radius that showed as a notch against the panel). */
+body.arena-room .chat-input { border-radius: 0; }

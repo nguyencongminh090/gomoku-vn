@@ -80,3 +80,6 @@ in the detail file / fix-log).
 - **#213.** Profile: one icon system + layout/spacing/size pass `[Model: Sonnet 5]` — [detail](docs/todo/B213-profile-icons-layout.md)
 - **#214.** Icon system (16/20/24, labels, one icon per concept) + apply to Settings/shell/profile; Scope 2: modern, content-fitting icon set for the whole site `[Model: Sonnet 5]` — [detail](docs/todo/B214-icon-system.md)
 - **#215.** Settings: sticky save bar hidden under the mobile tab bar (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B215-settings-save-bar-under-tabbar.md)
+- **#216.** Room redesign "Arena Focus" + SVG board (all pages) + friendly-only undo/time `[Model: Opus 5]` — [detail](docs/todo/B216-room-arena-redesign.md)
+- **#217.** Room mobile: minimizable bottom panel (actions + quick chat bar, ▲ expand) `[Model: Sonnet 5]` — [detail](docs/todo/B217-room-mobile-minimized-panel.md)
+- **#218.** Room mobile: blank band under the chat bar + page overscroll gap (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B218-room-mobile-blank-space.md)
