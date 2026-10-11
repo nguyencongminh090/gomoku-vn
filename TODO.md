@@ -84,3 +84,5 @@ in the detail file / fix-log).
 - **#217.** Room mobile: minimizable bottom panel (actions + quick chat bar, ▲ expand) `[Model: Sonnet 5]` — [detail](docs/todo/B217-room-mobile-minimized-panel.md)
 - **#218.** Room mobile: blank band under the chat bar + page overscroll gap (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B218-room-mobile-blank-space.md)
 - **#219.** Lobby room row: show Rated / Friendly (needs `ranked` in the lobby list payload) `[Model: Sonnet 5]` — [detail](docs/todo/B219-lobby-room-row-rated-friendly.md)
+- **#220.** Lobby: click online name → profile card (friend + private chat); DMs kept 3 days `[Model: Sonnet 5]` — [detail](docs/todo/B220-lobby-online-user-card.md)
+- **#221.** Browser notification permission asked in context (Message click / first send); Ctrl+K "Bật thông báo" button removed `[Model: Sonnet 5]` — [detail](docs/todo/B221-notif-permission-in-context.md)
