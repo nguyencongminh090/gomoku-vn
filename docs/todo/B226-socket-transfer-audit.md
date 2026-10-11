@@ -19,3 +19,7 @@ Leads from #225 (code-read 2026-10-12, unmeasured): (a) `lobby:online_users` = f
 Audit before optimizing: avoids patching the visible layer. Library notes to read first: `SKILLS_TREE/knowledge/web-development/items/be-realtime.md`, `software-architecture/items/dist-messaging-patterns.md`, `dist-idempotency-retries.md` (unread so far).
 ## Done when
 - Inventory table + ranked findings committed; user picks which become fix items.
+## Result (2026-10-12)
+Steps 1–3 done → `docs/notes/2026-10-12-socket-transfer-audit.md` (F1–F7), harness `scripts/measure-socket-transfer.js`.
+Step 4: user approved F1–F3 → #230 (F1), #229 (F2), #228 (F3). F4–F7 not filed. Library notes in "Why this way" not read (findings came from measurement).
+**Status:** ✅ DONE 2026-10-12 — audit + measurements; fixes tracked as #228–#230.

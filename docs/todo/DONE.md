@@ -3,6 +3,16 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#226.** Audit all server↔client transfer/broadcast (moves, lobby users, tickets…): inventory, measure, rank `[Model: Opus 5]` — [detail](docs/todo/B226-socket-transfer-audit.md)
+- ✅ **#212.** Icon + label review: icons match meaning, shorter labels, named icon-only controls `[Model: Sonnet 5]` — [detail](docs/todo/B212-icon-label-review.md)
+- ✅ **#213.** Profile: one icon system + layout/spacing/size pass `[Model: Sonnet 5]` — [detail](docs/todo/B213-profile-icons-layout.md)
+- ✅ **#214.** Icon system (16/20/24, labels, one icon per concept) + apply to Settings/shell/profile; Scope 2: modern, content-fitting icon set for the whole site `[Model: Sonnet 5]` — [detail](docs/todo/B214-icon-system.md)
+- ✅ **#215.** Settings: sticky save bar hidden under the mobile tab bar (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B215-settings-save-bar-under-tabbar.md)
+- ✅ **#216.** Room redesign "Arena Focus" + SVG board (all pages) + friendly-only undo/time `[Model: Opus 5]` — [detail](docs/todo/B216-room-arena-redesign.md)
+- ✅ **#217.** Room mobile: minimizable bottom panel (actions + quick chat bar, ▲ expand) `[Model: Sonnet 5]` — [detail](docs/todo/B217-room-mobile-minimized-panel.md)
+- ✅ **#218.** Room mobile: blank band under the chat bar + page overscroll gap (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B218-room-mobile-blank-space.md)
+- ✅ **#220.** Lobby: click online name → profile card (friend + private chat); DMs kept 3 days `[Model: Sonnet 5]` — [detail](docs/todo/B220-lobby-online-user-card.md)
+- ✅ **#221.** Browser notification permission asked in context (Message click / first send); Ctrl+K "Bật thông báo" button removed `[Model: Sonnet 5]` — [detail](docs/todo/B221-notif-permission-in-context.md)
 - ✅ **#227.** After a server restart open pages never reconnect (graceful shutdown → `io server disconnect`, not retried) (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B227-reconnect-after-server-restart.md)
 - ✅ **#225.** Dashboard realtime: pub/sub push for online/playing/searching, poll → 60 s fallback `[Model: Opus 5]` — [detail](docs/todo/B225-home-live-push.md)
 - ✅ **#223.** Dashboard: online/stats strip; live games as text rows (no board drawing) `[Model: Sonnet 5]` — [detail](docs/todo/B223-home-stats-live-no-board.md)
