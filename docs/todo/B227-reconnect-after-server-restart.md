@@ -1,5 +1,5 @@
 # B227 — After a server restart, open pages never reconnect
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — see fix-log b227
 **Area:** server/index.js (gracefulShutdown), client/js/socket-client.js
 **From:** found during #225 real-browser pass, 2026-10-12   **Depends:** —
 

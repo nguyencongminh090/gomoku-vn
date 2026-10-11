@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#227.** After a server restart open pages never reconnect (graceful shutdown → `io server disconnect`, not retried) (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B227-reconnect-after-server-restart.md)
 - ✅ **#225.** Dashboard realtime: pub/sub push for online/playing/searching, poll → 60 s fallback `[Model: Opus 5]` — [detail](docs/todo/B225-home-live-push.md)
 - ✅ **#223.** Dashboard: online/stats strip; live games as text rows (no board drawing) `[Model: Sonnet 5]` — [detail](docs/todo/B223-home-stats-live-no-board.md)
 - ✅ **#208.** R8: cheat reports — member reports a finished game, staff queue tab, confirm logs graph edge `[Model: Sonnet 5]` — [detail](docs/todo/B208-cheat-reports.md)

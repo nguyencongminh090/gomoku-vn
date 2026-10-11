@@ -230,3 +230,4 @@
 | 2026-10-11 19:30 | untracked: Settings floating back arrow same colour as its bg in Zen (.pl a colour:inherit out-specified it) -> .pl .pset__back uses --c-on-brand + test. | [detail](docs/fix-log/2026-10-11-settings-return-to-room.md) |
 | 2026-10-11 20:00 | untracked: Settings back-to-room button softer (translucent, blur, brand arrow) + draggable with edge snap, remembered position, transitions + tests. | [detail](docs/fix-log/2026-10-11-settings-return-to-room.md) |
 | 2026-10-12 02:54 | #225: dashboard push — socket room `home`, coalesced absolute home:stats + home:live on game start/end, resubscribe on reconnect/visible, poll 60 s + tests. | [detail](docs/fix-log/2026-10-12-b225-home-live-push.md) |
+| 2026-10-12 03:21 | #227: client reconnects by hand after `io server disconnect` (graceful shutdown), 1–5 s jitter; kick/lock stay out. Test + real-browser SIGTERM pass. | [detail](docs/fix-log/2026-10-12-b227-reconnect-after-restart.md) |

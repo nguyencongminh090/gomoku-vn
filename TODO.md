@@ -89,4 +89,3 @@ in the detail file / fix-log).
 - **#222.** Friend challenge: pick friend → full-rules modal → series → Swap Elo stake `[Model: Opus 5]` — [detail](docs/todo/B222-friend-challenge-full.md)
 - **#224.** Dashboard: admin news (DB + admin edit) + top-3 forum, About, Learn/Puzzle card `[Model: Opus 5]` — [detail](docs/todo/B224-home-news-about-learn.md)
 - **#226.** Audit all server↔client transfer/broadcast (moves, lobby users, tickets…): inventory, measure, rank `[Model: Opus 5]` — [detail](docs/todo/B226-socket-transfer-audit.md)
-- **#227.** After a server restart open pages never reconnect (graceful shutdown → `io server disconnect`, not retried) (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B227-reconnect-after-server-restart.md)
