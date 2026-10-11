@@ -1,5 +1,5 @@
 # B228 — Lobby/tournament lists freeze after a socket reconnect
-**Status:** FIXED
+**Status:** ✅ FIXED 2026-10-12 — merged to dev (5bb0fcd); fix-log 2026-10-12-b228
 **Area:** client/js/lobby.js (`lobby:subscribe`), client/js/tournaments.js (`tournament:subscribe`, `live_matches:subscribe`)
 **From:** audit #226 finding F3, 2026-10-12 (code-read)   **Depends:** #227 (manual reconnect after server restart)
 
