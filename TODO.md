@@ -77,4 +77,3 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#219.** Lobby room row: show Rated / Friendly (needs `ranked` in the lobby list payload) `[Model: Sonnet 5]` — [detail](docs/todo/B219-lobby-room-row-rated-friendly.md)
-- **#222.** Friend challenge: pick friend → full-rules modal → series → Swap Elo stake `[Model: Opus 5]` — [detail](docs/todo/B222-friend-challenge-full.md)
