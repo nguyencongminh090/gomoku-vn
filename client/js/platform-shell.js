@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=288'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=289'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -241,10 +241,13 @@
       n.append(icon(iconName), el('span', label));
       return n;
     };
+    // Remember where the user was so Settings can offer a way back (a room in particular).
+    const settingsHref = () => (location.pathname === '/settings.html' ? '/settings.html'
+      : '/settings.html?return=' + encodeURIComponent(location.pathname + location.search));
     const profile = member ? item('a', 'ph-regular-user-circle', t('shell.menu_profile'), '#') : null;
     const admin = member ? item('a', 'ph-regular-shield-check', t('shell.menu_admin'), '/admin') : null;
     if (admin) { admin.hidden = true; admin.classList.add('pnav__item--staff'); }
-    menu.append(...[profile, item('a', 'ph-regular-gear-six', t('gset.title'), '/settings.html'), admin, el('hr')].filter(Boolean));
+    menu.append(...[profile, item('a', 'ph-regular-gear-six', t('gset.title'), settingsHref()), admin, el('hr')].filter(Boolean));
     if (member) {
       const out = item('button', 'ph-regular-sign-out', t('gset.btn_logout'));
       out.addEventListener('click', async () => {

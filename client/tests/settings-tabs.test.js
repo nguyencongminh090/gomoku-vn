@@ -162,3 +162,22 @@ describe('settings page tabs', () => {
     expect(out.textContent).toBe('gset.btn_logout_failed');
   });
 });
+
+describe('?return= back button', () => {
+  test('room return shows a "back to room" link to that path', () => {
+    window.history.replaceState(null, '', '/settings.html?return=' + encodeURIComponent('/room.html?id=abc') + '#look');
+    boot(MEMBER, '');
+    window.history.replaceState(null, '', '/settings.html?return=' + encodeURIComponent('/room.html?id=abc') + '#look');
+    jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+    const a = $('st-back');
+    expect(a.getAttribute('href')).toBe('/room.html?id=abc');
+    expect(a.textContent).toBe('settings.back_room');
+  });
+
+  test.each(['//evil.com', 'https://evil.com', '/\\evil.com', 'javascript:alert(1)'])('rejects external return %s', (r) => {
+    boot(MEMBER, '');
+    window.history.replaceState(null, '', '/settings.html?return=' + encodeURIComponent(r));
+    jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+    expect($('st-back')).toBeNull();
+  });
+});

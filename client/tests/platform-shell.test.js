@@ -94,7 +94,7 @@ describe('platform shell', () => {
     expect(document.querySelector('.pnav__login')).toBeNull();
     expect(document.querySelector('.pbell')).toBeNull();
     expect(global.fetch).not.toHaveBeenCalled();
-    expect(menuItems()).toEqual([['/settings.html', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
+    expect(menuItems()).toEqual([['/settings.html?return=%2F', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
   });
 
   it('member → chip menu: profile link set once /me answers; display name as text', async () => {
@@ -103,7 +103,7 @@ describe('platform shell', () => {
     const me = document.querySelector('.pnav__me');
     expect(me.textContent).toContain('<i>Zed</i>');
     expect(me.querySelector('i')).toBeNull();
-    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html']);
+    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html?return=%2F']);
   });
 
   it('chip shows the member avatar once /me returns one; initials otherwise (and until then)', async () => {

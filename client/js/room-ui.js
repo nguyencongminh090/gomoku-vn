@@ -223,7 +223,7 @@
       ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'pcard__piece')
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<button class="pcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-x"></use></svg></button>`
+      ? `<button class="pcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=289#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
       <div class="pcard__av${isMe ? ' pcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
@@ -317,7 +317,7 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=289#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
@@ -463,10 +463,10 @@
       ? (() => { const p = global.BoardPrefs.get(); return global.boardPreviewSvg(p.theme, p[p.theme]); })()
       : '';
     return `
-      <a class="board-look-link" href="/settings.html#look">
+      <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=288#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=289#ph-regular-caret-right"></use></svg>
       </a>
     `;
   }

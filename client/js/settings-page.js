@@ -7,7 +7,7 @@
  */
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=288'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=289'; // ?v=: /assets is immutable-cached
   const TABS = ['profile', 'look', 'game', 'account'];
   const S = () => window.GvnSettings || {};
 
@@ -129,6 +129,25 @@
     host.replaceChildren(...kids);
   }
 
+  // ?return=<same-origin path> (set by the room link / shell menu) → "back" button at the top. Internal paths
+  // only: must start with a single "/" (no "//", no "/\\", no scheme) or it would be an open redirect.
+  function returnTarget() {
+    const r = new URLSearchParams(location.search).get('return');
+    if (!r || r[0] !== '/' || r[1] === '/' || r[1] === '\\' || /[\u0000-\u001f]/.test(r)) return null;
+    return r;
+  }
+
+  function renderBack() {
+    const r = returnTarget();
+    const host = document.querySelector('.pintro');
+    if (!r || !host || document.getElementById('st-back')) return;
+    const a = el('a', undefined, 'pbtn');
+    a.id = 'st-back';
+    a.href = r;
+    a.append(icon('arrow-left'), el('span', t(/^\/room(\.html)?(\?|$)/.test(r) ? 'settings.back_room' : 'settings.back')));
+    host.prepend(a);
+  }
+
   function render() {
     renderLook(document.getElementById('p-look'));
     renderGame(document.getElementById('p-game'));
@@ -170,6 +189,8 @@
       select(next, { focus: true });
     });
     render();
+    renderBack();
+    window.addEventListener('langchange', () => { const b = document.getElementById('st-back'); if (b) b.remove(); renderBack(); });
     window.addEventListener('langchange', render);
     window.addEventListener('colormodechange', render);
   });
