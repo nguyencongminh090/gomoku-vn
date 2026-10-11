@@ -218,6 +218,23 @@ describe('RoomManager — per-IP room quota', () => {
     const listed = roomManager.listRooms();
     expect(JSON.stringify(listed)).not.toContain(IP_A);
   });
+
+  test('listRooms carries the seated players by slot, null for an empty seat (B219)', () => {
+    const { room } = roomManager.createRoom(user(IP_A));
+    const entry = () => roomManager.listRooms().find((r) => r.roomId === room.roomId);
+    expect(entry().players).toEqual([null, null]);
+    roomManager.sitDown(room.host, 2);
+    const p = entry().players;
+    expect(p[0]).toBeNull();
+    expect(p[1]).toEqual({ displayName: expect.any(String), avatarUrl: null });
+  });
+
+  test('listRooms carries ranked (B219): true by default, false for a friendly room', () => {
+    const { room } = roomManager.createRoom(user(IP_A));
+    expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).ranked).toBe(true);
+    room.settings.ranked = false;
+    expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).ranked).toBe(false);
+  });
 });
 
 // ── Per-IP quota exemption for empty-room-grace rooms (TODO.md #43) ────────

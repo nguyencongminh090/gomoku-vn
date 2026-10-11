@@ -123,14 +123,30 @@ body.zen-lobby .link-action--primary { background: var(--c-brand); color: var(--
 body.zen-lobby .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); opacity: 1; }
 
 /* Rows (Arena .row): flat on the page, hairline between, text action. */
-body.zen-lobby .room-row { padding: 18px 4px; border-radius: var(--radius); }
+body.zen-lobby .room-row { padding: 14px 0; border-radius: 0; }   /* flush with the tabs on the left and the toolbar buttons on the right */
 body.zen-lobby .room-row:hover { background: var(--c-hover); }
 body.zen-lobby .room-row__bullet { background: var(--c-brand-text); }          /* open seat */
 body.zen-lobby .room-row__bullet--ready { background: transparent; border: 1.5px solid var(--c-brand-text); }
 body.zen-lobby .room-row__bullet--playing { background: var(--c-warning); border: 0; }
-body.zen-lobby .room-row__action { padding: 4px 0; background: none; color: var(--c-ink-2); }
-body.zen-lobby .room-row__action:hover:not(:disabled) { background: none; color: var(--c-ink); }
-body.zen-lobby .room-row__action:disabled { color: var(--c-ink-3); }
+/* The ticket is the control (no Vào/Quan sát button): whole row clickable, keyboard-focusable. */
+body.zen-lobby .room-row { cursor: pointer; }
+body.zen-lobby .room-row:focus-visible { outline: 2px solid var(--c-brand-text); outline-offset: -2px; }
+
+/* Ticket title = both players, avatar + name, on their own line above the tags. */
+body.zen-lobby .room-row__name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+body.zen-lobby .rplayer { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+body.zen-lobby .rplayer__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14ch; }
+body.zen-lobby .rplayer--empty { display: inline-flex; align-items: center; gap: 8px; color: var(--c-ink-3); font-weight: 400; font-size: 13px; }
+body.zen-lobby .rvs { font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; color: var(--c-ink-3); }
+body.zen-lobby .pav--xs { width: 24px; height: 24px; font-size: 9px; }
+body.zen-lobby .rplayer--empty::before { content: ""; width: 24px; height: 24px; border-radius: 50%; box-sizing: border-box; border: 1px dashed var(--c-border); }
+
+/* Meta line = host as plain text + tag chips (B219 follow-up); wraps instead of truncating. */
+body.zen-lobby .room-row__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; white-space: normal; overflow: visible; }
+body.zen-lobby .room-row__host { margin-right: 4px; font-size: 12.5px; color: var(--c-ink-2); }
+body.zen-lobby .rtag { padding: 2px 8px; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); font-size: 12px; line-height: 1.5; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.zen-lobby .rtag--rated { background: color-mix(in srgb, var(--c-brand) 18%, transparent); color: var(--c-brand-text); }
+body.zen-lobby .rtag--friendly { background: transparent; box-shadow: inset 0 0 0 1px var(--c-border); }
 
 /* Rooms screen (Arena): no card — tabs + actions bar, then the flat list. */
 body.zen-lobby #panel-tables { background: none; padding: 0; box-shadow: none; }
@@ -142,7 +158,7 @@ body.zen-lobby .room-bar .lobby-bar__actions { flex-wrap: wrap; }
   body.zen-lobby .lobby { padding: 16px 12px 80px; }
   body.zen-lobby .tab-panel { padding: 14px; }
   body.zen-lobby #panel-tables { padding: 0; }
-  body.zen-lobby .room-row { padding: 12px 4px; }
+  body.zen-lobby .room-row { padding: 12px 0; }
 }
 
 /* ── Shared components: Arena radius (pills → 5px) on every page ───────── */

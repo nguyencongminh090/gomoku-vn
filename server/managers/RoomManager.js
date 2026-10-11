@@ -624,7 +624,15 @@ class RoomManager extends EventEmitter {
       // Seated players marked 'disconnected' during grace still count — they're
       // mid-reconnect, not gone (TODO.md #158).
       let userCount = 0;
+      // Seated players by slot (index 0 = seat #1, 1 = seat #2; null = empty) for the ticket title.
+      const players = [null, null];
       for (const [, u] of room.users) {
+        if (u.slot === 1 || u.slot === 2) {
+          players[u.slot - 1] = {
+            displayName: u.displayName,
+            avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
+          };
+        }
         if (u.slot === null && u.presence === 'disconnected') continue;
         userCount++;
       }
@@ -634,6 +642,7 @@ class RoomManager extends EventEmitter {
         roomName: room.roomName,
         hostName: hostUser ? hostUser.displayName : '—',
         playerCount,                     // 0, 1, or 2 seated players
+        players,                         // [seat1, seat2] → { displayName, avatarUrl } | null
         userCount,                       // People in room, minus ghost viewers
         state: room.state,
         boardSize: room.settings.boardSize,
@@ -644,6 +653,7 @@ class RoomManager extends EventEmitter {
         timerMode: room.settings.timerMode,
         timerSeconds: room.settings.timerSeconds,
         timerIncrementSeconds: room.settings.timerIncrementSeconds,
+        ranked: room.settings.ranked !== false,
       });
     }
     return list;
