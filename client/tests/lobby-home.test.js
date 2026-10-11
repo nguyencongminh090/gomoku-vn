@@ -65,7 +65,7 @@ describe('screens ↔ hash ↔ shell nav', () => {
     await boot(url);
     expect(visible()).toEqual([screen]);
     expect(actions()).toEqual(acts);
-    expect(document.getElementById('lobby-bar').hidden).toBe(acts.length === 0);
+    expect(document.getElementById('lobby-bar').hidden).toBe(!acts.includes('btn-create-tournament')); // rooms actions live in the rooms .pbar now
     expect(navOn()).toEqual(nav);
     expect(window.__lobbyStub.setHeroTab).toHaveBeenLastCalledWith(hero);
   });

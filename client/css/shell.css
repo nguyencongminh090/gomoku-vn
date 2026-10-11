@@ -122,23 +122,27 @@ body.zen-lobby .link-action:hover { background: var(--c-border); color: var(--c-
 body.zen-lobby .link-action--primary { background: var(--c-brand); color: var(--c-on-brand); }
 body.zen-lobby .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); opacity: 1; }
 
-/* Rows: tighter, with a hover wash. */
-body.zen-lobby .room-row { padding: 14px 8px; border-radius: var(--radius); }
+/* Rows (Arena .row): flat on the page, hairline between, text action. */
+body.zen-lobby .room-row { padding: 18px 4px; border-radius: var(--radius); }
 body.zen-lobby .room-row:hover { background: var(--c-hover); }
-body.zen-lobby .room-row__bullet--playing { background: var(--c-brand); }
-body.zen-lobby .room-row__action {
-  padding: 7px 14px;
-  border-radius: var(--radius);
-  background: var(--c-fill);
-  color: var(--c-ink);
-}
-body.zen-lobby .room-row__action:hover:not(:disabled) { background: var(--c-brand); color: var(--c-on-brand); }
+body.zen-lobby .room-row__bullet { background: var(--c-brand-text); }          /* open seat */
+body.zen-lobby .room-row__bullet--ready { background: transparent; border: 1.5px solid var(--c-brand-text); }
+body.zen-lobby .room-row__bullet--playing { background: var(--c-warning); border: 0; }
+body.zen-lobby .room-row__action { padding: 4px 0; background: none; color: var(--c-ink-2); }
+body.zen-lobby .room-row__action:hover:not(:disabled) { background: none; color: var(--c-ink); }
 body.zen-lobby .room-row__action:disabled { color: var(--c-ink-3); }
+
+/* Rooms screen (Arena): no card — tabs + actions bar, then the flat list. */
+body.zen-lobby #panel-tables { background: none; padding: 0; box-shadow: none; }
+body.zen-lobby .room-bar { margin-bottom: 8px; }
+body.zen-lobby .room-bar .lobby-bar__actions { flex-wrap: wrap; }
 
 @media (max-width: 860px) {
   body.zen-lobby .topnav { padding: 0 14px; }
   body.zen-lobby .lobby { padding: 16px 12px 80px; }
   body.zen-lobby .tab-panel { padding: 14px; }
+  body.zen-lobby #panel-tables { padding: 0; }
+  body.zen-lobby .room-row { padding: 12px 4px; }
 }
 
 /* ── Shared components: Arena radius (pills → 5px) on every page ───────── */

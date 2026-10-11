@@ -83,3 +83,4 @@ in the detail file / fix-log).
 - **#216.** Room redesign "Arena Focus" + SVG board (all pages) + friendly-only undo/time `[Model: Opus 5]` — [detail](docs/todo/B216-room-arena-redesign.md)
 - **#217.** Room mobile: minimizable bottom panel (actions + quick chat bar, ▲ expand) `[Model: Sonnet 5]` — [detail](docs/todo/B217-room-mobile-minimized-panel.md)
 - **#218.** Room mobile: blank band under the chat bar + page overscroll gap (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B218-room-mobile-blank-space.md)
+- **#219.** Lobby room row: show Rated / Friendly (needs `ranked` in the lobby list payload) `[Model: Sonnet 5]` — [detail](docs/todo/B219-lobby-room-row-rated-friendly.md)

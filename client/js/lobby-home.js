@@ -13,7 +13,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=295';
+import { client, setHeroTab } from './lobby.js?v=297';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -62,7 +62,7 @@ export function showScreen(name) {
   }
   if (name !== 'rooms') closeJoinCode();
   const bar = document.getElementById('lobby-bar');
-  if (bar) bar.hidden = name === 'home';
+  if (bar) bar.hidden = name !== 'tournaments';
   setHeroTab(name === 'rooms' ? 'tables' : name);
   if (window.PlatformShell) window.PlatformShell.setActive(NAV[name]);
   const want = location.pathname + HASH[name];

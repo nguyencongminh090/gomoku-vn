@@ -151,6 +151,7 @@ function renderHero() {
 
   heroTitle.textContent = t(tournaments ? 'lobby.title_tournaments' : 'lobby.title_rooms');
   if (!heroSub) return;
+  if (!tournaments) { heroSub.hidden = true; return; } // Arena rooms screen: title only, the list is the count
   heroSub.hidden = false;
   if (n === 0) {
     heroSub.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
@@ -311,7 +312,7 @@ function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
         <div class="room-row__meta">${buildRoomMeta(room)}</div>
       </div>
       <button class="room-row__action" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
-        ${t('lobby.btn_join')}
+        ${t(canWatch(room) ? 'lobby.btn_watch' : 'lobby.btn_join')}
       </button>
     </div>
   `;
@@ -368,7 +369,10 @@ function updateRoomRowNode(node, room) {
   node.querySelector('.room-row__meta').innerHTML = buildRoomMeta(room);
 
   const action = node.querySelector('.room-row__action');
-  if (action) action.dataset.arg = room.roomId;
+  if (action) {
+    action.dataset.arg = room.roomId;
+    action.textContent = t(canWatch(room) ? 'lobby.btn_watch' : 'lobby.btn_join');
+  }
 }
 
 // Apply a `lobby:patch` ({ upserts, removed }) to `roomMap` and the DOM
@@ -437,10 +441,25 @@ function getBulletClass(state, playerCount) {
 function buildRoomMeta(room) {
   const parts = [
     escapeHtml(room.hostName),
-    `${room.playerCount}/2`,
     buildRuleSummary(room),
-  ];
+    buildTimeSummary(room),
+    `${room.playerCount}/2`,
+  ].filter(Boolean);
   return parts.join(' · ');
+}
+
+// A seat to sit in = "Vào"; a running game or a full table = "Quan sát" (same predicate as the Quan sát tab).
+function canWatch(room) {
+  return room.state === 'playing' || room.playerCount >= 2;
+}
+
+// "5+3" (blitz: minutes + increment), "10'" (per game), "60s/nước" (per move); '' when the payload has no clock.
+function buildTimeSummary(room) {
+  const s = room.timerSeconds;
+  if (typeof s !== 'number') return '';
+  if (room.timerMode === 'blitz') return `${Math.round(s / 60)}+${room.timerIncrementSeconds || 0}`;
+  if (room.timerMode === 'per_game') return `${Math.round(s / 60)}'`;
+  return t('lobby.time_per_move', { s });
 }
 
 // Lite: one plain-language summary instead of the jargon cluster
@@ -533,7 +552,7 @@ const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
 
 // The form's own hardcoded defaults, used when nothing has been remembered yet.
 const DEFAULT_ROOM_SETTINGS = {
-  boardSize: 17, winningRule: 'freestyle',
+  boardSize: 17, winningRule: 'freestyle', ranked: true,
   ruleWall: false, rulePortal: false, ruleSwap2: false,
   timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
 };
@@ -558,7 +577,8 @@ function readFormSettings() {
   let   ruleWall    = document.getElementById('rule-wall').checked;
   let   rulePortal  = document.getElementById('rule-portal').checked;
   if (ruleSwap2) { ruleWall = false; rulePortal = false; } // Swap2 plays on a plain board
-  return { boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
+  const ranked = (document.querySelector('input[name="roomMode"]:checked') || {}).value !== 'friendly';
+  return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
 function loadLastSettings() {
@@ -583,6 +603,7 @@ function applySettingsToForm(s) {
   const check = (sel) => { const el = document.querySelector(sel); if (el) el.checked = true; };
   check(`input[name="boardSize"][value="${s.boardSize}"]`);
   check(`input[name="winRule"][value="${s.winningRule}"]`);
+  check(`input[name="roomMode"][value="${s.ranked === false ? 'friendly' : 'rated'}"]`);
   check(`input[name="openRule"][value="${s.ruleSwap2 ? 'swap2' : 'none'}"]`);
   check(`input[name="timerMode"][value="${s.timerMode}"]`);
   const wall = document.getElementById('rule-wall');
