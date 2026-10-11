@@ -181,3 +181,12 @@ describe('?return= back button', () => {
     expect($('st-back')).toBeNull();
   });
 });
+
+test('tab switching keeps the path and ?return= (a <base href="/"> must not turn "#look" into "/#look")', () => {
+  boot(MEMBER, '');
+  window.history.replaceState(null, '', '/settings.html?return=%2Froom.html#look');
+  jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+  $('tab-game').click();
+  expect(window.location.pathname + window.location.search + window.location.hash).toBe('/settings.html?return=%2Froom.html#game');
+  expect($('st-back')).not.toBeNull();
+});

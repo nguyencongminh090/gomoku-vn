@@ -7,7 +7,7 @@
  */
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=289'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=290'; // ?v=: /assets is immutable-cached
   const TABS = ['profile', 'look', 'game', 'account'];
   const S = () => window.GvnSettings || {};
 
@@ -168,7 +168,7 @@
       document.getElementById('p-' + id).hidden = !on;
       if (on && focus) tab.focus();
     }
-    if (history.replaceState) history.replaceState(null, '', '#' + name);
+    if (history.replaceState) history.replaceState(null, '', location.pathname + location.search + '#' + name); // <base href="/"> would resolve a bare '#x' to "/#x"
   }
 
   document.addEventListener('DOMContentLoaded', () => {
