@@ -4,6 +4,7 @@
  * "Thách đấu bạn bè" button / #challenge deep link → ChallengeModal friend picker (#222).
  * Messages: /api/dm (conversation list + open thread polled every 5 s; #dm=<username> deep link).
  * "Thêm bạn": GET /api/friends/search?q= (debounced, ≥ 2 chars) → rows with a send-request button.
+ * My code "name#1234" (GET /api/friends/code) shown above the box with a copy button; the box accepts a code too.
  * GET /api/friends → {friends, incoming, outgoing}; actions POST/DELETE /api/friends/:username.
  * All user text through textContent.
  */
@@ -115,6 +116,18 @@
     } catch (_) {
       if (seq === searchSeq) box.replaceChildren(el('p', t('social.error'), 'pnote'));
     }
+  }
+
+  async function loadCode() {
+    try {
+      const res = await fetch('/api/friends/code', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const code = (await res.json()).code;
+      $('sc-code').textContent = code;
+      $('sc-code-copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(code); $('sc-code-copy').textContent = t('social.copied'); } catch (_) { /* clipboard blocked: the code stays selectable */ }
+      });
+    } catch (_) { /* leave the placeholder */ }
   }
 
   const desc = (c) => window.ChallengeModal.util.describe(c); // #222: full settings + series + stake
@@ -329,6 +342,7 @@
     window.PlatformShell.build('social');
     window.PlatformShell.notifications.onChange(renderNotifs);
     load();
+    loadCode();
     setInterval(() => { if (!document.hidden) loadChallenges(); }, 10000);
   });
 })();

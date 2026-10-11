@@ -225,3 +225,29 @@ describe('GET /api/friends/search (add by username / display name)', () => {
     expect((await call('GET', '/api/friends/search?q=bob', 'guest')).status).toBe(403);
   });
 });
+
+describe('friend code (name#1234)', () => {
+  it('is 4 random digits, assigned once and stable; members only', async () => {
+    const a = (await call('GET', '/api/friends/code', 'ann')).body.code;
+    expect(a).toMatch(/^ann#\d{4}$/);
+    expect((await call('GET', '/api/friends/code', 'ann')).body.code).toBe(a);
+    expect((await call('GET', '/api/friends/code')).status).toBe(401);
+    expect((await call('GET', '/api/friends/code', 'guest')).status).toBe(403);
+  });
+
+  it('search by exact code finds that one player; wrong tag, partial name or own code find nobody', async () => {
+    const bob = (await call('GET', '/api/friends/code', 'bob')).body.code;
+    const hit = (await call('GET', `/api/friends/search?q=${encodeURIComponent(bob)}`, 'ann')).body.results;
+    expect(hit.map((p) => p.username)).toEqual(['bob']);
+    const [name, tag] = bob.split('#');
+    const wrong = String((Number(tag) + 1) % 10000).padStart(4, '0');
+    expect((await call('GET', `/api/friends/search?q=${name}%23${wrong}`, 'ann')).body.results).toEqual([]);
+    expect((await call('GET', `/api/friends/search?q=bo%23${tag}`, 'ann')).body.results).toEqual([]);
+    expect((await call('GET', `/api/friends/search?q=${encodeURIComponent(bob.toUpperCase())}`, 'ann')).body.results.map((p) => p.username)).toEqual(['bob']);
+    expect((await call('GET', `/api/friends/search?q=${encodeURIComponent(bob)}`, 'bob')).body.results).toEqual([]);
+  });
+
+  it('a user who never generated a code cannot be matched by one', async () => {
+    expect((await call('GET', '/api/friends/search?q=dan%230000', 'ann')).body.results).toEqual([]);
+  });
+});

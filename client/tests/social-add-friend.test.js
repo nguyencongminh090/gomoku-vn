@@ -28,6 +28,7 @@ function boot(results) {
     const method = (opts && opts.method) || 'GET';
     calls.push(method + ' ' + url);
     if (url.startsWith('/api/friends/search')) return json({ results });
+    if (url === '/api/friends/code') return json({ code: 'me#0042' });
     if (url === '/api/friends') return json({ friends: [], incoming: [], outgoing: [] });
     if (method === 'POST') return json({ status: 'outgoing' }, 201);
     return json({}, 404);
@@ -78,5 +79,17 @@ describe('add friend search', () => {
     await tick();
     type('xx'); jest.advanceTimersByTime(400); await tick();
     expect(document.querySelector('#sc-add-results img')).toBeNull();
+  });
+});
+
+describe('my friend code', () => {
+  it('shows my name#tag and copies it', async () => {
+    boot([]);
+    const writeText = jest.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    await tick();
+    expect(document.getElementById('sc-code').textContent).toBe('me#0042');
+    document.getElementById('sc-code-copy').click(); await tick();
+    expect(writeText).toHaveBeenCalledWith('me#0042');
   });
 });

@@ -112,6 +112,12 @@ if (userColumns.length > 0 && !userColumns.includes('who_can_dm')) {
   logger.info('[DB] Migrated users: added country/city/who_can_*/hide_online columns (TODO.md #199)');
 }
 
+// Shareable friend code "username#1234" (TODO.md #232): the 4-digit tag is assigned lazily on first use.
+if (userColumns.length > 0 && !userColumns.includes('friend_tag')) {
+  db.exec('ALTER TABLE users ADD COLUMN friend_tag TEXT');
+  logger.info('[DB] Migrated users: added friend_tag column (TODO.md #232)');
+}
+
 // Reviewer flag for member-submitted puzzles (TODO.md #203). R8 Admin builds real roles later;
 // until then it is granted from the CLI (server/scripts/admin.js set-admin).
 if (userColumns.length > 0 && !userColumns.includes('is_admin')) {
