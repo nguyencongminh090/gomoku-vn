@@ -425,4 +425,36 @@ describe('live push (B225)', () => {
     expect(subs()).toEqual(['home:subscribe', 'home:subscribe']);
     expect(fetch).toHaveBeenCalledWith('/api/home', expect.anything());
   });
+
+  describe('lobby room only on the rooms screen (B229)', () => {
+    const lsubs = () => window.__lobbyStub.client.emitted.map(([ev]) => ev).filter((ev) => ev.startsWith('lobby:'));
+
+    it('subscribes entering rooms, unsubscribes leaving; dashboard/tournaments never join', async () => {
+      await boot('/index.html');
+      expect(lsubs()).toEqual([]);
+      window.__home.showScreen('rooms');
+      window.__home.showScreen('tournaments');
+      window.__home.showScreen('rooms');
+      window.__home.showScreen('home');
+      expect(lsubs()).toEqual(['lobby:subscribe', 'lobby:unsubscribe', 'lobby:subscribe', 'lobby:unsubscribe']);
+    });
+
+    it('starting on #rooms subscribes once', async () => {
+      await boot('/index.html#rooms');
+      expect(lsubs()).toEqual(['lobby:subscribe']);
+    });
+
+    it('hidden tab leaves, visible rejoins; reconnect rejoins only on rooms', async () => {
+      await boot('/index.html#rooms');
+      setHidden(true);
+      setHidden(false);
+      expect(lsubs()).toEqual(['lobby:subscribe', 'lobby:unsubscribe', 'lobby:subscribe']);
+      const c = window.__lobbyStub.client;
+      c.fire('disconnect'); c.fire('connect');
+      expect(lsubs()).toHaveLength(4);
+      window.__home.showScreen('home');
+      c.fire('disconnect'); c.fire('connect');
+      expect(lsubs().filter((e) => e === 'lobby:subscribe')).toHaveLength(3);
+    });
+  });
 });

@@ -35,18 +35,13 @@ beforeEach(() => {
   global.fetch = jest.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve({}) }));
 });
 
-it('lobby.js: subscribes once on load, again after disconnect → connect only', () => {
+it('lobby.js: no longer subscribes by itself (B229 — lobby-home.js owns it, rooms screen only)', () => {
   const c = fakeClient();
   window.SocketClient = { shared: () => c };
   window.eval(LOBBY);
-  expect(c.emitted.filter((e) => e === 'lobby:subscribe')).toHaveLength(1);
-  c.fire('connect'); // first connect: no double
-  expect(c.emitted.filter((e) => e === 'lobby:subscribe')).toHaveLength(1);
   c.fire('disconnect');
   c.fire('connect');
-  expect(c.emitted.filter((e) => e === 'lobby:subscribe')).toHaveLength(2);
-  c.fire('connect');
-  expect(c.emitted.filter((e) => e === 'lobby:subscribe')).toHaveLength(2);
+  expect(c.emitted.filter((e) => e === 'lobby:subscribe')).toHaveLength(0);
 });
 
 it('tournaments.js: both subscribes repeat after disconnect → connect only', () => {
