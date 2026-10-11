@@ -93,3 +93,13 @@ describe('my friend code', () => {
     expect(writeText).toHaveBeenCalledWith('me#0042');
   });
 });
+
+describe('css', () => {
+  it('the add-friend form class is not shared with another component (a clash shrank the box to 180px)', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    const cls = /<form id="sc-add" class="([\w-]+)"/.exec(fs.readFileSync(path.join(__dirname, '..', 'social.html'), 'utf8'))[1];
+    const defs = css.split('\n').filter((l) => new RegExp('^\\.' + cls + '[\\s{]').test(l));
+    expect(defs.length).toBe(2); // the form rule + its "input" rule, nothing else
+    expect(defs.every((l) => !/display:\s*flex|width:\s*180px/.test(l))).toBe(true);
+  });
+});

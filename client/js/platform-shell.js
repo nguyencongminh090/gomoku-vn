@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=321'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=323'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -214,7 +214,7 @@
     chip.av.style.backgroundImage = url ? 'url("' + url + '")' : '';
   }
 
-  /** User chip + dropdown (B211): Hồ sơ · Cài đặt · Quản trị (staff) · Đăng xuất; guests get Cài đặt · Tạo tài khoản. */
+  /** User chip + dropdown (B211): Hồ sơ · Bạn bè & tin nhắn · Cài đặt · Quản trị (staff) · Đăng xuất; guests get Cài đặt · Tạo tài khoản. */
   function mountAccount(right, user) {
     const member = !user.isGuest;
     const wrap = el('div', undefined, 'pnav__acct');
@@ -245,9 +245,10 @@
     const settingsHref = () => (/^\/room(\.html)?$/.test(location.pathname)
       ? '/settings.html?return=' + encodeURIComponent(location.pathname + location.search) : '/settings.html');
     const profile = member ? item('a', 'ph-regular-user-circle', t('shell.menu_profile'), '#') : null;
+    const social = member ? item('a', 'ph-regular-chat-circle', t('shell.menu_social'), '/social.html') : null; // #233: the only text entry to Bạn bè
     const admin = member ? item('a', 'ph-regular-shield-check', t('shell.menu_admin'), '/admin') : null;
     if (admin) { admin.hidden = true; admin.classList.add('pnav__item--staff'); }
-    menu.append(...[profile, item('a', 'ph-regular-gear-six', t('gset.title'), settingsHref()), admin, el('hr')].filter(Boolean));
+    menu.append(...[profile, social, item('a', 'ph-regular-gear-six', t('gset.title'), settingsHref()), admin, el('hr')].filter(Boolean));
     if (member) {
       const out = item('button', 'ph-regular-sign-out', t('gset.btn_logout'));
       out.addEventListener('click', async () => {
