@@ -3,6 +3,7 @@
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
 
+- ✅ **#230.** `lobby:online_users`: snapshot once, then joined/left deltas `[Model: Opus 5]` — [detail](docs/todo/B230-online-users-delta.md)
 - ✅ **#229.** index.html: subscribe to `lobby` only while the rooms screen is open `[Model: Sonnet 5]` — [detail](docs/todo/B229-lobby-subscribe-rooms-screen-only.md)
 - ✅ **#226.** Audit all server↔client transfer/broadcast (moves, lobby users, tickets…): inventory, measure, rank `[Model: Opus 5]` — [detail](docs/todo/B226-socket-transfer-audit.md)
 - ✅ **#212.** Icon + label review: icons match meaning, shorter labels, named icon-only controls `[Model: Sonnet 5]` — [detail](docs/todo/B212-icon-label-review.md)

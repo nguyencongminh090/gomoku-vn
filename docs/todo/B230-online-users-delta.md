@@ -1,5 +1,5 @@
 # B230 — `lobby:online_users`: snapshot once, then joined/left deltas
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-12 (uncommitted) — fix-log 2026-10-12-b230; harness re-run recorded there
 **Area:** server/socket/state.js (`broadcastOnlineUsers`, `getOnlineUsersList`), server/socket/handlers/LobbyHandler.js (subscribe), client/js/lobby.js (online line), client/js/private-chat.js (`updateOnlineUsers`, `isOnline`)
 **From:** audit #226 finding F1, 2026-10-12   **Depends:** #229 (narrows the audience first)
 

@@ -18,6 +18,7 @@ const {
   broadcastLobbyUpdate,
   broadcastRoomUpdate,
   sendLobbySnapshot,
+  sendOnlineSnapshot,
   getClientIp,
 } = require('../state');
 
@@ -38,7 +39,7 @@ function register(io, socket) {
     // so a client that joins mid-stream has nothing to apply patches to
     // until it has received this.
     sendLobbySnapshot(io, socket);
-    socket.emit('lobby:online_users', _getOnlineList(io));
+    sendOnlineSnapshot(io, socket); // #230: then lobby:online_patch deltas
   });
 
   socket.on('lobby:unsubscribe', () => {
@@ -123,20 +124,6 @@ function register(io, socket) {
       timestamp: Date.now(), isSystem: true,
     });
   });
-}
-
-/**
- * Build the online-users list for a lobby:online_users emission.
- * Reads directly from io.sockets to avoid a shared-state import cycle.
- *
- * @param {import('socket.io').Server} io
- */
-function _getOnlineList(io) {
-  // Delegate to the sessions registry in state.js via the parent SocketHandler
-  // by re-reading it here.  We import it lazily to avoid circular refs at
-  // module load time.
-  const { getOnlineUsersList } = require('../state');
-  return getOnlineUsersList();
 }
 
 module.exports = { register };

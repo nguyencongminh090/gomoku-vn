@@ -15,7 +15,7 @@ const SRC = read('js/lobby.js');
 const slice = (from, to) => SRC.slice(SRC.indexOf(from), SRC.indexOf(to));
 const FILTER = slice('let roomTab =', '// Full rebuild');
 const RENDER = slice('function renderRoomList(', '// Update an existing row');
-const WIRE = slice("document.querySelectorAll('#room-tabs", "client.on('lobby:online_users'");
+const WIRE = slice("document.querySelectorAll('#room-tabs", '// Apply a `lobby:online_patch`');
 
 const room = (roomId, state, playerCount) => ({ roomId, roomName: 'R' + roomId, hostName: 'h', playerCount, state, boardSize: 15 });
 const ROOMS = [room('a', 'idle', 1), room('b', 'playing', 2), room('c', 'idle', 2), room('d', 'idle', 0)];

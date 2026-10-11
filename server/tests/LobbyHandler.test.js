@@ -44,7 +44,9 @@ const mockState = {
   sendLobbySnapshot: jest.fn((io, socket) => {
     socket.emit('lobby:update', { rooms: mockRoomManager.listRooms() });
   }),
-  getOnlineUsersList: jest.fn(() => []),
+  sendOnlineSnapshot: jest.fn((io, socket) => {
+    socket.emit('lobby:online_users', []);
+  }),
   getClientIp: actualState.getClientIp,
 };
 jest.mock('../socket/state', () => mockState);

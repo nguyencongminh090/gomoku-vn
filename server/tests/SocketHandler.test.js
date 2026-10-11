@@ -211,22 +211,22 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     expect(sessions.get('u1')).toBe(b);
   });
 
-  test('lobby:online_users is broadcast once when a user first connects, and again when they fully disconnect', () => {
+  test('lobby:online_patch is broadcast once when a user first connects, and again when they fully disconnect', () => {
     const io = makeIo();
     init(io);
 
     const a = makeSocket(io, 'sockA', 'u1', 'Alice');
     connectSocket(io, a);
     jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
-    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(1);
+    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_patch')).toHaveLength(1);
 
     fireDisconnect(a);
     jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
-    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(2);
+    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_patch')).toHaveLength(2);
     expect(sessions.has('u1')).toBe(false);
   });
 
-  test('a burst of connects/disconnects within the debounce window collapses to one lobby:online_users broadcast', () => {
+  test('a burst of connects/disconnects within the debounce window collapses to one lobby:online_patch broadcast', () => {
     const io = makeIo();
     init(io);
 
@@ -237,10 +237,10 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     for (let i = 0; i < 5; i++) {
       connectSocket(io, makeSocket(io, `sockBurst${i}`, `burst${i}`, `Burst${i}`));
     }
-    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(0);
+    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_patch')).toHaveLength(0);
 
     jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
-    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users')).toHaveLength(1);
+    expect((io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_patch')).toHaveLength(1);
   });
 
   test('TODO.md #41: reconnect traffic spread 150-400ms apart (not a synchronized burst) still collapses to far fewer broadcasts than the old 300ms window managed', () => {
@@ -263,7 +263,7 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     // Flush whatever window is still pending after the last event.
     jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
 
-    const broadcastCount = (io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_users').length;
+    const broadcastCount = (io._toEmitted['lobby'] || []).filter(e => e.event === 'lobby:online_patch').length;
     // 12 events with no debounce at all would be 12 broadcasts; the old
     // 300ms window reduced that by well under half at this pace. The 1.5s
     // window should coalesce nearly all of them into very few broadcasts.

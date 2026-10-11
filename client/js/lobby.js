@@ -266,14 +266,28 @@ document.querySelectorAll('#room-tabs [data-room-tab]').forEach((btn) => {
   });
 });
 
-client.on('lobby:online_users', (users) => {
+// Apply a `lobby:online_patch` ({ joined, left }) to an online list (#230).
+// Idempotent: a `joined` entry already held is replaced, a `left` id never
+// held is ignored — a snapshot taken between flushes may already include it.
+function applyOnlineUsersPatch(users, patch) {
+  const byId = new Map(users.map((u) => [u.userId, u]));
+  for (const userId of (patch && patch.left) || []) byId.delete(userId);
+  for (const u of (patch && patch.joined) || []) byId.set(u.userId, u);
+  return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+function setOnlineUsers(users) {
   currentOnlineUsers = users;
   renderOnlineLine();
   // Feed the private-chat module (#159) — it owns the online-users modal and
   // per-window presence. Safe if it hasn't finished init yet: it also reads
   // GvnSession directly and this event re-fires on every presence change.
   if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users);
-});
+}
+
+// Full list once per lobby:subscribe (incl. after reconnect, #228), then deltas.
+client.on('lobby:online_users', (users) => setOnlineUsers(Array.isArray(users) ? users : []));
+client.on('lobby:online_patch', (patch) => setOnlineUsers(applyOnlineUsersPatch(currentOnlineUsers, patch)));
 
 client.on('room:error', (data) => {
   // `code` is language-neutral; `message` is Vietnamese-only fallback for
