@@ -89,9 +89,8 @@ class TournamentManager extends EventEmitter {
       this.tournaments.set(tournament.tournamentId, tournament);
 
       for (const [, entry] of tournament.entries) {
-        // Guest entries have no durable id (tournament_players.player_id is
-        // null for guests by design) — can't be re-linked to a userId after
-        // a restart. Known, accepted gap — see B77.
+        // Guest entries are re-linked via tournament_players.guest_id (#240);
+        // legacy guest rows without it stay unlinked.
         if (!entry.userId) continue;
         if (!this.userTournamentMap.has(entry.userId)) {
           this.userTournamentMap.set(entry.userId, new Set());
@@ -123,7 +122,7 @@ class TournamentManager extends EventEmitter {
     for (const playerRow of database.getTournamentPlayers(row.id)) {
       tournament.entries.set(playerRow.entry_id, {
         entryId: playerRow.entry_id,
-        userId: playerRow.player_id,
+        userId: playerRow.player_id ?? playerRow.guest_id ?? null,
         displayName: playerRow.display_name,
         isGuest: playerRow.player_id === null,
         seed: playerRow.seed,
@@ -406,6 +405,7 @@ class TournamentManager extends EventEmitter {
       entryId,
       tournamentId,
       playerId: userInfo.isGuest ? null : userInfo.userId,
+      guestId: userInfo.isGuest ? userInfo.userId : null,
       displayName: userInfo.displayName,
       registeredAt,
     });

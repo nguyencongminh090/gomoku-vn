@@ -77,7 +77,6 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
-- **#240.** Verify/fix guest tournament entries after restart (size S–M) `[Model: Sonnet 5]` — [detail](docs/todo/B240-tournament-guest-entries-after-restart.md)
 - **#241.** Drop/forfeit player + replay-loop cap (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B241-tournament-drop-forfeit-replay-cap.md)
 - **#242.** Persist tournament seeds, deterministic on hydrate (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B242-tournament-persist-seeds.md)
 - **#243.** Double-elim final ranks 3rd and below (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B243-de-final-ranks-3rd-and-below.md)
