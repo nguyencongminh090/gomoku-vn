@@ -72,6 +72,15 @@ describe('"Của CLB" tournaments tab', () => {
   });
 });
 
+describe('card meta is tag chips, not a joined string', () => {
+  it('renders each fact as its own span and never joins with a middot', async () => {
+    await boot();
+    const meta = document.querySelector('[data-tournament-id="a"] .tournament-card__meta');
+    expect(meta.querySelectorAll(':scope > .rtag').length).toBeGreaterThanOrEqual(3);
+    expect(meta.textContent).not.toContain(' · ');
+  });
+});
+
 describe('registration limits on cards (#246)', () => {
   it('shows n/max, and swaps the Register button for a Full / Closed label when registrationOpen is false', async () => {
     LIST.length = 0;
