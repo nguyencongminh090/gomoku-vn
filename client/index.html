@@ -13,37 +13,37 @@
        socket-early.js needs `io` and `SocketClient`, socket-client.js needs
        `GvnSession`. See client/js/socket-early.js for the measurement. -->
   <script src="/vendor/socket.io/socket.io.min.js"></script>
-  <script src="js/session.js?v=326"></script>
-  <script src="js/socket-client.js?v=326"></script>
-  <script src="js/socket-early.js?v=326"></script>
+  <script src="js/session.js?v=332"></script>
+  <script src="js/socket-client.js?v=332"></script>
+  <script src="js/socket-early.js?v=332"></script>
 
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=326" />
-  <link rel="stylesheet" href="css/tokens.css?v=326" />
-  <link rel="stylesheet" href="css/lobby.css?v=326" />
-  <link rel="stylesheet" href="css/lobby-zen.css?v=326" />
-  <link rel="stylesheet" href="css/shell.css?v=326" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=326" />
-  <link rel="stylesheet" href="css/platform.css?v=326" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=326" />
+  <link rel="stylesheet" href="css/main.css?v=332" />
+  <link rel="stylesheet" href="css/tokens.css?v=332" />
+  <link rel="stylesheet" href="css/lobby.css?v=332" />
+  <link rel="stylesheet" href="css/lobby-zen.css?v=332" />
+  <link rel="stylesheet" href="css/shell.css?v=332" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=332" />
+  <link rel="stylesheet" href="css/platform.css?v=332" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=332" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=326">
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=332">
 
-  <script src="js/ui-mode-preload.js?v=326"></script>
+  <script src="js/ui-mode-preload.js?v=332"></script>
 
-  <script src="js/skin-preload.js?v=326"></script>
+  <script src="js/skin-preload.js?v=332"></script>
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=326" />
-  <link rel="modulepreload" href="js/ui-mode.js?v=326" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=326" />
-  <link rel="modulepreload" href="js/platform-shell.js?v=326" />
-  <link rel="modulepreload" href="js/lobby.js?v=326" />
-  <link rel="modulepreload" href="js/private-chat.js?v=326" />
-  <link rel="modulepreload" href="js/tournaments.js?v=326" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=326" />
+  <link rel="modulepreload" href="js/i18n.js?v=332" />
+  <link rel="modulepreload" href="js/ui-mode.js?v=332" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=332" />
+  <link rel="modulepreload" href="js/platform-shell.js?v=332" />
+  <link rel="modulepreload" href="js/lobby.js?v=332" />
+  <link rel="modulepreload" href="js/private-chat.js?v=332" />
+  <link rel="modulepreload" href="js/tournaments.js?v=332" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=332" />
 
 </head>
 <body class="zen-lobby">
@@ -70,7 +70,7 @@
     </div>
     <div class="lobby-bar__actions" id="lobby-bar">
       <button id="btn-create-tournament" hidden class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-plus-circle"></use></svg>
         <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
       </button>
     </div>
@@ -122,11 +122,11 @@
       </div>
       <div class="lobby-bar__actions" id="room-actions">
         <button id="btn-create" class="link-action link-action--primary" type="button">
-          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-plus-circle"></use></svg>
+          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-plus-circle"></use></svg>
           <span data-i18n="lobby.btn_create">Tạo phòng</span>
         </button>
         <button id="btn-join-code" hidden class="link-action" type="button" aria-expanded="false" aria-controls="join-code-form">
-          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-door-open"></use></svg>
+          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-door-open"></use></svg>
           <span data-i18n="lobby.join_code">Vào bằng mã</span>
         </button>
         <form id="join-code-form" class="join-code" hidden autocomplete="off">
@@ -158,7 +158,7 @@
   <div class="tab-panel" id="panel-tournaments">
     <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
       <div class="live-matches-panel__header">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-broadcast"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-broadcast"></use></svg>
         <span data-i18n="live_matches.title">Trận đang diễn ra</span>
       </div>
       <div id="live-matches-list" class="live-matches-panel__list"></div>
@@ -191,7 +191,7 @@
   <div class="modal">
     <div class="modal__header">
       <h2 id="modal-title" class="modal__title" data-i18n="modal.title">Tạo phòng mới</h2>
-      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-bold-x"></use></svg></button>
+      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
 
@@ -209,13 +209,13 @@
         <div class="mode-cards" role="radiogroup" aria-labelledby="mode-label">
           <input type="radio" name="roomMode" id="rm-rated" value="rated" checked />
           <label for="rm-rated" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-trophy"></use></svg>
+            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-trophy"></use></svg>
             <span class="mode-card__name" data-i18n="room.mode_rated">Xếp hạng</span>
             <span class="mode-card__desc" data-i18n="modal.mode_rated_desc">Tính điểm Elo, không đi lại</span>
           </label>
           <input type="radio" name="roomMode" id="rm-friendly" value="friendly" />
           <label for="rm-friendly" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-handshake"></use></svg>
+            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-handshake"></use></svg>
             <span class="mode-card__name" data-i18n="room.mode_friendly">Giao hữu</span>
             <span class="mode-card__desc" data-i18n="modal.mode_friendly_desc">Không tính điểm, được đi lại</span>
           </label>
@@ -337,11 +337,11 @@
 </div>
 
 <!-- ── Create Tournament Modal ─────────────────────────────────────────── -->
-<div id="modal-create-tournament" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-tournament-title">
+<div id="modal-create-tournament" class="modal-overlay modal-overlay--form" role="dialog" aria-modal="true" aria-labelledby="modal-tournament-title">
   <div class="modal">
     <div class="modal__header">
       <h2 id="modal-tournament-title" class="modal__title" data-i18n="tournaments.modal_title">Tạo giải đấu mới</h2>
-      <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-bold-x"></use></svg></button>
+      <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
       <p id="tournament-club-note" class="pnote" hidden></p>
@@ -384,6 +384,7 @@
 
       <!-- Winning rule (radio — pick one) -->
       <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.win_rule">Luật thắng</span>
         <div class="pill-group">
           <input type="radio" name="tWinRule" id="twr-freestyle" value="freestyle" checked />
           <label for="twr-freestyle" data-i18n="rule.freestyle">Tự do</label>
@@ -396,6 +397,7 @@
 
       <!-- Board setup (checkboxes — may combine) -->
       <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.special_rules">Luật đặc biệt</span>
         <div class="toggle-row">
           <span class="toggle-name" data-i18n="modal.rule_wall">Tường (Wall)</span>
           <label class="toggle-switch">
@@ -414,6 +416,7 @@
 
       <!-- Opening rule (radio — pick one) -->
       <div class="setting-row">
+        <span class="setting-label" data-i18n="modal.opening">Luật mở đầu</span>
         <div class="pill-group">
           <input type="radio" name="tOpenRule" id="tor-none" value="none" checked />
           <label for="tor-none" data-i18n="rule.none">Không</label>
@@ -435,21 +438,21 @@
         </div>
       </div>
 
-      <!-- Timer seconds -->
-      <div class="setting-row">
+      <!-- Timer seconds + increment -->
+      <div class="setting-row setting-row--pair">
+        <div>
         <label class="setting-label" for="t-timer-seconds" data-i18n="modal.time_label">Thời gian</label>
         <div class="timer-input">
           <input type="number" id="t-timer-seconds" value="60" min="5" max="3600" step="5" />
           <span class="unit" data-i18n="modal.time_unit">giây</span>
         </div>
-      </div>
-
-      <!-- Timer increment (only applies in Blitz mode) -->
-      <div class="setting-row" id="t-timer-increment-row">
+        </div>
+        <div id="t-timer-increment-row">
         <label class="setting-label" for="t-timer-increment" data-i18n="modal.time_plus">Cộng thêm</label>
         <div class="timer-input">
           <input type="number" id="t-timer-increment" value="0" min="0" max="600" step="1" disabled />
           <span class="unit" data-i18n="modal.time_unit">giây</span>
+        </div>
         </div>
       </div>
 
@@ -462,13 +465,23 @@
         </div>
       </div>
 
+      <!-- Tournament period: from / to (dates, optional) -->
+      <div class="setting-row setting-row--pair">
+        <div>
+          <label class="setting-label" for="t-starts-at" data-i18n="tournaments.starts_at_label">Từ ngày</label>
+          <div class="timer-input timer-input--block"><input type="date" id="t-starts-at" /></div>
+        </div>
+        <div>
+          <label class="setting-label" for="t-ends-at" data-i18n="tournaments.ends_at_label">Tới ngày</label>
+          <div class="timer-input timer-input--block"><input type="date" id="t-ends-at" /></div>
+        </div>
+      </div>
+
       <!-- Series mode (TODO.md #50/#53) — how many games each pairing plays -->
       <div class="setting-row">
         <span class="setting-label" data-i18n="tournaments.series_mode_label">Số ván mỗi cặp đấu</span>
         <div class="pill-group">
-          <input type="radio" name="tSeriesMode" id="tsm-single" value="single" checked />
-          <label for="tsm-single" data-i18n="tournaments.series_single">Một ván</label>
-          <input type="radio" name="tSeriesMode" id="tsm-fixed" value="fixedCount" />
+          <input type="radio" name="tSeriesMode" id="tsm-fixed" value="fixedCount" checked />
           <label for="tsm-fixed" data-i18n="tournaments.series_fixed">Số ván cố định</label>
           <input type="radio" name="tSeriesMode" id="tsm-race" value="raceToMargin" />
           <label for="tsm-race" data-i18n="tournaments.series_race">Race-to-margin</label>
@@ -476,7 +489,7 @@
       </div>
 
       <!-- Fixed game count — only shown/used in "fixedCount" series mode -->
-      <div class="setting-row" id="t-series-count-row" style="display:none;">
+      <div class="setting-row" id="t-series-count-row">
         <label class="setting-label" for="t-series-game-count" data-i18n="tournaments.series_game_count_label">Số ván</label>
         <div class="timer-input">
           <input type="number" id="t-series-game-count" value="3" min="2" max="99" step="1" />
@@ -513,15 +526,15 @@
   <div class="modal online-users-modal">
     <div class="modal__header">
       <span class="online-users-modal__title-wrap">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-users-three"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-users-three"></use></svg>
         <h2 id="modal-online-users-title" class="modal__title" data-i18n="private_chat.modal_title">Danh sách người dùng online</h2>
         <span id="online-users-count" class="online-users-modal__count">0</span>
       </span>
-      <button id="modal-online-users-close" class="modal__close" type="button" data-i18n-aria="private_chat.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-bold-x"></use></svg></button>
+      <button id="modal-online-users-close" class="modal__close" type="button" data-i18n-aria="private_chat.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
       <div class="online-users-search-wrap">
-        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=326#ph-regular-magnifying-glass"></use></svg>
+        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-magnifying-glass"></use></svg>
         <input type="text" id="online-users-search" class="online-users-search" autocomplete="off"
                data-i18n-placeholder="private_chat.modal_search_ph" placeholder="Tìm kiếm người dùng..." />
         <kbd class="online-users-search-shortcut"></kbd>
@@ -533,9 +546,9 @@
 
 <!-- Socket.io CDN -->
 <!-- socket.io.min.js now loads in <head> (TODO.md #145) -->
-<script src="js/escape-utils.js?v=326"></script>
-<script src="js/audio-manager.js?v=326"></script>
-<script src="js/action-delegate.js?v=326"></script>
-<script type="module" src="js/index-entry.js?v=326"></script>
+<script src="js/escape-utils.js?v=332"></script>
+<script src="js/audio-manager.js?v=332"></script>
+<script src="js/action-delegate.js?v=332"></script>
+<script type="module" src="js/index-entry.js?v=332"></script>
 </body>
 </html>
