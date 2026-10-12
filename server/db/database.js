@@ -88,6 +88,13 @@ if (clubColumns.length > 0 && !clubColumns.includes('color')) {
   logger.info('[DB] Migrated clubs: added color/tag/announcement columns (TODO.md #235)');
 }
 
+// Club avatar + banner versions (TODO.md #250): 0 = none, else the cache-busting ?v= of the stored file.
+if (clubColumns.length > 0 && !clubColumns.includes('avatar_v')) {
+  db.exec('ALTER TABLE clubs ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE clubs ADD COLUMN banner_v INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated clubs: added avatar_v/banner_v columns (TODO.md #250)');
+}
+
 // Same additive-migration need as above, for oauth_provider/oauth_id
 // (TODO.md #91) — a db file created before Google login is missing these
 // two columns.
