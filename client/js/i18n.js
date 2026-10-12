@@ -426,6 +426,7 @@ const TRANSLATIONS = {
     'room.seat_timeout_kicked': 'Bạn không bấm Bắt đầu kịp thời nên bị rời khỏi vị trí (vẫn ở trong phòng).',
     'conn.disconnected_retrying': 'Mất kết nối. Đang thử kết nối lại...',
     'conn.reconnecting_attempt': 'Kết nối lại... (lần {n})',
+    'conn.lagging': 'Đang tải… mạng chậm',
 
     // ── Start modal (ready window) ─────────────────────────────
     'start_modal.title': 'Sẵn sàng vào trận?',
@@ -1939,6 +1940,7 @@ const TRANSLATIONS = {
     'room.seat_timeout_kicked': 'You didn\'t click Start in time, so you were removed from your seat (still in the room).',
     'conn.disconnected_retrying': 'Connection lost. Reconnecting...',
     'conn.reconnecting_attempt': 'Reconnecting... (attempt {n})',
+    'conn.lagging': 'Loading… connection is slow',
 
     // ── Start modal (ready window) ─────────────────────────────
     'start_modal.title': 'Ready to start?',

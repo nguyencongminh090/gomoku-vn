@@ -28,6 +28,8 @@ class SocketClient {
     this._listeners = [];
     this._statusEl = null;
 
+    // Initial data arrives over the socket: keep the lag overlay up until 'connect'.
+    window.dispatchEvent(new CustomEvent('gvn:conn', { detail: 'connecting' }));
     this._connect();
   }
 
@@ -336,6 +338,8 @@ class SocketClient {
   }
 
   _setStatus(status, detail) {
+    // Drives the full-screen lag overlay (session.js), banner or not.
+    window.dispatchEvent(new CustomEvent('gvn:conn', { detail: status }));
     if (!this._statusEl) return;
     this._lastStatus = status;
     this._lastDetail = detail;
