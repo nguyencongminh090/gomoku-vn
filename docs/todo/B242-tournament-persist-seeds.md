@@ -1,5 +1,5 @@
 # B242 — Persist seeds; deterministic seeding on hydrate
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — tournament seeds assigned + persisted at start; hydrate orders by seed (fix-log: docs/fix-log/2026-10-12-tournament-persist-seeds.md)
 **Area:** server/managers/tournament/TournamentManager.js, db tournament_players.seed
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 

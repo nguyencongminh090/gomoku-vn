@@ -493,6 +493,13 @@ class TournamentManager extends EventEmitter {
     database.updateTournamentStatus(tournamentId, 'active', { startedAt: tournament.startedAt });
 
     tournament.completedPairings = []; // for standings.js (Swiss/Round robin)
+    // Seeds = registration order, fixed and persisted now so a reload rebuilds
+    // the identical bracket (#242); hydrate orders entries by seed.
+    let seed = 0;
+    for (const entry of tournament.entries.values()) {
+      entry.seed = ++seed;
+      database.updateTournamentPlayerSeed(entry.entryId, entry.seed);
+    }
     const entryIds = Array.from(tournament.entries.keys());
 
     if (entryIds.length >= 2) {
