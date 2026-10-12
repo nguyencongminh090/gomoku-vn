@@ -13,6 +13,7 @@ Ratings can be inflated by repeat opponents, feeder accounts or closed rings; no
 4. Admin-only note; friend/club relation shown as annotation, not exemption.
 5. Tests on synthetic rings, broad players, sparse early graph.
 ## Don't
+- Admin-only (perm rating.integrity); signal only, no action on players.
 - No rating/ranking effect, no new table/migration, no IP/device, no pair damping (Q2, Q4 deferred).
 ## Traps
 - Sparse graphs look "closed" early; a selective player is not necessarily cheating.

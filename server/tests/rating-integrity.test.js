@@ -110,15 +110,19 @@ describe('service', () => {
   const user = (id, role = 'member') => database.db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at, role) VALUES (?, ?, 'x', ?, ?, ?)").run(id, id, id.toUpperCase(), NOW, role);
   const insert = (r) => database.db.prepare("INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at) VALUES (?, 'classic', ?, ?, ?, ?, ?, 100, 100, ?)").run(r.user_id, r.game_id, r.opponent_id, r.score, r.rating_before, r.rating_after, NOW);
 
-  test('staff only; flagged pair carries names and friend/club annotation, no rating change', () => {
-    user('mod', 'moderator'); user('mem');
+  test('admin only; flagged pair carries names and friend/club annotation, no rating change', () => {
+    user('adm', 'admin'); user('mod', 'moderator'); user('mem');
     for (let i = 0; i < 12; i++) user(`bg${i}`);
     user('boost'); user('feeder');
     database.db.prepare("INSERT INTO friendships (user_a, user_b, requested_by, status, created_at) VALUES ('boost', 'feeder', 'boost', 'accepted', ?)").run(NOW);
     for (const r of [...background(12), ...many('boost', 'feeder', 12, 'a')]) insert(r);
     expect(() => service.report('mem')).toThrow(service.RatingIntegrityError);
+    expect(() => service.report('mod')).toThrow(service.RatingIntegrityError); // moderators are not enough
     expect(() => service.report(null)).toThrow(service.RatingIntegrityError);
-    const out = service.report('mod');
+    const roles = require('../utils/roles');
+    expect(roles.permissionsOf('adm')).toContain('rating.integrity');
+    expect(roles.permissionsOf('mod')).not.toContain('rating.integrity'); // the admin tab stays hidden for moderators
+    const out = service.report('adm');
     expect(out.pairs[0]).toMatchObject({ aName: 'BOOST', bName: 'FEEDER', friends: true, sameClub: false });
     expect(out.players.find((p) => p.userId === 'boost')).toMatchObject({ displayName: 'BOOST', topOpponentName: 'FEEDER', topOpponentFriend: true });
     expect(database.db.prepare('SELECT COUNT(*) n FROM ratings').get().n).toBe(0);

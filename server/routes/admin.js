@@ -14,7 +14,7 @@
  * POST /api/admin/users/:id/lock        {locked: bool, reason}
  * GET  /api/admin/cheat-reports?page=    open cheat reports (perm cheat.review: moderator+admin, #208)
  * POST /api/admin/cheat-reports/:id/resolve  {confirm: bool}
- * GET  /api/admin/rating-integrity      read-only collusion signals (perm cheat.review, #249)
+ * GET  /api/admin/rating-integrity      read-only collusion signals (perm rating.integrity: admin only, #249)
  * DELETE /api/admin/users/:id/avatar     remove their avatar (file + DB), logged as an edge
  *
  * Dashboard news (#224; perm news.manage = admin only, checked in NewsService):
