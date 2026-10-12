@@ -256,3 +256,4 @@
 | 2026-10-12 16:00 | club Manage colour swatches grey (`.pav.pav--c-*` never matched `.pswatch`) -> rules also match `.pswatch.pav--c-*` | [detail](docs/fix-log/2026-10-12-club-color-swatches-unstyled.md) |
 | 2026-10-12 16:40 | club Manage swatches grey in Firefox (forced-colors repainted fill ButtonFace) -> `forced-color-adjust: none` | [detail](docs/fix-log/2026-10-12-club-swatches-forced-colors.md) |
 | 2026-10-12 17:10 | club banner ~60px on phones (6:1 at every width) -> 3:1 at <=600px | [detail](docs/fix-log/2026-10-12-club-banner-mobile-small.md) |
+| 2026-10-12 17:40 | club invite: exact-username only, no suggestions, error out of view -> debounced name suggestions + inline error | [detail](docs/fix-log/2026-10-12-club-invite-autocomplete.md) |

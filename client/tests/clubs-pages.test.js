@@ -397,6 +397,30 @@ describe('club upgrade (#235)', () => {
     expect(posts().some(([u, o]) => o.method === 'DELETE' && u.endsWith('/invites/zed'))).toBe(true);
   });
 
+  it('invite box suggests players by name; picking one fills the exact username; errors show beside the field', async () => {
+    {
+      await bootClub(FULL);
+      const input = document.getElementById('cb-invite-name');
+      global.fetch = jest.fn((u) => (String(u).includes('/api/friends/search')
+        ? ok({ results: [{ username: 'nguyen_a', displayName: 'Nguyễn A' }] })
+        : Promise.resolve({ ok: false, status: 404, json: async () => ({ error: 'Không tìm thấy người chơi.' }) })));
+      input.value = 'Ngu';
+      input.dispatchEvent(new Event('input'));
+      await new Promise((r) => setTimeout(r, 320)); // debounce
+      await flush();
+      expect(global.fetch.mock.calls[0][0]).toContain('/api/friends/search?q=Ngu');
+      const sugg = document.querySelectorAll('#cb-invite-sugg button');
+      expect(sugg).toHaveLength(1);
+      expect(sugg[0].textContent).toBe('Nguyễn A (@nguyen_a)');
+      sugg[0].click();
+      expect(input.value).toBe('nguyen_a');
+      expect(document.getElementById('cb-invite-sugg').hidden).toBe(true);
+      document.getElementById('cb-invite-form').dispatchEvent(new Event('submit', { cancelable: true }));
+      await flush(); await flush();
+      expect(document.getElementById('cb-invite-msg').textContent).toBe('Không tìm thấy người chơi.');
+    }
+  });
+
   it('history rows render as tickets: translated title + one meta span', async () => {
     await bootClub(FULL);
     const row = document.querySelector('#cb-history .prow');
