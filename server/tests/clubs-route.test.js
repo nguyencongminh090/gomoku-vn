@@ -194,7 +194,7 @@ describe('reads', () => {
     const rate = db.prepare("INSERT INTO ratings (user_id, category, rating, rd, volatility, games, updated_at) VALUES (?, 'freestyle', ?, 80, 0.06, ?, ?)");
     rate.run(U.newbie, 1500, 30, NOW);
     rate.run(U.mem, 1700, 25, NOW);
-    rate.run(U.off, 2400, 5, NOW); // under threshold: listed, not in average
+    rate.run(U.off, 2400, 0, NOW); // under threshold: listed, not in average
     const d = (await call('GET', '/api/clubs/rated-club?category=freestyle')).body;
     expect(d.leaderboard.map((m) => m.username)).toEqual(['off', 'mem', 'newbie']);
     expect(d.avgRating).toBe(1600);
@@ -228,7 +228,7 @@ describe('club rank (#190)', () => {
     await create('r3', 'Rank Gamma');
     rate('r1', 1600, 30);
     rate('r2', 1800, 30);
-    rate('r3', 2500, 3); // under the threshold → Gamma has no ranked member
+    rate('r3', 2500, 0); // under the threshold → Gamma has no ranked member
 
     const beta = (await call('GET', '/api/clubs/rank-beta?category=caro')).body;
     const alpha = (await call('GET', '/api/clubs/rank-alpha?category=caro')).body;

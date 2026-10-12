@@ -972,8 +972,8 @@ function getTournamentGameById(id) {
 // Rankings (#176) — read-only views over `ratings` + `users`
 // ---------------------------------------------------------------------------
 
-/** Min rated games before a player appears on a leaderboard (Arena mockup: "≥ 20"). */
-const RANKING_MIN_GAMES = 20;
+/** Min rated games before a player appears on a leaderboard (was 20; 1 = anyone with a rating shows, user request 2026-10-12). */
+const RANKING_MIN_GAMES = 1;
 
 /**
  * One page of a category's leaderboard, best rating first.
