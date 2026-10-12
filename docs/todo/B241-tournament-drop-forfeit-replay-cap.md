@@ -1,5 +1,5 @@
 # B241 — Drop/forfeit player + cap on void/replay loops (size L)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-12 (backend x3 formats, jsdom, real-browser pass on Swiss)
 **Area:** TournamentManager, PairingLifecycle, standings, doubleElim, TournamentHandler, client tournament-detail
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 

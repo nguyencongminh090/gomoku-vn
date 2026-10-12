@@ -247,3 +247,4 @@
 | 2026-10-12 12:00 | #242: tournament seeds assigned + persisted at start; hydrate orders by seed | [detail](docs/fix-log/2026-10-12-tournament-persist-seeds.md) |
 | 2026-10-12 12:00 | #245: round-robin final ranks use head-to-head, then wins, then Sonneborn-Berger | [detail](docs/fix-log/2026-10-12-rr-tiebreak-head-to-head.md) |
 | 2026-10-12 12:00 | #246: tournament registration cap + close day (+ endsAt closes registration) | [detail](docs/fix-log/2026-10-12-tournament-registration-cap-and-dates.md) |
+| 2026-10-12 09:56 | #241: tournament replay cap (2 → higher seed advances) + organizer drop / player withdraw with forfeits | [detail](docs/fix-log/2026-10-12-tournament-drop-forfeit-replay-cap.md) |

@@ -42,6 +42,12 @@ if (pairingColumns.length > 0 && !pairingColumns.includes('games')) {
   logger.info('[DB] Migrated tournament_pairings: added games column (TODO.md #50)');
 }
 
+// B241: consecutive double-no-show count per pairing (replay cap).
+if (pairingColumns.length > 0 && !pairingColumns.includes('noshow_count')) {
+  db.exec('ALTER TABLE tournament_pairings ADD COLUMN noshow_count INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated tournament_pairings: added noshow_count column (B241)');
+}
+
 // Same additive-migration need as above, for the 'cancelled' tournament
 // status (TODO.md #59) — a db file created before this feature is missing
 // these two columns.
@@ -737,6 +743,14 @@ function getTournamentPlayers(tournamentId) {
 }
 
 /**
+ * Mark an entry withdrawn/dropped (B241).
+ * @param {string} entryId
+ */
+function setTournamentPlayerWithdrawn(entryId) {
+  db.prepare('UPDATE tournament_players SET withdrawn = 1 WHERE entry_id = ?').run(entryId);
+}
+
+/**
  * Persist an entry's final standing once a tournament completes
  * (TournamentManager._completeTournament/_assignDoubleElimFinalRanks) —
  * previously in-memory only, needed now so it survives a reload (TODO.md #77).
@@ -789,8 +803,8 @@ function savePairing(pairing) {
   db.prepare(`
     INSERT INTO tournament_pairings
       (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
-       agreed_time, deadline, paired_at, result, games, moves, started_at, ended_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       agreed_time, deadline, paired_at, result, games, moves, started_at, ended_at, noshow_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       state = excluded.state,
       agreed_time = excluded.agreed_time,
@@ -799,7 +813,8 @@ function savePairing(pairing) {
       games = excluded.games,
       moves = excluded.moves,
       started_at = excluded.started_at,
-      ended_at = excluded.ended_at
+      ended_at = excluded.ended_at,
+      noshow_count = excluded.noshow_count
   `).run(
     pairing.pairingId,
     pairing.roundId,
@@ -814,7 +829,8 @@ function savePairing(pairing) {
     pairing.games ? JSON.stringify(pairing.games) : null,
     pairing.moves ? JSON.stringify(pairing.moves) : null,
     pairing.startedAt,
-    pairing.endedAt
+    pairing.endedAt,
+    pairing.noShowCount || 0
   );
 }
 
@@ -1280,6 +1296,7 @@ module.exports = {
   deleteTournamentPlayer,
   getTournamentPlayers,
   updateTournamentPlayerRank,
+  setTournamentPlayerWithdrawn,
   updateTournamentPlayerSeed,
   createTournamentRound,
   getTournamentRounds,

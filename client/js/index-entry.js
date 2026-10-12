@@ -7,11 +7,11 @@
 // room-entry.js for why they load as classic <script> tags in index.html
 // instead of an ES import here (a bare side-effect import of a CJS-shaped
 // file never runs in a production Vite build).
-import './i18n.js?v=334';
-import './ui-mode.js?v=334';
-import './settings-panel.js?v=334';
-import './platform-shell.js?v=334';
-import './lobby.js?v=334';
-import './private-chat.js?v=334';
-import './tournaments.js?v=334';
-import './lobby-home.js?v=334';
+import './i18n.js?v=336';
+import './ui-mode.js?v=336';
+import './settings-panel.js?v=336';
+import './platform-shell.js?v=336';
+import './lobby.js?v=336';
+import './private-chat.js?v=336';
+import './tournaments.js?v=336';
+import './lobby-home.js?v=336';
