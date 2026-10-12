@@ -42,6 +42,19 @@ if (pairingColumns.length > 0 && !pairingColumns.includes('games')) {
   logger.info('[DB] Migrated tournament_pairings: added games column (TODO.md #50)');
 }
 
+// Puzzle walls/portals: older puzzles tables lack the layout column (additive, safe each startup).
+const puzzleColumns = db.prepare('PRAGMA table_info(puzzles)').all().map((c) => c.name);
+if (puzzleColumns.length > 0 && !puzzleColumns.includes('layout')) {
+  db.exec("ALTER TABLE puzzles ADD COLUMN layout TEXT NOT NULL DEFAULT '{}'");
+  logger.info('[DB] Migrated puzzles: added layout column (walls/portals)');
+}
+
+// Puzzle tags narrowed to attack/defense/trap/vct/vcf: old three/four_three become attack.
+if (puzzleColumns.length > 0) {
+  db.exec(`INSERT OR IGNORE INTO puzzle_tags (puzzle_id, tag) SELECT puzzle_id, 'attack' FROM puzzle_tags WHERE tag IN ('three','four_three');
+    DELETE FROM puzzle_tags WHERE tag IN ('three','four_three')`);
+}
+
 // B241: consecutive double-no-show count per pairing (replay cap).
 if (pairingColumns.length > 0 && !pairingColumns.includes('noshow_count')) {
   db.exec('ALTER TABLE tournament_pairings ADD COLUMN noshow_count INTEGER NOT NULL DEFAULT 0');
@@ -86,6 +99,13 @@ if (clubColumns.length > 0 && !clubColumns.includes('color')) {
   db.exec("ALTER TABLE clubs ADD COLUMN tag TEXT NOT NULL DEFAULT ''");
   db.exec("ALTER TABLE clubs ADD COLUMN announcement TEXT NOT NULL DEFAULT ''");
   logger.info('[DB] Migrated clubs: added color/tag/announcement columns (TODO.md #235)');
+}
+
+// Club avatar + banner versions (TODO.md #250): 0 = none, else the cache-busting ?v= of the stored file.
+if (clubColumns.length > 0 && !clubColumns.includes('avatar_v')) {
+  db.exec('ALTER TABLE clubs ADD COLUMN avatar_v INTEGER NOT NULL DEFAULT 0');
+  db.exec('ALTER TABLE clubs ADD COLUMN banner_v INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated clubs: added avatar_v/banner_v columns (TODO.md #250)');
 }
 
 // Same additive-migration need as above, for oauth_provider/oauth_id

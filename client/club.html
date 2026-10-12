@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Câu lạc bộ</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=357" />
-  <link rel="stylesheet" href="css/tokens.css?v=357" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=357" />
-  <link rel="stylesheet" href="css/platform.css?v=357" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=357" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=357">
+  <link rel="stylesheet" href="css/main.css?v=368" />
+  <link rel="stylesheet" href="css/tokens.css?v=368" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=368" />
+  <link rel="stylesheet" href="css/platform.css?v=368" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=368" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=368">
 
-  <script src="js/ui-mode-preload.js?v=357"></script>
-  <script src="js/skin-preload.js?v=357"></script>
+  <script src="js/ui-mode-preload.js?v=368"></script>
+  <script src="js/skin-preload.js?v=368"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -24,6 +24,7 @@
   <p id="cb-status" class="pnote" role="status"></p>
 
   <div id="cb-content" hidden>
+    <div class="cb-banner" id="cb-banner" role="img" hidden></div>
     <header class="phead">
       <span id="cb-avatar"></span>
       <div>
@@ -85,6 +86,7 @@
       <div class="psplit">
         <section class="ppanel" id="cb-manage" hidden>
           <h2 class="ph2" data-i18n="clubs.manage">Quản lý</h2>
+          <div id="cb-images" class="cb-images"></div>
           <form id="cb-form" class="pform">
             <label for="cb-desc-input" data-i18n="clubs.desc">Mô tả</label>
             <textarea id="cb-desc-input" maxlength="280" rows="2" placeholder="Tối đa 280 ký tự" data-i18n-placeholder="common.max_280"></textarea>
@@ -116,6 +118,8 @@
             <input id="cb-invite-name" type="text" maxlength="40" required autocomplete="off" placeholder="Tên đăng nhập" data-i18n-placeholder="clubs.invite_ph" aria-label="Tên đăng nhập">
             <button type="submit" class="pbtn pbtn--primary" data-i18n="clubs.invite_btn">Mời</button>
           </form>
+          <p id="cb-invite-msg" class="pnote" role="status"></p>
+          <div id="cb-invite-sugg" class="prows cb-sugg" hidden></div>
           <div id="cb-invites" class="prows prows--tickets"></div>
           <h2 class="ph2 ph2--gap" data-i18n="clubs.history">Nhật ký</h2>
           <div id="cb-history" class="prows prows--tickets"></div>
@@ -189,14 +193,15 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=357"></script>
-<script src="js/escape-utils.js?v=357"></script>
-<script src="js/ui-mode.js?v=357"></script>
-<script src="js/session.js?v=357"></script>
-<script src="js/audio-manager.js?v=357"></script>
-<script src="js/settings-panel.js?v=357"></script>
-<script src="js/platform-shell.js?v=357"></script>
-<script src="js/challenge-modal.js?v=357"></script>
-<script src="js/club.js?v=357"></script>
+<script src="js/i18n.js?v=368"></script>
+<script src="js/escape-utils.js?v=368"></script>
+<script src="js/ui-mode.js?v=368"></script>
+<script src="js/session.js?v=368"></script>
+<script src="js/audio-manager.js?v=368"></script>
+<script src="js/settings-panel.js?v=368"></script>
+<script src="js/platform-shell.js?v=368"></script>
+<script src="js/challenge-modal.js?v=368"></script>
+<script src="js/avatar-crop.js?v=368"></script>
+<script src="js/club.js?v=368"></script>
 </body>
 </html>

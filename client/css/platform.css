@@ -380,16 +380,16 @@ a.prow:hover { background: var(--c-hover); }
 .ph2 .pbadge { margin-left: var(--space-2); padding: 2px 10px; font-size: 11px; letter-spacing: 0; }
 
 /* Club identity (#235): preset colours, white text ≥ 4.5:1. .pav.pav--c-* beats .pav--sq. */
-.pav.pav--c-blue { background-color: var(--club-blue); color: var(--club-ink); }
-.pav.pav--c-green { background-color: var(--club-green); color: var(--club-ink); }
-.pav.pav--c-red { background-color: var(--club-red); color: var(--club-ink); }
-.pav.pav--c-orange { background-color: var(--club-orange); color: var(--club-ink); }
-.pav.pav--c-purple { background-color: var(--club-purple); color: var(--club-ink); }
-.pav.pav--c-teal { background-color: var(--club-teal); color: var(--club-ink); }
-.pav.pav--c-pink { background-color: var(--club-pink); color: var(--club-ink); }
-.pav.pav--c-gray { background-color: var(--club-gray); color: var(--club-ink); }
+.pav.pav--c-blue, .pswatch.pav--c-blue { background-color: var(--club-blue); color: var(--club-ink); }
+.pav.pav--c-green, .pswatch.pav--c-green { background-color: var(--club-green); color: var(--club-ink); }
+.pav.pav--c-red, .pswatch.pav--c-red { background-color: var(--club-red); color: var(--club-ink); }
+.pav.pav--c-orange, .pswatch.pav--c-orange { background-color: var(--club-orange); color: var(--club-ink); }
+.pav.pav--c-purple, .pswatch.pav--c-purple { background-color: var(--club-purple); color: var(--club-ink); }
+.pav.pav--c-teal, .pswatch.pav--c-teal { background-color: var(--club-teal); color: var(--club-ink); }
+.pav.pav--c-pink, .pswatch.pav--c-pink { background-color: var(--club-pink); color: var(--club-ink); }
+.pav.pav--c-gray, .pswatch.pav--c-gray { background-color: var(--club-gray); color: var(--club-ink); }
 .pswatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.pswatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.pswatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; forced-color-adjust: none; }   /* forced-colors (Firefox on a high-contrast GTK theme) would repaint the fill ButtonFace grey; the colour IS the control */
 .pswatch[aria-checked="true"] { border-color: var(--c-ink); outline: 2px solid var(--c-surface); outline-offset: -4px; }
 .cb-announce { margin-bottom: var(--space-4); }
 .cb-announce p { margin: 0; font-size: 14px; overflow-wrap: anywhere; white-space: pre-line; }
@@ -401,3 +401,17 @@ a.prow:hover { background: var(--c-hover); }
   #cb-tablist { flex-wrap: nowrap; overflow-x: auto; }
   #cb-tablist .ptab { flex: none; }
 }
+/* Wide variant for the club banner editor (#250): 6:1 viewport, rectangular frame */
+.pcrop__dlg--wide { max-width: 540px; }
+.pcrop__dlg--wide .pcrop__view { width: 480px; }
+.pcrop__ring--rect { border-radius: var(--radius); box-shadow: inset 0 0 0 2px var(--c-on-brand); }
+/* Club banner + image controls (#250) */
+.cb-banner { width: 100%; aspect-ratio: 6 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
+@media (max-width: 600px) { .cb-banner { aspect-ratio: 3 / 1; } }   /* 6:1 is ~60px on a phone: crop the sides (cover) for a taller strip */
+.cb-sugg { margin-bottom: var(--space-3); border: 1px solid var(--c-border); border-radius: var(--radius); }
+.cb-sugg__item { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--c-border-light); font: inherit; cursor: pointer; color: inherit; }
+.cb-sugg__item:last-child { border-bottom: 0; }
+.cb-sugg__item:hover, .cb-sugg__item:focus-visible { background: var(--c-surface-2); }
+.cb-images { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.cb-images__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.cb-images__row .pform__label { min-width: 120px; }

@@ -397,6 +397,30 @@ describe('club upgrade (#235)', () => {
     expect(posts().some(([u, o]) => o.method === 'DELETE' && u.endsWith('/invites/zed'))).toBe(true);
   });
 
+  it('invite box suggests players by name; picking one fills the exact username; errors show beside the field', async () => {
+    {
+      await bootClub(FULL);
+      const input = document.getElementById('cb-invite-name');
+      global.fetch = jest.fn((u) => (String(u).includes('/api/friends/search')
+        ? ok({ results: [{ username: 'nguyen_a', displayName: 'Nguyễn A' }] })
+        : Promise.resolve({ ok: false, status: 404, json: async () => ({ error: 'Không tìm thấy người chơi.' }) })));
+      input.value = 'Ngu';
+      input.dispatchEvent(new Event('input'));
+      await new Promise((r) => setTimeout(r, 320)); // debounce
+      await flush();
+      expect(global.fetch.mock.calls[0][0]).toContain('/api/friends/search?q=Ngu');
+      const sugg = document.querySelectorAll('#cb-invite-sugg button');
+      expect(sugg).toHaveLength(1);
+      expect(sugg[0].textContent).toBe('Nguyễn A (@nguyen_a)');
+      sugg[0].click();
+      expect(input.value).toBe('nguyen_a');
+      expect(document.getElementById('cb-invite-sugg').hidden).toBe(true);
+      document.getElementById('cb-invite-form').dispatchEvent(new Event('submit', { cancelable: true }));
+      await flush(); await flush();
+      expect(document.getElementById('cb-invite-msg').textContent).toBe('Không tìm thấy người chơi.');
+    }
+  });
+
   it('history rows render as tickets: translated title + one meta span', async () => {
     await bootClub(FULL);
     const row = document.querySelector('#cb-history .prow');
@@ -433,5 +457,88 @@ describe('club upgrade (#235)', () => {
     expect(document.getElementById('cb-actions-th').hidden).toBe(true);
     expect(document.querySelectorAll('#cb-members-body button')).toHaveLength(0);
     delete window.ChallengeModal;
+  });
+});
+
+describe('club avatar + banner (#250)', () => {
+  const bg = (id) => document.getElementById(id).style.backgroundImage;
+
+  it('shows the banner and avatar images; hides the banner when there is none', async () => {
+    await bootClub({ ...CLUB, avatarUrl: '/api/clubs/caro/avatar?v=3', bannerUrl: '/api/clubs/caro/banner?v=4' });
+    expect(document.getElementById('cb-banner').hidden).toBe(false);
+    expect(bg('cb-banner')).toContain('/api/clubs/caro/banner?v=4');
+    expect(bg('cb-avatar')).toContain('/api/clubs/caro/avatar?v=3');
+    await bootClub({ ...CLUB, avatarUrl: null, bannerUrl: null });
+    expect(document.getElementById('cb-banner').hidden).toBe(true);
+    expect(document.getElementById('cb-avatar').textContent).not.toBe('');
+  });
+
+  it('staff get a change button per image; picking a file opens the crop editor then POSTs the blob', async () => {
+    const blob = { type: 'image/webp', size: 10 };
+    window.AvatarCrop = { open: jest.fn(() => Promise.resolve(blob)) };
+    await bootClub({ ...CLUB, myRole: 'owner', bannerUrl: '/api/clubs/caro/banner?v=4' });
+    expect(document.getElementById('cb-avatar-pick')).not.toBeNull();
+    const input = document.getElementById('cb-banner-file');
+    const file = { name: 'b.png' };
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    global.fetch.mockClear();
+    input.onchange();
+    await flush(); await flush();
+    expect(window.AvatarCrop.open).toHaveBeenCalledWith(file, expect.objectContaining({ aspect: 6, outWidth: 1200, titleKey: 'clubs.banner_crop_title' }));
+    const [url, init] = global.fetch.mock.calls[0];
+    expect(url).toBe('/api/clubs/caro/banner');
+    expect(init).toMatchObject({ method: 'POST', body: blob });
+    expect(init.headers['Content-Type']).toBe('image/webp');
+    delete window.AvatarCrop;
+  });
+
+  it('cancelling the editor uploads nothing; remove only shows for an existing image and DELETEs it', async () => {
+    window.AvatarCrop = { open: jest.fn(() => Promise.resolve(null)) };
+    await bootClub({ ...CLUB, myRole: 'officer', avatarUrl: null, bannerUrl: '/api/clubs/caro/banner?v=4' });
+    const rows = [...document.querySelectorAll('.cb-images__row')];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelectorAll('button')).toHaveLength(1); // avatar: change only
+    expect(rows[1].querySelectorAll('button')).toHaveLength(2); // banner: change + remove
+    const input = document.getElementById('cb-avatar-file');
+    Object.defineProperty(input, 'files', { value: [{ name: 'a.png' }], configurable: true });
+    global.fetch.mockClear();
+    input.onchange();
+    await flush(); await flush();
+    expect(global.fetch).not.toHaveBeenCalled();
+    window.confirm = () => true;
+    rows[1].querySelectorAll('button')[1].click();
+    await flush();
+    expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/banner');
+    expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    delete window.AvatarCrop;
+  });
+
+  it('plain members never get the controls', async () => {
+    await bootClub({ ...CLUB, myRole: 'member' });
+    expect(document.getElementById('cb-manage').hidden).toBe(true);
+  });
+});
+
+describe('club colour swatches are painted (fix: Manage "Màu" swatches were grey)', () => {
+  it('every swatch class has a .pswatch.pav--c-* background rule in platform.css', async () => {
+    await bootClub({ ...CLUB, myRole: 'owner' });
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    const swatches = [...document.querySelectorAll('#cb-colors .pswatch')];
+    expect(swatches.length).toBeGreaterThanOrEqual(8);
+    for (const b of swatches) {
+      const key = [...b.classList].find((c) => c.startsWith('pav--c-'));
+      expect(css).toMatch(new RegExp(`\\.pswatch\\.${key}\\b[^{]*\\{[^}]*background-color: var\\(--club-`));
+    }
+  });
+  it('swatches opt out of forced-colors repainting (Firefox showed them ButtonFace grey)', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).toMatch(/\.pswatch \{[^}]*forced-color-adjust: none/);
+  });
+});
+
+describe('club banner is taller on phones (fix: 6:1 banner was ~60px at 360px wide)', () => {
+  it('platform.css switches .cb-banner to 3:1 at <=600px', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 600px\) \{ \.cb-banner \{ aspect-ratio: 3 \/ 1; \}/);
   });
 });

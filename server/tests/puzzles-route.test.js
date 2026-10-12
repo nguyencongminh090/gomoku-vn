@@ -71,7 +71,7 @@ const POSITION = [
 ];
 const good = (over = {}) => ({
   title: 'Mở bốn', prompt: 'Đen đi trước', rule: 'freestyle', toMove: 'BLACK', mode: 'sequence', level: 'easy',
-  tags: ['three'], stones: POSITION, answers: [[{ x: 6, y: 7 }], ['K8']], ...over,
+  tags: ['attack'], stones: POSITION, answers: [[{ x: 6, y: 7 }], ['K8']], ...over,
 });
 
 beforeAll(async () => {
@@ -96,7 +96,7 @@ describe('submit + validation', () => {
     expect(mine).toHaveLength(1);
     expect(mine[0].answers).toEqual([[{ x: 6, y: 7 }], [{ x: 10, y: 7 }]]); // 'K8' = x 10, y 7
     expect((await call('GET', '/api/puzzles/mine', 'author')).body.canReview).toBe(false);
-    expect(mine[0].tags).toEqual(['three']);
+    expect(mine[0].tags).toEqual(['attack']);
   });
 
   it('guests/logged-out refused', async () => {
@@ -113,7 +113,7 @@ describe('submit + validation', () => {
     ['bad level', { level: 'insane' }, 'PUZZLE_LEVEL_INVALID'],
     ['no tags', { tags: [] }, 'PUZZLE_TAGS_INVALID'],
     ['unknown tag', { tags: ['nope'] }, 'PUZZLE_TAGS_INVALID'],
-    ['4 tags', { tags: ['three', 'vcf', 'vct', 'defense'] }, 'PUZZLE_TAGS_INVALID'],
+    ['4 tags', { tags: ['attack', 'vcf', 'vct', 'defense'] }, 'PUZZLE_TAGS_INVALID'],
     ['bad to_move', { toMove: 'RED' }, 'PUZZLE_STONES_INVALID'],
     ['stone counts vs side to move', { toMove: 'WHITE' }, 'PUZZLE_STONES_INVALID'],
     ['overlapping stones', { stones: [...POSITION.slice(0, 5), stone(7, 7, 'WHITE')] }, 'PUZZLE_STONES_INVALID'],
@@ -220,7 +220,7 @@ describe('review', () => {
     expect((await decide('boss', { decision: 'approve' })).body.code).toBe('PUZZLE_NOT_PENDING');
     const pub = (await call('GET', '/api/puzzles')).body.puzzles;
     expect(pub).toHaveLength(1);
-    expect(pub[0]).toMatchObject({ id, level: 'hard', tags: ['three'] });
+    expect(pub[0]).toMatchObject({ id, level: 'hard', tags: ['attack'] });
     expect(pub[0].answers).toBeUndefined();
     expect(pub[0].stones).toBeUndefined(); // the list carries no board
     const one = (await call('GET', `/api/puzzles/${id}`)).body.puzzle;
@@ -299,5 +299,35 @@ describe('editing', () => {
     expect((await call('GET', '/api/puzzles?level=hard')).body.puzzles).toHaveLength(0);
     expect(db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n).toBe(0);
     expect((await call('PUT', '/api/puzzles/nope', 'author', good())).status).toBe(404);
+  });
+});
+
+describe('walls + portals layout', () => {
+  const layout = { walls: [{ x: 0, y: 0 }], portals: [{ a: { x: 1, y: 0 }, b: 'C1' }] };
+  it('round-trips walls and portals (text cells normalised)', async () => {
+    addUser('layouter');
+    expect((await submit('layouter', good({ layout }))).status).toBe(201);
+    const p = (await call('GET', '/api/puzzles/mine', 'layouter')).body.puzzles[0];
+    expect(p.walls).toEqual([{ x: 0, y: 0 }]);
+    expect(p.portals).toEqual([{ a: { x: 1, y: 0 }, b: { x: 2, y: 14 } }]);
+  });
+
+  it('puzzles without a layout come back with empty walls/portals', async () => {
+    addUser('plain');
+    await submit('plain', good());
+    const p = (await call('GET', '/api/puzzles/mine', 'plain')).body.puzzles[0];
+    expect([p.walls, p.portals]).toEqual([[], []]);
+  });
+
+  it.each([
+    ['wall on a stone', { walls: [{ x: 7, y: 7 }] }],
+    ['wall off the board', { walls: [{ x: 15, y: 0 }] }],
+    ['duplicate wall', { walls: [{ x: 0, y: 0 }, { x: 0, y: 0 }] }],
+    ['portal missing an end', { portals: [{ a: { x: 1, y: 1 } }] }],
+    ['wall on the answer cell', { walls: [{ x: 6, y: 7 }] }],
+  ])('rejects %s', async (_n, bad) => {
+    addUser(`lay${_n.length}`);
+    const r = await submit(`lay${_n.length}`, good({ layout: bad }));
+    expect(r.status).toBe(400);
   });
 });

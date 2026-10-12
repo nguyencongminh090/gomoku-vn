@@ -22,7 +22,7 @@ const coords = require('../../client/js/coords');
 
 const RULES = ['freestyle', 'standard', 'caro'];
 const LEVELS = ['easy', 'medium', 'hard', 'expert'];
-const TAGS = ['three', 'four_three', 'vcf', 'vct', 'defense', 'trap'];
+const TAGS = ['attack', 'defense', 'trap', 'vct', 'vcf'];
 const MODES = ['sequence', 'final_move'];
 const BOARD_SIZES = [15, 17, 19, 20];
 const DEFAULT_BOARD_SIZE = 15;
@@ -100,6 +100,30 @@ function validateStones(raw, toMove, size) {
   return { stones, grid };
 }
 
+const MAX_PORTAL_PAIRS = 8;
+
+/** Walls [{x,y}] and portal pairs [{a,b}] on empty cells; marks `grid` so answers cannot land on them. */
+function validateLayout(raw, grid, size) {
+  const bad_ = () => bad('PUZZLE_STONES_INVALID', 'Tường/cổng không hợp lệ hoặc bị trùng ô.');
+  const r = raw === undefined || raw === null ? {} : raw;
+  if (typeof r !== 'object' || Array.isArray(r)) throw bad_();
+  const wallsIn = r.walls === undefined ? [] : r.walls;
+  const portalsIn = r.portals === undefined ? [] : r.portals;
+  if (!Array.isArray(wallsIn) || !Array.isArray(portalsIn) || wallsIn.length > size * size / 4 || portalsIn.length > MAX_PORTAL_PAIRS) throw bad_();
+  const take = (c, mark) => {
+    const cell = c && toCell(c, size);
+    if (!cell || grid[cell.y][cell.x]) throw bad_();
+    grid[cell.y][cell.x] = mark;
+    return cell;
+  };
+  const walls = wallsIn.map((c) => take(c, 'WALL'));
+  const portals = portalsIn.map((p) => {
+    if (!p || typeof p !== 'object') throw bad_();
+    return { a: take(p.a, 'PORTAL'), b: take(p.b, 'PORTAL') };
+  });
+  return { walls, portals };
+}
+
 function validateAnswers(raw, mode, grid, size) {
   if (!Array.isArray(raw) || raw.length < 1) {
     throw bad('PUZZLE_ANSWER_INVALID', 'Cần ít nhất một đáp án.');
@@ -140,10 +164,11 @@ function normalise(input) {
     throw bad('PUZZLE_TAGS_INVALID', `Chọn 1–${MAX_TAGS} tag hợp lệ.`);
   }
   const { stones, grid } = validateStones(i.stones, i.toMove, size);
+  const layout = validateLayout(i.layout, grid, size);
   const answers = validateAnswers(i.answers, i.mode, grid, size);
   const hash = crypto.createHash('sha1')
-    .update(JSON.stringify([i.rule, size, i.toMove, stones])).digest('hex');
-  return { title, prompt, rule: i.rule, size, toMove: i.toMove, mode: i.mode, level: i.level, tags, stones, answers, hash };
+    .update(JSON.stringify(layout.walls.length || layout.portals.length ? [i.rule, size, i.toMove, stones, layout] : [i.rule, size, i.toMove, stones])).digest('hex');
+  return { title, prompt, rule: i.rule, size, toMove: i.toMove, mode: i.mode, level: i.level, tags, stones, layout, answers, hash };
 }
 
 const countPending = (userId, exceptId) => db().prepare(
@@ -163,9 +188,9 @@ function createPuzzle(userId, input) {
     }
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    db().prepare(`INSERT INTO puzzles (id, author_id, title, prompt, rule, board_size, stones, to_move, mode, answers, level, position_hash, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(id, userId, p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, now, now);
+    db().prepare(`INSERT INTO puzzles (id, author_id, title, prompt, rule, board_size, stones, layout, to_move, mode, answers, level, position_hash, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(id, userId, p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), JSON.stringify(p.layout), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, now, now);
     writeTags(id, p.tags);
     return { id, status: 'pending' };
   })();
@@ -181,9 +206,9 @@ function updatePuzzle(userId, id, input) {
     if (row.status !== 'pending' && countPending(userId, id) >= MAX_PENDING_PER_USER) {
       throw new PuzzleError('PUZZLE_PENDING_LIMIT', 409, `Tối đa ${MAX_PENDING_PER_USER} puzzle đang chờ duyệt.`);
     }
-    db().prepare(`UPDATE puzzles SET title = ?, prompt = ?, rule = ?, board_size = ?, stones = ?, to_move = ?, mode = ?, answers = ?, level = ?,
+    db().prepare(`UPDATE puzzles SET title = ?, prompt = ?, rule = ?, board_size = ?, stones = ?, layout = ?, to_move = ?, mode = ?, answers = ?, level = ?,
       position_hash = ?, status = 'pending', review_note = '', reviewed_at = NULL, reviewed_by = NULL, updated_at = ? WHERE id = ?`)
-      .run(p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, new Date().toISOString(), row.id);
+      .run(p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), JSON.stringify(p.layout), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, new Date().toISOString(), row.id);
     writeTags(row.id, p.tags);
     if (row.status === 'approved') db().prepare('DELETE FROM puzzle_progress WHERE puzzle_id = ?').run(row.id);
     return { id: row.id, status: 'pending' };
@@ -198,10 +223,15 @@ function tagsOf(ids) {
   return map;
 }
 
+function layoutOf(row) {
+  const l = JSON.parse(row.layout || '{}');
+  return { walls: l.walls || [], portals: l.portals || [] };
+}
+
 function shape(row, tags, { answers = false, solved } = {}) {
   const out = {
     id: row.id, title: row.title, prompt: row.prompt, rule: row.rule, boardSize: row.board_size,
-    stones: JSON.parse(row.stones), toMove: row.to_move, mode: row.mode, level: row.level, status: row.status,
+    stones: JSON.parse(row.stones), walls: layoutOf(row).walls, portals: layoutOf(row).portals, toMove: row.to_move, mode: row.mode, level: row.level, status: row.status,
     tags, author: row.author_name ? { username: row.author_username, displayName: row.author_name } : undefined,
     createdAt: row.created_at,
   };

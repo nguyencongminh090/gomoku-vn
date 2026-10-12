@@ -66,5 +66,52 @@
     return out;
   }
 
-  return { LETTERS, label, number, parse, parseList };
+  const KEYWORDS = [
+    [/^(black|đen|den|b|x)$/i, 'BLACK'], [/^(white|trắng|trang|w|o)$/i, 'WHITE'],
+    [/^(wall|walls|tường|tuong)$/i, 'WALL'], [/^(portal|portals|cổng|cong)$/i, 'PORTAL'],
+  ];
+
+  /**
+   * Free-form setup text → stones / walls / portals. Any text works as long as it holds coordinates
+   * ("h8", "H 8", "(i9)", "1. h8 i9 h10"). A keyword (black/white/x/o/b/w, wall/tường, portal/cổng)
+   * sets the kind of the coordinates after it; with no keyword stones alternate black, white, …
+   * Portals pair up consecutive cells. Coordinates off the board are listed in `bad`.
+   * @returns {{stones:Array, walls:Array, portals:Array, bad:string[]}}
+   */
+  function parseSetup(text, size) {
+    const out = { stones: [], walls: [], portals: [], bad: [] };
+    const seen = new Set();
+    let kind = null;      // null = alternate
+    let alt = 0;
+    let pending = null;
+    const re = /([A-Za-zÀ-ỹ]+)(\s*)(\d{1,2})?/g;
+    const src = String(text == null ? '' : text);
+    let m;
+    while ((m = re.exec(src))) {
+      const [, word, gap, digits] = m;
+      const kw = KEYWORDS.find(([rx]) => rx.test(word));
+      // "h8" is always a cell; "h 8" is a cell unless the letter is a keyword (b/w/x/o); longer words are keywords or noise.
+      const isCell = word.length === 1 && digits !== undefined && (gap === '' || !kw);
+      if (!isCell) {
+        if (kw) { kind = kw[1]; pending = null; }
+        continue;
+      }
+      const label = word.toUpperCase() + digits;
+      const c = parse(label, size);
+      if (!c) { out.bad.push(label); continue; }
+      const key = c.x + ',' + c.y;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (kind === 'WALL') out.walls.push(c);
+      else if (kind === 'PORTAL') {
+        if (pending) { out.portals.push({ a: pending, b: c }); pending = null; } else pending = c;
+      } else {
+        out.stones.push({ x: c.x, y: c.y, color: kind || (alt++ % 2 === 0 ? 'BLACK' : 'WHITE') });
+      }
+    }
+    if (pending) out.bad.push(LETTERS[pending.x] + (size - pending.y));
+    return out;
+  }
+
+  return { LETTERS, label, number, parse, parseList, parseSetup };
 }));

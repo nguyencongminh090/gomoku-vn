@@ -20,9 +20,13 @@
  * GET    /api/clubs/:slug/messages?before=|after=   members only (polling)
  * POST   /api/clubs/:slug/messages                  {text} members only
  * DELETE /api/clubs/:slug/messages/:id              staff
+ * GET    /api/clubs/:slug/avatar | /banner         image (immutable; URL carries ?v=)
+ * POST   /api/clubs/:slug/avatar | /banner         raw image body, staff (#250) — DELETE removes
  */
 
+const fs = require('fs');
 const express = require('express');
+const sharp = require('sharp');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
@@ -30,6 +34,7 @@ const { optionalUserId } = require('../utils/optional-user');
 const { verifyToken } = require('../middleware/auth');
 const { CATEGORIES } = require('../managers/RatingService');
 const svc = require('../managers/ClubService');
+const { CLUB_IMAGE_DIR, KINDS, imageFile } = require('../utils/club-image-store');
 
 const router = express.Router();
 const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
@@ -69,6 +74,62 @@ router.get('/mine', verifyToken, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ clubs: req.user.userId ? svc.clubsOfUser(req.user.userId) : [] });
 }));
+
+// Avatar + banner (#250). Never stored as uploaded: sharp decodes, rotates, cover-crops to the kind's size and
+// re-encodes to WebP (no EXIF/polyglots). Staff only; the file is overwritten in place, the URL carries ?v=.
+const IMAGE_MAX_INPUT = 2 * 1024 * 1024;
+const MAX_INPUT_PIXELS = 24e6;
+const IMAGE_QUALITY_STEPS = [80, 65, 50, 35, 25];
+const imageAuth = write.slice(0, 3); // everything but express.json
+
+for (const [kind, spec] of Object.entries(KINDS)) {
+  router.get(`/:slug/${kind}`, h((req, res) => {
+    const club = svc.getClub(req.params.slug);
+    const file = imageFile(club.id, kind);
+    if (!fs.existsSync(file)) return res.status(404).json({ error: 'Chưa có ảnh.', code: 'CLUB_IMAGE_NONE' });
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.type('image/webp').sendFile(file);
+  }));
+
+  router.post(`/:slug/${kind}`, ...imageAuth, express.raw({ type: () => true, limit: IMAGE_MAX_INPUT }), async (req, res, next) => {
+    try {
+      const club = svc.clubForImageEdit(req.user.userId, req.params.slug);
+      if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+        return res.status(400).json({ error: 'Thiếu ảnh.', code: 'CLUB_IMAGE_EMPTY' });
+      }
+      let out;
+      try {
+        const img = sharp(req.body, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' });
+        const meta = await img.metadata();
+        if (!['jpeg', 'png', 'webp'].includes(meta.format)) {
+          return res.status(415).json({ error: 'Chỉ nhận ảnh JPEG, PNG hoặc WebP.', code: 'CLUB_IMAGE_TYPE' });
+        }
+        const base = img.rotate().resize(spec.w, spec.h, { fit: 'cover' });
+        for (const quality of IMAGE_QUALITY_STEPS) {
+          out = await base.clone().webp({ quality }).toBuffer();
+          if (out.length <= spec.maxBytes) break;
+        }
+      } catch (_) {
+        return res.status(415).json({ error: 'Ảnh không hợp lệ.', code: 'CLUB_IMAGE_INVALID' });
+      }
+      fs.mkdirSync(CLUB_IMAGE_DIR, { recursive: true });
+      const target = imageFile(club.id, kind);
+      const tmp = `${target}.${process.pid}.tmp`;
+      fs.writeFileSync(tmp, out);
+      fs.renameSync(tmp, target);
+      res.json({ url: svc.setImageVersion(club, kind, false), bytes: out.length });
+    } catch (err) {
+      if (err instanceof svc.ClubError) return res.status(err.status).json({ error: err.message, code: err.code });
+      next(err);
+    }
+  });
+
+  router.delete(`/:slug/${kind}`, ...write, h((req, res) => {
+    const club = svc.clubForImageEdit(req.user.userId, req.params.slug);
+    fs.rmSync(imageFile(club.id, kind), { force: true });
+    res.json({ url: svc.setImageVersion(club, kind, true) });
+  }));
+}
 
 router.get('/:slug', h((req, res) => {
   res.set('Cache-Control', 'no-store');

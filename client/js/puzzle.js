@@ -43,7 +43,7 @@
   const apiError = (data, fallback) => (data && data.code ? t('err.' + data.code.toLowerCase()) : fallback);
 
   function drawBoard() {
-    renderer.setState(window.PuzzleBoard.state(puzzle.boardSize, puzzle.stones, puzzle.toMove, moves, { interactive: !solved }));
+    renderer.setState(window.PuzzleBoard.state(puzzle.boardSize, puzzle.stones, puzzle.toMove, moves, { interactive: !solved, walls: puzzle.walls, portals: puzzle.portals }));
   }
 
   function renderMoves() {
@@ -69,7 +69,7 @@
   /** Add one cell; final_move keeps a single cell, sequence appends (no duplicates, no stones). */
   function addMove(c) {
     if (solved) return;
-    if (puzzle.stones.some((s) => s.x === c.x && s.y === c.y)) return;
+    if (puzzle.stones.concat(puzzle.walls || [], ...(puzzle.portals || []).map((p) => [p.a, p.b])).some((s) => s.x === c.x && s.y === c.y)) return;
     if (puzzle.mode === 'final_move') {
       moves = [c];
     } else if (!moves.some((m) => m.x === c.x && m.y === c.y)) {
@@ -83,7 +83,8 @@
     const text = inputEl.value.trim();
     if (!text) { moves = []; refresh(); return true; }
     const cells = window.Coords.parseList(text, puzzle.boardSize);
-    const occupied = (c) => puzzle.stones.some((s) => s.x === c.x && s.y === c.y);
+    const blocked = (puzzle.walls || []).concat(...(puzzle.portals || []).map((p) => [p.a, p.b]));
+    const occupied = (c) => puzzle.stones.concat(blocked).some((s) => s.x === c.x && s.y === c.y);
     const distinct = cells && new Set(cells.map((c) => c.x + ',' + c.y)).size === cells.length;
     if (!cells || !distinct || cells.some(occupied) || (puzzle.mode === 'final_move' && cells.length !== 1)) {
       resultEl.hidden = false;

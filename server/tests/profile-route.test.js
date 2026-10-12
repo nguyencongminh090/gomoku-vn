@@ -223,7 +223,7 @@ describe('profile clubs', () => {
     db.prepare("INSERT INTO clubs (id, slug, name, description, join_policy, owner_id, created_at) VALUES ('c1', 'k1', 'K1', '', 'open', ?, ?)").run(UID, NOW);
     db.prepare("INSERT INTO club_members VALUES ('c1', ?, 'owner', ?)").run(UID, NOW);
     db.prepare("INSERT INTO club_members VALUES ('c1', ?, 'pending', ?)").run(OTHER, NOW);
-    expect((await req('GET', '/api/profile/alice')).json.clubs).toEqual([{ slug: 'k1', name: 'K1', role: 'owner', members: 1 }]);
+    expect((await req('GET', '/api/profile/alice')).json.clubs).toEqual([{ slug: 'k1', name: 'K1', role: 'owner', members: 1, avatarUrl: null }]);
     expect((await req('GET', '/api/profile/bob')).json.clubs).toEqual([]);
   });
 });
