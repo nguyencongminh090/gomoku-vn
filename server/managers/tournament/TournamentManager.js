@@ -483,6 +483,12 @@ class TournamentManager extends EventEmitter {
       return { error: 'Giải đấu đã bắt đầu hoặc đã kết thúc.', code: 'TOURNAMENT_ALREADY_STARTED' };
     }
 
+    // Fewer than 2 entries can never produce a pairing, so the tournament would
+    // sit 'active' with nothing to play or complete (only cancel).
+    if (tournament.entries.size < 2) {
+      return { error: 'Cần ít nhất 2 người chơi để bắt đầu giải đấu.', code: 'NOT_ENOUGH_PLAYERS' };
+    }
+
     tournament.status = 'active';
     tournament.startedAt = new Date().toISOString();
     database.updateTournamentStatus(tournamentId, 'active', { startedAt: tournament.startedAt });
