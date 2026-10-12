@@ -45,6 +45,36 @@
     return res.ok ? (data || {}) : null;
   }
 
+  // Invite autocomplete: the invite endpoint needs the exact username, so suggest players by username / display name.
+  let suggSeq = 0;
+  let suggTimer = null;
+  function suggestInvitees() {
+    clearTimeout(suggTimer);
+    suggTimer = setTimeout(async () => {
+      const box = $('cb-invite-sugg');
+      const q = $('cb-invite-name').value.trim();
+      const seq = ++suggSeq;
+      if (q.length < 2) { box.hidden = true; return; }
+      try {
+        const res = await fetch('/api/friends/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+        if (!res.ok || seq !== suggSeq) return;
+        const { results } = await res.json();
+        if (seq !== suggSeq) return;
+        box.replaceChildren(...results.map((p) => {
+          const b = el('button', p.displayName + ' (@' + p.username + ')', 'prow pbtn--ghost cb-sugg__item');
+          b.type = 'button';
+          b.addEventListener('click', () => {
+            $('cb-invite-name').value = p.username;
+            box.hidden = true;
+            $('cb-invite-name').focus();
+          });
+          return b;
+        }));
+        box.hidden = !results.length;
+      } catch (_) { box.hidden = true; }
+    }, 250);
+  }
+
   // Avatar + banner (#250): crop in avatar-crop.js, then POST the blob; the server re-encodes and enforces the size.
   const IMAGES = {
     avatar: { aspect: 1, outWidth: 512 },
@@ -409,11 +439,16 @@
     $('cb-invite-form').onsubmit = async (ev) => {
       ev.preventDefault();
       const name = $('cb-invite-name').value.trim();
-      if (name && await act('POST', '/invites/' + encodeURIComponent(name), {})) {
+      if (!name) return;
+      const ok = await act('POST', '/invites/' + encodeURIComponent(name), {});
+      $('cb-invite-msg').textContent = ok ? '' : $('cb-msg').textContent; // error beside the field, not at page top
+      if (ok) {
         $('cb-invite-form').reset();
+        $('cb-invite-sugg').hidden = true;
         load();
       }
     };
+    $('cb-invite-name').addEventListener('input', suggestInvitees);
     $('cb-copy').onclick = async () => {
       const url = location.origin + '/c/' + encodeURIComponent(slug);
       try { await navigator.clipboard.writeText(url); $('cb-msg').textContent = t('clubs.link_copied'); } catch (_) { $('cb-msg').textContent = url; }

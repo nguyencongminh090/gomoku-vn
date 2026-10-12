@@ -408,6 +408,10 @@ a.prow:hover { background: var(--c-hover); }
 /* Club banner + image controls (#250) */
 .cb-banner { width: 100%; aspect-ratio: 6 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
 @media (max-width: 600px) { .cb-banner { aspect-ratio: 3 / 1; } }   /* 6:1 is ~60px on a phone: crop the sides (cover) for a taller strip */
+.cb-sugg { margin-bottom: var(--space-3); border: 1px solid var(--c-border); border-radius: var(--radius); }
+.cb-sugg__item { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--c-border-light); font: inherit; cursor: pointer; color: inherit; }
+.cb-sugg__item:last-child { border-bottom: 0; }
+.cb-sugg__item:hover, .cb-sugg__item:focus-visible { background: var(--c-surface-2); }
 .cb-images { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .cb-images__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .cb-images__row .pform__label { min-width: 120px; }
