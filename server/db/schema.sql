@@ -171,7 +171,8 @@ CREATE TABLE IF NOT EXISTS tournament_pairings (
   games             TEXT,                -- JSON array — [{index, winnerEntryId|null (draw), endedAt}], one entry per game played in the pairing's series (TODO.md #50); single-game pairings (ruleSet.seriesMode='single') always have exactly one entry once Completed
   moves             TEXT,                -- JSON array, same shape as games.moves once InProgress — the CURRENT/last game's move history only (not per-series)
   started_at        TEXT,
-  ended_at          TEXT
+  ended_at          TEXT,
+  noshow_count      INTEGER NOT NULL DEFAULT 0 -- B241: consecutive double-no-show voids; at the cap the higher seed advances
 );
 
 -- Tournament games — one row per INDIVIDUAL game played within a pairing

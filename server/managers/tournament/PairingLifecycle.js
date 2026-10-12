@@ -48,6 +48,7 @@ function createPairing(init) {
     player1EntryId: init.player1EntryId,
     player2EntryId: init.player2EntryId,
     state: 'Paired',
+    noShowCount: 0,
     proposedTime: null,
     reportedBy: null,
     disputed: false,

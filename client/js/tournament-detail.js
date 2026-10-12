@@ -233,29 +233,45 @@ function renderHeader() {
     const displayRound = tournament.format === 'round_robin'
       ? (tournament.currentRoundIndex || 0) + 1
       : (tournament.currentRoundIndex || 1);
-    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
+    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
   }
   detailMetaEl.innerHTML = `
     <span class="badge badge--format">${formatLabel(tournament.format)}</span>
     <span class="badge ${badge.cls}">${badge.label}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
     ${roundMeta}
   `;
 
+  const me = myEntry();
+  const canWithdraw = tournament.status === 'active' && me && !me.withdrawn;
+  const droppable = tournament.status === 'active' && isOrganizer()
+    ? tournament.entries.filter((e) => !e.withdrawn) : [];
+  const withdrawHtml = (canWithdraw ? `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-withdraw">${t('tdetail.btn_withdraw')}</button>` : '')
+    + (droppable.length ? `<div class="drop-group"><select id="drop-player-select" class="drop-group__select" aria-label="${t('tdetail.btn_drop_player')}">${droppable.map((e) => `<option value="${escapeAttr(e.entryId)}">${escapeHtml(e.displayName)}</option>`).join('')}</select><button class="btn-secondary btn-secondary--danger drop-group__btn" type="button" id="btn-drop-player">${t('tdetail.btn_drop_player')}</button></div>` : '');
+
   if (isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active')) {
-    detailCancelSlot.innerHTML = `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-cancel-tournament">${t('tdetail.btn_cancel_tournament')}</button>`;
+    detailCancelSlot.innerHTML = withdrawHtml + `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-cancel-tournament">${t('tdetail.btn_cancel_tournament')}</button>`;
     document.getElementById('btn-cancel-tournament').addEventListener('click', () => {
       document.getElementById('cancel-tournament-reason-input').value = '';
       document.getElementById('modal-cancel-tournament').classList.add('visible');
     });
   } else {
-    detailCancelSlot.innerHTML = '';
+    detailCancelSlot.innerHTML = withdrawHtml;
   }
+  const withdrawBtn = document.getElementById('btn-withdraw');
+  if (withdrawBtn) withdrawBtn.addEventListener('click', () => {
+    if (confirm(t('tdetail.confirm_withdraw'))) client.emit('tournament:withdraw', { tournamentId });
+  });
+  const dropBtn = document.getElementById('btn-drop-player');
+  if (dropBtn) dropBtn.addEventListener('click', () => {
+    const sel = document.getElementById('drop-player-select');
+    if (sel.value && confirm(t('tdetail.confirm_drop_player'))) client.emit('tournament:withdraw', { tournamentId, entryId: sel.value });
+  });
 
   if (tournament.status === 'cancelled') {
     detailCancelSlot.innerHTML = `
-      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-warning"></use></svg>
+      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-warning"></use></svg>
         <span>${t('tdetail.cancelled_notice')}${tournament.cancelReason ? ` — ${escapeHtml(tournament.cancelReason)}` : ''}</span>
       </div>
     `;
@@ -341,7 +357,7 @@ function renderActionBanner() {
 
   actionBannerSlot.innerHTML = `
     <div class="action-banner">
-      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-bold-hourglass-medium"></use></svg></div>
+      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-hourglass-medium"></use></svg></div>
       <div>
         <div class="action-banner__title">${escapeHtml(title)}</div>
         <div class="action-banner__sub">${escapeHtml(sub)}</div>
@@ -384,6 +400,11 @@ function stateLabel(pairing) {
   }
 }
 
+// 'withdrawn' (B241 drop/forfeit) and 'noshow_cap' (replay cap) are walkovers too.
+function isWalkoverReason(reason) {
+  return reason === 'walkover' || reason === 'withdrawn' || reason === 'noshow_cap';
+}
+
 function resultLine(pairing, me) {
   if (!pairing.result) return '';
   const { winnerEntryId, reason } = pairing.result;
@@ -394,7 +415,7 @@ function resultLine(pairing, me) {
     const won = me && winnerEntryId === me.entryId;
     const winnerName = entryName(winnerEntryId);
     text = won ? t('tdetail.result_you_won') : t('tdetail.result_winner', { name: winnerName });
-    if (reason === 'walkover') text += ` (${t('tdetail.reason_walkover')})`;
+    if (isWalkoverReason(reason)) text += ` (${t('tdetail.reason_walkover')})`;
     else if (reason === 'bye') text += ` (${t('tdetail.reason_bye')})`;
   }
   return `<div class="pairing-card__result">${t('tdetail.result_label')}: <span class="win">${escapeHtml(text)}</span></div>`;
@@ -415,30 +436,30 @@ function renderPairingCard(pairing) {
   const organizerActions = [];
 
   if (pairing.state === 'Negotiating' || pairing.state === 'Paired') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
     if (isMine) actions += `<button class="btn btn-confirm" type="button" data-action="report" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_report')}</button>`;
     if (isOrganizer()) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Reported') {
     if (pairing.disputed) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="resolve" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_resolve')}</button>`);
         organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
       }
     } else if (isMine && pairing.reportedBy === me.entryId) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
     } else if (isMine) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
       actions += `<button class="btn btn-confirm" type="button" data-action="confirm" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_confirm')}</button>`;
       actions += `<button class="btn-secondary" type="button" data-action="dispute" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_dispute')}</button>`;
     } else {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
     }
     if (isOrganizer() && !pairing.disputed) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Ready') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
     if (pairing.rescheduleRequest) {
-      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
+      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="approve_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_approve')}</button>`);
         organizerActions.push(`<button class="btn-secondary" type="button" data-action="deny_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_deny')}</button>`);
@@ -460,7 +481,7 @@ function renderPairingCard(pairing) {
   }
 
   const organizerToolsHtml = organizerActions.length
-    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
+    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
     : '';
 
   return `
@@ -746,7 +767,7 @@ function crossTableCell(lookup, rowEntryId, colEntryId) {
 
   // Walkover has no real games played — no score to sum, show W/L instead
   // (same convention as the pairing-card state pill for walkover elsewhere).
-  if (p.result && p.result.reason === 'walkover') {
+  if (p.result && isWalkoverReason(p.result.reason)) {
     const won = p.result.winnerEntryId === rowEntryId;
     return won
       ? `<span class="cross-table__win">${t('tdetail.cross_table_walkover_win')}</span>`
@@ -778,7 +799,7 @@ function renderCrossTable() {
   const entriesByIdLocal = new Map(tournament.entries.map((e) => [e.entryId, e]));
   const entries = ranked.map((r) => entriesByIdLocal.get(r.id)).filter(Boolean);
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
 
   // Highlight Vô địch/Á quân only once the tournament is over (rank is still
@@ -811,8 +832,8 @@ function renderCrossTable() {
               isRunnerUp ? 'is-runner-up' : '',
             ].filter(Boolean).join(' ');
             const trophyIcon = isChampion
-              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-trophy"></use></svg>`
-              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-trophy"></use></svg>` : '');
+              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-trophy"></use></svg>`
+              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-trophy"></use></svg>` : '');
             return `
               <tr class="${rowCls}">
                 <th class="cross-table__name-col">${trophyIcon}${escapeHtml(entryName(rowEntry.entryId))}</th>
@@ -846,7 +867,7 @@ function renderStandings() {
   const me = myEntry();
   const ranked = computeStandings();
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=334#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
   standingsContainer.innerHTML = `
     ${partialNotice}
@@ -863,7 +884,7 @@ function renderStandings() {
         ${ranked.map((row) => `
           <tr class="${me && row.id === me.entryId ? 'is-me' : ''}">
             <td class="rank-cell">${row.rank}</td>
-            <td class="name-cell">${escapeHtml(entryName(row.id))}</td>
+            <td class="name-cell">${escapeHtml(entryName(row.id))}${tournament.entries.find((e) => e.entryId === row.id)?.withdrawn ? ` <span class="badge badge--withdrawn">${t('tdetail.withdrawn_tag')}</span>` : ''}</td>
             <td class="num-cell">${row.score.toFixed(1)}</td>
             <td class="num-cell">${row.buchholz.toFixed(1)}</td>
             <td class="num-cell">${row.sonnebornBerger.toFixed(1)}</td>

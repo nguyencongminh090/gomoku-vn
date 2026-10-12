@@ -496,7 +496,7 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
  * @param {string} tournamentId
  * @param {string} pairingId
  */
-function forceCancelMatch(io, tournamentId, pairingId) {
+function forceCancelMatch(io, tournamentId, pairingId, reason = 'tournament_cancelled') {
   const match = tournamentState.tournamentGameMap.get(pairingId);
   if (!match) return;
   tournamentState.tournamentGameMap.delete(pairingId);
@@ -504,7 +504,7 @@ function forceCancelMatch(io, tournamentId, pairingId) {
   io.to(matchRoom(pairingId)).emit('tmatch:ended', {
     tournamentId,
     pairingId,
-    result: { winner: null, reason: 'tournament_cancelled' },
+    result: { winner: null, reason },
     series: null,
   });
   io.in(matchRoom(pairingId)).socketsLeave(matchRoom(pairingId));

@@ -45,6 +45,9 @@ const standingsModule = require('./standings');
 const seriesModule = require('./series');
 const tournamentState = require('../../socket/tournamentState');
 
+/** B241: consecutive double-no-show replays allowed before the higher seed advances. */
+const NO_SHOW_REPLAY_CAP = 2;
+
 class TournamentManager extends EventEmitter {
   constructor() {
     super();
@@ -196,6 +199,7 @@ class TournamentManager extends EventEmitter {
       reportedBy: null,
       disputed: false,
       overdue: false,
+      noShowCount: row.noshow_count || 0,
       agreedTime: row.agreed_time,
       rescheduleRequest: null,
       readyPlayers: new Set(),
@@ -885,6 +889,19 @@ class TournamentManager extends EventEmitter {
 
     const outcome = PairingLifecycle.resolveDeadline(pairing);
     tournamentState.untrackDeadline(pairingId);
+
+    // B241: the replay loop is capped — past the cap the higher seed advances
+    // (walkover) instead of voiding again, so absent players can't stall forever.
+    if (outcome.action === 'void_replay') {
+      if ((pairing.noShowCount || 0) >= NO_SHOW_REPLAY_CAP) {
+        outcome.action = 'walkover';
+        outcome.winnerEntryId = this._higherSeedEntryId(tournament, pairing.player1EntryId, pairing.player2EntryId);
+        pairing.state = 'Walkover';
+        pairing.result = { winnerEntryId: outcome.winnerEntryId, reason: 'noshow_cap' };
+      } else {
+        pairing.noShowCount = (pairing.noShowCount || 0) + 1;
+      }
+    }
     this._persistPairing(pairing);
 
     if (outcome.action === 'walkover') {
@@ -990,7 +1007,7 @@ class TournamentManager extends EventEmitter {
     const finalLocalId = tournament.bracket.grandFinal ? 'GF' : tournament.bracket.winners[0][0].id;
     const finalId = this.pairings.has(gfResetId) ? gfResetId : this._deId(tournament, finalLocalId);
     const finalPairing = this.pairings.get(finalId);
-    if (finalPairing && finalPairing.state === 'Completed') {
+    if (finalPairing && (finalPairing.state === 'Completed' || finalPairing.state === 'Walkover')) {
       this._completeTournament(tournament);
     }
   }
@@ -1027,7 +1044,8 @@ class TournamentManager extends EventEmitter {
   }
 
   _computeSwissStandings(tournament) {
-    const entries = Array.from(tournament.entries.values()).map((e) => ({ id: e.entryId }));
+    // B241: withdrawn players are not paired into later rounds (their points stay in the final table).
+    const entries = Array.from(tournament.entries.values()).filter((e) => !e.withdrawn).map((e) => ({ id: e.entryId }));
     const raw = standingsModule.computeStandings(entries, tournament.completedPairings);
     return raw.map((s) => ({
       id: s.id,
@@ -1102,6 +1120,13 @@ class TournamentManager extends EventEmitter {
       this._recordCompletion(tournament, pairing, pairing.result.winnerEntryId);
     } else {
       tournamentState.trackDeadline(pairingId, tournament.tournamentId, new Date(deadline).getTime());
+      // B241: a match involving a withdrawn player is decided at once. Round
+      // formats advance after _materializeRound has registered the whole round.
+      const e1 = tournament.entries.get(pairing.player1EntryId);
+      const e2 = tournament.entries.get(pairing.player2EntryId);
+      if (e1?.withdrawn || e2?.withdrawn) {
+        this._forfeitPairing(tournament, pairing, this._forfeitWinner(tournament, pairing), 'withdrawn', { deferAdvance: true });
+      }
     }
 
     this._emitPairingChanged(tournament.tournamentId, pairingId);
@@ -1157,6 +1182,7 @@ class TournamentManager extends EventEmitter {
     });
     PairingLifecycle.announcePairing(replay);
     replay.roundIndex = oldPairing.roundIndex;
+    replay.noShowCount = oldPairing.noShowCount || 0;
 
     this.pairings.set(replay.pairingId, replay);
     this._persistPairing(replay);
@@ -1168,6 +1194,81 @@ class TournamentManager extends EventEmitter {
     }
     this._emitPairingChanged(tournament.tournamentId, replay.pairingId);
     return replay;
+  }
+
+  /** Lower seed number = higher seed; unseeded entries lose ties to seeded ones. */
+  _higherSeedEntryId(tournament, a, b) {
+    const sa = tournament.entries.get(a)?.seed ?? Infinity;
+    const sb = tournament.entries.get(b)?.seed ?? Infinity;
+    return sb < sa ? b : a;
+  }
+
+  /** Winner of a forfeited pairing: the non-withdrawn side, else (both gone) the higher seed. */
+  _forfeitWinner(tournament, pairing) {
+    const { player1EntryId: p1, player2EntryId: p2 } = pairing;
+    const w1 = !!tournament.entries.get(p1)?.withdrawn;
+    const w2 = !!tournament.entries.get(p2)?.withdrawn;
+    if (w1 && !w2) return p2;
+    if (w2 && !w1) return p1;
+    return this._higherSeedEntryId(tournament, p1, p2);
+  }
+
+  /** Decide a non-terminal pairing without play (B241): walkover for winnerEntryId. */
+  _forfeitPairing(tournament, pairing, winnerEntryId, reason, { deferAdvance = false } = {}) {
+    this._teardownPairingTimer(pairing.pairingId);
+    tournamentState.untrackDeadline(pairing.pairingId);
+    pairing.state = 'Walkover';
+    pairing.result = { winnerEntryId, reason };
+    pairing.endedAt = new Date().toISOString();
+    this._persistPairing(pairing);
+    this._recordCompletion(tournament, pairing, winnerEntryId);
+    if (!deferAdvance) this._advanceIfRoundComplete(tournament);
+    this._emitPairingChanged(tournament.tournamentId, pairing.pairingId);
+  }
+
+  /**
+   * Drop a player from an ACTIVE tournament (B241). The organizer may drop
+   * anyone; a player may withdraw themselves. Every pending match of the
+   * entry is forfeited to the opponent, and later matches auto-forfeit as
+   * they are created. Points already earned stay in the standings.
+   *
+   * @param {string} userId — acting user
+   * @param {string} tournamentId
+   * @param {string} [entryId] — omit to withdraw yourself
+   * @returns {{ tournament: object, cancelledLivePairingIds: string[] } | { error: string, code: string }}
+   */
+  withdrawPlayer(userId, tournamentId, entryId) {
+    const tournament = this.tournaments.get(tournamentId);
+    if (!tournament) return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
+    if (tournament.status !== 'active') {
+      return { error: 'Chỉ có thể rút khỏi giải đấu đang diễn ra.', code: 'TOURNAMENT_NOT_ACTIVE' };
+    }
+    const isOrganizer = tournament.organizerId === userId;
+    const selfEntryId = this._findEntryIdByUserId(tournament, userId);
+    const targetId = entryId || selfEntryId;
+    const entry = targetId ? tournament.entries.get(targetId) : null;
+    if (!entry) return { error: 'Người chơi không tham gia giải đấu này.', code: 'NOT_A_PARTICIPANT' };
+    if (!isOrganizer && targetId !== selfEntryId) {
+      return { error: 'Chỉ người tổ chức mới có thể loại người chơi khác.', code: 'ORGANIZER_ONLY' };
+    }
+    if (entry.withdrawn) return { error: 'Người chơi đã rút khỏi giải đấu.', code: 'ALREADY_WITHDRAWN' };
+
+    entry.withdrawn = true;
+    database.setTournamentPlayerWithdrawn(targetId);
+
+    const cancelledLivePairingIds = [];
+    for (const pairing of this.listPairings(tournamentId)) {
+      if (tournament.status !== 'active') break; // a cascade may have completed the tournament
+      if (PairingLifecycle.TERMINAL_STATES.has(pairing.state)) continue;
+      if (pairing.player1EntryId !== targetId && pairing.player2EntryId !== targetId) continue;
+      if (pairing.state === 'InProgress') cancelledLivePairingIds.push(pairing.pairingId);
+      this._forfeitPairing(tournament, pairing, this._forfeitWinner(tournament, pairing), 'withdrawn', { deferAdvance: true });
+    }
+    this._advanceIfRoundComplete(tournament);
+
+    this.emit('player_withdrawn', { tournamentId, entryId: targetId, cancelledLivePairingIds });
+    logger.info(`[TournamentManager] Entry ${targetId} withdrawn from tournament ${tournamentId} by ${userId}`);
+    return { tournament, cancelledLivePairingIds };
   }
 
   _teardownPairingTimer(pairingId) {
@@ -1359,6 +1460,7 @@ class TournamentManager extends EventEmitter {
       reportedBy: pairing.reportedBy,
       disputed: pairing.disputed,
       overdue: pairing.overdue,
+      noShowCount: pairing.noShowCount || 0,
       agreedTime: pairing.agreedTime,
       rescheduleRequest: pairing.rescheduleRequest,
       readyPlayers: Array.from(pairing.readyPlayers),
