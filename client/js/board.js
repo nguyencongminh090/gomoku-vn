@@ -384,6 +384,7 @@
       this.boardSize = opts.boardSize || 17;
       this.onCellClick = opts.onCellClick || null;
       this.clickMode = opts.clickMode || 'double';
+      this.clickOccupied = !!opts.clickOccupied;
       this._pinnedPrefs = opts.prefs || null;
 
       this.board = null;
@@ -550,7 +551,7 @@
     _onClick(e) {
       if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
       const cell = this._cellFromClient(e.clientX, e.clientY);
-      if (this._isEmpty(cell)) this._handleCellSelect(cell.x, cell.y);
+      if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
     }
 
     _onTouchEnd(e) {
@@ -560,8 +561,11 @@
       const t = e.changedTouches && e.changedTouches[0];
       if (!t) return;
       const cell = this._cellFromClient(t.clientX, t.clientY);
-      if (this._isEmpty(cell)) this._handleCellSelect(cell.x, cell.y);
+      if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
     }
+
+    // Editors (puzzle authoring) set clickOccupied to erase / replace pieces.
+    _clickable(c) { return this.clickOccupied ? !!(c && this.board && this.board[c.y]) : this._isEmpty(c); }
 
     _handleCellSelect(x, y) {
       if (this.clickMode === 'single') {

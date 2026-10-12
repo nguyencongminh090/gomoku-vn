@@ -400,6 +400,7 @@ CREATE TABLE IF NOT EXISTS puzzles (
   rule          TEXT NOT NULL,                     -- 'freestyle' | 'standard' | 'caro'
   board_size    INTEGER NOT NULL,
   stones        TEXT NOT NULL,
+  layout        TEXT NOT NULL DEFAULT '{}',        -- {walls:[{x,y}], portals:[{a:{x,y},b:{x,y}}]}
   to_move       TEXT NOT NULL,                     -- 'BLACK' | 'WHITE'
   mode          TEXT NOT NULL,                     -- 'sequence' | 'final_move'
   answers       TEXT NOT NULL,

@@ -63,15 +63,57 @@ describe('editor', () => {
     clickTool(1); r.opts.onCellClick(8, 8);
     expect(r.state.board[7][7]).toBe(1);
     expect(r.state.board[8][8]).toBe(2);
-    clickTool(2); r.opts.onCellClick(7, 7);
+    clickTool(5); r.opts.onCellClick(7, 7);
     expect(r.state.board[7][7]).toBe(0);
+    expect(r.opts.clickOccupied).toBe(true); // the renderer must deliver clicks on occupied cells, or Erase never fires
+  });
+
+  it('auto tool alternates black/white and sets the side to move', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    clickTool(2);
+    r.opts.onCellClick(7, 7); r.opts.onCellClick(8, 8); r.opts.onCellClick(6, 6);
+    expect([r.state.board[7][7], r.state.board[8][8], r.state.board[6][6]]).toEqual([1, 2, 1]);
+    expect($('ed-tomove').value).toBe('WHITE');
+  });
+
+  it('wall toggles, portal needs two clicks, erase removes a whole portal', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    clickTool(3); r.opts.onCellClick(1, 1);
+    expect(r.state.board[1][1]).toBe(-1);
+    r.opts.onCellClick(1, 1);
+    expect(r.state.board[1][1]).toBe(0);
+    clickTool(4); r.opts.onCellClick(2, 2);
+    expect(r.state.portals).toHaveLength(0);
+    r.opts.onCellClick(5, 5);
+    expect(r.state.portals).toEqual([{ a: { x: 2, y: 2 }, b: { x: 5, y: 5 } }]);
+    expect([r.state.board[2][2], r.state.board[5][5]]).toEqual([-2, -2]);
+    clickTool(5); r.opts.onCellClick(5, 5);
+    expect(r.state.portals).toHaveLength(0);
+    expect(r.state.board[2][2]).toBe(0);
+  });
+
+  it('pasted text fills the board; coordinates off the board are rejected', async () => {
+    editorBoot(); await settle();
+    const r = renderers[0];
+    $('ed-import').value = 'h8 i9 h10 wall: a1 portal: b2 c3';
+    $('ed-import-btn').click();
+    expect(r.state.board[7][7]).toBe(1);
+    expect(r.state.board[6][8]).toBe(2);
+    expect(r.state.board[14][0]).toBe(-1);
+    expect(r.state.portals).toHaveLength(1);
+    $('ed-import').value = 'h8 z30';
+    $('ed-import-btn').click();
+    expect($('ed-result').textContent).toContain('puzzles.import_bad');
+    expect(r.state.board[7][7]).toBe(1); // unchanged
   });
 
   it('the answer tool appends labels to the active answer line (final_move keeps one)', async () => {
     editorBoot(); await settle();
     const r = renderers[0];
     clickTool(0); r.opts.onCellClick(7, 7); // a stone: answers cannot land on it
-    clickTool(3);
+    clickTool(6);
     r.opts.onCellClick(1, 6); r.opts.onCellClick(2, 6); r.opts.onCellClick(7, 7);
     expect(document.querySelector('.pz-answer').value).toBe('B9, C9');
     $('ed-mode').value = 'final_move'; $('ed-mode').dispatchEvent(new Event('change'));
