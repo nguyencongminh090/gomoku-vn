@@ -1426,6 +1426,24 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     expect(tournamentManager._findEntryIdByUserId(reloaded, g.userId)).toBe(entryId);
   });
 
+  test('#242: seeds are assigned + persisted at start, and a reload keeps the bracket even when registered_at would reorder (same-ms ties)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const entryIds = [user(), user(), user(), user()].map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(entryIds.map((id) => tournament.entries.get(id).seed)).toEqual([1, 2, 3, 4]);
+    const before = tournament.bracket.playersBySeed.slice();
+    expect(before).toEqual(entryIds);
+
+    // Simulate ms-tie / clock skew: the first registrant now sorts LAST by registered_at.
+    database.db.prepare('UPDATE tournament_players SET registered_at = ? WHERE entry_id = ?').run('2999-01-01T00:00:00.000Z', entryIds[0]);
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.bracket.playersBySeed).toEqual(before);
+    expect(entryIds.map((id) => reloaded.entries.get(id).seed)).toEqual([1, 2, 3, 4]);
+  });
+
   test('organizer name round-trips for a guest organizer too', () => {
     const organizer = guest({ displayName: 'Khách tổ chức' });
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;

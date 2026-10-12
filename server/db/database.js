@@ -727,12 +727,13 @@ function deleteTournamentPlayer(entryId) {
  * List all player entries for a tournament, in registration order — the
  * reload path (TODO.md #77) depends on this order to regenerate round-robin/
  * double-elim schedules deterministically (both are seeded off entry array
- * order).
+ * order). Once started, persisted seeds (#242) win over registration order;
+ * rowid breaks same-millisecond registration ties for unseeded rows.
  * @param {string} tournamentId
  * @returns {Array}
  */
 function getTournamentPlayers(tournamentId) {
-  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY registered_at ASC').all(tournamentId);
+  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY seed IS NULL, seed ASC, registered_at ASC, rowid ASC').all(tournamentId);
 }
 
 /**
@@ -744,6 +745,15 @@ function getTournamentPlayers(tournamentId) {
  */
 function updateTournamentPlayerRank(entryId, finalRank) {
   db.prepare('UPDATE tournament_players SET final_rank = ? WHERE entry_id = ?').run(finalRank, entryId);
+}
+
+/**
+ * Persist an entry's bracket/pairing seed, assigned once at start (#242).
+ * @param {string} entryId
+ * @param {number} seed
+ */
+function updateTournamentPlayerSeed(entryId, seed) {
+  db.prepare('UPDATE tournament_players SET seed = ? WHERE entry_id = ?').run(seed, entryId);
 }
 
 /**
@@ -1270,6 +1280,7 @@ module.exports = {
   deleteTournamentPlayer,
   getTournamentPlayers,
   updateTournamentPlayerRank,
+  updateTournamentPlayerSeed,
   createTournamentRound,
   getTournamentRounds,
   savePairing,

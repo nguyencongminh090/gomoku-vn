@@ -244,3 +244,4 @@ Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`
 - ✅ **#240.** Verify/fix guest tournament entries after restart (size S–M) `[Model: Sonnet 5]` — [detail](docs/todo/B240-tournament-guest-entries-after-restart.md)
 - ✅ **#243.** Double-elim final ranks 3rd and below (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B243-de-final-ranks-3rd-and-below.md)
 - ✅ **#244.** Double-elim losers drop-in crossing (size M) `[Model: Opus 5]` — [detail](docs/todo/B244-de-losers-dropin-crossing.md)
+- ✅ **#242.** Persist tournament seeds, deterministic on hydrate (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B242-tournament-persist-seeds.md)
