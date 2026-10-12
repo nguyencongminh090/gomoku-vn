@@ -1,5 +1,5 @@
 # B249 — Rating integrity v1: collusion signals + admin list (read-only)
-**Status:** OPEN — built + browser-verified 2026-10-12 on feature/249-rating-integrity, uncommitted
+**Status:** ✅ DONE 2026-10-12 — merged to dev (?v=350); 3171 tests green; browser-verified on isolated server. Louvain groups: see follow-up.
 **Area:** server/db/database.js (queries), server/routes/admin.js + admin page, tests; new pure module for metrics
 **From:** features/rating-integrity-graph (decisions 2026-10-12)   **Depends:** —
 
