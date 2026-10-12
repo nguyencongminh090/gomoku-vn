@@ -14,6 +14,7 @@
  * POST /api/admin/users/:id/lock        {locked: bool, reason}
  * GET  /api/admin/cheat-reports?page=    open cheat reports (perm cheat.review: moderator+admin, #208)
  * POST /api/admin/cheat-reports/:id/resolve  {confirm: bool}
+ * GET  /api/admin/rating-integrity      read-only collusion signals (perm cheat.review, #249)
  * DELETE /api/admin/users/:id/avatar     remove their avatar (file + DB), logged as an edge
  *
  * Dashboard news (#224; perm news.manage = admin only, checked in NewsService):
@@ -32,6 +33,7 @@ const roles = require('../utils/roles');
 const svc = require('../managers/AdminUserService');
 const cheat = require('../managers/CheatReportService');
 const news = require('../managers/NewsService');
+const integrity = require('../managers/RatingIntegrityService');
 
 const router = express.Router();
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || '') }));
@@ -51,7 +53,7 @@ const h = (fn) => (req, res, next) => {
     if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
     fn(req, res);
   } catch (err) {
-    if (err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError || err instanceof news.NewsError) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError || err instanceof news.NewsError || err instanceof integrity.RatingIntegrityError) return res.status(err.status).json({ error: err.message, code: err.code });
     next(err);
   }
 };
@@ -82,6 +84,11 @@ router.get('/cheat-reports', verifyToken, h((req, res) => {
 
 router.post('/cheat-reports/:id/resolve', ...write, h((req, res) => {
   res.json(cheat.resolve(req.user.userId, req.params.id, req.body || {}));
+}));
+
+router.get('/rating-integrity', verifyToken, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(integrity.report(req.user.userId));
 }));
 
 router.delete('/users/:id/avatar', ...write, h((req, res) => {
