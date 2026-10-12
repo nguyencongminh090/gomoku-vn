@@ -1429,6 +1429,9 @@ class TournamentManager extends EventEmitter {
       totalRounds: tournament.format === 'swiss'
         ? (tournament.totalRounds ?? null)
         : (tournament.format === 'round_robin' ? (tournament.allRounds ? tournament.allRounds.length : null) : null),
+      // Double Elimination only — the bracket skeleton (match ids + slot sources) so the client can draw
+      // the full tree, including matches not yet created as pairings.
+      bracket: tournament.format === 'double_elim' && tournament.bracket ? tournament.bracket : null,
     };
   }
 
@@ -1453,6 +1456,7 @@ class TournamentManager extends EventEmitter {
       tournamentId: pairing.tournamentId,
       roundId: pairing.roundId,
       roundIndex: pairing.roundIndex ?? null,
+      bracketMatchId: pairing.bracketMatchId ?? null,
       player1EntryId: pairing.player1EntryId,
       player2EntryId: pairing.player2EntryId,
       state: pairing.state,
