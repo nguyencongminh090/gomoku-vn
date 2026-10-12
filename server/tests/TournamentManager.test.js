@@ -1446,6 +1446,21 @@ describe('TournamentManager — registration cap / close (#246)', () => {
     expect(tournamentManager.registerPlayer(user(), t.tournamentId).code).toBe('REGISTRATION_CLOSED');
   });
 
+  test('startsAt gates Start: future day → TOURNAMENT_NOT_YET (stays draft); past/none starts', () => {
+    const org = user();
+    const future = tournamentManager.createTournament(org, { format: 'swiss', ruleSet: { startsAt: '2099-01-01' } }).tournament;
+    tournamentManager.registerPlayer(user(), future.tournamentId);
+    tournamentManager.registerPlayer(user(), future.tournamentId);
+    const res = tournamentManager.startTournament(org.userId, future.tournamentId);
+    expect(res.code).toBe('TOURNAMENT_NOT_YET');
+    expect(future.status).toBe('draft');
+
+    const past = tournamentManager.createTournament(org, { format: 'swiss', ruleSet: { startsAt: '2020-01-01' } }).tournament;
+    tournamentManager.registerPlayer(user(), past.tournamentId);
+    tournamentManager.registerPlayer(user(), past.tournamentId);
+    expect(tournamentManager.startTournament(org.userId, past.tournamentId).error).toBeUndefined();
+  });
+
   test('listTournaments exposes maxPlayers + registrationOpen', () => {
     const t = make({ maxPlayers: 2 });
     tournamentManager.registerPlayer(user(), t.tournamentId);

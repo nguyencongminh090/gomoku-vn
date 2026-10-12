@@ -505,6 +505,12 @@ class TournamentManager extends EventEmitter {
       return { error: 'Giải đấu đã bắt đầu hoặc đã kết thúc.', code: 'TOURNAMENT_ALREADY_STARTED' };
     }
 
+    // startsAt (UTC day) gates Start; nothing starts or ends by itself (#246).
+    const startsAt = tournament.ruleSet?.startsAt;
+    if (startsAt && new Date().toISOString().slice(0, 10) < startsAt) {
+      return { error: `Chưa đến ngày bắt đầu giải đấu (${startsAt}).`, code: 'TOURNAMENT_NOT_YET' };
+    }
+
     // Fewer than 2 entries can never produce a pairing, so the tournament would
     // sit 'active' with nothing to play or complete (only cancel).
     if (tournament.entries.size < 2) {
