@@ -232,6 +232,103 @@
     logout,
   };
 
+  // ── Lag overlay ─────────────────────────────────────────────────────────
+  // Full-screen spinner when the site is slow: a fetch pending past SHOW_AFTER_MS,
+  // or the socket dropped / reconnecting (SocketClient fires 'gvn:conn').
+  // Lives here because this module is already on every page that talks to the
+  // server. Shown at most once per lag episode and kept >= MIN_SHOW_MS (no flicker).
+  const SHOW_AFTER_MS = 1500;
+  // First load of a page (assets + initial DB-backed data over fetch/socket): react sooner.
+  const INITIAL_SHOW_AFTER_MS = 400;
+  const MIN_SHOW_MS = 500;
+  let pendingFetches = 0;
+  let socketDown = false;
+  let pageLoading = document.readyState !== 'complete';
+  let initial = true; // until the first lag-free moment after load
+  let showTimer = null;
+  let hideTimer = null;
+  let shownAt = 0;
+  let overlayEl = null;
+
+  function lagText() {
+    return typeof global.t === 'function' ? global.t('conn.lagging') : 'Loading…';
+  }
+
+  function ensureOverlay() {
+    if (overlayEl) return overlayEl;
+    const style = document.createElement('style');
+    style.textContent =
+      '.gvn-lag{position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.45);' +
+      'color:#fff;font:600 15px system-ui,sans-serif;backdrop-filter:blur(2px)}' +
+      '.gvn-lag[hidden]{display:none}' +
+      '.gvn-lag__spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);' +
+      'border-top-color:#fff;border-radius:50%;animation:gvn-lag-spin .8s linear infinite}' +
+      '@keyframes gvn-lag-spin{to{transform:rotate(360deg)}}' +
+      '@media (prefers-reduced-motion:reduce){.gvn-lag__spin{animation-duration:2.4s}}';
+    document.head.appendChild(style);
+    overlayEl = document.createElement('div');
+    overlayEl.className = 'gvn-lag';
+    overlayEl.hidden = true;
+    overlayEl.setAttribute('role', 'status');
+    overlayEl.setAttribute('aria-live', 'polite');
+    overlayEl.innerHTML = '<div class="gvn-lag__spin"></div><div class="gvn-lag__txt"></div>';
+    document.body.appendChild(overlayEl);
+    return overlayEl;
+  }
+
+  function lagActive() { return pendingFetches > 0 || socketDown || pageLoading; }
+
+  function lagUpdate() {
+    if (lagActive()) {
+      clearTimeout(hideTimer); hideTimer = null;
+      if (overlayEl && !overlayEl.hidden) return;
+      if (showTimer || !document.body) return;
+      showTimer = setTimeout(() => {
+        showTimer = null;
+        if (!lagActive()) return;
+        const el = ensureOverlay();
+        el.querySelector('.gvn-lag__txt').textContent = lagText();
+        el.hidden = false;
+        shownAt = Date.now();
+      }, initial ? INITIAL_SHOW_AFTER_MS : SHOW_AFTER_MS);
+    } else {
+      clearTimeout(showTimer); showTimer = null;
+      if (!pageLoading) initial = false;
+      if (!overlayEl || overlayEl.hidden || hideTimer) return;
+      hideTimer = setTimeout(() => {
+        hideTimer = null;
+        if (!lagActive()) overlayEl.hidden = true;
+      }, Math.max(0, MIN_SHOW_MS - (Date.now() - shownAt)));
+    }
+  }
+
+  if (typeof global.fetch === 'function' && !global.fetch.__gvnLag) {
+    const origFetch = global.fetch.bind(global);
+    global.fetch = function(...args) {
+      pendingFetches++;
+      lagUpdate();
+      const done = () => { pendingFetches--; lagUpdate(); };
+      const p = origFetch(...args);
+      p.then(done, done);
+      return p;
+    };
+    global.fetch.__gvnLag = true;
+  }
+
+  if (pageLoading) {
+    global.addEventListener('load', () => { pageLoading = false; lagUpdate(); });
+    lagUpdate();
+  }
+
+  global.addEventListener('gvn:conn', (e) => {
+    socketDown = e.detail !== 'connected';
+    lagUpdate();
+  });
+  global.addEventListener('langchange', () => {
+    if (overlayEl) overlayEl.querySelector('.gvn-lag__txt').textContent = lagText();
+  });
+
   // Kick the migration off as a side effect of loading, on every page that
   // pulls this module in. It self-cancels when there is no legacy token, which
   // is the case for every browser after the first post-deploy load.
