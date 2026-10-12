@@ -250,3 +250,4 @@
 | 2026-10-12 09:56 | #241: tournament replay cap (2 → higher seed advances) + organizer drop / player withdraw with forfeits | [detail](docs/fix-log/2026-10-12-tournament-drop-forfeit-replay-cap.md) |
 | 2026-10-12 12:03 | #248: tournament result views — double-elim bracket tree, Swiss round columns, champion strip | [detail](docs/fix-log/2026-10-12-tournament-bracket-views.md) |
 | 2026-10-12 12:40 | untracked: tournament cards — meta as .rtag tags instead of `a · b · c` | [detail](docs/fix-log/2026-10-12-tournament-card-meta-tags.md) |
+| 2026-10-12 14:08 | #249: Louvain single pass split dense groups in 6/20 seeded graphs — added aggregation level | [detail](docs/fix-log/2026-10-12-rating-integrity-louvain-aggregation.md) |

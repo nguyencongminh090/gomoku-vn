@@ -79,29 +79,21 @@ function pairSignals(players) {
   return out;
 }
 
-/** One Louvain local-moving pass (deterministic: nodes in sorted order). Returns Map node → community id. */
-function louvainPass(players) {
-  const ids = [...players.keys()].sort();
-  const w = new Map(ids.map((i) => [i, new Map()]));
-  for (const p of players.values()) {
-    for (const [oid, o] of p.opp) {
-      if (!w.has(oid)) continue;
-      w.get(p.id).set(oid, Math.max(w.get(p.id).get(oid) || 0, o.games));
-      w.get(oid).set(p.id, Math.max(w.get(oid).get(p.id) || 0, o.games));
-    }
-  }
+/** Louvain local-moving on a weighted graph (Map node → Map node → weight; w[i][i] = 2 × internal weight). Returns Map node → community. */
+function localMoving(w) {
+  const ids = [...w.keys()].sort();
   const deg = new Map(ids.map((i) => [i, [...w.get(i).values()].reduce((a, b) => a + b, 0)]));
   const m2 = [...deg.values()].reduce((a, b) => a + b, 0);
   const comm = new Map(ids.map((i) => [i, i]));
   if (!m2) return comm;
   const tot = new Map(ids.map((i) => [i, deg.get(i)]));
-  for (let sweep = 0; sweep < 20; sweep++) {
+  for (let sweep = 0; sweep < 50; sweep++) {
     let moved = false;
     for (const i of ids) {
       const ci = comm.get(i);
       const k = deg.get(i);
       const links = new Map();
-      for (const [j, wt] of w.get(i)) links.set(comm.get(j), (links.get(comm.get(j)) || 0) + wt);
+      for (const [j, wt] of w.get(i)) if (j !== i) links.set(comm.get(j), (links.get(comm.get(j)) || 0) + wt);
       tot.set(ci, tot.get(ci) - k);
       let best = ci;
       let bestGain = (links.get(ci) || 0) - (tot.get(ci) * k) / m2;
@@ -117,9 +109,35 @@ function louvainPass(players) {
   return comm;
 }
 
+/** Full Louvain: local moving, then collapse each community into one node and repeat until nothing merges.
+ *  Deterministic (sorted visit order). A single pass alone can leave one dense group split in halves. */
+function louvain(players) {
+  let w = new Map([...players.keys()].map((i) => [i, new Map()]));
+  for (const p of players.values()) {
+    for (const [oid, o] of p.opp) {
+      if (!w.has(oid) || oid === p.id) continue;
+      w.get(p.id).set(oid, Math.max(w.get(p.id).get(oid) || 0, o.games));
+      w.get(oid).set(p.id, Math.max(w.get(oid).get(p.id) || 0, o.games));
+    }
+  }
+  let member = new Map([...w.keys()].map((i) => [i, i])); // original node → current super-node
+  for (let level = 0; level < 20; level++) {
+    const comm = localMoving(w);
+    if (new Set(comm.values()).size === w.size) break;
+    member = new Map([...member].map(([i, sn]) => [i, comm.get(sn)]));
+    const next = new Map([...new Set(comm.values())].sort().map((c) => [c, new Map()]));
+    for (const [i, nbrs] of w) for (const [j, wt] of nbrs) {
+      const row = next.get(comm.get(i));
+      row.set(comm.get(j), (row.get(comm.get(j)) || 0) + wt);
+    }
+    w = next;
+  }
+  return member;
+}
+
 function groupSignals(players, population) {
   if (population < T.POP_MIN) return [];
-  const comm = louvainPass(players);
+  const comm = louvain(players);
   const members = new Map();
   for (const [id, c] of comm) { if (!members.has(c)) members.set(c, []); members.get(c).push(id); }
   const out = [];
@@ -144,4 +162,4 @@ function analyze(rows) {
   return { population, players: playerSignals(players, population), pairs: pairSignals(players), groups: groupSignals(players, population) };
 }
 
-module.exports = { analyze, THRESHOLDS: T };
+module.exports = { analyze, louvain, THRESHOLDS: T };

@@ -8,7 +8,7 @@ jest.mock('better-sqlite3', () => {
 });
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
-const { analyze } = require('../utils/rating-integrity');
+const { analyze, louvain } = require('../utils/rating-integrity');
 const database = require('../db/database');
 const service = require('../managers/RatingIntegrityService');
 
@@ -70,6 +70,38 @@ describe('analyze', () => {
 
   test('below MIN_GAMES nothing player-level', () => {
     expect(analyze([...background(12), ...many('n1', 'n2', 4, 'a')]).players.filter((p) => p.userId === 'n1')).toEqual([]);
+  });
+});
+
+describe('louvain', () => {
+  // Regression (#249): one local-moving pass split a dense 6-player group into 3+3 in 6 of 20 seeded graphs;
+  // the aggregation level must merge the halves back. 5 planted groups x 6, dense inside, sparse between.
+  test('recovers planted groups across seeded noisy graphs (needs the aggregation level)', () => {
+    let seed = 12345;
+    const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+    for (let trial = 0; trial < 20; trial++) {
+      const rows = [];
+      for (let i = 0; i < 30; i++) {
+        for (let j = i + 1; j < 30; j++) {
+          const same = Math.floor(i / 6) === Math.floor(j / 6);
+          if (rnd() < (same ? 0.8 : 0.1)) rows.push(...many(`p${i}`, `p${j}`, same ? 4 : 1, 'a'));
+        }
+      }
+      const players = new Map();
+      for (const r of rows) {
+        if (!players.has(r.user_id)) players.set(r.user_id, { id: r.user_id, games: 0, opp: new Map() });
+        const p = players.get(r.user_id);
+        p.games += 1;
+        const o = p.opp.get(r.opponent_id) || { games: 0 };
+        o.games += 1;
+        p.opp.set(r.opponent_id, o);
+      }
+      const comm = louvain(players);
+      for (const id of players.keys()) {
+        const same = [...players.keys()].filter((k) => Math.floor(+k.slice(1) / 6) === Math.floor(+id.slice(1) / 6));
+        expect(new Set(same.map((k) => comm.get(k))).size).toBe(1);
+      }
+    }
   });
 });
 
