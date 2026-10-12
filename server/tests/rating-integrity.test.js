@@ -73,6 +73,36 @@ describe('analyze', () => {
   });
 });
 
+describe('sparse and hub-shaped graphs (real data: a star around one account)', () => {
+  /** 14 regulars each play the hub 12 times and one other regular once — the hub has 14 distinct opponents. */
+  const star = () => {
+    const rows = [];
+    for (let i = 0; i < 14; i++) { rows.push(...many(`s${i}`, 'hub', 12, i % 2 ? 'a' : 'b')); rows.push(...game(`s${i}`, `s${(i + 1) % 14}`, 'a')); }
+    return rows;
+  };
+
+  test('players whose games and gain come from a hub are not flagged', () => {
+    const r = analyze(star());
+    expect(r.hubs).toEqual(['hub']);
+    expect(r.players.filter((p) => p.userId !== 'hub')).toEqual([]);
+  });
+
+  test('a feeder (1 opponent) is still flagged when a hub exists in the same graph', () => {
+    const r = analyze([...star(), ...many('boost', 'feeder', 12, 'a')]);
+    expect(r.players.find((p) => p.userId === 'boost').flags).toContain('gain_from_one');
+  });
+
+  test('gates count active players (>= MIN_GAMES), not every account that ever played', () => {
+    const rows = many('boost', 'feeder', 12, 'a'); // would be flagged in a dense graph
+    for (let i = 0; i < 10; i++) rows.push(...game(`c${i}`, `c${(i + 1) % 10}`, 'a')); // 10 casual players, 2 games each
+    const r = analyze(rows);
+    expect(r.population).toBeGreaterThanOrEqual(10);
+    expect(r.activePlayers).toBe(2);
+    expect(r.players).toEqual([]);
+    expect(r.groups).toEqual([]);
+  });
+});
+
 describe('louvain', () => {
   // Regression (#249): one local-moving pass split a dense 6-player group into 3+3 in 6 of 20 seeded graphs;
   // the aggregation level must merge the halves back. 5 planted groups x 6, dense inside, sparse between.

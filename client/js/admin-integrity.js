@@ -36,7 +36,7 @@
   }
 
   function render(d) {
-    $('ri-hint').textContent = t('admin.i_hint', { n: d.population }) + (d.population < d.thresholds.POP_MIN ? ' ' + t('admin.i_sparse', { n: d.thresholds.POP_MIN }) : '');
+    $('ri-hint').textContent = t('admin.i_hint', { n: d.population }) + (d.activePlayers < d.thresholds.POP_MIN ? ' ' + t('admin.i_sparse', { n: d.thresholds.POP_MIN, min: d.thresholds.MIN_GAMES, active: d.activePlayers }) : '');
     const players = d.players.map((p) => card(p.displayName,
       [...p.flags.map((f) => t('admin.i_flag_' + f)), ...context(p.topOpponentFriend, p.topOpponentSameClub)],
       t('admin.i_player', { games: p.games, eff: p.effectiveOpponents, uniq: p.uniqueOpponents, share: pct(p.topGainShare), top: p.topOpponentName || '?' })));

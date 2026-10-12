@@ -39,6 +39,7 @@ function report(staffId) {
   const sameClub = (a, b) => { const x = clubOf.get(a); const y = clubOf.get(b); return !!x && !!y && [...x].some((c) => y.has(c)); };
   return {
     population: result.population,
+    activePlayers: result.activePlayers,
     thresholds: THRESHOLDS,
     players: result.players.map((p) => ({ ...p, displayName: name(p.userId), topOpponentName: p.topOpponentId ? name(p.topOpponentId) : null,
       topOpponentFriend: p.topOpponentId ? areFriends(p.userId, p.topOpponentId) : false, topOpponentSameClub: p.topOpponentId ? sameClub(p.userId, p.topOpponentId) : false })),
