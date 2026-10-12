@@ -248,3 +248,4 @@
 | 2026-10-12 12:00 | #245: round-robin final ranks use head-to-head, then wins, then Sonneborn-Berger | [detail](docs/fix-log/2026-10-12-rr-tiebreak-head-to-head.md) |
 | 2026-10-12 12:00 | #246: tournament registration cap + close day (+ endsAt closes registration) | [detail](docs/fix-log/2026-10-12-tournament-registration-cap-and-dates.md) |
 | 2026-10-12 09:56 | #241: tournament replay cap (2 → higher seed advances) + organizer drop / player withdraw with forfeits | [detail](docs/fix-log/2026-10-12-tournament-drop-forfeit-replay-cap.md) |
+| 2026-10-12 12:03 | #248: tournament result views — double-elim bracket tree, Swiss round columns, champion strip | [detail](docs/fix-log/2026-10-12-tournament-bracket-views.md) |

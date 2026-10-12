@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+- ✅ **#248.** Tournament result views: double-elim bracket tree + Swiss round columns (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B248-tournament-result-bracket-views.md)
 - ✅ **#241.** Drop/forfeit player + replay-loop cap (size L) `[Model: Opus 5]` — [detail](docs/todo/B241-tournament-drop-forfeit-replay-cap.md)
 - ✅ **#247.** startsAt/endsAt accept impossible dates (size S) `[Model: Haiku 5]` — [detail](docs/todo/B247-tournament-isday-impossible-dates.md)
 - ✅ **#238.** Reject tournament start with <2 players (size S) `[Model: Haiku 5]` — [detail](docs/todo/B238-tournament-start-min-2-players.md)
