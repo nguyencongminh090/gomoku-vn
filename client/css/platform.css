@@ -389,7 +389,7 @@ a.prow:hover { background: var(--c-hover); }
 .pav.pav--c-pink, .pswatch.pav--c-pink { background-color: var(--club-pink); color: var(--club-ink); }
 .pav.pav--c-gray, .pswatch.pav--c-gray { background-color: var(--club-gray); color: var(--club-ink); }
 .pswatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.pswatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.pswatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; forced-color-adjust: none; }   /* forced-colors (Firefox on a high-contrast GTK theme) would repaint the fill ButtonFace grey; the colour IS the control */
 .pswatch[aria-checked="true"] { border-color: var(--c-ink); outline: 2px solid var(--c-surface); outline-offset: -4px; }
 .cb-announce { margin-bottom: var(--space-4); }
 .cb-announce p { margin: 0; font-size: 14px; overflow-wrap: anywhere; white-space: pre-line; }
