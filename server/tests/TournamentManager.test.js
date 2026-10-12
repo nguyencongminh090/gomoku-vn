@@ -881,6 +881,22 @@ describe('TournamentManager — round advancement (Round robin, 3 players -> 3 r
   });
 });
 
+describe('TournamentManager — round robin final ranks (#245)', () => {
+  test('_completeTournament ranks a score tie by head-to-head, not shared rank', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const [a, b, c, d] = [user(), user(), user(), user()].map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    // A=2 (B,C), B=2 (C,D), C=1 (D), D=1 (A): A and B tie on score; A beat B.
+    tournament.completedPairings = [
+      { player1: a, player2: b, winner: a }, { player1: a, player2: c, winner: a }, { player1: d, player2: a, winner: d },
+      { player1: b, player2: c, winner: b }, { player1: b, player2: d, winner: b }, { player1: c, player2: d, winner: c },
+    ];
+    tournamentManager._completeTournament(tournament);
+    expect([a, b, c, d].map((id) => tournament.entries.get(id).finalRank)).toEqual([1, 2, 3, 4]);
+  });
+});
+
 describe('TournamentManager — round advancement (Double Elimination, 4 players)', () => {
   test('a full bracket plays out to a champion without a reset (winners finalist wins the grand final)', () => {
     const organizer = user();

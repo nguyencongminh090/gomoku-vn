@@ -1,5 +1,5 @@
 # B245 — Round robin tiebreak: head-to-head / wins instead of Buchholz
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — round-robin final ranks use head-to-head, then wins, then Sonneborn-Berger (fix-log: docs/fix-log/2026-10-12-rr-tiebreak-head-to-head.md)
 **Area:** server/managers/tournament/standings.js, server/managers/tournament/TournamentManager.js (_completeTournament)
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 
