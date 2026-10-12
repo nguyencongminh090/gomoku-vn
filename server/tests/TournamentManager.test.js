@@ -924,6 +924,9 @@ describe('TournamentManager — round advancement (Double Elimination, 4 players
     expect(tournament.status).toBe('completed');
     expect(tournament.entries.get(entries[0]).finalRank).toBe(1);
     expect(tournament.entries.get(entries[3]).finalRank).toBe(2);
+    // #243: the rest are ranked by losers-bracket exit round.
+    expect(tournament.entries.get(entries[1]).finalRank).toBe(3); // lost the losers final
+    expect(tournament.entries.get(entries[2]).finalRank).toBe(4); // lost losers round 1
     expect(tournamentManager.getPairing(`${tournament.tournamentId}:GF_RESET`)).toBeNull();
   });
 
