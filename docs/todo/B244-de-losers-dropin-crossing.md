@@ -1,5 +1,5 @@
 # B244 — Double-elim losers bracket: cross drop-in order to avoid rematches
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — double-elim losers drop-in crossed on even winners rounds (no early rematch) (fix-log: docs/fix-log/2026-10-12-de-losers-dropin-crossing.md)
 **Area:** server/managers/tournament/pairing/doubleElim.js
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 

@@ -243,3 +243,4 @@
 | 2026-10-12 12:00 | #239: swissRounds ruleSet branches removed (dead code) | [detail](docs/fix-log/2026-10-12-tournament-swiss-rounds-dead-code.md) |
 | 2026-10-12 12:00 | #240: guest tournament entries keep their guest id across restart | [detail](docs/fix-log/2026-10-12-tournament-guest-entries-after-restart.md) |
 | 2026-10-12 12:00 | #243: double-elim ranks 3rd and below by losers-bracket exit round | [detail](docs/fix-log/2026-10-12-de-final-ranks-3rd-and-below.md) |
+| 2026-10-12 12:00 | #244: double-elim losers drop-in crossed on even winners rounds (no early rematch) | [detail](docs/fix-log/2026-10-12-de-losers-dropin-crossing.md) |

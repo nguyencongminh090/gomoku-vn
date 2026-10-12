@@ -110,7 +110,10 @@ function generateBracket(players) {
     for (let wr = 2; wr <= winnersRounds; wr++) {
       // Drop round: previous losers-bracket survivors vs this winners
       // round's fresh losers.
-      const wrLosers = winners[wr - 1];
+      // Cross the drop-in order on even winners rounds (reverse index): a
+      // winners-round-2 loser came from the same half as the survivors of
+      // L1 at the same index, so same-index would rematch them immediately.
+      const wrLosers = wr % 2 === 0 ? [...winners[wr - 1]].reverse() : winners[wr - 1];
       const dropRound = [];
       for (let i = 0; i < prevSurvivors.length; i++) {
         dropRound.push({
