@@ -17,6 +17,7 @@ const PERMISSIONS = {
   'cheat.review': ['moderator', 'admin'],
   'user.manage': ['admin'],
   'news.manage': ['admin'],
+  'rating.integrity': ['admin'],
 };
 
 /** The user's role; 'member' for an unknown/missing id or an unrecognised stored value. */

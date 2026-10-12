@@ -2,7 +2,7 @@
 
 /**
  * RatingIntegrityService.js — read-only collusion signals for the admin page (#249). Computes on demand from
- * rating_history; flags are a prompt for human review and never change a rating. Perm: cheat.review.
+ * rating_history; flags are a prompt for human review and never change a rating. Perm: rating.integrity (admin only). Output is a signal to read — nothing here acts on a player.
  */
 
 const database = require('../db/database');
@@ -14,7 +14,7 @@ class RatingIntegrityError extends Error {
 }
 
 function report(staffId) {
-  if (!roles.can(staffId, 'cheat.review')) throw new RatingIntegrityError('CHEAT_FORBIDDEN', 403, 'Bạn không có quyền.');
+  if (!roles.can(staffId, 'rating.integrity')) throw new RatingIntegrityError('CHEAT_FORBIDDEN', 403, 'Bạn không có quyền.');
   const db = database.db;
   const rows = db.prepare('SELECT user_id, opponent_id, game_id, score, rating_before, rating_after FROM rating_history').all();
   const result = analyze(rows);
@@ -39,6 +39,7 @@ function report(staffId) {
   const sameClub = (a, b) => { const x = clubOf.get(a); const y = clubOf.get(b); return !!x && !!y && [...x].some((c) => y.has(c)); };
   return {
     population: result.population,
+    activePlayers: result.activePlayers,
     thresholds: THRESHOLDS,
     players: result.players.map((p) => ({ ...p, displayName: name(p.userId), topOpponentName: p.topOpponentId ? name(p.topOpponentId) : null,
       topOpponentFriend: p.topOpponentId ? areFriends(p.userId, p.topOpponentId) : false, topOpponentSameClub: p.topOpponentId ? sameClub(p.userId, p.topOpponentId) : false })),

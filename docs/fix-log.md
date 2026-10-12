@@ -251,3 +251,5 @@
 | 2026-10-12 12:03 | #248: tournament result views — double-elim bracket tree, Swiss round columns, champion strip | [detail](docs/fix-log/2026-10-12-tournament-bracket-views.md) |
 | 2026-10-12 12:40 | untracked: tournament cards — meta as .rtag tags instead of `a · b · c` | [detail](docs/fix-log/2026-10-12-tournament-card-meta-tags.md) |
 | 2026-10-12 14:08 | #249: Louvain single pass split dense groups in 6/20 seeded graphs — added aggregation level | [detail](docs/fix-log/2026-10-12-rating-integrity-louvain-aggregation.md) |
+| 2026-10-12 14:40 | #249: rating-integrity view admin-only (new perm rating.integrity), was cheat.review | [detail](docs/fix-log/2026-10-12-rating-integrity-admin-only.md) |
+| 2026-10-12 15:10 | #249: star-shaped graph false flags — gates on active players + hub exemption (real data 6 -> 0 player flags) | [detail](docs/fix-log/2026-10-12-rating-integrity-star-graph.md) |

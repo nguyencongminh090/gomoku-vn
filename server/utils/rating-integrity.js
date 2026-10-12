@@ -4,15 +4,17 @@
  * rating-integrity.js — pure collusion signals over the ranked-game graph (#249, features/rating-integrity-graph).
  * Input: rating_history rows { user_id, opponent_id, game_id, score, rating_before, rating_after }.
  * Nodes = players, edge weight = ranked games between a pair. Output flags are for human review only;
- * nothing here touches ratings. Thresholds that depend on the graph being dense enough need POP_MIN players.
+ * nothing here touches ratings. Thresholds that depend on the graph being dense enough need POP_MIN *active* players (>= MIN_GAMES games). A hub (one account most others play) is not a suspect:
+ * players whose gain/opponents come from a hub are not flagged — real data was a star around one account.
  */
 
 const T = {
   MIN_GAMES: 10,        // player signals need this many ranked games
-  POP_MIN: 10,          // below this many players every graph looks "closed" — entropy/gain-share/community flags stay off
+  POP_MIN: 10,          // below this many ACTIVE players (>= MIN_GAMES games) every graph looks "closed" — entropy/gain-share/community flags stay off
   EFF_OPP_MAX: 2.5,     // effective opponents (2^entropy) at or below this → narrow opponent pool
   GAIN_MIN: 40,         // total positive rating gain before the top-opponent share means anything
   GAIN_SHARE: 0.6,      // top opponent supplied this share of positive gain
+  HUB_MIN_OPP: 8, HUB_MULT: 3, // hub = >= 8 distinct opponents and >= 3x the median among active players
   PAIR_MIN: 6,          // games inside a pair before asymmetry means anything
   PAIR_SKEW: 0.85,      // one side wins at least this share of decisive pair games
   GROUP_MIN: 3, GROUP_MAX: 8, GROUP_GAMES: 20, GROUP_INTERNAL: 0.9,
@@ -37,15 +39,27 @@ function perPlayer(rows) {
   return players;
 }
 
-function playerSignals(players, population) {
+/** Accounts most others play (the owner, an active regular). Their opponents' dependence on them is normal. */
+function findHubs(players) {
+  const active = [...players.values()].filter((p) => p.games >= T.MIN_GAMES).map((p) => p.opp.size).sort((a, b) => a - b);
+  if (!active.length) return new Set();
+  const median = active[Math.floor(active.length / 2)];
+  const hubs = new Set();
+  for (const p of players.values()) if (p.opp.size >= T.HUB_MIN_OPP && p.opp.size >= T.HUB_MULT * median) hubs.add(p.id);
+  return hubs;
+}
+
+function playerSignals(players, population, hubs) {
   const out = [];
   for (const p of players.values()) {
     if (p.games < T.MIN_GAMES) continue;
     let h = 0;
     let totalGain = 0;
     let top = null;
+    let most = null;
     for (const [oid, o] of p.opp) {
       const share = o.games / p.games;
+      if (!most || o.games > most.games) most = { id: oid, games: o.games };
       h -= share * Math.log2(share);
       totalGain += o.gain;
       if (!top || o.gain > top.gain) top = { id: oid, gain: o.gain };
@@ -53,8 +67,8 @@ function playerSignals(players, population) {
     const effective = 2 ** h;
     const gainShare = totalGain > 0 && top ? top.gain / totalGain : 0;
     const flags = [];
-    if (population >= T.POP_MIN && effective <= T.EFF_OPP_MAX) flags.push('narrow_opponents');
-    if (population >= T.POP_MIN && totalGain >= T.GAIN_MIN && gainShare >= T.GAIN_SHARE) flags.push('gain_from_one');
+    if (population >= T.POP_MIN && !hubs.has(most.id) && effective <= T.EFF_OPP_MAX) flags.push('narrow_opponents');
+    if (population >= T.POP_MIN && !(top && hubs.has(top.id)) && totalGain >= T.GAIN_MIN && gainShare >= T.GAIN_SHARE) flags.push('gain_from_one');
     if (flags.length) {
       out.push({ userId: p.id, games: p.games, uniqueOpponents: p.opp.size, effectiveOpponents: round(effective),
         topOpponentId: top ? top.id : null, topGainShare: round(gainShare), totalGain: round(totalGain, 1), flags });
@@ -158,8 +172,10 @@ function groupSignals(players, population) {
 
 function analyze(rows) {
   const players = perPlayer(rows);
-  const population = players.size;
-  return { population, players: playerSignals(players, population), pairs: pairSignals(players), groups: groupSignals(players, population) };
+  const active = [...players.values()].filter((p) => p.games >= T.MIN_GAMES).length;
+  const hubs = findHubs(players);
+  return { population: players.size, activePlayers: active, hubs: [...hubs],
+    players: playerSignals(players, active, hubs), pairs: pairSignals(players), groups: groupSignals(players, active) };
 }
 
 module.exports = { analyze, louvain, THRESHOLDS: T };
