@@ -680,6 +680,13 @@ class TournamentManager extends EventEmitter {
     if (result.error) return result;
     this._persistPairing(ctx.pairing);
     tournamentState.untrackDeadline(pairingId);
+    if (ctx.tournament.format === 'double_elim') {
+      // A bracket match has no "released" outcome: _advanceIfRoundComplete is a
+      // no-op for DE and nothing records a winner, so the next match would never
+      // be created. Reset the match in place instead (same as void/replay).
+      this._createReplayPairing(ctx.tournament, ctx.pairing);
+      return result;
+    }
     this._advanceIfRoundComplete(ctx.tournament);
     this._emitPairingChanged(tournamentId, pairingId);
     return result;
