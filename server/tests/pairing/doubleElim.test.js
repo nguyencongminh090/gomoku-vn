@@ -203,3 +203,30 @@ describe('computeEliminationGroups — placements below 2nd (#243)', () => {
     expect(computeEliminationGroups(bracket, new Map())).toEqual([]);
   });
 });
+
+describe('generateBracket — losers drop-in crossing (#244)', () => {
+  const players = (n) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
+
+  test('8 players: first drop round crosses W2 losers (L2M1 gets W2M2, L2M2 gets W2M1)', () => {
+    const { losers } = generateBracket(players(8));
+    expect(losers[1].map((m) => m.slotB.matchId)).toEqual(['W2M2', 'W2M1']);
+  });
+
+  test.each([8, 16, 32])('%i players: no first-drop-round match pairs an L1 survivor with a W2 loser from its own half', (n) => {
+    const { losers } = generateBracket(players(n));
+    losers[1].forEach((m, i) => {
+      // survivor L1M{i+1} descends from W1 pair i+1; W2M{k} descends from W1 pair k.
+      expect(m.slotA.matchId).toBe(`L1M${i + 1}`);
+      expect(m.slotB.matchId).not.toBe(`W2M${i + 1}`);
+    });
+  });
+
+  test('4 players (single drop match) and a mid-size field keep every winners-round loser mapped exactly once', () => {
+    for (const n of [4, 8, 16]) {
+      const { winners, losers } = generateBracket(players(n));
+      const dropped = losers.slice(1).flat().filter((m) => m.slotB.type === 'loser').map((m) => m.slotB.matchId);
+      const expected = winners.slice(1).flat().map((m) => m.id);
+      expect(dropped.sort()).toEqual(expected.sort());
+    }
+  });
+});

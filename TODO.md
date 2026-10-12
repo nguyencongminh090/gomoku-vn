@@ -79,6 +79,5 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#241.** Drop/forfeit player + replay-loop cap (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B241-tournament-drop-forfeit-replay-cap.md)
 - **#242.** Persist tournament seeds, deterministic on hydrate (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B242-tournament-persist-seeds.md)
-- **#244.** Double-elim losers drop-in crossing (size M) `[Model: Opus 5]` — [detail](docs/todo/B244-de-losers-dropin-crossing.md)
 - **#245.** Round-robin tiebreak: head-to-head/wins (size S–M) `[Model: Sonnet 5]` — [detail](docs/todo/B245-rr-tiebreak-head-to-head.md)
 - **#246.** Registration cap/close + enforce startsAt/endsAt (size M–L) `[Model: Sonnet 5]` — [detail](docs/todo/B246-tournament-registration-cap-and-dates.md)
