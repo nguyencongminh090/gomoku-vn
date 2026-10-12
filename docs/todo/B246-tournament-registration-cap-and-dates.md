@@ -1,5 +1,5 @@
 # B246 — Registration cap/close time; enforce startsAt/endsAt
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — tournament registration cap + close day (+ endsAt closes registration) (fix-log: docs/fix-log/2026-10-12-tournament-registration-cap-and-dates.md)
 **Area:** server/managers/tournament/TournamentManager.js (_validateRuleSet, registerPlayer), sweep, client create form
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 

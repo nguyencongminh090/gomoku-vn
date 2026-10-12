@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=332';
+import { client, setHeroTournamentCount } from './lobby.js?v=333';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -143,7 +143,7 @@ function renderLiveMatchRow(match) {
   const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
   const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
   const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
-    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=333#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
     : '';
   return `
     <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
@@ -151,7 +151,7 @@ function renderLiveMatchRow(match) {
       <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
       <div class="live-match-row__meta">
         ${gameIndexLabel}
-        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=333#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
       </div>
     </div>
   `;
@@ -287,11 +287,11 @@ function renderCard(tournament, index) {
   // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=333#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=333#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=332#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=333#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
@@ -304,6 +304,8 @@ function renderCard(tournament, index) {
       }
     } else if (isRegistered) {
       actionButtons += `<button class="btn-secondary" type="button" data-action="unregister" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_unregister')}</button>`;
+    } else if (tournament.registrationOpen === false) {
+      statusLine = `<span class="tournament-card__status">${t(tournament.maxPlayers && tournament.playerCount >= tournament.maxPlayers ? 'tournaments.status_full' : 'tournaments.status_reg_closed')}</span>`;
     } else {
       actionButtons += `<button class="btn btn-confirm" type="button" data-action="register" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_register')}</button>`;
     }
@@ -322,7 +324,7 @@ function renderCard(tournament, index) {
   const meta = [
     formatLabel(tournament.format),
     badge.label,
-    `${tournament.playerCount} ${t('tournaments.players_suffix')}`,
+    `${tournament.playerCount}${tournament.maxPlayers ? '/' + tournament.maxPlayers : ''} ${t('tournaments.players_suffix')}`,
     t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') }),
     tournament.clubName ? t('tournaments.club_suffix', { name: escapeHtml(tournament.clubName) }) : '',
   ].filter(Boolean).join(' · ');
@@ -418,6 +420,8 @@ function readTournamentRuleSet() {
     schedulingWindowMs: hours * 60 * 60 * 1000,
     startsAt: document.getElementById('t-starts-at').value || null,
     endsAt: document.getElementById('t-ends-at').value || null,
+    maxPlayers: parseInt(document.getElementById('t-max-players').value, 10) || null,
+    registrationClosesAt: document.getElementById('t-reg-closes-at').value || null,
     seriesMode, seriesGameCount, seriesTargetScore, seriesMargin,
   };
 }
@@ -431,6 +435,10 @@ modalConfirm.addEventListener('click', () => {
   // when they meant to configure a series, per docs/todo/B53-*.md).
   if (ruleSet.startsAt && ruleSet.endsAt && ruleSet.endsAt < ruleSet.startsAt) {
     alert(t('tournaments.period_validation'));
+    return;
+  }
+  if (ruleSet.maxPlayers !== null && !(ruleSet.maxPlayers >= 2 && ruleSet.maxPlayers <= 512)) {
+    alert(t('tournaments.max_players_validation'));
     return;
   }
   if (ruleSet.seriesMode === 'fixedCount'

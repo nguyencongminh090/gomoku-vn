@@ -71,3 +71,36 @@ describe('"Của CLB" tournaments tab', () => {
     expect(document.querySelector('[data-tournament-id="c"] .tournament-card__meta').textContent).not.toContain('club_suffix');
   });
 });
+
+describe('registration limits on cards (#246)', () => {
+  it('shows n/max, and swaps the Register button for a Full / Closed label when registrationOpen is false', async () => {
+    LIST.length = 0;
+    LIST.push(
+      T('open', { playerCount: 3, maxPlayers: 8, registrationOpen: true }),
+      T('full', { playerCount: 4, maxPlayers: 4, registrationOpen: false }),
+      T('late', { playerCount: 2, registrationOpen: false }),
+      T('plain'),
+    );
+    await boot();
+    const card = (id) => document.querySelector(`.tournament-card[data-tournament-id="${id}"]`);
+    expect(card('open').querySelector('.tournament-card__meta').textContent).toContain('3/8');
+    expect(card('open').querySelector('[data-action="register"]')).not.toBeNull();
+    expect(card('full').querySelector('[data-action="register"]')).toBeNull();
+    expect(card('full').textContent).toContain('tournaments.status_full');
+    expect(card('late').querySelector('[data-action="register"]')).toBeNull();
+    expect(card('late').textContent).toContain('tournaments.status_reg_closed');
+    expect(card('plain').querySelector('[data-action="register"]')).not.toBeNull();
+  });
+
+  it('create form sends maxPlayers / registrationClosesAt (null when blank)', async () => {
+    await boot();
+    document.getElementById('t-max-players').value = '16';
+    document.getElementById('t-reg-closes-at').value = '2026-12-31';
+    document.getElementById('modal-tournament-confirm').click();
+    const emit = window.__lobbyStub.client.emit;
+    const call = emit.mock.calls.find((c) => c[0] === 'tournament:create');
+    expect(call).toBeDefined();
+    expect(call[1].ruleSet.maxPlayers).toBe(16);
+    expect(call[1].ruleSet.registrationClosesAt).toBe('2026-12-31');
+  });
+});

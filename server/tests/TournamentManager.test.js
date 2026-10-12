@@ -159,6 +159,8 @@ describe('TournamentManager — createTournament', () => {
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,
       schedulingWindowMs: config.DEFAULT_SCHEDULING_WINDOW_MS,
       startsAt: null,
+      maxPlayers: null,
+      registrationClosesAt: null,
       endsAt: null,
       tiebreakRule: config.DEFAULT_TIEBREAK_RULE,
       seriesMode: 'single',
@@ -1387,6 +1389,79 @@ describe('TournamentManager — cancelTournament', () => {
       const { code } = tournamentManager.cancelTournament(organizer.userId, 'nonexistent-id');
       expect(code).toBe('TOURNAMENT_NOT_FOUND');
     }).not.toThrow();
+  });
+});
+
+// ── Registration limits (#246) ──────────────────────────────────────────
+
+describe('TournamentManager — registration cap / close (#246)', () => {
+  const make = (ruleSet) => tournamentManager.createTournament(user(), { format: 'swiss', ruleSet }).tournament;
+
+  test('maxPlayers is validated: int 2..512, else dropped to null', () => {
+    expect(make({ maxPlayers: 8 }).ruleSet.maxPlayers).toBe(8);
+    for (const bad of [1, 0, -3, 513, 2.5, '8', null, NaN]) expect(make({ maxPlayers: bad }).ruleSet.maxPlayers).toBeNull();
+    expect(make({}).ruleSet.maxPlayers).toBeNull();
+  });
+
+  test('registrationClosesAt keeps only real YYYY-MM-DD days', () => {
+    expect(make({ registrationClosesAt: '2030-05-01' }).ruleSet.registrationClosesAt).toBe('2030-05-01');
+    expect(make({ registrationClosesAt: '2026-02-31' }).ruleSet.registrationClosesAt).toBeNull();
+    expect(make({ registrationClosesAt: 'soon' }).ruleSet.registrationClosesAt).toBeNull();
+  });
+
+  test('the cap rejects the entry past maxPlayers with TOURNAMENT_FULL; unregistering frees a seat', () => {
+    const t = make({ maxPlayers: 2 });
+    const [a, b, c] = [user(), user(), user()];
+    expect(tournamentManager.registerPlayer(a, t.tournamentId).error).toBeUndefined();
+    expect(tournamentManager.registerPlayer(b, t.tournamentId).error).toBeUndefined();
+    expect(tournamentManager.registerPlayer(c, t.tournamentId).code).toBe('TOURNAMENT_FULL');
+    expect(t.entries.size).toBe(2);
+    tournamentManager.unregisterPlayer(a.userId, t.tournamentId);
+    expect(tournamentManager.registerPlayer(c, t.tournamentId).error).toBeUndefined();
+  });
+
+  test('an already-registered player still gets ALREADY_REGISTERED (not FULL) when the cap is hit', () => {
+    const t = make({ maxPlayers: 2 });
+    const [a, b] = [user(), user()];
+    tournamentManager.registerPlayer(a, t.tournamentId);
+    tournamentManager.registerPlayer(b, t.tournamentId);
+    expect(tournamentManager.registerPlayer(a, t.tournamentId).code).toBe('ALREADY_REGISTERED');
+  });
+
+  test('registrationClosesAt: open through that UTC day, REGISTRATION_CLOSED the day after; endsAt closes too', () => {
+    const t = make({ registrationClosesAt: '2030-05-01' });
+    const day = (iso) => Date.parse(iso);
+    expect(tournamentManager._registrationBlock(t, day('2030-05-01T23:59:59Z'))).toBeNull();
+    expect(tournamentManager._registrationBlock(t, day('2030-05-02T00:00:00Z')).code).toBe('REGISTRATION_CLOSED');
+    const e = make({ endsAt: '2030-06-10' });
+    expect(tournamentManager._registrationBlock(e, day('2030-06-10T12:00:00Z'))).toBeNull();
+    expect(tournamentManager._registrationBlock(e, day('2030-06-11T00:00:00Z')).code).toBe('REGISTRATION_CLOSED');
+    // earliest of the two wins
+    const both = make({ registrationClosesAt: '2030-05-01', endsAt: '2030-06-10' });
+    expect(tournamentManager._registrationBlock(both, day('2030-05-02T00:00:00Z')).code).toBe('REGISTRATION_CLOSED');
+  });
+
+  test('a past registrationClosesAt blocks registerPlayer for real', () => {
+    const t = make({ registrationClosesAt: '2020-01-01' });
+    expect(tournamentManager.registerPlayer(user(), t.tournamentId).code).toBe('REGISTRATION_CLOSED');
+  });
+
+  test('listTournaments exposes maxPlayers + registrationOpen', () => {
+    const t = make({ maxPlayers: 2 });
+    tournamentManager.registerPlayer(user(), t.tournamentId);
+    let row = tournamentManager.listTournaments().find((x) => x.tournamentId === t.tournamentId);
+    expect(row).toMatchObject({ maxPlayers: 2, registrationOpen: true });
+    tournamentManager.registerPlayer(user(), t.tournamentId);
+    row = tournamentManager.listTournaments().find((x) => x.tournamentId === t.tournamentId);
+    expect(row.registrationOpen).toBe(false);
+  });
+
+  test('limits survive a reload (ruleSet persisted)', () => {
+    const t = make({ maxPlayers: 3, registrationClosesAt: '2030-05-01' });
+    reload();
+    const r = tournamentManager.getTournament(t.tournamentId).ruleSet;
+    expect(r.maxPlayers).toBe(3);
+    expect(r.registrationClosesAt).toBe('2030-05-01');
   });
 });
 
