@@ -1,5 +1,5 @@
 # B240 — Verify/fix guest tournament entries after restart
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — guest tournament entries keep their guest id across restart (fix-log: docs/fix-log/2026-10-12-tournament-guest-entries-after-restart.md)
 **Area:** server/managers/tournament/TournamentManager.js (_hydrateTournament, _findEntryIdByUserId), db tournament_players
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 

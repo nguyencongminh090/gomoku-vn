@@ -60,6 +60,13 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
   logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
 }
 
+// Guest tournament entries (#240): persist the stable guest_xxxx id so a reload can re-link the entry.
+const playerColumns = db.prepare('PRAGMA table_info(tournament_players)').all().map((c) => c.name);
+if (playerColumns.length > 0 && !playerColumns.includes('guest_id')) {
+  db.exec('ALTER TABLE tournament_players ADD COLUMN guest_id TEXT');
+  logger.info('[DB] Migrated tournament_players: added guest_id column (#240)');
+}
+
 // Club-hosted tournaments (TODO.md #200 slice 4): nullable FK, SET NULL when the club is deleted.
 if (tournamentColumns.length > 0 && !tournamentColumns.includes('club_id')) {
   db.exec('ALTER TABLE tournaments ADD COLUMN club_id TEXT REFERENCES clubs(id) ON DELETE SET NULL');
@@ -698,14 +705,14 @@ function updateTournamentStatus(id, status, timestamps = {}) {
 
 /**
  * Insert a tournament player entry (guest-tolerant — playerId may be null).
- * @param {{ entryId, tournamentId, playerId, displayName, registeredAt }} entry
+ * @param {{ entryId, tournamentId, playerId, guestId, displayName, registeredAt }} entry
  */
-function saveTournamentPlayer({ entryId, tournamentId, playerId, displayName, registeredAt }) {
+function saveTournamentPlayer({ entryId, tournamentId, playerId, guestId, displayName, registeredAt }) {
   const stmt = db.prepare(
-    `INSERT INTO tournament_players (entry_id, tournament_id, player_id, display_name, registered_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO tournament_players (entry_id, tournament_id, player_id, guest_id, display_name, registered_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
   );
-  return stmt.run(entryId, tournamentId, playerId || null, displayName, registeredAt);
+  return stmt.run(entryId, tournamentId, playerId || null, guestId || null, displayName, registeredAt);
 }
 
 /**

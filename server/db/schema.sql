@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS tournament_players (
   entry_id      TEXT PRIMARY KEY,        -- UUID v4 — the real PK, since player_id may be null (guest)
   tournament_id TEXT NOT NULL REFERENCES tournaments(id),
   player_id     TEXT REFERENCES users(id), -- null for guests
+  guest_id      TEXT,                    -- guest_xxxx session id (guests only; lets a reload re-link the entry)
   display_name  TEXT NOT NULL,
   seed          INTEGER,                 -- bracket/pairing seed, set by startTournament()
   final_rank    INTEGER,                 -- set once the tournament completes

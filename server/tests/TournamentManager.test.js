@@ -1405,6 +1405,24 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     expect(tournamentManager.userTournamentMap.get(p1.userId).has(tournament.tournamentId)).toBe(true);
   });
 
+  test('#240: a guest entry keeps its guest id across reload — still isGuest, still in userTournamentMap, still found by id', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const g = guest();
+    const { entryId } = tournamentManager.registerPlayer(g, tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    const entry = reloaded.entries.get(entryId);
+    expect(entry.userId).toBe(g.userId);
+    expect(entry.isGuest).toBe(true);
+    expect(tournamentManager.userTournamentMap.get(g.userId).has(tournament.tournamentId)).toBe(true);
+    expect(tournamentManager._findEntryIdByUserId(reloaded, g.userId)).toBe(entryId);
+  });
+
   test('organizer name round-trips for a guest organizer too', () => {
     const organizer = guest({ displayName: 'Khách tổ chức' });
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
@@ -1414,19 +1432,17 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     expect(tournamentManager.getTournament(tournament.tournamentId).organizerName).toBe('Khách tổ chức');
   });
 
-  test('guest entries are absent from userTournamentMap after reload (known limitation, no durable guest id)', () => {
+  test('legacy guest rows (no guest_id) still reload unlinked — userId null, absent from userTournamentMap', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
-    const g = guest();
-    tournamentManager.registerPlayer(g, tournament.tournamentId);
+    database.saveTournamentPlayer({ entryId: 'legacy-guest-entry', tournamentId: tournament.tournamentId, playerId: null, displayName: 'Khách cũ', registeredAt: new Date().toISOString() });
 
     reload();
 
-    expect(tournamentManager.userTournamentMap.has(g.userId)).toBe(false);
-    const [entry] = Array.from(tournamentManager.getTournament(tournament.tournamentId).entries.values());
+    const entry = tournamentManager.getTournament(tournament.tournamentId).entries.get('legacy-guest-entry');
     expect(entry.userId).toBeNull();
     expect(entry.isGuest).toBe(true);
-    expect(entry.displayName).toBe(g.displayName);
+    expect(entry.displayName).toBe('Khách cũ');
   });
 
   test('swiss: reloaded pairing/round/standings state matches pre-reload state, and play continues correctly after reload', () => {
