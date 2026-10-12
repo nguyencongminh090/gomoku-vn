@@ -187,13 +187,17 @@ body.zen-lobby .lobby-bar__actions .link-action { font-size: 13px; font-weight: 
 body.zen-lobby .lobby-bar__actions [hidden] { display: none; }
 
 /* ── "Chơi" dashboard (B195) — platform.css .psplit/.ppanel/.prow + these ── */
-body.zen-lobby .hrow { width: 100%; text-align: left; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; cursor: pointer; }
+/* Ticket: raised surface, 4px-scale padding, 8px gap between tickets; title > meta > action hierarchy. */
+body.zen-lobby .prows, body.zen-lobby .hlives { gap: 8px; }
+body.zen-lobby .hrow { width: 100%; box-sizing: border-box; text-align: left; font: inherit; color: inherit; cursor: pointer; gap: 16px; padding: 12px 16px; border: 0; border-radius: var(--radius-lg); background: var(--c-surface-2); }
 body.zen-lobby .hrow:hover { background: var(--c-hover); }
-body.zen-lobby .hrow .prow__act { color: var(--c-ink-2); }
+body.zen-lobby .hrow .prow__t { font-weight: 600; line-height: 1.35; }
+body.zen-lobby .hrow__meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }
+body.zen-lobby .hrow .prow__act { padding: 4px 12px; border-radius: 999px; background: var(--c-surface); color: var(--c-ink-2); }
 body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
 body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
 body.zen-lobby .hbullet.on { background: var(--c-brand); }
-body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 4px; margin: 0; }
+body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
 body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wrap: wrap; padding: 4px 4px 8px; }
 body.zen-lobby .hstats[hidden] { display: none; }

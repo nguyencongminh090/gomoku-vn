@@ -12,7 +12,7 @@
 const database = require('../db/database');
 
 const MAX_PER_USER = 100;
-const TYPES = ['friend_request', 'friend_accepted', 'challenge', 'challenge_accepted', 'dm'];
+const TYPES = ['friend_request', 'friend_accepted', 'challenge', 'challenge_accepted', 'dm', 'club_invite', 'club_request', 'club_approved'];
 
 let emitter = () => {};
 const db = () => database.db;

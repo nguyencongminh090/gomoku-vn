@@ -11,7 +11,8 @@
   const $ = (id) => document.getElementById(id);
   const slug = decodeURIComponent(location.pathname.replace(/^\/c\//, '').replace(/\/$/, ''));
   const CATEGORIES = ['freestyle', 'standard', 'caro'];
-  const state = { category: CATEGORIES[0], club: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
+  const COLORS = ['blue', 'green', 'red', 'orange', 'purple', 'teal', 'pink', 'gray'];
+  const state = { category: CATEGORIES[0], weekly: false, color: 'blue', club: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
   const CHAT_POLL_MS = 8000;
   const OVERVIEW_ROWS = 10;
   const CHAT_PAGE = 50;
@@ -56,7 +57,7 @@
     a.href = '/u/' + encodeURIComponent(username);
     const body = el('div', undefined, 'prow__body');
     body.append(el('div', displayName, 'prow__t'));
-    if (meta) body.append(el('div', meta, 'prow__m'));
+    if (meta) body.append(window.PlatformShell.meta(meta));
     a.append(window.PlatformShell.avatar(avatarUrl, displayName, 'pav--sm'), body);
     return a;
   }
@@ -102,7 +103,7 @@
     row.dataset.id = String(m.id);
     const body = el('div', undefined, 'cb-chat__body');
     body.append(
-      el('div', m.displayName + ' · ' + fmtWhen(m.createdAt), 'cb-chat__who'),
+      Object.assign(window.PlatformShell.meta([m.displayName, fmtWhen(m.createdAt)]), { className: 'cb-chat__who prow__meta' }),
       el('div', decode(m.text), 'cb-chat__text'));
     row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), body);
     if (isStaff()) {
@@ -154,13 +155,57 @@
   }
 
 
+  function renderSwatches() {
+    $('cb-colors').replaceChildren(...COLORS.map((key) => {
+      const b = el('button', undefined, 'pswatch pav--c-' + key);
+      b.type = 'button';
+      b.setAttribute('role', 'radio');
+      b.setAttribute('aria-checked', String(key === state.color));
+      b.setAttribute('aria-label', t('clubs.color_' + key));
+      b.title = t('clubs.color_' + key);
+      b.onclick = () => { state.color = key; renderSwatches(); };
+      return b;
+    }));
+  }
+
+  function historyRow(e) {
+    const who = (u) => (u ? u.displayName : '');
+    const row = el('div', undefined, 'prow');
+    const body = el('div', undefined, 'prow__body');
+    body.append(el('div', t('clubs.log_' + e.type, { actor: who(e.actor), target: who(e.target), role: e.type === 'role' ? t('clubs.role_' + e.detail) : '' }), 'prow__t'),
+      window.PlatformShell.meta(fmtWhen(e.at)));
+    row.append(body);
+    return row;
+  }
+
+  /** Board tab: rating categories or "this week" (wins in 7 days, from the same payload). */
+  function renderBoardMode() {
+    const week = state.weekly;
+    const rows = state.club.weekly || [];
+    $('cb-board-wrap').hidden = week;
+    $('cb-weekly-wrap').hidden = !week || !rows.length;
+    $('cb-weekly-empty').hidden = !week || rows.length > 0;
+    $('cb-weekly-body').replaceChildren(...rows.map((m) => {
+      const tr = document.createElement('tr');
+      const name = document.createElement('td');
+      const link = el('a', m.displayName);
+      link.href = '/u/' + encodeURIComponent(m.username);
+      name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
+      tr.append(el('td', String(m.rank)), name, el('td', String(m.wins), 'num'), el('td', String(m.played), 'num'));
+      return tr;
+    }));
+    [...$('cb-tabs').children].forEach((b, i) => b.setAttribute('aria-selected', String(i === CATEGORIES.length ? week : !week && CATEGORIES[i] === state.category)));
+  }
+
   function render(c) {
     state.club = c;
     document.title = 'Play3CR — ' + c.name;
-    $('cb-avatar').replaceWith(Object.assign(window.PlatformShell.avatar(null, c.name, 'pav--xl pav--sq'), { id: 'cb-avatar' }));
+    $('cb-avatar').replaceWith(Object.assign(window.PlatformShell.avatar(null, c.name, 'pav--xl pav--sq', { color: c.color, tag: c.tag }), { id: 'cb-avatar' }));
     $('cb-name').textContent = c.name;
     $('cb-policy-badge').textContent = t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short');
     $('cb-desc').textContent = c.description;
+    $('cb-announce').hidden = !c.announcement;
+    $('cb-announce-text').textContent = c.announcement;
 
     const stats = $('cb-stats');
     stats.replaceChildren();
@@ -173,7 +218,7 @@
     const role = c.myRole;
     const staff = role === 'owner' || role === 'officer';
     $('cb-join').hidden = !!role;
-    $('cb-join').textContent = t(c.joinPolicy === 'open' ? 'clubs.join' : 'clubs.request');
+    $('cb-join').textContent = t(c.invited ? 'clubs.accept_invite' : c.joinPolicy === 'open' ? 'clubs.join' : 'clubs.request');
     $('cb-leave').hidden = !role || role === 'owner';
     $('cb-leave').textContent = role === 'pending' ? t('clubs.cancel_request') : t('clubs.leave');
     $('cb-delete').hidden = role !== 'owner';
@@ -186,7 +231,7 @@
       const row = el('div', undefined, 'prow');
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', e.title, 'prow__t'),
-        el('div', new Date(e.startsAt).toLocaleString(document.documentElement.lang || undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }), 'prow__m'));
+        window.PlatformShell.meta(new Date(e.startsAt).toLocaleString(document.documentElement.lang || undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })));
       row.append(body);
       if (staff) row.append(mini(t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
       return row;
@@ -197,7 +242,7 @@
       a.href = '/tournament.html?id=' + encodeURIComponent(x.id);
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', x.name, 'prow__t'),
-        el('div', [t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(document.documentElement.lang || undefined)].join(' · '), 'prow__m'));
+        window.PlatformShell.meta([t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(document.documentElement.lang || undefined)]));
       a.append(body);
       return a;
     }) : [el('p', t('clubs.no_tournaments'), 'pnote')]));
@@ -206,6 +251,16 @@
     $('cb-manage').hidden = !staff;
     if (staff) {
       $('cb-desc-input').value = c.description;
+      $('cb-announce-input').value = c.announcement;
+      $('cb-tag-input').value = c.tag;
+      state.color = c.color;
+      renderSwatches();
+      $('cb-invites').replaceChildren(...(c.invites || []).map((p) => {
+        const row = userRow(p.username, p.displayName, null);
+        row.append(mini(t('clubs.revoke'), () => act('DELETE', '/invites/' + encodeURIComponent(p.username))));
+        return row;
+      }));
+      $('cb-history').replaceChildren(...((c.history || []).length ? c.history.map(historyRow) : [el('p', t('clubs.history_none'), 'pnote')]));
       $('cb-policy').value = c.joinPolicy;
       $('cb-policy').hidden = $('cb-policy-label').hidden = role !== 'owner';
       const pending = c.pending || [];
@@ -218,7 +273,8 @@
       }) : [el('p', t('clubs.no_pending'), 'pnote')]));
     }
 
-    $('cb-actions-th').hidden = !staff;
+    const actions = staff || isMember();
+    $('cb-actions-th').hidden = !actions;
     $('cb-members-body').replaceChildren(...c.leaderboard.map((m) => {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
@@ -226,16 +282,24 @@
       link.href = '/u/' + encodeURIComponent(m.username);
       name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
       tr.append(name, el('td', t('clubs.role_' + m.role)));
-      if (staff) {
+      if (actions) {
         const td = document.createElement('td');
         td.className = 'num';
         const enc = encodeURIComponent(m.username);
+        if (isMember() && !m.mine && window.ChallengeModal) {
+          const ch = el('button', t('clubs.challenge'), 'pbtn pbtn--sm');
+          ch.type = 'button';
+          ch.onclick = () => window.ChallengeModal.open({ to: { username: m.username, displayName: m.displayName, avatarUrl: m.avatarUrl } });
+          td.append(ch, ' ');
+        }
+        if (staff) {
         const canKick = m.role !== 'owner' && (role === 'owner' || m.role === 'member');
         if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
         if (role === 'owner' && m.role !== 'owner') {
           td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
             () => act('PUT', '/members/' + enc + '/role', { role: m.role === 'officer' ? 'member' : 'officer' })));
           td.append(' ', mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
+        }
         }
         tr.append(td);
       }
@@ -252,17 +316,22 @@
     };
     $('cb-body').replaceChildren(...c.leaderboard.map(boardRow));
     // Tổng quan (mockup): the same ranking table, top of the list; the full board + rule chips stay in their tab.
-    $('cb-ov-title').textContent = t('clubs.board') + ' · ' + t('rankings.cat_' + state.category);
+    $('cb-ov-title').replaceChildren(t('clubs.board'), el('span', t('rankings.cat_' + state.category), 'pbadge'));
     $('cb-ov-body').replaceChildren(...c.leaderboard.slice(0, OVERVIEW_ROWS).map(boardRow));
 
-    $('cb-tabs').replaceChildren(...CATEGORIES.map((cat) => {
+    const chips = CATEGORIES.map((cat) => {
       const b = el('button', t('rankings.cat_' + cat), 'pchip');
       b.type = 'button';
       b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(cat === state.category));
-      b.onclick = () => { state.category = cat; load(); };
+      b.onclick = () => { state.category = cat; state.weekly = false; load(); };
       return b;
-    }));
+    });
+    const weekChip = el('button', t('clubs.board_week'), 'pchip');
+    weekChip.type = 'button';
+    weekChip.setAttribute('role', 'tab');
+    weekChip.onclick = () => { state.weekly = true; renderBoardMode(); };
+    $('cb-tabs').replaceChildren(...chips, weekChip);
+    renderBoardMode();
     $('cb-tab-chat').hidden = !isMember();
     if (!isMember() && state.chat.loaded) resetChat();
     $('cb-content').hidden = false;
@@ -289,9 +358,21 @@
     $('cb-delete').onclick = async () => { if (await act('DELETE', '', null, 'clubs.confirm_delete')) location.href = '/clubs.html'; };
     $('cb-form').onsubmit = async (ev) => {
       ev.preventDefault();
-      const body = { description: $('cb-desc-input').value };
+      const body = { description: $('cb-desc-input').value, announcement: $('cb-announce-input').value, tag: $('cb-tag-input').value, color: state.color };
       if (state.club.myRole === 'owner') body.joinPolicy = $('cb-policy').value;
       if (await act('PUT', '', body)) load();
+    };
+    $('cb-invite-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const name = $('cb-invite-name').value.trim();
+      if (name && await act('POST', '/invites/' + encodeURIComponent(name), {})) {
+        $('cb-invite-form').reset();
+        load();
+      }
+    };
+    $('cb-copy').onclick = async () => {
+      const url = location.origin + '/c/' + encodeURIComponent(slug);
+      try { await navigator.clipboard.writeText(url); $('cb-msg').textContent = t('clubs.link_copied'); } catch (_) { $('cb-msg').textContent = url; }
     };
     $('cb-event-form').onsubmit = async (ev) => {
       ev.preventDefault();

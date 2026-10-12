@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=323';
+import { client, setHeroTab } from './lobby.js?v=326';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -124,6 +124,11 @@ function clockAmount(sec) {
  * Only blitz carries an increment (TimerManager.applyMove) — per_game is a bare total (B196).
  */
 export function ruleLine(r) {
+  return ruleParts(r).join(' · ');
+}
+
+/** Same parts as ruleLine, kept separate so a ticket can lay them out as spaced segments (no "·" strings). */
+function ruleParts(r) {
   const parts = [];
   if (r.winningRule) parts.push(t('rankings.cat_' + r.winningRule));
   if (r.timerSeconds) {
@@ -133,15 +138,18 @@ export function ruleLine(r) {
     }
     else if (r.timerMode === 'per_move') parts.push(t('home.per_move', { s: r.timerSeconds }));
   }
-  return parts.join(' · ');
+  return parts;
 }
 
+/** meta: a string or an array of segments — segments render as separate spans, spaced by CSS gap. */
 function row(title, meta, action, onClick, bullet) {
   const r = el(onClick ? 'button' : 'div', undefined, 'prow hrow');
   if (onClick) { r.type = 'button'; r.addEventListener('click', onClick); }
   if (bullet !== undefined) r.appendChild(el('span', undefined, 'hbullet' + (bullet ? ' on' : '')));
   const body = el('div', undefined, 'prow__body');
-  body.append(el('div', title, 'prow__t'), el('div', meta, 'prow__m'));
+  const metaBox = el('div', undefined, 'prow__m hrow__meta');
+  for (const part of [].concat(meta)) if (part) metaBox.appendChild(el('span', part));
+  body.append(el('div', title, 'prow__t'), metaBox);
   r.appendChild(body);
   if (action) r.appendChild(el('span', action, 'prow__act'));
   return r;
@@ -155,13 +163,13 @@ function renderMine(data) {
   box.replaceChildren();
   const g = data.myGame;
   if (g) {
-    const title = g.opponent ? t('home.vs', { name: g.opponent }) + (ruleLine(g) ? ' · ' + ruleLine(g) : '') : (g.roomName || '');
-    const meta = g.state === 'playing' ? t(g.myTurn ? 'home.your_turn' : 'home.opp_turn') : t('home.waiting');
+    const title = g.opponent ? t('home.vs', { name: g.opponent }) : (g.roomName || '');
+    const meta = [...(g.opponent ? ruleParts(g) : []), g.state === 'playing' ? t(g.myTurn ? 'home.your_turn' : 'home.opp_turn') : t('home.waiting')];
     box.appendChild(row(title, meta, t('home.go_game'), () => window.joinRoom(g.roomId), true));
   }
   for (const m of data.myMatches || []) {
-    const title = m.tournamentName + (m.roundIndex !== null && m.roundIndex !== undefined ? ' · ' + t('home.round', { n: m.roundIndex + 1 }) : '');
-    const meta = t('home.vs', { name: m.opponent }) + ' · ' + t('home.match_' + m.state);
+    const title = m.tournamentName;
+    const meta = [m.roundIndex !== null && m.roundIndex !== undefined ? t('home.round', { n: m.roundIndex + 1 }) : '', t('home.vs', { name: m.opponent }), t('home.match_' + m.state)];
     box.appendChild(row(title, meta, t('home.details'), () => {
       location.href = 'tournament.html?id=' + encodeURIComponent(m.tournamentId);
     }, m.state === 'Ready'));
@@ -181,7 +189,7 @@ function renderToday(data) {
   if (!box) return;
   box.replaceChildren();
   for (const tr of data.tournaments || []) {
-    const meta = [t('home.status_' + tr.status), t('home.players', { n: tr.playerCount }), t('tournaments.format_' + tr.format)].join(' · ');
+    const meta = [t('home.status_' + tr.status), t('home.players', { n: tr.playerCount }), t('tournaments.format_' + tr.format)];
     const act = tr.registered ? t('home.registered') : t(tr.status === 'draft' ? 'home.register' : 'home.view');
     box.appendChild(row(tr.name, meta, act, () => {
       location.href = 'tournament.html?id=' + encodeURIComponent(tr.tournamentId);
@@ -210,7 +218,7 @@ function renderLive(data) {
   if (!box) return;
   box.replaceChildren();
   for (const g of data.live || []) {
-    const meta = [ruleLine(g), t('home.moves', { n: g.moves || 0 }), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''].filter(Boolean).join(' · ');
+    const meta = [...ruleParts(g), t('home.moves', { n: g.moves || 0 }), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''];
     box.appendChild(row(t('home.live_vs', { a: g.black || '?', b: g.white || '?' }), meta, t('home.view'), () => window.joinRoom(g.roomId)));
   }
   if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
@@ -239,7 +247,7 @@ function renderForum(data) {
   if (!box) return;
   box.replaceChildren();
   for (const th of data.forum || []) {
-    const meta = [t('forum.cat_' + th.category), t('forum.replies', { n: th.replyCount || 0 }), th.author].filter(Boolean).join(' · ');
+    const meta = [t('forum.cat_' + th.category), t('forum.replies', { n: th.replyCount || 0 }), th.author];
     box.appendChild(row(th.title, meta, t('home.view'), () => { location.href = '/forum/t/' + encodeURIComponent(th.id); }));
   }
   if (!box.children.length) box.appendChild(el('p', t('home.no_forum'), 'muted small hempty'));
@@ -256,7 +264,7 @@ function renderLearn(data) {
   if (!l) return;
   const parts = [l.total ? t('home.learn_total', { n: l.total }) : t('home.learn_none')];
   if (l.solved !== null && l.solved !== undefined && l.total) parts.push(t('home.learn_solved', { n: l.solved }));
-  box.appendChild(row(t('home.learn_title'), parts.join(' · '), t('home.view'), () => { location.href = '/puzzles'; }));
+  box.appendChild(row(t('home.learn_title'), parts, t('home.view'), () => { location.href = '/puzzles'; }));
 }
 
 function renderAbout(data) {

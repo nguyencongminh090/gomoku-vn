@@ -7,6 +7,7 @@ Generic notes: `CLAUDE.md`, `.claude/rules/*` and the `design-workflow` skill wi
 | Note | What it decides |
 |---|---|
 | [iconography](iconography.md) | **Project decision (#214):** Phosphor Regular only, sizes 16/20/24 (nothing < 16), visible labels, ≥ 24px targets, one icon per concept + registry |
+| [ticket-rows](ticket-rows.md) | **Project decision (2026-10-12):** list rows/tickets — meta as separate spans (no `a · b · c`), real padding (never 0), title > meta > action hierarchy |
 | [ux-design-systems](ux-design-systems.md) | What a web design system contains (tokens, components, patterns, guidance), how tokens are layered… |
 | [ux-forms-errors](ux-forms-errors.md) | Designing web forms and validation - server-side validation first, error summary plus inline… |
 | [ux-information-architecture](ux-information-architecture.md) | Structuring site content (information architecture), navigation as its interface, and designing URLs… |

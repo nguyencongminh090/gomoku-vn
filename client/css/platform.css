@@ -109,6 +109,13 @@ a.prow:hover { background: var(--c-hover); }
 .prow__body { flex: 1; min-width: 0; }
 .prow__t { font-size: 15px; font-weight: 500; overflow-wrap: anywhere; }
 .prow__m { margin-top: 2px; font-size: 12.5px; color: var(--c-ink-3); overflow-wrap: anywhere; }
+/* Ticket rows (docs/knowledge/ui-ux/ticket-rows.md) — opt-in per list via .prows--tickets; plain .prow stays for profile/social. */
+.prows--tickets { gap: var(--space-2); }
+.prows--tickets .prow { gap: var(--space-4); padding: var(--space-3) var(--space-4); border: 0; border-radius: var(--radius-lg); background: var(--c-surface-2); }
+a.prow:hover { background: var(--c-hover); }
+.prows--tickets .prow__t { font-weight: 600; line-height: 1.35; }
+.prow__meta { display: flex; flex-wrap: wrap; gap: 2px var(--space-3); margin-top: var(--space-1); }
+.prows--tickets .pnote { margin: 0; padding: var(--space-3) var(--space-4); }
 .prow__act { flex: none; font-size: 12.5px; font-weight: 600; color: var(--c-ink-2); }
 .pdot { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--c-ink-3); }
 .pdot--on { background: var(--c-brand-text); }
@@ -119,7 +126,7 @@ a.prow:hover { background: var(--c-hover); }
 
 /* ── Forms ───────────────────────────────────────────────────────────────── */
 .pform { display: flex; flex-direction: column; gap: 14px; max-width: 520px; }
-.pform label { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); }
+.pform label, .pform__label { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); }
 .pform input:not([type="checkbox"]):not([type="file"]), .pform textarea, .pform select { padding: 10px 12px; font-size: 14px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); resize: vertical; }
 .pform .pcheck { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; color: var(--c-ink); }
 .pform__hint { margin: 0; }
@@ -370,3 +377,27 @@ a.prow:hover { background: var(--c-hover); }
 .pchal__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .pchal__head .ph2 { margin-bottom: 0; }
 .pchal__stake .prow__m { color: var(--c-strong); font-weight: 600; }
+.ph2 .pbadge { margin-left: var(--space-2); padding: 2px 10px; font-size: 11px; letter-spacing: 0; }
+
+/* Club identity (#235): preset colours, white text ≥ 4.5:1. .pav.pav--c-* beats .pav--sq. */
+.pav.pav--c-blue { background-color: var(--club-blue); color: var(--club-ink); }
+.pav.pav--c-green { background-color: var(--club-green); color: var(--club-ink); }
+.pav.pav--c-red { background-color: var(--club-red); color: var(--club-ink); }
+.pav.pav--c-orange { background-color: var(--club-orange); color: var(--club-ink); }
+.pav.pav--c-purple { background-color: var(--club-purple); color: var(--club-ink); }
+.pav.pav--c-teal { background-color: var(--club-teal); color: var(--club-ink); }
+.pav.pav--c-pink { background-color: var(--club-pink); color: var(--club-ink); }
+.pav.pav--c-gray { background-color: var(--club-gray); color: var(--club-ink); }
+.pswatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pswatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; }
+.pswatch[aria-checked="true"] { border-color: var(--c-ink); outline: 2px solid var(--c-surface); outline-offset: -4px; }
+.cb-announce { margin-bottom: var(--space-4); }
+.cb-announce p { margin: 0; font-size: 14px; overflow-wrap: anywhere; white-space: pre-line; }
+.cb-announce .ph2 { margin-bottom: var(--space-2); }
+.cb-inline { display: flex; gap: var(--space-2); }
+.cb-inline input { flex: 1; min-width: 0; padding: 10px 12px; font-size: 14px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); }
+.cb-inline { margin-bottom: var(--space-3); }
+@media (max-width: 860px) {
+  #cb-tablist { flex-wrap: nowrap; overflow-x: auto; }
+  #cb-tablist .ptab { flex: none; }
+}
