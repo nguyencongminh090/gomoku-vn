@@ -57,19 +57,34 @@ describe('tournament-detail.js withdraw / drop controls (B241)', () => {
   test('a player sees Withdraw, not Drop, and it emits tournament:withdraw without entryId', () => {
     setup('u2');
     sock.trigger('tournament:detail', detail([entry(1), entry(2), entry(3)]));
-    expect(slot().querySelector('#drop-player-select')).toBeNull();
+    expect(slot().querySelector('#btn-drop-player')).toBeNull();
+    expect(slot().querySelector('#manage-menu').hidden).toBe(true);
+    slot().querySelector('#btn-manage').click();
+    expect(slot().querySelector('#manage-menu').hidden).toBe(false);
     slot().querySelector('#btn-withdraw').click();
     expect(emitted).toContainEqual(['tournament:withdraw', { tournamentId: 't1' }]);
   });
 
-  test('the organizer gets a picker of non-withdrawn players and drops the chosen entry', () => {
+  test('the organizer gets a list of non-withdrawn players and drops the chosen entry', () => {
     setup('u1');
     sock.trigger('tournament:detail', detail([entry(1), entry(2), entry(3, { withdrawn: true })]));
-    const options = [...slot().querySelectorAll('#drop-player-select option')].map((o) => o.value);
-    expect(options).toEqual(['e1', 'e2']);
-    slot().querySelector('#drop-player-select').value = 'e2';
+    slot().querySelector('#btn-manage').click();
     slot().querySelector('#btn-drop-player').click();
+    const options = [...slot().querySelectorAll('[data-drop-entry]')].map((o) => o.dataset.dropEntry);
+    expect(options).toEqual(['e1', 'e2']);
+    slot().querySelector('[data-drop-entry="e2"]').click();
     expect(emitted).toContainEqual(['tournament:withdraw', { tournamentId: 't1', entryId: 'e2' }]);
+  });
+
+  test('the manage menu closes on a pointerdown outside it (iOS never fires click on blank areas) but not inside', () => {
+    setup('u2');
+    sock.trigger('tournament:detail', detail([entry(1), entry(2)]));
+    const menu = () => slot().querySelector('#manage-menu');
+    slot().querySelector('#btn-manage').click();
+    menu().querySelector('#btn-withdraw').dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(menu().hidden).toBe(false);
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }));
+    expect(menu().hidden).toBe(true);
   });
 
   test('declining the confirm dialog emits nothing', () => {
