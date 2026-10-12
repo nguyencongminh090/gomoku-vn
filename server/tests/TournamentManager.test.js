@@ -357,6 +357,8 @@ describe('TournamentManager — registerPlayer / unregisterPlayer', () => {
   test('registration is rejected once the tournament is no longer draft', () => {
     const organizer = user();
     const tournament = draftTournament(organizer);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { error, code } = tournamentManager.registerPlayer(user(), tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -393,6 +395,7 @@ describe('TournamentManager — registerPlayer / unregisterPlayer', () => {
     const tournament = draftTournament(organizer);
     const player = user();
     tournamentManager.registerPlayer(player, tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { code } = tournamentManager.unregisterPlayer(player.userId, tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -441,15 +444,27 @@ describe('TournamentManager — concurrent registration (decision 6)', () => {
 // ── startTournament (Phase 1 stub) ──────────────────────────────────────
 
 describe('TournamentManager — startTournament (Phase 1 stub)', () => {
-  test('organizer can start a tournament with 0 players without throwing', () => {
+  test.each([0, 1])('#238 start with %i player(s) is rejected with NOT_ENOUGH_PLAYERS and the tournament stays draft', (n) => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
-    expect(() => {
-      const { tournament: started, error } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
-      expect(error).toBeUndefined();
-      expect(started.status).toBe('active');
-      expect(started.startedAt).toBeTruthy();
-    }).not.toThrow();
+    for (let k = 0; k < n; k++) tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    const { error, code } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(code).toBe('NOT_ENOUGH_PLAYERS');
+    expect(error).toBeTruthy();
+    expect(tournament.status).toBe('draft');
+    expect(tournament.startedAt).toBeFalsy();
+    expect(database.getTournamentById(tournament.tournamentId).status).toBe('draft');
+  });
+
+  test('#238 start with exactly 2 players succeeds', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    const { tournament: started, error } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(error).toBeUndefined();
+    expect(started.status).toBe('active');
+    expect(started.startedAt).toBeTruthy();
   });
 
   test('a non-organizer cannot start the tournament', () => {
@@ -465,6 +480,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test('starting an already-active tournament is rejected (no double-start)', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { code } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -479,6 +496,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test('status flip is persisted to SQLite', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const row = database.getTournamentById(tournament.tournamentId);
     expect(row.status).toBe('active');
@@ -488,6 +507,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test("emits 'tournament_started' with the tournamentId", () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     const listener = jest.fn();
     tournamentManager.once('tournament_started', listener);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);

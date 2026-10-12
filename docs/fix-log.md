@@ -238,3 +238,4 @@
 | 2026-10-12 06:30 | #231/#232: add-friend input shrunk to 180 px — `.psearch` class clashed with the rankings search; renamed `.padd` + jest guard. | [detail](docs/fix-log/2026-10-12-friend-add-box-css-clash.md) |
 | - | #234: club/clubs rows had 4px padding + "a · b · c" meta strings; PlatformShell.meta spans + .prows--tickets opt-in CSS, jsdom guards. | [detail](docs/fix-log/2026-10-12-club-ticket-rows.md) |
 | 2026-10-12 08:03 | #237: DE organizerAdjustPairing left the bracket stalled (no winner, advance no-op); now resets the match in place like void/replay. | [detail](docs/fix-log/2026-10-12-de-organizer-adjust-stall.md) |
+| 2026-10-12 08:05 | #238: startTournament set status active with <2 entries (no rounds, uncompletable); now NOT_ENOUGH_PLAYERS guard, stays draft. | [detail](docs/fix-log/2026-10-12-tournament-start-min-2-players.md) |
