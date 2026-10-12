@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+- ✅ **#247.** startsAt/endsAt accept impossible dates (size S) `[Model: Haiku 5]` — [detail](docs/todo/B247-tournament-isday-impossible-dates.md)
 - ✅ **#238.** Reject tournament start with <2 players (size S) `[Model: Haiku 5]` — [detail](docs/todo/B238-tournament-start-min-2-players.md)
 - ✅ **#237.** Double-elim: organizer-adjust stalls the bracket (bug, size S–M) `[Model: Sonnet 5]` — [detail](docs/todo/B237-de-organizer-adjust-stalls-bracket.md)
 - ✅ **#235.** Club upgrade bundle (identity, announcement, invites, notifications, weekly board, challenge, history) `[Model: Sonnet 5]` — [detail](docs/todo/B235-club-upgrade-bundle.md)

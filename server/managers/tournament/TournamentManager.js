@@ -1372,6 +1372,15 @@ class TournamentManager extends EventEmitter {
       ? Math.floor(ruleSet.schedulingWindowMs)
       : config.DEFAULT_SCHEDULING_WINDOW_MS;
 
+    // Tournament period — optional calendar dates 'YYYY-MM-DD'. Malformed values
+    // or an end before the start are dropped (null), never rejected: the period
+    // is informational, so a bad value must not block creating the tournament.
+    // Round-trip, not Date.parse: parse rolls 2026-02-31 over to Mar 3 instead of rejecting it.
+    const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+      && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
+    r.startsAt = isDay(ruleSet.startsAt) ? ruleSet.startsAt : null;
+    r.endsAt = isDay(ruleSet.endsAt) && (!r.startsAt || ruleSet.endsAt >= r.startsAt) ? ruleSet.endsAt : null;
+
     // Only one tiebreak method is implemented (decision 9) — validated
     // against a single-value allowlist so an invalid override can't silently
     // request a method Phase 2's standings.js doesn't know how to compute.
