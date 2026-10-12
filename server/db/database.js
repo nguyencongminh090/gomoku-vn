@@ -42,6 +42,13 @@ if (pairingColumns.length > 0 && !pairingColumns.includes('games')) {
   logger.info('[DB] Migrated tournament_pairings: added games column (TODO.md #50)');
 }
 
+// Puzzle walls/portals: older puzzles tables lack the layout column (additive, safe each startup).
+const puzzleColumns = db.prepare('PRAGMA table_info(puzzles)').all().map((c) => c.name);
+if (puzzleColumns.length > 0 && !puzzleColumns.includes('layout')) {
+  db.exec("ALTER TABLE puzzles ADD COLUMN layout TEXT NOT NULL DEFAULT '{}'");
+  logger.info('[DB] Migrated puzzles: added layout column (walls/portals)');
+}
+
 // B241: consecutive double-no-show count per pairing (replay cap).
 if (pairingColumns.length > 0 && !pairingColumns.includes('noshow_count')) {
   db.exec('ALTER TABLE tournament_pairings ADD COLUMN noshow_count INTEGER NOT NULL DEFAULT 0');

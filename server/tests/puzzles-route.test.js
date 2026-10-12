@@ -301,3 +301,33 @@ describe('editing', () => {
     expect((await call('PUT', '/api/puzzles/nope', 'author', good())).status).toBe(404);
   });
 });
+
+describe('walls + portals layout', () => {
+  const layout = { walls: [{ x: 0, y: 0 }], portals: [{ a: { x: 1, y: 0 }, b: 'C1' }] };
+  it('round-trips walls and portals (text cells normalised)', async () => {
+    addUser('layouter');
+    expect((await submit('layouter', good({ layout }))).status).toBe(201);
+    const p = (await call('GET', '/api/puzzles/mine', 'layouter')).body.puzzles[0];
+    expect(p.walls).toEqual([{ x: 0, y: 0 }]);
+    expect(p.portals).toEqual([{ a: { x: 1, y: 0 }, b: { x: 2, y: 14 } }]);
+  });
+
+  it('puzzles without a layout come back with empty walls/portals', async () => {
+    addUser('plain');
+    await submit('plain', good());
+    const p = (await call('GET', '/api/puzzles/mine', 'plain')).body.puzzles[0];
+    expect([p.walls, p.portals]).toEqual([[], []]);
+  });
+
+  it.each([
+    ['wall on a stone', { walls: [{ x: 7, y: 7 }] }],
+    ['wall off the board', { walls: [{ x: 15, y: 0 }] }],
+    ['duplicate wall', { walls: [{ x: 0, y: 0 }, { x: 0, y: 0 }] }],
+    ['portal missing an end', { portals: [{ a: { x: 1, y: 1 } }] }],
+    ['wall on the answer cell', { walls: [{ x: 6, y: 7 }] }],
+  ])('rejects %s', async (_n, bad) => {
+    addUser(`lay${_n.length}`);
+    const r = await submit(`lay${_n.length}`, good({ layout: bad }));
+    expect(r.status).toBe(400);
+  });
+});

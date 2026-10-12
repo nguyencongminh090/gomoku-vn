@@ -81,3 +81,19 @@ describe('other board sizes (17, 19, 20)', () => {
     expect(coords.parse('18', 17)).toBeNull();
   });
 });
+
+describe('parseSetup (free-form paste)', () => {
+  const C = require('../../client/js/coords.js');
+  it('alternates colours when no keyword, any separators', () => {
+    const r = C.parseSetup('1. h8, (i9)  H10\nj11', 15);
+    expect(r.stones.map((s) => s.color)).toEqual(['BLACK', 'WHITE', 'BLACK', 'WHITE']);
+    expect(r.bad).toEqual([]);
+  });
+  it('keywords set kind; portals pair cells; off-board cells are reported', () => {
+    const r = C.parseSetup('white a1 b2 wall c3 portal d4 e5 z9 f6', 15);
+    expect(r.stones.every((s) => s.color === 'WHITE')).toBe(true);
+    expect(r.walls).toHaveLength(1);
+    expect(r.portals).toHaveLength(1);
+    expect(r.bad).toEqual(['Z9', 'F6']);
+  });
+});
