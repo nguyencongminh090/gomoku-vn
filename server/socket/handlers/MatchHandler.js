@@ -52,7 +52,7 @@ function socketOf(entry) {
 }
 
 function status(entry) {
-  return { waiting: true, since: entry.since, inBucket: queue.countIn(entry), rule: entry.rule, time: entry.time, rated: entry.rated };
+  return { waiting: true, since: entry.since, inBucket: queue.countIn(entry), rule: entry.rule, time: entry.time, rated: entry.rated, wall: entry.wall, portal: entry.portal };
 }
 
 /** Turn a pair into a seated room. Returns the room, or null (both get match:error / requeue as needed). */
@@ -68,7 +68,7 @@ function makeRoom(a, b) {
     }
     return null;
   }
-  const settings = { ...PRESETS[a.time], winningRule: a.rule, ranked: a.rated, roomName: `${a.time} · ${a.displayName} vs ${b.displayName}` };
+  const settings = { ...PRESETS[a.time], winningRule: a.rule, ranked: a.rated, ruleWall: a.wall === true, rulePortal: a.portal === true, roomName: `${a.time} · ${a.displayName} vs ${b.displayName}` };
   const seated = seatPair(roomManager, a, b, settings, getClientIp(sa));
   if (seated.error) {
     for (const s of [sa, sb]) s.emit('match:error', { message: seated.error, code: seated.code });
@@ -134,6 +134,8 @@ function register(io, socket) {
       rule,
       time: String(payload.time || ''),
       rated: payload.rated === true,
+      wall: payload.wall === true,
+      portal: payload.portal === true,
       rating: payload.rated === true && !user.isGuest ? ratingOf(user.userId, rule) : INITIAL_RATING,
     });
     if (result.error) {
