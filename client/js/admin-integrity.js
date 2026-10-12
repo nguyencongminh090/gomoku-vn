@@ -20,18 +20,25 @@
   const pct = (x) => Math.round(x * 100);
 
   function card(title, badges, detail) {
-    const box = el('div', undefined, 'prow fm-report');
-    const head = el('div', undefined, 'fm-meta');
-    head.append(el('b', title), ...badges.map((b) => el('span', b, 'pbadge')));
-    box.append(head, el('p', detail, 'pnote'));
+    const box = el('div', undefined, 'prow ri-card');
+    const body = el('div', undefined, 'prow__body');
+    body.append(el('b', title, 'prow__t'), el('p', detail, 'prow__m'));
+    const tags = el('div', undefined, 'us-row__badges');
+    tags.append(...badges.map((x) => el('span', x, 'pbadge')));
+    box.append(body);
+    if (badges.length) box.append(tags);
     return box;
   }
   const context = (friends, club) => [friends && t('admin.i_friends'), club && t('admin.i_club')].filter(Boolean);
 
   function section(title, items) {
-    const wrap = el('div');
-    wrap.append(el('h3', title));
-    if (items.length) wrap.append(...items); else wrap.append(el('p', t('admin.i_empty'), 'muted small'));
+    const wrap = el('section', undefined, 'ri-sec');
+    const head = el('h3', undefined, 'ri-sec__h');
+    head.append(el('span', title), el('span', String(items.length), 'pbadge ri-sec__n' + (items.length ? ' is-hot' : '')));
+    wrap.append(head);
+    const list = el('div', undefined, 'prows prows--tickets');
+    if (items.length) list.append(...items); else list.append(el('p', t('admin.i_empty'), 'pnote'));
+    wrap.append(list);
     return wrap;
   }
 
@@ -43,6 +50,7 @@
     const pairs = d.pairs.map((p) => card(p.aName + ' – ' + p.bName, context(p.friends, p.sameClub),
       t('admin.i_pair', { games: p.games, a: p.aName, aw: p.aWins, b: p.bName, bw: p.bWins })));
     const groups = d.groups.map((g) => card(g.names.join(', '), [], t('admin.i_group', { games: g.games, share: pct(g.internalShare) })));
+    if (window.IntegrityViz) window.IntegrityViz.render($('ri-viz'), d.viz);
     $('ri-list').replaceChildren(section(t('admin.i_players'), players), section(t('admin.i_pairs'), pairs), section(t('admin.i_groups'), groups));
   }
 

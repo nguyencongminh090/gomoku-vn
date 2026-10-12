@@ -178,4 +178,36 @@ function analyze(rows) {
     players: playerSignals(players, active, hubs), pairs: pairSignals(players), groups: groupSignals(players, active) };
 }
 
-module.exports = { analyze, louvain, THRESHOLDS: T };
+const VIZ_MAX_NODES = 120;
+const RATING_BIN = 100;
+const GAME_BINS = [[1, 4], [5, 9], [10, 19], [20, 49], [50, Infinity]];
+
+/** Chart data from the same rows (rows ordered oldest → newest): graph (nodes + pair edges + Louvain community),
+ *  scatter points (games vs rating) and two distributions. Descriptive only — flags live in analyze(). */
+function visuals(rows) {
+  const players = perPlayer(rows);
+  const rating = new Map();
+  for (const r of rows) rating.set(r.user_id, r.rating_after);
+  const comm = louvain(players);
+  const size = new Map();
+  for (const c of comm.values()) size.set(c, (size.get(c) || 0) + 1);
+  const order = [...size].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))).map(([c]) => c);
+  const commIndex = new Map(order.map((c, i) => [c, i]));
+  const all = [...players.values()].sort((a, b) => b.games - a.games || String(a.id).localeCompare(String(b.id)));
+  const kept = all.slice(0, VIZ_MAX_NODES);
+  const keep = new Set(kept.map((p) => p.id));
+  const nodes = kept.map((p) => ({ id: p.id, games: p.games, rating: Math.round(rating.get(p.id)), opponents: p.opp.size, community: commIndex.get(comm.get(p.id)), communitySize: size.get(comm.get(p.id)) }));
+  const edges = [];
+  for (const p of kept) for (const [oid, o] of p.opp) {
+    if (keep.has(oid) && p.id < oid) edges.push({ a: p.id, b: oid, games: Math.max(o.games, players.get(oid).opp.get(p.id)?.games || 0) });
+  }
+  const ratings = all.map((p) => rating.get(p.id));
+  const lo = ratings.length ? Math.floor(Math.min(...ratings) / RATING_BIN) * RATING_BIN : 0;
+  const hi = ratings.length ? Math.floor(Math.max(...ratings) / RATING_BIN) * RATING_BIN : 0;
+  const ratingBins = [];
+  if (ratings.length) for (let from = lo; from <= hi; from += RATING_BIN) ratingBins.push({ from, to: from + RATING_BIN - 1, count: ratings.filter((x) => x >= from && x < from + RATING_BIN).length });
+  const gamesBins = GAME_BINS.map(([from, to]) => ({ from, to: Number.isFinite(to) ? to : null, count: all.filter((p) => p.games >= from && p.games <= to).length }));
+  return { total: all.length, shown: kept.length, communities: order.length, nodes, edges, ratingBins, gamesBins };
+}
+
+module.exports = { analyze, visuals, louvain, THRESHOLDS: T };

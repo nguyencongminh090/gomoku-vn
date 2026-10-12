@@ -6,22 +6,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Quản trị</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=352" />
-  <link rel="stylesheet" href="css/tokens.css?v=352" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=352" />
-  <link rel="stylesheet" href="css/platform.css?v=352" />
-  <link rel="stylesheet" href="css/puzzles.css?v=352" />
-  <link rel="stylesheet" href="css/forum.css?v=352" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=352" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=352">
+  <link rel="stylesheet" href="css/main.css?v=357" />
+  <link rel="stylesheet" href="css/tokens.css?v=357" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=357" />
+  <link rel="stylesheet" href="css/platform.css?v=357" />
+  <link rel="stylesheet" href="css/puzzles.css?v=357" />
+  <link rel="stylesheet" href="css/forum.css?v=357" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=357" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=357">
 
-  <script src="js/ui-mode-preload.js?v=352"></script>
-  <script src="js/skin-preload.js?v=352"></script>
+  <script src="js/ui-mode-preload.js?v=357"></script>
+  <script src="js/skin-preload.js?v=357"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
 
-<main class="papp" role="main">
+<main class="papp adm" role="main">
   <div class="pintro">
     <h1 data-i18n="admin.h1">Quản trị</h1>
     <p id="adm-role" class="muted small"></p>
@@ -87,9 +87,10 @@
   </section>
 
   <section id="adm-integrity" role="tabpanel" hidden>
-    <p id="ri-hint" class="muted small"></p>
+    <p id="ri-hint" class="ri-hint"></p>
     <p id="ri-msg" class="pnote" hidden></p>
-    <div id="ri-list" class="prows" aria-live="polite"></div>
+    <div id="ri-viz" class="ri-viz" hidden></div>
+    <div id="ri-list" class="ri-list" aria-live="polite"></div>
   </section>
 
   <section id="adm-news" role="tabpanel" hidden>
@@ -109,13 +110,13 @@
   </section>
 
   <section id="adm-users" role="tabpanel" hidden>
-    <form id="us-form" class="pform" role="search">
+    <form id="us-form" class="pform us-search" role="search">
       <input id="us-q" type="search" maxlength="50" autocomplete="off" data-i18n-placeholder="admin.u_search" placeholder="Tìm theo tên đăng nhập / tên hiển thị" aria-label="Tìm người dùng" />
     </form>
     <p id="us-msg" class="pnote" hidden></p>
     <div class="pz-review">
       <div>
-        <div id="us-list" class="prows" aria-live="polite"></div>
+        <div id="us-list" class="prows prows--tickets" aria-live="polite"></div>
         <div id="us-pager" class="ppager"></div>
       </div>
       <div id="us-detail" class="ppanel" hidden>
@@ -142,23 +143,24 @@
   </section>
 </main>
 
-<script src="js/i18n.js?v=352"></script>
-<script src="js/ui-mode.js?v=352"></script>
-<script src="js/session.js?v=352"></script>
-<script src="js/audio-manager.js?v=352"></script>
-<script src="js/settings-panel.js?v=352"></script>
-<script src="js/platform-shell.js?v=352"></script>
-<script src="js/coords.js?v=352"></script>
-<script src="js/board.js?v=352"></script>
-<script src="js/puzzle-board.js?v=352"></script>
-<script src="js/forum-common.js?v=352"></script>
-<script src="js/puzzles-review.js?v=352"></script>
-<script src="js/forum-reports.js?v=352"></script>
-<script src="js/admin-reports.js?v=352"></script>
-<script src="js/admin-users.js?v=352"></script>
-<script src="js/admin-cheat.js?v=352"></script>
-<script src="js/admin-integrity.js?v=352"></script>
-<script src="js/admin-news.js?v=352"></script>
-<script src="js/admin.js?v=352"></script>
+<script src="js/i18n.js?v=357"></script>
+<script src="js/ui-mode.js?v=357"></script>
+<script src="js/session.js?v=357"></script>
+<script src="js/audio-manager.js?v=357"></script>
+<script src="js/settings-panel.js?v=357"></script>
+<script src="js/platform-shell.js?v=357"></script>
+<script src="js/coords.js?v=357"></script>
+<script src="js/board.js?v=357"></script>
+<script src="js/puzzle-board.js?v=357"></script>
+<script src="js/forum-common.js?v=357"></script>
+<script src="js/puzzles-review.js?v=357"></script>
+<script src="js/forum-reports.js?v=357"></script>
+<script src="js/admin-reports.js?v=357"></script>
+<script src="js/admin-users.js?v=357"></script>
+<script src="js/admin-cheat.js?v=357"></script>
+<script src="js/admin-integrity-viz.js?v=357"></script>
+<script src="js/admin-integrity.js?v=357"></script>
+<script src="js/admin-news.js?v=357"></script>
+<script src="js/admin.js?v=357"></script>
 </body>
 </html>

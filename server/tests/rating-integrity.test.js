@@ -8,7 +8,7 @@ jest.mock('better-sqlite3', () => {
 });
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
-const { analyze, louvain } = require('../utils/rating-integrity');
+const { analyze, visuals, louvain } = require('../utils/rating-integrity');
 const database = require('../db/database');
 const service = require('../managers/RatingIntegrityService');
 
@@ -135,6 +135,38 @@ describe('louvain', () => {
   });
 });
 
+describe('visuals (charts)', () => {
+  test('empty input yields empty charts, not NaN', () => {
+    const v = visuals([]);
+    expect(v).toMatchObject({ total: 0, shown: 0, nodes: [], edges: [], ratingBins: [] });
+    expect(v.gamesBins.every((b) => b.count === 0)).toBe(true);
+  });
+  test('nodes carry games/rating/community; two planted groups get different communities; edges dedupe a pair', () => {
+    const rows = [...many('a1', 'a2', 6, 'a'), ...many('a2', 'a3', 6, 'a'), ...many('a1', 'a3', 6, 'b'),
+      ...many('b1', 'b2', 6, 'a'), ...many('b2', 'b3', 6, 'a'), ...many('b1', 'b3', 6, 'b')];
+    const v = visuals(rows);
+    const byId = new Map(v.nodes.map((n) => [n.id, n]));
+    expect(v.nodes).toHaveLength(6);
+    expect(byId.get('a1')).toMatchObject({ games: 12, opponents: 2, rating: expect.any(Number) });
+    expect(byId.get('a1').community).toBe(byId.get('a2').community);
+    expect(byId.get('a1').community).not.toBe(byId.get('b1').community);
+    expect(v.communities).toBe(2);
+    expect(v.edges).toHaveLength(6);
+    expect(v.edges.every((e) => e.a < e.b && e.games === 6)).toBe(true);
+  });
+  test('distributions: every player lands in exactly one bin; node list is capped, totals are not', () => {
+    const rows = [];
+    for (let i = 0; i < 130; i++) rows.push(...game(`p${i}`, `q${i}`, 'a'));
+    const v = visuals(rows);
+    expect(v.total).toBe(260);
+    expect(v.shown).toBe(120);
+    expect(v.nodes).toHaveLength(120);
+    expect(v.gamesBins.reduce((n, b) => n + b.count, 0)).toBe(260);
+    expect(v.ratingBins.reduce((n, b) => n + b.count, 0)).toBe(260);
+    expect(v.edges.every((e) => v.nodes.some((n) => n.id === e.a) && v.nodes.some((n) => n.id === e.b))).toBe(true);
+  });
+});
+
 describe('service', () => {
   const NOW = '2026-10-10T00:00:00.000Z';
   const user = (id, role = 'member') => database.db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at, role) VALUES (?, ?, 'x', ?, ?, ?)").run(id, id, id.toUpperCase(), NOW, role);
@@ -155,6 +187,7 @@ describe('service', () => {
     const out = service.report('adm');
     expect(out.pairs[0]).toMatchObject({ aName: 'BOOST', bName: 'FEEDER', friends: true, sameClub: false });
     expect(out.players.find((p) => p.userId === 'boost')).toMatchObject({ displayName: 'BOOST', topOpponentName: 'FEEDER', topOpponentFriend: true });
+    expect(out.viz.nodes.find((n) => n.id === 'boost')).toMatchObject({ name: 'BOOST', games: 12 });
     expect(database.db.prepare('SELECT COUNT(*) n FROM ratings').get().n).toBe(0);
   });
 });
