@@ -26,3 +26,12 @@ Status: **open** (recorded 2026-10-12). Resolve with the user, then formalize in
 `server/managers/RatingService.js` (`rateGame`), `server/db/database.js` (queries), `server/routes/admin.js`
 + admin page, `scripts/` (batch job), schema migration if a flag table is added, tests.
 Knowledge: check `docs/knowledge/INDEX.md` (security/storage) before deciding Q4/Q5.
+
+## Decisions (2026-10-12, user)
+- **Q1 scope v1:** detect + admin list only; no rating effect (so Q2 pair damping → later item).
+- **Q3 signals:** all four — opponent entropy/unique opponents, top-opponent gain share, pair asymmetry,
+  community detection (Louvain). Louvain last in sequencing: thresholds need real data; scale with population.
+- **Q5 action:** admin-only note; no ranking/rating effect.
+- **Q7 run mode:** computed on demand by a query on the admin page; no new table, no migration.
+- **Still open (not blocking v1):** Q2 (damping N, skip vs scale), Q4 (IP/device, privacy), Q6 (friend/club
+  context shown as annotation, per user_story rule), Q8 (matchmaking).
