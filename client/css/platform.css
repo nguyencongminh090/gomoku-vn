@@ -407,6 +407,7 @@ a.prow:hover { background: var(--c-hover); }
 .pcrop__ring--rect { border-radius: var(--radius); box-shadow: inset 0 0 0 2px var(--c-on-brand); }
 /* Club banner + image controls (#250) */
 .cb-banner { width: 100%; aspect-ratio: 6 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
+@media (max-width: 600px) { .cb-banner { aspect-ratio: 3 / 1; } }   /* 6:1 is ~60px on a phone: crop the sides (cover) for a taller strip */
 .cb-images { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .cb-images__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .cb-images__row .pform__label { min-width: 120px; }
