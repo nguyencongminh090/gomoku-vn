@@ -252,8 +252,7 @@ class TournamentManager extends EventEmitter {
 
     if (tournament.format === 'swiss') {
       tournament.currentRoundIndex = maxRoundIndex;
-      tournament.totalRounds = tournament.ruleSet.swissRounds
-        || Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
+      tournament.totalRounds = Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
       tournament.currentRoundPairingIds = new Set(
         tournamentPairings().filter((p) => p.roundIndex === maxRoundIndex).map((p) => p.pairingId)
       );
@@ -499,8 +498,7 @@ class TournamentManager extends EventEmitter {
     if (entryIds.length >= 2) {
       if (tournament.format === 'swiss') {
         tournament.currentRoundIndex = 1;
-        tournament.totalRounds = tournament.ruleSet.swissRounds
-          || Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
+        tournament.totalRounds = Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
         const standings = entryIds.map((id) => ({ id, score: 0, opponents: new Set(), hadBye: false }));
         const pairingsSpec = swissPairing.generateNextRound(standings);
         this._materializeRound(tournament, pairingsSpec);
