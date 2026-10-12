@@ -29,7 +29,7 @@
     const body = el('div', undefined, 'prow__body');
     body.append(el('div', c.name, 'prow__t'));
     body.append(window.PlatformShell.meta([t('clubs.members', { n: c.members }), c.avgRating ? t('clubs.avg', { n: c.avgRating }) : '', c.description]));
-    a.append(window.PlatformShell.avatar(null, c.name, 'pav--sm pav--sq', { color: c.color, tag: c.tag }), body);
+    a.append(window.PlatformShell.avatar(c.avatarUrl, c.name, 'pav--sm pav--sq', { color: c.color, tag: c.tag }), body);
     if (c.rank) a.append(el('span', t('clubs.rank_badge', { n: c.rank }), 'pbadge'));
     a.append(el('span', t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short'), 'pbadge'));
     return a;
@@ -91,7 +91,7 @@
       a.href = '/c/' + encodeURIComponent(c.slug);
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', c.name, 'prow__t'), el('div', t('clubs.members', { n: c.members }), 'prow__m'));
-      a.append(window.PlatformShell.avatar(null, c.name, 'pav--sm pav--sq'), body, el('span', t('clubs.role_' + c.role), 'pbadge'));
+      a.append(window.PlatformShell.avatar(c.avatarUrl, c.name, 'pav--sm pav--sq'), body, el('span', t('clubs.role_' + c.role), 'pbadge'));
       return a;
     }) : [el('p', t('clubs.no_mine'), 'pnote')]));
   }

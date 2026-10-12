@@ -435,3 +435,62 @@ describe('club upgrade (#235)', () => {
     delete window.ChallengeModal;
   });
 });
+
+describe('club avatar + banner (#250)', () => {
+  const bg = (id) => document.getElementById(id).style.backgroundImage;
+
+  it('shows the banner and avatar images; hides the banner when there is none', async () => {
+    await bootClub({ ...CLUB, avatarUrl: '/api/clubs/caro/avatar?v=3', bannerUrl: '/api/clubs/caro/banner?v=4' });
+    expect(document.getElementById('cb-banner').hidden).toBe(false);
+    expect(bg('cb-banner')).toContain('/api/clubs/caro/banner?v=4');
+    expect(bg('cb-avatar')).toContain('/api/clubs/caro/avatar?v=3');
+    await bootClub({ ...CLUB, avatarUrl: null, bannerUrl: null });
+    expect(document.getElementById('cb-banner').hidden).toBe(true);
+    expect(document.getElementById('cb-avatar').textContent).not.toBe('');
+  });
+
+  it('staff get a change button per image; picking a file opens the crop editor then POSTs the blob', async () => {
+    const blob = { type: 'image/webp', size: 10 };
+    window.AvatarCrop = { open: jest.fn(() => Promise.resolve(blob)) };
+    await bootClub({ ...CLUB, myRole: 'owner', bannerUrl: '/api/clubs/caro/banner?v=4' });
+    expect(document.getElementById('cb-avatar-pick')).not.toBeNull();
+    const input = document.getElementById('cb-banner-file');
+    const file = { name: 'b.png' };
+    Object.defineProperty(input, 'files', { value: [file], configurable: true });
+    global.fetch.mockClear();
+    input.onchange();
+    await flush(); await flush();
+    expect(window.AvatarCrop.open).toHaveBeenCalledWith(file, expect.objectContaining({ aspect: 6, outWidth: 1200, titleKey: 'clubs.banner_crop_title' }));
+    const [url, init] = global.fetch.mock.calls[0];
+    expect(url).toBe('/api/clubs/caro/banner');
+    expect(init).toMatchObject({ method: 'POST', body: blob });
+    expect(init.headers['Content-Type']).toBe('image/webp');
+    delete window.AvatarCrop;
+  });
+
+  it('cancelling the editor uploads nothing; remove only shows for an existing image and DELETEs it', async () => {
+    window.AvatarCrop = { open: jest.fn(() => Promise.resolve(null)) };
+    await bootClub({ ...CLUB, myRole: 'officer', avatarUrl: null, bannerUrl: '/api/clubs/caro/banner?v=4' });
+    const rows = [...document.querySelectorAll('.cb-images__row')];
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelectorAll('button')).toHaveLength(1); // avatar: change only
+    expect(rows[1].querySelectorAll('button')).toHaveLength(2); // banner: change + remove
+    const input = document.getElementById('cb-avatar-file');
+    Object.defineProperty(input, 'files', { value: [{ name: 'a.png' }], configurable: true });
+    global.fetch.mockClear();
+    input.onchange();
+    await flush(); await flush();
+    expect(global.fetch).not.toHaveBeenCalled();
+    window.confirm = () => true;
+    rows[1].querySelectorAll('button')[1].click();
+    await flush();
+    expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/banner');
+    expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    delete window.AvatarCrop;
+  });
+
+  it('plain members never get the controls', async () => {
+    await bootClub({ ...CLUB, myRole: 'member' });
+    expect(document.getElementById('cb-manage').hidden).toBe(true);
+  });
+});

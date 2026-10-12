@@ -45,6 +45,46 @@
     return res.ok ? (data || {}) : null;
   }
 
+  // Avatar + banner (#250): crop in avatar-crop.js, then POST the blob; the server re-encodes and enforces the size.
+  const IMAGES = {
+    avatar: { aspect: 1, outWidth: 512 },
+    banner: { aspect: 6, outWidth: 1200 },
+  };
+
+  async function pickImage(kind, file) {
+    const { aspect, outWidth } = IMAGES[kind];
+    let blob = file;
+    if (window.AvatarCrop) {
+      blob = await window.AvatarCrop.open(file, {
+        aspect, outWidth, titleKey: 'clubs.' + kind + '_crop_title', onError: (m) => { $('cb-msg').textContent = m; },
+      });
+    }
+    if (!blob) return;
+    const res = await fetch(base() + '/' + kind, {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': blob.type || 'application/octet-stream' }, body: blob,
+    });
+    if (res.status === 401) { location.href = '/login.html'; return; }
+    if (res.ok) { $('cb-msg').textContent = ''; load(); } else $('cb-msg').textContent = errMsg(await res.json().catch(() => null));
+  }
+
+  function renderImages(c) {
+    const rows = Object.keys(IMAGES).map((kind) => {
+      const input = document.createElement('input');
+      input.type = 'file'; input.accept = 'image/jpeg,image/png,image/webp'; input.hidden = true; input.id = 'cb-' + kind + '-file';
+      input.onchange = () => { const f = input.files[0]; input.value = ''; if (f) pickImage(kind, f); };
+      const url = c[kind + 'Url'];
+      const pick = el('button', t('clubs.' + kind + '_change'), 'pbtn pbtn--sm');
+      pick.type = 'button';
+      pick.id = 'cb-' + kind + '-pick';
+      pick.onclick = () => input.click();
+      const row = el('div', undefined, 'cb-images__row');
+      row.append(el('span', t('clubs.' + kind), 'pform__label'), pick, input);
+      if (url) row.append(mini(t('clubs.image_remove'), async () => { if (await act('DELETE', '/' + kind)) load(); }));
+      return row;
+    });
+    $('cb-images').replaceChildren(...rows, el('p', t('clubs.image_hint'), 'pnote'));
+  }
+
   function mini(label, fn) {
     const b = el('button', label, 'pbtn pbtn--sm');
     b.type = 'button';
@@ -200,7 +240,10 @@
   function render(c) {
     state.club = c;
     document.title = 'Play3CR — ' + c.name;
-    $('cb-avatar').replaceWith(Object.assign(window.PlatformShell.avatar(null, c.name, 'pav--xl pav--sq', { color: c.color, tag: c.tag }), { id: 'cb-avatar' }));
+    $('cb-avatar').replaceWith(Object.assign(window.PlatformShell.avatar(c.avatarUrl, c.name, 'pav--xl pav--sq', { color: c.color, tag: c.tag }), { id: 'cb-avatar' }));
+    $('cb-banner').hidden = !c.bannerUrl;
+    $('cb-banner').style.backgroundImage = c.bannerUrl ? 'url("' + c.bannerUrl + '")' : '';
+    $('cb-banner').setAttribute('aria-label', c.name);
     $('cb-name').textContent = c.name;
     $('cb-policy-badge').textContent = t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short');
     $('cb-desc').textContent = c.description;
@@ -250,6 +293,7 @@
 
     $('cb-manage').hidden = !staff;
     if (staff) {
+      renderImages(c);
       $('cb-desc-input').value = c.description;
       $('cb-announce-input').value = c.announcement;
       $('cb-tag-input').value = c.tag;

@@ -43,6 +43,7 @@ tools/profanity-training/data/
 # Playwright
 /playwright/.auth/
 server/data/avatars/
+server/data/club-images/
 
 # DB safety copies (real user data) — never commit
 server/db/*.bak-*

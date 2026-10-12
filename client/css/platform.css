@@ -401,3 +401,12 @@ a.prow:hover { background: var(--c-hover); }
   #cb-tablist { flex-wrap: nowrap; overflow-x: auto; }
   #cb-tablist .ptab { flex: none; }
 }
+/* Wide variant for the club banner editor (#250): 6:1 viewport, rectangular frame */
+.pcrop__dlg--wide { max-width: 540px; }
+.pcrop__dlg--wide .pcrop__view { width: 480px; }
+.pcrop__ring--rect { border-radius: var(--radius); box-shadow: inset 0 0 0 2px var(--c-on-brand); }
+/* Club banner + image controls (#250) */
+.cb-banner { width: 100%; aspect-ratio: 6 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
+.cb-images { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.cb-images__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.cb-images__row .pform__label { min-width: 120px; }

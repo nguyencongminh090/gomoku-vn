@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const database = require('../db/database');
 const { CATEGORIES } = require('./RatingService');
 const dmText = require('./DmText');
+const { KINDS, removeImage } = require('../utils/club-image-store');
 const notifications = require('./NotificationService');
 
 const MAX_MEMBERS = 500;
@@ -177,10 +178,28 @@ function updateClub(userId, slug, input) {
   }
 }
 
+const imageUrl = (slug, kind, v) => (v ? `/api/clubs/${slug}/${kind}?v=${v}` : null);
+
+/** Staff gate for avatar/banner changes; returns the club row. */
+function clubForImageEdit(userId, slug) {
+  const club = getClub(slug);
+  requireStaff(club, userId);
+  return club;
+}
+
+/** Record that the file for `kind` changed (or was removed); returns its new URL (null when removed). */
+function setImageVersion(club, kind, clear) {
+  const col = kind === 'avatar' ? 'avatar_v' : 'banner_v';
+  const v = clear ? 0 : Date.now() % 2147483647;
+  db().prepare(`UPDATE clubs SET ${col} = ? WHERE id = ?`).run(v, club.id);
+  return imageUrl(club.slug, kind, v);
+}
+
 function deleteClub(userId, slug) {
   const club = getClub(slug);
   if (roleOf(club.id, userId) !== 'owner') throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ chủ nhiệm xoá được CLB.');
   db().prepare('DELETE FROM clubs WHERE id = ?').run(club.id); // members cascade
+  for (const kind of Object.keys(KINDS)) removeImage(club.id, kind);
 }
 
 // ---------------------------------------------------------------------------
@@ -327,7 +346,7 @@ function listClubs({ q, page, limit, category }) {
   const like = q ? [`%${q.replace(/[\\%_]/g, '\\$&')}%`] : [];
   const total = db().prepare(`SELECT COUNT(*) AS n FROM clubs c ${where}`).get(...like).n;
   const rows = db().prepare(`
-    SELECT c.id, c.slug, c.name, c.description, c.join_policy, c.color, c.tag,
+    SELECT c.id, c.slug, c.name, c.description, c.join_policy, c.color, c.tag, c.avatar_v,
            (SELECT COUNT(*) FROM club_members m WHERE m.club_id = c.id AND m.role != 'pending') AS members,
            ${avgRatingSql()} AS avg_rating
     FROM clubs c ${where}
@@ -336,6 +355,7 @@ function listClubs({ q, page, limit, category }) {
   const ranks = clubRanks(category);
   return { total, clubs: rows.map((r) => ({
     slug: r.slug, name: r.name, description: r.description, joinPolicy: r.join_policy, color: r.color, tag: r.tag,
+    avatarUrl: imageUrl(r.slug, 'avatar', r.avatar_v),
     members: r.members, avgRating: r.avg_rating, rank: ranks.get(r.id) || null,
   })) };
 }
@@ -514,6 +534,7 @@ function getClubDetail(slug, viewerId, category) {
     slug: club.slug, name: club.name, description: club.description, joinPolicy: club.join_policy,
     createdAt: club.created_at, category,
     color: club.color, tag: club.tag, announcement: club.announcement,
+    avatarUrl: imageUrl(club.slug, 'avatar', club.avatar_v), bannerUrl: imageUrl(club.slug, 'banner', club.banner_v),
     weekly: weeklyBoard(club.id),
     invited: !!viewerId && !!db().prepare('SELECT 1 FROM club_invites WHERE club_id = ? AND user_id = ?').get(club.id, viewerId),
     members: rows.length,
@@ -544,11 +565,11 @@ function getClubDetail(slug, viewerId, category) {
 
 function clubsOfUser(userId) {
   return db().prepare(`
-    SELECT c.slug, c.name, m.role,
+    SELECT c.slug, c.name, c.avatar_v, m.role,
            (SELECT COUNT(*) FROM club_members x WHERE x.club_id = c.id AND x.role != 'pending') AS members
     FROM club_members m JOIN clubs c ON c.id = m.club_id
     WHERE m.user_id = ? AND m.role != 'pending' ORDER BY m.joined_at`).all(userId)
-    .map((r) => ({ slug: r.slug, name: r.name, role: r.role, members: r.members }));
+    .map((r) => ({ slug: r.slug, name: r.name, role: r.role, members: r.members, avatarUrl: imageUrl(r.slug, 'avatar', r.avatar_v) }));
 }
 
 function userIdByUsername(username) {
@@ -560,5 +581,5 @@ module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage,
-  listClubs, getClubDetail, clubsOfUser, userIdByUsername,
+  clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };
