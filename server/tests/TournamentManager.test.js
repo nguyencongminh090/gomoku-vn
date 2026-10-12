@@ -601,6 +601,15 @@ describe('TournamentManager — listTournaments / serialization', () => {
     expect(tournamentManager.serializePairing(pairing).roundIndex).toBe(1);
   });
 
+  test('#239: ruleSet.swissRounds is not an accepted field — Swiss round count is always ceil(log2 n)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss', ruleSet: { swissRounds: 1 } }).tournament;
+    expect(tournament.ruleSet.swissRounds).toBeUndefined();
+    for (let i = 0; i < 5; i++) tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(tournament.totalRounds).toBe(3); // ceil(log2 5)
+  });
+
   test('Double Elimination has no round grouping — currentRoundIndex/totalRounds and each pairing\'s roundIndex are null', () => {
     const organizer = user();
     const p1 = user(), p2 = user();

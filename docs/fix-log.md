@@ -240,3 +240,4 @@
 | 2026-10-12 08:03 | #237: DE organizerAdjustPairing left the bracket stalled (no winner, advance no-op); now resets the match in place like void/replay. | [detail](docs/fix-log/2026-10-12-de-organizer-adjust-stall.md) |
 | 2026-10-12 08:05 | #238: startTournament set status active with <2 entries (no rounds, uncompletable); now NOT_ENOUGH_PLAYERS guard, stays draft. | [detail](docs/fix-log/2026-10-12-tournament-start-min-2-players.md) |
 | 2026-10-12 08:06 | #247: ruleSet startsAt/endsAt accepted 2026-02-31 (Date.parse rolls over); isDay now round-trips through toISOString, bad dates drop to null. | [detail](docs/fix-log/2026-10-12-tournament-isday-impossible-dates.md) |
+| 2026-10-12 12:00 | #239: swissRounds ruleSet branches removed (dead code) | [detail](docs/fix-log/2026-10-12-tournament-swiss-rounds-dead-code.md) |

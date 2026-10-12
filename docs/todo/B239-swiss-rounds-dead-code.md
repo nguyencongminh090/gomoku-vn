@@ -1,5 +1,5 @@
 # B239 — swissRounds ruleSet field read but never validated
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-12 — swissRounds ruleSet branches removed (dead code) (fix-log: docs/fix-log/2026-10-12-tournament-swiss-rounds-dead-code.md)
 **Area:** server/managers/tournament/TournamentManager.js (_validateRuleSet, startTournament, _hydrateFormatState)
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 
