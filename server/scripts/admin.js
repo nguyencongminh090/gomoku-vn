@@ -655,6 +655,7 @@ const commandHandlers = {
   'truncate-table': handleTruncateTable,
   'set-password': handleSetPassword,
   'set-role': handleSetRole,
+  'make-admin': (flags) => handleSetRole({ ...flags, role: 'admin' }),
   'list-users': handleListUsers,
   'view-table': handleViewTable,
   'db-overview': handleDbOverview,
@@ -675,6 +676,7 @@ const MENU = [
   { name: 'truncate-table', message: 'truncate-table   — wipe a table (destructive)' },
   { name: 'set-password', message: 'set-password     — reset a user\'s password' },
   { name: 'set-role', message: 'set-role         — set staff role (member|moderator|admin)' },
+  { name: 'make-admin', message: 'make-admin      — grant admin role to a user (quick)' },
   { name: 'exit', message: 'exit' },
 ];
 
@@ -683,6 +685,7 @@ async function promptFlags(command) {
   switch (command) {
     case 'delete-user':
     case 'set-role':
+    case 'make-admin':
     case 'set-password': {
       const method = await askSelect('Look up user by', ['username (autocomplete)', 'user ID']);
       if (method.startsWith('username')) {
