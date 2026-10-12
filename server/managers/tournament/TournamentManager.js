@@ -1173,12 +1173,10 @@ class TournamentManager extends EventEmitter {
 
   /**
    * Double Elimination final placement: champion (1st) and runner-up (2nd)
-   * are exact — the grand final / bracket-reset match decides them
-   * directly. Full 3rd-place-and-below placement needs bracket-elimination-
-   * depth tracking that's out of scope for this phase (DE win-count isn't a
-   * meaningful ranking signal the way it is for Swiss/Round robin, so a
-   * score-based approximation would be actively misleading) — left null
-   * with this TODO rather than shipping an incorrect placement.
+   * come from the grand final / bracket-reset match; everyone else is ranked
+   * by the losers-bracket round they were eliminated in (later exit = better,
+   * same round = tie, sharing the rank like standings.js: 1+players ahead).
+   * Win count is deliberately not used — it isn't a meaningful DE signal.
    */
   _assignDoubleElimFinalRanks(tournament) {
     const gfResetId = this._deId(tournament, 'GF_RESET');
@@ -1198,6 +1196,18 @@ class TournamentManager extends EventEmitter {
     if (runnerUpEntry) {
       runnerUpEntry.finalRank = 2;
       database.updateTournamentPlayerRank(runnerUpEntry.entryId, 2);
+    }
+
+    let nextRank = 3;
+    for (const group of doubleElimPairing.computeEliminationGroups(tournament.bracket, tournament.bracketResults)) {
+      const ids = group.filter((id) => id !== championId && id !== runnerUpId);
+      for (const id of ids) {
+        const entry = tournament.entries.get(id);
+        if (!entry) continue;
+        entry.finalRank = nextRank;
+        database.updateTournamentPlayerRank(entry.entryId, nextRank);
+      }
+      nextRank += ids.length;
     }
   }
 

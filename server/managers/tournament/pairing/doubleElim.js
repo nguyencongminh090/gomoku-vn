@@ -238,4 +238,31 @@ function needsBracketReset(bracket, results) {
   return gf.winner === gf.player2;
 }
 
-module.exports = { nextPowerOfTwo, computeSeedOrder, generateBracket, resolveBracket, needsBracketReset };
+/**
+ * Elimination order of the players knocked out of the LOSERS bracket (i.e.
+ * everyone except the grand-final pair): one group per losers-bracket round,
+ * best placement first (the losers-final's loser, then the previous round's
+ * losers, ...). Players eliminated in the same round tie. A winners-bracket
+ * loser is not listed there — it drops into the losers bracket and is
+ * eliminated in a later round. Byes (null loser) are skipped. Pending matches
+ * contribute nothing.
+ *
+ * @param {ReturnType<typeof generateBracket>} bracket
+ * @param {Map<string, string>} results
+ * @returns {string[][]}
+ */
+function computeEliminationGroups(bracket, results) {
+  const resolved = resolveBracket(bracket, results);
+  const groups = [];
+  for (let r = bracket.losers.length - 1; r >= 0; r--) {
+    const group = [];
+    for (const m of bracket.losers[r]) {
+      const loser = resolved[m.id].loser;
+      if (loser !== null && loser !== undefined) group.push(loser);
+    }
+    if (group.length > 0) groups.push(group);
+  }
+  return groups;
+}
+
+module.exports = { nextPowerOfTwo, computeSeedOrder, generateBracket, resolveBracket, needsBracketReset, computeEliminationGroups };

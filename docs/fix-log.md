@@ -242,3 +242,4 @@
 | 2026-10-12 08:06 | #247: ruleSet startsAt/endsAt accepted 2026-02-31 (Date.parse rolls over); isDay now round-trips through toISOString, bad dates drop to null. | [detail](docs/fix-log/2026-10-12-tournament-isday-impossible-dates.md) |
 | 2026-10-12 12:00 | #239: swissRounds ruleSet branches removed (dead code) | [detail](docs/fix-log/2026-10-12-tournament-swiss-rounds-dead-code.md) |
 | 2026-10-12 12:00 | #240: guest tournament entries keep their guest id across restart | [detail](docs/fix-log/2026-10-12-tournament-guest-entries-after-restart.md) |
+| 2026-10-12 12:00 | #243: double-elim ranks 3rd and below by losers-bracket exit round | [detail](docs/fix-log/2026-10-12-de-final-ranks-3rd-and-below.md) |
