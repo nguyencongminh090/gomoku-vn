@@ -158,12 +158,30 @@ describe('TournamentManager — createTournament', () => {
       timerSeconds: config.DEFAULT_TIMER_SECONDS,
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,
       schedulingWindowMs: config.DEFAULT_SCHEDULING_WINDOW_MS,
+      startsAt: null,
+      endsAt: null,
       tiebreakRule: config.DEFAULT_TIEBREAK_RULE,
       seriesMode: 'single',
       seriesGameCount: null,
       seriesTargetScore: null,
       seriesMargin: null,
     });
+  });
+
+  test.each([
+    [{ startsAt: '2026-11-01', endsAt: '2026-11-30' }, '2026-11-01', '2026-11-30'],
+    [{ startsAt: '2026-11-01', endsAt: '2026-11-01' }, '2026-11-01', '2026-11-01'],   // same day is valid
+    [{ startsAt: '2026-11-30', endsAt: '2026-11-01' }, '2026-11-30', null],           // end before start dropped
+    [{ endsAt: '2026-11-01' }, null, '2026-11-01'],                                   // end alone is fine
+    [{ startsAt: 'tomorrow', endsAt: 20261101 }, null, null],                         // malformed dropped
+    [{ startsAt: '2026-13-45' }, null, null],                                         // impossible date dropped
+    [{ startsAt: '2026-02-31', endsAt: '2026-04-31' }, null, null],                   // #247 day rolls over the month
+    [{ startsAt: '2026-02-29' }, null, null],                                         // #247 2026 is not a leap year
+    [{ startsAt: '2028-02-29', endsAt: '2028-03-01' }, '2028-02-29', '2028-03-01'], // #247 leap day is valid
+  ])('normalizes the tournament period %j', (rs, startsAt, endsAt) => {
+    const { tournament } = tournamentManager.createTournament(user(), { format: 'swiss', ruleSet: rs });
+    expect(tournament.ruleSet.startsAt).toBe(startsAt);
+    expect(tournament.ruleSet.endsAt).toBe(endsAt);
   });
 
   test('persists the tournament to SQLite (readable back via database.getTournamentById)', () => {
@@ -357,6 +375,8 @@ describe('TournamentManager — registerPlayer / unregisterPlayer', () => {
   test('registration is rejected once the tournament is no longer draft', () => {
     const organizer = user();
     const tournament = draftTournament(organizer);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { error, code } = tournamentManager.registerPlayer(user(), tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -393,6 +413,7 @@ describe('TournamentManager — registerPlayer / unregisterPlayer', () => {
     const tournament = draftTournament(organizer);
     const player = user();
     tournamentManager.registerPlayer(player, tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { code } = tournamentManager.unregisterPlayer(player.userId, tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -441,15 +462,27 @@ describe('TournamentManager — concurrent registration (decision 6)', () => {
 // ── startTournament (Phase 1 stub) ──────────────────────────────────────
 
 describe('TournamentManager — startTournament (Phase 1 stub)', () => {
-  test('organizer can start a tournament with 0 players without throwing', () => {
+  test.each([0, 1])('#238 start with %i player(s) is rejected with NOT_ENOUGH_PLAYERS and the tournament stays draft', (n) => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
-    expect(() => {
-      const { tournament: started, error } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
-      expect(error).toBeUndefined();
-      expect(started.status).toBe('active');
-      expect(started.startedAt).toBeTruthy();
-    }).not.toThrow();
+    for (let k = 0; k < n; k++) tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    const { error, code } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(code).toBe('NOT_ENOUGH_PLAYERS');
+    expect(error).toBeTruthy();
+    expect(tournament.status).toBe('draft');
+    expect(tournament.startedAt).toBeFalsy();
+    expect(database.getTournamentById(tournament.tournamentId).status).toBe('draft');
+  });
+
+  test('#238 start with exactly 2 players succeeds', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    const { tournament: started, error } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(error).toBeUndefined();
+    expect(started.status).toBe('active');
+    expect(started.startedAt).toBeTruthy();
   });
 
   test('a non-organizer cannot start the tournament', () => {
@@ -465,6 +498,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test('starting an already-active tournament is rejected (no double-start)', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { code } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -479,6 +514,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test('status flip is persisted to SQLite', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const row = database.getTournamentById(tournament.tournamentId);
     expect(row.status).toBe('active');
@@ -488,6 +525,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test("emits 'tournament_started' with the tournamentId", () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     const listener = jest.fn();
     tournamentManager.once('tournament_started', listener);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
@@ -685,6 +724,43 @@ describe('TournamentManager — pairing wrappers resolve identity correctly', ()
 
     const { code } = tournamentManager.organizerAdjustPairing(p1.userId, tournament.tournamentId, pairing.pairingId, 'x');
     expect(code).toBe('ORGANIZER_ONLY');
+  });
+
+  test('#237 double_elim: organizerAdjustPairing resets the match in place so the bracket can continue', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const id = `${tournament.tournamentId}:W1M1`;
+
+    const { error } = tournamentManager.organizerAdjustPairing(organizer.userId, tournament.tournamentId, id, 'released');
+    expect(error).toBeUndefined();
+    const reset = tournamentManager.getPairing(id);
+    expect(reset.state).toBe('Negotiating');
+    expect(reset.result).toBeNull();
+
+    // The replayed match can still be played and feeds the bracket.
+    const [u1, u2] = [players[0], players[3]];
+    advanceToReady(tournament.tournamentId, id, u1.userId, u2.userId);
+    tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, id);
+    tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, id);
+    tournamentManager.recordPairingResult(tournament.tournamentId, id, entries[0]);
+    expect(tournamentManager.getPairing(id).state).toBe('Completed');
+    expect(tournamentManager.listPairings(tournament.tournamentId).some((p) => p.bracketMatchId === 'L1M1' || p.bracketMatchId === 'W2M1')).toBe(false); // needs W1M2 too
+  });
+
+  test('#237 swiss: organizerAdjustPairing still ends the pairing as OrganizerAdjusted and advances', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    tournamentManager.organizerAdjustPairing(organizer.userId, tournament.tournamentId, pairing.pairingId, 'released');
+    expect(tournamentManager.getPairing(pairing.pairingId).state).toBe('OrganizerAdjusted');
+    expect(tournament.status).toBe('completed');
   });
 
   test('operations against an unknown pairingId fail with PAIRING_NOT_FOUND, not a throw', () => {

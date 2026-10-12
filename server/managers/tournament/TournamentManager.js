@@ -483,6 +483,12 @@ class TournamentManager extends EventEmitter {
       return { error: 'Giải đấu đã bắt đầu hoặc đã kết thúc.', code: 'TOURNAMENT_ALREADY_STARTED' };
     }
 
+    // Fewer than 2 entries can never produce a pairing, so the tournament would
+    // sit 'active' with nothing to play or complete (only cancel).
+    if (tournament.entries.size < 2) {
+      return { error: 'Cần ít nhất 2 người chơi để bắt đầu giải đấu.', code: 'NOT_ENOUGH_PLAYERS' };
+    }
+
     tournament.status = 'active';
     tournament.startedAt = new Date().toISOString();
     database.updateTournamentStatus(tournamentId, 'active', { startedAt: tournament.startedAt });
@@ -680,6 +686,13 @@ class TournamentManager extends EventEmitter {
     if (result.error) return result;
     this._persistPairing(ctx.pairing);
     tournamentState.untrackDeadline(pairingId);
+    if (ctx.tournament.format === 'double_elim') {
+      // A bracket match has no "released" outcome: _advanceIfRoundComplete is a
+      // no-op for DE and nothing records a winner, so the next match would never
+      // be created. Reset the match in place instead (same as void/replay).
+      this._createReplayPairing(ctx.tournament, ctx.pairing);
+      return result;
+    }
     this._advanceIfRoundComplete(ctx.tournament);
     this._emitPairingChanged(tournamentId, pairingId);
     return result;
@@ -1358,6 +1371,15 @@ class TournamentManager extends EventEmitter {
     r.schedulingWindowMs = (typeof ruleSet.schedulingWindowMs === 'number' && ruleSet.schedulingWindowMs > 0)
       ? Math.floor(ruleSet.schedulingWindowMs)
       : config.DEFAULT_SCHEDULING_WINDOW_MS;
+
+    // Tournament period — optional calendar dates 'YYYY-MM-DD'. Malformed values
+    // or an end before the start are dropped (null), never rejected: the period
+    // is informational, so a bad value must not block creating the tournament.
+    // Round-trip, not Date.parse: parse rolls 2026-02-31 over to Mar 3 instead of rejecting it.
+    const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+      && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
+    r.startsAt = isDay(ruleSet.startsAt) ? ruleSet.startsAt : null;
+    r.endsAt = isDay(ruleSet.endsAt) && (!r.startsAt || ruleSet.endsAt >= r.startsAt) ? ruleSet.endsAt : null;
 
     // Only one tiebreak method is implemented (decision 9) — validated
     // against a single-value allowlist so an invalid override can't silently

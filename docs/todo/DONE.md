@@ -2,6 +2,9 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+- ✅ **#247.** startsAt/endsAt accept impossible dates (size S) `[Model: Haiku 5]` — [detail](docs/todo/B247-tournament-isday-impossible-dates.md)
+- ✅ **#238.** Reject tournament start with <2 players (size S) `[Model: Haiku 5]` — [detail](docs/todo/B238-tournament-start-min-2-players.md)
+- ✅ **#237.** Double-elim: organizer-adjust stalls the bracket (bug, size S–M) `[Model: Sonnet 5]` — [detail](docs/todo/B237-de-organizer-adjust-stalls-bracket.md)
 - ✅ **#235.** Club upgrade bundle (identity, announcement, invites, notifications, weekly board, challenge, history) `[Model: Sonnet 5]` — [detail](docs/todo/B235-club-upgrade-bundle.md)
 - ✅ **#234.** Club pages: ticket rows (padding, meta spans) `[Model: Sonnet 5]` — [detail](docs/todo/B234-club-pages-ticket-rows.md)
 - ✅ **#233.** Friends page discoverability (menu entry done; mobile tab + lobby hint deferred) `[Model: Sonnet 5]` — [detail](docs/todo/B233-friends-page-discoverability.md)
