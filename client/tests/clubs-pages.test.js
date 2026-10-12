@@ -494,3 +494,16 @@ describe('club avatar + banner (#250)', () => {
     expect(document.getElementById('cb-manage').hidden).toBe(true);
   });
 });
+
+describe('club colour swatches are painted (fix: Manage "Màu" swatches were grey)', () => {
+  it('every swatch class has a .pswatch.pav--c-* background rule in platform.css', async () => {
+    await bootClub({ ...CLUB, myRole: 'owner' });
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    const swatches = [...document.querySelectorAll('#cb-colors .pswatch')];
+    expect(swatches.length).toBeGreaterThanOrEqual(8);
+    for (const b of swatches) {
+      const key = [...b.classList].find((c) => c.startsWith('pav--c-'));
+      expect(css).toMatch(new RegExp(`\\.pswatch\\.${key}\\b[^{]*\\{[^}]*background-color: var\\(--club-`));
+    }
+  });
+});
