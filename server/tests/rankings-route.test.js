@@ -66,7 +66,7 @@ beforeAll(async () => {
   addPlayer('u1', 'Alice', 'freestyle', 1700, 30);
   addPlayer('u2', 'Bob', 'freestyle', 1800, 25);
   addPlayer('u3', 'Cara', 'freestyle', 1700, 40, 200);   // ties u1, provisional
-  addPlayer('u4', 'Dan', 'freestyle', 2100, 19);         // under the games threshold
+  addPlayer('u4', 'Dan', 'freestyle', 2100, 0) ;         // under the games threshold
   addPlayer('u1', 'Alice', 'caro', 1500, 22);
 });
 
