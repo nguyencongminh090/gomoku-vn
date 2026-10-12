@@ -88,6 +88,12 @@ function listThreads(viewerId, { category, page } = {}) {
   };
 }
 
+/** Dashboard teaser (#224): the n most recently active live threads, no bodies. */
+function topThreads(n = 3) {
+  return db().prepare(`SELECT t.*, ${AUTHOR} FROM forum_threads t JOIN users u ON u.id = t.author_id
+    WHERE t.deleted = 0 ORDER BY t.last_post_at DESC, t.id LIMIT ?`).all(n).map((r) => threadShape(r));
+}
+
 /** One thread + a page of replies. Deleted threads 404 for everyone but staff; deleted replies keep their slot, minus body. */
 function getThread(viewerId, id, { page } = {}) {
   const row = db().prepare(`SELECT t.*, ${AUTHOR} FROM forum_threads t JOIN users u ON u.id = t.author_id WHERE t.id = ?`).get(String(id).slice(0, 64));
@@ -210,5 +216,5 @@ function resolveReport(staffId, reportId, { remove: del } = {}) {
 
 module.exports = {
   ForumError, CATEGORIES, TITLE_MAX, BODY_MAX, REASON_MAX, isAdmin, cleanText,
-  listThreads, getThread, createThread, reply, remove, report, openReports, resolveReport,
+  listThreads, topThreads, getThread, createThread, reply, remove, report, openReports, resolveReport,
 };

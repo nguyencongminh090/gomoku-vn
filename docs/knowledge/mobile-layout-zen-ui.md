@@ -10,6 +10,12 @@ confidence: high
 ---
 # Mobile layout and zen UI traps
 
+> **2026-10-10 (#216):** the room no longer uses the zen drawer/sheet — `room-zen.css`, the quick-chat bar and
+> `RoomDrawer` are gone; the room is `body.arena-room` + `client/css/room-arena.css` and the board is SVG
+> (`client/js/board.js`). Rules 1–7, 12 and 14 below are history. Still live: dvh fallback (8), rAF-gated resize
+> (9), `preventDefault` first in `_onTouchEnd` + `touch-action:none` (10), `pointerdown` (11), grep after markup
+> migrations (13), `minmax(0,1fr)` for fixed-width grids.
+
 ## Why this note exists
 The room page stacks a drawer/sheet, overlays, a canvas board and chat. Most bugs came from two individually correct rules colliding, or from a CSS/JS assumption that only fails on a phone. #133 took four rounds, #142 five.
 

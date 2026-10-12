@@ -132,13 +132,12 @@ describe('settings page tabs', () => {
     expect(rule('.pset .pcheck > .icon')).toMatch(/width: var\(--icon-md\)/);
   });
 
-  it('Trò chơi: placement, board display and sound go through GvnSettings', () => {
+  it('Trò chơi: placement and sound go through GvnSettings; the board look moved to Giao diện (#216)', () => {
     boot(GUEST);
     const segs = $('p-game').querySelectorAll('.pseg');
+    expect(segs.length).toBe(1); // Paper/Stone now lives in Giao diện › Bàn cờ (settings-board.js)
     segs[0].querySelectorAll('button')[0].click();
     expect(window.GvnSettings.setClickMode).toHaveBeenCalledWith('single');
-    segs[1].querySelectorAll('button')[1].click();
-    expect(window.GvnSettings.setDisplayMode).toHaveBeenCalledWith('stone');
     const sound = $('p-game').querySelector('.pswitch input');
     sound.checked = false;
     sound.dispatchEvent(new Event('change'));
@@ -161,5 +160,101 @@ describe('settings page tabs', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(out.disabled).toBe(false);
     expect(out.textContent).toBe('gset.btn_logout_failed');
+  });
+});
+
+describe('?return= back button', () => {
+  test('room return shows a "back to room" link to that path', () => {
+    window.history.replaceState(null, '', '/settings.html?return=' + encodeURIComponent('/room.html?id=abc') + '#look');
+    boot(MEMBER, '');
+    window.history.replaceState(null, '', '/settings.html?return=' + encodeURIComponent('/room.html?id=abc') + '#look');
+    jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+    const a = $('st-back');
+    expect(a.getAttribute('href')).toBe('/room.html?id=abc');
+    expect(a.getAttribute('aria-label')).toBe('settings.back_room');
+    expect(a.className).toBe('pset__back');
+  });
+
+  test.each(['/index.html', '/forum.html', '//evil.com', 'https://evil.com', '/\\evil.com', 'javascript:alert(1)'])('rejects external return %s', (r) => {
+    boot(MEMBER, '');
+    window.history.replaceState(null, '', '/settings.html?return=' + encodeURIComponent(r));
+    jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+    expect($('st-back')).toBeNull();
+  });
+});
+
+test('tab switching keeps the path and ?return= (a <base href="/"> must not turn "#look" into "/#look")', () => {
+  boot(MEMBER, '');
+  window.history.replaceState(null, '', '/settings.html?return=%2Froom.html#look');
+  jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+  $('tab-game').click();
+  expect(window.location.pathname + window.location.search + window.location.hash).toBe('/settings.html?return=%2Froom.html#game');
+  expect($('st-back')).not.toBeNull();
+});
+
+test('floating back button out-specifies ".pl a {color:inherit}" (Zen: arrow was the same colour as its bg)', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+  expect(css).toMatch(/^\.pl \.pset__back \{[^}]*color: var\(--c-brand\)/m);
+  expect(css).not.toMatch(/^\.pset__back \{/m);
+});
+
+describe('floating back button drag', () => {
+  const ptr = (el, type, x, y) => {
+    const e = new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true });
+    e.pointerId = 1;
+    el.dispatchEvent(e);
+  };
+  function setup() {
+    boot(MEMBER, '');
+    sessionStorage.clear();
+    window.history.replaceState(null, '', '/settings.html?return=%2Froom.html#look');
+    Object.defineProperty(window, 'innerWidth', { value: 1000, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+    jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+    const b = $('st-back');
+    b.setPointerCapture = jest.fn();
+    b.getBoundingClientRect = () => ({ left: 932, top: 660, width: 48, height: 48 });
+    return b;
+  }
+
+  test('a tiny movement is still a click (no drag, link not blocked)', () => {
+    const b = setup();
+    ptr(b, 'pointerdown', 950, 680); ptr(b, 'pointermove', 953, 682); ptr(b, 'pointerup', 953, 682);
+    expect(b.classList.contains('is-dragging')).toBe(false);
+    expect(b.style.left).toBe('');
+    const c = new MouseEvent('click', { bubbles: true, cancelable: true });
+    b.dispatchEvent(c);
+    expect(c.defaultPrevented).toBe(false);
+  });
+
+  test('drag moves it, release snaps to the nearest side edge, remembers it, and swallows the click', () => {
+    const b = setup();
+    ptr(b, 'pointerdown', 950, 680); ptr(b, 'pointermove', 300, 400);
+    expect(b.classList.contains('is-dragging')).toBe(true);
+    ptr(b, 'pointerup', 300, 400);
+    expect(b.classList.contains('is-dragging')).toBe(false);
+    expect(b.style.left).toBe('12px'); // left half → left edge
+    expect(parseFloat(b.style.top)).toBe(380);
+    expect(JSON.parse(sessionStorage.getItem('gvn_back_pos'))).toEqual({ side: 'l', y: 380 });
+    const c = new MouseEvent('click', { bubbles: true, cancelable: true });
+    b.dispatchEvent(c);
+    expect(c.defaultPrevented).toBe(true);
+  });
+
+  test('stays inside the viewport (below the top, above the bottom)', () => {
+    const b = setup();
+    ptr(b, 'pointerdown', 950, 680); ptr(b, 'pointermove', 5000, 5000); ptr(b, 'pointerup', 5000, 5000);
+    expect(parseFloat(b.style.top)).toBeLessThanOrEqual(800 - 48 - 12);
+    expect(b.style.left).toBe(1000 - 48 - 12 + 'px');
+  });
+
+  test('restores the remembered spot on the next render', () => {
+    setup();
+    sessionStorage.setItem('gvn_back_pos', JSON.stringify({ side: 'l', y: 200 }));
+    jest.resetModules(); require('../js/settings-page.js'); document.dispatchEvent(new Event('DOMContentLoaded'));
+    const b = document.querySelectorAll('#st-back');
+    const last = b[b.length - 1];
+    expect(last.style.left).toBe('12px');
+    expect(last.style.top).toBe('200px');
   });
 });

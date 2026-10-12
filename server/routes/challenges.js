@@ -4,7 +4,8 @@
  * challenges.js — REST API for friend challenges (#198 slice 3). Rules in ChallengeService.
  *
  * GET    /api/challenges               {incoming, outgoing}
- * POST   /api/challenges               {to: username, rule, time, rated}  → challenge
+ * POST   /api/challenges               {to: username, settings, games, stake} → challenge (#222;
+ *                                       legacy {rule, time, rated} still accepted)
  * POST   /api/challenges/:id/accept    recipient → {roomId}
  * DELETE /api/challenges/:id           recipient declines / sender cancels (idempotent)
  * Members only. Rule / time values are the quick-match chips (B197).

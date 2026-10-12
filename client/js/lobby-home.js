@@ -2,18 +2,20 @@
  * lobby-home.js — the lobby's three screens and the "Chơi" dashboard (B195, R2).
  *
  * Screens follow the hash the shared Arena nav links to:
- *   ''            → home   (#screen-home: my games, today, live boards)
+ *   ''            → home   (#screen-home: stats strip, news line, my games, learn, about, today, forum, live games)
  *   '#rooms'      → rooms  (#panel-tables: the room list lobby.js renders)
  *   '#tournaments'→ tournaments (#panel-tournaments: tournaments.js)
  * Legacy `?tab=tournaments` (tournament.html's back link) still lands on tournaments.
  *
- * Dashboard data: GET /api/home (server/routes/home.js), polled while the
- * home screen is visible. Quick match (B197): match:* socket events
+ * Dashboard data: GET /api/home (server/routes/home.js) on entering the home
+ * screen, then a 60 s fallback poll. Between polls the server pushes the stats
+ * strip and the live list (B225: home:subscribe → home:stats / home:live,
+ * server/socket/home-feed.js) — only while the home screen is shown and the tab visible. Quick match (B197): match:* socket events
  * (server/socket/handlers/MatchHandler.js); a pair arrives as room:joined,
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=260';
+import { client, setHeroTab } from './lobby.js?v=357';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -21,11 +23,14 @@ const HASH = { home: '', rooms: '#rooms', tournaments: '#tournaments' };
 const NAV = { home: 'lobby', rooms: 'rooms', tournaments: 'tournaments' };
 const ACTION = { rooms: ['btn-create', 'btn-join-code'], tournaments: ['btn-create-tournament'] };
 const ROOM_CODE = /^[A-HJ-NP-Z2-9]{3}$/; // RoomManager._generateRoomId: '#' + 3 chars, no I O 0 1
-const POLL_MS = 20000;
+const POLL_MS = 60000; // fallback only — stats + live list arrive by push (B225)
 
 let current = null;
 let pollTimer = null;
 let lastData = null;
+let lastJson = '';
+let subscribed = false; // in the server's `home` socket room
+let lobbySubscribed = false; // in the server's `lobby` socket room (rooms screen only, B229)
 
 /** Leading sprite icon (B212, #214); a no-op before platform-shell.js has loaded. */
 function withIcon(node, name) { if (name && window.PlatformShell) node.prepend(window.PlatformShell.icon(name)); return node; }
@@ -62,12 +67,14 @@ export function showScreen(name) {
   }
   if (name !== 'rooms') closeJoinCode();
   const bar = document.getElementById('lobby-bar');
-  if (bar) bar.hidden = name === 'home';
+  if (bar) bar.hidden = name !== 'tournaments';
   setHeroTab(name === 'rooms' ? 'tables' : name);
   if (window.PlatformShell) window.PlatformShell.setActive(NAV[name]);
   const want = location.pathname + HASH[name];
   if (location.search || location.hash !== HASH[name]) history.replaceState(null, '', want);
   if (name === 'home') startPolling(); else stopPolling();
+  setSubscribed(name === 'home' && !document.hidden);
+  setLobbySubscribed(name === 'rooms' && !document.hidden);
 }
 
 // ── Vào bằng mã (Phòng screen): type the 3-char room code, go straight to the room ──
@@ -117,6 +124,11 @@ function clockAmount(sec) {
  * Only blitz carries an increment (TimerManager.applyMove) — per_game is a bare total (B196).
  */
 export function ruleLine(r) {
+  return ruleParts(r).join(' · ');
+}
+
+/** Same parts as ruleLine, kept separate so a ticket can lay them out as spaced segments (no "·" strings). */
+function ruleParts(r) {
   const parts = [];
   if (r.winningRule) parts.push(t('rankings.cat_' + r.winningRule));
   if (r.timerSeconds) {
@@ -126,40 +138,18 @@ export function ruleLine(r) {
     }
     else if (r.timerMode === 'per_move') parts.push(t('home.per_move', { s: r.timerSeconds }));
   }
-  return parts.join(' · ');
+  return parts;
 }
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-function svg(tag, attrs) {
-  const n = document.createElementNS(SVG_NS, tag);
-  for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, String(v));
-  return n;
-}
-
-/** Small read-only board: grid + stones, last move marked. Not board.js (board/stones lock). */
-export function miniBoard(size, stones, px = 96) {
-  const n = Math.max(5, Math.min(30, size || 15));
-  const c = px / (n + 1);
-  const root = svg('svg', { viewBox: `0 0 ${px} ${px}`, class: 'hmini', role: 'img', 'aria-label': t('home.board_aria') });
-  for (let i = 1; i <= n; i++) {
-    root.appendChild(svg('line', { x1: c, y1: i * c, x2: n * c, y2: i * c }));
-    root.appendChild(svg('line', { x1: i * c, y1: c, x2: i * c, y2: n * c }));
-  }
-  for (const [x, y, col] of stones || []) {
-    if (x < 0 || y < 0 || x >= n || y >= n) continue;
-    root.appendChild(svg('circle', { cx: (x + 1) * c, cy: (y + 1) * c, r: c * 0.43, class: col === 2 ? 'sw' : 'sb' }));
-  }
-  const last = stones && stones[stones.length - 1];
-  if (last) root.appendChild(svg('circle', { cx: (last[0] + 1) * c, cy: (last[1] + 1) * c, r: c * 0.14, class: 'last' }));
-  return root;
-}
-
+/** meta: a string or an array of segments — segments render as separate spans, spaced by CSS gap. */
 function row(title, meta, action, onClick, bullet) {
   const r = el(onClick ? 'button' : 'div', undefined, 'prow hrow');
   if (onClick) { r.type = 'button'; r.addEventListener('click', onClick); }
   if (bullet !== undefined) r.appendChild(el('span', undefined, 'hbullet' + (bullet ? ' on' : '')));
   const body = el('div', undefined, 'prow__body');
-  body.append(el('div', title, 'prow__t'), el('div', meta, 'prow__m'));
+  const metaBox = el('div', undefined, 'prow__m hrow__meta');
+  for (const part of [].concat(meta)) if (part) metaBox.appendChild(el('span', part));
+  body.append(el('div', title, 'prow__t'), metaBox);
   r.appendChild(body);
   if (action) r.appendChild(el('span', action, 'prow__act'));
   return r;
@@ -173,13 +163,13 @@ function renderMine(data) {
   box.replaceChildren();
   const g = data.myGame;
   if (g) {
-    const title = g.opponent ? t('home.vs', { name: g.opponent }) + (ruleLine(g) ? ' · ' + ruleLine(g) : '') : (g.roomName || '');
-    const meta = g.state === 'playing' ? t(g.myTurn ? 'home.your_turn' : 'home.opp_turn') : t('home.waiting');
+    const title = g.opponent ? t('home.vs', { name: g.opponent }) : (g.roomName || '');
+    const meta = [...(g.opponent ? ruleParts(g) : []), g.state === 'playing' ? t(g.myTurn ? 'home.your_turn' : 'home.opp_turn') : t('home.waiting')];
     box.appendChild(row(title, meta, t('home.go_game'), () => window.joinRoom(g.roomId), true));
   }
   for (const m of data.myMatches || []) {
-    const title = m.tournamentName + (m.roundIndex !== null && m.roundIndex !== undefined ? ' · ' + t('home.round', { n: m.roundIndex + 1 }) : '');
-    const meta = t('home.vs', { name: m.opponent }) + ' · ' + t('home.match_' + m.state);
+    const title = m.tournamentName;
+    const meta = [m.roundIndex !== null && m.roundIndex !== undefined ? t('home.round', { n: m.roundIndex + 1 }) : '', t('home.vs', { name: m.opponent }), t('home.match_' + m.state)];
     box.appendChild(row(title, meta, t('home.details'), () => {
       location.href = 'tournament.html?id=' + encodeURIComponent(m.tournamentId);
     }, m.state === 'Ready'));
@@ -199,7 +189,7 @@ function renderToday(data) {
   if (!box) return;
   box.replaceChildren();
   for (const tr of data.tournaments || []) {
-    const meta = [t('home.status_' + tr.status), t('home.players', { n: tr.playerCount }), t('tournaments.format_' + tr.format)].join(' · ');
+    const meta = [t('home.status_' + tr.status), t('home.players', { n: tr.playerCount }), t('tournaments.format_' + tr.format)];
     const act = tr.registered ? t('home.registered') : t(tr.status === 'draft' ? 'home.register' : 'home.view');
     box.appendChild(row(tr.name, meta, act, () => {
       location.href = 'tournament.html?id=' + encodeURIComponent(tr.tournamentId);
@@ -208,27 +198,90 @@ function renderToday(data) {
   if (!box.children.length) box.appendChild(el('p', t('home.no_today'), 'muted small hempty'));
 }
 
+function renderStats(data) {
+  const box = document.getElementById('home-stats');
+  if (!box) return;
+  const st = data.stats;
+  box.hidden = !st;
+  if (!st) return;
+  box.replaceChildren();
+  for (const [key, n] of [['online', st.online], ['playing', st.playing], ['searching', st.searching]]) {
+    const item = el('div', undefined, 'hstat');
+    item.append(el('strong', String(n || 0), 'hstat__n'), el('span', t('home.stat_' + key), 'hstat__l muted small'));
+    box.appendChild(item);
+  }
+}
+
+/** Live games as text rows — no board drawing (B223: the old mini boards were the poll's main DOM cost). */
 function renderLive(data) {
   const box = document.getElementById('home-live');
   if (!box) return;
   box.replaceChildren();
   for (const g of data.live || []) {
-    const card = el('button', undefined, 'hlive');
-    card.type = 'button';
-    card.addEventListener('click', () => window.joinRoom(g.roomId));
-    const text = el('span', undefined, 'hlive__t');
-    text.append(el('span', t('home.live_vs', { a: g.black || '?', b: g.white || '?' })),
-      el('span', [ruleLine(g), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''].filter(Boolean).join(' · '), 'muted small'));
-    card.append(miniBoard(g.boardSize, g.stones), text);
-    box.appendChild(card);
+    const meta = [...ruleParts(g), t('home.moves', { n: g.moves || 0 }), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''];
+    box.appendChild(row(t('home.live_vs', { a: g.black || '?', b: g.white || '?' }), meta, t('home.view'), () => window.joinRoom(g.roomId)));
   }
   if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
 }
 
+/** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
+const SAFE_LINK = /^\/(?![/\\])[^\s\\]*$/;
+
+/** One admin news line (#224) under the stats strip; a link makes the whole line clickable. */
+function renderNews(data) {
+  const box = document.getElementById('home-news');
+  if (!box) return;
+  const n = data.news;
+  box.replaceChildren();
+  box.hidden = !(n && n.body);
+  if (box.hidden) return;
+  const line = SAFE_LINK.test(n.link || '') ? el('a', undefined, 'hnews__line') : el('p', undefined, 'hnews__line');
+  if (line.tagName === 'A') line.href = n.link;
+  line.append(el('span', t('home.news'), 'hnews__tag'), el('span', n.body, 'hnews__body'));
+  if (line.tagName === 'A') line.appendChild(el('span', '›', 'hnews__go'));
+  box.appendChild(line);
+}
+
+function renderForum(data) {
+  const box = document.getElementById('home-forum');
+  if (!box) return;
+  box.replaceChildren();
+  for (const th of data.forum || []) {
+    const meta = [t('forum.cat_' + th.category), t('forum.replies', { n: th.replyCount || 0 }), th.author];
+    box.appendChild(row(th.title, meta, t('home.view'), () => { location.href = '/forum/t/' + encodeURIComponent(th.id); }));
+  }
+  if (!box.children.length) box.appendChild(el('p', t('home.no_forum'), 'muted small hempty'));
+  const all = withIcon(el('a', t('home.forum_all'), 'link-action hmore'), 'ph-regular-chat-circle');
+  all.href = '/forum';
+  box.appendChild(all);
+}
+
+function renderLearn(data) {
+  const box = document.getElementById('home-learn');
+  if (!box) return;
+  box.replaceChildren();
+  const l = data.learn;
+  if (!l) return;
+  const parts = [l.total ? t('home.learn_total', { n: l.total }) : t('home.learn_none')];
+  if (l.solved !== null && l.solved !== undefined && l.total) parts.push(t('home.learn_solved', { n: l.solved }));
+  box.appendChild(row(t('home.learn_title'), parts, t('home.view'), () => { location.href = '/puzzles'; }));
+}
+
+function renderAbout(data) {
+  const box = document.getElementById('home-about');
+  if (box) box.hidden = !data.newcomer;
+}
+
 export function renderHome(data) {
   lastData = data;
+  lastJson = JSON.stringify(data);
+  renderStats(data);
+  renderNews(data);
   renderMine(data);
+  renderLearn(data);
+  renderAbout(data);
   renderToday(data);
+  renderForum(data);
   renderLive(data);
   renderQuickMatch(); // the "N đang chờ" count comes with /api/home
 }
@@ -237,7 +290,8 @@ export async function loadHome() {
   try {
     const res = await fetch('/api/home', { credentials: 'same-origin' });
     if (!res.ok) throw new Error(String(res.status));
-    renderHome(await res.json());
+    const data = await res.json();
+    if (JSON.stringify(data) !== lastJson) renderHome(data); // unchanged poll → no DOM rebuild
   } catch {
     if (!lastData) renderHome({ myGame: null, myMatches: [], tournaments: [], live: [] });
   }
@@ -253,18 +307,53 @@ function stopPolling() {
   pollTimer = null;
 }
 
+// ── Live push (B225) ────────────────────────────────────────────────────────
+
+function setSubscribed(on) {
+  if (on === subscribed) return;
+  subscribed = on;
+  client.emit(on ? 'home:subscribe' : 'home:unsubscribe');
+}
+
+function setLobbySubscribed(on) {
+  if (on === lobbySubscribed) return;
+  lobbySubscribed = on;
+  client.emit(on ? 'lobby:subscribe' : 'lobby:unsubscribe'); // subscribe answers with a full snapshot
+}
+
+/** Merge one pushed field into the last /api/home payload and redraw only its section. */
+function applyPush(key, value, render) {
+  if (current !== 'home') return;
+  lastData = { ...(lastData || { myGame: null, myMatches: [], tournaments: [], live: [] }), [key]: value };
+  lastJson = JSON.stringify(lastData);
+  render(lastData);
+}
+
+client.on('home:stats', (st) => applyPush('stats', st, renderStats));
+client.on('home:live', (live) => applyPush('live', Array.isArray(live) ? live : [], renderLive));
+// A reconnect is a fresh server socket outside every room: subscribe again and resync the rest.
+client.on('disconnect', () => { subscribed = false; lobbySubscribed = false; });
+client.on('connect', () => {
+  if (current === 'rooms' && !document.hidden) setLobbySubscribed(true);
+  if (current !== 'home' || document.hidden || subscribed) return;
+  setSubscribed(true);
+  loadHome();
+});
+
 // ── Quick match (B197) ──────────────────────────────────────────────────────
 
 const QM_RULES = ['freestyle', 'standard', 'caro'];
 const QM_TIMES = ['1+0', '3+2', '5+3', '10+0'];
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: '5+3', searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
+const qm = { rule: 'caro', time: '5+3', wall: true, portal: false, searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
 let qmTimer = null;
 
 try {
   const saved = JSON.parse(localStorage.getItem(QM_KEY) || 'null');
   if (saved && QM_RULES.includes(saved.rule)) qm.rule = saved.rule;
   if (saved && QM_TIMES.includes(saved.time)) qm.time = saved.time;
+  qm.wall = saved && typeof saved.wall === 'boolean' ? saved.wall : true;
+  qm.portal = !!saved && saved.portal === true;
 } catch { /* per-viewer convenience only */ }
 
 function isMember() {
@@ -295,11 +384,23 @@ export function renderQuickMatch() {
   const pick = (k) => (v) => {
     qm[k] = v;
     qm.error = '';
-    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time })); } catch { /* ignore */ }
+    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time, wall: qm.wall, portal: qm.portal })); } catch { /* ignore */ }
     renderQuickMatch();
   };
   chipRow('qm-rule', QM_RULES, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
   chipRow('qm-time', QM_TIMES, qm.time, (v) => v, pick('time'));
+  const board = document.getElementById('qm-board');
+  if (board) {
+    board.replaceChildren();
+    for (const k of ['wall', 'portal']) {
+      const b = el('button', t('room.rule_' + k), 'pchip' + (qm[k] ? ' is-active' : ''));
+      b.type = 'button';
+      b.disabled = qm.searching;
+      b.setAttribute('aria-pressed', String(qm[k]));
+      b.addEventListener('click', () => pick(k)(!qm[k]));
+      board.appendChild(b);
+    }
+  }
 
   const acts = document.getElementById('qm-actions');
   const line = document.getElementById('qm-line');
@@ -319,14 +420,14 @@ export function renderQuickMatch() {
   } else {
     if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
     btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
-    if (isMember()) { // mockup: Thách đấu bạn bè → the social page, where friends are challenged
+    if (isMember()) { // mockup: Thách đấu bạn bè → the social page's friend picker (#222)
       const a = withIcon(el('a', t('qm.challenge_friend'), 'link-action'), 'ph-regular-boxing-glove');
-      a.href = '/social.html';
+      a.href = '/social.html#challenge';
       acts.appendChild(a);
     }
     const waiting = lastData && lastData.queue ? lastData.queue[qm.rule + '|' + qm.time] || 0 : 0;
     const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
-    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time })
+    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time + (qm.wall ? ' · ' + t('room.rule_wall') : '') + (qm.portal ? ' · ' + t('room.rule_portal') : '') })
       + (waiting ? ' · ' + t('qm.in_queue', { n: waiting }) : '')
       + (eta ? ' · ' + t('qm.eta', { s: eta }) : '')
       + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));
@@ -336,7 +437,7 @@ export function renderQuickMatch() {
 function startSearch(rated) {
   qm.error = '';
   qm.rated = rated;
-  client.emit('match:join', { rule: qm.rule, time: qm.time, rated });
+  client.emit('match:join', { rule: qm.rule, time: qm.time, rated, wall: qm.wall, portal: qm.portal });
 }
 
 function cancelSearch() {
@@ -374,6 +475,13 @@ client.on('match:found', () => {
 // ── Wiring ──────────────────────────────────────────────────────────────────
 
 window.addEventListener('hashchange', () => showScreen(screenFromLocation()));
+// Hidden tab: no pushes (the poll already skips); back to visible → resubscribe + catch up.
+document.addEventListener('visibilitychange', () => {
+  if (current === 'rooms') setLobbySubscribed(!document.hidden);
+  if (current !== 'home') return;
+  setSubscribed(!document.hidden);
+  if (!document.hidden) loadHome();
+});
 // Shell "Chơi" link while already on the lobby: switch, don't reload.
 document.querySelectorAll('#pl-shell a[data-tab="lobby"]').forEach((a) => a.addEventListener('click', (e) => {
   if (location.pathname.endsWith('/index.html') || location.pathname === '/') { e.preventDefault(); showScreen('home'); }

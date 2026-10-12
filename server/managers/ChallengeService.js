@@ -3,12 +3,16 @@
 /**
  * ChallengeService — friend challenges (#198 slice 3).
  *
- * A challenge is in-memory state (id, from, to, rule, time, rated, expiry) plus a
+ * A challenge is in-memory state (id, from, to, settings, games, stake, expiry) plus a
  * persisted `challenge` notification for the target. Accepting turns it into a
  * seated room via PairRoom (same path as quick match) — A = challenger in slot 1,
  * B = accepter in slot 2. Neither side needs a live socket: room pages rejoin by
  * user id on connect; `hooks.onSeated` lets SocketHandler redirect whoever IS
  * connected. A seated user who never shows up is released after SEAT_GRACE_MS.
+ *
+ * #222: full create-room settings, best-of-N series (`room.series`, ChallengeSeries)
+ * and the Swap Elo stake (guards in checkStake, applied by RatingService.rateSeries).
+ * Pending challenges stay in-memory — lost on restart (accepted 2026-10-12).
  *
  * Methods throw ChallengeError(code, status); routes translate it to JSON.
  */
@@ -20,6 +24,9 @@ const notifications = require('./NotificationService');
 const { seatPair } = require('./PairRoom');
 const { RULES, PRESETS } = require('./MatchQueue');
 const privacyGate = require('./PrivacyGate');
+const ChallengeSeries = require('./ChallengeSeries');
+const RatingService = require('./RatingService');
+const config = require('../config');
 
 const TTL_MS = 2 * 60 * 1000;
 const MAX_OUTGOING = 5;
@@ -33,7 +40,7 @@ class ChallengeError extends Error {
   }
 }
 
-/** id → { id, from, to, rule, time, rated, createdAt, timer } */
+/** id → { id, from, to, settings, games, stake, createdAt, timer } */
 const pending = new Map();
 let hooks = { onSeated: () => {}, onRoomChanged: () => {}, isOnline: () => false };
 
@@ -55,33 +62,95 @@ function remove(c, { dropNotification = true } = {}) {
   if (dropNotification) notifications.drop(c.to, 'challenge', c.from);
 }
 
-function send(fromId, username, { rule, time, rated } = {}) {
+const STAKES = ['none', 'swap'];
+const TIMER_MODES = ['per_move', 'per_game', 'blitz'];
+const bad = (msg) => new ChallengeError('BAD_SETTINGS', 400, msg);
+const isInt = (v, lo, hi) => Number.isInteger(v) && v >= lo && v <= hi;
+const optBool = (v) => v === undefined || typeof v === 'boolean';
+
+/**
+ * Create-room parity (#222): every field checked like the lobby form sends it —
+ * unknown values are rejected (not defaulted) so the challenged sees exactly what
+ * was proposed — then normalised by RoomManager's own validator.
+ * Legacy body `{rule, time, rated}` (B197 chips) maps to a blitz preset.
+ */
+function parseSettings(body) {
+  const raw = body.settings;
+  if (raw === undefined || raw === null) {
+    if (!RULES.includes(body.rule)) throw new ChallengeError('BAD_RULE', 400, 'Luật không hợp lệ.');
+    if (!PRESETS[body.time]) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
+    return roomManager._validateSettings({ ...PRESETS[body.time], winningRule: body.rule, ranked: body.rated === true });
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw bad('Cài đặt không hợp lệ.');
+  if (!config.VALID_BOARD_SIZES.includes(raw.boardSize)) throw bad('Kích thước bàn không hợp lệ.');
+  if (!RULES.includes(raw.winningRule)) throw new ChallengeError('BAD_RULE', 400, 'Luật không hợp lệ.');
+  if (!optBool(raw.ruleWall) || !optBool(raw.rulePortal) || !optBool(raw.ruleSwap2) || typeof raw.ranked !== 'boolean') {
+    throw bad('Cài đặt không hợp lệ.');
+  }
+  if (!TIMER_MODES.includes(raw.timerMode)) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
+  if (!isInt(raw.timerSeconds, 5, 3600)) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
+  const inc = raw.timerIncrementSeconds === undefined ? 0 : raw.timerIncrementSeconds;
+  if (!isInt(inc, 0, 600)) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
+  return roomManager._validateSettings({
+    boardSize: raw.boardSize, winningRule: raw.winningRule, ranked: raw.ranked,
+    ruleWall: raw.ruleWall === true, rulePortal: raw.rulePortal === true, ruleSwap2: raw.ruleSwap2 === true,
+    timerMode: raw.timerMode, timerSeconds: raw.timerSeconds,
+    timerIncrementSeconds: raw.timerMode === 'blitz' ? inc : 0, // increment only ticks in blitz
+  });
+}
+
+/** Swap Elo guards (all required): rated, both ≥ min rated games in the category, pair cooldown. */
+function checkStake(c) {
+  if (c.stake !== 'swap') return;
+  if (!c.settings.ranked) throw new ChallengeError('STAKE_NEEDS_RATED', 400, 'Cược đổi Elo chỉ dành cho ván xếp hạng.');
+  const cat = c.settings.winningRule;
+  for (const uid of [c.from, c.to]) {
+    if (database.getRatedGames(uid, cat) < config.SWAP_MIN_RATED_GAMES) {
+      throw new ChallengeError('STAKE_MIN_GAMES', 409, `Cả hai cần ít nhất ${config.SWAP_MIN_RATED_GAMES} ván xếp hạng ở luật này.`);
+    }
+  }
+  const last = database.lastEloSwapAt(c.from, c.to);
+  if (last && Date.now() - Date.parse(last) < config.SWAP_COOLDOWN_MS) {
+    throw new ChallengeError('STAKE_COOLDOWN', 409, 'Hai bạn vừa đổi Elo, hãy chờ 24 giờ.');
+  }
+}
+
+function send(fromId, username, body = {}) {
   const target = database.getUserByUsername(String(username || '').slice(0, 40));
   if (!target) throw new ChallengeError('USER_NOT_FOUND', 404, 'Không tìm thấy người chơi.');
   if (target.id === fromId) throw new ChallengeError('CANNOT_CHALLENGE_SELF', 400, 'Không thể tự thách đấu.');
   if (!privacyGate.allowed(fromId, target.id, 'challenge')) throw new ChallengeError('CHALLENGE_NOT_ALLOWED', 403, 'Người này không nhận thách đấu từ bạn.');
-  if (!RULES.includes(rule)) throw new ChallengeError('BAD_RULE', 400, 'Luật không hợp lệ.');
-  if (!PRESETS[time]) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
-  for (const c of [...pending.values()]) if (c.from === fromId && c.to === target.id) remove(c); // re-send replaces
-  const outgoing = [...pending.values()].filter((c) => c.from === fromId).length;
+  const settings = parseSettings(body);
+  const games = body.games === undefined ? 1 : body.games;
+  if (!Number.isInteger(games) || games < 1 || games > config.CHALLENGE_SERIES_MAX_GAMES) throw new ChallengeError('BAD_GAMES', 400, 'Số ván không hợp lệ.');
+  const stake = body.stake === undefined ? 'none' : body.stake;
+  if (!STAKES.includes(stake)) throw new ChallengeError('BAD_STAKE', 400, 'Kiểu cược không hợp lệ.');
+  const c = {
+    id: crypto.randomUUID(), from: fromId, to: target.id, settings, games, stake, createdAt: Date.now(),
+    time: body.settings == null ? body.time : null, // legacy chip label, shown as-is
+  };
+  checkStake(c);
+  for (const old of [...pending.values()]) if (old.from === fromId && old.to === target.id) remove(old); // re-send replaces
+  const outgoing = [...pending.values()].filter((x) => x.from === fromId).length;
   if (outgoing >= MAX_OUTGOING) throw new ChallengeError('TOO_MANY_CHALLENGES', 429, 'Quá nhiều thách đấu đang chờ.');
 
   const me = database.getUserById(fromId);
-  const c = {
-    id: crypto.randomUUID(), from: fromId, to: target.id, rule, time, rated: rated === true, createdAt: Date.now(),
-  };
   c.timer = setTimeout(() => remove(c), TTL_MS);
   if (c.timer.unref) c.timer.unref();
   pending.set(c.id, c);
+  const v = view(c);
   notifications.push(target.id, 'challenge', fromId, {
     from: { username: me.username, displayName: me.display_name },
-    challengeId: c.id, rule, time, rated: c.rated,
+    challengeId: c.id, rule: v.rule, time: v.time, rated: v.rated, settings: v.settings, games, stake,
   });
-  return view(c);
+  return v;
 }
 
 function view(c) {
-  return { id: c.id, rule: c.rule, time: c.time, rated: c.rated, expiresAt: c.createdAt + TTL_MS };
+  return {
+    id: c.id, rule: c.settings.winningRule, time: c.time, rated: c.settings.ranked,
+    settings: { ...c.settings }, games: c.games, stake: c.stake, expiresAt: c.createdAt + TTL_MS,
+  };
 }
 
 function list(userId) {
@@ -106,9 +175,10 @@ function accept(userId, id, ip) {
   if (roomManager.getRoomByUser(c.from) || roomManager.getRoomByUser(c.to)) {
     throw new ChallengeError('ALREADY_IN_ANOTHER_ROOM', 409, 'Một trong hai người đang ở trong phòng khác.');
   }
+  checkStake(c); // ratings / cooldown may have moved since send
   const a = database.getUserById(c.from);
   const b = database.getUserById(c.to);
-  const settings = { ...PRESETS[c.time], winningRule: c.rule, ranked: c.rated, roomName: `${c.time} · ${a.display_name} vs ${b.display_name}` };
+  const settings = { ...c.settings, roomName: `${a.display_name} vs ${b.display_name}`.slice(0, 30) };
   const seated = seatPair(
     roomManager,
     { userId: a.id, displayName: a.display_name },
@@ -119,6 +189,12 @@ function accept(userId, id, ip) {
   if (seated.error) throw new ChallengeError(seated.code, 409, seated.error);
   remove(c);
   const { room } = seated;
+  if (c.games > 1 || c.stake !== 'none') {
+    room.series = ChallengeSeries.create({
+      players: [a.id, b.id], total: c.games, stake: c.stake,
+      rated: c.settings.ranked, category: RatingService.categoryFor(c.settings.winningRule),
+    });
+  }
   notifications.push(c.from, 'challenge_accepted', c.to, { from: { username: b.username, displayName: b.display_name }, roomId: room.roomId });
   try { hooks.onSeated(room, [a.id, b.id]); } catch (_) { /* redirect is best-effort */ }
   scheduleSeatCheck(room.roomId, [a.id, b.id]);

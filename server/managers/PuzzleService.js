@@ -325,8 +325,15 @@ function statsFor(userId) {
   return { solved: Object.values(byLevel).reduce((a, b) => a + b, 0), level, byLevel, threshold: LEVEL_THRESHOLD };
 }
 
+/** Dashboard Learn card (#224): approved puzzle count, and how many of them the member solved (null for guests). */
+function learnSummary(userId) {
+  const total = db().prepare("SELECT COUNT(*) AS n FROM puzzles WHERE status = 'approved'").get().n;
+  if (!userId) return { total, solved: null };
+  return { total, solved: statsFor(userId).solved };
+}
+
 module.exports = {
-  statsFor, LEVEL_THRESHOLD,
+  statsFor, learnSummary, LEVEL_THRESHOLD,
   PuzzleError, RULES, LEVELS, TAGS, MODES, BOARD_SIZES, MAX_PENDING_PER_USER, isAdmin,
   createPuzzle, updatePuzzle, listApproved, getPuzzle, solve, mine, reviewQueue, review,
 };

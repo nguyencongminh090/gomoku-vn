@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=260'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=357'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -109,7 +109,11 @@
   /** The notifications page (social.js) shows the same list the bell holds — one fetch, one poll. */
   const notifications = {
     onChange(fn) { notifListeners.push(fn); fn(bell.items, bell.unread); },
-    text: (n) => t('notif.' + n.type, { name: n.payload && n.payload.from ? n.payload.from.displayName : '' }),
+    text: (n) => {
+      const vars = { name: n.payload && n.payload.from ? n.payload.from.displayName : '' };
+      if (n.payload && n.payload.club) vars.club = n.payload.club.name;
+      return t('notif.' + n.type, vars);
+    },
     target: (n) => notifTarget(n),
     markRead: (id) => markRead(id),
   };
@@ -118,6 +122,7 @@
     const from = n.payload && n.payload.from;
     if (n.type === 'friend_accepted' && from) return '/u/' + encodeURIComponent(from.username);
     if (n.type === 'challenge_accepted' && n.payload && n.payload.roomId) return '/room.html?id=' + encodeURIComponent(n.payload.roomId);
+    if (n.type.startsWith('club_') && n.payload && n.payload.club) return '/c/' + encodeURIComponent(n.payload.club.slug) + (n.type === 'club_request' ? '#tab=manage' : '');
     if (n.type === 'dm' && from) return '/social.html#dm=' + encodeURIComponent(from.username);
     return '/social.html';
   }
@@ -214,7 +219,7 @@
     chip.av.style.backgroundImage = url ? 'url("' + url + '")' : '';
   }
 
-  /** User chip + dropdown (B211): Hồ sơ · Cài đặt · Quản trị (staff) · Đăng xuất; guests get Cài đặt · Tạo tài khoản. */
+  /** User chip + dropdown (B211): Hồ sơ · Bạn bè & tin nhắn · Cài đặt · Quản trị (staff) · Đăng xuất; guests get Cài đặt · Tạo tài khoản. */
   function mountAccount(right, user) {
     const member = !user.isGuest;
     const wrap = el('div', undefined, 'pnav__acct');
@@ -241,10 +246,14 @@
       n.append(icon(iconName), el('span', label));
       return n;
     };
+    // Opened from a room → Settings shows a floating "back to room" button; elsewhere it adds nothing.
+    const settingsHref = () => (/^\/room(\.html)?$/.test(location.pathname)
+      ? '/settings.html?return=' + encodeURIComponent(location.pathname + location.search) : '/settings.html');
     const profile = member ? item('a', 'ph-regular-user-circle', t('shell.menu_profile'), '#') : null;
+    const social = member ? item('a', 'ph-regular-chat-circle', t('shell.menu_social'), '/social.html') : null; // #233: the only text entry to Bạn bè
     const admin = member ? item('a', 'ph-regular-shield-check', t('shell.menu_admin'), '/admin') : null;
     if (admin) { admin.hidden = true; admin.classList.add('pnav__item--staff'); }
-    menu.append(...[profile, item('a', 'ph-regular-gear-six', t('gset.title'), '/settings.html'), admin, el('hr')].filter(Boolean));
+    menu.append(...[profile, social, item('a', 'ph-regular-gear-six', t('gset.title'), settingsHref()), admin, el('hr')].filter(Boolean));
     if (member) {
       const out = item('button', 'ph-regular-sign-out', t('gset.btn_logout'));
       out.addEventListener('click', async () => {
@@ -349,12 +358,19 @@
   }
 
   /** Avatar circle: image if the member has one, else initials. cls e.g. 'pav--xl pav--sq'. */
-  function avatar(url, name, cls) {
-    const a = el('span', url ? '' : initials(name), 'pav' + (cls ? ' ' + cls : ''));
+  function avatar(url, name, cls, ident) {
+    const a = el('span', url ? '' : (ident && ident.tag) || initials(name), 'pav' + (cls ? ' ' + cls : '') + (!url && ident && ident.color ? ' pav--c-' + ident.color : ''));
     if (url) a.style.backgroundImage = 'url("' + url + '")';
     a.setAttribute('aria-hidden', 'true');
     return a;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, icon, pushNotification, setMyAvatar, notifications };
+  /** Ticket meta line (ticket-rows.md): one <span> per fact, spaced by CSS gap — never a joined "a · b" string. */
+  function meta(parts) {
+    const box = el("div", undefined, "prow__m prow__meta");
+    for (const p of [].concat(parts)) if (p) box.appendChild(el("span", p));
+    return box;
+  }
+
+  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications };
 })();

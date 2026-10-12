@@ -223,6 +223,14 @@ function statusBadgeInfo(status) {
 
 // ── Header ───────────────────────────────────────────────────────────────
 
+function closeManageMenu() {
+  const m = document.getElementById('manage-menu');
+  if (m && !m.hidden) { m.hidden = true; document.getElementById('btn-manage')?.setAttribute('aria-expanded', 'false'); }
+}
+// pointerdown, not click: iOS WebKit never fires click on non-interactive elements, so a tap on blank page would leave the menu open.
+document.addEventListener('pointerdown', (ev) => { if (!ev.target.closest('#manage-menu, #btn-manage')) closeManageMenu(); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeManageMenu(); });
+
 function renderHeader() {
   detailNameEl.textContent = tournament.name;
   const badge = statusBadgeInfo(tournament.status);
@@ -233,29 +241,52 @@ function renderHeader() {
     const displayRound = tournament.format === 'round_robin'
       ? (tournament.currentRoundIndex || 0) + 1
       : (tournament.currentRoundIndex || 1);
-    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
+    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
   }
   detailMetaEl.innerHTML = `
     <span class="badge badge--format">${formatLabel(tournament.format)}</span>
     <span class="badge ${badge.cls}">${badge.label}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
     ${roundMeta}
   `;
 
-  if (isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active')) {
-    detailCancelSlot.innerHTML = `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-cancel-tournament">${t('tdetail.btn_cancel_tournament')}</button>`;
-    document.getElementById('btn-cancel-tournament').addEventListener('click', () => {
-      document.getElementById('cancel-tournament-reason-input').value = '';
-      document.getElementById('modal-cancel-tournament').classList.add('visible');
-    });
-  } else {
-    detailCancelSlot.innerHTML = '';
-  }
+  const me = myEntry();
+  const canWithdraw = tournament.status === 'active' && me && !me.withdrawn;
+  const droppable = tournament.status === 'active' && isOrganizer()
+    ? tournament.entries.filter((e) => !e.withdrawn) : [];
+  const canCancel = isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active');
+  const item = (id, ico, key) => `<button class="manage-menu__item" type="button" role="menuitem" id="${id}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-${ico}"></use></svg>${t(key)}</button>`;
+  const menuItems = (canWithdraw ? item('btn-withdraw', 'sign-out', 'tdetail.btn_withdraw') : '')
+    + (droppable.length ? item('btn-drop-player', 'user-minus', 'tdetail.btn_drop_player') : '')
+    + (canCancel ? item('btn-cancel-tournament', 'warning', 'tdetail.btn_cancel_tournament') : '');
+  detailCancelSlot.innerHTML = menuItems
+    ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
+    : '';
+  const manageBtn = document.getElementById('btn-manage');
+  const menuEl = document.getElementById('manage-menu');
+  const setMenu = (open) => { menuEl.hidden = !open; manageBtn.setAttribute('aria-expanded', String(open)); };
+  if (manageBtn) manageBtn.addEventListener('click', () => { setMenu(menuEl.hidden); });
+  const onItem = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', () => { setMenu(false); fn(); }); };
+  onItem('btn-cancel-tournament', () => {
+    document.getElementById('cancel-tournament-reason-input').value = '';
+    document.getElementById('modal-cancel-tournament').classList.add('visible');
+  });
+  onItem('btn-withdraw', () => {
+    if (confirm(t('tdetail.confirm_withdraw'))) client.emit('tournament:withdraw', { tournamentId });
+  });
+  const dropBtn = document.getElementById('btn-drop-player');
+  if (dropBtn) dropBtn.addEventListener('click', () => {
+    menuEl.innerHTML = `<div class="manage-menu__title">${t('tdetail.btn_drop_player')}</div>` + droppable.map((e) => `<button class="manage-menu__item" type="button" role="menuitem" data-drop-entry="${escapeAttr(e.entryId)}">${escapeHtml(e.displayName)}</button>`).join('');
+    menuEl.querySelectorAll('[data-drop-entry]').forEach((b) => b.addEventListener('click', () => {
+      setMenu(false);
+      if (confirm(t('tdetail.confirm_drop_player'))) client.emit('tournament:withdraw', { tournamentId, entryId: b.dataset.dropEntry });
+    }));
+  });
 
   if (tournament.status === 'cancelled') {
     detailCancelSlot.innerHTML = `
-      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-warning"></use></svg>
+      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-warning"></use></svg>
         <span>${t('tdetail.cancelled_notice')}${tournament.cancelReason ? ` — ${escapeHtml(tournament.cancelReason)}` : ''}</span>
       </div>
     `;
@@ -341,7 +372,7 @@ function renderActionBanner() {
 
   actionBannerSlot.innerHTML = `
     <div class="action-banner">
-      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-hourglass-medium"></use></svg></div>
+      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-bold-hourglass-medium"></use></svg></div>
       <div>
         <div class="action-banner__title">${escapeHtml(title)}</div>
         <div class="action-banner__sub">${escapeHtml(sub)}</div>
@@ -384,6 +415,11 @@ function stateLabel(pairing) {
   }
 }
 
+// 'withdrawn' (B241 drop/forfeit) and 'noshow_cap' (replay cap) are walkovers too.
+function isWalkoverReason(reason) {
+  return reason === 'walkover' || reason === 'withdrawn' || reason === 'noshow_cap';
+}
+
 function resultLine(pairing, me) {
   if (!pairing.result) return '';
   const { winnerEntryId, reason } = pairing.result;
@@ -394,7 +430,7 @@ function resultLine(pairing, me) {
     const won = me && winnerEntryId === me.entryId;
     const winnerName = entryName(winnerEntryId);
     text = won ? t('tdetail.result_you_won') : t('tdetail.result_winner', { name: winnerName });
-    if (reason === 'walkover') text += ` (${t('tdetail.reason_walkover')})`;
+    if (isWalkoverReason(reason)) text += ` (${t('tdetail.reason_walkover')})`;
     else if (reason === 'bye') text += ` (${t('tdetail.reason_bye')})`;
   }
   return `<div class="pairing-card__result">${t('tdetail.result_label')}: <span class="win">${escapeHtml(text)}</span></div>`;
@@ -415,30 +451,30 @@ function renderPairingCard(pairing) {
   const organizerActions = [];
 
   if (pairing.state === 'Negotiating' || pairing.state === 'Paired') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
     if (isMine) actions += `<button class="btn btn-confirm" type="button" data-action="report" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_report')}</button>`;
     if (isOrganizer()) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Reported') {
     if (pairing.disputed) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="resolve" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_resolve')}</button>`);
         organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
       }
     } else if (isMine && pairing.reportedBy === me.entryId) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
     } else if (isMine) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
       actions += `<button class="btn btn-confirm" type="button" data-action="confirm" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_confirm')}</button>`;
       actions += `<button class="btn-secondary" type="button" data-action="dispute" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_dispute')}</button>`;
     } else {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
     }
     if (isOrganizer() && !pairing.disputed) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Ready') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
     if (pairing.rescheduleRequest) {
-      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
+      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="approve_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_approve')}</button>`);
         organizerActions.push(`<button class="btn-secondary" type="button" data-action="deny_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_deny')}</button>`);
@@ -460,7 +496,7 @@ function renderPairingCard(pairing) {
   }
 
   const organizerToolsHtml = organizerActions.length
-    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
+    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
     : '';
 
   return `
@@ -746,7 +782,7 @@ function crossTableCell(lookup, rowEntryId, colEntryId) {
 
   // Walkover has no real games played — no score to sum, show W/L instead
   // (same convention as the pairing-card state pill for walkover elsewhere).
-  if (p.result && p.result.reason === 'walkover') {
+  if (p.result && isWalkoverReason(p.result.reason)) {
     const won = p.result.winnerEntryId === rowEntryId;
     return won
       ? `<span class="cross-table__win">${t('tdetail.cross_table_walkover_win')}</span>`
@@ -778,7 +814,7 @@ function renderCrossTable() {
   const entriesByIdLocal = new Map(tournament.entries.map((e) => [e.entryId, e]));
   const entries = ranked.map((r) => entriesByIdLocal.get(r.id)).filter(Boolean);
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
 
   // Highlight Vô địch/Á quân only once the tournament is over (rank is still
@@ -811,8 +847,8 @@ function renderCrossTable() {
               isRunnerUp ? 'is-runner-up' : '',
             ].filter(Boolean).join(' ');
             const trophyIcon = isChampion
-              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-trophy"></use></svg>`
-              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-trophy"></use></svg>` : '');
+              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-trophy"></use></svg>`
+              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-trophy"></use></svg>` : '');
             return `
               <tr class="${rowCls}">
                 <th class="cross-table__name-col">${trophyIcon}${escapeHtml(entryName(rowEntry.entryId))}</th>
@@ -828,13 +864,203 @@ function renderCrossTable() {
   `;
 }
 
+// ── Bracket / round-column result views (Swiss + Double Elimination) ─────
+//
+// Same data as the pairing list, drawn as columns of match cards (Arena style:
+// dark surface cards, brand-green winner row). Double Elimination draws the
+// full skeleton (tournament.bracket) so future matches show "Winner of W1M1";
+// Swiss has no tree, so it is one column per round with every player's row
+// highlightable across rounds.
+
+/** Latest pairing per local bracket match id (replays create a new pairing for the same match). */
+function pairingsByMatchId() {
+  const map = new Map();
+  for (const p of pairingsById.values()) {
+    if (!p.bracketMatchId) continue;
+    const cur = map.get(p.bracketMatchId);
+    if (!cur || p.pairedAt > cur.pairedAt) map.set(p.bracketMatchId, p);
+  }
+  return map;
+}
+
+/** Winner entryId of a finished pairing, null when none/undecided. */
+function pairingWinner(p) {
+  if (!p || (p.state !== 'Completed' && p.state !== 'Walkover')) return null;
+  return p.result ? (p.result.winnerEntryId ?? null) : null;
+}
+
+/** Mirror of doubleElim.resolveBracket for display: undefined = not yet known, null = empty (bye). */
+function resolveBracketView(bracket, byMatch) {
+  const defs = new Map();
+  for (const round of bracket.winners) for (const m of round) defs.set(m.id, m);
+  for (const round of bracket.losers) for (const m of round) defs.set(m.id, m);
+  if (bracket.grandFinal) defs.set(bracket.grandFinal.id, bracket.grandFinal);
+  const cache = new Map();
+  const slot = (s) => {
+    if (s.type === 'seed') return bracket.playersBySeed[s.seed - 1] ?? null;
+    const m = match(s.matchId);
+    return s.type === 'winner' ? m.winner : m.loser;
+  };
+  function match(id) {
+    if (cache.has(id)) return cache.get(id);
+    const def = defs.get(id);
+    const a = slot(def.slotA);
+    const b = slot(def.slotB);
+    let out;
+    if (a === undefined || b === undefined) out = { a, b, winner: undefined, loser: undefined };
+    else if (a === null && b === null) out = { a, b, winner: null, loser: null };
+    else if (a === null || b === null) out = { a, b, winner: a ?? b, loser: null, bye: true };
+    else {
+      const w = pairingWinner(byMatch.get(id));
+      out = { a, b, winner: w ?? undefined, loser: w ? (w === a ? b : a) : undefined };
+    }
+    cache.set(id, out);
+    return out;
+  }
+  const resolved = new Map();
+  for (const id of defs.keys()) resolved.set(id, match(id));
+  return resolved;
+}
+
+function bracketRow(entryId, placeholder, pairing, isWinner, isLoser) {
+  if (entryId == null) {
+    // null = empty bye seat; undefined = not decided yet (show where the player comes from)
+    const text = entryId === null ? t('tdetail.bracket_bye') : placeholder;
+    return `<div class="bm__row bm__row--tbd"><span class="bm__name">${escapeHtml(text)}</span></div>`;
+  }
+  const me = myEntry();
+  const score = pairing && pairing.seriesScore && pairing.player2EntryId != null && ['InProgress', 'Completed', 'Walkover'].includes(pairing.state)
+    ? fmtScore(pairing.seriesScore[entryId] || 0) : '';
+  const cls = ['bm__row', isWinner ? 'is-winner' : '', isLoser ? 'is-loser' : '', me && me.entryId === entryId ? 'is-me' : ''].filter(Boolean).join(' ');
+  return `<div class="${cls}" data-entry="${entryId}"><span class="bm__name">${escapeHtml(entryName(entryId))}</span><span class="bm__score">${score}</span></div>`;
+}
+
+function bracketCard(label, a, b, winner, pairing, ph = {}) {
+  const live = pairing && pairing.state === 'InProgress';
+  const cls = ['bm', live ? 'is-live' : '', pairing && isMinePairing(pairing) ? 'is-mine' : ''].filter(Boolean).join(' ');
+  const done = winner != null;
+  const link = pairing && pairing.player2EntryId != null ? ` data-pairing="${escapeHtml(pairing.pairingId)}" role="link" tabindex="0"` : '';
+  return `<div class="${cls}"${link}><div class="bm__id">${escapeHtml(label)}${live ? ` · ${t('tdetail.cross_table_live')}` : ''}</div>`
+    + bracketRow(a, ph.a || '—', pairing, done && winner === a, done && winner !== a && a != null)
+    + bracketRow(b, ph.b || '—', pairing, done && winner === b, done && winner !== b && b != null)
+    + '</div>';
+}
+
+// Player-facing match numbers (1, 2, 3 … in play order) instead of engine ids like W2M1; byes take no number.
+let bracketNumbers = new Map();
+function numberBracketMatches(bracket, resolved) {
+  bracketNumbers = new Map();
+  const all = [...bracket.winners.flat(), ...bracket.losers.flat(), ...(bracket.grandFinal ? [bracket.grandFinal] : [])];
+  for (const def of all) {
+    const r = resolved.get(def.id);
+    if (r.a !== null && r.b !== null) bracketNumbers.set(def.id, bracketNumbers.size + 1);
+  }
+}
+function matchLabel(def, r) {
+  if (r.a === null || r.b === null) return t('tdetail.bracket_bye');
+  return t('tdetail.bracket_match_n', { n: bracketNumbers.get(def.id) });
+}
+function slotPlaceholder(s) {
+  if (s.type === 'seed') return t('tdetail.bracket_bye');
+  return t(s.type === 'winner' ? 'tdetail.bracket_winner_of' : 'tdetail.bracket_loser_of', { id: bracketNumbers.get(s.matchId) ?? '?' });
+}
+
+function bracketSection(title, rounds, resolved, byMatch) {
+  if (!rounds.length) return '';
+  return `<div class="bracket__section"><div class="round-group__title">${title}</div><div class="bracket__cols">`
+    + rounds.map((round, i) => `<div class="bracket__col${i < rounds.length - 1 && rounds[i + 1].length < round.length ? ' bracket__col--merge' : ''}"><div class="bracket__col-title">${t('tdetail.round_word')} ${i + 1}</div>`
+      + round.map((def, j) => {
+        const r = resolved.get(def.id);
+        if (r.a === null && r.b === null) return `<div class="bracket__slot is-empty${j % 2 ? ' is-bottom' : ' is-top'}"></div>`; // empty slot keeps the column geometry
+        return `<div class="bracket__slot${j % 2 ? ' is-bottom' : ' is-top'}">${bracketCard(matchLabel(def, r), r.a, r.b, r.winner, byMatch.get(def.id), { a: slotPlaceholder(def.slotA), b: slotPlaceholder(def.slotB) })}</div>`;
+      }).join('')
+      + '</div>').join('')
+    + '</div></div>';
+}
+
+/** Champion / runner-up strip once the tournament is over (from the server's finalRank). */
+function podiumHtml() {
+  if (tournament.status !== 'completed') return '';
+  const byRank = (r) => tournament.entries.filter((e) => e.finalRank === r);
+  const place = (list, cls, key) => list.map((e) => `<span class="podium__item podium__item--${cls}"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-trophy"></use></svg><span class="podium__label">${t(key)}</span><strong>${escapeHtml(e.displayName)}</strong></span>`).join('');
+  const html = place(byRank(1), 'champion', 'tdetail.cross_table_champion') + place(byRank(2), 'runner-up', 'tdetail.cross_table_runner_up');
+  return html ? `<div class="podium">${html}</div>` : '';
+}
+
+function renderBracketTree() {
+  const bracket = tournament.bracket;
+  if (!bracket || tournament.status === 'draft') {
+    standingsContainer.innerHTML = `<div class="empty-tournaments"><span class="room-list__empty-text">${t('tdetail.bracket_not_started')}</span></div>`;
+    return;
+  }
+  const byMatch = pairingsByMatchId();
+  const resolved = resolveBracketView(bracket, byMatch);
+  numberBracketMatches(bracket, resolved);
+  let gf = '';
+  if (bracket.grandFinal) {
+    const g = resolved.get('GF');
+    const reset = byMatch.get('GF_RESET');
+    gf = `<div class="bracket__section"><div class="round-group__title">${t('tdetail.bracket_grand_final')}</div><div class="bracket__cols">`
+      + `<div class="bracket__col"><div class="bracket__slot">${bracketCard(matchLabel(bracket.grandFinal, g), g.a, g.b, g.winner, byMatch.get('GF'), { a: slotPlaceholder(bracket.grandFinal.slotA), b: slotPlaceholder(bracket.grandFinal.slotB) })}</div></div>`
+      + (reset ? `<div class="bracket__col"><div class="bracket__slot">${bracketCard(t('tdetail.bracket_reset'), reset.player1EntryId, reset.player2EntryId, pairingWinner(reset), reset)}</div></div>` : '')
+      + '</div></div>';
+  }
+  standingsContainer.innerHTML = podiumHtml() + `<div class="bracket">`
+    + bracketSection(t('tdetail.bracket_winners'), bracket.winners, resolved, byMatch)
+    + bracketSection(t('tdetail.bracket_losers'), bracket.losers, resolved, byMatch)
+    + gf + '</div>';
+}
+
+function swissRoundsHtml() {
+  const byRound = new Map();
+  for (const p of pairingsById.values()) {
+    const idx = p.roundIndex ?? 0;
+    if (!byRound.has(idx)) byRound.set(idx, []);
+    byRound.get(idx).push(p);
+  }
+  if (!byRound.size) return '';
+  const cols = Array.from(byRound.keys()).sort((a, b) => b - a).map((idx) => {
+    const cards = byRound.get(idx).sort((a, b) => (a.pairedAt < b.pairedAt ? -1 : 1)).map((p, i) => {
+      if (p.player2EntryId == null) {
+        return `<div class="bracket__slot">${bracketCard(t('tdetail.bracket_bye'), p.player1EntryId, null, p.player1EntryId, p, { b: t('tdetail.bracket_bye') })}</div>`;
+      }
+      return `<div class="bracket__slot">${bracketCard(t('tdetail.bracket_board', { n: i + 1 }), p.player1EntryId, p.player2EntryId, pairingWinner(p), p)}</div>`;
+    }).join('');
+    return `<div class="bracket__col"><div class="bracket__col-title">${t('tdetail.round_word')} ${idx}</div>${cards}</div>`;
+  }).join('');
+  return `<div class="bracket bracket--swiss"><div class="round-group__title">${t('tdetail.bracket_swiss_title')}</div><div class="bracket__cols">${cols}</div></div>`;
+}
+
+// Hover a player anywhere → light up that player's rows in every round/column.
+standingsContainer.addEventListener('mouseover', (ev) => {
+  const row = ev.target.closest('.bm__row[data-entry]');
+  const id = row ? row.dataset.entry : null;
+  standingsContainer.querySelectorAll('.bm__row.is-tracked').forEach((el) => el.classList.remove('is-tracked'));
+  if (id) standingsContainer.querySelectorAll(`.bm__row[data-entry="${id}"]`).forEach((el) => el.classList.add('is-tracked'));
+});
+// Whole card opens the match page (mouse or Enter/Space) — same target as the pairing list's buttons.
+standingsContainer.addEventListener('click', (ev) => {
+  const card = ev.target.closest('.bm[data-pairing]');
+  if (card) goToMatch(card.dataset.pairing);
+});
+standingsContainer.addEventListener('keydown', (ev) => {
+  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+  const card = ev.target.closest('.bm[data-pairing]');
+  if (card && ev.target === card) { ev.preventDefault(); goToMatch(card.dataset.pairing); }
+});
+// Keyboard focus on a card lights up the same player everywhere, like hover does.
+standingsContainer.addEventListener('focusin', (ev) => {
+  const card = ev.target.closest('.bm');
+  standingsContainer.querySelectorAll('.bm__row.is-tracked').forEach((el) => el.classList.remove('is-tracked'));
+  if (card && ev.target === card) card.querySelectorAll('.bm__row[data-entry]').forEach((r) => standingsContainer.querySelectorAll(`.bm__row[data-entry="${r.dataset.entry}"]`).forEach((el) => el.classList.add('is-tracked')));
+});
+standingsContainer.addEventListener('mouseleave', () => {
+  standingsContainer.querySelectorAll('.bm__row.is-tracked').forEach((el) => el.classList.remove('is-tracked'));
+});
+
 function renderStandings() {
   if (tournament.format === 'double_elim') {
-    standingsContainer.innerHTML = `
-      <div class="empty-tournaments">
-        <span class="room-list__empty-text">${t('tdetail.no_standings_bracket')}</span>
-      </div>
-    `;
+    renderBracketTree();
     return;
   }
 
@@ -846,7 +1072,7 @@ function renderStandings() {
   const me = myEntry();
   const ranked = computeStandings();
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
   standingsContainer.innerHTML = `
     ${partialNotice}
@@ -863,7 +1089,7 @@ function renderStandings() {
         ${ranked.map((row) => `
           <tr class="${me && row.id === me.entryId ? 'is-me' : ''}">
             <td class="rank-cell">${row.rank}</td>
-            <td class="name-cell">${escapeHtml(entryName(row.id))}</td>
+            <td class="name-cell">${escapeHtml(entryName(row.id))}${tournament.entries.find((e) => e.entryId === row.id)?.withdrawn ? ` <span class="badge badge--withdrawn">${t('tdetail.withdrawn_tag')}</span>` : ''}</td>
             <td class="num-cell">${row.score.toFixed(1)}</td>
             <td class="num-cell">${row.buchholz.toFixed(1)}</td>
             <td class="num-cell">${row.sonnebornBerger.toFixed(1)}</td>
@@ -871,6 +1097,7 @@ function renderStandings() {
         `).join('')}
       </tbody>
     </table>
+    ${tournament.format === 'swiss' ? podiumHtml() + swissRoundsHtml() : ''}
   `;
 }
 

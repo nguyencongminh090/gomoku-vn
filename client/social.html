@@ -7,15 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Bạn bè</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=260" />
-  <link rel="stylesheet" href="css/tokens.css?v=260" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=260" />
-  <link rel="stylesheet" href="css/platform.css?v=260" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=260" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=260">
+  <link rel="stylesheet" href="css/main.css?v=357" />
+  <link rel="stylesheet" href="css/tokens.css?v=357" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=357" />
+  <link rel="stylesheet" href="css/platform.css?v=357" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=357" />
+  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=357">
 
-  <script src="js/ui-mode-preload.js?v=260"></script>
-  <script src="js/skin-preload.js?v=260"></script>
+  <script src="js/ui-mode-preload.js?v=357"></script>
+  <script src="js/skin-preload.js?v=357"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -33,7 +33,10 @@
         <div id="sc-notifs" class="prows" aria-live="polite"></div>
       </section>
       <section class="ppanel">
-        <h2 class="ph2" data-i18n="social.challenges">Thách đấu</h2>
+        <div class="pchal__head">
+          <h2 class="ph2" data-i18n="social.challenges">Thách đấu</h2>
+          <button id="sc-challenge-new" class="pbtn pbtn--sm pbtn--primary" type="button" data-i18n="challenge.pick_title">Thách đấu bạn bè</button>
+        </div>
         <div id="sc-challenges" class="prows"></div>
       </section>
       <section class="ppanel">
@@ -43,7 +46,13 @@
     </div>
     <div class="pcol">
       <section class="ppanel">
-        <h2 class="ph2" data-i18n="social.friends">Bạn bè</h2>
+        <h2 class="ph2" data-i18n="social.add">Thêm bạn</h2>
+        <div class="pcode"><span data-i18n="social.my_code">Mã của bạn</span> <code id="sc-code">…</code> <button id="sc-code-copy" class="pbtn pbtn--sm pbtn--ghost" type="button" data-i18n="social.copy">Sao chép</button></div>
+        <form id="sc-add" class="padd" role="search" autocomplete="off">
+          <input id="sc-add-q" type="search" maxlength="40" aria-label="Thêm bạn" data-i18n-placeholder="social.add_ph" placeholder="Tên đăng nhập, tên hiển thị hoặc tên#1234" />
+        </form>
+        <div id="sc-add-results" class="prows" aria-live="polite"></div>
+        <h2 class="ph2 ph2--gap" data-i18n="social.friends">Bạn bè</h2>
         <div id="sc-friends" class="prows"></div>
         <h2 class="ph2 ph2--gap" data-i18n="social.outgoing">Đã gửi lời mời</h2>
         <div id="sc-outgoing" class="prows"></div>
@@ -68,13 +77,14 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=260"></script>
-<script src="js/escape-utils.js?v=260"></script>
-<script src="js/ui-mode.js?v=260"></script>
-<script src="js/session.js?v=260"></script>
-<script src="js/audio-manager.js?v=260"></script>
-<script src="js/settings-panel.js?v=260"></script>
-<script src="js/platform-shell.js?v=260"></script>
-<script src="js/social.js?v=260"></script>
+<script src="js/i18n.js?v=357"></script>
+<script src="js/escape-utils.js?v=357"></script>
+<script src="js/ui-mode.js?v=357"></script>
+<script src="js/session.js?v=357"></script>
+<script src="js/audio-manager.js?v=357"></script>
+<script src="js/settings-panel.js?v=357"></script>
+<script src="js/platform-shell.js?v=357"></script>
+<script src="js/challenge-modal.js?v=357"></script>
+<script src="js/social.js?v=357"></script>
 </body>
 </html>

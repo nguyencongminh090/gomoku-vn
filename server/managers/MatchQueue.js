@@ -6,7 +6,7 @@
  * Pure state: no sockets, no rooms, clock injected. MatchHandler owns the
  * socket events, the ticker and turning a pair into a room.
  *
- * Buckets: rule × time preset × rated. One entry per user (re-joining replaces it).
+ * Buckets: rule × time preset × rated × board setup (wall / portal). One entry per user (re-joining replaces it).
  * Rated pairing uses a rating window that widens with the older entry's wait;
  * casual is first-come-first-served. Oldest waiter is served first.
  */
@@ -35,7 +35,7 @@ function ratingWindow(ms) {
 }
 
 function bucketKey(e) {
-  return `${e.rule}|${e.time}|${e.rated ? 'r' : 'c'}`;
+  return `${e.rule}|${e.time}|${e.rated ? 'r' : 'c'}|${e.wall ? 'w' : ''}${e.portal ? 'p' : ''}`;
 }
 
 class MatchQueue {
@@ -52,7 +52,7 @@ class MatchQueue {
     const rated = e.rated === true;
     if (rated && e.isGuest) return { error: 'Cần tài khoản để chơi xếp hạng.', code: 'RATED_NEEDS_ACCOUNT' };
     this.entries.delete(e.userId); // re-join → back of the line, fresh wait
-    const entry = { ...e, rated, since: this.now() };
+    const entry = { ...e, rated, wall: e.wall === true, portal: e.portal === true, since: this.now() };
     this.entries.set(e.userId, entry);
     return { ok: true, entry };
   }

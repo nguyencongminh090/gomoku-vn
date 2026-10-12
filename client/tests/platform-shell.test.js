@@ -97,13 +97,20 @@ describe('platform shell', () => {
     expect(menuItems()).toEqual([['/settings.html', 'gset.title'], ['/login.html', 'gset.btn_create_account']]);
   });
 
+  it('Settings menu link carries ?return= only when opened from a room', () => {
+    window.history.replaceState(null, '', '/room.html?id=abc');
+    boot({ userId: 'g', isGuest: true, displayName: 'Guest' });
+    expect(menuItems()[0][0]).toBe('/settings.html?return=' + encodeURIComponent('/room.html?id=abc'));
+    window.history.replaceState(null, '', '/');
+  });
+
   it('member → chip menu: profile link set once /me answers; display name as text', async () => {
     boot({ userId: 'u', isGuest: false, displayName: '<i>Zed</i>' });
     await flush();
     const me = document.querySelector('.pnav__me');
     expect(me.textContent).toContain('<i>Zed</i>');
     expect(me.querySelector('i')).toBeNull();
-    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/settings.html']);
+    expect(menuItems().map((i) => i[0])).toEqual(['/u/zed', '/social.html', '/settings.html']); // #233: Bạn bè is reachable from the chip menu
   });
 
   it('chip shows the member avatar once /me returns one; initials otherwise (and until then)', async () => {
@@ -208,5 +215,26 @@ describe('platform.css', () => {
   });
   it('is tokens-only: no hard-coded hex colours', () => {
     expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+  });
+});
+
+describe('club notifications (#235)', () => {
+  const n = (type, extra = {}) => ({ id: 1, type, read: false, payload: { club: { slug: 'a b', name: 'Caro' }, from: { username: 'x', displayName: 'Xi' }, ...extra } });
+  beforeEach(() => boot(null));
+
+  it('text passes {name} and {club}; club notifications link to the club, requests to the manage tab', () => {
+    window.t = (k, v) => k + JSON.stringify(v);
+    expect(window.PlatformShell.notifications.text(n('club_invite'))).toBe('notif.club_invite{"name":"Xi","club":"Caro"}');
+    expect(window.PlatformShell.notifications.target(n('club_invite'))).toBe('/c/a%20b');
+    expect(window.PlatformShell.notifications.target(n('club_approved'))).toBe('/c/a%20b');
+    expect(window.PlatformShell.notifications.target(n('club_request'))).toBe('/c/a%20b#tab=manage');
+  });
+
+  it('avatar takes tag + colour only when there is no image', () => {
+    const a = window.PlatformShell.avatar(null, 'Caro Club', 'pav--sq', { color: 'teal', tag: 'CC' });
+    expect([a.textContent, a.className]).toEqual(['CC', 'pav pav--sq pav--c-teal']);
+    const b = window.PlatformShell.avatar('/x.png', 'Caro Club', '', { color: 'teal', tag: 'CC' });
+    expect([b.textContent, b.className]).toEqual(['', 'pav']);
+    expect(window.PlatformShell.avatar(null, 'Caro Club').textContent).toBe('CA');
   });
 });

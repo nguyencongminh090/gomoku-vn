@@ -1,7 +1,7 @@
 /**
  * admin.js — staff console shell (R8 #205), page /admin. Asks GET /api/admin/me which tabs the
  * caller may see (the server still gates every queue call) and starts each tab's module the first
- * time it is shown. Tab = location.hash (#puzzles | #reports | #forum | #cheat | #users).
+ * time it is shown. Tab = location.hash (#puzzles | #reports | #forum | #cheat | #integrity | #users | #news).
  */
 
 'use strict';
@@ -9,7 +9,7 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
-  const TABS = { puzzles: () => window.PuzzlesReview, reports: () => window.AdminReports, forum: () => window.ForumReports, users: () => window.AdminUsers, cheat: () => window.AdminCheat };
+  const TABS = { puzzles: () => window.PuzzlesReview, reports: () => window.AdminReports, forum: () => window.ForumReports, users: () => window.AdminUsers, cheat: () => window.AdminCheat, integrity: () => window.AdminIntegrity, news: () => window.AdminNews };
 
   // Open-queue counts on the tab labels (mockup: "Báo cáo (7) · Nghi gian lận (2)"). Users has no queue.
   const COUNT_URL = { puzzles: '/api/puzzles/review', forum: '/api/forum/reports?page=1', cheat: '/api/admin/cheat-reports?page=1' };

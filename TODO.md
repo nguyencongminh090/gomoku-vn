@@ -76,7 +76,4 @@ in the detail file / fix-log).
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
-- **#212.** Icon + label review: icons match meaning, shorter labels, named icon-only controls `[Model: Sonnet 5]` — [detail](docs/todo/B212-icon-label-review.md)
-- **#213.** Profile: one icon system + layout/spacing/size pass `[Model: Sonnet 5]` — [detail](docs/todo/B213-profile-icons-layout.md)
-- **#214.** Icon system (16/20/24, labels, one icon per concept) + apply to Settings/shell/profile; Scope 2: modern, content-fitting icon set for the whole site `[Model: Sonnet 5]` — [detail](docs/todo/B214-icon-system.md)
-- **#215.** Settings: sticky save bar hidden under the mobile tab bar (bug) `[Model: Sonnet 5]` — [detail](docs/todo/B215-settings-save-bar-under-tabbar.md)
+- **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)

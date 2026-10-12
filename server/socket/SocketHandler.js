@@ -22,12 +22,19 @@ const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
 const database           = require('../db/database');
+
+// Room payloads carry each member's avatar URL (null for guests / no avatar) — same shape as profile.js.
+roomManager.avatarLookup = (userId) => {
+  const u = database.getUserById(userId);
+  return u && u.avatar_v ? `/api/profile/avatar/${u.id}.webp?v=${u.avatar_v}` : null;
+};
 const {
   timerMap,
   sessions,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
   setHideOnline,
+  isVisiblyOnline,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
@@ -43,6 +50,7 @@ const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
 const MatchHandler           = require('./handlers/MatchHandler');
+const HomeFeed               = require('./home-feed');
 
 /**
  * Initialize the Socket.io event handler.
@@ -72,6 +80,16 @@ function init(io) {
       broadcastLobbyUpdate(io);
     },
   });
+
+  // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.
+  require('../managers/FriendService').setHooks({ isOnline: (userId) => isVisiblyOnline(userId) });
+
+  // A series player left the room → close the challenge series on what was played (#222).
+  // Re-init (tests) replaces the listener; stubbed RoomManagers without an emitter skip it.
+  if (typeof roomManager.removeAllListeners === 'function') {
+    roomManager.removeAllListeners('series_abandoned');
+    roomManager.on('series_abandoned', (room) => GameHandler.finishSeries(io, room, 'abandoned'));
+  }
 
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
   const DmService = require('../managers/DmService');
@@ -331,6 +349,7 @@ function init(io) {
     TournamentHandler.register(io, socket);
     TournamentMatchHandler.register(io, socket);
     MatchHandler.register(io, socket);
+    HomeFeed.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {

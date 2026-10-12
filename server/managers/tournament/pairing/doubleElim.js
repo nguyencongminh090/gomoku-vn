@@ -110,7 +110,10 @@ function generateBracket(players) {
     for (let wr = 2; wr <= winnersRounds; wr++) {
       // Drop round: previous losers-bracket survivors vs this winners
       // round's fresh losers.
-      const wrLosers = winners[wr - 1];
+      // Cross the drop-in order on even winners rounds (reverse index): a
+      // winners-round-2 loser came from the same half as the survivors of
+      // L1 at the same index, so same-index would rematch them immediately.
+      const wrLosers = wr % 2 === 0 ? [...winners[wr - 1]].reverse() : winners[wr - 1];
       const dropRound = [];
       for (let i = 0; i < prevSurvivors.length; i++) {
         dropRound.push({
@@ -238,4 +241,31 @@ function needsBracketReset(bracket, results) {
   return gf.winner === gf.player2;
 }
 
-module.exports = { nextPowerOfTwo, computeSeedOrder, generateBracket, resolveBracket, needsBracketReset };
+/**
+ * Elimination order of the players knocked out of the LOSERS bracket (i.e.
+ * everyone except the grand-final pair): one group per losers-bracket round,
+ * best placement first (the losers-final's loser, then the previous round's
+ * losers, ...). Players eliminated in the same round tie. A winners-bracket
+ * loser is not listed there — it drops into the losers bracket and is
+ * eliminated in a later round. Byes (null loser) are skipped. Pending matches
+ * contribute nothing.
+ *
+ * @param {ReturnType<typeof generateBracket>} bracket
+ * @param {Map<string, string>} results
+ * @returns {string[][]}
+ */
+function computeEliminationGroups(bracket, results) {
+  const resolved = resolveBracket(bracket, results);
+  const groups = [];
+  for (let r = bracket.losers.length - 1; r >= 0; r--) {
+    const group = [];
+    for (const m of bracket.losers[r]) {
+      const loser = resolved[m.id].loser;
+      if (loser !== null && loser !== undefined) group.push(loser);
+    }
+    if (group.length > 0) groups.push(group);
+  }
+  return groups;
+}
+
+module.exports = { nextPowerOfTwo, computeSeedOrder, generateBracket, resolveBracket, needsBracketReset, computeEliminationGroups };

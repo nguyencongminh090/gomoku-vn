@@ -1,1233 +1,774 @@
 /**
- * board.js — Canvas-based Board Renderer for GomokuVN.
+ * board.js — SVG board renderer + shared board-look preferences (TODO.md #216).
  *
- * Papers Style: Matches the C++ BoardRenderer from gomoku-portal-ui.
- *   - Background: light warm paper (#FAF5E8)
- *   - Grid: darker high-contrast lines with thicker border
- *   - Black pieces: X cross (diagonal, round caps)
- *   - White pieces: O circle (white fill + black outline)
- *   - Optional stone display: round black/white stones with last-move dot
- *   - Walls: brick pattern (7 rows, 3 cols, alternating offset)
- *   - Portals: colored ring with center dot
- *   - Last move: golden yellow highlight square
- *   - Hover: gray semi-transparent rectangle
- *   - Star points: small dots at standard positions
+ * Ported from GomokuBoardSite (js/board.js, settings.js, contrast.js, coords.js):
+ *   - one geometry for both looks: an n×n grid of positions with pitch P;
+ *     "paper" draws cells around each position (X / O symbols), "stone" draws
+ *     lines through them (black / white stones on a wooden board);
+ *   - colour presets chosen to meet WCAG 2.2 AA on their own background;
+ *   - coordinates either on the edges (A–Z, 1–N) or as numbers inside cells.
+ *
+ * Every board on the site (room, tournament match, replay, puzzle, puzzle editor,
+ * puzzle review, /diag) renders from ONE store, `window.BoardPrefs`, edited only
+ * in Settings › Giao diện › Bàn cờ. A change fires `boardprefschange` on window
+ * (and `storage` from other tabs), and every live renderer redraws.
+ *
+ * Public renderer API is unchanged from the canvas version, so callers did not
+ * change: new BoardRenderer(el, { boardSize, onCellClick, clickMode }),
+ * setState(), resize(), setOptimisticStone(), markOptimisticWarning(),
+ * clearPending(), plus the fields interactive / isMyTurn / myColor / boardSize.
+ * Passing a <canvas> still works: it is swapped in place for an <svg> that keeps
+ * its id and class.
+ *
+ * Board values: 0 empty, 1 black (X), 2 white (O), -1 wall, -2 portal.
  */
 
 'use strict';
 
-// Portal pair color palette (matches C++ kPortalColors)
-const PORTAL_COLORS = [
-  { r: 0.20, g: 0.70, b: 0.95 },  // 0: Cyan/Blue
-  { r: 0.90, g: 0.40, b: 0.60 },  // 1: Pink/Magenta
-  { r: 0.30, g: 0.80, b: 0.40 },  // 2: Green
-  { r: 0.95, g: 0.60, b: 0.20 },  // 3: Orange
-  { r: 0.65, g: 0.35, b: 0.85 },  // 4: Purple
-  { r: 0.20, g: 0.75, b: 0.70 },  // 5: Teal
-  { r: 0.85, g: 0.75, b: 0.20 },  // 6: Gold
-  { r: 0.85, g: 0.25, b: 0.25 },  // 7: Red
-];
+(function (root) {
+  // ─── Preferences ───────────────────────────────────────────────────────────
 
-// Star point positions for common board sizes
-const STAR_POINTS = {
-  15: [[3, 3], [3, 7], [3, 11], [7, 3], [7, 7], [7, 11], [11, 3], [11, 7], [11, 11]],
-  17: [[3, 3], [3, 8], [3, 13], [8, 3], [8, 8], [8, 13], [13, 3], [13, 8], [13, 13]],
-  19: [[3, 3], [3, 9], [3, 15], [9, 3], [9, 9], [9, 15], [15, 3], [15, 9], [15, 15]],
-  20: [[3, 3], [3, 9], [3, 16], [9, 3], [9, 9], [9, 16], [16, 3], [16, 9], [16, 16]],
-};
+  const PREFS_KEY = 'play3cr_board_prefs';
+  const LEGACY_THEME_KEY = 'play3cr_board_display'; // pre-#216 Paper/Stone choice; kept in sync
 
-class BoardRenderer {
-  /**
-   * @param {HTMLCanvasElement} canvas
-   * @param {{ boardSize: number, onCellClick: (x: number, y: number) => void }} opts
-   */
-  constructor(canvas, opts = {}) {
-    this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
-    this.boardSize = opts.boardSize || 17;
-    this.onCellClick = opts.onCellClick || null;
-    this.displayMode = opts.displayMode || 'paper';
-    this.clickMode = opts.clickMode || 'double';
+  // Each preset's symbol and line colours meet WCAG 2.2 AA on its own background
+  // (client/tests/board-prefs.test.js audits them). Stones stay black and white.
+  const PRESETS = {
+    paper: [
+      { id: 'white', bg: '#ffffff', grid: '#c9d3df', xColor: '#d6383a', oColor: '#2764d1' },
+      { id: 'cream', bg: '#fbf8f1', grid: '#c3cedb', xColor: '#c8322f', oColor: '#1f5bc4' },
+      { id: 'notebook', bg: '#eef4ff', grid: '#94b3e0', xColor: '#c21d3a', oColor: '#1e3a8a' },
+      { id: 'kraft', bg: '#e7d3ad', grid: '#b39463', xColor: '#9b1c1c', oColor: '#1f3b73' },
+      { id: 'chalk', bg: '#22302a', grid: '#4d6a5d', xColor: '#ffd166', oColor: '#8ecdf5' },
+    ],
+    stone: [
+      { id: 'kaya', bg: '#dcb35c', line: '#3a2a12' },
+      { id: 'pale', bg: '#ecd8a4', line: '#4a3a1c' },
+      { id: 'walnut', bg: '#c38952', line: '#24160a' },
+      { id: 'slate', bg: '#9ea9ae', line: '#232d33' },
+      { id: 'felt', bg: '#8fc19f', line: '#16301f' },
+    ],
+  };
+  const WALL = { paper: '#4b4f58', stone: '#3b3f46' };
+  const PAPER_STYLES = ['classic', 'bold', 'hand'];
+  const STONE_STYLES = ['glossy', 'flat'];
+  const HEX = /^#[0-9a-f]{6}$/i;
 
-    // State (set externally via setState)
-    this.board = null;
-    this.walls = [];
-    this.portals = [];
-    this.firstMoveZones = [];
-    this.showZones = false;
-    this.lastMove = null;
-    this.winLine = null; // Array of {x, y}
-    this.moveHistory = [];
-    this.isMyTurn = false;
-    this.interactive = false;
-    this.myColor = null;
-
-    // Geometry
-    this.geo = { cellSize: 0, originX: 0, originY: 0, boardSize: this.boardSize };
-
-    // Hover
-    this._hoverCell = null;
-
-    // Double-tap: pending cell awaiting confirmation
-    this._pendingCell = null;
-
-    // Optimistic (not-yet-confirmed) stone for the player's own in-flight
-    // move (TODO.md #153) — { x, y, color, warning } or null. Separate from
-    // `this.board`: the confirmed board only ever changes from server data,
-    // this is a purely visual overlay the caller (GameUI.sendMove) drives.
-    this.optimisticStone = null;
-
-    // Bind events
-    this.canvas.addEventListener('mousemove', (e) => this._onMouseMove(e));
-    this.canvas.addEventListener('mouseleave', () => this._onMouseLeave());
-    this.canvas.addEventListener('click', (e) => this._onClick(e));
-    // Touch support for mobile
-    this.canvas.addEventListener('touchend', (e) => this._onTouchEnd(e));
-
+  function presetColors(theme, id) {
+    const p = PRESETS[theme].find(x => x.id === id) || PRESETS[theme][theme === 'paper' ? 1 : 0];
+    const { id: _id, ...colors } = p;
+    return colors;
   }
 
-  /** Resolve --board-* custom properties (paper/caro mode only). */
-  _readBoardTheme() {
-    const cs = getComputedStyle(document.documentElement);
-    const read = (name, fallback) => (cs.getPropertyValue(name) || '').trim() || fallback;
+  function defaults() {
+    let theme = 'paper';
+    try { if (localStorage.getItem(LEGACY_THEME_KEY) === 'stone') theme = 'stone'; } catch (e) { /* private mode */ }
     return {
-      bg: read('--board-bg', '#F7F7F7'),
-      accentRgb: read('--board-accent-rgb', '45, 60, 95'),
-      inkRgb: read('--board-ink-rgb', '41, 98, 255'),
-      pendingRgb: read('--board-pending-rgb', '72, 135, 95'),
-      highlightRgb: read('--board-highlight-rgb', '255, 234, 0'),
-      wallMortarRgb: read('--board-wall-mortar-rgb', '74, 74, 74'),
-      wallDarkRgb: read('--board-wall-dark-rgb', '97, 97, 97'),
-      wallBaseRgb: read('--board-wall-base-rgb', '138, 138, 138'),
-      wallLightRgb: read('--board-wall-light-rgb', '176, 176, 176'),
+      theme,
+      paperPreset: 'cream',
+      stonePreset: 'kaya',
+      paper: { ...presetColors('paper', 'cream'), style: 'classic' },
+      stone: { ...presetColors('stone', 'kaya'), style: 'glossy' },
+      coords: 'edge', // 'edge' | 'cell'
+      showLastMove: true,
+      showMoveNumbers: false,
     };
   }
 
-  /**
-   * Show a not-yet-confirmed stone for the player's own move (TODO.md #153).
-   * Pass `null` to clear it. Deliberately not part of `setState()` — it is
-   * driven by the move's ack/timeout lifecycle in GameUI.sendMove, not by
-   * gameState snapshots, and must survive calls to setState() that don't
-   * mention it (e.g. a resize-triggered geometry recompute).
-   */
-  setOptimisticStone(stone) {
-    this.optimisticStone = stone;
-    this._draw();
-  }
-
-  /**
-   * Flip the pending stone to its "still trying" look after the first ack
-   * timeout (GameUI.sendMove's retry), without moving it. No-op if it was
-   * already cleared out from under this call — a real race, since the
-   * retry's timer and an incoming game:moved run independently.
-   */
-  markOptimisticWarning() {
-    if (!this.optimisticStone) return;
-    this.optimisticStone = Object.assign({}, this.optimisticStone, { warning: true });
-    this._draw();
-  }
-
-  /** Update board state and redraw. */
-  setState(s) {
-    const prevBoardSize = this.boardSize;
-    const prevDisplayMode = this.displayMode;
-
-    if (s.boardSize !== undefined) this.boardSize = s.boardSize;
-    if (s.board !== undefined) this.board = s.board;
-    if (s.walls !== undefined) this.walls = s.walls;
-    if (s.portals !== undefined) this.portals = s.portals;
-    if (s.firstMoveZones !== undefined) this.firstMoveZones = s.firstMoveZones;
-    if (s.showZones !== undefined) this.showZones = s.showZones;
-    if (s.winLine !== undefined) this.winLine = s.winLine;
-    if (s.moveHistory !== undefined) this.moveHistory = s.moveHistory || [];
-    if (s.displayMode !== undefined) this.displayMode = s.displayMode || 'paper';
-    if (s.lastMove !== undefined) this.lastMove = s.lastMove;
-    if (s.isMyTurn !== undefined) this.isMyTurn = s.isMyTurn;
-    if (s.interactive !== undefined) this.interactive = s.interactive;
-    if (s.myColor !== undefined) this.myColor = s.myColor;
-    if ((prevBoardSize !== this.boardSize || prevDisplayMode !== this.displayMode) && this.cssSize) {
-      this._computeGeometry();
+  // Keeps only known keys with valid values, so a corrupt or old blob can't break a board.
+  function sanitize(raw) {
+    const d = defaults();
+    if (!raw || typeof raw !== 'object') return d;
+    const out = { ...d };
+    if (raw.theme === 'paper' || raw.theme === 'stone') out.theme = raw.theme;
+    if (raw.coords === 'edge' || raw.coords === 'cell') out.coords = raw.coords;
+    if (typeof raw.showLastMove === 'boolean') out.showLastMove = raw.showLastMove;
+    if (typeof raw.showMoveNumbers === 'boolean') out.showMoveNumbers = raw.showMoveNumbers;
+    for (const theme of ['paper', 'stone']) {
+      const key = theme + 'Preset';
+      if (raw[key] === 'custom' || PRESETS[theme].some(p => p.id === raw[key])) out[key] = raw[key];
+      const src = raw[theme] || {};
+      const dst = { ...d[theme], ...presetColors(theme, out[key]) };
+      for (const k of Object.keys(dst)) {
+        if (k === 'style') continue;
+        if (HEX.test(src[k] || '')) dst[k] = src[k].toLowerCase();
+      }
+      const styles = theme === 'paper' ? PAPER_STYLES : STONE_STYLES;
+      dst.style = styles.includes(src.style) ? src.style : styles[0];
+      out[theme] = dst;
     }
-    this._draw();
+    return out;
   }
 
-  /** Resize canvas to fit container. */
-  resize() {
-    const parent = this.canvas.parentElement;
-    if (!parent) return;
+  let cache = null;
+  function read() {
+    let raw = null;
+    try { raw = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch (e) { raw = null; }
+    return sanitize(raw);
+  }
 
-    const turnBarEl = document.getElementById('turn-bar');
-    const controlsEl = document.getElementById('game-controls');
-    const tbH = turnBarEl ? (turnBarEl.offsetHeight || 0) : 0;
-    const gcH = controlsEl ? (controlsEl.offsetHeight || 0) : 0;
-
-    let boardAreaH, maxVw;
-
-    {
-      // Normal layout: derive from the shell element which has
-      // height: calc(100vh - 76px) on desktop.
-      const boardAreaShell = document.querySelector('.board-area-shell');
-      const boardAreaEl = document.querySelector('.board-area');
-
-      // clientWidth/clientHeight include the element's own padding, so a shell
-      // that pads itself (the zen room reserves its right side for the drawer
-      // and its bottom for the mobile tab bar) reports a box far larger than
-      // the space the board may actually occupy. Sizing the canvas off that
-      // raw number makes it overflow .board-canvas-wrap, whose overflow:hidden
-      // then crops the right/bottom edge — the board reads as squashed or
-      // off-centre even though the canvas itself is still square. Always
-      // measure the shell's *content* box.
-      const shellStyle = boardAreaShell ? getComputedStyle(boardAreaShell) : null;
-      const padX = shellStyle
-        ? (parseFloat(shellStyle.paddingLeft) || 0) + (parseFloat(shellStyle.paddingRight) || 0)
-        : 0;
-      const padY = shellStyle
-        ? (parseFloat(shellStyle.paddingTop) || 0) + (parseFloat(shellStyle.paddingBottom) || 0)
-        : 0;
-
-      boardAreaH = boardAreaShell
-        ? boardAreaShell.clientHeight - padY
-        : (boardAreaEl ? boardAreaEl.clientHeight : (window.innerHeight - 76));
-
-      const zenRoom = document.body.classList.contains('zen-room');
-      if (zenRoom) {
-        // Zen's .board-area/.board-area-inner carry no padding or border of
-        // their own (see room-zen.css) — the only real overhead left is the
-        // 1px-top + 1px-bottom hairline on .board-canvas-wrap itself, plus
-        // each *visible* sibling's own reserved margin (turn-bar's
-        // margin-bottom, game-controls' margin-top — both 10px in
-        // room-zen.css). Both collapse to 0 while hidden/empty
-        // (turn-bar: display:none pre-game; game-controls: :empty pre-game,
-        // via room-zen.css), so only add the 10px when there's real height
-        // (tbH/gcH) behind it — otherwise this would over-subtract 10px of
-        // margin that isn't actually being rendered, artificially shrinking
-        // the board pre-game for no visible reason. The old flat
-        // "-14-16-12-8" below is the default (non-zen) Double-Bezel card's
-        // padding/border budget, which zen no longer has.
-        const canvasWrapBorder = 2;
-        const turnBarMargin = tbH > 0 ? 10 : 0;
-        const controlsMargin = gcH > 0 ? 10 : 0;
-        boardAreaH = boardAreaH - canvasWrapBorder - tbH - turnBarMargin - gcH - controlsMargin;
-      } else {
-        // Subtract outer padding/border (14px) + inner padding (16px) + turn-bar +
-        // controls + controls margin (12) + safety (8)
-        boardAreaH = boardAreaH - 14 - 16 - tbH - gcH - 12 - 8;
+  const BoardPrefs = {
+    PRESETS,
+    PAPER_STYLES,
+    STONE_STYLES,
+    get() {
+      if (!cache) cache = read();
+      return cache;
+    },
+    /** Shallow patch; `paper` / `stone` sub-objects merge. Picking a preset copies its colours. */
+    set(patch) {
+      const cur = BoardPrefs.get();
+      const next = { ...cur, ...patch };
+      for (const theme of ['paper', 'stone']) {
+        next[theme] = { ...cur[theme], ...(patch[theme] || {}) };
+        const key = theme + 'Preset';
+        if (patch[key] && patch[key] !== 'custom') Object.assign(next[theme], presetColors(theme, patch[key]));
+        else if (patch[theme] && Object.keys(patch[theme]).some(k => k !== 'style')) next[key] = 'custom';
       }
-      // On mobile (<=768px), .board-area-shell bleeds full-bleed via CSS
-      // (width: calc(100% + 32px); margin-left: -16px; padding: 0) to reclaim
-      // the .room padding-inline. That +32/-16 math assumes a fixed 16px
-      // padding, but .room's actual padding-inline is clamp(6px, 2.5vw, 16px)
-      // — on many phone widths the real padding is smaller, so the bleed
-      // overshoots and the shell's clientWidth can exceed the true viewport
-      // width, clipping the board against .board-canvas-wrap's overflow:
-      // hidden instead of scaling to fit. Clamp against window.innerWidth
-      // directly so the board can never be wider than the viewport. On
-      // desktop the shell still has its own padding/border (~32px) to
-      // subtract, and no viewport-bleed trick is in play.
-      // The zen room is the exception to the -8: room-zen.css's mobile rule
-      // explicitly cancels that bleed (width: 100%; margin-left: 0), so the
-      // overshoot it guards against cannot happen here, and the 8px is pure
-      // lost board width on the axis where a phone has least to spare. The
-      // Math.min clamp still stands as the real guard. Only the 1px-left +
-      // 1px-right hairline on .board-canvas-wrap has to come off, matching
-      // canvasWrapBorder on the height axis above — without it the wrap ends
-      // up 2px wider than the viewport and its right border is clipped by
-      // main.css's overflow-x: hidden.
-      const mobileWidth = window.innerWidth <= 768;
-      const shellWidth = (boardAreaShell
-        ? boardAreaShell.clientWidth
-        : (boardAreaEl ? boardAreaEl.clientWidth : parent.clientWidth)) - padX;
-      if (mobileWidth) {
-        maxVw = zenRoom
-          ? Math.min(shellWidth, window.innerWidth) - 2
-          : Math.min(shellWidth - 8, window.innerWidth - 8);
-      } else {
-        maxVw = shellWidth - 32;
-      }
+      cache = sanitize(next);
+      try {
+        localStorage.setItem(PREFS_KEY, JSON.stringify(cache));
+        localStorage.setItem(LEGACY_THEME_KEY, cache.theme);
+      } catch (e) { /* private mode: still applies for this page */ }
+      root.dispatchEvent(new CustomEvent('boardprefschange', { detail: cache }));
+      return cache;
+    },
+    reset() {
+      try { localStorage.removeItem(PREFS_KEY); } catch (e) { /* ignore */ }
+      cache = null;
+      root.dispatchEvent(new CustomEvent('boardprefschange', { detail: BoardPrefs.get() }));
+      return cache;
+    },
+    /** Quiet WCAG audit of the active look: only the failing items. */
+    problems(prefs) { return Contrast.audit(prefs || BoardPrefs.get()).filter(i => !i.ok && !i.advisory); },
+  };
 
-      // Mobile normally has no height budget to read (the shell is
-      // height:auto, so its box is whatever the board already made it) —
-      // derive one from the viewport instead: everything above the shell
-      // (top bar, players strip) plus the shell's own bottom padding, which
-      // is what reserves room for the zen bottom tab bar. Without this the
-      // board is sized purely by width and a tall board pushes the controls
-      // under the fold on short screens.
-      // Scoped to the zen room: it is the only layout that reserves fixed
-      // chrome (the bottom tab bar) below the board on a phone, and the only
-      // one whose shell padding makes this measurable. Other skins keep the
-      // width-driven behaviour they were tuned against.
-      if (mobileWidth && boardAreaShell && document.body.classList.contains('zen-room')) {
-        // Document-relative, not viewport-relative: measured mid-scroll the
-        // raw rect.top would shrink (or go negative) and hand the board a
-        // budget that changes with the scroll position.
-        const shellTop = Math.max(
-          boardAreaShell.getBoundingClientRect().top + window.scrollY, 0);
-        // Overhead here must match the zen-room overhead computed above
-        // (canvasWrapBorder/turnBarMargin/controlsMargin, lines ~197-200) —
-        // this used to subtract a flat "14 - 16 - 12 - 8" instead, which per
-        // the comment on that block is the *non-zen* Double-Bezel card's
-        // padding/border budget. Zen has none of that; reusing it here
-        // double-subtracted ~28-48px of real board space on every mobile
-        // zen-room resize, on top of tbH/gcH already accounted for.
-        const canvasWrapBorder = 2;
-        const turnBarMargin = tbH > 0 ? 10 : 0;
-        const controlsMargin = gcH > 0 ? 10 : 0;
-        const viewportBudget = window.innerHeight - shellTop - padY
-          - tbH - turnBarMargin - gcH - controlsMargin - canvasWrapBorder;
-        if (viewportBudget > 0) boardAreaH = viewportBudget;
-      }
+  // Another tab changed the look → same live update here. Replaces any listener from an
+  // earlier evaluation of this file, so a double load never fires the event twice.
+  if (root.__boardPrefsStorage) root.removeEventListener('storage', root.__boardPrefsStorage);
+  root.__boardPrefsStorage = (e) => {
+    if (e.key !== PREFS_KEY) return;
+    cache = null;
+    root.dispatchEvent(new CustomEvent('boardprefschange', { detail: BoardPrefs.get() }));
+  };
+  root.addEventListener('storage', root.__boardPrefsStorage);
+
+  // ─── WCAG 2.2 contrast (port of GomokuBoardSite js/contrast.js) ────────────
+
+  const Contrast = (function () {
+    // 1.4.11 non-text (symbols, lines, walls) · 1.4.3 text (coordinates). Grid is advisory.
+    const MIN = { graphic: 3, text: 4.5, grid: 1.4 };
+    const SUGGEST_MARGIN = 1.15;
+    const INK_ALPHA = { edge: 0.7, cellPaper: 0.72, cellStone: 0.85 };
+    const BLACK_STONE = '#151515';
+
+    const parse = (hex) => { const n = parseInt(String(hex).slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const toHex = (rgb) => '#' + rgb.map(c => Math.round(Math.min(255, Math.max(0, c))).toString(16).padStart(2, '0')).join('');
+    function luminance(rgb) {
+      const [r, g, b] = rgb.map((c) => { const v = c / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
     }
-
-    // Single-column layout (mobile, <=768px) has auto-height board-area in normal
-    // mode, so height budget collapses — drive by width instead. The zen room
-    // is the exception: the branch above gives it a real viewport-derived
-    // height budget, so it fits both axes.
-    const singleColumn = window.innerWidth <= 768
-      && !document.body.classList.contains('zen-room');
-    let rawSize = singleColumn
-      ? maxVw
-      : Math.min(maxVw, boardAreaH);
-    // Cap so the board never looks comically large on a big screen. The zen
-    // room is built around "the board is the page" and reserves the rest of
-    // the viewport for a single fixed drawer, so it gets a higher ceiling than
-    // the default two-column skin.
-    const zenRoom = document.body.classList.contains('zen-room');
-    rawSize = Math.min(rawSize, zenRoom ? 1100 : 860);
-    const s = Math.max(rawSize, 200); // usable minimum
-
-    // Support High-DPI screens. Some Android WebViews/browsers under-report
-    // devicePixelRatio (e.g. report 1 or 1.5 on a physically dense small
-    // screen), which makes the grid and glyphs look soft even though the
-    // CSS size itself is now correct — floor the render resolution at 2x on
-    // mobile so hairlines and stone glyphs stay crisp regardless of what the
-    // device reports. Cap at 3x everywhere to bound canvas memory/perf on
-    // very high-density panels (4x+ Android panels, etc).
-    const rawDpr = window.devicePixelRatio || 1;
-    const isMobileDpr = window.innerWidth <= 768;
-    const dpr = isMobileDpr ? Math.min(Math.max(rawDpr, 2), 3) : Math.min(rawDpr, 3);
-    this.dpr = dpr;
-    this.canvas.style.width = `${s}px`;
-    this.canvas.style.height = `${s}px`;
-    this.canvas.width = Math.round(s * dpr);
-    this.canvas.height = Math.round(s * dpr);
-
-    // Scale context to match CSS size
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.cssSize = s;
-
-    this._computeGeometry();
-    this._draw();
-  }
-
-  // ─── Geometry ────────────────────────────────────────────────────
-
-  _computeGeometry() {
-    const w = this.cssSize || this.canvas.width;
-    const h = this.cssSize || this.canvas.height;
-    const n = this.boardSize;
-
-    // Margin for coordinate labels. Mobile boards are smaller in absolute
-    // terms, so a smaller minimum keeps more of the canvas as playable grid
-    // instead of label whitespace.
-    const mobile = window.innerWidth <= 768;
-    let margin = Math.min(w, h) * (mobile ? 0.045 : 0.06);
-    margin = Math.max(margin, mobile ? 16 : 24);
-
-    const availW = w - 2 * margin;
-    const availH = h - 2 * margin;
-
-    const intervals = this.displayMode === 'stone' ? Math.max(n - 1, 1) : n;
-    const cellSize = Math.min(availW, availH) / intervals;
-
-    // Center the grid
-    const gridW = intervals * cellSize;
-    const gridH = intervals * cellSize;
-    const originX = margin + (availW - gridW) / 2;
-    const originY = margin + (availH - gridH) / 2;
-
-    this.geo = { cellSize, originX, originY, boardSize: n };
-  }
-
-  /** Convert cell (x,y) to pixel center of the cell. */
-  _cellToPixel(x, y) {
-    const g = this.geo;
-    if (this.displayMode === 'stone') {
-      return {
-        px: g.originX + x * g.cellSize,
-        py: g.originY + y * g.cellSize,
+    function ratio(a, b) {
+      const la = luminance(typeof a === 'string' ? parse(a) : a);
+      const lb = luminance(typeof b === 'string' ? parse(b) : b);
+      return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+    const blend = (fg, alpha, bg) => fg.map((c, i) => c * alpha + bg[i] * (1 - alpha));
+    function ink(bgHex) {
+      const bg = parse(bgHex);
+      return ratio([0, 0, 0], bg) >= ratio([255, 255, 255], bg) ? [0, 0, 0] : [255, 255, 255];
+    }
+    const textRatio = (bgHex, alpha) => { const bg = parse(bgHex); return ratio(blend(ink(bgHex), alpha, bg), bg); };
+    function rgbToHsl([r, g, b]) {
+      r /= 255; g /= 255; b /= 255;
+      const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+      if (max === min) return [0, 0, l];
+      const d = max - min;
+      const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      const h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      return [h / 6, s, l];
+    }
+    function hslToRgb([h, s, l]) {
+      if (s === 0) return [l * 255, l * 255, l * 255];
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+      const hue = (t) => { t = (t + 1) % 1; if (t < 1 / 6) return p + (q - p) * 6 * t; if (t < 1 / 2) return q; if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6; return p; };
+      return [hue(h + 1 / 3) * 255, hue(h) * 255, hue(h - 1 / 3) * 255];
+    }
+    // Closest colour of the same hue/saturation (lightness only) that passes `meets`.
+    function suggest(hex, meets) {
+      const [h, s, l] = rgbToHsl(parse(hex));
+      for (let step = 1; step <= 100; step++) {
+        for (const sign of [-1, 1]) {
+          const l2 = l + (sign * step) / 100;
+          if (l2 < 0 || l2 > 1) continue;
+          const c = toHex(hslToRgb([h, s, l2]));
+          if (meets(c)) return c;
+        }
+      }
+      return null;
+    }
+    const get = (o, path) => path.split('.').reduce((v, k) => (v == null ? undefined : v[k]), o);
+    // [{ key: 'paper.oColor', what, ratio, min, ok, advisory, suggestion }]
+    function audit(s) {
+      const paper = s.theme === 'paper';
+      const bgKey = paper ? 'paper.bg' : 'stone.bg';
+      const bg = get(s, bgKey);
+      const items = [];
+      const add = (key, what, value, min, meets, advisory = false) => {
+        const ok = value >= min;
+        items.push({ key, what, ratio: value, min, ok, advisory, suggestion: ok ? null : suggest(get(s, key), meets(min * SUGGEST_MARGIN)) });
       };
+      const against = (target) => (c) => ratio(c, bg) >= target;
+      if (paper) {
+        add('paper.xColor', 'x', ratio(s.paper.xColor, bg), MIN.graphic, against);
+        add('paper.oColor', 'o', ratio(s.paper.oColor, bg), MIN.graphic, against);
+        add('paper.grid', 'grid', ratio(s.paper.grid, bg), MIN.grid, against, true);
+      } else {
+        add('stone.line', 'line', ratio(s.stone.line, bg), MIN.graphic, against);
+        add('stone.bg', 'blackStone', ratio(BLACK_STONE, bg), MIN.graphic, (t) => (c) => ratio(BLACK_STONE, c) >= t);
+      }
+      const alpha = s.coords === 'cell' ? (paper ? INK_ALPHA.cellPaper : INK_ALPHA.cellStone) : INK_ALPHA.edge;
+      add(bgKey, 'labels', textRatio(bg, alpha), MIN.text, (t) => (c) => textRatio(c, alpha) >= t);
+      return items;
     }
+    return { MIN, INK_ALPHA, ratio, ink, textRatio, suggest, audit };
+  })();
 
-    return {
-      px: g.originX + (x + 0.5) * g.cellSize,
-      py: g.originY + (y + 0.5) * g.cellSize,
-    };
-  }
+  // ─── Coordinates ───────────────────────────────────────────────────────────
 
-  /** Convert pixel to cell index. Returns null if out of bounds. */
-  _pixelToCell(px, py) {
-    const g = this.geo;
-    if (this.displayMode === 'stone') {
-      const maxX = g.originX + (g.boardSize - 1) * g.cellSize;
-      const maxY = g.originY + (g.boardSize - 1) * g.cellSize;
-      const pad = g.cellSize * 0.5;
-      if (px < g.originX - pad || px > maxX + pad || py < g.originY - pad || py > maxY + pad) return null;
-
-      const x = Math.round((px - g.originX) / g.cellSize);
-      const y = Math.round((py - g.originY) / g.cellSize);
-      if (x < 0 || x >= g.boardSize || y < 0 || y >= g.boardSize) return null;
-      return { x, y };
+  const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const spiralCache = new Map();
+  // Numbers every cell 1..n², spiralling clockwise out from the centre. Indexed y*n+x.
+  function spiral(n) {
+    if (spiralCache.has(n)) return spiralCache.get(n);
+    const nums = new Array(n * n).fill(0);
+    const dirs = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+    let x = Math.floor((n - 1) / 2), y = x, k = 1;
+    const put = () => { if (x >= 0 && y >= 0 && x < n && y < n) nums[y * n + x] = k++; };
+    put();
+    for (let len = 1, d = 0; k <= n * n; len++) {
+      for (let leg = 0; leg < 2; leg++, d = (d + 1) % 4) {
+        for (let i = 0; i < len; i++) { x += dirs[d][0]; y += dirs[d][1]; put(); }
+      }
     }
-
-    const x = Math.floor((px - g.originX) / g.cellSize);
-    const y = Math.floor((py - g.originY) / g.cellSize);
-    if (x < 0 || x >= g.boardSize || y < 0 || y >= g.boardSize) return null;
-    return { x, y };
+    spiralCache.set(n, nums);
+    return nums;
   }
 
-  // ─── Event Handlers ──────────────────────────────────────────────
+  // ─── SVG primitives ────────────────────────────────────────────────────────
 
-  _getCanvasPos(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    const w = this.cssSize || this.canvas.width;
-    const h = this.cssSize || this.canvas.height;
-    return {
-      x: (e.clientX - rect.left) * (w / rect.width),
-      y: (e.clientY - rect.top) * (h / rect.height),
-    };
+  const P = 40;
+  const f = (n) => Math.round(n * 10) / 10;
+  const PORTAL_COLORS = [[51, 179, 242], [230, 102, 153], [77, 204, 102], [242, 153, 51], [166, 89, 217], [51, 191, 179], [217, 191, 51], [217, 64, 64]];
+  const portalRgb = (i, a = 1) => `rgba(${PORTAL_COLORS[i % PORTAL_COLORS.length].join(',')},${a})`;
+  const LAST = '#e0342f';
+  const PENDING = '#2f7d4f';
+  const WIN = '#e74c3c';
+
+  // Small deterministic PRNG so hand-drawn pieces keep their shape between renders.
+  function rng(seed) {
+    let s = (Math.imul(seed + 1, 2654435761) >>> 0) || 1;
+    return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return s / 4294967296; };
   }
-
-  _onMouseMove(e) {
-    if (!this.interactive || !this.isMyTurn) {
-      if (this._hoverCell) { this._hoverCell = null; this._draw(); }
-      return;
+  // Smooth curve through points (Catmull-Rom as cubic Béziers).
+  function smooth(pts) {
+    let d = `M${f(pts[0][0])} ${f(pts[0][1])}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(i + 2, pts.length - 1)];
+      d += `C${f(p1[0] + (p2[0] - p0[0]) / 6)} ${f(p1[1] + (p2[1] - p0[1]) / 6)} ` +
+        `${f(p2[0] - (p3[0] - p1[0]) / 6)} ${f(p2[1] - (p3[1] - p1[1]) / 6)} ${f(p2[0])} ${f(p2[1])}`;
     }
-    const pos = this._getCanvasPos(e);
-    const cell = this._pixelToCell(pos.x, pos.y);
-    const prev = this._hoverCell;
-    this._hoverCell = cell;
-    if (!prev && !cell) return;
-    if (prev && cell && prev.x === cell.x && prev.y === cell.y) return;
-    this._draw();
+    return d;
   }
-
-  _onMouseLeave() {
-    if (this._hoverCell) { this._hoverCell = null; this._draw(); }
-  }
-
-  _onClick(e) {
-    if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
-    const pos = this._getCanvasPos(e);
-    const cell = this._pixelToCell(pos.x, pos.y);
-    if (!cell) return;
-    // Check the cell is empty and not a wall/portal
-    if (this.board && this.board[cell.y] && this.board[cell.y][cell.x] === 0) {
-      this._handleCellSelect(cell.x, cell.y);
+  function cross(cx, cy, color, style, seed) {
+    const r = P * 0.28;
+    if (style === 'hand') {
+      const rnd = rng(seed);
+      const j = (a) => (rnd() - 0.5) * a;
+      const stroke = (x1, y1, x2, y2) => {
+        const bow = (rnd() < 0.5 ? -1 : 1) * (4 + rnd() * 4);
+        const mx = (x1 + x2) / 2 + bow + j(3), my = (y1 + y2) / 2 - bow + j(3);
+        return `M${f(x1 + j(5))} ${f(y1 + j(5))}Q${f(mx)} ${f(my)} ${f(x2 + j(6))} ${f(y2 + j(6))}`;
+      };
+      return `<path d="${stroke(cx - r, cy - r, cx + r, cy + r)}${stroke(cx + r, cy - r, cx - r, cy + r)}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`;
     }
+    const w = style === 'bold' ? 6.5 : 3.6;
+    return `<path d="M${f(cx - r)} ${f(cy - r)}L${f(cx + r)} ${f(cy + r)}M${f(cx + r)} ${f(cy - r)}L${f(cx - r)} ${f(cy + r)}" fill="none" stroke="${color}" stroke-width="${w}" stroke-linecap="round"/>`;
   }
-
-  _onTouchEnd(e) {
-    e.preventDefault();
-    if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
-    const touch = e.changedTouches[0];
-    const rect = this.canvas.getBoundingClientRect();
-    const w = this.cssSize || this.canvas.width;
-    const h = this.cssSize || this.canvas.height;
-    const px = (touch.clientX - rect.left) * (w / rect.width);
-    const py = (touch.clientY - rect.top) * (h / rect.height);
-    const cell = this._pixelToCell(px, py);
-    if (!cell) return;
-    if (this.board && this.board[cell.y] && this.board[cell.y][cell.x] === 0) {
-      this._handleCellSelect(cell.x, cell.y);
+  function ring(cx, cy, color, style, seed) {
+    const r = P * 0.29;
+    if (style === 'hand') {
+      const rnd = rng(seed);
+      const start = rnd() * Math.PI * 2, sweep = Math.PI * 2 + 0.5 + rnd() * 0.4, pts = [];
+      for (let i = 0; i <= 12; i++) {
+        const a = start + (sweep * i) / 12;
+        const rr = r * (1 + (rnd() - 0.5) * 0.14) * (i === 12 ? 0.9 : 1);
+        pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr * 0.92]);
+      }
+      return `<path d="${smooth(pts)}" fill="none" stroke="${color}" stroke-width="4" stroke-linecap="round"/>`;
     }
+    const w = style === 'bold' ? 6.2 : 3.6;
+    return `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="none" stroke="${color}" stroke-width="${w}"/>`;
+  }
+  function stoneSvg(white, cx, cy, style, uid) {
+    const r = P * 0.46;
+    if (style === 'flat') {
+      return `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="${white ? '#f7f7f4' : '#151515'}" stroke="#151515" stroke-width="1.6"/>`;
+    }
+    return `<circle cx="${f(cx + 1)}" cy="${f(cy + 2)}" r="${f(r)}" fill="#000" opacity=".28"/>` +
+      `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r)}" fill="url(#${white ? 'gW' : 'gB'}${uid})"${white ? ' stroke="rgba(0,0,0,.22)" stroke-width="1"' : ''}/>`;
+  }
+  // value: 1 black (X), 2 white (O)
+  function pieceSvg(value, cx, cy, s, seed, uid) {
+    if (s.theme === 'stone') return stoneSvg(value === 2, cx, cy, s.stone.style, uid);
+    return value === 1 ? cross(cx, cy, s.paper.xColor, s.paper.style, seed) : ring(cx, cy, s.paper.oColor, s.paper.style, seed);
+  }
+  function defsSvg(s, uid) {
+    const wall = s.theme === 'paper' ? WALL.paper : WALL.stone;
+    return `<defs>` +
+      `<radialGradient id="gB${uid}" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#6e6e6e"/><stop offset=".35" stop-color="#262626"/><stop offset="1" stop-color="#050505"/></radialGradient>` +
+      `<radialGradient id="gW${uid}" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#ececea"/><stop offset="1" stop-color="#b9b9b4"/></radialGradient>` +
+      `<linearGradient id="gS${uid}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".14"/></linearGradient>` +
+      `<pattern id="pH${uid}" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="${wall}"/><rect width="2.5" height="7" fill="#000" fill-opacity=".3"/></pattern>` +
+      `</defs>`;
+  }
+  function starPoints(n) {
+    if (n < 9) return [];
+    const a = n >= 13 ? 3 : 2, b = n - 1 - a;
+    const pts = [[a, a], [a, b], [b, a], [b, b]];
+    if (n % 2) pts.push([(n - 1) / 2, (n - 1) / 2]);
+    return pts;
   }
 
-  /** Tap logic: depending on clickMode (single/double). */
-  _handleCellSelect(x, y) {
-    if (this.clickMode === 'single') {
+  /** A small square swatch of a look (paper or stone), for preset pickers. */
+  function previewSvg(theme, colors) {
+    const body = theme === 'paper'
+      ? `<path d="M0 20H40M20 0V40" stroke="${colors.grid}"/>` + cross(10, 10, colors.xColor, 'classic', 1).replace(/stroke-width="3.6"/, 'stroke-width="3"') +
+        `<circle cx="30" cy="30" r="6.5" fill="none" stroke="${colors.oColor}" stroke-width="3"/>`
+      : `<path d="M10 0V40M30 0V40M0 10H40M0 30H40" stroke="${colors.line}"/><circle cx="10" cy="10" r="7.5" fill="#151515"/><circle cx="30" cy="30" r="7.5" fill="#f4f4f0" stroke="rgba(0,0,0,.25)"/>`;
+    return `<svg viewBox="0 0 40 40" aria-hidden="true" focusable="false"><rect width="40" height="40" fill="${colors.bg}"/>${body}</svg>`;
+  }
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  let uidSeq = 0;
+  const compactScreen = () => (root.innerWidth || 1024) <= 768;
+
+  // ─── Renderer ──────────────────────────────────────────────────────────────
+
+  class BoardRenderer {
+    /**
+     * @param {SVGSVGElement|HTMLCanvasElement} el — a <canvas> is replaced by an <svg> in place
+     * @param {{ boardSize?: number, onCellClick?: (x:number, y:number) => void,
+     *           clickMode?: 'single'|'double', prefs?: object }} opts
+     *   `prefs` pins a look (settings preview); otherwise BoardPrefs is followed live.
+     */
+    constructor(el, opts = {}) {
+      let svg = el;
+      if (!el || el.namespaceURI !== SVG_NS) {
+        svg = document.createElementNS(SVG_NS, 'svg');
+        if (el) {
+          if (el.id) svg.id = el.id;
+          if (el.getAttribute('class')) svg.setAttribute('class', el.getAttribute('class'));
+          if (el.parentNode) el.parentNode.replaceChild(svg, el);
+        }
+      }
+      svg.classList.add('gboard');
+      svg.setAttribute('role', 'img');
+      svg.style.touchAction = 'none';
+      svg.style.display = 'block';
+      svg.style.userSelect = 'none';
+      this.svg = svg;
+      this.canvas = svg; // legacy name some callers read
+      this.uid = 'b' + (++uidSeq);
+
+      this.boardSize = opts.boardSize || 17;
+      this.onCellClick = opts.onCellClick || null;
+      this.clickMode = opts.clickMode || 'double';
+      this._pinnedPrefs = opts.prefs || null;
+
+      this.board = null;
+      this.walls = [];
+      this.portals = [];
+      this.firstMoveZones = [];
+      this.showZones = false;
+      this.lastMove = null;
+      this.winLine = null;
+      this.moveHistory = [];
+      this.isMyTurn = false;
+      this.interactive = false;
+      this.myColor = null;
+      this.displayMode = this.prefs.theme; // read-only mirror for old callers
+
+      this._hoverCell = null;
       this._pendingCell = null;
-      this.onCellClick(x, y);
-      return;
+      this.optimisticStone = null;
+      this.geo = null; // { m, n, W, vx, vy, VW, VH }
+
+      // A page that builds a new renderer on the same element (puzzle.js, per puzzle)
+      // must not leave the previous handlers attached: one click would place twice.
+      if (svg.__gboard) svg.__gboard.destroy();
+      svg.__gboard = this;
+      this._handlers = {
+        pointermove: (e) => this._onMouseMove(e),
+        pointerleave: () => this._onMouseLeave(),
+        click: (e) => this._onClick(e),
+        touchend: (e) => this._onTouchEnd(e),
+      };
+      for (const [ev, fn] of Object.entries(this._handlers)) svg.addEventListener(ev, fn);
+
+      if (!this._pinnedPrefs) {
+        this._onPrefs = () => { this.displayMode = this.prefs.theme; this._draw(); };
+        root.addEventListener('boardprefschange', this._onPrefs);
+      }
+      // Redraw on container size changes (rAF-gated, never per move — see #90).
+      if (typeof ResizeObserver === 'function' && svg.parentElement) {
+        let pending = false;
+        this._ro = new ResizeObserver(() => {
+          if (pending) return;
+          pending = true;
+          requestAnimationFrame(() => { pending = false; this.resize(); });
+        });
+        this._ro.observe(svg.parentElement);
+      }
     }
 
-    if (this._pendingCell && this._pendingCell.x === x && this._pendingCell.y === y) {
-      // Second tap on same cell → confirm
-      this._pendingCell = null;
-      this.onCellClick(x, y);
-    } else {
-      // First tap or different cell → set pending
-      this._pendingCell = { x, y };
+    get prefs() { return this._pinnedPrefs || BoardPrefs.get(); }
+
+    /** Settings preview: swap the pinned look and redraw. */
+    setPrefs(prefs) { this._pinnedPrefs = prefs; this.displayMode = prefs.theme; this._draw(); }
+
+    setOptimisticStone(stone) { this.optimisticStone = stone; this._drawOverlay(); }
+
+    markOptimisticWarning() {
+      if (!this.optimisticStone) return;
+      this.optimisticStone = Object.assign({}, this.optimisticStone, { warning: true });
+      this._drawOverlay();
+    }
+
+    setState(s) {
+      if (s.boardSize !== undefined) this.boardSize = s.boardSize;
+      if (s.board !== undefined) this.board = s.board;
+      if (s.walls !== undefined) this.walls = s.walls;
+      if (s.portals !== undefined) this.portals = s.portals;
+      if (s.firstMoveZones !== undefined) this.firstMoveZones = s.firstMoveZones;
+      if (s.showZones !== undefined) this.showZones = s.showZones;
+      if (s.winLine !== undefined) this.winLine = s.winLine;
+      if (s.moveHistory !== undefined) this.moveHistory = s.moveHistory || [];
+      if (s.lastMove !== undefined) this.lastMove = s.lastMove;
+      if (s.isMyTurn !== undefined) this.isMyTurn = s.isMyTurn;
+      if (s.interactive !== undefined) this.interactive = s.interactive;
+      if (s.myColor !== undefined) this.myColor = s.myColor;
+      // s.displayMode is ignored: the look comes from BoardPrefs (#216).
       this._draw();
     }
-  }
 
-  /** Clear pending cell (called externally after a move is placed). */
-  clearPending() {
-    this._pendingCell = null;
-  }
-
-  // ─── Main Draw ───────────────────────────────────────────────────
-
-  _draw() {
-    const ctx = this.ctx;
-    const g = this.geo;
-    if (!g.cellSize) return;
-
-    this._theme = this._readBoardTheme();
-
-    const w = this.cssSize || this.canvas.width;
-    const h = this.cssSize || this.canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
-    // 1. Background + grid
-    this._drawBackground();
-    this._drawStarPoints();
-    this._drawCoordinates();
-
-    // 2. First move zone highlights (behind everything)
-    if (this.showZones && this.firstMoveZones && this.firstMoveZones.length > 0) {
-      this._drawFirstMoveZones();
-    }
-
-    // 3. Last move highlight (behind pieces)
-    if (this.lastMove) {
-      this._drawLastMoveHighlight(this.lastMove.x, this.lastMove.y);
-    }
-
-    // 3b. Win line highlight
-    if (this.winLine) {
-      this._drawWinHighlight(this.winLine);
-    }
-
-    // 4. Hover highlight
-    if (this._hoverCell && this.board) {
-      const hx = this._hoverCell.x, hy = this._hoverCell.y;
-      if (this.board[hy] && this.board[hy][hx] === 0) {
-        this._drawHoverHighlight(hx, hy);
+    /**
+     * Size the SVG square to its container. The container's own box decides:
+     * a fixed-height container (room desktop) fits both axes; an auto-height one
+     * (phones, simple pages) fits the width, capped by the viewport height on desktop.
+     */
+    resize() {
+      const svg = this.svg;
+      const parent = svg.parentElement;
+      if (!parent) { this._draw(); return; }
+      const prev = svg.style.display;
+      svg.style.display = 'none'; // measure the container without the board inflating it
+      const cs = getComputedStyle(parent);
+      const w = parent.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+      let h = parent.clientHeight - (parseFloat(cs.paddingTop) || 0) - (parseFloat(cs.paddingBottom) || 0);
+      svg.style.display = prev || 'block';
+      let size = w;
+      if (h > 40) size = Math.min(w, h);
+      else if (!compactScreen()) {
+        const top = Math.max(parent.getBoundingClientRect().top, 0);
+        size = Math.min(w, (root.innerHeight || w) - top - 16);
       }
+      size = Math.max(Math.floor(size), 160);
+      if (!(size > 0) || !isFinite(size)) { this._draw(); return; }
+      // Make one cell a whole number of device pixels (as the reference board does):
+      // with crispEdges every grid line then rounds the same way, so no line renders
+      // thicker than its neighbours.
+      const g = this._computeGeometry();
+      const dpr = root.devicePixelRatio || 1;
+      const q = Math.floor((size * dpr * P) / g.VW);
+      if (q >= 8) size = (g.VW * q) / P / dpr;
+      svg.style.width = size + 'px';
+      svg.style.height = size + 'px';
+      this.cssSize = size;
+      this._draw();
     }
 
-    // 4b. Pending cell highlight (double-tap preview)
-    if (this._pendingCell && this.board) {
-      const px = this._pendingCell.x, py = this._pendingCell.y;
-      if (this.board[py] && this.board[py][px] === 0) {
-        this._drawPendingHighlight(px, py);
+    clearPending() { this._pendingCell = null; this._drawOverlay(); }
+
+    // ── Geometry ──
+    _computeGeometry() {
+      const n = this.boardSize;
+      const edge = this.prefs.coords !== 'cell';
+      const compact = compactScreen();
+      const m = compact ? (edge ? 26 : 2) : (edge ? 34 : 12);
+      const W = 2 * m + n * P;
+      // Phones label only the left and bottom edges; crop the unlabelled margins to a hairline.
+      const cut = compact && edge ? m - 2 : 0;
+      this.geo = { m, n, W, vx: 0, vy: cut, VW: W - cut, VH: W - cut, edge, compact };
+      return this.geo;
+    }
+
+    _center(i) { return this.geo.m + (i + 0.5) * P; }
+
+    _cellFromClient(clientX, clientY) {
+      const g = this.geo;
+      if (!g) return null;
+      const rect = this.svg.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      const ux = g.vx + (clientX - rect.left) * (g.VW / rect.width);
+      const uy = g.vy + (clientY - rect.top) * (g.VH / rect.height);
+      const x = Math.floor((ux - g.m) / P);
+      const y = Math.floor((uy - g.m) / P);
+      return x >= 0 && y >= 0 && x < g.n && y < g.n ? { x, y } : null;
+    }
+
+    _isEmpty(c) { return !!(c && this.board && this.board[c.y] && this.board[c.y][c.x] === 0); }
+
+    // ── Events ──
+    _onMouseMove(e) {
+      if (e.pointerType === 'touch') return;
+      if (!this.interactive || !this.isMyTurn) {
+        if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
+        return;
       }
+      const cell = this._cellFromClient(e.clientX, e.clientY);
+      const prev = this._hoverCell;
+      if ((!prev && !cell) || (prev && cell && prev.x === cell.x && prev.y === cell.y)) return;
+      this._hoverCell = cell;
+      this._drawOverlay();
     }
 
-    // 5. Draw all cells
-    if (this.board) {
-      for (let y = 0; y < g.boardSize; y++) {
-        for (let x = 0; x < g.boardSize; x++) {
-          const val = this.board[y][x];
-          if (val === 1) this.displayMode === 'stone' ? this._drawStonePiece(x, y, 'BLACK') : this._drawBlackPiece(x, y);
-          else if (val === 2) this.displayMode === 'stone' ? this._drawStonePiece(x, y, 'WHITE') : this._drawWhitePiece(x, y);
-          else if (val === -1) this._drawWall(x, y);
-          else if (val === -2) this._drawPortal(x, y);
-        }
+    _onMouseLeave() {
+      if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
+    }
+
+    _onClick(e) {
+      if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
+      const cell = this._cellFromClient(e.clientX, e.clientY);
+      if (this._isEmpty(cell)) this._handleCellSelect(cell.x, cell.y);
+    }
+
+    _onTouchEnd(e) {
+      // First, before any guard: stops the synthetic click/zoom/keyboard (#104).
+      e.preventDefault();
+      if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const cell = this._cellFromClient(t.clientX, t.clientY);
+      if (this._isEmpty(cell)) this._handleCellSelect(cell.x, cell.y);
+    }
+
+    _handleCellSelect(x, y) {
+      if (this.clickMode === 'single') {
+        this._pendingCell = null;
+        this.onCellClick(x, y);
+        return;
       }
-    }
-
-    // 5b. This player's own in-flight move, drawn on top of the confirmed
-    // board (TODO.md #153) — faded + dashed so it never reads as placed.
-    if (this.optimisticStone) {
-      const { x, y, color, warning } = this.optimisticStone;
-      this._drawOptimisticStone(x, y, color, !!warning);
-    }
-
-    if (this.displayMode === 'stone' && this.lastMove) {
-      this._drawStoneLastMoveMarker(this.lastMove.x, this.lastMove.y);
-    }
-  }
-
-  // ─── Wood Texture (Stone mode) ────────────────────────────────────
-
-  /** Cached offscreen wood-grain texture, keyed by size — regenerated only on resize. */
-  _getWoodTexture(w, h) {
-    const rw = Math.max(1, Math.round(w));
-    const rh = Math.max(1, Math.round(h));
-    if (!this._woodTexture || this._woodTextureW !== rw || this._woodTextureH !== rh) {
-      this._woodTexture = this._buildWoodTexture(rw, rh);
-      this._woodTextureW = rw;
-      this._woodTextureH = rh;
-    }
-    return this._woodTexture;
-  }
-
-  /** Paint a kaya-wood gold/amber base with painted grain streaks onto an offscreen canvas. */
-  _buildWoodTexture(w, h) {
-    const off = document.createElement('canvas');
-    off.width = w;
-    off.height = h;
-    const c = off.getContext('2d');
-
-    // Flat base — the WCAG-solved #b58a40 (white-stone contrast ≈3.15:1,
-    // black-stone contrast ≈6.67:1), no gradient wash. Grain streaks below
-    // are the only variation.
-    c.fillStyle = '#b58a40';
-    c.fillRect(0, 0, w, h);
-
-    // Deterministic PRNG (mulberry32) — same seed every call, so the grain
-    // pattern is stable across redraws at a given canvas size instead of
-    // re-randomizing (and visibly flickering) on every _draw().
-    let seed = 0x9e3779b9;
-    const rand = () => {
-      seed = (seed + 0x6d2b79f5) | 0;
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-
-    const streakCount = Math.max(6, Math.round(h / 16));
-    const cp1x = w * 0.33, cp2x = w * 0.66;
-    for (let i = 0; i < streakCount; i++) {
-      const baseY = ((i + 0.5) / streakCount) * h;
-      const amp = 6 + rand() * 10;
-      const alpha = 0.05 + rand() * 0.07;
-      c.strokeStyle = rand() > 0.55
-        ? `rgba(235, 205, 155, ${alpha.toFixed(3)})`
-        : `rgba(90, 62, 26, ${alpha.toFixed(3)})`;
-      c.lineWidth = 1 + rand() * 2;
-      c.beginPath();
-      c.moveTo(0, baseY + (rand() - 0.5) * amp);
-      c.bezierCurveTo(
-        cp1x, baseY + (rand() - 0.5) * amp * 2,
-        cp2x, baseY + (rand() - 0.5) * amp * 2,
-        w, baseY + (rand() - 0.5) * amp
-      );
-      c.stroke();
-    }
-
-    return off;
-  }
-
-  // ─── Background & Grid ──────────────────────────────────────────
-
-  _drawBackground() {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const intervals = this.displayMode === 'stone' ? g.boardSize - 1 : g.boardSize;
-    const lineCount = this.displayMode === 'stone' ? g.boardSize : g.boardSize + 1;
-    const gridW = intervals * g.cellSize;
-    const gridH = intervals * g.cellSize;
-
-    const w = this.cssSize || this.canvas.width;
-    const h = this.cssSize || this.canvas.height;
-
-    // Premium radial gradient background (tactile matte feel)
-    const cx = w / 2;
-    const cy = h / 2;
-    const r = Math.max(w, h);
-    
-    if (this.displayMode === 'stone') {
-      // Stone mode intentionally keeps a fixed backdrop regardless of theme
-      // (filled black/white discs need a consistent board to read against;
-      // see the note on --board-bg in main.css) — a kaya-wood gold/amber
-      // tone (hue 38°, sat 48%) with painted grain streaks, instead of a
-      // flat gradient. Base #b58a40 is picked so white stones sit right at
-      // the WCAG 1.4.11 graphical-object floor of ~3:1 (contrast shrinks as
-      // the board lightens toward gold) while black stones stay crisp at
-      // ~6.7:1 — same medium-contrast approach as before, just re-solved
-      // for the warmer/more saturated hue the wood look needs.
-      ctx.drawImage(this._getWoodTexture(w, h), 0, 0, w, h);
-    } else {
-      ctx.fillStyle = this._theme.bg;
-      ctx.fillRect(0, 0, w, h);
-    }
-
-    // Grid lines (theme-aware teal for standard/caro, dark ink for stone —
-    // real goban lines are inked in dark lacquer, not a light overlay)
-    ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(34, 28, 17, 0.55)'
-      : `rgba(${this._theme.accentRgb}, 0.55)`;
-    // Snap to the physical device-pixel grid and stroke exactly 1px wide so
-    // hairlines stay crisp at any devicePixelRatio, including the fractional
-    // ratios (2.625, 3.5, ...) common on Android phones.
-    const dpr = this.dpr || (window.devicePixelRatio || 1);
-    const snap = (v) => Math.round(v * dpr) / dpr;
-    ctx.lineWidth = 1 / dpr;
-
-    ctx.beginPath();
-    for (let i = 0; i < lineCount; i++) {
-      // Vertical
-      const vx = snap(g.originX + i * g.cellSize) + 0.5 / dpr;
-      ctx.moveTo(vx, snap(g.originY));
-      ctx.lineTo(vx, snap(g.originY + gridH));
-      // Horizontal
-      const hy = snap(g.originY + i * g.cellSize) + 0.5 / dpr;
-      ctx.moveTo(snap(g.originX), hy);
-      ctx.lineTo(snap(g.originX + gridW), hy);
-    }
-    ctx.stroke();
-
-    // Board border (thicker and slightly darker)
-    ctx.strokeStyle = this.displayMode === 'stone'
-      ? 'rgba(0, 0, 0, 0.25)'
-      : `rgba(${this._theme.accentRgb}, 0.65)`;
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(g.originX, g.originY, gridW, gridH);
-  }
-
-  // ─── Star Points ────────────────────────────────────────────────
-
-  _drawStarPoints() {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const stars = STAR_POINTS[g.boardSize];
-    if (!stars) return;
-
-    ctx.fillStyle = this.displayMode === 'stone'
-      ? 'rgba(0, 0, 0, 0.6)'
-      : `rgba(${this._theme.accentRgb}, 0.6)`;
-    const dotR = g.cellSize * 0.08;
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
-    ctx.shadowBlur = 1;
-    ctx.shadowOffsetY = 1;
-
-    for (const [sx, sy] of stars) {
-      const { px, py } = this._cellToPixel(sx, sy);
-      ctx.beginPath();
-      ctx.arc(px, py, dotR, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-  }
-
-  // ─── Coordinates ────────────────────────────────────────────────
-
-  _drawCoordinates() {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const fontSize = g.cellSize * 0.35;
-    const labelOffset = g.cellSize * 0.55;
-    const hover = this._hoverCell;
-
-    const normalStyle = this.displayMode === 'stone'
-      ? 'rgba(0, 0, 0, 0.4)'
-      : `rgba(${this._theme.accentRgb}, 0.85)`;
-    const hoverStyle = `rgb(${this._theme.highlightRgb})`;
-
-    ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    if (ctx.letterSpacing !== undefined) {
-      ctx.letterSpacing = '1px';
-    }
-
-    // Column letters (A, B, C, ...) — the hovered column is highlighted
-    for (let x = 0; x < g.boardSize; x++) {
-      const ch = String.fromCharCode(65 + x);
-      const px = this.displayMode === 'stone'
-        ? g.originX + x * g.cellSize
-        : g.originX + (x + 0.5) * g.cellSize;
-      const py = g.originY - labelOffset;
-      ctx.fillStyle = hover && hover.x === x ? hoverStyle : normalStyle;
-      ctx.fillText(ch, px, py);
-    }
-
-    // Row numbers — displayed bottom-up (row 1 at the bottom, highest at the
-    // top, standard Go/Gomoku board convention) while internal y indices
-    // (top-to-bottom, used for board state/click mapping) stay unchanged.
-    ctx.textAlign = 'center';
-    for (let y = 0; y < g.boardSize; y++) {
-      const text = String(g.boardSize - y);
-      const px = g.originX - labelOffset;
-      const py = this.displayMode === 'stone'
-        ? g.originY + y * g.cellSize
-        : g.originY + (y + 0.5) * g.cellSize;
-      ctx.fillStyle = hover && hover.y === y ? hoverStyle : normalStyle;
-      ctx.fillText(text, px, py);
-    }
-  }
-
-  // ─── Highlights ─────────────────────────────────────────────────
-
-  _drawLastMoveHighlight(x, y) {
-    if (this.displayMode === 'stone') return;
-
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-    const half = g.cellSize * 0.45;
-
-    // Amber/gold highlight (Fix #14/#16) — fill only, no border.
-    const nx = px - half;
-    const ny = py - half;
-    const s = half * 2;
-    const r = 6;
-    ctx.beginPath();
-    ctx.moveTo(nx + r, ny);
-    ctx.lineTo(nx + s - r, ny);
-    ctx.quadraticCurveTo(nx + s, ny, nx + s, ny + r);
-    ctx.lineTo(nx + s, ny + s - r);
-    ctx.quadraticCurveTo(nx + s, ny + s, nx + s - r, ny + s);
-    ctx.lineTo(nx + r, ny + s);
-    ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
-    ctx.lineTo(nx, ny + r);
-    ctx.quadraticCurveTo(nx, ny, nx + r, ny);
-    ctx.closePath();
-    ctx.fillStyle = `rgba(${this._theme.highlightRgb}, 0.45)`;
-    ctx.fill();
-  }
-
-  _drawHoverHighlight(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-
-    ctx.save();
-    if (this.displayMode === 'stone') {
-      const r = g.cellSize * 0.38;
-      ctx.strokeStyle = 'rgba(15, 118, 110, 0.6)'; // Brand teal glowing ring
-      ctx.lineWidth = Math.max(g.cellSize * 0.04, 1.5);
-      
-      ctx.shadowColor = 'rgba(15, 118, 110, 0.3)';
-      ctx.shadowBlur = 6;
-      
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      const half = g.cellSize * 0.45;
-      ctx.fillStyle = `rgba(${this._theme.accentRgb}, 0.1)`;
-      ctx.strokeStyle = `rgba(${this._theme.accentRgb}, 0.6)`;
-      ctx.lineWidth = 1.5;
-      
-      const r = 4;
-      const nx = px - half;
-      const ny = py - half;
-      const s = half * 2;
-      
-      ctx.beginPath();
-      ctx.moveTo(nx + r, ny);
-      ctx.lineTo(nx + s - r, ny);
-      ctx.quadraticCurveTo(nx + s, ny, nx + s, ny + r);
-      ctx.lineTo(nx + s, ny + s - r);
-      ctx.quadraticCurveTo(nx + s, ny + s, nx + s - r, ny + s);
-      ctx.lineTo(nx + r, ny + s);
-      ctx.quadraticCurveTo(nx, ny + s, nx, ny + s - r);
-      ctx.lineTo(nx, ny + r);
-      ctx.quadraticCurveTo(nx, ny, nx + r, ny);
-      
-      ctx.fill();
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  _drawWinHighlight(stones) {
-    const ctx = this.ctx;
-    const half = this.geo.cellSize * 0.5;
-    ctx.save();
-    // A solid red/orange square highlight filling the cell
-    ctx.fillStyle = 'rgba(231, 76, 60, 0.65)';
-
-    for (const st of stones) {
-      const { px, py } = this._cellToPixel(st.x, st.y);
-      ctx.fillRect(px - half, py - half, half * 2, half * 2);
-    }
-    ctx.restore();
-  }
-
-  /** Draw pending cell: semi-transparent preview stone + green pulsing ring. */
-  /**
-   * The mover's own stone before the server has confirmed it (TODO.md #153,
-   * upgraded to solid/indistinguishable by #155's Full CSP). Drawn through
-   * the exact same per-mode piece routine a confirmed stone uses, at full
-   * opacity, with no ring — a player cannot tell "sent" from "landed" by eye,
-   * the UX tradeoff #155 was filed to accept. Rollback on a rejected move
-   * (just `setOptimisticStone(null)`, nothing was ever written to
-   * `this.board`) still reads as "never happened" instead of a stone visibly
-   * vanishing, same as before.
-   * `warning` (set after the first ack timeout, GameUI.sendMove's retry)
-   * still needs a signal — a player retrying blind is worse than one who
-   * knows — so it adds a thin solid ring instead of reappearing as the old
-   * dashed one, deliberately faint enough not to undo "indistinguishable".
-   */
-  _drawOptimisticStone(x, y, color, warning) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-
-    ctx.save();
-    if (this.displayMode === 'stone') {
-      this._drawStonePiece(x, y, color);
-    } else if (color === 'BLACK') {
-      this._drawBlackPiece(x, y);
-    } else {
-      this._drawWhitePiece(x, y);
-    }
-    ctx.restore();
-
-    if (warning) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(196, 130, 40, 0.9)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(px, py, g.cellSize * 0.42, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  _drawPendingHighlight(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-    const half = g.cellSize * 0.45;
-
-    if (this.displayMode === 'stone') {
-      ctx.save();
-      const r = g.cellSize * 0.45;
-      if (this.myColor === 'BLACK' || this.myColor === 'WHITE') {
-        ctx.globalAlpha = 0.42;
-        this._drawStonePiece(x, y, this.myColor);
-        ctx.globalAlpha = 1;
-      }
-      ctx.fillStyle = 'rgba(72, 135, 95, 0.16)';
-      ctx.strokeStyle = 'rgba(72, 135, 95, 0.82)';
-      ctx.lineWidth = Math.max(g.cellSize * 0.04, 1.25);
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
-
-    // Green highlight background
-    ctx.fillStyle = `rgba(${this._theme.pendingRgb}, 0.3)`;
-    ctx.fillRect(px - half, py - half, half * 2, half * 2);
-
-    // Green border ring
-    ctx.strokeStyle = `rgba(${this._theme.pendingRgb}, 0.8)`;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(px - half, py - half, half * 2, half * 2);
-
-    // Draw semi-transparent preview piece
-    const r = g.cellSize * 0.32;
-    if (this.myColor === 'BLACK') {
-      // X cross preview
-      ctx.globalAlpha = 0.45;
-      ctx.strokeStyle = `rgb(${this._theme.inkRgb})`;
-      ctx.lineWidth = Math.max(g.cellSize * 0.11, 1.5);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(px - r, py - r); ctx.lineTo(px + r, py + r);
-      ctx.moveTo(px + r, py - r); ctx.lineTo(px - r, py + r);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    } else if (this.myColor === 'WHITE') {
-      // O circle preview
-      ctx.globalAlpha = 0.45;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgb(255, 29, 35)';
-      ctx.lineWidth = Math.max(g.cellSize * 0.07, 1);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    }
-  }
-
-  _drawFirstMoveZones() {
-    const ctx = this.ctx;
-    const g = this.geo;
-
-    ctx.fillStyle = 'rgba(100, 180, 100, 0.25)';
-    for (const z of this.firstMoveZones) {
-      const { px, py } = this._cellToPixel(z.x, z.y);
-      const half = g.cellSize * 0.48;
-      ctx.fillRect(px - half, py - half, half * 2, half * 2);
-    }
-  }
-
-  // ─── Black Piece — X Cross ──────────────────────────────────────
-
-  _drawBlackPiece(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-
-    // Diagonal cross — ~70% visual extent
-    const arm = g.cellSize * 0.28;
-    const lw = Math.max(g.cellSize * 0.14, 2.5);
-
-    ctx.strokeStyle = `rgb(${this._theme.inkRgb})`; // Theme-aware ink (slate-900 light / slate-50 dark)
-    ctx.lineWidth = lw;
-    ctx.lineCap = 'round';
-
-    ctx.beginPath();
-    // Diagonal 1: top-left to bottom-right
-    ctx.moveTo(px - arm, py - arm);
-    ctx.lineTo(px + arm, py + arm);
-    // Diagonal 2: top-right to bottom-left
-    ctx.moveTo(px + arm, py - arm);
-    ctx.lineTo(px - arm, py + arm);
-    ctx.stroke();
-  }
-
-  // ─── Stone Piece — Round Stones ─────────────────────────────────
-
-  _drawStonePiece(x, y, color) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-    const radius = g.cellSize * 0.45;
-    const isBlack = color === 'BLACK';
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
-    ctx.shadowBlur = Math.max(g.cellSize * 0.12, 2.5);
-    ctx.shadowOffsetY = Math.max(g.cellSize * 0.055, 1.2);
-
-    const grad = ctx.createRadialGradient(
-      px - radius * 0.32, py - radius * 0.36, radius * 0.08,
-      px + radius * 0.12, py + radius * 0.16, radius * 1.08
-    );
-    if (isBlack) {
-      grad.addColorStop(0, '#464646');
-      grad.addColorStop(0.22, '#242424');
-      grad.addColorStop(0.7, '#0d0d0d');
-      grad.addColorStop(1, '#020202');
-    } else {
-      grad.addColorStop(0, '#ffffff');
-      grad.addColorStop(0.34, '#ffffff');
-      grad.addColorStop(0.78, '#f1f1f1');
-      grad.addColorStop(1, '#d8d8d8');
-    }
-
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.shadowColor = 'transparent';
-    const shine = ctx.createRadialGradient(
-      px - radius * 0.34, py - radius * 0.38, 0,
-      px - radius * 0.34, py - radius * 0.38, radius * 0.58
-    );
-    shine.addColorStop(0, isBlack ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.82)');
-    shine.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = shine;
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
-  }
-
-  _drawStoneLastMoveMarker(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-    const r = Math.max(g.cellSize * 0.05, 1.6);
-
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
-    ctx.shadowBlur = Math.max(g.cellSize * 0.035, 1);
-    ctx.fillStyle = '#e33434';
-    ctx.beginPath();
-    ctx.arc(px, py, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowColor = 'transparent';
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
-    ctx.lineWidth = Math.max(g.cellSize * 0.018, 0.75);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // ─── White Piece — O Circle ─────────────────────────────────────
-
-  _drawWhitePiece(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-
-    // Circle — ~74% visual extent
-    const radius = g.cellSize * 0.30;
-    const lw = Math.max(g.cellSize * 0.14, 2.5);
-
-    // White fill (no fill, just red ink outline for elegant paper look)
-
-    // Bright red ink outline (Fix #10)
-    ctx.strokeStyle = 'rgb(255, 29, 35)';
-    ctx.lineWidth = lw;
-    ctx.beginPath();
-    ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-
-  _drawWall(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
-
-    // ── Perfect Port of WormHole's _drawBlock using Canvas Transform ──
-    // Instead of quantizing dimensions (which breaks on small screens), we
-    // scale the context itself. On high-DPI mobile screens, Canvas will use
-    // physical sub-pixels to render the 36x36 reference block perfectly crisp!
-    const CS    = g.cellSize;
-    const REF   = 36;
-    const scale = CS / REF;
-
-    ctx.save();
-    // Move to cell center, scale to reference size, and move to top-left of local 36x36 box
-    ctx.translate(px, py);
-    ctx.scale(scale, scale);
-    ctx.translate(-REF / 2, -REF / 2);
-
-    const pad = 1;
-    const bx0 = pad;
-    const by0 = pad;
-    const w   = REF - pad * 2;
-    const h   = REF - pad * 2;
-    const br  = 3;
-    const br2 = 2;
-    const GAP = 1;
-
-    // WCAG-derived neutral palette. Paper/caro mode stays theme-aware
-    // (sourced from --board-wall-*, unchanged). Stone mode uses its own
-    // fixed warm-stone palette instead — the cool neutral gray from the
-    // theme vars read as foreign against the locked kaya-wood background,
-    // so this is solved the same way the wood tone itself was: contrast(
-    // L_board, L_x) = C against the locked board's relative luminance
-    // (#b58a40 → 0.2837), same warm hue family as the board (28° vs the
-    // board's 38°) but desaturated toward stone. Darker tones step up in
-    // target contrast (mortar 4.5:1, dark 3.8:1, base 3.0:1 — grout reads
-    // darkest, brick body lightest of the three) and the highlight is
-    // solved in the *lighter* direction (1.8:1) as a subtle stone sheen.
-    const theme = this._theme;
-    const isStone = this.displayMode === 'stone';
-    const BLOCK_MORTAR = isStone ? '#2f2a26' : `rgb(${theme.wallMortarRgb})`;
-    const BLOCK_DARK   = isStone ? '#3b3631' : `rgb(${theme.wallDarkRgb})`;
-    const BLOCK_BASE   = isStone ? '#4c453e' : `rgb(${theme.wallBaseRgb})`;
-    const BLOCK_LIGHT  = isStone ? '#c9c3bd' : `rgb(${theme.wallLightRgb})`;
-
-    const PALETTE = [
-      BLOCK_DARK, BLOCK_DARK, BLOCK_DARK,
-      BLOCK_BASE, BLOCK_BASE,
-      BLOCK_LIGHT,
-    ];
-    
-    const brickColor = (r, b) => PALETTE[Math.abs(r * 17 + b * 11 + r * b * 3 + x * 7 + y * 5) % PALETTE.length];
-
-    const rr = (rx, ry, rw, rh, radius) => {
-      ctx.beginPath();
-      ctx.moveTo(rx + radius, ry);
-      ctx.lineTo(rx + rw - radius, ry);
-      ctx.quadraticCurveTo(rx + rw, ry, rx + rw, ry + radius);
-      ctx.lineTo(rx + rw, ry + rh - radius);
-      ctx.quadraticCurveTo(rx + rw, ry + rh, rx + rw - radius, ry + rh);
-      ctx.lineTo(rx + radius, ry + rh);
-      ctx.quadraticCurveTo(rx, ry + rh, rx, ry + rh - radius);
-      ctx.lineTo(rx, ry + radius);
-      ctx.quadraticCurveTo(rx, ry, rx + radius, ry);
-      ctx.closePath();
-    };
-
-    // 1 — Mortar background
-    rr(bx0, by0, w, h, br);
-    ctx.fillStyle = BLOCK_MORTAR;
-    ctx.fill();
-    ctx.clip(); 
-
-    // 2 — Exactly 5 rows (WormHole standard)
-    const rows = 5;
-    const bh   = Math.floor((h - GAP * (rows + 1)) / rows);
-    const bw3  = Math.floor((w - GAP * 4) / 3);
-
-    for (let r = 0; r < rows; r++) {
-      const byRow    = by0 + GAP + r * (bh + GAP);
-      const staggered = r % 2 === 1;
-
-      if (!staggered) {
-        for (let b = 0; b < 3; b++) {
-          const bxCol = bx0 + GAP + b * (bw3 + GAP);
-          rr(bxCol, byRow, bw3, bh, br2);
-          ctx.fillStyle = brickColor(r, b);
-          ctx.fill();
-        }
+      if (this._pendingCell && this._pendingCell.x === x && this._pendingCell.y === y) {
+        this._pendingCell = null;
+        this.onCellClick(x, y);
       } else {
-        const halfW = Math.floor(bw3 / 2);
-        
-        // Left
-        rr(bx0 + GAP, byRow, halfW, bh, br2);
-        ctx.fillStyle = brickColor(r, 0);
-        ctx.fill();
-
-        // Middle 2
-        for (let b = 0; b < 2; b++) {
-          const bxCol = bx0 + GAP + halfW + GAP + b * (bw3 + GAP);
-          rr(bxCol, byRow, bw3, bh, br2);
-          ctx.fillStyle = brickColor(r, b + 1);
-          ctx.fill();
-        }
-
-        // Right
-        const rightHalfX = bx0 + GAP + halfW + GAP + bw3 + GAP + bw3 + GAP;
-        rr(rightHalfX, byRow, halfW, bh, br2);
-        ctx.fillStyle = brickColor(r, 3);
-        ctx.fill();
+        this._pendingCell = { x, y };
       }
+      this._drawOverlay();
     }
 
-    // 3 — Subtle outer border
-    ctx.strokeStyle = 'rgba(0,0,0,0.20)';
-    // In local 36x36 coords, 0.8 is the exact WormHole border size
-    ctx.lineWidth   = 0.8;
-    rr(bx0, by0, w, h, br);
-    ctx.stroke();
+    // ── Drawing ──
+    _draw() {
+      const s = this.prefs;
+      const g = this._computeGeometry();
+      const { m, n, W, edge, compact } = g;
+      const paper = s.theme === 'paper';
+      const c = (i) => this._center(i);
+      const bg = paper ? s.paper.bg : s.stone.bg;
+      const inkRgb = Contrast.ink(bg)[0] ? '255,255,255' : '0,0,0';
+      const A = Contrast.INK_ALPHA;
+      const uid = this.uid;
+      const out = [defsSvg(s, uid)];
 
-    ctx.restore();
-  }
+      this.svg.setAttribute('viewBox', `${g.vx} ${g.vy} ${g.VW} ${g.VH}`);
+      this.svg.setAttribute('aria-label', `${n}×${n}`);
+      const rx = compact ? 0 : 12;
+      out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="${bg}"/>`);
+      if (!paper) out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="url(#gS${uid})"/>`);
 
-  // ─── Portal — Colored Ring with Center Dot ─────────────────────
+      // Grid: paper = n+1 cell borders, stone = n lines through the centres. Outer lines bolder.
+      const count = paper ? n + 1 : n;
+      const base = paper ? m : c(0);
+      const end = base + (count - 1) * P;
+      const lines = [];
+      for (let i = 0; i < count; i++) {
+        const v = base + i * P;
+        const sw = i === 0 || i === count - 1 ? 2 : 1;
+        lines.push(`<line x1="${v}" y1="${base}" x2="${v}" y2="${end}" stroke-width="${sw}"/><line x1="${base}" y1="${v}" x2="${end}" y2="${v}" stroke-width="${sw}"/>`);
+      }
+      out.push(`<g stroke="${paper ? s.paper.grid : s.stone.line}" shape-rendering="crispEdges" vector-effect="non-scaling-stroke">${lines.join('')}</g>`);
+      if (!paper) out.push(`<g fill="${s.stone.line}">${starPoints(n).map(([x, y]) => `<circle cx="${c(x)}" cy="${c(y)}" r="3.6"/>`).join('')}</g>`);
 
-  _drawPortal(x, y) {
-    const ctx = this.ctx;
-    const g = this.geo;
-    const { px, py } = this._cellToPixel(x, y);
+      const board = this.board;
+      const at = (x, y) => (board && board[y] ? board[y][x] : 0);
 
-    // Find which portal pair this belongs to
-    let pairIdx = 0;
-    if (this.portals) {
-      for (let i = 0; i < this.portals.length; i++) {
-        const p = this.portals[i];
-        if ((p.a.x === x && p.a.y === y) || (p.b.x === x && p.b.y === y)) {
-          pairIdx = i;
-          break;
+      // Coordinates
+      if (edge) {
+        const t = [];
+        for (let i = 0; i < n; i++) {
+          const L = LETTERS[i], num = n - i;
+          t.push(`<text x="${c(i)}" y="${W - m / 2}">${L}</text><text x="${m / 2}" y="${c(i)}">${num}</text>`);
+          if (!compact) t.push(`<text x="${c(i)}" y="${m / 2}">${L}</text><text x="${W - m / 2}" y="${c(i)}">${num}</text>`);
+        }
+        out.push(`<g fill="rgba(${inkRgb},${A.edge})" font-size="${compact ? 18 : 14}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="Manrope,system-ui,sans-serif">${t.join('')}</g>`);
+      } else {
+        const nums = spiral(n), t = [];
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          if (at(x, y) !== 0) continue;
+          t.push(`<text x="${c(x)}" y="${c(y)}">${nums[y * n + x]}</text>`);
+        }
+        const size = compact ? 16 : (n * n >= 100 ? 12 : 14);
+        const halo = paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`;
+        out.push(`<g fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Manrope,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
+      }
+
+      // First-move zones (behind everything placed)
+      if (this.showZones && this.firstMoveZones && this.firstMoveZones.length) {
+        out.push(`<g fill="rgba(100,180,100,.25)">${this.firstMoveZones.map(z => `<rect x="${m + z.x * P + 1}" y="${m + z.y * P + 1}" width="${P - 2}" height="${P - 2}"/>`).join('')}</g>`);
+      }
+
+      // Last move (paper: tinted cell under the piece)
+      const last = this.lastMove;
+      if (last && s.showLastMove && paper) {
+        const v = at(last.x, last.y);
+        const col = v === 2 ? s.paper.oColor : s.paper.xColor;
+        out.push(`<rect x="${m + last.x * P + 1}" y="${m + last.y * P + 1}" width="${P - 2}" height="${P - 2}" fill="${col}" opacity=".16"/>`);
+      }
+
+      // Winning line (under pieces)
+      if (this.winLine && this.winLine.length) {
+        out.push(`<g fill="${WIN}" opacity=".38">${this.winLine.map(w => `<rect x="${m + w.x * P + 1}" y="${m + w.y * P + 1}" width="${P - 2}" height="${P - 2}" rx="${paper ? 0 : 6}"/>`).join('')}</g>`);
+      }
+
+      // Walls, portals, pieces
+      const portalIndex = (x, y) => {
+        const ps = this.portals || [];
+        for (let i = 0; i < ps.length; i++) {
+          const p = ps[i];
+          if ((p.a && p.a.x === x && p.a.y === y) || (p.b && p.b.x === x && p.b.y === y)) return i;
+        }
+        return 0;
+      };
+      const ink = inkRgb === '255,255,255' ? '#fff' : '#000';
+      if (board) {
+        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+          const v = at(x, y);
+          if (v === 0) continue;
+          const x0 = m + x * P, y0 = m + y * P;
+          if (v === -1) {
+            out.push(paper
+              ? `<rect x="${x0 + 1.5}" y="${y0 + 1.5}" width="${P - 3}" height="${P - 3}" fill="url(#pH${uid})"/>`
+              : `<rect x="${f(x0 + P * 0.08)}" y="${f(y0 + P * 0.08)}" width="${f(P * 0.84)}" height="${f(P * 0.84)}" rx="5" fill="url(#pH${uid})" stroke="rgba(0,0,0,.45)" stroke-width="1.5"/>`);
+          } else if (v === -2) {
+            const i = portalIndex(x, y), cx = x0 + P / 2, cy = y0 + P / 2, r = P * 0.32, w = P * 0.08;
+            out.push((paper ? `<rect x="${x0 + 1}" y="${y0 + 1}" width="${P - 2}" height="${P - 2}" fill="${portalRgb(i, 0.3)}"/>` : '') +
+              `<circle cx="${cx}" cy="${cy}" r="${f(r + w)}" fill="${portalRgb(i, 0.25)}"/>` +
+              `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${ink}" stroke-opacity=".6" stroke-width="${f(w + 2)}"/>` +
+              `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${portalRgb(i)}" stroke-width="${f(w)}"/>` +
+              `<circle cx="${cx}" cy="${cy}" r="${f(P * 0.08)}" fill="#262626"/>`);
+          } else if (v === 1 || v === 2) {
+            out.push(pieceSvg(v, c(x), c(y), s, y * n + x, uid));
+          }
         }
       }
+
+      // Move numbers (last occurrence of each cell in the history)
+      if (s.showMoveNumbers && this.moveHistory && this.moveHistory.length && board) {
+        const order = new Map();
+        this.moveHistory.forEach((mv, i) => { if (mv && Number.isInteger(mv.x) && Number.isInteger(mv.y)) order.set(mv.y * n + mv.x, i + 1); });
+        const t = [];
+        for (const [k, num] of order) {
+          const x = k % n, y = Math.floor(k / n), v = at(x, y);
+          if (v !== 1 && v !== 2) continue;
+          const isLast = last && last.x === x && last.y === y && s.showLastMove;
+          if (paper) {
+            t.push(`<text x="${m + x * P + 3}" y="${m + y * P + 3}" font-size="11" dominant-baseline="hanging" fill="${isLast ? LAST : `rgba(${inkRgb},.7)`}">${num}</text>`);
+          } else {
+            const white = v === 2;
+            t.push(`<text x="${c(x)}" y="${c(y)}" text-anchor="middle" dominant-baseline="central" font-size="${num >= 100 ? 13 : 16}" fill="${isLast ? (white ? '#d0201b' : '#ff7a6e') : (white ? '#1a1a1a' : '#f4f4f4')}">${num}</text>`);
+          }
+        }
+        out.push(`<g font-family="Manrope,system-ui,sans-serif" font-weight="700">${t.join('')}</g>`);
+      }
+
+      // Last move marker for stones (numbers already mark it otherwise)
+      if (last && s.showLastMove && !paper && !s.showMoveNumbers && (at(last.x, last.y) === 1 || at(last.x, last.y) === 2)) {
+        out.push(`<circle cx="${c(last.x)}" cy="${c(last.y)}" r="5" fill="${LAST}"/>`);
+      }
+
+      out.push(`<g class="gboard__ov"></g>`);
+      this.svg.innerHTML = out.join('');
+      this._ov = this.svg.querySelector('.gboard__ov');
+      this._drawOverlay();
     }
 
-    const col = PORTAL_COLORS[pairIdx % PORTAL_COLORS.length];
-    const ringRadius = g.cellSize * 0.32;
-    const ringWidth = g.cellSize * 0.08;
-    const dotRadius = g.cellSize * 0.08;
+    // Hover / pending / optimistic layer — redrawn alone on pointer moves.
+    _drawOverlay() {
+      if (!this._ov || !this.geo) return;
+      const s = this.prefs;
+      const { m } = this.geo;
+      const paper = s.theme === 'paper';
+      const c = (i) => this._center(i);
+      const out = [];
+      const mine = this.myColor === 'BLACK' ? 1 : this.myColor === 'WHITE' ? 2 : 0;
+      const accent = paper ? (mine === 2 ? s.paper.oColor : s.paper.xColor) : LAST;
 
-    // Outer glow
-    ctx.fillStyle = `rgba(${col.r * 255 | 0}, ${col.g * 255 | 0}, ${col.b * 255 | 0}, 0.25)`;
-    ctx.beginPath();
-    ctx.arc(px, py, ringRadius + ringWidth, 0, Math.PI * 2);
-    ctx.fill();
+      const h = this._hoverCell;
+      if (h && this._isEmpty(h) && !(this._pendingCell && this._pendingCell.x === h.x && this._pendingCell.y === h.y)) {
+        out.push(paper
+          ? `<rect x="${m + h.x * P + 3}" y="${m + h.y * P + 3}" width="${P - 6}" height="${P - 6}" rx="4" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`
+          : `<circle cx="${c(h.x)}" cy="${c(h.y)}" r="${P * 0.4}" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`);
+      }
+      const pd = this._pendingCell;
+      if (pd && this._isEmpty(pd)) {
+        if (mine) out.push(`<g opacity=".45">${pieceSvg(mine, c(pd.x), c(pd.y), s, pd.y * this.geo.n + pd.x, this.uid)}</g>`);
+        out.push(paper
+          ? `<rect x="${m + pd.x * P + 2}" y="${m + pd.y * P + 2}" width="${P - 4}" height="${P - 4}" fill="${PENDING}" fill-opacity=".14" stroke="${PENDING}" stroke-width="2.5"/>`
+          : `<circle cx="${c(pd.x)}" cy="${c(pd.y)}" r="${P * 0.47}" fill="${PENDING}" fill-opacity=".14" stroke="${PENDING}" stroke-width="2.5"/>`);
+      }
+      const o = this.optimisticStone;
+      if (o) {
+        const v = o.color === 'WHITE' ? 2 : 1;
+        // Same look as a confirmed piece (#155); the warning adds a faint ring after the first ack timeout.
+        out.push(`<g class="gboard__optimistic" data-x="${o.x}" data-y="${o.y}">${pieceSvg(v, c(o.x), c(o.y), s, o.y * this.geo.n + o.x, this.uid)}` +
+          (o.warning ? `<circle class="gboard__warning" cx="${c(o.x)}" cy="${c(o.y)}" r="${P * 0.44}" fill="none" stroke="rgba(196,130,40,.9)" stroke-width="1.5"/>` : '') + `</g>`);
+      }
+      this._ov.innerHTML = out.join('');
+    }
 
-    // Main ring
-    ctx.strokeStyle = `rgb(${col.r * 255 | 0}, ${col.g * 255 | 0}, ${col.b * 255 | 0})`;
-    ctx.lineWidth = ringWidth;
-    ctx.beginPath();
-    ctx.arc(px, py, ringRadius, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Center dot
-    ctx.fillStyle = 'rgb(38, 38, 38)';
-    ctx.beginPath();
-    ctx.arc(px, py, dotRadius, 0, Math.PI * 2);
-    ctx.fill();
+    /** Stop following BoardPrefs / container size (pages that rebuild their board). */
+    destroy() {
+      for (const [ev, fn] of Object.entries(this._handlers || {})) this.svg.removeEventListener(ev, fn);
+      this._handlers = null;
+      if (this.svg.__gboard === this) this.svg.__gboard = null;
+      if (this._onPrefs) root.removeEventListener('boardprefschange', this._onPrefs);
+      if (this._ro) this._ro.disconnect();
+    }
   }
-}
 
-window.BoardRenderer = BoardRenderer;
+  /** One piece (1 black/X, 2 white/O) in the current look, for player cards. */
+  function pieceIconSvg(value, cls) {
+    const s = BoardPrefs.get();
+    const uid = 'pc' + value;
+    return `<svg class="${cls || ''}" viewBox="0 0 ${P} ${P}" aria-hidden="true" focusable="false">` +
+      (s.theme === 'stone' ? defsSvg(s, uid) : `<rect width="${P}" height="${P}" rx="8" fill="${s.paper.bg}"/>`) +
+      pieceSvg(value, P / 2, P / 2, s, 7, uid) + `</svg>`;
+  }
+
+  root.BoardPrefs = BoardPrefs;
+  root.boardPieceSvg = pieceIconSvg;
+  root.BoardContrast = Contrast;
+  root.BoardRenderer = BoardRenderer;
+  root.boardPreviewSvg = previewSvg;
+})(window);

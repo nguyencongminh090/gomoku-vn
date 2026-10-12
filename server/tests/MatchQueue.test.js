@@ -164,3 +164,18 @@ describe('pairing', () => {
     expect(typeof key).toBe('string');
   });
 });
+
+describe('board setup buckets (wall / portal)', () => {
+  test('only identical wall/portal choices pair', () => {
+    const q = new MatchQueue();
+    q.join(entry('a', { wall: true }));
+    q.join(entry('b', { portal: true }));
+    q.join(entry('c'));
+    expect(q.pair()).toHaveLength(0);
+    q.join(entry('d', { wall: true }));
+    const pairs = q.pair();
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].map((e) => e.userId)).toEqual(['a', 'd']);
+    expect(pairs[0][0].wall).toBe(true);
+  });
+});

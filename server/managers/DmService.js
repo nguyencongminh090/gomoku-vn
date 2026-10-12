@@ -6,7 +6,7 @@
  * Text is stored in wire form (DmText.clean: angle brackets escaped, profanity
  * masked, ≤ 500); clients decode at render. Unread = rows addressed to me with
  * read_at NULL. An offline recipient gets one `dm` bell notification per sender
- * (a newer message replaces the older one). Newest DM_KEEP per conversation kept.
+ * (a newer message replaces the older one). Newest DM_KEEP per conversation kept, and nothing older than DM_TTL_MS (3 days).
  *
  * Methods throw DmError(code, status); routes translate it to JSON.
  */
@@ -18,6 +18,10 @@ const privacyGate = require('./PrivacyGate');
 
 const DM_KEEP = 500;
 const PAGE = 30;
+const DM_TTL_MS = 3 * 24 * 3600 * 1000; // B220: private chats are kept 3 days
+const PRUNE_EVERY_MS = 60 * 1000;
+let lastPrune = 0;
+const cutoff = () => new Date(Date.now() - DM_TTL_MS).toISOString();
 
 class DmError extends Error {
   constructor(code, status, message) {
@@ -30,6 +34,13 @@ class DmError extends Error {
 const db = () => database.db;
 const convKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 const isMember = (userId) => !!database.getUserById(userId);
+
+/** Delete messages older than the TTL; reads call it throttled so expiry never lags by more than a minute. */
+function pruneExpired(now = Date.now(), force = false) {
+  if (!force && now - lastPrune < PRUNE_EVERY_MS) return 0;
+  lastPrune = now;
+  return db().prepare('DELETE FROM direct_messages WHERE created_at < ?').run(new Date(now - DM_TTL_MS).toISOString()).changes;
+}
 
 let isOnline = () => false;
 /** @param {{isOnline?: (userId: string) => boolean}} h */
@@ -52,6 +63,7 @@ function findUser(username) {
  * @returns {{id:number, createdAt:string, createdAtMs:number}}
  */
 function save(fromId, toId, text, { notify = false } = {}) {
+  pruneExpired();
   const key = convKey(fromId, toId);
   const createdAt = new Date().toISOString();
   const row = db().transaction(() => {
@@ -92,13 +104,14 @@ function send(fromId, username, raw) {
 
 /** Conversations, newest first: other person, last message, unread count. */
 function conversations(userId) {
+  pruneExpired();
   const rows = db().prepare(`
     SELECT m.* FROM direct_messages m
-    JOIN (SELECT conv_key, MAX(id) AS id FROM direct_messages WHERE sender_id = ? OR recipient_id = ? GROUP BY conv_key) l ON l.id = m.id
-    ORDER BY m.id DESC`).all(userId, userId);
+    JOIN (SELECT conv_key, MAX(id) AS id FROM direct_messages WHERE (sender_id = ? OR recipient_id = ?) AND created_at >= ? GROUP BY conv_key) l ON l.id = m.id
+    ORDER BY m.id DESC`).all(userId, userId, cutoff());
   const unread = new Map(db().prepare(
-    'SELECT sender_id, COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL GROUP BY sender_id'
-  ).all(userId).map((r) => [r.sender_id, r.n]));
+    'SELECT sender_id, COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL AND created_at >= ? GROUP BY sender_id'
+  ).all(userId, cutoff()).map((r) => [r.sender_id, r.n]));
   return rows.map((m) => {
     const otherId = m.sender_id === userId ? m.recipient_id : m.sender_id;
     return { with: person(database.getUserById(otherId)), last: { text: m.body, mine: m.sender_id === userId, at: m.created_at }, unread: unread.get(otherId) || 0 };
@@ -118,9 +131,10 @@ function historyById(userId, otherId, before) {
 }
 
 function historyWith(userId, other, before) {
+  pruneExpired();
   const key = convKey(userId, other.id);
   const b = Number.isInteger(before) ? before : Number.MAX_SAFE_INTEGER;
-  const rows = db().prepare('SELECT * FROM direct_messages WHERE conv_key = ? AND id < ? ORDER BY id DESC LIMIT ?').all(key, b, PAGE + 1);
+  const rows = db().prepare('SELECT * FROM direct_messages WHERE conv_key = ? AND id < ? AND created_at >= ? ORDER BY id DESC LIMIT ?').all(key, b, cutoff(), PAGE + 1);
   const hasMore = rows.length > PAGE;
   const messages = rows.slice(0, PAGE).reverse().map((m) => ({
     id: m.id, mine: m.sender_id === userId, text: m.body, at: m.created_at, read: !!m.read_at,
@@ -147,7 +161,7 @@ function markReadFrom(userId, other) {
 }
 
 const unreadTotal = (userId) => db().prepare(
-  'SELECT COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL'
-).get(userId).n;
+  'SELECT COUNT(*) AS n FROM direct_messages WHERE recipient_id = ? AND read_at IS NULL AND created_at >= ?'
+).get(userId, cutoff()).n;
 
-module.exports = { DmError, DM_KEEP, PAGE, setHooks, isMember, save, send, conversations, history, historyById, markRead, markReadById, unreadTotal };
+module.exports = { DmError, DM_KEEP, DM_TTL_MS, pruneExpired, PAGE, setHooks, isMember, save, send, conversations, history, historyById, markRead, markReadById, unreadTotal };

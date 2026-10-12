@@ -8,22 +8,21 @@
  *
  * Exports (on window):
  *   RoomUI.updateUI()
- *   RoomUI.renderSlot(slotNum, contentEl, cardEl)
- *   RoomUI.renderActionButtons()
+ *   RoomUI.renderPlayerCards() — the two player cards (opponent top, you bottom;
+ *     #216) incl. their clocks; replaces the old slot cards + mobile strip
+ *   RoomUI.updateCardClocks() — per-second clock/turn repaint of those cards;
+ *     called from GameUI.renderTimers(), not on its own timer
+ *   RoomUI.renderModeBadge() — "Giao hữu" / "Xếp hạng" in the nav
  *   RoomUI.renderSettings()
  *   RoomUI.renderUsersList()
  *   RoomUI.renderScoreTable()
  *   RoomUI.renderStartModal() — Start-modal ready window (both seated; 15s
  *     countdown only once one player clicks Start — see instruction.md §B36)
- *   RoomUI.renderPlayersStrip() — full rebuild of the mobile players strip
- *   RoomUI.updateStripTimers() — per-second clock/bar repaint for the mobile
- *     players strip; called from GameUI.renderTimers(), not on its own timer
  *   window.sitDown(slot)     — onclick shim
  *   window.standUp()         — onclick shim
  *   window.confirmStart()    — onclick shim (Start modal)
  *   window.kickUser(userId)  — onclick shim
  *   window.updateSettings()  — onclick shim
- *   window.updateLocalSettings() — onclick shim
  */
 
 (function(global) {
@@ -34,12 +33,9 @@
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const roomIdNav      = document.getElementById('room-id-nav');
   const siteLinks      = document.getElementById('room-site-links');
-  const slot1Content   = document.getElementById('slot-1-content');
-  const slot2Content   = document.getElementById('slot-2-content');
-  const slot1Card      = document.getElementById('slot-1');
-  const slot2Card      = document.getElementById('slot-2');
-  const actionButtons  = document.getElementById('action-buttons');
-  const playersStrip   = document.getElementById('players-strip');
+  const cardTop        = document.getElementById('pcard-top');
+  const cardBottom     = document.getElementById('pcard-bottom');
+  const modeBadge      = document.getElementById('room-mode-badge');
   const settingsPanel  = document.getElementById('settings-panel');
   const settingsBody   = document.getElementById('settings-body');
   const usersPanel     = document.getElementById('users-panel');
@@ -115,10 +111,8 @@
     // condition as the Rời phòng confirm in room.js) — #191 item 6.
     if (siteLinks) siteLinks.hidden = !!(st.gameState && st.gameState.status === 'ongoing' && st.mySlot !== null);
 
-    renderSlot(1, slot1Content, slot1Card);
-    renderSlot(2, slot2Content, slot2Card);
-    renderPlayersStrip();
-    renderActionButtons();
+    renderPlayerCards();
+    renderModeBadge();
     renderSettings();
     renderUsersList();
     renderScoreTable();
@@ -166,169 +160,38 @@
     return `<span class="ready-dot ready-dot${status.modifier}" role="img" aria-label="${escapeAttr(status.label)}" title="${escapeAttr(status.label)}"></span>`;
   }
 
-  // ── Slot rendering ────────────────────────────────────────────────────────
-
-  function renderSlot(slotNum, contentEl, cardEl) {
-    const st = S();
-    const player = st.roomData.users.find(u => u.slot === slotNum);
-    cardEl.classList.toggle('slot-card--active', !!player);
-
-    if (!player) {
-      const canSit = st.mySlot === null && st.roomData.state !== 'playing';
-      contentEl.innerHTML = `
-        <div class="slot-card__empty ${canSit ? 'slot-card__clickable' : ''}"
-             ${canSit ? `data-action="sitDown" data-arg="${slotNum}" data-arg-type="number"` : ''}
-             title="${canSit ? t('room.click_to_sit') : ''}">
-          #${slotNum}
-        </div>
-      `;
-      return;
-    }
-
-    const isMe = player.userId === st.myUser.userId;
-    const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<span class="slot-card__stand" data-action="standUp" title="Rời vị trí"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-bold-x"></use></svg></span>`
-      : '';
-
-    contentEl.innerHTML = `
-      <div class="slot-card__header">
-        <div class="slot-card__name">${escapeHtml(player.displayName)}</div>
-        ${standBtn}
-      </div>
-      <div class="slot-card__status">
-        ${renderStatusDot(player)}
-      </div>
-    `;
-  }
-
-  // ── Compact players strip (mobile, sits above the board) ──────────────────
-
-  // On phones the right panel — including both slot cards — sits below a
-  // viewport-tall board, so this one-line-per-player strip surfaces "who am I
-  // playing, are they ready" without scrolling past the board.
+  // ── Player cards (#216) ───────────────────────────────────────────────────
   //
-  // It no longer hides once a game starts. It used to, because the turn bar
-  // right above the board then carried both names — but the turn bar is now
-  // display:none at ≤768px (game.css) and this strip absorbed its job: clock,
-  // whose-turn marker and stone colour all live here on mobile. Desktop is
-  // untouched; there the strip is still display:none and the turn bar still
-  // renders exactly as before.
-  function renderPlayersStrip() {
-    if (!playersStrip) return;
+  // Two cards frame the board: the opponent on top, you at the bottom, each with
+  // its own clock — the clock sits next to the player it belongs to, so a glance
+  // at the bottom card answers "how much time do I have". A spectator sees seat
+  // #2 on top and seat #1 at the bottom. One renderer for desktop and phone (the
+  // old slot cards + mobile players strip + desktop turn bar were three).
+
+  function initials(name) {
+    const parts = String(name || '?').trim().split(/\s+/).filter(Boolean);
+    const a = parts.length > 1 ? parts[0][0] + parts[parts.length - 1][0] : (parts[0] || '?').slice(0, 2);
+    return a.toUpperCase();
+  }
+
+  function seatOrder() {
     const st = S();
-
-    // Height changes when the clock rows appear/disappear, and board.js sizes
-    // the canvas against the space left below this element — measure across
-    // the rebuild and only pay for a re-layout when it actually moved.
-    const heightBefore = playersStrip.offsetHeight;
-
-    let html = '';
-    for (const slotNum of [1, 2]) {
-      const player = st.roomData.users.find(u => u.slot === slotNum);
-      if (!player) {
-        html += `
-          <div class="players-strip__slot players-strip__slot--empty">
-            <span class="players-strip__num">#${slotNum}</span>
-            <span class="players-strip__stone players-strip__stone--none"></span>
-            <span class="players-strip__turn" aria-hidden="true">▶</span>
-            <span class="players-strip__name">${t('room.slot_empty')}</span>
-          </div>
-        `;
-        continue;
-      }
-      html += renderStripPlayer(player, slotNum);
-    }
-    playersStrip.innerHTML = html;
-    updateStripTimers();
-
-    if (playersStrip.offsetHeight !== heightBefore) {
-      requestAnimationFrame(() => {
-        if (S().boardRenderer) S().boardRenderer.resize();
-      });
-    }
+    const bottom = st.mySlot === 2 ? 2 : 1;
+    return { top: bottom === 1 ? 2 : 1, bottom };
   }
 
-  // #155/#165/#166 — the strip's clock numbers and whose-turn marker must be
-  // computed the exact same way the desktop turn bar computes them, or the
-  // two surfaces of one feature drift apart on a laggy link. Both formulas
-  // live in game-ui.js; these thin wrappers just tolerate it not being
-  // loaded yet (module load order) by degrading to the raw authoritative
-  // state, which is what the strip did before #166 anyway.
-  function stripTimerValues() {
-    if (global.GameUI && typeof global.GameUI.effectiveTimerValues === 'function') {
-      return global.GameUI.effectiveTimerValues();
-    }
-    return S().timerValues || { black: 0, white: 0 };
-  }
-  function stripTurnColor() {
-    if (global.GameUI && typeof global.GameUI.effectiveTurnColor === 'function') {
-      return global.GameUI.effectiveTurnColor();
-    }
-    return null;
-  }
-
-  // One seated player: identity row, plus a clock row when a game is running.
-  function renderStripPlayer(player, slotNum) {
-    const st = S();
-    const clock = playerClock(player);
-    const live = !!st.gameState && clock.key !== null;
-
-    // predictedTurn overlay (#155) + Swap2 placeholder rule live in
-    // GameUI.effectiveTurnColor(); share it so the strip flips to the
-    // opponent the instant our move is in flight, same as the desktop turn
-    // bar (instruction.md #166). Falls back to authoritative currentTurn if
-    // game-ui.js somehow isn't loaded yet.
-    const turnColor = stripTurnColor();
-    const isTurn = live && (turnColor
-      ? turnColor === clock.key.toUpperCase()
-      : (st.gameState.status === 'ongoing' && st.gameState.currentTurn === player.userId));
-
-    const row = `
-      <div class="players-strip__slot ${isTurn ? 'players-strip__slot--turn' : ''}"
-           data-strip-slot="${slotNum}">
-        <span class="players-strip__num">#${slotNum}</span>
-        <span class="players-strip__stone players-strip__stone--${clock.stone}"></span>
-        <span class="players-strip__turn" aria-hidden="true">▶</span>
-        <span class="players-strip__name">${escapeHtml(player.displayName)}</span>
-        ${live ? `<span class="players-strip__time" data-strip-time="${clock.key}"></span>` : ''}
-        ${renderStatusDot(player)}
-      </div>
-    `;
-
-    if (!live) return row;
-
-    // Separate element rather than a border/background on the row itself: the
-    // fill has to be able to span the strip's full width independently of the
-    // row's own padding, and an <span> child is what lets width animate.
-    const track = `
-      <div class="players-strip__track ${isTurn ? '' : 'players-strip__track--idle'}"
-           data-strip-track="${clock.key}">
-        <span class="players-strip__fill" style="--pct:0"></span>
-      </div>
-    `;
-    return row + track;
-  }
-
-  // Which of the two server clocks ('black'/'white') is this player's, and
-  // which stone to draw for them.
-  //
-  // The two answers deliberately come apart during a Swap2 opening. The clocks
-  // are keyed by firstPlayerId/secondPlayerId as placeholders well before
-  // `player.color` is filled in — the same placeholder rule game-ui.js's
-  // renderTimers() follows (instruction.md §B37) — so whose clock is whose is
-  // already known while what colour they will end up holding is not. The stone
-  // stays on the neutral '--none' ring for that window instead of guessing a
-  // colour that Swap2 may well hand to the other player.
+  // Which of the two server clocks ('black'/'white') is this player's, and which
+  // piece to draw for them. During a Swap2 opening the clocks are already keyed by
+  // firstPlayerId/secondPlayerId (instruction.md §B37) while the colour is not
+  // decided yet — the piece stays neutral instead of guessing.
   function playerClock(player) {
     const gs = S().gameState;
     if (!gs) return { key: null, stone: 'none' };
-
     const gp = gs.players.find(p => p.userId === player.userId);
     if (gp && gp.color) {
       const key = gp.color === 'BLACK' ? 'black' : 'white';
       return { key, stone: key };
     }
-
     const swap2 = gs.swap2;
     if (swap2 && swap2.enabled && !swap2.colorsAssigned) {
       if (player.userId === swap2.firstPlayerId)  return { key: 'black', stone: 'none' };
@@ -337,89 +200,124 @@
     return { key: null, stone: 'none' };
   }
 
-  // Remaining time as 0-100% of the room's configured base time.
-  //
-  // Clamped at 100 deliberately: in blitz the per-move increment can push a
-  // clock past its own starting value (120s left on a 60s base), and an
-  // unclamped bar would render wider than its track. The clamp is the agreed
-  // behaviour, not a rounding guard — the bar saturates and the numeric clock
-  // beside it carries the real surplus.
-  function timePct(remaining) {
-    const settings = (S().roomData || {}).settings || {};
-    const base = Number(settings.timerSeconds) || 0;
-    if (!base) return 0;
-    return Math.max(0, Math.min(100, (remaining / base) * 100));
+  function renderCard(el, slotNum) {
+    const st = S();
+    const player = st.roomData.users.find(u => u.slot === slotNum);
+    el.dataset.slot = String(slotNum);
+    el.classList.remove('pcard--turn', 'pcard--low');
+    if (!player) {
+      const canSit = st.mySlot === null && st.roomData.state !== 'playing';
+      el.classList.add('pcard--empty');
+      delete el.dataset.clock;
+      el.innerHTML = canSit
+        ? `<button class="pcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number">${t('room.sit')} · #${slotNum}</button>`
+        : `<span class="pcard__seat">#${slotNum}</span><span class="pcard__empty">${t('room.slot_empty')}</span>`;
+      return;
+    }
+    el.classList.remove('pcard--empty');
+    const isMe = player.userId === st.myUser.userId;
+    const clock = playerClock(player);
+    const live = !!st.gameState && clock.key !== null;
+    if (live) el.dataset.clock = clock.key; else delete el.dataset.clock;
+    const piece = clock.stone !== 'none' && typeof global.boardPieceSvg === 'function'
+      ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'pcard__piece')
+      : '';
+    const standBtn = (isMe && st.roomData.state !== 'playing')
+      ? `<button class="pcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-x"></use></svg></button>`
+      : '';
+    el.innerHTML = `
+      <div class="pcard__av${isMe ? ' pcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
+      <div class="pcard__id">
+        <div class="pcard__name">${escapeHtml(player.displayName)}</div>
+        <div class="pcard__meta">${renderStatusDot(player)}</div>
+      </div>
+      ${standBtn}
+      ${live ? `<div class="pcard__clock" data-clock-text></div>` : ''}
+    `;
+    // CSP forbids inline onerror — fall back to initials from here.
+    const img = el.querySelector('.pcard__img');
+    if (img) img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true });
   }
 
-  // Always 'M:SS'. game-ui.js's formatTime() drops to bare seconds under a
-  // minute, which is fine in the turn bar's fixed-width cell but not here: the
-  // clock column sits next to a flex:1 name, so a string that shrinks from
-  // "1:00" to "53" would resize the column and shove the name sideways.
-  function formatStripTime(seconds) {
-    if (seconds < 0) seconds = 0;
+  // Uploaded avatar when the member has one; initials otherwise (and if the image fails to load).
+  function avatarInner(player) {
+    const ini = escapeHtml(initials(player.displayName));
+    const url = player.avatarUrl;
+    if (!url || !/^\/api\/profile\/avatar\/[\w-]+\.webp\?v=\d+$/.test(url)) return ini;
+    return `<img class="pcard__img" src="${escapeAttr(url)}" alt="" data-ini="${ini}">`;
+  }
+
+  function renderPlayerCards() {
+    if (!cardTop || !cardBottom) return;
+    const { top, bottom } = seatOrder();
+    renderCard(cardTop, top);
+    renderCard(cardBottom, bottom);
+    updateCardClocks();
+  }
+
+  // #155/#165/#166 — the clock numbers and whose-turn marker come from
+  // GameUI.effectiveTimerValues/effectiveTurnColor (predicted turn + transit
+  // shave), so every surface shows the same numbers. Degrades to raw state if
+  // game-ui.js is not loaded yet.
+  function cardTimerValues() {
+    if (global.GameUI && typeof global.GameUI.effectiveTimerValues === 'function') {
+      return global.GameUI.effectiveTimerValues();
+    }
+    return S().timerValues || { black: 0, white: 0 };
+  }
+  function cardTurnColor() {
+    if (global.GameUI && typeof global.GameUI.effectiveTurnColor === 'function') {
+      return global.GameUI.effectiveTurnColor();
+    }
+    return null;
+  }
+
+  // Always 'M:SS' in tabular digits: a string that shrinks from "1:00" to "53"
+  // would resize the clock box every minute boundary.
+  function formatClock(seconds) {
+    if (!(seconds > 0)) seconds = 0;
     const m = Math.floor(seconds / 60);
     const s = Math.floor(seconds % 60);
     return `${m}:${String(s).padStart(2, '0')}`;
   }
 
-  // Per-second repaint. Deliberately mutates the existing nodes instead of
-  // re-running renderPlayersStrip(): rebuilding innerHTML every second would
-  // restart the fill's width transition (so it could never animate), and would
-  // throw away and recreate both rows 60 times a minute for a two-character
-  // text change. Called from GameUI.renderTimers(), which is the single tick
-  // path room-socket.js drives — this adds no interval of its own.
-  function updateStripTimers() {
-    if (!playersStrip) return;
+  // Per-second repaint: mutates text/classes only (no rebuild), called from the
+  // single tick path (room-socket.js tickLocal → GameUI.renderTimers).
+  function updateCardClocks() {
     const st = S();
     if (!st.gameState) return;
-
-    // Same overlaid values (#155 predictedTurn) + transit compensation (#165)
-    // the desktop turn bar paints — see stripTimerValues/GameUI.
-    const vals = stripTimerValues();
-    const turnColor = stripTurnColor();
-
-    for (const key of ['black', 'white']) {
+    const vals = cardTimerValues();
+    const turnColor = cardTurnColor();
+    for (const el of [cardTop, cardBottom]) {
+      if (!el) continue;
+      const key = el.dataset.clock;
+      if (!key) continue;
       const remaining = Number(vals[key]) || 0;
-      const low = remaining <= 10;
-
-      const timeEl = playersStrip.querySelector(`[data-strip-time="${key}"]`);
-      if (timeEl) {
-        timeEl.textContent = formatStripTime(remaining);
-        timeEl.classList.toggle('players-strip__time--low', low);
-      }
-
-      const trackEl = playersStrip.querySelector(`[data-strip-track="${key}"]`);
-      if (trackEl) {
-        const fillEl = trackEl.firstElementChild;
-        if (fillEl) {
-          fillEl.style.setProperty('--pct', String(timePct(remaining)));
-          fillEl.classList.toggle('players-strip__fill--low', low);
-        }
-
-        // predictedTurn can flip whose turn it is between full strip
-        // rebuilds, so move the turn/idle markers here on the per-second
-        // path too — the mover's row must drop its highlight and the
-        // opponent's must gain it the instant our move goes in flight
-        // (instruction.md #166), not one RTT later.
-        if (turnColor) {
-          const isTurn = turnColor === key.toUpperCase();
-          trackEl.classList.toggle('players-strip__track--idle', !isTurn);
-          const rowEl = trackEl.previousElementSibling;
-          if (rowEl && rowEl.classList.contains('players-strip__slot')) {
-            rowEl.classList.toggle('players-strip__slot--turn', isTurn);
-          }
-        }
-      }
+      const textEl = el.querySelector('[data-clock-text]');
+      if (textEl) textEl.textContent = formatClock(remaining);
+      const isTurn = !!turnColor && turnColor === key.toUpperCase();
+      el.classList.toggle('pcard--turn', isTurn);
+      el.classList.toggle('pcard--low', remaining <= 10 && st.gameState.status === 'ongoing');
     }
   }
 
-  // ── Action buttons ────────────────────────────────────────────────────────
-  // Ready/Start used to live here as an inline toggle button. It's now the
-  // Start modal (see renderStartModal) so this row is currently unused but
-  // kept as a slot-actions extension point.
+  // "Giao hữu" (friendly: undo + extra time allowed) or "Xếp hạng" (rated) —
+  // the effective rule the server enforces (RatingService.isRatedSetup): a
+  // ranked room with a guest seated is friendly. Live games carry `rated`.
+  function isRatedNow() {
+    const st = S();
+    if (st.gameState && typeof st.gameState.rated === 'boolean') return st.gameState.rated;
+    const s = st.roomData.settings || {};
+    const seated = st.roomData.users.filter(u => u.slot === 1 || u.slot === 2);
+    return s.ranked !== false && !seated.some(u => u.isGuest);
+  }
 
-  function renderActionButtons() {
-    actionButtons.innerHTML = '';
+  function renderModeBadge() {
+    if (!modeBadge) return;
+    const rated = isRatedNow();
+    modeBadge.hidden = false;
+    modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
@@ -440,6 +338,22 @@
     const bothSeated = st.roomData.users.some(u => u.slot === 1)
       && st.roomData.users.some(u => u.slot === 2);
     const visible = st.mySlot !== null && bothSeated && st.roomData.state !== 'playing';
+
+    // Quick-match rooms play exactly one game: no Start modal, each page readies itself.
+    if (st.roomData.matchmade) {
+      if (st.roomData.state === 'playing') st.matchGameSeen = true;
+      // room:updated can render several times before the server acks; one emit per 3s (a missed ready
+      // window clears isReady and is retried after that).
+      if (visible && !st.isReady && !st.matchGameSeen && Date.now() - (st.matchReadyAt || 0) > 3000) {
+        st.matchReadyAt = Date.now();
+        global.confirmStart();
+      }
+      modal.classList.remove('visible');
+      // One game done: make the leave button the obvious next step.
+      const leave = document.getElementById('btn-leave');
+      if (leave) leave.classList.toggle('is-cta', !!st.matchGameSeen && st.roomData.state !== 'playing');
+      return;
+    }
 
     const countdownWrap = document.getElementById('start-modal-countdown-wrap');
 
@@ -542,21 +456,18 @@
     `;
   }
 
-  // Placement mode (click-mode) now lives only in the global Settings panel
-  // (see settings-panel.js) — it applies live to this room via the
-  // 'clickmodechange' listener below, so it isn't duplicated here.
+  // The board look (style, colours, coordinates) is edited only in Settings ›
+  // Giao diện › Bàn cờ and shared by every board (#216); this tab links there.
   function renderLocalSettingsControl() {
-    const st = S();
+    const preview = typeof global.boardPreviewSvg === 'function' && global.BoardPrefs
+      ? (() => { const p = global.BoardPrefs.get(); return global.boardPreviewSvg(p.theme, p[p.theme]); })()
+      : '';
     return `
-      <div class="setting-row">
-        <span class="setting-label">${t('settings.display')}</span>
-        <div class="pill-group">
-          <input type="radio" name="boardDisplayMode" id="bdm-paper" value="paper" ${st.boardDisplayMode === 'paper' ? 'checked' : ''} data-change-action="updateLocalSettings" />
-          <label for="bdm-paper">${t('settings.display_paper')}</label>
-          <input type="radio" name="boardDisplayMode" id="bdm-stone" value="stone" ${st.boardDisplayMode === 'stone' ? 'checked' : ''} data-change-action="updateLocalSettings" />
-          <label for="bdm-stone">${t('settings.display_stone')}</label>
-        </div>
-      </div>
+      <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
+        <span class="board-look-link__pv">${preview}</span>
+        <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-caret-right"></use></svg>
+      </a>
     `;
   }
 
@@ -704,7 +615,8 @@
     // tab button. Default/Pro leave the tab permanently visible.
     const tabBtn = document.querySelector('.tab-btn[data-tab="tab-users"]');
     if (tabBtn) {
-      const hideTab = uiMode() === 'lite' && guests.length === 0;
+      const scorePanel = document.getElementById('score-panel');
+      const hideTab = uiMode() === 'lite' && guests.length === 0 && !(scorePanel && !scorePanel.hidden);
       tabBtn.style.display = hideTab ? 'none' : '';
       // Don't strand the user on a tab that just disappeared. Say "show the
       // chat tab", not "pretend the user clicked the chat button": the click
@@ -772,13 +684,9 @@
       hasData = hasResult;
     }
 
-    const tabBtn = document.querySelector('.tab-btn[data-tab="tab-score"]');
-    if (tabBtn) {
-      tabBtn.style.display = hasData ? '' : 'none';
-      if (!hasData && tabBtn.classList.contains('tab-btn--active')) {
-        activateChatTab();   // same intent-not-event rule as above (#136)
-      }
-    }
+    // Lives at the top of the Khán giả tab since #216 (no tab of its own).
+    const panel = document.getElementById('score-panel');
+    if (panel) panel.hidden = !hasData;
 
     if (!hasData) return;
 
@@ -827,21 +735,13 @@
     if (st.boardRenderer) st.boardRenderer.clickMode = st.clickMode;
   });
 
-  // ── Display-mode change listener (TODO.md #74) ──────────────────────────
-  // Board display (Paper/Stone) can now also be changed from the global
-  // Settings panel (settings-panel.js), not just this room's own Settings
-  // tab (updateLocalSettings above) — apply it to the live board immediately
-  // either way, same pattern as clickmodechange.
-  window.addEventListener('displaymodechange', (e) => {
+  // ── Board look changed (Settings, another tab) — the board redraws itself;
+  // the cards' piece icons and the settings-tab preview follow here. ──
+  window.addEventListener('boardprefschange', () => {
     const st = S();
-    st.boardDisplayMode = e.detail.mode;
-    if (st.boardRenderer) {
-      st.boardRenderer.setState({
-        displayMode:  st.boardDisplayMode,
-        moveHistory:  st.gameState ? (st.gameState.moveHistory || []) : [],
-        lastMove:     st.gameState ? st.gameState.lastMove : null,
-      });
-    }
+    if (!st.roomData) return;
+    renderPlayerCards();
+    renderSettings();
   });
 
   // ── Global onclick shims ──────────────────────────────────────────────────
@@ -893,33 +793,48 @@
     });
   };
 
-  global.updateLocalSettings = function() {
-    const st = S();
-    const modeEl = document.querySelector('input[name="boardDisplayMode"]:checked');
-    const mode   = modeEl ? modeEl.value : 'paper';
-    st.boardDisplayMode = ['paper', 'stone'].includes(mode) ? mode : 'paper';
-    localStorage.setItem('play3cr_board_display', st.boardDisplayMode);
+  // Touch devices: tapping anywhere that isn't a text field (or the send button,
+  // so chatting keeps the keyboard up) blurs the focused field and closes the keyboard.
+  function installOutsideTapBlur(doc) {
+    doc.addEventListener('pointerdown', (e) => {
+      if (e.pointerType !== 'touch') return;
+      const a = doc.activeElement;
+      if (!a || !/^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+      if (e.target.closest && e.target.closest('input, textarea, select, #btn-send')) return;
+      a.blur();
+    }, { passive: true });
+  }
 
-    if (st.boardRenderer) {
-      st.boardRenderer.setState({
-        displayMode:  st.boardDisplayMode,
-        moveHistory:  st.gameState ? (st.gameState.moveHistory || []) : [],
-        lastMove:     st.gameState ? st.gameState.lastMove : null,
-      });
-    }
-  };
+  // Mobile sticky stack needs the board's rendered height (CSS can't read a sibling's size).
+  function trackBoardHeight(doc) {
+    const shell = doc.getElementById('board-area-shell');
+    if (!shell || typeof global.ResizeObserver !== 'function') return;
+    const set = () => {
+      const h = shell.getBoundingClientRect().height;
+      if (h > 0) doc.documentElement.style.setProperty('--board-h', h + 'px');
+    };
+    new global.ResizeObserver(set).observe(shell);
+    set();
+  }
+
+  if (global.document && !global.__outsideTapBlurInstalled) {
+    trackBoardHeight(global.document);
+    global.__outsideTapBlurInstalled = true;
+    installOutsideTapBlur(global.document);
+  }
 
   // ── Public API ────────────────────────────────────────────────────────────
   global.RoomUI = {
+    installOutsideTapBlur,
+    trackBoardHeight,
     updateUI,
-    renderSlot,
-    renderActionButtons,
+    renderPlayerCards,
+    updateCardClocks,
+    renderModeBadge,
     renderSettings,
     renderUsersList,
     renderScoreTable,
     renderStartModal,
-    renderPlayersStrip,
-    updateStripTimers,
   };
 
 })(window);

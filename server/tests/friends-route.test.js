@@ -89,6 +89,19 @@ describe('request / accept / remove', () => {
     expect((await call('GET', '/api/friends', 'bob')).body.friends.map((p) => p.username)).toEqual(['ann']);
   });
 
+  it('#222: friends carry visible presence from the hook (default offline); pending rows do not', async () => {
+    await call('POST', '/api/friends/bob', 'ann');
+    await call('POST', '/api/friends/ann/accept', 'bob');
+    await call('POST', '/api/friends/cat', 'ann');
+    expect((await call('GET', '/api/friends', 'ann')).body.friends).toEqual([expect.objectContaining({ username: 'bob', online: false })]);
+    svc.setHooks({ isOnline: (id) => id === 'bob-id' });
+    try {
+      const d = (await call('GET', '/api/friends', 'ann')).body;
+      expect(d.friends[0].online).toBe(true);
+      expect(d.outgoing[0]).not.toHaveProperty('online');
+    } finally { svc.setHooks({}); }
+  });
+
   it('crossed requests merge into one accepted row', async () => {
     await call('POST', '/api/friends/bob', 'ann');
     expect((await call('POST', '/api/friends/ann', 'bob')).body.status).toBe('friends');
@@ -173,5 +186,68 @@ describe('profile.friendship', () => {
     expect((await call('GET', '/api/profile/ann', 'bob')).body.friendship).toBe('incoming');
     await call('POST', '/api/friends/ann/accept', 'bob');
     expect((await call('GET', '/api/profile/ann', 'bob')).body.friendship).toBe('friends');
+  });
+});
+
+describe('GET /api/friends/search (add by username / display name)', () => {
+  const names = async (q, as = 'ann') => (await call('GET', `/api/friends/search?q=${encodeURIComponent(q)}`, as)).body.results.map((p) => p.username);
+
+  it('matches username or display name case-insensitively, never returns me, needs ≥ 2 chars', async () => {
+    expect(await names('BO')).toEqual(['bob']);
+    expect(await names('an')).toEqual(['dan']); // ann excluded (me)
+    expect(await names('b')).toEqual([]);
+    expect(await names('')).toEqual([]);
+    expect(await names('zzz')).toEqual([]);
+  });
+
+  it('treats % and _ literally (no wildcard dump of every user)', async () => {
+    expect(await names('%%')).toEqual([]);
+    expect(await names('__')).toEqual([]);
+  });
+
+  it('reports the relation and honours the recipient\'s privacy setting', async () => {
+    await call('POST', '/api/friends/bob', 'ann');
+    db.prepare("UPDATE users SET who_can_friend = 'nobody' WHERE id = ?").run(U.cat);
+    const res = (await call('GET', '/api/friends/search?q=o', 'ann')).body.results;
+    expect(res).toEqual([]); // 1 char
+    const all = (await call('GET', '/api/friends/search?q=-id', 'ann')).body.results;
+    expect(all).toEqual([]); // ids are not searchable
+    const by = Object.fromEntries((await call('GET', '/api/friends/search?q=ca', 'ann')).body.results.map((p) => [p.username, p]));
+    expect(by.cat).toMatchObject({ status: 'none', canRequest: false });
+    const bob = (await call('GET', '/api/friends/search?q=bob', 'ann')).body.results[0];
+    expect(bob).toMatchObject({ status: 'outgoing', canRequest: true });
+    expect((await call('GET', '/api/friends/search?q=ann', 'bob')).body.results[0].status).toBe('incoming');
+    db.prepare("UPDATE users SET who_can_friend = 'everyone' WHERE id = ?").run(U.cat);
+  });
+
+  it('members only', async () => {
+    expect((await call('GET', '/api/friends/search?q=bob')).status).toBe(401);
+    expect((await call('GET', '/api/friends/search?q=bob', 'guest')).status).toBe(403);
+  });
+});
+
+describe('friend code (name#1234)', () => {
+  it('is 4 random digits, assigned once and stable; members only', async () => {
+    const a = (await call('GET', '/api/friends/code', 'ann')).body.code;
+    expect(a).toMatch(/^ann#\d{4}$/);
+    expect((await call('GET', '/api/friends/code', 'ann')).body.code).toBe(a);
+    expect((await call('GET', '/api/friends/code')).status).toBe(401);
+    expect((await call('GET', '/api/friends/code', 'guest')).status).toBe(403);
+  });
+
+  it('search by exact code finds that one player; wrong tag, partial name or own code find nobody', async () => {
+    const bob = (await call('GET', '/api/friends/code', 'bob')).body.code;
+    const hit = (await call('GET', `/api/friends/search?q=${encodeURIComponent(bob)}`, 'ann')).body.results;
+    expect(hit.map((p) => p.username)).toEqual(['bob']);
+    const [name, tag] = bob.split('#');
+    const wrong = String((Number(tag) + 1) % 10000).padStart(4, '0');
+    expect((await call('GET', `/api/friends/search?q=${name}%23${wrong}`, 'ann')).body.results).toEqual([]);
+    expect((await call('GET', `/api/friends/search?q=bo%23${tag}`, 'ann')).body.results).toEqual([]);
+    expect((await call('GET', `/api/friends/search?q=${encodeURIComponent(bob.toUpperCase())}`, 'ann')).body.results.map((p) => p.username)).toEqual(['bob']);
+    expect((await call('GET', `/api/friends/search?q=${encodeURIComponent(bob)}`, 'bob')).body.results).toEqual([]);
+  });
+
+  it('a user who never generated a code cannot be matched by one', async () => {
+    expect((await call('GET', '/api/friends/search?q=dan%230000', 'ann')).body.results).toEqual([]);
   });
 });

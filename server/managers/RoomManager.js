@@ -36,6 +36,7 @@ const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
+const ChallengeSeries = require('./ChallengeSeries');
 
 /** Shared empty Set — default for createRoom's optional graceRoomIds param. */
 const EMPTY_SET = new Set();
@@ -251,6 +252,11 @@ class RoomManager extends EventEmitter {
     this.userRoomMap.delete(userId);
     room.lastActivity = Date.now();
 
+    // A series player walking out ends the friend-challenge series (#222).
+    if (room.series && !room.series.done && room.series.players.includes(userId)) {
+      this.emit('series_abandoned', room, userId);
+    }
+
     // If room is now empty → destroy
     if (room.users.size === 0) {
       this._destroyRoom(roomId);
@@ -403,6 +409,11 @@ class RoomManager extends EventEmitter {
 
     if (room.state === 'playing') {
       return { error: 'Không thể thay đổi cài đặt khi đang chơi.', code: 'CANNOT_CHANGE_SETTINGS_WHILE_PLAYING' };
+    }
+
+    // A friend-challenge series plays every game under the accepted terms (#222).
+    if (room.series && !room.series.done) {
+      return { error: 'Không thể đổi cài đặt giữa loạt thách đấu.', code: 'SERIES_SETTINGS_LOCKED' };
     }
 
     // Merge new settings with validation
@@ -624,7 +635,15 @@ class RoomManager extends EventEmitter {
       // Seated players marked 'disconnected' during grace still count — they're
       // mid-reconnect, not gone (TODO.md #158).
       let userCount = 0;
+      // Seated players by slot (index 0 = seat #1, 1 = seat #2; null = empty) for the ticket title.
+      const players = [null, null];
       for (const [, u] of room.users) {
+        if (u.slot === 1 || u.slot === 2) {
+          players[u.slot - 1] = {
+            displayName: u.displayName,
+            avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
+          };
+        }
         if (u.slot === null && u.presence === 'disconnected') continue;
         userCount++;
       }
@@ -634,6 +653,7 @@ class RoomManager extends EventEmitter {
         roomName: room.roomName,
         hostName: hostUser ? hostUser.displayName : '—',
         playerCount,                     // 0, 1, or 2 seated players
+        players,                         // [seat1, seat2] → { displayName, avatarUrl } | null
         userCount,                       // People in room, minus ghost viewers
         state: room.state,
         boardSize: room.settings.boardSize,
@@ -644,6 +664,7 @@ class RoomManager extends EventEmitter {
         timerMode: room.settings.timerMode,
         timerSeconds: room.settings.timerSeconds,
         timerIncrementSeconds: room.settings.timerIncrementSeconds,
+        ranked: room.settings.ranked !== false,
       });
     }
     return list;
@@ -689,6 +710,7 @@ class RoomManager extends EventEmitter {
         ready: u.ready,
         presence: u.presence || 'active',
         role: this.getUserRole(room, u.userId),
+        avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
       });
     }
 
@@ -708,6 +730,8 @@ class RoomManager extends EventEmitter {
       // docs/todo/B170-*.md.
       serverTime: Date.now(),
       readyMissCount: room.readyMissCount || 0,
+      matchmade: !!room.matchmade,
+      series: ChallengeSeries.view(room.series),
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
     };

@@ -241,6 +241,17 @@ function init(io) {
     broadcastTournamentListUpdate(io);
   });
 
+  // Drop / self-withdraw (B241) — TournamentManager already forfeited the
+  // entry's pairings (each emitted 'pairing_changed'); tear down live matches.
+  tournamentManager.on('player_withdrawn', ({ tournamentId, cancelledLivePairingIds }) => {
+    for (const pairingId of cancelledLivePairingIds) {
+      getTournamentMatchHandler().forceCancelMatch(io, tournamentId, pairingId, 'player_withdrawn');
+    }
+    const tournament = tournamentManager.getTournament(tournamentId);
+    if (tournament) broadcastTournamentDetail(io, tournament);
+    broadcastTournamentListUpdate(io);
+  });
+
   // Covers every pairing mutation, whether it came from a socket action
   // below (report/confirm/organizer resolve/...) or an automatic one
   // (deadline sweep walkover/void-replay, Double Elimination bracket
@@ -367,6 +378,18 @@ function register(io, socket) {
       return;
     }
     // tournament_cancelled listener (init()) handles the broadcast.
+  });
+
+  socket.on('tournament:withdraw', (payload = {}) => {
+    if (!payload.tournamentId) {
+      socket.emit('tournament:error', { message: 'Thiếu mã giải đấu.', code: 'MISSING_TOURNAMENT_ID' });
+      return;
+    }
+    const result = tournamentManager.withdrawPlayer(user.userId, payload.tournamentId, payload.entryId);
+    if (result.error) {
+      socket.emit('tournament:error', { message: result.error, code: result.code });
+    }
+    // player_withdrawn listener (init()) handles the broadcast.
   });
 
   socket.on('tournament:get', (payload = {}) => {

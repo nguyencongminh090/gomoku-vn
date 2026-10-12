@@ -4,6 +4,7 @@
  * profile.js — public profile + avatar (#177).
  *
  * GET    /api/profile/:username       — public profile (privacy opt-outs honoured)
+ * GET    /api/profile/card/:userId    — compact card for the lobby online list (B220)
  * PUT    /api/profile                 — edit own bio / privacy flags / uiSkin
  * GET    /api/profile/prefs           — own UI preferences (uiSkin)
  * POST   /api/profile/avatar          — upload (raw image body), re-encoded to WebP
@@ -229,6 +230,41 @@ router.get('/:username/rating-history', (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// Compact card for the lobby online list (B220). Addressed by user id because the
+// online list only carries ids; guests have no row, so they get a 404 and no card.
+router.get('/card/:userId', (req, res, next) => {
+  try {
+    const user = database.getProfileById(String(req.params.userId).slice(0, 64));
+    if (!user) return res.status(404).json({ error: 'Không tìm thấy người chơi.', code: 'PROFILE_NOT_FOUND' });
+    const viewerId = optionalUserId(req);
+    const isSelf = viewerId === user.id;
+    const showHistory = isSelf || !user.hide_history;
+    const ratings = [];
+    for (const category of CATEGORIES) {
+      const r = database.getUserRanking(user.id, category);
+      if (r) ratings.push({ category, rating: Math.round(r.rating), rank: r.rank, games: r.games, provisional: r.rd > PROVISIONAL_RD });
+    }
+    let stats = null;
+    if (showHistory) {
+      const s = database.getUserGameStats(user.id);
+      stats = { games: s.games, wins: s.wins || 0, draws: s.draws || 0 };
+    }
+    const body = {
+      userId: user.id, username: user.username, displayName: user.display_name,
+      avatarUrl: avatarUrl(user), country: user.country || '', city: user.city || '',
+      ratings, stats, isSelf, friendship: friendService.statusBetween(viewerId, user.id),
+    };
+    if (viewerId && !isSelf) {
+      body.can = {
+        dm: privacyGate.allowed(viewerId, user.id, 'dm'),
+        friend: body.friendship !== 'none' || privacyGate.allowed(viewerId, user.id, 'friend'),
+      };
+    }
+    res.set('Cache-Control', 'no-store');
+    res.json(body);
+  } catch (err) { next(err); }
 });
 
 router.get('/:username', (req, res, next) => {

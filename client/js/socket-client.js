@@ -149,6 +149,19 @@ class SocketClient {
 
     this.socket.on('disconnect', (reason) => {
       this._setStatus('disconnected', reason);
+      // #227: socket.io never auto-retries `io server disconnect` (the server
+      // called disconnect(), e.g. gracefulShutdown on a deploy restart), so
+      // reconnect by hand after a jittered delay to avoid a boot stampede.
+      // session:kicked calls destroy() first (this.socket === null), so a
+      // kick/lock never reaches this retry.
+      if (reason === 'io server disconnect' && this.socket) {
+        const sock = this.socket;
+        setTimeout(() => {
+          if (this.socket !== sock || sock.connected) return;
+          sock.auth = Object.assign({}, sock.auth, { reconnect: true });
+          sock.connect();
+        }, 1000 + Math.random() * 4000);
+      }
     });
 
     // Socket.io v4 emits 'reconnect_attempt'/'reconnect'/'reconnect_error' on

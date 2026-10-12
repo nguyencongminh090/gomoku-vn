@@ -42,6 +42,12 @@ if (pairingColumns.length > 0 && !pairingColumns.includes('games')) {
   logger.info('[DB] Migrated tournament_pairings: added games column (TODO.md #50)');
 }
 
+// B241: consecutive double-no-show count per pairing (replay cap).
+if (pairingColumns.length > 0 && !pairingColumns.includes('noshow_count')) {
+  db.exec('ALTER TABLE tournament_pairings ADD COLUMN noshow_count INTEGER NOT NULL DEFAULT 0');
+  logger.info('[DB] Migrated tournament_pairings: added noshow_count column (B241)');
+}
+
 // Same additive-migration need as above, for the 'cancelled' tournament
 // status (TODO.md #59) — a db file created before this feature is missing
 // these two columns.
@@ -60,10 +66,26 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('organizer_name'
   logger.info('[DB] Migrated tournaments: added organizer_name column (TODO.md #77)');
 }
 
+// Guest tournament entries (#240): persist the stable guest_xxxx id so a reload can re-link the entry.
+const playerColumns = db.prepare('PRAGMA table_info(tournament_players)').all().map((c) => c.name);
+if (playerColumns.length > 0 && !playerColumns.includes('guest_id')) {
+  db.exec('ALTER TABLE tournament_players ADD COLUMN guest_id TEXT');
+  logger.info('[DB] Migrated tournament_players: added guest_id column (#240)');
+}
+
 // Club-hosted tournaments (TODO.md #200 slice 4): nullable FK, SET NULL when the club is deleted.
 if (tournamentColumns.length > 0 && !tournamentColumns.includes('club_id')) {
   db.exec('ALTER TABLE tournaments ADD COLUMN club_id TEXT REFERENCES clubs(id) ON DELETE SET NULL');
   logger.info('[DB] Migrated tournaments: added club_id column (TODO.md #200)');
+}
+
+// Club identity + pinned announcement (TODO.md #235): additive columns on pre-existing clubs tables.
+const clubColumns = db.prepare('PRAGMA table_info(clubs)').all().map((c) => c.name);
+if (clubColumns.length > 0 && !clubColumns.includes('color')) {
+  db.exec("ALTER TABLE clubs ADD COLUMN color TEXT NOT NULL DEFAULT 'blue'");
+  db.exec("ALTER TABLE clubs ADD COLUMN tag TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE clubs ADD COLUMN announcement TEXT NOT NULL DEFAULT ''");
+  logger.info('[DB] Migrated clubs: added color/tag/announcement columns (TODO.md #235)');
 }
 
 // Same additive-migration need as above, for oauth_provider/oauth_id
@@ -110,6 +132,12 @@ if (userColumns.length > 0 && !userColumns.includes('who_can_dm')) {
   db.exec("ALTER TABLE users ADD COLUMN who_can_friend TEXT NOT NULL DEFAULT 'everyone'");
   db.exec('ALTER TABLE users ADD COLUMN hide_online INTEGER NOT NULL DEFAULT 0');
   logger.info('[DB] Migrated users: added country/city/who_can_*/hide_online columns (TODO.md #199)');
+}
+
+// Shareable friend code "username#1234" (TODO.md #232): the 4-digit tag is assigned lazily on first use.
+if (userColumns.length > 0 && !userColumns.includes('friend_tag')) {
+  db.exec('ALTER TABLE users ADD COLUMN friend_tag TEXT');
+  logger.info('[DB] Migrated users: added friend_tag column (TODO.md #232)');
 }
 
 // Reviewer flag for member-submitted puzzles (TODO.md #203). R8 Admin builds real roles later;
@@ -180,14 +208,16 @@ if (!existingOauthIndex || !existingOauthIndex.unique) {
   }
 }
 
-// Periodic WAL checkpoint to prevent unbounded growth
-setInterval(() => {
+// Periodic WAL checkpoint to prevent unbounded growth. unref(): the HTTP server keeps the process
+// alive; this timer must not, or every script/test that loads the DB never exits on its own.
+const walTimer = setInterval(() => {
   try {
     db.pragma('wal_checkpoint(PASSIVE)');
   } catch (err) {
     logger.error('[DB] WAL checkpoint failed:', err);
   }
 }, 60 * 60 * 1000); // Every hour
+walTimer.unref();
 
 logger.info('[DB] SQLite initialized at', DB_PATH);
 
@@ -681,14 +711,14 @@ function updateTournamentStatus(id, status, timestamps = {}) {
 
 /**
  * Insert a tournament player entry (guest-tolerant — playerId may be null).
- * @param {{ entryId, tournamentId, playerId, displayName, registeredAt }} entry
+ * @param {{ entryId, tournamentId, playerId, guestId, displayName, registeredAt }} entry
  */
-function saveTournamentPlayer({ entryId, tournamentId, playerId, displayName, registeredAt }) {
+function saveTournamentPlayer({ entryId, tournamentId, playerId, guestId, displayName, registeredAt }) {
   const stmt = db.prepare(
-    `INSERT INTO tournament_players (entry_id, tournament_id, player_id, display_name, registered_at)
-     VALUES (?, ?, ?, ?, ?)`
+    `INSERT INTO tournament_players (entry_id, tournament_id, player_id, guest_id, display_name, registered_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
   );
-  return stmt.run(entryId, tournamentId, playerId || null, displayName, registeredAt);
+  return stmt.run(entryId, tournamentId, playerId || null, guestId || null, displayName, registeredAt);
 }
 
 /**
@@ -703,12 +733,21 @@ function deleteTournamentPlayer(entryId) {
  * List all player entries for a tournament, in registration order — the
  * reload path (TODO.md #77) depends on this order to regenerate round-robin/
  * double-elim schedules deterministically (both are seeded off entry array
- * order).
+ * order). Once started, persisted seeds (#242) win over registration order;
+ * rowid breaks same-millisecond registration ties for unseeded rows.
  * @param {string} tournamentId
  * @returns {Array}
  */
 function getTournamentPlayers(tournamentId) {
-  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY registered_at ASC').all(tournamentId);
+  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY seed IS NULL, seed ASC, registered_at ASC, rowid ASC').all(tournamentId);
+}
+
+/**
+ * Mark an entry withdrawn/dropped (B241).
+ * @param {string} entryId
+ */
+function setTournamentPlayerWithdrawn(entryId) {
+  db.prepare('UPDATE tournament_players SET withdrawn = 1 WHERE entry_id = ?').run(entryId);
 }
 
 /**
@@ -720,6 +759,15 @@ function getTournamentPlayers(tournamentId) {
  */
 function updateTournamentPlayerRank(entryId, finalRank) {
   db.prepare('UPDATE tournament_players SET final_rank = ? WHERE entry_id = ?').run(finalRank, entryId);
+}
+
+/**
+ * Persist an entry's bracket/pairing seed, assigned once at start (#242).
+ * @param {string} entryId
+ * @param {number} seed
+ */
+function updateTournamentPlayerSeed(entryId, seed) {
+  db.prepare('UPDATE tournament_players SET seed = ? WHERE entry_id = ?').run(seed, entryId);
 }
 
 /**
@@ -755,8 +803,8 @@ function savePairing(pairing) {
   db.prepare(`
     INSERT INTO tournament_pairings
       (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
-       agreed_time, deadline, paired_at, result, games, moves, started_at, ended_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       agreed_time, deadline, paired_at, result, games, moves, started_at, ended_at, noshow_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       state = excluded.state,
       agreed_time = excluded.agreed_time,
@@ -765,7 +813,8 @@ function savePairing(pairing) {
       games = excluded.games,
       moves = excluded.moves,
       started_at = excluded.started_at,
-      ended_at = excluded.ended_at
+      ended_at = excluded.ended_at,
+      noshow_count = excluded.noshow_count
   `).run(
     pairing.pairingId,
     pairing.roundId,
@@ -780,7 +829,8 @@ function savePairing(pairing) {
     pairing.games ? JSON.stringify(pairing.games) : null,
     pairing.moves ? JSON.stringify(pairing.moves) : null,
     pairing.startedAt,
-    pairing.endedAt
+    pairing.endedAt,
+    pairing.noShowCount || 0
   );
 }
 
@@ -922,8 +972,8 @@ function getTournamentGameById(id) {
 // Rankings (#176) — read-only views over `ratings` + `users`
 // ---------------------------------------------------------------------------
 
-/** Min rated games before a player appears on a leaderboard (Arena mockup: "≥ 20"). */
-const RANKING_MIN_GAMES = 20;
+/** Min rated games before a player appears on a leaderboard (was 20; 1 = anyone with a rating shows, user request 2026-10-12). */
+const RANKING_MIN_GAMES = 1;
 
 /**
  * One page of a category's leaderboard, best rating first.
@@ -1017,6 +1067,19 @@ function getUserRanking(userId, category) {
     `).get(category, RANKING_MIN_GAMES, row.rating, row.rating, userId).n;
   }
   return { ...row, rank };
+}
+
+/** Rated games a user has played in a category (0 if unrated there). */
+function getRatedGames(userId, category) {
+  const row = db.prepare('SELECT games FROM ratings WHERE user_id = ? AND category = ?').get(userId, category);
+  return row ? row.games : 0;
+}
+
+/** ISO time of the pair's last applied Elo swap (#222), any category, or null. */
+function lastEloSwapAt(a, b) {
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  const row = db.prepare('SELECT created_at FROM elo_swaps WHERE user_lo = ? AND user_hi = ? ORDER BY created_at DESC LIMIT 1').get(lo, hi);
+  return row ? row.created_at : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1221,6 +1284,8 @@ module.exports = {
   searchRankings,
   countSearchRankings,
   getRatingSeries,
+  getRatedGames,
+  lastEloSwapAt,
   getGameStatsByDate,
   getGameStatsByResult,
   createTournament,
@@ -1231,6 +1296,8 @@ module.exports = {
   deleteTournamentPlayer,
   getTournamentPlayers,
   updateTournamentPlayerRank,
+  setTournamentPlayerWithdrawn,
+  updateTournamentPlayerSeed,
   createTournamentRound,
   getTournamentRounds,
   savePairing,

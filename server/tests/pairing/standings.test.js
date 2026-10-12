@@ -5,7 +5,7 @@
  * tiebreaks (Phase 2, TODO.md #48, decision 9).
  */
 
-const { computeStandings, computeTiebreaks, rankStandings } = require('../../managers/tournament/standings');
+const { computeStandings, computeTiebreaks, rankStandings, rankRoundRobinStandings } = require('../../managers/tournament/standings');
 
 describe('computeStandings', () => {
   test('a win scores 1, a loss scores 0', () => {
@@ -149,5 +149,52 @@ describe('rankStandings', () => {
 
   test('empty input: empty output, no throw', () => {
     expect(rankStandings([])).toEqual([]);
+  });
+});
+
+describe('rankRoundRobinStandings — head-to-head / wins (#245)', () => {
+  const ids = (n) => Array.from({ length: n }, (_, i) => ({ id: 'ABCDEF'[i] }));
+  const rank = (n, pairings) => {
+    const standings = computeStandings(ids(n), pairings);
+    return rankRoundRobinStandings(computeTiebreaks(standings, pairings), pairings);
+  };
+  const ranksById = (rows) => Object.fromEntries(rows.map((r) => [r.id, r.rank]));
+
+  test('two players tied on score: the one who won their game ranks higher (Buchholz would tie them)', () => {
+    // A=2 (beat B, C), B=2 (beat C, D), C=1 (beat D), D=1 (beat A)
+    const pairings = [
+      { player1: 'A', player2: 'B', winner: 'A' }, { player1: 'A', player2: 'C', winner: 'A' }, { player1: 'D', player2: 'A', winner: 'D' },
+      { player1: 'B', player2: 'C', winner: 'B' }, { player1: 'B', player2: 'D', winner: 'B' }, { player1: 'C', player2: 'D', winner: 'C' },
+    ];
+    const r = ranksById(rank(4, pairings));
+    expect(r.A).toBe(1);
+    expect(r.B).toBe(2);
+    // C and D: 1 point each, C beat D
+    expect(r.C).toBe(3);
+    expect(r.D).toBe(4);
+  });
+
+  test('a 3-way cycle (A>B>C>A) stays a genuine tie; the loser to all ranks below', () => {
+    const pairings = [
+      { player1: 'A', player2: 'B', winner: 'A' }, { player1: 'B', player2: 'C', winner: 'B' }, { player1: 'C', player2: 'A', winner: 'C' },
+      { player1: 'A', player2: 'D', winner: 'A' }, { player1: 'B', player2: 'D', winner: 'B' }, { player1: 'C', player2: 'D', winner: 'C' },
+    ];
+    expect(ranksById(rank(4, pairings))).toEqual({ A: 1, B: 1, C: 1, D: 4 });
+  });
+
+  test('equal score and equal head-to-head (draw): more real wins ranks higher', () => {
+    // A 1.5 (W vs C, D vs B, L vs D), B 1.5 (three draws), C 1 (L, D, D), D 2 (W vs A, D, D)
+    const pairings = [
+      { player1: 'A', player2: 'B', winner: 'draw' }, { player1: 'A', player2: 'C', winner: 'A' }, { player1: 'D', player2: 'A', winner: 'D' },
+      { player1: 'B', player2: 'C', winner: 'draw' }, { player1: 'B', player2: 'D', winner: 'draw' }, { player1: 'C', player2: 'D', winner: 'draw' },
+    ];
+    expect(ranksById(rank(4, pairings))).toEqual({ D: 1, A: 2, B: 3, C: 4 });
+  });
+
+  test('byes do not count as wins for the wins tiebreak and rows carry headToHead/wins', () => {
+    const pairings = [{ player1: 'A', player2: null }, { player1: 'B', player2: 'C', winner: 'B' }];
+    const rows = rank(3, pairings);
+    expect(rows.find((x) => x.id === 'A').wins).toBe(0);
+    expect(rows.find((x) => x.id === 'B').wins).toBe(1);
   });
 });

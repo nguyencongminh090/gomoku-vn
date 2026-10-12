@@ -1,5 +1,5 @@
 # B214 — Icon system for platform pages (size scale, labels, meaning) + apply to Settings/shell/profile
-**Status:** OPEN — built 2026-10-10 on `ui/icon-system` (`?v=259`), awaiting review
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: built 2026-10-10 on `ui/icon-system` (`?v=259`), awaiting review
 **Area:** client/css/platform.css, client/css/platform-shell.css, client/settings.html, client/js/settings-page.js, phosphor-sprite.svg, docs/knowledge/ui-ux/iconography.md
 **From:** user 2026-10-10 "một số Icon quá nhỏ, icon chưa phù hợp với nội dung, chưa chuyên nghiệp … search/dùng skills/knowledge để phân tích và quyết định"   **Depends:** #212, #213
 

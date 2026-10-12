@@ -10,6 +10,7 @@
  * Methods throw FriendError(code, status); routes translate it to JSON.
  */
 
+const crypto = require('crypto');
 const database = require('../db/database');
 const notifications = require('./NotificationService');
 const privacyGate = require('./PrivacyGate');
@@ -137,6 +138,10 @@ const person = (r) => ({
   avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.id}.webp?v=${r.avatar_v}` : null,
 });
 
+let isOnline = () => false;
+/** @param {{isOnline?: (userId: string) => boolean}} h  visible presence, for friends only (#222 picker) */
+function setHooks(h = {}) { isOnline = h.isOnline || (() => false); }
+
 function list(me) {
   const rows = db().prepare(`
     SELECT u.id, u.username, u.display_name, u.avatar_v, f.status, f.requested_by
@@ -146,13 +151,63 @@ function list(me) {
     ORDER BY u.display_name COLLATE NOCASE`).all(me, me, me);
   const out = { friends: [], incoming: [], outgoing: [] };
   for (const r of rows) {
-    if (r.status === 'accepted') out.friends.push(person(r));
+    if (r.status === 'accepted') out.friends.push({ ...person(r), online: !!isOnline(r.id) });
     else (r.requested_by === me ? out.outgoing : out.incoming).push(person(r));
   }
   return out;
 }
 
+const SEARCH_MIN = 2;
+const SEARCH_LIMIT = 8;
+const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
+
+const CODE_RE = /^(.{1,40})#(\d{4})$/;
+
+/** My shareable code "username#1234". The 4-digit tag is random, stored once, never derived from the name. */
+function myCode(me) {
+  const u = database.getUserById(me);
+  if (!u) throw new FriendError('USER_NOT_FOUND', 404, 'Không tìm thấy người chơi.');
+  let tag = u.friend_tag;
+  if (!tag) {
+    tag = String(crypto.randomInt(0, 10000)).padStart(4, '0');
+    db().prepare('UPDATE users SET friend_tag = ? WHERE id = ? AND friend_tag IS NULL').run(tag, me);
+    tag = database.getUserById(me).friend_tag;
+  }
+  return `${u.username}#${tag}`;
+}
+
+/** Exact "name#1234" lookup (case-insensitive name); same shape as a search hit, or []. */
+function searchByCode(me, name, tag) {
+  const r = db().prepare('SELECT id, username, display_name, avatar_v FROM users WHERE id != ? AND LOWER(username) = LOWER(?) AND friend_tag = ?')
+    .get(me, name, tag);
+  return r ? [hit(me, r)] : [];
+}
+
+function hit(me, r) {
+  const status = statusBetween(me, r.id);
+  return { ...person(r), status, canRequest: status !== 'none' || privacyGate.allowed(me, r.id, 'friend') };
+}
+
+/**
+ * Find players to add by username or display name (substring, case-insensitive).
+ * Exact username first. Each hit carries the relation to `me` and whether a NEW request
+ * would pass the recipient's privacy setting, so the UI can disable the button up front.
+ */
+function search(me, query) {
+  const q = String(query || '').trim().slice(0, 40);
+  if (q.length < SEARCH_MIN) return [];
+  const code = CODE_RE.exec(q);
+  if (code) return searchByCode(me, code[1].trim(), code[2]);
+  const like = likeEscape(q);
+  const rows = db().prepare(`
+    SELECT id, username, display_name, avatar_v FROM users
+    WHERE id != ? AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')
+    ORDER BY (LOWER(username) = LOWER(?)) DESC, display_name COLLATE NOCASE LIMIT ?`)
+    .all(me, like, like, q, SEARCH_LIMIT);
+  return rows.map((r) => hit(me, r));
+}
+
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
-  statusBetween, request, acceptRequest, remove, friendIds, list,
+  statusBetween, request, acceptRequest, remove, friendIds, list, search, myCode, setHooks,
 };

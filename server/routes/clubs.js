@@ -13,6 +13,8 @@
  * POST   /api/clubs/:slug/members/:username/approve
  * DELETE /api/clubs/:slug/members/:username        reject request / kick
  * PUT    /api/clubs/:slug/members/:username/role   {role: officer|member|owner}
+ * POST   /api/clubs/:slug/invites/:username      staff invite (invitee joins without approval)
+ * DELETE /api/clubs/:slug/invites/:username      staff revoke
  * POST   /api/clubs/:slug/events                   {title, startsAt} staff
  * DELETE /api/clubs/:slug/events/:id                staff
  * GET    /api/clubs/:slug/messages?before=|after=   members only (polling)
@@ -110,6 +112,16 @@ router.delete('/:slug/members/:username', ...write, h((req, res) => {
 
 router.put('/:slug/members/:username/role', ...write, h((req, res) => {
   svc.setRole(req.user.userId, req.params.slug, target(req), (req.body || {}).role);
+  res.json({ ok: true });
+}));
+
+router.post('/:slug/invites/:username', ...write, h((req, res) => {
+  svc.invite(req.user.userId, req.params.slug, target(req));
+  res.status(201).json({ ok: true });
+}));
+
+router.delete('/:slug/invites/:username', ...write, h((req, res) => {
+  svc.revokeInvite(req.user.userId, req.params.slug, target(req));
   res.json({ ok: true });
 }));
 

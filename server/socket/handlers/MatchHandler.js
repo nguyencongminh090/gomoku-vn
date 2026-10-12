@@ -25,6 +25,7 @@ const {
   broadcastRoomUpdate,
   getClientIp,
 } = require('../state');
+const { scheduleHomeUpdate } = require('../home-feed');
 
 const TICK_MS = 1000;
 const STATUS_EVERY_TICKS = 2;
@@ -51,7 +52,7 @@ function socketOf(entry) {
 }
 
 function status(entry) {
-  return { waiting: true, since: entry.since, inBucket: queue.countIn(entry), rule: entry.rule, time: entry.time, rated: entry.rated };
+  return { waiting: true, since: entry.since, inBucket: queue.countIn(entry), rule: entry.rule, time: entry.time, rated: entry.rated, wall: entry.wall, portal: entry.portal };
 }
 
 /** Turn a pair into a seated room. Returns the room, or null (both get match:error / requeue as needed). */
@@ -67,13 +68,14 @@ function makeRoom(a, b) {
     }
     return null;
   }
-  const settings = { ...PRESETS[a.time], winningRule: a.rule, ranked: a.rated, roomName: `${a.time} · ${a.displayName} vs ${b.displayName}` };
+  const settings = { ...PRESETS[a.time], winningRule: a.rule, ranked: a.rated, ruleWall: a.wall === true, rulePortal: a.portal === true, roomName: `${a.time} · ${a.displayName} vs ${b.displayName}` };
   const seated = seatPair(roomManager, a, b, settings, getClientIp(sa));
   if (seated.error) {
     for (const s of [sa, sb]) s.emit('match:error', { message: seated.error, code: seated.code });
     return null;
   }
   const room = seated.room;
+  room.matchmade = true; // one game only: clients auto-ready, no Start modal / rematch
   for (const s of [sa, sb]) {
     s.leave(LOBBY_ROOM);
     s.join(room.roomId);
@@ -132,6 +134,8 @@ function register(io, socket) {
       rule,
       time: String(payload.time || ''),
       rated: payload.rated === true,
+      wall: payload.wall === true,
+      portal: payload.portal === true,
       rating: payload.rated === true && !user.isGuest ? ratingOf(user.userId, rule) : INITIAL_RATING,
     });
     if (result.error) {
@@ -139,6 +143,7 @@ function register(io, socket) {
       return;
     }
     socket.emit('match:status', status(result.entry));
+    scheduleHomeUpdate(io); // B225: searching count
     startTicker();
     tick(); // pair right away if someone is already waiting
   });
@@ -146,11 +151,12 @@ function register(io, socket) {
   socket.on('match:leave', () => {
     queue.leave(user.userId);
     socket.emit('match:status', { waiting: false });
+    scheduleHomeUpdate(io);
   });
 
   socket.on('disconnect', () => {
     const e = queue.get(user.userId);
-    if (e && e.socketId === socket.id) queue.leave(user.userId); // a newer tab's entry stays
+    if (e && e.socketId === socket.id) { queue.leave(user.userId); scheduleHomeUpdate(io); } // a newer tab's entry stays
   });
 }
 

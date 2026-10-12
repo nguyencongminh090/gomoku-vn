@@ -45,6 +45,9 @@ const standingsModule = require('./standings');
 const seriesModule = require('./series');
 const tournamentState = require('../../socket/tournamentState');
 
+/** B241: consecutive double-no-show replays allowed before the higher seed advances. */
+const NO_SHOW_REPLAY_CAP = 2;
+
 class TournamentManager extends EventEmitter {
   constructor() {
     super();
@@ -89,9 +92,8 @@ class TournamentManager extends EventEmitter {
       this.tournaments.set(tournament.tournamentId, tournament);
 
       for (const [, entry] of tournament.entries) {
-        // Guest entries have no durable id (tournament_players.player_id is
-        // null for guests by design) — can't be re-linked to a userId after
-        // a restart. Known, accepted gap — see B77.
+        // Guest entries are re-linked via tournament_players.guest_id (#240);
+        // legacy guest rows without it stay unlinked.
         if (!entry.userId) continue;
         if (!this.userTournamentMap.has(entry.userId)) {
           this.userTournamentMap.set(entry.userId, new Set());
@@ -123,7 +125,7 @@ class TournamentManager extends EventEmitter {
     for (const playerRow of database.getTournamentPlayers(row.id)) {
       tournament.entries.set(playerRow.entry_id, {
         entryId: playerRow.entry_id,
-        userId: playerRow.player_id,
+        userId: playerRow.player_id ?? playerRow.guest_id ?? null,
         displayName: playerRow.display_name,
         isGuest: playerRow.player_id === null,
         seed: playerRow.seed,
@@ -197,6 +199,7 @@ class TournamentManager extends EventEmitter {
       reportedBy: null,
       disputed: false,
       overdue: false,
+      noShowCount: row.noshow_count || 0,
       agreedTime: row.agreed_time,
       rescheduleRequest: null,
       readyPlayers: new Set(),
@@ -252,8 +255,7 @@ class TournamentManager extends EventEmitter {
 
     if (tournament.format === 'swiss') {
       tournament.currentRoundIndex = maxRoundIndex;
-      tournament.totalRounds = tournament.ruleSet.swissRounds
-        || Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
+      tournament.totalRounds = Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
       tournament.currentRoundPairingIds = new Set(
         tournamentPairings().filter((p) => p.roundIndex === maxRoundIndex).map((p) => p.pairingId)
       );
@@ -360,6 +362,26 @@ class TournamentManager extends EventEmitter {
   // ---------------------------------------------------------------------------
 
   /**
+   * Why a draft tournament can't take another entry right now, or null if it
+   * can (#246). Cap first, then the registration-close day / end day (UTC;
+   * the named day itself is still open). Nothing here starts or ends a
+   * tournament — dates only gate registration.
+   * @returns {{ error: string, code: string } | null}
+   */
+  _registrationBlock(tournament, nowMs = Date.now()) {
+    const rs = tournament.ruleSet || {};
+    if (rs.maxPlayers && tournament.entries.size >= rs.maxPlayers) {
+      return { error: 'Giải đấu đã đủ người chơi.', code: 'TOURNAMENT_FULL' };
+    }
+    const today = new Date(nowMs).toISOString().slice(0, 10);
+    const lastDay = [rs.registrationClosesAt, rs.endsAt].filter(Boolean).sort()[0];
+    if (lastDay && today > lastDay) {
+      return { error: 'Đã hết hạn đăng ký giải đấu này.', code: 'REGISTRATION_CLOSED' };
+    }
+    return null;
+  }
+
+  /**
    * Register a player (or the organizer themselves — not forbidden by the
    * user story) into a tournament. Only valid while status is 'draft'.
    *
@@ -382,6 +404,9 @@ class TournamentManager extends EventEmitter {
         return { error: 'Bạn đã đăng ký giải đấu này rồi.', code: 'ALREADY_REGISTERED' };
       }
     }
+
+    const blocked = this._registrationBlock(tournament);
+    if (blocked) return blocked;
 
     const entryId = uuidv4();
     const registeredAt = new Date().toISOString();
@@ -407,6 +432,7 @@ class TournamentManager extends EventEmitter {
       entryId,
       tournamentId,
       playerId: userInfo.isGuest ? null : userInfo.userId,
+      guestId: userInfo.isGuest ? userInfo.userId : null,
       displayName: userInfo.displayName,
       registeredAt,
     });
@@ -483,18 +509,36 @@ class TournamentManager extends EventEmitter {
       return { error: 'Giải đấu đã bắt đầu hoặc đã kết thúc.', code: 'TOURNAMENT_ALREADY_STARTED' };
     }
 
+    // startsAt (UTC day) gates Start; nothing starts or ends by itself (#246).
+    const startsAt = tournament.ruleSet?.startsAt;
+    if (startsAt && new Date().toISOString().slice(0, 10) < startsAt) {
+      return { error: `Chưa đến ngày bắt đầu giải đấu (${startsAt}).`, code: 'TOURNAMENT_NOT_YET' };
+    }
+
+    // Fewer than 2 entries can never produce a pairing, so the tournament would
+    // sit 'active' with nothing to play or complete (only cancel).
+    if (tournament.entries.size < 2) {
+      return { error: 'Cần ít nhất 2 người chơi để bắt đầu giải đấu.', code: 'NOT_ENOUGH_PLAYERS' };
+    }
+
     tournament.status = 'active';
     tournament.startedAt = new Date().toISOString();
     database.updateTournamentStatus(tournamentId, 'active', { startedAt: tournament.startedAt });
 
     tournament.completedPairings = []; // for standings.js (Swiss/Round robin)
+    // Seeds = registration order, fixed and persisted now so a reload rebuilds
+    // the identical bracket (#242); hydrate orders entries by seed.
+    let seed = 0;
+    for (const entry of tournament.entries.values()) {
+      entry.seed = ++seed;
+      database.updateTournamentPlayerSeed(entry.entryId, entry.seed);
+    }
     const entryIds = Array.from(tournament.entries.keys());
 
     if (entryIds.length >= 2) {
       if (tournament.format === 'swiss') {
         tournament.currentRoundIndex = 1;
-        tournament.totalRounds = tournament.ruleSet.swissRounds
-          || Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
+        tournament.totalRounds = Math.max(1, Math.ceil(Math.log2(Math.max(entryIds.length, 2))));
         const standings = entryIds.map((id) => ({ id, score: 0, opponents: new Set(), hadBye: false }));
         const pairingsSpec = swissPairing.generateNextRound(standings);
         this._materializeRound(tournament, pairingsSpec);
@@ -680,6 +724,13 @@ class TournamentManager extends EventEmitter {
     if (result.error) return result;
     this._persistPairing(ctx.pairing);
     tournamentState.untrackDeadline(pairingId);
+    if (ctx.tournament.format === 'double_elim') {
+      // A bracket match has no "released" outcome: _advanceIfRoundComplete is a
+      // no-op for DE and nothing records a winner, so the next match would never
+      // be created. Reset the match in place instead (same as void/replay).
+      this._createReplayPairing(ctx.tournament, ctx.pairing);
+      return result;
+    }
     this._advanceIfRoundComplete(ctx.tournament);
     this._emitPairingChanged(tournamentId, pairingId);
     return result;
@@ -838,6 +889,19 @@ class TournamentManager extends EventEmitter {
 
     const outcome = PairingLifecycle.resolveDeadline(pairing);
     tournamentState.untrackDeadline(pairingId);
+
+    // B241: the replay loop is capped — past the cap the higher seed advances
+    // (walkover) instead of voiding again, so absent players can't stall forever.
+    if (outcome.action === 'void_replay') {
+      if ((pairing.noShowCount || 0) >= NO_SHOW_REPLAY_CAP) {
+        outcome.action = 'walkover';
+        outcome.winnerEntryId = this._higherSeedEntryId(tournament, pairing.player1EntryId, pairing.player2EntryId);
+        pairing.state = 'Walkover';
+        pairing.result = { winnerEntryId: outcome.winnerEntryId, reason: 'noshow_cap' };
+      } else {
+        pairing.noShowCount = (pairing.noShowCount || 0) + 1;
+      }
+    }
     this._persistPairing(pairing);
 
     if (outcome.action === 'walkover') {
@@ -943,7 +1007,7 @@ class TournamentManager extends EventEmitter {
     const finalLocalId = tournament.bracket.grandFinal ? 'GF' : tournament.bracket.winners[0][0].id;
     const finalId = this.pairings.has(gfResetId) ? gfResetId : this._deId(tournament, finalLocalId);
     const finalPairing = this.pairings.get(finalId);
-    if (finalPairing && finalPairing.state === 'Completed') {
+    if (finalPairing && (finalPairing.state === 'Completed' || finalPairing.state === 'Walkover')) {
       this._completeTournament(tournament);
     }
   }
@@ -980,7 +1044,8 @@ class TournamentManager extends EventEmitter {
   }
 
   _computeSwissStandings(tournament) {
-    const entries = Array.from(tournament.entries.values()).map((e) => ({ id: e.entryId }));
+    // B241: withdrawn players are not paired into later rounds (their points stay in the final table).
+    const entries = Array.from(tournament.entries.values()).filter((e) => !e.withdrawn).map((e) => ({ id: e.entryId }));
     const raw = standingsModule.computeStandings(entries, tournament.completedPairings);
     return raw.map((s) => ({
       id: s.id,
@@ -1055,6 +1120,13 @@ class TournamentManager extends EventEmitter {
       this._recordCompletion(tournament, pairing, pairing.result.winnerEntryId);
     } else {
       tournamentState.trackDeadline(pairingId, tournament.tournamentId, new Date(deadline).getTime());
+      // B241: a match involving a withdrawn player is decided at once. Round
+      // formats advance after _materializeRound has registered the whole round.
+      const e1 = tournament.entries.get(pairing.player1EntryId);
+      const e2 = tournament.entries.get(pairing.player2EntryId);
+      if (e1?.withdrawn || e2?.withdrawn) {
+        this._forfeitPairing(tournament, pairing, this._forfeitWinner(tournament, pairing), 'withdrawn', { deferAdvance: true });
+      }
     }
 
     this._emitPairingChanged(tournament.tournamentId, pairingId);
@@ -1110,6 +1182,7 @@ class TournamentManager extends EventEmitter {
     });
     PairingLifecycle.announcePairing(replay);
     replay.roundIndex = oldPairing.roundIndex;
+    replay.noShowCount = oldPairing.noShowCount || 0;
 
     this.pairings.set(replay.pairingId, replay);
     this._persistPairing(replay);
@@ -1121,6 +1194,81 @@ class TournamentManager extends EventEmitter {
     }
     this._emitPairingChanged(tournament.tournamentId, replay.pairingId);
     return replay;
+  }
+
+  /** Lower seed number = higher seed; unseeded entries lose ties to seeded ones. */
+  _higherSeedEntryId(tournament, a, b) {
+    const sa = tournament.entries.get(a)?.seed ?? Infinity;
+    const sb = tournament.entries.get(b)?.seed ?? Infinity;
+    return sb < sa ? b : a;
+  }
+
+  /** Winner of a forfeited pairing: the non-withdrawn side, else (both gone) the higher seed. */
+  _forfeitWinner(tournament, pairing) {
+    const { player1EntryId: p1, player2EntryId: p2 } = pairing;
+    const w1 = !!tournament.entries.get(p1)?.withdrawn;
+    const w2 = !!tournament.entries.get(p2)?.withdrawn;
+    if (w1 && !w2) return p2;
+    if (w2 && !w1) return p1;
+    return this._higherSeedEntryId(tournament, p1, p2);
+  }
+
+  /** Decide a non-terminal pairing without play (B241): walkover for winnerEntryId. */
+  _forfeitPairing(tournament, pairing, winnerEntryId, reason, { deferAdvance = false } = {}) {
+    this._teardownPairingTimer(pairing.pairingId);
+    tournamentState.untrackDeadline(pairing.pairingId);
+    pairing.state = 'Walkover';
+    pairing.result = { winnerEntryId, reason };
+    pairing.endedAt = new Date().toISOString();
+    this._persistPairing(pairing);
+    this._recordCompletion(tournament, pairing, winnerEntryId);
+    if (!deferAdvance) this._advanceIfRoundComplete(tournament);
+    this._emitPairingChanged(tournament.tournamentId, pairing.pairingId);
+  }
+
+  /**
+   * Drop a player from an ACTIVE tournament (B241). The organizer may drop
+   * anyone; a player may withdraw themselves. Every pending match of the
+   * entry is forfeited to the opponent, and later matches auto-forfeit as
+   * they are created. Points already earned stay in the standings.
+   *
+   * @param {string} userId — acting user
+   * @param {string} tournamentId
+   * @param {string} [entryId] — omit to withdraw yourself
+   * @returns {{ tournament: object, cancelledLivePairingIds: string[] } | { error: string, code: string }}
+   */
+  withdrawPlayer(userId, tournamentId, entryId) {
+    const tournament = this.tournaments.get(tournamentId);
+    if (!tournament) return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
+    if (tournament.status !== 'active') {
+      return { error: 'Chỉ có thể rút khỏi giải đấu đang diễn ra.', code: 'TOURNAMENT_NOT_ACTIVE' };
+    }
+    const isOrganizer = tournament.organizerId === userId;
+    const selfEntryId = this._findEntryIdByUserId(tournament, userId);
+    const targetId = entryId || selfEntryId;
+    const entry = targetId ? tournament.entries.get(targetId) : null;
+    if (!entry) return { error: 'Người chơi không tham gia giải đấu này.', code: 'NOT_A_PARTICIPANT' };
+    if (!isOrganizer && targetId !== selfEntryId) {
+      return { error: 'Chỉ người tổ chức mới có thể loại người chơi khác.', code: 'ORGANIZER_ONLY' };
+    }
+    if (entry.withdrawn) return { error: 'Người chơi đã rút khỏi giải đấu.', code: 'ALREADY_WITHDRAWN' };
+
+    entry.withdrawn = true;
+    database.setTournamentPlayerWithdrawn(targetId);
+
+    const cancelledLivePairingIds = [];
+    for (const pairing of this.listPairings(tournamentId)) {
+      if (tournament.status !== 'active') break; // a cascade may have completed the tournament
+      if (PairingLifecycle.TERMINAL_STATES.has(pairing.state)) continue;
+      if (pairing.player1EntryId !== targetId && pairing.player2EntryId !== targetId) continue;
+      if (pairing.state === 'InProgress') cancelledLivePairingIds.push(pairing.pairingId);
+      this._forfeitPairing(tournament, pairing, this._forfeitWinner(tournament, pairing), 'withdrawn', { deferAdvance: true });
+    }
+    this._advanceIfRoundComplete(tournament);
+
+    this.emit('player_withdrawn', { tournamentId, entryId: targetId, cancelledLivePairingIds });
+    logger.info(`[TournamentManager] Entry ${targetId} withdrawn from tournament ${tournamentId} by ${userId}`);
+    return { tournament, cancelledLivePairingIds };
   }
 
   _teardownPairingTimer(pairingId) {
@@ -1146,7 +1294,9 @@ class TournamentManager extends EventEmitter {
       const entries = Array.from(tournament.entries.values()).map((e) => ({ id: e.entryId }));
       const standings = standingsModule.computeStandings(entries, tournament.completedPairings);
       const tiebreaks = standingsModule.computeTiebreaks(standings, tournament.completedPairings);
-      const ranked = standingsModule.rankStandings(tiebreaks);
+      const ranked = tournament.format === 'round_robin'
+        ? standingsModule.rankRoundRobinStandings(tiebreaks, tournament.completedPairings)
+        : standingsModule.rankStandings(tiebreaks);
       for (const row of ranked) {
         const entry = tournament.entries.get(row.id);
         if (entry) {
@@ -1162,12 +1312,10 @@ class TournamentManager extends EventEmitter {
 
   /**
    * Double Elimination final placement: champion (1st) and runner-up (2nd)
-   * are exact — the grand final / bracket-reset match decides them
-   * directly. Full 3rd-place-and-below placement needs bracket-elimination-
-   * depth tracking that's out of scope for this phase (DE win-count isn't a
-   * meaningful ranking signal the way it is for Swiss/Round robin, so a
-   * score-based approximation would be actively misleading) — left null
-   * with this TODO rather than shipping an incorrect placement.
+   * come from the grand final / bracket-reset match; everyone else is ranked
+   * by the losers-bracket round they were eliminated in (later exit = better,
+   * same round = tie, sharing the rank like standings.js: 1+players ahead).
+   * Win count is deliberately not used — it isn't a meaningful DE signal.
    */
   _assignDoubleElimFinalRanks(tournament) {
     const gfResetId = this._deId(tournament, 'GF_RESET');
@@ -1187,6 +1335,18 @@ class TournamentManager extends EventEmitter {
     if (runnerUpEntry) {
       runnerUpEntry.finalRank = 2;
       database.updateTournamentPlayerRank(runnerUpEntry.entryId, 2);
+    }
+
+    let nextRank = 3;
+    for (const group of doubleElimPairing.computeEliminationGroups(tournament.bracket, tournament.bracketResults)) {
+      const ids = group.filter((id) => id !== championId && id !== runnerUpId);
+      for (const id of ids) {
+        const entry = tournament.entries.get(id);
+        if (!entry) continue;
+        entry.finalRank = nextRank;
+        database.updateTournamentPlayerRank(entry.entryId, nextRank);
+      }
+      nextRank += ids.length;
     }
   }
 
@@ -1210,6 +1370,8 @@ class TournamentManager extends EventEmitter {
         organizerId: tournament.organizerId,
         organizerName: tournament.organizerName,
         playerCount: tournament.entries.size,
+        maxPlayers: tournament.ruleSet?.maxPlayers ?? null,
+        registrationOpen: tournament.status === 'draft' && !this._registrationBlock(tournament),
         status: tournament.status,
         // Club-hosted (#200): lets the lobby's "Của CLB" tab filter by the viewer's clubs (B210).
         clubSlug: club ? club.slug : null,
@@ -1267,6 +1429,9 @@ class TournamentManager extends EventEmitter {
       totalRounds: tournament.format === 'swiss'
         ? (tournament.totalRounds ?? null)
         : (tournament.format === 'round_robin' ? (tournament.allRounds ? tournament.allRounds.length : null) : null),
+      // Double Elimination only — the bracket skeleton (match ids + slot sources) so the client can draw
+      // the full tree, including matches not yet created as pairings.
+      bracket: tournament.format === 'double_elim' && tournament.bracket ? tournament.bracket : null,
     };
   }
 
@@ -1291,6 +1456,7 @@ class TournamentManager extends EventEmitter {
       tournamentId: pairing.tournamentId,
       roundId: pairing.roundId,
       roundIndex: pairing.roundIndex ?? null,
+      bracketMatchId: pairing.bracketMatchId ?? null,
       player1EntryId: pairing.player1EntryId,
       player2EntryId: pairing.player2EntryId,
       state: pairing.state,
@@ -1298,6 +1464,7 @@ class TournamentManager extends EventEmitter {
       reportedBy: pairing.reportedBy,
       disputed: pairing.disputed,
       overdue: pairing.overdue,
+      noShowCount: pairing.noShowCount || 0,
       agreedTime: pairing.agreedTime,
       rescheduleRequest: pairing.rescheduleRequest,
       readyPlayers: Array.from(pairing.readyPlayers),
@@ -1358,6 +1525,23 @@ class TournamentManager extends EventEmitter {
     r.schedulingWindowMs = (typeof ruleSet.schedulingWindowMs === 'number' && ruleSet.schedulingWindowMs > 0)
       ? Math.floor(ruleSet.schedulingWindowMs)
       : config.DEFAULT_SCHEDULING_WINDOW_MS;
+
+    // Tournament period — optional calendar dates 'YYYY-MM-DD'. Malformed values
+    // or an end before the start are dropped (null), never rejected: the period
+    // is informational, so a bad value must not block creating the tournament.
+    // Round-trip, not Date.parse: parse rolls 2026-02-31 over to Mar 3 instead of rejecting it.
+    const isDay = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+      && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
+    r.startsAt = isDay(ruleSet.startsAt) ? ruleSet.startsAt : null;
+    r.endsAt = isDay(ruleSet.endsAt) && (!r.startsAt || ruleSet.endsAt >= r.startsAt) ? ruleSet.endsAt : null;
+
+    // Registration limits (#246): both optional, dropped to null when malformed
+    // (like the period above). maxPlayers caps entries; registrationClosesAt is
+    // the last day (UTC) on which registering is still allowed.
+    r.maxPlayers = Number.isInteger(ruleSet.maxPlayers) && ruleSet.maxPlayers >= 2 && ruleSet.maxPlayers <= 512
+      ? ruleSet.maxPlayers
+      : null;
+    r.registrationClosesAt = isDay(ruleSet.registrationClosesAt) ? ruleSet.registrationClosesAt : null;
 
     // Only one tiebreak method is implemented (decision 9) — validated
     // against a single-value allowlist so an invalid override can't silently

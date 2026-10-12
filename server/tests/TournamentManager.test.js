@@ -158,12 +158,32 @@ describe('TournamentManager — createTournament', () => {
       timerSeconds: config.DEFAULT_TIMER_SECONDS,
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,
       schedulingWindowMs: config.DEFAULT_SCHEDULING_WINDOW_MS,
+      startsAt: null,
+      maxPlayers: null,
+      registrationClosesAt: null,
+      endsAt: null,
       tiebreakRule: config.DEFAULT_TIEBREAK_RULE,
       seriesMode: 'single',
       seriesGameCount: null,
       seriesTargetScore: null,
       seriesMargin: null,
     });
+  });
+
+  test.each([
+    [{ startsAt: '2026-11-01', endsAt: '2026-11-30' }, '2026-11-01', '2026-11-30'],
+    [{ startsAt: '2026-11-01', endsAt: '2026-11-01' }, '2026-11-01', '2026-11-01'],   // same day is valid
+    [{ startsAt: '2026-11-30', endsAt: '2026-11-01' }, '2026-11-30', null],           // end before start dropped
+    [{ endsAt: '2026-11-01' }, null, '2026-11-01'],                                   // end alone is fine
+    [{ startsAt: 'tomorrow', endsAt: 20261101 }, null, null],                         // malformed dropped
+    [{ startsAt: '2026-13-45' }, null, null],                                         // impossible date dropped
+    [{ startsAt: '2026-02-31', endsAt: '2026-04-31' }, null, null],                   // #247 day rolls over the month
+    [{ startsAt: '2026-02-29' }, null, null],                                         // #247 2026 is not a leap year
+    [{ startsAt: '2028-02-29', endsAt: '2028-03-01' }, '2028-02-29', '2028-03-01'], // #247 leap day is valid
+  ])('normalizes the tournament period %j', (rs, startsAt, endsAt) => {
+    const { tournament } = tournamentManager.createTournament(user(), { format: 'swiss', ruleSet: rs });
+    expect(tournament.ruleSet.startsAt).toBe(startsAt);
+    expect(tournament.ruleSet.endsAt).toBe(endsAt);
   });
 
   test('persists the tournament to SQLite (readable back via database.getTournamentById)', () => {
@@ -357,6 +377,8 @@ describe('TournamentManager — registerPlayer / unregisterPlayer', () => {
   test('registration is rejected once the tournament is no longer draft', () => {
     const organizer = user();
     const tournament = draftTournament(organizer);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { error, code } = tournamentManager.registerPlayer(user(), tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -393,6 +415,7 @@ describe('TournamentManager — registerPlayer / unregisterPlayer', () => {
     const tournament = draftTournament(organizer);
     const player = user();
     tournamentManager.registerPlayer(player, tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { code } = tournamentManager.unregisterPlayer(player.userId, tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -441,15 +464,27 @@ describe('TournamentManager — concurrent registration (decision 6)', () => {
 // ── startTournament (Phase 1 stub) ──────────────────────────────────────
 
 describe('TournamentManager — startTournament (Phase 1 stub)', () => {
-  test('organizer can start a tournament with 0 players without throwing', () => {
+  test.each([0, 1])('#238 start with %i player(s) is rejected with NOT_ENOUGH_PLAYERS and the tournament stays draft', (n) => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
-    expect(() => {
-      const { tournament: started, error } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
-      expect(error).toBeUndefined();
-      expect(started.status).toBe('active');
-      expect(started.startedAt).toBeTruthy();
-    }).not.toThrow();
+    for (let k = 0; k < n; k++) tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    const { error, code } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(code).toBe('NOT_ENOUGH_PLAYERS');
+    expect(error).toBeTruthy();
+    expect(tournament.status).toBe('draft');
+    expect(tournament.startedAt).toBeFalsy();
+    expect(database.getTournamentById(tournament.tournamentId).status).toBe('draft');
+  });
+
+  test('#238 start with exactly 2 players succeeds', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    const { tournament: started, error } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(error).toBeUndefined();
+    expect(started.status).toBe('active');
+    expect(started.startedAt).toBeTruthy();
   });
 
   test('a non-organizer cannot start the tournament', () => {
@@ -465,6 +500,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test('starting an already-active tournament is rejected (no double-start)', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const { code } = tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     expect(code).toBe('TOURNAMENT_ALREADY_STARTED');
@@ -479,6 +516,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test('status flip is persisted to SQLite', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
     const row = database.getTournamentById(tournament.tournamentId);
     expect(row.status).toBe('active');
@@ -488,6 +527,8 @@ describe('TournamentManager — startTournament (Phase 1 stub)', () => {
   test("emits 'tournament_started' with the tournamentId", () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
     const listener = jest.fn();
     tournamentManager.once('tournament_started', listener);
     tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
@@ -560,6 +601,15 @@ describe('TournamentManager — listTournaments / serialization', () => {
 
     const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
     expect(tournamentManager.serializePairing(pairing).roundIndex).toBe(1);
+  });
+
+  test('#239: ruleSet.swissRounds is not an accepted field — Swiss round count is always ceil(log2 n)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss', ruleSet: { swissRounds: 1 } }).tournament;
+    expect(tournament.ruleSet.swissRounds).toBeUndefined();
+    for (let i = 0; i < 5; i++) tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(tournament.totalRounds).toBe(3); // ceil(log2 5)
   });
 
   test('Double Elimination has no round grouping — currentRoundIndex/totalRounds and each pairing\'s roundIndex are null', () => {
@@ -687,6 +737,43 @@ describe('TournamentManager — pairing wrappers resolve identity correctly', ()
     expect(code).toBe('ORGANIZER_ONLY');
   });
 
+  test('#237 double_elim: organizerAdjustPairing resets the match in place so the bracket can continue', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const id = `${tournament.tournamentId}:W1M1`;
+
+    const { error } = tournamentManager.organizerAdjustPairing(organizer.userId, tournament.tournamentId, id, 'released');
+    expect(error).toBeUndefined();
+    const reset = tournamentManager.getPairing(id);
+    expect(reset.state).toBe('Negotiating');
+    expect(reset.result).toBeNull();
+
+    // The replayed match can still be played and feeds the bracket.
+    const [u1, u2] = [players[0], players[3]];
+    advanceToReady(tournament.tournamentId, id, u1.userId, u2.userId);
+    tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, id);
+    tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, id);
+    tournamentManager.recordPairingResult(tournament.tournamentId, id, entries[0]);
+    expect(tournamentManager.getPairing(id).state).toBe('Completed');
+    expect(tournamentManager.listPairings(tournament.tournamentId).some((p) => p.bracketMatchId === 'L1M1' || p.bracketMatchId === 'W2M1')).toBe(false); // needs W1M2 too
+  });
+
+  test('#237 swiss: organizerAdjustPairing still ends the pairing as OrganizerAdjusted and advances', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    tournamentManager.organizerAdjustPairing(organizer.userId, tournament.tournamentId, pairing.pairingId, 'released');
+    expect(tournamentManager.getPairing(pairing.pairingId).state).toBe('OrganizerAdjusted');
+    expect(tournament.status).toBe('completed');
+  });
+
   test('operations against an unknown pairingId fail with PAIRING_NOT_FOUND, not a throw', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
@@ -796,6 +883,22 @@ describe('TournamentManager — round advancement (Round robin, 3 players -> 3 r
   });
 });
 
+describe('TournamentManager — round robin final ranks (#245)', () => {
+  test('_completeTournament ranks a score tie by head-to-head, not shared rank', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;
+    const [a, b, c, d] = [user(), user(), user(), user()].map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    // A=2 (B,C), B=2 (C,D), C=1 (D), D=1 (A): A and B tie on score; A beat B.
+    tournament.completedPairings = [
+      { player1: a, player2: b, winner: a }, { player1: a, player2: c, winner: a }, { player1: d, player2: a, winner: d },
+      { player1: b, player2: c, winner: b }, { player1: b, player2: d, winner: b }, { player1: c, player2: d, winner: c },
+    ];
+    tournamentManager._completeTournament(tournament);
+    expect([a, b, c, d].map((id) => tournament.entries.get(id).finalRank)).toEqual([1, 2, 3, 4]);
+  });
+});
+
 describe('TournamentManager — round advancement (Double Elimination, 4 players)', () => {
   test('a full bracket plays out to a champion without a reset (winners finalist wins the grand final)', () => {
     const organizer = user();
@@ -839,6 +942,9 @@ describe('TournamentManager — round advancement (Double Elimination, 4 players
     expect(tournament.status).toBe('completed');
     expect(tournament.entries.get(entries[0]).finalRank).toBe(1);
     expect(tournament.entries.get(entries[3]).finalRank).toBe(2);
+    // #243: the rest are ranked by losers-bracket exit round.
+    expect(tournament.entries.get(entries[1]).finalRank).toBe(3); // lost the losers final
+    expect(tournament.entries.get(entries[2]).finalRank).toBe(4); // lost losers round 1
     expect(tournamentManager.getPairing(`${tournament.tournamentId}:GF_RESET`)).toBeNull();
   });
 
@@ -1286,6 +1392,94 @@ describe('TournamentManager — cancelTournament', () => {
   });
 });
 
+// ── Registration limits (#246) ──────────────────────────────────────────
+
+describe('TournamentManager — registration cap / close (#246)', () => {
+  const make = (ruleSet) => tournamentManager.createTournament(user(), { format: 'swiss', ruleSet }).tournament;
+
+  test('maxPlayers is validated: int 2..512, else dropped to null', () => {
+    expect(make({ maxPlayers: 8 }).ruleSet.maxPlayers).toBe(8);
+    for (const bad of [1, 0, -3, 513, 2.5, '8', null, NaN]) expect(make({ maxPlayers: bad }).ruleSet.maxPlayers).toBeNull();
+    expect(make({}).ruleSet.maxPlayers).toBeNull();
+  });
+
+  test('registrationClosesAt keeps only real YYYY-MM-DD days', () => {
+    expect(make({ registrationClosesAt: '2030-05-01' }).ruleSet.registrationClosesAt).toBe('2030-05-01');
+    expect(make({ registrationClosesAt: '2026-02-31' }).ruleSet.registrationClosesAt).toBeNull();
+    expect(make({ registrationClosesAt: 'soon' }).ruleSet.registrationClosesAt).toBeNull();
+  });
+
+  test('the cap rejects the entry past maxPlayers with TOURNAMENT_FULL; unregistering frees a seat', () => {
+    const t = make({ maxPlayers: 2 });
+    const [a, b, c] = [user(), user(), user()];
+    expect(tournamentManager.registerPlayer(a, t.tournamentId).error).toBeUndefined();
+    expect(tournamentManager.registerPlayer(b, t.tournamentId).error).toBeUndefined();
+    expect(tournamentManager.registerPlayer(c, t.tournamentId).code).toBe('TOURNAMENT_FULL');
+    expect(t.entries.size).toBe(2);
+    tournamentManager.unregisterPlayer(a.userId, t.tournamentId);
+    expect(tournamentManager.registerPlayer(c, t.tournamentId).error).toBeUndefined();
+  });
+
+  test('an already-registered player still gets ALREADY_REGISTERED (not FULL) when the cap is hit', () => {
+    const t = make({ maxPlayers: 2 });
+    const [a, b] = [user(), user()];
+    tournamentManager.registerPlayer(a, t.tournamentId);
+    tournamentManager.registerPlayer(b, t.tournamentId);
+    expect(tournamentManager.registerPlayer(a, t.tournamentId).code).toBe('ALREADY_REGISTERED');
+  });
+
+  test('registrationClosesAt: open through that UTC day, REGISTRATION_CLOSED the day after; endsAt closes too', () => {
+    const t = make({ registrationClosesAt: '2030-05-01' });
+    const day = (iso) => Date.parse(iso);
+    expect(tournamentManager._registrationBlock(t, day('2030-05-01T23:59:59Z'))).toBeNull();
+    expect(tournamentManager._registrationBlock(t, day('2030-05-02T00:00:00Z')).code).toBe('REGISTRATION_CLOSED');
+    const e = make({ endsAt: '2030-06-10' });
+    expect(tournamentManager._registrationBlock(e, day('2030-06-10T12:00:00Z'))).toBeNull();
+    expect(tournamentManager._registrationBlock(e, day('2030-06-11T00:00:00Z')).code).toBe('REGISTRATION_CLOSED');
+    // earliest of the two wins
+    const both = make({ registrationClosesAt: '2030-05-01', endsAt: '2030-06-10' });
+    expect(tournamentManager._registrationBlock(both, day('2030-05-02T00:00:00Z')).code).toBe('REGISTRATION_CLOSED');
+  });
+
+  test('a past registrationClosesAt blocks registerPlayer for real', () => {
+    const t = make({ registrationClosesAt: '2020-01-01' });
+    expect(tournamentManager.registerPlayer(user(), t.tournamentId).code).toBe('REGISTRATION_CLOSED');
+  });
+
+  test('startsAt gates Start: future day → TOURNAMENT_NOT_YET (stays draft); past/none starts', () => {
+    const org = user();
+    const future = tournamentManager.createTournament(org, { format: 'swiss', ruleSet: { startsAt: '2099-01-01' } }).tournament;
+    tournamentManager.registerPlayer(user(), future.tournamentId);
+    tournamentManager.registerPlayer(user(), future.tournamentId);
+    const res = tournamentManager.startTournament(org.userId, future.tournamentId);
+    expect(res.code).toBe('TOURNAMENT_NOT_YET');
+    expect(future.status).toBe('draft');
+
+    const past = tournamentManager.createTournament(org, { format: 'swiss', ruleSet: { startsAt: '2020-01-01' } }).tournament;
+    tournamentManager.registerPlayer(user(), past.tournamentId);
+    tournamentManager.registerPlayer(user(), past.tournamentId);
+    expect(tournamentManager.startTournament(org.userId, past.tournamentId).error).toBeUndefined();
+  });
+
+  test('listTournaments exposes maxPlayers + registrationOpen', () => {
+    const t = make({ maxPlayers: 2 });
+    tournamentManager.registerPlayer(user(), t.tournamentId);
+    let row = tournamentManager.listTournaments().find((x) => x.tournamentId === t.tournamentId);
+    expect(row).toMatchObject({ maxPlayers: 2, registrationOpen: true });
+    tournamentManager.registerPlayer(user(), t.tournamentId);
+    row = tournamentManager.listTournaments().find((x) => x.tournamentId === t.tournamentId);
+    expect(row.registrationOpen).toBe(false);
+  });
+
+  test('limits survive a reload (ruleSet persisted)', () => {
+    const t = make({ maxPlayers: 3, registrationClosesAt: '2030-05-01' });
+    reload();
+    const r = tournamentManager.getTournament(t.tournamentId).ruleSet;
+    expect(r.maxPlayers).toBe(3);
+    expect(r.registrationClosesAt).toBe('2030-05-01');
+  });
+});
+
 // ── Reload from DB (TODO.md #77) ────────────────────────────────────────────
 
 /** Wipe all three in-memory Maps and rebuild them purely from SQLite. */
@@ -1320,6 +1514,42 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     expect(tournamentManager.userTournamentMap.get(p1.userId).has(tournament.tournamentId)).toBe(true);
   });
 
+  test('#240: a guest entry keeps its guest id across reload — still isGuest, still in userTournamentMap, still found by id', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const g = guest();
+    const { entryId } = tournamentManager.registerPlayer(g, tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    const entry = reloaded.entries.get(entryId);
+    expect(entry.userId).toBe(g.userId);
+    expect(entry.isGuest).toBe(true);
+    expect(tournamentManager.userTournamentMap.get(g.userId).has(tournament.tournamentId)).toBe(true);
+    expect(tournamentManager._findEntryIdByUserId(reloaded, g.userId)).toBe(entryId);
+  });
+
+  test('#242: seeds are assigned + persisted at start, and a reload keeps the bracket even when registered_at would reorder (same-ms ties)', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const entryIds = [user(), user(), user(), user()].map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    expect(entryIds.map((id) => tournament.entries.get(id).seed)).toEqual([1, 2, 3, 4]);
+    const before = tournament.bracket.playersBySeed.slice();
+    expect(before).toEqual(entryIds);
+
+    // Simulate ms-tie / clock skew: the first registrant now sorts LAST by registered_at.
+    database.db.prepare('UPDATE tournament_players SET registered_at = ? WHERE entry_id = ?').run('2999-01-01T00:00:00.000Z', entryIds[0]);
+    reload();
+
+    const reloaded = tournamentManager.getTournament(tournament.tournamentId);
+    expect(reloaded.bracket.playersBySeed).toEqual(before);
+    expect(entryIds.map((id) => reloaded.entries.get(id).seed)).toEqual([1, 2, 3, 4]);
+  });
+
   test('organizer name round-trips for a guest organizer too', () => {
     const organizer = guest({ displayName: 'Khách tổ chức' });
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
@@ -1329,19 +1559,17 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     expect(tournamentManager.getTournament(tournament.tournamentId).organizerName).toBe('Khách tổ chức');
   });
 
-  test('guest entries are absent from userTournamentMap after reload (known limitation, no durable guest id)', () => {
+  test('legacy guest rows (no guest_id) still reload unlinked — userId null, absent from userTournamentMap', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
-    const g = guest();
-    tournamentManager.registerPlayer(g, tournament.tournamentId);
+    database.saveTournamentPlayer({ entryId: 'legacy-guest-entry', tournamentId: tournament.tournamentId, playerId: null, displayName: 'Khách cũ', registeredAt: new Date().toISOString() });
 
     reload();
 
-    expect(tournamentManager.userTournamentMap.has(g.userId)).toBe(false);
-    const [entry] = Array.from(tournamentManager.getTournament(tournament.tournamentId).entries.values());
+    const entry = tournamentManager.getTournament(tournament.tournamentId).entries.get('legacy-guest-entry');
     expect(entry.userId).toBeNull();
     expect(entry.isGuest).toBe(true);
-    expect(entry.displayName).toBe(g.displayName);
+    expect(entry.displayName).toBe('Khách cũ');
   });
 
   test('swiss: reloaded pairing/round/standings state matches pre-reload state, and play continues correctly after reload', () => {
@@ -1544,5 +1772,134 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     const set = tournamentManager.userTournamentMap.get(p1.userId);
     expect(set.has(t1.tournamentId)).toBe(true);
     expect(set.has(t2.tournamentId)).toBe(true);
+  });
+});
+
+// ── B241: replay cap + drop/forfeit ──────────────────────────────────────
+
+describe('TournamentManager — B241 replay cap and withdraw', () => {
+  // One deadline firing for every pending pairing — deterministic, unlike
+  // advancing fake timers (a long advance can fire several sweeps in a row).
+  const SWEEP = (tid) => {
+    for (const p of [...tournamentManager.pairings.values()]) {
+      if (p.tournamentId !== tid) continue;
+      if (!['Paired', 'Negotiating', 'Reported', 'Ready'].includes(p.state)) continue;
+      tournamentManager._handlePairingDeadline(p.pairingId, p.tournamentId);
+    }
+  };
+
+  function started(format, n, ruleSet = { schedulingWindowMs: 5000 }) {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format, ruleSet }).tournament;
+    const players = Array.from({ length: n }, () => user());
+    const entryIds = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    return { organizer, tournament, players, entryIds };
+  }
+
+  test('two absent players terminate: 2 replays, then the higher seed advances (swiss)', () => {
+    const { tournament } = started('swiss', 2);
+    for (let i = 0; i < 2; i++) SWEEP(tournament.tournamentId); // 2 voids -> replays
+    expect(tournament.status).toBe('active');
+    SWEEP(tournament.tournamentId); // 3rd double no-show hits the cap
+    expect(tournament.status).toBe('completed');
+    const walkovers = tournamentManager.listPairings(tournament.tournamentId).filter((p) => p.state === 'Walkover');
+    expect(walkovers).toHaveLength(1);
+    expect(walkovers[0].result.reason).toBe('noshow_cap');
+    const winner = tournament.entries.get(walkovers[0].result.winnerEntryId);
+    expect(winner.seed).toBe(Math.min(...[...tournament.entries.values()].map((e) => e.seed)));
+  });
+
+  test('double_elim in-place reset also hits the cap and advances a player', () => {
+    const { tournament } = started('double_elim', 2);
+    for (let i = 0; i < 3; i++) SWEEP(tournament.tournamentId);
+    const matches = tournamentManager.listPairings(tournament.tournamentId);
+    expect(matches.some((p) => p.result && p.result.reason === 'noshow_cap')).toBe(true);
+  });
+
+  test('noShowCount survives a reload', () => {
+    const { tournament } = started('swiss', 2);
+    SWEEP(tournament.tournamentId);
+    const live = tournamentManager.listPairings(tournament.tournamentId).find((p) => p.state === 'Negotiating');
+    expect(live.noShowCount).toBe(1);
+    const row = database.getPairingsByTournament(tournament.tournamentId).find((r) => r.id === live.pairingId);
+    expect(row.noshow_count).toBe(1);
+  });
+
+  test('swiss: withdrawing forfeits the pending match to the opponent and persists the flag', () => {
+    const { tournament, players, entryIds } = started('swiss', 4);
+    const res = tournamentManager.withdrawPlayer(players[0].userId, tournament.tournamentId);
+    expect(res.error).toBeUndefined();
+    expect(tournament.entries.get(entryIds[0]).withdrawn).toBe(true);
+    const mine = tournamentManager.listPairings(tournament.tournamentId)
+      .find((p) => (p.player1EntryId === entryIds[0] || p.player2EntryId === entryIds[0]));
+    expect(mine.state).toBe('Walkover');
+    expect(mine.result.reason).toBe('withdrawn');
+    expect(mine.result.winnerEntryId).not.toBe(entryIds[0]);
+    expect(database.getTournamentPlayers(tournament.tournamentId).find((r) => r.entry_id === entryIds[0]).withdrawn).toBe(1);
+  });
+
+  test('swiss: a withdrawn player is not paired in the next round', () => {
+    const { tournament, players, entryIds } = started('swiss', 4);
+    tournamentManager.withdrawPlayer(players[0].userId, tournament.tournamentId);
+    // finish the other match via organizer-free walkover (deadline sweep, one ready)
+    for (const p of tournamentManager.listPairings(tournament.tournamentId)) {
+      if (p.state === 'Negotiating') {
+        advanceToReady(tournament.tournamentId, p.pairingId,
+          players[entryIds.indexOf(p.player1EntryId)].userId, players[entryIds.indexOf(p.player2EntryId)].userId);
+        tournamentManager.markPairingReady(players[entryIds.indexOf(p.player1EntryId)].userId, tournament.tournamentId, p.pairingId);
+      }
+    }
+    SWEEP(tournament.tournamentId);
+    const round2 = tournamentManager.listPairings(tournament.tournamentId).filter((p) => p.roundIndex === 2);
+    expect(round2.length).toBeGreaterThan(0);
+    expect(round2.some((p) => p.player1EntryId === entryIds[0] || p.player2EntryId === entryIds[0])).toBe(false);
+  });
+
+  test('round_robin: every remaining game of a dropped player is auto-forfeited, tournament finishes', () => {
+    const { organizer, tournament, entryIds } = started('round_robin', 3);
+    expect(tournamentManager.withdrawPlayer(organizer.userId, tournament.tournamentId, entryIds[2]).error).toBeUndefined();
+    // the other two still have to play each other; absent => cap -> terminates
+    for (let i = 0; i < 4; i++) SWEEP(tournament.tournamentId);
+    expect(tournament.status).toBe('completed');
+    const forfeits = tournamentManager.listPairings(tournament.tournamentId).filter((p) => p.result && p.result.reason === 'withdrawn');
+    expect(forfeits.length).toBe(2);
+    expect(tournament.entries.get(entryIds[2]).finalRank).toBeDefined();
+  });
+
+  test('double_elim: dropped player\'s opponent advances and later matches auto-forfeit', () => {
+    const { organizer, tournament, entryIds } = started('double_elim', 4);
+    const res = tournamentManager.withdrawPlayer(organizer.userId, tournament.tournamentId, entryIds[0]);
+    expect(res.error).toBeUndefined();
+    const all = tournamentManager.listPairings(tournament.tournamentId);
+    const forfeited = all.filter((p) => p.result && p.result.reason === 'withdrawn');
+    expect(forfeited.length).toBeGreaterThanOrEqual(1);
+    for (const p of forfeited) expect(p.result.winnerEntryId).not.toBe(entryIds[0]);
+    // dropped player never sits in a live (non-terminal) match
+    expect(all.filter((p) => !['Walkover', 'Completed', 'DoubleNoShow'].includes(p.state))
+      .some((p) => p.player1EntryId === entryIds[0] || p.player2EntryId === entryIds[0])).toBe(false);
+  });
+
+  test('double_elim: dropping all but one player completes the tournament', () => {
+    const { organizer, tournament, entryIds } = started('double_elim', 4);
+    for (const id of entryIds.slice(1)) tournamentManager.withdrawPlayer(organizer.userId, tournament.tournamentId, id);
+    expect(tournament.status).toBe('completed');
+  });
+
+  test('authorization and state guards', () => {
+    const { organizer, tournament, players, entryIds } = started('swiss', 4);
+    expect(tournamentManager.withdrawPlayer(players[0].userId, tournament.tournamentId, entryIds[1]).code).toBe('ORGANIZER_ONLY');
+    expect(tournamentManager.withdrawPlayer(user().userId, tournament.tournamentId).code).toBe('NOT_A_PARTICIPANT');
+    expect(tournamentManager.withdrawPlayer(players[0].userId, tournament.tournamentId).error).toBeUndefined();
+    expect(tournamentManager.withdrawPlayer(players[0].userId, tournament.tournamentId).code).toBe('ALREADY_WITHDRAWN');
+    const draft = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    expect(tournamentManager.withdrawPlayer(organizer.userId, draft.tournamentId, 'x').code).toBe('TOURNAMENT_NOT_ACTIVE');
+  });
+
+  test('withdrawn flag survives reload', () => {
+    const { tournament, players, entryIds } = started('swiss', 4);
+    tournamentManager.withdrawPlayer(players[0].userId, tournament.tournamentId);
+    const row = database.getTournamentPlayers(tournament.tournamentId).find((r) => r.entry_id === entryIds[0]);
+    expect(!!row.withdrawn).toBe(true);
   });
 });

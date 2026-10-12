@@ -33,6 +33,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
+const { isRatedSetup } = require('./RatingService');
 
 // Board cell constants
 const EMPTY  =  0;
@@ -739,6 +740,18 @@ class GameEngine {
   // ---------------------------------------------------------------------------
 
   /** Serialize full game state for the game:init payload. */
+  /**
+   * Whether this game will be rated when it ends (#216). Undo and extra time are
+   * friendly-only ("Giao hữu"), so GameHandler refuses them when this is true.
+   */
+  isRated() {
+    return isRatedSetup({
+      ranked: this.ranked === true,
+      winningRule: this.settings && this.settings.winningRule,
+      players: this.players.map(p => ({ id: p.userId, isGuest: p.isGuest })),
+    });
+  }
+
   serialize() {
     return {
       gameId: this.gameId,
@@ -759,6 +772,7 @@ class GameEngine {
       status: this.status,
       result: this.result,
       undoOffer: this.undoOffer,
+      rated: this.isRated(),
       swap2: {
         enabled: this.ruleSwap2 === true,
         openingPhase: this.openingPhase,

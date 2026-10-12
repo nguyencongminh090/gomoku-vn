@@ -203,3 +203,122 @@ describe('decline / cancel / expiry', () => {
     } finally { jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick', 'setTimeout', 'clearTimeout'] }); }
   });
 });
+
+describe('#222 full settings, series, Swap Elo stake', () => {
+  const FULL = {
+    boardSize: 19, winningRule: 'standard', ranked: true, ruleWall: true, rulePortal: false, ruleSwap2: false,
+    timerMode: 'per_game', timerSeconds: 600, timerIncrementSeconds: 0,
+  };
+  const sendFull = (as, to, extra = {}, settings = {}) =>
+    call('POST', '/api/challenges', as, { to, settings: { ...FULL, ...settings }, ...extra });
+  const setGames = (name, games, cat = 'standard') => db.prepare(`
+    INSERT INTO ratings (user_id, category, rating, rd, volatility, games, updated_at) VALUES (?, ?, 1500, 80, 0.06, ?, ?)
+    ON CONFLICT(user_id, category) DO UPDATE SET games = excluded.games`).run(U[name], cat, games, NOW);
+  beforeEach(() => { db.prepare('DELETE FROM ratings').run(); db.prepare('DELETE FROM elo_swaps').run(); });
+
+  it('stores and shows every create-room field + games + stake (incoming row and notification)', async () => {
+    const r = await sendFull('ann', 'bob', { games: 3 });
+    expect(r.status).toBe(201);
+    expect(r.body).toMatchObject({ settings: FULL, games: 3, stake: 'none', rule: 'standard', rated: true });
+    const inc = (await call('GET', '/api/challenges', 'bob')).body.incoming[0];
+    expect(inc).toMatchObject({ settings: FULL, games: 3, stake: 'none' });
+    expect(notif.list(U.bob).items[0].payload).toMatchObject({ settings: FULL, games: 3, stake: 'none' });
+  });
+
+  it('normalises like room create: Swap2 clears wall/portal; increment only in blitz', async () => {
+    let r = await sendFull('ann', 'bob', {}, { ruleSwap2: true, ruleWall: true, rulePortal: true });
+    expect(r.body.settings).toMatchObject({ ruleSwap2: true, ruleWall: false, rulePortal: false });
+    r = await sendFull('ann', 'bob', {}, { timerMode: 'per_move', timerIncrementSeconds: 5 });
+    expect(r.body.settings.timerIncrementSeconds).toBe(0);
+    r = await sendFull('ann', 'bob', {}, { timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 });
+    expect(r.body.settings).toMatchObject({ timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 });
+  });
+
+  it.each([
+    [{ boardSize: 16 }, 'BAD_SETTINGS'],
+    [{ boardSize: '19' }, 'BAD_SETTINGS'],
+    [{ winningRule: 'renju' }, 'BAD_RULE'],
+    [{ ruleWall: 'yes' }, 'BAD_SETTINGS'],
+    [{ ranked: undefined }, 'BAD_SETTINGS'],
+    [{ timerMode: 'hourglass' }, 'BAD_TIME'],
+    [{ timerSeconds: 4 }, 'BAD_TIME'],
+    [{ timerSeconds: 3601 }, 'BAD_TIME'],
+    [{ timerSeconds: 60.5 }, 'BAD_TIME'],
+    [{ timerMode: 'blitz', timerIncrementSeconds: 601 }, 'BAD_TIME'],
+  ])('rejects settings %j → %s', async (patch, code) => {
+    const r = await sendFull('ann', 'bob', {}, patch);
+    expect(r.status).toBe(400);
+    expect(r.body.code).toBe(code);
+  });
+
+  it('boundaries accepted: 5 s and 3600 s, increment 600 in blitz', async () => {
+    expect((await sendFull('ann', 'bob', {}, { timerSeconds: 5 })).status).toBe(201);
+    expect((await sendFull('ann', 'bob', {}, { timerSeconds: 3600, timerMode: 'blitz', timerIncrementSeconds: 600 })).status).toBe(201);
+  });
+
+  it.each([[0], [100], [-1], [3.5], ['3']])('rejects games=%p', async (games) => {
+    expect((await sendFull('ann', 'bob', { games })).body.code).toBe('BAD_GAMES');
+  });
+
+  it.each([[1], [2], [7], [10], [99]])('accepts games=%p', async (games) => {
+    expect((await sendFull('ann', 'bob', { games })).status).toBe(201);
+  });
+
+  it('rejects an unknown stake; settings must be an object', async () => {
+    expect((await sendFull('ann', 'bob', { stake: 'all-in' })).body.code).toBe('BAD_STAKE');
+    expect((await call('POST', '/api/challenges', 'ann', { to: 'bob', settings: [1] })).body.code).toBe('BAD_SETTINGS');
+  });
+
+  describe('Swap Elo guards', () => {
+    it('rated only', async () => {
+      setGames('ann', 50); setGames('bob', 50);
+      expect((await sendFull('ann', 'bob', { stake: 'swap' }, { ranked: false })).body.code).toBe('STAKE_NEEDS_RATED');
+    });
+
+    it('both players need the minimum rated games in the played category (boundary 19/20)', async () => {
+      setGames('ann', 20); setGames('bob', 19);
+      expect((await sendFull('ann', 'bob', { stake: 'swap' })).body.code).toBe('STAKE_MIN_GAMES');
+      setGames('bob', 20); setGames('bob', 99, 'caro');
+      expect((await sendFull('ann', 'bob', { stake: 'swap' })).status).toBe(201);
+      setGames('ann', 0, 'caro');
+      expect((await sendFull('ann', 'bob', { stake: 'swap' }, { winningRule: 'caro' })).body.code).toBe('STAKE_MIN_GAMES');
+    });
+
+    it('24 h per-pair cooldown (either direction, any category)', async () => {
+      setGames('ann', 30); setGames('bob', 30);
+      const at = (ms) => new Date(Date.now() - ms).toISOString();
+      const log = db.prepare(`INSERT INTO elo_swaps (category, user_lo, user_hi, winner_id, loser_id, winner_before, winner_after, loser_before, loser_after, game_ids, created_at)
+        VALUES ('caro', ?, ?, ?, ?, 1, 2, 2, 1, '[]', ?)`);
+      const [lo, hi] = [U.ann, U.bob].sort();
+      log.run(lo, hi, U.bob, U.ann, at(23 * 3600 * 1000));
+      expect((await sendFull('bob', 'ann', { stake: 'swap' })).body.code).toBe('STAKE_COOLDOWN');
+      db.prepare('DELETE FROM elo_swaps').run();
+      log.run(lo, hi, U.bob, U.ann, at(25 * 3600 * 1000));
+      expect((await sendFull('bob', 'ann', { stake: 'swap' })).status).toBe(201);
+    });
+
+    it('re-checked on accept: a guard that broke since send blocks the accept and keeps the challenge', async () => {
+      setGames('ann', 30); setGames('bob', 30);
+      const c = (await sendFull('ann', 'bob', { stake: 'swap', games: 3 })).body;
+      setGames('ann', 3);
+      expect((await call('POST', `/api/challenges/${c.id}/accept`, 'bob')).body.code).toBe('STAKE_MIN_GAMES');
+      expect((await call('GET', '/api/challenges', 'bob')).body.incoming).toHaveLength(1);
+      expect(roomManager.getRoomByUser(U.ann)).toBeFalsy();
+    });
+  });
+
+  it('accept: room gets the full settings and a series (players = challenger, accepter)', async () => {
+    setGames('ann', 30); setGames('bob', 30);
+    const c = (await sendFull('ann', 'bob', { stake: 'swap', games: 5 })).body;
+    const r = await call('POST', `/api/challenges/${c.id}/accept`, 'bob');
+    const room = roomManager.getRoom(r.body.roomId);
+    expect(room.settings).toMatchObject(FULL);
+    expect(room.series).toMatchObject({ players: [U.ann, U.bob], total: 5, stake: 'swap', rated: true, category: 'standard', done: false });
+  });
+
+  it('accept: a plain Bo1 without stake has no series (normal per-game Elo)', async () => {
+    const c = (await sendFull('ann', 'bob')).body;
+    const r = await call('POST', `/api/challenges/${c.id}/accept`, 'bob');
+    expect(roomManager.getRoom(r.body.roomId).series).toBeUndefined();
+  });
+});

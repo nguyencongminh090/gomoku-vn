@@ -31,6 +31,29 @@
   margin-bottom: 16px;
   flex-wrap: wrap;
 }
+/* B241: header "Manage" menu (withdraw / drop player / cancel) */
+.detail-actions { position: relative; display: flex; justify-content: flex-end; }
+.manage-btn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 14px; font-size: 14px; }
+.manage-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 220px; max-height: 60vh; overflow-y: auto;
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 12px; padding: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.14);
+}
+.manage-menu[hidden] { display: none; }
+.manage-menu__title { padding: 8px 12px 4px; font-size: 12px; font-weight: 700; color: var(--c-ink-3, var(--c-ink-2)); text-transform: uppercase; letter-spacing: .04em; }
+.manage-menu__item {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px;
+  font: inherit; font-size: 14px; font-weight: 600; color: var(--c-ink); text-align: left;
+  background: none; border: 0; border-radius: 8px; cursor: pointer;
+}
+.manage-menu__item:hover, .manage-menu__item:focus-visible { background: var(--c-border-light); }
+.manage-menu__item:last-child#btn-cancel-tournament { color: var(--c-error, #EF4444); }
+@media (max-width: 600px) {
+  .detail-header > #detail-cancel-slot { width: 100%; justify-content: flex-start; }
+  .manage-menu { left: 0; right: 0; }
+}
+}
+
 .detail-header__name { font-size: 26px; font-weight: 800; color: var(--c-ink); letter-spacing: -0.02em; }
 .detail-header__meta { display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 .detail-header__meta .icon { font-size: 16px; }
@@ -233,7 +256,7 @@
    640px cap here fought that JS-computed size and made the tournament board
    noticeably smaller/inconsistent than the casual-room board. */
 .match-board-canvas-wrap { width: 100%; display: flex; justify-content: center; }
-#match-canvas { touch-action: none; }
+#match-canvas { touch-action: none; display: block; }
 
 /* Layout comes from .game-controls (game.css, shared with room.html) now —
    .match-actions only needs to stay addressable for the mobile bleed-cancel
@@ -282,4 +305,55 @@
 
 @media (max-width: 640px) {
   .pairing-list, .round-group__title { padding-left: 8px; padding-right: 8px; }
+}
+
+/* ── Bracket / round columns (Swiss + Double Elimination) ─────────────── */
+.bracket { display: flex; flex-direction: column; gap: 22px; padding: 4px 0 8px; }
+.bracket--swiss { margin-top: 24px; }
+.bracket__cols { display: flex; gap: 28px; overflow-x: auto; padding: 4px 16px 12px; align-items: stretch; }
+.bracket__col { display: flex; flex-direction: column; min-width: 190px; flex: 0 0 190px; position: relative; }
+.bracket__col-title { font-size: 11px; font-weight: 700; color: var(--c-ink-3); text-transform: uppercase; letter-spacing: 0.03em; text-align: center; padding-bottom: 8px; }
+.bracket__slot { position: relative; display: flex; align-items: center; flex: 1 1 0; padding: 5px 0; min-height: 104px; }
+.bracket__slot > .bm { width: 100%; }
+/* Tree connectors (Double Elimination): 14px stub out of every card, 14px stub into every card of the next column,
+   and where a column merges pairs into the next, a vertical line joins the two stubs. Slots are equal-height flex
+   children, so the next round's card sits exactly at the midpoint of its two sources. */
+.bracket:not(.bracket--swiss) .bracket__col:not(:last-child) .bracket__slot::after {
+  content: ''; position: absolute; left: 100%; top: 50%; width: 14px; border-top: 1px solid var(--c-border);
+}
+.bracket:not(.bracket--swiss) .bracket__col:not(:first-child) .bracket__slot::before {
+  content: ''; position: absolute; right: 100%; top: 50%; width: 14px; border-top: 1px solid var(--c-border);
+}
+.bracket__col--merge .bracket__slot.is-top::after { height: 50%; border-right: 1px solid var(--c-border); }
+.bracket__col--merge .bracket__slot.is-bottom::after { top: auto; bottom: 50%; height: 50%; border-top: 0; border-bottom: 1px solid var(--c-border); border-right: 1px solid var(--c-border); }
+.podium { display: flex; flex-wrap: wrap; gap: 10px 20px; padding: 12px 16px; margin-bottom: 14px; background: var(--c-surface-2); border-radius: var(--radius-lg); font-size: 14px; }
+.podium__item { display: inline-flex; align-items: center; gap: 6px; color: var(--c-ink); }
+.podium__label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--c-ink-3); }
+.podium__item--champion .icon { color: var(--c-accent); }
+.podium__item--runner-up .icon { color: var(--c-ink-3); }
+.bm { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg); overflow: hidden; font-size: 13px; }
+.bm.is-mine { border-color: var(--c-brand); }
+.bm.is-live { border-color: var(--c-brand-text); box-shadow: 0 0 0 1px var(--c-brand-text) inset; }
+.bm__id { font-size: 10px; font-weight: 700; color: var(--c-ink-3); letter-spacing: 0.04em; padding: 4px 10px 3px; background: var(--c-surface-2); }
+.bm__row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; color: var(--c-ink-2); border-top: 1px solid var(--c-border-light); }
+.bm__row:first-of-type { border-top: 0; }
+.bm__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.bm__score { font-variant-numeric: tabular-nums; font-weight: 700; }
+.bm__row.is-winner { color: var(--c-ink); font-weight: 700; background: var(--c-brand-light); }
+.bm__row.is-winner .bm__score { color: var(--c-success); }
+.bm__row.is-loser { color: var(--c-ink-3); }
+.bm__row--tbd { color: var(--c-ink-3); font-style: italic; }
+.bm__row.is-me .bm__name { color: var(--c-brand-text); }
+.bm__row.is-tracked { background: var(--c-accent-light); }
+.bracket__slot.is-empty::before, .bracket__slot.is-empty::after { display: none; }
+.bracket--swiss .bracket__slot { flex: 0 0 auto; min-height: 0; }
+.bm[data-pairing] { cursor: pointer; }
+.bm[data-pairing]:hover, .bm[data-pairing]:focus-visible { border-color: var(--c-brand-text); outline: none; }
+/* scroll shadows: a soft edge shows where the columns continue off-screen (background-attachment: local keeps them in sync with the scroll) */
+.bracket__cols {
+  background:
+    linear-gradient(to right, var(--c-surface) 30%, transparent) left center / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--c-surface) 30%, transparent) right center / 24px 100% no-repeat local,
+    linear-gradient(to right, rgba(0,0,0,0.25), transparent) left center / 10px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(0,0,0,0.25), transparent) right center / 10px 100% no-repeat scroll;
 }

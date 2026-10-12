@@ -139,6 +139,7 @@ CREATE TABLE IF NOT EXISTS tournament_players (
   entry_id      TEXT PRIMARY KEY,        -- UUID v4 — the real PK, since player_id may be null (guest)
   tournament_id TEXT NOT NULL REFERENCES tournaments(id),
   player_id     TEXT REFERENCES users(id), -- null for guests
+  guest_id      TEXT,                    -- guest_xxxx session id (guests only; lets a reload re-link the entry)
   display_name  TEXT NOT NULL,
   seed          INTEGER,                 -- bracket/pairing seed, set by startTournament()
   final_rank    INTEGER,                 -- set once the tournament completes
@@ -170,7 +171,8 @@ CREATE TABLE IF NOT EXISTS tournament_pairings (
   games             TEXT,                -- JSON array — [{index, winnerEntryId|null (draw), endedAt}], one entry per game played in the pairing's series (TODO.md #50); single-game pairings (ruleSet.seriesMode='single') always have exactly one entry once Completed
   moves             TEXT,                -- JSON array, same shape as games.moves once InProgress — the CURRENT/last game's move history only (not per-series)
   started_at        TEXT,
-  ended_at          TEXT
+  ended_at          TEXT,
+  noshow_count      INTEGER NOT NULL DEFAULT 0 -- B241: consecutive double-no-show voids; at the cap the higher seed advances
 );
 
 -- Tournament games — one row per INDIVIDUAL game played within a pairing
@@ -249,6 +251,25 @@ CREATE TABLE IF NOT EXISTS rating_history (
 CREATE INDEX IF NOT EXISTS idx_ratings_category_rating ON ratings(category, rating DESC);
 CREATE INDEX IF NOT EXISTS idx_rating_history_user ON rating_history(user_id, category, id DESC);
 
+-- Swap Elo stake log (#222): one row per applied swap at a challenge series' end.
+-- user_lo/user_hi = the pair sorted, so the 24 h per-pair cooldown is one lookup.
+-- Written in the same transaction as the series' rating update (RatingService.rateSeries).
+CREATE TABLE IF NOT EXISTS elo_swaps (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  category       TEXT NOT NULL,
+  user_lo        TEXT NOT NULL REFERENCES users(id),
+  user_hi        TEXT NOT NULL REFERENCES users(id),
+  winner_id      TEXT NOT NULL,
+  loser_id       TEXT NOT NULL,
+  winner_before  REAL NOT NULL,
+  winner_after   REAL NOT NULL,
+  loser_before   REAL NOT NULL,
+  loser_after    REAL NOT NULL,
+  game_ids       TEXT NOT NULL,                   -- JSON array of the series' games
+  created_at     TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_elo_swaps_pair ON elo_swaps(user_lo, user_hi, created_at DESC);
+
 -- Clubs (TODO.md #178). slug = URL form of the name (UNIQUE, so also enforces
 -- unique names). role: owner | officer | member | pending (join request on an
 -- 'invite' club). Exactly one 'owner' row per club (ClubService enforces it).
@@ -259,7 +280,10 @@ CREATE TABLE IF NOT EXISTS clubs (
   description  TEXT NOT NULL DEFAULT '',
   join_policy  TEXT NOT NULL DEFAULT 'open',     -- 'open' | 'invite'
   owner_id     TEXT NOT NULL REFERENCES users(id),
-  created_at   TEXT NOT NULL
+  created_at   TEXT NOT NULL,
+  color        TEXT NOT NULL DEFAULT 'blue',     -- preset key (ClubService.COLORS)  (#235)
+  tag          TEXT NOT NULL DEFAULT '',         -- 2-4 char badge shown in the avatar (#235)
+  announcement TEXT NOT NULL DEFAULT ''          -- staff-pinned note on the overview tab (#235)
 );
 
 CREATE TABLE IF NOT EXISTS club_members (
@@ -298,6 +322,29 @@ CREATE TABLE IF NOT EXISTS club_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_club_messages_club ON club_messages(club_id, id);
+
+-- Staff invitations (#235): an invited user joins an 'invite' club without approval.
+-- Separate from club_members so 'role != pending' member counting never sees them.
+CREATE TABLE IF NOT EXISTS club_invites (
+  club_id     TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  invited_by  TEXT NOT NULL REFERENCES users(id),
+  created_at  TEXT NOT NULL,
+  PRIMARY KEY (club_id, user_id)
+);
+
+-- Membership history (#235). type: join | leave | kick | reject | approve | invite | role.
+CREATE TABLE IF NOT EXISTS club_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  club_id     TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL,
+  actor_id    TEXT REFERENCES users(id),
+  target_id   TEXT REFERENCES users(id),
+  detail      TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_club_log_club ON club_log(club_id, id);
 
 -- Friends (TODO.md #198). One row per pair, canonical order user_a < user_b.
 -- status 'pending' = requested_by asked the other; 'accepted' = mutual friends.
@@ -454,3 +501,15 @@ CREATE TABLE IF NOT EXISTS game_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_game_reports_open ON game_reports(resolved_at, created_at);
 CREATE INDEX IF NOT EXISTS idx_game_reports_accused ON game_reports(accused_id);
+
+-- Dashboard news (TODO.md #224): admin-written one-line announcements; the home page shows the newest.
+-- Plain text only (rendered with textContent). No FK on author: the item outlives a deleted admin.
+CREATE TABLE IF NOT EXISTS news (
+  id          TEXT PRIMARY KEY,
+  body        TEXT NOT NULL,
+  link        TEXT,                    -- optional same-site path ("/forum/…"), never an external URL
+  author_id   TEXT NOT NULL,
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_news_created ON news(created_at);

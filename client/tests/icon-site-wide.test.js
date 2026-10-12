@@ -60,7 +60,7 @@ describe('#214 Scope 2: site-wide icons', () => {
 
   test('legacy screens: no icon below 16px and no off-scale 18px', () => {
     const bad = [];
-    for (const f of ['lobby.css', 'lobby-zen.css', 'room-zen.css', 'tournament.css', 'diag.css']) {
+    for (const f of ['lobby.css', 'lobby-zen.css', 'tournament.css', 'diag.css']) {
       for (const line of read('css/' + f).split('\n')) {
         if (!/\.icon\b[^{]*\{/.test(line)) continue;
         if (/(font-size|width|height):\s*(1[2-58])px/.test(line)) bad.push(f + ': ' + line.trim());

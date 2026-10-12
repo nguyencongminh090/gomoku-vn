@@ -55,6 +55,9 @@ const navOn = () => [...document.querySelectorAll('#pl-shell .is-active')].map((
 
 afterEach(() => { window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling
 
+/** Ticket meta segments (separate spans — no "·"-joined strings in the DOM). */
+const segs = (row) => [...row.querySelectorAll('.hrow__meta > span')].map((x) => x.textContent);
+
 describe('screens ↔ hash ↔ shell nav', () => {
   it.each([
     ['/index.html', 'screen-home', [], ['lobby', 'lobby'], 'home'],
@@ -65,7 +68,7 @@ describe('screens ↔ hash ↔ shell nav', () => {
     await boot(url);
     expect(visible()).toEqual([screen]);
     expect(actions()).toEqual(acts);
-    expect(document.getElementById('lobby-bar').hidden).toBe(acts.length === 0);
+    expect(document.getElementById('lobby-bar').hidden).toBe(!acts.includes('btn-create-tournament')); // rooms actions live in the rooms .pbar now
     expect(navOn()).toEqual(nav);
     expect(window.__lobbyStub.setHeroTab).toHaveBeenLastCalledWith(hero);
   });
@@ -117,7 +120,7 @@ describe('dashboard rendering', () => {
       { tournamentId: 't1', name: 'Sat', format: 'swiss', status: 'active', playerCount: 64, registered: true },
       { tournamentId: 't2', name: 'Oct', format: 'swiss', status: 'draft', playerCount: 3, registered: false },
     ],
-    live: [{ roomId: 'L1', black: 'kim', white: 'sak', viewers: 120, boardSize: 15, stones: [[7, 7, 1], [8, 8, 2], [99, 0, 1]],
+    live: [{ roomId: 'L1', black: 'kim', white: 'sak', viewers: 120, boardSize: 15, moves: 42,
       winningRule: 'freestyle', timerMode: 'per_move', timerSeconds: 30 }],
   };
 
@@ -127,8 +130,8 @@ describe('dashboard rendering', () => {
     expect(rows).toHaveLength(2);
     expect(rows[0].querySelector('img')).toBeNull();
     expect(rows[0].querySelector('.prow__t').textContent)
-      .toBe('home.vs{"name":"<img src=x onerror=alert(1)>"} · rankings.cat_caro · 5+3');
-    expect(rows[0].querySelector('.prow__m').textContent).toBe('home.your_turn');
+      .toBe('home.vs{"name":"<img src=x onerror=alert(1)>"}');
+    expect(segs(rows[0])).toEqual(['rankings.cat_caro', '5+3', 'home.your_turn']);
     rows[0].click();
     expect(window.joinRoom).toHaveBeenCalledWith('R1');
   });
@@ -136,8 +139,8 @@ describe('dashboard rendering', () => {
   it('tournament match row: round is 1-based, state label, links to the tournament', async () => {
     await boot('/index.html', DATA);
     const row = document.querySelectorAll('#home-mine .prow')[1];
-    expect(row.querySelector('.prow__t').textContent).toBe('Sat · home.round{"n":3}');
-    expect(row.querySelector('.prow__m').textContent).toBe('home.vs{"name":"Bob"} · home.match_Ready');
+    expect(row.querySelector('.prow__t').textContent).toBe('Sat');
+    expect(segs(row)).toEqual(['home.round{"n":3}', 'home.vs{"name":"Bob"}', 'home.match_Ready']);
     expect(row.querySelector('.hbullet.on')).not.toBeNull();
   });
 
@@ -147,21 +150,30 @@ describe('dashboard rendering', () => {
     expect(acts).toEqual(['home.registered', 'home.register']);
   });
 
-  it('live: mini board draws in-bounds stones only + last-move dot; click spectates', async () => {
+  it('live: text row (names, rule, moves, viewers), no SVG board; click spectates', async () => {
     await boot('/index.html', DATA);
-    const card = document.querySelector('#home-live .hlive');
-    expect(card.querySelectorAll('circle.sb')).toHaveLength(1);
-    expect(card.querySelectorAll('circle.sw')).toHaveLength(1);
-    expect(card.querySelectorAll('line')).toHaveLength(30);
+    const card = document.querySelector('#home-live .prow');
+    expect(document.querySelector('#home-live svg, #home-live circle')).toBeNull();
+    expect(card.textContent).toContain('home.live_vs{"a":"kim","b":"sak"}');
+    expect(card.textContent).toContain('home.moves{"n":42}');
     expect(card.textContent).toContain('home.viewers{"n":120}');
     expect(card.textContent).toContain('home.per_move{"s":30}');
     card.click();
     expect(window.joinRoom).toHaveBeenCalledWith('L1');
   });
 
+  it('stats strip shows online / playing / searching; hidden without stats', async () => {
+    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 } });
+    const strip = document.getElementById('home-stats');
+    expect(strip.hidden).toBe(false);
+    expect([...strip.querySelectorAll('.hstat__n')].map((n) => n.textContent)).toEqual(['12', '3', '2']);
+    await boot('/index.html', DATA);
+    expect(document.getElementById('home-stats').hidden).toBe(true);
+  });
+
   it('live card with no spectators omits the viewer count', async () => {
     await boot('/index.html', { ...EMPTY, live: [{ ...DATA.live[0], viewers: 0 }] });
-    expect(document.querySelector('#home-live .hlive').textContent).not.toContain('home.viewers');
+    expect(document.querySelector('#home-live .prow').textContent).not.toContain('home.viewers');
   });
 
   it('empty payload → empty states; "find a room" goes to the rooms screen', async () => {
@@ -186,6 +198,71 @@ describe('dashboard rendering', () => {
     const row = document.querySelector('#home-mine .prow');
     expect(row.querySelector('.prow__t').textContent).toBe('My room');
     expect(row.querySelector('.prow__m').textContent).toBe('home.waiting');
+  });
+});
+
+describe('news, forum, learn, about (#224)', () => {
+  const XSS = '<img src=x onerror=alert(1)>';
+  const FORUM = [
+    { id: 't 1', title: XSS, category: 'tactics', replyCount: 3, lastPostAt: '2026-10-10T00:00:00Z', author: 'Kim' },
+    { id: 't2', title: 'Two', category: 'general', replyCount: 0, lastPostAt: '2026-10-09T00:00:00Z', author: 'Sak' },
+  ];
+
+  it('news line: text via textContent, link only for same-site paths, hidden when null', async () => {
+    await boot('/index.html', { ...EMPTY, news: { id: 'n', body: XSS, link: '/forum/t/abc' } });
+    const box = document.getElementById('home-news');
+    expect(box.hidden).toBe(false);
+    expect(box.querySelector('img')).toBeNull();
+    const a = box.querySelector('a.hnews__line');
+    expect(a.getAttribute('href')).toBe('/forum/t/abc');
+    expect(a.querySelector('.hnews__body').textContent).toBe(XSS);
+
+    for (const link of ['//evil.example', 'javascript:alert(1)', 'https://x.example', null]) {
+      await boot('/index.html', { ...EMPTY, news: { id: 'n', body: 'Hi', link } });
+      expect(document.querySelector('#home-news a')).toBeNull();
+      expect(document.querySelector('#home-news p.hnews__line .hnews__body').textContent).toBe('Hi');
+    }
+    await boot('/index.html', { ...EMPTY, news: null });
+    expect(document.getElementById('home-news').hidden).toBe(true);
+    await boot('/index.html', EMPTY); // older payload without the key
+    expect(document.getElementById('home-news').hidden).toBe(true);
+  });
+
+  it('forum: up to the server-sent threads as rows (category, replies, author), escaped, + "see all" link', async () => {
+    await boot('/index.html', { ...EMPTY, forum: FORUM });
+    const rows = document.querySelectorAll('#home-forum .prow');
+    expect(rows).toHaveLength(2);
+    expect(rows[0].querySelector('.prow__t').textContent).toBe(XSS);
+    expect(document.querySelector('#home-forum img')).toBeNull();
+    expect(segs(rows[0])).toEqual(['forum.cat_tactics', 'forum.replies{"n":3}', 'Kim']);
+    expect(document.querySelector('#home-forum a.hmore').getAttribute('href')).toBe('/forum');
+    await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-forum .hempty').textContent).toBe('home.no_forum');
+    expect(document.querySelector('#home-forum a.hmore')).not.toBeNull();
+  });
+
+  it.each([
+    ['member', { total: 42, solved: 5 }, 'home.learn_total{"n":42} · home.learn_solved{"n":5}'],
+    ['guest', { total: 42, solved: null }, 'home.learn_total{"n":42}'],
+    ['member, none solved', { total: 42, solved: 0 }, 'home.learn_total{"n":42} · home.learn_solved{"n":0}'],
+    ['no puzzles yet', { total: 0, solved: 0 }, 'home.learn_none'],
+  ])('learn card: %s', async (_, learn, meta) => {
+    await boot('/index.html', { ...EMPTY, learn });
+    const row = document.querySelector('#home-learn .prow');
+    expect(row.querySelector('.prow__t').textContent).toBe('home.learn_title');
+    expect(segs(row).join(' · ')).toBe(meta);
+  });
+
+  it('learn card absent without data (DB down / old payload)', async () => {
+    await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-learn').children).toHaveLength(0);
+  });
+
+  it.each([[true, false], [false, true], [undefined, true]])('about block: newcomer=%p → hidden=%p', async (newcomer, hidden) => {
+    await boot('/index.html', { ...EMPTY, newcomer });
+    const about = document.getElementById('home-about');
+    expect(about.hidden).toBe(hidden);
+    expect(about.querySelectorAll('dt')).toHaveLength(3); // Freestyle / Standard / Caro VN
   });
 });
 
@@ -237,8 +314,11 @@ describe('quick match panel (B197)', () => {
     chips('qm-rule')[0].click();
     chips('qm-time')[0].click();
     document.querySelectorAll('#qm-actions button')[0].click();
-    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true }]);
-    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0' });
+    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true, wall: true, portal: false }]);
+    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0', wall: true, portal: false });
+    document.querySelectorAll('#qm-board button')[0].click();
+    document.querySelectorAll('#qm-actions button')[0].click();
+    expect(client().emitted.pop()[1]).toMatchObject({ wall: false, portal: false });
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'standard', time: '10+0' } });
     expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_standard'], ['10+0']]);
   });
@@ -355,8 +435,97 @@ describe('Vào bằng mã (Phòng screen, B210)', () => {
   it('home: "Thách đấu bạn bè" links to the social page for members, absent for guests', async () => {
     await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Z' });
     const link = [...$('qm-actions').querySelectorAll('a')].find((a) => a.textContent === 'qm.challenge_friend');
-    expect(link.getAttribute('href')).toBe('/social.html');
+    expect(link.getAttribute('href')).toBe('/social.html#challenge');
     await boot('/index.html', EMPTY, { userId: 'g', isGuest: true, displayName: 'G' });
     expect($('qm-actions').querySelector('a')).toBeNull();
+  });
+});
+
+describe('live push (B225)', () => {
+  const subs = () => window.__lobbyStub.client.emitted.map(([ev]) => ev).filter((ev) => ev.startsWith('home:'));
+  const nums = () => [...document.querySelectorAll('#home-stats .hstat__n')].map((n) => n.textContent);
+  const setHidden = (v) => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); };
+  afterEach(() => { delete document.hidden; });
+
+  it('home screen subscribes once; leaving it unsubscribes; coming back resubscribes', async () => {
+    await boot('/index.html');
+    expect(subs()).toEqual(['home:subscribe']);
+    window.__home.showScreen('rooms');
+    window.__home.showScreen('tournaments');
+    window.__home.showScreen('home');
+    expect(subs()).toEqual(['home:subscribe', 'home:unsubscribe', 'home:subscribe']);
+  });
+
+  it('starting on #rooms never subscribes', async () => {
+    await boot('/index.html#rooms');
+    expect(subs()).toEqual([]);
+  });
+
+  it('home:stats redraws the strip with the pushed absolute values', async () => {
+    await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 } });
+    window.__lobbyStub.client.fire('home:stats', { online: 7, playing: 2, searching: 1 });
+    expect(nums()).toEqual(['7', '2', '1']);
+  });
+
+  it('home:live replaces the live rows; ignored off the home screen', async () => {
+    await boot('/index.html');
+    window.__lobbyStub.client.fire('home:live', [{ roomId: '#ABC', black: 'An', white: 'Binh', moves: 0, viewers: 0 }]);
+    expect(document.getElementById('home-live').textContent).toContain('"a":"An"');
+    window.__home.showScreen('rooms');
+    window.__lobbyStub.client.fire('home:live', []);
+    expect(document.getElementById('home-live').textContent).toContain('"a":"An"');
+  });
+
+  it('hidden tab unsubscribes; visible again resubscribes and refetches', async () => {
+    await boot('/index.html');
+    setHidden(true);
+    expect(subs()).toEqual(['home:subscribe', 'home:unsubscribe']);
+    fetch.mockClear();
+    setHidden(false);
+    expect(subs()).toEqual(['home:subscribe', 'home:unsubscribe', 'home:subscribe']);
+    expect(fetch).toHaveBeenCalledWith('/api/home', expect.anything());
+  });
+
+  it('socket reconnect resubscribes and refetches /api/home', async () => {
+    await boot('/index.html');
+    fetch.mockClear();
+    window.__lobbyStub.client.fire('connect'); // still subscribed → no-op
+    expect(subs()).toEqual(['home:subscribe']);
+    window.__lobbyStub.client.fire('disconnect');
+    window.__lobbyStub.client.fire('connect');
+    expect(subs()).toEqual(['home:subscribe', 'home:subscribe']);
+    expect(fetch).toHaveBeenCalledWith('/api/home', expect.anything());
+  });
+
+  describe('lobby room only on the rooms screen (B229)', () => {
+    const lsubs = () => window.__lobbyStub.client.emitted.map(([ev]) => ev).filter((ev) => ev.startsWith('lobby:'));
+
+    it('subscribes entering rooms, unsubscribes leaving; dashboard/tournaments never join', async () => {
+      await boot('/index.html');
+      expect(lsubs()).toEqual([]);
+      window.__home.showScreen('rooms');
+      window.__home.showScreen('tournaments');
+      window.__home.showScreen('rooms');
+      window.__home.showScreen('home');
+      expect(lsubs()).toEqual(['lobby:subscribe', 'lobby:unsubscribe', 'lobby:subscribe', 'lobby:unsubscribe']);
+    });
+
+    it('starting on #rooms subscribes once', async () => {
+      await boot('/index.html#rooms');
+      expect(lsubs()).toEqual(['lobby:subscribe']);
+    });
+
+    it('hidden tab leaves, visible rejoins; reconnect rejoins only on rooms', async () => {
+      await boot('/index.html#rooms');
+      setHidden(true);
+      setHidden(false);
+      expect(lsubs()).toEqual(['lobby:subscribe', 'lobby:unsubscribe', 'lobby:subscribe']);
+      const c = window.__lobbyStub.client;
+      c.fire('disconnect'); c.fire('connect');
+      expect(lsubs()).toHaveLength(4);
+      window.__home.showScreen('home');
+      c.fire('disconnect'); c.fire('connect');
+      expect(lsubs().filter((e) => e === 'lobby:subscribe')).toHaveLength(3);
+    });
   });
 });

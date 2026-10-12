@@ -15,10 +15,12 @@ jest.mock('../socket/state', () => ({
   broadcastRoomUpdate: jest.fn(),
   getClientIp: (s) => s.handshake.address,
 }));
+jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
 
 const roomManager = require('../managers/RoomManager');
 const MatchHandler = require('../socket/handlers/MatchHandler');
 const database = require('../db/database');
+const homeFeed = require('../socket/home-feed');
 
 let io;
 function makeSocket(userId, { isGuest = false, id = 'sock-' + userId, ip = '203.0.113.' + (userId.length) } = {}) {
@@ -156,6 +158,15 @@ describe('leaving the queue', () => {
     a.fire('match:leave');
     expect(MatchHandler._queue.size()).toBe(0);
     expect(a.last('match:status')).toEqual({ waiting: false });
+  });
+
+  it('join and leave tell the home feed the searching count moved (B225)', () => {
+    homeFeed.scheduleHomeUpdate.mockClear();
+    const a = makeSocket('m1');
+    join(a);
+    expect(homeFeed.scheduleHomeUpdate).toHaveBeenCalledTimes(1);
+    a.fire('match:leave');
+    expect(homeFeed.scheduleHomeUpdate).toHaveBeenCalledTimes(2);
   });
 
   it('disconnect of the queued tab removes it; disconnect of an older tab does not', () => {

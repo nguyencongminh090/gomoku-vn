@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=260';
+import { client, setHeroTournamentCount } from './lobby.js?v=357';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -103,6 +103,17 @@ client.on('tournament:error', (data) => {
 // ---------------------------------------------------------------------------
 client.emit('live_matches:subscribe');
 
+// B228: re-subscribe both lists after a reconnect (new server socket, no rooms). The disconnect gate
+// keeps the first connect from doubling the load-time emits.
+let tournamentsDropped = false;
+client.on('disconnect', () => { tournamentsDropped = true; });
+client.on('connect', () => {
+  if (!tournamentsDropped) return;
+  tournamentsDropped = false;
+  client.emit('tournament:subscribe');
+  client.emit('live_matches:subscribe');
+});
+
 client.on('live_matches:list', (data) => {
   renderLiveMatches(data.matches || []);
 });
@@ -132,7 +143,7 @@ function renderLiveMatchRow(match) {
   const p1 = match.player1 ? escapeHtml(match.player1.displayName) : '—';
   const p2 = match.player2 ? escapeHtml(match.player2.displayName) : '—';
   const gameIndexLabel = (match.series && match.series.seriesMode !== 'single')
-    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
+    ? `<span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-repeat"></use></svg>${t('live_matches.game_index', { n: match.series.gameIndex + 1 })}</span>`
     : '';
   return `
     <div class="live-match-row" data-live-match data-tournament-id="${escapeAttr(match.tournamentId)}" data-pairing-id="${escapeAttr(match.pairingId)}">
@@ -140,7 +151,7 @@ function renderLiveMatchRow(match) {
       <div class="live-match-row__players">${p1} <span class="live-match-row__vs">vs</span> ${p2}</div>
       <div class="live-match-row__meta">
         ${gameIndexLabel}
-        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
+        <span><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-eye"></use></svg>${t('live_matches.spectators', { n: match.spectatorCount })}</span>
       </div>
     </div>
   `;
@@ -276,11 +287,11 @@ function renderCard(tournament, index) {
   // apart from the rest of the meta line, so it keeps its own span.
   let statusLine;
   if (isOrganizer) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-crown-simple"></use></svg>${t('tournaments.status_organizer')}</span>`;
   } else if (isRegistered) {
-    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--registered"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-check-circle"></use></svg>${t('tournaments.status_registered')}</span>`;
   } else if (tournament.status === 'draft') {
-    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=260#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
+    statusLine = `<span class="tournament-card__status tournament-card__status--waiting"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=357#ph-regular-user-plus"></use></svg>${t('tournaments.status_open')}</span>`;
   } else {
     statusLine = '';
   }
@@ -293,6 +304,8 @@ function renderCard(tournament, index) {
       }
     } else if (isRegistered) {
       actionButtons += `<button class="btn-secondary" type="button" data-action="unregister" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_unregister')}</button>`;
+    } else if (tournament.registrationOpen === false) {
+      statusLine = `<span class="tournament-card__status">${t(tournament.maxPlayers && tournament.playerCount >= tournament.maxPlayers ? 'tournaments.status_full' : 'tournaments.status_reg_closed')}</span>`;
     } else {
       actionButtons += `<button class="btn btn-confirm" type="button" data-action="register" data-tournament-id="${escapeAttr(tournament.tournamentId)}">${t('tournaments.btn_register')}</button>`;
     }
@@ -307,14 +320,14 @@ function renderCard(tournament, index) {
 
   // One row, one meta line — the same shape the room list uses, so the two
   // tabs read as one screen. Every field the stacked card carried is still
-  // here, middot-joined instead of stacked (each segment escaped on its own).
+  // here, each as its own .rtag chip (ticket-rows rule: no joined `a · b · c`).
   const meta = [
     formatLabel(tournament.format),
     badge.label,
-    `${tournament.playerCount} ${t('tournaments.players_suffix')}`,
+    `${tournament.playerCount}${tournament.maxPlayers ? '/' + tournament.maxPlayers : ''} ${t('tournaments.players_suffix')}`,
     t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') }),
     tournament.clubName ? t('tournaments.club_suffix', { name: escapeHtml(tournament.clubName) }) : '',
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean).map((x) => `<span class="rtag">${x}</span>`).join('');
 
   return `
     <div class="tournament-card animate-fade-up" style="animation-delay: ${animDelay}s" data-tournament-id="${escapeAttr(tournament.tournamentId)}" data-open-detail="${escapeAttr(tournament.tournamentId)}" tabindex="0" role="link" aria-label="${escapeAttr(tournament.name)}">
@@ -322,7 +335,7 @@ function renderCard(tournament, index) {
         <span class="tournament-card__name">${escapeHtml(tournament.name)}</span>
         ${actions}
       </div>
-      <div class="tournament-card__meta">${meta}${statusLine ? ` · ${statusLine}` : ''}</div>
+      <div class="tournament-card__meta">${meta}${statusLine}</div>
     </div>
   `;
 }
@@ -390,7 +403,7 @@ function readTournamentRuleSet() {
   if (ruleSwap2) { ruleWall = false; rulePortal = false; }
   const hours = parseInt(document.getElementById('t-scheduling-hours').value, 10) || 48;
 
-  const seriesMode = (document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'single';
+  const seriesMode = (document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'fixedCount';
   let seriesGameCount = null;
   let seriesTargetScore = null;
   let seriesMargin = null;
@@ -405,6 +418,10 @@ function readTournamentRuleSet() {
     boardSize, winningRule, ruleWall, rulePortal, ruleSwap2,
     timerMode, timerSeconds, timerIncrementSeconds,
     schedulingWindowMs: hours * 60 * 60 * 1000,
+    startsAt: document.getElementById('t-starts-at').value || null,
+    endsAt: document.getElementById('t-ends-at').value || null,
+    maxPlayers: parseInt(document.getElementById('t-max-players').value, 10) || null,
+    registrationClosesAt: document.getElementById('t-reg-closes-at').value || null,
     seriesMode, seriesGameCount, seriesTargetScore, seriesMargin,
   };
 }
@@ -416,6 +433,14 @@ modalConfirm.addEventListener('click', () => {
   // Client-side validation (backend already falls back to 'single' safely on
   // bad input — this just stops the organizer from silently getting 'single'
   // when they meant to configure a series, per docs/todo/B53-*.md).
+  if (ruleSet.startsAt && ruleSet.endsAt && ruleSet.endsAt < ruleSet.startsAt) {
+    alert(t('tournaments.period_validation'));
+    return;
+  }
+  if (ruleSet.maxPlayers !== null && !(ruleSet.maxPlayers >= 2 && ruleSet.maxPlayers <= 512)) {
+    alert(t('tournaments.max_players_validation'));
+    return;
+  }
   if (ruleSet.seriesMode === 'fixedCount'
       && !(Number.isInteger(ruleSet.seriesGameCount) && ruleSet.seriesGameCount >= 2)) {
     alert(t('tournaments.series_validation_count'));

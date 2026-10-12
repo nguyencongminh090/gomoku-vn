@@ -1,5 +1,5 @@
 # B215 — Settings: sticky save bar hidden under the mobile tab bar
-**Status:** OPEN — fixed 2026-10-10 on `fix/settings-save-bar-under-tabbar` (`?v=260`), awaiting review/merge
+**Status:** ✅ CLOSED 2026-10-12 — closed by user request without review/merge; state at close: fixed 2026-10-10 on `fix/settings-save-bar-under-tabbar` (`?v=260`), awaiting review/merge
 **Area:** client/css/platform.css (`.pset__save`), client/css/platform-shell.css (`.ptabbar`)
 **From:** report 2026-10-10 (Settings → Hồ sơ review), measured on a seeded copy   **Depends:** —
 

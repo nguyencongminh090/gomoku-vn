@@ -122,23 +122,43 @@ body.zen-lobby .link-action:hover { background: var(--c-border); color: var(--c-
 body.zen-lobby .link-action--primary { background: var(--c-brand); color: var(--c-on-brand); }
 body.zen-lobby .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); opacity: 1; }
 
-/* Rows: tighter, with a hover wash. */
-body.zen-lobby .room-row { padding: 14px 8px; border-radius: var(--radius); }
+/* Rows (Arena .row): flat on the page, hairline between, text action. */
+body.zen-lobby .room-row { padding: 14px 0; border-radius: 0; }   /* flush with the tabs on the left and the toolbar buttons on the right */
 body.zen-lobby .room-row:hover { background: var(--c-hover); }
-body.zen-lobby .room-row__bullet--playing { background: var(--c-brand); }
-body.zen-lobby .room-row__action {
-  padding: 7px 14px;
-  border-radius: var(--radius);
-  background: var(--c-fill);
-  color: var(--c-ink);
-}
-body.zen-lobby .room-row__action:hover:not(:disabled) { background: var(--c-brand); color: var(--c-on-brand); }
-body.zen-lobby .room-row__action:disabled { color: var(--c-ink-3); }
+body.zen-lobby .room-row__bullet { background: var(--c-brand-text); }          /* open seat */
+body.zen-lobby .room-row__bullet--ready { background: transparent; border: 1.5px solid var(--c-brand-text); }
+body.zen-lobby .room-row__bullet--playing { background: var(--c-warning); border: 0; }
+/* The ticket is the control (no Vào/Quan sát button): whole row clickable, keyboard-focusable. */
+body.zen-lobby .room-row { cursor: pointer; }
+body.zen-lobby .room-row:focus-visible { outline: 2px solid var(--c-brand-text); outline-offset: -2px; }
+
+/* Ticket title = both players, avatar + name, on their own line above the tags. */
+body.zen-lobby .room-row__name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+body.zen-lobby .rplayer { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+body.zen-lobby .rplayer__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 14ch; }
+body.zen-lobby .rplayer--empty { display: inline-flex; align-items: center; gap: 8px; color: var(--c-ink-3); font-weight: 400; font-size: 13px; }
+body.zen-lobby .rvs { font-size: 11px; font-weight: 400; text-transform: uppercase; letter-spacing: .08em; color: var(--c-ink-3); }
+body.zen-lobby .pav--xs { width: 24px; height: 24px; font-size: 9px; }
+body.zen-lobby .rplayer--empty::before { content: ""; width: 24px; height: 24px; border-radius: 50%; box-sizing: border-box; border: 1px dashed var(--c-border); }
+
+/* Meta line = host as plain text + tag chips (B219 follow-up); wraps instead of truncating. */
+body.zen-lobby .room-row__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; white-space: normal; overflow: visible; }
+body.zen-lobby .room-row__host { margin-right: 4px; font-size: 12.5px; color: var(--c-ink-2); }
+body.zen-lobby .rtag { padding: 2px 8px; border-radius: var(--radius); background: var(--c-fill); color: var(--c-ink-2); font-size: 12px; line-height: 1.5; white-space: nowrap; font-variant-numeric: tabular-nums; }
+body.zen-lobby .rtag--rated { background: color-mix(in srgb, var(--c-brand) 18%, transparent); color: var(--c-brand-text); }
+body.zen-lobby .rtag--friendly { background: transparent; box-shadow: inset 0 0 0 1px var(--c-border); }
+
+/* Rooms screen (Arena): no card — tabs + actions bar, then the flat list. */
+body.zen-lobby #panel-tables { background: none; padding: 0; box-shadow: none; }
+body.zen-lobby .room-bar { margin-bottom: 8px; }
+body.zen-lobby .room-bar .lobby-bar__actions { flex-wrap: wrap; }
 
 @media (max-width: 860px) {
   body.zen-lobby .topnav { padding: 0 14px; }
   body.zen-lobby .lobby { padding: 16px 12px 80px; }
   body.zen-lobby .tab-panel { padding: 14px; }
+  body.zen-lobby #panel-tables { padding: 0; }
+  body.zen-lobby .room-row { padding: 12px 0; }
 }
 
 /* ── Shared components: Arena radius (pills → 5px) on every page ───────── */
@@ -167,23 +187,35 @@ body.zen-lobby .lobby-bar__actions .link-action { font-size: 13px; font-weight: 
 body.zen-lobby .lobby-bar__actions [hidden] { display: none; }
 
 /* ── "Chơi" dashboard (B195) — platform.css .psplit/.ppanel/.prow + these ── */
-body.zen-lobby .hrow { width: 100%; text-align: left; background: none; border-left: 0; border-right: 0; border-top: 0; font: inherit; color: inherit; cursor: pointer; }
+/* Ticket: raised surface, 4px-scale padding, 8px gap between tickets; title > meta > action hierarchy. */
+body.zen-lobby .prows, body.zen-lobby .hlives { gap: 8px; }
+body.zen-lobby .hrow { width: 100%; box-sizing: border-box; text-align: left; font: inherit; color: inherit; cursor: pointer; gap: 16px; padding: 12px 16px; border: 0; border-radius: var(--radius-lg); background: var(--c-surface-2); }
 body.zen-lobby .hrow:hover { background: var(--c-hover); }
-body.zen-lobby .hrow .prow__act { color: var(--c-ink-2); }
+body.zen-lobby .hrow .prow__t { font-weight: 600; line-height: 1.35; }
+body.zen-lobby .hrow__meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }
+body.zen-lobby .hrow .prow__act { padding: 4px 12px; border-radius: 999px; background: var(--c-surface); color: var(--c-ink-2); }
 body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
 body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
 body.zen-lobby .hbullet.on { background: var(--c-brand); }
-body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 4px; margin: 0; }
-body.zen-lobby .hlives { display: flex; flex-direction: column; gap: 16px; }
-body.zen-lobby .hlive { display: flex; align-items: center; gap: 14px; width: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
-body.zen-lobby .hlive:hover .hlive__t > span:first-child { text-decoration: underline; }
-body.zen-lobby .hlive__t { display: flex; flex-direction: column; gap: 2px; font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
-/* Mini board: the real board's paper surface (--board-* in main.css), not a new look. */
-body.zen-lobby .hmini { flex: none; width: 96px; height: 96px; border-radius: 4px; background: var(--board-bg); }
-body.zen-lobby .hmini line { stroke: rgba(var(--board-accent-rgb), .28); stroke-width: .6; }
-body.zen-lobby .hmini .sb { fill: #111; }
-body.zen-lobby .hmini .sw { fill: #fff; stroke: #111; stroke-width: .6; }
-body.zen-lobby .hmini .last { fill: var(--c-warning); }
+body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
+body.zen-lobby .hlives { display: flex; flex-direction: column; }
+body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wrap: wrap; padding: 4px 4px 8px; }
+body.zen-lobby .hstats[hidden] { display: none; }
+body.zen-lobby .hstat { display: flex; align-items: baseline; gap: 8px; }
+body.zen-lobby .hstat__n { font-size: 22px; font-variant-numeric: tabular-nums; }
+/* #224: admin news line (full width under the stats), forum "see all", About rules list. */
+body.zen-lobby .hnews { grid-column: 1 / -1; }
+body.zen-lobby .hnews[hidden] { display: none; }
+body.zen-lobby .hnews__line { display: flex; align-items: center; gap: 12px; margin: 0; min-height: 44px; padding: 10px 16px; border-radius: var(--radius-lg); background: var(--c-surface); box-shadow: var(--shadow-sm); color: var(--c-ink); text-decoration: none; font-size: 14px; }
+body.zen-lobby a.hnews__line:hover { background: var(--c-hover); }
+body.zen-lobby .hnews__tag { flex: none; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c-brand); }
+body.zen-lobby .hnews__body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+body.zen-lobby .hnews__go { flex: none; color: var(--c-ink-2); font-size: 18px; line-height: 1; }
+body.zen-lobby .hmore { margin-top: 8px; }
+body.zen-lobby .habout__lead { margin: 0 0 10px; }
+body.zen-lobby .habout { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13.5px; }
+body.zen-lobby .habout dt { font-weight: 600; }
+body.zen-lobby .habout dd { margin: 0; color: var(--c-ink-2); }
 /* Quick match panel (B197): chips lock while searching. */
 body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
 body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }

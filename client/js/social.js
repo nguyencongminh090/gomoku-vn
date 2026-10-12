@@ -1,7 +1,10 @@
 /**
  * social.js — Bạn bè & tin nhắn page (#198): challenges, friend requests, sent requests, friend list.
  * GET /api/challenges (polled 10 s) → accept goes straight to room.html?id=<roomId>.
+ * "Thách đấu bạn bè" button / #challenge deep link → ChallengeModal friend picker (#222).
  * Messages: /api/dm (conversation list + open thread polled every 5 s; #dm=<username> deep link).
+ * "Thêm bạn": GET /api/friends/search?q= (debounced, ≥ 2 chars) → rows with a send-request button.
+ * My code "name#1234" (GET /api/friends/code) shown above the box with a copy button; the box accepts a code too.
  * GET /api/friends → {friends, incoming, outgoing}; actions POST/DELETE /api/friends/:username.
  * All user text through textContent.
  */
@@ -54,7 +57,80 @@
     if (!people.length && emptyKey) box.appendChild(el('p', t(emptyKey), 'pnote'));
   }
 
-  const desc = (c) => t('rankings.cat_' + c.rule) + ' · ' + c.time + (c.rated ? ' · ' + t('challenge.rated') : '');
+  // ── Add friend by username / display name ──
+  const SEARCH_MIN = 2;
+  let searchTimer = null;
+  let searchSeq = 0;
+
+  function searchRow(p) {
+    const r = row(p, []);
+    const slot = (text) => { r.appendChild(el('span', text, 'prow__m')); };
+    if (p.status === 'friends') slot(t('social.add_friends'));
+    else if (p.status === 'outgoing') slot(t('social.add_sent'));
+    else if (p.status === 'incoming') {
+      const b = el('button', t('friends.accept'), 'pbtn pbtn--sm pbtn--primary');
+      b.type = 'button';
+      b.addEventListener('click', () => addAct('POST', '/api/friends/' + encodeURIComponent(p.username) + '/accept', b));
+      r.appendChild(b);
+    } else if (!p.canRequest) slot(t('social.add_closed'));
+    else {
+      const b = el('button', t('social.add_btn'), 'pbtn pbtn--sm pbtn--primary');
+      b.type = 'button';
+      b.addEventListener('click', () => addAct('POST', '/api/friends/' + encodeURIComponent(p.username), b));
+      r.appendChild(b);
+    }
+    return r;
+  }
+
+  async function addAct(method, path, btn) {
+    btn.disabled = true;
+    try {
+      const res = await fetch(path, { method, credentials: 'same-origin' });
+      if (!res.ok) {
+        let code = '';
+        try { code = (await res.json()).code || ''; } catch (_) { /* no body */ }
+        const key = 'social.add_err_' + code;
+        $('sc-status').textContent = t(code && t(key) !== key ? key : 'friends.error');
+        btn.disabled = false;
+        return;
+      }
+      $('sc-status').textContent = '';
+      await Promise.all([load(), runSearch()]);
+    } catch (_) {
+      btn.disabled = false;
+      $('sc-status').textContent = t('friends.error');
+    }
+  }
+
+  async function runSearch() {
+    const box = $('sc-add-results');
+    const q = $('sc-add-q').value.trim();
+    const seq = ++searchSeq;
+    if (q.length < SEARCH_MIN) { box.replaceChildren(); return; }
+    try {
+      const res = await fetch('/api/friends/search?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const d = await res.json();
+      if (seq !== searchSeq) return; // a newer query is already in flight
+      box.replaceChildren(...(d.results.length ? d.results.map(searchRow) : [el('p', t('social.add_none'), 'pnote')]));
+    } catch (_) {
+      if (seq === searchSeq) box.replaceChildren(el('p', t('social.error'), 'pnote'));
+    }
+  }
+
+  async function loadCode() {
+    try {
+      const res = await fetch('/api/friends/code', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const code = (await res.json()).code;
+      $('sc-code').textContent = code;
+      $('sc-code-copy').addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(code); $('sc-code-copy').textContent = t('social.copied'); } catch (_) { /* clipboard blocked: the code stays selectable */ }
+      });
+    } catch (_) { /* leave the placeholder */ }
+  }
+
+  const desc = (c) => window.ChallengeModal.util.describe(c); // #222: full settings + series + stake
 
   async function challengeAct(method, path, btn) {
     btn.disabled = true;
@@ -72,6 +148,7 @@
   function challengeRow(c, who, buttons) {
     const r = row(who, []);
     r.querySelector('.prow__body').appendChild(el('div', desc(c), 'prow__m'));
+    if (c.stake === 'swap') r.classList.add('pchal__stake'); // the challenged must see the stake before accepting
     for (const [key, method, suffix, cls] of buttons) {
       const b = el('button', t(key), 'pbtn pbtn--sm' + (cls ? ' ' + cls : ''));
       b.type = 'button';
@@ -241,7 +318,12 @@
     }
   }
 
+  function openChallenge() {
+    window.ChallengeModal.open({ onSent: loadChallenges });
+  }
+
   function openFromHash() {
+    if (location.hash === '#challenge') { history.replaceState(null, '', location.pathname); openChallenge(); return; }
     const m = /^#dm=(.+)$/.exec(location.hash);
     if (!m) return;
     openThread(decodeURIComponent(m[1]));
@@ -251,12 +333,16 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     $('dm-form').addEventListener('submit', sendDm);
+    $('sc-add').addEventListener('submit', (e) => { e.preventDefault(); clearTimeout(searchTimer); runSearch(); });
+    $('sc-add-q').addEventListener('input', () => { clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 300); });
+    $('sc-challenge-new').addEventListener('click', openChallenge);
     window.addEventListener('hashchange', openFromHash);
     loadConvs().then(openFromHash);
     setInterval(() => { if (!document.hidden) { loadConvs(); refreshThread(); } }, 5000);
     window.PlatformShell.build('social');
     window.PlatformShell.notifications.onChange(renderNotifs);
     load();
+    loadCode();
     setInterval(() => { if (!document.hidden) loadChallenges(); }, 10000);
   });
 })();

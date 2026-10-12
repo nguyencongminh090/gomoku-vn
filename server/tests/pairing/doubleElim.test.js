@@ -10,6 +10,7 @@ const {
   generateBracket,
   resolveBracket,
   needsBracketReset,
+  computeEliminationGroups,
 } = require('../../managers/tournament/pairing/doubleElim');
 
 describe('computeSeedOrder — standard bracket seeding', () => {
@@ -158,5 +159,74 @@ describe('generateBracket — edge/rare fields', () => {
     expect(bracket.size).toBe(2);
     expect(bracket.losers).toEqual([]);
     expect(bracket.grandFinal).toBeNull();
+  });
+});
+
+describe('computeEliminationGroups — placements below 2nd (#243)', () => {
+  // Chalk: the lower index (higher seed) always wins; the grand final is won by the winners finalist.
+  function playChalk(n) {
+    const players = Array.from({ length: n }, (_, i) => `p${i + 1}`);
+    const bracket = generateBracket(players);
+    const results = new Map();
+    for (;;) {
+      const resolved = resolveBracket(bracket, results);
+      const open = Object.entries(resolved).filter(([id, m]) => m.winner === undefined && m.player1 && m.player2 && !results.has(id));
+      if (open.length === 0) break;
+      for (const [id, m] of open) results.set(id, Number(m.player1.slice(1)) < Number(m.player2.slice(1)) ? m.player1 : m.player2);
+    }
+    return { players, groups: computeEliminationGroups(bracket, results) };
+  }
+
+  test.each([2, 3, 4, 5, 8])('%i players: every non-finalist appears in exactly one group', (n) => {
+    const { players, groups } = playChalk(n);
+    const placed = groups.flat();
+    expect(new Set(placed).size).toBe(placed.length);
+    // champion (p1) and the runner-up (losers-final winner) are not in any group
+    expect(placed).not.toContain('p1');
+    expect(placed.length).toBe(Math.max(n - 2, 0));
+    for (const id of placed) expect(players).toContain(id);
+  });
+
+  test('4 players: losers-final loser first, losers-round-1 loser next', () => {
+    const { groups } = playChalk(4);
+    expect(groups).toEqual([['p3'], ['p4']]);
+  });
+
+  test('8 players: later losers-bracket exit ranks better; same-round exits tie', () => {
+    const { groups } = playChalk(8);
+    expect(groups.map((g) => g.length)).toEqual([1, 1, 2, 2]);
+    expect(groups[0]).toEqual(['p3']);
+  });
+
+  test('pending matches contribute nothing', () => {
+    const bracket = generateBracket(['a', 'b', 'c', 'd']);
+    expect(computeEliminationGroups(bracket, new Map())).toEqual([]);
+  });
+});
+
+describe('generateBracket — losers drop-in crossing (#244)', () => {
+  const players = (n) => Array.from({ length: n }, (_, i) => `p${i + 1}`);
+
+  test('8 players: first drop round crosses W2 losers (L2M1 gets W2M2, L2M2 gets W2M1)', () => {
+    const { losers } = generateBracket(players(8));
+    expect(losers[1].map((m) => m.slotB.matchId)).toEqual(['W2M2', 'W2M1']);
+  });
+
+  test.each([8, 16, 32])('%i players: no first-drop-round match pairs an L1 survivor with a W2 loser from its own half', (n) => {
+    const { losers } = generateBracket(players(n));
+    losers[1].forEach((m, i) => {
+      // survivor L1M{i+1} descends from W1 pair i+1; W2M{k} descends from W1 pair k.
+      expect(m.slotA.matchId).toBe(`L1M${i + 1}`);
+      expect(m.slotB.matchId).not.toBe(`W2M${i + 1}`);
+    });
+  });
+
+  test('4 players (single drop match) and a mid-size field keep every winners-round loser mapped exactly once', () => {
+    for (const n of [4, 8, 16]) {
+      const { winners, losers } = generateBracket(players(n));
+      const dropped = losers.slice(1).flat().filter((m) => m.slotB.type === 'loser').map((m) => m.slotB.matchId);
+      const expected = winners.slice(1).flat().map((m) => m.id);
+      expect(dropped.sort()).toEqual(expected.sort());
+    }
   });
 });

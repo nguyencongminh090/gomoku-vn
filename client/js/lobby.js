@@ -102,7 +102,8 @@ client.bindStatusBanner(statusBanner);
 // ---------------------------------------------------------------------------
 // Subscribe to lobby updates
 // ---------------------------------------------------------------------------
-client.emit('lobby:subscribe');
+// B229: lobby:subscribe / unsubscribe (and the B228 reconnect re-subscribe) live in lobby-home.js —
+// the lobby room is joined only while the rooms screen is showing.
 
 // Local room map, keyed by roomId — the base that `lobby:patch` applies to.
 // A Map keeps insertion order and, importantly, keeps an updated entry in its
@@ -151,6 +152,7 @@ function renderHero() {
 
   heroTitle.textContent = t(tournaments ? 'lobby.title_tournaments' : 'lobby.title_rooms');
   if (!heroSub) return;
+  if (!tournaments) { heroSub.hidden = true; return; } // Arena rooms screen: title only, the list is the count
   heroSub.hidden = false;
   if (n === 0) {
     heroSub.textContent = t(tournaments ? 'lobby.hero_tournaments_empty' : 'lobby.hero_rooms_empty');
@@ -264,14 +266,28 @@ document.querySelectorAll('#room-tabs [data-room-tab]').forEach((btn) => {
   });
 });
 
-client.on('lobby:online_users', (users) => {
+// Apply a `lobby:online_patch` ({ joined, left }) to an online list (#230).
+// Idempotent: a `joined` entry already held is replaced, a `left` id never
+// held is ignored — a snapshot taken between flushes may already include it.
+function applyOnlineUsersPatch(users, patch) {
+  const byId = new Map(users.map((u) => [u.userId, u]));
+  for (const userId of (patch && patch.left) || []) byId.delete(userId);
+  for (const u of (patch && patch.joined) || []) byId.set(u.userId, u);
+  return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+function setOnlineUsers(users) {
   currentOnlineUsers = users;
   renderOnlineLine();
   // Feed the private-chat module (#159) — it owns the online-users modal and
   // per-window presence. Safe if it hasn't finished init yet: it also reads
   // GvnSession directly and this event re-fires on every presence change.
   if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users);
-});
+}
+
+// Full list once per lobby:subscribe (incl. after reconnect, #228), then deltas.
+client.on('lobby:online_users', (users) => setOnlineUsers(Array.isArray(users) ? users : []));
+client.on('lobby:online_patch', (patch) => setOnlineUsers(applyOnlineUsersPatch(currentOnlineUsers, patch)));
 
 client.on('room:error', (data) => {
   // `code` is language-neutral; `message` is Vietnamese-only fallback for
@@ -304,15 +320,13 @@ function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
   const animStyle = animate ? ` style="animation-delay: ${(delayIndex * 0.04).toFixed(2)}s"` : '';
 
   return `
-    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}"${animStyle}>
+    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}"
+         role="button" tabindex="0" aria-label="${escapeAttr(rowActionLabel(room))}"${animStyle}>
       <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
       <div class="room-row__body">
-        <div class="room-row__name">${escapeHtml(room.roomName || room.roomId)}</div>
+        <div class="room-row__name">${buildRoomPlayers(room)}</div>
         <div class="room-row__meta">${buildRoomMeta(room)}</div>
       </div>
-      <button class="room-row__action" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}" type="button">
-        ${t('lobby.btn_join')}
-      </button>
     </div>
   `;
 }
@@ -364,11 +378,33 @@ function updateRoomRowNode(node, room) {
   bullet.className = `room-row__bullet ${bulletClass}`;
   bullet.title = stateLabel;
 
-  node.querySelector('.room-row__name').textContent = room.roomName || room.roomId;
+  node.querySelector('.room-row__name').innerHTML = buildRoomPlayers(room);
   node.querySelector('.room-row__meta').innerHTML = buildRoomMeta(room);
+  node.setAttribute('aria-label', rowActionLabel(room));
+}
 
-  const action = node.querySelector('.room-row__action');
-  if (action) action.dataset.arg = room.roomId;
+// The whole ticket is the join/watch control (no button); keyboard users get Enter/Space.
+function rowActionLabel(room) {
+  return `${t(canWatch(room) ? 'lobby.btn_watch' : 'lobby.btn_join')}: ${room.roomName || room.roomId}`;
+}
+document.addEventListener('keydown', (e) => {
+  const row = e.target.closest && e.target.closest('.room-row[data-action]');
+  if (!row || e.target !== row || (e.key !== 'Enter' && e.key !== ' ')) return;
+  e.preventDefault();
+  window.joinRoom(row.dataset.arg);
+});
+
+// Ticket title: both seated players (avatar + name), "A vs B"; an empty seat reads as a muted placeholder.
+// A room nobody sits in yet falls back to its own name.
+function buildRoomPlayers(room) {
+  const seats = Array.isArray(room.players) ? room.players : [null, null];
+  if (!seats[0] && !seats[1]) return escapeHtml(room.roomName || room.roomId);
+  const seat = (p) => {
+    if (!p) return `<span class="rplayer rplayer--empty">${escapeHtml(t('lobby.seat_empty'))}</span>`;
+    const av = window.PlatformShell ? window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--xs').outerHTML : '';
+    return `<span class="rplayer">${av}<span class="rplayer__name">${escapeHtml(p.displayName)}</span></span>`;
+  };
+  return `${seat(seats[0])}<span class="rvs">vs</span>${seat(seats[1])}`;
 }
 
 // Apply a `lobby:patch` ({ upserts, removed }) to `roomMap` and the DOM
@@ -432,26 +468,42 @@ function getBulletClass(state, playerCount) {
   return 'room-row__bullet--waiting';
 }
 
-// The single meta line under the room name: middot-joined segments, escaped
-// individually so a room/host name can never inject markup through the join.
+// The meta line under the players: room name as plain text, everything else a tag chip (.rtag).
+// Every dynamic piece goes through escapeHtml, so a room/host name can never inject markup.
 function buildRoomMeta(room) {
-  const parts = [
-    escapeHtml(room.hostName),
-    `${room.playerCount}/2`,
-    buildRuleSummary(room),
-  ];
-  return parts.join(' · ');
+  const tag = (text, mod = '') => `<span class="rtag${mod ? ' rtag--' + mod : ''}">${escapeHtml(text)}</span>`;
+  const time = buildTimeSummary(room);
+  return [
+    `<span class="room-row__host">${escapeHtml(room.roomName || room.roomId)}</span>`,
+    ...buildRuleTags(room).map((x) => tag(x)),
+    time ? tag(time) : '',
+    room.ranked === false ? tag(t('room.mode_friendly'), 'friendly') : tag(t('room.mode_rated'), 'rated'),
+  ].join('');
 }
 
-// Lite: one plain-language summary instead of the jargon cluster
+// A seat to sit in = "Vào"; a running game or a full table = "Quan sát" (same predicate as the Quan sát tab).
+function canWatch(room) {
+  return room.state === 'playing' || room.playerCount >= 2;
+}
+
+// "5+3" (blitz: minutes + increment), "10'" (per game), "60s/nước" (per move); '' when the payload has no clock.
+function buildTimeSummary(room) {
+  const s = room.timerSeconds;
+  if (typeof s !== 'number') return '';
+  if (room.timerMode === 'blitz') return `${Math.round(s / 60)}+${room.timerIncrementSeconds || 0}`;
+  if (room.timerMode === 'per_game') return `${Math.round(s / 60)}'`;
+  return t('lobby.time_per_move', { s });
+}
+
+// Lite: one plain-language tag instead of the jargon cluster
 // (Wall / Portal / Swap2 / Caro).
 // Default: the full breakdown.
-function buildRuleSummary(room) {
+function buildRuleTags(room) {
   const size = `${room.boardSize}×${room.boardSize}`;
   if (uiMode() === 'lite') {
     const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
       || (room.winningRule || 'freestyle') !== 'freestyle';
-    return `${isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard')} · ${size}`;
+    return [isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard'), size];
   }
 
   const tags = [size];
@@ -462,7 +514,7 @@ function buildRuleSummary(room) {
   if (win === 'standard')  tags.push(t('rule.standard'));
   if (win === 'caro')      tags.push(t('rule.caro'));
   if (win === 'freestyle') tags.push(t('rule.freestyle'));
-  return tags.join(' · ');
+  return tags;
 }
 
 window.addEventListener('langchange', () => {
@@ -533,7 +585,7 @@ const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
 
 // The form's own hardcoded defaults, used when nothing has been remembered yet.
 const DEFAULT_ROOM_SETTINGS = {
-  boardSize: 17, winningRule: 'freestyle',
+  boardSize: 17, winningRule: 'freestyle', ranked: true,
   ruleWall: false, rulePortal: false, ruleSwap2: false,
   timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
 };
@@ -558,7 +610,8 @@ function readFormSettings() {
   let   ruleWall    = document.getElementById('rule-wall').checked;
   let   rulePortal  = document.getElementById('rule-portal').checked;
   if (ruleSwap2) { ruleWall = false; rulePortal = false; } // Swap2 plays on a plain board
-  return { boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
+  const ranked = (document.querySelector('input[name="roomMode"]:checked') || {}).value !== 'friendly';
+  return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
 function loadLastSettings() {
@@ -583,6 +636,7 @@ function applySettingsToForm(s) {
   const check = (sel) => { const el = document.querySelector(sel); if (el) el.checked = true; };
   check(`input[name="boardSize"][value="${s.boardSize}"]`);
   check(`input[name="winRule"][value="${s.winningRule}"]`);
+  check(`input[name="roomMode"][value="${s.ranked === false ? 'friendly' : 'rated'}"]`);
   check(`input[name="openRule"][value="${s.ruleSwap2 ? 'swap2' : 'none'}"]`);
   check(`input[name="timerMode"][value="${s.timerMode}"]`);
   const wall = document.getElementById('rule-wall');
