@@ -15,7 +15,7 @@
   const $ = (id) => document.getElementById(id);
   const RULES = ['freestyle', 'standard', 'caro'];
   const LEVELS = ['easy', 'medium', 'hard', 'expert'];
-  const TAGS = ['three', 'four_three', 'vcf', 'vct', 'defense', 'trap'];
+  const TAGS = ['attack', 'defense', 'trap', 'vct', 'vcf'];
   const SIZES = [15, 17, 19, 20];
   const MODES = ['sequence', 'final_move'];
   const MAX_TAGS = 3;

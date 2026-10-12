@@ -49,6 +49,12 @@ if (puzzleColumns.length > 0 && !puzzleColumns.includes('layout')) {
   logger.info('[DB] Migrated puzzles: added layout column (walls/portals)');
 }
 
+// Puzzle tags narrowed to attack/defense/trap/vct/vcf: old three/four_three become attack.
+if (puzzleColumns.length > 0) {
+  db.exec(`INSERT OR IGNORE INTO puzzle_tags (puzzle_id, tag) SELECT puzzle_id, 'attack' FROM puzzle_tags WHERE tag IN ('three','four_three');
+    DELETE FROM puzzle_tags WHERE tag IN ('three','four_three')`);
+}
+
 // B241: consecutive double-no-show count per pairing (replay cap).
 if (pairingColumns.length > 0 && !pairingColumns.includes('noshow_count')) {
   db.exec('ALTER TABLE tournament_pairings ADD COLUMN noshow_count INTEGER NOT NULL DEFAULT 0');
