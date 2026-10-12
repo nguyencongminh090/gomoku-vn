@@ -358,6 +358,26 @@ class TournamentManager extends EventEmitter {
   // ---------------------------------------------------------------------------
 
   /**
+   * Why a draft tournament can't take another entry right now, or null if it
+   * can (#246). Cap first, then the registration-close day / end day (UTC;
+   * the named day itself is still open). Nothing here starts or ends a
+   * tournament — dates only gate registration.
+   * @returns {{ error: string, code: string } | null}
+   */
+  _registrationBlock(tournament, nowMs = Date.now()) {
+    const rs = tournament.ruleSet || {};
+    if (rs.maxPlayers && tournament.entries.size >= rs.maxPlayers) {
+      return { error: 'Giải đấu đã đủ người chơi.', code: 'TOURNAMENT_FULL' };
+    }
+    const today = new Date(nowMs).toISOString().slice(0, 10);
+    const lastDay = [rs.registrationClosesAt, rs.endsAt].filter(Boolean).sort()[0];
+    if (lastDay && today > lastDay) {
+      return { error: 'Đã hết hạn đăng ký giải đấu này.', code: 'REGISTRATION_CLOSED' };
+    }
+    return null;
+  }
+
+  /**
    * Register a player (or the organizer themselves — not forbidden by the
    * user story) into a tournament. Only valid while status is 'draft'.
    *
@@ -380,6 +400,9 @@ class TournamentManager extends EventEmitter {
         return { error: 'Bạn đã đăng ký giải đấu này rồi.', code: 'ALREADY_REGISTERED' };
       }
     }
+
+    const blocked = this._registrationBlock(tournament);
+    if (blocked) return blocked;
 
     const entryId = uuidv4();
     const registeredAt = new Date().toISOString();
@@ -480,6 +503,12 @@ class TournamentManager extends EventEmitter {
 
     if (tournament.status !== 'draft') {
       return { error: 'Giải đấu đã bắt đầu hoặc đã kết thúc.', code: 'TOURNAMENT_ALREADY_STARTED' };
+    }
+
+    // startsAt (UTC day) gates Start; nothing starts or ends by itself (#246).
+    const startsAt = tournament.ruleSet?.startsAt;
+    if (startsAt && new Date().toISOString().slice(0, 10) < startsAt) {
+      return { error: `Chưa đến ngày bắt đầu giải đấu (${startsAt}).`, code: 'TOURNAMENT_NOT_YET' };
     }
 
     // Fewer than 2 entries can never produce a pairing, so the tournament would
@@ -1240,6 +1269,8 @@ class TournamentManager extends EventEmitter {
         organizerId: tournament.organizerId,
         organizerName: tournament.organizerName,
         playerCount: tournament.entries.size,
+        maxPlayers: tournament.ruleSet?.maxPlayers ?? null,
+        registrationOpen: tournament.status === 'draft' && !this._registrationBlock(tournament),
         status: tournament.status,
         // Club-hosted (#200): lets the lobby's "Của CLB" tab filter by the viewer's clubs (B210).
         clubSlug: club ? club.slug : null,
@@ -1397,6 +1428,14 @@ class TournamentManager extends EventEmitter {
       && !Number.isNaN(Date.parse(v)) && new Date(v).toISOString().slice(0, 10) === v;
     r.startsAt = isDay(ruleSet.startsAt) ? ruleSet.startsAt : null;
     r.endsAt = isDay(ruleSet.endsAt) && (!r.startsAt || ruleSet.endsAt >= r.startsAt) ? ruleSet.endsAt : null;
+
+    // Registration limits (#246): both optional, dropped to null when malformed
+    // (like the period above). maxPlayers caps entries; registrationClosesAt is
+    // the last day (UTC) on which registering is still allowed.
+    r.maxPlayers = Number.isInteger(ruleSet.maxPlayers) && ruleSet.maxPlayers >= 2 && ruleSet.maxPlayers <= 512
+      ? ruleSet.maxPlayers
+      : null;
+    r.registrationClosesAt = isDay(ruleSet.registrationClosesAt) ? ruleSet.registrationClosesAt : null;
 
     // Only one tiebreak method is implemented (decision 9) — validated
     // against a single-value allowlist so an invalid override can't silently
