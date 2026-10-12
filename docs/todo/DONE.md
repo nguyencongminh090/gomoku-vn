@@ -2,6 +2,8 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+- ✅ **#235.** Club upgrade bundle (identity, announcement, invites, notifications, weekly board, challenge, history) `[Model: Sonnet 5]` — [detail](docs/todo/B235-club-upgrade-bundle.md)
+- ✅ **#234.** Club pages: ticket rows (padding, meta spans) `[Model: Sonnet 5]` — [detail](docs/todo/B234-club-pages-ticket-rows.md)
 - ✅ **#233.** Friends page discoverability (menu entry done; mobile tab + lobby hint deferred) `[Model: Sonnet 5]` — [detail](docs/todo/B233-friends-page-discoverability.md)
 - ✅ **#232.** Shareable Discord-style friend code (`name#tag`) `[Model: Opus 5]` — [detail](docs/todo/B232-shareable-friend-code-discord-style.md)
 - ✅ **#231.** Add friend by username / display name (search box on Bạn bè page) `[Model: Sonnet 5]` — [detail](docs/todo/B231-friend-search-by-username-name.md)

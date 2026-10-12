@@ -115,7 +115,8 @@ describe('club page', () => {
       expect(ov.querySelectorAll('#cb-ov-body tr')).toHaveLength(2);
       expect(ov.querySelector('aside #cb-events')).not.toBeNull();
       expect(ov.querySelector('aside #cb-staff')).not.toBeNull();
-      expect(document.getElementById('cb-ov-title').textContent).toBe('clubs.board · rankings.cat_freestyle');
+      expect(document.getElementById('cb-ov-title').textContent).toBe('clubs.boardrankings.cat_freestyle');
+      expect(document.querySelector('#cb-ov-title .pbadge').textContent).toBe('rankings.cat_freestyle');
       expect(ov.querySelectorAll('tbody button')).toHaveLength(0);
     });
 
@@ -315,8 +316,12 @@ describe('club page', () => {
       expect(rows[0].querySelector('.prow__t').textContent).toBe('<b>Cup</b>');
       expect(rows[0].querySelector('b')).toBeNull();
       expect(rows[0].getAttribute('href')).toBe('/tournament.html?id=t%3C1%3E');
-      expect(rows[0].querySelector('.prow__m').textContent).toContain('clubs.tstatus_draft');
-      expect(rows[0].querySelector('.prow__m').textContent).toContain('3 clubs.tplayers');
+      // ticket-rows.md: one span per fact, never a joined "a · b · c" string
+      const seg = [...rows[0].querySelectorAll('.prow__meta > span')].map((x) => x.textContent);
+      expect(seg).toHaveLength(3);
+      expect(seg.slice(0, 2)).toEqual(['clubs.tstatus_draft', '3 clubs.tplayers']);
+      expect(rows[0].textContent).not.toContain('·');
+      expect(document.getElementById('cb-tournaments').classList.contains('prows--tickets')).toBe(true);
     });
 
     it('create button is staff-only and hands the club slug over via sessionStorage', async () => {
@@ -331,5 +336,102 @@ describe('club page', () => {
       quiet.mockRestore();
       expect(sessionStorage.getItem('gvn_club_tournament')).toBe('caro');
     });
+  });
+});
+
+describe('club upgrade (#235)', () => {
+  const FULL = {
+    ...CLUB, color: 'red', tag: 'HN', announcement: 'Họp tối nay', invited: false, myRole: 'owner',
+    leaderboard: [
+      { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30, mine: true },
+      { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0, mine: false },
+    ],
+    weekly: [{ rank: 1, username: 'mem', displayName: 'Mem', avatarUrl: null, wins: 4, played: 6 }],
+    invites: [{ username: 'zed', displayName: 'Zed' }],
+    history: [{ id: 2, type: 'role', detail: 'officer', at: '2026-10-12T10:00:00.000Z', actor: { username: 'own', displayName: 'Own' }, target: { username: 'mem', displayName: 'Mem' } }],
+    pending: [],
+  };
+  beforeEach(() => { location.hash = ''; sessionStorage.clear(); });
+  const posts = () => global.fetch.mock.calls.filter(([, o]) => o && o.method);
+
+  it('avatar shows the tag on the chosen colour; list rows too', async () => {
+    await bootClub(FULL);
+    const av = document.getElementById('cb-avatar');
+    expect(av.textContent).toBe('HN');
+    expect(av.classList.contains('pav--c-red')).toBe(true);
+  });
+
+  it('announcement panel only when set; invited visitor sees "accept invite"', async () => {
+    await bootClub(FULL);
+    expect(document.getElementById('cb-announce').hidden).toBe(false);
+    expect(document.getElementById('cb-announce-text').textContent).toBe('Họp tối nay');
+    await bootClub({ ...FULL, announcement: '', myRole: null, invited: true });
+    expect(document.getElementById('cb-announce').hidden).toBe(true);
+    expect(document.getElementById('cb-join').textContent).toBe('clubs.accept_invite');
+  });
+
+  it('staff saves announcement/tag/colour with the form; colour swatches are a radiogroup', async () => {
+    await bootClub(FULL);
+    expect(document.getElementById('cb-announce-input').value).toBe('Họp tối nay');
+    expect(document.getElementById('cb-tag-input').value).toBe('HN');
+    const sw = [...document.querySelectorAll('#cb-colors [role=radio]')];
+    expect(sw).toHaveLength(8);
+    expect(sw.filter((b) => b.getAttribute('aria-checked') === 'true')).toHaveLength(1);
+    sw[4].click(); // purple
+    document.getElementById('cb-tag-input').value = 'ab';
+    document.getElementById('cb-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await flush();
+    const put = posts().find(([, o]) => o.method === 'PUT');
+    expect(JSON.parse(put[1].body)).toMatchObject({ color: 'purple', tag: 'ab', announcement: 'Họp tối nay' });
+  });
+
+  it('invite form posts to /invites/<username>; pending invites list has a revoke button', async () => {
+    await bootClub(FULL);
+    expect(document.querySelectorAll('#cb-invites .prow')).toHaveLength(1);
+    document.getElementById('cb-invite-name').value = 'new guy';
+    document.getElementById('cb-invite-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await flush();
+    expect(posts().some(([u, o]) => o.method === 'POST' && u.endsWith('/invites/new%20guy'))).toBe(true);
+    document.querySelector('#cb-invites button').click();
+    await flush();
+    expect(posts().some(([u, o]) => o.method === 'DELETE' && u.endsWith('/invites/zed'))).toBe(true);
+  });
+
+  it('history rows render as tickets: translated title + one meta span', async () => {
+    await bootClub(FULL);
+    const row = document.querySelector('#cb-history .prow');
+    expect(row.querySelector('.prow__t').textContent).toContain('clubs.log_role');
+    expect(row.querySelectorAll('.prow__meta > span')).toHaveLength(1);
+  });
+
+  it('weekly chip swaps the table: wins/played columns, rating table hidden; empty → note', async () => {
+    await bootClub(FULL);
+    const chips = document.querySelectorAll('#cb-tabs .pchip');
+    expect(chips).toHaveLength(4);
+    chips[3].click();
+    expect(document.getElementById('cb-board-wrap').hidden).toBe(true);
+    expect(document.getElementById('cb-weekly-wrap').hidden).toBe(false);
+    expect([...document.querySelectorAll('#cb-weekly-body td')].map((x) => (x.querySelector('a') || x).textContent)).toEqual(['1', 'Mem', '4', '6']);
+    expect(chips[3].getAttribute('aria-selected')).toBe('true');
+    await bootClub({ ...FULL, weekly: [] });
+    document.querySelectorAll('#cb-tabs .pchip')[3].click();
+    expect(document.getElementById('cb-weekly-empty').hidden).toBe(false);
+    expect(document.getElementById('cb-weekly-wrap').hidden).toBe(true);
+  });
+
+  it('members get a Challenge button on other members only; visitors none; click opens ChallengeModal', async () => {
+    const open = jest.fn();
+    window.ChallengeModal = { open };
+    await bootClub(FULL);
+    const rows = document.querySelectorAll('#cb-members-body tr');
+    const label = (tr) => [...tr.querySelectorAll('button')].map((b) => b.textContent);
+    expect(label(rows[0])).not.toContain('clubs.challenge');
+    expect(label(rows[1])).toContain('clubs.challenge');
+    [...rows[1].querySelectorAll('button')].find((b) => b.textContent === 'clubs.challenge').click();
+    expect(open).toHaveBeenCalledWith({ to: { username: 'mem', displayName: 'Mem', avatarUrl: undefined } });
+    await bootClub({ ...FULL, myRole: null });
+    expect(document.getElementById('cb-actions-th').hidden).toBe(true);
+    expect(document.querySelectorAll('#cb-members-body button')).toHaveLength(0);
+    delete window.ChallengeModal;
   });
 });

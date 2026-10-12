@@ -278,7 +278,10 @@ CREATE TABLE IF NOT EXISTS clubs (
   description  TEXT NOT NULL DEFAULT '',
   join_policy  TEXT NOT NULL DEFAULT 'open',     -- 'open' | 'invite'
   owner_id     TEXT NOT NULL REFERENCES users(id),
-  created_at   TEXT NOT NULL
+  created_at   TEXT NOT NULL,
+  color        TEXT NOT NULL DEFAULT 'blue',     -- preset key (ClubService.COLORS)  (#235)
+  tag          TEXT NOT NULL DEFAULT '',         -- 2-4 char badge shown in the avatar (#235)
+  announcement TEXT NOT NULL DEFAULT ''          -- staff-pinned note on the overview tab (#235)
 );
 
 CREATE TABLE IF NOT EXISTS club_members (
@@ -317,6 +320,29 @@ CREATE TABLE IF NOT EXISTS club_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_club_messages_club ON club_messages(club_id, id);
+
+-- Staff invitations (#235): an invited user joins an 'invite' club without approval.
+-- Separate from club_members so 'role != pending' member counting never sees them.
+CREATE TABLE IF NOT EXISTS club_invites (
+  club_id     TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  invited_by  TEXT NOT NULL REFERENCES users(id),
+  created_at  TEXT NOT NULL,
+  PRIMARY KEY (club_id, user_id)
+);
+
+-- Membership history (#235). type: join | leave | kick | reject | approve | invite | role.
+CREATE TABLE IF NOT EXISTS club_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  club_id     TEXT NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
+  type        TEXT NOT NULL,
+  actor_id    TEXT REFERENCES users(id),
+  target_id   TEXT REFERENCES users(id),
+  detail      TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_club_log_club ON club_log(club_id, id);
 
 -- Friends (TODO.md #198). One row per pair, canonical order user_a < user_b.
 -- status 'pending' = requested_by asked the other; 'accepted' = mutual friends.

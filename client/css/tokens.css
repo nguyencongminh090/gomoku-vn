@@ -293,3 +293,16 @@
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
+
+/* Club avatar fills (#235): skin-independent, each ≥ 4.5:1 under --club-ink. Separate block so the per-skin token-set test ignores it. */
+:root {
+  --club-blue: #1d4ed8;
+  --club-green: #15803d;
+  --club-red: #b91c1c;
+  --club-orange: #c2410c;
+  --club-purple: #7e22ce;
+  --club-teal: #0f766e;
+  --club-pink: #be185d;
+  --club-gray: #475569;
+  --club-ink: #ffffff;
+}

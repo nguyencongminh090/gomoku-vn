@@ -236,3 +236,4 @@
 | 2026-10-12 04:22 | #230: lobby online list = snapshot on subscribe + `lobby:online_patch` {joined,left} deltas; churn flush 2.79 MB→37 KB @200; server+jsdom tests, browser pass. | [detail](docs/fix-log/2026-10-12-b230-online-users-delta.md) |
 | 2026-10-12 05:45 | untracked: Jest/scripts never exited — hourly WAL `setInterval` in db/database.js not `unref()`ed; unref + regression test; plain `npx jest` exits in 12 s. | [detail](docs/fix-log/2026-10-12-jest-hang-wal-timer.md) |
 | 2026-10-12 06:30 | #231/#232: add-friend input shrunk to 180 px — `.psearch` class clashed with the rankings search; renamed `.padd` + jest guard. | [detail](docs/fix-log/2026-10-12-friend-add-box-css-clash.md) |
+| - | #234: club/clubs rows had 4px padding + "a · b · c" meta strings; PlatformShell.meta spans + .prows--tickets opt-in CSS, jsdom guards. | [detail](docs/fix-log/2026-10-12-club-ticket-rows.md) |

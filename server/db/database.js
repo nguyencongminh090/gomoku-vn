@@ -66,6 +66,15 @@ if (tournamentColumns.length > 0 && !tournamentColumns.includes('club_id')) {
   logger.info('[DB] Migrated tournaments: added club_id column (TODO.md #200)');
 }
 
+// Club identity + pinned announcement (TODO.md #235): additive columns on pre-existing clubs tables.
+const clubColumns = db.prepare('PRAGMA table_info(clubs)').all().map((c) => c.name);
+if (clubColumns.length > 0 && !clubColumns.includes('color')) {
+  db.exec("ALTER TABLE clubs ADD COLUMN color TEXT NOT NULL DEFAULT 'blue'");
+  db.exec("ALTER TABLE clubs ADD COLUMN tag TEXT NOT NULL DEFAULT ''");
+  db.exec("ALTER TABLE clubs ADD COLUMN announcement TEXT NOT NULL DEFAULT ''");
+  logger.info('[DB] Migrated clubs: added color/tag/announcement columns (TODO.md #235)');
+}
+
 // Same additive-migration need as above, for oauth_provider/oauth_id
 // (TODO.md #91) — a db file created before Google login is missing these
 // two columns.

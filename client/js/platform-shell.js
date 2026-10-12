@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=324'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=326'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -109,7 +109,11 @@
   /** The notifications page (social.js) shows the same list the bell holds — one fetch, one poll. */
   const notifications = {
     onChange(fn) { notifListeners.push(fn); fn(bell.items, bell.unread); },
-    text: (n) => t('notif.' + n.type, { name: n.payload && n.payload.from ? n.payload.from.displayName : '' }),
+    text: (n) => {
+      const vars = { name: n.payload && n.payload.from ? n.payload.from.displayName : '' };
+      if (n.payload && n.payload.club) vars.club = n.payload.club.name;
+      return t('notif.' + n.type, vars);
+    },
     target: (n) => notifTarget(n),
     markRead: (id) => markRead(id),
   };
@@ -118,6 +122,7 @@
     const from = n.payload && n.payload.from;
     if (n.type === 'friend_accepted' && from) return '/u/' + encodeURIComponent(from.username);
     if (n.type === 'challenge_accepted' && n.payload && n.payload.roomId) return '/room.html?id=' + encodeURIComponent(n.payload.roomId);
+    if (n.type.startsWith('club_') && n.payload && n.payload.club) return '/c/' + encodeURIComponent(n.payload.club.slug) + (n.type === 'club_request' ? '#tab=manage' : '');
     if (n.type === 'dm' && from) return '/social.html#dm=' + encodeURIComponent(from.username);
     return '/social.html';
   }
@@ -353,12 +358,19 @@
   }
 
   /** Avatar circle: image if the member has one, else initials. cls e.g. 'pav--xl pav--sq'. */
-  function avatar(url, name, cls) {
-    const a = el('span', url ? '' : initials(name), 'pav' + (cls ? ' ' + cls : ''));
+  function avatar(url, name, cls, ident) {
+    const a = el('span', url ? '' : (ident && ident.tag) || initials(name), 'pav' + (cls ? ' ' + cls : '') + (!url && ident && ident.color ? ' pav--c-' + ident.color : ''));
     if (url) a.style.backgroundImage = 'url("' + url + '")';
     a.setAttribute('aria-hidden', 'true');
     return a;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, icon, pushNotification, setMyAvatar, notifications };
+  /** Ticket meta line (ticket-rows.md): one <span> per fact, spaced by CSS gap — never a joined "a · b" string. */
+  function meta(parts) {
+    const box = el("div", undefined, "prow__m prow__meta");
+    for (const p of [].concat(parts)) if (p) box.appendChild(el("span", p));
+    return box;
+  }
+
+  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications };
 })();
