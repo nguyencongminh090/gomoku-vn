@@ -1164,7 +1164,9 @@ class TournamentManager extends EventEmitter {
       const entries = Array.from(tournament.entries.values()).map((e) => ({ id: e.entryId }));
       const standings = standingsModule.computeStandings(entries, tournament.completedPairings);
       const tiebreaks = standingsModule.computeTiebreaks(standings, tournament.completedPairings);
-      const ranked = standingsModule.rankStandings(tiebreaks);
+      const ranked = tournament.format === 'round_robin'
+        ? standingsModule.rankRoundRobinStandings(tiebreaks, tournament.completedPairings)
+        : standingsModule.rankStandings(tiebreaks);
       for (const row of ranked) {
         const entry = tournament.entries.get(row.id);
         if (entry) {

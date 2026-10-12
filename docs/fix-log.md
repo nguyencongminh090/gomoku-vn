@@ -245,3 +245,4 @@
 | 2026-10-12 12:00 | #243: double-elim ranks 3rd and below by losers-bracket exit round | [detail](docs/fix-log/2026-10-12-de-final-ranks-3rd-and-below.md) |
 | 2026-10-12 12:00 | #244: double-elim losers drop-in crossed on even winners rounds (no early rematch) | [detail](docs/fix-log/2026-10-12-de-losers-dropin-crossing.md) |
 | 2026-10-12 12:00 | #242: tournament seeds assigned + persisted at start; hydrate orders by seed | [detail](docs/fix-log/2026-10-12-tournament-persist-seeds.md) |
+| 2026-10-12 12:00 | #245: round-robin final ranks use head-to-head, then wins, then Sonneborn-Berger | [detail](docs/fix-log/2026-10-12-rr-tiebreak-head-to-head.md) |

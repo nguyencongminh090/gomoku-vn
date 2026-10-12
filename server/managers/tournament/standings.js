@@ -109,4 +109,53 @@ function rankStandings(tiebreakRows) {
   return ranked;
 }
 
-module.exports = { computeStandings, computeTiebreaks, rankStandings };
+/**
+ * Round-robin ranking (#245). Every player meets the same opponents, so
+ * Buchholz is identical for everyone and useless. Order instead: score, then
+ * head-to-head points inside the group tied on score (mini-league), then
+ * real wins (byes excluded), then Sonneborn-Berger. Still-equal rows share a
+ * rank (a 3-way cycle stays a tie).
+ *
+ * @param {{id: string, score: number, sonnebornBerger: number}[]} tiebreakRows — computeTiebreaks output
+ * @param {{player1: string, player2: string|null, winner?: string|'draw'}[]} completedPairings
+ * @returns {({id: string, score: number, buchholz?: number, sonnebornBerger: number, headToHead: number, wins: number, rank: number})[]}
+ */
+function rankRoundRobinStandings(tiebreakRows, completedPairings) {
+  const wins = new Map(tiebreakRows.map((r) => [r.id, 0]));
+  const points = new Map(tiebreakRows.map((r) => [r.id, new Map()])); // id -> oppId -> 1 | 0.5 | 0
+  for (const p of completedPairings) {
+    if (p.player2 == null) continue;
+    if (!points.has(p.player1) || !points.has(p.player2)) continue;
+    if (p.winner === 'draw') {
+      points.get(p.player1).set(p.player2, 0.5);
+      points.get(p.player2).set(p.player1, 0.5);
+    } else if (p.winner === p.player1 || p.winner === p.player2) {
+      const loser = p.winner === p.player1 ? p.player2 : p.player1;
+      wins.set(p.winner, wins.get(p.winner) + 1);
+      points.get(p.winner).set(loser, 1);
+      points.get(loser).set(p.winner, 0);
+    }
+  }
+
+  const idsByScore = new Map();
+  for (const r of tiebreakRows) {
+    if (!idsByScore.has(r.score)) idsByScore.set(r.score, new Set());
+    idsByScore.get(r.score).add(r.id);
+  }
+  const rows = tiebreakRows.map((r) => {
+    const group = idsByScore.get(r.score);
+    let headToHead = 0;
+    for (const [oppId, pts] of points.get(r.id)) if (group.has(oppId)) headToHead += pts;
+    return { ...r, headToHead, wins: wins.get(r.id) };
+  });
+
+  const cmp = (a, b) => b.score - a.score || b.headToHead - a.headToHead || b.wins - a.wins || b.sonnebornBerger - a.sonnebornBerger;
+  rows.sort(cmp);
+  let rank = 1;
+  return rows.map((row, i) => {
+    if (i > 0 && cmp(rows[i - 1], row) !== 0) rank = i + 1;
+    return { ...row, rank };
+  });
+}
+
+module.exports = { computeStandings, computeTiebreaks, rankStandings, rankRoundRobinStandings };
