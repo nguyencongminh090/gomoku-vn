@@ -1,5 +1,5 @@
 # B241 — Drop/forfeit player + cap on void/replay loops (size L)
-**Status:** ✅ DONE 2026-10-12 (backend x3 formats, jsdom, real-browser pass on Swiss)
+**Status:** ✅ DONE 2026-10-12 (backend x3 formats, jsdom, real-browser pass on Swiss). UI follow-up: header actions → single "Quản lý" menu (1a448ec, ?v=338; real-browser + emulated Android/iOS touch).
 **Area:** TournamentManager, PairingLifecycle, standings, doubleElim, TournamentHandler, client tournament-detail
 **From:** tournament backend review, 2026-10-12 (user: "Open Task (gather all in once)")   **Depends:** —
 
