@@ -511,3 +511,10 @@ describe('club colour swatches are painted (fix: Manage "Màu" swatches were gre
     expect(css).toMatch(/\.pswatch \{[^}]*forced-color-adjust: none/);
   });
 });
+
+describe('club banner is taller on phones (fix: 6:1 banner was ~60px at 360px wide)', () => {
+  it('platform.css switches .cb-banner to 3:1 at <=600px', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 600px\) \{ \.cb-banner \{ aspect-ratio: 3 \/ 1; \}/);
+  });
+});
