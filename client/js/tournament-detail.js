@@ -223,6 +223,14 @@ function statusBadgeInfo(status) {
 
 // ── Header ───────────────────────────────────────────────────────────────
 
+function closeManageMenu() {
+  const m = document.getElementById('manage-menu');
+  if (m && !m.hidden) { m.hidden = true; document.getElementById('btn-manage')?.setAttribute('aria-expanded', 'false'); }
+}
+// pointerdown, not click: iOS WebKit never fires click on non-interactive elements, so a tap on blank page would leave the menu open.
+document.addEventListener('pointerdown', (ev) => { if (!ev.target.closest('#manage-menu, #btn-manage')) closeManageMenu(); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeManageMenu(); });
+
 function renderHeader() {
   detailNameEl.textContent = tournament.name;
   const badge = statusBadgeInfo(tournament.status);
@@ -233,13 +241,13 @@ function renderHeader() {
     const displayRound = tournament.format === 'round_robin'
       ? (tournament.currentRoundIndex || 0) + 1
       : (tournament.currentRoundIndex || 1);
-    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
+    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
   }
   detailMetaEl.innerHTML = `
     <span class="badge badge--format">${formatLabel(tournament.format)}</span>
     <span class="badge ${badge.cls}">${badge.label}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
     ${roundMeta}
   `;
 
@@ -247,31 +255,38 @@ function renderHeader() {
   const canWithdraw = tournament.status === 'active' && me && !me.withdrawn;
   const droppable = tournament.status === 'active' && isOrganizer()
     ? tournament.entries.filter((e) => !e.withdrawn) : [];
-  const withdrawHtml = (canWithdraw ? `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-withdraw">${t('tdetail.btn_withdraw')}</button>` : '')
-    + (droppable.length ? `<div class="drop-group"><select id="drop-player-select" class="drop-group__select" aria-label="${t('tdetail.btn_drop_player')}">${droppable.map((e) => `<option value="${escapeAttr(e.entryId)}">${escapeHtml(e.displayName)}</option>`).join('')}</select><button class="btn-secondary btn-secondary--danger drop-group__btn" type="button" id="btn-drop-player">${t('tdetail.btn_drop_player')}</button></div>` : '');
-
-  if (isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active')) {
-    detailCancelSlot.innerHTML = withdrawHtml + `<button class="btn-secondary btn-secondary--danger" type="button" id="btn-cancel-tournament">${t('tdetail.btn_cancel_tournament')}</button>`;
-    document.getElementById('btn-cancel-tournament').addEventListener('click', () => {
-      document.getElementById('cancel-tournament-reason-input').value = '';
-      document.getElementById('modal-cancel-tournament').classList.add('visible');
-    });
-  } else {
-    detailCancelSlot.innerHTML = withdrawHtml;
-  }
-  const withdrawBtn = document.getElementById('btn-withdraw');
-  if (withdrawBtn) withdrawBtn.addEventListener('click', () => {
+  const canCancel = isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active');
+  const item = (id, ico, key) => `<button class="manage-menu__item" type="button" role="menuitem" id="${id}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-${ico}"></use></svg>${t(key)}</button>`;
+  const menuItems = (canWithdraw ? item('btn-withdraw', 'sign-out', 'tdetail.btn_withdraw') : '')
+    + (droppable.length ? item('btn-drop-player', 'user-minus', 'tdetail.btn_drop_player') : '')
+    + (canCancel ? item('btn-cancel-tournament', 'warning', 'tdetail.btn_cancel_tournament') : '');
+  detailCancelSlot.innerHTML = menuItems
+    ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
+    : '';
+  const manageBtn = document.getElementById('btn-manage');
+  const menuEl = document.getElementById('manage-menu');
+  const setMenu = (open) => { menuEl.hidden = !open; manageBtn.setAttribute('aria-expanded', String(open)); };
+  if (manageBtn) manageBtn.addEventListener('click', () => { setMenu(menuEl.hidden); });
+  const onItem = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', () => { setMenu(false); fn(); }); };
+  onItem('btn-cancel-tournament', () => {
+    document.getElementById('cancel-tournament-reason-input').value = '';
+    document.getElementById('modal-cancel-tournament').classList.add('visible');
+  });
+  onItem('btn-withdraw', () => {
     if (confirm(t('tdetail.confirm_withdraw'))) client.emit('tournament:withdraw', { tournamentId });
   });
   const dropBtn = document.getElementById('btn-drop-player');
   if (dropBtn) dropBtn.addEventListener('click', () => {
-    const sel = document.getElementById('drop-player-select');
-    if (sel.value && confirm(t('tdetail.confirm_drop_player'))) client.emit('tournament:withdraw', { tournamentId, entryId: sel.value });
+    menuEl.innerHTML = `<div class="manage-menu__title">${t('tdetail.btn_drop_player')}</div>` + droppable.map((e) => `<button class="manage-menu__item" type="button" role="menuitem" data-drop-entry="${escapeAttr(e.entryId)}">${escapeHtml(e.displayName)}</button>`).join('');
+    menuEl.querySelectorAll('[data-drop-entry]').forEach((b) => b.addEventListener('click', () => {
+      setMenu(false);
+      if (confirm(t('tdetail.confirm_drop_player'))) client.emit('tournament:withdraw', { tournamentId, entryId: b.dataset.dropEntry });
+    }));
   });
 
   if (tournament.status === 'cancelled') {
     detailCancelSlot.innerHTML = `
-      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-warning"></use></svg>
+      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-warning"></use></svg>
         <span>${t('tdetail.cancelled_notice')}${tournament.cancelReason ? ` — ${escapeHtml(tournament.cancelReason)}` : ''}</span>
       </div>
     `;
@@ -357,7 +372,7 @@ function renderActionBanner() {
 
   actionBannerSlot.innerHTML = `
     <div class="action-banner">
-      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-hourglass-medium"></use></svg></div>
+      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-bold-hourglass-medium"></use></svg></div>
       <div>
         <div class="action-banner__title">${escapeHtml(title)}</div>
         <div class="action-banner__sub">${escapeHtml(sub)}</div>
@@ -436,30 +451,30 @@ function renderPairingCard(pairing) {
   const organizerActions = [];
 
   if (pairing.state === 'Negotiating' || pairing.state === 'Paired') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
     if (isMine) actions += `<button class="btn btn-confirm" type="button" data-action="report" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_report')}</button>`;
     if (isOrganizer()) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Reported') {
     if (pairing.disputed) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="resolve" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_resolve')}</button>`);
         organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
       }
     } else if (isMine && pairing.reportedBy === me.entryId) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
     } else if (isMine) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
       actions += `<button class="btn btn-confirm" type="button" data-action="confirm" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_confirm')}</button>`;
       actions += `<button class="btn-secondary" type="button" data-action="dispute" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_dispute')}</button>`;
     } else {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
     }
     if (isOrganizer() && !pairing.disputed) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Ready') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
     if (pairing.rescheduleRequest) {
-      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
+      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="approve_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_approve')}</button>`);
         organizerActions.push(`<button class="btn-secondary" type="button" data-action="deny_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_deny')}</button>`);
@@ -481,7 +496,7 @@ function renderPairingCard(pairing) {
   }
 
   const organizerToolsHtml = organizerActions.length
-    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
+    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
     : '';
 
   return `
@@ -799,7 +814,7 @@ function renderCrossTable() {
   const entriesByIdLocal = new Map(tournament.entries.map((e) => [e.entryId, e]));
   const entries = ranked.map((r) => entriesByIdLocal.get(r.id)).filter(Boolean);
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
 
   // Highlight Vô địch/Á quân only once the tournament is over (rank is still
@@ -832,8 +847,8 @@ function renderCrossTable() {
               isRunnerUp ? 'is-runner-up' : '',
             ].filter(Boolean).join(' ');
             const trophyIcon = isChampion
-              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-trophy"></use></svg>`
-              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-trophy"></use></svg>` : '');
+              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-trophy"></use></svg>`
+              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-trophy"></use></svg>` : '');
             return `
               <tr class="${rowCls}">
                 <th class="cross-table__name-col">${trophyIcon}${escapeHtml(entryName(rowEntry.entryId))}</th>
@@ -867,7 +882,7 @@ function renderStandings() {
   const me = myEntry();
   const ranked = computeStandings();
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
   standingsContainer.innerHTML = `
     ${partialNotice}

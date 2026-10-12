@@ -17,7 +17,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=336';
+import { client } from './lobby.js?v=338';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -213,10 +213,10 @@ function buildWindow(userId, name) {
   root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
-      <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-x"></use></svg></button>
+      <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-bold-x"></use></svg></button>
     </div>
     <div class="pm-window__log"></div>
     <div class="pm-notice" hidden></div>
@@ -224,7 +224,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -370,7 +370,7 @@ function renderCard(card, userId, fallbackName) {
   const x = cardNode('button', 'modal__close');
   x.type = 'button';
   x.setAttribute('aria-label', t('card.close'));
-  x.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-x"></use></svg>';
+  x.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-bold-x"></use></svg>';
   x.addEventListener('click', closeCard);
   head.appendChild(x);
   box.appendChild(head);
@@ -519,7 +519,7 @@ function renderModalList() {
       btn.className = 'online-users-list__chat-btn';
       btn.title = t('private_chat.btn_chat');
       btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
-      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=336#ph-bold-chat-circle"></use></svg>';
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=338#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
       // The chat button opens the chat directly; the rest of the row opens the profile card.
       btn.addEventListener('click', (e) => { e.stopPropagation(); openChat(u.userId); closeModal(); });
