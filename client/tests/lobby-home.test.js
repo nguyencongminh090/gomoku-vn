@@ -314,8 +314,11 @@ describe('quick match panel (B197)', () => {
     chips('qm-rule')[0].click();
     chips('qm-time')[0].click();
     document.querySelectorAll('#qm-actions button')[0].click();
-    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true }]);
-    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0' });
+    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true, wall: true, portal: false }]);
+    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0', wall: true, portal: false });
+    document.querySelectorAll('#qm-board button')[0].click();
+    document.querySelectorAll('#qm-actions button')[0].click();
+    expect(client().emitted.pop()[1]).toMatchObject({ wall: false, portal: false });
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'standard', time: '10+0' } });
     expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_standard'], ['10+0']]);
   });

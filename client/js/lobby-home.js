@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=345';
+import { client, setHeroTab } from './lobby.js?v=347';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -345,13 +345,15 @@ client.on('connect', () => {
 const QM_RULES = ['freestyle', 'standard', 'caro'];
 const QM_TIMES = ['1+0', '3+2', '5+3', '10+0'];
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: '5+3', searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
+const qm = { rule: 'caro', time: '5+3', wall: true, portal: false, searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
 let qmTimer = null;
 
 try {
   const saved = JSON.parse(localStorage.getItem(QM_KEY) || 'null');
   if (saved && QM_RULES.includes(saved.rule)) qm.rule = saved.rule;
   if (saved && QM_TIMES.includes(saved.time)) qm.time = saved.time;
+  qm.wall = saved && typeof saved.wall === 'boolean' ? saved.wall : true;
+  qm.portal = !!saved && saved.portal === true;
 } catch { /* per-viewer convenience only */ }
 
 function isMember() {
@@ -382,11 +384,23 @@ export function renderQuickMatch() {
   const pick = (k) => (v) => {
     qm[k] = v;
     qm.error = '';
-    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time })); } catch { /* ignore */ }
+    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time, wall: qm.wall, portal: qm.portal })); } catch { /* ignore */ }
     renderQuickMatch();
   };
   chipRow('qm-rule', QM_RULES, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
   chipRow('qm-time', QM_TIMES, qm.time, (v) => v, pick('time'));
+  const board = document.getElementById('qm-board');
+  if (board) {
+    board.replaceChildren();
+    for (const k of ['wall', 'portal']) {
+      const b = el('button', t('room.rule_' + k), 'pchip' + (qm[k] ? ' is-active' : ''));
+      b.type = 'button';
+      b.disabled = qm.searching;
+      b.setAttribute('aria-pressed', String(qm[k]));
+      b.addEventListener('click', () => pick(k)(!qm[k]));
+      board.appendChild(b);
+    }
+  }
 
   const acts = document.getElementById('qm-actions');
   const line = document.getElementById('qm-line');
@@ -413,7 +427,7 @@ export function renderQuickMatch() {
     }
     const waiting = lastData && lastData.queue ? lastData.queue[qm.rule + '|' + qm.time] || 0 : 0;
     const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
-    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time })
+    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time + (qm.wall ? ' · ' + t('room.rule_wall') : '') + (qm.portal ? ' · ' + t('room.rule_portal') : '') })
       + (waiting ? ' · ' + t('qm.in_queue', { n: waiting }) : '')
       + (eta ? ' · ' + t('qm.eta', { s: eta }) : '')
       + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));
@@ -423,7 +437,7 @@ export function renderQuickMatch() {
 function startSearch(rated) {
   qm.error = '';
   qm.rated = rated;
-  client.emit('match:join', { rule: qm.rule, time: qm.time, rated });
+  client.emit('match:join', { rule: qm.rule, time: qm.time, rated, wall: qm.wall, portal: qm.portal });
 }
 
 function cancelSearch() {
