@@ -506,4 +506,8 @@ describe('club colour swatches are painted (fix: Manage "Màu" swatches were gre
       expect(css).toMatch(new RegExp(`\\.pswatch\\.${key}\\b[^{]*\\{[^}]*background-color: var\\(--club-`));
     }
   });
+  it('swatches opt out of forced-colors repainting (Firefox showed them ButtonFace grey)', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).toMatch(/\.pswatch \{[^}]*forced-color-adjust: none/);
+  });
 });
