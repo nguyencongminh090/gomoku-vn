@@ -687,6 +687,43 @@ describe('TournamentManager — pairing wrappers resolve identity correctly', ()
     expect(code).toBe('ORGANIZER_ONLY');
   });
 
+  test('#237 double_elim: organizerAdjustPairing resets the match in place so the bracket can continue', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'double_elim' }).tournament;
+    const players = [user(), user(), user(), user()];
+    const entries = players.map((p) => tournamentManager.registerPlayer(p, tournament.tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const id = `${tournament.tournamentId}:W1M1`;
+
+    const { error } = tournamentManager.organizerAdjustPairing(organizer.userId, tournament.tournamentId, id, 'released');
+    expect(error).toBeUndefined();
+    const reset = tournamentManager.getPairing(id);
+    expect(reset.state).toBe('Negotiating');
+    expect(reset.result).toBeNull();
+
+    // The replayed match can still be played and feeds the bracket.
+    const [u1, u2] = [players[0], players[3]];
+    advanceToReady(tournament.tournamentId, id, u1.userId, u2.userId);
+    tournamentManager.markPairingReady(u1.userId, tournament.tournamentId, id);
+    tournamentManager.markPairingReady(u2.userId, tournament.tournamentId, id);
+    tournamentManager.recordPairingResult(tournament.tournamentId, id, entries[0]);
+    expect(tournamentManager.getPairing(id).state).toBe('Completed');
+    expect(tournamentManager.listPairings(tournament.tournamentId).some((p) => p.bracketMatchId === 'L1M1' || p.bracketMatchId === 'W2M1')).toBe(false); // needs W1M2 too
+  });
+
+  test('#237 swiss: organizerAdjustPairing still ends the pairing as OrganizerAdjusted and advances', () => {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.registerPlayer(user(), tournament.tournamentId);
+    tournamentManager.startTournament(organizer.userId, tournament.tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournament.tournamentId);
+
+    tournamentManager.organizerAdjustPairing(organizer.userId, tournament.tournamentId, pairing.pairingId, 'released');
+    expect(tournamentManager.getPairing(pairing.pairingId).state).toBe('OrganizerAdjusted');
+    expect(tournament.status).toBe('completed');
+  });
+
   test('operations against an unknown pairingId fail with PAIRING_NOT_FOUND, not a throw', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
