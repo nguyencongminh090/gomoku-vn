@@ -7,7 +7,7 @@
 
 const database = require('../db/database');
 const roles = require('../utils/roles');
-const { analyze, THRESHOLDS } = require('../utils/rating-integrity');
+const { analyze, visuals, THRESHOLDS } = require('../utils/rating-integrity');
 
 class RatingIntegrityError extends Error {
   constructor(code, status, message) { super(message); this.name = 'RatingIntegrityError'; this.code = code; this.status = status; }
@@ -16,12 +16,14 @@ class RatingIntegrityError extends Error {
 function report(staffId) {
   if (!roles.can(staffId, 'rating.integrity')) throw new RatingIntegrityError('CHEAT_FORBIDDEN', 403, 'Bạn không có quyền.');
   const db = database.db;
-  const rows = db.prepare('SELECT user_id, opponent_id, game_id, score, rating_before, rating_after FROM rating_history').all();
+  const rows = db.prepare('SELECT user_id, opponent_id, game_id, score, rating_before, rating_after FROM rating_history ORDER BY id').all();
   const result = analyze(rows);
+  const viz = visuals(rows);
   const ids = new Set();
   for (const p of result.players) { ids.add(p.userId); if (p.topOpponentId) ids.add(p.topOpponentId); }
   for (const p of result.pairs) { ids.add(p.a); ids.add(p.b); }
   for (const g of result.groups) g.members.forEach((m) => ids.add(m));
+  for (const n of viz.nodes) ids.add(n.id);
   const list = [...ids];
   const names = new Map();
   const clubOf = new Map();
@@ -45,6 +47,7 @@ function report(staffId) {
       topOpponentFriend: p.topOpponentId ? areFriends(p.userId, p.topOpponentId) : false, topOpponentSameClub: p.topOpponentId ? sameClub(p.userId, p.topOpponentId) : false })),
     pairs: result.pairs.map((p) => ({ ...p, aName: name(p.a), bName: name(p.b), friends: areFriends(p.a, p.b), sameClub: sameClub(p.a, p.b) })),
     groups: result.groups.map((g) => ({ ...g, names: g.members.map(name) })),
+    viz: { ...viz, nodes: viz.nodes.map((n) => ({ ...n, name: name(n.id) })) },
   };
 }
 

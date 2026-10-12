@@ -129,8 +129,14 @@
       const r = el('button', undefined, 'prow us-row' + (current && current.user.id === u.id ? ' is-active' : ''));
       r.type = 'button';
       r.dataset.id = u.id;
-      r.append(el('b', u.displayName), el('span', u.username, 'muted small'), el('span', t('admin.role_' + u.role), 'pbadge'));
-      if (u.locked) r.appendChild(el('span', t('admin.u_locked'), 'pbadge pz-dup'));
+      const body = el('div', undefined, 'prow__body');
+      const meta = el('div', undefined, 'prow__meta');
+      meta.appendChild(el('span', u.username, 'muted small'));
+      body.append(el('b', u.displayName, 'prow__t'), meta);
+      const badges = el('div', undefined, 'us-row__badges');
+      badges.appendChild(el('span', t('admin.role_' + u.role), 'pbadge us-role us-role--' + u.role));
+      if (u.locked) badges.appendChild(el('span', t('admin.u_locked'), 'pbadge pz-dup'));
+      r.append(body, badges);
       r.addEventListener('click', () => open(u.id));
       list.appendChild(r);
     }
