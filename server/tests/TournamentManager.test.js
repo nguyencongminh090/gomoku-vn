@@ -158,12 +158,30 @@ describe('TournamentManager — createTournament', () => {
       timerSeconds: config.DEFAULT_TIMER_SECONDS,
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,
       schedulingWindowMs: config.DEFAULT_SCHEDULING_WINDOW_MS,
+      startsAt: null,
+      endsAt: null,
       tiebreakRule: config.DEFAULT_TIEBREAK_RULE,
       seriesMode: 'single',
       seriesGameCount: null,
       seriesTargetScore: null,
       seriesMargin: null,
     });
+  });
+
+  test.each([
+    [{ startsAt: '2026-11-01', endsAt: '2026-11-30' }, '2026-11-01', '2026-11-30'],
+    [{ startsAt: '2026-11-01', endsAt: '2026-11-01' }, '2026-11-01', '2026-11-01'],   // same day is valid
+    [{ startsAt: '2026-11-30', endsAt: '2026-11-01' }, '2026-11-30', null],           // end before start dropped
+    [{ endsAt: '2026-11-01' }, null, '2026-11-01'],                                   // end alone is fine
+    [{ startsAt: 'tomorrow', endsAt: 20261101 }, null, null],                         // malformed dropped
+    [{ startsAt: '2026-13-45' }, null, null],                                         // impossible date dropped
+    [{ startsAt: '2026-02-31', endsAt: '2026-04-31' }, null, null],                   // #247 day rolls over the month
+    [{ startsAt: '2026-02-29' }, null, null],                                         // #247 2026 is not a leap year
+    [{ startsAt: '2028-02-29', endsAt: '2028-03-01' }, '2028-02-29', '2028-03-01'], // #247 leap day is valid
+  ])('normalizes the tournament period %j', (rs, startsAt, endsAt) => {
+    const { tournament } = tournamentManager.createTournament(user(), { format: 'swiss', ruleSet: rs });
+    expect(tournament.ruleSet.startsAt).toBe(startsAt);
+    expect(tournament.ruleSet.endsAt).toBe(endsAt);
   });
 
   test('persists the tournament to SQLite (readable back via database.getTournamentById)', () => {
