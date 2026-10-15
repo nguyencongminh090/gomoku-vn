@@ -415,3 +415,28 @@ a.prow:hover { background: var(--c-hover); }
 .cb-images { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .cb-images__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .cb-images__row .pform__label { min-width: 120px; }
+
+
+/* Profile header: ratings (hero tiles) + stats now live in the header (all widths); a faint brand wash on top gives depth. */
+.pprofile .phead { background: linear-gradient(180deg, color-mix(in srgb, var(--c-brand) 14%, transparent), transparent 96px), var(--c-surface); }
+.pprofile .phead .pcards { margin: 0; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.pprofile .phead .pcard { background: rgba(255,255,255,.07); border-radius: var(--radius-md, 10px); }
+.pprofile .phead .pcard b { font-size: 28px; }
+@media (min-width: 861px) {
+  /* identity left (avatar + text, edit button top-right of the text column); right column = ratings over stats grid. */
+  .pprofile .phead { grid-template-columns: auto 1fr minmax(440px, auto); grid-template-rows: auto auto; align-items: stretch; gap: var(--space-3) var(--space-5); }
+  .pprofile .phead > :first-child { grid-row: 1 / 3; align-self: center; }
+  .pprofile .phead > div { grid-row: 1 / 3; position: relative; align-self: center; }
+  .pprofile .phead > div #pf-actions { position: absolute; top: 0; right: 0; margin: 0; }
+  .pprofile .phead h1 { padding-right: 140px; }
+  .pprofile .phead .pcards { grid-column: 3; grid-row: 1; }
+  .pprofile .phead .pstats {
+    grid-column: 3; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(96px, 1fr)); gap: var(--space-2);
+  }
+  .pprofile .phead .pstats div { background: rgba(255,255,255,.04); border-radius: var(--radius-md, 10px); padding: var(--space-3) var(--space-4); align-items: flex-start; text-align: left; gap: 2px; }
+  .pprofile .phead .pstats dd { font-size: 20px; color: var(--c-ink-2); }
+  .pprofile .phead .pav--xl { width: 128px; height: 128px; font-size: 38px; }   /* 8px-scale; PatternFly profile avatar = 128 (.audit/profile-avatar-proportion.md) */
+}
+@media (max-width: 860px) {
+  .pprofile .phead .pcards, .pprofile .phead .pstats { grid-column: 1 / -1; }
+}
