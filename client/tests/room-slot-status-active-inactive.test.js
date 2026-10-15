@@ -21,8 +21,8 @@ function loadRoomUI() {
   delete window.RoomUI;
   document.body.innerHTML = `
     <div id="room-id-nav"></div>
-    <div id="pcard-top"></div>
-    <div id="pcard-bottom"></div>
+    <div id="seatcard-top"></div>
+    <div id="seatcard-bottom"></div>
     <div id="settings-panel"></div>
     <div id="settings-body"></div>
     <div id="users-panel"></div>
@@ -66,7 +66,7 @@ describe('playerStatusInfo via the player cards (TODO #114)', () => {
 
   beforeEach(() => {
     RoomUI = loadRoomUI();
-    contentEl = document.getElementById('pcard-bottom');
+    contentEl = document.getElementById('seatcard-bottom');
   });
 
   test('room playing + ready=true (post-startGame reset) still shows Active, not Inactive', () => {

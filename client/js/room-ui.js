@@ -33,8 +33,8 @@
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const roomIdNav      = document.getElementById('room-id-nav');
   const siteLinks      = document.getElementById('room-site-links');
-  const cardTop        = document.getElementById('pcard-top');
-  const cardBottom     = document.getElementById('pcard-bottom');
+  const cardTop        = document.getElementById('seatcard-top');
+  const cardBottom     = document.getElementById('seatcard-bottom');
   const modeBadge      = document.getElementById('room-mode-badge');
   const settingsPanel  = document.getElementById('settings-panel');
   const settingsBody   = document.getElementById('settings-body');
@@ -204,38 +204,38 @@
     const st = S();
     const player = st.roomData.users.find(u => u.slot === slotNum);
     el.dataset.slot = String(slotNum);
-    el.classList.remove('pcard--turn', 'pcard--low');
+    el.classList.remove('seatcard--turn', 'seatcard--low');
     if (!player) {
       const canSit = st.mySlot === null && st.roomData.state !== 'playing';
-      el.classList.add('pcard--empty');
+      el.classList.add('seatcard--empty');
       delete el.dataset.clock;
       el.innerHTML = canSit
-        ? `<button class="pcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number">${t('room.sit')} · #${slotNum}</button>`
-        : `<span class="pcard__seat">#${slotNum}</span><span class="pcard__empty">${t('room.slot_empty')}</span>`;
+        ? `<button class="seatcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number">${t('room.sit')} · #${slotNum}</button>`
+        : `<span class="seatcard__seat">#${slotNum}</span><span class="seatcard__empty">${t('room.slot_empty')}</span>`;
       return;
     }
-    el.classList.remove('pcard--empty');
+    el.classList.remove('seatcard--empty');
     const isMe = player.userId === st.myUser.userId;
     const clock = playerClock(player);
     const live = !!st.gameState && clock.key !== null;
     if (live) el.dataset.clock = clock.key; else delete el.dataset.clock;
     const piece = clock.stone !== 'none' && typeof global.boardPieceSvg === 'function'
-      ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'pcard__piece')
+      ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<button class="pcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=378#ph-regular-x"></use></svg></button>`
+      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=379#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
-      <div class="pcard__av${isMe ? ' pcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
-      <div class="pcard__id">
-        <div class="pcard__name">${escapeHtml(player.displayName)}</div>
-        <div class="pcard__meta">${renderStatusDot(player)}</div>
+      <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
+      <div class="seatcard__id">
+        <div class="seatcard__name">${escapeHtml(player.displayName)}</div>
+        <div class="seatcard__meta">${renderStatusDot(player)}</div>
       </div>
       ${standBtn}
-      ${live ? `<div class="pcard__clock" data-clock-text></div>` : ''}
+      ${live ? `<div class="seatcard__clock" data-clock-text></div>` : ''}
     `;
     // CSP forbids inline onerror — fall back to initials from here.
-    const img = el.querySelector('.pcard__img');
+    const img = el.querySelector('.seatcard__img');
     if (img) img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true });
   }
 
@@ -244,7 +244,7 @@
     const ini = escapeHtml(initials(player.displayName));
     const url = player.avatarUrl;
     if (!url || !/^\/api\/profile\/avatar\/[\w-]+\.webp\?v=\d+$/.test(url)) return ini;
-    return `<img class="pcard__img" src="${escapeAttr(url)}" alt="" data-ini="${ini}">`;
+    return `<img class="seatcard__img" src="${escapeAttr(url)}" alt="" data-ini="${ini}">`;
   }
 
   function renderPlayerCards() {
@@ -296,8 +296,8 @@
       const textEl = el.querySelector('[data-clock-text]');
       if (textEl) textEl.textContent = formatClock(remaining);
       const isTurn = !!turnColor && turnColor === key.toUpperCase();
-      el.classList.toggle('pcard--turn', isTurn);
-      el.classList.toggle('pcard--low', remaining <= 10 && st.gameState.status === 'ongoing');
+      el.classList.toggle('seatcard--turn', isTurn);
+      el.classList.toggle('seatcard--low', remaining <= 10 && st.gameState.status === 'ongoing');
     }
   }
 
@@ -317,7 +317,7 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=378#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=379#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
@@ -466,7 +466,7 @@
       <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=378#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=379#ph-regular-caret-right"></use></svg>
       </a>
     `;
   }
