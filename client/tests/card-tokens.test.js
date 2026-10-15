@@ -5,7 +5,7 @@ const path = require('path');
 const css = (f) => fs.readFileSync(path.join(__dirname, '../css', f), 'utf8');
 
 const CARDS = [
-  ['lobby.css', '.tournament-card'], ['tournament.css', '.pairing-card'],
+  ['lobby.css', '.tournament-card'], ['lobby-zen.css', 'body.zen-lobby .tournament-card'], ['tournament.css', '.pairing-card'],
   ['tournament.css', '.match-result-card'], ['puzzles.css', '.pz-card'], ['forum.css', '.fm-post'],
   ['platform.css', '.pcard'], ['platform.css', '.prows--tickets .prow'], ['shell.css', 'body.zen-lobby .hrow'],
 ];

@@ -310,21 +310,20 @@ body.zen-lobby .filter-select {
 body.zen-lobby .tournament-grid {
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: var(--card-gap);
   padding: 0;               /* was inset from the column by lobby.css */
 }
+/* Ticket (docs/knowledge/ui-ux/ticket-rows.md): raised surface + radius + card padding, 8px between tickets. */
 body.zen-lobby .tournament-card {
-  padding: 20px 0;
+  padding: var(--card-pad);
   gap: 4px;
-  background: none;
+  background: var(--c-surface-2);
   border: none;
-  border-bottom: 1px solid var(--c-border);
-  border-radius: 0;
+  border-radius: var(--card-radius);
   box-shadow: none;
 }
 body.zen-lobby .tournament-card:hover {
-  background: none;
-  border-color: var(--c-border);
+  background: var(--c-hover);
   box-shadow: none;
   transform: none;
 }
@@ -352,7 +351,7 @@ body.zen-lobby .tournament-card__status {
 }
 body.zen-lobby .tournament-card__meta .icon,
 body.zen-lobby .tournament-card__status .icon { font-size: 16px; }
-/* The row is already delimited by its own bottom hairline — an inner rule
+/* The ticket is already delimited by its own surface — an inner rule
    above the status line just fragments it. */
 body.zen-lobby .tournament-card__status {
   display: inline-flex;   /* it is a segment of the meta line now, not a row */
