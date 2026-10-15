@@ -78,3 +78,4 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#250.** Club avatar + banner with crop editors (built, awaiting browser pass) `[Model: Sonnet]` — [detail](docs/todo/B250-club-avatar-banner.md)
+- **#251.** Room-entry overlay smooth on slow network (built, awaiting browser pass) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)

@@ -353,17 +353,52 @@
   position: fixed;
   inset: 0;
   z-index: 1100;
-  background: rgba(26, 23, 20, 0.45);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  /* Opaque, no backdrop-filter: it only ever covers the empty room chrome, and
+     a full-screen blur stutters on the low-end phones that are on slow links. */
+  background: var(--c-bg);
   justify-content: center;
   align-items: center;
   padding: 16px;
 }
 
+/* The opaque backdrop shows at once (it matches the page background, so it
+   reads as a blank frame and hides the empty room chrome); only the card is
+   delayed 0.5s, so a fast join never flashes the "entering" card. */
 .game-overlay.visible {
   display: flex;
-  animation: overlay-fade-in 0.25s ease-out;
+}
+
+/* Added by hideEntryOverlay(); .visible is dropped on animationend. */
+.game-overlay.leaving {
+  animation: overlay-fade-out 0.15s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes overlay-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes overlay-spin { to { transform: rotate(360deg); } }
+
+.game-overlay__icon svg {
+  animation: overlay-spin 1.2s linear infinite;
+}
+
+/* "Connection is slow" hint: invisible, fades in after 3s of waiting. */
+.game-overlay__slow {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--c-text-muted, inherit);
+  opacity: 0;
+  animation: overlay-fade-in 0.3s ease-out 3s forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-overlay__card,
+  .game-overlay.leaving { animation-duration: 0.01s; animation-delay: 0s; }
+  .game-overlay__icon svg { animation: none; }
+  .game-overlay__slow { animation-delay: 3s; animation-duration: 0.01s; }
 }
 
 @keyframes overlay-fade-in {
@@ -380,7 +415,7 @@
   box-shadow: var(--shadow);
   min-width: 260px;
   max-width: calc(100vw - 32px);
-  animation: card-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: card-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) 0.5s both;
 }
 
 @keyframes card-slide-in {

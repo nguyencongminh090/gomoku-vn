@@ -88,7 +88,17 @@
   // hidden once we actually have room data to show instead of it.
   function hideEntryOverlay() {
     const el = document.getElementById('room-entry-overlay');
-    if (el) el.classList.remove('visible');
+    if (!el || !el.classList.contains('visible') || el.classList.contains('leaving')) return;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      el.classList.remove('visible', 'leaving');
+    };
+    el.classList.add('leaving');
+    // target check: the card's own animationend bubbles up here too
+    el.addEventListener('animationend', (e) => { if (e.target === el) finish(); });
+    setTimeout(finish, 300); // animationend never fires in a hidden tab
   }
 
   client.on('room:joined', (data) => {
