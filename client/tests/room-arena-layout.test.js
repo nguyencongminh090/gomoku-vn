@@ -60,7 +60,7 @@ describe('room.html structure', () => {
 
   test('the rail reads opponent card · panel · actions · your card', () => {
     const kids = [...document.querySelector('.rail').children].map(e => e.id || e.className);
-    expect(kids).toEqual(['pcard-top', 'rpanel', 'game-controls', 'pcard-bottom']);
+    expect(kids).toEqual(['seatcard-top', 'rpanel', 'game-controls', 'seatcard-bottom']);
   });
 
   test('request + confirm areas live in the panel toasts, never inside the board area', () => {
@@ -83,7 +83,7 @@ describe('room.html structure', () => {
     const mobile = ARENA_CSS.slice(ARENA_CSS.indexOf('@media (max-width: 768px)'));
     expect(mobile).toMatch(/\.rail \{ display: contents; \}/);
     const order = (sel) => Number((mobile.match(new RegExp(sel.replace('.', '\\.') + ' \\{[^}]*order: (\\d)')) || [])[1]);
-    expect([order('.pcard--top'), order('.board-area-shell'), order('.pcard--bottom'), order('.game-controls'), order('.rpanel')])
+    expect([order('.seatcard--top'), order('.board-area-shell'), order('.seatcard--bottom'), order('.game-controls'), order('.rpanel')])
       .toEqual([1, 2, 3, 4, 5]);
   });
 });

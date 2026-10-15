@@ -29,8 +29,8 @@ function setup({ predictedTurn, halfRttMs = 0, timerValues = { black: 60, white:
   mySlot = 1, users, gameState, settings } = {}) {
   document.body.innerHTML = `
     <span id="room-mode-badge" hidden></span>
-    <div class="pcard" id="pcard-top"></div>
-    <div class="pcard" id="pcard-bottom"></div>
+    <div class="seatcard" id="seatcard-top"></div>
+    <div class="seatcard" id="seatcard-bottom"></div>
   `;
 
   window.t = (key) => key;
@@ -72,9 +72,9 @@ function setup({ predictedTurn, halfRttMs = 0, timerValues = { black: 60, white:
   window.eval(ROOM_UI_SOURCE);
 }
 
-const top = () => document.getElementById('pcard-top');
-const bottom = () => document.getElementById('pcard-bottom');
-const turn = (el) => el.classList.contains('pcard--turn');
+const top = () => document.getElementById('seatcard-top');
+const bottom = () => document.getElementById('seatcard-bottom');
+const turn = (el) => el.classList.contains('seatcard--turn');
 const clock = (el) => el.querySelector('[data-clock-text]').textContent;
 
 describe('seat order', () => {
@@ -84,8 +84,8 @@ describe('seat order', () => {
       { userId: 'me', displayName: 'Me Player', slot: 2, role: 'player' },
     ], gameState: null });
     window.RoomUI.renderPlayerCards();
-    expect(bottom().querySelector('.pcard__name').textContent).toBe('Me Player');
-    expect(top().querySelector('.pcard__name').textContent).toBe('Foe');
+    expect(bottom().querySelector('.seatcard__name').textContent).toBe('Me Player');
+    expect(top().querySelector('.seatcard__name').textContent).toBe('Foe');
   });
 
   test('a spectator sees seat #2 on top and seat #1 at the bottom', () => {
@@ -114,7 +114,7 @@ describe('seat order', () => {
     ] });
     window.RoomUI.renderPlayerCards();
     expect(bottom().querySelector('img')).toBeNull();
-    expect(bottom().querySelector('.pcard__name').textContent).toBe('<img src=x onerror=alert(1)>');
+    expect(bottom().querySelector('.seatcard__name').textContent).toBe('<img src=x onerror=alert(1)>');
   });
 });
 
@@ -173,8 +173,8 @@ describe('clock numbers', () => {
   test.each([[11, false], [10, true], [0, true]])('low-time state at %ss → %s', (secs, low) => {
     setup({ timerValues: { black: secs, white: 60 } });
     window.RoomUI.renderPlayerCards();
-    expect(bottom().classList.contains('pcard--low')).toBe(low);
-    expect(top().classList.contains('pcard--low')).toBe(false);
+    expect(bottom().classList.contains('seatcard--low')).toBe(low);
+    expect(top().classList.contains('seatcard--low')).toBe(false);
   });
 
   test('no game → no clock on the cards', () => {

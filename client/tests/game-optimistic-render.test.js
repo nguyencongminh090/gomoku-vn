@@ -29,10 +29,10 @@ const ROOM_UI_SOURCE = JS('room-ui.js');
 
 // Clocks live on the player cards since #216 (RoomUI.updateCardClocks); the
 // opponent (WHITE) card is on top, mine (BLACK) at the bottom.
-const CARD = { black: 'pcard-bottom', white: 'pcard-top' };
+const CARD = { black: 'seatcard-bottom', white: 'seatcard-top' };
 const clockText = (color) => document.querySelector('#' + CARD[color] + ' [data-clock-text]').textContent;
 const clockSecs = (color) => { const [m, sec] = clockText(color).split(':').map(Number); return m * 60 + sec; };
-const isTurnCard = (color) => document.getElementById(CARD[color]).classList.contains('pcard--turn');
+const isTurnCard = (color) => document.getElementById(CARD[color]).classList.contains('seatcard--turn');
 const I18N_SOURCE        = JS('i18n.js');
 // Shared clock maths both room modules call into (TODO.md #168). room.html
 // loads it as a classic script before the module entry; evaluating it first
@@ -81,8 +81,8 @@ function loadRoomModules({ gameStatus = 'ongoing', moveCount = 5, withBoardRende
   // real RoomUI.updateCardClocks (loaded below).
   document.body.innerHTML = `
     <div id="board-area"></div><div id="chat-messages"></div>
-    <div class="pcard" id="pcard-top" data-clock="white"><div data-clock-text></div></div>
-    <div class="pcard" id="pcard-bottom" data-clock="black"><div data-clock-text></div></div>
+    <div class="seatcard" id="seatcard-top" data-clock="white"><div data-clock-text></div></div>
+    <div class="seatcard" id="seatcard-bottom" data-clock="black"><div data-clock-text></div></div>
   `;
 
   const client = makeClientStub();
