@@ -59,7 +59,9 @@
     const meta = [new Date(item.createdAt).toLocaleString()];
     if (item.link) meta.push(item.link);
     if (i === 0) meta.unshift(t('admin.n_live'));
-    body.append(el('div', meta.join(' · '), 'prow__m'));
+    const metaEl = el('div', undefined, 'prow__meta');
+    for (const p of meta) metaEl.append(el('span', p));
+    body.append(metaEl);
     const actions = el('div', undefined, 'pactions');
     const btn = (label, cls, fn) => { const b = el('button', label, cls); b.type = 'button'; b.addEventListener('click', () => fn(b)); return b; };
     actions.append(

@@ -74,10 +74,11 @@ describe('admin news tab', () => {
     expect($('adm-news').hidden).toBe(false);
     expect(titles()).toEqual(['<b>Old</b>', 'Older']);
     expect($('nw-list').querySelector('b')).toBeNull();
-    const metas = [...document.querySelectorAll('#nw-list .prow__m')].map((n) => n.textContent);
-    expect(metas[0].startsWith('admin.n_live · ')).toBe(true);
-    expect(metas[0].endsWith(' · /forum')).toBe(true);
-    expect(metas[1].startsWith('admin.n_live')).toBe(false);
+    const metas = [...document.querySelectorAll('#nw-list .prow__meta')].map((n) => [...n.children].map((s) => s.textContent));
+    expect(metas[0][0]).toBe('admin.n_live');
+    expect(metas[0][metas[0].length - 1]).toBe('/forum');
+    expect(metas[0].length).toBe(3); // separate spans, not one joined string
+    expect(metas[1][0]).not.toBe('admin.n_live');
   });
 
   it('publish posts {body, link} and reloads; form resets', async () => {
