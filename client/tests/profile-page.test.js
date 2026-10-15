@@ -93,6 +93,12 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-clubs b')).toBeNull();
   });
 
+  it('club rows show the club avatar image the server sent (same source as /clubs and the club page)', async () => {
+    await boot({ ...PROFILE, clubs: [{ slug: 'hn', name: 'HN', role: 'member', members: 3, avatarUrl: '/api/clubs/hn/avatar?v=4' }] });
+    const av = document.querySelector('#pf-clubs a .pav');
+    expect(av.style.backgroundImage).toContain('/api/clubs/hn/avatar?v=4');
+  });
+
   it('shows the history-private note when stats are withheld', async () => {
     await boot({ ...PROFILE, stats: null, recent: [], bio: null });
     expect(document.getElementById('pf-recent-note').textContent).toBe('profile.history_hidden');

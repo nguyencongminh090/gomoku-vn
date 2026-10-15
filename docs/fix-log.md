@@ -257,3 +257,4 @@
 | 2026-10-12 16:40 | club Manage swatches grey in Firefox (forced-colors repainted fill ButtonFace) -> `forced-color-adjust: none` | [detail](docs/fix-log/2026-10-12-club-swatches-forced-colors.md) |
 | 2026-10-12 17:10 | club banner ~60px on phones (6:1 at every width) -> 3:1 at <=600px | [detail](docs/fix-log/2026-10-12-club-banner-mobile-small.md) |
 | 2026-10-12 17:40 | club invite: exact-username only, no suggestions, error out of view -> debounced name suggestions + inline error | [detail](docs/fix-log/2026-10-12-club-invite-autocomplete.md) |
+| 2026-10-15 18:54 | untracked: profile club rows ignored club avatarUrl (hard-coded null) -> pass c.avatarUrl | [detail](docs/fix-log/2026-10-15-profile-club-avatar.md) |

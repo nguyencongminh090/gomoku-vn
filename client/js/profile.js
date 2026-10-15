@@ -128,7 +128,7 @@
       a.href = '/c/' + encodeURIComponent(c.slug);
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', c.name, 'prow__t'), el('div', t('clubs.role_' + c.role) + ' · ' + t('clubs.members', { n: c.members }), 'prow__m'));
-      a.append(SHELL().avatar(null, c.name, 'pav--sm pav--sq'), body);
+      a.append(SHELL().avatar(c.avatarUrl, c.name, 'pav--sm pav--sq'), body);
       return a;
     }));
 
