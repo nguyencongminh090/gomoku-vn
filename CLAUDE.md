@@ -31,6 +31,8 @@ UI audit: skill `ux-audit`, site settings (URL, auth, pages, allowlist) in `.aud
 8. **Ambiguous prompt** (no item id / file / behaviour to act on): ask ONE `AskUserQuestion` with concrete
    options before acting. Don't run `prompt-architect` for this — it is for explicit "improve this prompt".
    Already-clear short prompts ("run tests", "yes", "continue", "Do #B170") just execute.
+9. **Consistency:** one entity = one source. Avatars/images display identically on every page, and DB ↔
+   file store change together (`?v=` bumped). → `.claude/rules/consistency.md`
 
 ## Reasoning with knowledge (two tiers)
 Before a **design / architecture / security / protocol / UX / storage** decision, ground it in a
