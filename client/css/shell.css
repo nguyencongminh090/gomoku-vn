@@ -188,8 +188,8 @@ body.zen-lobby .lobby-bar__actions [hidden] { display: none; }
 
 /* ── "Chơi" dashboard (B195) — platform.css .psplit/.ppanel/.prow + these ── */
 /* Ticket: raised surface, 4px-scale padding, 8px gap between tickets; title > meta > action hierarchy. */
-body.zen-lobby .prows, body.zen-lobby .hlives { gap: 8px; }
-body.zen-lobby .hrow { width: 100%; box-sizing: border-box; text-align: left; font: inherit; color: inherit; cursor: pointer; gap: 16px; padding: 12px 16px; border: 0; border-radius: var(--radius-lg); background: var(--c-surface-2); }
+body.zen-lobby .prows, body.zen-lobby .hlives { gap: var(--card-gap); }
+body.zen-lobby .hrow { width: 100%; box-sizing: border-box; text-align: left; font: inherit; color: inherit; cursor: pointer; gap: 16px; padding: var(--card-pad); border: 0; border-radius: var(--card-radius); background: var(--c-surface-2); }
 body.zen-lobby .hrow:hover { background: var(--c-hover); }
 body.zen-lobby .hrow .prow__t { font-weight: 600; line-height: 1.35; }
 body.zen-lobby .hrow__meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }

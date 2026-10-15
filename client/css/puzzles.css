@@ -1,6 +1,6 @@
 /* puzzles.css — puzzle list + solve page (#203 7a-2). Tokens only; layout classes are pz-*. */
-.pz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-.pz-card { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; text-decoration: none; color: var(--c-ink); background: var(--c-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.pz-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--card-gap); }
+.pz-card { display: flex; flex-direction: column; gap: 8px; padding: var(--card-pad); text-decoration: none; color: var(--c-ink); background: var(--c-surface); border-radius: var(--card-radius); box-shadow: var(--shadow-sm); }
 .pz-card:hover, .pz-card:focus-visible { outline: 2px solid var(--c-brand); }
 .pz-card.is-solved { opacity: .75; }
 .pz-card__head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }

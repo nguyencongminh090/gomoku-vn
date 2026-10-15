@@ -218,7 +218,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 14px 16px;
+  padding: var(--card-pad);
   border-bottom: 1px solid var(--c-border-light);
   transition: background var(--duration-fast) var(--ease-out);
 }
@@ -928,8 +928,8 @@
 .tournament-card {
   background: var(--c-surface);
   border: 1px solid var(--c-border);
-  border-radius: 14px;
-  padding: 16px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-lg);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -937,7 +937,7 @@
   cursor: pointer;
 }
 .tournament-card:hover {
-  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.08);
+  box-shadow: var(--shadow);
   transform: translateY(-1px);
 }
 .tournament-card:focus-visible {
@@ -1029,7 +1029,7 @@
 
 @media (max-width: 640px) {
   .tournament-grid { padding: 8px; gap: 12px; }
-  .tournament-card { padding: 12px; }
+  .tournament-card { padding: var(--card-pad); }
 }
 
 /* ── Live matches browser (TODO.md #60) ─────────────────────────────────── */
