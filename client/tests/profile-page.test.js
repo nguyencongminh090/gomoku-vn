@@ -128,14 +128,15 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-joined b')).toBeNull();
   });
 
-  it('shows puzzles solved + level once something is solved; level "—" with a hint until a level reaches the threshold', async () => {
+  it('shows puzzles solved + level once something is solved; no empty level tile until a level reaches the threshold (hint moves to the solved tile)', async () => {
     await boot({ ...PROFILE, puzzles: { solved: 12, level: 'medium', byLevel: {}, threshold: 10 } });
     const text = document.getElementById('pf-stats').textContent;
     expect(text).toContain('profile.puzzles_solved12');
     expect(text).toContain('profile.puzzles_levelpuzzles.level_medium');
     await boot({ ...PROFILE, puzzles: { solved: 3, level: null, byLevel: {}, threshold: 10 } });
-    const dd = [...document.querySelectorAll('#pf-stats div')].find((d) => d.textContent.includes('profile.puzzles_level'));
-    expect(dd.querySelector('dd').textContent).toBe('—');
+    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles_level');
+    expect(document.getElementById('pf-stats').textContent).not.toContain('—');
+    const dd = [...document.querySelectorAll('#pf-stats div')].find((d) => d.textContent.includes('profile.puzzles_solved'));
     expect(dd.title).toBe('profile.puzzles_level_hint{"n":10}');
     await boot({ ...PROFILE, puzzles: { solved: 0, level: null, byLevel: {}, threshold: 10 } });
     expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles');
