@@ -186,9 +186,9 @@ describe('social page', () => {
       await bootPage({ ...base, 'GET /api/challenges': () => json(CH) });
       const rows = [...document.querySelectorAll('#sc-challenges .prow')];
       expect(rows).toHaveLength(2);
-      expect(rows[0].textContent).toContain('rankings.cat_caro · 3+2 · challenge.rated');
+      expect([...rows[0].querySelectorAll('.prow__meta > span')].map((x) => x.textContent)).toEqual(['rankings.cat_caro', '3+2', 'challenge.rated']);
       expect([...rows[0].querySelectorAll('button')].map((b) => b.textContent)).toEqual(['challenge.accept', 'friends.decline']);
-      expect(rows[1].textContent).toContain('rankings.cat_freestyle · 1+0');
+      expect([...rows[1].querySelectorAll('.prow__meta > span')].map((x) => x.textContent).slice(0, 2)).toEqual(['rankings.cat_freestyle', '1+0']);
       expect(rows[1].textContent).not.toContain('challenge.rated');
       expect([...rows[1].querySelectorAll('button')].map((b) => b.textContent)).toEqual(['friends.cancel']);
     });
@@ -197,8 +197,8 @@ describe('social page', () => {
       const settings = { boardSize: 19, winningRule: 'standard', ranked: true, ruleWall: false, rulePortal: true, ruleSwap2: false, timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 };
       await bootPage({ ...base, 'GET /api/challenges': () => json({ incoming: [{ id: 'c3', rule: 'standard', rated: true, settings, games: 3, stake: 'swap', from: P('cat') }], outgoing: [] }) });
       const row = document.querySelector('#sc-challenges .prow');
-      expect(row.querySelector('.prow__m').textContent).toBe(
-        'rankings.cat_standard · 19×19 · modal.rule_portal · 5\'+3s · challenge.best_of{"n":3} · challenge.rated · challenge.stake_swap');
+      expect([...row.querySelectorAll('.prow__meta > span')].map((x) => x.textContent)).toEqual(
+        ['rankings.cat_standard', '19×19', 'modal.rule_portal', "5'+3s", 'challenge.best_of{"n":3}', 'challenge.rated', 'challenge.stake_swap']);
       expect(row.classList.contains('pchal__stake')).toBe(true);
     });
 

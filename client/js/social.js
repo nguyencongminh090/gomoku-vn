@@ -130,7 +130,7 @@
     } catch (_) { /* leave the placeholder */ }
   }
 
-  const desc = (c) => window.ChallengeModal.util.describe(c); // #222: full settings + series + stake
+  const descParts = (c) => window.ChallengeModal.util.describeParts(c); // #222: full settings + series + stake
 
   async function challengeAct(method, path, btn) {
     btn.disabled = true;
@@ -147,7 +147,9 @@
 
   function challengeRow(c, who, buttons) {
     const r = row(who, []);
-    r.querySelector('.prow__body').appendChild(el('div', desc(c), 'prow__m'));
+    const meta = el('div', undefined, 'prow__meta');
+    for (const p of descParts(c)) meta.appendChild(el('span', p));
+    r.querySelector('.prow__body').appendChild(meta);
     if (c.stake === 'swap') r.classList.add('pchal__stake'); // the challenged must see the stake before accepting
     for (const [key, method, suffix, cls] of buttons) {
       const b = el('button', t(key), 'pbtn pbtn--sm' + (cls ? ' ' + cls : ''));
