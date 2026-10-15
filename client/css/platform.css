@@ -415,3 +415,18 @@ a.prow:hover { background: var(--c-hover); }
 .cb-images { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
 .cb-images__row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
 .cb-images__row .pform__label { min-width: 120px; }
+
+/* Profile header, desktop: identity left, stats as a 4-column tile grid on the right (7 tiles → 4+3).
+   ≤860px keeps the existing stacked layout. */
+@media (min-width: 861px) {
+  .pprofile .phead { grid-template-columns: auto 1fr auto; align-items: center; }
+  .pprofile .phead .pstats {
+    display: grid; grid-template-columns: repeat(4, minmax(96px, 1fr)); gap: var(--space-2); min-width: 440px;
+  }
+  .pprofile .phead .pstats div { background: rgba(255,255,255,.04); border-radius: var(--radius-md, 10px); padding: var(--space-3) var(--space-4); align-items: flex-start; text-align: left; gap: 2px; }
+  .pprofile .phead .pstats dd { font-size: 20px; color: var(--c-ink-2); }
+  /* hierarchy: games + win-rate are the hero tiles, the rest are secondary */
+  .pprofile .phead .pstats div:nth-child(-n+2) { background: rgba(255,255,255,.07); }
+  .pprofile .phead .pstats div:nth-child(-n+2) dd { font-size: 28px; color: var(--c-strong); }
+  .pprofile .phead .pav--xl { width: 128px; height: 128px; font-size: 38px; }   /* 8px-scale; PatternFly profile avatar = 128 (.audit/profile-avatar-proportion.md) */
+}
