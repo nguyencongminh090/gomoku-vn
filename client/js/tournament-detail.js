@@ -241,13 +241,13 @@ function renderHeader() {
     const displayRound = tournament.format === 'round_robin'
       ? (tournament.currentRoundIndex || 0) + 1
       : (tournament.currentRoundIndex || 1);
-    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
+    roundMeta = `<span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-flag-checkered"></use></svg>${t('tdetail.round_label', { n: Math.min(displayRound, tournament.totalRounds), total: tournament.totalRounds })}</span>`;
   }
   detailMetaEl.innerHTML = `
     <span class="badge badge--format">${formatLabel(tournament.format)}</span>
     <span class="badge ${badge.cls}">${badge.label}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
-    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-users-three"></use></svg>${tournament.entries.length} ${t('tournaments.players_suffix')}</span>
+    <span class="detail-meta-item"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-user-circle"></use></svg>${t('tournaments.organized_by', { name: escapeHtml(tournament.organizerName || '—') })}</span>
     ${roundMeta}
   `;
 
@@ -256,12 +256,12 @@ function renderHeader() {
   const droppable = tournament.status === 'active' && isOrganizer()
     ? tournament.entries.filter((e) => !e.withdrawn) : [];
   const canCancel = isOrganizer() && (tournament.status === 'draft' || tournament.status === 'active');
-  const item = (id, ico, key) => `<button class="manage-menu__item" type="button" role="menuitem" id="${id}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-${ico}"></use></svg>${t(key)}</button>`;
+  const item = (id, ico, key) => `<button class="manage-menu__item" type="button" role="menuitem" id="${id}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-${ico}"></use></svg>${t(key)}</button>`;
   const menuItems = (canWithdraw ? item('btn-withdraw', 'sign-out', 'tdetail.btn_withdraw') : '')
     + (droppable.length ? item('btn-drop-player', 'user-minus', 'tdetail.btn_drop_player') : '')
     + (canCancel ? item('btn-cancel-tournament', 'warning', 'tdetail.btn_cancel_tournament') : '');
   detailCancelSlot.innerHTML = menuItems
-    ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
+    ? `<button class="btn-secondary manage-btn" type="button" id="btn-manage" aria-haspopup="menu" aria-expanded="false">${t('tdetail.btn_manage')}<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-caret-down"></use></svg></button><div class="manage-menu" id="manage-menu" role="menu" hidden>${menuItems}</div>`
     : '';
   const manageBtn = document.getElementById('btn-manage');
   const menuEl = document.getElementById('manage-menu');
@@ -286,7 +286,7 @@ function renderHeader() {
 
   if (tournament.status === 'cancelled') {
     detailCancelSlot.innerHTML = `
-      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-warning"></use></svg>
+      <div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-warning"></use></svg>
         <span>${t('tdetail.cancelled_notice')}${tournament.cancelReason ? ` — ${escapeHtml(tournament.cancelReason)}` : ''}</span>
       </div>
     `;
@@ -372,7 +372,7 @@ function renderActionBanner() {
 
   actionBannerSlot.innerHTML = `
     <div class="action-banner">
-      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-bold-hourglass-medium"></use></svg></div>
+      <div class="action-banner__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-bold-hourglass-medium"></use></svg></div>
       <div>
         <div class="action-banner__title">${escapeHtml(title)}</div>
         <div class="action-banner__sub">${escapeHtml(sub)}</div>
@@ -451,30 +451,30 @@ function renderPairingCard(pairing) {
   const organizerActions = [];
 
   if (pairing.state === 'Negotiating' || pairing.state === 'Paired') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
     if (isMine) actions += `<button class="btn btn-confirm" type="button" data-action="report" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_report')}</button>`;
     if (isOrganizer()) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Reported') {
     if (pairing.disputed) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-hourglass"></use></svg>${formatHoursRemaining(pairing.deadline)}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="resolve" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_resolve')}</button>`);
         organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
       }
     } else if (isMine && pairing.reportedBy === me.entryId) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
     } else if (isMine) {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)} &nbsp;·&nbsp; ${formatHoursRemaining(pairing.deadline)}`;
       actions += `<button class="btn btn-confirm" type="button" data-action="confirm" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_confirm')}</button>`;
       actions += `<button class="btn-secondary" type="button" data-action="dispute" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_dispute')}</button>`;
     } else {
-      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
+      metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-calendar"></use></svg>${t('tdetail.proposed_label')}: ${formatDateTime(pairing.proposedTime)}`;
     }
     if (isOrganizer() && !pairing.disputed) organizerActions.push(`<button class="btn-secondary btn-secondary--danger" type="button" data-action="adjust" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_adjust')}</button>`);
   } else if (pairing.state === 'Ready') {
-    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
+    metaLine = `<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-calendar"></use></svg>${formatDateTime(pairing.agreedTime)}`;
     if (pairing.rescheduleRequest) {
-      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
+      metaLine += ` &nbsp;·&nbsp; <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-arrows-clockwise"></use></svg>${t('tdetail.reschedule_pending', { name: entryName(pairing.rescheduleRequest.requestedBy), time: formatDateTime(pairing.rescheduleRequest.newTime) })}`;
       if (isOrganizer()) {
         organizerActions.push(`<button class="btn btn-confirm" type="button" style="padding:6px 12px; font-size:12px;" data-action="approve_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_approve')}</button>`);
         organizerActions.push(`<button class="btn-secondary" type="button" data-action="deny_reschedule" data-pairing-id="${escapeAttr(pairing.pairingId)}">${t('tdetail.btn_deny')}</button>`);
@@ -496,7 +496,7 @@ function renderPairingCard(pairing) {
   }
 
   const organizerToolsHtml = organizerActions.length
-    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
+    ? `<div class="organizer-tools"><span class="organizer-tools__label"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-crown-simple"></use></svg>${t('tdetail.organizer_tools')}</span>${organizerActions.join('')}</div>`
     : '';
 
   return `
@@ -814,7 +814,7 @@ function renderCrossTable() {
   const entriesByIdLocal = new Map(tournament.entries.map((e) => [e.entryId, e]));
   const entries = ranked.map((r) => entriesByIdLocal.get(r.id)).filter(Boolean);
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
 
   // Highlight Vô địch/Á quân only once the tournament is over (rank is still
@@ -847,8 +847,8 @@ function renderCrossTable() {
               isRunnerUp ? 'is-runner-up' : '',
             ].filter(Boolean).join(' ');
             const trophyIcon = isChampion
-              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-trophy"></use></svg>`
-              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-trophy"></use></svg>` : '');
+              ? `<svg class="icon cross-table__trophy cross-table__trophy--champion" title="${t('tdetail.cross_table_champion')}"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-trophy"></use></svg>`
+              : (isRunnerUp ? `<svg class="icon cross-table__trophy cross-table__trophy--runner-up" title="${t('tdetail.cross_table_runner_up')}"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-trophy"></use></svg>` : '');
             return `
               <tr class="${rowCls}">
                 <th class="cross-table__name-col">${trophyIcon}${escapeHtml(entryName(rowEntry.entryId))}</th>
@@ -982,7 +982,7 @@ function bracketSection(title, rounds, resolved, byMatch) {
 function podiumHtml() {
   if (tournament.status !== 'completed') return '';
   const byRank = (r) => tournament.entries.filter((e) => e.finalRank === r);
-  const place = (list, cls, key) => list.map((e) => `<span class="podium__item podium__item--${cls}"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-trophy"></use></svg><span class="podium__label">${t(key)}</span><strong>${escapeHtml(e.displayName)}</strong></span>`).join('');
+  const place = (list, cls, key) => list.map((e) => `<span class="podium__item podium__item--${cls}"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-trophy"></use></svg><span class="podium__label">${t(key)}</span><strong>${escapeHtml(e.displayName)}</strong></span>`).join('');
   const html = place(byRank(1), 'champion', 'tdetail.cross_table_champion') + place(byRank(2), 'runner-up', 'tdetail.cross_table_runner_up');
   return html ? `<div class="podium">${html}</div>` : '';
 }
@@ -1072,7 +1072,7 @@ function renderStandings() {
   const me = myEntry();
   const ranked = computeStandings();
   const partialNotice = tournament.status === 'cancelled'
-    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=374#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
+    ? `<div class="dispute-notice"><svg class="icon" style="font-size:18px;"><use href="assets/icons/phosphor-sprite.svg?v=375#ph-regular-warning"></use></svg><span>${t('tdetail.standings_partial_notice')}</span></div>`
     : '';
   standingsContainer.innerHTML = `
     ${partialNotice}
