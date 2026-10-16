@@ -5,6 +5,8 @@
 .pnav :where(button), .ptabbar :where(button) { font: inherit; color: inherit; }
 
 /* ── Top nav ── */
+/* B261: JS fills the host after first paint; reserve the nav height (= .pnav height) so the page does not jump. */
+#pl-shell { min-height: 56px; }
 .pnav { display: flex; align-items: center; gap: 28px; position: sticky; top: 0; z-index: 10; height: 56px; padding: 0 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
 .pnav__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
 .pnav__links { display: flex; gap: 4px; flex: 1; }

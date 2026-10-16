@@ -220,6 +220,15 @@ body.zen-lobby .habout dd { margin: 0; color: var(--c-ink-2); }
 body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
 body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }
 body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
+/* B261: these fill only after /api/home; reserve their typical height while empty so .ppanel does not grow (CLS). */
+body.zen-lobby :is(#qm-rule, #qm-time, #qm-board):empty { min-height: 34px; }
+body.zen-lobby #qm-actions:empty { min-height: 38px; }
+body.zen-lobby :is(#home-today, #home-live):empty { min-height: 36px; }
+body.zen-lobby #home-learn:empty { min-height: 68px; }
+body.zen-lobby #home-mine:empty { min-height: 86px; }
+body.zen-lobby #home-forum:empty { min-height: 90px; }
+body.zen-lobby #home-stats:empty { min-height: 47px; }
+body.zen-lobby .zen-hero__title:empty { min-height: 1.25em; } /* lobby.js sets the text after load; line-height is 1.25 */
 
 /* Vào bằng mã (Phòng screen, B210): inline code field next to the create button */
 body.zen-lobby .join-code { position: relative; display: inline-flex; align-items: center; gap: 8px; }

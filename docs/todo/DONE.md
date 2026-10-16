@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#261.** Lobby layout shift: CLS 0.24 desktop / 0.85 mobile (reserve `#pl-shell` + `.ppanel` space) `[Model: Sonnet 5]` — [detail](docs/todo/B261-lobby-cls-shell-placeholder.md)
 ✅ - **#253.** Drop "Display density" Lite/Default switch, keep good behaviours `[Model: Sonnet]` — [detail](docs/todo/B253-drop-density-ui-mode.md)
 ✅ - **#250.** Club avatar + banner with crop editors `[Model: Sonnet]` — [detail](docs/todo/B250-club-avatar-banner.md)
 ✅ - **#251.** Room-entry overlay smooth on slow network (merged to dev e3e3aac, ?v=383, browser pass done) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)

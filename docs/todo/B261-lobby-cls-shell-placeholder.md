@@ -1,5 +1,5 @@
 # B261 — Lobby layout shift (CLS 0.24 desktop / 0.85 mobile): reserve space for the JS-built shell
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-16 — CSS reservations, CLS desktop 0 / mobile 0.062 (fix-log 2026-10-16-lobby-cls-reserve); open: mobile greeting wrap +27px
 **Area:** `client/index.html` (`#pl-shell`), `client/css/platform-shell.css`, `client/js/platform-shell.js`, lobby `.ppanel` CSS
 **From:** perf analysis 2026-10-16 (Playwright, isolated server :3999)   **Depends:** —
 
