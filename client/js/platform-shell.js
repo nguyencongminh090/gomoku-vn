@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=387'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=388'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -166,9 +166,14 @@
     }).catch(() => { /* next poll fixes it */ });
   }
 
+  /** fetch(), but takes the response api-early.js already started for this URL (index.html, #263), once. */
+  function earlyFetch(url, init) {
+    return window.GvnEarly ? window.GvnEarly.fetch(url, init) : fetch(url, init);
+  }
+
   function refreshBell() {
     if (document.hidden) return Promise.resolve();
-    return fetch('/api/notifications', { credentials: 'same-origin' })
+    return earlyFetch('/api/notifications', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); } })
       .catch(() => { /* offline: keep what we have */ });
@@ -277,7 +282,7 @@
     right.appendChild(wrap);
     if (!member) return;
 
-    fetch('/api/rankings/me', { credentials: 'same-origin' })
+    earlyFetch('/api/rankings/me', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
         if (!m) return;
@@ -290,7 +295,7 @@
         }
       })
       .catch(() => { /* chip stays inert */ });
-    fetch('/api/admin/me', { credentials: 'same-origin' })
+    earlyFetch('/api/admin/me', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
       .then((a) => { if (a && Array.isArray(a.permissions) && a.permissions.includes('admin.access')) admin.hidden = false; })
       .catch(() => { /* no staff entry */ });
