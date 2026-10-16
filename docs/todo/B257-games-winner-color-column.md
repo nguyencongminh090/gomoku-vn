@@ -18,7 +18,7 @@
 - Guest games have NULL player ids, so id comparison can't recover colour for them; check live data (306 guest rows were nulled in migration 002).
 
 ## Why this way
-Expand/migrate/contract (`docs/knowledge/data-schema-evolution.md`). Rejected: in-place retype (SQLite rebuild + old code live).
+Expand/migrate/contract (`docs/knowledge/data-schema-evolution.md`); CHECK needs a table rebuild: `db-sqlite-migrations-user-version.md`; constraint rules (NULL passes CHECK, backfill order): `db-constraints-check-fk-sqlite.md`. Rejected: in-place retype (SQLite rebuild + old code live).
 
 ## Done when
 - Backfill row counts match; CHECK rejects bad value; readers use winner_color; `npm test` green.

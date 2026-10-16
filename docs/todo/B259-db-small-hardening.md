@@ -19,7 +19,7 @@
 - Guest sessions have NULL user_id (fine for FK); check no placeholder ids exist.
 
 ## Why this way
-Each is small and independent; bundled to avoid 4 tracking files. Notes: none.
+Each is small and independent; bundled to avoid 4 tracking files. Notes: `docs/knowledge/db-constraints-check-fk-sqlite.md`; SKILLS_TREE (reference) `database/items/db-sqlite-pragmas-wal-transactions.md`, `db-sqlite-security-hardening.md`.
 
 ## Done when
 - Env override tested; CHECK rejects bad JSON; decisions on FK/index recorded here.

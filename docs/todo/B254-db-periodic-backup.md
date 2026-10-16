@@ -19,7 +19,7 @@ Last file in `server/db/backups/` is 2026-08-10; no scheduled job. `.bak-pre-*` 
 - `db.backup()` is async: a failed backup must not leave a half file counted as a good one (write to `.tmp`, rename).
 
 ## Why this way
-`db.backup()` is the SQLite online-backup API (safe under WAL). Rejected: `VACUUM INTO` (exclusive read lock longer), cron outside the app (extra moving part). Notes: none.
+`db.backup()` is the SQLite online-backup API (safe under WAL). Rejected: `VACUUM INTO` (exclusive read lock longer), cron outside the app (extra moving part). Notes: `docs/knowledge/db-backup-restore-retention.md` (VACUUM INTO / backup API, rotation, restore test).
 
 ## Done when
 - Backup file appears, opens, `integrity_check=ok`; rotation keeps N; unit test with temp DB; `npm test` green.

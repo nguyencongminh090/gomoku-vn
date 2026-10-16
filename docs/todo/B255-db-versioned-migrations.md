@@ -22,7 +22,7 @@
 - Rebuild migrations need `PRAGMA foreign_keys=OFF` outside the transaction.
 
 ## Why this way
-Expand/migrate/contract: `docs/knowledge/be-data-modeling-migrations.md`, `data-schema-evolution.md`. Rejected: ORM/knex (new dependency for 30 tables).
+Expand/migrate/contract: `docs/knowledge/db-sqlite-migrations-user-version.md` (runner, rebuild), `be-data-modeling-migrations.md`, `data-schema-evolution.md`. Rejected: ORM/knex (new dependency for 30 tables).
 
 ## Done when
 - `user_version` = latest on live-copy DB; 4 test cases above pass; `npm test` green; backup taken before first run on real DB.

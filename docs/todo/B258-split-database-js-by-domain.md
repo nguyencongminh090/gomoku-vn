@@ -18,7 +18,7 @@ One file holds init, migrations and helpers for users, sessions, games, tourname
 - Tests mock `server/db/database`; a second connection to the same file would break `:memory:`/temp DB tests.
 
 ## Why this way
-Facade keeps the diff mechanical. Notes: none.
+Facade keeps the diff mechanical. Notes: SKILLS_TREE `knowledge/software-design/items/cleancode-module-split.md` (reference: exports diff, no cycles, mock caveat).
 
 ## Done when
 - Full `npm test` unchanged-green; no export removed (diff of `Object.keys(module.exports)`).

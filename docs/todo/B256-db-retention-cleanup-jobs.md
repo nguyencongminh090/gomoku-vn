@@ -19,7 +19,7 @@
 - Deleting sessions must not log out live users (use expires_at/revoked_at only).
 
 ## Why this way
-Single timer beside walTimer. Notes: none.
+Single timer beside walTimer. Notes: `docs/knowledge/db-backup-restore-retention.md` (retention deletes, reclaiming space).
 
 ## Done when
 - Old rows removed, live rows kept (tests); numbers agreed with user recorded here.
