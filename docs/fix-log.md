@@ -262,3 +262,4 @@
 | 2026-10-16 13:42 | #255: DB versioned migrations on user_version (runner + legacy ALTERs moved, baseline 3) | [detail](docs/fix-log/2026-10-16-db-versioned-migrations.md) |
 | 2026-10-16 15:00 | #256: club_log capped at 500 rows/club (per-write delete in ClubService.log) | [detail](docs/fix-log/2026-10-16-club-log-cap.md) |
 | 2026-10-16 13:48 | #257: games.winner_color CHECK column (migration 004 + backfill), saveGame writes both, SQL readers switched | [detail](docs/fix-log/2026-10-16-games-winner-color.md) |
+| 2026-10-16 15:30 | #260: rankings search ranks only page rows (39→3.9 ms at 20k users); bench-queries.js added; game name filter left as LIKE | [detail](docs/fix-log/2026-10-16-slow-queries-rankings-search.md) |
