@@ -1,5 +1,5 @@
 # B263 — Lobby critical path: start APIs earlier, preload fonts, explain 1.5 s idle gap
-**Status:** OPEN
+**Status:** OPEN — implemented on `fix/263-lobby-critical-path` (uncommitted), ?v=388; awaiting prod cold HAR
 **Area:** `client/index.html`, `client/js/index-entry.js`, `lobby*.js`, `platform-shell.js`, `client/vendor/fonts/manrope/style.css`
 **From:** HAR 22-09-34, 2026-10-16   **Depends:** #262 (measure after edge fix to separate effects)
 
@@ -27,5 +27,10 @@ Serial JS→API→render is the largest controllable chunk (~0.6 s). Rejected: S
 Knowledge: none.
 
 ## Done when
-- Cold-load HAR shows APIs start ≤ first-JS start + 100 ms; fonts requested with the CSS wave; gap explained in this file.
+- Cold-load HAR shows APIs finish before `index-entry.js` finishes (revised 2026-10-17, user chose (a): +100 ms needs an inline script + CSP hash and gains no render time — APIs are off the critical path; module graph is); fonts requested with the CSS wave; gap explained in this file.
 - `npm test` green; `?v=` one value.
+
+## Result (2026-10-16) — fix-log `2026-10-16-lobby-early-api-font-preload.md`
+- Gap: none in the page. RUM Navigation Timing: TCP connect 18→2396 ms (cold connection, network), responseEnd 3085, first subresource 3138; the HAR HTML row understated it.
+- `api-early.js` + `GvnEarly.fetch` in 3 consumers; font preloads ×3; polling kept (≈250–300 B / 60 s, visible only).
+- Local @150 ms RTT: APIs 975→340 ms = first JS + 1 RTT, done ~550 < index-entry.js ~970. Inline+CSP hash rejected (knowledge `static-assets-caching-csp-build` rule 8).

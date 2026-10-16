@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=387';
+import { client, setHeroTab } from './lobby.js?v=388';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -288,7 +288,9 @@ export function renderHome(data) {
 
 export async function loadHome() {
   try {
-    const res = await fetch('/api/home', { credentials: 'same-origin' });
+    // First call takes the request api-early.js started during parsing (#263); polls fetch fresh.
+    const init = { credentials: 'same-origin' };
+    const res = await (window.GvnEarly ? window.GvnEarly.fetch('/api/home', init) : fetch('/api/home', init));
     if (!res.ok) throw new Error(String(res.status));
     const data = await res.json();
     if (JSON.stringify(data) !== lastJson) renderHome(data); // unchanged poll → no DOM rebuild
