@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#255.** DB: versioned migrations on PRAGMA user_version (replace inline ALTERs) `[Model: Opus]` — [detail](docs/todo/B255-db-versioned-migrations.md)
 - ✅ **#252.** `compression` + `lobby-home` suites fail in full `npm test` (pass alone; also fail on clean `dev`) `[Model: Sonnet]` — [detail](B252-compression-lobby-home-tests-fail-full-run.md)
 - ✅ **#249.** Rating integrity v1: collusion signals + read-only admin list `[Model: Opus 5]` — [detail](B249-rating-integrity-graph-v1.md)
 - ✅ **#248.** Tournament result views: double-elim bracket tree + Swiss round columns (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B248-tournament-result-bracket-views.md)
