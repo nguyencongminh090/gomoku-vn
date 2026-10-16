@@ -78,3 +78,34 @@ test('-- rebuild migration runs with foreign_keys off and restores it', () => {
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.pragma('user_version', { simple: true })).toBe(4);
 });
+
+test('concurrent boot: a second connection that read the old version skips what the first applied', () => {
+  const file = path.join(dir, 'race.db');
+  const migDir = path.join(dir, 'mig');
+  fs.mkdirSync(migDir);
+  const opts = { dir: migDir, schemaSql, legacy: upgradeLegacy };
+  const a = new Database(file);
+  const b = new Database(file);
+  runMigrations(a, opts);
+  fs.writeFileSync(path.join(migDir, '004_a.sql'), 'ALTER TABLE users ADD COLUMN a TEXT');
+  // b reads user_version (3), then a applies 004 before b's transaction starts.
+  const pragma = b.pragma.bind(b);
+  let raced = false;
+  b.pragma = (s, o) => {
+    const v = pragma(s, o);
+    if (!raced && s === 'user_version') { raced = true; runMigrations(a, opts); }
+    return v;
+  };
+  expect(() => runMigrations(b, opts)).not.toThrow();
+  expect(pragma('user_version', { simple: true })).toBe(4);
+  a.close(); b.close();
+});
+
+test('two migration files with the same number are refused before anything runs', () => {
+  mig('004_x.sql', 'ALTER TABLE users ADD COLUMN x TEXT');
+  mig('004_y.sql', 'ALTER TABLE users ADD COLUMN y TEXT');
+  const db = new Database(':memory:');
+  expect(() => run(db)).toThrow(/duplicate migration number 4/);
+  expect(cols(db, 'users')).not.toEqual(expect.arrayContaining(['x']));
+  expect(cols(db, 'users')).not.toEqual(expect.arrayContaining(['y']));
+});
