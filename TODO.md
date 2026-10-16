@@ -77,6 +77,5 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
-- **#262.** Cloudflare edge: static assets mostly cf MISS (Tiered Cache / Cache Reserve, re-measure) `[Model: Opus 5]` — [detail](docs/todo/B262-cloudflare-edge-cache-cold-misses.md)
 - **#263.** Lobby critical path: early APIs, font preload, explain 1.5 s idle gap `[Model: Opus 5]` — [detail](docs/todo/B263-lobby-critical-path-api-fonts-gap.md)
 - **#264.** Page weight: split i18n, lazy profanity, defer room scripts (low priority) `[Model: Sonnet 5]` — [detail](docs/todo/B264-page-weight-i18n-profanity-scripts.md)
