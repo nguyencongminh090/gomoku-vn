@@ -3,6 +3,7 @@
 /** db/rankings.js — split out of database.js (#258); code moved verbatim. */
 
 const { db } = require('./connection');
+const { likeEscape } = require('./like');
 
 
 // ---------------------------------------------------------------------------
@@ -150,8 +151,6 @@ function getPrimaryClubs(userIds) {
   for (const r of rows) if (!out.has(r.user_id)) out.set(r.user_id, { slug: r.slug, name: r.name });
   return out;
 }
-
-const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => "\\" + c)}%`;
 
 /**
  * Leaderboard rows whose username or display name contains q — each keeps its

@@ -4,6 +4,7 @@
 
 const logger = require('../utils/logger');
 const { db } = require('./connection');
+const { likeEscape } = require('./like');
 
 
 // ---------------------------------------------------------------------------
@@ -180,8 +181,8 @@ function buildGameFilters(filters = {}, extraClauses = []) {
   const params = [];
 
   if (filters.player) {
-    clauses.push('(black_player_name LIKE ? OR white_player_name LIKE ?)');
-    const like = `%${filters.player}%`;
+    clauses.push("(black_player_name LIKE ? ESCAPE '\\' OR white_player_name LIKE ? ESCAPE '\\')");
+    const like = likeEscape(filters.player);
     params.push(like, like);
   }
   if (filters.from) {

@@ -19,6 +19,8 @@ function legacyDb() {
   const db = new Database(':memory:');
   migrate(db, only003); // schema + legacy upgrade, stamped v3
   db.pragma('foreign_keys = OFF');
+  // real FK targets: migration 005 rebuilds games and runs foreign_key_check
+  db.exec("INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ('u1','u1','x','u1','t'),('u2','u2','x','u2','t')");
   const ins = db.prepare(`INSERT INTO games (id, room_id, black_player_id, white_player_id, black_player_name, white_player_name,
     winner, board_size, started_at) VALUES (?, 'r', ?, ?, 'b', 'w', ?, 15, 't')`);
   [
