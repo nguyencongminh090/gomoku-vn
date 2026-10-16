@@ -1,5 +1,5 @@
 # B252 — `compression` and `lobby-home` suites fail in the full `npm test` run
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-15 — test-side root causes, see fix-log
 **Area:** server/tests/compression.test.js, client/tests/lobby-home.test.js
 **From:** seen during #251 browser pass, 2026-10-15; same 2 fail on a clean `dev` worktree (97a4025)   **Depends:** —
 

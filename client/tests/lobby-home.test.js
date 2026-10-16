@@ -22,7 +22,15 @@ const HOME = read('js/lobby-home.js')
 const EMPTY = { myGame: null, myMatches: [], tournaments: [], live: [] };
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+// #252: a prior instance that got `match:status {waiting:true}` keeps a 1 s setInterval(renderQuickMatch)
+// alive; under load it ticks between boots and paints its stale state into the NEXT test's #qm-line.
+function stopPriorTicker() {
+  const s = window.__lobbyStub;
+  if (s && s.client) { try { s.client.fire('match:status', { waiting: false }); } catch { /* no handler yet */ } }
+}
+
 async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
+  stopPriorTicker();
   jest.useRealTimers();
   window.history.replaceState(null, '', url);
   document.body.innerHTML = BODY;
@@ -53,7 +61,7 @@ const visible = () => ['screen-home', 'panel-tables', 'panel-tournaments'].filte
 const actions = () => ['btn-create', 'btn-create-tournament'].filter((id) => !document.getElementById(id).hidden);
 const navOn = () => [...document.querySelectorAll('#pl-shell .is-active')].map((a) => a.dataset.tab);
 
-afterEach(() => { window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling
+afterEach(() => { stopPriorTicker(); window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling + quick-match ticker
 
 /** Ticket meta segments (separate spans — no "·"-joined strings in the DOM). */
 const segs = (row) => [...row.querySelectorAll('.hrow__meta > span')].map((x) => x.textContent);
