@@ -29,6 +29,7 @@ const EVENT_TITLE_MAX = 60;
 const MAX_UPCOMING_EVENTS = 20;
 const CHAT_PAGE = 50;
 const CHAT_KEEP = 200;
+const LOG_KEEP = 500;
 const COLORS = ['blue', 'green', 'red', 'orange', 'purple', 'teal', 'pink', 'gray'];
 const TAG_RE = /^[\p{L}\p{N}]{2,4}$/u;
 const MAX_INVITES = 50;
@@ -78,6 +79,8 @@ const countUserClubs = (userId) =>
 function log(clubId, type, actorId, targetId, detail = '') {
   db().prepare('INSERT INTO club_log (club_id, type, actor_id, target_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)')
     .run(clubId, type, actorId || null, targetId || null, detail, now());
+  db().prepare(`DELETE FROM club_log WHERE club_id = ? AND id <= (
+    SELECT id FROM club_log WHERE club_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)`).run(clubId, clubId, LOG_KEEP);
 }
 
 /** Owner + officers of a club. */
@@ -578,7 +581,7 @@ function userIdByUsername(username) {
 }
 
 module.exports = {
-  ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
+  ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
