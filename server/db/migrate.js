@@ -18,14 +18,20 @@ const logger = require('../utils/logger');
 const BASELINE = 3;
 
 function listMigrations(dir) {
-  return fs.readdirSync(dir)
+  const list = fs.readdirSync(dir)
     .map((f) => ({ file: f, m: /^(\d+)_.+\.sql$/.exec(f) }))
     .filter((x) => x.m && Number(x.m[1]) > BASELINE)
     .map((x) => ({ version: Number(x.m[1]), file: x.file }))
     .sort((a, b) => a.version - b.version);
+  // Two branches each adding "the next" file would otherwise both run (or one be skipped forever).
+  list.forEach((x, i) => {
+    if (i && list[i - 1].version === x.version) throw new Error(`[DB] duplicate migration number ${x.version}: ${list[i - 1].file}, ${x.file}`);
+  });
+  return list;
 }
 
 function runMigrations(db, { dir, schemaSql, legacy }) {
+  const pending = listMigrations(dir);
   let current = db.pragma('user_version', { simple: true });
 
   if (current < BASELINE) {
@@ -35,7 +41,6 @@ function runMigrations(db, { dir, schemaSql, legacy }) {
     current = BASELINE;
   }
 
-  const pending = listMigrations(dir);
   const latest = pending.length ? pending[pending.length - 1].version : BASELINE;
   if (current > latest) throw new Error(`[DB] database user_version ${current} is newer than this app (${latest})`);
 
@@ -44,16 +49,20 @@ function runMigrations(db, { dir, schemaSql, legacy }) {
     const sql = fs.readFileSync(path.join(dir, file), 'utf8');
     const rebuild = /^\s*--\s*rebuild\b/i.test(sql);
     if (rebuild) db.pragma('foreign_keys = OFF');
+    let applied = false;
     try {
       db.transaction(() => {
+        // Re-read under the write lock: another connection may have applied it since `current` was read.
+        if (db.pragma('user_version', { simple: true }) >= version) return;
         db.exec(sql);
         if (rebuild && db.pragma('foreign_key_check').length) throw new Error('foreign key violation');
         db.pragma(`user_version = ${version}`);
+        applied = true;
       }).immediate();
     } finally {
       if (rebuild) db.pragma('foreign_keys = ON');
     }
-    logger.info(`[DB] Applied migration ${file}`);
+    if (applied) logger.info(`[DB] Applied migration ${file}`);
   }
 }
 

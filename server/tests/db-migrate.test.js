@@ -78,3 +78,52 @@ test('-- rebuild migration runs with foreign_keys off and restores it', () => {
   expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
   expect(db.pragma('user_version', { simple: true })).toBe(4);
 });
+
+test('concurrent boot: a second connection that read the old version skips what the first applied', () => {
+  const file = path.join(dir, 'race.db');
+  const migDir = path.join(dir, 'mig');
+  fs.mkdirSync(migDir);
+  const opts = { dir: migDir, schemaSql, legacy: upgradeLegacy };
+  const a = new Database(file);
+  const b = new Database(file);
+  runMigrations(a, opts);
+  fs.writeFileSync(path.join(migDir, '004_a.sql'), 'ALTER TABLE users ADD COLUMN a TEXT');
+  // b reads user_version (3), then a applies 004 before b's transaction starts.
+  const pragma = b.pragma.bind(b);
+  let raced = false;
+  b.pragma = (s, o) => {
+    const v = pragma(s, o);
+    if (!raced && s === 'user_version') { raced = true; runMigrations(a, opts); }
+    return v;
+  };
+  expect(() => runMigrations(b, opts)).not.toThrow();
+  expect(pragma('user_version', { simple: true })).toBe(4);
+  a.close(); b.close();
+});
+
+test('two migration files with the same number are refused before anything runs', () => {
+  mig('004_x.sql', 'ALTER TABLE users ADD COLUMN x TEXT');
+  mig('004_y.sql', 'ALTER TABLE users ADD COLUMN y TEXT');
+  const db = new Database(':memory:');
+  expect(() => run(db)).toThrow(/duplicate migration number 4/);
+  expect(cols(db, 'users')).not.toEqual(expect.arrayContaining(['x']));
+  expect(cols(db, 'users')).not.toEqual(expect.arrayContaining(['y']));
+});
+
+test('old DB missing migration 003 gets users.last_login_at before the baseline stamp', () => {
+  const db = new Database(':memory:');
+  db.exec('CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT, password_hash TEXT, display_name TEXT, created_at TEXT)');
+  run(db);
+  expect(cols(db, 'users')).toContain('last_login_at');
+  expect(db.pragma('user_version', { simple: true })).toBe(BASELINE);
+});
+
+test.each([
+  ['games', 'CREATE TABLE games (id TEXT PRIMARY KEY, room_id TEXT NOT NULL, black_player_id TEXT, white_player_id TEXT, black_player_name TEXT NOT NULL, white_player_name TEXT NOT NULL, winner TEXT, reason TEXT, board_size INTEGER NOT NULL, rule_wall INTEGER NOT NULL DEFAULT 0, rule_portal INTEGER NOT NULL DEFAULT 0, moves TEXT, walls TEXT, portals TEXT, started_at TEXT NOT NULL, ended_at TEXT)'],
+  ['player_games', 'CREATE TABLE player_games (player_id TEXT NOT NULL, game_id TEXT NOT NULL REFERENCES games(id), PRIMARY KEY (player_id, game_id))'],
+])('old DB missing migration 002 (%s without users FK) is refused, not stamped', (_t, ddl) => {
+  const db = new Database(':memory:');
+  db.exec(ddl);
+  expect(() => run(db)).toThrow(/002_rebuild_player_games_and_games_fk\.sql/);
+  expect(db.pragma('user_version', { simple: true })).toBe(0);
+});

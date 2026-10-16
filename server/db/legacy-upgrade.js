@@ -161,6 +161,23 @@ function upgradeLegacy(db) {
     logger.info('[DB] Migrated users: added locked_at column (TODO.md #206)');
   }
 
+  // The baseline stamp asserts migrations/001-003 were applied by hand. 001 is an index already in
+  // schema.sql; 003 is additive, so heal it here; 002 deletes orphan rows, so never run it unattended.
+  if (userColumns.length > 0 && !userColumns.includes('last_login_at')) {
+    db.exec('ALTER TABLE users ADD COLUMN last_login_at TEXT');
+    logger.info('[DB] Migrated users: added last_login_at column (migration 003)');
+  }
+  assertMigration002(db);
+}
+
+/** Throws (before the baseline stamp) if games/player_games still lack their users FK. */
+function assertMigration002(db) {
+  const missing = [['games', 'black_player_id'], ['games', 'white_player_id'], ['player_games', 'player_id']]
+    .filter(([t, col]) => !db.prepare(`PRAGMA foreign_key_list(${t})`).all().some((fk) => fk.from === col && fk.table === 'users'));
+  if (missing.length) {
+    throw new Error(`[DB] migration 002 was never applied (no users FK on ${missing.map((m) => m.join('.')).join(', ')}). ` +
+      'Back up the DB, run: sqlite3 <db> < server/db/migrations/002_rebuild_player_games_and_games_fk.sql, then restart.');
+  }
 }
 
 /**
