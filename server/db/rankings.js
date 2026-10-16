@@ -157,15 +157,20 @@ function getPrimaryClubs(userIds) {
  * TRUE global rank (window function), so searching doesn't renumber players.
  */
 function searchRankings(category, q, limit, offset) {
+  // Match first (scan users, probe ratings by PK), page, and only then count the better-rated players for the
+  // page's rows — rank is COUNT(better) as in getUserRanking, not a ROW_NUMBER over the whole category (B260).
+  const like = likeEscape(q);
   return db.prepare(`
-    SELECT * FROM (
-      SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games,
-             ROW_NUMBER() OVER (ORDER BY r.rating DESC, r.user_id) AS rank
-      FROM ratings r JOIN users u ON u.id = r.user_id
-      WHERE r.category = ? AND r.games >= ?
-    ) WHERE username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\'
-    ORDER BY rank LIMIT ? OFFSET ?`)
-    .all(category, RANKING_MIN_GAMES, likeEscape(q), likeEscape(q), limit, offset);
+    WITH page AS (
+      SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
+      FROM users u CROSS JOIN ratings r ON r.user_id = u.id AND r.category = ?
+      WHERE r.games >= ? AND (u.username LIKE ? ESCAPE '\\' OR u.display_name LIKE ? ESCAPE '\\')
+      ORDER BY r.rating DESC, r.user_id LIMIT ? OFFSET ?
+    )
+    SELECT page.*, 1 + (SELECT COUNT(*) FROM ratings b WHERE b.category = ? AND b.games >= ?
+                        AND (b.rating > page.rating OR (b.rating = page.rating AND b.user_id < page.user_id))) AS rank
+    FROM page ORDER BY page.rating DESC, page.user_id`)
+    .all(category, RANKING_MIN_GAMES, like, like, limit, offset, category, RANKING_MIN_GAMES);
 }
 
 function countSearchRankings(category, q) {
