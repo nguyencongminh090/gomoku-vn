@@ -1,5 +1,5 @@
 # B253 — Drop "Display density" (Lite/Default UI mode); keep the good behaviours
-**Status:** ✅ DONE 2026-10-16, merged to dev 2c376d1 (?v=384); browser pass 2026-10-16 (Chromium 1280 + 390 px, real server, temp DB): lobby modal, rule tags + tooltip, online-name line, replay analysis memory, host-vs-spectator room settings, seated→Khán giả tab hides, settings page, legacy gvn_ui_mode ignored, 0 console errors. NOT covered: scoreboard with data, phone bottom-sheet tab bar, WebKit.
+**Status:** ✅ DONE 2026-10-16, merged to dev 2c376d1 (?v=384); browser pass 2026-10-16 (Chromium 1280 + 390 px, real server, temp DB): lobby modal, rule tags + tooltip, online-name line, replay analysis memory, host-vs-spectator room settings, seated→Khán giả tab hides, settings page, legacy gvn_ui_mode ignored, 0 console errors. Second pass 2026-10-16: scoreboard with data (seedA 0-1-0, seedB 1-0-0) shows in Khán giả tab; sit → tab hides; phone bottom sheet (expand via #rpanel-toggle) ok; WebKit iPhone 13 ok; 0 console errors.
 **Area:** client/js/ui-mode.js, ui-mode-preload.js, lobby.js, room-ui.js, replay.js, settings-panel.js, settings-page.js, i18n.js, css/lobby.css (`.modal--lite`), ~20 client/*.html preload tags
 **From:** user 2026-10-16: "Allow drop it out but keep behaviour (good behaviour)"   **Depends:** —
 
