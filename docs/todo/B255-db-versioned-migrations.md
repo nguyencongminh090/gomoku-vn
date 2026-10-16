@@ -1,5 +1,5 @@
 # B255 — Versioned migrations on PRAGMA user_version
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-16 (uncommitted on feature/255-db-migrations)
 **Area:** server/db/database.js (~20 inline ALTER blocks), server/db/migrations/, schema.sql, tests
 **From:** DB architecture review 2026-10-16   **Depends:** B254 (backup first)
 

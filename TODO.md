@@ -81,7 +81,6 @@ in the detail file / fix-log).
 - **#251.** Room-entry overlay smooth on slow network (merged to dev e3e3aac, ?v=383, browser pass done) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)
 - **#253.** Drop "Display density" Lite/Default switch, keep good behaviours `[Model: Sonnet]` — [detail](docs/todo/B253-drop-density-ui-mode.md)
 - **#254.** DB: periodic SQLite backup via db.backup() + rotation, file modes, tracked .bak in git `[Model: Sonnet]` — [detail](docs/todo/B254-db-periodic-backup.md)
-- **#255.** DB: versioned migrations on PRAGMA user_version (replace inline ALTERs) `[Model: Opus]` — [detail](docs/todo/B255-db-versioned-migrations.md)
 - **#256.** DB: cap club_log at 500 rows/club (other tables already bounded) `[Model: Sonnet]` — [detail](docs/todo/B256-db-retention-cleanup-jobs.md)
 - **#257.** DB: games.winner_color with CHECK (needs #255) `[Model: Opus]` — [detail](docs/todo/B257-games-winner-color-column.md)
 - **#258.** DB: split database.js by domain behind a facade (after #255) `[Model: Sonnet]` — [detail](docs/todo/B258-split-database-js-by-domain.md)
