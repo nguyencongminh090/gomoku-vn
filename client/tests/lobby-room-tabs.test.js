@@ -58,7 +58,7 @@ describe('room tabs', () => {
 
 describe('buildRoomMeta rated/friendly segment (B219)', () => {
   const meta = (r) => window.eval(`
-    var escapeHtml = (s) => s; var buildRuleTags = () => ['17×17']; var buildTimeSummary = () => '';
+    var escapeHtml = (s) => s; var buildRuleTags = () => ['17×17']; var isCustomRules = () => false; var buildRuleTitle = () => ''; var buildTimeSummary = () => '';
     ${slice('function buildRoomMeta(', '// A seat to sit in')}
     buildRoomMeta(${JSON.stringify(r)})`);
   it('shows the room name as plain text first', () => {
@@ -94,5 +94,20 @@ describe('ticket players + whole-row click (B219 follow-up)', () => {
     const row = SRC.slice(SRC.indexOf('<div class="room-row'), SRC.indexOf('<div class="room-row') + 300);
     expect(row).toContain('data-action="joinRoom"');
     expect(SRC).not.toContain('room-row__action');
+  });
+});
+
+describe('compact rule tags (#253)', () => {
+  const run = (r) => window.eval(`
+    var t = (k) => k;
+    ${slice('function isCustomRules(', 'window.addEventListener(\'langchange\'')}
+    JSON.stringify({ tags: buildRuleTags(${JSON.stringify(r)}), title: buildRuleTitle(${JSON.stringify(r)}) })`);
+  it('standard room: one plain tag + size, nothing custom', () => {
+    expect(JSON.parse(run({ boardSize: 15, winningRule: 'freestyle' })).tags).toEqual(['lobby.rules_standard', '15×15']);
+  });
+  it('custom room: "custom" tag, full breakdown in the title', () => {
+    const r = JSON.parse(run({ boardSize: 19, winningRule: 'caro', ruleWall: true, ruleSwap2: true }));
+    expect(r.tags).toEqual(['lobby.rules_custom', '19×19']);
+    expect(r.title).toBe('modal.rule_wall · Swap2 · rule.caro');
   });
 });

@@ -4,7 +4,7 @@
  * settings-panel.js — Global Settings entry point, shared by every
  * authenticated page (index.html, room.html, history.html).
  *
- * Replaces what used to be separate topnav icon buttons (UI density,
+ * Replaces what used to be separate topnav icon buttons (
  * language, logout) with a single gear icon that opens one panel.
  * Consolidates logic that was previously split across inline page scripts,
  * ui-mode.js's switcher UI, and i18n.js's createLangSwitcher, and adds a
@@ -160,19 +160,6 @@
     const body = document.createElement('div');
     body.className = 'gset-panel__body';
 
-    // Appearance: UI density
-    const densityRow = document.createElement('div');
-    densityRow.className = 'gset-row';
-    const densityLabel = document.createElement('span');
-    densityLabel.className = 'gset-row__label';
-    densityLabel.textContent = T('gset.density');
-    densityRow.appendChild(densityLabel);
-    densityRow.appendChild(segment(
-      [['lite', T('mode.lite')], ['default', T('mode.default')]],
-      global.getUiMode ? global.getUiMode() : 'lite',
-      (value) => { if (global.setUiMode) global.setUiMode(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
-    ));
-
     // Appearance: colour mode (dark | light) — B173
     const modeRow = document.createElement('div');
     modeRow.className = 'gset-row';
@@ -199,7 +186,7 @@
       (value) => { if (global.setSkin) global.setSkin(value); renderInto(overlayEl.querySelector('.gset-panel__body')); }
     ));
 
-    body.appendChild(group(T('gset.appearance'), [skinRow, modeRow, densityRow]));
+    body.appendChild(group(T('gset.appearance'), [skinRow, modeRow]));
 
     // Language
     const langRow = document.createElement('div');
@@ -366,7 +353,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=383#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }

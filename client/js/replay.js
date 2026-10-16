@@ -96,10 +96,8 @@ async function openReplay(gameId, source) {
     // Show the view FIRST (so parent has dimensions when we call resize)
     viewReplay.style.display = '';
 
-    // Reset analysis mode. Default opens straight into it (analysis is the
-    // reason a power user opens a replay at all); Lite starts closed but can
-    // toggle it.
-    setAnalysisMode(uiMode() === 'default');
+    // Reset analysis mode to however the user left it last time (#253).
+    setAnalysisMode(loadAnalysisPref());
 
     // Init board renderer (once)
     if (!boardRenderer) {
@@ -189,14 +187,16 @@ function countMainLine(node) {
 // Analysis Mode
 // ---------------------------------------------------------------------------
 
-// Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
-// 'pro' → 'default' normalisation lives in exactly one place.
-function uiMode() {
-  return (window.getUiMode && window.getUiMode()) || 'lite';
+// Whether replays open straight into analysis is remembered from the last toggle.
+const ANALYSIS_PREF_KEY = 'gvn_replay_analysis';
+
+function loadAnalysisPref() {
+  try { return localStorage.getItem(ANALYSIS_PREF_KEY) === '1'; } catch (e) { return false; }
 }
 
-// Analysis is available in every UI mode; only the entry state differs
-// (auto-opened in Default, closed in Lite) — see openReplay().
+function saveAnalysisPref(on) {
+  try { localStorage.setItem(ANALYSIS_PREF_KEY, on ? '1' : '0'); } catch (e) { /* private mode */ }
+}
 
 function setAnalysisMode(on) {
   analysisMode = on;
@@ -219,6 +219,7 @@ function setAnalysisMode(on) {
 
 function toggleAnalysis() {
   setAnalysisMode(!analysisMode);
+  saveAnalysisPref(analysisMode);
   // Let the DOM settle (tree panel show/hide), then resize board
   requestAnimationFrame(() => {
     if (boardRenderer) boardRenderer.resize();
@@ -285,7 +286,7 @@ function startAutoPlay() {
   if (!moveTree) return;
   if (moveTree.currentNode.isLeaf) moveTree.goToStart();
   
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=383#ph-bold-pause"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-bold-pause"></use></svg>';
   btnPlay.classList.add('playing');
   autoPlayTimer = setInterval(() => {
     if (!moveTree.goForward()) {
@@ -298,7 +299,7 @@ function startAutoPlay() {
 
 function stopAutoPlay() {
   if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=383#ph-bold-play"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-bold-play"></use></svg>';
   btnPlay.classList.remove('playing');
 }
 
@@ -394,20 +395,6 @@ function formatTime(isoStr) {
 // ---------------------------------------------------------------------------
 window.addEventListener('langchange', () => {
   if (replayGameData) renderReplayInfo(replayGameData);
-});
-
-// ---------------------------------------------------------------------------
-// UI mode change listener — re-gate the replay view without a reload
-// ---------------------------------------------------------------------------
-window.addEventListener('uimodechange', () => {
-  // Switching to Default mid-replay should switch straight into analysis.
-  if (replayGameData) {
-    if (uiMode() === 'default' && !analysisMode) setAnalysisMode(true);
-    requestAnimationFrame(() => {
-      if (boardRenderer) boardRenderer.resize();
-      syncBoardToTree();
-    });
-  }
 });
 
 // ---------------------------------------------------------------------------

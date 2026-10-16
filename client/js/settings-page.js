@@ -7,7 +7,7 @@
  */
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=383'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=384'; // ?v=: /assets is immutable-cached
   const TABS = ['profile', 'look', 'game', 'account'];
   const S = () => window.GvnSettings || {};
 
@@ -78,10 +78,6 @@
       row('circle-half', t('settings.row_mode'), segment(
         [['light', t('gset.mode_light'), 'sun'], ['dark', t('gset.mode_dark'), 'moon']],
         call('getColorMode') || 'dark', (v) => call('setColorMode', v))),
-      row('rows', t('gset.density'), segment(
-        // Text, not rows / list-dashes icons: their meaning is not guessable (#214, iconography.md rule 4).
-        [['default', t('mode.default')], ['lite', t('mode.lite')]],
-        call('getUiMode') || 'lite', (v) => call('setUiMode', v))),
       row('translate', t('gset.language'), segment(   // globe = country (Hồ sơ tab); one icon per concept (#214)
         [['vi', 'VI'], ['en', 'EN']], call('getLanguage') || 'vi', (v) => call('setLanguage', v))),
     );

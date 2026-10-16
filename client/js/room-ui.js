@@ -54,12 +54,6 @@
     return (rs && typeof rs.serverNow === 'function') ? rs.serverNow() : Date.now();
   }
 
-  // Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
-  // 'pro' → 'default' normalisation lives in exactly one place.
-  function uiMode() {
-    return (global.getUiMode && global.getUiMode()) || 'lite';
-  }
-
   // Bounce the user back to the Chat tab when the tab they are on disappears.
   // window.RoomTabs is published by room.js, which room-entry.js loads before
   // this file; the click fallback only matters if that order ever changes.
@@ -223,7 +217,7 @@
       ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=383#ph-regular-x"></use></svg></button>`
+      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
       <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
@@ -317,7 +311,7 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=383#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
@@ -466,7 +460,7 @@
       <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=383#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-regular-caret-right"></use></svg>
       </a>
     `;
   }
@@ -576,26 +570,9 @@
       const ruleText  = ruleNames.length > 0 ? ruleNames.join(', ') : t('room.rule_basic');
       const timerText = getTimerSettingsText(s);
 
-      // Lite: collapse the three label/value rows into one plain sentence built
-      // from exactly the same data.
-      const roomRows = uiMode() === 'lite'
-        ? `<p class="settings-summary">${escapeHtml(buildSettingsSentence(s, ruleText))}</p>`
-        : `
-        <div class="settings-info">
-          <div class="settings-info__row">
-            <span class="settings-info__label">${t('settings.board_size')}</span>
-            <span class="settings-info__value">${s.boardSize}×${s.boardSize}</span>
-          </div>
-          <div class="settings-info__row">
-            <span class="settings-info__label">${t('settings.rules')}</span>
-            <span class="settings-info__value">${ruleText}</span>
-          </div>
-          <div class="settings-info__row">
-            <span class="settings-info__label">${t('settings.timer')}</span>
-            <span class="settings-info__value">${timerText}</span>
-          </div>
-        </div>
-      `;
+      // The three label/value rows collapse into one plain sentence built from
+      // exactly the same data (#253).
+      const roomRows = `<p class="settings-summary">${escapeHtml(buildSettingsSentence(s, ruleText))}</p>`;
 
       settingsBody.innerHTML =
         settingsGroup('settings.group_room', 'settings.group_room_hint_guest', roomRows) +
@@ -610,13 +587,13 @@
     const st = S();
     const guests = st.roomData.users.filter(u => u.slot === null);
 
-    // Lite hides the whole "Khán giả" tab until a spectator actually joins —
+    // The "Khán giả" tab stays hidden until a spectator actually joins —
     // same empty-check that already governed the panel body, extended to the
-    // tab button. Default/Pro leave the tab permanently visible.
+    // tab button.
     const tabBtn = document.querySelector('.tab-btn[data-tab="tab-users"]');
     if (tabBtn) {
       const scorePanel = document.getElementById('score-panel');
-      const hideTab = uiMode() === 'lite' && guests.length === 0 && !(scorePanel && !scorePanel.hidden);
+      const hideTab = guests.length === 0 && !(scorePanel && !scorePanel.hidden);
       tabBtn.style.display = hideTab ? 'none' : '';
       // Don't strand the user on a tab that just disappeared. Say "show the
       // chat tab", not "pretend the user clicked the chat button": the click
@@ -675,9 +652,9 @@
     // tab-users above.
     let hasData = !(seatedPlayers.length === 0 && Object.keys(rawSt).length === 0);
 
-    // Lite waits for a result to exist — an all-zero scoreboard tells a casual
-    // player nothing. Default/Pro keep the existing "visible once seated" rule.
-    if (hasData && uiMode() === 'lite') {
+    // Wait for a result to exist — an all-zero scoreboard tells a casual
+    // player nothing.
+    if (hasData) {
       const hasResult = Object.values(rawSt).some(
         e => (e.win || 0) + (e.loss || 0) + (e.draw || 0) > 0
       );
@@ -715,14 +692,6 @@
   window.addEventListener('langchange', () => {
     const st = S();
     if (st.roomData) renderSettings();
-  });
-
-  // ── UI mode change listener ───────────────────────────────────────────────
-  // Score table, spectators tab and the guest settings summary are all mode-
-  // gated, so re-run the full panel render rather than just renderSettings().
-  window.addEventListener('uimodechange', () => {
-    const st = S();
-    if (st.roomData) updateUI();
   });
 
   // ── Click-mode change listener ─────────────────────────────────────────────
