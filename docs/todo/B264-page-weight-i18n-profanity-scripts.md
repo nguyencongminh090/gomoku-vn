@@ -1,5 +1,5 @@
 # B264 — Page weight: split i18n by language, lazy-load profanity, defer room scripts
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-17 (profanity lazy only; i18n split declined by user; defer/CSS merge no gain)
 **Area:** `client/js/i18n.js`, `profanity-filter.js`, `profanity-classifier-model.js`, `client/room.html`, `client/index.html`
 **From:** static size analysis 2026-10-16   **Depends:** #262, #263 (low priority: network, not bytes, is the bottleneck)
 
@@ -26,3 +26,7 @@ Knowledge: none.
 
 ## Done when
 - Lobby/room transfer reduced by the measured amount (numbers in fix-log); profanity tests + i18n tests green.
+
+## Result (2026-10-17) — fix-log `2026-10-17-room-lazy-profanity-filter.md`
+- Classifier model never loaded in browsers; room loaded only profanity-filter.js → now injected on chat focus (−12.3 KB gzip, −1 req).
+- i18n split: user chose don't split (first-visit-only ~20 KB vs 1-RTT language switch). Defer/CSS merge: scripts already end-of-body; merge breaks shared CSS cache.

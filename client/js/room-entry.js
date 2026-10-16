@@ -8,16 +8,18 @@
 // production build, silently leaving the global unset (see TODO.md #65
 // fix-log: this is exactly how B65's production-build check caught
 // window.EscapeUtils/window.ProfanityFilter never getting set). room.html
-// loads all four as plain classic <script> tags instead, before this module
-// script, so the global attachment always runs as ordinary script execution.
-import './session.js?v=388';
-import './i18n.js?v=388';
-import './ui-mode.js?v=388';
-import './settings-panel.js?v=388';
-import './socket-client.js?v=388';
-import './board.js?v=388';
-import './room.js?v=388';
-import './chat-ui.js?v=388';
-import './room-ui.js?v=388';
-import './game-ui.js?v=388';
-import './room-socket.js?v=388';
+// loads them as plain classic <script> tags instead, before this module
+// script, so the global attachment always runs as ordinary script execution
+// (profanity-filter.js is injected the same classic way by room.js on first
+// chat focus, #264; the classifier model is never loaded in the browser).
+import './session.js?v=389';
+import './i18n.js?v=389';
+import './ui-mode.js?v=389';
+import './settings-panel.js?v=389';
+import './socket-client.js?v=389';
+import './board.js?v=389';
+import './room.js?v=389';
+import './chat-ui.js?v=389';
+import './room-ui.js?v=389';
+import './game-ui.js?v=389';
+import './room-socket.js?v=389';

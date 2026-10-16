@@ -269,3 +269,4 @@
 | 2026-10-16 17:00 | #257 follow-up: migration 006 backfills winner_color for raw-name and guest-elimination legacy rows | [detail](docs/fix-log/2026-10-16-winner-color-heal.md) |
 | 2026-10-16 22:19 | #261 Lobby CLS: reserve #pl-shell 56px + empty dashboard containers; desktop 0.235→0, mobile 0.848→0.062 | [detail](docs/fix-log/2026-10-16-lobby-cls-reserve.md) |
 | 2026-10-16 23:32 | #263 Lobby: api-early.js starts 5 lobby APIs in <head> (dev ~975→~340 ms @150ms RTT), Manrope preload; 1.5 s gap = 2.4 s cold TCP connect hidden by HAR row | [detail](docs/fix-log/2026-10-16-lobby-early-api-font-preload.md) |
+| 2026-10-17 05:46 | #264 Room: profanity-filter.js lazy on chat focus (−1 req, −12 KB gzip); i18n split declined by user, room defer/CSS merge no gain | [detail](docs/fix-log/2026-10-17-room-lazy-profanity-filter.md) |
