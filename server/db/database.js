@@ -239,6 +239,9 @@ const walTimer = setInterval(() => {
 }, 60 * 60 * 1000); // Every hour
 walTimer.unref();
 
+// Daily online backup + rotation (#254). No-op in tests.
+require('./backup').startBackupScheduler(db, { dir: path.join(__dirname, 'backups') });
+
 logger.info('[DB] SQLite initialized at', DB_PATH);
 
 // ---------------------------------------------------------------------------
