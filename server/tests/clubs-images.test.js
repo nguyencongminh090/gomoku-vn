@@ -73,7 +73,7 @@ beforeAll(async () => {
 });
 afterAll(() => new Promise((r) => server.close(r)));
 
-describe.each([['avatar', 256, 256], ['banner', 1200, 200]])('club %s', (kind, w, h) => {
+describe.each([['avatar', 256, 256], ['banner', 1920, 480]])('club %s', (kind, w, h) => {
   let slug;
   beforeAll(async () => {
     slug = await mkClub('own', `Img ${kind} club`);

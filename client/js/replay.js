@@ -286,7 +286,7 @@ function startAutoPlay() {
   if (!moveTree) return;
   if (moveTree.currentNode.isLeaf) moveTree.goToStart();
   
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-bold-pause"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=386#ph-bold-pause"></use></svg>';
   btnPlay.classList.add('playing');
   autoPlayTimer = setInterval(() => {
     if (!moveTree.goForward()) {
@@ -299,7 +299,7 @@ function startAutoPlay() {
 
 function stopAutoPlay() {
   if (autoPlayTimer) { clearInterval(autoPlayTimer); autoPlayTimer = null; }
-  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=384#ph-bold-play"></use></svg>';
+  btnPlay.innerHTML = '<svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=386#ph-bold-play"></use></svg>';
   btnPlay.classList.remove('playing');
 }
 

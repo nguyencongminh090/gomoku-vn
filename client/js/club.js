@@ -78,7 +78,7 @@
   // Avatar + banner (#250): crop in avatar-crop.js, then POST the blob; the server re-encodes and enforces the size.
   const IMAGES = {
     avatar: { aspect: 1, outWidth: 512 },
-    banner: { aspect: 6, outWidth: 1200 },
+    banner: { aspect: 4, outWidth: 1920 },
   };
 
   async function pickImage(kind, file) {

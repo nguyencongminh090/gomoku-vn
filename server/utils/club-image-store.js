@@ -11,7 +11,7 @@ const path = require('path');
 const CLUB_IMAGE_DIR = process.env.CLUB_IMAGE_DIR || path.join(__dirname, '..', 'data', 'club-images');
 const KINDS = Object.freeze({
   avatar: { w: 256, h: 256, maxBytes: 30 * 1024 },
-  banner: { w: 1200, h: 200, maxBytes: 150 * 1024 },
+  banner: { w: 1920, h: 480, maxBytes: 300 * 1024 },
 });
 
 const imageFile = (clubId, kind) => path.join(CLUB_IMAGE_DIR, `${clubId}-${kind}.webp`);

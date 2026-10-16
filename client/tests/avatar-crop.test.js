@@ -93,20 +93,20 @@ describe('AvatarCrop.math.zoomAt (pinch)', () => {
 
 describe('crop geometry for a wide viewport (club banner, #250)', () => {
   const { math } = load();
-  const V = { w: 480, h: 80 };
+  const V = { w: 640, h: 160 };
 
-  it('covers the 4:1 window and crops a 6:1 source rectangle', () => {
-    const st = math.init(800, 400, V); // landscape 2:1 → width-limited: s = 480/800
-    expect(st.s).toBeCloseTo(0.6);
+  it('covers the 4:1 window and crops a 4:1 source rectangle', () => {
+    const st = math.init(800, 400, V); // landscape 2:1 → width-limited: s = 640/800
+    expect(st.s).toBeCloseTo(0.8);
     const r = math.cropRect(st, V);
-    expect(r.sw / r.sh).toBeCloseTo(6);
+    expect(r.sw / r.sh).toBeCloseTo(4);
     expect(r.sw).toBeCloseTo(800);
-    expect(r.sy).toBeCloseTo(133.33, 1); // centred vertically: (400 - 133.33) / 2
+    expect(r.sy).toBeCloseTo(100); // centred vertically: (400 - 200) / 2
   });
 
   it('a tall source is width-limited too, and move clamps inside the image', () => {
     const st = math.init(300, 900, V);
-    expect(st.s).toBeCloseTo(480 / 300);
+    expect(st.s).toBeCloseTo(640 / 300);
     const moved = math.move(st, 0, 99999, V);
     expect(moved.y).toBe(0);
     expect(math.move(st, 0, -99999, V).y).toBeCloseTo(V.h - 900 * st.s);
@@ -152,19 +152,19 @@ describe('AvatarCrop.open', () => {
     expect(document.querySelector('.pcrop')).toBeNull();
   });
 
-  it('aspect 6 opens the wide dialog and exports at outWidth × outWidth/6', async () => {
-    const p = start({ aspect: 6, outWidth: 1200, titleKey: 'clubs.banner_crop_title' });
+  it('aspect 4 opens the wide dialog and exports at outWidth × outWidth/4', async () => {
+    const p = start({ aspect: 4, outWidth: 1920, titleKey: 'clubs.banner_crop_title' });
     await tick();
     expect(document.querySelector('.pcrop__dlg--wide')).not.toBeNull();
     expect(document.querySelector('.pcrop__ring--rect')).not.toBeNull();
     expect(document.querySelector('.pcrop h2').textContent).toBe('clubs.banner_crop_title');
     const c = document.querySelector('.pcrop__view canvas');
-    expect([c.width, c.height]).toEqual([480, 80]);
+    expect([c.width, c.height]).toEqual([640, 160]);
     document.querySelector('.pbtn--primary').click();
     await p;
     const last = drawn[drawn.length - 1];
-    expect(last.slice(5)).toEqual([0, 0, 1200, 200]);
-    expect(last[3] / last[4]).toBeCloseTo(6);
+    expect(last.slice(5)).toEqual([0, 0, 1920, 480]);
+    expect(last[3] / last[4]).toBeCloseTo(4);
   });
 
     it('Escape and a backdrop click cancel', async () => {
