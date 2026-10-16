@@ -47,3 +47,5 @@ server/data/club-images/
 
 # DB safety copies (real user data) — never commit
 server/db/*.bak-*
+# admin CLI action log + pre-destructive DB copies (absolute paths, user data) — local only
+server/db/backups/
