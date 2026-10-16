@@ -260,3 +260,4 @@
 | 2026-10-15 18:54 | untracked: profile club rows ignored club avatarUrl (hard-coded null) -> pass c.avatarUrl | [detail](docs/fix-log/2026-10-15-profile-club-avatar.md) |
 | 2026-10-15 23:21 | #252 full-run flakes: compression test used keep-alive agent (ECONNRESET); lobby-home leaked quick-match ticker across tests -> agent:false + stop ticker | [detail](docs/fix-log/2026-10-15-full-run-test-flakes.md) |
 | 2026-10-16 13:42 | #255: DB versioned migrations on user_version (runner + legacy ALTERs moved, baseline 3) | [detail](docs/fix-log/2026-10-16-db-versioned-migrations.md) |
+| 2026-10-16 15:00 | #256: club_log capped at 500 rows/club (per-write delete in ClubService.log) | [detail](docs/fix-log/2026-10-16-club-log-cap.md) |

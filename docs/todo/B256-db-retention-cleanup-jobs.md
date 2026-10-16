@@ -1,5 +1,5 @@
 # B256 — Retention: cap club_log (rest already bounded)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-16 (uncommitted on feature/256-club-log-cap)
 **Area:** server/managers/ClubService.js (`log()` ~line 78), tests
 **From:** DB architecture review 2026-10-16; scope narrowed after code check same day   **Depends:** —
 
