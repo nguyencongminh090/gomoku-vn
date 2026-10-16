@@ -80,7 +80,3 @@ in the detail file / fix-log).
 - **#250.** Club avatar + banner with crop editors (built, awaiting browser pass) `[Model: Sonnet]` — [detail](docs/todo/B250-club-avatar-banner.md)
 - **#251.** Room-entry overlay smooth on slow network (merged to dev e3e3aac, ?v=383, browser pass done) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)
 - **#253.** Drop "Display density" Lite/Default switch, keep good behaviours `[Model: Sonnet]` — [detail](docs/todo/B253-drop-density-ui-mode.md)
-- **#254.** DB: periodic SQLite backup via db.backup() + rotation, file modes, tracked .bak in git `[Model: Sonnet]` — [detail](docs/todo/B254-db-periodic-backup.md)
-- **#258.** DB: split database.js by domain behind a facade (after #255) `[Model: Sonnet]` — [detail](docs/todo/B258-split-database-js-by-domain.md)
-- **#259.** DB: small hardening (DB_PATH env, json_valid, drop idx_games_room_id, trusted_schema, LIKE escape; no sessions FK) `[Model: Sonnet]` — [detail](docs/todo/B259-db-small-hardening.md)
-- **#260.** DB: slow queries at scale — rankings search (90 ms), player-name LIKE filter (79 ms), rank count `[Model: Sonnet]` — [detail](docs/todo/B260-slow-queries-rankings-search-player-filter.md)

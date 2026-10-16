@@ -1,5 +1,5 @@
 # B258 — Split server/db/database.js (1329 lines) by domain
-**Status:** DONE (feature/258-split-database-js, merged to dev)
+**Status:** ✅ DONE (feature/258-split-database-js, merged to dev)
 **Area:** server/db/database.js and all `require('../db/database')` callers
 **From:** DB architecture review 2026-10-16   **Depends:** B255 (migrations leave first)
 

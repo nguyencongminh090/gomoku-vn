@@ -1,5 +1,5 @@
 # B254 — Periodic SQLite backup via db.backup() + file permissions, tracked .bak
-**Status:** ✅ DONE 2026-10-16 (uncommitted on dev) — server/db/backup.js, daily db.backup() → tmp+rename, mode 600/700, keep 7 (env DB_BACKUP_INTERVAL_HOURS, DB_BACKUP_KEEP), test-skip; rotation only touches `gomoku-auto-*.db` so admin.js copies survive; tracked .bak untracked earlier; tests server/tests/db-backup.test.js
+**Status:** ✅ DONE 2026-10-16 (merged to dev 7cad375) — server/db/backup.js, daily db.backup() → tmp+rename, mode 600/700, keep 7 (env DB_BACKUP_INTERVAL_HOURS, DB_BACKUP_KEEP), test-skip; rotation only touches `gomoku-auto-*.db` so admin.js copies survive; tracked .bak untracked earlier; tests server/tests/db-backup.test.js
 **Area:** server/db/database.js (or new server/db/backup.js), server/db/backups/, tests
 **From:** DB architecture review 2026-10-16   **Depends:** —
 

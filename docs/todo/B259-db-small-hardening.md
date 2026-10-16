@@ -1,5 +1,5 @@
 # B259 — DB small hardening: DB_PATH env, json_valid, orphan sessions, unused index, trusted_schema, LIKE escape
-**Status:** DONE (feature/259-db-small-hardening). Item 4 drift check run 2026-10-16: 1 player_games row (of 365 games) whose player is neither seat; report only.
+**Status:** ✅ DONE (feature/259-db-small-hardening). Item 4 drift check run 2026-10-16: 1 player_games row (of 365 games) whose player is neither seat; report only.
 **Area:** server/db/database.js, schema.sql
 **From:** DB architecture review 2026-10-16   **Depends:** B255 (for schema changes)
 

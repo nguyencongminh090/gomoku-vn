@@ -4,6 +4,10 @@ Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`
 `node scripts/track.js <N|CODE>` or grep.
 ✅ - **#257.** DB: games.winner_color with CHECK (needs #255) `[Model: Opus]` — [detail](docs/todo/B257-games-winner-color-column.md)
 ✅ - **#255.** DB: versioned migrations on PRAGMA user_version (replace inline ALTERs) `[Model: Opus]` — [detail](docs/todo/B255-db-versioned-migrations.md)
+✅ - **#254.** DB: periodic SQLite backup via db.backup() + rotation, file modes, tracked .bak in git `[Model: Sonnet]` — [detail](docs/todo/B254-db-periodic-backup.md)
+✅ - **#258.** DB: split database.js by domain behind a facade (after #255) `[Model: Sonnet]` — [detail](docs/todo/B258-split-database-js-by-domain.md)
+✅ - **#259.** DB: small hardening (DB_PATH env, json_valid, drop idx_games_room_id, trusted_schema, LIKE escape; no sessions FK) `[Model: Sonnet]` — [detail](docs/todo/B259-db-small-hardening.md)
+✅ - **#260.** DB: slow queries at scale — rankings search (90 ms), player-name LIKE filter (79 ms), rank count `[Model: Sonnet]` — [detail](docs/todo/B260-slow-queries-rankings-search-player-filter.md)
 - ✅ **#252.** `compression` + `lobby-home` suites fail in full `npm test` (pass alone; also fail on clean `dev`) `[Model: Sonnet]` — [detail](B252-compression-lobby-home-tests-fail-full-run.md)
 - ✅ **#249.** Rating integrity v1: collusion signals + read-only admin list `[Model: Opus 5]` — [detail](B249-rating-integrity-graph-v1.md)
 - ✅ **#248.** Tournament result views: double-elim bracket tree + Swiss round columns (size M) `[Model: Sonnet 5]` — [detail](docs/todo/B248-tournament-result-bracket-views.md)

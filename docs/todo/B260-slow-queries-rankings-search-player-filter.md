@@ -1,5 +1,5 @@
 # B260 — Slow queries at scale: rankings search, player-name filter, rank count
-**Status:** DONE (partial: search fixed; name filter kept, see fix-log)
+**Status:** ✅ DONE (partial: search fixed; name filter kept, see fix-log)
 **Area:** server/db/database.js (`searchRankings`, `buildGameFilters`, `getUserRanking`), routes/rankings.js, routes/games.js
 **From:** EXPLAIN QUERY PLAN + timing run 2026-10-16 on a copy with 100k games / 20k rated users   **Depends:** —
 
