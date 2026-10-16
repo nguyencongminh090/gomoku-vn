@@ -264,3 +264,4 @@
 | 2026-10-16 13:48 | #257: games.winner_color CHECK column (migration 004 + backfill), saveGame writes both, SQL readers switched | [detail](docs/fix-log/2026-10-16-games-winner-color.md) |
 | 2026-10-16 15:30 | #260: rankings search ranks only page rows (39→3.9 ms at 20k users); bench-queries.js added; game name filter left as LIKE | [detail](docs/fix-log/2026-10-16-slow-queries-rankings-search.md) |
 | 2026-10-16 15:45 | #255 follow-up: migrate.js re-checks user_version under the write lock; duplicate migration numbers refused | [detail](docs/fix-log/2026-10-16-migrate-race-dupes.md) |
+| 2026-10-16 16:00 | #255 follow-up: baseline stamp heals missing 003 (last_login_at) and refuses DBs missing 002 FKs | [detail](docs/fix-log/2026-10-16-baseline-assumes-001-003.md) |

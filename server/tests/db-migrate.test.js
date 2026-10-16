@@ -109,3 +109,21 @@ test('two migration files with the same number are refused before anything runs'
   expect(cols(db, 'users')).not.toEqual(expect.arrayContaining(['x']));
   expect(cols(db, 'users')).not.toEqual(expect.arrayContaining(['y']));
 });
+
+test('old DB missing migration 003 gets users.last_login_at before the baseline stamp', () => {
+  const db = new Database(':memory:');
+  db.exec('CREATE TABLE users (id TEXT PRIMARY KEY, username TEXT, password_hash TEXT, display_name TEXT, created_at TEXT)');
+  run(db);
+  expect(cols(db, 'users')).toContain('last_login_at');
+  expect(db.pragma('user_version', { simple: true })).toBe(BASELINE);
+});
+
+test.each([
+  ['games', 'CREATE TABLE games (id TEXT PRIMARY KEY, room_id TEXT NOT NULL, black_player_id TEXT, white_player_id TEXT, black_player_name TEXT NOT NULL, white_player_name TEXT NOT NULL, winner TEXT, reason TEXT, board_size INTEGER NOT NULL, rule_wall INTEGER NOT NULL DEFAULT 0, rule_portal INTEGER NOT NULL DEFAULT 0, moves TEXT, walls TEXT, portals TEXT, started_at TEXT NOT NULL, ended_at TEXT)'],
+  ['player_games', 'CREATE TABLE player_games (player_id TEXT NOT NULL, game_id TEXT NOT NULL REFERENCES games(id), PRIMARY KEY (player_id, game_id))'],
+])('old DB missing migration 002 (%s without users FK) is refused, not stamped', (_t, ddl) => {
+  const db = new Database(':memory:');
+  db.exec(ddl);
+  expect(() => run(db)).toThrow(/002_rebuild_player_games_and_games_fk\.sql/);
+  expect(db.pragma('user_version', { simple: true })).toBe(0);
+});
