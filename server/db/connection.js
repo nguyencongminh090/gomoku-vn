@@ -13,7 +13,7 @@ const { runMigrations } = require('./migrate');
 const { upgradeLegacy, ensureOauthUniqueIndex } = require('./legacy-upgrade');
 
 // DB file lives in server/db/gomoku.db
-const DB_PATH     = path.join(__dirname, 'gomoku.db');
+const DB_PATH     = process.env.GOMOKU_DB_PATH || path.join(__dirname, 'gomoku.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 
 // ---------------------------------------------------------------------------
@@ -25,6 +25,7 @@ const db = new Database(DB_PATH);
 // Enable WAL mode for better concurrent read performance
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+db.pragma('trusted_schema = OFF'); // schema functions/views can't run unsafe SQL from a tampered file (B259)
 
 // Versioned schema (B255): schema.sql + legacy-upgrade bring pre-versioning files to the baseline, then migrations/NNN_*.sql
 // run in order. See migrate.js. Add schema changes as a new migration file, never as an inline ALTER here.
