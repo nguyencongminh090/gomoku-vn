@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#251.** Room-entry overlay smooth on slow network (merged to dev e3e3aac, ?v=383, browser pass done) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)
 ✅ - **#257.** DB: games.winner_color with CHECK (needs #255) `[Model: Opus]` — [detail](docs/todo/B257-games-winner-color-column.md)
 ✅ - **#255.** DB: versioned migrations on PRAGMA user_version (replace inline ALTERs) `[Model: Opus]` — [detail](docs/todo/B255-db-versioned-migrations.md)
 ✅ - **#254.** DB: periodic SQLite backup via db.backup() + rotation, file modes, tracked .bak in git `[Model: Sonnet]` — [detail](docs/todo/B254-db-periodic-backup.md)

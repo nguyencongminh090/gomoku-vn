@@ -1,5 +1,5 @@
 # B251 — Room-entry overlay smooth on slow networks
-**Status:** DONE — merged to dev e3e3aac (?v=383); browser pass: Chromium vi+en, Slow 3G, WebKit
+**Status:** ✅ DONE — merged to dev e3e3aac (?v=383); browser pass: Chromium vi+en, Slow 3G, WebKit
 **Area:** client/css/game.css, client/room.html, client/js/room-socket.js (`hideEntryOverlay`)
 **From:** user "check the transition animation for Loading on Slow Network", 2026-10-15   **Depends:** —
 

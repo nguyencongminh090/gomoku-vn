@@ -1,5 +1,5 @@
 # B250 — Club avatar + banner with image editors
-**Status:** OPEN (built + browser-verified 2026-10-12, uncommitted on feature/250-club-avatar-banner)
+**Status:** OPEN — built + browser-verified 2026-10-12, merged to dev d63fd25 (fe3f808); open only to check stash@{0} "250b banner standard size" for leftovers
 **Area:** server/routes/clubs.js, ClubService, utils/club-image-store.js, db migration, client/js/club.js, clubs.js, avatar-crop.js
 **From:** user request 2026-10-12   **Depends:** —
 
