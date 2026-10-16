@@ -5,7 +5,7 @@
    colour modes. Loaded right AFTER main.css so these :root values replace
    main.css's light palette; every page rule keeps reading the same --c-* names.
 
-   Axes (set on <html> by ui-mode-preload.js before first paint, changed by
+   Axes (set on <html> by skin-preload.js before first paint, changed by
    ui-mode.js → setColorMode()):
      data-skin  "arena" (default) | "zen" | "bento" — colour + radius tokens only
      data-mode  "dark" (default) | "light"

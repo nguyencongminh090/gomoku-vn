@@ -79,3 +79,4 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#250.** Club avatar + banner with crop editors (built, awaiting browser pass) `[Model: Sonnet]` — [detail](docs/todo/B250-club-avatar-banner.md)
 - **#251.** Room-entry overlay smooth on slow network (merged to dev e3e3aac, ?v=383, browser pass done) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)
+- **#253.** Drop "Display density" Lite/Default switch, keep good behaviours `[Model: Sonnet]` — [detail](docs/todo/B253-drop-density-ui-mode.md)

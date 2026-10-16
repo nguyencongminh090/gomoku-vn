@@ -333,11 +333,6 @@ const TRANSLATIONS = {
     'tmatch.th_score': 'Điểm',
 
     // ── UI mode (lite / default) ──────────────────────────────
-    'mode.title': 'Chế độ giao diện',
-    'mode.lite': 'Gọn',
-    'mode.default': 'Mặc định',
-    'mode.lite_desc': 'Tối giản cho người mới',
-    'mode.default_desc': 'Hiển thị đầy đủ chi tiết',
 
     // ── Create room modal (mode-dependent) ────────────────────
     'modal.quick_match': 'Tạo nhanh',
@@ -498,7 +493,6 @@ const TRANSLATIONS = {
     // ── Global Settings panel (header) ────────────────────────
     'gset.title': 'Cài đặt',
     'gset.appearance': 'Giao diện',
-    'gset.density': 'Mật độ hiển thị',
     'gset.skin': 'Giao diện',
     'gset.skin_arena': 'Arena',
     'gset.skin_zen': 'Zen',
@@ -1855,11 +1849,6 @@ const TRANSLATIONS = {
 
     // ── Create room modal ─────────────────────────────────────
     // ── UI mode (lite / default) ──────────────────────────────
-    'mode.title': 'Interface mode',
-    'mode.lite': 'Lite',
-    'mode.default': 'Default',
-    'mode.lite_desc': 'Simplified for new players',
-    'mode.default_desc': 'Full detail for power users',
 
     // ── Create room modal (mode-dependent) ────────────────────
     'modal.quick_match': 'Quick match',
@@ -2019,7 +2008,6 @@ const TRANSLATIONS = {
     // ── Global Settings panel (header) ────────────────────────
     'gset.title': 'Settings',
     'gset.appearance': 'Appearance',
-    'gset.density': 'Display density',
     'gset.skin': 'Theme',
     'gset.skin_arena': 'Arena',
     'gset.skin_zen': 'Zen',

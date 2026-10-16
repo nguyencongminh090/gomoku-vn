@@ -59,15 +59,15 @@ describe('Settings panel after Dark UI removal (TODO.md #160)', () => {
     expect(segmentLabels).not.toContain('gset.theme_dark');
   });
 
-  test('the Appearance group still renders the UI-density control', () => {
+  test('the Appearance group renders skin + colour mode and no density control (#253)', () => {
     loadSettingsPanel();
     const text = openPanelText();
     expect(text).toContain('gset.appearance');
-    expect(text).toContain('gset.density');
+    expect(text).not.toContain('gset.density');
     const segmentLabels = [...document.querySelectorAll('.gset-segment__opt')].map(b => b.textContent);
-    // B161: Pro removed — density control is now exactly Lite + Default.
-    expect(segmentLabels).toEqual(expect.arrayContaining(['mode.lite', 'mode.default']));
-    expect(segmentLabels).not.toContain('mode.pro');
+    expect(segmentLabels).not.toContain('mode.lite');
+    expect(segmentLabels).not.toContain('mode.default');
+    expect(segmentLabels).toEqual(expect.arrayContaining(['gset.mode_light', 'gset.mode_dark']));
   });
 
   test('opening the panel never writes localStorage["theme"]', () => {

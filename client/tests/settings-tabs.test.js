@@ -87,18 +87,16 @@ describe('settings page tabs', () => {
     expect(window.setColorMode).toHaveBeenCalledWith('light');
     [...$('p-look').querySelectorAll('.pseg')[0].querySelectorAll('button')][1].click();
     expect(window.setSkin).toHaveBeenCalledWith('zen');
-    [...$('p-look').querySelectorAll('.pseg')[3].querySelectorAll('button')][1].click();
+    [...$('p-look').querySelectorAll('.pseg')[2].querySelectorAll('button')][1].click();
     expect(window.setLanguage).toHaveBeenCalledWith('en');
   });
 
-  it('#214 icon registry: theme row is circle-half (not the sun option again); density options are text, not icons', () => {
+  it('#214 icon registry: theme row is circle-half (not the sun option again); no density row (#253)', () => {
     boot(MEMBER);
     const rowIcon = (i) => $('p-look').querySelectorAll('.psrow')[i].querySelector(':scope > svg use').getAttribute('href').split('#')[1];
     expect(rowIcon(1)).toBe('ph-regular-circle-half');
-    expect(rowIcon(3)).toBe('ph-regular-translate'); // globe is country's icon on the Hồ sơ tab
-    const density = [...$('p-look').querySelectorAll('.pseg')[2].querySelectorAll('button')];
-    expect(density.map((b) => b.textContent)).toEqual(['mode.default', 'mode.lite']);
-    expect(density.some((b) => b.querySelector('svg'))).toBe(false);
+    expect(rowIcon(2)).toBe('ph-regular-translate'); // globe is country's icon on the Hồ sơ tab
+    expect($('p-look').querySelectorAll('.pseg').length).toBe(3); // skin, colour mode, language
   });
 
   it('#214 icon registry on the Hồ sơ tab: one icon per concept', () => {
