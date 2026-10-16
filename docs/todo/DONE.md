@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#253.** Drop "Display density" Lite/Default switch, keep good behaviours `[Model: Sonnet]` — [detail](docs/todo/B253-drop-density-ui-mode.md)
 ✅ - **#250.** Club avatar + banner with crop editors `[Model: Sonnet]` — [detail](docs/todo/B250-club-avatar-banner.md)
 ✅ - **#251.** Room-entry overlay smooth on slow network (merged to dev e3e3aac, ?v=383, browser pass done) `[Model: Sonnet]` — [detail](docs/todo/B251-room-entry-overlay-slow-network.md)
 ✅ - **#257.** DB: games.winner_color with CHECK (needs #255) `[Model: Opus]` — [detail](docs/todo/B257-games-winner-color-column.md)
