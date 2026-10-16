@@ -1,4 +1,4 @@
-# B259 — DB small hardening: DB_PATH env, json_valid, orphan sessions, unused index
+# B259 — DB small hardening: DB_PATH env, json_valid, orphan sessions, unused index, trusted_schema, LIKE escape
 **Status:** OPEN
 **Area:** server/db/database.js, schema.sql
 **From:** DB architecture review 2026-10-16   **Depends:** B255 (for schema changes)
@@ -11,6 +11,8 @@
 2. `CHECK(moves IS NULL OR json_valid(moves))` via migration.
 3. Decide with user: FK on sessions.user_id (ON DELETE CASCADE) vs keep; drop idx_games_room_id after confirming no query uses it.
 4. Query to detect black/white vs player_games drift; report only.
+5. `PRAGMA trusted_schema = OFF` on the connection in database.js (not set today); check nothing in schema.sql relies on it.
+6. Escape LIKE in `buildGameFilters` (`filters.player`): reuse `likeEscape` (database.js:1220, used only by searchRankings) and add `ESCAPE` to the clause; test `%`/`_` input matches literally.
 
 ## Don't
 - Don't enable the FK or drop the index without the user's yes.
@@ -22,4 +24,4 @@
 Each is small and independent; bundled to avoid 4 tracking files. Notes: `docs/knowledge/db-constraints-check-fk-sqlite.md`; SKILLS_TREE (reference) `database/items/db-sqlite-pragmas-wal-transactions.md`, `db-sqlite-security-hardening.md`.
 
 ## Done when
-- Env override tested; CHECK rejects bad JSON; decisions on FK/index recorded here.
+- Env override tested; CHECK rejects bad JSON; decisions on FK/index recorded here; `trusted_schema` off; player filter with `%`/`_` matches literally (test).
