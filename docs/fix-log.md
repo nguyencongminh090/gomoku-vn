@@ -258,3 +258,4 @@
 | 2026-10-12 17:10 | club banner ~60px on phones (6:1 at every width) -> 3:1 at <=600px | [detail](docs/fix-log/2026-10-12-club-banner-mobile-small.md) |
 | 2026-10-12 17:40 | club invite: exact-username only, no suggestions, error out of view -> debounced name suggestions + inline error | [detail](docs/fix-log/2026-10-12-club-invite-autocomplete.md) |
 | 2026-10-15 18:54 | untracked: profile club rows ignored club avatarUrl (hard-coded null) -> pass c.avatarUrl | [detail](docs/fix-log/2026-10-15-profile-club-avatar.md) |
+| 2026-10-15 23:21 | #252 full-run flakes: compression test used keep-alive agent (ECONNRESET); lobby-home leaked quick-match ticker across tests -> agent:false + stop ticker | [detail](docs/fix-log/2026-10-15-full-run-test-flakes.md) |

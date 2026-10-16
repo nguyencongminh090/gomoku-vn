@@ -59,7 +59,7 @@ afterAll(async () => {
  */
 function rawGet(urlPath, headers = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: '127.0.0.1', port, path: urlPath, headers }, res => {
+    const req = http.get({ host: '127.0.0.1', port, path: urlPath, headers, agent: false }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
       res.on('end', () => resolve({
