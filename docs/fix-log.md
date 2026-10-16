@@ -267,3 +267,4 @@
 | 2026-10-16 16:00 | #255 follow-up: baseline stamp heals missing 003 (last_login_at) and refuses DBs missing 002 FKs | [detail](docs/fix-log/2026-10-16-baseline-assumes-001-003.md) |
 | 2026-10-16 16:30 | #255 follow-up: race-migrations.js — real multi-process race passes on dev, fails on old runner | [detail](docs/fix-log/2026-10-16-migrate-race-multiprocess.md) |
 | 2026-10-16 17:00 | #257 follow-up: migration 006 backfills winner_color for raw-name and guest-elimination legacy rows | [detail](docs/fix-log/2026-10-16-winner-color-heal.md) |
+| 2026-10-16 22:19 | #261 Lobby CLS: reserve #pl-shell 56px + empty dashboard containers; desktop 0.235→0, mobile 0.848→0.062 | [detail](docs/fix-log/2026-10-16-lobby-cls-reserve.md) |
