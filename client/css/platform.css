@@ -401,13 +401,13 @@ a.prow:hover { background: var(--c-hover); }
   #cb-tablist { flex-wrap: nowrap; overflow-x: auto; }
   #cb-tablist .ptab { flex: none; }
 }
-/* Wide variant for the club banner editor (#250): 6:1 viewport, rectangular frame */
-.pcrop__dlg--wide { max-width: 540px; }
-.pcrop__dlg--wide .pcrop__view { width: 480px; }
+/* Wide variant for the club banner editor (#250): 4:1 viewport, rectangular frame */
+.pcrop__dlg--wide { max-width: 700px; }
+.pcrop__dlg--wide .pcrop__view { width: 640px; }
 .pcrop__ring--rect { border-radius: var(--radius); box-shadow: inset 0 0 0 2px var(--c-on-brand); }
 /* Club banner + image controls (#250) */
-.cb-banner { width: 100%; aspect-ratio: 6 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
-@media (max-width: 600px) { .cb-banner { aspect-ratio: 3 / 1; } }   /* 6:1 is ~60px on a phone: crop the sides (cover) for a taller strip */
+.cb-banner { width: 100%; aspect-ratio: 4 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
+@media (max-width: 600px) { .cb-banner { aspect-ratio: 3 / 1; } }   /* 4:1 is ~90px on a phone: crop the sides (cover) for a taller strip */
 .cb-sugg { margin-bottom: var(--space-3); border: 1px solid var(--c-border); border-radius: var(--radius); }
 .cb-sugg__item { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--c-border-light); font: inherit; cursor: pointer; color: inherit; }
 .cb-sugg__item:last-child { border-bottom: 0; }

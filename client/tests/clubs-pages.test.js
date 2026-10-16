@@ -484,7 +484,7 @@ describe('club avatar + banner (#250)', () => {
     global.fetch.mockClear();
     input.onchange();
     await flush(); await flush();
-    expect(window.AvatarCrop.open).toHaveBeenCalledWith(file, expect.objectContaining({ aspect: 6, outWidth: 1200, titleKey: 'clubs.banner_crop_title' }));
+    expect(window.AvatarCrop.open).toHaveBeenCalledWith(file, expect.objectContaining({ aspect: 4, outWidth: 1920, titleKey: 'clubs.banner_crop_title' }));
     const [url, init] = global.fetch.mock.calls[0];
     expect(url).toBe('/api/clubs/caro/banner');
     expect(init).toMatchObject({ method: 'POST', body: blob });
