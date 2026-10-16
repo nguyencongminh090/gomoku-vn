@@ -1,5 +1,5 @@
 # B250 — Club avatar + banner with image editors
-**Status:** OPEN — #250 merged to dev d63fd25; 250b (banner 4:1, 1920×480) BUILT 2026-10-16 on feature/250b-club-banner-standard-size (uncommitted, ?v=386, browser pass done 2026-10-16 (Chromium desktop + 390px: upload→crop→save→show, served 1920×480 webp, no console errors; fixed stale "6:1" hint in i18n)), drop stash@{0} after merge
+**Status:** ✅ DONE 2026-10-16 — #250 merged d63fd25; 250b (banner 4:1, 1920×480, ?v=386) merged 019492f; browser pass Chromium desktop + 390px
 **Area:** server/routes/clubs.js, ClubService, utils/club-image-store.js, db migration, client/js/club.js, clubs.js, avatar-crop.js
 **From:** user request 2026-10-12   **Depends:** —
 
