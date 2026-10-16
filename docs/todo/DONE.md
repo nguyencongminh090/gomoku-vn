@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#257.** DB: games.winner_color with CHECK (needs #255) `[Model: Opus]` — [detail](docs/todo/B257-games-winner-color-column.md)
 ✅ - **#255.** DB: versioned migrations on PRAGMA user_version (replace inline ALTERs) `[Model: Opus]` — [detail](docs/todo/B255-db-versioned-migrations.md)
 - ✅ **#252.** `compression` + `lobby-home` suites fail in full `npm test` (pass alone; also fail on clean `dev`) `[Model: Sonnet]` — [detail](B252-compression-lobby-home-tests-fail-full-run.md)
 - ✅ **#249.** Rating integrity v1: collusion signals + read-only admin list `[Model: Opus 5]` — [detail](B249-rating-integrity-graph-v1.md)

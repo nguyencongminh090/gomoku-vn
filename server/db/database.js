@@ -203,6 +203,12 @@ function deleteExpiredSessions(before) {
 // Game helpers
 // ---------------------------------------------------------------------------
 
+/** 'BLACK'|'WHITE'|'draw'|other → 'BLACK'|'WHITE'|'DRAW'|null (raw/unresolvable ids can't satisfy the CHECK). */
+function toWinnerColor(winner) {
+  if (winner === 'BLACK' || winner === 'WHITE') return winner;
+  return winner === 'draw' ? 'DRAW' : null;
+}
+
 /**
  * Persist a completed game record to SQLite.
  * Called ONLY when a game ends (normal/resign/timeout/draw).
@@ -214,10 +220,10 @@ function saveGame(game) {
     INSERT OR REPLACE INTO games
       (id, room_id, black_player_id, white_player_id,
        black_player_name, white_player_name,
-       winner, reason, board_size, rule_wall, rule_portal,
+       winner, winner_color, reason, board_size, rule_wall, rule_portal,
        moves, walls, portals, started_at, ended_at, ranked)
     VALUES
-      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const insertPlayerGame = db.prepare(
@@ -240,6 +246,8 @@ function saveGame(game) {
     else winner = game.result.winner;
   }
 
+  const winnerColor = toWinnerColor(winner);
+
   // Wrap in a transaction for atomicity
   const saveAll = db.transaction(() => {
     insertGame.run(
@@ -250,6 +258,7 @@ function saveGame(game) {
       black ? black.name : 'Unknown',
       white ? white.name : 'Unknown',
       winner,
+      winnerColor,
       game.result ? game.result.reason : null,
       game.boardSize,
       game.ruleWall  ? 1 : 0,
@@ -305,7 +314,8 @@ function getPlayerHistory(playerId) {
  *   (both seats are guests on old data — no id to eliminate by)
  */
 function resolveWinnerSeat(row) {
-  const { winner, black_player_id, white_player_id, black_player_name, white_player_name } = row;
+  const { winner, winner_color, black_player_id, white_player_id, black_player_name, white_player_name } = row;
+  if (winner_color) return winner_color === 'DRAW' ? null : winner_color;
   if (!winner || winner === 'draw') return null;
   if (winner === 'BLACK') return 'BLACK';
   if (winner === 'WHITE') return 'WHITE';
@@ -343,6 +353,7 @@ function withWinnerName(row) {
     : seat === 'WHITE' ? row.white_player_name
     : null;
   if (seat) row.winner = seat;
+  delete row.winner_color;
   delete row.black_player_id;
   delete row.white_player_id;
   return row;
@@ -375,9 +386,9 @@ function buildGameFilters(filters = {}, extraClauses = []) {
     params.push(filters.to);
   }
   if (filters.result === 'draw') {
-    clauses.push("winner = 'draw'");
+    clauses.push("winner_color = 'DRAW'");
   } else if (filters.result === 'win') {
-    clauses.push("winner IS NOT NULL AND winner != 'draw'");
+    clauses.push("winner_color IN ('BLACK','WHITE')");
   }
 
   return {
@@ -398,7 +409,7 @@ function getRecentGames(limit = 20, offset = 0, filters = {}) {
   const rows = db.prepare(`
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
-           winner, reason, board_size, rule_wall, rule_portal,
+           winner, winner_color, reason, board_size, rule_wall, rule_portal,
            started_at, ended_at
     FROM games
     ${where}
@@ -425,7 +436,7 @@ function getGameById(gameId) {
   const row = db.prepare(`
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
-           winner, reason, board_size, rule_wall, rule_portal,
+           winner, winner_color, reason, board_size, rule_wall, rule_portal,
            moves, walls, portals,
            started_at, ended_at
     FROM games WHERE id = ?
@@ -469,8 +480,8 @@ function getGameStatsByResult(filters = {}) {
   const { where, params } = buildGameFilters(filters, ['ended_at IS NOT NULL']);
   const row = db.prepare(`
     SELECT
-      SUM(CASE WHEN winner = 'draw' THEN 1 ELSE 0 END) as draw,
-      SUM(CASE WHEN winner IS NOT NULL AND winner != 'draw' THEN 1 ELSE 0 END) as win,
+      SUM(CASE WHEN winner_color = 'DRAW' THEN 1 ELSE 0 END) as draw,
+      SUM(CASE WHEN winner_color IN ('BLACK','WHITE') THEN 1 ELSE 0 END) as win,
       COUNT(*) as total
     FROM games
     ${where}
@@ -964,9 +975,9 @@ function setAvatarVersion(userId, clear) {
 function getUserGameStats(userId) {
   return db.prepare(`
     SELECT COUNT(*) AS games,
-           SUM(CASE WHEN winner = 'draw' THEN 1 ELSE 0 END) AS draws,
-           SUM(CASE WHEN (winner = 'BLACK' AND black_player_id = @id)
-                      OR (winner = 'WHITE' AND white_player_id = @id) THEN 1 ELSE 0 END) AS wins
+           SUM(CASE WHEN winner_color = 'DRAW' THEN 1 ELSE 0 END) AS draws,
+           SUM(CASE WHEN (winner_color = 'BLACK' AND black_player_id = @id)
+                      OR (winner_color = 'WHITE' AND white_player_id = @id) THEN 1 ELSE 0 END) AS wins
     FROM games
     WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
   `).get({ id: userId });
@@ -975,12 +986,12 @@ function getUserGameStats(userId) {
 /** Newest-first outcomes ('win'|'loss'|'draw') of the user's finished RATED games with a decided result. */
 function getUserRankedResults(userId, limit) {
   return db.prepare(`
-    SELECT winner, black_player_id FROM games
-    WHERE (black_player_id = @id OR white_player_id = @id) AND ranked = 1 AND ended_at IS NOT NULL AND winner IS NOT NULL
+    SELECT winner_color, black_player_id FROM games
+    WHERE (black_player_id = @id OR white_player_id = @id) AND ranked = 1 AND ended_at IS NOT NULL AND winner_color IS NOT NULL
     ORDER BY ended_at DESC LIMIT @limit
   `).all({ id: userId, limit }).map((g) => {
-    if (g.winner === 'draw') return 'draw';
-    return (g.winner === 'BLACK') === (g.black_player_id === userId) ? 'win' : 'loss';
+    if (g.winner_color === 'DRAW') return 'draw';
+    return (g.winner_color === 'BLACK') === (g.black_player_id === userId) ? 'win' : 'loss';
   });
 }
 
@@ -988,13 +999,13 @@ function countUserRankedWins(userId) {
   return db.prepare(`
     SELECT COUNT(*) AS n FROM games
     WHERE ranked = 1 AND ended_at IS NOT NULL
-      AND ((winner = 'BLACK' AND black_player_id = @id) OR (winner = 'WHITE' AND white_player_id = @id))
+      AND ((winner_color = 'BLACK' AND black_player_id = @id) OR (winner_color = 'WHITE' AND white_player_id = @id))
   `).get({ id: userId }).n;
 }
 
 function getUserRecentGames(userId, limit, offset = 0) {
   return db.prepare(`
-    SELECT id, black_player_id, black_player_name, white_player_name, winner, ended_at
+    SELECT id, black_player_id, black_player_name, white_player_name, winner_color, ended_at
     FROM games
     WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
     ORDER BY ended_at DESC, id LIMIT @limit OFFSET @offset

@@ -1,5 +1,5 @@
 # B257 — games.winner_color with CHECK (split overloaded winner)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-16 — see docs/fix-log/2026-10-16-games-winner-color.md
 **Area:** schema.sql, migrations/, saveGame + readers of games.winner, scripts/backfill-ratings.js
 **From:** DB architecture review 2026-10-16 (DB_REVIEW.md finding #4)   **Depends:** B255
 

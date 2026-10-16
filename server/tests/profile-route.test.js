@@ -66,6 +66,7 @@ function req(method, urlPath, { cookie, body, type } = {}) {
 }
 
 beforeAll(async () => {
+  require('./helpers/winner-color-trigger').installWinnerColorTrigger(database.db);
   const add = (id, name) => database.db.prepare(
     `INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, 'x', ?, ?)`
   ).run(id, name, name, NOW);

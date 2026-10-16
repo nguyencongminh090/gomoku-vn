@@ -71,6 +71,7 @@ const roleIn = (slug, user) => {
 };
 
 beforeAll(async () => {
+  require('./helpers/winner-color-trigger').installWinnerColorTrigger(database.db);
   ['owner', 'off', 'mem', 'newbie', 'extra', 'stranger'].forEach(addUser);
   const app = express();
   app.use('/api/clubs', clubsRouter);
