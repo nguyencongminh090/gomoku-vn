@@ -266,3 +266,4 @@
 | 2026-10-16 15:45 | #255 follow-up: migrate.js re-checks user_version under the write lock; duplicate migration numbers refused | [detail](docs/fix-log/2026-10-16-migrate-race-dupes.md) |
 | 2026-10-16 16:00 | #255 follow-up: baseline stamp heals missing 003 (last_login_at) and refuses DBs missing 002 FKs | [detail](docs/fix-log/2026-10-16-baseline-assumes-001-003.md) |
 | 2026-10-16 16:30 | #255 follow-up: race-migrations.js — real multi-process race passes on dev, fails on old runner | [detail](docs/fix-log/2026-10-16-migrate-race-multiprocess.md) |
+| 2026-10-16 17:00 | #257 follow-up: migration 006 backfills winner_color for raw-name and guest-elimination legacy rows | [detail](docs/fix-log/2026-10-16-winner-color-heal.md) |
