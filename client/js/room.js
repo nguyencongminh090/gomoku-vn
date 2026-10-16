@@ -270,6 +270,17 @@ function sendChatFrom(inputEl) {
 
 function sendChat() { sendChatFrom(chatInput); }
 
+// #264: the filter (~39 KB) is only this cosmetic pre-send pass, so fetch it on first chat focus instead of at
+// startup. Classic <script>, not import() — it is a UMD file that must attach window.ProfanityFilter (see
+// room-entry.js header). Until it arrives, sendChatFrom sends the raw text and the server filters it.
+function loadProfanityFilter() {
+  if (window.ProfanityFilter || document.querySelector('script[src*="profanity-filter.js"]')) return;
+  const s = document.createElement('script');
+  s.src = '/js/profanity-filter.js?v=389';
+  document.head.appendChild(s);
+}
+chatInput.addEventListener('focus', loadProfanityFilter);
+
 btnSend.addEventListener('click', sendChat);
 chatInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') sendChat();
