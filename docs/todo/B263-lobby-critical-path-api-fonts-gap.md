@@ -1,5 +1,5 @@
 # B263 — Lobby critical path: start APIs earlier, preload fonts, explain 1.5 s idle gap
-**Status:** OPEN — implemented on `fix/263-lobby-critical-path` (uncommitted), ?v=388; awaiting prod cold HAR
+**Status:** ✅ DONE 2026-10-17 (merged to dev 7ae80fe, ?v=388; prod verified)
 **Area:** `client/index.html`, `client/js/index-entry.js`, `lobby*.js`, `platform-shell.js`, `client/vendor/fonts/manrope/style.css`
 **From:** HAR 22-09-34, 2026-10-16   **Depends:** #262 (measure after edge fix to separate effects)
 
@@ -34,3 +34,6 @@ Knowledge: none.
 - Gap: none in the page. RUM Navigation Timing: TCP connect 18→2396 ms (cold connection, network), responseEnd 3085, first subresource 3138; the HAR HTML row understated it.
 - `api-early.js` + `GvnEarly.fetch` in 3 consumers; font preloads ×3; polling kept (≈250–300 B / 60 s, visible only).
 - Local @150 ms RTT: APIs 975→340 ms = first JS + 1 RTT, done ~550 < index-entry.js ~970. Inline+CSP hash rejected (knowledge `static-assets-caching-csp-build` rule 8).
+- Prod 2026-10-17: fonts in CSS wave (178 ms), 1 request/API. Firefox console (DevTools closed): homeStart 287 <
+  domInteractive 307, entry 227. With DevTools open, HARs 05-25/05-28 showed module-issued APIs (after domInteractive):
+  the DevTools-recorded load is not representative. Clean Playwright on prod: fetch 1–2 ms after api-early.js arrives.
