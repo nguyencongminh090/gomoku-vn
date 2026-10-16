@@ -494,11 +494,11 @@ function weeklyBoard(clubId) {
   const since = new Date(Date.now() - WEEK_MS).toISOString();
   return db().prepare(`
     WITH g AS (
-      SELECT black_player_id AS uid, CASE WHEN winner = 'BLACK' THEN 1 ELSE 0 END AS win FROM games
-        WHERE black_player_id IS NOT NULL AND ended_at >= @since AND winner IS NOT NULL
+      SELECT black_player_id AS uid, CASE WHEN winner_color = 'BLACK' THEN 1 ELSE 0 END AS win FROM games
+        WHERE black_player_id IS NOT NULL AND ended_at >= @since AND winner_color IS NOT NULL
       UNION ALL
-      SELECT white_player_id, CASE WHEN winner = 'WHITE' THEN 1 ELSE 0 END FROM games
-        WHERE white_player_id IS NOT NULL AND ended_at >= @since AND winner IS NOT NULL)
+      SELECT white_player_id, CASE WHEN winner_color = 'WHITE' THEN 1 ELSE 0 END FROM games
+        WHERE white_player_id IS NOT NULL AND ended_at >= @since AND winner_color IS NOT NULL)
     SELECT m.user_id, u.username, u.display_name, u.avatar_v, SUM(g.win) AS wins, COUNT(*) AS played
     FROM club_members m JOIN users u ON u.id = m.user_id JOIN g ON g.uid = m.user_id
     WHERE m.club_id = @club AND m.role != 'pending'
