@@ -10,7 +10,9 @@ const path = require('path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
 const BODY_HTML = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
-const PAGE_V = html.match(/js\/room-entry\.js\?v=(\d+)/)[1];
+// #265: the injected URL carries profanity-filter.js's own content hash (what scripts/cache-bust.js writes).
+const FILTER_V = require('crypto').createHash('sha256')
+  .update(fs.readFileSync(path.join(__dirname, '..', 'js', 'profanity-filter.js'), 'utf8')).digest('hex').slice(0, 8);
 
 function loadRoom() {
   jest.resetModules();
@@ -44,7 +46,7 @@ test('first focus injects one script with the page ?v=; later focuses add none',
   input().dispatchEvent(new Event('focus'));
   const s = filterScripts();
   expect(s).toHaveLength(1);
-  expect(s[0].getAttribute('src')).toBe(`/js/profanity-filter.js?v=${PAGE_V}`);
+  expect(s[0].getAttribute('src')).toBe(`/js/profanity-filter.js?v=${FILTER_V}`);
 });
 
 test('no injection when the filter is already present', () => {

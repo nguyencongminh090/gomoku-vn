@@ -1,5 +1,5 @@
 # B265 — Per-file content-hash `?v=` instead of one global `?v=N`
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-17 — [fix-log](../fix-log/2026-10-17-per-file-content-hash.md)
 **Area:** `scripts/cache-bust.js`, `client/*.html`, `client/js/**` imports, `.claude/rules/cache-busting.md`, CLAUDE.md rule 4
 **From:** user question after #264, 2026-10-17   **Depends:** —
 

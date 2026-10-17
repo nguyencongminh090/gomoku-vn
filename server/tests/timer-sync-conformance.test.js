@@ -52,7 +52,7 @@ describe('the room imports the shared clock maths', () => {
     // <script src="js/..."> tags into dist/ automatically.
     const roomHtml = fs.readFileSync(
       path.join(__dirname, '..', '..', 'client', 'room.html'), 'utf8');
-    expect(roomHtml).toMatch(/<script src="js\/timer-sync-core\.js\?v=\d+"><\/script>/);
+    expect(roomHtml).toMatch(/<script src="js\/timer-sync-core\.js\?v=[0-9a-f]+"><\/script>/);
 
     const entry = read('room-entry.js');
     expect(entry).not.toContain('timer-sync-core');

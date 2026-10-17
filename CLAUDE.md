@@ -6,7 +6,7 @@ path-scoped `.claude/rules/*.md` (auto-load when you touch matching files) and s
 
 ## Commands
 `npm test` (server+client jsdom, ~11 s) · `npx jest <file>` while iterating · `npm run test:e2e`
-(read `playwright-e2e-safety` first) · `node scripts/cache-bust.js [--bump]` · `node scripts/track.js …`
+(read `playwright-e2e-safety` first) · `node scripts/cache-bust.js [--write]` · `node scripts/track.js …`
 UI audit: skill `ux-audit`, site settings (URL, auth, pages, allowlist) in `.audit/README.md`.
 
 ## Hard rules
@@ -18,8 +18,8 @@ UI audit: skill `ux-audit`, site settings (URL, auth, pages, allowlist) in `.aud
    legacy `docs/instruction/` file — `track.js` prints it too.
 3. **Every bug fix = root cause first, a kept regression test, and one fix-log entry** — scope strictly
    what was reported. → `.claude/rules/testing.md`
-4. **Any edit under `client/css|js` or `client/*.html` bumps `?v=N` everywhere**, verified by
-   `node scripts/cache-bust.js` (must print one value). → `.claude/rules/cache-busting.md`
+4. **Any edit under `client/` → `node scripts/cache-bust.js --write`** (per-file content
+   hash `?v=`; never hand-edit), verified by `node scripts/cache-bust.js` (must print OK). → `.claude/rules/cache-busting.md`
 5. **Tracking files are small indexes + one detail file per item; fix-log is append-only.** Never Read an
    index whole; use `track.js`. → `.claude/rules/tracking-files.md`
 6. **Git:** `fix/*` off `main` (or `dev` if the code/entry exists only there), `feature/*` and `ui/*` off
@@ -79,7 +79,7 @@ documented note instead of habit — in this order, stop at the first hit:
 | Design-decision knowledge (inline + SKILLS_TREE references) | `docs/knowledge/INDEX.md` |
 | UI/UX + front-end + visual-style knowledge | `docs/knowledge/ui-ux/INDEX.md` |
 | Fix/test/feature-done discipline, root-cause precedents | `.claude/rules/testing.md` |
-| `?v=N` cache-busting | `.claude/rules/cache-busting.md` + `scripts/cache-bust.js` |
+| `?v=<hash>` cache-busting | `.claude/rules/cache-busting.md` + `scripts/cache-bust.js` |
 | Index/detail layout, status markers, task size, templates (todo+fix-log+note) | `.claude/rules/tracking-files.md`, `docs/templates/` |
 | `features/<slug>/` design folders | `.claude/rules/design-intake.md` |
 | Room clock ↔ `/diag` coupling | `.claude/rules/diagnostic-page-sync.md` |

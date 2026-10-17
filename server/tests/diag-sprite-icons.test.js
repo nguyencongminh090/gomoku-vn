@@ -33,7 +33,7 @@ function spriteIds() {
 /** Ids referenced from diagnostic.html's markup. */
 function htmlIconIds() {
   const html = read('diagnostic.html');
-  return [...html.matchAll(/phosphor-sprite\.svg(?:\?v=\d+)?#([a-z0-9-]+)/g)].map((m) => m[1]);
+  return [...html.matchAll(/phosphor-sprite\.svg(?:\?v=[0-9a-f]+)?#([a-z0-9-]+)/g)].map((m) => m[1]);
 }
 
 /** Ids diag-report.js can emit for any verdict. */

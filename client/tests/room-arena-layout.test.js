@@ -52,7 +52,7 @@ describe('room.html structure', () => {
 
   test('body is the arena layout; the zen stylesheet and drawer markup are gone', () => {
     expect(HTML).toMatch(/<body class="arena-room">/);
-    expect(HTML).toMatch(/css\/room-arena\.css\?v=\d+/);
+    expect(HTML).toMatch(/css\/room-arena\.css\?v=[0-9a-f]+/);
     expect(HTML).not.toMatch(/room-zen\.css/);
     expect(document.querySelector('.panel-right-shell')).toBeNull();
     expect(document.getElementById('quick-chat-bar')).toBeNull();

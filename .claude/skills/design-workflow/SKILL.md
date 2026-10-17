@@ -86,7 +86,7 @@ Once mockups are approved (or skipped by user preference), implement each direct
 - Respect the backend and board/stones locks (see above) on every branch.
 - Commit incrementally within each branch (`commit → commit → ... → final`) rather than one giant
   commit — this keeps each direction's history reviewable on its own.
-- Bump `?v=N` cache-busting per `.claude/rules/cache-busting.md` whenever `client/css/`/`client/js/` changes,
+- Run `node scripts/cache-bust.js --write` per `.claude/rules/cache-busting.md` whenever `client/` changes,
   independently on each branch.
 
 **Restructure the layout to match the mockup — don't just re-skin the existing structure.** A
@@ -131,8 +131,8 @@ user's call per the standing `ui/*` rule that "no `ui/*` branch merges into `dev
 Once the user picks a winner, follow the `git-workflow` skill's `ui/<style>` merge steps exactly:
 
 1. Merge only the winning branch into `dev` with a regular merge commit.
-2. Resolve/confirm `?v=N` is consistent across the whole repo post-merge (the verification grep in
-   `.claude/rules/cache-busting.md`).
+2. Re-run `node scripts/cache-bust.js --write` post-merge and confirm `node scripts/cache-bust.js` prints OK
+   (`.claude/rules/cache-busting.md`).
 3. Delete every `ui/<style>` branch from that round, winner included, unless the user asks to keep
    one for reference.
 4. If the change touches a tracked `TODO.md` item, update it per the index/detail

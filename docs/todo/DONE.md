@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#265.** Per-file content-hash `?v=` instead of one global `?v=N` `[Model: Opus 5]` — [detail](docs/todo/B265-per-file-content-hash-versioning.md)
 ✅ - **#264.** Page weight: split i18n, lazy profanity, defer room scripts (low priority) `[Model: Sonnet 5]` — [detail](docs/todo/B264-page-weight-i18n-profanity-scripts.md)
 ✅ - **#263.** Lobby critical path: early APIs, font preload, explain 1.5 s idle gap `[Model: Opus 5]` — [detail](docs/todo/B263-lobby-critical-path-api-fonts-gap.md)
 ✅ - **#262.** Cloudflare edge: static assets mostly cf MISS (Tiered Cache / Cache Reserve, re-measure) `[Model: Opus 5]` — [detail](docs/todo/B262-cloudflare-edge-cache-cold-misses.md)

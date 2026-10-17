@@ -25,13 +25,13 @@ function jsFiles(dir) {
 }
 
 describe('sprite URL in JS is cache-busted', () => {
-  it('every phosphor-sprite.svg string literal in client/js has ?v=N', () => {
+  it('every phosphor-sprite.svg string literal in client/js has ?v=<hash>', () => {
     const bad = [];
     for (const f of jsFiles(JS)) {
       const src = fs.readFileSync(f, 'utf8');
       for (const m of src.matchAll(/['"`]([^'"`\n]*phosphor-sprite\.svg[^'"`\n]*)['"`]/g)) {
         if (m[1].startsWith('client/')) continue; // repo path in a doc comment
-        if (!/phosphor-sprite\.svg\?v=(\d+|\$\{)/.test(m[1])) bad.push(path.relative(JS, f) + ': ' + m[1]);
+        if (!/phosphor-sprite\.svg\?v=([0-9a-f]+|\$\{)/.test(m[1])) bad.push(path.relative(JS, f) + ': ' + m[1]);
       }
     }
     expect(bad).toEqual([]);
