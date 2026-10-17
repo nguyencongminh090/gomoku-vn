@@ -2,6 +2,10 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#273.** Puzzle: guest solve/submit returns 500 (guest passes the member guard) `[Model: Sonnet 5]` — [detail](docs/todo/B273-puzzle-guest-500.md)
+✅ - **#274.** /puzzles filter/paging rewrites URL to the lobby (`<base href="/">`) `[Model: Sonnet 5]` — [detail](docs/todo/B274-puzzles-list-url-base-href.md)
+✅ - **#275.** Puzzle: guests/visitors see full editor + action buttons, learn "members only" after submit `[Model: Sonnet 5]` — [detail](docs/todo/B275-puzzle-guest-anon-gating.md)
+✅ - **#276.** /puzzles filter bar: unlabeled groups, uneven rhythm `[Model: Sonnet 5]` — [detail](docs/todo/B276-puzzles-filter-bar-layout.md)
 ✅ - **#268.** e2e: rewrite 10 layout specs written for the pre-#216 room UI (drawer, sheet, strip, topnav, stand btn) `[Model: Sonnet 5]` — [detail](docs/todo/B268-e2e-rewrite-stale-pre-216-layout-specs.md)
 ✅ - **#269.** Fewer requests per load: one /api/shell for nav + no duplicate rankings/me `[Model: Sonnet 5]` — [detail](docs/todo/B269-shell-bootstrap-fewer-requests.md)
 ✅ - **#266.** Lazy-load view-specific lobby/room assets (tournaments, private chat, room lobby.css) `[Model: Sonnet 5]` — [detail](docs/todo/B266-lazy-load-view-specific-assets.md)

@@ -157,6 +157,59 @@ describe('list page', () => {
   });
 });
 
+describe('list page — #274 URL under <base href="/"> / #275 member actions / #276 labelled filters', () => {
+  const PAGE = { puzzles: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+  const listBoot = () => boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: () => ok(PAGE) });
+  afterEach(() => { document.head.querySelectorAll('base').forEach((b) => b.remove()); delete window.GvnSession; window.history.replaceState(null, '', '/puzzle/p1'); });
+
+  it('filtering keeps the page path (a bare "?x" would resolve to "/?x" against <base href="/">)', async () => {
+    const base = document.createElement('base'); base.href = '/'; document.head.appendChild(base);
+    window.history.replaceState(null, '', '/puzzles');
+    listBoot(); await settle();
+    expect(window.location.pathname).toBe('/puzzles');
+    expect(window.location.search).toBe('');
+    [...document.querySelectorAll('#pz-levels .pchip')].find((b) => b.textContent === 'puzzles.level_easy').click(); await settle();
+    expect(window.location.pathname).toBe('/puzzles');
+    expect(window.location.search).toBe('?level=easy');
+  });
+
+  it('anonymous visitors and guests do not get the member action buttons; members do', async () => {
+    window.GvnSession = { getUser: () => null };
+    listBoot(); await settle();
+    expect(document.getElementById('pz-actions').hidden).toBe(true);
+    window.GvnSession = { getUser: () => ({ userId: 'guest_1', isGuest: true }) };
+    listBoot(); await settle();
+    expect(document.getElementById('pz-actions').hidden).toBe(true);
+    window.GvnSession = { getUser: () => ({ userId: 'u1', isGuest: false }) };
+    listBoot(); await settle();
+    expect(document.getElementById('pz-actions').hidden).toBe(false);
+  });
+
+  it('level / rule / topic groups carry a visible label', () => {
+    document.body.innerHTML = LIST_HTML;
+    const labels = [...document.querySelectorAll('.pz-filter > .pz-filter__label')].map((n) => n.getAttribute('data-i18n'));
+    expect(labels).toEqual(['puzzles.filter_level', 'puzzles.filter_rule', 'puzzles.filter_tag']);
+    expect(document.querySelectorAll('.pz-filter #pz-tags').length).toBe(1);
+  });
+});
+
+describe('solve page — guest (#273/#275)', () => {
+  it('a guest (200 from /rankings/me with a guest_ id) sees the login prompt on load and never calls solve', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: (u) => (u.includes('/rankings/me') ? ok({ userId: 'guest_ab12' }) : ok({ puzzle: PUZZLE })) });
+    await settle();
+    expect(document.getElementById('pz-login').hidden).toBe(false);
+    renderers[0].opts.onCellClick(1, 6);
+    document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect(global.fetch.mock.calls.some(([u]) => u.includes('/solve'))).toBe(false);
+  });
+  it('a member does not see the prompt', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({ puzzle: PUZZLE })) });
+    await settle();
+    expect(document.getElementById('pz-login').hidden).toBe(true);
+  });
+});
+
 describe('solve page — submit availability', () => {
   it('the Check button is enabled before any move, so typed coordinates can be submitted', async () => {
     boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: (u) => (u.includes('/rankings/me') ? ok({}) : ok({ puzzle: PUZZLE })) });

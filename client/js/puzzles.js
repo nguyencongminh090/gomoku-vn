@@ -98,7 +98,7 @@
     renderChips(levelsEl, 'level', LEVELS, 'puzzles.level_');
     renderChips(rulesEl, 'rule', RULES, 'puzzles.rule_');
     renderChips(tagsEl, 'tag', TAGS, 'puzzles.tag_');
-    history.replaceState(null, '', '?' + query());
+    history.replaceState(null, '', location.pathname + (query() ? '?' + query() : '')); // <base href="/"> would resolve a bare '?x' to "/?x" (#274)
     try {
       const res = await fetch('/api/puzzles?' + query(), { credentials: 'same-origin' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -114,6 +114,8 @@
 
   function init() {
     window.PlatformShell.build('learn');
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    if (window.GvnSession && (!u || u.isGuest)) document.getElementById('pz-actions').hidden = true; // member-only actions (#275)
     load();
   }
 

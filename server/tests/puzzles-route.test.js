@@ -20,7 +20,7 @@ jest.mock('../managers/SessionManager', () => ({
 jest.mock('../middleware/auth', () => ({
   verifyToken: (req, res, next) => {
     if (!req.headers.cookie) return res.status(401).json({ code: 'AUTH_REQUIRED' });
-    req.user = { userId: req.headers.cookie === 'guest' ? null : req.headers.cookie };
+    req.user = { userId: req.headers.cookie === 'guest' ? 'guest_abc' : req.headers.cookie, isGuest: req.headers.cookie === 'guest' };
     next();
   },
 }));
@@ -102,6 +102,10 @@ describe('submit + validation', () => {
   it('guests/logged-out refused', async () => {
     expect((await submit('guest', good())).status).toBe(403);
     expect((await submit(undefined, good())).status).toBe(401);
+    // #273: a real guest session carries a `guest_…` userId + isGuest — it used to pass the guard and hit an FK 500.
+    const g = await submit('guest', good());
+    expect(g.body.code).toBe('GUEST_FORBIDDEN');
+    expect((await call('GET', '/api/puzzles/mine', 'guest')).status).toBe(403);
   });
 
   it.each([
