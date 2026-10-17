@@ -36,7 +36,7 @@ test.describe('room.html with no ?id= and no room intent', () => {
     const hostPage = await hostCtx.newPage();
     await authAsGuest(hostCtx, hostPage, 'host');
 
-    await hostPage.goto('/index.html');
+    await hostPage.goto('/index.html#rooms');
     await hostPage.click('#btn-create');
     await hostPage.click('#modal-advanced-toggle');
     await hostPage.locator('#rule-wall').evaluate((el: HTMLInputElement) => {

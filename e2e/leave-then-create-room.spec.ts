@@ -57,7 +57,7 @@ test.describe('leave then create room — per-IP room quota', () => {
     }
 
     async function createRoomAsHost(host: { page: Page }) {
-      await host.page.goto('/index.html');
+      await host.page.goto('/index.html#rooms');
       await expect(host.page.locator('#btn-create')).toBeVisible();
       await host.page.click('#btn-create');
       await host.page.click('#modal-advanced-toggle');
@@ -101,7 +101,7 @@ test.describe('leave then create room — per-IP room quota', () => {
     // 4th create from the same host/IP: the 3 rooms above are all still
     // alive (each still has its guest connected), so this should hit
     // MAX_ROOMS_PER_IP and bounce the host back to the lobby.
-    await host.page.goto('/index.html');
+    await host.page.goto('/index.html#rooms');
     await expect(host.page.locator('#btn-create')).toBeVisible();
     await host.page.waitForTimeout(1500); // let lobby:subscribe's snapshot land
     const preCreateCards = await host.page.locator('.room-row').allTextContents();
@@ -137,6 +137,9 @@ test.describe('leave then create room — per-IP room quota', () => {
     // Now check the actual complaint: does the lobby's room list repopulate
     // after being bounced back? The 3 leftover rooms (still alive, guests
     // still connected) should be visible.
+    // The bounce lands on the lobby home (index.html, no room list; #195) — open
+    // the rooms screen, which is what subscribes to lobby updates (B229).
+    await host.page.goto('/index.html#rooms');
     await host.page.waitForTimeout(2000); // let lobby:subscribe's snapshot land
     const roomListHtml = await host.page.locator('#room-list').innerHTML();
     const roomCardCount = await host.page.locator('.room-row').count();

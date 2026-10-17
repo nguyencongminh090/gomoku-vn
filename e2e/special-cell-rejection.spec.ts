@@ -45,7 +45,7 @@ test.describe('Special-rule cell rejection', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     // Enable both Wall and Portal — both are custom-toggle checkboxes (zero-size,
@@ -64,8 +64,8 @@ test.describe('Special-rule cell rejection', () => {
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await A.page.click('#start-modal-btn');
     await B.page.click('#start-modal-btn');

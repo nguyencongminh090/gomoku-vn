@@ -28,7 +28,7 @@ test.describe('Lobby patch incremental render (B117)', () => {
     const seeders: { ctx: any; page: Page }[] = [];
     for (let i = 0; i < 3; i++) {
       const { ctx, page } = await makeGuest(browser, `Seeder${i}`);
-      await page.goto('/index.html');
+      await page.goto('/index.html#rooms');
       await page.click('#btn-create');
       await page.click('#btn-quick-match');
       await page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
@@ -47,7 +47,7 @@ test.describe('Lobby patch incremental render (B117)', () => {
     obs.on('websocket', (ws) => ws.on('framereceived', (f) => {
       if (String(f.payload).includes('"lobby:')) lastLobbyFrameAt = Date.now();
     }));
-    await obs.goto('/index.html');
+    await obs.goto('/index.html#rooms');
     await expect(obs.locator('.room-row').first()).toBeVisible({ timeout: 15000 });
     await expect.poll(() => Date.now() - lastLobbyFrameAt, { timeout: 10000, intervals: [100] })
       .toBeGreaterThan(1000);

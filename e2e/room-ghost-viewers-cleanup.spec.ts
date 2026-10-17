@@ -13,7 +13,7 @@ test('room of two unseated users, both crashed, disappears after the empty-room 
   test.setTimeout(120_000);
   const hostCtx = await browser.newContext(); const host = await hostCtx.newPage();
   await authAsGuest(hostCtx, host);
-  await host.goto('/index.html'); await host.click('#btn-create'); await host.click('#btn-quick-match');
+  await host.goto('/index.html#rooms'); await host.click('#btn-create'); await host.click('#btn-quick-match');
   await host.waitForURL(/room\.html\?id=/, { timeout: 15000 });
   const roomId = new URL(host.url()).searchParams.get('id')!;
   const jCtx = await browser.newContext(); const joiner = await jCtx.newPage();
@@ -23,7 +23,7 @@ test('room of two unseated users, both crashed, disappears after the empty-room 
 
   const oCtx = await browser.newContext(); const obs = await oCtx.newPage();
   await authAsGuest(oCtx, obs);
-  await obs.goto('/index.html');
+  await obs.goto('/index.html#rooms');
   const row = obs.locator(`.room-row[data-room-id="${roomId}"]`);
   await expect(row).toBeVisible({ timeout: 15000 });
 

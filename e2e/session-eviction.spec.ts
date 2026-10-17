@@ -27,7 +27,7 @@ test.describe('Session eviction', () => {
 
     const { username, password, displayName } = await authAsMember(ctxA, pageA, 'qauser');
 
-    await pageA.goto('/index.html');
+    await pageA.goto('/index.html#rooms');
     await expect(pageA.locator('#btn-create')).toBeVisible({ timeout: 15000 });
     // Give the lobby socket a moment to actually establish. Unlike room.html
     // (which exposes window.RoomState/#room-id-nav to poll), index.html's
@@ -45,7 +45,7 @@ test.describe('Session eviction', () => {
     });
     expect(loginRes.ok(), 'login with the same credentials should succeed').toBeTruthy();
     await seedSession(ctxB, (await loginRes.json()).user);
-    await pageB.goto('/index.html');
+    await pageB.goto('/index.html#rooms');
     await expect(pageB.locator('#btn-create')).toBeVisible({ timeout: 15000 });
 
     // A's session (the older connection, same userId) gets evicted and

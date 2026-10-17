@@ -73,6 +73,7 @@ test.describe('zen drawer: long player names never displace the icon rail (TODO.
     const stamp = Date.now().toString().slice(-6);
 
     const A = await register(browser, `railA${stamp}`, NAME_A);
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     if (await A.page.locator('#modal-advanced-toggle').isVisible().catch(() => false)) {
       await A.page.click('#modal-advanced-toggle');
@@ -86,14 +87,14 @@ test.describe('zen drawer: long player names never displace the icon rail (TODO.
 
     expectRailIntact(await railGeometry(A.page), 'nobody seated');
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await expect(A.page.locator('#slot-1 .slot-card__name')).toHaveText(NAME_A, { timeout: 15000 });
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await expect(A.page.locator('[data-slot="1"] .seatcard__name')).toHaveText(NAME_A, { timeout: 15000 });
     expectRailIntact(await railGeometry(A.page), 'one long name seated');
 
     const B = await register(browser, `railB${stamp}`, NAME_B);
     await B.page.goto(roomUrl);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 20000 });
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 20000 });
 
     const seated = await railGeometry(A.page);
@@ -122,6 +123,7 @@ test.describe('zen drawer: long player names never displace the icon rail (TODO.
     const stamp = Date.now().toString().slice(-6);
 
     const A = await register(browser, `railE${stamp}`, NAME_A);
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     if (await A.page.locator('#modal-advanced-toggle').isVisible().catch(() => false)) {
       await A.page.click('#modal-advanced-toggle');
@@ -131,8 +133,8 @@ test.describe('zen drawer: long player names never displace the icon rail (TODO.
     else await A.page.click('#modal-confirm');
     await A.page.waitForURL(/room\.html\?id=/, { timeout: 20000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    const nameEl = A.page.locator('#slot-1 .slot-card__name');
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    const nameEl = A.page.locator('[data-slot="1"] .seatcard__name');
     await expect(nameEl).toHaveText(NAME_A, { timeout: 15000 });
 
     const m = await nameEl.evaluate((el) => ({

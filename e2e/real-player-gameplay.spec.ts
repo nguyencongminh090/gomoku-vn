@@ -2,6 +2,7 @@ import { test, expect, Page } from './helpers/fixtures';
 import fs from 'fs';
 import path from 'path';
 import { authAsGuest } from './helpers/auth';
+import { cellPosition } from './helpers/board';
 
 /**
  * Full end-to-end simulation of two real players using the product through
@@ -105,7 +106,7 @@ test.describe('real-player gameplay simulation', () => {
     // ── Player A: guest login, create a room via the real "Quick match" flow ──
     const A = await makeGuestPlayer('PlayerA');
     let tStart = Date.now();
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     results.lobbyNavTimingA = await navTiming(A.page);
     await expect(A.page.locator('#btn-create')).toBeVisible();
     await A.page.click('#btn-create');
@@ -154,9 +155,9 @@ test.describe('real-player gameplay simulation', () => {
     record('system', 'presence_sync_ok', { seenBy: 'PlayerA', of: 'PlayerB' });
 
     // ── Both sit down in their slots ──
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
     record('PlayerA', 'sit_down', { slot: 1 });
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     record('PlayerB', 'sit_down', { slot: 2 });
 
     // ── Both confirm ready within the start-modal window ──
@@ -195,19 +196,9 @@ test.describe('real-player gameplay simulation', () => {
       );
       // The board's canvas geometry is computed asynchronously (resize() runs
       // off a requestAnimationFrame) after gameState flips to 'ongoing', so a
-      // click immediately on turn-change can race a still-zeroed cellSize and
+      // click immediately on turn-change can race a not-yet-computed geo (see helpers/board.ts) and
       // land on a NaN cell that the renderer silently ignores.
-      await p.page.waitForFunction(
-        () => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize,
-        null,
-        { timeout: 10000 },
-      );
-      const geo = await p.page.evaluate(() => {
-        const br = (window as any).RoomState.boardRenderer;
-        return { cellSize: br.geo.cellSize, originX: br.geo.originX, originY: br.geo.originY };
-      });
-      const px = geo.originX + (x + 0.5) * geo.cellSize;
-      const py = geo.originY + (y + 0.5) * geo.cellSize;
+      const { x: px, y: py } = await cellPosition(p.page, x, y);
       const beforeCount = await p.page.evaluate(() => (window as any).RoomState.gameState.moveCount);
 
       const t = Date.now();

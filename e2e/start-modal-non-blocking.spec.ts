@@ -22,7 +22,7 @@ test.describe('Start Modal does not block the board/seats/chat underneath', () =
     test.setTimeout(30_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -36,8 +36,8 @@ test.describe('Start Modal does not block the board/seats/chat underneath', () =
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await expect(B.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
 
@@ -55,7 +55,7 @@ test.describe('Start Modal does not block the board/seats/chat underneath', () =
     test.setTimeout(30_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -69,15 +69,15 @@ test.describe('Start Modal does not block the board/seats/chat underneath', () =
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
 
     // The seat's own stand-up button (client/js/room-ui.js
     // `.slot-card__stand`) sits underneath/beside the modal card, outside its
     // backdrop-free hit area — it must still be clickable, not obscured by a
     // full-screen overlay the way the old #start-modal was.
-    await A.page.locator('#slot-1 .slot-card__stand').click();
+    await A.page.locator('[data-slot="1"] .seatcard__stand').click();
     await A.page.waitForFunction(() => (window as any).RoomState?.mySlot === null, null, { timeout: 10000 });
     expect(await A.page.evaluate(() => (window as any).RoomState.mySlot)).toBeNull();
 

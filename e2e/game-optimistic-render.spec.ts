@@ -1,4 +1,5 @@
 import { test, expect, Page, BrowserContext } from './helpers/fixtures';
+import { cellPosition } from './helpers/board';
 
 /**
  * TODO.md #153 — optimistic render for the mover's own stone.
@@ -77,15 +78,8 @@ async function makeGuestThrottled(browser: any, actor: string, latencyMs: number
 }
 
 async function clickCell(p: Player, x: number, y: number) {
-  await p.page.waitForFunction(
-    () => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
-  const geo = await p.page.evaluate(() => {
-    const g = (window as any).RoomState.boardRenderer.geo;
-    return { cellSize: g.cellSize, originX: g.originX, originY: g.originY };
-  });
-  await p.page.locator('#game-canvas').click({
-    position: { x: geo.originX + (x + 0.5) * geo.cellSize, y: geo.originY + (y + 0.5) * geo.cellSize },
-  });
+  const position = await cellPosition(p.page, x, y);
+  await p.page.locator('#game-canvas').click({ position });
 }
 
 const optimisticStone = (p: Player) =>
@@ -120,7 +114,7 @@ const firstOptimisticSet = (p: Player) =>
 /** Create + join a 2-player room through the real UI, Wall rule off, and start the game. */
 async function setUpGame(browser: any, guestFactory: typeof makeGuest): Promise<[Player, Player]> {
   const A = await guestFactory(browser, 'PlayerA');
-  await A.page.goto('/index.html');
+  await A.page.goto('/index.html#rooms');
   await A.page.click('#btn-create');
   await A.page.click('#modal-advanced-toggle');
   await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -134,8 +128,8 @@ async function setUpGame(browser: any, guestFactory: typeof makeGuest): Promise<
   await B.page.goto(`/room.html?id=${encodeURIComponent(roomId)}`);
   await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-  await A.page.locator('#slot-1 .slot-card__clickable').click();
-  await B.page.locator('#slot-2 .slot-card__clickable').click();
+  await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+  await B.page.locator('[data-slot="2"] .seatcard__sit').click();
   await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
   await expect(B.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
   await A.page.click('#start-modal-btn');
@@ -263,7 +257,7 @@ test.describe('optimistic render for the mover\'s own stone (TODO.md #153)', () 
     // board.js does NOT know about is reachable: enable Wall and click
     // outside the server-computed first-move zone.
     const C = await makeGuest(browser, 'PlayerC');
-    await C.page.goto('/index.html');
+    await C.page.goto('/index.html#rooms');
     await C.page.click('#btn-create');
     await C.page.click('#modal-advanced-toggle');
     await C.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -276,8 +270,8 @@ test.describe('optimistic render for the mover\'s own stone (TODO.md #153)', () 
     const D = await makeGuest(browser, 'PlayerD');
     await D.page.goto(`/room.html?id=${encodeURIComponent(roomId)}`);
     await expect(D.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
-    await C.page.locator('#slot-1 .slot-card__clickable').click();
-    await D.page.locator('#slot-2 .slot-card__clickable').click();
+    await C.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await D.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(C.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await C.page.click('#start-modal-btn');
     await D.page.click('#start-modal-btn');

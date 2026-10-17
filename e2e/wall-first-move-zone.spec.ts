@@ -1,5 +1,6 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { cellPosition } from './helpers/board';
 
 /**
  * TEST-MATRIX.md row 3/4 — Wall rule: the first move of the game must land in
@@ -20,13 +21,7 @@ async function makeGuest(browser: any, actor: string) {
 }
 
 async function clickCell(page: Page, x: number, y: number) {
-  await page.waitForFunction(() => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
-  const geo = await page.evaluate(() => {
-    const br = (window as any).RoomState.boardRenderer;
-    return { cellSize: br.geo.cellSize, originX: br.geo.originX, originY: br.geo.originY };
-  });
-  const px = geo.originX + (x + 0.5) * geo.cellSize;
-  const py = geo.originY + (y + 0.5) * geo.cellSize;
+  const { x: px, y: py } = await cellPosition(page, x, y);
   await page.locator('#game-canvas').click({ position: { x: px, y: py } });
 }
 
@@ -35,7 +30,7 @@ test.describe('Wall rule — first-move zone enforcement', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await expect(A.page.locator('#btn-create')).toBeVisible();
     await A.page.click('#btn-create');
     // Leave Wall ON (lite default) — do NOT toggle it off here, unlike other specs.
@@ -48,8 +43,8 @@ test.describe('Wall rule — first-move zone enforcement', () => {
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await A.page.click('#start-modal-btn');
     await B.page.click('#start-modal-btn');

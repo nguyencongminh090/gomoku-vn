@@ -11,6 +11,8 @@ Read the `playwright-e2e-safety` skill first. The server has **no DB path overri
    - `.env` sets `CORS_ORIGIN` to the production domain → without the override every localhost
      socket is rejected (`Socket handshake rejected: bad origin`).
    - Default `AUTH_LIMITER_MAX` is 20 per window; the suite mints far more guests.
+   - Outside the repo checkout (worktrees, no `.env`) set the SAME `JWT_SECRET` for the server **and** the `playwright test` process:
+     `flood-protection` signs its own JWTs with `server/config.js` and otherwise fails with `AUTH_INVALID`.
    - Do **not** raise `MAX_ROOMS_PER_IP` — `leave-then-create-room.spec.ts` asserts the quota.
 4. `npx playwright test --project=chromium` (one worker is the config default; rooms/guests all come from one IP).
    If the installed Chromium revision ≠ the one this Playwright wants, do **not** `playwright install`;
@@ -29,8 +31,8 @@ Read the `playwright-e2e-safety` skill first. The server has **no DB path overri
 - Shell gotcha: `pkill -f "playwright test"` inside a bash command also matches (and kills) that
   shell. Kill by PID.
 
-## Known state (2026-10-09)
-Chromium, fresh DB, recipe above: 56 specs, all app-only (no external hosts; the Playwright scaffold was removed in #188). Last 5 full runs saw 54-56 pass; both failure causes are fixed (#187, #188), not re-run since. Back-to-back runs against one server work
-again: a room left with only dropped connections now closes after `EMPTY_ROOM_GRACE_MS` (20 s, #186).
-`kick-blocked-interrupted` deliberately leaves an "interrupted" room for 60 s; specs that need the whole quota
-call `waitForEmptyLobby()`.
+## Known state (2026-10-17)
+Chromium, isolated server (`PORT=3917`, `GOMOKU_DB_PATH`, `CORS_ORIGIN`, `PLAYWRIGHT_BASE_URL`, `PW_CHROMIUM_PATH` if the revision differs), 56 specs: **41 pass / 15 fail** (17 min; since then flood-protection, leave-then-create, lobby-patch, room-ghost fixed/explained → expect ~10 fail). Remaining failures are stale pre-#216 layout
+specs — see `docs/todo/B267-*`. Specs reach room actions via `goto('/index.html#rooms')`,
+`helpers/board.ts` `cellPosition`, `helpers/actions.ts` `act/confirmAct`.
+
