@@ -276,3 +276,7 @@
 | 2026-10-17 16:00 | #270 `.pl a.pbtn--primary` keeps on-brand label; default-dark --c-error → #f77f7f (AA) | [detail](docs/fix-log/2026-10-17-contrast-270.md) |
 | 2026-10-17 17:00 | #271 Lobby 375 px: stats strip reserves its 2 wrapped rows; CLS 0.124 → 0.007 (0.058 with news line) | [detail](docs/fix-log/2026-10-17-lobby-cls-271.md) |
 | 2026-10-17 18:00 | #272 /profile.html without /u/<name> redirects to / instead of fetching a 404 profile API | [detail](docs/fix-log/2026-10-17-profile-no-username-272.md) |
+| 2026-10-17 19:00 | #273 Puzzle guest solve/submit 500 → 403 + prompt | [detail](docs/fix-log/2026-10-17-puzzle-guest-500-273.md) |
+| 2026-10-17 19:01 | #274 /puzzles filter/paging kept the lobby URL | [detail](docs/fix-log/2026-10-17-puzzles-list-url-274.md) |
+| 2026-10-17 19:02 | #275 Puzzle guests/visitors see the prompt up front | [detail](docs/fix-log/2026-10-17-puzzle-guest-gating-275.md) |
+| 2026-10-17 19:03 | #276 /puzzles filter bar labelled, even rhythm | [detail](docs/fix-log/2026-10-17-puzzles-filter-bar-276.md) |

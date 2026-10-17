@@ -28,7 +28,7 @@ router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 300, keyGenerator });
 
 const member = [verifyToken, (req, res, next) => {
-  if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
+  if (!req.user.userId || req.user.isGuest || String(req.user.userId).startsWith('guest_')) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
   next();
 }];
 const write = [...member, writeLimiter, express.json({ limit: '128kb' })];

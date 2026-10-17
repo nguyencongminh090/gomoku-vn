@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="css/platform-shell.css?v=96dbccef" />
   <link rel="stylesheet" href="css/platform.css?v=6bffd1d9" />
   <link rel="stylesheet" href="css/forum.css?v=2bc09214" />
-  <link rel="stylesheet" href="css/puzzles.css?v=1f3a0a06" />
+  <link rel="stylesheet" href="css/puzzles.css?v=f8787f20" />
   <link rel="stylesheet" href="css/settings-panel.css?v=d8ac9246" />
   <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=1e215c18">
 
@@ -27,16 +27,16 @@
     <p id="pz-total" class="muted small"></p>
   </div>
 
-  <div class="pactions" style="margin:0 0 16px">
+  <div id="pz-actions" class="pactions" style="margin:0 0 16px">
     <a class="pbtn pbtn--primary" href="/puzzles/new"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg><span data-i18n="puzzles.new">Đăng puzzle mới</span></a>
     <a class="pbtn pbtn--ghost" href="/puzzles/mine" data-i18n="puzzles.mine">Puzzle của tôi</a>
   </div>
 
-  <div class="pbar">
-    <div id="pz-levels" class="pchips" role="group" data-i18n-aria="puzzles.filter_level" aria-label="Level" style="margin:0"></div>
-    <div id="pz-rules" class="pchips" role="group" data-i18n-aria="puzzles.filter_rule" aria-label="Luật" style="margin:0"></div>
+  <div class="pz-filters">
+    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_level">Level</span><div id="pz-levels" class="pchips" role="group" data-i18n-aria="puzzles.filter_level" aria-label="Level"></div></div>
+    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_rule">Luật</span><div id="pz-rules" class="pchips" role="group" data-i18n-aria="puzzles.filter_rule" aria-label="Luật"></div></div>
+    <div class="pz-filter"><span class="pz-filter__label" data-i18n="puzzles.filter_tag">Chủ đề</span><div id="pz-tags" class="pchips" role="group" data-i18n-aria="puzzles.filter_tag" aria-label="Chủ đề"></div></div>
   </div>
-  <div id="pz-tags" class="pchips" role="group" data-i18n-aria="puzzles.filter_tag" aria-label="Chủ đề"></div>
 
   <div id="pz-list" class="pz-grid" aria-live="polite"></div>
   <p id="pz-empty" class="pnote" hidden></p>
@@ -49,6 +49,6 @@
 <script src="js/audio-manager.js?v=f0ca2309"></script>
 <script src="js/settings-panel.js?v=014127cb"></script>
 <script src="js/platform-shell.js?v=4c683e1d"></script>
-<script src="js/puzzles.js?v=d673c726"></script>
+<script src="js/puzzles.js?v=789b7c10"></script>
 </body>
 </html>

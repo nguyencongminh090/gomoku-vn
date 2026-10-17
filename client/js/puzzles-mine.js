@@ -41,6 +41,9 @@
     window.PlatformShell.build('learn');
     const msg = $('mn-msg');
     let canReview = false;
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    // No cached member session → say so without the doomed 401 probe (#275).
+    if (window.GvnSession && (!u || u.isGuest)) { msg.hidden = false; msg.textContent = t('puzzles.login_to_submit'); $('mn-actions').hidden = true; return; }
     try {
       const res = await fetch('/api/puzzles/mine', { credentials: 'same-origin' });
       if (res.status === 401 || res.status === 403) { msg.hidden = false; msg.textContent = t('puzzles.login_to_submit'); return; }

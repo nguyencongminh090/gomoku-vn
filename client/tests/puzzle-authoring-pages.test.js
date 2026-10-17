@@ -48,7 +48,24 @@ const $ = (id) => document.getElementById(id);
 const clickTool = (n) => document.querySelectorAll('#ed-tools .pchip')[n].click();
 
 describe('editor', () => {
-  const editorBoot = (over) => boot('editor', '../js/puzzle-editor.js', (u, o) => (over && over(u, o)) || (u.includes('/rankings/me') ? ok({}) : ok({ id: 'new', status: 'pending' })));
+  it('a guest (200 with a guest_ id) gets the login hint, not the editor (#275)', async () => {
+    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'guest_ab12' }) : ok({})));
+    await settle();
+    expect($('ed-error').hidden).toBe(false);
+    expect($('ed-error').textContent).toBe('puzzles.login_to_submit');
+    expect($('ed-view').hidden).toBe(true);
+  });
+
+  it('/puzzles/mine without a member session shows the prompt and makes no API call (#275)', async () => {
+    window.GvnSession = { getUser: () => null };
+    boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [] }));
+    await settle();
+    delete window.GvnSession;
+    expect($('mn-msg').textContent).toBe('puzzles.login_to_submit');
+    expect(global.fetch.mock.calls.some(([u]) => u.includes('/api/puzzles/mine'))).toBe(false);
+  });
+
+  const editorBoot = (over) => boot('editor', '../js/puzzle-editor.js', (u, o) => (over && over(u, o)) || (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({ id: 'new', status: 'pending' })));
 
   it('guests get a login hint and no board', async () => {
     editorBoot((u) => (u.includes('/rankings/me') ? fail(401) : null)); await settle();
@@ -170,7 +187,7 @@ describe('editor — edit mode', () => {
     window.history.pushState({}, '', '/puzzles/new?id=p9');
     const P = { id: 'p9', title: 'Cũ', prompt: '', rule: 'caro', boardSize: 17, toMove: 'WHITE', mode: 'final_move', level: 'hard', status: 'approved', tags: ['trap'],
       stones: [{ x: 1, y: 1, color: 'BLACK' }, { x: 2, y: 2, color: 'BLACK' }, { x: 3, y: 3, color: 'WHITE' }], answers: [[{ x: 6, y: 8 }]] };
-    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({}) : u.includes('/api/puzzles/p9') ? ok({ puzzle: P }) : ok({ id: 'p9', status: 'pending' })));
+    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : u.includes('/api/puzzles/p9') ? ok({ puzzle: P }) : ok({ id: 'p9', status: 'pending' })));
     await settle();
     expect($('ed-title').value).toBe('Cũ');
     expect($('ed-size').value).toBe('17');
@@ -256,7 +273,7 @@ describe('review queue', () => {
 
 describe('editor — answer lines', () => {
   it('focusing another answer line keeps the DOM (typing is not lost) and switches the active line', async () => {
-    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({}) : ok({})));
+    boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({})));
     await settle();
     $('ed-add-answer').click();
     const [first, second] = document.querySelectorAll('.pz-answer');
