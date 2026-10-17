@@ -137,7 +137,7 @@
 
   async function load() {
     renderTabs();
-    history.replaceState(null, '', '?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+    history.replaceState(null, '', location.pathname + '?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
     try {
       const res = await fetch('/api/rankings?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
       if (!res.ok) throw new Error('HTTP ' + res.status);

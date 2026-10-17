@@ -16,6 +16,7 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { verifyToken } = require('../middleware/auth');
+const { rejectGuests } = require('../middleware/guest-guard');
 const svc = require('../managers/ChallengeService');
 
 const router = express.Router();
@@ -23,10 +24,7 @@ const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 120, keyGenerator });
 
-router.use(verifyToken, (req, res, next) => {
-  if (!req.user.userId) return res.status(403).json({ error: 'Khách không thách đấu được.', code: 'GUEST_FORBIDDEN' });
-  next();
-});
+router.use(verifyToken, rejectGuests('Khách không thách đấu được.'));
 
 const h = (fn) => (req, res, next) => {
   try {

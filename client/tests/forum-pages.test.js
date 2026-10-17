@@ -60,6 +60,18 @@ describe('list page', () => {
     expect(row.textContent).toContain('forum.replies{"n":3}');
   });
 
+  it('filtering keeps the page path under <base href="/"> (a bare "?x" would resolve to "/?x", #281)', async () => {
+    const base = document.createElement('base'); base.href = '/'; document.head.appendChild(base);
+    try {
+      listBoot(null, '/forum'); await settle();
+      expect([window.location.pathname, window.location.search]).toEqual(['/forum', '']);
+      [...document.querySelectorAll('#fm-cats .pchip')].find((b) => b.textContent === 'forum.cat_help').click(); await settle();
+      expect([window.location.pathname, window.location.search]).toEqual(['/forum', '?category=help']);
+      [...document.querySelectorAll('#fm-cats .pchip')][0].click(); await settle();
+      expect([window.location.pathname, window.location.search]).toEqual(['/forum', '']);
+    } finally { base.remove(); }
+  });
+
   it('a category chip re-queries with it; the all chip clears it', async () => {
     listBoot(); await settle();
     const chip = [...document.querySelectorAll('#fm-cats .pchip')].find((b) => b.textContent === 'forum.cat_help');

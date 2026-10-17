@@ -2,6 +2,8 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#281.** Bare `replaceState('?…')` under `<base href="/">` in forum.js + rankings.js `[Model: Haiku]` — [detail](docs/todo/B281-replacestate-bare-query-base-href.md)
+✅ - **#280.** Same `!req.user.userId` guest guard in 6 other routes `[Model: Sonnet 5]` — [detail](docs/todo/B280-guest-guard-other-routes.md)
 ✅ - **#279.** /puzzles/mine is one unpaged list `[Model: Sonnet 5]` — [detail](docs/todo/B279-puzzles-mine-paging.md)
 ✅ - **#278.** Puzzle editor hints need prior knowledge `[Model: Haiku]` — [detail](docs/todo/B278-puzzle-editor-hints-wording.md)
 ✅ - **#277.** /puzzles pager keeps scroll position `[Model: Haiku]` — [detail](docs/todo/B277-puzzles-pager-scroll.md)
