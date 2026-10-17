@@ -166,15 +166,41 @@
     }).catch(() => { /* next poll fixes it */ });
   }
 
-  /** fetch(), but takes the response api-early.js already started for this URL (index.html, #263), once. */
-  function earlyFetch(url, init) {
-    return window.GvnEarly ? window.GvnEarly.fetch(url, init) : fetch(url, init);
+  /**
+   * One round trip for what every member page's nav needs (B269): /api/shell =
+   * { me, admin, notifications }. api-early.js may already have it in flight
+   * (index.html). Parsed once and kept SHELL_TTL ms so the page's own script can
+   * reuse `me` (fetchMe) instead of asking /api/rankings/me again.
+   */
+  const SHELL_TTL = 15000;
+  let shellP = null;
+  let shellAt = 0;
+  function loadShell() {
+    if (shellP && Date.now() - shellAt < SHELL_TTL) return shellP;
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    if (!u || u.isGuest) return Promise.resolve(null);
+    const init = { credentials: 'same-origin' };
+    shellAt = Date.now();
+    shellP = (window.GvnEarly ? window.GvnEarly.fetch('/api/shell', init) : fetch('/api/shell', init))
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    return shellP;
   }
 
+  /** Drop-in for `fetch('/api/rankings/me', …)`: Response-like from the shell payload, else a real fetch. */
+  function fetchMe() {
+    return loadShell().then((b) => (b && b.me
+      ? { ok: true, status: 200, json: () => Promise.resolve(b.me) }
+      : fetch('/api/rankings/me', { credentials: 'same-origin' })));
+  }
+
+  let bellPrimed = false;
   function refreshBell() {
     if (document.hidden) return Promise.resolve();
-    return earlyFetch('/api/notifications', { credentials: 'same-origin' })
-      .then((r) => (r.ok ? r.json() : null))
+    // First call rides the shell payload; every later poll hits /api/notifications.
+    const first = bellPrimed ? Promise.resolve(null) : (bellPrimed = true, loadShell().then((b) => (b && b.notifications) || null));
+    return first
+      .then((pre) => pre || fetch('/api/notifications', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)))
       .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); } })
       .catch(() => { /* offline: keep what we have */ });
   }
@@ -282,7 +308,7 @@
     right.appendChild(wrap);
     if (!member) return;
 
-    earlyFetch('/api/rankings/me', { credentials: 'same-origin' })
+    fetchMe()
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
         if (!m) return;
@@ -295,8 +321,8 @@
         }
       })
       .catch(() => { /* chip stays inert */ });
-    earlyFetch('/api/admin/me', { credentials: 'same-origin' })
-      .then((r) => (r.ok ? r.json() : null))
+    loadShell()
+      .then((b) => (b ? b.admin : fetch('/api/admin/me', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null))))
       .then((a) => { if (a && Array.isArray(a.permissions) && a.permissions.includes('admin.access')) admin.hidden = false; })
       .catch(() => { /* no staff entry */ });
   }
@@ -377,5 +403,5 @@
     return box;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications };
+  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications, fetchMe };
 })();

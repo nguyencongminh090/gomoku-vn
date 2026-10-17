@@ -161,7 +161,7 @@
       return showError(t('puzzles.error'));
     }
     try {
-      const me = await fetch('/api/rankings/me', { credentials: 'same-origin' });
+      const me = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
       member = me.ok;
     } catch (_) { member = false; }
     solved = !!puzzle.solved;

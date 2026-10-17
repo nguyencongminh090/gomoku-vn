@@ -23,7 +23,7 @@
   /** Members only: guests and signed-out visitors get 401/403 from this probe. */
   async function isMember() {
     try {
-      const res = await fetch('/api/rankings/me', { credentials: 'same-origin' });
+      const res = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
       return res.ok;
     } catch (_) { return false; }
   }
