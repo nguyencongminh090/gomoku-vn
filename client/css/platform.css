@@ -68,6 +68,7 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .pbtn:hover { opacity: .75; }
 .pbtn:disabled { opacity: .45; cursor: default; }
 .pbtn--primary { background: var(--c-brand); color: var(--c-on-brand); }
+.pl a.pbtn--primary { color: var(--c-on-brand); }   /* #270: `.pl a{color:inherit}` (0,1,1) outranks `.pbtn--primary` (0,1,0) on <a> buttons */
 .pbtn--ghost { background: none; border: 1px solid var(--c-border); color: var(--c-ink-2); }
 .pbtn--sm { min-height: 28px; padding: 3px 10px; font-size: 12px; }
 .pactions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 16px 0 0; }

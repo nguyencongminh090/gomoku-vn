@@ -36,8 +36,8 @@
   --c-accent:       #ee6a20;   /* text/border only; was #d85000 = 3.7:1 on surface, now 4.95:1 (#180) */
   --c-accent-light: rgba(238,106,32,0.16);
 
-  --c-error:        #ef6a6a;
-  --c-error-bg:     rgba(239,106,106,0.12);
+  --c-error:        #f77f7f;
+  --c-error-bg:     rgba(247,127,127,0.12);
   --c-success:      #8bc34a;
   --c-success-bg:   rgba(139,195,74,0.12);
   --c-warning:      #f2a33a;

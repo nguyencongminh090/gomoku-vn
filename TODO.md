@@ -77,3 +77,6 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
+- **#270.** Contrast: `<a>.pbtn--primary` label (puzzles, 2.91:1) + dark-skin `--c-error` (4.28:1) `[Model: Sonnet 5]` — [detail](docs/todo/B270-contrast-primary-link-and-dark-error.md)
+- **#271.** Lobby at 375 px: CLS 0.135 during load `[Model: Sonnet 5]` — [detail](docs/todo/B271-lobby-375-cls.md)
+- **#272.** `/profile.html` without `/u/<name>` calls a 404 API `[Model: Haiku]` — [detail](docs/todo/B272-profile-html-without-username-404.md)
