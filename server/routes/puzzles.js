@@ -54,7 +54,7 @@ router.get('/', h((req, res) => {
 
 router.get('/mine', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ puzzles: svc.mine(req.user.userId), canReview: svc.isAdmin(req.user.userId) });
+  res.json({ ...svc.mine(req.user.userId, req.query), canReview: svc.isAdmin(req.user.userId) });
 }));
 
 router.get('/review', ...member, h((req, res) => {

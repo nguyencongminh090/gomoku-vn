@@ -2,6 +2,9 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#279.** /puzzles/mine is one unpaged list `[Model: Sonnet 5]` — [detail](docs/todo/B279-puzzles-mine-paging.md)
+✅ - **#278.** Puzzle editor hints need prior knowledge `[Model: Haiku]` — [detail](docs/todo/B278-puzzle-editor-hints-wording.md)
+✅ - **#277.** /puzzles pager keeps scroll position `[Model: Haiku]` — [detail](docs/todo/B277-puzzles-pager-scroll.md)
 ✅ - **#273.** Puzzle: guest solve/submit returns 500 (guest passes the member guard) `[Model: Sonnet 5]` — [detail](docs/todo/B273-puzzle-guest-500.md)
 ✅ - **#274.** /puzzles filter/paging rewrites URL to the lobby (`<base href="/">`) `[Model: Sonnet 5]` — [detail](docs/todo/B274-puzzles-list-url-base-href.md)
 ✅ - **#275.** Puzzle: guests/visitors see full editor + action buttons, learn "members only" after submit `[Model: Sonnet 5]` — [detail](docs/todo/B275-puzzle-guest-anon-gating.md)

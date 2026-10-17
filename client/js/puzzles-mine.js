@@ -44,22 +44,44 @@
     const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
     // No cached member session → say so without the doomed 401 probe (#275).
     if (window.GvnSession && (!u || u.isGuest)) { msg.hidden = false; msg.textContent = t('puzzles.login_to_submit'); $('mn-actions').hidden = true; return; }
-    try {
-      const res = await fetch('/api/puzzles/mine', { credentials: 'same-origin' });
-      if (res.status === 401 || res.status === 403) { msg.hidden = false; msg.textContent = t('puzzles.login_to_submit'); return; }
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const data = await res.json();
-      const { puzzles } = data;
-      canReview = !!data.canReview;
-      const list = $('mn-list');
-      list.replaceChildren(...puzzles.map(row));
-      $('mn-count').textContent = t('puzzles.total', { n: puzzles.length });
-      if (!puzzles.length) { msg.hidden = false; msg.textContent = t('puzzles.mine_empty'); }
-    } catch (err) {
-      msg.hidden = false;
-      msg.textContent = t('puzzles.error');
-      return;
+
+    function renderPager(pg) {
+      const host = $('mn-pager');
+      host.replaceChildren();
+      if (pg.totalPages <= 1) return;
+      const prev = el('button', t('rankings.prev'), 'pbtn');
+      const next = el('button', t('rankings.next'), 'pbtn');
+      prev.type = next.type = 'button';
+      prev.disabled = pg.page <= 1;
+      next.disabled = pg.page >= pg.totalPages;
+      prev.addEventListener('click', () => loadPage(pg.page - 1, true));
+      next.addEventListener('click', () => loadPage(pg.page + 1, true));
+      host.append(prev, el('span', pg.page + ' / ' + pg.totalPages), next);
     }
+
+    /** One page of my puzzles (20 a page, like the public list); false when the page could not be shown. */
+    async function loadPage(page, toTop) {
+      try {
+        const res = await fetch('/api/puzzles/mine' + (page > 1 ? '?page=' + page : ''), { credentials: 'same-origin' });
+        if (res.status === 401 || res.status === 403) { msg.hidden = false; msg.textContent = t('puzzles.login_to_submit'); return false; }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const { puzzles, pagination } = data;
+        canReview = !!data.canReview;
+        const list = $('mn-list');
+        list.replaceChildren(...puzzles.map(row));
+        $('mn-count').textContent = t('puzzles.total', { n: pagination.total });
+        renderPager(pagination);
+        if (!puzzles.length) { msg.hidden = false; msg.textContent = t('puzzles.mine_empty'); }
+        if (toTop && list.scrollIntoView) list.scrollIntoView({ block: 'start' });
+        return true;
+      } catch (err) {
+        msg.hidden = false;
+        msg.textContent = t('puzzles.error');
+        return false;
+      }
+    }
+    if (!(await loadPage(1, false))) return;
     if (!canReview) return;
     try {
       const rv = await fetch('/api/puzzles/review', { credentials: 'same-origin' });

@@ -157,6 +157,25 @@ describe('list page', () => {
   });
 });
 
+describe('list page — #277 pager scrolls to the list', () => {
+  const pg = (n) => ({ puzzles: [], pagination: { page: n, limit: 20, total: 45, totalPages: 3 } });
+  afterEach(() => { delete Element.prototype.scrollIntoView; });
+
+  it('Sau / Trước scroll #pz-list to the top of the viewport; first load and filter changes do not', async () => {
+    const spy = jest.fn(); Element.prototype.scrollIntoView = spy;
+    boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: (u) => ok(pg(u.includes('page=2') ? 2 : 1)) }); await settle();
+    expect(spy).not.toHaveBeenCalled();
+    [...document.querySelectorAll('#pz-levels .pchip')][0].click(); await settle();
+    expect(spy).not.toHaveBeenCalled();
+    [...document.querySelectorAll('#pz-pager button')][1].click(); await settle(); // Sau
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy.mock.contexts[0]).toBe(document.getElementById('pz-list'));
+    expect(spy.mock.calls[0][0]).toEqual({ block: 'start' });
+    [...document.querySelectorAll('#pz-pager button')][0].click(); await settle(); // Trước
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe('list page — #274 URL under <base href="/"> / #275 member actions / #276 labelled filters', () => {
   const PAGE = { puzzles: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
   const listBoot = () => boot({ html: LIST_HTML, scripts: ['../js/puzzles.js'], fetchImpl: () => ok(PAGE) });

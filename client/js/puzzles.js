@@ -82,8 +82,8 @@
     prev.type = next.type = 'button';
     prev.disabled = pg.page <= 1;
     next.disabled = pg.page >= pg.totalPages;
-    prev.addEventListener('click', () => { state.page = pg.page - 1; load(); });
-    next.addEventListener('click', () => { state.page = pg.page + 1; load(); });
+    prev.addEventListener('click', () => { state.page = pg.page - 1; load(true); });
+    next.addEventListener('click', () => { state.page = pg.page + 1; load(true); });
     pagerEl.append(prev, el('span', pg.page + ' / ' + pg.totalPages), next);
   }
 
@@ -94,7 +94,8 @@
     return q.toString();
   }
 
-  async function load() {
+  /** @param {boolean} [toTop] a pager click: bring the first card of the new page into view (#277). */
+  async function load(toTop) {
     renderChips(levelsEl, 'level', LEVELS, 'puzzles.level_');
     renderChips(rulesEl, 'rule', RULES, 'puzzles.rule_');
     renderChips(tagsEl, 'tag', TAGS, 'puzzles.tag_');
@@ -105,6 +106,7 @@
       const data = await res.json();
       renderCards(data);
       renderPager(data.pagination);
+      if (toTop && listEl.scrollIntoView) listEl.scrollIntoView({ block: 'start' });
     } catch (err) {
       listEl.replaceChildren();
       emptyEl.hidden = false;

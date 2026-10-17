@@ -280,3 +280,6 @@
 | 2026-10-17 19:01 | #274 /puzzles filter/paging kept the lobby URL | [detail](docs/fix-log/2026-10-17-puzzles-list-url-274.md) |
 | 2026-10-17 19:02 | #275 Puzzle guests/visitors see the prompt up front | [detail](docs/fix-log/2026-10-17-puzzle-guest-gating-275.md) |
 | 2026-10-17 19:03 | #276 /puzzles filter bar labelled, even rhythm | [detail](docs/fix-log/2026-10-17-puzzles-filter-bar-276.md) |
+| 2026-10-17 16:42 | #277 /puzzles pager lands at the first card | [detail](docs/fix-log/2026-10-17-puzzles-pager-scroll-277.md) |
+| 2026-10-17 16:42 | #278 Puzzle editor hints in plain words | [detail](docs/fix-log/2026-10-17-puzzle-editor-hints-wording-278.md) |
+| 2026-10-17 16:42 | #279 /puzzles/mine paged (20/page) | [detail](docs/fix-log/2026-10-17-puzzles-mine-paging-279.md) |
