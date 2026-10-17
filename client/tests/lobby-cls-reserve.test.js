@@ -28,4 +28,10 @@ describe('lobby layout-shift reservations (B261)', () => {
     expect(zen).toMatch(/\.zen-hero__title:empty \{ min-height: 1\.25em;/);
     expect(html).not.toMatch(/id="home-stats"[^>]*\bhidden\b/);
   });
+
+  it('B271: #home-stats reserves its two wrapped rows at <=480px (375 px CLS 0.124 -> 0.007)', () => {
+    const m = zen.match(/@media \(max-width: 480px\) \{[^@]*?#home-stats:empty \{ min-height: (\d+)px; \}/);
+    expect(m).toBeTruthy();
+    expect(Number(m[1])).toBeGreaterThanOrEqual(86);
+  });
 });

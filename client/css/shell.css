@@ -228,6 +228,11 @@ body.zen-lobby #home-learn:empty { min-height: 68px; }
 body.zen-lobby #home-mine:empty { min-height: 86px; }
 body.zen-lobby #home-forum:empty { min-height: 90px; }
 body.zen-lobby #home-stats:empty { min-height: 47px; }
+/* B271: at 375 px the three counters wrap to two rows (tight row gap) — reserve both so /api/home does not push the panels down */
+@media (max-width: 480px) {
+  body.zen-lobby .hstats { gap: 4px 24px; }
+  body.zen-lobby #home-stats:empty { min-height: 86px; }
+}
 body.zen-lobby .zen-hero__title:empty { min-height: 1.25em; } /* lobby.js sets the text after load; line-height is 1.25 */
 
 /* Vào bằng mã (Phòng screen, B210): inline code field next to the create button */
