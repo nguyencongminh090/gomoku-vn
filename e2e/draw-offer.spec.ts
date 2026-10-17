@@ -1,5 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { cellPosition } from './helpers/board';
+import { confirmAct } from './helpers/actions';
 
 /**
  * TEST-MATRIX.md rows 9-11 — Draw offer/accept/decline and the
@@ -17,7 +19,7 @@ async function makeGuest(browser: any, actor: string) {
 
 async function startGame(browser: any) {
   const A = await makeGuest(browser, 'PlayerA');
-  await A.page.goto('/index.html');
+  await A.page.goto('/index.html#rooms');
   await A.page.click('#btn-create');
   await A.page.click('#modal-advanced-toggle');
   await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -31,8 +33,8 @@ async function startGame(browser: any) {
   await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
   await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-  await A.page.locator('#slot-1 .slot-card__clickable').click();
-  await B.page.locator('#slot-2 .slot-card__clickable').click();
+  await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+  await B.page.locator('[data-slot="2"] .seatcard__sit').click();
   await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
   await A.page.click('#start-modal-btn');
   await B.page.click('#start-modal-btn');
@@ -42,13 +44,7 @@ async function startGame(browser: any) {
 }
 
 async function clickCell(page: Page, x: number, y: number) {
-  await page.waitForFunction(() => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
-  const geo = await page.evaluate(() => {
-    const br = (window as any).RoomState.boardRenderer;
-    return { cellSize: br.geo.cellSize, originX: br.geo.originX, originY: br.geo.originY };
-  });
-  const px = geo.originX + (x + 0.5) * geo.cellSize;
-  const py = geo.originY + (y + 0.5) * geo.cellSize;
+  const { x: px, y: py } = await cellPosition(page, x, y);
   const before = await page.evaluate(() => (window as any).RoomState.gameState.moveCount);
   await page.locator('#game-canvas').click({ position: { x: px, y: py } });
   await page.waitForFunction((bc) => (window as any).RoomState?.gameState?.moveCount > bc, before, { timeout: 10000 });
@@ -65,11 +61,11 @@ test.describe('Draw offer', () => {
     test.setTimeout(60_000);
     const { A, B } = await startGame(browser);
 
-    await A.page.click('.btn-game--draw');
-    await expect(B.page.locator('.btn-draw-accept')).toBeVisible({ timeout: 10000 });
+    await confirmAct(A.page, 'doDrawOffer');
+    await expect(B.page.locator('[data-action="doDrawAccept"]')).toBeVisible({ timeout: 10000 });
     await expect(A.page.locator('#draw-prompt-area')).toContainText('chờ đối thủ');
 
-    await B.page.click('.btn-draw-accept');
+    await B.page.click('[data-action="doDrawAccept"]');
     await A.page.waitForFunction(() => (window as any).RoomState?.gameState?.status === 'finished', null, { timeout: 10000 });
     const result = await A.page.evaluate(() => (window as any).RoomState.gameState.result);
     expect(result.winner).toBe('draw');
@@ -89,9 +85,9 @@ test.describe('Draw offer', () => {
     test.setTimeout(60_000);
     const { A, B } = await startGame(browser);
 
-    await A.page.click('.btn-game--draw');
-    await expect(B.page.locator('.btn-draw-decline')).toBeVisible({ timeout: 10000 });
-    await B.page.click('.btn-draw-decline');
+    await confirmAct(A.page, 'doDrawOffer');
+    await expect(B.page.locator('[data-action="doDrawDecline"]')).toBeVisible({ timeout: 10000 });
+    await B.page.click('[data-action="doDrawDecline"]');
 
     await expect(A.page.locator('#draw-prompt-area')).toBeEmpty({ timeout: 10000 });
     await expect(B.page.locator('#draw-prompt-area')).toBeEmpty({ timeout: 10000 });
@@ -114,7 +110,7 @@ test.describe('Draw offer', () => {
     const blackPage = blackId ? A.page : B.page;
     const offerPage = A.page; // whoever offers, doesn't matter for this assertion
 
-    await offerPage.click('.btn-game--draw');
+    await confirmAct(offerPage, 'doDrawOffer');
     await expect(offerPage.locator('#draw-prompt-area')).not.toBeEmpty({ timeout: 10000 });
 
     // Whoever's turn it is (BLACK moves first) makes a move — the pending

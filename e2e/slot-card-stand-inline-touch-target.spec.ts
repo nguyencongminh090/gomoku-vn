@@ -45,6 +45,7 @@ async function register(browser: Browser, contextOptions: Parameters<Browser['ne
 
 async function seatBothPlayers(browser: Browser, contextOptions: Parameters<Browser['newContext']>[0], stamp: string) {
   const A = await register(browser, contextOptions, `s143a${stamp}`, NAME_A);
+  await A.page.goto('/index.html#rooms');
   await A.page.click('#btn-create');
   if (await A.page.locator('#modal-advanced-toggle').isVisible().catch(() => false)) {
     await A.page.click('#modal-advanced-toggle');
@@ -55,14 +56,14 @@ async function seatBothPlayers(browser: Browser, contextOptions: Parameters<Brow
   await A.page.waitForURL(/room\.html\?id=/, { timeout: 20000 });
   const roomUrl = A.page.url();
 
-  await A.page.locator('#slot-1 .slot-card__clickable').click();
-  await expect(A.page.locator('#slot-1 .slot-card__name')).toHaveText(NAME_A, { timeout: 15000 });
+  await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+  await expect(A.page.locator('[data-slot="1"] .seatcard__name')).toHaveText(NAME_A, { timeout: 15000 });
 
   const B = await register(browser, contextOptions, `s143b${stamp}`, NAME_B);
   await B.page.goto(roomUrl);
   await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 20000 });
-  await B.page.locator('#slot-2 .slot-card__clickable').click();
-  await expect(A.page.locator('#slot-2 .slot-card__name')).toHaveText(NAME_B, { timeout: 15000 });
+  await B.page.locator('[data-slot="2"] .seatcard__sit').click();
+  await expect(A.page.locator('[data-slot="2"] .seatcard__name')).toHaveText(NAME_B, { timeout: 15000 });
 
   return { A, B, roomUrl };
 }
@@ -74,9 +75,9 @@ test.describe('slot-card stand button: inline but shrunk to the touch-target flo
     const { A, B } = await seatBothPlayers(browser, { viewport: { width: 1920, height: 995 } }, stamp);
 
     const g = await A.page.evaluate(() => {
-      const card = document.querySelector('#slot-1')!;
-      const name = card.querySelector('.slot-card__name')!.getBoundingClientRect();
-      const stand = card.querySelector('.slot-card__stand')!.getBoundingClientRect();
+      const card = document.querySelector('[data-slot="1"]')!;
+      const name = card.querySelector('.seatcard__name')!.getBoundingClientRect();
+      const stand = card.querySelector('.seatcard__stand')!.getBoundingClientRect();
       return {
         standWidth: +(stand.right - stand.left).toFixed(1),
         standHeight: +(stand.bottom - stand.top).toFixed(1),
@@ -100,15 +101,15 @@ test.describe('slot-card stand button: inline but shrunk to the touch-target flo
     const stamp = 'touch' + Date.now().toString().slice(-6);
     const { A, B } = await seatBothPlayers(browser, { ...devices['Pixel 5'] }, stamp);
 
-    const standBox = await A.page.locator('#slot-1 .slot-card__stand').boundingBox();
+    const standBox = await A.page.locator('[data-slot="1"] .seatcard__stand').boundingBox();
     expect(standBox, 'stand button must be present and have a real hit box').not.toBeNull();
     expect(standBox!.width, 'stand button hit box width').toBeGreaterThanOrEqual(24);
     expect(standBox!.height, 'stand button hit box height').toBeGreaterThanOrEqual(24);
 
-    await A.page.locator('#slot-1 .slot-card__stand').tap();
+    await A.page.locator('[data-slot="1"] .seatcard__stand').tap();
 
-    await expect(A.page.locator('#slot-1 .slot-card__empty')).toBeVisible({ timeout: 5000 });
-    await expect(A.page.locator('#slot-1 .slot-card__name')).toHaveCount(0);
+    await expect(A.page.locator('[data-slot="1"].seatcard--empty')).toBeVisible({ timeout: 5000 });
+    await expect(A.page.locator('[data-slot="1"] .seatcard__name')).toHaveCount(0);
 
     await A.ctx.close();
     await B.ctx.close();

@@ -39,7 +39,7 @@ test.describe('mobile players-strip carries the clocks', () => {
     const A = await guest();
     const B = await guest();
 
-    await A.goto('/index.html');
+    await A.goto('/index.html#rooms');
     await A.click('#btn-create');
     await A.click('#btn-quick-match');
     await A.waitForURL(/room\.html/, { timeout: 20000 });
@@ -56,8 +56,8 @@ test.describe('mobile players-strip carries the clocks', () => {
     expect(await A.locator('.players-strip__track').count()).toBe(0);
 
     // ── Vào ván ──
-    await A.locator('#slot-1 .slot-card__clickable').click();
-    await B.locator('#slot-2 .slot-card__clickable').click();
+    await A.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.locator('#start-modal')).toHaveClass(/visible/, { timeout: 20000 });
     await expect(B.locator('#start-modal')).toHaveClass(/visible/, { timeout: 20000 });
     await A.click('#start-modal-btn');

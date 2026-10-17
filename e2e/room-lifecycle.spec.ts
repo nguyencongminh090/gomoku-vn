@@ -29,7 +29,7 @@ async function makeGuest(browser: any, actor: string) {
 }
 
 async function createRoomAsHost(host: { page: Page }) {
-  await host.page.goto('/index.html');
+  await host.page.goto('/index.html#rooms');
   await host.page.click('#btn-create');
   await host.page.click('#modal-advanced-toggle');
   await host.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -58,8 +58,8 @@ test.describe('Room lifecycle — ready-window cancel and host transfer', () => 
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
 
     // Both slots seated → Start Modal is visible, but nobody has clicked
     // Start yet, so there's no countdown running (instruction.md §B36).

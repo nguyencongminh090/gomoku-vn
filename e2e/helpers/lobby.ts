@@ -16,7 +16,7 @@ export async function waitForEmptyLobby(browser: Browser, timeoutMs = 90_000) {
   try {
     const page = await ctx.newPage();
     await authAsGuest(ctx, page, 'lobby-probe');
-    await page.goto('/index.html');
+    await page.goto('/index.html#rooms');
     await page.locator('#room-list').waitFor({ state: 'attached' });
     await page.waitForFunction(
       () => document.querySelectorAll('#room-list .room-row').length === 0,

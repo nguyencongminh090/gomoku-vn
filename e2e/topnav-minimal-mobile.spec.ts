@@ -52,6 +52,7 @@ test.describe('room topnav is a minimal always-on bar on zen mobile (TODO.md #14
       const stamp = Date.now().toString().slice(-6);
 
       const A = await register(browser, opts, `s144a${stamp}`, 'Nguoi Choi A');
+      await A.page.goto('/index.html#rooms');
       await A.page.click('#btn-create');
       if (await A.page.locator('#modal-advanced-toggle').isVisible().catch(() => false)) {
         await A.page.click('#modal-advanced-toggle');

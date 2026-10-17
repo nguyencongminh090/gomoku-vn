@@ -38,6 +38,7 @@ async function guest(browser: Browser, viewport: { width: number; height: number
 /** Two seated guests in a fresh room ⇒ `#start-modal` is showing on A's page. */
 async function roomWithStartModal(browser: Browser, viewport: { width: number; height: number }) {
   const A = await guest(browser, viewport);
+  await A.page.goto('/index.html#rooms');
   await A.page.click('#btn-create');
   await A.page.click('#modal-advanced-toggle');
   await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -53,8 +54,8 @@ async function roomWithStartModal(browser: Browser, viewport: { width: number; h
   await B.page.goto(roomUrl);
   await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 20000 });
 
-  await A.page.locator('#slot-1 .slot-card__clickable').click();
-  await B.page.locator('#slot-2 .slot-card__clickable').click();
+  await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+  await B.page.locator('[data-slot="2"] .seatcard__sit').click();
   await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 20000 });
   return { A, B };
 }
