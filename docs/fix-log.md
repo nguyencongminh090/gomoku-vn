@@ -283,3 +283,5 @@
 | 2026-10-17 16:42 | #277 /puzzles pager lands at the first card | [detail](docs/fix-log/2026-10-17-puzzles-pager-scroll-277.md) |
 | 2026-10-17 16:42 | #278 Puzzle editor hints in plain words | [detail](docs/fix-log/2026-10-17-puzzle-editor-hints-wording-278.md) |
 | 2026-10-17 16:42 | #279 /puzzles/mine paged (20/page) | [detail](docs/fix-log/2026-10-17-puzzles-mine-paging-279.md) |
+| 2026-10-17 16:53 | #280 Shared guest guard on 7 member-only routes | [detail](docs/fix-log/2026-10-17-guest-guard-shared-280.md) |
+| 2026-10-17 16:53 | #281 forum.js + rankings.js keep their path on filter | [detail](docs/fix-log/2026-10-17-replacestate-base-href-281.md) |

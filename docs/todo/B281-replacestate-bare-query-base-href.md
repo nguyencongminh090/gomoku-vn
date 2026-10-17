@@ -1,5 +1,5 @@
 # B281 — Bare `replaceState('?…')` under <base href="/"> in forum.js and rankings.js
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-17 (tests + real-browser pass + fix-log)
 **Area:** client/js/forum.js:58, client/js/rankings.js:140 (both pages have <base href="/">)
 **From:** #274 scope item 3, 2026-10-17   **Depends:** —
 

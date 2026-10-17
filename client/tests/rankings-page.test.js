@@ -97,6 +97,17 @@ describe('rankings page', () => {
     expect(calls[1]).toContain('page=1');
   });
 
+  it('switching category keeps the page path under <base href="/"> (#281)', async () => {
+    const base = document.createElement('base'); base.href = '/'; document.head.appendChild(base);
+    window.history.replaceState(null, '', '/rankings');
+    try {
+      await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+      expect(window.location.pathname).toBe('/rankings');
+      [...document.querySelectorAll('.pchip')].find((c) => c.textContent === 'rankings.cat_caro').click(); await flush(); await flush();
+      expect([window.location.pathname, window.location.search]).toEqual(['/rankings', '?category=caro']);
+    } finally { base.remove(); window.history.replaceState(null, '', '/rankings.html'); }
+  });
+
   it('works logged out (me → 401) and switches category via tab', async () => {
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
     expect(document.getElementById('rk-mine').textContent).toBe('');

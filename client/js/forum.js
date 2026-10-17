@@ -55,7 +55,7 @@
     const q = new URLSearchParams();
     if (state.category) q.set('category', state.category);
     if (state.page > 1) q.set('page', String(state.page));
-    history.replaceState(null, '', '?' + q.toString());
+    history.replaceState(null, '', location.pathname + (q.toString() ? '?' + q.toString() : '')); // <base href="/"> would resolve a bare '?x' to "/?x" (#281)
     try {
       const res = await fetch('/api/forum/threads?' + q.toString(), { credentials: 'same-origin' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
