@@ -39,7 +39,7 @@ The displayed clock was wrong in three different ways on three different layers:
 | "Just swap to serverNow()" did nothing | offset only set by `timer:sync` | stamp the payload first |
 
 ## Verify before calling it fixed
-- `grep -rn "?v=" client/*.html client/js/ | grep -v mockup | grep -o "?v=[0-9]*" | sort -u` shows one value.
+- `node scripts/cache-bust.js` prints OK (per-file content-hash `?v=` since #265).
 - Run `npm test`; the conformance and `timer-sync-core` suites must stay green.
 - Inject a noisy `halfRttMs` series and assert the displayed sequence, not "no throw".
 - Test with a client clock skewed several seconds (the #170 case was about -8.4 s).

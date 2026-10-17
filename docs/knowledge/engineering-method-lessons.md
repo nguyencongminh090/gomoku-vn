@@ -26,7 +26,7 @@ Several fixes took 2-6 rounds because the first attempt patched the visible laye
 10. **A shipped fix needs a test that fails without it.** #11: six shipped fixes stayed green when removed. Prove each test by reverting the fix (mutation check); one test was narrowed because it could not detect the revert.
 11. **Audit all consumers of a migrated contract.** #135: icon markup moved from `<i>` to `<svg class="icon">`, CSS selectors targeting `i` were missed. Grep CSS and JS, not just markup.
 12. **Do not claim the reporter's symptom is solved when the evidence does not match.** #135: measured 13px vs 15px could not explain the reported "zoom"; the entry says so.
-13. **Merges: `?v=N` becomes `max(dev, main) + 1`, repo-wide.** #133 round 4 kept 133 after merge and shipped stale JS; #157 repeated the rule on `dev` (155 to 156).
+13. **Merges: re-run `node scripts/cache-bust.js --write`** (content hashes since #265; was `max(dev, main) + 1`). #133 round 4 kept the old counter after merge and shipped stale JS.
 14. **Use real taps in verification.** #139: `page.click()` hit-tests; `el.click()` via `evaluate` gives false passes.
 
 ## Symptom -> real cause -> fix
@@ -34,10 +34,10 @@ Several fixes took 2-6 rounds because the first attempt patched the visible laye
 |---|---|---|
 | CSP still blocks analytics | data host differs from script host | allowlist both (#112) |
 | ready countdown wrong on skewed clock | no server time before first `timer:sync` | `serverTime` in payload (#170) |
-| live site shows old board after merge | `?v=` not re-bumped | max+1 (#133) |
+| live site shows old board after merge | `?v=` not recomputed | `cache-bust.js --write` (#133, #265) |
 
 ## Verify before calling it fixed
-- `grep -rn "?v=" client/*.html client/js/ | grep -v mockup | grep -o "?v=[0-9]*" | sort -u` shows one value.
+- `node scripts/cache-bust.js` prints OK (per-file content-hash `?v=` since #265).
 - Revert the fix in a scratch copy; the new test must go red.
 - Check on the production domain or an isolated server on another port, never the real DB.
 

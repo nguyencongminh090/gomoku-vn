@@ -276,7 +276,7 @@ function sendChat() { sendChatFrom(chatInput); }
 function loadProfanityFilter() {
   if (window.ProfanityFilter || document.querySelector('script[src*="profanity-filter.js"]')) return;
   const s = document.createElement('script');
-  s.src = '/js/profanity-filter.js?v=389';
+  s.src = '/js/profanity-filter.js?v=ffb6ee81';
   document.head.appendChild(s);
 }
 chatInput.addEventListener('focus', loadProfanityFilter);

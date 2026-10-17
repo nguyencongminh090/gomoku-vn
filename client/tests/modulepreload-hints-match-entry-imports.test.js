@@ -25,7 +25,7 @@ const CLIENT_DIR = path.join(__dirname, '..');
 
 function extractModulepreloadHints(htmlFile) {
   const html = fs.readFileSync(path.join(CLIENT_DIR, htmlFile), 'utf8');
-  const linkRe = /<link\s+rel="modulepreload"\s+href="js\/([^"?]+)\?v=(\d+)"\s*\/>/g;
+  const linkRe = /<link\s+rel="modulepreload"\s+href="js\/([^"?]+)\?v=([0-9a-f]+)"\s*\/>/g;
   const hints = [];
   let m;
   while ((m = linkRe.exec(html)) !== null) {
@@ -36,7 +36,7 @@ function extractModulepreloadHints(htmlFile) {
 
 function extractEntryImports(entryFile) {
   const src = fs.readFileSync(path.join(CLIENT_DIR, 'js', entryFile), 'utf8');
-  const importRe = /^import\s+['"]\.\/([^'"?]+)\?v=(\d+)['"];/gm;
+  const importRe = /^import\s+['"]\.\/([^'"?]+)\?v=([0-9a-f]+)['"];/gm;
   const imports = [];
   let m;
   while ((m = importRe.exec(src)) !== null) {
