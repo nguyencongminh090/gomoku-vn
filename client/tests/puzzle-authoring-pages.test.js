@@ -56,6 +56,15 @@ describe('editor', () => {
     expect($('ed-view').hidden).toBe(true);
   });
 
+  it('the editor without a member session shows the prompt and makes no API call (#275)', async () => {
+    window.GvnSession = { getUser: () => null };
+    boot('editor', '../js/puzzle-editor.js', () => ok({ userId: 'u1' }));
+    await settle();
+    delete window.GvnSession;
+    expect($('ed-error').textContent).toBe('puzzles.login_to_submit');
+    expect(global.fetch.mock.calls.length).toBe(0);
+  });
+
   it('/puzzles/mine without a member session shows the prompt and makes no API call (#275)', async () => {
     window.GvnSession = { getUser: () => null };
     boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [] }));
