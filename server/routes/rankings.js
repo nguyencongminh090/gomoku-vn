@@ -116,28 +116,32 @@ router.get('/', (req, res, next) => {
   }
 });
 
-router.get('/me', verifyToken, (req, res, next) => {
-  try {
-    const userId = req.user.userId;
-    const mine = {};
-    if (userId) {
-      for (const category of CATEGORIES) {
-        const r = database.getUserRanking(userId, category);
-        if (r) {
-          mine[category] = {
-            rank: r.rank,
-            rating: Math.round(r.rating),
-            games: r.games,
-            provisional: r.rd > PROVISIONAL_RD,
-            total: database.getRankingCount(category),
-          };
-        }
+/** Body of GET /api/rankings/me for a signed-in user (also served inside GET /api/shell). */
+function buildMe(userId) {
+  const mine = {};
+  if (userId) {
+    for (const category of CATEGORIES) {
+      const r = database.getUserRanking(userId, category);
+      if (r) {
+        mine[category] = {
+          rank: r.rank,
+          rating: Math.round(r.rating),
+          games: r.games,
+          provisional: r.rd > PROVISIONAL_RD,
+          total: database.getRankingCount(category),
+        };
       }
     }
+  }
+  const me = userId ? database.getUserById(userId) : null;
+  const avatarUrl = me && me.avatar_v ? `/api/profile/avatar/${me.id}.webp?v=${me.avatar_v}` : null; // nav chip (B211 follow-up)
+  return { userId: userId || null, username: me ? me.username : null, avatarUrl, minGames: database.RANKING_MIN_GAMES, ratings: mine };
+}
+
+router.get('/me', verifyToken, (req, res, next) => {
+  try {
     res.set('Cache-Control', 'no-store');
-    const me = userId ? database.getUserById(userId) : null;
-    const avatarUrl = me && me.avatar_v ? `/api/profile/avatar/${me.id}.webp?v=${me.avatar_v}` : null; // nav chip (B211 follow-up)
-    res.json({ userId: userId || null, username: me ? me.username : null, avatarUrl, minGames: database.RANKING_MIN_GAMES, ratings: mine });
+    res.json(buildMe(req.user.userId));
   } catch (err) {
     return next(err);
   }
@@ -145,5 +149,6 @@ router.get('/me', verifyToken, (req, res, next) => {
 
 // Test hook — the cache is module-level state.
 router._clearCache = () => cache.clear();
+router.buildMe = buildMe;
 
 module.exports = router;

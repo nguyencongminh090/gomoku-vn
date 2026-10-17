@@ -34,6 +34,7 @@ const adminRouter    = require('./routes/admin');
 const clubsRouter    = require('./routes/clubs');
 const friendsRouter  = require('./routes/friends');
 const notificationsRouter = require('./routes/notifications');
+const shellRouter = require('./routes/shell');
 const challengesRouter = require('./routes/challenges');
 const dmRouter = require('./routes/dm');
 const tournamentGamesRouter = require('./routes/tournamentGames');
@@ -165,6 +166,7 @@ app.use('/api/forum', forumRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/friends', friendsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/shell', shellRouter);
 app.use('/api/challenges', challengesRouter);
 app.use('/api/dm', dmRouter);
 

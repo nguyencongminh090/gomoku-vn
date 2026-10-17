@@ -63,7 +63,7 @@
     const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
     if (user && user.isGuest) return; // guests have no profile; settings-page.js hides that tab
     try {
-      const who = await fetch('/api/rankings/me', { credentials: 'same-origin' });
+      const who = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
       if (who.status === 401 || who.status === 403) { location.href = '/login.html'; return; }
       const m = who.ok ? await who.json() : null;
       if (!m || !m.username) { status.textContent = t('settings.members_only'); return; }

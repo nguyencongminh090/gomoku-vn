@@ -24,7 +24,7 @@ const SESSION_JS = read('js', 'session.js');
 const API_EARLY_JS = read('js', 'api-early.js');
 const INDEX_HTML = read('index.html');
 
-const ALL = ['/api/home', '/api/clubs/mine', '/api/notifications', '/api/rankings/me', '/api/admin/me'];
+const ALL = ['/api/home', '/api/clubs/mine', '/api/shell']; // B269: /api/shell = notifications + rankings/me + admin/me
 
 function boot({ user = null, hash = '', search = '', hidden = false } = {}) {
   localStorage.clear();
@@ -59,13 +59,13 @@ describe('api-early.js — which requests start during parsing', () => {
     expect(calls).toEqual([]);
   });
 
-  test('member on home: all five, same-origin credentials', () => {
+  test('member on home: all three, same-origin credentials', () => {
     const calls = boot({ user: MEMBER });
     expect(calls.map((c) => c.url).sort()).toEqual([...ALL].sort());
     for (const c of calls) expect(c.init).toEqual({ credentials: 'same-origin' });
   });
 
-  test('guest on home: only /api/home and /api/clubs/mine (shell skips bell/rankings/admin for guests)', () => {
+  test('guest on home: only /api/home and /api/clubs/mine (the shell call is members-only)', () => {
     expect(boot({ user: GUEST }).map((c) => c.url).sort()).toEqual(['/api/clubs/mine', '/api/home']);
   });
 
@@ -76,11 +76,11 @@ describe('api-early.js — which requests start during parsing', () => {
   ])('not the home screen (hash %p search %p): no /api/home', (hash, search) => {
     const urls = boot({ user: MEMBER, hash, search }).map((c) => c.url);
     expect(urls).not.toContain('/api/home');
-    expect(urls).toContain('/api/rankings/me');
+    expect(urls).toContain('/api/shell');
   });
 
-  test('hidden tab: no /api/notifications (refreshBell skips hidden tabs too)', () => {
-    expect(boot({ user: MEMBER, hidden: true }).map((c) => c.url)).not.toContain('/api/notifications');
+  test('hidden tab still starts /api/shell (it also carries me + admin)', () => {
+    expect(boot({ user: MEMBER, hidden: true }).map((c) => c.url)).toContain('/api/shell');
   });
 
   test('expired gvn_user counts as signed out', () => {
@@ -118,9 +118,7 @@ describe('consumers take the early response', () => {
   test.each([
     ['lobby-home.js', '/api/home'],
     ['tournaments.js', '/api/clubs/mine'],
-    ['platform-shell.js', '/api/notifications'],
-    ['platform-shell.js', '/api/rankings/me'],
-    ['platform-shell.js', '/api/admin/me'],
+    ['platform-shell.js', '/api/shell'],
   ])('%s fetches %s through GvnEarly', (file, url) => {
     const src = read('js', file);
     expect(src).toMatch(/window\.GvnEarly \? window\.GvnEarly\.fetch\(/);

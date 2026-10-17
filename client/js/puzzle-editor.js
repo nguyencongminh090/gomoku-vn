@@ -292,7 +292,7 @@
     window.PlatformShell.build('learn');
     const fail = (msg) => { $('ed-error').hidden = false; $('ed-error').textContent = msg; };
     try {
-      const me = await fetch('/api/rankings/me', { credentials: 'same-origin' });
+      const me = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
       if (!me.ok) return fail(t('puzzles.login_to_submit'));
     } catch (_) { return fail(t('puzzles.error')); }
 

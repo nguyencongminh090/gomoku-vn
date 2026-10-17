@@ -24,9 +24,8 @@
  *      /api/home          lobby-home.js loadHome() — home screen (no #rooms /
  *                         #tournaments / ?tab=tournaments)
  *      /api/clubs/mine    tournaments.js — any cached user (guests included)
- *      /api/notifications platform-shell.js refreshBell() — members, tab visible
- *      /api/rankings/me   platform-shell.js mountAccount() — members
- *      /api/admin/me      platform-shell.js mountAccount() — members
+ *      /api/shell         platform-shell.js loadShell() — members (B269: one call replacing
+ *                         /api/notifications + /api/rankings/me + /api/admin/me)
  *
  * Must sit after session.js and above every stylesheet link (same reason as
  * socket-early.js: a classic script after a stylesheet waits for it).
@@ -69,9 +68,7 @@
     if (homeScreen(global.location)) start('/api/home');
     start('/api/clubs/mine');
     if (user.isGuest) return;
-    if (!global.document.hidden) start('/api/notifications');
-    start('/api/rankings/me');
-    start('/api/admin/me');
+    start('/api/shell');
   }
 
   global.GvnEarly = { take, fetch: fetchEarly };

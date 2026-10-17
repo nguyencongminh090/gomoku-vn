@@ -272,3 +272,4 @@
 | 2026-10-17 05:46 | #264 Room: profanity-filter.js lazy on chat focus (−1 req, −12 KB gzip); i18n split declined by user, room defer/CSS merge no gain | [detail](docs/fix-log/2026-10-17-room-lazy-profanity-filter.md) |
 | 2026-10-17 06:01 | #265 Per-file content-hash `?v=` (8-hex sha256, Merkle over imports); 1-file edit re-versions 1–6 URLs instead of 91 | [detail](docs/fix-log/2026-10-17-per-file-content-hash.md) |
 | 2026-10-17 14:01 | #267 e2e: goto #rooms, cellPosition/act helpers, .seatcard selectors; 41/56 pass, 10 layout specs → #268 | [detail](docs/fix-log/2026-10-17-e2e-goto-rooms-267.md) |
+| 2026-10-17 15:08 | #269 /api/shell bootstrap replaces 3 nav calls; rankings/me no longer fetched twice (warm lobby 6→4 req, settings 6→3) | [detail](docs/fix-log/2026-10-17-shell-bootstrap-269.md) |

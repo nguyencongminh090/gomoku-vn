@@ -10,7 +10,7 @@
 import './i18n.js?v=d9c61376';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
-import './platform-shell.js?v=16c57725';
+import './platform-shell.js?v=4c683e1d';
 import './lobby.js?v=637fade9';
 import './private-chat.js?v=659109b9';
 import './tournaments.js?v=7198eaa0';
