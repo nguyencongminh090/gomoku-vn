@@ -275,3 +275,4 @@
 | 2026-10-17 15:08 | #269 /api/shell bootstrap replaces 3 nav calls; rankings/me no longer fetched twice (warm lobby 6→4 req, settings 6→3) | [detail](docs/fix-log/2026-10-17-shell-bootstrap-269.md) |
 | 2026-10-17 16:00 | #270 `.pl a.pbtn--primary` keeps on-brand label; default-dark --c-error → #f77f7f (AA) | [detail](docs/fix-log/2026-10-17-contrast-270.md) |
 | 2026-10-17 17:00 | #271 Lobby 375 px: stats strip reserves its 2 wrapped rows; CLS 0.124 → 0.007 (0.058 with news line) | [detail](docs/fix-log/2026-10-17-lobby-cls-271.md) |
+| 2026-10-17 18:00 | #272 /profile.html without /u/<name> redirects to / instead of fetching a 404 profile API | [detail](docs/fix-log/2026-10-17-profile-no-username-272.md) |

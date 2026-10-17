@@ -291,6 +291,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // /profile.html has no /u/<name> segment: nothing to fetch (#272).
+    if (!/^\/u\/./.test(location.pathname)) { location.replace('/'); return; }
     SHELL().build(null);
     $('pf-more').onclick = loadMoreGames;
     load();
