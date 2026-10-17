@@ -78,4 +78,3 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#266.** Lazy-load view-specific lobby/room assets (tournaments, private chat, room lobby.css) `[Model: Sonnet 5]` — [detail](docs/todo/B266-lazy-load-view-specific-assets.md)
-- **#268.** e2e: rewrite 10 layout specs written for the pre-#216 room UI (drawer, sheet, strip, topnav, stand btn) `[Model: Sonnet 5]` — [detail](docs/todo/B268-e2e-rewrite-stale-pre-216-layout-specs.md)

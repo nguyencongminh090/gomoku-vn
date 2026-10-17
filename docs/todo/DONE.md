@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#268.** e2e: rewrite 10 layout specs written for the pre-#216 room UI (drawer, sheet, strip, topnav, stand btn) `[Model: Sonnet 5]` — [detail](docs/todo/B268-e2e-rewrite-stale-pre-216-layout-specs.md)
 ✅ - **#267.** e2e: 39 specs time out on hidden `#btn-create` (lobby home since #195) `[Model: Sonnet 5]` — [detail](docs/todo/B267-e2e-btn-create-hidden-on-home.md)
 ✅ - **#265.** Per-file content-hash `?v=` instead of one global `?v=N` `[Model: Opus 5]` — [detail](docs/todo/B265-per-file-content-hash-versioning.md)
 ✅ - **#264.** Page weight: split i18n, lazy profanity, defer room scripts (low priority) `[Model: Sonnet 5]` — [detail](docs/todo/B264-page-weight-i18n-profanity-scripts.md)

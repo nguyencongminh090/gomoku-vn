@@ -1,27 +1,18 @@
-import { test, expect, Page, Browser, devices } from './helpers/fixtures';
+import { test, expect, devices } from './helpers/fixtures';
+import { authAsGuest } from './helpers/auth';
+import { createRoom } from './helpers/room';
 
 /**
- * TODO.md #144 — `.topnav` was a fixed 60px on zen mobile (`--zen-topnav-h`),
- * always showing the full brand/logo + room code + leave button row. On an
- * iPhone SE that's 9% of the viewport, the largest remaining chrome cost on
- * the room screen, for a bar whose brand/logo half is purely decorative
- * during a match.
- *
- * Two rounds of user feedback shaped the final design (see
- * docs/todo/B144-*.md for the full history):
- *   1. First measured whether hiding it actually grows the board — it
- *      doesn't (board is width-bound on every phone viewport tested, so the
- *      freed height becomes blank space below .game-controls, not board).
- *      Kept anyway as a pure decluttering change.
- *   2. First implementation used a ▾ toggle to expand/collapse the full row.
- *      User reviewed it live and asked for something simpler: no toggle at
- *      all, just a permanently minimal bar — leave icon (left), room code
- *      (center), the global settings gear (right, injected at runtime by
- *      settings-panel.js). Brand/logo drops for good on mobile.
- *
- * This guards the FINAL shape: minimal height at all times (no expand
- * state), and the two controls that exist ONLY in this nav — leave and room
- * code — plus the settings gear stay visible and functional.
+ * TODO.md #144 — on phones the room's `.topnav` must stay a small always-on bar
+ * (it was a fixed 60px, brand row and all): leave icon, room code, nothing the
+ * match doesn't need. Arena Focus (#216/#218) keeps that intent with a new
+ * budget — `--nav-h: 48px` on <=768px, the sticky bar the whole page layout is
+ * computed from (`.room` is `100dvh - --nav-h`). The settings gear is gone
+ * from the room nav (Settings is a tab in the panel), so this guards the two
+ * controls that exist ONLY here — leave and room code — plus the height:
+ *   - bar height <= 48px and equal to --nav-h (the layout math depends on it),
+ *   - leave + room code visible and fully inside the bar,
+ *   - leave works.
  */
 
 const VIEWPORTS = [
@@ -29,57 +20,34 @@ const VIEWPORTS = [
   { name: 'iPhone SE 375x667', opts: { viewport: { width: 375, height: 667 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } },
 ];
 
-async function register(browser: Browser, contextOptions: any, username: string, displayName: string) {
-  const ctx = await browser.newContext(contextOptions);
-  const page: Page = await ctx.newPage();
-  await page.goto('/login.html');
-  await page.click('#tab-register');
-  await page.fill('#reg-username', username);
-  await page.fill('#reg-display', displayName);
-  await page.fill('#reg-password', 'test-password-123');
-  await page.fill('#reg-confirm', 'test-password-123');
-  await page.click('#btn-register');
-  await page.waitForURL(/index\.html|\/$/, { timeout: 20000 });
-  return { ctx, page };
-}
-
-test.describe('room topnav is a minimal always-on bar on zen mobile (TODO.md #144)', () => {
+test.describe('room topnav is a minimal always-on bar on phones (TODO.md #144)', () => {
   for (const { name, opts } of VIEWPORTS) {
-    // TODO.md #184: shell.css's 8px .topnav__btn padding (#173) once made these
-    // controls 32/36px in the 28px bar, overflowing it — the box checks below catch that.
-    test(`${name}: topnav stays minimal-height with leave/room-code/settings reachable`, async ({ browser }) => {
+    // TODO.md #184: oversized .topnav__btn padding once overflowed the bar — the box checks below catch that.
+    test(`${name}: topnav stays minimal-height with leave and room code reachable`, async ({ browser }) => {
       test.setTimeout(60_000);
-      const stamp = Date.now().toString().slice(-6);
+      const ctx = await browser.newContext(opts);
+      const page = await ctx.newPage();
+      await authAsGuest(ctx, page);
+      await createRoom(page);
 
-      const A = await register(browser, opts, `s144a${stamp}`, 'Nguoi Choi A');
-      await A.page.goto('/index.html#rooms');
-      await A.page.click('#btn-create');
-      if (await A.page.locator('#modal-advanced-toggle').isVisible().catch(() => false)) {
-        await A.page.click('#modal-advanced-toggle');
-      }
-      const quick = A.page.locator('#btn-quick-match');
-      if (await quick.isVisible().catch(() => false)) await quick.click();
-      else await A.page.click('#modal-confirm');
-      await A.page.waitForURL(/room\.html\?id=/, { timeout: 20000 });
+      // The whole point: the nav row is small, and it is the layout's --nav-h.
+      const { topnavHeight, navVar } = await page.evaluate(() => ({
+        topnavHeight: document.querySelector('.topnav')!.getBoundingClientRect().height,
+        navVar: parseFloat(getComputedStyle(document.body).getPropertyValue('--nav-h')),
+      }));
+      expect(topnavHeight, 'topnav must stay the minimal bar, not the old 60px').toBeLessThanOrEqual(48);
+      expect(topnavHeight, 'topnav height must equal the --nav-h the room layout subtracts').toBe(navVar);
 
-      // The whole point of the fix: the nav row is small, not the old 60px.
-      const topnavHeight = await A.page.locator('.topnav').evaluate(
-        (el) => el.getBoundingClientRect().height
-      );
-      expect(topnavHeight, 'topnav must be the collapsed minimal height, not the old 60px').toBeLessThanOrEqual(36);
-
-      // Leave, room code, and settings all present and visible.
-      const leave = A.page.locator('#btn-leave');
-      const roomId = A.page.locator('#room-id-nav');
-      const settings = A.page.locator('#btn-settings');
+      // Leave and room code present and visible.
+      const leave = page.locator('#btn-leave');
+      const roomId = page.locator('#room-id-nav');
       await expect(leave, 'leave button is the only exit from a room — must always be visible').toBeVisible();
       await expect(roomId, 'room code must always be visible (needed to invite others)').toBeVisible();
-      await expect(settings, 'global settings gear must remain reachable').toBeVisible();
 
       // Nothing clipped out of the shrunk row — every control's box must sit
       // fully inside the nav's own bounding box.
-      const navBox = await A.page.locator('.topnav').boundingBox();
-      for (const loc of [leave, roomId, settings]) {
+      const navBox = await page.locator('.topnav').boundingBox();
+      for (const loc of [leave, roomId]) {
         const box = await loc.boundingBox();
         expect(box, 'control must have a real box').not.toBeNull();
         expect(box!.y, 'control must not start above the nav').toBeGreaterThanOrEqual(navBox!.y - 1);
@@ -89,9 +57,9 @@ test.describe('room topnav is a minimal always-on bar on zen mobile (TODO.md #14
       // Functional, not just visible: leaving actually leaves the room.
       // No confirm() dialog fires pre-game (mySlot is null at this point).
       await leave.click();
-      await A.page.waitForURL(/index\.html|\/$/, { timeout: 10000 });
+      await page.waitForURL(/index\.html|\/$/, { timeout: 10000 });
 
-      await A.ctx.close();
+      await ctx.close();
     });
   }
 });

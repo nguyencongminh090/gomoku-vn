@@ -32,7 +32,7 @@ Read the `playwright-e2e-safety` skill first. The server has **no DB path overri
   shell. Kill by PID.
 
 ## Known state (2026-10-17)
-Chromium, isolated server (`PORT=3917`, `GOMOKU_DB_PATH`, `CORS_ORIGIN`, `PLAYWRIGHT_BASE_URL`, `PW_CHROMIUM_PATH` if the revision differs), 56 specs: **41 pass / 15 fail** (17 min; since then flood-protection, leave-then-create, lobby-patch, room-ghost fixed/explained → expect ~10 fail). Remaining failures are stale pre-#216 layout
-specs — see `docs/todo/B267-*`. Specs reach room actions via `goto('/index.html#rooms')`,
-`helpers/board.ts` `cellPosition`, `helpers/actions.ts` `act/confirmAct`.
-
+Chromium, isolated server (`PORT`, `GOMOKU_DB_PATH`, `CORS_ORIGIN`, `PLAYWRIGHT_BASE_URL`, `PW_CHROMIUM_PATH` if the revision differs),
+55 specs: **55 pass** (7 min). Specs reach room actions via `goto('/index.html#rooms')` (`helpers/room.ts`
+`createRoom/joinRoom/sit`), `helpers/board.ts` `cellPosition`, `helpers/actions.ts` `act/confirmAct`. Sign in with a FRESH
+page load (`authAsGuest/authAsMember` before `goto`); registering through the login UI and then `goto('#rooms')` on mobile stayed on home.
