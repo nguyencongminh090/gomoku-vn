@@ -12,7 +12,7 @@
 // script, so the global attachment always runs as ordinary script execution
 // (profanity-filter.js is injected the same classic way by room.js on first
 // chat focus, #264; the classifier model is never loaded in the browser).
-import './session.js?v=89599d1e';
+import './session.js?v=7d763f30';
 import './i18n.js?v=d9c61376';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
