@@ -1,0 +1,595 @@
+{
+ "res": [
+  {
+   "tag": "lobby-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 7,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 1
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 56,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "rankings-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 6,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 2
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 108,
+    "cls": 0.003,
+    "inp": 56
+   },
+   "actErr": null
+  },
+  {
+   "tag": "settings-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 3,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 4
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 104,
+    "cls": 0,
+    "inp": 24
+   },
+   "actErr": null
+  },
+  {
+   "tag": "forum-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 7,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 2
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 52,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "puzzles-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 6,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "color-contrast",
+     "impact": "serious",
+     "n": 1,
+     "t": "span[data-i18n=\"puzzles.new\"]",
+     "h": "Elements must meet minimum color contrast ratio thresholds"
+    }
+   ],
+   "perf": {
+    "lcp": 44,
+    "cls": 0.003,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "clubs-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 9,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 2
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 68,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "social-1280",
+   "con": [],
+   "bad": [],
+   "reqs": 7,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "color-contrast",
+     "impact": "serious",
+     "n": 1,
+     "t": "#sc-code-copy",
+     "h": "Elements must meet minimum color contrast ratio thresholds"
+    }
+   ],
+   "perf": {
+    "lcp": 80,
+    "cls": 0.017,
+    "inp": 56
+   },
+   "actErr": null
+  },
+  {
+   "tag": "profile-1280",
+   "con": [
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "bad": [
+    "404 /api/profile/%2Fprofile.html"
+   ],
+   "reqs": 3,
+   "layout": {
+    "overflowX": false,
+    "sw": 1280,
+    "cw": 1280,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "t": "html",
+     "h": "Page should contain a level-one heading"
+    }
+   ],
+   "perf": {
+    "lcp": 64,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "lobby-768",
+   "con": [],
+   "bad": [],
+   "reqs": 4,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 1
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 112,
+    "cls": 0.043,
+    "inp": 56
+   },
+   "actErr": null
+  },
+  {
+   "tag": "rankings-768",
+   "con": [],
+   "bad": [],
+   "reqs": 6,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 2
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 112,
+    "cls": 0.007,
+    "inp": 48
+   },
+   "actErr": null
+  },
+  {
+   "tag": "settings-768",
+   "con": [],
+   "bad": [],
+   "reqs": 3,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 4
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 96,
+    "cls": 0,
+    "inp": 16
+   },
+   "actErr": null
+  },
+  {
+   "tag": "forum-768",
+   "con": [
+    "error: Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+   ],
+   "bad": [
+    "429 /api/forum/threads"
+   ],
+   "reqs": 4,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 1
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 80,
+    "cls": 0,
+    "inp": 16
+   },
+   "actErr": null
+  },
+  {
+   "tag": "puzzles-768",
+   "con": [],
+   "bad": [],
+   "reqs": 6,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 1
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 60,
+    "cls": 0.003,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "clubs-768",
+   "con": [],
+   "bad": [],
+   "reqs": 9,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 2
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 68,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "social-768",
+   "con": [],
+   "bad": [],
+   "reqs": 7,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 1
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 68,
+    "cls": 0.078,
+    "inp": 32
+   },
+   "actErr": null
+  },
+  {
+   "tag": "profile-768",
+   "con": [
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "bad": [
+    "404 /api/profile/%2Fprofile.html"
+   ],
+   "reqs": 3,
+   "layout": {
+    "overflowX": false,
+    "sw": 768,
+    "cw": 768,
+    "small": 1
+   },
+   "axe": null,
+   "perf": {
+    "lcp": 72,
+    "cls": 0,
+    "inp": 16
+   },
+   "actErr": null
+  },
+  {
+   "tag": "lobby-375",
+   "con": [],
+   "bad": [],
+   "reqs": 4,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "landmark-complementary-is-top-level",
+     "impact": "moderate",
+     "n": 1,
+     "t": "aside",
+     "h": "Aside should not be contained in another landmark"
+    }
+   ],
+   "perf": {
+    "lcp": 828,
+    "cls": 0.135,
+    "inp": 48
+   },
+   "actErr": null
+  },
+  {
+   "tag": "rankings-375",
+   "con": [],
+   "bad": [],
+   "reqs": 6,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 2
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 76,
+    "cls": 0.021,
+    "inp": 16
+   },
+   "actErr": null
+  },
+  {
+   "tag": "settings-375",
+   "con": [],
+   "bad": [],
+   "reqs": 3,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 4
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 116,
+    "cls": 0,
+    "inp": 32
+   },
+   "actErr": null
+  },
+  {
+   "tag": "forum-375",
+   "con": [
+    "error: Failed to load resource: the server responded with a status of 429 (Too Many Requests)"
+   ],
+   "bad": [
+    "429 /api/forum/threads"
+   ],
+   "reqs": 4,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "color-contrast",
+     "impact": "serious",
+     "n": 1,
+     "t": "#fm-new-result",
+     "h": "Elements must meet minimum color contrast ratio thresholds"
+    }
+   ],
+   "perf": {
+    "lcp": 92,
+    "cls": 0.005,
+    "inp": 16
+   },
+   "actErr": null
+  },
+  {
+   "tag": "puzzles-375",
+   "con": [],
+   "bad": [],
+   "reqs": 6,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "color-contrast",
+     "impact": "serious",
+     "n": 1,
+     "t": "span[data-i18n=\"puzzles.new\"]",
+     "h": "Elements must meet minimum color contrast ratio thresholds"
+    }
+   ],
+   "perf": {
+    "lcp": 44,
+    "cls": 0.008,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "clubs-375",
+   "con": [],
+   "bad": [],
+   "reqs": 9,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 2
+   },
+   "axe": [],
+   "perf": {
+    "lcp": 44,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  },
+  {
+   "tag": "social-375",
+   "con": [],
+   "bad": [],
+   "reqs": 7,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "color-contrast",
+     "impact": "serious",
+     "n": 1,
+     "t": "#sc-code-copy",
+     "h": "Elements must meet minimum color contrast ratio thresholds"
+    }
+   ],
+   "perf": {
+    "lcp": 72,
+    "cls": 0.097,
+    "inp": 56
+   },
+   "actErr": null
+  },
+  {
+   "tag": "profile-375",
+   "con": [
+    "error: Failed to load resource: the server responded with a status of 404 (Not Found)"
+   ],
+   "bad": [
+    "404 /api/profile/%2Fprofile.html"
+   ],
+   "reqs": 3,
+   "layout": {
+    "overflowX": false,
+    "sw": 375,
+    "cw": 375,
+    "small": 1
+   },
+   "axe": [
+    {
+     "id": "page-has-heading-one",
+     "impact": "moderate",
+     "n": 1,
+     "t": "html",
+     "h": "Page should contain a level-one heading"
+    }
+   ],
+   "perf": {
+    "lcp": 68,
+    "cls": 0,
+    "inp": 0
+   },
+   "actErr": null
+  }
+ ],
+ "manifest": [
+  "[✓] 08:30:55.615 lobby-1280 loaded, screenshot before",
+  "[✓] 08:30:55.707 lobby-1280 interaction (type/click) done",
+  "[✓] 08:30:57.830 rankings-1280 loaded, screenshot before",
+  "[✓] 08:30:58.481 rankings-1280 interaction (type/click) done",
+  "[✓] 08:31:00.545 settings-1280 loaded, screenshot before",
+  "[✓] 08:31:00.660 settings-1280 interaction (type/click) done",
+  "[✓] 08:31:02.780 forum-1280 loaded, screenshot before",
+  "[✓] 08:31:03.671 forum-1280 interaction (type/click) done",
+  "[✓] 08:31:05.706 puzzles-1280 loaded, screenshot before",
+  "[✓] 08:31:05.778 puzzles-1280 interaction (type/click) done",
+  "[✓] 08:31:07.819 clubs-1280 loaded, screenshot before",
+  "[✓] 08:31:09.225 clubs-1280 interaction (type/click) done",
+  "[✓] 08:31:11.313 social-1280 loaded, screenshot before",
+  "[✓] 08:31:11.981 social-1280 interaction (type/click) done",
+  "[✓] 08:31:14.057 profile-1280 loaded, screenshot before",
+  "[✓] 08:31:17.060 profile-1280 interaction (type/click) done",
+  "[✓] 08:31:19.093 lobby-768 loaded, screenshot before",
+  "[✓] 08:31:22.097 lobby-768 interaction (type/click) done",
+  "[✓] 08:31:24.010 rankings-768 loaded, screenshot before",
+  "[✓] 08:31:24.646 rankings-768 interaction (type/click) done",
+  "[✓] 08:31:26.543 settings-768 loaded, screenshot before",
+  "[✓] 08:31:26.658 settings-768 interaction (type/click) done",
+  "[✓] 08:31:28.553 forum-768 loaded, screenshot before",
+  "[✓] 08:31:29.453 forum-768 interaction (type/click) done",
+  "[✓] 08:31:31.316 puzzles-768 loaded, screenshot before",
+  "[✓] 08:31:31.392 puzzles-768 interaction (type/click) done",
+  "[✓] 08:31:33.275 clubs-768 loaded, screenshot before",
+  "[✓] 08:31:34.666 clubs-768 interaction (type/click) done",
+  "[✓] 08:31:36.565 social-768 loaded, screenshot before",
+  "[✓] 08:31:37.228 social-768 interaction (type/click) done",
+  "[✓] 08:31:39.124 profile-768 loaded, screenshot before",
+  "[✓] 08:31:42.124 profile-768 interaction (type/click) done",
+  "[✓] 08:31:44.035 lobby-375 loaded, screenshot before",
+  "[✓] 08:31:47.036 lobby-375 interaction (type/click) done",
+  "[✓] 08:31:49.095 rankings-375 loaded, screenshot before",
+  "[✓] 08:31:49.732 rankings-375 interaction (type/click) done",
+  "[✓] 08:31:51.766 settings-375 loaded, screenshot before",
+  "[✓] 08:31:51.856 settings-375 interaction (type/click) done",
+  "[✓] 08:31:53.965 forum-375 loaded, screenshot before",
+  "[✓] 08:31:54.933 forum-375 interaction (type/click) done",
+  "[✓] 08:31:56.944 puzzles-375 loaded, screenshot before",
+  "[✓] 08:31:57.002 puzzles-375 interaction (type/click) done",
+  "[✓] 08:31:58.997 clubs-375 loaded, screenshot before",
+  "[✓] 08:32:00.384 clubs-375 interaction (type/click) done",
+  "[✓] 08:32:02.419 social-375 loaded, screenshot before",
+  "[✓] 08:32:03.073 social-375 interaction (type/click) done",
+  "[✓] 08:32:05.139 profile-375 loaded, screenshot before",
+  "[✓] 08:32:08.140 profile-375 interaction (type/click) done"
+ ],
+ "secs": 74.965
+}
