@@ -25,7 +25,8 @@ const PROFILE = {
 let HISTORY = { hidden: false, points: [{ t: 'a', rating: 1500 }, { t: 'b', rating: 1580 }, { t: 'c', rating: 1650 }], peak: 1700 };
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-async function boot(profile, status = 200) {
+async function boot(profile, status = 200, pathname = '/u/alice') {
+  window.history.pushState({}, '', pathname);
   jest.resetModules();
   document.body.innerHTML = BODY_HTML;
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
@@ -303,5 +304,14 @@ describe('profile page', () => {
       await boot({ ...PROFILE, stats: null, recent: [] });
       expect(document.getElementById('pf-more').hidden).toBe(true);
     });
+  });
+});
+
+// Last on purpose: boot() leaves its DOMContentLoaded listener behind, which would fire in later tests.
+describe('profile page without a username (#272)', () => {
+  it('#272 /profile.html without /u/<name> never calls the profile API', async () => {
+    await boot(PROFILE, 200, '/profile.html');
+    expect(global.fetch.mock.calls.some((c) => String(c[0]).includes('/api/profile'))).toBe(false);
+    expect(document.getElementById('pf-status').textContent).toBe('');
   });
 });
