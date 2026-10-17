@@ -1,5 +1,5 @@
 # B277 — Pager keeps scroll position after changing page
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-17 (tests + real-browser pass + fix-log)
 **Area:** client/js/puzzles.js:85-86
 **From:** ux-audit puzzle 2026-10-17 (`docs/audits/ux-audit-2026-10-17-puzzle.md`), finding L1 (Low)   **Depends:** B274
 

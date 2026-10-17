@@ -1,5 +1,5 @@
 # B279 — /puzzles/mine is one unpaged list
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-17 (tests + real-browser pass + fix-log)
 **Area:** server/routes/puzzles.js (/mine), client/js/puzzles-mine.js
 **From:** ux-audit puzzle 2026-10-17 (`docs/audits/ux-audit-2026-10-17-puzzle.md`), finding L3 (Low)   **Depends:** —
 

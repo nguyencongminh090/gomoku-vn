@@ -67,7 +67,7 @@ describe('editor', () => {
 
   it('/puzzles/mine without a member session shows the prompt and makes no API call (#275)', async () => {
     window.GvnSession = { getUser: () => null };
-    boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [] }));
+    boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } }));
     await settle();
     delete window.GvnSession;
     expect($('mn-msg').textContent).toBe('puzzles.login_to_submit');
@@ -216,7 +216,7 @@ describe('my puzzles', () => {
     { id: 'b', title: 'B', status: 'approved', level: 'hard', rule: 'freestyle', boardSize: 17, reviewNote: '' },
   ];
   it('lists puzzles as text with the reject note, edit links, and an admin review link', async () => {
-    boot('mine', '../js/puzzles-mine.js', (u) => (u.includes('/review') ? ok({ pagination: { total: 3 } }) : ok({ puzzles: MINE, canReview: true })));
+    boot('mine', '../js/puzzles-mine.js', (u) => (u.includes('/review') ? ok({ pagination: { total: 3 } }) : ok({ puzzles: MINE, canReview: true, pagination: { page: 1, limit: 20, total: 2, totalPages: 1 } })));
     await settle();
     const rows = document.querySelectorAll('#mn-list .prow');
     expect(rows).toHaveLength(2);
@@ -231,11 +231,51 @@ describe('my puzzles', () => {
   it('a non-admin gets no review link and no review request', async () => {
     const errs = [];
     process.once('unhandledRejection', (e) => errs.push(String(e)));
-    boot('mine', '../js/puzzles-mine.js', (u) => ok({ puzzles: MINE, canReview: false }));
+    boot('mine', '../js/puzzles-mine.js', (u) => ok({ puzzles: MINE, canReview: false, pagination: { page: 1, limit: 20, total: 2, totalPages: 1 } }));
     await settle();
     expect($('mn-review').hidden).toBe(true);
     expect(errs).toEqual([]); // init() is async: a ReferenceError there would only surface as an unhandled rejection
     expect(global.fetch.mock.calls.some(([u]) => u.includes('/review'))).toBe(false); // no probe → no 403 in the console
+  });
+});
+
+describe('my puzzles — paging (#279)', () => {
+  const row = (i) => ({ id: 'r' + i, title: 'T' + i, status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' });
+  const pageOf = (n) => ({ page: n, limit: 20, total: 45, totalPages: 3 });
+
+  it('45 puzzles: page 1 shows 20 + a pager; Sau requests page 2 and shows that page\'s rows; total stays 45', async () => {
+    boot('mine', '../js/puzzles-mine.js', (u) => ok(u.includes('page=2')
+      ? { puzzles: [row(20), row(21)], canReview: false, pagination: pageOf(2) }
+      : { puzzles: Array.from({ length: 20 }, (_, i) => row(i)), canReview: false, pagination: pageOf(1) }));
+    await settle();
+    expect(document.querySelectorAll('#mn-list .prow')).toHaveLength(20);
+    expect($('mn-count').textContent).toContain('"n":45');
+    const [prev, next] = document.querySelectorAll('#mn-pager button');
+    expect(prev.disabled).toBe(true);
+    next.click(); await settle();
+    expect(global.fetch.mock.calls.pop()[0]).toBe('/api/puzzles/mine?page=2');
+    expect(document.querySelector('#mn-list .prow b').textContent).toBe('T20');
+    expect($('mn-pager').textContent).toContain('2 / 3');
+  });
+
+  it('a single page renders no pager buttons', async () => {
+    boot('mine', '../js/puzzles-mine.js', () => ok({ puzzles: [row(0)], canReview: false, pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } }));
+    await settle();
+    expect(document.querySelectorAll('#mn-pager button')).toHaveLength(0);
+  });
+});
+
+describe('editor hints — plain wording (#278)', () => {
+  const i18n = require('fs').readFileSync(require('path').join(__dirname, '../js/i18n.js'), 'utf8');
+  it.each([
+    ["puzzles.counts_equal", /lượt Đen \(hai bên bằng quân\)/, /Black to move \(equal stones\)/],
+    ["puzzles.counts_black_more", /lượt Trắng \(Đen nhiều hơn 1 quân\)/, /White to move \(Black has one more\)/],
+    ["puzzles.tool_portal", /nối thành một cặp/, /link them as a pair/],
+  ])('%s is a plain sentence in vi and en', (key, vi, en) => {
+    const lines = i18n.split('\n').filter((l) => l.includes("'" + key + "'"));
+    expect(lines).toHaveLength(2);
+    expect(vi.test(lines[0])).toBe(true);
+    expect(en.test(lines[1])).toBe(true);
   });
 });
 

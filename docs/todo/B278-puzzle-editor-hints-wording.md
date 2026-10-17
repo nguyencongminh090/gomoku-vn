@@ -1,5 +1,5 @@
 # B278 — Editor hints need prior knowledge
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-17 (tests + real-browser pass + fix-log)
 **Area:** client/js/puzzle-editor.js (count line), i18n puzzles.tool_portal
 **From:** ux-audit puzzle 2026-10-17 (`docs/audits/ux-audit-2026-10-17-puzzle.md`), finding L2 (Low)   **Depends:** —
 

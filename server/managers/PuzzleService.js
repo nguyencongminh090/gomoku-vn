@@ -295,10 +295,15 @@ function solve(userId, id, rawMoves) {
 }
 
 /** The author's own puzzles, every status, with the reviewer's note. */
-function mine(userId) {
-  const rows = db().prepare(`${AUTHOR_JOIN} WHERE p.author_id = ? ORDER BY p.created_at DESC, p.id`).all(userId);
+function mine(userId, { page } = {}) {
+  const pg = Math.max(1, parseInt(page, 10) || 1);
+  const total = db().prepare('SELECT COUNT(*) AS n FROM puzzles WHERE author_id = ?').get(userId).n;
+  const rows = db().prepare(`${AUTHOR_JOIN} WHERE p.author_id = ? ORDER BY p.created_at DESC, p.id LIMIT ? OFFSET ?`).all(userId, PAGE, (pg - 1) * PAGE);
   const tags = tagsOf(rows.map((r) => r.id));
-  return rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), reviewNote: r.review_note }));
+  return {
+    puzzles: rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), reviewNote: r.review_note })),
+    pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
+  };
 }
 
 function requireAdmin(userId) {
