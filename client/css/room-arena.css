@@ -69,7 +69,7 @@ body.arena-room .board-canvas-wrap {
   overflow: hidden;
 }
 body.arena-room .gboard {
-  border-radius: 12px;
+  border-radius: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,.35);
   cursor: pointer;
   touch-action: none;
@@ -247,6 +247,58 @@ body.arena-room .game-controls .swap2-choice .btn-game { min-height: 44px; }
 
 /* Above phones there is no minimized state: the toggle never shows (phone block re-enables it). */
 body.arena-room .rpanel-toggle { display: none; }
+
+/* ── Desktop: rail docked to the viewport's right edge, collapsible ─────────
+   The rail leaves the grid (fixed, full height under the nav); .room reserves its width as padding so the board
+   centres in the remaining space, and gets the full width when collapsed. Phones keep the stacked layout. */
+body.arena-room .rail-dock-toggle { display: none; }
+@media (min-width: 769px) {
+  body.arena-room .room {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: none;
+    padding-right: calc(var(--rail-w) + 24px + 16px);
+    transition: padding-right .24s cubic-bezier(.2, .8, .2, 1);
+  }
+  body.arena-room.rail-collapsed .room { padding-right: 16px; }
+  body.arena-room .rail {
+    position: fixed; top: var(--nav-h); right: 0; bottom: 0;
+    width: calc(var(--rail-w) + 24px);
+    padding: 12px;
+    background: var(--c-surface);
+    border-left: 1px solid var(--c-border);
+    box-shadow: -2px 0 12px rgba(0,0,0,.06);
+    z-index: 20;
+    transition: transform .24s cubic-bezier(.2, .8, .2, 1), visibility 0s;
+  }
+  /* The rail is itself a panel (surface), so the cards inside step down to surface-2 to stay distinct. */
+  body.arena-room .rail .seatcard, body.arena-room .rail .rpanel { background: var(--c-surface-2); }
+  body.arena-room.rail-collapsed .rail { transform: translateX(100%); visibility: hidden; transition: transform .24s cubic-bezier(.2, .8, .2, 1), visibility 0s .24s; }
+  /* Seated in your own game (#game-controls is non-empty only then): collapsing hides just the tabs. Seat cards, clocks,
+     controls and request toasts (which live in .rpanel) stay put, so a clock or a draw/undo/time offer is never lost. */
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) { transform: none; visibility: visible; bottom: auto; border-bottom: 1px solid var(--c-border); border-radius: 0 0 0 var(--radius-lg); }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) .rpanel { flex: 0 0 auto; height: auto; min-height: 0; padding: 0; overflow: visible; background: none; }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) .rpanel > :not(.gtoasts) { display: none; }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) .gtoasts { position: static; margin: 0 8px; }
+  body.arena-room.rail-collapsed:has(#game-controls:not(:empty)) .room { padding-right: calc(var(--rail-w) + 24px + 16px); }
+  body.arena-room.rail-collapsed:has(#game-controls:not(:empty)) .rail-dock-toggle { right: calc(var(--rail-w) + 24px); }
+  body.arena-room .rail-dock-toggle {
+    display: flex; align-items: center; justify-content: center;
+    position: fixed; top: calc(var(--nav-h) + 50vh - 40px); right: calc(var(--rail-w) + 24px);
+    width: 20px; height: 80px; padding: 0;
+    background: var(--c-surface); color: var(--c-ink-3);
+    border: 1px solid var(--c-border); border-right: 0; border-radius: 8px 0 0 8px;
+    cursor: pointer; z-index: 21;
+    transition: right .24s cubic-bezier(.2, .8, .2, 1), color .12s;
+  }
+  body.arena-room .rail-dock-toggle:hover { color: var(--c-ink); }
+  body.arena-room .rail-dock-toggle:focus-visible { outline: 2px solid var(--c-brand); outline-offset: -2px; }
+  body.arena-room .rail-dock-toggle .icon { width: 14px; height: 14px; transition: transform .24s; }
+  body.arena-room.rail-collapsed .rail-dock-toggle { right: 0; }
+  body.arena-room.rail-collapsed .rail-dock-toggle .icon { transform: rotate(180deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.arena-room .room, body.arena-room .rail, body.arena-room .rail-dock-toggle { transition: none !important; }
+}
 
 /* ── Phones: one column, board edge to edge ─────────────────────────────── */
 @media (max-width: 768px) {

@@ -527,9 +527,9 @@
 }
 .toggle-row + .toggle-row { margin-top: 8px; }
 
-.toggle-name { font-size: 14px; color: var(--c-ink); font-weight: 500; }
+.toggle-name { flex: 1; min-width: 0; font-size: 14px; color: var(--c-ink); font-weight: 500; }
 
-.toggle-switch { position: relative; width: 44px; height: 24px; }
+.toggle-switch { position: relative; flex: none; width: 44px; height: 24px; }
 .toggle-switch input { opacity: 0; width: 0; height: 0; }
 .toggle-slider {
   position: absolute;

@@ -475,27 +475,21 @@
       const rankedBlocked = st.roomData.users.some(u => u.slot !== null && u.isGuest);
       const roomRows = `
         <div class="setting-row">
-          <span class="setting-label">${t('modal.board_size')}</span>
-          <div class="pill-group">
-            <input type="radio" name="r-boardSize" id="r-bs-15" value="15" ${s.boardSize === 15 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-15">15×15</label>
-            <input type="radio" name="r-boardSize" id="r-bs-17" value="17" ${s.boardSize === 17 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-17">17×17</label>
-            <input type="radio" name="r-boardSize" id="r-bs-19" value="19" ${s.boardSize === 19 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-19">19×19</label>
-            <input type="radio" name="r-boardSize" id="r-bs-20" value="20" ${s.boardSize === 20 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-20">20×20</label>
-          </div>
+          <label class="setting-label" for="r-boardSize">${t('modal.board_size')}</label>
+          <select class="setting-select" id="r-boardSize" data-change-action="updateSettings">
+            <option value="15" ${s.boardSize === 15 ? 'selected' : ''}>15×15</option>
+            <option value="17" ${s.boardSize === 17 ? 'selected' : ''}>17×17</option>
+            <option value="19" ${s.boardSize === 19 ? 'selected' : ''}>19×19</option>
+            <option value="20" ${s.boardSize === 20 ? 'selected' : ''}>20×20</option>
+          </select>
         </div>
         <div class="setting-row">
-          <div class="pill-group">
-            <input type="radio" name="r-winRule" id="r-wr-freestyle" value="freestyle" ${s.winningRule === 'freestyle' || !s.winningRule ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-wr-freestyle">${t('rule.freestyle')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-standard" value="standard" ${s.winningRule === 'standard' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-wr-standard">${t('rule.standard')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-caro" value="caro" ${s.winningRule === 'caro' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-wr-caro">${t('rule.caro')}</label>
-          </div>
+          <label class="setting-label" for="r-winRule">${t('modal.win_rule')}</label>
+          <select class="setting-select" id="r-winRule" data-change-action="updateSettings">
+            <option value="freestyle" ${(s.winningRule || 'freestyle')==="freestyle" ? 'selected' : ''}>${t('rule.freestyle')}</option>
+            <option value="standard" ${(s.winningRule || 'freestyle')==="standard" ? 'selected' : ''}>${t('rule.standard')}</option>
+            <option value="caro" ${(s.winningRule || 'freestyle')==="caro" ? 'selected' : ''}>${t('rule.caro')}</option>
+          </select>
         </div>
         <div class="setting-row">
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
@@ -514,12 +508,11 @@
           </div>
         </div>
         <div class="setting-row">
-          <div class="pill-group">
-            <input type="radio" name="r-openRule" id="r-or-none" value="none" ${!s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-or-none">${t('rule.none')}</label>
-            <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-or-swap2">Swap2</label>
-          </div>
+          <label class="setting-label" for="r-openRule">${t('modal.opening')}</label>
+          <select class="setting-select" id="r-openRule" data-change-action="updateSettings">
+            <option value="none" ${(s.ruleSwap2 ? 'swap2' : 'none')==="none" ? 'selected' : ''}>${t('rule.none')}</option>
+            <option value="swap2" ${(s.ruleSwap2 ? 'swap2' : 'none')==="swap2" ? 'selected' : ''}>Swap2</option>
+          </select>
         </div>
         <div class="setting-row">
           <div class="toggle-row" ${rankedBlocked ? 'style="opacity:0.45"' : ''}>
@@ -531,15 +524,12 @@
           </div>
         </div>
         <div class="setting-row">
-          <span class="setting-label">${t('modal.timer_mode')}</span>
-          <div class="pill-group">
-            <input type="radio" name="r-timerMode" id="r-tm-move" value="per_move" ${s.timerMode === 'per_move' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-tm-move">${t('modal.per_move')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-game" value="per_game" ${s.timerMode === 'per_game' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-tm-game">${t('modal.per_game')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-blitz" value="blitz" ${s.timerMode === 'blitz' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-tm-blitz">${t('modal.blitz')}</label>
-          </div>
+          <label class="setting-label" for="r-timerMode">${t('modal.timer_mode')}</label>
+          <select class="setting-select" id="r-timerMode" data-change-action="updateSettings">
+            <option value="per_move" ${s.timerMode==="per_move" ? 'selected' : ''}>${t('modal.per_move')}</option>
+            <option value="per_game" ${s.timerMode==="per_game" ? 'selected' : ''}>${t('modal.per_game')}</option>
+            <option value="blitz" ${s.timerMode==="blitz" ? 'selected' : ''}>${t('modal.blitz')}</option>
+          </select>
         </div>
         <div class="setting-row">
           <span class="setting-label">${t('modal.time_label')}</span>
@@ -674,8 +664,14 @@
       }
     }
 
+    // Ranked by points (win 1, draw ½), then more wins, then fewer losses; ties keep a stable name order.
+    const points = (e) => (e.win || 0) + (e.draw || 0) / 2;
+    const ranked = Object.values(combined).sort((a, b) =>
+      points(b) - points(a) || (b.win || 0) - (a.win || 0) || (a.loss || 0) - (b.loss || 0)
+      || String(a.name || '').localeCompare(String(b.name || '')));
+
     let html = '';
-    for (const [, entry] of Object.entries(combined)) {
+    for (const entry of ranked) {
       html += `
         <tr>
           <td>${escapeHtml(entry.name || '—')}</td>
@@ -733,8 +729,8 @@
   };
 
   global.updateSettings = function() {
-    const boardSizeEl = document.querySelector('input[name="r-boardSize"]:checked');
-    const timerModeEl = document.querySelector('input[name="r-timerMode"]:checked');
+    const boardSizeEl = document.getElementById('r-boardSize');
+    const timerModeEl = document.getElementById('r-timerMode');
     const timerEl          = document.getElementById('r-timer');
     const timerIncrementEl = document.getElementById('r-timer-increment');
     const wallEl           = document.getElementById('r-wall');
@@ -748,10 +744,10 @@
     global.RoomClient.emit('room:settings', {
       settings: {
         boardSize:             parseInt(boardSizeEl.value, 10),
-        winningRule:           (document.querySelector('input[name="r-winRule"]:checked') || {}).value || 'freestyle',
+        winningRule:           (document.getElementById('r-winRule') || {}).value || 'freestyle',
         ruleWall:              wallEl   ? wallEl.checked   : false,
         rulePortal:            portalEl ? portalEl.checked : false,
-        ruleSwap2:             (document.querySelector('input[name="r-openRule"]:checked') || {}).value === 'swap2',
+        ruleSwap2:             (document.getElementById('r-openRule') || {}).value === 'swap2',
         ranked:                rankedEl ? rankedEl.checked : true,
         timerMode,
         timerSeconds:          timerEl          ? (parseInt(timerEl.value, 10) || 60)          : 60,
