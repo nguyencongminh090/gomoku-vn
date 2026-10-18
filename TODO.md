@@ -81,3 +81,4 @@ in the detail file / fix-log).
 - **#284.** Docked rail squeezes board at 769–1024px (ux-audit M1) `[Model: Sonnet 5]` — [detail](docs/todo/B284-rail-tablet-width-board-squeeze.md)
 - **#285.** Disabled ranked toggle row misaligned (ux-audit L1) `[Model: Sonnet 5]` — [detail](docs/todo/B285-ranked-toggle-row-misaligned.md)
 - **#287.** Collapsed in-game rail: pending request toast covers the action tiles `[Model: Sonnet 5]` — [detail](docs/todo/B287-collapsed-rail-toast-covers-controls.md)
+- **#286.** Settings-changed chat notice repeats with no detail (ux-audit L2, server) `[Model: Sonnet 5]` — [detail](docs/todo/B286-settings-changed-notice-no-detail.md)

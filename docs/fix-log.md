@@ -288,3 +288,4 @@
 | 2026-10-18 | .ptbl cells keep real side padding (rankings/club tables) | [detail](docs/fix-log/2026-10-18-ptbl-cell-padding.md) |
 | 2026-10-18 11:28 | #282 Paper grid + leaf background on all platform pages, layered card shadow, home layout A7.1 | [detail](docs/fix-log/2026-10-18-paper-bg-home-a71-282.md) |
 | 2026-10-18 | #283 Collapsed rail keeps clocks/controls/toasts in your own game | [detail](docs/fix-log/2026-10-18-rail-collapse-keeps-clocks-283.md) |
+| 2026-10-18 | #286 Settings-changed chat notice names what changed; skipped on no-op save | [detail](docs/fix-log/2026-10-18-settings-notice-detail-286.md) |
