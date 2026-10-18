@@ -285,3 +285,4 @@
 | 2026-10-17 16:42 | #279 /puzzles/mine paged (20/page) | [detail](docs/fix-log/2026-10-17-puzzles-mine-paging-279.md) |
 | 2026-10-17 16:53 | #280 Shared guest guard on 7 member-only routes | [detail](docs/fix-log/2026-10-17-guest-guard-shared-280.md) |
 | 2026-10-17 16:53 | #281 forum.js + rankings.js keep their path on filter | [detail](docs/fix-log/2026-10-17-replacestate-base-href-281.md) |
+| 2026-10-18 | .ptbl cells keep real side padding (rankings/club tables) | [detail](docs/fix-log/2026-10-18-ptbl-cell-padding.md) |
