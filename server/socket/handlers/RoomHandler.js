@@ -151,10 +151,11 @@ function register(io, socket) {
     // this is where they learn the new values. See RoomManager.serializeRoomUpdate.
     broadcastRoomUpdate(io, result.room, { settings: true });
     broadcastLobbyUpdate(io);
+    if (!result.changes.length) return; // no-op save: nothing to announce (#286)
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: 'Cài đặt phòng đã được thay đổi.',
-      code: 'ROOM_SETTINGS_CHANGED',
+      code: 'ROOM_SETTINGS_CHANGED', vars: { changes: result.changes },
       timestamp: Date.now(), isSystem: true,
     });
   });
