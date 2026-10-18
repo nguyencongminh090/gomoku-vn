@@ -61,6 +61,10 @@ body.zen-room .topnav__btn:hover { background: var(--c-fill); }
 }
 .topnav__logo { width: 20px; height: 20px; border-radius: var(--radius); }
 .topnav__title { font-size: 14px; font-weight: 700; letter-spacing: 0; }
+/* Typographic wordmark, same as .pnav__brand (no icon mark); stays visible on phones since there is no logo to fall back on. */
+body .topnav .topnav__title { display: inline; font-size: 23px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+.topnav__title b { font-weight: 900; color: var(--c-brand-text); }
+@media (max-width: 600px) { body .topnav .topnav__title { font-size: 19px; } }
 .topnav__user { font-size: 12.5px; font-weight: 500; }
 .topnav__badge {
   padding: 0;
