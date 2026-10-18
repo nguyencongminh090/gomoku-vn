@@ -21,10 +21,8 @@
   <script src="js/socket-early.js?v=dece3898"></script>
   <!-- Manrope woff2, fetched with the CSS wave instead of after style.css parses (#263).
        crossorigin is required: fonts are CORS requests, a preload without it is never reused.
-       All three subsets are used by Vietnamese UI text (every HAR requests all three). -->
+       Only the latin subset is preloaded: vietnamese/latin-ext are unicode-range-gated, so a page without those glyphs never uses a preload for them (browser "preloaded but not used" warning); they still load on demand via style.css. -->
   <link rel="preload" href="vendor/fonts/manrope/manrope-latin.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="vendor/fonts/manrope/manrope-vietnamese.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="vendor/fonts/manrope/manrope-latin-ext.woff2" as="font" type="font/woff2" crossorigin>
 
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />

@@ -143,7 +143,7 @@ describe('index.html <head> ordering', () => {
   test('Manrope woff2 preloads: crossorigin, real files, URLs style.css uses', () => {
     const css = read('vendor', 'fonts', 'manrope', 'style.css');
     const links = INDEX_HTML.match(/<link rel="preload"[^>]*as="font"[^>]*>/g) || [];
-    expect(links.length).toBe(3);
+    expect(links.length).toBe(1);
     for (const l of links) {
       expect(l).toMatch(/\scrossorigin[\s>]/);
       const href = l.match(/href="([^"]+)"/)[1];
