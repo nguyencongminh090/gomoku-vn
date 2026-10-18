@@ -8,7 +8,8 @@
 /* B261: JS fills the host after first paint; reserve the nav height (= .pnav height) so the page does not jump. */
 #pl-shell { min-height: 56px; }
 .pnav { display: flex; align-items: center; gap: 28px; position: sticky; top: 0; z-index: 10; height: 56px; padding: 0 24px; background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
-.pnav__brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 14px; }
+.pnav__brand { display: flex; align-items: center; font-size: 23px; font-weight: 900; letter-spacing: -0.05em; line-height: 1; }
+.pnav__word b { font-weight: 900; color: var(--c-brand-text); }
 .pnav__links { display: flex; gap: 4px; flex: 1; }
 .pnav__links a { padding: 8px 12px; border-radius: var(--radius); font-size: 13.5px; font-weight: 500; color: var(--c-ink-3); }
 .pnav__links a:hover { color: var(--c-ink); }
@@ -26,7 +27,8 @@
 .pnav__item .icon { width: 20px; height: 20px; color: var(--c-ink-3); }
 .pnav__item--staff, .pnav__item--staff .icon { color: var(--c-accent); }
 .pnav__item:disabled { opacity: .5; cursor: default; }
-.pnav__me small { display: block; font-size: 11px; font-weight: 400; color: var(--c-ink-3); }
+.pnav__who { padding: 8px 10px 10px; margin-bottom: 6px; border-bottom: 1px solid var(--c-border); font-size: 13.5px; font-weight: 700; color: var(--c-ink); overflow-wrap: anywhere; }
+.pnav__who small { display: block; margin-top: 2px; font-size: 12px; font-weight: 500; color: var(--c-ink-3); }
 .pnav__login { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: var(--radius); background: var(--c-brand); color: var(--c-on-brand) !important; }
 
 /* ── Notification bell (#198) ── */

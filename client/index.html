@@ -29,12 +29,12 @@
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="stylesheet" href="css/main.css?v=b48e027f" />
-  <link rel="stylesheet" href="css/tokens.css?v=dd8db688" />
+  <link rel="stylesheet" href="css/tokens.css?v=e359be30" />
   <link rel="stylesheet" href="css/lobby.css?v=1c35ee5e" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=724adfe9" />
-  <link rel="stylesheet" href="css/shell.css?v=08755a01" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=96dbccef" />
-  <link rel="stylesheet" href="css/platform.css?v=d5510ec8" />
+  <link rel="stylesheet" href="css/shell.css?v=15272ac5" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=8156b4c8" />
+  <link rel="stylesheet" href="css/platform.css?v=4a4d271a" />
   <link rel="stylesheet" href="css/settings-panel.css?v=d8ac9246" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
   <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=1e215c18">
@@ -44,14 +44,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=98c79e01" />
+  <link rel="modulepreload" href="js/i18n.js?v=123e38c3" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
-  <link rel="modulepreload" href="js/platform-shell.js?v=4c683e1d" />
+  <link rel="modulepreload" href="js/platform-shell.js?v=86159d16" />
   <link rel="modulepreload" href="js/lobby.js?v=637fade9" />
   <link rel="modulepreload" href="js/private-chat.js?v=659109b9" />
   <link rel="modulepreload" href="js/tournaments.js?v=7198eaa0" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=5361b86c" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=9b214260" />
 
 </head>
 <body class="zen-lobby">
@@ -89,19 +89,26 @@
   <section class="lobby-home psplit" id="screen-home" aria-labelledby="hero-title">
     <div class="hstats" id="home-stats" aria-live="off"></div>
     <div class="hnews" id="home-news" hidden></div>
-    <div class="ppanel">
-      <h2 class="ph2" data-i18n="qm.title">Ghép trận nhanh</h2>
-      <div class="pchips" id="qm-rule" role="group" aria-label="Luật" data-i18n-aria="qm.rule_aria"></div>
-      <div class="pchips" id="qm-time" role="group" aria-label="Thời gian" data-i18n-aria="qm.time_aria"></div>
-      <div class="pchips" id="qm-board" role="group" aria-label="Bàn cờ" data-i18n-aria="qm.board_aria"></div>
-      <div class="pactions" id="qm-actions"></div>
-      <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
-      <h2 class="ph2 ph2--gap" data-i18n="home.my_games">Ván đang chơi</h2>
-      <div class="prows" id="home-mine"></div>
-      <h2 class="ph2 ph2--gap" data-i18n="home.learn">Học &amp; giải đố</h2>
-      <div class="prows" id="home-learn"></div>
-      <div id="home-about" hidden>
-        <h2 class="ph2 ph2--gap" data-i18n="home.about">Giới thiệu</h2>
+    <div class="hstack">
+      <div class="ppanel hp-qm">
+        <h2 class="ph2" data-i18n="qm.title">Ghép trận nhanh</h2>
+        <p class="qm-lbl" aria-hidden="true" data-i18n="qm.lbl_rule">Luật chơi</p>
+        <div class="pchips" id="qm-rule" role="group" aria-label="Luật" data-i18n-aria="qm.rule_aria"></div>
+        <p class="qm-lbl" aria-hidden="true" data-i18n="qm.lbl_time">Thời gian · mỗi người</p>
+        <div class="pchips" id="qm-time" role="group" aria-label="Thời gian" data-i18n-aria="qm.time_aria"></div>
+        <p class="qm-lbl" aria-hidden="true" data-i18n="qm.lbl_board">Biến thể bàn cờ</p>
+        <div class="pchips" id="qm-board" role="group" aria-label="Bàn cờ" data-i18n-aria="qm.board_aria"></div>
+        <div class="qm-start">
+          <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
+          <div class="pactions" id="qm-actions"></div>
+        </div>
+      </div>
+      <div class="ppanel hp-learn">
+        <h2 class="ph2" data-i18n="home.learn">Học &amp; giải đố</h2>
+        <div class="prows" id="home-learn"></div>
+      </div>
+      <div class="ppanel hp-about" id="home-about" hidden>
+        <h2 class="ph2" data-i18n="home.about">Giới thiệu</h2>
         <p class="muted small habout__lead" data-i18n="home.about_lead">Cờ caro online: hai người lần lượt đặt quân, ai có hàng 5 trước là thắng. Chọn một trong ba luật:</p>
         <dl class="habout">
           <dt data-i18n="rankings.cat_freestyle">Free-style</dt><dd data-i18n="home.about_freestyle">5 quân liên tiếp trở lên là thắng.</dd>
@@ -110,13 +117,23 @@
         </dl>
       </div>
     </div>
-    <aside class="ppanel">
-      <h2 class="ph2" data-i18n="home.today">Hôm nay</h2>
-      <div class="prows" id="home-today"></div>
-      <h2 class="ph2 ph2--gap" data-i18n="home.forum">Diễn đàn</h2>
-      <div class="prows" id="home-forum"></div>
-      <h2 class="ph2 ph2--gap" data-i18n="home.live">Đang phát trực tiếp</h2>
-      <div class="hlives" id="home-live"></div>
+    <aside class="hstack">
+      <div class="ppanel hp-mine">
+        <h2 class="ph2" data-i18n="home.my_games">Ván đang chơi</h2>
+        <div class="prows" id="home-mine"></div>
+      </div>
+      <div class="ppanel hp-today">
+        <h2 class="ph2" data-i18n="home.today">Hôm nay</h2>
+        <div class="prows" id="home-today"></div>
+      </div>
+      <div class="ppanel hp-forum">
+        <h2 class="ph2" data-i18n="home.forum">Diễn đàn</h2>
+        <div class="prows" id="home-forum"></div>
+      </div>
+      <div class="ppanel hp-live">
+        <h2 class="ph2" data-i18n="home.live">Đang phát trực tiếp</h2>
+        <div class="hlives" id="home-live"></div>
+      </div>
     </aside>
   </section>
 
@@ -570,6 +587,6 @@
 <script src="js/escape-utils.js?v=05dffe1e"></script>
 <script src="js/audio-manager.js?v=f0ca2309"></script>
 <script src="js/action-delegate.js?v=7420bbed"></script>
-<script type="module" src="js/index-entry.js?v=7a0abe9e"></script>
+<script type="module" src="js/index-entry.js?v=d8dbb491"></script>
 </body>
 </html>

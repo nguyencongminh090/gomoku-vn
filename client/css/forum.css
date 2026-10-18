@@ -13,7 +13,7 @@
 .fm-text { margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.55; }
 .fm-h2 { margin: 0 0 12px; font-size: 16px; }
 .fm-posts { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
-.fm-post { padding: var(--card-pad); background: var(--c-surface); border-radius: var(--card-radius); box-shadow: var(--shadow-sm); }
+.fm-post { padding: var(--card-pad); background: var(--c-surface); border-radius: var(--card-radius); box-shadow: var(--shadow-card); }
 .fm-post.is-deleted { opacity: .6; font-style: italic; }
 .fm-reportbox { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
 .fm-reportbox input { flex: 1 1 220px; min-height: 32px; padding: 4px 10px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-field); color: var(--c-ink); }
