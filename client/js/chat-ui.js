@@ -28,7 +28,30 @@
   // interpolation) alongside the Vietnamese `text` (logs/back-compat) — same
   // convention as error payloads. Prefer translating via `code` so English
   // mode doesn't show these announcements in Vietnamese (TODO #45).
-  const systemText = (msg) => msg.code ? t('sys.' + msg.code.toLowerCase(), msg.vars) : msg.text;
+  // ROOM_SETTINGS_CHANGED carries `vars.changes` ([{k, v}]); name what changed (#286).
+  const settingLabel = (k, v) => {
+    const on = t(v ? 'sys.set_on' : 'sys.set_off');
+    switch (k) {
+      case 'boardSize':     return t('modal.board_size') + ': ' + v + '×' + v;
+      case 'winningRule':   return t('rule.' + v);
+      case 'ruleWall':      return t('modal.rule_wall') + ': ' + on;
+      case 'rulePortal':    return t('modal.rule_portal') + ': ' + on;
+      case 'ruleSwap2':     return 'Swap2: ' + on;
+      case 'ranked':        return t('room.ranked') + ': ' + on;
+      case 'timerMode':     return t('modal.timer_mode') + ': ' + t('room.timer_' + v);
+      case 'timerSeconds':  return t('sys.set_timer_seconds') + ': ' + v + 's';
+      case 'timerIncrementSeconds': return t('sys.set_increment') + ': +' + v + 's';
+      default:              return null;
+    }
+  };
+  const systemText = (msg) => {
+    if (!msg.code) return msg.text;
+    if (msg.code === 'ROOM_SETTINGS_CHANGED' && msg.vars && Array.isArray(msg.vars.changes)) {
+      const detail = msg.vars.changes.map(c => settingLabel(c.k, c.v)).filter(Boolean).join(' · ');
+      if (detail) return t('sys.room_settings_changed_detail', { detail });
+    }
+    return t('sys.' + msg.code.toLowerCase(), msg.vars);
+  };
 
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const chatMessages   = document.getElementById('chat-messages');

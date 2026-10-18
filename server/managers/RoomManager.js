@@ -417,8 +417,13 @@ class RoomManager extends EventEmitter {
     }
 
     // Merge new settings with validation
+    const prev = room.settings;
     const merged = this._validateSettings({ ...room.settings, ...newSettings });
     room.settings = merged;
+    // What actually changed (after validation), for the room's chat notice (#286).
+    const changes = Object.keys(merged)
+      .filter(k => !prev || prev[k] !== merged[k])
+      .map(k => ({ k, v: merged[k] }));
     room.lastActivity = Date.now();
 
     // Reset ready status for all seated players when settings change
@@ -427,7 +432,7 @@ class RoomManager extends EventEmitter {
     }
 
     logger.info(`[RoomManager] Settings updated in room ${room.roomId}`);
-    return { room };
+    return { room, changes };
   }
 
   // ---------------------------------------------------------------------------
