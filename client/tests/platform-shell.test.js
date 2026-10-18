@@ -50,20 +50,21 @@ describe('platform shell', () => {
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/login.html');
   });
 
-  it('member → Tôi tab and chip point at /u/<username>; chip shows the most-played rating', async () => {
+  it('member → Tôi tab and chip point at /u/<username>; menu header shows the most-played rating, chip stays name-only', async () => {
     boot(MEMBER, { username: 'zed', ratings: {
       freestyle: { rating: 1700.4, games: 3 }, caro: { rating: 1612.2, games: 80 }, standard: { rating: 1500, games: 20 } } });
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('#');
     await flush();
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/u/zed');
-    expect(document.querySelector('.pnav__me small').textContent).toBe('rankings.cat_caro 1612');
+    expect(document.querySelector('.pnav__menu .pnav__who small').textContent).toBe('rankings.cat_caro 1612');
+    expect(document.querySelector('.pnav__me small')).toBeNull();
   });
 
-  it('member with no rated games → "unrated" second line (mockup always has one); /me failure → chip stays inert', async () => {
+  it('member with no rated games → "unrated" under the menu name; /me failure → chip stays inert', async () => {
     boot(MEMBER, { username: 'zed', ratings: {} });
-    expect(document.querySelector('.pnav__me small').textContent).toBe('shell.unrated');
+    expect(document.querySelector('.pnav__who small').textContent).toBe('shell.unrated');
     await flush();
-    expect(document.querySelector('.pnav__me small').textContent).toBe('shell.unrated');
+    expect(document.querySelector('.pnav__who small').textContent).toBe('shell.unrated');
     boot(MEMBER);
     global.fetch = jest.fn(() => Promise.reject(new Error('net')));
     window.PlatformShell.build('clubs');

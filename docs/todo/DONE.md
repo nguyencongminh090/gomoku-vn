@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#282.** Paper background (grid + leaves) on every platform page, card shadows, home layout A7.1 `[Model: Sonnet 5]` — [detail](docs/todo/B282-paper-bg-home-a71.md)
 ✅ - **#272.** `/profile.html` without `/u/<name>` calls a 404 API `[Model: Haiku]` — [detail](docs/todo/B272-profile-html-without-username-404.md)
 ✅ - **#271.** Lobby at 375 px: CLS 0.135 during load `[Model: Sonnet 5]` — [detail](docs/todo/B271-lobby-375-cls.md)
 ✅ - **#270.** Contrast: `<a>.pbtn--primary` label (puzzles, 2.91:1) + dark-skin `--c-error` (4.28:1) `[Model: Sonnet 5]` — [detail](docs/todo/B270-contrast-primary-link-and-dark-error.md)

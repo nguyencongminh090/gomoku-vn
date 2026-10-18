@@ -63,6 +63,11 @@
   --shadow-sm:  none;
   --shadow:     0 2px 8px rgba(0,0,0,0.35);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.6);
+  --bg-grid: rgba(170,195,225,.13);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(170,195,225,.11);
+  --bg-leaf-op: .28;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -110,6 +115,11 @@
 
   --shadow:     0 1px 3px rgba(0,0,0,0.10);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.22);
+  --bg-grid: rgba(100,140,185,.26);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(100,140,185,.24);
+  --bg-leaf-op: .55;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
 }
 
 
@@ -158,6 +168,11 @@
   --shadow-sm: none;
   --shadow: none;
   --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.6);
+  --bg-grid: rgba(255,255,255,.10);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(255,255,255,.08);
+  --bg-leaf-op: .14;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: grayscale(1);
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -202,6 +217,11 @@
   --shadow-sm: none;
   --shadow: none;
   --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.2);
+  --bg-grid: rgba(0,0,0,.12);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(0,0,0,.10);
+  --bg-leaf-op: .45;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: grayscale(1);
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -246,6 +266,11 @@
   --shadow-sm: none;
   --shadow: 0 6px 18px rgba(0,0,0,0.35);
   --shadow-lg: 0 28px 56px -16px rgba(0,0,0,0.6);
+  --bg-grid: rgba(170,195,225,.13);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(170,195,225,.11);
+  --bg-leaf-op: .28;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -290,6 +315,11 @@
   --shadow-sm: none;
   --shadow: 0 4px 14px rgba(31,36,51,0.08);
   --shadow-lg: 0 28px 56px -16px rgba(31,36,51,0.22);
+  --bg-grid: rgba(100,140,185,.26);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(100,140,185,.24);
+  --bg-leaf-op: .55;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }

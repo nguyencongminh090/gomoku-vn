@@ -206,7 +206,7 @@ body.zen-lobby .hstat__n { font-size: 22px; font-variant-numeric: tabular-nums; 
 /* #224: admin news line (full width under the stats), forum "see all", About rules list. */
 body.zen-lobby .hnews { grid-column: 1 / -1; }
 body.zen-lobby .hnews[hidden] { display: none; }
-body.zen-lobby .hnews__line { display: flex; align-items: center; gap: 12px; margin: 0; min-height: 44px; padding: 10px 16px; border-radius: var(--radius-lg); background: var(--c-surface); box-shadow: var(--shadow-sm); color: var(--c-ink); text-decoration: none; font-size: 14px; }
+body.zen-lobby .hnews__line { display: flex; align-items: center; gap: 12px; margin: 0; min-height: 44px; padding: 10px 16px; border-radius: var(--radius-lg); background: var(--c-surface); box-shadow: var(--shadow-card); color: var(--c-ink); text-decoration: none; font-size: 14px; }
 body.zen-lobby a.hnews__line:hover { background: var(--c-hover); }
 body.zen-lobby .hnews__tag { flex: none; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--c-brand); }
 body.zen-lobby .hnews__body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -220,6 +220,31 @@ body.zen-lobby .habout dd { margin: 0; color: var(--c-ink-2); }
 body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
 body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }
 body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
+/* A7.1 (ui/grid-leaves-home): two card stacks; quick-match group labels, ✓ on the chosen chip, one dominant CTA, learn progress. */
+body.zen-lobby .hstack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+body.zen-lobby .qm-lbl { margin: 16px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-2); }
+body.zen-lobby .hp-qm .ph2 + .qm-lbl { margin-top: 0; }
+body.zen-lobby .hp-qm .pchips { margin-bottom: 0; }
+body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; }
+body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
+body.zen-lobby .hp-qm .pchip[aria-pressed="true"]::before { content: '✓'; margin-right: 6px; font-weight: 700; }
+body.zen-lobby .qm-start { margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--c-border); }
+body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; }
+body.zen-lobby .qm-start .pactions { margin: 0; gap: 10px; }
+body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 16px; border: 1px solid var(--c-border); background: transparent; color: var(--c-ink-2); font-size: 14px; font-weight: 600; }
+body.zen-lobby #qm-actions .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
+body.zen-lobby #qm-actions .link-action--primary { min-height: 48px; padding: 12px 24px; border-color: transparent; background: var(--c-brand); color: var(--c-on-brand); font-size: 16px; font-weight: 700; box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--c-brand) 70%, #000), inset 0 1px 0 rgba(255,255,255,.25); }
+body.zen-lobby #qm-actions .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); }
+body.zen-lobby .hlink { color: var(--c-brand-text, var(--c-brand)); font-weight: 600; font-size: 14px; }
+body.zen-lobby .hprog { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+body.zen-lobby .hprog__bar { flex: 1; height: 6px; border-radius: 99px; background: var(--c-surface-2); overflow: hidden; }
+body.zen-lobby .hprog__bar i { display: block; height: 100%; border-radius: 99px; background: var(--c-brand); }
+/* One column (≤ 860px, same as .psplit): the stacks dissolve so the order is explicit — match, my game, learn, then the rest. */
+@media (max-width: 860px) {
+  body.zen-lobby .hstack { display: contents; }
+  body.zen-lobby .hp-qm { order: 1; } body.zen-lobby .hp-mine { order: 2; } body.zen-lobby .hp-learn { order: 3; }
+  body.zen-lobby .hp-today { order: 4; } body.zen-lobby .hp-forum { order: 5; } body.zen-lobby .hp-live { order: 6; } body.zen-lobby .hp-about { order: 7; }
+}
 /* B261: these fill only after /api/home; reserve their typical height while empty so .ppanel does not grow (CLS). */
 body.zen-lobby :is(#qm-rule, #qm-time, #qm-board):empty { min-height: 34px; }
 body.zen-lobby #qm-actions:empty { min-height: 38px; }

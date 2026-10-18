@@ -195,7 +195,13 @@ function renderToday(data) {
       location.href = 'tournament.html?id=' + encodeURIComponent(tr.tournamentId);
     }));
   }
-  if (!box.children.length) box.appendChild(el('p', t('home.no_today'), 'muted small hempty'));
+  if (!box.children.length) {
+    const empty = el('div', undefined, 'hempty');
+    const all = el('a', t('home.see_tournaments'), 'hlink');
+    all.href = '#tournaments';
+    empty.append(el('p', t('home.no_today'), 'muted small'), all);
+    box.appendChild(empty);
+  }
 }
 
 function renderStats(data) {
@@ -265,6 +271,20 @@ function renderLearn(data) {
   const parts = [l.total ? t('home.learn_total', { n: l.total }) : t('home.learn_none')];
   if (l.solved !== null && l.solved !== undefined && l.total) parts.push(t('home.learn_solved', { n: l.solved }));
   box.appendChild(row(t('home.learn_title'), parts, t('home.view'), () => { location.href = '/puzzles'; }));
+  if (l.total && l.solved !== null && l.solved !== undefined) {
+    const pct = Math.min(100, Math.round((l.solved / l.total) * 100));
+    const bar = el('div', undefined, 'hprog');
+    const track = el('div', undefined, 'hprog__bar');
+    track.setAttribute('role', 'progressbar');
+    track.setAttribute('aria-valuemin', '0');
+    track.setAttribute('aria-valuemax', String(l.total));
+    track.setAttribute('aria-valuenow', String(l.solved));
+    const fill = el('i');
+    fill.style.width = pct + '%';
+    track.appendChild(fill);
+    bar.append(track, el('span', t('home.learn_progress', { s: l.solved, n: l.total }), 'muted small'));
+    box.appendChild(bar);
+  }
 }
 
 function renderAbout(data) {

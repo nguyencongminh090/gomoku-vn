@@ -263,13 +263,16 @@
     const av = el('span', initials(user.displayName), 'pav');
     chip.av = av;
     chip.name = user.displayName;
-    const sub = el('small', member ? t('shell.unrated') : t('nav.guest_badge')); // mockup always shows a second line
-    name.append(user.displayName, sub);
+    name.append(user.displayName);   // chip = avatar + name only; rating lives in the menu header
     me.append(av, name, icon('ph-regular-caret-down'));
 
     const menu = el('div', undefined, 'pnav__menu');
     menu.hidden = true;
     menu.setAttribute('role', 'menu');
+    const sub = el('small', member ? t('shell.unrated') : t('nav.guest_badge'));
+    const who = el('div', user.displayName, 'pnav__who');
+    who.append(sub);
+    menu.append(who);
     const item = (tag, iconName, label, href) => {
       const n = el(tag, undefined, 'pnav__item');
       if (href) n.href = href; else n.type = 'button';
@@ -335,11 +338,10 @@
     const nav = el('header', undefined, 'pnav');
     const brand = el('a', undefined, 'pnav__brand');
     brand.href = '/index.html';
-    const logo = document.createElement('img');
-    logo.src = '/assets/brand/logo-mark.svg';
-    logo.alt = '';
-    logo.width = logo.height = 20;
-    brand.append(logo, el('span', 'Play3CR'));
+    // typographic logo: wordmark only, no icon mark; "3CR" carries the brand colour
+    const word = el('span', 'Play', 'pnav__word');
+    word.appendChild(el('b', '3CR'));
+    brand.append(word);
 
     const links = el('nav', undefined, 'pnav__links');
     links.setAttribute('aria-label', t('shell.nav'));

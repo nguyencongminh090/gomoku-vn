@@ -186,7 +186,11 @@ describe('dashboard rendering', () => {
 
   it('empty payload → empty states; "find a room" goes to the rooms screen', async () => {
     await boot('/index.html', EMPTY);
-    expect(document.querySelector('#home-today').textContent).toBe('home.no_today');
+    expect(document.querySelector('#home-today p').textContent).toBe('home.no_today');
+    // A7.1: the empty state offers a next step — an honest link to the tournaments screen, not a dead end.
+    const more = document.querySelector('#home-today a.hlink');
+    expect(more.textContent).toBe('home.see_tournaments');
+    expect(more.getAttribute('href')).toBe('#tournaments');
     expect(document.querySelector('#home-live').textContent).toBe('home.no_live');
     document.querySelector('#home-mine .link-action').click();
     expect(visible()).toEqual(['panel-tables']);
@@ -261,6 +265,26 @@ describe('news, forum, learn, about (#224)', () => {
     expect(segs(row).join(' · ')).toBe(meta);
   });
 
+  it.each([
+    ['member', { total: 4, solved: 1 }, { now: '1', max: '4', width: '25%', label: 'home.learn_progress{"s":1,"n":4}' }],
+    ['all solved', { total: 3, solved: 3 }, { now: '3', max: '3', width: '100%', label: 'home.learn_progress{"s":3,"n":3}' }],
+    ['none solved', { total: 5, solved: 0 }, { now: '0', max: '5', width: '0%', label: 'home.learn_progress{"s":0,"n":5}' }],
+  ])('learn progress bar (A7.1): %s', async (_, learn, want) => {
+    await boot('/index.html', { ...EMPTY, learn });
+    const bar = document.querySelector('#home-learn .hprog__bar');
+    expect(bar.getAttribute('role')).toBe('progressbar');
+    expect([bar.getAttribute('aria-valuenow'), bar.getAttribute('aria-valuemax'), bar.firstElementChild.style.width]).toEqual([want.now, want.max, want.width]);
+    expect(document.querySelector('#home-learn .hprog span').textContent).toBe(want.label);
+  });
+
+  it.each([
+    ['guest (solved unknown)', { total: 42, solved: null }],
+    ['no puzzles yet', { total: 0, solved: 0 }],
+  ])('learn progress bar absent: %s', async (_, learn) => {
+    await boot('/index.html', { ...EMPTY, learn });
+    expect(document.querySelector('#home-learn .hprog')).toBeNull();
+  });
+
   it('learn card absent without data (DB down / old payload)', async () => {
     await boot('/index.html', EMPTY);
     expect(document.querySelector('#home-learn').children).toHaveLength(0);
@@ -288,6 +312,34 @@ describe('ruleLine()', () => {
   ])('%j → %s', async (r, out) => {
     await boot('/index.html#rooms');
     expect(window.__home.ruleLine(r)).toBe(out);
+  });
+});
+
+describe('home layout (A7.1)', () => {
+  it('quick match: every chip row sits under a visible group label, and the summary line comes before the actions', async () => {
+    await boot('/index.html', EMPTY);
+    const qm = document.querySelector('.hp-qm');
+    const kids = [...qm.children].map((c) => c.id || c.className.split(' ')[0]);
+    expect(kids).toEqual(['ph2', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-lbl', 'qm-board', 'qm-start']);
+    expect([...qm.querySelectorAll('.qm-lbl')].map((n) => n.dataset.i18n)).toEqual(['qm.lbl_rule', 'qm.lbl_time', 'qm.lbl_board']);
+    expect([...qm.querySelectorAll('.qm-lbl')].every((n) => n.getAttribute('aria-hidden') === 'true')).toBe(true); // the group already has an aria-label
+    expect([...qm.querySelector('.qm-start').children].map((c) => c.id)).toEqual(['qm-line', 'qm-actions']);
+  });
+
+  it('two card stacks: match + learn (+ about) left; my game, today, forum, live right — each its own card', async () => {
+    await boot('/index.html', EMPTY);
+    const stacks = [...document.querySelectorAll('#screen-home > .hstack')];
+    expect(stacks).toHaveLength(2);
+    const cards = (st) => [...st.children].map((c) => c.classList.contains('ppanel') && c.className.split(' ').find((x) => x.startsWith('hp-')));
+    expect(cards(stacks[0])).toEqual(['hp-qm', 'hp-learn', 'hp-about']);
+    expect(cards(stacks[1])).toEqual(['hp-mine', 'hp-today', 'hp-forum', 'hp-live']);
+    expect(stacks[1].querySelector('#home-mine').closest('.ppanel')).toBe(stacks[1].children[0]);
+  });
+
+  it('the empty "no game" state names the destination (open rooms), not just "find"', async () => {
+    await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-mine .hempty p').textContent).toBe('home.no_games');
+    expect(document.querySelector('#home-mine .hempty button').textContent).toBe('home.find_room');
   });
 });
 
