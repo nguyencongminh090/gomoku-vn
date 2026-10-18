@@ -2,6 +2,9 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#272.** `/profile.html` without `/u/<name>` calls a 404 API `[Model: Haiku]` — [detail](docs/todo/B272-profile-html-without-username-404.md)
+✅ - **#271.** Lobby at 375 px: CLS 0.135 during load `[Model: Sonnet 5]` — [detail](docs/todo/B271-lobby-375-cls.md)
+✅ - **#270.** Contrast: `<a>.pbtn--primary` label (puzzles, 2.91:1) + dark-skin `--c-error` (4.28:1) `[Model: Sonnet 5]` — [detail](docs/todo/B270-contrast-primary-link-and-dark-error.md)
 ✅ - **#281.** Bare `replaceState('?…')` under `<base href="/">` in forum.js + rankings.js `[Model: Haiku]` — [detail](docs/todo/B281-replacestate-bare-query-base-href.md)
 ✅ - **#280.** Same `!req.user.userId` guest guard in 6 other routes `[Model: Sonnet 5]` — [detail](docs/todo/B280-guest-guard-other-routes.md)
 ✅ - **#279.** /puzzles/mine is one unpaged list `[Model: Sonnet 5]` — [detail](docs/todo/B279-puzzles-mine-paging.md)

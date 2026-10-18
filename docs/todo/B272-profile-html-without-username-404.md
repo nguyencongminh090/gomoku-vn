@@ -1,5 +1,5 @@
 # B272 — /profile.html without /u/<name> calls a 404 API
-**Status:** DONE
+**Status:** ✅ DONE 2026-10-17 — see fix-log (#272)
 **Area:** client/js/profile.js:283
 **From:** ux-audit 2026-10-17 (`docs/audits/ux-audit-2026-10-17.md`)   **Depends:** —
 

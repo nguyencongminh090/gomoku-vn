@@ -1,5 +1,5 @@
 # B270 — Contrast: <a>.pbtn--primary label and dark-skin --c-error
-**Status:** DONE
+**Status:** ✅ DONE 2026-10-17 — see fix-log (#270)
 **Area:** client/css/platform.css:12/:70, client/css/tokens.css:39
 **From:** ux-audit 2026-10-17 (`docs/audits/ux-audit-2026-10-17.md`)   **Depends:** —
 

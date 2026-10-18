@@ -1,5 +1,5 @@
 # B271 — Lobby at 375 px: CLS 0.135 during load
-**Status:** DONE (see fix-log 2026-10-17-lobby-cls-271)
+**Status:** ✅ DONE 2026-10-17 — see fix-log (#271)
 **Area:** client/js/lobby-home.js, client/css/lobby*.css
 **From:** ux-audit 2026-10-17 (`docs/audits/ux-audit-2026-10-17.md`)   **Depends:** —
 
