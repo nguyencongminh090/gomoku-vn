@@ -287,3 +287,4 @@
 | 2026-10-17 16:53 | #281 forum.js + rankings.js keep their path on filter | [detail](docs/fix-log/2026-10-17-replacestate-base-href-281.md) |
 | 2026-10-18 | .ptbl cells keep real side padding (rankings/club tables) | [detail](docs/fix-log/2026-10-18-ptbl-cell-padding.md) |
 | 2026-10-18 11:28 | #282 Paper grid + leaf background on all platform pages, layered card shadow, home layout A7.1 | [detail](docs/fix-log/2026-10-18-paper-bg-home-a71-282.md) |
+| 2026-10-18 | #283 Collapsed rail keeps clocks/controls/toasts in your own game | [detail](docs/fix-log/2026-10-18-rail-collapse-keeps-clocks-283.md) |

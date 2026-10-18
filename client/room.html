@@ -9,12 +9,12 @@
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="stylesheet" href="css/main.css?v=b48e027f" />
   <link rel="stylesheet" href="css/tokens.css?v=e359be30" />
-  <link rel="stylesheet" href="css/lobby.css?v=1c35ee5e" />
-  <link rel="stylesheet" href="css/room.css?v=5339de9b" />
+  <link rel="stylesheet" href="css/lobby.css?v=2d0ccfbd" />
+  <link rel="stylesheet" href="css/room.css?v=70cf7510" />
   <link rel="stylesheet" href="css/shell.css?v=11e82774" />
   <link rel="stylesheet" href="css/game.css?v=e77e8c5b" />
   <link rel="stylesheet" href="css/settings-panel.css?v=d8ac9246" />
-  <link rel="stylesheet" href="css/room-arena.css?v=cd2c157c" />
+  <link rel="stylesheet" href="css/room-arena.css?v=55ad914e" />
   <!-- Manrope (self-hosted, TODO.md #69) -->
   <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=1e215c18">
 
@@ -24,14 +24,14 @@
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/room-entry.js's import list -->
   <link rel="modulepreload" href="js/session.js?v=7d763f30" />
-  <link rel="modulepreload" href="js/i18n.js?v=123e38c3" />
+  <link rel="modulepreload" href="js/i18n.js?v=b85e37f4" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/socket-client.js?v=13b77de5" />
-  <link rel="modulepreload" href="js/board.js?v=52770c32" />
-  <link rel="modulepreload" href="js/room.js?v=bb038daf" />
-  <link rel="modulepreload" href="js/chat-ui.js?v=69b1bba8" />
-  <link rel="modulepreload" href="js/room-ui.js?v=a79b3749" />
+  <link rel="modulepreload" href="js/board.js?v=8a25f014" />
+  <link rel="modulepreload" href="js/room.js?v=d303980d" />
+  <link rel="modulepreload" href="js/chat-ui.js?v=c9347a46" />
+  <link rel="modulepreload" href="js/room-ui.js?v=6339f10d" />
   <link rel="modulepreload" href="js/game-ui.js?v=40aa4bb0" />
   <link rel="modulepreload" href="js/room-socket.js?v=c7acb632" />
 
@@ -112,7 +112,10 @@
       </div>
     </section>
 
-    <aside class="rail" aria-label="Ván đấu">
+    <!-- Desktop only (CSS): collapses the docked rail so the board gets the full width -->
+    <button class="rail-dock-toggle" id="rail-dock-toggle" type="button" aria-expanded="true" aria-controls="rail"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-caret-right"></use></svg></button>
+
+    <aside class="rail" id="rail" aria-label="Ván đấu">
       <!-- Player cards: the opponent on top, you at the bottom (a spectator
            sees seat #2 on top, seat #1 at the bottom). RoomUI.renderPlayerCards. -->
       <div class="seatcard seatcard--top" id="seatcard-top" aria-live="polite"></div>
@@ -204,7 +207,7 @@
   <script src="js/timer-sync-core.js?v=c56a5a16"></script>
   <script src="js/audio-manager.js?v=f0ca2309"></script>
   <script src="js/action-delegate.js?v=7420bbed"></script>
-  <script type="module" src="js/room-entry.js?v=40dd6c04"></script>
+  <script type="module" src="js/room-entry.js?v=3a914acd"></script>
 </body>
 
 </html>

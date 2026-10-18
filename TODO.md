@@ -77,3 +77,7 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
+- **#283.** Rail collapse mid-game hides clocks, controls and request toasts (ux-audit H1) `[Model: Sonnet 5]` — [detail](docs/todo/B283-rail-collapse-hides-clock-controls.md)
+- **#284.** Docked rail squeezes board at 769–1024px (ux-audit M1) `[Model: Sonnet 5]` — [detail](docs/todo/B284-rail-tablet-width-board-squeeze.md)
+- **#285.** Disabled ranked toggle row misaligned (ux-audit L1) `[Model: Sonnet 5]` — [detail](docs/todo/B285-ranked-toggle-row-misaligned.md)
+- **#287.** Collapsed in-game rail: pending request toast covers the action tiles `[Model: Sonnet 5]` — [detail](docs/todo/B287-collapsed-rail-toast-covers-controls.md)

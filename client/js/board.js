@@ -597,7 +597,7 @@
 
       this.svg.setAttribute('viewBox', `${g.vx} ${g.vy} ${g.VW} ${g.VH}`);
       this.svg.setAttribute('aria-label', `${n}×${n}`);
-      const rx = compact ? 0 : 12;
+      const rx = 0; // square frame on every screen
       out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="${bg}"/>`);
       if (!paper) out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="url(#gS${uid})"/>`);
 

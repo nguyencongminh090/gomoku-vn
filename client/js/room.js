@@ -238,7 +238,31 @@ if (!document.body.dataset.roomPanelToggleBound) {
     setPanelMinimized(toggle.getAttribute('aria-expanded') === 'true', true);
   });
 }
-window.RoomPanel = { setMinimized: setPanelMinimized };
+// Desktop: the rail is docked to the viewport's right edge; this collapses it (CSS keys off body.rail-collapsed).
+const RAIL_COLLAPSED_KEY = 'gvn_room_rail_collapsed';
+const RAIL_TABLET_MQ = '(min-width: 769px) and (max-width: 1024px)';
+function setRailCollapsed(collapsed, persist = true) {
+  const btn = document.getElementById('rail-dock-toggle');
+  document.body.classList.toggle('rail-collapsed', collapsed);
+  if (btn) {
+    btn.setAttribute('aria-expanded', String(!collapsed));
+    const label = t(collapsed ? 'room.rail_expand' : 'room.rail_collapse');
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+  }
+  if (persist) try { localStorage.setItem(RAIL_COLLAPSED_KEY, collapsed ? '1' : '0'); } catch (_) { /* private mode */ }
+}
+if (!document.body.dataset.roomRailDockBound) {
+  document.body.dataset.roomRailDockBound = '1';
+  const dock = document.getElementById('rail-dock-toggle');
+  let stored = null;
+  try { stored = localStorage.getItem(RAIL_COLLAPSED_KEY); } catch (_) { /* ignore */ }
+  // B284: no saved choice → start collapsed at tablet widths so the board keeps the focus; a stored choice wins.
+  const tablet = !!(window.matchMedia && window.matchMedia(RAIL_TABLET_MQ).matches);
+  setRailCollapsed(stored === null ? tablet : stored === '1', false);
+  if (dock) dock.addEventListener('click', () => setRailCollapsed(!document.body.classList.contains('rail-collapsed')));
+}
+window.RoomPanel = { setMinimized: setPanelMinimized, setRailCollapsed };
 
 // ---------------------------------------------------------------------------
 // Leave room

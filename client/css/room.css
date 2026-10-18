@@ -468,6 +468,19 @@
   display: block;
 }
 
+.settings-panel .setting-select {
+  width: 100%;
+  font: inherit; font-size: 14px; font-weight: 600;
+  color: var(--c-ink);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  min-height: 40px;
+  cursor: pointer;
+}
+.settings-panel .setting-select:focus-visible { outline: 2px solid var(--c-brand); outline-offset: 2px; }
+
 /* Settings sections: room-wide config vs. personal preferences */
 .settings-group + .settings-group {
   margin-top: 18px;
