@@ -316,11 +316,11 @@ describe('ruleLine()', () => {
 });
 
 describe('home layout (A7.1)', () => {
-  it('quick match: every chip row sits under a visible group label, and the summary line comes before the actions', async () => {
+  it('quick match: the start block (summary line, then actions) comes right after the title (#290); every chip row sits under a visible group label', async () => {
     await boot('/index.html', EMPTY);
     const qm = document.querySelector('.hp-qm');
     const kids = [...qm.children].map((c) => c.id || c.className.split(' ')[0]);
-    expect(kids).toEqual(['ph2', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-lbl', 'qm-board', 'qm-start']);
+    expect(kids).toEqual(['ph2', 'qm-start', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-lbl', 'qm-board']);
     expect([...qm.querySelectorAll('.qm-lbl')].map((n) => n.dataset.i18n)).toEqual(['qm.lbl_rule', 'qm.lbl_time', 'qm.lbl_board']);
     expect([...qm.querySelectorAll('.qm-lbl')].every((n) => n.getAttribute('aria-hidden') === 'true')).toBe(true); // the group already has an aria-label
     expect([...qm.querySelector('.qm-start').children].map((c) => c.id)).toEqual(['qm-line', 'qm-actions']);
@@ -340,6 +340,12 @@ describe('home layout (A7.1)', () => {
     await boot('/index.html', EMPTY);
     expect(document.querySelector('#home-mine .hempty p').textContent).toBe('home.no_games');
     expect(document.querySelector('#home-mine .hempty button').textContent).toBe('home.find_room');
+  });
+
+  it('#289: one primary action — the empty-state "open rooms" button is secondary, the quick-match CTA is the filled one', async () => {
+    await boot('/index.html', EMPTY, { isGuest: false });
+    expect(document.querySelector('#home-mine .hempty button').classList.contains('link-action--primary')).toBe(false);
+    expect([...document.querySelectorAll('#screen-home .link-action--primary')].map((n) => n.closest('#qm-actions') && 'qm')).toEqual(['qm']);
   });
 });
 

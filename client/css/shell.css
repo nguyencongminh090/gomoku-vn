@@ -201,6 +201,8 @@ body.zen-lobby .hrow .prow__act { padding: 4px 12px; border-radius: 999px; backg
 body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
 body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
 body.zen-lobby .hbullet.on { background: var(--c-brand); }
+body.zen-lobby .hempty .link-action { border: 1px solid var(--c-border); background: transparent; color: var(--c-ink-2); }   /* #289: secondary, the quick-match CTA is the one filled button */
+body.zen-lobby .hempty .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
 body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
 body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wrap: wrap; padding: 4px 4px 8px; }
@@ -227,14 +229,14 @@ body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
 /* A7.1 (ui/grid-leaves-home): two card stacks; quick-match group labels, ✓ on the chosen chip, one dominant CTA, learn progress. */
 body.zen-lobby .hstack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 body.zen-lobby .qm-lbl { margin: 16px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-2); }
-body.zen-lobby .hp-qm .ph2 + .qm-lbl { margin-top: 0; }
+body.zen-lobby .hp-qm .qm-start + .qm-lbl { margin-top: 0; }
 body.zen-lobby .hp-qm .pchips { margin-bottom: 0; }
 body.zen-lobby .hp-qm .qm-grp { flex-basis: 100%; margin: 4px 0 -2px; font-size: 12px; color: var(--c-ink-3, var(--c-ink-2)); }
 body.zen-lobby .hp-qm .qm-grp:first-child { margin-top: 0; }
-body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; }
-body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
+body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; border: 1px solid color-mix(in srgb, var(--c-ink-2) 75%, var(--c-surface)); }   /* #291: control boundary >= 3:1 (WCAG 1.4.11); was no border, 1.1-1.4:1 */
+body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
 body.zen-lobby .hp-qm .pchip[aria-pressed="true"]::before { content: '✓'; margin-right: 6px; font-weight: 700; }
-body.zen-lobby .qm-start { margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--c-border); }
+body.zen-lobby .qm-start { margin: 0 0 20px; padding-bottom: 18px; border-bottom: 1px dashed var(--c-border); }   /* #290: CTA first, the chips below only adjust it */
 body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; }
 body.zen-lobby .qm-start .pactions { margin: 0; gap: 10px; }
 body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 16px; border: 1px solid var(--c-border); background: transparent; color: var(--c-ink-2); font-size: 14px; font-weight: 600; }

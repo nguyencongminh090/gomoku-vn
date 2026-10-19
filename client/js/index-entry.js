@@ -14,4 +14,4 @@ import './platform-shell.js?v=86159d16';
 import './lobby.js?v=637fade9';
 import './private-chat.js?v=659109b9';
 import './tournaments.js?v=7198eaa0';
-import './lobby-home.js?v=cf654090';
+import './lobby-home.js?v=59260fee';

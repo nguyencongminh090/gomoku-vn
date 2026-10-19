@@ -83,3 +83,8 @@ in the detail file / fix-log).
 - **#287.** Collapsed in-game rail: pending request toast covers the action tiles `[Model: Sonnet 5]` — [detail](docs/todo/B287-collapsed-rail-toast-covers-controls.md)
 - **#286.** Settings-changed chat notice repeats with no detail (ux-audit L2, server) `[Model: Sonnet 5]` — [detail](docs/todo/B286-settings-changed-notice-no-detail.md)
 - **#288.** Quick-match: more time presets (1+1, 7+3, 60/45/30/5s per move), per-game vs per-move groups `[Model: Sonnet 5]` — [detail](docs/todo/B288-more-quickmatch-times.md)
+- **#292.** Lobby: flat type hierarchy - greeting and 3 stats near same size; bold "0" draws the eye `[Model: Sonnet 5]` — [detail](docs/todo/B292-lobby-type-hierarchy.md)
+- **#293.** Quick-match "Time": when Auto is selected the per-game / per-move rows still look clickable `[Model: Sonnet 5]` — [detail](docs/todo/B293-qm-time-disabled-state.md)
+- **#294.** Right column spends a card on each empty state ("Chưa có…") `[Model: Sonnet 5]` — [detail](docs/todo/B294-lobby-empty-states-compact.md)
+- **#295.** Same "Xem" action in three looks: underlined link, white-on-grey button, solid green `[Model: Sonnet 5]` — [detail](docs/todo/B295-lobby-view-action-consistency.md)
+- **#296.** Paper-grid + leaves background slightly strong at both page edges `[Model: Sonnet 5]` — [detail](docs/todo/B296-lobby-bg-pattern-edges.md)

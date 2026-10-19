@@ -2,6 +2,9 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#291.** Lobby contrast: unselected quick-match chips have no boundary (1.1-1.4:1 vs 3:1 required) `[Model: Sonnet 5]` — [detail](docs/todo/B291-lobby-contrast-chip-borders.md)
+✅ - **#290.** Quick-match card: CTA buttons sit under ~14 same-size chips; move them near the top `[Model: Sonnet 5]` — [detail](docs/todo/B290-qm-cta-near-top.md)
+✅ - **#289.** Lobby: one primary action per screen (secondary "Browse open rooms" must not be solid) `[Model: Sonnet 5]` — [detail](docs/todo/B289-one-primary-action-lobby.md)
 ✅ - **#282.** Paper background (grid + leaves) on every platform page, card shadows, home layout A7.1 `[Model: Sonnet 5]` — [detail](docs/todo/B282-paper-bg-home-a71.md)
 ✅ - **#272.** `/profile.html` without `/u/<name>` calls a 404 API `[Model: Haiku]` — [detail](docs/todo/B272-profile-html-without-username-404.md)
 ✅ - **#271.** Lobby at 375 px: CLS 0.135 during load `[Model: Sonnet 5]` — [detail](docs/todo/B271-lobby-375-cls.md)
