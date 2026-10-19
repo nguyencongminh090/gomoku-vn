@@ -184,6 +184,12 @@ function renderMine(data) {
   }
 }
 
+/** #294: a card whose list is just its empty-state message collapses to one compact row (CSS .is-empty). */
+function flagEmpty(box) {
+  const card = box.closest('.ppanel');
+  if (card) card.classList.toggle('is-empty', !!box.querySelector('.hempty'));
+}
+
 function renderToday(data) {
   const box = document.getElementById('home-today');
   if (!box) return;
@@ -202,6 +208,7 @@ function renderToday(data) {
     empty.append(el('p', t('home.no_today'), 'muted small'), all);
     box.appendChild(empty);
   }
+  flagEmpty(box);
 }
 
 function renderStats(data) {
@@ -228,6 +235,7 @@ function renderLive(data) {
     box.appendChild(row(t('home.live_vs', { a: g.black || '?', b: g.white || '?' }), meta, t('home.view'), () => window.joinRoom(g.roomId)));
   }
   if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
+  flagEmpty(box);
 }
 
 /** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
@@ -260,6 +268,7 @@ function renderForum(data) {
   const all = withIcon(el('a', t('home.forum_all'), 'link-action hmore'), 'ph-regular-chat-circle');
   all.href = '/forum';
   box.appendChild(all);
+  flagEmpty(box);
 }
 
 function renderLearn(data) {

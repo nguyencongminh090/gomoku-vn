@@ -339,6 +339,16 @@ describe('home layout (A7.1)', () => {
     expect(stacks[1].querySelector('#home-mine').closest('.ppanel')).toBe(stacks[1].children[0]);
   });
 
+  it('#294: empty Hôm nay / Diễn đàn / Live cards are flagged compact (entry links kept); a filled card is not', async () => {
+    await boot('/index.html', EMPTY);
+    const flagged = (sel) => document.querySelector(sel).classList.contains('is-empty');
+    expect([flagged('.hp-today'), flagged('.hp-forum'), flagged('.hp-live'), flagged('.hp-mine')]).toEqual([true, true, true, false]);
+    expect(document.querySelector('.hp-today a.hlink')).toBeTruthy();
+    expect(document.querySelector('.hp-forum a.hmore')).toBeTruthy();
+    await boot('/index.html', { ...EMPTY, tournaments: [{ tournamentId: 't1', name: 'Cup', status: 'draft', playerCount: 2, format: 'single_elim' }] });
+    expect(document.querySelector('.hp-today').classList.contains('is-empty')).toBe(false);
+  });
+
   it('the empty "no game" state names the destination (open rooms), not just "find"', async () => {
     await boot('/index.html', EMPTY);
     expect(document.querySelector('#home-mine .hempty p').textContent).toBe('home.no_games');

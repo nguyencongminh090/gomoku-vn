@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#294.** Right column spends a card on each empty state ("Chưa có…") `[Model: Sonnet 5]` — [detail](docs/todo/B294-lobby-empty-states-compact.md)
 ✅ - **#293.** Quick-match "Time": when Auto is selected the per-game / per-move rows still look clickable `[Model: Sonnet 5]` — [detail](docs/todo/B293-qm-time-disabled-state.md)
 ✅ - **#292.** Lobby: flat type hierarchy - greeting and 3 stats near same size; bold "0" draws the eye `[Model: Sonnet 5]` — [detail](docs/todo/B292-lobby-type-hierarchy.md)
 ✅ - **#291.** Lobby contrast: unselected quick-match chips have no boundary (1.1-1.4:1 vs 3:1 required) `[Model: Sonnet 5]` — [detail](docs/todo/B291-lobby-contrast-chip-borders.md)

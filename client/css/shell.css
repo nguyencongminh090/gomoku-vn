@@ -205,6 +205,12 @@ body.zen-lobby .hempty .link-action { border: 1px solid var(--c-border); backgro
 body.zen-lobby .hempty .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
 body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
+/* #294: an empty Hôm nay / Diễn đàn / Live card is one wrapped row — title, message, entry link — not a full card. */
+body.zen-lobby .ppanel.is-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 12px 20px; }
+body.zen-lobby .ppanel.is-empty .ph2 { margin: 0; }
+body.zen-lobby .ppanel.is-empty :is(.prows, .hlives, .hempty) { display: contents; }
+body.zen-lobby .ppanel.is-empty .hempty { padding: 0; }
+body.zen-lobby .ppanel.is-empty .hmore { margin: 0; }
 body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wrap: wrap; padding: 4px 4px 8px; }
 body.zen-lobby .hstats[hidden] { display: none; }
 body.zen-lobby .hstat { display: flex; align-items: baseline; gap: 8px; }
