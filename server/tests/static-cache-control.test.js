@@ -32,6 +32,7 @@ const {
   setStaticCacheHeaders,
   IMMUTABLE,
   REVALIDATE,
+  EDGE_HTML,
 } = require('../config/staticCache');
 
 const clientPath = path.join(__dirname, '..', '..', 'client');
@@ -145,5 +146,22 @@ describe('express.static wiring (real client/ files)', () => {
     const revalidated = await get({ 'if-none-match': first.headers.etag });
     expect(revalidated.statusCode).toBe(304);
     expect(revalidated.headers['cache-control']).toBe(REVALIDATE);
+  });
+});
+
+// Edge-only SWR for HTML: Cloudflare may serve a stale page while a slow origin/tunnel
+// refetches, but the browser contract (no-cache) must not change.
+describe('HTML edge cache header', () => {
+  test('HTML carries Cloudflare-CDN-Cache-Control with a short max-age and SWR, and browsers still revalidate', async () => {
+    const res = await fetch(`${baseUrl}/index.html`);
+    expect(res.headers.get('cache-control')).toBe(REVALIDATE);
+    expect(res.headers.get('cloudflare-cdn-cache-control')).toBe(EDGE_HTML);
+    expect(EDGE_HTML).toMatch(/max-age=\d{1,2}\b.*stale-while-revalidate=\d{1,3}\b/);
+  });
+
+  test('versioned assets do not get the HTML edge header', async () => {
+    const css = (await (await fetch(`${baseUrl}/index.html`)).text()).match(/href="(css\/[^"]+)"/)[1];
+    const res = await fetch(`${baseUrl}/${css}`);
+    expect(res.headers.get('cloudflare-cdn-cache-control')).toBeNull();
   });
 });

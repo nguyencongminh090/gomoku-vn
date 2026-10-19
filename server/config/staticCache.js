@@ -30,6 +30,23 @@ const IMMUTABLE = 'public, max-age=31536000, immutable';
 const REVALIDATE = 'no-cache';
 
 /**
+ * Edge-only freshness for HTML. The browser still gets `REVALIDATE`; Cloudflare
+ * reads `Cloudflare-CDN-Cache-Control` (which it strips before the response
+ * leaves the edge) and serves HTML from its cache for 30 s, then keeps serving
+ * the stale copy for up to 120 s while it refetches in the background. A slow or
+ * suspended origin/tunnel therefore no longer stalls page loads. The window is
+ * short on purpose: a `?v=` bump reaches users within ~2.5 min at worst.
+ * Only for pages whose bytes are identical for every visitor.
+ */
+const EDGE_HTML = 'max-age=30, stale-while-revalidate=120';
+
+/** Header set for a shared (non-personalised) HTML response. */
+function setHtmlHeaders(res) {
+  res.setHeader('Cache-Control', REVALIDATE);
+  res.setHeader('Cloudflare-CDN-Cache-Control', EDGE_HTML);
+}
+
+/**
  * Cache policy for the socket.io browser client (TODO.md #111).
  *
  * Deliberately NOT `IMMUTABLE`, and deliberately a separate export rather
@@ -58,7 +75,7 @@ const SOCKET_IO_CLIENT = 'public, max-age=86400';
  */
 function setStaticCacheHeaders(res, filePath) {
   if (filePath.endsWith('.html')) {
-    res.setHeader('Cache-Control', REVALIDATE);
+    setHtmlHeaders(res);
   } else {
     res.setHeader('Cache-Control', IMMUTABLE);
   }
@@ -77,8 +94,10 @@ const socketIoClientOptions = {
 module.exports = {
   staticOptions,
   setStaticCacheHeaders,
+  setHtmlHeaders,
   socketIoClientOptions,
   IMMUTABLE,
   REVALIDATE,
+  EDGE_HTML,
   SOCKET_IO_CLIENT,
 };
