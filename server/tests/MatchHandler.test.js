@@ -118,6 +118,25 @@ describe('pairing → seated room', () => {
     expect(room.settings).toMatchObject({ ranked: false, timerSeconds: 60, timerIncrementSeconds: 0, winningRule: 'freestyle' });
   });
 
+  it.each([
+    ['auto', 'auto', { timerMode: 'per_move', timerSeconds: 60 }],
+    ['auto', 'm30', { timerMode: 'per_move', timerSeconds: 30 }],
+    ['7+3', 'auto', { timerMode: 'blitz', timerSeconds: 420, timerIncrementSeconds: 3 }],
+  ])('auto time: %s + %s → room clock %j', (ta, tb, want) => {
+    const a = makeSocket('guest_a', { isGuest: true });
+    const b = makeSocket('guest_b', { isGuest: true });
+    join(a, { rated: false, time: ta, rule: 'caro' });
+    join(b, { rated: false, time: tb, rule: 'caro' });
+    expect([...roomManager.rooms.values()][0].settings).toMatchObject(want);
+  });
+
+  it('two different chosen clocks do not pair', () => {
+    join(makeSocket('guest_a', { isGuest: true }), { rated: false, time: '3+2', rule: 'caro' });
+    join(makeSocket('guest_b', { isGuest: true }), { rated: false, time: '5+3', rule: 'caro' });
+    expect(roomManager.rooms.size).toBe(0);
+    expect(MatchHandler._queue.size()).toBe(2);
+  });
+
   it('far ratings wait, then pair once the window opens (30 s of ticks)', () => {
     const a = makeSocket('m1');
     const f = makeSocket('far');

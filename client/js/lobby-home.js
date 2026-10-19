@@ -365,9 +365,13 @@ client.on('connect', () => {
 // ── Quick match (B197) ──────────────────────────────────────────────────────
 
 const QM_RULES = ['freestyle', 'standard', 'caro'];
-const QM_TIMES = ['1+0', '3+2', '5+3', '10+0'];
+const QM_TIMES_GAME = ['1+0', '1+1', '3+2', '5+3', '7+3', '10+0']; // total + increment per move
+const QM_TIMES_MOVE = ['m60', 'm45', 'm30', 'm5']; // seconds per move
+const QM_AUTO = 'auto'; // no clock preference: pairs with anyone, adopts the other side's clock (default 60s/nước)
+const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE];
+const qmTimeLabel = (v) => (v === QM_AUTO ? t('qm.time_auto') : v[0] === 'm' ? t('home.per_move', { s: v.slice(1) }) : v);
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: '5+3', wall: true, portal: false, searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
+const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
 let qmTimer = null;
 
 try {
@@ -410,7 +414,15 @@ export function renderQuickMatch() {
     renderQuickMatch();
   };
   chipRow('qm-rule', QM_RULES, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
-  chipRow('qm-time', QM_TIMES, qm.time, (v) => v, pick('time'));
+  chipRow('qm-time', QM_TIMES, qm.time, qmTimeLabel, pick('time'));
+  const timeBox = document.getElementById('qm-time');
+  if (timeBox) {
+    // Auto chip first, then two labelled groups in the same row.
+    const grp = (k) => { const g = el('span', t('qm.grp_' + k), 'qm-grp'); g.setAttribute('aria-hidden', 'true'); return g; };
+    const firstMove = timeBox.children[QM_TIMES_GAME.length + 1]; // [auto, ...game, ...move]
+    if (firstMove) timeBox.insertBefore(grp('move'), firstMove);
+    if (timeBox.children[1]) timeBox.insertBefore(grp('game'), timeBox.children[1]);
+  }
   const board = document.getElementById('qm-board');
   if (board) {
     board.replaceChildren();
@@ -447,9 +459,14 @@ export function renderQuickMatch() {
       a.href = '/social.html#challenge';
       acts.appendChild(a);
     }
-    const waiting = lastData && lastData.queue ? lastData.queue[qm.rule + '|' + qm.time] || 0 : 0;
+    // Who can pair with this pick: same clock, an auto waiter, and (for auto) everyone of the rule.
+    let waiting = 0;
+    for (const [k, n] of Object.entries((lastData && lastData.queue) || {})) {
+      const [rule, time] = k.split('|');
+      if (rule === qm.rule && (qm.time === QM_AUTO || time === QM_AUTO || time === qm.time)) waiting += n;
+    }
     const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
-    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qm.time + (qm.wall ? ' · ' + t('room.rule_wall') : '') + (qm.portal ? ' · ' + t('room.rule_portal') : '') })
+    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qmTimeLabel(qm.time) + (qm.wall ? ' · ' + t('room.rule_wall') : '') + (qm.portal ? ' · ' + t('room.rule_portal') : '') })
       + (waiting ? ' · ' + t('qm.in_queue', { n: waiting }) : '')
       + (eta ? ' · ' + t('qm.eta', { s: eta }) : '')
       + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));

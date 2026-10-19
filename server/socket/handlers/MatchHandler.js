@@ -19,7 +19,7 @@ const logger = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
 const { seatPair } = require('../../managers/PairRoom');
 const database = require('../../db/database');
-const { MatchQueue, PRESETS } = require('../../managers/MatchQueue');
+const { MatchQueue, PRESETS, timeLabel, resolveTime } = require('../../managers/MatchQueue');
 const {
   broadcastLobbyUpdate,
   broadcastRoomUpdate,
@@ -68,7 +68,8 @@ function makeRoom(a, b) {
     }
     return null;
   }
-  const settings = { ...PRESETS[a.time], winningRule: a.rule, ranked: a.rated, ruleWall: a.wall === true, rulePortal: a.portal === true, roomName: `${a.time} · ${a.displayName} vs ${b.displayName}` };
+  const time = resolveTime(a, b); // an auto side adopts the other's clock; two autos → default
+  const settings = { ...PRESETS[time], winningRule: a.rule, ranked: a.rated, ruleWall: a.wall === true, rulePortal: a.portal === true, roomName: `${timeLabel(time)} · ${a.displayName} vs ${b.displayName}` };
   const seated = seatPair(roomManager, a, b, settings, getClientIp(sa));
   if (seated.error) {
     for (const s of [sa, sb]) s.emit('match:error', { message: seated.error, code: seated.code });
@@ -87,7 +88,7 @@ function makeRoom(a, b) {
   }
   broadcastRoomUpdate(ioRef, room);
   broadcastLobbyUpdate(ioRef);
-  logger.info('[Match] paired', { roomId: room.roomId, time: a.time, rule: a.rule, rated: a.rated });
+  logger.info('[Match] paired', { roomId: room.roomId, time, rule: a.rule, rated: a.rated });
   return room;
 }
 
