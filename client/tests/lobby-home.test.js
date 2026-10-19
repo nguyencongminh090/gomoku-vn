@@ -191,7 +191,7 @@ describe('dashboard rendering', () => {
     await boot('/index.html', EMPTY);
     expect(document.querySelector('#home-today p').textContent).toBe('home.no_today');
     // A7.1: the empty state offers a next step — an honest link to the tournaments screen, not a dead end.
-    const more = document.querySelector('#home-today a.hlink');
+    const more = document.querySelector('#home-today a.link-action');
     expect(more.textContent).toBe('home.see_tournaments');
     expect(more.getAttribute('href')).toBe('#tournaments');
     expect(document.querySelector('#home-live').textContent).toBe('home.no_live');
@@ -343,7 +343,7 @@ describe('home layout (A7.1)', () => {
     await boot('/index.html', EMPTY);
     const flagged = (sel) => document.querySelector(sel).classList.contains('is-empty');
     expect([flagged('.hp-today'), flagged('.hp-forum'), flagged('.hp-live'), flagged('.hp-mine')]).toEqual([true, true, true, false]);
-    expect(document.querySelector('.hp-today a.hlink')).toBeTruthy();
+    expect(document.querySelector('.hp-today a.link-action')).toBeTruthy();
     expect(document.querySelector('.hp-forum a.hmore')).toBeTruthy();
     await boot('/index.html', { ...EMPTY, tournaments: [{ tournamentId: 't1', name: 'Cup', status: 'draft', playerCount: 2, format: 'single_elim' }] });
     expect(document.querySelector('.hp-today').classList.contains('is-empty')).toBe(false);

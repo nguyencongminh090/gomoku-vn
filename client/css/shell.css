@@ -197,12 +197,13 @@ body.zen-lobby .hrow { width: 100%; box-sizing: border-box; text-align: left; fo
 body.zen-lobby .hrow:hover { background: var(--c-hover); }
 body.zen-lobby .hrow .prow__t { font-weight: 600; line-height: 1.35; }
 body.zen-lobby .hrow__meta { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }
-body.zen-lobby .hrow .prow__act { padding: 4px 12px; border-radius: 999px; background: var(--c-surface); color: var(--c-ink-2); }
+body.zen-lobby .hrow .prow__act { padding: 3px 12px; border-radius: var(--radius); }
 body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
 body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
 body.zen-lobby .hbullet.on { background: var(--c-brand); }
-body.zen-lobby .hempty .link-action { border: 1px solid var(--c-border); background: transparent; color: var(--c-ink-2); }   /* #289: secondary, the quick-match CTA is the one filled button */
-body.zen-lobby .hempty .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
+/* #289 + #295: every navigational "view" action in a lobby card is one quiet outline — empty-state buttons, the forum link, the row's action pill; the quick-match CTA is the only filled button. */
+body.zen-lobby :is(.hempty .link-action, .hmore), body.zen-lobby .hrow .prow__act { border: 1px solid color-mix(in srgb, var(--c-ink-2) 75%, var(--c-surface)); background: transparent; color: var(--c-ink-2); }
+body.zen-lobby :is(.hempty .link-action, .hmore):hover { background: var(--c-fill); color: var(--c-ink); }
 body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
 /* #294: an empty Hôm nay / Diễn đàn / Live card is one wrapped row — title, message, entry link — not a full card. */
@@ -252,7 +253,6 @@ body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 16px; b
 body.zen-lobby #qm-actions .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
 body.zen-lobby #qm-actions .link-action--primary { min-height: 48px; padding: 12px 24px; border-color: transparent; background: var(--c-brand); color: var(--c-on-brand); font-size: 16px; font-weight: 700; box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--c-brand) 70%, #000), inset 0 1px 0 rgba(255,255,255,.25); }
 body.zen-lobby #qm-actions .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); }
-body.zen-lobby .hlink { color: var(--c-brand-text, var(--c-brand)); font-weight: 600; font-size: 14px; }
 body.zen-lobby .hprog { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 body.zen-lobby .hprog__bar { flex: 1; height: 6px; border-radius: 99px; background: var(--c-surface-2); overflow: hidden; }
 body.zen-lobby .hprog__bar i { display: block; height: 100%; border-radius: 99px; background: var(--c-brand); }
