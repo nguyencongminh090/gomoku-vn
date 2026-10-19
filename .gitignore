@@ -49,3 +49,6 @@ server/data/club-images/
 server/db/*.bak-*
 # admin CLI action log + pre-destructive DB copies (absolute paths, user data) — local only
 server/db/backups/
+
+# Browser network captures (may contain cookies/tokens)
+*.har
