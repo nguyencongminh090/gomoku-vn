@@ -323,10 +323,11 @@ describe('home layout (A7.1)', () => {
     await boot('/index.html', EMPTY);
     const qm = document.querySelector('.hp-qm');
     const kids = [...qm.children].map((c) => c.id || c.className.split(' ')[0]);
-    expect(kids).toEqual(['ph2', 'qm-start', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-lbl', 'qm-board']);
+    expect(kids).toEqual(['ph2', 'qm-start', 'qm-opt', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-time-hint', 'qm-lbl', 'qm-board']);
     expect([...qm.querySelectorAll('.qm-lbl')].map((n) => n.dataset.i18n)).toEqual(['qm.lbl_rule', 'qm.lbl_time', 'qm.lbl_board']);
     expect([...qm.querySelectorAll('.qm-lbl')].every((n) => n.getAttribute('aria-hidden') === 'true')).toBe(true); // the group already has an aria-label
     expect([...qm.querySelector('.qm-start').children].map((c) => c.id)).toEqual(['qm-line', 'qm-actions']);
+    expect(qm.querySelector('.qm-opt').dataset.i18n).toBe('qm.optional'); // #298: the groups below are optional
   });
 
   it('two card stacks: match + learn (+ about) left; my game, today, forum, live right — each its own card', async () => {
@@ -387,10 +388,12 @@ describe('quick match panel (B197)', () => {
     await boot('/index.html', EMPTY, MEMBER);
     const box = document.getElementById('qm-time');
     expect(box.classList.contains('is-auto')).toBe(true);
+    expect(document.getElementById('qm-time-hint').hidden).toBe(false);
     expect(chips('qm-time').every((b) => !b.disabled)).toBe(true);
     chips('qm-time').find((b) => b.textContent === '3+2').click();
     expect(document.getElementById('qm-time').classList.contains('is-auto')).toBe(false);
     expect(pressed('qm-time')).toEqual(['3+2']);
+    expect(document.getElementById('qm-time-hint').hidden).toBe(true); // #298: the Auto explanation only shows while Auto is the pick
   });
 
   it('guest: casual only, with the reason in the status line', async () => {

@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#298.** Quick-match: "Tuỳ chỉnh (không bắt buộc)" cue + Auto explanation under Thời gian `[Model: Sonnet 5.5]` — [detail](docs/todo/B298-qm-optional-label-auto-hint.md)
 ✅ - **#297.** Quick-match card: fewer same-looking grey boxes — chip fill + thin border, pill secondary/view buttons `[Model: Sonnet 5.5]` — [detail](docs/todo/B297-qm-fewer-borders.md)
 ✅ - **#296.** Paper-grid + leaves background slightly strong at both page edges `[Model: Sonnet 5]` — [detail](docs/todo/B296-lobby-bg-pattern-edges.md)
 ✅ - **#295.** Same "Xem" action in three looks: underlined link, white-on-grey button, solid green `[Model: Sonnet 5]` — [detail](docs/todo/B295-lobby-view-action-consistency.md)
