@@ -21,7 +21,7 @@ const path         = require('path');
 
 const config         = require('./config');
 const { cspDirectives } = require('./config/csp');
-const { staticOptions, socketIoClientOptions, REVALIDATE } = require('./config/staticCache');
+const { staticOptions, socketIoClientOptions, setHtmlHeaders, REVALIDATE } = require('./config/staticCache');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -173,45 +173,45 @@ app.use('/api/dm', dmRouter);
 // Public profile page: /u/<username> — same HTML for every name; profile.js reads the path.
 // Club pages: /clubs.html (discover) and /c/<slug> (one club).
 app.get('/c/:slug', (req, res) => {
-  res.setHeader('Cache-Control', REVALIDATE);
+  setHtmlHeaders(res);
   res.sendFile(path.join(clientPath, 'club.html'));
 });
 
 // Puzzles (B203 7a-2): /puzzles (list) and /puzzle/<id> (solve); puzzle.js reads the path.
 app.get('/puzzles', (req, res) => {
-  res.setHeader('Cache-Control', REVALIDATE);
+  setHtmlHeaders(res);
   res.sendFile(path.join(clientPath, 'puzzles.html'));
 });
 // Authoring pages (7a-3): static paths, so they never collide with /puzzle/:id.
 for (const [route, file] of [['/puzzles/new', 'puzzle-editor.html'], ['/puzzles/mine', 'puzzles-mine.html']]) {
   app.get(route, (req, res) => {
-    res.setHeader('Cache-Control', REVALIDATE);
+    setHtmlHeaders(res);
     res.sendFile(path.join(clientPath, file));
   });
 }
 // Staff console (R8 #205): one page, tabs read the hash. The two old queue URLs redirect into it.
 app.get('/admin', (req, res) => {
-  res.setHeader('Cache-Control', REVALIDATE);
+  setHtmlHeaders(res);
   res.sendFile(path.join(clientPath, 'admin.html'));
 });
 app.get('/puzzles/review', (req, res) => res.redirect(301, '/admin#puzzles'));
 app.get('/forum/reports', (req, res) => res.redirect(301, '/admin#forum'));
 app.get('/puzzle/:id', (req, res) => {
-  res.setHeader('Cache-Control', REVALIDATE);
+  setHtmlHeaders(res);
   res.sendFile(path.join(clientPath, 'puzzle.html'));
 });
 
 // Forum (B203 7c): /forum (list + new thread), /forum/t/<id> (thread), /forum/reports (staff). Scripts read the path.
 for (const [route, file] of [['/forum', 'forum.html'], ['/forum/t/:id', 'forum-thread.html']]) {
   app.get(route, (req, res) => {
-    res.setHeader('Cache-Control', REVALIDATE);
+    setHtmlHeaders(res);
     res.sendFile(path.join(clientPath, file));
   });
 }
 
 // Replay page (B202): /replay/<gameId> — same HTML for every id; replay.js reads the path.
 app.get('/replay/:id', (req, res) => {
-  res.setHeader('Cache-Control', REVALIDATE);
+  setHtmlHeaders(res);
   res.sendFile(path.join(clientPath, 'replay.html'));
 });
 
@@ -230,7 +230,7 @@ app.get('/history.html', (req, res) => {
 });
 
 app.get('/u/:username', (req, res) => {
-  res.setHeader('Cache-Control', REVALIDATE);
+  setHtmlHeaders(res);
   res.sendFile(path.join(clientPath, 'profile.html'));
 });
 app.use('/api', tournamentGamesRouter);
@@ -240,7 +240,8 @@ app.get('*', (req, res) => {
   // If not an API request, redirect to login
   if (!req.path.startsWith('/api')) {
     // Same policy as express.static gives HTML — this path bypasses its
-    // setHeaders hook, so set it explicitly (TODO.md #106).
+    // setHeaders hook, so set it explicitly (TODO.md #106). Browser policy only: this answers
+    // every unknown URL, so letting the edge cache it would fill the cache with junk keys.
     res.setHeader('Cache-Control', REVALIDATE);
     res.sendFile(path.join(clientPath, 'login.html'));
     return;
