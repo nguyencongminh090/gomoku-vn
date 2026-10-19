@@ -1,5 +1,5 @@
 # B289 — Lobby: one primary action per screen (secondary "Browse open rooms" must not be solid)
-**Status:** OPEN — in progress
+**Status:** ✅ DONE 2026-10-19 — Verified in browser 375/768/1280/1440 (guest): visible filled buttons before = Giao hữu + Xem phòng đang mở; after = Giao hữu only.
 **Area:** client/index.html, client/css/shell.css, client/js/lobby-home.js
 **From:** lobby UI audit (user, 2026-10-19)   **Depends:** —
 

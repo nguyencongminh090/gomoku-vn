@@ -1,5 +1,5 @@
 # B290 — Quick-match card: CTA buttons sit under ~14 same-size chips; move them near the top
-**Status:** OPEN — in progress
+**Status:** ✅ DONE 2026-10-19 — Verified 375-1440: CTA y before 823/683/705/705px (375/768/1280/1440) -> after 307/259/281/281px.
 **Area:** client/index.html, client/css/shell.css, client/js/lobby-home.js
 **From:** lobby UI audit (user, 2026-10-19)   **Depends:** —
 
