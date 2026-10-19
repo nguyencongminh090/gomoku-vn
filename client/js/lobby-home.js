@@ -176,7 +176,7 @@ function renderMine(data) {
   }
   if (!box.children.length) {
     const empty = el('div', undefined, 'hempty');
-    const go = withIcon(el('button', t('home.find_room'), 'link-action link-action--primary'), 'ph-regular-magnifying-glass');
+    const go = withIcon(el('button', t('home.find_room'), 'link-action'), 'ph-regular-magnifying-glass');
     go.type = 'button';
     go.addEventListener('click', () => showScreen('rooms'));
     empty.append(el('p', t('home.no_games'), 'muted small'), go);

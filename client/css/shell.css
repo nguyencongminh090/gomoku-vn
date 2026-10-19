@@ -201,6 +201,8 @@ body.zen-lobby .hrow .prow__act { padding: 4px 12px; border-radius: 999px; backg
 body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
 body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
 body.zen-lobby .hbullet.on { background: var(--c-brand); }
+body.zen-lobby .hempty .link-action { border: 1px solid var(--c-border); background: transparent; color: var(--c-ink-2); }   /* #289: secondary, the quick-match CTA is the one filled button */
+body.zen-lobby .hempty .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
 body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
 body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wrap: wrap; padding: 4px 4px 8px; }

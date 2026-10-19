@@ -341,6 +341,12 @@ describe('home layout (A7.1)', () => {
     expect(document.querySelector('#home-mine .hempty p').textContent).toBe('home.no_games');
     expect(document.querySelector('#home-mine .hempty button').textContent).toBe('home.find_room');
   });
+
+  it('#289: one primary action — the empty-state "open rooms" button is secondary, the quick-match CTA is the filled one', async () => {
+    await boot('/index.html', EMPTY, { isGuest: false });
+    expect(document.querySelector('#home-mine .hempty button').classList.contains('link-action--primary')).toBe(false);
+    expect([...document.querySelectorAll('#screen-home .link-action--primary')].map((n) => n.closest('#qm-actions') && 'qm')).toEqual(['qm']);
+  });
 });
 
 describe('quick match panel (B197)', () => {
