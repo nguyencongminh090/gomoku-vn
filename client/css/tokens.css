@@ -326,6 +326,7 @@
 
 /* Club avatar fills (#235): skin-independent, each ≥ 4.5:1 under --club-ink. Separate block so the per-skin token-set test ignores it. */
 :root {
+  --radius-pill: 999px;   /* #297: actions (pill) vs chips (rounded rect); skin-independent */
   --club-blue: #1d4ed8;
   --club-green: #15803d;
   --club-red: #b91c1c;
