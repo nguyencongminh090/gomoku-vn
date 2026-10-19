@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#302.** Paper-grid + leaves background still strong at both page edges (follow-up to #296) `[Model: Sonnet]` — [detail](docs/todo/B302-bg-pattern-edges-2.md)
 ✅ - **#301.** Lobby Diễn đàn card: per-post "Xem" and "Xem diễn đàn" are two actions in the same direction `[Model: Sonnet]` — [detail](docs/todo/B301-forum-duplicate-view-actions.md)
 ✅ - **#300.** Lobby: Hôm nay / Đang phát trực tiếp compact rows start the status at different x and have different heights `[Model: Sonnet]` — [detail](docs/todo/B300-qm-todo-rows-align.md)
 ✅ - **#299.** Quick-match "Đang chọn" line larger/bolder; secondary-text contrast re-measured `[Model: Sonnet 5.5]` — [detail](docs/todo/B299-qm-selected-line-and-contrast.md)

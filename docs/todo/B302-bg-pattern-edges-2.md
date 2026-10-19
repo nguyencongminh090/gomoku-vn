@@ -1,5 +1,5 @@
 # B302 — Paper-grid + leaves background still strong at both page edges
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-19 — platform.css only (shared by every body.pl page): leaves x.75 → x.6 (desktop), x.45 → x.35 (<=820px); grid fade band 8% → 14% per side. Edge-strip luminance std with all content hidden (left/right ~8% of width, guest, lobby): 1440 dark L 4.64→3.53 R 6.09→4.70; 1440 light L 4.79→3.67 R 3.88→2.88; 1920 dark L 4.67→3.60 R 5.93→4.62; 375 dark L 2.50→1.71 R 2.81→1.93 (about -23…-32%). Centre column untouched. Checked by eye 1440 dark+light. Not checked: other platform pages (rankings/profile), 768/1280 screenshots, a real ultrawide.
 **Area:** client/css/platform.css (shared body.pl / zen-lobby pattern)
 **From:** lobby UI audit round 2 (user, 2026-10-19)   **Depends:** B296
 
