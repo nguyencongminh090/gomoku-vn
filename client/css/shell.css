@@ -202,13 +202,19 @@ body.zen-lobby .hrow:hover .prow__act { color: var(--c-ink); }
 body.zen-lobby .hbullet { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--c-ink-3); }
 body.zen-lobby .hbullet.on { background: var(--c-brand); }
 /* #289 + #295: every navigational "view" action in a lobby card is one quiet outline — empty-state buttons, the forum link, the row's action pill; the quick-match CTA is the only filled button. */
-body.zen-lobby :is(.hempty .link-action, .hmore), body.zen-lobby .hrow .prow__act { border: 1px solid color-mix(in srgb, var(--c-ink-2) 75%, var(--c-surface)); background: transparent; color: var(--c-ink-2); }
+body.zen-lobby :is(.hempty .link-action, .hmore), body.zen-lobby .hrow .prow__act { border-radius: var(--radius-pill); border: 1px solid color-mix(in srgb, var(--c-ink-2) 75%, var(--c-surface)); background: transparent; color: var(--c-ink-2); }
 body.zen-lobby :is(.hempty .link-action, .hmore):hover { background: var(--c-fill); color: var(--c-ink); }
 body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; padding: 8px 16px; margin: 0; }
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
 /* #294: an empty Hôm nay / Diễn đàn / Live card is one wrapped row — title, message, entry link — not a full card. */
 body.zen-lobby .ppanel.is-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 12px 20px; }
-body.zen-lobby .ppanel.is-empty .ph2 { margin: 0; }
+body.zen-lobby .ppanel.is-empty { min-height: 64px; }   /* #300: same row height with and without the entry button */
+body.zen-lobby .ppanel.is-empty .ph2 { margin: 0; flex: 0 0 16ch; }   /* #300: shared title column (longest title "Đang phát trực tiếp" ≈ 15.3ch) so every status starts at one x; ch tracks the font, not a pixel guess */
+body.zen-lobby .ppanel.is-empty { flex-wrap: nowrap; }
+body.zen-lobby .ppanel.is-empty :is(.hempty > p, .hempty > .link-action, .hmore) { min-width: 0; }
+body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { display: block; flex: 1 1 0; min-width: 0; margin: 0; padding: 0; line-height: 1.4; }   /* the forum's message is itself the .hempty <p> */   /* #300: status takes the middle and may wrap; the entry button keeps its size on the right */
+body.zen-lobby .ppanel.is-empty :is(.hempty > .link-action, .hmore) { flex: none; }
+@media (max-width: 480px) { body.zen-lobby .ppanel.is-empty { flex-wrap: wrap; } body.zen-lobby .ppanel.is-empty .ph2 { flex-basis: 100%; } body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { flex: 1 1 12ch; } }   /* #300: narrow = status under the title */
 body.zen-lobby .ppanel.is-empty :is(.prows, .hlives, .hempty) { display: contents; }
 body.zen-lobby .ppanel.is-empty .hempty { padding: 0; }
 body.zen-lobby .ppanel.is-empty .hmore { margin: 0; }
@@ -226,6 +232,8 @@ body.zen-lobby .hnews__tag { flex: none; font-size: 12px; font-weight: 700; lett
 body.zen-lobby .hnews__body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 body.zen-lobby .hnews__go { flex: none; color: var(--c-ink-2); font-size: 18px; line-height: 1; }
 body.zen-lobby .hmore { margin-top: 8px; }
+body.zen-lobby .hmore.hmore--text { border: 0; border-radius: 0; padding: 4px 2px; min-height: 0; color: var(--c-brand-text); text-decoration: underline; text-underline-offset: 3px; }   /* #301: a plain text link under a list that already has per-row actions; brand-text on card >= 4.5:1 */
+body.zen-lobby .hmore.hmore--text:hover { background: transparent; color: var(--c-ink); }
 body.zen-lobby .habout__lead { margin: 0 0 10px; }
 body.zen-lobby .habout { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13.5px; }
 body.zen-lobby .habout dt { font-weight: 600; }
@@ -237,20 +245,21 @@ body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
 /* A7.1 (ui/grid-leaves-home): two card stacks; quick-match group labels, ✓ on the chosen chip, one dominant CTA, learn progress. */
 body.zen-lobby .hstack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 body.zen-lobby .qm-lbl { margin: 16px 0 8px; font-size: 13px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-2); }
-body.zen-lobby .hp-qm .qm-start + .qm-lbl { margin-top: 0; }
+body.zen-lobby .qm-opt { margin: 0; font-size: 13px; color: var(--c-ink-2); }   /* #298: one-line cue that the groups below can be skipped */
+body.zen-lobby .qm-hint { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--c-ink-2); }   /* #298: shown while Auto is chosen; reserved in the markup so the first render does not shift */
 body.zen-lobby .hp-qm .pchips { margin-bottom: 0; }
 body.zen-lobby .hp-qm .qm-grp { flex-basis: 100%; margin: 4px 0 -2px; font-size: 12px; color: var(--c-ink-3, var(--c-ink-2)); }
 body.zen-lobby .hp-qm .qm-grp:first-child { margin-top: 0; }
-body.zen-lobby .hp-qm #qm-time.is-auto > :not(.is-active) { opacity: .7; transition: opacity .15s; }   /* #293: Auto = no clock preference; NOT :disabled (that means 'searching') */
-body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:not(.is-active):hover, body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:focus-visible { opacity: 1; }
-body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; border: 1px solid color-mix(in srgb, var(--c-ink-2) 75%, var(--c-surface)); }   /* #291: control boundary >= 3:1 (WCAG 1.4.11); was no border, 1.1-1.4:1 */
-body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
+body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:not(.is-active) { background: transparent; color: var(--c-ink-3); }   /* #293/#297: Auto = no clock preference, so the manual chips lose their fill (text 4.5:1, border 3:1 kept; opacity would break both); NOT :disabled (that means 'searching') */
+body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:not(.is-active):hover, body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:focus-visible { background: var(--c-surface-2); color: var(--c-ink); }
+body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; background: var(--c-surface-2); border: 1px solid color-mix(in srgb, var(--c-ink-2) 70%, var(--c-surface)); }   /* #291/#297: boundary >= 3:1 (WCAG 1.4.11) in both modes (62% gave 2.83 in light) from a thin border; the lighter fill, not a heavier line, marks it as a chip */
+body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { background: var(--c-brand); border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
 body.zen-lobby .hp-qm .pchip[aria-pressed="true"]::before { content: '✓'; margin-right: 6px; font-weight: 700; }
 body.zen-lobby .qm-start { margin: 0 0 20px; padding-bottom: 18px; border-bottom: 1px dashed var(--c-border); }   /* #290: CTA first, the chips below only adjust it */
-body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; }
+body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--c-ink); }   /* #299: "Đang chọn: …" is what the CTA will run — read it first */
 body.zen-lobby .qm-start .pactions { margin: 0; gap: 10px; }
-body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 16px; border: 1px solid var(--c-border); background: transparent; color: var(--c-ink-2); font-size: 14px; font-weight: 600; }
-body.zen-lobby #qm-actions .link-action:hover { background: var(--c-fill); color: var(--c-ink); }
+body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 18px; border: 1px solid var(--c-brand-text); border-radius: var(--radius-pill); background: transparent; color: var(--c-brand-text); font-size: 14px; font-weight: 600; }   /* #297: pill + brand outline = an action, never mistaken for a chip (rounded rect + grey fill) */
+body.zen-lobby #qm-actions .link-action:hover { background: var(--c-brand-light); color: var(--c-brand-text); }
 body.zen-lobby #qm-actions .link-action--primary { min-height: 48px; padding: 12px 24px; border-color: transparent; background: var(--c-brand); color: var(--c-on-brand); font-size: 16px; font-weight: 700; box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--c-brand) 70%, #000), inset 0 1px 0 rgba(255,255,255,.25); }
 body.zen-lobby #qm-actions .link-action--primary:hover { background: var(--c-brand-dark); color: var(--c-on-brand); }
 body.zen-lobby .hprog { display: flex; align-items: center; gap: 12px; margin-top: 12px; }

@@ -16,21 +16,21 @@ body.pl::before, body.zen-lobby::before { content: ''; position: fixed; inset: 0
   background-image: linear-gradient(var(--bg-grid) 1px, transparent 1px), linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px),
     linear-gradient(var(--bg-grid-minor) 1px, transparent 1px), linear-gradient(90deg, var(--bg-grid-minor) 1px, transparent 1px);
   background-size: 48px 48px, 48px 48px, 12px 12px, 12px 12px; background-position: 0 0;
-  /* #296: the grid also fades over the outer 8% of each side (intersected with the centre ellipse), so the page edges stay calm. */
-  -webkit-mask-image: radial-gradient(ellipse 110% 85% at 50% 25%, black 0, transparent 78%), linear-gradient(90deg, transparent, black 8%, black 92%, transparent); -webkit-mask-composite: source-in;
-  mask-image: radial-gradient(ellipse 110% 85% at 50% 25%, black 0, transparent 78%), linear-gradient(90deg, transparent, black 8%, black 92%, transparent); mask-composite: intersect; }
+  /* #296/#302: the grid also fades over the outer 14% of each side (was 8%) (intersected with the centre ellipse), so the page edges stay calm. */
+  -webkit-mask-image: radial-gradient(ellipse 110% 85% at 50% 25%, black 0, transparent 78%), linear-gradient(90deg, transparent, black 14%, black 86%, transparent); -webkit-mask-composite: source-in;
+  mask-image: radial-gradient(ellipse 110% 85% at 50% 25%, black 0, transparent 78%), linear-gradient(90deg, transparent, black 14%, black 86%, transparent); mask-composite: intersect; }
 body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
   background-image: url('../assets/patterns/leaves.svg?v=6b12fa47'), url('../assets/patterns/leaves.svg?v=6b12fa47');
   background-repeat: no-repeat; background-size: 1000px 1000px;
   background-position: right -440px top -130px, left -560px bottom -100px;   /* edge keywords: a bare calc(100% - n) would be relative to (box − image) */
-  opacity: calc(var(--bg-leaf-op) * .75); filter: var(--bg-leaf-filter);   /* #296: was the full token value */
+  opacity: calc(var(--bg-leaf-op) * .6); filter: var(--bg-leaf-filter);   /* #296: x.75, #302: x.6 */
   -webkit-mask-image: radial-gradient(circle 310px at calc(100% - 190px) 220px, black 40%, transparent 100%), radial-gradient(circle 320px at 180px calc(100% - 200px), black 40%, transparent 100%);
   mask-image: radial-gradient(circle 310px at calc(100% - 190px) 220px, black 40%, transparent 100%), radial-gradient(circle 320px at 180px calc(100% - 200px), black 40%, transparent 100%); }
 /* dark theme only: green leaves (light theme and zen keep the original neutral art) */
 :root:not([data-mode="light"]):not([data-skin="zen"]) body.pl::after, :root:not([data-mode="light"]):not([data-skin="zen"]) body.zen-lobby::after {
   background-image: url('../assets/patterns/leaves-green.svg?v=1420c01f'), url('../assets/patterns/leaves-green.svg?v=1420c01f'); }
 @media (max-width: 820px) {
-  body.pl::after, body.zen-lobby::after { background-size: 640px 640px; opacity: calc(var(--bg-leaf-op) * .45);
+  body.pl::after, body.zen-lobby::after { background-size: 640px 640px; opacity: calc(var(--bg-leaf-op) * .35);
     background-position: right -280px top -80px, left -360px bottom -80px;
     -webkit-mask-image: radial-gradient(circle 200px at calc(100% - 120px) 140px, black 40%, transparent 100%), radial-gradient(circle 200px at 110px calc(100% - 130px), black 40%, transparent 100%);
     mask-image: radial-gradient(circle 200px at calc(100% - 120px) 140px, black 40%, transparent 100%), radial-gradient(circle 200px at 110px calc(100% - 130px), black 40%, transparent 100%); }
