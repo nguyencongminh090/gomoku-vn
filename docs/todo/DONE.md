@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#304.** Lobby "Hôm nay" empty row: status wraps to 2 lines between title and button `[Model: Sonnet]` — [detail](docs/todo/B304-today-row-status-wrap.md)
 ✅ - **#303.** Quick-match: Auto hint says "below" but presets are above `[Model: Sonnet]` — [detail](docs/todo/B303-qm-hint-position-wording.md)
 ✅ - **#302.** Paper-grid + leaves background still strong at both page edges (follow-up to #296) `[Model: Sonnet]` — [detail](docs/todo/B302-bg-pattern-edges-2.md)
 ✅ - **#301.** Lobby Diễn đàn card: per-post "Xem" and "Xem diễn đàn" are two actions in the same direction `[Model: Sonnet]` — [detail](docs/todo/B301-forum-duplicate-view-actions.md)

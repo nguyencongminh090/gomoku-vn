@@ -1044,7 +1044,7 @@ const TRANSLATIONS = {
     'home.match_Reported': 'chờ xác nhận giờ',
     'home.match_Ready': 'sẵn sàng thi đấu',
     'home.match_Playing': 'đang đấu',
-    'home.no_today': 'Chưa có giải nào đang mở.',
+    'home.no_today': 'Chưa có giải nào.',
     'home.register': 'Đăng ký',
     'home.registered': 'Đã đăng ký',
     'home.view': 'Xem',
