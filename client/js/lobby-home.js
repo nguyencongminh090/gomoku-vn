@@ -212,7 +212,7 @@ function renderStats(data) {
   if (!st) return;
   box.replaceChildren();
   for (const [key, n] of [['online', st.online], ['playing', st.playing], ['searching', st.searching]]) {
-    const item = el('div', undefined, 'hstat');
+    const item = el('div', undefined, 'hstat' + (n ? '' : ' hstat--zero'));
     item.append(el('strong', String(n || 0), 'hstat__n'), el('span', t('home.stat_' + key), 'hstat__l muted small'));
     box.appendChild(item);
   }

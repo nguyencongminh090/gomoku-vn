@@ -25,7 +25,7 @@ describe('lobby layout-shift reservations (B261)', () => {
   );
 
   it('hero title reserves a line while empty; #home-stats ships visible (hidden would shift the panels down)', () => {
-    expect(zen).toMatch(/\.zen-hero__title:empty \{ min-height: 1\.25em;/);
+    expect(zen).toMatch(/\.zen-hero__title:empty \{ min-height: 1\.3em;/);
     expect(html).not.toMatch(/id="home-stats"[^>]*\bhidden\b/);
   });
 

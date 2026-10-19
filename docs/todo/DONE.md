@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#292.** Lobby: flat type hierarchy - greeting and 3 stats near same size; bold "0" draws the eye `[Model: Sonnet 5]` — [detail](docs/todo/B292-lobby-type-hierarchy.md)
 ✅ - **#291.** Lobby contrast: unselected quick-match chips have no boundary (1.1-1.4:1 vs 3:1 required) `[Model: Sonnet 5]` — [detail](docs/todo/B291-lobby-contrast-chip-borders.md)
 ✅ - **#290.** Quick-match card: CTA buttons sit under ~14 same-size chips; move them near the top `[Model: Sonnet 5]` — [detail](docs/todo/B290-qm-cta-near-top.md)
 ✅ - **#289.** Lobby: one primary action per screen (secondary "Browse open rooms" must not be solid) `[Model: Sonnet 5]` — [detail](docs/todo/B289-one-primary-action-lobby.md)
