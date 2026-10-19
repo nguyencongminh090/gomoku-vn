@@ -265,7 +265,9 @@ function renderForum(data) {
     box.appendChild(row(th.title, meta, t('home.view'), () => { location.href = '/forum/t/' + encodeURIComponent(th.id); }));
   }
   if (!box.children.length) box.appendChild(el('p', t('home.no_forum'), 'muted small hempty'));
-  const all = withIcon(el('a', t('home.forum_all'), 'link-action hmore'), 'ph-regular-chat-circle');
+  // #301: with threads listed, each row already has its "Xem" pill — the footer is a quiet "all threads" text link, not a second outlined button; the empty state keeps the outlined entry button (#294).
+  const has = !!(data.forum && data.forum.length);
+  const all = withIcon(el('a', t(has ? 'home.forum_all_threads' : 'home.forum_all'), 'link-action hmore' + (has ? ' hmore--text' : '')), 'ph-regular-chat-circle');
   all.href = '/forum';
   box.appendChild(all);
   flagEmpty(box);

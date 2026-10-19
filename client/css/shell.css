@@ -232,6 +232,8 @@ body.zen-lobby .hnews__tag { flex: none; font-size: 12px; font-weight: 700; lett
 body.zen-lobby .hnews__body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 body.zen-lobby .hnews__go { flex: none; color: var(--c-ink-2); font-size: 18px; line-height: 1; }
 body.zen-lobby .hmore { margin-top: 8px; }
+body.zen-lobby .hmore.hmore--text { border: 0; border-radius: 0; padding: 4px 2px; min-height: 0; color: var(--c-brand-text); text-decoration: underline; text-underline-offset: 3px; }   /* #301: a plain text link under a list that already has per-row actions; brand-text on card >= 4.5:1 */
+body.zen-lobby .hmore.hmore--text:hover { background: transparent; color: var(--c-ink); }
 body.zen-lobby .habout__lead { margin: 0 0 10px; }
 body.zen-lobby .habout { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: 13.5px; }
 body.zen-lobby .habout dt { font-weight: 600; }

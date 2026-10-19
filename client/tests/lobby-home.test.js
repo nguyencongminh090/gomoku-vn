@@ -251,7 +251,12 @@ describe('news, forum, learn, about (#224)', () => {
     expect(document.querySelector('#home-forum img')).toBeNull();
     expect(segs(rows[0])).toEqual(['forum.cat_tactics', 'forum.replies{"n":3}', 'Kim']);
     expect(document.querySelector('#home-forum a.hmore').getAttribute('href')).toBe('/forum');
+    // #301: with threads the footer is a quiet text link with its own label (rows already carry "Xem"); empty keeps the outlined entry button
+    expect(document.querySelector('#home-forum a.hmore').classList.contains('hmore--text')).toBe(true);
+    expect(document.querySelector('#home-forum a.hmore').textContent).toBe('home.forum_all_threads');
     await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-forum a.hmore').classList.contains('hmore--text')).toBe(false);
+    expect(document.querySelector('#home-forum a.hmore').textContent).toBe('home.forum_all');
     expect(document.querySelector('#home-forum .hempty').textContent).toBe('home.no_forum');
     expect(document.querySelector('#home-forum a.hmore')).not.toBeNull();
   });
