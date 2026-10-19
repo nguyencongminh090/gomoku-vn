@@ -244,11 +244,11 @@ body.zen-lobby .hp-qm .qm-grp { flex-basis: 100%; margin: 4px 0 -2px; font-size:
 body.zen-lobby .hp-qm .qm-grp:first-child { margin-top: 0; }
 body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:not(.is-active) { background: transparent; color: var(--c-ink-3); }   /* #293/#297: Auto = no clock preference, so the manual chips lose their fill (text 4.5:1, border 3:1 kept; opacity would break both); NOT :disabled (that means 'searching') */
 body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:not(.is-active):hover, body.zen-lobby .hp-qm #qm-time.is-auto > .pchip:focus-visible { background: var(--c-surface-2); color: var(--c-ink); }
-body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; background: var(--c-surface-2); border: 1px solid color-mix(in srgb, var(--c-ink-2) 62%, var(--c-surface)); }   /* #291/#297: boundary >= 3:1 (WCAG 1.4.11) from a thin border; the lighter fill, not a heavier line, marks it as a chip */
+body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: 14px; background: var(--c-surface-2); border: 1px solid color-mix(in srgb, var(--c-ink-2) 70%, var(--c-surface)); }   /* #291/#297: boundary >= 3:1 (WCAG 1.4.11) in both modes (62% gave 2.83 in light) from a thin border; the lighter fill, not a heavier line, marks it as a chip */
 body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { background: var(--c-brand); border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
 body.zen-lobby .hp-qm .pchip[aria-pressed="true"]::before { content: '✓'; margin-right: 6px; font-weight: 700; }
 body.zen-lobby .qm-start { margin: 0 0 20px; padding-bottom: 18px; border-bottom: 1px dashed var(--c-border); }   /* #290: CTA first, the chips below only adjust it */
-body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; }
+body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; font-size: 14px; font-weight: 600; line-height: 1.5; color: var(--c-ink); }   /* #299: "Đang chọn: …" is what the CTA will run — read it first */
 body.zen-lobby .qm-start .pactions { margin: 0; gap: 10px; }
 body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 18px; border: 1px solid var(--c-brand-text); border-radius: var(--radius-pill); background: transparent; color: var(--c-brand-text); font-size: 14px; font-weight: 600; }   /* #297: pill + brand outline = an action, never mistaken for a chip (rounded rect + grey fill) */
 body.zen-lobby #qm-actions .link-action:hover { background: var(--c-brand-light); color: var(--c-brand-text); }
