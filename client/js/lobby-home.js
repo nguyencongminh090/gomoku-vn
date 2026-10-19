@@ -203,7 +203,7 @@ function renderToday(data) {
   }
   if (!box.children.length) {
     const empty = el('div', undefined, 'hempty');
-    const all = el('a', t('home.see_tournaments'), 'hlink');
+    const all = withIcon(el('a', t('home.see_tournaments'), 'link-action'), 'ph-regular-trophy');
     all.href = '#tournaments';
     empty.append(el('p', t('home.no_today'), 'muted small'), all);
     box.appendChild(empty);
