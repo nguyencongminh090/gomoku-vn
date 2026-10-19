@@ -83,4 +83,3 @@ in the detail file / fix-log).
 - **#287.** Collapsed in-game rail: pending request toast covers the action tiles `[Model: Sonnet 5]` — [detail](docs/todo/B287-collapsed-rail-toast-covers-controls.md)
 - **#286.** Settings-changed chat notice repeats with no detail (ux-audit L2, server) `[Model: Sonnet 5]` — [detail](docs/todo/B286-settings-changed-notice-no-detail.md)
 - **#288.** Quick-match: more time presets (1+1, 7+3, 60/45/30/5s per move), per-game vs per-move groups `[Model: Sonnet 5]` — [detail](docs/todo/B288-more-quickmatch-times.md)
-- **#305.** Lobby "Diễn đàn" empty row: status still wraps at >=1280 (same defect as #304) `[Model: Sonnet]` — [detail](docs/todo/B305-forum-row-status-wrap.md)

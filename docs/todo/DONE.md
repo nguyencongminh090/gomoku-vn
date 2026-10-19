@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#305.** Lobby "Diễn đàn" empty row: status still wraps at >=1280 (same defect as #304) `[Model: Sonnet]` — [detail](docs/todo/B305-forum-row-status-wrap.md)
 ✅ - **#304.** Lobby "Hôm nay" empty row: status wraps to 2 lines between title and button `[Model: Sonnet]` — [detail](docs/todo/B304-today-row-status-wrap.md)
 ✅ - **#303.** Quick-match: Auto hint says "below" but presets are above `[Model: Sonnet]` — [detail](docs/todo/B303-qm-hint-position-wording.md)
 ✅ - **#302.** Paper-grid + leaves background still strong at both page edges (follow-up to #296) `[Model: Sonnet]` — [detail](docs/todo/B302-bg-pattern-edges-2.md)
