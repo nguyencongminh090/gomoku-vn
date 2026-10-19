@@ -1,5 +1,5 @@
 # B293 — Quick-match "Time": when Auto is selected the per-game / per-move rows still look clickable
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-19 — display-only (user said "do #293", no disabled): while Auto is chosen the 2 clock groups (labels + chips) get opacity .7, restored on hover/focus; still clickable, picking one leaves Auto. Verified 375-1440 (guest, dark). Dimmed text contrast 3.8:1 chip text, 3.3:1 group label (below 4.5:1 by design for inactive-looking state).
 **Area:** client/index.html, client/css/shell.css, client/js/lobby-home.js
 **From:** lobby UI audit (user, 2026-10-19)   **Depends:** —
 

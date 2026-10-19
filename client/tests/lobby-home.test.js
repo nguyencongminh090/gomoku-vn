@@ -373,6 +373,16 @@ describe('quick match panel (B197)', () => {
     expect(iconOf(document.getElementById('qm-actions').querySelector('a'))).toBe('ph-regular-boxing-glove');
   });
 
+  it('#293: the clock groups are marked secondary only while Auto is chosen, and stay clickable', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    const box = document.getElementById('qm-time');
+    expect(box.classList.contains('is-auto')).toBe(true);
+    expect(chips('qm-time').every((b) => !b.disabled)).toBe(true);
+    chips('qm-time').find((b) => b.textContent === '3+2').click();
+    expect(document.getElementById('qm-time').classList.contains('is-auto')).toBe(false);
+    expect(pressed('qm-time')).toEqual(['3+2']);
+  });
+
   it('guest: casual only, with the reason in the status line', async () => {
     await boot('/index.html', EMPTY, GUEST);
     expect(buttons()).toEqual(['qm.find_casual']);
