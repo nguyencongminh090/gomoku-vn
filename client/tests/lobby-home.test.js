@@ -175,6 +175,9 @@ describe('dashboard rendering', () => {
     const strip = document.getElementById('home-stats');
     expect(strip.hidden).toBe(false);
     expect([...strip.querySelectorAll('.hstat__n')].map((n) => n.textContent)).toEqual(['12', '3', '2']);
+    await boot('/index.html', { ...DATA, stats: { online: 5, playing: 0, searching: 0 } }); // #292: zero counts are de-emphasised
+    expect([...document.querySelectorAll('#home-stats .hstat')].map((n) => n.classList.contains('hstat--zero'))).toEqual([false, true, true]);
+    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 } });
     await boot('/index.html', DATA);
     expect(document.getElementById('home-stats').hidden).toBe(true);
   });

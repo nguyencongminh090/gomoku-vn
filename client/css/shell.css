@@ -93,7 +93,7 @@ body.zen-lobby { --zen-col: 1180px; }   /* = .papp on the platform pages (B193) 
 body.zen-lobby .lobby { padding: 28px 24px 80px; }
 body.zen-lobby .zen-hero { margin-bottom: 20px; }
 body.zen-lobby .zen-hero__eyebrow { display: none; }
-body.zen-lobby .zen-hero__title { font-size: 22px; font-weight: 700; letter-spacing: 0; }
+body.zen-lobby .zen-hero__title { font-size: 28px; font-weight: 700; letter-spacing: 0; line-height: 1.3; }   /* #292: title 28 > stat 18 > label 13 */
 
 /* Panels: the tab body is one card. */
 body.zen-lobby .tab-panel {
@@ -208,7 +208,8 @@ body.zen-lobby .hlives { display: flex; flex-direction: column; }
 body.zen-lobby .hstats { grid-column: 1 / -1; display: flex; gap: 32px; flex-wrap: wrap; padding: 4px 4px 8px; }
 body.zen-lobby .hstats[hidden] { display: none; }
 body.zen-lobby .hstat { display: flex; align-items: baseline; gap: 8px; }
-body.zen-lobby .hstat__n { font-size: 22px; font-variant-numeric: tabular-nums; }
+body.zen-lobby .hstat__n { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+body.zen-lobby .hstat--zero .hstat__n { font-weight: 400; color: var(--c-ink-3); }   /* #292: an empty count must not out-shout a real one */
 /* #224: admin news line (full width under the stats), forum "see all", About rules list. */
 body.zen-lobby .hnews { grid-column: 1 / -1; }
 body.zen-lobby .hnews[hidden] { display: none; }
@@ -266,7 +267,8 @@ body.zen-lobby #home-stats:empty { min-height: 47px; }
   body.zen-lobby .hstats { gap: 4px 24px; }
   body.zen-lobby #home-stats:empty { min-height: 86px; }
 }
-body.zen-lobby .zen-hero__title:empty { min-height: 1.25em; } /* lobby.js sets the text after load; line-height is 1.25 */
+body.zen-lobby .zen-hero__title:empty { min-height: 1.3em; } /* lobby.js sets the text after load; line-height is 1.3 */
+@media (max-width: 480px) { body.zen-lobby .zen-hero__title { font-size: 24px; } }   /* #292: still > stat 18 */
 
 /* Vào bằng mã (Phòng screen, B210): inline code field next to the create button */
 body.zen-lobby .join-code { position: relative; display: inline-flex; align-items: center; gap: 8px; }
