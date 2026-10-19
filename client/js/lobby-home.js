@@ -417,6 +417,7 @@ export function renderQuickMatch() {
   chipRow('qm-time', QM_TIMES, qm.time, qmTimeLabel, pick('time'));
   const timeBox = document.getElementById('qm-time');
   if (timeBox) {
+    timeBox.classList.toggle('is-auto', qm.time === QM_AUTO); // #293: the two clock groups read as secondary while Auto is chosen (still clickable)
     // Auto chip first, then two labelled groups in the same row.
     const grp = (k) => { const g = el('span', t('qm.grp_' + k), 'qm-grp'); g.setAttribute('aria-hidden', 'true'); return g; };
     const firstMove = timeBox.children[QM_TIMES_GAME.length + 1]; // [auto, ...game, ...move]
