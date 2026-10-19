@@ -1,5 +1,5 @@
 # B296 — Paper-grid + leaves background slightly strong at both page edges
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-19 — platform.css (shared body.pl/zen-lobby pattern, so all platform pages): leaf opacity x0.75 (desktop) / x0.45 (<=820px, was x0.6); grid ::before mask now also fades the outer 8% of each side (mask-composite intersect with the centre ellipse). Centre column untouched. Compared before/after screenshots 1440 dark + light by eye (375-1440 captured, guest); no numeric metric (edge pixel std is dominated by card content). Change is subtle by design.
 **Area:** client/index.html, client/css/shell.css, client/js/lobby-home.js
 **From:** lobby UI audit (user, 2026-10-19)   **Depends:** —
 
