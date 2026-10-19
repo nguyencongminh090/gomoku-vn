@@ -13,7 +13,7 @@
 // (profanity-filter.js is injected the same classic way by room.js on first
 // chat focus, #264; the classifier model is never loaded in the browser).
 import './session.js?v=7d763f30';
-import './i18n.js?v=338a47e0';
+import './i18n.js?v=a173b527';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
 import './socket-client.js?v=13b77de5';

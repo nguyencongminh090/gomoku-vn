@@ -351,11 +351,12 @@ describe('quick match panel (B197)', () => {
   const pressed = (id) => chips(id).filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent);
   const buttons = () => [...document.querySelectorAll('#qm-actions button')].map((b) => b.textContent);
 
-  it('member: 3 rule chips, 4 time chips, Caro VN · 5+3 by default, rated + casual buttons', async () => {
+  it('member: 3 rule chips, Auto + 10 time chips (2 groups), Caro VN · Auto by default, rated + casual buttons', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     expect(chips('qm-rule').map((b) => b.textContent)).toEqual(['rankings.cat_freestyle', 'rankings.cat_standard', 'rankings.cat_caro']);
-    expect(chips('qm-time').map((b) => b.textContent)).toEqual(['1+0', '3+2', '5+3', '10+0']);
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
+    expect(chips('qm-time').map((b) => b.textContent)).toEqual(['qm.time_auto', '1+0', '1+1', '3+2', '5+3', '7+3', '10+0', 'home.per_move{"s":"60"}', 'home.per_move{"s":"45"}', 'home.per_move{"s":"30"}', 'home.per_move{"s":"5"}']);
+    expect([...document.querySelectorAll('#qm-time .qm-grp')].map((n) => n.textContent)).toEqual(['qm.grp_game', 'qm.grp_move']);
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
     expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
     // B212: ▶ on the rated search (Arena mockup), sword on "challenge a friend" — same icon as on profiles.
     const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
@@ -372,7 +373,7 @@ describe('quick match panel (B197)', () => {
   it('picking chips changes the request and is remembered; a saved choice is restored', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     chips('qm-rule')[0].click();
-    chips('qm-time')[0].click();
+    chips('qm-time').find((b) => b.textContent === '1+0').click();
     document.querySelectorAll('#qm-actions button')[0].click();
     expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true, wall: true, portal: false }]);
     expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0', wall: true, portal: false });
@@ -385,7 +386,7 @@ describe('quick match panel (B197)', () => {
 
   it('a bogus saved choice falls back to the defaults', async () => {
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'renju', time: '2+1' } });
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
   });
 
   it('searching: chips lock, Cancel only, elapsed + queue count; cancel emits match:leave', async () => {
@@ -428,21 +429,29 @@ describe('quick-match waiting count (B210)', () => {
   const line = () => document.getElementById('qm-line').textContent;
 
   it('"N đang chờ" for the selected rule|time comes with /api/home; none waiting → no suffix', async () => {
-    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).toContain('qm.in_queue{"n":214}');
-    await boot('/index.html', { ...EMPTY, queue: { 'standard|10+0': 9 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'standard|10+0': 9 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).not.toContain('qm.in_queue');
   });
 
   it('"ước tính N giây" shows only when the server sent an estimate for the selected rule|time', async () => {
-    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'caro|5+3': 8, 'caro|1+0': 2 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'caro|5+3': 8, 'caro|1+0': 2 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).toContain('qm.eta{"s":8}');
-    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'standard|10+0': 8 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'standard|10+0': 8 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).not.toContain('qm.eta');
+  });
+
+  it('count adds auto waiters; an auto pick counts every clock of the rule', async () => {
+    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 4, 'caro|auto': 2, 'caro|1+0': 3, 'standard|auto': 9 } }, MEMBER2);
+    await flush();
+    expect(line()).toContain('qm.in_queue{"n":9}'); // auto: 4 + 2 + 3
+    [...document.querySelectorAll('#qm-time button')].find((b) => b.textContent === '1+0').click();
+    expect(line()).toContain('qm.in_queue{"n":5}'); // 1+0: 3 + auto 2
   });
 
   it('changing the chip re-reads the count for the new rule|time', async () => {
