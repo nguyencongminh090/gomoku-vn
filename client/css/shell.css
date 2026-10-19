@@ -208,7 +208,13 @@ body.zen-lobby .hempty { display: flex; flex-direction: column; align-items: fle
 body.zen-lobby .hlives { display: flex; flex-direction: column; }
 /* #294: an empty Hôm nay / Diễn đàn / Live card is one wrapped row — title, message, entry link — not a full card. */
 body.zen-lobby .ppanel.is-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 12px 20px; }
-body.zen-lobby .ppanel.is-empty .ph2 { margin: 0; }
+body.zen-lobby .ppanel.is-empty { min-height: 64px; }   /* #300: same row height with and without the entry button */
+body.zen-lobby .ppanel.is-empty .ph2 { margin: 0; flex: 0 0 16ch; }   /* #300: shared title column (longest title "Đang phát trực tiếp" ≈ 15.3ch) so every status starts at one x; ch tracks the font, not a pixel guess */
+body.zen-lobby .ppanel.is-empty { flex-wrap: nowrap; }
+body.zen-lobby .ppanel.is-empty :is(.hempty > p, .hempty > .link-action, .hmore) { min-width: 0; }
+body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { display: block; flex: 1 1 0; min-width: 0; margin: 0; padding: 0; line-height: 1.4; }   /* the forum's message is itself the .hempty <p> */   /* #300: status takes the middle and may wrap; the entry button keeps its size on the right */
+body.zen-lobby .ppanel.is-empty :is(.hempty > .link-action, .hmore) { flex: none; }
+@media (max-width: 480px) { body.zen-lobby .ppanel.is-empty { flex-wrap: wrap; } body.zen-lobby .ppanel.is-empty .ph2 { flex-basis: 100%; } body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { flex: 1 1 12ch; } }   /* #300: narrow = status under the title */
 body.zen-lobby .ppanel.is-empty :is(.prows, .hlives, .hempty) { display: contents; }
 body.zen-lobby .ppanel.is-empty .hempty { padding: 0; }
 body.zen-lobby .ppanel.is-empty .hmore { margin: 0; }

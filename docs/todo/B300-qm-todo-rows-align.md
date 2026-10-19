@@ -1,5 +1,5 @@
 # B300 — Lobby: Hôm nay / Đang phát trực tiếp rows misaligned
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-19 — shell.css only: empty cards (.is-empty) get a shared 16ch title column, status in the middle (wraps, line-height 1.4), entry button right, nowrap > 480px; min-height 64px. Fix needed `p.hempty` too (forum's message is itself the .hempty <p>, display:contents made flex rules dead). Measured guest, empty DB: status x identical across the 3 cards at 768 (192), 1280 (941), 1440 (1021) dark+light; heights 64/64/64 (before 62/62/48 at 1440). 375: status under title, x=32 for all; heights 84/84/64 (live has no button — accepted). Not checked: English strings, long data states.
 **Area:** client/css/shell.css (.ppanel.is-empty), client/js/lobby-home.js
 **From:** lobby UI audit round 2 (user, 2026-10-19)   **Depends:** B294
 

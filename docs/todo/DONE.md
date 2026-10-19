@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#300.** Lobby: Hôm nay / Đang phát trực tiếp compact rows start the status at different x and have different heights `[Model: Sonnet]` — [detail](docs/todo/B300-qm-todo-rows-align.md)
 ✅ - **#299.** Quick-match "Đang chọn" line larger/bolder; secondary-text contrast re-measured `[Model: Sonnet 5.5]` — [detail](docs/todo/B299-qm-selected-line-and-contrast.md)
 ✅ - **#298.** Quick-match: "Tuỳ chỉnh (không bắt buộc)" cue + Auto explanation under Thời gian `[Model: Sonnet 5.5]` — [detail](docs/todo/B298-qm-optional-label-auto-hint.md)
 ✅ - **#297.** Quick-match card: fewer same-looking grey boxes — chip fill + thin border, pill secondary/view buttons `[Model: Sonnet 5.5]` — [detail](docs/todo/B297-qm-fewer-borders.md)
