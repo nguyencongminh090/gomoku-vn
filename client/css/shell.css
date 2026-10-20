@@ -307,3 +307,9 @@ body.zen-lobby .join-code__error { position: absolute; top: calc(100% + 4px); le
 body.zen-lobby .prow__t { font-size: var(--text-md); }
 body.zen-lobby :is(.prow__m, .prow__act, .small, .pnote, .pbtn--sm, .pbadge) { font-size: var(--text-xs); }
 body.zen-lobby :is(.pbtn, .pchip, .ptab) { font-size: var(--text-sm); }
+
+/* Room tabs: weight stays equal in every state (500 -> 700 shifted the next tab); the selected tab
+   is already marked by its underline + colour. */
+body.zen-lobby .ptab, body.zen-lobby .ptab[aria-selected="true"] { font-weight: 600; }
+body.zen-lobby .zen-hero__title { text-wrap: balance; }   /* no one-word last line on phones */
+body.zen-lobby .qm-start .qm-line { text-wrap: pretty; }   /* no orphan last word */
