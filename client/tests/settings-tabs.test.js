@@ -124,7 +124,7 @@ describe('settings page tabs', () => {
     const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
     const rule = (sel) => { const i = css.indexOf('\n' + sel + ' {'); return i < 0 ? '' : css.slice(i, css.indexOf('}', i)); };
     expect(rule('.pset__tabs .ptab .icon')).toMatch(/width: var\(--icon-md\)/);
-    expect(rule('.pset__tabs .ptab')).toMatch(/font-size: 14px/);
+    expect(rule('.pset__tabs .ptab')).toMatch(/font-size: calc\(14px \* var\(--fs-scale, 1\)\)/);
     expect(rule('.pset__h2')).not.toMatch(/uppercase/);
     expect(rule('.pset__h2 .icon')).toMatch(/width: var\(--icon-md\)/);
     expect(rule('.pset .pcheck > .icon')).toMatch(/width: var\(--icon-md\)/);
