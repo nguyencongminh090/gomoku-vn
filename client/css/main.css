@@ -87,6 +87,7 @@ input, button, textarea, select { font-family: inherit; }
 
   /* ── Typography ────────────────────────────────────────────────────────── */
   --font: 'Manrope', system-ui, -apple-system, sans-serif;
+  --font-display: 'Fraunces', Georgia, 'Times New Roman', serif;   /* #307: short titles only */
   
   /* ── Animation (Fluid Dynamics) ────────────────────────────────────────── */
   --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);

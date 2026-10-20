@@ -93,7 +93,7 @@ body.zen-lobby { --zen-col: 1180px; }   /* = .papp on the platform pages (B193) 
 body.zen-lobby .lobby { padding: 28px 24px 80px; }
 body.zen-lobby .zen-hero { margin-bottom: 20px; }
 body.zen-lobby .zen-hero__eyebrow { display: none; }
-body.zen-lobby .zen-hero__title { font-size: 28px; font-weight: 700; letter-spacing: 0; line-height: 1.3; }   /* #292: title 28 > stat 18 > label 13 */
+body.zen-lobby .zen-hero__title { font-family: var(--font-display); font-size: 28px; font-weight: 600; letter-spacing: 0; line-height: 1.3; }   /* #292: title 28 > stat 18 > label 13 */
 
 /* Panels: the tab body is one card. */
 body.zen-lobby .tab-panel {
@@ -209,6 +209,7 @@ body.zen-lobby .hlives { display: flex; flex-direction: column; }
 /* #294: an empty Hôm nay / Diễn đàn / Live card is one wrapped row — title, message, entry link — not a full card. */
 body.zen-lobby .ppanel.is-empty { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; padding: 12px 20px; }
 body.zen-lobby .ppanel.is-empty { min-height: 64px; }   /* #300: same row height with and without the entry button */
+body.zen-lobby .ph2 { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: 0; }   /* #307: section titles use the display face; 14px serif is too small to read */
 body.zen-lobby .ppanel.is-empty .ph2 { margin: 0; flex: 0 0 16ch; }   /* #300: shared title column (longest title "Đang phát trực tiếp" ≈ 15.3ch) so every status starts at one x; ch tracks the font, not a pixel guess */
 body.zen-lobby .ppanel.is-empty { flex-wrap: nowrap; }
 body.zen-lobby .ppanel.is-empty :is(.hempty > p, .hempty > .link-action, .hmore) { min-width: 0; }
