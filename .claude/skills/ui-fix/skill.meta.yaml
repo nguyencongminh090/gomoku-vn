@@ -1,0 +1,12 @@
+name: ui-fix
+description: "Fix ui-audit findings in small token-first edits and record a Fix results table; refuses to run without an audit report"
+domain: frontend-ui-design
+tags: ui-fix,visual-design,css,refactor,design-tokens
+apply_when: "applying the findings of a ui-audit report to a web UI or CSS"
+scope: global
+project: ""
+language: en
+knowledge: vbase-color,vbase-typography,vbase-layout-spacing,vbase-eye-flow-scanning,vbase-depth-motion,vbase-visual-principles,vpick-choosing-style
+conflicts: ""
+source: "authored in tree 2026-10-20"
+last_reviewed: 2026-10-20

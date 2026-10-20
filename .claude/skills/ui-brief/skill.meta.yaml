@@ -1,0 +1,12 @@
+name: ui-brief
+description: "Turn a web UI request into a DESIGN.md: fix the facts, shortlist and choose a visual style with the user, outline tokens, layout and forbidden list"
+domain: frontend-ui-design
+tags: ui-brief,visual-design,style-selection,design-brief,frontend
+apply_when: "starting or restyling a website or web app and a visual direction must be chosen before any code"
+scope: global
+project: ""
+language: en
+knowledge: vpick-choosing-style,vpick-style-by-site-type,vpick-brand-attributes,vpick-trends-longevity,vbase-color,vbase-typography,vbase-layout-spacing,vbase-eye-flow-scanning,vbase-depth-motion,vbase-visual-principles
+conflicts: ""
+source: "authored in tree 2026-10-20"
+last_reviewed: 2026-10-20

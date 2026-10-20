@@ -15,6 +15,12 @@ node_modules
 !.claude/skills/design-workflow/**
 !.claude/skills/deep-reasoning/
 !.claude/skills/deep-reasoning/**
+!.claude/skills/ui-brief/
+!.claude/skills/ui-brief/**
+!.claude/skills/ui-audit/
+!.claude/skills/ui-audit/**
+!.claude/skills/ui-fix/
+!.claude/skills/ui-fix/**
 CLAUDE.md.bak
 .DS_Store
 # Submitted diagnostic runs (TODO.md #168) — real players' IPs, geo labels and
