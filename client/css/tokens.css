@@ -337,3 +337,16 @@
   --club-gray: #475569;
   --club-ink: #ffffff;
 }
+
+/* ── Type scale (rem, root 16px) × --fs-scale (main.css: 1, 1.15 from 900px) ───────────
+   Lobby typography round. Floor for secondary text is --text-xs (12px mobile / 13.8px desktop).
+   Hero is clamp() with rem bounds (max 1.75rem <= 2x min 1.5rem) so 200% zoom still scales.
+   Named exceptions kept outside the scale: icons, .pav initials, bell count badge, wordmark. */
+:root {
+  --text-xs:  calc(0.75rem * var(--fs-scale, 1));    /* captions, meta, badges */
+  --text-sm:  calc(0.875rem * var(--fs-scale, 1));   /* nav, chips, helper text, group labels */
+  --text-md:  calc(1rem * var(--fs-scale, 1));       /* row names, paragraphs */
+  --text-lg:  calc(1.25rem * var(--fs-scale, 1));    /* section titles, stat numbers */
+  --text-xl:  calc(clamp(1.5rem, 1.25rem + 1vw, 1.75rem) * var(--fs-scale, 1));   /* page hero */
+  --text-brand: calc(1.4375rem * var(--fs-scale, 1));   /* wordmark (exception) */
+}
