@@ -313,3 +313,10 @@ body.zen-lobby :is(.pbtn, .pchip, .ptab) { font-size: var(--text-sm); }
 body.zen-lobby .ptab, body.zen-lobby .ptab[aria-selected="true"] { font-weight: 600; }
 body.zen-lobby .zen-hero__title { text-wrap: balance; }   /* no one-word last line on phones */
 body.zen-lobby .qm-start .qm-line { text-wrap: pretty; }   /* no orphan last word */
+
+/* ── Tracking: negative letter-spacing only from ~24px up (hero keeps -0.01em) ─────────
+   main.css gives every heading -0.03em and p/li -0.01em; at 12-20px that pulls Vietnamese
+   diacritics into neighbouring letters. .ph2 sets its own tracking. */
+body.zen-lobby :is(h2, h3, h4, h5, h6):not(.ph2) { letter-spacing: 0; }
+body.zen-lobby :is(p, li) { letter-spacing: 0; }
+body.zen-lobby .zen-hero__title { letter-spacing: -0.01em; }
