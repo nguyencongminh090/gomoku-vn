@@ -13,6 +13,8 @@ node_modules
 !.claude/skills/playwright-e2e-safety/**
 !.claude/skills/design-workflow/
 !.claude/skills/design-workflow/**
+!.claude/skills/deep-reasoning/
+!.claude/skills/deep-reasoning/**
 CLAUDE.md.bak
 .DS_Store
 # Submitted diagnostic runs (TODO.md #168) — real players' IPs, geo labels and

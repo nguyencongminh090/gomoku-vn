@@ -36,6 +36,7 @@ UI audit: skill `ux-audit`, site settings (URL, auth, pages, allowlist) in `.aud
 ## Reasoning with knowledge
 Before a design / architecture / security / protocol / UX / storage decision, ground it in a documented note, not habit:
 `docs/knowledge/INDEX.md` first, then SKILLS_TREE `tools/find`. Procedure → `.claude/rules/knowledge.md`.
+Size L / hard-to-reverse decision → skill `deep-reasoning`.
 Precedence: this file, `.claude/rules/*` and user instructions > knowledge notes.
 
 ## Token / quota economy

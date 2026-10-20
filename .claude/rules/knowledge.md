@@ -4,6 +4,7 @@ paths:
   - "docs/notes/**"
 ---
 # Reasoning with knowledge (three steps, stop at first hit)
+Hard / size-L decisions: use skill `deep-reasoning` (this file is its lookup step).
 documented note instead of habit — in this order, stop at the first hit:
 1. **Inline** — `docs/knowledge/INDEX.md` (one line per note; read the index, then ONLY the matched note).
    Holds what we use most: project-specific lessons + copied generic notes (each carries its `source:` path).
