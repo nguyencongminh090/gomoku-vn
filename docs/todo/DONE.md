@@ -2,6 +2,12 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#288.** Quick-match: more time presets (1+1, 7+3, 60/45/30/5s per move), per-game vs per-move groups `[Model: Sonnet 5]` — [detail](docs/todo/B288-more-quickmatch-times.md)
+✅ - **#287.** Collapsed in-game rail: pending request toast covers the action tiles `[Model: Sonnet 5]` — [detail](docs/todo/B287-collapsed-rail-toast-covers-controls.md)
+✅ - **#286.** Settings-changed chat notice repeats with no detail (ux-audit L2, server) `[Model: Sonnet 5]` — [detail](docs/todo/B286-settings-changed-notice-no-detail.md)
+✅ - **#285.** Disabled ranked toggle row misaligned (ux-audit L1) `[Model: Sonnet 5]` — [detail](docs/todo/B285-ranked-toggle-row-misaligned.md)
+✅ - **#284.** Docked rail squeezes board at 769–1024px (ux-audit M1) `[Model: Sonnet 5]` — [detail](docs/todo/B284-rail-tablet-width-board-squeeze.md)
+✅ - **#283.** Rail collapse mid-game hides clocks, controls and request toasts (ux-audit H1) `[Model: Sonnet 5]` — [detail](docs/todo/B283-rail-collapse-hides-clock-controls.md)
 ✅ - **#127.** Gộp CSS theo trang — bỏ `lobby.css` thừa khỏi `room.html` (CLOSED, không làm) `[Model: Sonnet 5]` — [chi tiết](docs/todo/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
 ✅ - **#305.** Lobby "Diễn đàn" empty row: status still wraps at >=1280 (same defect as #304) `[Model: Sonnet]` — [detail](docs/todo/B305-forum-row-status-wrap.md)
 ✅ - **#304.** Lobby "Hôm nay" empty row: status wraps to 2 lines between title and button `[Model: Sonnet]` — [detail](docs/todo/B304-today-row-status-wrap.md)
