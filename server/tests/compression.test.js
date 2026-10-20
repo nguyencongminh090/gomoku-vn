@@ -132,7 +132,7 @@ describe('compression edge cases', () => {
     // nothing and can grow the payload. This pins the default `compressible`
     // content-type filter, which the instruction file says to verify rather
     // than replace with a hand-rolled one.
-    const res = await rawGet('/vendor/fonts/manrope/manrope-latin.woff2', GZIP);
+    const res = await rawGet('/vendor/fonts/nunito/nunito-latin.woff2', GZIP);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-encoding']).toBeUndefined();
