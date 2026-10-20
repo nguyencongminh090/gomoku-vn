@@ -290,3 +290,4 @@
 | 2026-10-18 | #283 Collapsed rail keeps clocks/controls/toasts in your own game | [detail](docs/fix-log/2026-10-18-rail-collapse-keeps-clocks-283.md) |
 | 2026-10-18 | #286 Settings-changed chat notice names what changed; skipped on no-op save | [detail](docs/fix-log/2026-10-18-settings-notice-detail-286.md) |
 | 2026-10-20 | #307 Fraunces display face for lobby hero + section titles (ui/display-serif, unmerged) | [detail](docs/fix-log/2026-10-20-display-serif-fraunces-307.md) |
+| 2026-10-20 | #307 one UI face: Nunito everywhere (Manrope + Fraunces removed), labels sentence case, desktop text x1.15 | [detail](docs/fix-log/2026-10-20-nunito-only-ui-font-307.md) |

@@ -140,15 +140,15 @@ describe('index.html <head> ordering', () => {
     expect(early).toBeLessThan(INDEX_HTML.search(/<link rel="stylesheet" href=/));
   });
 
-  test('font woff2 preloads: crossorigin, real files, URLs the family style.css uses (Manrope + Fraunces #307)', () => {
+  test('font woff2 preloads: crossorigin, real files, URLs the family style.css uses (Nunito)', () => {
     const links = INDEX_HTML.match(/<link rel="preload"[^>]*as="font"[^>]*>/g) || [];
-    expect(links.length).toBe(2);
+    expect(links.length).toBe(1);
     for (const l of links) {
       expect(l).toMatch(/\scrossorigin[\s>]/);
       const href = l.match(/href="([^"]+)"/)[1];
       expect(fs.existsSync(path.join(CLIENT_DIR, href))).toBe(true);
       const family = href.split('/')[2];
-      expect(['manrope', 'fraunces']).toContain(family);
+      expect(['nunito']).toContain(family);
       const css = read('vendor', 'fonts', family, 'style.css');
       expect(css).toContain("url('./" + path.basename(href) + "')");
     }

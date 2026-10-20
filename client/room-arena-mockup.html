@@ -3,12 +3,12 @@
 <title>Play3CR — Phòng (Arena Focus, mockup)</title>
 <meta name="description" content="Front-end mockup only — not wired to the server. #216 Room redesign: board + clock rail (desktop), opp bar / board / my bar / action bar (mobile).">
 <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg">
-<link rel="stylesheet" href="vendor/fonts/manrope/style.css"><link rel="stylesheet" href="vendor/phosphor/regular/style.css">
+<link rel="stylesheet" href="vendor/fonts/nunito/style.css"><link rel="stylesheet" href="vendor/phosphor/regular/style.css">
 <style>
 :root{--bg:#161512;--surface:#262421;--surface-2:#2f2d29;--line:rgba(255,255,255,.10);--line-2:rgba(255,255,255,.06);
 --ink:#e8e6e1;--ink-2:#a8a49b;--ink-3:#9a968c;--brand:#4f7d1c;--brand-text:#8bc34a;--brand-light:rgba(98,153,36,.16);
 --warn:#f2a33a;--warn-bg:rgba(242,163,58,.12);--err:#ef6a6a;--err-bg:rgba(239,106,106,.12);--fill:rgba(255,255,255,.06);--hov:rgba(255,255,255,.04);
---r:5px;--r2:8px;--font:'Manrope',system-ui,sans-serif;--nav-h:48px}
+--r:5px;--r2:8px;--font:'Nunito',system-ui,sans-serif;--nav-h:48px}
 :root[data-mode=light]{--bg:#ecebe8;--surface:#fff;--surface-2:#f4f3f0;--line:rgba(0,0,0,.12);--line-2:rgba(0,0,0,.07);--ink:#2b2926;--ink-2:#5f5b52;--ink-3:#66625a;
 --brand:#4d7c1f;--brand-text:#41701a;--brand-light:rgba(77,124,31,.10);--warn:#8f5500;--warn-bg:rgba(178,106,0,.08);--err:#c62828;--err-bg:rgba(198,40,40,.08);--fill:rgba(0,0,0,.05);--hov:rgba(0,0,0,.035)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -270,10 +270,10 @@ function drawBoard(svg, allowCompact) {
   if (!paper) o.push(`<g fill="${S.stone.line}">${[[3,3],[3,11],[11,3],[11,11],[7,7]].map(([x,y]) => `<circle cx="${c(x)}" cy="${c(y)}" r="3.6"/>`).join('')}</g>`);
   const t = [];
   if (edge) { for (let i = 0; i < N; i++) { t.push(`<text x="${c(i)}" y="${W - m/2}">${LET[i]}</text><text x="${m/2}" y="${c(i)}">${N - i}</text>`); if (!compact) t.push(`<text x="${c(i)}" y="${m/2}">${LET[i]}</text><text x="${W - m/2}" y="${c(i)}">${N - i}</text>`); }
-    o.push(`<g fill="${ink}.7)" font-size="${compact ? 18 : 14}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="Manrope,sans-serif">${t.join('')}</g>`); }
+    o.push(`<g fill="${ink}.7)" font-size="${compact ? 18 : 14}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="Nunito,sans-serif">${t.join('')}</g>`); }
   else { const nums = spiral(N), occ = new Set(MOVES.map(([x,y]) => y*N+x)), u = [];
     for (let k = 0; k < N*N; k++) if (!occ.has(k)) u.push(`<text x="${c(k%N)}" y="${c((k/N)|0)}">${nums[k]}</text>`);
-    o.push(`<g fill="${ink}.72)" font-size="${compact ? 16 : 12}" text-anchor="middle" dominant-baseline="central" font-family="Manrope,sans-serif"${paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`}>${u.join('')}</g>`); }
+    o.push(`<g fill="${ink}.72)" font-size="${compact ? 16 : 12}" text-anchor="middle" dominant-baseline="central" font-family="Nunito,sans-serif"${paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`}>${u.join('')}</g>`); }
   const last = MOVES[MOVES.length - 1];
   if (paper) o.push(`<rect x="${m+last[0]*P+1}" y="${m+last[1]*P+1}" width="${P-2}" height="${P-2}" fill="${MOVES.length % 2 ? S.paper.xColor : S.paper.oColor}" opacity=".14"/>`);
   MOVES.forEach(([x, y], i) => o.push(piece(i % 2, c(x), c(y))));
