@@ -22,7 +22,6 @@ in the detail file / fix-log).
 - **#67.** Xác minh HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không (claim của audit gốc sai — Helmet đã bật HSTS mặc định, cần đo thật trên deploy) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 - **#125.** Cloudflare xoá `ETag` của HTML khi tự nén lại — cần bật "Respect Strong ETags" trên dashboard Cloudflare để khôi phục; không hỏng gì hiện tại (`If-Modified-Since` vẫn trả 304), không gấp `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A125-cloudflare-respect-strong-etags-cho-html.md)
 - **#29.** Trần >6000 người vẫn chưa quy được nguyên nhân — sau khi sửa backlog, `[Model: Opus 5]` — [chi tiết](docs/todo/B29-tran-6000-nguoi-van-chua-quy-duoc-nguyen-nhan-sau-khi-sua.md)
-- **#127.** ⚠️ (làm SAU CÙNG, cùng nhóm STRICT với #126) Gộp CSS theo trang — bỏ `lobby.css` thừa khỏi `room.html` (nạp theo lịch sử tách file, không theo trang) — cần grep xác nhận không class nào của `lobby.css` đang thật sự dùng ở `room.html` trước khi bỏ, xác minh bằng trình duyệt thật (không chỉ đoán) vì dễ vỡ layout âm thầm `[Model: Sonnet 5]` — [chi tiết](docs/todo/B127-gop-css-theo-trang-bo-lobby-css-thua-o-room.md)
   tả tổng quát — hiện tượng thật là **drawer bị thu vào rail đúng lúc modal hiện lên**, và ảnh chụp
   DevTools cho thấy `body.zen-drawer-collapsed` ở viewport ~933px CSS (`#board-area-shell` đo
   `933×773`), tức **trên** breakpoint 768px nên `game:init` không thể là nơi thêm class. Bản sửa
@@ -77,9 +76,3 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
-- **#283.** Rail collapse mid-game hides clocks, controls and request toasts (ux-audit H1) `[Model: Sonnet 5]` — [detail](docs/todo/B283-rail-collapse-hides-clock-controls.md)
-- **#284.** Docked rail squeezes board at 769–1024px (ux-audit M1) `[Model: Sonnet 5]` — [detail](docs/todo/B284-rail-tablet-width-board-squeeze.md)
-- **#285.** Disabled ranked toggle row misaligned (ux-audit L1) `[Model: Sonnet 5]` — [detail](docs/todo/B285-ranked-toggle-row-misaligned.md)
-- **#287.** Collapsed in-game rail: pending request toast covers the action tiles `[Model: Sonnet 5]` — [detail](docs/todo/B287-collapsed-rail-toast-covers-controls.md)
-- **#286.** Settings-changed chat notice repeats with no detail (ux-audit L2, server) `[Model: Sonnet 5]` — [detail](docs/todo/B286-settings-changed-notice-no-detail.md)
-- **#288.** Quick-match: more time presets (1+1, 7+3, 60/45/30/5s per move), per-game vs per-move groups `[Model: Sonnet 5]` — [detail](docs/todo/B288-more-quickmatch-times.md)
