@@ -1,3 +1,6 @@
+✅ - **#319.** /api/clubs/mine 401 console error on every logged-out /clubs.html visit `[Model: Sonnet 5]` — [detail](docs/todo/B319-clubs-logged-out-401-console-error.md)
+✅ - **#320.** Club list search: failed fetch is an unhandled rejection with stale/false status `[Model: Sonnet 5]` — [detail](docs/todo/B320-clubs-list-fetch-failure-feedback.md)
+✅ - **#321.** Club list rows: long description makes one club fill the phone screen `[Model: Sonnet 5]` — [detail](docs/todo/B321-clubs-list-description-clamp.md)
 ✅ - **#322.** Club list rows: two badges squeeze the club name column (name wraps per word) `[Model: Sonnet 5]` — [detail](docs/todo/B322-clubs-list-badges-squeeze-name.md)
 ✅ - **#323.** Create-club form: duplicate-name error looks like a note and is not tied to the field `[Model: Sonnet 5]` — [detail](docs/todo/B323-clubs-create-form-error-not-an-error.md)
 ✅ - **#324.** Club search pill is 33 px tall; focus ring is a square box inside a rounded pill `[Model: Sonnet 5]` — [detail](docs/todo/B324-clubs-search-pill-touch-target-focus.md)

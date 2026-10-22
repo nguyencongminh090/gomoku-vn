@@ -298,3 +298,4 @@
 | 2026-10-22 15:45 | #317 lobby right column <aside> nested in landmark -> <div> (axe), container-query selector follows (+ test) | [detail](docs/fix-log/2026-10-22-lobby-nested-aside-317.md) |
 | 2026-10-22 16:30 | #318 create-room modal defaults to Giao hữu for guests (per-open, + test) | [detail](docs/fix-log/2026-10-22-modal-guest-default-318.md) |
 | 2026-10-22 17:04 | #322 #323 #324 clubs list: invite-only badge + wrap under name, inline create error on field, search pill 44px + pill focus ring (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-form-322-324.md) |
+| 2026-10-22 17:19 | #319 #320 #321 clubs list: no /mine request when logged out, fetch failure shows error + clears list, description clamped to 2 lines (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-load-319-321.md) |
