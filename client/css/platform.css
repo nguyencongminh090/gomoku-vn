@@ -74,6 +74,8 @@ body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; 
 .padd input { width: 100%; box-sizing: border-box; min-height: 38px; padding: 6px 12px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: calc(14px * var(--fs-scale, 1)); }
 .pnote { margin: 12px 0 0; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-2); }
 #tournament-club-note { margin: 0 0 14px; }
+.pnote--error { display: inline-flex; align-items: center; gap: 6px; margin: 0; color: var(--c-error); font-weight: 600; }
+.pnote--error:empty { display: none; }
 .pnote b { color: var(--c-ink); }
 
 /* ── Header card (profile / club) ────────────────────────────────────────── */
@@ -110,6 +112,9 @@ body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; 
 .pbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .psearch { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: var(--radius); background: var(--c-fill); }
 .psearch__icon { color: var(--c-ink-3); }
+.psearch:focus-within { outline: 2px solid var(--c-ink); outline-offset: 2px; }   /* B324: ring on the pill, not the inner input */
+.psearch input:focus-visible { outline: 0 !important; }   /* main.css :focus-visible is !important */
+@media (max-width: 860px) { .psearch { min-height: 44px; } }
 .psearch input { width: 180px; border: 0; background: none; outline: 0; font-size: calc(14px * var(--fs-scale, 1)); }
 
 /* ── Table ───────────────────────────────────────────────────────────────── */
@@ -137,6 +142,11 @@ body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; 
 .prow:last-child { border-bottom: 0; }
 a.prow:hover { background: var(--c-hover); }
 .prow__body { flex: 1; min-width: 0; }
+@media (max-width: 480px) {   /* B322: a badge drops under the name instead of squeezing it */
+  #cl-list .prow { flex-wrap: wrap; row-gap: 6px; }
+  #cl-list .prow__body { flex: 1 1 60%; }
+  #cl-list .prow .pbadge { margin-left: calc(28px + 14px); }
+}
 .prow__t { font-size: calc(15px * var(--fs-scale, 1)); font-weight: 500; overflow-wrap: anywhere; }
 .prow__m { margin-top: 2px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-3); overflow-wrap: anywhere; }
 /* Ticket rows (docs/knowledge/ui-ux/ticket-rows.md) — opt-in per list via .prows--tickets; plain .prow stays for profile/social. */
