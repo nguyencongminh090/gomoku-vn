@@ -36,7 +36,7 @@
 .pbell__btn { position: relative; padding: 6px; background: none; }   /* mockup .icon-btn: bare icon, no fill */
 .pnav__mode .icon, .pbell__btn .icon { width: 20px; height: 20px; }   /* #214: icon-only toolbar buttons = 20 */
 .pbell__btn:hover { background: var(--c-fill); }
-.pbell__badge { position: absolute; top: -4px; right: -4px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--c-accent); color: #1b1208; font-size: calc(10px * var(--fs-scale, 1)); font-weight: 700; line-height: 16px; text-align: center; }   /* mockup: orange dot; dark ink keeps 4.5:1 on it */
+.pbell__badge { position: absolute; top: -4px; right: -4px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--c-accent); color: var(--c-on-accent); font-size: calc(10px * var(--fs-scale, 1)); font-weight: 700; line-height: 16px; text-align: center; }   /* mockup: orange dot; dark ink keeps 4.5:1 on it */
 .pbell__badge[hidden], .pbell__panel[hidden] { display: none; }
 .pbell__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 320px; max-width: calc(100vw - 24px); padding: 8px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
 .pbell__head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px; font-size: var(--text-sm); }
@@ -62,8 +62,9 @@ body.pshell:not(.zen-lobby) .lobby, body.pshell .history { max-width: 1180px; pa
   .pnav__brand { flex: 1; }
   .pnav__right { gap: 8px; }
   .pbell { position: static; }
-  .pnav__mode { min-width: 40px; min-height: 40px; align-items: center; justify-content: center; }
+  .pnav__mode { min-width: 44px; min-height: 44px; align-items: center; justify-content: center; }
   .pbell__panel { position: fixed; left: 12px; right: 12px; top: 62px; width: auto; max-width: none; }
+  .pnav__me { min-width: 44px; min-height: 44px; }   /* B306 */
   .pnav__links, .pnav__me span.pnav__name { display: none; }
   .ptabbar { display: flex; position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; box-sizing: border-box; min-height: calc(var(--ptabbar-h) + env(safe-area-inset-bottom)); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); background: var(--c-bg); border-top: 1px solid var(--c-border); }
   .ptabbar a { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; padding: 6px 0; font-size: var(--text-xs); color: var(--c-ink-3); }

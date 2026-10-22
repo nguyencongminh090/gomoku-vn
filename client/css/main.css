@@ -97,6 +97,17 @@ input, button, textarea, select { font-family: inherit; }
   --duration-fast: 0.2s;
   --duration-normal: 0.4s;
   --duration-slow: 0.7s;
+  --duration-xfast: 0.1s;
+
+  /* ── Layers (z-index scale) ────────────────────────────────────────────── */
+  --z-crop: 100;
+  --z-board-toast: 900;
+  --z-topnav: 1000;
+  --z-banner: 1150;
+  --z-toast: 1200;
+  --z-modal: 2000;
+  --z-settings: 2200;
+  --z-chat: 2500;
 
   /* ── Spacing Scale ──────────────────────────────────────────────────────── */
   --space-1:  4px;
@@ -132,8 +143,8 @@ input, button, textarea, select { font-family: inherit; }
 
 /* ── Entry Animations ────────────────────────────────────────────────────── */
 @keyframes fadeUp {
-  0% { opacity: 0; transform: translateY(24px); filter: blur(4px); }
-  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
+  0% { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 .animate-fade-up {
   animation: fadeUp var(--duration-slow) var(--ease-spring) backwards;
@@ -150,11 +161,13 @@ input, button, textarea, select { font-family: inherit; }
     --duration-fast: 0s;
     --duration-normal: 0s;
     --duration-slow: 0s;
+    --duration-xfast: 0s;
   }
 }
 
 html, body {
   min-height: 100vh;
+  min-height: 100svh;
   /* iOS fix for min-height */
   min-height: 100dvh;
   font-family: var(--font);
@@ -189,11 +202,11 @@ p, li {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1150;
+  z-index: var(--z-banner);
   padding: 10px 16px;
   background: var(--c-warning-bg);
   color: var(--c-warning);
-  font-size: calc(13px * var(--fs-scale, 1));
+  font-size: calc(14px * var(--fs-scale, 1));
   font-weight: 600;
   text-align: center;
   border-bottom: 1px solid var(--c-border);
@@ -222,9 +235,10 @@ p, li {
   top: 16px;
   margin: 0 auto 32px auto;
   max-width: 1200px;
-  z-index: 1000;
+  z-index: var(--z-topnav);
   box-shadow: var(--shadow-sm), var(--shadow-glass-inset);
-  transition: all var(--duration-normal) var(--ease-out);
+  transition: var(--duration-normal) var(--ease-out);
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
 }
 
 .topnav__brand {
@@ -276,7 +290,7 @@ p, li {
 .topnav__room-code { display: none; }
 
 .topnav__badge {
-  font-size: calc(11px * var(--fs-scale, 1));
+  font-size: calc(14px * var(--fs-scale, 1));
   padding: 4px 10px;
   border-radius: 9999px;
   background: var(--c-surface-2);
@@ -296,7 +310,8 @@ p, li {
   border: 1px solid var(--c-border);
   border-radius: 9999px;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: var(--duration-fast) var(--ease-spring);
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
   font-family: var(--font);
   display: flex;
   align-items: center;
@@ -345,7 +360,7 @@ p, li {
 /* ── Language Switcher ────────────────────────────────────────────────────── */
 .lang-switch {
   padding: 4px 10px;
-  font-size: calc(12px * var(--fs-scale, 1));
+  font-size: calc(14px * var(--fs-scale, 1));
   font-weight: 700;
   font-family: var(--font);
   color: var(--c-ink-2);
@@ -354,7 +369,8 @@ p, li {
   border-radius: 9999px;
   cursor: pointer;
   letter-spacing: 0.03em;
-  transition: all var(--duration-fast) var(--ease-in-out);
+  transition: var(--duration-fast) var(--ease-in-out);
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
   text-transform: uppercase;
 }
 .lang-switch:hover {
@@ -375,7 +391,7 @@ p, li {
   top: 32px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 1200;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -389,12 +405,12 @@ p, li {
   border-radius: 9999px;
   font-size: calc(14px * var(--fs-scale, 1));
   font-weight: 600;
-  color: #FFFFFF;
+  color: var(--c-on-ink);
   background: var(--c-ink);
   box-shadow: var(--shadow-lg);
   text-align: center;
   word-break: break-word;
-  animation: toast-in 0.4s var(--ease-spring), toast-out 0.4s var(--ease-out) forwards;
+  animation: toast-in var(--duration-normal) var(--ease-spring), toast-out var(--duration-normal) var(--ease-out) forwards;
   animation-delay: 0s, 3s;
 }
 .toast--error   { background: var(--c-error); }
@@ -402,12 +418,12 @@ p, li {
 .toast--info    { background: var(--c-brand); }
 
 @keyframes toast-in {
-  from { opacity: 0; transform: translateY(-24px) scale(0.95); filter: blur(4px); }
-  to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+  from { opacity: 0; transform: translateY(-24px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes toast-out {
-  0%   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-  100% { opacity: 0; transform: translateY(-16px) scale(0.95); filter: blur(4px); }
+  0%   { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-16px) scale(0.95); }
 }
 
 /* ── Accessibility & Global UX ───────────────────────────────────────────── */

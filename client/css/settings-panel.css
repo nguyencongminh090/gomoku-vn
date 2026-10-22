@@ -8,7 +8,7 @@
 .gset-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2200;
+  z-index: var(--z-settings);
   display: none;
   align-items: flex-end;
   justify-content: center;
@@ -54,7 +54,8 @@
   color: var(--c-ink-2);
   cursor: pointer;
   font-size: calc(16px * var(--fs-scale, 1));
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: var(--duration-fast) var(--ease-out);
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
 }
 .gset-panel__close:hover { background: var(--c-border); color: var(--c-ink); }
 
@@ -70,7 +71,7 @@
 }
 
 .gset-group__title {
-  font-size: calc(11px * var(--fs-scale, 1));
+  font-size: calc(14px * var(--fs-scale, 1));
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -101,7 +102,7 @@
 }
 .gset-segment__opt {
   padding: 6px 12px;
-  font-size: calc(12px * var(--fs-scale, 1));
+  font-size: calc(14px * var(--fs-scale, 1));
   font-weight: 600;
   font-family: var(--font);
   color: var(--c-ink-3);
@@ -110,7 +111,8 @@
   border-radius: 9999px;
   cursor: pointer;
   white-space: nowrap;
-  transition: all var(--duration-fast) var(--ease-out);
+  transition: var(--duration-fast) var(--ease-out);
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
 }
 .gset-segment__opt:hover { color: var(--c-ink); }
 .gset-segment__opt.is-active {
@@ -154,7 +156,7 @@
 }
 .gset-account__name { font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-ink); }
 .gset-account__hint {
-  font-size: calc(13px * var(--fs-scale, 1));
+  font-size: calc(14px * var(--fs-scale, 1));
   color: var(--c-ink-2);
   line-height: 1.5;
   margin-bottom: 12px;
@@ -173,11 +175,12 @@
   text-decoration: none;
   border-radius: 9999px;
   cursor: pointer;
-  transition: all var(--duration-fast) var(--ease-spring);
+  transition: var(--duration-fast) var(--ease-spring);
+  transition-property: background-color, color, border-color, box-shadow, transform, opacity;
   white-space: nowrap;
 }
 .gset-btn--primary {
-  color: #fff;
+  color: var(--c-on-brand);
   background: var(--c-brand);
   border: 1px solid var(--c-brand);
 }
@@ -203,3 +206,4 @@
     max-height: min(70vh, 560px);
   }
 }
+@media (max-width: 860px) { .gset-panel__close { width: 44px; height: 44px; } }   /* B306: touch target */

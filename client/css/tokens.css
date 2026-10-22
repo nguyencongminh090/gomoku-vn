@@ -32,6 +32,9 @@
   --c-brand-text:   #8bc34a;   /* brand-coloured TEXT on dark surfaces: 7.4:1 */
   --c-brand-light:  rgba(98,153,36,0.16);
   --c-on-brand:     #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
 
   --c-accent:       #ee6a20;   /* text/border only; was #d85000 = 3.7:1 on surface, now 4.95:1 (#180) */
   --c-accent-light: rgba(238,106,32,0.16);
@@ -144,6 +147,9 @@
   --c-brand-text: #ececec;
   --c-brand-light: rgba(236,236,236,0.10);
   --c-on-brand: #121212;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
   --c-accent: #f08a4b;
   --c-accent-light: rgba(240,138,75,0.16);
   --c-error: #ef6a6a;
@@ -193,6 +199,9 @@
   --c-brand-text: #1c1c1c;
   --c-brand-light: rgba(28,28,28,0.07);
   --c-on-brand: #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
   --c-accent: #a63d00;
   --c-accent-light: rgba(194,71,0,0.10);
   --c-error: #c62828;
@@ -242,6 +251,9 @@
   --c-brand-text: #a5a0ff;
   --c-brand-light: rgba(129,122,255,0.18);
   --c-on-brand: #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
   --c-accent: #fbbf24;
   --c-accent-light: rgba(251,191,36,0.16);
   --c-error: #ff8585;
@@ -291,6 +303,9 @@
   --c-brand-text: #4338ca;
   --c-brand-light: rgba(79,70,229,0.10);
   --c-on-brand: #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
   --c-accent: #a8500a;
   --c-accent-light: rgba(245,158,11,0.16);
   --c-error: #c62828;
