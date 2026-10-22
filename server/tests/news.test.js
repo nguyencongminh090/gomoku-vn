@@ -2,7 +2,7 @@
 
 /**
  * news.test.js — admin dashboard news (#224): admin-only CRUD on /api/admin/news, and the DB-backed
- * /api/home blocks (news, top-3 forum, learn, newcomer). Real SQL, in-memory DB.
+ * /api/home blocks (news, top-3 forum, learn). Real SQL, in-memory DB.
  */
 
 jest.mock('better-sqlite3', () => {
@@ -156,15 +156,4 @@ describe('/api/home content blocks', () => {
     expect(home(ME('boss')).learn).toEqual({ total: 2, solved: 0 });
   });
 
-  it('newcomer: guests and members with < 5 games; boundary at 4 / 5', () => {
-    expect(home(null).newcomer).toBe(true);
-    expect(home({ userId: 'g', isGuest: true }).newcomer).toBe(true);
-    const g = db.prepare(`INSERT INTO games (id, room_id, black_player_id, white_player_id, black_player_name, white_player_name, winner, reason, board_size, started_at, ended_at)
-      VALUES (?, 'r', 'alice', NULL, 'A', 'G', 'BLACK', 'normal', 15, ?, ?)`);
-    const pg = db.prepare("INSERT INTO player_games (player_id, game_id) VALUES ('alice', ?)");
-    for (let i = 1; i <= 4; i++) { g.run('g' + i, NOW, NOW); pg.run('g' + i); }
-    expect(home(ME('alice')).newcomer).toBe(true);
-    g.run('g5', NOW, NOW); pg.run('g5');
-    expect(home(ME('alice')).newcomer).toBe(false);
-  });
 });

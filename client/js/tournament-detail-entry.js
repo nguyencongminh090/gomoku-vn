@@ -2,7 +2,7 @@
 // it loads as a classic <script> tag in tournament.html instead of an ES
 // import here.
 import './session.js?v=7d763f30';
-import './i18n.js?v=cc38f8a5';
+import './i18n.js?v=7d67ef60';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
 import './platform-shell.js?v=86159d16';
