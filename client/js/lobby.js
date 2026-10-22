@@ -535,7 +535,8 @@ function openModal() {
   // One-click, low-decision path — always start from the fixed preset rather
   // than recalling last-used settings. The user can still open Advanced and
   // tweak before hitting Quick Match/Confirm.
-  applySettingsToForm(LITE_DEFAULT_SETTINGS);
+  // Guests can only play friendly, so preselect it (re-evaluated on every open).
+  applySettingsToForm({ ...LITE_DEFAULT_SETTINGS, ranked: !userInfo.isGuest });
   applyModalMode();
   modalOverlay.classList.add('visible');
 }

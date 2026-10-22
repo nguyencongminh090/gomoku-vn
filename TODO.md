@@ -77,4 +77,4 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#315.** Browser Back from a room bounces straight back into it (mobile) `[Model: Sonnet 5]` — [detail](docs/todo/B315-room-back-button-bounces-into-room.md)
-- **#318.** Create-room modal preselects ranked for guests `[Model: Sonnet 5]` — [detail](docs/todo/B318-create-room-modal-default-mode-for-guest.md)
+- ✅ **#318.** Create-room modal preselects ranked for guests `[Model: Sonnet 5]` — [detail](docs/todo/B318-create-room-modal-default-mode-for-guest.md)
