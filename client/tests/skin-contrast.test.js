@@ -62,6 +62,7 @@ const PAIRS = [
   ['--c-error', '--c-surface', 4.5], ['--c-error', '--c-surface-2', 4.5], ['--c-success', '--c-surface', 4.5], ['--c-warning', '--c-surface', 4.5],
   ['--c-state-playing', '--c-surface', 3], ['--c-state-waiting', '--c-surface', 3], ['--c-state-idle', '--c-surface', 3],
   ['--c-ink', '--c-field', 4.5],
+  ['--c-on-ink', '--c-ink', 4.5],   // toast: text on an ink fill (dark mode had white on light ink)
 ];
 
 describe.each(SKINS.flatMap((s) => MODES.map((m) => [s, m])))('%s / %s', (skin, mode) => {
