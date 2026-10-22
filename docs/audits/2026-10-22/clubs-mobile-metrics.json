@@ -1,0 +1,174 @@
+{
+ "scrollW": 414,
+ "clientW": 414,
+ "tabs": [
+  {
+   "cls": "ptab",
+   "w": 66,
+   "h": 44,
+   "x": 12,
+   "text": "Khám phá"
+  },
+  {
+   "cls": "ptab",
+   "w": 45,
+   "h": 44,
+   "x": 102,
+   "text": "Của tôi"
+  }
+ ],
+ "search": [
+  {
+   "cls": "psearch",
+   "w": 224,
+   "h": 33,
+   "x": 12,
+   "text": ""
+  }
+ ],
+ "create": [
+  {
+   "cls": "pbtn pbtn--primary",
+   "w": 110,
+   "h": 44,
+   "x": 248,
+   "text": "Tạo CLB"
+  }
+ ],
+ "rows": [
+  {
+   "cls": "prow",
+   "w": 362,
+   "h": 239,
+   "x": 26,
+   "text": "VÁVán Cuối1 thành viênMô tả dà"
+  },
+  {
+   "cls": "prow",
+   "w": 362,
+   "h": 69,
+   "x": 26,
+   "text": "NINight Owls1 thành viênTheo l"
+  },
+  {
+   "cls": "prow",
+   "w": 362,
+   "h": 69,
+   "x": 26,
+   "text": "XÓXóm Cờ Chiều1 thành viênMAX "
+  },
+  {
+   "cls": "prow",
+   "w": 362,
+   "h": 239,
+   "x": 26,
+   "text": "TETeam Lá Cải1 thành viênMô tả"
+  }
+ ],
+ "names": [
+  {
+   "cls": "prow__t",
+   "w": 181,
+   "h": 20,
+   "x": 86,
+   "text": "Ván Cuối"
+  },
+  {
+   "cls": "prow__t",
+   "w": 165,
+   "h": 20,
+   "x": 86,
+   "text": "Night Owls"
+  },
+  {
+   "cls": "prow__t",
+   "w": 181,
+   "h": 20,
+   "x": 86,
+   "text": "Xóm Cờ Chiều"
+  },
+  {
+   "cls": "prow__t",
+   "w": 181,
+   "h": 20,
+   "x": 86,
+   "text": "Team Lá Cải"
+  },
+  {
+   "cls": "prow__t",
+   "w": 181,
+   "h": 20,
+   "x": 86,
+   "text": "Gomoku Hà Nội"
+  },
+  {
+   "cls": "prow__t",
+   "w": 165,
+   "h": 20,
+   "x": 86,
+   "text": "Blue Dragon Club"
+  }
+ ],
+ "badges": [
+  {
+   "cls": "pbadge",
+   "w": 89,
+   "h": 31,
+   "x": 283,
+   "text": "Công khai"
+  },
+  {
+   "cls": "pbadge",
+   "w": 105,
+   "h": 31,
+   "x": 267,
+   "text": "Theo lời mời"
+  },
+  {
+   "cls": "pbadge",
+   "w": 89,
+   "h": 31,
+   "x": 283,
+   "text": "Công khai"
+  },
+  {
+   "cls": "pbadge",
+   "w": 89,
+   "h": 31,
+   "x": 283,
+   "text": "Công khai"
+  }
+ ],
+ "body": [
+  {
+   "cls": "prow__body",
+   "w": 181,
+   "h": 215,
+   "x": 86,
+   "text": "Ván Cuối1 thành viênMô tả dài:"
+  },
+  {
+   "cls": "prow__body",
+   "w": 165,
+   "h": 45,
+   "x": 86,
+   "text": "Night Owls1 thành viên"
+  },
+  {
+   "cls": "prow__body",
+   "w": 181,
+   "h": 45,
+   "x": 86,
+   "text": "Xóm Cờ Chiều1 thành viênMAX SP"
+  },
+  {
+   "cls": "prow__body",
+   "w": 181,
+   "h": 215,
+   "x": 86,
+   "text": "Team Lá Cải1 thành viênMô tả d"
+  }
+ ],
+ "pager": [],
+ "searchFont": "14px"
+}

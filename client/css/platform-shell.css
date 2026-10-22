@@ -19,7 +19,7 @@
 .pnav__acct { position: relative; }
 .pnav__me { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; font-size: var(--text-sm); font-weight: 600; line-height: 1.2; }
 .pnav__me > .icon { color: var(--c-ink-3); width: 16px; height: 16px; }
-.pnav__menu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 30; min-width: 210px; padding: 6px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0,0,0,.35); }
+.pnav__menu { position: absolute; right: 0; top: calc(100% + 10px); z-index: 30; min-width: 210px; padding: 6px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: var(--shadow-pop); }
 .pnav__menu[hidden], .pnav__item[hidden] { display: none; }
 .pnav__menu hr { margin: 6px 0; border: 0; border-top: 1px solid var(--c-border); }
 .pnav__item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: var(--radius); background: none; cursor: pointer; text-align: left; font-size: var(--text-sm); font-weight: 500; color: var(--c-ink); }
@@ -38,7 +38,7 @@
 .pbell__btn:hover { background: var(--c-fill); }
 .pbell__badge { position: absolute; top: -4px; right: -4px; min-width: 16px; padding: 0 4px; border-radius: 8px; background: var(--c-accent); color: var(--c-on-accent); font-size: calc(10px * var(--fs-scale, 1)); font-weight: 700; line-height: 16px; text-align: center; }   /* mockup: orange dot; dark ink keeps 4.5:1 on it */
 .pbell__badge[hidden], .pbell__panel[hidden] { display: none; }
-.pbell__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 320px; max-width: calc(100vw - 24px); padding: 8px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.pbell__panel { position: absolute; right: 0; top: calc(100% + 8px); z-index: 30; width: 320px; max-width: calc(100vw - 24px); padding: 8px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-lg, 12px); box-shadow: var(--shadow-pop-soft); }
 .pbell__head { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px; font-size: var(--text-sm); }
 .pbell__link { border: 0; background: none; cursor: pointer; font-size: var(--text-xs); color: var(--c-ink-2); }
 .pbell__link:disabled { opacity: .4; cursor: default; }
