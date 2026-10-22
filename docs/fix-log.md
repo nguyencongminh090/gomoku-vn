@@ -291,3 +291,4 @@
 | 2026-10-18 | #286 Settings-changed chat notice names what changed; skipped on no-op save | [detail](docs/fix-log/2026-10-18-settings-notice-detail-286.md) |
 | 2026-10-20 | #307 Fraunces display face for lobby hero + section titles (ui/display-serif, unmerged) | [detail](docs/fix-log/2026-10-20-display-serif-fraunces-307.md) |
 | 2026-10-20 | #307 one UI face: Nunito everywhere (Manrope + Fraunces removed), labels sentence case, desktop text x1.15 | [detail](docs/fix-log/2026-10-20-nunito-only-ui-font-307.md) |
+| 2026-10-22 | #306 lobby chips/links still 38px: unclosed brace in shell.css nested the 44px rule (+ brace regression test) | [detail](docs/fix-log/2026-10-22-lobby-chip-touch-target-306.md) |
