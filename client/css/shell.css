@@ -249,7 +249,6 @@ body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
 /* A7.1 (ui/grid-leaves-home): two card stacks; quick-match group labels, ✓ on the chosen chip, one dominant CTA, learn progress. */
 body.zen-lobby .hstack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 body.zen-lobby .qm-lbl { margin: 16px 0 8px; font-size: var(--text-sm); font-weight: 700; letter-spacing: 0; color: var(--c-ink-2); }   /* sentence case: tracked all-caps 800 read stiff on Vietnamese */
-body.zen-lobby .qm-opt { margin: 0; font-size: var(--text-sm); color: var(--c-ink-2); }   /* #298: one-line cue that the groups below can be skipped */
 body.zen-lobby .qm-hint { margin: 8px 0 0; font-size: var(--text-sm); line-height: 1.5; color: var(--c-ink-2); }   /* #298: shown while Auto is chosen; reserved in the markup so the first render does not shift */
 body.zen-lobby .hp-qm .pchips { margin-bottom: 0; }
 body.zen-lobby .hp-qm .qm-grp { flex-basis: 100%; margin: 4px 0 -2px; font-size: var(--text-xs); color: var(--c-ink-3, var(--c-ink-2)); }
