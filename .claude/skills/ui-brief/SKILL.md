@@ -1,6 +1,7 @@
 ---
 name: ui-brief
 description: "Choose a visual style for a website and write DESIGN.md before any code. Use for 'design a site', 'pick a style', 'restyle', 'make a design brief', 'ui brief'."
+argument-hint: "[free text describing the site and audience]"
 ---
 
 # UI Brief

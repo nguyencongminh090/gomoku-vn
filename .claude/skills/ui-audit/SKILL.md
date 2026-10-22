@@ -1,6 +1,7 @@
 ---
 name: ui-audit
 description: "Audit an existing web UI against visual-design rules, read-only, and write a cited findings report. Use for 'audit this UI', 'review the visual design', 'check the CSS against DESIGN.md', 'ui audit'."
+argument-hint: "[path or url]"
 ---
 
 # UI Audit
@@ -13,7 +14,7 @@ Note paths in this skill are under `${SKILLS_TREE:-/run/media/ngmint/Data/Progra
 
 1. **Baseline.** Look for `DESIGN.md` in the project root. Read its `Style:` (a `vstyle-*` note name), `## Tokens` and `## Forbidden` sections. No `DESIGN.md`: Baseline is `vbase-only` and the report header says so. `DESIGN.md` exists but has no `Style:` line: skip step 2, Baseline stays `DESIGN.md`.
 2. **Style notes.** With a style, read `knowledge/visual-design/items/<Style>.md` sections "Keep it usable", "Do not use when", "Common mistakes". Match headings by prefix: in some notes "Keep it usable" carries a suffix such as "(Sheikh 2025, ...)".
-3. **Collect the target.** List the files (CSS, SCSS, JSX/TSX, Vue, Svelte, HTML) or screenshots. If the target is a URL without a browser tool, or no screenshots are available, the Mode is `code-only` (with a browser tool a URL can be audited); never invent screenshots. Rules marked "visual" in `detect` are then reported as "not checked (code-only)", not as findings.
+3. **Collect the target.** No target given: audit the current project directory. List the files (CSS, SCSS, JSX/TSX, Vue, Svelte, HTML) or screenshots. If the target is a URL without a browser tool, or no screenshots are available, the Mode is `code-only` (with a browser tool a URL can be audited); never invent screenshots. Rules marked "visual" in `detect` are then reported as "not checked (code-only)", not as findings.
 4. **Run the rules.** Run every row of `references/rules.md` using its `detect` column, and read the cited `note#section` for the reasoning. For focus and contrast rules (PRI-FOCUS-VISIBLE, COL-CONTRAST-*) also read `a11y-wcag-essentials` (in `knowledge/web-development/items/`). Also check `DESIGN.md` Tokens (literals outside tokens) and each Forbidden item.
 5. **Write the report** `ui-audit-YYYY-MM-DD.md` (YYYY-MM-DD is today) in the project root; overwrite it if it already exists. Format:
 

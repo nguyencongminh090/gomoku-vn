@@ -1,6 +1,7 @@
 ---
 name: ui-fix
 description: "Fix the findings of a ui-audit report in small, token-first edits and record a Fix results table. Use for 'fix the audit findings', 'apply the ui-audit report', 'ui fix F3'."
+argument-hint: "[finding ids, e.g. F1 F3]"
 ---
 
 # UI Fix
