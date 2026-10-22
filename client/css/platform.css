@@ -131,6 +131,7 @@ body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; 
 .ptbl .num { text-align: right; font-variant-numeric: tabular-nums; }
 .ptbl .pav { margin-right: 8px; }
 .ptbl a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }   /* F3: name links keep a signifier on touch (no hover) */
+#rk-wrap .ptbl a { text-decoration: none; }   /* rankings table: names are links without underline (other .ptbl tables keep F3 signifier) */
 .ptbl a:hover { text-decoration-thickness: 2px; }
 @media (max-width: 860px) { .ptbl__games { display: none; } }
 .ptbl__prov { margin-left: 2px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-3); }
