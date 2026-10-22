@@ -2,6 +2,9 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#318.** Create-room modal preselects ranked for guests `[Model: Sonnet 5]` — [detail](docs/todo/B318-create-room-modal-default-mode-for-guest.md)
+✅ - **#316.** Lobby home: rooms entry buried 3 screens down on mobile `[Model: Sonnet 5]` — [detail](docs/todo/B316-lobby-rooms-entry-buried-below-fold.md)
+✅ - **#315.** Browser Back from a room bounces straight back into it (mobile) `[Model: Sonnet 5]` — [detail](docs/todo/B315-room-back-button-bounces-into-room.md)
 ✅ - **#317.** Lobby: nested `<aside>` landmark flagged by axe — [detail](docs/todo/B317-lobby-nested-aside-landmark.md)
 ✅ - **#314.** Verify focus ring where outline is removed (lobby.css:572, platform.css:112) `[Model: Haiku 4.5]` — [detail](docs/todo/B314-verify-outline-none-focus-ring.md)
 ✅ - **#313.** lobby-zen.css literal 120ms transitions ignore reduced motion `[Model: Haiku 4.5]` — [detail](docs/todo/B313-lobby-zen-literal-durations-reduced-motion.md)
