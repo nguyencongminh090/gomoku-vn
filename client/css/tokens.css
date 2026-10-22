@@ -356,7 +356,8 @@
 /* ── Type scale (rem, root 16px) × --fs-scale (main.css: 1, 1.15 from 900px) ───────────
    Lobby typography round. Floor for secondary text is --text-xs (12px mobile / 13.8px desktop).
    Hero is clamp() with rem bounds (max 1.75rem <= 2x min 1.5rem) so 200% zoom still scales.
-   Named exceptions kept outside the scale: icons, .pav initials, bell count badge, wordmark. */
+   Named exceptions kept outside the scale: icons, .pav initials, bell count badge, wordmark.
+   #307: 12px floor kept on purpose (ui-audit asked 14px; decided 2026-10-22); test lobby-text-floor. */
 :root {
   --text-xs:  calc(0.75rem * var(--fs-scale, 1));    /* captions, meta, badges */
   --text-sm:  calc(0.875rem * var(--fs-scale, 1));   /* nav, chips, helper text, group labels */
