@@ -298,11 +298,6 @@ function renderLearn(data) {
   }
 }
 
-function renderAbout(data) {
-  const box = document.getElementById('home-about');
-  if (box) box.hidden = !data.newcomer;
-}
-
 export function renderHome(data) {
   lastData = data;
   lastJson = JSON.stringify(data);
@@ -310,7 +305,6 @@ export function renderHome(data) {
   renderNews(data);
   renderMine(data);
   renderLearn(data);
-  renderAbout(data);
   renderToday(data);
   renderForum(data);
   renderLive(data);

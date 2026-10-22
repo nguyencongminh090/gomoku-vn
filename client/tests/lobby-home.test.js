@@ -298,11 +298,9 @@ describe('news, forum, learn, about (#224)', () => {
     expect(document.querySelector('#home-learn').children).toHaveLength(0);
   });
 
-  it.each([[true, false], [false, true], [undefined, true]])('about block: newcomer=%p → hidden=%p', async (newcomer, hidden) => {
-    await boot('/index.html', { ...EMPTY, newcomer });
-    const about = document.getElementById('home-about');
-    expect(about.hidden).toBe(hidden);
-    expect(about.querySelectorAll('dt')).toHaveLength(3); // Freestyle / Standard / Caro VN
+  it('no About block on the home page', async () => {
+    await boot('/index.html', EMPTY);
+    expect(document.getElementById('home-about')).toBeNull();
   });
 });
 
@@ -334,12 +332,12 @@ describe('home layout (A7.1)', () => {
     expect([...qm.querySelector('.qm-start').children].map((c) => c.id)).toEqual(['qm-line', 'qm-actions']);
   });
 
-  it('two card stacks: match + learn (+ about) left; my game, today, forum, live right — each its own card', async () => {
+  it('two card stacks: match + learn left; my game, today, forum, live right — each its own card', async () => {
     await boot('/index.html', EMPTY);
     const stacks = [...document.querySelectorAll('#screen-home > .hstack')];
     expect(stacks).toHaveLength(2);
     const cards = (st) => [...st.children].map((c) => c.classList.contains('ppanel') && c.className.split(' ').find((x) => x.startsWith('hp-')));
-    expect(cards(stacks[0])).toEqual(['hp-qm', 'hp-learn', 'hp-about']);
+    expect(cards(stacks[0])).toEqual(['hp-qm', 'hp-learn']);
     expect(cards(stacks[1])).toEqual(['hp-mine', 'hp-today', 'hp-forum', 'hp-live']);
     expect(stacks[1].querySelector('#home-mine').closest('.ppanel')).toBe(stacks[1].children[0]);
   });
