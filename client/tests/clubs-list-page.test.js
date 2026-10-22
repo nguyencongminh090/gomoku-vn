@@ -37,4 +37,53 @@ describe('clubs list page', () => {
     expect(document.getElementById('cl-create-toggle').hidden).toBe(true);
     expect(document.querySelectorAll('#cl-tabs .ptab')).toHaveLength(1);
   });
+
+  async function boot(listClubs, post) {
+    jest.resetModules();
+    document.body.innerHTML = body('clubs.html');
+    window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
+    global.fetch = jest.fn((url, o) => {
+      if (o && o.method === 'POST') return post;
+      return url.includes('/mine') ? ok({ clubs: [] }) : ok({ clubs: listClubs, pagination: { page: 1, totalPages: 1 } });
+    });
+    require('../js/platform-shell.js');
+    require('../js/clubs.js');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+    await flush(); await flush();
+  }
+
+  it('#322: open club has no policy badge, invite club has one', async () => {
+    await boot([
+      { slug: 'o', name: 'O', joinPolicy: 'open', members: 1, avgRating: 0, description: '' },
+      { slug: 'i', name: 'I', joinPolicy: 'invite', members: 1, avgRating: 0, description: '' },
+    ]);
+    const [open, invite] = document.querySelectorAll('#cl-list .prow');
+    expect(open.querySelectorAll('.pbadge')).toHaveLength(0);
+    expect([...invite.querySelectorAll('.pbadge')].map((b) => b.textContent)).toEqual(['clubs.policy_invite_short']);
+  });
+
+  it('#323: create error marks #cl-name invalid + focused, red message with icon; cleared on input', async () => {
+    await boot([], Promise.resolve({ ok: false, status: 409, json: () => Promise.resolve({ code: 'X', error: 'Tên CLB đã được dùng.' }) }));
+    const name = document.getElementById('cl-name');
+    document.getElementById('cl-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await flush(); await flush();
+    const msg = document.getElementById('cl-form-msg');
+    expect(msg.textContent).toBe('Tên CLB đã được dùng.');
+    expect(msg.getAttribute('role')).toBe('alert');
+    expect(msg.classList.contains('pnote--error')).toBe(true);
+    expect(msg.querySelector('svg.icon')).not.toBeNull();
+    expect(name.getAttribute('aria-invalid')).toBe('true');
+    expect(name.getAttribute('aria-describedby')).toBe('cl-form-msg');
+    expect(document.activeElement).toBe(name);
+    name.dispatchEvent(new Event('input'));
+    expect(name.hasAttribute('aria-invalid')).toBe(false);
+    expect(msg.textContent).toBe('');
+  });
+
+  it('#324: search ring sits on the pill, not the inner input', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).toMatch(/\.psearch:focus-within\s*\{[^}]*outline:\s*2px solid/);
+    expect(css).toMatch(/\.psearch input:focus-visible\s*\{\s*outline:\s*0/);
+    expect(css).toMatch(/max-width:\s*860px\)\s*\{\s*\.psearch\s*\{\s*min-height:\s*44px/);
+  });
 });

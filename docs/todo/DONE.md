@@ -1,3 +1,6 @@
+✅ - **#322.** Club list rows: two badges squeeze the club name column (name wraps per word) `[Model: Sonnet 5]` — [detail](docs/todo/B322-clubs-list-badges-squeeze-name.md)
+✅ - **#323.** Create-club form: duplicate-name error looks like a note and is not tied to the field `[Model: Sonnet 5]` — [detail](docs/todo/B323-clubs-create-form-error-not-an-error.md)
+✅ - **#324.** Club search pill is 33 px tall; focus ring is a square box inside a rounded pill `[Model: Sonnet 5]` — [detail](docs/todo/B324-clubs-search-pill-touch-target-focus.md)
 # DONE — finished TODO items (one line each, newest first when appended at top)
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use

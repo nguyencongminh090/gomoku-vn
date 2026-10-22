@@ -297,3 +297,4 @@
 | 2026-10-22 13:05 | Slash menu listed /ui-audit, /ui-brief, /ui-fix 2-3x: kit installed same-named commands + skills; dropped the 3 wrapper commands (+ collision test) | [detail](docs/fix-log/2026-10-22-claude-ui-command-skill-dupes.md) |
 | 2026-10-22 15:45 | #317 lobby right column <aside> nested in landmark -> <div> (axe), container-query selector follows (+ test) | [detail](docs/fix-log/2026-10-22-lobby-nested-aside-317.md) |
 | 2026-10-22 16:30 | #318 create-room modal defaults to Giao hữu for guests (per-open, + test) | [detail](docs/fix-log/2026-10-22-modal-guest-default-318.md) |
+| 2026-10-22 17:04 | #322 #323 #324 clubs list: invite-only badge + wrap under name, inline create error on field, search pill 44px + pill focus ring (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-form-322-324.md) |
