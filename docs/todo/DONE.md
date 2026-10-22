@@ -2,6 +2,7 @@
 
 Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`. Don't read whole — use
 `node scripts/track.js <N|CODE>` or grep.
+✅ - **#317.** Lobby: nested `<aside>` landmark flagged by axe — [detail](docs/todo/B317-lobby-nested-aside-landmark.md)
 ✅ - **#314.** Verify focus ring where outline is removed (lobby.css:572, platform.css:112) `[Model: Haiku 4.5]` — [detail](docs/todo/B314-verify-outline-none-focus-ring.md)
 ✅ - **#313.** lobby-zen.css literal 120ms transitions ignore reduced motion `[Model: Haiku 4.5]` — [detail](docs/todo/B313-lobby-zen-literal-durations-reduced-motion.md)
 ✅ - **#312.** z-index literals 900–2500, no scale `[Model: Haiku 4.5]` — [detail](docs/todo/B312-css-z-index-scale.md)

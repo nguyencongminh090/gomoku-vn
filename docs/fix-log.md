@@ -295,3 +295,4 @@
 | 2026-10-22 | #307 create-room modal text 10.5/11.5px -> --text-xs (12px floor kept by decision) + floor test | [detail](docs/fix-log/2026-10-22-lobby-text-floor-307.md) |
 | 2026-10-22 12:15 | Toast text unreadable in dark mode: --c-on-ink was white on light --c-ink; dark skins now use their bg colour (+ contrast pair test) | [detail](docs/fix-log/2026-10-22-toast-dark-mode-on-ink.md) |
 | 2026-10-22 13:05 | Slash menu listed /ui-audit, /ui-brief, /ui-fix 2-3x: kit installed same-named commands + skills; dropped the 3 wrapper commands (+ collision test) | [detail](docs/fix-log/2026-10-22-claude-ui-command-skill-dupes.md) |
+| 2026-10-22 15:45 | #317 lobby right column <aside> nested in landmark -> <div> (axe), container-query selector follows (+ test) | [detail](docs/fix-log/2026-10-22-lobby-nested-aside-317.md) |

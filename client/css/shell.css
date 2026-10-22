@@ -217,7 +217,7 @@ body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { display: block; fle
 body.zen-lobby .ppanel.is-empty :is(.hempty > .link-action, .hmore) { flex: none; }
 @media (max-width: 480px) { body.zen-lobby .ppanel.is-empty { flex-wrap: wrap; } body.zen-lobby .ppanel.is-empty .ph2 { flex-basis: 100%; } body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { flex: 1 1 12ch; } }   /* #300: narrow = status under the title */
 /* #305: the right column is only ~320-445px wide in the two-column layout, too narrow for title + status + entry pill on one line (the forum status wrapped). Same stacked row as the phone: status under the title, pill on the right. */
-body.zen-lobby .psplit > aside { container-type: inline-size; }
+body.zen-lobby .psplit > .hstack:last-child { container-type: inline-size; }
 @container (max-width: 520px) { body.zen-lobby .ppanel.is-empty { flex-wrap: wrap; } body.zen-lobby .ppanel.is-empty .ph2 { flex-basis: 100%; } body.zen-lobby .ppanel.is-empty :is(.hempty > p, p.hempty) { flex: 1 1 12ch; } }
 body.zen-lobby .ppanel.is-empty :is(.prows, .hlives, .hempty) { display: contents; }
 body.zen-lobby .ppanel.is-empty .hempty { padding: 0; }
