@@ -293,3 +293,4 @@
 | 2026-10-20 | #307 one UI face: Nunito everywhere (Manrope + Fraunces removed), labels sentence case, desktop text x1.15 | [detail](docs/fix-log/2026-10-20-nunito-only-ui-font-307.md) |
 | 2026-10-22 | #306 lobby chips/links still 38px: unclosed brace in shell.css nested the 44px rule (+ brace regression test) | [detail](docs/fix-log/2026-10-22-lobby-chip-touch-target-306.md) |
 | 2026-10-22 | #307 create-room modal text 10.5/11.5px -> --text-xs (12px floor kept by decision) + floor test | [detail](docs/fix-log/2026-10-22-lobby-text-floor-307.md) |
+| 2026-10-22 12:15 | Toast text unreadable in dark mode: --c-on-ink was white on light --c-ink; dark skins now use their bg colour (+ contrast pair test) | [detail](docs/fix-log/2026-10-22-toast-dark-mode-on-ink.md) |

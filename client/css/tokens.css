@@ -33,7 +33,7 @@
   --c-brand-light:  rgba(98,153,36,0.16);
   --c-on-brand:     #ffffff;
   --c-on-accent: #1b1208;
-  --c-on-ink: #ffffff;
+  --c-on-ink: #161512;
   --c-knob: #ffffff;
 
   --c-accent:       #ee6a20;   /* text/border only; was #d85000 = 3.7:1 on surface, now 4.95:1 (#180) */
@@ -85,6 +85,7 @@
   --c-border-light: rgba(0,0,0,0.07);
 
   --c-ink:          #2b2926;
+  --c-on-ink:       #ffffff;   /* toast text on the dark ink fill; :root (dark) uses the bg colour */
   --c-ink-2:        #5f5b52;
   --c-ink-3:        #66625a;
 
@@ -148,7 +149,7 @@
   --c-brand-light: rgba(236,236,236,0.10);
   --c-on-brand: #121212;
   --c-on-accent: #1b1208;
-  --c-on-ink: #ffffff;
+  --c-on-ink: #121212;
   --c-knob: #ffffff;
   --c-accent: #f08a4b;
   --c-accent-light: rgba(240,138,75,0.16);
@@ -252,7 +253,7 @@
   --c-brand-light: rgba(129,122,255,0.18);
   --c-on-brand: #ffffff;
   --c-on-accent: #1b1208;
-  --c-on-ink: #ffffff;
+  --c-on-ink: #14151c;
   --c-knob: #ffffff;
   --c-accent: #fbbf24;
   --c-accent-light: rgba(251,191,36,0.16);
