@@ -273,9 +273,9 @@ body.zen-lobby .hprog__bar i { display: block; height: 100%; border-radius: 99px
 @media (max-width: 860px) {
   body.zen-lobby .hstack { display: contents; }
   body.zen-lobby .hp-qm { order: 1; } body.zen-lobby .hp-mine { order: 2; } body.zen-lobby .hp-learn { order: 3; }
-  body.zen-lobby .hp-today { order: 4; } body.zen-lobby .hp-forum { order: 5; } body.zen-lobby .hp-live { order: 6; } body.zen-lobby .hp-about { order: 7;   /* B306: 44px touch targets on phones (desktop sizes unchanged) */
+  body.zen-lobby .hp-today { order: 4; } body.zen-lobby .hp-forum { order: 5; } body.zen-lobby .hp-live { order: 6; } body.zen-lobby .hp-about { order: 7; }
+  /* B306: 44px touch targets on phones (desktop sizes unchanged) */
   body.zen-lobby .link-action, body.zen-lobby #qm-actions .link-action, body.zen-lobby .hp-qm .pchip, body.zen-lobby .section-tabs__btn, body.zen-lobby .join-code__input { min-height: 44px; }
-}
 }
 /* B261: these fill only after /api/home; reserve their typical height while empty so .ppanel does not grow (CLS). */
 body.zen-lobby :is(#qm-rule, #qm-time, #qm-board):empty { min-height: 34px; }

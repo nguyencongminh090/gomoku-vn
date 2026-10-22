@@ -1,5 +1,5 @@
 # B306 — Lobby mobile: 22 controls under 44px touch target
-**Status:** ✅ DONE 2026-10-22 — all lobby/settings/platform controls ≥44px at ≤860px (incl. .pswatch). ui-audit/ui-fix loop (5 rounds), code-only; no browser pass yet.
+**Status:** ✅ DONE 2026-10-22 — all lobby/settings/platform controls ≥44px at ≤860px (incl. .pswatch). ui-audit/ui-fix loop (5 rounds), code-only; no browser pass yet. REOPENED-CHECK 2026-10-22: effect only after fix/306 (shell.css brace); see fix-log 2026-10-22-lobby-chip-touch-target-306.
 **Area:** client/css/platform.css (.pchip/.pbtn/.ptab), shell.css (.hp-qm chips), lobby link-actions, .pnav__me, .pnav__mode
 **From:** ui-audit 2026-10-22 (`ui-audit-2026-10-22.md`, finding F1), lobby mobile; recorded, not built   **Depends:** —
 
