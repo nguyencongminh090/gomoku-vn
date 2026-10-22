@@ -17,15 +17,15 @@ else fs.copyFileSync(src, `${src}.bak-pre-ratings-${Date.now()}`);
 
 const db = new Database(target);
 const catOf = new Map(db.prepare('SELECT DISTINCT game_id, category FROM rating_history').all().map((r) => [r.game_id, r.category]));
-const games = db.prepare(`SELECT id, black_player_id b, white_player_id w, winner FROM games
+const games = db.prepare(`SELECT id, black_player_id b, white_player_id w, winner_color FROM games
   WHERE black_player_id IS NOT NULL AND white_player_id IS NOT NULL AND black_player_id != white_player_id
-    AND winner IS NOT NULL ORDER BY ended_at, started_at`).all();
+    AND winner_color IS NOT NULL ORDER BY ended_at, started_at`).all();
 
 db.transaction(() => {
   db.prepare('DELETE FROM rating_history').run();
   db.prepare('DELETE FROM ratings').run();
   for (const g of games) {
-    const winner = g.winner === 'BLACK' ? g.b : g.winner === 'WHITE' ? g.w : g.winner === 'draw' ? 'draw' : null;
+    const winner = g.winner_color === 'BLACK' ? g.b : g.winner_color === 'WHITE' ? g.w : g.winner_color === 'DRAW' ? 'draw' : null;
     if (!winner) continue;
     rateGame(db, { gameId: g.id, category: catOf.get(g.id) || 'freestyle', players: [{ id: g.b }, { id: g.w }], winner });
   }

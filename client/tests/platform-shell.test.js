@@ -42,7 +42,7 @@ describe('platform shell', () => {
   it('mobile tab bar: Xếp hạng uses the crown (mockup), not the podium', () => {
     boot(null);
     const use = document.querySelector('.ptabbar a[data-tab="rankings"] use').getAttribute('href');
-    expect(use).toMatch(/^\/assets\/icons\/phosphor-sprite\.svg\?v=\d+#ph-regular-crown-simple$/);
+    expect(use).toMatch(/^\/assets\/icons\/phosphor-sprite\.svg\?v=[0-9a-f]+#ph-regular-crown-simple$/);
   });
 
   it('signed-out → Tôi tab goes to login', () => {
@@ -50,20 +50,21 @@ describe('platform shell', () => {
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/login.html');
   });
 
-  it('member → Tôi tab and chip point at /u/<username>; chip shows the most-played rating', async () => {
+  it('member → Tôi tab and chip point at /u/<username>; menu header shows the most-played rating, chip stays name-only', async () => {
     boot(MEMBER, { username: 'zed', ratings: {
       freestyle: { rating: 1700.4, games: 3 }, caro: { rating: 1612.2, games: 80 }, standard: { rating: 1500, games: 20 } } });
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('#');
     await flush();
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/u/zed');
-    expect(document.querySelector('.pnav__me small').textContent).toBe('rankings.cat_caro 1612');
+    expect(document.querySelector('.pnav__menu .pnav__who small').textContent).toBe('rankings.cat_caro 1612');
+    expect(document.querySelector('.pnav__me small')).toBeNull();
   });
 
-  it('member with no rated games → "unrated" second line (mockup always has one); /me failure → chip stays inert', async () => {
+  it('member with no rated games → "unrated" under the menu name; /me failure → chip stays inert', async () => {
     boot(MEMBER, { username: 'zed', ratings: {} });
-    expect(document.querySelector('.pnav__me small').textContent).toBe('shell.unrated');
+    expect(document.querySelector('.pnav__who small').textContent).toBe('shell.unrated');
     await flush();
-    expect(document.querySelector('.pnav__me small').textContent).toBe('shell.unrated');
+    expect(document.querySelector('.pnav__who small').textContent).toBe('shell.unrated');
     boot(MEMBER);
     global.fetch = jest.fn(() => Promise.reject(new Error('net')));
     window.PlatformShell.build('clubs');
@@ -159,10 +160,9 @@ describe('platform shell', () => {
     boot(null);
     window.GvnSession = { getUser: () => MEMBER, logout: jest.fn(() => Promise.resolve(false)) };
     global.fetch = jest.fn((url) => Promise.resolve({ ok: true, json: () => Promise.resolve(
-      url === '/api/admin/me' ? { role: 'moderator', permissions: ['admin.access'] }
-        : url === '/api/notifications' ? { items: [], unread: 0 } : { username: 'zed' }) }));
+      url === '/api/shell' ? { me: { username: 'zed' }, admin: { role: 'moderator', permissions: ['admin.access'] }, notifications: { items: [], unread: 0 } } : {}) }));
     window.PlatformShell.build('clubs');
-    expect(document.querySelector('.pnav__item--staff').hidden).toBe(true); // hidden until /api/admin/me answers
+    expect(document.querySelector('.pnav__item--staff').hidden).toBe(true); // hidden until /api/shell answers
     await flush();
     const staff = document.querySelector('.pnav__item--staff');
     expect(staff.hidden).toBe(false);
@@ -172,6 +172,39 @@ describe('platform shell', () => {
     await flush();
     expect(window.GvnSession.logout).toHaveBeenCalled();
     expect(out.disabled).toBe(false); // failed logout leaves the user signed in and the button usable
+  });
+
+  it('B269: a member page makes ONE nav request (/api/shell); fetchMe() reuses its me, no /api/rankings/me', async () => {
+    boot(null);
+    window.GvnSession = { getUser: () => MEMBER };
+    const calls = [];
+    global.fetch = jest.fn((url) => {
+      calls.push(url);
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(
+        url === '/api/shell' ? { me: { username: 'zed', ratings: {} }, admin: { permissions: [] }, notifications: { items: [], unread: 2 } } : {}) });
+    });
+    window.PlatformShell.build('clubs');
+    const r = await window.PlatformShell.fetchMe();
+    expect(r.ok).toBe(true);
+    expect((await r.json()).username).toBe('zed');
+    await flush();
+    expect(calls).toEqual(['/api/shell']);
+    expect(window.PlatformShell.fetchMe()).toBeInstanceOf(Promise);
+  });
+
+  it('B269: fetchMe falls back to /api/rankings/me when the shell call fails; guests never call /api/shell', async () => {
+    boot(null);
+    window.GvnSession = { getUser: () => MEMBER };
+    global.fetch = jest.fn((url) => (url === '/api/shell'
+      ? Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+      : Promise.resolve({ ok: true, json: () => Promise.resolve({ username: 'direct' }) })));
+    window.PlatformShell.build('clubs');
+    expect((await (await window.PlatformShell.fetchMe()).json()).username).toBe('direct');
+    expect(global.fetch.mock.calls.map((c) => c[0])).toContain('/api/rankings/me');
+    window.GvnSession = { getUser: () => ({ userId: 'g', isGuest: true }) };
+    global.fetch.mockClear();
+    await window.PlatformShell.fetchMe();
+    expect(global.fetch.mock.calls.map((c) => c[0])).toEqual(['/api/rankings/me']);
   });
 
   it('mode button flips colour mode through ui-mode.js', () => {

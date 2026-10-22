@@ -148,6 +148,12 @@
     loginEl.textContent = t('puzzles.login_needed');
   }
 
+  /** Guests carry a `guest_…` id (and isGuest in the cached session): /api/rankings/me answers 200 for them too. */
+  function isGuestMe(m) {
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    return !!(u && u.isGuest) || !m || !m.userId || String(m.userId).startsWith('guest_');
+  }
+
   async function init() {
     window.PlatformShell.build('learn');
     const id = decodeURIComponent((location.pathname.match(/^\/puzzle\/([^/]+)/) || [])[1] || '');
@@ -161,13 +167,14 @@
       return showError(t('puzzles.error'));
     }
     try {
-      const me = await fetch('/api/rankings/me', { credentials: 'same-origin' });
-      member = me.ok;
+      const me = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
+      member = me.ok && !isGuestMe(await me.json().catch(() => ({})));
     } catch (_) { member = false; }
     solved = !!puzzle.solved;
 
     viewEl.hidden = false;
     renderInfo();
+    if (!member && !solved) loginEl.hidden = false;
     renderer = new window.BoardRenderer($('pz-canvas'), {
       boardSize: puzzle.boardSize,
       clickMode: 'single',

@@ -1,0 +1,41 @@
+[08:21:27.649] host created http://localhost:3101/room.html?id=%234LM
+[08:21:29.256] geo open 1440: {"rail":{"x":1076,"y":56,"w":364,"h":844,"vis":"visible"},"board":{"x":136,"y":76,"w":804,"h":804,"vis":"visible"},"toggle":{"x":1056,"y":466,"w":20,"h":80,"vis":"visible"},"room":{"x":0,"y":56,"w":1440,"h":844,"vis":"visible"},"docW":1440,"winW":1440,"rx":null,"radius":"0px"}
+[08:21:29.293] shot 01-room-host-open-1440
+[08:21:29.342] host sat slot 1
+[08:21:29.358] guest sat slot 2
+[08:21:30.193] shot 02-seated
+[08:21:30.646] selects: [{"id":"r-boardSize","v":"17","opts":["15","17","19","20"]},{"id":"r-winRule","v":"freestyle","opts":["freestyle","standard","caro"]},{"id":"r-openRule","v":"none","opts":["none","swap2"]},{"id":"r-timerMode","v":"per_move","opts":["per_move","per_game","blitz"]}]
+[08:21:30.679] shot 03-settings-dropdowns
+[08:21:31.498] after board 15: select=15 cells/svg=0 0 668 668
+[08:21:32.113] blitz inc disabled=false
+[08:21:33.137] guest sees settings? {"boardSize":15,"winningRule":"caro","ruleWall":false,"rulePortal":false,"ruleSwap2":true,"ranked":true,"timerMode":"blitz","timerSeconds":60,"timerIncrementSeconds":0}
+[08:21:33.660] geo collapsed: {"rail":{"x":1440,"y":56,"w":364,"h":844,"vis":"hidden"},"board":{"x":319,"y":77,"w":802,"h":802,"vis":"visible"},"toggle":{"x":1420,"y":466,"w":20,"h":80,"vis":"visible"},"room":{"x":0,"y":56,"w":1440,"h":844,"vis":"visible"},"docW":1440,"winW":1440,"rx":null,"radius":"0px"}
+[08:21:33.694] shot 04-collapsed
+[08:21:35.734] after reload collapsed persists: true
+[08:21:36.279] geo reopened: {"rail":{"x":1076,"y":56,"w":364,"h":844,"vis":"visible"},"board":{"x":137,"y":77,"w":802,"h":802,"vis":"visible"},"toggle":{"x":1056,"y":466,"w":20,"h":80,"vis":"visible"},"room":{"x":0,"y":56,"w":1440,"h":844,"vis":"visible"},"docW":1440,"winW":1440,"rx":null,"radius":"0px"}
+[08:21:36.696] keyboard toggle collapsed=true
+[08:21:37.815] chat cleared=true msgs=2 guestSees=7
+[08:21:37.817] chat host: ["guest2045 đã vào phòng.","xin chào ♟ test"]
+[08:21:37.819] chat guest: ["guest7595 đã vào phòng.","Cài đặt phòng đã được thay đổi.","Cài đặt phòng đã được thay đổi.","Cài đặt phòng đã được thay đổi.","Cài đặt phòng đã được thay đổi.","guest2045 đã vào phòng.","guest2045xin chào ♟ test"]
+[08:21:37.864] shot 05-chat
+[08:21:39.426] start modal visible host=false
+[08:21:39.429] users tab visible=false
+[08:21:39.479] shot 06-after-start
+[08:21:39.984] geo 1920x1000: board={"x":327,"y":77,"w":902,"h":902,"vis":"visible"} rail={"x":1556,"y":56,"w":364,"h":944,"vis":"visible"} toggle={"x":1536,"y":516,"w":20,"h":80,"vis":"visible"} overflowX=false
+[08:21:40.038] shot 07-resize-1920
+[08:21:40.544] geo 1280x800: board={"x":107,"y":77,"w":701,"h":701,"vis":"visible"} rail={"x":916,"y":56,"w":364,"h":744,"vis":"visible"} toggle={"x":896,"y":416,"w":20,"h":80,"vis":"visible"} overflowX=false
+[08:21:40.573] shot 07-resize-1280
+[08:21:41.077] geo 1024x768: board={"x":21,"y":103,"w":618,"h":618,"vis":"visible"} rail={"x":660,"y":56,"w":364,"h":712,"vis":"visible"} toggle={"x":640,"y":400,"w":20,"h":80,"vis":"visible"} overflowX=false
+[08:21:41.104] shot 07-resize-1024
+[08:21:41.609] geo 900x700: board={"x":18,"y":128,"w":501,"h":501,"vis":"visible"} rail={"x":536,"y":56,"w":364,"h":644,"vis":"visible"} toggle={"x":516,"y":366,"w":20,"h":80,"vis":"visible"} overflowX=false
+[08:21:41.635] shot 07-resize-900
+[08:21:42.145] geo 768x900: board={"x":86,"y":100,"w":597,"h":597,"vis":"visible"} rail={"x":0,"y":0,"w":0,"h":0,"vis":"visible"} toggle={"x":0,"y":0,"w":0,"h":0,"vis":"visible"} overflowX=false
+[08:21:42.166] shot 07-resize-768
+[08:21:42.674] geo 375x800: board={"x":7,"y":100,"w":361,"h":361,"vis":"visible"} rail={"x":0,"y":0,"w":0,"h":0,"vis":"visible"} toggle={"x":0,"y":0,"w":0,"h":0,"vis":"visible"} overflowX=false
+[08:21:42.702] shot 07-resize-375
+[08:21:42.709] axe load fail page.addScriptTag: Loading the script 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js' violates the following Content Security Policy directive: "script-src 'self' https://static.cloudflareinsights.com". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked.
+[08:21:42.710] axe: null
+[08:21:42.710] console host: ["host error: Loading the script 'https://cdnjs.cloudflare.com/ajax/libs/axe-core/4.9.1/axe.min.js' violates the following Content Security Policy directive: \"script-src 'self' https://static.cloudflareinsights.com\". Note that 'script-src-elem' was not explicitly set, so 'script-src' is used as a fallback. The action has been blocked."]
+[08:21:42.710] console guest: []
+[08:21:42.710] net host: []
+[08:21:42.710] net guest: []

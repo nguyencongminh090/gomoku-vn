@@ -1,4 +1,5 @@
 import { test, expect, Page, BrowserContext } from './helpers/fixtures';
+import { cellPosition } from './helpers/board';
 
 /**
  * TODO.md #152 — `game:move` recovers from a silently dropped packet.
@@ -100,7 +101,7 @@ test.describe('game:move ack / retry / resync (TODO.md #152)', () => {
 
     // ── Set up a normal game through the real UI ──────────────────────────
     const A = await makeGuest('PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     // Wall on would confine the first move to a random zone; this test needs
@@ -116,8 +117,8 @@ test.describe('game:move ack / retry / resync (TODO.md #152)', () => {
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await expect(B.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await A.page.click('#start-modal-btn');
@@ -142,15 +143,8 @@ test.describe('game:move ack / retry / resync (TODO.md #152)', () => {
     async function clickCell(p: Player, id: string, x: number, y: number) {
       await p.page.waitForFunction(
         (u) => (window as any).RoomState?.gameState?.currentTurn === u, id, { timeout: 20000 });
-      await p.page.waitForFunction(
-        () => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
-      const geo = await p.page.evaluate(() => {
-        const g = (window as any).RoomState.boardRenderer.geo;
-        return { cellSize: g.cellSize, originX: g.originX, originY: g.originY };
-      });
-      await p.page.locator('#game-canvas').click({
-        position: { x: geo.originX + (x + 0.5) * geo.cellSize, y: geo.originY + (y + 0.5) * geo.cellSize },
-      });
+      const position = await cellPosition(p.page, x, y);
+      await p.page.locator('#game-canvas').click({ position });
     }
 
     const stoneAt = (p: Player, x: number, y: number) =>

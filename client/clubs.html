@@ -4,18 +4,17 @@
   <meta charset="UTF-8" />
   <!-- Some of these pages are served at /u/<x> or /c/<x>: root-relative base keeps css/js/assets working. -->
   <base href="/" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Play3CR — Câu lạc bộ</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=368" />
-  <link rel="stylesheet" href="css/tokens.css?v=368" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=368" />
-  <link rel="stylesheet" href="css/platform.css?v=368" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=368" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=368">
+  <link rel="stylesheet" href="css/main.css?v=237afa6e" />
+  <link rel="stylesheet" href="css/tokens.css?v=75d051bd" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=c86085ef" />
+  <link rel="stylesheet" href="css/platform.css?v=c7ba5a99" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=33a2079d" />
+  <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
-  <script src="js/ui-mode-preload.js?v=368"></script>
-  <script src="js/skin-preload.js?v=368"></script>
+  <script src="js/skin-preload.js?v=b452e3a9"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -26,9 +25,9 @@
   <div class="pbar">
     <div class="ptabs" id="cl-tabs" role="tablist"></div>
     <div class="pactions" style="margin:0">
-      <label class="psearch"><svg class="icon psearch__icon" width="16" height="16" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-regular-magnifying-glass"></use></svg>
+      <label class="psearch"><svg class="icon psearch__icon" width="16" height="16" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-magnifying-glass"></use></svg>
         <input type="search" id="cl-q" maxlength="30" data-i18n-placeholder="clubs.search_ph" placeholder="Tìm CLB" aria-label="Tìm CLB" /></label>
-      <button type="button" class="pbtn pbtn--primary" id="cl-create-toggle" hidden><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-regular-plus-circle"></use></svg><span data-i18n="clubs.create_open">Tạo CLB</span></button>
+      <button type="button" class="pbtn pbtn--primary" id="cl-create-toggle" hidden><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg><span data-i18n="clubs.create_open">Tạo CLB</span></button>
     </div>
   </div>
   <p id="cl-status" class="pnote" role="status"></p>
@@ -47,7 +46,7 @@
       </select>
       <div class="pform__row">
         <button type="submit" class="pbtn pbtn--primary" data-i18n="clubs.create_btn">Tạo CLB</button>
-        <span id="cl-form-msg" class="pnote" role="status"></span>
+        <span id="cl-form-msg" class="pnote pnote--error" role="alert"></span>
       </div>
     </form>
   </section>
@@ -59,12 +58,12 @@
   </section>
 </main>
 
-<script src="js/i18n.js?v=368"></script>
-<script src="js/ui-mode.js?v=368"></script>
-<script src="js/session.js?v=368"></script>
-<script src="js/audio-manager.js?v=368"></script>
-<script src="js/settings-panel.js?v=368"></script>
-<script src="js/platform-shell.js?v=368"></script>
-<script src="js/clubs.js?v=368"></script>
+<script src="js/i18n.js?v=7d67ef60"></script>
+<script src="js/ui-mode.js?v=3e1ff171"></script>
+<script src="js/session.js?v=7d763f30"></script>
+<script src="js/audio-manager.js?v=f0ca2309"></script>
+<script src="js/settings-panel.js?v=014127cb"></script>
+<script src="js/platform-shell.js?v=86159d16"></script>
+<script src="js/clubs.js?v=0526039e"></script>
 </body>
 </html>

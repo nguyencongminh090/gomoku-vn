@@ -1,5 +1,23 @@
 {
+  "env": {
+    "SKILLS_TREE": "/run/media/ngmint/Data/Programming/Programming/SKILLS/SKILLS_TREE"
+  },
   "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/web-visual/design-gate.sh\"" }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/web-visual/ui-lint.sh\"" }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
@@ -8,6 +26,11 @@
             "command": "node \"${CLAUDE_PROJECT_DIR}/scripts/check-tracking-sync.js\" --hook",
             "timeout": 15
           }
+        ]
+      },
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/web-visual/audit-reminder.sh\"" }
         ]
       }
     ]

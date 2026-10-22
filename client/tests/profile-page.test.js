@@ -25,7 +25,8 @@ const PROFILE = {
 let HISTORY = { hidden: false, points: [{ t: 'a', rating: 1500 }, { t: 'b', rating: 1580 }, { t: 'c', rating: 1650 }], peak: 1700 };
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
-async function boot(profile, status = 200) {
+async function boot(profile, status = 200, pathname = '/u/alice') {
+  window.history.pushState({}, '', pathname);
   jest.resetModules();
   document.body.innerHTML = BODY_HTML;
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
@@ -93,6 +94,12 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-clubs b')).toBeNull();
   });
 
+  it('club rows show the club avatar image the server sent (same source as /clubs and the club page)', async () => {
+    await boot({ ...PROFILE, clubs: [{ slug: 'hn', name: 'HN', role: 'member', members: 3, avatarUrl: '/api/clubs/hn/avatar?v=4' }] });
+    const av = document.querySelector('#pf-clubs a .pav');
+    expect(av.style.backgroundImage).toContain('/api/clubs/hn/avatar?v=4');
+  });
+
   it('shows the history-private note when stats are withheld', async () => {
     await boot({ ...PROFILE, stats: null, recent: [], bio: null });
     expect(document.getElementById('pf-recent-note').textContent).toBe('profile.history_hidden');
@@ -128,14 +135,15 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-joined b')).toBeNull();
   });
 
-  it('shows puzzles solved + level once something is solved; level "—" with a hint until a level reaches the threshold', async () => {
+  it('shows puzzles solved + level once something is solved; no empty level tile until a level reaches the threshold (hint moves to the solved tile)', async () => {
     await boot({ ...PROFILE, puzzles: { solved: 12, level: 'medium', byLevel: {}, threshold: 10 } });
     const text = document.getElementById('pf-stats').textContent;
     expect(text).toContain('profile.puzzles_solved12');
     expect(text).toContain('profile.puzzles_levelpuzzles.level_medium');
     await boot({ ...PROFILE, puzzles: { solved: 3, level: null, byLevel: {}, threshold: 10 } });
-    const dd = [...document.querySelectorAll('#pf-stats div')].find((d) => d.textContent.includes('profile.puzzles_level'));
-    expect(dd.querySelector('dd').textContent).toBe('—');
+    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles_level');
+    expect(document.getElementById('pf-stats').textContent).not.toContain('—');
+    const dd = [...document.querySelectorAll('#pf-stats div')].find((d) => d.textContent.includes('profile.puzzles_solved'));
     expect(dd.title).toBe('profile.puzzles_level_hint{"n":10}');
     await boot({ ...PROFILE, puzzles: { solved: 0, level: null, byLevel: {}, threshold: 10 } });
     expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles');
@@ -296,5 +304,14 @@ describe('profile page', () => {
       await boot({ ...PROFILE, stats: null, recent: [] });
       expect(document.getElementById('pf-more').hidden).toBe(true);
     });
+  });
+});
+
+// Last on purpose: boot() leaves its DOMContentLoaded listener behind, which would fire in later tests.
+describe('profile page without a username (#272)', () => {
+  it('#272 /profile.html without /u/<name> never calls the profile API', async () => {
+    await boot(PROFILE, 200, '/profile.html');
+    expect(global.fetch.mock.calls.some((c) => String(c[0]).includes('/api/profile'))).toBe(false);
+    expect(document.getElementById('pf-status').textContent).toBe('');
   });
 });

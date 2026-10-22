@@ -20,7 +20,7 @@ jest.mock('../managers/SessionManager', () => ({
 jest.mock('../middleware/auth', () => ({
   verifyToken: (req, res, next) => {
     if (!req.headers.cookie) return res.status(401).json({ code: 'AUTH_REQUIRED' });
-    req.user = { userId: req.headers.cookie === 'guest' ? null : req.headers.cookie };
+    req.user = { userId: req.headers.cookie === 'guest' ? 'guest_abc' : req.headers.cookie, isGuest: req.headers.cookie === 'guest' };
     next();
   },
 }));
@@ -102,6 +102,10 @@ describe('submit + validation', () => {
   it('guests/logged-out refused', async () => {
     expect((await submit('guest', good())).status).toBe(403);
     expect((await submit(undefined, good())).status).toBe(401);
+    // #273: a real guest session carries a `guest_…` userId + isGuest — it used to pass the guard and hit an FK 500.
+    const g = await submit('guest', good());
+    expect(g.body.code).toBe('GUEST_FORBIDDEN');
+    expect((await call('GET', '/api/puzzles/mine', 'guest')).status).toBe(403);
   });
 
   it.each([
@@ -329,5 +333,40 @@ describe('walls + portals layout', () => {
     addUser(`lay${_n.length}`);
     const r = await submit(`lay${_n.length}`, good({ layout: bad }));
     expect(r.status).toBe(400);
+  });
+});
+
+describe('GET /mine paging (#279)', () => {
+  beforeAll(() => {
+    addUser('prolific');
+    const ins = db.prepare(`INSERT INTO puzzles (id, author_id, title, prompt, rule, board_size, stones, layout, to_move, mode, answers, level, position_hash, status, created_at, updated_at)
+      VALUES (?, ?, ?, 'p', 'freestyle', 15, '[]', '{}', 'BLACK', 'sequence', '[]', 'easy', ?, 'approved', ?, ?)`);
+    for (let i = 0; i < 45; i++) {
+      const at = new Date(Date.parse(NOW) + i * 1000).toISOString();
+      ins.run(`pm${i}`, U.prolific, `P${i}`, `h${i}`, at, at);
+    }
+  });
+
+  it('returns 20 newest first with pagination; page 3 holds the rest; the total counts all', async () => {
+    const p1 = (await call('GET', '/api/puzzles/mine', 'prolific')).body;
+    expect(p1.puzzles).toHaveLength(20);
+    expect(p1.puzzles[0].title).toBe('P44');
+    expect(p1.pagination).toEqual({ page: 1, limit: 20, total: 45, totalPages: 3 });
+    const p3 = (await call('GET', '/api/puzzles/mine?page=3', 'prolific')).body;
+    expect(p3.puzzles.map((p) => p.title)).toEqual(['P4', 'P3', 'P2', 'P1', 'P0']);
+    expect(p3.pagination.page).toBe(3);
+  });
+
+  it.each(['0', '-2', 'abc'])('page=%s falls back to page 1', async (q) => {
+    const r = (await call('GET', `/api/puzzles/mine?page=${q}`, 'prolific')).body;
+    expect(r.pagination.page).toBe(1);
+    expect(r.puzzles[0].title).toBe('P44');
+  });
+
+  it('a page past the end is empty, and an author sees only their own', async () => {
+    const r = (await call('GET', '/api/puzzles/mine?page=9', 'prolific')).body;
+    expect(r.puzzles).toEqual([]);
+    addUser('nopuz');
+    expect((await call('GET', '/api/puzzles/mine', 'nopuz')).body.pagination.total).toBe(0);
   });
 });

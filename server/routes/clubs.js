@@ -32,6 +32,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { optionalUserId } = require('../utils/optional-user');
 const { verifyToken } = require('../middleware/auth');
+const { rejectGuests } = require('../middleware/guest-guard');
 const { CATEGORIES } = require('../managers/RatingService');
 const svc = require('../managers/ClubService');
 const { CLUB_IMAGE_DIR, KINDS, imageFile } = require('../utils/club-image-store');
@@ -41,10 +42,7 @@ const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 120, keyGenerator });
 
-const write = [verifyToken, (req, res, next) => {
-  if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được CLB.', code: 'GUEST_FORBIDDEN' });
-  next();
-}, writeLimiter, express.json({ limit: '4kb' })];
+const write = [verifyToken, rejectGuests('Khách không dùng được CLB.'), writeLimiter, express.json({ limit: '4kb' })];
 
 /** Wrap a handler: ClubError → its status/code, anything else → errorHandler. */
 const h = (fn) => (req, res, next) => {

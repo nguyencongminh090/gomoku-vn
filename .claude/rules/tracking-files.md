@@ -79,3 +79,9 @@ node scripts/track.js log 5      # last 5 fix-log rows
 - Unsure → pick the larger. A **bug fix always gets a fix-log entry** (S fix: ≤ 12 lines); size only
   decides whether it also needs a todo.
 - Notes expire: at each dev→main checkpoint promote (→ todo / fix-log) or delete.
+
+## Model tier per task (put as `[Model: …]` on the TODO line; re-read at pickup, scope may have shrunk)
+- **Haiku** — pure measurement / reproduce / confirm a flag; no judgement.
+- **Sonnet** — scoped implementation whose todo file already states the approach (default).
+- **Opus** — architecture/security tradeoffs; multi-round root-cause diagnosis (proxy/infra, wire
+  shape, timing) where an early fix tends to patch the visible layer.

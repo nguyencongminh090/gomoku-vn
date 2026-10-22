@@ -20,7 +20,7 @@ jest.mock('../managers/SessionManager', () => ({
 jest.mock('../middleware/auth', () => ({
   verifyToken: (req, res, next) => {
     if (!req.headers.cookie) return res.status(401).json({ code: 'AUTH_REQUIRED' });
-    req.user = { userId: req.headers.cookie === 'guest' ? null : req.headers.cookie };
+    req.user = req.headers.cookie === 'guest' ? { userId: 'guest_abc', isGuest: true } : { userId: req.headers.cookie }; // realistic guest (#280): a guest_… id + isGuest, never a null id
     next();
   },
 }));

@@ -15,6 +15,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const database = require('../db/database');
 const { verifyToken } = require('../middleware/auth');
+const { rejectGuests } = require('../middleware/guest-guard');
 const cheat = require('../managers/CheatReportService');
 
 const router = express.Router();
@@ -133,9 +134,8 @@ const reportLimiter = rateLimit({
   keyGenerator: (req) => ipKeyGenerator(getClientIpFromReq(req) || ''),
 });
 
-router.post('/:id/report', verifyToken, reportLimiter, express.json({ limit: '4kb' }), (req, res, next) => {
+router.post('/:id/report', verifyToken, rejectGuests(), reportLimiter, express.json({ limit: '4kb' }), (req, res, next) => {
   try {
-    if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
     res.json(cheat.report(req.user.userId, req.params.id, req.body || {}));
   } catch (err) {
     if (err instanceof cheat.CheatReportError) return res.status(err.status).json({ error: err.message, code: err.code });

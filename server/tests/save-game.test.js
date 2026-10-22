@@ -180,3 +180,21 @@ describe('handleGameEnd persistence guard (backend fix #3)', () => {
     expect(disconnectSrc).toContain('noScore: true');
   });
 });
+
+describe('saveGame — winner_color (B257)', () => {
+  test.each([
+    ['registered winner', { winner: REGISTERED.id, reason: 'normal' }, 'BLACK'],
+    ['guest winner', { winner: GUEST.id, reason: 'normal' }, 'WHITE'],
+    ['draw', { winner: 'draw', reason: 'board_full' }, 'DRAW'],
+  ])('%s', (_n, result, color) => {
+    const game = gameFixture({ result });
+    database.saveGame(game);
+    expect(rowFor(game.gameId).winner_color).toBe(color);
+  });
+
+  test('interrupted game (no result) stores NULL', () => {
+    const game = gameFixture({ result: null });
+    database.saveGame(game);
+    expect(rowFor(game.gameId).winner_color).toBeNull();
+  });
+});

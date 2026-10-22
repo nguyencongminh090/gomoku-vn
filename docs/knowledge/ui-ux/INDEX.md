@@ -68,3 +68,8 @@ Generic notes: `CLAUDE.md`, `.claude/rules/*` and the `design-workflow` skill wi
 | [vstyle-motion-immersive](vstyle-motion-immersive.md) | Motion-led and immersive styles - kinetic typography, scroll-driven storytelling, parallax,… |
 | [vstyle-retro-nostalgia](vstyle-retro-nostalgia.md) | Retro web styles - Memphis and Corporate Memphis, Y2K, Frutiger Aero, vaporwave, pixel art and 90s… |
 | [vstyle-skeuomorphism-neumorphism](vstyle-skeuomorphism-neumorphism.md) | Skeuomorphism, neumorphism (soft UI) and claymorphism - real-world and soft 3D looks; when realism… |
+
+## Reference only (SKILLS_TREE, not copied)
+| Path | Use when |
+|---|---|
+| `/run/media/ngmint/Data/Programming/Programming/SKILLS/SKILLS_TREE/knowledge/visual-design/items/vbase-eye-flow-scanning.md` | Placing a CTA / laying out by eye-flow (F/Z scan, first-fixation) |

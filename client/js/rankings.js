@@ -137,7 +137,7 @@
 
   async function load() {
     renderTabs();
-    history.replaceState(null, '', '?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+    history.replaceState(null, '', location.pathname + '?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
     try {
       const res = await fetch('/api/rankings?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
       if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -161,7 +161,7 @@
       timer = setTimeout(() => { state.q = qEl.value.trim().slice(0, 30); state.page = 1; load(); }, 250);
     });
     try {
-      const res = await fetch('/api/rankings/me', { credentials: 'same-origin' });
+      const res = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
       if (res.ok) state.mine = await res.json();
     } catch (_) { /* logged out / offline: no personal line */ }
     if (state.mine && state.mine.userId) {

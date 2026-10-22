@@ -14,7 +14,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=368'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=421b7369'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -166,10 +166,41 @@
     }).catch(() => { /* next poll fixes it */ });
   }
 
+  /**
+   * One round trip for what every member page's nav needs (B269): /api/shell =
+   * { me, admin, notifications }. api-early.js may already have it in flight
+   * (index.html). Parsed once and kept SHELL_TTL ms so the page's own script can
+   * reuse `me` (fetchMe) instead of asking /api/rankings/me again.
+   */
+  const SHELL_TTL = 15000;
+  let shellP = null;
+  let shellAt = 0;
+  function loadShell() {
+    if (shellP && Date.now() - shellAt < SHELL_TTL) return shellP;
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    if (!u || u.isGuest) return Promise.resolve(null);
+    const init = { credentials: 'same-origin' };
+    shellAt = Date.now();
+    shellP = (window.GvnEarly ? window.GvnEarly.fetch('/api/shell', init) : fetch('/api/shell', init))
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    return shellP;
+  }
+
+  /** Drop-in for `fetch('/api/rankings/me', …)`: Response-like from the shell payload, else a real fetch. */
+  function fetchMe() {
+    return loadShell().then((b) => (b && b.me
+      ? { ok: true, status: 200, json: () => Promise.resolve(b.me) }
+      : fetch('/api/rankings/me', { credentials: 'same-origin' })));
+  }
+
+  let bellPrimed = false;
   function refreshBell() {
     if (document.hidden) return Promise.resolve();
-    return fetch('/api/notifications', { credentials: 'same-origin' })
-      .then((r) => (r.ok ? r.json() : null))
+    // First call rides the shell payload; every later poll hits /api/notifications.
+    const first = bellPrimed ? Promise.resolve(null) : (bellPrimed = true, loadShell().then((b) => (b && b.notifications) || null));
+    return first
+      .then((pre) => pre || fetch('/api/notifications', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)))
       .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); } })
       .catch(() => { /* offline: keep what we have */ });
   }
@@ -232,13 +263,16 @@
     const av = el('span', initials(user.displayName), 'pav');
     chip.av = av;
     chip.name = user.displayName;
-    const sub = el('small', member ? t('shell.unrated') : t('nav.guest_badge')); // mockup always shows a second line
-    name.append(user.displayName, sub);
+    name.append(user.displayName);   // chip = avatar + name only; rating lives in the menu header
     me.append(av, name, icon('ph-regular-caret-down'));
 
     const menu = el('div', undefined, 'pnav__menu');
     menu.hidden = true;
     menu.setAttribute('role', 'menu');
+    const sub = el('small', member ? t('shell.unrated') : t('nav.guest_badge'));
+    const who = el('div', user.displayName, 'pnav__who');
+    who.append(sub);
+    menu.append(who);
     const item = (tag, iconName, label, href) => {
       const n = el(tag, undefined, 'pnav__item');
       if (href) n.href = href; else n.type = 'button';
@@ -277,7 +311,7 @@
     right.appendChild(wrap);
     if (!member) return;
 
-    fetch('/api/rankings/me', { credentials: 'same-origin' })
+    fetchMe()
       .then((r) => (r.ok ? r.json() : null))
       .then((m) => {
         if (!m) return;
@@ -290,8 +324,8 @@
         }
       })
       .catch(() => { /* chip stays inert */ });
-    fetch('/api/admin/me', { credentials: 'same-origin' })
-      .then((r) => (r.ok ? r.json() : null))
+    loadShell()
+      .then((b) => (b ? b.admin : fetch('/api/admin/me', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null))))
       .then((a) => { if (a && Array.isArray(a.permissions) && a.permissions.includes('admin.access')) admin.hidden = false; })
       .catch(() => { /* no staff entry */ });
   }
@@ -304,11 +338,10 @@
     const nav = el('header', undefined, 'pnav');
     const brand = el('a', undefined, 'pnav__brand');
     brand.href = '/index.html';
-    const logo = document.createElement('img');
-    logo.src = '/assets/brand/logo-mark.svg';
-    logo.alt = '';
-    logo.width = logo.height = 20;
-    brand.append(logo, el('span', 'Play3CR'));
+    // typographic logo: wordmark only, no icon mark; "3CR" carries the brand colour
+    const word = el('span', 'Play', 'pnav__word');
+    word.appendChild(el('b', '3CR'));
+    brand.append(word);
 
     const links = el('nav', undefined, 'pnav__links');
     links.setAttribute('aria-label', t('shell.nav'));
@@ -372,5 +405,5 @@
     return box;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications };
+  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications, fetchMe };
 })();

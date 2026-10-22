@@ -1,0 +1,12 @@
+name: ui-audit
+description: "Read-only audit of an existing web UI against DESIGN.md and the visual-design rules, producing a cited findings report"
+domain: frontend-ui-design
+tags: ui-audit,visual-design,design-review,frontend,css
+apply_when: "reviewing an existing web UI or CSS for visual-design and usability-of-style problems"
+scope: global
+project: ""
+language: en
+knowledge: vbase-color,vbase-typography,vbase-layout-spacing,vbase-eye-flow-scanning,vbase-depth-motion,vbase-visual-principles,vpick-choosing-style,a11y-wcag-essentials,fe-media-assets,fe-css-viewport-and-stacking
+conflicts: ""
+source: "authored in tree 2026-10-20"
+last_reviewed: 2026-10-20

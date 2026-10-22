@@ -13,6 +13,14 @@ node_modules
 !.claude/skills/playwright-e2e-safety/**
 !.claude/skills/design-workflow/
 !.claude/skills/design-workflow/**
+!.claude/skills/deep-reasoning/
+!.claude/skills/deep-reasoning/**
+!.claude/skills/ui-brief/
+!.claude/skills/ui-brief/**
+!.claude/skills/ui-audit/
+!.claude/skills/ui-audit/**
+!.claude/skills/ui-fix/
+!.claude/skills/ui-fix/**
 CLAUDE.md.bak
 .DS_Store
 # Submitted diagnostic runs (TODO.md #168) — real players' IPs, geo labels and
@@ -49,3 +57,6 @@ server/data/club-images/
 server/db/*.bak-*
 # admin CLI action log + pre-destructive DB copies (absolute paths, user data) — local only
 server/db/backups/
+
+# Browser network captures (may contain cookies/tokens)
+*.har

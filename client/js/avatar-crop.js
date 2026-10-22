@@ -9,7 +9,7 @@
   'use strict';
 
   const VIEW = 280;        // CSS px of the square viewport
-  const WIDE_VIEW = 480;   // CSS px width of the viewport for wide (banner) crops
+  const WIDE_VIEW = 640;   // CSS px width of the viewport for wide (banner) crops
   const OUT = 512;         // exported edge in px
   const MAX_ZOOM = 4;      // × the "cover" scale
   const MAX_BYTES = 2 * 1024 * 1024; // server limit (routes/profile.js)

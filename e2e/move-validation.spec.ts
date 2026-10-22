@@ -1,5 +1,6 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { confirmAct } from './helpers/actions';
 
 /**
  * TEST-MATRIX.md rows 24-27 — GameEngine.makeMove's validation guards
@@ -55,7 +56,7 @@ test.describe('Move validation', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -69,8 +70,8 @@ test.describe('Move validation', () => {
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await A.page.click('#start-modal-btn');
     await B.page.click('#start-modal-btn');
@@ -122,7 +123,7 @@ test.describe('Move validation', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -136,8 +137,8 @@ test.describe('Move validation', () => {
     await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
     await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await A.page.click('#start-modal-btn');
     await B.page.click('#start-modal-btn');
@@ -146,8 +147,8 @@ test.describe('Move validation', () => {
 
     // End the game via resign — doesn't require it to be the resigner's turn.
     A.page.on('dialog', (d) => d.accept());
-    await expect(A.page.locator('.btn-game--resign')).toBeVisible({ timeout: 10000 });
-    await A.page.click('.btn-game--resign');
+    await expect(A.page.locator('.act[data-action="doResign"]')).toBeVisible({ timeout: 10000 });
+    await confirmAct(A.page, 'doResign');
     await A.page.waitForFunction(() => (window as any).RoomState?.gameState?.status === 'finished', null, { timeout: 10000 });
     await B.page.waitForFunction(() => (window as any).RoomState?.gameState?.status === 'finished', null, { timeout: 10000 });
 

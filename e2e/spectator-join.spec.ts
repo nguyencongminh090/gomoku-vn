@@ -1,5 +1,6 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { cellPosition } from './helpers/board';
 
 /**
  * TEST-MATRIX.md row 15 — a user who joins a room without sitting (`room:sit`)
@@ -23,7 +24,7 @@ test.describe('Spectator join', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
     await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -55,8 +56,8 @@ test.describe('Spectator join', () => {
 
     // A and B sit, ready up, and start a game — the spectator should observe
     // the game state flip to 'ongoing' without ever sitting.
-    await A.page.locator('#slot-1 .slot-card__clickable').click();
-    await B.page.locator('#slot-2 .slot-card__clickable').click();
+    await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await B.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await A.page.click('#start-modal-btn');
     await B.page.click('#start-modal-btn');
@@ -73,17 +74,12 @@ test.describe('Spectator join', () => {
     await expect(C.page.locator('#chat-messages')).toContainText(chatText, { timeout: 10000 });
 
     // A move made by a player is visible live to the spectator's board state.
-    await A.page.waitForFunction(() => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
     const movesBefore = await C.page.evaluate(() => (window as any).RoomState.gameState.moveCount ?? 0);
     await A.page.waitForFunction(() => !!(window as any).RoomState?.gameState?.currentTurn, null, { timeout: 10000 });
     const currentTurn = await A.page.evaluate(() => (window as any).RoomState.gameState.currentTurn);
     const aUserId = await A.page.evaluate(() => (window as any).RoomState.myUser.userId);
     const mover = currentTurn === aUserId ? A.page : B.page;
-    await mover.waitForFunction(() => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
-    const geo = await mover.evaluate(() => (window as any).RoomState.boardRenderer.geo);
-    const { cellSize, originX, originY } = geo;
-    const px = originX + 7.5 * cellSize;
-    const py = originY + 7.5 * cellSize;
+    const { x: px, y: py } = await cellPosition(mover, 7, 7);
     await mover.mouse.move(px - 10, py - 10);
     await mover.locator('#game-canvas').hover({ position: { x: px, y: py } });
     // Default clickMode is 'double': first click previews the cell, a second

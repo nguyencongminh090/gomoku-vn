@@ -1,5 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { cellPosition } from './helpers/board';
+import { act } from './helpers/actions';
 
 /**
  * TODO.md #128 — Undo request/accept/decline (GameEngine.requestUndo/
@@ -17,7 +19,7 @@ async function makeGuest(browser: any, actor: string) {
 
 async function startGame(browser: any, opts: { swap2?: boolean } = {}) {
   const A = await makeGuest(browser, 'PlayerA');
-  await A.page.goto('/index.html');
+  await A.page.goto('/index.html#rooms');
   await A.page.click('#btn-create');
   await A.page.click('#modal-advanced-toggle');
   await A.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -45,8 +47,8 @@ async function startGame(browser: any, opts: { swap2?: boolean } = {}) {
   await B.page.goto(`/room.html?id=${encodeURIComponent(roomId!)}`);
   await expect(B.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
 
-  await A.page.locator('#slot-1 .slot-card__clickable').click();
-  await B.page.locator('#slot-2 .slot-card__clickable').click();
+  await A.page.locator('[data-slot="1"] .seatcard__sit').click();
+  await B.page.locator('[data-slot="2"] .seatcard__sit').click();
   await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
   await A.page.click('#start-modal-btn');
   await B.page.click('#start-modal-btn');
@@ -56,13 +58,7 @@ async function startGame(browser: any, opts: { swap2?: boolean } = {}) {
 }
 
 async function clickCell(page: Page, x: number, y: number) {
-  await page.waitForFunction(() => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
-  const geo = await page.evaluate(() => {
-    const br = (window as any).RoomState.boardRenderer;
-    return { cellSize: br.geo.cellSize, originX: br.geo.originX, originY: br.geo.originY };
-  });
-  const px = geo.originX + (x + 0.5) * geo.cellSize;
-  const py = geo.originY + (y + 0.5) * geo.cellSize;
+  const { x: px, y: py } = await cellPosition(page, x, y);
   const before = await page.evaluate(() => (window as any).RoomState.gameState.moveCount);
   await page.locator('#game-canvas').click({ position: { x: px, y: py } });
   await page.waitForFunction((bc) => (window as any).RoomState?.gameState?.moveCount > bc, before, { timeout: 10000 });
@@ -87,11 +83,11 @@ test.describe('Undo', () => {
     await clickCell(blackPage, 5, 5);
     expect(await A.page.evaluate(() => (window as any).RoomState.gameState.moveCount)).toBe(1);
 
-    await blackPage.click('.btn-game--undo');
-    await expect(whitePage.locator('.btn-draw-accept')).toBeVisible({ timeout: 10000 });
+    await act(blackPage, 'doUndoRequest').click();
+    await expect(whitePage.locator('[data-action="doUndoAccept"]')).toBeVisible({ timeout: 10000 });
     await expect(blackPage.locator('#undo-prompt-area')).toContainText('chờ đối thủ');
 
-    await whitePage.click('.btn-draw-accept');
+    await whitePage.click('[data-action="doUndoAccept"]');
     await A.page.waitForFunction(() => (window as any).RoomState?.gameState?.moveCount === 0, null, { timeout: 10000 });
     await B.page.waitForFunction(() => (window as any).RoomState?.gameState?.moveCount === 0, null, { timeout: 10000 });
 
@@ -123,9 +119,9 @@ test.describe('Undo', () => {
     await clickCell(whitePage, 6, 6);
     expect(await A.page.evaluate(() => (window as any).RoomState.gameState.moveCount)).toBe(2);
 
-    await blackPage.click('.btn-game--undo');
-    await expect(whitePage.locator('.btn-draw-accept')).toBeVisible({ timeout: 10000 });
-    await whitePage.click('.btn-draw-accept');
+    await act(blackPage, 'doUndoRequest').click();
+    await expect(whitePage.locator('[data-action="doUndoAccept"]')).toBeVisible({ timeout: 10000 });
+    await whitePage.click('[data-action="doUndoAccept"]');
 
     await A.page.waitForFunction(() => (window as any).RoomState?.gameState?.moveCount === 0, null, { timeout: 10000 });
     const boardA = await A.page.evaluate(() =>
@@ -149,9 +145,9 @@ test.describe('Undo', () => {
     const whitePage = blackIsA ? B.page : A.page;
 
     await clickCell(blackPage, 5, 5);
-    await blackPage.click('.btn-game--undo');
-    await expect(whitePage.locator('.btn-draw-decline')).toBeVisible({ timeout: 10000 });
-    await whitePage.click('.btn-draw-decline');
+    await act(blackPage, 'doUndoRequest').click();
+    await expect(whitePage.locator('[data-action="doUndoDecline"]')).toBeVisible({ timeout: 10000 });
+    await whitePage.click('[data-action="doUndoDecline"]');
 
     await expect(A.page.locator('#undo-prompt-area')).toBeEmpty({ timeout: 10000 });
     await expect(B.page.locator('#undo-prompt-area')).toBeEmpty({ timeout: 10000 });
@@ -175,14 +171,14 @@ test.describe('Undo', () => {
     const whitePage = blackIsA ? B.page : A.page;
 
     await clickCell(blackPage, 5, 5);       // BLACK's move — targetIndex snapshot here
-    await blackPage.click('.btn-game--undo'); // requested while WHITE hasn't replied
+    await act(blackPage, 'doUndoRequest').click(); // requested while WHITE hasn't replied
     await expect(whitePage.locator('#undo-prompt-area')).not.toBeEmpty({ timeout: 10000 });
 
     await clickCell(whitePage, 6, 6);       // WHITE replies instead of responding first
     // Pending request must survive the opponent's move.
-    await expect(whitePage.locator('.btn-draw-accept')).toBeVisible({ timeout: 10000 });
+    await expect(whitePage.locator('[data-action="doUndoAccept"]')).toBeVisible({ timeout: 10000 });
 
-    await whitePage.click('.btn-draw-accept');
+    await whitePage.click('[data-action="doUndoAccept"]');
     await A.page.waitForFunction(() => (window as any).RoomState?.gameState?.moveCount === 0, null, { timeout: 10000 });
     const boardA = await A.page.evaluate(() =>
       (window as any).RoomState.gameState.board.flat().every((c: number) => c === 0));
@@ -206,7 +202,7 @@ test.describe('Undo', () => {
 
     await clickCell(blackPage, 5, 5);
     await clickCell(whitePage, 6, 6);
-    await blackPage.click('.btn-game--undo'); // BLACK's turn again — requests instead of waiting
+    await act(blackPage, 'doUndoRequest').click(); // BLACK's turn again — requests instead of waiting
     await expect(whitePage.locator('#undo-prompt-area')).not.toBeEmpty({ timeout: 10000 });
 
     await clickCell(blackPage, 7, 7); // BLACK continues instead of waiting for a response
@@ -230,21 +226,15 @@ test.describe('Undo', () => {
     const firstPage = isFirst ? A.page : B.page;
     const secondPage = isFirst ? B.page : A.page;
 
-    await firstPage.waitForFunction(() => !!(window as any).RoomState?.boardRenderer?.geo?.cellSize, null, { timeout: 10000 });
     const before = await firstPage.evaluate(() => (window as any).RoomState.gameState.moveCount);
-    const geo = await firstPage.evaluate(() => {
-      const br = (window as any).RoomState.boardRenderer;
-      return { cellSize: br.geo.cellSize, originX: br.geo.originX, originY: br.geo.originY };
-    });
-    const px = geo.originX + 5.5 * geo.cellSize;
-    const py = geo.originY + 5.5 * geo.cellSize;
+    const { x: px, y: py } = await cellPosition(firstPage, 5, 5);
     await firstPage.locator('#game-canvas').click({ position: { x: px, y: py } });
     await firstPage.waitForFunction((bc) => (window as any).RoomState?.gameState?.moveCount > bc, before, { timeout: 10000 });
 
     // The non-placing second player requests undo of that single stone.
-    await secondPage.click('.btn-game--undo');
-    await expect(firstPage.locator('.btn-draw-accept')).toBeVisible({ timeout: 10000 });
-    await firstPage.click('.btn-draw-accept');
+    await act(secondPage, 'doUndoRequest').click();
+    await expect(firstPage.locator('[data-action="doUndoAccept"]')).toBeVisible({ timeout: 10000 });
+    await firstPage.click('[data-action="doUndoAccept"]');
 
     await A.page.waitForFunction(() => (window as any).RoomState?.gameState?.moveCount === 0, null, { timeout: 10000 });
     const phase = await A.page.evaluate(() => (window as any).RoomState.gameState.swap2.openingPhase);

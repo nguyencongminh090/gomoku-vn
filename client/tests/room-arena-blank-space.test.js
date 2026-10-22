@@ -32,7 +32,7 @@ test('chat/moves lists chain their scroll into .room (no overscroll-behavior:con
   expect(phone).toMatch(/body\.arena-room \.room \{[^}]*overscroll-behavior: none;/); // contain still bounces locally
 });
 test('the panel toggle is sticky right under my card, and the panel clips without becoming its scroll container', () => {
-  expect(phone).toMatch(/\.rpanel-toggle \{[^}]*position: sticky; top: calc\(2 \* var\(--pcard-h\) \+ var\(--board-h, 100vw\)\)/);
+  expect(phone).toMatch(/\.rpanel-toggle \{[^}]*position: sticky; top: calc\(2 \* var\(--seatcard-h\) \+ var\(--board-h, 100vw\)\)/);
   expect(phone).toMatch(/body\.arena-room \.rpanel \{ overflow: clip; \}/);
   expect(phone).toMatch(/:has\(#chat-input:focus\) \.rpanel-toggle \{ position: relative; top: auto; \}/);
 });
@@ -41,5 +41,5 @@ test('the panel toggle is sticky right under my card, and the panel clips withou
 test('expanded (aria-expanded=true) un-sticks cards + board and makes the panel a screen tall; the base sticky rules stay for minimized', () => {
   expect(phone).toMatch(/:has\(#rpanel-toggle\[aria-expanded="true"\]\) \.board-area-shell[^{]*\{ position: relative; top: auto; \}/);
   expect(phone).toMatch(/\.rpanel:not\(\.rpanel--min\) \{ flex: none; min-height: calc\(100dvh - var\(--nav-h\)\); \}/);
-  expect(phone).toMatch(/body\.arena-room \.board-area-shell \{ top: var\(--pcard-h\); z-index: 20; \}/);
+  expect(phone).toMatch(/body\.arena-room \.board-area-shell \{ top: var\(--seatcard-h\); z-index: 20; \}/);
 });

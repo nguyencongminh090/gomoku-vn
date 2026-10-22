@@ -6,18 +6,16 @@
   <title>Play3CR — Trận đấu giải đấu</title>
   <meta name="description" content="Play3CR — Trận đấu trong giải đấu Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=368" />
-  <link rel="stylesheet" href="css/tokens.css?v=368" />
-  <link rel="stylesheet" href="css/lobby.css?v=368" />
-  <link rel="stylesheet" href="css/room.css?v=368" />
-  <link rel="stylesheet" href="css/game.css?v=368" />
-  <link rel="stylesheet" href="css/tournament.css?v=368" />
-  <link rel="stylesheet" href="css/shell.css?v=368" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=368" />
-  <!-- Manrope (self-hosted, TODO.md #69) -->
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=368">
-  <script src="js/ui-mode-preload.js?v=368"></script>
-  <script src="js/skin-preload.js?v=368"></script>
+  <link rel="stylesheet" href="css/main.css?v=237afa6e" />
+  <link rel="stylesheet" href="css/tokens.css?v=75d051bd" />
+  <link rel="stylesheet" href="css/lobby.css?v=64758c00" />
+  <link rel="stylesheet" href="css/room.css?v=70cf7510" />
+  <link rel="stylesheet" href="css/game.css?v=e77e8c5b" />
+  <link rel="stylesheet" href="css/tournament.css?v=90d33d50" />
+  <link rel="stylesheet" href="css/shell.css?v=524202cc" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=33a2079d" />
+  <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
+  <script src="js/skin-preload.js?v=b452e3a9"></script>
 </head>
 <body>
 
@@ -25,8 +23,7 @@
 
 <nav class="topnav" role="navigation" aria-label="Điều hướng chính">
   <a href="index.html" class="topnav__brand" aria-label="Play3CR">
-    <img src="assets/brand/logo-mark.svg" alt="" width="28" height="28" class="topnav__logo" />
-    <span class="topnav__title">Play3CR</span>
+    <span class="topnav__title">Play<b>3CR</b></span>
   </a>
   <div class="topnav__right">
     <span id="nav-user" class="topnav__user"></span>
@@ -35,7 +32,7 @@
 </nav>
 
 <div class="match-page-header">
-  <a href="#" id="back-to-tournament" class="detail-back"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-regular-arrow-left"></use></svg><span data-i18n="tmatch.back">Chi tiết giải</span></a>
+  <a href="#" id="back-to-tournament" class="detail-back"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-arrow-left"></use></svg><span data-i18n="tmatch.back">Chi tiết giải</span></a>
 
   <div class="detail-header">
     <div>
@@ -156,7 +153,7 @@
 
 <div class="match-result-overlay" id="match-result-overlay">
   <div class="match-result-card">
-    <svg class="icon match-result-card__icon" id="match-result-icon"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-bold-flag-checkered"></use></svg>
+    <svg class="icon match-result-card__icon" id="match-result-icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-flag-checkered"></use></svg>
     <div class="match-result-card__title" id="match-result-title"></div>
     <div class="match-result-card__sub" id="match-result-sub"></div>
     <a class="btn btn-confirm" id="match-result-back" href="#" data-i18n="tmatch.back_to_tournament">Quay lại giải đấu</a>
@@ -173,7 +170,7 @@
      unchanged, this only adds a second UI entry point into it. -->
 <div class="match-result-overlay" id="series-transition-overlay">
   <div class="match-result-card">
-    <svg class="icon match-result-card__icon" id="series-transition-icon"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-bold-flag-checkered"></use></svg>
+    <svg class="icon match-result-card__icon" id="series-transition-icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-flag-checkered"></use></svg>
     <div class="match-result-card__title" id="series-transition-title"></div>
     <div class="match-result-card__sub" id="series-transition-sub"></div>
     <button class="btn btn-confirm" id="series-transition-ready-btn" type="button" data-i18n="tmatch.series_ready_btn">Sẵn sàng</button>
@@ -185,7 +182,7 @@
 <!-- TODO.md #74: tournament matches never loaded this, so had no move/win/
      lose/timer sound at all despite tournament-match.js calling audioManager
      the same way room-socket.js does. -->
-<script src="js/audio-manager.js?v=368"></script>
-<script type="module" src="js/tournament-match-entry.js?v=368"></script>
+<script src="js/audio-manager.js?v=f0ca2309"></script>
+<script type="module" src="js/tournament-match-entry.js?v=a79e2534"></script>
 </body>
 </html>

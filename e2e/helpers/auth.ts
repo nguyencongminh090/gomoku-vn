@@ -59,10 +59,10 @@ export async function singleTapPlacement(ctx: BrowserContext) {
 }
 
 /** Register a fresh member account and sign `ctx` in as it. */
-export async function authAsMember(ctx: BrowserContext, page: Page, name = 'member') {
+export async function authAsMember(ctx: BrowserContext, page: Page, name = 'member', displayNameOverride?: string) {
   const username = `${name}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
   const password = 'testpass123';
-  const displayName = `${name}${Math.random().toString(36).slice(2, 6)}`;
+  const displayName = displayNameOverride ?? `${name}${Math.random().toString(36).slice(2, 6)}`;
   const r = await authAs(ctx, page, '/api/auth/register', { username, password, displayName }, `${name} register`);
   return { ...r, username, password };
 }

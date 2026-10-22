@@ -33,7 +33,7 @@ test.describe('Security boundary', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#btn-quick-match');
     await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
@@ -98,7 +98,7 @@ test.describe('Security boundary', () => {
     test.setTimeout(60_000);
 
     const A = await makeGuest(browser, 'PlayerA');
-    await A.page.goto('/index.html');
+    await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#btn-quick-match');
     await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });

@@ -4,18 +4,17 @@
   <meta charset="UTF-8" />
   <!-- Some of these pages are served at /u/<x> or /c/<x>: root-relative base keeps css/js/assets working. -->
   <base href="/" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Play3CR — Bạn bè</title>
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=368" />
-  <link rel="stylesheet" href="css/tokens.css?v=368" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=368" />
-  <link rel="stylesheet" href="css/platform.css?v=368" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=368" />
-  <link rel="stylesheet" href="vendor/fonts/manrope/style.css?v=368">
+  <link rel="stylesheet" href="css/main.css?v=237afa6e" />
+  <link rel="stylesheet" href="css/tokens.css?v=75d051bd" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=c86085ef" />
+  <link rel="stylesheet" href="css/platform.css?v=c7ba5a99" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=33a2079d" />
+  <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
-  <script src="js/ui-mode-preload.js?v=368"></script>
-  <script src="js/skin-preload.js?v=368"></script>
+  <script src="js/skin-preload.js?v=b452e3a9"></script>
 </head>
 <body class="pl">
 <div id="pl-shell"></div>
@@ -30,18 +29,18 @@
     <div class="pcol">
       <section class="ppanel">
         <h2 class="ph2" data-i18n="notif.title">Thông báo</h2>
-        <div id="sc-notifs" class="prows" aria-live="polite"></div>
+        <div id="sc-notifs" class="prows prows--tickets" aria-live="polite"></div>
       </section>
       <section class="ppanel">
         <div class="pchal__head">
           <h2 class="ph2" data-i18n="social.challenges">Thách đấu</h2>
           <button id="sc-challenge-new" class="pbtn pbtn--sm pbtn--primary" type="button" data-i18n="challenge.pick_title">Thách đấu bạn bè</button>
         </div>
-        <div id="sc-challenges" class="prows"></div>
+        <div id="sc-challenges" class="prows prows--tickets"></div>
       </section>
       <section class="ppanel">
         <h2 class="ph2" data-i18n="social.incoming">Lời mời kết bạn</h2>
-        <div id="sc-incoming" class="prows"></div>
+        <div id="sc-incoming" class="prows prows--tickets"></div>
       </section>
     </div>
     <div class="pcol">
@@ -51,11 +50,11 @@
         <form id="sc-add" class="padd" role="search" autocomplete="off">
           <input id="sc-add-q" type="search" maxlength="40" aria-label="Thêm bạn" data-i18n-placeholder="social.add_ph" placeholder="Tên đăng nhập, tên hiển thị hoặc tên#1234" />
         </form>
-        <div id="sc-add-results" class="prows" aria-live="polite"></div>
+        <div id="sc-add-results" class="prows prows--tickets" aria-live="polite"></div>
         <h2 class="ph2 ph2--gap" data-i18n="social.friends">Bạn bè</h2>
-        <div id="sc-friends" class="prows"></div>
+        <div id="sc-friends" class="prows prows--tickets"></div>
         <h2 class="ph2 ph2--gap" data-i18n="social.outgoing">Đã gửi lời mời</h2>
-        <div id="sc-outgoing" class="prows"></div>
+        <div id="sc-outgoing" class="prows prows--tickets"></div>
       </section>
       <section class="ppanel pdm" id="sc-dm">
         <h2 class="ph2" data-i18n="social.messages">Tin nhắn</h2>
@@ -77,14 +76,14 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=368"></script>
-<script src="js/escape-utils.js?v=368"></script>
-<script src="js/ui-mode.js?v=368"></script>
-<script src="js/session.js?v=368"></script>
-<script src="js/audio-manager.js?v=368"></script>
-<script src="js/settings-panel.js?v=368"></script>
-<script src="js/platform-shell.js?v=368"></script>
-<script src="js/challenge-modal.js?v=368"></script>
-<script src="js/social.js?v=368"></script>
+<script src="js/i18n.js?v=7d67ef60"></script>
+<script src="js/escape-utils.js?v=05dffe1e"></script>
+<script src="js/ui-mode.js?v=3e1ff171"></script>
+<script src="js/session.js?v=7d763f30"></script>
+<script src="js/audio-manager.js?v=f0ca2309"></script>
+<script src="js/settings-panel.js?v=014127cb"></script>
+<script src="js/platform-shell.js?v=86159d16"></script>
+<script src="js/challenge-modal.js?v=ef75733c"></script>
+<script src="js/social.js?v=a0d1a9d6"></script>
 </body>
 </html>

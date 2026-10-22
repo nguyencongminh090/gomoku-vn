@@ -191,8 +191,8 @@ const GAMES_PAGE = 10;
 /** One finished game as the profile history shows it, from `userId`'s point of view. */
 function gameRow(g, userId) {
   const black = g.black_player_id === userId;
-  const result = g.winner === 'draw' ? 'draw'
-    : (g.winner === 'BLACK') === black && (g.winner === 'BLACK' || g.winner === 'WHITE') ? 'win' : 'loss';
+  const result = g.winner_color === 'DRAW' ? 'draw'
+    : (g.winner_color === 'BLACK') === black && (g.winner_color === 'BLACK' || g.winner_color === 'WHITE') ? 'win' : 'loss';
   return { id: g.id, opponent: black ? g.white_player_name : g.black_player_name, result, endedAt: g.ended_at };
 }
 

@@ -34,7 +34,7 @@ test.describe('Kick blocked during interrupted state', () => {
 
     // B is the host so B is the one allowed to call room:kick at all.
     const B = await makeGuest(browser, 'PlayerB (host)');
-    await B.page.goto('/index.html');
+    await B.page.goto('/index.html#rooms');
     await B.page.click('#btn-create');
     await B.page.click('#modal-advanced-toggle');
     await B.page.locator('#rule-wall').evaluate((el: HTMLInputElement) => {
@@ -49,8 +49,8 @@ test.describe('Kick blocked during interrupted state', () => {
     await expect(A.page.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
     const aUserId = await A.page.evaluate(() => (window as any).RoomState.myUser.userId);
 
-    await B.page.locator('#slot-1 .slot-card__clickable').click();
-    await A.page.locator('#slot-2 .slot-card__clickable').click();
+    await B.page.locator('[data-slot="1"] .seatcard__sit').click();
+    await A.page.locator('[data-slot="2"] .seatcard__sit').click();
     await expect(B.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 15000 });
     await B.page.click('#start-modal-btn');
     await A.page.click('#start-modal-btn');

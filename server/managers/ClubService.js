@@ -29,6 +29,7 @@ const EVENT_TITLE_MAX = 60;
 const MAX_UPCOMING_EVENTS = 20;
 const CHAT_PAGE = 50;
 const CHAT_KEEP = 200;
+const LOG_KEEP = 500;
 const COLORS = ['blue', 'green', 'red', 'orange', 'purple', 'teal', 'pink', 'gray'];
 const TAG_RE = /^[\p{L}\p{N}]{2,4}$/u;
 const MAX_INVITES = 50;
@@ -78,6 +79,8 @@ const countUserClubs = (userId) =>
 function log(clubId, type, actorId, targetId, detail = '') {
   db().prepare('INSERT INTO club_log (club_id, type, actor_id, target_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?)')
     .run(clubId, type, actorId || null, targetId || null, detail, now());
+  db().prepare(`DELETE FROM club_log WHERE club_id = ? AND id <= (
+    SELECT id FROM club_log WHERE club_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)`).run(clubId, clubId, LOG_KEEP);
 }
 
 /** Owner + officers of a club. */
@@ -491,11 +494,11 @@ function weeklyBoard(clubId) {
   const since = new Date(Date.now() - WEEK_MS).toISOString();
   return db().prepare(`
     WITH g AS (
-      SELECT black_player_id AS uid, CASE WHEN winner = 'BLACK' THEN 1 ELSE 0 END AS win FROM games
-        WHERE black_player_id IS NOT NULL AND ended_at >= @since AND winner IS NOT NULL
+      SELECT black_player_id AS uid, CASE WHEN winner_color = 'BLACK' THEN 1 ELSE 0 END AS win FROM games
+        WHERE black_player_id IS NOT NULL AND ended_at >= @since AND winner_color IS NOT NULL
       UNION ALL
-      SELECT white_player_id, CASE WHEN winner = 'WHITE' THEN 1 ELSE 0 END FROM games
-        WHERE white_player_id IS NOT NULL AND ended_at >= @since AND winner IS NOT NULL)
+      SELECT white_player_id, CASE WHEN winner_color = 'WHITE' THEN 1 ELSE 0 END FROM games
+        WHERE white_player_id IS NOT NULL AND ended_at >= @since AND winner_color IS NOT NULL)
     SELECT m.user_id, u.username, u.display_name, u.avatar_v, SUM(g.win) AS wins, COUNT(*) AS played
     FROM club_members m JOIN users u ON u.id = m.user_id JOIN g ON g.uid = m.user_id
     WHERE m.club_id = @club AND m.role != 'pending'
@@ -578,7 +581,7 @@ function userIdByUsername(username) {
 }
 
 module.exports = {
-  ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify,
+  ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,

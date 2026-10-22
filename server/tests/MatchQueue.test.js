@@ -4,7 +4,7 @@
  * MatchQueue.test.js — quick-match pairing (B197, R3). Pure: the clock is injected.
  */
 
-const { MatchQueue, ratingWindow, PRESETS, bucketKey } = require('../managers/MatchQueue');
+const { MatchQueue, ratingWindow, PRESETS, bucketKey, timeLabel, resolveTime } = require('../managers/MatchQueue');
 
 function queue() {
   let now = 0;
@@ -26,10 +26,70 @@ describe('PRESETS / bucketKey', () => {
       '3+2': { timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 },
       '5+3': { timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 },
       '10+0': { timerMode: 'blitz', timerSeconds: 600, timerIncrementSeconds: 0 },
+      '1+1': { timerMode: 'blitz', timerSeconds: 60, timerIncrementSeconds: 1 },
+      '7+3': { timerMode: 'blitz', timerSeconds: 420, timerIncrementSeconds: 3 },
+      m60: { timerMode: 'per_move', timerSeconds: 60 },
+      m45: { timerMode: 'per_move', timerSeconds: 45 },
+      m30: { timerMode: 'per_move', timerSeconds: 30 },
+      m5: { timerMode: 'per_move', timerSeconds: 5 },
     });
+  });
+  it('timeLabel: blitz keys stay, m<s> reads "<s>s/nước"', () => {
+    expect([timeLabel('7+3'), timeLabel('m30')]).toEqual(['7+3', '30s/nước']);
   });
   it('rated and casual never share a bucket', () => {
     expect(bucketKey({ rule: 'caro', time: '5+3', rated: true })).not.toBe(bucketKey({ rule: 'caro', time: '5+3', rated: false }));
+  });
+});
+
+describe('auto time', () => {
+  const pairOf = (a, b, extra = {}) => { const { q } = queue(); q.join(entry('a', { time: a, ...extra })); q.join(entry('b', { time: b, ...extra })); return q.pair(); };
+  it('TH1 auto + auto pair and play the default m60', () => {
+    const [p] = pairOf('auto', 'auto');
+    expect(p).toHaveLength(2);
+    expect(resolveTime(p[0], p[1])).toBe('m60');
+  });
+  it('TH2 auto + a chosen clock pair, whichever joined first, on the chosen clock', () => {
+    for (const [a, b] of [['auto', '3+2'], ['3+2', 'auto']]) {
+      const [p] = pairOf(a, b);
+      expect(p).toHaveLength(2);
+      expect(resolveTime(p[0], p[1])).toBe('3+2');
+    }
+  });
+  it('TH3 two different chosen clocks never pair; the same clock does', () => {
+    expect(pairOf('3+2', '5+3')).toEqual([]);
+    expect(pairOf('m30', '5+3')).toEqual([]);
+    expect(pairOf('3+2', '3+2')).toHaveLength(1);
+  });
+  it('auto still needs the same rule, rated flag and board', () => {
+    const { q } = queue();
+    q.join(entry('a', { time: 'auto' }));
+    q.join(entry('b', { time: '3+2', rule: 'standard' }));
+    q.join(entry('c', { time: '3+2', rated: false }));
+    q.join(entry('d', { time: '3+2', wall: true }));
+    expect(q.pair()).toEqual([]);
+  });
+  it('an auto bridges two different clocks only once: it takes the first waiter, the other keeps waiting', () => {
+    const { q } = queue();
+    q.join(entry('a', { time: '3+2' }));
+    q.join(entry('b', { time: '5+3' }));
+    q.join(entry('c', { time: 'auto' }));
+    const pairs = q.pair();
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0].map((e) => e.userId)).toEqual(['a', 'c']);
+    expect(q.get('b')).not.toBeNull();
+  });
+  it('countIn counts compatible waiters (auto sees all clocks, a clock sees itself + autos)', () => {
+    const { q } = queue();
+    q.join(entry('a', { time: '3+2' }));
+    q.join(entry('b', { time: '5+3' }));
+    q.join(entry('c', { time: 'auto' }));
+    expect([q.countIn(q.get('a')), q.countIn(q.get('c'))]).toEqual([2, 3]);
+  });
+  it('timeLabel(auto) is Tự động; counts() keys auto as rule|auto', () => {
+    const { q } = queue();
+    q.join(entry('a', { time: 'auto' }));
+    expect([timeLabel('auto'), q.counts()]).toEqual(['Tự động', { 'caro|auto': 1 }]);
   });
 });
 

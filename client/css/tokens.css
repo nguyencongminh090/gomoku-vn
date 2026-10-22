@@ -5,7 +5,7 @@
    colour modes. Loaded right AFTER main.css so these :root values replace
    main.css's light palette; every page rule keeps reading the same --c-* names.
 
-   Axes (set on <html> by ui-mode-preload.js before first paint, changed by
+   Axes (set on <html> by skin-preload.js before first paint, changed by
    ui-mode.js → setColorMode()):
      data-skin  "arena" (default) | "zen" | "bento" — colour + radius tokens only
      data-mode  "dark" (default) | "light"
@@ -32,12 +32,15 @@
   --c-brand-text:   #8bc34a;   /* brand-coloured TEXT on dark surfaces: 7.4:1 */
   --c-brand-light:  rgba(98,153,36,0.16);
   --c-on-brand:     #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #161512;
+  --c-knob: #ffffff;
 
   --c-accent:       #ee6a20;   /* text/border only; was #d85000 = 3.7:1 on surface, now 4.95:1 (#180) */
   --c-accent-light: rgba(238,106,32,0.16);
 
-  --c-error:        #ef6a6a;
-  --c-error-bg:     rgba(239,106,106,0.12);
+  --c-error:        #f77f7f;
+  --c-error-bg:     rgba(247,127,127,0.12);
   --c-success:      #8bc34a;
   --c-success-bg:   rgba(139,195,74,0.12);
   --c-warning:      #f2a33a;
@@ -63,6 +66,11 @@
   --shadow-sm:  none;
   --shadow:     0 2px 8px rgba(0,0,0,0.35);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.6);
+  --bg-grid: rgba(170,195,225,.13);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(170,195,225,.11);
+  --bg-leaf-op: .28;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -77,6 +85,7 @@
   --c-border-light: rgba(0,0,0,0.07);
 
   --c-ink:          #2b2926;
+  --c-on-ink:       #ffffff;   /* toast text on the dark ink fill; :root (dark) uses the bg colour */
   --c-ink-2:        #5f5b52;
   --c-ink-3:        #66625a;
 
@@ -110,6 +119,11 @@
 
   --shadow:     0 1px 3px rgba(0,0,0,0.10);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.22);
+  --bg-grid: rgba(100,140,185,.26);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(100,140,185,.24);
+  --bg-leaf-op: .55;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
 }
 
 
@@ -134,6 +148,9 @@
   --c-brand-text: #ececec;
   --c-brand-light: rgba(236,236,236,0.10);
   --c-on-brand: #121212;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #121212;
+  --c-knob: #ffffff;
   --c-accent: #f08a4b;
   --c-accent-light: rgba(240,138,75,0.16);
   --c-error: #ef6a6a;
@@ -158,6 +175,11 @@
   --shadow-sm: none;
   --shadow: none;
   --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.6);
+  --bg-grid: rgba(255,255,255,.10);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(255,255,255,.08);
+  --bg-leaf-op: .14;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: grayscale(1);
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -178,6 +200,9 @@
   --c-brand-text: #1c1c1c;
   --c-brand-light: rgba(28,28,28,0.07);
   --c-on-brand: #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
   --c-accent: #a63d00;
   --c-accent-light: rgba(194,71,0,0.10);
   --c-error: #c62828;
@@ -202,6 +227,11 @@
   --shadow-sm: none;
   --shadow: none;
   --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.2);
+  --bg-grid: rgba(0,0,0,.12);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(0,0,0,.10);
+  --bg-leaf-op: .45;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: grayscale(1);
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -222,6 +252,9 @@
   --c-brand-text: #a5a0ff;
   --c-brand-light: rgba(129,122,255,0.18);
   --c-on-brand: #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #14151c;
+  --c-knob: #ffffff;
   --c-accent: #fbbf24;
   --c-accent-light: rgba(251,191,36,0.16);
   --c-error: #ff8585;
@@ -246,6 +279,11 @@
   --shadow-sm: none;
   --shadow: 0 6px 18px rgba(0,0,0,0.35);
   --shadow-lg: 0 28px 56px -16px rgba(0,0,0,0.6);
+  --bg-grid: rgba(170,195,225,.13);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(170,195,225,.11);
+  --bg-leaf-op: .28;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
@@ -266,6 +304,9 @@
   --c-brand-text: #4338ca;
   --c-brand-light: rgba(79,70,229,0.10);
   --c-on-brand: #ffffff;
+  --c-on-accent: #1b1208;
+  --c-on-ink: #ffffff;
+  --c-knob: #ffffff;
   --c-accent: #a8500a;
   --c-accent-light: rgba(245,158,11,0.16);
   --c-error: #c62828;
@@ -290,12 +331,18 @@
   --shadow-sm: none;
   --shadow: 0 4px 14px rgba(31,36,51,0.08);
   --shadow-lg: 0 28px 56px -16px rgba(31,36,51,0.22);
+  --bg-grid: rgba(100,140,185,.26);   /* page paper grid: 48px cells (platform.css body::before) */
+  --bg-grid-minor: rgba(100,140,185,.24);
+  --bg-leaf-op: .55;   /* corner leaf line-art opacity */
+  --bg-leaf-filter: none;
+  --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
 
 /* Club avatar fills (#235): skin-independent, each ≥ 4.5:1 under --club-ink. Separate block so the per-skin token-set test ignores it. */
 :root {
+  --radius-pill: 999px;   /* #297: actions (pill) vs chips (rounded rect); skin-independent */
   --club-blue: #1d4ed8;
   --club-green: #15803d;
   --club-red: #b91c1c;
@@ -305,4 +352,18 @@
   --club-pink: #be185d;
   --club-gray: #475569;
   --club-ink: #ffffff;
+}
+
+/* ── Type scale (rem, root 16px) × --fs-scale (main.css: 1, 1.15 from 900px) ───────────
+   Lobby typography round. Floor for secondary text is --text-xs (12px mobile / 13.8px desktop).
+   Hero is clamp() with rem bounds (max 1.75rem <= 2x min 1.5rem) so 200% zoom still scales.
+   Named exceptions kept outside the scale: icons, .pav initials, bell count badge, wordmark.
+   #307: 12px floor kept on purpose (ui-audit asked 14px; decided 2026-10-22); test lobby-text-floor. */
+:root {
+  --text-xs:  calc(0.75rem * var(--fs-scale, 1));    /* captions, meta, badges */
+  --text-sm:  calc(0.875rem * var(--fs-scale, 1));   /* nav, chips, helper text, group labels */
+  --text-md:  calc(1rem * var(--fs-scale, 1));       /* row names, paragraphs */
+  --text-lg:  calc(1.25rem * var(--fs-scale, 1));    /* section titles, stat numbers */
+  --text-xl:  calc(clamp(1.5rem, 1.25rem + 1vw, 1.75rem) * var(--fs-scale, 1));   /* page hero */
+  --text-brand: calc(1.4375rem * var(--fs-scale, 1));   /* wordmark (exception) */
 }

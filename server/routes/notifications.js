@@ -12,16 +12,14 @@ const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { verifyToken } = require('../middleware/auth');
+const { rejectGuests } = require('../middleware/guest-guard');
 const svc = require('../managers/NotificationService');
 
 const router = express.Router();
 const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 600, keyGenerator }));
 
-router.use(verifyToken, (req, res, next) => {
-  if (!req.user.userId) return res.status(403).json({ error: 'Khách không có thông báo.', code: 'GUEST_FORBIDDEN' });
-  next();
-});
+router.use(verifyToken, rejectGuests('Khách không có thông báo.'));
 
 router.get('/', (req, res, next) => {
   try {

@@ -42,9 +42,11 @@
     /** Stake needs a rated challenge. */
     stakeAllowed: (s) => s.ranked === true,
     /** One-line summary for incoming/outgoing rows: "Caro · 17×17 · Swap2 · 60 giây/nước · 3 ván · Xếp hạng · Cược Elo". */
-    describe(c) {
+    describe(c) { return util.describeParts(c).join(' · '); },
+    /** Same facts as describe(), as segments — rows render each in its own span (ticket-rows: no joined strings). */
+    describeParts(c) {
       const s = c.settings;
-      if (!s) return t('rankings.cat_' + c.rule) + (c.time ? ' · ' + c.time : '') + (c.rated ? ' · ' + t('challenge.rated') : '');
+      if (!s) return [t('rankings.cat_' + c.rule), c.time, c.rated ? t('challenge.rated') : ''].filter(Boolean);
       const parts = [t('rankings.cat_' + s.winningRule), s.boardSize + '×' + s.boardSize];
       if (s.ruleSwap2) parts.push('Swap2');
       if (s.ruleWall) parts.push(t('modal.rule_wall'));
@@ -53,7 +55,7 @@
       if (c.games > 1) parts.push(t('challenge.best_of', { n: c.games }));
       parts.push(s.ranked ? t('challenge.rated') : t('room.mode_friendly'));
       if (c.stake === 'swap') parts.push(t('challenge.stake_swap'));
-      return parts.join(' · ');
+      return parts;
     },
     clock(s) {
       if (s.timerMode === 'blitz') {

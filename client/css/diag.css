@@ -41,7 +41,7 @@ body.diag {
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
-  font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;

@@ -291,9 +291,14 @@
   async function init() {
     window.PlatformShell.build('learn');
     const fail = (msg) => { $('ed-error').hidden = false; $('ed-error').textContent = msg; };
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    // No cached member session → say so without the doomed 401 probe (#275).
+    if (window.GvnSession && (!u || u.isGuest)) return fail(t('puzzles.login_to_submit'));
     try {
-      const me = await fetch('/api/rankings/me', { credentials: 'same-origin' });
-      if (!me.ok) return fail(t('puzzles.login_to_submit'));
+      const me = await (window.PlatformShell && window.PlatformShell.fetchMe ? window.PlatformShell.fetchMe() : fetch('/api/rankings/me', { credentials: 'same-origin' }));
+      const m = me.ok ? await me.json().catch(() => ({})) : null;
+      // /api/rankings/me answers 200 for guests too (their `guest_…` id) — the puzzle API is member-only (#273).
+      if (!m || !m.userId || String(m.userId).startsWith('guest_') || (u && u.isGuest)) return fail(t('puzzles.login_to_submit'));
     } catch (_) { return fail(t('puzzles.error')); }
 
     fillSelect($('ed-rule'), RULES, 'puzzles.rule_');

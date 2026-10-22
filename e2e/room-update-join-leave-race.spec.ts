@@ -14,7 +14,7 @@ test('host leaves inside the joiner\'s 80ms debounce window -> joiner sees exact
   test.setTimeout(60_000);
   const aCtx = await browser.newContext(); const A = await aCtx.newPage();
   await authAsGuest(aCtx, A);
-  await A.goto('/index.html'); await A.click('#btn-create'); await A.click('#btn-quick-match');
+  await A.goto('/index.html#rooms'); await A.click('#btn-create'); await A.click('#btn-quick-match');
   await A.waitForURL(/room\.html\?id=/, { timeout: 15000 });
   await expect(A.locator('#room-id-nav')).not.toHaveText('', { timeout: 15000 });
   const roomId = new URL(A.url()).searchParams.get('id')!;

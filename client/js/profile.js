@@ -73,16 +73,19 @@
     }
     // Puzzle record (7b): public, shown once the member has solved anything.
     if (p.puzzles && p.puzzles.solved > 0) {
-      const lv = p.puzzles.level ? t('puzzles.level_' + p.puzzles.level) : '—';
-      for (const [label, v] of [['puzzles_solved', String(p.puzzles.solved)], ['puzzles_level', lv]]) {
+      // No level yet: no empty "—" tile; the unlock hint moves to the solved tile.
+      const rows = [['puzzles_solved', String(p.puzzles.solved)]];
+      if (p.puzzles.level) rows.push(['puzzles_level', t('puzzles.level_' + p.puzzles.level)]);
+      for (const [label, v] of rows) {
         const d = document.createElement('div');
         d.append(el('dt', t('profile.' + label)), el('dd', v));
-        if (label === 'puzzles_level' && !p.puzzles.level) d.title = t('profile.puzzles_level_hint', { n: p.puzzles.threshold });
+        if (label === 'puzzles_solved' && !p.puzzles.level) d.title = t('profile.puzzles_level_hint', { n: p.puzzles.threshold });
         stats.appendChild(d);
       }
     }
 
     const cards = $('pf-ratings');
+    cards.setAttribute('aria-label', t('profile.ratings'));
     cards.replaceChildren();
     if (!p.ratings.length) cards.appendChild(el('p', t('profile.no_ratings'), 'pnote'));
     for (const c of CATEGORIES) {
@@ -125,7 +128,7 @@
       a.href = '/c/' + encodeURIComponent(c.slug);
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', c.name, 'prow__t'), el('div', t('clubs.role_' + c.role) + ' · ' + t('clubs.members', { n: c.members }), 'prow__m'));
-      a.append(SHELL().avatar(null, c.name, 'pav--sm pav--sq'), body);
+      a.append(SHELL().avatar(c.avatarUrl, c.name, 'pav--sm pav--sq'), body);
       return a;
     }));
 
@@ -288,6 +291,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    // /profile.html has no /u/<name> segment: nothing to fetch (#272).
+    if (!/^\/u\/./.test(location.pathname)) { location.replace('/'); return; }
     SHELL().build(null);
     $('pf-more').onclick = loadMoreGames;
     load();

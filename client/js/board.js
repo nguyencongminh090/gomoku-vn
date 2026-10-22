@@ -597,7 +597,7 @@
 
       this.svg.setAttribute('viewBox', `${g.vx} ${g.vy} ${g.VW} ${g.VH}`);
       this.svg.setAttribute('aria-label', `${n}×${n}`);
-      const rx = compact ? 0 : 12;
+      const rx = 0; // square frame on every screen
       out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="${bg}"/>`);
       if (!paper) out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="url(#gS${uid})"/>`);
 
@@ -625,7 +625,7 @@
           t.push(`<text x="${c(i)}" y="${W - m / 2}">${L}</text><text x="${m / 2}" y="${c(i)}">${num}</text>`);
           if (!compact) t.push(`<text x="${c(i)}" y="${m / 2}">${L}</text><text x="${W - m / 2}" y="${c(i)}">${num}</text>`);
         }
-        out.push(`<g fill="rgba(${inkRgb},${A.edge})" font-size="${compact ? 18 : 14}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="Manrope,system-ui,sans-serif">${t.join('')}</g>`);
+        out.push(`<g fill="rgba(${inkRgb},${A.edge})" font-size="${compact ? 18 : 14}" font-weight="600" text-anchor="middle" dominant-baseline="central" font-family="Nunito,system-ui,sans-serif">${t.join('')}</g>`);
       } else {
         const nums = spiral(n), t = [];
         for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
@@ -634,7 +634,7 @@
         }
         const size = compact ? 16 : (n * n >= 100 ? 12 : 14);
         const halo = paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`;
-        out.push(`<g fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Manrope,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
+        out.push(`<g fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Nunito,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
       }
 
       // First-move zones (behind everything placed)
@@ -703,7 +703,7 @@
             t.push(`<text x="${c(x)}" y="${c(y)}" text-anchor="middle" dominant-baseline="central" font-size="${num >= 100 ? 13 : 16}" fill="${isLast ? (white ? '#d0201b' : '#ff7a6e') : (white ? '#1a1a1a' : '#f4f4f4')}">${num}</text>`);
           }
         }
-        out.push(`<g font-family="Manrope,system-ui,sans-serif" font-weight="700">${t.join('')}</g>`);
+        out.push(`<g font-family="Nunito,system-ui,sans-serif" font-weight="700">${t.join('')}</g>`);
       }
 
       // Last move marker for stones (numbers already mark it otherwise)

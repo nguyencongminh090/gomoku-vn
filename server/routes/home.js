@@ -12,7 +12,6 @@
  *   news       — newest admin announcement { id, body, link, createdAt } or null (#224, DB)
  *   forum      — top 3 most recently active forum threads, titles only (#224, DB)
  *   learn      — { total, solved } approved puzzles / solved by the caller (null for guests) (#224, DB)
- *   newcomer   — guest, or a member with fewer than NEWCOMER_GAMES finished games: show the About block (#224)
  *
  * Session is optional: guests / signed-out callers get `tournaments` + `live`.
  * Never sends other users' ids — names only.
@@ -30,7 +29,6 @@ const tournamentManager = require('../managers/tournament/TournamentManager');
 const LIVE_LIMIT = 3;
 const TOURNAMENT_LIMIT = 5;
 const FORUM_LIMIT = 3;
-const NEWCOMER_GAMES = 5;
 
 function seatedPlayers(room) {
   return [...room.users.values()].filter((u) => u.slot === 1 || u.slot === 2);
@@ -138,7 +136,7 @@ const defaultQueueCounts = () => require('../socket/handlers/MatchHandler').queu
 const defaultOnline = () => require('../socket/state').getOnlineUsersList().length;
 const defaultQueueEta = () => require('../socket/handlers/MatchHandler').queueEstimates();
 
-const EMPTY_CONTENT = (member) => ({ news: null, forum: [], learn: null, newcomer: !member });
+const EMPTY_CONTENT = (member) => ({ news: null, forum: [], learn: null });
 
 /**
  * DB-backed blocks (#224). Lazy requires, so tests that fake the managers never open the DB.
@@ -155,15 +153,11 @@ function defaultContent(member) {
 
 function readContent(member) {
   const database = require('../db/database');
-  const games = member
-    ? database.db.prepare('SELECT COUNT(*) AS n FROM (SELECT 1 FROM player_games WHERE player_id = ? LIMIT ?)').get(member, NEWCOMER_GAMES).n
-    : 0;
   return {
     news: require('../managers/NewsService').latest(),
     forum: require('../managers/ForumService').topThreads(FORUM_LIMIT)
       .map((t) => ({ id: t.id, title: t.title, category: t.category, replyCount: t.replyCount, lastPostAt: t.lastPostAt, author: t.author.displayName })),
     learn: require('../managers/PuzzleService').learnSummary(member),
-    newcomer: !member || games < NEWCOMER_GAMES,
   };
 }
 

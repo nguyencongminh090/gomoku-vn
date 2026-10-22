@@ -926,3 +926,27 @@ describe('RoomManager — listRooms userCount vs. ghost viewers (TODO.md #158)',
     expect(listedCount(room.roomId)).toBe(2); // host + active v4
   });
 });
+
+// ── updateSettings reports what changed (#286) ────────────────────────────
+
+describe('RoomManager.updateSettings — changes (#286)', () => {
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  test('returns only the settings whose validated value differs', () => {
+    const host = { userId: 'chg-host', displayName: 'H', isGuest: false };
+    roomManager.createRoom(host, { boardSize: 15, ranked: true });
+    const r = roomManager.updateSettings('chg-host', { boardSize: 19, ranked: true });
+    expect(r.changes).toEqual([{ k: 'boardSize', v: 19 }]);
+  });
+
+  test('no-op update yields no changes; invalid value falls back and is not reported as typed', () => {
+    const host = { userId: 'chg-host2', displayName: 'H', isGuest: false };
+    roomManager.createRoom(host, { boardSize: 15 });
+    expect(roomManager.updateSettings('chg-host2', { boardSize: 15 }).changes).toEqual([]);
+    expect(roomManager.updateSettings('chg-host2', { boardSize: 999 }).changes.find(c => c.k === 'boardSize')?.v).not.toBe(999);
+  });
+});

@@ -33,3 +33,34 @@ describe('create-room modal: rated / friendly', () => {
       expect(i18n.split(`'${k}':`).length - 1).toBe(2);
     });
 });
+
+describe('create-room modal: guest default (B318)', () => {
+  const lobby = read('js/lobby.js');
+  const html = read('index.html');
+
+  // Run the real openModal body's mode decision against the real form markup.
+  function openWith(isGuest) {
+    document.body.innerHTML = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
+    const m = lobby.match(/function openModal\(\) \{[\s\S]*?applySettingsToForm\(([^;]*)\);/);
+    expect(m).not.toBeNull();
+    const ranked = new Function('userInfo', 'LITE_DEFAULT_SETTINGS', `return (${m[1]}).ranked;`)(
+      { isGuest }, { ranked: true, ruleWall: true });
+    document.getElementById(ranked ? 'rm-rated' : 'rm-friendly').checked = true;
+    return ranked;
+  }
+
+  test('guest → friendly checked, rated unchecked', () => {
+    openWith(true);
+    expect(document.getElementById('rm-friendly').checked).toBe(true);
+    expect(document.getElementById('rm-rated').checked).toBe(false);
+  });
+
+  test('logged-in user → rated checked', () => {
+    openWith(false);
+    expect(document.getElementById('rm-rated').checked).toBe(true);
+  });
+
+  test('default is computed on each open, not once at init', () => {
+    expect(lobby).toMatch(/function openModal\(\) \{[\s\S]*?ranked: !userInfo\.isGuest/);
+  });
+});

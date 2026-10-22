@@ -33,8 +33,8 @@
   // ── DOM refs ──────────────────────────────────────────────────────────────
   const roomIdNav      = document.getElementById('room-id-nav');
   const siteLinks      = document.getElementById('room-site-links');
-  const cardTop        = document.getElementById('pcard-top');
-  const cardBottom     = document.getElementById('pcard-bottom');
+  const cardTop        = document.getElementById('seatcard-top');
+  const cardBottom     = document.getElementById('seatcard-bottom');
   const modeBadge      = document.getElementById('room-mode-badge');
   const settingsPanel  = document.getElementById('settings-panel');
   const settingsBody   = document.getElementById('settings-body');
@@ -52,12 +52,6 @@
   function serverNow() {
     const rs = global.RoomSocket;
     return (rs && typeof rs.serverNow === 'function') ? rs.serverNow() : Date.now();
-  }
-
-  // Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
-  // 'pro' → 'default' normalisation lives in exactly one place.
-  function uiMode() {
-    return (global.getUiMode && global.getUiMode()) || 'lite';
   }
 
   // Bounce the user back to the Chat tab when the tab they are on disappears.
@@ -204,38 +198,38 @@
     const st = S();
     const player = st.roomData.users.find(u => u.slot === slotNum);
     el.dataset.slot = String(slotNum);
-    el.classList.remove('pcard--turn', 'pcard--low');
+    el.classList.remove('seatcard--turn', 'seatcard--low');
     if (!player) {
       const canSit = st.mySlot === null && st.roomData.state !== 'playing';
-      el.classList.add('pcard--empty');
+      el.classList.add('seatcard--empty');
       delete el.dataset.clock;
       el.innerHTML = canSit
-        ? `<button class="pcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number">${t('room.sit')} · #${slotNum}</button>`
-        : `<span class="pcard__seat">#${slotNum}</span><span class="pcard__empty">${t('room.slot_empty')}</span>`;
+        ? `<button class="seatcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number">${t('room.sit')} · #${slotNum}</button>`
+        : `<span class="seatcard__seat">#${slotNum}</span><span class="seatcard__empty">${t('room.slot_empty')}</span>`;
       return;
     }
-    el.classList.remove('pcard--empty');
+    el.classList.remove('seatcard--empty');
     const isMe = player.userId === st.myUser.userId;
     const clock = playerClock(player);
     const live = !!st.gameState && clock.key !== null;
     if (live) el.dataset.clock = clock.key; else delete el.dataset.clock;
     const piece = clock.stone !== 'none' && typeof global.boardPieceSvg === 'function'
-      ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'pcard__piece')
+      ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<button class="pcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-regular-x"></use></svg></button>`
+      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
-      <div class="pcard__av${isMe ? ' pcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
-      <div class="pcard__id">
-        <div class="pcard__name">${escapeHtml(player.displayName)}</div>
-        <div class="pcard__meta">${renderStatusDot(player)}</div>
+      <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
+      <div class="seatcard__id">
+        <div class="seatcard__name">${escapeHtml(player.displayName)}</div>
+        <div class="seatcard__meta">${renderStatusDot(player)}</div>
       </div>
       ${standBtn}
-      ${live ? `<div class="pcard__clock" data-clock-text></div>` : ''}
+      ${live ? `<div class="seatcard__clock" data-clock-text></div>` : ''}
     `;
     // CSP forbids inline onerror — fall back to initials from here.
-    const img = el.querySelector('.pcard__img');
+    const img = el.querySelector('.seatcard__img');
     if (img) img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true });
   }
 
@@ -244,7 +238,7 @@
     const ini = escapeHtml(initials(player.displayName));
     const url = player.avatarUrl;
     if (!url || !/^\/api\/profile\/avatar\/[\w-]+\.webp\?v=\d+$/.test(url)) return ini;
-    return `<img class="pcard__img" src="${escapeAttr(url)}" alt="" data-ini="${ini}">`;
+    return `<img class="seatcard__img" src="${escapeAttr(url)}" alt="" data-ini="${ini}">`;
   }
 
   function renderPlayerCards() {
@@ -296,8 +290,8 @@
       const textEl = el.querySelector('[data-clock-text]');
       if (textEl) textEl.textContent = formatClock(remaining);
       const isTurn = !!turnColor && turnColor === key.toUpperCase();
-      el.classList.toggle('pcard--turn', isTurn);
-      el.classList.toggle('pcard--low', remaining <= 10 && st.gameState.status === 'ongoing');
+      el.classList.toggle('seatcard--turn', isTurn);
+      el.classList.toggle('seatcard--low', remaining <= 10 && st.gameState.status === 'ongoing');
     }
   }
 
@@ -317,7 +311,7 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
@@ -466,7 +460,7 @@
       <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=368#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-caret-right"></use></svg>
       </a>
     `;
   }
@@ -481,27 +475,21 @@
       const rankedBlocked = st.roomData.users.some(u => u.slot !== null && u.isGuest);
       const roomRows = `
         <div class="setting-row">
-          <span class="setting-label">${t('modal.board_size')}</span>
-          <div class="pill-group">
-            <input type="radio" name="r-boardSize" id="r-bs-15" value="15" ${s.boardSize === 15 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-15">15×15</label>
-            <input type="radio" name="r-boardSize" id="r-bs-17" value="17" ${s.boardSize === 17 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-17">17×17</label>
-            <input type="radio" name="r-boardSize" id="r-bs-19" value="19" ${s.boardSize === 19 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-19">19×19</label>
-            <input type="radio" name="r-boardSize" id="r-bs-20" value="20" ${s.boardSize === 20 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-bs-20">20×20</label>
-          </div>
+          <label class="setting-label" for="r-boardSize">${t('modal.board_size')}</label>
+          <select class="setting-select" id="r-boardSize" data-change-action="updateSettings">
+            <option value="15" ${s.boardSize === 15 ? 'selected' : ''}>15×15</option>
+            <option value="17" ${s.boardSize === 17 ? 'selected' : ''}>17×17</option>
+            <option value="19" ${s.boardSize === 19 ? 'selected' : ''}>19×19</option>
+            <option value="20" ${s.boardSize === 20 ? 'selected' : ''}>20×20</option>
+          </select>
         </div>
         <div class="setting-row">
-          <div class="pill-group">
-            <input type="radio" name="r-winRule" id="r-wr-freestyle" value="freestyle" ${s.winningRule === 'freestyle' || !s.winningRule ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-wr-freestyle">${t('rule.freestyle')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-standard" value="standard" ${s.winningRule === 'standard' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-wr-standard">${t('rule.standard')}</label>
-            <input type="radio" name="r-winRule" id="r-wr-caro" value="caro" ${s.winningRule === 'caro' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-wr-caro">${t('rule.caro')}</label>
-          </div>
+          <label class="setting-label" for="r-winRule">${t('modal.win_rule')}</label>
+          <select class="setting-select" id="r-winRule" data-change-action="updateSettings">
+            <option value="freestyle" ${(s.winningRule || 'freestyle')==="freestyle" ? 'selected' : ''}>${t('rule.freestyle')}</option>
+            <option value="standard" ${(s.winningRule || 'freestyle')==="standard" ? 'selected' : ''}>${t('rule.standard')}</option>
+            <option value="caro" ${(s.winningRule || 'freestyle')==="caro" ? 'selected' : ''}>${t('rule.caro')}</option>
+          </select>
         </div>
         <div class="setting-row">
           <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
@@ -520,12 +508,11 @@
           </div>
         </div>
         <div class="setting-row">
-          <div class="pill-group">
-            <input type="radio" name="r-openRule" id="r-or-none" value="none" ${!s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-or-none">${t('rule.none')}</label>
-            <input type="radio" name="r-openRule" id="r-or-swap2" value="swap2" ${s.ruleSwap2 ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-or-swap2">Swap2</label>
-          </div>
+          <label class="setting-label" for="r-openRule">${t('modal.opening')}</label>
+          <select class="setting-select" id="r-openRule" data-change-action="updateSettings">
+            <option value="none" ${(s.ruleSwap2 ? 'swap2' : 'none')==="none" ? 'selected' : ''}>${t('rule.none')}</option>
+            <option value="swap2" ${(s.ruleSwap2 ? 'swap2' : 'none')==="swap2" ? 'selected' : ''}>Swap2</option>
+          </select>
         </div>
         <div class="setting-row">
           <div class="toggle-row" ${rankedBlocked ? 'style="opacity:0.45"' : ''}>
@@ -537,15 +524,12 @@
           </div>
         </div>
         <div class="setting-row">
-          <span class="setting-label">${t('modal.timer_mode')}</span>
-          <div class="pill-group">
-            <input type="radio" name="r-timerMode" id="r-tm-move" value="per_move" ${s.timerMode === 'per_move' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-tm-move">${t('modal.per_move')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-game" value="per_game" ${s.timerMode === 'per_game' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-tm-game">${t('modal.per_game')}</label>
-            <input type="radio" name="r-timerMode" id="r-tm-blitz" value="blitz" ${s.timerMode === 'blitz' ? 'checked' : ''} data-change-action="updateSettings" />
-            <label for="r-tm-blitz">${t('modal.blitz')}</label>
-          </div>
+          <label class="setting-label" for="r-timerMode">${t('modal.timer_mode')}</label>
+          <select class="setting-select" id="r-timerMode" data-change-action="updateSettings">
+            <option value="per_move" ${s.timerMode==="per_move" ? 'selected' : ''}>${t('modal.per_move')}</option>
+            <option value="per_game" ${s.timerMode==="per_game" ? 'selected' : ''}>${t('modal.per_game')}</option>
+            <option value="blitz" ${s.timerMode==="blitz" ? 'selected' : ''}>${t('modal.blitz')}</option>
+          </select>
         </div>
         <div class="setting-row">
           <span class="setting-label">${t('modal.time_label')}</span>
@@ -576,26 +560,9 @@
       const ruleText  = ruleNames.length > 0 ? ruleNames.join(', ') : t('room.rule_basic');
       const timerText = getTimerSettingsText(s);
 
-      // Lite: collapse the three label/value rows into one plain sentence built
-      // from exactly the same data.
-      const roomRows = uiMode() === 'lite'
-        ? `<p class="settings-summary">${escapeHtml(buildSettingsSentence(s, ruleText))}</p>`
-        : `
-        <div class="settings-info">
-          <div class="settings-info__row">
-            <span class="settings-info__label">${t('settings.board_size')}</span>
-            <span class="settings-info__value">${s.boardSize}×${s.boardSize}</span>
-          </div>
-          <div class="settings-info__row">
-            <span class="settings-info__label">${t('settings.rules')}</span>
-            <span class="settings-info__value">${ruleText}</span>
-          </div>
-          <div class="settings-info__row">
-            <span class="settings-info__label">${t('settings.timer')}</span>
-            <span class="settings-info__value">${timerText}</span>
-          </div>
-        </div>
-      `;
+      // The three label/value rows collapse into one plain sentence built from
+      // exactly the same data (#253).
+      const roomRows = `<p class="settings-summary">${escapeHtml(buildSettingsSentence(s, ruleText))}</p>`;
 
       settingsBody.innerHTML =
         settingsGroup('settings.group_room', 'settings.group_room_hint_guest', roomRows) +
@@ -610,13 +577,13 @@
     const st = S();
     const guests = st.roomData.users.filter(u => u.slot === null);
 
-    // Lite hides the whole "Khán giả" tab until a spectator actually joins —
+    // The "Khán giả" tab stays hidden until a spectator actually joins —
     // same empty-check that already governed the panel body, extended to the
-    // tab button. Default/Pro leave the tab permanently visible.
+    // tab button.
     const tabBtn = document.querySelector('.tab-btn[data-tab="tab-users"]');
     if (tabBtn) {
       const scorePanel = document.getElementById('score-panel');
-      const hideTab = uiMode() === 'lite' && guests.length === 0 && !(scorePanel && !scorePanel.hidden);
+      const hideTab = guests.length === 0 && !(scorePanel && !scorePanel.hidden);
       tabBtn.style.display = hideTab ? 'none' : '';
       // Don't strand the user on a tab that just disappeared. Say "show the
       // chat tab", not "pretend the user clicked the chat button": the click
@@ -675,9 +642,9 @@
     // tab-users above.
     let hasData = !(seatedPlayers.length === 0 && Object.keys(rawSt).length === 0);
 
-    // Lite waits for a result to exist — an all-zero scoreboard tells a casual
-    // player nothing. Default/Pro keep the existing "visible once seated" rule.
-    if (hasData && uiMode() === 'lite') {
+    // Wait for a result to exist — an all-zero scoreboard tells a casual
+    // player nothing.
+    if (hasData) {
       const hasResult = Object.values(rawSt).some(
         e => (e.win || 0) + (e.loss || 0) + (e.draw || 0) > 0
       );
@@ -697,8 +664,14 @@
       }
     }
 
+    // Ranked by points (win 1, draw ½), then more wins, then fewer losses; ties keep a stable name order.
+    const points = (e) => (e.win || 0) + (e.draw || 0) / 2;
+    const ranked = Object.values(combined).sort((a, b) =>
+      points(b) - points(a) || (b.win || 0) - (a.win || 0) || (a.loss || 0) - (b.loss || 0)
+      || String(a.name || '').localeCompare(String(b.name || '')));
+
     let html = '';
-    for (const [, entry] of Object.entries(combined)) {
+    for (const entry of ranked) {
       html += `
         <tr>
           <td>${escapeHtml(entry.name || '—')}</td>
@@ -715,14 +688,6 @@
   window.addEventListener('langchange', () => {
     const st = S();
     if (st.roomData) renderSettings();
-  });
-
-  // ── UI mode change listener ───────────────────────────────────────────────
-  // Score table, spectators tab and the guest settings summary are all mode-
-  // gated, so re-run the full panel render rather than just renderSettings().
-  window.addEventListener('uimodechange', () => {
-    const st = S();
-    if (st.roomData) updateUI();
   });
 
   // ── Click-mode change listener ─────────────────────────────────────────────
@@ -764,8 +729,8 @@
   };
 
   global.updateSettings = function() {
-    const boardSizeEl = document.querySelector('input[name="r-boardSize"]:checked');
-    const timerModeEl = document.querySelector('input[name="r-timerMode"]:checked');
+    const boardSizeEl = document.getElementById('r-boardSize');
+    const timerModeEl = document.getElementById('r-timerMode');
     const timerEl          = document.getElementById('r-timer');
     const timerIncrementEl = document.getElementById('r-timer-increment');
     const wallEl           = document.getElementById('r-wall');
@@ -779,10 +744,10 @@
     global.RoomClient.emit('room:settings', {
       settings: {
         boardSize:             parseInt(boardSizeEl.value, 10),
-        winningRule:           (document.querySelector('input[name="r-winRule"]:checked') || {}).value || 'freestyle',
+        winningRule:           (document.getElementById('r-winRule') || {}).value || 'freestyle',
         ruleWall:              wallEl   ? wallEl.checked   : false,
         rulePortal:            portalEl ? portalEl.checked : false,
-        ruleSwap2:             (document.querySelector('input[name="r-openRule"]:checked') || {}).value === 'swap2',
+        ruleSwap2:             (document.getElementById('r-openRule') || {}).value === 'swap2',
         ranked:                rankedEl ? rankedEl.checked : true,
         timerMode,
         timerSeconds:          timerEl          ? (parseInt(timerEl.value, 10) || 60)          : 60,

@@ -17,7 +17,7 @@ describe('settings-panel.css is linked wherever settings-panel.js loads', () => 
 
   it.each(users)('%s links css/settings-panel.css', (f) => {
     const html = fs.readFileSync(path.join(CLIENT, f), 'utf8');
-    expect(html).toMatch(/<link[^>]+rel="stylesheet"[^>]+href="css\/settings-panel\.css\?v=\d+"/);
+    expect(html).toMatch(/<link[^>]+rel="stylesheet"[^>]+href="css\/settings-panel\.css\?v=[0-9a-f]+"/);
   });
 });
 

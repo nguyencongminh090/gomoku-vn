@@ -64,12 +64,6 @@ const btnQuickMatch = document.getElementById('btn-quick-match');
 const modalAdvancedToggle = document.getElementById('modal-advanced-toggle');
 let currentRooms = [];
 
-// Current UI mode — 'lite' | 'default'. Delegates to ui-mode.js so the
-// 'pro' → 'default' normalisation lives in exactly one place.
-function uiMode() {
-  return (window.getUiMode && window.getUiMode()) || 'lite';
-}
-
 // ---------------------------------------------------------------------------
 // Display user info in nav
 // ---------------------------------------------------------------------------
@@ -211,11 +205,8 @@ const onlineLineEl      = document.getElementById('online-line');
 const onlineLineCountEl = document.getElementById('online-line-count');
 const onlineLineNamesEl = document.getElementById('online-line-names');
 
-// How many names the line spells out before it summarises the rest. Lite keeps
-// the line short; Default names more before trailing off.
-function onlineNameLimit() {
-  return uiMode() === 'lite' ? 6 : 12;
-}
+// How many names the line spells out before it summarises the rest (#253).
+const ONLINE_NAME_LIMIT = 6;
 
 let currentOnlineUsers = [];
 
@@ -233,7 +224,7 @@ function renderOnlineLine() {
     return;
   }
 
-  const limit  = onlineNameLimit();
+  const limit  = ONLINE_NAME_LIMIT;
   const shown  = users.slice(0, limit);
   const hidden = count - shown.length;
   // Own name set in ink so you can find yourself in the line at a glance.
@@ -343,7 +334,7 @@ function roomMatchesTab(room) {
 }
 
 // Full rebuild — used for the initial/reconnect snapshot (lobby:update) and
-// for langchange/uimodechange, where every row's text genuinely needs to be
+// for langchange, where every row's text genuinely needs to be
 // redone. NOT used for lobby:patch — see applyLobbyPatch below.
 function renderRoomList(allRooms) {
   const rooms = allRooms.filter(roomMatchesTab);
@@ -471,11 +462,11 @@ function getBulletClass(state, playerCount) {
 // The meta line under the players: room name as plain text, everything else a tag chip (.rtag).
 // Every dynamic piece goes through escapeHtml, so a room/host name can never inject markup.
 function buildRoomMeta(room) {
-  const tag = (text, mod = '') => `<span class="rtag${mod ? ' rtag--' + mod : ''}">${escapeHtml(text)}</span>`;
+  const tag = (text, mod = '', title = '') => `<span class="rtag${mod ? ' rtag--' + mod : ''}"${title ? ` title="${escapeHtml(title)}"` : ''}>${escapeHtml(text)}</span>`;
   const time = buildTimeSummary(room);
   return [
     `<span class="room-row__host">${escapeHtml(room.roomName || room.roomId)}</span>`,
-    ...buildRuleTags(room).map((x) => tag(x)),
+    ...buildRuleTags(room).map((x, i) => tag(x, '', i === 0 && isCustomRules(room) ? buildRuleTitle(room) : '')),
     time ? tag(time) : '',
     room.ranked === false ? tag(t('room.mode_friendly'), 'friendly') : tag(t('room.mode_rated'), 'rated'),
   ].join('');
@@ -495,40 +486,35 @@ function buildTimeSummary(room) {
   return t('lobby.time_per_move', { s });
 }
 
-// Lite: one plain-language tag instead of the jargon cluster
-// (Wall / Portal / Swap2 / Caro).
-// Default: the full breakdown.
+// One plain-language tag instead of the jargon cluster (Wall / Portal / Swap2 /
+// Caro); the full breakdown is in the tooltip (buildRuleTitle) (#253).
+function isCustomRules(room) {
+  return !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
+    || (room.winningRule || 'freestyle') !== 'freestyle';
+}
+
 function buildRuleTags(room) {
   const size = `${room.boardSize}×${room.boardSize}`;
-  if (uiMode() === 'lite') {
-    const isCustom = !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
-      || (room.winningRule || 'freestyle') !== 'freestyle';
-    return [isCustom ? t('lobby.rules_custom') : t('lobby.rules_standard'), size];
-  }
+  return [isCustomRules(room) ? t('lobby.rules_custom') : t('lobby.rules_standard'), size];
+}
 
-  const tags = [size];
-  if (room.ruleWall)   tags.push(t('modal.rule_wall'));
-  if (room.rulePortal) tags.push(t('modal.rule_portal'));
-  if (room.ruleSwap2)  tags.push('Swap2');
+// Full rule list for the tooltip of the compact tag.
+function buildRuleTitle(room) {
+  const parts = [];
+  if (room.ruleWall)   parts.push(t('modal.rule_wall'));
+  if (room.rulePortal) parts.push(t('modal.rule_portal'));
+  if (room.ruleSwap2)  parts.push('Swap2');
   const win = room.winningRule || 'freestyle';
-  if (win === 'standard')  tags.push(t('rule.standard'));
-  if (win === 'caro')      tags.push(t('rule.caro'));
-  if (win === 'freestyle') tags.push(t('rule.freestyle'));
-  return tags;
+  if (win === 'standard')  parts.push(t('rule.standard'));
+  if (win === 'caro')      parts.push(t('rule.caro'));
+  if (win === 'freestyle') parts.push(t('rule.freestyle'));
+  return parts.join(' · ');
 }
 
 window.addEventListener('langchange', () => {
   renderRoomList(currentRooms);
   renderHero();
   renderOnlineLine();
-});
-
-window.addEventListener('uimodechange', () => {
-  // Both the room meta line and how many names the online line spells out are
-  // mode-dependent (see buildRuleSummary/onlineNameLimit).
-  renderRoomList(currentRooms);
-  renderOnlineLine();
-  applyModalMode();
 });
 
 // ---------------------------------------------------------------------------
@@ -546,15 +532,11 @@ window.joinRoom = function(roomId) {
 // ---------------------------------------------------------------------------
 
 function openModal() {
-  if (uiMode() === 'lite') {
-    // Lite is a one-click, low-decision path — always start from the fixed
-    // Lite preset rather than recalling last-used settings. The user can still
-    // open Advanced and tweak before hitting Quick Match/Confirm.
-    applySettingsToForm(LITE_DEFAULT_SETTINGS);
-  } else {
-    const last = loadLastSettings();
-    if (last) applySettingsToForm(last); // so Quick match/Confirm reflect the real form state
-  }
+  // One-click, low-decision path — always start from the fixed preset rather
+  // than recalling last-used settings. The user can still open Advanced and
+  // tweak before hitting Quick Match/Confirm.
+  // Guests can only play friendly, so preselect it (re-evaluated on every open).
+  applySettingsToForm({ ...LITE_DEFAULT_SETTINGS, ranked: !userInfo.isGuest });
   applyModalMode();
   modalOverlay.classList.add('visible');
 }
@@ -614,17 +596,6 @@ function readFormSettings() {
   return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
-function loadLastSettings() {
-  try {
-    const raw = localStorage.getItem(LAST_SETTINGS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? { ...DEFAULT_ROOM_SETTINGS, ...parsed } : null;
-  } catch (e) {
-    return null;
-  }
-}
-
 function saveLastSettings(settings) {
   try {
     localStorage.setItem(LAST_SETTINGS_KEY, JSON.stringify(settings));
@@ -675,21 +646,15 @@ btnQuickMatch.addEventListener('click', () => {
 
 // ── Modal mode gating ───────────────────────────────────────────────────────
 
-// Lite    → Quick match primary, everything else behind a closed "Advanced".
-// Default → flat form, pre-filled with last-used settings on open.
+// Quick match primary, everything else behind a closed "Advanced".
 function applyModalMode() {
   const advanced = document.getElementById('modal-advanced');
   const toggle   = document.getElementById('modal-advanced-toggle');
   if (!advanced || !toggle) return;
 
-  const lite = uiMode() === 'lite';
-  modalOverlay.classList.toggle('modal--lite', lite);
-
-  // Advanced disclosure exists only in Lite; Default shows the form flat.
-  if (lite) {
-    advanced.classList.remove('open');
-    toggle.setAttribute('aria-expanded', 'false');
-  }
+  modalOverlay.classList.add('modal--lite');
+  advanced.classList.remove('open');
+  toggle.setAttribute('aria-expanded', 'false');
 }
 
 modalAdvancedToggle.addEventListener('click', () => {

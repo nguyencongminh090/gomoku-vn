@@ -8,7 +8,7 @@ compatibility: claude-code-only
 
 ## Never run against the real user database
 
-`server/db/database.js`'s `DB_PATH` is hardcoded to `server/db/gomoku.db` — no env override. Simply
+`server/db/connection.js`'s `DB_PATH` defaults to `server/db/gomoku.db`; `GOMOKU_DB_PATH=<file>` overrides it (B259, safest for e2e: point it at a temp file). Without it, simply
 running `node server/index.js` for Playwright's `baseURL` reads/writes the same db a real deployment
 or the user's own dev session uses. Guest games completing (resign, draw, timeout, five-in-a-row)
 persist rows via `database.saveGame()`.

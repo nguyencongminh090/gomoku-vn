@@ -59,7 +59,7 @@ afterAll(async () => {
  */
 function rawGet(urlPath, headers = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: '127.0.0.1', port, path: urlPath, headers }, res => {
+    const req = http.get({ host: '127.0.0.1', port, path: urlPath, headers, agent: false }, res => {
       const chunks = [];
       res.on('data', c => chunks.push(c));
       res.on('end', () => resolve({
@@ -132,16 +132,16 @@ describe('compression edge cases', () => {
     // nothing and can grow the payload. This pins the default `compressible`
     // content-type filter, which the instruction file says to verify rather
     // than replace with a hand-rolled one.
-    const res = await rawGet('/vendor/fonts/manrope/manrope-latin.woff2', GZIP);
+    const res = await rawGet('/vendor/fonts/nunito/nunito-latin.woff2', GZIP);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-encoding']).toBeUndefined();
   });
 
   test('tiny responses below the size threshold are left alone', async () => {
-    // compression's default threshold is 1 KB; ui-mode-preload.js is ~399 B.
+    // compression's default threshold is 1 KB; skin-preload.js is under 1 KB.
     // Compressing payloads this small typically makes them bigger.
-    const res = await rawGet('/js/ui-mode-preload.js', GZIP);
+    const res = await rawGet('/js/skin-preload.js', GZIP);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-encoding']).toBeUndefined();

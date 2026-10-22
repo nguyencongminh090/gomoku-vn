@@ -116,6 +116,7 @@ let server;
 let baseUrl;
 
 beforeAll(async () => {
+  require('./helpers/winner-color-trigger').installWinnerColorTrigger(database.db);
   // games.black_player_id / white_player_id are FKs into users, so the two
   // "secret" ids need real rows behind them.
   const insertUser = database.db.prepare(

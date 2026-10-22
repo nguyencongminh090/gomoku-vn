@@ -59,9 +59,10 @@ const PAIRS = [
   ['--c-ink-3', '--c-surface', 4.5], ['--c-ink-3', '--c-bg', 4.5],
   ['--c-on-brand', '--c-brand', 4.5], ['--c-brand-text', '--c-surface', 4.5], ['--c-brand-text', '--c-bg', 4.5],
   ['--c-accent', '--c-surface', 4.5],
-  ['--c-error', '--c-surface', 4.5], ['--c-success', '--c-surface', 4.5], ['--c-warning', '--c-surface', 4.5],
+  ['--c-error', '--c-surface', 4.5], ['--c-error', '--c-surface-2', 4.5], ['--c-success', '--c-surface', 4.5], ['--c-warning', '--c-surface', 4.5],
   ['--c-state-playing', '--c-surface', 3], ['--c-state-waiting', '--c-surface', 3], ['--c-state-idle', '--c-surface', 3],
   ['--c-ink', '--c-field', 4.5],
+  ['--c-on-ink', '--c-ink', 4.5],   // toast: text on an ink fill (dark mode had white on light ink)
 ];
 
 describe.each(SKINS.flatMap((s) => MODES.map((m) => [s, m])))('%s / %s', (skin, mode) => {
@@ -83,4 +84,9 @@ describe.each(SKINS.flatMap((s) => MODES.map((m) => [s, m])))('%s / %s', (skin, 
 
 it('no skin block redefines the shared board tokens', () => {
   expect(blocks.flatMap((b) => Object.keys(b.vars)).filter((k) => /board|stone/.test(k))).toEqual([]);
+});
+
+it('#270: <a>.pbtn--primary keeps --c-on-brand (not beaten by `.pl a{color:inherit}`)', () => {
+  const pcss = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+  expect(pcss).toMatch(/\.pl a\.pbtn--primary\s*\{\s*color:\s*var\(--c-on-brand\)/);
 });

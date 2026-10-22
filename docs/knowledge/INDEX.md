@@ -30,6 +30,11 @@ Notes are generic: `CLAUDE.md` and `.claude/rules/*` win on conflict. Check `app
 | [be-data-modeling-migrations](be-data-modeling-migrations.md) | database design for the platform: constraints, indexes from query patterns, versioned migrations (`server/db/`) |
 | [data-schema-evolution](data-schema-evolution.md) | expand/migrate/contract when changing persisted data with old and new code live |
 | [data-storage-selection](data-storage-selection.md) | when SQLite stops being enough (concurrency, scale-out, search, analytics) — see platform direction |
+| [db-sqlite-migrations-user-version](db-sqlite-migrations-user-version.md) | versioned migration runner on `PRAGMA user_version`, table rebuild (adding CHECK) — #255, #257 |
+| [db-backup-restore-retention](db-backup-restore-retention.md) | scheduled live backup + rotation + restore test, retention deletes, shrinking the file — #254, #256 |
+| [db-query-plan-index-tuning](db-query-plan-index-tuning.md) | `EXPLAIN QUERY PLAN`, composite/covering/partial indexes, N+1 — slow hot paths (recent games, rankings, sessions) |
+| [db-benchmarking-sqlite](db-benchmarking-sqlite.md) | measuring a query/index/pagination change: synthetic volume, ANALYZE, median of N runs, plan beside timing |
+| [db-constraints-check-fk-sqlite](db-constraints-check-fk-sqlite.md) | adding NOT NULL / CHECK / json_valid / STRICT / FK actions to the live schema, safe backfill order — #257, #259 |
 
 ## Reference (SKILLS_TREE, not copied)
 | Path under `K/` | Use when |
@@ -43,6 +48,12 @@ Notes are generic: `CLAUDE.md` and `.claude/rules/*` win on conflict. Check `app
 | `software-design/items/pattern-observer.md` | event fan-out (room broadcasts, lobby deltas) |
 | `web-development/items/webtest-strategy.md` | where a test belongs (unit/integration/e2e), "bug with no failing test" |
 | `web-development/items/webtest-e2e-browser.md` | reliable Playwright tests |
+| `database/items/db-sqlite-pragmas-wal-transactions.md` | pragmas (synchronous, busy_timeout, cache_size), WAL growth, batching writes in a short transaction (#259) |
+| `database/items/db-keyset-pagination.md` | recent-games / history lists: keyset vs OFFSET |
+| `database/items/db-sqlite-vs-client-server.md` | sanity check for when SQLite stops being enough |
+| `database/items/db-sqlite-security-hardening.md` | file/backup permissions, .gitignore, trusted_schema, LIKE escaping, secure_delete, PII retention (#254, #256, #259) |
+| `software-design/items/cleancode-module-split.md` | splitting database.js: connection module, facade, exports diff, mocks (#258) |
+| `software-architecture/items/data-inprocess-read-cache.md` | in-process cache for slow rank/aggregate reads, TTL vs invalidate-on-write, single-process only |
 | `security/items/threat-risk-rating.md` | ranking audit findings (weak fit; only for triage) |
 
 ## Platform direction (planned: playing site → full platform) — reference only, copy when the work starts

@@ -187,10 +187,12 @@ describe('#145 — index.html load order', () => {
     expect(occurrences).toBe(1);
   });
 
-  test('every ?v= on the page is the same version (cache-busting rule)', () => {
-    const versions = new Set(
-      [...INDEX_HTML.matchAll(/\?v=(\d+)/g)].map((m) => m[1])
-    );
-    expect(versions.size).toBe(1);
+  test('each asset on the page has exactly one ?v= (cache-busting rule, #265 per-file hash)', () => {
+    const byPath = new Map();
+    for (const m of INDEX_HTML.matchAll(/([\w./-]+)\?v=([0-9a-f]+)/g)) {
+      byPath.set(m[1], (byPath.get(m[1]) || new Set()).add(m[2]));
+    }
+    expect(byPath.size).toBeGreaterThan(0);
+    expect([...byPath].filter(([, v]) => v.size > 1)).toEqual([]);
   });
 });

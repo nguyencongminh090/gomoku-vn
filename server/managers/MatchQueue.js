@@ -19,7 +19,25 @@ const PRESETS = {
   '3+2': { timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 },
   '5+3': { timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 },
   '10+0': { timerMode: 'blitz', timerSeconds: 600, timerIncrementSeconds: 0 },
+  '1+1': { timerMode: 'blitz', timerSeconds: 60, timerIncrementSeconds: 1 },
+  '7+3': { timerMode: 'blitz', timerSeconds: 420, timerIncrementSeconds: 3 },
+  // "m<s>" = per-move clock: each player gets <s> seconds per move (TimerManager 'per_move').
+  m60: { timerMode: 'per_move', timerSeconds: 60 },
+  m45: { timerMode: 'per_move', timerSeconds: 45 },
+  m30: { timerMode: 'per_move', timerSeconds: 30 },
+  m5: { timerMode: 'per_move', timerSeconds: 5 },
 };
+
+/** Human label for a preset key: "5+3" stays, "m30" → "30s/nước", auto → "Tự động". */
+function timeLabel(key) {
+  if (key === 'auto') return 'Tự động';
+  const m = /^m(\d+)$/.exec(key);
+  return m ? m[1] + 's/nước' : key;
+}
+
+/** Time "auto": pairs with anyone of the same rule/rated/board, whatever their clock. */
+const AUTO = 'auto';
+const AUTO_DEFAULT = 'm60'; // two autos play this
 
 const WINDOW_START = 100;
 const WINDOW_STEP = 50;
@@ -32,6 +50,22 @@ const WAIT_MIN_SAMPLES = 3; // below this the lobby shows no estimate
 function ratingWindow(ms) {
   if (ms >= WINDOW_OPEN_MS) return Infinity;
   return WINDOW_START + WINDOW_STEP * Math.floor(ms / WINDOW_STEP_MS);
+}
+
+/** Everything but the clock — two entries can only pair when this matches. */
+function poolKey(e) {
+  return `${e.rule}|${e.rated ? 'r' : 'c'}|${e.wall ? 'w' : ''}${e.portal ? 'p' : ''}`;
+}
+
+/** Same pool and clocks that agree: equal, or either side is auto (a set clock never meets a different one). */
+function compatible(a, b) {
+  return poolKey(a) === poolKey(b) && (a.time === AUTO || b.time === AUTO || a.time === b.time);
+}
+
+/** Clock key a pair plays: the side that picked one wins; two autos get AUTO_DEFAULT. */
+function resolveTime(a, b) {
+  if (a.time !== AUTO) return a.time;
+  return b.time !== AUTO ? b.time : AUTO_DEFAULT;
 }
 
 function bucketKey(e) {
@@ -48,7 +82,7 @@ class MatchQueue {
   /** @returns {{ok:true, entry}|{error:string, code:string}} */
   join(e) {
     if (!RULES.includes(e.rule)) return { error: 'Luật không hợp lệ.', code: 'BAD_RULE' };
-    if (!PRESETS[e.time]) return { error: 'Thời gian không hợp lệ.', code: 'BAD_TIME' };
+    if (e.time !== AUTO && !PRESETS[e.time]) return { error: 'Thời gian không hợp lệ.', code: 'BAD_TIME' };
     const rated = e.rated === true;
     if (rated && e.isGuest) return { error: 'Cần tài khoản để chơi xếp hạng.', code: 'RATED_NEEDS_ACCOUNT' };
     this.entries.delete(e.userId); // re-join → back of the line, fresh wait
@@ -99,9 +133,8 @@ class MatchQueue {
   }
 
   countIn(entry) {
-    const key = bucketKey(entry);
     let n = 0;
-    for (const e of this.entries.values()) if (bucketKey(e) === key) n++;
+    for (const e of this.entries.values()) if (compatible(e, entry)) n++;
     return n;
   }
 
@@ -121,11 +154,10 @@ class MatchQueue {
     };
     for (const a of [...this.entries.values()]) {
       if (!this.entries.has(a.userId) || !ok(a)) continue; // taken earlier this pass, or vetoed
-      const key = bucketKey(a);
       const win = a.rated ? ratingWindow(now - a.since) : Infinity;
       let best = null;
       for (const b of [...this.entries.values()]) {
-        if (b === a || b.userId === a.userId || bucketKey(b) !== key) continue;
+        if (b === a || b.userId === a.userId || !compatible(a, b)) continue;
         const gap = a.rated ? Math.abs((a.rating || 0) - (b.rating || 0)) : 0;
         if (gap > win || (best && gap >= best.gap) || !ok(b)) continue;
         best = { b, gap };
@@ -142,4 +174,4 @@ class MatchQueue {
   }
 }
 
-module.exports = { MatchQueue, ratingWindow, bucketKey, PRESETS, RULES };
+module.exports = { MatchQueue, ratingWindow, bucketKey, compatible, resolveTime, AUTO, PRESETS, RULES, timeLabel };

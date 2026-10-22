@@ -257,3 +257,46 @@
 | 2026-10-12 16:40 | club Manage swatches grey in Firefox (forced-colors repainted fill ButtonFace) -> `forced-color-adjust: none` | [detail](docs/fix-log/2026-10-12-club-swatches-forced-colors.md) |
 | 2026-10-12 17:10 | club banner ~60px on phones (6:1 at every width) -> 3:1 at <=600px | [detail](docs/fix-log/2026-10-12-club-banner-mobile-small.md) |
 | 2026-10-12 17:40 | club invite: exact-username only, no suggestions, error out of view -> debounced name suggestions + inline error | [detail](docs/fix-log/2026-10-12-club-invite-autocomplete.md) |
+| 2026-10-15 18:54 | untracked: profile club rows ignored club avatarUrl (hard-coded null) -> pass c.avatarUrl | [detail](docs/fix-log/2026-10-15-profile-club-avatar.md) |
+| 2026-10-15 23:21 | #252 full-run flakes: compression test used keep-alive agent (ECONNRESET); lobby-home leaked quick-match ticker across tests -> agent:false + stop ticker | [detail](docs/fix-log/2026-10-15-full-run-test-flakes.md) |
+| 2026-10-16 13:42 | #255: DB versioned migrations on user_version (runner + legacy ALTERs moved, baseline 3) | [detail](docs/fix-log/2026-10-16-db-versioned-migrations.md) |
+| 2026-10-16 15:00 | #256: club_log capped at 500 rows/club (per-write delete in ClubService.log) | [detail](docs/fix-log/2026-10-16-club-log-cap.md) |
+| 2026-10-16 13:48 | #257: games.winner_color CHECK column (migration 004 + backfill), saveGame writes both, SQL readers switched | [detail](docs/fix-log/2026-10-16-games-winner-color.md) |
+| 2026-10-16 15:30 | #260: rankings search ranks only page rows (39→3.9 ms at 20k users); bench-queries.js added; game name filter left as LIKE | [detail](docs/fix-log/2026-10-16-slow-queries-rankings-search.md) |
+| 2026-10-16 15:45 | #255 follow-up: migrate.js re-checks user_version under the write lock; duplicate migration numbers refused | [detail](docs/fix-log/2026-10-16-migrate-race-dupes.md) |
+| 2026-10-16 16:00 | #255 follow-up: baseline stamp heals missing 003 (last_login_at) and refuses DBs missing 002 FKs | [detail](docs/fix-log/2026-10-16-baseline-assumes-001-003.md) |
+| 2026-10-16 16:30 | #255 follow-up: race-migrations.js — real multi-process race passes on dev, fails on old runner | [detail](docs/fix-log/2026-10-16-migrate-race-multiprocess.md) |
+| 2026-10-16 17:00 | #257 follow-up: migration 006 backfills winner_color for raw-name and guest-elimination legacy rows | [detail](docs/fix-log/2026-10-16-winner-color-heal.md) |
+| 2026-10-16 22:19 | #261 Lobby CLS: reserve #pl-shell 56px + empty dashboard containers; desktop 0.235→0, mobile 0.848→0.062 | [detail](docs/fix-log/2026-10-16-lobby-cls-reserve.md) |
+| 2026-10-16 23:32 | #263 Lobby: api-early.js starts 5 lobby APIs in <head> (dev ~975→~340 ms @150ms RTT), Manrope preload; 1.5 s gap = 2.4 s cold TCP connect hidden by HAR row | [detail](docs/fix-log/2026-10-16-lobby-early-api-font-preload.md) |
+| 2026-10-17 05:46 | #264 Room: profanity-filter.js lazy on chat focus (−1 req, −12 KB gzip); i18n split declined by user, room defer/CSS merge no gain | [detail](docs/fix-log/2026-10-17-room-lazy-profanity-filter.md) |
+| 2026-10-17 06:01 | #265 Per-file content-hash `?v=` (8-hex sha256, Merkle over imports); 1-file edit re-versions 1–6 URLs instead of 91 | [detail](docs/fix-log/2026-10-17-per-file-content-hash.md) |
+| 2026-10-17 14:01 | #267 e2e: goto #rooms, cellPosition/act helpers, .seatcard selectors; 41/56 pass, 10 layout specs → #268 | [detail](docs/fix-log/2026-10-17-e2e-goto-rooms-267.md) |
+| 2026-10-17 15:08 | #269 /api/shell bootstrap replaces 3 nav calls; rankings/me no longer fetched twice (warm lobby 6→4 req, settings 6→3) | [detail](docs/fix-log/2026-10-17-shell-bootstrap-269.md) |
+| 2026-10-17 16:00 | #270 `.pl a.pbtn--primary` keeps on-brand label; default-dark --c-error → #f77f7f (AA) | [detail](docs/fix-log/2026-10-17-contrast-270.md) |
+| 2026-10-17 17:00 | #271 Lobby 375 px: stats strip reserves its 2 wrapped rows; CLS 0.124 → 0.007 (0.058 with news line) | [detail](docs/fix-log/2026-10-17-lobby-cls-271.md) |
+| 2026-10-17 18:00 | #272 /profile.html without /u/<name> redirects to / instead of fetching a 404 profile API | [detail](docs/fix-log/2026-10-17-profile-no-username-272.md) |
+| 2026-10-17 19:00 | #273 Puzzle guest solve/submit 500 → 403 + prompt | [detail](docs/fix-log/2026-10-17-puzzle-guest-500-273.md) |
+| 2026-10-17 19:01 | #274 /puzzles filter/paging kept the lobby URL | [detail](docs/fix-log/2026-10-17-puzzles-list-url-274.md) |
+| 2026-10-17 19:02 | #275 Puzzle guests/visitors see the prompt up front | [detail](docs/fix-log/2026-10-17-puzzle-guest-gating-275.md) |
+| 2026-10-17 19:03 | #276 /puzzles filter bar labelled, even rhythm | [detail](docs/fix-log/2026-10-17-puzzles-filter-bar-276.md) |
+| 2026-10-17 16:42 | #277 /puzzles pager lands at the first card | [detail](docs/fix-log/2026-10-17-puzzles-pager-scroll-277.md) |
+| 2026-10-17 16:42 | #278 Puzzle editor hints in plain words | [detail](docs/fix-log/2026-10-17-puzzle-editor-hints-wording-278.md) |
+| 2026-10-17 16:42 | #279 /puzzles/mine paged (20/page) | [detail](docs/fix-log/2026-10-17-puzzles-mine-paging-279.md) |
+| 2026-10-17 16:53 | #280 Shared guest guard on 7 member-only routes | [detail](docs/fix-log/2026-10-17-guest-guard-shared-280.md) |
+| 2026-10-17 16:53 | #281 forum.js + rankings.js keep their path on filter | [detail](docs/fix-log/2026-10-17-replacestate-base-href-281.md) |
+| 2026-10-18 | .ptbl cells keep real side padding (rankings/club tables) | [detail](docs/fix-log/2026-10-18-ptbl-cell-padding.md) |
+| 2026-10-18 11:28 | #282 Paper grid + leaf background on all platform pages, layered card shadow, home layout A7.1 | [detail](docs/fix-log/2026-10-18-paper-bg-home-a71-282.md) |
+| 2026-10-18 | #283 Collapsed rail keeps clocks/controls/toasts in your own game | [detail](docs/fix-log/2026-10-18-rail-collapse-keeps-clocks-283.md) |
+| 2026-10-18 | #286 Settings-changed chat notice names what changed; skipped on no-op save | [detail](docs/fix-log/2026-10-18-settings-notice-detail-286.md) |
+| 2026-10-20 | #307 Fraunces display face for lobby hero + section titles (ui/display-serif, unmerged) | [detail](docs/fix-log/2026-10-20-display-serif-fraunces-307.md) |
+| 2026-10-20 | #307 one UI face: Nunito everywhere (Manrope + Fraunces removed), labels sentence case, desktop text x1.15 | [detail](docs/fix-log/2026-10-20-nunito-only-ui-font-307.md) |
+| 2026-10-22 | #306 lobby chips/links still 38px: unclosed brace in shell.css nested the 44px rule (+ brace regression test) | [detail](docs/fix-log/2026-10-22-lobby-chip-touch-target-306.md) |
+| 2026-10-22 | #307 create-room modal text 10.5/11.5px -> --text-xs (12px floor kept by decision) + floor test | [detail](docs/fix-log/2026-10-22-lobby-text-floor-307.md) |
+| 2026-10-22 12:15 | Toast text unreadable in dark mode: --c-on-ink was white on light --c-ink; dark skins now use their bg colour (+ contrast pair test) | [detail](docs/fix-log/2026-10-22-toast-dark-mode-on-ink.md) |
+| 2026-10-22 13:05 | Slash menu listed /ui-audit, /ui-brief, /ui-fix 2-3x: kit installed same-named commands + skills; dropped the 3 wrapper commands (+ collision test) | [detail](docs/fix-log/2026-10-22-claude-ui-command-skill-dupes.md) |
+| 2026-10-22 15:45 | #317 lobby right column <aside> nested in landmark -> <div> (axe), container-query selector follows (+ test) | [detail](docs/fix-log/2026-10-22-lobby-nested-aside-317.md) |
+| 2026-10-22 16:30 | #318 create-room modal defaults to Giao hữu for guests (per-open, + test) | [detail](docs/fix-log/2026-10-22-modal-guest-default-318.md) |
+| 2026-10-22 17:04 | #322 #323 #324 clubs list: invite-only badge + wrap under name, inline create error on field, search pill 44px + pill focus ring (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-form-322-324.md) |
+| 2026-10-22 17:19 | #319 #320 #321 clubs list: no /mine request when logged out, fetch failure shows error + clears list, description clamped to 2 lines (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-load-319-321.md) |
+| 2026-10-22 17:59 | untracked club page (mobile) ui-audit: stronger control borders, table-link underline, overlay tokens, safe-area bottom pad, :active, 16px fields, Manage primaries | [detail](docs/fix-log/2026-10-22-club-mobile-ui-audit.md) |

@@ -82,8 +82,8 @@
     prev.type = next.type = 'button';
     prev.disabled = pg.page <= 1;
     next.disabled = pg.page >= pg.totalPages;
-    prev.addEventListener('click', () => { state.page = pg.page - 1; load(); });
-    next.addEventListener('click', () => { state.page = pg.page + 1; load(); });
+    prev.addEventListener('click', () => { state.page = pg.page - 1; load(true); });
+    next.addEventListener('click', () => { state.page = pg.page + 1; load(true); });
     pagerEl.append(prev, el('span', pg.page + ' / ' + pg.totalPages), next);
   }
 
@@ -94,17 +94,19 @@
     return q.toString();
   }
 
-  async function load() {
+  /** @param {boolean} [toTop] a pager click: bring the first card of the new page into view (#277). */
+  async function load(toTop) {
     renderChips(levelsEl, 'level', LEVELS, 'puzzles.level_');
     renderChips(rulesEl, 'rule', RULES, 'puzzles.rule_');
     renderChips(tagsEl, 'tag', TAGS, 'puzzles.tag_');
-    history.replaceState(null, '', '?' + query());
+    history.replaceState(null, '', location.pathname + (query() ? '?' + query() : '')); // <base href="/"> would resolve a bare '?x' to "/?x" (#274)
     try {
       const res = await fetch('/api/puzzles?' + query(), { credentials: 'same-origin' });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       renderCards(data);
       renderPager(data.pagination);
+      if (toTop && listEl.scrollIntoView) listEl.scrollIntoView({ block: 'start' });
     } catch (err) {
       listEl.replaceChildren();
       emptyEl.hidden = false;
@@ -114,6 +116,8 @@
 
   function init() {
     window.PlatformShell.build('learn');
+    const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+    if (window.GvnSession && (!u || u.isGuest)) document.getElementById('pz-actions').hidden = true; // member-only actions (#275)
     load();
   }
 

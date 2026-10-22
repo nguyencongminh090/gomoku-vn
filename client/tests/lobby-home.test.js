@@ -22,7 +22,15 @@ const HOME = read('js/lobby-home.js')
 const EMPTY = { myGame: null, myMatches: [], tournaments: [], live: [] };
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
+// #252: a prior instance that got `match:status {waiting:true}` keeps a 1 s setInterval(renderQuickMatch)
+// alive; under load it ticks between boots and paints its stale state into the NEXT test's #qm-line.
+function stopPriorTicker() {
+  const s = window.__lobbyStub;
+  if (s && s.client) { try { s.client.fire('match:status', { waiting: false }); } catch { /* no handler yet */ } }
+}
+
 async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
+  stopPriorTicker();
   jest.useRealTimers();
   window.history.replaceState(null, '', url);
   document.body.innerHTML = BODY;
@@ -53,7 +61,7 @@ const visible = () => ['screen-home', 'panel-tables', 'panel-tournaments'].filte
 const actions = () => ['btn-create', 'btn-create-tournament'].filter((id) => !document.getElementById(id).hidden);
 const navOn = () => [...document.querySelectorAll('#pl-shell .is-active')].map((a) => a.dataset.tab);
 
-afterEach(() => { window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling
+afterEach(() => { stopPriorTicker(); window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling + quick-match ticker
 
 /** Ticket meta segments (separate spans — no "·"-joined strings in the DOM). */
 const segs = (row) => [...row.querySelectorAll('.hrow__meta > span')].map((x) => x.textContent);
@@ -167,6 +175,9 @@ describe('dashboard rendering', () => {
     const strip = document.getElementById('home-stats');
     expect(strip.hidden).toBe(false);
     expect([...strip.querySelectorAll('.hstat__n')].map((n) => n.textContent)).toEqual(['12', '3', '2']);
+    await boot('/index.html', { ...DATA, stats: { online: 5, playing: 0, searching: 0 } }); // #292: zero counts are de-emphasised
+    expect([...document.querySelectorAll('#home-stats .hstat')].map((n) => n.classList.contains('hstat--zero'))).toEqual([false, true, true]);
+    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 } });
     await boot('/index.html', DATA);
     expect(document.getElementById('home-stats').hidden).toBe(true);
   });
@@ -178,7 +189,11 @@ describe('dashboard rendering', () => {
 
   it('empty payload → empty states; "find a room" goes to the rooms screen', async () => {
     await boot('/index.html', EMPTY);
-    expect(document.querySelector('#home-today').textContent).toBe('home.no_today');
+    expect(document.querySelector('#home-today p').textContent).toBe('home.no_today');
+    // A7.1: the empty state offers a next step — an honest link to the tournaments screen, not a dead end.
+    const more = document.querySelector('#home-today a.link-action');
+    expect(more.textContent).toBe('home.see_tournaments');
+    expect(more.getAttribute('href')).toBe('#tournaments');
     expect(document.querySelector('#home-live').textContent).toBe('home.no_live');
     document.querySelector('#home-mine .link-action').click();
     expect(visible()).toEqual(['panel-tables']);
@@ -236,7 +251,12 @@ describe('news, forum, learn, about (#224)', () => {
     expect(document.querySelector('#home-forum img')).toBeNull();
     expect(segs(rows[0])).toEqual(['forum.cat_tactics', 'forum.replies{"n":3}', 'Kim']);
     expect(document.querySelector('#home-forum a.hmore').getAttribute('href')).toBe('/forum');
+    // #301: with threads the footer is a quiet text link with its own label (rows already carry "Xem"); empty keeps the outlined entry button
+    expect(document.querySelector('#home-forum a.hmore').classList.contains('hmore--text')).toBe(true);
+    expect(document.querySelector('#home-forum a.hmore').textContent).toBe('home.forum_all_threads');
     await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-forum a.hmore').classList.contains('hmore--text')).toBe(false);
+    expect(document.querySelector('#home-forum a.hmore').textContent).toBe('home.forum_all');
     expect(document.querySelector('#home-forum .hempty').textContent).toBe('home.no_forum');
     expect(document.querySelector('#home-forum a.hmore')).not.toBeNull();
   });
@@ -253,16 +273,34 @@ describe('news, forum, learn, about (#224)', () => {
     expect(segs(row).join(' · ')).toBe(meta);
   });
 
+  it.each([
+    ['member', { total: 4, solved: 1 }, { now: '1', max: '4', width: '25%', label: 'home.learn_progress{"s":1,"n":4}' }],
+    ['all solved', { total: 3, solved: 3 }, { now: '3', max: '3', width: '100%', label: 'home.learn_progress{"s":3,"n":3}' }],
+    ['none solved', { total: 5, solved: 0 }, { now: '0', max: '5', width: '0%', label: 'home.learn_progress{"s":0,"n":5}' }],
+  ])('learn progress bar (A7.1): %s', async (_, learn, want) => {
+    await boot('/index.html', { ...EMPTY, learn });
+    const bar = document.querySelector('#home-learn .hprog__bar');
+    expect(bar.getAttribute('role')).toBe('progressbar');
+    expect([bar.getAttribute('aria-valuenow'), bar.getAttribute('aria-valuemax'), bar.firstElementChild.style.width]).toEqual([want.now, want.max, want.width]);
+    expect(document.querySelector('#home-learn .hprog span').textContent).toBe(want.label);
+  });
+
+  it.each([
+    ['guest (solved unknown)', { total: 42, solved: null }],
+    ['no puzzles yet', { total: 0, solved: 0 }],
+  ])('learn progress bar absent: %s', async (_, learn) => {
+    await boot('/index.html', { ...EMPTY, learn });
+    expect(document.querySelector('#home-learn .hprog')).toBeNull();
+  });
+
   it('learn card absent without data (DB down / old payload)', async () => {
     await boot('/index.html', EMPTY);
     expect(document.querySelector('#home-learn').children).toHaveLength(0);
   });
 
-  it.each([[true, false], [false, true], [undefined, true]])('about block: newcomer=%p → hidden=%p', async (newcomer, hidden) => {
-    await boot('/index.html', { ...EMPTY, newcomer });
-    const about = document.getElementById('home-about');
-    expect(about.hidden).toBe(hidden);
-    expect(about.querySelectorAll('dt')).toHaveLength(3); // Freestyle / Standard / Caro VN
+  it('no About block on the home page', async () => {
+    await boot('/index.html', EMPTY);
+    expect(document.getElementById('home-about')).toBeNull();
   });
 });
 
@@ -283,6 +321,50 @@ describe('ruleLine()', () => {
   });
 });
 
+describe('home layout (A7.1)', () => {
+  it('quick match: the start block (summary line, then actions) comes right after the title (#290); every chip row sits under a visible group label', async () => {
+    await boot('/index.html', EMPTY);
+    const qm = document.querySelector('.hp-qm');
+    const kids = [...qm.children].map((c) => c.id || c.className.split(' ')[0]);
+    expect(kids).toEqual(['ph2', 'qm-start', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-time-hint', 'qm-lbl', 'qm-board']);
+    expect([...qm.querySelectorAll('.qm-lbl')].map((n) => n.dataset.i18n)).toEqual(['qm.lbl_rule', 'qm.lbl_time', 'qm.lbl_board']);
+    expect([...qm.querySelectorAll('.qm-lbl')].every((n) => n.getAttribute('aria-hidden') === 'true')).toBe(true); // the group already has an aria-label
+    expect([...qm.querySelector('.qm-start').children].map((c) => c.id)).toEqual(['qm-line', 'qm-actions']);
+  });
+
+  it('two card stacks: match + learn left; my game, today, forum, live right — each its own card', async () => {
+    await boot('/index.html', EMPTY);
+    const stacks = [...document.querySelectorAll('#screen-home > .hstack')];
+    expect(stacks).toHaveLength(2);
+    const cards = (st) => [...st.children].map((c) => c.classList.contains('ppanel') && c.className.split(' ').find((x) => x.startsWith('hp-')));
+    expect(cards(stacks[0])).toEqual(['hp-qm', 'hp-learn']);
+    expect(cards(stacks[1])).toEqual(['hp-mine', 'hp-today', 'hp-forum', 'hp-live']);
+    expect(stacks[1].querySelector('#home-mine').closest('.ppanel')).toBe(stacks[1].children[0]);
+  });
+
+  it('#294: empty Hôm nay / Diễn đàn / Live cards are flagged compact (entry links kept); a filled card is not', async () => {
+    await boot('/index.html', EMPTY);
+    const flagged = (sel) => document.querySelector(sel).classList.contains('is-empty');
+    expect([flagged('.hp-today'), flagged('.hp-forum'), flagged('.hp-live'), flagged('.hp-mine')]).toEqual([true, true, true, false]);
+    expect(document.querySelector('.hp-today a.link-action')).toBeTruthy();
+    expect(document.querySelector('.hp-forum a.hmore')).toBeTruthy();
+    await boot('/index.html', { ...EMPTY, tournaments: [{ tournamentId: 't1', name: 'Cup', status: 'draft', playerCount: 2, format: 'single_elim' }] });
+    expect(document.querySelector('.hp-today').classList.contains('is-empty')).toBe(false);
+  });
+
+  it('the empty "no game" state names the destination (open rooms), not just "find"', async () => {
+    await boot('/index.html', EMPTY);
+    expect(document.querySelector('#home-mine .hempty p').textContent).toBe('home.no_games');
+    expect(document.querySelector('#home-mine .hempty button').textContent).toBe('home.find_room');
+  });
+
+  it('#289: one primary action — the empty-state "open rooms" button is secondary, the quick-match CTA is the filled one', async () => {
+    await boot('/index.html', EMPTY, { isGuest: false });
+    expect(document.querySelector('#home-mine .hempty button').classList.contains('link-action--primary')).toBe(false);
+    expect([...document.querySelectorAll('#screen-home .link-action--primary')].map((n) => n.closest('#qm-actions') && 'qm')).toEqual(['qm']);
+  });
+});
+
 describe('quick match panel (B197)', () => {
   const MEMBER = { userId: 'u1', isGuest: false, displayName: 'Me' };
   const GUEST = { userId: 'g1', isGuest: true, displayName: 'G' };
@@ -291,16 +373,29 @@ describe('quick match panel (B197)', () => {
   const pressed = (id) => chips(id).filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent);
   const buttons = () => [...document.querySelectorAll('#qm-actions button')].map((b) => b.textContent);
 
-  it('member: 3 rule chips, 4 time chips, Caro VN · 5+3 by default, rated + casual buttons', async () => {
+  it('member: 3 rule chips, Auto + 10 time chips (2 groups), Caro VN · Auto by default, rated + casual buttons', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     expect(chips('qm-rule').map((b) => b.textContent)).toEqual(['rankings.cat_freestyle', 'rankings.cat_standard', 'rankings.cat_caro']);
-    expect(chips('qm-time').map((b) => b.textContent)).toEqual(['1+0', '3+2', '5+3', '10+0']);
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
+    expect(chips('qm-time').map((b) => b.textContent)).toEqual(['qm.time_auto', '1+0', '1+1', '3+2', '5+3', '7+3', '10+0', 'home.per_move{"s":"60"}', 'home.per_move{"s":"45"}', 'home.per_move{"s":"30"}', 'home.per_move{"s":"5"}']);
+    expect([...document.querySelectorAll('#qm-time .qm-grp')].map((n) => n.textContent)).toEqual(['qm.grp_game', 'qm.grp_move']);
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
     expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
     // B212: ▶ on the rated search (Arena mockup), sword on "challenge a friend" — same icon as on profiles.
     const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
     expect(iconOf(document.getElementById('qm-actions').querySelector('button'))).toBe('ph-regular-play');
     expect(iconOf(document.getElementById('qm-actions').querySelector('a'))).toBe('ph-regular-boxing-glove');
+  });
+
+  it('#293: the clock groups are marked secondary only while Auto is chosen, and stay clickable', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    const box = document.getElementById('qm-time');
+    expect(box.classList.contains('is-auto')).toBe(true);
+    expect(document.getElementById('qm-time-hint').hidden).toBe(false);
+    expect(chips('qm-time').every((b) => !b.disabled)).toBe(true);
+    chips('qm-time').find((b) => b.textContent === '3+2').click();
+    expect(document.getElementById('qm-time').classList.contains('is-auto')).toBe(false);
+    expect(pressed('qm-time')).toEqual(['3+2']);
+    expect(document.getElementById('qm-time-hint').hidden).toBe(true); // #298: the Auto explanation only shows while Auto is the pick
   });
 
   it('guest: casual only, with the reason in the status line', async () => {
@@ -312,7 +407,7 @@ describe('quick match panel (B197)', () => {
   it('picking chips changes the request and is remembered; a saved choice is restored', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     chips('qm-rule')[0].click();
-    chips('qm-time')[0].click();
+    chips('qm-time').find((b) => b.textContent === '1+0').click();
     document.querySelectorAll('#qm-actions button')[0].click();
     expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true, wall: true, portal: false }]);
     expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0', wall: true, portal: false });
@@ -325,7 +420,7 @@ describe('quick match panel (B197)', () => {
 
   it('a bogus saved choice falls back to the defaults', async () => {
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'renju', time: '2+1' } });
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['5+3']]);
+    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
   });
 
   it('searching: chips lock, Cancel only, elapsed + queue count; cancel emits match:leave', async () => {
@@ -368,21 +463,29 @@ describe('quick-match waiting count (B210)', () => {
   const line = () => document.getElementById('qm-line').textContent;
 
   it('"N đang chờ" for the selected rule|time comes with /api/home; none waiting → no suffix', async () => {
-    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).toContain('qm.in_queue{"n":214}');
-    await boot('/index.html', { ...EMPTY, queue: { 'standard|10+0': 9 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'standard|10+0': 9 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).not.toContain('qm.in_queue');
   });
 
   it('"ước tính N giây" shows only when the server sent an estimate for the selected rule|time', async () => {
-    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'caro|5+3': 8, 'caro|1+0': 2 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'caro|5+3': 8, 'caro|1+0': 2 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).toContain('qm.eta{"s":8}');
-    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'standard|10+0': 8 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: {}, queueEta: { 'standard|10+0': 8 } }, MEMBER2, { saved: { rule: 'caro', time: '5+3' } });
     await flush();
     expect(line()).not.toContain('qm.eta');
+  });
+
+  it('count adds auto waiters; an auto pick counts every clock of the rule', async () => {
+    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 4, 'caro|auto': 2, 'caro|1+0': 3, 'standard|auto': 9 } }, MEMBER2);
+    await flush();
+    expect(line()).toContain('qm.in_queue{"n":9}'); // auto: 4 + 2 + 3
+    [...document.querySelectorAll('#qm-time button')].find((b) => b.textContent === '1+0').click();
+    expect(line()).toContain('qm.in_queue{"n":5}'); // 1+0: 3 + auto 2
   });
 
   it('changing the chip re-reads the count for the new rule|time', async () => {
