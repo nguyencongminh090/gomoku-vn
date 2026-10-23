@@ -135,6 +135,22 @@ body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; 
 .ptbl a:hover { text-decoration-thickness: 2px; }
 @media (max-width: 860px) { .ptbl__games { display: none; } }
 .ptbl__prov { margin-left: 2px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-3); }
+/* #330: phone rankings = # · Người chơi · Rating (no sideways scroll); top 3 get a medal pill on every width */
+#rk-wrap .ptbl td:first-child { font-variant-numeric: tabular-nums; color: var(--c-ink-3); }
+#rk-wrap .rk-top td:first-child { color: var(--c-ink); font-weight: 700; }
+#rk-wrap .rk-top--1 td { background: rgba(242,190,58,.16); }
+#rk-wrap .rk-top--2 td { background: rgba(170,180,195,.18); }
+#rk-wrap .rk-top--3 td { background: rgba(205,127,50,.16); }
+#rk-wrap .rk-top--1 td:first-child { box-shadow: inset 4px 0 0 rgb(224 168 0); }
+#rk-wrap .rk-top--2 td:first-child { box-shadow: inset 4px 0 0 rgb(154 165 180); }
+#rk-wrap .rk-top--3 td:first-child { box-shadow: inset 4px 0 0 rgb(184 115 58); }
+#rk-wrap .rk-top td:nth-child(2) a { font-weight: 700; }
+#rk-wrap .ptbl tr.is-me td { background: var(--c-brand-light); }
+@media (max-width: 640px) {
+  #rk-wrap .ptbl__region, #rk-wrap .ptbl__delta, #rk-wrap .ptbl__club, #rk-wrap .ptbl__games { display: none; }
+  #rk-wrap .ptbl th, #rk-wrap .ptbl td { padding-left: 8px; padding-right: 8px; }
+  #rk-wrap .ptbl td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; width: 100%; }
+}
 
 /* ── Cards / rows ────────────────────────────────────────────────────────── */
 .pcards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
