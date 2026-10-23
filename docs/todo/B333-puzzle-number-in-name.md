@@ -1,5 +1,5 @@
 # B333 — Show a puzzle index (#n) in its name
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-23 — migration 007, "Title #n", /api/puzzles/<n> — browser pass 2026-10-23 (isolated server :3101, own DB, desktop 1280 + mobile 390): all checks pass, 0 console errors
 **Area:** server/managers/PuzzleService.js, server/routes/puzzles.js, client puzzle list/page, db puzzles table
 **From:** user, 2026-10-23 (puzzle mechanics review)   **Depends:** —
 

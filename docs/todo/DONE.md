@@ -1,3 +1,8 @@
+✅ - **#333.** Show puzzle index (#n) in its name `[Model: Sonnet 5]` — [detail](docs/todo/B333-puzzle-number-in-name.md)
+✅ - **#334.** Allow the author to rename a puzzle without re-review `[Model: Sonnet 5]` — [detail](docs/todo/B334-puzzle-allow-rename.md)
+✅ - **#335.** Limit attempts per user per puzzle `[Model: Sonnet 5]` — [detail](docs/todo/B335-puzzle-attempt-limit.md)
+✅ - **#336.** Record each user attempt on a puzzle `[Model: Sonnet 5]` — [detail](docs/todo/B336-puzzle-attempt-record.md)
+✅ - **#332.** Editing an approved puzzle wipes all solvers' progress `[Model: Sonnet 5]` — [detail](docs/todo/B332-puzzle-edit-wipes-progress.md)
 ✅ - **#331.** Puzzle answers never verified as a real win; exact-match rejects alternative winning lines `[Model: Opus 5]` — [detail](docs/todo/B331-puzzle-answer-not-verified.md)
 ✅ - **#329.** Phone: draw/undo/time request toast covered by the chat bar when the panel is minimized `[Model: Sonnet 5]` — [detail](docs/todo/B329-phone-request-toast-covered.md)
 ✅ - **#327.** Phone room: expanding the panel leaves the chat input below the fold; small touch targets `[Model: Sonnet 5]` — [detail](docs/todo/B327-room-phone-panel-expand-input-below-fold.md)

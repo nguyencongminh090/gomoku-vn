@@ -29,6 +29,7 @@ const express = require('express');
 const http = require('http');
 const database = require('../db/database');
 const puzzlesRouter = require('../routes/puzzles');
+const dmText = require('../managers/DmText');
 
 const NOW = '2026-10-10T00:00:00.000Z';
 const db = database.db;
@@ -296,13 +297,132 @@ describe('solving', () => {
 });
 
 describe('editing', () => {
-  it('only the author edits; editing an approved puzzle returns it to pending and clears solves', async () => {
-    const id = (await call('GET', '/api/puzzles?level=hard')).body.puzzles[0].id;
+  const progressCount = (id) => db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n;
+  let id;
+  beforeAll(async () => { id = (await call('GET', '/api/puzzles?level=hard')).body.puzzles[0].id; });
+
+  it('only the author edits; 404 for a missing puzzle', async () => {
     expect((await call('PUT', `/api/puzzles/${id}`, 'other', good())).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await call('PUT', '/api/puzzles/nope', 'author', good())).status).toBe(404);
+  });
+
+  it('#332: a text/level edit returns it to pending but keeps solves and attempts', async () => {
+    expect(progressCount(id)).toBeGreaterThan(0);
+    const attempts = db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n;
     expect((await call('PUT', `/api/puzzles/${id}`, 'author', good({ title: 'Mở bốn v2', level: 'medium' }))).body.status).toBe('pending');
     expect((await call('GET', '/api/puzzles?level=hard')).body.puzzles).toHaveLength(0);
-    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n).toBe(0);
-    expect((await call('PUT', '/api/puzzles/nope', 'author', good())).status).toBe(404);
+    expect(progressCount(id)).toBeGreaterThan(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n).toBe(attempts);
+  });
+
+  it('#332: changing stones or answers clears solves and attempts of an approved puzzle', async () => {
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    const answersOnly = await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']] }));
+    expect(answersOnly.body.status).toBe('pending');
+    expect(progressCount(id)).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n).toBe(0);
+  });
+
+  it('#332: re-saving identical position/answers (even with moved stone order) keeps solves', async () => {
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+    await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']], stones: [...POSITION].reverse(), tags: ['defense'] }));
+    expect(progressCount(id)).toBe(1);
+  });
+});
+
+describe('#333 puzzle number', () => {
+  it('numbers are sequential, shown in the list and detail, and a number resolves like the id', async () => {
+    const list = (await call('GET', '/api/puzzles')).body.puzzles;
+    expect(list.every((p) => Number.isInteger(p.number) && p.number >= 1)).toBe(true);
+    const nums = db.prepare('SELECT number FROM puzzles ORDER BY number').all().map((r) => r.number);
+    expect(nums).toEqual(nums.map((_, i) => i + 1));
+    const p = list[0];
+    const byNum = await call('GET', `/api/puzzles/${p.number}`);
+    expect(byNum.body.puzzle.id).toBe(p.id);
+    expect(byNum.body.puzzle.number).toBe(p.number);
+    expect((await call('GET', '/api/puzzles/987654')).status).toBe(404);
+  });
+
+  it('a new puzzle gets max+1 even when earlier ones were rejected; the UUID id is unchanged', async () => {
+    const before = db.prepare('SELECT MAX(number) m FROM puzzles').get().m;
+    const r = await submit('solver', good());
+    expect(db.prepare('SELECT number FROM puzzles WHERE id = ?').get(r.body.id).number).toBe(before + 1);
+    expect(r.body.id).toMatch(/-/);
+    await call('POST', `/api/puzzles/${r.body.id}/review`, 'boss', { decision: 'reject', note: 'x' });
+    const r2 = await submit('solver', good());
+    expect(db.prepare('SELECT number FROM puzzles WHERE id = ?').get(r2.body.id).number).toBe(before + 2);
+  });
+});
+
+describe('#334 rename', () => {
+  let id;
+  beforeAll(async () => {
+    id = (await submit('author', good({ title: 'Cũ' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+  });
+  const rename = (as, title) => call('PATCH', `/api/puzzles/${id}/title`, as, { title });
+
+  it('the author renames an approved puzzle: status and solves stay', async () => {
+    expect((await rename('author', 'Mới <b>')).status).toBe(200);
+    const row = db.prepare('SELECT title, status FROM puzzles WHERE id = ?').get(id);
+    expect(row.status).toBe('approved');
+    expect(row.title).toBe(dmText.clean('Mới <b>'));
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n).toBe(1);
+  });
+  it('a reviewer may rename; another member gets 403; guests 403; bad titles 400; missing 404', async () => {
+    expect((await rename('boss', 'Của mod')).status).toBe(200);
+    expect((await rename('other', 'x')).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await rename('guest', 'x')).status).toBe(403);
+    expect((await rename('author', '')).body.code).toBe('PUZZLE_TITLE_INVALID');
+    expect((await rename('author', 'a'.repeat(61))).body.code).toBe('PUZZLE_TITLE_INVALID');
+    expect((await call('PATCH', '/api/puzzles/nope/title', 'author', { title: 'x' })).status).toBe(404);
+    expect(db.prepare('SELECT title FROM puzzles WHERE id = ?').get(id).title).toBe('Của mod');
+  });
+});
+
+describe('#335 attempt limit + #336 attempt record', () => {
+  let id;
+  beforeAll(async () => {
+    id = (await submit('author', good({ title: 'Giới hạn' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+  });
+  const solve = (as, moves) => call('POST', `/api/puzzles/${id}/solve`, as, { moves });
+
+  it('3 wrong tries lock the member out (429, attemptsLeft 0); others are unaffected', async () => {
+    const r1 = await solve('other', ['A1']);
+    expect(r1.body).toMatchObject({ correct: false, attemptsUsed: 1, attemptsLeft: 2, maxAttempts: 3 });
+    await solve('other', ['A2']);
+    expect((await solve('other', ['A3'])).body.attemptsLeft).toBe(0);
+    const blocked = await solve('other', ['K8']);
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toMatchObject({ code: 'PUZZLE_ATTEMPTS_EXCEEDED', attemptsLeft: 0 });
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE user_id = ? AND puzzle_id = ?').get(U.other, id).n).toBe(3);
+    expect((await solve('solver', ['K8'])).body.correct).toBe(true);
+  });
+
+  it('malformed moves do not use a try; a solved puzzle is exempt from the cap', async () => {
+    const used = (await solve('author', ['A1'])).body.attemptsUsed;
+    expect((await solve('author', [])).status).toBe(400);
+    expect((await solve('author', ['A2'])).body.attemptsUsed).toBe(used + 1);
+    expect((await solve('solver', ['A5'])).body.attemptsLeft).toBeNull();
+    for (let i = 0; i < 4; i++) expect((await solve('solver', ['A6'])).status).toBe(200);
+  });
+
+  it('GET /attempts returns only my own tries, newest first, with the moves; login needed', async () => {
+    const mine = (await call('GET', `/api/puzzles/${id}/attempts`, 'other')).body;
+    expect(mine.attempts.map((a) => a.moves[0].y)).toEqual([12, 13, 14]); // A3, A2, A1 (rows count from the bottom)
+    expect((await call('GET', `/api/puzzles/${id}/attempts`)).status).toBe(401);
+  });
+
+  it('GET /solvers is public: who solved and in how many tries (up to the first correct)', async () => {
+    const r = await call('GET', `/api/puzzles/${id}/solvers`);
+    expect(r.status).toBe(200);
+    expect(r.body.total).toBe(1);
+    expect(r.body.solvers).toEqual([expect.objectContaining({ username: 'solver', tries: 1 })]);
+    expect(JSON.stringify(r.body)).not.toMatch(/moves/);
+    expect((await call('GET', '/api/puzzles/nope/solvers')).status).toBe(404);
   });
 });
 
