@@ -29,7 +29,7 @@ function boot(page, script, fetchImpl) {
   jest.resetModules();
   document.body.innerHTML = HTML[page];
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
-  window.PlatformShell = { build: jest.fn() };
+  window.PlatformShell = { build: jest.fn(), icon: () => document.createElement('svg') };
   renderers = [];
   window.BoardRenderer = class {
     constructor(canvas, opts) { this.opts = opts; this.state = null; renderers.push(this); }
@@ -236,6 +236,43 @@ describe('my puzzles', () => {
     expect($('mn-review').hidden).toBe(true);
     expect(errs).toEqual([]); // init() is async: a ReferenceError there would only surface as an unhandled rejection
     expect(global.fetch.mock.calls.some(([u]) => u.includes('/review'))).toBe(false); // no probe → no 403 in the console
+  });
+});
+
+describe('my puzzles — number + rename (#333/#334)', () => {
+  const MINE = [{ id: 'a', number: 7, title: 'Cũ', status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' }];
+  const bootMine = (patch) => boot('mine', '../js/puzzles-mine.js', (u, o) => (o && o.method === 'PATCH' ? patch(u, o)
+    : ok({ puzzles: MINE.map((p) => ({ ...p })), canReview: false, pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } })));
+
+  it('shows "Title #n"; Rename PATCHes /title and updates the name in place without reloading', async () => {
+    bootMine((u, o) => ok({ id: 'a', title: JSON.parse(o.body).title }));
+    await settle();
+    const row = () => document.querySelector('#mn-list .prow');
+    expect(row().querySelector('b').textContent).toBe('Cũ #7');
+    [...row().querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    const input = row().querySelector('input.pz-rename');
+    expect(input.value).toBe('Cũ');
+    input.value = 'Mới';
+    [...row().querySelectorAll('button')].find((b) => b.textContent === 'puzzles.save').click();
+    await settle();
+    const patch = global.fetch.mock.calls.find(([, o]) => o && o.method === 'PATCH');
+    expect(patch[0]).toBe('/api/puzzles/a/title');
+    expect(JSON.parse(patch[1].body)).toEqual({ title: 'Mới' });
+    expect(row().querySelector('b').textContent).toBe('Mới #7');
+    expect(row().querySelector('input')).toBeNull();
+  });
+
+  it('a rejected rename shows the translated error and keeps the editor open', async () => {
+    bootMine(() => fail(400, { code: 'PUZZLE_TITLE_INVALID' }));
+    await settle();
+    const row = document.querySelector('#mn-list .prow');
+    [...row.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    [...row.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.save').click();
+    await settle();
+    expect(row.textContent).toContain('err.puzzle_title_invalid');
+    expect(row.querySelector('input.pz-rename')).not.toBeNull();
+    expect(row.querySelector('input.pz-rename').getAttribute('aria-invalid')).toBe('true');
+    expect(row.querySelector('[role=alert]')).not.toBeNull();
   });
 });
 
