@@ -144,7 +144,8 @@ describe('read / list', () => {
   });
 
   it('keeps only the newest MAX_PER_USER, newest first', () => {
-    for (let i = 0; i < notif.MAX_PER_USER + 5; i++) notif.push(U.bob, 'dm', `actor${i}`, { i });
+    for (let i = 0; i < notif.MAX_PER_USER + 5; i++) addUser(`actor${i}`); // actor_id is an FK to users (B346)
+    for (let i = 0; i < notif.MAX_PER_USER + 5; i++) notif.push(U.bob, 'dm', U[`actor${i}`], { i });
     const { items } = notif.list(U.bob, 500);
     expect(items).toHaveLength(notif.MAX_PER_USER);
     expect(items[0].payload.i).toBe(notif.MAX_PER_USER + 4);

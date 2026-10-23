@@ -1,3 +1,7 @@
+✅ - **#347.** CHECK constraints for enum and boolean columns `[Model: Sonnet 5]` — [detail](docs/todo/B347-db-check-constraints-enums-and-bools.md)
+✅ - **#346.** Decide FKs for actor/reference id columns without constraints `[Model: Sonnet 5]` — [detail](docs/todo/B346-db-fk-gaps-actor-reference-columns.md)
+✅ - **#345.** Tournament results stored twice + missing json_valid CHECKs `[Model: Sonnet 5]` — [detail](docs/todo/B345-tournament-results-dual-store-json-check.md)
+✅ - **#344.** users.role vs is_admin: one source of truth `[Model: Sonnet 5]` — [detail](docs/todo/B344-users-role-vs-is-admin-single-source.md)
 ✅ - **#343.** Profile clubs panel: measure and fix gap under heading `[Model: Haiku 4.5]` — [detail](docs/todo/B343-profile-clubs-panel-gap.md)
 ✅ - **#342.** Profile badges: show highest tier only (Top 10 over Top 500) `[Model: Sonnet 5]` — [detail](docs/todo/B342-profile-badges-show-highest-only.md)
 ✅ - **#341.** Profile rating delta copy: add unit, hide when 0 `[Model: Haiku 4.5]` — [detail](docs/todo/B341-profile-delta-week-copy.md)

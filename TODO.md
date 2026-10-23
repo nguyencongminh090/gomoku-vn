@@ -77,7 +77,3 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#328.** Quick-match status line: facts as chips, guest sentence as a note `[Model: Sonnet 5]` — [detail](docs/todo/B328-qm-line-chips.md)
-- **#344.** users.role vs is_admin: one source of truth `[Model: Sonnet 5]` — [detail](docs/todo/B344-users-role-vs-is-admin-single-source.md)
-- **#345.** Tournament results stored twice + missing json_valid CHECKs `[Model: Sonnet 5]` — [detail](docs/todo/B345-tournament-results-dual-store-json-check.md)
-- **#346.** Decide FKs for actor/reference id columns without constraints `[Model: Sonnet 5]` — [detail](docs/todo/B346-db-fk-gaps-actor-reference-columns.md)
-- **#347.** CHECK constraints for enum and boolean columns `[Model: Sonnet 5]` — [detail](docs/todo/B347-db-check-constraints-enums-and-bools.md)

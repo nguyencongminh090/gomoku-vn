@@ -57,7 +57,8 @@ test('006 heals a DB that already ran 004 (live case: user_version 5)', () => {
   migrate(db, path.join(dbDir, 'migrations'));
   expect([color('name-black'), color('name-white'), color('elim-black'), color('elim-white'), color('orphan-id')])
     .toEqual(['BLACK', 'WHITE', 'BLACK', 'WHITE', null]);
-  expect(db.pragma('user_version', { simple: true })).toBe(9); // latest migration (009 puzzle number seq)
+  const latest = Math.max(...fs.readdirSync(path.join(dbDir, 'migrations')).map((f) => parseInt(f, 10)).filter(Number.isFinite));
+  expect(db.pragma('user_version', { simple: true })).toBe(latest);
 });
 
 test('CHECK rejects a bad winner_color but allows NULL', () => {

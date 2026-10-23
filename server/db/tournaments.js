@@ -167,15 +167,14 @@ function savePairing(pairing) {
   db.prepare(`
     INSERT INTO tournament_pairings
       (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
-       agreed_time, deadline, paired_at, result, games, moves, started_at, ended_at, noshow_count)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       agreed_time, deadline, paired_at, result, games, started_at, ended_at, noshow_count)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       state = excluded.state,
       agreed_time = excluded.agreed_time,
       deadline = excluded.deadline,
       result = excluded.result,
       games = excluded.games,
-      moves = excluded.moves,
       started_at = excluded.started_at,
       ended_at = excluded.ended_at,
       noshow_count = excluded.noshow_count
@@ -191,7 +190,6 @@ function savePairing(pairing) {
     pairing.pairedAt,
     pairing.result ? JSON.stringify(pairing.result) : null,
     pairing.games ? JSON.stringify(pairing.games) : null,
-    pairing.moves ? JSON.stringify(pairing.moves) : null,
     pairing.startedAt,
     pairing.endedAt,
     pairing.noShowCount || 0
@@ -208,7 +206,6 @@ function getPairingsByTournament(tournamentId) {
   return rows.map((row) => {
     if (row.result) row.result = JSON.parse(row.result);
     if (row.games) row.games = JSON.parse(row.games);
-    if (row.moves) row.moves = JSON.parse(row.moves);
     return row;
   });
 }
@@ -216,8 +213,8 @@ function getPairingsByTournament(tournamentId) {
 /**
  * Persist one INDIVIDUAL finished tournament game (TODO.md #78) — called once
  * per game from TournamentMatchHandler._endMatch, not once per pairing, so a
- * multi-game series gets one row per game instead of tournament_pairings.moves'
- * single overwritten column. Mirrors saveGame()'s exact winner-normalization
+ * multi-game series gets one row per game. This table owns per-game replay data;
+ * the pairing row keeps only the series summary (B345). Mirrors saveGame()'s exact winner-normalization
  * logic, keyed to a tournament entry instead of a raw user id.
  *
  * @param {{ gameId, tournamentId, pairingId, gameIndex,

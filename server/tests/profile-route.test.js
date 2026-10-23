@@ -250,7 +250,7 @@ describe('ui skin preference', () => {
 describe('rating history (#190)', () => {
   const hist = (uid, cat, before, after, daysAgo) => database.db.prepare(
     `INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at)
-     VALUES (?, ?, 'g', 'x', 1, ?, ?, 80, 80, ?)`
+     VALUES (?, ?, 'g', '${OTHER}', 1, ?, ?, 80, 80, ?)`
   ).run(uid, cat, before, after, new Date(Date.now() - daysAgo * 86400000).toISOString());
 
   beforeAll(() => {
@@ -281,7 +281,7 @@ describe('rating history (#190)', () => {
   });
 
   it('thins long histories to at most 120 points', async () => {
-    const ins = database.db.prepare(`INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at) VALUES (?, 'freestyle', 'g', 'x', 1, 1500, 1501, 80, 80, ?)`);
+    const ins = database.db.prepare(`INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at) VALUES (?, 'freestyle', 'g', '${OTHER}', 1, 1500, 1501, 80, 80, ?)`);
     database.db.transaction(() => { for (let i = 0; i < 400; i++) ins.run(OTHER, new Date(Date.now() - 3600000).toISOString()); })();
     expect((await req('GET', '/api/profile/bob/rating-history?category=freestyle')).json.points.length).toBe(120);
   });

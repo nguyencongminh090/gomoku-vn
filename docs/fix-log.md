@@ -312,3 +312,5 @@
 | 2026-10-23 15:10 | #337 puzzle rename audit log: puzzle_renames (keep 50/puzzle), reviewer list on admin Puzzles tab (+ tests; no browser pass) | [detail](docs/fix-log/2026-10-23-puzzle-rename-log-337.md) |
 | 2026-10-23 15:55 | #338 updatePuzzle: wipe solves/attempts on any position change, not only when status is approved (+ regression test) | [detail](docs/fix-log/2026-10-23-puzzle-stale-progress-338.md) |
 | 2026-10-23 | #339-#343 profile: name no longer wraps per syllable, provisional label, delta unit/hide 0, highest badge tier only, clubs heading gap (+ tests; no browser pass) | [detail](docs/fix-log/2026-10-23-profile-audit-339-343.md) |
+| 2026-10-23 16:34 | #344-#347 DB: drop users.is_admin, drop tournament_pairings.moves, json_valid + enum/0-1 CHECKs, FKs on notif actor/elo swap/rating opponent (migrations 010-014 + tests) | [detail](docs/fix-log/2026-10-23-db-constraints-344-347.md) |
+| 2026-10-23 16:58 | Correction #344-#347: real gomoku.db already migrated to v14 by a leaking test run (#348); checked clean (integrity, FK, row counts) | [detail](docs/fix-log/2026-10-23-db-constraints-344-347-correction.md) |

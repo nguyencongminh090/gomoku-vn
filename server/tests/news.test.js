@@ -145,7 +145,7 @@ describe('/api/home content blocks', () => {
 
   it('learn = approved puzzle total; solved only for members', () => {
     const ins = db.prepare(`INSERT INTO puzzles (id, author_id, title, rule, board_size, stones, to_move, mode, answers, level, status, position_hash, created_at, updated_at)
-      VALUES (?, 'alice', 't', 'freestyle', 15, '[]', 'BLACK', 'final_move', '[]', 'beginner', ?, ?, ?, ?)`);
+      VALUES (?, 'alice', 't', 'freestyle', 15, '[]', 'BLACK', 'final_move', '[]', 'easy', ?, ?, ?, ?)`);
     ins.run('p1', 'approved', 'h1', NOW, NOW);
     ins.run('p2', 'approved', 'h2', NOW, NOW);
     ins.run('p3', 'pending', 'h3', NOW, NOW);
