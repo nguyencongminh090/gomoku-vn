@@ -1,3 +1,8 @@
+✅ - **#343.** Profile clubs panel: measure and fix gap under heading `[Model: Haiku 4.5]` — [detail](docs/todo/B343-profile-clubs-panel-gap.md)
+✅ - **#342.** Profile badges: show highest tier only (Top 10 over Top 500) `[Model: Sonnet 5]` — [detail](docs/todo/B342-profile-badges-show-highest-only.md)
+✅ - **#341.** Profile rating delta copy: add unit, hide when 0 `[Model: Haiku 4.5]` — [detail](docs/todo/B341-profile-delta-week-copy.md)
+✅ - **#340.** Explain the "?" on provisional ratings in profile cards `[Model: Sonnet 5]` — [detail](docs/todo/B340-profile-provisional-rating-mark.md)
+✅ - **#339.** Profile name wraps one syllable per line at ≥861px (layout collapse) `[Model: Sonnet 5]` — [detail](docs/todo/B339-profile-name-wraps-vertically.md)
 ✅ - **#338.** Solves survive a position edit made while the puzzle is pending `[Model: Sonnet 5]` — [detail](docs/todo/B338-puzzle-stale-progress-two-edits.md)
 ✅ - **#337.** Audit trail for puzzle renames (log + reviewer view, no re-review) `[Model: Sonnet 5]` — [detail](docs/todo/B337-puzzle-rename-audit-log.md)
 ✅ - **#333.** Show puzzle index (#n) in its name `[Model: Sonnet 5]` — [detail](docs/todo/B333-puzzle-number-in-name.md)

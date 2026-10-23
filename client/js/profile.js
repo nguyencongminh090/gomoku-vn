@@ -25,6 +25,8 @@
   const SHELL = () => window.PlatformShell;
   /** Leading sprite icon on an action button (B212); profile actions all carry one (B213). */
   const BADGE_ICONS = { first_win: 'ph-regular-flag-checkered', wins_100: 'ph-regular-medal', wins_1000: 'ph-regular-medal', top_500: 'ph-regular-trophy', top_10: 'ph-regular-trophy' };
+  // Lower tier is hidden when its higher tier is earned (B342).
+  const BADGE_SUPERSEDED_BY = { top_500: ['top_10'], wins_100: ['wins_1000'] };
   const withIcon = (node, name) => { if (name) node.prepend(SHELL().icon(name)); return node; };
 
   function setAvatar(url, name) {
@@ -61,7 +63,9 @@
 
     const badgeBox = $('pf-badges');
     badgeBox.replaceChildren();
-    for (const id of p.badges || []) badgeBox.appendChild(withIcon(el('span', t('badge.' + id), 'pbadge'), BADGE_ICONS[id] || 'ph-regular-medal'));
+    // Display filter only (B342): a higher tier in the same family makes the lower one redundant.
+    const shown = (p.badges || []).filter((id) => !(BADGE_SUPERSEDED_BY[id] || []).some((hi) => (p.badges || []).includes(hi)));
+    for (const id of shown) badgeBox.appendChild(withIcon(el('span', t('badge.' + id), 'pbadge'), BADGE_ICONS[id] || 'ph-regular-medal'));
     badgeBox.hidden = !badgeBox.childElementCount;
     if (p.streak && (p.streak.best > 0)) {
       // Two plain numbers, not "3 (cao nhất 4)" — that wrapped under its label on phones (B213).
@@ -95,9 +99,10 @@
       card.append(
         el('span', t('rankings.cat_' + c)),
         el('b', String(r.rating) + (r.provisional ? '?' : '')),
+        ...(r.provisional ? [el('small', t('profile.provisional_hint'), 'pprov')] : []),
         el('small', r.rank ? t('profile.rank', { rank: r.rank }) : t('profile.unranked', { games: r.games }))
       );
-      if (r.delta7 != null) {
+      if (r.delta7) {
         card.appendChild(el('small', t('profile.delta_week', { n: r.delta7 > 0 ? '+' + r.delta7 : String(r.delta7) }), r.delta7 > 0 ? 'up' : r.delta7 < 0 ? 'dn' : ''));
       }
       cards.appendChild(card);

@@ -1,5 +1,5 @@
 # B343 — Clubs panel: unexplained gap under heading
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (branch fix/339-343-profile-polish; jsdom + CSS tests; browser pass done)
 **Area:** client/profile.html:58-60, client/css/platform.css (.ppanel/.ph2/.prows)
 **From:** ux-audit of /u/<name> (user screenshot), 2026-10-23   **Depends:** —
 
