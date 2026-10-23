@@ -1,3 +1,4 @@
+✅ - **#338.** Solves survive a position edit made while the puzzle is pending `[Model: Sonnet 5]` — [detail](docs/todo/B338-puzzle-stale-progress-two-edits.md)
 ✅ - **#337.** Audit trail for puzzle renames (log + reviewer view, no re-review) `[Model: Sonnet 5]` — [detail](docs/todo/B337-puzzle-rename-audit-log.md)
 ✅ - **#333.** Show puzzle index (#n) in its name `[Model: Sonnet 5]` — [detail](docs/todo/B333-puzzle-number-in-name.md)
 ✅ - **#334.** Allow the author to rename a puzzle without re-review `[Model: Sonnet 5]` — [detail](docs/todo/B334-puzzle-allow-rename.md)

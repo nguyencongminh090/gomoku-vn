@@ -329,6 +329,16 @@ describe('editing', () => {
     await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']], stones: [...POSITION].reverse(), tags: ['defense'] }));
     expect(progressCount(id)).toBe(1);
   });
+
+  it('#338: a position edit made while still pending clears solves kept from the approved version', async () => {
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+    expect((await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']], title: 'Chỉ đổi chữ' }))).body.status).toBe('pending');
+    expect(progressCount(id)).toBe(1); // text-only edit keeps them (#332)
+    await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [[{ x: 6, y: 7 }]] })); // now the position/answers change, still pending
+    expect(progressCount(id)).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n).toBe(0);
+  });
 });
 
 describe('#333 puzzle number', () => {

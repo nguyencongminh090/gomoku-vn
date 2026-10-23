@@ -215,7 +215,7 @@ const positionKey = (rule, size, toMove, mode, stones, walls, portals, answers) 
 
 /**
  * Author edits; a changed approved/rejected puzzle goes back to pending. Solves and attempts are cleared only
- * when the position, layout or answers changed (#332) — a title/prompt/tag/level edit keeps them.
+ * when the position, layout or answers changed (#332), at any status (#338) — a title/prompt/tag/level edit keeps them.
  */
 function updatePuzzle(userId, id, input) {
   const p = normalise(input);
@@ -233,7 +233,8 @@ function updatePuzzle(userId, id, input) {
     const lay = layoutOf(row);
     const changed = positionKey(row.rule, row.board_size, row.to_move, row.mode, JSON.parse(row.stones), lay.walls, lay.portals, JSON.parse(row.answers))
       !== positionKey(p.rule, p.size, p.toMove, p.mode, p.stones, p.layout.walls, p.layout.portals, p.answers);
-    if (row.status === 'approved' && changed) {
+    // Whatever the current status: a pending/rejected puzzle can still carry solves from an earlier approved version (#338).
+    if (changed) {
       db().prepare('DELETE FROM puzzle_progress WHERE puzzle_id = ?').run(row.id);
       db().prepare('DELETE FROM puzzle_attempts WHERE puzzle_id = ?').run(row.id);
     }
