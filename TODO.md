@@ -77,3 +77,8 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#328.** Quick-match status line: facts as chips, guest sentence as a note `[Model: Sonnet 5]` — [detail](docs/todo/B328-qm-line-chips.md)
+- **#332.** Editing an approved puzzle wipes all solvers' progress `[Model: Sonnet 5]` — [detail](docs/todo/B332-puzzle-edit-wipes-progress.md)
+- **#333.** Show puzzle index (#n) in its name `[Model: Sonnet 5]` — [detail](docs/todo/B333-puzzle-number-in-name.md)
+- **#334.** Allow the author to rename a puzzle without re-review `[Model: Sonnet 5]` — [detail](docs/todo/B334-puzzle-allow-rename.md)
+- **#335.** Limit attempts per user per puzzle `[Model: Sonnet 5]` — [detail](docs/todo/B335-puzzle-attempt-limit.md)
+- **#336.** Record each user attempt on a puzzle `[Model: Sonnet 5]` — [detail](docs/todo/B336-puzzle-attempt-record.md)
