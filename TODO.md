@@ -76,3 +76,6 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
+- **#325.** Room at 769–1024 px: rail hidden before you sit, so new players cannot sit/chat `[Model: Sonnet 5]` — [detail](docs/todo/B325-room-tablet-rail-hidden-before-seating.md)
+- **#326.** Room board cannot be played with the keyboard (no tab stop, role=img) `[Model: Opus 5]` — [detail](docs/todo/B326-room-board-not-keyboard-operable.md)
+- **#327.** Phone room: expanding the panel leaves the chat input below the fold; small touch targets `[Model: Sonnet 5]` — [detail](docs/todo/B327-room-phone-panel-expand-input-below-fold.md)
