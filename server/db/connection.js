@@ -13,8 +13,14 @@ const { runMigrations } = require('./migrate');
 const { upgradeLegacy, ensureOauthUniqueIndex } = require('./legacy-upgrade');
 
 // DB file lives in server/db/gomoku.db
-const DB_PATH     = process.env.GOMOKU_DB_PATH || path.join(__dirname, 'gomoku.db');
+const DEFAULT_DB_PATH = path.join(__dirname, 'gomoku.db');
+const DB_PATH     = process.env.GOMOKU_DB_PATH || DEFAULT_DB_PATH;
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+
+// B348: a test must never open (and migrate) the live file. tests/setup/isolate-db.js sets GOMOKU_DB_PATH per file.
+if (process.env.JEST_WORKER_ID && path.resolve(DB_PATH) === DEFAULT_DB_PATH) {
+  throw new Error('[DB] refusing to open server/db/gomoku.db under Jest; set GOMOKU_DB_PATH');
+}
 
 // ---------------------------------------------------------------------------
 // Initialize

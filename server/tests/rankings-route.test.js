@@ -131,7 +131,7 @@ describe('GET /api/rankings/me', () => {
 describe('phase 2 (#190): search, 7-day change, club column', () => {
   const hist = (uid, cat, before, after, daysAgo) => database.db.prepare(
     `INSERT INTO rating_history (user_id, category, game_id, opponent_id, score, rating_before, rating_after, rd_before, rd_after, created_at)
-     VALUES (?, ?, 'g', 'x', 1, ?, ?, 80, 80, ?)`
+     VALUES (?, ?, 'g', 'u1', 1, ?, ?, 80, 80, ?)`
   ).run(uid, cat, before, after, new Date(Date.now() - daysAgo * 86400000).toISOString());
 
   beforeAll(() => {

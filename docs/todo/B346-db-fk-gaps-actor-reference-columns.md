@@ -1,5 +1,5 @@
 # B346 — Decide FKs for actor/reference id columns without constraints
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (branch fix/344-347-db-constraints; migrations 010-014 + db-constraints-344-347.test.js; live DB copy migrated clean)
 **Area:** schema.sql, migrations/
 **From:** DB design review 2026-10-23   **Depends:** —
 

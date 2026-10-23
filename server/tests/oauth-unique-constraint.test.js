@@ -182,6 +182,17 @@ describe('idx_users_oauth — already UNIQUE (steady state, TODO.md #100)', () =
   });
 
   test('boot does not run the duplicate-scan query (GROUP BY) when the index is already unique', () => {
+    // Warm-up boot: the seed is unversioned, so it replays every migration first, and migration 010's users
+    // rebuild (B344) recreates the index plain, which that boot's scan upgrades. Steady state is the boot after.
+    jest.resetModules();
+    const warm = new RealDatabase(tmpFile);
+    jest.doMock('better-sqlite3', () => function MockedDatabase() {
+      return warm;
+    });
+    jest.doMock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+    require('../db/database');
+    warm.close();
+
     jest.resetModules();
     const realDb = new RealDatabase(tmpFile);
     const prepareSpy = jest.spyOn(realDb, 'prepare');
