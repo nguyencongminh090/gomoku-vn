@@ -241,7 +241,7 @@ body.zen-lobby .hmore.hmore--text:hover { background: transparent; color: var(--
 /* Quick match panel (B197): chips lock while searching. */
 body.zen-lobby .pchip:disabled { cursor: default; opacity: .55; }
 body.zen-lobby .pchip[aria-pressed="true"]:disabled { opacity: 1; }
-body.zen-lobby .qm-line { margin: 12px 0 0; min-height: 1.5em; }
+body.zen-lobby .qm-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 12px 0 0; min-height: 1.5em; }   /* status parts are spans, spaced by gap — no "a · b" strings */
 /* A7.1 (ui/grid-leaves-home): two card stacks; quick-match group labels, ✓ on the chosen chip, one dominant CTA, learn progress. */
 body.zen-lobby .hstack { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 body.zen-lobby .qm-lbl { margin: 16px 0 8px; font-size: var(--text-sm); font-weight: 700; letter-spacing: 0; color: var(--c-ink-2); }   /* sentence case: tracked all-caps 800 read stiff on Vietnamese */
@@ -255,6 +255,9 @@ body.zen-lobby .hp-qm .pchip { min-height: 38px; padding: 8px 15px; font-size: v
 body.zen-lobby .hp-qm .pchip[aria-pressed="true"] { background: var(--c-brand); border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--c-brand) 35%, transparent); }
 body.zen-lobby .hp-qm .pchip[aria-pressed="true"]::before { content: '✓'; margin-right: 6px; font-weight: 700; }
 body.zen-lobby .qm-start { margin: 0 0 20px; padding-bottom: 18px; border-bottom: 1px dashed var(--c-border); }   /* #290: CTA first, the chips below only adjust it */
+body.zen-lobby .qm-line .rtag { font-size: var(--text-sm); font-weight: 600; padding: 3px 10px; white-space: normal; }
+body.zen-lobby .qm-line__note { flex-basis: 100%; font-size: var(--text-xs); font-weight: 400; color: var(--c-ink-2); }   /* a sentence is a note, not a chip */
+body.zen-lobby .qm-line .rtag--rule { background: color-mix(in srgb, var(--c-brand) 18%, transparent); color: var(--c-brand-text); }   /* the rule = the main pick */
 body.zen-lobby .qm-start .qm-line { margin: 0 0 12px; font-size: var(--text-sm); font-weight: 600; line-height: 1.5; color: var(--c-ink); }   /* #299: "Đang chọn: …" is what the CTA will run — read it first */
 body.zen-lobby .qm-start .pactions { margin: 0; gap: 10px; }
 body.zen-lobby #qm-actions .link-action { min-height: 40px; padding: 8px 18px; border: 1px solid var(--c-brand-text); border-radius: var(--radius-pill); background: transparent; color: var(--c-brand-text); font-size: var(--text-sm); font-weight: 600; }   /* #297: pill + brand outline = an action, never mistaken for a chip (rounded rect + grey fill) */
