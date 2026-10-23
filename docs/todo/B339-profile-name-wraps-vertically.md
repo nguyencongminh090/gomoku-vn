@@ -1,5 +1,5 @@
 # B339 — Profile name wraps one syllable per line at ≥861px
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (branch fix/339-343-profile-polish; jsdom + CSS tests; browser pass done)
 **Area:** client/css/platform.css (~L85, L489-493), client/profile.html
 **From:** ux-audit of /u/<name> (user screenshot), 2026-10-23   **Depends:** —
 

@@ -1,5 +1,5 @@
 # B340 — Explain the "?" on provisional ratings
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (branch fix/339-343-profile-polish; jsdom + CSS tests; browser pass done)
 **Area:** client/js/profile.js:97, client/js/i18n.js (profile.*, sys.rating_provisional)
 **From:** ux-audit of /u/<name> (user screenshot), 2026-10-23   **Depends:** —
 

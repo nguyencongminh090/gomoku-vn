@@ -1,5 +1,5 @@
 # B341 — Rating delta copy: "0 tuần này" reads as 0 weeks
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (branch fix/339-343-profile-polish; jsdom + CSS tests; browser pass done)
 **Area:** client/js/i18n.js:1287 (profile.delta_week), client/js/profile.js:101
 **From:** ux-audit of /u/<name> (user screenshot), 2026-10-23   **Depends:** —
 

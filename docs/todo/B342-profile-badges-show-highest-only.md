@@ -1,5 +1,5 @@
 # B342 — Profile badges: hide redundant lower tier (Top 500 beside Top 10)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (branch fix/339-343-profile-polish; jsdom + CSS tests; browser pass done)
 **Area:** client/js/profile.js:62-65, server badge list (badge ids top_500/top_10, wins_100/wins_1000)
 **From:** ux-audit of /u/<name> (user screenshot), 2026-10-23   **Depends:** —
 

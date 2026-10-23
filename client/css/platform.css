@@ -349,6 +349,8 @@ a.prow:hover { background: var(--c-hover); }
 .pprofile .pactions { gap: var(--space-2); margin-top: var(--space-4); }
 .pprofile .pstats { gap: var(--space-5); }
 .pprofile .ph2 { margin-bottom: var(--space-3); }
+.pprofile #pf-clubs-panel { gap: 0; }   /* B343: .psplit > aside flex gap (20px) stacked on .ph2 margin = ~32px under the heading */
+.pprofile .pprov { text-transform: none; }
 .pprofile .pcards { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-5); }
 .pprofile .pcard { padding: var(--space-4); }
 .pprofile .pcard span { font-size: calc(14px * var(--fs-scale, 1)); }
@@ -489,8 +491,7 @@ a.prow:hover { background: var(--c-hover); }
   .pprofile .phead { grid-template-columns: auto 1fr minmax(440px, auto); grid-template-rows: auto auto; align-items: stretch; gap: var(--space-3) var(--space-5); }
   .pprofile .phead > :first-child { grid-row: 1 / 3; align-self: center; }
   .pprofile .phead > div { grid-row: 1 / 3; position: relative; align-self: center; }
-  .pprofile .phead > div #pf-actions { position: absolute; top: 0; right: 0; margin: 0; }
-  .pprofile .phead h1 { padding-right: 140px; }
+  .pprofile .phead h1 { overflow-wrap: break-word; }   /* B339: no right-padding reserve; Edit button sits in its own row below the name */
   .pprofile .phead .pcards { grid-column: 3; grid-row: 1; }
   .pprofile .phead .pstats {
     grid-column: 3; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(96px, 1fr)); gap: var(--space-2);

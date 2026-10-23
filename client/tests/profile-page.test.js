@@ -53,6 +53,31 @@ describe('profile page', () => {
     expect(document.getElementById('pf-chart-note').textContent).toContain('1700');
   });
 
+  it('B341: no delta line when the weekly change is 0', async () => {
+    await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], delta7: 0 }] });
+    expect(document.querySelector('.pcard small.up, .pcard small.dn')).toBeNull();
+    expect([...document.querySelectorAll('.pcard small')].map((x) => x.textContent)).not.toContain('profile.delta_week{"n":"0"}');
+  });
+
+  it('B340: provisional rating shows a visible label; settled rating does not', async () => {
+    await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], provisional: true }] });
+    expect(document.querySelector('.pcard .pprov').textContent).toBe('profile.provisional_hint');
+    await boot(PROFILE);
+    expect(document.querySelector('.pcard .pprov')).toBeNull();
+  });
+
+  it('B342: only the highest badge of a tier family is shown', async () => {
+    await boot({ ...PROFILE, badges: ['top_500', 'top_10', 'wins_100', 'wins_1000'] });
+    expect([...document.querySelectorAll('#pf-badges .pbadge')].map((b) => b.textContent)).toEqual(['badge.top_10', 'badge.wins_1000']);
+  });
+
+  it('B339/B343: stylesheet keeps no padding reserve on the name and no double gap under the clubs heading', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).not.toMatch(/\.phead h1\s*\{\s*padding-right/);
+    expect(css).not.toMatch(/#pf-actions\s*\{\s*position:\s*absolute/);
+    expect(css).toMatch(/\.pprofile #pf-clubs-panel\s*\{\s*gap:\s*0/);
+  });
+
   it('hidden history → no weekly change, no chart, explanatory note', async () => {
     HISTORY = { hidden: true, points: [], peak: null };
     await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], delta7: null }] });
