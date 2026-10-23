@@ -1,5 +1,5 @@
 # B330 — Rankings on phone: no sideways scroll, top 3 highlighted
-**Status:** FIXED
+**Status:** ✅ FIXED 2026-10-23 (merged to dev 6df3b7d)
 **Area:** client/rankings.html, client/js/rankings.js, client/css/platform.css (`#rk-wrap`), client/tests/rankings-page.test.js
 **From:** user 2026-10-23   **Depends:** —
 
