@@ -275,12 +275,12 @@ body.arena-room .rail-dock-toggle { display: none; }
   body.arena-room.rail-collapsed .rail { transform: translateX(100%); visibility: hidden; transition: transform .24s cubic-bezier(.2, .8, .2, 1), visibility 0s .24s; }
   /* Seated in your own game (#game-controls is non-empty only then): collapsing hides just the tabs. Seat cards, clocks,
      controls and request toasts (which live in .rpanel) stay put, so a clock or a draw/undo/time offer is never lost. */
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) { transform: none; visibility: visible; bottom: auto; border-bottom: 1px solid var(--c-border); border-radius: 0 0 0 var(--radius-lg); }
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) .rpanel { flex: 0 0 auto; height: auto; min-height: 0; padding: 0; overflow: visible; background: none; }
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) .rpanel > :not(.gtoasts) { display: none; }
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty)) .gtoasts { position: static; margin: 0 8px; }
-  body.arena-room.rail-collapsed:has(#game-controls:not(:empty)) .room { padding-right: calc(var(--rail-w) + 24px + 16px); }
-  body.arena-room.rail-collapsed:has(#game-controls:not(:empty)) .rail-dock-toggle { right: calc(var(--rail-w) + 24px); }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) { transform: none; visibility: visible; bottom: auto; border-bottom: 1px solid var(--c-border); border-radius: 0 0 0 var(--radius-lg); }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) .rpanel { flex: 0 0 auto; height: auto; min-height: 0; padding: 0; overflow: visible; background: none; }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) .rpanel > :not(.gtoasts) { display: none; }
+  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) .gtoasts { position: static; margin: 0 8px; }
+  body.arena-room.rail-collapsed:has(#game-controls:not(:empty), .seatcard__sit) .room { padding-right: calc(var(--rail-w) + 24px + 16px); }
+  body.arena-room.rail-collapsed:has(#game-controls:not(:empty), .seatcard__sit) .rail-dock-toggle { right: calc(var(--rail-w) + 24px); }
   body.arena-room .rail-dock-toggle {
     display: flex; align-items: center; justify-content: center;
     position: fixed; top: calc(var(--nav-h) + 50vh - 40px); right: calc(var(--rail-w) + 24px);
