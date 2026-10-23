@@ -3,8 +3,9 @@
  * Exposes window.PuzzlesReview.init(); admin.js calls it when the tab is first shown.
  * GET /api/puzzles/review (403 PUZZLE_FORBIDDEN for non-admins — the server is the gate, this
  * page only reports it), POST /api/puzzles/:id/review {decision, level, note}. Shows each
- * pending puzzle's board with its accepted answer lines (click to preview) and how many other
- * puzzles share the position (duplicates).
+ * pending puzzle's board with its accepted answer lines (click to preview), each line's engine
+ * verdict (#331: verified win / breaks at move k / unchecked — a hint, the reviewer still decides)
+ * and how many other puzzles share the position (duplicates).
  */
 
 'use strict';
@@ -25,6 +26,16 @@
     if (cls) n.className = cls;
     return n;
   }
+
+  /** Text for one PuzzleVerifier verdict; null when the server sent none. */
+  function verdictText(v) {
+    if (!v) return null;
+    if (v.status === 'verified') return t('puzzles.rv_v_verified', { n: v.step });
+    if (v.status === 'breaks') return t('puzzles.rv_v_breaks_' + v.reason, { n: v.step });
+    return t('puzzles.rv_v_unchecked');
+  }
+
+  const flagged = (p) => (p.verification || []).some((v) => v.status === 'breaks');
 
   const apiError = (data) => (data && data.code ? t('err.' + data.code.toLowerCase()) : t('puzzles.error'));
 
@@ -62,8 +73,12 @@
       const b = el('button', (i + 1) + '. ' + a.map((c) => window.Coords.label(c.x, c.y, p.boardSize)).join(', '), 'pchip');
       b.type = 'button';
       b.addEventListener('click', () => { line = a; draw(); });
+      const v = p.verification && p.verification[i];
+      const text = verdictText(v);
+      if (text) b.appendChild(el('small', ' · ' + text, 'pz-verdict pz-verdict--' + v.status));
       answers.appendChild(b);
     });
+    $('rv-verify').hidden = !flagged(p);
     $('rv-level').value = p.level;
     $('rv-note').value = '';
     if (!renderer) renderer = new window.BoardRenderer($('rv-canvas'), { boardSize: p.boardSize, clickMode: 'single' });
@@ -79,6 +94,7 @@
       r.type = 'button';
       r.append(el('b', p.title), el('span', t('puzzles.level_' + p.level), 'pbadge'));
       if (p.duplicates) r.appendChild(el('span', t('puzzles.rv_dup_badge', { n: p.duplicates }), 'pbadge pz-dup'));
+      if (flagged(p)) r.appendChild(el('span', t('puzzles.rv_v_flag_badge'), 'pbadge pz-dup'));
       r.addEventListener('click', () => { select(p); renderQueue(); });
       list.appendChild(r);
     }

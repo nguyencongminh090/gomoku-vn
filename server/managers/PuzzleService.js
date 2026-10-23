@@ -7,9 +7,10 @@
  * decision 2026-10-10); an answer's moves are distinct empty cells, so it is bounded by the board.
  *
  * An answer is the SOLVER's moves only (the opponent's replies are never entered), so submit-time
- * validation is structural; whether the line really wins is the reviewer's call. Any one matching
- * answer solves the puzzle; `final_move` puzzles take a single decisive move. Answers are never sent
- * to solvers — comparison happens here.
+ * validation is structural. PuzzleVerifier replays forcing lines (#331): the review queue shows each
+ * line's verdict as a hint (never a reject), and a solver line that is not stored still solves the
+ * puzzle when it is a verified forced win. Any one matching answer solves the puzzle; `final_move`
+ * puzzles take a single decisive move. Answers are never sent to solvers — comparison happens here.
  *
  * Methods throw PuzzleError(code, status); routes translate it to JSON.
  */
@@ -19,6 +20,7 @@ const database = require('../db/database');
 const roles = require('../utils/roles');
 const dmText = require('./DmText');
 const coords = require('../../client/js/coords');
+const { verifyAnswers } = require('./PuzzleVerifier');
 
 const RULES = ['freestyle', 'standard', 'caro'];
 const LEVELS = ['easy', 'medium', 'hard', 'expert'];
@@ -240,6 +242,12 @@ function shape(row, tags, { answers = false, solved } = {}) {
   return out;
 }
 
+/** PuzzleVerifier verdicts for `answers` (default: the stored lines) on a stored puzzle row. */
+function verificationOf(row, answers = JSON.parse(row.answers)) {
+  const { walls, portals } = layoutOf(row);
+  return verifyAnswers({ size: row.board_size, rule: row.rule, toMove: row.to_move, stones: JSON.parse(row.stones), walls, portals }, answers);
+}
+
 const AUTHOR_JOIN = 'SELECT p.*, u.username AS author_username, u.display_name AS author_name FROM puzzles p JOIN users u ON u.id = p.author_id';
 
 /** Approved puzzles, optionally filtered; `solved` is set for a logged-in viewer. */
@@ -278,13 +286,19 @@ function getPuzzle(viewerId, id) {
 
 /** Check a solver's moves against the accepted answers. Records an attempt (and the first solve). */
 function solve(userId, id, rawMoves) {
-  const row = db().prepare('SELECT id, status, mode, answers, author_id, board_size FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
+  const row = db().prepare('SELECT * FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
   if (!row || row.status !== 'approved') throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
   const size = row.board_size;
   const moves = Array.isArray(rawMoves) && rawMoves.length <= size * size ? rawMoves.map((c) => toCell(c, size)) : null;
   if (!moves || !moves.length || moves.some((c) => !c)) throw bad('PUZZLE_MOVES_INVALID', 'Tọa độ không hợp lệ.');
   const same = (a, b) => a.length === b.length && a.every((c, k) => c.x === b[k].x && c.y === b[k].y);
-  const correct = JSON.parse(row.answers).some((a) => same(a, moves));
+  // Not a stored line: still solved when it is a forced win ending on its winning move (#331).
+  const forcedWin = () => {
+    if (row.mode === 'final_move' && moves.length !== 1) return false;
+    const v = verificationOf(row, [moves])[0];
+    return v.status === 'verified' && v.step === moves.length;
+  };
+  const correct = JSON.parse(row.answers).some((a) => same(a, moves)) || forcedWin();
   const now = new Date().toISOString();
   db().transaction(() => {
     db().prepare('INSERT OR IGNORE INTO puzzle_progress (user_id, puzzle_id) VALUES (?, ?)').run(userId, row.id);
@@ -310,7 +324,7 @@ function requireAdmin(userId) {
   if (!isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
 }
 
-/** Pending puzzles, oldest first, each with how many OTHER puzzles share its position. */
+/** Pending puzzles, oldest first, each with how many OTHER puzzles share its position and its answers' verdicts (#331). */
 function reviewQueue(adminId, { page } = {}) {
   requireAdmin(adminId);
   const pg = Math.max(1, parseInt(page, 10) || 1);
@@ -319,7 +333,7 @@ function reviewQueue(adminId, { page } = {}) {
   const tags = tagsOf(rows.map((r) => r.id));
   const dup = db().prepare('SELECT COUNT(*) AS n FROM puzzles WHERE position_hash = ? AND id != ?');
   return {
-    puzzles: rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), duplicates: dup.get(r.position_hash, r.id).n })),
+    puzzles: rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), duplicates: dup.get(r.position_hash, r.id).n, verification: verificationOf(r) })),
     pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
   };
 }

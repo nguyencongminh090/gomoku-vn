@@ -1,3 +1,4 @@
+✅ - **#331.** Puzzle answers never verified as a real win; exact-match rejects alternative winning lines `[Model: Opus 5]` — [detail](docs/todo/B331-puzzle-answer-not-verified.md)
 ✅ - **#329.** Phone: draw/undo/time request toast covered by the chat bar when the panel is minimized `[Model: Sonnet 5]` — [detail](docs/todo/B329-phone-request-toast-covered.md)
 ✅ - **#327.** Phone room: expanding the panel leaves the chat input below the fold; small touch targets `[Model: Sonnet 5]` — [detail](docs/todo/B327-room-phone-panel-expand-input-below-fold.md)
 ✅ - **#326.** Room board cannot be played with the keyboard (no tab stop, role=img) `[Model: Opus 5]` — [detail](docs/todo/B326-room-board-not-keyboard-operable.md)
