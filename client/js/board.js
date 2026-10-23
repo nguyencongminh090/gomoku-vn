@@ -373,7 +373,9 @@
         }
       }
       svg.classList.add('gboard');
-      svg.setAttribute('role', 'img');
+      // One tab stop; arrows move a cursor, Enter/Space selects (#326). `application` so a screen
+      // reader passes the keys through instead of announcing a picture.
+      svg.setAttribute('role', 'application');
       svg.style.touchAction = 'none';
       svg.style.display = 'block';
       svg.style.userSelect = 'none';
@@ -414,6 +416,8 @@
         pointerleave: () => this._onMouseLeave(),
         click: (e) => this._onClick(e),
         touchend: (e) => this._onTouchEnd(e),
+        keydown: (e) => this._onKey(e),
+        blur: () => this._onBlur(),
       };
       for (const [ev, fn] of Object.entries(this._handlers)) svg.addEventListener(ev, fn);
 
@@ -457,7 +461,11 @@
       if (s.moveHistory !== undefined) this.moveHistory = s.moveHistory || [];
       if (s.lastMove !== undefined) this.lastMove = s.lastMove;
       if (s.isMyTurn !== undefined) this.isMyTurn = s.isMyTurn;
-      if (s.interactive !== undefined) this.interactive = s.interactive;
+      if (s.interactive !== undefined) {
+        this.interactive = s.interactive;
+        if (this.interactive) this.svg.setAttribute('tabindex', '0');
+        else { this.svg.removeAttribute('tabindex'); this._kbCell = null; }
+      }
       if (s.myColor !== undefined) this.myColor = s.myColor;
       // s.displayMode is ignored: the look comes from BoardPrefs (#216).
       this._draw();
@@ -537,6 +545,7 @@
         if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
         return;
       }
+      this._kbCell = null; // the pointer takes over: Enter must act on the cell that is drawn
       const cell = this._cellFromClient(e.clientX, e.clientY);
       const prev = this._hoverCell;
       if ((!prev && !cell) || (prev && cell && prev.x === cell.x && prev.y === cell.y)) return;
@@ -545,6 +554,7 @@
     }
 
     _onMouseLeave() {
+      this._kbCell = null;
       if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
     }
 
@@ -562,6 +572,58 @@
       if (!t) return;
       const cell = this._cellFromClient(t.clientX, t.clientY);
       if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
+    }
+
+    // Keyboard path (#326): the cursor is the hover cell; selecting goes through the same
+    // _handleCellSelect as a click, so legality / pending / optimistic logic stays in one place.
+    _onKey(e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const n = this.boardSize;
+      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (d) {
+        e.preventDefault();
+        if (!this.interactive) return;
+        const c = this._kbCell || { x: (n - 1) >> 1, y: (n - 1) >> 1 };
+        const first = !this._kbCell;
+        const nx = first ? c.x : Math.min(n - 1, Math.max(0, c.x + d[0]));
+        const ny = first ? c.y : Math.min(n - 1, Math.max(0, c.y + d[1]));
+        this._kbCell = { x: nx, y: ny };
+        this._hoverCell = this._kbCell;
+        this._drawOverlay();
+        this._announce(this._cellName(nx, ny) + (!this._clickable(this._kbCell) ? ' occupied' : this.isMyTurn ? '' : ' not your turn'));
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!this._kbCell || !this.interactive || !this.isMyTurn || !this.onCellClick) return;
+        if (this._clickable(this._kbCell)) this._handleCellSelect(this._kbCell.x, this._kbCell.y);
+      } else if (e.key === 'Escape') {
+        this._kbCell = null;
+        this._pendingCell = null;
+        this._hoverCell = null;
+        this._drawOverlay();
+        this.svg.blur();
+      }
+    }
+
+    _onBlur() {
+      if (!this._kbCell) return;
+      this._kbCell = null;
+      this._hoverCell = null;
+      this._drawOverlay();
+    }
+
+    _cellName(x, y) { return LETTERS[x] + (this.boardSize - y); }
+
+    // Visually hidden live region next to the board (created lazily).
+    _announce(text) {
+      if (!this._live) {
+        const el = document.createElement('div');
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
+        el.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap';
+        if (this.svg.parentNode) this.svg.parentNode.insertBefore(el, this.svg.nextSibling);
+        this._live = el;
+      }
+      this._live.textContent = text;
     }
 
     // Editors (puzzle authoring) set clickOccupied to erase / replace pieces.
@@ -734,6 +796,10 @@
           ? `<rect x="${m + h.x * P + 3}" y="${m + h.y * P + 3}" width="${P - 6}" height="${P - 6}" rx="4" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`
           : `<circle cx="${c(h.x)}" cy="${c(h.y)}" r="${P * 0.4}" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`);
       }
+      const k = this._kbCell;
+      if (k) { // keyboard cursor: visible on stones too, solid so it differs from the hover ghost
+        out.push(`<rect x="${m + k.x * P + 1}" y="${m + k.y * P + 1}" width="${P - 2}" height="${P - 2}" rx="3" fill="none" stroke="${PENDING}" stroke-width="2.5" class="gboard__kbcursor"/>`);
+      }
       const pd = this._pendingCell;
       if (pd && this._isEmpty(pd)) {
         if (mine) out.push(`<g opacity=".45">${pieceSvg(mine, c(pd.x), c(pd.y), s, pd.y * this.geo.n + pd.x, this.uid)}</g>`);
@@ -758,6 +824,7 @@
       if (this.svg.__gboard === this) this.svg.__gboard = null;
       if (this._onPrefs) root.removeEventListener('boardprefschange', this._onPrefs);
       if (this._ro) this._ro.disconnect();
+      if (this._live) this._live.remove();
     }
   }
 

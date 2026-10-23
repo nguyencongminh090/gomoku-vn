@@ -1,5 +1,5 @@
 # B326 — Room board cannot be played with the keyboard
-**Status:** OPEN
+**Status:** FIXED 2026-10-23 (e2e pass; audit Scenario 5 re-run pending)
 **Area:** client/js/board.js:~376 (svg `role="img"`), client/js/game-ui.js (move emit), client/css (focus ring)
 **From:** ux-audit room.html, 2026-10-23 (`docs/audits/ux-audit-2026-10-23-room.md` M1)   **Depends:** —
 
