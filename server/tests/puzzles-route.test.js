@@ -346,7 +346,7 @@ describe('#333 puzzle number', () => {
     const list = (await call('GET', '/api/puzzles')).body.puzzles;
     expect(list.every((p) => Number.isInteger(p.number) && p.number >= 1)).toBe(true);
     const nums = db.prepare('SELECT number FROM puzzles ORDER BY number').all().map((r) => r.number);
-    expect(nums).toEqual(nums.map((_, i) => i + 1));
+    expect(nums).toEqual([...new Set(nums)]); // ascending and unique; deletes may leave gaps
     const p = list[0];
     const byNum = await call('GET', `/api/puzzles/${p.number}`);
     expect(byNum.body.puzzle.id).toBe(p.id);
@@ -389,6 +389,38 @@ describe('#334 rename', () => {
     expect((await rename('author', 'a'.repeat(61))).body.code).toBe('PUZZLE_TITLE_INVALID');
     expect((await call('PATCH', '/api/puzzles/nope/title', 'author', { title: 'x' })).status).toBe(404);
     expect(db.prepare('SELECT title FROM puzzles WHERE id = ?').get(id).title).toBe('Của mod');
+  });
+});
+
+describe('delete puzzle', () => {
+  let id;
+  const del = (as, pid) => call('DELETE', `/api/puzzles/${pid || id}`, as);
+  beforeEach(async () => {
+    id = (await submit('author', good({ title: 'Xoá tôi' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+  });
+
+  it('the author deletes it: row, tags and solves are gone', async () => {
+    expect((await del('author')).status).toBe(200);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzles WHERE id = ?').get(id).n).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_tags WHERE puzzle_id = ?').get(id).n).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n).toBe(0);
+    expect((await call('GET', `/api/puzzles/${id}`, 'author')).status).toBe(404);
+  });
+
+  it('a reviewer may delete; another member gets 403; guests 403; missing 404', async () => {
+    expect((await del('other')).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await del('guest')).status).toBe(403);
+    expect((await del('author', 'nope')).status).toBe(404);
+    expect((await del('boss')).status).toBe(200);
+  });
+
+  it('a deleted highest #number is never handed out again', async () => {
+    const number = db.prepare('SELECT number FROM puzzles WHERE id = ?').get(id).number;
+    await del('author');
+    const next = (await submit('author', good({ title: 'Mới' }))).body.id;
+    expect(db.prepare('SELECT number FROM puzzles WHERE id = ?').get(next).number).toBeGreaterThan(number);
   });
 });
 

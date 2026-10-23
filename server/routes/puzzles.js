@@ -12,6 +12,7 @@
  * PUT    /api/puzzles/:id                       author edit (→ pending again; solves cleared only if position/answers changed)
  * GET    /api/puzzles/renames                  reviewer: recent title changes (#337)
  * PATCH  /api/puzzles/:id/title                 {title} rename by author/reviewer; keeps status + solves
+ * DELETE /api/puzzles/:id                      author or reviewer deletes it for good (solves/attempts go too)
  * POST   /api/puzzles/:id/solve                 {moves: [{x,y}|"H8"|"122", ...]} → {correct, attemptsLeft, ...}; 429 PUZZLE_ATTEMPTS_EXCEEDED
  * GET    /api/puzzles/:id/attempts              my own tries (member)
  * GET    /api/puzzles/:id/solvers               who solved it and in how many tries (public)
@@ -89,6 +90,10 @@ router.put('/:id', ...write, h((req, res) => {
 
 router.patch('/:id/title', ...write, h((req, res) => {
   res.json(svc.renamePuzzle(req.user.userId, req.params.id, (req.body || {}).title));
+}));
+
+router.delete('/:id', ...write, h((req, res) => {
+  res.json(svc.deletePuzzle(req.user.userId, req.params.id));
 }));
 
 router.get('/:id/attempts', ...member, h((req, res) => {

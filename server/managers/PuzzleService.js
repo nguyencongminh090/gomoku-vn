@@ -200,7 +200,9 @@ function createPuzzle(userId, input) {
     }
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    const number = db().prepare('SELECT COALESCE(MAX(number), 0) + 1 AS n FROM puzzles').get().n; // never reused: puzzles are not deleted (#333)
+    // Never reused, even after a delete (#333): the sequence only grows.
+    db().prepare('UPDATE puzzle_number_seq SET last = MAX(last, (SELECT COALESCE(MAX(number), 0) FROM puzzles)) + 1 WHERE id = 1').run();
+    const number = db().prepare('SELECT last FROM puzzle_number_seq WHERE id = 1').get().last;
     db().prepare(`INSERT INTO puzzles (id, number, author_id, title, prompt, rule, board_size, stones, layout, to_move, mode, answers, level, position_hash, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
       .run(id, number, userId, p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), JSON.stringify(p.layout), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, now, now);
@@ -258,6 +260,17 @@ function renamePuzzle(userId, id, rawTitle) {
         (SELECT id FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id DESC LIMIT ?)`).run(row.id, row.id, RENAME_KEEP);
     }
     return { id: row.id, title };
+  })();
+}
+
+/** Author or reviewer deletes a puzzle for good; tags, solves, attempts and rename log go with it (FK cascade). */
+function deletePuzzle(userId, id) {
+  return db().transaction(() => {
+    const row = db().prepare('SELECT id, author_id FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
+    if (!row) throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
+    if (row.author_id !== userId && !isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
+    db().prepare('DELETE FROM puzzles WHERE id = ?').run(row.id);
+    return { id: row.id, deleted: true };
   })();
 }
 
@@ -503,5 +516,5 @@ function learnSummary(userId) {
 module.exports = {
   statsFor, learnSummary, LEVEL_THRESHOLD,
   PuzzleError, RULES, LEVELS, TAGS, MODES, BOARD_SIZES, MAX_PENDING_PER_USER, isAdmin,
-  MAX_ATTEMPTS, createPuzzle, updatePuzzle, renameLog, renamePuzzle, listApproved, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
+  MAX_ATTEMPTS, createPuzzle, updatePuzzle, deletePuzzle, renameLog, renamePuzzle, listApproved, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
 };
