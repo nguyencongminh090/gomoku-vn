@@ -56,7 +56,7 @@
     line = [];
     say('');
     $('rv-detail').hidden = false;
-    $('rv-title').textContent = p.title;
+    $('rv-title').textContent = window.PuzzleBoard.name(p);
     $('rv-prompt').textContent = p.prompt || '';
     const meta = $('rv-meta');
     meta.replaceChildren(
@@ -92,7 +92,7 @@
     for (const p of queue) {
       const r = el('button', undefined, 'prow pz-rv-row' + (current && current.id === p.id ? ' is-active' : ''));
       r.type = 'button';
-      r.append(el('b', p.title), el('span', t('puzzles.level_' + p.level), 'pbadge'));
+      r.append(el('b', window.PuzzleBoard.name(p)), el('span', t('puzzles.level_' + p.level), 'pbadge'));
       if (p.duplicates) r.appendChild(el('span', t('puzzles.rv_dup_badge', { n: p.duplicates }), 'pbadge pz-dup'));
       if (flagged(p)) r.appendChild(el('span', t('puzzles.rv_v_flag_badge'), 'pbadge pz-dup'));
       r.addEventListener('click', () => { select(p); renderQueue(); });

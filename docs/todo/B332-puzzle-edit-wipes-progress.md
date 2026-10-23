@@ -1,5 +1,5 @@
 # B332 — Editing an approved puzzle wipes every solver's progress
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 — progress/attempts wiped only when rule/size/toMove/mode/stones/walls/portals/answers change; test in puzzles-route.test.js
 **Area:** server/managers/PuzzleService.js:updatePuzzle, statsFor
 **From:** user, 2026-10-23 (puzzle mechanics review)   **Depends:** —
 

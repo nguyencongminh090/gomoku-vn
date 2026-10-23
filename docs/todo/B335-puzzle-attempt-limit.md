@@ -1,5 +1,5 @@
 # B335 — Limit attempts per user per puzzle
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-23 — decided 2026-10-23: 3 tries/puzzle, never reset, solved = exempt; solvers + tries public, own moves private, kept forever — browser pass 2026-10-23 (isolated server :3101, own DB, desktop 1280 + mobile 390): all checks pass, 0 console errors
 **Area:** server/managers/PuzzleService.js:solve, routes/puzzles.js, client solve UI
 **From:** user, 2026-10-23 (puzzle mechanics review)   **Depends:** B336
 

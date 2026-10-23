@@ -1,5 +1,5 @@
 # B334 — Allow the author to rename a puzzle without re-review
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-23 — PATCH /:id/title (author or reviewer), rename on /puzzles/mine — browser pass 2026-10-23 (isolated server :3101, own DB, desktop 1280 + mobile 390): all checks pass, 0 console errors
 **Area:** server/managers/PuzzleService.js:updatePuzzle, routes/puzzles.js, client edit form
 **From:** user, 2026-10-23 (puzzle mechanics review)   **Depends:** B332
 

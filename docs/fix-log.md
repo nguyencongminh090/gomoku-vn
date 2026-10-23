@@ -307,3 +307,5 @@
 | 2026-10-23 13:56 | #329 phone: draw/undo/time request toast no longer covered/clipped on the minimized panel (in flow; +CSS test, browser pass) | [detail](docs/fix-log/2026-10-23-phone-request-toast-329.md) |
 | 2026-10-23 | #330 rankings phone: only # · Người chơi · Rating (no sideways scroll), top 3 highlighted (+test, browser pass 360/1100) | [detail](docs/fix-log/2026-10-23-rankings-phone-table-330.md) |
 | 2026-10-23 14:35 | #331 puzzle answers replayed as forcing lines: review shows verified/breaks/unchecked per line + flag; non-stored forced wins solve (+ tests, browser pass 1280/390) | [detail](docs/fix-log/2026-10-23-puzzle-answer-verify-331.md) |
+| 2026-10-23 | #332 editing an approved puzzle keeps solves unless position/answers change (+ tests) | [detail](docs/fix-log/2026-10-23-puzzle-edit-keeps-progress-332.md) |
+| 2026-10-23 | #333-#336 puzzle #n in name, author/reviewer rename, 3-try cap (429), per-attempt record + public solvers (+ tests, browser pass 1280/390) | [detail](docs/fix-log/2026-10-23-puzzle-number-rename-attempts-333-336.md) |
