@@ -370,3 +370,35 @@ describe('GET /mine paging (#279)', () => {
     expect((await call('GET', '/api/puzzles/mine', 'nopuz')).body.pagination.total).toBe(0);
   });
 });
+
+describe('#331 engine verdicts: review queue hint + alternative forced wins solve', () => {
+  // Black to move. Row 8: W C8, black D8 E8 F8 (a closed three). Row 13: black F13 G13 H13 (an open three).
+  const pos = [
+    stone(2, 7, 'WHITE'), stone(3, 7, 'BLACK'), stone(4, 7, 'BLACK'), stone(5, 7, 'BLACK'),
+    stone(5, 12, 'BLACK'), stone(6, 12, 'BLACK'), stone(7, 12, 'BLACK'),
+    stone(0, 0, 'WHITE'), stone(2, 0, 'WHITE'), stone(4, 0, 'WHITE'), stone(6, 0, 'WHITE'), stone(8, 0, 'WHITE'),
+  ];
+  let id;
+  beforeAll(async () => {
+    addUser('vcf');
+    id = (await submit('vcf', good({ title: 'VCF', tags: ['vcf'], stones: pos, answers: [[{ x: 8, y: 12 }], [{ x: 13, y: 13 }]] }))).body.id;
+  });
+
+  it('the queue carries one verdict per stored line; a quiet line is unchecked, not rejected', async () => {
+    const p = (await call('GET', '/api/puzzles/review', 'boss')).body.puzzles.find((q) => q.id === id);
+    expect(p.verification).toEqual([
+      { status: 'verified', step: 1, reason: 'open_four' },
+      { status: 'unchecked', step: 1, reason: 'not_forcing' },
+    ]);
+  });
+
+  it('after approval, a forced win that is not stored solves; a non-win or a line past its win does not', async () => {
+    expect((await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' })).status).toBe(200);
+    const solve = (moves) => call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves }).then((r) => r.body.correct);
+    expect(await solve([{ x: 4, y: 12 }])).toBe(true);                    // other end of the open three
+    expect(await solve([{ x: 6, y: 7 }, { x: 8, y: 12 }])).toBe(true);    // four, forced block, open four
+    expect(await solve([{ x: 9, y: 12 }])).toBe(false);                   // quiet move
+    expect(await solve([{ x: 6, y: 7 }, { x: 7, y: 7 }])).toBe(false);    // lands on the forced block
+    expect(await solve([{ x: 8, y: 12 }, { x: 9, y: 12 }])).toBe(false);  // moves past the win
+  });
+});

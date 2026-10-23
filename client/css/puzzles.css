@@ -53,6 +53,8 @@
 .pz-rv-row { width: 100%; text-align: left; cursor: pointer; border: 0; background: none; color: var(--c-ink); font: inherit; flex-wrap: wrap; }
 .pz-rv-row.is-active { background: var(--c-fill); }
 .pz-dup { color: var(--c-error); }
+.pz-verdict--verified { color: var(--c-brand-text); }
+.pz-verdict--breaks { color: var(--c-error); }
 @media (max-width: 800px) {
   .pz-review { grid-template-columns: minmax(0, 1fr); }
 }

@@ -318,6 +318,24 @@ describe('review queue', () => {
     expect($('rv-title').textContent).toBe('Hai');
     expect(document.querySelectorAll('#rv-list .prow')).toHaveLength(1);
   });
+
+  it('#331: shows each answer line\'s verdict; a breaking line flags the puzzle (row badge + note)', async () => {
+    const withV = [
+      { ...Q[0], answers: [[{ x: 1, y: 6 }], [{ x: 2, y: 6 }], [{ x: 3, y: 6 }]],
+        verification: [{ status: 'verified', step: 3 }, { status: 'breaks', step: 2, reason: 'occupied' }, { status: 'unchecked', step: 1 }] },
+      { ...Q[1], verification: [{ status: 'unchecked', step: 1 }] },
+    ];
+    reviewBoot(() => ok({ puzzles: withV, pagination: { total: 2 } })); await settle();
+    const v = [...document.querySelectorAll('#rv-answers .pz-verdict')];
+    expect(v.map((n) => n.className)).toEqual(['pz-verdict pz-verdict--verified', 'pz-verdict pz-verdict--breaks', 'pz-verdict pz-verdict--unchecked']);
+    expect(v[1].textContent).toBe(' · puzzles.rv_v_breaks_occupied{"n":2}');
+    expect($('rv-verify').hidden).toBe(false);
+    const rows = document.querySelectorAll('#rv-list .prow');
+    expect(rows[0].textContent).toContain('puzzles.rv_v_flag_badge');
+    expect(rows[1].textContent).not.toContain('puzzles.rv_v_flag_badge');
+    rows[1].click();
+    expect($('rv-verify').hidden).toBe(true);
+  });
 });
 
 describe('editor — answer lines', () => {
