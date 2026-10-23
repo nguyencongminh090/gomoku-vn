@@ -1,5 +1,5 @@
 # B329 — Phone: draw/undo/time request toast is covered by the chat bar
-**Status:** ✅ FIXED 2026-10-23 (fix/329-phone-request-toast-covered, uncommitted)
+**Status:** ✅ FIXED 2026-10-23 (merged to dev 5720a57)
 **Area:** client/css/room-arena.css (phone block), client/tests/room-arena-layout.test.js
 **From:** user "Draw offer,... on phone is covered", 2026-10-23   **Depends:** #216, #217
 
