@@ -160,3 +160,32 @@ describe('#218 keyboard: keep the chat field in view when the viewport shrinks',
     expect(bar.scrollIntoView).not.toHaveBeenCalled();
   });
 });
+
+// #327 — phone: expanding must bring the chat input into view; touch targets >= 44px
+test('#327 expanding on a phone scrolls the panel (input) into view; minimizing and desktop do not', () => {
+  jest.useFakeTimers();
+  loadRoom();
+  const spy = jest.fn();
+  panel().scrollIntoView = spy;
+  window.matchMedia = jest.fn(() => ({ matches: true }));
+  btn().click(); // expand on phone
+  jest.advanceTimersByTime(400);
+  expect(spy).toHaveBeenCalledWith({ block: 'end' });
+  spy.mockClear();
+  btn().click(); // minimize
+  jest.advanceTimersByTime(400);
+  expect(spy).not.toHaveBeenCalled();
+  window.matchMedia = jest.fn(() => ({ matches: false }));
+  btn().click(); // expand on desktop width
+  jest.advanceTimersByTime(400);
+  expect(spy).not.toHaveBeenCalled();
+  jest.useRealTimers();
+});
+
+test('#327 CSS: phone touch targets are 44px (toggle, leave, input, send)', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'room-arena.css'), 'utf8');
+  expect(css).toMatch(/\.rpanel-toggle \{[^}]*min-height: 44px/);
+  expect(css).toMatch(/#btn-leave \{ min-width: 44px; min-height: 44px; \}/);
+  expect(css).toMatch(/\.chat-input input, body\.arena-room \.chat-input button \{ min-height: 44px; \}/);
+  expect(css).toMatch(/--minbar-h: 93px/);
+});

@@ -353,7 +353,7 @@ body.arena-room .rail-dock-toggle { display: none; }
   /* #217 minimized panel: only the quick chat bar + ▲ toggle; expanded = tabs + messages (▼) */
   body.arena-room .rpanel-toggle {
     display: flex; align-items: center; justify-content: center;
-    width: 100%; min-height: 28px; padding: 0; border: 0; cursor: pointer;
+    width: 100%; min-height: 44px; padding: 0; border: 0; cursor: pointer;
     background: var(--c-surface-2); color: var(--c-ink-2);
     /* Always reachable (user 2026-10-11): when .room scrolls the expanded panel up under the stack, the ▼ bar
        sticks right under my card instead of leaving with the tabs. */
@@ -421,10 +421,15 @@ body.arena-room .rail-dock-toggle { display: none; }
    the input 16px below the fold — #218 iOS check). Room for nav + 2 cards + tiles (52 + 2·5) + bar (28 + 49).
    svh: measured with the browser bars shown, so it never resizes while they hide/show. */
 @media (max-width: 768px) {
-  body.arena-room { --tiles-h: 62px; --minbar-h: 77px; }
+  body.arena-room { --tiles-h: 62px; --minbar-h: 93px; }
   body.arena-room .board-area-shell .board-area {
     width: min(100%, max(260px, calc(100svh - var(--nav-h) - 2 * var(--seatcard-h) - var(--tiles-h) - var(--minbar-h))));
   }
+  /* #327 touch targets >= 44px; --minbar-h = 44px toggle + 49px input bar */
+  body.arena-room #btn-leave { min-width: 44px; min-height: 44px; }
+  body.arena-room .chat-input { padding-top: 2px; padding-bottom: 2px; }
+  body.arena-room .chat-input input, body.arena-room .chat-input button { min-height: 44px; }
+  body.arena-room .chat-input button { min-width: 44px; }
 }
 /* Only genuinely short screens (iPhone SE class) narrow the board further. svh, not dvh: the browser toolbar
    collapsing while scrolling must not resize the board (user: small when idle, full once scrolled). */

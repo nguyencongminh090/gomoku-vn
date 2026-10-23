@@ -26,7 +26,7 @@ test('board is capped only on short viewports, with svh (stable while the toolba
   expect(css).not.toMatch(/\.board-area \{\s*width: min\(100%, max\(260px, calc\(100dvh/);
 });
 test('every phone caps the board so nav + cards + board + tiles + minimized bar fit the small viewport (iPhone 13 overflowed 16px)', () => {
-  expect(css).toMatch(/@media \(max-width: 768px\) \{\s*body\.arena-room \{ --tiles-h: 62px; --minbar-h: 77px; \}\s*body\.arena-room \.board-area-shell \.board-area \{\s*width: min\(100%, max\(260px, calc\(100svh - var\(--nav-h\) - 2 \* var\(--seatcard-h\) - var\(--tiles-h\) - var\(--minbar-h\)\)\)\);/);
+  expect(css).toMatch(/@media \(max-width: 768px\) \{\s*body\.arena-room \{ --tiles-h: 62px; --minbar-h: 93px; \}\s*body\.arena-room \.board-area-shell \.board-area \{\s*width: min\(100%, max\(260px, calc\(100svh - var\(--nav-h\) - 2 \* var\(--seatcard-h\) - var\(--tiles-h\) - var\(--minbar-h\)\)\)\);/);
   // the short-screen rule (more board room for the panel) still comes after it, so it wins below 600px
   expect(css.indexOf('max-height: 600px')).toBeGreaterThan(css.indexOf('var(--minbar-h))))'));
 });
