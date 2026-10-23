@@ -25,6 +25,9 @@
     input.value = p.title;
     const save = el('button', t('puzzles.save'), 'pbtn pbtn--primary pbtn--sm');
     save.type = 'button';
+    const cancel = el('button', t('modal.btn_cancel'), 'pbtn pbtn--ghost pbtn--sm');
+    cancel.type = 'button';
+    const rowEl = btn.closest('.pz-mine');
     const err = el('small', undefined, 'pz-rename-form__err');
     err.setAttribute('role', 'alert');
     const holder = el('span', undefined, 'pz-rename-form');
@@ -33,11 +36,19 @@
       input.setAttribute('aria-invalid', 'true');
       save.disabled = false;
     };
-    holder.append(input, save, err);
+    const close = () => { holder.replaceWith(nameEl); btn.hidden = false; if (rowEl) rowEl.classList.remove('pz-mine--editing'); btn.focus(); };
+    holder.append(input, save, cancel, err);
     nameEl.replaceWith(holder);
     btn.hidden = true;
+    if (rowEl) rowEl.classList.add('pz-mine--editing');
+    cancel.addEventListener('click', close);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); save.click(); }
+      else if (e.key === 'Escape') close();
+    });
     input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); err.replaceChildren(); });
     input.focus();
+    input.select();
     save.addEventListener('click', async () => {
       save.disabled = true;
       try {
@@ -48,8 +59,7 @@
         if (!res.ok) { fail(data.code ? t('err.' + data.code.toLowerCase()) : t('puzzles.rename_error')); return; }
         p.title = data.title;
         nameEl.textContent = window.PuzzleBoard.name(p);
-        holder.replaceWith(nameEl);
-        btn.hidden = false;
+        close();
       } catch (_) { fail(t('puzzles.rename_error')); }
     });
   }

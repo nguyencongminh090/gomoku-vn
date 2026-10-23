@@ -262,6 +262,27 @@ describe('my puzzles — number + rename (#333/#334)', () => {
     expect(row().querySelector('input')).toBeNull();
   });
 
+  it('rename editor: Cancel and Esc restore the name, Enter saves, row is flagged while editing', async () => {
+    bootMine((u, o) => ok({ id: 'a', title: JSON.parse(o.body).title }));
+    await settle();
+    const row = () => document.querySelector('#mn-list .prow');
+    const open = () => [...row().querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    open();
+    expect(row().classList.contains('pz-mine--editing')).toBe(true);
+    [...row().querySelectorAll('button')].find((b) => b.textContent === 'modal.btn_cancel').click();
+    expect(row().querySelector('input')).toBeNull();
+    expect(row().classList.contains('pz-mine--editing')).toBe(false);
+    open();
+    row().querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(row().querySelector('input')).toBeNull();
+    open();
+    const input = row().querySelector('input');
+    input.value = 'Enter';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle();
+    expect(row().querySelector('b').textContent).toBe('Enter #7');
+  });
+
   it('a rejected rename shows the translated error and keeps the editor open', async () => {
     bootMine(() => fail(400, { code: 'PUZZLE_TITLE_INVALID' }));
     await settle();
