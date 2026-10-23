@@ -77,3 +77,8 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#328.** Quick-match status line: facts as chips, guest sentence as a note `[Model: Sonnet 5]` — [detail](docs/todo/B328-qm-line-chips.md)
+- **#339.** Profile name wraps one syllable per line at ≥861px (layout collapse) `[Model: Sonnet 5]` — [detail](docs/todo/B339-profile-name-wraps-vertically.md)
+- **#340.** Explain the "?" on provisional ratings in profile cards `[Model: Sonnet 5]` — [detail](docs/todo/B340-profile-provisional-rating-mark.md)
+- **#341.** Profile rating delta copy: add unit, hide when 0 `[Model: Haiku 4.5]` — [detail](docs/todo/B341-profile-delta-week-copy.md)
+- **#342.** Profile badges: show highest tier only (Top 10 over Top 500) `[Model: Sonnet 5]` — [detail](docs/todo/B342-profile-badges-show-highest-only.md)
+- **#343.** Profile clubs panel: measure and fix gap under heading `[Model: Haiku 4.5]` — [detail](docs/todo/B343-profile-clubs-panel-gap.md)
