@@ -131,3 +131,10 @@ describe('start modal (§B36)', () => {
     expect(modal.parentElement.id).toBe('board-area-shell');
   });
 });
+
+describe('request toasts on a minimized phone panel (#329)', () => {
+  test('minimized: toasts are in flow, not absolute over the 93px panel (covered chat bar, clipped ✓/✕)', () => {
+    const phone = ARENA_CSS.slice(ARENA_CSS.indexOf('@media (max-width: 768px) {\n  body.arena-room { --nav-h: 48px; }'));
+    expect(/\.rpanel--min \.gtoasts\s*\{[^}]*position:\s*static/.test(phone)).toBe(true);
+  });
+});

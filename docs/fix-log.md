@@ -304,3 +304,4 @@
 | 2026-10-23 12:30 | #325 room 769–1024 px: rail stays visible while a seat is open so new players can sit (+ test, browser pass) | [detail](docs/fix-log/2026-10-23-room-tablet-rail-presit-325.md) |
 | 2026-10-23 13:00 | #326 board keyboard-operable: tab stop, arrows + Enter/Space via click path, live-region cell name (+ tests) | [detail](docs/fix-log/2026-10-23-board-keyboard-326.md) |
 | 2026-10-23 13:30 | #327 phone room: expanding the panel scrolls the input into view; toggle/leave/input/send ≥ 44px, --minbar-h 93 (+ tests, browser pass 375/320) | [detail](docs/fix-log/2026-10-23-room-phone-panel-expand-327.md) |
+| 2026-10-23 13:56 | #329 phone: draw/undo/time request toast no longer covered/clipped on the minimized panel (in flow; +CSS test, browser pass) | [detail](docs/fix-log/2026-10-23-phone-request-toast-329.md) |
