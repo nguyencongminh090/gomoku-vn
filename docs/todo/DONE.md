@@ -1,4 +1,5 @@
 ✅ - **#351.** Login timing reveals whether a username exists `[Model: Sonnet 5]` — [detail](docs/todo/B351-login-timing-user-enumeration.md)
+✅ - **#349.** Oversized / malformed JSON body returns 500 instead of 413 / 400 `[Model: Sonnet 5]` — [detail](docs/todo/B349-body-parser-errors-return-500.md)
 ✅ - **#348.** Some server tests open and migrate the real gomoku.db `[Model: Sonnet 5]` — [detail](docs/todo/B348-tests-open-real-db.md)
 ✅ - **#347.** CHECK constraints for enum and boolean columns `[Model: Sonnet 5]` — [detail](docs/todo/B347-db-check-constraints-enums-and-bools.md)
 ✅ - **#346.** Decide FKs for actor/reference id columns without constraints `[Model: Sonnet 5]` — [detail](docs/todo/B346-db-fk-gaps-actor-reference-columns.md)
