@@ -79,3 +79,4 @@ in the detail file / fix-log).
 - **#325.** Room at 769–1024 px: rail hidden before you sit, so new players cannot sit/chat `[Model: Sonnet 5]` — [detail](docs/todo/B325-room-tablet-rail-hidden-before-seating.md)
 - **#326.** Room board cannot be played with the keyboard (no tab stop, role=img) `[Model: Opus 5]` — [detail](docs/todo/B326-room-board-not-keyboard-operable.md)
 - **#327.** Phone room: expanding the panel leaves the chat input below the fold; small touch targets `[Model: Sonnet 5]` — [detail](docs/todo/B327-room-phone-panel-expand-input-below-fold.md)
+- **#328.** Quick-match status line: facts as chips, guest sentence as a note `[Model: Sonnet 5]` — [detail](docs/todo/B328-qm-line-chips.md)

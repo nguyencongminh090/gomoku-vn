@@ -402,6 +402,9 @@ describe('quick match panel (B197)', () => {
     await boot('/index.html', EMPTY, GUEST);
     expect(buttons()).toEqual(['qm.find_casual']);
     expect(document.getElementById('qm-line').textContent).toContain('qm.guest_casual_only');
+    expect(document.getElementById('qm-line').textContent).not.toContain('·');
+    expect(document.querySelector('#qm-line .qm-line__note').textContent).toBe('qm.guest_casual_only'); // sentence = note, not a chip
+    expect(document.querySelectorAll('#qm-line .rtag--rule').length).toBe(1); // only the rule chip is highlighted
   });
 
   it('picking chips changes the request and is remembered; a saved choice is restored', async () => {
@@ -428,7 +431,9 @@ describe('quick match panel (B197)', () => {
     client().fire('match:status', { waiting: true, inBucket: 3, rated: true });
     expect(chips('qm-rule').every((b) => b.disabled)).toBe(true);
     expect(buttons()).toEqual(['qm.cancel']);
-    expect(document.getElementById('qm-line').textContent).toBe('qm.searching_rated{"t":"0:00"} · qm.in_queue{"n":3}');
+    expect(document.getElementById('qm-line').textContent).toBe('qm.searching_rated{"t":"0:00"}qm.in_queue{"n":3}');
+    expect([...document.querySelectorAll('#qm-line span')].length).toBe(2); // spans, no "·" string
+    expect(document.querySelectorAll('#qm-line .rtag--rule').length).toBe(0); // queue chip is never the highlighted rule chip (audit L1)
     document.querySelector('#qm-actions button').click();
     expect(client().emitted.pop()).toEqual(['match:leave', undefined]);
     client().fire('match:status', { waiting: false });

@@ -457,8 +457,7 @@ export function renderQuickMatch() {
   };
   if (qm.searching) {
     btn('qm.cancel', '', cancelSearch);
-    line.textContent = t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() })
-      + (qm.inBucket > 1 ? ' · ' + t('qm.in_queue', { n: qm.inBucket }) : '');
+    setSegments(line, [t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() }), qm.inBucket > 1 && t('qm.in_queue', { n: qm.inBucket })]);
   } else {
     if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
     btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
@@ -474,11 +473,22 @@ export function renderQuickMatch() {
       if (rule === qm.rule && (qm.time === QM_AUTO || time === QM_AUTO || time === qm.time)) waiting += n;
     }
     const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
-    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qmTimeLabel(qm.time) + (qm.wall ? ' · ' + t('room.rule_wall') : '') + (qm.portal ? ' · ' + t('room.rule_portal') : '') })
-      + (waiting ? ' · ' + t('qm.in_queue', { n: waiting }) : '')
-      + (eta ? ' · ' + t('qm.eta', { s: eta }) : '')
-      + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));
+    if (qm.error) line.textContent = qm.error;
+    else setSegments(line, [
+      t('qm.selected'), { text: t('rankings.cat_' + qm.rule), cls: 'rtag rtag--rule' }, qmTimeLabel(qm.time),
+      qm.wall && t('room.rule_wall'), qm.portal && t('room.rule_portal'),
+      waiting && t('qm.in_queue', { n: waiting }), eta && t('qm.eta', { s: eta }),
+      !isMember() && { text: t('qm.guest_casual_only'), cls: 'qm-line__note' },
+    ]);
   }
+}
+
+/** Status line: first part = plain label, the rest = .rtag chips; `{ text, cls }` overrides a chip's class (ticket-rows.md: no "a · b · c" strings). */
+function setSegments(line, parts) {
+  line.replaceChildren(...parts.filter(Boolean).map((p, i) => {
+    const o = typeof p === 'string' ? { text: p } : p;
+    return el('span', o.text, o.cls || (i ? 'rtag' : 'qm-line__lead'));
+  }));
 }
 
 function startSearch(rated) {

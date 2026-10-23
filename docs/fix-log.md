@@ -300,4 +300,5 @@
 | 2026-10-22 17:04 | #322 #323 #324 clubs list: invite-only badge + wrap under name, inline create error on field, search pill 44px + pill focus ring (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-form-322-324.md) |
 | 2026-10-22 17:19 | #319 #320 #321 clubs list: no /mine request when logged out, fetch failure shows error + clears list, description clamped to 2 lines (+ tests) | [detail](docs/fix-log/2026-10-22-clubs-list-load-319-321.md) |
 | 2026-10-22 17:59 | untracked club page (mobile) ui-audit: stronger control borders, table-link underline, overlay tokens, safe-area bottom pad, :active, 16px fields, Manage primaries | [detail](docs/fix-log/2026-10-22-club-mobile-ui-audit.md) |
+| 2026-10-23 12:00 | #328 quick-match #qm-line: "A · B · C" string → chips + guest note (+ tests, browser pass 375/1280) | [detail](docs/fix-log/2026-10-23-qm-line-segments.md) |
 | 2026-10-23 12:30 | #325 room 769–1024 px: rail stays visible while a seat is open so new players can sit (+ test, browser pass) | [detail](docs/fix-log/2026-10-23-room-tablet-rail-presit-325.md) |
