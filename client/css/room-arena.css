@@ -378,6 +378,10 @@ body.arena-room .rail-dock-toggle { display: none; }
   body.arena-room .rpanel--min #tab-chat { display: flex; }
   /* The input stays on the panel's bottom edge while the height animates (it doesn't ride the top edge). */
   body.arena-room .rpanel--min .chat-panel { justify-content: flex-end; }
+  /* #329: the minimized panel is only --minbar-h (93px) tall, so the toasts (absolute, top:52px) hung off its bottom
+     edge: the chat bar was covered and the ✓/✕ of a draw/undo/time offer were clipped by overflow:clip. In flow
+     instead — the panel grows by the toast and nothing is covered. */
+  body.arena-room .rpanel--min .gtoasts { position: static; margin: 6px 8px 0; }
   body.arena-room .rpanel-toggle__tri { transition: transform .24s cubic-bezier(.2, .8, .2, 1); }
 
   /* Sticky stack: opponent card + board + my card stay put inside the .room scroller (nav sits above it);
