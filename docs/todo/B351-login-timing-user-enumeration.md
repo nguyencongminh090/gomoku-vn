@@ -1,5 +1,5 @@
 # B351 — Login timing reveals whether a username exists
-**Status:** OPEN
+**Status:** ✅ CLOSED 2026-10-23 — already mitigated (985c9c4); probe was skewed by rate-limit 429s, see fix-log 2026-10-23-351-login-timing-not-a-bug
 **Area:** server/routes/auth.js (POST /login), password hashing util
 **From:** web-security-testing local probe, 2026-10-23   **Depends:** —
 
