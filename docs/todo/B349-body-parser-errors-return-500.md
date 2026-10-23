@@ -1,5 +1,5 @@
 # B349 — Oversized / malformed JSON body returns 500 instead of 413 / 400
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (fix-log 2026-10-23-349-body-parser-errors-4xx)
 **Area:** server/middleware/errorHandler.js, server/index.js (express.json)
 **From:** web-security-testing local probe, 2026-10-23   **Depends:** —
 

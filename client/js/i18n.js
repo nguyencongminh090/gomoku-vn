@@ -1464,6 +1464,8 @@ const TRANSLATIONS = {
     'err.auth_required': 'Cần đăng nhập để thực hiện thao tác này.',
     'err.auth_invalid_token': 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.',
     'err.server_error': 'Lỗi máy chủ. Vui lòng thử lại.',
+    'err.payload_too_large': 'Dữ liệu gửi lên quá lớn.',
+    'err.body_invalid': 'Dữ liệu gửi lên không hợp lệ.',
     'err.server_restarting': 'Server đang khởi động lại. Vui lòng chờ.',
 
     // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
@@ -3015,6 +3017,8 @@ const TRANSLATIONS = {
     'err.auth_required': 'You need to log in to do this.',
     'err.auth_invalid_token': 'Your session is invalid. Please log in again.',
     'err.server_error': 'Server error. Please try again.',
+    'err.payload_too_large': 'The data sent is too large.',
+    'err.body_invalid': 'The data sent is invalid.',
     'err.server_restarting': 'Server is restarting. Please wait.',
 
     // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
