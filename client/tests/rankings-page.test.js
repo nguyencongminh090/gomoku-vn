@@ -83,6 +83,19 @@ describe('rankings page', () => {
     expect(th[6].classList.contains('ptbl__games')).toBe(true);
   });
 
+  it('phone keeps # · Người chơi · Rating: region/7-day/club/games columns carry hide classes; top 3 rows are marked (#330)', async () => {
+    await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
+    const [bob, alice] = document.querySelectorAll('#rk-body tr');
+    for (const [i, c] of [[2, 'ptbl__region'], [4, 'ptbl__delta'], [5, 'ptbl__club'], [6, 'ptbl__games']]) {
+      expect(bob.children[i].classList.contains(c)).toBe(true);
+      expect(document.querySelectorAll('thead th')[i].classList.contains(c)).toBe(true);
+    }
+    expect(bob.classList.contains('rk-top--1')).toBe(true);
+    expect(alice.classList.contains('rk-top--2')).toBe(true);
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 640px\) \{\s*#rk-wrap \.ptbl__region, #rk-wrap \.ptbl__delta, #rk-wrap \.ptbl__club, #rk-wrap \.ptbl__games \{ display: none; \}/);
+  });
+
   it('typing in the search box re-queries with q (debounced) and resets to page 1', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const input = document.getElementById('rk-q');
@@ -167,10 +180,10 @@ describe('rankings page', () => {
     require('../js/countries.js');
     const page = { ...PAGE, players: [{ ...PAGE.players[0], city: '<i>HN</i>', country: 'VN' }, { ...PAGE.players[0], userId: 'x', username: 'x', city: '', country: '' }] };
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(page)));
-    const cells = [...document.querySelectorAll('.ptbl__region')].map((c) => c.textContent);
+    const cells = [...document.querySelectorAll('#rk-body .ptbl__region')].map((c) => c.textContent);
     expect(cells[0].startsWith('<i>HN</i>, ')).toBe(true);
     expect(cells[1]).toBe('—');
-    expect(document.querySelector('.ptbl__region i')).toBeNull();
+    expect(document.querySelector('#rk-body .ptbl__region i')).toBeNull();
   });
 
   it('shows the empty state', async () => {

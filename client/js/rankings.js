@@ -93,14 +93,16 @@
     for (const p of data.players) {
       const tr = document.createElement('tr');
       if (state.mine && p.userId === state.mine.userId) tr.className = 'is-me';
+      if (p.rank >= 1 && p.rank <= 3) tr.classList.add('rk-top', 'rk-top--' + p.rank);
       const name = document.createElement('td');
       const link = el('a', p.displayName);
       link.href = '/u/' + encodeURIComponent(p.username);
       name.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm'), link);
       const rating = el('td', String(p.rating), 'num');
       if (p.provisional) rating.appendChild(el('span', '?', 'ptbl__prov'));
-      const delta = el('td', p.delta7 > 0 ? '+' + p.delta7 : String(p.delta7), 'num' + (p.delta7 > 0 ? ' up' : p.delta7 < 0 ? ' dn' : ''));
+      const delta = el('td', p.delta7 > 0 ? '+' + p.delta7 : String(p.delta7), 'num ptbl__delta' + (p.delta7 > 0 ? ' up' : p.delta7 < 0 ? ' dn' : ''));
       const club = document.createElement('td');
+      club.className = 'ptbl__club';
       if (p.club) {
         const ca = el('a', p.club.name);
         ca.href = '/c/' + encodeURIComponent(p.club.slug);
@@ -108,7 +110,7 @@
       } else {
         club.textContent = '—';
       }
-      // Mockup order: # · Người chơi · Khu vực · Rating · 7 ngày · CLB (+ Ván, dropped on mobile)
+      // Mockup order: # · Người chơi · Khu vực · Rating · 7 ngày · CLB (+ Ván). Phone keeps # · Người chơi · Rating (#330).
       tr.append(el('td', String(p.rank)), name, el('td', regionText(p), 'ptbl__region'), rating, delta, club, el('td', String(p.games), 'num ptbl__games'));
       bodyEl.appendChild(tr);
     }
