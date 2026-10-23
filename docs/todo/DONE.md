@@ -1,3 +1,4 @@
+✅ - **#348.** Some server tests open and migrate the real gomoku.db `[Model: Sonnet 5]` — [detail](docs/todo/B348-tests-open-real-db.md)
 ✅ - **#347.** CHECK constraints for enum and boolean columns `[Model: Sonnet 5]` — [detail](docs/todo/B347-db-check-constraints-enums-and-bools.md)
 ✅ - **#346.** Decide FKs for actor/reference id columns without constraints `[Model: Sonnet 5]` — [detail](docs/todo/B346-db-fk-gaps-actor-reference-columns.md)
 ✅ - **#345.** Tournament results stored twice + missing json_valid CHECKs `[Model: Sonnet 5]` — [detail](docs/todo/B345-tournament-results-dual-store-json-check.md)
