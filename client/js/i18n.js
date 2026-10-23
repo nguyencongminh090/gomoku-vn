@@ -1466,6 +1466,7 @@ const TRANSLATIONS = {
     'err.server_error': 'Lỗi máy chủ. Vui lòng thử lại.',
     'err.payload_too_large': 'Dữ liệu gửi lên quá lớn.',
     'err.body_invalid': 'Dữ liệu gửi lên không hợp lệ.',
+    'err.cross_site_blocked': 'Yêu cầu từ trang khác bị từ chối.',
     'err.server_restarting': 'Server đang khởi động lại. Vui lòng chờ.',
 
     // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
@@ -3019,6 +3020,7 @@ const TRANSLATIONS = {
     'err.server_error': 'Server error. Please try again.',
     'err.payload_too_large': 'The data sent is too large.',
     'err.body_invalid': 'The data sent is invalid.',
+    'err.cross_site_blocked': 'Request from another site was blocked.',
     'err.server_restarting': 'Server is restarting. Please wait.',
 
     // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──

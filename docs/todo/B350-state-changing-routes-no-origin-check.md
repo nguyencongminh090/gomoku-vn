@@ -1,5 +1,5 @@
 # B350 — No Origin / Sec-Fetch-Site check on cookie-authenticated state-changing routes
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (fix-log 2026-10-23-350-origin-guard)
 **Area:** server/index.js, server/middleware/ (new), server/middleware/auth.js comment
 **From:** web-security-testing local probe, 2026-10-23   **Depends:** —
 
