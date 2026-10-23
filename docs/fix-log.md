@@ -309,3 +309,4 @@
 | 2026-10-23 14:35 | #331 puzzle answers replayed as forcing lines: review shows verified/breaks/unchecked per line + flag; non-stored forced wins solve (+ tests, browser pass 1280/390) | [detail](docs/fix-log/2026-10-23-puzzle-answer-verify-331.md) |
 | 2026-10-23 | #332 editing an approved puzzle keeps solves unless position/answers change (+ tests) | [detail](docs/fix-log/2026-10-23-puzzle-edit-keeps-progress-332.md) |
 | 2026-10-23 | #333-#336 puzzle #n in name, author/reviewer rename, 3-try cap (429), per-attempt record + public solvers (+ tests, browser pass 1280/390) | [detail](docs/fix-log/2026-10-23-puzzle-number-rename-attempts-333-336.md) |
+| 2026-10-23 15:10 | #337 puzzle rename audit log: puzzle_renames (keep 50/puzzle), reviewer list on admin Puzzles tab (+ tests; no browser pass) | [detail](docs/fix-log/2026-10-23-puzzle-rename-log-337.md) |

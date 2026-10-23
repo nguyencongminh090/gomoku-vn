@@ -181,3 +181,6 @@
 @media (max-width: 860px) { .pz-rename { min-height: 44px; } }
 #pz-history, #pz-solvers { margin-top: 16px; }
 #pz-history h2, #pz-solvers h2 { margin: 0 0 6px; }
+.pz-rn { flex-wrap: wrap; gap: var(--space-2); }
+.pz-rn__old { text-decoration: line-through; }
+.pz-rn__h { margin: var(--space-4) 0 var(--space-2); font-size: var(--text-lg); }

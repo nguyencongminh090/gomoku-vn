@@ -34,6 +34,8 @@ const TITLE_MAX = 60;
 const PROMPT_MAX = 280;
 const NOTE_MAX = 200;
 const PAGE = 20;
+/** Rename log rows kept per puzzle (#337). */
+const RENAME_KEEP = 50;
 /** Wrong-or-right tries a member gets per puzzle, never reset (#335); a solved puzzle is exempt. */
 const MAX_ATTEMPTS = 3;
 const SOLVERS_MAX = 100;
@@ -239,14 +241,40 @@ function updatePuzzle(userId, id, input) {
   })();
 }
 
-/** Title-only rename by the author (or a reviewer): keeps status, solves and attempts (#334). */
+/** Title-only rename by the author (or a reviewer): keeps status, solves and attempts (#334); logged for reviewers (#337). */
 function renamePuzzle(userId, id, rawTitle) {
   const title = cleanTitle(rawTitle);
-  const row = db().prepare('SELECT id, author_id FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
-  if (!row) throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
-  if (row.author_id !== userId && !isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
-  db().prepare('UPDATE puzzles SET title = ?, updated_at = ? WHERE id = ?').run(title, new Date().toISOString(), row.id);
-  return { id: row.id, title };
+  return db().transaction(() => {
+    const row = db().prepare('SELECT id, author_id, title FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
+    if (!row) throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
+    if (row.author_id !== userId && !isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
+    const now = new Date().toISOString();
+    db().prepare('UPDATE puzzles SET title = ?, updated_at = ? WHERE id = ?').run(title, now, row.id);
+    if (title !== row.title) {
+      db().prepare('INSERT INTO puzzle_renames (puzzle_id, user_id, old_title, new_title, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(row.id, userId, row.title, title, now);
+      db().prepare(`DELETE FROM puzzle_renames WHERE puzzle_id = ? AND id NOT IN
+        (SELECT id FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id DESC LIMIT ?)`).run(row.id, row.id, RENAME_KEEP);
+    }
+    return { id: row.id, title };
+  })();
+}
+
+/** Recent title changes, newest first, for reviewers (#337). */
+function renameLog(adminId, { page } = {}) {
+  requireAdmin(adminId);
+  const pg = Math.max(1, parseInt(page, 10) || 1);
+  const total = db().prepare('SELECT COUNT(*) AS n FROM puzzle_renames').get().n;
+  const rows = db().prepare(`SELECT r.id, r.puzzle_id, r.old_title, r.new_title, r.created_at, p.number, p.status,
+      u.username, u.display_name FROM puzzle_renames r JOIN puzzles p ON p.id = r.puzzle_id JOIN users u ON u.id = r.user_id
+    ORDER BY r.id DESC LIMIT ? OFFSET ?`).all(PAGE, (pg - 1) * PAGE);
+  return {
+    renames: rows.map((r) => ({
+      id: r.id, puzzleId: r.puzzle_id, number: r.number, status: r.status, oldTitle: r.old_title, newTitle: r.new_title,
+      createdAt: r.created_at, by: { username: r.username, displayName: r.display_name },
+    })),
+    pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
+  };
 }
 
 function tagsOf(ids) {
@@ -474,5 +502,5 @@ function learnSummary(userId) {
 module.exports = {
   statsFor, learnSummary, LEVEL_THRESHOLD,
   PuzzleError, RULES, LEVELS, TAGS, MODES, BOARD_SIZES, MAX_PENDING_PER_USER, isAdmin,
-  MAX_ATTEMPTS, createPuzzle, updatePuzzle, renamePuzzle, listApproved, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
+  MAX_ATTEMPTS, createPuzzle, updatePuzzle, renameLog, renamePuzzle, listApproved, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
 };

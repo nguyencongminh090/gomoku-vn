@@ -1,5 +1,5 @@
 # B337 — Audit trail for puzzle renames
-**Status:** OPEN
+**Status:** ✅ DONE 2026-10-23 — log kept 50/puzzle, shown on the admin Puzzles tab (docs/fix-log/2026-10-23-puzzle-rename-log-337.md)
 **Area:** server/managers/PuzzleService.js:renamePuzzle, server/db/migrations (new), server/routes/puzzles.js, review queue / admin UI
 **From:** automated security review of #334, 2026-10-23; user chose option 2 (log, no re-review)   **Depends:** —
 

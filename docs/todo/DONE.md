@@ -1,3 +1,4 @@
+✅ - **#337.** Audit trail for puzzle renames (log + reviewer view, no re-review) `[Model: Sonnet 5]` — [detail](docs/todo/B337-puzzle-rename-audit-log.md)
 ✅ - **#333.** Show puzzle index (#n) in its name `[Model: Sonnet 5]` — [detail](docs/todo/B333-puzzle-number-in-name.md)
 ✅ - **#334.** Allow the author to rename a puzzle without re-review `[Model: Sonnet 5]` — [detail](docs/todo/B334-puzzle-allow-rename.md)
 ✅ - **#335.** Limit attempts per user per puzzle `[Model: Sonnet 5]` — [detail](docs/todo/B335-puzzle-attempt-limit.md)

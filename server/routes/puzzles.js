@@ -10,6 +10,7 @@
  * POST   /api/puzzles                           submit (→ pending)
  * GET    /api/puzzles/:id                       one puzzle; answers only for author/admin
  * PUT    /api/puzzles/:id                       author edit (→ pending again; solves cleared only if position/answers changed)
+ * GET    /api/puzzles/renames                  reviewer: recent title changes (#337)
  * PATCH  /api/puzzles/:id/title                 {title} rename by author/reviewer; keeps status + solves
  * POST   /api/puzzles/:id/solve                 {moves: [{x,y}|"H8"|"122", ...]} → {correct, attemptsLeft, ...}; 429 PUZZLE_ATTEMPTS_EXCEEDED
  * GET    /api/puzzles/:id/attempts              my own tries (member)
@@ -66,6 +67,11 @@ router.get('/mine', ...member, h((req, res) => {
 router.get('/review', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(svc.reviewQueue(req.user.userId, req.query));
+}));
+
+router.get('/renames', ...member, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.renameLog(req.user.userId, req.query));
 }));
 
 router.post('/', ...write, h((req, res) => {
