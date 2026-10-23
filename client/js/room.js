@@ -226,6 +226,11 @@ function setPanelMinimized(min, animate) {
   btn.setAttribute('aria-label', label);
   try { localStorage.setItem(PANEL_MIN_KEY, min ? '1' : '0'); } catch (_) { /* private mode */ }
   if (!min && chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
+  // Phone: the expanded panel starts below the stack and .room is the only scroller, so bring the input into view.
+  if (!min && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
+    const reveal = () => panel.scrollIntoView({ block: 'end' });
+    if (animate) setTimeout(reveal, PANEL_ANIM_MS + 20); else reveal();
+  }
 }
 if (!document.body.dataset.roomPanelToggleBound) {
   document.body.dataset.roomPanelToggleBound = '1';
