@@ -1,5 +1,5 @@
 # B327 — Phone room: expanding the panel leaves the chat input below the fold
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-10-23 (07ea191, merged 7c70408; closed on user's word "đã xong")
 **Area:** client/js/room.js `setPanelMinimized` (~l.215-229), client/css/room-arena.css phone block (`.room` overflow)
 **From:** ux-audit room.html, 2026-10-23 (`docs/audits/ux-audit-2026-10-23-room.md` M2, L1; evidence `docs/audits/2026-10-23-room/31b-375-panel-open.png`)   **Depends:** —
 

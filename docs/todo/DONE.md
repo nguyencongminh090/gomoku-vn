@@ -1,3 +1,6 @@
+✅ - **#327.** Phone room: expanding the panel leaves the chat input below the fold; small touch targets `[Model: Sonnet 5]` — [detail](docs/todo/B327-room-phone-panel-expand-input-below-fold.md)
+✅ - **#326.** Room board cannot be played with the keyboard (no tab stop, role=img) `[Model: Opus 5]` — [detail](docs/todo/B326-room-board-not-keyboard-operable.md)
+✅ - **#325.** Room at 769–1024 px: rail hidden before you sit, so new players cannot sit/chat `[Model: Sonnet 5]` — [detail](docs/todo/B325-room-tablet-rail-hidden-before-seating.md)
 ✅ - **#319.** /api/clubs/mine 401 console error on every logged-out /clubs.html visit `[Model: Sonnet 5]` — [detail](docs/todo/B319-clubs-logged-out-401-console-error.md)
 ✅ - **#320.** Club list search: failed fetch is an unhandled rejection with stale/false status `[Model: Sonnet 5]` — [detail](docs/todo/B320-clubs-list-fetch-failure-feedback.md)
 ✅ - **#321.** Club list rows: long description makes one club fill the phone screen `[Model: Sonnet 5]` — [detail](docs/todo/B321-clubs-list-description-clamp.md)
