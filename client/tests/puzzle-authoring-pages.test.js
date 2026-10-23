@@ -375,6 +375,26 @@ describe('review queue', () => {
   });
 });
 
+describe('review — recent renames (#337)', () => {
+  const R = { id: 1, puzzleId: 'p1', number: 7, status: 'approved', oldTitle: 'Cũ', newTitle: 'Mới', createdAt: '2026-10-23T01:00:00.000Z', by: { username: 'al', displayName: 'Al' } };
+  const bootWith = (renames, total) => boot('review', '../js/puzzles-review.js', (u) => (u.includes('/renames')
+    ? ok({ renames, pagination: { total } }) : ok({ puzzles: [], pagination: { total: 0 } })));
+
+  it('lists old → new with a link to the puzzle, and says how many older ones are hidden', async () => {
+    bootWith([R], 3); await settle();
+    expect($('rv-renames').hidden).toBe(false);
+    const row = $('rn-list').firstChild;
+    expect(row.textContent).toContain('Cũ');
+    expect(row.querySelector('a').textContent).toBe('Mới #7');
+    expect(row.querySelector('a').getAttribute('href')).toBe('/puzzle/p1');
+    expect($('rn-more').hidden).toBe(false);
+  });
+  it('stays hidden when there are no renames or the log is refused', async () => {
+    bootWith([], 0); await settle();
+    expect($('rv-renames').hidden).toBe(true);
+  });
+});
+
 describe('editor — answer lines', () => {
   it('focusing another answer line keeps the DOM (typing is not lost) and switches the active line', async () => {
     boot('editor', '../js/puzzle-editor.js', (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({})));

@@ -382,6 +382,47 @@ describe('#334 rename', () => {
   });
 });
 
+describe('#337 rename log', () => {
+  let id;
+  beforeAll(async () => {
+    id = (await submit('author', good({ title: 'Gốc' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+  });
+  const rename = (as, title) => call('PATCH', `/api/puzzles/${id}/title`, as, { title });
+  const log = (as) => call('GET', '/api/puzzles/renames', as);
+
+  it('each real rename leaves one row (old → new, who); an unchanged title leaves none', async () => {
+    const before = db.prepare('SELECT COUNT(*) n FROM puzzle_renames WHERE puzzle_id = ?').get(id).n;
+    await rename('author', 'Gốc');
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_renames WHERE puzzle_id = ?').get(id).n).toBe(before);
+    await rename('author', 'Tên hai');
+    await rename('boss', 'Tên ba');
+    const rows = db.prepare('SELECT old_title, new_title, user_id FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id').all(id);
+    expect(rows.slice(-2)).toEqual([
+      { old_title: 'Gốc', new_title: 'Tên hai', user_id: U.author },
+      { old_title: 'Tên hai', new_title: 'Tên ba', user_id: U.boss },
+    ]);
+  });
+  it('only reviewers read the log; newest first with number, status and who', async () => {
+    expect((await log('author')).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await log('guest')).status).toBe(403);
+    expect((await call('GET', '/api/puzzles/renames')).status).toBe(401);
+    const r = await log('boss');
+    expect(r.status).toBe(200);
+    expect(r.body.renames[0]).toMatchObject({ puzzleId: id, oldTitle: 'Tên hai', newTitle: 'Tên ba', status: 'approved', by: { username: 'boss' } });
+    expect(r.body.renames[0].number).toBeGreaterThan(0);
+    expect(r.body.pagination.total).toBeGreaterThanOrEqual(2);
+  });
+  it('keeps only the newest 50 rows per puzzle', async () => {
+    for (let i = 0; i < 55; i++) await rename('author', `T${i}`);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_renames WHERE puzzle_id = ?').get(id).n).toBe(50);
+    expect(db.prepare('SELECT new_title FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id DESC LIMIT 1').get(id).new_title).toBe('T54');
+  });
+  it('a rename never changes status or progress (#334 stays free)', async () => {
+    expect(db.prepare('SELECT status FROM puzzles WHERE id = ?').get(id).status).toBe('approved');
+  });
+});
+
 describe('#335 attempt limit + #336 attempt record', () => {
   let id;
   beforeAll(async () => {

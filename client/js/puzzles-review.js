@@ -5,7 +5,8 @@
  * page only reports it), POST /api/puzzles/:id/review {decision, level, note}. Shows each
  * pending puzzle's board with its accepted answer lines (click to preview), each line's engine
  * verdict (#331: verified win / breaks at move k / unchecked — a hint, the reviewer still decides)
- * and how many other puzzles share the position (duplicates).
+ * and how many other puzzles share the position (duplicates). Below the queue: recent renames (#337,
+ * GET /api/puzzles/renames).
  */
 
 'use strict';
@@ -130,6 +131,28 @@
     }
   }
 
+  /** #337: recent title changes (author/reviewer renames keep the status, so they are not in the queue). */
+  async function loadRenames() {
+    try {
+      const res = await fetch('/api/puzzles/renames', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const { renames, pagination } = await res.json();
+      const list = $('rn-list');
+      list.replaceChildren(...renames.map((r) => {
+        const row = el('div', undefined, 'prow pz-rn');
+        const link = el('a', window.PuzzleBoard.name({ title: r.newTitle, number: r.number }));
+        link.href = '/puzzle/' + encodeURIComponent(r.puzzleId);
+        row.append(el('span', r.oldTitle, 'muted pz-rn__old'), el('span', '→', 'muted'), link,
+          el('small', t('puzzles.by', { name: r.by.displayName }) + ' · ' + new Date(r.createdAt).toLocaleString(), 'muted'));
+        return row;
+      }));
+      $('rv-renames').hidden = !renames.length;
+      const more = $('rn-more');
+      more.hidden = pagination.total <= renames.length;
+      more.textContent = t('puzzles.rn_more', { n: pagination.total - renames.length });
+    } catch (err) { /* the log is secondary; the queue still works */ }
+  }
+
   let started = false;
 
   async function init() {
@@ -150,6 +173,7 @@
     $('rv-form').addEventListener('submit', (e) => e.preventDefault());
     if (queue.length) select(queue[0]);
     renderQueue();
+    loadRenames();
     window.addEventListener('resize', () => { if (renderer) { renderer.resize(); draw(); } });
   }
 
