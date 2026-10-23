@@ -53,13 +53,15 @@ test('stored collapsed state is restored on load', () => {
 test('collapsed rail keeps seatcards, controls and toasts while seated in a game (B283)', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'room-arena.css'), 'utf8');
   const desktop = css.slice(css.indexOf('@media (min-width: 769px)'), css.indexOf('@media (prefers-reduced-motion'));
-  const live = ':has(#game-controls:not(:empty))';
+  const live = ':has(#game-controls:not(:empty), .seatcard__sit)';
   expect(desktop).toMatch(new RegExp('rail-collapsed \\.rail' + live.replace(/[()#:]/g, '\\$&') + ' \\{[^}]*visibility: visible'));
   expect(desktop).toMatch(/\.rpanel > :not\(\.gtoasts\) \{ display: none/);
-  expect(desktop).toMatch(/\.rail-collapsed:has\(#game-controls:not\(:empty\)\) \.room \{ padding-right/);
+  expect(desktop).toMatch(/\.rail-collapsed:has\(#game-controls:not\(:empty\), \.seatcard__sit\) \.room \{ padding-right/);
   // B287: toasts take flow space so they push the controls down instead of covering them
   expect(desktop).toMatch(/\.gtoasts \{ position: static/);
   expect(desktop).toMatch(/\.rpanel \{ flex: 0 0 auto; height: auto/);
+  // B325: an open seat keeps the rail visible so a new player can sit without the chevron
+  expect(desktop).toMatch(/rail-collapsed \.rail:has\(.*\.seatcard__sit\) \{[^}]*visibility: visible/);
   expect(document.getElementById('game-toasts').closest('.rpanel')).not.toBeNull();
 });
 

@@ -1,5 +1,5 @@
 # B325 — Room at 769–1024 px: rail is hidden before you sit, so a new player cannot sit, chat or see clocks
-**Status:** OPEN
+**Status:** FIXED
 **Area:** client/css/room-arena.css (~l.273-283 `.rail-collapsed` rules), client/js/room.js:257-269 (B284 default)
 **From:** ux-audit room.html, 2026-10-23 (`docs/audits/ux-audit-2026-10-23-room.md` H1, evidence `docs/audits/2026-10-23-room/40-1024-presit.png`)   **Depends:** —
 
