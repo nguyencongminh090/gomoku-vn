@@ -377,6 +377,20 @@ describe('review queue', () => {
     expect(document.querySelectorAll('#rv-list .prow')).toHaveLength(1);
   });
 
+  it('delete asks first (cancel = no request); confirmed DELETE removes the puzzle and moves to the next', async () => {
+    reviewBoot((u, o) => (o && o.method === 'DELETE' ? ok({ id: 'q1', deleted: true }) : null)); await settle();
+    window.confirm = jest.fn(() => false);
+    $('rv-delete').click(); await settle();
+    expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'DELETE')).toBe(false);
+
+    window.confirm = jest.fn(() => true);
+    $('rv-delete').click(); await settle();
+    const [url] = global.fetch.mock.calls.find(([, o]) => o && o.method === 'DELETE');
+    expect(url).toBe('/api/puzzles/q1');
+    expect($('rv-title').textContent).toBe('Hai');
+    expect(document.querySelectorAll('#rv-list .prow')).toHaveLength(1);
+  });
+
   it('#331: shows each answer line\'s verdict; a breaking line flags the puzzle (row badge + note)', async () => {
     const withV = [
       { ...Q[0], answers: [[{ x: 1, y: 6 }], [{ x: 2, y: 6 }], [{ x: 3, y: 6 }]],

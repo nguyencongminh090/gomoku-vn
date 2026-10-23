@@ -131,6 +131,26 @@
     }
   }
 
+  /** Permanent delete of the open puzzle (DELETE /api/puzzles/:id); the queue moves on to the next one. */
+  async function remove() {
+    if (!current || !window.confirm(t('puzzles.delete_confirm', { title: current.title }))) return;
+    $('rv-delete').disabled = true;
+    try {
+      const res = await fetch('/api/puzzles/' + encodeURIComponent(current.id), { method: 'DELETE', credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && res.status !== 404) { say(apiError(data)); return; }
+      queue = queue.filter((p) => p.id !== current.id);
+      current = null;
+      $('rv-detail').hidden = true;
+      renderQueue();
+      if (queue.length) { select(queue[0]); renderQueue(); }
+    } catch (err) {
+      say(t('puzzles.delete_error'));
+    } finally {
+      $('rv-delete').disabled = false;
+    }
+  }
+
   /** #337: recent title changes (author/reviewer renames keep the status, so they are not in the queue). */
   async function loadRenames() {
     try {
@@ -170,6 +190,7 @@
     $('rv-view').hidden = false;
     $('rv-approve').addEventListener('click', () => decide('approve'));
     $('rv-reject').addEventListener('click', () => decide('reject'));
+    $('rv-delete').addEventListener('click', remove);
     $('rv-form').addEventListener('submit', (e) => e.preventDefault());
     if (queue.length) select(queue[0]);
     renderQueue();
