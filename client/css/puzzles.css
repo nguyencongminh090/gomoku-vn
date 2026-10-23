@@ -174,3 +174,10 @@
 .adm .ri-key-dash::after { border-top-style: dashed; opacity: .7; }
 .adm .ri-key-halo { width: 16px; height: 16px; margin: 0 5px; border: 1.5px dashed var(--c-ink-3); border-radius: 50%; }
 .adm .ri-key-size { background: radial-gradient(circle, var(--c-ink-3) 0 3px, transparent 3.5px) left center / 10px 12px no-repeat, radial-gradient(circle, var(--c-ink-3) 0 5px, transparent 5.5px) right center / 14px 12px no-repeat; }
+.pz-rename-form { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); flex: 1 1 240px; min-width: 0; }
+.pz-rename { min-width: 0; flex: 1 1 160px; min-height: 28px; padding: 3px 10px; border: 1px solid var(--c-border); border-radius: var(--radius); background: var(--c-surface); color: var(--c-ink); font: inherit; font-size: calc(14px * var(--fs-scale, 1)); }
+.pz-rename[aria-invalid="true"] { border-color: var(--c-error); }
+.pz-rename-form__err { flex-basis: 100%; display: flex; align-items: center; gap: var(--space-1); color: var(--c-error); font-size: calc(14px * var(--fs-scale, 1)); }
+@media (max-width: 860px) { .pz-rename { min-height: 44px; } }
+#pz-history, #pz-solvers { margin-top: 16px; }
+#pz-history h2, #pz-solvers h2 { margin: 0 0 6px; }

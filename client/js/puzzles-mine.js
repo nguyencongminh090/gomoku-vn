@@ -17,10 +17,48 @@
     return n;
   }
 
+  /** Inline title edit; PATCH keeps status and solves (#334). */
+  function startRename(p, nameEl, btn) {
+    const input = el('input', undefined, 'pz-rename');
+    input.type = 'text';
+    input.maxLength = 60;
+    input.value = p.title;
+    const save = el('button', t('puzzles.save'), 'pbtn pbtn--primary pbtn--sm');
+    save.type = 'button';
+    const err = el('small', undefined, 'pz-rename-form__err');
+    err.setAttribute('role', 'alert');
+    const holder = el('span', undefined, 'pz-rename-form');
+    const fail = (text) => {
+      err.replaceChildren(window.PlatformShell.icon('ph-regular-warning'), document.createTextNode(text));
+      input.setAttribute('aria-invalid', 'true');
+      save.disabled = false;
+    };
+    holder.append(input, save, err);
+    nameEl.replaceWith(holder);
+    btn.hidden = true;
+    input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); err.replaceChildren(); });
+    input.focus();
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      try {
+        const res = await fetch('/api/puzzles/' + encodeURIComponent(p.id) + '/title', {
+          method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: input.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { fail(data.code ? t('err.' + data.code.toLowerCase()) : t('puzzles.rename_error')); return; }
+        p.title = data.title;
+        nameEl.textContent = window.PuzzleBoard.name(p);
+        holder.replaceWith(nameEl);
+        btn.hidden = false;
+      } catch (_) { fail(t('puzzles.rename_error')); }
+    });
+  }
+
   function row(p) {
     const r = el('div', undefined, 'prow pz-mine');
     const main = el('div', undefined, 'pz-mine__main');
-    main.append(el('b', p.title), el('span', t('puzzles.status_' + p.status), 'pbadge pz-st pz-st--' + p.status),
+    const nameEl = el('b', window.PuzzleBoard.name(p));
+    main.append(nameEl, el('span', t('puzzles.status_' + p.status), 'pbadge pz-st pz-st--' + p.status),
       el('span', t('puzzles.level_' + p.level) + ' · ' + t('puzzles.rule_' + p.rule) + ' · ' + p.boardSize + '×' + p.boardSize, 'muted small'));
     r.appendChild(main);
     if (p.status === 'rejected' && p.reviewNote) r.appendChild(el('p', t('puzzles.reject_note', { note: p.reviewNote }), 'pnote pz-mine__note'));
@@ -33,6 +71,10 @@
       view.href = '/puzzle/' + encodeURIComponent(p.id);
       actions.appendChild(view);
     }
+    const rename = el('button', t('puzzles.rename'), 'pbtn pbtn--ghost pbtn--sm');
+    rename.type = 'button';
+    rename.addEventListener('click', () => startRename(p, nameEl, rename));
+    actions.appendChild(rename);
     r.appendChild(actions);
     return r;
   }
