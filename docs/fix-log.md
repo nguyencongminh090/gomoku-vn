@@ -315,3 +315,4 @@
 | 2026-10-23 16:34 | #344-#347 DB: drop users.is_admin, drop tournament_pairings.moves, json_valid + enum/0-1 CHECKs, FKs on notif actor/elo swap/rating opponent (migrations 010-014 + tests) | [detail](docs/fix-log/2026-10-23-db-constraints-344-347.md) |
 | 2026-10-23 16:58 | Correction #344-#347: real gomoku.db already migrated to v14 by a leaking test run (#348); checked clean (integrity, FK, row counts) | [detail](docs/fix-log/2026-10-23-db-constraints-344-347-correction.md) |
 | 2026-10-23 17:17 | #348 tests: per-file temp GOMOKU_DB_PATH via jest setupFiles + connection.js refuses server/db/gomoku.db under Jest (+ db-isolation test) | [detail](docs/fix-log/2026-10-23-tests-open-real-db-348.md) |
+| 2026-10-23 22:07 | #350 originGuard on /api writes: cross-site Origin / Sec-Fetch-Site → 403 CROSS_SITE_BLOCKED (logout-CSRF); tests + live probe | [detail](docs/fix-log/2026-10-23-350-origin-guard.md) |

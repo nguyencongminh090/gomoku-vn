@@ -1,3 +1,4 @@
+✅ - **#350.** Origin / Sec-Fetch-Site check on cookie-authenticated state-changing routes (logout-CSRF) `[Model: Sonnet 5]` — [detail](docs/todo/B350-state-changing-routes-no-origin-check.md)
 ✅ - **#348.** Some server tests open and migrate the real gomoku.db `[Model: Sonnet 5]` — [detail](docs/todo/B348-tests-open-real-db.md)
 ✅ - **#347.** CHECK constraints for enum and boolean columns `[Model: Sonnet 5]` — [detail](docs/todo/B347-db-check-constraints-enums-and-bools.md)
 ✅ - **#346.** Decide FKs for actor/reference id columns without constraints `[Model: Sonnet 5]` — [detail](docs/todo/B346-db-fk-gaps-actor-reference-columns.md)

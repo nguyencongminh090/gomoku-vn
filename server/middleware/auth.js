@@ -35,7 +35,8 @@ const { readSessionIdFromHeader } = require('../utils/session-cookie');
  * anti-forgery token, or an equivalent Origin/Sec-Fetch-Site check). The
  * SameSite=Lax attribute set in utils/session-cookie.js blocks the usual
  * cross-site POST, but do not treat that single layer as the whole answer.
- * See features/jwt-httponly-cookie/planning.md Q4.
+ * See features/jwt-httponly-cookie/planning.md Q4. (/api writes are already
+ * covered by middleware/origin-guard.js, #350.)
  */
 function verifyToken(req, res, next) {
   const sessionId = readSessionIdFromHeader(req.headers.cookie);

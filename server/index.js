@@ -41,6 +41,7 @@ const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
 const { errorHandler } = require('./middleware/errorHandler');
+const { originGuard } = require('./middleware/origin-guard');
 const socketHandler  = require('./socket/SocketHandler');
 const diagNamespace  = require('./socket/diag-namespace');
 const sessionManager = require('./managers/SessionManager');
@@ -153,6 +154,9 @@ app.use('/vendor/socket.io', express.static(socketIoClientPath, socketIoClientOp
 // booting this server — see TODO.md #106 for why the express.static default
 // (`public, max-age=0`) was actively harmful here.
 app.use(express.static(clientPath, staticOptions));
+
+// Reject cross-site writes before any /api router (#350).
+app.use('/api', originGuard);
 
 // REST API routes
 app.use('/api/auth', authRouter);

@@ -1464,6 +1464,7 @@ const TRANSLATIONS = {
     'err.auth_required': 'Cần đăng nhập để thực hiện thao tác này.',
     'err.auth_invalid_token': 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.',
     'err.server_error': 'Lỗi máy chủ. Vui lòng thử lại.',
+    'err.cross_site_blocked': 'Yêu cầu từ trang khác bị từ chối.',
     'err.server_restarting': 'Server đang khởi động lại. Vui lòng chờ.',
 
     // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
@@ -3015,6 +3016,7 @@ const TRANSLATIONS = {
     'err.auth_required': 'You need to log in to do this.',
     'err.auth_invalid_token': 'Your session is invalid. Please log in again.',
     'err.server_error': 'Server error. Please try again.',
+    'err.cross_site_blocked': 'Request from another site was blocked.',
     'err.server_restarting': 'Server is restarting. Please wait.',
 
     // ── Tournament errors (TournamentHandler.js / TournamentManager.js) ──
