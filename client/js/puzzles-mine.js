@@ -64,7 +64,7 @@
     });
   }
 
-  function row(p) {
+  function row(p, onDeleted) {
     const r = el('div', undefined, 'prow pz-mine');
     const main = el('div', undefined, 'pz-mine__main');
     const nameEl = el('b', window.PuzzleBoard.name(p));
@@ -85,6 +85,21 @@
     rename.type = 'button';
     rename.addEventListener('click', () => startRename(p, nameEl, rename));
     actions.appendChild(rename);
+    const del = el('button', t('puzzles.delete'), 'pbtn pbtn--ghost pbtn--sm');
+    del.type = 'button';
+    del.addEventListener('click', async () => {
+      if (!window.confirm(t('puzzles.delete_confirm', { title: p.title }))) return;
+      del.disabled = true;
+      try {
+        const res = await fetch('/api/puzzles/' + encodeURIComponent(p.id), { method: 'DELETE', credentials: 'same-origin' });
+        if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+        onDeleted();
+      } catch (_) {
+        del.disabled = false;
+        window.alert(t('puzzles.delete_error'));
+      }
+    });
+    actions.appendChild(del);
     r.appendChild(actions);
     return r;
   }
@@ -121,7 +136,7 @@
         const { puzzles, pagination } = data;
         canReview = !!data.canReview;
         const list = $('mn-list');
-        list.replaceChildren(...puzzles.map(row));
+        list.replaceChildren(...puzzles.map((p) => row(p, () => loadPage(page > 1 && puzzles.length === 1 ? page - 1 : page, false))));
         $('mn-count').textContent = t('puzzles.total', { n: pagination.total });
         renderPager(pagination);
         if (!puzzles.length) { msg.hidden = false; msg.textContent = t('puzzles.mine_empty'); }
