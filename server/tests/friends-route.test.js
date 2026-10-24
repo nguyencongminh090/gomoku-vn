@@ -251,3 +251,43 @@ describe('friend code (name#1234)', () => {
     expect((await call('GET', '/api/friends/search?q=dan%230000', 'ann')).body.results).toEqual([]);
   });
 });
+
+describe('GET /api/friends/search — Vietnamese names and typos (feature/user-search)', () => {
+  const add = (id, username, display) => db.prepare(`INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES (?, ?, 'x', ?, ?)`).run(id, username, display, NOW);
+  const found = async (q) => (await call('GET', `/api/friends/search?q=${encodeURIComponent(q)}`, 'ann')).body.results.map((p) => p.username);
+
+  beforeAll(() => { add('vn1', 'vnduc', 'Nguyễn Văn Đức'); add('vn2', 'tbinh', 'Trần Thị Bình'); });
+  afterAll(() => db.prepare("DELETE FROM users WHERE id IN ('vn1','vn2')").run());
+
+  it('finds accented names without accents, in any case or word order', async () => {
+    expect(await found('nguyen')).toEqual(['vnduc']);
+    expect(await found('NGUYỄN')).toEqual(['vnduc']);
+    expect(await found('duc van')).toEqual(['vnduc']);
+    expect(await found('đức')).toEqual(['vnduc']);
+  });
+  it('tolerates a typo only when nothing matches exactly', async () => {
+    expect(await found('nugyen')).toEqual(['vnduc']);
+    expect(await found('tran thi bing')).toEqual(['tbinh']);
+  });
+  it('a newly registered user is searchable at once (index follows the users table)', async () => {
+    expect(await found('Lê Hoàng')).toEqual([]);
+    add('vn3', 'lehoang', 'Lê Hoàng');
+    expect(await found('le hoang')).toEqual(['lehoang']);
+    db.prepare("DELETE FROM users WHERE id = 'vn3'").run();
+    expect(await found('le hoang')).toEqual([]);
+  });
+});
+
+describe('user-search result cache follows the users table', () => {
+  const userSearch = require('../db/user-search');
+  it('same query twice is stable; a new user invalidates it; limit/exclude apply after the cache', () => {
+    const first = userSearch.matchUserIds('an');
+    expect(userSearch.matchUserIds('an')).toEqual(first);
+    db.prepare(`INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ('cache1', 'zanzan', 'x', 'Zan Zan', ?)`).run(NOW);
+    expect(userSearch.matchUserIds('zan')).toContain('cache1');
+    expect(userSearch.matchUserIds('zan', { exclude: 'cache1' })).not.toContain('cache1');
+    expect(userSearch.matchUserIds('zan', { limit: 1 })).toHaveLength(1);
+    db.prepare("DELETE FROM users WHERE id = 'cache1'").run();
+    expect(userSearch.matchUserIds('zan')).not.toContain('cache1');
+  });
+});

@@ -3,7 +3,7 @@
 /** db/rankings.js — split out of database.js (#258); code moved verbatim. */
 
 const { db } = require('./connection');
-const { likeEscape } = require('./like');
+const userSearch = require('./user-search');
 
 
 // ---------------------------------------------------------------------------
@@ -159,25 +159,25 @@ function getPrimaryClubs(userIds) {
 function searchRankings(category, q, limit, offset) {
   // Match first (scan users, probe ratings by PK), page, and only then count the better-rated players for the
   // page's rows — rank is COUNT(better) as in getUserRanking, not a ROW_NUMBER over the whole category (B260).
-  const like = likeEscape(q);
+  const ids = JSON.stringify(userSearch.matchUserIds(q));
   return db.prepare(`
     WITH page AS (
       SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
       FROM users u CROSS JOIN ratings r ON r.user_id = u.id AND r.category = ?
-      WHERE r.games >= ? AND (u.username LIKE ? ESCAPE '\\' OR u.display_name LIKE ? ESCAPE '\\')
+      WHERE r.games >= ? AND u.id IN (SELECT value FROM json_each(?))
       ORDER BY r.rating DESC, r.user_id LIMIT ? OFFSET ?
     )
     SELECT page.*, 1 + (SELECT COUNT(*) FROM ratings b WHERE b.category = ? AND b.games >= ?
                         AND (b.rating > page.rating OR (b.rating = page.rating AND b.user_id < page.user_id))) AS rank
     FROM page ORDER BY page.rating DESC, page.user_id`)
-    .all(category, RANKING_MIN_GAMES, like, like, limit, offset, category, RANKING_MIN_GAMES);
+    .all(category, RANKING_MIN_GAMES, ids, limit, offset, category, RANKING_MIN_GAMES);
 }
 
 function countSearchRankings(category, q) {
   return db.prepare(`
     SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id
-    WHERE r.category = ? AND r.games >= ? AND (u.username LIKE ? ESCAPE '\\' OR u.display_name LIKE ? ESCAPE '\\')`)
-    .get(category, RANKING_MIN_GAMES, likeEscape(q), likeEscape(q)).n;
+    WHERE r.category = ? AND r.games >= ? AND u.id IN (SELECT value FROM json_each(?))`)
+    .get(category, RANKING_MIN_GAMES, JSON.stringify(userSearch.matchUserIds(q))).n;
 }
 
 /**
