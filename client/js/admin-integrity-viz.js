@@ -58,26 +58,35 @@
   function simulate(nodes, edges, anchors, W, H) {
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const links = edges.map((e) => ({ a: byId.get(e.a), b: byId.get(e.b), w: e.games })).filter((l) => l.a && l.b);
+    const grow = Math.max(1, nodes.length / 40); // a bigger graph needs a stronger push and longer links to fill the canvas
+    const repel = 2400 * grow * grow, rest = 56 * grow;
     function step(alpha) {
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const a = nodes[i], b = nodes[j];
           let dx = b.x - a.x, dy = b.y - a.y;
           const d2 = Math.max(dx * dx + dy * dy, 36);
-          const f = (2400 * alpha) / d2, d = Math.sqrt(d2);
+          const f = (repel * alpha) / d2, d = Math.sqrt(d2);
           dx = (dx / d) * f; dy = (dy / d) * f;
           a.vx -= dx; a.vy -= dy; b.vx += dx; b.vy += dy;
+          // collision: circles never overlap (6px gap inside a group, 16px between groups), regardless of alpha, so the layout settles overlap-free
+          const min = a.r + b.r + (a.community === b.community ? 6 : 16), d1 = Math.sqrt(d2); // wider gap between groups
+          if (d1 < min) {
+            const push = (min - d1) / 2, ux = (b.x - a.x) / d1, uy = (b.y - a.y) / d1;
+            if (!a.fixed) { a.x -= ux * push; a.y -= uy * push; }
+            if (!b.fixed) { b.x += ux * push; b.y += uy * push; }
+          }
         }
       }
       for (const l of links) {
         const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y, d = Math.hypot(dx, dy) || 1;
-        const f = ((d - 56) * 0.035 * alpha) * (1 + Math.min(2, l.w / 10)) / d;
+        const f = ((d - rest) * 0.02 * alpha) * (1 + Math.min(2, l.w / 10)) * (l.a.community === l.b.community ? 1 : 0.25) / d; // cross-group links pull weakly so groups stay apart
         l.a.vx += dx * f; l.a.vy += dy * f; l.b.vx -= dx * f; l.b.vy -= dy * f;
       }
       for (const n of nodes) {
         const an = anchors.get(n.community);
-        n.vx += (an.x - n.x) * 0.05 * alpha; n.vy += (an.y - n.y) * 0.05 * alpha;
-        n.vx += (W / 2 - n.x) * 0.006 * alpha; n.vy += (H / 2 - n.y) * 0.006 * alpha;
+        n.vx += (an.x - n.x) * 0.06 * alpha; n.vy += (an.y - n.y) * 0.06 * alpha;
+        n.vx += (W / 2 - n.x) * 0.003 * alpha; n.vy += (H / 2 - n.y) * 0.003 * alpha;
         if (n.fixed) { n.vx = 0; n.vy = 0; continue; }
         n.vx *= 0.8; n.vy *= 0.8;
         n.x = Math.min(W - n.r - 4, Math.max(n.r + 4, n.x + n.vx));
@@ -88,7 +97,7 @@
   }
 
   function graph(viz) {
-    const W = 760, H = 460;
+    const W = 1100, H = 760;
     const box = panel(t('admin.i_viz_graph'), t('admin.i_viz_graph_hint', { shown: viz.shown, total: viz.total, c: viz.communities }));
     box.classList.add('ri-chart--graph');
     const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'ri-svg ri-svg--graph', role: 'img', 'aria-label': t('admin.i_viz_graph') });
@@ -99,11 +108,12 @@
     const anchors = new Map();
     groupIds.forEach((c, i) => {
       const a = (2 * Math.PI * i) / groupIds.length - Math.PI / 2;
-      const R = groupIds.length > 1 ? Math.min(W, H) * 0.33 : 0;
+      const R = groupIds.length > 1 ? Math.min(W, H) * 0.38 : 0;
       anchors.set(c, { x: W / 2 + R * Math.cos(a) * 1.3, y: H / 2 + R * Math.sin(a) });
     });
     const step = simulate(nodes, viz.edges, anchors, W, H);
-    for (let i = 0, a = 1; i < 160; i++, a = Math.max(0.03, a * 0.96)) step(a);
+    for (let i = 0, a = 1; i < 240; i++, a = Math.max(0.03, a * 0.97)) step(a);
+    for (let i = 0; i < 120; i++) step(0); // forces off: only the no-overlap pass runs, so the layout ends clean
 
     const maxE = Math.max(1, ...viz.edges.map((e) => e.games));
     const hullLayer = svg('g', { class: 'ri-hulls' });
@@ -211,12 +221,58 @@
       c.addEventListener('pointercancel', end);
     });
 
+    // Zoom / pan: the viewBox is the camera. Buttons, Ctrl/⌘+wheel (plain wheel keeps scrolling the page), drag the background to pan.
+    const home = { x: 0, y: 0, w: W, h: H };
+    let cam = { ...home };
+    const applyCam = () => s.setAttribute('viewBox', `${cam.x} ${cam.y} ${cam.w} ${cam.h}`);
+    function zoomBy(k, fx = 0.5, fy = 0.5) {
+      const w = Math.min(W, Math.max(W / 6, cam.w / k)), h = w * (H / W);
+      cam = { x: cam.x + (cam.w - w) * fx, y: cam.y + (cam.h - h) * fy, w, h };
+      if (w >= W) cam = { ...home };
+      applyCam();
+    }
+    const zoomBar = document.createElement('span');
+    zoomBar.className = 'ri-zoom';
+    for (const [label, key, fn] of [['−', 'admin.i_viz_zoom_out', () => zoomBy(1 / 1.4)], ['+', 'admin.i_viz_zoom_in', () => zoomBy(1.4)], ['1:1', 'admin.i_viz_zoom_reset', () => { cam = { ...home }; applyCam(); }]]) {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'pbtn pbtn--ghost pbtn--sm'; b.textContent = label;
+      b.setAttribute('aria-label', t(key)); b.title = t(key);
+      b.addEventListener('click', fn);
+      zoomBar.appendChild(b);
+    }
+    s.addEventListener('wheel', (ev) => {
+      if (!ev.ctrlKey && !ev.metaKey) return;
+      ev.preventDefault();
+      const r = s.getBoundingClientRect();
+      zoomBy(ev.deltaY < 0 ? 1.15 : 1 / 1.15, (ev.clientX - r.left) / r.width, (ev.clientY - r.top) / r.height);
+    }, { passive: false });
+    let pan = null;
+    s.addEventListener('pointerdown', (ev) => {
+      if (ev.target !== s && !ev.target.classList.contains('ri-hull')) return;
+      pan = { x: ev.clientX, y: ev.clientY, cam: { ...cam } };
+      s.classList.add('is-pan');
+      if (s.setPointerCapture) { try { s.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic event */ } }
+    });
+    s.addEventListener('pointermove', (ev) => {
+      if (!pan) return;
+      const r = s.getBoundingClientRect(), k = pan.cam.w / r.width;
+      cam.x = Math.min(W - cam.w, Math.max(0, pan.cam.x - (ev.clientX - pan.x) * k));
+      cam.y = Math.min(H - cam.h, Math.max(0, pan.cam.y - (ev.clientY - pan.y) * k));
+      applyCam();
+    });
+    const endPan = () => { pan = null; s.classList.remove('is-pan'); };
+    s.addEventListener('pointerup', endPan);
+    s.addEventListener('pointercancel', endPan);
+
     const reset = document.createElement('button');
     reset.type = 'button';
     reset.className = 'pbtn pbtn--ghost pbtn--sm';
     reset.textContent = t('admin.i_viz_relayout');
     reset.addEventListener('click', () => { nodes.forEach((n) => { n.x = pos.get(n.id).x; n.y = pos.get(n.id).y; n.vx = n.vy = 0; }); alpha = 1; heat(1); });
-    box.querySelector('figcaption').appendChild(reset);
+    const bar = document.createElement('div');
+    bar.className = 'ri-tools';
+    bar.append(zoomBar, reset);
+    box.querySelector('figcaption').appendChild(bar);
 
     box.appendChild(s);
     box.appendChild(readout);
