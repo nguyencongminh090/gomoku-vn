@@ -318,3 +318,4 @@
 | 2026-10-23 21:51 | #349 body-parser errors (413 too large / 400 bad JSON) no longer fall into the 500 branch; regression test | [detail](docs/fix-log/2026-10-23-349-body-parser-errors-4xx.md) |
 | 2026-10-23 22:07 | #350 originGuard on /api writes: cross-site Origin / Sec-Fetch-Site → 403 CROSS_SITE_BLOCKED (logout-CSRF); tests + live probe | [detail](docs/fix-log/2026-10-23-350-origin-guard.md) |
 | 2026-10-23 23:19 | #351 closed, not a bug: unknown-user login already compares a dummy bcrypt hash; earlier timing gap was 429 noise (re-measured 187 vs 188 ms) | [detail](docs/fix-log/2026-10-23-351-login-timing-not-a-bug.md) |
+| 2026-10-23 | #352 login with non-string username/password: 500 → 400 MISSING_CREDENTIALS (+ 5-case regression test) | [detail](docs/fix-log/2026-10-23-352-login-non-string-body.md) |

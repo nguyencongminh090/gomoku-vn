@@ -347,7 +347,9 @@ router.post('/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
+    // typeof, not just truthiness: a JSON object/array/number is truthy and
+    // would reach better-sqlite3 / bcrypt as a bind value and throw (#352).
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       return res.status(400).json({
         error: 'Vui lòng nhập tên đăng nhập và mật khẩu.',
         code: 'MISSING_CREDENTIALS',
