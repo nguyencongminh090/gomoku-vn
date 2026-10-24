@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const database = require('../db/database');
 const notifications = require('./NotificationService');
 const privacyGate = require('./PrivacyGate');
+const userSearch = require('../db/user-search');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -159,7 +160,6 @@ function list(me) {
 
 const SEARCH_MIN = 2;
 const SEARCH_LIMIT = 8;
-const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
 
 const CODE_RE = /^(.{1,40})#(\d{4})$/;
 
@@ -189,8 +189,8 @@ function hit(me, r) {
 }
 
 /**
- * Find players to add by username or display name (substring, case-insensitive).
- * Exact username first. Each hit carries the relation to `me` and whether a NEW request
+ * Find players to add by username or display name — accent/case-insensitive, any word order,
+ * tolerant of a typo (utils/text-search.js), best match first. Each hit carries the relation to `me` and whether a NEW request
  * would pass the recipient's privacy setting, so the UI can disable the button up front.
  */
 function search(me, query) {
@@ -198,12 +198,11 @@ function search(me, query) {
   if (q.length < SEARCH_MIN) return [];
   const code = CODE_RE.exec(q);
   if (code) return searchByCode(me, code[1].trim(), code[2]);
-  const like = likeEscape(q);
-  const rows = db().prepare(`
-    SELECT id, username, display_name, avatar_v FROM users
-    WHERE id != ? AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')
-    ORDER BY (LOWER(username) = LOWER(?)) DESC, display_name COLLATE NOCASE LIMIT ?`)
-    .all(me, like, like, q, SEARCH_LIMIT);
+  const ids = userSearch.matchUserIds(q, { limit: SEARCH_LIMIT, exclude: me });
+  if (!ids.length) return [];
+  const byId = new Map(db().prepare(`SELECT id, username, display_name, avatar_v FROM users WHERE id IN (SELECT value FROM json_each(?))`)
+    .all(JSON.stringify(ids)).map((r) => [r.id, r]));
+  const rows = ids.map((id) => byId.get(id)).filter(Boolean); // keep relevance order
   return rows.map((r) => hit(me, r));
 }
 
