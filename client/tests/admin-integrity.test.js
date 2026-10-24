@@ -95,4 +95,31 @@ describe('charts', () => {
     circles[0].dispatchEvent(ev('pointerup', 200, 150));
     expect(circles[0].classList.contains('is-drag')).toBe(false);
   });
+  it('network: a dense 120-node graph settles with no overlapping circles', async () => {
+    const nodes = Array.from({ length: 120 }, (_, i) => N('n' + i, i % 8, 5 + (i % 30), 1500));
+    const edges = [];
+    for (let i = 0; i < 120; i++) for (let j = i + 1; j < 120; j += 7) edges.push({ a: 'n' + i, b: 'n' + j, games: 1 + ((i + j) % 9) });
+    await boot(() => ok({ ...DATA, viz: { ...VIZ, total: 120, shown: 120, communities: 8, nodes, edges } }));
+    const c = [...document.querySelectorAll('.ri-svg--graph circle.ri-node')].map((e) => ({ x: +e.getAttribute('cx'), y: +e.getAttribute('cy'), r: +e.getAttribute('r'), k: e.getAttribute('class') }));
+    expect(c).toHaveLength(120);
+    let minGap = Infinity;
+    for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) minGap = Math.min(minGap, Math.hypot(c[i].x - c[j].x, c[i].y - c[j].y) - c[i].r - c[j].r);
+    expect(minGap).toBeGreaterThanOrEqual(0); // collision pass guarantees circles never touch (was 449 overlapping pairs)
+  });
+  it('network: zoom buttons narrow the viewBox, 1:1 restores it, and zoom stops at 6x', async () => {
+    await boot(() => ok({ ...DATA, viz: VIZ }));
+    const g = document.querySelector('.ri-svg--graph');
+    const [out, inn, one] = document.querySelectorAll('.ri-zoom button');
+    const vb = () => g.getAttribute('viewBox').split(' ').map(Number);
+    const w0 = vb()[2];
+    out.click();
+    expect(vb()[2]).toBe(w0); // already fully zoomed out
+    inn.click();
+    expect(vb()[2]).toBeLessThan(w0);
+    for (let i = 0; i < 20; i++) inn.click();
+    expect(vb()[2]).toBeCloseTo(w0 / 6, 5);
+    one.click();
+    expect(vb()).toEqual([0, 0, w0, vb()[3]]);
+    expect(inn.getAttribute('aria-label')).toBe('admin.i_viz_zoom_in');
+  });
 });

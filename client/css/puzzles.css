@@ -112,7 +112,10 @@
 
 /* Admin → integrity tab (#249): hint panel, sectioned ticket lists */
 .adm .ri-hint { margin: 0 0 var(--space-5, 20px); padding: var(--space-3) var(--space-4); font-size: calc(12.5px * var(--fs-scale, 1)); line-height: 1.5; color: var(--c-ink-2); background: var(--c-surface); border-left: 3px solid var(--c-brand); border-radius: var(--radius); }
-.adm .ri-list { display: flex; flex-direction: column; gap: var(--space-5, 20px); max-width: 820px; }
+.adm .ri-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5, 20px) var(--space-4); align-items: start; }
+.adm .ri-sec:last-child { grid-column: 1 / -1; }
+.adm .ri-sec .prows { max-height: 640px; overflow-y: auto; padding-right: 2px; }   /* 100+ pairs scroll inside the section, not the page */
+@media (max-width: 800px) { .adm .ri-list { grid-template-columns: minmax(0, 1fr); } .adm .ri-sec .prows { max-height: 420px; } }
 .adm .ri-sec__h { display: flex; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-3); font-size: calc(11px * var(--fs-scale, 1)); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--c-ink-3); }
 .adm .ri-sec__n { padding: 1px 8px; font-size: calc(11px * var(--fs-scale, 1)); letter-spacing: 0; }
 .adm .ri-sec__n.is-hot { color: var(--c-accent); background: var(--c-accent-light); border-color: transparent; }
@@ -125,7 +128,7 @@
 /* Integrity charts. Categorical slots validated with dataviz validate_palette.js (dark + light surfaces). */
 .adm { --viz-1: #3987e5; --viz-2: #d95926; --viz-3: #199e70; --viz-4: #c98500; --viz-5: #d55181; --viz-other: #8a867c; }
 :root[data-mode="light"] .adm { --viz-1: #2a78d6; --viz-2: #eb6834; --viz-3: #1baf7a; --viz-4: #eda100; --viz-5: #e87ba4; --viz-other: #8a867c; }
-.adm .ri-viz { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); max-width: 1100px; margin-bottom: var(--space-5, 20px); }
+.adm .ri-viz { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: var(--space-5, 20px); }
 .adm .ri-viz[hidden] { display: none; }
 .adm .ri-chart { margin: 0; padding: var(--space-4); background: var(--c-surface); border-radius: var(--radius-lg); min-width: 0; }
 .adm .ri-chart figcaption { display: flex; flex-direction: column; gap: 2px; margin-bottom: var(--space-2); }
@@ -154,7 +157,10 @@
 
 /* Integrity network: draggable nodes, community halos, hover focus */
 .adm .ri-chart figcaption { position: relative; }
-.adm .ri-chart--graph figcaption .pbtn { position: absolute; top: 0; right: 0; }
+.adm .ri-tools { position: absolute; top: 0; right: 0; display: flex; gap: var(--space-2); align-items: center; }
+.adm .ri-zoom { display: inline-flex; gap: var(--space-1); }
+.adm .ri-svg--graph { cursor: grab; } .adm .ri-svg--graph.is-pan { cursor: grabbing; }
+.adm .ri-hull { pointer-events: none; }
 .adm .ri-svg--graph { background: radial-gradient(circle at 50% 45%, var(--c-surface-2), var(--c-surface) 75%); border-radius: var(--radius); touch-action: none; }
 .adm .ri-hull { fill-opacity: .08; stroke-opacity: .35; stroke-width: 1.2; stroke-dasharray: 4 4; }
 .adm .viz-c0.ri-hull { stroke: var(--viz-1); } .adm .viz-c1.ri-hull { stroke: var(--viz-2); } .adm .viz-c2.ri-hull { stroke: var(--viz-3); }
@@ -193,3 +199,8 @@
 .pz-rn { flex-wrap: wrap; gap: var(--space-2); }
 .pz-rn__old { text-decoration: line-through; }
 .pz-rn__h { margin: var(--space-4) 0 var(--space-2); font-size: var(--text-lg); }
+
+/* Admin layout (UI audit): every tab fills the same 1132px column; users list uses the width while no detail is open; news form is a card. */
+.adm .pz-review:has(#us-detail[hidden]) { grid-template-columns: minmax(0, 1fr); }
+.adm .pz-review:has(#us-detail[hidden]) #us-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-content: start; }
+.adm #nw-form { max-width: none; margin-bottom: var(--space-5, 20px); padding: var(--card-pad); background: var(--c-surface); border-radius: var(--card-radius); }
