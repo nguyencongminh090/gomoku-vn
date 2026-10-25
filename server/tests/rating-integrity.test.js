@@ -167,6 +167,18 @@ describe('visuals (charts)', () => {
   });
 });
 
+describe('visuals mustKeep (#353)', () => {
+  test('flagged ids outside the top-N are still drawn', () => {
+    const rows = [];
+    for (let i = 0; i < 130; i++) rows.push(...game(`p${i}`, `q${i}`, 'a'));
+    for (let i = 0; i < 3; i++) rows.push(...game('p0', 'q0', 'a'));
+    const v = visuals(rows, ['p129', 'ghost']);
+    expect(v.nodes.some((n) => n.id === 'p129')).toBe(true);
+    expect(v.nodes.some((n) => n.id === 'ghost')).toBe(false);
+    expect(v.nodes.length).toBeLessThanOrEqual(121);
+  });
+});
+
 describe('service', () => {
   const NOW = '2026-10-10T00:00:00.000Z';
   const user = (id, role = 'member') => database.db.prepare("INSERT INTO users (id, username, password_hash, display_name, created_at, role) VALUES (?, ?, 'x', ?, ?, ?)").run(id, id, id.toUpperCase(), NOW, role);

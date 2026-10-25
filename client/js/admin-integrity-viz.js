@@ -20,6 +20,54 @@
   const slot = (c) => (c < SLOTS ? 'viz-c' + c : 'viz-c-other');
   const tip = (node, text) => { node.appendChild(svg('title', {}, text)); return node; };
 
+  const SUSPECT_OPP = 2;   // opponents kept per flagged player in the suspect-first view
+  const SUSPECT_FALLBACK = 40; // no flags at all → show the most active players instead of an empty graph
+  const norm = (str) => String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
+
+  /** Which player ids the graph covers: 'all' = every node of the payload; 'suspect' = flagged players + their top opponents. */
+  function scopeIds(viz, scope) {
+    const have = new Set(viz.nodes.map((n) => n.id));
+    if (scope === 'all') return have;
+    const flagged = (viz.flagged || []).filter((id) => have.has(id));
+    if (!flagged.length) return new Set([...viz.nodes].sort((a, b) => b.games - a.games).slice(0, SUSPECT_FALLBACK).map((n) => n.id));
+    const ids = new Set(flagged);
+    for (const f of flagged) {
+      viz.edges.filter((e) => e.a === f || e.b === f).sort((x, y) => y.games - x.games).slice(0, SUSPECT_OPP).forEach((e) => ids.add(e.a === f ? e.b : e.a));
+    }
+    return ids;
+  }
+
+  /** What to draw for a view state {scope, level: 'players'|'groups', focus: community|null, min, cross}. Groups beyond the palette fold into one bubble. */
+  function buildView(viz, st) {
+    const ids = scopeIds(viz, st.scope);
+    const members = viz.nodes.filter((n) => ids.has(n.id));
+    const grp = (n) => Math.min(n.community, SLOTS);
+    const asPlayer = (n) => st.level === 'players' && (st.focus == null || grp(n) === st.focus);
+    const byId = new Map(members.map((n) => [n.id, n]));
+    const key = (n) => (asPlayer(n) ? n.id : 'g' + grp(n));
+    const items = [];
+    const bubbles = new Map();
+    for (const n of members) {
+      if (asPlayer(n)) { items.push(n); continue; }
+      const c = grp(n);
+      if (!bubbles.has(c)) bubbles.set(c, { id: 'g' + c, bubble: true, community: c, members: 0, games: 0, opponents: 0, rating: 0, name: c >= SLOTS ? t('admin.i_viz_other') : t('admin.i_viz_group', { n: c + 1 }) });
+      const b = bubbles.get(c);
+      b.members++; b.games += n.games; b.opponents += n.opponents;
+    }
+    for (const b of bubbles.values()) b.r = 14 + Math.min(34, Math.sqrt(b.members) * 7);
+    const sum = new Map();
+    for (const e of viz.edges) {
+      const a = byId.get(e.a), b = byId.get(e.b);
+      if (!a || !b || e.games < st.min || (st.cross && a.community === b.community)) continue;
+      const ka = key(a), kb = key(b);
+      if (ka === kb) continue;
+      const k = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+      if (!sum.has(k)) sum.set(k, { a: ka < kb ? ka : kb, b: ka < kb ? kb : ka, games: 0 });
+      sum.get(k).games += e.games;
+    }
+    return { nodes: [...items, ...bubbles.values()], edges: [...sum.values()], shown: members.length, communities: new Set(members.map(grp)).size };
+  }
+
   function panel(title, hint) {
     const box = document.createElement('figure');
     box.className = 'ri-chart';
@@ -96,13 +144,15 @@
     return step;
   }
 
-  function graph(viz) {
+  /** One drawn graph for a buildView() result. `onBubble(community)` opens a group; returns { box, find(query) }. */
+  function canvas(view, total, onBubble) {
     const W = 1100, H = 760;
-    const box = panel(t('admin.i_viz_graph'), t('admin.i_viz_graph_hint', { shown: viz.shown, total: viz.total, c: viz.communities }));
+    const viz = view;
+    const box = panel(t('admin.i_viz_graph'), t('admin.i_viz_graph_hint', { shown: view.shown, total, c: view.communities }));
     box.classList.add('ri-chart--graph');
     const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'ri-svg ri-svg--graph', role: 'img', 'aria-label': t('admin.i_viz_graph') });
     const pos = layout(viz.nodes, W, H);
-    const nodes = viz.nodes.map((n) => ({ ...n, x: pos.get(n.id).x, y: pos.get(n.id).y, vx: 0, vy: 0, r: 5 + Math.min(11, Math.sqrt(n.games)), fixed: false }));
+    const nodes = viz.nodes.map((n) => ({ ...n, x: pos.get(n.id).x, y: pos.get(n.id).y, vx: 0, vy: 0, r: n.r || 5 + Math.min(11, Math.sqrt(n.games)), fixed: false }));
     const byId = new Map(nodes.map((n) => [n.id, n]));
     const groupIds = [...new Set(nodes.map((n) => n.community))].sort((a, b) => a - b);
     const anchors = new Map();
@@ -123,7 +173,7 @@
     s.append(hullLayer, edgeLayer, nodeLayer, labelLayer);
 
     const hulls = new Map();
-    for (const c of groupIds.filter((g) => nodes.filter((n) => n.community === g).length > 1)) {
+    for (const c of groupIds.filter((g) => nodes.filter((n) => n.community === g).length > 2)) { // halo only for groups of 3+
       const h = svg('circle', { class: 'ri-hull ' + slot(c) });
       hullLayer.appendChild(h);
       hulls.set(c, h);
@@ -136,14 +186,14 @@
       return { ln, a, b };
     });
     const circles = nodes.map((n) => {
-      const c = svg('circle', { r: n.r, class: 'ri-node ri-node--drag ' + slot(n.community), tabindex: 0 });
-      c.appendChild(svg('title', {}, `${n.name} · ${t('admin.i_viz_n_games', { n: n.games })} · ${n.rating} · ${t('admin.i_viz_group', { n: n.community + 1 })}`));
+      const c = svg('circle', { r: n.r, class: 'ri-node ri-node--drag ' + slot(n.community) + (n.bubble ? ' ri-node--bubble' : ''), tabindex: 0 });
+      c.appendChild(svg('title', {}, n.bubble ? `${n.name} · ${t('admin.i_viz_bubble', { n: n.members, g: n.games })}` : `${n.name} · ${t('admin.i_viz_n_games', { n: n.games })} · ${n.rating} · ${t('admin.i_viz_group', { n: n.community + 1 })}`));
       nodeLayer.appendChild(c);
       return c;
     });
-    const top = new Set([...nodes].sort((a, b) => b.games - a.games).slice(0, 6).map((n) => n.id));
+    const top = new Set(nodes.filter((n) => !n.bubble).sort((a, b) => b.games - a.games).slice(0, 6).map((n) => n.id));
     const labels = nodes.map((n) => {
-      const l = svg('text', { class: 'ri-label' + (top.has(n.id) ? '' : ' is-hover'), 'text-anchor': 'middle' }, n.name.length > 14 ? n.name.slice(0, 13) + '…' : n.name);
+      const l = svg('text', { class: 'ri-label' + (top.has(n.id) || n.bubble ? '' : ' is-hover'), 'text-anchor': 'middle' }, n.bubble ? `${n.name} · ${n.members}` : n.name.length > 14 ? n.name.slice(0, 13) + '…' : n.name);
       labelLayer.appendChild(l);
       return l;
     });
@@ -171,7 +221,8 @@
       const near = new Set([n.id]);
       lines.forEach(({ ln, a, b }) => { const on = a === n || b === n; ln.classList.toggle('is-on', on); ln.classList.toggle('is-off', !on); if (on) { near.add(a.id); near.add(b.id); } });
       nodes.forEach((m, i) => { circles[i].classList.toggle('is-off', !near.has(m.id)); labels[i].classList.toggle('is-show', near.has(m.id)); });
-      readout.textContent = `${n.name} · ${t('admin.i_viz_n_games', { n: n.games })} · ${t('admin.i_viz_y_rating')} ${n.rating} · ${t('admin.i_viz_opponents', { n: n.opponents })} · ${t('admin.i_viz_group', { n: n.community + 1 })}`;
+      readout.textContent = n.bubble ? `${n.name} · ${t('admin.i_viz_bubble', { n: n.members, g: n.games })} · ${t('admin.i_viz_bubble_open')}`
+        : `${n.name} · ${t('admin.i_viz_n_games', { n: n.games })} · ${t('admin.i_viz_y_rating')} ${n.rating} · ${t('admin.i_viz_opponents', { n: n.opponents })} · ${t('admin.i_viz_group', { n: n.community + 1 })}`;
     }
     function blur() {
       lines.forEach(({ ln }) => ln.classList.remove('is-on', 'is-off'));
@@ -180,6 +231,7 @@
       readout.textContent = idle;
     }
 
+    let pinned = null; // click pins a node's focus (hover alone is unusable on touch)
     let alpha = 0, raf = 0;
     function tick() {
       raf = 0;
@@ -201,17 +253,25 @@
     circles.forEach((c, i) => {
       const n = nodes[i];
       let dragging = false;
-      c.addEventListener('pointerenter', () => { if (!dragging) focus(n); });
-      c.addEventListener('pointerleave', () => { if (!dragging) blur(); });
-      c.addEventListener('focus', () => focus(n));
-      c.addEventListener('blur', blur);
+      let moved = false;
+      c.addEventListener('pointerenter', () => { if (!dragging && !pinned) focus(n); });
+      c.addEventListener('pointerleave', () => { if (!dragging && !pinned) blur(); });
+      c.addEventListener('focus', () => { if (!pinned) focus(n); });
+      c.addEventListener('blur', () => { if (!pinned) blur(); });
+      const activate = () => {
+        if (n.bubble) { onBubble(n.community); return; }
+        if (pinned === n) { pinned = null; blur(); } else { pinned = n; focus(n); }
+      };
+      c.addEventListener('click', () => { if (!moved) activate(); });
+      c.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); activate(); } });
       c.addEventListener('pointerdown', (ev) => {
-        dragging = true; n.fixed = true; c.classList.add('is-drag');
+        dragging = true; moved = false; n.fixed = true; c.classList.add('is-drag');
         if (c.setPointerCapture) { try { c.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic event */ } }
         focus(n); heat(0.4); ev.preventDefault();
       });
       c.addEventListener('pointermove', (ev) => {
         if (!dragging) return;
+        moved = true;
         const p = toSvg(ev);
         n.x = Math.min(W - n.r, Math.max(n.r, p.x)); n.y = Math.min(H - n.r, Math.max(n.r, p.y));
         heat(0.3); draw();
@@ -249,6 +309,7 @@
     let pan = null;
     s.addEventListener('pointerdown', (ev) => {
       if (ev.target !== s && !ev.target.classList.contains('ri-hull')) return;
+      if (pinned) { pinned = null; blur(); }
       pan = { x: ev.clientX, y: ev.clientY, cam: { ...cam } };
       s.classList.add('is-pan');
       if (s.setPointerCapture) { try { s.setPointerCapture(ev.pointerId); } catch (_) { /* synthetic event */ } }
@@ -279,7 +340,7 @@
     const legend = document.createElement('div');
     legend.className = 'ri-legend';
     const counts = new Map();
-    for (const n of viz.nodes) counts.set(Math.min(n.community, SLOTS), (counts.get(Math.min(n.community, SLOTS)) || 0) + 1);
+    for (const n of viz.nodes) counts.set(Math.min(n.community, SLOTS), (counts.get(Math.min(n.community, SLOTS)) || 0) + (n.members || 1));
     for (const [c, k] of [...counts].sort((a, b) => a[0] - b[0])) {
       const item = document.createElement('span');
       const dot = document.createElement('span');
@@ -298,7 +359,75 @@
       keys.appendChild(item);
     }
     box.appendChild(keys);
-    return box;
+
+    /** Pin + pan to the first player whose name contains `q` (accent/case-insensitive). */
+    function find(q) {
+      const k = norm(q.trim());
+      const n = k && nodes.find((m) => !m.bubble && norm(m.name).includes(k));
+      if (!n) return null;
+      pinned = n; focus(n);
+      const w = W / 2.5, h = w * (H / W);
+      cam = { x: Math.min(W - w, Math.max(0, n.x - w / 2)), y: Math.min(H - h, Math.max(0, n.y - h / 2)), w, h };
+      applyCam();
+      return n;
+    }
+    return { box, find };
+  }
+
+  /** The network panel: scope / level / edge filters + search above one canvas that is rebuilt on every change. */
+  function graph(viz) {
+    const st = { scope: 'suspect', level: 'players', focus: null, min: 2, cross: false };
+    const root = document.createElement('div');
+    root.className = 'ri-graph';
+    const bar = document.createElement('div');
+    bar.className = 'ri-filters';
+    const holder = document.createElement('div');
+    let cur = null;
+    const maxEdge = Math.max(2, ...viz.edges.map((e) => e.games));
+    const nFlag = scopeIds(viz, 'suspect').size;
+    const mk = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
+    const seg = (items) => {
+      const wrap = mk('span', 'ri-seg');
+      const btns = items.map(([label, on, fn]) => { const b = mk('button', 'pbtn pbtn--ghost pbtn--sm', label); b.type = 'button'; b.addEventListener('click', fn); wrap.appendChild(b); return [b, on]; });
+      return { wrap, sync: () => btns.forEach(([b, on]) => { const v = on(); b.setAttribute('aria-pressed', v); b.classList.toggle('is-on', v); }) };
+    };
+    const scope = seg([[t('admin.i_viz_scope_suspect', { n: nFlag }), () => st.scope === 'suspect', () => { st.scope = 'suspect'; rebuild(); }],
+      [t('admin.i_viz_scope_all', { n: viz.nodes.length }), () => st.scope === 'all', () => { st.scope = 'all'; rebuild(); }]]);
+    const level = seg([[t('admin.i_viz_level_players'), () => st.level === 'players', () => { st.level = 'players'; st.focus = null; rebuild(); }],
+      [t('admin.i_viz_level_groups'), () => st.level === 'groups', () => { st.level = 'groups'; st.focus = null; rebuild(); }]]);
+    const slider = mk('input'); slider.type = 'range'; slider.min = 1; slider.max = maxEdge; slider.value = st.min; slider.className = 'ri-min';
+    slider.setAttribute('aria-label', t('admin.i_viz_min_edge', { n: '' }).trim());
+    const sliderLabel = mk('span', 'ri-min-label', t('admin.i_viz_min_edge', { n: st.min }));
+    slider.addEventListener('input', () => { sliderLabel.textContent = t('admin.i_viz_min_edge', { n: slider.value }); });
+    slider.addEventListener('change', () => { st.min = +slider.value; rebuild(); });
+    const crossBox = mk('input'); crossBox.type = 'checkbox';
+    crossBox.addEventListener('change', () => { st.cross = crossBox.checked; rebuild(); });
+    const cross = mk('label', 'ri-cross'); cross.append(crossBox, document.createTextNode(' ' + t('admin.i_viz_cross_only')));
+    const search = mk('input', 'ri-search'); search.type = 'search'; search.placeholder = t('admin.i_viz_search'); search.setAttribute('aria-label', t('admin.i_viz_search'));
+    const note = mk('span', 'ri-note');
+    const focusNote = mk('span', 'ri-note');
+    bar.append(scope.wrap, level.wrap, focusNote, sliderLabel, slider, cross, search, note);
+
+    function rebuild() {
+      cur = canvas(buildView(viz, st), viz.total, (c) => { st.level = 'players'; st.focus = c; rebuild(); });
+      holder.replaceChildren(cur.box);
+      scope.sync(); level.sync();
+      focusNote.textContent = st.focus == null ? '' : t('admin.i_viz_focus_note', { g: st.focus >= SLOTS ? t('admin.i_viz_other') : t('admin.i_viz_group', { n: st.focus + 1 }) });
+    }
+    search.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter') return;
+      const k = norm(search.value.trim());
+      note.textContent = '';
+      if (!k) return;
+      const hit = viz.nodes.find((n) => norm(n.name).includes(k));
+      if (!hit) { note.textContent = t('admin.i_viz_search_none'); return; }
+      const visible = buildView(viz, st).nodes.some((n) => n.id === hit.id);
+      if (!visible) { st.scope = 'all'; st.level = 'players'; st.focus = null; rebuild(); }
+      cur.find(search.value);
+    });
+    rebuild();
+    root.append(bar, holder);
+    return root;
   }
 
   const ticks = (lo, hi, n) => Array.from({ length: n + 1 }, (_, i) => lo + ((hi - lo) * i) / n);
@@ -363,5 +492,5 @@
     container.append(graph(viz), scatter(viz), dist);
   }
 
-  window.IntegrityViz = { render };
+  window.IntegrityViz = { render, buildView };
 })();

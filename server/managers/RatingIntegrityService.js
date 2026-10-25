@@ -18,7 +18,11 @@ function report(staffId) {
   const db = database.db;
   const rows = db.prepare('SELECT user_id, opponent_id, game_id, score, rating_before, rating_after FROM rating_history ORDER BY id').all();
   const result = analyze(rows);
-  const viz = visuals(rows);
+  const flagged = new Set();
+  for (const p of result.players) flagged.add(p.userId);
+  for (const p of result.pairs) { flagged.add(p.a); flagged.add(p.b); }
+  for (const g of result.groups) g.members.forEach((m) => flagged.add(m));
+  const viz = visuals(rows, flagged);
   const ids = new Set();
   for (const p of result.players) { ids.add(p.userId); if (p.topOpponentId) ids.add(p.topOpponentId); }
   for (const p of result.pairs) { ids.add(p.a); ids.add(p.b); }
@@ -47,7 +51,7 @@ function report(staffId) {
       topOpponentFriend: p.topOpponentId ? areFriends(p.userId, p.topOpponentId) : false, topOpponentSameClub: p.topOpponentId ? sameClub(p.userId, p.topOpponentId) : false })),
     pairs: result.pairs.map((p) => ({ ...p, aName: name(p.a), bName: name(p.b), friends: areFriends(p.a, p.b), sameClub: sameClub(p.a, p.b) })),
     groups: result.groups.map((g) => ({ ...g, names: g.members.map(name) })),
-    viz: { ...viz, nodes: viz.nodes.map((n) => ({ ...n, name: name(n.id) })) },
+    viz: { ...viz, flagged: [...flagged].filter((id) => viz.nodes.some((n) => n.id === id)), nodes: viz.nodes.map((n) => ({ ...n, name: name(n.id) })) },
   };
 }
 
