@@ -320,3 +320,4 @@
 | 2026-10-23 23:19 | #351 closed, not a bug: unknown-user login already compares a dummy bcrypt hash; earlier timing gap was 429 noise (re-measured 187 vs 188 ms) | [detail](docs/fix-log/2026-10-23-351-login-timing-not-a-bug.md) |
 | 2026-10-23 | #352 login with non-string username/password: 500 → 400 MISSING_CREDENTIALS (+ 5-case regression test) | [detail](docs/fix-log/2026-10-23-352-login-non-string-body.md) |
 | 2026-10-25 | #356 #357 integrity: gain_from_one ≥20 games, hub ≥20 opponents, pair Elo-expected z + weaker-side tag (sim: players 28→10, pairs 116→9) | [detail](docs/fix-log/2026-10-25-356-357-integrity-calibration.md) |
+| 2026-10-25 | integrity tab UI polish: mobile tools overlap, unstyled search box, labels scale with zoom, clipped matrix 'other' tick | [detail](docs/fix-log/2026-10-25-integrity-ui-polish.md) |

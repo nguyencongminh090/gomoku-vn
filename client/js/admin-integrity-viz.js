@@ -286,7 +286,8 @@
     // Zoom / pan: the viewBox is the camera. Buttons, Ctrl/⌘+wheel (plain wheel keeps scrolling the page), drag the background to pan.
     const home = { x: 0, y: 0, w: W, h: H };
     let cam = { ...home };
-    const applyCam = () => s.setAttribute('viewBox', `${cam.x} ${cam.y} ${cam.w} ${cam.h}`);
+    // --ri-k = camera width / full width: labels shrink as the view zooms in, so they keep their on-screen size and stop piling up
+    const applyCam = () => { s.setAttribute('viewBox', `${cam.x} ${cam.y} ${cam.w} ${cam.h}`); s.style.setProperty('--ri-k', cam.w / W); };
     function zoomBy(k, fx = 0.5, fy = 0.5) {
       const w = Math.min(W, Math.max(W / 6, cam.w / k)), h = w * (H / W);
       cam = { x: cam.x + (cam.w - w) * fx, y: cam.y + (cam.h - h) * fy, w, h };
@@ -410,7 +411,8 @@
       s.appendChild(svg('rect', { x: a, y: 4, width: len, height: 8, class: 'ri-mx-strip ' + slot(c) }));
       s.appendChild(svg('rect', { x: 4, y: a, width: 8, height: len, class: 'ri-mx-strip ' + slot(c) }));
       s.appendChild(svg('rect', { x: a, y: a, width: len, height: len, class: 'ri-mx-block' }));
-      if (len > 26) s.appendChild(svg('text', { x: a + len / 2, y: 20, class: 'ri-tick', 'text-anchor': 'middle' }, c >= SLOTS ? t('admin.i_viz_other') : String(c + 1)));
+      const other = c >= SLOTS;
+      if (len > 26) s.appendChild(svg('text', { x: a + len / 2, y: 20, class: 'ri-tick', 'text-anchor': 'middle' }, other ? (len >= 70 ? t('admin.i_viz_other') : '…') : String(c + 1))); // the long "other" word is clipped by the SVG edge in a narrow strip
       i0 = i1;
     }
     const rowHi = svg('rect', { class: 'ri-mx-hi', width: S - M, height: cell, x: M, y: -99 });
