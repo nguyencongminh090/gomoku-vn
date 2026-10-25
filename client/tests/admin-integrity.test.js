@@ -100,7 +100,7 @@ describe('charts', () => {
     const edges = [];
     for (let i = 0; i < 120; i++) for (let j = i + 1; j < 120; j += 7) edges.push({ a: 'n' + i, b: 'n' + j, games: 1 + ((i + j) % 9) });
     await boot(() => ok({ ...DATA, viz: { ...VIZ, total: 120, shown: 120, communities: 8, nodes, edges } }));
-    document.querySelectorAll('.ri-seg button')[1].click(); // default view is suspect-first; "All" restores the 120
+    document.querySelectorAll('.ri-seg button')[3].click(); // default view is suspect-first; "All" restores the 120
     const c = [...document.querySelectorAll('.ri-svg--graph circle.ri-node')].map((e) => ({ x: +e.getAttribute('cx'), y: +e.getAttribute('cy'), r: +e.getAttribute('r'), k: e.getAttribute('class') }));
     expect(c).toHaveLength(120);
     let minGap = Infinity;
@@ -168,9 +168,9 @@ describe('charts', () => {
       const g = () => document.querySelector('.ri-svg--graph');
       expect(g().querySelectorAll('circle.ri-node')).toHaveLength(4);
       const btns = document.querySelectorAll('.ri-seg button');
-      btns[1].click(); // All
+      btns[3].click(); // All
       expect(g().querySelectorAll('circle.ri-node')).toHaveLength(nodes.length);
-      btns[3].click(); // by group
+      btns[5].click(); // by group
       const bubbles = g().querySelectorAll('circle.ri-node--bubble');
       expect(bubbles).toHaveLength(3);
       bubbles[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -184,6 +184,38 @@ describe('charts', () => {
       input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       expect(+g().getAttribute('viewBox').split(' ')[2]).toBeLessThan(1100);
       expect(document.querySelector('.ri-readout').textContent).toContain('F2');
+    });
+    it('#354: clearing / Esc releases the pin and resets the camera; halo only for groups of 3+', async () => {
+      await boot(() => ok({ ...DATA, viz: V }));
+      document.querySelectorAll('.ri-seg button')[3].click(); // All
+      const g = () => document.querySelector('.ri-svg--graph');
+      const sizes = {}; nodes.forEach((n) => { sizes[n.community] = (sizes[n.community] || 0) + 1; });
+      expect(g().querySelectorAll('circle.ri-hull')).toHaveLength(Object.values(sizes).filter((k) => k >= 3).length);
+      const input = document.querySelector('.ri-search');
+      input.value = 'f2';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(+g().getAttribute('viewBox').split(' ')[2]).toBeLessThan(1100);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(input.value).toBe('');
+      expect(g().getAttribute('viewBox')).toBe('0 0 1100 760');
+      expect(document.querySelector('.ri-readout').textContent).not.toContain('F2');
+    });
+    it('#355: matrix view — one row/col per player, shade buckets, block outlines, hover fills the readout', async () => {
+      await boot(() => ok({ ...DATA, viz: V }));
+      document.querySelectorAll('.ri-seg button')[3].click(); // All
+      const toggle = document.querySelectorAll('.ri-seg button')[1];
+      toggle.click();
+      const m = document.querySelector('.ri-svg--matrix');
+      expect(m).not.toBeNull();
+      expect(document.querySelector('.ri-svg--graph')).toBeNull();
+      expect(m.querySelectorAll('.ri-mx-strip').length).toBe(2 * m.querySelectorAll('.ri-mx-block').length);
+      expect(m.querySelectorAll('path.ri-mx-cell').length).toBeGreaterThan(0);
+      const input = document.querySelector('.ri-search');
+      input.value = 'f2';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(document.querySelector('.ri-readout').textContent).toContain('F2');
+      document.querySelectorAll('.ri-seg button')[0].click();
+      expect(document.querySelector('.ri-svg--graph')).not.toBeNull();
     });
   });
 });

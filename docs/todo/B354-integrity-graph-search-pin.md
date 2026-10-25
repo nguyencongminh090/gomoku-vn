@@ -1,5 +1,5 @@
 # B354 — Integrity graph: name search, click-to-pin, no halo for tiny groups
-**Status:** OPEN
+**Status:** ✅ DONE (jsdom; real-browser pass pending)
 **Area:** client/js/admin-integrity-viz.js (`graph`: `focus`/`blur`, `hulls`), client/css/puzzles.css (`.ri-*`), client/js/i18n.js (vi+en), client/tests/admin-integrity.test.js
 **From:** user, 2026-10-25 (items 4 of the declutter proposal, split from #353)   **Depends:** — (works on the current graph; reuses zoom/pan camera)
 

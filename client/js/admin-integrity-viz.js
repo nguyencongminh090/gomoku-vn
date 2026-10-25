@@ -22,6 +22,8 @@
 
   const SUSPECT_OPP = 2;   // opponents kept per flagged player in the suspect-first view
   const SUSPECT_FALLBACK = 40; // no flags at all → show the most active players instead of an empty graph
+  const HALO_MIN = 3;      // a community halo is drawn only for groups of at least this many members
+  const MATRIX_MAX = 150;  // matrix never draws more rows than this (the network's own node set is already capped)
   const norm = (str) => String(str).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').toLowerCase();
 
   /** Which player ids the graph covers: 'all' = every node of the payload; 'suspect' = flagged players + their top opponents. */
@@ -173,7 +175,7 @@
     s.append(hullLayer, edgeLayer, nodeLayer, labelLayer);
 
     const hulls = new Map();
-    for (const c of groupIds.filter((g) => nodes.filter((n) => n.community === g).length > 2)) { // halo only for groups of 3+
+    for (const c of groupIds.filter((g) => nodes.filter((n) => n.community === g).length >= HALO_MIN)) {
       const h = svg('circle', { class: 'ri-hull ' + slot(c) });
       hullLayer.appendChild(h);
       hulls.set(c, h);
@@ -371,12 +373,82 @@
       applyCam();
       return n;
     }
-    return { box, find };
+    /** Release the pin and put the camera back (search cleared / Esc). */
+    function clear() { pinned = null; blur(); cam = { ...home }; applyCam(); }
+    return { box, find, clear };
+  }
+
+  /** Adjacency matrix of a buildView() result: rows/cols = players grouped by community (largest first), shade = games. */
+  function matrix(view, total) {
+    const SH = 5, S = 640, M = 22; // shade buckets, canvas size, margin for the community strip + boundary labels
+    const size = new Map();
+    for (const n of view.nodes) size.set(n.community, (size.get(n.community) || 0) + (n.members || 1));
+    const nodes = [...view.nodes].sort((a, b) => (size.get(b.community) - size.get(a.community)) || (a.community - b.community) || (b.games - a.games)).slice(0, MATRIX_MAX);
+    const N = nodes.length, cell = (S - M) / Math.max(1, N);
+    const idx = new Map(nodes.map((n, i) => [n.id, i]));
+    const box = panel(t('admin.i_viz_graph'), t('admin.i_viz_graph_hint', { shown: view.shown, total, c: view.communities }));
+    box.classList.add('ri-chart--graph');
+    const s = svg('svg', { viewBox: `0 0 ${S} ${S}`, class: 'ri-svg ri-svg--matrix', role: 'img', 'aria-label': t('admin.i_viz_matrix') });
+    const pairs = view.edges.filter((e) => idx.has(e.a) && idx.has(e.b));
+    const maxE = Math.max(1, ...pairs.map((e) => e.games));
+    const bucket = (g) => Math.min(SH - 1, Math.floor(Math.sqrt(g / maxE) * SH)); // sqrt: one heavy pair does not wash out the rest
+    const d = Array.from({ length: SH }, () => '');
+    const at = new Map();
+    for (const e of pairs) {
+      const i = idx.get(e.a), j = idx.get(e.b), b = bucket(e.games);
+      at.set(i * N + j, e.games); at.set(j * N + i, e.games);
+      for (const [r, c] of [[i, j], [j, i]]) d[b] += `M${(M + c * cell).toFixed(1)} ${(M + r * cell).toFixed(1)}h${cell.toFixed(1)}v${cell.toFixed(1)}h-${cell.toFixed(1)}z`;
+    }
+    const grid = svg('rect', { x: M, y: M, width: S - M, height: S - M, class: 'ri-mx-bg' });
+    s.appendChild(grid);
+    d.forEach((p, b) => { if (p) s.appendChild(svg('path', { d: p, class: 'ri-mx-cell ri-mx-b' + b })); });
+    // community strips (both axes), diagonal block outlines (colour is not the only cue) and a label at each boundary
+    let i0 = 0;
+    while (i0 < N) {
+      let i1 = i0; while (i1 < N && nodes[i1].community === nodes[i0].community) i1++;
+      const c = nodes[i0].community, a = M + i0 * cell, len = (i1 - i0) * cell;
+      s.appendChild(svg('rect', { x: a, y: 4, width: len, height: 8, class: 'ri-mx-strip ' + slot(c) }));
+      s.appendChild(svg('rect', { x: 4, y: a, width: 8, height: len, class: 'ri-mx-strip ' + slot(c) }));
+      s.appendChild(svg('rect', { x: a, y: a, width: len, height: len, class: 'ri-mx-block' }));
+      if (len > 26) s.appendChild(svg('text', { x: a + len / 2, y: 20, class: 'ri-tick', 'text-anchor': 'middle' }, c >= SLOTS ? t('admin.i_viz_other') : String(c + 1)));
+      i0 = i1;
+    }
+    const rowHi = svg('rect', { class: 'ri-mx-hi', width: S - M, height: cell, x: M, y: -99 });
+    const colHi = svg('rect', { class: 'ri-mx-hi', width: cell, height: S - M, x: -99, y: M });
+    const hit = svg('rect', { x: M, y: M, width: S - M, height: S - M, class: 'ri-mx-hit' });
+    const hitTitle = svg('title', {}, '');
+    hit.appendChild(hitTitle);
+    s.append(rowHi, colHi, hit);
+    const readout = document.createElement('div');
+    readout.className = 'ri-readout';
+    const idle = t('admin.i_viz_matrix_idle');
+    readout.textContent = idle;
+    const label = (n) => (n.bubble ? `${n.name} · ${n.members}` : n.name);
+    function show(r, c) {
+      if (r < 0 || c < 0 || r >= N || c >= N) { rowHi.setAttribute('y', -99); colHi.setAttribute('x', -99); readout.textContent = idle; hitTitle.textContent = ''; return; }
+      rowHi.setAttribute('y', M + r * cell); colHi.setAttribute('x', M + c * cell);
+      const txt = `${label(nodes[r])} – ${label(nodes[c])}: ${t('admin.i_viz_n_games', { n: at.get(r * N + c) || 0 })}`;
+      readout.textContent = txt; hitTitle.textContent = txt;
+    }
+    const cellOf = (ev) => {
+      const r = s.getBoundingClientRect(), k = S / (r.width || S);
+      return [Math.floor(((ev.clientY - r.top) * k - M) / cell), Math.floor(((ev.clientX - r.left) * k - M) / cell)];
+    };
+    hit.addEventListener('pointermove', (ev) => show(...cellOf(ev)));
+    hit.addEventListener('pointerleave', () => show(-1, -1));
+    box.append(s, readout);
+    const find = (q) => {
+      const k = norm(q.trim());
+      const i = k ? nodes.findIndex((n) => !n.bubble && norm(n.name).includes(k)) : -1;
+      if (i < 0) return null;
+      show(i, i); readout.textContent = label(nodes[i]); return nodes[i];
+    };
+    return { box, find, clear: () => show(-1, -1), matrix: true, show };
   }
 
   /** The network panel: scope / level / edge filters + search above one canvas that is rebuilt on every change. */
   function graph(viz) {
-    const st = { scope: 'suspect', level: 'players', focus: null, min: 2, cross: false };
+    const st = { scope: 'suspect', level: 'players', focus: null, min: 2, cross: false, view: 'network' };
     const root = document.createElement('div');
     root.className = 'ri-graph';
     const bar = document.createElement('div');
@@ -395,6 +467,8 @@
       [t('admin.i_viz_scope_all', { n: viz.nodes.length }), () => st.scope === 'all', () => { st.scope = 'all'; rebuild(); }]]);
     const level = seg([[t('admin.i_viz_level_players'), () => st.level === 'players', () => { st.level = 'players'; st.focus = null; rebuild(); }],
       [t('admin.i_viz_level_groups'), () => st.level === 'groups', () => { st.level = 'groups'; st.focus = null; rebuild(); }]]);
+    const view = seg([[t('admin.i_viz_view_network'), () => st.view === 'network', () => { st.view = 'network'; rebuild(); }],
+      [t('admin.i_viz_view_matrix'), () => st.view === 'matrix', () => { st.view = 'matrix'; rebuild(); }]]);
     const slider = mk('input'); slider.type = 'range'; slider.min = 1; slider.max = maxEdge; slider.value = st.min; slider.className = 'ri-min';
     slider.setAttribute('aria-label', t('admin.i_viz_min_edge', { n: '' }).trim());
     const sliderLabel = mk('span', 'ri-min-label', t('admin.i_viz_min_edge', { n: st.min }));
@@ -406,12 +480,13 @@
     const search = mk('input', 'ri-search'); search.type = 'search'; search.placeholder = t('admin.i_viz_search'); search.setAttribute('aria-label', t('admin.i_viz_search'));
     const note = mk('span', 'ri-note');
     const focusNote = mk('span', 'ri-note');
-    bar.append(scope.wrap, level.wrap, focusNote, sliderLabel, slider, cross, search, note);
+    bar.append(view.wrap, scope.wrap, level.wrap, focusNote, sliderLabel, slider, cross, search, note);
 
     function rebuild() {
-      cur = canvas(buildView(viz, st), viz.total, (c) => { st.level = 'players'; st.focus = c; rebuild(); });
+      const v = buildView(viz, st), open = (c) => { st.level = 'players'; st.focus = c; rebuild(); };
+      cur = st.view === 'matrix' ? matrix(v, viz.total) : canvas(v, viz.total, open);
       holder.replaceChildren(cur.box);
-      scope.sync(); level.sync();
+      scope.sync(); level.sync(); view.sync();
       focusNote.textContent = st.focus == null ? '' : t('admin.i_viz_focus_note', { g: st.focus >= SLOTS ? t('admin.i_viz_other') : t('admin.i_viz_group', { n: st.focus + 1 }) });
     }
     search.addEventListener('keydown', (ev) => {
@@ -425,6 +500,8 @@
       if (!visible) { st.scope = 'all'; st.level = 'players'; st.focus = null; rebuild(); }
       cur.find(search.value);
     });
+    search.addEventListener('input', () => { if (!search.value) { note.textContent = ''; cur.clear(); } });
+    search.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { search.value = ''; note.textContent = ''; cur.clear(); } });
     rebuild();
     root.append(bar, holder);
     return root;

@@ -213,4 +213,11 @@
 .adm .ri-min { width: 110px; }
 .adm .ri-min-label, .adm .ri-note, .adm .ri-cross { font-size: calc(12.5px * var(--fs-scale, 1)); color: var(--c-ink-2); }
 .adm .ri-search { max-width: 180px; }
+.adm .ri-svg--matrix { max-width: 640px; margin: 0 auto; background: var(--c-surface); border-radius: var(--radius); }
+.adm .ri-mx-bg { fill: var(--c-surface-2); }
+.adm .ri-mx-cell { fill: var(--c-strong); }
+.adm .ri-mx-b0 { fill-opacity: .25; } .adm .ri-mx-b1 { fill-opacity: .45; } .adm .ri-mx-b2 { fill-opacity: .65; } .adm .ri-mx-b3 { fill-opacity: .82; } .adm .ri-mx-b4 { fill-opacity: 1; }
+.adm .ri-mx-block { fill: none; stroke: var(--c-ink-2); stroke-width: 1.2; }
+.adm .ri-mx-hi { fill: var(--c-ink-3); fill-opacity: .18; pointer-events: none; }
+.adm .ri-mx-hit { fill: transparent; cursor: crosshair; }
 .adm .ri-node--bubble { fill-opacity: .4; stroke-dasharray: 3 3; cursor: pointer; }
