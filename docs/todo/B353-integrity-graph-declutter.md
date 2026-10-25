@@ -1,5 +1,5 @@
 # B353 — Integrity network graph: declutter (suspect-first, group bubbles, edge filter)
-**Status:** BUILT on feature/353-graph-declutter (uncommitted, no real-browser pass yet; scope 1–4 done, 5 skipped)
+**Status:** ✅ DONE 2026-10-25 (scope 1–4 merged to dev d8294ea; 5 split out as #355; closed on user's word, real-browser pass not recorded)
 **Area:** client/js/admin-integrity-viz.js (`graph`), server rating-integrity `viz` payload (node/edge selection), client/css/puzzles.css (`.ri-*`), client/js/i18n.js, client/tests/admin-integrity.test.js
 **From:** user, 2026-10-25 — "data is too dense, hard to review"; after #249 follow-up (no-overlap + zoom/pan, ui/admin-layout 44cad5c)   **Depends:** —
 

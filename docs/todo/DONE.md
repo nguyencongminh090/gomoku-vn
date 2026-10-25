@@ -1,3 +1,6 @@
+✅ - **#355.** Integrity tab: community-sorted adjacency matrix view `[Model: Opus 5]` — [detail](docs/todo/B355-integrity-adjacency-matrix.md)
+✅ - **#354.** Integrity graph: name search, click-to-pin, no halo for tiny groups `[Model: Sonnet 5]` — [detail](docs/todo/B354-integrity-graph-search-pin.md)
+✅ - **#353.** Integrity network graph: declutter (suspect-first, group bubbles, edge filter) `[Model: Opus 5]` — [detail](docs/todo/B353-integrity-graph-declutter.md)
 ✅ - **#351.** Login timing reveals whether a username exists `[Model: Sonnet 5]` — [detail](docs/todo/B351-login-timing-user-enumeration.md)
 ✅ - **#350.** Origin / Sec-Fetch-Site check on cookie-authenticated state-changing routes (logout-CSRF) `[Model: Sonnet 5]` — [detail](docs/todo/B350-state-changing-routes-no-origin-check.md)
 ✅ - **#349.** Oversized / malformed JSON body returns 500 instead of 413 / 400 `[Model: Sonnet 5]` — [detail](docs/todo/B349-body-parser-errors-return-500.md)
