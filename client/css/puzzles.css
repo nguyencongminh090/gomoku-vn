@@ -153,6 +153,7 @@
 .adm .ri-dot.viz-c3 { background: var(--viz-4); } .adm .ri-dot.viz-c4 { background: var(--viz-5); } .adm .ri-dot.viz-c-other { background: var(--viz-other); }
 .adm .ri-dist { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .adm .ri-viz > .ri-chart:first-child { grid-column: 1 / -1; }
+.adm .ri-viz > .ri-graph { grid-column: 1 / -1; }
 @media (max-width: 800px) { .adm .ri-viz, .adm .ri-dist { grid-template-columns: minmax(0, 1fr); } }
 
 /* Integrity network: draggable nodes, community halos, hover focus */
@@ -204,3 +205,12 @@
 .adm .pz-review:has(#us-detail[hidden]) { grid-template-columns: minmax(0, 1fr); }
 .adm .pz-review:has(#us-detail[hidden]) #us-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-content: start; }
 .adm #nw-form { max-width: none; margin-bottom: var(--space-5, 20px); padding: var(--card-pad); background: var(--c-surface); border-radius: var(--card-radius); }
+
+/* Integrity network filters (#353) */
+.adm .ri-filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
+.adm .ri-seg { display: inline-flex; gap: var(--space-1); }
+.adm .ri-seg .pbtn.is-on { background: var(--c-surface-2); border-color: var(--c-strong); color: var(--c-ink); }
+.adm .ri-min { width: 110px; }
+.adm .ri-min-label, .adm .ri-note, .adm .ri-cross { font-size: calc(12.5px * var(--fs-scale, 1)); color: var(--c-ink-2); }
+.adm .ri-search { max-width: 180px; }
+.adm .ri-node--bubble { fill-opacity: .4; stroke-dasharray: 3 3; cursor: pointer; }

@@ -100,6 +100,7 @@ describe('charts', () => {
     const edges = [];
     for (let i = 0; i < 120; i++) for (let j = i + 1; j < 120; j += 7) edges.push({ a: 'n' + i, b: 'n' + j, games: 1 + ((i + j) % 9) });
     await boot(() => ok({ ...DATA, viz: { ...VIZ, total: 120, shown: 120, communities: 8, nodes, edges } }));
+    document.querySelectorAll('.ri-seg button')[1].click(); // default view is suspect-first; "All" restores the 120
     const c = [...document.querySelectorAll('.ri-svg--graph circle.ri-node')].map((e) => ({ x: +e.getAttribute('cx'), y: +e.getAttribute('cy'), r: +e.getAttribute('r'), k: e.getAttribute('class') }));
     expect(c).toHaveLength(120);
     let minGap = Infinity;
@@ -121,5 +122,68 @@ describe('charts', () => {
     one.click();
     expect(vb()).toEqual([0, 0, w0, vb()[3]]);
     expect(inn.getAttribute('aria-label')).toBe('admin.i_viz_zoom_in');
+  });
+
+  describe('declutter (#353)', () => {
+    // flagged f1,f2 in group 0 with weak/strong links; group 1 has 4 players; 7 lone communities fold into "other"
+    const mk = (id, community, games = 10) => N(id, community, games, 1500);
+    const nodes = [mk('f1', 0, 30), mk('f2', 0, 25), mk('o1', 0), mk('o2', 0), mk('o3', 0), mk('q1', 1), mk('q2', 1), mk('q3', 1), mk('q4', 1),
+      ...[5, 6, 7].map((c) => mk('s' + c, c))];
+    const edges = [{ a: 'f1', b: 'f2', games: 20 }, { a: 'f1', b: 'o1', games: 6 }, { a: 'f1', b: 'o2', games: 4 }, { a: 'f1', b: 'o3', games: 1 },
+      { a: 'f2', b: 'q1', games: 3 }, { a: 'q1', b: 'q2', games: 5 }, { a: 'q2', b: 'q3', games: 5 }, { a: 'q3', b: 'q4', games: 5 }, { a: 'q4', b: 's5', games: 2 }];
+    const V = { total: 40, shown: nodes.length, communities: 5, nodes, edges, flagged: ['f1', 'f2'], ratingBins: [], gamesBins: [] };
+    const st = (o = {}) => ({ scope: 'suspect', level: 'players', focus: null, min: 2, cross: false, ...o });
+    const ids = (v) => v.nodes.map((n) => n.id).sort();
+    beforeEach(() => { window.t = (k, v) => k + (v ? JSON.stringify(v) : ''); require('../js/admin-integrity-viz.js'); });
+
+    it('suspect scope = flagged + their top 2 opponents; "all" shows every node', () => {
+      const b = window.IntegrityViz.buildView;
+      expect(ids(b(V, st()))).toEqual(['f1', 'f2', 'o1', 'q1']); // f1's top 2 = f2, o1 (o2 is 3rd); f2's top 2 = f1, q1
+      expect(b(V, st({ scope: 'all' })).nodes).toHaveLength(nodes.length);
+    });
+    it('edge filter hides weak edges and optionally in-group edges', () => {
+      const b = window.IntegrityViz.buildView;
+      const all = (o) => b(V, st({ scope: 'all', ...o })).edges;
+      expect(all({ min: 1 })).toHaveLength(edges.length);
+      expect(all({ min: 5 }).every((e) => e.games >= 5)).toBe(true);
+      expect(all({ min: 1, cross: true }).map((e) => e.a + e.b).sort()).toEqual(['f2q1', 'q4s5']);
+    });
+    it('group level: one bubble per community, groups past the palette fold into one, edges are summed', () => {
+      const v = window.IntegrityViz.buildView(V, st({ scope: 'all', level: 'groups', min: 1 }));
+      expect(v.nodes.every((n) => n.bubble)).toBe(true);
+      expect(v.nodes.map((n) => n.community).sort()).toEqual([0, 1, 5]);
+      expect(v.nodes.find((n) => n.community === 5)).toMatchObject({ members: 3 });
+      expect(v.edges.find((e) => e.a === 'g0' && e.b === 'g1').games).toBe(3);
+    });
+    it('focus keeps one group as players and folds the rest into bubbles', () => {
+      const v = window.IntegrityViz.buildView(V, st({ scope: 'all', focus: 1, min: 1 }));
+      expect(v.nodes.filter((n) => !n.bubble).map((n) => n.id).sort()).toEqual(['q1', 'q2', 'q3', 'q4']);
+      expect(v.nodes.filter((n) => n.bubble).map((n) => n.community).sort()).toEqual([0, 5]);
+    });
+    it('no flags → falls back to the most active players, never an empty graph', () => {
+      expect(window.IntegrityViz.buildView({ ...V, flagged: [] }, st()).nodes.length).toBeGreaterThan(0);
+    });
+    it('UI: default is the suspect view; clicking a bubble opens its group; click pins; search pans to a player', async () => {
+      await boot(() => ok({ ...DATA, viz: V }));
+      const g = () => document.querySelector('.ri-svg--graph');
+      expect(g().querySelectorAll('circle.ri-node')).toHaveLength(4);
+      const btns = document.querySelectorAll('.ri-seg button');
+      btns[1].click(); // All
+      expect(g().querySelectorAll('circle.ri-node')).toHaveLength(nodes.length);
+      btns[3].click(); // by group
+      const bubbles = g().querySelectorAll('circle.ri-node--bubble');
+      expect(bubbles).toHaveLength(3);
+      bubbles[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(g().querySelectorAll('circle.ri-node:not(.ri-node--bubble)')).toHaveLength(4);
+      const c = g().querySelector('circle.ri-node:not(.ri-node--bubble)');
+      c.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      c.dispatchEvent(new MouseEvent('pointerleave', { bubbles: true }));
+      expect(document.querySelector('.ri-readout').textContent).toContain('Q'); // pinned: readout survives leaving
+      const input = document.querySelector('.ri-search');
+      input.value = 'f2';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(+g().getAttribute('viewBox').split(' ')[2]).toBeLessThan(1100);
+      expect(document.querySelector('.ri-readout').textContent).toContain('F2');
+    });
   });
 });

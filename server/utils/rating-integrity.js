@@ -183,8 +183,9 @@ const RATING_BIN = 100;
 const GAME_BINS = [[1, 4], [5, 9], [10, 19], [20, 49], [50, Infinity]];
 
 /** Chart data from the same rows (rows ordered oldest → newest): graph (nodes + pair edges + Louvain community),
- *  scatter points (games vs rating) and two distributions. Descriptive only — flags live in analyze(). */
-function visuals(rows) {
+ *  scatter points (games vs rating) and two distributions. Descriptive only — flags live in analyze().
+ *  `mustKeep`: player ids added to the node list even outside the top VIZ_MAX_NODES. */
+function visuals(rows, mustKeep = []) {
   const players = perPlayer(rows);
   const rating = new Map();
   for (const r of rows) rating.set(r.user_id, r.rating_after);
@@ -194,8 +195,11 @@ function visuals(rows) {
   const order = [...size].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))).map(([c]) => c);
   const commIndex = new Map(order.map((c, i) => [c, i]));
   const all = [...players.values()].sort((a, b) => b.games - a.games || String(a.id).localeCompare(String(b.id)));
+  // flagged players are always drawn even when they are not among the most active (#353 suspect-first view)
   const kept = all.slice(0, VIZ_MAX_NODES);
-  const keep = new Set(kept.map((p) => p.id));
+  const have = new Set(kept.map((p) => p.id));
+  for (const id of mustKeep) if (!have.has(id) && players.has(id)) { kept.push(players.get(id)); have.add(id); }
+  const keep = have;
   const nodes = kept.map((p) => ({ id: p.id, games: p.games, rating: Math.round(rating.get(p.id)), opponents: p.opp.size, community: commIndex.get(comm.get(p.id)), communitySize: size.get(comm.get(p.id)) }));
   const edges = [];
   for (const p of kept) for (const [oid, o] of p.opp) {
