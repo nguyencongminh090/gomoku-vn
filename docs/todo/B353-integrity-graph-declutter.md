@@ -10,8 +10,8 @@ The graph draws the 120 most-active players with every edge between them. Heavy 
 1. **Suspect-first default:** nodes = flagged players (`players[]`, ~28) + their top opponents (~30–50 nodes); edges from the pairs already computed. Toggle "All (120)" for the old view.
 2. **Two-level view:** overview = one bubble per Louvain community (size = members, edge width = total games between groups). Click a bubble → expand its members, dim the other groups.
 3. **Edge filter:** slider "min N games between two players" (default hides weak edges) + toggle "cross-group edges only".
-4. Small: name search that highlights/pans to a player; click-to-pin a node (hover-only is unusable on touch); skip halos for groups < 3.
-5. Optional later: community-sorted adjacency matrix as a second view.
+4. Graph helpers (name search, click-to-pin, no halo for tiny groups) → split out as #354.
+5. Community-sorted adjacency matrix as a second view → split out as #355.
 
 ## Don't
 - Don't change ratings or any scoring; the tab stays read-only/descriptive.
