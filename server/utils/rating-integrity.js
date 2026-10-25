@@ -12,11 +12,13 @@ const T = {
   MIN_GAMES: 10,        // player signals need this many ranked games
   POP_MIN: 10,          // below this many ACTIVE players (>= MIN_GAMES games) every graph looks "closed" — entropy/gain-share/community flags stay off
   EFF_OPP_MAX: 2.5,     // effective opponents (2^entropy) at or below this → narrow opponent pool
+  GAIN_MIN_GAMES: 20, // gain-from-one needs this many games: with 10–14 games a top opponent trivially holds a big share (#356)
   GAIN_MIN: 40,         // total positive rating gain before the top-opponent share means anything
   GAIN_SHARE: 0.6,      // top opponent supplied this share of positive gain
-  HUB_MIN_OPP: 8, HUB_MULT: 3, // hub = >= 8 distinct opponents and >= 3x the median among active players
+  HUB_MIN_OPP: 20, HUB_MULT: 3, // hub = >= 20 distinct opponents and >= 3x the median among active players (8 made 18% of active players hubs, #356)
   PAIR_MIN: 6,          // games inside a pair before asymmetry means anything
   PAIR_SKEW: 0.85,      // one side wins at least this share of decisive pair games
+  PAIR_Z: 3,            // …and the result is this many σ from the Elo-expected score — a plain skill gap is not a flag (#357)
   GROUP_MIN: 3, GROUP_MAX: 8, GROUP_GAMES: 20, GROUP_INTERNAL: 0.9,
 };
 
@@ -25,13 +27,19 @@ const round = (n, d = 2) => Math.round(n * 10 ** d) / 10 ** d;
 /** Per player: ranked game count and, per opponent, games / positive rating gain / wins / losses. */
 function perPlayer(rows) {
   const players = new Map();
+  const before = new Map(); // game_id|user → rating_before, to read the opponent's rating at game time
+  for (const r of rows) before.set(r.game_id + '|' + r.user_id, r.rating_before);
   for (const r of rows) {
     let p = players.get(r.user_id);
     if (!p) { p = { id: r.user_id, games: 0, opp: new Map() }; players.set(r.user_id, p); }
     p.games += 1;
     let o = p.opp.get(r.opponent_id);
-    if (!o) { o = { games: 0, gain: 0, wins: 0, losses: 0 }; p.opp.set(r.opponent_id, o); }
+    if (!o) { o = { games: 0, gain: 0, wins: 0, losses: 0, points: 0, exp: 0, vari: 0, gap: 0 }; p.opp.set(r.opponent_id, o); }
     o.games += 1;
+    const ob = before.get(r.game_id + '|' + r.opponent_id);
+    const gap = ob === undefined ? 0 : r.rating_before - ob; // unknown opponent rating → treat as equal
+    const pe = 1 / (1 + 10 ** (-gap / 400));
+    o.points += r.score; o.exp += pe; o.vari += pe * (1 - pe); o.gap += gap;
     const delta = r.rating_after - r.rating_before;
     if (delta > 0) o.gain += delta;
     if (r.score === 1) o.wins += 1; else if (r.score === 0) o.losses += 1;
@@ -68,7 +76,7 @@ function playerSignals(players, population, hubs) {
     const gainShare = totalGain > 0 && top ? top.gain / totalGain : 0;
     const flags = [];
     if (population >= T.POP_MIN && !hubs.has(most.id) && effective <= T.EFF_OPP_MAX) flags.push('narrow_opponents');
-    if (population >= T.POP_MIN && !(top && hubs.has(top.id)) && totalGain >= T.GAIN_MIN && gainShare >= T.GAIN_SHARE) flags.push('gain_from_one');
+    if (population >= T.POP_MIN && p.games >= T.GAIN_MIN_GAMES && !(top && hubs.has(top.id)) && totalGain >= T.GAIN_MIN && gainShare >= T.GAIN_SHARE) flags.push('gain_from_one');
     if (flags.length) {
       out.push({ userId: p.id, games: p.games, uniqueOpponents: p.opp.size, effectiveOpponents: round(effective),
         topOpponentId: top ? top.id : null, topGainShare: round(gainShare), totalGain: round(totalGain, 1), flags });
@@ -85,9 +93,13 @@ function pairSignals(players) {
       const decisive = o.wins + o.losses;
       if (!decisive) continue;
       const skew = Math.max(o.wins, o.losses) / decisive;
-      if (skew >= T.PAIR_SKEW) {
-        out.push({ a: p.id, b: oid, games: o.games, aWins: o.wins, bWins: o.losses, skew: round(skew) });
-      }
+      if (skew < T.PAIR_SKEW) continue;
+      // z of a's points vs the Elo-expected score at game time (normal approximation; rough below ~10 games)
+      const z = o.vari > 0 ? (o.points - o.exp) / Math.sqrt(o.vari) : 0;
+      if (Math.abs(z) < T.PAIR_Z) continue;
+      const winner = o.wins >= o.losses ? 1 : -1; // +1 = a dominates
+      out.push({ a: p.id, b: oid, games: o.games, aWins: o.wins, bWins: o.losses, skew: round(skew), z: round(z, 1),
+        weakerWins: winner * o.gap < 0 });
     }
   }
   return out;

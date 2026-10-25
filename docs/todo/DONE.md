@@ -1,3 +1,5 @@
+✅ - **#357.** Integrity pairs: Elo-expected z-score + "weaker side wins" tag `[Model: Sonnet 5]` — [detail](docs/todo/B357-integrity-pair-elo-z.md)
+✅ - **#356.** Integrity detector: gain_from_one needs ≥20 games, narrower hub rule `[Model: Sonnet 5]` — [detail](docs/todo/B356-integrity-detector-calibration.md)
 ✅ - **#355.** Integrity tab: community-sorted adjacency matrix view `[Model: Opus 5]` — [detail](docs/todo/B355-integrity-adjacency-matrix.md)
 ✅ - **#354.** Integrity graph: name search, click-to-pin, no halo for tiny groups `[Model: Sonnet 5]` — [detail](docs/todo/B354-integrity-graph-search-pin.md)
 ✅ - **#353.** Integrity network graph: declutter (suspect-first, group bubbles, edge filter) `[Model: Opus 5]` — [detail](docs/todo/B353-integrity-graph-declutter.md)
