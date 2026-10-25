@@ -160,6 +160,7 @@
 .adm .ri-chart figcaption { position: relative; }
 .adm .ri-tools { position: absolute; top: 0; right: 0; display: flex; gap: var(--space-2); align-items: center; }
 .adm .ri-zoom { display: inline-flex; gap: var(--space-1); }
+@media (max-width: 800px) { .adm .ri-tools { position: static; flex-wrap: wrap; margin-top: var(--space-2); } }   /* absolute tools covered the figcaption hint on phones */
 .adm .ri-svg--graph { cursor: grab; } .adm .ri-svg--graph.is-pan { cursor: grabbing; }
 .adm .ri-hull { pointer-events: none; }
 .adm .ri-svg--graph { background: radial-gradient(circle at 50% 45%, var(--c-surface-2), var(--c-surface) 75%); border-radius: var(--radius); touch-action: none; }
@@ -171,7 +172,7 @@
 .adm .ri-node--drag:focus-visible { stroke: var(--c-strong); outline: 0; }
 .adm .ri-node.is-off, .adm .ri-edge.is-off { opacity: .12; }
 .adm .ri-edge.is-on { stroke-opacity: .95; stroke: var(--c-strong); }
-.adm .ri-label { fill: var(--c-ink-2); font-size: calc(10.5px * var(--fs-scale, 1)); pointer-events: none; paint-order: stroke; stroke: var(--c-surface); stroke-width: 3px; }
+.adm .ri-label { fill: var(--c-ink-2); font-size: calc(10.5px * var(--fs-scale, 1) * var(--ri-k, 1)); pointer-events: none; paint-order: stroke; stroke: var(--c-surface); stroke-width: calc(3px * var(--ri-k, 1)); }
 .adm .ri-label.is-hover { opacity: 0; }
 .adm .ri-label.is-show { opacity: 1; fill: var(--c-ink); }
 .adm .ri-readout { min-height: 20px; margin-top: var(--space-2); font-size: calc(12.5px * var(--fs-scale, 1)); color: var(--c-ink-2); }
@@ -212,7 +213,9 @@
 .adm .ri-seg .pbtn.is-on { background: var(--c-surface-2); border-color: var(--c-strong); color: var(--c-ink); }
 .adm .ri-min { width: 110px; }
 .adm .ri-min-label, .adm .ri-note, .adm .ri-cross { font-size: calc(12.5px * var(--fs-scale, 1)); color: var(--c-ink-2); }
-.adm .ri-search { max-width: 180px; }
+.adm .ri-search { max-width: 180px; padding: 6px 10px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink); border: 1px solid var(--c-border-strong); border-radius: var(--radius); background: var(--c-field); }
+.adm .ri-search:focus-visible { border-color: var(--c-brand); outline: 0; box-shadow: 0 0 0 2px var(--c-brand-light); }
+@media (max-width: 860px) { .adm .ri-search { font-size: 16px; } }   /* iOS Safari zooms on focus below 16px */
 .adm .ri-svg--matrix { max-width: 640px; margin: 0 auto; background: var(--c-surface); border-radius: var(--radius); }
 .adm .ri-mx-bg { fill: var(--c-surface-2); }
 .adm .ri-mx-cell { fill: var(--c-strong); }

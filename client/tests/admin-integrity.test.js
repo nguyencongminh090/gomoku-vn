@@ -108,6 +108,21 @@ describe('charts', () => {
     for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) minGap = Math.min(minGap, Math.hypot(c[i].x - c[j].x, c[i].y - c[j].y) - c[i].r - c[j].r);
     expect(minGap).toBeGreaterThanOrEqual(0); // collision pass guarantees circles never touch (was 449 overlapping pairs)
   });
+  it('network: zoom scales --ri-k so labels keep their on-screen size; 1:1 resets it', async () => {
+    await boot(() => ok({ ...DATA, viz: VIZ }));
+    const g = document.querySelector('.ri-svg--graph');
+    const [, inn, one] = document.querySelectorAll('.ri-zoom button');
+    inn.click();
+    expect(+g.style.getPropertyValue('--ri-k')).toBeCloseTo(1 / 1.4, 5);
+    one.click();
+    expect(+g.style.getPropertyValue('--ri-k')).toBe(1);
+  });
+  it('css: tools sit in flow on phones and the search box is styled like other admin inputs', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'puzzles.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 800px\) \{ \.adm \.ri-tools \{ position: static/);
+    expect(css).toMatch(/\.adm \.ri-search \{[^}]*border: 1px solid var\(--c-border-strong\)/);
+    expect(css).toMatch(/\.adm \.ri-label \{[^}]*var\(--ri-k, 1\)/);
+  });
   it('network: zoom buttons narrow the viewBox, 1:1 restores it, and zoom stops at 6x', async () => {
     await boot(() => ok({ ...DATA, viz: VIZ }));
     const g = document.querySelector('.ri-svg--graph');
@@ -200,6 +215,16 @@ describe('charts', () => {
       expect(input.value).toBe('');
       expect(g().getAttribute('viewBox')).toBe('0 0 1100 760');
       expect(document.querySelector('.ri-readout').textContent).not.toContain('F2');
+    });
+    it('matrix: a narrow "other" strip gets an ellipsis, not the word that the SVG edge would clip', async () => {
+      const ns = [...Array.from({ length: 37 }, (_, i) => N('m' + i, 0, 12, 1500)), ...Array.from({ length: 3 }, (_, i) => N('o' + i, 5, 12, 1500))];
+      await boot(() => ok({ ...DATA, viz: { ...V, total: 40, shown: 40, communities: 2, nodes: ns, edges: [{ a: 'm0', b: 'o0', games: 4 }] } }));
+      document.querySelectorAll('.ri-seg button')[3].click();
+      document.querySelectorAll('.ri-seg button')[1].click();
+      const ticks = [...document.querySelectorAll('.ri-svg--matrix text.ri-tick')].map((e) => e.textContent);
+      expect(ticks).toContain('1');
+      expect(ticks).toContain('…');
+      expect(ticks).not.toContain('admin.i_viz_other');
     });
     it('#355: matrix view — one row/col per player, shade buckets, block outlines, hover fills the readout', async () => {
       await boot(() => ok({ ...DATA, viz: V }));
