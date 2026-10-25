@@ -40,8 +40,8 @@ describe('analyze', () => {
   });
 
   test('feeder: one account farms another → pair skew, gain from one, narrow opponents', () => {
-    const r = analyze([...background(12), ...many('boost', 'feeder', 12, 'a')]);
-    expect(r.pairs).toEqual([expect.objectContaining({ a: 'boost', b: 'feeder', games: 12, aWins: 12, bWins: 0 })]);
+    const r = analyze([...background(12), ...many('boost', 'feeder', 20, 'a')]);
+    expect(r.pairs).toEqual([expect.objectContaining({ a: 'boost', b: 'feeder', games: 20, aWins: 20, bWins: 0, weakerWins: false })]);
     const p = r.players.find((x) => x.userId === 'boost');
     expect(p.flags).toEqual(expect.arrayContaining(['narrow_opponents', 'gain_from_one']));
     expect(p.topOpponentId).toBe('feeder');
@@ -73,11 +73,48 @@ describe('analyze', () => {
   });
 });
 
+describe('calibration (#356, #357)', () => {
+  /** Like game() but with explicit ratings, so the Elo-expected score differs from 50%. */
+  const rated = (a, ra, b, rb, winner) => {
+    gid += 1;
+    const sa = winner === 'a' ? 1 : 0;
+    return [
+      { user_id: a, opponent_id: b, game_id: `g${gid}`, score: sa, rating_before: ra, rating_after: ra },
+      { user_id: b, opponent_id: a, game_id: `g${gid}`, score: 1 - sa, rating_before: rb, rating_after: rb },
+    ];
+  };
+  const series = (a, ra, b, rb, n, winner) => Array.from({ length: n }, () => rated(a, ra, b, rb, winner)).flat();
+
+  test('one-sided pair explained by a big rating gap is not flagged', () => {
+    expect(analyze([...background(12), ...series('pro', 1900, 'newbie', 1100, 10, 'a')]).pairs).toEqual([]);
+  });
+
+  test('same skew with equal ratings is flagged; weaker side winning is tagged', () => {
+    const even = analyze([...background(12), ...series('a1', 1500, 'b1', 1500, 10, 'a')]).pairs;
+    expect(even).toEqual([expect.objectContaining({ a: 'a1', b: 'b1', weakerWins: false })]);
+    expect(even[0].z).toBeGreaterThanOrEqual(3);
+    const upset = analyze([...background(12), ...series('a_low', 1300, 'z_high', 1700, 8, 'a')]).pairs;
+    expect(upset).toEqual([expect.objectContaining({ a: 'a_low', b: 'z_high', weakerWins: true })]);
+  });
+
+  test('12-game farmer: gain_from_one stays off below GAIN_MIN_GAMES, pair is still flagged', () => {
+    const r = analyze([...background(12), ...many('boost', 'feeder', 12, 'a')]);
+    expect(r.players.find((p) => p.userId === 'boost').flags).not.toContain('gain_from_one');
+    expect(r.pairs).toHaveLength(1);
+  });
+
+  test('a mid-size account (<20 opponents) is not a hub', () => {
+    const rows = background(12);
+    for (let i = 0; i < 12; i++) rows.push(...game('wide', `bg${i}`, i % 2 ? 'a' : 'b'));
+    expect(analyze(rows).hubs).toEqual([]);
+  });
+});
+
 describe('sparse and hub-shaped graphs (real data: a star around one account)', () => {
-  /** 14 regulars each play the hub 12 times and one other regular once — the hub has 14 distinct opponents. */
+  /** 22 regulars each play the hub 20 times and one other regular once — the hub has 22 distinct opponents. */
   const star = () => {
     const rows = [];
-    for (let i = 0; i < 14; i++) { rows.push(...many(`s${i}`, 'hub', 12, i % 2 ? 'a' : 'b')); rows.push(...game(`s${i}`, `s${(i + 1) % 14}`, 'a')); }
+    for (let i = 0; i < 22; i++) { rows.push(...many(`s${i}`, 'hub', 20, i % 2 ? 'a' : 'b')); rows.push(...game(`s${i}`, `s${(i + 1) % 22}`, 'a')); }
     return rows;
   };
 
@@ -88,7 +125,7 @@ describe('sparse and hub-shaped graphs (real data: a star around one account)', 
   });
 
   test('a feeder (1 opponent) is still flagged when a hub exists in the same graph', () => {
-    const r = analyze([...star(), ...many('boost', 'feeder', 12, 'a')]);
+    const r = analyze([...star(), ...many('boost', 'feeder', 20, 'a')]);
     expect(r.players.find((p) => p.userId === 'boost').flags).toContain('gain_from_one');
   });
 

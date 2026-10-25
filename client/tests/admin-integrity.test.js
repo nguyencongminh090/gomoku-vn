@@ -18,7 +18,7 @@ const ok = (b) => Promise.resolve({ ok: true, status: 200, json: () => Promise.r
 const DATA = {
   population: 12, activePlayers: 12, thresholds: { POP_MIN: 10, MIN_GAMES: 10 },
   players: [{ userId: 'u', displayName: 'Boost', games: 12, uniqueOpponents: 1, effectiveOpponents: 1, topOpponentName: 'Feeder', topGainShare: 1, flags: ['narrow_opponents', 'gain_from_one'], topOpponentFriend: true, topOpponentSameClub: false }],
-  pairs: [{ aName: 'Boost', bName: 'Feeder', games: 12, aWins: 12, bWins: 0, friends: true, sameClub: false }],
+  pairs: [{ aName: 'Boost', bName: 'Feeder', games: 12, aWins: 12, bWins: 0, z: 3.5, weakerWins: true, friends: true, sameClub: false }],
   groups: [],
 };
 
@@ -41,6 +41,7 @@ it('renders players, pairs and an empty groups section with friend context', asy
   expect(text).toContain('admin.i_flag_gain_from_one');
   expect(text).toContain('admin.i_friends');
   expect(text).toContain('admin.i_pair');
+  expect(text).toContain('admin.i_weaker');
   expect(text).toContain('admin.i_empty');
   expect($('ri-msg').hidden).toBe(true);
 });
