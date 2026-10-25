@@ -1,5 +1,5 @@
 # B355 — Integrity tab: community-sorted adjacency matrix view
-**Status:** OPEN
+**Status:** ✅ DONE (jsdom; real-browser pass pending)
 **Area:** client/js/admin-integrity-viz.js (new `matrix` chart + view toggle), client/css/puzzles.css (`.ri-*`), client/js/i18n.js (vi+en), client/tests/admin-integrity.test.js
 **From:** user, 2026-10-25 (item 5 of the declutter proposal, split from #353)   **Depends:** — (reads the same `viz.nodes`/`viz.edges`; nicer after #353 trims the node set)
 
