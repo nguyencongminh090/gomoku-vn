@@ -227,7 +227,7 @@
 .btn-game--draw {
   border-color: var(--c-border);
   color: var(--c-ink-2);
-  background: transparent;
+  background: var(--c-surface-2);
 }
 .btn-game--draw:hover {
   background: var(--c-surface-2);
@@ -258,7 +258,7 @@
 .swap2-choice .btn-game {
   border-color: var(--c-brand);
   color: var(--c-brand-text);
-  background: transparent;
+  background: var(--c-surface-2);
 }
 
 .swap2-choice .btn-game:hover {
@@ -597,7 +597,7 @@
 .btn-game--time {
   border-color: #2980b9;
   color: #2980b9;
-  background: transparent;
+  background: var(--c-surface-2);
 }
 
 .btn-game--time:hover {
@@ -617,7 +617,7 @@
 .btn-game--undo {
   border-color: #8e44ad;
   color: #8e44ad;
-  background: transparent;
+  background: var(--c-surface-2);
 }
 
 .btn-game--undo:hover {

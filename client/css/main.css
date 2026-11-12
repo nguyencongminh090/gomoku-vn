@@ -364,7 +364,7 @@ p, li {
   font-weight: 700;
   font-family: var(--font);
   color: var(--c-ink-2);
-  background: transparent;
+  background: var(--c-surface-2);
   border: 1px solid var(--c-border);
   border-radius: 9999px;
   cursor: pointer;

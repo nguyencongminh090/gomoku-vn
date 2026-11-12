@@ -52,6 +52,7 @@ function screenFromLocation() {
 export function showScreen(name) {
   if (!SCREENS[name]) name = 'home';
   current = name;
+  document.body.classList.toggle('is-home', name === 'home');   // ui/home-minimal: the pinned footer replaces the mobile tab bar on Home only
   for (const [key, id] of Object.entries(SCREENS)) {
     const node = document.getElementById(id);
     if (!node) continue;
@@ -174,41 +175,8 @@ function renderMine(data) {
       location.href = 'tournament.html?id=' + encodeURIComponent(m.tournamentId);
     }, m.state === 'Ready'));
   }
-  if (!box.children.length) {
-    const empty = el('div', undefined, 'hempty');
-    const go = withIcon(el('button', t('home.find_room'), 'link-action'), 'ph-regular-magnifying-glass');
-    go.type = 'button';
-    go.addEventListener('click', () => showScreen('rooms'));
-    empty.append(el('p', t('home.no_games'), 'muted small'), go);
-    box.appendChild(empty);
-  }
-}
-
-/** #294: a card whose list is just its empty-state message collapses to one compact row (CSS .is-empty). */
-function flagEmpty(box) {
-  const card = box.closest('.ppanel');
-  if (card) card.classList.toggle('is-empty', !!box.querySelector('.hempty'));
-}
-
-function renderToday(data) {
-  const box = document.getElementById('home-today');
-  if (!box) return;
-  box.replaceChildren();
-  for (const tr of data.tournaments || []) {
-    const meta = [t('home.status_' + tr.status), t('home.players', { n: tr.playerCount }), t('tournaments.format_' + tr.format)];
-    const act = tr.registered ? t('home.registered') : t(tr.status === 'draft' ? 'home.register' : 'home.view');
-    box.appendChild(row(tr.name, meta, act, () => {
-      location.href = 'tournament.html?id=' + encodeURIComponent(tr.tournamentId);
-    }));
-  }
-  if (!box.children.length) {
-    const empty = el('div', undefined, 'hempty');
-    const all = withIcon(el('a', t('home.see_tournaments'), 'link-action'), 'ph-regular-trophy');
-    all.href = '#tournaments';
-    empty.append(el('p', t('home.no_today'), 'muted small'), all);
-    box.appendChild(empty);
-  }
-  flagEmpty(box);
+  const card = document.getElementById('home-mine-card');
+  if (card) card.hidden = !box.children.length; // nothing to resume → the card is gone, Home stays two buttons
 }
 
 function renderStats(data) {
@@ -223,19 +191,6 @@ function renderStats(data) {
     item.append(el('strong', String(n || 0), 'hstat__n'), el('span', t('home.stat_' + key), 'hstat__l muted small'));
     box.appendChild(item);
   }
-}
-
-/** Live games as text rows — no board drawing (B223: the old mini boards were the poll's main DOM cost). */
-function renderLive(data) {
-  const box = document.getElementById('home-live');
-  if (!box) return;
-  box.replaceChildren();
-  for (const g of data.live || []) {
-    const meta = [...ruleParts(g), t('home.moves', { n: g.moves || 0 }), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''];
-    box.appendChild(row(t('home.live_vs', { a: g.black || '?', b: g.white || '?' }), meta, t('home.view'), () => window.joinRoom(g.roomId)));
-  }
-  if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
-  flagEmpty(box);
 }
 
 /** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
@@ -256,58 +211,12 @@ function renderNews(data) {
   box.appendChild(line);
 }
 
-function renderForum(data) {
-  const box = document.getElementById('home-forum');
-  if (!box) return;
-  box.replaceChildren();
-  for (const th of data.forum || []) {
-    const meta = [t('forum.cat_' + th.category), t('forum.replies', { n: th.replyCount || 0 }), th.author];
-    box.appendChild(row(th.title, meta, t('home.view'), () => { location.href = '/forum/t/' + encodeURIComponent(th.id); }));
-  }
-  if (!box.children.length) box.appendChild(el('p', t('home.no_forum'), 'muted small hempty'));
-  // #301: with threads listed, each row already has its "Xem" pill — the footer is a quiet "all threads" text link, not a second outlined button; the empty state keeps the outlined entry button (#294).
-  const has = !!(data.forum && data.forum.length);
-  const all = withIcon(el('a', t(has ? 'home.forum_all_threads' : 'home.forum_all'), 'link-action hmore' + (has ? ' hmore--text' : '')), 'ph-regular-chat-circle');
-  all.href = '/forum';
-  box.appendChild(all);
-  flagEmpty(box);
-}
-
-function renderLearn(data) {
-  const box = document.getElementById('home-learn');
-  if (!box) return;
-  box.replaceChildren();
-  const l = data.learn;
-  if (!l) return;
-  const parts = [l.total ? t('home.learn_total', { n: l.total }) : t('home.learn_none')];
-  if (l.solved !== null && l.solved !== undefined && l.total) parts.push(t('home.learn_solved', { n: l.solved }));
-  box.appendChild(row(t('home.learn_title'), parts, t('home.view'), () => { location.href = '/puzzles'; }));
-  if (l.total && l.solved !== null && l.solved !== undefined) {
-    const pct = Math.min(100, Math.round((l.solved / l.total) * 100));
-    const bar = el('div', undefined, 'hprog');
-    const track = el('div', undefined, 'hprog__bar');
-    track.setAttribute('role', 'progressbar');
-    track.setAttribute('aria-valuemin', '0');
-    track.setAttribute('aria-valuemax', String(l.total));
-    track.setAttribute('aria-valuenow', String(l.solved));
-    const fill = el('i');
-    fill.style.width = pct + '%';
-    track.appendChild(fill);
-    bar.append(track, el('span', t('home.learn_progress', { s: l.solved, n: l.total }), 'muted small'));
-    box.appendChild(bar);
-  }
-}
-
 export function renderHome(data) {
   lastData = data;
   lastJson = JSON.stringify(data);
   renderStats(data);
   renderNews(data);
   renderMine(data);
-  renderLearn(data);
-  renderToday(data);
-  renderForum(data);
-  renderLive(data);
   renderQuickMatch(); // the "N đang chờ" count comes with /api/home
 }
 
@@ -357,7 +266,6 @@ function applyPush(key, value, render) {
 }
 
 client.on('home:stats', (st) => applyPush('stats', st, renderStats));
-client.on('home:live', (live) => applyPush('live', Array.isArray(live) ? live : [], renderLive));
 // A reconnect is a fresh server socket outside every room: subscribe again and resync the rest.
 client.on('disconnect', () => { subscribed = false; lobbySubscribed = false; });
 client.on('connect', () => {
@@ -369,20 +277,22 @@ client.on('connect', () => {
 
 // ── Quick match (B197) ──────────────────────────────────────────────────────
 
-const QM_RULES = ['freestyle', 'standard', 'caro'];
+const QM_RULES = ['freestyle', 'caro']; // Home menu: two rules (Standard stays reachable via rooms)
 const QM_TIMES_GAME = ['1+0', '1+1', '3+2', '5+3', '7+3', '10+0']; // total + increment per move
 const QM_TIMES_MOVE = ['m60', 'm45', 'm30', 'm5']; // seconds per move
 const QM_AUTO = 'auto'; // no clock preference: pairs with anyone, adopts the other side's clock (default 60s/nước)
-const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE];
+const QM_MENU_TIMES = [QM_AUTO, 'm45', 'm30', '1+1']; // Home menu: Auto + 45s / 30s per move + 1p+1s
+const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE]; // still accepted from a saved pick
 const qmTimeLabel = (v) => (v === QM_AUTO ? t('qm.time_auto') : v[0] === 'm' ? t('home.per_move', { s: v.slice(1) }) : v);
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
+const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, rated: true, searching: false, startedAt: 0, inBucket: 0, error: '' };
 let qmTimer = null;
 
 try {
   const saved = JSON.parse(localStorage.getItem(QM_KEY) || 'null');
   if (saved && QM_RULES.includes(saved.rule)) qm.rule = saved.rule;
   if (saved && QM_TIMES.includes(saved.time)) qm.time = saved.time;
+  if (saved && typeof saved.rated === 'boolean') qm.rated = saved.rated;
   qm.wall = saved && typeof saved.wall === 'boolean' ? saved.wall : true;
   qm.portal = !!saved && saved.portal === true;
 } catch { /* per-viewer convenience only */ }
@@ -412,60 +322,38 @@ function elapsed() {
 }
 
 export function renderQuickMatch() {
-  const pick = (k) => (v) => {
-    qm[k] = v;
-    qm.error = '';
-    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time, wall: qm.wall, portal: qm.portal })); } catch { /* ignore */ }
-    renderQuickMatch();
-  };
-  chipRow('qm-rule', QM_RULES, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
-  chipRow('qm-time', QM_TIMES, qm.time, qmTimeLabel, pick('time'));
-  const timeBox = document.getElementById('qm-time');
-  if (timeBox) {
-    const hint = document.getElementById('qm-time-hint');
-    if (hint) hint.hidden = qm.time !== QM_AUTO; // #298: display only, shown while Auto is the pick
-    timeBox.classList.toggle('is-auto', qm.time === QM_AUTO); // #293: the two clock groups read as secondary while Auto is chosen (still clickable)
-    // Auto chip first, then two labelled groups in the same row.
-    const grp = (k) => { const g = el('span', t('qm.grp_' + k), 'qm-grp'); g.setAttribute('aria-hidden', 'true'); return g; };
-    const firstMove = timeBox.children[QM_TIMES_GAME.length + 1]; // [auto, ...game, ...move]
-    if (firstMove) timeBox.insertBefore(grp('move'), firstMove);
-    if (timeBox.children[1]) timeBox.insertBefore(grp('game'), timeBox.children[1]);
+  const save = () => { try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time, wall: qm.wall, portal: qm.portal, rated: qm.rated })); } catch { /* ignore */ } };
+  const pick = (k) => (v) => { qm[k] = v; qm.error = ''; save(); renderQuickMatch(); };
+  // A saved pick outside the Home menu (older UI) stays selected and listed, so nothing is silently changed.
+  const times = QM_MENU_TIMES.includes(qm.time) ? QM_MENU_TIMES : [...QM_MENU_TIMES, qm.time];
+  const rules = QM_RULES.includes(qm.rule) ? QM_RULES : [...QM_RULES, qm.rule];
+  chipRow('qm-rule', rules, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
+  chipRow('qm-time', times, qm.time, qmTimeLabel, pick('time'));
+  const member = isMember();
+  const mode = document.getElementById('qm-mode');
+  if (mode) {
+    mode.hidden = !member;
+    if (member) chipRow('qm-mode', [true, false], qm.rated, (v) => t(v ? 'qm.find_rated' : 'qm.find_casual'), pick('rated'));
   }
-  const board = document.getElementById('qm-board');
-  if (board) {
-    board.replaceChildren();
-    for (const k of ['wall', 'portal']) {
-      const b = el('button', t('room.rule_' + k), 'pchip' + (qm[k] ? ' is-active' : ''));
-      b.type = 'button';
-      b.disabled = qm.searching;
-      b.setAttribute('aria-pressed', String(qm[k]));
-      b.addEventListener('click', () => pick(k)(!qm[k]));
-      board.appendChild(b);
-    }
-  }
+  const friend = document.getElementById('qm-friend');
+  if (friend) friend.hidden = !member;
+  const play = document.getElementById('qm-play');
+  if (play) play.disabled = qm.searching;
+  const menuBtn = document.getElementById('qm-menu-btn');
+  if (menuBtn) menuBtn.disabled = qm.searching;
+  if (qm.searching) setMenuOpen(false);
 
   const acts = document.getElementById('qm-actions');
   const line = document.getElementById('qm-line');
   if (!acts || !line) return;
   acts.replaceChildren();
-  const btn = (key, cls, fn, iconName) => {
-    const b = withIcon(el('button', t(key), 'link-action' + (cls ? ' ' + cls : '')), iconName);
-    b.type = 'button';
-    b.addEventListener('click', fn);
-    acts.appendChild(b);
-    return b;
-  };
   if (qm.searching) {
-    btn('qm.cancel', '', cancelSearch);
+    const b = withIcon(el('button', t('qm.cancel'), 'link-action'), null);
+    b.type = 'button';
+    b.addEventListener('click', cancelSearch);
+    acts.appendChild(b);
     setSegments(line, [t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() }), qm.inBucket > 1 && t('qm.in_queue', { n: qm.inBucket })]);
   } else {
-    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
-    btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
-    if (isMember()) { // mockup: Thách đấu bạn bè → the social page's friend picker (#222)
-      const a = withIcon(el('a', t('qm.challenge_friend'), 'link-action'), 'ph-regular-boxing-glove');
-      a.href = '/social.html#challenge';
-      acts.appendChild(a);
-    }
     // Who can pair with this pick: same clock, an auto waiter, and (for auto) everyone of the rule.
     let waiting = 0;
     for (const [k, n] of Object.entries((lastData && lastData.queue) || {})) {
@@ -476,12 +364,34 @@ export function renderQuickMatch() {
     if (qm.error) line.textContent = qm.error;
     else setSegments(line, [
       t('qm.selected'), { text: t('rankings.cat_' + qm.rule), cls: 'rtag rtag--rule' }, qmTimeLabel(qm.time),
-      qm.wall && t('room.rule_wall'), qm.portal && t('room.rule_portal'),
       waiting && t('qm.in_queue', { n: waiting }), eta && t('qm.eta', { s: eta }),
-      !isMember() && { text: t('qm.guest_casual_only'), cls: 'qm-line__note' },
+      !member && { text: t('qm.guest_casual_only'), cls: 'qm-line__note' },
     ]);
   }
 }
+
+function setMenuOpen(on) {
+  const menu = document.getElementById('qm-menu');
+  const btn = document.getElementById('qm-menu-btn');
+  if (!menu || !btn) return;
+  menu.hidden = !on;
+  btn.setAttribute('aria-expanded', String(on));
+}
+
+function wireHub() {
+  const rooms = document.getElementById('hub-rooms');
+  if (rooms) rooms.addEventListener('click', () => showScreen('rooms'));
+  const play = document.getElementById('qm-play');
+  if (play) play.addEventListener('click', () => startSearch(isMember() && qm.rated));
+  const btn = document.getElementById('qm-menu-btn');
+  const menu = document.getElementById('qm-menu');
+  if (btn && menu) {
+    btn.addEventListener('click', (e) => { e.stopPropagation(); setMenuOpen(menu.hidden); });
+    document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) setMenuOpen(false); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !menu.hidden) { setMenuOpen(false); btn.focus(); } });
+  }
+}
+wireHub();
 
 /** Status line: first part = plain label, the rest = .rtag chips; `{ text, cls }` overrides a chip's class (ticket-rows.md: no "a · b · c" strings). */
 function setSegments(line, parts) {

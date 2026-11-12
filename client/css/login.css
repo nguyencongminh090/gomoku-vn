@@ -287,7 +287,7 @@ html, body {
   right: 8px;
   top: 50%;
   transform: translateY(-50%);
-  background: transparent;
+  background: var(--c-surface-2);
   border: none;
   cursor: pointer;
   color: var(--c-ink-3);
