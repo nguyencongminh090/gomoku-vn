@@ -1,3 +1,5 @@
+✅ - **#361.** Home "Thách đấu" composer: challenge online players or friends `[Model: Opus 5]` — [detail](docs/todo/B361-home-challenge-composer.md)
+✅ - **#360.** Home phone: move Học/Diễn đàn/Giải đấu/Hội nhóm links off the top (audit/redesign first) `[Model: Opus 5]` — [detail](docs/todo/B360-home-phone-secondary-nav.md)
 ✅ - **#358.** Home redesign M4 "Câu lệnh" (sentence composer + code input) `[Model: Opus 5]` — [detail](docs/todo/B358-home-redesign-m4-sentence.md)
 ✅ - **#357.** Integrity pairs: Elo-expected z-score + "weaker side wins" tag `[Model: Sonnet 5]` — [detail](docs/todo/B357-integrity-pair-elo-z.md)
 ✅ - **#356.** Integrity detector: gain_from_one needs ≥20 games, narrower hub rule `[Model: Sonnet 5]` — [detail](docs/todo/B356-integrity-detector-calibration.md)

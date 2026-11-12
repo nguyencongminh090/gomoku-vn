@@ -311,7 +311,7 @@ const QM_MENU_TIMES = [QM_AUTO, 'm45', 'm30', '1+1']; // Home menu: Auto + 45s /
 const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE]; // still accepted from a saved pick
 const qmTimeLabel = (v) => (v === QM_AUTO ? t('qm.time_auto') : v[0] === 'm' ? t('home.per_move', { s: v.slice(1) }) : v);
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, rated: true, searching: false, startedAt: 0, inBucket: 0, error: '' };
+const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, rated: true, searching: false, startedAt: 0, inBucket: 0, error: '', notice: '' }; // notice: last challenge sent (#361)
 let qmTimer = null;
 
 try {
@@ -415,6 +415,7 @@ function closePick(focusBlank) {
 function choose(key, v) {
   qm[BLANKS[key].field] = v;
   qm.error = '';
+  qm.notice = '';
   saveQm();
   closePick(true);
   renderQuickMatch();
@@ -450,8 +451,10 @@ export function renderQuickMatch() {
   if (qm.searching && openBlank) closePick(false);
   renderSentence();
   const member = isMember();
-  const friend = document.getElementById('qm-friend');
-  if (friend) friend.hidden = !member;
+  // #361 Thách đấu: members only; gone while searching (the pill takes the .hq-go row).
+  const chal = document.getElementById('qm-challenge');
+  if (chal) chal.hidden = !member || qm.searching;
+  if ((!member || qm.searching) && window.HomeChallenge && window.HomeChallenge.isOpen()) window.HomeChallenge.close();
   const play = document.getElementById('qm-play');
   const pill = document.getElementById('qm-search');
   if (play) { play.hidden = qm.searching; play.disabled = qm.searching; }
@@ -483,6 +486,7 @@ export function renderQuickMatch() {
   }
   const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
   if (qm.error) line.textContent = qm.error;
+  else if (qm.notice) line.textContent = qm.notice;
   else setSegments(line, [waiting && t('qm.in_queue', { n: waiting }), eta && t('qm.eta', { s: eta }), !member && { node: guestNote() }], 'rtag');
   if (lastData) renderStats(lastData); // the searching card's ETA follows the picked rule|time
 }
@@ -503,6 +507,7 @@ function guestNote() {
 
 function startSearch(rated) {
   qm.error = '';
+  qm.notice = '';
   qm.rated = rated;
   client.emit('match:join', { rule: qm.rule, time: qm.time, rated, wall: qm.wall, portal: qm.portal });
 }
@@ -593,11 +598,26 @@ function wireHomeCode() {
   });
 }
 
+/** #361: Thách đấu → opponent picker (home-challenge.js) carrying the sentence's pick as a single game. */
+function openChallenge() {
+  const chal = document.getElementById('qm-challenge');
+  if (!chal || !window.HomeChallenge || qm.searching || !isMember()) return;
+  if (openBlank) closePick(false);
+  window.HomeChallenge.open({
+    anchor: chal,
+    pick: { rule: qm.rule, time: qm.time, rated: qm.rated, wall: qm.wall, portal: qm.portal },
+    ruleParts: ['rule', 'time', 'mode'].map((k) => BLANKS[k].option(qm[BLANKS[k].field])),
+    onSent: (who) => { qm.error = ''; qm.notice = who && who.displayName ? t('home.ch_sent', { name: who.displayName }) : t('home.ch_sent_any'); renderQuickMatch(); },
+  });
+}
+
 function wireHub() {
   const rooms = document.getElementById('hub-rooms');
   if (rooms) rooms.addEventListener('click', (e) => { e.preventDefault(); showScreen('rooms'); });
   const play = document.getElementById('qm-play');
   if (play) play.addEventListener('click', () => startSearch(isMember() && qm.rated));
+  const chal = document.getElementById('qm-challenge');
+  if (chal) chal.addEventListener('click', openChallenge);
   wirePick();
   wireHomeCode();
 }

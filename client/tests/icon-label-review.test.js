@@ -98,7 +98,7 @@ describe('icon + label review (#212)', () => {
   test('shortened labels stay short (vi and en)', () => {
     const src = read('js/i18n.js');
     const keys = ['profile.bio_label', 'clubs.desc', 'settings.who_dm', 'settings.who_challenge', 'settings.who_friend',
-      'qm.find_rated', 'qm.challenge_friend', 'tdetail.back', 'tmatch.back'];
+      'qm.find_rated', 'qm.challenge', 'tdetail.back', 'tmatch.back'];
     for (const key of keys) {
       const values = [...src.matchAll(new RegExp("'" + key.replace('.', '\\.') + "': '([^']*)'", 'g'))].map((m) => m[1]);
       expect(values.length).toBeGreaterThan(0);
