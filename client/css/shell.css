@@ -351,18 +351,3 @@ body.zen-lobby #home-mine-card { max-width: 520px; width: 100%; margin: 20px aut
 body.zen-lobby #home-mine-card[hidden] { display: none; }
 body.zen-lobby .psplit > :is(.hub, .hub-more, #home-mine-card) { grid-column: 1 / -1; justify-self: center; }   /* .psplit is a 2-column grid on desktop: the hub is one centred column */
 body.zen-lobby .hub .qm-line { text-align: center; }
-
-/* ── Home minimal (ui/home-minimal): Chơi nhanh primary, Phòng secondary, discover links pinned as a footer whose 5 equal
-   cells line up with the 520px hub column (position: fixed — nothing above it can move it). Mockup: client/home-page-mockup.html ── */
-body.zen-lobby.is-home .lobby-bar { justify-content: center; text-align: center; }
-body.zen-lobby.is-home .zen-hero { margin-bottom: 4px; }
-body.zen-lobby.is-home .hstats { justify-content: center; gap: 4px 24px; padding: 0 4px 16px; }
-body.zen-lobby .hub-btn--play { min-height: 72px; }
-body.zen-lobby .hub-btn--menu { width: 72px; min-height: 72px; }
-body.zen-lobby .hub-btn--room { min-height: 56px; font-size: var(--text-md); }
-body.zen-lobby.is-home { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
-body.zen-lobby .hub-more { position: fixed; z-index: 20; left: 0; right: 0; bottom: 0; width: 100%; box-sizing: border-box; margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 6px max(8px, calc((100% - 520px) / 2)) calc(6px + env(safe-area-inset-bottom)); background: var(--c-surface); border-top: 1px solid var(--c-border); }
-body.zen-lobby .hub-ico { width: auto; height: auto; min-height: 56px; flex-direction: column; gap: 2px; padding: 0 2px; border: 0; border-radius: 12px; background: none; font-size: var(--text-xs); white-space: nowrap; }
-body.zen-lobby .hub-ico span { overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-body.zen-lobby .hub-ico:hover, body.zen-lobby .hub-ico:focus-visible { background: var(--c-surface-2); }
-@media (max-width: 860px) { body.zen-lobby.is-home .ptabbar { display: none; } }   /* the footer above carries the same destinations on Home */

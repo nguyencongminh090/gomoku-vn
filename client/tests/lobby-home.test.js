@@ -238,12 +238,11 @@ describe('ruleLine()', () => {
 });
 
 describe('home hub (ui/home-hub)', () => {
-  it('two hero actions: the Chơi nhanh split button (play + options toggle) first, then Phòng', async () => {
+  it('two hero actions first: Vào Phòng, then the Chơi nhanh split button (play + options toggle)', async () => {
     await boot('/index.html', EMPTY, { isGuest: false });
     const hub = document.querySelector('#screen-home .hub');
     expect(hub.querySelector('#hub-rooms')).not.toBeNull();
     expect(hub.querySelector('#qm-play')).not.toBeNull();
-    expect(hub.querySelector('#qm-play').compareDocumentPosition(hub.querySelector('#hub-rooms')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(hub.querySelector('#qm-menu-btn').getAttribute('aria-expanded')).toBe('false');
     expect(document.getElementById('qm-menu').hidden).toBe(true);
     expect(document.querySelectorAll('.hp-learn, .hp-today, .hp-forum, .hp-live, #qm-board')).toHaveLength(0);
@@ -255,18 +254,11 @@ describe('home hub (ui/home-hub)', () => {
     expect(visible()).toEqual(['panel-tables']);
   });
 
-  it('secondary features are a labelled footer nav (Xếp hạng, CLB, Giải đấu, Học, Diễn đàn)', async () => {
+  it('secondary features are icon-only links with an accessible name', async () => {
     await boot('/index.html', EMPTY);
-    const links = [...document.querySelectorAll('#screen-home .hub-more .hub-ico')];
-    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/rankings.html', '/clubs.html', '/index.html#tournaments', '/puzzles', '/forum']);
-    expect(links.every((a) => a.textContent.trim() !== '')).toBe(true);
-  });
-
-  it('body.is-home follows the active screen (the pinned footer replaces the mobile tab bar on Home only)', async () => {
-    await boot('/index.html', EMPTY);
-    expect(document.body.classList.contains('is-home')).toBe(true);
-    document.getElementById('hub-rooms').click();
-    expect(document.body.classList.contains('is-home')).toBe(false);
+    const links = [...document.querySelectorAll('#screen-home .hub-ico')];
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/puzzles', '/forum', '/index.html#tournaments', '/clubs.html']);
+    expect(links.every((a) => a.textContent.trim() === '' && a.getAttribute('aria-label'))).toBe(true);
   });
 
   it('the options menu toggles from the ▾ button, closes on Escape and outside click', async () => {

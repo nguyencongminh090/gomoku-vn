@@ -52,7 +52,6 @@ function screenFromLocation() {
 export function showScreen(name) {
   if (!SCREENS[name]) name = 'home';
   current = name;
-  document.body.classList.toggle('is-home', name === 'home');   // ui/home-minimal: the pinned footer replaces the mobile tab bar on Home only
   for (const [key, id] of Object.entries(SCREENS)) {
     const node = document.getElementById(id);
     if (!node) continue;
