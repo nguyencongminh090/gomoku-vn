@@ -1,0 +1,88 @@
+<style>
+/* M7 — Sơn mài: Vietnamese lacquer identity. Dark mode = black-red lacquer with gold leaf;
+   light mode = giấy dó (warm handmade paper) with a vermilion seal. Own palette, scoped to .m7. */
+body.mk-m7-lacquer::before, body.mk-m7-lacquer::after { display: none; }
+body.mk-m7-lacquer { --l-bg: #140b09; --l-bg2: #2a100c; --l-ink: #f6e9cf; --l-ink2: #cdb68c; --l-gold: #d9a94a; --l-gold2: #f3d58a; --l-red: #b3261e; --l-card: rgba(255,240,210,.05); --l-line: rgba(217,169,74,.35); --l-on-gold: #2a1606;
+  background: radial-gradient(900px 600px at 85% 15%, #4a1712 0%, transparent 60%), radial-gradient(700px 500px at 10% 90%, #3a110d 0%, transparent 60%), var(--l-bg); }
+:root[data-mode="light"] body.mk-m7-lacquer { --l-bg: #f3ead8; --l-bg2: #e9dcc2; --l-ink: #2a1a10; --l-ink2: #6b5338; --l-gold: #8a5a12; --l-gold2: #a8701c; --l-red: #b3261e; --l-card: rgba(255,255,255,.55); --l-line: rgba(138,90,18,.35); --l-on-gold: #fff8ea;
+  background: radial-gradient(900px 600px at 85% 15%, #f9f3e6 0%, transparent 60%), var(--l-bg); }
+.m7 { position: relative; overflow: hidden; color: var(--l-ink); max-width: 1220px; margin: 0 auto; padding: 40px 40px 24px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px 56px; align-items: center; }
+.m7-waves { position: absolute; right: -60px; bottom: -40px; width: 620px; height: 420px; opacity: .5; pointer-events: none; color: var(--l-gold); }
+.m7-seal { position: absolute; right: 40px; top: 30px; width: 74px; height: 74px; border-radius: 10px; border: 3px solid var(--l-red); color: var(--l-red); display: grid; place-items: center; font-weight: 1000; font-size: 15px; line-height: 1.05; text-align: center; transform: rotate(-8deg); opacity: .9; }
+.m7-k { display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 800; letter-spacing: .3em; text-transform: uppercase; color: var(--l-gold); }
+.m7-k::before, .m7-k::after { content: ''; width: 34px; height: 1px; background: var(--l-gold); }
+.m7 h1 { margin: 16px 0 14px; font-size: clamp(46px, 5vw + 2px, 88px); line-height: .95; font-weight: 1000; letter-spacing: -.03em; }
+.m7 h1 span { display: block; background: linear-gradient(100deg, var(--l-gold) 0%, var(--l-gold2) 40%, var(--l-gold) 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.m7-lead { margin: 0 0 26px; font-size: 18px; color: var(--l-ink2); max-width: 34ch; }
+.m7-acts { display: flex; flex-wrap: wrap; gap: 12px; }
+.m7-play { display: inline-flex; align-items: center; gap: 12px; min-height: 66px; padding: 0 32px; border-radius: 6px; background: linear-gradient(180deg, var(--l-gold2), var(--l-gold)) !important; color: var(--l-on-gold) !important; font-size: 23px !important; font-weight: 1000 !important; box-shadow: 0 0 0 1px var(--l-gold), 0 0 0 5px color-mix(in srgb, var(--l-gold) 25%, transparent), 0 18px 30px -14px rgba(0,0,0,.6); transition: transform var(--d-fast) var(--e-out); }
+.m7-play:hover { transform: translateY(-2px); }
+.m7-room { display: inline-flex; align-items: center; gap: 10px; min-height: 66px; padding: 0 26px; border-radius: 6px; border: 1.5px solid var(--l-gold) !important; color: var(--l-ink) !important; font-size: 20px; font-weight: 900; }
+.m7-opts { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.m7 .seg__b { background: transparent !important; border-color: var(--l-line) !important; color: var(--l-ink2); border-radius: 4px; }
+.m7 .seg__b[aria-pressed="true"] { background: var(--l-red) !important; border-color: var(--l-red) !important; color: #fff6e6; }
+.m7 .resume { margin-top: 18px; background: var(--l-card); border-color: var(--l-line); color: var(--l-ink); box-shadow: none; border-radius: 6px; max-width: 520px; }
+.m7 .resume .tag--brand { background: color-mix(in srgb, var(--l-red) 20%, transparent); color: var(--l-ink); }
+.m7 .resume__go { background: var(--l-red) !important; color: #fff6e6 !important; border-radius: 4px; }
+.m7-search { display: inline-flex; align-items: center; gap: 12px; min-height: 66px; padding: 0 20px; border-radius: 6px; border: 1.5px solid var(--l-gold); font-weight: 900; font-size: 19px; }
+.m7-search .ring { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--l-line); border-top-color: var(--l-gold2); animation: mk-spin 1s linear infinite; }
+.m7-search button { color: var(--l-gold) !important; font-weight: 800; margin-left: 6px; }
+/* right: the "lacquer box" with an inlaid mother-of-pearl board */
+.m7-box { position: relative; aspect-ratio: 1; max-width: 480px; justify-self: center; width: 100%; border-radius: 10px; padding: 26px; box-sizing: border-box; background: linear-gradient(145deg, #3b0f0b, #120706); box-shadow: 0 0 0 1px var(--l-gold), inset 0 0 0 10px #1a0807, inset 0 0 0 11px var(--l-gold), 0 40px 60px -24px rgba(0,0,0,.7); }
+.m7-grid { --c: calc(100% / 11); position: relative; width: 100%; height: 100%; background: linear-gradient(#0000 calc(var(--c) / 2 - .5px), rgba(243,213,138,.55) 0 calc(var(--c) / 2 + .5px), #0000 0) 0 0 / 100% var(--c), linear-gradient(90deg, #0000 calc(var(--c) / 2 - .5px), rgba(243,213,138,.55) 0 calc(var(--c) / 2 + .5px), #0000 0) 0 0 / var(--c) 100%; }
+.m7-grid .st { position: absolute; width: calc(var(--c) * .8); height: calc(var(--c) * .8); left: calc(var(--x) * var(--c) + var(--c) * .1); top: calc(var(--y) * var(--c) + var(--c) * .1); }
+.m7-grid .st--w { background: radial-gradient(circle at 34% 30%, #fffdf6 0, #f1e6cf 40%, #c9d7d4 70%, #e9d6ee 100%); }
+.m7-grid .st--b { background: radial-gradient(circle at 34% 30%, #7a2a20 0, #2a0c09 45%, #0b0302 80%); box-shadow: 0 0 0 1px rgba(243,213,138,.4); }
+.m7-dock { grid-column: 1 / -1; display: flex; justify-content: center; gap: 18px; padding-top: 8px; border-top: 1px solid var(--l-line); }
+.m7-dock .ico { color: var(--l-gold); border-radius: 6px; }
+.m7-dock .ico:hover, .m7-dock .ico:focus-visible { background: color-mix(in srgb, var(--l-gold) 14%, transparent); color: var(--l-gold2); }
+.m7-stats { display: flex; gap: 22px; margin-top: 22px; font-size: 14px; color: var(--l-ink2); }
+.m7-stats b { color: var(--l-gold2); font-size: 20px; font-weight: 1000; margin-right: 4px; }
+:root[data-mode="light"] .m7-stats b { color: var(--l-gold); }
+@media (max-width: 860px) {
+  .m7 { grid-template-columns: 1fr; padding: 22px 16px 20px; gap: 18px; }
+  .m7-box { order: -1; max-width: 220px; padding: 14px; }
+  .m7-seal { width: 56px; height: 56px; font-size: 12px; right: 14px; top: 14px; }
+  .m7 h1 { font-size: 46px; }
+  .m7-lead { font-size: 16px; margin-bottom: 18px; }
+  .m7-play, .m7-room, .m7-search { width: 100%; justify-content: center; box-sizing: border-box; }
+  .m7-dock { justify-content: space-around; gap: 0; }
+  .m7-stats { flex-wrap: wrap; gap: 10px 16px; }
+  .m7 .resume > span:nth-child(2) { display: none; }
+  .m7-waves { width: 360px; height: 240px; }
+}
+</style>
+<div class="mk mk-screen m7">
+  <svg class="m7-waves" viewBox="0 0 620 420" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+    <path d="M0 300 q40 -40 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0"/><path d="M0 330 q40 -40 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0"/><path d="M40 360 q40 -40 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0"/><path d="M0 390 q40 -40 80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0 t80 0"/>
+    <circle cx="470" cy="150" r="70"/><circle cx="470" cy="150" r="56" stroke-dasharray="2 6"/>
+  </svg>
+  <span class="m7-seal" aria-hidden="true">CỜ<br>CARO</span>
+  <div>
+    <span class="m7-k rise">Chào minhcaro</span>
+    <h1 class="rise rise-2">Ngũ tử<span>liên châu.</span></h1>
+    <p class="m7-lead rise rise-2">Năm quân thành hàng — ván cờ của người Việt, chơi ngay trên trình duyệt.</p>
+    <div class="m7-acts rise rise-3">
+      <button class="m7-play when-idle">{{i:play}} Chơi nhanh</button>
+      <div class="m7-search when-search" aria-live="polite"><span class="ring"></span>Đang tìm đối thủ… 0:12<button>Huỷ tìm</button></div>
+      <a class="m7-room" href="#">{{i:door-open}} Vào phòng</a>
+    </div>
+    <div class="m7-opts rise rise-3">
+      <div class="seg"><button class="seg__b" aria-pressed="true">Caro VN</button><button class="seg__b" aria-pressed="false">Freestyle</button></div>
+      <div class="seg"><button class="seg__b" aria-pressed="true">Tự động</button><button class="seg__b" aria-pressed="false">45s/nước</button><button class="seg__b" aria-pressed="false">30s/nước</button><button class="seg__b" aria-pressed="false">1+1</button></div>
+      <div class="seg"><button class="seg__b" aria-pressed="true">Xếp hạng</button><button class="seg__b" aria-pressed="false">Giao hữu</button></div>
+    </div>
+    <div class="resume rise rise-4"><span class="resume__dot"></span><span>Phòng chơi</span><b>vs. Lan Anh</b><span class="tag tag--brand">Lượt của bạn</span><a class="resume__go" href="#">Vào ván</a></div>
+    <div class="m7-stats rise rise-4"><span><b>128</b>đang online</span><span><b>23</b>ván đang chơi</span><span><b>12</b>phòng mở</span></div>
+  </div>
+  <div class="m7-box rise rise-3" aria-hidden="true"><div class="m7-grid">
+    <span class="st st--b" style="--x:3;--y:3"></span><span class="st st--b" style="--x:4;--y:4"></span><span class="st st--b" style="--x:5;--y:5"></span><span class="st st--b" style="--x:6;--y:6"></span>
+    <span class="st st--w" style="--x:4;--y:5"></span><span class="st st--w" style="--x:5;--y:4"></span><span class="st st--w" style="--x:6;--y:5"></span><span class="st st--w" style="--x:2;--y:2"></span><span class="st st--w" style="--x:7;--y:7"></span><span class="st st--b" style="--x:5;--y:6"></span>
+  </div></div>
+  <nav class="m7-dock rise rise-4" aria-label="Khám phá">
+    <a class="ico" href="/puzzles" aria-label="Học" data-tip="Học" data-tip-pos="up">{{i:target}}</a>
+    <a class="ico" href="/forum" aria-label="Diễn đàn" data-tip="Diễn đàn" data-tip-pos="up">{{i:chat-circle}}</a>
+    <a class="ico" href="#tournaments" aria-label="Giải đấu" data-tip="Giải đấu" data-tip-pos="up">{{i:trophy}}</a>
+    <a class="ico" href="/clubs.html" aria-label="Hội nhóm" data-tip="Hội nhóm" data-tip-pos="up">{{i:users-three}}</a>
+  </nav>
+</div>

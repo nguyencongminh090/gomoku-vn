@@ -163,7 +163,12 @@ input, button, textarea, select { font-family: inherit; }
     --duration-slow: 0s;
     --duration-xfast: 0s;
   }
+  /* ui-audit F3: animations with literal durations ignore the tokens above */
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* ui-audit F2: keep focused elements / anchor targets clear of the sticky top bar */
+html { scroll-padding-top: calc(var(--nav-h, 56px) + 8px); }
 
 html, body {
   min-height: 100vh;

@@ -254,11 +254,21 @@ describe('home hub (ui/home-hub)', () => {
     expect(visible()).toEqual(['panel-tables']);
   });
 
-  it('secondary features are icon-only links with an accessible name', async () => {
+  it('secondary features are links with a visible label (ui-audit home F4: title/aria-label alone is invisible on touch)', async () => {
     await boot('/index.html', EMPTY);
     const links = [...document.querySelectorAll('#screen-home .hub-ico')];
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['/puzzles', '/forum', '/index.html#tournaments', '/clubs.html']);
-    expect(links.every((a) => a.textContent.trim() === '' && a.getAttribute('aria-label'))).toBe(true);
+    expect(links.map((a) => a.querySelector('.hub-ico__l').getAttribute('data-i18n'))).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
+    expect(links.every((a) => a.textContent.trim() !== '' && !a.hasAttribute('aria-label'))).toBe(true);
+  });
+
+  it('the rule/time chips in the status line are buttons that open the options menu (ui-audit home F3)', async () => {
+    await boot('/index.html', EMPTY);
+    const menu = document.getElementById('qm-menu');
+    const chips = [...document.querySelectorAll('#qm-line .rtag--btn')];
+    expect(chips.map((b) => b.tagName)).toEqual(['BUTTON', 'BUTTON']);
+    chips[1].click();
+    expect([menu.hidden, document.getElementById('qm-menu-btn').getAttribute('aria-expanded')]).toEqual([false, 'true']);
   });
 
   it('the options menu toggles from the ▾ button, closes on Escape and outside click', async () => {
@@ -301,7 +311,9 @@ describe('quick match panel (B197)', () => {
     document.getElementById('qm-play').click();
     expect(client().emitted.pop()[1]).toMatchObject({ rated: false });
     expect(document.getElementById('qm-line').textContent).toContain('qm.guest_casual_only');
-    expect(document.querySelector('#qm-line .qm-line__note').textContent).toBe('qm.guest_casual_only');
+    expect(document.querySelector('#qm-line .qm-line__note').textContent).toBe('qm.guest_casual_only — qm.guest_login_rated');
+    // ui-audit home F2: "log in" is a real link, not plain text
+    expect(document.querySelector('#qm-line .qm-line__note a.qm-line__login').getAttribute('href')).toBe('/login.html');
     expect(document.querySelectorAll('#qm-line .rtag--rule').length).toBe(1);
   });
 

@@ -246,7 +246,7 @@
 
 .slot-card__stand .icon { width: 16px; height: 16px; }   /* #214: sprite x replaces the ✕ glyph */
 .slot-card__stand:hover {
-  color: #c0392b;
+  color: var(--c-error);   /* ui-audit F1 */
   background: rgba(192, 57, 43, 0.1);
 }
 

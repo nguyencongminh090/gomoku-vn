@@ -1076,6 +1076,7 @@
 :is(#modal-create, .modal-overlay--form) .modal__close { width: 32px; height: 32px; border: 0; background: var(--c-fill); border-radius: var(--radius); }
 :is(#modal-create, .modal-overlay--form) .modal__close .icon { width: 16px; height: 16px; }
 @media (max-width: 860px) { .modal__close, :is(#modal-create, .modal-overlay--form) .modal__close { width: 44px; height: 44px; } }   /* B306 */
+@media (max-width: 860px) { .toggle-switch::after { content: ""; position: absolute; inset: -8px 0; } }   /* ui-audit F6: 24px switch -> 40px hit area, no visual change (8px row gap, no overlap) */
 :is(#modal-create, .modal-overlay--form) .modal__body { padding: 20px 24px 24px; }
 :is(#modal-create, .modal-overlay--form) .setting-row { margin-bottom: 18px; }
 :is(#modal-create, .modal-overlay--form) .setting-label { font-size: var(--text-xs); font-weight: 600; letter-spacing: .1em; margin-bottom: 7px; }

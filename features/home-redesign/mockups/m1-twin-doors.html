@@ -1,0 +1,96 @@
+<style>
+/* M1 — Hai cửa: two equal "doors". Grid kept, leaves removed (cleaner background). */
+body.mk-m1-twin-doors::after { display: none; }
+.m1 { max-width: 1180px; margin: 0 auto; padding: 40px 32px 32px; display: grid; gap: 24px; align-content: start; }
+.m1-top { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; }
+.m1-top h1 { margin: 0; font-size: clamp(28px, 2.2vw + 14px, 44px); font-weight: 900; letter-spacing: -.02em; line-height: 1.1; }
+.m1-top h1 em { font-style: normal; color: var(--c-brand-text); }
+.m1-stats { display: flex; gap: 20px; margin-top: 10px; font-size: var(--text-sm); color: var(--c-ink-2); }
+.m1-stats b { color: var(--c-ink); font-size: 18px; font-weight: 900; margin-right: 4px; }
+.m1-stats .live::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c-state-playing); margin-right: 6px; animation: mk-pulse 2s infinite; }
+.m1-icons { margin-left: auto; display: flex; gap: 6px; padding: 6px; border-radius: 999px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
+.m1-doors { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.m1-door { position: relative; overflow: hidden; border-radius: 22px; padding: 28px; display: flex; flex-direction: column; gap: 20px; min-height: 440px; box-sizing: border-box; box-shadow: var(--shadow-card); }
+.m1-door h2 { margin: 0; display: flex; align-items: center; gap: 12px; font-size: 34px; font-weight: 900; letter-spacing: -.02em; }
+.m1-door h2 .icon { width: 36px; height: 36px; }
+.m1-door p.sub { margin: -10px 0 0; font-size: var(--text-md); }
+.m1-play { background: linear-gradient(150deg, color-mix(in srgb, var(--c-brand) 88%, #fff 0%) 0%, var(--c-brand-dark) 100%); color: #fff; }
+.m1-play .sub { color: rgba(255,255,255,.82); }
+.m1-play .lbl { color: rgba(255,255,255,.78); }
+.m1-play .seg__b { background: rgba(255,255,255,.12) !important; border-color: rgba(255,255,255,.28) !important; color: #fff; }
+.m1-play .seg__b[aria-pressed="true"] { background: #fff !important; border-color: #fff !important; color: var(--c-brand-dark); }
+.m1-go { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; border-radius: 16px; background: #fff !important; color: var(--c-brand-dark) !important; font-size: 22px !important; font-weight: 900 !important; box-shadow: 0 10px 24px -8px rgba(0,0,0,.45); transition: transform var(--d-fast) var(--e-out); }
+.m1-go:hover { transform: translateY(-2px); }
+.m1-art { position: absolute; right: -40px; top: -40px; width: 260px; height: 260px; opacity: .18; background:
+  linear-gradient(rgba(255,255,255,.9) 1px, transparent 1px) 0 0/26px 26px, linear-gradient(90deg, rgba(255,255,255,.9) 1px, transparent 1px) 0 0/26px 26px; border-radius: 50%; mask: radial-gradient(circle, #000 40%, transparent 70%); pointer-events: none; }
+.m1-room { background: var(--c-surface); border: 1px solid var(--c-border); }
+.m1-room h2 .icon { color: var(--c-brand-text); }
+.m1-room .sub { color: var(--c-ink-2); }
+.m1-code { display: flex; gap: 8px; }
+.m1-code input { flex: 1; min-width: 0; min-height: 52px; border-radius: 14px; border: 2px solid var(--c-border); background: var(--c-field); color: var(--c-ink); padding: 0 16px; font-weight: 800; font-size: 20px; line-height: 1; font-family: inherit; letter-spacing: .12em; text-transform: uppercase; }
+.m1-code button { min-height: 52px; padding: 0 22px; border-radius: 14px; background: var(--c-ink) !important; color: var(--c-on-ink) !important; font-weight: 900; font-size: 17px; }
+.m1-rooms { display: grid; gap: 8px; }
+.m1-r { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--c-surface-2); font-size: var(--text-sm); }
+.m1-r b { font-weight: 800; }
+.m1-r .act { margin-left: auto; font-weight: 800; color: var(--c-brand-text); }
+.m1-all { margin-top: auto; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 56px; border-radius: 16px; border: 2px solid var(--c-ink); font-weight: 900; font-size: 18px; }
+.m1-sum { display: none; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-sm); }
+.m1-sum .tag { background: rgba(255,255,255,.16); color: #fff; }
+.m1-sum a { margin-left: auto; font-weight: 800; text-decoration: underline !important; }
+.m1-search { margin-top: auto; display: grid; gap: 10px; text-align: center; }
+.m1-search .ring { width: 54px; height: 54px; margin: 0 auto; border-radius: 50%; border: 4px solid rgba(255,255,255,.25); border-top-color: #fff; animation: mk-spin 1s linear infinite; }
+.m1-search .t { font-size: 20px; font-weight: 900; }
+.m1-search button { min-height: 48px; border-radius: 14px; border: 2px solid rgba(255,255,255,.6); color: #fff; font-weight: 800; }
+@media (max-width: 860px) {
+  .m1 { padding: 20px 16px; gap: 16px; }
+  .m1-doors { grid-template-columns: 1fr; gap: 16px; }
+  .m1-door { min-height: 0; padding: 20px; border-radius: 18px; gap: 16px; }
+  .m1-door h2 { font-size: 26px; }
+  .m1-icons { margin-left: 0; width: 100%; justify-content: space-around; box-sizing: border-box; }
+  .m1-stats { gap: 14px; flex-wrap: wrap; }
+  .m1-r .tag, .m1 .resume > span:nth-child(2) { display: none; }
+  .m1-top { display: contents; } .m1-icons { order: 5; }
+  .m1-play > .when-idle:not(.m1-go):not(.m1-sum) { display: none !important; }
+  .m1-play .sub { display: none; }
+  .m1-sum { display: flex !important; }
+}
+</style>
+<div class="mk mk-screen m1">
+  <div class="m1-top rise">
+    <div>
+      <h1>Chào <em>minhcaro</em>, sẵn sàng một ván?</h1>
+      <div class="m1-stats"><span class="live"><b>128</b>đang online</span><span><b>23</b>ván đang chơi</span><span><b>6</b>đang tìm trận</span></div>
+    </div>
+    <nav class="m1-icons" aria-label="Khám phá">
+      <a class="ico" href="/puzzles" aria-label="Học" data-tip="Học">{{i:target}}</a>
+      <a class="ico" href="/forum" aria-label="Diễn đàn" data-tip="Diễn đàn">{{i:chat-circle}}</a>
+      <a class="ico" href="#tournaments" aria-label="Giải đấu" data-tip="Giải đấu">{{i:trophy}}</a>
+      <a class="ico" href="/clubs.html" aria-label="Hội nhóm" data-tip="Hội nhóm">{{i:users-three}}</a>
+    </nav>
+  </div>
+  <div class="resume rise rise-2"><span class="resume__dot"></span><span>Phòng chơi</span><b>vs. Lan Anh</b><span class="tag tag--brand">Lượt của bạn</span><a class="resume__go" href="#">Vào ván {{i:caret-right}}</a></div>
+  <div class="m1-doors">
+    <section class="m1-door m1-play rise rise-2" aria-labelledby="m1-qm">
+      <span class="m1-art" aria-hidden="true"></span>
+      <h2 id="m1-qm">{{i:play}} Chơi nhanh</h2>
+      <p class="sub">Ghép đối thủ trong vài giây.</p>
+      <div class="when-idle"><p class="lbl">Luật chơi</p><div class="seg"><button class="seg__b" aria-pressed="true">Caro VN</button><button class="seg__b" aria-pressed="false">Freestyle</button></div></div>
+      <div class="when-idle"><p class="lbl">Thời gian</p><div class="seg"><button class="seg__b" aria-pressed="true">Tự động</button><button class="seg__b" aria-pressed="false">45s/nước</button><button class="seg__b" aria-pressed="false">30s/nước</button><button class="seg__b" aria-pressed="false">1+1</button></div></div>
+      <div class="when-idle"><p class="lbl">Chế độ</p><div class="seg"><button class="seg__b" aria-pressed="true">Đấu xếp hạng</button><button class="seg__b" aria-pressed="false">Giao hữu</button></div></div>
+      <div class="m1-sum when-idle"><span>Đang chọn:</span><span class="tag">Caro VN</span><span class="tag">Tự động</span><span class="tag">Xếp hạng</span><a href="#" aria-label="Đổi tuỳ chọn chơi nhanh">Đổi</a></div>
+      <button class="m1-go when-idle">{{i:play}} Tìm trận</button>
+      <div class="m1-search when-search" aria-live="polite"><span class="ring"></span><span class="t">Đang tìm đối thủ xếp hạng… 0:12</span><span>6 người đang chờ · ước tính 20 giây</span><button>Huỷ tìm</button></div>
+    </section>
+    <section class="m1-door m1-room rise rise-3" aria-labelledby="m1-room">
+      <h2 id="m1-room">{{i:door-open}} Vào phòng</h2>
+      <p class="sub">Có mã phòng? Nhập ở đây — hoặc chọn bàn đang mở.</p>
+      <form class="m1-code" onsubmit="return false"><input aria-label="Mã phòng" placeholder="#A3F" maxlength="4"><button>Vào</button></form>
+      <div class="m1-rooms">
+        <a class="m1-r" href="#"><span class="st st--b"></span><b>#K7Q</b><span class="muted">tuan_99</span><span class="tag">Caro VN</span><span class="tag">30s/nước</span><span class="act">Ngồi</span></a>
+        <a class="m1-r" href="#"><span class="st st--w"></span><b>#B2M</b><span class="muted">hoangbao</span><span class="tag">Freestyle</span><span class="tag">1+1</span><span class="act">Ngồi</span></a>
+        <a class="m1-r" href="#">{{i:eye}}<b>#P9D</b><span class="muted">Khánh Linh vs quang.dv</span><span class="act">Xem</span></a>
+      </div>
+      <a class="m1-all" href="#">Xem 12 phòng đang mở {{i:caret-right}}</a>
+    </section>
+  </div>
+</div>

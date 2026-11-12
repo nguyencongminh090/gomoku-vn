@@ -362,9 +362,11 @@ export function renderQuickMatch() {
     const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
     if (qm.error) line.textContent = qm.error;
     else setSegments(line, [
-      t('qm.selected'), { text: t('rankings.cat_' + qm.rule), cls: 'rtag rtag--rule' }, qmTimeLabel(qm.time),
+      t('qm.selected'),
+      { text: t('rankings.cat_' + qm.rule), cls: 'rtag rtag--rule', opensMenu: true },
+      { text: qmTimeLabel(qm.time), opensMenu: true },
       waiting && t('qm.in_queue', { n: waiting }), eta && t('qm.eta', { s: eta }),
-      !member && { text: t('qm.guest_casual_only'), cls: 'qm-line__note' },
+      !member && { node: guestNote() },
     ]);
   }
 }
@@ -392,12 +394,29 @@ function wireHub() {
 }
 wireHub();
 
-/** Status line: first part = plain label, the rest = .rtag chips; `{ text, cls }` overrides a chip's class (ticket-rows.md: no "a · b · c" strings). */
+/** Status line: first part = plain label, the rest = .rtag chips; `{ text, cls }` overrides a chip's class (ticket-rows.md: no "a · b · c" strings).
+ *  `opensMenu`: the chip is a button that opens the options menu — a chip-shaped span did nothing on tap (ui-audit home F3). `{ node }` passes a built element. */
 function setSegments(line, parts) {
   line.replaceChildren(...parts.filter(Boolean).map((p, i) => {
     const o = typeof p === 'string' ? { text: p } : p;
-    return el('span', o.text, o.cls || (i ? 'rtag' : 'qm-line__lead'));
+    if (o.node) return o.node;
+    const cls = o.cls || (i ? 'rtag' : 'qm-line__lead');
+    if (!o.opensMenu) return el('span', o.text, cls);
+    const b = el('button', o.text, cls + ' rtag--btn');
+    b.type = 'button';
+    b.setAttribute('aria-controls', 'qm-menu');
+    b.addEventListener('click', (e) => { e.stopPropagation(); setMenuOpen(true); });
+    return b;
   }));
+}
+
+/** Guest reason + a real link to act on it (ui-audit home F2: "đăng nhập" was plain text). */
+function guestNote() {
+  const note = el('span', t('qm.guest_casual_only') + ' — ', 'qm-line__note');
+  const a = el('a', t('qm.guest_login_rated'), 'qm-line__login');
+  a.href = '/login.html';
+  note.appendChild(a);
+  return note;
 }
 
 function startSearch(rated) {
