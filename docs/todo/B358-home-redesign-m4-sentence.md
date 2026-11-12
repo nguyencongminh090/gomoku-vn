@@ -1,5 +1,5 @@
 # B358 — Home redesign: M4 "Câu lệnh" (sentence composer)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-12 — ui/home-sentence; npm test 3592/3592, cache-bust OK; browser pass 1280/768/375 light+dark + guest (0 console errors, CTAs above the tab bar at 375×812: play bottom 406, code bottom 579 < 742). Not built: sparkline + open-room count (no data in /api/home). Unverified in a browser: resume strip with a live game. Follow-ups #360, #361.
 **Area:** client/index.html (#screen-home), client/js/lobby-home.js, client/css/lobby.css (+ platform.css bg on home), client/js/i18n.js, client/tests/lobby-home*.test.js
 **From:** user 2026-11-12, picked M4 of `features/home-redesign/` (gallery index.html, mockups/m4-sentence.html)   **Depends:** —
 

@@ -77,5 +77,6 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#328.** Quick-match status line: facts as chips, guest sentence as a note `[Model: Sonnet 5]` — [detail](docs/todo/B328-qm-line-chips.md)
-- **#358.** Home redesign M4 "Câu lệnh" (sentence composer + code input) `[Model: Opus 5]` — [detail](docs/todo/B358-home-redesign-m4-sentence.md)
 - **#359.** Rename "Câu lạc bộ/CLB" → "Hội nhóm" site-wide (vi text only) `[Model: Sonnet 5]` — [detail](docs/todo/B359-rename-clubs-hoi-nhom.md)
+- **#360.** Home phone: move Học/Diễn đàn/Giải đấu/Hội nhóm links off the top (audit/redesign first) `[Model: Opus 5]` — [detail](docs/todo/B360-home-phone-secondary-nav.md)
+- **#361.** Home "Thách đấu" composer: challenge online players or friends `[Model: Opus 5]` — [detail](docs/todo/B361-home-challenge-composer.md)
