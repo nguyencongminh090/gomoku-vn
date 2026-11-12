@@ -14,6 +14,7 @@ const path = require('path');
 const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 const BODY = read('index.html').match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
 const SHELL = read('js/platform-shell.js');
+const HCH = read('js/home-challenge.js'); // #361 classic script, loaded before the index-entry module
 // ES module → classic script: swap the lobby.js import for a stub, expose the exports.
 const HOME = read('js/lobby-home.js')
   .replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { client, setHeroTab } = window.__lobbyStub;\n')
@@ -31,6 +32,7 @@ function stopPriorTicker() {
 
 async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
   stopPriorTicker();
+  if (window.HomeChallenge) window.HomeChallenge.close(); // a picker left open by the prior test keeps its document listener
   jest.useRealTimers();
   window.history.replaceState(null, '', url);
   document.body.innerHTML = BODY;
@@ -45,10 +47,15 @@ async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
   try { localStorage.clear(); } catch { /* ignore */ }
   if (opts.saved) localStorage.setItem('gvn_quickmatch', JSON.stringify(opts.saved));
   window.__home = {};
-  global.fetch = jest.fn((u) => Promise.resolve(String(u).startsWith('/api/home')
-    ? { ok: true, json: () => Promise.resolve(data) }
-    : { ok: false, json: () => Promise.resolve({}) }));
+  global.fetch = jest.fn((u, init) => {
+    const api = opts.api && opts.api(String(u), init);
+    if (api) return Promise.resolve(api);
+    return Promise.resolve(String(u).startsWith('/api/home')
+      ? { ok: true, json: () => Promise.resolve(data) }
+      : { ok: false, json: () => Promise.resolve({}) });
+  });
   window.eval(SHELL);
+  window.eval(HCH);
   window.PlatformShell.build('lobby');
   window.eval(HOME);
   await flush();
@@ -316,22 +323,22 @@ describe('quick match panel (B197)', () => {
   const buttons = () => [...document.querySelectorAll('#qm-actions button')].map((b) => b.textContent);
   const blanks = () => ['rule', 'time', 'mode'].map((k) => blank(k).textContent);
 
-  it('member: 2 rules, Auto + 45s/30s/1+1, rated|casual; sentence reads Caro · auto · rated by default; friend link shown', async () => {
+  it('member: 2 rules, Auto + 45s/30s/1+1, rated|casual; sentence reads Caro · auto · rated by default; Thách đấu shown', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     expect(optTexts('rule')).toEqual(['rankings.cat_freestyle', 'rankings.cat_caro']);
     expect(optTexts('time')).toEqual(['qm.time_auto', 'home.per_move{"s":"45"}', 'home.per_move{"s":"30"}', '1+1']);
     expect(optTexts('mode')).toEqual(['qm.find_rated', 'qm.find_casual']);
     expect(blanks()).toEqual(['rankings.cat_caro', 'qm.blank_time_auto', 'qm.blank_rated']);
-    expect(document.getElementById('qm-friend').hidden).toBe(false);
-    expect(document.getElementById('qm-friend').getAttribute('href')).toBe('/social.html#challenge');
+    expect(document.getElementById('qm-challenge').hidden).toBe(false);
+    expect(document.getElementById('qm-friend')).toBeNull(); // #361: the grey "Thách bạn bè" link is replaced
     expect(buttons()).toEqual([]); // idle: the one Chơi nhanh button is the action
   });
 
-  it('guest: casual only (play sends rated:false), mode is fixed text not a control, no friend link, reason + login link under the button', async () => {
+  it('guest: casual only (play sends rated:false), mode is fixed text not a control, no Thách đấu, reason + login link under the button', async () => {
     await boot('/index.html', EMPTY, GUEST);
     expect(blank('mode')).toBeNull();
     expect(document.querySelector('#home-q .hq-blank--fixed').textContent).toBe('qm.blank_casual');
-    expect(document.getElementById('qm-friend').hidden).toBe(true);
+    expect(document.getElementById('qm-challenge').hidden).toBe(true);
     document.getElementById('qm-play').click();
     expect(client().emitted.pop()[1]).toMatchObject({ rated: false });
     expect(document.querySelector('#qm-line .qm-line__note').textContent).toBe('qm.guest_casual_only — qm.guest_login_rated');
@@ -522,12 +529,12 @@ describe('Vào bằng mã (Phòng screen, B210)', () => {
     expect(window.joinRoom).toHaveBeenCalledWith('#A3F');
   });
 
-  it('home: "Thách đấu bạn bè" (under Chơi nhanh) links to the social page for members, hidden for guests', async () => {
+  it('home: Thách đấu (twin of Chơi nhanh) for members only — hidden for guests (#361)', async () => {
     await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Z' });
-    expect($('qm-friend').hidden).toBe(false);
-    expect($('qm-friend').getAttribute('href')).toBe('/social.html#challenge');
+    expect($('qm-challenge').hidden).toBe(false);
+    expect($('qm-challenge').closest('.hq-go')).toBe($('qm-play').parentElement);
     await boot('/index.html', EMPTY, { userId: 'g', isGuest: true, displayName: 'G' });
-    expect($('qm-friend').hidden).toBe(true);
+    expect($('qm-challenge').hidden).toBe(true);
   });
 });
 
@@ -608,5 +615,175 @@ describe('live push (B225)', () => {
       c.fire('disconnect'); c.fire('connect');
       expect(lsubs().filter((e) => e === 'lobby:subscribe')).toHaveLength(3);
     });
+  });
+});
+
+describe('#361 Thách đấu on Home', () => {
+  const MEMBER = { userId: 'u1', isGuest: false, displayName: 'Me' };
+  const $ = (id) => document.getElementById(id);
+  const ok = (body, status = 200) => ({ ok: status < 400, status, json: () => Promise.resolve(body) });
+  const FRIENDS = [{ username: 'lan', displayName: 'Lan Anh', avatarUrl: null, online: true }, { username: 'quang', displayName: 'Quang', avatarUrl: null, online: false }];
+  const ONLINE = [{ userId: 'k', username: 'khanh', displayName: 'Khánh', avatarUrl: null }, { userId: 'l', username: 'lan', displayName: 'Lan Anh', avatarUrl: null }];
+  let posts;
+  const api = (postReply = ok({ id: 'c1', rule: 'caro', games: 1, stake: 'none' }, 201)) => (u, init) => { // real reply shape: no `to`
+    if (u === '/api/friends') return ok({ friends: FRIENDS });
+    if (u === '/api/challenges/online') return ok({ players: ONLINE });
+    if (u === '/api/challenges' && init && init.method === 'POST') { posts.push(JSON.parse(init.body)); return postReply; }
+    return null;
+  };
+  const rows = () => [...document.querySelectorAll('#home-ch .hch__row')].map((r) => [r.dataset.u, !!r.querySelector('.hch__tag'), r.querySelector('.hch__av').classList.contains('is-on')]);
+  const tab = (k) => document.querySelector(`#home-ch .hch__tab[data-tab="${k}"]`).click();
+  const openPicker = async () => { $('qm-challenge').click(); await flush(); await flush(); };
+  beforeEach(() => { posts = []; });
+
+  it('opens a picker merging friends (online first) + online players by username; tabs filter; search filters', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    await openPicker();
+    expect($('qm-challenge').getAttribute('aria-expanded')).toBe('true');
+    expect($('home-ch').classList.contains('hch--sheet')).toBe(false); // jsdom: 768px tall, button at 0 → popover
+    expect($('home-ch').style.getPropertyValue('--ch-max')).toMatch(/^\d+px$/); // capped to the viewport (home doesn't scroll)
+    expect(document.activeElement).toBe(document.querySelector('#home-ch .hch__search'));
+    expect(rows()).toEqual([['lan', true, true], ['quang', true, false], ['khanh', false, true]]); // Lan once, tagged + online
+    tab('friends');
+    expect(rows().map((r) => r[0])).toEqual(['lan', 'quang']);
+    tab('online');
+    expect(rows().map((r) => r[0])).toEqual(['lan', 'khanh']);
+    tab('all');
+    const q = document.querySelector('#home-ch .hch__search');
+    q.value = 'KHÁ'; q.dispatchEvent(new Event('input'));
+    expect(rows().map((r) => r[0])).toEqual(['khanh']);
+    q.value = 'zzz'; q.dispatchEvent(new Event('input'));
+    expect([rows(), document.querySelector('#home-ch .hch__note').textContent]).toEqual([[], 'challenge.no_match']);
+  });
+
+  it('shows the sentence rules; send is disabled until a pick; sends one game with the sentence settings; notice in #qm-line', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api(), saved: { rule: 'freestyle', time: 'm45', rated: false, wall: false, portal: true } });
+    await openPicker();
+    expect([...document.querySelectorAll('#home-ch .hch__rules .rtag')].map((n) => n.textContent))
+      .toEqual(['rankings.cat_freestyle', 'home.per_move{"s":"45"}', 'qm.find_casual']);
+    const send = document.querySelector('#home-ch .hch__send');
+    expect([send.disabled, send.textContent]).toEqual([true, 'home.ch_pick']);
+    document.querySelector('#home-ch .hch__row[data-u="khanh"]').click();
+    expect([send.disabled, send.textContent]).toEqual([false, 'home.ch_send{"name":"Khánh"}']);
+    send.click();
+    await flush(); await flush();
+    expect(posts).toEqual([{ to: 'khanh', games: 1, stake: 'none', settings: {
+      boardSize: 17, winningRule: 'freestyle', ranked: false, ruleSwap2: false, ruleWall: false, rulePortal: true,
+      timerMode: 'per_move', timerSeconds: 45, timerIncrementSeconds: 0 } }]);
+    expect($('home-ch')).toBeNull();
+    expect(document.activeElement).toBe($('qm-challenge'));
+    expect($('qm-line').textContent).toBe('home.ch_sent{"name":"Khánh"}');
+    // the next pick clears the notice
+    document.querySelector('#home-q [data-blank="rule"]').click();
+    document.querySelector('#qm-pick [role="option"]').click();
+    expect($('qm-line').textContent).not.toContain('home.ch_sent');
+  });
+
+  it('server refusal (privacy gate) is shown in the picker, which stays open', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api(ok({ error: 'Người này không nhận thách đấu từ bạn.', code: 'CHALLENGE_NOT_ALLOWED' }, 403)) });
+    await openPicker();
+    document.querySelector('#home-ch .hch__row[data-u="lan"]').click();
+    document.querySelector('#home-ch .hch__send').click();
+    await flush(); await flush();
+    expect(document.querySelector('#home-ch .hch__status').textContent).toBe('Người này không nhận thách đấu từ bạn.');
+    expect(document.querySelector('#home-ch .hch__send').disabled).toBe(false);
+  });
+
+  it.each([
+    ['phone width', true, 0, true], ['short window: <460px under the button', false, 400, true], ['room under the button', false, 100, false],
+  ])('%s → sheet %s/%s → %s', async (_, phone, bottom, sheet) => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    window.matchMedia = (q) => ({ matches: phone && q.includes('860') });
+    $('qm-challenge').getBoundingClientRect = () => ({ top: bottom - 60, bottom, left: 0, right: 200, width: 200, height: 60 });
+    await openPicker();
+    expect($('home-ch').classList.contains('hch--sheet')).toBe(sheet);
+    expect(!!$('home-ch').style.getPropertyValue('--ch-max')).toBe(!sheet);
+    delete window.matchMedia;
+  });
+
+  it('outside tap: popover closes and the tap goes through; sheet closes and swallows the tap (scrim)', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    const tapPlay = () => { $('qm-play').dispatchEvent(new Event('pointerdown', { bubbles: true })); $('qm-play').click(); };
+    await openPicker();
+    tapPlay();
+    expect([$('home-ch'), window.__lobbyStub.client.emitted.filter(([ev]) => ev === 'match:join').length]).toEqual([null, 1]);
+    window.matchMedia = () => ({ matches: true });
+    await openPicker();
+    expect($('home-ch').classList.contains('hch--sheet')).toBe(true);
+    tapPlay();
+    expect([$('home-ch'), window.__lobbyStub.client.emitted.filter(([ev]) => ev === 'match:join').length]).toEqual([null, 1]);
+    delete window.matchMedia;
+  });
+
+  it('Escape closes and returns focus; a second click toggles it closed; searching hides the button and closes the picker', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    await openPicker();
+    $('home-ch').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect([$('home-ch'), document.activeElement, $('qm-challenge').getAttribute('aria-expanded')]).toEqual([null, $('qm-challenge'), 'false']);
+    await openPicker();
+    $('qm-challenge').click();
+    expect($('home-ch')).toBeNull();
+    await openPicker();
+    window.__lobbyStub.client.fire('match:status', { waiting: true, inBucket: 1 });
+    expect([$('home-ch'), $('qm-challenge').hidden]).toEqual([null, true]);
+    window.__lobbyStub.client.fire('match:status', { waiting: false });
+    expect($('qm-challenge').hidden).toBe(false);
+  });
+
+  it('"Tuỳ chọn khác" hands the picked player to the full #222 ChallengeModal (focus on Thách đấu when it opens, so Escape returns there)', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    let focusAtOpen = null;
+    window.ChallengeModal = { open: jest.fn(() => { focusAtOpen = document.activeElement; }) };
+    await openPicker();
+    document.querySelector('#home-ch .hch__row[data-u="quang"]').click();
+    document.querySelector('#home-ch .hch__more').click();
+    expect($('home-ch')).toBeNull();
+    expect(focusAtOpen).toBe($('qm-challenge'));
+    expect(window.ChallengeModal.open).toHaveBeenCalledWith(expect.objectContaining({ to: { username: 'quang', displayName: 'Quang', avatarUrl: null } }));
+    // the modal sends → notice names the picked player
+    window.ChallengeModal.open.mock.calls[0][0].onSent({ id: 'c2' });
+    expect($('qm-line').textContent).toBe('home.ch_sent{"name":"Quang"}');
+    delete window.ChallengeModal;
+  });
+
+  it('"Tuỳ chọn khác" with nobody picked opens the modal picker; its send shows a name-less notice', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    window.ChallengeModal = { open: jest.fn() };
+    await openPicker();
+    document.querySelector('#home-ch .hch__more').click();
+    const arg = window.ChallengeModal.open.mock.calls[0][0];
+    expect(arg.to).toBeUndefined();
+    arg.onSent({ id: 'c3' });
+    expect($('qm-line').textContent).toBe('home.ch_sent_any');
+    delete window.ChallengeModal;
+  });
+
+  it.each([
+    ['auto', ['per_move', 60, 0]], ['m30', ['per_move', 30, 0]], ['1+1', ['blitz', 60, 1]], ['5+3', ['blitz', 300, 3]], ['bogus', ['per_move', 60, 0]],
+  ])('util.settings: time %s → %j (auto plays the server default m60)', async (time, [timerMode, timerSeconds, timerIncrementSeconds]) => {
+    await boot('/index.html', EMPTY, MEMBER);
+    expect(window.HomeChallenge.util.settings({ rule: 'caro', time, rated: true, wall: true, portal: false }))
+      .toEqual({ boardSize: 17, winningRule: 'caro', ranked: true, ruleSwap2: false, ruleWall: true, rulePortal: false, timerMode, timerSeconds, timerIncrementSeconds });
+  });
+});
+
+describe('#360 phone links → labelled tiles after the room code', () => {
+  it('4 tiles (same hrefs as the greeting icons) sit after #home-code inside .hq-main; desktop icons unchanged', async () => {
+    await boot('/index.html');
+    const tiles = [...document.querySelectorAll('.hq-tiles a.hq-tile')];
+    const icons = [...document.querySelectorAll('.hq-hello .hub-more a')];
+    expect(tiles.map((a) => a.getAttribute('href'))).toEqual(icons.map((a) => a.getAttribute('href')));
+    expect(tiles.map((a) => a.querySelector('span').dataset.i18n)).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
+    const tilesNav = document.querySelector('.hq-tiles');
+    expect(tilesNav.parentElement.classList.contains('hq-main')).toBe(true);
+    expect(tilesNav.previousElementSibling.id).toBe('home-code');
+  });
+
+  it('CSS: tiles hidden by default (desktop) and shown ≤860px where the greeting icons are hidden', () => {
+    const css = read('css/shell.css');
+    expect(css).toMatch(/^body\.zen-lobby \.hq-tiles \{ display: none; \}/m);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.hq-hello \.hub-more \{ display: none; \}/);
+    expect(phone).toMatch(/\.hq-tiles \{ display: grid;/);
   });
 });

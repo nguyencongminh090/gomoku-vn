@@ -35,6 +35,7 @@ const {
   broadcastOnlineUsers,
   setHideOnline,
   isVisiblyOnline,
+  getOnlineUsersList,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
@@ -66,6 +67,7 @@ function init(io) {
   // socket-less pages rejoin by user id when room.html connects.
   require('../managers/ChallengeService').setHooks({
     isOnline: (userId) => sessions.has(userId),
+    onlineUsers: () => getOnlineUsersList(), // #361 Home picker: visible presence only
     onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
     onSeated: (room, userIds) => {
       const payload = roomManager.serializeRoom(room);

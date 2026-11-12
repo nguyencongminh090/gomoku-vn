@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=db200088" />
   <link rel="stylesheet" href="css/lobby.css?v=2bd69874" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
-  <link rel="stylesheet" href="css/shell.css?v=eb9947ee" />
+  <link rel="stylesheet" href="css/shell.css?v=f5a35c27" />
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
   <link rel="stylesheet" href="css/platform.css?v=a2a363cd" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
@@ -41,14 +41,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=e1f5e1e8" />
+  <link rel="modulepreload" href="js/i18n.js?v=804c6a8e" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
   <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
   <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
   <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=ecf6da2b" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=8aef2997" />
 
 </head>
 <body class="zen-lobby">
@@ -107,6 +107,8 @@
       <ul class="hq-menu" id="qm-pick" role="listbox" hidden></ul>
       <div class="hq-go">
         <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
+        <!-- #361 T2: twin of Chơi nhanh, members only; opens the opponent picker (home-challenge.js) with the sentence's rules. -->
+        <button type="button" class="hq-chal" id="qm-challenge" aria-haspopup="dialog" aria-expanded="false" hidden><span class="hq-chal__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-sword"></use></svg></span><span data-i18n="qm.challenge">Thách đấu</span></button>
         <div class="hq-search" id="qm-search" hidden>
           <span class="hq-ring" aria-hidden="true"></span>
           <span class="hq-search__text" id="qm-status" aria-live="polite"></span>
@@ -114,7 +116,6 @@
         </div>
       </div>
       <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
-      <a class="link-action hq-friend" id="qm-friend" href="/social.html#challenge" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-boxing-glove"></use></svg><span data-i18n="qm.challenge_friend">Thách bạn bè</span></a>
       <p class="hq-or" data-i18n="home.or_code">hoặc vào phòng bằng mã</p>
       <form class="hq-code" id="home-code" novalidate>
         <span class="hq-code__hash" aria-hidden="true">#</span>
@@ -125,6 +126,13 @@
         <a class="hq-list" id="hub-rooms" href="#rooms"><span data-i18n="home.open_rooms">Xem phòng đang mở</span><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-caret-right"></use></svg></a>
         <p class="hq-code__err" id="home-code-error" role="alert" hidden></p>
       </form>
+      <!-- #360 N2: phones only (≤860px) — the greeting-row icons become 4 labelled tiles here; desktop keeps .hub-more. -->
+      <nav class="hq-tiles" aria-label="Khám phá" data-i18n-aria="home.more_aria">
+        <a class="hq-tile" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-tile" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-tile" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Câu lạc bộ</span></a>
+      </nav>
     </div>
     <div class="hq-side" id="home-stats" role="group" aria-label="Đang diễn ra" data-i18n-aria="home.side_aria">
       <section class="hq-card" id="home-card-search">
@@ -589,6 +597,8 @@
 <script src="js/escape-utils.js?v=05dffe1e"></script>
 <script src="js/audio-manager.js?v=f0ca2309"></script>
 <script src="js/action-delegate.js?v=7420bbed"></script>
-<script type="module" src="js/index-entry.js?v=d52e1c03"></script>
+<script src="js/challenge-modal.js?v=ef75733c"></script>
+<script src="js/home-challenge.js?v=a4c4bc5e"></script>
+<script type="module" src="js/index-entry.js?v=d3cfd16b"></script>
 </body>
 </html>
