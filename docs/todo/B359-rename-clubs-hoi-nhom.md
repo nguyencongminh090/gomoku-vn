@@ -1,5 +1,5 @@
 # B359 — Rename "Câu lạc bộ / CLB" → "Hội nhóm" site-wide (vi)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-13 — vi text renamed (i18n.js, static html, server vi errors); leftovers = comments + *-mockup.html only
 **Area:** client/js/i18n.js (vi strings: lobby.clubs, profile.clubs, clubs.*, tournaments.*club*, err.*club*), nav/tab bar labels (platform-shell.js), client/*.html static fallback text, tests asserting the old text
 **From:** user 2026-11-12 (home redesign: "CLB -> Hội nhóm"; scope = toàn site)   **Depends:** —
 

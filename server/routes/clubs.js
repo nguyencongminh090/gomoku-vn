@@ -42,7 +42,7 @@ const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
 router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 120, keyGenerator });
 
-const write = [verifyToken, rejectGuests('Khách không dùng được CLB.'), writeLimiter, express.json({ limit: '4kb' })];
+const write = [verifyToken, rejectGuests('Khách không dùng được nhÃ³m.'), writeLimiter, express.json({ limit: '4kb' })];
 
 /** Wrap a handler: ClubError → its status/code, anything else → errorHandler. */
 const h = (fn) => (req, res, next) => {
@@ -194,7 +194,7 @@ router.delete('/:slug/events/:id', ...write, h((req, res) => {
 }));
 
 const readAuth = [verifyToken, (req, res, next) => {
-  if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được CLB.', code: 'GUEST_FORBIDDEN' });
+  if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được nhÃ³m.', code: 'GUEST_FORBIDDEN' });
   next();
 }];
 
