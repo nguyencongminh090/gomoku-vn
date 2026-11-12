@@ -26,9 +26,9 @@
   ];
   const TABS = [
     { id: 'lobby', href: '/index.html', icon: 'ph-bold-house', key: 'shell.lobby' },
+    { id: 'rooms', href: '/index.html#rooms', icon: 'ph-regular-door-open', key: 'shell.rooms' },
     { id: 'rankings', href: '/rankings.html', icon: 'ph-regular-crown-simple', key: 'lobby.rankings' },
     { id: 'tournaments', href: '/index.html#tournaments', icon: 'ph-regular-trophy', key: 'shell.tournaments_short' },
-    { id: 'clubs', href: '/clubs.html', icon: 'ph-regular-users-three', key: 'shell.clubs_short' },
     { id: 'me', href: '/login.html', icon: 'ph-regular-user-circle', key: 'shell.me' },
   ];
   const CATS = ['caro', 'standard', 'freestyle'];

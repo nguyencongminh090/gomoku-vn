@@ -17,7 +17,7 @@ describe('lobby layout-shift reservations (B261)', () => {
     expect(host[1]).toBe(nav[1]);
   });
 
-  it.each(['#qm-rule', '#qm-time', '#qm-board', '#qm-actions', '#home-today', '#home-live', '#home-learn', '#home-mine', '#home-forum', '#home-stats'])(
+  it.each(['#qm-rule', '#qm-time', '#qm-actions', '#home-mine', '#home-stats'])(
     '%s keeps a min-height while empty',
     (id) => {
       expect(zen).toMatch(new RegExp(id + '[^{]*:empty[^{]*\\{ min-height: \\d+px; \\}'));

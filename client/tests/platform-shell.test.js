@@ -30,11 +30,11 @@ describe('platform shell', () => {
   it('builds nav + tab bar with the active page marked in both', () => {
     boot(null);
     const active = [...document.querySelectorAll('.is-active')].map((a) => a.getAttribute('href'));
-    expect(active).toEqual(['/clubs.html', '/clubs.html']);
+    expect(active).toEqual(['/clubs.html']); // clubs left the mobile tab bar (ui/home-hub): marked in the desktop nav only
     expect([...document.querySelectorAll('.pnav__links a')].map((a) => a.dataset.tab))
       .toEqual(['lobby', 'rooms', 'tournaments', 'rankings', 'clubs', 'learn']);
     expect([...document.querySelectorAll('.ptabbar a')].map((a) => a.dataset.tab))
-      .toEqual(['lobby', 'rankings', 'tournaments', 'clubs', 'me']);
+      .toEqual(['lobby', 'rooms', 'rankings', 'tournaments', 'me']);
     expect(document.querySelector('.pnav__links a[data-tab="tournaments"]').getAttribute('href')).toBe('/index.html#tournaments');
     expect(document.body.classList.contains('pshell')).toBe(true);
   });

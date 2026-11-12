@@ -112,7 +112,7 @@ body.arena-room .seatcard__meta { display: flex; align-items: center; gap: 8px; 
 body.arena-room .seatcard__stand {
   display: grid; place-items: center; width: 32px; height: 32px;
   border: 1px solid var(--c-border); border-radius: var(--radius);
-  background: none; color: var(--c-ink-2); cursor: pointer;
+  background: var(--c-surface-2); color: var(--c-ink-2); cursor: pointer;
 }
 body.arena-room .seatcard__stand .icon { width: 16px; height: 16px; }
 body.arena-room .seatcard__clock {
@@ -131,7 +131,7 @@ body.arena-room .seatcard--low .seatcard__clock { background: var(--c-error); co
 body.arena-room .seatcard__sit {
   grid-column: 1 / -1;
   min-height: 44px; border: 1px dashed var(--c-border); border-radius: var(--radius);
-  background: none; color: var(--c-brand-text); font: inherit; font-weight: 700; cursor: pointer;
+  background: var(--c-surface-2); color: var(--c-brand-text); font: inherit; font-weight: 700; cursor: pointer;
 }
 body.arena-room .seatcard__sit:hover { background: var(--c-brand-light); }
 body.arena-room .seatcard__seat { font-size: 13px; font-weight: 700; color: var(--c-ink-3); }
@@ -214,7 +214,7 @@ body.arena-room .gtoast--danger .gtoast__bar { background: var(--c-error); }
 body.arena-room .gtoast__btn {
   flex: none; display: grid; place-items: center;
   width: 36px; height: 36px; border-radius: var(--radius);
-  border: 1px solid var(--c-border); background: none; color: var(--c-ink-2); cursor: pointer;
+  border: 1px solid var(--c-border); background: var(--c-surface-2); color: var(--c-ink-2); cursor: pointer;
 }
 body.arena-room .gtoast__btn--ok { background: var(--c-brand); border-color: var(--c-brand); color: var(--c-on-brand); }
 body.arena-room .gtoast__btn .icon { width: 20px; height: 20px; }
