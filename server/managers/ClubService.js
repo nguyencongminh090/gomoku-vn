@@ -60,7 +60,7 @@ function slugify(name) {
 
 function getClub(slug) {
   const club = db().prepare('SELECT * FROM clubs WHERE slug = ?').get(String(slug).toLowerCase().slice(0, 60));
-  if (!club) throw new ClubError('CLUB_NOT_FOUND', 404, 'Không tìm thấy câu lạc bộ.');
+  if (!club) throw new ClubError('CLUB_NOT_FOUND', 404, 'Không tìm thấy hội nhóm.');
   return club;
 }
 
@@ -104,7 +104,7 @@ function validateIdentity({ color, tag, announcement }) {
   }
   if (tag !== undefined) {
     const v = typeof tag === 'string' ? tag.trim().toUpperCase() : '';
-    if (v && !TAG_RE.test(v)) throw new ClubError('CLUB_TAG_INVALID', 400, 'Ký hiệu CLB gồm 2–4 chữ hoặc số.');
+    if (v && !TAG_RE.test(v)) throw new ClubError('CLUB_TAG_INVALID', 400, 'Ký hiệu nhÃ³m gồm 2–4 chữ hoặc số.');
     out.tag = v;
   }
   if (announcement !== undefined) {
@@ -121,7 +121,7 @@ function validateText({ name, description }, { requireName }) {
   if (requireName || name !== undefined) {
     const n = typeof name === 'string' ? name.trim().replace(/\s+/g, ' ') : '';
     if (n.length < NAME_MIN || n.length > NAME_MAX || !slugify(n)) {
-      throw new ClubError('CLUB_NAME_INVALID', 400, `Tên CLB dài ${NAME_MIN}–${NAME_MAX} ký tự.`);
+      throw new ClubError('CLUB_NAME_INVALID', 400, `Tên nhÃ³m dài ${NAME_MIN}–${NAME_MAX} ký tự.`);
     }
     out.name = n;
   }
@@ -149,10 +149,10 @@ function createClub(userId, input) {
 
   return db().transaction(() => {
     if (countUserClubs(userId) >= MAX_CLUBS_PER_USER) {
-      throw new ClubError('CLUB_LIMIT', 409, `Mỗi người chỉ ở tối đa ${MAX_CLUBS_PER_USER} CLB.`);
+      throw new ClubError('CLUB_LIMIT', 409, `Mỗi người chỉ ở tối đa ${MAX_CLUBS_PER_USER} nhÃ³m.`);
     }
     if (db().prepare('SELECT 1 FROM clubs WHERE slug = ?').get(slug)) {
-      throw new ClubError('CLUB_NAME_TAKEN', 409, 'Tên CLB đã được dùng.');
+      throw new ClubError('CLUB_NAME_TAKEN', 409, 'Tên nhÃ³m đã được dùng.');
     }
     const id = crypto.randomUUID();
     db().prepare('INSERT INTO clubs (id, slug, name, description, join_policy, owner_id, created_at, color, tag) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
@@ -200,7 +200,7 @@ function setImageVersion(club, kind, clear) {
 
 function deleteClub(userId, slug) {
   const club = getClub(slug);
-  if (roleOf(club.id, userId) !== 'owner') throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ chủ nhiệm xoá được CLB.');
+  if (roleOf(club.id, userId) !== 'owner') throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ chủ nhiệm xoá được nhÃ³m.');
   db().prepare('DELETE FROM clubs WHERE id = ?').run(club.id); // members cascade
   for (const kind of Object.keys(KINDS)) removeImage(club.id, kind);
 }
@@ -213,11 +213,11 @@ function deleteClub(userId, slug) {
 function join(userId, slug) {
   return db().transaction(() => {
     const club = getClub(slug);
-    if (roleOf(club.id, userId)) throw new ClubError('CLUB_ALREADY_MEMBER', 409, 'Bạn đã ở trong CLB này.');
+    if (roleOf(club.id, userId)) throw new ClubError('CLUB_ALREADY_MEMBER', 409, 'Bạn đã ở trong nhÃ³m này.');
     const invited = db().prepare('SELECT 1 FROM club_invites WHERE club_id = ? AND user_id = ?').get(club.id, userId);
     if (club.join_policy === 'open' || invited) {
-      if (countUserClubs(userId) >= MAX_CLUBS_PER_USER) throw new ClubError('CLUB_LIMIT', 409, `Mỗi người chỉ ở tối đa ${MAX_CLUBS_PER_USER} CLB.`);
-      if (countMembers(club.id) >= MAX_MEMBERS) throw new ClubError('CLUB_FULL', 409, 'CLB đã đủ thành viên.');
+      if (countUserClubs(userId) >= MAX_CLUBS_PER_USER) throw new ClubError('CLUB_LIMIT', 409, `Mỗi người chỉ ở tối đa ${MAX_CLUBS_PER_USER} nhÃ³m.`);
+      if (countMembers(club.id) >= MAX_MEMBERS) throw new ClubError('CLUB_FULL', 409, 'NhÃ³m đã đủ thành viên.');
       db().prepare("INSERT INTO club_members (club_id, user_id, role, joined_at) VALUES (?, ?, 'member', ?)").run(club.id, userId, now());
       db().prepare('DELETE FROM club_invites WHERE club_id = ? AND user_id = ?').run(club.id, userId);
       log(club.id, 'join', userId, userId, invited ? 'invited' : '');
@@ -235,8 +235,8 @@ function join(userId, slug) {
 function leave(userId, slug) {
   const club = getClub(slug);
   const role = roleOf(club.id, userId);
-  if (!role) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Bạn không ở trong CLB này.');
-  if (role === 'owner') throw new ClubError('CLUB_OWNER_LEAVE', 409, 'Chủ nhiệm cần chuyển quyền hoặc xoá CLB trước.');
+  if (!role) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Bạn không ở trong nhÃ³m này.');
+  if (role === 'owner') throw new ClubError('CLUB_OWNER_LEAVE', 409, 'Chủ nhiệm cần chuyển quyền hoặc xoá nhÃ³m trước.');
   db().prepare('DELETE FROM club_members WHERE club_id = ? AND user_id = ?').run(club.id, userId);
   if (role === 'pending') {
     for (const id of staffIds(club.id)) notifications.drop(id, 'club_request', userId);
@@ -250,8 +250,8 @@ function approve(actorId, slug, targetId) {
     const club = getClub(slug);
     if (!isStaff(roleOf(club.id, actorId))) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
     if (roleOf(club.id, targetId) !== 'pending') throw new ClubError('CLUB_NOT_PENDING', 404, 'Không có yêu cầu này.');
-    if (countMembers(club.id) >= MAX_MEMBERS) throw new ClubError('CLUB_FULL', 409, 'CLB đã đủ thành viên.');
-    if (countUserClubs(targetId) >= MAX_CLUBS_PER_USER) throw new ClubError('CLUB_TARGET_LIMIT', 409, 'Người này đã ở đủ số CLB tối đa.');
+    if (countMembers(club.id) >= MAX_MEMBERS) throw new ClubError('CLUB_FULL', 409, 'NhÃ³m đã đủ thành viên.');
+    if (countUserClubs(targetId) >= MAX_CLUBS_PER_USER) throw new ClubError('CLUB_TARGET_LIMIT', 409, 'Người này đã ở đủ số nhÃ³m tối đa.');
     db().prepare("UPDATE club_members SET role = 'member', joined_at = ? WHERE club_id = ? AND user_id = ?").run(now(), club.id, targetId);
     db().prepare('DELETE FROM club_invites WHERE club_id = ? AND user_id = ?').run(club.id, targetId);
     log(club.id, 'approve', actorId, targetId);
@@ -266,7 +266,7 @@ function remove(actorId, slug, targetId) {
   const actor = roleOf(club.id, actorId);
   const target = roleOf(club.id, targetId);
   if (!isStaff(actor)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền.');
-  if (!target) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không ở trong CLB.');
+  if (!target) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không ở trong nhÃ³m.');
   if (target === 'owner' || (isStaff(target) && actor !== 'owner')) {
     throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền với người này.');
   }
@@ -280,7 +280,7 @@ function invite(actorId, slug, targetId) {
   return db().transaction(() => {
     const club = getClub(slug);
     requireStaff(club, actorId);
-    if (roleOf(club.id, targetId)) throw new ClubError('CLUB_ALREADY_MEMBER', 409, 'Người này đã ở trong CLB hoặc đang chờ duyệt.');
+    if (roleOf(club.id, targetId)) throw new ClubError('CLUB_ALREADY_MEMBER', 409, 'Người này đã ở trong nhÃ³m hoặc đang chờ duyệt.');
     const open = db().prepare('SELECT COUNT(*) AS n FROM club_invites WHERE club_id = ?').get(club.id).n;
     if (open >= MAX_INVITES) throw new ClubError('CLUB_INVITE_LIMIT', 409, `Tối đa ${MAX_INVITES} lời mời đang chờ.`);
     db().prepare('INSERT OR REPLACE INTO club_invites (club_id, user_id, invited_by, created_at) VALUES (?, ?, ?, ?)')
@@ -326,7 +326,7 @@ function avgRatingSql() {
 }
 
 /**
- * "Hạng CLB": clubs ordered by the average rating of their ranked members
+ * "Hạng nhÃ³m": clubs ordered by the average rating of their ranked members
  * (≥ RANKING_MIN_GAMES games) in a category; clubs with no ranked member have no
  * rank. Ties → more members, then slug.
  * @returns {Map<string, number>} club id → 1-based rank
