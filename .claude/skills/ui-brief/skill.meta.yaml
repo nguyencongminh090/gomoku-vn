@@ -6,7 +6,7 @@ apply_when: "starting or restyling a website or web app and a visual direction m
 scope: global
 project: ""
 language: en
-knowledge: vpick-choosing-style,vpick-style-by-site-type,vpick-brand-attributes,vpick-trends-longevity,vbase-color,vbase-typography,vbase-layout-spacing,vbase-eye-flow-scanning,vbase-depth-motion,vbase-visual-principles
+knowledge: vpick-choosing-style,vpick-style-by-site-type,vpick-brand-attributes,vpick-trends-longevity,vbase-color,vbase-typography,vbase-layout-spacing,vbase-eye-flow-scanning,vbase-depth-motion,vbase-visual-principles,fe-web-animation,fe-stock-images
 conflicts: ""
 source: "authored in tree 2026-10-20"
-last_reviewed: 2026-10-20
+last_reviewed: 2026-11-12

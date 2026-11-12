@@ -8,6 +8,7 @@ prompt=$(json_get_from "$input" prompt)
 shopt -s nocasematch
 case "$prompt" in
   *design*|*redesign*|*restyle*|*"landing page"*|*website*|*"giao diện"*|*"thiết kế"*) ;;
+  *animation*|*animate*|*"page transition"*|*"hero image"*|*"stock photo"*|*"hiệu ứng"*|*"ảnh nền"*) ;;
   *) exit 0 ;;
 esac
 [ -f "$(project_dir)/DESIGN.md" ] && exit 0

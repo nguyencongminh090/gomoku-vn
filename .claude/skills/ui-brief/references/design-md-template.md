@@ -36,7 +36,8 @@ Reason: <one line>
 - Type scale: <body size >= 16px, ratio, heading sizes, font families, line heights>
 - Spacing unit: <base unit, e.g. 8px, and the scale>
 - Radius: <values>
-- Motion: <durations, easing, reduced-motion behavior>
+- Motion: <level none | subtle | expressive | immersive; durations fast/base/slow, e.g. 120/200/320ms; easing; reduced-motion behavior>
+- Imagery: <source: own photos | stock (Pexels, Pixabay) | illustration | none; subjects; mood; people yes/no; color treatment; aspect ratios>
 
 ## Layout
 - Sections (top to bottom): <list>
