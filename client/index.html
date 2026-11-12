@@ -27,10 +27,10 @@
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="stylesheet" href="css/main.css?v=11c2bf6e" />
-  <link rel="stylesheet" href="css/tokens.css?v=75d051bd" />
+  <link rel="stylesheet" href="css/tokens.css?v=db200088" />
   <link rel="stylesheet" href="css/lobby.css?v=277e5d08" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
-  <link rel="stylesheet" href="css/shell.css?v=8a3540ee" />
+  <link rel="stylesheet" href="css/shell.css?v=38efd4be" />
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
   <link rel="stylesheet" href="css/platform.css?v=a2a363cd" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
@@ -41,14 +41,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=3ad2d2a0" />
+  <link rel="modulepreload" href="js/i18n.js?v=d76c872d" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
   <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
   <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
   <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=7b8483fd" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=5d4c0e3b" />
 
 </head>
 <body class="zen-lobby">
@@ -116,10 +116,11 @@
       <div class="prows" id="home-mine"></div>
     </div>
     <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
-      <a class="hub-ico" href="/puzzles" aria-label="Học & giải đố" data-i18n-aria="home.learn" title="Học & giải đố"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg></a>
-      <a class="hub-ico" href="/forum" aria-label="Diễn đàn" data-i18n-aria="home.forum" title="Diễn đàn"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg></a>
-      <a class="hub-ico" href="/index.html#tournaments" aria-label="Giải đấu" data-i18n-aria="tabs.tournaments" title="Giải đấu"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg></a>
-      <a class="hub-ico" href="/clubs.html" aria-label="CLB" data-i18n-aria="lobby.clubs" title="CLB"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg></a>
+      <!-- Visible labels (ui-audit home F4): a title/aria-label alone is invisible on touch. -->
+      <a class="hub-ico" href="/puzzles"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg></span><span class="hub-ico__l" data-i18n="shell.learn">Học</span></a>
+      <a class="hub-ico" href="/forum"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg></span><span class="hub-ico__l" data-i18n="home.forum">Diễn đàn</span></a>
+      <a class="hub-ico" href="/index.html#tournaments"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg></span><span class="hub-ico__l" data-i18n="tabs.tournaments">Giải đấu</span></a>
+      <a class="hub-ico" href="/clubs.html"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg></span><span class="hub-ico__l" data-i18n="lobby.clubs">Câu lạc bộ</span></a>
     </nav>
   </section>
 
@@ -573,6 +574,6 @@
 <script src="js/escape-utils.js?v=05dffe1e"></script>
 <script src="js/audio-manager.js?v=f0ca2309"></script>
 <script src="js/action-delegate.js?v=7420bbed"></script>
-<script type="module" src="js/index-entry.js?v=6de16597"></script>
+<script type="module" src="js/index-entry.js?v=91258c88"></script>
 </body>
 </html>

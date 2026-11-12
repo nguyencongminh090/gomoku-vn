@@ -91,7 +91,7 @@
 
   --c-brand:        #4d7c1f;
   --c-brand-dark:   #3d6418;
-  --c-brand-text:   #41701a;
+  --c-brand-text:   #3d6418;   /* = brand-dark: 4.67:1 on the 18% brand tint (.qm-line .rtag--rule), #41701a gave 3.98 */
   --c-brand-light:  rgba(77,124,31,0.10);
 
   --c-accent:       #a63d00;

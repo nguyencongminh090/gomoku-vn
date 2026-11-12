@@ -17,7 +17,13 @@ describe('lobby layout-shift reservations (B261)', () => {
     expect(host[1]).toBe(nav[1]);
   });
 
-  it.each(['#qm-rule', '#qm-time', '#qm-actions', '#home-mine', '#home-stats'])(
+  // #qm-actions is no longer reserved: since the hub (Chơi nhanh is #qm-play) it only fills with the
+  // cancel button of a search the user started — input-driven, so not CLS (ui-audit home F8).
+  it('#qm-actions collapses while empty', () => {
+    expect(zen).toMatch(/#qm-actions:empty \{ display: none; \}/);
+  });
+
+  it.each(['#qm-rule', '#qm-time', '#home-mine', '#home-stats'])(
     '%s keeps a min-height while empty',
     (id) => {
       expect(zen).toMatch(new RegExp(id + '[^{]*:empty[^{]*\\{ min-height: \\d+px; \\}'));
