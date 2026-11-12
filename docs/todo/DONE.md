@@ -1,3 +1,4 @@
+✅ - **#358.** Home redesign M4 "Câu lệnh" (sentence composer + code input) `[Model: Opus 5]` — [detail](docs/todo/B358-home-redesign-m4-sentence.md)
 ✅ - **#357.** Integrity pairs: Elo-expected z-score + "weaker side wins" tag `[Model: Sonnet 5]` — [detail](docs/todo/B357-integrity-pair-elo-z.md)
 ✅ - **#356.** Integrity detector: gain_from_one needs ≥20 games, narrower hub rule `[Model: Sonnet 5]` — [detail](docs/todo/B356-integrity-detector-calibration.md)
 ✅ - **#355.** Integrity tab: community-sorted adjacency matrix view `[Model: Opus 5]` — [detail](docs/todo/B355-integrity-adjacency-matrix.md)

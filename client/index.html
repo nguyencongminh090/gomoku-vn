@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=db200088" />
   <link rel="stylesheet" href="css/lobby.css?v=2bd69874" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
-  <link rel="stylesheet" href="css/shell.css?v=38efd4be" />
+  <link rel="stylesheet" href="css/shell.css?v=eb9947ee" />
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
   <link rel="stylesheet" href="css/platform.css?v=a2a363cd" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
@@ -41,14 +41,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=d76c872d" />
+  <link rel="modulepreload" href="js/i18n.js?v=e1f5e1e8" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
   <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
   <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
   <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=5d4c0e3b" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=ecf6da2b" />
 
 </head>
 <body class="zen-lobby">
@@ -83,45 +83,60 @@
 
   <!-- ══════════════════════ SCREEN: Chơi (home dashboard, B195) ════════════ -->
   <!-- Filled by js/lobby-home.js from GET /api/home. -->
-  <section class="lobby-home psplit" id="screen-home" aria-labelledby="hero-title">
-    <div class="hstats" id="home-stats" aria-live="off"></div>
-    <div class="hnews" id="home-news" hidden></div>
-    <div class="hub">
-      <button type="button" class="hub-btn hub-btn--room" id="hub-rooms">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg><span data-i18n="home.enter_room">Vào Phòng</span>
-      </button>
-      <div class="hub-qm" id="hub-qm">
-        <div class="hub-split">
-          <button type="button" class="hub-btn hub-btn--play" id="qm-play">
-            <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-play"></use></svg><span data-i18n="qm.play">Chơi nhanh</span>
-          </button>
-          <button type="button" class="hub-btn hub-btn--menu" id="qm-menu-btn" aria-haspopup="true" aria-expanded="false" aria-controls="qm-menu" aria-label="Tuỳ chọn chơi nhanh" data-i18n-aria="qm.menu_aria">
-            <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-sliders-horizontal"></use></svg>
-          </button>
-        </div>
-        <div class="hub-menu" id="qm-menu" hidden>
-          <p class="qm-lbl" data-i18n="qm.lbl_rule">Luật chơi</p>
-          <div class="pchips" id="qm-rule" role="group" aria-label="Luật" data-i18n-aria="qm.rule_aria"></div>
-          <p class="qm-lbl" data-i18n="qm.lbl_time">Thời gian · mỗi người</p>
-          <div class="pchips" id="qm-time" role="group" aria-label="Thời gian" data-i18n-aria="qm.time_aria"></div>
-          <div class="pchips" id="qm-mode" role="group" aria-label="Chế độ" data-i18n-aria="qm.mode_aria" hidden></div>
-          <a class="link-action hub-menu__friend" id="qm-friend" href="/social.html#challenge" hidden><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-boxing-glove"></use></svg><span data-i18n="qm.challenge_friend">Thách bạn bè</span></a>
-        </div>
-      </div>
-      <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
-      <div class="pactions" id="qm-actions"></div>
+  <section class="lobby-home hq" id="screen-home" aria-labelledby="home-q">
+    <!-- #358 M4 "Câu lệnh" (DESIGN.md): greeting row → resume strip → sentence composer + Chơi nhanh → room code; right column = live counts. -->
+    <div class="hq-hello">
+      <span class="hq-hi" id="home-hello"></span>
+      <span class="hq-online" id="home-online" hidden></span>
+      <!-- Icon-only + aria-label + tooltip (user decision 2026-11-12, reverses ui-audit home F4). -->
+      <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
+        <a class="hub-ico" href="/puzzles" aria-label="Học" data-i18n-aria="shell.learn"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg></a>
+        <a class="hub-ico" href="/forum" aria-label="Diễn đàn" data-i18n-aria="home.forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg></a>
+        <a class="hub-ico" href="/index.html#tournaments" aria-label="Giải đấu" data-i18n-aria="tabs.tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg></a>
+        <a class="hub-ico" href="/clubs.html" aria-label="Câu lạc bộ" data-i18n-aria="lobby.clubs"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg></a>
+      </nav>
     </div>
+    <div class="hnews" id="home-news" hidden></div>
     <div class="ppanel hp-mine" id="home-mine-card" hidden>
       <h2 class="ph2" data-i18n="home.my_games">Phòng chơi</h2>
       <div class="prows" id="home-mine"></div>
     </div>
-    <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
-      <!-- Visible labels (ui-audit home F4): a title/aria-label alone is invisible on touch. -->
-      <a class="hub-ico" href="/puzzles"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg></span><span class="hub-ico__l" data-i18n="shell.learn">Học</span></a>
-      <a class="hub-ico" href="/forum"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg></span><span class="hub-ico__l" data-i18n="home.forum">Diễn đàn</span></a>
-      <a class="hub-ico" href="/index.html#tournaments"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg></span><span class="hub-ico__l" data-i18n="tabs.tournaments">Giải đấu</span></a>
-      <a class="hub-ico" href="/clubs.html"><span class="hub-ico__c"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg></span><span class="hub-ico__l" data-i18n="lobby.clubs">Câu lạc bộ</span></a>
-    </nav>
+    <div class="hq-main">
+      <!-- Static default sentence = the first render's shape (no reflow of a 60px h1); lobby-home.js rebuilds it with the saved pick. -->
+      <h1 class="hq-q" id="home-q">Tìm cho tôi một ván <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">Caro VN</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">thời gian tự động</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">xếp hạng</button>.</h1>
+      <ul class="hq-menu" id="qm-pick" role="listbox" hidden></ul>
+      <div class="hq-go">
+        <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
+        <div class="hq-search" id="qm-search" hidden>
+          <span class="hq-ring" aria-hidden="true"></span>
+          <span class="hq-search__text" id="qm-status" aria-live="polite"></span>
+          <div class="pactions" id="qm-actions"></div>
+        </div>
+      </div>
+      <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
+      <a class="link-action hq-friend" id="qm-friend" href="/social.html#challenge" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-boxing-glove"></use></svg><span data-i18n="qm.challenge_friend">Thách bạn bè</span></a>
+      <p class="hq-or" data-i18n="home.or_code">hoặc vào phòng bằng mã</p>
+      <form class="hq-code" id="home-code" novalidate>
+        <span class="hq-code__hash" aria-hidden="true">#</span>
+        <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
+        <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
+        <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
+        <button type="submit" class="hq-enter"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg><span data-i18n="home.enter_room">Vào phòng</span></button>
+        <a class="hq-list" id="hub-rooms" href="#rooms"><span data-i18n="home.open_rooms">Xem phòng đang mở</span><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-caret-right"></use></svg></a>
+        <p class="hq-code__err" id="home-code-error" role="alert" hidden></p>
+      </form>
+    </div>
+    <div class="hq-side" id="home-stats" role="group" aria-label="Đang diễn ra" data-i18n-aria="home.side_aria">
+      <section class="hq-card" id="home-card-search">
+        <h2 class="hq-card__h" data-i18n="home.card_searching">Đang tìm trận</h2>
+        <p class="hq-num"><b id="home-n-search">–</b><span class="muted" id="home-n-search-l"></span></p>
+      </section>
+      <section class="hq-card" id="home-card-live">
+        <h2 class="hq-card__h" data-i18n="home.card_playing">Đang chơi</h2>
+        <p class="hq-num"><b id="home-n-live">–</b><span class="muted" id="home-n-live-l"></span></p>
+        <div id="home-live-one"></div>
+      </section>
+    </div>
   </section>
 
   <!-- ══════════════════════════ SCREEN: Phòng (room list) ══════════════════ -->
@@ -574,6 +589,6 @@
 <script src="js/escape-utils.js?v=05dffe1e"></script>
 <script src="js/audio-manager.js?v=f0ca2309"></script>
 <script src="js/action-delegate.js?v=7420bbed"></script>
-<script type="module" src="js/index-entry.js?v=91258c88"></script>
+<script type="module" src="js/index-entry.js?v=d52e1c03"></script>
 </body>
 </html>
