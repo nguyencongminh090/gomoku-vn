@@ -1,0 +1,89 @@
+<style>
+/* M8 — Bento Arena: one grid of tiles, sized by importance. Chơi nhanh = 2×2 hero tile with options,
+   Vào phòng = 2×1 tile with code input + room count, a live-game tile (static board thumbnail),
+   resume tile, stats tile, and one slim tile holding the four icon-only links. */
+body.mk-m8-bento::after { display: none; }
+.m8 { max-width: 1200px; margin: 0 auto; padding: 28px 32px 24px; box-sizing: border-box; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: auto; gap: 16px; }
+.m8 > * { border-radius: 24px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); padding: 22px; box-sizing: border-box; min-width: 0; }
+.m8-hello { grid-column: 1 / 4; display: flex; align-items: center; gap: 16px; background: transparent; border: 0; box-shadow: none; padding: 4px 4px 0; }
+.m8-hello h1 { margin: 0; font-size: clamp(26px, 1.6vw + 14px, 38px); font-weight: 1000; letter-spacing: -.02em; }
+.m8-icons { grid-column: 4; align-self: center; display: grid; grid-template-columns: repeat(4, 1fr); align-items: center; justify-items: center; padding: 8px; }
+.m8-play { grid-column: 1 / 3; grid-row: span 3; position: relative; overflow: hidden; display: flex; flex-direction: column; gap: 16px; background: var(--c-brand); color: #fff; border: 0; }
+.m8-play::after { content: ''; position: absolute; right: -80px; bottom: -80px; width: 320px; height: 320px; border-radius: 50%; background: radial-gradient(circle at 34% 30%, #6d6a64 0, #2a2825 38%, #0b0a09 75%); opacity: .9; box-shadow: 0 30px 60px rgba(0,0,0,.4); }
+.m8-play > * { position: relative; z-index: 1; }
+.m8-play h2 { margin: 0; font-size: 44px; font-weight: 1000; letter-spacing: -.03em; line-height: 1; display: flex; align-items: center; gap: 12px; }
+.m8-play .lbl { color: rgba(255,255,255,.8); }
+.m8-play .seg__b { background: rgba(255,255,255,.14) !important; border-color: rgba(255,255,255,.3) !important; color: #fff; }
+.m8-play .seg__b[aria-pressed="true"] { background: #fff !important; color: var(--c-brand-dark); border-color: #fff !important; }
+.m8-go { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: 10px; min-height: 64px; padding: 0 30px; border-radius: 18px; background: #fff !important; color: var(--c-brand-dark) !important; font-size: 22px !important; font-weight: 1000 !important; box-shadow: 0 12px 24px -10px rgba(0,0,0,.45); transition: transform var(--d-fast) var(--e-out); }
+.m8-go:hover { transform: translateY(-2px); }
+.m8-sum { display: none; align-items: center; flex-wrap: wrap; gap: 6px; font-size: var(--text-sm); }
+.m8-sum .tag { background: rgba(255,255,255,.16); color: #fff; }
+.m8-sum a { margin-left: auto; font-weight: 800; text-decoration: underline !important; }
+.m8-search { margin-top: auto; display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 900; }
+.m8-search .ring { width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; animation: mk-spin 1s linear infinite; }
+.m8-search button { min-height: 44px; padding: 0 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,.55) !important; font-size: 15px; font-weight: 800; }
+.m8-room { grid-column: 3 / 5; grid-row: span 2; display: grid; grid-template-columns: 1fr auto; gap: 14px 20px; align-content: start; }
+.m8-room h2 { margin: 0; font-size: 32px; font-weight: 1000; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+.m8-room h2 .icon { color: var(--c-brand-text); }
+.m8-room .count { text-align: right; } .m8-room .count b { display: block; font-size: 34px; font-weight: 1000; line-height: 1; } .m8-room .count span { font-size: var(--text-xs); color: var(--c-ink-2); font-weight: 700; }
+.m8-code { grid-column: 1 / -1; display: flex; gap: 8px; }
+.m8-code input { flex: 1; min-width: 0; min-height: 56px; border-radius: 16px; border: 2px solid var(--c-border); background: var(--c-field); color: var(--c-ink); padding: 0 16px; font-weight: 900; font-size: 22px; line-height: 1; font-family: inherit; letter-spacing: .14em; }
+.m8-code button { min-height: 56px; padding: 0 24px; border-radius: 16px; background: var(--c-ink) !important; color: var(--c-on-ink) !important; font-weight: 1000; font-size: 18px; }
+.m8-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.m8-chips a { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 14px; border-radius: 999px; background: var(--c-surface-2); font-size: var(--text-sm); font-weight: 700; }
+.m8-chips a b { font-weight: 1000; }
+.m8-live { grid-column: 3; grid-row: span 1; display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center; }
+.m8-mini { --c: calc(100% / 7); aspect-ratio: 1; border-radius: 10px; position: relative; background: linear-gradient(#0000 calc(var(--c) / 2 - .5px), rgba(70,50,20,.5) 0 calc(var(--c) / 2 + .5px), #0000 0) 0 0 / 100% var(--c), linear-gradient(90deg, #0000 calc(var(--c) / 2 - .5px), rgba(70,50,20,.5) 0 calc(var(--c) / 2 + .5px), #0000 0) 0 0 / var(--c) 100%, #e9c98f; }
+.m8-mini .st { position: absolute; width: calc(var(--c) * .84); height: calc(var(--c) * .84); left: calc(var(--x) * var(--c) + var(--c) * .08); top: calc(var(--y) * var(--c) + var(--c) * .08); }
+.m8-live .t { font-weight: 900; font-size: 15px; line-height: 1.25; } .m8-live .m { font-size: 13px; color: var(--c-ink-2); }
+.m8-live .k { font-size: 11px; font-weight: 900; letter-spacing: .12em; color: var(--c-error); }
+.m8-stats { grid-column: 4; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; align-content: center; }
+.m8-stats b { display: block; font-size: 26px; font-weight: 1000; line-height: 1; } .m8-stats span { font-size: 12px; color: var(--c-ink-2); font-weight: 700; }
+.m8 .resume { grid-column: 1 / 3; border-radius: 24px; padding: 14px 16px; }
+@media (max-width: 1000px) { .m8 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .m8-hello, .m8-room { grid-column: 1 / -1; } .m8-icons { grid-column: 1 / -1; } .m8-play { grid-column: 1 / -1; grid-row: auto; } .m8-room { grid-row: auto; } .m8-live { grid-column: 1; } .m8-stats { grid-column: 2; } .m8 .resume { grid-column: 1 / -1; } }
+@media (max-width: 860px) {
+  .m8 { padding: 14px 12px; gap: 12px; }
+  .m8 > * { border-radius: 20px; padding: 18px; }
+  .m8-hello h1 { font-size: 26px; }
+  .m8-play h2 { font-size: 34px; }
+  .m8-play::after { width: 200px; height: 200px; right: -70px; bottom: -70px; }
+  .m8-go { align-self: stretch; justify-content: center; }
+  .m8-room h2 { font-size: 26px; }
+  .m8-live, .m8-stats { grid-column: 1 / -1; }
+  .m8 .resume > span:nth-child(2) { display: none; }
+  .m8-play > .when-idle:not(.m8-go):not(.m8-sum) { display: none !important; }
+  .m8-sum { display: flex !important; }
+  .m8-icons { order: 9; } .m8-live, .m8-stats { order: 8; }
+}
+</style>
+<div class="mk mk-screen m8">
+  <div class="m8-hello rise"><h1>Chào minhcaro, sẵn sàng một ván?</h1></div>
+  <nav class="m8-icons rise" aria-label="Khám phá">
+    <a class="ico" href="/puzzles" aria-label="Học" data-tip="Học">{{i:target}}</a>
+    <a class="ico" href="/forum" aria-label="Diễn đàn" data-tip="Diễn đàn">{{i:chat-circle}}</a>
+    <a class="ico" href="#tournaments" aria-label="Giải đấu" data-tip="Giải đấu">{{i:trophy}}</a>
+    <a class="ico" href="/clubs.html" aria-label="Hội nhóm" data-tip="Hội nhóm">{{i:users-three}}</a>
+  </nav>
+  <section class="m8-play rise rise-2" aria-labelledby="m8-qm">
+    <h2 id="m8-qm">{{i:play}} Chơi nhanh</h2>
+    <div class="when-idle"><p class="lbl">Luật chơi</p><div class="seg"><button class="seg__b" aria-pressed="true">Caro VN</button><button class="seg__b" aria-pressed="false">Freestyle</button></div></div>
+    <div class="when-idle"><p class="lbl">Thời gian</p><div class="seg"><button class="seg__b" aria-pressed="true">Tự động</button><button class="seg__b" aria-pressed="false">45s/nước</button><button class="seg__b" aria-pressed="false">30s/nước</button><button class="seg__b" aria-pressed="false">1+1</button></div></div>
+    <div class="when-idle"><p class="lbl">Chế độ</p><div class="seg"><button class="seg__b" aria-pressed="true">Đấu xếp hạng</button><button class="seg__b" aria-pressed="false">Giao hữu</button></div></div>
+    <div class="m8-sum when-idle"><span>Đang chọn:</span><span class="tag">Caro VN</span><span class="tag">Tự động</span><span class="tag">Xếp hạng</span><a href="#" aria-label="Đổi tuỳ chọn chơi nhanh">Đổi</a></div>
+    <button class="m8-go when-idle">{{i:play}} Tìm trận</button>
+    <div class="m8-search when-search" aria-live="polite"><span class="ring"></span>Đang tìm đối thủ xếp hạng… 0:12<button>Huỷ tìm</button></div>
+  </section>
+  <section class="m8-room rise rise-2" aria-labelledby="m8-room">
+    <h2 id="m8-room">{{i:door-open}} Vào phòng</h2>
+    <div class="count"><b>12</b><span>phòng đang mở</span></div>
+    <form class="m8-code" onsubmit="return false"><input aria-label="Mã phòng" placeholder="#A3F" maxlength="4"><button>Vào</button></form>
+    <div class="m8-chips"><a href="#"><span class="st st--b"></span><b>#K7Q</b> tuan_99 · 30s</a><a href="#"><span class="st st--w"></span><b>#B2M</b> hoangbao · 1+1</a><a href="#">Tất cả phòng {{i:caret-right}}</a></div>
+  </section>
+  <a class="m8-live rise rise-3" href="#">
+    <span class="m8-mini" aria-hidden="true"><span class="st st--b" style="--x:2;--y:2"></span><span class="st st--b" style="--x:3;--y:3"></span><span class="st st--w" style="--x:3;--y:2"></span><span class="st st--b" style="--x:4;--y:4"></span><span class="st st--w" style="--x:2;--y:4"></span><span class="st st--w" style="--x:4;--y:3"></span></span>
+    <span><span class="k">● ĐANG ĐẤU</span><br><span class="t">Khánh Linh vs quang.dv</span><br><span class="m">42 nước · 5 người xem</span></span>
+  </a>
+  <div class="m8-stats rise rise-3"><div><b>128</b><span>online</span></div><div><b>23</b><span>ván</span></div><div><b>6</b><span>tìm trận</span></div><div><b>~20s</b><span>chờ ghép</span></div></div>
+  <div class="resume rise rise-4"><span class="resume__dot"></span><span>Phòng chơi</span><b>vs. Lan Anh</b><span class="tag tag--brand">Lượt của bạn</span><a class="resume__go" href="#">Vào ván</a></div>
+</div>

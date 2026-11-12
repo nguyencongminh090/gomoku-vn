@@ -1,0 +1,92 @@
+<style>
+/* M5 — Đen & Trắng: full-bleed split. Left half = black side (Chơi nhanh), right half = white side
+   (Vào phòng). The seam carries a stone-shaped logo mark. Both halves look the same in both modes;
+   only the page chrome follows the mode. Hover widens a side (desktop). */
+body.mk-m5-black-white::before, body.mk-m5-black-white::after { display: none; }
+.m5 { --side-pad: clamp(24px, 5vw, 72px); display: grid; grid-template-columns: 1fr 1fr; padding-bottom: 0; position: relative; transition: grid-template-columns var(--d-slow) var(--e-out); }
+@media (hover: hover) and (pointer: fine) { .m5:has(.m5-b:hover) { grid-template-columns: 1.12fr .88fr; } .m5:has(.m5-w:hover) { grid-template-columns: .88fr 1.12fr; } }
+.m5-side { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; gap: 18px; padding: 40px var(--side-pad) 96px; min-width: 0; }
+.m5-b { background: radial-gradient(900px 600px at 20% 10%, #2b2a27 0%, #0f0e0d 60%); color: #f2efe8; }
+.m5-w { background: radial-gradient(900px 600px at 80% 10%, #ffffff 0%, #ece8df 70%); color: #1d1b18; }
+.m5-side::before { content: ''; position: absolute; inset: 0; pointer-events: none; opacity: .35; background: linear-gradient(currentColor 1px, transparent 1px) 0 0 / 56px 56px, linear-gradient(90deg, currentColor 1px, transparent 1px) 0 0 / 56px 56px; mask: radial-gradient(70% 60% at 50% 45%, #0000 0, #000 100%); -webkit-mask: radial-gradient(70% 60% at 50% 45%, #0000 0, #000 100%); }
+.m5-b::before { color: rgba(255,255,255,.07); } .m5-w::before { color: rgba(0,0,0,.07); }
+.m5-side > * { position: relative; }
+.m5-k { font-size: var(--text-sm); font-weight: 800; letter-spacing: .14em; text-transform: uppercase; opacity: .7; display: flex; align-items: center; gap: 10px; }
+.m5-k .st { width: 18px; height: 18px; }
+.m5-side h2 { margin: 0; font-size: clamp(44px, 5vw, 84px); line-height: .95; font-weight: 1000; letter-spacing: -.04em; }
+.m5-side p { margin: 0; max-width: 34ch; font-size: 18px; opacity: .78; }
+.m5-b .lbl { color: rgba(255,255,255,.62); }
+.m5-b .seg__b { background: rgba(255,255,255,.08) !important; border-color: rgba(255,255,255,.18) !important; color: #f2efe8; }
+.m5-b .seg__b[aria-pressed="true"] { background: #f2efe8 !important; border-color: #f2efe8 !important; color: #0f0e0d; }
+.m5-opts { display: grid; gap: 12px; }
+.m5-cta { align-self: flex-start; display: inline-flex; align-items: center; gap: 12px; min-height: 64px; padding: 0 30px; border-radius: 999px; font-size: 22px !important; font-weight: 1000 !important; transition: transform var(--d-fast) var(--e-out); }
+.m5-cta:hover { transform: translateY(-2px); }
+.m5-b .m5-cta { background: #8bc34a !important; color: #10200a !important; }
+.m5-w .m5-cta { background: #1d1b18 !important; color: #fff !important; }
+.m5-code { display: flex; gap: 8px; max-width: 420px; }
+.m5-code input { flex: 1; min-width: 0; min-height: 56px; border-radius: 14px; border: 2px solid rgba(0,0,0,.18); background: #fff; color: #1d1b18; padding: 0 16px; font-weight: 900; font-size: 22px; line-height: 1; font-family: inherit; letter-spacing: .14em; }
+.m5-rooms { display: grid; gap: 6px; max-width: 460px; }
+.m5-r { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.1); font-size: 15px; }
+.m5-r b { font-weight: 900; } .m5-r .m { color: #5f5b52; } .m5-r .go { margin-left: auto; font-weight: 900; color: #3d6418; }
+.m5-seam { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 2; width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(from 180deg, #0f0e0d 0 50%, #f4f1ea 0 100%); box-shadow: 0 10px 30px rgba(0,0,0,.4), 0 0 0 6px rgba(127,127,127,.25); font-weight: 1000; font-size: 22px; transition: transform var(--d-slow) var(--e-out); }
+.m5-seam span { mix-blend-mode: difference; color: #fff; }
+.m5:has(.m5-b:hover) .m5-seam { transform: translate(calc(-50% + 6vw), -50%); } .m5:has(.m5-w:hover) .m5-seam { transform: translate(calc(-50% - 6vw), -50%); }
+.m5-bottom { position: absolute; left: 0; right: 0; bottom: 18px; z-index: 2; display: flex; justify-content: center; gap: 12px; align-items: center; pointer-events: none; }
+.m5-bottom > * { pointer-events: auto; }
+.m5-dock { display: flex; gap: 4px; padding: 6px; border-radius: 999px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-lg); }
+.m5-stat { padding: 10px 16px; border-radius: 999px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-lg); font-size: var(--text-sm); color: var(--c-ink-2); }
+.m5-stat b { color: var(--c-ink); }
+.m5-b .resume { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.14); color: #f2efe8; box-shadow: none; max-width: 460px; }
+.m5-b .resume .tag--brand { background: rgba(139,195,74,.18); color: #8bc34a; }
+.m5-search { display: flex; align-items: center; gap: 14px; font-size: 22px; font-weight: 900; }
+.m5-search .ring { width: 30px; height: 30px; border-radius: 50%; border: 3px solid rgba(255,255,255,.2); border-top-color: #8bc34a; animation: mk-spin 1s linear infinite; }
+.m5-search button { margin-left: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,.4) !important; font-size: 15px; font-weight: 800; }
+@media (max-width: 860px) {
+  .m5 { grid-template-columns: 1fr; }
+  .m5-side { padding: 28px 18px 36px; gap: 14px; }
+  .m5-side h2 { font-size: 44px; }
+  .m5-side p { font-size: 16px; }
+  .m5-seam { position: relative; left: auto; top: auto; transform: none; margin: -46px auto; width: 72px; height: 72px; }
+  .m5-w { padding-top: 46px; }
+  .m5-bottom { position: static; flex-direction: column; padding: 14px 16px 18px; background: var(--c-bg); }
+  .m5-dock { width: 100%; justify-content: space-around; box-sizing: border-box; }
+  .m5-cta { align-self: stretch; justify-content: center; }
+  .m5 .resume > span:nth-child(2) { display: none; }
+}
+</style>
+<div class="mk mk-screen m5">
+  <section class="m5-side m5-b" aria-labelledby="m5-qm">
+    <span class="m5-k"><span class="st st--b"></span>Quân đen đi trước</span>
+    <h2 id="m5-qm" class="rise">Chơi nhanh</h2>
+    <p class="rise rise-2">Chào minhcaro. Chọn luật và thời gian — hệ thống ghép đối thủ cho bạn.</p>
+    <div class="m5-opts rise rise-2 when-idle">
+      <div><p class="lbl">Luật chơi</p><div class="seg"><button class="seg__b" aria-pressed="true">Caro VN</button><button class="seg__b" aria-pressed="false">Freestyle</button></div></div>
+      <div><p class="lbl">Thời gian</p><div class="seg"><button class="seg__b" aria-pressed="true">Tự động</button><button class="seg__b" aria-pressed="false">45s/nước</button><button class="seg__b" aria-pressed="false">30s/nước</button><button class="seg__b" aria-pressed="false">1+1</button></div></div>
+      <div class="seg"><button class="seg__b" aria-pressed="true">Đấu xếp hạng</button><button class="seg__b" aria-pressed="false">Giao hữu</button></div>
+    </div>
+    <button class="m5-cta rise rise-3 when-idle">{{i:play}} Tìm trận</button>
+    <div class="m5-search when-search" aria-live="polite"><span class="ring"></span>Đang tìm đối thủ… 0:12<button>Huỷ tìm</button></div>
+    <div class="resume rise rise-4"><span class="resume__dot"></span><span>Phòng chơi</span><b>vs. Lan Anh</b><span class="tag tag--brand">Lượt của bạn</span><a class="resume__go" href="#">Vào ván</a></div>
+  </section>
+  <div class="m5-seam" aria-hidden="true"><span>VS</span></div>
+  <section class="m5-side m5-w" aria-labelledby="m5-room">
+    <span class="m5-k"><span class="st st--w"></span>Bạn bè đang đợi</span>
+    <h2 id="m5-room" class="rise">Vào phòng</h2>
+    <p class="rise rise-2">Nhập mã phòng bạn được gửi, hoặc ngồi vào bàn đang mở.</p>
+    <form class="m5-code rise rise-2" onsubmit="return false"><input aria-label="Mã phòng" placeholder="#A3F" maxlength="4"><button class="m5-cta" style="min-height:56px;padding:0 22px;font-size:18px!important">Vào</button></form>
+    <div class="m5-rooms rise rise-3">
+      <a class="m5-r" href="#"><b>#K7Q</b><span class="m">tuan_99 · Caro VN · 30s/nước</span><span class="go">Ngồi →</span></a>
+      <a class="m5-r" href="#"><b>#B2M</b><span class="m">hoangbao · Freestyle · 1+1</span><span class="go">Ngồi →</span></a>
+      <a class="m5-r" href="#"><b>12</b><span class="m">phòng đang mở</span><span class="go">Xem tất cả →</span></a>
+    </div>
+  </section>
+  <div class="m5-bottom">
+    <span class="m5-stat"><b>128</b> online · <b>23</b> ván · <b>6</b> tìm trận</span>
+    <nav class="m5-dock" aria-label="Khám phá">
+      <a class="ico" href="/puzzles" aria-label="Học" data-tip="Học" data-tip-pos="up">{{i:target}}</a>
+      <a class="ico" href="/forum" aria-label="Diễn đàn" data-tip="Diễn đàn" data-tip-pos="up">{{i:chat-circle}}</a>
+      <a class="ico" href="#tournaments" aria-label="Giải đấu" data-tip="Giải đấu" data-tip-pos="up">{{i:trophy}}</a>
+      <a class="ico" href="/clubs.html" aria-label="Hội nhóm" data-tip="Hội nhóm" data-tip-pos="up">{{i:users-three}}</a>
+    </nav>
+  </div>
+</div>
