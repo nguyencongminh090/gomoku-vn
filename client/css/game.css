@@ -55,7 +55,7 @@
     0 4px 12px rgba(15,118,110,0.15),
     inset 0 1px 0 rgba(255,255,255,0.8);
   border-radius: 100px;
-  animation: turnPulse 2.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  animation: turnPulse 2.5s 2 cubic-bezier(0.4, 0, 0.2, 1);   /* ui-audit F4: stops after 5s (DEP-AUTO-MOTION) */
 }
 
 @keyframes turnPulse {
@@ -100,7 +100,7 @@
 }
 
 .turn-bar__timer--low {
-  color: #c0392b;
+  color: var(--c-error);   /* ui-audit F1: #c0392b was 2.85:1 on dark surface */
   animation: timer-pulse 0.6s ease-in-out infinite alternate;
 }
 
@@ -214,7 +214,7 @@
 
 .btn-game--resign {
   border-color: rgba(192,57,43,0.35);
-  color: #c0392b;
+  color: var(--c-error);   /* ui-audit F1: #c0392b was 2.53:1 on dark surface-2 */
   background: rgba(192,57,43,0.04);
 }
 .btn-game--resign:hover {
