@@ -297,4 +297,4 @@ function getGameStatsByResult(filters = {}) {
   return { win: row.win || 0, draw: row.draw || 0, total: row.total || 0 };
 }
 
-module.exports = { saveGame, getPlayerHistory, getRecentGames, getGameById, getGameCount, getGameStatsByDate, getGameStatsByResult, withWinnerName };
+module.exports = { saveGame, getPlayerHistory, getRecentGames, getGameById, getGameCount, getGameStatsByDate, getGameStatsByResult, withWinnerName, resolveWinnerSeat };

@@ -1,0 +1,84 @@
+<!-- S5 "Quán trà": a photo lounge (tea + stones). The hero is the room you share with friends: who is here now
+     (avatars on the photo), one "Rủ chơi" action. Below: a lively friend activity feed (wins, rating peaks, clubs)
+     with one-tap reactions/rematch, and a right column of requests + messages. -->
+<style>
+  .s5__hero { position: relative; min-height: 300px; display: grid; align-content: end; color: #fff; overflow: hidden;
+    background: linear-gradient(90deg, rgba(12,10,6,.86) 0, rgba(12,10,6,.55) 45%, rgba(12,10,6,.1) 80%), linear-gradient(0deg, rgba(12,10,6,.7), transparent 55%), var(--ph) center 45% / cover; }
+  .s5__hero .wrap { width: 100%; padding-block: 28px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: end; }
+  .s5__hero .wrap > * { min-width: 0; }
+  .s5__eye { font-size: 12px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; opacity: .8; }
+  .s5__hero h1 { font-size: clamp(30px, 2.8vw + 8px, 48px); font-weight: 900; line-height: 1.1; margin: 6px 0 14px; text-shadow: 0 2px 12px rgba(0,0,0,.4); }
+  .here { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .here__av { display: flex; } .here__av .av { --s: 44px; margin-left: -10px; box-shadow: 0 0 0 3px rgba(20,16,10,.9); }
+  .here__av .av:first-child { margin-left: 0; }
+  .here__t { font-weight: 800; }
+  .s5__cta { display: grid; gap: 8px; justify-items: end; }
+  .s5__cta small { opacity: .8; font-size: 12px; }
+  .s5__credit { position: absolute; right: 12px; top: 8px; font-size: 10px; opacity: .6; }
+  .s5__body { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 28px; padding-top: 24px; align-items: start; }
+  .s5__body > * { min-width: 0; }
+  .s5 h2 { font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+  .feed { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .post { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 14px 16px; }
+  .post .av { --s: 44px; }
+  .post__t { font-size: 15px; line-height: 1.4; } .post__t b { font-weight: 900; }
+  .post__t .nm { display: inline-block; max-width: 14em; vertical-align: bottom; font-weight: 900; }
+  .post__m { display: flex; gap: 8px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--c-ink-2); flex-wrap: wrap; }
+  .react { display: inline-flex; align-items: center; gap: 4px; min-height: 30px; padding: 0 10px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--c-border); font-weight: 800; font-size: 12.5px; }
+  .post:first-child { grid-template-columns: auto minmax(0, 1fr) 140px; }
+  .post:first-child .mbx { display: block; }
+  .mbx { display: none; }
+  .online-row { display: flex; gap: 10px; overflow-x: auto; padding: 4px 2px 14px; scrollbar-width: thin; }
+  .oc { flex: none; width: 128px; padding: 12px 10px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+  .oc .av { --s: 48px; } .oc .nm { width: 100%; font-weight: 800; font-size: 14px; } .oc small { font-size: 11.5px; color: var(--c-ink-2); }
+  .col { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .col .card { padding: 16px; }
+  .rq { display: flex; align-items: center; gap: 10px; padding: 8px 0; min-width: 0; }
+  .rq small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .s5__empty { display: none; padding: 28px; text-align: center; border: 2px dashed var(--c-border); border-radius: 16px; gap: 10px; flex-direction: column; align-items: center; }
+  .feed[data-count="0"] + .s5__empty { display: flex; }
+  @media (max-width: 1000px) { .s5__body { grid-template-columns: minmax(0, 1fr); } .col { order: -1; } }
+  @media (max-width: 860px) {
+    .s5__hero { min-height: 240px; } .s5__hero .wrap { grid-template-columns: minmax(0, 1fr); padding-block: 18px; gap: 14px; }
+    .s5__cta { justify-items: stretch; } .here__av .av { --s: 36px; }
+    .post:first-child { grid-template-columns: auto minmax(0, 1fr); } .post:first-child .mbx { display: none; }
+    .col .msgs { display: none; }
+  }
+</style>
+<div class="mk-screen s5" style="--ph:url({{img:1579841}})">
+  <section class="s5__hero rise">
+    <span class="s5__credit">Ảnh: Pixabay</span>
+    <div class="wrap">
+      <div>
+        <p class="s5__eye">Quán trà của {{me}}</p>
+        <h1 class="hide-sparse"><span class="num">{{n:online}}</span> người bạn đang ở quán</h1>
+        <h1 class="only-sparse">Quán còn trống — mời bạn vào uống trà, chơi cờ</h1>
+        <div class="here hide-sparse"><span class="here__av"><template data-list="online" data-max="6"><span class="av" style="--h:{{h}}" data-st="{{st}}" title="{{name}}">{{ini}}</span></template></span><span class="here__t">Chạm vào ai đó để rủ chơi</span></div>
+      </div>
+      <div class="s5__cta">
+        <button class="btn btn--pri hide-sparse">{{i:sword}} Rủ bạn chơi</button>
+        <button class="btn btn--pri only-sparse">{{i:paper-plane-tilt}} Gửi link mời · {{me}}{{mytag}}</button>
+        <small>hoặc tìm theo tên, tên#1234</small>
+      </div>
+    </div>
+  </section>
+  <div class="wrap s5__body">
+    <div>
+      <h2 class="hide-sparse"><span class="dot dot--on"></span> Đang ở quán</h2>
+      <div class="online-row hscroll hide-sparse"><template data-list="online"><div class="card oc"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><span class="nm">{{name}}</span><small>{{stText}}</small>{{#free}}<button class="btn btn--sm btn--pri" style="width:100%">Thách</button>{{/free}}{{#play}}<button class="btn btn--sm btn--sec" style="width:100%">{{i:eye}} Xem</button>{{/play}}{{#watch}}<button class="btn btn--sm btn--sec" style="width:100%">Nhắn</button>{{/watch}}</div></template></div>
+      <h2 data-be="bảng tin">{{i:broadcast}} Bạn bè dạo này</h2>
+      <div class="feed rise rise-2"><template data-list="feed"><article class="card post"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><p class="post__t"><span class="nm">{{name}}</span> {{text}}</p><div class="post__m"><span>{{ago}} trước</span><button class="react">{{i:trophy}} Chúc mừng · 3</button><button class="react">{{i:repeat}} Đấu thử</button></div></div><span class="mbx"><svg class="mb" viewBox="0 0 15 15" aria-hidden="true"><rect class="mb-bg" width="15" height="15" rx=".4"/><path d="M.5 2.5H14.5M.5 5.5H14.5M.5 8.5H14.5M.5 11.5H14.5M2.5 .5V14.5M5.5 .5V14.5M8.5 .5V14.5M11.5 .5V14.5"/><circle class="b" cx="5.5" cy="5.5" r=".5"/><circle class="b" cx="6.5" cy="6.5" r=".5"/><circle class="b" cx="7.5" cy="7.5" r=".5"/><circle class="b" cx="8.5" cy="8.5" r=".5"/><circle class="b" cx="9.5" cy="9.5" r=".5"/><circle class="w" cx="8.5" cy="6.5" r=".5"/><circle class="w" cx="6.5" cy="8.5" r=".5"/><circle class="w" cx="9.5" cy="7.5" r=".5"/></svg></span></article></template></div>
+      <div class="s5__empty"><b>Bảng tin sẽ sống động khi bạn có bạn bè</b><span class="muted">Ván thắng, mốc Elo, CLB mới của bạn bè hiện ở đây.</span></div>
+    </div>
+    <aside class="col rise rise-3">
+      <section class="card hide-empty" data-count="{{n:todo}}"><h2>{{i:bell}} Chờ bạn <span class="badge">{{n:todo}}</span></h2>
+        <template data-list="chin"><div class="rq"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>thách {{rule}} · {{clock}}</small></div><button class="btn btn--sm btn--pri">Chơi</button></div></template>
+        <template data-list="incoming"><div class="rq"><span class="av" style="--h:{{h}};--s:36px">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>muốn kết bạn</small></div><button class="btn btn--sm btn--sec btn--icon" aria-label="Đồng ý">{{i:check}}</button></div></template>
+      </section>
+      <section class="card msgs"><h2>{{i:chat-circle}} Tin nhắn</h2>
+        <div><template data-list="convs" data-max="4"><a class="rq" href="#"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small class="nm">{{last}}</small></div>{{#unread}}<span class="badge">{{unread}}</span>{{/unread}}</a></template><p class="if-empty muted" style="font-size:13px">Chưa có tin nhắn.</p></div></section>
+      <section class="card only-sparse"><h2>Người đang online</h2><template data-list="suggest"><div class="rq"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{why}}</small></div><button class="btn btn--sm btn--pri btn--icon" aria-label="Kết bạn">{{i:user-plus}}</button></div></template></section>
+    </aside>
+  </div>
+</div>
+{{sheet}}

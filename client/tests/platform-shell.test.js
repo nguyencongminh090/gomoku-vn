@@ -215,13 +215,14 @@ describe('platform shell', () => {
     expect(window.setColorMode).toHaveBeenCalledWith('light');
   });
 
-  it('right cluster follows the mockup order [mode][bell]…[me]; mode is a sun svg, not a text glyph', () => {
+  it('right cluster follows the mockup order [mode][chat][bell]…[me]; mode is a sun svg, not a text glyph', () => {
     boot(MEMBER, { username: 'zed', ratings: {} });
     const kids = [...document.querySelector('.pnav__right').children];
     expect(kids[0].classList.contains('pnav__mode')).toBe(true);
-    expect(kids[1].classList.contains('pbell')).toBe(true);
+    expect(kids[1].classList.contains('pchat__btn')).toBe(true); // #370 chat icon
+    expect(kids[2].classList.contains('pbell')).toBe(true);
     expect(kids[kids.length - 1].classList.contains('pnav__acct')).toBe(true);
-    expect(kids).toHaveLength(3); // no gear: Settings is in the chip menu (B211)
+    expect(kids).toHaveLength(4); // no gear: Settings is in the chip menu (B211)
     const mode = kids[0];
     expect(mode.textContent).toBe('');
     expect(mode.querySelector('svg circle')).not.toBeNull();
@@ -231,7 +232,7 @@ describe('platform shell', () => {
   it('never adds a gear button even when the in-room settings panel is loaded', () => {
     window.openSettingsPanel = jest.fn();
     boot(MEMBER);
-    expect(document.querySelectorAll('.pnav__mode')).toHaveLength(2); // mode + bell only
+    expect(document.querySelectorAll('.pnav__mode')).toHaveLength(3); // mode + chat (#370) + bell only
     delete window.openSettingsPanel;
   });
 

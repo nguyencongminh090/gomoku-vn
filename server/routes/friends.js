@@ -9,6 +9,7 @@
  * POST   /api/friends/:username          send a request (or accept a crossed one)
  * POST   /api/friends/:username/accept   accept their request
  * DELETE /api/friends/:username          cancel / decline / unfriend
+ * GET    /api/friends/:username/summary  {with, rating, h2h, last5, games, friendship} — chat profile pane (#370)
  * Members only — guests get 403 GUEST_FORBIDDEN.
  */
 
@@ -51,6 +52,11 @@ router.get('/search', ...member, searchLimiter, h((req, res) => {
 router.get('/code', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ code: svc.myCode(req.user.userId) });
+}));
+
+router.get('/:username/summary', ...member, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.summary(req.user.userId, req.params.username));
 }));
 
 router.post('/:username', ...member, writeLimiter, h((req, res) => {

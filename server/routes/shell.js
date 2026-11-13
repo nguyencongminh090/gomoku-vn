@@ -13,7 +13,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { verifyToken } = require('../middleware/auth');
 const roles = require('../utils/roles');
-const notifications = require('../managers/NotificationService');
+const notificationsRoute = require('./notifications');
 const rankings = require('./rankings');
 
 const router = express.Router();
@@ -27,7 +27,7 @@ router.get('/', verifyToken, (req, res, next) => {
     res.json({
       me: rankings.buildMe(userId),
       admin: { role: roles.roleOf(userId), permissions: roles.permissionsOf(userId) },
-      notifications: notifications.list(userId),
+      notifications: notificationsRoute.body(userId),
     });
   } catch (err) { next(err); }
 });

@@ -291,3 +291,85 @@ describe('user-search result cache follows the users table', () => {
     expect(userSearch.matchUserIds('zan')).not.toContain('cache1');
   });
 });
+
+describe('#370 presence activity', () => {
+  const room = (state, status, users) => ({ roomId: 'r1', state, gameState: status ? { status, startedAt: 1234 } : null, users: new Map(users) });
+
+  it('activityFromRoom: seated in a running game → playing; spectator → watching; seated before start / no room → free', () => {
+    const { activityFromRoom } = svc;
+    expect(activityFromRoom(room('playing', 'ongoing', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'playing', startedAt: 1234, roomId: 'r1' });
+    expect(activityFromRoom(room('playing', 'ongoing', [['u', { slot: 2 }]]), 'u').activity).toBe('playing');
+    expect(activityFromRoom(room('playing', 'ongoing', [['u', { slot: null }]]), 'u')).toEqual({ activity: 'watching', roomId: 'r1' });
+    expect(activityFromRoom(room('waiting', null, [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'free' });
+    expect(activityFromRoom(room('playing', 'finished', [['u', { slot: 1 }]]), 'u')).toEqual({ activity: 'free' });
+    expect(activityFromRoom(null, 'u')).toEqual({ activity: 'free' });
+    expect(activityFromRoom(room('playing', 'ongoing', []), 'u')).toEqual({ activity: 'free' });
+  });
+
+  it('friends list: online friends carry the hook activity; offline / hidden ones get null and the hook is not asked', async () => {
+    await call('POST', '/api/friends/bob', 'ann'); await call('POST', '/api/friends/ann/accept', 'bob');
+    await call('POST', '/api/friends/cat', 'ann'); await call('POST', '/api/friends/ann/accept', 'cat');
+    const asked = [];
+    svc.setHooks({ isOnline: (id) => id === 'bob-id', activityOf: (id) => { asked.push(id); return { activity: 'playing', startedAt: 99, roomId: 'r9' }; } });
+    try {
+      const { friends } = (await call('GET', '/api/friends', 'ann')).body;
+      expect(friends.find((f) => f.username === 'bob')).toMatchObject({ online: true, activity: 'playing', startedAt: 99, roomId: 'r9' });
+      expect(friends.find((f) => f.username === 'cat')).toMatchObject({ online: false, activity: null });
+      expect(friends.find((f) => f.username === 'cat')).not.toHaveProperty('roomId');
+      expect(asked).toEqual(['bob-id']);
+      svc.setHooks({ isOnline: () => true }); // no activity hook wired → free
+      expect((await call('GET', '/api/friends', 'ann')).body.friends[0].activity).toBe('free');
+    } finally { svc.setHooks({}); }
+  });
+});
+
+describe('#370 GET /api/friends/:username/summary', () => {
+  let n = 0;
+  function game(black, white, winner, { winnerColor, ended = true, moves = '[{"x":1,"y":1},{"x":2,"y":2}]' } = {}) {
+    const id = 'g' + (++n);
+    const at = new Date(Date.parse(NOW) + n * 60000).toISOString();
+    db.prepare(`INSERT INTO games (id, room_id, black_player_id, white_player_id, black_player_name, white_player_name, winner, winner_color, reason, board_size, moves, started_at, ended_at)
+      VALUES (?, 'r', ?, ?, ?, ?, ?, ?, 'normal', 15, ?, ?, ?)`)
+      .run(id, black && U[black], white && U[white], black || 'Guest', white || 'Guest', winner, winnerColor || null, moves, at, ended ? at : null);
+    for (const p of [black, white]) if (p) db.prepare('INSERT INTO player_games (player_id, game_id) VALUES (?, ?)').run(U[p], id);
+    return id;
+  }
+  beforeAll(() => {
+    db.prepare('DELETE FROM player_games').run(); db.prepare('DELETE FROM games').run();
+    game('ann', 'bob', 'BLACK');                      // ann W
+    game('bob', 'ann', 'BLACK');                      // ann L
+    game('ann', 'bob', 'draw', { winnerColor: 'DRAW' }); // D
+    game('bob', 'ann', 'ann-id');                     // legacy raw-id winner → ann W
+    game('ann', 'bob', null);                         // interrupted → ignored
+    game('ann', 'bob', 'BLACK', { ended: false });    // unfinished → ignored
+    game('ann', 'cat', 'BLACK');                      // other opponent → ignored
+    game('ann', null, 'BLACK');                       // vs a guest → ignored
+    game('bob', 'ann', 'WHITE', { moves: null }); // ann W, latest, no moves → null count
+  });
+
+  it('H2H from my side, newest first, last 5, rating pool, no user ids', async () => {
+    const r = await call('GET', '/api/friends/bob/summary', 'ann');
+    expect(r.status).toBe(200);
+    expect(r.body.with).toMatchObject({ username: 'bob', displayName: 'BOB' });
+    expect(r.body.rating).toEqual({ category: 'freestyle', rating: 1600, provisional: false });
+    expect(r.body.h2h).toEqual({ wins: 3, losses: 1, draws: 1, winPct: 70 });
+    expect(r.body.last5).toEqual(['W', 'W', 'D', 'L', 'W']);
+    expect(r.body.games[0]).toMatchObject({ result: 'W', color: 'WHITE', moves: null, boardSize: 15 });
+    expect(r.body.games[1].moves).toBe(2);
+    expect(JSON.stringify(r.body)).not.toMatch(/-id"/);
+    const mirror = (await call('GET', '/api/friends/ann/summary', 'bob')).body;
+    expect(mirror.h2h).toMatchObject({ wins: 1, losses: 3, draws: 1 });
+    expect(mirror.games[0].result).toBe('L');
+  });
+
+  it('no games / unrated → nulls; unknown 404, self 400, guests 403', async () => {
+    const r = (await call('GET', '/api/friends/dan/summary', 'cat')).body;
+    expect(r.h2h).toEqual({ wins: 0, losses: 0, draws: 0, winPct: null });
+    expect(r.games).toEqual([]);
+    db.prepare("DELETE FROM ratings WHERE user_id = ?").run(U.dan);
+    expect((await call('GET', '/api/friends/dan/summary', 'cat')).body.rating).toBeNull();
+    expect((await call('GET', '/api/friends/nobody/summary', 'cat')).status).toBe(404);
+    expect((await call('GET', '/api/friends/cat/summary', 'cat')).status).toBe(400);
+    expect((await call('GET', '/api/friends/cat/summary', 'guest')).status).toBe(403);
+  });
+});
