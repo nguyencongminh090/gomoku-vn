@@ -14,7 +14,7 @@
   <link rel="stylesheet" href="css/shell.css?v=09cb623c" />
   <link rel="stylesheet" href="css/game.css?v=4a01190d" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
-  <link rel="stylesheet" href="css/room-arena.css?v=bb246d0d" />
+  <link rel="stylesheet" href="css/room-arena.css?v=59cae47b" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
@@ -23,15 +23,15 @@
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/room-entry.js's import list -->
   <link rel="modulepreload" href="js/session.js?v=7d763f30" />
-  <link rel="modulepreload" href="js/i18n.js?v=64ea98d7" />
+  <link rel="modulepreload" href="js/i18n.js?v=d290f43e" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/socket-client.js?v=3dde98aa" />
   <link rel="modulepreload" href="js/board.js?v=9e0cd3f5" />
-  <link rel="modulepreload" href="js/room.js?v=0fad5d1c" />
+  <link rel="modulepreload" href="js/room.js?v=c455bd4f" />
   <link rel="modulepreload" href="js/chat-ui.js?v=87065d01" />
   <link rel="modulepreload" href="js/room-ui.js?v=4b5a7cd4" />
-  <link rel="modulepreload" href="js/room-stage.js?v=8f847a49" />
+  <link rel="modulepreload" href="js/room-stage.js?v=76bf0157" />
   <link rel="modulepreload" href="js/game-ui.js?v=7f0e0d35" />
   <link rel="modulepreload" href="js/room-socket.js?v=8bf4432f" />
 
@@ -118,13 +118,18 @@
       </div>
     </section>
 
-    <!-- Desktop only (CSS): collapses the docked rail so the board gets the full width -->
-    <button class="rail-dock-toggle" id="rail-dock-toggle" type="button" aria-expanded="true" aria-controls="rail"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-caret-right"></use></svg></button>
 
     <aside class="rail" id="rail" aria-label="Ván đấu">
       <!-- Player cards: the opponent on top, you at the bottom (a spectator
            sees seat #2 on top, seat #1 at the bottom). RoomUI.renderPlayerCards. -->
       <div class="seatcard seatcard--top" id="seatcard-top" aria-live="polite"></div>
+
+      <!-- #369 desktop only (CSS): the score card under the opponent. room-stage.js moves #score-hero in here above
+           768px and back into the Tỉ số tab on phones; the empty line shows while the hero is empty. -->
+      <div class="scorecard" id="scorecard">
+        <div class="scorecard__title" data-i18n="room.tab_scores">Tỉ số</div>
+        <p class="scorecard__empty" data-i18n="room.score_empty">Chưa có ván nào kết thúc.</p>
+      </div>
 
       <div class="rpanel">
         <!-- Requests + confirm countdowns float over the top of the panel, never
@@ -201,7 +206,8 @@
 
       <div class="seatcard seatcard--bottom" id="seatcard-bottom" aria-live="polite"></div>
 
-      <!-- #368 phones only (CSS hides both above 768px): the live stage under the board and the dock.
+      <!-- #368 phones: the live stage under the board and the dock. #369 desktop: the stage overlays the board, the dock
+           overlays the right column (audience stack on top, input + 👏 at the bottom).
            Spectator lines and reactions float in the stage; every line is also in #chat-messages (sheet → Chat). -->
       <div class="stage" id="stage" aria-hidden="true">
         <button class="stage__handle" id="stage-handle" type="button" tabindex="-1"><span></span></button>
@@ -221,7 +227,7 @@
 
   <!-- Float Messages (appear on top of game board) -->
   <div id="float-messages" class="float-messages"></div>
-  <!-- #368 phones: players' chat as speech bubbles next to their seat cards (position:fixed, never takes taps) -->
+  <!-- #368/#369: players' chat as speech bubbles next to their seat cards (position:fixed, never takes taps) -->
   <div id="speech-layer" class="speech-layer" aria-hidden="true"></div>
 
   <!-- Socket.io CDN -->
@@ -237,7 +243,7 @@
   <script src="js/timer-sync-core.js?v=c56a5a16"></script>
   <script src="js/audio-manager.js?v=f0ca2309"></script>
   <script src="js/action-delegate.js?v=7420bbed"></script>
-  <script type="module" src="js/room-entry.js?v=a803471c"></script>
+  <script type="module" src="js/room-entry.js?v=ae881411"></script>
 </body>
 
 </html>

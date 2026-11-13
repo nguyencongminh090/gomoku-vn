@@ -3,7 +3,9 @@
 /**
  * room-stage.js — phone "live stage" under the board (#368, mockup features/room-mobile-panel, direction C).
  *
- * ≤768px only. Desktop keeps the rail tabs untouched (every entry point checks active()).
+ * Phones (≤768px, active()): stage under the board, dock at the bottom, tabs in a bottom sheet.
+ * #369 desktop (on() but not active()): the same stage overlays the board, the dock overlays the right column, the
+ * Tỉ số hero lives in the left #scorecard; no sheet, no unread badge (the chat is always on screen).
  *   - A seated player's chat → speech bubble next to that player's seat card (fades after BUBBLE_MS, never takes taps).
  *   - A spectator's chat → pill rising from the bottom-left of the stage (max FLY_MAX).
  *   - Spectators leave the tabs: avatar stack in the dock (tap → popover with names, host can still kick).
@@ -13,7 +15,8 @@
  *
  * Reads: window.RoomState (roomData, myUser, myRole), window.RoomUI.avatarInner. Writes: DOM only + room:react.
  *   - Tỉ số tab: big score between the two seat-card faces, result dots and one row per game (room.gameLog).
- * Exports: window.RoomStage = { active, onChat, onReact, renderAudience, renderScores, setSheetOpen }
+ * Exports: window.RoomStage = { active (phone sheet mode), on (stage at any width), onChat, onReact, renderAudience,
+ *   renderScores, setSheetOpen }
  */
 (function (global) {
   const S = () => global.RoomState;
@@ -35,29 +38,50 @@
 
   let unread = 0;
 
+  function on() {
+    return !!(document.body.classList.contains('arena-room') && $('stage'));
+  }
+  // Phone sheet mode (bottom sheet, unread badge, Tỉ số tab).
   function active() {
-    return !!(mq && mq.matches && document.body.classList.contains('arena-room') && $('stage'));
+    return !!(mq && mq.matches && on());
   }
 
-  // ── Chat input lives in the dock on phones, in the Chat tab on desktop ─────
+  // ── Chat input lives in the dock at every width (#369: the desktop dock sits under the right column) ──
   // Moving the node keeps its listeners (room.js binds #chat-input / #btn-send by id).
   function placeChatInput() {
     const wrap = $('chat-input-wrapper');
     const dock = $('rdock');
-    const panel = document.querySelector('#tab-chat .chat-panel');
-    if (!wrap || !dock || !panel) return;
+    if (!wrap || !dock || !on()) return;
     const input = $('chat-input');
     const t = global.t || ((k) => k);
+    const anchor = $('btn-react');
+    if (wrap.parentNode !== dock) dock.insertBefore(wrap, anchor || null);
+    // mockup C: "Bình luận…" in the dock. The i18n key moves too, or the next applyTranslations() puts it back.
+    if (input) { input.dataset.i18nPlaceholder = 'room.ph_comment'; input.placeholder = t('room.ph_comment'); }
+  }
+
+  // ── #369 score: hero in the left #scorecard on desktop, in the Tỉ số tab on phones ──
+  function placeScores() {
+    const hero = $('score-hero');
+    const card = $('scorecard');
+    const tab = $('tab-users');
+    if (!hero || !card || !tab) return;
     if (active()) {
-      const anchor = $('btn-react');
-      if (wrap.parentNode !== dock) dock.insertBefore(wrap, anchor || null);
-      // mockup C: "Bình luận…" in the dock. The i18n key moves too, or the next applyTranslations() puts it back.
-      if (input) { input.dataset.i18nPlaceholder = 'room.ph_comment'; input.placeholder = t('room.ph_comment'); }
-    } else if (wrap.parentNode !== panel) {
-      panel.appendChild(wrap);
-      if (input) { input.dataset.i18nPlaceholder = 'room.ph_chat'; input.placeholder = t('room.ph_chat'); }
-      setSheetOpen(false);
+      if (hero.parentNode !== tab) tab.insertBefore(hero, $('score-panel') || tab.firstChild);
+      return;
     }
+    const empty = card.querySelector('.scorecard__empty');
+    if (hero.parentNode !== card) card.insertBefore(hero, empty || null);
+    // The Tỉ số tab is hidden on desktop: never leave it as the open tab (the column would be blank).
+    if (document.querySelector('#tab-users.tab-content--active') && global.RoomTabs && global.RoomTabs.activate) {
+      global.RoomTabs.activate('tab-chat');
+    }
+  }
+
+  function layout() {
+    placeChatInput();
+    placeScores();
+    setSheetOpen(false);
   }
 
   // ── Bottom sheet ───────────────────────────────────────────────────────────
@@ -99,8 +123,8 @@
   // ── Chat routing ───────────────────────────────────────────────────────────
   // Returns true when the stage showed the message (ChatUI then skips its float toast).
   function onChat(msg) {
-    if (!active() || !msg || msg.isSystem) return false;
-    if (!chatTabVisible()) setUnread(unread + 1);
+    if (!on() || !msg || msg.isSystem) return false;
+    if (active() && !chatTabVisible()) setUnread(unread + 1);
     const st = S();
     const users = (st && st.roomData && st.roomData.users) || [];
     const sender = msg.fromId ? users.find((u) => u.userId === msg.fromId) : null;
@@ -116,14 +140,28 @@
     const old = layer.querySelector(`.speech[data-slot="${slot}"]`);
     if (old) old.remove();
     const el = document.createElement('div');
-    el.className = 'speech ' + (top ? 'speech--top' : 'speech--bottom');
     el.dataset.slot = String(slot);
     el.textContent = chatText(msg.text);
     const r = card.getBoundingClientRect();
-    if (top) {
+    if (!active()) {
+      // #369 desktop: left column → beside the card, pointing at the board; top-row layout (<1100px) → under the card.
+      const shell = $('board-area-shell');
+      const b = shell ? shell.getBoundingClientRect() : null;
+      const side = !!(b && b.width && r.right <= b.left + 1);
+      el.className = 'speech ' + (side ? 'speech--side' : 'speech--top') + (top ? '' : ' speech--mine');
+      if (side) {
+        el.style.top = Math.round(r.top + 14) + 'px';
+        el.style.left = Math.round(r.right - 24) + 'px';
+      } else {
+        el.style.top = Math.round(r.bottom + 8) + 'px';
+        el.style.left = Math.round(r.left + 12) + 'px';
+      }
+    } else if (top) {
+      el.className = 'speech speech--top';
       el.style.top = Math.round(r.bottom + 8) + 'px';
       el.style.left = Math.round(r.left + 12) + 'px';
     } else {
+      el.className = 'speech speech--bottom';
       el.style.bottom = Math.round(global.innerHeight - r.top + 8) + 'px';
       el.style.right = Math.round(global.innerWidth - r.right + 12) + 'px';
     }
@@ -139,7 +177,7 @@
     if (!fly || !stage) return false;
     // The pills overlay the area just above the dock (pointer-events:none). Where the stage is squeezed to nothing
     // (short phones) only the newest one shows, so the action tiles are covered as little as possible.
-    const max = stage.clientHeight >= 110 ? FLY_MAX : FLY_MAX_SHORT;
+    const max = !active() || stage.clientHeight >= 110 ? FLY_MAX : FLY_MAX_SHORT;
     const el = document.createElement('div');
     el.className = 'fly';
     const av = document.createElement('span');
@@ -159,7 +197,7 @@
 
   // ── Reactions ──────────────────────────────────────────────────────────────
   function onReact(data) {
-    if (!active() || !data || !REACT_EMOJI[data.kind]) return;
+    if (!on() || !data || !REACT_EMOJI[data.kind]) return;
     burst(data.kind);
   }
 
@@ -271,8 +309,9 @@
     if (!list.length) { setAudOpen(false); pop.innerHTML = ''; btn.innerHTML = ''; return; }
     const shown = list.slice(0, 3).map((g) => `<span class="aud__av">${avatar(g)}</span>`).join('');
     const more = list.length > 3 ? `<span class="aud__more">+${list.length - 3}</span>` : '';
-    btn.innerHTML = `<span class="aud__live" aria-hidden="true"></span>${shown}${more}`;
     const label = t('room.audience_count', { n: list.length });
+    // #369 desktop shows the count next to the faces (CSS hides it on phones)
+    btn.innerHTML = `<span class="aud__live" aria-hidden="true"></span>${shown}${more}<span class="aud__label" aria-hidden="true">${esc(label)}</span>`;
     btn.setAttribute('aria-label', label);
     btn.title = label;
     const st = S();
@@ -298,12 +337,13 @@
   function init() {
     if (document.body.dataset.roomStageBound) return;
     document.body.dataset.roomStageBound = '1';
-    placeChatInput();
+    layout();
     if (mq) {
-      const onChange = () => { placeChatInput(); setSheetOpen(false); };
-      if (mq.addEventListener) mq.addEventListener('change', onChange); else if (mq.addListener) mq.addListener(onChange);
+      if (mq.addEventListener) mq.addEventListener('change', layout); else if (mq.addListener) mq.addListener(layout);
     }
-    setSheetOpen(false);
+    // #369: the desktop score card is always on screen, so its "Ván N · đang chơi · X nước" row follows the moves.
+    const grid = $('moves-grid');
+    if (grid && global.MutationObserver) new global.MutationObserver(() => { if (!active()) renderScores(); }).observe(grid, { childList: true });
     const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
     on('btn-sheet', () => setSheetOpen(!document.body.classList.contains('stage-sheet-open')));
     on('rsheet-grab', () => setSheetOpen(false));
@@ -334,6 +374,6 @@
     }));
   }
 
-  global.RoomStage = { active, onChat, onReact, renderAudience, renderScores, setSheetOpen, init, _setUnread: setUnread };
+  global.RoomStage = { active, on, onChat, onReact, renderAudience, renderScores, setSheetOpen, init, _setUnread: setUnread };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })(window);

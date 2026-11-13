@@ -82,3 +82,4 @@ in the detail file / fix-log).
 - **#366.** Home desktop: "Bảng quán cờ" scoreboard + labelled explore chips `[Model: Opus 5]` — [detail](docs/todo/B366-home-desktop-scoreboard.md)
 - **#367.** Reconnect: lapsed player stays in room + quiet connection banner `[Model: Opus 5]` — [detail](docs/todo/B367-reconnect-stay-in-room.md)
 - **#368.** Room mobile: "Live stage" panel — bubbles, spectator stack, Scores tab `[Model: Opus 5]` — [detail](docs/todo/B368-room-mobile-live-stage.md)
+- **#369.** Room desktop: "Sân khấu" 3-column stage (follows #368) `[Model: Opus 5]` — [detail](docs/todo/B369-room-desktop-stage.md)

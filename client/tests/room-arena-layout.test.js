@@ -60,7 +60,7 @@ describe('room.html structure', () => {
 
   test('the rail reads opponent card · panel · actions · your card (+ #368 phone-only stage and dock)', () => {
     const kids = [...document.querySelector('.rail').children].map(e => e.id || e.className);
-    expect(kids).toEqual(['seatcard-top', 'rpanel', 'game-controls', 'seatcard-bottom', 'stage', 'rdock']);
+    expect(kids).toEqual(['seatcard-top', 'scorecard', 'rpanel', 'game-controls', 'seatcard-bottom', 'stage', 'rdock']);
   });
 
   test('request + confirm areas live in the panel toasts, never inside the board area', () => {
