@@ -68,11 +68,25 @@
   // DisconnectHandler.js). Only meaningful once actually in a room; the
   // server-side setPresence() is a safe no-op otherwise, but skipping here
   // avoids emitting on every lobby/login tab-switch too.
-  document.addEventListener('visibilitychange', () => {
+  // Strict presence: "away" = tab hidden OR the window lost focus (another window/program in front,
+  // even with this tab still visible) — a second client open during play must not read as online.
+  function isAway() { return document.hidden || !document.hasFocus(); }
+  let sentAway = null;
+  function reportPresence(force) {
     if (!S().roomData) return;
-    client.emit('room:presence', { presence: document.hidden ? 'away' : 'active' });
+    const away = isAway();
+    if (!force && away === sentAway) return;
+    sentAway = away;
+    client.emit('room:presence', { presence: away ? 'away' : 'active' });
+  }
+  document.addEventListener('visibilitychange', () => {
+    reportPresence();
     if (!document.hidden) resyncClockOnReturn();
   });
+  window.addEventListener('blur', () => reportPresence());
+  window.addEventListener('focus', () => reportPresence());
+  // blur/focus can be missed (devtools, OS focus stealing); cheap safety net.
+  setInterval(() => reportPresence(), 2000);
 
   // A backgrounded tab throttles setInterval, so the local countdown drifts
   // while hidden and `timer:sync` broadcasts received meanwhile were applied
@@ -166,7 +180,7 @@
     // Cover the rare case of joining/reconnecting with the tab already
     // hidden (e.g. it was backgrounded through the whole page load) — the
     // visibilitychange listener above only fires on a state *change*.
-    if (document.hidden) client.emit('room:presence', { presence: 'away' });
+    reportPresence(true);
   });
 
   client.on('room:updated', (data) => {

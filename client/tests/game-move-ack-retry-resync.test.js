@@ -270,12 +270,12 @@ describe('game:moved — receive-side gap detection', () => {
     });
 
     expect(st.gameState.moveCount).toBe(11);
-    expect(client.plainEmits).toHaveLength(1);   // still just the one resync
+    expect(client.plainEmits.filter((e) => e.event === 'game:resync')).toHaveLength(1);   // still just the one resync
 
     // The next broadcast now lines up with the new baseline.
     client.listeners['game:moved'](moved({ moveCount: 12 }));
     expect(st.gameState.moveCount).toBe(12);
-    expect(client.plainEmits).toHaveLength(1);   // and no further resync
+    expect(client.plainEmits.filter((e) => e.event === 'game:resync')).toHaveLength(1);   // and no further resync
   });
 
   test.each(['game:init', 'game:swap2_state', 'game:undo_applied'])(
