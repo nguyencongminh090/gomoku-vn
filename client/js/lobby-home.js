@@ -339,7 +339,7 @@ const QM_MENU_TIMES = [QM_AUTO, 'm45', 'm30', '1+1']; // Home menu: Auto + 45s /
 const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE]; // still accepted from a saved pick
 const qmTimeLabel = (v) => (v === QM_AUTO ? t('qm.time_auto') : v[0] === 'm' ? t('home.per_move', { s: v.slice(1) }) : v);
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, rated: true, searching: false, startedAt: 0, inBucket: 0, error: '', notice: '' }; // notice: last challenge sent (#361)
+const qm = { rule: 'freestyle', time: QM_AUTO, wall: true, portal: false, rated: true, searching: false, startedAt: 0, inBucket: 0, error: '', notice: '' }; // notice: last challenge sent (#361)
 let qmTimer = null;
 
 try {
@@ -362,9 +362,20 @@ function isMember() {
 
 /** Per blank: the field it sets, the values offered (a saved pick outside the menu stays listed, nothing silently changes),
  *  the label inside the listbox and the (lower-case, mid-sentence) label in the blank itself. */
+const QM_WALL = '+wall';
+function ruleWallLabel(v) {
+  const wall = v.endsWith(QM_WALL);
+  const name = t('rankings.cat_' + (wall ? v.slice(0, -QM_WALL.length) : v));
+  return wall ? name + ' (' + t('room.rule_wall') + ')' : name;
+}
+const blankValue = (spec) => (spec.get ? spec.get() : qm[spec.field]);
+
 const BLANKS = {
-  rule: { field: 'rule', aria: 'qm.pick_rule', values: () => (QM_RULES.includes(qm.rule) ? QM_RULES : [...QM_RULES, qm.rule]),
-    option: (v) => t('rankings.cat_' + v), blank: (v) => t('rankings.cat_' + v) },
+  // Rule + Ô khoá share one blank: "Luật 1 (Ô khoá)" only when walls are on, plain "Luật 1" otherwise.
+  rule: { aria: 'qm.pick_rule', get: () => qm.rule + (qm.wall ? QM_WALL : ''),
+    set: (v) => { qm.wall = v.endsWith(QM_WALL); qm.rule = qm.wall ? v.slice(0, -QM_WALL.length) : v; },
+    values: () => (QM_RULES.includes(qm.rule) ? QM_RULES : [...QM_RULES, qm.rule]).flatMap((r) => [r, r + QM_WALL]),
+    option: ruleWallLabel, blank: ruleWallLabel },
   time: { field: 'time', aria: 'qm.pick_time', values: () => (QM_MENU_TIMES.includes(qm.time) ? QM_MENU_TIMES : [...QM_MENU_TIMES, qm.time]),
     option: qmTimeLabel, blank: (v) => (v === QM_AUTO ? t('qm.blank_time_auto') : qmTimeLabel(v)) },
   mode: { field: 'rated', aria: 'qm.pick_mode', values: () => [true, false],
@@ -385,7 +396,7 @@ function renderSentence() {
     if (i % 2 === 0) return document.createTextNode(p);
     const spec = BLANKS[p];
     if (p === 'mode' && !member) return el('span', spec.blank(false), 'hq-blank hq-blank--fixed');
-    const b = el('button', spec.blank(qm[spec.field]), 'hq-blank');
+    const b = el('button', spec.blank(blankValue(spec)), 'hq-blank');
     b.type = 'button';
     b.dataset.blank = p;
     b.disabled = qm.searching;
@@ -412,8 +423,8 @@ function openPick(key) {
   list.replaceChildren(...spec.values().map((v) => {
     const o = el('li', spec.option(v), 'hq-opt');
     o.setAttribute('role', 'option');
-    o.setAttribute('aria-selected', String(v === qm[spec.field]));
-    o.tabIndex = v === qm[spec.field] ? 0 : -1;
+    o.setAttribute('aria-selected', String(v === blankValue(spec)));
+    o.tabIndex = v === blankValue(spec) ? 0 : -1;
     o.addEventListener('click', (e) => { e.stopPropagation(); choose(key, v); });
     o.qmValue = v;
     return o;
@@ -441,7 +452,8 @@ function closePick(focusBlank) {
 }
 
 function choose(key, v) {
-  qm[BLANKS[key].field] = v;
+  const spec = BLANKS[key];
+  if (spec.set) spec.set(v); else qm[spec.field] = v;
   qm.error = '';
   qm.notice = '';
   saveQm();
@@ -634,7 +646,7 @@ function openChallenge() {
   window.HomeChallenge.open({
     anchor: chal,
     pick: { rule: qm.rule, time: qm.time, rated: qm.rated, wall: qm.wall, portal: qm.portal },
-    ruleParts: ['rule', 'time', 'mode'].map((k) => BLANKS[k].option(qm[BLANKS[k].field])),
+    ruleParts: ['rule', 'time', 'mode'].map((k) => BLANKS[k].option(blankValue(BLANKS[k]))),
     onSent: (who) => { qm.error = ''; qm.notice = who && who.displayName ? t('home.ch_sent', { name: who.displayName }) : t('home.ch_sent_any'); renderQuickMatch(); },
   });
 }

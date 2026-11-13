@@ -41,14 +41,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=2cf31da7" />
+  <link rel="modulepreload" href="js/i18n.js?v=209b1437" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
   <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
   <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
   <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=c10952a2" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=f881d771" />
 
 </head>
 <body class="zen-lobby">
@@ -103,7 +103,7 @@
     </div>
     <div class="hq-main">
       <!-- Static default sentence = the first render's shape (no reflow of a 60px h1); lobby-home.js rebuilds it with the saved pick. -->
-      <h1 class="hq-q" id="home-q">Tìm cho tôi một ván <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">Caro VN</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">thời gian tự động</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">xếp hạng</button>.</h1>
+      <h1 class="hq-q" id="home-q">Tìm cho tôi một ván <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">Luật 1 (Ô khoá)</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">thời gian tự động</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">xếp hạng</button>.</h1>
       <ul class="hq-menu" id="qm-pick" role="listbox" hidden></ul>
       <div class="hq-go">
         <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
@@ -299,11 +299,11 @@
         <span class="setting-label" data-i18n="modal.win_rule">Luật thắng</span>
         <div class="pill-group">
           <input type="radio" name="winRule" id="wr-freestyle" value="freestyle" checked />
-          <label for="wr-freestyle" data-i18n="rule.freestyle">Tự do</label>
+          <label for="wr-freestyle" data-i18n="rule.freestyle">Luật 1</label>
           <input type="radio" name="winRule" id="wr-standard" value="standard" />
           <label for="wr-standard" data-i18n="rule.standard">Tiêu chuẩn</label>
           <input type="radio" name="winRule" id="wr-caro" value="caro" />
-          <label for="wr-caro" data-i18n="rule.caro">Caro</label>
+          <label for="wr-caro" data-i18n="rule.caro">Luật 2</label>
         </div>
       </div>
 
@@ -430,11 +430,11 @@
         <span class="setting-label" data-i18n="modal.win_rule">Luật thắng</span>
         <div class="pill-group">
           <input type="radio" name="tWinRule" id="twr-freestyle" value="freestyle" checked />
-          <label for="twr-freestyle" data-i18n="rule.freestyle">Tự do</label>
+          <label for="twr-freestyle" data-i18n="rule.freestyle">Luật 1</label>
           <input type="radio" name="tWinRule" id="twr-standard" value="standard" />
           <label for="twr-standard" data-i18n="rule.standard">Tiêu chuẩn</label>
           <input type="radio" name="tWinRule" id="twr-caro" value="caro" />
-          <label for="twr-caro" data-i18n="rule.caro">Caro</label>
+          <label for="twr-caro" data-i18n="rule.caro">Luật 2</label>
         </div>
       </div>
 
@@ -606,6 +606,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=72254280"></script>
+<script type="module" src="js/index-entry.js?v=028e3616"></script>
 </body>
 </html>
