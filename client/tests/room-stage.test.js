@@ -56,13 +56,13 @@ describe('layout wiring', () => {
     expect($('btn-sheet').getAttribute('aria-expanded')).toBe('false');
     expect($('rsheet').hasAttribute('inert')).toBe(true);
   });
-  test('desktop: nothing moves, chat stays in the Chat tab, the stage ignores messages', () => {
+  test('#369 desktop: the input sits in the dock too, the sheet stays open (no inert), players get bubbles', () => {
     load({ phone: false });
-    expect($('chat-input-wrapper').closest('#tab-chat')).not.toBeNull();
+    expect($('chat-input-wrapper').parentElement.id).toBe('rdock');
     expect($('rsheet').hasAttribute('inert')).toBe(false);
     chat('Hoàng Long', 'hi', 'u-opp');
-    expect($('speech-layer').children).toHaveLength(0);
-    expect($('float-messages').children).toHaveLength(1); // the old toast, unchanged
+    expect($('speech-layer').children).toHaveLength(1);
+    expect($('float-messages').children).toHaveLength(0); // the old dark toast is gone at every width
   });
   test('the #217 toggle is gone from the page', () => {
     load();
@@ -208,10 +208,10 @@ describe('reactions', () => {
     for (let i = 0; i < 30; i++) window.RoomStage.onReact({ kind: 'fire' });
     expect($('stage-reacts').children).toHaveLength(25);
   });
-  test('desktop ignores incoming reactions', () => {
+  test('#369 desktop plays incoming reactions too', () => {
     load({ phone: false });
     window.RoomStage.onReact({ kind: 'clap' });
-    expect($('stage-reacts').children).toHaveLength(0);
+    expect($('stage-reacts').children).toHaveLength(5);
   });
 });
 
@@ -300,12 +300,12 @@ test('reduced motion: no floating/rising, the sheet just appears', () => {
 });
 
 describe('mockup C details', () => {
-  test('dock placeholder is "Bình luận…" on phones, back to the chat one on desktop', () => {
+  test('dock placeholder is "Bình luận…" at every width (#369: the desktop dock is the same one)', () => {
     load();
     expect($('chat-input').placeholder).toBe('room.ph_comment');
     expect($('chat-input').getAttribute('data-i18n-placeholder')).toBe('room.ph_comment'); // survives applyTranslations()
     load({ phone: false });
-    expect($('chat-input').placeholder).toBe('Nhập tin nhắn...');
+    expect($('chat-input').placeholder).toBe('room.ph_comment');
   });
   test('CSS: send button only while typing; sheet tabs are text pills; the stage handle exists', () => {
     expect(CSS).toMatch(/\.rdock \.chat-input:has\(#chat-input:placeholder-shown\) #btn-send \{ display: none; \}/);
@@ -336,7 +336,7 @@ describe('mockup C details', () => {
     expect(opp.querySelector('.chat-msg__tag').textContent).toBe(' · room.player_tag');
     expect(g.querySelector('.chat-msg__tag')).toBeNull();
     expect(me.querySelector('.chat-msg__av')).toBeNull(); // mine: green bubble on the right, no face
-    expect(CSS).toMatch(/body\.arena-room \.chat-msg__av, body\.arena-room \.chat-msg__tag \{ display: none; \}/);
+    expect(CSS).toMatch(/body\.arena-room \.chat-msg__av, body\.arena-room \.chat-msg__tag, body\.arena-room \.scorecard/); // hidden outside .rsheet
   });
 });
 
@@ -385,5 +385,83 @@ describe('Tỉ số tab (score hero)', () => {
     window.RoomState.roomData.gameLog = [g(1, 'u-me', 9, null)];
     window.RoomStage.renderScores();
     expect($('score-hero').querySelector('td:last-child').textContent).toBe('—');
+  });
+});
+
+describe('#369 desktop "Sân khấu"', () => {
+  const rect = (el, r) => { el.getBoundingClientRect = () => ({ top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0, ...r }); };
+  test('spectator chat → pill over the board (3 max), no unread badge (the chat is always on screen)', () => {
+    load({ phone: false, users: [{ ...ME, slot: 1 }, OPP, guest(1)] });
+    for (let i = 0; i < 4; i++) chat('Khách 1', 'm' + i, 'g1');
+    expect($('stage-fly').children).toHaveLength(3);
+    expect($('sheet-badge').hidden).toBe(true);
+    expect($('float-messages').children).toHaveLength(0);
+  });
+  test('bubble beside a left-column card (pointing at the board); mine is the green one', () => {
+    load({ phone: false });
+    rect($('board-area-shell'), { left: 300, right: 900, width: 600 });
+    rect($('seatcard-top'), { top: 70, left: 14, right: 284, bottom: 180 });
+    rect($('seatcard-bottom'), { top: 700, left: 14, right: 284, bottom: 820 });
+    chat('Hoàng Long', 'a', 'u-opp');
+    chat('Minh', 'b', 'u-me');
+    const [opp, me] = $('speech-layer').children;
+    expect(opp.className).toBe('speech speech--side');
+    expect([opp.style.top, opp.style.left]).toEqual(['84px', '260px']);
+    expect(me.className).toBe('speech speech--side speech--mine');
+  });
+  test('top-row layout (<1100px: cards above the board) → bubble under the card', () => {
+    load({ phone: false });
+    rect($('board-area-shell'), { left: 10, right: 520, width: 510 });
+    rect($('seatcard-top'), { top: 66, left: 10, right: 240, bottom: 130 });
+    chat('Hoàng Long', 'a', 'u-opp');
+    const b = $('speech-layer').firstElementChild;
+    expect(b.className).toBe('speech speech--top');
+    expect([b.style.top, b.style.left]).toEqual(['138px', '22px']);
+  });
+  test('the score hero lives in the left card on desktop (before the empty line), in the Tỉ số tab on phones', () => {
+    load({ phone: false });
+    expect($('score-hero').parentElement.id).toBe('scorecard');
+    expect($('score-hero').nextElementSibling.className).toBe('scorecard__empty');
+    load();
+    expect($('score-hero').parentElement.id).toBe('tab-users');
+    expect($('score-hero').nextElementSibling.id).toBe('score-panel');
+  });
+  test('a restored Tỉ số tab falls back to Chat on desktop (that tab is hidden there)', () => {
+    load({ phone: false });
+    window.RoomTabs.activate('tab-users');
+    // re-run the layout through the media-query change listener (as a resize across 768px would)
+    const mqCalls = window.matchMedia.mock.results.map((r) => r.value).filter((m) => m.addEventListener.mock.calls.length);
+    mqCalls[0].addEventListener.mock.calls[0][1]();
+    expect(document.querySelector('.tab-content--active').id).toBe('tab-chat');
+  });
+  test('the live "Ván N · đang chơi" row follows the moves (observer on #moves-grid)', async () => {
+    load({ phone: false });
+    window.RoomState.roomData.gameLog = [];
+    window.RoomState.gameState = { status: 'ongoing', moveHistory: [1] };
+    window.RoomStage.renderScores();
+    window.RoomState.gameState.moveHistory = [1, 2, 3];
+    $('moves-grid').appendChild(document.createElement('li'));
+    await Promise.resolve();
+    expect($('score-hero').textContent).toContain('room.game_moves:3');
+  });
+  test('the docked/collapsible rail is gone (markup, JS, CSS, i18n)', () => {
+    expect(html).not.toMatch(/rail-dock-toggle/);
+    expect(CSS).not.toMatch(/rail-collapsed|rail-dock-toggle/);
+    expect(fs.readFileSync(path.join(__dirname, '..', 'js', 'room.js'), 'utf8')).not.toMatch(/setRailCollapsed|rail-collapsed/);
+    expect(fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8')).not.toMatch(/room\.rail_(collapse|expand)/);
+  });
+  test('CSS: three columns ≥769px with the rail dissolved; top-row variant below 1100px; Tỉ số tab hidden', () => {
+    const desk = CSS.slice(CSS.indexOf('@media (min-width: 769px) {'));
+    expect(desk).toMatch(/grid-template-columns: var\(--left-w\) minmax\(0, 1fr\) var\(--right-w\)/);
+    expect(desk).toMatch(/\.rail \{ display: contents; \}/);
+    expect(desk).toMatch(/\.tab-btn\[data-tab="tab-users"\] \{ display: none; \}/);
+    expect(desk).toMatch(/\.rail > \.stage \{[^}]*pointer-events: none/);
+    expect(CSS).toMatch(/@media \(min-width: 769px\) and \(max-width: 1099px\), \(min-width: 769px\) and \(max-aspect-ratio: 3\/2\) \{[\s\S]*\.scorecard \{ grid-area: 1 \/ 2;/);
+    // side panels docked to the viewport edges (user 2026-11-13): no outer side padding, full-height left/right panels
+    expect(desk).toMatch(/padding: var\(--pad-y\) 0; max-width: none;/);
+    expect(desk).toMatch(/\.room::before \{[^}]*grid-area: 1 \/ 1 \/ 5 \/ 2; margin: calc\(-1 \* var\(--pad-y\)\) 0;[^}]*border-right/);
+    expect(desk).toMatch(/\.rpanel \{[^}]*margin: calc\(-1 \* var\(--pad-y\)\) 0;[^}]*border-left/);
+    // the shared stage components come before the desktop block, so its overrides win
+    expect(CSS.indexOf('body.arena-room .aud-pop {')).toBeLessThan(CSS.indexOf('@media (min-width: 769px) {'));
   });
 });

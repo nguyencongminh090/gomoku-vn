@@ -4,9 +4,8 @@
    every rule is scoped to body.arena-room so the shared components there
    (chat, settings rows, score table, start modal) keep their base styles.
 
-   Desktop: [board | 340px rail]. The rail reads top→bottom as the board does:
-   opponent card (top edge) · tabs · action tiles · your card (bottom edge),
-   so each clock sits beside the edge of the board its player faces.
+   Desktop (#369 "Sân khấu"): [cards · score · tiles | board | audience · tabs · input]; the
+   rail is display:contents there (see the #369 block). The base grid below is only the fallback.
    ≤768px: one column — opponent card, edge-to-edge board, your card, action
    tiles in thumb reach, then the tabs (the rail is display:contents there).
 
@@ -245,67 +244,16 @@ body.arena-room .game-controls .swap2-hint { padding: 10px 12px; border-radius: 
 body.arena-room .game-controls .swap2-choice { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 body.arena-room .game-controls .swap2-choice .btn-game { min-height: 44px; }
 
-/* #368 phone-only parts: the live stage, its dock and the sheet grab never show above 768px; the sheet wrapper is
-   transparent there, so the tabs stay children of .rpanel exactly as before. */
+/* Hidden until a width block shows them: the stage + dock at both widths (#369), the sheet grab, scrim and Tỉ số
+   tab label only on phones, the score card only on desktop. The sheet wrapper is transparent on desktop. */
 body.arena-room .stage, body.arena-room .rdock, body.arena-room .rsheet__grab, body.arena-room .rsheet-scrim,
 body.arena-room .speech-layer, body.arena-room .tab-btn__label--phone, body.arena-room .tab-btn__icon--phone,
 body.arena-room .score-empty, body.arena-room .score-hero, body.arena-room .moves-grid,
-body.arena-room .chat-msg__av, body.arena-room .chat-msg__tag { display: none; }
+body.arena-room .chat-msg__av, body.arena-room .chat-msg__tag, body.arena-room .scorecard, body.arena-room .scorecard__empty,
+body.arena-room .aud__label { display: none; }
 body.arena-room .rsheet { display: contents; }
 /* .tab-btn > .icon (above) sets display — out-specify it, or both icons show */
 body.arena-room .tab-btn > .tab-btn__icon--phone { display: none; }
-
-/* ── Desktop: rail docked to the viewport's right edge, collapsible ─────────
-   The rail leaves the grid (fixed, full height under the nav); .room reserves its width as padding so the board
-   centres in the remaining space, and gets the full width when collapsed. Phones keep the stacked layout. */
-body.arena-room .rail-dock-toggle { display: none; }
-@media (min-width: 769px) {
-  body.arena-room .room {
-    grid-template-columns: minmax(0, 1fr);
-    max-width: none;
-    padding-right: calc(var(--rail-w) + 24px + 16px);
-    transition: padding-right .24s cubic-bezier(.2, .8, .2, 1);
-  }
-  body.arena-room.rail-collapsed .room { padding-right: 16px; }
-  body.arena-room .rail {
-    position: fixed; top: var(--nav-h); right: 0; bottom: 0;
-    width: calc(var(--rail-w) + 24px);
-    padding: 12px;
-    background: var(--c-surface);
-    border-left: 1px solid var(--c-border);
-    box-shadow: -2px 0 12px rgba(0,0,0,.06);
-    z-index: 20;
-    transition: transform .24s cubic-bezier(.2, .8, .2, 1), visibility 0s;
-  }
-  /* The rail is itself a panel (surface), so the cards inside step down to surface-2 to stay distinct. */
-  body.arena-room .rail .seatcard, body.arena-room .rail .rpanel { background: var(--c-surface-2); }
-  body.arena-room.rail-collapsed .rail { transform: translateX(100%); visibility: hidden; transition: transform .24s cubic-bezier(.2, .8, .2, 1), visibility 0s .24s; }
-  /* Seated in your own game (#game-controls is non-empty only then): collapsing hides just the tabs. Seat cards, clocks,
-     controls and request toasts (which live in .rpanel) stay put, so a clock or a draw/undo/time offer is never lost. */
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) { transform: none; visibility: visible; bottom: auto; border-bottom: 1px solid var(--c-border); border-radius: 0 0 0 var(--radius-lg); }
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) .rpanel { flex: 0 0 auto; height: auto; min-height: 0; padding: 0; overflow: visible; background: none; }
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) .rpanel > :not(.gtoasts) { display: none; }
-  body.arena-room.rail-collapsed .rail:has(#game-controls:not(:empty), .seatcard__sit) .gtoasts { position: static; margin: 0 8px; }
-  body.arena-room.rail-collapsed:has(#game-controls:not(:empty), .seatcard__sit) .room { padding-right: calc(var(--rail-w) + 24px + 16px); }
-  body.arena-room.rail-collapsed:has(#game-controls:not(:empty), .seatcard__sit) .rail-dock-toggle { right: calc(var(--rail-w) + 24px); }
-  body.arena-room .rail-dock-toggle {
-    display: flex; align-items: center; justify-content: center;
-    position: fixed; top: calc(var(--nav-h) + 50vh - 40px); right: calc(var(--rail-w) + 24px);
-    width: 20px; height: 80px; padding: 0;
-    background: var(--c-surface); color: var(--c-ink-3);
-    border: 1px solid var(--c-border); border-right: 0; border-radius: 8px 0 0 8px;
-    cursor: pointer; z-index: 21;
-    transition: right .24s cubic-bezier(.2, .8, .2, 1), color .12s;
-  }
-  body.arena-room .rail-dock-toggle:hover { color: var(--c-ink); }
-  body.arena-room .rail-dock-toggle:focus-visible { outline: 2px solid var(--c-brand); outline-offset: -2px; }
-  body.arena-room .rail-dock-toggle .icon { width: 14px; height: 14px; transition: transform .24s; }
-  body.arena-room.rail-collapsed .rail-dock-toggle { right: 0; }
-  body.arena-room.rail-collapsed .rail-dock-toggle .icon { transform: rotate(180deg); }
-}
-@media (prefers-reduced-motion: reduce) {
-  body.arena-room .room, body.arena-room .rail, body.arena-room .rail-dock-toggle { transition: none !important; }
-}
 
 /* ── Phones: one column, board edge to edge ─────────────────────────────── */
 @media (max-width: 768px) {
@@ -407,6 +355,276 @@ body.arena-room .rail-dock-toggle { display: none; }
    (room.css gave it a zen-era bottom radius that showed as a notch against the panel). */
 body.arena-room .chat-input { border-radius: 0; }
 
+/* ── #368/#369 live-stage components, shared by the phone stage and the desktop "Sân khấu" ─────────────────────
+   (pills, reactions, dock input/buttons, audience stack + popover, speech bubbles, pill tabs, chat faces,
+   score hero, moves grid). Placement lives in the desktop block right after and the phone block below. */
+body.arena-room { --ease-out: cubic-bezier(.2, .8, .2, 1); }
+body.arena-room .fly {
+  display: flex; align-items: center; gap: 6px; max-width: 100%;
+  padding: 3px 10px 3px 3px; border-radius: 999px;
+  background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow);
+  font-size: 13px; line-height: 1.3;
+  animation: stage-rise .32s var(--ease-out) backwards;
+}
+body.arena-room .fly:not(:last-child) { opacity: .75; }
+body.arena-room .fly:nth-last-child(3) { opacity: .45; }
+body.arena-room .fly__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.arena-room .fly__text b { font-weight: 800; }
+body.arena-room .fly__av, body.arena-room .aud__av {
+  flex: none; display: grid; place-items: center; overflow: hidden;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--c-surface-2); color: var(--c-ink); font-size: 9px; font-weight: 800;
+}
+body.arena-room .stage__reacts { position: absolute; right: 12px; bottom: 0; width: 60px; height: 100%; pointer-events: none; }
+body.arena-room .react {
+  position: absolute; bottom: 0; font-size: 22px; line-height: 1; opacity: 0;
+  animation: stage-float 1.8s var(--ease-out) forwards;
+}
+body.arena-room .rdock .chat-input { flex: 1; min-width: 0; padding: 0; margin: 0; border: 0; background: none; gap: 6px; }
+body.arena-room .rdock .chat-input input { border-radius: 999px; padding: 0 14px; }
+body.arena-room .rdock .chat-input button { border-radius: 50%; }
+body.arena-room .rdock .chat-input:has(#chat-input:placeholder-shown) #btn-send { display: none; }
+body.arena-room .rdock__btn {
+  position: relative; flex: none; display: grid; place-items: center;
+  width: 44px; height: 44px; padding: 0; border-radius: 50%;
+  border: 1px solid var(--c-border); background: var(--c-surface-2); color: var(--c-ink-2);
+  font-size: 19px; cursor: pointer;
+}
+body.arena-room .rdock__btn .icon { width: 20px; height: 20px; }
+body.arena-room .rdock__btn:active { transform: scale(.92); }
+body.arena-room .rdock__btn[aria-expanded="true"] { border-color: var(--c-brand); color: var(--c-brand-text); background: var(--c-brand-light); }
+body.arena-room .rdock__badge {
+  position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 4px;
+  display: grid; place-items: center; border-radius: 9px;
+  background: var(--c-accent); color: var(--c-on-brand); font-size: 11px; font-weight: 800;
+}
+body.arena-room .rdock__badge[hidden] { display: none; }
+body.arena-room .aud {
+  position: relative; flex: none; display: flex; align-items: center;
+  min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+}
+body.arena-room .aud[hidden] { display: none; }
+body.arena-room .aud .aud__av { width: 28px; height: 28px; font-size: 9px; letter-spacing: -.02em; margin-left: -6px; border: 2px solid var(--c-surface); }
+body.arena-room .aud .aud__av:nth-child(2) { margin-left: 0; }
+body.arena-room .aud__more {
+  display: grid; place-items: center; width: 28px; height: 28px; margin-left: -9px; border-radius: 50%;
+  border: 2px solid var(--c-surface); background: var(--c-surface-2); color: var(--c-ink-2); font-size: 10.5px; font-weight: 800;
+}
+body.arena-room .aud__live {
+  position: absolute; left: 0; top: 6px; z-index: 1; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--c-error); border: 2px solid var(--c-surface);
+}
+body.arena-room .aud__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.arena-room .aud-pop {
+  position: absolute; left: 8px; bottom: calc(100% + 6px); z-index: 50;
+  width: min(280px, calc(100vw - 16px)); max-height: 50dvh; overflow: auto; padding: 12px;
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
+  animation: stage-pop .18s var(--ease-out) both;
+}
+body.arena-room .aud-pop[hidden] { display: none; }
+body.arena-room .aud-pop__title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+body.arena-room .aud-pop__title .icon { width: 16px; height: 16px; color: var(--c-ink-2); }
+body.arena-room .aud-pop__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
+body.arena-room .aud-pop__list li { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+body.arena-room .aud-pop__list .aud__av { width: 36px; height: 36px; font-size: 12px; }
+body.arena-room .aud-pop__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--c-ink-2); }
+body.arena-room .aud-pop__list .btn-kick { min-height: 24px; padding: 0 6px; font-size: 10.5px; }
+body.arena-room .speech-layer { display: block; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+body.arena-room .speech {
+  position: fixed; max-width: min(260px, 70vw); padding: 7px 12px; border-radius: 14px;
+  background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-lg);
+  font-size: 14px; line-height: 1.35; overflow-wrap: anywhere;
+  animation: stage-pop .3s var(--ease-out) backwards; transition: opacity .35s ease;
+}
+body.arena-room .speech::before {
+  content: ""; position: absolute; width: 12px; height: 12px; background: inherit; transform: rotate(45deg);
+}
+body.arena-room .speech--top::before { top: -5px; left: 18px; }
+body.arena-room .speech--bottom { background: var(--c-brand); color: var(--c-on-brand); }
+body.arena-room .speech--bottom::before { bottom: -5px; right: 30px; }
+body.arena-room .speech--out { opacity: 0; }
+body.arena-room .rsheet .sidebar-tabs { gap: 4px; padding: 2px 12px 8px; border-bottom: 0; }
+body.arena-room .rsheet .tab-btn {
+  min-height: 40px; padding: 0 6px; border: 0; border-radius: 999px;
+  background: var(--c-fill); color: var(--c-ink-2); font-weight: 700;
+}
+body.arena-room .rsheet .tab-btn > .icon { display: none; }
+body.arena-room .rsheet .tab-btn--active { background: var(--c-brand); color: var(--c-on-brand); border: 0; }
+body.arena-room .rsheet .chat-messages { padding: 4px 14px 12px; }
+body.arena-room .rsheet .chat-msg--other { flex-direction: row; align-items: flex-end; gap: 7px; max-width: 88%; }
+body.arena-room .rsheet .chat-msg__av {
+  display: grid; place-items: center; flex: none; overflow: hidden;
+  width: 24px; height: 24px; border-radius: 50%; background: var(--c-surface-2); font-size: 9.5px; font-weight: 800;
+}
+body.arena-room .rsheet .chat-msg__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.arena-room .rsheet .chat-msg__bubble { max-width: none; padding: 6px 10px; border: 0; border-radius: 14px 14px 14px 4px; box-shadow: none; }
+body.arena-room .rsheet .chat-msg--self .chat-msg__bubble { max-width: 88%; border-radius: 14px 14px 4px 14px; }
+body.arena-room .rsheet .chat-msg__name { color: var(--c-ink-3); font-size: 11px; font-weight: 800; opacity: 1; }
+body.arena-room .rsheet .chat-msg__tag { display: inline; font-weight: 600; }
+body.arena-room .rsheet .chat-msg__text { font-size: 13.5px; line-height: 1.35; }
+body.arena-room #score-panel { display: none; }
+body.arena-room .score-hero { display: block; padding: 4px 14px 12px; }
+body.arena-room .score-hero:empty { display: none; }
+body.arena-room .score-hero__top { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 6px 0 10px; }
+body.arena-room .score-hero__p { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; max-width: 34%; }
+body.arena-room .score-hero__av {
+  display: grid; place-items: center; overflow: hidden; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--c-surface-2); font-size: 13px; font-weight: 800;
+}
+body.arena-room .score-hero__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+body.arena-room .score-hero__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
+body.arena-room .score-hero__num { font-size: 40px; font-weight: 900; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+body.arena-room .score-dots { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
+body.arena-room .score-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-fill); border: 1px solid var(--c-border); }
+body.arena-room .score-dot--r { background: var(--c-brand); border-color: var(--c-brand); }
+body.arena-room .score-dot--l { background: var(--c-error); border-color: var(--c-error); }
+body.arena-room .score-dot--d { background: var(--c-ink-3); border-color: var(--c-ink-3); }
+body.arena-room .score-games { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+body.arena-room .score-games td { padding: 7px 4px; border-top: 1px solid var(--c-border); }
+body.arena-room .score-games__w { font-weight: 800; color: var(--c-brand-text); }
+body.arena-room .score-games__now td { color: var(--c-ink-3); }
+body.arena-room #moves-list { display: none; }
+body.arena-room .moves-grid {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px;
+  list-style: none; margin: 0; padding: 4px 14px 12px; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+body.arena-room .moves-grid li { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 4px; }
+body.arena-room .moves-grid em { font-style: normal; color: var(--c-ink-3); min-width: 2.2em; }
+body.arena-room .moves-grid__pc { width: 14px; height: 14px; flex: none; }
+body.arena-room .moves-grid__cur { background: var(--c-brand-light); color: var(--c-brand-text); font-weight: 800; }
+body.arena-room .moves-grid .moves__empty { grid-column: 1 / -1; color: var(--c-ink-3); }
+body.arena-room .speech--side::before { left: -5px; top: 13px; }
+body.arena-room .speech--mine { background: var(--c-brand); color: var(--c-on-brand); }
+
+/* ── #369 Desktop: "Sân khấu" — three columns around the board (mockup features/room-desktop-stage, direction B) ──
+   ≥1100px: [opponent card · score card · action tiles · your card] | board + stage overlay | [audience · tabs · input].
+   769–1099px (user choice): the two cards + a compact score form a row over the board, the tiles sit under it, the
+   right column stays. The rail dissolves (display:contents) so its children are grid items; the dock (audience stack
+   on top, input + 👏 at the bottom) overlays the right column, whose panel pads around it.
+   Side panels are docked (user 2026-11-13 "dính vào cạnh"): full height under the nav, flush with the viewport edge,
+   surface + a border toward the board. The left one is .room::before (a grid item behind the left-column cards). */
+@media (min-width: 769px) {
+  body.arena-room { --left-w: 280px; --right-w: 340px; --pad-y: 12px; }
+  body.arena-room .room {
+    grid-template-columns: var(--left-w) minmax(0, 1fr) var(--right-w);
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 10px 0; padding: var(--pad-y) 0; max-width: none;
+  }
+  body.arena-room .room::before {
+    content: ""; grid-area: 1 / 1 / 5 / 2; margin: calc(-1 * var(--pad-y)) 0;
+    background: var(--c-surface); border-right: 1px solid var(--c-border); box-shadow: 2px 0 12px rgba(0,0,0,.05);
+  }
+  body.arena-room .seatcard--top, body.arena-room .scorecard, body.arena-room .game-controls, body.arena-room .seatcard--bottom { margin: 0 12px; }
+  body.arena-room .seatcard, body.arena-room .act { background: var(--c-surface-2); }
+  body.arena-room .act:hover:not(:disabled) { background: var(--c-fill); }
+  body.arena-room .board-area-shell { margin: 0 16px; }
+  body.arena-room .rail { display: contents; }
+  body.arena-room .seatcard--top { grid-area: 1 / 1; }
+  body.arena-room .scorecard { grid-area: 2 / 1; }
+  body.arena-room .game-controls { grid-area: 3 / 1; grid-auto-flow: row; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.arena-room .game-controls .act { flex-direction: row; gap: 6px; min-height: 44px; }
+  body.arena-room .seatcard--bottom { grid-area: 4 / 1; }
+  body.arena-room .board-area-shell { grid-area: 1 / 2 / 5 / 3; }
+
+  /* Left column cards: name row, the clock full width under it (mockup B) */
+  body.arena-room .seatcard { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 8px; border-radius: var(--radius-xl); }
+  body.arena-room .seatcard__clock { grid-column: 1 / -1; min-width: 0; text-align: center; font-size: 36px; }
+
+  /* Score card: title · hero (big score, dots, one row per game) — or the empty line */
+  body.arena-room .scorecard {
+    display: flex; flex-direction: column; min-height: 0; overflow: auto;
+    padding: 6px 2px; /* a section of the docked panel, not a floating card */
+  }
+  body.arena-room .scorecard .score-games td { white-space: nowrap; }
+  body.arena-room .scorecard__title { font-size: 11.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--c-ink-3); }
+  body.arena-room .scorecard .score-hero { padding: 4px 0 0; }
+  body.arena-room .scorecard .score-hero__top { padding: 4px 0 8px; }
+  body.arena-room .scorecard .score-hero__num { font-size: 34px; }
+  body.arena-room #score-hero:empty + .scorecard__empty { display: block; margin: auto 0; padding: 12px 0; text-align: center; color: var(--c-ink-3); font-size: 13.5px; }
+
+  /* Stage: over the board cell, never takes a click (pills bottom-left, 👏 burst on the right edge) */
+  body.arena-room .rail > .stage { grid-area: 1 / 2 / 5 / 3; display: block; position: relative; z-index: 6; overflow: hidden; pointer-events: none; }
+  body.arena-room .stage__handle { display: none; }
+  body.arena-room .stage__fly {
+    position: absolute; left: 12px; bottom: 12px; max-width: min(60%, 440px);
+    display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+  }
+  body.arena-room .stage .fly { font-size: 14px; padding: 4px 12px 4px 4px; }
+  body.arena-room .stage .fly__av { width: 24px; height: 24px; }
+  body.arena-room .stage .react { font-size: 26px; }
+  body.arena-room .speech-layer { display: block; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+  body.arena-room .speech { max-width: 280px; }
+
+  /* Right column: the panel (tabs + content) with the dock laid over its top and bottom edges */
+  body.arena-room .rpanel {
+    grid-area: 1 / 3 / 5 / 4; margin: calc(-1 * var(--pad-y)) 0; padding: 70px 12px 78px; border-radius: 0;
+    border-left: 1px solid var(--c-border); box-shadow: -2px 0 12px rgba(0,0,0,.05);
+  }
+  body.arena-room .rail > .rdock {
+    grid-area: 1 / 3 / 5 / 4; margin: calc(-1 * var(--pad-y)) 0; position: relative; z-index: 7; pointer-events: none;
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px;
+    padding: 18px 12px 22px;
+  }
+  body.arena-room .rdock > * { pointer-events: auto; }
+  body.arena-room .rdock > .aud { grid-area: 1 / 1 / 2 / 3; justify-self: stretch; border-bottom: 1px solid var(--c-border); }
+  body.arena-room .rdock > .chat-input { grid-area: 3 / 1; }
+  body.arena-room .rdock > #btn-react { grid-area: 3 / 2; }
+  body.arena-room #btn-sheet { display: none; }
+  body.arena-room .aud__label { display: inline; margin-left: 10px; font-size: 13px; font-weight: 700; color: var(--c-ink-2); }
+  body.arena-room .aud-pop { left: 12px; top: 68px; bottom: auto; }
+  body.arena-room .rdock .chat-input input { min-height: 44px; background: var(--c-surface-2); }
+  body.arena-room .rdock .chat-input button { min-width: 44px; min-height: 44px; }
+  /* Request toasts: under the audience bar, over the chat (never over the board, cards or clocks) */
+  body.arena-room .gtoasts { top: 116px; left: 12px; right: 12px; }
+  body.arena-room .gtoast__t { white-space: normal; }
+
+  /* Tabs: Chat · Nước đi · ⚙ as pills; the score has its own card, so the Tỉ số/Khán giả tab is gone */
+  body.arena-room .rsheet .sidebar-tabs { padding: 0 0 8px; }
+  body.arena-room .tab-btn[data-tab="tab-users"] { display: none; }
+  body.arena-room .tab-btn[data-tab="tab-chat"] { order: -1; }
+  body.arena-room .rsheet .tab-btn[data-tab="tab-settings"] { flex: 0 0 44px; }
+  body.arena-room .rsheet .tab-btn[data-tab="tab-settings"] > .icon { display: inline-block; }
+  body.arena-room .tab-btn[data-tab="tab-settings"] .tab-btn__label { display: none; }
+  body.arena-room .rsheet .tab-content--active { flex: 1; min-height: 0; overflow: auto; background: var(--c-surface-2); border-radius: var(--radius-lg); }
+  body.arena-room .rsheet #tab-chat .chat-panel { height: 100%; }
+  body.arena-room .rsheet .chat-msg__bubble { background: var(--c-surface); }
+  body.arena-room .rsheet .chat-msg--self .chat-msg__bubble { background: var(--c-brand); color: var(--c-on-brand); }
+}
+/* Top-row variant: cards + compact score in one row over the board, tiles under it. User picked it for <1100px; it
+   also takes screens no wider than 3:2, where three columns would give a smaller board (measured: 1100×900 3-col
+   430px vs top-row 729px at 1099; 1180×820 524 vs ~584). Three columns win from ~W − H ≥ 420 (1280×800: 617px). */
+@media (min-width: 769px) and (max-width: 1099px), (min-width: 769px) and (max-aspect-ratio: 3/2) {
+  body.arena-room { --right-w: 300px; --pad-y: 10px; }
+  body.arena-room .room {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) var(--right-w);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 10px; padding: var(--pad-y) 0 var(--pad-y) 10px;
+  }
+  body.arena-room .room::before { display: none; }
+  body.arena-room .seatcard--top, body.arena-room .scorecard, body.arena-room .game-controls, body.arena-room .seatcard--bottom { margin: 0; }
+  body.arena-room .seatcard, body.arena-room .scorecard, body.arena-room .act { background: var(--c-surface); }
+  body.arena-room .board-area-shell { margin: 0; }
+  body.arena-room .seatcard--top { grid-area: 1 / 1; }
+  body.arena-room .scorecard { grid-area: 1 / 2; justify-content: center; overflow: visible; padding: 4px 10px; }
+  body.arena-room .scorecard:has(#score-hero:empty) { display: none; }
+  body.arena-room .scorecard__title, body.arena-room .scorecard .score-games, body.arena-room .scorecard .score-hero__p { display: none; }
+  body.arena-room .scorecard .score-hero { padding: 0; }
+  body.arena-room .scorecard .score-hero__top { padding: 0; }
+  body.arena-room .scorecard .score-hero__num { font-size: 26px; }
+  body.arena-room .scorecard .score-dots { margin: 2px 0 0; }
+  body.arena-room .seatcard--bottom { grid-area: 1 / 3; }
+  body.arena-room .board-area-shell, body.arena-room .rail > .stage { grid-area: 2 / 1 / 3 / 4; }
+  body.arena-room .game-controls { grid-area: 3 / 1 / 4 / 4; grid-auto-flow: column; grid-template-columns: none; }
+  body.arena-room .rpanel, body.arena-room .rail > .rdock { grid-area: 1 / 4 / 4 / 5; }
+  body.arena-room .seatcard { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+  body.arena-room .seatcard__clock { grid-column: 4; font-size: 24px; padding: 2px 8px; }
+}
+/* Narrow top row (portrait tablets): the clock goes under the name, or the name is cut to "gu…" (height is not short here) */
+@media (min-width: 769px) and (max-width: 959px) {
+  body.arena-room .seatcard { grid-template-columns: auto minmax(0, 1fr) auto; row-gap: 6px; }
+  body.arena-room .seatcard__clock { grid-column: 1 / -1; text-align: center; }
+}
+
 /* ── #368 Phones: "live stage" under the board (mockup features/room-mobile-panel, direction C) ──────────────
    Column: opponent card · board · my card · action tiles · request toasts · STAGE (takes the leftover height) ·
    DOCK (audience stack · chat input · 👏 · sheet button), sticky at the bottom of the .room scroller.
@@ -425,27 +643,6 @@ body.arena-room .chat-input { border-radius: 0; }
     max-width: 74%; pointer-events: none;
     display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
   }
-  body.arena-room .fly {
-    display: flex; align-items: center; gap: 6px; max-width: 100%;
-    padding: 3px 10px 3px 3px; border-radius: 999px;
-    background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow);
-    font-size: 13px; line-height: 1.3;
-    animation: stage-rise .32s var(--ease-out) backwards;
-  }
-  body.arena-room .fly:not(:last-child) { opacity: .75; }
-  body.arena-room .fly:nth-last-child(3) { opacity: .45; }
-  body.arena-room .fly__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  body.arena-room .fly__text b { font-weight: 800; }
-  body.arena-room .fly__av, body.arena-room .aud__av {
-    flex: none; display: grid; place-items: center; overflow: hidden;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: var(--c-surface-2); color: var(--c-ink); font-size: 9px; font-weight: 800;
-  }
-  body.arena-room .stage__reacts { position: absolute; right: 12px; bottom: 0; width: 60px; height: 100%; pointer-events: none; }
-  body.arena-room .react {
-    position: absolute; bottom: 0; font-size: 22px; line-height: 1; opacity: 0;
-    animation: stage-float 1.8s var(--ease-out) forwards;
-  }
 
   body.arena-room .rail > .rdock {
     order: 7; display: flex; align-items: center; gap: 8px;
@@ -454,81 +651,18 @@ body.arena-room .chat-input { border-radius: 0; }
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
     background: var(--c-surface); border-top: 1px solid var(--c-border);
   }
-  body.arena-room .rdock .chat-input { flex: 1; min-width: 0; padding: 0; margin: 0; border: 0; background: none; gap: 6px; }
-  body.arena-room .rdock .chat-input input { border-radius: 999px; padding: 0 14px; }
-  body.arena-room .rdock .chat-input button { border-radius: 50%; }
   /* Mockup C has no send button at rest: it appears once there is text (Enter / the keyboard's Send also send) */
-  body.arena-room .rdock .chat-input:has(#chat-input:placeholder-shown) #btn-send { display: none; }
   body.arena-room .stage__handle {
     position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 1;
     display: grid; place-items: center; width: 64px; height: 20px; padding: 0; border: 0; background: none; cursor: pointer;
   }
   body.arena-room .stage__handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--c-border); }
-  body.arena-room .rdock__btn {
-    position: relative; flex: none; display: grid; place-items: center;
-    width: 44px; height: 44px; padding: 0; border-radius: 50%;
-    border: 1px solid var(--c-border); background: var(--c-surface-2); color: var(--c-ink-2);
-    font-size: 19px; cursor: pointer;
-  }
-  body.arena-room .rdock__btn .icon { width: 20px; height: 20px; }
-  body.arena-room .rdock__btn:active { transform: scale(.92); }
-  body.arena-room .rdock__btn[aria-expanded="true"] { border-color: var(--c-brand); color: var(--c-brand-text); background: var(--c-brand-light); }
-  body.arena-room .rdock__badge {
-    position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 4px;
-    display: grid; place-items: center; border-radius: 9px;
-    background: var(--c-accent); color: var(--c-on-brand); font-size: 11px; font-weight: 800;
-  }
-  body.arena-room .rdock__badge[hidden] { display: none; }
 
   /* Audience: avatar stack only (live dot = watching now); tap → names */
-  body.arena-room .aud {
-    position: relative; flex: none; display: flex; align-items: center;
-    min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: pointer;
-  }
-  body.arena-room .aud[hidden] { display: none; }
-  body.arena-room .aud .aud__av { width: 28px; height: 28px; font-size: 9px; letter-spacing: -.02em; margin-left: -6px; border: 2px solid var(--c-surface); }
-  body.arena-room .aud .aud__av:nth-child(2) { margin-left: 0; }
-  body.arena-room .aud__more {
-    display: grid; place-items: center; width: 28px; height: 28px; margin-left: -9px; border-radius: 50%;
-    border: 2px solid var(--c-surface); background: var(--c-surface-2); color: var(--c-ink-2); font-size: 10.5px; font-weight: 800;
-  }
-  body.arena-room .aud__live {
-    position: absolute; left: 0; top: 6px; z-index: 1; width: 9px; height: 9px; border-radius: 50%;
-    background: var(--c-error); border: 2px solid var(--c-surface);
-  }
-  body.arena-room .aud__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  body.arena-room .aud-pop {
-    position: absolute; left: 8px; bottom: calc(100% + 6px); z-index: 50;
-    width: min(280px, calc(100vw - 16px)); max-height: 50dvh; overflow: auto; padding: 12px;
-    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
-    animation: stage-pop .18s var(--ease-out) both;
-  }
-  body.arena-room .aud-pop[hidden] { display: none; }
-  body.arena-room .aud-pop__title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; margin-bottom: 10px; }
-  body.arena-room .aud-pop__title .icon { width: 16px; height: 16px; color: var(--c-ink-2); }
   /* Mockup C: a grid of faces, the name under each */
-  body.arena-room .aud-pop__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
-  body.arena-room .aud-pop__list li { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
-  body.arena-room .aud-pop__list .aud__av { width: 36px; height: 36px; font-size: 12px; }
-  body.arena-room .aud-pop__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--c-ink-2); }
-  body.arena-room .aud-pop__list .btn-kick { min-height: 24px; padding: 0 6px; font-size: 10.5px; }
 
   /* Players' chat: speech bubble next to the speaker's seat card (fixed; never takes a tap meant for the board) */
-  body.arena-room .speech-layer { display: block; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
   body.arena-room.stage-sheet-open .speech-layer, body.arena-room.stage-sheet-open .stage__fly { display: none; }
-  body.arena-room .speech {
-    position: fixed; max-width: min(260px, 70vw); padding: 7px 12px; border-radius: 14px;
-    background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-lg);
-    font-size: 14px; line-height: 1.35; overflow-wrap: anywhere;
-    animation: stage-pop .3s var(--ease-out) backwards; transition: opacity .35s ease;
-  }
-  body.arena-room .speech::before {
-    content: ""; position: absolute; width: 12px; height: 12px; background: inherit; transform: rotate(45deg);
-  }
-  body.arena-room .speech--top::before { top: -5px; left: 18px; }
-  body.arena-room .speech--bottom { background: var(--c-brand); color: var(--c-on-brand); }
-  body.arena-room .speech--bottom::before { bottom: -5px; right: 30px; }
-  body.arena-room .speech--out { opacity: 0; }
 
   /* The sheet: the tabs, above the dock */
   body.arena-room .rsheet {
@@ -546,60 +680,10 @@ body.arena-room .chat-input { border-radius: 0; }
   body.arena-room .rsheet__grab span { width: 40px; height: 5px; border-radius: 3px; background: var(--c-border-strong, var(--c-border)); }
   body.arena-room .rsheet .tab-content--active { flex: 1; min-height: 0; overflow: auto; }
   /* Mockup C sheet tabs: text-only pills, the active one filled */
-  body.arena-room .rsheet .sidebar-tabs { gap: 4px; padding: 2px 12px 8px; border-bottom: 0; }
-  body.arena-room .rsheet .tab-btn {
-    min-height: 40px; padding: 0 6px; border: 0; border-radius: 999px;
-    background: var(--c-fill); color: var(--c-ink-2); font-weight: 700;
-  }
-  body.arena-room .rsheet .tab-btn > .icon { display: none; }
-  body.arena-room .rsheet .tab-btn--active { background: var(--c-brand); color: var(--c-on-brand); border: 0; }
   /* Chat lines: face + name (· người chơi) for others, mine on the right in brand green */
-  body.arena-room .rsheet .chat-messages { padding: 4px 14px 12px; }
-  body.arena-room .rsheet .chat-msg--other { flex-direction: row; align-items: flex-end; gap: 7px; max-width: 88%; }
-  body.arena-room .rsheet .chat-msg__av {
-    display: grid; place-items: center; flex: none; overflow: hidden;
-    width: 24px; height: 24px; border-radius: 50%; background: var(--c-surface-2); font-size: 9.5px; font-weight: 800;
-  }
-  body.arena-room .rsheet .chat-msg__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  body.arena-room .rsheet .chat-msg__bubble { max-width: none; padding: 6px 10px; border: 0; border-radius: 14px 14px 14px 4px; box-shadow: none; }
-  body.arena-room .rsheet .chat-msg--self .chat-msg__bubble { max-width: 88%; border-radius: 14px 14px 4px 14px; }
-  body.arena-room .rsheet .chat-msg__name { color: var(--c-ink-3); font-size: 11px; font-weight: 800; opacity: 1; }
-  body.arena-room .rsheet .chat-msg__tag { display: inline; font-weight: 600; }
-  body.arena-room .rsheet .chat-msg__text { font-size: 13.5px; line-height: 1.35; }
   /* Tỉ số: big score between the two faces, result dots, one row per game */
-  body.arena-room #score-panel { display: none; }
-  body.arena-room .score-hero { display: block; padding: 4px 14px 12px; }
-  body.arena-room .score-hero:empty { display: none; }
-  body.arena-room .score-hero__top { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 6px 0 10px; }
-  body.arena-room .score-hero__p { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; max-width: 34%; }
-  body.arena-room .score-hero__av {
-    display: grid; place-items: center; overflow: hidden; width: 38px; height: 38px; border-radius: 50%;
-    background: var(--c-surface-2); font-size: 13px; font-weight: 800;
-  }
-  body.arena-room .score-hero__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
-  body.arena-room .score-hero__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
-  body.arena-room .score-hero__num { font-size: 40px; font-weight: 900; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
-  body.arena-room .score-dots { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
-  body.arena-room .score-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-fill); border: 1px solid var(--c-border); }
-  body.arena-room .score-dot--r { background: var(--c-brand); border-color: var(--c-brand); }
-  body.arena-room .score-dot--l { background: var(--c-error); border-color: var(--c-error); }
-  body.arena-room .score-dot--d { background: var(--c-ink-3); border-color: var(--c-ink-3); }
-  body.arena-room .score-games { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
-  body.arena-room .score-games td { padding: 7px 4px; border-top: 1px solid var(--c-border); }
-  body.arena-room .score-games__w { font-weight: 800; color: var(--c-brand-text); }
-  body.arena-room .score-games__now td { color: var(--c-ink-3); }
   body.arena-room #score-hero:empty ~ .score-empty { display: block; margin: 24px 16px; text-align: center; color: var(--c-ink-3); font-size: 14px; }
   /* Nước đi: one cell per move, three per row (the paired list stays for desktop) */
-  body.arena-room #moves-list { display: none; }
-  body.arena-room .moves-grid {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px;
-    list-style: none; margin: 0; padding: 4px 14px 12px; font-size: 13px; font-variant-numeric: tabular-nums;
-  }
-  body.arena-room .moves-grid li { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 4px; }
-  body.arena-room .moves-grid em { font-style: normal; color: var(--c-ink-3); min-width: 2.2em; }
-  body.arena-room .moves-grid__pc { width: 14px; height: 14px; flex: none; }
-  body.arena-room .moves-grid__cur { background: var(--c-brand-light); color: var(--c-brand-text); font-weight: 800; }
-  body.arena-room .moves-grid .moves__empty { grid-column: 1 / -1; color: var(--c-ink-3); }
   body.arena-room .rsheet #tab-chat .chat-panel { height: 100%; }
   body.arena-room .rsheet-scrim {
     display: block; position: fixed; left: 0; right: 0; top: var(--nav-h); bottom: var(--rdock-h); z-index: 44;
