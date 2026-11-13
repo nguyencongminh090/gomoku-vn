@@ -323,3 +323,4 @@
 | 2026-10-25 | integrity tab UI polish: mobile tools overlap, unstyled search box, labels scale with zoom, clipped matrix 'other' tick | [detail](docs/fix-log/2026-10-25-integrity-ui-polish.md) |
 | 2026-11-13 14:02 | #367 grace expiry kept user out of room → reconnect got ROOM_GONE → Home; now seat released, user stays, reconnect rejoins; banner after 8 s | [detail](docs/fix-log/2026-11-13-reconnect-stay-in-room.md) |
 | 2026-11-13 14:40 | lobby online faces showed initials: online payload had no avatarUrl + lobby passed null; both fixed, tests | [detail](docs/fix-log/2026-11-13-online-avatars-missing.md) |
+| 2026-11-13 15:10 | social: unread bell/#notifs row stayed after reading a DM (bell not refreshed) or clicking a notif (POST aborted on navigate); refresh + keepalive, tests | [detail](docs/fix-log/2026-11-13-social-unread-stale-bell.md) |

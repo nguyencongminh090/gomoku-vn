@@ -56,7 +56,7 @@
     return w;
   }
 
-  const state = { friends: new Map(), convs: [], challenges: { incoming: [], outgoing: [] }, incoming: [], outgoing: [], code: '' };
+  const state = { friends: new Map(), convs: [], challenges: { incoming: [], outgoing: [] }, incoming: [], outgoing: [], code: '', notifs: [] };
   const dm = { with: null, lastId: 0, person: null, summary: null, seq: 0 };
 
   const presenceOf = (username) => {
@@ -613,11 +613,14 @@
     renderChallenges();
   }
 
+  /** The server marks the thread read AND deletes its `dm` bell row, so refresh both the conversations and the bell. */
   async function markRead() {
     const c = state.convs.find((x) => x.with.username === dm.with);
-    if (c && !c.unread) return;
+    const bellDm = state.notifs.some((n) => !n.read && n.type === 'dm' && n.payload && n.payload.from && n.payload.from.username === dm.with);
+    if (c && !c.unread && !bellDm) return;
     await fetch('/api/dm/' + enc(dm.with) + '/read', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
-    await loadConvs();
+    const N = PS() && PS().notifications;
+    await Promise.all([loadConvs(), N && N.refresh ? N.refresh() : null]);
   }
 
   /** Poll the open thread for newer messages (no socket on this page: see B198 slice 3 notes). */
@@ -665,6 +668,7 @@
 
   // ── Notifications view (#notifs; the bell's "Xem tất cả") ──
   function renderNotifs(items) {
+    state.notifs = items;
     const box = $('sc-notifs');
     const N = PS().notifications;
     box.replaceChildren(...(items.length ? items.slice(0, 30).map((n) => {
