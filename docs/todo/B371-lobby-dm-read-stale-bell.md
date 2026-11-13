@@ -1,5 +1,5 @@
 # B371 — Lobby DM window read leaves the bell stale
-**Status:** OPEN
+**Status:** DONE
 **Area:** client/js/private-chat.js, client/js/platform-shell.js
 **From:** found while fixing social unread (fix-log 2026-11-13-social-unread-stale-bell)   **Depends:** —
 
