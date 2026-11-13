@@ -28,6 +28,8 @@ roomManager.avatarLookup = (userId) => {
   const u = database.getUserById(userId);
   return u && u.avatar_v ? `/api/profile/avatar/${u.id}.webp?v=${u.avatar_v}` : null;
 };
+// Lobby cards show each seated member's rating in the room's rule pool (#364).
+roomManager.ratingLookup = require('../managers/seat-rating').seatRating;
 const {
   timerMap,
   sessions,

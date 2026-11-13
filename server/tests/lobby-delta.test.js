@@ -32,7 +32,7 @@ jest.mock('../utils/logger', () => ({
 // B225: every lobby change also pokes the dashboard feed — its own timer, tested in home-feed.test.js.
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
 
-const { broadcastLobbyUpdate, sendLobbySnapshot } = require('../socket/state');
+const { broadcastLobbyUpdate, sendLobbySnapshot, scheduleLobbyBoardUpdate, LOBBY_BOARD_THROTTLE_MS } = require('../socket/state');
 const homeFeed = require('../socket/home-feed');
 
 const DEBOUNCE_MS = 300;
@@ -413,4 +413,29 @@ test('broadcastLobbyUpdate pokes the home feed (B225: playing count + live list)
   const io = { to: () => ({ emit: () => {} }) };
   broadcastLobbyUpdate(io);
   expect(homeFeed.scheduleHomeUpdate).toHaveBeenCalledWith(io);
+});
+
+describe('lobby mini-board throttle (#364)', () => {
+  test('a burst of moves yields one patch after the throttle window, with only the moved room', () => {
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB')]);
+    flush(io);
+    io.emitted.length = 0;
+
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7, 8, 8, 6, 6] }), entry('#BBB')]);
+    for (let i = 0; i < 5; i++) scheduleLobbyBoardUpdate(io); // five moves
+    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS - 1);
+    expect(io.emitted).toHaveLength(0); // nothing per move
+    jest.advanceTimersByTime(1 + DEBOUNCE_MS);
+    expect(io.emitted).toHaveLength(1);
+    expect(io.emitted[0].data.upserts.map((r) => r.roomId)).toEqual(['#AAA']);
+  });
+
+  test('does not poke the home feed (its counts do not change on a move)', () => {
+    homeFeed.scheduleHomeUpdate.mockClear();
+    const io = makeIo();
+    scheduleLobbyBoardUpdate(io);
+    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS + DEBOUNCE_MS);
+    expect(homeFeed.scheduleHomeUpdate).not.toHaveBeenCalled();
+  });
 });

@@ -65,7 +65,7 @@ const visible = () => ['screen-home', 'panel-tables', 'panel-tournaments'].filte
   const n = document.getElementById(id);
   return n.classList.contains('is-active') && !n.hidden;
 });
-const actions = () => ['btn-create', 'btn-create-tournament'].filter((id) => !document.getElementById(id).hidden);
+const actions = () => ['btn-create-tournament'].filter((id) => !document.getElementById(id).hidden); // rooms create = the grid card #btn-create, shown with its screen (#364)
 const navOn = () => [...document.querySelectorAll('#pl-shell .is-active')].map((a) => a.dataset.tab);
 
 afterEach(() => { stopPriorTicker(); window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling + quick-match ticker
@@ -76,7 +76,7 @@ const segs = (row) => [...row.querySelectorAll('.hrow__meta > span')].map((x) =>
 describe('screens ↔ hash ↔ shell nav', () => {
   it.each([
     ['/index.html', 'screen-home', [], ['lobby', 'lobby'], 'home'],
-    ['/index.html#rooms', 'panel-tables', ['btn-create'], ['rooms', 'rooms'], 'tables'],
+    ['/index.html#rooms', 'panel-tables', [], ['rooms', 'rooms'], 'tables'],
     ['/index.html#tournaments', 'panel-tournaments', ['btn-create-tournament'], ['tournaments', 'tournaments'], 'tournaments'],
     ['/index.html#bogus', 'screen-home', [], ['lobby', 'lobby'], 'home'],
   ])('%s → %s', async (url, screen, acts, nav, hero) => {
@@ -506,24 +506,30 @@ describe('quick-match waiting count (B210)', () => {
   });
 });
 
-describe('Vào bằng mã (Phòng screen, B210)', () => {
+describe('Vào bằng mã (Phòng screen, B210 → #364 hero boxes)', () => {
   const $ = (id) => document.getElementById(id);
+  const boxes = () => [...$('join-code-form').querySelectorAll('.rh-code__box')];
   const submit = (value) => {
-    $('join-code').value = value;
+    boxes().forEach((b, i) => { b.value = value[i] || ''; });
     $('join-code-form').dispatchEvent(new Event('submit', { cancelable: true }));
   };
 
-  it('button lives on the Phòng screen only; the form is closed until it is pressed', async () => {
+  it('#364: the code form sits open in the Phòng hero (3 boxes, no toggle); the only create entry is the grid card #btn-create', async () => {
     await boot('/index.html#rooms', EMPTY, null);
-    expect($('btn-join-code').hidden).toBe(false);
-    expect($('join-code-form').hidden).toBe(true);
-    $('btn-join-code').click();
     expect($('join-code-form').hidden).toBe(false);
-    expect($('btn-join-code').getAttribute('aria-expanded')).toBe('true');
-    window.location.hash = '#tournaments';
-    window.dispatchEvent(new Event('hashchange'));
-    expect($('btn-join-code').hidden).toBe(true);
-    expect($('join-code-form').hidden).toBe(true);
+    expect(boxes()).toHaveLength(3);
+    expect($('btn-join-code').type).toBe('submit');
+    expect($('btn-create').classList.contains('rcard-new')).toBe(true);
+    expect($('btn-create').closest('#room-list')).not.toBeNull();
+    expect(document.querySelector('.rh').textContent).not.toContain('Tạo phòng');
+  });
+
+  it('#364: pasting "#a3f" into the first box fills all three', async () => {
+    await boot('/index.html#rooms', EMPTY, null);
+    const ev = new Event('paste', { cancelable: true });
+    ev.clipboardData = { getData: () => '#a3f' };
+    boxes()[0].dispatchEvent(ev);
+    expect(boxes().map((b) => b.value)).toEqual(['A', '3', 'F']);
   });
 
   it('parseRoomCode accepts "#a3f", "a3f", " A3F " and rejects ambiguous / wrong-length codes', async () => {
@@ -539,7 +545,7 @@ describe('Vào bằng mã (Phòng screen, B210)', () => {
     expect(window.joinRoom).not.toHaveBeenCalled();
     expect($('join-code-error').hidden).toBe(false);
     expect($('join-code-error').textContent).toBe('lobby.join_code_invalid');
-    $('join-code').dispatchEvent(new Event('input'));
+    boxes()[0].dispatchEvent(new Event('input'));
     expect($('join-code-error').hidden).toBe(true);
     submit('a3f');
     expect(window.joinRoom).toHaveBeenCalledWith('#A3F');
@@ -814,17 +820,12 @@ describe('#362 phone: counts as one status line, links in one card', () => {
     expect([...p.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['–', '–']);
   });
 
-  it('renders the same counts as the cards (no ETA — #qm-line shows it); "M ván đang chơi" links to Phòng › Quan sát', async () => {
+  it('renders the same counts as the cards (no ETA — #qm-line shows it); "M ván đang chơi" links to Phòng', async () => {
     await boot('/index.html', { ...EMPTY, stats: { online: 9, playing: 3, searching: 2 }, queueEta: { 'freestyle|auto': 20 } });
     expect(part('home-pulse-search')).toEqual(['2', 'home.pulse_searching']);
     expect(part('home-pulse-live')).toEqual(['3', 'home.pulse_playing']);
     const live = document.getElementById('home-pulse-live');
-    expect(live.getAttribute('href')).toBe('#rooms');
-    const tab = document.querySelector('#room-tabs [data-room-tab="watch"]');
-    const spy = jest.fn();
-    tab.addEventListener('click', spy);
-    live.click();
-    expect(spy).toHaveBeenCalledTimes(1);
+    expect(live.getAttribute('href')).toBe('#rooms'); // Phòng lists live games under "Đang chơi" (no Quan sát filter since #364)
   });
 
   it('zero counts: de-emphasised numbers, the playing part is plain text (no href)', async () => {

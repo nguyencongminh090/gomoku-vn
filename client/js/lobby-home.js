@@ -15,13 +15,13 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=7cb74e0c';
+import { client, setHeroTab } from './lobby.js?v=1a9ef1f4';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
 const HASH = { home: '', rooms: '#rooms', tournaments: '#tournaments' };
 const NAV = { home: 'lobby', rooms: 'rooms', tournaments: 'tournaments' };
-const ACTION = { rooms: ['btn-create', 'btn-join-code'], tournaments: ['btn-create-tournament'] };
+const ACTION = { rooms: [], tournaments: ['btn-create-tournament'] }; // rooms: create = the grid's ghost card (#364)
 const ROOM_CODE = /^[A-HJ-NP-Z2-9]{3}$/; // RoomManager._generateRoomId: '#' + 3 chars, no I O 0 1
 const POLL_MS = 60000; // fallback only — stats + live list arrive by push (B225)
 
@@ -65,7 +65,6 @@ export function showScreen(name) {
       if (btn) btn.hidden = key !== name;
     }
   }
-  if (name !== 'rooms') closeJoinCode();
   const bar = document.getElementById('lobby-bar');
   if (bar) bar.hidden = name !== 'tournaments';
   setHeroTab(name === 'rooms' ? 'tables' : name);
@@ -77,39 +76,12 @@ export function showScreen(name) {
   setLobbySubscribed(name === 'rooms' && !document.hidden);
 }
 
-// ── Vào bằng mã (Phòng screen): type the 3-char room code, go straight to the room ──
-
-function closeJoinCode() {
-  const form = document.getElementById('join-code-form');
-  const btn = document.getElementById('btn-join-code');
-  if (form) form.hidden = true;
-  if (btn) btn.setAttribute('aria-expanded', 'false');
-}
+// ── Vào bằng mã: the same 3-box code form on Home (#358) and on the Phòng hero (#364) ──
 
 /** "#a3f" / "a3f " / "A3F" → "#A3F"; null when it cannot be a room code. */
 export function parseRoomCode(raw) {
   const code = String(raw || '').trim().replace(/^#/, '').toUpperCase();
   return ROOM_CODE.test(code) ? '#' + code : null;
-}
-
-function wireJoinCode() {
-  const btn = document.getElementById('btn-join-code');
-  const form = document.getElementById('join-code-form');
-  const input = document.getElementById('join-code');
-  const err = document.getElementById('join-code-error');
-  if (!btn || !form || !input) return;
-  btn.addEventListener('click', () => {
-    form.hidden = !form.hidden;
-    btn.setAttribute('aria-expanded', String(!form.hidden));
-    if (!form.hidden) input.focus();
-  });
-  input.addEventListener('input', () => { err.hidden = true; });
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const id = parseRoomCode(input.value);
-    if (!id) { err.textContent = t('lobby.join_code_invalid'); err.hidden = false; input.focus(); return; }
-    window.joinRoom(id);
-  });
 }
 
 // ── Formatting ──────────────────────────────────────────────────────────────
@@ -235,15 +207,6 @@ function renderPulse(st) {   // no ETA here: #qm-line right under it already say
   } else {
     live.removeAttribute('href');
     live.removeAttribute('title');
-  }
-  if (!live.dataset.bound) {
-    live.dataset.bound = '1';
-    // The hash link opens Phòng (hashchange → showScreen); then pick the Quan sát filter lobby.js owns.
-    live.addEventListener('click', () => {
-      if (!live.hasAttribute('href')) return;
-      const tab = document.querySelector('#room-tabs [data-room-tab="watch"]');
-      if (tab) tab.click();
-    });
   }
 }
 
@@ -590,11 +553,11 @@ client.on('match:found', () => {
 
 // ── Vào phòng bằng mã on Home (#358): 3 boxes, auto-advance, paste "#a3f" fills all; same parse + join as the rooms form ──
 
-function wireHomeCode() {
-  const form = document.getElementById('home-code');
-  const err = document.getElementById('home-code-error');
+function wireCodeBoxes(formId, errId, boxSel) {
+  const form = document.getElementById(formId);
+  const err = document.getElementById(errId);
   if (!form || !err) return;
-  const boxes = [...form.querySelectorAll('.hq-code__box')];
+  const boxes = [...form.querySelectorAll(boxSel)];
   const fill = (text, from) => {
     let i = from;
     for (const c of String(text).replace(/[^a-z0-9]/gi, '').toUpperCase()) {
@@ -659,7 +622,8 @@ function wireHub() {
   const chal = document.getElementById('qm-challenge');
   if (chal) chal.addEventListener('click', openChallenge);
   wirePick();
-  wireHomeCode();
+  wireCodeBoxes('home-code', 'home-code-error', '.hq-code__box');
+  wireCodeBoxes('join-code-form', 'join-code-error', '.rh-code__box');
 }
 wireHub();
 
@@ -679,6 +643,5 @@ document.querySelectorAll('#pl-shell a[data-tab="lobby"]').forEach((a) => a.addE
 }));
 window.addEventListener('langchange', () => { const acts = document.getElementById('qm-actions'); if (acts) acts.replaceChildren(); if (lastData) renderHome(lastData); renderQuickMatch(); }); // acts: rebuild Huỷ tìm in the new language
 
-wireJoinCode();
 renderQuickMatch();
 showScreen(screenFromLocation());

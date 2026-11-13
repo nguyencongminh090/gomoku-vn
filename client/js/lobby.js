@@ -55,7 +55,6 @@ const roomListEl    = document.getElementById('room-list');
 const heroEyebrow   = document.getElementById('hero-eyebrow');
 const heroSub       = document.getElementById('hero-sub');
 const heroTitle     = document.getElementById('hero-title');
-const btnCreate     = document.getElementById('btn-create');
 const modalOverlay  = document.getElementById('modal-create');
 const modalClose    = document.getElementById('modal-close');
 const modalCancel   = document.getElementById('modal-cancel');
@@ -111,6 +110,20 @@ function renderFromMap() {
   renderHero();
 }
 
+// ── #364 hero counts + tab counts ───────────────────────────────────────────
+// Watchers = people in a room who are not seated (userCount already drops ghost viewers, #158).
+const watchersOf = (room) => Math.max(0, (room.userCount || 0) - (room.playerCount || 0));
+// Write only on change: the hero counts sit in an aria-live region and patches arrive every 2.5 s during play.
+const setNum = (id, n) => { const el = document.getElementById(id); if (el && el.textContent !== String(n)) el.textContent = String(n); };
+function renderRoomStats() {
+  const rooms = currentRooms;
+  const open = rooms.filter((r) => r.state !== 'playing' && r.playerCount < 2).length;
+  setNum('rh-n-open', open);
+  setNum('rh-n-live', rooms.filter((r) => r.state === 'playing').length);
+  setNum('rh-n-watch', rooms.reduce((a, r) => a + watchersOf(r), 0));
+  setNum('room-n-playing', rooms.filter((r) => r.state === 'playing').length); // "Đang chơi · N" (user 2026-11-13: one label instead of Phòng/Bàn/Quan sát)
+}
+
 // ---------------------------------------------------------------------------
 // Hero line
 // ---------------------------------------------------------------------------
@@ -137,6 +150,7 @@ function renderGreeting() {
 }
 
 function renderHero() {
+  renderRoomStats(); // #364: every room-list change ends here (snapshot, patch, langchange)
   if (!heroTitle) return;
   if (heroTab === 'home') { renderGreeting(); return; }
   const tournaments = heroTab === 'tournaments';
@@ -177,7 +191,15 @@ renderHero();
 
 // Full snapshot — sent once on subscribe, and again on every reconnect, since
 // the client re-subscribes. Replaces the local map wholesale.
+// Server clock − local clock, from the lobby envelopes (#364): `startedAt` is a server epoch, so a
+// visitor whose clock is off by minutes must not see "Đang đấu · 07:12" on a game that just began.
+let serverClockOffset = 0;
+function noteServerTime(data) {
+  if (data && Number.isFinite(data.serverTime)) serverClockOffset = data.serverTime - Date.now();
+}
+
 client.on('lobby:update', (data) => {
+  noteServerTime(data);
   roomMap = new Map((data.rooms || []).map(r => [r.roomId, r]));
   renderFromMap();
 });
@@ -194,6 +216,7 @@ client.on('lobby:update', (data) => {
 // animation — on each one scales with the *total* room count instead of the
 // (usually 1-2) rooms that actually changed.
 client.on('lobby:patch', (data) => {
+  noteServerTime(data);
   applyLobbyPatch(data);
 });
 
@@ -217,7 +240,7 @@ function renderOnlineLine() {
 
   if (onlineCountEl) onlineCountEl.textContent = t('lobby.online_count_nav', { n: count });
   if (onlineLineCountEl) onlineLineCountEl.textContent = count;
-
+  setNum('rh-n-online', count);
   onlineLineEl.hidden = false;
   if (count === 0) {
     onlineLineNamesEl.textContent = t('lobby.no_one_online');
@@ -227,35 +250,18 @@ function renderOnlineLine() {
   const limit  = ONLINE_NAME_LIMIT;
   const shown  = users.slice(0, limit);
   const hidden = count - shown.length;
-  // Own name set in ink so you can find yourself in the line at a glance.
-  // Each user is `{ userId, displayName, isGuest }` (see server state.js
-  // getOnlineUsersList) — a click on a name opens a private chat (#159).
-  // Names render as plain ink text (not link-blue); the `.online-name` class
-  // just gives a pointer cursor + hover underline.
+  // #364: faces only (user 2026-11-13 — the names line was redundant next to the avatars). Each
+  // avatar is still the PM control (#159, [data-user-id] → private-chat.js); its name is the
+  // tooltip + accessible name. Your own face is not a button. "+N" opens the full list.
+  const avatar = (u) => (window.PlatformShell ? window.PlatformShell.avatar(null, u.displayName, 'pav--sm').outerHTML : '');
   const parts = shown.map((u) => {
-    const name = escapeHtml(u.displayName);
-    if (u.userId === userInfo.userId) {
-      return u.displayName === userInfo.displayName ? `<b>${name}</b>` : name;
-    }
-    return `<span class="online-name" role="button" tabindex="0" data-user-id="${escapeHtml(u.userId)}">${name}</span>`;
+    const name = escapeAttr(u.displayName);
+    if (u.userId === userInfo.userId) return `<span class="online-av online-av--me" title="${name}">${avatar(u)}</span>`;
+    return `<span class="online-name online-av" role="button" tabindex="0" data-user-id="${escapeAttr(u.userId)}" title="${name}" aria-label="${name}">${avatar(u)}</span>`;
   });
-  let html = parts.join(', ');
-  // Only when the line actually had to truncate do we offer a "…and N others"
-  // affordance — clicking it opens the full online-users modal (#159). No
-  // permanent button when everyone already fits.
-  html += hidden > 0
-    ? ` <span class="online-name online-line__more" role="button" tabindex="0" data-open-users>${escapeHtml(t('lobby.online_more', { n: hidden }))}</span>`
-    : '.';
-  onlineLineNamesEl.innerHTML = html;
+  if (hidden > 0) parts.push(`<span class="online-name online-line__more" role="button" tabindex="0" data-open-users title="${escapeAttr(t('lobby.online_more', { n: hidden }))}">+${hidden}</span>`);
+  onlineLineNamesEl.innerHTML = parts.join('');
 }
-
-document.querySelectorAll('#room-tabs [data-room-tab]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    roomTab = btn.dataset.roomTab;
-    document.querySelectorAll('#room-tabs [data-room-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
-    renderRoomList(currentRooms);
-  });
-});
 
 // Apply a `lobby:online_patch` ({ joined, left }) to an online list (#230).
 // Idempotent: a `joined` entry already held is replaced, a `left` id never
@@ -295,57 +301,107 @@ client.on('room:joined', (data) => {
 // Room List Rendering
 // ---------------------------------------------------------------------------
 
-// Zen Minimal renders a room as a *row*, not a card: a state bullet, the room
-// name, one meta line reading "host · 1/2 · rules", and a text action. The
-// state that used to be spelled out in a badge is carried by the bullet; the
-// full label stays available as the row's title attribute.
-// Builds one row's markup. `animate` staggers the entrance animation by
-// `delayIndex` (used for a full render); a row created for a single new
-// arrival via a patch passes delayIndex 0. An in-place update (existing room,
-// changed fields) never calls this — see updateRoomRowNode — so it never
-// replays the entrance animation.
+// #364 R1 "Sảnh gỗ": a room is a TABLE CARD — mini board on top (the live position, or an empty
+// board with "Ngồi vào" for an open seat), state flag + elapsed time, watchers, then the players
+// (avatar · name · rating) and the meta tags. The whole card is the join/watch control (B219);
+// `.room-row` stays as the hook e2e specs and the keyboard handler use.
+// `animate` staggers the entrance animation by `delayIndex` (full render); a card created by a
+// patch passes delayIndex 0. An in-place update (updateRoomRowNode) never replays it.
 function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
-  const stateLabel  = getStateLabel(room.state, room.playerCount);
-  const bulletClass = getBulletClass(room.state, room.playerCount);
   const animClass = animate ? ' animate-fade-up' : '';
   const animStyle = animate ? ` style="animation-delay: ${(delayIndex * 0.04).toFixed(2)}s"` : '';
-
   return `
-    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}"
-         role="button" tabindex="0" aria-label="${escapeAttr(rowActionLabel(room))}"${animStyle}>
-      <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
-      <div class="room-row__body">
-        <div class="room-row__name">${buildRoomPlayers(room)}</div>
-        <div class="room-row__meta">${buildRoomMeta(room)}</div>
-      </div>
-    </div>
+    <div class="${cardClass(room)}${animClass}" data-room-id="${escapeAttr(room.roomId)}" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}"
+         role="button" tabindex="0" aria-label="${escapeAttr(rowActionLabel(room))}"${animStyle}>${buildRoomCardInner(room)}</div>
   `;
 }
 
-// Mockup tabs Phòng / Bàn / Quan sát (B210c) — filters over the one room list, not room kinds:
-// all = every room, open = a table waiting for an opponent (can join to play), watch = a game in
-// progress or a full table (spectate) — open and watch partition the list. The Map/patch plumbing is untouched; only what is drawn is filtered.
-let roomTab = 'all'; // 'all' | 'open' | 'watch'
-const ROOM_TAB_EMPTY = { all: 'lobby.no_rooms', open: 'lobby.no_tables', watch: 'lobby.no_watch' };
-function roomMatchesTab(room) {
-  if (roomTab === 'open') return room.state !== 'playing' && room.playerCount < 2;
-  if (roomTab === 'watch') return room.state === 'playing' || room.playerCount >= 2; // nothing left to sit in
-  return true;
+/** 'live' (game running), 'open' (a seat to take), 'ready' (both seated, not started). */
+function cardKind(room) {
+  if (room.state === 'playing') return 'live';
+  return room.playerCount >= 2 ? 'ready' : 'open';
 }
+function cardClass(room) { return `room-row rcard rcard--${cardKind(room)}`; }
+
+function buildRoomCardInner(room) {
+  const kind = cardKind(room);
+  const watchers = watchersOf(room);
+  const eye = window.PlatformShell ? window.PlatformShell.icon('ph-regular-eye').outerHTML : '';
+  const flag = kind === 'live'
+    ? `<i class="rcard__dot"></i>${escapeHtml(t('lobby.card_live'))}${room.startedAt ? `<span class="rcard__el" data-started="${Number(room.startedAt)}"> · ${formatElapsed(room.startedAt)}</span>` : ''}`
+    : escapeHtml(t(kind === 'open' ? 'lobby.card_open' : 'lobby.state_ready'));
+  return `
+      <div class="rcard__board">
+        ${miniBoardSvg(room.boardSize, kind === 'live' ? room.moves : null)}
+        <span class="rcard__flag">${flag}</span>
+        ${watchers ? `<span class="rcard__eye" title="${escapeAttr(t('lobby.card_watchers', { n: watchers }))}">${eye}${watchers}</span>` : ''}
+        ${kind === 'open' ? `<span class="rcard__sit">${escapeHtml(t('lobby.card_sit'))}</span>` : ''}
+      </div>
+      <div class="rcard__body">
+        <div class="room-row__name">${buildRoomPlayers(room)}</div>
+        <div class="room-row__meta">${buildRoomMeta(room)}</div>
+      </div>`;
+}
+
+/** "mm:ss" (or "h:mm:ss") since a server epoch; '' for a bad stamp. */
+function formatElapsed(startedAt) {
+  const sec = Math.max(0, Math.floor((Date.now() + serverClockOffset - Number(startedAt)) / 1000));
+  if (!Number.isFinite(sec)) return '';
+  const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, ss = sec % 60;
+  const two = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${two(m)}:${two(ss)}` : `${two(m)}:${two(ss)}`;
+}
+// One ticker for every live card's elapsed time; idle when the rooms screen is not showing.
+setInterval(() => {
+  if (document.hidden || !roomListEl.offsetParent) return;
+  for (const el of roomListEl.querySelectorAll('.rcard__el[data-started]')) el.textContent = ' · ' + formatElapsed(el.dataset.started);
+}, 1000);
+
+// Lobby mini board (#364): a small static SVG of the live position — NOT BoardRenderer (board lock).
+// `moves` is the flat [x0,y0,x1,y1,…] list from listRooms(), black first, alternating; the last
+// stone gets a ring. null/[] → empty board. Grid paths are cached per size.
+const _gridCache = new Map();
+function miniBoardSvg(size, moves) {
+  const n = Number(size) > 0 && Number(size) <= 25 ? Number(size) : 15;
+  let grid = _gridCache.get(n);
+  if (!grid) {
+    let d = '';
+    for (let i = 0; i < n; i++) d += `M.5 ${i + .5}H${n - .5}M${i + .5} .5V${n - .5}`;
+    grid = `<rect class="mb__bg" width="${n}" height="${n}" rx=".4"/><path class="mb__grid" d="${d}"/>`;
+    _gridCache.set(n, grid);
+  }
+  let stones = '';
+  const list = Array.isArray(moves) ? moves : [];
+  let lx = -1, ly = -1;
+  for (let i = 0; i + 1 < list.length; i += 2) {
+    const x = Number(list[i]), y = Number(list[i + 1]);
+    if (!(x >= 0 && y >= 0 && x < n && y < n)) continue;
+    stones += `<circle class="${(i / 2) % 2 ? 'mb__w' : 'mb__b'}" cx="${x + .5}" cy="${y + .5}" r=".42"/>`;
+    lx = x; ly = y;
+  }
+  const last = lx >= 0 ? `<circle class="mb__last" cx="${lx + .5}" cy="${ly + .5}" r=".2"/>` : '';
+  return `<svg class="mb" viewBox="0 0 ${n} ${n}" aria-hidden="true" focusable="false">${grid}${stones}${last}</svg>`;
+}
+
+// The ghost card at the start of the grid is the screen's only create-room entry (user 2026-11-13:
+// "Tạo phòng và Mở bàn mới là giống nhau"), so it carries the #btn-create id e2e specs click.
+const NEW_CARD_HTML = () => `<button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus">${window.PlatformShell ? window.PlatformShell.icon('ph-regular-plus-circle').outerHTML : '+'}</span><span>${escapeHtml(t('lobby.rh_new_table'))}</span></button>`;
+document.addEventListener('click', (e) => {
+  if (e.target.closest && e.target.closest('[data-create-room]')) openModal();
+});
 
 // Full rebuild — used for the initial/reconnect snapshot (lobby:update) and
 // for langchange, where every row's text genuinely needs to be
 // redone. NOT used for lobby:patch — see applyLobbyPatch below.
 function renderRoomList(allRooms) {
-  const rooms = allRooms.filter(roomMatchesTab);
+  const rooms = allRooms;
   if (rooms.length === 0) {
-    const sub = roomTab === 'all' ? `<span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>` : '';
     roomListEl.innerHTML = `
       <div class="room-list__empty">
-        <span class="room-list__empty-text">${t(ROOM_TAB_EMPTY[roomTab])}</span>
-        ${sub}
+        <span class="room-list__empty-text">${t('lobby.no_rooms')}</span>
+        <span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>
       </div>
-    `;
+    ` + NEW_CARD_HTML();
     return;
   }
 
@@ -356,21 +412,14 @@ function renderRoomList(allRooms) {
     i++;
   }
 
-  roomListEl.innerHTML = html;
+  roomListEl.innerHTML = NEW_CARD_HTML() + html; // create first: it is the only create entry, never buried under 16 rooms
 }
 
 // Update an existing row's content in place — no DOM node replacement, no
 // entrance-animation replay.
 function updateRoomRowNode(node, room) {
-  const stateLabel  = getStateLabel(room.state, room.playerCount);
-  const bulletClass = getBulletClass(room.state, room.playerCount);
-
-  const bullet = node.querySelector('.room-row__bullet');
-  bullet.className = `room-row__bullet ${bulletClass}`;
-  bullet.title = stateLabel;
-
-  node.querySelector('.room-row__name').innerHTML = buildRoomPlayers(room);
-  node.querySelector('.room-row__meta').innerHTML = buildRoomMeta(room);
+  node.className = cardClass(room);
+  node.innerHTML = buildRoomCardInner(room);
   node.setAttribute('aria-label', rowActionLabel(room));
 }
 
@@ -393,7 +442,8 @@ function buildRoomPlayers(room) {
   const seat = (p) => {
     if (!p) return `<span class="rplayer rplayer--empty">${escapeHtml(t('lobby.seat_empty'))}</span>`;
     const av = window.PlatformShell ? window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--xs').outerHTML : '';
-    return `<span class="rplayer">${av}<span class="rplayer__name">${escapeHtml(p.displayName)}</span></span>`;
+    const rating = Number.isFinite(p.rating) ? `<small class="rplayer__rating">${p.rating}${p.provisional ? '?' : ''}</small>` : ''; // '?' = provisional, as on profile / user card
+    return `<span class="rplayer">${av}<span class="rplayer__who"><span class="rplayer__name">${escapeHtml(p.displayName)}</span>${rating}</span></span>`;
   };
   return `${seat(seats[0])}<span class="rvs">vs</span>${seat(seats[1])}`;
 }
@@ -409,14 +459,16 @@ function applyLobbyPatch(patch) {
   const removed = patch.removed || [];
   const upserts = patch.upserts || [];
 
-  const wasEmpty = currentRooms.length === 0;
-
   for (const roomId of removed) roomMap.delete(roomId);
   for (const room of upserts) roomMap.set(room.roomId, room);
   currentRooms = Array.from(roomMap.values());
 
-  // A filtered tab can gain/lose rows on any patch (a room fills, a game starts), so it re-renders in full.
-  if (wasEmpty || currentRooms.length === 0 || roomTab !== 'all') {
+  // Crossing the empty <-> non-empty boundary swaps the empty-state markup for cards, so that edge
+  // (only) re-renders in full. Everything else is incremental (#364: live games patch every 2.5 s —
+  // a full re-render would replay every card's entrance animation and drop hover/keyboard focus).
+  const showingEmpty = !!roomListEl.querySelector('.room-list__empty');
+  const willBeEmpty = currentRooms.length === 0;
+  if (showingEmpty || willBeEmpty) {
     renderRoomList(currentRooms);
     renderHero();
     return;
@@ -444,19 +496,6 @@ function applyLobbyPatch(patch) {
   }
 
   renderHero();
-}
-
-function getStateLabel(state, playerCount) {
-  if (state === 'playing') return t('lobby.state_playing');
-  if (state === 'interrupted') return t('lobby.state_interrupted');
-  if (playerCount >= 2) return t('lobby.state_ready');
-  return t('lobby.state_waiting');
-}
-
-function getBulletClass(state, playerCount) {
-  if (state === 'playing') return 'room-row__bullet--playing';
-  if (playerCount >= 2) return 'room-row__bullet--ready';
-  return 'room-row__bullet--waiting';
 }
 
 // The meta line under the players: room name as plain text, everything else a tag chip (.rtag).
@@ -545,7 +584,6 @@ function closeModal() {
   modalOverlay.classList.remove('visible');
 }
 
-btnCreate.addEventListener('click', openModal);
 modalClose.addEventListener('click', closeModal);
 modalCancel.addEventListener('click', closeModal);
 
