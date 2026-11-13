@@ -291,6 +291,16 @@ p, li {
   color: var(--c-ink);
 }
 
+#room-id-nav[role="button"]:hover { text-decoration: underline; }
+
+/* Room QR modal (room-ui.js openQrModal) */
+.room-qr { max-width: 320px; padding: 20px; align-items: center; gap: 12px; text-align: center; }
+.room-qr__code { font-weight: 800; font-size: 22px; letter-spacing: 0.06em; color: var(--c-ink); }
+.room-qr__img { width: 220px; max-width: 100%; background: #fff; border-radius: 8px; padding: 4px; line-height: 0; }
+.room-qr__img svg { width: 100%; height: auto; display: block; }
+.room-qr__hint { font-size: 14px; color: var(--c-ink-soft, var(--c-ink)); }
+.room-qr__actions { display: flex; gap: 8px; }
+
 /* Desktop shows the room name; the compact ID takes over on mobile. */
 .topnav__room-code { display: none; }
 

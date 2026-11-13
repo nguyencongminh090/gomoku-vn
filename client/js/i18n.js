@@ -20,6 +20,11 @@ const TRANSLATIONS = {
     // ── Common / Nav ──────────────────────────────────────────
     'nav.logout': 'Đăng xuất',
     'nav.leave': 'Rời phòng',
+    'room.qr_title': 'Mã QR vào bàn',
+    'room.qr_hint': 'Quét mã để vào bàn này',
+    'room.code_copied': 'Đã chép mã bàn',
+    'room.link_copy': 'Chép liên kết',
+    'common.close_x': 'Đóng',
     'nav.guest_badge': 'Khách',
     'nav.lobby': 'Sảnh',
 
@@ -1678,6 +1683,11 @@ const TRANSLATIONS = {
     // ── Common / Nav ──────────────────────────────────────────
     'nav.logout': 'Log out',
     'nav.leave': 'Leave room',
+    'room.qr_title': 'Table QR code',
+    'room.qr_hint': 'Scan to join this table',
+    'room.code_copied': 'Table code copied',
+    'room.link_copy': 'Copy link',
+    'common.close_x': 'Close',
     'nav.guest_badge': 'Guest',
     'nav.lobby': 'Lobby',
 
