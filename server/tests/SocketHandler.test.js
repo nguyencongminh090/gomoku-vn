@@ -470,6 +470,27 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(a.join).toHaveBeenCalledWith('r1');
   });
 
+  // #373: a member of a room connecting from ANOTHER page (lobby, home…) is not watching the table.
+  test.each([
+    // [case, auth, presence before, presence after]
+    ['other page, was disconnected', {}, 'disconnected', 'away'],
+    ['other page, was active', {}, 'active', 'away'],
+    ['other page reconnect naming no room', { reconnect: true }, 'active', 'away'],
+    ['room page of a different room', { reconnect: true, roomId: 'r2' }, 'active', 'away'],
+    ['room page reconnect, was disconnected', { reconnect: true, roomId: 'r1' }, 'disconnected', 'active'],
+    ['room page reconnect, was away', { reconnect: true, roomId: 'r1' }, 'away', 'away'],
+  ])('room member connect: %s → %s', (_c, auth, before, after) => {
+    const io = makeIo();
+    init(io);
+    const me = { userId: 'u1', presence: before };
+    mockRoomManager.getRoomByUser.mockReturnValueOnce({ roomId: 'r1', gameState: null, users: new Map([['u1', me]]) });
+    mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'r1' }));
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', auth);
+    connectSocket(io, a);
+    expect(me.presence).toBe(after);
+    expect(!!(a.data && a.data.roomPageId === 'r1')).toBe(auth.roomId === 'r1');
+  });
+
   test('a reconnect that resumes a disconnect-grace game is not told the room is gone', () => {
     const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
     DisconnectHandler.cancelDisconnectGrace.mockReturnValueOnce(true);

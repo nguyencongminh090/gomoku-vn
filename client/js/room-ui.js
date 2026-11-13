@@ -691,7 +691,10 @@
 
   function renderUsersList() {
     const st = S();
-    const guests = st.roomData.users.filter(u => u.slot === null);
+    // #373: only viewers actually on the room page right now. 'away' (tab hidden / window unfocused / on
+    // another page of the site) and 'disconnected' (left the site; viewers keep their place, #115) are not
+    // watching — they drop from the list, the tab and the audience stack until they come back.
+    const guests = st.roomData.users.filter(u => u.slot === null && (u.presence || 'active') === 'active');
     // #368 phones: spectators are an avatar stack in the dock, and this tab is "Tỉ số" (always shown, with an
     // empty state) — so the hide rule below only applies on desktop.
     const stage = global.RoomStage && global.RoomStage.active() ? global.RoomStage : null;
@@ -728,19 +731,10 @@
       const hostBadge = g.role === 'host'
         ? ' <span class="slot-card__role slot-card__role--host">CP</span>'
         : '';
-      // Only render a dot for the non-default presence states — a normally
-      // connected guest stays unmarked (same noise tradeoff as renderStatusDot
-      // above). Without this, a viewer whose socket dropped (no reconnect
-      // timeout for viewers — TODO.md #115) looked identical to one actually
-      // present, since the server-side `presence` field wasn't read here at all.
-      const statusDot = (g.presence === 'disconnected' || g.presence === 'away')
-        ? renderStatusDot(g)
-        : '';
       html += `
         <li>
           <span class="user-name-group">
             <span class="user-name">${escapeHtml(g.displayName)}${hostBadge}</span>
-            ${statusDot}
           </span>
           ${kickBtn}
         </li>

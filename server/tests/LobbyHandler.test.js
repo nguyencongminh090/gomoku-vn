@@ -334,6 +334,21 @@ describe('LobbyHandler — room:join', () => {
     expect(socket.join).toHaveBeenCalledWith('room-abc');
   });
 
+  test('#373: room:join from the room page marks the socket as the room page and a returning member as watching', () => {
+    const io = makeIo();
+    const socket = makeSocket('u2', 'Bob');
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    const me = { userId: 'u2', presence: 'away' }; // set 'away' while they were on the lobby
+    mockRoomManager.joinRoom.mockReturnValue({ room: { roomId: 'room-abc', users: new Map([['u2', me]]) } });
+
+    LobbyHandler.register(io, socket);
+    handlers['room:join']({ roomId: 'room-abc' });
+
+    expect(me.presence).toBe('active');
+    expect(socket.data.roomPageId).toBe('room-abc');
+  });
+
   test('emits room:error when joinRoom fails', () => {
     const io = makeIo();
     const socket = makeSocket();

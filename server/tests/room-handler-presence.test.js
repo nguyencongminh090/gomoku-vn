@@ -9,6 +9,7 @@ let mockChanged = true;
 jest.mock('../managers/RoomManager', () => ({
   on: jest.fn(),
   setPresence: jest.fn(() => ({ room: mockRoom, changed: mockChanged })),
+  getRoomIdByUser: jest.fn(() => 'r1'),
 }));
 jest.mock('../socket/state', () => ({
   ...jest.requireActual('../socket/state'),
@@ -54,5 +55,25 @@ describe('presence:set handler (#372 review)', () => {
     s.handlers['presence:set']({ presence: 'active' });
     expect(roomManager.setPresence).toHaveBeenCalledTimes(1);
     expect(state.broadcastRoomUpdate).not.toHaveBeenCalled();
+  });
+});
+
+// #373: the room member is "watching" only while their socket is the room page of that room.
+describe('room presence follows the room page only (#373)', () => {
+  const io = { to: () => ({ emit: jest.fn() }) };
+  beforeEach(() => { state.sessions.clear(); state.awayUsers.clear(); roomManager.setPresence.mockClear(); });
+  afterAll(() => { state.sessions.clear(); state.awayUsers.clear(); });
+
+  test.each([
+    // [case, socket.data, event, reported, room presence, site-wide away]
+    ['room page, visible', { roomPageId: 'r1' }, 'room:presence', 'active', 'active', false],
+    ['room page, hidden', { roomPageId: 'r1' }, 'presence:set', 'away', 'away', true],
+    ['lobby/home page, visible', undefined, 'presence:set', 'active', 'away', false],
+    ['room page of another room', { roomPageId: 'r9' }, 'room:presence', 'active', 'away', false],
+  ])('%s', (_c, data, ev, reported, roomPresence, siteAway) => {
+    const s = makeSocket('a'); if (data) s.data = data; register(io, s); state.sessions.set('a', s);
+    s.handlers[ev]({ presence: reported });
+    expect(roomManager.setPresence).toHaveBeenCalledWith('a', roomPresence);
+    expect(state.awayUsers.has('a')).toBe(siteAway);
   });
 });

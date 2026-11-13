@@ -79,6 +79,7 @@ function register(io, socket) {
     const room = result.room;
     socket.leave(LOBBY_ROOM);
     socket.join(room.roomId);
+    (socket.data || (socket.data = {})).roomPageId = room.roomId; // #373: this socket is the room page (RoomHandler onPresence reads it)
     socket.emit('room:joined', roomManager.serializeRoom(room));
     broadcastLobbyUpdate(io);
   });
@@ -102,6 +103,11 @@ function register(io, socket) {
     const room = result.room;
     socket.leave(LOBBY_ROOM);
     socket.join(room.roomId);
+    // #373: the room page itself asked — a returning member (reload, back from another page) is watching
+    // again, even if a non-room page had marked them away or their old socket left them 'disconnected'.
+    (socket.data || (socket.data = {})).roomPageId = room.roomId;
+    const me = room.users && room.users.get(user.userId);
+    if (me) me.presence = 'active';
 
     const joinPayload = roomManager.serializeRoom(room);
     // If a game is active, include game state so joining spectators can catch up
