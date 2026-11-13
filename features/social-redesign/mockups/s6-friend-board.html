@@ -1,0 +1,91 @@
+<!-- S6 "Bàn cờ bạn bè": your circle drawn as a Caro board. You are the centre stone; friends who are online sit
+     on the inner ring (joined to you by a line), offline friends rest on the edge, faded. Tap a stone → card
+     with Thách đấu / Nhắn / Xem. Requests and chats live in a tabbed side panel. Purely decorative layout:
+     the list view (toggle) is the accessible equivalent. -->
+<style>
+  .s6 { padding-top: 24px; }
+  .s6__grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 28px; align-items: start; }
+  .s6__grid > * { min-width: 0; }
+  .s6__top { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .s6__top h1 { font-size: clamp(28px, 2.2vw + 10px, 40px); font-weight: 900; }
+  .s6__top p { color: var(--c-ink-2); font-weight: 700; }
+  .seg { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--c-fill); }
+  .seg button { min-height: 34px; padding: 0 14px; border-radius: 999px; font-weight: 800; font-size: 13px; color: var(--c-ink-2); }
+  .seg button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .bd { position: relative; aspect-ratio: 1; max-width: 640px; margin: 0 auto; border-radius: 18px; padding: 5%; box-sizing: border-box;
+    background: radial-gradient(120% 90% at 30% 20%, #e8b977, var(--wood) 55%, var(--wood-2)); box-shadow: inset 0 0 0 1px rgba(60,35,10,.35), 0 30px 60px -30px rgba(60,35,10,.7); }
+  .bd__in { position: relative; width: 100%; height: 100%; }
+  .bd__lines { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .bd__lines path { stroke: var(--wood-line); stroke-width: .05; fill: none; }
+  .bd__lines .link { stroke: rgba(30,90,20,.65); stroke-width: .09; stroke-dasharray: .25 .18; }
+  .p { position: absolute; left: calc(var(--x) / 12 * 100%); top: calc(var(--y) / 12 * 100%); transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 2px; width: 92px; }
+  .p .av { --s: 52px; box-shadow: 0 0 0 3px #f6f4ee, 0 6px 10px rgba(40,20,0,.45); }
+  .p .av[data-st="play"] { box-shadow: 0 0 0 3px var(--busy), 0 6px 10px rgba(40,20,0,.45); }
+  .p__n { max-width: 92px; padding: 1px 7px; border-radius: 999px; background: rgba(255,250,240,.92); color: #2a1d0c; font-size: 12px; font-weight: 800; box-sizing: border-box; }
+  .p--off .av { --s: 34px; filter: grayscale(.9); opacity: .55; box-shadow: 0 0 0 2px rgba(246,244,238,.8); }
+  .p--off .p__n { display: none; }
+  .p--me .av { --s: 64px; background: radial-gradient(circle at 34% 30%, #6d6a64 0, #2a2825 38%, #0b0a09 75%); font-size: 15px; }
+  .p--me .p__n { background: #141210; color: #fff; }
+  .ring1 > .p:nth-child(1) { --x: 3.5; --y: 3.5; } .ring1 > .p:nth-child(2) { --x: 8.5; --y: 3.5; } .ring1 > .p:nth-child(3) { --x: 3.5; --y: 8.5; } .ring1 > .p:nth-child(4) { --x: 8.5; --y: 8.5; }
+  .ring1 > .p:nth-child(5) { --x: 6; --y: 2.5; } .ring1 > .p:nth-child(6) { --x: 2.5; --y: 6; } .ring1 > .p:nth-child(7) { --x: 9.5; --y: 6; } .ring1 > .p:nth-child(8) { --x: 6; --y: 9.5; }
+  .ring2 > .p:nth-child(1) { --x: .6; --y: .6; } .ring2 > .p:nth-child(2) { --x: 11.4; --y: .6; } .ring2 > .p:nth-child(3) { --x: .6; --y: 11.4; } .ring2 > .p:nth-child(4) { --x: 11.4; --y: 11.4; }
+  .ring2 > .p:nth-child(5) { --x: 6; --y: .4; } .ring2 > .p:nth-child(6) { --x: .4; --y: 6; } .ring2 > .p:nth-child(7) { --x: 11.6; --y: 6; } .ring2 > .p:nth-child(8) { --x: 6; --y: 11.6; }
+  .ring1 > .p:nth-child(n+9), .ring2 > .p:nth-child(n+9) { display: none; }
+  .ring1[data-count="0"] ~ .bd__lines .link { display: none; }
+  .pop { position: absolute; left: calc(8.5 / 12 * 100% + 40px); top: calc(8.5 / 12 * 100% - 34px); z-index: 5; width: 240px; padding: 14px; display: grid; gap: 10px; }
+  .pop::before { content: ''; position: absolute; left: -7px; top: 34px; width: 14px; height: 14px; background: var(--c-surface); transform: rotate(45deg); }
+  .pop__h { display: flex; gap: 10px; align-items: center; min-width: 0; } .pop__h small { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--c-ink-2); }
+  .pop__s { display: flex; gap: 6px; } .pop__a { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .mk-sparse .pop { display: none; }
+  .more { position: absolute; right: 4%; bottom: 3%; font-weight: 900; font-size: 13px; color: #2a1d0c; background: rgba(255,250,240,.9); padding: 4px 10px; border-radius: 999px; }
+  .bd__empty { display: none; position: absolute; left: 50%; top: 66%; transform: translateX(-50%); width: 80%; text-align: center; color: #2a1d0c; font-weight: 800; }
+  .mk-sparse .bd__empty { display: block; }
+  .side { padding: 6px 16px 16px; }
+  .side .tabs { margin-bottom: 8px; box-shadow: 0 1px 0 var(--c-border); }
+  .side .tabs .badge { margin-left: 4px; }
+  .li { display: flex; gap: 10px; align-items: center; padding: 10px 0; min-width: 0; }
+  .li + .li { border-top: 1px solid var(--c-border); }
+  .li small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .add { margin-top: 12px; display: grid; gap: 8px; padding-top: 12px; border-top: 1px solid var(--c-border); }
+  @media (max-width: 1060px) { .s6__grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 860px) {
+    .s6 { padding-top: 14px; }
+    .bd { border-radius: 14px; }
+    .p { width: 60px; } .p .av { --s: 36px; font-size: 12px; } .p__n { max-width: 64px; font-size: 10.5px; padding: 0 5px; }
+    .p--off .av { --s: 22px; font-size: 0; } .p--me .av { --s: 44px; }
+    .pop { left: 6%; right: 6%; top: auto; bottom: 3%; width: auto; }
+    .pop::before { display: none; }
+  }
+</style>
+<div class="mk-screen s6">
+  <div class="wrap s6__grid">
+    <div>
+      <div class="s6__top rise"><div><h1>Bàn cờ bạn bè</h1><p><span class="num">{{n:online}}</span> bạn đang online ở vòng trong · {{n:friends}} bạn</p></div>
+        <div class="seg" role="group" aria-label="Kiểu xem"><button aria-pressed="true">Bàn cờ</button><button aria-pressed="false">Danh sách</button></div></div>
+      <div class="bd rise rise-2" role="img" aria-label="Sơ đồ bạn bè: bạn ở giữa, bạn bè online ở vòng trong">
+        <div class="bd__in">
+          <svg class="bd__lines" viewBox="0 0 12 12" aria-hidden="true"><path d="M0 0H12M0 1H12M0 2H12M0 3H12M0 4H12M0 5H12M0 6H12M0 7H12M0 8H12M0 9H12M0 10H12M0 11H12M0 12H12M0 0V12M1 0V12M2 0V12M3 0V12M4 0V12M5 0V12M6 0V12M7 0V12M8 0V12M9 0V12M10 0V12M11 0V12M12 0V12"/>
+            <path class="link hide-sparse" d="M6 6L3.5 3.5M6 6L8.5 3.5M6 6L3.5 8.5M6 6L8.5 8.5M6 6L6 2.5M6 6L2.5 6"/></svg>
+          <div class="ring2"><template data-list="offline"><span class="p p--off"><span class="av" style="--h:{{h}}" title="{{name}} · {{stText}}">{{ini}}</span><span class="p__n nm">{{name}}</span></span></template></div>
+          <div class="ring1"><template data-list="online"><span class="p"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><span class="p__n nm">{{name}}</span></span></template></div>
+          <span class="p p--me" style="--x:6;--y:6"><span class="av">BẠN</span><span class="p__n">{{me}}</span></span>
+          <div class="bd__empty">Bàn còn trống. Đặt quân đầu tiên: gửi mã <b>{{me}}{{mytag}}</b> cho bạn bè.</div>
+          <div class="card pop" role="dialog" aria-label="Tuấn Caro">
+            <div class="pop__h"><span class="av" style="--h:20;--s:40px" data-st="on">TC</span><div class="nm-box"><b class="nm">Tuấn Caro</b><small><span class="dot dot--on"></span>Rảnh</small></div></div>
+            <div class="pop__s" data-be="elo + đối đầu"><span class="tag">Elo 1684</span><span class="tag tag--brand">Đối đầu 11–9</span></div>
+            <div class="pop__a"><button class="btn btn--sm btn--pri">{{i:sword}} Thách</button><button class="btn btn--sm btn--sec">{{i:chat-circle}} Nhắn</button></div>
+          </div>
+        </div>
+        <span class="more hide-empty" data-count="{{n:moreon}}">+{{n:moreon}} bạn online</span>
+      </div>
+    </div>
+    <aside class="card side rise rise-3">
+      <div class="tabs" role="tablist"><button role="tab" aria-selected="true">Chờ bạn<span class="badge hide-empty" data-count="{{n:todo}}">{{n:todo}}</span></button><button role="tab" aria-selected="false">Tin nhắn<span class="badge hide-empty" data-count="{{n:unread}}">{{n:unread}}</span></button></div>
+      <template data-list="chin"><div class="li" style="background:var(--c-brand-light);margin:0 -16px;padding:12px 16px"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>thách {{rule}} · {{clock}} · {{ago}}</small></div><button class="btn btn--sm btn--pri">Vào chơi</button></div></template>
+      <template data-list="incoming"><div class="li"><span class="av" style="--h:{{h}};--s:36px">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>muốn kết bạn · {{ago}}</small></div><button class="btn btn--sm btn--pri btn--icon" aria-label="Đồng ý">{{i:check}}</button><button class="btn btn--sm btn--ghost btn--icon" aria-label="Từ chối">{{i:x}}</button></div></template>
+      <div class="only-sparse"><p class="muted" style="font-size:13px;margin:8px 0">Không có gì chờ bạn. Người đang online:</p><template data-list="suggest"><div class="li"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{why}}</small></div><button class="btn btn--sm btn--pri btn--icon" aria-label="Kết bạn">{{i:user-plus}}</button></div></template></div>
+      <div class="add"><span class="field">{{i:magnifying-glass}}<span>Thêm bạn: tên hoặc tên#1234</span></span><span class="muted" style="font-size:13px">Mã của bạn: <b>{{me}}{{mytag}}</b></span></div>
+    </aside>
+  </div>
+</div>
+{{sheet}}

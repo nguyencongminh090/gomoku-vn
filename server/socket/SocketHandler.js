@@ -87,7 +87,12 @@ function init(io) {
   });
 
   // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.
-  require('../managers/FriendService').setHooks({ isOnline: (userId) => isVisiblyOnline(userId) });
+  // + what they are doing (#370 chat page: playing / watching / free, with the room for "Xem ván").
+  const friendService = require('../managers/FriendService');
+  friendService.setHooks({
+    isOnline: (userId) => isVisiblyOnline(userId),
+    activityOf: (userId) => friendService.activityFromRoom(roomManager.getRoomByUser(userId), userId),
+  });
 
   // A series player left the room → close the challenge series on what was played (#222).
   // Re-init (tests) replaces the listener; stubbed RoomManagers without an emitter skip it.

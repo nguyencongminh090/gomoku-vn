@@ -1,0 +1,73 @@
+<!-- S7 "Câu lệnh": the Home M4 language carried over. The page is one big sentence you fill in:
+     "Thách [Linh_99 ▾] một ván [Luật 1 ▾] [5+5 ▾]" + one big button. Under it: "hoặc kết bạn bằng [mã]".
+     Three quiet lanes below: online now, waiting for you, messages. -->
+<style>
+  .s7 { padding-top: clamp(20px, 5vh, 56px); }
+  .s7 .wrap { max-width: 1120px; }
+  .s7__hi { font-weight: 800; color: var(--c-ink-2); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .s7__q { font-size: clamp(34px, 3.3vw + 8px, 60px); font-weight: 900; line-height: 1.22; letter-spacing: -.015em; margin: 10px 0 22px; max-width: 22ch; }
+  .blank { display: inline-flex; align-items: baseline; gap: .12em; max-width: 9.5ch; padding: 0 .18em; border-radius: .22em; background: var(--c-brand-light); color: var(--c-brand-text); box-shadow: inset 0 -.07em 0 var(--c-brand-text); vertical-align: baseline; }
+  .blank .nm { display: inline-block; vertical-align: bottom; }
+  .blank .icon { width: .5em; height: .5em; align-self: center; }
+  .blank--who { gap: .2em; } .blank--who { max-width: 12ch; } .blank--who .av { --s: 48px; font-size: 1em; align-self: center; box-shadow: none; }
+  .blank--who .av { font-size: 0; } .blank--who .av::before { content: attr(data-i); font-size: 18px; }
+  .s7__go { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  .gobtn { min-height: 64px; padding: 0 28px 0 10px; font-size: 20px; background: var(--c-ink) !important; color: var(--c-on-ink) !important; }
+  .gobtn .disc { width: 46px; height: 46px; border-radius: 50%; background: var(--c-brand); display: grid; place-items: center; color: var(--c-on-brand); }
+  .s7__or { margin-top: 26px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-weight: 800; color: var(--c-ink-2); }
+  .s7__or .field { min-width: 0; flex: 0 1 340px; }
+  .lanes { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 16px; margin-top: 40px; }
+  .lanes > * { min-width: 0; }
+  .lane { padding: 16px; }
+  .lane h2 { font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+  .avs { display: flex; flex-wrap: wrap; gap: 10px; }
+  .avs a { display: grid; justify-items: center; gap: 4px; width: 62px; font-size: 11.5px; font-weight: 700; }
+  .avs .av { --s: 46px; }
+  .avs a.is-pick .av { box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-brand-text); }
+  .avs .nm { width: 100%; text-align: center; }
+  .ln { display: flex; gap: 10px; align-items: center; padding: 8px 0; min-width: 0; }
+  .ln small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .ln + .ln { border-top: 1px solid var(--c-border); }
+  .mk-sparse .s7__q .blank--who { background: var(--c-fill); color: var(--c-ink-2); box-shadow: inset 0 -.07em 0 var(--c-ink-2); }
+  @media (max-width: 960px) { .lanes { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 860px) {
+    .s7 { padding-top: 16px; }
+    .s7__q { font-size: 32px; margin: 8px 0 16px; }
+    .blank--who .av { --s: 28px; } .blank--who .av::before { font-size: 11px; }
+    .gobtn { width: 100%; justify-content: flex-start; min-height: 56px; font-size: 18px; }
+    .s7__or .field { flex-basis: 100%; }
+    .lanes { margin-top: 24px; gap: 10px; }
+  }
+</style>
+<div class="mk-screen s7">
+  <div class="wrap">
+    <p class="s7__hi rise"><span><span class="dot dot--on"></span> {{n:online}} bạn đang online</span><span class="badge hide-empty" data-count="{{n:todo}}">{{n:todo}}</span><span class="hide-empty" data-count="{{n:todo}}">việc chờ bạn ↓</span></p>
+    <h1 class="s7__q rise rise-2">
+      <span class="hide-sparse">Thách <button class="blank blank--who"><span class="av" style="--h:20" data-i="TC"></span><span class="nm">Tuấn Caro</span>{{i:caret-down}}</button> một ván <button class="blank">Luật 1{{i:caret-down}}</button> <button class="blank">5+5{{i:caret-down}}</button></span>
+      <span class="only-sparse">Mời <button class="blank blank--who"><span class="nm">một người bạn</span>{{i:caret-down}}</button> vào chơi cờ cùng bạn</span>
+    </h1>
+    <div class="s7__go rise rise-3">
+      <button class="btn gobtn hide-sparse"><span class="disc">{{i:sword}}</span>Gửi thách đấu</button>
+      <button class="btn gobtn only-sparse"><span class="disc">{{i:paper-plane-tilt}}</span>Gửi link mời</button>
+      <span class="muted hide-sparse" style="font-weight:700">Rảnh ngay — thường nhận trong 1 phút</span>
+    </div>
+    <div class="s7__or rise rise-3">hoặc kết bạn bằng <span class="field">{{i:magnifying-glass}}<span>tên hoặc tên#1234</span></span> · mã của bạn <b style="color:var(--c-ink)">{{me}}{{mytag}}</b></div>
+    <div class="lanes rise rise-4">
+      <section class="card lane"><h2><span class="dot dot--on"></span> Đang online — chạm để điền vào câu</h2>
+        <div class="avs"><template data-list="online" data-max="10"><a href="#" class="{{#free}}{{/free}}"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><span class="nm">{{name}}</span></a></template>
+        <p class="if-empty muted" style="font-size:13px">Chưa có bạn nào online.</p></div>
+        <div class="only-sparse" style="margin-top:6px"><template data-list="suggest"><div class="ln"><span class="av" style="--h:{{h}};--s:32px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{why}}</small></div><button class="btn btn--sm btn--sec btn--icon" aria-label="Kết bạn">{{i:user-plus}}</button></div></template></div>
+      </section>
+      <section class="card lane"><h2>{{i:bell}} Chờ bạn</h2>
+        <template data-list="chin"><div class="ln"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>thách {{rule}} · {{clock}}</small></div><button class="btn btn--sm btn--pri">Chơi</button></div></template>
+        <template data-list="incoming"><div class="ln"><span class="av" style="--h:{{h}};--s:36px">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>muốn kết bạn</small></div><button class="btn btn--sm btn--sec btn--icon" aria-label="Đồng ý">{{i:check}}</button></div></template>
+        <p class="if-empty muted" style="font-size:13px">Không có gì chờ bạn.</p>
+      </section>
+      <section class="card lane"><h2>{{i:chat-circle}} Tin nhắn</h2>
+        <template data-list="convs" data-max="3"><a class="ln" href="#"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small class="nm">{{last}}</small></div>{{#unread}}<span class="badge">{{unread}}</span>{{/unread}}</a></template>
+        <p class="if-empty muted" style="font-size:13px">Chưa có tin nhắn.</p>
+      </section>
+    </div>
+  </div>
+</div>
+{{sheet}}

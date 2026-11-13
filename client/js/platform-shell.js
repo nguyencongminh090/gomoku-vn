@@ -8,6 +8,8 @@
  * for members it asks /api/rankings/me for the username and /api/admin/me for the staff entry (guests / signed-out never call them).
  * Members also get the notification bell (#198): /api/notifications polled every
  * 60 s while visible, plus live `notify:new` via PlatformShell.pushNotification.
+ * Left of the bell, a chat icon → social.html with the unread-DM badge (#370): `dmUnread` rides the
+ * same /api/notifications poll; the chat page pushes fresher counts via PlatformShell.setDmUnread.
  */
 
 'use strict';
@@ -150,7 +152,7 @@
       bell.panel.appendChild(a);
     }
     const all = el('a', t('notif.open_social'), 'pbell__all');
-    all.href = '/social.html';
+    all.href = '/social.html#notifs'; // #370: the chat page's notifications view
     bell.panel.appendChild(all);
   }
 
@@ -201,7 +203,7 @@
     const first = bellPrimed ? Promise.resolve(null) : (bellPrimed = true, loadShell().then((b) => (b && b.notifications) || null));
     return first
       .then((pre) => pre || fetch('/api/notifications', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)))
-      .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); } })
+      .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); if (typeof d.dmUnread === 'number') setDmUnread(d.dmUnread); } })
       .catch(() => { /* offline: keep what we have */ });
   }
 
@@ -211,6 +213,30 @@
     bell.items = [n].concat(bell.items.filter((x) => x.id !== n.id));
     bell.unread = typeof n.unread === 'number' ? n.unread : bell.unread + 1;
     renderBell();
+  }
+
+  // ── Chat icon (#370) ──
+  const chat = { link: null, badge: null, unread: 0 };
+
+  function setDmUnread(n) {
+    chat.unread = Math.max(0, n | 0);
+    if (!chat.link) return;
+    chat.badge.textContent = chat.unread > 99 ? '99+' : String(chat.unread);
+    chat.badge.hidden = chat.unread === 0;
+    chat.link.setAttribute('aria-label', t('shell.chat') + (chat.unread ? ' (' + chat.unread + ')' : ''));
+  }
+
+  function mountChat(right, active) {
+    const a = el('a', undefined, 'pnav__mode pbell__btn pchat__btn');
+    a.href = '/social.html';
+    if (active === 'social') a.setAttribute('aria-current', 'page');
+    a.appendChild(icon('ph-regular-chat-circle'));
+    const badge = el('span', '0', 'pbell__badge');
+    badge.hidden = true;
+    a.appendChild(badge);
+    right.appendChild(a);
+    Object.assign(chat, { link: a, badge });
+    setDmUnread(chat.unread);
   }
 
   function mountBell(right) {
@@ -356,9 +382,9 @@
       if (window.setColorMode && window.getColorMode) window.setColorMode(window.getColorMode() === 'light' ? 'dark' : 'light');
     });
     const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
-    // Mockup order: [mode] [bell] [me ▾]. Settings lives in the chip menu (B211), not a gear.
+    // Mockup order: [mode] [chat] [bell] [me ▾]. Settings lives in the chip menu (B211), not a gear.
     right.appendChild(mode);
-    if (user && !user.isGuest) mountBell(right);
+    if (user && !user.isGuest) { mountChat(right, active); mountBell(right); }
     if (user) {
       mountAccount(right, user);
     } else {
@@ -405,5 +431,5 @@
     return box;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications, fetchMe };
+  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
 })();

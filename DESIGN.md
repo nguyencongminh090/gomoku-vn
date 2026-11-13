@@ -53,3 +53,11 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Cards: live = mini board (lobby SVG, wood token), flag "Đang đấu · mm:ss", watchers; open = faded empty board + "Ngồi vào" primary; ready = empty board, "Sắp bắt đầu".
 - Motion: card hover lift 3px (240ms), live dot pulse; none under reduced motion.
 - Forbidden: BoardRenderer in the lobby, per-move lobby traffic, photo behind text without scrim.
+
+## Bạn bè page (#370, S3 "Trò chuyện")
+- Chosen 2026-11-13 from 8 mockups (`features/social-redesign/`). Style: vstyle-flat-material, messenger layout; no photo.
+- Layout (desktop): one card, 3 panes — left 320px (title + search/add, online story strip 48px avatars with presence dot/ring, conversation list with challenges + requests pinned on a warning tint), centre thread (header with status + Xem ván / Thách đấu primary; bubbles; challenge + result cards inline; composer with sword icon + Gửi), right 280px profile (72px avatar, Elo / Đối đầu / Thắng tiles, last-5 chips). ≤1100px drops the profile pane; ≤860px list only, thread full screen above the tab bar.
+- Presence colours: free --on #43a047, playing --busy #e08a1e (+ ring on the story avatar), watching --watch #3b82c4, offline = no dot.
+- Names: one line, ellipsis, full name in `title`; every flex/grid ancestor `min-width:0`. Applies to every name on the page.
+- Eye-flow: pinned items (what needs me) top-left → open thread centre → profile right (secondary).
+- Forbidden: names wrapping to 2 lines, equal-weight boxes, emoji as icons, a separate challenge list outside the conversation list.

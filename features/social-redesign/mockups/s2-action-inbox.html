@@ -1,0 +1,81 @@
+<!-- S2 "Hộp việc": what needs YOU is the page. One prioritized inbox (challenge → friend requests → unread chats),
+     each item a big ticket with one primary action. Online friends are a secondary rail. Empty inbox = "Xong hết". -->
+<style>
+  .s2 { padding-top: 28px; }
+  .s2__grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: start; max-width: 1080px; margin: 0 auto; }
+  .s2__grid > * { min-width: 0; }
+  .s2 h1 { font-size: clamp(28px, 2.2vw + 10px, 40px); font-weight: 900; display: flex; align-items: center; gap: 12px; }
+  .s2 h1 .badge { font-size: 16px; height: 28px; min-width: 28px; }
+  .s2__lead { color: var(--c-ink-2); font-weight: 700; margin: 4px 0 20px; }
+  .inbox { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .tk { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 16px 18px; }
+  .tk .av { --s: 48px; }
+  .tk__k { font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); display: flex; gap: 6px; align-items: center; }
+  .tk__t { font-size: 17px; font-weight: 800; display: flex; gap: 6px; min-width: 0; }
+  .tk__t .nm { flex: 0 1 auto; }
+  .tk__m { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tk__b { display: flex; gap: 8px; }
+  .tk--hot { grid-template-columns: 112px minmax(0, 1fr) auto; padding: 18px; background: linear-gradient(135deg, var(--c-surface), color-mix(in srgb, var(--c-brand-light) 70%, var(--c-surface))); box-shadow: inset 0 0 0 2px var(--c-brand), 0 16px 40px -24px var(--c-brand); }
+  .tk--hot .tk__t { font-size: 22px; font-weight: 900; }
+  .tk__board { position: relative; }
+  .tk__board .av { --s: 40px; position: absolute; right: -8px; bottom: -8px; }
+  .ring { width: 44px; height: 44px; border-radius: 50%; background: conic-gradient(var(--c-brand) 0 72%, var(--c-fill) 0); display: grid; place-items: center; font-size: 11px; font-weight: 900; }
+  .ring span { width: 34px; height: 34px; border-radius: 50%; background: var(--c-surface); display: grid; place-items: center; }
+  .tk--msg { background: transparent; box-shadow: inset 0 0 0 1px var(--c-border); }
+  .tk--msg .tk__q { margin-top: 4px; color: var(--c-ink); font-weight: 600; }
+  .s2__h2 { margin: 28px 0 10px; font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+  .done { display: none; flex-direction: column; align-items: center; gap: 10px; padding: 36px 16px; text-align: center; border: 2px dashed var(--c-border); border-radius: 16px; }
+  .inbox[data-count="0"] ~ .done { display: flex; }
+  .done b { font-size: 20px; }
+  .side { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; position: sticky; top: calc(var(--nav) + 16px); }
+  .side .card { padding: 16px; }
+  .side h2 { font-size: 15px; font-weight: 900; margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+  .fr { display: flex; align-items: center; gap: 10px; padding: 7px 0; min-width: 0; }
+  .fr small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .fr .btn { opacity: .0; } .fr:hover .btn, .fr:focus-within .btn { opacity: 1; }
+  .fr--free .btn { opacity: 1; }
+  .mycode { display: grid; gap: 8px; }
+  .mycode b { font-size: 22px; font-weight: 900; }
+  @media (max-width: 960px) { .s2__grid { grid-template-columns: minmax(0, 1fr); } .side { position: static; } }
+  @media (max-width: 860px) {
+    .s2 { padding-top: 16px; }
+    .tk { grid-template-columns: auto minmax(0, 1fr); padding: 14px; }
+    .tk__b { grid-column: 1 / -1; } .tk__b .btn { flex: 1; }
+    .tk--hot { grid-template-columns: 76px minmax(0, 1fr); }
+    .tk--hot .tk__t { font-size: 18px; }
+    .tk .ring { display: none; }
+  }
+</style>
+<div class="mk-screen s2">
+  <div class="wrap">
+    <div class="s2__grid">
+      <div>
+        <h1 class="rise">Hộp việc <span class="badge hide-empty" data-count="{{n:todo}}">{{n:todo}}</span></h1>
+        <p class="s2__lead rise">Thách đấu, lời mời và tin nhắn chờ bạn — việc gấp nhất ở trên cùng.</p>
+        <div class="inbox rise rise-2">
+          <template data-list="chin" data-max="1">
+            <article class="card tk tk--hot">
+              <div class="tk__board"><svg class="mb" viewBox="0 0 15 15" aria-hidden="true"><rect class="mb-bg" width="15" height="15" rx=".4"/><path d="M.5 .5H14.5M.5 2.5H14.5M.5 4.5H14.5M.5 6.5H14.5M.5 8.5H14.5M.5 10.5H14.5M.5 12.5H14.5M.5 14.5H14.5M.5 .5V14.5M2.5 .5V14.5M4.5 .5V14.5M6.5 .5V14.5M8.5 .5V14.5M10.5 .5V14.5M12.5 .5V14.5M14.5 .5V14.5"/><circle class="b" cx="7.5" cy="7.5" r=".6"/></svg><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span></div>
+              <div class="nm-box"><span class="tk__k">{{i:sword}} Thách đấu · {{ago}} trước</span><span class="tk__t"><span class="nm">{{name}}</span><span style="flex:none">mời bạn một ván</span></span>
+                <span class="tk__m"><span class="tag">{{rule}}</span><span class="tag">{{size}}</span><span class="tag">{{clock}}</span><span class="tag tag--brand">{{mode}}</span></span></div>
+              <div class="tk__b"><span class="ring" title="Còn 72 giây" data-be="hạn"><span>72s</span></span><button class="btn btn--pri">{{i:play}} Vào chơi</button><button class="btn btn--ghost btn--sm">Để sau</button></div>
+            </article>
+          </template>
+          <template data-list="chin" data-skip="1"><article class="card tk"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><span class="tk__k">{{i:sword}} Thách đấu</span><span class="tk__t"><span class="nm">{{name}}</span></span><span class="tk__m"><span class="tag">{{rule}}</span><span class="tag">{{clock}}</span>{{#swap}}<span class="tag tag--warn">Đổi điểm</span>{{/swap}}</span></div><div class="tk__b"><button class="btn btn--pri btn--sm">Vào chơi</button><button class="btn btn--ghost btn--sm">Từ chối</button></div></article></template>
+          <template data-list="incoming"><article class="card tk"><span class="av" style="--h:{{h}}">{{ini}}</span><div class="nm-box"><span class="tk__k">{{i:user-plus}} Lời mời kết bạn · {{ago}}</span><span class="tk__t"><span class="nm">{{name}}</span></span><span class="tk__m"><span class="tag" data-be="elo">{{r}}</span><span class="tag" data-be="bạn chung">2 bạn chung</span></span></div><div class="tk__b"><button class="btn btn--pri btn--sm">{{i:check}} Đồng ý</button><button class="btn btn--ghost btn--sm">Từ chối</button></div></article></template>
+        </div>
+        <div class="done"><span style="font-size:44px;color:var(--c-brand-text)">{{i:check-circle}}</span><b>Xong hết — không có gì chờ bạn</b><span class="muted">Rủ một người bạn chơi, hoặc gửi mã {{me}}{{mytag}} để kết bạn.</span><button class="btn btn--pri">{{i:user-plus}} Thêm bạn</button></div>
+        <h2 class="s2__h2 hide-empty" data-count="{{n:convs}}">Tin nhắn</h2>
+        <div class="inbox inbox--msg hide-empty"><template data-list="convs" data-max="4"><a class="card tk tk--msg" href="#"><span class="av" style="--h:{{h}};--s:40px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><span class="tk__t" style="font-size:15px"><span class="nm">{{name}}</span><span class="muted" style="flex:none;font-weight:600;font-size:12px">{{time}}</span></span><span class="tk__q nm">{{#mine}}Bạn: {{/mine}}{{last}}</span></div>{{#unread}}<span class="badge">{{unread}}</span>{{/unread}}</a></template></div>
+      </div>
+      <aside class="side rise rise-3">
+        <section class="card"><h2><span class="dot dot--on"></span>Đang online · {{n:online}}</h2>
+          <template data-list="online" data-max="7"><div class="fr {{#free}}fr--free{{/free}}"><span class="av" style="--h:{{h}};--s:32px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><span class="nm">{{name}}</span><small>{{stText}}</small></div>{{#free}}<button class="btn btn--sm btn--sec btn--icon" aria-label="Thách đấu">{{i:sword}}</button>{{/free}}</div></template>
+          <p class="if-empty muted" style="font-size:13px">Chưa có bạn nào online.</p>
+        </section>
+        <section class="card mycode"><span class="muted" style="font-weight:800;font-size:13px">Mã kết bạn của bạn</span><b>{{me}}<span class="muted">{{mytag}}</span></b><span class="field">{{i:magnifying-glass}}<span>Thêm bạn bằng tên hoặc mã</span></span><a href="#" class="muted" style="font-weight:800;font-size:13px">Tất cả {{n:friends}} bạn →</a></section>
+      </aside>
+    </div>
+  </div>
+</div>
+{{sheet}}

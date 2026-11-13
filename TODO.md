@@ -83,3 +83,4 @@ in the detail file / fix-log).
 - **#367.** Reconnect: lapsed player stays in room + quiet connection banner `[Model: Opus 5]` — [detail](docs/todo/B367-reconnect-stay-in-room.md)
 - **#368.** Room mobile: "Live stage" panel — bubbles, spectator stack, Scores tab `[Model: Opus 5]` — [detail](docs/todo/B368-room-mobile-live-stage.md)
 - **#369.** Room desktop: "Sân khấu" 3-column stage (follows #368) `[Model: Opus 5]` — [detail](docs/todo/B369-room-desktop-stage.md)
+- **#370.** Bạn bè page redesign S3 "Trò chuyện": chat-first, presence, game cards, profile pane `[Model: Opus 5]` — [detail](docs/todo/B370-social-chat-first.md)

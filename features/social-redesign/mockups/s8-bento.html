@@ -1,0 +1,95 @@
+<!-- S8 "Bento": one screen of tiles, sized by importance. Big tile = friends online now; then the live challenge,
+     requests, your code/QR, recent chats, "đối thủ ruột" (head-to-head rival) and friends' activity. -->
+<style>
+  .s8 { padding-top: 24px; }
+  .s8 h1 { font-size: clamp(26px, 2vw + 10px, 36px); font-weight: 900; margin-bottom: 14px; }
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: minmax(120px, auto); gap: 14px; }
+  .bento > * { min-width: 0; }
+  .t { padding: 16px; display: flex; flex-direction: column; gap: 10px; border-radius: 20px; }
+  .t h2 { font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); display: flex; gap: 8px; align-items: center; }
+  .t--on { grid-column: span 2; grid-row: span 2; }
+  .t--on .big { font-size: 56px; font-weight: 1000; line-height: 1; }
+  .ong { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+  .og { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: var(--c-fill); min-width: 0; }
+  .og small { display: block; font-size: 11.5px; color: var(--c-ink-2); }
+  .t--ch { grid-column: span 2; background: var(--c-ink); color: var(--c-on-ink); }
+  .t--ch h2 { color: color-mix(in srgb, var(--c-on-ink) 70%, transparent); }
+  .t--ch .row { display: flex; gap: 12px; align-items: center; min-width: 0; }
+  .t--ch b { font-size: 20px; }
+  .t--ch small { display: block; opacity: .75; font-size: 13px; }
+  .t--req .n { font-size: 40px; font-weight: 1000; line-height: 1; }
+  .stack { display: flex; } .stack .av { --s: 34px; margin-left: -8px; } .stack .av:first-child { margin-left: 0; }
+  .t--code { background: var(--c-brand); color: var(--c-on-brand); }
+  .t--code h2 { color: inherit; opacity: .8; }
+  .t--code b { font-size: 22px; font-weight: 1000; display: grid; } .t--code b > span { font-size: .8em; }
+  .qr { width: 56px; height: 56px; border-radius: 8px; background: #fff; padding: 5px; box-sizing: border-box; align-self: flex-end; margin-top: auto; }
+  .qr i { display: block; width: 100%; height: 100%; background: conic-gradient(#111 25%, #fff 0 50%, #111 0 75%, #fff 0) 0 0 / 10px 10px; }
+  .t--dm { grid-column: span 2; }
+  .dm { display: flex; gap: 10px; align-items: center; min-width: 0; }
+  .dm small { display: block; font-size: 12.5px; color: var(--c-ink-2); }
+  .t--rival { background: linear-gradient(160deg, var(--wood), var(--wood-2)); color: #2a1d0c; }
+  .t--rival h2 { color: rgba(42,29,12,.75); }
+  .vs { display: flex; align-items: center; gap: 8px; } .vs b { font-size: 34px; font-weight: 1000; }
+  .t--feed { grid-column: span 2; }
+  .fd { display: flex; gap: 10px; align-items: center; font-size: 14px; min-width: 0; }
+  .fd p { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fd .nm { display: inline; font-weight: 900; }
+  .t__empty { display: none; color: var(--c-ink-2); font-size: 13px; }
+  [data-count="0"] + .t__empty { display: block; }
+  @media (max-width: 1000px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 860px) {
+    .s8 { padding-top: 14px; }
+    .bento { gap: 10px; }
+    .t--on, .t--ch, .t--dm, .t--feed { grid-column: span 2; }
+    .t--on { grid-row: auto; } .t--on .big { font-size: 40px; }
+    .ong { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ong .og:nth-child(n+7) { display: none; }
+  }
+</style>
+<div class="mk-screen s8">
+  <div class="wrap">
+    <h1 class="rise">Bạn bè</h1>
+    <div class="bento">
+      <section class="card t t--on rise">
+        <h2><span class="dot dot--on"></span> Đang online</h2>
+        <div style="display:flex;align-items:baseline;gap:10px"><span class="big num">{{n:online}}</span><span class="muted" style="font-weight:800">/ {{n:friends}} bạn</span></div>
+        <div class="ong"><template data-list="online" data-max="10"><a class="og" href="#"><span class="av" style="--h:{{h}};--s:34px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small class="nm">{{stText}}</small></div></a></template></div>
+        <div class="only-sparse" style="display:none"><p class="muted" style="margin-bottom:8px">Chưa có bạn. Người đang online:</p><div class="ong"><template data-list="suggest"><a class="og" href="#"><span class="av" style="--h:{{h}};--s:34px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small class="nm">{{why}}</small></div></a></template></div></div>
+        <span class="field" style="margin-top:auto">{{i:magnifying-glass}}<span>Tìm hoặc thêm bạn — tên, tên#1234</span></span>
+      </section>
+      <section class="t t--ch rise rise-2 hide-empty" data-count="{{n:chin}}">
+        <h2>{{i:sword}} Thách đấu đang chờ</h2>
+        <template data-list="chin" data-max="1"><div class="row"><span class="av" style="--h:{{h}};--s:48px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{rule}} · {{size}} · {{clock}} · {{mode}}</small></div><button class="btn btn--pri">Vào chơi</button></div></template>
+      </section>
+      <section class="card t t--ch only-sparse" style="background:var(--c-surface);color:var(--c-ink)"><h2>{{i:sword}} Thách đấu</h2><span class="muted">Kết bạn rồi thách đấu một chạm — ván được tạo sẵn, chỉ cần vào chơi.</span></section>
+      <section class="card t t--req rise rise-2">
+        <h2>{{i:user-plus}} Lời mời</h2>
+        <span class="n num">{{n:incoming}}</span>
+        <span class="stack"><template data-list="incoming" data-max="4"><span class="av" style="--h:{{h}}" title="{{name}}">{{ini}}</span></template></span>
+        <button class="btn btn--sm btn--sec hide-empty" data-count="{{n:incoming}}" style="margin-top:auto">Xem & đồng ý</button>
+      </section>
+      <section class="t t--code rise rise-2">
+        <h2>Mã của bạn</h2>
+        <b>{{me}}<span style="opacity:.75">{{mytag}}</span></b>
+        <span style="display:flex;gap:8px;align-items:flex-end;margin-top:auto"><button class="btn btn--sm" style="background:rgba(255,255,255,.2);color:inherit">Sao chép</button><span class="qr" aria-hidden="true"><i></i></span></span>
+      </section>
+      <section class="card t t--dm rise rise-3">
+        <h2>{{i:chat-circle}} Tin nhắn <span class="badge hide-empty" data-count="{{n:unread}}">{{n:unread}}</span></h2>
+        <div style="display:grid;gap:10px"><template data-list="convs" data-max="3"><a class="dm" href="#"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small class="nm">{{#mine}}Bạn: {{/mine}}{{last}}</small></div>{{#unread}}<span class="badge">{{unread}}</span>{{/unread}}</a></template></div>
+        <p class="t__empty">Chưa có cuộc trò chuyện.</p>
+      </section>
+      <section class="t t--rival rise rise-3 hide-sparse" data-be="đối đầu">
+        <h2>{{i:boxing-glove}} Đối thủ ruột</h2>
+        <div class="vs"><span class="av" style="--h:20;--s:40px">TC</span><b class="num">11–9</b></div>
+        <span style="font-weight:800;font-size:13px" class="nm">Tuấn Caro · 20 ván</span>
+        <button class="btn btn--sm btn--ink" style="margin-top:auto">{{i:repeat}} Phục thù</button>
+      </section>
+      <section class="card t t--feed rise rise-4" data-be="bảng tin">
+        <h2>{{i:broadcast}} Bạn bè dạo này</h2>
+        <div style="display:grid;gap:10px"><template data-list="feed" data-max="4"><div class="fd"><span class="av" style="--h:{{h}};--s:30px">{{ini}}</span><p><span class="nm">{{name}}</span> {{text}} <span class="muted">· {{ago}}</span></p></div></template></div>
+        <p class="t__empty">Ván thắng, mốc Elo của bạn bè sẽ hiện ở đây.</p>
+      </section>
+    </div>
+  </div>
+</div>
+{{sheet}}
