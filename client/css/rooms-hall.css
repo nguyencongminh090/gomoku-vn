@@ -59,7 +59,7 @@ body.zen-lobby #panel-tables .rh {
 /* ── Bar: "Đang chơi · N" + who is online (avatars) ─────────────────────── */
 body.zen-lobby #panel-tables .rbar { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; flex-wrap: wrap; margin: 22px 0 14px; }
 .rbar__h { display: inline-flex; align-items: baseline; gap: 8px; margin: 0; font-family: var(--font-display); font-size: var(--text-lg, 20px); font-weight: 800; color: var(--c-ink); }
-.rbar__h .ptab__n { font-size: var(--text-md); color: var(--c-brand-text); }
+.rbar__h .ptab__n { margin-left: 0; font-size: 1em; line-height: 1; color: var(--c-brand-text); }
 .ptab__n { margin-left: 5px; font-size: var(--text-xs); font-weight: 800; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
 body.zen-lobby #panel-tables .online-line { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin: 0; padding: 0; border: 0; font-size: var(--text-sm); color: var(--c-ink-2); }
 body.zen-lobby #panel-tables .online-line[hidden] { display: none; }
