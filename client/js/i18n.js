@@ -370,9 +370,9 @@ const TRANSLATIONS = {
     'modal.btn_confirm': 'Tạo phòng',
 
     // Rule labels
-    'rule.freestyle': 'Tự do',
+    'rule.freestyle': 'Luật 1',
     'rule.standard': 'Tiêu chuẩn',
-    'rule.caro': 'Caro',
+    'rule.caro': 'Luật 2',
     'rule.none': 'Không',
 
     // ── Room page ─────────────────────────────────────────────
@@ -558,9 +558,9 @@ const TRANSLATIONS = {
     'rankings.col_player': 'Người chơi',
     'rankings.col_rating': 'Rating',
     'rankings.col_games': 'Ván',
-    'rankings.cat_freestyle': 'Free-style',
+    'rankings.cat_freestyle': 'Luật 1',
     'rankings.cat_standard': 'Standard',
-    'rankings.cat_caro': 'Caro VN',
+    'rankings.cat_caro': 'Luật 2',
     'rankings.total': '{n} người chơi',
     'rankings.you': 'Bạn: hạng',
     'rankings.not_ranked': 'Bạn mới có {games} ván xếp hạng — cần ≥ {min} ván để vào bảng.',
@@ -750,9 +750,9 @@ const TRANSLATIONS = {
     'puzzles.level_medium': 'Vừa',
     'puzzles.level_hard': 'Khó',
     'puzzles.level_expert': 'Cao thủ',
-    'puzzles.rule_freestyle': 'Freestyle',
+    'puzzles.rule_freestyle': 'Luật 1',
     'puzzles.rule_standard': 'Standard',
-    'puzzles.rule_caro': 'Caro VN',
+    'puzzles.rule_caro': 'Luật 2',
     'puzzles.tag_attack': 'Tấn công',
     'puzzles.tag_vcf': 'VCF',
     'puzzles.tag_vct': 'VCT',

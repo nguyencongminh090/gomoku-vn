@@ -162,7 +162,7 @@ describe('dashboard rendering', () => {
   it('#358 counts: online tag in the greeting row, searching + playing cards (one live game, click watches); dashes without stats', async () => {
     const num = (id) => document.getElementById(id).textContent;
     const lbl = (id) => [...document.querySelectorAll('#' + id + ' > span')].map((s) => s.textContent);
-    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 }, queueEta: { 'caro|auto': 20 } });
+    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 }, queueEta: { 'freestyle|auto': 20 } });
     expect(document.getElementById('home-online').hidden).toBe(false);
     expect(document.getElementById('home-online').textContent).toBe('home.online{"n":12}');
     expect([num('home-n-search'), num('home-n-live')]).toEqual(['2', '3']);
@@ -309,7 +309,7 @@ describe('home M4 "Câu lệnh" (#358)', () => {
     blank('rule').click();
     key(document.activeElement, 'End');
     key(document.activeElement, 'Escape');
-    expect([list.hidden, blank('rule').textContent, document.activeElement]).toEqual([true, 'rankings.cat_caro', blank('rule')]);
+    expect([list.hidden, blank('rule').textContent, document.activeElement]).toEqual([true, 'rankings.cat_freestyle (room.rule_wall)', blank('rule')]);
     blank('mode').click();
     document.body.click();
     expect([list.hidden, blank('mode').getAttribute('aria-expanded')]).toEqual([true, 'false']);
@@ -323,12 +323,12 @@ describe('quick match panel (B197)', () => {
   const buttons = () => [...document.querySelectorAll('#qm-actions button')].map((b) => b.textContent);
   const blanks = () => ['rule', 'time', 'mode'].map((k) => blank(k).textContent);
 
-  it('member: 2 rules, Auto + 45s/30s/1+1, rated|casual; sentence reads Caro · auto · rated by default; Thách đấu shown', async () => {
+  it('member: 2 rules, Auto + 45s/30s/1+1, rated|casual; sentence reads Luật 1 (Ô khoá) · auto · rated by default; Thách đấu shown', async () => {
     await boot('/index.html', EMPTY, MEMBER);
-    expect(optTexts('rule')).toEqual(['rankings.cat_freestyle', 'rankings.cat_caro']);
+    expect(optTexts('rule')).toEqual(['rankings.cat_freestyle', 'rankings.cat_freestyle (room.rule_wall)', 'rankings.cat_caro', 'rankings.cat_caro (room.rule_wall)']);
     expect(optTexts('time')).toEqual(['qm.time_auto', 'home.per_move{"s":"45"}', 'home.per_move{"s":"30"}', '1+1']);
     expect(optTexts('mode')).toEqual(['qm.find_rated', 'qm.find_casual']);
-    expect(blanks()).toEqual(['rankings.cat_caro', 'qm.blank_time_auto', 'qm.blank_rated']);
+    expect(blanks()).toEqual(['rankings.cat_freestyle (room.rule_wall)', 'qm.blank_time_auto', 'qm.blank_rated']);
     expect(document.getElementById('qm-challenge').hidden).toBe(false);
     expect(document.getElementById('qm-friend')).toBeNull(); // #361: the grey "Thách bạn bè" link is replaced
     expect(buttons()).toEqual([]); // idle: the one Chơi nhanh button is the action
@@ -348,7 +348,7 @@ describe('quick match panel (B197)', () => {
 
   it('picking blanks changes the request and is remembered; a saved choice is restored', async () => {
     await boot('/index.html', EMPTY, MEMBER);
-    pick('rule', 'rankings.cat_freestyle');
+    pick('rule', 'rankings.cat_freestyle (room.rule_wall)');
     pick('time', '1+1');
     document.getElementById('qm-play').click();
     expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+1', rated: true, wall: true, portal: false }]);
@@ -358,13 +358,29 @@ describe('quick match panel (B197)', () => {
     expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+1', wall: true, portal: false, rated: false });
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'freestyle', time: '10+0', rated: false } });
     // a saved clock outside the Home menu stays visible and selected, nothing silently changes
-    expect([chosen('rule'), chosen('time'), chosen('mode')]).toEqual([['rankings.cat_freestyle'], ['10+0'], ['qm.find_casual']]);
-    expect(blanks()).toEqual(['rankings.cat_freestyle', '10+0', 'qm.blank_casual']);
+    expect([chosen('rule'), chosen('time'), chosen('mode')]).toEqual([['rankings.cat_freestyle (room.rule_wall)'], ['10+0'], ['qm.find_casual']]);
+    expect(blanks()).toEqual(['rankings.cat_freestyle (room.rule_wall)', '10+0', 'qm.blank_casual']);
+  });
+
+  it('Ô khoá rides the rule blank: "(Ô khoá)" only when walls are on; the pick sets rule + wall and is remembered', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    pick('rule', 'rankings.cat_freestyle');
+    expect(blank('rule').textContent).toBe('rankings.cat_freestyle');
+    expect(chosen('rule')).toEqual(['rankings.cat_freestyle']);
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()[1]).toMatchObject({ rule: 'freestyle', wall: false });
+    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toMatchObject({ rule: 'freestyle', wall: false });
+    await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'freestyle', time: 'auto', wall: false, rated: true } });
+    expect(blank('rule').textContent).toBe('rankings.cat_freestyle');
+    pick('rule', 'rankings.cat_freestyle (room.rule_wall)');
+    expect(blank('rule').textContent).toBe('rankings.cat_freestyle (room.rule_wall)');
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()[1]).toMatchObject({ rule: 'freestyle', wall: true });
   });
 
   it('a bogus saved choice falls back to the defaults', async () => {
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'renju', time: '2+1' } });
-    expect([chosen('rule'), chosen('time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
+    expect([chosen('rule'), chosen('time')]).toEqual([['rankings.cat_freestyle (room.rule_wall)'], ['qm.time_auto']]);
   });
 
   it('searching: the pill replaces Chơi nhanh in place (elapsed + queue, Huỷ tìm), blanks lock; cancel emits match:leave', async () => {
@@ -475,7 +491,7 @@ describe('quick-match waiting count (B210)', () => {
   });
 
   it('count adds auto waiters; an auto pick counts every clock of the rule', async () => {
-    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 4, 'caro|auto': 2, 'caro|1+1': 3, 'standard|auto': 9 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'freestyle|5+3': 4, 'freestyle|auto': 2, 'freestyle|1+1': 3, 'standard|auto': 9 } }, MEMBER2);
     await flush();
     expect(line()).toContain('qm.in_queue{"n":9}'); // auto: 4 + 2 + 3
     pick('time', '1+1');
@@ -483,7 +499,7 @@ describe('quick-match waiting count (B210)', () => {
   });
 
   it('changing the chip re-reads the count for the new rule|time', async () => {
-    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+1': 3 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'freestyle|5+3': 214, 'freestyle|1+1': 3 } }, MEMBER2);
     await flush();
     pick('time', '1+1');
     expect(line()).toContain('qm.in_queue{"n":3}');
@@ -799,7 +815,7 @@ describe('#362 phone: counts as one status line, links in one card', () => {
   });
 
   it('renders the same counts as the cards (no ETA — #qm-line shows it); "M ván đang chơi" links to Phòng › Quan sát', async () => {
-    await boot('/index.html', { ...EMPTY, stats: { online: 9, playing: 3, searching: 2 }, queueEta: { 'caro|auto': 20 } });
+    await boot('/index.html', { ...EMPTY, stats: { online: 9, playing: 3, searching: 2 }, queueEta: { 'freestyle|auto': 20 } });
     expect(part('home-pulse-search')).toEqual(['2', 'home.pulse_searching']);
     expect(part('home-pulse-live')).toEqual(['3', 'home.pulse_playing']);
     const live = document.getElementById('home-pulse-live');
@@ -812,7 +828,7 @@ describe('#362 phone: counts as one status line, links in one card', () => {
   });
 
   it('zero counts: de-emphasised numbers, the playing part is plain text (no href)', async () => {
-    await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 }, queueEta: { 'caro|auto': 20 } });
+    await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 }, queueEta: { 'freestyle|auto': 20 } });
     expect(part('home-pulse-search')).toEqual(['0', 'home.pulse_searching']);
     const live = document.getElementById('home-pulse-live');
     expect(live.hasAttribute('href')).toBe(false);
