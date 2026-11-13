@@ -322,3 +322,4 @@
 | 2026-10-25 | #356 #357 integrity: gain_from_one ≥20 games, hub ≥20 opponents, pair Elo-expected z + weaker-side tag (sim: players 28→10, pairs 116→9) | [detail](docs/fix-log/2026-10-25-356-357-integrity-calibration.md) |
 | 2026-10-25 | integrity tab UI polish: mobile tools overlap, unstyled search box, labels scale with zoom, clipped matrix 'other' tick | [detail](docs/fix-log/2026-10-25-integrity-ui-polish.md) |
 | 2026-11-13 14:02 | #367 grace expiry kept user out of room → reconnect got ROOM_GONE → Home; now seat released, user stays, reconnect rejoins; banner after 8 s | [detail](docs/fix-log/2026-11-13-reconnect-stay-in-room.md) |
+| 2026-11-13 14:40 | lobby online faces showed initials: online payload had no avatarUrl + lobby passed null; both fixed, tests | [detail](docs/fix-log/2026-11-13-online-avatars-missing.md) |

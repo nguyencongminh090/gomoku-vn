@@ -70,3 +70,32 @@ describe('online users snapshot + patch', () => {
     expect(ids()).toEqual([]);
   });
 });
+
+// The lobby faces drew initials for everyone: renderOnlineLine passed `null` as the url instead of the
+// member's avatarUrl from the online payload.
+describe('renderOnlineLine avatars', () => {
+  it('passes each user\'s avatarUrl to PlatformShell.avatar (null for guests / no photo)', () => {
+    const RENDER = slice('function renderOnlineLine()', '// Apply a `lobby:online_patch`');
+    const calls = [];
+    window.__calls = calls;
+    window.PlatformShell = { avatar: (url, name) => { calls.push([url, name]); const s = document.createElement('span'); s.className = 'pav'; return s; } };
+    document.body.innerHTML = '<div id="online-line"><span id="online-line-names"></span></div>';
+    window.eval(`
+      var userInfo = { userId: 'me' };
+      var t = (k) => k; var setNum = () => {};
+      var escapeAttr = (s) => String(s);
+      var onlineCountEl = null, onlineLineCountEl = null;
+      var onlineLineEl = document.getElementById('online-line');
+      var onlineLineNamesEl = document.getElementById('online-line-names');
+      var ONLINE_NAME_LIMIT = 6;
+      var currentOnlineUsers = [
+        { userId: 'me', displayName: 'Me', isGuest: false, avatarUrl: '/api/profile/avatar/me.webp?v=3' },
+        { userId: 'b', displayName: 'Bob', isGuest: false, avatarUrl: null },
+        { userId: 'g', displayName: 'Gus', isGuest: true, avatarUrl: null },
+      ];
+      ${RENDER}
+      renderOnlineLine();
+    `);
+    expect(calls).toEqual([['/api/profile/avatar/me.webp?v=3', 'Me'], [null, 'Bob'], [null, 'Gus']]);
+  });
+});

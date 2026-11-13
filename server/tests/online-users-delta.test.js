@@ -49,7 +49,7 @@ describe('lobby:online_patch', () => {
     online('a'); online('b');
     sendOnlineSnapshot(io, s);
     expect(s.emitted).toEqual([{ event: 'lobby:online_users', data: [
-      { userId: 'a', displayName: 'a', isGuest: false }, { userId: 'b', displayName: 'b', isGuest: false },
+      { userId: 'a', displayName: 'a', isGuest: false, avatarUrl: null }, { userId: 'b', displayName: 'b', isGuest: false, avatarUrl: null },
     ] }]);
   });
 
@@ -59,7 +59,7 @@ describe('lobby:online_patch', () => {
     sendOnlineSnapshot(io, makeSocket());
     online('new'); sessions.delete('u3');
     flush(io);
-    expect(patches(io)).toEqual([{ joined: [{ userId: 'new', displayName: 'new', isGuest: false }], left: ['u3'] }]);
+    expect(patches(io)).toEqual([{ joined: [{ userId: 'new', displayName: 'new', isGuest: false, avatarUrl: null }], left: ['u3'] }]);
   });
 
   test('nothing changed → nothing emitted', () => {
@@ -124,7 +124,7 @@ describe('lobby:online_patch', () => {
     jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
     expect(patches(io)).toEqual([
       { joined: [], left: ['h'] },
-      { joined: [{ userId: 'h', displayName: 'h', isGuest: false }], left: [] },
+      { joined: [{ userId: 'h', displayName: 'h', isGuest: false, avatarUrl: null }], left: [] },
     ]);
   });
 
@@ -143,6 +143,6 @@ describe('lobby:online_patch', () => {
     sendOnlineSnapshot(io, makeSocket());
     online('a', 'Alicia');
     flush(io);
-    expect(patches(io)).toEqual([{ joined: [{ userId: 'a', displayName: 'Alicia', isGuest: false }], left: [] }]);
+    expect(patches(io)).toEqual([{ joined: [{ userId: 'a', displayName: 'Alicia', isGuest: false, avatarUrl: null }], left: [] }]);
   });
 });
