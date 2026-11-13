@@ -344,21 +344,37 @@ class SocketClient {
     this._lastStatus = status;
     this._lastDetail = detail;
 
-    switch (status) {
-      case 'connected':
-        this._statusEl.classList.remove('visible');
-        break;
-      case 'disconnected':
-        this._statusEl.textContent = t('conn.disconnected_retrying');
+    // #367: a short drop is repaired by the silent auto-rejoin, so the banner
+    // stays hidden unless the connection has been gone for BANNER_DELAY_MS —
+    // a flashing "Mất kết nối" on every blip reads as an unstable site.
+    if (status === 'connected') {
+      clearTimeout(this._bannerTimer);
+      this._bannerTimer = null;
+      this._statusEl.classList.remove('visible');
+      return;
+    }
+    if (status !== 'disconnected' && status !== 'reconnecting') return;
+    if (this._statusEl.classList.contains('visible')) {
+      this._renderBanner();
+    } else if (!this._bannerTimer) {
+      this._bannerTimer = setTimeout(() => {
+        this._bannerTimer = null;
+        if (this._lastStatus === 'connected') return;
+        this._renderBanner();
         this._statusEl.classList.add('visible');
-        break;
-      case 'reconnecting':
-        this._statusEl.textContent = t('conn.reconnecting_attempt', { n: detail });
-        this._statusEl.classList.add('visible');
-        break;
+      }, SocketClient.BANNER_DELAY_MS);
     }
   }
+
+  _renderBanner() {
+    this._statusEl.textContent = this._lastStatus === 'reconnecting'
+      ? t('conn.reconnecting_attempt', { n: this._lastDetail })
+      : t('conn.disconnected_retrying');
+  }
 }
+
+/** #367: how long a connection must stay lost before the top banner appears. */
+SocketClient.BANNER_DELAY_MS = 8000;
 
 // Expose to global scope for ESM module usage
 window.SocketClient = SocketClient;

@@ -138,6 +138,7 @@ class RoomManager extends EventEmitter {
       creatorIp: userInfo.ip || null,   // Per-IP quota bookkeeping; never serialized to clients
       users: new Map(),
       joinOrder: [],                    // For host transfer queue
+      memberIds: new Set(),             // #367: everyone ever admitted — gates the silent reconnect rejoin
       settings: validatedSettings,
       state: 'idle',                    // idle | playing | interrupted
       readyDeadline: null,              // epoch ms — Start-modal countdown deadline, or null
@@ -160,6 +161,7 @@ class RoomManager extends EventEmitter {
 
     room.users.set(userInfo.userId, userEntry);
     room.joinOrder.push(userInfo.userId);
+    room.memberIds.add(userInfo.userId);
 
     this.rooms.set(roomId, room);
     this.userRoomMap.set(userInfo.userId, roomId);
@@ -212,6 +214,7 @@ class RoomManager extends EventEmitter {
 
     room.users.set(userInfo.userId, userEntry);
     room.joinOrder.push(userInfo.userId);
+    room.memberIds.add(userInfo.userId);
     room.lastActivity = Date.now();
 
     this.userRoomMap.set(userInfo.userId, roomId);
@@ -282,6 +285,47 @@ class RoomManager extends EventEmitter {
     }
 
     return { room, destroyed: false, hostTransferred };
+  }
+
+  /**
+   * A disconnected user's grace window ran out (#367): free their seat but keep
+   * them in the room as a disconnected viewer, so the page's reconnect — however
+   * late — lands back in the same room instead of on ROOM_GONE. Seat side
+   * effects match leaveRoom (series/quick-match end, ready pair reset); host
+   * moves to the first still-connected occupant, if any.
+   *
+   * @param {string} userId
+   * @returns {{ room: object|null, wasSeated: boolean, hostTransferred: boolean }}
+   */
+  releaseSeat(userId) {
+    const room = this._getUserRoom(userId);
+    if (!room) return { room: null, wasSeated: false, hostTransferred: false };
+
+    const user = room.users.get(userId);
+    const wasSeated = user.slot !== null;
+    user.slot = null;
+    user.ready = false;
+    user.presence = 'disconnected';
+    room.lastActivity = Date.now();
+
+    if (room.series && !room.series.done && room.series.players.includes(userId)) {
+      this.emit('series_abandoned', room, userId);
+    }
+    if (room.matchmade && wasSeated) this.emit('match_abandoned', room, userId);
+    if (wasSeated) this.resetReadyPair(room);
+
+    let hostTransferred = false;
+    if (room.host === userId) {
+      const next = room.joinOrder.find(id => id !== userId && room.users.get(id) && room.users.get(id).presence !== 'disconnected');
+      if (next) {
+        room.host = next;
+        hostTransferred = true;
+        logger.info(`[RoomManager] Host transferred to ${room.users.get(next).displayName} in room ${room.roomId}`);
+      }
+    }
+
+    logger.info(`[RoomManager] ${user.displayName} seat released (disconnected) in room ${room.roomId}`);
+    return { room, wasSeated, hostTransferred };
   }
 
   // ---------------------------------------------------------------------------
@@ -525,6 +569,8 @@ class RoomManager extends EventEmitter {
     this.userRoomMap.delete(targetId);
     room.lastActivity = Date.now();
     if (wasSeated) this.resetReadyPair(room);
+    // A kicked user's page that was offline at kick time must not auto-rejoin on reconnect (#367).
+    if (room.memberIds) room.memberIds.delete(targetId);
 
     return { room, kicked: true };
   }

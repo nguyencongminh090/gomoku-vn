@@ -169,6 +169,40 @@ function finalizeNormalLeave(io, roomId, user, result) {
 }
 
 /**
+ * Apply the result of roomManager.releaseSeat() after a grace window ran out
+ * (#367): the user stays in room.users as a disconnected viewer.
+ *
+ * @param {import('socket.io').Server} io
+ * @param {string} roomId
+ * @param {{ userId: string, displayName: string }} user
+ * @param {{ room: object|null, wasSeated: boolean, hostTransferred: boolean }} result
+ */
+function finalizeSeatRelease(io, roomId, user, result) {
+  if (!result || !result.room) return;
+  const room = result.room;
+  clearReadyState(io, room);
+  broadcastRoomUpdate(io, room);
+  if (result.wasSeated) {
+    io.to(roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${user.displayName} đã mất kết nối.`,
+      code: 'PLAYER_DISCONNECTED', vars: { name: user.displayName },
+      timestamp: Date.now(), isSystem: true,
+    });
+  }
+  if (result.hostTransferred) {
+    const newHost = room.users.get(room.host);
+    io.to(roomId).emit('chat:message', {
+      from: null, fromId: null,
+      text: `${newHost ? newHost.displayName : '—'} là chủ phòng mới.`,
+      code: 'ROOM_NEW_HOST', vars: { name: newHost ? newHost.displayName : '—' },
+      timestamp: Date.now(), isSystem: true,
+    });
+  }
+  broadcastLobbyUpdate(io);
+}
+
+/**
  * Start a bounded grace period for a room that just became solely occupied
  * by the disconnecting user, instead of destroying it immediately. Cancelled
  * by cancelEmptyRoomGrace() if that same user reconnects in time — see the
@@ -252,10 +286,10 @@ function startSpectatorGrace(io, room, user) {
 
   const timeout = setTimeout(() => {
     spectatorGraceTimers.delete(user.userId);
-    const result = roomManager.leaveRoom(user.userId);
-    finalizeNormalLeave(io, roomId, user, result);
-    logger.info(`[Disconnect] Spectator grace expired for ${user.displayName}, room ${roomId} — left for real`);
-    if (result && !result.destroyed && result.room) reapGhostRoom(io, roomId);
+    // #367: free the seat, keep the user in the room — their late reconnect auto-rejoins.
+    finalizeSeatRelease(io, roomId, user, roomManager.releaseSeat(user.userId));
+    logger.info(`[Disconnect] Spectator grace expired for ${user.displayName}, room ${roomId} — seat released, stays as viewer`);
+    reapGhostRoom(io, roomId);
   }, config.SPECTATOR_GRACE_MS);
 
   spectatorGraceTimers.set(user.userId, { timeout, roomId });
@@ -355,10 +389,11 @@ function startDisconnectGrace(io, room, user) {
       });
     }
 
-    const result = roomManager.leaveRoom(user.userId);
-    if (result.destroyed) cleanupRoomTimer(roomId);
-    else if (result.room) broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    // #367: the game is over for them, but they stay in the room as a viewer so a
+    // reconnect after the window still lands back here instead of on ROOM_GONE.
+    finalizeSeatRelease(io, roomId, user, roomManager.releaseSeat(user.userId));
+    logger.info(`[Disconnect] Grace expired for ${user.displayName}, room ${roomId} — seat released, stays as viewer`);
+    reapGhostRoom(io, roomId);
   }, config.DISCONNECT_GRACE_MS);
 
   disconnectTimers.set(user.userId, { timeout, countdown, roomId });

@@ -201,8 +201,12 @@ function init(io) {
   io.on('connection', (socket) => {
     const user = socket.user;
     const { ip, geo } = clientInfoFromSocket(socket);
+    const handshakeAuth = (socket.handshake && socket.handshake.auth) || {};
     logger.info('[Socket] Connected', {
       user: user.displayName, uid: user.userId, sid: socket.id, ip, geo,
+      // #367: tells a page load apart from the same page re-establishing its transport.
+      ...(handshakeAuth.reconnect ? { reconnect: 1 } : {}),
+      ...(handshakeAuth.reconnect && typeof handshakeAuth.roomId === 'string' ? { room: handshakeAuth.roomId } : {}),
     });
 
     // ── Single-device-per-token enforcement ─────────────────────────────────
@@ -325,7 +329,10 @@ function init(io) {
         // the client byte-identical state — see buildRoomStatePayload().
         socket.emit('room:joined', buildRoomStatePayload(existingRoom));
         logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
-      } else if (socket.handshake && socket.handshake.auth && socket.handshake.auth.reconnect) {
+      } else if (handshakeAuth.reconnect && rejoinOnReconnect(io, socket, handshakeAuth.roomId)) {
+        // #367: a room page whose user lost their place (grace ran out, server
+        // restart kept the room) silently rejoins the room it is showing.
+      } else if (handshakeAuth.reconnect) {
         // Room state lives in memory only, so a server restart (or an idle
         // cleanup that ran while this client was offline) leaves a room page
         // attached to a room that no longer exists. Socket.io reconnects
@@ -341,6 +348,7 @@ function init(io) {
         // Manager's reconnect_attempt (see client/js/socket-client.js), so it
         // is only ever true for a connection that replaces an earlier one.
         socket.emit('room:destroyed', { message: 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.', code: 'ROOM_GONE' });
+        logger.info(`[Socket] ${user.displayName} reconnected but room ${handshakeAuth.roomId || '?'} is gone — ROOM_GONE sent`);
       }
     }
 
@@ -404,4 +412,37 @@ function init(io) {
   }, 60_000);
 }
 
-module.exports = { init };
+/**
+ * #367: a reconnecting room page whose user is no longer in any room rejoins the
+ * room it is showing (`auth.roomId`, set by room-socket.js on room:joined) as a
+ * viewer, if that room still exists, admitted them before and didn't kick them. Silent: no join chat
+ * line, since to everyone else this person never really left.
+ *
+ * @returns {boolean} true if the socket was put back into the room
+ */
+function rejoinOnReconnect(io, socket, roomId) {
+  if (typeof roomId !== 'string' || !roomId) return false;
+  const room = roomManager.getRoom(roomId);
+  if (!room) return false;
+  const user = socket.user;
+  // Only someone this room already admitted (and didn't kick) — an arbitrary roomId
+  // in the handshake must not become a silent, unannounced join.
+  if (!room.memberIds || !room.memberIds.has(user.userId)) return false;
+  const result = roomManager.joinRoom(
+    { userId: user.userId, displayName: user.displayName, isGuest: user.isGuest },
+    roomId,
+  );
+  if (result.error) {
+    logger.info(`[Socket] ${user.displayName} reconnect rejoin to room ${roomId} refused: ${result.code}`);
+    return false;
+  }
+  socket.leave('lobby');
+  socket.join(roomId);
+  socket.emit('room:joined', buildRoomStatePayload(result.room));
+  broadcastRoomUpdate(io, result.room);
+  broadcastLobbyUpdate(io);
+  logger.info(`[Socket] ${user.displayName} rejoined room ${roomId} on reconnect (as viewer)`);
+  return true;
+}
+
+module.exports = { init, _rejoinOnReconnect: rejoinOnReconnect };

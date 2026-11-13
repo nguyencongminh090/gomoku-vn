@@ -90,3 +90,14 @@ describe('overlay styles + markup', () => {
     expect((I18N.match(/'conn\.lagging':/g) || []).length).toBe(2);
   });
 });
+
+// #367: the page tells a later reconnect which room it shows, so a user whose
+// seat lapsed while offline is put back into the room instead of sent home.
+describe('room:joined records the room for reconnect (#367)', () => {
+  test('auth.roomId is set, existing auth fields are kept', () => {
+    const client = loadRoom();
+    client.socket.auth = { reconnect: true };
+    client.listeners['room:joined'](payload);
+    expect(client.socket.auth).toEqual({ reconnect: true, roomId: 'r1' });
+  });
+});

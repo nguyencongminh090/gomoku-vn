@@ -567,8 +567,11 @@ describe('every room:updated emit site', () => {
     expect(emitSites[0].file).toBe('state.js');
   });
 
-  test('all 24 sites are still accounted for, now via broadcastRoomUpdate (22 + 2 in the SocketHandler challenge hooks, #198)', () => {
-    expect(callSites).toHaveLength(24);
+  // 24 → 25 (#367): grace expiry now releases the seat via finalizeSeatRelease
+  // (replacing startDisconnectGrace's own post-leave broadcast) and SocketHandler's
+  // rejoinOnReconnect puts a lapsed user back in — net +1.
+  test('all 25 sites are still accounted for, now via broadcastRoomUpdate (22 + 2 challenge hooks #198, +1 #367)', () => {
+    expect(callSites).toHaveLength(25);
   });
 
   test('passes { settings: true } at exactly the one settings-change site', () => {
@@ -577,7 +580,7 @@ describe('every room:updated emit site', () => {
     expect(withSettings).toHaveLength(1);
     expect(withSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
 
-    expect(callSites.length - withSettings.length).toBe(23);
+    expect(callSites.length - withSettings.length).toBe(24);
   });
 });
 
@@ -981,5 +984,70 @@ describe('RoomManager.updateSettings — changes (#286)', () => {
     roomManager.createRoom(host, { boardSize: 15 });
     expect(roomManager.updateSettings('chg-host2', { boardSize: 15 }).changes).toEqual([]);
     expect(roomManager.updateSettings('chg-host2', { boardSize: 999 }).changes.find(c => c.k === 'boardSize')?.v).not.toBe(999);
+  });
+});
+
+// #367: a lapsed disconnect grace frees the seat but keeps the user in the room,
+// so a late reconnect lands back in it (BabyHuyền, log 2026-11-13 12:54:21).
+describe('RoomManager.releaseSeat — keep the user, free the seat (#367)', () => {
+  beforeEach(() => {
+    for (const [roomId] of [...roomManager.rooms]) roomManager._destroyRoom(roomId);
+    roomManager.rooms.clear();
+    roomManager.userRoomMap.clear();
+  });
+
+  function seatedPair() {
+    const a = { userId: 'rs-a', displayName: 'A', isGuest: false };
+    const b = { userId: 'rs-b', displayName: 'B', isGuest: false };
+    const { room } = roomManager.createRoom(a, {});
+    roomManager.joinRoom(b, room.roomId);
+    roomManager.sitDown('rs-a', 1);
+    roomManager.sitDown('rs-b', 2);
+    return room;
+  }
+
+  test('frees the seat, marks disconnected, and the user is still in the room', () => {
+    const room = seatedPair();
+    const r = roomManager.releaseSeat('rs-b');
+    expect(r).toMatchObject({ room, wasSeated: true, hostTransferred: false });
+    const u = room.users.get('rs-b');
+    expect(u.slot).toBeNull();
+    expect(u.ready).toBe(false);
+    expect(u.presence).toBe('disconnected');
+    expect(roomManager.getRoomByUser('rs-b')).toBe(room);
+    // Reconnect path: joinRoom treats them as already in this room.
+    expect(roomManager.joinRoom({ userId: 'rs-b', displayName: 'B', isGuest: false }, room.roomId).room).toBe(room);
+  });
+
+  test('host moves to a connected occupant; with nobody connected the host stays', () => {
+    const room = seatedPair();
+    expect(roomManager.releaseSeat('rs-a').hostTransferred).toBe(true);
+    expect(room.host).toBe('rs-b');
+    expect(roomManager.releaseSeat('rs-b').hostTransferred).toBe(false);
+    expect(room.host).toBe('rs-b');
+  });
+
+  test('a quick-match seat lapsing still ends the session (same as leaving)', () => {
+    const room = seatedPair();
+    room.matchmade = true;
+    const spy = jest.fn();
+    roomManager.on('match_abandoned', spy);
+    try {
+      roomManager.releaseSeat('rs-b');
+      expect(spy).toHaveBeenCalledWith(room, 'rs-b');
+    } finally {
+      roomManager.off('match_abandoned', spy);
+    }
+  });
+
+  test('unknown user is a no-op', () => {
+    expect(roomManager.releaseSeat('nobody')).toEqual({ room: null, wasSeated: false, hostTransferred: false });
+  });
+
+  test('memberIds records creator + joiners; kickUser drops the target so a reconnect cannot auto-rejoin', () => {
+    const room = seatedPair();
+    expect([...room.memberIds].sort()).toEqual(['rs-a', 'rs-b']);
+    roomManager.kickUser('rs-a', 'rs-b');
+    expect(room.memberIds.has('rs-b')).toBe(false);
   });
 });
