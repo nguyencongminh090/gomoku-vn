@@ -253,7 +253,7 @@ function renderOnlineLine() {
   // #364: faces only (user 2026-11-13 — the names line was redundant next to the avatars). Each
   // avatar is still the PM control (#159, [data-user-id] → private-chat.js); its name is the
   // tooltip + accessible name. Your own face is not a button. "+N" opens the full list.
-  const avatar = (u) => (window.PlatformShell ? window.PlatformShell.avatar(null, u.displayName, 'pav--sm').outerHTML : '');
+  const avatar = (u) => (window.PlatformShell ? window.PlatformShell.avatar(u.avatarUrl, u.displayName, 'pav--sm').outerHTML : '');
   const parts = shown.map((u) => {
     const name = escapeAttr(u.displayName);
     if (u.userId === userInfo.userId) return `<span class="online-av online-av--me" title="${name}">${avatar(u)}</span>`;

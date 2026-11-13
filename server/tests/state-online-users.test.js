@@ -12,6 +12,7 @@
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 const { sessions, getOnlineUsersList } = require('../socket/state');
+const roomManager = require('../managers/RoomManager');
 
 function fakeSocket(userId, displayName, isGuest) {
   return { id: 'sock-' + userId, user: { userId, displayName, isGuest } };
@@ -25,12 +26,38 @@ describe('getOnlineUsersList()', () => {
     expect(getOnlineUsersList()).toEqual([]);
   });
 
-  test('returns one object per session with exactly userId/displayName/isGuest', () => {
+  test('returns one object per session with exactly userId/displayName/isGuest/avatarUrl', () => {
     sessions.set('u1', fakeSocket('u1', 'Alice', false));
     const list = getOnlineUsersList();
     expect(list).toHaveLength(1);
-    expect(list[0]).toEqual({ userId: 'u1', displayName: 'Alice', isGuest: false });
-    expect(Object.keys(list[0]).sort()).toEqual(['displayName', 'isGuest', 'userId']);
+    expect(list[0]).toEqual({ userId: 'u1', displayName: 'Alice', isGuest: false, avatarUrl: null });
+    expect(Object.keys(list[0]).sort()).toEqual(['avatarUrl', 'displayName', 'isGuest', 'userId']);
+  });
+
+  // Lobby faces (#364) drew initials for everyone: the payload carried no avatarUrl.
+  describe('avatarUrl (same lookup as the room payload)', () => {
+    const saved = roomManager.avatarLookup;
+    afterEach(() => { roomManager.avatarLookup = saved; });
+
+    test('members get their avatar URL; guests and members without one get null', () => {
+      roomManager.avatarLookup = (id) => (id === 'm1' ? '/api/profile/avatar/m1.webp?v=7' : null);
+      sessions.set('m1', fakeSocket('m1', 'Member', false));
+      sessions.set('m2', fakeSocket('m2', 'NoPhoto', false));
+      sessions.set('g1', fakeSocket('g1', 'Guest', true));
+      const by = Object.fromEntries(getOnlineUsersList().map(u => [u.userId, u.avatarUrl]));
+      expect(by).toEqual({ m1: '/api/profile/avatar/m1.webp?v=7', m2: null, g1: null });
+    });
+
+    test('does not look a guest up, and tolerates no lookup being wired', () => {
+      const spy = jest.fn(() => '/x');
+      roomManager.avatarLookup = spy;
+      sessions.set('g1', fakeSocket('g1', 'Guest', true));
+      getOnlineUsersList();
+      expect(spy).not.toHaveBeenCalled();
+      roomManager.avatarLookup = undefined;
+      sessions.set('m1', fakeSocket('m1', 'Member', false));
+      expect(getOnlineUsersList().find(u => u.userId === 'm1').avatarUrl).toBeNull();
+    });
   });
 
   test('sorts by displayName, not insertion order', () => {

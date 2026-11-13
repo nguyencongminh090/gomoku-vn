@@ -87,7 +87,7 @@ function isVisiblyOnline(userId) {
 /**
  * Return the online users for lobby broadcast, sorted by display name.
  *
- * Shape: `[{ userId, displayName, isGuest }]`. This used to be a bare
+ * Shape: `[{ userId, displayName, isGuest, avatarUrl }]`. This used to be a bare
  * `string[]` of display names; Private Chat (#159) needs the userId to route a
  * `private_message:send` and the guest flag to badge the row, and the
  * online-users channel is the natural carrier since it already fans the full
@@ -101,6 +101,9 @@ function getOnlineUsersList() {
       userId: s.user.userId,
       displayName: s.user.displayName,
       isGuest: !!s.user.isGuest,
+      // Same lookup the room payload uses (null for guests / no avatar) — the lobby faces
+      // drew initials for everyone while this was missing.
+      avatarUrl: s.user.isGuest || !roomManager.avatarLookup ? null : roomManager.avatarLookup(s.user.userId),
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
