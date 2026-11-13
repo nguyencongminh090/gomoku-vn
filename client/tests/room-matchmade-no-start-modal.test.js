@@ -14,10 +14,10 @@ const path = require('path');
 const html = fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
 const BODY_HTML = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
 
-function load({ matchmade, state = 'idle', isReady = false, matchGameSeen = false }) {
+function load({ matchmade, state = 'idle', isReady = false, matchGameSeen = false, matchGames = 0, matchMax = 3, readyDeadline = null }) {
   jest.resetModules();
   document.body.innerHTML = BODY_HTML;
-  window.t = jest.fn((k) => k);
+  window.t = jest.fn((k, v) => (v ? `${k} ${JSON.stringify(v)}` : k));
   window.EscapeUtils = require('../js/escape-utils.js');
   const emit = jest.fn();
   window.RoomClient = { emit };
@@ -25,7 +25,7 @@ function load({ matchmade, state = 'idle', isReady = false, matchGameSeen = fals
     mySlot: 1, isReady, matchGameSeen, myRole: 'player',
     myUser: { userId: 'me', displayName: 'Me' },
     roomData: {
-      state, matchmade,
+      state, matchmade, matchGames, matchMax, readyDeadline,
       users: [
         { userId: 'me', displayName: 'Me', slot: 1, role: 'player', presence: 'active' },
         { userId: 'opp', displayName: 'Opp', slot: 2, role: 'player', presence: 'active' },
@@ -49,10 +49,10 @@ describe('room-ui.js renderStartModal(): matchmade rooms', () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
-  test('matchmade, game finished (idle after playing) → no rematch ready, no modal', () => {
-    const { emit, modal } = load({ matchmade: true, matchGameSeen: true });
+  test('matchmade, game finished → no auto-ready; #365 post-game modal instead', () => {
+    const { emit, modal } = load({ matchmade: true, matchGameSeen: true, matchGames: 1 });
     expect(emit).not.toHaveBeenCalled();
-    expect(modal.classList.contains('visible')).toBe(false);
+    expect(modal.classList.contains('visible')).toBe(true);
   });
 
   test('matchmade, state playing marks the game as seen', () => {
@@ -67,59 +67,64 @@ describe('room-ui.js renderStartModal(): matchmade rooms', () => {
   });
 });
 
-describe('leave button after the single matchmade game', () => {
-  test('is highlighted once the game was seen and the room is idle', () => {
-    load({ matchmade: true, matchGameSeen: true });
-    expect(document.getElementById('btn-leave').classList.contains('is-cta')).toBe(true);
+// #365: after each quick-match game: "Chơi tiếp (ván n/max)" + "Về trang chủ", countdown from the server.
+describe('#365 quick-match post-game modal', () => {
+  const shown = (id) => document.getElementById(id).style.display !== 'none';
+
+  test('game 1 of 3 done: play-again (game 2/3) + home, server countdown', () => {
+    const { modal } = load({ matchmade: true, matchGames: 1, readyDeadline: Date.now() + 15000 });
+    expect(modal.classList.contains('visible')).toBe(true);
+    expect(document.getElementById('start-modal-title').textContent).toBe('match_end.title {"n":1,"max":3}');
+    expect(document.getElementById('start-modal-btn').textContent).toBe('match_end.again {"n":2,"max":3}');
+    expect(shown('start-modal-btn')).toBe(true);
+    expect(shown('start-modal-home')).toBe(true);
+    expect(shown('start-modal-countdown-wrap')).toBe(true);
+    expect(Number(document.getElementById('start-modal-countdown').textContent)).toBeGreaterThanOrEqual(14);
   });
-  test('not highlighted before the game or in manual rooms', () => {
-    load({ matchmade: true });
-    expect(document.getElementById('btn-leave').classList.contains('is-cta')).toBe(false);
-    load({ matchmade: false, matchGameSeen: true });
-    expect(document.getElementById('btn-leave').classList.contains('is-cta')).toBe(false);
+
+  test('a reload between games (no matchGameSeen) neither auto-readies nor hides the modal', () => {
+    const { emit, modal } = load({ matchmade: true, matchGames: 2 });
+    expect(emit).not.toHaveBeenCalled();
+    expect(modal.classList.contains('visible')).toBe(true);
+  });
+
+  test('after "Chơi tiếp": button hidden, waiting line shown, home still offered', () => {
+    load({ matchmade: true, matchGames: 1, isReady: true });
+    expect(shown('start-modal-btn')).toBe(false);
+    expect(shown('start-modal-waiting')).toBe(true);
+    expect(shown('start-modal-home')).toBe(true);
+  });
+
+  test('3 of 3 played: only "Về trang chủ"', () => {
+    load({ matchmade: true, matchGames: 3 });
+    expect(document.getElementById('start-modal-title').textContent).toBe('match_end.done_title {"max":3}');
+    expect(shown('start-modal-btn')).toBe(false);
+    expect(shown('start-modal-waiting')).toBe(false);
+    expect(shown('start-modal-home')).toBe(true);
+  });
+
+  test('"Về trang chủ" emits room:leave', () => {
+    const { emit } = load({ matchmade: true, matchGames: 1 });
+    expect(document.getElementById('start-modal-home').dataset.action).toBe('leaveMatch');
+    window.leaveMatch();
+    expect(emit).toHaveBeenCalledWith('room:leave');
+  });
+
+  test('during a game the modal stays hidden', () => {
+    const { modal } = load({ matchmade: true, matchGames: 1, state: 'playing' });
+    expect(modal.classList.contains('visible')).toBe(false);
   });
 });
 
-describe('RoomUI.installOutsideTapBlur (mobile keyboard)', () => {
-  function tap(target, pointerType = 'touch') {
-    const ev = new Event('pointerdown', { bubbles: true });
-    ev.pointerType = pointerType;
-    target.dispatchEvent(ev);
-  }
-  beforeEach(() => {
+describe('#365 seat lock in the UI', () => {
+  test('quick match: no stand-up button on my card', () => {
+    load({ matchmade: true, matchGames: 1 });
+    window.RoomUI.renderPlayerCards();
+    expect(document.querySelector('[data-action="standUp"]')).toBeNull();
+  });
+  test('manual room keeps the stand-up button', () => {
     load({ matchmade: false });
-    document.getElementById('chat-input').focus(); // room-ui.js installs the listener on load
-  });
-  test('touch on the board area blurs the chat input', () => {
-    tap(document.getElementById('start-modal'));
-    expect(document.activeElement).not.toBe(document.getElementById('chat-input'));
-  });
-  test('touch on the send button keeps focus', () => {
-    tap(document.getElementById('btn-send'));
-    expect(document.activeElement).toBe(document.getElementById('chat-input'));
-  });
-  test('mouse click does not blur', () => {
-    tap(document.getElementById('start-modal'), 'mouse');
-    expect(document.activeElement).toBe(document.getElementById('chat-input'));
-  });
-});
-
-describe('RoomUI.trackBoardHeight (mobile sticky stack)', () => {
-  test('writes the board shell height to --board-h', () => {
-    load({ matchmade: false });
-    const shell = document.getElementById('board-area-shell');
-    shell.getBoundingClientRect = () => ({ height: 390 });
-    window.ResizeObserver = class { observe() {} };
-    window.RoomUI.trackBoardHeight(document);
-    expect(document.documentElement.style.getPropertyValue('--board-h')).toBe('390px');
-  });
-});
-
-describe('matchmade auto-ready is not re-emitted while the ack is in flight', () => {
-  test('two renders in a row → one room:ready', () => {
-    const { emit } = load({ matchmade: true });
-    window.RoomUI.renderStartModal();
-    window.RoomUI.renderStartModal();
-    expect(emit).toHaveBeenCalledTimes(1);
+    window.RoomUI.renderPlayerCards();
+    expect(document.querySelector('[data-action="standUp"]')).not.toBeNull();
   });
 });

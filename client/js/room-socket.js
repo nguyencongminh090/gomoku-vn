@@ -18,6 +18,15 @@
   const S = () => global.RoomState;
   const client = global.RoomClient;
 
+  // Where leaving the room goes (#365): a quick-match session always ends on Home; otherwise back to
+  // the tab the room was entered from (lobby.js adds ?from=rooms when entering from the Phòng tab).
+  function exitUrl() {
+    const st = S();
+    if (st && st.roomData && st.roomData.matchmade) return 'index.html';
+    const from = new URLSearchParams(global.location.search).get('from');
+    return from === 'rooms' ? 'index.html#rooms' : 'index.html';
+  }
+
   // Server error/status payloads carry a language-neutral `code` alongside a
   // Vietnamese `message` (for logs/back-compat) — see server/routes/auth.js's
   // equivalent pattern. Always prefer `code`'s i18n translation over the raw
@@ -197,24 +206,24 @@
   client.on('room:left', () => {
     cancelTurnWatchdog();
     cancelMoveConfirmWatchdog();
-    window.location.href = 'index.html';
+    window.location.href = exitUrl();
   });
 
   client.on('room:kicked', (data) => {
     showToast(data.code ? serverMessage(data) : (data.message || t('room.kicked')), 'error');
-    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+    setTimeout(() => { window.location.href = exitUrl(); }, 1500);
   });
 
   client.on('room:destroyed', (data) => {
     showToast(serverMessage(data), 'error');
-    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+    setTimeout(() => { window.location.href = exitUrl(); }, 1500);
   });
 
   client.on('room:error', (data) => {
     const st = S();
     if (!st.roomData) {
       showToast(serverMessage(data), 'error');
-      setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+      setTimeout(() => { window.location.href = exitUrl(); }, 1500);
       return;
     }
     ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
@@ -976,7 +985,7 @@
         // room:joined will never arrive and #room-entry-overlay would stay up
         // forever (see TODO.md #40 / instruction.md §40). Bounce back to the
         // lobby instead of freezing there.
-        window.location.href = 'index.html';
+        window.location.href = exitUrl();
       }
     }
   }
@@ -993,7 +1002,7 @@
   // may have already needed it.
   global.RoomSocket = {
     serverMessage, requestResync, armMoveConfirmWatchdog,
-    refreshLocalTimer: tickLocal, serverNow,
+    refreshLocalTimer: tickLocal, serverNow, exitUrl,
   };
 
 })(window);

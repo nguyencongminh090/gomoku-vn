@@ -21,6 +21,7 @@
  *   window.sitDown(slot)     — onclick shim
  *   window.standUp()         — onclick shim
  *   window.confirmStart()    — onclick shim (Start modal)
+ *   window.leaveMatch()      — quick-match "Về trang chủ" (#365)
  *   window.kickUser(userId)  — onclick shim
  *   window.updateSettings()  — onclick shim
  */
@@ -200,7 +201,8 @@
     el.dataset.slot = String(slotNum);
     el.classList.remove('seatcard--turn', 'seatcard--low');
     if (!player) {
-      const canSit = st.mySlot === null && st.roomData.state !== 'playing';
+      // #365: a quick-match pair is fixed — nobody else takes a seat.
+      const canSit = st.mySlot === null && st.roomData.state !== 'playing' && !st.roomData.matchmade;
       el.classList.add('seatcard--empty');
       delete el.dataset.clock;
       el.innerHTML = canSit
@@ -216,7 +218,7 @@
     const piece = clock.stone !== 'none' && typeof global.boardPieceSvg === 'function'
       ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
-    const standBtn = (isMe && st.roomData.state !== 'playing')
+    const standBtn = (isMe && st.roomData.state !== 'playing' && !st.roomData.matchmade)
       ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
@@ -324,6 +326,54 @@
 
   let startModalCountdownHandle = null;
 
+  function stopStartModalCountdown() {
+    if (startModalCountdownHandle) {
+      clearInterval(startModalCountdownHandle);
+      startModalCountdownHandle = null;
+    }
+  }
+
+  /** Tick `#start-modal-countdown` toward `deadline` (server-clock epoch ms); hides the line when none. */
+  function runStartModalCountdown(deadline) {
+    const wrap = document.getElementById('start-modal-countdown-wrap');
+    const el = document.getElementById('start-modal-countdown');
+    stopStartModalCountdown();
+    if (!deadline) { if (wrap) wrap.style.display = 'none'; return; }
+    if (wrap) wrap.style.display = '';
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - serverNow()) / 1000));
+      if (el) el.textContent = String(remaining);
+    };
+    tick();
+    startModalCountdownHandle = setInterval(tick, 250);
+  }
+
+  /**
+   * #365 post-game modal of a quick-match session. Below the cap: "Chơi tiếp (ván n/max)" (room:ready)
+   * or "Về trang chủ" (room:leave); the server closes the room when its window runs out. At the cap:
+   * only "Về trang chủ" — the server sends everyone home a few seconds later anyway.
+   */
+  function renderMatchEndModal(modal) {
+    const st = S();
+    const played = st.roomData.matchGames || 0;
+    const max = st.roomData.matchMax || 1;
+    const done = played >= max;
+    const set = (id, text, show) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (text !== null) el.textContent = text;
+      el.style.display = show ? '' : 'none';
+    };
+    set('start-modal-title', done ? t('match_end.done_title', { max }) : t('match_end.title', { n: played, max }), true);
+    set('start-modal-btn', t('match_end.again', { n: played + 1, max }), !done && !st.isReady);
+    set('start-modal-waiting', t('match_end.waiting'), !done && st.isReady);
+    set('start-modal-home', t('match_end.home'), true);
+    const label = document.querySelector('#start-modal-countdown-wrap [data-i18n]');
+    if (label) label.textContent = t('match_end.countdown_label');
+    modal.classList.add('visible');
+    runStartModalCountdown(st.roomData.readyDeadline);
+  }
+
   function renderStartModal() {
     const st = S();
     const modal = document.getElementById('start-modal');
@@ -333,19 +383,25 @@
       && st.roomData.users.some(u => u.slot === 2);
     const visible = st.mySlot !== null && bothSeated && st.roomData.state !== 'playing';
 
-    // Quick-match rooms play exactly one game: no Start modal, each page readies itself.
+    // Quick-match session (#365): the first game readies itself (no Start modal); after each game the
+    // modal turns into "Chơi tiếp (ván n/max)" + "Về trang chủ" with the server's decision countdown.
     if (st.roomData.matchmade) {
       if (st.roomData.state === 'playing') st.matchGameSeen = true;
+      // A reload between games has no matchGameSeen; the server's count still says a game was played.
+      if ((st.roomData.matchGames || 0) > 0) st.matchGameSeen = true;
       // room:updated can render several times before the server acks; one emit per 3s (a missed ready
       // window clears isReady and is retried after that).
       if (visible && !st.isReady && !st.matchGameSeen && Date.now() - (st.matchReadyAt || 0) > 3000) {
         st.matchReadyAt = Date.now();
         global.confirmStart();
       }
-      modal.classList.remove('visible');
-      // One game done: make the leave button the obvious next step.
-      const leave = document.getElementById('btn-leave');
-      if (leave) leave.classList.toggle('is-cta', !!st.matchGameSeen && st.roomData.state !== 'playing');
+      const postGame = st.mySlot !== null && !!st.matchGameSeen && st.roomData.state !== 'playing';
+      if (!postGame) {
+        modal.classList.remove('visible');
+        stopStartModalCountdown();
+        return;
+      }
+      renderMatchEndModal(modal);
       return;
     }
 
@@ -722,6 +778,11 @@
 
   global.confirmStart = function() {
     global.RoomClient.emit('room:ready');
+  };
+
+  // #365 quick-match "Về trang chủ": leave now; room:left navigates home.
+  global.leaveMatch = function() {
+    global.RoomClient.emit('room:leave');
   };
 
   global.kickUser = function(userId) {

@@ -264,6 +264,9 @@ class RoomManager extends EventEmitter {
       return { room, destroyed: true, hostTransferred: false };
     }
 
+    // #365: a quick-match player walking out ends the session for the other seat too.
+    if (room.matchmade && wasSeated) this.emit('match_abandoned', room, userId);
+
     if (wasSeated) this.resetReadyPair(room);
 
     // Host transfer if needed
@@ -306,6 +309,11 @@ class RoomManager extends EventEmitter {
 
     const user = room.users.get(userId);
 
+    // #365: a quick-match room keeps its matched pair — no one else sits down.
+    if (room.matchmade && Array.isArray(room.matchPlayers) && !room.matchPlayers.includes(userId)) {
+      return { error: 'Trận chơi nhanh không cho đổi người chơi.', code: 'MATCH_SEAT_LOCKED' };
+    }
+
     // Already in this slot?
     if (user.slot === slot) return { room };
 
@@ -343,6 +351,11 @@ class RoomManager extends EventEmitter {
 
     if (room.state === 'playing') {
       return { error: 'Không thể đứng dậy khi đang chơi.', code: 'CANNOT_STAND_WHILE_PLAYING' };
+    }
+
+    // #365: a quick-match player leaves via "Về trang chủ" (room:leave), never by standing up.
+    if (room.matchmade) {
+      return { error: 'Trận chơi nhanh không cho đổi người chơi.', code: 'MATCH_SEAT_LOCKED' };
     }
 
     const user = room.users.get(userId);
@@ -459,6 +472,11 @@ class RoomManager extends EventEmitter {
     const user = room.users.get(userId);
     if (user.slot === null) {
       return { error: 'Bạn cần ngồi vào chỗ trước khi bắt đầu.', code: 'MUST_BE_SEATED_TO_START' };
+    }
+
+    // #365: a quick-match session stops at matchMax games.
+    if (room.matchmade && (room.matchGames || 0) >= (room.matchMax || 1)) {
+      return { error: 'Đã chơi đủ số ván của trận ghép.', code: 'MATCH_LIMIT_REACHED' };
     }
 
     if (!user.ready) {
@@ -603,6 +621,8 @@ class RoomManager extends EventEmitter {
       kicked = { userId: notReadyUser.userId, displayName: notReadyUser.displayName };
       notReadyUser.slot = null;
       room.readyMissCount = 0;
+      // #365: a quick-match pair can't be refilled, so losing a seat ends the session.
+      if (room.matchmade) this.emit('match_abandoned', room, notReadyUser.userId);
     }
 
     slot1.ready = false;
@@ -747,6 +767,9 @@ class RoomManager extends EventEmitter {
       serverTime: Date.now(),
       readyMissCount: room.readyMissCount || 0,
       matchmade: !!room.matchmade,
+      // #365: quick-match session = up to matchMax games; matchGames counts finished ones.
+      matchGames: room.matchmade ? (room.matchGames || 0) : 0,
+      matchMax: room.matchmade ? (room.matchMax || 0) : 0,
       series: ChallengeSeries.view(room.series),
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
