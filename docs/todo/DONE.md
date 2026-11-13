@@ -1,4 +1,5 @@
 ✅ 
+✅ - **#362.** Home phone: counts as a status line, 4 links in one Khám phá card `[Model: Sonnet 5]` — [detail](docs/todo/B362-home-phone-pulse-line.md)
 ✅ - **#361.** Home "Thách đấu" composer: challenge online players or friends `[Model: Opus 5]` — [detail](docs/todo/B361-home-challenge-composer.md)
 ✅ - **#360.** Home phone: move Học/Diễn đàn/Giải đấu/Hội nhóm links off the top (audit/redesign first) `[Model: Opus 5]` — [detail](docs/todo/B360-home-phone-secondary-nav.md)
 ✅ - **#358.** Home redesign M4 "Câu lệnh" (sentence composer + code input) `[Model: Opus 5]` — [detail](docs/todo/B358-home-redesign-m4-sentence.md)

@@ -207,6 +207,7 @@ function renderStats(data) {
   const eta = data.queueEta ? data.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
   fill('home-n-search', 'home-n-search-l', st && st.searching, [t('home.unit_people'), eta && t('home.eta_short', { s: eta })], st && t('home.none_searching'));
   fill('home-n-live', 'home-n-live-l', st && st.playing, [t('home.unit_games')], st && t('home.none_playing'));
+  renderPulse(st);
   const one = document.getElementById('home-live-one');
   if (!one) return;
   const g = (data.live || [])[0];
@@ -217,6 +218,33 @@ function renderStats(data) {
   b.append(el('span', g.black + ' vs ' + g.white, 'hq-live__t'), el('span', t('home.moves', { n: g.moves || 0 }), 'hq-live__m'));
   b.addEventListener('click', () => window.joinRoom(g.roomId));
   one.appendChild(b);
+}
+
+/** #362 phone status line: same counts as the cards; "M ván đang chơi" links to Phòng › Quan sát only when M > 0. */
+function renderPulse(st) {   // no ETA here: #qm-line right under it already says "ước tính N giây"
+  const search = document.getElementById('home-pulse-search');
+  const live = document.getElementById('home-pulse-live');
+  if (!search || !live) return;
+  const num = (n) => { const b = el('b', st ? String(n || 0) : '–'); b.classList.toggle('is-zero', !n); return b; };
+  const ns = st && st.searching, nl = st && st.playing;
+  search.replaceChildren(num(ns), el('span', t('home.pulse_searching')));
+  live.replaceChildren(num(nl), el('span', t('home.pulse_playing')));
+  if (nl) {
+    live.href = '#rooms';
+    live.title = t('home.pulse_watch');
+  } else {
+    live.removeAttribute('href');
+    live.removeAttribute('title');
+  }
+  if (!live.dataset.bound) {
+    live.dataset.bound = '1';
+    // The hash link opens Phòng (hashchange → showScreen); then pick the Quan sát filter lobby.js owns.
+    live.addEventListener('click', () => {
+      if (!live.hasAttribute('href')) return;
+      const tab = document.querySelector('#room-tabs [data-room-tab="watch"]');
+      if (tab) tab.click();
+    });
+  }
 }
 
 /** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
