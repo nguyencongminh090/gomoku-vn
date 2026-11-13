@@ -78,6 +78,65 @@
   // below read the same as before.
   const escapeAttr = (str) => global.EscapeUtils.escapeAttr(str);
 
+  // ── Copy table code + QR (join link) ──────────────────────────────────────
+
+  const joinUrl = (code) => `${location.origin}/room.html?id=${encodeURIComponent(code)}`;
+
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (_) { return false; }
+  }
+
+  async function copyCode() {
+    const code = roomIdNav && roomIdNav.dataset.code;
+    if (!code) return;
+    if (await copyText(code) && window.showToast) window.showToast(t('room.code_copied'), 'success', 1800);
+  }
+  if (roomIdNav) {
+    roomIdNav.setAttribute('role', 'button');
+    roomIdNav.tabIndex = 0;
+    roomIdNav.style.cursor = 'pointer';
+    roomIdNav.addEventListener('click', copyCode);
+    roomIdNav.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyCode(); } });
+  }
+
+  function qrSvg(text) {
+    const qr = window.qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    return qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
+  }
+
+  function openQrModal() {
+    const code = roomIdNav && roomIdNav.dataset.code;
+    if (!code || !window.qrcode) return;
+    const url = joinUrl(code);
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay visible';
+    ov.innerHTML = `
+      <div class="modal room-qr" role="dialog" aria-modal="true" aria-label="${escapeHtml(t('room.qr_title'))}">
+        <div class="room-qr__code">${escapeHtml(code)}</div>
+        <div class="room-qr__img">${qrSvg(url)}</div>
+        <div class="room-qr__hint">${escapeHtml(t('room.qr_hint'))}</div>
+        <div class="room-qr__actions">
+          <button type="button" class="btn-primary" data-qr="copy">${escapeHtml(t('room.link_copy'))}</button>
+          <button type="button" class="btn-secondary" data-qr="close">${escapeHtml(t('common.close_x'))}</button>
+        </div>
+      </div>`;
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    ov.addEventListener('click', async (e) => {
+      if (e.target === ov) return close();
+      const act = e.target.closest('[data-qr]');
+      if (!act) return;
+      if (act.dataset.qr === 'close') return close();
+      if (await copyText(url) && window.showToast) window.showToast(t('room.code_copied'), 'success', 1800);
+    });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(ov);
+  }
+  const qrBtn = document.getElementById('btn-room-qr');
+  if (qrBtn) qrBtn.addEventListener('click', openQrModal);
+
   // ── Main render entry ─────────────────────────────────────────────────────
 
   function updateUI() {
@@ -92,9 +151,10 @@
       <span class="topnav__room-name">${escapeHtml(roomName)}</span>
       <span class="topnav__room-code">${escapeHtml(st.roomData.roomId)}</span>
     `;
-    roomIdNav.title = roomName === st.roomData.roomId
+    roomIdNav.title = (roomName === st.roomData.roomId
       ? roomName
-      : `${roomName} (${st.roomData.roomId})`;
+      : `${roomName} (${st.roomData.roomId})`) + ' — ' + t('room.link_copy');
+    roomIdNav.dataset.code = st.roomData.roomId;
     document.title = `Play3CR — ${roomName}`;
 
     const me = st.roomData.users.find(u => u.userId === st.myUser.userId);
