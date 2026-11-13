@@ -442,8 +442,10 @@ class RoomManager extends EventEmitter {
     const user = room.users.get(userId);
     if (user.presence === 'disconnected') return { room };
 
-    user.presence = presence === 'away' ? 'away' : 'active';
-    return { room };
+    const next = presence === 'away' ? 'away' : 'active';
+    const changed = user.presence !== next;
+    user.presence = next;
+    return { room, changed };
   }
 
   // ---------------------------------------------------------------------------

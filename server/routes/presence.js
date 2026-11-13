@@ -18,9 +18,13 @@ const database = require('../db/database');
 const state = require('../socket/state');
 
 const router = express.Router();
-const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
-router.use(rateLimit({ windowMs: 60 * 1000, max: 30, keyGenerator }));
+// Two layers: a loose per-IP flood guard before auth (many members share one IP behind CGNAT /
+// a school or café network), then the real budget per member. A 429 here silently drops the
+// user offline, so the per-user cap leaves ample room over the ~3 beats/min + edge reports.
+const ipKey = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
+router.use(rateLimit({ windowMs: 60 * 1000, max: 600, keyGenerator: ipKey }));
 router.use(verifyToken, rejectGuests('Khách không có trạng thái.'));
+router.use(rateLimit({ windowMs: 60 * 1000, max: 60, keyGenerator: (req) => 'u:' + req.user.userId }));
 
 router.post('/', express.json({ limit: '1kb' }), (req, res, next) => {
   try {

@@ -1,4 +1,5 @@
 // #372 — site-wide presence: away (tab hidden / unfocused) counts as offline everywhere.
+jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: () => {}, register: () => {} })); // keep the DB-backed Home feed out
 const state = require('../socket/state');
 
 const sock = (id) => ({ user: { userId: id, displayName: id.toUpperCase(), isGuest: false } });
@@ -63,5 +64,53 @@ describe('HTTP heartbeat (#372)', () => {
     state.touchHeartbeat(u, 'active');
     expect(state.getOnlineUsersList()).toEqual([]);
     state.setHideOnline('h', false);
+  });
+});
+
+// #372 review fixes.
+describe('presence review (#372)', () => {
+  const u = { userId: 'h', displayName: 'H', isGuest: false };
+  let io, emitted;
+  beforeEach(() => {
+    jest.useFakeTimers();
+    state.sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear();
+    emitted = [];
+    io = { to: () => ({ emit: (ev, data) => emitted.push({ ev, data }) }) };
+    state.broadcastOnlineUsers(io); // registers io as the broadcast target
+    jest.advanceTimersByTime(state.ONLINE_USERS_DEBOUNCE_MS + 1);
+    emitted = [];
+  });
+  afterEach(() => { state.setHideOnline('h', false); state.heartbeats.clear(); state.sessions.clear(); state.awayUsers.clear(); flush(); jest.useRealTimers(); });
+  const flush = () => jest.advanceTimersByTime(state.ONLINE_USERS_DEBOUNCE_MS + 1);
+  const left = () => emitted.filter(e => e.ev === 'lobby:online_patch').flatMap(e => e.data.left);
+
+  test('hide_online turned on from a socket-less page (heartbeat only) is pushed to the lobby', () => {
+    state.touchHeartbeat(u, 'active');
+    flush();
+    emitted = [];
+    state.setHideOnline('h', true);
+    flush();
+    expect(left()).toEqual(['h']);
+  });
+
+  test('dropHeartbeat (logout / lock) removes a beat-only user at once', () => {
+    state.touchHeartbeat(u, 'active');
+    flush();
+    emitted = [];
+    expect(state.dropHeartbeat('h')).toBe(true);
+    expect(state.isPresent('h')).toBe(false);
+    flush();
+    expect(left()).toEqual(['h']);
+    expect(state.dropHeartbeat('h')).toBe(false);
+  });
+
+  test('hasPresentSocket: only a visible socket — not a heartbeat, not an away socket', () => {
+    state.touchHeartbeat(u, 'active');
+    expect(state.isPresent('h')).toBe(true);
+    expect(state.hasPresentSocket('h')).toBe(false); // no socket to push a DM to → bell entry needed
+    state.sessions.set('h', { user: u });
+    expect(state.hasPresentSocket('h')).toBe(true);
+    state.setUserPresence('h', 'away');
+    expect(state.hasPresentSocket('h')).toBe(false);
   });
 });

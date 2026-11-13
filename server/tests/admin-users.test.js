@@ -14,7 +14,7 @@ const os = require('os');
 const pathMod = require('path');
 process.env.AVATAR_DIR = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'adm-avatars-'));
 // The real socket layer starts timers and pulls in RoomManager; the lock path only needs its live-socket Map.
-jest.mock('../socket/state', () => ({ sessions: new Map() }));
+jest.mock('../socket/state', () => ({ sessions: new Map(), dropHeartbeat: jest.fn() }));
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 jest.mock('../middleware/auth', () => ({
   verifyToken: (req, res, next) => {
@@ -137,7 +137,8 @@ describe('lock', () => {
     expect(JSON.parse(e.detail)).toEqual({ reason: 'spam' });
   });
   it('closes the target\'s already-open socket with session:kicked ACCOUNT_LOCKED (revoking sessions alone only stops the next connect)', async () => {
-    const { sessions: live } = require('../socket/state');
+    const { sessions: live, dropHeartbeat } = require('../socket/state');
+    dropHeartbeat.mockClear();
     const bob = { emit: jest.fn(), disconnect: jest.fn() };
     const mem = { emit: jest.fn(), disconnect: jest.fn() };
     live.set('bob', bob);
@@ -150,6 +151,8 @@ describe('lock', () => {
       expect(bob.disconnect).toHaveBeenCalledWith(true);
       expect(bob.emit.mock.invocationCallOrder[0]).toBeLessThan(bob.disconnect.mock.invocationCallOrder[0]); // tell, then close
       expect(mem.disconnect).not.toHaveBeenCalled(); // other users untouched
+      expect(dropHeartbeat).toHaveBeenCalledWith('bob'); // #372: a socket-less page's beat must not keep them "online"
+      expect(dropHeartbeat).not.toHaveBeenCalledWith('mem');
       bob.disconnect.mockClear();
       await call('POST', '/api/admin/users/bob/lock', 'boss', { locked: false }); // unlock never kicks
       expect(bob.disconnect).not.toHaveBeenCalled();

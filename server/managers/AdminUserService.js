@@ -102,7 +102,9 @@ function setRole(adminId, id, role) {
  * Lazy require: the socket layer pulls in RoomManager & co., which this service must not load eagerly.
  */
 function kickLiveSocket(userId) {
-  const socket = require('../socket/state').sessions.get(userId);
+  const state = require('../socket/state');
+  state.dropHeartbeat(userId); // #372: a socket-less page must not keep a locked account "online"
+  const socket = state.sessions.get(userId);
   if (!socket) return;
   socket.emit('session:kicked', { message: 'Tài khoản đã bị khoá.', code: 'ACCOUNT_LOCKED' });
   socket.disconnect(true);

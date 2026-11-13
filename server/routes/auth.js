@@ -431,7 +431,12 @@ router.post('/guest', (req, res, next) => {
 router.post('/logout', (req, res, next) => {
   try {
     const sessionId = readSessionIdFromHeader(req.headers.cookie);
-    if (sessionId) sessionManager.revokeSession(sessionId);
+    if (sessionId) {
+      const live = sessionManager.getValidSession(sessionId);
+      sessionManager.revokeSession(sessionId);
+      // #372: a socket-less page's heartbeat would keep them "online" for up to BEAT_TTL_MS.
+      if (live && live.userId && !live.isGuest) require('../socket/state').dropHeartbeat(live.userId);
+    }
     clearSessionCookie(req, res);
     // 204 whether or not a session was found: "log me out" is satisfied either
     // way, and reporting which ids exist would leak session-id validity.

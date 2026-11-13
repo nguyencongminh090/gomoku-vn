@@ -23,10 +23,14 @@ const svc = require('../managers/FriendService');
 
 const router = express.Router();
 const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
-router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator }));
+// #372: social.html polls GET / every 10 s for presence (~90 req / 15 min per open tab). A per-IP
+// budget alone would 429 members sharing one IP (CGNAT, school/café) — so a loose per-IP flood guard
+// here, and the real budget per member after auth.
+router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1500, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 120, keyGenerator });
+const userLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator: (req) => 'u:' + req.user.userId });
 
-const member = [verifyToken, rejectGuests('Khách không dùng được bạn bè.')];
+const member = [verifyToken, rejectGuests('Khách không dùng được bạn bè.'), userLimiter];
 
 const h = (fn) => (req, res, next) => {
   try {

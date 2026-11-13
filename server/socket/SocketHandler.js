@@ -37,7 +37,7 @@ const {
   broadcastOnlineUsers,
   setHideOnline,
   isVisiblyOnline,
-  isPresent,
+  hasPresentSocket,
   awayUsers,
   getOnlineUsersList,
   broadcastRoomUpdate,
@@ -71,7 +71,9 @@ function init(io) {
   // Friend challenges (#198): a seated pair is redirected on whichever sockets are live;
   // socket-less pages rejoin by user id when room.html connects.
   require('../managers/ChallengeService').setHooks({
-    isOnline: (userId) => isPresent(userId),
+    // Seat check only: "did they ever connect a socket?" — NOT presence (#372 review). An away
+    // room tab must keep its seat; a heartbeat from social.html is not a socket in the room.
+    isOnline: (userId) => sessions.has(userId),
     onlineUsers: () => getOnlineUsersList(), // #361 Home picker: visible presence only
     onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
     onSeated: (room, userIds) => {
@@ -109,7 +111,8 @@ function init(io) {
 
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
   const DmService = require('../managers/DmService');
-  DmService.setHooks({ isOnline: (userId) => isPresent(userId) }); // away tab → saved + bell notify, not live-only
+  // Live push needs a visible socket: away tab or heartbeat-only page (no socket) → bell entry too.
+  DmService.setHooks({ isOnline: (userId) => hasPresentSocket(userId), hasSocket: (userId) => sessions.has(userId) });
   PrivateChatHandler.setStore(DmService);
 
   // Live push for the bell (#198): one socket per user lives in `sessions`.
