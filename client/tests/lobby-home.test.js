@@ -159,26 +159,29 @@ describe('dashboard rendering', () => {
     expect(row.querySelector('.hbullet.on')).not.toBeNull();
   });
 
-  it('#358 counts: online tag in the greeting row, searching + playing cards (one live game, click watches); dashes without stats', async () => {
+  it('#366 scoreboard: online / searching / playing as digit plates (textContent = number), labels name the count, one live game (click watches); dashes without stats', async () => {
     const num = (id) => document.getElementById(id).textContent;
     const lbl = (id) => [...document.querySelectorAll('#' + id + ' > span')].map((s) => s.textContent);
+    const cls = (id, c) => document.getElementById(id).classList.contains(c);
     await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 }, queueEta: { 'freestyle|auto': 20 } });
-    expect(document.getElementById('home-online').hidden).toBe(false);
-    expect(document.getElementById('home-online').textContent).toBe('home.online{"n":12}');
-    expect([num('home-n-search'), num('home-n-live')]).toEqual(['2', '3']);
-    expect(lbl('home-n-search-l')).toEqual(['home.unit_people', 'home.eta_short{"s":20}']);
+    expect([num('home-n-online'), num('home-n-search'), num('home-n-live')]).toEqual(['12', '2', '3']);
+    expect([document.getElementById('home-online').hidden, document.getElementById('home-online').textContent]).toEqual([false, 'home.online{"n":12}']); // phone tag
+    expect([...document.querySelectorAll('#home-n-online > i')].map((i) => i.textContent)).toEqual(['1', '2']);
+    expect([cls('home-n-online', 'is-1'), cls('home-n-search', 'is-1')]).toEqual([false, true]); // 1 digit → CSS "0" plate
+    expect(lbl('home-n-search-l')).toEqual(['home.pulse_searching', 'home.eta_short{"s":20}']);
+    expect(lbl('home-n-live-l')).toEqual(['home.pulse_playing']);
     const live = document.querySelector('#home-live-one .hq-live');
     expect([live.querySelector('.hq-live__t').textContent, live.querySelector('.hq-live__m').textContent]).toEqual(['kim vs sak', 'home.moves{"n":42}']);
     live.click();
     expect(window.joinRoom).toHaveBeenCalledWith('L1');
-    await boot('/index.html', { ...EMPTY, stats: { online: 5, playing: 0, searching: 0 } }); // #292: zero counts are de-emphasised + say so
-    expect(['home-n-search', 'home-n-live'].map((id) => document.getElementById(id).classList.contains('is-zero'))).toEqual([true, true]);
-    expect([lbl('home-n-search-l'), lbl('home-n-live-l')]).toEqual([['home.none_searching'], ['home.none_playing']]);
+    await boot('/index.html', { ...EMPTY, stats: { online: 5, playing: 0, searching: 0 }, queueEta: { 'freestyle|auto': 20 } }); // #292: zero counts dimmed, label kept, no ETA
+    expect(['home-n-online', 'home-n-search', 'home-n-live'].map((id) => cls(id, 'is-zero'))).toEqual([false, true, true]);
+    expect([lbl('home-n-search-l'), lbl('home-n-live-l')]).toEqual([['home.pulse_searching'], ['home.pulse_playing']]);
     expect(document.getElementById('home-live-one').children).toHaveLength(0);
     await boot('/index.html', DATA);
-    expect([num('home-n-search'), num('home-n-live'), document.getElementById('home-online').hidden]).toEqual(['–', '–', true]);
+    expect([num('home-n-online'), num('home-n-search'), num('home-n-live')]).toEqual(['–', '–', '–']);
+    expect(document.getElementById('home-online').hidden).toBe(true);
   });
-
   it('no game to resume → the resume card stays hidden; the empty payload renders without throwing', async () => {
     await boot('/index.html', EMPTY);
     expect(document.getElementById('home-mine-card').hidden).toBe(true);
@@ -286,12 +289,13 @@ describe('home M4 "Câu lệnh" (#358)', () => {
     expect(visible()).toEqual(['panel-tables']);
   });
 
-  it('secondary features are icon-only links named by aria-label (= the tooltip; user decision 2026-11-12 reverses ui-audit home F4)', async () => {
+  it('#366 secondary features: 4 labelled chips under the scoreboard (desktop right column), no icon-only links left', async () => {
     await boot('/index.html', EMPTY);
-    const links = [...document.querySelectorAll('#screen-home .hub-ico')];
+    const links = [...document.querySelectorAll('#home-stats .hub-more a.hq-chip')];
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['/puzzles', '/forum', '/index.html#tournaments', '/clubs.html']);
-    expect(links.map((a) => a.getAttribute('data-i18n-aria'))).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
-    expect(links.every((a) => a.textContent.trim() === '' && a.getAttribute('aria-label'))).toBe(true);
+    expect(links.map((a) => a.querySelector('span').dataset.i18n)).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
+    expect(document.querySelectorAll('.hq-hello nav, .hub-ico')).toHaveLength(0);
+    expect(document.querySelector('#home-stats .hub-more').previousElementSibling.classList.contains('hq-board')).toBe(true);
   });
 
   it('a blank opens the listbox: selected option focused, arrows rove, Enter picks; Escape closes and returns focus; outside click closes', async () => {
@@ -562,7 +566,7 @@ describe('Vào bằng mã (Phòng screen, B210 → #364 hero boxes)', () => {
 
 describe('live push (B225)', () => {
   const subs = () => window.__lobbyStub.client.emitted.map(([ev]) => ev).filter((ev) => ev.startsWith('home:'));
-  const nums = () => ['home-online', 'home-n-search', 'home-n-live'].map((id) => document.getElementById(id).textContent);
+  const nums = () => ['home-n-online', 'home-n-search', 'home-n-live'].map((id) => document.getElementById(id).textContent);
   const setHidden = (v) => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); };
   afterEach(() => { delete document.hidden; });
 
@@ -583,7 +587,7 @@ describe('live push (B225)', () => {
   it('home:stats redraws the strip with the pushed absolute values', async () => {
     await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 } });
     window.__lobbyStub.client.fire('home:stats', { online: 7, playing: 2, searching: 1 });
-    expect(nums()).toEqual(['home.online{"n":7}', '1', '2']);
+    expect(nums()).toEqual(['7', '1', '2']);
   });
 
   it('hidden tab unsubscribes; visible again resubscribes and refetches', async () => {
@@ -790,10 +794,10 @@ describe('#361 Thách đấu on Home', () => {
 });
 
 describe('#360 phone links → labelled tiles after the room code', () => {
-  it('4 tiles (same hrefs as the greeting icons) sit after #home-code inside .hq-main; desktop icons unchanged', async () => {
+  it('4 tiles (same hrefs as the desktop chips) sit after #home-code inside .hq-main; same hrefs as the desktop chips', async () => {
     await boot('/index.html');
     const tiles = [...document.querySelectorAll('.hq-tiles a.hq-tile')];
-    const icons = [...document.querySelectorAll('.hq-hello .hub-more a')];
+    const icons = [...document.querySelectorAll('#home-stats .hub-more a')];
     expect(tiles.map((a) => a.getAttribute('href'))).toEqual(icons.map((a) => a.getAttribute('href')));
     expect(tiles.map((a) => a.querySelector('span').dataset.i18n)).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
     const tilesNav = document.querySelector('.hq-tiles');
@@ -801,11 +805,10 @@ describe('#360 phone links → labelled tiles after the room code', () => {
     expect(tilesNav.previousElementSibling.id).toBe('home-code');
   });
 
-  it('CSS: tiles hidden by default (desktop) and shown ≤860px where the greeting icons are hidden', () => {
+  it('CSS: tiles hidden by default (desktop) and shown ≤860px (desktop chips live in #home-stats, hidden there)', () => {
     const css = read('css/shell.css');
     expect(css).toMatch(/^body\.zen-lobby \.hq-tiles \{ display: none; \}/m);
     const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
-    expect(phone).toMatch(/\.hq-hello \.hub-more \{ display: none; \}/);
     expect(phone).toMatch(/\.hq-tiles \{ display: grid;/);
   });
 });
@@ -843,5 +846,15 @@ describe('#362 phone: counts as one status line, links in one card', () => {
     expect(phone).toMatch(/\.hq > \.hq-side \{ display: none; \}/);
     expect(phone).toMatch(/\.hq-pulse \{ display: flex;/);
     expect(phone).toMatch(/\.hq-tiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  });
+});
+
+describe('#366 desktop scoreboard vs phone', () => {
+  it('CSS: the greeting-row online tag is hidden ≥861px (board shows it); ≤860px still hides #home-stats', () => {
+    const css = read('css/shell.css');
+    expect(css).toMatch(/@media \(min-width: 861px\) \{ body\.zen-lobby \.hq-online \{ display: none; \} \}/);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.hq > \.hq-side \{ display: none; \}/);
+    expect(css).toMatch(/prefers-reduced-motion[\s\S]*\.hq-board__live i \{ animation: none; \}/);
   });
 });

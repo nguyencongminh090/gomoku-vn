@@ -160,25 +160,31 @@ function renderHello() {
   box.replaceChildren(before, el('b', u.displayName), after);
 }
 
-/** Counts (B223) → the online tag in the greeting row + the two right-column cards (#358). Empty state is text, not a blank card. */
+/**
+ * Counts (B223) → the desktop scoreboard (#366 "Bảng quán cờ"): one plate per digit (textContent stays the number;
+ * a 1-digit value gets a leading "0" plate from CSS), zero = dimmed plates (#292). Label always names what it counts.
+ */
 function renderStats(data) {
   const st = data.stats;
-  const online = document.getElementById('home-online');
+  const online = document.getElementById('home-online');   // phone greeting-row tag (desktop hides it: the board shows the count)
   if (online) {
     online.hidden = !st || !st.online;
     if (!online.hidden) online.replaceChildren(el('span', undefined, 'hq-online__dot'), el('span', t('home.online', { n: st.online })));
   }
-  const fill = (numId, labelId, n, parts, none) => {
+  const fill = (numId, labelId, n, parts) => {
     const num = document.getElementById(numId);
-    const label = document.getElementById(labelId);
-    if (!num || !label) return;
-    num.textContent = st ? String(n || 0) : '–';
+    if (!num) return;
+    const text = st ? String(n || 0) : '–';
+    num.replaceChildren(...[...text].map((c) => el('i', c)));
     num.classList.toggle('is-zero', !n);
-    label.replaceChildren(...(n ? parts : [none]).filter(Boolean).map((p) => el('span', p)));
+    num.classList.toggle('is-1', text.length === 1);
+    const label = labelId && document.getElementById(labelId);
+    if (label) label.replaceChildren(...parts.filter(Boolean).map((p) => el('span', p)));
   };
   const eta = data.queueEta ? data.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
-  fill('home-n-search', 'home-n-search-l', st && st.searching, [t('home.unit_people'), eta && t('home.eta_short', { s: eta })], st && t('home.none_searching'));
-  fill('home-n-live', 'home-n-live-l', st && st.playing, [t('home.unit_games')], st && t('home.none_playing'));
+  fill('home-n-online', null, st && st.online, []);
+  fill('home-n-search', 'home-n-search-l', st && st.searching, [t('home.pulse_searching'), st && st.searching && eta && t('home.eta_short', { s: eta })]);
+  fill('home-n-live', 'home-n-live-l', st && st.playing, [t('home.pulse_playing')]);
   renderPulse(st);
   const one = document.getElementById('home-live-one');
   if (!one) return;

@@ -327,14 +327,7 @@ body.zen-lobby .hq-hi b { color: var(--c-ink); font-weight: 800; }
 body.zen-lobby .hq-online { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 10px; border-radius: 6px; background: var(--c-fill); font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
 body.zen-lobby .hq-online[hidden] { display: none; }
 body.zen-lobby .hq-online__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c-state-playing); }
-body.zen-lobby .hub-more { margin-left: auto; display: flex; gap: 4px; }
-body.zen-lobby .hub-ico { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; color: var(--c-ink-2); text-decoration: none; transition: background-color var(--duration-fast), color var(--duration-fast); }
-body.zen-lobby .hub-ico .icon { width: 24px; height: 24px; }
-body.zen-lobby .hub-ico:hover, body.zen-lobby .hub-ico:focus-visible { color: var(--c-ink); background: var(--c-fill); }
-body.zen-lobby .hub-ico:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
-/* Tooltip = the accessible name (aria-label, translated by i18n.js), on hover and keyboard focus. */
-body.zen-lobby .hub-ico::after { content: attr(aria-label); position: absolute; left: 50%; top: calc(100% + 6px); transform: translateX(-50%); padding: 4px 8px; border-radius: 6px; background: var(--c-ink); color: var(--c-on-ink); font-size: var(--text-xs); font-weight: 700; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity var(--duration-fast); z-index: 5; }
-body.zen-lobby .hub-ico:hover::after, body.zen-lobby .hub-ico:focus-visible::after { opacity: 1; }
+@media (min-width: 861px) { body.zen-lobby .hq-online { display: none; } }   /* #366: desktop shows the count on the board */
 
 /* Resume strip = #home-mine-card, compact */
 body.zen-lobby .hq #home-mine-card { display: flex; align-items: center; gap: 4px 16px; flex-wrap: wrap; padding: 8px 8px 8px 16px; }
@@ -453,19 +446,40 @@ body.zen-lobby .hq-list .icon { width: 16px; height: 16px; }
 body.zen-lobby .hq-code__err { flex-basis: 100%; margin: 4px 0 0; font-size: var(--text-sm); color: var(--c-error); }
 body.zen-lobby .hq-code__err[hidden] { display: none; }
 
-/* Right column: live counts */
-body.zen-lobby .hq-side { display: grid; gap: 14px; align-content: start; padding-top: 10px; }
-body.zen-lobby .hq-card { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
-body.zen-lobby .hq-card__h { margin: 0; font-size: var(--text-sm); font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--c-ink-2); }
-body.zen-lobby .hq-num { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; margin: 0; }
-body.zen-lobby .hq-num b { font-size: 40px; font-weight: 900; line-height: 1; font-variant-numeric: tabular-nums; color: var(--c-ink); }
-body.zen-lobby .hq-num b.is-zero { color: var(--c-ink-3); font-weight: 700; }   /* #292: an empty count must not out-shout a real one */
-body.zen-lobby .hq-num span { display: inline-flex; gap: 8px; font-size: var(--text-sm); }
+/* Right column (desktop): #366 C "Bảng quán cờ" — an ink scoreboard (dark in both modes) + 4 labelled chips. Hidden ≤860px. */
+body.zen-lobby .hq-side { display: grid; gap: 16px; align-content: start; padding-top: 6px; }
+body.zen-lobby .hq-board { --hb-bg: #24221e; --hb-plate: #34312c; --hb-ink: #f2f0eb; --hb-ink-2: #b9b5ab; --hb-line: rgba(255,255,255,.14); --hb-live: #8bc34a; --hb-hot: #ee6a20;
+  position: relative; display: grid; padding: 18px; border-radius: 20px; background: var(--hb-bg); color: var(--hb-ink); border: 1px solid rgba(255,255,255,.10); box-shadow: 0 22px 40px -22px rgba(0,0,0,.7); overflow: hidden; }
+:root[data-mode="light"] body.zen-lobby .hq-board { --hb-bg: #1d1c19; --hb-plate: #2f2d29; border-color: transparent; }
+body.zen-lobby .hq-board::before { content: ''; position: absolute; inset: 0; background-image: linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px); background-size: 22px 22px; pointer-events: none; }
+body.zen-lobby .hq-board > * { position: relative; }
+body.zen-lobby .hq-board__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; font-size: var(--text-xs); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--hb-ink-2); }
+body.zen-lobby .hq-board__live { display: inline-flex; align-items: center; gap: 6px; color: var(--hb-live); }
+body.zen-lobby .hq-board__live i { width: 8px; height: 8px; border-radius: 50%; background: var(--hb-live); animation: hq-blink 1.6s ease-in-out infinite; }
+@keyframes hq-blink { 50% { opacity: .3; } }
+body.zen-lobby .hq-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 14px; margin: 0; padding: 10px 0; border-top: 1px dashed var(--hb-line); }
+body.zen-lobby .hq-row__l { display: flex; flex-wrap: wrap; gap: 2px 8px; font-weight: 700; color: var(--hb-ink); }
+body.zen-lobby .hq-row__l > span + span { font-weight: 600; color: var(--hb-ink-2); }
+/* One plate per digit; a 1-digit value gets a leading "0" plate (CSS only — textContent stays the number). */
+body.zen-lobby .hq-dig { display: inline-flex; gap: 3px; font-weight: 900; }
+body.zen-lobby .hq-dig > i, body.zen-lobby .hq-dig.is-1::before { display: inline-grid; place-items: center; width: 30px; height: 42px; border-radius: 6px; background: var(--hb-plate); box-shadow: inset 0 -21px 0 rgba(0,0,0,.18); font-style: normal; font-size: 28px; line-height: 1; font-variant-numeric: tabular-nums; color: var(--hb-ink); }
+body.zen-lobby .hq-dig.is-1::before { content: '0'; color: rgba(255,255,255,.28); }
+body.zen-lobby .hq-row--on .hq-dig:not(.is-zero) > i { color: var(--hb-live); }
+body.zen-lobby .hq-dig.is-zero > i { color: rgba(255,255,255,.4); }   /* #292: an empty count must not out-shout a real one */
 body.zen-lobby #home-live-one:empty { display: none; }
-body.zen-lobby .hq-live { display: grid; gap: 2px; width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: var(--c-surface-2); color: var(--c-ink); font: inherit; text-align: left; cursor: pointer; }
-body.zen-lobby .hq-live:hover { background: var(--c-hover); }
-body.zen-lobby .hq-live__t { font-weight: 700; overflow-wrap: anywhere; }
-body.zen-lobby .hq-live__m { font-size: var(--text-sm); color: var(--c-ink-2); }
+body.zen-lobby .hq-board .hq-live { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin-top: 6px; padding: 8px 12px; border: 0; border-radius: 12px; background: rgba(238,106,32,.16); color: var(--hb-ink-2); font: inherit; font-size: var(--text-sm); text-align: left; cursor: pointer; }
+body.zen-lobby .hq-board .hq-live::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--hb-hot); }
+body.zen-lobby .hq-board .hq-live:hover { background: rgba(238,106,32,.26); }
+body.zen-lobby .hq-board .hq-live:focus-visible { outline: 2px solid var(--hb-hot); outline-offset: 2px; }
+body.zen-lobby .hq-board .hq-live__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--hb-ink); }
+body.zen-lobby .hq-board .hq-live__m { flex: none; }
+body.zen-lobby .hq-board .hq-live__m::before { content: '· '; }
+body.zen-lobby .hub-more { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+body.zen-lobby .hq-chip { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 14px; border-radius: 999px; background: var(--c-surface); border: 1.5px solid var(--c-ink); color: var(--c-ink); font-weight: 800; text-decoration: none; transition: background-color var(--duration-fast); }
+body.zen-lobby .hq-chip .icon { flex: none; width: 22px; height: 22px; color: var(--c-brand-text); }
+body.zen-lobby .hq-chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.zen-lobby .hq-chip:hover { background: var(--c-fill); }
+body.zen-lobby .hq-chip:focus-visible { outline: 3px solid var(--c-brand); outline-offset: 2px; }
 
 /* One load reveal (rise 14px + fade, 80ms stagger). */
 @keyframes hq-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
@@ -474,6 +488,7 @@ body.zen-lobby .hq > :nth-child(4) { animation-delay: 80ms; }
 body.zen-lobby .hq > :nth-child(5) { animation-delay: 160ms; }
 @media (prefers-reduced-motion: reduce) {
   body.zen-lobby .hq > *, body.zen-lobby .hq-menu, body.zen-lobby .hch { animation: none; }
+  body.zen-lobby .hq-board__live i { animation: none; }
   body.zen-lobby .hq-ring { animation: none; border-top-color: var(--c-brand-light); border-color: var(--c-brand); }
   body.zen-lobby .hq-play:hover { transform: none; }
 }
@@ -481,7 +496,6 @@ body.zen-lobby .hq > :nth-child(5) { animation-delay: 160ms; }
 @media (max-width: 860px) {
   body.zen-lobby .hq { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   body.zen-lobby .hq-hello { gap: 8px 12px; }
-  body.zen-lobby .hq-hello .hub-more { display: none; }   /* #360: replaced by the labelled .hq-tiles after the room code */
   /* #362 F: the 4 links share ONE card, 4 equal columns (icon over label), hairline dividers. */
   body.zen-lobby .hq-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px; padding: 8px 4px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
   body.zen-lobby .hq-tile { display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 64px; padding: 4px 2px; border-radius: 12px; color: var(--c-ink); font-size: var(--text-sm); font-weight: 800; text-align: center; text-decoration: none; }
@@ -516,7 +530,6 @@ body.zen-lobby .hq > :nth-child(5) { animation-delay: 160ms; }
   body.zen-lobby a.hq-pulse__part[href] { color: var(--c-brand-text); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
   body.zen-lobby a.hq-pulse__part[href]:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; border-radius: 4px; }
   body.zen-lobby .hq-pulse__sep { width: 1px; height: 14px; background: var(--c-border); }
-  body.zen-lobby .hq-num b { font-size: 30px; }
   /* Phone order (B358 §7): sentence + Chơi nhanh first, code next; resume strip after them. */
   body.zen-lobby .hq > .hq-hello { order: 0; } body.zen-lobby .hq > .hnews { order: 1; }
   body.zen-lobby .hq > .hq-main { order: 2; } body.zen-lobby .hq > #home-mine-card { order: 3; } body.zen-lobby .hq > .hq-side { order: 4; }

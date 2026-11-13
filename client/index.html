@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=db200088" />
   <link rel="stylesheet" href="css/lobby.css?v=2bd69874" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
-  <link rel="stylesheet" href="css/shell.css?v=3dcd7aa2" />
+  <link rel="stylesheet" href="css/shell.css?v=09cb623c" />
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
   <link rel="stylesheet" href="css/platform.css?v=a2a363cd" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
@@ -42,14 +42,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=f1f3fe6a" />
+  <link rel="modulepreload" href="js/i18n.js?v=447e7fb3" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
   <link rel="modulepreload" href="js/lobby.js?v=a44c1b8d" />
   <link rel="modulepreload" href="js/private-chat.js?v=2a76e20c" />
   <link rel="modulepreload" href="js/tournaments.js?v=0901d155" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=47bdc761" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=825f6f6d" />
 
 </head>
 <body class="zen-lobby">
@@ -88,14 +88,7 @@
     <!-- #358 M4 "Câu lệnh" (DESIGN.md): greeting row → resume strip → sentence composer + Chơi nhanh → room code; right column = live counts. -->
     <div class="hq-hello">
       <span class="hq-hi" id="home-hello"></span>
-      <span class="hq-online" id="home-online" hidden></span>
-      <!-- Icon-only + aria-label + tooltip (user decision 2026-11-12, reverses ui-audit home F4). -->
-      <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
-        <a class="hub-ico" href="/puzzles" aria-label="Học" data-i18n-aria="shell.learn"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg></a>
-        <a class="hub-ico" href="/forum" aria-label="Diễn đàn" data-i18n-aria="home.forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg></a>
-        <a class="hub-ico" href="/index.html#tournaments" aria-label="Giải đấu" data-i18n-aria="tabs.tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg></a>
-        <a class="hub-ico" href="/clubs.html" aria-label="Hội nhóm" data-i18n-aria="lobby.clubs"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg></a>
-      </nav>
+      <span class="hq-online" id="home-online" hidden></span><!-- phones only since #366 (desktop: board row #home-n-online) -->
     </div>
     <div class="hnews" id="home-news" hidden></div>
     <div class="ppanel hp-mine" id="home-mine-card" hidden>
@@ -142,16 +135,21 @@
         <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
       </nav>
     </div>
+    <!-- #366 C "Bảng quán cờ": desktop only (hidden ≤860px, where .hq-pulse + .hq-tiles carry the same data/links). -->
     <div class="hq-side" id="home-stats" role="group" aria-label="Đang diễn ra" data-i18n-aria="home.side_aria">
-      <section class="hq-card" id="home-card-search">
-        <h2 class="hq-card__h" data-i18n="home.card_searching">Đang tìm trận</h2>
-        <p class="hq-num"><b id="home-n-search">–</b><span class="muted" id="home-n-search-l"></span></p>
-      </section>
-      <section class="hq-card" id="home-card-live">
-        <h2 class="hq-card__h" data-i18n="home.card_playing">Đang chơi</h2>
-        <p class="hq-num"><b id="home-n-live">–</b><span class="muted" id="home-n-live-l"></span></p>
+      <section class="hq-board" aria-labelledby="home-board-h">
+        <h2 class="hq-board__top"><span id="home-board-h" data-i18n="home.board_title">Bảng quán cờ</span><span class="hq-board__live"><i aria-hidden="true"></i><span data-i18n="home.board_live">Trực tiếp</span></span></h2>
+        <p class="hq-row hq-row--on"><b class="hq-dig" id="home-n-online">–</b><span class="hq-row__l"><span data-i18n="home.board_online">người đang online</span></span></p>
+        <p class="hq-row"><b class="hq-dig" id="home-n-search">–</b><span class="hq-row__l" id="home-n-search-l"></span></p>
+        <p class="hq-row"><b class="hq-dig" id="home-n-live">–</b><span class="hq-row__l" id="home-n-live-l"></span></p>
         <div id="home-live-one"></div>
       </section>
+      <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
+        <a class="hq-chip" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-chip" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-chip" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-chip" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+      </nav>
     </div>
   </section>
 
@@ -616,6 +614,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=3b91cb5f"></script>
+<script type="module" src="js/index-entry.js?v=a6e3bebb"></script>
 </body>
 </html>
