@@ -245,8 +245,15 @@ body.arena-room .game-controls .swap2-hint { padding: 10px 12px; border-radius: 
 body.arena-room .game-controls .swap2-choice { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; }
 body.arena-room .game-controls .swap2-choice .btn-game { min-height: 44px; }
 
-/* Above phones there is no minimized state: the toggle never shows (phone block re-enables it). */
-body.arena-room .rpanel-toggle { display: none; }
+/* #368 phone-only parts: the live stage, its dock and the sheet grab never show above 768px; the sheet wrapper is
+   transparent there, so the tabs stay children of .rpanel exactly as before. */
+body.arena-room .stage, body.arena-room .rdock, body.arena-room .rsheet__grab, body.arena-room .rsheet-scrim,
+body.arena-room .speech-layer, body.arena-room .tab-btn__label--phone, body.arena-room .tab-btn__icon--phone,
+body.arena-room .score-empty, body.arena-room .score-hero, body.arena-room .moves-grid,
+body.arena-room .chat-msg__av, body.arena-room .chat-msg__tag { display: none; }
+body.arena-room .rsheet { display: contents; }
+/* .tab-btn > .icon (above) sets display — out-specify it, or both icons show */
+body.arena-room .tab-btn > .tab-btn__icon--phone { display: none; }
 
 /* ── Desktop: rail docked to the viewport's right edge, collapsible ─────────
    The rail leaves the grid (fixed, full height under the nav); .room reserves its width as padding so the board
@@ -324,11 +331,6 @@ body.arena-room .rail-dock-toggle { display: none; }
   body.arena-room .board-area-shell { order: 2; width: 100%; margin: 0; }
   body.arena-room .seatcard--bottom { order: 3; }
   body.arena-room .game-controls { order: 4; padding: 5px 8px; width: 100%; margin: 0; } /* 5px: the minimized bar fits a 360×645 phone with no scroll */
-  /* Expanded fits the screen left under the tiles (flex:1 from the base rule; user 2026-10-11 "vừa khít màn
-     hình", was min 360px). 200px floor for short phones — there .room scrolls a little, the page never does. */
-  /* margin-top:auto in both states: flex-grow eats the free space when expanded (margin 0), and while room.js
-     animates the height the free space goes above the panel, so its bottom edge (the input) stays put. */
-  body.arena-room .rpanel { order: 5; min-height: 200px; flex-shrink: 1; border-radius: 0; margin-top: auto; }
   /* #218: game.css caps phone chat at 180px (zen-era). Here the panel's leftover height belongs to the
      messages; the cap left an empty band under the chat input (expanded, and minimized on tall phones). */
   body.arena-room .chat-messages { max-height: none; min-height: 0; }
@@ -349,40 +351,6 @@ body.arena-room .rail-dock-toggle { display: none; }
   body.arena-room .gboard { border-radius: 0; box-shadow: none; }
   body.arena-room .act { min-height: 52px; }
   body.arena-room .start-modal { position: absolute; }
-
-  /* #217 minimized panel: only the quick chat bar + ▲ toggle; expanded = tabs + messages (▼) */
-  body.arena-room .rpanel-toggle {
-    display: flex; align-items: center; justify-content: center;
-    width: 100%; min-height: 44px; padding: 0; border: 0; cursor: pointer;
-    background: var(--c-surface-2); color: var(--c-ink-2);
-    /* Always reachable (user 2026-10-11): when .room scrolls the expanded panel up under the stack, the ▼ bar
-       sticks right under my card instead of leaving with the tabs. */
-    position: sticky; top: calc(2 * var(--seatcard-h) + var(--board-h, 100vw)); z-index: 25;
-  }
-  /* overflow:hidden would make the panel the sticky toggle's scroll container (it never scrolls → no stick);
-     clip keeps the rounded/animated clipping without creating one. */
-  body.arena-room .rpanel { overflow: clip; }
-  body.arena-room .rpanel-toggle__tri {
-    width: 0; height: 0; border-left: 8px solid transparent; border-right: 8px solid transparent;
-    border-top: 0; border-bottom: 9px solid currentColor; /* ▲ */
-  }
-  /* aria-expanded (set at click), not the class (switches only when a collapse animation ends) → turns in sync */
-  body.arena-room .rpanel-toggle[aria-expanded="true"] .rpanel-toggle__tri { transform: rotate(180deg); } /* ▼ */
-  /* Minimized (user 2026-10-11): ▲ + the input bar only, no message lines. The panel docks at the screen bottom
-     (margin-top:auto) so the bar stays in thumb reach; on tall phones the leftover sits between the action tiles
-     and the bar. room.js animates the height between the two states (flex-basis + min-height, ~240ms). */
-  body.arena-room .rpanel--min { flex: none; min-height: 0; margin-top: auto; }
-  body.arena-room .rpanel--min .sidebar-tabs,
-  body.arena-room .rpanel--min .tab-content:not(#tab-chat),
-  body.arena-room .rpanel--min .chat-messages { display: none; }
-  body.arena-room .rpanel--min #tab-chat { display: flex; }
-  /* The input stays on the panel's bottom edge while the height animates (it doesn't ride the top edge). */
-  body.arena-room .rpanel--min .chat-panel { justify-content: flex-end; }
-  /* #329: the minimized panel is only --minbar-h (93px) tall, so the toasts (absolute, top:52px) hung off its bottom
-     edge: the chat bar was covered and the ✓/✕ of a draw/undo/time offer were clipped by overflow:clip. In flow
-     instead — the panel grows by the toast and nothing is covered. */
-  body.arena-room .rpanel--min .gtoasts { position: static; margin: 6px 8px 0; }
-  body.arena-room .rpanel-toggle__tri { transition: transform .24s cubic-bezier(.2, .8, .2, 1); }
 
   /* Sticky stack: opponent card + board + my card stay put inside the .room scroller (nav sits above it);
      tiles and the tab panel scroll underneath when they don't fit. --board-h is measured by room-ui.js
@@ -410,26 +378,18 @@ body.arena-room .rail-dock-toggle { display: none; }
   }
   body.arena-room:has(#chat-input:focus) .seatcard--top,
   body.arena-room:has(#chat-input:focus) .board-area-shell,
-  body.arena-room:has(#chat-input:focus) .seatcard--bottom,
-  body.arena-room:has(#chat-input:focus) .rpanel-toggle { position: relative; top: auto; }
-  /* Expanded (user 2026-10-11): the stack is NOT pinned — the page scrolls so chat can be long and Settings easy
-     to edit; the panel is at least a screen tall. aria-expanded (set at click) drives it, so minimizing re-pins
-     at once. The ▼ bar still sticks, at the very top of the scroller. */
-  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .seatcard--top,
-  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .board-area-shell,
-  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .seatcard--bottom { position: relative; top: auto; }
-  body.arena-room:has(#rpanel-toggle[aria-expanded="true"]) .rpanel-toggle { top: 0; }
-  body.arena-room .rpanel:not(.rpanel--min) { flex: none; min-height: calc(100dvh - var(--nav-h)); }
+  body.arena-room:has(#chat-input:focus) .seatcard--bottom { position: relative; top: auto; }
 }
 /* Every phone: the board never pushes the minimized bar off screen (iPhone 13 in Safari, 390×664: board 389px left
    the input 16px below the fold — #218 iOS check). Room for nav + 2 cards + tiles (52 + 2·5) + bar (28 + 49).
+   --minbar-h is the #368 dock (44px input + 2×6px padding + border; was the 93px ▲+input bar).
    svh: measured with the browser bars shown, so it never resizes while they hide/show. */
 @media (max-width: 768px) {
-  body.arena-room { --tiles-h: 62px; --minbar-h: 93px; }
+  body.arena-room { --tiles-h: 62px; --minbar-h: 57px; }
   body.arena-room .board-area-shell .board-area {
     width: min(100%, max(260px, calc(100svh - var(--nav-h) - 2 * var(--seatcard-h) - var(--tiles-h) - var(--minbar-h))));
   }
-  /* #327 touch targets >= 44px; --minbar-h = 44px toggle + 49px input bar */
+  /* #327 touch targets >= 44px */
   body.arena-room #btn-leave { min-width: 44px; min-height: 44px; }
   body.arena-room .chat-input { padding-top: 2px; padding-bottom: 2px; }
   body.arena-room .chat-input input, body.arena-room .chat-input button { min-height: 44px; }
@@ -437,9 +397,6 @@ body.arena-room .rail-dock-toggle { display: none; }
 }
 /* Only genuinely short screens (iPhone SE class) narrow the board further. svh, not dvh: the browser toolbar
    collapsing while scrolling must not resize the board (user: small when idle, full once scrolled). */
-@media (prefers-reduced-motion: reduce) {
-  body.arena-room .rpanel-toggle__tri { transition: none; }
-}
 @media (max-width: 768px) and (max-height: 600px) {
   body.arena-room .board-area-shell .board-area {
     width: min(100%, max(260px, calc(100svh - var(--nav-h) - 2 * var(--seatcard-h) - 200px)));
@@ -449,3 +406,226 @@ body.arena-room .rail-dock-toggle { display: none; }
 /* Chat input bar sits flush in the panel; the panel's own radius + overflow:hidden clip the corners
    (room.css gave it a zen-era bottom radius that showed as a notch against the panel). */
 body.arena-room .chat-input { border-radius: 0; }
+
+/* ── #368 Phones: "live stage" under the board (mockup features/room-mobile-panel, direction C) ──────────────
+   Column: opponent card · board · my card · action tiles · request toasts · STAGE (takes the leftover height) ·
+   DOCK (audience stack · chat input · 👏 · sheet button), sticky at the bottom of the .room scroller.
+   The tabs (Chat · Tỉ số · Nước đi · Cài đặt) are a fixed bottom sheet above the dock; the board never moves. */
+@media (max-width: 768px) {
+  body.arena-room { --rdock-h: 57px; --ease-out: cubic-bezier(.2, .8, .2, 1); }
+  body.arena-room .rpanel { display: contents; }
+  body.arena-room .gtoasts { order: 5; position: static; margin: 6px 8px 0; }
+
+  body.arena-room .rail > .stage {
+    order: 6; display: block; position: relative;
+    flex: 1 1 0; min-height: 0; overflow: hidden;
+  }
+  body.arena-room .stage__fly {
+    position: fixed; left: 8px; bottom: calc(var(--rdock-h) + 6px + env(safe-area-inset-bottom, 0px)); z-index: 35;
+    max-width: 74%; pointer-events: none;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  }
+  body.arena-room .fly {
+    display: flex; align-items: center; gap: 6px; max-width: 100%;
+    padding: 3px 10px 3px 3px; border-radius: 999px;
+    background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow);
+    font-size: 13px; line-height: 1.3;
+    animation: stage-rise .32s var(--ease-out) backwards;
+  }
+  body.arena-room .fly:not(:last-child) { opacity: .75; }
+  body.arena-room .fly:nth-last-child(3) { opacity: .45; }
+  body.arena-room .fly__text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  body.arena-room .fly__text b { font-weight: 800; }
+  body.arena-room .fly__av, body.arena-room .aud__av {
+    flex: none; display: grid; place-items: center; overflow: hidden;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--c-surface-2); color: var(--c-ink); font-size: 9px; font-weight: 800;
+  }
+  body.arena-room .stage__reacts { position: absolute; right: 12px; bottom: 0; width: 60px; height: 100%; pointer-events: none; }
+  body.arena-room .react {
+    position: absolute; bottom: 0; font-size: 22px; line-height: 1; opacity: 0;
+    animation: stage-float 1.8s var(--ease-out) forwards;
+  }
+
+  body.arena-room .rail > .rdock {
+    order: 7; display: flex; align-items: center; gap: 8px;
+    position: sticky; bottom: 0; z-index: 40;
+    min-height: var(--rdock-h);
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
+    background: var(--c-surface); border-top: 1px solid var(--c-border);
+  }
+  body.arena-room .rdock .chat-input { flex: 1; min-width: 0; padding: 0; margin: 0; border: 0; background: none; gap: 6px; }
+  body.arena-room .rdock .chat-input input { border-radius: 999px; padding: 0 14px; }
+  body.arena-room .rdock .chat-input button { border-radius: 50%; }
+  /* Mockup C has no send button at rest: it appears once there is text (Enter / the keyboard's Send also send) */
+  body.arena-room .rdock .chat-input:has(#chat-input:placeholder-shown) #btn-send { display: none; }
+  body.arena-room .stage__handle {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 1;
+    display: grid; place-items: center; width: 64px; height: 20px; padding: 0; border: 0; background: none; cursor: pointer;
+  }
+  body.arena-room .stage__handle span { width: 44px; height: 5px; border-radius: 3px; background: var(--c-border); }
+  body.arena-room .rdock__btn {
+    position: relative; flex: none; display: grid; place-items: center;
+    width: 44px; height: 44px; padding: 0; border-radius: 50%;
+    border: 1px solid var(--c-border); background: var(--c-surface-2); color: var(--c-ink-2);
+    font-size: 19px; cursor: pointer;
+  }
+  body.arena-room .rdock__btn .icon { width: 20px; height: 20px; }
+  body.arena-room .rdock__btn:active { transform: scale(.92); }
+  body.arena-room .rdock__btn[aria-expanded="true"] { border-color: var(--c-brand); color: var(--c-brand-text); background: var(--c-brand-light); }
+  body.arena-room .rdock__badge {
+    position: absolute; top: -3px; right: -3px; min-width: 18px; height: 18px; padding: 0 4px;
+    display: grid; place-items: center; border-radius: 9px;
+    background: var(--c-accent); color: var(--c-on-brand); font-size: 11px; font-weight: 800;
+  }
+  body.arena-room .rdock__badge[hidden] { display: none; }
+
+  /* Audience: avatar stack only (live dot = watching now); tap → names */
+  body.arena-room .aud {
+    position: relative; flex: none; display: flex; align-items: center;
+    min-height: 44px; padding: 0 2px; border: 0; background: none; cursor: pointer;
+  }
+  body.arena-room .aud[hidden] { display: none; }
+  body.arena-room .aud .aud__av { width: 28px; height: 28px; font-size: 9px; letter-spacing: -.02em; margin-left: -6px; border: 2px solid var(--c-surface); }
+  body.arena-room .aud .aud__av:nth-child(2) { margin-left: 0; }
+  body.arena-room .aud__more {
+    display: grid; place-items: center; width: 28px; height: 28px; margin-left: -9px; border-radius: 50%;
+    border: 2px solid var(--c-surface); background: var(--c-surface-2); color: var(--c-ink-2); font-size: 10.5px; font-weight: 800;
+  }
+  body.arena-room .aud__live {
+    position: absolute; left: 0; top: 6px; z-index: 1; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--c-error); border: 2px solid var(--c-surface);
+  }
+  body.arena-room .aud__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  body.arena-room .aud-pop {
+    position: absolute; left: 8px; bottom: calc(100% + 6px); z-index: 50;
+    width: min(280px, calc(100vw - 16px)); max-height: 50dvh; overflow: auto; padding: 12px;
+    background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-xl); box-shadow: var(--shadow-lg);
+    animation: stage-pop .18s var(--ease-out) both;
+  }
+  body.arena-room .aud-pop[hidden] { display: none; }
+  body.arena-room .aud-pop__title { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+  body.arena-room .aud-pop__title .icon { width: 16px; height: 16px; color: var(--c-ink-2); }
+  /* Mockup C: a grid of faces, the name under each */
+  body.arena-room .aud-pop__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px 4px; }
+  body.arena-room .aud-pop__list li { display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+  body.arena-room .aud-pop__list .aud__av { width: 36px; height: 36px; font-size: 12px; }
+  body.arena-room .aud-pop__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; color: var(--c-ink-2); }
+  body.arena-room .aud-pop__list .btn-kick { min-height: 24px; padding: 0 6px; font-size: 10.5px; }
+
+  /* Players' chat: speech bubble next to the speaker's seat card (fixed; never takes a tap meant for the board) */
+  body.arena-room .speech-layer { display: block; position: fixed; inset: 0; pointer-events: none; z-index: 60; }
+  body.arena-room.stage-sheet-open .speech-layer, body.arena-room.stage-sheet-open .stage__fly { display: none; }
+  body.arena-room .speech {
+    position: fixed; max-width: min(260px, 70vw); padding: 7px 12px; border-radius: 14px;
+    background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-lg);
+    font-size: 14px; line-height: 1.35; overflow-wrap: anywhere;
+    animation: stage-pop .3s var(--ease-out) backwards; transition: opacity .35s ease;
+  }
+  body.arena-room .speech::before {
+    content: ""; position: absolute; width: 12px; height: 12px; background: inherit; transform: rotate(45deg);
+  }
+  body.arena-room .speech--top::before { top: -5px; left: 18px; }
+  body.arena-room .speech--bottom { background: var(--c-brand); color: var(--c-on-brand); }
+  body.arena-room .speech--bottom::before { bottom: -5px; right: 30px; }
+  body.arena-room .speech--out { opacity: 0; }
+
+  /* The sheet: the tabs, above the dock */
+  body.arena-room .rsheet {
+    display: flex; flex-direction: column;
+    position: fixed; left: 0; right: 0; bottom: var(--rdock-h); z-index: 45;
+    height: min(62dvh, calc(100dvh - var(--nav-h) - var(--rdock-h) - 48px));
+    background: var(--c-surface); border-radius: 16px 16px 0 0; box-shadow: var(--shadow-lg);
+    transform: translateY(calc(100% + var(--rdock-h))); visibility: hidden;
+    transition: transform .26s var(--ease-out), visibility 0s .26s;
+  }
+  body.arena-room.stage-sheet-open .rsheet { transform: none; visibility: visible; transition: transform .26s var(--ease-out), visibility 0s; }
+  body.arena-room .rsheet__grab {
+    display: grid; place-items: center; flex: none; width: 100%; height: 22px; padding: 0; border: 0; background: none; cursor: pointer;
+  }
+  body.arena-room .rsheet__grab span { width: 40px; height: 5px; border-radius: 3px; background: var(--c-border-strong, var(--c-border)); }
+  body.arena-room .rsheet .tab-content--active { flex: 1; min-height: 0; overflow: auto; }
+  /* Mockup C sheet tabs: text-only pills, the active one filled */
+  body.arena-room .rsheet .sidebar-tabs { gap: 4px; padding: 2px 12px 8px; border-bottom: 0; }
+  body.arena-room .rsheet .tab-btn {
+    min-height: 40px; padding: 0 6px; border: 0; border-radius: 999px;
+    background: var(--c-fill); color: var(--c-ink-2); font-weight: 700;
+  }
+  body.arena-room .rsheet .tab-btn > .icon { display: none; }
+  body.arena-room .rsheet .tab-btn--active { background: var(--c-brand); color: var(--c-on-brand); border: 0; }
+  /* Chat lines: face + name (· người chơi) for others, mine on the right in brand green */
+  body.arena-room .rsheet .chat-messages { padding: 4px 14px 12px; }
+  body.arena-room .rsheet .chat-msg--other { flex-direction: row; align-items: flex-end; gap: 7px; max-width: 88%; }
+  body.arena-room .rsheet .chat-msg__av {
+    display: grid; place-items: center; flex: none; overflow: hidden;
+    width: 24px; height: 24px; border-radius: 50%; background: var(--c-surface-2); font-size: 9.5px; font-weight: 800;
+  }
+  body.arena-room .rsheet .chat-msg__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  body.arena-room .rsheet .chat-msg__bubble { max-width: none; padding: 6px 10px; border: 0; border-radius: 14px 14px 14px 4px; box-shadow: none; }
+  body.arena-room .rsheet .chat-msg--self .chat-msg__bubble { max-width: 88%; border-radius: 14px 14px 4px 14px; }
+  body.arena-room .rsheet .chat-msg__name { color: var(--c-ink-3); font-size: 11px; font-weight: 800; opacity: 1; }
+  body.arena-room .rsheet .chat-msg__tag { display: inline; font-weight: 600; }
+  body.arena-room .rsheet .chat-msg__text { font-size: 13.5px; line-height: 1.35; }
+  /* Tỉ số: big score between the two faces, result dots, one row per game */
+  body.arena-room #score-panel { display: none; }
+  body.arena-room .score-hero { display: block; padding: 4px 14px 12px; }
+  body.arena-room .score-hero:empty { display: none; }
+  body.arena-room .score-hero__top { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 6px 0 10px; }
+  body.arena-room .score-hero__p { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; max-width: 34%; }
+  body.arena-room .score-hero__av {
+    display: grid; place-items: center; overflow: hidden; width: 38px; height: 38px; border-radius: 50%;
+    background: var(--c-surface-2); font-size: 13px; font-weight: 800;
+  }
+  body.arena-room .score-hero__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  body.arena-room .score-hero__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
+  body.arena-room .score-hero__num { font-size: 40px; font-weight: 900; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+  body.arena-room .score-dots { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
+  body.arena-room .score-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-fill); border: 1px solid var(--c-border); }
+  body.arena-room .score-dot--r { background: var(--c-brand); border-color: var(--c-brand); }
+  body.arena-room .score-dot--l { background: var(--c-error); border-color: var(--c-error); }
+  body.arena-room .score-dot--d { background: var(--c-ink-3); border-color: var(--c-ink-3); }
+  body.arena-room .score-games { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  body.arena-room .score-games td { padding: 7px 4px; border-top: 1px solid var(--c-border); }
+  body.arena-room .score-games__w { font-weight: 800; color: var(--c-brand-text); }
+  body.arena-room .score-games__now td { color: var(--c-ink-3); }
+  body.arena-room #score-hero:empty ~ .score-empty { display: block; margin: 24px 16px; text-align: center; color: var(--c-ink-3); font-size: 14px; }
+  /* Nước đi: one cell per move, three per row (the paired list stays for desktop) */
+  body.arena-room #moves-list { display: none; }
+  body.arena-room .moves-grid {
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px;
+    list-style: none; margin: 0; padding: 4px 14px 12px; font-size: 13px; font-variant-numeric: tabular-nums;
+  }
+  body.arena-room .moves-grid li { display: flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 4px; }
+  body.arena-room .moves-grid em { font-style: normal; color: var(--c-ink-3); min-width: 2.2em; }
+  body.arena-room .moves-grid__pc { width: 14px; height: 14px; flex: none; }
+  body.arena-room .moves-grid__cur { background: var(--c-brand-light); color: var(--c-brand-text); font-weight: 800; }
+  body.arena-room .moves-grid .moves__empty { grid-column: 1 / -1; color: var(--c-ink-3); }
+  body.arena-room .rsheet #tab-chat .chat-panel { height: 100%; }
+  body.arena-room .rsheet-scrim {
+    display: block; position: fixed; left: 0; right: 0; top: var(--nav-h); bottom: var(--rdock-h); z-index: 44;
+    background: var(--c-scrim); animation: stage-fade .26s var(--ease-out) both;
+  }
+  body.arena-room .rsheet-scrim[hidden] { display: none; }
+
+  /* "Người xem" tab → "Tỉ số" on phones: spectators moved to the dock, an empty score gets a line instead of nothing */
+  body.arena-room .tab-btn__label--desk, body.arena-room .tab-btn > .tab-btn__icon--desk, body.arena-room #users-panel { display: none; }
+  body.arena-room .tab-btn__label--phone { display: inline; }
+  body.arena-room .tab-btn > .tab-btn__icon--phone { display: inline-block; }
+
+  /* Keyboard up: the dock rides with the input (stack already released by the :focus rule above) */
+  body.arena-room:has(#chat-input:focus) .rail > .stage { flex-basis: 0; }
+}
+@keyframes stage-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes stage-pop { from { opacity: 0; transform: translateY(6px) scale(.95); } to { opacity: 1; transform: none; } }
+@keyframes stage-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes stage-float {
+  0% { opacity: 0; transform: translate(0, 0) scale(.6); }
+  15% { opacity: 1; transform: translate(0, -30px) scale(1); }
+  100% { opacity: 0; transform: translate(var(--drift, 0px), -180px) scale(1.1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  body.arena-room .fly, body.arena-room .speech, body.arena-room .aud-pop, body.arena-room .rsheet-scrim { animation: none; }
+  body.arena-room .rsheet, body.arena-room.stage-sheet-open .rsheet { transition: none; }
+  body.arena-room .react { animation: stage-fade-out 1.2s linear forwards; }
+}
+@keyframes stage-fade-out { from { opacity: 1; } to { opacity: 0; } }

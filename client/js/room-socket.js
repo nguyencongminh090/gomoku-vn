@@ -240,6 +240,11 @@
     ChatUI.appendChatMessage(msg);
   });
 
+  // #368: someone else tapped 👏 (the server skips the sender, who already played it).
+  client.on('room:react', (data) => {
+    if (window.RoomStage) window.RoomStage.onReact(data);
+  });
+
   // Rating change after a ranked game (TODO.md #182). Everyone in the room
   // gets the same payload; each client shows only its own line.
   client.on('rating:update', (data) => {

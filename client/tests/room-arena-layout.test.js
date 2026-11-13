@@ -58,9 +58,9 @@ describe('room.html structure', () => {
     expect(document.getElementById('quick-chat-bar')).toBeNull();
   });
 
-  test('the rail reads opponent card · panel · actions · your card', () => {
+  test('the rail reads opponent card · panel · actions · your card (+ #368 phone-only stage and dock)', () => {
     const kids = [...document.querySelector('.rail').children].map(e => e.id || e.className);
-    expect(kids).toEqual(['seatcard-top', 'rpanel', 'game-controls', 'seatcard-bottom']);
+    expect(kids).toEqual(['seatcard-top', 'rpanel', 'game-controls', 'seatcard-bottom', 'stage', 'rdock']);
   });
 
   test('request + confirm areas live in the panel toasts, never inside the board area', () => {
@@ -83,8 +83,9 @@ describe('room.html structure', () => {
     const mobile = ARENA_CSS.slice(ARENA_CSS.indexOf('@media (max-width: 768px)'));
     expect(mobile).toMatch(/\.rail \{ display: contents; \}/);
     const order = (sel) => Number((mobile.match(new RegExp(sel.replace('.', '\\.') + ' \\{[^}]*order: (\\d)')) || [])[1]);
-    expect([order('.seatcard--top'), order('.board-area-shell'), order('.seatcard--bottom'), order('.game-controls'), order('.rpanel')])
-      .toEqual([1, 2, 3, 4, 5]);
+    expect([order('.seatcard--top'), order('.board-area-shell'), order('.seatcard--bottom'), order('.game-controls'), order('.gtoasts'), order('.rail > .stage'), order('.rail > .rdock')])
+      .toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(mobile).toMatch(/body\.arena-room \.rpanel \{ display: contents; \}/);
   });
 });
 
@@ -132,9 +133,9 @@ describe('start modal (§B36)', () => {
   });
 });
 
-describe('request toasts on a minimized phone panel (#329)', () => {
-  test('minimized: toasts are in flow, not absolute over the 93px panel (covered chat bar, clipped ✓/✕)', () => {
-    const phone = ARENA_CSS.slice(ARENA_CSS.indexOf('@media (max-width: 768px) {\n  body.arena-room { --nav-h: 48px; }'));
-    expect(/\.rpanel--min \.gtoasts\s*\{[^}]*position:\s*static/.test(phone)).toBe(true);
+describe('request toasts on phones (#329, kept by #368)', () => {
+  test('toasts are in flow above the stage, never absolute over the dock (covered chat bar, clipped ✓/✕)', () => {
+    const phone = ARENA_CSS.slice(ARENA_CSS.indexOf('#368 Phones'));
+    expect(/body\.arena-room \.gtoasts \{ order: 5; position: static;/.test(phone)).toBe(true);
   });
 });

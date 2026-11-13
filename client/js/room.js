@@ -168,81 +168,9 @@ if (chatInput && !document.body.dataset.roomKeyboardBound) {
 }
 
 // ---------------------------------------------------------------------------
-// Phone panel: minimized (quick chat bar) <-> expanded (tabs + messages). #217
-// The toggle is display:none above 768px, so the class is harmless on desktop.
+// Phone panel: the #217 minimize/expand toggle is gone (#368) — on phones the tabs open as a bottom sheet from
+// the live-stage dock (room-stage.js), so the board, clocks and chat bar never move.
 // ---------------------------------------------------------------------------
-const PANEL_MIN_KEY = 'gvn_room_panel_min';
-const PANEL_ANIM_MS = 240;
-// Animate the panel height between the two states (FLIP: measure, switch, measure, play old → new). The panel
-// is a flex item (flex-basis 0 + min-height 360 when expanded), so flex-basis AND min/max-height are animated —
-// height alone is ignored/clamped. While it runs, the inner column is pinned at the EXPANDED layout and anchored
-// to the panel's bottom (justify-content:flex-end), so the input bar rides the bottom edge and never jumps out of
-// view; the overflow above is clipped. Expand switches the class first; collapse keeps the expanded content
-// until the end (lines fade out), then switches. Skipped on desktop (toggle hidden), for reduced motion, and
-// where Element.animate is missing.
-function animatePanelSwitch(panel, btn, min) {
-  const apply = () => panel.classList.toggle('rpanel--min', min);
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce || typeof panel.animate !== 'function' || getComputedStyle(btn).display === 'none') { apply(); return; }
-  const from = panel.getBoundingClientRect().height; // mid-flight this is the animated size
-  if (panel._gvnAnim) panel._gvnAnim.cancel(); // its cleanup lands the previous target state
-  apply();
-  const to = panel.getBoundingClientRect().height;
-  if (!from || !to || Math.abs(from - to) < 1) return;
-  if (min) panel.classList.remove('rpanel--min'); // collapse: keep showing the expanded content while shrinking
-  const pane = [...panel.querySelectorAll('.tab-content')].find((el) => getComputedStyle(el).display !== 'none');
-  const kids = [...panel.children];
-  const paneH = pane ? pane.getBoundingClientRect().height : 0;
-  panel.style.justifyContent = 'flex-end';
-  kids.forEach((el) => { el.style.flexShrink = '0'; });
-  if (pane && paneH) pane.style.flex = '0 0 ' + paneH + 'px';
-  const opts = { duration: PANEL_ANIM_MS, easing: 'cubic-bezier(.2, .8, .2, 1)' };
-  const anim = panel.animate([
-    { flexBasis: from + 'px', flexGrow: 0, flexShrink: 0, minHeight: from + 'px', maxHeight: from + 'px' },
-    { flexBasis: to + 'px', flexGrow: 0, flexShrink: 0, minHeight: to + 'px', maxHeight: to + 'px' },
-  ], opts);
-  panel._gvnAnim = anim;
-  const fade = panel.querySelectorAll(min ? '.chat-messages, .sidebar-tabs' : '.sidebar-tabs, .tab-content--active');
-  const fades = [...fade].map((el) => el.animate(min ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 0 }, { opacity: 1 }], opts));
-  anim.onfinish = anim.oncancel = () => {
-    if (panel._gvnAnim !== anim) return;
-    panel._gvnAnim = null;
-    fades.forEach((a) => a.cancel());
-    panel.style.justifyContent = '';
-    kids.forEach((el) => { el.style.flexShrink = ''; });
-    if (pane) pane.style.flex = '';
-    apply();
-  };
-}
-function setPanelMinimized(min, animate) {
-  const panel = document.querySelector('.rpanel');
-  const btn = document.getElementById('rpanel-toggle');
-  if (!panel || !btn) return;
-  if (animate) animatePanelSwitch(panel, btn, min);
-  else panel.classList.toggle('rpanel--min', min);
-  btn.setAttribute('aria-expanded', String(!min));
-  const label = t(min ? 'room.panel_expand' : 'room.panel_collapse');
-  btn.title = label;
-  btn.setAttribute('aria-label', label);
-  try { localStorage.setItem(PANEL_MIN_KEY, min ? '1' : '0'); } catch (_) { /* private mode */ }
-  if (!min && chatMessages) chatMessages.scrollTop = chatMessages.scrollHeight;
-  // Phone: the expanded panel starts below the stack and .room is the only scroller, so bring the input into view.
-  if (!min && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) {
-    const reveal = () => panel.scrollIntoView({ block: 'end' });
-    if (animate) setTimeout(reveal, PANEL_ANIM_MS + 20); else reveal();
-  }
-}
-if (!document.body.dataset.roomPanelToggleBound) {
-  document.body.dataset.roomPanelToggleBound = '1';
-  const toggle = document.getElementById('rpanel-toggle');
-  let stored = null;
-  try { stored = localStorage.getItem(PANEL_MIN_KEY); } catch (_) { /* ignore */ }
-  setPanelMinimized(stored !== '0'); // default: minimized — the board stays the focus
-  if (toggle) toggle.addEventListener('click', () => {
-    // aria-expanded, not the class: mid-collapse the class still says expanded until the animation ends
-    setPanelMinimized(toggle.getAttribute('aria-expanded') === 'true', true);
-  });
-}
 // Desktop: the rail is docked to the viewport's right edge; this collapses it (CSS keys off body.rail-collapsed).
 const RAIL_COLLAPSED_KEY = 'gvn_room_rail_collapsed';
 const RAIL_TABLET_MQ = '(min-width: 769px) and (max-width: 1024px)';
@@ -267,7 +195,7 @@ if (!document.body.dataset.roomRailDockBound) {
   setRailCollapsed(stored === null ? tablet : stored === '1', false);
   if (dock) dock.addEventListener('click', () => setRailCollapsed(!document.body.classList.contains('rail-collapsed')));
 }
-window.RoomPanel = { setMinimized: setPanelMinimized, setRailCollapsed };
+window.RoomPanel = { setRailCollapsed };
 
 // ---------------------------------------------------------------------------
 // Leave room
