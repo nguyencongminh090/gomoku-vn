@@ -30,7 +30,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=db200088" />
   <link rel="stylesheet" href="css/lobby.css?v=2bd69874" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
-  <link rel="stylesheet" href="css/shell.css?v=f5a35c27" />
+  <link rel="stylesheet" href="css/shell.css?v=3dcd7aa2" />
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
   <link rel="stylesheet" href="css/platform.css?v=a2a363cd" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
@@ -41,14 +41,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=e9bc586e" />
+  <link rel="modulepreload" href="js/i18n.js?v=2cf31da7" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
   <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
   <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
   <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=8aef2997" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=c10952a2" />
 
 </head>
 <body class="zen-lobby">
@@ -115,6 +115,13 @@
           <div class="pactions" id="qm-actions"></div>
         </div>
       </div>
+      <!-- #362 F: phones only (≤860px) — the two count cards become this one line under the play buttons; desktop keeps #home-stats. -->
+      <p class="hq-pulse" id="home-pulse">
+        <span class="hq-pulse__dot" aria-hidden="true"></span>
+        <span class="hq-pulse__part" id="home-pulse-search"><b>–</b><span data-i18n="home.pulse_searching">người đang tìm trận</span></span>
+        <span class="hq-pulse__sep" aria-hidden="true"></span>
+        <a class="hq-pulse__part" id="home-pulse-live"><b>–</b><span data-i18n="home.pulse_playing">ván đang chơi</span></a>
+      </p>
       <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
       <p class="hq-or" data-i18n="home.or_code">hoặc vào phòng bằng mã</p>
       <form class="hq-code" id="home-code" novalidate>
@@ -599,6 +606,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=630121da"></script>
+<script type="module" src="js/index-entry.js?v=72254280"></script>
 </body>
 </html>

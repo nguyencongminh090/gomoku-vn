@@ -433,6 +433,8 @@ body.zen-lobby .hch__more { min-height: 44px; padding: 0; border: 0; background:
 
 /* #360 N2: labelled tiles for Học / Diễn đàn / Giải đấu / Câu lạc bộ — phones only (desktop keeps the greeting-row icons). */
 body.zen-lobby .hq-tiles { display: none; }
+/* #362 F: phone status line for the counts (desktop keeps the right-column cards). */
+body.zen-lobby .hq-pulse { display: none; }
 
 /* Room code */
 body.zen-lobby .hq-or { display: flex; align-items: center; gap: 14px; margin: 34px 0 16px; font-size: var(--text-sm); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
@@ -480,19 +482,22 @@ body.zen-lobby .hq > :nth-child(5) { animation-delay: 160ms; }
   body.zen-lobby .hq { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   body.zen-lobby .hq-hello { gap: 8px 12px; }
   body.zen-lobby .hq-hello .hub-more { display: none; }   /* #360: replaced by the labelled .hq-tiles after the room code */
-  body.zen-lobby .hq-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 22px; }
-  body.zen-lobby .hq-tile { display: flex; align-items: center; gap: 10px; min-height: 52px; box-sizing: border-box; padding: 0 14px; border-radius: 14px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); color: var(--c-ink); font-weight: 800; text-decoration: none; }
-  body.zen-lobby .hq-tile .icon { flex: none; width: 22px; height: 22px; color: var(--c-brand-text); }
+  /* #362 F: the 4 links share ONE card, 4 equal columns (icon over label), hairline dividers. */
+  body.zen-lobby .hq-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 22px; padding: 8px 4px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
+  body.zen-lobby .hq-tile { display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 64px; padding: 4px 2px; border-radius: 12px; color: var(--c-ink); font-size: var(--text-sm); font-weight: 800; text-align: center; text-decoration: none; }
+  body.zen-lobby .hq-tile + .hq-tile { position: relative; }
+  body.zen-lobby .hq-tile + .hq-tile::before { content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 1px; background: var(--c-border); }
+  body.zen-lobby .hq-tile .icon { width: 26px; height: 26px; color: var(--c-brand-text); }
   body.zen-lobby .hq-tile:active { background: var(--c-fill); }
   body.zen-lobby .hq-tile:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
   body.zen-lobby .hq-q { font-size: 30px; }
   /* Listbox → bottom sheet above the tab bar; the shadow doubles as the scrim. */
   body.zen-lobby .hq-menu { position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; width: auto; max-width: none; margin: 0; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; box-shadow: 0 0 0 100vmax rgba(0,0,0,.45); }
   body.zen-lobby .hq-go { margin-top: 18px; min-height: 64px; }
-  body.zen-lobby .hq-play { width: 100%; justify-content: center; min-height: 64px; font-size: 22px; }
+  body.zen-lobby .hq-play { width: 100%; justify-content: flex-start; padding: 0 20px 0 14px; min-height: 64px; font-size: 22px; }
   body.zen-lobby .hq-go { gap: 10px; }
-  body.zen-lobby .hq-chal { width: 100%; justify-content: center; min-height: 56px; font-size: 20px; }
-  body.zen-lobby .hq-chal__disc { width: 36px; height: 36px; }
+  body.zen-lobby .hq-chal { width: 100%; justify-content: flex-start; padding: 0 20px 0 12px; min-height: 64px; font-size: 22px; }
+  body.zen-lobby .hq-chal__disc { width: 46px; height: 46px; }
   body.zen-lobby .hq-search { display: flex; width: 100%; min-height: 64px; gap: 10px; padding: 6px 8px 6px 16px; font-size: var(--text-sm); }
   body.zen-lobby .hq-search__text { flex: 1; min-width: 0; }
   body.zen-lobby #qm-actions .hq-cancel { padding: 0 14px; }
@@ -502,10 +507,17 @@ body.zen-lobby .hq > :nth-child(5) { animation-delay: 160ms; }
   body.zen-lobby .hq-code__box { width: 48px; height: 60px; font-size: 28px; border-radius: 14px; }
   body.zen-lobby .hq-enter { min-height: 60px; padding: 0 14px; font-size: var(--text-md); }   /* # + 3 boxes + Vào phòng on one row at 375 */
   body.zen-lobby .hq-list { width: 100%; margin: 0; }
-  body.zen-lobby .hq-side { grid-template-columns: 1fr 1fr; padding: 0; }
+  body.zen-lobby .hq > .hq-side { display: none; }   /* #362: counts live in .hq-pulse on phones */
+  body.zen-lobby .hq-pulse { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 12px 4px 0; font-size: var(--text-sm); color: var(--c-ink-2); }
+  body.zen-lobby .hq-pulse__dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c-state-playing); }
+  body.zen-lobby .hq-pulse__part { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; color: inherit; text-decoration: none; }
+  body.zen-lobby .hq-pulse__part b { font-size: var(--text-md); font-weight: 900; color: var(--c-ink); font-variant-numeric: tabular-nums; }
+  body.zen-lobby .hq-pulse__part b.is-zero { color: var(--c-ink-2); }
+  body.zen-lobby a.hq-pulse__part[href] { color: var(--c-brand-text); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  body.zen-lobby a.hq-pulse__part[href]:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; border-radius: 4px; }
+  body.zen-lobby .hq-pulse__sep { width: 1px; height: 14px; background: var(--c-border); }
   body.zen-lobby .hq-num b { font-size: 30px; }
   /* Phone order (B358 §7): sentence + Chơi nhanh first, code next; resume strip after them. */
   body.zen-lobby .hq > .hq-hello { order: 0; } body.zen-lobby .hq > .hnews { order: 1; }
   body.zen-lobby .hq > .hq-main { order: 2; } body.zen-lobby .hq > #home-mine-card { order: 3; } body.zen-lobby .hq > .hq-side { order: 4; }
 }
-@media (max-width: 380px) { body.zen-lobby .hq-side { grid-template-columns: 1fr; } }

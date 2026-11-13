@@ -787,3 +787,44 @@ describe('#360 phone links → labelled tiles after the room code', () => {
     expect(phone).toMatch(/\.hq-tiles \{ display: grid;/);
   });
 });
+
+describe('#362 phone: counts as one status line, links in one card', () => {
+  const part = (id) => [...document.getElementById(id).children].map((n) => n.textContent);
+  it('line sits right after .hq-go with "–" placeholders before data (B261: no reflow)', async () => {
+    await boot('/index.html');
+    const p = document.getElementById('home-pulse');
+    expect(p.previousElementSibling.classList.contains('hq-go')).toBe(true);
+    expect(p.querySelectorAll('b')).toHaveLength(2);
+    expect([...p.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['–', '–']);
+  });
+
+  it('renders the same counts as the cards (no ETA — #qm-line shows it); "M ván đang chơi" links to Phòng › Quan sát', async () => {
+    await boot('/index.html', { ...EMPTY, stats: { online: 9, playing: 3, searching: 2 }, queueEta: { 'caro|auto': 20 } });
+    expect(part('home-pulse-search')).toEqual(['2', 'home.pulse_searching']);
+    expect(part('home-pulse-live')).toEqual(['3', 'home.pulse_playing']);
+    const live = document.getElementById('home-pulse-live');
+    expect(live.getAttribute('href')).toBe('#rooms');
+    const tab = document.querySelector('#room-tabs [data-room-tab="watch"]');
+    const spy = jest.fn();
+    tab.addEventListener('click', spy);
+    live.click();
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('zero counts: de-emphasised numbers, the playing part is plain text (no href)', async () => {
+    await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 }, queueEta: { 'caro|auto': 20 } });
+    expect(part('home-pulse-search')).toEqual(['0', 'home.pulse_searching']);
+    const live = document.getElementById('home-pulse-live');
+    expect(live.hasAttribute('href')).toBe(false);
+    expect([...document.querySelectorAll('#home-pulse b')].every((b) => b.classList.contains('is-zero'))).toBe(true);
+  });
+
+  it('CSS: line hidden on desktop; ≤860px shows it, hides the count cards, and lays the 4 links in one 4-column card', () => {
+    const css = read('css/shell.css');
+    expect(css).toMatch(/^body\.zen-lobby \.hq-pulse \{ display: none; \}/m);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.hq > \.hq-side \{ display: none; \}/);
+    expect(phone).toMatch(/\.hq-pulse \{ display: flex;/);
+    expect(phone).toMatch(/\.hq-tiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  });
+});
