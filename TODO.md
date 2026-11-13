@@ -85,3 +85,4 @@ in the detail file / fix-log).
 - **#369.** Room desktop: "Sân khấu" 3-column stage (follows #368) `[Model: Opus 5]` — [detail](docs/todo/B369-room-desktop-stage.md)
 - **#370.** Bạn bè page redesign S3 "Trò chuyện": chat-first, presence, game cards, profile pane `[Model: Opus 5]` — [detail](docs/todo/B370-social-chat-first.md)
 - **#371.** Lobby DM window read leaves the bell stale until the 60 s poll `[Model: Sonnet 5]` — [detail](docs/todo/B371-lobby-dm-read-stale-bell.md)
+- **#373.** Room Khán giả lists viewers who left the table page (lobby/home/closed tab) `[Model: Opus 5]` — [detail](docs/todo/B373-spectators-watching-only.md)

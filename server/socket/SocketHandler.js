@@ -324,6 +324,12 @@ function init(io) {
       const existingRoom = roomManager.getRoomByUser(user.userId);
       if (existingRoom) {
         socket.join(existingRoom.roomId);
+        // #373: only the room page (auth.roomId, set by room-socket.js on room:joined) puts the member back
+        // to watching. Any other page (lobby, home…) of a member who never left: present on the site, not
+        // at the table — 'away', so the room's spectator list drops them. A fresh room-page load has no
+        // auth.roomId yet; its room:join (LobbyHandler) marks it active right after.
+        const onRoomPage = handshakeAuth.roomId === existingRoom.roomId;
+        if (onRoomPage) (socket.data || (socket.data = {})).roomPageId = existingRoom.roomId;
 
         // A fresh connection replacing one lost during an empty-room/spectator
         // grace window (see DisconnectHandler.js) left this user's own entry
@@ -331,9 +337,12 @@ function init(io) {
         // tell the room's other occupants before this reconnecter's own
         // `room:joined` payload is built, so it reflects 'active' too.
         const reconnectedUser = existingRoom.users.get(user.userId);
-        if (reconnectedUser && reconnectedUser.presence === 'disconnected') {
-          reconnectedUser.presence = 'active';
-          broadcastRoomUpdate(io, existingRoom);
+        if (reconnectedUser) {
+          const next = onRoomPage ? (reconnectedUser.presence === 'disconnected' ? 'active' : reconnectedUser.presence) : 'away';
+          if (next !== reconnectedUser.presence) {
+            reconnectedUser.presence = next;
+            broadcastRoomUpdate(io, existingRoom);
+          }
         }
 
         // Shared with game:resync (TODO.md #152) so both rebuild paths hand
@@ -450,6 +459,7 @@ function rejoinOnReconnect(io, socket, roomId) {
   }
   socket.leave('lobby');
   socket.join(roomId);
+  (socket.data || (socket.data = {})).roomPageId = roomId; // #373
   socket.emit('room:joined', buildRoomStatePayload(result.room));
   broadcastRoomUpdate(io, result.room);
   broadcastLobbyUpdate(io);

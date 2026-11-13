@@ -137,7 +137,10 @@ function register(io, socket) {
     if (sessions.get(user.userId) !== socket) return;
     const presence = payload.presence === 'away' ? 'away' : 'active';
     setUserPresence(user.userId, presence);
-    const result = roomManager.setPresence(user.userId, presence);
+    // #373: the room member is "watching" only while this (their single) socket is the room page of that
+    // room. Any other page (lobby, home…) reports its own visibility, which says nothing about the table.
+    const onRoomPage = !!socket.data && socket.data.roomPageId === roomManager.getRoomIdByUser(user.userId);
+    const result = roomManager.setPresence(user.userId, onRoomPage ? presence : 'away');
     if (result.error) return; // not in a room: the site-wide state above is all there is
     if (result.changed === false) return; // repeat report: no room-wide fan-out
     broadcastRoomUpdate(io, result.room);
