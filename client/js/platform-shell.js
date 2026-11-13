@@ -118,6 +118,8 @@
     },
     target: (n) => notifTarget(n),
     markRead: (id) => markRead(id),
+    /** Refetch now — e.g. reading a DM thread deletes its `dm` row server-side; don't wait for the 60 s poll. */
+    refresh: () => refreshBell(),
   };
 
   function notifTarget(n) {
@@ -158,7 +160,7 @@
 
   function markRead(id) {
     fetch('/api/notifications/read', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST', credentials: 'same-origin', keepalive: true, // the click also navigates away: don't let unload abort it
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(id == null ? {} : { id }),
     }).then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d) return;

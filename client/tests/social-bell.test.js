@@ -252,6 +252,40 @@ describe('social page (#370 chat-first)', () => {
       expect(document.getElementById('sc-notifs-view').hidden).toBe(true);
       expect(location.hash).toBe('');
     });
+
+    it('the read POST uses keepalive: a row that navigates away must not abort it (stayed unread)', async () => {
+      const opts = [];
+      location.hash = '#notifs';
+      await bootPage({ 'GET /api/notifications': () => json({ unread: 1, items: [N(3, 'friend_request')] }), // fresh: markRead mutates items
+        'POST /api/notifications/read': (o) => { opts.push(o); return json({ unread: 0 }); } });
+      rows()[0].addEventListener('click', (e) => e.preventDefault());
+      rows()[0].click();
+      await tick();
+      expect(opts[0].keepalive).toBe(true);
+    });
+
+    // Reading the thread deletes the `dm` bell row server-side; the bell + this view used to keep it until the 60 s poll.
+    it.each([
+      ['conversation has unread', 2],
+      ['conversation already 0 but the bell still holds the dm row', 0],
+    ])('opening a DM thread refreshes the bell at once (%s)', async (_, convUnread) => {
+      const conv = { with: P('bob'), last: { text: 'hi', mine: false, at: new Date().toISOString() }, unread: convUnread };
+      let read = false;
+      const dmN = { ...N(7, 'dm'), payload: { from: { username: 'bob', displayName: 'BOB' } } };
+      location.hash = '#notifs';
+      await bootPage({
+        'GET /api/notifications': () => json(read ? { unread: 0, items: [] } : { unread: 1, items: [dmN] }),
+        'GET /api/dm': () => json({ conversations: [{ ...conv, unread: read ? 0 : convUnread }] }),
+        'GET /api/dm/bob': () => json({ with: P('bob'), messages: [] }),
+        'POST /api/dm/bob/read': () => { read = true; return json({ unread: 0 }); },
+      });
+      expect(badge().hidden).toBe(false);
+      expect(rows()[0].querySelector('.pdot--on')).not.toBeNull();
+      await fire('#dm=bob');
+      expect(read).toBe(true);
+      expect(badge().hidden).toBe(true);
+      expect(document.querySelector('#sc-notifs .pdot--on')).toBeNull();
+    });
   });
 
   describe('challenges', () => {
