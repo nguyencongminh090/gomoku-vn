@@ -275,9 +275,14 @@
   // the server treats "present" as a union, so the two never disagree.
   let beatTimer = null;
   let beatAway = null;
-  function beat(force) {
+  let edgeTimer = null;
+  // mode: 'first' always sends; 'tick' = the 20s heartbeat (silent once away was reported);
+  // 'edge' = focus/blur/visibility — sends only when active/away actually flipped (the server
+  // rate-limits per member, and a 429 would silently drop us offline).
+  function beat(mode) {
     const away = document.hidden || !document.hasFocus();
-    if (!force && away === beatAway && away) return; // already told them we're away; stay quiet
+    if (mode === 'edge' && away === beatAway) return;
+    if (mode === 'tick' && away && beatAway === true) return;
     beatAway = away;
     fetch('/api/presence', {
       method: 'POST', credentials: 'same-origin', keepalive: true,
@@ -288,9 +293,10 @@
   function startPresenceBeat() {
     if (beatTimer) return;
     // Not on the page-load critical path (B269: one nav request): first beat shortly after load.
-    setTimeout(() => beat(true), 3000);
-    beatTimer = setInterval(() => beat(false), 20000);
-    const edge = () => beat(true);
+    setTimeout(() => beat('first'), 3000);
+    beatTimer = setInterval(() => beat('tick'), 20000);
+    // blur + visibilitychange fire together on a tab switch: coalesce into one report.
+    const edge = () => { clearTimeout(edgeTimer); edgeTimer = setTimeout(() => beat('edge'), 250); };
     document.addEventListener('visibilitychange', edge);
     window.addEventListener('blur', edge);
     window.addEventListener('focus', edge);

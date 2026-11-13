@@ -510,3 +510,43 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(spectatorGraceCallOrder).toBeLessThan(rejoinCheckCallOrder);
   });
 });
+
+// #372 review: SocketHandler wires two different "online" predicates — they must not both be presence.
+describe('presence hooks wiring (#372 review)', () => {
+  const state = require('../socket/state');
+  let challengeHooks, dmHooks;
+  beforeAll(() => {
+    const Challenge = require('../managers/ChallengeService');
+    const Dm = require('../managers/DmService');
+    const c = jest.spyOn(Challenge, 'setHooks');
+    const d = jest.spyOn(Dm, 'setHooks');
+    init(makeIo());
+    challengeHooks = c.mock.calls.at(-1)[0];
+    dmHooks = d.mock.calls.at(-1)[0];
+    c.mockRestore(); d.mockRestore();
+  });
+  beforeEach(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
+  afterAll(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
+  const u = { userId: 'p1', displayName: 'P1', isGuest: false };
+
+  test('challenge seat check = has a socket: an AWAY room tab keeps its seat', () => {
+    sessions.set('p1', { user: u });
+    state.awayUsers.add('p1');
+    expect(challengeHooks.isOnline('p1')).toBe(true);
+  });
+
+  test('challenge seat check: a heartbeat from a socket-less page is not a socket in the room', () => {
+    state.heartbeats.set('p1', { at: Date.now(), away: false, user: u });
+    expect(challengeHooks.isOnline('p1')).toBe(false);
+  });
+
+  test('DM live-push = a visible socket: heartbeat-only or away recipient gets the bell entry', () => {
+    state.heartbeats.set('p1', { at: Date.now(), away: false, user: u });
+    expect(dmHooks.isOnline('p1')).toBe(false);
+    sessions.set('p1', { user: u });
+    expect(dmHooks.isOnline('p1')).toBe(true);
+    state.awayUsers.add('p1');
+    expect(dmHooks.isOnline('p1')).toBe(false);
+    expect(dmHooks.hasSocket('p1')).toBe(true); // away tab still gets the live push
+  });
+});

@@ -29,6 +29,7 @@ const {
   clearReadyState,
   handleReadyClick,
   setUserPresence,
+  sessions,
 } = require('../state');
 
 // Lazy-require GameHandler to avoid circular dependency at load time
@@ -132,10 +133,13 @@ function register(io, socket) {
   // stale/out-of-room event.
   // #372: one site-wide state per user (state.js); the room slot dot is derived from the same report.
   const onPresence = (payload = {}) => {
+    // An evicted socket (replaced by a newer tab, still draining) must not overwrite the live one's state.
+    if (sessions.get(user.userId) !== socket) return;
     const presence = payload.presence === 'away' ? 'away' : 'active';
     setUserPresence(user.userId, presence);
     const result = roomManager.setPresence(user.userId, presence);
     if (result.error) return; // not in a room: the site-wide state above is all there is
+    if (result.changed === false) return; // repeat report: no room-wide fan-out
     broadcastRoomUpdate(io, result.room);
   };
   socket.on('room:presence', onPresence);

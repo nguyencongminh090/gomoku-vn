@@ -5,6 +5,6 @@ import './session.js?v=7d763f30';
 import './i18n.js?v=3a34a48f';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
-import './platform-shell.js?v=3de577e1';
+import './platform-shell.js?v=940778bb';
 import './socket-client.js?v=c3c76eda';
 import './tournament-detail.js?v=43e497dd';

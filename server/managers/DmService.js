@@ -43,8 +43,16 @@ function pruneExpired(now = Date.now(), force = false) {
 }
 
 let isOnline = () => false;
-/** @param {{isOnline?: (userId: string) => boolean}} h */
-function setHooks(h = {}) { isOnline = h.isOnline || (() => false); }
+let hasSocket = () => false;
+/**
+ * isOnline = a visible socket (no bell entry needed); hasSocket = any live socket (push it live, even to an
+ * away tab — the open DM window doesn't refetch on focus). Same split as PrivateChatHandler (#372 review).
+ * @param {{isOnline?: (userId: string) => boolean, hasSocket?: (userId: string) => boolean}} h
+ */
+function setHooks(h = {}) {
+  isOnline = h.isOnline || (() => false);
+  hasSocket = h.hasSocket || isOnline;
+}
 
 const person = (u) => ({
   username: u.username,
@@ -92,7 +100,7 @@ function send(fromId, username, raw) {
   if (dmText.isRateLimited(fromId)) throw new DmError('PRIVATE_CHAT_RATE_LIMITED', 429, 'Bạn nhắn quá nhanh.');
   const online = isOnline(to.id);
   const saved = save(fromId, to.id, text, { notify: !online });
-  if (online) { // present (#372): away counts as offline → bell only
+  if (online || hasSocket(to.id)) { // away tab: bell entry AND live push; socket-less page: bell only
     const me = database.getUserById(fromId);
     notifications.emitTo(to.id, 'private_message:receive', {
       messageId: String(saved.id), fromUserId: fromId, fromUsername: me.display_name,

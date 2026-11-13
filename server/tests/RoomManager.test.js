@@ -689,6 +689,13 @@ describe('RoomManager — setPresence (slot status dots)', () => {
     expect(room.users.get('host').presence).toBe('active');
   });
 
+  test('reports whether the presence actually changed (#372 review: no fan-out on repeats)', () => {
+    roomWithOne();
+    expect(roomManager.setPresence('host', 'away').changed).toBe(true);
+    expect(roomManager.setPresence('host', 'away').changed).toBe(false);
+    expect(roomManager.setPresence('host', 'active').changed).toBe(true);
+  });
+
   test('a user not in any room reports NOT_IN_ROOM instead of throwing', () => {
     const result = roomManager.setPresence('nobody', 'away');
     expect(result.error).toBeTruthy();

@@ -76,7 +76,8 @@ let _lastIo = null;
 function setHideOnline(userId, hidden) {
   const had = hiddenOnline.has(userId);
   if (hidden) hiddenOnline.add(userId); else hiddenOnline.delete(userId);
-  if (had !== !!hidden && sessions.has(userId) && _lastIo) broadcastOnlineUsers(_lastIo);
+  // A heartbeat-only user (settings.html has no socket) is listed too — re-broadcast for them as well.
+  if (had !== !!hidden && (sessions.has(userId) || _freshBeat(userId)) && _lastIo) broadcastOnlineUsers(_lastIo);
 }
 
 /**
@@ -130,6 +131,24 @@ function pruneHeartbeats(now = Date.now()) {
   return gone;
 }
 setInterval(() => pruneHeartbeats(), 15_000).unref();
+
+/** Forget a user's heartbeat now (logout, account lock/delete) instead of waiting out BEAT_TTL_MS. */
+function dropHeartbeat(userId) {
+  const b = heartbeats.get(userId);
+  if (!b) return false;
+  heartbeats.delete(userId);
+  if (_lastIo) broadcastOnlineUsers(_lastIo);
+  return true;
+}
+
+/**
+ * A live socket whose page is visible+focused — the only place a live push (DM, bell) can land.
+ * Narrower than isPresent: a heartbeat-only page (forum, profile…) has no socket to receive it,
+ * so a DM to that user must still create the bell entry.
+ */
+function hasPresentSocket(userId) {
+  return sessions.has(userId) && !awayUsers.has(userId);
+}
 
 /** Present = a socket that is visible+focused, OR a fresh non-away heartbeat. Hidden-online is a separate privacy filter. */
 function isPresent(userId) {
@@ -821,6 +840,8 @@ module.exports = {
   setHideOnline,
   isVisiblyOnline,
   isPresent,
+  hasPresentSocket,
+  dropHeartbeat,
   setUserPresence,
   awayUsers,
   touchHeartbeat,
