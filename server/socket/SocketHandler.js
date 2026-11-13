@@ -42,6 +42,7 @@ const {
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
   buildRoomStatePayload,
+  closeMatchRoom,
 } = require('./state');
 
 const LobbyHandler      = require('./handlers/LobbyHandler');
@@ -93,6 +94,10 @@ function init(io) {
   if (typeof roomManager.removeAllListeners === 'function') {
     roomManager.removeAllListeners('series_abandoned');
     roomManager.on('series_abandoned', (room) => GameHandler.finishSeries(io, room, 'abandoned'));
+    // A quick-match seat walked out (#365): close the session for whoever is left. Deferred so the
+    // leave path that triggered it finishes its own broadcasts against the still-existing room first.
+    roomManager.removeAllListeners('match_abandoned');
+    roomManager.on('match_abandoned', (room) => setImmediate(() => closeMatchRoom(io, room.roomId, 'MATCH_OPPONENT_LEFT')));
   }
 
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.

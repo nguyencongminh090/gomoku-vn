@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/lobby.css?v=2bd69874" />
   <link rel="stylesheet" href="css/room.css?v=8f7150fc" />
   <link rel="stylesheet" href="css/shell.css?v=3dcd7aa2" />
-  <link rel="stylesheet" href="css/game.css?v=a7a95ae9" />
+  <link rel="stylesheet" href="css/game.css?v=4a01190d" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
   <link rel="stylesheet" href="css/room-arena.css?v=c9b21ba5" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
@@ -23,16 +23,16 @@
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/room-entry.js's import list -->
   <link rel="modulepreload" href="js/session.js?v=7d763f30" />
-  <link rel="modulepreload" href="js/i18n.js?v=cb5808d6" />
+  <link rel="modulepreload" href="js/i18n.js?v=f1f3fe6a" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/socket-client.js?v=13b77de5" />
   <link rel="modulepreload" href="js/board.js?v=9e0cd3f5" />
   <link rel="modulepreload" href="js/room.js?v=765022dd" />
   <link rel="modulepreload" href="js/chat-ui.js?v=c9347a46" />
-  <link rel="modulepreload" href="js/room-ui.js?v=6339f10d" />
+  <link rel="modulepreload" href="js/room-ui.js?v=61cfaa10" />
   <link rel="modulepreload" href="js/game-ui.js?v=40aa4bb0" />
-  <link rel="modulepreload" href="js/room-socket.js?v=c7acb632" />
+  <link rel="modulepreload" href="js/room-socket.js?v=e1e08a08" />
 
 </head>
 
@@ -99,7 +99,7 @@
       <div class="start-modal" id="start-modal">
         <div class="start-modal__card">
           <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-play-circle"></use></svg></div>
-          <div class="start-modal__title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
+          <div class="start-modal__title" id="start-modal-title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
           <div class="start-modal__countdown" id="start-modal-countdown-wrap" style="display:none;">
             <span data-i18n="start_modal.countdown_label">Còn</span>
             <span id="start-modal-countdown">15</span>s
@@ -107,6 +107,8 @@
           <div class="start-modal__divider"></div>
           <button class="btn-primary" id="start-modal-btn" type="button" data-action="confirmStart" data-i18n="start_modal.btn_start">Bắt đầu</button>
           <div class="start-modal__waiting" id="start-modal-waiting" data-i18n="start_modal.waiting" style="display:none;">Đang chờ đối thủ bấm Bắt đầu...</div>
+          <!-- #365 quick-match only: "Về trang chủ" next to "Chơi tiếp" after each game -->
+          <button class="btn-secondary start-modal__home" id="start-modal-home" type="button" data-action="leaveMatch" data-i18n="match_end.home" style="display:none;">Về trang chủ</button>
         </div>
       </div>
     </section>
@@ -206,7 +208,7 @@
   <script src="js/timer-sync-core.js?v=c56a5a16"></script>
   <script src="js/audio-manager.js?v=f0ca2309"></script>
   <script src="js/action-delegate.js?v=7420bbed"></script>
-  <script type="module" src="js/room-entry.js?v=03d45854"></script>
+  <script type="module" src="js/room-entry.js?v=f5ecf1ec"></script>
 </body>
 
 </html>

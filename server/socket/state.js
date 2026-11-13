@@ -445,6 +445,8 @@ function _emitRoomUpdate(io, room, opts = {}) {
     // builds its payload field-by-field rather than spreading `full`.
     serverTime: Date.now(),
     readyMissCount: full.readyMissCount,
+    matchGames: full.matchGames,
+    matchMax: full.matchMax,
   };
   if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };
   if (scoreTableChanged) payload.scoreTable = full.scoreTable;
@@ -660,6 +662,52 @@ function handleReadyWindowTimeout(io, roomId) {
   }
 }
 
+// ── Quick-match sessions (#365) ─────────────────────────────────────────
+// A matchmade room plays up to `room.matchMax` games. After each game both
+// seats get one decision window (READY_WINDOW_MS) to pick "Chơi tiếp"
+// (= room:ready, both → next game) or "Về trang chủ" (= room:leave). The
+// window lives in `readyTimers`, so handleReadyClick() won't open a second
+// one and the existing allReady → startGame path clears it. Once the cap is
+// hit the room closes after MATCH_END_CLOSE_MS (time to see the result).
+
+const MATCH_END_CLOSE_MS = 5_000;
+
+/** Called by handleGameEnd for a matchmade room, after matchGames was bumped. */
+function openMatchDecision(io, room) {
+  if (!room || !room.matchmade) return;
+  cleanupReadyTimer(room.roomId);
+  const done = (room.matchGames || 0) >= (room.matchMax || 1);
+  const ms = done ? MATCH_END_CLOSE_MS : READY_WINDOW_MS;
+  const code = done ? 'MATCH_SESSION_DONE' : 'MATCH_NO_REMATCH';
+  room.readyDeadline = Date.now() + ms;
+  readyTimers.set(room.roomId, setTimeout(() => {
+    readyTimers.delete(room.roomId);
+    closeMatchRoom(io, room.roomId, code);
+  }, ms));
+}
+
+const MATCH_CLOSE_TEXT = {
+  MATCH_SESSION_DONE: 'Đã chơi đủ số ván của trận ghép. Về trang chủ.',
+  MATCH_NO_REMATCH: 'Không đủ 2 người chọn chơi tiếp. Về trang chủ.',
+  MATCH_OPPONENT_LEFT: 'Đối thủ đã rời trận. Về trang chủ.',
+};
+
+/**
+ * End a quick-match session: everyone in the room gets `room:destroyed`
+ * (the client toasts + navigates home), then the room is torn down through
+ * the usual `_destroyRoom` choke point. No-op while a game is running.
+ */
+function closeMatchRoom(io, roomId, code) {
+  const room = roomManager.getRoom(roomId);
+  if (!room || !room.matchmade || room.state === 'playing') return;
+  cleanupReadyTimer(roomId);
+  cleanupRoomTimer(roomId);
+  io.to(roomId).emit('room:destroyed', { message: MATCH_CLOSE_TEXT[code] || '', code });
+  if (io.in) io.in(roomId).socketsLeave(roomId);
+  roomManager._destroyRoom(roomId);
+  logger.info('[Match] session closed', { roomId, code, games: room.matchGames });
+}
+
 /**
  * Build the full room-state payload the client rebuilds a room page from.
  *
@@ -714,4 +762,8 @@ module.exports = {
   clearReadyState,
   buildRoomStatePayload,
   handleReadyClick,
+  openMatchDecision,
+  closeMatchRoom,
+  MATCH_END_CLOSE_MS,
+  READY_WINDOW_MS,
 };

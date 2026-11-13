@@ -294,8 +294,17 @@ client.on('room:error', (data) => {
 
 // Auto-redirect if server detects we are already in a room
 client.on('room:joined', (data) => {
-  window.location.replace(`room.html?id=${encodeURIComponent(data.roomId)}`);
+  window.location.replace(roomHref(data.roomId));
 });
+
+// room.html URL; entering from the Phòng tab adds ?from=rooms so leaving returns there (#365).
+function roomHref(roomId) {
+  const q = new URLSearchParams();
+  if (roomId) q.set('id', roomId);
+  if (window.location.hash === '#rooms') q.set('from', 'rooms');
+  const qs = q.toString();
+  return 'room.html' + (qs ? '?' + qs : '');
+}
 
 // ---------------------------------------------------------------------------
 // Room List Rendering
@@ -563,7 +572,7 @@ window.addEventListener('langchange', () => {
 window.joinRoom = function(roomId) {
   // Store intent and navigate — room.js will handle the actual join
   sessionStorage.setItem('gvn_room_intent', JSON.stringify({ action: 'join', roomId }));
-  window.location.href = `room.html?id=${encodeURIComponent(roomId)}`;
+  window.location.href = roomHref(roomId);
 };
 
 // ---------------------------------------------------------------------------
@@ -670,7 +679,7 @@ function submitCreate(settings) {
   }));
 
   closeModal();
-  window.location.href = 'room.html'; // Create room ID is assigned by server later
+  window.location.href = roomHref(null); // Create room ID is assigned by server later
 }
 
 // Confirm → create room

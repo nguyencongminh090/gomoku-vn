@@ -518,6 +518,13 @@
   padding: 8px 4px;
 }
 
+/* #365 quick-match "Về trang chủ" under "Chơi tiếp" */
+.start-modal__home {
+  width: 100%;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 /* ─── Board Placeholder ─────────────────────────────────────────── */
 
 .board-placeholder {

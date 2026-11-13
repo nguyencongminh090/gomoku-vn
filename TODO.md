@@ -78,3 +78,4 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#328.** Quick-match status line: facts as chips, guest sentence as a note `[Model: Sonnet 5]` — [detail](docs/todo/B328-qm-line-chips.md)
 - **#364.** Phòng tab R1 "Sảnh gỗ": photo hero, table cards, live mini boards `[Model: Opus 5]` — [detail](docs/todo/B364-rooms-photo-hall.md)
+- **#365.** Quick-match session up to 3 games + return to entry tab `[Model: Opus 5]` — [detail](docs/todo/B365-quick-match-session-return-tab.md)

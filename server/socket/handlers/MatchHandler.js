@@ -56,6 +56,8 @@ function status(entry) {
 }
 
 /** Turn a pair into a seated room. Returns the room, or null (both get match:error / requeue as needed). */
+const MATCH_MAX_GAMES = 3;
+
 function makeRoom(a, b) {
   const sa = socketOf(a);
   const sb = socketOf(b);
@@ -76,7 +78,12 @@ function makeRoom(a, b) {
     return null;
   }
   const room = seated.room;
-  room.matchmade = true; // one game only: clients auto-ready, no Start modal / rematch
+  // Quick-match session (#365): the first game auto-readies (no Start modal); after each game
+  // both seats choose "Chơi tiếp" / "Về trang chủ", up to MATCH_MAX_GAMES games, then home.
+  room.matchmade = true;
+  room.matchPlayers = [a.userId, b.userId]; // the only users who may sit (seat-locked)
+  room.matchGames = 0;
+  room.matchMax = MATCH_MAX_GAMES;
   for (const s of [sa, sb]) {
     s.leave(LOBBY_ROOM);
     s.join(room.roomId);

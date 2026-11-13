@@ -43,6 +43,7 @@ const {
   cleanupRoomTimer,
   cleanupReadyTimer,
   buildRoomStatePayload,
+  openMatchDecision,
 } = require('../state');
 
 /**
@@ -1021,6 +1022,13 @@ function handleGameEnd(io, room, opts = {}) {
 
   if (inSeries && ChallengeSeries.isDecided(series)) finishSeries(io, room, 'complete');
   else if (inSeries) io.to(roomId).emit('series:update', ChallengeSeries.view(series));
+
+  // Quick-match session (#365): every ended game counts (draws, aborted ones
+  // too); then open the "Chơi tiếp / Về trang chủ" window, or close after the cap.
+  if (room.matchmade && engine) {
+    room.matchGames = (room.matchGames || 0) + 1;
+    openMatchDecision(io, room);
+  }
 
   broadcastRoomUpdate(io, room);
   broadcastLobbyUpdate(io);
