@@ -48,6 +48,8 @@ jest.mock('../socket/handlers/DisconnectHandler', () => ({
 jest.mock('../socket/handlers/TournamentHandler', () => ({ init: jest.fn(), register: jest.fn() }));
 jest.mock('../socket/handlers/TournamentMatchHandler', () => ({ register: jest.fn(), resyncOnConnect: jest.fn() }));
 jest.mock('../managers/ChatHandler', () => ({ cleanupUser: jest.fn() }));
+// #367 rejoin path broadcasts a lobby update; keep home-feed (DB-backed) out of this unit test.
+jest.mock('../socket/home-feed', () => ({ register: jest.fn(), scheduleHomeUpdate: jest.fn() }));
 
 const { sessions, ONLINE_USERS_DEBOUNCE_MS } = require('../socket/state');
 const { init } = require('../socket/SocketHandler');
@@ -85,6 +87,7 @@ function makeSocket(io, id, userId, displayName = 'User', auth = {}) {
     _emitted: [],
     disconnected: false,
     join: jest.fn(),
+    leave: jest.fn(),
     emit: jest.fn(function (event, data) { this._emitted.push({ event, data }); }),
     on: jest.fn(function (event, cb) {
       (this._listeners[event] = this._listeners[event] || []).push(cb);
@@ -367,6 +370,62 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(destroyed).toBeDefined();
     expect(typeof destroyed.data.message).toBe('string');
     expect(sockEmit(a, 'room:joined')).toBeUndefined();
+  });
+
+  // #367: a room page whose user lost their place while offline (seat grace ran
+  // out, or was removed) sends the room it shows; the server puts them back in.
+  test('a reconnect naming a room that still exists rejoins it silently instead of ROOM_GONE (#367)', () => {
+    const io = makeIo();
+    init(io);
+    const room = { roomId: 'MLC', gameState: null, users: new Map(), memberIds: new Set(['u1']) };
+    mockRoomManager.getRoom.mockImplementation((id) => (id === 'MLC' ? room : null));
+    mockRoomManager.joinRoom = jest.fn(() => ({ room }));
+    mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'MLC' }));
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', { reconnect: true, roomId: 'MLC' });
+    connectSocket(io, a);
+
+    expect(mockRoomManager.joinRoom).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1' }), 'MLC');
+    expect(a.join).toHaveBeenCalledWith('MLC');
+    expect(sockEmit(a, 'room:joined')).toBeDefined();
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+    // Silent: nobody gets a "đã vào phòng" chat line.
+    expect((io._toEmitted.MLC || []).some(e => e.event === 'chat:message')).toBe(false);
+    mockRoomManager.getRoom.mockReset().mockReturnValue(null);
+  });
+
+  test.each([
+    ['the room is gone', null, {}],
+    ['the user was kicked from it', { kicked: true }, {}],
+    ['the user was never a member (arbitrary roomId)', { stranger: true }, {}],
+    ['joinRoom refuses (full)', {}, { error: 'full', code: 'ROOM_FULL' }],
+  ])('a reconnect naming a room still gets ROOM_GONE when %s (#367)', (_label, roomShape, joinResult) => {
+    const io = makeIo();
+    init(io);
+    const room = roomShape && {
+      roomId: 'MLC', gameState: null, users: new Map(),
+      memberIds: new Set(roomShape.kicked || roomShape.stranger ? [] : ['u1']),
+    };
+    mockRoomManager.getRoom.mockImplementation((id) => (id === 'MLC' ? room : null));
+    mockRoomManager.joinRoom = jest.fn(() => (joinResult.error ? joinResult : { room }));
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', { reconnect: true, roomId: 'MLC' });
+    connectSocket(io, a);
+
+    expect(sockEmit(a, 'room:destroyed')).toBeDefined();
+    expect(sockEmit(a, 'room:joined')).toBeUndefined();
+    if (roomShape && (roomShape.kicked || roomShape.stranger)) expect(mockRoomManager.joinRoom).not.toHaveBeenCalled();
+    mockRoomManager.getRoom.mockReset().mockReturnValue(null);
+  });
+
+  test('a FIRST connect naming a room does not auto-join it — only reconnects do (#367)', () => {
+    const io = makeIo();
+    init(io);
+    mockRoomManager.joinRoom = jest.fn();
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', { roomId: 'MLC' });
+    connectSocket(io, a);
+    expect(mockRoomManager.joinRoom).not.toHaveBeenCalled();
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
   });
 
   test('a FIRST connect is never told the room is gone — it has not asked for one yet', () => {

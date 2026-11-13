@@ -17,6 +17,8 @@ const mockRoomManager = {
   getRoomIdByUser: jest.fn(),
   getRoom: jest.fn(),
   leaveRoom: jest.fn(),
+  // #367: grace expiry frees the seat but keeps the user as a disconnected viewer.
+  releaseSeat: jest.fn(() => ({ room: null, wasSeated: false, hostTransferred: false })),
   serializeRoom: jest.fn((room) => ({ roomId: room.roomId, settings: {} })),
   // room:updated carries everything serializeRoom does except settings.
   serializeRoomUpdate: jest.fn((room) => ({ roomId: room.roomId })),
@@ -231,7 +233,9 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(mockHandleGameEnd).toHaveBeenCalledWith(io, room, { noScore: true });
     expect(room.gameState.status).toBe('finished');
     expect(toEmitted(io, 'room1', 'game:ended')).toBeDefined();
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u1');
+    // #367: not evicted — the seat is released and they stay in the room.
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledWith('u1');
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u1');
   });
 
   test('a second disconnect grace call for the same user clears the stale timer instead of stacking two', () => {
@@ -426,11 +430,12 @@ describe('DisconnectHandler — spectator grace period', () => {
     expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
   });
 
-  test('grace expiring without a reconnect leaves for real, without destroying the room (others remain)', () => {
+  test('grace expiring without a reconnect releases the seat but keeps the user in the room (#367)', () => {
     const io = makeIo();
+    const released = { roomId: 'room1', users: new Map() };
     mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
     mockRoomManager.getRoom.mockReturnValue(sharedRoom());
-    mockRoomManager.leaveRoom.mockReturnValue({ room: { roomId: 'room1', users: new Map() }, destroyed: false });
+    mockRoomManager.releaseSeat.mockReturnValueOnce({ room: released, wasSeated: true, hostTransferred: false });
 
     DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
     expect(mockState.spectatorGraceTimers.has('u1')).toBe(true);
@@ -438,8 +443,9 @@ describe('DisconnectHandler — spectator grace period', () => {
     jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
 
     expect(mockState.spectatorGraceTimers.has('u1')).toBe(false);
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u1');
-    expect(mockState.broadcastRoomUpdate).toHaveBeenCalledWith(io, { roomId: 'room1', users: new Map() });
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledWith('u1');
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u1');
+    expect(mockState.broadcastRoomUpdate).toHaveBeenCalledWith(io, released);
     expect(mockState.broadcastLobbyUpdate).toHaveBeenCalled();
   });
 
@@ -455,7 +461,7 @@ describe('DisconnectHandler — spectator grace period', () => {
     expect(mockState.spectatorGraceTimers.size).toBe(1);
 
     jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledTimes(1);
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledTimes(1);
   });
 
   test('cancelSpectatorGrace returns false when nothing is pending for the user', () => {
@@ -516,7 +522,7 @@ describe('DisconnectHandler — viewer (slot === null) unlimited reconnect', () 
     expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
   });
 
-  test('control case: a seated player (slot 1|2) whose game is not ongoing still gets evicted after 30s, unchanged', () => {
+  test('control case: a seated player (slot 1|2) whose game is not ongoing loses the seat after 30s but stays in the room (#367)', () => {
     const io = makeIo();
     const room = roomWithViewer();
     mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
@@ -530,7 +536,8 @@ describe('DisconnectHandler — viewer (slot === null) unlimited reconnect', () 
     jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
 
     expect(mockState.spectatorGraceTimers.has('u2')).toBe(false);
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u2');
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledWith('u2');
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u2');
   });
 });
 
@@ -563,6 +570,15 @@ describe('DisconnectHandler — room of disconnected viewers (TODO.md #186)', ()
         return { room, destroyed: true, hostTransferred: false };
       }
       return { room, destroyed: false, hostTransferred: false };
+    });
+    mockRoomManager.releaseSeat.mockImplementation((id) => {
+      const room = [...rooms.values()].find(r => r.users.has(id));
+      if (!room) return { room: null, wasSeated: false, hostTransferred: false };
+      const u = room.users.get(id);
+      const wasSeated = u.slot != null;
+      u.slot = null;
+      u.presence = 'disconnected';
+      return { room, wasSeated, hostTransferred: false };
     });
   });
   afterEach(() => {

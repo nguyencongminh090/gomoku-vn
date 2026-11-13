@@ -80,3 +80,4 @@ in the detail file / fix-log).
 - **#364.** Phòng tab R1 "Sảnh gỗ": photo hero, table cards, live mini boards `[Model: Opus 5]` — [detail](docs/todo/B364-rooms-photo-hall.md)
 - **#365.** Quick-match session up to 3 games + return to entry tab `[Model: Opus 5]` — [detail](docs/todo/B365-quick-match-session-return-tab.md)
 - **#366.** Home desktop: "Bảng quán cờ" scoreboard + labelled explore chips `[Model: Opus 5]` — [detail](docs/todo/B366-home-desktop-scoreboard.md)
+- **#367.** Reconnect: lapsed player stays in room + quiet connection banner `[Model: Opus 5]` — [detail](docs/todo/B367-reconnect-stay-in-room.md)

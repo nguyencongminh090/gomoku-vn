@@ -115,6 +115,11 @@
     const st = S();
     st.roomData = data;
     syncClockFromServerTime(data.serverTime);
+    // #367: a later reconnect tells the server which room this page shows, so a
+    // user whose seat/place lapsed while offline is put back in, not sent home.
+    if (client.socket && data && data.roomId) {
+      client.socket.auth = Object.assign({}, client.socket.auth, { roomId: data.roomId });
+    }
 
     // Clear any not-yet-confirmed stone from a move still in flight
     // (TODO.md #153). This fires on first join too (boardRenderer doesn't
