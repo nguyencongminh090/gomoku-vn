@@ -226,7 +226,7 @@ describe('RoomManager — per-IP room quota', () => {
     roomManager.sitDown(room.host, 2);
     const p = entry().players;
     expect(p[0]).toBeNull();
-    expect(p[1]).toEqual({ displayName: expect.any(String), avatarUrl: null });
+    expect(p[1]).toEqual({ displayName: expect.any(String), avatarUrl: null, rating: null, provisional: false });
   });
 
   test('listRooms carries ranked (B219): true by default, false for a friendly room', () => {
@@ -234,6 +234,39 @@ describe('RoomManager — per-IP room quota', () => {
     expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).ranked).toBe(true);
     room.settings.ranked = false;
     expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).ranked).toBe(false);
+  });
+
+  // ── #364: lobby cards — rating per seat, live position + start time ─────────
+  test('listRooms gives each seated member a rating from ratingLookup in the room rule (#364)', () => {
+    const { room } = roomManager.createRoom(user(IP_A));
+    roomManager.sitDown(room.host, 1);
+    room.settings.winningRule = 'caro';
+    const seen = [];
+    roomManager.ratingLookup = (id, rule) => { seen.push([id, rule]); return { rating: 1711, provisional: true }; };
+    try {
+      const p = roomManager.listRooms().find((r) => r.roomId === room.roomId).players;
+      expect(p[0].rating).toBe(1711);
+      expect(p[0].provisional).toBe(true);
+      expect(seen).toEqual([[room.host, 'caro']]);
+      room.users.get(room.host).isGuest = true; // guests never get a rating
+      expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).players[0].rating).toBeNull();
+    } finally {
+      delete roomManager.ratingLookup;
+    }
+  });
+
+  test('listRooms carries moves + startedAt only while a game is ongoing (#364)', () => {
+    const { room } = roomManager.createRoom(user(IP_A));
+    const entry = () => roomManager.listRooms().find((r) => r.roomId === room.roomId);
+    expect(entry().moves).toBeNull();
+    expect(entry().startedAt).toBeNull();
+    room.state = 'playing';
+    room.gameState = { status: 'ongoing', startedAt: 1234, moveHistory: [{ x: 7, y: 7, color: 'BLACK' }, { x: 8, y: 6, color: 'WHITE' }] };
+    expect(entry().moves).toEqual([7, 7, 8, 6]);
+    expect(entry().startedAt).toBe(1234);
+    room.gameState.status = 'finished';
+    expect(entry().moves).toBeNull();
+    expect(entry().startedAt).toBeNull();
   });
 });
 

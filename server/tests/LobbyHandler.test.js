@@ -38,6 +38,7 @@ const mockState = {
   timerMap: new Map(),
   emptyRoomGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   // The real one sends the full room list and seeds the delta baseline; here
   // only the emit matters, which is what this suite asserts on.

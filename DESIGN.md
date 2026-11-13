@@ -45,3 +45,11 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Thin content hidden by empty space (keep the right-column cards; empty state text when 0).
 - Emoji as icons; text labels on the 4 secondary links (user chose icon-only + tooltip + aria-label).
 - Photos/stock imagery, leaf background on home, animating stones/board.
+
+## Phòng tab (#364, R1 "Sảnh gỗ")
+- Chosen 2026-11-13 from 8 mockups (`features/rooms-redesign/`). Style: vstyle-flat-material with one photographic hero.
+- Imagery: ONE photo, the hero band only (Pixabay 3339748, low-angle wooden board, credited in the hero); dark scrim (left→right + bottom) so white text passes AA on any crop; no photo behind the list. Home stays photo-free.
+- Layout: hero (eyebrow + h1 + 4 counts left; code boxes right) → "Đang chơi · N" + online avatars (each = PM) → card grid (auto-fill ≥268px) starting with the "Mở bàn mới" card, the only create entry. No filter tabs, no names line (user 2026-11-13). Phone: hero ≈ title + counts + code row, horizontal cards with a 112px board.
+- Cards: live = mini board (lobby SVG, wood token), flag "Đang đấu · mm:ss", watchers; open = faded empty board + "Ngồi vào" primary; ready = empty board, "Sắp bắt đầu".
+- Motion: card hover lift 3px (240ms), live dot pulse; none under reduced motion.
+- Forbidden: BoardRenderer in the lobby, per-move lobby traffic, photo behind text without scrim.

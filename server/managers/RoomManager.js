@@ -648,10 +648,19 @@ class RoomManager extends EventEmitter {
             displayName: u.displayName,
             avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
           };
+          // Rating in the room's rule pool (#364): { rating, provisional } from seat-rating.js; null for guests / unrated / no lookup wired.
+          const r = u.isGuest || !this.ratingLookup ? null : this.ratingLookup(u.userId, room.settings.winningRule);
+          players[u.slot - 1].rating = r ? r.rating : null;
+          players[u.slot - 1].provisional = !!(r && r.provisional);
         }
         if (u.slot === null && u.presence === 'disconnected') continue;
         userCount++;
       }
+
+      // Live position for the lobby mini board (#364): flat [x0,y0,x1,y1,…] in play order, plus the
+      // game's start time. null when no game is running, so the lobby diff sees the game end.
+      const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
+      const moves = game ? game.moveHistory.flatMap((m) => [m.x, m.y]) : null;
 
       list.push({
         roomId: room.roomId,
@@ -670,6 +679,8 @@ class RoomManager extends EventEmitter {
         timerSeconds: room.settings.timerSeconds,
         timerIncrementSeconds: room.settings.timerIncrementSeconds,
         ranked: room.settings.ranked !== false,
+        startedAt: game ? game.startedAt || null : null,
+        moves,
       });
     }
     return list;

@@ -40,6 +40,7 @@ const mockState = {
   emptyRoomGraceTimers: new Map(),
   spectatorGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
   cleanupReadyTimer: jest.fn(),

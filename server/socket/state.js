@@ -210,7 +210,7 @@ function _diffLobbyRooms(io) {
  */
 function sendLobbySnapshot(io, socket) {
   const rooms = roomManager.listRooms();
-  socket.emit('lobby:update', { rooms });
+  socket.emit('lobby:update', { rooms, serverTime: Date.now() }); // serverTime: clock offset for the cards' elapsed time (#364, as B170)
   if (!_lobbySnapshots.has(io)) {
     const baseline = new Map();
     for (const entry of rooms) baseline.set(entry.roomId, JSON.stringify(entry));
@@ -232,14 +232,37 @@ function sendLobbySnapshot(io, socket) {
  */
 function broadcastLobbyUpdate(io) {
   require('./home-feed').scheduleHomeUpdate(io); // B225: playing count + live list (lazy: home-feed requires this module)
+  _scheduleLobbyFlush(io);
+}
+
+/** The debounced diff + `lobby:patch` emit shared by broadcastLobbyUpdate and the board throttle. */
+function _scheduleLobbyFlush(io) {
   if (_lobbyUpdateTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _lobbyUpdateTimers.delete(io);
     const { upserts, removed } = _diffLobbyRooms(io);
     if (upserts.length === 0 && removed.length === 0) return;
-    io.to('lobby').emit('lobby:patch', { upserts, removed });
+    io.to('lobby').emit('lobby:patch', { upserts, removed, serverTime: Date.now() });
   }, LOBBY_UPDATE_DEBOUNCE_MS);
   _lobbyUpdateTimers.set(io, timeout);
+}
+
+/**
+ * Lobby mini boards (#364): a move changes `moves` in listRooms(), but nothing else would tell the
+ * lobby. GameHandler calls this after each move; at most one flush per LOBBY_BOARD_THROTTLE_MS per
+ * server carries every game's position at once (diffed, so only rooms that moved are sent). Home
+ * feed is not poked — its counts don't change on a move.
+ */
+const LOBBY_BOARD_THROTTLE_MS = 2_500;
+const _lobbyBoardTimers = new WeakMap();
+function scheduleLobbyBoardUpdate(io) {
+  if (_lobbyBoardTimers.has(io)) return;
+  const timeout = setTimeout(() => {
+    _lobbyBoardTimers.delete(io);
+    _scheduleLobbyFlush(io);
+  }, LOBBY_BOARD_THROTTLE_MS);
+  if (timeout.unref) timeout.unref();
+  _lobbyBoardTimers.set(io, timeout);
 }
 
 /**
@@ -678,6 +701,8 @@ module.exports = {
   isVisiblyOnline,
   getClientIp,
   broadcastLobbyUpdate,
+  scheduleLobbyBoardUpdate,
+  LOBBY_BOARD_THROTTLE_MS,
   broadcastOnlineUsers,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,

@@ -34,6 +34,7 @@
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
   <link rel="stylesheet" href="css/platform.css?v=a2a363cd" />
   <link rel="stylesheet" href="css/settings-panel.css?v=a2e285a4" />
+  <link rel="stylesheet" href="css/rooms-hall.css" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
@@ -41,14 +42,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=209b1437" />
+  <link rel="modulepreload" href="js/i18n.js?v=e374877e" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
   <link rel="modulepreload" href="js/platform-shell.js?v=fa29a6d7" />
-  <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
-  <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
-  <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=f881d771" />
+  <link rel="modulepreload" href="js/lobby.js?v=1a9ef1f4" />
+  <link rel="modulepreload" href="js/private-chat.js?v=0cf78b4d" />
+  <link rel="modulepreload" href="js/tournaments.js?v=3078701a" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=e4b10c6d" />
 
 </head>
 <body class="zen-lobby">
@@ -155,45 +156,54 @@
   </section>
 
   <!-- ══════════════════════════ SCREEN: Phòng (room list) ══════════════════ -->
+  <!-- #364 R1 "Sảnh gỗ" (DESIGN.md): photo hero (live counts + room code) → tabs + who is online → table-card grid (lobby.js). -->
   <div class="tab-panel" id="panel-tables">
-    <!-- Arena .bar: tabs Phòng / Bàn / Quan sát (client-side filters over the one room list, B210c) left, the screen's actions right. -->
-    <div class="pbar room-bar">
-      <div class="ptabs" id="room-tabs" role="tablist" data-i18n-aria="lobby.tabs_aria" aria-label="Lọc phòng">
-        <button type="button" role="tab" class="ptab" data-room-tab="all" aria-selected="true" data-i18n="lobby.tab_rooms">Phòng</button>
-        <button type="button" role="tab" class="ptab" data-room-tab="open" aria-selected="false" data-i18n="lobby.tab_tables">Bàn</button>
-        <button type="button" role="tab" class="ptab" data-room-tab="watch" aria-selected="false" data-i18n="lobby.tab_watch">Quan sát</button>
+    <section class="rh" aria-labelledby="rh-title">
+      <img class="rh__img" src="assets/photos/rooms-hero-1280.webp" srcset="assets/photos/rooms-hero-640.webp 640w, assets/photos/rooms-hero-1280.webp 1280w" sizes="100vw" width="1280" height="707" alt="" fetchpriority="high" decoding="async" />
+      <div class="rh__in">
+        <div class="rh__text">
+          <p class="rh__eyebrow"><i aria-hidden="true"></i><span data-i18n="lobby.rh_eyebrow">Sảnh đang mở</span></p>
+          <h1 class="rh__title" id="rh-title" data-i18n="lobby.rh_title">Ngồi vào một bàn, hoặc mở bàn của bạn.</h1>
+          <ul class="rh__stats" aria-live="polite">
+            <li><b id="rh-n-open">0</b><span data-i18n="lobby.rh_open">bàn chờ đối thủ</span></li>
+            <li><b id="rh-n-live">0</b><span data-i18n="lobby.rh_live">ván đang đấu</span></li>
+            <li><b id="rh-n-watch">0</b><span data-i18n="lobby.rh_watch">người đang xem</span></li>
+            <li><b id="rh-n-online">0</b><span data-i18n="lobby.rh_online">đang online</span></li>
+          </ul>
+        </div>
+        <div class="rh__act">
+          <form id="join-code-form" class="rh-code" novalidate autocomplete="off">
+            <label class="rh__lbl" for="join-code-1" data-i18n="lobby.join_code">Vào bằng mã</label>
+            <div class="rh-code__row">
+              <span class="rh-code__hash" aria-hidden="true">#</span>
+              <input class="rh-code__box" id="join-code-1" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
+              <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
+              <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
+              <button id="btn-join-code" class="rh-code__go" type="submit"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg><span data-i18n="lobby.join_code_go">Vào</span></button>
+            </div>
+            <p id="join-code-error" class="rh-code__err" role="alert" hidden></p>
+          </form>
+        </div>
       </div>
-      <div class="lobby-bar__actions" id="room-actions">
-        <button id="btn-create" class="link-action link-action--primary" type="button">
-          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg>
-          <span data-i18n="lobby.btn_create">Tạo phòng</span>
-        </button>
-        <button id="btn-join-code" hidden class="link-action" type="button" aria-expanded="false" aria-controls="join-code-form">
-          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg>
-          <span data-i18n="lobby.join_code">Vào bằng mã</span>
-        </button>
-        <form id="join-code-form" class="join-code" hidden autocomplete="off">
-          <input id="join-code" class="join-code__input" type="text" maxlength="4" inputmode="text" spellcheck="false" placeholder="#A3F" data-i18n-placeholder="lobby.join_code_ph" aria-label="Mã phòng" data-i18n-aria="lobby.join_code_aria" />
-          <button class="link-action link-action--primary" type="submit" data-i18n="lobby.join_code_go">Vào</button>
-          <span id="join-code-error" class="join-code__error" role="alert" hidden></span>
-        </form>
+      <p class="rh__credit"><span data-i18n="lobby.rh_photo">Ảnh</span>: <a href="https://pixabay.com/photos/go-board-game-board-games-game-3339748/" target="_blank" rel="noopener">OrcaTec / Pixabay</a></p>
+    </section>
+
+    <!-- "Đang chơi · N" (one label — the Phòng/Bàn/Quan sát filters were dropped 2026-11-13) + who is online as avatars (#159: an avatar opens a PM). -->
+    <div class="rbar">
+      <h2 class="rbar__h"><span data-i18n="lobby.rh_playing">Đang chơi</span><span class="ptab__n" id="room-n-playing">0</span></h2>
+      <div class="online-line" id="online-line" hidden>
+        <span class="online-line__names" id="online-line-names"></span>
+        <span class="online-line__title"><span id="online-line-count">0</span> <span data-i18n="lobby.rh_online">đang online</span></span>
       </div>
     </div>
-    <!-- Room list container -->
-    <div id="room-list" class="room-list">
+
+    <!-- Room cards (lobby.js renderRoomList); the last card opens the create modal. -->
+    <div id="room-list" class="room-list rgrid">
       <div class="room-list__empty">
         <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
         <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
       </div>
-    </div>
-
-    <!-- Online users — the mockup's flowing text line, replacing the old
-         sticky sidebar panel. Written by lobby.js on lobby:online_users. -->
-    <div class="online-line" id="online-line" hidden>
-      <span class="online-line__title">
-        <span data-i18n="lobby.online_title">Đang online</span> · <span id="online-line-count">0</span>
-      </span>
-      <span class="online-line__names" id="online-line-names"></span>
+      <button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg></span><span data-i18n="lobby.rh_new_table">Mở bàn mới</span></button>
     </div>
   </div>
 
@@ -606,6 +616,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=028e3616"></script>
+<script type="module" src="js/index-entry.js?v=10c8d93d"></script>
 </body>
 </html>
