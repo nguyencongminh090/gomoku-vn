@@ -504,7 +504,7 @@ body.arena-room .speech--mine { background: var(--c-brand); color: var(--c-on-br
    Side panels are docked (user 2026-11-13 "dính vào cạnh"): full height under the nav, flush with the viewport edge,
    surface + a border toward the board. The left one is .room::before (a grid item behind the left-column cards). */
 @media (min-width: 769px) {
-  body.arena-room { --left-w: 280px; --right-w: 340px; --pad-y: 12px; }
+  body.arena-room { --left-w: clamp(300px, 26vw, 400px); --right-w: 340px; --pad-y: 12px; }
   body.arena-room .room {
     grid-template-columns: var(--left-w) minmax(0, 1fr) var(--right-w);
     grid-template-rows: auto minmax(0, 1fr) auto auto;
