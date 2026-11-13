@@ -92,7 +92,7 @@ function send(fromId, username, raw) {
   if (dmText.isRateLimited(fromId)) throw new DmError('PRIVATE_CHAT_RATE_LIMITED', 429, 'Bạn nhắn quá nhanh.');
   const online = isOnline(to.id);
   const saved = save(fromId, to.id, text, { notify: !online });
-  if (online) {
+  if (online) { // present (#372): away counts as offline → bell only
     const me = database.getUserById(fromId);
     notifications.emitTo(to.id, 'private_message:receive', {
       messageId: String(saved.id), fromUserId: fromId, fromUsername: me.display_name,

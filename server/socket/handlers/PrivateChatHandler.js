@@ -26,7 +26,7 @@ const config = require('../../config');
 const logger = require('../../utils/logger');
 const dmText = require('../../managers/DmText');
 const privacyGate = require('../../managers/PrivacyGate');
-const { sessions } = require('../state');
+const { sessions, isPresent } = require('../state');
 
 /**
  * userId → Set<userId> of people this user currently has an open conversation
@@ -84,7 +84,7 @@ function register(io, socket) {
     let messageId = crypto.randomUUID();
     let timestamp = Date.now();
     if (persist) {
-      const saved = store.save(user.userId, toUserId, filtered, { notify: !recipientSocket });
+      const saved = store.save(user.userId, toUserId, filtered, { notify: !isPresent(toUserId) });
       messageId = String(saved.id);
       timestamp = saved.createdAtMs;
     }

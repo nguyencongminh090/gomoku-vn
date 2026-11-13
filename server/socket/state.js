@@ -79,9 +79,68 @@ function setHideOnline(userId, hidden) {
   if (had !== !!hidden && sessions.has(userId) && _lastIo) broadcastOnlineUsers(_lastIo);
 }
 
-/** Connected and not hiding it (#199) — what other members may be told (#222 friend picker). */
+/**
+ * Site-wide presence (#372). ONE rule for every page: a user is "online" only while they are present
+ * on the site — connected AND the tab visible+focused. A tab in the background / another window in
+ * front = 'away' (treated like offline for online lists, counts, DM push, challenge picker).
+ * Reported by the client on any page (`presence:set`, `room:presence`); absent entry = 'active'
+ * (a fresh socket is presumed present until its page says otherwise). Cleared with the session.
+ */
+const awayUsers = new Set();
+
+/** @param {string} userId @param {'active'|'away'} presence @returns {boolean} true if it changed */
+function setUserPresence(userId, presence) {
+  const had = awayUsers.has(userId);
+  if (presence === 'away') awayUsers.add(userId); else awayUsers.delete(userId);
+  const changed = had !== (presence === 'away');
+  if (changed && sessions.has(userId) && _lastIo) broadcastOnlineUsers(_lastIo);
+  return changed;
+}
+
+/**
+ * HTTP heartbeats (#372) for pages WITHOUT a socket (social, profile, forum, clubs, puzzles…): the shell
+ * posts {presence} every ~20s. A beat counts for BEAT_TTL_MS; no beat (tab closed / hidden pauses the
+ * timer) = gone. userId → { at, away, user: { userId, displayName, isGuest } }.
+ */
+const BEAT_TTL_MS = 45_000;
+const heartbeats = new Map();
+
+function _freshBeat(userId, now = Date.now()) {
+  const b = heartbeats.get(userId);
+  return b && now - b.at <= BEAT_TTL_MS ? b : null;
+}
+
+/** Record a heartbeat. Returns true if the user's visible-online state may have changed (list re-broadcast). */
+function touchHeartbeat(user, presence, now = Date.now()) {
+  const prev = _freshBeat(user.userId, now);
+  const away = presence === 'away';
+  heartbeats.set(user.userId, { at: now, away, user: { userId: user.userId, displayName: user.displayName, isGuest: !!user.isGuest } });
+  const changed = !prev || prev.away !== away;
+  if (changed && _lastIo) broadcastOnlineUsers(_lastIo);
+  return changed;
+}
+
+/** Drop expired beats; re-broadcast if any present user vanished. */
+function pruneHeartbeats(now = Date.now()) {
+  let gone = false;
+  for (const [id, b] of heartbeats) {
+    if (now - b.at > BEAT_TTL_MS) { heartbeats.delete(id); if (!b.away) gone = true; }
+  }
+  if (gone && _lastIo) broadcastOnlineUsers(_lastIo);
+  return gone;
+}
+setInterval(() => pruneHeartbeats(), 15_000).unref();
+
+/** Present = a socket that is visible+focused, OR a fresh non-away heartbeat. Hidden-online is a separate privacy filter. */
+function isPresent(userId) {
+  if (sessions.has(userId) && !awayUsers.has(userId)) return true;
+  const b = _freshBeat(userId);
+  return !!(b && !b.away);
+}
+
+/** Connected, present and not hiding it (#199) — what other members may be told (#222 friend picker). */
 function isVisiblyOnline(userId) {
-  return sessions.has(userId) && !hiddenOnline.has(userId);
+  return isPresent(userId) && !hiddenOnline.has(userId);
 }
 
 /**
@@ -95,15 +154,19 @@ function isVisiblyOnline(userId) {
  * `s.user` already holds all three fields.
  */
 function getOnlineUsersList() {
-  return Array.from(sessions.values())
-    .filter(s => !hiddenOnline.has(s.user.userId))
-    .map(s => ({
-      userId: s.user.userId,
-      displayName: s.user.displayName,
-      isGuest: !!s.user.isGuest,
+  const byId = new Map();
+  for (const s of sessions.values()) if (!awayUsers.has(s.user.userId)) byId.set(s.user.userId, s.user);
+  const now = Date.now();
+  for (const [id, b] of heartbeats) if (!byId.has(id) && !b.away && now - b.at <= BEAT_TTL_MS) byId.set(id, b.user);
+  return Array.from(byId.values())
+    .filter(u => !hiddenOnline.has(u.userId))
+    .map(u => ({
+      userId: u.userId,
+      displayName: u.displayName,
+      isGuest: !!u.isGuest,
       // Same lookup the room payload uses (null for guests / no avatar) — the lobby faces
       // drew initials for everyone while this was missing.
-      avatarUrl: s.user.isGuest || !roomManager.avatarLookup ? null : roomManager.avatarLookup(s.user.userId),
+      avatarUrl: u.isGuest || !roomManager.avatarLookup ? null : roomManager.avatarLookup(u.userId),
     }))
     .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
@@ -757,6 +820,13 @@ module.exports = {
   getOnlineUsersList,
   setHideOnline,
   isVisiblyOnline,
+  isPresent,
+  setUserPresence,
+  awayUsers,
+  touchHeartbeat,
+  pruneHeartbeats,
+  heartbeats,
+  BEAT_TTL_MS,
   getClientIp,
   broadcastLobbyUpdate,
   scheduleLobbyBoardUpdate,
