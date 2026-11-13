@@ -132,12 +132,47 @@ function handleMessage(io, socket, roomId, text) {
   io.to(roomId).emit('chat:message', payload);
 }
 
+// ── Reactions (#368) ──────────────────────────────────────────────────────
+// Phone "live stage": a tap on 👏 floats an emoji for everyone in the room. Only a kind id travels (never free
+// text), so there is nothing to sanitize or filter. Own sliding window, so clapping never eats the chat budget.
+const REACTION_KINDS = ['clap', 'heart', 'fire', 'wow'];
+const REACT_RATE_LIMIT = 8;
+const REACT_RATE_WINDOW_MS = 3000;
+const reactRateMap = new Map();
+
+function isReactRateLimited(userId) {
+  const now = Date.now();
+  const stamps = (reactRateMap.get(userId) || []).filter((t) => t > now - REACT_RATE_WINDOW_MS);
+  if (stamps.length >= REACT_RATE_LIMIT) { reactRateMap.set(userId, stamps); return true; }
+  stamps.push(now);
+  reactRateMap.set(userId, stamps);
+  return false;
+}
+
+/**
+ * Broadcast a reaction to the rest of the room (the sender already played it locally).
+ * Unknown kinds and rate-limited taps are dropped silently — a lost clap needs no error.
+ *
+ * @param {import('socket.io').Socket} socket
+ * @param {string} roomId
+ * @param {string} kind — one of REACTION_KINDS
+ * @returns {boolean} true when broadcast
+ */
+function handleReaction(socket, roomId, kind) {
+  if (typeof kind !== 'string' || !REACTION_KINDS.includes(kind)) return false;
+  const userId = socket.user.userId;
+  if (isReactRateLimited(userId)) return false;
+  socket.to(roomId).emit('room:react', { kind, fromId: userId });
+  return true;
+}
+
 /**
  * Clean up rate limit data for a user (on disconnect).
  * @param {string} userId
  */
 function cleanupUser(userId) {
   rateLimitMap.delete(userId);
+  reactRateMap.delete(userId);
 }
 
-module.exports = { handleMessage, cleanupUser, sanitize };
+module.exports = { handleMessage, handleReaction, cleanupUser, sanitize, REACTION_KINDS, REACT_RATE_LIMIT };

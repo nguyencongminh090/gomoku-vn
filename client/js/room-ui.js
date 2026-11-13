@@ -632,6 +632,10 @@
   function renderUsersList() {
     const st = S();
     const guests = st.roomData.users.filter(u => u.slot === null);
+    // #368 phones: spectators are an avatar stack in the dock, and this tab is "Tỉ số" (always shown, with an
+    // empty state) — so the hide rule below only applies on desktop.
+    const stage = global.RoomStage && global.RoomStage.active() ? global.RoomStage : null;
+    if (global.RoomStage) global.RoomStage.renderAudience(guests);
 
     // The "Khán giả" tab stays hidden until a spectator actually joins —
     // same empty-check that already governed the panel body, extended to the
@@ -639,7 +643,7 @@
     const tabBtn = document.querySelector('.tab-btn[data-tab="tab-users"]');
     if (tabBtn) {
       const scorePanel = document.getElementById('score-panel');
-      const hideTab = guests.length === 0 && !(scorePanel && !scorePanel.hidden);
+      const hideTab = !stage && guests.length === 0 && !(scorePanel && !scorePanel.hidden);
       tabBtn.style.display = hideTab ? 'none' : '';
       // Don't strand the user on a tab that just disappeared. Say "show the
       // chat tab", not "pretend the user clicked the chat button": the click
@@ -688,6 +692,7 @@
   // ── Score table ───────────────────────────────────────────────────────────
 
   function renderScoreTable() {
+    if (global.RoomStage) global.RoomStage.renderScores(); // #368 phone Tỉ số tab
     const st = S();
     const rawSt = st.roomData.scoreTable || {};
     const seatedPlayers = st.roomData.users.filter(u => u.slot === 1 || u.slot === 2);
@@ -861,6 +866,7 @@
     renderUsersList,
     renderScoreTable,
     renderStartModal,
+    avatarInner, // #368: the phone audience stack draws faces the same way as the seat cards
   };
 
 })(window);

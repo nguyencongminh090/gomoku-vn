@@ -145,6 +145,7 @@ class RoomManager extends EventEmitter {
       readyMissCount: 0,                 // consecutive ready-window misses for the CURRENT seat pair (0-3)
       gameState: null,                  // Set in Phase 4 when game starts
       scoreTable: {},                   // Per-room cumulative scores
+      gameLog: [],                      // #368: one entry per scored game (GameHandler.handleGameEnd), capped
       lastActivity: Date.now(),
       createdAt: new Date().toISOString(),
     };
@@ -819,6 +820,7 @@ class RoomManager extends EventEmitter {
       series: ChallengeSeries.view(room.series),
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
+      gameLog: (room.gameLog || []).slice(), // #368 phone Tỉ số tab: big score, result dots, per-game rows
     };
   }
 
@@ -931,6 +933,7 @@ class RoomManager extends EventEmitter {
     room.joinOrder = [];
     room.gameState = null;
     room.scoreTable = null;
+    room.gameLog = null;
 
     this.rooms.delete(roomId);
     this.emit('room_destroyed', roomId);

@@ -370,6 +370,8 @@ const _roomUserSnapshots = new Map();
 
 /** Per-room last-broadcast `scoreTable` JSON string, for change detection. */
 const _roomScoreTableSnapshots = new Map();
+/** Per-room last-broadcast `gameLog` JSON string (#368), same change detection as scoreTable. */
+const _roomGameLogSnapshots = new Map();
 
 /**
  * Diff a room's current user list against what was last broadcast for it.
@@ -435,6 +437,9 @@ function _emitRoomUpdate(io, room, opts = {}) {
   const scoreTableJson = JSON.stringify(full.scoreTable);
   const scoreTableChanged = _roomScoreTableSnapshots.get(room.roomId) !== scoreTableJson;
   if (scoreTableChanged) _roomScoreTableSnapshots.set(room.roomId, scoreTableJson);
+  const gameLogJson = JSON.stringify(full.gameLog);
+  const gameLogChanged = _roomGameLogSnapshots.get(room.roomId) !== gameLogJson;
+  if (gameLogChanged) _roomGameLogSnapshots.set(room.roomId, gameLogJson);
 
   const payload = {
     roomName: full.roomName,
@@ -453,6 +458,7 @@ function _emitRoomUpdate(io, room, opts = {}) {
   };
   if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };
   if (scoreTableChanged) payload.scoreTable = full.scoreTable;
+  if (gameLogChanged) payload.gameLog = full.gameLog;
   if (opts.settings) payload.settings = { ...room.settings };
 
   io.to(room.roomId).emit('room:updated', payload);
@@ -545,6 +551,7 @@ function broadcastRoomUpdate(io, room, opts = {}) {
 function clearRoomUpdateSnapshot(roomId) {
   _roomUserSnapshots.delete(roomId);
   _roomScoreTableSnapshots.delete(roomId);
+  _roomGameLogSnapshots.delete(roomId);
 
   const timeout = _roomUpdateTimers.get(roomId);
   if (timeout) {

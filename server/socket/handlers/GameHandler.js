@@ -916,6 +916,27 @@ function startGame(io, room) {
   logger.info(`[Game] Game started in room ${roomId}`);
 }
 
+/** #368: how many finished games a room remembers for the phone "Tỉ số" tab. */
+const GAME_LOG_MAX = 30;
+
+/**
+ * Append one scored game to the room's log (phone Tỉ số tab: result dots + one row per game).
+ * `n` keeps counting past the cap so "Ván 31" stays "Ván 31" after the oldest rows drop.
+ */
+function appendGameLog(room, engine) {
+  if (!Array.isArray(room.gameLog)) room.gameLog = [];
+  const prev = room.gameLog[room.gameLog.length - 1];
+  room.gameLog.push({
+    n: prev ? prev.n + 1 : 1,
+    winnerId: engine.result.winner,
+    reason: engine.result.reason,
+    moves: (engine.moveHistory || []).length,
+    durationMs: typeof engine.startedAt === 'number' ? Math.max(0, Date.now() - engine.startedAt) : null,
+    players: engine.players.map((p) => ({ userId: p.userId, name: p.displayName, color: p.color })),
+  });
+  if (room.gameLog.length > GAME_LOG_MAX) room.gameLog.splice(0, room.gameLog.length - GAME_LOG_MAX);
+}
+
 /**
  * Handle game end — stop timer, update scores, persist game, reset room state.
  *
@@ -946,6 +967,7 @@ function handleGameEnd(io, room, opts = {}) {
         room.scoreTable[p.userId].loss++;
       }
     }
+    appendGameLog(room, engine);
   }
 
   // Friend-challenge series (#222): games by anyone but the series pair end it.
@@ -1051,4 +1073,4 @@ function finishSeries(io, room, reason) {
   })) emit(null);
 }
 
-module.exports = { register, startGame, handleGameEnd, finishSeries };
+module.exports = { register, startGame, handleGameEnd, finishSeries, GAME_LOG_MAX };

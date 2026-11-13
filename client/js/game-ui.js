@@ -355,12 +355,22 @@
   function moveLabel(mv, n) {
     return String.fromCharCode(65 + mv.x) + (n - mv.y);
   }
+  // #368 phones: one cell per move, three per row (CSS shows this list instead of the pairs on phones).
+  function renderMovesGrid(hist, gs) {
+    const grid = document.getElementById('moves-grid');
+    if (!grid) return;
+    if (!hist.length) { grid.innerHTML = `<li class="moves__empty">${t('room.moves_empty')}</li>`; return; }
+    const piece = (c) => (typeof global.boardPieceSvg === 'function' ? global.boardPieceSvg(c === 'BLACK' ? 1 : 2, 'moves-grid__pc') : '');
+    grid.innerHTML = hist.map((mv, i) =>
+      `<li${i === hist.length - 1 ? ' class="moves-grid__cur"' : ''}><em>${i + 1}.</em>${piece(mv.color)}<b>${moveLabel(mv, gs.boardSize)}</b></li>`).join('');
+  }
   function renderMoves() {
     const el = document.getElementById('moves-list');
     if (!el) return;
     const st = S();
     const gs = st.gameState;
     const hist = (gs && gs.moveHistory) || [];
+    renderMovesGrid(hist, gs);
     if (!hist.length) {
       el.innerHTML = `<li class="moves__empty">${t('room.moves_empty')}</li>`;
       return;

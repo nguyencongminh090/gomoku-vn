@@ -78,10 +78,31 @@
       const bubble = document.createElement('div');
       bubble.className = 'chat-msg__bubble';
 
+      // #368: who said it — avatar + "người chơi" tag. Rendered always, shown only in the phone sheet (CSS).
+      const users = (S() && S().roomData && S().roomData.users) || [];
+      const sender = msg.fromId ? users.find((u) => u.userId === msg.fromId) : null;
+      const isPlayer = !!(sender && (sender.slot === 1 || sender.slot === 2));
+      if (isPlayer) div.classList.add('chat-msg--player');
+      if (!isSelf && global.RoomUI && typeof global.RoomUI.avatarInner === 'function') {
+        const av = document.createElement('span');
+        av.className = 'chat-msg__av';
+        av.setAttribute('aria-hidden', 'true');
+        av.innerHTML = global.RoomUI.avatarInner(sender || { displayName: msg.from }); // escaped / URL-checked there
+        const img = av.querySelector('img');
+        if (img) img.addEventListener('error', () => img.replaceWith(document.createTextNode(img.dataset.ini)), { once: true });
+        div.appendChild(av);
+      }
+
       if (!isSelf) {
         const nameSpan = document.createElement('div');
         nameSpan.className = 'chat-msg__name';
         nameSpan.textContent = msg.from;
+        if (isPlayer) {
+          const tag = document.createElement('span');
+          tag.className = 'chat-msg__tag';
+          tag.textContent = ' · ' + t('room.player_tag');
+          nameSpan.appendChild(tag);
+        }
         bubble.appendChild(nameSpan);
       }
 
@@ -99,7 +120,8 @@
     // Also show as a float toast (non-system messages only) — always, not
     // just mid-game, so a message sent from the mobile quick chat bar while
     // the sheet is collapsed pre-game still surfaces to the sender/others.
-    if (!msg.isSystem) {
+    // #368 phones: the live stage shows it (bubble on the seat card / spectator pill) instead of the toast.
+    if (!msg.isSystem && !(global.RoomStage && global.RoomStage.onChat(msg))) {
       showFloatMessage(msg);
     }
   }
