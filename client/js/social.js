@@ -765,7 +765,7 @@
     setInterval(() => { if (!document.hidden) { loadConvs(); refreshThread(); } }, 5000);
     setInterval(() => { if (!document.hidden) loadChallenges(); }, 10000);
     // Presence: 30 s keeps the friends router (300 req / 15 min / IP, shared with search + actions) far from 429.
-    setInterval(() => { if (!document.hidden) loadFriends({ quiet: true }); }, 30000);
+    setInterval(() => { if (!document.hidden) loadFriends({ quiet: true }); }, 10000); // #372: presence changes show within ~10s
     setInterval(tickHead, 1000);
   });
 })();

@@ -139,7 +139,9 @@ class SocketClient {
     // ── Connection lifecycle ──────────────────────────────────────────
     this.socket.on('connect', () => {
       this._setStatus('connected');
+      this._reportPresence(true);
     });
+    this._bindPresence();
 
     // The server states who this connection belongs to (TODO.md #68). With an
     // HttpOnly credential the client has no way to work this out for itself,
@@ -285,6 +287,7 @@ class SocketClient {
     this._listeners = [];
     this.socket.disconnect();
     this.socket = null;
+    clearInterval(this._presenceTimer);
     // Release the shared slot too (TODO.md #145). Every caller of destroy()
     // navigates away immediately, so this is belt-and-braces — but a stale
     // dead client sitting in `shared()` would be handed to the next caller
@@ -335,6 +338,26 @@ class SocketClient {
     window.addEventListener('langchange', () => {
       if (this._lastStatus) this._setStatus(this._lastStatus, this._lastDetail);
     });
+  }
+
+  // Site-wide presence (#372): on EVERY page, "away" = tab hidden or window unfocused. The server
+  // treats away like offline (online list, counts, DM push, challenge picker).
+  _bindPresence() {
+    if (this._presenceBound) return;
+    this._presenceBound = true;
+    const report = () => this._reportPresence();
+    document.addEventListener('visibilitychange', report);
+    window.addEventListener('blur', report);
+    window.addEventListener('focus', report);
+    this._presenceTimer = setInterval(report, 5000); // safety net: blur/focus can be missed
+  }
+
+  _reportPresence(force) {
+    if (!this.socket || !this.socket.connected) return;
+    const away = document.hidden || !document.hasFocus();
+    if (!force && away === this._sentAway) return;
+    this._sentAway = away;
+    this.socket.emit('presence:set', { presence: away ? 'away' : 'active' });
   }
 
   _setStatus(status, detail) {

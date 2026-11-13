@@ -37,6 +37,8 @@ const {
   broadcastOnlineUsers,
   setHideOnline,
   isVisiblyOnline,
+  isPresent,
+  awayUsers,
   getOnlineUsersList,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
@@ -69,7 +71,7 @@ function init(io) {
   // Friend challenges (#198): a seated pair is redirected on whichever sockets are live;
   // socket-less pages rejoin by user id when room.html connects.
   require('../managers/ChallengeService').setHooks({
-    isOnline: (userId) => sessions.has(userId),
+    isOnline: (userId) => isPresent(userId),
     onlineUsers: () => getOnlineUsersList(), // #361 Home picker: visible presence only
     onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
     onSeated: (room, userIds) => {
@@ -107,7 +109,7 @@ function init(io) {
 
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
   const DmService = require('../managers/DmService');
-  DmService.setHooks({ isOnline: (userId) => sessions.has(userId) });
+  DmService.setHooks({ isOnline: (userId) => isPresent(userId) }); // away tab → saved + bell notify, not live-only
   PrivateChatHandler.setStore(DmService);
 
   // Live push for the bell (#198): one socket per user lives in `sessions`.
@@ -296,6 +298,7 @@ function init(io) {
       setHideOnline(user.userId, !!(prof && prof.hide_online));
     }
     sessions.set(user.userId, socket);
+    awayUsers.delete(user.userId); // fresh socket: present until its page reports otherwise (#372)
     if (!wasOnline) {
       broadcastOnlineUsers(io);
     }
@@ -384,6 +387,7 @@ function init(io) {
       // that already replaced it in the registry (see eviction above).
       if (sessions.get(user.userId) === socket) {
         sessions.delete(user.userId);
+        awayUsers.delete(user.userId);
         broadcastOnlineUsers(io);
       }
 

@@ -267,6 +267,33 @@
     renderBell();
     refreshBell();
     if (!bell.timer) bell.timer = setInterval(refreshBell, 60000);
+    startPresenceBeat();
+  }
+
+  // Site-wide presence (#372) for pages without a socket: members post active/away every 20s; the
+  // server drops a user whose beats stop (tab closed). Socket pages report over the socket as well —
+  // the server treats "present" as a union, so the two never disagree.
+  let beatTimer = null;
+  let beatAway = null;
+  function beat(force) {
+    const away = document.hidden || !document.hasFocus();
+    if (!force && away === beatAway && away) return; // already told them we're away; stay quiet
+    beatAway = away;
+    fetch('/api/presence', {
+      method: 'POST', credentials: 'same-origin', keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ presence: away ? 'away' : 'active' }),
+    }).catch(() => { /* offline: the server expires us */ });
+  }
+  function startPresenceBeat() {
+    if (beatTimer) return;
+    // Not on the page-load critical path (B269: one nav request): first beat shortly after load.
+    setTimeout(() => beat(true), 3000);
+    beatTimer = setInterval(() => beat(false), 20000);
+    const edge = () => beat(true);
+    document.addEventListener('visibilitychange', edge);
+    window.addEventListener('blur', edge);
+    window.addEventListener('focus', edge);
   }
 
   const chip = { av: null, name: '' };

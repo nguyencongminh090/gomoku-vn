@@ -28,6 +28,7 @@ const {
   findSocketsByUserId,
   clearReadyState,
   handleReadyClick,
+  setUserPresence,
 } = require('../state');
 
 // Lazy-require GameHandler to avoid circular dependency at load time
@@ -129,11 +130,16 @@ function register(io, socket) {
   // "leaved site" (away) status dot on the slot cards. Silent on error: this
   // fires often (every tab switch) and isn't worth surfacing a toast for a
   // stale/out-of-room event.
-  socket.on('room:presence', (payload = {}) => {
-    const result = roomManager.setPresence(user.userId, payload.presence);
-    if (result.error) return;
+  // #372: one site-wide state per user (state.js); the room slot dot is derived from the same report.
+  const onPresence = (payload = {}) => {
+    const presence = payload.presence === 'away' ? 'away' : 'active';
+    setUserPresence(user.userId, presence);
+    const result = roomManager.setPresence(user.userId, presence);
+    if (result.error) return; // not in a room: the site-wide state above is all there is
     broadcastRoomUpdate(io, result.room);
-  });
+  };
+  socket.on('room:presence', onPresence);
+  socket.on('presence:set', onPresence);
 
   socket.on('room:settings', (payload = {}) => {
     const result = roomManager.updateSettings(user.userId, payload.settings || {});
