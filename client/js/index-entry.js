@@ -12,6 +12,6 @@ import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
 import './platform-shell.js?v=2571c2ee';
 import './lobby.js?v=5f51da63';
-import './private-chat.js?v=13b42103';
+import './private-chat.js?v=b2ce3735';
 import './tournaments.js?v=23201968';
 import './lobby-home.js?v=fb566fa2';

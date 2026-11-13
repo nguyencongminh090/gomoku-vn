@@ -202,7 +202,12 @@ async function loadHistory(userId) {
       w.log.scrollTop = w.log.scrollHeight;
     }
     if (messages.some((m) => !m.mine && !m.read)) {
-      fetch('/api/dm/id/' + encodeURIComponent(userId) + '/read', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+      fetch('/api/dm/id/' + encodeURIComponent(userId) + '/read', { method: 'POST', credentials: 'same-origin' })
+        .then(() => { // #371: server deleted the `dm` bell row — refetch now, not at the 60 s poll
+          const ps = window.PlatformShell;
+          if (ps && ps.notifications && ps.notifications.refresh) ps.notifications.refresh();
+        })
+        .catch(() => {});
     }
   } catch (_) { /* offline: the window works live-only, as before */ }
 }
