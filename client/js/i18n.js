@@ -416,6 +416,7 @@ const TRANSLATIONS = {
     // ── Room page ─────────────────────────────────────────────
     'room.title': 'Play3CR — Phòng chơi',
     'room.score_title': 'Bảng điểm',
+    'room.score_history': 'Các cặp trước',
     'room.th_name': 'Tên',
     'room.th_win': 'Thắng',
     'room.th_loss': 'Thua',
@@ -2143,6 +2144,7 @@ const TRANSLATIONS = {
     // ── Room page ─────────────────────────────────────────────
     'room.title': 'Play3CR — Room',
     'room.score_title': 'Scoreboard',
+    'room.score_history': 'Earlier pairs',
     'room.th_name': 'Name',
     'room.th_win': 'W',
     'room.th_loss': 'L',
