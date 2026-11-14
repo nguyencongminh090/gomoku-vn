@@ -264,7 +264,7 @@
     const future = rd.matchMax ? Math.max(0, rd.matchMax - pair.length) : 0;
     for (let i = 0; i < future; i++) dots.push('<span class="score-dot"></span>');
     const nameOf = (id, g) => { const p = g.players.find((x) => x.userId === id); return p ? p.name : '?'; };
-    const rows = log.map((g) => `<tr><td>${esc(t('room.game_n', { n: g.n }))}</td>` +
+    const rows = pair.map((g) => `<tr><td>${esc(t('room.game_n', { n: g.n }))}</td>` +
       (g.winnerId === 'draw' ? `<td>${esc(t('room.game_draw'))}</td>` : `<td class="score-games__w">${esc(t('room.game_won', { name: nameOf(g.winnerId, g) }))}</td>`) +
       `<td>${esc(t('room.game_moves', { n: g.moves }))}</td><td>${fmtDuration(g.durationMs)}</td></tr>`).join('');
     const now = playing

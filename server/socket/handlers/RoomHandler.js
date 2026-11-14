@@ -61,6 +61,7 @@ function register(io, socket) {
             io.to(roomId).emit('game:ended', {
               result: gameResult,
               scoreTable: room.scoreTable,
+              scoreHistory: room.scoreHistory || [],
             });
             io.to(roomId).emit('chat:message', {
               from: null, fromId: null,

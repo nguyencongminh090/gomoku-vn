@@ -327,3 +327,4 @@
 | 2026-11-13 15:40 | #371 lobby DM window read left bell stale until 60 s poll; refresh bell after read POST, test | [detail](docs/fix-log/2026-11-13-371-lobby-dm-bell-refresh.md) |
 | 2026-11-13 23:31 | #372 review: seat check/DM notify used presence instead of socket; hide_online+logout/lock beat sync; per-member rate limits; beat edges deduped | [detail](docs/fix-log/2026-11-13-372-presence-review.md) |
 | 2026-11-13 23:59 | #373 Khán giả listed viewers on other pages/closed tabs: room presence now tied to the room-page socket; list shows only 'active' viewers | [detail](docs/fix-log/2026-11-13-373-spectators-watching-only.md) |
+| 2026-11-14 13:31 | Score table (Tỉ số) per pair: new opponent resets current table, earlier pairs kept in scoreHistory + 'Các cặp trước' list (+ tests; no browser pass) | [detail](docs/fix-log/2026-11-14-score-table-per-pair.md) |

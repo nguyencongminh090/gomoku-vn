@@ -909,6 +909,22 @@
       `;
     }
     scoreBody.innerHTML = html;
+    renderScoreHistory(st.roomData.scoreHistory || []);
+  }
+
+  // Earlier pairs of this room (newest first), one line each: "A 3–2 B". The table above is the current pair.
+  function renderScoreHistory(history) {
+    const box = document.getElementById('score-history');
+    if (!box) return;
+    if (!history.length) { box.hidden = true; box.innerHTML = ''; return; }
+    const rows = history.slice().reverse().map((h) => {
+      const [a, b] = h.players;
+      const wa = a ? a.win || 0 : 0, wb = b ? b.win || 0 : 0;
+      const draws = a ? a.draw || 0 : 0;
+      return `<li><span>${escapeHtml((a && a.name) || '—')}</span><b>${wa}–${wb}${draws ? ` (${draws}=)` : ''}</b><span>${escapeHtml((b && b.name) || '—')}</span></li>`;
+    }).join('');
+    box.hidden = false;
+    box.innerHTML = `<div class="score-panel__title">${t('room.score_history')}</div><ul class="score-history__list">${rows}</ul>`;
   }
 
   // ── Lang change listener ──────────────────────────────────────────────────

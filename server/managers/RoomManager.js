@@ -145,6 +145,7 @@ class RoomManager extends EventEmitter {
       readyMissCount: 0,                 // consecutive ready-window misses for the CURRENT seat pair (0-3)
       gameState: null,                  // Set in Phase 4 when game starts
       scoreTable: {},                   // Per-room cumulative scores
+      scoreHistory: [],                 // earlier pairs: { key, players:[{userId,name,win,loss,draw}] }, newest last
       gameLog: [],                      // #368: one entry per scored game (GameHandler.handleGameEnd), capped
       lastActivity: Date.now(),
       createdAt: new Date().toISOString(),
@@ -822,6 +823,7 @@ class RoomManager extends EventEmitter {
       series: ChallengeSeries.view(room.series),
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
+      scoreHistory: (room.scoreHistory || []).slice(), // finished-pair tallies; scoreTable is the CURRENT pair
       gameLog: (room.gameLog || []).slice(), // #368 phone Tỉ số tab: big score, result dots, per-game rows
     };
   }

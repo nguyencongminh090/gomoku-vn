@@ -516,7 +516,7 @@ function _emitRoomUpdate(io, room, opts = {}) {
   const full = roomManager.serializeRoomUpdate(room);
   const { upserts, removed } = _diffRoomUsers(room.roomId, full.users, opts.seenUserIds);
 
-  const scoreTableJson = JSON.stringify(full.scoreTable);
+  const scoreTableJson = JSON.stringify([full.scoreTable, full.scoreHistory]);
   const scoreTableChanged = _roomScoreTableSnapshots.get(room.roomId) !== scoreTableJson;
   if (scoreTableChanged) _roomScoreTableSnapshots.set(room.roomId, scoreTableJson);
   const gameLogJson = JSON.stringify(full.gameLog);
@@ -539,7 +539,7 @@ function _emitRoomUpdate(io, room, opts = {}) {
     matchMax: full.matchMax,
   };
   if (upserts.length > 0 || removed.length > 0) payload.users = { upserts, removed };
-  if (scoreTableChanged) payload.scoreTable = full.scoreTable;
+  if (scoreTableChanged) { payload.scoreTable = full.scoreTable; payload.scoreHistory = full.scoreHistory; }
   if (gameLogChanged) payload.gameLog = full.gameLog;
   if (opts.settings) payload.settings = { ...room.settings };
 

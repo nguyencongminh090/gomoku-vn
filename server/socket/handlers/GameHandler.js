@@ -188,6 +188,7 @@ function register(io, socket) {
       io.to(room.roomId).emit('game:ended', {
         result: finalResult,
         scoreTable: room.scoreTable,
+        scoreHistory: room.scoreHistory || [],
       });
       // Board-full draw has no dedicated modal any more (instruction.md
       // §B36 removed #game-overlay) — this system-chat line is now the only
@@ -337,6 +338,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:ended', {
       result: gameResult,
       scoreTable: room.scoreTable,
+      scoreHistory: room.scoreHistory || [],
     });
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -384,6 +386,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:ended', {
       result: gameResult,
       scoreTable: room.scoreTable,
+      scoreHistory: room.scoreHistory || [],
     });
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -717,6 +720,7 @@ function startTimerForGame(io, room, engine, idOverride) {
       io.to(roomId).emit('game:ended', {
         result: engine.result,
         scoreTable: room.scoreTable,
+        scoreHistory: room.scoreHistory || [],
       });
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,
@@ -937,6 +941,21 @@ function appendGameLog(room, engine) {
   if (room.gameLog.length > GAME_LOG_MAX) room.gameLog.splice(0, room.gameLog.length - GAME_LOG_MAX);
 }
 
+const SCORE_HISTORY_MAX = 20;
+
+/** Move the finished pair's tally into room.scoreHistory; resume the new pair's old tally if they played before. */
+function archiveScorePair(room, nextKey) {
+  const hist = (room.scoreHistory || []).filter((h) => h.key !== room.scorePair && h.key !== nextKey);
+  const prev = (room.scoreHistory || []).find((h) => h.key === nextKey);
+  if (room.scoreTable && Object.keys(room.scoreTable).length) {
+    hist.push({ key: room.scorePair, players: Object.entries(room.scoreTable).map(([userId, e]) => ({ userId, ...e })) });
+  }
+  if (hist.length > SCORE_HISTORY_MAX) hist.splice(0, hist.length - SCORE_HISTORY_MAX);
+  room.scoreHistory = hist;
+  room.scoreTable = {};
+  if (prev) for (const { userId, ...e } of prev.players) room.scoreTable[userId] = e;
+}
+
 /**
  * Handle game end — stop timer, update scores, persist game, reset room state.
  *
@@ -955,6 +974,11 @@ function handleGameEnd(io, room, opts = {}) {
 
   if (engine && engine.result && !noScore) {
     const { winner } = engine.result;
+    // The table is the CURRENT pair's tally: when either seat changes hands (even if
+    // one player keeps sitting) the previous pair's counts must not carry over.
+    const pairKey = engine.players.map((p) => p.userId).sort().join('|');
+    if (room.scorePair !== undefined && room.scorePair !== pairKey) archiveScorePair(room, pairKey);
+    room.scorePair = pairKey;
     for (const p of engine.players) {
       if (!room.scoreTable[p.userId]) {
         room.scoreTable[p.userId] = { name: p.displayName, win: 0, loss: 0, draw: 0 };

@@ -380,6 +380,7 @@ function startDisconnectGrace(io, room, user) {
       io.to(roomId).emit('game:ended', {
         result: { winner: null, reason: 'disconnect' },
         scoreTable: room.scoreTable,
+        scoreHistory: room.scoreHistory || [],
       });
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,

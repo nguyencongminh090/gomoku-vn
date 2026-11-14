@@ -862,6 +862,7 @@
     cancelTurnWatchdog();
     cancelMoveConfirmWatchdog();
     if (data.scoreTable && st.roomData) st.roomData.scoreTable = data.scoreTable;
+    if (data.scoreHistory && st.roomData) st.roomData.scoreHistory = data.scoreHistory;
     if (st.gameState) {
       st.gameState.status = 'finished';
       if (data.result) st.gameState.result = data.result;
