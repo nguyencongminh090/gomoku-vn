@@ -88,3 +88,4 @@ in the detail file / fix-log).
 - **#373.** Room Khán giả lists viewers who left the table page (lobby/home/closed tab) `[Model: Opus 5]` — [detail](docs/todo/B373-spectators-watching-only.md)
 - **#374.** Rankings redesign RK17: podium in LED split-flap board + 5 s opening `[Model: Opus 5]` — [detail](docs/todo/B374-rankings-podium-board.md)
 - **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)
+- **#376.** Room nav N1 "Thẻ bàn": rules always visible + popover, menu ≡ `[Model: Opus 5]` — [detail](docs/todo/B376-room-nav-title-rules.md)

@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room nav — mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#4d7c1f;--brand-d:#3d6418;--brand-l:rgba(77,124,31,.10);--ink:#1f1f1f;--ink2:#3a3a3a;--mut:#707070;--line:#e4e2dd;--bg:#ecebe8;--warn:#8f5500;--warn-l:rgba(178,106,0,.10);--danger:#b3261e;--x:#d32f2f;--o:#1e5bbf;--page:#d9d7d2}
+*{box-sizing:border-box}
+body{margin:0;font-family:Nunito,system-ui,sans-serif;background:var(--page);color:var(--ink)}
+.page{max-width:1500px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 6px}
+.lead{color:#444;margin:0 0 18px;max-width:1000px}
+.opt{background:#f6f5f2;border-radius:14px;padding:18px;margin:0 0 28px}
+.opt h2{margin:0 0 4px;font-size:21px}
+.opt .why{margin:0 0 14px;color:#444;max-width:1150px;font-size:14px;line-height:1.5}
+.row{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:18px}
+.cap{font-size:12px;font-weight:800;color:var(--mut);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
+.dwrap{width:1008px;overflow:hidden;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.dwrap.full{height:630px}.dwrap.crop{height:330px}
+.desk{position:relative;width:1440px;height:900px;transform:scale(.7);transform-origin:0 0;background:url(base-desktop.png) 0 0/1440px 900px}
+.pwrap{width:390px;height:844px;overflow:hidden;border-radius:22px;box-shadow:0 2px 10px rgba(0,0,0,.15);border:6px solid #222;flex:none}
+.phone{position:relative;width:390px;height:844px;background:url(base-phone.png) 0 0/390px 844px}
+.abs{position:absolute}
+svg.i{width:20px;height:20px;fill:currentColor;flex:none}
+/* ---- nav shared ---- */
+.nav{position:absolute;left:0;top:0;right:0;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center}
+.d .nav{height:56px;padding:0 20px 0 24px}
+.p .nav{height:48px;padding:0 8px 0 12px}
+.brand{font-size:24px;font-weight:600;color:var(--ink);letter-spacing:-.01em;white-space:nowrap}
+.brand b{color:var(--brand);font-weight:700}
+.p .brand{font-size:19px}
+.ibtn{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--ink2);background:none;border:0}
+.ibtn:hover{background:#f1f0ec}
+.ibtn.on{background:#efeee9}
+.tbtn{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 12px;border-radius:10px;border:1px solid var(--line);font-weight:700;font-size:14px;color:var(--ink2);background:#fff}
+.spacer{flex:1}
+/* ---- N1 ticket ---- */
+.ticket{display:inline-flex;align-items:stretch;height:36px;border:1px solid #d9d6cf;border-radius:11px;background:#fbfaf7;overflow:hidden;font-size:13.5px;font-weight:800;color:var(--ink2)}
+.ticket>span{display:inline-flex;align-items:center;gap:6px;padding:0 11px;border-left:1px solid #e6e3dc;white-space:nowrap}
+.ticket>span:first-child{border-left:0}
+.ticket .code{font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.ticket .code svg{width:14px;height:14px;color:var(--mut)}
+.ticket .mode{color:var(--brand-d);background:var(--brand-l)}
+.ticket .mode.rated{color:var(--warn);background:var(--warn-l)}
+.ticket .rule{color:var(--brand-d)}
+.ticket .rule .dot{width:3px;height:3px;border-radius:50%;background:#9bb07f}
+.ticket .rule svg{width:16px;height:16px}
+.p .ticket{height:32px;font-size:12.5px;border-radius:10px}
+.p .ticket>span{padding:0 8px;gap:5px}
+.p .ticket .mode svg{width:17px;height:17px}
+/* ---- N2 title block ---- */
+.title{display:flex;flex-direction:column;justify-content:center;line-height:1.15;min-width:0}
+.title .t1{font-size:15.5px;font-weight:800;color:var(--ink);white-space:nowrap}
+.title .t1 .code{color:var(--mut);font-weight:700;margin-left:4px}
+.title .t2{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--brand-d);margin-top:2px;white-space:nowrap}
+.title .t2 svg{width:14px;height:14px}
+.title .t2 .sep{color:#b0b0a8}
+.title .t2 .info{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;border:1.5px solid currentColor;font-size:9.5px;font-weight:900}
+.title .t2.rated{color:var(--warn)}
+.vsep{width:1px;height:26px;background:var(--line);margin:0 16px}
+/* ---- menus ---- */
+.menu{background:#fff;border-radius:14px;box-shadow:0 12px 36px rgba(0,0,0,.2);border:1px solid var(--line);padding:8px;font-size:14px}
+.mh{font-size:11px;font-weight:800;color:var(--mut);letter-spacing:.05em;text-transform:uppercase;padding:8px 10px 4px}
+.mi{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:9px;font-weight:700;color:var(--ink2)}
+.mi:hover{background:#f3f2ee}
+.mi .sub{margin-left:auto;font-size:12px;font-weight:600;color:var(--mut)}
+.mi svg{width:19px;height:19px;color:#555}
+.mi.rule svg{color:var(--brand)}
+.mi.danger{color:var(--danger)}.mi.danger svg{color:var(--danger)}
+.mdiv{height:1px;background:var(--line);margin:6px 4px}
+.go{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 6px 6px}
+.go span{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:9px;background:#f5f4f0;font-size:12px;font-weight:700;color:var(--ink2)}
+.go svg{width:19px;height:19px;color:#555}
+.scrim{background:rgba(0,0,0,.35)}
+.sheet{background:#fff;border-radius:18px 18px 0 0;padding:8px 10px 18px;box-shadow:0 -6px 24px rgba(0,0,0,.2);font-size:15px}
+.sheet .mi{padding:12px 10px}
+.grab{width:40px;height:4px;border-radius:2px;background:#ccc;margin:2px auto 8px}
+.shead{display:flex;align-items:center;gap:10px;padding:2px 10px 8px}
+.shead b{font-size:16px}
+.new{outline:2px dashed #e07b00;outline-offset:2px}
+.tip{font-size:12px;color:var(--mut);margin:6px 0 0}
+.pop{background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);border:1px solid var(--line);padding:12px 14px;font-size:13px;width:340px}
+.pop h3{margin:0 0 6px;font-size:14.5px}
+.pop p{margin:2px 0 8px;line-height:1.4}
+.cells{display:inline-flex;border:1px solid #c9d3e6;background:#fbfaf6;vertical-align:middle}
+.c{width:16px;height:16px;border-left:1px solid #dbe2ef;display:grid;place-items:center;font-size:12px;font-weight:900;line-height:1}
+.c:first-child{border-left:0}.c.x{color:var(--x)}.c.o{color:var(--o)}
+.compare{width:100%;border-collapse:collapse;font-size:13.5px;background:#fff;border-radius:10px;overflow:hidden}
+.compare th,.compare td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.compare th{background:#efeee9;font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:#555}
+</style>
+</head>
+<body>
+<!--SPRITE-->
+<div class="page">
+<h1>Thanh nav phòng chơi — 2 hướng</h1>
+<p class="lead">Nền là ảnh chụp phòng thật; chỉ thanh nav (và menu khi mở) được vẽ lại. Chiều cao nav giữ nguyên (desktop 56 px, phone 48 px) → bàn cờ, thẻ người chơi, cột chat không dịch. Ví dụ: bàn <b>#YKE</b>, Giao hữu, <b>Luật 2 + Ô khoá</b>. Icon lấy từ bộ Phosphor đang dùng (QR / sao chép / info là icon tự vẽ cùng nét).</p>
+
+<table class="compare" style="margin-bottom:22px">
+<tr><th>Mục trên nav hiện tại</th><th>N1 · Thẻ bàn + menu ≡</th><th>N2 · Thanh tiêu đề</th></tr>
+<tr><td>Logo Play3CR</td><td>Giữ (desktop + phone)</td><td>Desktop giữ · phone bỏ (nhường chỗ tiêu đề)</td></tr>
+<tr><td>6 link trang (Chơi, Phòng…) — đang ẩn khi bạn đang đánh</td><td colspan="2">Vào menu ≡ (lưới 6 ô "Đi tới"), vẫn ẩn khi bạn đang đánh</td></tr>
+<tr><td>Mã bàn #YKE (bấm = sao chép)</td><td>Ô đầu của thẻ, có icon sao chép</td><td>Dòng tiêu đề "Bàn #YKE"</td></tr>
+<tr><td>Badge Giao hữu / Xếp hạng</td><td>Ô icon trong thẻ (bắt tay xanh / cúp cam) — chữ trong tooltip + menu</td><td>Icon + chữ ở dòng phụ</td></tr>
+<tr><td><b>Luật (mới)</b></td><td>Ô cuối của thẻ "Luật 2 · Ô khoá ⓘ" → popover/sheet giải thích</td><td>Dòng phụ "Luật 2 · Ô khoá ⓘ" → popover/sheet</td></tr>
+<tr><td>Nút QR</td><td>Menu ≡</td><td>Menu ≡</td></tr>
+<tr><td>Rời phòng</td><td>Desktop: nút chữ · Phone: cuối menu ≡ (màu đỏ)</td><td>Desktop: nút chữ · Phone: nút ← đầu thanh</td></tr>
+<tr><td>Bánh răng Cài đặt</td><td>Menu ≡</td><td>Menu ≡</td></tr>
+<tr><td><b>Số nút trên thanh</b> (desktop / phone)</td><td><b>2 / 1</b> + thẻ bàn</td><td><b>2 / 2</b> + tiêu đề</td></tr>
+</table>
+
+<!-- ===================== N1 ===================== -->
+<section class="opt">
+<h2>N1 · "Thẻ bàn" — một khối duy nhất chứa mã bàn, chế độ, luật</h2>
+<p class="why">Mọi thông tin về bàn gom vào <b>một thẻ chia ô</b> ở giữa thanh: <code>#YKE ⧉ | 🤝 | Luật 2 · Ô khoá ⓘ</code>. Bên phải chỉ còn <b>Rời phòng</b> + <b>≡</b>. Mọi tính năng phụ (QR, sao chép link, cài đặt, đi tới trang khác) nằm trong ≡. Trên phone thẻ đứng cạnh logo, Rời phòng chuyển xuống cuối menu (vẫn hỏi xác nhận khi đang đánh). Bấm vào ô luật sẽ mở popover/sheet giải thích (như phương án A đã duyệt).</p>
+<div class="row">
+ <div><p class="cap">Desktop — đang đánh (Giao hữu)</p>
+ <div class="dwrap full d"><div class="desk">
+  <div class="nav new">
+   <span class="brand">Play<b>3CR</b></span>
+   <span class="spacer"></span>
+   <span class="ticket"><span class="code">#YKE <svg class="i"><use href="#x-copy"/></svg></span><span class="mode" title="Giao hữu"><svg class="i"><use href="#ph-regular-handshake"/></svg></span><span class="rule">Luật 2<i class="dot"></i>Ô khoá<svg class="i"><use href="#x-info"/></svg></span></span>
+   <span class="spacer"></span>
+   <span class="tbtn"><svg class="i" style="width:17px;height:17px"><use href="#ph-regular-sign-out"/></svg>Rời phòng</span>
+   <span class="ibtn" style="margin-left:8px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-list"/></svg></span>
+  </div>
+ </div></div></div>
+</div>
+<div class="row">
+ <div><p class="cap">Desktop — menu ≡ mở (đang xem, chưa ngồi)</p>
+ <div class="dwrap crop d" style="height:420px"><div class="desk">
+  <div class="nav">
+   <span class="brand">Play<b>3CR</b></span><span class="spacer"></span>
+   <span class="ticket"><span class="code">#YKE <svg class="i"><use href="#x-copy"/></svg></span><span class="mode rated" title="Xếp hạng"><svg class="i"><use href="#ph-regular-trophy"/></svg></span><span class="rule">Luật 2<i class="dot"></i>Ô khoá<svg class="i"><use href="#x-info"/></svg></span></span>
+   <span class="spacer"></span>
+   <span class="tbtn"><svg class="i" style="width:17px;height:17px"><use href="#ph-regular-sign-out"/></svg>Rời phòng</span>
+   <span class="ibtn on" style="margin-left:8px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-x"/></svg></span>
+  </div>
+  <div class="abs menu new" style="right:16px;top:60px;width:300px">
+   <div class="mh">Bàn #YKE · Xếp hạng</div>
+   <div class="mi"><svg class="i"><use href="#x-qr"/></svg>Mã QR vào bàn</div>
+   <div class="mi"><svg class="i"><use href="#x-copy"/></svg>Sao chép link mời</div>
+   <div class="mi rule"><svg class="i"><use href="#x-info"/></svg>Luật ván này<span class="sub">Luật 2 · Ô khoá</span></div>
+   <div class="mi"><svg class="i"><use href="#ph-regular-gear-six"/></svg>Cài đặt<span class="sub">âm thanh, giao diện</span></div>
+   <div class="mdiv"></div>
+   <div class="mh">Đi tới</div>
+   <div class="go">
+    <span><svg class="i"><use href="#ph-regular-play"/></svg>Chơi</span><span><svg class="i"><use href="#ph-regular-grid-four"/></svg>Phòng</span><span><svg class="i"><use href="#ph-regular-trophy"/></svg>Giải đấu</span>
+    <span><svg class="i"><use href="#ph-regular-ranking"/></svg>Xếp hạng</span><span><svg class="i"><use href="#ph-regular-users-three"/></svg>Hội nhóm</span><span><svg class="i"><use href="#ph-regular-target"/></svg>Học</span>
+   </div>
+  </div>
+ </div></div>
+ <p class="tip">Chế độ Xếp hạng: ô icon đổi sang cúp màu cam. "Đi tới" ẩn khi bạn đang ngồi đánh (như hiện tại).</p></div>
+</div>
+<div class="row">
+ <div><p class="cap">Phone — đóng</p>
+ <div class="pwrap p"><div class="phone">
+  <div class="nav new">
+   <span class="brand">Play<b>3CR</b></span><span class="spacer"></span>
+   <span class="ticket"><span class="code">#5UX</span><span class="mode"><svg class="i"><use href="#ph-regular-handshake"/></svg></span><span class="rule">Luật 2 +1<svg class="i"><use href="#x-info"/></svg></span></span>
+   <span class="ibtn" style="margin-left:4px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-list"/></svg></span>
+  </div>
+ </div></div></div>
+ <div><p class="cap">Phone — menu ≡ mở (đang đánh)</p>
+ <div class="pwrap p"><div class="phone">
+  <div class="nav">
+   <span class="brand">Play<b>3CR</b></span><span class="spacer"></span>
+   <span class="ticket"><span class="code">#5UX</span><span class="mode"><svg class="i"><use href="#ph-regular-handshake"/></svg></span><span class="rule">Luật 2 +1<svg class="i"><use href="#x-info"/></svg></span></span>
+   <span class="ibtn on" style="margin-left:4px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-x"/></svg></span>
+  </div>
+  <div class="abs scrim" style="left:0;top:48px;right:0;bottom:0"></div>
+  <div class="abs sheet new" style="left:0;right:0;bottom:0">
+   <div class="grab"></div>
+   <div class="shead"><svg class="i" style="color:var(--brand)"><use href="#ph-regular-handshake"/></svg><b>Bàn #5UX · Giao hữu</b></div>
+   <div class="mi rule"><svg class="i"><use href="#x-info"/></svg>Luật ván này<span class="sub">Luật 2 · Ô khoá</span></div>
+   <div class="mi"><svg class="i"><use href="#x-qr"/></svg>Mã QR vào bàn</div>
+   <div class="mi"><svg class="i"><use href="#x-copy"/></svg>Sao chép link mời</div>
+   <div class="mi"><svg class="i"><use href="#ph-regular-gear-six"/></svg>Cài đặt<span class="sub">âm thanh, giao diện</span></div>
+   <div class="mdiv"></div>
+   <div class="mi danger"><svg class="i"><use href="#ph-regular-sign-out"/></svg>Rời phòng<span class="sub" style="color:var(--danger)">sẽ hỏi lại</span></div>
+  </div>
+ </div></div></div>
+ <div><p class="cap">Phone — bấm ô luật</p>
+ <div class="pwrap p"><div class="phone">
+  <div class="nav">
+   <span class="brand">Play<b>3CR</b></span><span class="spacer"></span>
+   <span class="ticket"><span class="code">#5UX</span><span class="mode"><svg class="i"><use href="#ph-regular-handshake"/></svg></span><span class="rule" style="background:var(--brand-l)">Luật 2 +1<svg class="i"><use href="#x-info"/></svg></span></span>
+   <span class="ibtn" style="margin-left:4px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-list"/></svg></span>
+  </div>
+  <div class="abs scrim" style="left:0;top:48px;right:0;bottom:0"></div>
+  <div class="abs sheet" style="left:0;right:0;bottom:0;padding:8px 16px 20px;font-size:13.5px">
+   <div class="grab"></div>
+   <b style="font-size:16px">Luật của ván này</b>
+   <p style="margin:10px 0 2px"><b>Luật 2</b> — 5 quân liên tiếp trở lên là thắng, <b>trừ khi bị quân đối thủ chặn cả 2 đầu</b>. Tường hay mép bàn không tính là chặn.</p>
+   <p style="margin:6px 0 10px"><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span> <b style="color:#c62828;font-size:12px">✗ không thắng</b></p>
+   <p style="margin:0;border-top:1px solid var(--line);padding-top:10px"><b>Ô khoá</b> — Ô xám là tường. <b>Nước đầu phải đặt cạnh ô tường.</b></p>
+  </div>
+ </div></div></div>
+</div>
+</section>
+
+<!-- ===================== N2 ===================== -->
+<section class="opt">
+<h2>N2 · "Thanh tiêu đề" — kiểu app, tên bàn + dòng luật bên dưới</h2>
+<p class="why">Thanh nav thành <b>tiêu đề 2 dòng</b>: dòng 1 "Bàn #YKE", dòng 2 nhỏ màu theo chế độ: <code>🤝 Giao hữu · Luật 2 · Ô khoá ⓘ</code> (bấm = xem luật). Chữ "Giao hữu/Xếp hạng" vẫn hiện đầy đủ. Phone bỏ logo, nút <b>←</b> đầu thanh là Rời phòng (như nút back của app), <b>≡</b> cuối thanh chứa QR, sao chép link, cài đặt, đi tới. Desktop giữ logo, tiêu đề đứng sau vạch ngăn.</p>
+<div class="row">
+ <div><p class="cap">Desktop — đang đánh (Giao hữu)</p>
+ <div class="dwrap full d"><div class="desk">
+  <div class="nav new">
+   <span class="brand">Play<b>3CR</b></span><span class="vsep"></span>
+   <span class="title"><span class="t1">Bàn #YKE</span><span class="t2"><svg class="i"><use href="#ph-regular-handshake"/></svg>Giao hữu<span class="sep">·</span>Luật 2<span class="sep">·</span>Ô khoá<span class="info">i</span></span></span>
+   <span class="spacer"></span>
+   <span class="tbtn"><svg class="i" style="width:17px;height:17px"><use href="#ph-regular-sign-out"/></svg>Rời phòng</span>
+   <span class="ibtn" style="margin-left:8px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-list"/></svg></span>
+  </div>
+ </div></div></div>
+</div>
+<div class="row">
+ <div><p class="cap">Desktop — bấm dòng luật (Xếp hạng)</p>
+ <div class="dwrap crop d" style="height:330px"><div class="desk">
+  <div class="nav">
+   <span class="brand">Play<b>3CR</b></span><span class="vsep"></span>
+   <span class="title"><span class="t1">Bàn #YKE</span><span class="t2 rated" style="background:var(--warn-l);border-radius:6px;padding:0 6px;margin-left:-6px"><svg class="i"><use href="#ph-regular-trophy"/></svg>Xếp hạng<span class="sep">·</span>Luật 2<span class="sep">·</span>Ô khoá<span class="info">i</span></span></span>
+   <span class="spacer"></span>
+   <span class="tbtn"><svg class="i" style="width:17px;height:17px"><use href="#ph-regular-sign-out"/></svg>Rời phòng</span>
+   <span class="ibtn" style="margin-left:8px"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-list"/></svg></span>
+  </div>
+  <div class="abs pop new" style="left:150px;top:60px">
+   <h3>Luật của ván này</h3>
+   <p><b>Luật 2</b> — 5+ quân thắng, <b>trừ khi bị quân đối thủ chặn cả 2 đầu</b>. Tường/mép bàn không tính là chặn.</p>
+   <p><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span> <b style="color:#c62828;font-size:12px">✗ không thắng</b></p>
+   <p style="border-top:1px solid var(--line);padding-top:8px;margin-bottom:0"><b>Ô khoá</b> — Nước đầu phải đặt cạnh ô tường.</p>
+  </div>
+ </div></div></div>
+</div>
+<div class="row">
+ <div><p class="cap">Phone — đóng</p>
+ <div class="pwrap p"><div class="phone">
+  <div class="nav new" style="padding-left:4px">
+   <span class="ibtn" title="Rời phòng"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-arrow-left"/></svg></span>
+   <span class="title" style="margin-left:2px"><span class="t1">Bàn #5UX</span><span class="t2"><svg class="i"><use href="#ph-regular-handshake"/></svg>Giao hữu<span class="sep">·</span>Luật 2<span class="sep">·</span>Ô khoá<span class="info">i</span></span></span>
+   <span class="spacer"></span>
+   <span class="ibtn"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-list"/></svg></span>
+  </div>
+ </div></div></div>
+ <div><p class="cap">Phone — menu ≡ mở (đang xem)</p>
+ <div class="pwrap p"><div class="phone">
+  <div class="nav" style="padding-left:4px">
+   <span class="ibtn"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-arrow-left"/></svg></span>
+   <span class="title" style="margin-left:2px"><span class="t1">Bàn #5UX</span><span class="t2"><svg class="i"><use href="#ph-regular-handshake"/></svg>Giao hữu<span class="sep">·</span>Luật 2<span class="sep">·</span>Ô khoá<span class="info">i</span></span></span>
+   <span class="spacer"></span>
+   <span class="ibtn on"><svg class="i" style="width:22px;height:22px"><use href="#ph-regular-x"/></svg></span>
+  </div>
+  <div class="abs scrim" style="left:0;top:48px;right:0;bottom:0"></div>
+  <div class="abs sheet new" style="left:0;right:0;bottom:0">
+   <div class="grab"></div>
+   <div class="mi"><svg class="i"><use href="#x-qr"/></svg>Mã QR vào bàn</div>
+   <div class="mi"><svg class="i"><use href="#x-copy"/></svg>Sao chép link mời</div>
+   <div class="mi"><svg class="i"><use href="#ph-regular-gear-six"/></svg>Cài đặt<span class="sub">âm thanh, giao diện</span></div>
+   <div class="mdiv"></div>
+   <div class="mh">Đi tới</div>
+   <div class="go">
+    <span><svg class="i"><use href="#ph-regular-play"/></svg>Chơi</span><span><svg class="i"><use href="#ph-regular-grid-four"/></svg>Phòng</span><span><svg class="i"><use href="#ph-regular-trophy"/></svg>Giải đấu</span>
+    <span><svg class="i"><use href="#ph-regular-ranking"/></svg>Xếp hạng</span><span><svg class="i"><use href="#ph-regular-users-three"/></svg>Hội nhóm</span><span><svg class="i"><use href="#ph-regular-target"/></svg>Học</span>
+   </div>
+  </div>
+ </div></div></div>
+</div>
+</section>
+</div>
+</body>
+</html>

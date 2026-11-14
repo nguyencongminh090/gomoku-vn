@@ -42,13 +42,13 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=59d2d482" />
+  <link rel="modulepreload" href="js/i18n.js?v=70ecfb22" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
-  <link rel="modulepreload" href="js/platform-shell.js?v=940778bb" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=f5001901" />
+  <link rel="modulepreload" href="js/platform-shell.js?v=bd6fcdfc" />
   <link rel="modulepreload" href="js/lobby.js?v=5f51da63" />
-  <link rel="modulepreload" href="js/private-chat.js?v=b2ce3735" />
-  <link rel="modulepreload" href="js/tournaments.js?v=23201968" />
+  <link rel="modulepreload" href="js/private-chat.js?v=fd2b4134" />
+  <link rel="modulepreload" href="js/tournaments.js?v=48180dfc" />
   <link rel="modulepreload" href="js/lobby-home.js?v=fb566fa2" />
 
 </head>
@@ -76,7 +76,7 @@
     </div>
     <div class="lobby-bar__actions" id="lobby-bar">
       <button id="btn-create-tournament" hidden class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-plus-circle"></use></svg>
         <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
       </button>
     </div>
@@ -100,9 +100,9 @@
       <h1 class="hq-q" id="home-q">Tìm cho tôi một ván <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">Luật 1 (Ô khoá)</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">thời gian tự động</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">xếp hạng</button>.</h1>
       <ul class="hq-menu" id="qm-pick" role="listbox" hidden></ul>
       <div class="hq-go">
-        <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
+        <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
         <!-- #361 T2: twin of Chơi nhanh, members only; opens the opponent picker (home-challenge.js) with the sentence's rules. -->
-        <button type="button" class="hq-chal" id="qm-challenge" aria-haspopup="dialog" aria-expanded="false" hidden><span class="hq-chal__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-sword"></use></svg></span><span data-i18n="qm.challenge">Thách đấu</span></button>
+        <button type="button" class="hq-chal" id="qm-challenge" aria-haspopup="dialog" aria-expanded="false" hidden><span class="hq-chal__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-sword"></use></svg></span><span data-i18n="qm.challenge">Thách đấu</span></button>
         <div class="hq-search" id="qm-search" hidden>
           <span class="hq-ring" aria-hidden="true"></span>
           <span class="hq-search__text" id="qm-status" aria-live="polite"></span>
@@ -123,16 +123,16 @@
         <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
         <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
         <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
-        <button type="submit" class="hq-enter"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg><span data-i18n="home.enter_room">Vào phòng</span></button>
-        <a class="hq-list" id="hub-rooms" href="#rooms"><span data-i18n="home.open_rooms">Xem phòng đang mở</span><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-caret-right"></use></svg></a>
+        <button type="submit" class="hq-enter"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-door-open"></use></svg><span data-i18n="home.enter_room">Vào phòng</span></button>
+        <a class="hq-list" id="hub-rooms" href="#rooms"><span data-i18n="home.open_rooms">Xem phòng đang mở</span><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-caret-right"></use></svg></a>
         <p class="hq-code__err" id="home-code-error" role="alert" hidden></p>
       </form>
       <!-- #360 N2: phones only (≤860px) — the greeting-row icons become 4 labelled tiles here; desktop keeps .hub-more. -->
       <nav class="hq-tiles" aria-label="Khám phá" data-i18n-aria="home.more_aria">
-        <a class="hq-tile" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
-        <a class="hq-tile" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
-        <a class="hq-tile" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
-        <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+        <a class="hq-tile" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-tile" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-tile" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
       </nav>
     </div>
     <!-- #366 C "Bảng quán cờ": desktop only (hidden ≤860px, where .hq-pulse + .hq-tiles carry the same data/links). -->
@@ -145,10 +145,10 @@
         <div id="home-live-one"></div>
       </section>
       <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
-        <a class="hq-chip" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
-        <a class="hq-chip" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
-        <a class="hq-chip" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
-        <a class="hq-chip" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+        <a class="hq-chip" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-chip" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-chip" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-chip" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
       </nav>
     </div>
   </section>
@@ -177,7 +177,7 @@
               <input class="rh-code__box" id="join-code-1" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
               <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
               <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
-              <button id="btn-join-code" class="rh-code__go" type="submit"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg><span data-i18n="lobby.join_code_go">Vào</span></button>
+              <button id="btn-join-code" class="rh-code__go" type="submit"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-door-open"></use></svg><span data-i18n="lobby.join_code_go">Vào</span></button>
             </div>
             <p id="join-code-error" class="rh-code__err" role="alert" hidden></p>
           </form>
@@ -201,7 +201,7 @@
         <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
         <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
       </div>
-      <button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg></span><span data-i18n="lobby.rh_new_table">Mở bàn mới</span></button>
+      <button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-plus-circle"></use></svg></span><span data-i18n="lobby.rh_new_table">Mở bàn mới</span></button>
     </div>
   </div>
 
@@ -209,7 +209,7 @@
   <div class="tab-panel" id="panel-tournaments">
     <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
       <div class="live-matches-panel__header">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-broadcast"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-broadcast"></use></svg>
         <span data-i18n="live_matches.title">Trận đang diễn ra</span>
       </div>
       <div id="live-matches-list" class="live-matches-panel__list"></div>
@@ -242,7 +242,7 @@
   <div class="modal">
     <div class="modal__header">
       <h2 id="modal-title" class="modal__title" data-i18n="modal.title">Tạo phòng mới</h2>
-      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
 
@@ -260,13 +260,13 @@
         <div class="mode-cards" role="radiogroup" aria-labelledby="mode-label">
           <input type="radio" name="roomMode" id="rm-rated" value="rated" checked />
           <label for="rm-rated" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg>
+            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg>
             <span class="mode-card__name" data-i18n="room.mode_rated">Xếp hạng</span>
             <span class="mode-card__desc" data-i18n="modal.mode_rated_desc">Tính điểm Elo, không đi lại</span>
           </label>
           <input type="radio" name="roomMode" id="rm-friendly" value="friendly" />
           <label for="rm-friendly" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-handshake"></use></svg>
+            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-handshake"></use></svg>
             <span class="mode-card__name" data-i18n="room.mode_friendly">Giao hữu</span>
             <span class="mode-card__desc" data-i18n="modal.mode_friendly_desc">Không tính điểm, được đi lại</span>
           </label>
@@ -392,7 +392,7 @@
   <div class="modal">
     <div class="modal__header">
       <h2 id="modal-tournament-title" class="modal__title" data-i18n="tournaments.modal_title">Tạo giải đấu mới</h2>
-      <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
       <p id="tournament-club-note" class="pnote" hidden></p>
@@ -589,15 +589,15 @@
   <div class="modal online-users-modal">
     <div class="modal__header">
       <span class="online-users-modal__title-wrap">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg>
         <h2 id="modal-online-users-title" class="modal__title" data-i18n="private_chat.modal_title">Danh sách người dùng online</h2>
         <span id="online-users-count" class="online-users-modal__count">0</span>
       </span>
-      <button id="modal-online-users-close" class="modal__close" type="button" data-i18n-aria="private_chat.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button id="modal-online-users-close" class="modal__close" type="button" data-i18n-aria="private_chat.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
       <div class="online-users-search-wrap">
-        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-magnifying-glass"></use></svg>
+        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-magnifying-glass"></use></svg>
         <input type="text" id="online-users-search" class="online-users-search" autocomplete="off"
                data-i18n-placeholder="private_chat.modal_search_ph" placeholder="Tìm kiếm người dùng..." />
         <kbd class="online-users-search-shortcut"></kbd>
@@ -614,6 +614,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=da29dbbe"></script>
+<script type="module" src="js/index-entry.js?v=2752237c"></script>
 </body>
 </html>
