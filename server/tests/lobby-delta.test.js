@@ -32,6 +32,7 @@ jest.mock('../utils/logger', () => ({
 // B225: every lobby change also pokes the dashboard feed — its own timer, tested in home-feed.test.js.
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
 
+const LobbyMoves = require('../../client/js/lobby-moves');
 const { broadcastLobbyUpdate, sendLobbySnapshot, scheduleLobbyBoardUpdate, LOBBY_BOARD_THROTTLE_MS } = require('../socket/state');
 const homeFeed = require('../socket/home-feed');
 
@@ -437,5 +438,92 @@ describe('lobby mini-board throttle (#364)', () => {
     scheduleLobbyBoardUpdate(io);
     jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS + DEBOUNCE_MS);
     expect(homeFeed.scheduleHomeUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe('moves delta (#377)', () => {
+  const playing = (moves, startedAt = 1000) => entry('#AAA', { state: 'playing', playerCount: 2, startedAt, moves });
+
+  function upsertAfter(before, after) {
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([before]);
+    flush(io);
+    io.emitted.length = 0;
+    mockRoomManager.listRooms.mockReturnValue([after]);
+    flush(io);
+    return io.emitted.length ? io.emitted[0].data.upserts[0] : undefined;
+  }
+
+  test('a continued game, nothing else changed: only roomId, startedAt and the new moves', () => {
+    const u = upsertAfter(playing([7, 7, 8, 8]), playing([7, 7, 8, 8, 6, 6, 9, 9]));
+    expect(u).toEqual({ roomId: '#AAA', startedAt: 1000, movesFrom: 4, moves: [6, 6, 9, 9] });
+  });
+
+  test('a continued game with another change: the whole entry, moves still as a delta', () => {
+    const u = upsertAfter(playing([7, 7]), { ...playing([7, 7, 8, 8]), userCount: 5 });
+    expect(u).toMatchObject({ roomName: 'Phòng #AAA', userCount: 5, movesFrom: 2, moves: [8, 8] });
+  });
+
+  test('undo sends the shared prefix length and the (shorter) tail', () => {
+    const u = upsertAfter(playing([7, 7, 8, 8, 6, 6]), playing([7, 7, 8, 8]));
+    expect(u).toMatchObject({ movesFrom: 4, moves: [] });
+  });
+
+  test.each([
+    ['a game starts (moves were null)', entry('#AAA'), playing([7, 7])],
+    ['a new game in the same room (startedAt changed)', playing([7, 7, 8, 8], 1000), playing([7, 7], 2000)],
+    ['the game ends (moves → null)', playing([7, 7]), entry('#AAA', { moves: null })],
+  ])('full entry, no movesFrom: %s', (_, before, after) => {
+    const u = upsertAfter(before, after);
+    expect(u).toEqual(after);
+    expect(u).not.toHaveProperty('movesFrom');
+  });
+
+  test('a static change with the same moves is still sent (without a moves delta cost)', () => {
+    const u = upsertAfter(playing([7, 7]), { ...playing([7, 7]), userCount: 5 });
+    expect(u.userCount).toBe(5);
+    expect(u.movesFrom).toBe(2);
+    expect(u.moves).toEqual([]);
+  });
+
+  test('the patch shrinks: 100-move game, one new move → bytes of one move, not 100', () => {
+    const long = Array.from({ length: 200 }, (_, i) => i % 15);
+    const u = upsertAfter(playing(long), playing([...long, 3, 4]));
+    expect(u.moves).toEqual([3, 4]);
+    expect(JSON.stringify(u).length).toBeLessThan(80);
+  });
+
+  test('snapshot + delta patches (with a mid-stream newer snapshot) reproduce the server state', () => {
+    const io = makeIo();
+    const states = [
+      [playing([1, 1])],
+      [playing([1, 1, 2, 2, 3, 3])],
+      [playing([1, 1, 2, 2])],              // undo
+      [playing([1, 1, 2, 2, 4, 4, 5, 5])],
+      [playing([6, 6], 2000)],              // rematch
+      [playing([6, 6, 7, 7], 2000)],
+    ];
+    mockRoomManager.listRooms.mockReturnValue(states[0]);
+    const s1 = makeSocket();
+    sendLobbySnapshot(io, s1);
+    let early = new Map(s1.emitted[0].data.rooms.map((r) => [r.roomId, r]));
+    let late = null;
+    const apply = (map, patch) => {
+      for (const id of patch.removed) map.delete(id);
+      for (const r of patch.upserts) map.set(r.roomId, LobbyMoves.applyDelta(map.get(r.roomId), r));
+    };
+    states.slice(1).forEach((state, i) => {
+      io.emitted.length = 0;
+      mockRoomManager.listRooms.mockReturnValue(state);
+      if (i === 2) { // a second viewer subscribes between flushes: its snapshot is newer than the baseline
+        const s2 = makeSocket();
+        sendLobbySnapshot(io, s2);
+        late = new Map(s2.emitted[0].data.rooms.map((r) => [r.roomId, r]));
+      }
+      flush(io);
+      for (const m of [early, late]) if (m && io.emitted.length) apply(m, io.emitted[0].data);
+      expect([...early.values()]).toEqual(state);
+      if (late) expect([...late.values()]).toEqual(state);
+    });
   });
 });

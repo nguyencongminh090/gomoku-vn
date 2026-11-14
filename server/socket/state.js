@@ -12,6 +12,7 @@ const logger      = require('../utils/logger');
 const roomManager = require('../managers/RoomManager');
 const TimerManager = require('../managers/TimerManager');
 const { resolveClientIp } = require('../utils/get-client-ip');
+const LobbyMoves = require('../../client/js/lobby-moves'); // #377: shared with the lobby client
 
 // ---------------------------------------------------------------------------
 // Shared state maps
@@ -276,7 +277,29 @@ const _onlineUsersTimers = new WeakMap();
 const _lobbySnapshots = new WeakMap();
 
 /**
+ * Baseline record for one entry: everything but `moves` as a JSON string, plus the `moves` array
+ * itself (listRooms() builds a fresh array per call, so holding the reference is safe).
+ */
+function _lobbyBaseline(entry) {
+  const { moves, ...rest } = entry;
+  return { json: JSON.stringify(rest), startedAt: rest.startedAt, moves: moves === undefined ? null : moves };
+}
+
+function _sameMoves(a, b) {
+  if (a === b) return true;
+  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+/**
  * Compare the live room list against what lobby clients were last sent.
+ *
+ * #377: an upsert for a room whose game continued carries `moves` as a delta — `{ movesFrom, moves }`,
+ * the moves since the shared prefix with the baseline (LobbyMoves.applyDelta splices it client side).
+ * When nothing else in the entry changed, the upsert is just `{ roomId, startedAt, movesFrom, moves }` (the
+ * other ~500 B — names, avatars, ratings, settings — dominated the patch). A new room, a new game
+ * (`startedAt` changed) or no shared prefix → the full entry, as before.
  * @returns {{ upserts: object[], removed: string[] }}
  */
 function _diffLobbyRooms(io) {
@@ -285,9 +308,16 @@ function _diffLobbyRooms(io) {
   const upserts = [];
 
   for (const entry of roomManager.listRooms()) {
-    const serialized = JSON.stringify(entry);
-    next.set(entry.roomId, serialized);
-    if (previous.get(entry.roomId) !== serialized) upserts.push(entry);
+    const base = _lobbyBaseline(entry);
+    next.set(entry.roomId, base);
+    const prev = previous.get(entry.roomId);
+    if (!prev) { upserts.push(entry); continue; }
+    if (prev.json === base.json && _sameMoves(prev.moves, base.moves)) continue;
+    const movesFrom = prev.startedAt === base.startedAt ? LobbyMoves.sharedPrefix(prev.moves, base.moves) : 0;
+    if (movesFrom === 0) { upserts.push(entry); continue; }
+    const delta = { movesFrom, moves: base.moves.slice(movesFrom) };
+    // Board-only change (the 2.5 s mini-board flush): the rest of the entry is what the client holds.
+    upserts.push(prev.json === base.json ? { roomId: entry.roomId, startedAt: entry.startedAt, ...delta } : { ...entry, ...delta });
   }
 
   const removed = [];
@@ -310,7 +340,7 @@ function sendLobbySnapshot(io, socket) {
   socket.emit('lobby:update', { rooms, serverTime: Date.now() }); // serverTime: clock offset for the cards' elapsed time (#364, as B170)
   if (!_lobbySnapshots.has(io)) {
     const baseline = new Map();
-    for (const entry of rooms) baseline.set(entry.roomId, JSON.stringify(entry));
+    for (const entry of rooms) baseline.set(entry.roomId, _lobbyBaseline(entry));
     _lobbySnapshots.set(io, baseline);
   }
 }
