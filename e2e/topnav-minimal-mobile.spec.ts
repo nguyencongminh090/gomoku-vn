@@ -38,16 +38,17 @@ test.describe('room topnav is a minimal always-on bar on phones (TODO.md #144)',
       expect(topnavHeight, 'topnav must stay the minimal bar, not the old 60px').toBeLessThanOrEqual(48);
       expect(topnavHeight, 'topnav height must equal the --nav-h the room layout subtracts').toBe(navVar);
 
-      // Leave and room code present and visible.
+      // Leave and room code present and visible (#376: leave is icon-only on phones but stays on the bar).
       const leave = page.locator('#btn-leave');
       const roomId = page.locator('#room-id-nav');
       await expect(leave, 'leave button is the only exit from a room — must always be visible').toBeVisible();
       await expect(roomId, 'room code must always be visible (needed to invite others)').toBeVisible();
+      await expect(page.locator('#room-rules-text'), 'the rules segment must always be visible (#376)').toBeVisible();
 
       // Nothing clipped out of the shrunk row — every control's box must sit
       // fully inside the nav's own bounding box.
       const navBox = await page.locator('.topnav').boundingBox();
-      for (const loc of [leave, roomId]) {
+      for (const loc of [leave, roomId, page.locator('#btn-room-menu'), page.locator('#btn-room-rules')]) {
         const box = await loc.boundingBox();
         expect(box, 'control must have a real box').not.toBeNull();
         expect(box!.y, 'control must not start above the nav').toBeGreaterThanOrEqual(navBox!.y - 1);

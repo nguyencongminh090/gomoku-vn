@@ -36,6 +36,149 @@ body.arena-room .mode-badge .icon { width: 16px; height: 16px; }
 body.arena-room .mode-badge--friendly { background: var(--c-brand-light); color: var(--c-brand-text); }
 body.arena-room .mode-badge--rated { background: var(--c-warning-bg); color: var(--c-warning); }
 
+/* ── #376 nav N1 "Thẻ bàn" (mockup features/room-rules-display/mockups/nav.html) ──────────────────────
+   brand … ticket [#code ⧉ | mode icon | rules ⓘ] … Rời phòng · ≡. Height stays --nav-h, so nothing below moves.
+   Phones (≤768px block below): ticket next to the brand with a short rules segment, Rời phòng icon-only (it stays on
+   the bar: the exit must never hide in a menu — user 2026-11-14), menu + rules = bottom sheets. */
+body.arena-room { --rex-x: #ef6b6b; --rex-o: #7fb0f5; } /* dark is the default mode (tokens.css) */
+:root[data-mode="light"] body.arena-room { --rex-x: #c8322f; --rex-o: #1f5bc4; } /* = board.js 'cream' paper marks */
+body.arena-room .rnav { justify-content: flex-start; gap: 0; }
+body.arena-room .rnav__brand { flex: none; }
+body.arena-room .rnav__spacer { flex: 1 1 12px; }
+body.arena-room .rnav__ticket {
+  display: inline-flex; align-items: stretch; flex: 0 1 auto; min-width: 0; height: 36px; overflow: hidden;
+  border: 1px solid var(--c-border); border-radius: 11px; background: var(--c-surface-2);
+  font-size: calc(13.5px * var(--fs-scale, 1)); font-weight: 800; color: var(--c-ink-2); white-space: nowrap;
+}
+body.arena-room .rnav__code {
+  display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 0 11px; cursor: pointer;
+  color: var(--c-ink); letter-spacing: 0.03em; font-variant-numeric: tabular-nums;
+}
+body.arena-room #room-id-nav[role="button"]:hover { text-decoration: none; background: var(--c-fill); }
+body.arena-room .rnav__code:focus-visible { outline: 2px solid var(--c-brand); outline-offset: -2px; }
+body.arena-room .rnav__copy { width: 14px; height: 14px; color: var(--c-ink-3); }
+body.arena-room .rnav__meta {
+  display: inline-flex; align-items: stretch; min-width: 0; padding: 0; border: 0; border-left: 1px solid var(--c-border);
+  background: none; font: inherit; color: var(--c-brand-text); cursor: pointer;
+}
+body.arena-room .rnav__meta:hover, body.arena-room .rnav__meta[aria-expanded="true"] { background: var(--c-fill); }
+body.arena-room .rnav__meta:focus-visible { outline: 2px solid var(--c-brand); outline-offset: -2px; }
+/* Mode = icon-only segment; the text stays for screen readers (and the title attribute). */
+body.arena-room .rnav__meta .mode-badge {
+  display: inline-flex; align-items: center; padding: 0 10px; border-radius: 0; border-right: 1px solid var(--c-border);
+}
+body.arena-room .rnav__meta .mode-badge[hidden] { display: none; }
+body.arena-room .rnav__meta .mode-badge .icon { width: 18px; height: 18px; }
+body.arena-room .rnav__meta .mode-badge > span {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+body.arena-room .rnav__rules { display: inline-flex; align-items: center; min-width: 0; padding: 0 4px 0 11px; overflow: hidden; }
+body.arena-room .rnav__rules-full { overflow: hidden; text-overflow: ellipsis; }
+body.arena-room .rnav__rules-short { display: none; }
+body.arena-room .rnav__dot { font-style: normal; margin: 0 6px; color: var(--c-ink-3); }
+body.arena-room .rnav__info { flex: none; width: 16px; height: 16px; margin: auto 0; padding-right: 10px; box-sizing: content-box; }
+body.arena-room .rnav__leave { flex: none; gap: 7px; height: 36px; padding: 0 12px; border: 1px solid var(--c-border); }
+body.arena-room .rnav__leave .icon { width: 17px; height: 17px; }
+body.arena-room .rnav__menu { flex: none; width: 40px; height: 40px; padding: 0; margin-left: 8px; }
+body.arena-room .rnav__menu .icon { width: 22px; height: 22px; }
+body.arena-room .rnav__menu-close, body.arena-room .rnav__menu[aria-expanded="true"] .rnav__menu-open { display: none; }
+body.arena-room .rnav__menu[aria-expanded="true"] .rnav__menu-close { display: inline-block; }
+body.arena-room .rnav__menu[aria-expanded="true"] { background: var(--c-fill); }
+
+/* Dropdown menu + rules popover (desktop); the phone query turns both into bottom sheets. */
+body.arena-room .rmenu, body.arena-room .rules-pop {
+  position: absolute; top: calc(100% + 6px); z-index: 2;
+  background: var(--c-surface); color: var(--c-ink);
+  border: 1px solid var(--c-border); border-radius: 14px; box-shadow: var(--shadow-lg);
+}
+body.arena-room .rmenu[hidden], body.arena-room .rules-pop[hidden], body.arena-room .rmenu__go[hidden], body.arena-room .rnav-scrim[hidden] { display: none; }
+body.arena-room .rmenu { right: 16px; width: 320px; padding: 8px; }
+body.arena-room .rmenu__item {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 10px;
+  border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer;
+  font: inherit; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-ink);
+}
+body.arena-room .rmenu__item:hover, body.arena-room .rmenu__item:focus-visible { background: var(--c-fill); }
+body.arena-room .rmenu__item .icon { flex: none; width: 19px; height: 19px; color: var(--c-ink-2); }
+body.arena-room .rmenu__go { margin-top: 6px; padding-top: 2px; border-top: 1px solid var(--c-border); }
+body.arena-room .rmenu__head {
+  padding: 8px 10px 6px; font-size: calc(11px * var(--fs-scale, 1)); font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase; color: var(--c-ink-3);
+}
+body.arena-room .rmenu__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 4px 4px; }
+body.arena-room .rmenu__grid a {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 4px; border-radius: 9px;
+  background: var(--c-fill); color: var(--c-ink); text-decoration: none;
+  font-size: calc(12px * var(--fs-scale, 1)); font-weight: 700;
+}
+body.arena-room .rmenu__grid a:hover { background: var(--c-strong, var(--c-fill)); }
+body.arena-room .rmenu__grid .icon { width: 19px; height: 19px; color: var(--c-ink-2); }
+body.arena-room .rmenu__title { padding: 6px 10px 6px; font-size: calc(12px * var(--fs-scale, 1)); font-weight: 800; color: var(--c-ink-3); }
+body.arena-room .rmenu__item > span { white-space: nowrap; }
+body.arena-room .rmenu__sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: auto; padding-left: 10px; font-size: calc(12px * var(--fs-scale, 1)); font-weight: 600; color: var(--c-ink-3); }
+body.arena-room .rmenu__item--rules .icon { color: var(--c-brand-text); }
+
+body.arena-room .rules-pop { left: var(--rules-x, 140px); width: 360px; max-width: calc(100vw - 32px); padding: 14px 16px; }
+body.arena-room .rules-pop__title { margin: 0 0 8px; font-size: calc(15px * var(--fs-scale, 1)); font-weight: 800; }
+body.arena-room .rules-pop__rule { padding: 10px 0; border-top: 1px solid var(--c-border); }
+body.arena-room .rules-pop__rule:first-child { padding-top: 0; border-top: 0; }
+body.arena-room .rules-pop__rule:last-child { padding-bottom: 0; }
+body.arena-room .rules-pop__rule h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 3px; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 800; }
+body.arena-room .rules-pop__kind {
+  padding: 1px 6px; border-radius: 4px; font-size: calc(10.5px * var(--fs-scale, 1)); font-weight: 800;
+  background: var(--c-brand-light); color: var(--c-brand-text);
+}
+body.arena-room .rules-pop__kind--variant, body.arena-room .rules-pop__kind--opening { background: var(--c-warning-bg); color: var(--c-warning); }
+body.arena-room .rules-pop__rule p { margin: 0 0 6px; font-size: calc(13.5px * var(--fs-scale, 1)); line-height: 1.45; color: var(--c-ink-2); }
+body.arena-room .rex { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+body.arena-room .rex__cells { display: inline-flex; border: 1px solid var(--c-border); background: var(--c-surface-2); }
+body.arena-room .rex__c {
+  display: grid; place-items: center; width: 17px; height: 17px; border-left: 1px solid var(--c-border);
+  font-size: 12px; font-weight: 900; line-height: 1;
+}
+body.arena-room .rex__c:first-child { border-left: 0; }
+body.arena-room .rex__c--x { color: var(--rex-x); }
+body.arena-room .rex__c--o { color: var(--rex-o); }
+body.arena-room .rex__verdict { font-size: calc(12px * var(--fs-scale, 1)); font-weight: 800; }
+body.arena-room .rex__verdict--ok { color: var(--c-success); }
+body.arena-room .rex__verdict--no { color: var(--c-error); }
+body.arena-room .rnav-scrim { display: none; } /* desktop: outside clicks close via the document listener */
+@media (max-width: 768px) {
+  body.arena-room .rnav { padding: 0 6px 0 12px; }
+  body.arena-room .rnav__ticket { height: 32px; border-radius: 10px; font-size: calc(12.5px * var(--fs-scale, 1)); }
+  body.arena-room .rnav__code { padding: 0 8px; }
+  body.arena-room .rnav__copy { display: none; }
+  body.arena-room .rnav__meta .mode-badge { padding: 0 7px; }
+  body.arena-room .rnav__meta .mode-badge .icon { width: 17px; height: 17px; }
+  body.arena-room .rnav__rules { padding-left: 7px; }
+  body.arena-room .rnav__rules-full { display: none; }
+  body.arena-room .rnav__rules-short { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  body.arena-room .rnav__info { padding-right: 7px; }
+  body.arena-room .rnav__spacer { flex-basis: 0; }
+  body.arena-room .rnav__ticket { margin: 0 6px; }
+  body.arena-room .rnav__leave { width: 40px; height: 40px; padding: 0; border: 0; }
+  body.arena-room .rnav__leave .icon { width: 21px; height: 21px; }
+  body.arena-room .rnav__leave-text { display: none; }
+  body.arena-room .rnav__menu { margin-left: 0; }
+  /* Menu + rules: bottom sheets above the dock, under a scrim that starts below the nav. */
+  body.arena-room .rmenu, body.arena-room .rules-pop {
+    position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: auto; max-width: none;
+    max-height: calc(100dvh - var(--nav-h) - 24px); overflow-y: auto; overscroll-behavior: contain;
+    border-radius: 18px 18px 0 0; border-bottom: 0;
+    padding: 14px 12px calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+  body.arena-room .rules-pop { padding-inline: 18px; }
+  body.arena-room .rmenu__item { min-height: 48px; font-size: calc(15px * var(--fs-scale, 1)); }
+  body.arena-room .rnav-scrim:not([hidden]) {
+    display: block; position: fixed; left: 0; right: 0; top: var(--nav-h); bottom: 0; z-index: 999; background: var(--c-scrim);
+  }
+}
+/* Narrow phones: the ⓘ goes (the segment still reads as a button) so "Tiêu chuẩn +1" fits beside leave + menu. */
+@media (max-width: 400px) {
+  body.arena-room .rnav__info { display: none; }
+  body.arena-room .rnav__rules { padding-right: 8px; }
+}
+
 /* ── Grid ───────────────────────────────────────────────────────────────── */
 body.arena-room .room {
   display: grid;

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Luật trong phòng — mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--brand:#4d7c1f;--brand-d:#3d6418;--brand-l:rgba(77,124,31,.10);--ink:#1f1f1f;--mut:#6b6b6b;--line:#e2e0db;--bg:#ecebe8;--x:#d32f2f;--o:#1e5bbf;--warn:#8f5500;--warn-bg:rgba(178,106,0,.08)}
+*{box-sizing:border-box}
+body{margin:0;font-family:Nunito,system-ui,sans-serif;background:#d9d7d2;color:var(--ink)}
+.page{max-width:1500px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 6px}
+.lead{color:#444;margin:0 0 20px;max-width:900px}
+.opt{background:#f6f5f2;border-radius:14px;padding:18px;margin:0 0 28px}
+.opt h2{margin:0 0 4px;font-size:20px}
+.opt .why{margin:0 0 14px;color:#444;max-width:1100px;font-size:14px}
+.row{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+.cap{font-size:12px;font-weight:700;color:var(--mut);margin:0 0 6px;text-transform:uppercase;letter-spacing:.04em}
+/* frames: real screenshots, overlays in CSS px of the original viewport */
+.dwrap{width:1008px;height:630px;overflow:hidden;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.desk{position:relative;width:1440px;height:900px;transform:scale(.7);transform-origin:0 0;background:url(base-desktop.png) 0 0/1440px 900px}
+.pwrap{width:390px;height:844px;overflow:hidden;border-radius:22px;box-shadow:0 2px 10px rgba(0,0,0,.15);border:6px solid #222}
+.phone{position:relative;width:390px;height:844px;background:url(base-phone.png) 0 0/390px 844px}
+.abs{position:absolute}
+.white{background:#fff}
+.new{outline:2px dashed #e07b00;outline-offset:3px}
+/* chips */
+.rid{font-weight:700;font-size:15px;color:#333}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:6px;font-size:12px;font-weight:800;background:var(--brand-l);color:var(--brand-d);white-space:nowrap}
+.rchip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12.5px;font-weight:800;border:1.5px solid var(--brand);color:var(--brand-d);background:#fff;white-space:nowrap;cursor:pointer}
+.rchip .i{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--brand);color:#fff;font-size:10px;font-weight:900}
+.rchip .sep{width:1px;height:12px;background:#b9c9a5}
+/* rule cards */
+.rcard{background:#fff;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:14px 16px;font-size:13.5px}
+.rcard h3{margin:0 0 2px;font-size:15px}
+.rcard .sub{color:var(--mut);font-size:12px;margin:0 0 10px}
+.rule{padding:10px 0;border-top:1px solid var(--line)}
+.rule:first-of-type{border-top:0;padding-top:0}
+.rule b{font-size:14px}
+.rule .tag{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--brand-l);color:var(--brand-d);margin-left:6px;vertical-align:1px}
+.rule .tag.var{background:var(--warn-bg);color:var(--warn)}
+.rule p{margin:3px 0 6px;line-height:1.4}
+.ex{display:flex;gap:14px;flex-wrap:wrap}
+.line{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800}
+.cells{display:inline-flex;border:1px solid #c9d3e6;background:#fbfaf6}
+.c{width:17px;height:17px;border-left:1px solid #dbe2ef;display:grid;place-items:center;font-size:13px;font-weight:900;line-height:1}
+.c:first-child{border-left:0}
+.c.x{color:var(--x)}.c.o{color:var(--o)}.c.w{background:#5b5b5b}.c.z{background:rgba(77,124,31,.25)}
+.ok{color:#2e7d32}.no{color:#c62828}
+.foot{margin-top:8px;font-size:11.5px;color:var(--mut)}
+/* sheet (phone) */
+.scrim{background:rgba(0,0,0,.35)}
+.sheet{background:#fff;border-radius:18px 18px 0 0;padding:10px 16px 18px;box-shadow:0 -6px 24px rgba(0,0,0,.2);font-size:13.5px}
+.grab{width:40px;height:4px;border-radius:2px;background:#ccc;margin:0 auto 10px}
+/* strip (B) */
+.strip{display:flex;align-items:center;gap:8px;padding:0 12px;font-size:12.5px;background:#f3f6ee;border-top:1px solid #dfe6d4;border-bottom:1px solid #dfe6d4;color:#2c3a1d}
+.strip b{color:var(--brand-d)}
+.strip .more{margin-left:auto;font-weight:800;color:var(--brand-d);white-space:nowrap}
+/* modal (C) */
+.modal{background:#fff;border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.28);padding:18px 18px 16px;text-align:center}
+.modal .t{font-size:19px;font-weight:800;margin:0 0 10px}
+.modal .rules{text-align:left;background:#f7f8f4;border:1px solid #e3e8da;border-radius:10px;padding:10px 12px;margin:0 0 12px}
+.btn{display:block;width:100%;border:0;border-radius:10px;background:var(--brand);color:#fff;font:800 16px Nunito,sans-serif;padding:11px}
+.chk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:#444;margin:0 0 12px;text-align:left}
+.chk i{width:16px;height:16px;border-radius:4px;background:var(--brand);color:#fff;font-style:normal;font-size:11px;display:grid;place-items:center}
+.note{font-size:13px;color:#444;margin:10px 0 0}
+.rec{background:#fff4e0;border:1px solid #f0c98a;border-radius:10px;padding:12px 14px;margin:0 0 24px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="page">
+<h1>Hiển thị luật chơi trong phòng — 3 phương án</h1>
+<p class="lead">Nền là ảnh chụp phòng thật (desktop 1440×900, phone 390×844). Phần <span style="outline:2px dashed #e07b00;padding:0 4px">viền cam</span> là phần thêm mới. Ví dụ phòng: <b>Luật 2 + Ô khoá</b>, giao hữu. Hiện tại luật chỉ nằm trong tab Cài đặt — người chơi không thấy khi đang đánh, và tên "Luật 1 / Luật 2" không nói luật là gì.</p>
+
+<div class="rec"><b>Đề xuất:</b> A (luôn thấy, 0 px dịch layout) + C (xác nhận luật đúng lúc bấm Bắt đầu). B chỉ nếu muốn câu luật hiện sẵn không cần bấm — đổi lại phone dịch xuống 30 px.</div>
+
+<!-- ====================== A ====================== -->
+<section class="opt">
+<h2>A · Chip luật trên thanh nav → bấm xem giải thích</h2>
+<p class="why">Chip "Luật 2 · Ô khoá ⓘ" đứng cạnh badge Giao hữu/Xếp hạng, luôn thấy ở mọi trạng thái (chờ, đang đánh, xem). Bấm → popover (desktop) / bottom sheet (phone) giải thích từng luật đang bật, mỗi luật có ví dụ thắng/không thắng. Nav cao cố định 56 px nên <b>không dịch layout</b>. Phone: badge chế độ thu về icon + màu (chữ "Giao hữu" vào tiêu đề sheet) để chip vừa chỗ.</p>
+<div class="row">
+ <div><p class="cap">Desktop — popover mở</p>
+ <div class="dwrap"><div class="desk">
+  <div class="abs white" style="left:860px;top:6px;width:340px;height:44px"></div>
+  <div class="abs" style="left:880px;top:14px;display:flex;align-items:center;gap:12px">
+   <span class="rid">#YKE</span>
+   <span class="badge">🤝 Giao hữu</span>
+   <span class="rchip new">Luật 2<span class="sep"></span>Ô khoá<span class="i">i</span></span>
+  </div>
+  <div class="abs rcard new" style="left:830px;top:56px;width:380px">
+   <h3>Luật của ván này</h3><p class="sub">Chủ phòng đặt · áp dụng cho cả hai người</p>
+   <div class="rule"><b>Luật 2</b><span class="tag">Luật thắng</span>
+    <p>5 quân liên tiếp trở lên là thắng, <b>trừ khi bị quân đối thủ chặn cả 2 đầu</b>. Tường hay mép bàn không tính là chặn.</p>
+    <div class="ex">
+     <span class="line"><span class="cells"><span class="c"></span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="ok">✓ thắng</span></span>
+     <span class="line"><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="no">✗ chặn 2 đầu</span></span>
+    </div></div>
+   <div class="rule"><b>Ô khoá</b><span class="tag var">Biến thể</span>
+    <p>Ô xám là tường — không đặt quân được. <b>Nước đầu tiên phải đặt cạnh một ô tường.</b></p>
+    <div class="ex"><span class="line"><span class="cells"><span class="c"></span><span class="c w"></span><span class="c z"></span><span class="c"></span></span>ô xanh = được đi nước đầu</span></div></div>
+   <p class="foot">Không bật: Hố đen, Swap2 · Thời gian 60 giây/nước</p>
+  </div>
+ </div></div></div>
+ <div><p class="cap">Phone — bottom sheet mở</p>
+ <div class="pwrap"><div class="phone">
+  <div class="abs white" style="left:140px;top:6px;width:150px;height:36px"></div>
+  <div class="abs" style="left:146px;top:11px;display:flex;align-items:center;gap:5px">
+   <span class="rid" style="font-size:13px">#5UX</span>
+   <span class="badge" title="Giao hữu" style="padding:4px 5px">🤝</span>
+   <span class="rchip new" style="padding:3px 7px;font-size:11.5px;gap:4px">Luật 2 +1</span>
+  </div>
+  <div class="abs scrim" style="left:0;top:48px;width:390px;height:796px"></div>
+  <div class="abs sheet new" style="left:0;bottom:0;width:390px">
+   <div class="grab"></div>
+   <h3 style="margin:0 0 2px;font-size:16px">Luật của ván này</h3><p style="margin:0 0 10px;color:#6b6b6b;font-size:12px">🤝 Giao hữu · chủ phòng đặt</p>
+   <div class="rule"><b>Luật 2</b><span class="tag">Luật thắng</span>
+    <p>5 quân liên tiếp trở lên là thắng, <b>trừ khi bị quân đối thủ chặn cả 2 đầu</b>. Tường hay mép bàn không tính là chặn.</p>
+    <div class="ex">
+     <span class="line"><span class="cells"><span class="c"></span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="ok">✓</span></span>
+     <span class="line"><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="no">✗</span></span>
+    </div></div>
+   <div class="rule"><b>Ô khoá</b><span class="tag var">Biến thể</span>
+    <p>Ô xám là tường, không đặt được. <b>Nước đầu phải đặt cạnh ô tường.</b></p></div>
+   <p class="foot">Không bật: Hố đen, Swap2 · 60 giây/nước</p>
+  </div>
+ </div></div></div>
+</div>
+</section>
+
+<!-- ====================== B ====================== -->
+<section class="opt">
+<h2>B · Câu luật hiện sẵn (không cần bấm)</h2>
+<p class="why">Desktop: thẻ "Luật ván này" nằm vào khoảng trống sẵn có ở cột trái (giữa Tỉ số và các nút) — <b>0 px dịch</b>, ví dụ luôn thấy. Phone: một dải 30 px giữa bàn cờ và thẻ của bạn, bấm "Chi tiết" mở cùng sheet như A — bàn cờ giữ nguyên kích thước (bàn bị giới hạn theo bề ngang), phần dưới dịch xuống 30 px (lấn vào vùng trống chat nổi). Rủi ro: iPhone SE (667 px cao) chật hơn.</p>
+<div class="row">
+ <div><p class="cap">Desktop — thẻ ở cột trái</p>
+ <div class="dwrap"><div class="desk">
+  <div class="abs" style="left:12px;top:400px;width:256px;height:250px;background:#ecebe8"></div>
+  <div class="abs new" style="left:14px;top:404px;width:252px;background:#fff;border-radius:10px;padding:12px 12px 10px;font-size:13px">
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><b style="font-size:12px;letter-spacing:.04em;color:#555">LUẬT VÁN NÀY</b><span class="rchip" style="font-size:11px;padding:2px 8px">Chi tiết</span></div>
+   <div class="rule" style="padding-top:0"><b>Luật 2</b>
+    <p style="font-size:12.5px">5+ quân thắng, trừ khi bị đối thủ chặn cả 2 đầu.</p>
+    <span class="line"><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="no">✗</span></span></div>
+   <div class="rule"><b>Ô khoá</b><p style="font-size:12.5px;margin-bottom:0">Nước đầu phải đặt cạnh ô tường.</p></div>
+  </div>
+ </div></div></div>
+ <div><p class="cap">Phone — dải dưới bàn cờ (+30 px)</p>
+ <div class="pwrap"><div class="phone" style="background:none">
+  <div class="abs" style="left:0;top:0;width:390px;height:488px;background:url(base-phone.png) 0 0/390px 844px"></div>
+  <div class="abs strip new" style="left:0;top:488px;width:390px;height:30px"><b>Luật 2</b> 5+ quân, không bị chặn 2 đầu · <b>Ô khoá</b><span class="more">Chi tiết ›</span></div>
+  <div class="abs" style="left:0;top:518px;width:390px;height:326px;background:url(base-phone.png) 0 -488px/390px 844px"></div>
+ </div></div></div>
+</div>
+</section>
+
+<!-- ====================== C ====================== -->
+<section class="opt">
+<h2>C · Xác nhận luật lúc bấm "Bắt đầu"</h2>
+<p class="why">Modal "Sẵn sàng vào trận?" (đã có) thêm khối luật ngắn + ví dụ. Đúng thời điểm người chơi cần biết, không chiếm chỗ khi đang đánh. Khi chủ phòng <b>đổi luật</b> giữa các ván, khối luật có nhãn "Đã đổi" để không ai đánh theo luật cũ. Chỉ hiện ở đầu ván → nên đi kèm A.</p>
+<div class="row">
+ <div><p class="cap">Desktop</p>
+ <div class="dwrap"><div class="desk">
+  <div class="abs" style="left:280px;top:56px;width:820px;height:844px;background:rgba(0,0,0,.25)"></div>
+  <div class="abs modal new" style="left:500px;top:250px;width:380px">
+   <p class="t">Sẵn sàng vào trận?</p>
+   <div class="rules">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Luật 2 · Ô khoá</b><span class="tag var" style="font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--warn-bg);color:var(--warn)">Đã đổi</span></div>
+    <p style="margin:0 0 6px;font-size:13px;line-height:1.4">5+ quân thắng, <b>trừ khi bị chặn cả 2 đầu</b>. Nước đầu phải đặt cạnh ô tường.</p>
+    <span class="line"><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="no">✗ không thắng</span></span>
+   </div>
+   <button class="btn">Bắt đầu</button>
+  </div>
+ </div></div></div>
+ <div><p class="cap">Phone</p>
+ <div class="pwrap"><div class="phone">
+  <div class="abs" style="left:0;top:48px;width:390px;height:796px;background:rgba(0,0,0,.25)"></div>
+  <div class="abs modal new" style="left:24px;top:230px;width:342px">
+   <p class="t">Sẵn sàng vào trận?</p>
+   <div class="rules">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>Luật 2 · Ô khoá</b><span style="font-size:10.5px;font-weight:800;padding:1px 6px;border-radius:4px;background:var(--warn-bg);color:var(--warn)">Đã đổi</span></div>
+    <p style="margin:0 0 6px;font-size:13px;line-height:1.4">5+ quân thắng, <b>trừ khi bị chặn cả 2 đầu</b>. Nước đầu phải đặt cạnh ô tường.</p>
+    <span class="line"><span class="cells"><span class="c o">○</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c o">○</span></span><span class="no">✗ không thắng</span></span>
+   </div>
+   <button class="btn">Bắt đầu</button>
+  </div>
+ </div></div></div>
+</div>
+</section>
+
+<section class="opt">
+<h2>Nội dung luật (dùng chung cho A/B/C — rút từ GameEngine)</h2>
+<div class="rcard" style="box-shadow:none;max-width:900px">
+ <div class="rule"><b>Luật 1</b><span class="tag">Luật thắng</span><p>5 quân liên tiếp trở lên là thắng (6, 7 quân cũng thắng).</p>
+  <span class="line"><span class="cells"><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span></span><span class="ok">✓ 6 quân vẫn thắng</span></span></div>
+ <div class="rule"><b>Tiêu chuẩn</b><span class="tag">Luật thắng</span><p><b>Đúng 5 quân</b> mới thắng; 6 quân trở lên không tính.</p>
+  <div class="ex"><span class="line"><span class="cells"><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span></span><span class="ok">✓</span></span>
+  <span class="line"><span class="cells"><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span><span class="c x">✕</span></span><span class="no">✗ quá 5</span></span></div></div>
+ <div class="rule"><b>Luật 2</b><span class="tag">Luật thắng</span><p>5+ quân thắng, trừ khi bị <b>quân đối thủ</b> chặn cả 2 đầu. Tường/mép bàn không tính là chặn.</p></div>
+ <div class="rule"><b>Ô khoá</b><span class="tag var">Biến thể</span><p>Ô tường không đặt quân được. Nước đầu tiên phải đặt cạnh một ô tường.</p></div>
+ <div class="rule"><b>Hố đen</b><span class="tag var">Biến thể</span><p>Hai hố đen là một cặp: hàng quân đi vào hố này nối tiếp ra hố kia và vẫn được tính liên tiếp. Không đặt quân lên hố.</p></div>
+ <div class="rule"><b>Swap2</b><span class="tag var">Khai cuộc</span><p>Người đi trước đặt 3 quân mở màn; người kia chọn cầm Đen, cầm Trắng, hoặc đặt thêm 2 quân và trả quyền chọn màu.</p></div>
+</div>
+</section>
+</div>
+</body>
+</html>
