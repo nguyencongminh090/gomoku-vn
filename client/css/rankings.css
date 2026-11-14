@@ -1,0 +1,156 @@
+/* rankings.css — #374 RK17 "Bục + Bảng điện tử": podium inside an LED split-flap board.
+   Dark mode = night LED board; light mode = cream "paper" board with white flaps (user 2026-11-14: follow Light/Dark). */
+.rk-page {
+  --led-bg: #0b0d0a; --led-panel: #12150f; --led-line: #26301f; --led-row: #1e2619; --led-hover: #182014;
+  --led-ink: #e8f5d0; --led-ink-2: #9db287; --led-on: #8bc34a; --led-dn: #f77f7f; --led-me: rgba(139, 195, 74, .14);
+  --led-glow: rgba(139, 195, 74, .35); --spot: rgba(255, 236, 170, .16);
+  --flap-top: #222a1c; --flap-bot: #1a2115; --flap-ink: #f4ffe0;
+  --gold: #d9a521; --gold-2: #9a7410; --silver: #aab1b8; --silver-2: #6d747b; --bronze: #c9843f; --bronze-2: #8a5524;
+  --step-ink: #fff; --step-shade: rgba(0, 0, 0, .35);
+  --rk-e: cubic-bezier(.2, .7, .2, 1); --rk-bounce: cubic-bezier(.3, 1.4, .5, 1);
+  --flap-edge: transparent;
+}
+/* Light: AA pairs — ink #1d2116 / ink-2 #56614b / rank #3d6418 / down #b3261e on #fbf8f1 and #f3efe4. */
+:root[data-mode="light"] .rk-page {
+  --led-bg: #f3efe4; --led-panel: #fbf8f1; --led-line: #ddd5c3; --led-row: #e8e1d1; --led-hover: #f1ebde;
+  --led-ink: #1d2116; --led-ink-2: #56614b; --led-on: #3d6418; --led-dn: #b3261e; --led-me: rgba(77, 124, 31, .12);
+  --led-glow: rgba(77, 124, 31, .16); --spot: rgba(255, 205, 100, .28);
+  --flap-top: #ffffff; --flap-bot: #f1ece0; --flap-ink: #1d2116; --flap-edge: #d6cdb9;
+  --step-shade: rgba(0, 0, 0, .18);
+}
+
+/* ── ticker ─────────────────────────────────────────── */
+.rk-tick { overflow: hidden; white-space: nowrap; background: var(--led-panel); color: var(--led-ink); border-bottom: 1px solid var(--led-line);
+  font-weight: 800; font-size: calc(14px * var(--fs-scale, 1)); letter-spacing: .04em; }
+.rk-tick[hidden] { display: none; }
+.rk-tick__in { display: inline-block; padding: 10px 0; animation: rk-mq 40s linear infinite; }
+.rk-tick span { margin: 0 28px; }
+.rk-tick .up { color: var(--led-on); } .rk-tick .dn { color: var(--led-dn); }
+@keyframes rk-mq { to { transform: translateX(-50%); } }
+
+/* ── header ─────────────────────────────────────────── */
+.rk-page .pintro { position: relative; }
+.rk-page .pintro h1 { font-size: clamp(28px, 2.4vw + 12px, 48px); font-weight: 1000; letter-spacing: .02em; text-transform: uppercase; }
+.rk-skip { position: absolute; z-index: 2; right: 0; top: 0; min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; cursor: pointer;
+  font: inherit; font-weight: 800; color: var(--c-ink-2); background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+.rk-skip[hidden] { display: none; }
+
+/* ── arena ──────────────────────────────────────────── */
+.rk-arena { position: relative; border-radius: var(--radius-lg, 16px); background: var(--led-bg); color: var(--led-ink); overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--led-line), 0 0 70px -24px var(--led-glow); }
+.rk-arena[hidden] { display: none; }
+.rk-arena::before { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background: radial-gradient(circle, var(--led-row) 1px, transparent 1.6px) 0 0 / 6px 6px; }
+.rk-spot { position: absolute; left: 15%; top: -30%; width: 70%; height: 120%; pointer-events: none;
+  background: radial-gradient(50% 60% at 50% 40%, var(--spot), transparent 70%); }
+
+/* podium: DOM order 1·2·3 (screen readers), visual 2·1·3 */
+.rk-pod { position: relative; display: grid; grid-template-columns: 1fr 1.15fr 1fr; grid-template-areas: "p2 p1 p3"; gap: 14px; align-items: end;
+  max-width: 760px; margin: 0 auto; padding: 40px 20px 0; }
+.rk-pod[hidden] { display: none; }
+.rk-c { display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; }
+.rk-c--1 { grid-area: p1; --ring: var(--gold); } .rk-c--2 { grid-area: p2; --ring: var(--silver); } .rk-c--3 { grid-area: p3; --ring: var(--bronze); }
+.rk-who { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; }
+.rk-c .pav { width: 72px; height: 72px; font-size: calc(26px * var(--fs-scale, 1)); box-shadow: 0 0 0 4px var(--ring), 0 0 28px var(--ring); }
+.rk-c--1 .pav { width: 96px; height: 96px; font-size: calc(32px * var(--fs-scale, 1)); }
+.rk-crown { width: 34px; height: 20px; margin-bottom: 6px; background: var(--gold); clip-path: polygon(0 100%, 0 20%, 25% 55%, 50% 0, 75% 55%, 100% 20%, 100% 100%); }
+.rk-c__nm { margin-top: 10px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 900; color: var(--led-ink); text-decoration: none; }
+.rk-c--1 .rk-c__nm { font-size: calc(20px * var(--fs-scale, 1)); }
+.rk-c__nm:hover { text-decoration: underline; }
+.rk-c .rk-flap { margin-top: 8px; }
+.rk-d { margin-top: 4px; font-weight: 800; font-size: calc(14px * var(--fs-scale, 1)); color: var(--led-ink-2); font-variant-numeric: tabular-nums; }
+.rk-d.up { color: var(--led-on); } .rk-d.dn { color: var(--led-dn); }
+.rk-step { width: 100%; margin-top: 12px; border-radius: 14px 14px 0 0; display: flex; justify-content: center; padding-top: 12px; transform-origin: bottom;
+  font-size: 48px; font-weight: 1000; color: var(--step-ink); box-shadow: inset 0 -18px 30px var(--step-shade); }
+.rk-c--1 .rk-step { height: 150px; background: linear-gradient(var(--gold), var(--gold-2)); }
+.rk-c--2 .rk-step { height: 110px; background: linear-gradient(var(--silver), var(--silver-2)); }
+.rk-c--3 .rk-step { height: 82px; background: linear-gradient(var(--bronze), var(--bronze-2)); }
+
+/* split-flap digits (visual only; the real number is in .rk-sr) */
+.rk-flap { display: inline-flex; gap: 4px; perspective: 400px; vertical-align: middle; }
+.rk-dg { width: 26px; height: 38px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; font-style: normal;
+  font-size: 24px; font-weight: 1000; font-variant-numeric: tabular-nums; color: var(--flap-ink);
+  background: linear-gradient(var(--flap-top) 49%, var(--led-bg) 50%, var(--flap-bot)); box-shadow: inset 0 0 0 1px var(--flap-edge); }
+.rk-c .rk-dg { width: 30px; height: 44px; font-size: 28px; }
+.rk-c--1 .rk-dg { width: 36px; height: 52px; font-size: 34px; }
+.rk-dg.is-flip { animation: rk-flip 180ms var(--rk-e); }
+@keyframes rk-flip { from { transform: rotateX(-80deg); } }
+.rk-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* the table becomes the LED board (rank ≥ 4) */
+.rk-page #rk-wrap { position: relative; margin: 0 14px 14px; padding: 4px 14px; background: var(--led-panel); border-radius: 14px; box-shadow: inset 0 0 0 1px var(--led-line); }
+.rk-page .rk-pod[hidden] + #rk-wrap { margin-top: 14px; }
+.rk-page #rk-wrap .ptbl th { color: var(--led-ink-2); border-bottom-color: var(--led-line); }
+.rk-page #rk-wrap .ptbl td { border-bottom-color: var(--led-row); color: var(--led-ink); vertical-align: middle; }
+.rk-page #rk-wrap .ptbl td:first-child { font-size: calc(24px * var(--fs-scale, 1)); font-weight: 1000; color: var(--led-on); text-align: center; }
+.rk-page #rk-wrap .ptbl td:nth-child(2) a { font-weight: 900; font-size: calc(17px * var(--fs-scale, 1)); color: var(--led-ink); }
+.rk-page #rk-wrap .ptbl .ptbl__region, .rk-page #rk-wrap .ptbl .ptbl__games, .rk-page #rk-wrap .ptbl__club, .rk-page #rk-wrap .ptbl__club a { color: var(--led-ink-2); }
+.rk-page #rk-wrap .ptbl__delta { font-weight: 800; color: var(--led-ink-2); }
+.rk-page #rk-wrap .ptbl__delta.up { color: var(--led-on); } .rk-page #rk-wrap .ptbl__delta.dn { color: var(--led-dn); }
+.rk-page #rk-wrap .ptbl__prov { color: var(--led-ink-2); }
+.rk-page #rk-wrap .ptbl tbody tr:hover td { background: var(--led-hover); }
+.rk-page #rk-wrap .ptbl tr.is-me td { background: var(--led-me); }
+
+/* ── your-rank dock ─────────────────────────────────── */
+.rk-dock { position: fixed; z-index: 15; left: 0; right: 0; bottom: 0; margin: 0; padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--led-panel); color: var(--led-ink); border-top: 2px solid var(--led-on); font-size: calc(15px * var(--fs-scale, 1)); }
+.rk-dock:empty { display: none; }
+.rk-dock__in { max-width: 1132px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+.rk-dock b { font-size: calc(20px * var(--fs-scale, 1)); color: var(--led-ink); }
+.rk-dock .rk-dock__m { flex: 1; min-width: 0; color: var(--led-ink-2); }
+.rk-page .papp { padding-bottom: 120px; }
+
+/* ── 5 s opening (only while html.rk-intro) ────────────
+   0.0 board on · 0.3 ticker/spot · 0.5–2.4 rows cascade · 2.2/2.7/3.2 steps 3/2/1 · 3.7–4.4 podium digits · 4.4 crown · 4.7 dock */
+.rk-intro .rk-arena { animation: rk-on 300ms ease-out backwards; }
+@keyframes rk-on { from { opacity: 0; } }
+.rk-intro .rk-spot { animation: rk-fade 400ms 300ms backwards, rk-pulse 420ms 4400ms; }
+.rk-intro .rk-tick__in { animation: rk-fade 300ms 300ms backwards, rk-mq 40s 300ms linear infinite; }
+@keyframes rk-fade { from { opacity: 0; } }
+@keyframes rk-pulse { 50% { opacity: .4; } }
+.rk-intro #rk-body tr { animation: rk-slide 300ms var(--rk-e) backwards; animation-delay: calc(500ms + var(--i, 0) * 110ms); }
+@keyframes rk-slide { from { opacity: 0; transform: translateX(-24px); } }
+.rk-intro .rk-step { animation: rk-grow 420ms var(--rk-bounce) backwards; }
+.rk-intro .rk-c--3 .rk-step { animation-delay: 2200ms; } .rk-intro .rk-c--2 .rk-step { animation-delay: 2700ms; } .rk-intro .rk-c--1 .rk-step { animation-delay: 3200ms; }
+@keyframes rk-grow { from { opacity: 0; transform: scaleY(.04); } }
+.rk-intro .rk-who { animation: rk-drop 380ms var(--rk-e) backwards; }
+.rk-intro .rk-c--3 .rk-who { animation-delay: 2450ms; } .rk-intro .rk-c--2 .rk-who { animation-delay: 2950ms; } .rk-intro .rk-c--1 .rk-who { animation-delay: 3450ms; }
+@keyframes rk-drop { from { opacity: 0; transform: translateY(-30px); } }
+.rk-intro .rk-crown { animation: rk-crown 380ms var(--rk-bounce) 4400ms backwards; }
+@keyframes rk-crown { from { opacity: 0; transform: translateY(-40px) rotate(-20deg); } }
+.rk-intro .rk-dock { animation: rk-up 300ms var(--rk-e) 4700ms backwards; }
+@keyframes rk-up { from { transform: translateY(100%); } }
+
+@media (max-width: 860px) {
+  .rk-skip { position: fixed; top: auto; right: 16px; bottom: calc(var(--ptabbar-h) + env(safe-area-inset-bottom) + 12px); z-index: 30; box-shadow: inset 0 0 0 1px var(--c-border), var(--shadow-pop); }
+  .rk-dock { bottom: calc(var(--ptabbar-h) + env(safe-area-inset-bottom)); padding-bottom: 10px; }
+  .rk-page .papp { padding-bottom: calc(var(--ptabbar-h) + env(safe-area-inset-bottom) + 90px); }
+  .rk-pod { gap: 8px; padding: 28px 10px 0; }
+  .rk-step { font-size: 30px; padding-top: 8px; }
+  .rk-c--1 .rk-step { height: 96px; } .rk-c--2 .rk-step { height: 70px; } .rk-c--3 .rk-step { height: 52px; }
+  .rk-c .pav { width: 52px; height: 52px; font-size: calc(18px * var(--fs-scale, 1)); } .rk-c--1 .pav { width: 68px; height: 68px; font-size: calc(22px * var(--fs-scale, 1)); }
+  .rk-c__nm { font-size: calc(14px * var(--fs-scale, 1)); } .rk-c--1 .rk-c__nm { font-size: calc(16px * var(--fs-scale, 1)); }
+  .rk-flap { gap: 2px; }
+  .rk-dg, .rk-c .rk-dg { width: 19px; height: 30px; font-size: 18px; border-radius: 4px; }
+  .rk-c--1 .rk-dg { width: 23px; height: 34px; font-size: 22px; }
+  .rk-page #rk-wrap { margin: 0 8px 8px; padding: 2px 6px; }
+  .rk-page #rk-wrap .ptbl td:first-child { font-size: calc(18px * var(--fs-scale, 1)); }
+  .rk-page #rk-wrap .ptbl td:nth-child(2) a { font-size: calc(15px * var(--fs-scale, 1)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rk-tick__in { animation: none; }
+  .rk-dg.is-flip { animation: none; }
+}
+
+/* filters row (mockup rk17): category chips · scope underline tabs · search pill */
+.rk-filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin: 16px 0 20px; }
+.rk-filters .pchips, .rk-filters .pbar { margin: 0; gap: 8px; }
+.rk-filters .pbar { display: contents; }
+.rk-filters .ptabs { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; }
+.rk-filters .pchip { min-height: 44px; padding: 0 18px; border-radius: 999px; font-weight: 800; background: none; color: inherit; box-shadow: inset 0 0 0 1px var(--c-border); transition: background var(--d-fast), color var(--d-fast); }
+.rk-filters .pchip[aria-selected="true"] { background: var(--c-ink); color: var(--c-on-ink); box-shadow: none; }
+.rk-filters .ptab { min-height: 44px; padding: 0 12px; font-weight: 800; color: var(--c-ink-2); border-bottom: 3px solid transparent; white-space: nowrap; }
+.rk-filters .ptab[aria-selected="true"] { color: var(--c-ink); border-bottom-color: var(--c-brand-text); }
+.rk-filters .psearch { padding: 0 14px; min-height: 44px; border-radius: 999px; background: var(--c-field); box-shadow: inset 0 0 0 1px var(--c-border); }
+.rk-filters .psearch input { width: 170px; }
+@media (max-width: 860px) { .rk-filters .psearch, .rk-filters .psearch input { width: 100%; } }

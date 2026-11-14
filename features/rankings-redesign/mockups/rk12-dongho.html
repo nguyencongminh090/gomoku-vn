@@ -1,0 +1,97 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK12 Tranh Đông Hồ</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* Đông Hồ palette: giấy điệp, son, chàm, vàng hoè, than. Prints stay on paper in both modes; the page is chàm-dyed at night. */
+:root{--paper:#efe4cc;--paper-2:#e4d5b4;--ink:#1d1a16;--son:#a8321f;--cham:#22405f;--vang:#c99a2e;--la:#4f6b2a;
+  --pg:#15202b;--pg-ink:#efe4cc;--pg-ink-2:#c3b89f;--pg-rule:rgba(239,228,204,.14);--seal-ink:#fbeee0;--speck:rgba(255,255,255,.05);--paper-ink-2:#5a5143;--up-night:#a9d46f;--lotus:#d97b6b}
+:root[data-mode=light]{--pg:#efe4cc;--pg-ink:#1d1a16;--pg-ink-2:#5a5143;--pg-rule:rgba(29,26,22,.14)}
+body{background:var(--pg);color:var(--pg-ink);
+  background-image:radial-gradient(circle at 20% 30%,var(--speck) 0 1px,transparent 2px),radial-gradient(circle at 70% 80%,var(--speck) 0 1px,transparent 2px);
+  background-size:7px 7px,11px 11px}
+.mk-top{background:var(--pg);border-color:var(--pg-rule)}
+.hd{padding:34px 0 0;text-align:center}
+.hd .eyebrow{color:var(--vang)}
+.hd h1{margin:0;font-size:clamp(32px,3.4vw+10px,58px);font-weight:1000;letter-spacing:.04em;text-transform:uppercase}
+.hd p{margin:6px 0 0;color:var(--pg-ink-2)}
+.filters{justify-content:center;margin:18px 0 28px}
+.chip[aria-selected=true]{background:var(--son);color:var(--seal-ink)}
+.scope button[aria-selected=true]{border-color:var(--son)}
+/* the three prints */
+.prints{display:grid;grid-template-columns:1fr 1.18fr 1fr;gap:18px;align-items:end;max-width:900px;margin:0 auto}
+.print{position:relative;background:var(--paper);color:var(--ink);padding:10px;border:4px solid var(--ink);box-shadow:6px 6px 0 var(--son);animation:rise 500ms var(--e-out) backwards}
+.print .frame{position:relative;border:2px solid var(--son);padding:14px 12px 16px;text-align:center;overflow:hidden;
+  background:repeating-linear-gradient(-35deg,transparent 0 9px,rgba(29,26,22,.07) 9px 10px)}
+.print .ttl{display:inline-block;padding:4px 14px;background:var(--ink);color:var(--paper);font-weight:1000;font-size:14px;letter-spacing:.18em;text-transform:uppercase}
+.print.p1 .ttl{background:var(--son)}
+.motif{display:block;width:100%;height:auto;margin:10px auto 4px;max-width:200px}
+.print .av{--s:76px;box-shadow:0 0 0 3px var(--paper),0 0 0 6px var(--ink);margin-top:-46px;position:relative}
+.p1 .av{--s:92px;box-shadow:0 0 0 3px var(--paper),0 0 0 6px var(--son)}
+.print .nm{margin-top:12px;font-weight:1000;font-size:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p1 .nm{font-size:26px}
+.print .rt{font-size:34px;font-weight:1000;line-height:1;color:var(--cham)}.p1 .rt{font-size:44px}
+.print .cl{font-size:13px;font-weight:700;color:var(--paper-ink-2)}
+.seal{position:absolute;right:10px;top:12px;width:48px;height:48px;display:grid;place-items:center;transform:rotate(-8deg);
+  background:var(--son);color:var(--seal-ink);font-weight:1000;font-size:11px;line-height:1.05;letter-spacing:.06em;text-align:center;border-radius:4px;
+  box-shadow:inset 0 0 0 2px var(--son),inset 0 0 0 4px var(--seal-ink)}
+.p1 .seal{width:58px;height:58px;font-size:13px}
+.p1{animation-delay:200ms}.p2{animation-delay:100ms}
+/* wave band (sóng nước) */
+.waves{height:28px;margin:30px 0 10px;opacity:.9;
+  background:radial-gradient(circle at 50% 100%,transparent 9px,var(--vang) 10px 12px,transparent 13px) 0 0/28px 28px repeat-x,
+  radial-gradient(circle at 50% 100%,transparent 3px,var(--vang) 4px 6px,transparent 7px) 0 0/28px 28px repeat-x}
+/* scroll list */
+.scroll{max-width:900px;margin:0 auto;padding-bottom:110px}
+h2{display:flex;align-items:center;gap:12px;font-size:16px;font-weight:1000;letter-spacing:.16em;text-transform:uppercase;color:var(--vang);margin:24px 0 8px}
+h2::after{content:"";flex:1;height:2px;background:var(--pg-rule)}
+.row{display:grid;grid-template-columns:40px 36px 1fr auto 56px;gap:12px;align-items:center;min-height:56px;padding:6px 4px;border-bottom:1px dashed var(--pg-rule)}
+.row .k{width:36px;height:36px;display:grid;place-items:center;background:var(--son);color:var(--seal-ink);font-weight:1000;border-radius:3px;transform:rotate(-3deg)}
+.row.tsi .k{background:transparent;color:var(--pg-ink);box-shadow:inset 0 0 0 2px var(--son);transform:none}
+.row .n{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .n small{display:block;font-weight:600;font-size:12px;color:var(--pg-ink-2)}
+.row .r{font-weight:1000;font-size:20px}.row .dl{text-align:right}
+:root:not([data-mode=light]) .row .dl.up{color:var(--up-night)}
+.dock{position:fixed;inset:auto 0 0;z-index:15;background:var(--paper);color:var(--ink);border-top:4px solid var(--ink);padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+.dock .row{max-width:900px;margin:0 auto;border:0}.dock .n small{color:var(--paper-ink-2)}.dock .row .k{color:var(--ink)}
+.note{color:var(--pg-ink-2);max-width:70ch}
+@media(max-width:860px){
+  .prints{grid-template-columns:1fr 1fr;gap:14px}.print.p1{grid-column:1/-1;order:-1}
+  .print{padding:6px;box-shadow:4px 4px 0 var(--son)}.print .frame{padding:10px 8px 12px}.motif{max-width:120px}
+  .print .av{--s:56px;margin-top:-34px}.p1 .av{--s:72px}.print .nm{font-size:16px}.p1 .nm{font-size:22px}.print .rt{font-size:26px}.p1 .rt{font-size:36px}
+  .seal{width:40px;height:40px;font-size:9px}.p1 .seal{width:48px;height:48px;font-size:11px}.print .ttl{font-size:12px;letter-spacing:.12em;padding:3px 8px}
+  .row{grid-template-columns:36px 32px 1fr auto 44px;gap:8px}.row .av{--s:32px}.row .k{width:32px;height:32px}
+}
+@media(prefers-reduced-motion:reduce){.print{animation:none}}
+</style></head><body>
+<main class="wrap">
+  <section class="hd"><p class="eyebrow">Khoa thi Caro · mùa 4</p><h1>Bảng khoa</h1><p>Ba người đứng đầu được khắc ván in như tranh làng Đông Hồ.</p></section>
+  <div class="filters" id="f"></div>
+  <section class="prints" id="prints" aria-label="Top 3"></section>
+  <div class="waves" aria-hidden="true"></div>
+  <section class="scroll"><h2>Hoàng giáp · hạng 4–10</h2><div id="hg"></div><h2>Tiến sĩ · hạng 11+</h2><div id="ts"></div>
+  <p class="note">Mockup: hoạ tiết khắc gỗ là SVG tự vẽ (không dùng tranh thật hay bộ hình vẽ tay có sẵn). Danh hiệu khoa bảng (Trạng nguyên, Bảng nhãn, Thám hoa, Hoàng giáp, Tiến sĩ) chỉ là nhãn hiển thị theo hạng, không cần API mới.</p></section>
+</main>
+<div class="dock" id="dock" aria-label="Hạng của bạn"></div>
+<svg width="0" height="0" style="position:absolute"><defs>
+  <!-- woodcut motifs: carp (cá chép), rooster tail (gà), lotus (sen) — flat colour + ink outline -->
+  <symbol id="m-carp" viewBox="0 0 200 110"><path d="M20 60 Q60 18 120 34 Q150 42 168 60 Q150 78 120 86 Q60 102 20 60Z" fill="var(--vang)" stroke="var(--ink)" stroke-width="4"/>
+    <path d="M168 60 L196 36 L188 60 L196 84Z" fill="var(--son)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M60 46 q10 14 0 28 M80 42 q10 18 0 36 M100 40 q10 20 0 40 M120 42 q8 18 0 36" fill="none" stroke="var(--ink)" stroke-width="3"/>
+    <circle cx="38" cy="54" r="5" fill="var(--ink)"/><path d="M84 30 Q100 6 126 22" fill="var(--son)" stroke="var(--ink)" stroke-width="4"/></symbol>
+  <symbol id="m-lotus" viewBox="0 0 200 110"><path d="M100 96 C70 80 62 44 100 14 C138 44 130 80 100 96Z" fill="var(--son)" stroke="var(--ink)" stroke-width="4"/>
+    <path d="M100 96 C60 96 30 70 30 42 C64 46 90 68 100 96Z M100 96 C140 96 170 70 170 42 C136 46 110 68 100 96Z" fill="var(--lotus)" stroke="var(--ink)" stroke-width="4"/>
+    <path d="M100 30v58" stroke="var(--ink)" stroke-width="3"/><path d="M20 100h160" stroke="var(--la)" stroke-width="6" stroke-linecap="round"/></symbol>
+  <symbol id="m-sun" viewBox="0 0 200 110"><circle cx="100" cy="58" r="30" fill="var(--son)" stroke="var(--ink)" stroke-width="4"/>
+    <g stroke="var(--ink)" stroke-width="4" stroke-linecap="round"><path d="M100 10v12M100 94v12M52 58H40M160 58h-12M66 24l8 8M134 24l-8 8M66 92l8-8M134 92l-8-8"/></g>
+    <path d="M30 104 Q65 84 100 104 T170 104" fill="none" stroke="var(--cham)" stroke-width="5"/></symbol>
+</defs></svg>
+<script src="../data.js"></script><script>
+RK.top();RK.chrome(document.getElementById('f'));
+const P=RK.players, T=[['Trạng nguyên','HẠNG<br>NHẤT','m-sun'],['Bảng nhãn','HẠNG<br>NHÌ','m-carp'],['Thám hoa','HẠNG<br>BA','m-lotus']];
+const pr=(p,i)=>`<article class="print p${i+1}"><div class="frame"><span class="ttl">${T[i][0]}</span><span class="seal" aria-hidden="true">${T[i][1]}</span>
+  <svg class="motif" viewBox="0 0 200 110" aria-hidden="true"><use href="#${T[i][2]}"/></svg>${RK.av(p,76)}
+  <div class="nm">${p.name}</div><div class="rt num">${p.rating}</div><div class="cl">${p.club||p.city} · ${RK.dl(p)}</div></div></article>`;
+document.getElementById('prints').innerHTML=pr(P[1],1)+pr(P[0],0)+pr(P[2],2);
+const row=(p,c)=>`<a class="row ${c||''}"><span class="k num">${p.rank}</span>${RK.av(p,36)}<span class="n">${p.name}<small>${p.club||p.city}</small></span><span class="r num">${p.rating}</span>${RK.dl(p)}</a>`;
+document.getElementById('hg').innerHTML=P.slice(3,10).map(p=>row(p)).join('');
+document.getElementById('ts').innerHTML=P.slice(10).map(p=>row(p,'tsi')).join('');
+document.getElementById('dock').innerHTML=row(RK.me,'tsi');
+</script></body></html>

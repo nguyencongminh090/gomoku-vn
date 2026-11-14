@@ -1,0 +1,83 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK13 Sticker Neo-brutal</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* 3 colours + black/cream. Line = the ink colour, shadow is hard (no blur). */
+:root{--nb-bg:#191815;--nb-card:#26241f;--nb-ink:#f6efe1;--nb-line:#f6efe1;--nb-lime:#b6e35a;--nb-tom:#ff6f4f;--nb-sky:#7cc7ff;--nb-on:#14130f;--nb-w:3px;--nb-sh:6px}
+:root[data-mode=light]{--nb-bg:#f6efe1;--nb-card:#fffaf0;--nb-ink:#14130f;--nb-line:#14130f}
+body{background:var(--nb-bg);color:var(--nb-ink);background-image:radial-gradient(var(--c-border) 1px,transparent 1.5px);background-size:22px 22px}
+.mk-top{background:var(--nb-bg);border-bottom:var(--nb-w) solid var(--nb-line)}
+.box{background:var(--nb-card);border:var(--nb-w) solid var(--nb-line);border-radius:14px;box-shadow:var(--nb-sh) var(--nb-sh) 0 var(--nb-line)}
+.hd{display:flex;flex-wrap:wrap;align-items:end;gap:10px 24px;padding:32px 0 6px}
+.hd h1{margin:0;font-size:clamp(40px,6vw,92px);font-weight:1000;line-height:.9;letter-spacing:-.04em;text-transform:uppercase}
+.hd h1 span{display:inline-block;background:var(--nb-lime);color:var(--nb-on);padding:0 .12em;border:var(--nb-w) solid var(--nb-line);transform:rotate(-2deg);box-shadow:var(--nb-sh) var(--nb-sh) 0 var(--nb-line)}
+.hd p{margin:0 0 8px;font-weight:700;max-width:30ch}
+.filters{margin:22px 0 28px}
+.chip{border:var(--nb-w) solid var(--nb-line);box-shadow:3px 3px 0 var(--nb-line)}
+.chip[aria-selected=true]{background:var(--nb-tom);color:var(--nb-on);box-shadow:3px 3px 0 var(--nb-line)}
+.scope button[aria-selected=true]{color:var(--nb-ink);border-color:var(--nb-tom)}
+.search input{border:var(--nb-w) solid var(--nb-line);box-shadow:none;background:var(--nb-card)}
+/* top 3 */
+.top3{display:grid;grid-template-columns:1.25fr 1fr 1fr;gap:22px}
+.t{position:relative;padding:18px 18px 16px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;align-items:center;animation:pop 360ms var(--e-out) backwards}
+.t .big{grid-row:span 3;font-size:120px;font-weight:1000;line-height:.8;letter-spacing:-.06em;-webkit-text-stroke:var(--nb-w) var(--nb-line);color:transparent}
+.t1{background:var(--nb-lime);color:var(--nb-on)}.t1 .big{color:var(--nb-on);-webkit-text-stroke:0}
+.t2 .big{color:var(--nb-sky)}.t3 .big{color:var(--nb-tom)}
+.t .nm{font-size:24px;font-weight:1000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.t1 .nm{font-size:30px}
+.t .rt{font-size:40px;font-weight:1000;line-height:1}.t1 .rt{font-size:54px}
+.t .cl{font-weight:700;font-size:13px;opacity:.8}
+.t .av{position:absolute;right:14px;top:-18px;--s:56px;border:var(--nb-w) solid var(--nb-line);box-shadow:3px 3px 0 var(--nb-line)}.t1 .av{--s:72px}
+.t2{animation-delay:90ms}.t3{animation-delay:180ms}
+/* stickers */
+.stk{position:absolute;display:inline-block;padding:4px 10px;font-size:13px;font-weight:1000;letter-spacing:.04em;text-transform:uppercase;border:var(--nb-w) solid var(--nb-line);border-radius:999px;box-shadow:3px 3px 0 var(--nb-line);color:var(--nb-on)}
+.stk.lime{background:var(--nb-lime)}.stk.tom{background:var(--nb-tom)}.stk.sky{background:var(--nb-sky)}
+.t .stk{left:-10px;bottom:-14px;transform:rotate(-6deg)}
+/* tickets */
+h2{font-size:28px;font-weight:1000;text-transform:uppercase;letter-spacing:-.02em;margin:40px 0 14px}
+.list{display:grid;gap:14px;padding-bottom:110px}
+.tk{position:relative;display:grid;grid-template-columns:56px 40px 1fr auto 64px;gap:14px;align-items:center;min-height:64px;padding:8px 18px 8px 0;
+  transition:transform var(--d-fast),box-shadow var(--d-fast)}
+.tk .k{height:100%;display:grid;place-items:center;font-size:22px;font-weight:1000;border-right:var(--nb-w) dashed var(--nb-line)}
+.tk .n{font-weight:900;font-size:18px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tk .n small{display:block;font-weight:700;font-size:12px;opacity:.75}
+.tk .r{font-size:24px;font-weight:1000}.tk .dl{text-align:right;font-size:16px}
+.tk .av{border:2px solid var(--nb-line)}
+.tk:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 var(--nb-line)}
+.tk:active{transform:translate(var(--nb-sh),var(--nb-sh));box-shadow:0 0 0 var(--nb-line)}
+.tk .stk{right:200px;top:-13px;transform:rotate(4deg)}
+.tk:nth-child(odd) .stk{transform:rotate(-4deg)}
+/* my ticket */
+.mine{position:fixed;left:50%;bottom:16px;z-index:15;width:min(760px,calc(100% - 32px));transform:translateX(-50%) rotate(-1deg);background:var(--nb-tom);color:var(--nb-on)}
+.mine:hover,.mine:active{transform:translateX(-50%) rotate(-1deg)}
+.note{max-width:70ch}
+@keyframes pop{from{opacity:0;transform:scale(.92) rotate(-2deg)}}
+@media(max-width:860px){
+  .hd p{display:none}
+  .top3{grid-template-columns:1fr 1fr;gap:16px}.t1{grid-column:1/-1}
+  .t{padding:12px;grid-template-columns:1fr}.t .big{grid-row:auto;font-size:64px}.t1 .big{font-size:84px}
+  .t1{grid-template-columns:auto 1fr}.t1 .big{grid-row:span 3}
+  .t .nm{font-size:17px}.t1 .nm{font-size:24px}.t .rt{font-size:28px}.t1 .rt{font-size:40px}.t .av{--s:44px;right:10px;top:-14px}.t1 .av{--s:56px}
+  .tk{grid-template-columns:40px 32px 1fr auto 44px;gap:8px;padding-right:10px;min-height:58px}.tk .k{font-size:18px}.tk .av{--s:32px}.tk .n{font-size:16px}.tk .r{font-size:20px}.tk .dl{font-size:14px}
+  .tk .stk{right:8px;top:-15px;font-size:11px}.t .cl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+  .mine{bottom:8px;width:calc(100% - 20px)}
+}
+@media(prefers-reduced-motion:reduce){.t{animation:none}.tk,.tk:hover,.tk:active{transition:none}}
+</style></head><body>
+<main class="wrap">
+  <section class="hd"><h1>Bảng <span>xếp hạng</span></h1><p>Ai đang cháy, ai đang nguội. Cập nhật mỗi ván.</p></section>
+  <div class="filters" id="f"></div>
+  <section class="top3" id="top3" aria-label="Top 3"></section>
+  <h2>Cả bảng</h2>
+  <div class="list" id="list"></div>
+  <p class="note">Mockup: nhãn dán (BỨT PHÁ, TỤT DỐC, MỚI, CHUỖI THẮNG) tự sinh từ <code>delta7</code> và <code>provisional</code>. CHUỖI THẮNG cần API chuỗi thắng (cần API sau). Thanh điều hướng giữ nguyên kiểu của site.</p>
+</main>
+<script src="../data.js"></script><script>
+RK.top();RK.chrome(document.getElementById('f'));
+const P=RK.players;
+const sticker=p=>p.prov?['MỚI','sky']:p.d>=50?['BỨT PHÁ +'+p.d,'lime']:p.d<=-20?['TỤT DỐC '+p.d,'tom']:p.rank===6?['CHUỖI THẮNG 7','lime']:null;
+const order=[0,1,2], cls=['t1','t2','t3'], tags=[['VUA CỜ','tom'],['Á QUÂN','lime'],['HẠNG BA','sky']];
+document.getElementById('top3').innerHTML=order.map(i=>{const p=P[i];return `<article class="box t ${cls[i]}"><span class="big num" aria-hidden="true">${i+1}</span>
+  <div class="nm">${p.name}</div><div class="rt num">${p.rating}</div><div class="cl">${p.club||p.city} · ${p.games} ván</div>${RK.av(p,56)}
+  <span class="stk ${tags[i][1]}">${tags[i][0]}</span></article>`}).join('');
+const tk=(p,extra)=>{const s=sticker(p);return `<a class="box tk ${extra||''}" href="#"><span class="k num">${p.rank}</span>${RK.av(p,40)}<span class="n">${p.name}<small>${p.club||p.city}</small></span><span class="r num">${p.rating}</span>${RK.dl(p)}${s?`<span class="stk ${s[1]}">${s[0]}</span>`:''}</a>`};
+document.getElementById('list').innerHTML=P.slice(3).map(p=>tk(p)).join('');
+document.body.insertAdjacentHTML('beforeend',tk(RK.me,'mine').replace('<a ','<a aria-label="Hạng của bạn" '));
+</script></body></html>
