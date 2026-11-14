@@ -2,7 +2,7 @@
 
 /** db/users.js — split out of database.js (#258); code moved verbatim. */
 
-const { db } = require('./connection');
+const { stmt } = require('./connection');
 
 
 // ---------------------------------------------------------------------------
@@ -14,11 +14,11 @@ const { db } = require('./connection');
  * @param {{ id, username, passwordHash, displayName, createdAt, oauthProvider?, oauthId? }} user
  */
 function createUser({ id, username, passwordHash, displayName, createdAt, oauthProvider = null, oauthId = null }) {
-  const stmt = db.prepare(
+  const insert = stmt(
     `INSERT INTO users (id, username, password_hash, display_name, created_at, oauth_provider, oauth_id)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   );
-  return stmt.run(id, username, passwordHash, displayName, createdAt, oauthProvider, oauthId);
+  return insert.run(id, username, passwordHash, displayName, createdAt, oauthProvider, oauthId);
 }
 
 /**
@@ -27,7 +27,7 @@ function createUser({ id, username, passwordHash, displayName, createdAt, oauthP
  * @returns {{ id, username, password_hash, display_name, created_at } | undefined}
  */
 function getUserByUsername(username) {
-  return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+  return stmt('SELECT * FROM users WHERE username = ?').get(username);
 }
 
 /**
@@ -37,7 +37,7 @@ function getUserByUsername(username) {
  * @returns {{ id, username, password_hash, display_name, created_at, oauth_provider, oauth_id } | undefined}
  */
 function getUserByOAuthId(provider, oauthId) {
-  return db.prepare('SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?').get(provider, oauthId);
+  return stmt('SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?').get(provider, oauthId);
 }
 
 /**
@@ -46,7 +46,7 @@ function getUserByOAuthId(provider, oauthId) {
  * @returns {{ id, username, password_hash, display_name, created_at } | undefined}
  */
 function getUserById(id) {
-  return db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+  return stmt('SELECT * FROM users WHERE id = ?').get(id);
 }
 
 /**
@@ -55,7 +55,7 @@ function getUserById(id) {
  * @param {string} loggedInAt  ISO 8601 timestamp
  */
 function updateLastLogin(id, loggedInAt) {
-  db.prepare('UPDATE users SET last_login_at = ? WHERE id = ?').run(loggedInAt, id);
+  stmt('UPDATE users SET last_login_at = ? WHERE id = ?').run(loggedInAt, id);
 }
 
 // ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ function updateLastLogin(id, loggedInAt) {
  * @param {{ id, userId, displayName, isGuest, createdAt, expiresAt }} session
  */
 function createSession({ id, userId, displayName, isGuest, createdAt, expiresAt }) {
-  return db.prepare(
+  return stmt(
     `INSERT INTO sessions (id, user_id, display_name, is_guest, created_at, last_seen_at, expires_at)
      VALUES (?, ?, ?, ?, ?, ?, ?)`
   ).run(id, userId || null, displayName, isGuest ? 1 : 0, createdAt, createdAt, expiresAt);
@@ -84,7 +84,7 @@ function createSession({ id, userId, displayName, isGuest, createdAt, expiresAt 
  * @returns {{ id, user_id, display_name, is_guest, created_at, last_seen_at, expires_at, revoked_at } | undefined}
  */
 function getSessionById(id) {
-  return db.prepare('SELECT * FROM sessions WHERE id = ?').get(id);
+  return stmt('SELECT * FROM sessions WHERE id = ?').get(id);
 }
 
 /**
@@ -98,7 +98,7 @@ function getSessionById(id) {
  * @returns {boolean}
  */
 function hasLiveGuestSessionWithDisplayName(displayName, now) {
-  return !!db.prepare(
+  return !!stmt(
     `SELECT 1 FROM sessions
      WHERE display_name = ? AND is_guest = 1 AND revoked_at IS NULL AND expires_at > ?
      LIMIT 1`
@@ -110,7 +110,7 @@ function hasLiveGuestSessionWithDisplayName(displayName, now) {
  * ORIGINAL revoked_at, so re-revoking never rewrites when it first happened.
  */
 function revokeSession(id, revokedAt) {
-  return db.prepare('UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')
+  return stmt('UPDATE sessions SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL')
     .run(revokedAt, id);
 }
 
@@ -127,15 +127,15 @@ function revokeSession(id, revokedAt) {
 function revokeSessionsForUser(userId, revokedAt, exceptId) {
   if (!userId) return { changes: 0 };
   return exceptId
-    ? db.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND id != ? AND revoked_at IS NULL')
+    ? stmt('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND id != ? AND revoked_at IS NULL')
       .run(revokedAt, userId, exceptId)
-    : db.prepare('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL')
+    : stmt('UPDATE sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL')
       .run(revokedAt, userId);
 }
 
 /** Refresh last_seen_at (observability only — never affects validity). */
 function touchSession(id, seenAt) {
-  return db.prepare('UPDATE sessions SET last_seen_at = ? WHERE id = ?').run(seenAt, id);
+  return stmt('UPDATE sessions SET last_seen_at = ? WHERE id = ?').run(seenAt, id);
 }
 
 /**
@@ -145,7 +145,7 @@ function touchSession(id, seenAt) {
  * outcome but loses the audit trail of why it stopped working.
  */
 function deleteExpiredSessions(before) {
-  return db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(before);
+  return stmt('DELETE FROM sessions WHERE expires_at < ?').run(before);
 }
 
 

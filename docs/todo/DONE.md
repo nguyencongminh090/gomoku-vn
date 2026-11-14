@@ -1,3 +1,4 @@
+✅ - **#379.** server/db helpers `db.prepare` per call; check prod `MAX_ROOMS` (default 50) `[Model: Sonnet 5]` — [detail](docs/todo/B379-db-prepare-per-call.md)
 ✅ 
 ✅ - **#362.** Home phone: counts as a status line, 4 links in one Khám phá card `[Model: Sonnet 5]` — [detail](docs/todo/B362-home-phone-pulse-line.md)
 ✅ - **#361.** Home "Thách đấu" composer: challenge online players or friends `[Model: Opus 5]` — [detail](docs/todo/B361-home-challenge-composer.md)

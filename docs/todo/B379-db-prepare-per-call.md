@@ -1,5 +1,5 @@
 # B379 — server/db/*.js prepares SQL on every call
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-14 — stmt() cache in connection.js; MAX_ROOMS unset in repo .env (=50), left for user ([fix-log](../fix-log/2026-11-14-379-db-stmt-cache.md))
 **Area:** server/db/users.js and siblings
 **From:** perf/play-lag CPU profile 2026-11-14 (`prepare` was the top self-time frame)   **Depends:** —
 

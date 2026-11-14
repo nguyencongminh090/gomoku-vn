@@ -8,21 +8,21 @@
  * Names are never edited in place today; if a rename path is added, call invalidate() from it.
  */
 
-const { db } = require('./connection');
+const { stmt } = require('./connection');
 const textSearch = require('../utils/text-search');
 
 const RESULT_CACHE_MAX = 200;
 let cache = null; // { stamp, index, results: Map<q, id[]> }
 
 function stamp() {
-  const r = db.prepare('SELECT COUNT(*) AS n, COALESCE(MAX(rowid), 0) AS m FROM users').get();
+  const r = stmt('SELECT COUNT(*) AS n, COALESCE(MAX(rowid), 0) AS m FROM users').get();
   return `${r.n}:${r.m}`;
 }
 
 function load() {
   const s = stamp();
   if (!cache || cache.stamp !== s) {
-    const rows = db.prepare('SELECT id, username, display_name FROM users').all();
+    const rows = stmt('SELECT id, username, display_name FROM users').all();
     // fields[0] = display name (what people type / see), fields[1] = login handle.
     const docs = rows.map((r) => ({ id: r.id, fields: [textSearch.prepare(r.display_name), textSearch.prepare(r.username)] }));
     cache = { stamp: s, index: textSearch.createIndex(docs), results: new Map() };

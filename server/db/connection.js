@@ -59,4 +59,20 @@ require('./backup').startBackupScheduler(db, { dir: path.join(__dirname, 'backup
 
 logger.info('[DB] SQLite initialized at', DB_PATH);
 
-module.exports = { db, DB_PATH };
+// Prepared-statement cache (B379): db.prepare costs far more than running the query, and helpers ran
+// it on every call. Keyed by SQL text — use only for SQL drawn from a bounded set of texts (constants,
+// fixed column lists, option-built WHERE). Per-call `IN (?,?,…)` lists stay on db.prepare. The cap is a
+// safety net: past it, statements are prepared but not kept. Statements here must stay in default mode
+// (no .pluck/.raw/.expand — shared state) and must not be iterate()d (a busy statement can't re-enter).
+const STMT_CACHE_MAX = 500;
+const stmtCache = new Map();
+function stmt(sql) {
+  let s = stmtCache.get(sql);
+  if (!s) {
+    s = db.prepare(sql);
+    if (stmtCache.size < STMT_CACHE_MAX) stmtCache.set(sql, s);
+  }
+  return s;
+}
+
+module.exports = { db, DB_PATH, stmt, STMT_CACHE_MAX };
