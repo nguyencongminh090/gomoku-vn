@@ -1,0 +1,29 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK8 Quanh bạn</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+h1{margin:30px 0 4px;font-size:clamp(28px,2.6vw+10px,44px);font-weight:1000}
+.f{margin:16px 0}
+.stage{max-width:640px;margin:0 auto 24px;display:grid;gap:8px}
+.nb{display:grid;grid-template-columns:48px 40px 1fr auto;gap:12px;align-items:center;min-height:56px;padding:6px 16px;border-radius:14px;background:var(--c-surface);animation:rise 400ms var(--e-out) backwards}
+.nb .k{font-weight:900;color:var(--c-ink-2)}.nb b{font-weight:800}.nb .gap{font-weight:900;text-align:right;font-variant-numeric:tabular-nums}.nb .gap small{display:block;font-weight:600;color:var(--c-ink-2);font-size:12px}
+.up .gap{color:var(--c-warning)}.dn .gap{color:var(--c-success)}
+.hero{position:relative;padding:22px;border-radius:22px;background:var(--c-surface-2);box-shadow:0 0 0 2px var(--c-brand-text),0 20px 50px -24px var(--c-brand);display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:center;animation:rise 500ms var(--e-out) backwards;animation-delay:200ms}
+.ring{--p:.72;width:132px;height:132px;border-radius:50%;background:conic-gradient(var(--c-brand-text) calc(var(--p)*360deg),var(--c-fill) 0);display:grid;place-items:center}
+.ring div{width:104px;height:104px;border-radius:50%;background:var(--c-surface-2);display:grid;place-items:center;text-align:center;line-height:1}
+.ring b{font-size:36px;font-weight:1000}.ring small{font-size:12px;font-weight:800;color:var(--c-ink-2)}
+.hero h2{margin:0;font-size:22px;font-weight:1000}.hero p{margin:4px 0 12px;color:var(--c-ink-2)}
+.stats{display:flex;gap:18px;flex-wrap:wrap}.stats b{display:block;font-size:24px;font-weight:1000}.stats span{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-2)}
+.cta{display:inline-flex;align-items:center;min-height:44px;padding:0 20px;border-radius:999px;background:var(--c-brand);color:var(--c-on-brand);font-weight:800;margin-top:12px}
+details{max-width:640px;margin:0 auto 80px;background:var(--c-surface);border-radius:14px}summary{min-height:52px;display:flex;align-items:center;padding:0 18px;font-weight:800;cursor:pointer}
+.l{display:grid;grid-template-columns:36px 36px 1fr auto;gap:10px;align-items:center;min-height:48px;padding:0 16px;border-top:1px solid var(--c-border-light)}.l .r{font-weight:1000}
+@media(max-width:600px){.hero{grid-template-columns:1fr;justify-items:center;text-align:center}.stats{justify-content:center}}
+</style></head><body><main class="wrap"><p class="eyebrow" style="margin-top:28px;text-align:center">Tự do · hạng của bạn</p><h1 style="text-align:center">Quanh bạn</h1>
+<div class="filters f" id="f" style="justify-content:center"></div><div class="stage" id="s"></div>
+<details><summary>Xem top 20 và toàn bộ bảng</summary><div id="l"></div></details>
+<p class="note" style="text-align:center">"Người trên/dưới bạn" cần API trả lân cận hạng (cần API sau). Ghim sẵn khi chưa đăng nhập = dùng mẫu top 3.</p></main>
+<script src="../data.js"></script><script>RK.top();RK.chrome(f);const M=RK.me,P=RK.players;
+const nb=[[44,1269,'Ánh Dương'],[45,1262,'trung.le'],[46,1252,'Mỹ Linh']],lo=[[48,1231,'hieu_gm'],[49,1224,'Bích Hà'],[50,1219,'vinh99']];
+const q=(r,sign,i)=>{const p={name:r[2],h:r[2].length*37%360};const d=Math.abs(r[1]-M.rating);return `<a class="nb ${sign}" style="animation-delay:${i*70}ms"><span class="k num">${r[0]}</span>${RK.av(p,36)}<b>${r[2]} <span class="muted num">${r[1]}</span></b><span class="gap">${sign=='up'?'+':'−'}${d}<small>${sign=='up'?'cần vượt':'đang đuổi'}</small></span></a>`};
+s.innerHTML=nb.map((r,i)=>q(r,'up',i)).join('')+`<div class="hero"><div class="ring"><div><span><b class="num" id="cnt">47</b><br><small>/ 1.284</small></span></div></div><div><h2>${M.name}</h2><p>Hà Nội Gomoku · Tự do</p><div class="stats"><div><b class="num">${M.rating}</b><span>Rating</span></div><div><b class="dl up" style="font-size:24px"><i class="tri"></i>21</b><span>7 ngày</span></div><div><b class="num">64</b><span>Ván</span></div></div><a class="cta">Chơi nhanh · vượt 46 cần 16 điểm</a></div></div>`+lo.map((r,i)=>q(r,'dn',i+4)).join('');
+l.innerHTML=P.map(p=>`<div class="l"><span class="k num">${p.rank}</span>${RK.av(p,32)}<b>${p.name}</b><span class="r num">${p.rating}</span></div>`).join('');
+const red=matchMedia('(prefers-reduced-motion:reduce)').matches;if(!red){let n=1284;const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/900),e=1-Math.pow(1-k,3);cnt.textContent=Math.round(n-(n-47)*e);if(k<1)requestAnimationFrame(f)})(t0)}</script></body></html>

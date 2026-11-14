@@ -1,0 +1,123 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK17 Bục + Bảng điện tử</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* RK1 podium standing inside the RK4 LED scoreboard. The board is a physical object: always dark, page follows the mode. */
+:root{--led-bg:#0b0d0a;--led-panel:#12150f;--led-line:#26301f;--led-row:#1e2619;--led-ink:#e8f5d0;--led-ink-2:#8fa278;--led-on:#8bc34a;--led-dn:#f77f7f;
+  --flap-top:#222a1c;--flap-bot:#1a2115;--flap-ink:#f4ffe0;--led-glow:rgba(139,195,74,.35);--spot:rgba(255,236,170,.16);
+  --gold:#d9a521;--gold-2:#9a7410;--silver:#aab1b8;--silver-2:#6d747b;--bronze:#c9843f;--bronze-2:#8a5524;--step-ink:#fff;--shade:rgba(0,0,0,.35)}
+.tick{overflow:hidden;white-space:nowrap;background:var(--led-panel);color:var(--led-ink);border-bottom:1px solid var(--led-line);font-weight:800;font-size:14px;letter-spacing:.04em}
+.tick div{display:inline-block;padding:10px 0;animation:mq 40s linear infinite}.tick span{margin:0 28px}.tick .u{color:var(--led-on)}.tick .d{color:var(--led-dn)}
+@keyframes mq{to{transform:translateX(-50%)}}
+.hd{position:relative;display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:8px 20px;padding-top:28px}
+.hd h1{margin:0;font-size:clamp(30px,3vw+10px,52px);font-weight:1000;letter-spacing:.02em;text-transform:uppercase}
+.hd p{margin:4px 0 0;color:var(--c-ink-2)}
+.skip{min-height:44px;padding:0 16px;border-radius:999px;font-weight:800;box-shadow:inset 0 0 0 1px var(--c-border);color:var(--c-ink-2)}
+.skip[hidden]{display:none}
+#skip{position:absolute;right:0;top:24px;background:var(--c-bg)}
+.filters{margin:16px 0 20px}
+/* the arena */
+.arena{position:relative;border-radius:20px;background:var(--led-bg);color:var(--led-ink);overflow:hidden;
+  box-shadow:inset 0 0 0 1px var(--led-line),0 0 70px -24px var(--led-glow)}
+.arena::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+  background:radial-gradient(circle,var(--led-row) 1px,transparent 1.6px) 0 0/6px 6px}
+.spot{position:absolute;left:50%;top:-30%;width:70%;height:120%;margin-left:-35%;pointer-events:none;
+  background:radial-gradient(50% 60% at 50% 40%,var(--spot),transparent 70%)}
+.pod{position:relative;display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:14px;align-items:end;max-width:760px;margin:0 auto;padding:40px 20px 0}
+.c{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+.c .who{display:flex;flex-direction:column;align-items:center;min-width:0;max-width:100%}
+.c .av{box-shadow:0 0 0 4px var(--ring),0 0 28px color-mix(in srgb,var(--ring) 50%,transparent)}
+.p1{--ring:var(--gold)}.p2{--ring:var(--silver)}.p3{--ring:var(--bronze)}
+.crown{width:34px;height:20px;background:var(--gold);clip-path:polygon(0 100%,0 20%,25% 55%,50% 0,75% 55%,100% 20%,100% 100%);margin-bottom:6px}
+.nm{font-weight:900;margin-top:10px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.p1 .nm{font-size:20px}
+.c .digits{margin-top:8px}
+.c .dl{margin-top:4px}
+.step{width:100%;margin-top:12px;border-radius:14px 14px 0 0;display:flex;justify-content:center;padding-top:12px;font-size:48px;font-weight:1000;color:var(--step-ink);transform-origin:bottom;
+  box-shadow:inset 0 -18px 30px var(--shade)}
+.p1 .step{height:150px;background:linear-gradient(var(--gold),var(--gold-2))}.p2 .step{height:110px;background:linear-gradient(var(--silver),var(--silver-2))}.p3 .step{height:82px;background:linear-gradient(var(--bronze),var(--bronze-2))}
+/* split-flap digits */
+.digits{display:inline-flex;gap:4px;perspective:400px}
+.dg{width:30px;height:44px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-size:28px;font-weight:1000;
+  font-variant-numeric:tabular-nums;color:var(--flap-ink);background:linear-gradient(var(--flap-top) 49%,var(--led-bg) 50%,var(--flap-bot))}
+.p1 .dg{width:36px;height:52px;font-size:34px}
+.dg.flip{animation:flip 180ms var(--e-out)}
+@keyframes flip{from{transform:rotateX(-80deg)}}
+/* rows 4+ */
+.board{position:relative;margin:0 14px 14px;padding:4px 14px;border-radius:14px;background:var(--led-panel);box-shadow:inset 0 0 0 1px var(--led-line)}
+.row{display:grid;grid-template-columns:56px 36px 1fr auto 64px;gap:14px;align-items:center;min-height:60px;border-bottom:1px solid var(--led-row)}
+.row:last-child{border:0}
+.row .k{font-size:26px;font-weight:1000;color:var(--led-on);text-align:center}
+.row .n{font-weight:900;font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.row .n small{display:block;font-weight:600;font-size:12px;color:var(--led-ink-2)}
+.row .dg{width:26px;height:38px;font-size:24px}
+.row .dl{text-align:right;font-size:16px}.row .dl.up{color:var(--led-on)}.row .dl.dn{color:var(--led-dn)}
+.c .dl.up{color:var(--led-on)}.c .dl.dn{color:var(--led-dn)}
+.dock{position:fixed;inset:auto 0 0;z-index:15;padding:8px 16px calc(8px + env(safe-area-inset-bottom));background:var(--led-panel);color:var(--led-ink);border-top:2px solid var(--led-on)}
+.dock .in{max-width:1132px;margin:auto;display:flex;align-items:center;gap:12px}.dock b{font-size:20px}.dock .muted{color:var(--led-ink-2)}
+main{padding-bottom:90px}
+.note{max-width:72ch}
+/* ===== 5s opening (only while html.intro) =====
+   0.0  board lights up      0.3  ticker + spotlight   0.5–2.4  rows 4+ flap in (cascade)
+   2.2  bronze step rises    2.7  silver               3.2  gold    3.6–4.4  podium ratings flap
+   4.4  crown drops + spot pulse   4.7  dock slides up   5.0  done */
+.intro .arena{animation:on 300ms ease-out backwards}
+@keyframes on{from{opacity:0;filter:brightness(2.2)}}
+.intro .spot{animation:fade 500ms 300ms backwards,pulse 500ms 4400ms}
+@keyframes fade{from{opacity:0}}@keyframes pulse{50%{opacity:.4}}
+.intro .tick div{animation:fade 300ms 300ms backwards,mq 40s 300ms linear infinite}
+.intro .row{animation:slide 300ms var(--e-out) backwards;animation-delay:calc(500ms + var(--i) * 110ms)}
+@keyframes slide{from{opacity:0;transform:translateX(-24px)}}
+.intro .step{animation:grow 420ms cubic-bezier(.3,1.4,.5,1) backwards}
+.intro .p3 .step{animation-delay:2200ms}.intro .p2 .step{animation-delay:2700ms}.intro .p1 .step{animation-delay:3200ms}
+@keyframes grow{from{opacity:0;transform:scaleY(.04)}}
+.intro .who{animation:drop 380ms var(--e-out) backwards}
+.intro .p3 .who{animation-delay:2450ms}.intro .p2 .who{animation-delay:2950ms}.intro .p1 .who{animation-delay:3450ms}
+@keyframes drop{from{opacity:0;transform:translateY(-30px)}}
+.intro .crown{animation:crown 380ms cubic-bezier(.3,1.5,.5,1) 4400ms backwards}
+@keyframes crown{from{opacity:0;transform:translateY(-40px) rotate(-20deg)}}
+.intro .dock{animation:up 300ms var(--e-out) 4700ms backwards}
+@keyframes up{from{transform:translateY(100%)}}
+@media(max-width:860px){
+  #skip{position:fixed;top:auto;right:16px;bottom:16px;z-index:30;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-border),0 6px 20px var(--shade)}
+  .pod{gap:8px;padding:28px 10px 0}.step{font-size:30px;padding-top:8px}.p1 .step{height:96px}.p2 .step{height:70px}.p3 .step{height:52px}
+  .nm{font-size:14px}.p1 .nm{font-size:16px}.dg,.p1 .dg{width:20px;height:30px;font-size:19px;border-radius:4px}.p1 .dg{width:23px;height:34px;font-size:22px}.digits{gap:2px}
+  .board{margin:0 8px 8px;padding:2px 8px}.row{grid-template-columns:32px 1fr auto;gap:8px;min-height:54px}.row .av,.row .dl{display:none}
+  .row .k{font-size:18px}.row .n{font-size:16px}.row .dg{width:19px;height:30px;font-size:18px;border-radius:4px}
+}
+@media(prefers-reduced-motion:reduce){.tick div{animation:none}}
+</style></head><body>
+<div class="tick" aria-hidden="true"><div id="tk"></div></div>
+<main class="wrap">
+  <section class="hd"><div><p class="eyebrow">Mùa này · trực tiếp</p><h1>Bảng xếp hạng</h1><p>Tự do · 1.284 người chơi</p></div><button class="skip" id="skip" hidden>Bỏ qua ›</button></section>
+  <div class="filters" id="f"></div>
+  <section class="arena" aria-label="Bảng xếp hạng"><div class="spot"></div><div class="pod" id="pod"></div><div class="board" id="bd"></div></section>
+  <p class="note muted">Mockup: mở màn 5s chạy 1 lần mỗi phiên (sessionStorage), bấm/cuộn/phím bất kỳ hoặc "Bỏ qua" là nhảy tới cuối. Giảm chuyển động: hiện trạng thái cuối ngay. Dữ liệu có trong DOM từ đầu (trình đọc màn hình không phải chờ). <button class="skip" id="replay">Phát lại ↺</button></p>
+</main>
+<div class="dock"><div class="in"><span class="av" style="--h:120">MK</span><div style="flex:1"><b>Bạn #47</b> <span class="muted">· 1236 · còn 64 điểm để lên hạng 46</span></div><span class="dl up"><i class="tri"></i>21</span></div></div>
+<script src="../data.js"></script><script>
+RK.top();RK.chrome(document.getElementById('f'));const P=RK.players;
+const s=P.filter(p=>p.d).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,8).map(p=>`<span class="${p.d>0?'u':'d'}">${p.d>0?'LÊN':'XUỐNG'} · ${p.name.toUpperCase()} ${p.d>0?'+':''}${p.d}</span>`).join('');tk.innerHTML=s+s;
+/* digits carry their final value + the time they settle (ms from start) */
+const flap=(v,at)=>`<span class="digits num" aria-label="${v} điểm">${String(v).split('').map((c,j)=>`<i class="dg" aria-hidden="true" data-v="${c}" data-at="${at+j*90}">${c}</i>`).join('')}</span>`;
+const SET=[3700,3700,3700]; /* podium ratings settle after the steps are up */
+pod.innerHTML=[1,0,2].map(i=>{const p=P[i];return `<div class="c p${i+1}"><div class="who">${i==0?'<i class="crown"></i>':''}${RK.av(p,i==0?96:72)}<div class="nm">${p.name}</div>${flap(p.rating,SET[i]+i*120)}${RK.dl(p)}</div><div class="step">${i+1}</div></div>`}).join('');
+bd.innerHTML=P.slice(3).map((p,i)=>`<a class="row" style="--i:${i}"><span class="k num">${p.rank}</span>${RK.av(p,36)}<span class="n">${p.name}<small>${p.club||p.city}</small></span>${flap(p.rating,700+i*110)}${RK.dl(p)}</a>`).join('');
+/* ---- intro controller ---- */
+const root=document.documentElement, skipB=document.getElementById('skip');let timers=[],raf=0;
+function finish(){timers.forEach(clearTimeout);timers=[];cancelAnimationFrame(raf);root.classList.remove('intro');skipB.hidden=true;
+  document.querySelectorAll('.dg').forEach(d=>{d.textContent=d.dataset.v;d.classList.remove('flip')});['pointerdown','wheel','keydown','touchstart'].forEach(e=>removeEventListener(e,finish))}
+function play(){
+  finish();void root.offsetWidth;root.classList.add('intro');skipB.hidden=false;
+  const ds=[...document.querySelectorAll('.dg')], t0=performance.now();
+  /* roll: unsettled digits cycle random 0-9 every ~60ms, then settle with one flap */
+  let last=0;const tick=t=>{const el=t-t0;if(t-last>60){last=t;ds.forEach(d=>{if(!d.dataset.done)d.textContent=(Math.random()*10)|0})}
+    ds.forEach(d=>{if(!d.dataset.done&&el>=+d.dataset.at){d.dataset.done=1;d.textContent=d.dataset.v;d.classList.remove('flip');void d.offsetWidth;d.classList.add('flip')}});
+    if(el<5000)raf=requestAnimationFrame(tick)};
+  ds.forEach(d=>delete d.dataset.done);raf=requestAnimationFrame(tick);
+  timers.push(setTimeout(finish,5000));
+  setTimeout(()=>['pointerdown','wheel','keydown','touchstart'].forEach(e=>addEventListener(e,finish,{once:true})),50);
+}
+skipB.onclick=finish;
+document.getElementById('replay').onclick=e=>{e.stopPropagation();setTimeout(play,60)};
+const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;let seen=false;try{seen=sessionStorage.getItem('rk-intro')==='1';sessionStorage.setItem('rk-intro','1')}catch(e){}
+if(!rm&&!seen&&!new URLSearchParams(location.search).has('nointro'))play();
+</script></body></html>

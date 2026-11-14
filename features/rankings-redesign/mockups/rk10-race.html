@@ -1,0 +1,99 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK10 Đường đua 7 ngày</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+:root{--rk-on-bar:#fff;--rk-on-swap:#10140c}
+.hero{padding:32px 0 8px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between}
+.hero h1{margin:0;font-size:clamp(30px,3vw+10px,52px);font-weight:1000;letter-spacing:-.02em;line-height:1.05}
+.hero p{margin:6px 0 0;color:var(--c-ink-2);max-width:46ch}
+.filters{margin:16px 0 20px}
+/* track */
+.track{position:relative;border-radius:20px;background:var(--c-surface);padding:18px 20px 14px;overflow:hidden;
+  background-image:repeating-linear-gradient(90deg,transparent 0 calc(10% - 1px),var(--c-border-light) calc(10% - 1px) 10%)}
+.track::after{content:"";position:absolute;top:0;bottom:0;right:0;width:14px;opacity:.55;
+  background:conic-gradient(var(--c-ink) 25%,transparent 0 50%,var(--c-ink) 0 75%,transparent 0) 0 0/14px 14px}
+.day{position:absolute;right:36px;bottom:6px;font-size:clamp(56px,9vw,120px);font-weight:1000;line-height:1;color:var(--c-ink);opacity:.08;pointer-events:none;letter-spacing:-.04em}
+.lanes{position:relative;height:calc(var(--n) * 46px)}
+.lane{position:absolute;left:0;right:20px;top:0;height:40px;display:grid;grid-template-columns:30px 1fr 64px;gap:10px;align-items:center;
+  transition:transform 450ms var(--e-out),opacity 240ms}
+.lane .k{font-weight:1000;font-size:18px;color:var(--c-ink-2);text-align:right}
+.bar{position:relative;height:40px;display:flex;align-items:center;gap:10px;padding:0 6px 0 4px;color:var(--rk-on-bar);isolation:isolate}
+.bar::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:0 999px 999px 0;transform-origin:left;transform:scaleX(var(--w));
+  background:linear-gradient(90deg,hsl(var(--h) 45% 30%),hsl(var(--h) 55% 42%));transition:transform 450ms var(--e-out)}
+.bar .av{--s:32px;box-shadow:0 0 0 2px rgba(255,255,255,.7)}
+.bar .nm{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.lane .rt{font-weight:1000;font-size:18px;text-align:right}
+.lane.me .bar::before{box-shadow:0 0 0 3px var(--c-brand-text)}
+.lane .swap{position:absolute;left:44px;top:-8px;font-size:11px;font-weight:900;padding:1px 6px;border-radius:6px;background:var(--c-success);color:var(--rk-on-swap);opacity:0;transition:opacity 240ms}
+.lane.up .swap{opacity:1}
+/* controls */
+.ctl{display:flex;align-items:center;gap:14px;margin-top:14px}
+.play{width:52px;height:52px;flex:none;border-radius:50%;background:var(--c-ink);color:var(--c-on-ink);display:grid;place-items:center}
+.play svg{width:20px;height:20px;fill:currentColor}
+.scrub{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.scrub button{min-height:44px;border-radius:10px;font-weight:800;font-size:13px;color:var(--c-ink-2);background:var(--c-fill);position:relative}
+.scrub button[aria-pressed=true]{background:var(--c-brand);color:var(--rk-on-bar)}
+.scrub button small{display:block;font-size:11px;font-weight:700;opacity:.8}
+/* stories */
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+.cards article{background:var(--c-surface);border-radius:16px;padding:16px}
+.cards b{display:block;font-size:22px;font-weight:1000}
+.cards p{margin:4px 0 0;color:var(--c-ink-2);font-size:14px}
+/* full list */
+h2{font-size:20px;font-weight:900;margin:28px 0 10px}
+.list{display:grid;gap:6px;padding-bottom:40px}
+.row{display:grid;grid-template-columns:32px 36px 1fr 96px 56px 52px;gap:12px;align-items:center;min-height:52px;padding:6px 14px;background:var(--c-surface);border-radius:12px}
+.row .k{font-weight:900;color:var(--c-ink-2)}.row .n{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .r{font-weight:1000;font-size:18px;text-align:right}
+.row svg{width:96px;height:28px;overflow:visible}.row .dl{text-align:right}
+.note{max-width:70ch}
+@media(max-width:860px){
+  .cards{grid-template-columns:1fr}
+  .track{padding:14px 10px 10px}.lane{right:6px;grid-template-columns:22px 1fr 48px;gap:6px}.lane .k{font-size:15px}.lane .rt{font-size:16px}
+  .day{right:20px}.scrub button{font-size:12px}.scrub button small{display:none}
+  .row{grid-template-columns:28px 32px 1fr 52px 44px;gap:8px;padding:6px 10px}.row svg{display:none}.row .av{--s:32px}
+}
+@media(prefers-reduced-motion:reduce){.lane,.bar::before{transition:none}}
+</style></head><body>
+<main class="wrap">
+  <section class="hero"><div><p class="eyebrow">Xếp hạng · tuần 46</p><h1>Đường đua 7 ngày</h1><p>Bấm ▶ để xem ai đã vượt ai trong tuần. Dừng lại là bảng xếp hạng hôm nay.</p></div></section>
+  <div class="filters" id="f"></div>
+  <section class="track" aria-label="Top 10 theo ngày"><div class="day num" id="day">CN</div><div class="lanes" id="lanes" style="--n:10"></div></section>
+  <div class="ctl"><button class="play" id="play" aria-label="Phát lại 7 ngày"><svg viewBox="0 0 20 20"><path d="M5 3l12 7-12 7z"/></svg></button>
+    <div class="scrub" id="scrub" role="group" aria-label="Chọn ngày"></div></div>
+  <div class="cards" id="cards"></div>
+  <h2>Toàn bảng</h2>
+  <div class="list" id="list"></div>
+  <p class="note">Mockup: điểm từng ngày nội suy từ <code>delta7</code>. Bản thật cần API lịch sử rating theo ngày (cần API sau). Giảm chuyển động: không tự chạy, đổi ngày là nhảy thẳng tới khung đó.</p>
+</main>
+<script src="../data.js"></script><script>
+RK.top();RK.chrome(document.getElementById('f'));
+const P=RK.players, DAYS=['T2','T3','T4','T5','T6','T7','CN'], DATES=['10/11','11/11','12/11','13/11','14/11','15/11','16/11'];
+/* deterministic wobble so the race has overtakes, ends exactly at today's rating */
+const wob=(p,k)=>k===6?0:Math.round(Math.sin((p.h+1)*(k+1)*.7)*18*(1-k/6));
+const at=(p,k)=>Math.round(p.rating-p.d*(6-k)/6)+wob(p,k);
+const lead=P.slice(0,12), lanes=document.getElementById('lanes'), dayEl=document.getElementById('day');
+lanes.innerHTML=lead.map(p=>`<div class="lane${p.name==='Minh Khoa'?' me':''}" data-n="${p.name}"><span class="k num"></span><div class="bar" style="--h:${p.h}">${RK.av(p,32)}<span class="nm">${p.name}</span></div><span class="rt num"></span><span class="swap">VƯỢT</span></div>`).join('');
+const scrub=document.getElementById('scrub');
+scrub.innerHTML=DAYS.map((d,i)=>`<button aria-pressed="${i===6}" data-k="${i}">${d}<small>${DATES[i]}</small></button>`).join('');
+let prev={};
+function show(k){
+  const rows=lead.map(p=>({p,v:at(p,k)})).sort((a,b)=>b.v-a.v), lo=1250, hi=rows[0].v;
+  rows.forEach((r,i)=>{const el=lanes.querySelector(`[data-n="${r.p.name}"]`);
+    el.style.transform=`translateY(${i<10?i*46:10*46+40}px)`;el.style.opacity=i<10?1:0;
+    el.querySelector('.k').textContent=i+1;el.querySelector('.rt').textContent=r.v;
+    el.querySelector('.bar').style.setProperty('--w',(.4+.6*(r.v-lo)/(hi-lo)).toFixed(3));
+    el.classList.toggle('up',prev[r.p.name]!=null&&i<prev[r.p.name]&&k>0);prev[r.p.name]=i;});
+  dayEl.textContent=DAYS[k];scrub.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.k===k)));
+}
+show(6);
+scrub.onclick=e=>{const b=e.target.closest('button');if(b)show(+b.dataset.k)};
+const rm=matchMedia('(prefers-reduced-motion: reduce)').matches;let tm;
+document.getElementById('play').onclick=()=>{clearInterval(tm);if(rm){show(6);return}let k=0;prev={};show(0);tm=setInterval(()=>{k++;show(k);if(k>=6)clearInterval(tm)},900)};
+/* story cards */
+const by=(f)=>[...P].sort(f)[0], up=by((a,b)=>b.d-a.d), dn=by((a,b)=>a.d-b.d);
+document.getElementById('cards').innerHTML=`<article><span class="eyebrow">Về đích nhất</span><b>${P[0].name}</b><p>Giữ hạng 1 cả 7 ngày, ${P[0].rating} điểm.</p></article>
+<article><span class="eyebrow">Tăng tốc mạnh nhất</span><b>${up.name} <span class="dl up"><i class="tri"></i>${up.d}</span></b><p>Từ hạng ${up.rank+6} lên ${up.rank} trong tuần.</p></article>
+<article><span class="eyebrow">Hụt hơi</span><b>${dn.name} <span class="dl dn"><i class="tri"></i>${-dn.d}</span></b><p>Rơi khỏi nhóm dẫn đầu sau 3 trận thua.</p></article>`;
+/* list with 7-day sparkline */
+const spark=p=>{const v=DAYS.map((_,k)=>at(p,k)),mn=Math.min(...v),mx=Math.max(...v)||1;return `<svg viewBox="0 0 96 28" aria-hidden="true"><polyline fill="none" stroke="${p.d>=0?'var(--c-success)':'var(--c-error)'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" points="${v.map((x,k)=>`${k*16},${26-22*(x-mn)/((mx-mn)||1)}`).join(' ')}"/></svg>`};
+document.getElementById('list').innerHTML=P.map(p=>`<a class="row"><span class="k num">${p.rank}</span>${RK.av(p,36)}<span class="n">${p.name}</span>${spark(p)}<span class="r num">${p.rating}</span>${RK.dl(p)}</a>`).join('');
+</script></body></html>

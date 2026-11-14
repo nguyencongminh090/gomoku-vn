@@ -61,3 +61,11 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Names: one line, ellipsis, full name in `title`; every flex/grid ancestor `min-width:0`. Applies to every name on the page.
 - Eye-flow: pinned items (what needs me) top-left → open thread centre → profile right (secondary).
 - Forbidden: names wrapping to 2 lines, equal-weight boxes, emoji as icons, a separate challenge list outside the conversation list.
+
+## Xếp hạng (#374, RK17 "Bục + Bảng điện tử")
+- Style: vstyle-maximalism-expressive (one loud zone: the LED arena) + vstyle-motion-immersive (opening only). Picked 2026-11-14 from 13 mockups (RK1–8, RK10–13, merged RK17) in `features/rankings-redesign/`.
+- Tokens: own `--led-*` / `--flap-*` / medal tokens in `client/css/rankings.css` (`.rk-page`), following Light/Dark (user 2026-11-14). Dark: night LED #0b0d0a, rank green #8bc34a (≥ 9:1), flaps #f4ffe0 on dark. Light: cream board #f3efe4/#fbf8f1, rank green #3d6418, white flaps with ink #1d2116.
+- Type: Nunito 1000 digits (tabular), step numerals 48px (30px phone), row names 18px (16px phone).
+- Motion: level `immersive` on first load only — 5 s choreography of ≤ 420 ms transform/opacity steps; 1×/session, skip on any input or "Bỏ qua", prefers-reduced-motion → final state; ticker marquee stops under reduced-motion.
+- Layout: ticker → h1 + skip → chips/scope/search → arena (podium 2·1·3, then table rank ≥ 4) → pager → fixed "your rank" dock above the tab bar. Phone keeps # · name · rating (#330).
+- Forbidden: delaying data for the animation; re-playing the intro on tab/page switches; motion on the board/stones.

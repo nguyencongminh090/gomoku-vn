@@ -86,3 +86,5 @@ in the detail file / fix-log).
 - **#370.** Bạn bè page redesign S3 "Trò chuyện": chat-first, presence, game cards, profile pane `[Model: Opus 5]` — [detail](docs/todo/B370-social-chat-first.md)
 - **#371.** Lobby DM window read leaves the bell stale until the 60 s poll `[Model: Sonnet 5]` — [detail](docs/todo/B371-lobby-dm-read-stale-bell.md)
 - **#373.** Room Khán giả lists viewers who left the table page (lobby/home/closed tab) `[Model: Opus 5]` — [detail](docs/todo/B373-spectators-watching-only.md)
+- **#374.** Rankings redesign RK17: podium in LED split-flap board + 5 s opening `[Model: Opus 5]` — [detail](docs/todo/B374-rankings-podium-board.md)
+- **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)

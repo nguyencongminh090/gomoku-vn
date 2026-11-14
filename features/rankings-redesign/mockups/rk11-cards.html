@@ -1,0 +1,99 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK11 Thẻ kỳ thủ</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+:root{--t-kc:#7fe3ff;--t-kc2:#c79bff;--t-v:#f2c94c;--t-v2:#e08a2e;--t-b:#d7dde3;--t-b2:#8a96a3;--t-d:#d9935a;--t-d2:#8a5524;--card-ink:#fff;--card-bg:#15141b;--card-sh:rgba(0,0,0,.45)}
+.stage{position:relative;padding:28px 0 36px;overflow:hidden}
+.stage::before{content:"";position:absolute;inset:-20% -10% auto;height:120%;z-index:-1;
+  background:radial-gradient(40% 50% at 50% 30%,color-mix(in srgb,var(--t-v) 22%,transparent),transparent 70%),
+  radial-gradient(30% 40% at 20% 60%,color-mix(in srgb,var(--t-kc2) 16%,transparent),transparent 70%),
+  radial-gradient(30% 40% at 80% 60%,color-mix(in srgb,var(--t-kc) 14%,transparent),transparent 70%)}
+.hd{text-align:center}
+.hd h1{margin:0;font-size:clamp(30px,3vw+10px,52px);font-weight:1000;letter-spacing:-.02em}
+.hd p{margin:6px 0 0;color:var(--c-ink-2)}
+.filters{justify-content:center;margin:18px 0 26px}
+/* card */
+.deck{display:flex;justify-content:center;align-items:flex-end;gap:20px;perspective:1000px}
+.card{--a:var(--t-b);--b:var(--t-b2);--mx:50%;--my:30%;--rx:0deg;--ry:0deg;position:relative;width:220px;aspect-ratio:5/7;border-radius:18px;padding:3px;
+  background:conic-gradient(from 140deg,var(--a),var(--b),var(--a),var(--b),var(--a));color:var(--card-ink);
+  transform:rotateX(var(--rx)) rotateY(var(--ry));transform-style:preserve-3d;transition:transform 240ms var(--e-out);box-shadow:0 18px 40px var(--card-sh);
+  animation:deal 500ms var(--e-out) backwards}
+.card.big{width:268px}
+.card.t-kc{--a:var(--t-kc);--b:var(--t-kc2)}.card.t-v{--a:var(--t-v);--b:var(--t-v2)}.card.t-d{--a:var(--t-d);--b:var(--t-d2)}
+.in{position:relative;height:100%;border-radius:15px;overflow:hidden;display:flex;flex-direction:column;padding:14px;
+  background:radial-gradient(120% 70% at 50% 0%,color-mix(in srgb,var(--a) 38%,var(--card-bg)),var(--card-bg) 70%)}
+.in::after{content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:color-dodge;opacity:.35;
+  background:radial-gradient(circle at var(--mx) var(--my),rgba(255,255,255,.55),transparent 40%),
+  repeating-linear-gradient(115deg,transparent 0 10px,color-mix(in srgb,var(--a) 40%,transparent) 10px 12px,transparent 12px 22px)}
+.top{display:flex;justify-content:space-between;align-items:flex-start}
+.rk{font-size:44px;font-weight:1000;line-height:.9}.big .rk{font-size:56px}
+.tier{font-size:11px;font-weight:900;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border-radius:6px;background:rgba(0,0,0,.35);color:var(--a)}
+.pic{margin:6px auto 0;display:grid;place-items:center}
+.pic .av{--s:96px;box-shadow:0 0 0 3px var(--a),0 0 30px color-mix(in srgb,var(--a) 50%,transparent)}.big .pic .av{--s:118px!important}
+.nm{margin-top:12px;text-align:center;font-weight:1000;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.club{text-align:center;font-size:12px;font-weight:700;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st{margin-top:auto;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,.18);padding-top:10px;text-align:center}
+.st b{display:block;font-size:20px;font-weight:1000;line-height:1.1}.big .st b{font-size:24px}
+.st small{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;opacity:.7}
+.st .up{color:var(--c-success)}.st .dn{color:var(--c-error)}
+@keyframes deal{from{opacity:0;transform:translateY(40px) rotate(-6deg)}}
+/* binder for 4–10 */
+h2{font-size:20px;font-weight:900;margin:8px 0 12px}
+.binder{display:grid;grid-template-columns:repeat(7,1fr) 8px 1.1fr;gap:12px;align-items:end}
+.binder .sep{align-self:stretch;border-left:2px dashed var(--c-border)}
+.binder .mine-lbl{display:block;font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--c-brand-text);margin-bottom:6px}
+.binder .card{width:auto;border-radius:14px;box-shadow:0 8px 20px var(--card-sh)}
+.binder .in{padding:10px;border-radius:12px}.binder .rk{font-size:28px}.binder .pic .av{--s:56px!important}.binder .nm{font-size:14px;margin-top:8px}
+.binder .club,.binder .tier{display:none}.binder .st{grid-template-columns:1fr;padding-top:6px}.binder .st div:not(:first-child){display:none}.binder .st b{font-size:18px}
+/* rest list */
+.list{display:grid;gap:6px;margin-top:24px;padding-bottom:100px}
+.row{display:grid;grid-template-columns:32px 36px 1fr auto 56px;gap:12px;align-items:center;min-height:52px;padding:6px 14px;background:var(--c-surface);border-radius:12px}
+.row .k{font-weight:900;color:var(--c-ink-2)}.row .n{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .r{font-weight:1000;font-size:18px}.row .dl{text-align:right}
+.row .dot{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:6px;background:var(--a)}
+.mine{display:none}
+.mine .card{width:100%;animation-delay:600ms}.mine .in{padding:10px}.mine .rk{font-size:26px}.mine .pic .av{--s:48px!important}.mine .nm{font-size:14px;margin-top:6px}.mine .club{display:none}.mine .st b{font-size:15px}
+.note{max-width:70ch}
+@media(max-width:860px){
+  .deck{gap:8px}.deck .card{aspect-ratio:auto}.deck .in{min-height:190px}.deck .big .in{min-height:220px}
+  .binder .card{aspect-ratio:auto}.card{width:31%}.card.big{width:36%}
+  .deck .in{padding:8px}.deck .rk{font-size:24px}.deck .big .rk{font-size:30px}.deck .tier{display:none}
+  .deck .pic .av{--s:52px!important}.deck .big .pic .av{--s:64px!important}.deck .nm{font-size:13px;margin-top:6px}.deck .club{display:none}
+  .deck .st{grid-template-columns:1fr}.deck .st div:not(:first-child){display:none}.deck .st b{font-size:16px}
+  .binder{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:8px;margin-inline:-16px;padding-inline:16px}
+  .binder .card{flex:0 0 112px;scroll-snap-align:start}
+  .row{grid-template-columns:28px 32px 1fr auto 44px;gap:8px;padding:6px 10px}.row .av{--s:32px!important}
+  .binder .sep,.binder .mine-wrap{display:none}
+  .mine{display:block;position:fixed;z-index:15;inset:auto 0 0;width:auto}.mine .card{aspect-ratio:auto;border-radius:0;padding:3px 0 0;box-shadow:none;animation:none}
+  .mine .in{border-radius:0;flex-direction:row;align-items:center;gap:12px;padding:8px 16px calc(8px + env(safe-area-inset-bottom))}
+  .mine .pic{margin:0}.mine .top{display:contents}.mine .tier{order:9;display:inline}.mine .nm{margin:0;flex:1;text-align:left}.mine .st{margin:0;border:0;padding:0;grid-template-columns:repeat(2,auto);gap:12px}.mine .st div:last-child{display:none}
+}
+@media(prefers-reduced-motion:reduce){.card{transform:none!important}}
+</style></head><body>
+<main class="wrap">
+  <section class="stage"><div class="hd"><p class="eyebrow">Mùa 4 · bộ sưu tập</p><h1>Thẻ kỳ thủ</h1><p>Top 10 được in thẻ. Lên bậc thì thẻ đổi màu viền.</p></div>
+    <div class="filters" id="f"></div>
+    <div class="deck" id="deck"></div></section>
+  <h2>Hạng 4–10</h2>
+  <div class="binder" id="binder"></div>
+  <div class="list" id="list"></div>
+  <p class="note">Mockup: bậc thẻ (Kim cương ≥2000, Vàng ≥1700, Bạc ≥1500, Đồng) là ngưỡng giả định, chưa có trong API (cần API sau). Thẻ nghiêng theo chuột chỉ trên máy có hover; giảm chuyển động thì thẻ đứng yên. Thiết kế thẻ riêng, không mô phỏng thẻ của game nào.</p>
+</main>
+<aside class="mine" id="mine" aria-label="Thẻ của bạn"></aside>
+<script src="../data.js"></script><script>
+RK.top();RK.chrome(document.getElementById('f'));
+const P=RK.players;
+const tier=r=>r>=2000?['t-kc','Kim cương']:r>=1700?['t-v','Vàng']:r>=1500?['t-b','Bạc']:['t-d','Đồng'];
+const card=(p,cls,i)=>{const [t,tn]=tier(p.rating);return `<article class="card ${t} ${cls||''}" style="animation-delay:${(i||0)*90}ms" tabindex="0" aria-label="Hạng ${p.rank}, ${p.name}, ${p.rating} điểm">
+  <div class="in"><div class="top"><span class="rk num">${p.rank}</span><span class="tier">${tn}</span></div>
+  <div class="pic">${RK.av(p,96)}</div><div class="nm">${p.name}</div><div class="club">${p.club||p.city}</div>
+  <div class="st num"><div><b>${p.rating}</b><small>Điểm</small></div><div><b class="${p.d>0?'up':p.d<0?'dn':''}">${p.d>0?'+':''}${p.d}</b><small>7 ngày</small></div><div><b>${p.games}</b><small>Ván</small></div></div></div></article>`};
+document.getElementById('deck').innerHTML=card(P[1],'',1)+card(P[0],'big',2)+card(P[2],'',0);
+document.getElementById('binder').innerHTML=P.slice(3,10).map((p,i)=>card(p,'',i+3)).join('')+'<span class="sep" aria-hidden="true"></span><div class="mine-wrap"><span class="mine-lbl">Thẻ của bạn</span>'+card({...RK.me},'',10)+'</div>';
+document.getElementById('list').innerHTML=P.slice(10).map(p=>{const [t,tn]=tier(p.rating);return `<a class="row ${t}"><span class="k num">${p.rank}</span>${RK.av(p,36)}<span class="n">${p.name}</span><span class="r num"><i class="dot" style="background:var(--${t})" title="${tn}"></i>${p.rating}</span>${RK.dl(p)}</a>`}).join('');
+document.getElementById('mine').innerHTML=card({...RK.me},'',0);
+/* foil + tilt follow the pointer (hover devices, motion allowed) */
+if(matchMedia('(hover:hover)').matches&&!matchMedia('(prefers-reduced-motion: reduce)').matches)
+  document.querySelectorAll('.deck .card,.binder .card').forEach(c=>{
+    c.addEventListener('pointermove',e=>{const r=c.getBoundingClientRect(),x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+      c.style.setProperty('--mx',x*100+'%');c.style.setProperty('--my',y*100+'%');c.style.setProperty('--ry',(x-.5)*16+'deg');c.style.setProperty('--rx',(.5-y)*16+'deg')});
+    c.addEventListener('pointerleave',()=>{c.style.setProperty('--rx','0deg');c.style.setProperty('--ry','0deg')})});
+</script></body></html>

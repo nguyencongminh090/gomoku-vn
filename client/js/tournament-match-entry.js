@@ -1,5 +1,5 @@
 import './session.js?v=7d763f30';
-import './i18n.js?v=3a34a48f';
+import './i18n.js?v=59d2d482';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=014127cb';
 import './socket-client.js?v=c3c76eda';
