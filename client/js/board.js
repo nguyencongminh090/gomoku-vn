@@ -468,7 +468,8 @@
       }
       if (s.myColor !== undefined) this.myColor = s.myColor;
       // s.displayMode is ignored: the look comes from BoardPrefs (#216).
-      this._draw();
+      // #378: one new stone (a move) patches the SVG; anything else redraws it whole.
+      if (!this._drawMove()) this._draw();
     }
 
     /**
@@ -645,16 +646,161 @@
     }
 
     // ── Drawing ──
-    _draw() {
+    // Everything one draw needs, computed once and shared by the full and the one-move path.
+    _drawCtx() {
       const s = this.prefs;
       const g = this._computeGeometry();
-      const { m, n, W, edge, compact } = g;
       const paper = s.theme === 'paper';
-      const c = (i) => this._center(i);
       const bg = paper ? s.paper.bg : s.stone.bg;
       const inkRgb = Contrast.ink(bg)[0] ? '255,255,255' : '0,0,0';
+      const board = this.board;
+      return {
+        s, g, m: g.m, n: g.n, W: g.W, edge: g.edge, compact: g.compact, paper, bg, inkRgb, uid: this.uid, board,
+        c: (i) => this._center(i),
+        at: (x, y) => (board && board[y] ? board[y][x] : 0),
+        last: this.lastMove,
+      };
+    }
+
+    // One cell's wall / portal / piece, tagged with its index so a later stone can be inserted
+    // in the same row-major order a full draw uses (pieces may overlap their neighbours).
+    _cellSvg(ctx, x, y) {
+      const { s, m, n, paper, uid, inkRgb, c } = ctx;
+      const v = ctx.at(x, y);
+      if (v === 0) return '';
+      const x0 = m + x * P, y0 = m + y * P;
+      let body = '';
+      if (v === -1) {
+        body = paper
+          ? `<rect x="${x0 + 1.5}" y="${y0 + 1.5}" width="${P - 3}" height="${P - 3}" fill="url(#pH${uid})"/>`
+          : `<rect x="${f(x0 + P * 0.08)}" y="${f(y0 + P * 0.08)}" width="${f(P * 0.84)}" height="${f(P * 0.84)}" rx="5" fill="url(#pH${uid})" stroke="rgba(0,0,0,.45)" stroke-width="1.5"/>`;
+      } else if (v === -2) {
+        const ink = inkRgb === '255,255,255' ? '#fff' : '#000';
+        const i = this._portalIndex(x, y), cx = x0 + P / 2, cy = y0 + P / 2, r = P * 0.32, w = P * 0.08;
+        body = (paper ? `<rect x="${x0 + 1}" y="${y0 + 1}" width="${P - 2}" height="${P - 2}" fill="${portalRgb(i, 0.3)}"/>` : '') +
+          `<circle cx="${cx}" cy="${cy}" r="${f(r + w)}" fill="${portalRgb(i, 0.25)}"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${ink}" stroke-opacity=".6" stroke-width="${f(w + 2)}"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${portalRgb(i)}" stroke-width="${f(w)}"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="${f(P * 0.08)}" fill="#262626"/>`;
+      } else if (v === 1 || v === 2) {
+        body = pieceSvg(v, c(x), c(y), s, y * n + x, uid);
+      } else {
+        return '';
+      }
+      return `<g data-c="${y * n + x}">${body}</g>`;
+    }
+
+    _portalIndex(x, y) {
+      const ps = this.portals || [];
+      for (let i = 0; i < ps.length; i++) {
+        const p = ps[i];
+        if ((p.a && p.a.x === x && p.a.y === y) || (p.b && p.b.x === x && p.b.y === y)) return i;
+      }
+      return 0;
+    }
+
+    // Last move, paper look: a tinted cell under the piece.
+    _lastCellSvg(ctx) {
+      const { s, m, paper, last } = ctx;
+      if (!(last && s.showLastMove && paper)) return '';
+      const col = ctx.at(last.x, last.y) === 2 ? s.paper.oColor : s.paper.xColor;
+      return `<rect x="${m + last.x * P + 1}" y="${m + last.y * P + 1}" width="${P - 2}" height="${P - 2}" fill="${col}" opacity=".16"/>`;
+    }
+
+    // Move numbers (last occurrence of each cell in the history).
+    _moveNumbersSvg(ctx) {
+      const { s, m, n, paper, inkRgb, c, last } = ctx;
+      if (!(s.showMoveNumbers && this.moveHistory && this.moveHistory.length && ctx.board)) return '';
+      const order = new Map();
+      this.moveHistory.forEach((mv, i) => { if (mv && Number.isInteger(mv.x) && Number.isInteger(mv.y)) order.set(mv.y * n + mv.x, i + 1); });
+      const t = [];
+      for (const [k, num] of order) {
+        const x = k % n, y = Math.floor(k / n), v = ctx.at(x, y);
+        if (v !== 1 && v !== 2) continue;
+        const isLast = last && last.x === x && last.y === y && s.showLastMove;
+        if (paper) {
+          t.push(`<text x="${m + x * P + 3}" y="${m + y * P + 3}" font-size="11" dominant-baseline="hanging" fill="${isLast ? LAST : `rgba(${inkRgb},.7)`}">${num}</text>`);
+        } else {
+          const white = v === 2;
+          t.push(`<text x="${c(x)}" y="${c(y)}" text-anchor="middle" dominant-baseline="central" font-size="${num >= 100 ? 13 : 16}" fill="${isLast ? (white ? '#d0201b' : '#ff7a6e') : (white ? '#1a1a1a' : '#f4f4f4')}">${num}</text>`);
+        }
+      }
+      return t.join('');
+    }
+
+    // Last move marker for stones (numbers already mark it otherwise).
+    _lastMarkerSvg(ctx) {
+      const { s, paper, last, c } = ctx;
+      if (!(last && s.showLastMove && !paper && !s.showMoveNumbers)) return '';
+      const v = ctx.at(last.x, last.y);
+      return v === 1 || v === 2 ? `<circle cx="${c(last.x)}" cy="${c(last.y)}" r="5" fill="${LAST}"/>` : '';
+    }
+
+    // What a full draw depends on besides the board cells, the last move and the history.
+    _drawSig(ctx) {
+      const g = ctx.g;
+      return JSON.stringify([ctx.s, g.n, g.m, g.W, g.vy, g.edge, g.compact, this.uid,
+        this.showZones ? this.firstMoveZones : null, this.winLine, this.portals]);
+    }
+
+    _rememberDrawn(ctx) {
+      const { n } = ctx;
+      const cells = new Int8Array(n * n);
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) cells[y * n + x] = ctx.at(x, y);
+      this._drawn = { sig: this._drawSig(ctx), cells, n, hist: this.moveHistory ? this.moveHistory.length : 0 };
+    }
+
+    /**
+     * #378: a move adds exactly one stone. Patch that stone in plus the last-move layers instead
+     * of rebuilding the whole SVG (~6.7 ms late game on a 4×-throttled phone). Anything else
+     * (undo, resync, new game, win line, zones, look or size change) returns false → full draw.
+     * The result is the same markup a full draw produces (asserted in board-incremental-draw.test.js).
+     */
+    _drawMove() {
+      const d = this._drawn;
+      if (!d || !this._ov || this._ov.parentNode !== this.svg) return false;
+      const ctx = this._drawCtx();
+      const { n, last } = ctx;
+      if (n !== d.n || !last || !ctx.board) return false;
+      if ((this.moveHistory ? this.moveHistory.length : 0) !== d.hist + 1) return false;
+      let k = -1;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const i = y * n + x;
+        if (ctx.at(x, y) === d.cells[i]) continue;
+        if (k !== -1) return false; // more than one cell changed
+        k = i;
+      }
+      if (k !== last.y * n + last.x || d.cells[k] !== 0) return false;
+      const v = ctx.at(last.x, last.y);
+      if (v !== 1 && v !== 2) return false;
+      if (this._drawSig(ctx) !== d.sig) return false;
+
+      const svg = this.svg;
+      const layer = (cls) => svg.querySelector(`.${cls}`);
+      const cn = layer('gboard__cn');
+      if (cn) { const label = cn.querySelector(`[data-c="${k}"]`); if (label) label.remove(); }
+      const pcs = layer('gboard__pcs');
+      let before = null;
+      for (let el = pcs.firstElementChild; el; el = el.nextElementSibling) {
+        if (+el.getAttribute('data-c') > k) { before = el; break; }
+      }
+      const html = this._cellSvg(ctx, last.x, last.y);
+      if (before) before.insertAdjacentHTML('beforebegin', html);
+      else pcs.insertAdjacentHTML('beforeend', html);
+      layer('gboard__lc').innerHTML = this._lastCellSvg(ctx);
+      layer('gboard__num').innerHTML = this._moveNumbersSvg(ctx);
+      layer('gboard__lm').innerHTML = this._lastMarkerSvg(ctx);
+
+      d.cells[k] = v;
+      d.hist += 1;
+      this._drawOverlay();
+      return true;
+    }
+
+    _draw() {
+      const ctx = this._drawCtx();
+      const { s, g, m, n, W, edge, compact, paper, bg, inkRgb, uid, c, at } = ctx;
       const A = Contrast.INK_ALPHA;
-      const uid = this.uid;
       const out = [defsSvg(s, uid)];
 
       this.svg.setAttribute('viewBox', `${g.vx} ${g.vy} ${g.VW} ${g.VH}`);
@@ -676,9 +822,6 @@
       out.push(`<g stroke="${paper ? s.paper.grid : s.stone.line}" shape-rendering="crispEdges" vector-effect="non-scaling-stroke">${lines.join('')}</g>`);
       if (!paper) out.push(`<g fill="${s.stone.line}">${starPoints(n).map(([x, y]) => `<circle cx="${c(x)}" cy="${c(y)}" r="3.6"/>`).join('')}</g>`);
 
-      const board = this.board;
-      const at = (x, y) => (board && board[y] ? board[y][x] : 0);
-
       // Coordinates
       if (edge) {
         const t = [];
@@ -692,11 +835,11 @@
         const nums = spiral(n), t = [];
         for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
           if (at(x, y) !== 0) continue;
-          t.push(`<text x="${c(x)}" y="${c(y)}">${nums[y * n + x]}</text>`);
+          t.push(`<text x="${c(x)}" y="${c(y)}" data-c="${y * n + x}">${nums[y * n + x]}</text>`);
         }
         const size = compact ? 16 : (n * n >= 100 ? 12 : 14);
         const halo = paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`;
-        out.push(`<g fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Nunito,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
+        out.push(`<g class="gboard__cn" fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Nunito,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
       }
 
       // First-move zones (behind everything placed)
@@ -704,13 +847,8 @@
         out.push(`<g fill="rgba(100,180,100,.25)">${this.firstMoveZones.map(z => `<rect x="${m + z.x * P + 1}" y="${m + z.y * P + 1}" width="${P - 2}" height="${P - 2}"/>`).join('')}</g>`);
       }
 
-      // Last move (paper: tinted cell under the piece)
-      const last = this.lastMove;
-      if (last && s.showLastMove && paper) {
-        const v = at(last.x, last.y);
-        const col = v === 2 ? s.paper.oColor : s.paper.xColor;
-        out.push(`<rect x="${m + last.x * P + 1}" y="${m + last.y * P + 1}" width="${P - 2}" height="${P - 2}" fill="${col}" opacity=".16"/>`);
-      }
+      // Last move (paper: tinted cell under the piece) — its own layer so a move can swap it.
+      out.push(`<g class="gboard__lc">${this._lastCellSvg(ctx)}</g>`);
 
       // Winning line (under pieces)
       if (this.winLine && this.winLine.length) {
@@ -718,64 +856,17 @@
       }
 
       // Walls, portals, pieces
-      const portalIndex = (x, y) => {
-        const ps = this.portals || [];
-        for (let i = 0; i < ps.length; i++) {
-          const p = ps[i];
-          if ((p.a && p.a.x === x && p.a.y === y) || (p.b && p.b.x === x && p.b.y === y)) return i;
-        }
-        return 0;
-      };
-      const ink = inkRgb === '255,255,255' ? '#fff' : '#000';
-      if (board) {
-        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-          const v = at(x, y);
-          if (v === 0) continue;
-          const x0 = m + x * P, y0 = m + y * P;
-          if (v === -1) {
-            out.push(paper
-              ? `<rect x="${x0 + 1.5}" y="${y0 + 1.5}" width="${P - 3}" height="${P - 3}" fill="url(#pH${uid})"/>`
-              : `<rect x="${f(x0 + P * 0.08)}" y="${f(y0 + P * 0.08)}" width="${f(P * 0.84)}" height="${f(P * 0.84)}" rx="5" fill="url(#pH${uid})" stroke="rgba(0,0,0,.45)" stroke-width="1.5"/>`);
-          } else if (v === -2) {
-            const i = portalIndex(x, y), cx = x0 + P / 2, cy = y0 + P / 2, r = P * 0.32, w = P * 0.08;
-            out.push((paper ? `<rect x="${x0 + 1}" y="${y0 + 1}" width="${P - 2}" height="${P - 2}" fill="${portalRgb(i, 0.3)}"/>` : '') +
-              `<circle cx="${cx}" cy="${cy}" r="${f(r + w)}" fill="${portalRgb(i, 0.25)}"/>` +
-              `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${ink}" stroke-opacity=".6" stroke-width="${f(w + 2)}"/>` +
-              `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${portalRgb(i)}" stroke-width="${f(w)}"/>` +
-              `<circle cx="${cx}" cy="${cy}" r="${f(P * 0.08)}" fill="#262626"/>`);
-          } else if (v === 1 || v === 2) {
-            out.push(pieceSvg(v, c(x), c(y), s, y * n + x, uid));
-          }
-        }
-      }
+      const cells = [];
+      if (ctx.board) for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) cells.push(this._cellSvg(ctx, x, y));
+      out.push(`<g class="gboard__pcs">${cells.join('')}</g>`);
 
-      // Move numbers (last occurrence of each cell in the history)
-      if (s.showMoveNumbers && this.moveHistory && this.moveHistory.length && board) {
-        const order = new Map();
-        this.moveHistory.forEach((mv, i) => { if (mv && Number.isInteger(mv.x) && Number.isInteger(mv.y)) order.set(mv.y * n + mv.x, i + 1); });
-        const t = [];
-        for (const [k, num] of order) {
-          const x = k % n, y = Math.floor(k / n), v = at(x, y);
-          if (v !== 1 && v !== 2) continue;
-          const isLast = last && last.x === x && last.y === y && s.showLastMove;
-          if (paper) {
-            t.push(`<text x="${m + x * P + 3}" y="${m + y * P + 3}" font-size="11" dominant-baseline="hanging" fill="${isLast ? LAST : `rgba(${inkRgb},.7)`}">${num}</text>`);
-          } else {
-            const white = v === 2;
-            t.push(`<text x="${c(x)}" y="${c(y)}" text-anchor="middle" dominant-baseline="central" font-size="${num >= 100 ? 13 : 16}" fill="${isLast ? (white ? '#d0201b' : '#ff7a6e') : (white ? '#1a1a1a' : '#f4f4f4')}">${num}</text>`);
-          }
-        }
-        out.push(`<g font-family="Nunito,system-ui,sans-serif" font-weight="700">${t.join('')}</g>`);
-      }
-
-      // Last move marker for stones (numbers already mark it otherwise)
-      if (last && s.showLastMove && !paper && !s.showMoveNumbers && (at(last.x, last.y) === 1 || at(last.x, last.y) === 2)) {
-        out.push(`<circle cx="${c(last.x)}" cy="${c(last.y)}" r="5" fill="${LAST}"/>`);
-      }
+      out.push(`<g class="gboard__num" font-family="Nunito,system-ui,sans-serif" font-weight="700">${this._moveNumbersSvg(ctx)}</g>`);
+      out.push(`<g class="gboard__lm">${this._lastMarkerSvg(ctx)}</g>`);
 
       out.push(`<g class="gboard__ov"></g>`);
       this.svg.innerHTML = out.join('');
       this._ov = this.svg.querySelector('.gboard__ov');
+      this._rememberDrawn(ctx);
       this._drawOverlay();
     }
 

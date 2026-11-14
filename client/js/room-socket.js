@@ -438,7 +438,12 @@
     armTurnWatchdog();
 
     GameUI.updateBoardState();
-    RoomUI.updateUI();
+    // #378: a move changes only board, turn and clocks — updateBoardState covers those
+    // (renderTimers → RoomUI.updateCardClocks repaints the cards' turn marker). The full
+    // RoomUI.updateUI() (cards, settings, users, score table: ~3.5 ms per move on a
+    // throttled phone) is for room data, which a move leaves alone. A game-ending move
+    // flips status (site links, card dots), so it still refreshes the room UI.
+    if (data.gameOver) RoomUI.updateUI();
   });
 
   client.on('game:swap2_state', (data) => {
