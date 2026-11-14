@@ -198,7 +198,17 @@ function noteServerTime(data) {
   if (data && Number.isFinite(data.serverTime)) serverClockOffset = data.serverTime - Date.now();
 }
 
+// #377: a patch whose moves delta does not fit what we hold → ask for the full list again, once
+// until it arrives (lobby:subscribe answers with lobby:update; re-joining the lobby room is a no-op).
+let snapshotRequested = false;
+function requestLobbySnapshot() {
+  if (snapshotRequested) return;
+  snapshotRequested = true;
+  client.emit('lobby:subscribe');
+}
+
 client.on('lobby:update', (data) => {
+  snapshotRequested = false;
   noteServerTime(data);
   roomMap = new Map((data.rooms || []).map(r => [r.roomId, r]));
   renderFromMap();
@@ -466,7 +476,14 @@ function buildRoomPlayers(room) {
 // to a full render — it happens at most once per transition, not per patch.
 function applyLobbyPatch(patch) {
   const removed = patch.removed || [];
-  const upserts = patch.upserts || [];
+  // #377: an upsert may carry `moves` as a delta ({ movesFrom, moves }) — splice it onto the held entry.
+  // An entry that cannot take it (another game, too few moves held) is skipped and a fresh snapshot
+  // asked for; the snapshot (lobby:update) then replaces the whole map.
+  const upserts = [];
+  for (const raw of patch.upserts || []) {
+    const room = globalThis.LobbyMoves ? globalThis.LobbyMoves.applyDelta(roomMap.get(raw.roomId), raw) : raw;
+    if (room) upserts.push(room); else requestLobbySnapshot();
+  }
 
   for (const roomId of removed) roomMap.delete(roomId);
   for (const room of upserts) roomMap.set(room.roomId, room);

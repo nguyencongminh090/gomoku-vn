@@ -1,5 +1,5 @@
 # B377 — lobby:patch sends full `moves` of every moved room
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-14 — see docs/fix-log/2026-11-14-377-lobby-moves-delta.md
 **Area:** server/socket/state.js (_diffLobbyRooms), server/managers/RoomManager.js listRooms, client/js/lobby.js
 **From:** perf/play-lag measurement 2026-11-14   **Depends:** —
 
