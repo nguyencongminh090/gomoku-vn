@@ -11,7 +11,7 @@
 
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
-const { sessions, getOnlineUsersList } = require('../socket/state');
+const { sessions, getOnlineUsersList, getOnlineUsersCount } = require('../socket/state');
 const roomManager = require('../managers/RoomManager');
 
 function fakeSocket(userId, displayName, isGuest) {
@@ -46,6 +46,19 @@ describe('getOnlineUsersList()', () => {
       sessions.set('g1', fakeSocket('g1', 'Guest', true));
       const by = Object.fromEntries(getOnlineUsersList().map(u => [u.userId, u.avatarUrl]));
       expect(by).toEqual({ m1: '/api/profile/avatar/m1.webp?v=7', m2: null, g1: null });
+    });
+
+    // perf/play-lag: the home counters only need the number — counting must not do one avatar
+    // lookup (a DB read) per online user, which blocked the event loop at ~1000 online.
+    test('getOnlineUsersCount() equals the list length and does no avatar lookup', () => {
+      const spy = jest.fn(() => '/x');
+      roomManager.avatarLookup = spy;
+      sessions.set('m1', fakeSocket('m1', 'Member', false));
+      sessions.set('m2', fakeSocket('m2', 'Other', false));
+      sessions.set('g1', fakeSocket('g1', 'Guest', true));
+      expect(getOnlineUsersCount()).toBe(3);
+      expect(spy).not.toHaveBeenCalled();
+      expect(getOnlineUsersCount()).toBe(getOnlineUsersList().length);
     });
 
     test('does not look a guest up, and tolerates no lookup being wired', () => {
