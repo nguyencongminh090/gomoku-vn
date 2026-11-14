@@ -2,7 +2,7 @@
 
 /** db/rankings.js — split out of database.js (#258); code moved verbatim. */
 
-const { db } = require('./connection');
+const { db, stmt } = require('./connection');
 const userSearch = require('./user-search');
 
 
@@ -19,7 +19,7 @@ const RANKING_MIN_GAMES = 1;
  * @returns {Array<{user_id:string, display_name:string, rating:number, rd:number, games:number}>}
  */
 function getRankings(category, limit, offset) {
-  return db.prepare(`
+  return stmt(`
     SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ?
@@ -54,7 +54,7 @@ const CLUB_CIRCLE_SQL = `SELECT m2.user_id FROM club_members m1 JOIN club_member
 
 /** Rankings restricted to the viewer's club-mates (B191 "CLB của tôi"); rank is within that set. */
 function getRankingsInMyClubs(category, viewerId, limit, offset) {
-  return db.prepare(`
+  return stmt(`
     SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ? AND r.user_id IN (${CLUB_CIRCLE_SQL})
@@ -64,13 +64,13 @@ function getRankingsInMyClubs(category, viewerId, limit, offset) {
 }
 
 function countRankingsInMyClubs(category, viewerId) {
-  return db.prepare(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${CLUB_CIRCLE_SQL})`)
+  return stmt(`SELECT COUNT(*) AS n FROM ratings WHERE category = ? AND games >= ? AND user_id IN (${CLUB_CIRCLE_SQL})`)
     .get(category, RANKING_MIN_GAMES, viewerId).n;
 }
 
 /** Rankings of members who set `country` (alpha-2); rank is within that country. */
 function getRankingsByCountry(category, country, limit, offset) {
-  return db.prepare(`
+  return stmt(`
     SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
     FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ? AND u.country = ?
@@ -80,12 +80,12 @@ function getRankingsByCountry(category, country, limit, offset) {
 }
 
 function countRankingsByCountry(category, country) {
-  return db.prepare('SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id WHERE r.category = ? AND r.games >= ? AND u.country = ?')
+  return stmt('SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id WHERE r.category = ? AND r.games >= ? AND u.country = ?')
     .get(category, RANKING_MIN_GAMES, country).n;
 }
 
 function getRankingCount(category) {
-  return db.prepare('SELECT COUNT(*) AS count FROM ratings WHERE category = ? AND games >= ?')
+  return stmt('SELECT COUNT(*) AS count FROM ratings WHERE category = ? AND games >= ?')
     .get(category, RANKING_MIN_GAMES).count;
 }
 
@@ -94,12 +94,12 @@ function getRankingCount(category) {
  * under RANKING_MIN_GAMES), or null if they have no rating there.
  */
 function getUserRanking(userId, category) {
-  const row = db.prepare('SELECT rating, rd, games FROM ratings WHERE user_id = ? AND category = ?')
+  const row = stmt('SELECT rating, rd, games FROM ratings WHERE user_id = ? AND category = ?')
     .get(userId, category);
   if (!row) return null;
   let rank = null;
   if (row.games >= RANKING_MIN_GAMES) {
-    rank = 1 + db.prepare(`
+    rank = 1 + stmt(`
       SELECT COUNT(*) AS n FROM ratings
       WHERE category = ? AND games >= ? AND (rating > ? OR (rating = ? AND user_id < ?))
     `).get(category, RANKING_MIN_GAMES, row.rating, row.rating, userId).n;
@@ -109,14 +109,14 @@ function getUserRanking(userId, category) {
 
 /** Rated games a user has played in a category (0 if unrated there). */
 function getRatedGames(userId, category) {
-  const row = db.prepare('SELECT games FROM ratings WHERE user_id = ? AND category = ?').get(userId, category);
+  const row = stmt('SELECT games FROM ratings WHERE user_id = ? AND category = ?').get(userId, category);
   return row ? row.games : 0;
 }
 
 /** ISO time of the pair's last applied Elo swap (#222), any category, or null. */
 function lastEloSwapAt(a, b) {
   const [lo, hi] = a < b ? [a, b] : [b, a];
-  const row = db.prepare('SELECT created_at FROM elo_swaps WHERE user_lo = ? AND user_hi = ? ORDER BY created_at DESC LIMIT 1').get(lo, hi);
+  const row = stmt('SELECT created_at FROM elo_swaps WHERE user_lo = ? AND user_hi = ? ORDER BY created_at DESC LIMIT 1').get(lo, hi);
   return row ? row.created_at : null;
 }
 
@@ -160,7 +160,7 @@ function searchRankings(category, q, limit, offset) {
   // Match first (scan users, probe ratings by PK), page, and only then count the better-rated players for the
   // page's rows — rank is COUNT(better) as in getUserRanking, not a ROW_NUMBER over the whole category (B260).
   const ids = JSON.stringify(userSearch.matchUserIds(q));
-  return db.prepare(`
+  return stmt(`
     WITH page AS (
       SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
       FROM users u CROSS JOIN ratings r ON r.user_id = u.id AND r.category = ?
@@ -174,7 +174,7 @@ function searchRankings(category, q, limit, offset) {
 }
 
 function countSearchRankings(category, q) {
-  return db.prepare(`
+  return stmt(`
     SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id
     WHERE r.category = ? AND r.games >= ? AND u.id IN (SELECT value FROM json_each(?))`)
     .get(category, RANKING_MIN_GAMES, JSON.stringify(userSearch.matchUserIds(q))).n;
@@ -187,7 +187,7 @@ function countSearchRankings(category, q) {
  */
 function getRatingSeries(userId, category, days, maxPoints = 120) {
   const since = new Date(Date.now() - days * DAY_MS).toISOString();
-  const rows = db.prepare(`
+  const rows = stmt(`
     SELECT created_at AS t, rating_before AS b, rating_after AS a FROM rating_history
     WHERE user_id = ? AND category = ? AND created_at >= ? ORDER BY id`).all(userId, category, since);
   let points = rows.length ? [{ t: rows[0].t, rating: Math.round(rows[0].b) }, ...rows.map((r) => ({ t: r.t, rating: Math.round(r.a) }))] : [];
@@ -195,7 +195,7 @@ function getRatingSeries(userId, category, days, maxPoints = 120) {
     const step = (points.length - 1) / (maxPoints - 1);
     points = Array.from({ length: maxPoints }, (_, i) => points[Math.round(i * step)]);
   }
-  const peak = db.prepare('SELECT MAX(rating_after) AS m FROM rating_history WHERE user_id = ? AND category = ?').get(userId, category).m;
+  const peak = stmt('SELECT MAX(rating_after) AS m FROM rating_history WHERE user_id = ? AND category = ?').get(userId, category).m;
   return { points, peak: peak == null ? null : Math.round(peak) };
 }
 

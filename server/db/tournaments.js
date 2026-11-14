@@ -3,7 +3,7 @@
 /** db/tournaments.js — split out of database.js (#258); code moved verbatim. */
 
 const logger = require('../utils/logger');
-const { db } = require('./connection');
+const { stmt } = require('./connection');
 const { withWinnerName } = require('./games');
 
 
@@ -22,11 +22,11 @@ const { withWinnerName } = require('./games');
  * @param {{ id, name, format, organizerId, organizerName, ruleSet, createdAt }} tournament
  */
 function createTournament({ id, name, format, organizerId, organizerName, ruleSet, createdAt, clubId = null }) {
-  const stmt = db.prepare(
+  const insert = stmt(
     `INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at, club_id)
      VALUES (?, ?, ?, ?, ?, ?, 'draft', ?, ?)`
   );
-  return stmt.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt, clubId);
+  return insert.run(id, name, format, organizerId, organizerName, JSON.stringify(ruleSet), createdAt, clubId);
 }
 
 /**
@@ -35,7 +35,7 @@ function createTournament({ id, name, format, organizerId, organizerName, ruleSe
  * @returns {object|undefined}
  */
 function getTournamentById(id) {
-  const row = db.prepare('SELECT * FROM tournaments WHERE id = ?').get(id);
+  const row = stmt('SELECT * FROM tournaments WHERE id = ?').get(id);
   if (row) row.rule_set = JSON.parse(row.rule_set);
   return row;
 }
@@ -47,7 +47,7 @@ function getTournamentById(id) {
  * @returns {Array<object>}
  */
 function getAllTournaments() {
-  const rows = db.prepare('SELECT * FROM tournaments').all();
+  const rows = stmt('SELECT * FROM tournaments').all();
   for (const row of rows) row.rule_set = JSON.parse(row.rule_set);
   return rows;
 }
@@ -60,16 +60,16 @@ function getAllTournaments() {
  */
 function updateTournamentStatus(id, status, timestamps = {}) {
   if (status === 'active') {
-    db.prepare('UPDATE tournaments SET status = ?, started_at = ? WHERE id = ?')
+    stmt('UPDATE tournaments SET status = ?, started_at = ? WHERE id = ?')
       .run(status, timestamps.startedAt, id);
   } else if (status === 'completed') {
-    db.prepare('UPDATE tournaments SET status = ?, completed_at = ? WHERE id = ?')
+    stmt('UPDATE tournaments SET status = ?, completed_at = ? WHERE id = ?')
       .run(status, timestamps.completedAt, id);
   } else if (status === 'cancelled') {
-    db.prepare('UPDATE tournaments SET status = ?, cancelled_at = ?, cancel_reason = ? WHERE id = ?')
+    stmt('UPDATE tournaments SET status = ?, cancelled_at = ?, cancel_reason = ? WHERE id = ?')
       .run(status, timestamps.cancelledAt, timestamps.cancelReason || null, id);
   } else {
-    db.prepare('UPDATE tournaments SET status = ? WHERE id = ?').run(status, id);
+    stmt('UPDATE tournaments SET status = ? WHERE id = ?').run(status, id);
   }
 }
 
@@ -78,11 +78,11 @@ function updateTournamentStatus(id, status, timestamps = {}) {
  * @param {{ entryId, tournamentId, playerId, guestId, displayName, registeredAt }} entry
  */
 function saveTournamentPlayer({ entryId, tournamentId, playerId, guestId, displayName, registeredAt }) {
-  const stmt = db.prepare(
+  const insert = stmt(
     `INSERT INTO tournament_players (entry_id, tournament_id, player_id, guest_id, display_name, registered_at)
      VALUES (?, ?, ?, ?, ?, ?)`
   );
-  return stmt.run(entryId, tournamentId, playerId || null, guestId || null, displayName, registeredAt);
+  return insert.run(entryId, tournamentId, playerId || null, guestId || null, displayName, registeredAt);
 }
 
 /**
@@ -90,7 +90,7 @@ function saveTournamentPlayer({ entryId, tournamentId, playerId, guestId, displa
  * @param {string} entryId
  */
 function deleteTournamentPlayer(entryId) {
-  db.prepare('DELETE FROM tournament_players WHERE entry_id = ?').run(entryId);
+  stmt('DELETE FROM tournament_players WHERE entry_id = ?').run(entryId);
 }
 
 /**
@@ -103,7 +103,7 @@ function deleteTournamentPlayer(entryId) {
  * @returns {Array}
  */
 function getTournamentPlayers(tournamentId) {
-  return db.prepare('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY seed IS NULL, seed ASC, registered_at ASC, rowid ASC').all(tournamentId);
+  return stmt('SELECT * FROM tournament_players WHERE tournament_id = ? ORDER BY seed IS NULL, seed ASC, registered_at ASC, rowid ASC').all(tournamentId);
 }
 
 /**
@@ -111,7 +111,7 @@ function getTournamentPlayers(tournamentId) {
  * @param {string} entryId
  */
 function setTournamentPlayerWithdrawn(entryId) {
-  db.prepare('UPDATE tournament_players SET withdrawn = 1 WHERE entry_id = ?').run(entryId);
+  stmt('UPDATE tournament_players SET withdrawn = 1 WHERE entry_id = ?').run(entryId);
 }
 
 /**
@@ -122,7 +122,7 @@ function setTournamentPlayerWithdrawn(entryId) {
  * @param {number} finalRank
  */
 function updateTournamentPlayerRank(entryId, finalRank) {
-  db.prepare('UPDATE tournament_players SET final_rank = ? WHERE entry_id = ?').run(finalRank, entryId);
+  stmt('UPDATE tournament_players SET final_rank = ? WHERE entry_id = ?').run(finalRank, entryId);
 }
 
 /**
@@ -131,7 +131,7 @@ function updateTournamentPlayerRank(entryId, finalRank) {
  * @param {number} seed
  */
 function updateTournamentPlayerSeed(entryId, seed) {
-  db.prepare('UPDATE tournament_players SET seed = ? WHERE entry_id = ?').run(seed, entryId);
+  stmt('UPDATE tournament_players SET seed = ? WHERE entry_id = ?').run(seed, entryId);
 }
 
 /**
@@ -139,7 +139,7 @@ function updateTournamentPlayerSeed(entryId, seed) {
  * @param {{ id, tournamentId, roundIndex, bracketSide }} round
  */
 function createTournamentRound({ id, tournamentId, roundIndex, bracketSide }) {
-  db.prepare(
+  stmt(
     `INSERT INTO tournament_rounds (id, tournament_id, round_index, bracket_side)
      VALUES (?, ?, ?, ?)`
   ).run(id, tournamentId, roundIndex, bracketSide || null);
@@ -154,7 +154,7 @@ function createTournamentRound({ id, tournamentId, roundIndex, bracketSide }) {
  * @returns {Array<{id, tournament_id, round_index, bracket_side}>}
  */
 function getTournamentRounds(tournamentId) {
-  return db.prepare('SELECT * FROM tournament_rounds WHERE tournament_id = ?').all(tournamentId);
+  return stmt('SELECT * FROM tournament_rounds WHERE tournament_id = ?').all(tournamentId);
 }
 
 /**
@@ -164,7 +164,7 @@ function getTournamentRounds(tournamentId) {
  * @param {object} pairing — a PairingLifecycle pairing object
  */
 function savePairing(pairing) {
-  db.prepare(`
+  stmt(`
     INSERT INTO tournament_pairings
       (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state,
        agreed_time, deadline, paired_at, result, games, started_at, ended_at, noshow_count)
@@ -202,7 +202,7 @@ function savePairing(pairing) {
  * @returns {Array}
  */
 function getPairingsByTournament(tournamentId) {
-  const rows = db.prepare('SELECT * FROM tournament_pairings WHERE tournament_id = ? ORDER BY paired_at DESC').all(tournamentId);
+  const rows = stmt('SELECT * FROM tournament_pairings WHERE tournament_id = ? ORDER BY paired_at DESC').all(tournamentId);
   return rows.map((row) => {
     if (row.result) row.result = JSON.parse(row.result);
     if (row.games) row.games = JSON.parse(row.games);
@@ -236,7 +236,7 @@ function saveTournamentGame({
     else winner = result.winner;
   }
 
-  db.prepare(`
+  stmt(`
     INSERT INTO tournament_games
       (id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
        black_player_name, white_player_name, winner, reason, board_size,
@@ -276,7 +276,7 @@ function saveTournamentGame({
  */
 function getTournamentGames(tournamentId, limit = null, offset = 0) {
   if (limit == null) {
-    return db.prepare(`
+    return stmt(`
       SELECT id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
              black_player_name, white_player_name, winner, reason, board_size,
              rule_wall, rule_portal, started_at, ended_at
@@ -285,7 +285,7 @@ function getTournamentGames(tournamentId, limit = null, offset = 0) {
       ORDER BY started_at ASC
     `).all(tournamentId);
   }
-  return db.prepare(`
+  return stmt(`
     SELECT id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id,
            black_player_name, white_player_name, winner, reason, board_size,
            rule_wall, rule_portal, started_at, ended_at
@@ -302,7 +302,7 @@ function getTournamentGames(tournamentId, limit = null, offset = 0) {
  * @returns {number}
  */
 function getTournamentGameCount(tournamentId) {
-  return db.prepare('SELECT COUNT(*) as count FROM tournament_games WHERE tournament_id = ?')
+  return stmt('SELECT COUNT(*) as count FROM tournament_games WHERE tournament_id = ?')
     .get(tournamentId).count;
 }
 
@@ -314,7 +314,7 @@ function getTournamentGameCount(tournamentId) {
  * @returns {object|undefined}
  */
 function getTournamentGameById(id) {
-  const row = db.prepare('SELECT * FROM tournament_games WHERE id = ?').get(id);
+  const row = stmt('SELECT * FROM tournament_games WHERE id = ?').get(id);
   if (!row) return row;
   row.moves = row.moves ? JSON.parse(row.moves) : [];
   row.walls = row.walls ? JSON.parse(row.walls) : [];

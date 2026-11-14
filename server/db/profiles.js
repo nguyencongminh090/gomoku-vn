@@ -2,7 +2,7 @@
 
 /** db/profiles.js — split out of database.js (#258); code moved verbatim. */
 
-const { db } = require('./connection');
+const { stmt } = require('./connection');
 
 
 // ---------------------------------------------------------------------------
@@ -12,16 +12,16 @@ const { db } = require('./connection');
 const PROFILE_COLS = 'id, username, display_name, created_at, bio, avatar_v, hide_history, hide_bio, country, city, who_can_dm, who_can_challenge, who_can_friend, hide_online';
 
 function getUiSkin(userId) {
-  const r = db.prepare('SELECT ui_skin FROM users WHERE id = ?').get(userId);
+  const r = stmt('SELECT ui_skin FROM users WHERE id = ?').get(userId);
   return r ? r.ui_skin : null;
 }
 
 function getProfileById(id) {
-  return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE id = ?`).get(id);
+  return stmt(`SELECT ${PROFILE_COLS} FROM users WHERE id = ?`).get(id);
 }
 
 function getProfileByUsername(username) {
-  return db.prepare(`SELECT ${PROFILE_COLS} FROM users WHERE username = ? COLLATE NOCASE`).get(username);
+  return stmt(`SELECT ${PROFILE_COLS} FROM users WHERE username = ? COLLATE NOCASE`).get(username);
 }
 
 /** @param {{bio?:string, hide_history?:boolean, hide_bio?:boolean, ui_skin?:string}} f */
@@ -38,19 +38,19 @@ function updateProfile(userId, f) {
   }
   if (typeof f.hide_online === 'boolean') { sets.push('hide_online = ?'); params.push(f.hide_online ? 1 : 0); }
   if (!sets.length) return;
-  db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params, userId);
+  stmt(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...params, userId);
 }
 
 /** Set (bump) or clear (0) the avatar version; returns the new version. */
 function setAvatarVersion(userId, clear) {
-  db.prepare('UPDATE users SET avatar_v = ? WHERE id = ?')
+  stmt('UPDATE users SET avatar_v = ? WHERE id = ?')
     .run(clear ? 0 : Date.now() % 2147483647, userId);
-  return db.prepare('SELECT avatar_v FROM users WHERE id = ?').get(userId).avatar_v;
+  return stmt('SELECT avatar_v FROM users WHERE id = ?').get(userId).avatar_v;
 }
 
 /** Aggregate record for a user's finished games. */
 function getUserGameStats(userId) {
-  return db.prepare(`
+  return stmt(`
     SELECT COUNT(*) AS games,
            SUM(CASE WHEN winner_color = 'DRAW' THEN 1 ELSE 0 END) AS draws,
            SUM(CASE WHEN (winner_color = 'BLACK' AND black_player_id = @id)
@@ -62,7 +62,7 @@ function getUserGameStats(userId) {
 
 /** Newest-first outcomes ('win'|'loss'|'draw') of the user's finished RATED games with a decided result. */
 function getUserRankedResults(userId, limit) {
-  return db.prepare(`
+  return stmt(`
     SELECT winner_color, black_player_id FROM games
     WHERE (black_player_id = @id OR white_player_id = @id) AND ranked = 1 AND ended_at IS NOT NULL AND winner_color IS NOT NULL
     ORDER BY ended_at DESC LIMIT @limit
@@ -73,7 +73,7 @@ function getUserRankedResults(userId, limit) {
 }
 
 function countUserRankedWins(userId) {
-  return db.prepare(`
+  return stmt(`
     SELECT COUNT(*) AS n FROM games
     WHERE ranked = 1 AND ended_at IS NOT NULL
       AND ((winner_color = 'BLACK' AND black_player_id = @id) OR (winner_color = 'WHITE' AND white_player_id = @id))
@@ -81,7 +81,7 @@ function countUserRankedWins(userId) {
 }
 
 function getUserRecentGames(userId, limit, offset = 0) {
-  return db.prepare(`
+  return stmt(`
     SELECT id, black_player_id, black_player_name, white_player_name, winner_color, ended_at
     FROM games
     WHERE (black_player_id = @id OR white_player_id = @id) AND ended_at IS NOT NULL
