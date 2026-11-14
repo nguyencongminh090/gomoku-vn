@@ -89,3 +89,6 @@ in the detail file / fix-log).
 - **#374.** Rankings redesign RK17: podium in LED split-flap board + 5 s opening `[Model: Opus 5]` — [detail](docs/todo/B374-rankings-podium-board.md)
 - **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)
 - **#376.** Room nav N1 "Thẻ bàn": rules always visible + popover, menu ≡ `[Model: Opus 5]` — [detail](docs/todo/B376-room-nav-title-rules.md)
+- **#377.** lobby:patch sends full `moves` of every moved room (~300 KB/2.5 s per viewer at 500 rooms) → delta `[Model: Opus 5]` — [detail](docs/todo/B377-lobby-patch-moves-delta.md)
+- **#378.** Remaining per-move room cost: full board `_draw`, `RoomUI.updateUI` per move, audio nodes `[Model: Sonnet 5]` — [detail](docs/todo/B378-play-remaining-per-move-cost.md)
+- **#379.** server/db helpers `db.prepare` per call; check prod `MAX_ROOMS` (default 50) `[Model: Sonnet 5]` — [detail](docs/todo/B379-db-prepare-per-call.md)
