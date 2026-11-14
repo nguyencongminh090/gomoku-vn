@@ -156,11 +156,14 @@ function register(io, socket) {
         const nextColor = np && np.color === 'BLACK' ? 'black' : 'white';
         timer.switchTurn(nextColor);
         moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
-        movePayload.timer = timer.getTimers();
         // Ride along on the move rather than sending a separate timer event:
         // the turn switch is exactly when the clock changes, so this costs no
-        // extra packet per move.
+        // extra packet per move. `timerSync` already carries both clocks, and
+        // the client's applyTimerSync() rewrites both from it, so the plain
+        // `timer` pair is dropped here (perf/play-lag: ~33 B of a ~277 B packet,
+        // every move). Game-over moves keep `timer`: they carry no sync.
         movePayload.timerSync = timer.getSync();
+        delete movePayload.timer;
       }
     }
 

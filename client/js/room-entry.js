@@ -22,5 +22,5 @@ import './room.js?v=c455bd4f';
 import './chat-ui.js?v=87065d01';
 import './room-ui.js?v=328959c6';
 import './room-stage.js?v=07770a6a';
-import './game-ui.js?v=ac3cf02b';
+import './game-ui.js?v=823536da';
 import './room-socket.js?v=22c0a21e';

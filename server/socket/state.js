@@ -172,13 +172,25 @@ function isVisiblyOnline(userId) {
  * list to every lobby socket. `sessions` is `Map<userId, socket>` so
  * `s.user` already holds all three fields.
  */
-function getOnlineUsersList() {
+/** The visibly-online users' raw identities (no DB work) — shared by the list and the count. */
+function _visibleOnlineUsers() {
   const byId = new Map();
   for (const s of sessions.values()) if (!awayUsers.has(s.user.userId)) byId.set(s.user.userId, s.user);
   const now = Date.now();
   for (const [id, b] of heartbeats) if (!byId.has(id) && !b.away && now - b.at <= BEAT_TTL_MS) byId.set(id, b.user);
-  return Array.from(byId.values())
-    .filter(u => !hiddenOnline.has(u.userId))
+  return Array.from(byId.values()).filter(u => !hiddenOnline.has(u.userId));
+}
+
+/**
+ * How many users getOnlineUsersList() would return, without building it. The home counters only
+ * need the number; building the list costs one avatar lookup per online user (perf/play-lag).
+ */
+function getOnlineUsersCount() {
+  return _visibleOnlineUsers().length;
+}
+
+function getOnlineUsersList() {
+  return _visibleOnlineUsers()
     .map(u => ({
       userId: u.userId,
       displayName: u.displayName,
@@ -837,6 +849,7 @@ module.exports = {
   readyTimers,
   sessions,
   getOnlineUsersList,
+  getOnlineUsersCount,
   setHideOnline,
   isVisiblyOnline,
   isPresent,
