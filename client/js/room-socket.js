@@ -55,10 +55,11 @@
   client.on('connect', () => {
     processRoomIntent();
   });
-  // Also fire immediately in case connect already fired before this listener
-  if (client.socket && client.socket.connected) {
-    processRoomIntent();
-  }
+  // The "connect already fired" case is handled at the END of this module
+  // (#391), not here: processRoomIntent() reads `intentProcessed`, a `let`
+  // declared further down, so calling it here threw a TDZ ReferenceError and
+  // aborted the whole module — reachable once socket-early.js opens the
+  // socket in <head> and it connects before this module evaluates.
 
   // ── Presence (slot status dot: leave-site vs disconnected) ─────────────────
 
@@ -1034,5 +1035,12 @@
     serverMessage, requestResync, armMoveConfirmWatchdog,
     refreshLocalTimer: tickLocal, serverNow, exitUrl,
   };
+
+  // Early socket (#391): it may have connected before this module ran, so the
+  // 'connect' listener above never fires for this connection. Runs last, with
+  // every handler (room:joined, room:error…) already registered.
+  if (client.socket && client.socket.connected) {
+    processRoomIntent();
+  }
 
 })(window);

@@ -106,7 +106,7 @@ describe('#145 — exactly one connection per page', () => {
   });
 
   test('shared() still works when the early script never ran (other pages)', () => {
-    // room.html/tournament pages are deliberately out of scope for #145 and
+    // tournament pages are out of scope for #145/#391 and
     // have no <head> script — the first shared() must connect there.
     const { ioCalls } = bootPage();
     window.SocketClient.shared();

@@ -12,15 +12,18 @@
 // script, so the global attachment always runs as ordinary script execution
 // (profanity-filter.js is injected the same classic way by room.js on first
 // chat focus, #264; the classifier model is never loaded in the browser).
-import './session.js?v=7d763f30';
+//
+// session.js and socket-client.js are NOT imported here (#391): room.html loads
+// them as classic <head> scripts so socket-early.js can open the socket while
+// the page parses. Importing them too would evaluate both a second time — the
+// #51 duplicate-socket bug.
 import './i18n.js?v=aa3d71d3';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=7acad48e';
-import './socket-client.js?v=c3c76eda';
 import './board.js?v=89363fd1';
-import './room.js?v=c455bd4f';
+import './room.js?v=36813fdf';
 import './chat-ui.js?v=87065d01';
 import './room-ui.js?v=ccffbeb5';
 import './room-stage.js?v=07770a6a';
 import './game-ui.js?v=823536da';
-import './room-socket.js?v=e289fd7d';
+import './room-socket.js?v=1e97b0c2';

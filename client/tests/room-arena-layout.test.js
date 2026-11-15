@@ -34,7 +34,7 @@ function setupPage() {
   };
   window.t = jest.fn((key) => key);
   window.requestAnimationFrame = jest.fn((cb) => cb());
-  window.SocketClient = class { emit() {} on() {} bindStatusBanner() {} };
+  window.SocketClient = class { emit() {} on() {} bindStatusBanner() {} static shared() { return new this(); } };
   window.matchMedia = jest.fn(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() }));
 }
 
