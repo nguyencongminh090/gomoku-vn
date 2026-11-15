@@ -1,3 +1,4 @@
+✅ - **#384.** Slow DB reads block the game thread; rankings cache, mmap/cache pragmas `[Model: Opus 5]` — [detail](docs/todo/B384-db-reads-block-game-thread.md)
 ✅ - **#383.** `findSocketsByUserId` scans all sockets per disconnect/kick `[Model: Sonnet 5]` — [detail](docs/todo/B383-disconnect-scans-all-sockets.md)
 ✅ - **#382.** Lobby room list: full snapshot of all rooms + moves per subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B382-lobby-room-snapshot-full.md)
 ✅ - **#381.** Online list: full snapshot (1.1 MB @ 10k) to every lobby subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B381-online-list-full-snapshot.md)

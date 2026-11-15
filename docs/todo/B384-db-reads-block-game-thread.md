@@ -1,5 +1,5 @@
 # B384 — Slow DB reads run on the game thread; pragmas for read-heavy pages
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-15 — all sim-DB routes stall ≤ 6.5 ms; see docs/fix-log/2026-11-15-384-db-reads-game-thread.md
 **Area:** `server/db/connection.js`, `server/db/rankings.js`, `server/db/games.js`, `server/db/user-search.js`, `server/routes/**`
 **From:** perf review 2026-11-15   **Depends:** —
 

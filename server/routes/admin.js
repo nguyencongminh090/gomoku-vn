@@ -51,7 +51,7 @@ const write = [verifyToken, rateLimit({ windowMs: 60 * 60 * 1000, max: 300, keyG
 const h = (fn) => (req, res, next) => {
   try {
     if (!req.user.userId) return res.status(403).json({ error: 'Khách không dùng được tính năng này.', code: 'GUEST_FORBIDDEN' });
-    fn(req, res);
+    fn(req, res, next);
   } catch (err) {
     if (err instanceof svc.AdminUserError || err instanceof cheat.CheatReportError || err instanceof news.NewsError || err instanceof integrity.RatingIntegrityError) return res.status(err.status).json({ error: err.message, code: err.code });
     next(err);
@@ -86,9 +86,10 @@ router.post('/cheat-reports/:id/resolve', ...write, h((req, res) => {
   res.json(cheat.resolve(req.user.userId, req.params.id, req.body || {}));
 }));
 
-router.get('/rating-integrity', verifyToken, h((req, res) => {
+// Computed in a worker thread (B384): the permission check throws synchronously (→ h), the JSON arrives later.
+router.get('/rating-integrity', verifyToken, h((req, res, next) => {
   res.set('Cache-Control', 'no-store');
-  res.json(integrity.report(req.user.userId));
+  integrity.reportJson(req.user.userId).then((json) => res.type('application/json').send(json), next);
 }));
 
 router.delete('/users/:id/avatar', ...write, h((req, res) => {
