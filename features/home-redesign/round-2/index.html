@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>10 mockup Trang chủ · Play3CR</title>
+  <link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css">
+  <style>
+    * { box-sizing: border-box; }
+    :root { font: 15px/1.45 Nunito, system-ui, sans-serif; color: #17241c; background: #f5f6f1; }
+    body { margin: 0; }
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible { outline: 2px solid #368053; outline-offset: 3px; }
+    .top { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px clamp(16px, 3vw, 46px); border-bottom: 1px solid #dce1d8; background: #fcfdf9; }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand img { width: 36px; height: 36px; }
+    .brand strong, .brand small { display: block; }
+    .brand small { color: #516358; }
+    .device { display: flex; gap: 3px; padding: 3px; border: 1px solid #d7e0d5; border-radius: 8px; background: #edf1e9; }
+    .device button { padding: 6px 11px; border: 0; border-radius: 5px; background: transparent; color: #44554a; font-size: .9rem; font-weight: 800; white-space: nowrap; }
+    .device [aria-pressed="true"] { background: #fff; color: #14251b; box-shadow: 0 1px 4px #17241c20; }
+    .layout { display: grid; grid-template-columns: 218px minmax(0, 1fr); max-width: 1720px; margin: 0 auto; }
+    aside { min-width: 0; padding: 23px 14px 18px 19px; border-right: 1px solid #dce1d8; }
+    aside h2 { margin: 0 0 12px 8px; color: #526458; font-size: .88rem; }
+    #designs { display: grid; gap: 4px; }
+    #designs button { display: grid; grid-template-columns: 28px minmax(0, 1fr) 12px; align-items: center; gap: 6px; border: 1px solid transparent; border-radius: 7px; background: transparent; padding: 9px 7px; color: inherit; text-align: left; font-weight: 800; white-space: nowrap; }
+    #designs button:hover { background: #e6ebe1; }
+    #designs button[aria-pressed="true"] { border-color: #c9d9ca; background: #e2ede0; }
+    .number { color: #53705d; font: 600 12px/1.3 ui-monospace, monospace; }
+    .swatch { width: 10px; height: 10px; border-radius: 50%; border: 1px solid #1113; }
+    main { min-width: 0; padding: 16px clamp(10px, 2vw, 29px) 22px; }
+    .caption { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 0 0 12px; }
+    h1 { margin: 0 0 2px; font-size: clamp(17px, 2vw, 24px); line-height: 1.2; letter-spacing: -.03em; }
+    #description { margin: 0; color: #516358; font-size: .92rem; }
+    #open { flex-shrink: 0; color: #285437; font-size: .9rem; font-weight: 800; text-underline-offset: 3px; }
+    .stage { display: flex; justify-content: center; min-width: 0; padding: 5px; border: 1px solid #d7ded3; border-radius: 12px; background: #e7ece4; }
+    .viewport { width: 100%; height: max(520px, calc(100dvh - 172px)); overflow: hidden; border-radius: 8px; background: white; }
+    iframe { display: block; width: 100%; height: 100%; border: 0; transform-origin: top left; }
+    [data-device="mobile"] .viewport { width: min(100%, 390px); box-shadow: 0 3px 28px #17241c26; }
+    @media (max-width: 850px) {
+      .layout { display: block; }
+      aside { padding: 4px 8px; border-right: 0; border-bottom: 1px solid #dce1d8; }
+      aside h2 { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+      #designs { display: flex; overflow-x: auto; padding: 4px; }
+      #designs button { flex: 0 0 auto; }
+      .top { padding: 10px 12px; }
+      .viewport { height: max(490px, calc(100dvh - 215px)); }
+    }
+    @media (max-width: 400px) { .top { gap: 6px; } .brand { gap: 6px; } .brand img { width: 30px; height: 30px; } .device button { padding-inline: 7px; } }
+  </style>
+  <script src="mockups.js" defer></script>
+  <script src="gallery.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><img src="../../../client/assets/brand/logo-mark.svg" alt=""><div><strong>Play3CR</strong><small>10 mockup Trang chủ</small></div></div>
+    <div class="device" role="group" aria-label="Kích thước xem thử">
+      <button type="button" data-view="desktop" aria-pressed="true">Desktop</button>
+      <button type="button" data-view="mobile" aria-pressed="false">Điện thoại</button>
+    </div>
+  </header>
+  <div class="layout">
+    <aside><h2 id="design-label">Chọn mockup</h2><div id="designs" role="group" aria-labelledby="design-label"></div></aside>
+    <main>
+      <div class="caption">
+        <div aria-live="polite"><h1 id="design-name">Mặt bàn</h1><p id="description">Dữ liệu mẫu</p></div>
+        <a id="open" href="preview.html#moc" target="_blank" rel="noopener">Mở riêng ↗</a>
+      </div>
+      <div class="stage" data-device="desktop">
+        <div class="viewport"><iframe id="preview" title="Mockup Trang chủ Play3CR"></iframe></div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>
