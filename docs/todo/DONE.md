@@ -1,4 +1,8 @@
 ✅ - **#393.** room:join is still emitted only after room.html's module graph `[Model: Sonnet 5]` — [detail](docs/todo/B393-room-join-emit-waits-modules.md)
+✅ - **#378.** Remaining per-move room cost: full board `_draw`, `RoomUI.updateUI` per move, audio nodes `[Model: Sonnet 5]` — [detail](docs/todo/B378-play-remaining-per-move-cost.md)
+✅ - **#364.** Phòng tab R1 "Sảnh gỗ": photo hero, table cards, live mini boards `[Model: Opus 5]` — [detail](docs/todo/B364-rooms-photo-hall.md)
+✅ - **#365.** Quick-match session up to 3 games + return to entry tab `[Model: Opus 5]` — [detail](docs/todo/B365-quick-match-session-return-tab.md)
+✅ - **#371.** Lobby DM window read leaves the bell stale until the 60 s poll `[Model: Sonnet 5]` — [detail](docs/todo/B371-lobby-dm-read-stale-bell.md)
 ✅ - **#390.** Rooms tab first paint waits for the socket and re-staggers every snapshot `[Model: Sonnet 5]` — [detail](docs/todo/B390-rooms-tab-first-paint.md)
 ✅ - **#391.** room.html opens its socket only after the module graph (no socket-early) `[Model: Sonnet 5]` — [detail](docs/todo/B391-room-page-early-socket.md)
 ✅ - **#392.** See all live tables fast vs the 30-card lobby page; load tests off the prod host `[Model: Opus 5]` — [detail](docs/todo/B392-see-all-live-tables.md)

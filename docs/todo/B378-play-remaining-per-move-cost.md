@@ -1,5 +1,5 @@
 # B378 — remaining per-move client cost in the room (after perf/play-lag)
-**Status:** OPEN — built 2026-11-14 (fix-log 2026-11-14-378-per-move-board-patch.md), awaiting real-phone pass
+**Status:** ✅ CLOSED 2026-11-16 — user closed; built in b02240e (on dev). Real-phone pass was never done. Prior: OPEN — built 2026-11-14 (fix-log 2026-11-14-378-per-move-board-patch.md), awaiting real-phone pass
 **Area:** client/js/board.js, client/js/room-socket.js, client/js/room-ui.js, client/js/audio-manager.js
 **From:** perf/play-lag measurement 2026-11-14   **Depends:** —
 

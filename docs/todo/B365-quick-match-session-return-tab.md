@@ -1,5 +1,5 @@
 # B365 — Quick-match session (up to 3 games) + return to the entry tab
-**Status:** OPEN — built 2026-11-13 on feature/365-match-rematch, uncommitted. npm test 3650/3650; browser pass (2 guests, :3101 own DB): 3 games → home in 6.2s, "Về trang chủ" → opponent sent home, #rooms create→leave → index.html#rooms. Not seen in browser: 15s timeout close (unit-tested).
+**Status:** ✅ DONE 2026-11-16 — merged to dev (6639a0f, merge dd46099), pushed. Build notes: built 2026-11-13 on feature/365-match-rematch, uncommitted. npm test 3650/3650; browser pass (2 guests, :3101 own DB): 3 games → home in 6.2s, "Về trang chủ" → opponent sent home, #rooms create→leave → index.html#rooms. Not seen in browser: 15s timeout close (unit-tested).
 **Area:** server/socket/{state.js,SocketHandler.js,handlers/GameHandler.js,handlers/MatchHandler.js}, server/managers/RoomManager.js, client/js/{room-ui.js,room-socket.js,lobby.js,i18n.js}, client/room.html, client/css/game.css
 **From:** user 2026-11-13: "Với mode chơi nhanh/ghép trận ở home page. Sau khi kết thúc ván, tự chuyển người chơi về lại Home Page. Hoặc, chơi tiếp … tối đa 3 ván, sau 3 ván tự chuyển về trang chủ. Người chơi bắt đầu ở Tab Phòng, khi kết thúc sẽ trở về tab Phòng."   **Depends:** #216 (supersedes its one-game rule)
 
