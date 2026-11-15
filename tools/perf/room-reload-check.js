@@ -65,7 +65,9 @@ const HOOK = () => {
         early: (window.__early || []).slice(0, 8),
         overlayVisible: !!ov && ov.classList.contains('visible'),
         moves: gs && gs.moves ? gs.moves.length : (gs && gs.moveHistory ? gs.moveHistory.length : null),
-        timerText: [...document.querySelectorAll('[class*="timer"], [id*="timer"]')].map(e => e.textContent.trim()).filter(Boolean).slice(0, 4),
+        timerText: [...document.querySelectorAll('[data-clock-text]')].map(e => e.textContent.trim()).filter(Boolean).slice(0, 4),
+        // #393: same host → ≈ 0 when the replayed serverTime is read at arrival; ≈ −hold wait if not
+        clockSkewMs: window.RoomSocket ? Math.round(window.RoomSocket.serverNow() - Date.now()) : null,
         status: rd.state || null,
       };
     });

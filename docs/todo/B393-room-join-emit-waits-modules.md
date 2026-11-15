@@ -1,5 +1,5 @@
 # B393 — room:join is still emitted only after room.html's module graph
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-16 — [fix-log](../fix-log/2026-11-16-393-room-early-join.md)
 **Area:** client/room.html (head), client/js/socket-early.js, client/js/room-socket.js (`processRoomIntent`)
 **From:** #391 measurement 2026-11-15   **Depends:** #391
 

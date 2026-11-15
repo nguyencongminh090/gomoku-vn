@@ -532,9 +532,17 @@
    * display shave. A missing/NaN stamp is ignored — the offset keeps its last
    * value, or 0 if none yet, which is exactly today's behaviour.
    */
+  // Local time the packet being handled ARRIVED (#393): a packet replayed from
+  // SocketClient's hold was received replayAgeMs() ago, and reading Date.now()
+  // for it would skew the offset by that wait. Live packets: plain Date.now().
+  function receivedAt() {
+    const age = typeof client.replayAgeMs === 'function' ? client.replayAgeMs() : 0;
+    return Date.now() - age;
+  }
+
   function syncClockFromServerTime(serverTime) {
     if (typeof serverTime !== 'number' || !isFinite(serverTime)) return;
-    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(serverTime, Date.now());
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(serverTime, receivedAt());
   }
 
   /**
@@ -617,7 +625,7 @@
 
     // One `Date.now()` reading feeds both halves of the subtraction (it used
     // to be read twice, a millisecond apart) — same value, no double read.
-    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(sync.serverTime, Date.now());
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(sync.serverTime, receivedAt());
 
     // Shave transit delay off the active player's opening value too, not just
     // the per-second ticks below — otherwise the first paint after every sync
@@ -989,35 +997,19 @@
 
   let intentProcessed = false;
 
+  // The intent itself is read and sent by room-early-join.js (#393), usually on
+  // the early socket's `connect` before this module even ran; its send() is
+  // once-guarded, so this only acts when nothing was sent yet.
   function processRoomIntent() {
     if (intentProcessed) return;
     intentProcessed = true;
-
-    const raw = sessionStorage.getItem('gvn_room_intent');
-    sessionStorage.removeItem('gvn_room_intent');
-
-    if (raw) {
-      try {
-        const intent = JSON.parse(raw);
-        if (intent.action === 'create') {
-          client.emit('room:create', { settings: intent.settings || {} });
-        } else if (intent.action === 'join') {
-          client.emit('room:join', { roomId: intent.roomId });
-        }
-      } catch { /* ignore parse error */ }
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      const roomId = params.get('id');
-      if (roomId) {
-        client.emit('room:join', { roomId });
-      } else {
-        // No sessionStorage intent and no ?id= — e.g. a bare room.html link
-        // pasted/typed directly. Nothing will ever emit room:join/create, so
-        // room:joined will never arrive and #room-entry-overlay would stay up
-        // forever (see TODO.md #40 / instruction.md §40). Bounce back to the
-        // lobby instead of freezing there.
-        window.location.href = exitUrl();
-      }
+    if (!global.RoomIntent.send(client)) {
+      // No sessionStorage intent and no ?id= — e.g. a bare room.html link
+      // pasted/typed directly. Nothing will ever emit room:join/create, so
+      // room:joined will never arrive and #room-entry-overlay would stay up
+      // forever (see TODO.md #40 / instruction.md §40). Bounce back to the
+      // lobby instead of freezing there.
+      window.location.href = exitUrl();
     }
   }
 
@@ -1035,6 +1027,10 @@
     serverMessage, requestResync, armMoveConfirmWatchdog,
     refreshLocalTimer: tickLocal, serverNow, exitUrl,
   };
+
+  // #393: every handler is registered now — hand over what arrived while this
+  // module graph was loading (the join reply, on-connect pushes), in order.
+  if (typeof client.releaseEvents === 'function') client.releaseEvents();
 
   // Early socket (#391): it may have connected before this module ran, so the
   // 'connect' listener above never fires for this connection. Runs last, with
