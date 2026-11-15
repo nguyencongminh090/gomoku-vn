@@ -1,3 +1,4 @@
+✅ - **#385.** DM `pruneExpired` scans all of `direct_messages` (13 ms) on boot, hourly and read path `[Model: Sonnet 5]` — [detail](docs/todo/B385-dm-prune-full-scan.md)
 ✅ - **#384.** Slow DB reads block the game thread; rankings cache, mmap/cache pragmas `[Model: Opus 5]` — [detail](docs/todo/B384-db-reads-block-game-thread.md)
 ✅ - **#383.** `findSocketsByUserId` scans all sockets per disconnect/kick `[Model: Sonnet 5]` — [detail](docs/todo/B383-disconnect-scans-all-sockets.md)
 ✅ - **#382.** Lobby room list: full snapshot of all rooms + moves per subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B382-lobby-room-snapshot-full.md)
