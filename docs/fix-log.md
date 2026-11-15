@@ -337,3 +337,4 @@
 | 2026-11-15 18:04 | #382 lobby rooms: one live page (30) + `stats`, "Xem thêm" via `lobby:rooms_query`; snapshot at 5 000 games 3 015 KB → 18 KB | [detail](docs/fix-log/2026-11-15-382-lobby-room-page.md) |
 | 2026-11-15 19:44 | #383 findSocketsByUserId reads a userId → Set<socket> index (kept at connect/disconnect) instead of scanning io.sockets: 150–200 → 0.4 µs/lookup at 10 000 sockets | [detail](docs/fix-log/2026-11-15-383-socket-user-index.md) |
 | 2026-11-15 19:44 | #384 DB reads off the game thread: slow-query timing (>5 ms log), covering index 015, 64 MB page cache, rating-integrity in a worker (stall 249–338 → 2–5 ms); all sim-DB routes stall ≤ 6.5 ms | [detail](docs/fix-log/2026-11-15-384-db-reads-game-thread.md) |
+| 2026-11-15 20:06 | Patch production and build-tool dependencies within existing ranges | [detail](fix-log/2026-11-15-npm-security-updates.md) |
