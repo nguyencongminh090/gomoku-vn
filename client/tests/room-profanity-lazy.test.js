@@ -22,7 +22,7 @@ function loadRoom() {
   window.GvnSession = { requireAuth: jest.fn(), getUser: jest.fn(() => ({ userId: 'u-1', displayName: 'T', isGuest: false })) };
   window.t = jest.fn((k) => k);
   window.requestAnimationFrame = jest.fn((cb) => cb());
-  window.SocketClient = class { constructor() { this.emit = jest.fn(); } on() {} bindStatusBanner() {} };
+  window.SocketClient = class { constructor() { this.emit = jest.fn(); } on() {} bindStatusBanner() {} static shared() { return new this(); } };
   window.matchMedia = jest.fn(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() }));
   window.RoomState = { mySlot: null, roomData: { users: [] }, gameState: null };
   require('../js/room.js');

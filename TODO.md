@@ -92,3 +92,5 @@ in the detail file / fix-log).
 - **#378.** Remaining per-move room cost: full board `_draw`, `RoomUI.updateUI` per move, audio nodes `[Model: Sonnet 5]` — [detail](docs/todo/B378-play-remaining-per-move-cost.md)
 - **#387.** Reconnecting player sees "Đối thủ đã kết nối lại!" about themselves `[Model: Haiku]` — [detail](docs/todo/B387-resumed-toast-self.md)
 - **#388.** A 1 000-socket reconnect storm holds the game loop ~120 ms `[Model: Sonnet 5]` — [detail](docs/todo/B388-reconnect-storm-stall.md)
+- **#389.** Rooms tab live boards land 0.3–2.8 s after the move (uneven board throttle) `[Model: Sonnet 5]` — [detail](docs/todo/B389-lobby-live-board-cadence.md)
+- **#393.** room:join is still emitted only after room.html's module graph `[Model: Sonnet 5]` — [detail](docs/todo/B393-room-join-emit-waits-modules.md)

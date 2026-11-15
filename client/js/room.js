@@ -42,9 +42,12 @@
 })();
 
 // ---------------------------------------------------------------------------
-// Socket client — exposed globally so modules can emit without circular deps
+// Socket client — exposed globally so modules can emit without circular deps.
+// The page's one shared client (#391): socket-early.js already created it in
+// <head>, so the handshake overlaps the module downloads. Never `new` here —
+// a second client is a second socket, and the server evicts the player (#51).
 // ---------------------------------------------------------------------------
-window.RoomClient = new SocketClient();
+window.RoomClient = SocketClient.shared();
 
 // ---------------------------------------------------------------------------
 // Shared state singleton (read/written by all modules)

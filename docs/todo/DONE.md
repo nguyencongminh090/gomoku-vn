@@ -1,3 +1,5 @@
+✅ - **#391.** room.html opens its socket only after the module graph (no socket-early) `[Model: Sonnet 5]` — [detail](docs/todo/B391-room-page-early-socket.md)
+✅ - **#392.** See all live tables fast vs the 30-card lobby page; load tests off the prod host `[Model: Opus 5]` — [detail](docs/todo/B392-see-all-live-tables.md)
 ✅ - **#386.** Verify #380–#384 under load + real-sized DB + browser pass `[Model: Sonnet 5]` — [detail](docs/todo/B386-scale-verification-380-384.md)
 ✅ - **#385.** DM `pruneExpired` scans all of `direct_messages` (13 ms) on boot, hourly and read path `[Model: Sonnet 5]` — [detail](docs/todo/B385-dm-prune-full-scan.md)
 ✅ - **#384.** Slow DB reads block the game thread; rankings cache, mmap/cache pragmas `[Model: Opus 5]` — [detail](docs/todo/B384-db-reads-block-game-thread.md)

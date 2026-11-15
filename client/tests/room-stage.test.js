@@ -26,7 +26,7 @@ function load({ phone = true, users } = {}) {
   window.GvnSession = { requireAuth: jest.fn(), getUser: jest.fn(() => ME) };
   window.t = jest.fn((k, v) => (v && v.n != null ? `${k}:${v.n}` : k));
   window.requestAnimationFrame = jest.fn((cb) => cb());
-  window.SocketClient = class { emit() {} on() {} bindStatusBanner() {} };
+  window.SocketClient = class { emit() {} on() {} bindStatusBanner() {} static shared() { return new this(); } };
   window.matchMedia = jest.fn(() => ({ matches: phone, addEventListener: jest.fn(), removeEventListener: jest.fn() }));
   window.EscapeUtils = { decodeChatText: (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>') };
   delete window.RoomStage;
