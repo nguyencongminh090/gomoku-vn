@@ -36,7 +36,7 @@ const {
   isVisiblyOnline,
   hasPresentSocket,
   awayUsers,
-  getOnlineUsersList,
+  getOnlineUsersSorted,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
@@ -71,8 +71,8 @@ function init(io) {
     // Seat check only: "did they ever connect a socket?" — NOT presence (#372 review). An away
     // room tab must keep its seat; a heartbeat from social.html is not a socket in the room.
     isOnline: (userId) => sessions.has(userId),
-    onlineUsers: () => getOnlineUsersList(), // #361 Home picker: visible presence only
-    onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
+    onlineUsers: () => getOnlineUsersSorted(), // #361 Home picker: visible presence only (ids — no avatar lookup per online user, #381)
+    onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io, room.roomId); },
     onSeated: (room, userIds) => {
       const payload = roomManager.serializeRoom(room);
       for (const uid of userIds) {
@@ -83,7 +83,7 @@ function init(io) {
         s.emit('room:joined', payload);
       }
       broadcastRoomUpdate(io, room);
-      broadcastLobbyUpdate(io);
+      broadcastLobbyUpdate(io, room.roomId);
     },
   });
 
@@ -126,7 +126,7 @@ function init(io) {
     // other mutation. Emitting a full list straight to the lobby here (as this
     // did) both wasted the payload and left the delta baseline stale, so the
     // next patch re-announced a removal the lobby had already been told about.
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, roomId);
     // `_destroyRoom` is the single choke point for every teardown path (idle
     // cleanup, last member leaving, etc.), so this is the one place that needs
     // to drop the room's `room:updated` diff baseline — otherwise state.js's
@@ -459,7 +459,7 @@ function rejoinOnReconnect(io, socket, roomId) {
   (socket.data || (socket.data = {})).roomPageId = roomId; // #373
   socket.emit('room:joined', buildRoomStatePayload(result.room));
   broadcastRoomUpdate(io, result.room);
-  broadcastLobbyUpdate(io);
+  broadcastLobbyUpdate(io, roomId);
   logger.info(`[Socket] ${user.displayName} rejoined room ${roomId} on reconnect (as viewer)`);
   return true;
 }

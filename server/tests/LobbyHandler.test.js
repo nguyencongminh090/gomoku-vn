@@ -48,6 +48,8 @@ const mockState = {
   sendOnlineSnapshot: jest.fn((io, socket) => {
     socket.emit('lobby:online_users', []);
   }),
+  queryOnlineUsers: jest.fn((query) => (Array.isArray(query.ids) ? { online: [] } : { total: 0, matched: 0, users: [] })),
+  queryLobbyRooms: jest.fn(() => ({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } })),
   getClientIp: actualState.getClientIp,
 };
 jest.mock('../socket/state', () => mockState);
@@ -390,5 +392,88 @@ describe('LobbyHandler — room:join', () => {
     expect(joined.data.timer).toBeDefined();
 
     mockState.timerMap.delete('room-live');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #381: on-demand online lookup (the snapshot carries one page only)
+// ---------------------------------------------------------------------------
+describe('LobbyHandler — lobby:online_query', () => {
+  function setup() {
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(makeIo(), socket);
+    mockState.queryOnlineUsers.mockClear();
+    return handlers['lobby:online_query'];
+  }
+  afterEach(() => jest.useRealTimers());
+
+  test('answers through the ack with what state.queryOnlineUsers returns', () => {
+    const query = setup(); const ack = jest.fn();
+    query({ q: 'minh' }, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledWith({ q: 'minh' });
+    expect(ack).toHaveBeenCalledWith({ total: 0, matched: 0, users: [] });
+  });
+
+  test.each([[undefined], [null], ['x'], [42]])('payload %p is treated as an empty query, not a crash', (payload) => {
+    const query = setup(); const ack = jest.fn();
+    query(payload, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledWith({});
+    expect(ack).toHaveBeenCalledTimes(1);
+  });
+
+  test('no ack callback → ignored (nothing to answer on)', () => {
+    const query = setup();
+    expect(() => query({ q: 'a' })).not.toThrow();
+    expect(mockState.queryOnlineUsers).not.toHaveBeenCalled();
+  });
+
+  test('name searches faster than typing are refused; id lookups are never throttled', () => {
+    jest.useFakeTimers();
+    const query = setup(); const ack = jest.fn();
+    query({ q: 'a' }, ack);
+    query({ q: 'ab' }, ack);                 // same instant
+    expect(ack).toHaveBeenLastCalledWith({ error: 'RATE_LIMITED' });
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledTimes(1);
+    query({ ids: ['u9'] }, ack);
+    query({ ids: ['u9'] }, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledTimes(3);
+    jest.advanceTimersByTime(200);
+    query({ q: 'abc' }, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledTimes(4);
+  });
+});
+
+// #382: "show more" — the next page of the room ranking
+describe('LobbyHandler — lobby:rooms_query', () => {
+  function setup() {
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(makeIo(), socket);
+    mockState.queryLobbyRooms.mockClear();
+    return handlers['lobby:rooms_query'];
+  }
+  afterEach(() => jest.useRealTimers());
+
+  test('answers through the ack; a missing/odd payload is an empty query; no ack → ignored', () => {
+    const query = setup(); const ack = jest.fn();
+    query({ offset: 30 }, ack);
+    expect(mockState.queryLobbyRooms).toHaveBeenLastCalledWith({ offset: 30 });
+    expect(ack).toHaveBeenCalledWith({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } });
+    expect(() => query({ offset: 30 })).not.toThrow();
+    expect(mockState.queryLobbyRooms).toHaveBeenCalledTimes(1);
+  });
+
+  test('a second request inside 200 ms is refused, the next one after it is served', () => {
+    jest.useFakeTimers();
+    const query = setup(); const ack = jest.fn();
+    query(null, ack);
+    query({ offset: 30 }, ack);
+    expect(ack).toHaveBeenLastCalledWith({ error: 'RATE_LIMITED' });
+    jest.advanceTimersByTime(200);
+    query({ offset: 30 }, ack);
+    expect(mockState.queryLobbyRooms.mock.calls).toEqual([[{}], [{ offset: 30 }]]);
   });
 });

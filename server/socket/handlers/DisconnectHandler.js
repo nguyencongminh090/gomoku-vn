@@ -142,7 +142,7 @@ function finalizeNormalLeave(io, roomId, user, result) {
   if (result.destroyed) {
     cleanupRoomTimer(roomId);
     cleanupReadyTimer(roomId);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, roomId);
   } else if (result.room) {
     // Leaving a seat mid ready-window frees it — roomManager.leaveRoom()
     // already reset the pair's ready state; this just cancels the socket-side
@@ -164,7 +164,7 @@ function finalizeNormalLeave(io, roomId, user, result) {
         timestamp: Date.now(), isSystem: true,
       });
     }
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, roomId);
   }
 }
 
@@ -199,7 +199,7 @@ function finalizeSeatRelease(io, roomId, user, result) {
       timestamp: Date.now(), isSystem: true,
     });
   }
-  broadcastLobbyUpdate(io);
+  broadcastLobbyUpdate(io, roomId);
 }
 
 /**

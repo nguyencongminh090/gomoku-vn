@@ -19,10 +19,13 @@ const {
   broadcastRoomUpdate,
   sendLobbySnapshot,
   sendOnlineSnapshot,
+  queryOnlineUsers,
+  queryLobbyRooms,
   getClientIp,
 } = require('../state');
 
 const LOBBY_ROOM = 'lobby';
+const ONLINE_SEARCH_MIN_INTERVAL_MS = 200; // #381
 
 /**
  * Register lobby-domain event listeners on a socket.
@@ -32,6 +35,8 @@ const LOBBY_ROOM = 'lobby';
  */
 function register(io, socket) {
   const user = socket.user;
+  let lastOnlineSearchAt = 0;
+  let lastRoomsQueryAt = 0;
 
   socket.on('lobby:subscribe', () => {
     socket.join(LOBBY_ROOM);
@@ -40,6 +45,30 @@ function register(io, socket) {
     // until it has received this.
     sendLobbySnapshot(io, socket);
     sendOnlineSnapshot(io, socket); // #230: then lobby:online_patch deltas
+  });
+
+  // #381: the snapshot carries one page of the online list; search / "is this user online" is on demand.
+  socket.on('lobby:online_query', (payload, ack) => {
+    if (typeof ack !== 'function') return;
+    const query = payload && typeof payload === 'object' ? payload : {};
+    // A name search walks the whole online list; the client debounces at 250 ms, so anything
+    // faster than this is not typing. The id lookup is O(ids) and is not throttled.
+    if (!Array.isArray(query.ids)) {
+      const now = Date.now();
+      if (now - lastOnlineSearchAt < ONLINE_SEARCH_MIN_INTERVAL_MS) { ack({ error: 'RATE_LIMITED' }); return; }
+      lastOnlineSearchAt = now;
+    }
+    ack(queryOnlineUsers(query));
+  });
+
+  // #382: the lobby mirrors one page of rooms; "show more" fetches the next page of the ranking.
+  socket.on('lobby:rooms_query', (payload, ack) => {
+    if (typeof ack !== 'function') return;
+    const now = Date.now();
+    // Ranks every room: same throttle as the name search above (a click, not a stream).
+    if (now - lastRoomsQueryAt < ONLINE_SEARCH_MIN_INTERVAL_MS) { ack({ error: 'RATE_LIMITED' }); return; }
+    lastRoomsQueryAt = now;
+    ack(queryLobbyRooms(payload && typeof payload === 'object' ? payload : {}));
   });
 
   socket.on('lobby:unsubscribe', () => {
@@ -81,7 +110,7 @@ function register(io, socket) {
     socket.join(room.roomId);
     (socket.data || (socket.data = {})).roomPageId = room.roomId; // #373: this socket is the room page (RoomHandler onPresence reads it)
     socket.emit('room:joined', roomManager.serializeRoom(room));
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, room.roomId);
   });
 
   socket.on('room:join', (payload = {}) => {
@@ -121,7 +150,7 @@ function register(io, socket) {
     }
     socket.emit('room:joined', joinPayload);
     broadcastRoomUpdate(io, room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, room.roomId);
 
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,

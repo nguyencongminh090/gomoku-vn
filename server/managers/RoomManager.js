@@ -699,61 +699,83 @@ class RoomManager extends EventEmitter {
    */
   listRooms() {
     const list = [];
-    for (const [, room] of this.rooms) {
-      const hostUser = room.users.get(room.host);
-      const playerCount = this._countPlayers(room);
-
-      // Ghost viewers: a spectator (slot === null) whose socket dropped has no
-      // cleanup timeout (see TODO.md #115) — they linger in room.users forever
-      // while any other occupant keeps the room alive. Exclude them from the
-      // lobby head-count so the room-card number reflects who's actually there.
-      // Seated players marked 'disconnected' during grace still count — they're
-      // mid-reconnect, not gone (TODO.md #158).
-      let userCount = 0;
-      // Seated players by slot (index 0 = seat #1, 1 = seat #2; null = empty) for the ticket title.
-      const players = [null, null];
-      for (const [, u] of room.users) {
-        if (u.slot === 1 || u.slot === 2) {
-          players[u.slot - 1] = {
-            displayName: u.displayName,
-            avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
-          };
-          // Rating in the room's rule pool (#364): { rating, provisional } from seat-rating.js; null for guests / unrated / no lookup wired.
-          const r = u.isGuest || !this.ratingLookup ? null : this.ratingLookup(u.userId, room.settings.winningRule);
-          players[u.slot - 1].rating = r ? r.rating : null;
-          players[u.slot - 1].provisional = !!(r && r.provisional);
-        }
-        if (u.slot === null && u.presence === 'disconnected') continue;
-        userCount++;
-      }
-
-      // Live position for the lobby mini board (#364): flat [x0,y0,x1,y1,…] in play order, plus the
-      // game's start time. null when no game is running, so the lobby diff sees the game end.
-      const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
-      const moves = game ? game.moveHistory.flatMap((m) => [m.x, m.y]) : null;
-
-      list.push({
-        roomId: room.roomId,
-        roomName: room.roomName,
-        hostName: hostUser ? hostUser.displayName : '—',
-        playerCount,                     // 0, 1, or 2 seated players
-        players,                         // [seat1, seat2] → { displayName, avatarUrl } | null
-        userCount,                       // People in room, minus ghost viewers
-        state: room.state,
-        boardSize: room.settings.boardSize,
-        ruleWall: room.settings.ruleWall,
-        rulePortal: room.settings.rulePortal,
-        winningRule: room.settings.winningRule,
-        ruleSwap2: room.settings.ruleSwap2,
-        timerMode: room.settings.timerMode,
-        timerSeconds: room.settings.timerSeconds,
-        timerIncrementSeconds: room.settings.timerIncrementSeconds,
-        ranked: room.settings.ranked !== false,
-        startedAt: game ? game.startedAt || null : null,
-        moves,
-      });
-    }
+    for (const room of this.rooms.values()) list.push(this.lobbyEntry(room));
     return list;
+  }
+
+  /**
+   * The cheap part of a lobby entry — no DB lookup, no moves copy (#382: the lobby counts and ranks
+   * every room, but builds full entries only for the page it mirrors). Same numbers as lobbyEntry().
+   * @returns {{ state: string, playerCount: number, userCount: number }}
+   */
+  lobbyStat(room) {
+    let playerCount = 0;
+    let userCount = 0;
+    for (const u of room.users.values()) {
+      if (u.slot === 1 || u.slot === 2) playerCount++;
+      if (u.slot === null && u.presence === 'disconnected') continue; // ghost viewer, see lobbyEntry
+      userCount++;
+    }
+    return { state: room.state, playerCount, userCount };
+  }
+
+  /**
+   * One room's lobby-list entry (#380: the lobby flush builds this for changed rooms only —
+   * it costs two DB lookups per seated player plus a copy of the game's moves).
+   */
+  lobbyEntry(room) {
+    const hostUser = room.users.get(room.host);
+    const playerCount = this._countPlayers(room);
+
+    // Ghost viewers: a spectator (slot === null) whose socket dropped has no
+    // cleanup timeout (see TODO.md #115) — they linger in room.users forever
+    // while any other occupant keeps the room alive. Exclude them from the
+    // lobby head-count so the room-card number reflects who's actually there.
+    // Seated players marked 'disconnected' during grace still count — they're
+    // mid-reconnect, not gone (TODO.md #158).
+    let userCount = 0;
+    // Seated players by slot (index 0 = seat #1, 1 = seat #2; null = empty) for the ticket title.
+    const players = [null, null];
+    for (const [, u] of room.users) {
+      if (u.slot === 1 || u.slot === 2) {
+        players[u.slot - 1] = {
+          displayName: u.displayName,
+          avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
+        };
+        // Rating in the room's rule pool (#364): { rating, provisional } from seat-rating.js; null for guests / unrated / no lookup wired.
+        const r = u.isGuest || !this.ratingLookup ? null : this.ratingLookup(u.userId, room.settings.winningRule);
+        players[u.slot - 1].rating = r ? r.rating : null;
+        players[u.slot - 1].provisional = !!(r && r.provisional);
+      }
+      if (u.slot === null && u.presence === 'disconnected') continue;
+      userCount++;
+    }
+
+    // Live position for the lobby mini board (#364): flat [x0,y0,x1,y1,…] in play order, plus the
+    // game's start time. null when no game is running, so the lobby diff sees the game end.
+    const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
+    const moves = game ? game.moveHistory.flatMap((m) => [m.x, m.y]) : null;
+
+    return {
+      roomId: room.roomId,
+      roomName: room.roomName,
+      hostName: hostUser ? hostUser.displayName : '—',
+      playerCount,                     // 0, 1, or 2 seated players
+      players,                         // [seat1, seat2] → { displayName, avatarUrl } | null
+      userCount,                       // People in room, minus ghost viewers
+      state: room.state,
+      boardSize: room.settings.boardSize,
+      ruleWall: room.settings.ruleWall,
+      rulePortal: room.settings.rulePortal,
+      winningRule: room.settings.winningRule,
+      ruleSwap2: room.settings.ruleSwap2,
+      timerMode: room.settings.timerMode,
+      timerSeconds: room.settings.timerSeconds,
+      timerIncrementSeconds: room.settings.timerIncrementSeconds,
+      ranked: room.settings.ranked !== false,
+      startedAt: game ? game.startedAt || null : null,
+      moves,
+    };
   }
 
   // ---------------------------------------------------------------------------

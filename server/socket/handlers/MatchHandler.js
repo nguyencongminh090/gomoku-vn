@@ -94,7 +94,7 @@ function makeRoom(a, b) {
     s.emit('room:joined', payload);
   }
   broadcastRoomUpdate(ioRef, room);
-  broadcastLobbyUpdate(ioRef);
+  broadcastLobbyUpdate(ioRef, room.roomId);
   logger.info('[Match] paired', { roomId: room.roomId, time, rule: a.rule, rated: a.rated });
   return room;
 }

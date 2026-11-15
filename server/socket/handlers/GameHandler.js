@@ -183,7 +183,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:moved', movePayload);
     if (hasAck) ack({ ok: true, moveCount: movePayload.moveCount });
     room.lastActivity = Date.now();
-    scheduleLobbyBoardUpdate(io); // lobby mini board (#364), throttled
+    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364), throttled
 
     if (result.won || result.draw) {
       const finalResult = engine.result;
@@ -255,7 +255,7 @@ function register(io, socket) {
     const swap2State = buildSwap2State(engine, { x: r.x, y: r.y, color: r.color }, r.nextColor);
     if (hadOwnUndoOffer) swap2State.undoCancelled = true;
     io.to(room.roomId).emit('game:swap2_state', swap2State);
-    scheduleLobbyBoardUpdate(io); // lobby mini board (#364): opening stones are moves too
+    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): opening stones are moves too
 
     // Phase boundary (place3 → p2choice, or place2 → p1choice) hands the turn
     // to the other placeholder player — sync the timer to match.
@@ -464,7 +464,7 @@ function register(io, socket) {
       socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
-    scheduleLobbyBoardUpdate(io); // lobby mini board (#364): the undone stones leave the lobby board too
+    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): the undone stones leave the lobby board too
 
     const timer = timerMap.get(room.roomId);
 
@@ -872,7 +872,7 @@ function startGame(io, room) {
       timerSync: timer.getSync(),
     });
     broadcastRoomUpdate(io, room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, room.roomId);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `Swap2: ${blackPlayer.displayName} đặt 3 quân mở màn.`,
@@ -913,7 +913,7 @@ function startGame(io, room) {
     timerSync: timer.getSync(),
   });
   broadcastRoomUpdate(io, room);
-  broadcastLobbyUpdate(io);
+  broadcastLobbyUpdate(io, room.roomId);
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null,
     text: 'Ván đấu bắt đầu! Đen đi trước.',
@@ -1080,7 +1080,7 @@ function handleGameEnd(io, room, opts = {}) {
   }
 
   broadcastRoomUpdate(io, room);
-  broadcastLobbyUpdate(io);
+  broadcastLobbyUpdate(io, room.roomId);
 }
 
 /**
