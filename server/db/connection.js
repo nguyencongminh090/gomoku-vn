@@ -27,11 +27,17 @@ if (process.env.JEST_WORKER_ID && path.resolve(DB_PATH) === DEFAULT_DB_PATH) {
 // ---------------------------------------------------------------------------
 
 const db = new Database(DB_PATH);
+require('./slow-query').install(db); // every statement is timed; > SLOW_QUERY_MS is logged (B384)
 
 // Enable WAL mode for better concurrent read performance
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.pragma('trusted_schema = OFF'); // schema functions/views can't run unsafe SQL from a tampered file (B259)
+// Page cache (B384): the 2 MB default makes any scan of the wide `games` rows re-read through the OS —
+// 64 MB cut unindexed scans ~3x on a 90 MB DB (16.6 -> 5.6 ms). Allocated on demand, so small DBs cost nothing.
+// mmap_size stays 0: benched no faster than the cache, and a failed mapped read is a crash, not an error.
+const CACHE_KB = Number(process.env.SQLITE_CACHE_KB) > 0 ? Math.floor(Number(process.env.SQLITE_CACHE_KB)) : 65536;
+db.pragma(`cache_size = -${CACHE_KB}`);
 
 // Versioned schema (B255): schema.sql + legacy-upgrade bring pre-versioning files to the baseline, then migrations/NNN_*.sql
 // run in order. See migrate.js. Add schema changes as a new migration file, never as an inline ALTER here.
