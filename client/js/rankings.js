@@ -49,37 +49,23 @@
     return n;
   }
 
-  function renderTabs() {
-    tabsEl.replaceChildren();
-    scopeEl.replaceChildren();
-    {
-      for (const sc of state.mine && state.mine.userId ? ['all', 'vn', 'friends', ...(state.hasClub ? ['club'] : [])] : ['all', 'vn']) {
-        const b = el('button', t('rankings.scope_' + sc), 'ptab');
-        b.type = 'button';
-        b.setAttribute('role', 'tab');
-        b.setAttribute('aria-selected', String(sc === state.scope));
-        b.addEventListener('click', () => {
-          if (sc === state.scope) return;
-          state.scope = sc;
-          state.page = 1;
-          load();
-        });
-        scopeEl.appendChild(b);
-      }
-    }
-    for (const c of CATEGORIES) {
-      const b = el('button', t('rankings.cat_' + c), 'pchip');
+  function renderFilter(container, choices, field, label, cls) {
+    for (const value of choices) {
+      const b = el('button', t(label + value), cls);
       b.type = 'button';
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(c === state.category));
+      b.value = value;
       b.addEventListener('click', () => {
-        if (c === state.category) return;
-        state.category = c;
+        if (value === state[field]) return;
+        state[field] = value;
         state.page = 1;
         load();
       });
-      tabsEl.appendChild(b);
+      container.appendChild(b);
     }
+  }
+
+  function updateSelection(container, value) {
+    for (const b of container.children) b.setAttribute('aria-pressed', String(b.value === value));
   }
 
   function renderMine() {
@@ -269,25 +255,41 @@
     SKIP_EVENTS.forEach((e) => window.addEventListener(e, finishIntro, true));
   }
 
+  let boardRequest;
+
   async function load() {
     finishIntro(); // a tab/page switch during the opening jumps to the end first
-    renderTabs();
-    history.replaceState(null, '', location.pathname + '?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + (state.page > 1 ? '&page=' + state.page : '') + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+    boardRequest?.abort();
+    const request = boardRequest = new AbortController();
+    updateSelection(tabsEl, state.category);
+    updateSelection(scopeEl, state.scope);
+    const query = new URLSearchParams({ category: state.category });
+    if (state.scope !== 'all') query.set('scope', state.scope);
+    if (state.q) query.set('q', state.q);
+    if (state.page > 1) query.set('page', state.page);
+    history.replaceState(null, '', location.pathname + '?' + query);
+    query.set('page', state.page);
+    arenaEl.hidden = true;
+    tickEl.hidden = true;
+    emptyEl.hidden = false;
+    emptyEl.textContent = t('history.loading');
+    pagerEl.replaceChildren();
+    totalEl.textContent = '';
+    footEl.textContent = '';
+    renderMine();
     try {
-      const res = await fetch('/api/rankings?category=' + state.category + (state.scope !== 'all' ? '&scope=' + state.scope : '') + '&page=' + state.page + (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+      const res = await fetch('/api/rankings?' + query, { signal: request.signal });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      if (request.signal.aborted) return;
       renderRows(data);
       renderPager(data.pagination);
-      renderMine();
       if (!state.introDone) {
         state.introDone = true;
         if (data.players.length && introWanted()) playIntro();
       }
-    } catch (err) {
-      arenaEl.hidden = true;
-      emptyEl.hidden = false;
-      emptyEl.textContent = t('rankings.error');
+    } catch (_) {
+      if (!request.signal.aborted) emptyEl.textContent = t('rankings.error');
     }
   }
 
@@ -312,7 +314,15 @@
         state.hasClub = !!(d && d.clubs && d.clubs.length);
       } catch (_) { /* no club tab */ }
     }
-    if (state.scope === 'club' && !state.hasClub) state.scope = 'all'; // stale ?scope=club link
+    const scopes = ['all', 'vn'];
+    if (state.mine?.userId) scopes.push('friends');
+    if (state.hasClub) scopes.push('club');
+    if (!scopes.includes(state.scope)) {
+      state.scope = 'all';
+      state.page = 1;
+    }
+    renderFilter(scopeEl, scopes, 'scope', 'rankings.scope_', 'ptab');
+    renderFilter(tabsEl, CATEGORIES, 'category', 'rankings.cat_', 'pchip');
     load();
   }
 

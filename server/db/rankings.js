@@ -152,32 +152,39 @@ function getPrimaryClubs(userIds) {
   return out;
 }
 
-/**
- * Leaderboard rows whose username or display name contains q — each keeps its
- * TRUE global rank (window function), so searching doesn't renumber players.
- */
-function searchRankings(category, q, limit, offset) {
+function searchScopeFilter(alias, { country, clubViewerId, userIds } = {}) {
+  if (country) return [`AND ${alias}.user_id IN (SELECT id FROM users WHERE country = ?)`, [country]];
+  if (clubViewerId) return [`AND ${alias}.user_id IN (${CLUB_CIRCLE_SQL})`, [clubViewerId]];
+  if (userIds) return [`AND ${alias}.user_id IN (SELECT value FROM json_each(?))`, [JSON.stringify(userIds)]];
+  return ['', []];
+}
+
+/** Search usernames/display names while keeping each player's rank within the selected scope. */
+function searchRankings(category, q, limit, offset, scope) {
   // Match first (scan users, probe ratings by PK), page, and only then count the better-rated players for the
   // page's rows — rank is COUNT(better) as in getUserRanking, not a ROW_NUMBER over the whole category (B260).
   const ids = JSON.stringify(userSearch.matchUserIds(q));
+  const [pageScope, args] = searchScopeFilter('r', scope);
+  const [rankScope] = searchScopeFilter('b', scope);
   return stmt(`
     WITH page AS (
-      SELECT r.user_id, u.username, u.display_name, u.avatar_v, r.rating, r.rd, r.games
+      SELECT r.user_id, u.username, u.display_name, u.avatar_v, u.country, u.city, r.rating, r.rd, r.games
       FROM users u CROSS JOIN ratings r ON r.user_id = u.id AND r.category = ?
-      WHERE r.games >= ? AND u.id IN (SELECT value FROM json_each(?))
+      WHERE r.games >= ? AND u.id IN (SELECT value FROM json_each(?)) ${pageScope}
       ORDER BY r.rating DESC, r.user_id LIMIT ? OFFSET ?
     )
-    SELECT page.*, 1 + (SELECT COUNT(*) FROM ratings b WHERE b.category = ? AND b.games >= ?
+    SELECT page.*, 1 + (SELECT COUNT(*) FROM ratings b WHERE b.category = ? AND b.games >= ? ${rankScope}
                         AND (b.rating > page.rating OR (b.rating = page.rating AND b.user_id < page.user_id))) AS rank
     FROM page ORDER BY page.rating DESC, page.user_id`)
-    .all(category, RANKING_MIN_GAMES, ids, limit, offset, category, RANKING_MIN_GAMES);
+    .all(category, RANKING_MIN_GAMES, ids, ...args, limit, offset, category, RANKING_MIN_GAMES, ...args);
 }
 
-function countSearchRankings(category, q) {
+function countSearchRankings(category, q, scope) {
+  const [scopeSql, args] = searchScopeFilter('r', scope);
   return stmt(`
     SELECT COUNT(*) AS n FROM ratings r JOIN users u ON u.id = r.user_id
-    WHERE r.category = ? AND r.games >= ? AND u.id IN (SELECT value FROM json_each(?))`)
-    .get(category, RANKING_MIN_GAMES, JSON.stringify(userSearch.matchUserIds(q))).n;
+    WHERE r.category = ? AND r.games >= ? AND u.id IN (SELECT value FROM json_each(?)) ${scopeSql}`)
+    .get(category, RANKING_MIN_GAMES, JSON.stringify(userSearch.matchUserIds(q)), ...args).n;
 }
 
 /**

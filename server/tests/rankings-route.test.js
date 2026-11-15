@@ -199,6 +199,17 @@ describe('region (#199)', () => {
     expect(all.pagination.total).toBe(3);
   });
 
+  it('keeps location in search results and applies the query within Vietnam', async () => {
+    const all = (await get('/api/rankings?q=alice')).body;
+    expect(all.players[0]).toMatchObject({ country: 'VN', city: 'Hà Nội', rank: 2 });
+
+    const vn = (await get('/api/rankings?scope=vn&q=alice')).body;
+    expect(vn.players[0]).toMatchObject({ country: 'VN', city: 'Hà Nội', rank: 1 });
+    const outside = (await get('/api/rankings?scope=vn&q=bob')).body;
+    expect(outside.players).toEqual([]);
+    expect(outside.pagination.total).toBe(0);
+  });
+
   it('unknown scope falls back to everyone', async () => {
     expect((await get('/api/rankings?category=freestyle&scope=zz')).body.scope).toBe('all');
   });
@@ -244,5 +255,32 @@ describe('scope=club — "CLB của tôi" (B191)', () => {
     expect(await names('u9')).toEqual([]);
     expect((await get('/api/rankings?category=freestyle')).body.players).toHaveLength(3); // unscoped list unaffected
     expect(await names('u1')).toEqual([[1, 'Bob'], [2, 'Alice']]); // not Bob's/u9's cached body
+  });
+
+  it('searches confirmed club members and preserves their rank before filtering', async () => {
+    const alice = (await get('/api/rankings?scope=club&q=alice', asUser('u1'))).body;
+    expect(alice.pagination.total).toBe(1);
+    expect(alice.players.map((p) => [p.rank, p.displayName])).toEqual([[2, 'Alice']]);
+    const pending = (await get('/api/rankings?scope=club&q=cara', asUser('u1'))).body;
+    expect(pending.pagination.total).toBe(0);
+    expect(pending.players).toEqual([]);
+  });
+});
+
+describe('scope=friends', () => {
+  it('searches within the viewer and their accepted friends, with scoped ranks', async () => {
+    const service = require('../managers/FriendService');
+    const ids = jest.spyOn(service, 'friendIds').mockReturnValue(['u3']);
+    try {
+      const headers = { 'x-test-viewer': 'u1' };
+      const cara = (await get('/api/rankings?scope=friends&q=cara', headers)).body;
+      expect(cara.pagination.total).toBe(1);
+      expect(cara.players.map((p) => [p.rank, p.displayName])).toEqual([[2, 'Cara']]);
+      const bob = (await get('/api/rankings?scope=friends&q=bob', headers)).body;
+      expect(bob.pagination.total).toBe(0);
+      expect(bob.players).toEqual([]);
+    } finally {
+      ids.mockRestore();
+    }
   });
 });

@@ -148,9 +148,9 @@
 .rk-filters .pbar { display: contents; }
 .rk-filters .ptabs { display: flex; flex-wrap: nowrap; gap: 4px; overflow-x: auto; }
 .rk-filters .pchip { min-height: 44px; padding: 0 18px; border-radius: 999px; font-weight: 800; background: none; color: inherit; box-shadow: inset 0 0 0 1px var(--c-border); transition: background var(--d-fast), color var(--d-fast); }
-.rk-filters .pchip[aria-selected="true"] { background: var(--c-ink); color: var(--c-on-ink); box-shadow: none; }
+.rk-filters .pchip[aria-pressed="true"] { background: var(--c-ink); color: var(--c-on-ink); box-shadow: none; }
 .rk-filters .ptab { min-height: 44px; padding: 0 12px; font-weight: 800; color: var(--c-ink-2); border-bottom: 3px solid transparent; white-space: nowrap; }
-.rk-filters .ptab[aria-selected="true"] { color: var(--c-ink); border-bottom-color: var(--c-brand-text); }
+.rk-filters .ptab[aria-pressed="true"] { color: var(--c-ink); font-weight: 700; border-bottom-color: var(--c-brand-text); }
 .rk-filters .psearch { padding: 0 14px; min-height: 44px; border-radius: 999px; background: var(--c-field); box-shadow: inset 0 0 0 1px var(--c-border); }
 .rk-filters .psearch input { width: 170px; }
 @media (max-width: 860px) { .rk-filters .psearch, .rk-filters .psearch input { width: 100%; } }

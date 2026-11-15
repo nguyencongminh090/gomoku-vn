@@ -112,6 +112,40 @@ describe('rankings page', () => {
     expect(calls[1]).toContain('page=1');
   });
 
+  it('keeps the latest category results and filter focus when requests finish out of order', async () => {
+    const pending = {};
+    await boot((url) => {
+      const cat = new URL(url, location.origin).searchParams.get('category');
+      if (cat === 'standard' || cat === 'caro') return new Promise((resolve) => { pending[cat] = resolve; });
+      return url.includes('/me') ? ok(ME) : ok(PAGE);
+    });
+    const category = (name) => [...document.querySelectorAll('#rk-tabs button')]
+      .find((button) => button.textContent === 'rankings.cat_' + name);
+    category('standard').click();
+    const caro = category('caro');
+    caro.focus();
+    caro.click();
+    pending.caro(ok({ ...PAGE, players: [{ ...PAGE.players[0], displayName: 'Caro player' }] }));
+    await flush();
+    pending.standard(ok({ ...PAGE, players: [{ ...PAGE.players[0], displayName: 'Standard player' }] }));
+    await flush();
+    expect(document.querySelector('#rk-body a').textContent).toBe('Caro player');
+    expect(document.activeElement).toBe(caro);
+  });
+
+  it('clears the previous board indicators when the next page fails to load', async () => {
+    const page = { ...PAGE, pagination: { ...PAGE.pagination, totalPages: 2 } };
+    await boot((url) => (url.includes('page=2') ? Promise.resolve({ ok: false, status: 500 }) : ok(url.includes('/me') ? ME : page)));
+    expect(document.getElementById('rk-tick').hidden).toBe(false);
+    document.querySelector('#rk-pager button:last-child').click();
+    await flush();
+    expect(document.getElementById('rk-tick').hidden).toBe(true);
+    expect(document.getElementById('rk-arena').hidden).toBe(true);
+    expect(document.getElementById('rk-pager').textContent).toBe('');
+    expect(document.getElementById('rk-total').textContent).toBe('');
+    expect(document.getElementById('rk-empty').textContent).toBe('rankings.error');
+  });
+
   it('switching category keeps the page path under <base href="/"> (#281)', async () => {
     const base = document.createElement('base'); base.href = '/'; document.head.appendChild(base);
     window.history.replaceState(null, '', '/rankings');
@@ -135,7 +169,7 @@ describe('rankings page', () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const chips = [...document.querySelectorAll('#rk-scope .ptab')];
     expect(chips.map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends']);
-    expect(chips[0].getAttribute('aria-selected')).toBe('true');
+    expect(chips[0].getAttribute('aria-pressed')).toBe('true');
     chips[2].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('scope=friends');
@@ -166,6 +200,14 @@ describe('rankings page', () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     expect(global.fetch.mock.calls.pop()[0]).not.toContain('scope=');
     window.history.replaceState(null, '', '/rankings.html');
+  });
+
+  it('a signed-out visitor following a friends page link starts at the public first page', async () => {
+    window.history.replaceState(null, '', '/rankings.html?scope=friends&page=3');
+    await boot((u) => (u.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
+    const board = global.fetch.mock.calls.find(([url]) => url.startsWith('/api/rankings?'))[0];
+    expect(board).toContain('page=1');
+    expect(board).not.toContain('scope');
   });
 
   it('everyone (even logged out) gets a Việt Nam scope tab that re-queries with scope=vn', async () => {

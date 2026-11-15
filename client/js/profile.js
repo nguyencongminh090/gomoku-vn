@@ -138,7 +138,7 @@
     }));
 
     $('pf-content').hidden = false;
-    drawChart(p);
+    initChart(p);
     if (location.hash === '#games') $('pf-games').scrollIntoView();
   }
 
@@ -157,15 +157,21 @@
 
   async function loadMoreGames() {
     const btn = $('pf-more');
+    const note = $('pf-recent-note');
+    if (btn.disabled) return;
     btn.disabled = true;
+    note.hidden = true;
     try {
       const res = await fetch('/api/profile/' + encodeURIComponent(username) + '/games?page=' + (gamesPage + 1), { credentials: 'same-origin' });
-      if (!res.ok) return;
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const { games, pagination } = await res.json();
       $('pf-recent').append(...games.map(gameRow));
       gamesPage = pagination.page;
       btn.hidden = pagination.page >= pagination.totalPages;
-    } catch (_) { /* button stays; user can retry */ } finally { btn.disabled = false; }
+    } catch (_) {
+      note.textContent = t('tdetail.games_load_error');
+      note.hidden = false;
+    } finally { btn.disabled = false; }
   }
 
   /** Friend button(s) on someone else's profile; state comes from p.friendship. */
@@ -234,38 +240,52 @@
     }
   }
 
-  const chart = { category: null, days: 90 };
+  const CHART_DAYS = 90;
+  let chartRequest;
 
   /** Rating curve for one variant; chips switch between the variants the player has rated. */
-  async function drawChart(p) {
+  function initChart(p) {
     const cats = CATEGORIES.filter((c) => p.ratings.some((r) => r.category === c));
     const tabs = $('pf-chart-tabs');
-    const svg = $('pf-chart');
-    const note = $('pf-chart-note');
-    tabs.replaceChildren();
-    svg.setAttribute('hidden', ''); // SVG elements have no .hidden property — use the attribute
-    note.textContent = '';
-    $('pf-chart-title').textContent = t('profile.chart_title', { cat: '' }).replace(/\s*·\s*$/, '');
-    if (!cats.length) { note.textContent = t('profile.no_ratings'); return; }
-    if (!cats.includes(chart.category)) chart.category = cats[0];
-    $('pf-chart-title').textContent = t('profile.chart_title', { cat: t('rankings.cat_' + chart.category) });
+    if (!cats.length) {
+      $('pf-chart-title').textContent = t('profile.chart_title', { cat: '' }).replace(/\s*·\s*$/, '');
+      $('pf-chart-note').textContent = t('profile.no_ratings');
+      return;
+    }
     tabs.replaceChildren(...cats.map((c) => {
       const b = el('button', t('rankings.cat_' + c), 'pchip');
       b.type = 'button';
-      b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(c === chart.category));
-      b.onclick = () => { chart.category = c; drawChart(p); };
+      b.value = c;
+      b.onclick = () => drawChart(c);
       return b;
     }));
+    tabs.hidden = false;
+    drawChart(cats[0]);
+  }
+
+  async function drawChart(category) {
+    chartRequest?.abort();
+    const request = chartRequest = new AbortController();
+    const svg = $('pf-chart');
+    const note = $('pf-chart-note');
+    const title = t('profile.chart_title', { cat: t('rankings.cat_' + category) });
+    $('pf-chart-title').textContent = title;
+    for (const b of $('pf-chart-tabs').children) b.setAttribute('aria-pressed', String(b.value === category));
+    svg.setAttribute('hidden', '');
+    note.textContent = t('history.loading');
     let h;
     try {
-      const res = await fetch('/api/profile/' + encodeURIComponent(username) + '/rating-history?category=' + chart.category + '&days=' + chart.days, { credentials: 'same-origin' });
-      if (!res.ok) return;
+      const res = await fetch('/api/profile/' + encodeURIComponent(username) + '/rating-history?category=' + category + '&days=' + CHART_DAYS, { credentials: 'same-origin', signal: request.signal });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       h = await res.json();
-    } catch (_) { return; }
-    if (!h || !Array.isArray(h.points)) return;
+      if (!h || !Array.isArray(h.points)) throw new Error('Bad rating history');
+    } catch (_) {
+      if (!request.signal.aborted) note.textContent = t('history.load_error');
+      return;
+    }
+    if (request.signal.aborted) return;
     if (h.hidden) { note.textContent = t('profile.chart_hidden'); return; }
-    if (h.points.length < 2) { note.textContent = t('profile.chart_empty', { days: chart.days }); return; }
+    if (h.points.length < 2) { note.textContent = t('profile.chart_empty', { days: CHART_DAYS }); return; }
     const vals = h.points.map((x) => x.rating);
     const lo = Math.min(...vals);
     const span = Math.max(...vals) - lo || 1;
@@ -277,9 +297,9 @@
     line.setAttribute('stroke-width', '1.6');
     line.setAttribute('vector-effect', 'non-scaling-stroke');
     svg.replaceChildren(line);
-    svg.setAttribute('aria-label', t('profile.chart_title', { cat: t('rankings.cat_' + chart.category) }));
+    svg.setAttribute('aria-label', title);
     svg.removeAttribute('hidden');
-    note.textContent = t('profile.chart_caption', { days: chart.days, peak: h.peak });
+    note.textContent = t('profile.chart_caption', { days: CHART_DAYS, peak: h.peak });
   }
 
   async function load() {

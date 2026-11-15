@@ -44,13 +44,13 @@
       <div class="pcol">
        <div class="ppanel">
         <h2 class="ph2" id="pf-chart-title"></h2>
-        <div id="pf-chart-tabs" class="pchips" role="tablist"></div>
+        <div id="pf-chart-tabs" class="pchips" role="group" aria-labelledby="pf-chart-title" hidden></div>
         <svg id="pf-chart" class="pchart" viewBox="0 0 400 120" preserveAspectRatio="none" role="img" hidden></svg>
-        <p id="pf-chart-note" class="pnote"></p>
+        <p id="pf-chart-note" class="pnote" role="status"></p>
        </div>
        <div class="ppanel" id="pf-games">
         <h2 class="ph2" data-i18n="profile.recent">Lịch sử ván</h2>
-        <p id="pf-recent-note" class="pnote" hidden></p>
+        <p id="pf-recent-note" class="pnote" role="status" hidden></p>
         <div id="pf-recent" class="prows"></div>
         <div class="pform__row"><button type="button" class="pbtn pbtn--ghost" id="pf-more" hidden><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-caret-down"></use></svg><span data-i18n="profile.load_more">Xem thêm</span></button></div>
        </div>
@@ -71,6 +71,6 @@
 <script src="js/platform-shell.js?v=bd6fcdfc"></script>
 <script src="js/countries.js?v=60e0b5b7"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
-<script src="js/profile.js?v=38569b1b"></script>
+<script src="js/profile.js?v=b33ab9e3"></script>
 </body>
 </html>

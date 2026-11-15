@@ -60,6 +60,7 @@ router.get('/', (req, res, next) => {
     const privateScope = friendsScope || clubScope;
     const viewerId = privateScope ? optionalUserId(req) : null;
     if (privateScope && !viewerId) return res.status(401).json({ error: 'Cần đăng nhập.', code: 'AUTH_REQUIRED' });
+    if (privateScope) res.set('Cache-Control', 'no-store');
     const key = `${category}:${page}:${limit}:${q}:${countryScope || ''}`;
 
     let body = privateScope ? null : cacheGet(key);
@@ -68,7 +69,11 @@ router.get('/', (req, res, next) => {
       const circle = friendsScope ? [viewerId, ...friendService.friendIds(viewerId)] : null;
       let total;
       let rows;
-      if (countryScope) {
+      if (q) {
+        const filter = { country: countryScope, clubViewerId: clubScope ? viewerId : null, userIds: circle };
+        total = database.countSearchRankings(category, q, filter);
+        rows = database.searchRankings(category, q, limit, offset, filter);
+      } else if (countryScope) {
         total = database.countRankingsByCountry(category, countryScope);
         rows = database.getRankingsByCountry(category, countryScope, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
       } else if (clubScope) {
@@ -78,10 +83,8 @@ router.get('/', (req, res, next) => {
         total = database.countRankingsAmong(category, circle);
         rows = database.getRankingsAmong(category, circle, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
       } else {
-        total = q ? database.countSearchRankings(category, q) : database.getRankingCount(category);
-        rows = q
-          ? database.searchRankings(category, q, limit, offset)
-          : database.getRankings(category, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
+        total = database.getRankingCount(category);
+        rows = database.getRankings(category, limit, offset).map((r, i) => ({ ...r, rank: offset + i + 1 }));
       }
       const ids = rows.map((r) => r.user_id);
       const deltas = database.getRatingDeltas7(category, ids);

@@ -53,6 +53,38 @@ describe('profile page', () => {
     expect(document.getElementById('pf-chart-note').textContent).toContain('1700');
   });
 
+  it('keeps the selected rating series when an older response arrives last', async () => {
+    await boot({ ...PROFILE, ratings: ['freestyle', 'standard', 'caro'].map((category) => ({ ...PROFILE.ratings[0], category })) });
+    const pending = {};
+    global.fetch.mockImplementation((url) => new Promise((resolve) => {
+      pending[new URL(url, location.origin).searchParams.get('category')] = resolve;
+    }));
+    const chip = (category) => Array.from(document.querySelectorAll('#pf-chart-tabs button'))
+      .find((b) => b.textContent === 'rankings.cat_' + category);
+    const response = (peak) => ({ ok: true, json: async () => ({ ...HISTORY, peak }) });
+    chip('standard').click();
+    const caro = chip('caro');
+    caro.focus();
+    caro.click();
+    pending.caro(response(2000));
+    await flush();
+    pending.standard(response(2100));
+    await flush();
+    expect(document.getElementById('pf-chart-note').textContent).toContain('2000');
+    expect(document.getElementById('pf-chart').getAttribute('aria-label')).toContain('rankings.cat_caro');
+    expect(document.activeElement).toBe(caro);
+  });
+
+  it('announces a chart load failure while keeping the profile visible', async () => {
+    await boot({ ...PROFILE, ratings: ['standard', 'caro'].map((category) => ({ ...PROFILE.ratings[0], category })) });
+    global.fetch.mockResolvedValue({ ok: false, status: 500 });
+    document.querySelector('#pf-chart-tabs button:last-child').click();
+    await flush();
+    expect(document.getElementById('pf-chart').hasAttribute('hidden')).toBe(true);
+    expect(document.getElementById('pf-chart-note').textContent).toBe('history.load_error');
+    expect(document.getElementById('pf-content').hidden).toBe(false);
+  });
+
   it('B341: no delta line when the weekly change is 0', async () => {
     await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], delta7: 0 }] });
     expect(document.querySelector('.pcard small.up, .pcard small.dn')).toBeNull();
@@ -309,6 +341,29 @@ describe('profile page', () => {
   });
 
   describe('game history (B202)', () => {
+    it('shows a fetch error and retries the same page without removing the first page', async () => {
+      await boot({ ...PROFILE, stats: { ...PROFILE.stats, games: 11 } });
+      const button = document.getElementById('pf-more');
+      const recent = document.getElementById('pf-recent');
+      const note = document.getElementById('pf-recent-note');
+      global.fetch.mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ games: [{ ...PROFILE.recent[0], id: 'g2' }], pagination: { page: 2, totalPages: 2 } }),
+      });
+      button.click();
+      await flush();
+      expect(recent.children).toHaveLength(1);
+      expect(note.hidden).toBe(false);
+      expect(note.textContent).toBe('tdetail.games_load_error');
+      expect(button.disabled).toBe(false);
+      button.click();
+      await flush();
+      expect(global.fetch.mock.calls.slice(-2).map(([url]) => url)).toEqual(Array(2).fill('/api/profile/alice/games?page=2'));
+      expect(recent.children).toHaveLength(2);
+      expect(note.hidden).toBe(true);
+      expect(button.hidden).toBe(true);
+    });
+
     it('rows link to /replay/<id>; "load more" is shown only when more games exist and appends the next page', async () => {
       await boot({ ...PROFILE, stats: { games: 12, wins: 1, draws: 0 } });
       expect(document.querySelector('#pf-recent a').getAttribute('href')).toBe('/replay/g1');
