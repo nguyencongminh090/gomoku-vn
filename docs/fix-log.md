@@ -335,3 +335,4 @@
 | 2026-11-15 17:39 | #380 lobby flush builds only rooms named by the call site (dirty set) instead of `listRooms()` for all: 32.4 → 0.17 ms per flush at 5 000 playing rooms; full reconcile ≤ every 30 s | [detail](docs/fix-log/2026-11-15-380-lobby-dirty-rooms.md) |
 | 2026-11-15 18:04 | #381 online list: lobby mirrors first 50 by name + `total`, search/ids via `lobby:online_query`; snapshot at 10 000 online 1 088 KB → 5.5 KB; friends-first deferred | [detail](docs/fix-log/2026-11-15-381-online-list-first-page.md) |
 | 2026-11-15 18:04 | #382 lobby rooms: one live page (30) + `stats`, "Xem thêm" via `lobby:rooms_query`; snapshot at 5 000 games 3 015 KB → 18 KB | [detail](docs/fix-log/2026-11-15-382-lobby-room-page.md) |
+| 2026-11-15 19:44 | #383 findSocketsByUserId reads a userId → Set<socket> index (kept at connect/disconnect) instead of scanning io.sockets: 150–200 → 0.4 µs/lookup at 10 000 sockets | [detail](docs/fix-log/2026-11-15-383-socket-user-index.md) |
