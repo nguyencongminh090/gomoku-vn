@@ -1,3 +1,4 @@
+✅ - **#390.** Rooms tab first paint waits for the socket and re-staggers every snapshot `[Model: Sonnet 5]` — [detail](docs/todo/B390-rooms-tab-first-paint.md)
 ✅ - **#386.** Verify #380–#384 under load + real-sized DB + browser pass `[Model: Sonnet 5]` — [detail](docs/todo/B386-scale-verification-380-384.md)
 ✅ - **#385.** DM `pruneExpired` scans all of `direct_messages` (13 ms) on boot, hourly and read path `[Model: Sonnet 5]` — [detail](docs/todo/B385-dm-prune-full-scan.md)
 ✅ - **#384.** Slow DB reads block the game thread; rankings cache, mmap/cache pragmas `[Model: Opus 5]` — [detail](docs/todo/B384-db-reads-block-game-thread.md)
