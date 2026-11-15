@@ -70,3 +70,6 @@ exports/
 
 # Hosting proposal (local only)
 docs/proposal/
+
+# local server logs (real usernames/IPs)
+log.txt
