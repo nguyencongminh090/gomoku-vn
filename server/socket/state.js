@@ -560,7 +560,7 @@ function _lobbyUpsert(prev, entry, into, rank) {
   const movesFrom = prev.startedAt === base.startedAt ? LobbyMoves.sharedPrefix(prev.moves, base.moves) : 0;
   if (movesFrom === 0) return entry;
   const delta = { movesFrom, moves: base.moves.slice(movesFrom) };
-  // Board-only change (the 2.5 s mini-board flush): the rest of the entry is what the client holds.
+  // Board-only change (the mini-board flush, ≤ 1 s since #389): the rest of the entry is what the client holds.
   return prev.json === base.json ? { roomId: entry.roomId, startedAt: entry.startedAt, ...delta } : { ...entry, ...delta };
 }
 
@@ -627,15 +627,19 @@ function broadcastLobbyUpdate(io, roomId) {
 /** The debounced diff + `lobby:patch` emit shared by broadcastLobbyUpdate and the board throttle. */
 function _scheduleLobbyFlush(io) {
   if (_lobbyUpdateTimers.has(io)) return; // a broadcast is already scheduled for this burst
-  const timeout = setTimeout(() => {
-    _lobbyUpdateTimers.delete(io);
-    const { upserts, removed, stats, statsChanged } = _diffLobbyRooms(io);
-    if (upserts.length === 0 && removed.length === 0 && !statsChanged) return;
-    const patch = { upserts, removed, serverTime: Date.now() };
-    if (stats) patch.stats = stats; // #382: counts over all rooms while the page is not the whole list
-    io.to('lobby').emit('lobby:patch', patch);
-  }, LOBBY_UPDATE_DEBOUNCE_MS);
+  const timeout = setTimeout(() => _flushLobbyNow(io), LOBBY_UPDATE_DEBOUNCE_MS);
   _lobbyUpdateTimers.set(io, timeout);
+}
+
+/** Diff + emit now; also absorbs a pending debounced flush (it would find nothing new). */
+function _flushLobbyNow(io) {
+  const pending = _lobbyUpdateTimers.get(io);
+  if (pending) { clearTimeout(pending); _lobbyUpdateTimers.delete(io); }
+  const { upserts, removed, stats, statsChanged } = _diffLobbyRooms(io);
+  if (upserts.length === 0 && removed.length === 0 && !statsChanged) return;
+  const patch = { upserts, removed, serverTime: Date.now() };
+  if (stats) patch.stats = stats; // #382: counts over all rooms while the page is not the whole list
+  io.to('lobby').emit('lobby:patch', patch);
 }
 
 /**
@@ -643,15 +647,18 @@ function _scheduleLobbyFlush(io) {
  * lobby. GameHandler calls this after each move; at most one flush per LOBBY_BOARD_THROTTLE_MS per
  * server carries every game's position at once (diffed, so only rooms that moved are sent). Home
  * feed is not poked — its counts don't change on a move.
+ * #389: the window closes straight into a flush (no extra 300 ms debounce), so a move reaches the
+ * cards ≤ LOBBY_BOARD_THROTTLE_MS later wherever it falls in the window (was 0.3–2.8 s). 1 s is
+ * affordable because #382 bounds each flush to the 30 mirrored rooms and #377 sends only new moves.
  */
-const LOBBY_BOARD_THROTTLE_MS = 2_500;
+const LOBBY_BOARD_THROTTLE_MS = 1_000;
 const _lobbyBoardTimers = new WeakMap();
 function scheduleLobbyBoardUpdate(io, roomId) {
   _markLobbyDirty(io, roomId); // #380
   if (_lobbyBoardTimers.has(io)) return;
   const timeout = setTimeout(() => {
     _lobbyBoardTimers.delete(io);
-    _scheduleLobbyFlush(io);
+    _flushLobbyNow(io);
   }, LOBBY_BOARD_THROTTLE_MS);
   if (timeout.unref) timeout.unref();
   _lobbyBoardTimers.set(io, timeout);
