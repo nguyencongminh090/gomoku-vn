@@ -73,6 +73,7 @@ afterAll(async () => {
 beforeEach(() => {
   jest.clearAllMocks();
   db.getUserByUsername.mockReturnValue(undefined);
+  db.getUserById.mockReturnValue({ id: 'user-1', display_name: 'Alice' });
 });
 
 const post = (path, { body, headers } = {}) => fetch(`${baseUrl}${path}`, {
@@ -269,6 +270,15 @@ describe('POST /api/auth/upgrade-session — legacy token migration', () => {
     expect(body.user).toMatchObject({ userId: 'guest_abc12345', isGuest: true });
   });
 
+  test.each([undefined, { id: 'user-1', locked_at: '2026-10-10T00:00:00.000Z' }])('requires an eligible member account (%p)', async (account) => {
+    db.getUserById.mockReturnValue(account);
+    const res = await post('/api/auth/upgrade-session', { body: { token: legacyToken() } });
+
+    expect(res.status).toBe(401);
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(db.createSession).not.toHaveBeenCalled();
+  });
+
   test.each([
     ['an expired token', () => legacyToken({}, { expiresIn: '-1s' })],
     ['a token signed with the wrong secret', () => jwt.sign({ userId: 'x' }, 'wrong-secret')],
@@ -290,4 +300,15 @@ describe('POST /api/auth/upgrade-session — legacy token migration', () => {
     expect(res.status).toBe(400);
     expect(db.createSession).not.toHaveBeenCalled();
   });
+});
+
+test('login uses the current account state after verifying the password', async () => {
+  const account = { id: 'user-1', username: 'alice', password_hash: '$2b$12$x', display_name: 'Alice' };
+  db.getUserByUsername.mockReturnValueOnce(account).mockReturnValueOnce({ ...account, locked_at: '2026-10-10T00:00:00.000Z' });
+
+  const res = await post('/api/auth/login', { body: { username: 'alice', password: 'secret123' } });
+
+  expect(res.status).toBe(403);
+  expect(await res.json()).toMatchObject({ code: 'ACCOUNT_LOCKED' });
+  expect(db.createSession).not.toHaveBeenCalled();
 });

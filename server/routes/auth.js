@@ -29,7 +29,6 @@
 
 const express = require('express');
 const bcrypt  = require('bcrypt');
-const jwt     = require('jsonwebtoken');
 const crypto  = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
@@ -68,6 +67,7 @@ const db      = require('../db/database');
 const logger  = require('../utils/logger');
 const sessionManager = require('../managers/SessionManager');
 const { setSessionCookie, clearSessionCookie, readSessionIdFromHeader, baseCookieOptions, parseCookies } = require('../utils/session-cookie');
+const { legacyIdentity } = require('../utils/legacy-auth');
 
 // Built once at module load, null when Google OAuth isn't configured for this
 // environment (see config.js — GOOGLE_CLIENT_ID/SECRET are optional, unlike
@@ -356,14 +356,16 @@ router.post('/login', async (req, res, next) => {
       });
     }
 
-    const user = db.getUserByUsername(username);
+    const candidate = db.getUserByUsername(username);
 
     // Always run one bcrypt.compare, whether or not the account exists — see
     // DUMMY_PASSWORD_HASH above. The unknown-user branch compares against the
     // dummy and then fails on `!user`, so both paths do the same work and
     // return the same message.
-    const match = await bcrypt.compare(password, user ? user.password_hash : DUMMY_PASSWORD_HASH);
-    if (!user || !match) {
+    const match = await bcrypt.compare(password, candidate ? candidate.password_hash : DUMMY_PASSWORD_HASH);
+    // A lock, deletion or password change can commit while bcrypt is running.
+    const user = candidate && match ? db.getUserByUsername(username) : null;
+    if (!user || user.id !== candidate.id || user.password_hash !== candidate.password_hash) {
       return res.status(401).json({
         error: 'Tên đăng nhập hoặc mật khẩu không đúng.',
         code: 'INVALID_CREDENTIALS',
@@ -467,34 +469,25 @@ router.post('/upgrade-session', (req, res, next) => {
       return res.status(400).json({ error: 'Thiếu token.', code: 'MISSING_TOKEN' });
     }
 
-    let payload;
-    try {
-      payload = jwt.verify(token, config.JWT_SECRET);
-    } catch {
-      // Expired or forged — nothing to migrate. Client falls back to login.
+    const identity = legacyIdentity(token);
+    if (!identity) {
       return res.status(401).json({
         error: 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.',
         code: 'AUTH_INVALID_TOKEN',
       });
     }
 
-    // `exp` is in seconds. Anything already past is rejected above by verify(),
-    // so this is always positive here, but clamp anyway rather than trust it.
-    const remainingMs = Math.max(0, (payload.exp * 1000) - Date.now());
-    if (remainingMs === 0) {
+    const remainingMs = identity.expiresAt - Date.now();
+    if (remainingMs <= 0) {
       return res.status(401).json({
         error: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
         code: 'AUTH_INVALID_TOKEN',
       });
     }
 
-    const body = startSession(req, res, {
-      userId: payload.userId,
-      displayName: payload.displayName,
-      isGuest: !!payload.isGuest,
-    }, { ttlMs: remainingMs });
+    const body = startSession(req, res, identity, { ttlMs: remainingMs });
 
-    logger.info(`[Auth] Upgraded legacy token → session: ${payload.displayName} (${payload.userId})`);
+    logger.info(`[Auth] Upgraded legacy token → session: ${identity.displayName} (${identity.userId})`);
     return res.json(body);
   } catch (err) {
     logger.error('[Auth] Upgrade-session error:', err);

@@ -19,6 +19,7 @@
 
 jest.mock('../db/database', () => ({
   createSession: jest.fn(),
+  getUserById: jest.fn(),
   getSessionById: jest.fn(),
   revokeSession: jest.fn(() => ({ changes: 1 })),
   revokeSessionsForUser: jest.fn(() => ({ changes: 0 })),
@@ -67,6 +68,7 @@ const ORIGINAL_ENV  = process.env.NODE_ENV;
 beforeEach(() => {
   jest.clearAllMocks();
   db.getSessionById.mockReturnValue(undefined);
+  db.getUserById.mockReturnValue({ id: 'user-9', display_name: 'Current Bob' });
   delete process.env.CORS_ORIGIN;
   process.env.NODE_ENV = 'test';
 });
@@ -174,9 +176,17 @@ describe('verifySocketToken — legacy JWT fallback (migration window)', () => {
 
     expect(res.ok).toBe(true);
     expect(res.user.userId).toBe('user-9');
+    expect(res.user.displayName).toBe('Current Bob');
     // No session row backs it, so there is nothing to revoke or touch.
     expect(res.user.sessionId).toBeNull();
     expect(db.touchSession).not.toHaveBeenCalled();
+  });
+
+  test.each([undefined, { id: 'user-9', locked_at: '2026-10-10T00:00:00.000Z' }])('requires an eligible member account (%p)', (account) => {
+    db.getUserById.mockReturnValue(account);
+    const token = jwt.sign({ userId: 'user-9', displayName: 'Bob' }, config.JWT_SECRET, { expiresIn: '1h' });
+
+    expect(run(mockSocket({ auth: { token } }))).toMatchObject({ ok: false, code: 'AUTH_INVALID' });
   });
 
   test('a forged legacy token is rejected', () => {

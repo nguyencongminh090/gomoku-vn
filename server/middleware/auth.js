@@ -14,12 +14,11 @@
  * session:kicked actually end a session instead of merely closing a socket.
  */
 
-const jwt    = require('jsonwebtoken');
-const config = require('../config');
 const logger = require('../utils/logger');
 const { clientInfoFromSocket } = require('../utils/geo');
 const sessionManager = require('../managers/SessionManager');
 const { readSessionIdFromHeader } = require('../utils/session-cookie');
+const { legacyIdentity } = require('../utils/legacy-auth');
 
 // ---------------------------------------------------------------------------
 // Express middleware
@@ -29,14 +28,8 @@ const { readSessionIdFromHeader } = require('../utils/session-cookie');
  * Verifies the session cookie and attaches the identity to req.user.
  * Responds 401 if there is no valid session.
  *
- * ⚠ CSRF: this is currently mounted on NO route. The credential it reads is a
- * cookie, which the browser attaches automatically — so the first
- * state-changing route this is ever added to needs CSRF protection (an
- * anti-forgery token, or an equivalent Origin/Sec-Fetch-Site check). The
- * SameSite=Lax attribute set in utils/session-cookie.js blocks the usual
- * cross-site POST, but do not treat that single layer as the whole answer.
- * See features/jwt-httponly-cookie/planning.md Q4. (/api writes are already
- * covered by middleware/origin-guard.js, #350.)
+ * The browser attaches this credential automatically. The Origin/Sec-Fetch-Site
+ * middleware guards state-changing /api requests (#350).
  */
 function verifyToken(req, res, next) {
   const sessionId = readSessionIdFromHeader(req.headers.cookie);
@@ -137,11 +130,12 @@ function verifySocketToken(socket, next) {
   }
 
   try {
-    const payload = jwt.verify(legacyToken, config.JWT_SECRET);
+    const identity = legacyIdentity(legacyToken);
+    if (!identity) return next(new Error('AUTH_INVALID'));
     socket.user = {
-      userId: payload.userId,
-      displayName: payload.displayName,
-      isGuest: !!payload.isGuest,
+      userId: identity.userId,
+      displayName: identity.displayName,
+      isGuest: identity.isGuest,
       sessionId: null, // no session row — nothing to revoke or touch
     };
     return next();
