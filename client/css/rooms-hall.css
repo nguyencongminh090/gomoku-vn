@@ -160,3 +160,10 @@ body.zen-lobby #panel-tables .rgrid:has(.room-list__empty) .rcard-new { grid-col
   body.zen-lobby #panel-tables .rcard { transition: none; }
   body.zen-lobby #panel-tables .rcard:hover { transform: none; }
 }
+
+/* #382: "show more" under the grid — only while the server holds more rooms than the live page. */
+.rooms-more { display: block; width: 100%; min-height: 44px; margin: 12px 0 0; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-ink); font: inherit; cursor: pointer; }
+.rooms-more:hover { border-color: var(--c-brand-text); }
+.rooms-more:focus-visible { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
+.rooms-more:disabled { opacity: .6; cursor: progress; }
+.rooms-more[hidden] { display: none; }

@@ -115,14 +115,68 @@ function renderFromMap() {
 const watchersOf = (room) => Math.max(0, (room.userCount || 0) - (room.playerCount || 0));
 // Write only on change: the hero counts sit in an aria-live region and patches arrive every 2.5 s during play.
 const setNum = (id, n) => { const el = document.getElementById(id); if (el && el.textContent !== String(n)) el.textContent = String(n); };
+// #382: with more rooms than one page the server mirrors only that page here and sends the counts
+// over ALL rooms as `stats` ({ rooms, open, live, watch }); null = the cards held are the whole list.
+let lobbyStats = null;
+let roomsMoreOffset = 0;   // where the next "show more" page starts in the server's ranking
+let roomsMoreBusy = false;
 function renderRoomStats() {
   const rooms = currentRooms;
-  const open = rooms.filter((r) => r.state !== 'playing' && r.playerCount < 2).length;
-  setNum('rh-n-open', open);
-  setNum('rh-n-live', rooms.filter((r) => r.state === 'playing').length);
-  setNum('rh-n-watch', rooms.reduce((a, r) => a + watchersOf(r), 0));
-  setNum('room-n-playing', rooms.filter((r) => r.state === 'playing').length); // "Đang chơi · N" (user 2026-11-13: one label instead of Phòng/Bàn/Quan sát)
+  const s = lobbyStats || {
+    open: rooms.filter((r) => r.state !== 'playing' && r.playerCount < 2).length,
+    live: rooms.filter((r) => r.state === 'playing').length,
+    watch: rooms.reduce((a, r) => a + watchersOf(r), 0),
+  };
+  setNum('rh-n-open', s.open);
+  setNum('rh-n-live', s.live);
+  setNum('rh-n-watch', s.watch);
+  setNum('room-n-playing', s.live); // "Đang chơi · N" (user 2026-11-13: one label instead of Phòng/Bàn/Quan sát)
+  renderRoomsMore();
 }
+
+// "Show more" under the grid: only while the server holds rooms this page does not.
+// The cards it adds are a one-off copy (no live patches) — a click on a stale one fails cleanly
+// with the server's room:error.
+function renderRoomsMore() {
+  const rest = lobbyStats ? lobbyStats.rooms - currentRooms.length : 0;
+  let btn = document.getElementById('rooms-more');
+  if (rest <= 0) { if (btn) btn.hidden = true; return; }
+  if (!btn) {
+    if (typeof roomListEl === 'undefined' || !roomListEl) return;
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'rooms-more';
+    btn.className = 'rooms-more';
+    btn.addEventListener('click', loadMoreRooms);
+    roomListEl.insertAdjacentElement('afterend', btn);
+  }
+  btn.hidden = false;
+  btn.disabled = roomsMoreBusy;
+  const label = t('lobby.rooms_more', { n: rest });
+  if (btn.textContent !== label) btn.textContent = label;
+}
+
+function loadMoreRooms() {
+  if (roomsMoreBusy) return;
+  roomsMoreBusy = true;
+  renderRoomsMore();
+  client.emitAck('lobby:rooms_query', { offset: roomsMoreOffset }, 5000, (err, res) => {
+    roomsMoreBusy = false;
+    if (err || !res || !Array.isArray(res.rooms)) { renderRoomsMore(); return; }
+    roomsMoreOffset += res.rooms.length;
+    if (res.stats) lobbyStats = res.stats;
+    // Rooms already on screen keep their live entry; the rest are appended like a patch upsert.
+    applyLobbyPatch({ upserts: res.rooms.filter((r) => !roomMap.has(r.roomId)), removed: [] });
+  });
+}
+
+// Registered before the list handlers below, so the counts are in place when those render.
+client.on('lobby:update', (data) => {
+  lobbyStats = (data && data.stats) || null;
+  roomsMoreOffset = ((data && data.rooms) || []).length;
+});
+// While the list is truncated every patch carries `stats`; one without them means it is whole again.
+client.on('lobby:patch', (data) => { lobbyStats = (data && data.stats) || null; });
 
 // ---------------------------------------------------------------------------
 // Hero line
@@ -242,11 +296,13 @@ const onlineLineNamesEl = document.getElementById('online-line-names');
 const ONLINE_NAME_LIMIT = 6;
 
 let currentOnlineUsers = [];
+// #381: the server sends only the first page of the list; this is the real count when there are more.
+let currentOnlineTotal = 0;
 
 function renderOnlineLine() {
   if (!onlineLineEl) return;
   const users = currentOnlineUsers;
-  const count = users.length;
+  const count = Math.max(currentOnlineTotal, users.length);
 
   if (onlineCountEl) onlineCountEl.textContent = t('lobby.online_count_nav', { n: count });
   if (onlineLineCountEl) onlineLineCountEl.textContent = count;
@@ -283,18 +339,20 @@ function applyOnlineUsersPatch(users, patch) {
   return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
-function setOnlineUsers(users) {
+function setOnlineUsers(users, total) {
   currentOnlineUsers = users;
+  currentOnlineTotal = typeof total === 'number' && total > users.length ? total : users.length;
   renderOnlineLine();
   // Feed the private-chat module (#159) — it owns the online-users modal and
   // per-window presence. Safe if it hasn't finished init yet: it also reads
   // GvnSession directly and this event re-fires on every presence change.
-  if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users);
+  if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users, currentOnlineTotal);
 }
 
 // Full list once per lobby:subscribe (incl. after reconnect, #228), then deltas.
 client.on('lobby:online_users', (users) => setOnlineUsers(Array.isArray(users) ? users : []));
-client.on('lobby:online_patch', (patch) => setOnlineUsers(applyOnlineUsersPatch(currentOnlineUsers, patch)));
+// `total` rides on a patch only while the list is truncated (#381); without it the list is complete.
+client.on('lobby:online_patch', (patch) => setOnlineUsers(applyOnlineUsersPatch(currentOnlineUsers, patch), patch && patch.total));
 
 client.on('room:error', (data) => {
   // `code` is language-neutral; `message` is Vietnamese-only fallback for

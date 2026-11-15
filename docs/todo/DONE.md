@@ -1,3 +1,6 @@
+✅ - **#382.** Lobby room list: full snapshot of all rooms + moves per subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B382-lobby-room-snapshot-full.md)
+✅ - **#381.** Online list: full snapshot (1.1 MB @ 10k) to every lobby subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B381-online-list-full-snapshot.md)
+✅ - **#380.** Lobby flush rebuilds every room on each move throttle / room change — diff dirty rooms only `[Model: Fable 5]` — [detail](docs/todo/B380-lobby-flush-dirty-rooms.md)
 ✅ - **#379.** server/db helpers `db.prepare` per call; check prod `MAX_ROOMS` (default 50) `[Model: Sonnet 5]` — [detail](docs/todo/B379-db-prepare-per-call.md)
 ✅ 
 ✅ - **#362.** Home phone: counts as a status line, 4 links in one Khám phá card `[Model: Sonnet 5]` — [detail](docs/todo/B362-home-phone-pulse-line.md)

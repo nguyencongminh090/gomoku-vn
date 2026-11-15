@@ -88,7 +88,7 @@ function register(io, socket) {
     if (result.destroyed) {
       cleanupRoomTimer(roomId);
       cleanupReadyTimer(roomId);
-      broadcastLobbyUpdate(io);
+      broadcastLobbyUpdate(io, roomId);
     } else if (result.room) {
       clearReadyState(io, result.room);
       broadcastRoomUpdate(io, result.room);
@@ -101,7 +101,7 @@ function register(io, socket) {
           timestamp: Date.now(), isSystem: true,
         });
       }
-      broadcastLobbyUpdate(io);
+      broadcastLobbyUpdate(io, roomId);
     }
   });
 
@@ -114,7 +114,7 @@ function register(io, socket) {
     }
     clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, result.room.roomId);
   });
 
   socket.on('room:stand', () => {
@@ -125,7 +125,7 @@ function register(io, socket) {
     }
     clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, result.room.roomId);
   });
 
   // Client-reported tab-visibility state (Page Visibility API) — drives the
@@ -164,7 +164,7 @@ function register(io, socket) {
     // where they actually changed, and clients merge rather than replace, so
     // this is where they learn the new values. See RoomManager.serializeRoomUpdate.
     broadcastRoomUpdate(io, result.room, { settings: true });
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, result.room.roomId);
     if (!result.changes.length) return; // no-op save: nothing to announce (#286)
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -219,7 +219,7 @@ function register(io, socket) {
 
     clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, roomId);
   });
 }
 
