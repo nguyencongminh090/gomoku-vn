@@ -1,5 +1,5 @@
 # B389 — Rooms tab live boards land 0.3–2.8 s after the move ("lúc nhanh lúc chậm")
-**Status:** BUILT 2026-11-15 (fix/389-lobby-board-cadence) — scope 3 perf run pending, needs a non-production machine
+**Status:** DONE 2026-11-15 (cf2e22b; perf: lobby 1.1 → 2.1 KB/s per watcher, server cost unchanged)
 **Area:** server/socket/state.js (`scheduleLobbyBoardUpdate`, `LOBBY_BOARD_THROTTLE_MS`, `_scheduleLobbyFlush`), server/tests/lobby-delta.test.js
 **From:** user 2026-11-15 "Room cập nhật đôi lúc bị trễ, có thể là do cập nhật theo đợt (có lúc nhanh/lúc chậm)"   **Depends:** —
 

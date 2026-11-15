@@ -10,7 +10,7 @@ const fs = require('fs');
 const [B, ROOMS = '100', THINK = '1000', LOBBY = '20', DUR = '30', PID] = process.argv.slice(2);
 const N = 17;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const uniq = Date.now().toString(36).slice(-5);
+const uniq = Date.now().toString(36).slice(-5) + process.pid.toString(36); // pid: shards start in the same ms (#389 run hit a username clash)
 
 async function register(i) {
   if (process.env.GUESTS && i > 0) { // #386: guests skip bcrypt (12 rounds) so thousands of players sign in fast; user 0 stays registered for the route poller
