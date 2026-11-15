@@ -19,7 +19,9 @@ jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: j
 jest.mock('../middleware/auth', () => ({
   verifyToken: (req, res, next) => {
     if (!req.headers.cookie) return res.status(401).json({ code: 'AUTH_REQUIRED' });
-    req.user = { userId: req.headers.cookie === 'guest' ? null : req.headers.cookie };
+    req.user = req.headers.cookie === 'guest'
+      ? { userId: 'guest_12345678', isGuest: true }
+      : { userId: req.headers.cookie };
     next();
   },
 }));
@@ -41,7 +43,7 @@ async function call(method, p, as, body) {
   if (as) headers.cookie = as;
   if (body !== undefined) headers['content-type'] = 'application/json';
   const r = await fetch(base + p, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  return { status: r.status, body: await r.json() };
+  return { status: r.status, headers: r.headers, body: await r.json() };
 }
 const role = (id) => db.prepare('SELECT role FROM users WHERE id = ?').get(id).role;
 const edges = () => db.prepare('SELECT * FROM admin_edges ORDER BY created_at, id').all();
@@ -67,6 +69,15 @@ describe('access matrix (admin only)', () => {
     expect((await call('GET', '/api/admin/users', as)).status).toBe(status);
   });
   it('anonymous → 401', async () => { expect((await call('GET', '/api/admin/users')).status).toBe(401); });
+  it('rejects a real guest identity and prevents caching auth responses', async () => {
+    const guest = await call('GET', '/api/admin/me', 'guest');
+    expect(guest).toMatchObject({ status: 403, body: { code: 'GUEST_FORBIDDEN' } });
+    expect(guest.headers.get('cache-control')).toBe('no-store');
+    const anonymous = await call('GET', '/api/admin/users');
+    expect(anonymous.headers.get('cache-control')).toBe('no-store');
+    const write = await call('POST', '/api/admin/users/bob/role', 'boss', { role: 'moderator' });
+    expect(write.headers.get('cache-control')).toBe('no-store');
+  });
   it.each([['mod'], ['mem']])('%s cannot change roles or lock', async (as) => {
     expect((await call('POST', '/api/admin/users/bob/role', as, { role: 'admin' })).status).toBe(403);
     expect((await call('POST', '/api/admin/users/bob/lock', as, { locked: true, reason: 'x' })).status).toBe(403);
@@ -171,11 +182,17 @@ describe('lock', () => {
     expect(lockedAt('bob')).toBeNull();
     expect(edges().map((e) => e.action)).toEqual(['lock', 'unlock']);
   });
-  it('cannot lock yourself or an admin; locked must be exactly true', async () => {
+  it('cannot lock yourself or an admin', async () => {
     expect((await call('POST', '/api/admin/users/boss/lock', 'boss', { locked: true, reason: 'x' })).body.code).toBe('ADMIN_SELF_FORBIDDEN');
     expect((await call('POST', '/api/admin/users/boss2/lock', 'boss', { locked: true, reason: 'x' })).body.code).toBe('ADMIN_TARGET_PROTECTED');
-    await call('POST', '/api/admin/users/bob/lock', 'boss', { locked: 'true', reason: 'x' });
-    expect(lockedAt('bob')).toBeNull();
+  });
+  it.each([undefined, null, 'true', 0])('rejects an invalid lock choice (%p) without a state or audit change', async (locked) => {
+    const at = '2026-10-10T01:00:00.000Z';
+    db.prepare("UPDATE users SET locked_at = ? WHERE id = 'bob'").run(at);
+    const response = await call('POST', '/api/admin/users/bob/lock', 'boss', { locked });
+    expect(response).toMatchObject({ status: 400, body: { code: 'ADMIN_LOCK_INVALID' } });
+    expect(lockedAt('bob')).toBe(at);
+    expect(edges()).toHaveLength(0);
   });
 });
 

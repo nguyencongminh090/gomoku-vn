@@ -112,6 +112,7 @@ function kickLiveSocket(userId) {
 
 function setLocked(adminId, id, locked, reason) {
   requireManager(adminId);
+  if (typeof locked !== 'boolean') throw bad('ADMIN_LOCK_INVALID', 'Trạng thái khoá không hợp lệ.');
   const why = typeof reason === 'string' ? reason.trim() : '';
   if (locked && !why) throw bad('ADMIN_REASON_REQUIRED', 'Cần ghi lý do khoá.');
   if (why.length > REASON_MAX) throw bad('ADMIN_REASON_REQUIRED', `Lý do tối đa ${REASON_MAX} ký tự.`);
@@ -119,7 +120,8 @@ function setLocked(adminId, id, locked, reason) {
     const user = findUser(id);
     if (user.id === adminId) throw bad('ADMIN_SELF_FORBIDDEN', 'Không thể tự khoá tài khoản của mình.');
     if (locked && ROLE(user.role) === 'admin') throw bad('ADMIN_TARGET_PROTECTED', 'Hãy hạ vai trò quản trị viên trước khi khoá.');
-    if (!!user.locked_at !== !!locked) {
+    if (locked) sessions.revokeOtherSessionsForUser(user.id);
+    if (!!user.locked_at !== locked) {
       const at = locked ? new Date().toISOString() : null;
       db().prepare('UPDATE users SET locked_at = ? WHERE id = ?').run(at, user.id);
       addEdge(adminId, locked ? 'lock' : 'unlock', user.id, why ? { reason: why } : {});
@@ -127,10 +129,7 @@ function setLocked(adminId, id, locked, reason) {
     }
     return shape(user);
   })();
-  if (locked) {
-    sessions.revokeOtherSessionsForUser(out.id); // evicts every live session (no exception)
-    kickLiveSocket(out.id); // ...and the socket that is still open on one of them (#206 trap)
-  }
+  if (locked) kickLiveSocket(out.id);
   return out;
 }
 

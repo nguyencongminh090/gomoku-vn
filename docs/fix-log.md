@@ -339,3 +339,4 @@
 | 2026-11-15 19:44 | #384 DB reads off the game thread: slow-query timing (>5 ms log), covering index 015, 64 MB page cache, rating-integrity in a worker (stall 249–338 → 2–5 ms); all sim-DB routes stall ≤ 6.5 ms | [detail](docs/fix-log/2026-11-15-384-db-reads-game-thread.md) |
 | 2026-11-15 20:06 | Patch production and build-tool dependencies within existing ranges | [detail](fix-log/2026-11-15-npm-security-updates.md) |
 | 2026-11-15 20:06 | Check current account eligibility for password login and legacy credentials | [detail](fix-log/2026-11-15-auth-account-eligibility.md) |
+| 2026-11-15 20:06 | Validate admin actions and revoke sessions atomically when locking accounts | [detail](fix-log/2026-11-15-admin-action-validation.md) |

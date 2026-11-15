@@ -86,14 +86,15 @@ function openReports(staffId, { page } = {}) {
 /** Close a report (and every other open report on the same game + accused). `confirm` also logs a graph edge. */
 function resolve(staffId, reportId, { confirm } = {}) {
   requireStaff(staffId);
+  if (typeof confirm !== 'boolean') throw bad('CHEAT_RESOLUTION_INVALID', 'Chọn xác nhận hoặc bác bỏ báo cáo.');
   return db().transaction(() => {
     const r = db().prepare('SELECT * FROM game_reports WHERE id = ?').get(String(reportId).slice(0, 64));
     if (!r) throw new CheatReportError('CHEAT_REPORT_NOT_FOUND', 404, 'Không tìm thấy báo cáo.');
     if (r.resolved_at) throw new CheatReportError('CHEAT_REPORT_CLOSED', 409, 'Báo cáo này đã được xử lý.');
-    const resolution = confirm === true ? 'confirmed' : 'dismissed';
+    const resolution = confirm ? 'confirmed' : 'dismissed';
     db().prepare('UPDATE game_reports SET resolved_at = ?, resolved_by = ?, resolution = ? WHERE game_id = ? AND accused_id = ? AND resolved_at IS NULL')
       .run(new Date().toISOString(), staffId, resolution, r.game_id, r.accused_id);
-    if (confirm === true) adminUsers.addEdge(staffId, 'cheat_confirm', r.accused_id, { gameId: r.game_id });
+    if (confirm) adminUsers.addEdge(staffId, 'cheat_confirm', r.accused_id, { gameId: r.game_id });
     return { ok: true, resolution };
   })();
 }

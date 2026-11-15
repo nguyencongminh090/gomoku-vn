@@ -146,14 +146,19 @@ describe('staff queue', () => {
     await rep('g2', 'carol', { side: 'WHITE', reason: 'r' });
     expect((await open()).body.reports[0].accusedConfirmedGames).toBe(1);
   });
-  it('confirm must be exactly true; closed → 409; unknown → 404; non-staff 403', async () => {
+  it('requires an explicit decision; closed → 409; unknown → 404; non-staff 403', async () => {
     await rep('g1', 'carol', { side: 'WHITE', reason: 'r1' });
     const id = (await open()).body.reports[0].id;
     expect((await call('POST', `/api/admin/cheat-reports/${id}/resolve`, 'carol', { confirm: true })).status).toBe(403);
-    await call('POST', `/api/admin/cheat-reports/${id}/resolve`, 'mod', { confirm: 'true' });
+    for (const confirm of [undefined, null, 'true', 0]) {
+      const invalid = await call('POST', `/api/admin/cheat-reports/${id}/resolve`, 'mod', { confirm });
+      expect(invalid).toMatchObject({ status: 400, body: { code: 'CHEAT_RESOLUTION_INVALID' } });
+    }
+    expect((await open()).body.reports.map((report) => report.id)).toEqual([id]);
     expect(edges()).toHaveLength(0);
+    expect((await call('POST', `/api/admin/cheat-reports/${id}/resolve`, 'mod', { confirm: true })).status).toBe(200);
     expect((await call('POST', `/api/admin/cheat-reports/${id}/resolve`, 'mod', { confirm: true })).status).toBe(409);
-    expect((await call('POST', '/api/admin/cheat-reports/nope/resolve', 'mod', {})).status).toBe(404);
+    expect((await call('POST', '/api/admin/cheat-reports/nope/resolve', 'mod', { confirm: false })).status).toBe(404);
   });
   it('a deleted accused shows as (đã xoá)', async () => {
     await rep('g1', 'carol', { side: 'WHITE', reason: 'r1' });
