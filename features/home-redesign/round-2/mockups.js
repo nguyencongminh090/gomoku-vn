@@ -92,24 +92,40 @@
 
   const designs = [
     {
-      id: 'moc', name: 'Mặt bàn', color: '#427151', summary: 'Nút chơi ở bên trái, bàn cờ và số liệu ở bên phải',
+      id: 'moc', name: 'Mặt bàn', color: '#427151', summary: 'Chơi nhanh, bàn cờ và hoạt động cùng nằm trong một khung',
       render: () => `${top()}<main class="wrap">
-        <div class="split"><section class="moc-copy">${pulse()}
-          <h1>Một ván<br>cho hôm nay.</h1>
-          <p class="lede">Chọn luật bạn thích và tìm người chơi cùng.</p>
-          ${settings()}${actionRow()}${code()}
-        </section><div class="moc-art">${board()}<span class="board-caption">THẾ CỜ MẪU</span></div></div>
-        ${metrics()}${explore()}
+        <div class="moc-hub">
+          <div class="split">
+            <section class="moc-copy">
+              <div><h1>Một ván<br>cho hôm nay.</h1><p class="lede">Chọn luật và tìm người chơi cùng.</p></div>
+              <div class="moc-play">${settings()}${actionRow()}</div>
+              ${code()}
+            </section>
+            <aside class="moc-scene" aria-label="Ván đang chơi">
+              <div class="moc-art">${board()}<span class="board-caption">THẾ CỜ MẪU</span></div>
+              <div class="moc-match">${match()}${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
+            </aside>
+          </div>
+          <div class="moc-footer">${metrics()}${explore()}</div>
+        </div>
       </main>`,
     },
     {
-      id: 'dem', name: 'Câu lạc bộ đêm', color: '#27443d', summary: 'Ảnh toàn khung và khu chơi nhanh đặt trên nền tối',
+      id: 'dem', name: 'Câu lạc bộ đêm', color: '#27443d', summary: 'Cụm vào ván và dải hoạt động căn chung trên một nền ảnh',
       render: () => `${top()}<main class="night"><div class="night-image" aria-hidden="true" style="background-image:url('${photo}')"></div>
-        <div class="wrap night-content"><div class="night-copy">${pulse()}<h1>Hẹn nhau<br>qua bàn cờ.</h1>
-          <p class="lede">Một ván xếp hạng hoặc một buổi chơi cùng bạn bè.</p></div>
-          <section class="night-card"><h2>Bắt đầu ván</h2>${settings()}${actionRow()}${code()}</section>
+        <div class="wrap night-inner">
+          <div class="night-content"><div class="night-copy"><h1>Hẹn nhau<br>qua bàn cờ.</h1>
+            <p class="lede">Chơi xếp hạng hoặc hẹn bạn bè vào một bàn.</p></div>
+            <section class="night-card"><h2>Bắt đầu ván</h2>${settings()}${actionRow()}${code()}</section>
+          </div>
+          <div class="night-foot">
+            <div class="night-activity">
+              ${metrics()}
+              <div class="night-match"><div><p>Ván Caro đang chơi</p>${match()}</div>${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
+            </div>
+            ${explore()}
+          </div>
         </div>
-        <div class="wrap night-foot">${metrics()}${explore()}</div>
       </main>`,
     },
     {
@@ -153,11 +169,18 @@
       </main>`,
     },
     {
-      id: 'console', name: 'Bàn điều khiển', color: '#4f83ad', summary: 'Thanh điều hướng bên trái, khu vào ván và hoạt động ở giữa',
+      id: 'console', name: 'Bàn điều khiển', color: '#4f83ad', summary: 'Bảng chơi, phòng đang mở và ván trực tiếp chung một lưới',
       render: () => `<div class="workspace"><aside class="rail">${logo()}<nav aria-label="Điều hướng"><span class="nav-current">Trang chủ</span>${navigation([['rooms', 'Phòng'], ...sections])}</nav>${action('profile', 'Minh · Elo 1.480', 'profile')}</aside>
-        <main class="work-main"><div class="work-head"><div><h1>Chào Minh</h1><p class="lede">Bàn chơi của bạn</p></div>${pulse()}</div>
-        <section class="work-play"><div><h2>Chơi nhanh</h2>${settings()}${actionRow()}</div><div class="work-code">${code()}</div></section>
-        <div class="work-panels"><section><h2>Phòng đang mở</h2>${roomRows()}</section><section><h2>Trực tiếp</h2>${metrics()}${match()}</section></div></main>
+        <main class="work-main"><header class="work-head"><h1>Chào Minh</h1></header>
+          <div class="work-panels">
+            <section class="work-play"><h2>Vào ván</h2>${settings()}${actionRow()}${code()}</section>
+            <section class="work-rooms"><h2>Phòng đang mở</h2>${roomRows()}</section>
+            <section class="work-live">
+              <h2>Trực tiếp</h2>${metrics()}
+              <div class="work-featured"><h3>Ván Caro đang chơi</h3>${match()}${board()}${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
+            </section>
+          </div>
+        </main>
       </div>`,
     },
     {
