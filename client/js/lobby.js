@@ -382,8 +382,8 @@ function roomHref(roomId) {
 // board with "Ngồi vào" for an open seat), state flag + elapsed time, watchers, then the players
 // (avatar · name · rating) and the meta tags. The whole card is the join/watch control (B219);
 // `.room-row` stays as the hook e2e specs and the keyboard handler use.
-// `animate` staggers the entrance animation by `delayIndex` (full render); a card created by a
-// patch passes delayIndex 0. An in-place update (updateRoomRowNode) never replays it.
+// `animate` gives the entrance animation, staggered by `delayIndex`: only a card a patch creates asks
+// for it (delayIndex 0); a full snapshot paints at once (#390). An in-place update never replays it.
 function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
   const animClass = animate ? ' animate-fade-up' : '';
   const animStyle = animate ? ` style="animation-delay: ${(delayIndex * 0.04).toFixed(2)}s"` : '';
@@ -482,12 +482,10 @@ function renderRoomList(allRooms) {
     return;
   }
 
+  // #390: no entrance here. This runs on every snapshot (first paint, each re-subscribe on tab switch /
+  // visible tab / reconnect, langchange); a staggered fadeUp kept 30 cards hidden for up to ~1.9 s.
   let html = '';
-  let i = 0;
-  for (const room of rooms) {
-    html += buildRoomRowHtml(room, { animate: true, delayIndex: i });
-    i++;
-  }
+  for (const room of rooms) html += buildRoomRowHtml(room);
 
   roomListEl.innerHTML = NEW_CARD_HTML() + html; // create first: it is the only create entry, never buried under 16 rooms
 }
