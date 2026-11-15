@@ -239,6 +239,62 @@ class SocketClient {
     return this;
   }
 
+  /**
+   * Hold incoming events until the page's handlers exist (#393).
+   *
+   * room.html emits its join intent from <head> (room-early-join.js), so the
+   * reply — room:joined plus the on-connect pushes (game:init, timer:sync…) —
+   * can arrive before room-socket.js, the last deferred module, registers its
+   * handlers. socket.io delivers to whoever listens *now*, so those packets were
+   * lost. While held, every incoming event is recorded with the listeners that
+   * already received it live; `releaseEvents()` then hands each one, in arrival
+   * order, to the listeners registered since.
+   */
+  holdEvents() {
+    if (!this.socket || this._held) return;
+    this._held = [];
+    this._onAnyHeld = (event, ...args) => {
+      // onAny runs BEFORE the regular listeners (socket.io-client emitEvent),
+      // so `listeners(event)` here is exactly the set getting it live.
+      if (this._held.length < SocketClient.HOLD_MAX) {
+        this._held.push({ event, args, at: Date.now(), seen: this.socket.listeners(event).slice() });
+      }
+    };
+    this.socket.onAny(this._onAnyHeld);
+  }
+
+  /** Replay held events to late listeners, once, in arrival order; stop holding. */
+  releaseEvents() {
+    const held = this._held;
+    if (!held) return;
+    this._held = null;
+    if (this.socket) this.socket.offAny(this._onAnyHeld);
+    for (const { event, args, at, seen } of held) {
+      if (!this.socket) return;
+      const late = this.socket.listeners(event).filter((fn) => !seen.includes(fn));
+      // How long the packet sat in the hold: clock code subtracts it so a
+      // replayed serverTime isn't read as ~200 ms older than it is.
+      this._replayAgeMs = Date.now() - at;
+      for (const fn of late) {
+        // Live, each packet is its own callback and a throwing handler loses only
+        // that packet; keep it that way here, or one throw would drop every later
+        // held event (room:joined included → overlay stuck, #40). Rethrown async
+        // so the error is still reported.
+        try {
+          fn.apply(this.socket, args);
+        } catch (e) {
+          setTimeout(() => { throw e; });
+        }
+      }
+      this._replayAgeMs = 0;
+    }
+  }
+
+  /** ms the event being handled right now waited in the hold (0 for a live event). */
+  replayAgeMs() {
+    return this._replayAgeMs || 0;
+  }
+
   /** Emit an event to the server. */
   emit(event, data) {
     if (!this.socket) return;
@@ -398,6 +454,8 @@ class SocketClient {
 
 /** #367: how long a connection must stay lost before the top banner appears. */
 SocketClient.BANNER_DELAY_MS = 8000;
+/** #393: cap on held events — a page that never releases must not grow without bound. */
+SocketClient.HOLD_MAX = 500;
 
 // Expose to global scope for ESM module usage
 window.SocketClient = SocketClient;

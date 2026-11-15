@@ -7,14 +7,16 @@
   <title>Play3CR — Phòng chơi</title>
 
   <!-- ── Socket handshake, started before anything else (#391, same as index.html #145) ──
-       These four MUST stay above every <link rel="stylesheet">: a classic script after a
+       These five MUST stay above every <link rel="stylesheet">: a classic script after a
        stylesheet link waits for it to load. Order matters too: socket-client.js needs
        GvnSession, socket-early.js needs io + SocketClient. room.js takes the same client
-       via SocketClient.shared(). See client/js/socket-early.js. -->
+       via SocketClient.shared(). See client/js/socket-early.js. room-early-join.js (#393)
+       emits room:join on connect and holds replies until room-socket.js releases them. -->
   <script src="js/session.js?v=7d763f30"></script>
   <script src="/vendor/socket.io/socket.io.min.js"></script>
-  <script src="js/socket-client.js?v=c3c76eda"></script>
+  <script src="js/socket-client.js?v=89ce4288"></script>
   <script src="js/socket-early.js?v=a384ff9d"></script>
+  <script src="js/room-early-join.js?v=e4d87758"></script>
   <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
   <link rel="stylesheet" href="css/main.css?v=8aabd3f8" />
@@ -41,7 +43,7 @@
   <link rel="modulepreload" href="js/room-ui.js?v=ccffbeb5" />
   <link rel="modulepreload" href="js/room-stage.js?v=07770a6a" />
   <link rel="modulepreload" href="js/game-ui.js?v=823536da" />
-  <link rel="modulepreload" href="js/room-socket.js?v=1e97b0c2" />
+  <link rel="modulepreload" href="js/room-socket.js?v=4e5d32b3" />
 
 </head>
 
@@ -290,7 +292,7 @@
   <script src="js/timer-sync-core.js?v=c56a5a16"></script>
   <script src="js/audio-manager.js?v=7f8d015d"></script>
   <script src="js/action-delegate.js?v=7420bbed"></script>
-  <script type="module" src="js/room-entry.js?v=117b1be9"></script>
+  <script type="module" src="js/room-entry.js?v=b9299d05"></script>
 </body>
 
 </html>

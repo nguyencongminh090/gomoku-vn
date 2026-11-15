@@ -1,7 +1,8 @@
 // Run: SP=<scratch> tools/perf/room-join-timing.sh <label> — CHROME=<chromium binary> if Playwright's pinned revision is absent
 // #391: time a table join (index.html → room.html?id=…) under Cloudflare-like latency (CDP throttling).
 // Marks are performance.now() on room.html, i.e. ms since that navigation started:
-//   dcl = DOMContentLoaded, io = io() called, connect = socket 'connect', joined = first 'room:joined'.
+//   dcl = DOMContentLoaded, io = io() called, connect = socket 'connect', joined = first 'room:joined' on the wire,
+//   handled = the page's room:joined handler ran (#393: replies are held until room-socket.js, so joined ≠ handled).
 const path = require('path');
 const REPO = process.env.REPO, B = process.env.BASE, RUNS = +(process.env.RUNS || 5);
 const LAT = +(process.env.LATENCY || 150), KBPS = +(process.env.KBPS || 1250), CPU = +(process.env.CPU || 4);
@@ -33,6 +34,12 @@ const HOOK = () => {
     },
   });
   document.addEventListener('DOMContentLoaded', () => performance.mark('dcl'));
+  // #393: 'joined' is wire arrival; 'handled' = the room:joined handler ran (its first act starts hiding the overlay).
+  new MutationObserver((recs, mo) => {
+    if (recs.some(r => r.target.id === 'room-entry-overlay' && !(r.target.classList.contains('visible') && !r.target.classList.contains('leaving')))) {
+      performance.mark('handled'); mo.disconnect();
+    }
+  }).observe(document, { attributes: true, attributeFilter: ['class'], subtree: true });
 };
 const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor(s.length / 2)]; };
 (async () => {
@@ -54,10 +61,10 @@ const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor
     for (const kind of ['cold', 'warm']) {
       await page.goto(B + '/index.html'); await page.waitForTimeout(1500);
       await page.goto(`${B}/room.html?id=${encodeURIComponent(roomId)}`);
-      await page.waitForFunction(() => performance.getEntriesByName('joined').length, null, { timeout: 30000 });
+      await page.waitForFunction(() => performance.getEntriesByName('handled').length, null, { timeout: 30000 });
       const m = await page.evaluate(() => {
         const g = (n) => { const e = performance.getEntriesByName(n)[0]; return e ? Math.round(e.startTime) : null; };
-        return { dcl: g('dcl'), io: g('io'), connect: g('connect'), joined: g('joined'), ioCalls: window.__ioCalls, ws: (window.RoomClient && window.RoomClient === window.__gvnSharedClient) };
+        return { dcl: g('dcl'), io: g('io'), connect: g('connect'), joined: g('joined'), handled: g('handled'), ioCalls: window.__ioCalls, ws: (window.RoomClient && window.RoomClient === window.__gvnSharedClient) };
       });
       rows[kind].push(m);
     }
@@ -66,7 +73,7 @@ const med = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.floor
   await browser.close(); host.close();
   const out = { label: process.env.LABEL, latencyMs: LAT, kbps: KBPS, cpu: CPU, runs: RUNS, errs };
   for (const k of ['cold', 'warm']) {
-    out[k] = { median: Object.fromEntries(['dcl', 'io', 'connect', 'joined'].map(f => [f, med(rows[k].map(r => r[f]))])), ioCalls: [...new Set(rows[k].map(r => r.ioCalls))], sharedClient: [...new Set(rows[k].map(r => r.ws))], rows: rows[k] };
+    out[k] = { median: Object.fromEntries(['dcl', 'io', 'connect', 'joined', 'handled'].map(f => [f, med(rows[k].map(r => r[f]))])), ioCalls: [...new Set(rows[k].map(r => r.ioCalls))], sharedClient: [...new Set(rows[k].map(r => r.ws))], rows: rows[k] };
   }
   console.log(JSON.stringify(out, null, 1));
 })().catch(e => { console.error(e); process.exit(1); });

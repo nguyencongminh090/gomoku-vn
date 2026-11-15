@@ -1,3 +1,4 @@
+✅ - **#393.** room:join is still emitted only after room.html's module graph `[Model: Sonnet 5]` — [detail](docs/todo/B393-room-join-emit-waits-modules.md)
 ✅ - **#390.** Rooms tab first paint waits for the socket and re-staggers every snapshot `[Model: Sonnet 5]` — [detail](docs/todo/B390-rooms-tab-first-paint.md)
 ✅ - **#391.** room.html opens its socket only after the module graph (no socket-early) `[Model: Sonnet 5]` — [detail](docs/todo/B391-room-page-early-socket.md)
 ✅ - **#392.** See all live tables fast vs the 30-card lobby page; load tests off the prod host `[Model: Opus 5]` — [detail](docs/todo/B392-see-all-live-tables.md)
