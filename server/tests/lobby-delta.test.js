@@ -437,6 +437,61 @@ describe('lobby mini-board throttle (#364)', () => {
     expect(io.emitted[0].data.upserts.map((r) => r.roomId)).toEqual(['#AAA']);
   });
 
+  // #389: one move can land anywhere in the board window; its card must update within 1 s either way
+  // (was 0.3–2.8 s: 2.5 s window + the 300 ms seat debounce on top).
+  const BOUND_MS = 1000;
+  /** ms from now until a lobby:patch carrying `roomId` is emitted (stepping fake time 10 ms). */
+  function msUntilPatchFor(io, roomId, limit = 5000) {
+    for (let t = 0; t <= limit; t += 10) {
+      if (io.emitted.some((e) => e.event === 'lobby:patch' && e.data.upserts.some((r) => r.roomId === roomId))) return t;
+      jest.advanceTimersByTime(10);
+    }
+    return Infinity;
+  }
+  test.each([0, 10, 500, 990])('a move %i ms into an open window reaches the lobby within 1 s', (offset) => {
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB', { moves: [3, 3] })]);
+    flush(io);
+    io.emitted.length = 0;
+
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB', { moves: [3, 3, 4, 4] })]);
+    scheduleLobbyBoardUpdate(io, '#BBB'); // opens the window
+    jest.advanceTimersByTime(offset);
+    io.emitted.length = 0;
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7, 8, 8] }), entry('#BBB', { moves: [3, 3, 4, 4] })]);
+    scheduleLobbyBoardUpdate(io, '#AAA');
+    expect(msUntilPatchFor(io, '#AAA')).toBeLessThanOrEqual(BOUND_MS);
+  });
+
+  test('a move made while a seat-change flush is pending still lands within 1 s', () => {
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB')]);
+    flush(io);
+    io.emitted.length = 0;
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7, 8, 8] }), entry('#BBB', { playerCount: 1 })]);
+    broadcastLobbyUpdate(io, '#BBB');
+    scheduleLobbyBoardUpdate(io, '#AAA');
+    expect(msUntilPatchFor(io, '#AAA')).toBeLessThanOrEqual(BOUND_MS);
+  });
+
+  test('a stream of moves still coalesces: at most one board patch per window, never one per move', () => {
+    const io = makeIo();
+    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [] })]);
+    flush(io);
+    io.emitted.length = 0;
+    const moves = [];
+    for (let i = 0; i < 100; i++) { // a move every 100 ms for 10 s
+      moves.push(i % 15, 0);
+      mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [...moves] })]);
+      scheduleLobbyBoardUpdate(io, '#AAA');
+      jest.advanceTimersByTime(100);
+    }
+    jest.advanceTimersByTime(BOUND_MS);
+    const patches = io.emitted.filter((e) => e.event === 'lobby:patch').length;
+    expect(patches).toBeLessThanOrEqual(Math.ceil(10_000 / LOBBY_BOARD_THROTTLE_MS) + 1);
+    expect(patches).toBeGreaterThan(1);
+  });
+
   test('does not poke the home feed (its counts do not change on a move)', () => {
     homeFeed.scheduleHomeUpdate.mockClear();
     const io = makeIo();
