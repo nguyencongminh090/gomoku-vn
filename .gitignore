@@ -67,3 +67,6 @@ server/db/backups/
 
 # crawled data exports (contain usernames/avatars)
 exports/
+
+# Hosting proposal (local only)
+docs/proposal/
