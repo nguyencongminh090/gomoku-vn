@@ -8,7 +8,8 @@ rm -rf $D; mkdir -p $D; cp $REPO/exports/vncaro-sim.db $D/perf.db
 cd $T
 JWT_SECRET=${JWT_SECRET:-perf386-not-a-real-secret-0123456789abcdef0123456789} MAX_ROOMS=10000 MAX_ROOMS_PER_IP=100000 AUTH_LIMITER_MAX=1000000 PORT=3117 CORS_ORIGIN=http://localhost:3117 GOMOKU_DB_PATH=$D/perf.db LOG_LEVEL=warn \
   nohup node --max-old-space-size=3072 -r $REPO/tools/perf/eld.js server/index.js > $D/server.log 2>&1 &
-SPID=$!; echo $SPID > $D/server.pid; date +%s > $D/srv-start; sleep 6
+SPID=$!; echo $SPID > $D/server.pid; date +%s > $D/srv-start
+until curl -s -o /dev/null localhost:3117; do sleep 1; done # was a fixed sleep 6: a slow boot left the watchers ECONNREFUSED (#389)
 cd $D; export REPO GUESTS=1
 WAIT_SIGNAL=1 node $REPO/tools/perf/load.js http://localhost:3117 0 1000 $WATCHERS 1 > watchers.log 2>&1 &
 WP=$!

@@ -373,3 +373,4 @@ Moved here from `TODO.md`. Detail + evidence: the linked `docs/todo/<CODE>-*.md`
 - ✅ **#246.** Registration cap/close + enforce startsAt/endsAt (size M–L) `[Model: Sonnet 5]` — [detail](docs/todo/B246-tournament-registration-cap-and-dates.md)
 ✅ - **#330.** Rankings on phone: no sideways scroll (# · Người chơi · Rating), top 3 highlighted `[Model: Sonnet 5]` — [detail](docs/todo/B330-rankings-phone-table.md)
 - ✅ **#377.** lobby:patch sends full `moves` of every moved room (~300 KB/2.5 s per viewer at 500 rooms) → delta `[Model: Opus 5]` — [detail](docs/todo/B377-lobby-patch-moves-delta.md)
+- ✅ **#389.** Rooms tab live boards land 0.3–2.8 s after the move (uneven board throttle) `[Model: Sonnet 5]` — [detail](docs/todo/B389-lobby-live-board-cadence.md)
