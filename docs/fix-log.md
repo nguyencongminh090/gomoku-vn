@@ -342,3 +342,4 @@
 | 2026-11-15 20:06 | Validate admin actions and revoke sessions atomically when locking accounts | [detail](fix-log/2026-11-15-admin-action-validation.md) |
 | 2026-11-15 20:06 | Fix Admin console loading, keyboard navigation and user selection races | [detail](fix-log/2026-11-15-admin-console-state.md) |
 | 2026-11-15 20:06 | Apply ranking search within the selected scope and fix stale ranking and profile responses | [detail](fix-log/2026-11-15-ranking-profile-requests.md) |
+| 2026-11-15 20:06 | Count Swiss rematches in tiebreaks and persist tournament rankings atomically | [detail](fix-log/2026-11-15-tournament-rankings.md) |

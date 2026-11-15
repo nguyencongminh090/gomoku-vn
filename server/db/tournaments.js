@@ -3,7 +3,7 @@
 /** db/tournaments.js — split out of database.js (#258); code moved verbatim. */
 
 const logger = require('../utils/logger');
-const { stmt } = require('./connection');
+const { db, stmt } = require('./connection');
 const { withWinnerName } = require('./games');
 
 
@@ -114,16 +114,12 @@ function setTournamentPlayerWithdrawn(entryId) {
   stmt('UPDATE tournament_players SET withdrawn = 1 WHERE entry_id = ?').run(entryId);
 }
 
-/**
- * Persist an entry's final standing once a tournament completes
- * (TournamentManager._completeTournament/_assignDoubleElimFinalRanks) —
- * previously in-memory only, needed now so it survives a reload (TODO.md #77).
- * @param {string} entryId
- * @param {number} finalRank
- */
-function updateTournamentPlayerRank(entryId, finalRank) {
-  stmt('UPDATE tournament_players SET final_rank = ? WHERE entry_id = ?').run(finalRank, entryId);
-}
+/** Save final ranks and completion together so a failed write can be retried on reload. */
+const saveTournamentCompletion = db.transaction((id, completedAt, ranks) => {
+  updateTournamentStatus(id, 'completed', { completedAt });
+  const updateRank = stmt('UPDATE tournament_players SET final_rank = ? WHERE tournament_id = ? AND entry_id = ?');
+  for (const [entryId, rank] of ranks) updateRank.run(rank, id, entryId);
+});
 
 /**
  * Persist an entry's bracket/pairing seed, assigned once at start (#242).
@@ -329,4 +325,4 @@ function getTournamentGameById(id) {
   return row;
 }
 
-module.exports = { createTournament, getTournamentById, getAllTournaments, updateTournamentStatus, saveTournamentPlayer, deleteTournamentPlayer, getTournamentPlayers, updateTournamentPlayerRank, setTournamentPlayerWithdrawn, updateTournamentPlayerSeed, createTournamentRound, getTournamentRounds, savePairing, getPairingsByTournament, saveTournamentGame, getTournamentGames, getTournamentGameCount, getTournamentGameById };
+module.exports = { createTournament, getTournamentById, getAllTournaments, updateTournamentStatus, saveTournamentPlayer, deleteTournamentPlayer, getTournamentPlayers, saveTournamentCompletion, setTournamentPlayerWithdrawn, updateTournamentPlayerSeed, createTournamentRound, getTournamentRounds, savePairing, getPairingsByTournament, saveTournamentGame, getTournamentGames, getTournamentGameCount, getTournamentGameById };

@@ -51,35 +51,28 @@ function computeStandings(entries, completedPairings) {
  * @returns {{id: string, score: number, buchholz: number, sonnebornBerger: number}[]}
  */
 function computeTiebreaks(standings, completedPairings) {
-  const scoreById = new Map(standings.map((s) => [s.id, s.score]));
-  const resultsAgainst = new Map(standings.map((s) => [s.id, new Map()]));
+  const rows = standings.map(({ id, score }) => ({ id, score, buchholz: 0, sonnebornBerger: 0 }));
+  const byId = new Map(rows.map((row) => [row.id, row]));
 
-  for (const p of completedPairings) {
-    if (p.player2 == null) continue; // byes have no real opponent to weight by
-    if (!resultsAgainst.has(p.player1) || !resultsAgainst.has(p.player2)) continue;
-    if (p.winner === 'draw') {
-      resultsAgainst.get(p.player1).set(p.player2, 'draw');
-      resultsAgainst.get(p.player2).set(p.player1, 'draw');
-    } else if (p.winner === p.player1) {
-      resultsAgainst.get(p.player1).set(p.player2, 'win');
-      resultsAgainst.get(p.player2).set(p.player1, 'loss');
-    } else if (p.winner === p.player2) {
-      resultsAgainst.get(p.player2).set(p.player1, 'win');
-      resultsAgainst.get(p.player1).set(p.player2, 'loss');
+  for (const { player1, player2, winner } of completedPairings) {
+    const first = byId.get(player1);
+    const second = byId.get(player2);
+    if (!first || !second || (winner !== 'draw' && winner !== player1 && winner !== player2)) continue;
+
+    // Each completed pairing contributes, including rematches in Swiss rounds.
+    first.buchholz += second.score;
+    second.buchholz += first.score;
+    if (winner === 'draw') {
+      first.sonnebornBerger += second.score / 2;
+      second.sonnebornBerger += first.score / 2;
+    } else if (winner === player1) {
+      first.sonnebornBerger += second.score;
+    } else {
+      second.sonnebornBerger += first.score;
     }
   }
 
-  return standings.map((s) => {
-    let buchholz = 0;
-    let sonnebornBerger = 0;
-    for (const [oppId, result] of resultsAgainst.get(s.id)) {
-      const oppScore = scoreById.get(oppId) || 0;
-      buchholz += oppScore;
-      if (result === 'win') sonnebornBerger += oppScore;
-      else if (result === 'draw') sonnebornBerger += oppScore / 2;
-    }
-    return { id: s.id, score: s.score, buchholz, sonnebornBerger };
-  });
+  return rows;
 }
 
 /**

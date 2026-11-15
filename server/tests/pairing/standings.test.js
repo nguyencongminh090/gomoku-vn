@@ -120,6 +120,23 @@ describe('computeTiebreaks — Sonneborn-Berger', () => {
   });
 });
 
+test('each Swiss rematch contributes regardless of pairing order', () => {
+  const entries = [{ id: 'A' }, { id: 'B' }];
+  const pairings = [
+    { player1: 'A', player2: 'B', winner: 'A' },
+    { player1: 'B', player2: 'A', winner: 'B' },
+    { player1: 'A', player2: 'B', winner: 'draw' },
+  ];
+  const standings = computeStandings(entries, pairings);
+  const expected = [
+    { id: 'A', score: 1.5, buchholz: 4.5, sonnebornBerger: 2.25, rank: 1 },
+    { id: 'B', score: 1.5, buchholz: 4.5, sonnebornBerger: 2.25, rank: 1 },
+  ];
+
+  expect(rankStandings(computeTiebreaks(standings, pairings))).toEqual(expected);
+  expect(rankStandings(computeTiebreaks(standings, [...pairings].reverse()))).toEqual(expected);
+});
+
 describe('rankStandings', () => {
   test('ranks by score, then Buchholz, then Sonneborn-Berger, all descending', () => {
     const rows = [

@@ -286,6 +286,9 @@ class TournamentManager extends EventEmitter {
       } else {
         this._advanceIfRoundComplete(tournament);
       }
+    } else if (tournament.status === 'completed' && [...tournament.entries.values()].some((entry) => entry.finalRank == null)) {
+      // Repair tournaments left partially ranked by the former non-atomic completion writes.
+      this._saveFinalRanks(tournament, tournament.completedAt);
     }
   }
 
@@ -1284,30 +1287,31 @@ class TournamentManager extends EventEmitter {
   }
 
   _completeTournament(tournament) {
+    if (tournament.status !== 'active') return;
+    const completedAt = new Date().toISOString();
+    this._saveFinalRanks(tournament, completedAt);
     tournament.status = 'completed';
-    tournament.completedAt = new Date().toISOString();
-    database.updateTournamentStatus(tournament.tournamentId, 'completed', { completedAt: tournament.completedAt });
-
-    if (tournament.format === 'double_elim') {
-      this._assignDoubleElimFinalRanks(tournament);
-    } else {
-      const entries = Array.from(tournament.entries.values()).map((e) => ({ id: e.entryId }));
-      const standings = standingsModule.computeStandings(entries, tournament.completedPairings);
-      const tiebreaks = standingsModule.computeTiebreaks(standings, tournament.completedPairings);
-      const ranked = tournament.format === 'round_robin'
-        ? standingsModule.rankRoundRobinStandings(tiebreaks, tournament.completedPairings)
-        : standingsModule.rankStandings(tiebreaks);
-      for (const row of ranked) {
-        const entry = tournament.entries.get(row.id);
-        if (entry) {
-          entry.finalRank = row.rank;
-          database.updateTournamentPlayerRank(entry.entryId, row.rank);
-        }
-      }
-    }
+    tournament.completedAt = completedAt;
 
     this.emit('tournament_completed', tournament.tournamentId);
     logger.info(`[TournamentManager] Tournament ${tournament.tournamentId} completed`);
+  }
+
+  _saveFinalRanks(tournament, completedAt) {
+    const ranks = this._computeFinalRanks(tournament);
+    database.saveTournamentCompletion(tournament.tournamentId, completedAt, ranks);
+    for (const [entryId, rank] of ranks) tournament.entries.get(entryId).finalRank = rank;
+  }
+
+  _computeFinalRanks(tournament) {
+    if (tournament.format === 'double_elim') return this._computeDoubleElimFinalRanks(tournament);
+    const entries = Array.from(tournament.entries.keys(), (id) => ({ id }));
+    const standings = standingsModule.computeStandings(entries, tournament.completedPairings);
+    const tiebreaks = standingsModule.computeTiebreaks(standings, tournament.completedPairings);
+    const ranked = tournament.format === 'round_robin'
+      ? standingsModule.rankRoundRobinStandings(tiebreaks, tournament.completedPairings)
+      : standingsModule.rankStandings(tiebreaks);
+    return new Map(ranked.map(({ id, rank }) => [id, rank]));
   }
 
   /**
@@ -1317,37 +1321,26 @@ class TournamentManager extends EventEmitter {
    * same round = tie, sharing the rank like standings.js: 1+players ahead).
    * Win count is deliberately not used — it isn't a meaningful DE signal.
    */
-  _assignDoubleElimFinalRanks(tournament) {
+  _computeDoubleElimFinalRanks(tournament) {
+    const ranks = new Map();
     const gfResetId = this._deId(tournament, 'GF_RESET');
     const finalLocalId = tournament.bracket.grandFinal ? 'GF' : tournament.bracket.winners[0][0].id;
     const finalId = this.pairings.has(gfResetId) ? gfResetId : this._deId(tournament, finalLocalId);
     const finalPairing = this.pairings.get(finalId);
-    if (!finalPairing || !finalPairing.result) return;
+    if (!finalPairing || !finalPairing.result) return ranks;
 
     const championId = finalPairing.result.winnerEntryId;
     const runnerUpId = championId === finalPairing.player1EntryId ? finalPairing.player2EntryId : finalPairing.player1EntryId;
-    const championEntry = tournament.entries.get(championId);
-    const runnerUpEntry = tournament.entries.get(runnerUpId);
-    if (championEntry) {
-      championEntry.finalRank = 1;
-      database.updateTournamentPlayerRank(championEntry.entryId, 1);
-    }
-    if (runnerUpEntry) {
-      runnerUpEntry.finalRank = 2;
-      database.updateTournamentPlayerRank(runnerUpEntry.entryId, 2);
-    }
+    if (tournament.entries.has(championId)) ranks.set(championId, 1);
+    if (tournament.entries.has(runnerUpId)) ranks.set(runnerUpId, 2);
 
     let nextRank = 3;
     for (const group of doubleElimPairing.computeEliminationGroups(tournament.bracket, tournament.bracketResults)) {
-      const ids = group.filter((id) => id !== championId && id !== runnerUpId);
-      for (const id of ids) {
-        const entry = tournament.entries.get(id);
-        if (!entry) continue;
-        entry.finalRank = nextRank;
-        database.updateTournamentPlayerRank(entry.entryId, nextRank);
-      }
+      const ids = group.filter((id) => id !== championId && id !== runnerUpId && tournament.entries.has(id));
+      for (const id of ids) ranks.set(id, nextRank);
       nextRank += ids.length;
     }
+    return ranks;
   }
 
   // ---------------------------------------------------------------------------

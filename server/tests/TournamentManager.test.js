@@ -1598,6 +1598,61 @@ describe('TournamentManager — loadTournamentsFromDb', () => {
     expect(reloadedPairing.roundIndex).toBe(1);
   });
 
+  function startSwissFinal() {
+    const organizer = user();
+    const tournament = tournamentManager.createTournament(organizer, { format: 'swiss' }).tournament;
+    const { tournamentId } = tournament;
+    const p1 = user();
+    const p2 = user();
+    const entries = [p1, p2].map((p) => tournamentManager.registerPlayer(p, tournamentId).entryId);
+    tournamentManager.startTournament(organizer.userId, tournamentId);
+    const [pairing] = tournamentManager.listPairings(tournamentId);
+    advanceToReady(tournamentId, pairing.pairingId, p1.userId, p2.userId);
+    tournamentManager.markPairingReady(p1.userId, tournamentId, pairing.pairingId);
+    tournamentManager.markPairingReady(p2.userId, tournamentId, pairing.pairingId);
+    return { tournament, entries, pairing };
+  }
+
+  test('a final rank write failure rolls back standings and completion, allowing recovery on reload', () => {
+    const { tournament, entries, pairing } = startSwissFinal();
+    const { tournamentId } = tournament;
+    database.db.exec([
+      'CREATE TEMP TRIGGER fail_final_rank BEFORE UPDATE OF final_rank ON tournament_players',
+      "WHEN NEW.final_rank = 2 BEGIN SELECT RAISE(ABORT, 'final rank write failed'); END;",
+    ].join(' '));
+    try {
+      expect(() => tournamentManager.recordPairingResult(tournamentId, pairing.pairingId, entries[0]))
+        .toThrow('final rank write failed');
+    } finally {
+      database.db.exec('DROP TRIGGER fail_final_rank');
+    }
+
+    expect(database.getTournamentById(tournamentId)).toMatchObject({ status: 'active', completed_at: null });
+    expect(database.getTournamentPlayers(tournamentId).map((p) => p.final_rank)).toEqual([null, null]);
+    expect(tournament.status).toBe('active');
+    expect(entries.map((id) => tournament.entries.get(id).finalRank)).toEqual([null, null]);
+
+    reload();
+    const reloaded = tournamentManager.getTournament(tournamentId);
+    expect(reloaded.status).toBe('completed');
+    expect(entries.map((id) => reloaded.entries.get(id).finalRank)).toEqual([1, 2]);
+    expect(database.getTournamentPlayers(tournamentId).map((p) => p.final_rank)).toEqual([1, 2]);
+  });
+
+  test('reload restores missing ranks for a tournament completed by the old write order', () => {
+    const { tournament, entries, pairing } = startSwissFinal();
+    const { tournamentId } = tournament;
+    tournamentManager.recordPairingResult(tournamentId, pairing.pairingId, entries[0]);
+    const { completedAt } = tournament;
+    database.db.prepare('UPDATE tournament_players SET final_rank = NULL WHERE entry_id = ?').run(entries[1]);
+
+    reload();
+    const reloaded = tournamentManager.getTournament(tournamentId);
+    expect(reloaded).toMatchObject({ status: 'completed', completedAt });
+    expect(entries.map((id) => reloaded.entries.get(id).finalRank)).toEqual([1, 2]);
+    expect(database.getTournamentPlayers(tournamentId).map((p) => p.final_rank)).toEqual([1, 2]);
+  });
+
   test('round robin: allRounds/currentRoundIndex regenerate correctly, and a post-reload result still advances the schedule', () => {
     const organizer = user();
     const tournament = tournamentManager.createTournament(organizer, { format: 'round_robin' }).tournament;

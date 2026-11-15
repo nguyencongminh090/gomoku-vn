@@ -91,6 +91,31 @@ describe('bracket views in the Standings tab', () => {
     expect([...document.querySelectorAll('.bracket--swiss .bracket__col-title')].map((e) => e.textContent)).toEqual(['tdetail.round_word 2', 'tdetail.round_word 1']);
   });
 
+  test('Swiss standings count rematches and honor the saved final ranks', () => {
+    setup();
+    const fixture = {
+      tournament: base('swiss', { entries: entries.slice(0, 2) }),
+      pairings: [
+        pairing('p1', null, 'e1', 'e2', 'e1', { roundIndex: 1 }),
+        pairing('p2', null, 'e1', 'e2', 'e2', { roundIndex: 2 }),
+      ],
+    };
+    const renderedRows = () => [...document.querySelectorAll('.standings-table tbody tr')]
+      .map((row) => [...row.cells].map((cell) => cell.textContent));
+    sock.trigger('tournament:detail', fixture);
+    expect(renderedRows()).toEqual([['1', 'P1', '1.0', '2.0', '1.0'], ['1', 'P2', '1.0', '2.0', '1.0']]);
+
+    sock.trigger('tournament:detail', {
+      ...fixture,
+      tournament: {
+        ...fixture.tournament,
+        status: 'completed',
+        entries: fixture.tournament.entries.map((entry, index) => ({ ...entry, finalRank: 2 - index })),
+      },
+    });
+    expect(renderedRows()).toEqual([['1', 'P2', '1.0', '2.0', '1.0'], ['2', 'P1', '1.0', '2.0', '1.0']]);
+  });
+
   test('cards with two players are keyboard-focusable links carrying their pairing id; byes are not', () => {
     setup();
     sock.trigger('tournament:detail', {

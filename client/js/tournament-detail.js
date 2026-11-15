@@ -669,7 +669,6 @@ function computeStandings() {
     }));
 
   const score = new Map(entries.map((e) => [e.id, 0]));
-  const opponents = new Map(entries.map((e) => [e.id, []]));
   for (const p of completed) {
     if (p.player2 == null) {
       if (score.has(p.player1)) score.set(p.player1, score.get(p.player1) + 1);
@@ -683,37 +682,30 @@ function computeStandings() {
     } else if (p.winner === p.player2 && score.has(p.player2)) {
       score.set(p.player2, score.get(p.player2) + 1);
     }
-    if (opponents.has(p.player1)) opponents.get(p.player1).push(p.player2);
-    if (opponents.has(p.player2)) opponents.get(p.player2).push(p.player1);
   }
-  const standings = entries.map((e) => ({ id: e.id, score: score.get(e.id) || 0, opponents: opponents.get(e.id) || [] }));
+  const tiebreaks = entries.map(({ id }) => ({ id, score: score.get(id), buchholz: 0, sonnebornBerger: 0 }));
+  const byId = new Map(tiebreaks.map((row) => [row.id, row]));
+  for (const { player1, player2, winner } of completed) {
+    const first = byId.get(player1);
+    const second = byId.get(player2);
+    if (!first || !second || (winner !== 'draw' && winner !== player1 && winner !== player2)) continue;
 
-  const scoreById = new Map(standings.map((s) => [s.id, s.score]));
-  const resultsAgainst = new Map(standings.map((s) => [s.id, new Map()]));
-  for (const p of completed) {
-    if (p.player2 == null) continue;
-    if (!resultsAgainst.has(p.player1) || !resultsAgainst.has(p.player2)) continue;
-    if (p.winner === 'draw') {
-      resultsAgainst.get(p.player1).set(p.player2, 'draw');
-      resultsAgainst.get(p.player2).set(p.player1, 'draw');
-    } else if (p.winner === p.player1) {
-      resultsAgainst.get(p.player1).set(p.player2, 'win');
-      resultsAgainst.get(p.player2).set(p.player1, 'loss');
-    } else if (p.winner === p.player2) {
-      resultsAgainst.get(p.player2).set(p.player1, 'win');
-      resultsAgainst.get(p.player1).set(p.player2, 'loss');
+    first.buchholz += second.score;
+    second.buchholz += first.score;
+    if (winner === 'draw') {
+      first.sonnebornBerger += second.score / 2;
+      second.sonnebornBerger += first.score / 2;
+    } else if (winner === player1) {
+      first.sonnebornBerger += second.score;
+    } else {
+      second.sonnebornBerger += first.score;
     }
   }
-  const tiebreaks = standings.map((s) => {
-    let buchholz = 0, sonnebornBerger = 0;
-    for (const [oppId, result] of resultsAgainst.get(s.id)) {
-      const oppScore = scoreById.get(oppId) || 0;
-      buchholz += oppScore;
-      if (result === 'win') sonnebornBerger += oppScore;
-      else if (result === 'draw') sonnebornBerger += oppScore / 2;
-    }
-    return { id: s.id, score: s.score, buchholz, sonnebornBerger };
-  });
+
+  if (tournament.status === 'completed' && tournament.entries.every((entry) => Number.isInteger(entry.finalRank))) {
+    const finalRanks = new Map(tournament.entries.map((entry) => [entry.entryId, entry.finalRank]));
+    return tiebreaks.map((row) => ({ ...row, rank: finalRanks.get(row.id) })).sort((a, b) => a.rank - b.rank);
+  }
 
   const sorted = [...tiebreaks].sort((a, b) => b.score - a.score || b.buchholz - a.buchholz || b.sonnebornBerger - a.sonnebornBerger);
   const ranked = [];
