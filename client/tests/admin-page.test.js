@@ -138,4 +138,35 @@ describe('admin shell', () => {
     await boot(ME.member, 200, '', true);
     expect($('adm-msg').textContent).toBe('admin.error');
   });
+
+  it.each([[503, { code: 'SERVER_ERROR' }], [200, null], [200, { role: 'admin' }]])(
+    'shows an error for an unusable permission response (%i)', async (status, payload) => {
+      await boot(payload, status);
+      expect($('adm-msg').textContent).toBe('admin.error');
+      expect($('adm-tabs').hidden).toBe(true);
+      expect($('adm-role').textContent).toBe('');
+    },
+  );
+
+  it('moves between permitted tabs with the keyboard and associates them with their panels', async () => {
+    await boot(ME.moderator, 200, '#forum');
+    const forum = $('adm-tab-forum');
+    const puzzles = $('adm-tab-puzzles');
+    expect(forum.getAttribute('aria-controls')).toBe('adm-forum');
+    expect($('adm-forum').getAttribute('aria-labelledby')).toBe(forum.id);
+    expect(forum.tabIndex).toBe(0);
+    expect(puzzles.tabIndex).toBe(-1);
+
+    forum.focus();
+    forum.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(puzzles);
+    expect($('adm-puzzles').hidden).toBe(false);
+    expect(window.location.hash).toBe('#puzzles');
+    expect(puzzles.tabIndex).toBe(0);
+    expect(forum.tabIndex).toBe(-1);
+
+    puzzles.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }));
+    expect(document.activeElement).toBe(forum);
+    expect($('adm-forum').hidden).toBe(false);
+  });
 });

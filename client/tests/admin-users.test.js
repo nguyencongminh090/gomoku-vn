@@ -17,6 +17,12 @@ const settle = async () => { for (let i = 0; i < 8; i++) await flush(); };
 const $ = (id) => document.getElementById(id);
 const ok = (b) => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(b) });
 const fail = (status, b) => Promise.resolve({ ok: false, status, json: () => Promise.resolve(b || {}) });
+const rejectRequest = () => Promise.reject(new Error('Offline'));
+const deferred = () => {
+  let resolve;
+  const response = new Promise((done) => { resolve = done; });
+  return { response, resolve };
+};
 
 const U = (id, over) => ({ id, username: id, displayName: id.toUpperCase(), role: 'member', locked: false, google: false, ...over });
 const LIST = { users: [U('bob'), U('eve', { locked: true })], pagination: { page: 1, limit: 20, total: 2, totalPages: 1 } };
@@ -29,7 +35,11 @@ const DETAIL = (id, over) => ({
 function boot(impl) {
   jest.resetModules();
   document.body.innerHTML = HTML;
-  window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
+  $('adm-users').hidden = false;
+  window.t = (k, v) => ({
+    'err.admin_self_forbidden': 'You cannot change your own account.',
+    'err.admin_forbidden': 'Admin permission required.',
+  })[k] || k + (v ? JSON.stringify(v) : '');
   window.Forum = { pager: jest.fn() };
   global.fetch = jest.fn(impl);
   require('../js/admin-users.js');
@@ -63,6 +73,30 @@ describe('users tab', () => {
     expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/admin/users?page=1&q=a%26b');
   });
 
+  it('shows the latest search results even when the earlier request finishes last', async () => {
+    const earlier = deferred();
+    boot(routes({
+      'GET /api/admin/users': (url) => url.endsWith('q=') ? earlier.response : ok({ ...LIST, users: [U('eve')] }),
+    }));
+    $('us-q').value = 'eve';
+    $('us-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    earlier.resolve(ok(LIST));
+    await settle();
+    expect([...$('us-list').querySelectorAll('.us-row')].map((row) => row.dataset.id)).toEqual(['eve']);
+  });
+
+  it('reports a failed search and clears the preceding results', async () => {
+    boot(routes({ 'GET /api/admin/users': (url) => url.endsWith('q=') ? ok(LIST) : rejectRequest() }));
+    await settle();
+    $('us-q').value = 'eve';
+    $('us-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+    expect($('us-msg').textContent).toBe('admin.error');
+    expect($('us-msg').hidden).toBe(false);
+    expect($('us-list').children).toHaveLength(0);
+  });
+
   it('opening a user shows role, history and a graph with one node per person and one edge per change', async () => {
     boot(routes());
     await settle();
@@ -76,6 +110,37 @@ describe('users tab', () => {
     expect($('us-graph').querySelectorAll('line.us-edge--role_set')).toHaveLength(1);
     expect($('us-graph').querySelector('b')).toBeNull(); // names never become markup
     expect($('us-lock').textContent).toBe('admin.u_lock');
+  });
+
+  it('keeps the latest selected user when an earlier detail request finishes last', async () => {
+    const earlier = deferred();
+    boot(routes({ 'GET /api/admin/users/bob': () => earlier.response }));
+    await settle();
+    const [bob, eve] = $('us-list').querySelectorAll('.us-row');
+    bob.click();
+    eve.click();
+    await settle();
+    earlier.resolve(ok(DETAIL('bob')));
+    await settle();
+    expect($('us-name').textContent).toBe('EVE');
+    expect($('us-list').querySelector('.is-active').dataset.id).toBe('eve');
+  });
+
+  it('shows a detail error with no user selected and allows retry', async () => {
+    const first = jest.fn().mockImplementationOnce(rejectRequest).mockImplementation(() => ok(DETAIL('bob')));
+    boot(routes({ 'GET /api/admin/users/bob': first }));
+    await settle();
+    const bob = $('us-list').querySelector('.us-row');
+    bob.click();
+    await settle();
+    expect($('us-result').textContent).toBe('admin.error');
+    expect($('us-result').hidden).toBe(false);
+    expect($('us-result').closest('[hidden]')).toBeNull();
+    expect($('us-detail').hidden).toBe(true);
+    bob.click();
+    await settle();
+    expect($('us-detail').hidden).toBe(false);
+    expect($('us-result').hidden).toBe(true);
   });
 
   it('changing the role POSTs it, then reloads the detail', async () => {
@@ -99,8 +164,42 @@ describe('users tab', () => {
     $('us-role').value = 'admin';
     $('us-role').dispatchEvent(new Event('change'));
     await settle();
-    expect($('us-result').textContent).toBe('err.admin_self_forbidden');
+    expect($('us-result').textContent).toBe('You cannot change your own account.');
     expect($('us-role').value).toBe('member');
+  });
+
+  it('prevents another mutation while saving and restores controls after a network error', async () => {
+    const post = deferred();
+    const lock = jest.fn(() => ok({}));
+    boot(routes({ 'POST /api/admin/users/bob/role': () => post.response, 'POST /api/admin/users/bob/lock': lock }));
+    await settle();
+    $('us-list').querySelector('.us-row').click();
+    await settle();
+    $('us-role').value = 'moderator';
+    $('us-role').dispatchEvent(new Event('change'));
+    expect($('us-lock').disabled).toBe(true);
+    expect($('us-role').disabled).toBe(true);
+    $('us-lock').click();
+    expect(lock).not.toHaveBeenCalled();
+    post.resolve(rejectRequest());
+    await settle();
+    expect($('us-result').textContent).toBe('admin.error');
+    expect($('us-role').value).toBe('member');
+    expect($('us-lock').disabled).toBe(false);
+  });
+
+  it('reports when a saved change cannot be reloaded and clears the stale detail', async () => {
+    const detail = jest.fn().mockImplementationOnce(() => ok(DETAIL('bob'))).mockImplementation(rejectRequest);
+    boot(routes({ 'GET /api/admin/users/bob': detail }));
+    await settle();
+    $('us-list').querySelector('.us-row').click();
+    await settle();
+    $('us-role').value = 'moderator';
+    $('us-role').dispatchEvent(new Event('change'));
+    await settle();
+    expect($('us-detail').hidden).toBe(true);
+    expect($('us-result').textContent).toBe('admin.u_saved admin.error');
+    expect($('us-result').closest('[hidden]')).toBeNull();
   });
 
   it('lock sends the reason; a locked user offers unlock and hides the reason box', async () => {
@@ -126,7 +225,7 @@ describe('users tab', () => {
     boot(routes({ 'GET /api/admin/users': () => fail(403, { code: 'ADMIN_FORBIDDEN' }) }));
     await settle();
     expect($('us-msg').hidden).toBe(false);
-    expect($('us-msg').textContent).toBe('err.admin_forbidden');
+    expect($('us-msg').textContent).toBe('Admin permission required.');
     expect(document.querySelectorAll('#us-list .us-row')).toHaveLength(0);
   });
 

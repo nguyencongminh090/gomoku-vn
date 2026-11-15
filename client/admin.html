@@ -22,21 +22,21 @@
 
 <main class="papp adm" role="main">
   <div class="pintro">
-    <h1 data-i18n="admin.h1">Quản trị</h1>
+    <h1 id="adm-title" data-i18n="admin.h1">Quản trị</h1>
     <p id="adm-role" class="muted small"></p>
   </div>
-  <p id="adm-msg" class="pnote" hidden></p>
-  <div id="adm-tabs" class="ptabs" role="tablist" hidden>
-    <button type="button" role="tab" id="adm-tab-puzzles" class="ptab" data-tab="puzzles" data-perm="puzzle.review" hidden><span data-i18n="admin.tab_puzzles">Duyệt puzzle</span></button>
-    <button type="button" role="tab" id="adm-tab-reports" class="ptab" data-tab="reports" data-perm="forum.moderate cheat.review" hidden><span data-i18n="admin.tab_reports">Tất cả báo cáo</span></button>
-    <button type="button" role="tab" id="adm-tab-forum" class="ptab" data-tab="forum" data-perm="forum.moderate" hidden><span data-i18n="admin.tab_forum">Báo cáo diễn đàn</span></button>
-    <button type="button" role="tab" id="adm-tab-cheat" class="ptab" data-tab="cheat" data-perm="cheat.review" hidden><span data-i18n="admin.tab_cheat">Gian lận</span></button>
-    <button type="button" role="tab" id="adm-tab-integrity" class="ptab" data-tab="integrity" data-perm="rating.integrity" hidden><span data-i18n="admin.tab_integrity">Toàn vẹn xếp hạng</span></button>
-    <button type="button" role="tab" id="adm-tab-users" class="ptab" data-tab="users" data-perm="user.manage" hidden><span data-i18n="admin.tab_users">Người dùng</span></button>
-    <button type="button" role="tab" id="adm-tab-news" class="ptab" data-tab="news" data-perm="news.manage" hidden><span data-i18n="admin.tab_news">Tin tức</span></button>
+  <p id="adm-msg" class="pnote" role="status" hidden></p>
+  <div id="adm-tabs" class="ptabs" role="tablist" aria-labelledby="adm-title" hidden>
+    <button type="button" role="tab" id="adm-tab-puzzles" aria-controls="adm-puzzles" class="ptab" data-tab="puzzles" data-perm="puzzle.review" hidden><span data-i18n="admin.tab_puzzles">Duyệt puzzle</span></button>
+    <button type="button" role="tab" id="adm-tab-reports" aria-controls="adm-reports" class="ptab" data-tab="reports" data-perm="forum.moderate cheat.review" hidden><span data-i18n="admin.tab_reports">Tất cả báo cáo</span></button>
+    <button type="button" role="tab" id="adm-tab-forum" aria-controls="adm-forum" class="ptab" data-tab="forum" data-perm="forum.moderate" hidden><span data-i18n="admin.tab_forum">Báo cáo diễn đàn</span></button>
+    <button type="button" role="tab" id="adm-tab-cheat" aria-controls="adm-cheat" class="ptab" data-tab="cheat" data-perm="cheat.review" hidden><span data-i18n="admin.tab_cheat">Gian lận</span></button>
+    <button type="button" role="tab" id="adm-tab-integrity" aria-controls="adm-integrity" class="ptab" data-tab="integrity" data-perm="rating.integrity" hidden><span data-i18n="admin.tab_integrity">Toàn vẹn xếp hạng</span></button>
+    <button type="button" role="tab" id="adm-tab-users" aria-controls="adm-users" class="ptab" data-tab="users" data-perm="user.manage" hidden><span data-i18n="admin.tab_users">Người dùng</span></button>
+    <button type="button" role="tab" id="adm-tab-news" aria-controls="adm-news" class="ptab" data-tab="news" data-perm="news.manage" hidden><span data-i18n="admin.tab_news">Tin tức</span></button>
   </div>
 
-  <section id="adm-puzzles" role="tabpanel" hidden>
+  <section id="adm-puzzles" role="tabpanel" aria-labelledby="adm-tab-puzzles" tabindex="0" hidden>
     <p id="rv-total" class="muted small"></p>
     <p id="rv-msg" class="pnote" hidden></p>
     <div id="rv-view" class="pz-review" hidden>
@@ -73,33 +73,33 @@
     </div>
   </section>
 
-  <section id="adm-reports" role="tabpanel" hidden>
+  <section id="adm-reports" role="tabpanel" aria-labelledby="adm-tab-reports" tabindex="0" hidden>
     <p id="rl-total" class="muted small"></p>
     <p id="rl-msg" class="pnote" hidden></p>
     <div id="rl-table" class="ptable-wrap" aria-live="polite"></div>
   </section>
 
-  <section id="adm-forum" role="tabpanel" hidden>
+  <section id="adm-forum" role="tabpanel" aria-labelledby="adm-tab-forum" tabindex="0" hidden>
     <p id="rp-total" class="muted small"></p>
     <p id="rp-msg" class="pnote" hidden></p>
     <div id="rp-list" class="prows prows--tickets" aria-live="polite"></div>
     <div id="rp-pager" class="ppager"></div>
   </section>
-  <section id="adm-cheat" role="tabpanel" hidden>
+  <section id="adm-cheat" role="tabpanel" aria-labelledby="adm-tab-cheat" tabindex="0" hidden>
     <p id="ch-total" class="muted small"></p>
     <p id="ch-msg" class="pnote" hidden></p>
     <div id="ch-list" class="prows prows--tickets" aria-live="polite"></div>
     <div id="ch-pager" class="ppager"></div>
   </section>
 
-  <section id="adm-integrity" role="tabpanel" hidden>
+  <section id="adm-integrity" role="tabpanel" aria-labelledby="adm-tab-integrity" tabindex="0" hidden>
     <p id="ri-hint" class="ri-hint"></p>
     <p id="ri-msg" class="pnote" hidden></p>
     <div id="ri-viz" class="ri-viz" hidden></div>
     <div id="ri-list" class="ri-list" aria-live="polite"></div>
   </section>
 
-  <section id="adm-news" role="tabpanel" hidden>
+  <section id="adm-news" role="tabpanel" aria-labelledby="adm-tab-news" hidden>
     <form id="nw-form" class="pform">
       <p class="muted small pform__hint" data-i18n="admin.n_hint">Tin mới nhất hiện thành một dòng trên trang Chơi. Chỉ văn bản, không HTML.</p>
       <label for="nw-body" data-i18n="admin.n_body">Nội dung</label>
@@ -115,11 +115,12 @@
     <div id="nw-list" class="prows prows--tickets" aria-live="polite"></div>
   </section>
 
-  <section id="adm-users" role="tabpanel" hidden>
+  <section id="adm-users" role="tabpanel" aria-labelledby="adm-tab-users" hidden>
     <form id="us-form" class="pform us-search" role="search">
       <input id="us-q" type="search" maxlength="50" autocomplete="off" data-i18n-placeholder="admin.u_search" placeholder="Tìm theo tên đăng nhập / tên hiển thị" aria-label="Tìm người dùng" />
     </form>
-    <p id="us-msg" class="pnote" hidden></p>
+    <p id="us-msg" class="pnote" role="status" hidden></p>
+    <p id="us-result" class="pz-result" role="status" hidden></p>
     <div class="pz-review">
       <div>
         <div id="us-list" class="prows prows--tickets" aria-live="polite"></div>
@@ -137,7 +138,6 @@
           <select id="us-role"></select>
           <label for="us-reason" data-i18n="admin.u_reason">Lý do khoá (bắt buộc)</label>
           <input id="us-reason" type="text" maxlength="200" />
-          <p id="us-result" class="pz-result" role="status" hidden></p>
           <div class="pactions"><button type="button" id="us-lock" class="pbtn pbtn--ghost" data-i18n="admin.u_lock">Khoá tài khoản</button></div>
         </div>
         <h3 data-i18n="admin.u_graph">Đồ thị thay đổi</h3>
@@ -162,11 +162,11 @@
 <script src="js/puzzles-review.js?v=45b9173d"></script>
 <script src="js/forum-reports.js?v=2cabad42"></script>
 <script src="js/admin-reports.js?v=06aba7da"></script>
-<script src="js/admin-users.js?v=da4b6c40"></script>
+<script src="js/admin-users.js?v=b1cdb7cc"></script>
 <script src="js/admin-cheat.js?v=365644b9"></script>
 <script src="js/admin-integrity-viz.js?v=48d8bc91"></script>
 <script src="js/admin-integrity.js?v=5d14aae2"></script>
 <script src="js/admin-news.js?v=68970306"></script>
-<script src="js/admin.js?v=c5d5ef66"></script>
+<script src="js/admin.js?v=3bfe6430"></script>
 </body>
 </html>

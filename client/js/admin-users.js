@@ -19,6 +19,9 @@
   let q = '';
   let current = null;   // { user, nodes, edges }
   let busy = false;
+  let detailLoading = false;
+  let detailRequest = 0;
+  let listRequest = 0;
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -33,15 +36,23 @@
     return n;
   }
 
-  const apiError = (data) => (data && data.code ? t('err.' + data.code.toLowerCase()) : t('admin.error'));
+  function apiError(data) {
+    const key = typeof data?.code === 'string' && 'err.' + data.code.toLowerCase();
+    const message = key && t(key);
+    return message && message !== key ? message : t('admin.error');
+  }
 
   async function send(method, url, body) {
-    const res = await fetch(url, {
-      method, credentials: 'same-origin',
-      headers: body ? { 'Content-Type': 'application/json' } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return { ok: res.ok, status: res.status, data: await res.json().catch(() => ({})) };
+    try {
+      const res = await fetch(url, {
+        method, credentials: 'same-origin',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return { ok: res.ok, data: await res.json().catch(() => null) };
+    } catch {
+      return { ok: false, data: null };
+    }
   }
 
   function say(msg, good) {
@@ -49,6 +60,13 @@
     r.hidden = !msg;
     r.className = 'pz-result ' + (good ? 'is-right' : 'is-wrong');
     r.textContent = msg || '';
+  }
+
+  function updateControls() {
+    const inactive = busy || detailLoading || !current;
+    $('us-detail').setAttribute('aria-busy', String(busy || detailLoading));
+    for (const id of ['us-role', 'us-reason', 'us-lock', 'us-avatar-remove']) $(id).disabled = inactive;
+    document.querySelectorAll('#us-list .us-row').forEach((row) => { row.disabled = busy; });
   }
 
   const nameOf = (nodes, id) => (nodes.find((n) => n.id === id) || { name: '?' }).name;
@@ -100,11 +118,11 @@
     $('us-meta').textContent = u.username + (u.google ? ' · Google' : '') + (u.locked ? ' · ' + t('admin.u_locked') : '');
     $('us-avatar').hidden = !u.avatarUrl;
     if (u.avatarUrl) $('us-avatar-img').src = u.avatarUrl;
+    else $('us-avatar-img').removeAttribute('src');
     $('us-role').value = u.role;
     $('us-lock').textContent = t(u.locked ? 'admin.u_unlock' : 'admin.u_lock');
     $('us-reason').hidden = $('us-reason').previousElementSibling.hidden = u.locked;
     $('us-reason').value = '';
-    say('');
     const hist = $('us-history');
     hist.replaceChildren();
     if (!data.edges.length) hist.appendChild(el('li', t('admin.u_no_history'), 'muted'));
@@ -113,21 +131,53 @@
     document.querySelectorAll('#us-list .us-row').forEach((r) => r.classList.toggle('is-active', r.dataset.id === u.id));
   }
 
-  async function open(id) {
+  async function loadDetail(id, saved = false) {
+    const request = ++detailRequest;
+    detailLoading = true;
+    say(t('history.loading'), true);
+    updateControls();
     const res = await send('GET', '/api/admin/users/' + encodeURIComponent(id));
-    if (!res.ok) { say(apiError(res.data)); return; }
-    render(res.data);
+    if (request !== detailRequest) return;
+    detailLoading = false;
+    const { data } = res;
+    if (res.ok && data?.user && Array.isArray(data.nodes) && Array.isArray(data.edges)) {
+      render(data);
+      say(saved ? t('admin.u_saved') : '');
+    } else {
+      current = null;
+      $('us-detail').hidden = true;
+      document.querySelectorAll('#us-list .us-row.is-active').forEach((row) => row.classList.remove('is-active'));
+      const error = apiError(data);
+      say(saved ? `${t('admin.u_saved')} ${error}` : error);
+    }
+    updateControls();
+  }
+
+  function open(id) {
+    if (!busy) loadDetail(id);
   }
 
   async function load() {
+    const request = ++listRequest;
     const msg = $('us-msg');
-    const res = await send('GET', '/api/admin/users?page=' + page + '&q=' + encodeURIComponent(q));
-    if (!res.ok) { msg.hidden = false; msg.textContent = apiError(res.data); return; }
     const list = $('us-list');
+    const pager = $('us-pager');
+    msg.hidden = false;
+    msg.textContent = t('history.loading');
+    list.setAttribute('aria-busy', 'true');
+    const res = await send('GET', '/api/admin/users?page=' + page + '&q=' + encodeURIComponent(q));
+    if (request !== listRequest) return;
     list.replaceChildren();
+    pager.replaceChildren();
+    list.setAttribute('aria-busy', 'false');
+    if (!res.ok || !Array.isArray(res.data?.users) || !res.data.pagination) {
+      msg.textContent = apiError(res.data);
+      return;
+    }
     for (const u of res.data.users) {
       const r = el('button', undefined, 'prow us-row' + (current && current.user.id === u.id ? ' is-active' : ''));
       r.type = 'button';
+      r.disabled = busy;
       r.dataset.id = u.id;
       const body = el('div', undefined, 'prow__body');
       const meta = el('div', undefined, 'prow__meta');
@@ -142,19 +192,23 @@
     }
     msg.hidden = res.data.users.length > 0;
     msg.textContent = t('admin.u_none');
-    window.Forum && window.Forum.pager($('us-pager'), res.data.pagination, (p) => { page = p; load(); });
+    window.Forum && window.Forum.pager(pager, res.data.pagination, (p) => { page = p; load(); });
   }
 
   async function change(fn) {
-    if (busy || !current) return;
+    if (busy || detailLoading || !current) return;
     busy = true;
+    updateControls();
+    say('');
     try {
       const res = await fn();
       if (!res.ok) { say(apiError(res.data)); $('us-role').value = current.user.role; return; }
-      await open(current.user.id);
-      say(t('admin.u_saved'), true);
+      await loadDetail(current.user.id, true);
       load();
-    } finally { busy = false; }
+    } finally {
+      busy = false;
+      updateControls();
+    }
   }
 
   function init() {
