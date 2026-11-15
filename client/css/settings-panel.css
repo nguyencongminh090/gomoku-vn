@@ -207,3 +207,8 @@
   }
 }
 @media (max-width: 860px) { .gset-panel__close { width: 44px; height: 44px; } }   /* B306: touch target */
+
+/* Volume sliders (Settings panel, Settings page, room Settings tab) */
+.gset-range-wrap { display: inline-flex; align-items: center; gap: 10px; min-width: 150px; }
+.gset-range, .psrange { flex: 1; min-width: 100px; accent-color: var(--c-brand); height: 24px; }
+.gset-range__val { min-width: 4ch; text-align: right; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-3); font-variant-numeric: tabular-nums; }

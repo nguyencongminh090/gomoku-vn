@@ -693,6 +693,36 @@
     `;
   }
 
+  // Personal sound volumes (move / tick / message) — same store as Settings › Trò chơi.
+  const VOLUME_KINDS = [['move', 'settings.vol_move'], ['tick', 'settings.vol_tick'], ['message', 'settings.vol_message']];
+
+  function renderVolumeControls() {
+    const am = global.audioManager;
+    if (!am || !am.getChannelVolume) return '';
+    return VOLUME_KINDS.map(([ch, key]) => {
+      const pct = Math.round(am.getChannelVolume(ch) * 100);
+      return `
+        <div class="setting-row setting-row--volume">
+          <label class="setting-label" for="r-vol-${ch}">${t(key)}</label>
+          <span class="gset-range-wrap">
+            <input type="range" class="gset-range" id="r-vol-${ch}" data-volume="${ch}" min="0" max="100" step="5" value="${pct}" />
+            <output class="gset-range__val">${pct}%</output>
+          </span>
+        </div>`;
+    }).join('');
+  }
+
+  function bindVolumeControls(root) {
+    const am = global.audioManager;
+    if (!am || !am.setChannelVolume) return;
+    root.querySelectorAll('input[data-volume]').forEach((input) => {
+      const ch = input.dataset.volume;
+      const out = input.parentNode.querySelector('output');
+      input.addEventListener('input', () => { out.textContent = input.value + '%'; am.setChannelVolume(ch, input.value / 100); });
+      input.addEventListener('change', () => am.preview(ch));
+    });
+  }
+
   function renderSettings() {
     const st = S();
     const s = st.roomData.settings;
@@ -777,7 +807,8 @@
 
       settingsBody.innerHTML =
         settingsGroup('settings.group_room', 'settings.group_room_hint_host', roomRows) +
-        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl());
+        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl() + renderVolumeControls());
+      bindVolumeControls(settingsBody);
       settingsBody.classList.add('open');
     } else {
       const ruleNames = [];
@@ -794,7 +825,8 @@
 
       settingsBody.innerHTML =
         settingsGroup('settings.group_room', 'settings.group_room_hint_guest', roomRows) +
-        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl());
+        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl() + renderVolumeControls());
+      bindVolumeControls(settingsBody);
       settingsBody.classList.add('open');
     }
   }

@@ -92,6 +92,7 @@
         [['single', t('settings.click_single')], ['double', t('settings.click_double')]],
         g.getClickMode ? g.getClickMode() : 'double', (v) => g.setClickMode && g.setClickMode(v)), t('settings.row_click_hint')),
       row('speaker-high', t('settings.sound'), toggle(t('settings.sound'), g.isSoundOn ? g.isSoundOn() : true, (on) => g.setSoundOn && g.setSoundOn(on))),
+      ...(g.VOLUME_KINDS || []).map(([ch, key]) => row('speaker-low', t(key), g.volumeSlider(ch, t(key), 'psrange'))),
     );
   }
 
