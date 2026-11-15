@@ -1,5 +1,5 @@
 # B386 — Verify the #380–#384 perf work under load, on a real-sized DB
-**Status:** OPEN
+**Status:** ✅ VERIFIED 2026-11-15 — fix-log 2026-11-15-386-scale-verification.md; misses → #387, #388
 **Area:** `tools/perf/` (`harness.js`, `load.js`, `run.sh`), `server/scripts/slow-routes.js`, `scripts/capacity-test`
 **From:** #383/#384 close-out 2026-11-15 — all five were benched in isolation only   **Depends:** #380 #381 #382 #383 #384
 

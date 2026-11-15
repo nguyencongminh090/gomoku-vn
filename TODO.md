@@ -90,4 +90,5 @@ in the detail file / fix-log).
 - **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)
 - **#376.** Room nav N1 "Thẻ bàn": rules always visible + popover, menu ≡ `[Model: Opus 5]` — [detail](docs/todo/B376-room-nav-title-rules.md)
 - **#378.** Remaining per-move room cost: full board `_draw`, `RoomUI.updateUI` per move, audio nodes `[Model: Sonnet 5]` — [detail](docs/todo/B378-play-remaining-per-move-cost.md)
-- **#386.** Verify #380–#384 under load + real-sized DB + browser pass `[Model: Sonnet 5]` — [detail](docs/todo/B386-scale-verification-380-384.md)
+- **#387.** Reconnecting player sees "Đối thủ đã kết nối lại!" about themselves `[Model: Haiku]` — [detail](docs/todo/B387-resumed-toast-self.md)
+- **#388.** A 1 000-socket reconnect storm holds the game loop ~120 ms `[Model: Sonnet 5]` — [detail](docs/todo/B388-reconnect-storm-stall.md)
