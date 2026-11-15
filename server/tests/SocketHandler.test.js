@@ -192,6 +192,33 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     expect(JSON.stringify(disconnectLog)).not.toContain('[object Object]');
   });
 
+  test('#383: socket index follows connect/disconnect — the draining old socket still counts until it closes', () => {
+    const state = require('../socket/state');
+    const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
+    const noScan = { sockets: { get sockets() { throw new Error('scanned io.sockets.sockets'); } } };
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u383', 'Alice');
+    connectSocket(io, a);
+    const b = makeSocket(io, 'sockB', 'u383', 'Alice', { reconnect: true });
+    connectSocket(io, b);
+    // A was told to disconnect but its 'disconnect' has not fired yet: both are live.
+    expect(state.findSocketsByUserId(noScan, 'u383')).toEqual([a, b]);
+
+    // When A's disconnect runs, DisconnectHandler must see B (and not A itself).
+    let seen = null;
+    DisconnectHandler.handleDisconnect.mockImplementationOnce(() => { seen = state.findSocketsByUserId(noScan, 'u383'); });
+    fireDisconnect(a);
+    expect(seen).toEqual([b]);
+
+    // Last socket gone → nothing left, so leave / grace runs.
+    DisconnectHandler.handleDisconnect.mockImplementationOnce(() => { seen = state.findSocketsByUserId(noScan, 'u383'); });
+    fireDisconnect(b);
+    expect(seen).toEqual([]);
+    expect(state._userSockets.has('u383')).toBe(false);
+  });
+
   test("the kicked socket's later disconnect does not erase the new session's online presence", () => {
     const io = makeIo();
     init(io);

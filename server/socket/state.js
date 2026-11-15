@@ -982,17 +982,44 @@ function clearRoomUpdateSnapshot(roomId) {
 }
 
 /**
- * Find all active Socket.io sockets belonging to a given userId.
- * @param {import('socket.io').Server} io
+ * userId → Set<socket>: every live socket of a user (#383). `sessions` holds only the NEWEST one;
+ * a user briefly has two while the old socket drains after a reconnect / second login, and
+ * DisconnectHandler must still see the other one. Maintained by SocketHandler at connect and at
+ * the socket's 'disconnect' — the same lifetime as io.sockets.sockets, without the scan.
+ */
+const _userSockets = new Map();
+
+/** @param {import('socket.io').Socket} socket */
+function trackSocket(socket) {
+  const userId = socket && socket.user && socket.user.userId;
+  if (!userId) return;
+  let set = _userSockets.get(userId);
+  if (!set) { set = new Set(); _userSockets.set(userId, set); }
+  set.add(socket);
+}
+
+/** @param {import('socket.io').Socket} socket */
+function untrackSocket(socket) {
+  const userId = socket && socket.user && socket.user.userId;
+  const set = userId && _userSockets.get(userId);
+  if (!set) return;
+  set.delete(socket);
+  if (set.size === 0) _userSockets.delete(userId);
+}
+
+/**
+ * Find all active Socket.io sockets belonging to a given userId — O(that user's sockets), from
+ * the index above (it used to scan io.sockets.sockets: O(n) per disconnect / kick, #383).
+ * @param {import('socket.io').Server} _io — unused, kept for the call sites' signature
  * @param {string} userId
  * @param {string} [excludeSocketId] — skip this socket.id (e.g. the caller's own new connection)
+ * @returns {import('socket.io').Socket[]} a fresh array
  */
-function findSocketsByUserId(io, userId, excludeSocketId = null) {
+function findSocketsByUserId(_io, userId, excludeSocketId = null) {
+  const set = _userSockets.get(userId);
+  if (!set) return [];
   const results = [];
-  for (const [, s] of io.sockets.sockets) {
-    if (s.id === excludeSocketId) continue;
-    if (s.user && s.user.userId === userId) results.push(s);
-  }
+  for (const s of set) if (s.id !== excludeSocketId) results.push(s);
   return results;
 }
 
@@ -1205,6 +1232,9 @@ module.exports = {
   ONLINE_PAGE_SIZE,
   ONLINE_PAGE_CACHE_MS,
   findSocketsByUserId,
+  trackSocket,
+  untrackSocket,
+  _userSockets,
   cleanupRoomTimer,
   cleanupReadyTimer,
   clearReadyState,

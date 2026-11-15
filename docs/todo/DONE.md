@@ -1,3 +1,4 @@
+✅ - **#383.** `findSocketsByUserId` scans all sockets per disconnect/kick `[Model: Sonnet 5]` — [detail](docs/todo/B383-disconnect-scans-all-sockets.md)
 ✅ - **#382.** Lobby room list: full snapshot of all rooms + moves per subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B382-lobby-room-snapshot-full.md)
 ✅ - **#381.** Online list: full snapshot (1.1 MB @ 10k) to every lobby subscriber — page it `[Model: Opus 5]` — [detail](docs/todo/B381-online-list-full-snapshot.md)
 ✅ - **#380.** Lobby flush rebuilds every room on each move throttle / room change — diff dirty rooms only `[Model: Fable 5]` — [detail](docs/todo/B380-lobby-flush-dirty-rooms.md)

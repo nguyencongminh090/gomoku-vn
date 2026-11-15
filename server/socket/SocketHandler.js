@@ -30,6 +30,8 @@ roomManager.ratingLookup = require('../managers/seat-rating').seatRating;
 const {
   timerMap,
   sessions,
+  trackSocket,
+  untrackSocket,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
   setHideOnline,
@@ -215,6 +217,12 @@ function init(io) {
       ...(handshakeAuth.reconnect ? { reconnect: 1 } : {}),
       ...(handshakeAuth.reconnect && typeof handshakeAuth.roomId === 'string' ? { room: handshakeAuth.roomId } : {}),
     });
+
+    // userId → sockets index (#383). Registered first, so it is already updated when the main
+    // 'disconnect' listener below asks DisconnectHandler "any other live socket?", and it is
+    // released even if the rest of this handler throws.
+    trackSocket(socket);
+    socket.on('disconnect', () => untrackSocket(socket));
 
     // ── Single-device-per-token enforcement ─────────────────────────────────
     // Exactly one live session per userId is allowed. The `sessions` map IS

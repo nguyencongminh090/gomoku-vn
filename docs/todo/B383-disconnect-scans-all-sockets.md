@@ -1,5 +1,5 @@
 # B383 — `findSocketsByUserId` scans every socket on each disconnect / kick
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-15 — index in state.js; bench ×300–440; see docs/fix-log/2026-11-15-383-socket-user-index.md
 **Area:** `server/socket/state.js` (`findSocketsByUserId`), `server/socket/handlers/DisconnectHandler.js:46`, `RoomHandler.js:214`, `TournamentMatchHandler.js:255`
 **From:** perf review 2026-11-15   **Depends:** —
 
