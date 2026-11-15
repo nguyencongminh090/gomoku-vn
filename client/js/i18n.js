@@ -548,6 +548,9 @@ const TRANSLATIONS = {
     'settings.sound': 'Âm thanh',
     'settings.sound_on': 'Bật',
     'settings.sound_off': 'Tắt',
+    'settings.vol_move': 'Âm lượng nước đi',
+    'settings.vol_tick': 'Âm lượng tiếng tích tắc',
+    'settings.vol_message': 'Âm lượng tin nhắn',
 
     // ── Global Settings panel (header) ────────────────────────
     'gset.title': 'Cài đặt',
@@ -2276,6 +2279,9 @@ const TRANSLATIONS = {
     'settings.sound': 'Sound',
     'settings.sound_on': 'On',
     'settings.sound_off': 'Muted',
+    'settings.vol_move': 'Move volume',
+    'settings.vol_tick': 'Clock tick volume',
+    'settings.vol_message': 'Message volume',
 
     // ── Global Settings panel (header) ────────────────────────
     'gset.title': 'Settings',
