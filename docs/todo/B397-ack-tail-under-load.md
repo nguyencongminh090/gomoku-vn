@@ -1,5 +1,5 @@
 # B397 — Move-ack tail (p99 / max) under load: is it real, and what drives it?
-**Status:** OPEN
+**Status:** ✅ CLOSED 2026-11-16 — noise; tail is storm-second only, no code change (fix-log 2026-11-16-397-ack-tail-noise.md)
 **Area:** `server/socket/handlers/GameHandler.js` (move ack path), `tools/perf/mixed.sh` + `mixed-summary.sh`
 **From:** #394 storm run 2026-11-16 (user: "ack p99/max cao" → separate task; #380–#384 handled this before)   **Depends:** #396
 
