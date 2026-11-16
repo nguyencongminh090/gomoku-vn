@@ -1,3 +1,3 @@
 import './session.js?v=7d763f30';
-import './i18n.js?v=cc477836';
+import './i18n.js?v=67caca40';
 import './login.js?v=c3b277be';
