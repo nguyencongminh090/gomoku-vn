@@ -16,6 +16,18 @@ function getUiSkin(userId) {
   return r ? r.ui_skin : null;
 }
 
+/** Settings the member used for their last created room (F402), or null. */
+function getLastRoomSettings(userId) {
+  const r = stmt('SELECT last_room_settings FROM users WHERE id = ?').get(userId);
+  if (!r || !r.last_room_settings) return null;
+  try { return JSON.parse(r.last_room_settings); } catch (_) { return null; }
+}
+
+/** @param {object} settings already validated by RoomManager._validateSettings */
+function setLastRoomSettings(userId, settings) {
+  stmt('UPDATE users SET last_room_settings = ? WHERE id = ?').run(JSON.stringify(settings), userId);
+}
+
 function getProfileById(id) {
   return stmt(`SELECT ${PROFILE_COLS} FROM users WHERE id = ?`).get(id);
 }
@@ -89,4 +101,4 @@ function getUserRecentGames(userId, limit, offset = 0) {
   `).all({ id: userId, limit, offset });
 }
 
-module.exports = { getProfileByUsername, getProfileById, getUiSkin, updateProfile, setAvatarVersion, getUserGameStats, getUserRecentGames, getUserRankedResults, countUserRankedWins };
+module.exports = { getLastRoomSettings, setLastRoomSettings, getProfileByUsername, getProfileById, getUiSkin, updateProfile, setAvatarVersion, getUserGameStats, getUserRecentGames, getUserRankedResults, countUserRankedWins };

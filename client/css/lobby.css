@@ -1098,22 +1098,23 @@
 :is(#modal-create, .modal-overlay--form) .toggle-row:last-child { border-bottom: 0; }
 :is(#modal-create, .modal-overlay--form) .toggle-name { font-size: calc(13.5px * var(--fs-scale, 1)); }
 
-/* Rated / friendly choice — two cards */
-.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.mode-cards input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
-.mode-card {
-  display: grid; grid-template-columns: auto 1fr; column-gap: 10px; row-gap: 2px; align-items: center;
-  padding: 12px; cursor: pointer; user-select: none;
-  background: var(--c-fill); border: 1px solid transparent; border-radius: var(--radius-lg);
-  color: var(--c-ink-2); transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+/* Create-room choices are native <select>s (F402): OS picker on phones, type-ahead + arrows on desktop */
+#modal-create .setting-select {
+  display: block; width: 100%; min-height: 44px; padding: 0 40px 0 12px;
+  font: inherit; font-size: calc(15px * var(--fs-scale, 1)); font-weight: 600; color: var(--c-ink);
+  background-color: var(--c-field); border: 1px solid var(--c-border); border-radius: var(--radius);
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a968c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+  transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
 }
-.mode-card .icon { grid-row: 1 / 3; width: 22px; height: 22px; color: var(--c-ink-3); }
-.mode-card__name { font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-ink); }
-.mode-card__desc { grid-column: 2; font-size: var(--text-xs); line-height: 1.35; }
-.mode-card:hover { background: var(--c-hover); border-color: var(--c-border); }
-.mode-cards input:checked + .mode-card { background: var(--c-brand-light); border-color: var(--c-brand); }
-.mode-cards input:checked + .mode-card .icon { color: var(--c-brand-text); }
-.mode-cards input:focus-visible + .mode-card { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+#modal-create .setting-select:hover { border-color: var(--c-ink-3); }
+#modal-create .setting-select:focus-visible { outline: 2px solid var(--c-ink); outline-offset: 2px; }
+#modal-create .setting-select option { background: var(--c-surface); color: var(--c-ink); }
+/* What "Tạo nhanh" will create, right above the button */
+.modal__summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.modal__chip { padding: 3px 10px; font-size: calc(13px * var(--fs-scale, 1)); line-height: 1.4; color: var(--c-ink-2); background: var(--c-fill); border: 1px solid var(--c-border); border-radius: 999px; }
+.modal__summary:empty { display: none; }
 
 :is(#modal-create, .modal-overlay--form) .modal__actions { gap: 10px; margin-top: 22px; }
 :is(#modal-create, .modal-overlay--form) .modal__actions .btn { padding: 11px 0; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; border-radius: var(--radius); }
@@ -1125,6 +1126,5 @@
 
 @media (max-width: 420px) {
   :is(#modal-create, .modal-overlay--form) .modal { max-width: calc(100vw - 24px); }
-  .mode-cards { grid-template-columns: 1fr; }
   :is(#modal-create, .modal-overlay--form) .modal__body { padding: 16px; }
 }

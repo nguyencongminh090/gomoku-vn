@@ -26,9 +26,8 @@ async function startGame(browser: any, opts: { swap2?: boolean } = {}) {
     if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
   });
   if (opts.swap2) {
-    // #or-swap2 is a visually-hidden radio in a .pill-group — the <label>
-    // is the actual clickable surface.
-    await A.page.click('label[for="or-swap2"]');
+    // The opening rule is a <select name="openRule"> (F402).
+    await A.page.selectOption('#or-select', 'swap2');
   }
   await A.page.click('#btn-quick-match');
   await A.page.waitForURL(/room\.html/, { timeout: 15000 });

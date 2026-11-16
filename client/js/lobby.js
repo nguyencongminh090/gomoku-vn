@@ -653,13 +653,45 @@ window.joinRoom = function(roomId) {
 // ---------------------------------------------------------------------------
 
 function openModal() {
-  // One-click, low-decision path — always start from the fixed preset rather
-  // than recalling last-used settings. The user can still open Advanced and
-  // tweak before hitting Quick Match/Confirm.
-  // Guests can only play friendly, so preselect it (re-evaluated on every open).
-  applySettingsToForm({ ...LITE_DEFAULT_SETTINGS, ranked: !userInfo.isGuest });
+  // F402: start from what the player used for their previous room (members: stored server-side,
+  // guests: this browser), else the fixed preset. Advanced stays collapsed; the summary line
+  // above "Tạo nhanh" says what a one-tap create will use.
+  // Guests can only play friendly, so it is forced for them (re-evaluated on every open).
+  modalTouched = false;
+  applySettingsToForm(rememberedSettings());
   applyModalMode();
   modalOverlay.classList.add('visible');
+  refreshRoomDefaults();
+}
+
+// ── Remembered settings (F402) ──────────────────────────────────────────────
+let serverRoomDefaults = null;   // members: GET /api/profile/prefs → roomDefaults (null = never created one)
+let modalTouched = false;        // the player changed a control since this open — don't overwrite their pick
+
+function readLocalSettings() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_SETTINGS_KEY) || 'null');
+    return v && typeof v === 'object' ? v : null;
+  } catch (e) { return null; }
+}
+
+function rememberedSettings() {
+  if (userInfo.isGuest) return { ...LITE_DEFAULT_SETTINGS, ...(readLocalSettings() || {}), ranked: false };
+  return { ...LITE_DEFAULT_SETTINGS, ...(serverRoomDefaults || {}) };
+}
+
+// Members: pick up the server copy (another device may have created a room since). Applied only
+// when it differs from what is shown and the player has not started editing.
+function refreshRoomDefaults() {
+  if (!userInfo.signedIn || userInfo.isGuest) return;
+  fetch('/api/profile/prefs', { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (!j) return;
+      serverRoomDefaults = j.roomDefaults || null;
+      if (!modalTouched && modalOverlay.classList.contains('visible')) applySettingsToForm(rememberedSettings());
+    })
+    .catch(() => { /* offline — the cached/default values stay */ });
 }
 
 function closeModal() {
@@ -687,32 +719,33 @@ const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
 
 // The form's own hardcoded defaults, used when nothing has been remembered yet.
 const DEFAULT_ROOM_SETTINGS = {
-  boardSize: 17, winningRule: 'freestyle', ranked: true,
+  boardSize: 19, winningRule: 'freestyle', ranked: true,
   ruleWall: false, rulePortal: false, ruleSwap2: false,
   timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
 };
 
-// Lite mode's fixed preset — Board 17x17 + WALL — applied on every modal
+// Lite mode's fixed preset — Board 19x19 + WALL — applied on every modal
 // open in Lite, regardless of any previously recalled settings.
 const LITE_DEFAULT_SETTINGS = { ...DEFAULT_ROOM_SETTINGS, ruleWall: true };
 
+// The create-room form's choices are native <select>s (F402), looked up by name.
+const pick = (name) => (document.querySelector(`select[name="${name}"]`) || {}).value;
+
 function readFormSettings() {
-  const boardSize = parseInt(
-    document.querySelector('input[name="boardSize"]:checked').value, 10
-  );
-  const timerMode = document.querySelector('input[name="timerMode"]:checked').value;
+  const boardSize = parseInt(pick('boardSize'), 10);
+  const timerMode = pick('timerMode');
   const timerSeconds = parseInt(document.getElementById('timer-seconds').value, 10) || 60;
   // Increment only takes effect in blitz mode (TimerManager.applyMove) — zero
   // it out otherwise so the stored/submitted setting doesn't imply it's active.
   const timerIncrementSeconds = timerMode === 'blitz'
     ? (parseInt(document.getElementById('timer-increment').value, 10) || 0)
     : 0;
-  const winningRule = (document.querySelector('input[name="winRule"]:checked') || {}).value || 'freestyle';
-  const ruleSwap2   = (document.querySelector('input[name="openRule"]:checked') || {}).value === 'swap2';
+  const winningRule = pick('winRule') || 'freestyle';
+  const ruleSwap2   = pick('openRule') === 'swap2';
   let   ruleWall    = document.getElementById('rule-wall').checked;
   let   rulePortal  = document.getElementById('rule-portal').checked;
   if (ruleSwap2) { ruleWall = false; rulePortal = false; } // Swap2 plays on a plain board
-  const ranked = (document.querySelector('input[name="roomMode"]:checked') || {}).value !== 'friendly';
+  const ranked = pick('roomMode') !== 'friendly';
   return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
@@ -724,12 +757,16 @@ function saveLastSettings(settings) {
 
 // Push a settings object back into the form controls.
 function applySettingsToForm(s) {
-  const check = (sel) => { const el = document.querySelector(sel); if (el) el.checked = true; };
-  check(`input[name="boardSize"][value="${s.boardSize}"]`);
-  check(`input[name="winRule"][value="${s.winningRule}"]`);
-  check(`input[name="roomMode"][value="${s.ranked === false ? 'friendly' : 'rated'}"]`);
-  check(`input[name="openRule"][value="${s.ruleSwap2 ? 'swap2' : 'none'}"]`);
-  check(`input[name="timerMode"][value="${s.timerMode}"]`);
+  // An unknown value (stale / hand-edited storage) leaves the select on its current option.
+  const choose = (name, value) => {
+    const el = document.querySelector(`select[name="${name}"]`);
+    if (el && [...el.options].some((o) => o.value === String(value))) el.value = String(value);
+  };
+  choose('boardSize', s.boardSize);
+  choose('winRule', s.winningRule);
+  choose('roomMode', s.ranked === false ? 'friendly' : 'rated');
+  choose('openRule', s.ruleSwap2 ? 'swap2' : 'none');
+  choose('timerMode', s.timerMode);
   const wall = document.getElementById('rule-wall');
   const portal = document.getElementById('rule-portal');
   if (wall) wall.checked = !!s.ruleWall;
@@ -737,8 +774,44 @@ function applySettingsToForm(s) {
   document.getElementById('timer-seconds').value = s.timerSeconds;
   document.getElementById('timer-increment').value = s.timerIncrementSeconds;
   // Re-run the Swap2 ⇄ board-setup interlock and the Blitz ⇄ increment interlock
-  document.querySelectorAll('input[name="openRule"]').forEach(r => r.dispatchEvent(new Event('change')));
-  document.querySelectorAll('input[name="timerMode"]').forEach(r => r.dispatchEvent(new Event('change')));
+  document.querySelectorAll('select[name="roomMode"], select[name="openRule"], select[name="timerMode"]')
+    .forEach(r => r.dispatchEvent(new Event('change')));
+  updateModeHint(); // the synthetic change above does not bubble to the modal's listener
+  updateModalSummary();
+}
+
+// One line saying what "Tạo nhanh" will create with the current form (selected option texts —
+// no extra i18n keys, and it follows a language change on the next open/edit).
+function updateModalSummary() {
+  const out = document.getElementById('modal-summary');
+  if (!out) return;
+  const text = (name) => {
+    const el = document.querySelector(`select[name="${name}"]`);
+    return el && el.selectedOptions[0] ? el.selectedOptions[0].textContent.trim() : '';
+  };
+  const s = readFormSettings();
+  const parts = [text('roomMode'), text('boardSize'), text('winRule')];
+  if (s.ruleSwap2) parts.push(text('openRule'));
+  if (s.ruleWall) parts.push(t('modal.rule_wall').replace(/\s*\(.*\)/, ''));
+  if (s.rulePortal) parts.push(t('modal.rule_portal').replace(/\s*\(.*\)/, ''));
+  // The clock is one setting → one chip ("Blitz 180s +2s").
+  parts.push(`${text('timerMode')} ${s.timerSeconds}s${s.timerMode === 'blitz' && s.timerIncrementSeconds ? ' +' + s.timerIncrementSeconds + 's' : ''}`);
+  // One chip per setting (ticket-rows rule: meta as separate spans, never "a · b · c").
+  out.replaceChildren(...parts.map((txt) => {
+    const chip = document.createElement('span');
+    chip.className = 'modal__chip';
+    chip.textContent = txt;
+    return chip;
+  }));
+}
+
+// Rated / friendly: the description under the select follows the choice.
+function updateModeHint() {
+  const hint = document.getElementById('rm-hint');
+  if (!hint) return;
+  const key = pick('roomMode') === 'friendly' ? 'modal.mode_friendly_desc' : 'modal.mode_rated_desc';
+  hint.setAttribute('data-i18n', key);
+  hint.textContent = t(key);
 }
 
 function submitCreate(settings) {
@@ -788,8 +861,7 @@ applyModalMode();
 // Swap2 (opening rule) is played on a plain board → disable & clear board setup.
 (function () {
   const sync = () => {
-    const swap2 = document.getElementById('or-swap2');
-    const disabled = !!(swap2 && swap2.checked);
+    const disabled = pick('openRule') === 'swap2';
     ['rule-wall', 'rule-portal'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -799,7 +871,7 @@ applyModalMode();
       if (trow) trow.style.opacity = disabled ? '0.45' : '';
     });
   };
-  document.querySelectorAll('input[name="openRule"]').forEach(r => r.addEventListener('change', sync));
+  document.querySelectorAll('select[name="openRule"]').forEach(r => r.addEventListener('change', sync));
   sync();
 })();
 
@@ -808,8 +880,7 @@ applyModalMode();
 // doesn't look active when it silently has no effect.
 (function () {
   const sync = () => {
-    const blitz = document.getElementById('tm-blitz');
-    const active = !!(blitz && blitz.checked);
+    const active = pick('timerMode') === 'blitz';
     const el = document.getElementById('timer-increment');
     if (!el) return;
     if (!active) el.value = 0;
@@ -817,9 +888,14 @@ applyModalMode();
     const row = document.getElementById('timer-increment-row');
     if (row) row.style.opacity = active ? '' : '0.45';
   };
-  document.querySelectorAll('input[name="timerMode"]').forEach(r => r.addEventListener('change', sync));
+  document.querySelectorAll('select[name="timerMode"]').forEach(r => r.addEventListener('change', sync));
   sync();
 })();
+
+// Any edit inside the form: stop a late server copy overwriting it; refresh hint + summary.
+modalOverlay.addEventListener('change', () => { modalTouched = true; updateModeHint(); updateModalSummary(); });
+modalOverlay.addEventListener('input', () => { modalTouched = true; updateModalSummary(); });
+window.addEventListener('langchange', () => { updateModeHint(); updateModalSummary(); });
 
 // ---------------------------------------------------------------------------
 // Utility

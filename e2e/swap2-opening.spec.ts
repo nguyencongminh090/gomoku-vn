@@ -8,7 +8,7 @@ import { cellPosition } from './helpers/board';
  * more stones themselves (place2) → whoever didn't just choose picks the
  * final color → normal play resumes.
  *
- * Enabled via the `openRule` radio group (`#or-swap2` in the create-room
+ * Enabled via the `openRule` select (`#or-select` in the create-room
  * modal, client/index.html) rather than a checkbox like `#rule-wall` —
  * enabling it also forces Wall/Portal off (client/js/lobby.js ~line 370).
  *
@@ -51,7 +51,7 @@ test.describe('Swap2 opening', () => {
     await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#modal-advanced-toggle');
-    await A.page.locator('label[for="or-swap2"]').click();
+    await A.page.selectOption('#or-select', 'swap2');
     await A.page.click('#btn-quick-match');
     await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');

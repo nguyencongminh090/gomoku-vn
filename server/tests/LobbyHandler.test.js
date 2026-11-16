@@ -23,6 +23,10 @@ const mockRoomManager = {
 
 jest.mock('../managers/RoomManager', () => mockRoomManager);
 
+// F402: remembering the member's last room settings
+const mockDb = { setLastRoomSettings: jest.fn() };
+jest.mock('../db/database', () => mockDb);
+
 // Mock logger (suppress output during tests)
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
@@ -175,6 +179,39 @@ describe('LobbyHandler — room:create', () => {
     expect(joined).toBeDefined();
     expect(socket.join).toHaveBeenCalledWith('room-xyz');
     expect(mockState.broadcastLobbyUpdate).toHaveBeenCalled();
+  });
+
+  describe('F402 remembers the creator\'s settings', () => {
+    const create = (socketUser, result) => {
+      const io = makeIo();
+      const socket = makeSocket('u1', 'Alice');
+      Object.assign(socket.user, socketUser);
+      const handlers = {};
+      socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+      mockRoomManager.createRoom.mockReturnValue(result);
+      LobbyHandler.register(io, socket);
+      handlers['room:create']({ settings: {} });
+      return socket;
+    };
+    const room = { roomId: 'r1', roomName: 'x', settings: { boardSize: 19, ranked: false } };
+
+    test('member: the validated room.settings are saved for their user id', () => {
+      create({}, { room });
+      expect(mockDb.setLastRoomSettings).toHaveBeenCalledWith('u1', room.settings);
+    });
+    test('guest: nothing is saved', () => {
+      create({ isGuest: true }, { room });
+      expect(mockDb.setLastRoomSettings).not.toHaveBeenCalled();
+    });
+    test('failed create: nothing is saved', () => {
+      create({}, { error: 'x', code: 'ROOM_LIMIT' });
+      expect(mockDb.setLastRoomSettings).not.toHaveBeenCalled();
+    });
+    test('a throwing save never fails the create', () => {
+      mockDb.setLastRoomSettings.mockImplementationOnce(() => { throw new Error('disk full'); });
+      const socket = create({}, { room });
+      expect(socket._emitted.find(e => e.event === 'room:joined')).toBeDefined();
+    });
   });
 
   test('emits room:error when createRoom returns an error', () => {

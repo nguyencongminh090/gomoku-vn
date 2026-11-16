@@ -229,6 +229,23 @@ describe('profile clubs', () => {
   });
 });
 
+describe('room defaults (F402)', () => {
+  it('null until a room was created, then returns what was saved; per user', async () => {
+    const prefs = async (c) => (await req('GET', '/api/profile/prefs', { cookie: c })).json.roomDefaults;
+    expect(await prefs(UID)).toBeNull();
+    const s = { boardSize: 19, winningRule: 'caro', ranked: false, ruleWall: false, rulePortal: false, ruleSwap2: true, timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 };
+    database.setLastRoomSettings(UID, s);
+    expect(await prefs(UID)).toEqual(s);
+    expect(await prefs(OTHER)).toBeNull();
+    database.setLastRoomSettings(UID, { ...s, boardSize: 15 });
+    expect((await prefs(UID)).boardSize).toBe(15);
+  });
+  it('a corrupt stored value reads as null, not a 500', async () => {
+    database.db.prepare('UPDATE users SET last_room_settings = ? WHERE id = ?').run('{nope', OTHER);
+    expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.roomDefaults).toBeNull();
+  });
+});
+
 describe('ui skin preference', () => {
   const put = (body, cookie = UID) => req('PUT', '/api/profile', { cookie, type: 'application/json', body: JSON.stringify(body) });
 
