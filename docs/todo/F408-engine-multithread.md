@@ -1,5 +1,5 @@
 # F408 — Multi-thread engine variant (cross-origin isolated pages)
-**Status:** ✅ DONE 2026-11-16 (branch feature/405-engine-lease-socket with #405, uncommitted; no page isolated by default)
+**Status:** ✅ CLOSED 2026-11-16 (merged to dev 7dd8fbd9, pushed; no page isolated by default)
 **Area:** `server/engine/build.js`, `ClientWasmTransport`, `EngineHandler`, `server/config/csp.js`, `client/js/engine/*`
 **From:** user 2026-11-16 "Support multithread engine."   **Depends:** F405, F406 (multi build in `server/engine-files/<id>/`)
 
