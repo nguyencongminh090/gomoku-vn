@@ -1,3 +1,4 @@
+✅ - **#394.** Info logs written synchronously on every socket connect/disconnect/grace/timer start `[Model: Sonnet 5]` — [detail](docs/todo/B394-sync-info-logs-per-socket.md)
 ✅ - **#376.** Room nav N1 "Thẻ bàn": rules always visible + popover, menu ≡ `[Model: Opus 5]` — [detail](docs/todo/B376-room-nav-title-rules.md)
 ✅ - **#374.** Rankings redesign RK17: podium in LED split-flap board + 5 s opening `[Model: Opus 5]` — [detail](docs/todo/B374-rankings-podium-board.md)
 ✅ - **#373.** Room Khán giả lists viewers who left the table page (lobby/home/closed tab) `[Model: Opus 5]` — [detail](docs/todo/B373-spectators-watching-only.md)
