@@ -69,8 +69,8 @@ describe('icon + label review (#212)', () => {
   test('settings: Account tab is not the admin shield; who-can-DM is a chat bubble, not the bio icon', () => {
     const doc = parse('settings.html');
     expect(iconOf(doc.getElementById('tab-account'))).toBe('ph-regular-user-gear');
-    expect(iconOf(doc.querySelector('label[for="st-dm"]'))).toBe('ph-regular-chat-circle');
-    expect(iconOf(doc.querySelector('label[for="st-bio"]'))).not.toBe(iconOf(doc.querySelector('label[for="st-dm"]')));
+    expect(iconOf(doc.getElementById('st-dm-lab'))).toBe('ph-regular-chat-circle');
+    expect(iconOf(doc.querySelector('label[for="st-bio"]'))).not.toBe(iconOf(doc.getElementById('st-dm-lab')));
   });
 
   test('settings: tab labels stay visible on mobile (#214 supersedes the #212 visually-hidden labels)', () => {
