@@ -25,6 +25,32 @@
     sel.value = current;
   }
 
+  // Audience choice = a radio group (.pseg): one native radio per value, label text via textContent.
+  function fillAudience(group, values, labelOf, current) {
+    group.replaceChildren();
+    for (const v of values) {
+      const lab = document.createElement('label');
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = group.id;
+      input.value = v;
+      input.checked = v === current;
+      const text = document.createElement('span');
+      text.textContent = labelOf(v);
+      lab.append(input, text);
+      group.appendChild(lab);
+    }
+  }
+
+  function audienceValue(group) {
+    const r = group.querySelector('input:checked');
+    return r ? r.value : 'everyone';
+  }
+
+  function countBio() {
+    $('st-bio-count').textContent = $('st-bio').value.length + '/280';
+  }
+
   function fillCountry(current) {
     const sel = $('st-country');
     const rows = [['', t('settings.country_none')]].concat(window.Countries.options(lang()).map((c) => [c.code, c.name]));
@@ -46,14 +72,15 @@
     const pr = p.privacy || {};
     setAvatar(p.avatarUrl, p.displayName);
     $('st-bio').value = p.bio || '';
+    countBio();
     fillCountry(pr.country);
     $('st-city').value = pr.city || '';
     $('st-hide-history').checked = !!pr.hideHistory;
     $('st-hide-bio').checked = !!pr.hideBio;
     $('st-hide-online').checked = !!pr.hideOnline;
-    for (const sel of document.querySelectorAll('select[data-aud]')) {
-      const key = sel.dataset.aud;
-      fillSelect(sel, AUDIENCE[key], (v) => t('settings.aud_' + v), pr[key] || 'everyone');
+    for (const group of document.querySelectorAll('[data-aud]')) {
+      const key = group.dataset.aud;
+      fillAudience(group, AUDIENCE[key], (v) => t('settings.aud_' + v), pr[key] || 'everyone');
     }
     $('st-profile-link').href = '/u/' + encodeURIComponent(p.username);
   }
@@ -87,7 +114,7 @@
       hideBio: $('st-hide-bio').checked,
       hideOnline: $('st-hide-online').checked,
     };
-    for (const sel of document.querySelectorAll('select[data-aud]')) body[sel.dataset.aud] = sel.value;
+    for (const group of document.querySelectorAll('[data-aud]')) body[group.dataset.aud] = audienceValue(group);
     const out = $('st-saved');
     try {
       const res = await fetch('/api/profile', {
@@ -128,6 +155,7 @@
     SHELL().build(null);
     $('st-form').addEventListener('submit', save);
     $('st-cancel').addEventListener('click', () => { if (me) fill(me); $('st-saved').textContent = ''; });
+    $('st-bio').addEventListener('input', countBio);
     $('st-file').addEventListener('change', upload);
     $('st-avatar-remove').addEventListener('click', removeAvatar);
     window.addEventListener('langchange', () => { if (me) fill(me); });

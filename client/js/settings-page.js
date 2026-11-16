@@ -47,10 +47,19 @@
     return wrap;
   }
 
+  // A bento tile (same look as the Hồ sơ tiles): icon + uppercase title, then its rows.
+  function tile(iconName, title, span, ...kids) {
+    const s = el('section', undefined, 'ptile ptile--' + span);
+    const h = el('h2', undefined, 'ptile__h');
+    h.append(icon(iconName), el('span', title));
+    s.append(h, ...kids);
+    return s;
+  }
+
   function row(iconName, label, control, hint) {
     const r = el('div', undefined, 'psrow');
     const lab = el('div', undefined, 'psrow__t');
-    lab.append(el('span', label));
+    lab.append(typeof label === 'string' ? el('span', label) : label);
     if (hint) lab.appendChild(el('small', hint));
     r.append(icon(iconName), lab, control);
     return r;
@@ -70,7 +79,7 @@
   const call = (name, ...args) => (typeof window[name] === 'function' ? window[name](...args) : undefined);
 
   function renderLook(host) {
-    host.replaceChildren(
+    host.replaceChildren(tile('paint-brush', t('settings.tab_look'), 'wide',
       row('swatches', t('settings.row_skin'), segment(
         [['arena', t('gset.skin_arena')], ['zen', t('gset.skin_zen')], ['bento', t('gset.skin_bento')]],
         call('getSkin') || 'arena', (v) => call('setSkin', v))),
@@ -80,7 +89,7 @@
         call('getColorMode') || 'dark', (v) => call('setColorMode', v))),
       row('translate', t('gset.language'), segment(   // globe = country (Hồ sơ tab); one icon per concept (#214)
         [['vi', 'VI'], ['en', 'EN']], call('getLanguage') || 'vi', (v) => call('setLanguage', v))),
-    );
+    ));
     // Board look (#216): the one editor of the look every board on the site uses.
     if (window.SettingsBoard) window.SettingsBoard.mount(host);
   }
@@ -88,11 +97,13 @@
   function renderGame(host) {
     const g = S();
     host.replaceChildren(
-      row('cursor-click', t('gset.click_mode_default'), segment(
-        [['single', t('settings.click_single')], ['double', t('settings.click_double')]],
-        g.getClickMode ? g.getClickMode() : 'double', (v) => g.setClickMode && g.setClickMode(v)), t('settings.row_click_hint')),
-      row('speaker-high', t('settings.sound'), toggle(t('settings.sound'), g.isSoundOn ? g.isSoundOn() : true, (on) => g.setSoundOn && g.setSoundOn(on))),
-      ...(g.VOLUME_KINDS || []).map(([ch, key]) => row('speaker-low', t(key), g.volumeSlider(ch, t(key), 'psrange'))),
+      tile('cursor-click', t('settings.tile_input'), 'half',
+        row('cursor-click', t('gset.click_mode_default'), segment(
+          [['single', t('settings.click_single')], ['double', t('settings.click_double')]],
+          g.getClickMode ? g.getClickMode() : 'double', (v) => g.setClickMode && g.setClickMode(v)), t('settings.row_click_hint'))),
+      tile('speaker-high', t('settings.sound'), 'half',
+        row('speaker-high', t('settings.sound'), toggle(t('settings.sound'), g.isSoundOn ? g.isSoundOn() : true, (on) => g.setSoundOn && g.setSoundOn(on))),
+        ...(g.VOLUME_KINDS || []).map(([ch, key]) => row('sliders-horizontal', t(key), g.volumeSlider(ch, t(key), 'psrange')))),
     );
   }
 
@@ -108,7 +119,9 @@
       const a = el('a', undefined, 'pbtn pbtn--primary');
       a.href = '/login.html';
       a.append(icon('user-plus'), el('span', t('gset.btn_create_account')));
-      kids.push(row('user-circle', (user.displayName || '') + ' · ' + t('nav.guest_badge'), a, t('gset.guest_hint')));
+      const who = el('span', undefined, 'psrow__who');   // name and badge are separate segments, never "a · b"
+      who.append(el('span', user.displayName || ''), el('span', t('nav.guest_badge'), 'ptag'));
+      kids.push(row('user-circle', who, a, t('gset.guest_hint')));
     }
     if (user && !user.isGuest) {
       const out = el('button', undefined, 'pbtn pbtn--danger');
@@ -123,7 +136,7 @@
       });
       kids.push(row('user-circle', t('settings.signed_in_as', { name: user.displayName || '' }), out));
     }
-    host.replaceChildren(...kids);
+    host.replaceChildren(tile('user-gear', t('settings.tab_account'), 'half', ...kids));
   }
 
   // ?return=<room path> (set only by the in-room Board-look link and the shell menu on /room) → floating

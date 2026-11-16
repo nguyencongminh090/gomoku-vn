@@ -77,3 +77,9 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Tokens: reuse tokens.css; section headings 12–13px w900 uppercase +.2em with a hairline to the right; numbers Nunito 1000 tabular.
 - Motion: subtle; sheet rise 600ms, level bars wipe 600ms (80ms stagger), W/D/L bar wipe; reduced motion → end state.
 - Forbidden: the "A · B · C" pattern (middle-dot joined facts) anywhere on the page (user 2026-11-16) — use label/value pairs, two-sided rows, pills or separate lines; colour-only win/loss; more than one filled button; game history as tiles.
+
+## Cài đặt › Hồ sơ (ui/settings-profile-bento)
+- Chosen 2026-11-16 from 3 mockups (`features/settings-profile-redesign/`): SB "Ô xếp". Style: vstyle-bento-modular (tiles hold different kinds of settings; same-kind rows stay lists).
+- Layout: avatar tile (span 4, brand tint) + Giới thiệu + Nơi ở; Riêng tư (3 switch rows) + Ai được liên hệ (3 radio groups: everyone/friends/nobody; friend = everyone/nobody); sticky save bar. Panel max 1040px; ≤860px single column, save bar above the tab bar.
+- Rules from the user: no `A · B · C` strings; every button/div fill opaque (tints via color-mix on a solid surface; test in settings-page.test.js).
+- Motion: subtle; tile rise 240ms staggered 70ms, switch knob 240ms, segment colour 140ms; reduced motion → none.

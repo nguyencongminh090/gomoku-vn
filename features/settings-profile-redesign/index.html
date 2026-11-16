@@ -1,0 +1,6 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cài đặt, Hồ sơ: 3 hướng</title>
+<link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../client/css/tokens.css"><link rel="stylesheet" href="common.css">
+<style>.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:18px;padding:18px 0 60px}.c{background:var(--c-surface);border-radius:16px;overflow:hidden}.c img{width:100%;display:block;background:var(--c-bg)}.b{padding:14px 16px}.b p{margin:6px 0 0;color:var(--c-ink-2);font-size:14px}</style></head>
+<body class="mk"><main class="mk-wrap"><h1>Cài đặt, tab Hồ sơ: 3 hướng</h1><div class="g" id="g"></div></main>
+<script>const L=[['sa-preview','SA Thẻ xem trước','An toàn (flat-material). Form chia thẻ, bên phải thẻ "người khác thấy gì" đổi theo từng công tắc.'],['sb-bento','SB Ô xếp','Đúng thương hiệu (bento). Ảnh đại diện là ô lớn, mỗi nhóm cài đặt một ô.'],['sc-sheet','SC Tờ khai','Tối giản (minimalism-swiss). Một cột 720px, nhóm đánh số, nhãn trái điều khiển phải.']];
+g.innerHTML=L.map(x=>`<div class="c"><a href="mockups/${x[0]}.html"><img src="shots/${x[0]}-dark-1280.png" alt=""></a><div class="b"><b>${x[1]}</b><p>${x[2]}</p></div></div>`).join('')</script></body></html>

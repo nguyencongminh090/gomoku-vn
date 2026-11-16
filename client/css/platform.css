@@ -444,3 +444,97 @@ a.prow:hover { background: var(--c-hover); }
 @media (max-width: 860px) { .pseg__opt, .pboard__controls .pseg__opt, .pchal__search, .pchal__seg input[type="radio"] + span, .pchal__check, .pchal__num input, .pboard__color, .pboard__check { min-height: 44px; } }   /* B306: touch targets */
 @media (max-width: 860px) { .pswatch { width: 44px; height: 44px; } }   /* B306: touch target (user ok 2026-10-22) */
 @media (max-width: 860px) { .pform input:not([type="checkbox"]):not([type="file"]), .pform textarea, .pform select, .cb-chat__form input, .cb-inline input, .padd input, .pdm__form input { font-size: 16px; } }   /* F2: iOS Safari zooms on focus below 16px */
+
+/* ── Settings › Hồ sơ: bento tiles (ui/settings-profile-bento, SB) ──────────────────────────────────
+   Every fill is opaque (tints are color-mix against a solid surface); no transparent button/div. */
+.pset { max-width: 1040px; --ctl-r: 14px; --ctl-h: 44px; }
+.pset__panel { background: var(--c-bg); box-shadow: none; border-radius: 0; padding: 16px 0 0; }
+.pset__panel:not(#p-profile) { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.pset { --tint: color-mix(in srgb, var(--c-brand) 16%, var(--c-surface)); --soft: color-mix(in srgb, var(--c-ink) 7%, var(--c-surface)); --soft-2: color-mix(in srgb, var(--c-ink) 12%, var(--c-surface)); --line: color-mix(in srgb, var(--c-ink) 22%, var(--c-surface)); }
+.pbento { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+.pset .pbento { gap: 14px; }
+.ptile { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 20px; border-radius: 22px; background: var(--c-surface); box-shadow: var(--shadow-card); animation: ptile-in var(--duration-base, 240ms) var(--ease-out, ease-out) backwards; }
+.ptile:nth-child(2) { animation-delay: 70ms; } .ptile:nth-child(3) { animation-delay: 140ms; } .ptile:nth-child(4) { animation-delay: 210ms; } .ptile:nth-child(5) { animation-delay: 280ms; }
+@keyframes ptile-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.ptile__h, .pset .pform .ptile__h { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0; border: 0; font-size: calc(13px * var(--fs-scale, 1)); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+.ptile__h > .icon, .ptile__h label > .icon { width: var(--icon-md); height: var(--icon-md); color: var(--c-ink-2); }
+.pset .pform .ptile__h label { margin: 0; font-size: inherit; font-weight: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; }
+.pcount { margin-left: auto; padding: 2px 8px; border-radius: 999px; background: var(--soft); font-size: calc(13px * var(--fs-scale, 1)); font-weight: 700; letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.ptile--avatar { grid-column: span 4; grid-row: span 2; align-items: center; justify-content: center; text-align: center; background: var(--tint); }
+.ptile--avatar .ptile__h, .ptile--avatar .ptile__h > .icon { color: var(--c-brand-text); }
+.ptile--avatar .pav--xl { width: 132px; height: 132px; font-size: calc(48px * var(--fs-scale, 1)); }
+.pbento__btns { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.pbento__btns .pbtn { justify-content: center; min-height: 44px; }
+.ptile--avatar #st-avatar-remove { color: var(--c-error); }
+.ptile--avatar .pnote { margin: 0; }
+.ptile--wide { grid-column: 1 / -1; }
+.ptile--half { grid-column: span 6; }
+.ptile--bio, .ptile--place { grid-column: span 8; }
+.ptile--priv, .ptile--contact { grid-column: span 6; }
+.ptile--bio textarea { min-height: 96px; }
+.ptile__two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pfield { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.pset .pform .pfield label { margin: 0; }
+.pbento .pcheck { min-height: 48px; padding: 6px 8px 6px 12px; border-radius: 14px; background: var(--soft); }
+.pset .pbento .pcheck input { width: 52px; height: 30px; border-radius: 15px; background: var(--line); transition: background-color var(--duration-fast) var(--ease-out, ease-out); }
+.pset .pbento .pcheck input::after { top: 3px; left: 3px; width: 24px; height: 24px; background: var(--c-knob); box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: transform var(--duration-base, 240ms) var(--ease-out, ease-out); }
+.pset .pbento .pcheck input:checked { background: var(--c-brand); }
+.pset .pbento .pcheck input:checked::after { transform: translateX(22px); background: var(--c-knob); }
+.pbento .pcheck:has(input:focus-visible) { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
+.paud { display: flex; flex-direction: column; gap: 6px; }
+.paud__lab { display: flex; align-items: center; gap: 8px; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 800; color: var(--c-ink); }
+.paud__lab > .icon { width: var(--icon-md); height: var(--icon-md); color: var(--c-ink-2); }
+.paudseg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 4px; padding: 4px; border-radius: var(--ctl-r); background: var(--soft); }
+.pset .pform .paudseg label:not(.pcheck):not(:first-child), .pset .pform .paudseg label { position: relative; display: flex; margin: 0; gap: 0; font-size: inherit; font-weight: inherit; }   /* margin:0 must beat the :not(:first-child) stacking rule or options 2-3 sit 12px low */
+.paudseg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.paudseg span { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 36px; padding: 0 12px; border-radius: 10px; background: var(--soft); color: var(--c-ink-2); font-size: calc(14px * var(--fs-scale, 1)); font-weight: 800; white-space: nowrap; transition: background-color var(--duration-fast) var(--ease-out, ease-out), color var(--duration-fast) var(--ease-out, ease-out); }
+.paudseg input:checked + span { background: var(--c-brand); color: var(--c-on-brand); }
+.paudseg input:focus-visible + span { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
+.pbento .pset__save { grid-column: 1 / -1; z-index: 2; padding: 12px 16px; border: 0; border-radius: 22px; background: var(--c-surface); box-shadow: 0 -6px 20px -10px rgba(0, 0, 0, .5); }
+.pbento .pset__save .pbtn { min-height: 44px; }
+.pbento .pset__save .pnote { margin: 0 0 0 auto; }
+@media (max-width: 860px) {
+  .ptile--avatar, .ptile--bio, .ptile--place, .ptile--priv, .ptile--contact, .ptile--half { grid-column: 1 / -1; grid-row: auto; }
+  .ptile--avatar { flex-direction: row; flex-wrap: wrap; justify-content: flex-start; text-align: left; }
+  .ptile--avatar .ptile__h { flex-basis: 100%; }
+  .ptile--avatar .pav--xl { width: 84px; height: 84px; font-size: calc(32px * var(--fs-scale, 1)); }
+  .ptile--avatar .pbento__btns { flex: 1; min-width: 200px; width: auto; }
+  .ptile__two { grid-template-columns: 1fr; }
+  .pbento .pset__save { bottom: calc(var(--ptabbar-h, 62px) + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { .ptile { animation: none; } .pset .pbento .pcheck input, .pset .pbento .pcheck input::after, .paudseg span { transition: none; } }
+.pset .pform label.pbtn, .pset .pform label.pbtn:not(:first-child) { margin: 0; justify-content: center; font-weight: 700; }   /* beat `.pset .pform label:not(.pcheck)` (ink text, flex) on the upload button */
+.pset .pform label.pbtn--primary { color: var(--c-on-brand); }
+.pset .pform label.pbtn > .icon { color: inherit; width: var(--icon-md); height: var(--icon-md); }
+
+/* One control language on every Settings tab: 14px radius, 44px height, 1px solid-tint border, opaque fills.
+   Buttons, text boxes, selects, switch rows and segmented choices all share it; segments are equal-width columns. */
+.pset .pbtn { justify-content: center; min-height: var(--ctl-h); padding: 0 18px; border: 1px solid var(--line); border-radius: var(--ctl-r); background: var(--soft); color: var(--c-ink); font-weight: 700; }
+.pset .pbtn--primary { background: var(--c-brand); border-color: var(--c-brand); color: var(--c-on-brand); }
+.pset .pbtn--ghost { background: var(--soft); border-color: var(--line); color: var(--c-ink); }
+.pset .pbtn--danger { background: var(--soft); border-color: var(--c-error); color: var(--c-error); }
+.pset .pform input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), .pset .pform select, .pset .pform textarea { box-sizing: border-box; min-height: var(--ctl-h); padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--ctl-r); background: var(--c-field); font-size: calc(14px * var(--fs-scale, 1)); }
+.pset .pform textarea { min-height: 96px; }
+.pbento .pcheck { border-radius: var(--ctl-r); }
+.pset .pseg { display: inline-grid; grid-auto-flow: column; grid-auto-columns: minmax(44px, 1fr); gap: 4px; padding: 4px; border-radius: var(--ctl-r); background: var(--soft); }
+.pset .pseg__opt { min-height: 36px; padding: 0 12px; border-radius: 10px; background: var(--soft); color: var(--c-ink-2); font-weight: 800; transition: background-color var(--duration-fast) var(--ease-out, ease-out), color var(--duration-fast) var(--ease-out, ease-out); }
+.pset .pseg__opt.is-active { background: var(--c-brand); color: var(--c-on-brand); box-shadow: none; }
+.pset .pseg__opt:focus-visible { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
+.pset .psrow .pseg { background: var(--soft-2); }
+.pset .psrow .pseg__opt { background: var(--soft-2); }
+.pset .psrow .pseg__opt.is-active { background: var(--c-brand); }
+.pset .pboard__controls .pseg { display: grid; width: 100%; }
+.pset .ptile .psrow { min-height: 52px; padding: 6px 8px 6px 14px; border: 0; border-radius: var(--ctl-r); background: var(--soft); }
+.psrow__who { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ptag { padding: 2px 10px; border-radius: 999px; background: var(--tint); color: var(--c-brand-text); font-size: calc(13px * var(--fs-scale, 1)); font-weight: 700; }
+.pset .pswitch { width: 52px; height: 30px; }
+.pset .pswitch span { border-radius: 15px; background: var(--line); }
+.pset .pswitch span::after { top: 3px; left: 3px; width: 24px; height: 24px; background: var(--c-knob); box-shadow: 0 1px 3px rgba(0, 0, 0, .35); transition: transform var(--duration-base, 240ms) var(--ease-out, ease-out); }
+.pset .pswitch input:checked + span { background: var(--c-brand); }
+.pset .pswitch input:checked + span::after { transform: translateX(22px); background: var(--c-knob); }
+.pset .pboard__swatch { background: var(--c-surface-2); border-radius: 10px; }
+.pset .pboard__color input { background: var(--c-field); border-radius: 10px; }
+.pset .pboard__check { padding: 6px 8px 6px 14px; border-radius: var(--ctl-r); background: var(--soft); }
+.pset .pboard__preview { border-radius: var(--ctl-r); }
+@media (max-width: 860px) { .paudseg span { min-height: 44px; } }
+.pset .pboard__label { text-transform: none; letter-spacing: 0; font-weight: 800; color: var(--c-ink); }
