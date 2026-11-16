@@ -22,6 +22,24 @@ const ERR = Object.freeze({
   STALE: 'ENGINE_STALE',
   HINT_FORBIDDEN: 'ENGINE_HINT_FORBIDDEN',
   NO_LEGAL_MOVE: 'ENGINE_NO_LEGAL_MOVE',
+  // Lease / socket / file route (#405)
+  DISABLED: 'ENGINE_DISABLED',
+  FORBIDDEN: 'ENGINE_FORBIDDEN',
+  BAD_REQUEST: 'ENGINE_BAD_REQUEST',
+  LIMIT: 'ENGINE_LEASE_LIMIT',
+  NO_LEASE: 'ENGINE_NO_LEASE',
+  NOT_READY: 'ENGINE_NOT_READY',
+  BUSY: 'ENGINE_BUSY',
+  RATE_LIMITED: 'ENGINE_RATE_LIMITED',
+  TOO_LARGE: 'ENGINE_PAYLOAD_TOO_LARGE',
+  NO_BUILD: 'ENGINE_NO_BUILD',
+  BAD_TOKEN: 'ENGINE_BAD_TOKEN',
+});
+
+/** Why a lease ended (engine:end.reason). */
+const END = Object.freeze({
+  REVOKED: 'revoked', GAME_OVER: 'game_over', REPLACED: 'replaced', DISCONNECT: 'disconnect',
+  READY_TIMEOUT: 'ready_timeout', IDLE: 'idle', SLOW: 'slow', ABUSE: 'abuse', CLIENT_ERROR: 'client_error',
 });
 
 /** Error with a stable machine code (never a user-facing string). */
@@ -34,5 +52,5 @@ class EngineError extends Error {
 }
 
 module.exports = {
-  ENGINE_SCALING_FACTOR, MATE_BAR_VALUE, RULE_IDS, WALL_SECOND_MOVE_DISTANCE, ERR, EngineError,
+  ENGINE_SCALING_FACTOR, MATE_BAR_VALUE, RULE_IDS, WALL_SECOND_MOVE_DISTANCE, ERR, END, EngineError,
 };

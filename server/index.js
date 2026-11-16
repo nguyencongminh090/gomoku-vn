@@ -20,7 +20,9 @@ const { Server }   = require('socket.io');
 const path         = require('path');
 
 const config         = require('./config');
-const { cspDirectives } = require('./config/csp');
+const { cspDirectives, ENGINE_WORKER_PATH, ENGINE_WORKER_CSP, parseIsolatedPages, isolationMiddleware } = require('./config/csp');
+const { createEngineFilesRouter } = require('./routes/engine-files');
+const EngineHandler = require('./socket/handlers/EngineHandler');
 const { staticOptions, socketIoClientOptions, setHtmlHeaders, REVALIDATE } = require('./config/staticCache');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
@@ -154,6 +156,16 @@ app.use('/vendor/socket.io', express.static(socketIoClientPath, socketIoClientOp
 // revalidated) lives in ./config/staticCache so it is unit-testable without
 // booting this server — see TODO.md #106 for why the express.static default
 // (`public, max-age=0`) was actively harmful here.
+// Engine worker gets its own CSP (WASM compile), engine files are lease-gated (#405).
+app.use(ENGINE_WORKER_PATH, (req, res, next) => { res.setHeader('Content-Security-Policy', ENGINE_WORKER_CSP); next(); });
+// Multi-thread engine pages (#408): cross-origin isolation only where ENGINE_ISOLATED_PAGES lists it.
+app.use(isolationMiddleware(parseIsolatedPages(config.ENGINE_ISOLATED_PAGES)));
+app.use('/engine', createEngineFilesRouter({
+  getLeaseManager: EngineHandler.getLeaseManager,
+  dir: config.ENGINE_FILES_DIR || undefined,
+  buildId: config.ENGINE_BUILD_ID,
+}));
+
 app.use(express.static(clientPath, staticOptions));
 
 // Reject cross-site writes before any /api router (#350).
