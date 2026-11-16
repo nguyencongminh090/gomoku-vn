@@ -1,3 +1,5 @@
+- ✅ **#406.** Rebuild WASM engine (Caro + rect) and pick hosting `[Model: Sonnet 5]` — [detail](docs/todo/F406-engine-wasm-rebuild.md)
+- ✅ **#404.** Engine service core: jobs, purposes, rule mapper, output parser (size L, features/rapfi-engine) `[Model: Sonnet 5]` — [detail](docs/todo/F404-engine-service-core.md)
 - ✅ **#408.** Multi-thread engine variant on cross-origin isolated pages `[Model: Opus 5]` — [detail](docs/todo/F408-engine-multithread.md)
 - ✅ **#405.** Engine lease + socket protocol + file route + client host (client-hosted WASM) `[Model: Opus 5]` — [detail](docs/todo/F405-engine-lease-socket-client-host.md)
 - ✅ **#402.** Create-room modal: dropdown comboboxes + server-remembered last settings `[Model: Sonnet 5]` — [detail](docs/todo/F402-room-settings-memory.md)

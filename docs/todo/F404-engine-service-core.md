@@ -1,5 +1,5 @@
 # F404 — Engine service core (jobs, purposes, rule mapper, output parser)
-**Status:** BUILT 2026-11-16 on feature/404-engine-service-core (uncommitted; awaiting commit/merge)
+**Status:** ✅ DONE 2026-11-16 (merged to dev fb76bf46)
 **Area:** new `server/engine/**` (EngineService, JobFactory, RuleMapper, purposes/*, EngineOutputParser, EngineTransport + FakeTransport), `server/tests/engine-*.test.js`
 **From:** features/rapfi-engine (user, 2026-11-16: "write TODO")   **Depends:** —
 

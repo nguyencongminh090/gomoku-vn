@@ -1,5 +1,5 @@
 # F406 — Rebuild WASM engine (Caro + rect), pick hosting
-**Status:** BUILT 2026-11-16 (Node-verified; real-browser pass + hosting decision pending)
+**Status:** ✅ DONE 2026-11-16 (Node-verified, merged dev bb0ddb5f; hosting = #405 file route; browser pass via #405 tools/engine-browser-check.js)
 **Area:** `Rapfi_V3_PTR/dev/rapfi` build only; output to a scratch dir then `server/engine-files/<hash>/`
 **From:** features/rapfi-engine (2026-11-16)   **Depends:** —
 
