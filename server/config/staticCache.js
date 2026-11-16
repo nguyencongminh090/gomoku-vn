@@ -76,6 +76,9 @@ const SOCKET_IO_CLIENT = 'public, max-age=86400';
 function setStaticCacheHeaders(res, filePath) {
   if (filePath.endsWith('.html')) {
     setHtmlHeaders(res);
+  } else if (/[\\/](sw\.js|manifest\.webmanifest)$/.test(filePath)) {
+    // Fixed URL, no ?v=: the service worker and manifest must be re-checked, never pinned for a year.
+    res.setHeader('Cache-Control', REVALIDATE);
   } else {
     res.setHeader('Cache-Control', IMMUTABLE);
   }

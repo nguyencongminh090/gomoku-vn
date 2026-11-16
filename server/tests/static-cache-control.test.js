@@ -74,6 +74,10 @@ describe('setStaticCacheHeaders', () => {
     expect(headerFor(filePath)).toBe(IMMUTABLE);
   });
 
+  test.each(['/srv/client/sw.js', '/srv/client/manifest.webmanifest'])('%s revalidates (fixed URL, no ?v=)', (p) => {
+    expect(headerFor(p)).toBe(REVALIDATE);
+  });
+
   test('.html always revalidates', () => {
     expect(headerFor('/srv/client/index.html')).toBe(REVALIDATE);
   });
