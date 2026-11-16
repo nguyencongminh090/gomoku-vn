@@ -8,4 +8,7 @@ module.exports = {
   ...require('./normalizer'),
   ...require('./transports/EngineTransport'),
   ...require('./transports/FakeTransport'),
+  ...require('./transports/ClientWasmTransport'),
+  ...require('./LeaseManager'),
+  ...require('./build'),
 };

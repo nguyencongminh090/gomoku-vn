@@ -52,13 +52,14 @@ Honest limit: files already downloaded cannot be "taken back"; revocation means 
 |---|---|---|
 | `engine:request` | C→S | `{purpose, gameId}` → ack `{leaseId, token, base, variant}` or `{code}` |
 | `engine:ready` | C→S | `{leaseId, version}` (engine `ABOUT`/capabilities) |
-| `engine:job` | S→C | `{leaseId, jobId, lines: string[], stopAfterMs}` |
-| `engine:line` | C→S | `{jobId, text}` batched (≤ 50 ms) — progress/PV |
+| `engine:job` | S→C | `{leaseId, jobId, commands: string[]}` — one engine command each; `YXBOARD…DONE`/`YXBLOCK…DONE` joined with `\n` (#405: WASM runs one command per `sendCommand`) |
+| `engine:line` | C→S | `{leaseId, jobId, lines[]}` batched (100 ms or 256 lines; global socket cap 50 ev/s) — progress/PV |
 | `engine:done` | C→S | `{jobId, moveLine}` |
-| `engine:stop` | S→C | `{jobId}` (client sends `YXSTOP`, or terminates worker for single build) |
+| `engine:stop` | S→C | `{leaseId, jobId, hard\|command}` — single build: `hard` → client terminates + respawns the worker, no move follows (deadline + 1.5 s grace → TIMEOUT); multi build (#408, isolated pages): `command:'YXSTOP'` → engine answers with a move |
 | `engine:end` | S→C | `{leaseId, reason}` |
 | `engine:error` | C→S | `{jobId?, text}` load failure, crash |
 Rules: error codes (not Vietnamese strings) per `i18n-and-server-message-codes`; per-event rate limit; reject events from a socket that doesn't own the lease; max line count/size per job and per result (client is untrusted); exactly **one job in flight per lease** (engine drops commands while thinking).
+As built (#405, [F405 Result](../../docs/todo/F405-engine-lease-socket-client-host.md)): lease dies with its socket (no grace); token in `X-Engine-Token` header; a cap/rate violation fails the in-flight job (never a silently dropped batch); `engine:done` is exempt from the rate bucket.
 
 ## 5. Trust model (client-hosted engine)
 - The client can send *any* move line. **Server validates every engine move** via `GameEngine.makeMove` for `botUserId`; an illegal move ⇒ retry once with `YXBLOCK`, then server fallback (random legal / centre) so the game never stalls.

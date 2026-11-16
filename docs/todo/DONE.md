@@ -1,3 +1,5 @@
+- ✅ **#408.** Multi-thread engine variant on cross-origin isolated pages `[Model: Opus 5]` — [detail](docs/todo/F408-engine-multithread.md)
+- ✅ **#405.** Engine lease + socket protocol + file route + client host (client-hosted WASM) `[Model: Opus 5]` — [detail](docs/todo/F405-engine-lease-socket-client-host.md)
 - ✅ **#402.** Create-room modal: dropdown comboboxes + server-remembered last settings `[Model: Sonnet 5]` — [detail](docs/todo/F402-room-settings-memory.md)
 - ✅ **#403.** Profile page redesign: PF7 CV sheet `[Model: Sonnet 5]` — [detail](docs/todo/B403-profile-cv-redesign.md)
 - ✅ **#401.** Installable PWA + sticky install banner on home (Android prompt, iOS Add-to-Home-Screen hint) `[Model: Sonnet 5]` — [detail](docs/todo/F401-pwa-install-banner.md)

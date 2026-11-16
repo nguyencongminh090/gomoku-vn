@@ -228,6 +228,18 @@ const DIAG_MAX_FEEDBACK_LEN   = parseInt(process.env.DIAG_MAX_FEEDBACK_LEN, 10) 
 const DIAG_RETENTION_DAYS     = parseInt(process.env.DIAG_RETENTION_DAYS, 10) || 90;
 // Where the JSONL lives. Overridable so tests never touch the real folder.
 const DIAG_RESULTS_DIR        = process.env.DIAG_RESULTS_DIR || null;
+// Client-hosted engine (#405, features/rapfi-engine/backend-design.md §3-§5). OFF by default: no
+// purpose is wired to a game until #407; the authorizer hook in EngineHandler decides who may lease.
+const ENGINE_LEASES_ENABLED   = process.env.ENGINE_LEASES_ENABLED === 'true';
+// Where `<buildId>/rapfi-*.{js,wasm,data}` live (#406 output). Overridable so tests use a fixture dir.
+const ENGINE_FILES_DIR        = process.env.ENGINE_FILES_DIR || null;
+// Which build to hand out; null = the only/first `<hex12>` dir found in ENGINE_FILES_DIR.
+const ENGINE_BUILD_ID         = process.env.ENGINE_BUILD_ID || null;
+const ENGINE_MAX_LEASES       = parseInt(process.env.ENGINE_MAX_LEASES, 10) || 200;
+// Comma list of HTML paths served cross-origin isolated (COEP require-corp) so the multi-thread engine can run
+// there (#408). Empty by default: COEP blocks cross-origin subresources such as the Cloudflare beacon.
+const ENGINE_ISOLATED_PAGES   = process.env.ENGINE_ISOLATED_PAGES || '';
+
 // Per-game clock for the solo measurement board. Deliberately NOT
 // DEFAULT_TIMER_SECONDS: a ~60s run against a 60s per-game budget would time
 // out mid-measurement and end the session before enough samples exist. Sized
@@ -297,4 +309,9 @@ module.exports = {
   DIAG_RETENTION_DAYS,
   DIAG_RESULTS_DIR,
   DIAG_TIMER_SECONDS,
+  ENGINE_LEASES_ENABLED,
+  ENGINE_FILES_DIR,
+  ENGINE_BUILD_ID,
+  ENGINE_MAX_LEASES,
+  ENGINE_ISOLATED_PAGES,
 };

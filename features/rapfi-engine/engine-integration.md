@@ -68,6 +68,11 @@ Recommendation (not a decision): **A for bot opponents/rated analysis, C unchang
 **Traps:** the script (1) **overwrites `../GomokuEngineFiles`** (only copy of the deployed engine besides the Worker) unless `GOMOKU_ENGINE_DIR` is set; (2) **rewrites `R/Networks/config.toml` and `wasm_preloads.txt`**; (3) uses `--clean-first`. Always `GOMOKU_ENGINE_DIR=<scratch>`, back up `Networks/`. Output name is fixed by CMake; preamble (`Rapfi/emscripten/preamble.js`) defines `Module.sendCommand` (one call = run until the command is consumed; single build blocks during search), `onReceiveStdout`, `terminate`.
 Must-test after rebuild: `RULE 8`, `RECTSTART`, `STYLE_TROLL_FLOOR`, bench hash (`Nodes 16202773 / Hash d5f0a710` at 4a0e8bc — moves legitimately after CARO/RECT; record the new baseline).
 
+## 7.1 WASM command loop (measured 2026-11-16, #405)
+- `Module.sendCommand(text)` pushes `text\n` and runs `gomocupLoopOnce` ONCE = one command per call; extra queued lines wait for later calls.
+- stdin is read synchronously: a block (`YXBOARD`…`DONE`) split over several calls hits EOF mid-block → `exit(0)` (ExitStatus thrown). Send each block as ONE `\n`-joined command (server `groupCommands`).
+- Single build cannot see `YXSTOP` while searching: stop = terminate worker + respawn from cached buffers.
+
 ## 8. Per-job sequence (what the backend wrapper does)
 1. `INFO` config block: `RULE`, `THREAD_NUM`, `HASH_SIZE` (KB, **not** `MAX_MEMORY`), `MAX_DEPTH`/`MAX_NODE`, `STRENGTH`, `TIMEOUT_MATCH 0`, `TIMEOUT_TURN`, `SHOW_DETAIL 2`, `STYLE` (+ margin/contempt/target/floor).
 2. Board shape: `START n` or `RECTSTART`, then `INFO TORUS`, portals (`CLEARPORTALS` first), then `YXBOARD` block.

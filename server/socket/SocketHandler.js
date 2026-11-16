@@ -55,6 +55,7 @@ const PrivateChatHandler = require('./handlers/PrivateChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
+const EngineHandler     = require('./handlers/EngineHandler');
 const MatchHandler           = require('./handlers/MatchHandler');
 const HomeFeed               = require('./home-feed');
 
@@ -393,6 +394,7 @@ function init(io) {
     TournamentMatchHandler.register(io, socket);
     MatchHandler.register(io, socket);
     HomeFeed.register(io, socket);
+    EngineHandler.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {

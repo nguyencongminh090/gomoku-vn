@@ -1,5 +1,5 @@
 # F405 — Engine lease, socket protocol, file route, client host
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-16 (branch feature/405-engine-lease-socket, uncommitted; flag ENGINE_LEASES_ENABLED off)
 **Area:** `server/engine/LeaseManager`, `server/socket/handlers/EngineHandler.js`, `server/routes/engine-files.js`, `client/js/engine/engine-host.js`
 **From:** features/rapfi-engine (2026-11-16)   **Depends:** F404 (transport interface), F406 (files)
 
@@ -28,3 +28,11 @@ Lease/Resource-pool + state machine; knowledge: `be-realtime`, `realtime-reliabi
 ## Done when
 - Tests: lease TTL/revoke, foreign-socket rejection, stale job drop, illegal-move fallback; jsdom host test.
 - Real-browser pass: engine loads, answers a job, is torn down at game end.
+
+## Result (2026-11-16)
+- Server: `engine/LeaseManager.js`, `transports/ClientWasmTransport.js`, `engine/build.js`, `socket/handlers/EngineHandler.js` (hooks `setAuthorizer`, `onLeaseReady`, `getService`, `revokeForGame`), `routes/engine-files.js`; worker CSP in `config/csp.js`. Client: `js/engine/engine-host.js`, `js/engine/engine.worker.js`.
+- Tests: `engine-lease`, `engine-handler` (+route), `csp`, jsdom `engine-host`; full suite 4202 green.
+- Real browser: `tools/engine-browser-check.js` (own port + temp DB) — Chromium 1243 and Firefox 1538: 9/9 (load, analysis PV, opponent move, forced stop → respawn → next job, game-over revoke, no CSP errors).
+- Deviations: (1) lease dies with its socket, no grace — host re-requests after reconnect (files cached in page); (2) revocation = live-lease map checked by the file route (stronger than a denylist); (3) token in `X-Engine-Token` header, stable URL, `private, immutable` cache — page fetches, worker gets buffers (glue via blob:); (4) `engine:job` carries `commands[]`: WASM runs ONE command per `sendCommand` and a split `YXBOARD…DONE` block makes it exit(0), so the server joins blocks; (5) line batches every 100 ms or 64 lines; a cap/rate violation fails the job (no silent drop), `engine:done` exempt from the rate bucket; (6) no authorizer = every request refused.
+- Volume (heaviest: analysis nbest 8 / 5M nodes, 7.3 s): 1755 lines, peak 12 batches/s → caps 12000 lines/job, 30 events/s.
+- Open for #407: who may lease (guest/member/purpose), wiring `revokeForGame` to game end, difficulty table; each stop costs deadline + 1.5 s grace (single build never answers STOP).
