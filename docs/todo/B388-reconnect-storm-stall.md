@@ -1,5 +1,5 @@
 # B388 — A 1 000-socket reconnect storm holds the game loop ~120 ms (ack p99.9 133 ms)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-16 — timer-pass cause (per-room flush timers) fixed; storm-second poll-phase burst → #396, logging → #394. [fix-log](../fix-log/2026-11-16-388-room-update-shared-flush.md)
 **Area:** `server/socket/SocketHandler.js` (`io.on('connection')`), `server/socket/handlers/DisconnectHandler.js`, `server/socket/state.js`
 **From:** #386 load run 2026-11-15 (2 500 rooms, `tools/perf/mixed.sh`)   **Depends:** —
 

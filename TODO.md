@@ -87,4 +87,6 @@ in the detail file / fix-log).
 - **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)
 - **#376.** Room nav N1 "Thẻ bàn": rules always visible + popover, menu ≡ `[Model: Opus 5]` — [detail](docs/todo/B376-room-nav-title-rules.md)
 - **#387.** Reconnecting player sees "Đối thủ đã kết nối lại!" about themselves `[Model: Haiku]` — [detail](docs/todo/B387-resumed-toast-self.md)
-- **#388.** A 1 000-socket reconnect storm holds the game loop ~120 ms `[Model: Sonnet 5]` — [detail](docs/todo/B388-reconnect-storm-stall.md)
+- **#394.** Info logs written synchronously on every socket connect/disconnect/grace/timer start `[Model: Sonnet 5]` — [detail](docs/todo/B394-sync-info-logs-per-socket.md)
+- **#395.** home-feed and online-list flushes fan out to every watcher in one tick `[Model: Sonnet 5]` — [detail](docs/todo/B395-home-online-fanout-tick.md)
+- **#396.** Storm second: one poll phase runs ~0.5 s of per-socket connect/disconnect work `[Model: Opus 5]` — [detail](docs/todo/B396-storm-poll-phase-burst.md)
