@@ -606,6 +606,11 @@ function sendLobbySnapshot(io, socket) {
   socket.emit('lobby:update', payload);
 }
 
+// home-feed requires this module, so it can't be a top-level require; memoized because a cached
+// require() still resolves the path each call (~15 µs under load: 40 ms per 1k-socket storm, #396).
+let _homeFeedMod = null;
+function _homeFeed() { return _homeFeedMod || (_homeFeedMod = require('./home-feed')); }
+
 /**
  * Broadcast what changed in the room list to everyone in the lobby (debounced).
  *
@@ -619,7 +624,7 @@ function sendLobbySnapshot(io, socket) {
  * full list every time regardless.
  */
 function broadcastLobbyUpdate(io, roomId) {
-  require('./home-feed').scheduleHomeUpdate(io); // B225: playing count + live list (lazy: home-feed requires this module)
+  _homeFeed().scheduleHomeUpdate(io); // B225: playing count + live list
   _markLobbyDirty(io, roomId); // #380: no roomId → full diff
   _scheduleLobbyFlush(io);
 }
@@ -768,7 +773,7 @@ function sendOnlineSnapshot(io, socket) {
  */
 function broadcastOnlineUsers(io) {
   _lastIo = io;
-  require('./home-feed').scheduleHomeUpdate(io); // B225: online count
+  _homeFeed().scheduleHomeUpdate(io); // B225: online count
   if (_onlineUsersTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => {
     _onlineUsersTimers.delete(io);
