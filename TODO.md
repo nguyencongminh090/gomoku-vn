@@ -78,6 +78,4 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)
 - **#387.** Reconnecting player sees "Đối thủ đã kết nối lại!" about themselves `[Model: Haiku]` — [detail](docs/todo/B387-resumed-toast-self.md)
-- **#396.** Storm second: one poll phase runs ~0.5 s of per-socket connect/disconnect work `[Model: Opus 5]` — [detail](docs/todo/B396-storm-poll-phase-burst.md)
 - **#397.** Move-ack tail (p99/max) under load: real or noise, and what drives it `[Model: Opus 5]` — [detail](docs/todo/B397-ack-tail-under-load.md)
-- **#398.** Merge disconnect-grace emits (timer:sync into game:interrupted/game:resumed; self gets only game:init) `[Model: Sonnet 5]` — [detail](docs/todo/B398-merge-grace-emits.md)

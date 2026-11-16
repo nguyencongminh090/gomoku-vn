@@ -1,5 +1,5 @@
 # B398 — Merge disconnect-grace emits (drop: 2→1 to opponent; resume: 3→1 to self, 2→1 to opponent)
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-16 — branch fix/398-merge-grace-emits; fix-log 2026-11-16-398-merge-grace-emits.md (tests, browser pass, mixed.sh table)
 **Area:** `server/socket/handlers/DisconnectHandler.js` (`startDisconnectGrace`, `cancelDisconnectGrace`),
 `client/js/room-socket.js` (`game:init` :317, `timer:sync` :688, `game:interrupted` :976, `game:resumed` :986)
 **From:** #396 evaluation 2026-11-16, owner: "gộp event"   **Depends:** #396 cuts (fix/396-storm-poll-burst)

@@ -1,3 +1,5 @@
+✅ - **#398.** Merge disconnect-grace emits (timer:sync into game:interrupted/game:resumed; self gets only game:init) `[Model: Sonnet 5]` — [detail](docs/todo/B398-merge-grace-emits.md)
+✅ - **#396.** Storm second: one poll phase runs ~0.5 s of per-socket connect/disconnect work `[Model: Opus 5]` — [detail](docs/todo/B396-storm-poll-phase-burst.md)
 ✅ - **#395.** home-feed and online-list flushes fan out to every watcher in one tick `[Model: Sonnet 5]` — [detail](docs/todo/B395-home-online-fanout-tick.md)
 ✅ - **#394.** Info logs written synchronously on every socket connect/disconnect/grace/timer start `[Model: Sonnet 5]` — [detail](docs/todo/B394-sync-info-logs-per-socket.md)
 ✅ - **#376.** Room nav N1 "Thẻ bàn": rules always visible + popover, menu ≡ `[Model: Opus 5]` — [detail](docs/todo/B376-room-nav-title-rules.md)

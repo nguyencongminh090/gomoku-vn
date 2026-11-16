@@ -976,6 +976,8 @@
   client.on('game:interrupted', (data) => {
     ChatUI.appendSystemMessage(t('room.disconnected', { name: data.playerName, seconds: data.secondsLeft }));
     if (S().gameState) S().gameState.status = 'interrupted';
+    // #398: the paused clock rides on this event (no separate timer:sync).
+    applyTimerSync(data.timerSync);
     // Not 'ongoing' any more, and the server pauses the clock — no deadlock to
     // detect while a player is inside disconnect grace (TODO.md #154).
     cancelTurnWatchdog();
@@ -983,12 +985,13 @@
     GameUI.updateBoardState();
   });
 
-  client.on('game:resumed', () => {
+  // #398: only the others in the room get this; the reconnecting socket gets game:init alone.
+  client.on('game:resumed', (data) => {
     ChatUI.appendSystemMessage(t('room.reconnected'));
     if (S().gameState) S().gameState.status = 'ongoing';
-    // Back to 'ongoing', so the watchdog can guard again. The server's resume
-    // sends a fresh timer:sync of its own; this only covers the case of that
-    // sync arriving before this event (TODO.md #154).
+    // Back to 'ongoing', so the watchdog can guard again (TODO.md #154). The restarted clock rides
+    // on this event; applyTimerSync re-arms the watchdog, the explicit arm covers a sync-less payload.
+    if (data && data.timerSync) applyTimerSync(data.timerSync);
     armTurnWatchdog();
     GameUI.updateBoardState();
   });
