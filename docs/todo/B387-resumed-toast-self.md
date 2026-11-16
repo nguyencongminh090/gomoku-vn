@@ -1,5 +1,5 @@
 # B387 — Reconnecting player sees "Đối thủ đã kết nối lại!" about themselves
-**Status:** FIXED (jsdom) 2026-11-16 — viewer gets the name line, self copy silent; browser pass pending (fix-log 2026-11-16-387-resumed-line-viewer.md)
+**Status:** ✅ CLOSED 2026-11-16 — viewer gets the name line, self copy silent (jsdom green, merged dev 241bc9f); closed by user without a real-browser pass (fix-log 2026-11-16-387-resumed-line-viewer.md)
 **Area:** `server/socket/handlers/DisconnectHandler.js:477` (`game:resumed` to the whole room), `client/js/room-socket.js:977`
 **From:** #386 browser pass 2026-11-15 (screenshot: reconnecting player's own chat shows the opponent message)   **Depends:** —
 

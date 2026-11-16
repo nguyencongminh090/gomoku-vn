@@ -77,4 +77,3 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)
-- **#387.** Reconnecting player sees "Đối thủ đã kết nối lại!" about themselves `[Model: Haiku]` — [detail](docs/todo/B387-resumed-toast-self.md)
