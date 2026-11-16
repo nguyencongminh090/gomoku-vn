@@ -69,3 +69,11 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Motion: level `immersive` on first load only — 5 s choreography of ≤ 420 ms transform/opacity steps; 1×/session, skip on any input or "Bỏ qua", prefers-reduced-motion → final state; ticker marquee stops under reduced-motion.
 - Layout: ticker → h1 + skip → chips/scope/search → arena (podium 2·1·3, then table rank ≥ 4) → pager → fixed "your rank" dock above the tab bar. Phone keeps # · name · rating (#330).
 - Forbidden: delaying data for the animation; re-playing the intro on tab/page switches; motion on the board/stones.
+
+## Hồ sơ (#403, PF7 "Sơ yếu kỳ thủ")
+- Chosen 2026-11-16 from 7 mockups (`features/profile-redesign/`, source of truth `mockups/pf7-cv.html`). Style: vstyle-minimalism-swiss (editorial CV sheet); no photo.
+- Layout (desktop): one sheet max 1040px, 2 columns. Side 300px inverted (`--c-ink` bg, `--c-on-ink` text): avatar 148px, Liên hệ (@user, place, joined), Rating (3 variants: name left, number right, level bar, rank left + games right), Giải đố, Hội nhóm (name, role below, member count right). Main: name h1 uppercase, fact strip (Thể loại chính / Hạng / Rating / 7 ngày qua, labels above values, vertical rules), actions, 3px ink rule, then sections Giới thiệu → Số liệu (5 numbers + W/D/L bar) → Quá trình thi đấu → Thành tích → Ván gần đây (table).
+- Phone (≤860px): side column becomes the top block (avatar 76px + name + rank tag, Liên hệ, 3 ratings in a row); Giải đố/Hội nhóm move below or hide per todo; table keeps Ngày, Đối thủ, Kết quả, ±.
+- Tokens: reuse tokens.css; section headings 12–13px w900 uppercase +.2em with a hairline to the right; numbers Nunito 1000 tabular.
+- Motion: subtle; sheet rise 600ms, level bars wipe 600ms (80ms stagger), W/D/L bar wipe; reduced motion → end state.
+- Forbidden: the "A · B · C" pattern (middle-dot joined facts) anywhere on the page (user 2026-11-16) — use label/value pairs, two-sided rows, pills or separate lines; colour-only win/loss; more than one filled button; game history as tiles.

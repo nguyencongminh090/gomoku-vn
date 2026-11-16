@@ -43,9 +43,9 @@ async function boot(profile, status = 200, pathname = '/u/alice') {
 describe('profile page', () => {
   beforeEach(() => { HISTORY = { hidden: false, points: [{ t: 'a', rating: 1500 }, { t: 'b', rating: 1580 }, { t: 'c', rating: 1650 }], peak: 1700 }; });
 
-  it('card shows the weekly change; chart plots the curve with the all-time peak', async () => {
+  it('fact strip shows the weekly change; chart plots the curve with the all-time peak', async () => {
     await boot(PROFILE);
-    expect(document.querySelector('.pcard small.up').textContent).toBe('profile.delta_week{"n":"+14"}');
+    expect(document.querySelector('#pf-facts .pf-delta.up').textContent).toBe('+14');
     expect(global.fetch.mock.calls.some((c) => c[0] === '/api/profile/alice/rating-history?category=caro&days=90')).toBe(true);
     const svg = document.getElementById('pf-chart');
     expect(svg.hasAttribute('hidden')).toBe(false);
@@ -55,15 +55,16 @@ describe('profile page', () => {
 
   it('B341: no delta line when the weekly change is 0', async () => {
     await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], delta7: 0 }] });
-    expect(document.querySelector('.pcard small.up, .pcard small.dn')).toBeNull();
-    expect([...document.querySelectorAll('.pcard small')].map((x) => x.textContent)).not.toContain('profile.delta_week{"n":"0"}');
+    expect(document.querySelector('#pf-facts .pf-delta')).toBeNull();
+    expect(document.getElementById('pf-facts').textContent).not.toContain('profile.fact_week');
   });
 
   it('B340: provisional rating shows a visible label; settled rating does not', async () => {
     await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], provisional: true }] });
-    expect(document.querySelector('.pcard .pprov').textContent).toBe('profile.provisional_hint');
+    expect(document.querySelector('#pf-ratings .pprov').textContent).toBe('profile.provisional_hint');
+    expect(document.querySelector('#pf-ratings .pf-skill__r b').textContent).toBe('1650?');
     await boot(PROFILE);
-    expect(document.querySelector('.pcard .pprov')).toBeNull();
+    expect(document.querySelector('#pf-ratings .pprov')).toBeNull();
   });
 
   it('B342: only the highest badge of a tier family is shown', async () => {
@@ -71,17 +72,22 @@ describe('profile page', () => {
     expect([...document.querySelectorAll('#pf-badges .pbadge')].map((b) => b.textContent)).toEqual(['badge.top_10', 'badge.wins_1000']);
   });
 
-  it('B339/B343: stylesheet keeps no padding reserve on the name and no double gap under the clubs heading', () => {
-    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
-    expect(css).not.toMatch(/\.phead h1\s*\{\s*padding-right/);
-    expect(css).not.toMatch(/#pf-actions\s*\{\s*position:\s*absolute/);
-    expect(css).toMatch(/\.pprofile #pf-clubs-panel\s*\{\s*gap:\s*0/);
+  it('#403: page styles live in profile.css (no leftover .pprofile rules in platform.css); no middle-dot strings', () => {
+    const platform = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    expect(platform).not.toMatch(/\.pprofile/);
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'profile.css'), 'utf8');
+    expect(css).toMatch(/\.pf-cv\s*\{/);
+    expect(BODY_HTML).toContain('class="pf-cv"');
+    const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'profile.js'), 'utf8');
+    expect(src).not.toMatch(/' · '/);
+    const i18n = fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8');
+    expect(i18n.split('\n').filter((l) => /'profile\./.test(l) && l.includes('·'))).toEqual([]);
   });
 
   it('hidden history → no weekly change, no chart, explanatory note', async () => {
     HISTORY = { hidden: true, points: [], peak: null };
     await boot({ ...PROFILE, ratings: [{ ...PROFILE.ratings[0], delta7: null }] });
-    expect(document.querySelector('.pcard small.up, .pcard small.dn')).toBeNull();
+    expect(document.querySelector('#pf-facts .pf-delta')).toBeNull();
     expect(document.getElementById('pf-chart').hasAttribute('hidden')).toBe(true);
     expect(document.getElementById('pf-chart-note').textContent).toBe('profile.chart_hidden');
   });
@@ -99,22 +105,24 @@ describe('profile page', () => {
     expect(document.getElementById('pf-name').textContent).toBe(PROFILE.displayName);
     expect(document.querySelector('#pf-name img')).toBeNull();
     expect(document.getElementById('pf-bio').querySelector('b')).toBeNull();
-    expect(document.querySelectorAll('.pcard')).toHaveLength(1);
-    expect(document.querySelectorAll('#pf-recent .prow')).toHaveLength(1);
+    expect(document.querySelectorAll('#pf-ratings .pf-skill')).toHaveLength(1);
+    expect(document.querySelectorAll('#pf-recent tr')).toHaveLength(1);
+    expect(document.getElementById('pf-side-name').textContent).toBe(PROFILE.displayName);
     expect(document.getElementById('pf-actions').hidden).toBe(true);
   });
 
-  it('no clubs → the whole clubs card (not just its contents) is hidden and the grid is one column; with clubs → card shown', async () => {
+  it('no clubs and no puzzles → the whole org block is hidden; with clubs → clubs section shown', async () => {
     await boot({ ...PROFILE, clubs: [] });
-    const panel = document.getElementById('pf-clubs-panel');
-    expect(panel.hidden).toBe(true);
-    expect(panel.classList.contains('ppanel')).toBe(true); // the card chrome lives on the hidden element
-    expect(document.getElementById('pf-split').classList.contains('psplit--solo')).toBe(true);
-    await boot({ ...PROFILE });  // field absent behaves like none
     expect(document.getElementById('pf-clubs-panel').hidden).toBe(true);
+    expect(document.getElementById('pf-org').hidden).toBe(true);
+    await boot({ ...PROFILE });  // field absent behaves like none
+    expect(document.getElementById('pf-org').hidden).toBe(true);
     await boot({ ...PROFILE, clubs: [{ slug: 'hn', name: '<b>HN</b>', role: 'member', members: 3 }] });
     expect(document.getElementById('pf-clubs-panel').hidden).toBe(false);
-    expect(document.getElementById('pf-split').classList.contains('psplit--solo')).toBe(false);
+    expect(document.getElementById('pf-org').hidden).toBe(false);
+    // Role on its own line, member count separate (no "A · B" string, DESIGN.md Hồ sơ).
+    expect(document.querySelector('#pf-clubs small').textContent).toBe('clubs.role_member');
+    expect(document.querySelector('#pf-clubs .pf-club__cnt').textContent).toBe('3');
     expect(document.querySelector('#pf-clubs a').getAttribute('href')).toBe('/c/hn');
     expect(document.querySelector('#pf-clubs b')).toBeNull();
   });
@@ -129,6 +137,9 @@ describe('profile page', () => {
     await boot({ ...PROFILE, stats: null, recent: [], bio: null });
     expect(document.getElementById('pf-recent-note').textContent).toBe('profile.history_hidden');
     expect(document.getElementById('pf-stats').children).toHaveLength(0);
+    expect(document.getElementById('pf-stats-note').hidden).toBe(false);
+    expect(document.getElementById('pf-wdl').hidden).toBe(true);
+    expect(document.getElementById('pf-recent-tbl').hidden).toBe(true);
   });
 
   it('shows the edit link (to /settings.html) only for the owner', async () => {
@@ -160,35 +171,35 @@ describe('profile page', () => {
     expect(document.querySelector('#pf-joined b')).toBeNull();
   });
 
-  it('shows puzzles solved + level once something is solved; no empty level tile until a level reaches the threshold (hint moves to the solved tile)', async () => {
+  it('puzzles: level → dots + solved count; no level → solved + unlock hint, no dots; nothing solved → section hidden', async () => {
     await boot({ ...PROFILE, puzzles: { solved: 12, level: 'medium', byLevel: {}, threshold: 10 } });
-    const text = document.getElementById('pf-stats').textContent;
-    expect(text).toContain('profile.puzzles_solved12');
-    expect(text).toContain('profile.puzzles_levelpuzzles.level_medium');
+    const box = document.getElementById('pf-puzzle-box');
+    expect(document.getElementById('pf-puzzles').hidden).toBe(false);
+    expect(box.querySelector('.pf-skill__r').textContent).toBe('profile.puzzles_level_v{"level":"puzzles.level_medium"}12');
+    expect([...box.querySelectorAll('.pf-dots i')].map((i) => i.className)).toEqual(['on', 'on', '', '']);
     await boot({ ...PROFILE, puzzles: { solved: 3, level: null, byLevel: {}, threshold: 10 } });
-    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles_level');
-    expect(document.getElementById('pf-stats').textContent).not.toContain('—');
-    const dd = [...document.querySelectorAll('#pf-stats div')].find((d) => d.textContent.includes('profile.puzzles_solved'));
-    expect(dd.title).toBe('profile.puzzles_level_hint{"n":10}');
+    expect(document.querySelector('#pf-puzzle-box .pf-dots')).toBeNull();
+    expect(document.getElementById('pf-puzzle-box').textContent).toContain('profile.puzzles_level_hint{"n":10}');
+    expect(document.getElementById('pf-org').hidden).toBe(false);
     await boot({ ...PROFILE, puzzles: { solved: 0, level: null, byLevel: {}, threshold: 10 } });
-    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles');
+    expect(document.getElementById('pf-puzzles').hidden).toBe(true);
     await boot({ ...PROFILE });
-    expect(document.getElementById('pf-stats').textContent).not.toContain('profile.puzzles');
+    expect(document.getElementById('pf-puzzles').hidden).toBe(true);
   });
 
   it('renders badges and the win streak; nothing when there are none', async () => {
     await boot({ ...PROFILE, badges: ['first_win', 'top_500'], streak: { current: 2, best: 5 } });
     expect([...document.querySelectorAll('#pf-badges .pbadge')].map((b) => b.textContent)).toEqual(['badge.first_win', 'badge.top_500']);
-    expect(document.getElementById('pf-badges').hidden).toBe(false);
+    expect(document.getElementById('pf-badges-sec').hidden).toBe(false);
     // B213: two plain stats instead of "2 (cao nhất 5)", which wrapped on phones.
     const stat = (key) => [...document.querySelectorAll('#pf-stats > div')].find((d) => d.querySelector('dt').textContent === key);
     expect(stat('profile.streak').querySelector('dd').textContent).toBe('2');
     expect(stat('profile.streak_best').querySelector('dd').textContent).toBe('5');
-    // Badges sit in the header, each with an icon.
-    const badges = [...document.querySelectorAll('.phead #pf-badges .pbadge')];
+    // Badges sit in the Thành tích section, each with an icon.
+    const badges = [...document.querySelectorAll('#pf-badges-sec #pf-badges .pbadge')];
     expect(badges.map((b) => b.querySelector('use').getAttribute('href').split('#')[1])).toEqual(['ph-regular-flag-checkered', 'ph-regular-trophy']);
     await boot({ ...PROFILE, badges: [], streak: { current: 0, best: 0 } });
-    expect(document.getElementById('pf-badges').hidden).toBe(true);
+    expect(document.getElementById('pf-badges-sec').hidden).toBe(true);
     expect(document.getElementById('pf-stats').textContent).not.toContain('profile.streak');
     await boot({ ...PROFILE, streak: null });
     expect(document.getElementById('pf-stats').textContent).not.toContain('profile.streak');
@@ -196,6 +207,16 @@ describe('profile page', () => {
 
   describe('friend button', () => {
     const labels = () => [...document.querySelectorAll('#pf-social > button')].map((b) => b.textContent).filter((l) => l !== 'challenge.btn');
+    const friendBtn = (label) => [...document.querySelectorAll('#pf-social > button')].find((b) => b.textContent === label);
+
+    it.each([
+      ['none', 'challenge.btn'],
+      ['incoming', 'friends.accept'],
+    ])('state %s: exactly one filled button (%s), Thách đấu first', async (friendship, filled) => {
+      await boot({ ...PROFILE, friendship });
+      expect([...document.querySelectorAll('#pf-social .pbtn--primary')].map((b) => b.textContent)).toEqual([filled]);
+      expect(document.querySelector('#pf-social > button').textContent).toBe('challenge.btn');
+    });
 
     it.each([
       ['none', ['friends.add']],
@@ -220,10 +241,11 @@ describe('profile page', () => {
       expect(got).toEqual(expected);
     });
 
-    it('meta line: joined date and place each lead with an icon (B213)', async () => {
+    it('Liên hệ: username, place and joined date each lead with an icon (B213)', async () => {
       await boot({ ...PROFILE, friendship: 'none', city: 'Hà Nội' });
       const icons = [...document.querySelectorAll('#pf-joined > span use')].map((u) => u.getAttribute('href').split('#')[1]);
-      expect(icons).toEqual(['ph-regular-calendar', 'ph-regular-map-pin']);
+      expect(icons).toEqual(['ph-regular-user-circle', 'ph-regular-map-pin', 'ph-regular-calendar']);
+      expect(document.querySelector('#pf-joined > span').textContent).toBe('@alice');
     });
 
     it('action buttons lead with an icon that matches them (B212)', async () => {
@@ -284,7 +306,7 @@ describe('profile page', () => {
       await boot({ ...PROFILE, friendship: 'none' });
       const base = global.fetch;
       global.fetch = jest.fn(() => Promise.resolve({ ok: true, status: 201, json: () => Promise.resolve({ status: 'outgoing' }) }));
-      document.querySelector('#pf-social > button').click();
+      friendBtn('friends.add').click();
       await flush(); await flush();
       expect(global.fetch).toHaveBeenCalledWith('/api/friends/alice', expect.objectContaining({ method: 'POST' }));
       expect(labels()).toEqual(['friends.cancel']);
@@ -294,11 +316,90 @@ describe('profile page', () => {
     it('accept posts to /accept; failure re-enables the button and reports', async () => {
       await boot({ ...PROFILE, friendship: 'incoming' });
       global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) }));
-      document.querySelector('#pf-social > button').click();
+      friendBtn('friends.accept').click();
       await flush(); await flush();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/friends/alice/accept');
-      expect(document.querySelector('#pf-social > button').disabled).toBe(false);
+      expect(friendBtn('friends.accept').disabled).toBe(false);
       expect(document.getElementById('pf-status').textContent).toBe('friends.error');
+    });
+  });
+
+  describe('#403 CV sheet', () => {
+    const R3 = [
+      { category: 'freestyle', rating: 1811, rank: 3, games: 212, provisional: false, delta7: 54 },
+      { category: 'standard', rating: 1742, rank: 12, games: 80, provisional: false, delta7: -8 },
+      { category: 'caro', rating: 1655, rank: null, games: 9, provisional: true, delta7: 0 },
+    ];
+
+    it('fact strip uses the variant with the most games; side shows all three in CATEGORIES order with rank / games', async () => {
+      await boot({ ...PROFILE, ratings: [R3[2], R3[1], R3[0]] });
+      const facts = [...document.querySelectorAll('#pf-facts > div')].map((d) => [d.querySelector('dt').textContent, d.querySelector('dd').textContent]);
+      expect(facts).toEqual([['profile.fact_main', 'rankings.cat_freestyle'], ['profile.fact_rank', '#3'], ['profile.fact_rating', '1811'], ['profile.fact_week', '+54']]);
+      expect([...document.querySelectorAll('#pf-ratings .pf-skill__r span')].map((n) => n.textContent)).toEqual(['rankings.cat_freestyle', 'rankings.cat_standard', 'rankings.cat_caro']);
+      expect([...document.querySelectorAll('#pf-ratings .pf-skill__m')].map((n) => n.textContent)).toEqual([
+        'profile.rank{"rank":3}profile.games_n{"n":212}', 'profile.rank{"rank":12}profile.games_n{"n":80}', 'profile.provisional_hintprofile.games_n{"n":9}']);
+      expect(document.getElementById('pf-tag').textContent).toBe('profile.tag_player{"cat":"rankings.cat_freestyle"}#3');
+      // Level bar: clamped width, never 0 or over 100.
+      const w = [...document.querySelectorAll('#pf-ratings .pf-lv i')].map((i) => parseFloat(i.style.width));
+      expect(w).toEqual([61.1, 54.2, 45.5]);
+    });
+
+    it('unranked main variant: no Hạng fact, no rank tag; negative delta is marked down', async () => {
+      await boot({ ...PROFILE, ratings: [{ category: 'caro', rating: 1500, rank: null, games: 4, provisional: false, delta7: -6 }] });
+      expect(document.getElementById('pf-facts').textContent).not.toContain('profile.fact_rank');
+      expect(document.querySelector('#pf-tag b')).toBeNull();
+      expect(document.querySelector('#pf-facts .pf-delta.dn').textContent).toBe('-6');
+      expect(document.querySelector('#pf-ratings .pf-skill__m span').textContent).toBe('profile.unranked_short');
+    });
+
+    it('no ratings: facts and tag hidden, side note shown', async () => {
+      await boot({ ...PROFILE, ratings: [] });
+      expect(document.getElementById('pf-facts').hidden).toBe(true);
+      expect(document.getElementById('pf-tag').hidden).toBe(true);
+      expect(document.getElementById('pf-ratings').textContent).toBe('profile.no_ratings');
+    });
+
+    it('Số liệu: 5 numbers with a streak, W/D/L bar widths add up and carry a text label', async () => {
+      await boot({ ...PROFILE, stats: { games: 10, wins: 6, draws: 1 }, streak: { current: 2, best: 5 } });
+      expect([...document.querySelectorAll('#pf-stats dd')].map((d) => d.textContent)).toEqual(['10', '60%', '1', '2', '5']);
+      const bar = document.getElementById('pf-wdl');
+      expect(bar.hidden).toBe(false);
+      expect([...bar.children].map((i) => [i.className, i.style.width])).toEqual([['w', '60%'], ['d', '10%'], ['l', '30%']]);
+      expect(bar.getAttribute('aria-label')).toBe('profile.wdl_aria{"w":6,"d":1,"l":3}');
+      await boot({ ...PROFILE, stats: { games: 0, wins: 0, draws: 0 }, recent: [] });
+      expect(document.getElementById('pf-wdl').hidden).toBe(true);
+      expect(document.getElementById('pf-recent-note').textContent).toBe('profile.no_recent');
+    });
+
+    it('game table: Ngày, Đối thủ (replay link), Kết quả as text; "Xem cả N ván" label', async () => {
+      await boot({ ...PROFILE, stats: { games: 12, wins: 1, draws: 0 } });
+      const cells = [...document.querySelectorAll('#pf-recent tr td')];
+      expect(cells).toHaveLength(3);
+      expect(cells[1].querySelector('a').textContent).toBe('bob');
+      expect(cells[2].textContent).toBe('profile.win');
+      expect(cells[2].classList.contains('pf-res--win')).toBe(true);
+      expect(document.getElementById('pf-more-label').textContent).toBe('profile.load_all{"n":12}');
+    });
+
+    it('own profile: Sao chép liên kết copies the /u/ link and confirms', async () => {
+      await boot({ ...PROFILE, isSelf: true });
+      const writeText = jest.fn(() => Promise.resolve());
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      document.getElementById('pf-copy').click();
+      await flush();
+      expect(writeText).toHaveBeenCalledWith('http://localhost/u/alice');
+      expect(document.getElementById('pf-copy-note').textContent).toBe('profile.copied');
+      writeText.mockImplementation(() => Promise.reject(new Error('denied')));
+      document.getElementById('pf-copy').click();
+      await flush();
+      expect(document.getElementById('pf-copy-note').textContent).toBe('profile.copy_failed');
+    });
+
+    it('bio hidden note for the owner; empty bio for others shows nothing', async () => {
+      await boot({ ...PROFILE, isSelf: true, bio: null, privacy: { hideBio: true } });
+      expect(document.getElementById('pf-bio').textContent).toBe('profile.bio_hidden');
+      await boot({ ...PROFILE, bio: null });
+      expect(document.getElementById('pf-bio').textContent).toBe('');
     });
   });
 

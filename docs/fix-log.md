@@ -355,3 +355,4 @@
 | 2026-11-16 12:30 | #399 phone Tỉ số "8–16" no longer wraps: num nowrap+flex:none, 32px at ≤360px; 2 tests | [detail](docs/fix-log/2026-11-16-399-score-hero-wrap.md) |
 | 2026-11-16 12:32 | #400 board pinch-zoom (viewBox only), 1-finger pan, double-tap reset; no +/- buttons; 6 tests | [detail](docs/fix-log/2026-11-16-400-board-pinch-zoom.md) |
 | 2026-11-16 13:10 | #401 installable PWA (manifest, icons, sw offline page) + sticky install banner on home; sw/manifest no-cache; 8 tests | [detail](docs/fix-log/2026-11-16-401-pwa-install-banner.md) |
+| 2026-11-16 14:20 | #403 profile page rebuilt as PF7 CV sheet (profile.css, side+main+org grid), chart kept, no Quá trình, copy link; 8 new tests | [detail](docs/fix-log/2026-11-16-403-profile-cv.md) |
