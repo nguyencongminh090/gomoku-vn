@@ -1,5 +1,5 @@
 # F405 — Engine lease, socket protocol, file route, client host
-**Status:** ✅ DONE 2026-11-16 (branch feature/405-engine-lease-socket, uncommitted; flag ENGINE_LEASES_ENABLED off)
+**Status:** ✅ CLOSED 2026-11-16 (merged to dev 7dd8fbd9, pushed; flag ENGINE_LEASES_ENABLED off)
 **Area:** `server/engine/LeaseManager`, `server/socket/handlers/EngineHandler.js`, `server/routes/engine-files.js`, `client/js/engine/engine-host.js`
 **From:** features/rapfi-engine (2026-11-16)   **Depends:** F404 (transport interface), F406 (files)
 
