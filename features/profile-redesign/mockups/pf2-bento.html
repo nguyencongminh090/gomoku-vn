@@ -1,0 +1,69 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PF2 Bento</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* PF2 — bento: 2 hero tiles (who, rating), medium tiles (form, activity), small tiles (one number each).
+   Game history stays a LIST inside one tile (same-kind rows are scanned, not tiled). */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:16px;margin-top:24px}
+.t{position:relative;background:var(--c-surface);border-radius:20px;padding:20px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.t h2{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2);display:flex;align-items:center;gap:6px}
+.t .n{font-size:44px;font-weight:1000;line-height:1;letter-spacing:-.02em}
+.t .s{color:var(--c-ink-2);font-size:14px;font-weight:700}
+.t-who{grid-column:span 5;grid-row:span 2;gap:14px;background:var(--c-ink);color:var(--c-on-ink)}
+.t-who .top{display:flex;gap:16px;align-items:center}
+.t-who h1{font-size:34px;font-weight:1000;line-height:1.1;letter-spacing:-.02em}
+.t-who .meta{font-size:14px;font-weight:700;opacity:.75}
+.t-who .bio{font-size:17px;line-height:1.45}
+.t-who .acts{margin-top:auto}
+.t-who .btn{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c-on-ink) 35%,transparent)}
+.t-who .btn--pri{box-shadow:none}
+.t-who .bdg{color:var(--c-on-ink)}
+.t-rate{grid-column:span 7;grid-row:span 2}
+.t-rate .hd{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;justify-content:space-between}
+.t-rate .n{font-size:72px}
+.t-rate .rank{font-weight:900;color:var(--c-brand-text)}
+.t-rate .ch{margin-top:auto}
+.c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}.c5{grid-column:span 5}.c6{grid-column:span 6}.c7{grid-column:span 7}
+.ring{--p:59;width:84px;height:84px;border-radius:50%;flex:none;display:grid;place-items:center;font-weight:1000;font-size:22px;
+  background:radial-gradient(closest-side,var(--c-surface) 76%,transparent 77%),conic-gradient(var(--c-success) calc(var(--p)*1%),var(--c-fill) 0)}
+.rw{display:flex;gap:14px;align-items:center}
+.mini{display:flex;justify-content:space-between;align-items:baseline;padding:8px 0;border-top:1px solid var(--c-border-light)}
+.mini:first-of-type{border-top:0}.mini b{font-size:22px;font-weight:1000}
+.prog{height:8px;border-radius:99px;background:var(--c-fill);overflow:hidden}.prog i{display:block;height:100%;background:var(--c-brand-text);border-radius:99px}
+.gm{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;gap:10px;align-items:center;min-height:44px;border-top:1px solid var(--c-border-light)}
+.gm:first-of-type{border-top:0}.gm .o{font-weight:800}.gm .d{color:var(--c-ink-2);font-size:13px}
+.club{display:flex;gap:10px;align-items:center;min-height:44px}.club small{display:block;color:var(--c-ink-2);font-size:12px}
+.t .more{margin-top:auto;font-weight:800;color:var(--c-brand-text);font-size:14px;min-height:28px;display:inline-flex;align-items:center;gap:4px}
+.bl{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+@media(hover:hover) and (pointer:fine){.t-link{transition:transform var(--d-base) var(--e-out)}.t-link:hover{transform:translateY(-3px)}}
+@media(max-width:1000px){.grid{grid-template-columns:repeat(6,minmax(0,1fr))}.t-who,.t-rate,.c6,.c7,.c5{grid-column:1/-1}.c4,.c3,.c2{grid-column:span 3}}
+@media(max-width:860px){
+  .grid{gap:12px;margin-top:16px}.t{padding:16px;border-radius:16px}
+  .t-who h1{font-size:26px}.t-who .av{--s:64px!important}.t-who .bio{font-size:16px}
+  .t-who .acts .btn--pri{flex:1 1 100%}.t-who .acts .btn{flex:1}
+  .t-rate .n{font-size:56px}.t .n{font-size:34px}
+  .ring{width:64px;height:64px;font-size:17px}
+  .c-wide{grid-column:1/-1}
+}
+</style></head><body>
+<main class="wrap"><div class="grid" id="g"></div></main>
+<p class="mk-note">PF2 · Ô lớn = ai + rating; ô nhỏ = một con số. Điện thoại: 2 cột, thứ tự theo độ quan trọng. <span class="need">API</span> = cần dữ liệu mới.</p>
+<script src="../icons.js"></script><script src="../data.js"></script><script>
+const {P,G,ic,av,dl,need,res,badges,actions,chart,series,form,heat}=PF;PF.top();const m=P.ratings[0],z=P.puzzles;
+g.innerHTML=`
+<section class="t t-who rise"><div class="top">${av(P,96)}<div style="min-width:0"><h1 class="ell">${P.name}</h1><p class="meta">@${P.user} · ${PF.where} · từ ${P.joined}</p></div></div>
+  <p class="bio">${P.bio}</p><div class="chips">${badges()}</div><div class="acts">${actions()}</div></section>
+<section class="t t-rate rise" style="--i:1"><div class="hd"><div><h2>Rating · ${m.k}</h2><div class="rw" style="align-items:baseline;margin-top:6px"><b class="n num" data-count>${m.r}</b><span class="rank">#${m.rank}</span>${dl(m.d,' / 7 ngày')}</div></div>
+  <div class="chips" role="tablist">${P.ratings.map((r,i)=>`<button class="chip" role="tab" aria-selected="${!i}">${r.k} <span class="num">${r.r}${r.prov?'?':''}</span></button>`).join('')}</div></div>
+  ${chart(series(m),{axis:1,peak:1,h:190})}<p class="s">90 ngày gần nhất · cao nhất ${m.peak}</p></section>
+<section class="t c4 c-wide rise" style="--i:2"><h2>Phong độ · 10 ván gần nhất</h2>${form(10)}<p class="s">7 thắng · 1 hoà · 2 thua</p></section>
+<section class="t c2 rise" style="--i:2"><h2>Chuỗi thắng</h2><b class="n num">${P.streak.cur}</b><p class="s">cao nhất ${P.streak.best}</p></section>
+<section class="t c3 rise" style="--i:3"><h2>Tỉ lệ thắng</h2><div class="rw"><div class="ring num" style="--p:${P.pct}">${P.pct}%</div><p class="s">${P.stats.g} ván<br>${P.stats.w} thắng · ${P.stats.d} hoà</p></div></section>
+<section class="t c3 c-wide rise" style="--i:3"><h2>Puzzle</h2><div class="rw" style="align-items:baseline"><b class="n num">${z.solved}</b><span class="pill">Level ${z.level}</span></div><div class="prog" role="img" aria-label="${z.have}/${z.need} tới level ${z.next}"><i style="width:${z.have/z.need*100}%"></i></div><p class="s">${z.have}/${z.need} puzzle tới level ${z.next}</p></section>
+<section class="t c7 rise" style="--i:4"><h2>Ván gần đây</h2>${G.slice(0,10).map(x=>`<a class="gm">${res(x)}<span class="o ell">${x.opp}</span><span class="d num">${x.date}</span>${dl(x.delta)}</a>`).join('')}<a class="more">Xem cả ${P.stats.g} ván ${ic('caret-right','ico--sm')}</a></section>
+<div class="c5" style="display:grid;gap:16px;align-content:start;min-width:0">
+ <section class="t rise" style="--i:4"><h2>Hoạt động · 20 tuần ${need()}</h2>${heat(20)}<p class="s">Chơi đều nhất vào thứ Bảy</p></section>
+ <section class="t rise" style="--i:5"><h2>Thể loại khác</h2>${P.ratings.slice(1).map(r=>`<div class="mini"><span>${r.k}<br><small class="s">${r.rank?'Hạng #'+r.rank:'Tạm tính'} · ${r.g} ván</small></span><b class="num">${r.r}${r.prov?'?':''}</b></div>`).join('')}</section>
+ <section class="t rise" style="--i:5"><h2>Hội nhóm</h2>${P.clubs.map(c=>`<a class="club">${av(c,36,'av--sq')}<span class="ell"><b>${c.name}</b><small>${c.role} · ${c.n} thành viên</small></span></a>`).join('')}</section>
+</div>`;
+PF.tabs();PF.count();
+</script></body></html>

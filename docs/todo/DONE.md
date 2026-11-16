@@ -1,3 +1,4 @@
+- ✅ **#403.** Profile page redesign: PF7 CV sheet `[Model: Sonnet 5]` — [detail](docs/todo/B403-profile-cv-redesign.md)
 - ✅ **#401.** Installable PWA + sticky install banner on home (Android prompt, iOS Add-to-Home-Screen hint) `[Model: Sonnet 5]` — [detail](docs/todo/F401-pwa-install-banner.md)
 - ✅ **#400.** Pinch-zoom the board only on phones (viewBox; pan; double-tap reset; no +/-) `[Model: Sonnet 5]` — [detail](docs/todo/F400-board-pinch-zoom.md)
 - ✅ **#375.** Rankings "Nhóm" column header shows mojibake "NhÃ³m" (vi i18n) `[Model: Haiku]` — [detail](docs/todo/B375-rankings-club-header-mojibake.md)

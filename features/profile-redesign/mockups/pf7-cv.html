@@ -1,0 +1,98 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PF7 Sơ yếu kỳ thủ (CV)</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* PF7 — the profile as a curriculum vitae: one sheet, an inverted side column (photo, contact, "skills" = ratings,
+   clubs) and a main column of CV sections (summary, competition record, awards, recent games as a table). */
+:root{--cv-shadow:rgba(0,0,0,.5)}
+:root[data-mode=light]{--cv-shadow:rgba(40,36,28,.22)}
+.cv{display:grid;grid-template-columns:300px minmax(0,1fr);max-width:1040px;margin:28px auto 0;background:var(--c-surface);border-radius:6px;overflow:hidden;box-shadow:0 20px 44px -20px var(--cv-shadow)}
+.sd{background:var(--c-ink);color:var(--c-on-ink);padding:32px 26px;display:flex;flex-direction:column;gap:26px}
+.sd .ph{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.sd .ph .av{box-shadow:0 0 0 4px var(--c-ink),0 0 0 6px var(--c-on-ink)}
+.sd h3{font-size:12px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;padding-bottom:6px;margin-bottom:12px;border-bottom:2px solid color-mix(in srgb,var(--c-on-ink) 30%,transparent)}
+.ct{display:grid;gap:10px;font-weight:700;font-size:15px}
+.ct span{display:flex;gap:10px;align-items:center;min-width:0}
+.sk{display:grid;gap:14px}
+.sk .r{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:800}
+.sk .r b{font-size:20px;font-weight:1000}
+.sk small{display:block;font-size:12px;font-weight:700;opacity:.7;margin-top:4px}
+.lv{height:6px;border-radius:99px;margin-top:6px;background:color-mix(in srgb,var(--c-on-ink) 18%,transparent);overflow:hidden}
+.lv i{display:block;height:100%;border-radius:99px;background:var(--c-on-ink);animation:wipe var(--d-slow) var(--e-out) backwards;animation-delay:calc(300ms + var(--i)*80ms)}
+.sd .club{display:flex;gap:10px;align-items:center;min-height:44px;font-weight:800}
+.sd .club small{display:block;font-weight:600;opacity:.7;font-size:12px}
+.sd .dots{display:flex;gap:5px;margin-top:6px}.sd .dots i{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--c-on-ink)}.sd .dots i.on{background:var(--c-on-ink)}
+.mn{padding:36px 40px 40px;min-width:0}
+.top{display:flex;flex-wrap:wrap;gap:16px 24px;align-items:flex-end;justify-content:space-between;padding-bottom:20px;border-bottom:3px solid var(--c-ink)}
+.top h1{font-size:clamp(36px,3.6vw + 10px,60px);font-weight:1000;letter-spacing:-.02em;line-height:1;text-transform:uppercase}
+.facts{display:flex;flex-wrap:wrap;gap:10px 0;margin:14px 0 0}
+.facts div{padding:0 22px;border-left:1px solid var(--c-border)}.facts div:first-child{padding-left:0;border-left:0}
+.facts dt{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink-2)}
+.facts dd{margin:2px 0 0;font-size:22px;font-weight:1000;line-height:1.2;color:var(--c-brand-text)}.facts dd .dl{font-size:18px}
+.tag{display:flex;gap:8px;align-items:center;margin-top:4px;font-weight:700}.tag span{opacity:.75}.tag b{padding:1px 8px;border-radius:6px;font-weight:1000;box-shadow:inset 0 0 0 1.5px currentColor}
+.sk small,.sd .r2{display:flex!important;justify-content:space-between;gap:8px}.sd .r2{font-weight:800;align-items:baseline}.sd .r2 b{font-size:20px;font-weight:1000}
+.sd .club .cnt{margin-left:auto;font-size:13px;font-weight:900;opacity:.75}
+.sec{margin-top:28px}
+.sec>h2{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px}
+.sec>h2::after{content:"";flex:1;height:1px;background:var(--c-border)}
+.sum{font-size:18px;line-height:1.55;max-width:60ch}
+.nums{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.nums div{padding:12px 0 0;border-top:3px solid var(--c-ink)}
+.nums b{display:block;font-size:30px;font-weight:1000;line-height:1.1}.nums span{font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-2)}
+.xp{display:grid;grid-template-columns:120px minmax(0,1fr);gap:4px 20px;padding:12px 0;border-top:1px solid var(--c-border-light)}
+.xp:first-of-type{border-top:0;padding-top:0}
+.xp time{font-weight:800;color:var(--c-ink-2);font-size:14px;padding-top:2px}
+.xp b{font-size:17px;font-weight:900}.xp p{color:var(--c-ink-2);font-size:15px}
+.xp ul{margin:6px 0 0;padding-left:18px;color:var(--c-ink-2);font-size:15px}
+.aw{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.aw div{display:flex;gap:12px;align-items:center}
+.aw .ico{width:30px;height:30px;color:var(--gold)}
+.aw small{display:block;color:var(--c-ink-2);font-weight:700}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2);text-align:left;padding:6px 8px 6px 0;border-bottom:2px solid var(--c-ink)}
+td{height:44px;padding:0 8px 0 0;border-bottom:1px solid var(--c-border-light);font-weight:700}
+td.o{max-width:0;width:44%}td .ell{display:block}
+td.r,th.r{text-align:right;padding-right:0}td.x.r,th.x.r{padding-right:28px}.sd .ph>div{display:none}
+.foot{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-top:14px}
+.ref{color:var(--c-ink-2);font-size:14px;font-style:italic}
+.dock{display:none}
+@media(max-width:860px){
+  .cv{grid-template-columns:minmax(0,1fr);margin:0;border-radius:0;box-shadow:none}
+  .sd{padding:20px 16px;gap:18px}
+  .sd .ph{flex-direction:row;text-align:left;gap:14px}.sd .ph .av{--s:76px!important}
+  .sd .ph>div{display:block}.sd .ph h2{font-size:24px!important}
+  .sk{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.sk .r{flex-direction:column;gap:0}.sk small{display:none!important}.tag{margin-top:2px}
+  .sd .org{display:none}
+  .mn{padding:20px 16px 24px}
+  .top{border-bottom:0;padding-bottom:0}.top .nm{display:none}.top .acts{width:100%}.top .acts .btn{flex:1}.top .acts .btn--pri{flex:1 1 100%}
+  .sec{margin-top:22px}.sum{font-size:16px}
+  .nums{grid-template-columns:repeat(3,minmax(0,1fr))}.nums b{font-size:24px}
+  .xp{grid-template-columns:minmax(0,1fr)}
+  .x{display:none}
+}
+</style></head><body>
+<main><article class="cv rise" id="cv"></article></main>
+<p class="mk-note">PF7: hồ sơ dạng CV: cột trái đảo màu (ảnh, liên hệ, "kỹ năng" = rating, hội nhóm), cột phải là các mục CV. Mốc thời gian trong "Quá trình thi đấu" và ngày đạt huy hiệu <span class="need">API</span>. Điện thoại: cột trái thành khối đầu trang.</p>
+<script src="../icons.js"></script><script src="../data.js"></script><script>
+const {P,G,RES,ic,av,dl,need,actions}=PF;PF.top();const m=P.ratings[0],z=P.puzzles;
+const lvl=r=>Math.max(8,Math.min(100,(r-1200)/(2200-1200)*100)),LV=['Dễ','Vừa','Khó','Cao thủ'];
+cv.innerHTML=`<aside class="sd">
+  <div class="ph">${av(P,148)}<div style="min-width:0"><h2 class="ell" style="font-size:22px;font-weight:1000">${P.name}</h2><p class="tag"><span>Kỳ thủ ${m.k}</span><b class="num">#${m.rank}</b></p></div></div>
+  <section><h3>Liên hệ</h3><div class="ct"><span>${ic('user-circle')}<span class="ell">@${P.user}</span></span><span>${ic('map-pin')}<span class="ell">${PF.where}</span></span><span>${ic('calendar')}Tham gia ${P.joined}</span></div></section>
+  <section><h3>Rating</h3><div class="sk">${P.ratings.map((r,i)=>`<div><div class="r"><span>${r.k}</span><b class="num">${r.r}${r.prov?'?':''}</b></div><div class="lv" role="img" aria-label="${r.k} ${r.r}"><i style="width:${lvl(r.r)}%;--i:${i}"></i></div><small><span>${r.rank?'Hạng #'+r.rank:'Tạm tính'}</span><span class="num">${r.g} ván</span></small></div>`).join('')}</div></section>
+  <section class="org"><h3>Giải đố</h3><div class="r2"><span>Level ${z.level}</span><b class="num">${z.solved}</b></div><div class="dots" role="img" aria-label="Level ${z.level}">${LV.map((l,i)=>`<i class="${i<=LV.indexOf(z.level)?'on':''}"></i>`).join('')}</div><small style="display:block;margin-top:6px;opacity:.7;font-weight:700">puzzle đã giải</small></section>
+  <section class="org"><h3>Hội nhóm</h3>${P.clubs.map(c=>`<a class="club">${av(c,36,'av--sq')}<span class="ell">${c.name}<small>${c.role}</small></span><span class="cnt num" title="${c.n} thành viên">${c.n}</span></a>`).join('')}</section>
+ </aside>
+ <div class="mn">
+  <header class="top"><div class="nm" style="min-width:0"><h1 class="ell">${P.name}</h1><dl class="facts"><div><dt>Thể loại chính</dt><dd>${m.k}</dd></div><div><dt>Hạng</dt><dd class="num">#${m.rank}</dd></div><div><dt>Rating</dt><dd class="num">${m.r}</dd></div><div><dt>7 ngày qua</dt><dd>${dl(m.d)}</dd></div></dl></div><div class="acts">${actions()}</div></header>
+  <section class="sec"><h2>Giới thiệu</h2><p class="sum">${P.bio}</p></section>
+  <section class="sec"><h2>Số liệu</h2><div class="nums"><div><b class="num">${P.stats.g}</b><span>Ván</span></div><div><b class="num">${P.pct}%</b><span>Thắng</span></div><div><b class="num">${P.stats.d}</b><span>Hoà</span></div><div><b class="num">${P.streak.cur}</b><span>Chuỗi thắng</span></div><div><b class="num">${P.streak.best}</b><span>Chuỗi cao nhất</span></div></div><div style="margin-top:14px">${PF.wdl()}</div></section>
+  <section class="sec"><h2>Quá trình thi đấu ${need()}</h2>
+   <div class="xp"><time>10/2026 — nay</time><div><b>Vào Top 10 ${m.k}</b><p>Hạng #${m.rank}, đỉnh rating ${m.peak}.</p><ul><li>Chuỗi ${P.streak.best} thắng liên tiếp</li><li>Thắng Sơn Tùng (2104) và Gomoku_VN (2087)</li></ul></div></div>
+   <div class="xp"><time>02/2026 — nay</time><div><b>${P.clubs[0].role}</b><p>${P.clubs[0].name}, hội ${P.clubs[0].n} thành viên.</p></div></div>
+   <div class="xp"><time>03/2024</time><div><b>Gia nhập Play3CR</b><p>Thắng ván xếp hạng đầu tiên ở ván thứ 3.</p></div></div></section>
+  <section class="sec"><h2>Thành tích</h2><div class="aw">${P.badges.map(b=>`<div>${ic(b.i)}<span><b>${b.t}</b><small>${b.date} ${need()}</small></span></div>`).join('')}</div></section>
+  <section class="sec"><h2>Ván gần đây</h2><table><thead><tr><th>Ngày</th><th>Đối thủ</th><th class="x">Luật</th><th class="x r">Nước</th><th>Kết quả</th><th class="r">±</th></tr></thead><tbody>
+   ${G.slice(0,8).map(g=>`<tr><td>${g.date}</td><td class="o"><a class="ell">${g.opp}</a></td><td class="x">${g.rule}</td><td class="x r">${g.moves}</td><td class="t-${g.res}">${RES[g.res][1]}</td><td class="r">${dl(g.delta)}</td></tr>`).join('')}</tbody></table>
+   <div class="foot"><button class="btn">${ic('caret-down')}Xem cả ${P.stats.g} ván</button><span class="ref">Bấm vào ván để xem lại.</span></div></section>
+ </div>`;
+</script></body></html>
