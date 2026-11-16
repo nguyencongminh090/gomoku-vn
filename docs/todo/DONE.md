@@ -1,3 +1,4 @@
+- ✅ **#407.** AI opponent (bot seat) on the engine service; scope TBD `[Model: Opus 5]` — [detail](docs/todo/F407-engine-ai-opponent.md)
 - ✅ **#406.** Rebuild WASM engine (Caro + rect) and pick hosting `[Model: Sonnet 5]` — [detail](docs/todo/F406-engine-wasm-rebuild.md)
 - ✅ **#404.** Engine service core: jobs, purposes, rule mapper, output parser (size L, features/rapfi-engine) `[Model: Sonnet 5]` — [detail](docs/todo/F404-engine-service-core.md)
 - ✅ **#408.** Multi-thread engine variant on cross-origin isolated pages `[Model: Opus 5]` — [detail](docs/todo/F408-engine-multithread.md)

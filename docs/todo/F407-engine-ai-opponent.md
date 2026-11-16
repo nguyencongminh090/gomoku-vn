@@ -1,5 +1,5 @@
 # F407 — AI opponent (bot seat) on engine service
-**Status:** OPEN
+**Status:** ✅ CLOSED 2026-11-16 (deferred by user, not built; reopen when AI opponent is wanted)
 **Area:** TBD (room/game handler bot seat, difficulty UI)   **From:** user 2026-11-16 "step 2: implement AI opponent in detail" (deferred)   **Depends:** F404, F405, F406
 
 ## Problem
