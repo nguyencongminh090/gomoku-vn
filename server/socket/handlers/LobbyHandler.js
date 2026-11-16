@@ -12,6 +12,7 @@
 
 const logger      = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
+const database    = require('../../db/database');
 const {
   timerMap,
   emptyRoomGraceTimers,
@@ -106,6 +107,12 @@ function register(io, socket) {
     }
 
     const room = result.room;
+    // F402: the create-room modal pre-fills with these next time. Members only (guests have no
+    // users row); best-effort — a failed write must never fail the room that was just created.
+    if (!user.isGuest) {
+      try { database.setLastRoomSettings(user.userId, room.settings); }
+      catch (err) { logger.warn('[Lobby] could not remember room settings', { err: err.message }); }
+    }
     socket.leave(LOBBY_ROOM);
     socket.join(room.roomId);
     (socket.data || (socket.data = {})).roomPageId = room.roomId; // #373: this socket is the room page (RoomHandler onPresence reads it)

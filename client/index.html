@@ -34,7 +34,7 @@
   <meta name="apple-mobile-web-app-title" content="Play3CR" />
   <link rel="stylesheet" href="css/main.css?v=8aabd3f8" />
   <link rel="stylesheet" href="css/tokens.css?v=db200088" />
-  <link rel="stylesheet" href="css/lobby.css?v=2bd69874" />
+  <link rel="stylesheet" href="css/lobby.css?v=fd31e763" />
   <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
   <link rel="stylesheet" href="css/shell.css?v=09cb623c" />
   <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
@@ -53,10 +53,10 @@
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=7acad48e" />
   <link rel="modulepreload" href="js/platform-shell.js?v=bd6fcdfc" />
-  <link rel="modulepreload" href="js/lobby.js?v=265cb14e" />
-  <link rel="modulepreload" href="js/private-chat.js?v=8ec869ab" />
-  <link rel="modulepreload" href="js/tournaments.js?v=905fedab" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=bc3f25cf" />
+  <link rel="modulepreload" href="js/lobby.js?v=f155548e" />
+  <link rel="modulepreload" href="js/private-chat.js?v=0606a1fd" />
+  <link rel="modulepreload" href="js/tournaments.js?v=a7608bd9" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=dd3c2d33" />
 
 </head>
 <body class="zen-lobby">
@@ -263,23 +263,16 @@
 
       <!-- Mode: rated / friendly (room.settings.ranked) -->
       <div class="setting-row">
-        <span class="setting-label" id="mode-label" data-i18n="modal.mode">Chế độ</span>
-        <div class="mode-cards" role="radiogroup" aria-labelledby="mode-label">
-          <input type="radio" name="roomMode" id="rm-rated" value="rated" checked />
-          <label for="rm-rated" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg>
-            <span class="mode-card__name" data-i18n="room.mode_rated">Xếp hạng</span>
-            <span class="mode-card__desc" data-i18n="modal.mode_rated_desc">Tính điểm Elo, không đi lại</span>
-          </label>
-          <input type="radio" name="roomMode" id="rm-friendly" value="friendly" />
-          <label for="rm-friendly" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-handshake"></use></svg>
-            <span class="mode-card__name" data-i18n="room.mode_friendly">Giao hữu</span>
-            <span class="mode-card__desc" data-i18n="modal.mode_friendly_desc">Không tính điểm, được đi lại</span>
-          </label>
-        </div>
+        <label class="setting-label" for="rm-select" data-i18n="modal.mode">Chế độ</label>
+        <select class="setting-select" id="rm-select" name="roomMode">
+          <option value="rated" data-i18n="room.mode_rated">Xếp hạng</option>
+          <option value="friendly" data-i18n="room.mode_friendly">Giao hữu</option>
+        </select>
+        <p class="setting-hint" id="rm-hint" data-i18n="modal.mode_rated_desc">Tính điểm Elo, không đi lại</p>
         <p class="setting-hint" data-i18n="modal.mode_guest_note">Có khách ngồi chơi thì ván tự thành giao hữu.</p>
       </div>
+
+      <p id="modal-summary" class="modal__summary" aria-live="polite"></p>
 
       <!-- Lite: one-tap create with last-used (or default) settings -->
       <button id="btn-quick-match" class="btn btn-confirm modal__quick" type="button" data-i18n="modal.quick_match">Tạo nhanh</button>
@@ -294,43 +287,31 @@
 
       <div id="modal-advanced" class="modal__advanced">
 
-      <!-- Board size -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.board_size">Kích thước bàn</span>
-        <div class="pill-group">
-          <input type="radio" name="boardSize" id="bs-15" value="15" />
-          <label for="bs-15">15×15</label>
-          <input type="radio" name="boardSize" id="bs-17" value="17" checked />
-          <label for="bs-17">17×17</label>
-          <input type="radio" name="boardSize" id="bs-19" value="19" />
-          <label for="bs-19">19×19</label>
-          <input type="radio" name="boardSize" id="bs-20" value="20" />
-          <label for="bs-20">20×20</label>
-        </div>
+        <label class="setting-label" for="bs-select" data-i18n="modal.board_size">Kích thước bàn</label>
+        <select class="setting-select" id="bs-select" name="boardSize">
+          <option value="15">15×15</option>
+          <option value="17">17×17</option>
+          <option value="19" selected>19×19</option>
+          <option value="20">20×20</option>
+        </select>
       </div>
 
-      <!-- Winning rule (radio — pick one) -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.win_rule">Luật thắng</span>
-        <div class="pill-group">
-          <input type="radio" name="winRule" id="wr-freestyle" value="freestyle" checked />
-          <label for="wr-freestyle" data-i18n="rule.freestyle">Luật 1</label>
-          <input type="radio" name="winRule" id="wr-standard" value="standard" />
-          <label for="wr-standard" data-i18n="rule.standard">Tiêu chuẩn</label>
-          <input type="radio" name="winRule" id="wr-caro" value="caro" />
-          <label for="wr-caro" data-i18n="rule.caro">Luật 2</label>
-        </div>
+        <label class="setting-label" for="wr-select" data-i18n="modal.win_rule">Luật thắng</label>
+        <select class="setting-select" id="wr-select" name="winRule">
+          <option value="freestyle" data-i18n="rule.freestyle">Luật 1</option>
+          <option value="standard" data-i18n="rule.standard">Tiêu chuẩn</option>
+          <option value="caro" data-i18n="rule.caro">Luật 2</option>
+        </select>
       </div>
 
-      <!-- Opening rule (radio — pick one) -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.opening">Luật mở đầu</span>
-        <div class="pill-group">
-          <input type="radio" name="openRule" id="or-none" value="none" checked />
-          <label for="or-none" data-i18n="rule.none">Không</label>
-          <input type="radio" name="openRule" id="or-swap2" value="swap2" />
-          <label for="or-swap2">Swap2</label>
-        </div>
+        <label class="setting-label" for="or-select" data-i18n="modal.opening">Luật mở đầu</label>
+        <select class="setting-select" id="or-select" name="openRule">
+          <option value="none" data-i18n="rule.none">Không</option>
+          <option value="swap2">Swap2</option>
+        </select>
       </div>
 
       <!-- Board setup (checkboxes — may combine) -->
@@ -352,17 +333,13 @@
         </div>
       </div>
 
-      <!-- Timer mode -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.timer_mode">Bộ đếm giờ</span>
-        <div class="pill-group">
-          <input type="radio" name="timerMode" id="tm-move" value="per_move" checked />
-          <label for="tm-move" data-i18n="modal.per_move">Mỗi nước</label>
-          <input type="radio" name="timerMode" id="tm-game" value="per_game" />
-          <label for="tm-game" data-i18n="modal.per_game">Mỗi ván</label>
-          <input type="radio" name="timerMode" id="tm-blitz" value="blitz" />
-          <label for="tm-blitz" data-i18n="modal.blitz">Blitz</label>
-        </div>
+        <label class="setting-label" for="tm-select" data-i18n="modal.timer_mode">Bộ đếm giờ</label>
+        <select class="setting-select" id="tm-select" name="timerMode">
+          <option value="per_move" data-i18n="modal.per_move">Mỗi nước</option>
+          <option value="per_game" data-i18n="modal.per_game">Mỗi ván</option>
+          <option value="blitz" data-i18n="modal.blitz">Blitz</option>
+        </select>
       </div>
 
       <!-- Timer seconds + increment (increment only applies in Blitz; disabled otherwise via lobby.js) -->
@@ -622,6 +599,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=aa3e41e3"></script>
+<script type="module" src="js/index-entry.js?v=f3c29074"></script>
 </body>
 </html>

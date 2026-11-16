@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=265cb14e';
+import { client, setHeroTournamentCount } from './lobby.js?v=f155548e';
 
 // ---------------------------------------------------------------------------
 // Element refs
