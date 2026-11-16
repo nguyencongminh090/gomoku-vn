@@ -111,7 +111,7 @@ body.zen-lobby #panel-tables .rcard .rplayer--empty::before { width: 28px; heigh
 body.zen-lobby #panel-tables .rcard .room-row__meta { margin-top: 0; }
 body.zen-lobby #panel-tables .rcard .room-row__host { flex-basis: 100%; margin: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.rcard-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 250px; border-radius: 16px; border: 2px dashed var(--c-border); background: none; cursor: pointer;
+.rcard-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 250px; border-radius: 16px; border: 2px dashed var(--c-border); background: var(--c-surface); cursor: pointer;
   font: inherit; font-weight: 800; color: var(--c-ink-2); transition: border-color 140ms, color 140ms; }
 .rcard-new:hover { border-color: var(--c-brand-text); color: var(--c-ink); }
 .rcard-new:focus-visible { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
