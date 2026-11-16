@@ -81,3 +81,4 @@ in the detail file / fix-log).
 - **#394.** Info logs written synchronously on every socket connect/disconnect/grace/timer start `[Model: Sonnet 5]` — [detail](docs/todo/B394-sync-info-logs-per-socket.md)
 - **#395.** home-feed and online-list flushes fan out to every watcher in one tick `[Model: Sonnet 5]` — [detail](docs/todo/B395-home-online-fanout-tick.md)
 - **#396.** Storm second: one poll phase runs ~0.5 s of per-socket connect/disconnect work `[Model: Opus 5]` — [detail](docs/todo/B396-storm-poll-phase-burst.md)
+- **#397.** Move-ack tail (p99/max) under load: real or noise, and what drives it `[Model: Opus 5]` — [detail](docs/todo/B397-ack-tail-under-load.md)
