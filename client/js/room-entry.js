@@ -20,7 +20,7 @@
 import './i18n.js?v=88acd694';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=7acad48e';
-import './board.js?v=89363fd1';
+import './board.js?v=f4df4701';
 import './room.js?v=36813fdf';
 import './chat-ui.js?v=87065d01';
 import './room-ui.js?v=ccffbeb5';
