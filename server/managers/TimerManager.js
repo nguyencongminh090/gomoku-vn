@@ -69,7 +69,7 @@ class TimerManager {
       this._tick();
     }, 1000);
 
-    logger.info(`[Timer] Started for room ${this.roomId} (${this.mode}, ${this.initialSeconds}s)`);
+    logger.debug(`[Timer] Started for room ${this.roomId} (${this.mode}, ${this.initialSeconds}s)`);
   }
 
   /** Stop the timer and clear the interval. */

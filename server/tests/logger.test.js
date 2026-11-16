@@ -12,7 +12,7 @@
 function freshLogger(env = {}) {
   jest.resetModules();
   const saved = {};
-  for (const k of ['LOG_FORMAT', 'LOG_COLOR', 'DEBUG']) {
+  for (const k of ['LOG_FORMAT', 'LOG_COLOR', 'DEBUG', 'LOG_LEVEL']) {
     saved[k] = process.env[k];
     if (k in env) process.env[k] = env[k];
     else delete process.env[k];
@@ -119,4 +119,20 @@ describe('level gating', () => {
     f.restore();
     spy.mockRestore();
   });
+});
+
+describe('LOG_LEVEL (#394)', () => {
+  function run(level) {
+    const { logger, restore } = freshLogger({ LOG_FORMAT: 'logfmt', ...(level ? { LOG_LEVEL: level } : {}) });
+    const spies = ['info', 'warn', 'error'].map((m) => jest.spyOn(console, m).mockImplementation(() => {}));
+    logger.info('i'); logger.warn('w'); logger.error('e');
+    const counts = spies.map((s) => s.mock.calls.length);
+    spies.forEach((s) => s.mockRestore());
+    restore();
+    return counts;
+  }
+  test('default prints info/warn/error', () => expect(run()).toEqual([1, 1, 1]));
+  test('warn suppresses info', () => expect(run('warn')).toEqual([0, 1, 1]));
+  test('error suppresses info+warn', () => expect(run('error')).toEqual([0, 0, 1]));
+  test('unknown value falls back to info', () => expect(run('bogus')).toEqual([1, 1, 1]));
 });

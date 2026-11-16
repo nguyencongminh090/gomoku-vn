@@ -1,5 +1,5 @@
 # B394 — Info logs are written synchronously on every socket connect/disconnect/grace/timer start
-**Status:** OPEN
+**Status:** FIXED on fix/394-logger-log-level (uncommitted); storm share not re-measured
 **Area:** `server/utils/logger.js`, call sites in `SocketHandler.js`, `DisconnectHandler.js`, `TimerManager.js`
 **From:** #388 storm profile 2026-11-16 (`mixed.sh`, `--cpu-prof`)   **Depends:** —
 

@@ -45,7 +45,7 @@ function handleDisconnect(io, socket) {
   // skip leave / grace — only the last connection should trigger cleanup.
   const activeSockets = findSocketsByUserId(io, user.userId);
   if (activeSockets.length > 0) {
-    logger.info(`[Disconnect] Stale socket closed for ${user.displayName}, active socket exists — skipping`);
+    logger.debug(`[Disconnect] Stale socket closed for ${user.displayName}, active socket exists — skipping`);
     return;
   }
 
@@ -90,7 +90,7 @@ function handleDisconnect(io, socket) {
   if (roomUser && roomUser.slot === null) {
     roomUser.presence = 'disconnected';
     broadcastRoomUpdate(io, room);
-    logger.info(`[Disconnect] Viewer ${user.displayName} disconnected in room ${roomId} — no grace timeout, stays in room.users indefinitely`);
+    logger.debug(`[Disconnect] Viewer ${user.displayName} disconnected in room ${roomId} — no grace timeout, stays in room.users indefinitely`);
     return;
   }
 
@@ -126,7 +126,7 @@ function reapGhostRoom(io, roomId) {
   for (const [id, u] of [...room.users]) {
     finalizeNormalLeave(io, roomId, u, roomManager.leaveRoom(id));
   }
-  logger.info(`[Disconnect] Room ${roomId}: only disconnected viewers left — removed them`);
+  logger.debug(`[Disconnect] Room ${roomId}: only disconnected viewers left — removed them`);
 }
 
 /**
@@ -236,7 +236,7 @@ function startEmptyRoomGrace(io, room, user) {
   }, config.EMPTY_ROOM_GRACE_MS);
 
   emptyRoomGraceTimers.set(user.userId, { timeout, roomId });
-  logger.info(`[Disconnect] Empty-room grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
+  logger.debug(`[Disconnect] Empty-room grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
 }
 
 /**
@@ -253,7 +253,7 @@ function cancelEmptyRoomGrace(userId) {
   if (!entry) return false;
   clearTimeout(entry.timeout);
   emptyRoomGraceTimers.delete(userId);
-  logger.info(`[Disconnect] Empty-room grace cancelled for ${userId} — reconnected in time`);
+  logger.debug(`[Disconnect] Empty-room grace cancelled for ${userId} — reconnected in time`);
   return true;
 }
 
@@ -293,7 +293,7 @@ function startSpectatorGrace(io, room, user) {
   }, config.SPECTATOR_GRACE_MS);
 
   spectatorGraceTimers.set(user.userId, { timeout, roomId });
-  logger.info(`[Disconnect] Spectator grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
+  logger.debug(`[Disconnect] Spectator grace started for ${user.displayName} in room ${roomId} (${graceSec}s)`);
 }
 
 /**
@@ -310,7 +310,7 @@ function cancelSpectatorGrace(userId) {
   if (!entry) return false;
   clearTimeout(entry.timeout);
   spectatorGraceTimers.delete(userId);
-  logger.info(`[Disconnect] Spectator grace cancelled for ${userId} — reconnected in time`);
+  logger.debug(`[Disconnect] Spectator grace cancelled for ${userId} — reconnected in time`);
   return true;
 }
 
@@ -333,7 +333,7 @@ function startDisconnectGrace(io, room, user) {
     clearTimeout(existing.timeout);
     clearInterval(existing.countdown);
     disconnectTimers.delete(user.userId);
-    logger.info(`[Disconnect] Cleared stale grace timer for ${user.displayName}`);
+    logger.debug(`[Disconnect] Cleared stale grace timer for ${user.displayName}`);
   }
 
   // Pause the game timer
@@ -398,7 +398,7 @@ function startDisconnectGrace(io, room, user) {
   }, config.DISCONNECT_GRACE_MS);
 
   disconnectTimers.set(user.userId, { timeout, countdown, roomId });
-  logger.info(`[Disconnect] Grace period started for ${user.displayName} in room ${roomId}`);
+  logger.debug(`[Disconnect] Grace period started for ${user.displayName} in room ${roomId}`);
 }
 
 /**
@@ -458,7 +458,7 @@ function cancelDisconnectGrace(io, socket) {
       code: 'PLAYER_RECONNECTED_WAITING', vars: { name: user.displayName },
       timestamp: Date.now(), isSystem: true,
     });
-    logger.info(`[Disconnect] ${user.displayName} reconnected to room ${entry.roomId} but another player is still in grace — not resuming yet`);
+    logger.debug(`[Disconnect] ${user.displayName} reconnected to room ${entry.roomId} but another player is still in grace — not resuming yet`);
     broadcastRoomUpdate(io, room);
     return true;
   }
@@ -482,7 +482,7 @@ function cancelDisconnectGrace(io, socket) {
   });
   broadcastRoomUpdate(io, room);
 
-  logger.info(`[Disconnect] ${user.displayName} reconnected, game resumed in room ${entry.roomId}`);
+  logger.debug(`[Disconnect] ${user.displayName} reconnected, game resumed in room ${entry.roomId}`);
   return true;
 }
 
