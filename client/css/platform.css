@@ -147,7 +147,7 @@ body.pl::after, body.zen-lobby::after { content: ''; position: fixed; inset: 0; 
 #rk-wrap .rk-top td:nth-child(2) a { font-weight: 700; }
 #rk-wrap .ptbl tr.is-me td { background: var(--c-brand-light); }
 @media (max-width: 640px) {
-  #rk-wrap .ptbl__region, #rk-wrap .ptbl__delta, #rk-wrap .ptbl__club, #rk-wrap .ptbl__games { display: none; }
+  #rk-wrap .ptbl__delta, #rk-wrap .ptbl__club, #rk-wrap .ptbl__games { display: none; }
   #rk-wrap .ptbl th, #rk-wrap .ptbl td { padding-left: 8px; padding-right: 8px; }
   #rk-wrap .ptbl td:nth-child(2) { white-space: normal; overflow-wrap: anywhere; width: 100%; }
 }

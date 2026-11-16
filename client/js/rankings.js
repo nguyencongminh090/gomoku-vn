@@ -37,7 +37,7 @@
     category: CATEGORIES.includes(params.get('category')) ? params.get('category') : CATEGORIES[0],
     page: Math.max(1, parseInt(params.get('page'), 10) || 1),
     q: (params.get('q') || '').slice(0, 30),
-    scope: ['friends', 'vn', 'club'].includes(params.get('scope')) ? params.get('scope') : 'all',
+    scope: ['friends', 'club'].includes(params.get('scope')) ? params.get('scope') : 'all',
     mine: null,
     hasClub: false, // belongs to ≥ 1 club → "CLB của tôi" tab
   };
@@ -53,7 +53,7 @@
     tabsEl.replaceChildren();
     scopeEl.replaceChildren();
     {
-      for (const sc of state.mine && state.mine.userId ? ['all', 'vn', 'friends', ...(state.hasClub ? ['club'] : [])] : ['all', 'vn']) {
+      for (const sc of state.mine && state.mine.userId ? ['all', 'friends', ...(state.hasClub ? ['club'] : [])] : ['all']) {
         const b = el('button', t('rankings.scope_' + sc), 'ptab');
         b.type = 'button';
         b.setAttribute('role', 'tab');
@@ -88,17 +88,35 @@
     if (!m) return;
     const box = el('div', undefined, 'rk-dock__in');
     if (m.rank) {
-      box.append(el('span', t('rankings.you')), ' ', el('b', '#' + m.rank), ' ', el('span', '/ ' + m.total + ' · ' + m.rating, 'rk-dock__m'));
+      // Two labelled stat blocks split by a rule, not "#12 / 340 · 1642" (no A · B · C runs on this page).
+      const rank = el('span', undefined, 'rk-dock__st');
+      rank.append(el('small', t('rankings.you'), 'rk-dock__lbl'), ' ', el('b', '#' + m.rank), ' ', el('span', '/ ' + m.total, 'rk-dock__of'));
+      const rating = el('span', undefined, 'rk-dock__st rk-dock__st--r');
+      rating.append(el('small', t('rankings.col_rating'), 'rk-dock__lbl'), ' ', el('b', String(m.rating)));
+      box.append(rank, ' ', rating); // spaces: copy-paste / AT read "Bạn #2 / 2 Rating 1700"
     } else {
       box.append(el('span', t('rankings.not_ranked', { games: m.games, min: state.mine.minGames }), 'rk-dock__m'));
     }
     mineEl.appendChild(box);
   }
 
-  /** "Hà Nội, Việt Nam" / "Việt Nam" / "—": city is free text (textContent only), country name from Intl. */
-  function regionText(p) {
-    const country = p.country && window.Countries ? window.Countries.name(p.country, document.documentElement.lang || 'vi') : '';
-    return [p.city, country].filter(Boolean).join(', ') || '—';
+  // Windows ships no flag glyphs (regional indicators render as two plain letters) → show a "VN" code badge there.
+  const FLAG_EMOJI = !/Windows/.test((window.navigator && window.navigator.userAgent) || '');
+
+  /**
+   * Country flag beside a name (user 2026-11-16: no city/region text on this page, a flag instead).
+   * Country name from Intl is the accessible name. null when the member set no (valid) country.
+   */
+  function flagEl(code) {
+    const cc = String(code || '').toUpperCase();
+    if (!/^[A-Z]{2}$/.test(cc)) return null;
+    const name = window.Countries ? window.Countries.name(cc, document.documentElement.lang || 'vi') : cc;
+    const f = el('span', FLAG_EMOJI ? String.fromCodePoint(...[...cc].map((c) => 0x1F1A5 + c.charCodeAt(0))) : cc,
+      'rk-flag' + (FLAG_EMOJI ? '' : ' rk-flag--code'));
+    f.setAttribute('role', 'img');
+    f.setAttribute('aria-label', name);
+    f.title = name;
+    return f;
   }
 
   /** Split-flap digits (visual only) + the real number for assistive tech. `at` = ms into the intro when they settle. */
@@ -130,7 +148,11 @@
       if (p.rank === 1) who.appendChild(el('i', undefined, 'rk-crown'));
       const link = el('a', p.displayName, 'rk-c__nm');
       link.href = '/u/' + encodeURIComponent(p.username);
-      who.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName), link);
+      const id = el('div', undefined, 'rk-c__id');
+      const f = flagEl(p.country);
+      if (f) id.appendChild(f);
+      id.appendChild(link);
+      who.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName), id);
       const rt = el('div', undefined, 'rk-c__rt');
       rt.appendChild(flap(p.rating, 3700 + (p.rank - 1) * 120));
       if (p.provisional) rt.appendChild(el('span', '?', 'ptbl__prov'));
@@ -150,7 +172,11 @@
     tickEl.hidden = movers.length === 0;
     for (let k = 0; k < 2; k++) {
       for (const p of movers) {
-        inner.appendChild(el('span', t(p.delta7 > 0 ? 'rankings.tick_up' : 'rankings.tick_down') + ' · ' + String(p.displayName).toUpperCase() + ' ' + deltaText(p.delta7), p.delta7 > 0 ? 'up' : 'dn'));
+        // [LÊN] NAME +12 — a solid direction tag, then name and number; no "LÊN · NAME" dot run.
+        const item = el('span', undefined, 'rk-tk ' + (p.delta7 > 0 ? 'up' : 'dn'));
+        item.append(el('span', t(p.delta7 > 0 ? 'rankings.tick_up' : 'rankings.tick_down'), 'rk-tk__tag'),
+          el('b', String(p.displayName).toUpperCase(), 'rk-tk__nm'), el('span', deltaText(p.delta7), 'rk-tk__d'));
+        inner.appendChild(item);
       }
     }
   }
@@ -172,7 +198,10 @@
       const name = document.createElement('td');
       const link = el('a', p.displayName);
       link.href = '/u/' + encodeURIComponent(p.username);
-      name.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm'), link);
+      name.append(window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--sm'));
+      const f = flagEl(p.country);
+      if (f) name.appendChild(f);
+      name.appendChild(link);
       const rating = el('td', undefined, 'num');
       rating.appendChild(flap(p.rating, 700 + k * 110));
       if (p.provisional) rating.appendChild(el('span', '?', 'ptbl__prov'));
@@ -186,8 +215,8 @@
       } else {
         club.textContent = '—';
       }
-      // Mockup order: # · Người chơi · Khu vực · Rating · 7 ngày · CLB (+ Ván). Phone keeps # · Người chơi · Rating (#330).
-      tr.append(el('td', String(p.rank)), name, el('td', regionText(p), 'ptbl__region'), rating, delta, club, el('td', String(p.games), 'num ptbl__games'));
+      // Columns: #, Người chơi (flag beside the name), Rating, 7 ngày, Nhóm, Ván. Phone keeps #, Người chơi, Rating (#330).
+      tr.append(el('td', String(p.rank)), name, rating, delta, club, el('td', String(p.games), 'num ptbl__games'));
       bodyEl.appendChild(tr);
       i++;
     }

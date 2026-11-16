@@ -17,7 +17,7 @@
 // them as classic <head> scripts so socket-early.js can open the socket while
 // the page parses. Importing them too would evaluate both a second time — the
 // #51 duplicate-socket bug.
-import './i18n.js?v=cc477836';
+import './i18n.js?v=67caca40';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=7acad48e';
 import './board.js?v=f4df4701';

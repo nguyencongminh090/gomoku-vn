@@ -64,38 +64,39 @@ describe('rankings page', () => {
   it('shows the 7-day change (signed, coloured) and the club link; no club → dash', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const [bob, alice] = document.querySelectorAll('#rk-body tr');
-    expect(bob.children[4].textContent).toBe('+12');
-    expect(bob.children[4].classList.contains('up')).toBe(true);
-    expect(alice.children[4].textContent).toBe('-5');
-    expect(alice.children[4].classList.contains('dn')).toBe(true);
-    const club = bob.children[5].querySelector('a');
+    expect(bob.children[3].textContent).toBe('+12');
+    expect(bob.children[3].classList.contains('up')).toBe(true);
+    expect(alice.children[3].textContent).toBe('-5');
+    expect(alice.children[3].classList.contains('dn')).toBe(true);
+    const club = bob.children[4].querySelector('a');
     expect(club.textContent).toBe('<i>K1</i>');
     expect(club.querySelector('i')).toBeNull();
     expect(club.getAttribute('href')).toBe('/c/k-1');
-    expect(alice.children[5].textContent).toBe('—');
+    expect(alice.children[4].textContent).toBe('—');
   });
 
-  it('columns follow the mockup: # · Người chơi · Khu vực · Rating · 7 ngày · CLB · Ván (Ván dropped on mobile)', async () => {
+  it('columns: #, Người chơi, Rating, 7 ngày, Nhóm, Ván; no Khu vực column (user 2026-11-16)', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const th = [...document.querySelectorAll('thead th')];
-    expect(th.map((x) => x.getAttribute('data-i18n') || x.textContent)).toEqual(['#', 'rankings.col_player', 'rankings.col_region', 'rankings.col_rating', 'rankings.col_delta', 'rankings.col_club', 'rankings.col_games']);
+    expect(th.map((x) => x.getAttribute('data-i18n') || x.textContent)).toEqual(['#', 'rankings.col_player', 'rankings.col_rating', 'rankings.col_delta', 'rankings.col_club', 'rankings.col_games']);
     const [bob] = document.querySelectorAll('#rk-body tr');
-    expect(bob.children).toHaveLength(7);
-    expect(bob.children[3].classList.contains('num')).toBe(true); // rating
-    expect(bob.children[6].classList.contains('ptbl__games')).toBe(true);
-    expect(th[6].classList.contains('ptbl__games')).toBe(true);
+    expect(bob.children).toHaveLength(6);
+    expect(bob.children[2].classList.contains('num')).toBe(true); // rating
+    expect(bob.children[5].classList.contains('ptbl__games')).toBe(true);
+    expect(th[5].classList.contains('ptbl__games')).toBe(true);
+    expect(document.querySelector('.ptbl__region')).toBeNull();
   });
 
-  it('phone keeps # · Người chơi · Rating: region/7-day/club/games columns carry hide classes (#330)', async () => {
+  it('phone keeps # · Người chơi · Rating: 7-day/club/games columns carry hide classes (#330)', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const [bob, alice] = document.querySelectorAll('#rk-body tr');
-    for (const [i, c] of [[2, 'ptbl__region'], [4, 'ptbl__delta'], [5, 'ptbl__club'], [6, 'ptbl__games']]) {
+    for (const [i, c] of [[3, 'ptbl__delta'], [4, 'ptbl__club'], [5, 'ptbl__games']]) {
       expect(bob.children[i].classList.contains(c)).toBe(true);
       expect(document.querySelectorAll('thead th')[i].classList.contains(c)).toBe(true);
     }
-    expect(alice.children[3].classList.contains('num')).toBe(true);
+    expect(alice.children[2].classList.contains('num')).toBe(true);
     const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
-    expect(css).toMatch(/@media \(max-width: 640px\) \{\s*#rk-wrap \.ptbl__region, #rk-wrap \.ptbl__delta, #rk-wrap \.ptbl__club, #rk-wrap \.ptbl__games \{ display: none; \}/);
+    expect(css).toMatch(/@media \(max-width: 640px\) \{\s*#rk-wrap \.ptbl__delta, #rk-wrap \.ptbl__club, #rk-wrap \.ptbl__games \{ display: none; \}/);
   });
 
   it('typing in the search box re-queries with q (debounced) and resets to page 1', async () => {
@@ -131,12 +132,15 @@ describe('rankings page', () => {
     expect(global.fetch.mock.calls.pop()[0]).toContain('category=caro');
   });
 
+  // Scope tab label = its accessible name (the VN tab shows a flag + "VN", named by aria-label).
+  const scopeLabel = (c) => c.getAttribute('aria-label') || c.textContent;
+
   it('members get a Bạn bè scope tab that re-queries with scope=friends; guests/logged-out do not', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
     const chips = [...document.querySelectorAll('#rk-scope .ptab')];
-    expect(chips.map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends']);
+    expect(chips.map(scopeLabel)).toEqual(['rankings.scope_all', 'rankings.scope_friends']);
     expect(chips[0].getAttribute('aria-selected')).toBe('true');
-    chips[2].click();
+    chips[1].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('scope=friends');
     expect(location.search).toContain('scope=friends');
@@ -147,12 +151,12 @@ describe('rankings page', () => {
 
   it('"CLB của tôi" tab appears only for members who belong to a club, and re-queries with scope=club', async () => {
     const route = (clubs) => (url) => (url.includes('/me') ? ok(ME) : url.includes('/api/clubs/mine') ? ok({ clubs }) : ok(PAGE));
-    const labels = () => [...document.querySelectorAll('#rk-scope .ptab')].map((c) => c.textContent);
+    const labels = () => [...document.querySelectorAll('#rk-scope .ptab')].map(scopeLabel);
     await boot(route([]));
     expect(labels()).not.toContain('rankings.scope_club');
     await boot(route([{ slug: 'k1', name: 'K1' }]));
-    expect(labels()).toEqual(['rankings.scope_all', 'rankings.scope_vn', 'rankings.scope_friends', 'rankings.scope_club']);
-    document.querySelectorAll('#rk-scope .ptab')[3].click();
+    expect(labels()).toEqual(['rankings.scope_all', 'rankings.scope_friends', 'rankings.scope_club']);
+    document.querySelectorAll('#rk-scope .ptab')[2].click();
     await flush();
     expect(global.fetch.mock.calls.pop()[0]).toContain('scope=club');
     expect(location.search).toContain('scope=club');
@@ -168,24 +172,37 @@ describe('rankings page', () => {
     window.history.replaceState(null, '', '/rankings.html');
   });
 
-  it('everyone (even logged out) gets a Việt Nam scope tab that re-queries with scope=vn', async () => {
+  it('no country scope tab (user 2026-11-16); a stale ?scope=vn link falls back to everyone', async () => {
+    window.history.replaceState(null, '', '/rankings.html?scope=vn');
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(PAGE)));
-    const chips = [...document.querySelectorAll('#rk-scope .ptab')];
-    expect(chips.map((c) => c.textContent)).toEqual(['rankings.scope_all', 'rankings.scope_vn']);
-    chips[1].click();
-    await flush();
-    expect(global.fetch.mock.calls.pop()[0]).toContain('scope=vn');
-    expect(location.search).toContain('scope=vn');
+    expect([...document.querySelectorAll('#rk-scope .ptab')].map(scopeLabel)).toEqual(['rankings.scope_all']);
+    expect(global.fetch.mock.calls.pop()[0]).not.toContain('scope=');
+    window.history.replaceState(null, '', '/rankings.html');
   });
 
-  it('renders the Khu vực cell as text: city, country name; — when unset', async () => {
+  it('a country shows as a flag beside the name (named by the country), never city text; none when unset', async () => {
     require('../js/countries.js');
-    const page = { ...PAGE, players: [{ ...PAGE.players[0], city: '<i>HN</i>', country: 'VN' }, { ...PAGE.players[0], userId: 'x', username: 'x', city: '', country: '' }] };
+    const page = { ...TOP5, players: [P(1, { country: 'JP', city: 'Osaka' }), ...TOP5.players.slice(1, 3), P(4, { city: '<i>HN</i>', country: 'vn' }), P(5, { city: 'HN', country: '' })] };
     await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok(page)));
-    const cells = [...document.querySelectorAll('#rk-body .ptbl__region')].map((c) => c.textContent);
-    expect(cells[0].startsWith('<i>HN</i>, ')).toBe(true);
-    expect(cells[1]).toBe('—');
-    expect(document.querySelector('#rk-body .ptbl__region i')).toBeNull();
+    const [r4, r5] = document.querySelectorAll('#rk-body tr');
+    const f = r4.children[1].querySelector('.rk-flag');
+    expect(f.textContent).toBe('🇻🇳');
+    expect(f.getAttribute('role')).toBe('img');
+    expect(f.getAttribute('aria-label')).toBe(window.Countries.name('VN', 'vi'));
+    expect(f.nextElementSibling.tagName).toBe('A'); // avatar, flag, name
+    expect(r5.children[1].querySelector('.rk-flag')).toBeNull();
+    expect(document.getElementById('rk-arena').textContent).not.toMatch(/HN|Osaka/);
+    expect(document.querySelector('#rk-pod .rk-c--1 .rk-c__id .rk-flag').textContent).toBe('🇯🇵'); // podium too
+  });
+
+  it('Windows (no flag glyphs) gets a two-letter code badge instead of the emoji', async () => {
+    const spy = jest.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+    try {
+      await boot((url) => (url.includes('/me') ? Promise.resolve({ ok: false, status: 401 }) : ok({ ...PAGE, players: [{ ...PAGE.players[0], country: 'VN' }] })));
+      const f = document.querySelector('#rk-body .rk-flag');
+      expect(f.textContent).toBe('VN');
+      expect(f.classList.contains('rk-flag--code')).toBe(true);
+    } finally { spy.mockRestore(); }
   });
 
   it('shows the empty state', async () => {
@@ -240,7 +257,7 @@ describe('rankings page', () => {
 
   it('ratings render as aria-hidden split-flap digits plus the plain number for assistive tech', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
-    const cell = document.querySelector('#rk-body tr').children[3];
+    const cell = document.querySelector('#rk-body tr').children[2];
     expect(cell.querySelector('.rk-sr').textContent).toBe('1800');
     const flap = cell.querySelector('.rk-flap');
     expect(flap.getAttribute('aria-hidden')).toBe('true');
@@ -251,11 +268,14 @@ describe('rankings page', () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(TOP5)));
     const tick = document.getElementById('rk-tick');
     expect(tick.hidden).toBe(false);
-    const spans = [...tick.querySelectorAll('span')];
-    expect(spans).toHaveLength(6);
-    expect(spans.slice(0, 3).map((x) => x.textContent)).toEqual(['rankings.tick_up · P4 +41', 'rankings.tick_down · P2 -30', 'rankings.tick_up · <B>ONE</B> +9']);
-    expect(tick.querySelector('b')).toBeNull();
-    expect(spans[1].className).toBe('dn');
+    const items = [...tick.querySelectorAll('.rk-tk')];
+    expect(items).toHaveLength(6);
+    // [tag] NAME delta as separate parts, never a "LÊN · NAME" dot run
+    expect(items.slice(0, 3).map((x) => [...x.children].map((c) => c.textContent))).toEqual([
+      ['rankings.tick_up', 'P4', '+41'], ['rankings.tick_down', 'P2', '-30'], ['rankings.tick_up', '<B>ONE</B>', '+9']]);
+    expect(tick.textContent).not.toContain('·');
+    expect(tick.querySelector('.rk-tk__nm b')).toBeNull(); // name stays text
+    expect(items[1].className).toBe('rk-tk dn');
     await boot((url) => (url.includes('/me') ? ok(ME) : ok({ ...TOP5, players: TOP5.players.map((p) => ({ ...p, delta7: 0 })) })));
     expect(document.getElementById('rk-tick').hidden).toBe(true);
   });
@@ -266,9 +286,27 @@ describe('rankings page', () => {
     expect(document.getElementById('rk-mine').textContent).toBe('rankings.not_ranked{"games":4,"min":20}');
   });
 
-  it('the dock reads as one spaced line for assistive tech and copy-paste', async () => {
+  it('the dock = two labelled stat blocks (rank, rating), spaced for AT/copy-paste, no middle dot', async () => {
     await boot((url) => (url.includes('/me') ? ok(ME) : ok(PAGE)));
-    expect(document.getElementById('rk-mine').textContent).toBe('rankings.you #2 / 2 · 1700');
+    const dock = document.getElementById('rk-mine');
+    expect(dock.textContent).toBe('rankings.you #2 / 2 rankings.col_rating 1700');
+    expect(dock.querySelectorAll('.rk-dock__st')).toHaveLength(2);
+    expect(dock.textContent).not.toContain('·');
+  });
+
+  it('no rankings.* string (vi/en) joins facts with a middle dot (user 2026-11-16)', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8');
+    expect(src.split('\n').filter((l) => /'rankings\.[a-z_]+':.*·/.test(l))).toEqual([]);
+  });
+
+  it('page buttons sit on solid fills, never transparent (user 2026-11-16)', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'rankings.css'), 'utf8');
+    const rule = (sel) => { const m = css.match(new RegExp(sel.replace(/[.[\]"=]/g, '\\$&') + ' \\{([^}]*)\\}')); return m && m[1]; };
+    for (const sel of ['.rk-filters .pchip', '.rk-filters .ptab', '.rk-filters .ptab[aria-selected="true"]', '.rk-page .ppager .pbtn', '.rk-skip']) {
+      const body = rule(sel);
+      expect(body).toMatch(/background: var\(--c-[a-z0-9-]+\)/);
+      expect(body).not.toMatch(/background: (none|transparent)/);
+    }
   });
 
   it('a full 50-row page caps the row stagger at 17 so the cascade stays inside the opening', async () => {
@@ -304,7 +342,7 @@ describe('rankings page', () => {
       expect(html.classList.contains('rk-intro')).toBe(false);
       expect(document.getElementById('rk-skip').hidden).toBe(true);
       expect([...document.querySelectorAll('#rk-pod .rk-c--1 .rk-dg')].map((d) => d.textContent).join('')).toBe('1990');
-      expect([...document.querySelectorAll('#rk-body tr')][0].children[3].querySelector('.rk-flap').textContent).toBe('1960');
+      expect([...document.querySelectorAll('#rk-body tr')][0].children[2].querySelector('.rk-flap').textContent).toBe('1960');
     });
 
     it('the Bỏ qua button skips; the opening ends by itself after 5 s', async () => {
