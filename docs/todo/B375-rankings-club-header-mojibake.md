@@ -1,5 +1,5 @@
 # B375 — Rankings "Nhóm" column header shows mojibake "NhÃ³m"
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-16 — all "nhÃ³m" in i18n.js fixed + whole-file regression test (fix-log 2026-11-16-375-i18n-mojibake.md)
 **Area:** client/js/i18n.js:1428 (`rankings.col_club` vi)
 **From:** seen in #374 real-browser pass, 2026-11-14   **Depends:** —
 

@@ -351,3 +351,4 @@
 | 2026-11-16 09:23 | #398 grace emits merged: clock on game:interrupted/game:resumed (others only), self gets game:init alone; no compat timer:sync (rooms in-memory); drop handler 45→30 ms | [detail](docs/fix-log/2026-11-16-398-merge-grace-emits.md) |
 | 2026-11-16 09:30 | #397 ack tail closed as noise: p99 spread 5.5–19.6 ms same code, median 6–13 ms (≤ #386 9.9); tail = storm second only (ws writes); no code change | [detail](docs/fix-log/2026-11-16-397-ack-tail-noise.md) |
 | 2026-11-16 09:44 | #387 game:resumed line by reader: viewer gets "{name} đã kết nối lại!", player keeps room.reconnected, self copy silent; no browser pass | [detail](docs/fix-log/2026-11-16-387-resumed-line-viewer.md) |
+| 2026-11-16 11:56 | #375 i18n.js: 55 vi strings 'nhÃ³m' → 'nhóm' (from #359), test scans whole file; same fix in ClubService.js + routes/clubs.js, server test added | [detail](docs/fix-log/2026-11-16-375-i18n-mojibake.md) |
