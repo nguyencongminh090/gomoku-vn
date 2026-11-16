@@ -909,8 +909,41 @@ function _emitRoomUpdate(io, room, opts = {}) {
  */
 const ROOM_UPDATE_DEBOUNCE_MS = 80;
 
-/** Per-room pending debounce timer for broadcastRoomUpdate(): roomId → Timeout. */
-const _roomUpdateTimers = new Map();
+/**
+ * Per-room flush due time (ms, Date.now) for broadcastRoomUpdate(): roomId → dueAt. Insertion order is
+ * due order (the delay is constant), and ONE shared timer serves the head (#388): a reconnect storm used
+ * to arm hundreds of per-room 80 ms timers in one tick, which all expired in a single timer pass and
+ * flushed every room back-to-back (~50 ms stall). _drainRoomUpdates flushes in budgeted chunks instead.
+ */
+const _roomUpdateDue = new Map();
+/** Longest stretch one drain pass may run before yielding to I/O with setImmediate (#388). */
+const ROOM_UPDATE_FLUSH_BUDGET_MS = 5;
+const { performance: _perf } = require('perf_hooks'); // real clock even under jest fake timers
+let _roomUpdateTimer = null;
+let _roomUpdateImmediate = null;
+
+function _armRoomUpdateFlush() {
+  if (_roomUpdateTimer || _roomUpdateImmediate) return;
+  const head = _roomUpdateDue.values().next();
+  if (head.done) return;
+  _roomUpdateTimer = setTimeout(_drainRoomUpdates, Math.max(0, head.value - Date.now()));
+}
+
+function _drainRoomUpdates() {
+  _roomUpdateTimer = null;
+  _roomUpdateImmediate = null;
+  const start = _perf.now();
+  const now = Date.now() + 1; // a timer can fire a hair before Date.now() reaches its due ms
+  for (const [roomId, due] of _roomUpdateDue) {
+    if (due > now) break;
+    if (_perf.now() - start >= ROOM_UPDATE_FLUSH_BUDGET_MS) {
+      _roomUpdateImmediate = setImmediate(_drainRoomUpdates); // let socket reads/writes run, then continue
+      return;
+    }
+    _flushRoomUpdate(roomId);
+  }
+  _armRoomUpdateFlush();
+}
 
 /**
  * Per-room state accumulated across calls within one debounce window:
@@ -923,7 +956,7 @@ const _roomUpdateTimers = new Map();
 const _roomUpdatePending = new Map();
 
 function _flushRoomUpdate(roomId) {
-  _roomUpdateTimers.delete(roomId);
+  _roomUpdateDue.delete(roomId);
   const pending = _roomUpdatePending.get(roomId);
   _roomUpdatePending.delete(roomId);
   if (!pending) return;
@@ -961,9 +994,9 @@ function broadcastRoomUpdate(io, room, opts = {}) {
     seenUserIds,
   });
 
-  if (_roomUpdateTimers.has(roomId)) return; // a flush is already scheduled for this burst
-  const timeout = setTimeout(() => _flushRoomUpdate(roomId), ROOM_UPDATE_DEBOUNCE_MS);
-  _roomUpdateTimers.set(roomId, timeout);
+  if (_roomUpdateDue.has(roomId)) return; // a flush is already scheduled for this burst
+  _roomUpdateDue.set(roomId, Date.now() + ROOM_UPDATE_DEBOUNCE_MS);
+  _armRoomUpdateFlush();
 }
 
 /**
@@ -980,12 +1013,9 @@ function clearRoomUpdateSnapshot(roomId) {
   _roomScoreTableSnapshots.delete(roomId);
   _roomGameLogSnapshots.delete(roomId);
 
-  const timeout = _roomUpdateTimers.get(roomId);
-  if (timeout) {
-    clearTimeout(timeout);
-    _roomUpdateTimers.delete(roomId);
-  }
+  _roomUpdateDue.delete(roomId);
   _roomUpdatePending.delete(roomId);
+  if (_roomUpdateDue.size === 0 && _roomUpdateTimer) { clearTimeout(_roomUpdateTimer); _roomUpdateTimer = null; }
 }
 
 /**
