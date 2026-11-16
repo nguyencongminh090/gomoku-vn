@@ -98,8 +98,9 @@
           <div class="split">
             <section class="moc-copy">
               <div><h1>Một ván<br>cho hôm nay.</h1><p class="lede">Chọn luật và tìm người chơi cùng.</p></div>
-              <div class="moc-play">${settings()}${actionRow()}</div>
-              ${code()}
+              <div class="moc-entry">
+                ${settings()}${actionRow()}${code()}
+              </div>
             </section>
             <aside class="moc-scene" aria-label="Ván đang chơi">
               <div class="moc-art">${board()}<span class="board-caption">THẾ CỜ MẪU</span></div>
@@ -111,20 +112,15 @@
       </main>`,
     },
     {
-      id: 'dem', name: 'Câu lạc bộ đêm', color: '#27443d', summary: 'Cụm vào ván và dải hoạt động căn chung trên một nền ảnh',
+      id: 'dem', name: 'Câu lạc bộ đêm', color: '#27443d', summary: 'Ván đang chơi nằm dưới lời chào, ngang với khu vào ván',
       render: () => `${top()}<main class="night"><div class="night-image" aria-hidden="true" style="background-image:url('${photo}')"></div>
         <div class="wrap night-inner">
           <div class="night-content"><div class="night-copy"><h1>Hẹn nhau<br>qua bàn cờ.</h1>
             <p class="lede">Chơi xếp hạng hoặc hẹn bạn bè vào một bàn.</p></div>
             <section class="night-card"><h2>Bắt đầu ván</h2>${settings()}${actionRow()}${code()}</section>
+            <div class="night-match"><div><p>Ván Caro đang chơi</p>${match()}</div>${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
           </div>
-          <div class="night-foot">
-            <div class="night-activity">
-              ${metrics()}
-              <div class="night-match"><div><p>Ván Caro đang chơi</p>${match()}</div>${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
-            </div>
-            ${explore()}
-          </div>
+          <div class="night-foot">${metrics()}${explore()}</div>
         </div>
       </main>`,
     },
@@ -171,8 +167,9 @@
     {
       id: 'console', name: 'Bàn điều khiển', color: '#4f83ad', summary: 'Bảng chơi, phòng đang mở và ván trực tiếp chung một lưới',
       render: () => `<div class="workspace"><aside class="rail">${logo()}<nav aria-label="Điều hướng"><span class="nav-current">Trang chủ</span>${navigation([['rooms', 'Phòng'], ...sections])}</nav>${action('profile', 'Minh · Elo 1.480', 'profile')}</aside>
-        <main class="work-main"><header class="work-head"><h1>Chào Minh</h1></header>
+        <main class="work-main">
           <div class="work-panels">
+            <header class="work-head"><h1>Chào Minh</h1></header>
             <section class="work-play"><h2>Vào ván</h2>${settings()}${actionRow()}${code()}</section>
             <section class="work-rooms"><h2>Phòng đang mở</h2>${roomRows()}</section>
             <section class="work-live">
