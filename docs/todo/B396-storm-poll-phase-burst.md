@@ -1,5 +1,5 @@
 # B396 — Storm second: one poll phase runs ~0.5 s of per-socket connect/disconnect work
-**Status:** OPEN
+**Status:** OPEN — app cuts done 2026-11-16 (fix-log 396); owner chose emit merge → #398, close after its measurement
 **Area:** `server/socket/SocketHandler.js` (connection `:210`, disconnect `:397`), `DisconnectHandler.js`
 (`handleDisconnect`, `startDisconnectGrace`, `cancelDisconnectGrace`), socket.io/engine.io handshake
 **From:** #388 2026-11-16 (`eld.js` GAP probe + cpu-prof)   **Depends:** #394 (largest app share)

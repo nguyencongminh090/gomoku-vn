@@ -789,6 +789,31 @@ describe('DisconnectHandler — both players disconnected', () => {
     expect(room.state).toBe('playing');
     expect(timer.start).toHaveBeenCalledTimes(1);
   });
+
+  // #396: a reconnect storm puts ~1 000 players in grace at once; every reconnect copied and scanned
+  // the whole map (1 000 × 1 000). The "other player still away" check only needs this room's seats.
+  test('#396 other rooms\' grace entries are neither scanned nor counted', () => {
+    const io = makeIo();
+    const room = twoPlayerRoom();
+    const timer = installTimer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+    for (let i = 0; i < 1000; i++) mockState.disconnectTimers.set(`x${i}`, { timeout: null, countdown: null, roomId: `r${i}` });
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    timer.start.mockClear();
+    const values = jest.spyOn(mockState.disconnectTimers, 'values');
+    const entries = jest.spyOn(mockState.disconnectTimers, 'entries');
+    const forEach = jest.spyOn(mockState.disconnectTimers, 'forEach');
+
+    expect(DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'))).toBe(true);
+    expect(room.state).toBe('playing');
+    expect(timer.start).toHaveBeenCalledTimes(1);
+    expect(values).not.toHaveBeenCalled();
+    expect(entries).not.toHaveBeenCalled();
+    expect(forEach).not.toHaveBeenCalled();
+    values.mockRestore(); entries.mockRestore(); forEach.mockRestore();
+  });
 });
 
 // ---------------------------------------------------------------------------

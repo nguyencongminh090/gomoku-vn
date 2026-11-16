@@ -446,7 +446,11 @@ function cancelDisconnectGrace(io, socket) {
   // let this player back in to see the board, but don't resume the clock —
   // resuming here would run out the timer on the still-absent player's turn
   // even though their own grace window hasn't expired yet.
-  const otherStillAway = [...disconnectTimers.values()].some(e => e.roomId === entry.roomId);
+  // #396: only this room's seats can be in its grace — scanning the whole map made a reconnect storm O(N²).
+  const otherStillAway = room.gameState.players.some((p) => {
+    const other = p.userId !== user.userId && disconnectTimers.get(p.userId);
+    return !!other && other.roomId === entry.roomId;
+  });
   if (otherStillAway) {
     socket.emit('game:init', {
       ...room.gameState.serialize(),

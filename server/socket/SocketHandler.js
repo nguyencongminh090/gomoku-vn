@@ -22,6 +22,7 @@ const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
 const database           = require('../db/database');
+const chatManager        = require('../managers/ChatHandler'); // #396: was required per disconnect
 
 // Room payloads carry each member's avatar URL (null for guests / no avatar) — same shape as profile.js.
 roomManager.avatarLookup = require('../managers/avatar-lookup').avatarUrlFor;
@@ -411,7 +412,6 @@ function init(io) {
       DisconnectHandler.handleDisconnect(io, socket);
 
       // Clean up user's chat state
-      const chatManager = require('../managers/ChatHandler');
       chatManager.cleanupUser(user.userId);
       PrivateChatHandler.cleanupUser(io, user.userId);
     });
