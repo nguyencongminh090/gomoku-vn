@@ -530,6 +530,29 @@ describe('#398 grace events carry the clock', () => {
     expect(client.resyncs()).toHaveLength(1);
   });
 
+  // #387: the chat line depends on who reads it.
+  test.each([
+    ['opponent player', 'me', 'room.reconnected', {}],
+    ['viewer', 'viewer1', 'sys.player_reconnected_resumed', { name: 'Them Name' }],
+  ])('game:resumed chat line for %s', (_label, myId, key, params) => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+    st.myUser = { userId: myId };
+    st.roomData.users = [{ userId: 'them', displayName: 'Them Name' }];
+    client.listeners['game:resumed']({ playerId: 'them', timerSync: sync() });
+    expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledTimes(1);
+    expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledWith(window.t(key, params));
+    if (myId === 'viewer1') {
+      expect(window.ChatUI.appendSystemMessage.mock.calls[0][0]).toContain('Them Name');
+    }
+  });
+
+  test('game:resumed about myself (stray copy): no chat line, still resumes', () => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+    client.listeners['game:resumed']({ playerId: 'me', timerSync: sync() });
+    expect(window.ChatUI.appendSystemMessage).not.toHaveBeenCalled();
+    expect(st.gameState.status).toBe('ongoing');
+  });
+
   test('self resume via game:init alone: status ongoing, clock running, watchdog armed, no chat line', () => {
     const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
 

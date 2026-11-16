@@ -26,4 +26,4 @@ import './chat-ui.js?v=87065d01';
 import './room-ui.js?v=ccffbeb5';
 import './room-stage.js?v=07770a6a';
 import './game-ui.js?v=823536da';
-import './room-socket.js?v=2b374387';
+import './room-socket.js?v=3cfe0e77';
