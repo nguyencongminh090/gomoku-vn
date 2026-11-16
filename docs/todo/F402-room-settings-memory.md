@@ -1,5 +1,5 @@
 # F402 — Create-room modal: dropdown comboboxes + server-remembered last settings
-**Status:** OPEN — merged to local dev 2026-11-16; unverified: e2e specs (undo, swap2-opening), real-phone select picker, EN language switch with modal open
+**Status:** ✅ CLOSED 2026-11-16 by user request — merged to dev; left unverified: e2e specs (undo, swap2-opening), real-phone select picker, EN language switch with modal open
 **Area:** client/index.html, client/js/lobby.js, client/css/lobby.css, server/db/migrations/017, db/profiles.js, routes/profile.js, socket/handlers/LobbyHandler.js
 **From:** user 2026-11-16 (after 3 mockups, `client/room-create-modal-mockup.html`): "giữ giao diện chọn nhanh hiện tại. Nhưng thay việc chọn bằng click qua việc chọn dropdown combobox. Thêm cơ chế backend ghi nhớ lựa chọn của người chơi (lần tạo mới lấy settings lần tạo trước đó)"   **Depends:** —
 

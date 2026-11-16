@@ -1,3 +1,4 @@
+- ✅ **#402.** Create-room modal: dropdown comboboxes + server-remembered last settings `[Model: Sonnet 5]` — [detail](docs/todo/F402-room-settings-memory.md)
 - ✅ **#403.** Profile page redesign: PF7 CV sheet `[Model: Sonnet 5]` — [detail](docs/todo/B403-profile-cv-redesign.md)
 - ✅ **#401.** Installable PWA + sticky install banner on home (Android prompt, iOS Add-to-Home-Screen hint) `[Model: Sonnet 5]` — [detail](docs/todo/F401-pwa-install-banner.md)
 - ✅ **#400.** Pinch-zoom the board only on phones (viewBox; pan; double-tap reset; no +/-) `[Model: Sonnet 5]` — [detail](docs/todo/F400-board-pinch-zoom.md)

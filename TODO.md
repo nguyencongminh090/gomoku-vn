@@ -15,7 +15,6 @@ in the detail file / fix-log).
 
 ## Open
 
-- **#402.** Create-room modal: dropdown comboboxes + server-remembered last settings `[Model: Sonnet 5]` — [detail](docs/todo/F402-room-settings-memory.md)
 - **#2.** Xác nhận biến môi trường khi deploy thật `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A02-xac-nhan-bien-moi-truong-khi-deploy-that.md)
 - **#3.** `npm install` không chạy được trên Node 24 tại máy đánh giá `[Model: Sonnet 5]` — [chi tiết](docs/todo/A03-npm-install-khong-chay-duoc-tren-node-24-tai-may-danh-gia.md)
 - **#4.** Kiểm chứng thật cho các mục "CHƯA ĐO ĐƯỢC" trong review `[Model: Sonnet 5]` — [chi tiết](docs/todo/A04-kiem-chung-that-cho-cac-muc-chua-do-duoc-trong-review.md)
