@@ -616,7 +616,11 @@ body.arena-room .score-hero__av {
 }
 body.arena-room .score-hero__av img { width: 100%; height: 100%; object-fit: cover; display: block; }
 body.arena-room .score-hero__name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
-body.arena-room .score-hero__num { font-size: 40px; font-weight: 900; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+body.arena-room .score-hero__num { flex: none; white-space: nowrap; font-size: 40px; font-weight: 900; letter-spacing: 2px; font-variant-numeric: tabular-nums; }
+@media (max-width: 360px) {
+  body.arena-room .score-hero__top { gap: 10px; }
+  body.arena-room .score-hero__num { font-size: 32px; letter-spacing: 1px; }
+}
 body.arena-room .score-dots { display: flex; justify-content: center; gap: 5px; margin-bottom: 10px; }
 body.arena-room .score-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c-fill); border: 1px solid var(--c-border); }
 body.arena-room .score-dot--r { background: var(--c-brand); border-color: var(--c-brand); }

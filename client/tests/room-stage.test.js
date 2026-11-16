@@ -465,3 +465,15 @@ describe('#369 desktop "Sân khấu"', () => {
     expect(CSS.indexOf('body.arena-room .aud-pop {')).toBeLessThan(CSS.indexOf('@media (min-width: 769px) {'));
   });
 });
+
+// #399 — "8–16" wrapped onto two lines on ≤360px phones (en dash is a break opportunity, flex item shrank).
+describe('#399 score-hero__num never wraps', () => {
+  const rule = CSS.match(/body\.arena-room \.score-hero__num \{[^}]*\}/)[0];
+  test('nowrap + no flex shrink', () => {
+    expect(rule).toMatch(/white-space:\s*nowrap/);
+    expect(rule).toMatch(/flex:\s*none/);
+  });
+  test('narrow phones get a smaller number', () => {
+    expect(CSS).toMatch(/@media \(max-width: 360px\)\s*\{[^@]*\.score-hero__num \{ font-size: 32px/);
+  });
+});
