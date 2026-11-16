@@ -212,6 +212,62 @@
         </div></div><div class="wrap">${explore()}</div>
       </main>`,
     },
+    {
+      id: 'son', name: 'Sơn son', color: '#b23122', featured: true,
+      summary: 'Bàn cờ sơn đỏ và chữ serif lớn trong một khung đôi',
+      render: () => `${top()}<main class="wrap son-home">
+        <div class="son-layout">
+          <section class="son-copy">
+            <h1>Đặt quân.<br><span>Vào ván.</span></h1>
+            <div class="son-entry">${settings()}${actionRow()}${code()}</div>
+          </section>
+          <div class="son-visual">
+            <img src="assets/son-vermilion.webp" width="1672" height="941" alt="Bàn Caro gỗ viền sơn đỏ với quân đen và trắng">
+            <div class="son-match"><div><p>Ván Caro đang chơi</p>${match()}</div>${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
+          </div>
+          <div class="son-rail">${metrics()}${explore()}</div>
+        </div>
+      </main>`,
+    },
+    {
+      id: 'finale', name: 'Tàn cuộc', color: '#167da9', featured: true,
+      summary: 'Ảnh cận cảnh toàn chiều ngang với các nút chơi đặt sát chân ảnh',
+      render: () => `${top()}<main class="ending">
+        <div class="ending-photo" aria-hidden="true"></div>
+        <div class="wrap ending-frame">
+          <div class="ending-hero">${pulse()}<h1>Một nước<br><span>đổi cả ván.</span></h1></div>
+          <div class="ending-dock">
+            <div class="ending-entry">${settings()}${actionRow()}</div>
+            <div class="ending-code">${code()}</div>
+            <div class="ending-live"><div><p>Ván Caro đang chơi</p>${match()}</div>${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
+          </div>
+          ${explore()}
+        </div>
+      </main>`,
+    },
+    {
+      id: 'arcade', name: 'Caro Arcade', color: '#6d49aa', featured: true,
+      summary: 'Bàn cờ nằm trong màn hình arcade và cụm chơi nằm trên cùng vỏ máy',
+      render: () => `${top()}<main class="wrap arcade-home">
+        <div class="arcade-cabinet">
+          <div class="arcade-layout">
+            <section class="arcade-console">
+              <h1>Caro<br><span>Arcade.</span></h1>
+              <div class="arcade-entry">${settings()}${actionRow()}${code()}</div>
+            </section>
+            <div class="arcade-display">
+              <div class="arcade-screen">
+                <div class="arcade-screen-label"><i aria-hidden="true"></i> Ván Caro đang chơi</div>
+                ${board()}
+                <div class="arcade-match">${match()}${action('room-V8Q', 'Xem ván ↗', 'key-link')}</div>
+              </div>
+              <div class="arcade-vents" aria-hidden="true"></div>
+            </div>
+          </div>
+          <div class="arcade-foot">${metrics()}${explore()}</div>
+        </div>
+      </main>`,
+    },
   ];
 
   window.Play3CRMockups = { designs };

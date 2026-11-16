@@ -5,7 +5,10 @@ const picker = document.querySelector('#designs');
 const stage = document.querySelector('.stage');
 const viewport = document.querySelector('.viewport');
 const preview = document.querySelector('#preview');
-const buttons = designs.map((design, index) => {
+const featured = designs.filter(design => design.featured);
+const order = [...featured, ...designs.filter(design => !design.featured)];
+const buttons = order.map(design => {
+  const index = designs.indexOf(design);
   const button = document.createElement('button');
   button.type = 'button';
   button.innerHTML = `<span class="number">${String(index + 1).padStart(2, '0')}</span><span>${design.name}</span><span class="swatch" aria-hidden="true" style="background:${design.color}"></span>`;
@@ -15,7 +18,7 @@ const buttons = designs.map((design, index) => {
 picker.append(...buttons);
 
 function showDesign() {
-  const design = designs.find(option => '#' + option.id === location.hash) ?? designs[0];
+  const design = designs.find(option => '#' + option.id === location.hash) ?? order[0];
   const url = 'preview.html#' + design.id;
   document.querySelector('#design-name').textContent = design.name;
   document.querySelector('#description').textContent = design.summary + ' · Dữ liệu mẫu';
@@ -23,7 +26,7 @@ function showDesign() {
   preview.title = 'Mockup ' + design.name;
   preview.src = url;
   buttons.forEach((button, index) => {
-    button.setAttribute('aria-pressed', String(designs[index] === design));
+    button.setAttribute('aria-pressed', String(order[index] === design));
   });
 }
 
