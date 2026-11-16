@@ -258,6 +258,7 @@
   // ─── SVG primitives ────────────────────────────────────────────────────────
 
   const P = 40;
+  const MAX_ZOOM = 4; // pinch-zoom ceiling (#400)
   const f = (n) => Math.round(n * 10) / 10;
   const PORTAL_COLORS = [[51, 179, 242], [230, 102, 153], [77, 204, 102], [242, 153, 51], [166, 89, 217], [51, 191, 179], [217, 191, 51], [217, 64, 64]];
   const portalRgb = (i, a = 1) => `rgba(${PORTAL_COLORS[i % PORTAL_COLORS.length].join(',')},${a})`;
@@ -406,16 +407,23 @@
       this._pendingCell = null;
       this.optimisticStone = null;
       this.geo = null; // { m, n, W, vx, vy, VW, VH }
+      // Pinch-zoom (touch only): a sub-rectangle of the base view, kept in user units.
+      this._zoom = 1; this._zx = 0; this._zy = 0;
+      this._ptrs = new Map(); this._gesture = false; this._lastTap = null;
 
       // A page that builds a new renderer on the same element (puzzle.js, per puzzle)
       // must not leave the previous handlers attached: one click would place twice.
       if (svg.__gboard) svg.__gboard.destroy();
       svg.__gboard = this;
       this._handlers = {
-        pointermove: (e) => this._onMouseMove(e),
         pointerleave: () => this._onMouseLeave(),
         click: (e) => this._onClick(e),
         touchend: (e) => this._onTouchEnd(e),
+        touchcancel: () => { this._gesture = false; },
+        pointerdown: (e) => this._onPtrDown(e),
+        pointermove: (e) => { this._onPtrMove(e); this._onMouseMove(e); },
+        pointerup: (e) => this._onPtrEnd(e),
+        pointercancel: (e) => this._onPtrEnd(e),
         keydown: (e) => this._onKey(e),
         blur: () => this._onBlur(),
       };
@@ -530,11 +538,82 @@
       if (!g) return null;
       const rect = this.svg.getBoundingClientRect();
       if (!rect.width || !rect.height) return null;
-      const ux = g.vx + (clientX - rect.left) * (g.VW / rect.width);
-      const uy = g.vy + (clientY - rect.top) * (g.VH / rect.height);
+      const v = this._view();
+      const ux = v.x + (clientX - rect.left) * (v.w / rect.width);
+      const uy = v.y + (clientY - rect.top) * (v.h / rect.height);
       const x = Math.floor((ux - g.m) / P);
       const y = Math.floor((uy - g.m) / P);
       return x >= 0 && y >= 0 && x < g.n && y < g.n ? { x, y } : null;
+    }
+
+    // ── Pinch zoom (#400): only the SVG viewBox changes, so the page layout never moves ──
+    /** Current visible rectangle in user units (clamped inside the base view). */
+    _view() {
+      const g = this.geo;
+      const z = this._zoom;
+      const w = g.VW / z, h = g.VH / z;
+      const x = Math.min(g.vx + g.VW - w, Math.max(g.vx, g.vx + this._zx));
+      const y = Math.min(g.vy + g.VH - h, Math.max(g.vy, g.vy + this._zy));
+      return { x, y, w, h };
+    }
+
+    _applyView() {
+      const v = this._view();
+      this._zx = v.x - this.geo.vx; this._zy = v.y - this.geo.vy;
+      this.svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+    }
+
+    resetZoom() {
+      if (this._zoom === 1 && !this._zx && !this._zy) return;
+      this._zoom = 1; this._zx = 0; this._zy = 0;
+      if (this.geo) this._applyView();
+    }
+
+    _gestureBase() {
+      const pts = [...this._ptrs.values()];
+      const rect = this.svg.getBoundingClientRect();
+      const mx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      const my = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      const v = this._view();
+      this._gb = {
+        rect, z: this._zoom, d: pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0,
+        ux: v.x + ((mx - rect.left) / rect.width) * v.w, uy: v.y + ((my - rect.top) / rect.height) * v.h,
+      };
+    }
+
+    _onPtrDown(e) {
+      if (e.pointerType !== 'touch' || !this.geo) return;
+      this._ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
+      if (this._ptrs.size > 1) this._gesture = true;
+      this._gestureBase();
+    }
+
+    _onPtrMove(e) {
+      const p = this._ptrs.get(e.pointerId);
+      if (!p || !this._gb) return;
+      p.x = e.clientX; p.y = e.clientY;
+      const pts = [...this._ptrs.values()];
+      const b = this._gb, g = this.geo;
+      if (pts.length === 1) {
+        if (this._zoom <= 1) return;
+        if (!this._gesture && Math.hypot(p.x - p.x0, p.y - p.y0) < 8) return; // still a tap
+        this._gesture = true;
+      }
+      const mx = pts.reduce((a, q) => a + q.x, 0) / pts.length;
+      const my = pts.reduce((a, q) => a + q.y, 0) / pts.length;
+      let z = b.z;
+      if (pts.length > 1 && b.d > 0) z = Math.min(MAX_ZOOM, Math.max(1, b.z * (Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) / b.d)));
+      if (z < 1.04) z = 1; // snap back to the full board
+      const w = g.VW / z, h = g.VH / z;
+      this._zoom = z;
+      this._zx = b.ux - ((mx - b.rect.left) / b.rect.width) * w - g.vx;
+      this._zy = b.uy - ((my - b.rect.top) / b.rect.height) * h - g.vy;
+      this._applyView();
+    }
+
+    _onPtrEnd(e) {
+      if (!this._ptrs.delete(e.pointerId)) return;
+      if (this._ptrs.size) this._gestureBase(); // the remaining finger keeps panning from here
     }
 
     _isEmpty(c) { return !!(c && this.board && this.board[c.y] && this.board[c.y][c.x] === 0); }
@@ -568,11 +647,19 @@
     _onTouchEnd(e) {
       // First, before any guard: stops the synthetic click/zoom/keyboard (#104).
       e.preventDefault();
-      if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
+      // A pinch / pan is not a tap: swallow every touchend of it, clear when the last finger lifts.
+      if (this._gesture) { if (!(e.touches && e.touches.length)) this._gesture = false; this._lastTap = null; return; }
       const t = e.changedTouches && e.changedTouches[0];
       if (!t) return;
       const cell = this._cellFromClient(t.clientX, t.clientY);
-      if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
+      const acts = this.interactive && this.isMyTurn && this.onCellClick && this._clickable(cell);
+      // Double-tap resets the zoom, unless that second tap is a normal move confirmation.
+      const now = Date.now(), lt = this._lastTap;
+      this._lastTap = { t: now, x: t.clientX, y: t.clientY };
+      if (this._zoom > 1 && !acts && lt && now - lt.t < 320 && Math.hypot(t.clientX - lt.x, t.clientY - lt.y) < 30) {
+        this._lastTap = null; this.resetZoom(); return;
+      }
+      if (acts) this._handleCellSelect(cell.x, cell.y);
     }
 
     // Keyboard path (#326): the cursor is the hover cell; selecting goes through the same
@@ -803,7 +890,7 @@
       const A = Contrast.INK_ALPHA;
       const out = [defsSvg(s, uid)];
 
-      this.svg.setAttribute('viewBox', `${g.vx} ${g.vy} ${g.VW} ${g.VH}`);
+      this._applyView();
       this.svg.setAttribute('aria-label', `${n}×${n}`);
       const rx = 0; // square frame on every screen
       out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="${bg}"/>`);
@@ -915,6 +1002,7 @@
       if (this.svg.__gboard === this) this.svg.__gboard = null;
       if (this._onPrefs) root.removeEventListener('boardprefschange', this._onPrefs);
       if (this._ro) this._ro.disconnect();
+      this._ptrs.clear();
       if (this._live) this._live.remove();
     }
   }
