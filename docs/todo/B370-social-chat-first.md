@@ -1,5 +1,5 @@
 # B370 — Bạn bè page redesign S3 "Trò chuyện" (chat-first, presence, game cards, profile pane)
-**Status:** BUILT 2026-11-13, merged to dev — jest + real-browser pass done; open until real-phone/Safari check
+**Status:** ✅ DONE 2026-11-16 — merged to dev (14ab028). Earlier status: BUILT 2026-11-13, merged to dev — jest + real-browser pass done; open until real-phone/Safari check
 **Area:** client/social.html, client/js/social.js, client/css/platform.css (or new social.css), client/js/platform-shell.js (header chat icon), server/managers/FriendService.js, server/routes/friends.js, server/routes/dm.js (+ a small H2H/games query)
 **From:** user 2026-11-13 "S3" — features/social-redesign (mockup s3-chat-first, gallery Q5rH73LiRvXhVQFHRf7WVR)   **Depends:** —
 

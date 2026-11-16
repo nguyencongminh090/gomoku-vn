@@ -1,5 +1,5 @@
 # B368 — Room mobile: "Live stage" panel (direction C)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-16 — merged to dev (6b78ad1). Earlier status: OPEN
 **Area:** server/socket (room:react), client/room.html, client/css/room-arena.css (≤768px), client/js/room.js (+ chat render), i18n
 **From:** user 2026-11-13 "Redesign for Table (bàn chơi) for Mobile only" → picked **C** ("Choose C.")   **Depends:** —
 Mockup: `features/room-mobile-panel/mockups/index.html` (frame C), shots in `features/room-mobile-panel/shots/`.

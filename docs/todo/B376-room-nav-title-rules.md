@@ -1,5 +1,5 @@
 # B376 — Room nav N1 "Thẻ bàn": rules always visible + menu ≡
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-16 — merged to dev (e2e0de8). Earlier status: OPEN
 **Area:** client/room.html, client/js/room-ui.js, client/css/room-arena.css, client/js/i18n.js, client/tests/room-nav-rules.test.js
 **From:** user 2026-11-14 "Hiển thị Luật chơi tường minh trong phòng" → picked A (nav), then N2, then switched to N1 (2026-11-14) → features/room-rules-display/mockups/nav.html   **Depends:** —
 

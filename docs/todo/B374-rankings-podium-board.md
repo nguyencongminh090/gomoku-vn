@@ -1,5 +1,5 @@
 # B374 — Rankings page redesign RK17: podium inside LED split-flap board + 5 s opening
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-16 — merged to dev (506d171). Earlier status: OPEN
 **Area:** client/rankings.html, client/js/rankings.js, client/css/rankings.css (new), client/js/i18n.js, client/tests/rankings-page.test.js, DESIGN.md
 **From:** user 2026-11-14 "RK1 + RK4 + motions/animation on loading (animation 5s)" → mockup features/rankings-redesign/mockups/rk17-podium-board.html   **Depends:** —
 

@@ -1,5 +1,5 @@
 # B367 — Reconnect: a lapsed player stays in the room; quiet connection banner
-**Status:** OPEN — fixed on `fix/367-reconnect-stay-in-room`, uncommitted; awaiting real-device check
+**Status:** ✅ DONE 2026-11-16 — merged to dev (567bdac). Earlier status: OPEN — fixed on `fix/367-reconnect-stay-in-room`, uncommitted; awaiting real-device check
 **Area:** server/managers/RoomManager.js, server/socket/{SocketHandler,handlers/DisconnectHandler}.js, client/js/{socket-client,room-socket}.js
 **From:** user report 2026-11-13 (BabyHuyền "đang chơi tự nhiên về trang chủ", log.txt)   **Depends:** —
 

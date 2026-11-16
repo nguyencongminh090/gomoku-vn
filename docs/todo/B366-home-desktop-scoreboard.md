@@ -1,5 +1,5 @@
 # B366 — Home desktop: "Bảng quán cờ" scoreboard + labelled explore chips
-**Status:** DONE — built 2026-11-13 on ui/home-desktop-scoreboard, merged to dev
+**Status:** ✅ DONE 2026-11-16 — merged to dev (94b4ea3). Earlier status: DONE — built 2026-11-13 on ui/home-desktop-scoreboard, merged to dev
 **Area:** client/index.html (#screen-home), client/css/shell.css, client/js/lobby-home.js, client/js/i18n.js, client/tests/lobby-home.test.js
 **From:** user 2026-11-13 "Học/Hội nhóm... Đang online... Các layout này trên desktop cần thiết kế lại. Layout trên điện thoại giữ nguyên"; mockup C picked (features/home-redesign/desktop-side, gallery artifact Ut21hiNdcfBeAEVQszUhmZ)   **Depends:** #358 #360 #362
 

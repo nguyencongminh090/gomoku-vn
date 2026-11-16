@@ -1,5 +1,5 @@
 # B328 — Quick-match status line: facts as chips, guest sentence as a note
-**Status:** FIXED
+**Status:** ✅ DONE 2026-11-16 — merged to dev (e6f5aed). Earlier status: FIXED
 **Area:** client/js/lobby-home.js (`setSegments`), client/css/shell.css (`.qm-line*`), client/js/i18n.js (`qm.selected`), client/tests/lobby-home.test.js
 **From:** ticket-rows.md ("a · b · c" strings), ux-audit `docs/audits/ux-audit-2026-10-23-qm-line.md` M1+L1, 2026-10-23   **Depends:** —
 

@@ -1,5 +1,5 @@
 # B369 — Room desktop: "Sân khấu" 3-column stage (follows #368)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-16 — merged to dev (7e6f619). Earlier status: OPEN
 **Area:** client/room.html, client/css/room-arena.css (≥769px), client/js/room-stage.js, client/js/room.js (rail dock removed), i18n
 **From:** user 2026-11-13 "UI on Phone have updated. Now I need to update UI on Desktop" → picked **B** (mockup
 `features/room-desktop-stage/mockups/index.html`, shots in `shots/`)   **Depends:** #368

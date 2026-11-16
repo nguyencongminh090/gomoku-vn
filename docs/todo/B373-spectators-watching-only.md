@@ -1,5 +1,5 @@
 # B373 — Room "Khán giả" lists only viewers actually watching
-**Status:** OPEN (fixed on fix/373-spectators-watching-only; awaiting real-browser check)
+**Status:** ✅ DONE 2026-11-16 — merged to dev (31a9fdc). Earlier status: OPEN (fixed on fix/373-spectators-watching-only; awaiting real-browser check)
 **Area:** server/socket/{SocketHandler,handlers/LobbyHandler,handlers/RoomHandler}.js, client/js/room-ui.js
 **From:** user report 2026-11-13   **Depends:** #372
 
