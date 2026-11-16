@@ -1,5 +1,5 @@
 # B395 — home-feed and online-list flushes fan out to every watcher in one tick (~20 ms each)
-**Status:** OPEN
+**Status:** ✅ CLOSED 2026-11-16 — measured, no change needed (see fix-log 2026-11-16-395)
 **Area:** `server/socket/home-feed.js` `_flush`, `server/socket/state.js` online-users flush (`:773`, `_diffOnlineUsers`)
 **From:** #388 storm profile 2026-11-16   **Depends:** —
 
