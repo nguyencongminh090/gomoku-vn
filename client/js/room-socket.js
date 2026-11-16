@@ -987,8 +987,22 @@
 
   // #398: only the others in the room get this; the reconnecting socket gets game:init alone.
   client.on('game:resumed', (data) => {
-    ChatUI.appendSystemMessage(t('room.reconnected'));
-    if (S().gameState) S().gameState.status = 'ongoing';
+    // #387: "Đối thủ" only fits the other player; a viewer gets the name, and a stray self
+    // copy (pre-#398 shape) adds nothing — game:init already resumed this tab.
+    const st = S();
+    const id = data && data.playerId;
+    const me = st.myUser && st.myUser.userId;
+    const players = (st.gameState && st.gameState.players) || [];
+    if (id !== me) {
+      if (players.some((p) => p.userId === me)) {
+        ChatUI.appendSystemMessage(t('room.reconnected'));
+      } else {
+        const u = ((st.roomData && st.roomData.users) || []).find((x) => x.userId === id)
+          || players.find((p) => p.userId === id);
+        ChatUI.appendSystemMessage(t('sys.player_reconnected_resumed', { name: (u && u.displayName) || '?' }));
+      }
+    }
+    if (st.gameState) st.gameState.status = 'ongoing';
     // Back to 'ongoing', so the watchdog can guard again (TODO.md #154). The restarted clock rides
     // on this event; applyTimerSync re-arms the watchdog, the explicit arm covers a sync-less payload.
     if (data && data.timerSync) applyTimerSync(data.timerSync);
