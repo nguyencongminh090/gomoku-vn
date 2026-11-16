@@ -353,7 +353,7 @@ function init(io) {
         // Shared with game:resync (TODO.md #152) so both rebuild paths hand
         // the client byte-identical state — see buildRoomStatePayload().
         socket.emit('room:joined', buildRoomStatePayload(existingRoom));
-        logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
+        logger.debug(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
       } else if (handshakeAuth.reconnect && rejoinOnReconnect(io, socket, handshakeAuth.roomId)) {
         // #367: a room page whose user lost their place (grace ran out, server
         // restart kept the room) silently rejoins the room it is showing.
@@ -432,7 +432,7 @@ function init(io) {
     for (const [roomId] of timerMap) {
       if (!roomManager.getRoom(roomId)) {
         cleanupRoomTimer(roomId);
-        logger.info(`[Socket] Orphan timer cleaned for destroyed room ${roomId}`);
+        logger.debug(`[Socket] Orphan timer cleaned for destroyed room ${roomId}`);
       }
     }
   }, 60_000);
@@ -468,7 +468,7 @@ function rejoinOnReconnect(io, socket, roomId) {
   socket.emit('room:joined', buildRoomStatePayload(result.room));
   broadcastRoomUpdate(io, result.room);
   broadcastLobbyUpdate(io, roomId);
-  logger.info(`[Socket] ${user.displayName} rejoined room ${roomId} on reconnect (as viewer)`);
+  logger.debug(`[Socket] ${user.displayName} rejoined room ${roomId} on reconnect (as viewer)`);
   return true;
 }
 

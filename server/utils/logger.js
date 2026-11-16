@@ -14,6 +14,7 @@
  *                 in a terminal), `logfmt` otherwise (piped to a file / log
  *                 shipper / systemd journal).
  * LOG_COLOR=false force-disables ANSI even in pretty mode.
+ * LOG_LEVEL=info|warn|error (default info) drops lower levels.
  *
  * Structured fields: pass a plain object as the LAST argument and its
  * key/value pairs are appended as `key=value` (logfmt-quoted). Everything
@@ -135,12 +136,19 @@ function emit(level, args) {
   }
 }
 
+// LOG_LEVEL=warn|error drops lower levels before any formatting/IO (#394).
+// Unset/unknown → info (prod output unchanged). Read per call so tests/scripts can flip it.
+const RANK = { info: 1, warn: 2, error: 3 };
+function minRank() {
+  return RANK[String(process.env.LOG_LEVEL || '').toLowerCase()] || 1;
+}
+
 const logger = {
   debug(...args) {
     if (process.env.DEBUG === 'true' || process.env.DEBUG === '1') emit('debug', args);
   },
-  info(...args) { emit('info', args); },
-  warn(...args) { emit('warn', args); },
+  info(...args) { if (minRank() <= 1) emit('info', args); },
+  warn(...args) { if (minRank() <= 2) emit('warn', args); },
   error(...args) { emit('error', args); },
 };
 

@@ -26,6 +26,7 @@ jest.mock('../config', () => ({ MAX_EVENTS_PER_SECOND: 50 }));
 
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
+  debug: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
 }));

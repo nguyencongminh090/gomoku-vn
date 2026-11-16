@@ -24,7 +24,7 @@ jest.mock('better-sqlite3', () => {
   };
 });
 
-jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+jest.mock('../utils/logger', () => ({ info: jest.fn(), debug: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 
 const tournamentManager = require('../managers/tournament/TournamentManager');
 const tournamentState = require('../socket/tournamentState');
