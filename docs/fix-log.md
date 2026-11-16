@@ -353,3 +353,4 @@
 | 2026-11-16 09:44 | #387 game:resumed line by reader: viewer gets "{name} đã kết nối lại!", player keeps room.reconnected, self copy silent; no browser pass | [detail](docs/fix-log/2026-11-16-387-resumed-line-viewer.md) |
 | 2026-11-16 11:56 | #375 i18n.js: 55 vi strings 'nhÃ³m' → 'nhóm' (from #359), test scans whole file; same fix in ClubService.js + routes/clubs.js, server test added | [detail](docs/fix-log/2026-11-16-375-i18n-mojibake.md) |
 | 2026-11-16 12:30 | #399 phone Tỉ số "8–16" no longer wraps: num nowrap+flex:none, 32px at ≤360px; 2 tests | [detail](docs/fix-log/2026-11-16-399-score-hero-wrap.md) |
+| 2026-11-16 12:32 | #400 board pinch-zoom (viewBox only), 1-finger pan, double-tap reset; no +/- buttons; 6 tests | [detail](docs/fix-log/2026-11-16-400-board-pinch-zoom.md) |

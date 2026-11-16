@@ -1,5 +1,5 @@
 # F400 — Pinch-zoom the board on phones
-**Status:** BUILT (uncommitted, ui/board-pinch-zoom) — awaiting real-phone pass
+**Status:** ✅ DONE 2026-11-16 — user confirmed on real phone; merged dev 5d6e183
 **Area:** client/js/board.js, client/tests/board-pinch-zoom.test.js
 **From:** user request 2026-11-16   **Depends:** —
 
