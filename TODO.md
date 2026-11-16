@@ -76,3 +76,7 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
+- **#404.** Engine service core: jobs, purposes, rule mapper, output parser (size L, features/rapfi-engine) `[Model: Sonnet 5]` — [detail](docs/todo/F404-engine-service-core.md)
+- **#405.** Engine lease + socket protocol + file route + client host (client-hosted WASM) `[Model: Opus 5]` — [detail](docs/todo/F405-engine-lease-socket-client-host.md)
+- **#406.** Rebuild WASM engine (Caro + rect) and pick hosting `[Model: Sonnet 5]` — [detail](docs/todo/F406-engine-wasm-rebuild.md)
+- **#407.** AI opponent (bot seat) on the engine service; scope TBD `[Model: Opus 5]` — [detail](docs/todo/F407-engine-ai-opponent.md)
