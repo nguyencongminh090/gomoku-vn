@@ -337,14 +337,10 @@ function startDisconnectGrace(io, room, user) {
   }
 
   // Pause the game timer
+  // The paused clock rides on game:interrupted below (#398: one emit, not a separate timer:sync) —
+  // clients must stop their local countdown or it keeps running while the real one is paused.
   const timer = timerMap.get(roomId);
-  if (timer) {
-    timer.stop();
-    // Tell clients to stop their local countdown — with no per-second ticks,
-    // silence would otherwise let their clocks keep running while the real
-    // one is paused.
-    io.to(roomId).emit('timer:sync', timer.getSync());
-  }
+  if (timer) timer.stop();
 
   room.state = 'interrupted';
 
@@ -360,6 +356,7 @@ function startDisconnectGrace(io, room, user) {
     playerId: user.userId,
     playerName: user.displayName,
     secondsLeft: graceSec,
+    timerSync: timer ? timer.getSync() : null,
   });
   broadcastRoomUpdate(io, room);
 
@@ -470,19 +467,21 @@ function cancelDisconnectGrace(io, socket) {
   room.state = 'playing';
 
   const timer = timerMap.get(entry.roomId);
-  if (timer) {
-    timer.start();
-    io.to(entry.roomId).emit('timer:sync', timer.getSync());
-  }
+  if (timer) timer.start();
+  const timerSync = timer ? timer.getSync() : null;
 
+  // #398: one emit per side. The others get game:resumed carrying the clock (no separate timer:sync);
+  // the reconnecting socket gets only game:init, which already carries timerSync, and whose client
+  // handler sets status 'ongoing' + re-arms the watchdog. Rooms are in-memory only, so no pre-#398
+  // tab can be mid-game on this server — no compat timer:sync kept.
   // No server-side chat:message here either — the client's game:resumed
   // handler already shows ChatUI.appendSystemMessage(t('room.reconnected'))
   // + a toast. See the matching comment in startDisconnectGrace (TODO #47).
-  io.to(entry.roomId).emit('game:resumed', { playerId: user.userId });
+  socket.to(entry.roomId).emit('game:resumed', { playerId: user.userId, timerSync });
   socket.emit('game:init', {
     ...room.gameState.serialize(),
     timer: timer ? timer.getTimers() : null,
-    timerSync: timer ? timer.getSync() : null,
+    timerSync,
   });
   broadcastRoomUpdate(io, room);
 

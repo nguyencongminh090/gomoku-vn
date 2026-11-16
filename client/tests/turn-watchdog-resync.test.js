@@ -495,3 +495,55 @@ describe('move-confirm watchdog — ack OK but our own broadcast dropped', () =>
     expect(client.resyncs()).toHaveLength(1);
   });
 });
+
+// #398: the disconnect-grace clock rides on game:interrupted / game:resumed (no separate
+// timer:sync), and the reconnecting player gets game:init alone (no game:resumed).
+describe('#398 grace events carry the clock', () => {
+  test('game:interrupted applies the paused clock — the local countdown stops', () => {
+    const { client, st } = loadRoomModules();
+    startClock(client);
+    jest.advanceTimersByTime(3000);
+
+    client.listeners['game:interrupted']({
+      playerName: 'x', secondsLeft: 60, timerSync: { ...sync({ running: false }), black: 42, white: 30 },
+    });
+    expect(st.gameState.status).toBe('interrupted');
+    expect(st.timerValues).toEqual({ black: 42, white: 30 });
+
+    jest.advanceTimersByTime(WAIT_CEILING_MS * 2);
+    expect(st.timerValues).toEqual({ black: 42, white: 30 });   // frozen, not counting down
+    expect(client.resyncs()).toHaveLength(0);
+  });
+
+  test('game:resumed (opponent side) applies the restarted clock and re-arms the watchdog', () => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+    st.gameState.currentTurn = 'them';
+
+    client.listeners['game:resumed']({ playerId: 'them', timerSync: sync() });
+    expect(st.gameState.status).toBe('ongoing');
+    expect(st.timerValues.white).toBe(CLOCK_MS / 1000);
+    expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(3000);
+    expect(st.timerValues.white).toBeLessThan(CLOCK_MS / 1000);   // counting again
+    jest.advanceTimersByTime(FIRE_AT);
+    expect(client.resyncs()).toHaveLength(1);
+  });
+
+  test('self resume via game:init alone: status ongoing, clock running, watchdog armed, no chat line', () => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+
+    client.listeners['game:init']({
+      ...st.gameState,
+      status: 'ongoing',
+      currentTurn: 'them',
+      timer: { black: 60, white: 60 },
+      timerSync: sync(),
+    });
+    expect(st.gameState.status).toBe('ongoing');
+    expect(window.ChatUI.appendSystemMessage).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(FIRE_AT + 1);
+    expect(client.resyncs()).toHaveLength(1);
+  });
+});

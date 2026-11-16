@@ -75,8 +75,19 @@ function makeSocket(userId = 'u1', displayName = 'Alice') {
   return {
     user: { userId, displayName },
     _emitted: [],
+    // socket.to(room) = the room minus this socket (#398); recorded separately from io.to.
+    _toEmitted: {},
     join: jest.fn(),
     emit: jest.fn(function (event, data) { this._emitted.push({ event, data }); }),
+    to: jest.fn(function (room) {
+      const self = this;
+      return {
+        emit: jest.fn((event, data) => {
+          if (!self._toEmitted[room]) self._toEmitted[room] = [];
+          self._toEmitted[room].push({ event, data });
+        }),
+      };
+    }),
   };
 }
 
@@ -204,7 +215,7 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(resumed).toBe(true);
     expect(mockState.disconnectTimers.has('u1')).toBe(false);
     expect(reconnectSocket.join).toHaveBeenCalledWith('room1');
-    expect(toEmitted(io, 'room1', 'game:resumed')).toBeDefined();
+    expect(toEmitted(reconnectSocket, 'room1', 'game:resumed')).toBeDefined();
 
     // No server-side chat:message for this event either — the client's own
     // game:resumed handler already announces it in the chat panel (TODO #47).
@@ -764,12 +775,40 @@ describe('DisconnectHandler — both players disconnected', () => {
     timer.start.mockClear();
 
     DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'));
-    DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u2', 'Bob'));
+    const bob = makeSocket('u2', 'Bob');
+    DisconnectHandler.cancelDisconnectGrace(io, bob);
 
     expect(room.state).toBe('playing');
     expect(timer.start).toHaveBeenCalledTimes(1);
     expect(mockState.disconnectTimers.size).toBe(0);
-    expect(toEmitted(io, 'room1', 'game:resumed')).toBeDefined();
+    expect(toEmitted(bob, 'room1', 'game:resumed')).toBeDefined();
+  });
+
+  // #398: a reconnect storm paid ~4 redundant packets per pair. Drop = 1 room emit (clock on
+  // game:interrupted); resume = 1 emit to the others (clock on game:resumed) + game:init to self only.
+  test('#398 drop and resume each send one game event per side, the clock riding on it', () => {
+    const io = makeIo();
+    const room = twoPlayerRoom();
+    const timer = installTimer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    const dropEvents = (io._toEmitted.room1 || []).map(e => e.event);
+    expect(dropEvents).toEqual(['game:interrupted']);
+    expect(toEmitted(io, 'room1', 'game:interrupted').data.timerSync).toEqual(timer.getSync.mock.results[0].value);
+
+    io._toEmitted = {};
+    const alice = makeSocket('u1', 'Alice');
+    DisconnectHandler.cancelDisconnectGrace(io, alice);
+
+    // Nothing to the whole room (self included) any more — no timer:sync, no game:resumed.
+    expect(io._toEmitted.room1 || []).toEqual([]);
+    expect(alice._toEmitted.room1.map(e => e.event)).toEqual(['game:resumed']);
+    const resumedSync = toEmitted(alice, 'room1', 'game:resumed').data.timerSync;
+    expect(resumedSync).toMatchObject({ running: true, activeColor: 'black' });
+    expect(alice._emitted.map(e => e.event)).toEqual(['game:init']);
+    expect(alice._emitted[0].data.timerSync).toBe(resumedSync);
   });
 
   test('a single player reconnecting alone still resumes immediately', () => {
