@@ -1,0 +1,19 @@
+/* Sticky "install the app" banner (home only). Sits above the phone tab bar; floats bottom-right on desktop. */
+.pwa-banner { position: fixed; z-index: 30; left: 12px; right: 12px; bottom: calc(var(--ptabbar-h, 68px) + env(safe-area-inset-bottom) + 10px);
+  display: flex; align-items: center; gap: 10px; box-sizing: border-box; padding: 10px 12px; border-radius: 14px;
+  background: var(--c-surface); color: var(--c-ink); border: 1px solid var(--c-border); box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+.pwa-banner__icon { flex: none; border-radius: 10px; }
+.pwa-banner__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--text-sm, 14px); line-height: 1.3; }
+.pwa-banner__sub { color: var(--c-ink-2); }
+.pwa-banner__cta { flex: none; min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer;
+  background: var(--c-accent); color: var(--c-bg); }
+.pwa-banner__cta[hidden] { display: none; }
+.pwa-banner__close { flex: none; min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--c-ink-2); font-size: 24px; line-height: 1; cursor: pointer; }
+.pwa-banner__cta:focus-visible, .pwa-banner__close:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 2px; }
+@media (min-width: 861px) {
+  .pwa-banner { left: auto; right: 20px; bottom: 20px; width: 420px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pwa-banner { animation: pwa-in .25s ease-out; }
+  @keyframes pwa-in { from { opacity: 0; transform: translateY(12px); } }
+}
