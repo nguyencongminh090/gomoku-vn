@@ -59,7 +59,7 @@
       const a = el('a', undefined, 'pz-card' + (p.solved ? ' is-solved' : ''));
       a.href = '/puzzle/' + encodeURIComponent(p.id);
       const head = el('div', undefined, 'pz-card__head');
-      head.append(el('b', p.title), p.solved ? withIcon(el('span', t('puzzles.solved'), 'pbadge'), 'ph-regular-check-circle') : el('span', undefined));
+      head.append(el('b', window.PuzzleBoard.name(p)), p.solved ? withIcon(el('span', t('puzzles.solved'), 'pbadge'), 'ph-regular-check-circle') : el('span', undefined));
       const meta = el('div', undefined, 'pz-card__meta');
       meta.append(el('span', t('puzzles.level_' + p.level), 'pbadge pz-lv pz-lv--' + p.level),
         el('span', t('puzzles.rule_' + p.rule) + ' · ' + p.boardSize + '×' + p.boardSize, 'muted small'));

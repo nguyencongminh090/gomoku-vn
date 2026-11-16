@@ -177,6 +177,14 @@ describe('unread, conversations, bell', () => {
     expect(bellTypes(U.bob)).toEqual(['dm']); // online: no new notification, the old one stays
   });
 
+  it('#372 away recipient (socket, tab hidden): bell entry AND live push — same as the socket send path', async () => {
+    dm.setHooks({ isOnline: () => false, hasSocket: (id) => sessions.has(id) });
+    sessions.set(U.bob, fakeSocket(U.bob, 'BOB'));
+    await post('ann', 'bob', 'while away');
+    expect(bellTypes(U.bob)).toEqual(['dm']);
+    expect(live.filter((e) => e.event === 'private_message:receive')).toHaveLength(1);
+  });
+
   it('read marks only their messages to me, clears the bell entry, and conversations sort newest first', async () => {
     await post('ann', 'bob', 'a1');
     await post('cat', 'bob', 'c1');

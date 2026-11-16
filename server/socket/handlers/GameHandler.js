@@ -38,10 +38,12 @@ const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #16
 const {
   timerMap,
   broadcastLobbyUpdate,
+  scheduleLobbyBoardUpdate,
   broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
   buildRoomStatePayload,
+  openMatchDecision,
 } = require('../state');
 
 /**
@@ -154,11 +156,14 @@ function register(io, socket) {
         const nextColor = np && np.color === 'BLACK' ? 'black' : 'white';
         timer.switchTurn(nextColor);
         moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
-        movePayload.timer = timer.getTimers();
         // Ride along on the move rather than sending a separate timer event:
         // the turn switch is exactly when the clock changes, so this costs no
-        // extra packet per move.
+        // extra packet per move. `timerSync` already carries both clocks, and
+        // the client's applyTimerSync() rewrites both from it, so the plain
+        // `timer` pair is dropped here (perf/play-lag: ~33 B of a ~277 B packet,
+        // every move). Game-over moves keep `timer`: they carry no sync.
         movePayload.timerSync = timer.getSync();
+        delete movePayload.timer;
       }
     }
 
@@ -178,6 +183,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:moved', movePayload);
     if (hasAck) ack({ ok: true, moveCount: movePayload.moveCount });
     room.lastActivity = Date.now();
+    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364), throttled
 
     if (result.won || result.draw) {
       const finalResult = engine.result;
@@ -185,6 +191,7 @@ function register(io, socket) {
       io.to(room.roomId).emit('game:ended', {
         result: finalResult,
         scoreTable: room.scoreTable,
+        scoreHistory: room.scoreHistory || [],
       });
       // Board-full draw has no dedicated modal any more (instruction.md
       // §B36 removed #game-overlay) — this system-chat line is now the only
@@ -248,6 +255,7 @@ function register(io, socket) {
     const swap2State = buildSwap2State(engine, { x: r.x, y: r.y, color: r.color }, r.nextColor);
     if (hadOwnUndoOffer) swap2State.undoCancelled = true;
     io.to(room.roomId).emit('game:swap2_state', swap2State);
+    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): opening stones are moves too
 
     // Phase boundary (place3 → p2choice, or place2 → p1choice) hands the turn
     // to the other placeholder player — sync the timer to match.
@@ -333,6 +341,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:ended', {
       result: gameResult,
       scoreTable: room.scoreTable,
+      scoreHistory: room.scoreHistory || [],
     });
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -380,6 +389,7 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:ended', {
       result: gameResult,
       scoreTable: room.scoreTable,
+      scoreHistory: room.scoreHistory || [],
     });
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -454,6 +464,7 @@ function register(io, socket) {
       socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
+    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): the undone stones leave the lobby board too
 
     const timer = timerMap.get(room.roomId);
 
@@ -712,6 +723,7 @@ function startTimerForGame(io, room, engine, idOverride) {
       io.to(roomId).emit('game:ended', {
         result: engine.result,
         scoreTable: room.scoreTable,
+        scoreHistory: room.scoreHistory || [],
       });
       io.to(roomId).emit('chat:message', {
         from: null, fromId: null,
@@ -860,7 +872,7 @@ function startGame(io, room) {
       timerSync: timer.getSync(),
     });
     broadcastRoomUpdate(io, room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, room.roomId);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
       text: `Swap2: ${blackPlayer.displayName} đặt 3 quân mở màn.`,
@@ -901,7 +913,7 @@ function startGame(io, room) {
     timerSync: timer.getSync(),
   });
   broadcastRoomUpdate(io, room);
-  broadcastLobbyUpdate(io);
+  broadcastLobbyUpdate(io, room.roomId);
   io.to(roomId).emit('chat:message', {
     from: null, fromId: null,
     text: 'Ván đấu bắt đầu! Đen đi trước.',
@@ -909,6 +921,42 @@ function startGame(io, room) {
     timestamp: Date.now(), isSystem: true,
   });
   logger.info(`[Game] Game started in room ${roomId}`);
+}
+
+/** #368: how many finished games a room remembers for the phone "Tỉ số" tab. */
+const GAME_LOG_MAX = 30;
+
+/**
+ * Append one scored game to the room's log (phone Tỉ số tab: result dots + one row per game).
+ * `n` keeps counting past the cap so "Ván 31" stays "Ván 31" after the oldest rows drop.
+ */
+function appendGameLog(room, engine) {
+  if (!Array.isArray(room.gameLog)) room.gameLog = [];
+  const prev = room.gameLog[room.gameLog.length - 1];
+  room.gameLog.push({
+    n: prev ? prev.n + 1 : 1,
+    winnerId: engine.result.winner,
+    reason: engine.result.reason,
+    moves: (engine.moveHistory || []).length,
+    durationMs: typeof engine.startedAt === 'number' ? Math.max(0, Date.now() - engine.startedAt) : null,
+    players: engine.players.map((p) => ({ userId: p.userId, name: p.displayName, color: p.color })),
+  });
+  if (room.gameLog.length > GAME_LOG_MAX) room.gameLog.splice(0, room.gameLog.length - GAME_LOG_MAX);
+}
+
+const SCORE_HISTORY_MAX = 20;
+
+/** Move the finished pair's tally into room.scoreHistory; resume the new pair's old tally if they played before. */
+function archiveScorePair(room, nextKey) {
+  const hist = (room.scoreHistory || []).filter((h) => h.key !== room.scorePair && h.key !== nextKey);
+  const prev = (room.scoreHistory || []).find((h) => h.key === nextKey);
+  if (room.scoreTable && Object.keys(room.scoreTable).length) {
+    hist.push({ key: room.scorePair, players: Object.entries(room.scoreTable).map(([userId, e]) => ({ userId, ...e })) });
+  }
+  if (hist.length > SCORE_HISTORY_MAX) hist.splice(0, hist.length - SCORE_HISTORY_MAX);
+  room.scoreHistory = hist;
+  room.scoreTable = {};
+  if (prev) for (const { userId, ...e } of prev.players) room.scoreTable[userId] = e;
 }
 
 /**
@@ -929,6 +977,11 @@ function handleGameEnd(io, room, opts = {}) {
 
   if (engine && engine.result && !noScore) {
     const { winner } = engine.result;
+    // The table is the CURRENT pair's tally: when either seat changes hands (even if
+    // one player keeps sitting) the previous pair's counts must not carry over.
+    const pairKey = engine.players.map((p) => p.userId).sort().join('|');
+    if (room.scorePair !== undefined && room.scorePair !== pairKey) archiveScorePair(room, pairKey);
+    room.scorePair = pairKey;
     for (const p of engine.players) {
       if (!room.scoreTable[p.userId]) {
         room.scoreTable[p.userId] = { name: p.displayName, win: 0, loss: 0, draw: 0 };
@@ -941,6 +994,7 @@ function handleGameEnd(io, room, opts = {}) {
         room.scoreTable[p.userId].loss++;
       }
     }
+    appendGameLog(room, engine);
   }
 
   // Friend-challenge series (#222): games by anyone but the series pair end it.
@@ -1018,8 +1072,15 @@ function handleGameEnd(io, room, opts = {}) {
   if (inSeries && ChallengeSeries.isDecided(series)) finishSeries(io, room, 'complete');
   else if (inSeries) io.to(roomId).emit('series:update', ChallengeSeries.view(series));
 
+  // Quick-match session (#365): every ended game counts (draws, aborted ones
+  // too); then open the "Chơi tiếp / Về trang chủ" window, or close after the cap.
+  if (room.matchmade && engine) {
+    room.matchGames = (room.matchGames || 0) + 1;
+    openMatchDecision(io, room);
+  }
+
   broadcastRoomUpdate(io, room);
-  broadcastLobbyUpdate(io);
+  broadcastLobbyUpdate(io, room.roomId);
 }
 
 /**
@@ -1039,4 +1100,4 @@ function finishSeries(io, room, reason) {
   })) emit(null);
 }
 
-module.exports = { register, startGame, handleGameEnd, finishSeries };
+module.exports = { register, startGame, handleGameEnd, finishSeries, GAME_LOG_MAX };

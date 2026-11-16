@@ -1,0 +1,29 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK1 Bục vinh danh</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+.hero{padding:40px 0 0;text-align:center}
+.hero h1{margin:0;font-size:clamp(30px,3vw+10px,52px);font-weight:1000;letter-spacing:-.02em}
+.filters{justify-content:center;margin:20px 0}
+.pod{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:12px;align-items:end;max-width:760px;margin:36px auto 0}
+.pod .c{display:flex;flex-direction:column;align-items:center;text-align:center;animation:rise 600ms var(--e-out) backwards}
+.pod .c.p1{animation-delay:320ms}.pod .c.p2{animation-delay:160ms}.pod .c.p3{animation-delay:0ms}
+.pod .nm{font-weight:900;margin-top:8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pod .rt{font-size:clamp(26px,3vw,40px);font-weight:1000;line-height:1.1}
+.pod .step{width:100%;margin-top:12px;border-radius:16px 16px 0 0;display:flex;justify-content:center;padding-top:14px;font-size:44px;font-weight:1000;color:#fff}
+.p1 .step{height:150px;background:linear-gradient(#d9a521,#9a7410)}.p2 .step{height:112px;background:linear-gradient(#aab1b8,#6d747b)}.p3 .step{height:84px;background:linear-gradient(#c9843f,#8a5524)}
+.p1 .av{box-shadow:0 0 0 4px #d9a521,0 0 28px rgba(217,165,33,.5)}.p2 .av{box-shadow:0 0 0 4px #aab1b8}.p3 .av{box-shadow:0 0 0 4px #c9843f}
+.crown{width:34px;height:20px;background:#d9a521;clip-path:polygon(0 100%,0 20%,25% 55%,50% 0,75% 55%,100% 20%,100% 100%);margin-bottom:6px}
+.list{max-width:760px;margin:20px auto 0;padding-bottom:110px;display:grid;gap:8px}
+.row{display:grid;grid-template-columns:36px 40px 1fr auto 64px;gap:12px;align-items:center;min-height:56px;padding:6px 16px;background:var(--c-surface);border-radius:14px;animation:rise 400ms var(--e-out) backwards}
+.row .k{font-weight:900;color:var(--c-ink-2)}.row .n{font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.row .n small{display:block;font-weight:600;color:var(--c-ink-2);font-size:12px}
+.row .r{font-weight:1000;font-size:20px}.row .dl{text-align:right}
+.dock{position:fixed;inset:auto 0 0;z-index:15;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:var(--c-surface);border-top:1px solid var(--c-border)}
+.dock .in{max-width:760px;margin:auto;display:flex;align-items:center;gap:12px}.dock b{font-size:22px}
+@media(max-width:600px){.row{grid-template-columns:28px 36px 1fr auto;gap:8px}.row .dl{display:none}.pod .step{font-size:32px}}
+</style></head><body><main class="wrap">
+<section class="hero"><p class="eyebrow">Mùa này · 1.284 người chơi</p><h1>Bục vinh danh</h1></section>
+<div class="filters" id="f"></div><div class="pod" id="pod"></div><div class="list" id="l"></div></main>
+<div class="dock"><div class="in"><span class="av" style="--h:120">MK</span><div style="flex:1"><b>Bạn #47</b> <span class="muted">· 1236 · còn 64 điểm để lên hạng 46</span></div><span class="dl up"><i class="tri"></i>21</span></div></div>
+<script src="../data.js"></script><script>RK.top();RK.chrome(f);const P=RK.players;
+pod.innerHTML=[1,0,2].map(i=>{const p=P[i];return `<div class="c p${i+1}">${i==0?'<i class="crown"></i>':''}${RK.av(p,i==0?96:72)}<div class="nm">${p.name}</div><div class="rt num">${p.rating}</div>${RK.dl(p)}<div class="step">${i+1}</div></div>`}).join('');
+l.innerHTML=P.slice(3).map((p,i)=>`<a class="row" style="animation-delay:${i*40}ms"><span class="k num">${p.rank}</span>${RK.av(p,36)}<span class="n">${p.name}<small>${p.club||p.city}</small></span><span class="r num">${p.rating}</span>${RK.dl(p)}</a>`).join('');</script></body></html>

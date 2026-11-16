@@ -12,7 +12,7 @@ jest.mock('../managers/SessionManager', () => ({ getValidSession: () => null }))
 jest.mock('../managers/tournament/TournamentManager', () => ({ pairings: new Map(), listTournaments: () => [], getTournament: () => null }));
 jest.mock('../managers/RoomManager', () => ({ rooms: new Map(), getRoomByUser: () => null }));
 jest.mock('../socket/handlers/MatchHandler', () => ({ queueCounts: jest.fn(() => ({})) }));
-jest.mock('../socket/state', () => ({ getOnlineUsersList: jest.fn(() => []) }));
+jest.mock('../socket/state', () => ({ getOnlineUsersCount: jest.fn(() => 0), getOnlineUsersList: jest.fn(() => []) }));
 
 const roomManager = require('../managers/RoomManager');
 const MatchHandler = require('../socket/handlers/MatchHandler');
@@ -44,7 +44,7 @@ function playing(roomId, black, white) {
   return { roomId, roomName: roomId, state: 'playing', users: new Map(), settings: { winningRule: 'caro' },
     gameState: { boardSize: 15, moveHistory: [], players: [{ color: 'BLACK', displayName: black, userId: 'id-' + black }, { color: 'WHITE', displayName: white, userId: 'id-' + white }] } };
 }
-const online = (n) => state.getOnlineUsersList.mockReturnValue(Array.from({ length: n }, (_, i) => ({ userId: 'u' + i })));
+const online = (n) => state.getOnlineUsersCount.mockReturnValue(n);
 const settle = () => jest.advanceTimersByTime(feed.HOME_DEBOUNCE_MS);
 
 let io;

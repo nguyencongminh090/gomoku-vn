@@ -14,6 +14,9 @@ const crypto = require('crypto');
 const database = require('../db/database');
 const notifications = require('./NotificationService');
 const privacyGate = require('./PrivacyGate');
+const userSearch = require('../db/user-search');
+const { resolveWinnerSeat } = require('../db/games');
+const { PROVISIONAL_RD } = require('./RatingService');
 
 const MAX_FRIENDS = 500;
 const MAX_OUTGOING = 50;
@@ -139,8 +142,29 @@ const person = (r) => ({
 });
 
 let isOnline = () => false;
-/** @param {{isOnline?: (userId: string) => boolean}} h  visible presence, for friends only (#222 picker) */
-function setHooks(h = {}) { isOnline = h.isOnline || (() => false); }
+let activityOf = () => null;
+/**
+ * @param {{isOnline?: (userId: string) => boolean, activityOf?: (userId: string) => object|null}} h
+ *   visible presence (#222 picker) and what an online friend is doing (#370), for friends only
+ */
+function setHooks(h = {}) {
+  isOnline = h.isOnline || (() => false);
+  activityOf = h.activityOf || (() => null);
+}
+
+/**
+ * What `userId` is doing in `room` (#370): seated in a running game → playing (+ startedAt),
+ * in a room without a seat → watching, otherwise free. roomId lets a friend open "Xem ván".
+ */
+function activityFromRoom(room, userId) {
+  const u = room && room.users && room.users.get(userId);
+  if (!u) return { activity: 'free' };
+  const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
+  if (u.slot === 1 || u.slot === 2) {
+    return game ? { activity: 'playing', startedAt: game.startedAt || null, roomId: room.roomId } : { activity: 'free' };
+  }
+  return { activity: 'watching', roomId: room.roomId };
+}
 
 function list(me) {
   const rows = db().prepare(`
@@ -151,7 +175,11 @@ function list(me) {
     ORDER BY u.display_name COLLATE NOCASE`).all(me, me, me);
   const out = { friends: [], incoming: [], outgoing: [] };
   for (const r of rows) {
-    if (r.status === 'accepted') out.friends.push({ ...person(r), online: !!isOnline(r.id) });
+    if (r.status === 'accepted') {
+      const online = !!isOnline(r.id);
+      // Activity only for visibly-online friends: hidden presence stays hidden (#370).
+      out.friends.push({ ...person(r), online, ...(online ? (activityOf(r.id) || { activity: 'free' }) : { activity: null }) });
+    }
     else (r.requested_by === me ? out.outgoing : out.incoming).push(person(r));
   }
   return out;
@@ -159,7 +187,6 @@ function list(me) {
 
 const SEARCH_MIN = 2;
 const SEARCH_LIMIT = 8;
-const likeEscape = (q) => `%${q.replace(/[\\%_]/g, (c) => '\\' + c)}%`;
 
 const CODE_RE = /^(.{1,40})#(\d{4})$/;
 
@@ -189,8 +216,8 @@ function hit(me, r) {
 }
 
 /**
- * Find players to add by username or display name (substring, case-insensitive).
- * Exact username first. Each hit carries the relation to `me` and whether a NEW request
+ * Find players to add by username or display name — accent/case-insensitive, any word order,
+ * tolerant of a typo (utils/text-search.js), best match first. Each hit carries the relation to `me` and whether a NEW request
  * would pass the recipient's privacy setting, so the UI can disable the button up front.
  */
 function search(me, query) {
@@ -198,16 +225,62 @@ function search(me, query) {
   if (q.length < SEARCH_MIN) return [];
   const code = CODE_RE.exec(q);
   if (code) return searchByCode(me, code[1].trim(), code[2]);
-  const like = likeEscape(q);
-  const rows = db().prepare(`
-    SELECT id, username, display_name, avatar_v FROM users
-    WHERE id != ? AND (username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\')
-    ORDER BY (LOWER(username) = LOWER(?)) DESC, display_name COLLATE NOCASE LIMIT ?`)
-    .all(me, like, like, q, SEARCH_LIMIT);
+  const ids = userSearch.matchUserIds(q, { limit: SEARCH_LIMIT, exclude: me });
+  if (!ids.length) return [];
+  const byId = new Map(db().prepare(`SELECT id, username, display_name, avatar_v FROM users WHERE id IN (SELECT value FROM json_each(?))`)
+    .all(JSON.stringify(ids)).map((r) => [r.id, r]));
+  const rows = ids.map((id) => byId.get(id)).filter(Boolean); // keep relevance order
   return rows.map((r) => hit(me, r));
+}
+
+const SUMMARY_GAMES = 20;
+
+/**
+ * Who I'm talking to (#370 profile pane + result cards in the thread): their rating in their
+ * most-played pool, head-to-head vs me, and our latest finished games. Games come from
+ * player_games, so only games where BOTH members had an id count (guests have none).
+ * Interrupted games (no winner) are not results. No user ids leave the server.
+ */
+function summary(me, username) {
+  const other = findUser(username);
+  if (other.id === me) throw new FriendError('CANNOT_FRIEND_SELF', 400, 'Không thể xem đối đầu với chính mình.');
+  const r = db().prepare('SELECT category, rating, rd FROM ratings WHERE user_id = ? ORDER BY games DESC, rating DESC LIMIT 1').get(other.id);
+  const rating = r ? { category: r.category, rating: Math.round(r.rating), provisional: r.rd > PROVISIONAL_RD } : null;
+  const rows = db().prepare(`
+    SELECT g.id, g.black_player_id, g.white_player_id, g.black_player_name, g.white_player_name,
+           g.winner, g.winner_color, g.reason, g.board_size, g.ended_at,
+           CASE WHEN json_valid(g.moves) THEN json_array_length(g.moves) ELSE NULL END AS move_count
+    FROM player_games a
+    JOIN player_games b ON b.game_id = a.game_id AND b.player_id = ?
+    JOIN games g ON g.id = a.game_id
+    WHERE a.player_id = ? AND g.ended_at IS NOT NULL
+    ORDER BY g.ended_at DESC, g.id DESC`).all(other.id, me);
+  const h2h = { wins: 0, losses: 0, draws: 0 };
+  const games = [];
+  for (const g of rows) {
+    const draw = g.winner === 'draw' || g.winner_color === 'DRAW';
+    const seat = draw ? null : resolveWinnerSeat(g);
+    if (!draw && !seat) continue; // interrupted / unresolvable
+    const mine = g.black_player_id === me ? 'BLACK' : 'WHITE';
+    const result = draw ? 'D' : (seat === mine ? 'W' : 'L');
+    if (result === 'W') h2h.wins++; else if (result === 'L') h2h.losses++; else h2h.draws++;
+    if (games.length < SUMMARY_GAMES) {
+      games.push({ id: g.id, result, color: mine, reason: g.reason, boardSize: g.board_size, moves: g.move_count, endedAt: g.ended_at });
+    }
+  }
+  const played = h2h.wins + h2h.losses + h2h.draws;
+  return {
+    with: person(other),
+    rating,
+    h2h: { ...h2h, winPct: played ? Math.round((100 * (h2h.wins + h2h.draws / 2)) / played) : null },
+    last5: games.slice(0, 5).map((g) => g.result),
+    games,
+    friendship: statusBetween(me, other.id),
+  };
 }
 
 module.exports = {
   FriendError, MAX_FRIENDS, MAX_OUTGOING,
   statusBetween, request, acceptRequest, remove, friendIds, list, search, myCode, setHooks,
+  activityFromRoom, summary,
 };

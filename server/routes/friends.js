@@ -9,6 +9,7 @@
  * POST   /api/friends/:username          send a request (or accept a crossed one)
  * POST   /api/friends/:username/accept   accept their request
  * DELETE /api/friends/:username          cancel / decline / unfriend
+ * GET    /api/friends/:username/summary  {with, rating, h2h, last5, games, friendship} — chat profile pane (#370)
  * Members only — guests get 403 GUEST_FORBIDDEN.
  */
 
@@ -22,10 +23,14 @@ const svc = require('../managers/FriendService');
 
 const router = express.Router();
 const keyGenerator = (req) => ipKeyGenerator(getClientIpFromReq(req) || '');
-router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator }));
+// #372: social.html polls GET / every 10 s for presence (~90 req / 15 min per open tab). A per-IP
+// budget alone would 429 members sharing one IP (CGNAT, school/café) — so a loose per-IP flood guard
+// here, and the real budget per member after auth.
+router.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 1500, keyGenerator }));
 const writeLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 120, keyGenerator });
+const userLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, keyGenerator: (req) => 'u:' + req.user.userId });
 
-const member = [verifyToken, rejectGuests('Khách không dùng được bạn bè.')];
+const member = [verifyToken, rejectGuests('Khách không dùng được bạn bè.'), userLimiter];
 
 const h = (fn) => (req, res, next) => {
   try {
@@ -51,6 +56,11 @@ router.get('/search', ...member, searchLimiter, h((req, res) => {
 router.get('/code', ...member, h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json({ code: svc.myCode(req.user.userId) });
+}));
+
+router.get('/:username/summary', ...member, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.summary(req.user.userId, req.params.username));
 }));
 
 router.post('/:username', ...member, writeLimiter, h((req, res) => {

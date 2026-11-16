@@ -30,6 +30,7 @@ jest.mock('../db/database', () => ({ saveGame: jest.fn() }));
 const mockState = {
   timerMap: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
   cleanupReadyTimer: jest.fn(),
@@ -134,6 +135,25 @@ describe('game:move — ack contract', () => {
     const moved = io.broadcastsOf('room1', 'game:moved');
     expect(moved).toHaveLength(1);
     expect(moved[0]).toMatchObject({ x: 7, y: 7, color: 'BLACK', moveCount: 1 });
+  });
+
+  // perf/play-lag: mid-game the clock rides only in timerSync (both clocks in it); the duplicate
+  // `timer` pair is not sent. The client's applyTimerSync() rewrites both values from it.
+  test('mid-game move carries timerSync with both clocks and no duplicate `timer`', () => {
+    const io = makeIo();
+    const room = makeRoom();
+    mockRoomManager.getRoomByUser.mockReturnValue(room);
+    mockState.timerMap.set('room1', {
+      mode: 'per_game',
+      getTimers: () => ({ black: 50, white: 60 }),
+      getSync: () => ({ black: 50, white: 60, activeColor: 'white', deadline: 2, serverTime: 1, running: true }),
+      switchTurn: jest.fn(),
+    });
+    const socket = connect(io, 'p1');
+    socket.handlers['game:move']({ x: 7, y: 7, moveId: 'mv-t' }, jest.fn());
+    const [moved] = io.broadcastsOf('room1', 'game:moved');
+    expect(moved.timerSync).toMatchObject({ black: 50, white: 60, activeColor: 'white' });
+    expect(moved).not.toHaveProperty('timer');
   });
 
   test('broadcast goes out before the ack, so a lost ack still leaves one path home', () => {

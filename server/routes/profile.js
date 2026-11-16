@@ -6,7 +6,7 @@
  * GET    /api/profile/:username       — public profile (privacy opt-outs honoured)
  * GET    /api/profile/card/:userId    — compact card for the lobby online list (B220)
  * PUT    /api/profile                 — edit own bio / privacy flags / uiSkin
- * GET    /api/profile/prefs           — own UI preferences (uiSkin)
+ * GET    /api/profile/prefs           — own UI preferences (uiSkin, roomDefaults = last created room's settings)
  * POST   /api/profile/avatar          — upload (raw image body), re-encoded to WebP
  * DELETE /api/profile/avatar          — remove
  * GET    /api/profile/:username/rating-history?category=&days= — rating curve (privacy-aware)
@@ -180,7 +180,7 @@ router.get('/prefs', verifyToken, requireMember, (req, res, next) => {
   try {
     res.set('Cache-Control', 'no-store');
     const u = database.getProfileById(req.user.userId);
-    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0], ...(u ? privacyOf(u) : {}) });
+    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0], roomDefaults: database.getLastRoomSettings(req.user.userId), ...(u ? privacyOf(u) : {}) });
   } catch (err) {
     next(err);
   }

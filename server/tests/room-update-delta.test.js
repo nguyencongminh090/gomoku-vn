@@ -337,14 +337,14 @@ describe('broadcastRoomUpdate — debounce', () => {
     jest.advanceTimersByTime(DEBOUNCE_MS);
   });
 
-  test('bursts for different rooms flush independently, one timer each', () => {
+  test('bursts for different rooms flush independently, under ONE shared timer (#388)', () => {
     const io = makeIo();
     currentFullState = fullState();
 
     const before = jest.getTimerCount();
     broadcastRoomUpdate(io, { roomId: 'r1' });
     broadcastRoomUpdate(io, { roomId: 'r2' });
-    expect(jest.getTimerCount() - before).toBe(2);
+    expect(jest.getTimerCount() - before).toBe(1);
 
     jest.advanceTimersByTime(DEBOUNCE_MS);
     expect(io.emitted.map(e => e.room).sort()).toEqual(['r1', 'r2']);
@@ -383,6 +383,42 @@ describe('broadcastRoomUpdate — debounce', () => {
     jest.advanceTimersByTime(DEBOUNCE_MS);
 
     expect(io.emitted).toHaveLength(0);
+  });
+});
+
+describe('broadcastRoomUpdate — burst across many rooms (#388)', () => {
+  // A reconnect storm calls broadcastRoomUpdate for hundreds of rooms in one tick. Their windows all end
+  // together; flushing every room in one timer callback held the event loop ~50 ms (#388 profile). The
+  // flush must yield to I/O between chunks while still sending every room its update.
+  test('a 40-room burst is flushed in chunks that let other callbacks run, and every room is sent', async () => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    try {
+      const io = makeIo();
+      const marks = [];
+      const realEmit = io.to;
+      io.to = jest.fn((room) => ({ emit: (event, data) => {
+        if (marks.length === 0) setImmediate(() => marks.push('yield')); // queued before any continuation
+        marks.push(room);
+        realEmit(room).emit(event, data);
+      } }));
+      mockRoomManager.serializeRoomUpdate.mockImplementation(() => {
+        const t = performance.now(); while (performance.now() - t < 1) { /* 1 ms of work per room */ }
+        return currentFullState;
+      });
+      currentFullState = fullState();
+      for (let i = 0; i < 40; i++) broadcastRoomUpdate(io, { roomId: 'burst' + i });
+      await new Promise((r) => setTimeout(r, DEBOUNCE_MS + 150));
+
+      const rooms = marks.filter((m) => m !== 'yield');
+      expect(rooms.sort()).toEqual(Array.from({ length: 40 }, (_, i) => 'burst' + i).sort());
+      const y = marks.indexOf('yield');
+      expect(y).toBeGreaterThan(0);
+      expect(y).toBeLessThan(marks.length - 1); // another callback ran BETWEEN room flushes
+    } finally {
+      mockRoomManager.serializeRoomUpdate.mockImplementation(() => currentFullState);
+      jest.useFakeTimers();
+    }
   });
 });
 

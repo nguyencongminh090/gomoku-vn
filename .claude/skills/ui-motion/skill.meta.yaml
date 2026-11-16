@@ -1,0 +1,12 @@
+name: ui-motion
+description: "Add transitions, animation, page transitions, scroll effects and 3D to a web UI: lightest tool first, motion tokens from DESIGN.md, reduced-motion and no-WebGL fallbacks"
+domain: frontend-ui-design
+tags: ui-motion,animation,transitions,view-transitions,scroll-animation,3d,threejs,gsap,reduced-motion,frontend
+apply_when: "adding or reworking animation, micro-interactions, page transitions, scroll reveals, parallax or 3D effects in a web UI"
+scope: global
+project: ""
+language: en
+knowledge: fe-web-animation,fe-web-3d,vbase-depth-motion,vstyle-motion-immersive,fe-browser-support-baseline,perf-core-web-vitals
+conflicts: ""
+source: "authored in tree 2026-11-12"
+last_reviewed: 2026-11-12

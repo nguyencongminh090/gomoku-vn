@@ -31,15 +31,12 @@ test('chat/moves lists chain their scroll into .room (no overscroll-behavior:con
   expect(phone).not.toMatch(/\.chat-messages \{[^}]*overscroll-behavior: (contain|none)/);
   expect(phone).toMatch(/body\.arena-room \.room \{[^}]*overscroll-behavior: none;/); // contain still bounces locally
 });
-test('the panel toggle is sticky right under my card, and the panel clips without becoming its scroll container', () => {
-  expect(phone).toMatch(/\.rpanel-toggle \{[^}]*position: sticky; top: calc\(2 \* var\(--seatcard-h\) \+ var\(--board-h, 100vw\)\)/);
-  expect(phone).toMatch(/body\.arena-room \.rpanel \{ overflow: clip; \}/);
-  expect(phone).toMatch(/:has\(#chat-input:focus\) \.rpanel-toggle \{ position: relative; top: auto; \}/);
+// #368: the ▲/▼ expand mode is gone — the dock sticks to the bottom of the .room scroller, the tabs are a sheet.
+test('no expand mode is left: no toggle rules, no expanded un-sticking, no rpanel--min', () => {
+  expect(arena).not.toMatch(/rpanel-toggle|rpanel--min|aria-expanded="true"\]\) \.board-area-shell/);
 });
-
-// user 2026-10-11: expanded panel releases the sticky stack (page scrolls: longer chat, easier Settings); minimized re-pins.
-test('expanded (aria-expanded=true) un-sticks cards + board and makes the panel a screen tall; the base sticky rules stay for minimized', () => {
-  expect(phone).toMatch(/:has\(#rpanel-toggle\[aria-expanded="true"\]\) \.board-area-shell[^{]*\{ position: relative; top: auto; \}/);
-  expect(phone).toMatch(/\.rpanel:not\(\.rpanel--min\) \{ flex: none; min-height: calc\(100dvh - var\(--nav-h\)\); \}/);
+test('the dock is sticky at the bottom of .room and the stage takes the leftover height', () => {
+  expect(phone).toMatch(/body\.arena-room \.rail > \.rdock \{[^}]*position: sticky; bottom: 0;/);
+  expect(phone).toMatch(/body\.arena-room \.rail > \.stage \{[^}]*flex: 1 1 0; min-height: 0;/);
   expect(phone).toMatch(/body\.arena-room \.board-area-shell \{ top: var\(--seatcard-h\); z-index: 20; \}/);
 });

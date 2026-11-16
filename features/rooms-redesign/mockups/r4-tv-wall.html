@@ -1,0 +1,119 @@
+<style>
+/* R4 — Màn hình TV: the room tab as a live broadcast. One featured game, big (most watchers), with
+   both players + clocks; a wall of other live boards; on the right the "ghế trống" queue — tables
+   waiting for an opponent, each one tap from playing. Needs the live position in the lobby feed. */
+body.mk-r4-tv-wall::after { display: none; }
+.r4 .wrap { max-width: 1320px; padding-top: 20px; }
+.r4-top { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 16px; }
+.r4-top h1 { margin: 0; font-size: 28px; font-weight: 1000; letter-spacing: -.02em; display: flex; align-items: center; gap: 10px; }
+.r4-live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: #d32f2f; color: #fff; font-size: 12px; font-weight: 900; letter-spacing: .06em; }
+.r4-live-pill i { width: 7px; height: 7px; border-radius: 50%; background: #fff; animation: mk-pulse 1.2s infinite; }
+.r4-top .tabs { margin-left: 8px; }
+.r4-top .act { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.r4-top .code__box { width: 34px; height: 40px; font-size: 18px; }
+.r4-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.r4-feat { display: grid; gap: 12px; padding: 16px; border-radius: 20px; background: var(--c-surface); box-shadow: var(--shadow-card); }
+.r4-feat .bd { position: relative; }
+.r4-feat .mb { border-radius: 10px; }
+.r4-feat .over { position: absolute; left: 12px; top: 12px; display: flex; gap: 6px; }
+.r4-feat .over span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; background: rgba(20,18,15,.8); color: #fff; font-size: 12px; font-weight: 800; }
+.r4-pl { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: var(--c-fill); }
+.r4-pl .av { --s: 36px; }
+.r4-pl b { font-weight: 800; display: block; }
+.r4-pl small { color: var(--c-ink-2); font-size: var(--text-xs); }
+.r4-pl .clk { font-size: 22px; font-weight: 1000; font-variant-numeric: tabular-nums; padding: 2px 10px; border-radius: 8px; background: var(--c-surface); }
+.r4-pl--turn .clk { background: var(--c-ink); color: var(--c-on-ink); }
+.r4-feat .foot { display: flex; align-items: center; gap: 8px; }
+.r4-feat .foot .btn { margin-left: auto; }
+.r4-wall { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.r4-ch { display: grid; gap: 8px; padding: 10px; border-radius: 14px; background: var(--c-surface); box-shadow: var(--shadow-card); cursor: pointer; transition: transform var(--d-base) var(--e-out); }
+.r4-ch:hover { transform: translateY(-2px); }
+.r4-ch .bd { position: relative; }
+.r4-ch .eye { position: absolute; right: 6px; top: 6px; display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; background: rgba(20,18,15,.78); color: #fff; font-size: 11px; font-weight: 800; }
+.r4-ch .who { display: flex; align-items: center; gap: 6px; font-size: var(--text-sm); font-weight: 700; min-width: 0; }
+.r4-ch .who .av { --s: 22px; }
+.r4-ch .who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.r4-ch .who em { font-style: normal; color: var(--c-ink-2); font-size: var(--text-xs); }
+.r4-ch .meta { font-size: var(--text-xs); color: var(--c-ink-2); }
+.r4-seats { display: grid; gap: 10px; padding: 14px; border-radius: 20px; background: color-mix(in srgb, var(--c-state-waiting) 12%, var(--c-surface)); box-shadow: var(--shadow-card); }
+.r4-seats h2 { margin: 0; font-size: var(--text-md); font-weight: 900; display: flex; align-items: center; justify-content: space-between; }
+.r4-seat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px; border-radius: 12px; background: var(--c-surface); }
+.r4-seat .av { --s: 34px; }
+.r4-seat b { display: block; font-weight: 800; font-size: var(--text-sm); }
+.r4-seat small { font-size: var(--text-xs); color: var(--c-ink-2); }
+.r4-seats .btn--sec { width: 100%; }
+.r4-on { margin-top: 4px; font-size: var(--text-xs); color: var(--c-ink-2); line-height: 1.6; }
+.r4-on b { color: var(--c-ink); }
+.r4-none .mb { max-width: 160px; }
+.r4-none { flex-direction: column; align-items: center; gap: 10px; padding: 26px 12px; text-align: center; color: var(--c-ink-2); }
+.r4-none b { color: var(--c-ink); font-size: 18px; }
+.r4-wall .if-empty { grid-column: 1 / -1; border-radius: 14px; border: 2px dashed var(--c-border); }
+@media (max-width: 1100px) { .r4-grid { grid-template-columns: minmax(0, 1fr) 300px; } .r4-wall { grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-row: 2; } }
+@media (max-width: 860px) {
+  .r4 .wrap { padding-top: 14px; }
+  .r4-top { gap: 10px; }
+  .r4-top h1 { font-size: 22px; }
+  .r4-top .tabs { order: 3; width: 100%; margin: 0; }
+  .r4-top .act { margin-left: auto; }
+  .r4-top .act .code { display: none; }
+  .r4-top .act .btn--sec { display: inline-flex; }
+  .r4-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .r4-seats { order: -1; }
+  .r4-seat:nth-of-type(n+4) { display: none; }
+  .r4-feat { padding: 10px; }
+  .r4-pl .clk { font-size: 18px; }
+  .r4-wall { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-row: auto; }
+}
+.r4-top .act .btn--sec { display: none; }
+</style>
+<div class="mk mk-screen r4">
+  <div class="wrap">
+    <div class="r4-top rise">
+      <h1>Phòng <span class="r4-live-pill"><i></i>TRỰC TIẾP</span></h1>
+      <div class="tabs" role="tablist" aria-label="Lọc phòng">
+        <button role="tab" aria-selected="true">Phòng<span class="n">{{n:all}}</span></button>
+        <button role="tab" aria-selected="false">Bàn<span class="n">{{n:open}}</span></button>
+        <button role="tab" aria-selected="false">Quan sát<span class="n">{{n:seated}}</span></button>
+      </div>
+      <div class="act">
+        <span class="code"><span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span></span>
+        <button class="btn btn--sec btn--sm">{{i:door-open}}Mã</button>
+        <button class="btn btn--pri btn--sm">{{i:plus-circle}}Tạo phòng</button>
+      </div>
+    </div>
+
+    <div class="r4-grid">
+      <div>
+        <template data-list="live" data-max="1">
+          <section class="r4-feat rise rise-2" data-be="board">
+            <div class="r4-pl"><span class="av" style="--h:{{p2h}}">{{p2i}}</span><span><b>{{p2}}</b><small>{{p2r}} · trắng</small></span><span class="clk">03:12</span></div>
+            <div class="bd">{{board}}<div class="over"><span>{{i:eye}}{{viewers}} đang xem</span><span>Nước {{moves}}</span></div></div>
+            <div class="r4-pl r4-pl--turn"><span class="av" style="--h:{{p1h}}">{{p1i}}</span><span><b>{{p1}}</b><small>{{p1r}} · đen · đến lượt</small></span><span class="clk">02:47</span></div>
+            <div class="foot"><span class="tag">{{rule}}</span><span class="tag">{{time}}</span><span class="tag {{#rated}}tag--brand{{/rated}}">{{mode}}</span><button class="btn btn--ink btn--sm">{{i:eye}}Vào xem</button></div>
+          </section>
+        </template>
+        <div class="r4-feat r4-none if-empty">{{boardEmpty}}<b>Chưa có ván nào đang đấu</b><span>Ván đầu tiên bạn mở sẽ lên sóng ở đây.</span></div>
+      </div>
+
+      <div class="r4-wall">
+        <template data-list="seated" data-skip="1" data-max="6">
+          <article class="r4-ch" tabindex="0">
+            <div class="bd">{{board}}<span class="eye">{{i:eye}}{{viewers}}</span></div>
+            <div class="who"><span class="av" style="--h:{{p1h}}">{{p1i}}</span><span>{{p1}}</span><em>vs</em><span>{{p2}}</span></div>
+            <div class="meta">{{rule}} · {{time}}{{#live}} · {{elapsed}}{{/live}}{{#ready}} · sắp bắt đầu{{/ready}}</div>
+          </article>
+        </template>
+        <div class="r4-none if-empty">Các ván khác sẽ hiện ở đây.</div>
+      </div>
+
+      <aside class="r4-seats rise rise-3">
+        <h2>Ghế trống <span class="tag tag--warn">{{n:open}} bàn</span></h2>
+        <template data-list="open" data-max="5">
+          <div class="r4-seat"><span class="av" style="--h:{{p1h}}">{{p1i}}</span><span><b>{{p1}} <small data-be="rating">{{p1r}}</small></b><small>{{rule}} · {{time}} · {{mode}}</small></span><button class="btn btn--pri btn--sm">Ngồi</button></div>
+        </template>
+        <button class="btn btn--sec btn--sm">{{i:plus-circle}}Mở bàn mới</button>
+        <p class="r4-on"><b>{{n:online}} online</b> · <span class="oname">Quân</span>, <span class="oname">trung_kien</span>, <span class="oname">Minh Trí</span> đang rảnh — <span class="oname">mời chơi</span></p>
+      </aside>
+    </div>
+  </div>
+</div>

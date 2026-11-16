@@ -47,6 +47,10 @@ const MAX_ROOMS_PER_IP      = parseInt(process.env.MAX_ROOMS_PER_IP, 10) || 3;
 // instruction.md §43.
 const MAX_GRACE_ROOMS_PER_IP = parseInt(process.env.MAX_GRACE_ROOMS_PER_IP, 10) || 3;
 const MAX_USERS_PER_ROOM    = parseInt(process.env.MAX_USERS_PER_ROOM, 10) || 40; // 2 players + 38 guests
+// #381: how many online users a lobby client mirrors (snapshot + patches); the rest is searched on demand.
+// #382: how many rooms a lobby client mirrors live; the rest is fetched a page at a time on demand.
+const LOBBY_ROOM_PAGE_SIZE  = parseInt(process.env.LOBBY_ROOM_PAGE_SIZE, 10) || 30;
+const ONLINE_PAGE_SIZE      = parseInt(process.env.ONLINE_PAGE_SIZE, 10) || 50;
 
 // --- Auth rate limit ---
 // `authLimiter` in server/routes/auth.js — 20 req/15min/IP by default, same
@@ -235,6 +239,8 @@ module.exports = {
   MAX_ROOMS_PER_IP,
   MAX_GRACE_ROOMS_PER_IP,
   MAX_USERS_PER_ROOM,
+  ONLINE_PAGE_SIZE,
+  LOBBY_ROOM_PAGE_SIZE,
   AUTH_LIMITER_MAX,
   IDLE_TIMEOUT_MS,
   IDLE_SCAN_INTERVAL_MS,

@@ -17,21 +17,27 @@ describe('lobby layout-shift reservations (B261)', () => {
     expect(host[1]).toBe(nav[1]);
   });
 
-  it.each(['#qm-rule', '#qm-time', '#qm-board', '#qm-actions', '#home-today', '#home-live', '#home-learn', '#home-mine', '#home-forum', '#home-stats'])(
-    '%s keeps a min-height while empty',
-    (id) => {
-      expect(zen).toMatch(new RegExp(id + '[^{]*:empty[^{]*\\{ min-height: \\d+px; \\}'));
-    },
-  );
+  // #qm-actions is no longer reserved: since the hub (Chơi nhanh is #qm-play) it only fills with the
+  // cancel button of a search the user started — input-driven, so not CLS (ui-audit home F8).
+  it('#qm-actions collapses while empty', () => {
+    expect(zen).toMatch(/#qm-actions:empty \{ display: none; \}/);
+  });
 
-  it('hero title reserves a line while empty; #home-stats ships visible (hidden would shift the panels down)', () => {
-    expect(zen).toMatch(/\.zen-hero__title:empty \{ min-height: 1\.3em;/);
+  it('#home-mine keeps a min-height while empty', () => {
+    expect(zen).toMatch(/#home-mine:empty \{ min-height: \d+px; \}/);
+  });
+
+  // #358: the sentence + count cards ship their final shape in the HTML, so /api/home only swaps text (no reserve needed).
+  it('#358: the sentence ships with its three default blanks; the count cards ship their structure, visible', () => {
+    const q = html.match(/<h1 class="hq-q" id="home-q">([\s\S]*?)<\/h1>/);
+    expect(q).toBeTruthy();
+    expect(q[1].match(/class="hq-blank"/g)).toHaveLength(3);
     expect(html).not.toMatch(/id="home-stats"[^>]*\bhidden\b/);
+    for (const id of ['home-n-search', 'home-n-live']) expect(html).toMatch(new RegExp('id="' + id + '">–<'));
   });
 
-  it('B271: #home-stats reserves its two wrapped rows at <=480px (375 px CLS 0.124 -> 0.007)', () => {
-    const m = zen.match(/@media \(max-width: 480px\) \{[^@]*?#home-stats:empty \{ min-height: (\d+)px; \}/);
-    expect(m).toBeTruthy();
-    expect(Number(m[1])).toBeGreaterThanOrEqual(86);
+  it('hero title reserves a line while empty', () => {
+    expect(zen).toMatch(/\.zen-hero__title:empty \{ min-height: 1\.3em;/);
   });
+
 });

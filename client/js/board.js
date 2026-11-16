@@ -258,6 +258,7 @@
   // ─── SVG primitives ────────────────────────────────────────────────────────
 
   const P = 40;
+  const MAX_ZOOM = 4; // pinch-zoom ceiling (#400)
   const f = (n) => Math.round(n * 10) / 10;
   const PORTAL_COLORS = [[51, 179, 242], [230, 102, 153], [77, 204, 102], [242, 153, 51], [166, 89, 217], [51, 191, 179], [217, 191, 51], [217, 64, 64]];
   const portalRgb = (i, a = 1) => `rgba(${PORTAL_COLORS[i % PORTAL_COLORS.length].join(',')},${a})`;
@@ -373,7 +374,9 @@
         }
       }
       svg.classList.add('gboard');
-      svg.setAttribute('role', 'img');
+      // One tab stop; arrows move a cursor, Enter/Space selects (#326). `application` so a screen
+      // reader passes the keys through instead of announcing a picture.
+      svg.setAttribute('role', 'application');
       svg.style.touchAction = 'none';
       svg.style.display = 'block';
       svg.style.userSelect = 'none';
@@ -404,16 +407,25 @@
       this._pendingCell = null;
       this.optimisticStone = null;
       this.geo = null; // { m, n, W, vx, vy, VW, VH }
+      // Pinch-zoom (touch only): a sub-rectangle of the base view, kept in user units.
+      this._zoom = 1; this._zx = 0; this._zy = 0;
+      this._ptrs = new Map(); this._gesture = false; this._lastTap = null;
 
       // A page that builds a new renderer on the same element (puzzle.js, per puzzle)
       // must not leave the previous handlers attached: one click would place twice.
       if (svg.__gboard) svg.__gboard.destroy();
       svg.__gboard = this;
       this._handlers = {
-        pointermove: (e) => this._onMouseMove(e),
         pointerleave: () => this._onMouseLeave(),
         click: (e) => this._onClick(e),
         touchend: (e) => this._onTouchEnd(e),
+        touchcancel: () => { this._gesture = false; },
+        pointerdown: (e) => this._onPtrDown(e),
+        pointermove: (e) => { this._onPtrMove(e); this._onMouseMove(e); },
+        pointerup: (e) => this._onPtrEnd(e),
+        pointercancel: (e) => this._onPtrEnd(e),
+        keydown: (e) => this._onKey(e),
+        blur: () => this._onBlur(),
       };
       for (const [ev, fn] of Object.entries(this._handlers)) svg.addEventListener(ev, fn);
 
@@ -457,10 +469,15 @@
       if (s.moveHistory !== undefined) this.moveHistory = s.moveHistory || [];
       if (s.lastMove !== undefined) this.lastMove = s.lastMove;
       if (s.isMyTurn !== undefined) this.isMyTurn = s.isMyTurn;
-      if (s.interactive !== undefined) this.interactive = s.interactive;
+      if (s.interactive !== undefined) {
+        this.interactive = s.interactive;
+        if (this.interactive) this.svg.setAttribute('tabindex', '0');
+        else { this.svg.removeAttribute('tabindex'); this._kbCell = null; }
+      }
       if (s.myColor !== undefined) this.myColor = s.myColor;
       // s.displayMode is ignored: the look comes from BoardPrefs (#216).
-      this._draw();
+      // #378: one new stone (a move) patches the SVG; anything else redraws it whole.
+      if (!this._drawMove()) this._draw();
     }
 
     /**
@@ -521,11 +538,82 @@
       if (!g) return null;
       const rect = this.svg.getBoundingClientRect();
       if (!rect.width || !rect.height) return null;
-      const ux = g.vx + (clientX - rect.left) * (g.VW / rect.width);
-      const uy = g.vy + (clientY - rect.top) * (g.VH / rect.height);
+      const v = this._view();
+      const ux = v.x + (clientX - rect.left) * (v.w / rect.width);
+      const uy = v.y + (clientY - rect.top) * (v.h / rect.height);
       const x = Math.floor((ux - g.m) / P);
       const y = Math.floor((uy - g.m) / P);
       return x >= 0 && y >= 0 && x < g.n && y < g.n ? { x, y } : null;
+    }
+
+    // ── Pinch zoom (#400): only the SVG viewBox changes, so the page layout never moves ──
+    /** Current visible rectangle in user units (clamped inside the base view). */
+    _view() {
+      const g = this.geo;
+      const z = this._zoom;
+      const w = g.VW / z, h = g.VH / z;
+      const x = Math.min(g.vx + g.VW - w, Math.max(g.vx, g.vx + this._zx));
+      const y = Math.min(g.vy + g.VH - h, Math.max(g.vy, g.vy + this._zy));
+      return { x, y, w, h };
+    }
+
+    _applyView() {
+      const v = this._view();
+      this._zx = v.x - this.geo.vx; this._zy = v.y - this.geo.vy;
+      this.svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+    }
+
+    resetZoom() {
+      if (this._zoom === 1 && !this._zx && !this._zy) return;
+      this._zoom = 1; this._zx = 0; this._zy = 0;
+      if (this.geo) this._applyView();
+    }
+
+    _gestureBase() {
+      const pts = [...this._ptrs.values()];
+      const rect = this.svg.getBoundingClientRect();
+      const mx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      const my = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+      const v = this._view();
+      this._gb = {
+        rect, z: this._zoom, d: pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0,
+        ux: v.x + ((mx - rect.left) / rect.width) * v.w, uy: v.y + ((my - rect.top) / rect.height) * v.h,
+      };
+    }
+
+    _onPtrDown(e) {
+      if (e.pointerType !== 'touch' || !this.geo) return;
+      this._ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY });
+      if (this._ptrs.size > 1) this._gesture = true;
+      this._gestureBase();
+    }
+
+    _onPtrMove(e) {
+      const p = this._ptrs.get(e.pointerId);
+      if (!p || !this._gb) return;
+      p.x = e.clientX; p.y = e.clientY;
+      const pts = [...this._ptrs.values()];
+      const b = this._gb, g = this.geo;
+      if (pts.length === 1) {
+        if (this._zoom <= 1) return;
+        if (!this._gesture && Math.hypot(p.x - p.x0, p.y - p.y0) < 8) return; // still a tap
+        this._gesture = true;
+      }
+      const mx = pts.reduce((a, q) => a + q.x, 0) / pts.length;
+      const my = pts.reduce((a, q) => a + q.y, 0) / pts.length;
+      let z = b.z;
+      if (pts.length > 1 && b.d > 0) z = Math.min(MAX_ZOOM, Math.max(1, b.z * (Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) / b.d)));
+      if (z < 1.04) z = 1; // snap back to the full board
+      const w = g.VW / z, h = g.VH / z;
+      this._zoom = z;
+      this._zx = b.ux - ((mx - b.rect.left) / b.rect.width) * w - g.vx;
+      this._zy = b.uy - ((my - b.rect.top) / b.rect.height) * h - g.vy;
+      this._applyView();
+    }
+
+    _onPtrEnd(e) {
+      if (!this._ptrs.delete(e.pointerId)) return;
+      if (this._ptrs.size) this._gestureBase(); // the remaining finger keeps panning from here
     }
 
     _isEmpty(c) { return !!(c && this.board && this.board[c.y] && this.board[c.y][c.x] === 0); }
@@ -537,6 +625,7 @@
         if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
         return;
       }
+      this._kbCell = null; // the pointer takes over: Enter must act on the cell that is drawn
       const cell = this._cellFromClient(e.clientX, e.clientY);
       const prev = this._hoverCell;
       if ((!prev && !cell) || (prev && cell && prev.x === cell.x && prev.y === cell.y)) return;
@@ -545,6 +634,7 @@
     }
 
     _onMouseLeave() {
+      this._kbCell = null;
       if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
     }
 
@@ -557,11 +647,71 @@
     _onTouchEnd(e) {
       // First, before any guard: stops the synthetic click/zoom/keyboard (#104).
       e.preventDefault();
-      if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
+      // A pinch / pan is not a tap: swallow every touchend of it, clear when the last finger lifts.
+      if (this._gesture) { if (!(e.touches && e.touches.length)) this._gesture = false; this._lastTap = null; return; }
       const t = e.changedTouches && e.changedTouches[0];
       if (!t) return;
       const cell = this._cellFromClient(t.clientX, t.clientY);
-      if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
+      const acts = this.interactive && this.isMyTurn && this.onCellClick && this._clickable(cell);
+      // Double-tap resets the zoom, unless that second tap is a normal move confirmation.
+      const now = Date.now(), lt = this._lastTap;
+      this._lastTap = { t: now, x: t.clientX, y: t.clientY };
+      if (this._zoom > 1 && !acts && lt && now - lt.t < 320 && Math.hypot(t.clientX - lt.x, t.clientY - lt.y) < 30) {
+        this._lastTap = null; this.resetZoom(); return;
+      }
+      if (acts) this._handleCellSelect(cell.x, cell.y);
+    }
+
+    // Keyboard path (#326): the cursor is the hover cell; selecting goes through the same
+    // _handleCellSelect as a click, so legality / pending / optimistic logic stays in one place.
+    _onKey(e) {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      const n = this.boardSize;
+      const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key];
+      if (d) {
+        e.preventDefault();
+        if (!this.interactive) return;
+        const c = this._kbCell || { x: (n - 1) >> 1, y: (n - 1) >> 1 };
+        const first = !this._kbCell;
+        const nx = first ? c.x : Math.min(n - 1, Math.max(0, c.x + d[0]));
+        const ny = first ? c.y : Math.min(n - 1, Math.max(0, c.y + d[1]));
+        this._kbCell = { x: nx, y: ny };
+        this._hoverCell = this._kbCell;
+        this._drawOverlay();
+        this._announce(this._cellName(nx, ny) + (!this._clickable(this._kbCell) ? ' occupied' : this.isMyTurn ? '' : ' not your turn'));
+      } else if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!this._kbCell || !this.interactive || !this.isMyTurn || !this.onCellClick) return;
+        if (this._clickable(this._kbCell)) this._handleCellSelect(this._kbCell.x, this._kbCell.y);
+      } else if (e.key === 'Escape') {
+        this._kbCell = null;
+        this._pendingCell = null;
+        this._hoverCell = null;
+        this._drawOverlay();
+        this.svg.blur();
+      }
+    }
+
+    _onBlur() {
+      if (!this._kbCell) return;
+      this._kbCell = null;
+      this._hoverCell = null;
+      this._drawOverlay();
+    }
+
+    _cellName(x, y) { return LETTERS[x] + (this.boardSize - y); }
+
+    // Visually hidden live region next to the board (created lazily).
+    _announce(text) {
+      if (!this._live) {
+        const el = document.createElement('div');
+        el.setAttribute('role', 'status');
+        el.setAttribute('aria-live', 'polite');
+        el.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap';
+        if (this.svg.parentNode) this.svg.parentNode.insertBefore(el, this.svg.nextSibling);
+        this._live = el;
+      }
+      this._live.textContent = text;
     }
 
     // Editors (puzzle authoring) set clickOccupied to erase / replace pieces.
@@ -583,19 +733,164 @@
     }
 
     // ── Drawing ──
-    _draw() {
+    // Everything one draw needs, computed once and shared by the full and the one-move path.
+    _drawCtx() {
       const s = this.prefs;
       const g = this._computeGeometry();
-      const { m, n, W, edge, compact } = g;
       const paper = s.theme === 'paper';
-      const c = (i) => this._center(i);
       const bg = paper ? s.paper.bg : s.stone.bg;
       const inkRgb = Contrast.ink(bg)[0] ? '255,255,255' : '0,0,0';
+      const board = this.board;
+      return {
+        s, g, m: g.m, n: g.n, W: g.W, edge: g.edge, compact: g.compact, paper, bg, inkRgb, uid: this.uid, board,
+        c: (i) => this._center(i),
+        at: (x, y) => (board && board[y] ? board[y][x] : 0),
+        last: this.lastMove,
+      };
+    }
+
+    // One cell's wall / portal / piece, tagged with its index so a later stone can be inserted
+    // in the same row-major order a full draw uses (pieces may overlap their neighbours).
+    _cellSvg(ctx, x, y) {
+      const { s, m, n, paper, uid, inkRgb, c } = ctx;
+      const v = ctx.at(x, y);
+      if (v === 0) return '';
+      const x0 = m + x * P, y0 = m + y * P;
+      let body = '';
+      if (v === -1) {
+        body = paper
+          ? `<rect x="${x0 + 1.5}" y="${y0 + 1.5}" width="${P - 3}" height="${P - 3}" fill="url(#pH${uid})"/>`
+          : `<rect x="${f(x0 + P * 0.08)}" y="${f(y0 + P * 0.08)}" width="${f(P * 0.84)}" height="${f(P * 0.84)}" rx="5" fill="url(#pH${uid})" stroke="rgba(0,0,0,.45)" stroke-width="1.5"/>`;
+      } else if (v === -2) {
+        const ink = inkRgb === '255,255,255' ? '#fff' : '#000';
+        const i = this._portalIndex(x, y), cx = x0 + P / 2, cy = y0 + P / 2, r = P * 0.32, w = P * 0.08;
+        body = (paper ? `<rect x="${x0 + 1}" y="${y0 + 1}" width="${P - 2}" height="${P - 2}" fill="${portalRgb(i, 0.3)}"/>` : '') +
+          `<circle cx="${cx}" cy="${cy}" r="${f(r + w)}" fill="${portalRgb(i, 0.25)}"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${ink}" stroke-opacity=".6" stroke-width="${f(w + 2)}"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${portalRgb(i)}" stroke-width="${f(w)}"/>` +
+          `<circle cx="${cx}" cy="${cy}" r="${f(P * 0.08)}" fill="#262626"/>`;
+      } else if (v === 1 || v === 2) {
+        body = pieceSvg(v, c(x), c(y), s, y * n + x, uid);
+      } else {
+        return '';
+      }
+      return `<g data-c="${y * n + x}">${body}</g>`;
+    }
+
+    _portalIndex(x, y) {
+      const ps = this.portals || [];
+      for (let i = 0; i < ps.length; i++) {
+        const p = ps[i];
+        if ((p.a && p.a.x === x && p.a.y === y) || (p.b && p.b.x === x && p.b.y === y)) return i;
+      }
+      return 0;
+    }
+
+    // Last move, paper look: a tinted cell under the piece.
+    _lastCellSvg(ctx) {
+      const { s, m, paper, last } = ctx;
+      if (!(last && s.showLastMove && paper)) return '';
+      const col = ctx.at(last.x, last.y) === 2 ? s.paper.oColor : s.paper.xColor;
+      return `<rect x="${m + last.x * P + 1}" y="${m + last.y * P + 1}" width="${P - 2}" height="${P - 2}" fill="${col}" opacity=".16"/>`;
+    }
+
+    // Move numbers (last occurrence of each cell in the history).
+    _moveNumbersSvg(ctx) {
+      const { s, m, n, paper, inkRgb, c, last } = ctx;
+      if (!(s.showMoveNumbers && this.moveHistory && this.moveHistory.length && ctx.board)) return '';
+      const order = new Map();
+      this.moveHistory.forEach((mv, i) => { if (mv && Number.isInteger(mv.x) && Number.isInteger(mv.y)) order.set(mv.y * n + mv.x, i + 1); });
+      const t = [];
+      for (const [k, num] of order) {
+        const x = k % n, y = Math.floor(k / n), v = ctx.at(x, y);
+        if (v !== 1 && v !== 2) continue;
+        const isLast = last && last.x === x && last.y === y && s.showLastMove;
+        if (paper) {
+          t.push(`<text x="${m + x * P + 3}" y="${m + y * P + 3}" font-size="11" dominant-baseline="hanging" fill="${isLast ? LAST : `rgba(${inkRgb},.7)`}">${num}</text>`);
+        } else {
+          const white = v === 2;
+          t.push(`<text x="${c(x)}" y="${c(y)}" text-anchor="middle" dominant-baseline="central" font-size="${num >= 100 ? 13 : 16}" fill="${isLast ? (white ? '#d0201b' : '#ff7a6e') : (white ? '#1a1a1a' : '#f4f4f4')}">${num}</text>`);
+        }
+      }
+      return t.join('');
+    }
+
+    // Last move marker for stones (numbers already mark it otherwise).
+    _lastMarkerSvg(ctx) {
+      const { s, paper, last, c } = ctx;
+      if (!(last && s.showLastMove && !paper && !s.showMoveNumbers)) return '';
+      const v = ctx.at(last.x, last.y);
+      return v === 1 || v === 2 ? `<circle cx="${c(last.x)}" cy="${c(last.y)}" r="5" fill="${LAST}"/>` : '';
+    }
+
+    // What a full draw depends on besides the board cells, the last move and the history.
+    _drawSig(ctx) {
+      const g = ctx.g;
+      return JSON.stringify([ctx.s, g.n, g.m, g.W, g.vy, g.edge, g.compact, this.uid,
+        this.showZones ? this.firstMoveZones : null, this.winLine, this.portals]);
+    }
+
+    _rememberDrawn(ctx) {
+      const { n } = ctx;
+      const cells = new Int8Array(n * n);
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) cells[y * n + x] = ctx.at(x, y);
+      this._drawn = { sig: this._drawSig(ctx), cells, n, hist: this.moveHistory ? this.moveHistory.length : 0 };
+    }
+
+    /**
+     * #378: a move adds exactly one stone. Patch that stone in plus the last-move layers instead
+     * of rebuilding the whole SVG (~6.7 ms late game on a 4×-throttled phone). Anything else
+     * (undo, resync, new game, win line, zones, look or size change) returns false → full draw.
+     * The result is the same markup a full draw produces (asserted in board-incremental-draw.test.js).
+     */
+    _drawMove() {
+      const d = this._drawn;
+      if (!d || !this._ov || this._ov.parentNode !== this.svg) return false;
+      const ctx = this._drawCtx();
+      const { n, last } = ctx;
+      if (n !== d.n || !last || !ctx.board) return false;
+      if ((this.moveHistory ? this.moveHistory.length : 0) !== d.hist + 1) return false;
+      let k = -1;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        const i = y * n + x;
+        if (ctx.at(x, y) === d.cells[i]) continue;
+        if (k !== -1) return false; // more than one cell changed
+        k = i;
+      }
+      if (k !== last.y * n + last.x || d.cells[k] !== 0) return false;
+      const v = ctx.at(last.x, last.y);
+      if (v !== 1 && v !== 2) return false;
+      if (this._drawSig(ctx) !== d.sig) return false;
+
+      const svg = this.svg;
+      const layer = (cls) => svg.querySelector(`.${cls}`);
+      const cn = layer('gboard__cn');
+      if (cn) { const label = cn.querySelector(`[data-c="${k}"]`); if (label) label.remove(); }
+      const pcs = layer('gboard__pcs');
+      let before = null;
+      for (let el = pcs.firstElementChild; el; el = el.nextElementSibling) {
+        if (+el.getAttribute('data-c') > k) { before = el; break; }
+      }
+      const html = this._cellSvg(ctx, last.x, last.y);
+      if (before) before.insertAdjacentHTML('beforebegin', html);
+      else pcs.insertAdjacentHTML('beforeend', html);
+      layer('gboard__lc').innerHTML = this._lastCellSvg(ctx);
+      layer('gboard__num').innerHTML = this._moveNumbersSvg(ctx);
+      layer('gboard__lm').innerHTML = this._lastMarkerSvg(ctx);
+
+      d.cells[k] = v;
+      d.hist += 1;
+      this._drawOverlay();
+      return true;
+    }
+
+    _draw() {
+      const ctx = this._drawCtx();
+      const { s, g, m, n, W, edge, compact, paper, bg, inkRgb, uid, c, at } = ctx;
       const A = Contrast.INK_ALPHA;
-      const uid = this.uid;
       const out = [defsSvg(s, uid)];
 
-      this.svg.setAttribute('viewBox', `${g.vx} ${g.vy} ${g.VW} ${g.VH}`);
+      this._applyView();
       this.svg.setAttribute('aria-label', `${n}×${n}`);
       const rx = 0; // square frame on every screen
       out.push(`<rect width="${W}" height="${W}" rx="${rx}" fill="${bg}"/>`);
@@ -614,9 +909,6 @@
       out.push(`<g stroke="${paper ? s.paper.grid : s.stone.line}" shape-rendering="crispEdges" vector-effect="non-scaling-stroke">${lines.join('')}</g>`);
       if (!paper) out.push(`<g fill="${s.stone.line}">${starPoints(n).map(([x, y]) => `<circle cx="${c(x)}" cy="${c(y)}" r="3.6"/>`).join('')}</g>`);
 
-      const board = this.board;
-      const at = (x, y) => (board && board[y] ? board[y][x] : 0);
-
       // Coordinates
       if (edge) {
         const t = [];
@@ -630,11 +922,11 @@
         const nums = spiral(n), t = [];
         for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
           if (at(x, y) !== 0) continue;
-          t.push(`<text x="${c(x)}" y="${c(y)}">${nums[y * n + x]}</text>`);
+          t.push(`<text x="${c(x)}" y="${c(y)}" data-c="${y * n + x}">${nums[y * n + x]}</text>`);
         }
         const size = compact ? 16 : (n * n >= 100 ? 12 : 14);
         const halo = paper ? '' : ` stroke="${bg}" stroke-width="5" paint-order="stroke"`;
-        out.push(`<g fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Nunito,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
+        out.push(`<g class="gboard__cn" fill="rgba(${inkRgb},${paper ? A.cellPaper : A.cellStone})" font-size="${size}" text-anchor="middle" dominant-baseline="central" font-family="Nunito,system-ui,sans-serif"${halo}>${t.join('')}</g>`);
       }
 
       // First-move zones (behind everything placed)
@@ -642,13 +934,8 @@
         out.push(`<g fill="rgba(100,180,100,.25)">${this.firstMoveZones.map(z => `<rect x="${m + z.x * P + 1}" y="${m + z.y * P + 1}" width="${P - 2}" height="${P - 2}"/>`).join('')}</g>`);
       }
 
-      // Last move (paper: tinted cell under the piece)
-      const last = this.lastMove;
-      if (last && s.showLastMove && paper) {
-        const v = at(last.x, last.y);
-        const col = v === 2 ? s.paper.oColor : s.paper.xColor;
-        out.push(`<rect x="${m + last.x * P + 1}" y="${m + last.y * P + 1}" width="${P - 2}" height="${P - 2}" fill="${col}" opacity=".16"/>`);
-      }
+      // Last move (paper: tinted cell under the piece) — its own layer so a move can swap it.
+      out.push(`<g class="gboard__lc">${this._lastCellSvg(ctx)}</g>`);
 
       // Winning line (under pieces)
       if (this.winLine && this.winLine.length) {
@@ -656,64 +943,17 @@
       }
 
       // Walls, portals, pieces
-      const portalIndex = (x, y) => {
-        const ps = this.portals || [];
-        for (let i = 0; i < ps.length; i++) {
-          const p = ps[i];
-          if ((p.a && p.a.x === x && p.a.y === y) || (p.b && p.b.x === x && p.b.y === y)) return i;
-        }
-        return 0;
-      };
-      const ink = inkRgb === '255,255,255' ? '#fff' : '#000';
-      if (board) {
-        for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-          const v = at(x, y);
-          if (v === 0) continue;
-          const x0 = m + x * P, y0 = m + y * P;
-          if (v === -1) {
-            out.push(paper
-              ? `<rect x="${x0 + 1.5}" y="${y0 + 1.5}" width="${P - 3}" height="${P - 3}" fill="url(#pH${uid})"/>`
-              : `<rect x="${f(x0 + P * 0.08)}" y="${f(y0 + P * 0.08)}" width="${f(P * 0.84)}" height="${f(P * 0.84)}" rx="5" fill="url(#pH${uid})" stroke="rgba(0,0,0,.45)" stroke-width="1.5"/>`);
-          } else if (v === -2) {
-            const i = portalIndex(x, y), cx = x0 + P / 2, cy = y0 + P / 2, r = P * 0.32, w = P * 0.08;
-            out.push((paper ? `<rect x="${x0 + 1}" y="${y0 + 1}" width="${P - 2}" height="${P - 2}" fill="${portalRgb(i, 0.3)}"/>` : '') +
-              `<circle cx="${cx}" cy="${cy}" r="${f(r + w)}" fill="${portalRgb(i, 0.25)}"/>` +
-              `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${ink}" stroke-opacity=".6" stroke-width="${f(w + 2)}"/>` +
-              `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${portalRgb(i)}" stroke-width="${f(w)}"/>` +
-              `<circle cx="${cx}" cy="${cy}" r="${f(P * 0.08)}" fill="#262626"/>`);
-          } else if (v === 1 || v === 2) {
-            out.push(pieceSvg(v, c(x), c(y), s, y * n + x, uid));
-          }
-        }
-      }
+      const cells = [];
+      if (ctx.board) for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) cells.push(this._cellSvg(ctx, x, y));
+      out.push(`<g class="gboard__pcs">${cells.join('')}</g>`);
 
-      // Move numbers (last occurrence of each cell in the history)
-      if (s.showMoveNumbers && this.moveHistory && this.moveHistory.length && board) {
-        const order = new Map();
-        this.moveHistory.forEach((mv, i) => { if (mv && Number.isInteger(mv.x) && Number.isInteger(mv.y)) order.set(mv.y * n + mv.x, i + 1); });
-        const t = [];
-        for (const [k, num] of order) {
-          const x = k % n, y = Math.floor(k / n), v = at(x, y);
-          if (v !== 1 && v !== 2) continue;
-          const isLast = last && last.x === x && last.y === y && s.showLastMove;
-          if (paper) {
-            t.push(`<text x="${m + x * P + 3}" y="${m + y * P + 3}" font-size="11" dominant-baseline="hanging" fill="${isLast ? LAST : `rgba(${inkRgb},.7)`}">${num}</text>`);
-          } else {
-            const white = v === 2;
-            t.push(`<text x="${c(x)}" y="${c(y)}" text-anchor="middle" dominant-baseline="central" font-size="${num >= 100 ? 13 : 16}" fill="${isLast ? (white ? '#d0201b' : '#ff7a6e') : (white ? '#1a1a1a' : '#f4f4f4')}">${num}</text>`);
-          }
-        }
-        out.push(`<g font-family="Nunito,system-ui,sans-serif" font-weight="700">${t.join('')}</g>`);
-      }
-
-      // Last move marker for stones (numbers already mark it otherwise)
-      if (last && s.showLastMove && !paper && !s.showMoveNumbers && (at(last.x, last.y) === 1 || at(last.x, last.y) === 2)) {
-        out.push(`<circle cx="${c(last.x)}" cy="${c(last.y)}" r="5" fill="${LAST}"/>`);
-      }
+      out.push(`<g class="gboard__num" font-family="Nunito,system-ui,sans-serif" font-weight="700">${this._moveNumbersSvg(ctx)}</g>`);
+      out.push(`<g class="gboard__lm">${this._lastMarkerSvg(ctx)}</g>`);
 
       out.push(`<g class="gboard__ov"></g>`);
       this.svg.innerHTML = out.join('');
       this._ov = this.svg.querySelector('.gboard__ov');
+      this._rememberDrawn(ctx);
       this._drawOverlay();
     }
 
@@ -733,6 +973,10 @@
         out.push(paper
           ? `<rect x="${m + h.x * P + 3}" y="${m + h.y * P + 3}" width="${P - 6}" height="${P - 6}" rx="4" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`
           : `<circle cx="${c(h.x)}" cy="${c(h.y)}" r="${P * 0.4}" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`);
+      }
+      const k = this._kbCell;
+      if (k) { // keyboard cursor: visible on stones too, solid so it differs from the hover ghost
+        out.push(`<rect x="${m + k.x * P + 1}" y="${m + k.y * P + 1}" width="${P - 2}" height="${P - 2}" rx="3" fill="none" stroke="${PENDING}" stroke-width="2.5" class="gboard__kbcursor"/>`);
       }
       const pd = this._pendingCell;
       if (pd && this._isEmpty(pd)) {
@@ -758,6 +1002,8 @@
       if (this.svg.__gboard === this) this.svg.__gboard = null;
       if (this._onPrefs) root.removeEventListener('boardprefschange', this._onPrefs);
       if (this._ro) this._ro.disconnect();
+      this._ptrs.clear();
+      if (this._live) this._live.remove();
     }
   }
 

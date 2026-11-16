@@ -69,8 +69,8 @@ describe('icon + label review (#212)', () => {
   test('settings: Account tab is not the admin shield; who-can-DM is a chat bubble, not the bio icon', () => {
     const doc = parse('settings.html');
     expect(iconOf(doc.getElementById('tab-account'))).toBe('ph-regular-user-gear');
-    expect(iconOf(doc.querySelector('label[for="st-dm"]'))).toBe('ph-regular-chat-circle');
-    expect(iconOf(doc.querySelector('label[for="st-bio"]'))).not.toBe(iconOf(doc.querySelector('label[for="st-dm"]')));
+    expect(iconOf(doc.getElementById('st-dm-lab'))).toBe('ph-regular-chat-circle');
+    expect(iconOf(doc.querySelector('label[for="st-bio"]'))).not.toBe(iconOf(doc.getElementById('st-dm-lab')));
   });
 
   test('settings: tab labels stay visible on mobile (#214 supersedes the #212 visually-hidden labels)', () => {
@@ -98,7 +98,7 @@ describe('icon + label review (#212)', () => {
   test('shortened labels stay short (vi and en)', () => {
     const src = read('js/i18n.js');
     const keys = ['profile.bio_label', 'clubs.desc', 'settings.who_dm', 'settings.who_challenge', 'settings.who_friend',
-      'qm.find_rated', 'qm.challenge_friend', 'tdetail.back', 'tmatch.back'];
+      'qm.find_rated', 'qm.challenge', 'tdetail.back', 'tmatch.back'];
     for (const key of keys) {
       const values = [...src.matchAll(new RegExp("'" + key.replace('.', '\\.') + "': '([^']*)'", 'g'))].map((m) => m[1]);
       expect(values.length).toBeGreaterThan(0);

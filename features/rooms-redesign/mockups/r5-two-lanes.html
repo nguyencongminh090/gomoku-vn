@@ -1,0 +1,113 @@
+<style>
+/* R5 — Hai làn: the list split by what YOU can do. Left lane "Ngồi vào là chơi" (open tables, big
+   cards, host + rules + one button), middle lane "Đang đấu — vào xem" (compact rows, watchers, move
+   count), right rail = quick-create presets + code + online. The lanes replace the Phòng/Bàn/Quan sát
+   tabs on desktop; on phone the tabs come back as a 2-way switch. */
+body.mk-r5-two-lanes::after { display: none; }
+.r5 .wrap { max-width: 1320px; padding-top: 22px; }
+.r5-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+.r5-head h1 { margin: 0; font-size: clamp(26px, 1.6vw + 12px, 36px); font-weight: 1000; letter-spacing: -.02em; }
+.r5-head p { margin: 0; color: var(--c-ink-2); font-size: var(--text-sm); }
+.r5-cols { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 290px; gap: 20px; align-items: start; }
+.r5-lane { display: grid; gap: 10px; }
+.r5-lane > h2 { margin: 0 0 2px; display: flex; align-items: center; gap: 10px; font-size: var(--text-md); font-weight: 900; }
+.r5-lane > h2 .dot { width: 10px; height: 10px; border-radius: 50%; }
+.r5-lane > h2 small { font-weight: 700; color: var(--c-ink-2); font-size: var(--text-sm); }
+.r5-open { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 14px; padding: 16px; border-radius: 16px; background: var(--c-surface); box-shadow: var(--shadow-card); border-left: 4px solid var(--c-state-waiting); }
+.r5-open .av { --s: 48px; grid-row: span 2; }
+.r5-open .t { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.r5-open .t b { font-size: 18px; font-weight: 900; }
+.r5-open .t small { color: var(--c-ink-2); font-weight: 700; font-size: var(--text-xs); }
+.r5-open .s { font-size: var(--text-sm); color: var(--c-ink-2); }
+.r5-open .row { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.r5-open .row .btn { margin-left: auto; min-width: 140px; }
+.r5-watch { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; background: var(--c-surface); box-shadow: var(--shadow-card); cursor: pointer; }
+.r5-watch .bd { border-radius: 6px; overflow: hidden; }
+.r5-watch .vs { display: grid; gap: 2px; min-width: 0; }
+.r5-watch .vs span { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: var(--text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r5-watch .vs .st { width: 12px; height: 12px; }
+.r5-watch .vs small { color: var(--c-ink-2); font-weight: 600; }
+.r5-watch .side { display: grid; justify-items: end; gap: 2px; font-size: var(--text-xs); color: var(--c-ink-2); font-weight: 700; }
+.r5-watch .side b { display: inline-flex; gap: 4px; align-items: center; color: var(--c-ink); font-size: var(--text-sm); }
+.r5-watch--ready .bd { opacity: .55; }
+.r5-rail { display: grid; gap: 14px; position: sticky; top: 16px; }
+.r5-box { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: var(--c-surface); box-shadow: var(--shadow-card); }
+.r5-box h3 { margin: 0; font-size: var(--text-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+.r5-pre { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--c-fill) !important; text-align: left; }
+.r5-pre .big { font-size: 20px; font-weight: 1000; width: 52px; }
+.r5-pre b { display: block; font-weight: 800; font-size: var(--text-sm); }
+.r5-pre small { color: var(--c-ink-2); font-size: var(--text-xs); }
+.r5-pre .icon { color: var(--c-brand-text); }
+.r5-pre:hover { background: var(--c-brand-light) !important; }
+.r5-box .link { font-size: var(--text-sm); font-weight: 700; color: var(--c-brand-text); }
+.r5-box .code .btn { margin-left: auto; }
+.r5-ppl { display: flex; flex-wrap: wrap; gap: 6px; }
+.r5-ppl .av { --s: 30px; }
+.r5-ppl .av.busy { box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-state-playing); }
+.r5-empty { flex-direction: column; gap: 6px; padding: 26px 16px; border-radius: 16px; border: 2px dashed var(--c-border); color: var(--c-ink-2); text-align: center; align-items: center; }
+.r5-empty b { color: var(--c-ink); }
+.r5-switch { display: none; }
+@media (max-width: 1100px) { .r5-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .r5-rail { grid-column: 1 / -1; position: static; grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px) {
+  .r5-head { flex-direction: column; gap: 2px; margin-bottom: 10px; }
+  .r5-head h1 { font-size: 24px; }
+  .r5-switch { display: flex; padding: 3px; margin-bottom: 12px; border-radius: 999px; background: var(--c-fill); }
+  .r5-switch button { flex: 1; min-height: 40px; border-radius: 999px; font-weight: 800 !important; color: var(--c-ink-2) !important; }
+  .r5-switch button[aria-selected="true"] { background: var(--c-surface) !important; color: var(--c-ink) !important; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+  .r5-cols { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .r5-lane--watch { display: none; }
+  .r5-lane > h2 { display: none; }
+  .r5-rail { grid-template-columns: minmax(0, 1fr); order: -1; gap: 10px; }
+  .r5-box--ppl { display: none; }
+  .r5-box--pre .r5-pre:nth-of-type(n+3) { display: none; }
+  .r5-box--pre { grid-template-columns: 1fr 1fr; padding: 12px; }
+  .r5-box--pre h3, .r5-box--pre .link { grid-column: 1 / -1; }
+  .r5-pre { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .r5-pre .big { width: auto; } .r5-pre .icon, .r5-pre small { display: none; }
+  .r5-box--code { padding: 12px; }
+  .r5-open { padding: 12px; } .r5-open .av { --s: 40px; } .r5-open .t b { font-size: 16px; }
+  .r5-open .row .btn { min-width: 0; }
+}
+</style>
+<div class="mk mk-screen r5">
+  <div class="wrap">
+    <div class="r5-head rise"><h1>Phòng</h1><p><b class="num">{{n:open}}</b> bàn đang chờ bạn · <b class="num">{{n:live}}</b> ván để xem · <b class="num">{{n:online}}</b> online</p></div>
+    <div class="r5-switch" role="tablist" aria-label="Lọc phòng"><button role="tab" aria-selected="true">Vào chơi · {{n:open}}</button><button role="tab" aria-selected="false">Vào xem · {{n:seated}}</button></div>
+    <div class="r5-cols">
+      <section class="r5-lane rise rise-2">
+        <h2><i class="dot" style="background:var(--c-state-waiting)"></i>Ngồi vào là chơi <small>{{n:open}} bàn</small></h2>
+        <template data-list="open">
+          <article class="r5-open" tabindex="0">
+            <span class="av" style="--h:{{p1h}}">{{p1i}}</span>
+            <div class="t"><b>{{p1}}</b><small data-be="rating">{{p1r}}</small></div>
+            <div class="s">{{name}} · {{code}} · <span data-be="wait">chờ 2 phút</span></div>
+            <div class="row"><span class="tag">{{rule}}</span><span class="tag">{{size}}</span><span class="tag">{{time}}</span><span class="tag {{#rated}}tag--brand{{/rated}}">{{mode}}</span><button class="btn btn--pri">{{i:play}}Ngồi vào</button></div>
+          </article>
+        </template>
+        <div class="r5-empty if-empty"><b>Chưa ai đang chờ.</b><span>Mở một bàn bên phải — người tiếp theo vào sảnh sẽ thấy bàn của bạn đầu tiên.</span></div>
+      </section>
+      <section class="r5-lane r5-lane--watch rise rise-3">
+        <h2><i class="dot" style="background:var(--c-state-playing)"></i>Đang đấu — vào xem <small>{{n:seated}} ván</small></h2>
+        <template data-list="seated">
+          <article class="r5-watch r5-watch--{{#live}}live{{/live}}{{#ready}}ready{{/ready}}" tabindex="0">
+            <div class="bd" data-be="board">{{board}}</div>
+            <div class="vs"><span><i class="st st--b"></i>{{p1}} <small>{{p1r}}</small></span><span><i class="st st--w"></i>{{p2}} <small>{{p2r}}</small></span></div>
+            <div class="side">{{#live}}<b>{{i:eye}}{{viewers}}</b><span>nước {{moves}} · {{elapsed}}</span>{{/live}}{{#ready}}<b>Sắp bắt đầu</b><span>{{rule}} · {{time}}</span>{{/ready}}</div>
+          </article>
+        </template>
+        <div class="r5-empty if-empty"><b>Chưa có ván nào.</b></div>
+      </section>
+      <aside class="r5-rail rise rise-4">
+        <div class="r5-box r5-box--pre">
+          <h3>Mở bàn nhanh</h3>
+          <button class="r5-pre"><span class="big">3'</span><span><b>Chớp nhoáng</b><small>Luật 1 · 15×15 · xếp hạng</small></span>{{i:plus-circle}}</button>
+          <button class="r5-pre"><span class="big">5+5</span><span><b>Tiêu chuẩn</b><small>Luật 1 · 15×15 · xếp hạng</small></span>{{i:plus-circle}}</button>
+          <button class="r5-pre"><span class="big">10'</span><span><b>Thong thả</b><small>Luật 2 · 15×15 · giao hữu</small></span>{{i:plus-circle}}</button>
+          <a class="link" href="#">Tuỳ chỉnh đầy đủ…</a>
+        </div>
+        <div class="r5-box r5-box--code"><h3>Vào bằng mã</h3><div class="code"><span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span><button class="btn btn--ink btn--sm">Vào</button></div></div>
+        <div class="r5-box r5-box--ppl"><h3>Online · {{n:online}}</h3><div class="r5-ppl"><template data-list="online" data-max="12"><span class="av {{#busy}}busy{{/busy}}" style="--h:{{h}}" title="{{name}} — {{st}}">{{ini}}</span></template></div><span class="oname link">Xem tất cả, nhắn tin</span></div>
+      </aside>
+    </div>
+  </div>
+</div>

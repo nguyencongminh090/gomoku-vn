@@ -44,6 +44,7 @@ const SERVER_FILES = [
   'server/routes/games.js',
   'server/middleware/auth.js',
   'server/middleware/errorHandler.js',
+  'server/middleware/origin-guard.js',
   'server/index.js',
 ];
 

@@ -108,6 +108,7 @@ class GameEngine {
     this.currentTurn = this.players[0].userId; // BLACK goes first
     this.moveHistory = [];
     this.moveCount   = 0;
+    this.startedAt   = Date.now(); // lobby card "Đang đấu · mm:ss" (#364); fixed so the lobby diff stays stable
     this.status      = 'ongoing'; // 'ongoing' | 'finished'
     this.result      = null;      // { winner, reason }
     this.drawOffer   = null;      // { from: userId } or null

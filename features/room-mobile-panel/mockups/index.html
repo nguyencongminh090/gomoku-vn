@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Room Mobile Panel</title>
+<style>
+/* Tokens copied from client/css/tokens.css (light + dark) — mockup only */
+:root{
+  --c-bg:#ecebe8;--c-surface:#fff;--c-surface-2:#f4f3f0;--c-border:rgba(0,0,0,.12);
+  --c-ink:#2b2926;--c-ink-2:#5f5b52;--c-ink-3:#66625a;
+  --c-brand:#4d7c1f;--c-brand-text:#3d6418;--c-brand-light:rgba(77,124,31,.10);--c-on-brand:#fff;
+  --c-accent:#a63d00;--c-accent-light:rgba(194,71,0,.10);--c-error:#c62828;
+  --c-fill:rgba(0,0,0,.05);--c-scrim:rgba(0,0,0,.35);
+  --board-bg:#faf7ee;--grid:rgba(41,98,255,.22);
+  --radius:5px;--radius-lg:8px;--radius-xl:12px;
+  --shadow-pop:0 -8px 28px rgba(0,0,0,.18);
+  --ease-out:cubic-bezier(.2,.8,.2,1);--dur:260ms;
+  --page:#dcdad5;--bezel:#1d1c1a;--frame:0 0 0 8px var(--bezel),0 18px 40px rgba(0,0,0,.25);
+  font-family:"Nunito","Segoe UI",system-ui,sans-serif;color:var(--c-ink);
+}
+:root[data-theme="dark"]{
+  --c-bg:#161512;--c-surface:#262421;--c-surface-2:#2f2d29;--c-border:rgba(255,255,255,.10);
+  --c-ink:#e8e6e1;--c-ink-2:#a8a49b;--c-ink-3:#9a968c;
+  --c-brand:#4f7d1c;--c-brand-text:#8bc34a;--c-brand-light:rgba(98,153,36,.16);
+  --c-accent:#ee6a20;--c-accent-light:rgba(238,106,32,.16);--c-error:#f77f7f;
+  --c-fill:rgba(255,255,255,.06);--c-scrim:rgba(0,0,0,.55);--shadow-pop:0 -8px 28px rgba(0,0,0,.6);
+  --page:#0d0c0b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--c-ink)}
+button{font:inherit;color:inherit}
+.top{position:relative;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;padding:12px 16px;background:var(--c-surface);border-bottom:1px solid var(--c-border)}
+.top h1{font-size:17px;margin:0}
+.top .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--c-border);border-radius:999px;overflow:hidden}
+.seg button{border:0;background:none;padding:6px 12px;font-size:13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--c-brand);color:var(--c-on-brand)}
+.intro{max-width:1100px;margin:16px auto 0;padding:0 16px;font-size:14px;line-height:1.55;color:var(--c-ink-2)}
+.intro b{color:var(--c-ink)}
+.gallery{display:flex;flex-wrap:wrap;gap:36px 28px;justify-content:center;padding:24px 16px 60px}
+.dir{width:390px;max-width:100%}
+.dir h2{font-size:18px;margin:0 0 2px}
+.dir .tag{font-size:13px;color:var(--c-ink-2);margin:0 0 10px;min-height:58px}
+.states{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.states button{border:1px solid var(--c-border);background:var(--c-surface);border-radius:999px;padding:6px 11px;font-size:12.5px;cursor:pointer}
+.states button[aria-pressed="true"]{border-color:var(--c-brand);background:var(--c-brand-light);color:var(--c-brand-text);font-weight:700}
+.notes{font-size:13px;line-height:1.5;color:var(--c-ink-2);margin:0;padding-left:18px}
+.notes li{margin:3px 0}
+.notes b{color:var(--c-ink)}
+
+/* ---------- phone ---------- */
+.phone{position:relative;width:390px;max-width:100%;height:var(--ph,844px);background:var(--c-bg);border-radius:22px;overflow:hidden;
+  box-shadow:var(--frame);display:flex;flex-direction:column;isolation:isolate}
+.nav{height:46px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--c-surface);border-bottom:1px solid var(--c-border)}
+.nav .brand{font-size:18px;font-weight:600;flex:1}.nav .brand b{color:var(--c-brand)}
+.nav .rid{font-size:13px;color:var(--c-ink-2)}
+.nav .rank{font-size:12px;font-weight:700;background:var(--c-accent-light);color:var(--c-accent);padding:4px 8px;border-radius:6px}
+.nav .ic{width:28px;height:28px;display:grid;place-items:center;font-size:16px;color:var(--c-ink-2)}
+.card{flex:none;margin:4px 8px;min-height:56px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:6px 10px;
+  background:var(--c-surface);border:2px solid transparent;border-radius:var(--radius-lg);position:relative}
+.card.turn{border-color:var(--c-brand)}
+.card .nm{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .mt{font-size:12px;color:var(--c-ink-3)}
+.card .clk{font-size:26px;font-weight:700;padding:2px 10px;border-radius:var(--radius);background:var(--c-fill);color:var(--c-ink-2);font-variant-numeric:tabular-nums}
+.card.turn .clk{background:var(--c-brand);color:var(--c-on-brand)}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:800;color:#fff;position:relative;flex:none}
+.av .pc{position:absolute;right:-5px;bottom:-5px;width:19px;height:19px;border-radius:5px;background:var(--c-surface);display:grid;place-items:center;font-size:12px;font-weight:900;border:1px solid var(--c-border)}
+.board{flex:none;margin:0 auto;width:min(calc(100% - 16px),calc(var(--ph,844px) - 330px));height:auto;background:var(--board-bg);border-radius:4px;display:block}
+.ctrls{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:5px 8px}
+.act{min-height:44px;border:0;border-radius:var(--radius-lg);background:var(--c-surface);color:var(--c-ink-2);font-size:12px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.act i{font-style:normal;font-size:15px}
+.zone{flex:1 1 auto;min-height:0;position:relative;display:flex;flex-direction:column;container-type:size}
+@container (max-height:150px){.B .sb .sb-row,.B .sb .chips{display:none}.B .zone .sb{padding:0;margin:3px 8px;gap:0;background:none}.B .sb .ticker{margin:0;padding:6px 10px}.D .tile .glance{display:none!important}.D .tile{padding:6px 10px;justify-content:center}.D .tiles{padding:3px 8px}}
+.dock{flex:none;display:flex;align-items:center;gap:8px;padding:8px 8px 10px;background:var(--c-surface);border-top:1px solid var(--c-border);position:relative;z-index:10}
+.input{flex:1;min-width:0;height:40px;border:1px solid var(--c-border);border-radius:999px;background:var(--c-surface-2);display:flex;align-items:center;padding:0 14px;color:var(--c-ink-3);font-size:14px}
+.send{width:40px;height:40px;border-radius:50%;border:0;background:var(--c-brand);color:#fff;font-size:15px;flex:none}
+.ibtn{width:40px;height:40px;border-radius:50%;border:1px solid var(--c-border);background:var(--c-surface-2);flex:none;font-size:16px;display:grid;place-items:center;cursor:pointer;position:relative}
+.badge{position:absolute;top:-3px;right:-3px;min-width:17px;height:17px;border-radius:9px;background:var(--c-accent);color:#fff;font-size:10.5px;font-weight:800;display:grid;place-items:center;padding:0 4px}
+
+/* spectator stack (shared) */
+.stack{display:flex;align-items:center;cursor:pointer;flex:none;border:0;background:none;padding:0;position:relative}
+.stack .av{width:28px;height:28px;font-size:10.5px;border:2px solid var(--c-surface);margin-left:-9px}
+.stack .av:first-child{margin-left:0}
+.stack .more{width:28px;height:28px;border-radius:50%;margin-left:-9px;background:var(--c-surface-2);border:2px solid var(--c-surface);font-size:10.5px;font-weight:800;display:grid;place-items:center;color:var(--c-ink-2)}
+.stack .live{position:absolute;left:-2px;top:-2px;width:9px;height:9px;border-radius:50%;background:#e53935;border:2px solid var(--c-surface);z-index:2}
+.aud-pop{position:absolute;left:8px;bottom:64px;z-index:20;width:250px;padding:12px;background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--radius-xl);box-shadow:var(--shadow-pop);
+  opacity:0;transform:translateY(8px) scale(.97);transform-origin:bottom left;pointer-events:none;transition:opacity 180ms var(--ease-out),transform 180ms var(--ease-out)}
+.phone[data-aud="1"] .aud-pop{opacity:1;transform:none;pointer-events:auto}
+.aud-pop h4{margin:0 0 8px;font-size:13px}
+.aud-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px 4px}
+.aud-grid div{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--c-ink-2)}
+.aud-grid .av{width:34px;height:34px}
+
+/* sheet (shared) */
+.scrim{position:absolute;inset:0;background:var(--c-scrim);opacity:0;pointer-events:none;transition:opacity var(--dur) var(--ease-out);z-index:8}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:9;background:var(--c-surface);border-radius:16px 16px 0 0;box-shadow:var(--shadow-pop);
+  transform:translateY(105%);transition:transform var(--dur) var(--ease-out);display:flex;flex-direction:column;max-height:62%;padding-bottom:58px}
+.sheet .grab{width:38px;height:5px;border-radius:3px;background:var(--c-border);margin:8px auto 4px;flex:none}
+.sheet .sh-body{flex:1;min-height:0;overflow:auto;padding:4px 14px 12px}
+.phone.sheet-open .scrim{opacity:1;pointer-events:auto}
+.phone.sheet-open .sheet{transform:none}
+.tabs{display:flex;gap:4px;padding:4px 12px 8px;flex:none}
+.tabs button{flex:1;border:0;border-radius:999px;padding:7px 0;background:var(--c-fill);font-size:13px;font-weight:700;color:var(--c-ink-2);cursor:pointer}
+.tabs button.on{background:var(--c-brand);color:var(--c-on-brand)}
+
+/* chat bubbles */
+.msg{display:flex;gap:7px;align-items:flex-end;margin:6px 0;max-width:88%}
+.msg .av{width:24px;height:24px;font-size:9.5px}
+.msg .bub{padding:6px 10px;border-radius:14px 14px 14px 4px;background:var(--c-surface-2);font-size:13.5px;line-height:1.35}
+.msg .who{display:block;font-size:11px;font-weight:800;color:var(--c-ink-3)}
+.msg.me{margin-left:auto;flex-direction:row-reverse}
+.msg.me .bub{background:var(--c-brand);color:#fff;border-radius:14px 14px 4px 14px}
+.msg.pl .who::after{content:" · người chơi";font-weight:600}
+.msg.sys{max-width:100%;justify-content:center;font-size:12px;color:var(--c-ink-3)}
+
+/* score table */
+.score-hero{display:flex;align-items:center;justify-content:center;gap:16px;padding:6px 0 10px}
+.score-hero .num{font-size:40px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:2px}
+.score-hero .p{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:12px;font-weight:700}
+.games{width:100%;border-collapse:collapse;font-size:13px}
+.games td{padding:7px 4px;border-top:1px solid var(--c-border)}
+.games .w{font-weight:800;color:var(--c-brand-text)}
+.dots{display:flex;gap:5px;justify-content:center}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c-fill);border:1px solid var(--c-border)}
+.dot.l{background:#d64545;border-color:#d64545}.dot.m{background:var(--c-brand);border-color:var(--c-brand)}.dot.d{background:#9a968c}
+
+.mvgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;font-size:13px;font-variant-numeric:tabular-nums}
+.mvgrid span{padding:3px 6px;border-radius:4px}
+.mvgrid span.cur{background:var(--c-brand-light);color:var(--c-brand-text);font-weight:800}
+.mvgrid em{font-style:normal;color:var(--c-ink-3);margin-right:4px}
+
+/* ===== A: River ===== */
+.A .river{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;padding:0 12px 4px;cursor:pointer;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0,#000 46%);mask-image:linear-gradient(to bottom,transparent 0,#000 46%)}
+.A .river .msg{animation:rise 320ms var(--ease-out) both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ===== B: Scoreboard ===== */
+.B .sb{flex:1;min-height:0;margin:4px 8px 6px;background:var(--c-surface);border-radius:var(--radius-xl);padding:10px 12px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.B .sb-row{display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+.B .sb-big{display:flex;align-items:center;gap:10px}
+.B .sb-big .num{font-size:30px;font-weight:900;font-variant-numeric:tabular-nums}
+.B .sb-big .av{width:30px;height:30px;font-size:11px}
+.B .sb-meta{font-size:12px;color:var(--c-ink-3);text-align:right;line-height:1.35}
+.B .chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px;flex:none}
+.B .chip{flex:none;padding:5px 9px;border-radius:999px;background:var(--c-surface-2);font-size:12.5px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;gap:5px;align-items:center}
+.B .chip .x{color:#2962ff}.B .chip .o{color:#ff1d23}
+.B .chip.cur{background:var(--c-brand-light);outline:2px solid var(--c-brand);color:var(--c-brand-text)}
+.B .ticker{margin-top:auto;display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius-lg);background:var(--c-surface-2);font-size:13px;cursor:pointer;min-width:0}
+.B .ticker .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.B .ticker b{font-weight:800}
+.B .ticker .n{background:var(--c-accent);color:#fff;font-size:11px;font-weight:800;border-radius:9px;padding:1px 7px}
+
+/* ===== C: Stage ===== */
+.C .stage{flex:1;min-height:0;position:relative;overflow:hidden}
+.C .fly{position:absolute;left:10px;bottom:6px;display:flex;flex-direction:column;gap:5px;align-items:flex-start;max-width:72%}
+.C .fly .c{display:flex;gap:6px;align-items:center;padding:4px 10px 4px 4px;border-radius:999px;background:color-mix(in srgb,var(--c-surface) 88%,transparent);font-size:13px;box-shadow:0 1px 3px rgba(0,0,0,.12);animation:rise 360ms var(--ease-out) both}
+.C .fly .c:nth-child(1){opacity:.45}.C .fly .c:nth-child(2){opacity:.75}
+.C .fly .c .av{width:22px;height:22px;font-size:9px}
+.C .fly .c b{font-weight:800;margin-right:2px}
+.C .reacts{position:absolute;right:14px;bottom:0;width:60px;height:100%;pointer-events:none}
+.C .reacts span{position:absolute;bottom:-20px;font-size:22px;opacity:0}
+.C.phone[data-burst="1"] .reacts span{animation:floatup 1.8s var(--ease-out) forwards}
+.C .reacts span:nth-child(2){left:20px;animation-delay:.15s!important}.C .reacts span:nth-child(3){left:8px;animation-delay:.3s!important}.C .reacts span:nth-child(4){left:28px;animation-delay:.5s!important}.C .reacts span:nth-child(5){left:4px;animation-delay:.7s!important}
+@keyframes floatup{0%{opacity:0;transform:translateY(0) scale(.6)}15%{opacity:1;transform:translateY(-30px) scale(1)}100%{opacity:0;transform:translateY(-190px) translateX(-10px) scale(1.1)}}
+.C .speech{position:absolute;z-index:4;max-width:230px;padding:7px 12px;border-radius:14px;background:var(--c-surface);box-shadow:0 4px 14px rgba(0,0,0,.18);font-size:13.5px;line-height:1.35;pointer-events:none;animation:pop 300ms var(--ease-out) both}
+.C .speech::before{content:"";position:absolute;width:12px;height:12px;background:inherit;transform:rotate(45deg);top:-5px;left:18px}
+.C .speech.opp{left:14px;top:118px}
+.C .speech.me{right:14px;background:var(--c-brand);color:#fff}
+.C .speech.me::before{top:auto;bottom:-5px;left:auto;right:30px}
+@keyframes pop{from{opacity:0;transform:translateY(-6px) scale(.9)}to{opacity:1;transform:none}}
+.C .handle{position:absolute;left:50%;top:4px;transform:translateX(-50%);width:44px;height:5px;border-radius:3px;background:var(--c-border);cursor:pointer}
+.C .react-btn{font-size:18px}
+
+/* ===== D: Glance tiles (morph in place) ===== */
+.D .tiles{flex:1;min-height:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:4px 8px 6px;transition:grid-template-columns var(--dur) var(--ease-out)}
+.D .tile{min-width:0;min-height:0;border:0;text-align:left;background:var(--c-surface);border-radius:var(--radius-xl);padding:9px 10px;display:flex;flex-direction:column;gap:6px;cursor:pointer;overflow:hidden;position:relative}
+.D .tile .lbl{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--c-ink-3);display:flex;justify-content:space-between;align-items:center}
+.D .tile .big{font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;line-height:1}
+.D .tile .sm{font-size:12px;color:var(--c-ink-2);line-height:1.35}
+.D .tile .full{display:none;flex:1;min-height:0;overflow:auto}
+.D .tile .glance{display:flex;flex-direction:column;gap:6px;min-height:0}
+.D .tile .x{color:#2962ff;font-weight:800}.D .tile .o{color:#ff1d23;font-weight:800}
+.D .tile .close{display:none;border:0;background:var(--c-fill);border-radius:50%;width:26px;height:26px;cursor:pointer}
+.D.phone[data-open="score"] .tiles{grid-template-columns:minmax(0,1fr) 0fr 0fr}
+.D.phone[data-open="moves"] .tiles{grid-template-columns:0fr minmax(0,1fr) 0fr}
+.D.phone[data-open="chat"] .tiles{grid-template-columns:0fr 0fr minmax(0,1fr)}
+.D.phone[data-open] .tile{padding:9px 0}
+.D.phone[data-open="score"] .t-score,.D.phone[data-open="moves"] .t-moves,.D.phone[data-open="chat"] .t-chat{padding:9px 12px;cursor:default}
+.D.phone[data-open="score"] .t-score .full,.D.phone[data-open="moves"] .t-moves .full,.D.phone[data-open="chat"] .t-chat .full{display:block}
+.D.phone[data-open="score"] .t-score .glance,.D.phone[data-open="moves"] .t-moves .glance,.D.phone[data-open="chat"] .t-chat .glance{display:none}
+.D.phone[data-open="score"] .t-score .close,.D.phone[data-open="moves"] .t-moves .close,.D.phone[data-open="chat"] .t-chat .close{display:grid;place-items:center}
+.D.phone[data-open] .tiles{gap:0}
+.D.phone[data-open] .tile:not(.t-score):not(.t-moves):not(.t-chat){display:none}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:1ms!important;animation-delay:0s!important;transition-duration:1ms!important}
+}
+@media (max-width:440px){.gallery{padding:16px 8px 40px}.phone{box-shadow:0 0 0 4px var(--bezel)}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Bàn chơi · Mobile — 4 hướng cho vùng dưới bàn cờ</h1>
+  <span class="sp"></span>
+  <div class="seg" id="theme"><button data-v="light" aria-pressed="true">Sáng</button><button data-v="dark" aria-pressed="false">Tối</button></div>
+  <div class="seg" id="height"><button data-v="844" aria-pressed="true">390×844</button><button data-v="667" aria-pressed="false">SE 375×667</button></div>
+</div>
+<p class="intro">
+  Giữ nguyên <b>header · thẻ đối thủ · bàn cờ · thẻ của tôi · hàng nút ván</b> (vẽ lại cho giống, không đổi). Chỉ thiết kế lại vùng còn lại phía dưới.
+  Chung cho cả 4 hướng: <b>khán giả ra ngoài</b> thành cụm avatar ở góc dưới-trái (chấm đỏ = đang xem trực tiếp, chạm → bảng avatar),
+  tab Người xem thành <b>Tỉ số</b>, bỏ tab <b>Cài đặt</b> (đã có bánh răng trên header), bỏ chế độ “mở rộng ▲”.
+  Bấm các nút trạng thái dưới mỗi khung, hoặc bấm thẳng vào mockup. Đổi “SE 375×667” để xem màn hình ngắn: bàn cờ tự co (như luật hiện tại) và mọi hướng rút về thanh nhập + 1 dòng nhìn nhanh.
+</p>
+<div class="gallery" id="gallery"></div>
+
+<script>
+const PEOPLE = {
+  long:{n:'Hoàng Long',i:'HL',c:'#b5542c'}, minh:{n:'Minh',i:'M',c:'#4d7c1f'},
+  thu:{n:'Thu',i:'T',c:'#7b4bb7'}, bao:{n:'Bảo',i:'B',c:'#1f6fb2'}, an:{n:'An',i:'A',c:'#c2185b'},
+  khoa:{n:'Khoa',i:'K',c:'#00897b'}, vy:{n:'Vy',i:'V',c:'#ef6c00'}, duc:{n:'Đức',i:'Đ',c:'#5d4037'}
+};
+const AUD = ['thu','bao','an','khoa','vy','duc'];
+const CHAT = [
+  {w:'long',t:'Ván này căng đấy 😄',k:'pl'},
+  {w:'thu',t:'H8 đẹp quá 👏'},
+  {w:'minh',t:'Cảm ơn mọi người',k:'me'},
+  {w:'bao',t:'Long phải chặn J10 ngay'},
+  {w:'long',t:'Biết rồi mà 😅',k:'pl'}
+];
+const COLS='ABCDEFGHIJKLMNOPQ';
+const MOVES=['H9','I9','H8','H10','I8','G8','J7','G10','G9','I10','J10','F10','E10','J9','K8','I7','F8','H6','J8','K9','L9','G7','F6','E7','K10','L11','G6','H7','E9','D9','I11','J12','K7','L7'];
+const av=(k,cls='')=>{const p=PEOPLE[k];return `<span class="av ${cls}" style="background:${p.c}">${p.i}</span>`};
+const msg=(m)=>{const p=PEOPLE[m.w];const me=m.k==='me';return `<div class="msg ${me?'me':''} ${m.k==='pl'?'pl':''}">${me?'':av(m.w)}<div class="bub">${me?'':`<span class="who">${p.n}</span>`}${m.t}</div></div>`};
+const stack=()=>`<button class="stack" data-act="aud" aria-label="6 người xem"><span class="live"></span>${AUD.slice(0,3).map(k=>av(k)).join('')}<span class="more">+3</span></button>`;
+const audPop=()=>`<div class="aud-pop"><h4>👁 6 người đang xem</h4><div class="aud-grid">${AUD.map(k=>`<div>${av(k)}${PEOPLE[k].n}</div>`).join('')}</div></div>`;
+
+function boardSVG(w){
+  const lab=14,n=17,cell=(w-lab)/n,h=lab+n*cell;let s=`<svg class="board" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+  for(let i=0;i<=n;i++){s+=`<line x1="${lab+i*cell}" y1="0" x2="${lab+i*cell}" y2="${n*cell}" stroke="var(--grid)"/><line x1="${lab}" y1="${i*cell}" x2="${w}" y2="${i*cell}" stroke="var(--grid)"/>`}
+  for(let i=0;i<n;i++){s+=`<text x="${lab+i*cell+cell/2}" y="${h-3}" font-size="9.5" text-anchor="middle" fill="#555">${COLS[i]}</text><text x="7" y="${(n-i-1)*cell+cell/2+3.5}" font-size="9" text-anchor="middle" fill="#555">${i+1}</text>`}
+  MOVES.forEach((m,idx)=>{const c=COLS.indexOf(m[0]),r=+m.slice(1)-1;const cx=lab+c*cell+cell/2,cy=(n-r-1)*cell+cell/2,q=cell*.3;
+    if(idx===MOVES.length-1)s+=`<rect x="${cx-cell/2+1}" y="${cy-cell/2+1}" width="${cell-2}" height="${cell-2}" fill="rgba(255,234,0,.45)"/>`;
+    s+= idx%2===0?`<path d="M${cx-q} ${cy-q}L${cx+q} ${cy+q}M${cx+q} ${cy-q}L${cx-q} ${cy+q}" stroke="#2962ff" stroke-width="2.4" stroke-linecap="round"/>`
+                 :`<circle cx="${cx}" cy="${cy}" r="${q*1.1}" fill="none" stroke="#ff1d23" stroke-width="2.4"/>`});
+  return s+'</svg>';
+}
+const base=(w)=>`
+  <div class="nav"><span class="brand">Play<b>3CR</b></span><span class="rid">#SPJ</span><span class="rank">🏆 Xếp hạng</span><span class="ic">⇥</span><span class="ic">⚙</span></div>
+  <div class="card">${av('long')}<div><div class="nm">Hoàng Long</div><div class="mt">1 642 · O</div></div><span class="clk">4:12</span></div>
+  ${boardSVG(w)}
+  <div class="card turn">${av('minh')}<div><div class="nm">Minh (bạn)</div><div class="mt">1 608 · X · lượt bạn</div></div><span class="clk">3:47</span></div>
+  <div class="ctrls"><button class="act"><i>½</i>Xin hoà</button><button class="act"><i>↶</i>Đi lại</button><button class="act"><i>⏱</i>Thêm giờ</button><button class="act"><i>⚑</i>Đầu hàng</button></div>`;
+const scoreBody=()=>`
+  <div class="score-hero"><div class="p">${av('long')}Hoàng Long</div><span class="num">1–2</span><div class="p">${av('minh')}Minh</div></div>
+  <div class="dots" style="margin-bottom:10px"><span class="dot m"></span><span class="dot l"></span><span class="dot m"></span><span class="dot"></span><span class="dot"></span></div>
+  <table class="games"><tr><td>Ván 1</td><td class="w">Minh thắng</td><td>41 nước</td><td>8:12</td></tr><tr><td>Ván 2</td><td class="w">Long thắng</td><td>27 nước</td><td>5:40</td></tr><tr><td>Ván 3</td><td class="w">Minh thắng</td><td>55 nước</td><td>11:03</td></tr><tr><td>Ván 4</td><td>đang chơi</td><td>${MOVES.length} nước</td><td>—</td></tr></table>`;
+const movesBody=()=>`<div class="mvgrid">${MOVES.map((m,i)=>`<span class="${i===MOVES.length-1?'cur':''}"><em>${i+1}.</em><b style="color:${i%2?'#ff1d23':'#2962ff'}">${i%2?'O':'X'}</b> ${m}</span>`).join('')}</div>`;
+const chatBody=()=>`<div class="msg sys">Ván 4 bắt đầu · Minh cầm X</div>${CHAT.map(msg).join('')}`;
+
+/* ---------- directions ---------- */
+const DIRS = [
+{ id:'A', name:'A · Dòng chảy (Chat river)',
+  tag:'Không còn khung tab. Tin nhắn mới nổi lên ngay khoảng trống dưới bàn cờ rồi mờ dần lên trên — như chat trực tiếp. Chạm vào dòng chảy → mở cả lịch sử.',
+  zone:()=>`<div class="river" data-act="sheet:chat">${CHAT.slice(-4).map(msg).join('')}</div>
+    <div class="dock">${stack()}<div class="input">Nhắn tin…</div><button class="send">➤</button><button class="ibtn" data-act="sheet:score" aria-label="Tỉ số và nước đi">▤</button></div>`,
+  sheetTabs:['chat','score','moves'],
+  states:[['Nghỉ','rest'],['Lịch sử chat','sheet:chat'],['Tỉ số','sheet:score'],['Nước đi','sheet:moves'],['Khán giả','aud']],
+  notes:['<b>Ưu:</b> tận dụng hết khoảng trống; chat luôn “sống” mà không cần mở gì.','Nút ▤ cạnh ô nhập mở sheet <b>Chat · Tỉ số · Nước đi</b> (snap 62% chiều cao, bàn cờ phía trên vẫn thấy).','Màn hình ngắn (SE): dòng chảy co về 0, chỉ còn thanh nhập — vẫn dùng được.','<b>Rủi ro:</b> tin nhắn khán giả nhiều có thể gây xao nhãng → có thể giới hạn chỉ tin của 2 người chơi hiện ở dòng chảy.']},
+{ id:'B', name:'B · Bảng tỉ số sống (Scoreboard)',
+  tag:'Khoảng trống trở thành thẻ trận đấu: tỉ số loạt ván, dải nước đi cuộn ngang, và 1 dòng chat mới nhất kiểu “ticker”. Tỉ số là nhân vật chính.',
+  zone:()=>`<div class="sb">
+      <div class="sb-row" data-act="sheet:score"><div class="sb-big">${av('long')}<span class="num">1–2</span>${av('minh')}</div><div class="sb-meta">Ván 4 · Best of 5<br>Nước ${MOVES.length} · vừa đi <b>${MOVES.at(-1)}</b></div></div>
+      <div class="chips" data-act="sheet:moves">${MOVES.slice(-8).map((m,i,a)=>{const idx=MOVES.length-a.length+i;return `<span class="chip ${i===a.length-1?'cur':''}"><span class="${idx%2?'o':'x'}">${idx%2?'O':'X'}</span>${m}</span>`}).reverse().join('')}</div>
+      <div class="ticker" data-act="sheet:chat">💬<span class="t"><b>Bảo:</b> Long phải chặn J10 ngay</span><span class="n">2</span></div>
+    </div>
+    <div class="dock">${stack()}<div class="input">Nhắn tin…</div><button class="send">➤</button></div>`,
+  sheetTabs:['chat','score','moves'],
+  states:[['Nghỉ','rest'],['Chat','sheet:chat'],['Chi tiết tỉ số','sheet:score'],['Nước đi','sheet:moves'],['Khán giả','aud']],
+  notes:['<b>Ưu:</b> thông tin ván đấu nhìn được ngay, không phải mở tab; hợp với khán giả xem trận.','Chạm tỉ số → bảng từng ván; chạm dải nước → toàn bộ nước đi; chạm ticker → chat.','Màn hình ngắn: thẻ tự rút gọn còn 1 dòng (tỉ số + ticker).','<b>Rủi ro:</b> chat bị “hạ cấp” xuống 1 dòng — phòng nói chuyện nhiều sẽ thấy thiếu.']},
+{ id:'C', name:'C · Sân khấu (Live stage)',
+  tag:'Lời người chơi hiện thành bong bóng thoại gắn vào thẻ của họ (tự tắt sau 4s). Bình luận khán giả bay lên từ góc khán đài, có nút thả tim/vỗ tay như livestream.',
+  zone:()=>`<div class="stage"><div class="handle" data-act="sheet:chat" title="Vuốt lên: lịch sử"></div>
+      <div class="fly">${['thu','bao','an'].map((k,i)=>`<div class="c">${av(k)}<span><b>${PEOPLE[k].n}</b>${['H8 đẹp quá 👏','Long phải chặn J10 ngay','kèo căng 🔥'][i]}</span></div>`).join('')}</div>
+      <div class="reacts"><span>👏</span><span>🔥</span><span>❤️</span><span>👏</span><span>😮</span></div></div>
+    <div class="dock">${stack()}<div class="input">Bình luận…</div><button class="ibtn react-btn" data-act="burst" aria-label="Vỗ tay">👏</button><button class="ibtn" data-act="sheet:score" aria-label="Tỉ số">▤<span class="badge">2</span></button></div>`,
+  extra:()=>`<div class="speech opp">Ván này căng đấy 😄</div>`,
+  sheetTabs:['chat','score','moves'],
+  states:[['Nghỉ','rest'],['Thả 👏','burst'],['Lịch sử','sheet:chat'],['Tỉ số','sheet:score'],['Khán giả','aud']],
+  notes:['<b>Ưu:</b> sáng tạo nhất — ván đấu thành “sân khấu”, người chơi nói chuyện mặt đối mặt; khán giả có chỗ riêng.','Bong bóng không bắt chạm (pointer-events:none), chỉ phủ mép trên bàn cờ ≤ 4s; có thể tắt trong Cài đặt.','Reaction là tính năng mới → cần 1 sự kiện socket nhẹ (<b>backend</b>) — có thể làm sau, bản đầu chỉ có chat.','<b>Rủi ro:</b> bong bóng che 1–2 hàng trên cùng bàn cờ trong 4s.']},
+{ id:'D', name:'D · Ô nhìn nhanh (Glance tiles)',
+  tag:'Ba ô xem nhanh: Tỉ số · Nước đi · Chat. Chạm ô nào, ô đó nở ra chiếm cả vùng (morph tại chỗ) — không có sheet đè lên bàn cờ.',
+  zone:()=>`<div class="tiles">
+      <div class="tile t-score" data-act="open:score"><div class="lbl">Tỉ số <button class="close" data-act="close">✕</button></div>
+        <div class="glance"><span class="big">1–2</span><div class="dots" style="justify-content:flex-start"><span class="dot m"></span><span class="dot l"></span><span class="dot m"></span><span class="dot"></span></div><span class="sm">Ván 4 · Bo5</span></div>
+        <div class="full">${scoreBody()}</div></div>
+      <div class="tile t-moves" data-act="open:moves"><div class="lbl">Nước đi <button class="close" data-act="close">✕</button></div>
+        <div class="glance"><span class="big">${MOVES.length}</span><span class="sm"><span class="o">O</span> ${MOVES.at(-1)}<br><span class="x">X</span> ${MOVES.at(-2)}<br><span class="o">O</span> ${MOVES.at(-3)}</span></div>
+        <div class="full">${movesBody()}</div></div>
+      <div class="tile t-chat" data-act="open:chat"><div class="lbl">Chat <span class="badge" style="position:static">2</span><button class="close" data-act="close">✕</button></div>
+        <div class="glance"><span class="sm"><b>Bảo:</b> Long phải chặn J10 ngay</span><span class="sm"><b>Long:</b> Biết rồi mà 😅</span></div>
+        <div class="full">${chatBody()}</div></div>
+    </div>
+    <div class="dock">${stack()}<div class="input">Nhắn tin…</div><button class="send">➤</button></div>`,
+  states:[['Nghỉ','rest'],['Mở Tỉ số','open:score'],['Mở Nước đi','open:moves'],['Mở Chat','open:chat'],['Khán giả','aud']],
+  notes:['<b>Ưu:</b> bàn cờ không bao giờ bị che; mỗi tab có “bản xem trước” nên ít khi phải mở.','Morph bằng grid-template-columns 260ms; giảm chuyển động → đổi ngay.','Màn hình ngắn: 3 ô thành 1 hàng chip cao 36px.','<b>Rủi ro:</b> vùng mở rộng chỉ cao ~200px — đọc chat dài hơi chật.']}
+];
+
+const TABN={chat:'Chat',score:'Tỉ số',moves:'Nước đi'};
+const BODY={chat:chatBody,score:scoreBody,moves:movesBody};
+function sheet(tabs){return `<div class="scrim" data-act="rest"></div><div class="sheet"><div class="grab" data-act="rest"></div>
+  <div class="tabs">${tabs.map(t=>`<button data-act="sheet:${t}" data-t="${t}">${TABN[t]}</button>`).join('')}</div><div class="sh-body"></div></div>`}
+
+const W = Math.min(390, document.documentElement.clientWidth - 16);
+const g=document.getElementById('gallery');
+DIRS.forEach(d=>{
+  const el=document.createElement('section');el.className='dir';
+  el.innerHTML=`<h2>${d.name}</h2><p class="tag">${d.tag}</p>
+   <div class="phone ${d.id}">${base(W-16)}<div class="zone">${d.zone()}</div>${d.extra?d.extra():''}${audPop()}${d.sheetTabs?sheet(d.sheetTabs):''}</div>
+   <div class="states">${d.states.map(([l,v])=>`<button data-act="${v}" aria-pressed="${v==='rest'}">${l}</button>`).join('')}</div>
+   <ul class="notes">${d.notes.map(n=>`<li>${n}</li>`).join('')}</ul>`;
+  g.appendChild(el);
+  const ph=el.querySelector('.phone');
+  const set=(v)=>{
+    if(v==='close')v='rest';
+    ph.classList.remove('sheet-open');ph.removeAttribute('data-open');ph.removeAttribute('data-aud');
+    if(v==='burst'){ph.removeAttribute('data-burst');void ph.offsetWidth;ph.setAttribute('data-burst','1')}
+    if(v==='aud')ph.setAttribute('data-aud','1');
+    if(v.startsWith('sheet:')){const t=v.slice(6);ph.classList.add('sheet-open');ph.querySelector('.sh-body').innerHTML=BODY[t]();
+      ph.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+      const sb=ph.querySelector('.sh-body');if(t==='chat')sb.scrollTop=sb.scrollHeight}
+    if(v.startsWith('open:'))ph.setAttribute('data-open',v.slice(5));
+    el.querySelectorAll('.states button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.act===v));
+  };
+  el.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(!a)return;
+    if(a.dataset.act.startsWith('open:')&&ph.hasAttribute('data-open'))return; e.stopPropagation(); set(a.dataset.act)});
+  ph.set=set;
+});
+// C: player speech bubble for "me" appears on the my-card when burst? keep one static opp bubble.
+function seg(id,fn){document.getElementById(id).addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#'+id+' button').forEach(x=>x.setAttribute('aria-pressed',x===b));fn(b.dataset.v)})}
+seg('theme',v=>document.documentElement.dataset.theme=v);
+seg('height',v=>document.documentElement.style.setProperty('--ph',v+'px'));
+const q=new URLSearchParams(location.search);
+if(q.get('theme'))document.documentElement.dataset.theme=q.get('theme');
+if(q.get('h'))document.documentElement.style.setProperty('--ph',q.get('h')+'px');
+window.setAll=(arr)=>document.querySelectorAll('.phone').forEach((p,i)=>arr[i]&&p.set(arr[i]));
+</script>
+</body>
+</html>

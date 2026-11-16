@@ -14,6 +14,7 @@ const path = require('path');
 const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 const BODY = read('index.html').match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
 const SHELL = read('js/platform-shell.js');
+const HCH = read('js/home-challenge.js'); // #361 classic script, loaded before the index-entry module
 // ES module → classic script: swap the lobby.js import for a stub, expose the exports.
 const HOME = read('js/lobby-home.js')
   .replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { client, setHeroTab } = window.__lobbyStub;\n')
@@ -31,6 +32,7 @@ function stopPriorTicker() {
 
 async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
   stopPriorTicker();
+  if (window.HomeChallenge) window.HomeChallenge.close(); // a picker left open by the prior test keeps its document listener
   jest.useRealTimers();
   window.history.replaceState(null, '', url);
   document.body.innerHTML = BODY;
@@ -45,10 +47,15 @@ async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
   try { localStorage.clear(); } catch { /* ignore */ }
   if (opts.saved) localStorage.setItem('gvn_quickmatch', JSON.stringify(opts.saved));
   window.__home = {};
-  global.fetch = jest.fn((u) => Promise.resolve(String(u).startsWith('/api/home')
-    ? { ok: true, json: () => Promise.resolve(data) }
-    : { ok: false, json: () => Promise.resolve({}) }));
+  global.fetch = jest.fn((u, init) => {
+    const api = opts.api && opts.api(String(u), init);
+    if (api) return Promise.resolve(api);
+    return Promise.resolve(String(u).startsWith('/api/home')
+      ? { ok: true, json: () => Promise.resolve(data) }
+      : { ok: false, json: () => Promise.resolve({}) });
+  });
   window.eval(SHELL);
+  window.eval(HCH);
   window.PlatformShell.build('lobby');
   window.eval(HOME);
   await flush();
@@ -58,7 +65,7 @@ const visible = () => ['screen-home', 'panel-tables', 'panel-tournaments'].filte
   const n = document.getElementById(id);
   return n.classList.contains('is-active') && !n.hidden;
 });
-const actions = () => ['btn-create', 'btn-create-tournament'].filter((id) => !document.getElementById(id).hidden);
+const actions = () => ['btn-create-tournament'].filter((id) => !document.getElementById(id).hidden); // rooms create = the grid card #btn-create, shown with its screen (#364)
 const navOn = () => [...document.querySelectorAll('#pl-shell .is-active')].map((a) => a.dataset.tab);
 
 afterEach(() => { stopPriorTicker(); window.__home.showScreen && window.__home.showScreen('rooms'); }); // stop polling + quick-match ticker
@@ -69,7 +76,7 @@ const segs = (row) => [...row.querySelectorAll('.hrow__meta > span')].map((x) =>
 describe('screens ↔ hash ↔ shell nav', () => {
   it.each([
     ['/index.html', 'screen-home', [], ['lobby', 'lobby'], 'home'],
-    ['/index.html#rooms', 'panel-tables', ['btn-create'], ['rooms'], 'tables'],
+    ['/index.html#rooms', 'panel-tables', [], ['rooms', 'rooms'], 'tables'],
     ['/index.html#tournaments', 'panel-tournaments', ['btn-create-tournament'], ['tournaments', 'tournaments'], 'tournaments'],
     ['/index.html#bogus', 'screen-home', [], ['lobby', 'lobby'], 'home'],
   ])('%s → %s', async (url, screen, acts, nav, hero) => {
@@ -152,60 +159,42 @@ describe('dashboard rendering', () => {
     expect(row.querySelector('.hbullet.on')).not.toBeNull();
   });
 
-  it('today: registered vs register vs view labels', async () => {
-    await boot('/index.html', DATA);
-    const acts = [...document.querySelectorAll('#home-today .prow__act')].map((n) => n.textContent);
-    expect(acts).toEqual(['home.registered', 'home.register']);
-  });
-
-  it('live: text row (names, rule, moves, viewers), no SVG board; click spectates', async () => {
-    await boot('/index.html', DATA);
-    const card = document.querySelector('#home-live .prow');
-    expect(document.querySelector('#home-live svg, #home-live circle')).toBeNull();
-    expect(card.textContent).toContain('home.live_vs{"a":"kim","b":"sak"}');
-    expect(card.textContent).toContain('home.moves{"n":42}');
-    expect(card.textContent).toContain('home.viewers{"n":120}');
-    expect(card.textContent).toContain('home.per_move{"s":30}');
-    card.click();
+  it('#366 scoreboard: online / searching / playing as digit plates (textContent = number), labels name the count, one live game (click watches); dashes without stats', async () => {
+    const num = (id) => document.getElementById(id).textContent;
+    const lbl = (id) => [...document.querySelectorAll('#' + id + ' > span')].map((s) => s.textContent);
+    const cls = (id, c) => document.getElementById(id).classList.contains(c);
+    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 }, queueEta: { 'freestyle|auto': 20 } });
+    expect([num('home-n-online'), num('home-n-search'), num('home-n-live')]).toEqual(['12', '2', '3']);
+    expect([document.getElementById('home-online').hidden, document.getElementById('home-online').textContent]).toEqual([false, 'home.online{"n":12}']); // phone tag
+    expect([...document.querySelectorAll('#home-n-online > i')].map((i) => i.textContent)).toEqual(['1', '2']);
+    expect([cls('home-n-online', 'is-1'), cls('home-n-search', 'is-1')]).toEqual([false, true]); // 1 digit → CSS "0" plate
+    expect(lbl('home-n-search-l')).toEqual(['home.pulse_searching', 'home.eta_short{"s":20}']);
+    expect(lbl('home-n-live-l')).toEqual(['home.pulse_playing']);
+    const live = document.querySelector('#home-live-one .hq-live');
+    expect([live.querySelector('.hq-live__t').textContent, live.querySelector('.hq-live__m').textContent]).toEqual(['kim vs sak', 'home.moves{"n":42}']);
+    live.click();
     expect(window.joinRoom).toHaveBeenCalledWith('L1');
-  });
-
-  it('stats strip shows online / playing / searching; hidden without stats', async () => {
-    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 } });
-    const strip = document.getElementById('home-stats');
-    expect(strip.hidden).toBe(false);
-    expect([...strip.querySelectorAll('.hstat__n')].map((n) => n.textContent)).toEqual(['12', '3', '2']);
-    await boot('/index.html', { ...DATA, stats: { online: 5, playing: 0, searching: 0 } }); // #292: zero counts are de-emphasised
-    expect([...document.querySelectorAll('#home-stats .hstat')].map((n) => n.classList.contains('hstat--zero'))).toEqual([false, true, true]);
-    await boot('/index.html', { ...DATA, stats: { online: 12, playing: 3, searching: 2 } });
+    await boot('/index.html', { ...EMPTY, stats: { online: 5, playing: 0, searching: 0 }, queueEta: { 'freestyle|auto': 20 } }); // #292: zero counts dimmed, label kept, no ETA
+    expect(['home-n-online', 'home-n-search', 'home-n-live'].map((id) => cls(id, 'is-zero'))).toEqual([false, true, true]);
+    expect([lbl('home-n-search-l'), lbl('home-n-live-l')]).toEqual([['home.pulse_searching'], ['home.pulse_playing']]);
+    expect(document.getElementById('home-live-one').children).toHaveLength(0);
     await boot('/index.html', DATA);
-    expect(document.getElementById('home-stats').hidden).toBe(true);
+    expect([num('home-n-online'), num('home-n-search'), num('home-n-live')]).toEqual(['–', '–', '–']);
+    expect(document.getElementById('home-online').hidden).toBe(true);
   });
-
-  it('live card with no spectators omits the viewer count', async () => {
-    await boot('/index.html', { ...EMPTY, live: [{ ...DATA.live[0], viewers: 0 }] });
-    expect(document.querySelector('#home-live .prow').textContent).not.toContain('home.viewers');
-  });
-
-  it('empty payload → empty states; "find a room" goes to the rooms screen', async () => {
+  it('no game to resume → the resume card stays hidden; the empty payload renders without throwing', async () => {
     await boot('/index.html', EMPTY);
-    expect(document.querySelector('#home-today p').textContent).toBe('home.no_today');
-    // A7.1: the empty state offers a next step — an honest link to the tournaments screen, not a dead end.
-    const more = document.querySelector('#home-today a.link-action');
-    expect(more.textContent).toBe('home.see_tournaments');
-    expect(more.getAttribute('href')).toBe('#tournaments');
-    expect(document.querySelector('#home-live').textContent).toBe('home.no_live');
-    document.querySelector('#home-mine .link-action').click();
-    expect(visible()).toEqual(['panel-tables']);
+    expect(document.getElementById('home-mine-card').hidden).toBe(true);
+    await boot('/index.html', { ...EMPTY, myGame: { roomId: 'R', roomName: 'x', state: 'idle', opponent: null, myTurn: false } });
+    expect(document.getElementById('home-mine-card').hidden).toBe(false);
   });
 
-  it('fetch failure on first load still renders empty states, no throw', async () => {
-    jest.useRealTimers();
+  it('fetch failure on first load still renders (hidden resume card), no throw', async () => {
     await boot('/index.html#rooms');
     global.fetch = jest.fn(() => Promise.reject(new Error('net')));
     window.__home.showScreen('home');
     await flush();
-    expect(document.querySelector('#home-live').textContent).toBe('home.no_live');
+    expect(document.getElementById('home-mine-card').hidden).toBe(true);
   });
 
   it('waiting room (no opponent) shows the room name and "waiting"', async () => {
@@ -243,61 +232,6 @@ describe('news, forum, learn, about (#224)', () => {
     expect(document.getElementById('home-news').hidden).toBe(true);
   });
 
-  it('forum: up to the server-sent threads as rows (category, replies, author), escaped, + "see all" link', async () => {
-    await boot('/index.html', { ...EMPTY, forum: FORUM });
-    const rows = document.querySelectorAll('#home-forum .prow');
-    expect(rows).toHaveLength(2);
-    expect(rows[0].querySelector('.prow__t').textContent).toBe(XSS);
-    expect(document.querySelector('#home-forum img')).toBeNull();
-    expect(segs(rows[0])).toEqual(['forum.cat_tactics', 'forum.replies{"n":3}', 'Kim']);
-    expect(document.querySelector('#home-forum a.hmore').getAttribute('href')).toBe('/forum');
-    // #301: with threads the footer is a quiet text link with its own label (rows already carry "Xem"); empty keeps the outlined entry button
-    expect(document.querySelector('#home-forum a.hmore').classList.contains('hmore--text')).toBe(true);
-    expect(document.querySelector('#home-forum a.hmore').textContent).toBe('home.forum_all_threads');
-    await boot('/index.html', EMPTY);
-    expect(document.querySelector('#home-forum a.hmore').classList.contains('hmore--text')).toBe(false);
-    expect(document.querySelector('#home-forum a.hmore').textContent).toBe('home.forum_all');
-    expect(document.querySelector('#home-forum .hempty').textContent).toBe('home.no_forum');
-    expect(document.querySelector('#home-forum a.hmore')).not.toBeNull();
-  });
-
-  it.each([
-    ['member', { total: 42, solved: 5 }, 'home.learn_total{"n":42} · home.learn_solved{"n":5}'],
-    ['guest', { total: 42, solved: null }, 'home.learn_total{"n":42}'],
-    ['member, none solved', { total: 42, solved: 0 }, 'home.learn_total{"n":42} · home.learn_solved{"n":0}'],
-    ['no puzzles yet', { total: 0, solved: 0 }, 'home.learn_none'],
-  ])('learn card: %s', async (_, learn, meta) => {
-    await boot('/index.html', { ...EMPTY, learn });
-    const row = document.querySelector('#home-learn .prow');
-    expect(row.querySelector('.prow__t').textContent).toBe('home.learn_title');
-    expect(segs(row).join(' · ')).toBe(meta);
-  });
-
-  it.each([
-    ['member', { total: 4, solved: 1 }, { now: '1', max: '4', width: '25%', label: 'home.learn_progress{"s":1,"n":4}' }],
-    ['all solved', { total: 3, solved: 3 }, { now: '3', max: '3', width: '100%', label: 'home.learn_progress{"s":3,"n":3}' }],
-    ['none solved', { total: 5, solved: 0 }, { now: '0', max: '5', width: '0%', label: 'home.learn_progress{"s":0,"n":5}' }],
-  ])('learn progress bar (A7.1): %s', async (_, learn, want) => {
-    await boot('/index.html', { ...EMPTY, learn });
-    const bar = document.querySelector('#home-learn .hprog__bar');
-    expect(bar.getAttribute('role')).toBe('progressbar');
-    expect([bar.getAttribute('aria-valuenow'), bar.getAttribute('aria-valuemax'), bar.firstElementChild.style.width]).toEqual([want.now, want.max, want.width]);
-    expect(document.querySelector('#home-learn .hprog span').textContent).toBe(want.label);
-  });
-
-  it.each([
-    ['guest (solved unknown)', { total: 42, solved: null }],
-    ['no puzzles yet', { total: 0, solved: 0 }],
-  ])('learn progress bar absent: %s', async (_, learn) => {
-    await boot('/index.html', { ...EMPTY, learn });
-    expect(document.querySelector('#home-learn .hprog')).toBeNull();
-  });
-
-  it('learn card absent without data (DB down / old payload)', async () => {
-    await boot('/index.html', EMPTY);
-    expect(document.querySelector('#home-learn').children).toHaveLength(0);
-  });
-
   it('no About block on the home page', async () => {
     await boot('/index.html', EMPTY);
     expect(document.getElementById('home-about')).toBeNull();
@@ -321,47 +255,68 @@ describe('ruleLine()', () => {
   });
 });
 
-describe('home layout (A7.1)', () => {
-  it('quick match: the start block (summary line, then actions) comes right after the title (#290); every chip row sits under a visible group label', async () => {
-    await boot('/index.html', EMPTY);
-    const qm = document.querySelector('.hp-qm');
-    const kids = [...qm.children].map((c) => c.id || c.className.split(' ')[0]);
-    expect(kids).toEqual(['ph2', 'qm-start', 'qm-lbl', 'qm-rule', 'qm-lbl', 'qm-time', 'qm-time-hint', 'qm-lbl', 'qm-board']);
-    expect([...qm.querySelectorAll('.qm-lbl')].map((n) => n.dataset.i18n)).toEqual(['qm.lbl_rule', 'qm.lbl_time', 'qm.lbl_board']);
-    expect([...qm.querySelectorAll('.qm-lbl')].every((n) => n.getAttribute('aria-hidden') === 'true')).toBe(true); // the group already has an aria-label
-    expect([...qm.querySelector('.qm-start').children].map((c) => c.id)).toEqual(['qm-line', 'qm-actions']);
+/** #358 M4 helpers: the quick-match options are the blanks of the #home-q sentence, chosen in the #qm-pick listbox. */
+const blank = (k) => document.querySelector('#home-q [data-blank="' + k + '"]');
+const opts = () => [...document.querySelectorAll('#qm-pick [role="option"]')];
+const optTexts = (k) => { blank(k).click(); const r = opts().map((o) => o.textContent); document.body.click(); return r; };
+const chosen = (k) => { blank(k).click(); const r = opts().filter((o) => o.getAttribute('aria-selected') === 'true').map((o) => o.textContent); document.body.click(); return r; };
+const pick = (k, text) => { blank(k).click(); opts().find((o) => o.textContent === text).click(); };
+const key = (node, k) => node.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true }));
+
+describe('home M4 "Câu lệnh" (#358)', () => {
+  it('shape: greeting row, news, resume strip, sentence + Chơi nhanh + room code, count cards', async () => {
+    await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Me' });
+    const home = document.getElementById('screen-home');
+    expect([...home.children].map((n) => n.id || n.className)).toEqual(['hq-hello', 'home-news', 'home-mine-card', 'hq-main', 'home-stats']);
+    expect(home.getAttribute('aria-labelledby')).toBe('home-q');
+    expect(document.getElementById('home-q').tagName).toBe('H1');
+    expect(document.getElementById('home-hello').textContent).toBe('home.hello{"name":"Me"}');
+    expect(['rule', 'time', 'mode'].map((k) => [blank(k).getAttribute('aria-haspopup'), blank(k).getAttribute('aria-expanded')]))
+      .toEqual([['listbox', 'false'], ['listbox', 'false'], ['listbox', 'false']]);
+    expect(document.getElementById('qm-pick').hidden).toBe(true);
+    expect(document.querySelector('#home-code').querySelectorAll('input.hq-code__box')).toHaveLength(3);
+    expect(document.querySelectorAll('.hub-btn, #qm-menu, #qm-menu-btn, .hstats')).toHaveLength(0);
   });
 
-  it('two card stacks: match + learn left; my game, today, forum, live right — each its own card', async () => {
-    await boot('/index.html', EMPTY);
-    const stacks = [...document.querySelectorAll('#screen-home > .hstack')];
-    expect(stacks).toHaveLength(2);
-    const cards = (st) => [...st.children].map((c) => c.classList.contains('ppanel') && c.className.split(' ').find((x) => x.startsWith('hp-')));
-    expect(cards(stacks[0])).toEqual(['hp-qm', 'hp-learn']);
-    expect(cards(stacks[1])).toEqual(['hp-mine', 'hp-today', 'hp-forum', 'hp-live']);
-    expect(stacks[1].querySelector('#home-mine').closest('.ppanel')).toBe(stacks[1].children[0]);
+  it('guest greeting has no name', async () => {
+    await boot('/index.html', EMPTY, { userId: 'g', isGuest: true, displayName: 'Khách 1' });
+    expect(document.getElementById('home-hello').textContent).toBe('home.hello_anon');
   });
 
-  it('#294: empty Hôm nay / Diễn đàn / Live cards are flagged compact (entry links kept); a filled card is not', async () => {
+  it('"Xem phòng đang mở" goes to the rooms screen', async () => {
     await boot('/index.html', EMPTY);
-    const flagged = (sel) => document.querySelector(sel).classList.contains('is-empty');
-    expect([flagged('.hp-today'), flagged('.hp-forum'), flagged('.hp-live'), flagged('.hp-mine')]).toEqual([true, true, true, false]);
-    expect(document.querySelector('.hp-today a.link-action')).toBeTruthy();
-    expect(document.querySelector('.hp-forum a.hmore')).toBeTruthy();
-    await boot('/index.html', { ...EMPTY, tournaments: [{ tournamentId: 't1', name: 'Cup', status: 'draft', playerCount: 2, format: 'single_elim' }] });
-    expect(document.querySelector('.hp-today').classList.contains('is-empty')).toBe(false);
+    document.getElementById('hub-rooms').click();
+    expect(visible()).toEqual(['panel-tables']);
   });
 
-  it('the empty "no game" state names the destination (open rooms), not just "find"', async () => {
+  it('#366 secondary features: 4 labelled chips under the scoreboard (desktop right column), no icon-only links left', async () => {
     await boot('/index.html', EMPTY);
-    expect(document.querySelector('#home-mine .hempty p').textContent).toBe('home.no_games');
-    expect(document.querySelector('#home-mine .hempty button').textContent).toBe('home.find_room');
+    const links = [...document.querySelectorAll('#home-stats .hub-more a.hq-chip')];
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/puzzles', '/forum', '/index.html#tournaments', '/clubs.html']);
+    expect(links.map((a) => a.querySelector('span').dataset.i18n)).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
+    expect(document.querySelectorAll('.hq-hello nav, .hub-ico')).toHaveLength(0);
+    expect(document.querySelector('#home-stats .hub-more').previousElementSibling.classList.contains('hq-board')).toBe(true);
   });
 
-  it('#289: one primary action — the empty-state "open rooms" button is secondary, the quick-match CTA is the filled one', async () => {
-    await boot('/index.html', EMPTY, { isGuest: false });
-    expect(document.querySelector('#home-mine .hempty button').classList.contains('link-action--primary')).toBe(false);
-    expect([...document.querySelectorAll('#screen-home .link-action--primary')].map((n) => n.closest('#qm-actions') && 'qm')).toEqual(['qm']);
+  it('a blank opens the listbox: selected option focused, arrows rove, Enter picks; Escape closes and returns focus; outside click closes', async () => {
+    await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Me' });
+    const list = document.getElementById('qm-pick');
+    blank('time').click();
+    expect([list.hidden, list.getAttribute('role'), list.getAttribute('aria-label'), blank('time').getAttribute('aria-expanded')]).toEqual([false, 'listbox', 'qm.pick_time', 'true']);
+    expect(document.activeElement.textContent).toBe('qm.time_auto');
+    expect(opts().map((o) => o.tabIndex)).toEqual([0, -1, -1, -1]);
+    key(document.activeElement, 'ArrowDown');
+    key(document.activeElement, 'ArrowDown');
+    expect(opts().map((o) => o.tabIndex)).toEqual([-1, -1, 0, -1]);
+    key(document.activeElement, 'Enter');
+    expect([list.hidden, blank('time').textContent, document.activeElement]).toEqual([true, 'home.per_move{"s":"30"}', blank('time')]);
+    blank('rule').click();
+    key(document.activeElement, 'End');
+    key(document.activeElement, 'Escape');
+    expect([list.hidden, blank('rule').textContent, document.activeElement]).toEqual([true, 'rankings.cat_freestyle (room.rule_wall)', blank('rule')]);
+    blank('mode').click();
+    document.body.click();
+    expect([list.hidden, blank('mode').getAttribute('aria-expanded')]).toEqual([true, 'false']);
   });
 });
 
@@ -369,77 +324,97 @@ describe('quick match panel (B197)', () => {
   const MEMBER = { userId: 'u1', isGuest: false, displayName: 'Me' };
   const GUEST = { userId: 'g1', isGuest: true, displayName: 'G' };
   const client = () => window.__lobbyStub.client;
-  const chips = (id) => [...document.querySelectorAll('#' + id + ' .pchip')];
-  const pressed = (id) => chips(id).filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent);
   const buttons = () => [...document.querySelectorAll('#qm-actions button')].map((b) => b.textContent);
+  const blanks = () => ['rule', 'time', 'mode'].map((k) => blank(k).textContent);
 
-  it('member: 3 rule chips, Auto + 10 time chips (2 groups), Caro VN · Auto by default, rated + casual buttons', async () => {
+  it('member: 2 rules, Auto + 45s/30s/1+1, rated|casual; sentence reads Luật 1 (Ô khoá) · auto · rated by default; Thách đấu shown', async () => {
     await boot('/index.html', EMPTY, MEMBER);
-    expect(chips('qm-rule').map((b) => b.textContent)).toEqual(['rankings.cat_freestyle', 'rankings.cat_standard', 'rankings.cat_caro']);
-    expect(chips('qm-time').map((b) => b.textContent)).toEqual(['qm.time_auto', '1+0', '1+1', '3+2', '5+3', '7+3', '10+0', 'home.per_move{"s":"60"}', 'home.per_move{"s":"45"}', 'home.per_move{"s":"30"}', 'home.per_move{"s":"5"}']);
-    expect([...document.querySelectorAll('#qm-time .qm-grp')].map((n) => n.textContent)).toEqual(['qm.grp_game', 'qm.grp_move']);
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
-    expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
-    // B212: ▶ on the rated search (Arena mockup), sword on "challenge a friend" — same icon as on profiles.
-    const iconOf = (n) => n.querySelector('svg use').getAttribute('href').split('#')[1];
-    expect(iconOf(document.getElementById('qm-actions').querySelector('button'))).toBe('ph-regular-play');
-    expect(iconOf(document.getElementById('qm-actions').querySelector('a'))).toBe('ph-regular-boxing-glove');
+    expect(optTexts('rule')).toEqual(['rankings.cat_freestyle', 'rankings.cat_freestyle (room.rule_wall)', 'rankings.cat_caro', 'rankings.cat_caro (room.rule_wall)']);
+    expect(optTexts('time')).toEqual(['qm.time_auto', 'home.per_move{"s":"45"}', 'home.per_move{"s":"30"}', '1+1']);
+    expect(optTexts('mode')).toEqual(['qm.find_rated', 'qm.find_casual']);
+    expect(blanks()).toEqual(['rankings.cat_freestyle (room.rule_wall)', 'qm.blank_time_auto', 'qm.blank_rated']);
+    expect(document.getElementById('qm-challenge').hidden).toBe(false);
+    expect(document.getElementById('qm-friend')).toBeNull(); // #361: the grey "Thách bạn bè" link is replaced
+    expect(buttons()).toEqual([]); // idle: the one Chơi nhanh button is the action
   });
 
-  it('#293: the clock groups are marked secondary only while Auto is chosen, and stay clickable', async () => {
-    await boot('/index.html', EMPTY, MEMBER);
-    const box = document.getElementById('qm-time');
-    expect(box.classList.contains('is-auto')).toBe(true);
-    expect(document.getElementById('qm-time-hint').hidden).toBe(false);
-    expect(chips('qm-time').every((b) => !b.disabled)).toBe(true);
-    chips('qm-time').find((b) => b.textContent === '3+2').click();
-    expect(document.getElementById('qm-time').classList.contains('is-auto')).toBe(false);
-    expect(pressed('qm-time')).toEqual(['3+2']);
-    expect(document.getElementById('qm-time-hint').hidden).toBe(true); // #298: the Auto explanation only shows while Auto is the pick
-  });
-
-  it('guest: casual only, with the reason in the status line', async () => {
+  it('guest: casual only (play sends rated:false), mode is fixed text not a control, no Thách đấu, reason + login link under the button', async () => {
     await boot('/index.html', EMPTY, GUEST);
-    expect(buttons()).toEqual(['qm.find_casual']);
-    expect(document.getElementById('qm-line').textContent).toContain('qm.guest_casual_only');
+    expect(blank('mode')).toBeNull();
+    expect(document.querySelector('#home-q .hq-blank--fixed').textContent).toBe('qm.blank_casual');
+    expect(document.getElementById('qm-challenge').hidden).toBe(true);
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()[1]).toMatchObject({ rated: false });
+    expect(document.querySelector('#qm-line .qm-line__note').textContent).toBe('qm.guest_casual_only — qm.guest_login_rated');
+    // ui-audit home F2: "log in" is a real link, not plain text
+    expect(document.querySelector('#qm-line .qm-line__note a.qm-line__login').getAttribute('href')).toBe('/login.html');
   });
 
-  it('picking chips changes the request and is remembered; a saved choice is restored', async () => {
+  it('picking blanks changes the request and is remembered; a saved choice is restored', async () => {
     await boot('/index.html', EMPTY, MEMBER);
-    chips('qm-rule')[0].click();
-    chips('qm-time').find((b) => b.textContent === '1+0').click();
-    document.querySelectorAll('#qm-actions button')[0].click();
-    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+0', rated: true, wall: true, portal: false }]);
-    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+0', wall: true, portal: false });
-    document.querySelectorAll('#qm-board button')[0].click();
-    document.querySelectorAll('#qm-actions button')[0].click();
-    expect(client().emitted.pop()[1]).toMatchObject({ wall: false, portal: false });
-    await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'standard', time: '10+0' } });
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_standard'], ['10+0']]);
+    pick('rule', 'rankings.cat_freestyle (room.rule_wall)');
+    pick('time', '1+1');
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()).toEqual(['match:join', { rule: 'freestyle', time: '1+1', rated: true, wall: true, portal: false }]);
+    pick('mode', 'qm.find_casual');
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()[1]).toMatchObject({ rated: false });
+    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toEqual({ rule: 'freestyle', time: '1+1', wall: true, portal: false, rated: false });
+    await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'freestyle', time: '10+0', rated: false } });
+    // a saved clock outside the Home menu stays visible and selected, nothing silently changes
+    expect([chosen('rule'), chosen('time'), chosen('mode')]).toEqual([['rankings.cat_freestyle (room.rule_wall)'], ['10+0'], ['qm.find_casual']]);
+    expect(blanks()).toEqual(['rankings.cat_freestyle (room.rule_wall)', '10+0', 'qm.blank_casual']);
+  });
+
+  it('Ô khoá rides the rule blank: "(Ô khoá)" only when walls are on; the pick sets rule + wall and is remembered', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    pick('rule', 'rankings.cat_freestyle');
+    expect(blank('rule').textContent).toBe('rankings.cat_freestyle');
+    expect(chosen('rule')).toEqual(['rankings.cat_freestyle']);
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()[1]).toMatchObject({ rule: 'freestyle', wall: false });
+    expect(JSON.parse(localStorage.getItem('gvn_quickmatch'))).toMatchObject({ rule: 'freestyle', wall: false });
+    await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'freestyle', time: 'auto', wall: false, rated: true } });
+    expect(blank('rule').textContent).toBe('rankings.cat_freestyle');
+    pick('rule', 'rankings.cat_freestyle (room.rule_wall)');
+    expect(blank('rule').textContent).toBe('rankings.cat_freestyle (room.rule_wall)');
+    document.getElementById('qm-play').click();
+    expect(client().emitted.pop()[1]).toMatchObject({ rule: 'freestyle', wall: true });
   });
 
   it('a bogus saved choice falls back to the defaults', async () => {
     await boot('/index.html', EMPTY, MEMBER, { saved: { rule: 'renju', time: '2+1' } });
-    expect([pressed('qm-rule'), pressed('qm-time')]).toEqual([['rankings.cat_caro'], ['qm.time_auto']]);
+    expect([chosen('rule'), chosen('time')]).toEqual([['rankings.cat_freestyle (room.rule_wall)'], ['qm.time_auto']]);
   });
 
-  it('searching: chips lock, Cancel only, elapsed + queue count; cancel emits match:leave', async () => {
+  it('searching: the pill replaces Chơi nhanh in place (elapsed + queue, Huỷ tìm), blanks lock; cancel emits match:leave', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     client().fire('match:status', { waiting: true, inBucket: 3, rated: true });
-    expect(chips('qm-rule').every((b) => b.disabled)).toBe(true);
+    expect(['rule', 'time', 'mode'].every((k) => blank(k).disabled)).toBe(true);
+    expect([document.getElementById('qm-play').hidden, document.getElementById('qm-search').hidden]).toEqual([true, false]);
     expect(buttons()).toEqual(['qm.cancel']);
-    expect(document.getElementById('qm-line').textContent).toBe('qm.searching_rated{"t":"0:00"} · qm.in_queue{"n":3}');
+    expect(document.getElementById('qm-status').textContent).toBe('qm.searching_rated{"t":"0:00"}qm.in_queue{"n":3}');
+    expect(document.querySelectorAll('#qm-status span')).toHaveLength(2); // spans, no "·" string
+    expect(document.getElementById('qm-line').textContent).toBe('');
     document.querySelector('#qm-actions button').click();
     expect(client().emitted.pop()).toEqual(['match:leave', undefined]);
     client().fire('match:status', { waiting: false });
-    expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
-    expect(chips('qm-rule').some((b) => b.disabled)).toBe(false);
+    expect(buttons()).toEqual([]);
+    expect([document.getElementById('qm-play').hidden, document.getElementById('qm-play').disabled, document.getElementById('qm-search').hidden]).toEqual([false, false, true]);
+    expect(['rule', 'time', 'mode'].some((k) => blank(k).disabled)).toBe(false);
+  });
+
+  it('searching closes an open listbox', async () => {
+    await boot('/index.html', EMPTY, MEMBER);
+    blank('rule').click();
+    client().fire('match:status', { waiting: true, inBucket: 1 });
+    expect(document.getElementById('qm-pick').hidden).toBe(true);
   });
 
   it('alone in the bucket → no queue count', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     client().fire('match:status', { waiting: true, inBucket: 1, rated: false });
-    expect(document.getElementById('qm-line').textContent).toBe('qm.searching_casual{"t":"0:00"}');
+    expect(document.getElementById('qm-status').textContent).toBe('qm.searching_casual{"t":"0:00"}');
   });
 
   it('match:error shows the translated code and unlocks', async () => {
@@ -447,14 +422,53 @@ describe('quick match panel (B197)', () => {
     client().fire('match:status', { waiting: true, inBucket: 1 });
     client().fire('match:error', { code: 'ALREADY_IN_ANOTHER_ROOM', message: 'x' });
     expect(document.getElementById('qm-line').textContent).toBe('err.already_in_another_room');
-    expect(buttons()).toEqual(['qm.find_rated', 'qm.find_casual']);
+    expect(buttons()).toEqual([]);
   });
 
   it('match:found → "entering the room" (lobby.js follows room:joined)', async () => {
     await boot('/index.html', EMPTY, MEMBER);
     client().fire('match:status', { waiting: true, inBucket: 2 });
     client().fire('match:found', { roomId: 'R' });
-    expect(document.getElementById('qm-line').textContent).toBe('qm.found');
+    expect(document.getElementById('qm-status').textContent).toBe('qm.found');
+  });
+});
+
+describe('Vào phòng bằng mã on Home (#358)', () => {
+  const boxes = () => [...document.querySelectorAll('#home-code .hq-code__box')];
+  const type = (i, v) => { boxes()[i].value = v; boxes()[i].dispatchEvent(new Event('input')); };
+  const submit = () => document.getElementById('home-code').dispatchEvent(new Event('submit', { cancelable: true }));
+  const err = () => document.getElementById('home-code-error');
+
+  it('typing advances, upper-cases; Backspace on an empty box clears the previous one', async () => {
+    await boot('/index.html', EMPTY);
+    boxes()[0].focus();
+    type(0, 'a');
+    expect([boxes()[0].value, document.activeElement]).toEqual(['A', boxes()[1]]);
+    type(1, '3');
+    key(boxes()[2], 'Backspace');
+    expect([boxes()[1].value, document.activeElement]).toEqual(['', boxes()[1]]);
+  });
+
+  it('pasting "#a3f" fills all three boxes', async () => {
+    await boot('/index.html', EMPTY);
+    const e = new Event('paste', { cancelable: true, bubbles: true });
+    e.clipboardData = { getData: () => '#a3f' };
+    boxes()[0].dispatchEvent(e);
+    expect(boxes().map((b) => b.value)).toEqual(['A', '3', 'F']);
+    submit();
+    expect(window.joinRoom).toHaveBeenCalledWith('#A3F');
+  });
+
+  it('an invalid or incomplete code shows the rooms-form error and joins nothing; typing clears it', async () => {
+    await boot('/index.html', EMPTY);
+    type(0, 'a'); type(1, '0'); type(2, 'f'); // 0 is never generated
+    submit();
+    expect([window.joinRoom.mock.calls.length, err().hidden, err().textContent]).toEqual([0, false, 'lobby.join_code_invalid']);
+    type(1, '3');
+    expect(err().hidden).toBe(true);
+    boxes()[2].value = '';
+    submit();
+    expect([err().hidden, document.activeElement]).toEqual([false, boxes()[2]]);
   });
 });
 
@@ -481,39 +495,45 @@ describe('quick-match waiting count (B210)', () => {
   });
 
   it('count adds auto waiters; an auto pick counts every clock of the rule', async () => {
-    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 4, 'caro|auto': 2, 'caro|1+0': 3, 'standard|auto': 9 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'freestyle|5+3': 4, 'freestyle|auto': 2, 'freestyle|1+1': 3, 'standard|auto': 9 } }, MEMBER2);
     await flush();
     expect(line()).toContain('qm.in_queue{"n":9}'); // auto: 4 + 2 + 3
-    [...document.querySelectorAll('#qm-time button')].find((b) => b.textContent === '1+0').click();
-    expect(line()).toContain('qm.in_queue{"n":5}'); // 1+0: 3 + auto 2
+    pick('time', '1+1');
+    expect(line()).toContain('qm.in_queue{"n":5}'); // 1+1: 3 + auto 2
   });
 
   it('changing the chip re-reads the count for the new rule|time', async () => {
-    await boot('/index.html', { ...EMPTY, queue: { 'caro|5+3': 214, 'caro|1+0': 3 } }, MEMBER2);
+    await boot('/index.html', { ...EMPTY, queue: { 'freestyle|5+3': 214, 'freestyle|1+1': 3 } }, MEMBER2);
     await flush();
-    [...document.querySelectorAll('#qm-time button')].find((b) => b.textContent === '1+0').click();
+    pick('time', '1+1');
     expect(line()).toContain('qm.in_queue{"n":3}');
   });
 });
 
-describe('Vào bằng mã (Phòng screen, B210)', () => {
+describe('Vào bằng mã (Phòng screen, B210 → #364 hero boxes)', () => {
   const $ = (id) => document.getElementById(id);
+  const boxes = () => [...$('join-code-form').querySelectorAll('.rh-code__box')];
   const submit = (value) => {
-    $('join-code').value = value;
+    boxes().forEach((b, i) => { b.value = value[i] || ''; });
     $('join-code-form').dispatchEvent(new Event('submit', { cancelable: true }));
   };
 
-  it('button lives on the Phòng screen only; the form is closed until it is pressed', async () => {
+  it('#364: the code form sits open in the Phòng hero (3 boxes, no toggle); the only create entry is the grid card #btn-create', async () => {
     await boot('/index.html#rooms', EMPTY, null);
-    expect($('btn-join-code').hidden).toBe(false);
-    expect($('join-code-form').hidden).toBe(true);
-    $('btn-join-code').click();
     expect($('join-code-form').hidden).toBe(false);
-    expect($('btn-join-code').getAttribute('aria-expanded')).toBe('true');
-    window.location.hash = '#tournaments';
-    window.dispatchEvent(new Event('hashchange'));
-    expect($('btn-join-code').hidden).toBe(true);
-    expect($('join-code-form').hidden).toBe(true);
+    expect(boxes()).toHaveLength(3);
+    expect($('btn-join-code').type).toBe('submit');
+    expect($('btn-create').classList.contains('rcard-new')).toBe(true);
+    expect($('btn-create').closest('#room-list')).not.toBeNull();
+    expect(document.querySelector('.rh').textContent).not.toContain('Tạo phòng');
+  });
+
+  it('#364: pasting "#a3f" into the first box fills all three', async () => {
+    await boot('/index.html#rooms', EMPTY, null);
+    const ev = new Event('paste', { cancelable: true });
+    ev.clipboardData = { getData: () => '#a3f' };
+    boxes()[0].dispatchEvent(ev);
+    expect(boxes().map((b) => b.value)).toEqual(['A', '3', 'F']);
   });
 
   it('parseRoomCode accepts "#a3f", "a3f", " A3F " and rejects ambiguous / wrong-length codes', async () => {
@@ -529,24 +549,24 @@ describe('Vào bằng mã (Phòng screen, B210)', () => {
     expect(window.joinRoom).not.toHaveBeenCalled();
     expect($('join-code-error').hidden).toBe(false);
     expect($('join-code-error').textContent).toBe('lobby.join_code_invalid');
-    $('join-code').dispatchEvent(new Event('input'));
+    boxes()[0].dispatchEvent(new Event('input'));
     expect($('join-code-error').hidden).toBe(true);
     submit('a3f');
     expect(window.joinRoom).toHaveBeenCalledWith('#A3F');
   });
 
-  it('home: "Thách đấu bạn bè" links to the social page for members, absent for guests', async () => {
+  it('home: Thách đấu (twin of Chơi nhanh) for members only — hidden for guests (#361)', async () => {
     await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Z' });
-    const link = [...$('qm-actions').querySelectorAll('a')].find((a) => a.textContent === 'qm.challenge_friend');
-    expect(link.getAttribute('href')).toBe('/social.html#challenge');
+    expect($('qm-challenge').hidden).toBe(false);
+    expect($('qm-challenge').closest('.hq-go')).toBe($('qm-play').parentElement);
     await boot('/index.html', EMPTY, { userId: 'g', isGuest: true, displayName: 'G' });
-    expect($('qm-actions').querySelector('a')).toBeNull();
+    expect($('qm-challenge').hidden).toBe(true);
   });
 });
 
 describe('live push (B225)', () => {
   const subs = () => window.__lobbyStub.client.emitted.map(([ev]) => ev).filter((ev) => ev.startsWith('home:'));
-  const nums = () => [...document.querySelectorAll('#home-stats .hstat__n')].map((n) => n.textContent);
+  const nums = () => ['home-n-online', 'home-n-search', 'home-n-live'].map((id) => document.getElementById(id).textContent);
   const setHidden = (v) => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => v }); document.dispatchEvent(new Event('visibilitychange')); };
   afterEach(() => { delete document.hidden; });
 
@@ -567,16 +587,7 @@ describe('live push (B225)', () => {
   it('home:stats redraws the strip with the pushed absolute values', async () => {
     await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 } });
     window.__lobbyStub.client.fire('home:stats', { online: 7, playing: 2, searching: 1 });
-    expect(nums()).toEqual(['7', '2', '1']);
-  });
-
-  it('home:live replaces the live rows; ignored off the home screen', async () => {
-    await boot('/index.html');
-    window.__lobbyStub.client.fire('home:live', [{ roomId: '#ABC', black: 'An', white: 'Binh', moves: 0, viewers: 0 }]);
-    expect(document.getElementById('home-live').textContent).toContain('"a":"An"');
-    window.__home.showScreen('rooms');
-    window.__lobbyStub.client.fire('home:live', []);
-    expect(document.getElementById('home-live').textContent).toContain('"a":"An"');
+    expect(nums()).toEqual(['7', '1', '2']);
   });
 
   it('hidden tab unsubscribes; visible again resubscribes and refetches', async () => {
@@ -630,5 +641,220 @@ describe('live push (B225)', () => {
       c.fire('disconnect'); c.fire('connect');
       expect(lsubs().filter((e) => e === 'lobby:subscribe')).toHaveLength(3);
     });
+  });
+});
+
+describe('#361 Thách đấu on Home', () => {
+  const MEMBER = { userId: 'u1', isGuest: false, displayName: 'Me' };
+  const $ = (id) => document.getElementById(id);
+  const ok = (body, status = 200) => ({ ok: status < 400, status, json: () => Promise.resolve(body) });
+  const FRIENDS = [{ username: 'lan', displayName: 'Lan Anh', avatarUrl: null, online: true }, { username: 'quang', displayName: 'Quang', avatarUrl: null, online: false }];
+  const ONLINE = [{ userId: 'k', username: 'khanh', displayName: 'Khánh', avatarUrl: null }, { userId: 'l', username: 'lan', displayName: 'Lan Anh', avatarUrl: null }];
+  let posts;
+  const api = (postReply = ok({ id: 'c1', rule: 'caro', games: 1, stake: 'none' }, 201)) => (u, init) => { // real reply shape: no `to`
+    if (u === '/api/friends') return ok({ friends: FRIENDS });
+    if (u === '/api/challenges/online') return ok({ players: ONLINE });
+    if (u === '/api/challenges' && init && init.method === 'POST') { posts.push(JSON.parse(init.body)); return postReply; }
+    return null;
+  };
+  const rows = () => [...document.querySelectorAll('#home-ch .hch__row')].map((r) => [r.dataset.u, !!r.querySelector('.hch__tag'), r.querySelector('.hch__av').classList.contains('is-on')]);
+  const tab = (k) => document.querySelector(`#home-ch .hch__tab[data-tab="${k}"]`).click();
+  const openPicker = async () => { $('qm-challenge').click(); await flush(); await flush(); };
+  beforeEach(() => { posts = []; });
+
+  it('opens a picker merging friends (online first) + online players by username; tabs filter; search filters', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    await openPicker();
+    expect($('qm-challenge').getAttribute('aria-expanded')).toBe('true');
+    expect($('home-ch').classList.contains('hch--sheet')).toBe(false); // jsdom: 768px tall, button at 0 → popover
+    expect($('home-ch').style.getPropertyValue('--ch-max')).toMatch(/^\d+px$/); // capped to the viewport (home doesn't scroll)
+    expect(document.activeElement).toBe(document.querySelector('#home-ch .hch__search'));
+    expect(rows()).toEqual([['lan', true, true], ['quang', true, false], ['khanh', false, true]]); // Lan once, tagged + online
+    tab('friends');
+    expect(rows().map((r) => r[0])).toEqual(['lan', 'quang']);
+    tab('online');
+    expect(rows().map((r) => r[0])).toEqual(['lan', 'khanh']);
+    tab('all');
+    const q = document.querySelector('#home-ch .hch__search');
+    q.value = 'KHÁ'; q.dispatchEvent(new Event('input'));
+    expect(rows().map((r) => r[0])).toEqual(['khanh']);
+    q.value = 'zzz'; q.dispatchEvent(new Event('input'));
+    expect([rows(), document.querySelector('#home-ch .hch__note').textContent]).toEqual([[], 'challenge.no_match']);
+  });
+
+  it('shows the sentence rules; send is disabled until a pick; sends one game with the sentence settings; notice in #qm-line', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api(), saved: { rule: 'freestyle', time: 'm45', rated: false, wall: false, portal: true } });
+    await openPicker();
+    expect([...document.querySelectorAll('#home-ch .hch__rules .rtag')].map((n) => n.textContent))
+      .toEqual(['rankings.cat_freestyle', 'home.per_move{"s":"45"}', 'qm.find_casual']);
+    const send = document.querySelector('#home-ch .hch__send');
+    expect([send.disabled, send.textContent]).toEqual([true, 'home.ch_pick']);
+    document.querySelector('#home-ch .hch__row[data-u="khanh"]').click();
+    expect([send.disabled, send.textContent]).toEqual([false, 'home.ch_send{"name":"Khánh"}']);
+    send.click();
+    await flush(); await flush();
+    expect(posts).toEqual([{ to: 'khanh', games: 1, stake: 'none', settings: {
+      boardSize: 17, winningRule: 'freestyle', ranked: false, ruleSwap2: false, ruleWall: false, rulePortal: true,
+      timerMode: 'per_move', timerSeconds: 45, timerIncrementSeconds: 0 } }]);
+    expect($('home-ch')).toBeNull();
+    expect(document.activeElement).toBe($('qm-challenge'));
+    expect($('qm-line').textContent).toBe('home.ch_sent{"name":"Khánh"}');
+    // the next pick clears the notice
+    document.querySelector('#home-q [data-blank="rule"]').click();
+    document.querySelector('#qm-pick [role="option"]').click();
+    expect($('qm-line').textContent).not.toContain('home.ch_sent');
+  });
+
+  it('server refusal (privacy gate) is shown in the picker, which stays open', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api(ok({ error: 'Người này không nhận thách đấu từ bạn.', code: 'CHALLENGE_NOT_ALLOWED' }, 403)) });
+    await openPicker();
+    document.querySelector('#home-ch .hch__row[data-u="lan"]').click();
+    document.querySelector('#home-ch .hch__send').click();
+    await flush(); await flush();
+    expect(document.querySelector('#home-ch .hch__status').textContent).toBe('Người này không nhận thách đấu từ bạn.');
+    expect(document.querySelector('#home-ch .hch__send').disabled).toBe(false);
+  });
+
+  it.each([
+    ['phone width', true, 0, true], ['short window: <460px under the button', false, 400, true], ['room under the button', false, 100, false],
+  ])('%s → sheet %s/%s → %s', async (_, phone, bottom, sheet) => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    window.matchMedia = (q) => ({ matches: phone && q.includes('860') });
+    $('qm-challenge').getBoundingClientRect = () => ({ top: bottom - 60, bottom, left: 0, right: 200, width: 200, height: 60 });
+    await openPicker();
+    expect($('home-ch').classList.contains('hch--sheet')).toBe(sheet);
+    expect(!!$('home-ch').style.getPropertyValue('--ch-max')).toBe(!sheet);
+    delete window.matchMedia;
+  });
+
+  it('outside tap: popover closes and the tap goes through; sheet closes and swallows the tap (scrim)', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    const tapPlay = () => { $('qm-play').dispatchEvent(new Event('pointerdown', { bubbles: true })); $('qm-play').click(); };
+    await openPicker();
+    tapPlay();
+    expect([$('home-ch'), window.__lobbyStub.client.emitted.filter(([ev]) => ev === 'match:join').length]).toEqual([null, 1]);
+    window.matchMedia = () => ({ matches: true });
+    await openPicker();
+    expect($('home-ch').classList.contains('hch--sheet')).toBe(true);
+    tapPlay();
+    expect([$('home-ch'), window.__lobbyStub.client.emitted.filter(([ev]) => ev === 'match:join').length]).toEqual([null, 1]);
+    delete window.matchMedia;
+  });
+
+  it('Escape closes and returns focus; a second click toggles it closed; searching hides the button and closes the picker', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    await openPicker();
+    $('home-ch').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect([$('home-ch'), document.activeElement, $('qm-challenge').getAttribute('aria-expanded')]).toEqual([null, $('qm-challenge'), 'false']);
+    await openPicker();
+    $('qm-challenge').click();
+    expect($('home-ch')).toBeNull();
+    await openPicker();
+    window.__lobbyStub.client.fire('match:status', { waiting: true, inBucket: 1 });
+    expect([$('home-ch'), $('qm-challenge').hidden]).toEqual([null, true]);
+    window.__lobbyStub.client.fire('match:status', { waiting: false });
+    expect($('qm-challenge').hidden).toBe(false);
+  });
+
+  it('"Tuỳ chọn khác" hands the picked player to the full #222 ChallengeModal (focus on Thách đấu when it opens, so Escape returns there)', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    let focusAtOpen = null;
+    window.ChallengeModal = { open: jest.fn(() => { focusAtOpen = document.activeElement; }) };
+    await openPicker();
+    document.querySelector('#home-ch .hch__row[data-u="quang"]').click();
+    document.querySelector('#home-ch .hch__more').click();
+    expect($('home-ch')).toBeNull();
+    expect(focusAtOpen).toBe($('qm-challenge'));
+    expect(window.ChallengeModal.open).toHaveBeenCalledWith(expect.objectContaining({ to: { username: 'quang', displayName: 'Quang', avatarUrl: null } }));
+    // the modal sends → notice names the picked player
+    window.ChallengeModal.open.mock.calls[0][0].onSent({ id: 'c2' });
+    expect($('qm-line').textContent).toBe('home.ch_sent{"name":"Quang"}');
+    delete window.ChallengeModal;
+  });
+
+  it('"Tuỳ chọn khác" with nobody picked opens the modal picker; its send shows a name-less notice', async () => {
+    await boot('/index.html', EMPTY, MEMBER, { api: api() });
+    window.ChallengeModal = { open: jest.fn() };
+    await openPicker();
+    document.querySelector('#home-ch .hch__more').click();
+    const arg = window.ChallengeModal.open.mock.calls[0][0];
+    expect(arg.to).toBeUndefined();
+    arg.onSent({ id: 'c3' });
+    expect($('qm-line').textContent).toBe('home.ch_sent_any');
+    delete window.ChallengeModal;
+  });
+
+  it.each([
+    ['auto', ['per_move', 60, 0]], ['m30', ['per_move', 30, 0]], ['1+1', ['blitz', 60, 1]], ['5+3', ['blitz', 300, 3]], ['bogus', ['per_move', 60, 0]],
+  ])('util.settings: time %s → %j (auto plays the server default m60)', async (time, [timerMode, timerSeconds, timerIncrementSeconds]) => {
+    await boot('/index.html', EMPTY, MEMBER);
+    expect(window.HomeChallenge.util.settings({ rule: 'caro', time, rated: true, wall: true, portal: false }))
+      .toEqual({ boardSize: 17, winningRule: 'caro', ranked: true, ruleSwap2: false, ruleWall: true, rulePortal: false, timerMode, timerSeconds, timerIncrementSeconds });
+  });
+});
+
+describe('#360 phone links → labelled tiles after the room code', () => {
+  it('4 tiles (same hrefs as the desktop chips) sit after #home-code inside .hq-main; same hrefs as the desktop chips', async () => {
+    await boot('/index.html');
+    const tiles = [...document.querySelectorAll('.hq-tiles a.hq-tile')];
+    const icons = [...document.querySelectorAll('#home-stats .hub-more a')];
+    expect(tiles.map((a) => a.getAttribute('href'))).toEqual(icons.map((a) => a.getAttribute('href')));
+    expect(tiles.map((a) => a.querySelector('span').dataset.i18n)).toEqual(['shell.learn', 'home.forum', 'tabs.tournaments', 'lobby.clubs']);
+    const tilesNav = document.querySelector('.hq-tiles');
+    expect(tilesNav.parentElement.classList.contains('hq-main')).toBe(true);
+    expect(tilesNav.previousElementSibling.id).toBe('home-code');
+  });
+
+  it('CSS: tiles hidden by default (desktop) and shown ≤860px (desktop chips live in #home-stats, hidden there)', () => {
+    const css = read('css/shell.css');
+    expect(css).toMatch(/^body\.zen-lobby \.hq-tiles \{ display: none; \}/m);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.hq-tiles \{ display: grid;/);
+  });
+});
+
+describe('#362 phone: counts as one status line, links in one card', () => {
+  const part = (id) => [...document.getElementById(id).children].map((n) => n.textContent);
+  it('line sits right after .hq-go with "–" placeholders before data (B261: no reflow)', async () => {
+    await boot('/index.html');
+    const p = document.getElementById('home-pulse');
+    expect(p.previousElementSibling.classList.contains('hq-go')).toBe(true);
+    expect(p.querySelectorAll('b')).toHaveLength(2);
+    expect([...p.querySelectorAll('b')].map((b) => b.textContent)).toEqual(['–', '–']);
+  });
+
+  it('renders the same counts as the cards (no ETA — #qm-line shows it); "M ván đang chơi" links to Phòng', async () => {
+    await boot('/index.html', { ...EMPTY, stats: { online: 9, playing: 3, searching: 2 }, queueEta: { 'freestyle|auto': 20 } });
+    expect(part('home-pulse-search')).toEqual(['2', 'home.pulse_searching']);
+    expect(part('home-pulse-live')).toEqual(['3', 'home.pulse_playing']);
+    const live = document.getElementById('home-pulse-live');
+    expect(live.getAttribute('href')).toBe('#rooms'); // Phòng lists live games under "Đang chơi" (no Quan sát filter since #364)
+  });
+
+  it('zero counts: de-emphasised numbers, the playing part is plain text (no href)', async () => {
+    await boot('/index.html', { ...EMPTY, stats: { online: 1, playing: 0, searching: 0 }, queueEta: { 'freestyle|auto': 20 } });
+    expect(part('home-pulse-search')).toEqual(['0', 'home.pulse_searching']);
+    const live = document.getElementById('home-pulse-live');
+    expect(live.hasAttribute('href')).toBe(false);
+    expect([...document.querySelectorAll('#home-pulse b')].every((b) => b.classList.contains('is-zero'))).toBe(true);
+  });
+
+  it('CSS: line hidden on desktop; ≤860px shows it, hides the count cards, and lays the 4 links in one 4-column card', () => {
+    const css = read('css/shell.css');
+    expect(css).toMatch(/^body\.zen-lobby \.hq-pulse \{ display: none; \}/m);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.hq > \.hq-side \{ display: none; \}/);
+    expect(phone).toMatch(/\.hq-pulse \{ display: flex;/);
+    expect(phone).toMatch(/\.hq-tiles \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  });
+});
+
+describe('#366 desktop scoreboard vs phone', () => {
+  it('CSS: the greeting-row online tag is hidden ≥861px (board shows it); ≤860px still hides #home-stats', () => {
+    const css = read('css/shell.css');
+    expect(css).toMatch(/@media \(min-width: 861px\) \{ body\.zen-lobby \.hq-online \{ display: none; \} \}/);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.hq > \.hq-side \{ display: none; \}/);
+    expect(css).toMatch(/prefers-reduced-motion[\s\S]*\.hq-board__live i \{ animation: none; \}/);
   });
 });

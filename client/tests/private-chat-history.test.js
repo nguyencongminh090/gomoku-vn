@@ -77,4 +77,18 @@ describe('private chat window history', () => {
     await flush(); await flush();
     expect(document.querySelectorAll('.pm-window')).toHaveLength(1);
   });
+
+  it('#371: reading the thread refreshes the bell after the POST resolves, not before', async () => {
+    const order = [];
+    boot({ fetchImpl: (url, opts) => {
+      if (opts && opts.method === 'POST') { order.push('post'); return json({}); }
+      return json({ messages: [{ id: 1, mine: false, text: 'hi', read: false }] });
+    } });
+    window.PlatformShell = { notifications: { refresh: jest.fn(() => order.push('refresh')) } };
+    window.PrivateChat.openChat('u2');
+    await flush(); await flush(); await flush();
+    expect(window.PlatformShell.notifications.refresh).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['post', 'refresh']);
+    delete window.PlatformShell;
+  });
 });

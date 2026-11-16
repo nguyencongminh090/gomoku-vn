@@ -291,7 +291,7 @@
         displayMode: st.boardDisplayMode, moveHistory: [],
       });
       const gc = document.getElementById('game-controls');
-      if (gc) gc.innerHTML = '';
+      if (gc) { gc.innerHTML = ''; gc.__html = undefined; }
       renderMoves();
     } else {
       const myPlayer = st.gameState.players.find(p => p.userId === st.myUser.userId);
@@ -355,26 +355,87 @@
   function moveLabel(mv, n) {
     return String.fromCharCode(65 + mv.x) + (n - mv.y);
   }
+  // #368 phones: one cell per move, three per row (CSS shows this list instead of the pairs on phones).
+  //
+  // Both lists are append-only during play, so a move appends one row instead of rebuilding the
+  // whole list (perf/play-lag: the full rebuild — one inline SVG per move — reached ~50 ms per move
+  // late in a game on a 4×-throttled phone). Anything that is not "exactly one more move on top of
+  // what is drawn" (undo, resync, new game, look change) falls back to a full rebuild.
+  const movesView = { sig: null, count: 0, last: null };
+  const moveKey = (mv) => (mv ? `${mv.x},${mv.y},${mv.color}` : null);
+
+  function renderMovesGridRow(mv, i, n, piece, cur) {
+    return `<li${cur ? ' class="moves-grid__cur"' : ''}><em>${i + 1}.</em>${piece(mv.color)}<b>${moveLabel(mv, n)}</b></li>`;
+  }
+  function renderMovesPairRow(hist, i, n) {
+    const a = hist[i], b = hist[i + 1];
+    const last = (j) => (j === hist.length - 1 ? ' class="moves__cur"' : '');
+    return `<li><span class="moves__n">${i / 2 + 1}</span><span${last(i)}>${moveLabel(a, n)}</span><span${b ? last(i + 1) : ''}>${b ? moveLabel(b, n) : ''}</span></li>`;
+  }
+
   function renderMoves() {
     const el = document.getElementById('moves-list');
     if (!el) return;
+    const grid = document.getElementById('moves-grid');
     const st = S();
     const gs = st.gameState;
     const hist = (gs && gs.moveHistory) || [];
     if (!hist.length) {
-      el.innerHTML = `<li class="moves__empty">${t('room.moves_empty')}</li>`;
+      const empty = `<li class="moves__empty">${t('room.moves_empty')}</li>`;
+      if (grid) grid.innerHTML = empty;
+      el.innerHTML = empty;
+      movesView.sig = null; movesView.count = 0; movesView.last = null;
       return;
     }
     const n = gs.boardSize;
-    let html = '';
-    for (let i = 0; i < hist.length; i += 2) {
-      const a = hist[i], b = hist[i + 1];
-      const last = (j) => (j === hist.length - 1 ? ' class="moves__cur"' : '');
-      html += `<li><span class="moves__n">${i / 2 + 1}</span><span${last(i)}>${moveLabel(a, n)}</span><span${b ? last(i + 1) : ''}>${b ? moveLabel(b, n) : ''}</span></li>`;
+    // One icon string per colour per render, not one boardPieceSvg() call per move.
+    const icons = typeof global.boardPieceSvg === 'function'
+      ? { BLACK: global.boardPieceSvg(1, 'moves-grid__pc'), WHITE: global.boardPieceSvg(2, 'moves-grid__pc') }
+      : { BLACK: '', WHITE: '' };
+    const piece = (c) => (c === 'BLACK' ? icons.BLACK : icons.WHITE);
+    const sig = `${n}|${icons.BLACK}|${icons.WHITE}`;
+    const k = hist.length;
+    const drawnMatches = movesView.sig === sig && movesView.count > 0 && moveKey(hist[movesView.count - 1]) === movesView.last;
+
+    if (drawnMatches && k === movesView.count) return; // nothing new (e.g. a timer-only refresh)
+
+    if (drawnMatches && k === movesView.count + 1) {
+      const i = k - 1, mv = hist[i];
+      if (grid) {
+        const prev = grid.querySelector('.moves-grid__cur');
+        if (prev) prev.classList.remove('moves-grid__cur');
+        grid.insertAdjacentHTML('beforeend', renderMovesGridRow(mv, i, n, piece, true));
+      }
+      const prevCur = el.querySelector('.moves__cur');
+      if (prevCur) prevCur.classList.remove('moves__cur');
+      const lastRow = el.lastElementChild;
+      if (i % 2 === 1 && lastRow && lastRow.children[2]) {
+        lastRow.children[2].textContent = moveLabel(mv, n); // white fills the open pair
+        lastRow.children[2].className = 'moves__cur';
+      } else {
+        el.insertAdjacentHTML('beforeend', renderMovesPairRow(hist, i, n));
+      }
+    } else {
+      if (grid) grid.innerHTML = hist.map((mv, i) => renderMovesGridRow(mv, i, n, piece, i === k - 1)).join('');
+      let html = '';
+      for (let i = 0; i < k; i += 2) html += renderMovesPairRow(hist, i, n);
+      el.innerHTML = html;
     }
-    el.innerHTML = html;
-    const pane = document.getElementById('tab-moves');
-    if (pane) pane.scrollTop = pane.scrollHeight;
+    movesView.sig = sig; movesView.count = k; movesView.last = moveKey(hist[k - 1]);
+    scrollMovesToEnd();
+  }
+  // Reading scrollHeight right after the DOM write forces a synchronous layout of the whole page
+  // inside the game:moved handler (~10 ms/move at 4× CPU). In the next frame callback that layout is
+  // the one the frame does anyway; one pending scroll per frame.
+  let movesScrollPending = false;
+  function scrollMovesToEnd() {
+    if (movesScrollPending) return;
+    movesScrollPending = true;
+    requestAnimationFrame(() => {
+      movesScrollPending = false;
+      const pane = document.getElementById('tab-moves');
+      if (pane) pane.scrollTop = pane.scrollHeight;
+    });
   }
 
   // ── Timer rendering ───────────────────────────────────────────────────────
@@ -487,7 +548,7 @@
   function tile(action, icon, labelKey, attrs = '') {
     const isArmed = armed && armed.action === action;
     return `<button class="act${isArmed ? ' act--confirm' : ''}" type="button" data-action="${action}" ${attrs}>
-      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-${icon}"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-${icon}"></use></svg>
       <span>${isArmed ? t('room.btn_confirm') : t(labelKey)}</span>
     </button>`;
   }
@@ -501,16 +562,15 @@
 
     if (!st.gameState || st.gameState.status !== 'ongoing' || !myPlayer) {
       disarm(false);
-      el.innerHTML = '';
       renderDrawPrompt();
-      requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
+      setControlsHtml(el, '');
       return;
     }
 
     const friendly = st.gameState.rated !== true;
     const timeTitle = escAttr(t('game.btn_time'));
     const undoTitle = escAttr(t('game.btn_undo'));
-    el.innerHTML =
+    const html =
       (friendly ? tile('doUndoRequest', 'arrow-counter-clockwise', 'room.act_undo',
         `title="${undoTitle}" ${st.undoOfferPending ? 'disabled' : ''}`) : '') +
       (friendly ? tile('doRequestTime', 'hourglass', 'room.act_time',
@@ -522,6 +582,20 @@
     renderTimePrompt();
     renderUndoPrompt();
     renderConfirmPrompt();
+    setControlsHtml(el, html);
+  }
+
+  /**
+   * Write #game-controls and re-fit the board — only when the markup actually changed. This runs
+   * on every move; rebuilding identical buttons and forcing a resize() (a synchronous re-layout
+   * plus a second full board redraw) per move was a measured per-move cost (perf/play-lag) and the
+   * same per-move resize #90 removed from the tournament page. The board only needs re-fitting
+   * when the controls row changes height (empty ↔ buttons, swap2 ↔ normal).
+   */
+  function setControlsHtml(el, html) {
+    if (el.__html === html) return; // other writers (initBoard, renderSwap2) reset __html
+    el.innerHTML = html;
+    el.__html = html;
     requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });
   }
 
@@ -567,7 +641,7 @@
   // One toast row: icon, one line of text, optional countdown, optional buttons.
   function gtoast(icon, text, { danger = false, count = '', pct = null, actions = '' } = {}) {
     return `<div class="gtoast${danger ? ' gtoast--danger' : ''}" role="alert">
-      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-${icon}"></use></svg>
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-${icon}"></use></svg>
       <span class="gtoast__t">${text}</span>
       ${count ? `<b class="gtoast__n">${count}</b>` : ''}
       ${actions}
@@ -576,8 +650,8 @@
   }
 
   function answerButtons(acceptAction, declineAction) {
-    return `<button class="gtoast__btn gtoast__btn--ok" type="button" data-action="${acceptAction}" title="${escAttr(t('game.btn_accept'))}" aria-label="${escAttr(t('game.btn_accept'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-check"></use></svg></button>
-      <button class="gtoast__btn" type="button" data-action="${declineAction}" title="${escAttr(t('game.btn_decline'))}" aria-label="${escAttr(t('game.btn_decline'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-x"></use></svg></button>`;
+    return `<button class="gtoast__btn gtoast__btn--ok" type="button" data-action="${acceptAction}" title="${escAttr(t('game.btn_accept'))}" aria-label="${escAttr(t('game.btn_accept'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-check"></use></svg></button>
+      <button class="gtoast__btn" type="button" data-action="${declineAction}" title="${escAttr(t('game.btn_decline'))}" aria-label="${escAttr(t('game.btn_decline'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-x"></use></svg></button>`;
   }
 
   // ── Swap2 opening UI ──────────────────────────────────────────────────────
@@ -657,6 +731,7 @@
         `title="${escAttr(t('game.btn_undo'))}" ${st.undoOfferPending ? 'disabled' : ''}`)}</div>`;
     }
     el.innerHTML = html;
+    el.__html = undefined; // the next renderGameControls() must rewrite, not skip
     // Same empty/populated-height concern as renderGameControls() above —
     // swap2 also writes directly into #game-controls.
     requestAnimationFrame(() => { if (S().boardRenderer) S().boardRenderer.resize(); });

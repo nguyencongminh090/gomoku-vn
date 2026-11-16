@@ -21,6 +21,7 @@
  *   window.sitDown(slot)     — onclick shim
  *   window.standUp()         — onclick shim
  *   window.confirmStart()    — onclick shim (Start modal)
+ *   window.leaveMatch()      — quick-match "Về trang chủ" (#365)
  *   window.kickUser(userId)  — onclick shim
  *   window.updateSettings()  — onclick shim
  */
@@ -77,23 +78,193 @@
   // below read the same as before.
   const escapeAttr = (str) => global.EscapeUtils.escapeAttr(str);
 
+  // ── Copy table code + QR (join link) ──────────────────────────────────────
+
+  const joinUrl = (code) => `${location.origin}/room.html?id=${encodeURIComponent(code)}`;
+
+  async function copyText(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch (_) { return false; }
+  }
+
+  async function copyCode() {
+    const code = roomIdNav && roomIdNav.dataset.code;
+    if (!code) return;
+    if (await copyText(code) && window.showToast) window.showToast(t('room.code_copied'), 'success', 1800);
+  }
+  if (roomIdNav) {
+    roomIdNav.setAttribute('role', 'button');
+    roomIdNav.tabIndex = 0;
+    roomIdNav.style.cursor = 'pointer';
+    roomIdNav.addEventListener('click', copyCode);
+    roomIdNav.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); copyCode(); } });
+  }
+
+  function qrSvg(text) {
+    const qr = window.qrcode(0, 'M');
+    qr.addData(text);
+    qr.make();
+    return qr.createSvgTag({ cellSize: 6, margin: 4, scalable: true });
+  }
+
+  function openQrModal() {
+    const code = roomIdNav && roomIdNav.dataset.code;
+    if (!code || !window.qrcode) return;
+    const url = joinUrl(code);
+    const ov = document.createElement('div');
+    ov.className = 'modal-overlay visible';
+    ov.innerHTML = `
+      <div class="modal room-qr" role="dialog" aria-modal="true" aria-label="${escapeHtml(t('room.qr_title'))}">
+        <div class="room-qr__code">${escapeHtml(code)}</div>
+        <div class="room-qr__img">${qrSvg(url)}</div>
+        <div class="room-qr__hint">${escapeHtml(t('room.qr_hint'))}</div>
+        <div class="room-qr__actions">
+          <button type="button" class="btn-primary" data-qr="copy">${escapeHtml(t('room.link_copy'))}</button>
+          <button type="button" class="btn-secondary" data-qr="close">${escapeHtml(t('common.close_x'))}</button>
+        </div>
+      </div>`;
+    const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    ov.addEventListener('click', async (e) => {
+      if (e.target === ov) return close();
+      const act = e.target.closest('[data-qr]');
+      if (!act) return;
+      if (act.dataset.qr === 'close') return close();
+      if (await copyText(url) && window.showToast) window.showToast(t('room.code_copied'), 'success', 1800);
+    });
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(ov);
+  }
+  const qrBtn = document.getElementById('btn-room-qr');
+  if (qrBtn) qrBtn.addEventListener('click', () => { closeNavPops(); openQrModal(); });
+
+  // ── Nav menu ≡ + rules popover (#376) ─────────────────────────────────────
+  // One of the two is open at a time. Desktop: dropdown/popover under the nav; phones: bottom sheets over a
+  // scrim (CSS). Closed by the toggle again, the scrim, Escape or a click anywhere outside.
+  const menuBtn   = document.getElementById('btn-room-menu');
+  const menuEl    = document.getElementById('room-menu');
+  const rulesBtn  = document.getElementById('btn-room-rules');
+  const rulesPop  = document.getElementById('rules-pop');
+  const navScrim  = document.getElementById('rnav-scrim');
+  const POPS = [[menuBtn, menuEl], [rulesBtn, rulesPop]];
+
+  function setPop(btn, el, open) {
+    if (!btn || !el) return;
+    el.hidden = !open;
+    btn.setAttribute('aria-expanded', String(open));
+  }
+  function closeNavPops() {
+    for (const [b, el] of POPS) setPop(b, el, false);
+    if (navScrim) navScrim.hidden = true;
+  }
+  const openPop = () => POPS.find(([b, el]) => b && el && !el.hidden);
+  function togglePop(btn, el) {
+    const open = el.hidden;
+    closeNavPops();
+    if (!open) return;
+    setPop(btn, el, true);
+    if (navScrim) navScrim.hidden = false;
+  }
+  if (menuBtn && menuEl) menuBtn.addEventListener('click', (e) => { e.stopPropagation(); togglePop(menuBtn, menuEl); });
+  if (rulesBtn && rulesPop) rulesBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    renderRules();
+    // Desktop popover starts under the rules line (offsetParent = the sticky nav); the phone sheet ignores it.
+    rulesPop.style.setProperty('--rules-x', Math.max(8, rulesBtn.offsetLeft - 8) + 'px');
+    togglePop(rulesBtn, rulesPop);
+  });
+  if (navScrim) navScrim.addEventListener('click', closeNavPops);
+  document.addEventListener('keydown', (e) => {
+    const opener = e.key === 'Escape' && openPop();
+    if (!opener) return;
+    closeNavPops();
+    opener[0].focus();
+  });
+  document.addEventListener('click', (e) => {
+    if (!openPop()) return;
+    if (POPS.some(([, el]) => el && el.contains(e.target))) return;
+    closeNavPops();
+  });
+  if (menuEl) menuEl.addEventListener('click', (e) => { if (e.target.closest('a')) closeNavPops(); });
+
+  const menuRulesBtn = document.getElementById('btn-menu-rules');
+  if (menuRulesBtn && rulesBtn) menuRulesBtn.addEventListener('click', (e) => { e.stopPropagation(); closeNavPops(); rulesBtn.click(); });
+
+  const inviteBtn = document.getElementById('btn-room-invite');
+  if (inviteBtn) inviteBtn.addEventListener('click', async () => {
+    closeNavPops();
+    const code = roomIdNav && roomIdNav.dataset.code;
+    if (code && await copyText(joinUrl(code)) && window.showToast) window.showToast(t('room.invite_copied'), 'success', 1800);
+  });
+  const settingsBtn = document.getElementById('btn-room-settings');
+  if (settingsBtn) settingsBtn.addEventListener('click', () => {
+    closeNavPops();
+    if (typeof global.openSettingsPanel === 'function') global.openSettingsPanel();
+  });
+
+  // The rules this table plays (room settings are locked while a game runs — RoomManager.updateSettings — so
+  // roomData.settings is also the live game's rule set). Text mirrors GameEngine's win check.
+  const RULE_EXAMPLES = {
+    // cells: x = own stone, o = opponent, '' = empty; ok = wins?
+    freestyle: { cells: ['', 'x', 'x', 'x', 'x', 'x', 'x', ''], ok: true,  key: 'rules.ex_freestyle' },
+    standard:  { cells: ['', 'x', 'x', 'x', 'x', 'x', 'x', ''], ok: false, key: 'rules.ex_standard' },
+    caro:      { cells: ['o', 'x', 'x', 'x', 'x', 'x', 'o'],    ok: false, key: 'rules.ex_caro' },
+  };
+
+  function activeRules() {
+    const s = (S() && S().roomData && S().roomData.settings) || {};
+    const win = ['freestyle', 'standard', 'caro'].includes(s.winningRule) ? s.winningRule : 'freestyle';
+    const list = [{ id: win, name: getWinningRuleLabel(win), kind: 'rules.kind_win', desc: `rules.${win}_desc` }];
+    if (s.ruleWall)   list.push({ id: 'wall',   name: t('room.rule_wall'),   kind: 'rules.kind_variant', desc: 'rules.wall_desc' });
+    if (s.rulePortal) list.push({ id: 'portal', name: t('room.rule_portal'), kind: 'rules.kind_variant', desc: 'rules.portal_desc' });
+    if (s.ruleSwap2)  list.push({ id: 'swap2',  name: 'Swap2',               kind: 'rules.kind_opening', desc: 'rules.swap2_desc' });
+    return list;
+  }
+
+  function exampleHtml(ex) {
+    const cells = ex.cells.map((c) => `<span class="rex__c${c ? ' rex__c--' + c : ''}">${c === 'x' ? '✕' : c === 'o' ? '○' : ''}</span>`).join('');
+    return `<div class="rex"><span class="rex__cells" aria-hidden="true">${cells}</span>`
+      + `<span class="rex__verdict rex__verdict--${ex.ok ? 'ok' : 'no'}">${ex.ok ? '✓' : '✗'} ${escapeHtml(t(ex.key))}</span></div>`;
+  }
+
+  /** The nav's rules line ("Luật 2 · Ô khoá") + the popover body. */
+  function renderRules() {
+    const list = activeRules();
+    const line = document.getElementById('room-rules-text');
+    // Full line on desktop; phones show the win rule + a count of the rest ("Luật 2 +1") — CSS picks one.
+    if (line) {
+      line.innerHTML = `<span class="rnav__rules-full">${list.map((r) => `<span>${escapeHtml(r.name)}</span>`).join('<i class="rnav__dot" aria-hidden="true">·</i>')}</span>`
+        + `<span class="rnav__rules-short" aria-hidden="true">${escapeHtml(list[0].name)}${list.length > 1 ? ' +' + (list.length - 1) : ''}</span>`;
+    }
+    const sub = document.getElementById('room-menu-rules');
+    if (sub) sub.textContent = list.map((r) => r.name).join(' · ');
+    const title = document.getElementById('room-menu-title');
+    const code = roomIdNav && roomIdNav.dataset.code;
+    if (title && code) title.textContent = t('room.table_label', { code }) + ' · ' + t(isRatedNow() ? 'room.mode_rated' : 'room.mode_friendly');
+    const body = document.getElementById('rules-pop-body');
+    if (!body) return;
+    body.innerHTML = list.map((r) => `
+      <section class="rules-pop__rule" data-rule="${r.id}">
+        <h3><span>${escapeHtml(r.name)}</span><span class="rules-pop__kind rules-pop__kind--${r.kind.slice(11)}">${escapeHtml(t(r.kind))}</span></h3>
+        <p>${escapeHtml(t(r.desc))}</p>
+        ${RULE_EXAMPLES[r.id] ? exampleHtml(RULE_EXAMPLES[r.id]) : ''}
+      </section>`).join('');
+  }
+
   // ── Main render entry ─────────────────────────────────────────────────────
 
   function updateUI() {
     const st = S();
     if (!st.roomData) return;
 
-    // Nav shows the room name on desktop and the short room ID on mobile (CSS
-    // swaps them) so a room identifier survives the icon-only mobile nav; the
-    // title attribute carries the full name for tap/long-press either way.
+    // #376 ticket, first segment: the short code + a copy icon (click copies the code). The room name rides in
+    // the title attribute (tap/long-press) — the code is what people type to join.
     const roomName = st.roomData.roomName || st.roomData.roomId;
-    roomIdNav.innerHTML = `
-      <span class="topnav__room-name">${escapeHtml(roomName)}</span>
-      <span class="topnav__room-code">${escapeHtml(st.roomData.roomId)}</span>
-    `;
-    roomIdNav.title = roomName === st.roomData.roomId
+    roomIdNav.innerHTML = `<span class="rnav__code-text">${escapeHtml(st.roomData.roomId)}</span>`
+      + '<svg class="icon rnav__copy" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-copy"></use></svg>';
+    roomIdNav.title = (roomName === st.roomData.roomId
       ? roomName
-      : `${roomName} (${st.roomData.roomId})`;
+      : `${roomName} (${st.roomData.roomId})`) + ' — ' + t('room.link_copy');
+    roomIdNav.dataset.code = st.roomData.roomId;
     document.title = `Play3CR — ${roomName}`;
 
     const me = st.roomData.users.find(u => u.userId === st.myUser.userId);
@@ -107,6 +278,7 @@
 
     renderPlayerCards();
     renderModeBadge();
+    renderRules();
     renderSettings();
     renderUsersList();
     renderScoreTable();
@@ -200,7 +372,8 @@
     el.dataset.slot = String(slotNum);
     el.classList.remove('seatcard--turn', 'seatcard--low');
     if (!player) {
-      const canSit = st.mySlot === null && st.roomData.state !== 'playing';
+      // #365: a quick-match pair is fixed — nobody else takes a seat.
+      const canSit = st.mySlot === null && st.roomData.state !== 'playing' && !st.roomData.matchmade;
       el.classList.add('seatcard--empty');
       delete el.dataset.clock;
       el.innerHTML = canSit
@@ -216,8 +389,8 @@
     const piece = clock.stone !== 'none' && typeof global.boardPieceSvg === 'function'
       ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
-    const standBtn = (isMe && st.roomData.state !== 'playing')
-      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-x"></use></svg></button>`
+    const standBtn = (isMe && st.roomData.state !== 'playing' && !st.roomData.matchmade)
+      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
       <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
@@ -311,7 +484,8 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.title = t(rated ? 'room.mode_rated' : 'room.mode_friendly'); // #376: icon-only in the ticket, text is sr-only
   }
 
   // ── Start modal (ready window) ──────────────────────────────────────────
@@ -324,6 +498,54 @@
 
   let startModalCountdownHandle = null;
 
+  function stopStartModalCountdown() {
+    if (startModalCountdownHandle) {
+      clearInterval(startModalCountdownHandle);
+      startModalCountdownHandle = null;
+    }
+  }
+
+  /** Tick `#start-modal-countdown` toward `deadline` (server-clock epoch ms); hides the line when none. */
+  function runStartModalCountdown(deadline) {
+    const wrap = document.getElementById('start-modal-countdown-wrap');
+    const el = document.getElementById('start-modal-countdown');
+    stopStartModalCountdown();
+    if (!deadline) { if (wrap) wrap.style.display = 'none'; return; }
+    if (wrap) wrap.style.display = '';
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((deadline - serverNow()) / 1000));
+      if (el) el.textContent = String(remaining);
+    };
+    tick();
+    startModalCountdownHandle = setInterval(tick, 250);
+  }
+
+  /**
+   * #365 post-game modal of a quick-match session. Below the cap: "Chơi tiếp (ván n/max)" (room:ready)
+   * or "Về trang chủ" (room:leave); the server closes the room when its window runs out. At the cap:
+   * only "Về trang chủ" — the server sends everyone home a few seconds later anyway.
+   */
+  function renderMatchEndModal(modal) {
+    const st = S();
+    const played = st.roomData.matchGames || 0;
+    const max = st.roomData.matchMax || 1;
+    const done = played >= max;
+    const set = (id, text, show) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (text !== null) el.textContent = text;
+      el.style.display = show ? '' : 'none';
+    };
+    set('start-modal-title', done ? t('match_end.done_title', { max }) : t('match_end.title', { n: played, max }), true);
+    set('start-modal-btn', t('match_end.again', { n: played + 1, max }), !done && !st.isReady);
+    set('start-modal-waiting', t('match_end.waiting'), !done && st.isReady);
+    set('start-modal-home', t('match_end.home'), true);
+    const label = document.querySelector('#start-modal-countdown-wrap [data-i18n]');
+    if (label) label.textContent = t('match_end.countdown_label');
+    modal.classList.add('visible');
+    runStartModalCountdown(st.roomData.readyDeadline);
+  }
+
   function renderStartModal() {
     const st = S();
     const modal = document.getElementById('start-modal');
@@ -333,19 +555,25 @@
       && st.roomData.users.some(u => u.slot === 2);
     const visible = st.mySlot !== null && bothSeated && st.roomData.state !== 'playing';
 
-    // Quick-match rooms play exactly one game: no Start modal, each page readies itself.
+    // Quick-match session (#365): the first game readies itself (no Start modal); after each game the
+    // modal turns into "Chơi tiếp (ván n/max)" + "Về trang chủ" with the server's decision countdown.
     if (st.roomData.matchmade) {
       if (st.roomData.state === 'playing') st.matchGameSeen = true;
+      // A reload between games has no matchGameSeen; the server's count still says a game was played.
+      if ((st.roomData.matchGames || 0) > 0) st.matchGameSeen = true;
       // room:updated can render several times before the server acks; one emit per 3s (a missed ready
       // window clears isReady and is retried after that).
       if (visible && !st.isReady && !st.matchGameSeen && Date.now() - (st.matchReadyAt || 0) > 3000) {
         st.matchReadyAt = Date.now();
         global.confirmStart();
       }
-      modal.classList.remove('visible');
-      // One game done: make the leave button the obvious next step.
-      const leave = document.getElementById('btn-leave');
-      if (leave) leave.classList.toggle('is-cta', !!st.matchGameSeen && st.roomData.state !== 'playing');
+      const postGame = st.mySlot !== null && !!st.matchGameSeen && st.roomData.state !== 'playing';
+      if (!postGame) {
+        modal.classList.remove('visible');
+        stopStartModalCountdown();
+        return;
+      }
+      renderMatchEndModal(modal);
       return;
     }
 
@@ -460,9 +688,39 @@
       <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-caret-right"></use></svg>
       </a>
     `;
+  }
+
+  // Personal sound volumes (move / tick / message) — same store as Settings › Trò chơi.
+  const VOLUME_KINDS = [['move', 'settings.vol_move'], ['tick', 'settings.vol_tick'], ['message', 'settings.vol_message']];
+
+  function renderVolumeControls() {
+    const am = global.audioManager;
+    if (!am || !am.getChannelVolume) return '';
+    return VOLUME_KINDS.map(([ch, key]) => {
+      const pct = Math.round(am.getChannelVolume(ch) * 100);
+      return `
+        <div class="setting-row setting-row--volume">
+          <label class="setting-label" for="r-vol-${ch}">${t(key)}</label>
+          <span class="gset-range-wrap">
+            <input type="range" class="gset-range" id="r-vol-${ch}" data-volume="${ch}" min="0" max="100" step="5" value="${pct}" />
+            <output class="gset-range__val">${pct}%</output>
+          </span>
+        </div>`;
+    }).join('');
+  }
+
+  function bindVolumeControls(root) {
+    const am = global.audioManager;
+    if (!am || !am.setChannelVolume) return;
+    root.querySelectorAll('input[data-volume]').forEach((input) => {
+      const ch = input.dataset.volume;
+      const out = input.parentNode.querySelector('output');
+      input.addEventListener('input', () => { out.textContent = input.value + '%'; am.setChannelVolume(ch, input.value / 100); });
+      input.addEventListener('change', () => am.preview(ch));
+    });
   }
 
   function renderSettings() {
@@ -549,7 +807,8 @@
 
       settingsBody.innerHTML =
         settingsGroup('settings.group_room', 'settings.group_room_hint_host', roomRows) +
-        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl());
+        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl() + renderVolumeControls());
+      bindVolumeControls(settingsBody);
       settingsBody.classList.add('open');
     } else {
       const ruleNames = [];
@@ -566,7 +825,8 @@
 
       settingsBody.innerHTML =
         settingsGroup('settings.group_room', 'settings.group_room_hint_guest', roomRows) +
-        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl());
+        settingsGroup('settings.group_personal', 'settings.group_personal_hint', renderLocalSettingsControl() + renderVolumeControls());
+      bindVolumeControls(settingsBody);
       settingsBody.classList.add('open');
     }
   }
@@ -575,7 +835,14 @@
 
   function renderUsersList() {
     const st = S();
-    const guests = st.roomData.users.filter(u => u.slot === null);
+    // #373: only viewers actually on the room page right now. 'away' (tab hidden / window unfocused / on
+    // another page of the site) and 'disconnected' (left the site; viewers keep their place, #115) are not
+    // watching — they drop from the list, the tab and the audience stack until they come back.
+    const guests = st.roomData.users.filter(u => u.slot === null && (u.presence || 'active') === 'active');
+    // #368 phones: spectators are an avatar stack in the dock, and this tab is "Tỉ số" (always shown, with an
+    // empty state) — so the hide rule below only applies on desktop.
+    const stage = global.RoomStage && global.RoomStage.active() ? global.RoomStage : null;
+    if (global.RoomStage) global.RoomStage.renderAudience(guests);
 
     // The "Khán giả" tab stays hidden until a spectator actually joins —
     // same empty-check that already governed the panel body, extended to the
@@ -583,7 +850,7 @@
     const tabBtn = document.querySelector('.tab-btn[data-tab="tab-users"]');
     if (tabBtn) {
       const scorePanel = document.getElementById('score-panel');
-      const hideTab = guests.length === 0 && !(scorePanel && !scorePanel.hidden);
+      const hideTab = !stage && guests.length === 0 && !(scorePanel && !scorePanel.hidden);
       tabBtn.style.display = hideTab ? 'none' : '';
       // Don't strand the user on a tab that just disappeared. Say "show the
       // chat tab", not "pretend the user clicked the chat button": the click
@@ -608,19 +875,10 @@
       const hostBadge = g.role === 'host'
         ? ' <span class="slot-card__role slot-card__role--host">CP</span>'
         : '';
-      // Only render a dot for the non-default presence states — a normally
-      // connected guest stays unmarked (same noise tradeoff as renderStatusDot
-      // above). Without this, a viewer whose socket dropped (no reconnect
-      // timeout for viewers — TODO.md #115) looked identical to one actually
-      // present, since the server-side `presence` field wasn't read here at all.
-      const statusDot = (g.presence === 'disconnected' || g.presence === 'away')
-        ? renderStatusDot(g)
-        : '';
       html += `
         <li>
           <span class="user-name-group">
             <span class="user-name">${escapeHtml(g.displayName)}${hostBadge}</span>
-            ${statusDot}
           </span>
           ${kickBtn}
         </li>
@@ -632,6 +890,7 @@
   // ── Score table ───────────────────────────────────────────────────────────
 
   function renderScoreTable() {
+    if (global.RoomStage) global.RoomStage.renderScores(); // #368 phone Tỉ số tab
     const st = S();
     const rawSt = st.roomData.scoreTable || {};
     const seatedPlayers = st.roomData.users.filter(u => u.slot === 1 || u.slot === 2);
@@ -682,6 +941,22 @@
       `;
     }
     scoreBody.innerHTML = html;
+    renderScoreHistory(st.roomData.scoreHistory || []);
+  }
+
+  // Earlier pairs of this room (newest first), one line each: "A 3–2 B". The table above is the current pair.
+  function renderScoreHistory(history) {
+    const box = document.getElementById('score-history');
+    if (!box) return;
+    if (!history.length) { box.hidden = true; box.innerHTML = ''; return; }
+    const rows = history.slice().reverse().map((h) => {
+      const [a, b] = h.players;
+      const wa = a ? a.win || 0 : 0, wb = b ? b.win || 0 : 0;
+      const draws = a ? a.draw || 0 : 0;
+      return `<li><span>${escapeHtml((a && a.name) || '—')}</span><b>${wa}–${wb}${draws ? ` (${draws}=)` : ''}</b><span>${escapeHtml((b && b.name) || '—')}</span></li>`;
+    }).join('');
+    box.hidden = false;
+    box.innerHTML = `<div class="score-panel__title">${t('room.score_history')}</div><ul class="score-history__list">${rows}</ul>`;
   }
 
   // ── Lang change listener ──────────────────────────────────────────────────
@@ -722,6 +997,11 @@
 
   global.confirmStart = function() {
     global.RoomClient.emit('room:ready');
+  };
+
+  // #365 quick-match "Về trang chủ": leave now; room:left navigates home.
+  global.leaveMatch = function() {
+    global.RoomClient.emit('room:leave');
   };
 
   global.kickUser = function(userId) {
@@ -796,10 +1076,12 @@
     renderPlayerCards,
     updateCardClocks,
     renderModeBadge,
+    renderRules,
     renderSettings,
     renderUsersList,
     renderScoreTable,
     renderStartModal,
+    avatarInner, // #368: the phone audience stack draws faces the same way as the seat cards
   };
 
 })(window);

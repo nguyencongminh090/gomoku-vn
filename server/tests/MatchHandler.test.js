@@ -12,6 +12,7 @@ jest.mock('../db/database', () => ({
 }));
 jest.mock('../socket/state', () => ({
   broadcastLobbyUpdate: jest.fn(),
+  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   getClientIp: (s) => s.handshake.address,
 }));

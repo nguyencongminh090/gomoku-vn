@@ -127,6 +127,42 @@ describe('send', () => {
   });
 });
 
+describe('GET /online (#361 Home picker)', () => {
+  const online = (...ids) => svc.setHooks({ onlineUsers: () => ids.map((x) => (typeof x === 'string' ? { userId: x, isGuest: false } : x)) });
+  const names = async (as) => (await call('GET', '/api/challenges/online', as)).body.players.map((p) => p.username);
+  afterEach(() => db.prepare("UPDATE users SET who_can_challenge = 'everyone'").run());
+
+  it('lists visibly-online members I may challenge, with username + displayName + avatarUrl; self excluded', async () => {
+    online(U.ann, U.bob, U.cat);
+    const r = await call('GET', '/api/challenges/online', 'ann');
+    expect(r.status).toBe(200);
+    expect(r.body.players).toEqual([
+      { userId: U.bob, username: 'bob', displayName: 'BOB', avatarUrl: null },
+      { userId: U.cat, username: 'cat', displayName: 'CAT', avatarUrl: null },
+    ]);
+  });
+
+  it('excludes guests, unknown ids and anyone whose privacy gate refuses me', async () => {
+    online({ userId: 'guest_x', isGuest: true }, 'ghost-id', U.bob, U.cat);
+    db.prepare("UPDATE users SET who_can_challenge = 'nobody' WHERE id = ?").run(U.bob);
+    db.prepare("UPDATE users SET who_can_challenge = 'friends' WHERE id = ?").run(U.cat); // not ann's friend
+    expect(await names('ann')).toEqual([]);
+  });
+
+  it('caps the list at ONLINE_MAX', async () => {
+    const ids = [];
+    for (let i = 0; i < svc.ONLINE_MAX + 5; i++) { if (!U[`o${i}`]) addUser(`o${i}`); ids.push(U[`o${i}`]); }
+    online(...ids);
+    expect(await names('ann')).toHaveLength(svc.ONLINE_MAX);
+  });
+
+  it('members only: guest 403, logged-out 401; no hook → empty list', async () => {
+    expect((await call('GET', '/api/challenges/online', 'guest')).status).toBe(403);
+    expect((await call('GET', '/api/challenges/online')).status).toBe(401);
+    expect(await names('ann')).toEqual([]);
+  });
+});
+
 describe('accept', () => {
   it('seats challenger in slot 1 and accepter in slot 2 with the chosen rule/clock/ranked; both notified; hook fires', async () => {
     const c = (await send('ann', 'bob', { rule: 'standard', time: '5+3', rated: true })).body;

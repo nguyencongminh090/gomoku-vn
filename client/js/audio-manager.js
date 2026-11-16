@@ -8,7 +8,13 @@ class AudioManager {
     constructor() {
         this.ctx = null;
         this.isMuted = localStorage.getItem('gomoku_muted') === 'true';
-        this.volume = parseFloat(localStorage.getItem('gomoku_volume') || '0.7');
+        this.volume = parseFloat(localStorage.getItem('gomoku_volume') || '1');
+        // Per-kind volume (0..1, default full), multiplied with the master `volume`.
+        this.channels = {};
+        for (const ch of AudioManager.CHANNELS) {
+            const v = parseFloat(localStorage.getItem('gomoku_vol_' + ch));
+            this.channels[ch] = Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 1;
+        }
         this.soundPool = {};
         this.isUnlocked = false;
 
@@ -68,6 +74,29 @@ class AudioManager {
         localStorage.setItem('gomoku_volume', this.volume.toString());
     }
 
+    /** Per-kind volume, 0..1. Kinds: 'move' (stone/win/lose/invalid), 'tick' (clock), 'message' (chat). */
+    getChannelVolume(ch) {
+        return this.channels[ch] === undefined ? 1 : this.channels[ch];
+    }
+
+    setChannelVolume(ch, val) {
+        if (!AudioManager.CHANNELS.includes(ch)) return;
+        const n = Number(val);
+        this.channels[ch] = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+        localStorage.setItem('gomoku_vol_' + ch, this.channels[ch].toString());
+    }
+
+    _vol(ch) {
+        return this.volume * this.getChannelVolume(ch);
+    }
+
+    /** Play one sample of a kind (used when a slider is released). */
+    preview(ch) {
+        if (ch === 'tick') this.playTimerTickSound();
+        else if (ch === 'message') this.playMessageSound();
+        else this.playMoveSound(false);
+    }
+
     /**
      * Toggle Mute State
      */
@@ -95,12 +124,14 @@ class AudioManager {
      */
     playMoveSound(isOpponent = false) {
         if (this.isMuted) return;
+        const vol = this._vol('move');
+        if (vol <= 0) return;
         this._ensureActive();
         if (!this.ctx) return;
 
         const now = this.ctx.currentTime;
         const masterGain = this.ctx.createGain();
-        masterGain.gain.setValueAtTime(this.volume, now);
+        masterGain.gain.setValueAtTime(vol, now);
         masterGain.connect(this.ctx.destination);
 
         // 1. Resonant Wood Body (Sine / Lowpass filter)
@@ -151,6 +182,8 @@ class AudioManager {
      */
     playWinSound() {
         if (this.isMuted) return;
+        const vol = this._vol('move');
+        if (vol <= 0) return;
         this._ensureActive();
         if (!this.ctx) return;
 
@@ -167,7 +200,7 @@ class AudioManager {
             osc.frequency.setValueAtTime(freq, startTime);
 
             gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(0.4 * this.volume, startTime + 0.03);
+            gain.gain.linearRampToValueAtTime(0.4 * vol, startTime + 0.03);
             gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
             osc.connect(gain);
@@ -183,6 +216,8 @@ class AudioManager {
      */
     playLoseSound() {
         if (this.isMuted) return;
+        const vol = this._vol('move');
+        if (vol <= 0) return;
         this._ensureActive();
         if (!this.ctx) return;
 
@@ -199,7 +234,7 @@ class AudioManager {
             osc.frequency.setValueAtTime(freq, startTime);
 
             gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(0.2 * this.volume, startTime + 0.04);
+            gain.gain.linearRampToValueAtTime(0.2 * vol, startTime + 0.04);
             gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
 
             osc.connect(gain);
@@ -215,6 +250,8 @@ class AudioManager {
      */
     playInvalidMoveSound() {
         if (this.isMuted) return;
+        const vol = this._vol('move');
+        if (vol <= 0) return;
         this._ensureActive();
         if (!this.ctx) return;
 
@@ -226,7 +263,7 @@ class AudioManager {
         osc.frequency.setValueAtTime(150, now);
         osc.frequency.exponentialRampToValueAtTime(80, now + 0.12);
 
-        gain.gain.setValueAtTime(0.3 * this.volume, now);
+        gain.gain.setValueAtTime(0.3 * vol, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
         osc.connect(gain);
@@ -241,6 +278,8 @@ class AudioManager {
      */
     playTimerTickSound() {
         if (this.isMuted) return;
+        const vol = this._vol('tick');
+        if (vol <= 0) return;
         this._ensureActive();
         if (!this.ctx) return;
 
@@ -252,7 +291,7 @@ class AudioManager {
         osc.frequency.setValueAtTime(1000, now);
         osc.frequency.exponentialRampToValueAtTime(400, now + 0.03);
 
-        gain.gain.setValueAtTime(0.2 * this.volume, now);
+        gain.gain.setValueAtTime(0.2 * vol, now);
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
 
         osc.connect(gain);
@@ -269,6 +308,8 @@ class AudioManager {
      */
     playMessageSound() {
         if (this.isMuted) return;
+        const vol = this._vol('message');
+        if (vol <= 0) return;
         this._ensureActive();
         if (!this.ctx) return;
 
@@ -281,7 +322,7 @@ class AudioManager {
         osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
 
         gain.gain.setValueAtTime(0.0001, now);
-        gain.gain.exponentialRampToValueAtTime(0.5 * this.volume, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.5 * vol, now + 0.02);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
 
         osc.connect(gain);
@@ -291,6 +332,8 @@ class AudioManager {
         osc.stop(now + 0.35);
     }
 }
+
+AudioManager.CHANNELS = ['move', 'tick', 'message'];
 
 // Export singleton instance globally or for ES6 modules
 if (typeof window !== 'undefined') {

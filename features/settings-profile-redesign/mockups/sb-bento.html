@@ -1,0 +1,41 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>SB Ô xếp</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* SB — bento. Different kinds of settings become differently sized tiles; the avatar is the hero tile. */
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.t{background:var(--c-surface);border-radius:22px;padding:20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.t h2{margin:0;font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-2);display:flex;align-items:center;gap:8px}
+.t-av{grid-column:span 4;grid-row:span 2;background:var(--tint);align-items:center;text-align:center;justify-content:center}
+.t-av h2{color:var(--c-brand-text)}
+.t-av .av{width:132px;height:132px;font-size:56px}
+.t-av .btns{display:flex;flex-direction:column;gap:8px;width:100%}
+.t-bio{grid-column:span 8}.t-place{grid-column:span 8}
+.t-priv{grid-column:span 6}.t-aud{grid-column:span 6}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.sr{display:flex;align-items:center;gap:10px;min-height:48px;padding:6px 6px 6px 12px;border-radius:14px;background:var(--soft)}
+.sr span.n{flex:1;font-weight:800;font-size:15px}
+.sr .icon{color:var(--c-ink-2)}
+.ar{display:flex;flex-direction:column;gap:6px}
+.bar{position:sticky;bottom:0;margin-top:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:12px 16px;background:var(--c-surface);border-radius:22px;box-shadow:0 -6px 20px -10px rgba(0,0,0,.5)}
+.bar .st{margin-left:auto;color:var(--c-ink-2);font-size:14px}
+@media(max-width:860px){.t-av,.t-bio,.t-place,.t-priv,.t-aud{grid-column:1/-1;grid-row:auto}.two{grid-template-columns:1fr}.t-av{flex-direction:row;flex-wrap:wrap;text-align:left;justify-content:flex-start}.t-av .btns{flex:1;min-width:200px}.t-av h2{flex-basis:100%}.t-av .av{width:84px;height:84px;font-size:36px}}
+</style></head><body class="mk"><main class="mk-wrap">
+<div class="mk-top rv"><h1>Cài đặt</h1></div>
+<div class="mk-tabs rv" style="--i:1" role="tablist"><button class="mk-tab" role="tab" aria-selected="true" data-i="user-circle">Hồ sơ</button><button class="mk-tab" role="tab" aria-selected="false" data-i="paint-brush">Giao diện</button><button class="mk-tab" role="tab" aria-selected="false" data-i="sliders-horizontal">Trò chơi</button><button class="mk-tab" role="tab" aria-selected="false" data-i="lock">Tài khoản</button></div>
+<div class="grid">
+ <section class="t t-av rv" style="--i:2"><h2 data-i="camera">Ảnh đại diện</h2><span class="av" id="st-avatar">M</span>
+  <div class="btns"><label class="btn btn--pri" for="st-file" data-i="camera"><span>Đổi ảnh đại diện</span></label><input type="file" id="st-file" hidden><button type="button" class="btn btn--danger" id="st-avatar-remove" data-i="trash"><span>Xoá ảnh</span></button></div>
+  <p class="hint">JPEG, PNG hoặc WebP, tối đa 2 MB. Ảnh được thu nhỏ còn 256×256.</p></section>
+ <section class="t t-bio rv" style="--i:3"><h2 data-i="quotes">Giới thiệu</h2><div class="field"><label for="st-bio" class="hint" style="font-weight:700"><span>Một hai câu để người khác biết bạn chơi thế nào.</span><span class="count" id="bio-count">0/280</span></label><textarea class="inp" id="st-bio" maxlength="280" rows="3" placeholder="Tối đa 280 ký tự">Chơi Caro từ năm 2019, thích khai cuộc chặn hai đầu.</textarea></div></section>
+ <section class="t t-place rv" style="--i:4"><h2 data-i="map-pin">Nơi ở</h2><div class="two"><div class="field"><label for="st-country" data-i="globe"><span>Quốc gia</span></label><select class="inp" id="st-country"><option>Việt Nam</option><option>Nhật Bản</option></select></div><div class="field"><label for="st-city" data-i="map-pin"><span>Thành phố</span></label><input class="inp" id="st-city" maxlength="40" value="Hà Nội"></div></div></section>
+ <section class="t t-priv rv" style="--i:5"><h2 data-i="lock">Riêng tư</h2>
+  <label class="sr"><span data-i="clock-counter-clockwise"></span><span class="n">Ẩn lịch sử ván đấu</span><span class="sw"><input type="checkbox" id="st-hide-history"><i></i></span></label>
+  <label class="sr"><span data-i="quotes"></span><span class="n">Ẩn giới thiệu</span><span class="sw"><input type="checkbox" id="st-hide-bio"><i></i></span></label>
+  <label class="sr"><span data-i="user-circle-dashed"></span><span class="n">Ẩn trạng thái trực tuyến</span><span class="sw"><input type="checkbox" id="st-hide-online" checked><i></i></span></label></section>
+ <section class="t t-aud rv" style="--i:6"><h2 data-i="users-three">Ai được liên hệ</h2>
+  <div class="ar"><span class="lab" data-i="chat-circle">Nhắn tin</span><div class="seg" role="radiogroup" aria-label="Ai được nhắn tin"><label><input type="radio" name="dm" checked><span>Mọi người</span></label><label><input type="radio" name="dm"><span>Chỉ bạn bè</span></label><label><input type="radio" name="dm"><span>Không ai</span></label></div></div>
+  <div class="ar"><span class="lab" data-i="boxing-glove">Thách đấu</span><div class="seg" role="radiogroup" aria-label="Ai được thách đấu"><label><input type="radio" name="ch" checked><span>Mọi người</span></label><label><input type="radio" name="ch"><span>Chỉ bạn bè</span></label><label><input type="radio" name="ch"><span>Không ai</span></label></div></div>
+  <div class="ar"><span class="lab" data-i="user-plus">Kết bạn</span><div class="seg" role="radiogroup" aria-label="Ai được kết bạn"><label><input type="radio" name="fr" checked><span>Mọi người</span></label><label><input type="radio" name="fr"><span>Không ai</span></label></div></div></section>
+</div>
+<div class="bar rv" style="--i:7"><button class="btn btn--pri" id="st-save" data-i="check"><span>Lưu</span></button><button type="button" class="btn" id="st-cancel" data-i="arrow-counter-clockwise"><span>Hoàn tác</span></button><a class="btn" id="st-profile-link" href="#" data-i="eye"><span>Xem hồ sơ</span></a><span class="st" id="st-saved" role="status"></span></div>
+</main><script src="../icons.js"></script><script src="../common.js"></script></body></html>

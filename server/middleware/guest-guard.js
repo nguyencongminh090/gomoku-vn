@@ -8,7 +8,7 @@
 
 const isGuestUser = (user) => !user || !user.userId || !!user.isGuest || String(user.userId).startsWith('guest_');
 
-/** @param {string} message user-facing reason, e.g. 'Khách không dùng được CLB.' */
+/** @param {string} message user-facing reason, e.g. 'Khách không dùng được nhóm.' */
 function rejectGuests(message = 'Khách không dùng được tính năng này.') {
   return (req, res, next) => {
     if (isGuestUser(req.user)) return res.status(403).json({ error: message, code: 'GUEST_FORBIDDEN' });

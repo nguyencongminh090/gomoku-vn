@@ -5,6 +5,7 @@
  *
  * Events handled:
  *   chat:message — send a message in the current room
+ *   room:react   — float a reaction (#368) to the rest of the room
  *
  * This is the socket-level wiring. Actual rate-limiting and content handling
  * are delegated to managers/ChatHandler.js.
@@ -34,6 +35,12 @@ function register(io, socket) {
     if (room) room.lastActivity = Date.now();
 
     chatManager.handleMessage(io, socket, roomId, payload.text || '');
+  });
+
+  socket.on('room:react', (payload = {}) => {
+    const roomId = roomManager.getRoomIdByUser(user.userId);
+    if (!roomId) return; // not in a room: nothing to show it to
+    chatManager.handleReaction(socket, roomId, payload && payload.kind);
   });
 }
 

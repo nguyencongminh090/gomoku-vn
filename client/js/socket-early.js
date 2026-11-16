@@ -32,7 +32,7 @@
  * connection is on the critical path" — was closed as not planned
  * (whatwg/html#8037). Calling `io()` earlier is what the platform leaves us.
  *
- * ## Ordering requirement in index.html — do not move this below the CSS
+ * ## Ordering requirement in index.html / room.html — do not move this below the CSS
  *
  * This file and its three dependencies (`socket.io.min.js`, `session.js`,
  * `socket-client.js`) must sit **above every `<link rel="stylesheet">`** in
@@ -44,10 +44,9 @@
  *
  * ## Scope
  *
- * `index.html` only, for now. `room.html`, `tournament-detail.html` and
- * `tournament-match.html` still construct their client from their entry
- * module. Rolling this out there is deliberate follow-up work, gated on the
- * measurement from this page — see docs/instruction/B145-*.md.
+ * `index.html` (#145) and `room.html` (#391, measured in its fix-log).
+ * `tournament-detail.html` and `tournament-match.html` still construct their
+ * client from their entry module.
  */
 
 (function () {

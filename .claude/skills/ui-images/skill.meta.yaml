@@ -1,0 +1,12 @@
+name: ui-images
+description: "Find, pick and download free stock photos from Pexels and Pixabay for a web design, record credits and license links, write responsive img markup"
+domain: frontend-ui-design
+tags: ui-images,stock-images,pexels,pixabay,photos,image-search,attribution,frontend
+apply_when: "a website or prototype needs photos (hero, backgrounds, cards) and there is no own photography"
+scope: global
+project: ""
+language: en
+knowledge: fe-stock-images,fe-media-assets,vbase-color,vpick-brand-attributes
+conflicts: ""
+source: "authored in tree 2026-11-12"
+last_reviewed: 2026-11-12

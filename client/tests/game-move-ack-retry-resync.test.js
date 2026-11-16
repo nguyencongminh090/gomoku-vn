@@ -227,6 +227,17 @@ describe('game:moved — receive-side gap detection', () => {
     expect(rendered.boardState).toBe(1);
   });
 
+  // #378: room data does not change on a move — the full room UI rebuild ran on every one.
+  test('a normal move does not rebuild the room UI; a game-ending move does', () => {
+    const { client, rendered } = loadRoomModules({ moveCount: 5 });
+
+    client.listeners['game:moved'](moved({ moveCount: 6 }));
+    expect(rendered.ui).toBe(0);
+
+    client.listeners['game:moved'](moved({ x: 3, moveCount: 7, gameOver: true, result: { winner: 'them' } }));
+    expect(rendered.ui).toBe(1);
+  });
+
   test('a skipped moveCount means a dropped broadcast — resync, do not apply the delta', () => {
     const { client, st } = loadRoomModules({ moveCount: 5 });
 
@@ -270,12 +281,12 @@ describe('game:moved — receive-side gap detection', () => {
     });
 
     expect(st.gameState.moveCount).toBe(11);
-    expect(client.plainEmits).toHaveLength(1);   // still just the one resync
+    expect(client.plainEmits.filter((e) => e.event === 'game:resync')).toHaveLength(1);   // still just the one resync
 
     // The next broadcast now lines up with the new baseline.
     client.listeners['game:moved'](moved({ moveCount: 12 }));
     expect(st.gameState.moveCount).toBe(12);
-    expect(client.plainEmits).toHaveLength(1);   // and no further resync
+    expect(client.plainEmits.filter((e) => e.event === 'game:resync')).toHaveLength(1);   // and no further resync
   });
 
   test.each(['game:init', 'game:swap2_state', 'game:undo_applied'])(

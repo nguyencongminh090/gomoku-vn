@@ -133,7 +133,7 @@ function playingCount(rooms) {
 
 // Lazy: MatchHandler pulls in the socket layer, which this route (and its tests) should not load eagerly.
 const defaultQueueCounts = () => require('../socket/handlers/MatchHandler').queueCounts();
-const defaultOnline = () => require('../socket/state').getOnlineUsersList().length;
+const defaultOnline = () => require('../socket/state').getOnlineUsersCount();
 const defaultQueueEta = () => require('../socket/handlers/MatchHandler').queueEstimates();
 
 const EMPTY_CONTENT = (member) => ({ news: null, forum: [], learn: null });

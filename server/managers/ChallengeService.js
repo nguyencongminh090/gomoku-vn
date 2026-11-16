@@ -42,11 +42,13 @@ class ChallengeError extends Error {
 
 /** id → { id, from, to, settings, games, stake, createdAt, timer } */
 const pending = new Map();
-let hooks = { onSeated: () => {}, onRoomChanged: () => {}, isOnline: () => false };
+const NO_HOOKS = { onSeated: () => {}, onRoomChanged: () => {}, isOnline: () => false, onlineUsers: () => [] };
+let hooks = { ...NO_HOOKS };
 
-/** @param {{onSeated?: (room, userIds) => void, onRoomChanged?: (room) => void, isOnline?: (userId) => boolean}} h */
+/** @param {{onSeated?: (room, userIds) => void, onRoomChanged?: (room) => void, isOnline?: (userId) => boolean,
+ *   onlineUsers?: () => Array<{userId, isGuest}>}} h  onlineUsers = visible presence list (hidden-online excluded) */
 function setHooks(h) {
-  hooks = { onSeated: () => {}, onRoomChanged: () => {}, isOnline: () => false, ...h };
+  hooks = { ...NO_HOOKS, ...h };
 }
 
 const publicUser = (u) => ({
@@ -113,6 +115,25 @@ function checkStake(c) {
   if (last && Date.now() - Date.parse(last) < config.SWAP_COOLDOWN_MS) {
     throw new ChallengeError('STAKE_COOLDOWN', 409, 'Hai bạn vừa đổi Elo, hãy chờ 24 giờ.');
   }
+}
+
+const ONLINE_MAX = 50;
+
+/**
+ * Home "Thách đấu" picker (#361): members visibly online right now that `fromId` may challenge
+ * (privacy gate applied here, so the list never shows someone who would refuse). Guests, self and
+ * hidden-online are excluded; capped at ONLINE_MAX (search on the client covers only these).
+ */
+function onlineCandidates(fromId) {
+  const out = [];
+  for (const o of hooks.onlineUsers() || []) {
+    if (out.length >= ONLINE_MAX) break;
+    if (!o || o.isGuest || o.userId === fromId) continue;
+    const u = database.getUserById(o.userId);
+    if (!u || !privacyGate.allowed(fromId, u.id, 'challenge')) continue;
+    out.push(publicUser(u));
+  }
+  return out;
 }
 
 function send(fromId, username, body = {}) {
@@ -228,5 +249,5 @@ function _reset() {
 }
 
 module.exports = {
-  ChallengeError, TTL_MS, MAX_OUTGOING, SEAT_GRACE_MS, setHooks, send, list, accept, close, _reset,
+  ChallengeError, TTL_MS, MAX_OUTGOING, SEAT_GRACE_MS, ONLINE_MAX, setHooks, onlineCandidates, send, list, accept, close, _reset,
 };

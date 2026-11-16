@@ -1,0 +1,57 @@
+/* Shared parts of the settings#profile mockups. Rules: every button/div has an OPAQUE background
+   (no transparent/rgba fills; tints are color-mix against a solid surface), no "a · b · c" strings. */
+*{box-sizing:border-box}
+body{margin:0;background:var(--c-bg);color:var(--c-ink);font-family:var(--font,'Nunito',system-ui,sans-serif);font-size:16px;line-height:1.5}
+body.mk{
+  --soft:color-mix(in srgb,var(--c-ink) 7%,var(--c-surface));
+  --soft-2:color-mix(in srgb,var(--c-ink) 12%,var(--c-surface));
+  --tint:color-mix(in srgb,var(--c-brand) 16%,var(--c-surface));
+  --line:color-mix(in srgb,var(--c-ink) 22%,var(--c-surface));
+  --d-fast:140ms;--d-base:240ms;--e-out:cubic-bezier(.2,.7,.2,1);
+}
+.icon{width:20px;height:20px;flex:none;fill:currentColor}
+.mk-wrap{max-width:1040px;margin:0 auto;padding:20px 16px 96px}
+.mk-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.mk-top h1{font-size:30px;font-weight:900;margin:0}
+.mk-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:20px;padding:4px;background:var(--soft);border-radius:999px;width:max-content;max-width:100%}
+.mk-tab{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border:0;border-radius:999px;background:var(--soft);color:var(--c-ink-2);font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}
+.mk-tab[aria-selected=true]{background:var(--c-surface);color:var(--c-ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:1px solid var(--line);border-radius:999px;background:var(--soft);color:var(--c-ink);font:inherit;font-weight:800;cursor:pointer;text-decoration:none;transition:background-color var(--d-fast) var(--e-out),transform var(--d-fast) var(--e-out)}
+.btn:hover{background:var(--soft-2)}
+.btn:active{transform:scale(.97)}
+.btn--pri{background:var(--c-brand);border-color:var(--c-brand);color:var(--c-on-brand)}
+.btn--pri:hover{background:var(--c-brand-dark)}
+.btn--danger{color:var(--c-error)}
+.btn.is-done{background:var(--tint);border-color:var(--tint);color:var(--c-brand-text)}
+:focus-visible{outline:3px solid var(--c-brand-text);outline-offset:2px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field>label,.lab{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--c-ink)}
+.lab .icon,.field>label .icon{color:var(--c-ink-2)}
+.inp{width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--c-field);color:var(--c-ink);font:inherit}
+textarea.inp{resize:vertical;min-height:96px}
+.hint{font-size:13px;color:var(--c-ink-2);margin:0}
+.count{margin-left:auto;font-weight:700;font-size:13px;color:var(--c-ink-2);background:var(--soft);padding:2px 8px;border-radius:999px}
+.av{display:grid;place-items:center;border-radius:50%;background:var(--c-brand);color:var(--c-on-brand);font-weight:1000;flex:none}
+.av--xl{width:96px;height:96px;font-size:40px}
+/* switch: real checkbox inside, solid track */
+.sw{position:relative;display:inline-block;width:52px;height:30px;flex:none}
+.sw input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.sw i{position:absolute;inset:0;border-radius:999px;background:var(--line);transition:background-color var(--d-base) var(--e-out)}
+.sw i::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:var(--c-knob,#fff);box-shadow:0 1px 3px rgba(0,0,0,.35);transition:transform var(--d-base) var(--e-out)}
+.sw input:checked+i{background:var(--c-brand)}
+.sw input:checked+i::after{transform:translateX(22px)}
+.sw input:focus-visible+i{outline:3px solid var(--c-brand-text);outline-offset:2px}
+/* segmented choice (radio group) */
+.seg{display:inline-flex;gap:4px;padding:4px;border-radius:999px;background:var(--soft);max-width:100%}
+.seg label{position:relative;display:inline-flex}
+.seg input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.seg span{display:inline-flex;align-items:center;min-height:36px;padding:0 14px;border-radius:999px;background:var(--soft);color:var(--c-ink-2);font-weight:800;font-size:14px;white-space:nowrap;transition:background-color var(--d-fast) var(--e-out),color var(--d-fast) var(--e-out)}
+.seg input:checked+span{background:var(--c-brand);color:var(--c-on-brand)}
+.seg input:focus-visible+span{outline:3px solid var(--c-brand-text);outline-offset:2px}
+.tag{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0 10px;border-radius:999px;background:var(--soft);font-weight:700;font-size:13px;color:var(--c-ink-2)}
+.tag--brand{background:var(--tint);color:var(--c-brand-text)}
+/* one load reveal, content is visible without it */
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.rv{animation:rise var(--d-base) var(--e-out) backwards;animation-delay:calc(var(--i,0)*70ms)}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+[hidden]{display:none!important}

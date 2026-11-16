@@ -21,6 +21,10 @@ node_modules
 !.claude/skills/ui-audit/**
 !.claude/skills/ui-fix/
 !.claude/skills/ui-fix/**
+!.claude/skills/ui-images/
+!.claude/skills/ui-images/**
+!.claude/skills/ui-motion/
+!.claude/skills/ui-motion/**
 CLAUDE.md.bak
 .DS_Store
 # Submitted diagnostic runs (TODO.md #168) — real players' IPs, geo labels and
@@ -60,3 +64,12 @@ server/db/backups/
 
 # Browser network captures (may contain cookies/tokens)
 *.har
+
+# crawled data exports (contain usernames/avatars)
+exports/
+
+# Hosting proposal (local only)
+docs/proposal/
+
+# local server logs (real usernames/IPs)
+log.txt

@@ -20,12 +20,14 @@
   const inputEl = $('pz-input');
   const resultEl = $('pz-result');
   const loginEl = $('pz-login');
+  const attemptsEl = $('pz-attempts');
 
   let puzzle = null;
   let renderer = null;
   let moves = [];        // solver's cells, in entry order
   let solved = false;
   let member = false;
+  let attemptsLeft = null; // null = unlimited (solved) or not a member
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -57,7 +59,48 @@
     inputEl.value = moves.map((m) => window.Coords.label(m.x, m.y, puzzle.boardSize)).join(', ');
     $('pz-undo').disabled = solved || !moves.length;
     $('pz-clear').disabled = solved || !moves.length;
-    $('pz-submit').disabled = solved; // typed text is only parsed on submit, so it must stay clickable with no moves yet
+    $('pz-submit').disabled = solved || attemptsLeft === 0; // typed text is only parsed on submit, so it must stay clickable with no moves yet
+  }
+
+  function renderAttempts(info) {
+    if (info) attemptsLeft = info.attemptsLeft === undefined ? null : info.attemptsLeft;
+    attemptsEl.hidden = !member || solved || attemptsLeft === null;
+    if (!attemptsEl.hidden) attemptsEl.textContent = t(attemptsLeft ? 'puzzles.attempts_left' : 'puzzles.attempts_none', { n: attemptsLeft });
+  }
+
+  function who(s) {
+    const a = el('a', s.displayName, 'prow__link');
+    a.href = '/profile/' + encodeURIComponent(s.username);
+    const n = el('span', t('puzzles.solver_tries', { n: s.tries }), 'muted small');
+    const row = el('div', undefined, 'prow');
+    const av = window.PlatformShell && window.PlatformShell.avatar ? window.PlatformShell.avatar(s.avatarUrl, s.displayName, 'avatar--sm') : null;
+    if (av) row.appendChild(av);
+    row.append(a, n);
+    return row;
+  }
+
+  async function loadSolvers() {
+    try {
+      const res = await fetch('/api/puzzles/' + encodeURIComponent(puzzle.id) + '/solvers', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      $('pz-solvers').hidden = false;
+      $('pz-solvers-h').textContent = t('puzzles.solvers_h', { n: data.total });
+      $('pz-solvers-list').replaceChildren(...(data.solvers.length ? data.solvers.map(who) : [el('span', t('puzzles.solvers_none'), 'muted small')]));
+    } catch (_) { /* optional panel */ }
+  }
+
+  async function loadHistory() {
+    if (!member) return;
+    try {
+      const res = await fetch('/api/puzzles/' + encodeURIComponent(puzzle.id) + '/attempts', { credentials: 'same-origin' });
+      if (!res.ok) return;
+      const data = await res.json();
+      renderAttempts(data);
+      $('pz-history').hidden = !data.attempts.length;
+      $('pz-history-list').replaceChildren(...data.attempts.map((a) => el('span',
+        a.moves.map((m) => window.Coords.label(m.x, m.y, puzzle.boardSize)).join(', ') + ' · ' + t(a.correct ? 'puzzles.attempt_right' : 'puzzles.attempt_wrong'), 'pbadge')));
+    } catch (_) { /* optional panel */ }
   }
 
   function refresh() {
@@ -111,7 +154,8 @@
       resultEl.hidden = false;
       if (!res.ok) {
         resultEl.className = 'pz-result is-wrong';
-        resultEl.textContent = apiError(data, t('puzzles.error'));
+        resultEl.textContent = data.code === 'PUZZLE_ATTEMPTS_EXCEEDED' ? t('puzzles.attempts_none') : apiError(data, t('puzzles.error'));
+        if (data.attemptsLeft !== undefined) renderAttempts(data);
       } else if (data.correct) {
         solved = true;
         resultEl.className = 'pz-result is-right';
@@ -120,10 +164,14 @@
         $('pz-next').hidden = false;
         refresh();
         resultEl.hidden = false;
+        renderAttempts(data);
       } else {
         resultEl.className = 'pz-result is-wrong';
         resultEl.textContent = t('puzzles.wrong');
+        renderAttempts(data);
       }
+      loadHistory();
+      loadSolvers();
     } catch (err) {
       resultEl.hidden = false;
       resultEl.className = 'pz-result is-wrong';
@@ -133,7 +181,7 @@
   }
 
   function renderInfo() {
-    $('pz-title').textContent = puzzle.title;
+    $('pz-title').textContent = window.PuzzleBoard.name(puzzle);
     $('pz-prompt').textContent = puzzle.prompt || '';
     $('pz-turn').textContent = t(puzzle.toMove === 'BLACK' ? 'puzzles.black_to_move' : 'puzzles.white_to_move');
     $('pz-input-label').textContent = t(puzzle.mode === 'final_move' ? 'puzzles.enter_final' : 'puzzles.enter_sequence');
@@ -144,7 +192,7 @@
     );
     for (const tg of puzzle.tags || []) meta.appendChild(el('span', t('puzzles.tag_' + tg), 'pbadge'));
     if (puzzle.author) meta.appendChild(el('small', t('puzzles.by', { name: puzzle.author.displayName }), 'muted'));
-    document.title = 'Play3CR — ' + puzzle.title;
+    document.title = 'Play3CR — ' + window.PuzzleBoard.name(puzzle);
     loginEl.textContent = t('puzzles.login_needed');
   }
 
@@ -171,6 +219,7 @@
       member = me.ok && !isGuestMe(await me.json().catch(() => ({})));
     } catch (_) { member = false; }
     solved = !!puzzle.solved;
+    attemptsLeft = puzzle.attemptsLeft === undefined ? null : puzzle.attemptsLeft;
 
     viewEl.hidden = false;
     renderInfo();
@@ -189,6 +238,9 @@
       resultEl.textContent = t('puzzles.already_solved');
       $('pz-next').hidden = false;
     }
+    renderAttempts();
+    loadSolvers();
+    loadHistory();
     requestAnimationFrame(() => { renderer.resize(); renderMoves(); drawBoard(); });
     window.addEventListener('resize', () => { renderer.resize(); drawBoard(); });
   }

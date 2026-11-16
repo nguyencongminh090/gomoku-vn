@@ -17,10 +17,58 @@
     return n;
   }
 
-  function row(p) {
+  /** Inline title edit; PATCH keeps status and solves (#334). */
+  function startRename(p, nameEl, btn) {
+    const input = el('input', undefined, 'pz-rename');
+    input.type = 'text';
+    input.maxLength = 60;
+    input.value = p.title;
+    const save = el('button', t('puzzles.save'), 'pbtn pbtn--primary pbtn--sm');
+    save.type = 'button';
+    const cancel = el('button', t('modal.btn_cancel'), 'pbtn pbtn--ghost pbtn--sm');
+    cancel.type = 'button';
+    const rowEl = btn.closest('.pz-mine');
+    const err = el('small', undefined, 'pz-rename-form__err');
+    err.setAttribute('role', 'alert');
+    const holder = el('span', undefined, 'pz-rename-form');
+    const fail = (text) => {
+      err.replaceChildren(window.PlatformShell.icon('ph-regular-warning'), document.createTextNode(text));
+      input.setAttribute('aria-invalid', 'true');
+      save.disabled = false;
+    };
+    const close = () => { holder.replaceWith(nameEl); btn.hidden = false; if (rowEl) rowEl.classList.remove('pz-mine--editing'); btn.focus(); };
+    holder.append(input, save, cancel, err);
+    nameEl.replaceWith(holder);
+    btn.hidden = true;
+    if (rowEl) rowEl.classList.add('pz-mine--editing');
+    cancel.addEventListener('click', close);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); save.click(); }
+      else if (e.key === 'Escape') close();
+    });
+    input.addEventListener('input', () => { input.removeAttribute('aria-invalid'); err.replaceChildren(); });
+    input.focus();
+    input.select();
+    save.addEventListener('click', async () => {
+      save.disabled = true;
+      try {
+        const res = await fetch('/api/puzzles/' + encodeURIComponent(p.id) + '/title', {
+          method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: input.value }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { fail(data.code ? t('err.' + data.code.toLowerCase()) : t('puzzles.rename_error')); return; }
+        p.title = data.title;
+        nameEl.textContent = window.PuzzleBoard.name(p);
+        close();
+      } catch (_) { fail(t('puzzles.rename_error')); }
+    });
+  }
+
+  function row(p, onDeleted) {
     const r = el('div', undefined, 'prow pz-mine');
     const main = el('div', undefined, 'pz-mine__main');
-    main.append(el('b', p.title), el('span', t('puzzles.status_' + p.status), 'pbadge pz-st pz-st--' + p.status),
+    const nameEl = el('b', window.PuzzleBoard.name(p));
+    main.append(nameEl, el('span', t('puzzles.status_' + p.status), 'pbadge pz-st pz-st--' + p.status),
       el('span', t('puzzles.level_' + p.level) + ' · ' + t('puzzles.rule_' + p.rule) + ' · ' + p.boardSize + '×' + p.boardSize, 'muted small'));
     r.appendChild(main);
     if (p.status === 'rejected' && p.reviewNote) r.appendChild(el('p', t('puzzles.reject_note', { note: p.reviewNote }), 'pnote pz-mine__note'));
@@ -33,6 +81,25 @@
       view.href = '/puzzle/' + encodeURIComponent(p.id);
       actions.appendChild(view);
     }
+    const rename = el('button', t('puzzles.rename'), 'pbtn pbtn--ghost pbtn--sm');
+    rename.type = 'button';
+    rename.addEventListener('click', () => startRename(p, nameEl, rename));
+    actions.appendChild(rename);
+    const del = el('button', t('puzzles.delete'), 'pbtn pbtn--ghost pbtn--sm');
+    del.type = 'button';
+    del.addEventListener('click', async () => {
+      if (!window.confirm(t('puzzles.delete_confirm', { title: p.title }))) return;
+      del.disabled = true;
+      try {
+        const res = await fetch('/api/puzzles/' + encodeURIComponent(p.id), { method: 'DELETE', credentials: 'same-origin' });
+        if (!res.ok && res.status !== 404) throw new Error('HTTP ' + res.status);
+        onDeleted();
+      } catch (_) {
+        del.disabled = false;
+        window.alert(t('puzzles.delete_error'));
+      }
+    });
+    actions.appendChild(del);
     r.appendChild(actions);
     return r;
   }
@@ -69,7 +136,7 @@
         const { puzzles, pagination } = data;
         canReview = !!data.canReview;
         const list = $('mn-list');
-        list.replaceChildren(...puzzles.map(row));
+        list.replaceChildren(...puzzles.map((p) => row(p, () => loadPage(page > 1 && puzzles.length === 1 ? page - 1 : page, false))));
         $('mn-count').textContent = t('puzzles.total', { n: pagination.total });
         renderPager(pagination);
         if (!puzzles.length) { msg.hidden = false; msg.textContent = t('puzzles.mine_empty'); }

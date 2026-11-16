@@ -495,3 +495,78 @@ describe('move-confirm watchdog — ack OK but our own broadcast dropped', () =>
     expect(client.resyncs()).toHaveLength(1);
   });
 });
+
+// #398: the disconnect-grace clock rides on game:interrupted / game:resumed (no separate
+// timer:sync), and the reconnecting player gets game:init alone (no game:resumed).
+describe('#398 grace events carry the clock', () => {
+  test('game:interrupted applies the paused clock — the local countdown stops', () => {
+    const { client, st } = loadRoomModules();
+    startClock(client);
+    jest.advanceTimersByTime(3000);
+
+    client.listeners['game:interrupted']({
+      playerName: 'x', secondsLeft: 60, timerSync: { ...sync({ running: false }), black: 42, white: 30 },
+    });
+    expect(st.gameState.status).toBe('interrupted');
+    expect(st.timerValues).toEqual({ black: 42, white: 30 });
+
+    jest.advanceTimersByTime(WAIT_CEILING_MS * 2);
+    expect(st.timerValues).toEqual({ black: 42, white: 30 });   // frozen, not counting down
+    expect(client.resyncs()).toHaveLength(0);
+  });
+
+  test('game:resumed (opponent side) applies the restarted clock and re-arms the watchdog', () => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+    st.gameState.currentTurn = 'them';
+
+    client.listeners['game:resumed']({ playerId: 'them', timerSync: sync() });
+    expect(st.gameState.status).toBe('ongoing');
+    expect(st.timerValues.white).toBe(CLOCK_MS / 1000);
+    expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledTimes(1);
+
+    jest.advanceTimersByTime(3000);
+    expect(st.timerValues.white).toBeLessThan(CLOCK_MS / 1000);   // counting again
+    jest.advanceTimersByTime(FIRE_AT);
+    expect(client.resyncs()).toHaveLength(1);
+  });
+
+  // #387: the chat line depends on who reads it.
+  test.each([
+    ['opponent player', 'me', 'room.reconnected', {}],
+    ['viewer', 'viewer1', 'sys.player_reconnected_resumed', { name: 'Them Name' }],
+  ])('game:resumed chat line for %s', (_label, myId, key, params) => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+    st.myUser = { userId: myId };
+    st.roomData.users = [{ userId: 'them', displayName: 'Them Name' }];
+    client.listeners['game:resumed']({ playerId: 'them', timerSync: sync() });
+    expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledTimes(1);
+    expect(window.ChatUI.appendSystemMessage).toHaveBeenCalledWith(window.t(key, params));
+    if (myId === 'viewer1') {
+      expect(window.ChatUI.appendSystemMessage.mock.calls[0][0]).toContain('Them Name');
+    }
+  });
+
+  test('game:resumed about myself (stray copy): no chat line, still resumes', () => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+    client.listeners['game:resumed']({ playerId: 'me', timerSync: sync() });
+    expect(window.ChatUI.appendSystemMessage).not.toHaveBeenCalled();
+    expect(st.gameState.status).toBe('ongoing');
+  });
+
+  test('self resume via game:init alone: status ongoing, clock running, watchdog armed, no chat line', () => {
+    const { client, st } = loadRoomModules({ gameStatus: 'interrupted' });
+
+    client.listeners['game:init']({
+      ...st.gameState,
+      status: 'ongoing',
+      currentTurn: 'them',
+      timer: { black: 60, white: 60 },
+      timerSync: sync(),
+    });
+    expect(st.gameState.status).toBe('ongoing');
+    expect(window.ChatUI.appendSystemMessage).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(FIRE_AT + 1);
+    expect(client.resyncs()).toHaveLength(1);
+  });
+});

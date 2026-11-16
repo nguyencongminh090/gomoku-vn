@@ -56,11 +56,11 @@ function asSortedKeys(entries) {
 // NOT come back as module imports — importing a file that a <script> tag has
 // already run evaluates it a second time, which is the #51 duplicate-socket
 // bug. That direction is guarded in client/tests/socket-early-connect.test.js.
-// room-entry.js is untouched: #145 is index.html-only for now.
+// #391 did the same for room-entry.js (12 → 10 imports): room.html now loads both in <head>.
 // #159 then added private-chat.js as a 6th index-entry import (+ its hint).
 // B193 added platform-shell.js (site-wide Arena header) as the 7th; B195 lobby-home.js the 8th.
 describe.each([
-  ['room.html', 'room-entry.js', 11],
+  ['room.html', 'room-entry.js', 10],
   ['index.html', 'index-entry.js', 8],
 ])('%s modulepreload hints vs %s imports (TODO.md #126)', (htmlFile, entryFile, expectedCount) => {
   test(`entry file has exactly ${expectedCount} static imports (sanity check on the count itself)`, () => {

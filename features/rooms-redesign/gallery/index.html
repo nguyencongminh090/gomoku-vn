@@ -1,0 +1,91 @@
+<title>Play3CR Phòng Mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+<style>
+/* Layout: one card per direction — notes column left, screenshot with a frame switcher right. Site tokens (Play3CR Arena). */
+:root { --bg: #ecebe8; --surface: #ffffff; --ink: #2b2926; --ink2: #5f5b52; --line: rgba(0,0,0,.12); --brand: #4d7c1f; --brand-ink: #3d6418; --chip: #f4f3f0; --be: #c2185b;
+  --font: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #161512; --surface: #262421; --ink: #e8e6e1; --ink2: #a8a49b; --line: rgba(255,255,255,.12); --brand: #4f7d1c; --brand-ink: #8bc34a; --chip: #2f2d29; --be: #f06292; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #161512; --surface: #262421; --ink: #e8e6e1; --ink2: #a8a49b; --line: rgba(255,255,255,.12); --brand: #4f7d1c; --brand-ink: #8bc34a; --chip: #2f2d29; --be: #f06292; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 24px; }
+header h1 { margin: 0; font-size: clamp(28px, 3vw, 40px); font-weight: 900; letter-spacing: -.02em; text-wrap: balance; }
+header p { margin: 8px 0 0; max-width: 75ch; color: var(--ink2); }
+header p b { color: var(--ink); }
+.be { display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--be); color: #fff; font-size: 12px; font-weight: 800; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.toc a { padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 700; font-size: 14px; }
+.toc a:focus-visible, .views button:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 2px; }
+.card { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; padding: 20px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); scroll-margin-top: 16px; }
+.card h2 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -.01em; display: flex; gap: 10px; align-items: baseline; text-wrap: balance; }
+.card h2 .id { font-size: 14px; font-weight: 800; color: var(--brand-ink); }
+.card dl { margin: 12px 0 0; display: grid; gap: 10px; }
+.card dt { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
+.card dd { margin: 2px 0 0; font-size: 15px; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.views button { font: 700 13px/1 var(--font); min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); cursor: pointer; }
+.views button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.shot { min-width: 0; }
+.frame { border-radius: 10px; border: 1px solid var(--line); overflow: auto; max-height: 820px; background: var(--chip); }
+.frame img { display: block; width: 100%; height: auto; }
+.frame.phone { max-width: 390px; margin: 0 auto; }
+.frame.tablet { max-width: 640px; margin: 0 auto; }
+footer { color: var(--ink2); font-size: 14px; }
+footer a { color: var(--brand-ink); }
+@media (max-width: 860px) { .card { grid-template-columns: minmax(0, 1fr); padding: 14px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Tab Phòng: 8 hướng thiết kế</h1>
+    <p>Mỗi mockup được chèn vào <b>trang index.html#rooms thật</b> (nav, màu, font thật) với cùng một bộ dữ liệu mẫu: 7 phòng (3 chờ đối thủ, 3 đang đấu, 1 sắp bắt đầu). Có thêm khung <b>Vắng</b> (1 phòng) và <b>Đông</b> (16 phòng) để xem bố cục có còn đứng được khi sảnh thưa hay đông. Nhãn <span class="be">cần backend</span> (chỉ ở khung Sáng 1280) đánh dấu dữ liệu server chưa gửi.</p>
+    <p>Hướng nào cũng giữ đủ 5 chức năng hiện có: Tạo phòng, Vào bằng mã, lọc Phòng/Bàn/Quan sát, bấm vào phòng để vào, và danh sách online (bấm tên để nhắn tin). Mỗi thẻ ghi rõ chức năng nào đã đổi chỗ.</p>
+    <nav class="toc" id="toc"></nav>
+  </header>
+  <main id="cards" style="display:grid;gap:24px"></main>
+  <footer>Ảnh R1: <a href="https://pixabay.com/photos/go-board-game-board-games-game-3339748/">OrcaTec</a>, ảnh R2: <a href="https://pixabay.com/photos/go-tea-casual-1579841/">magaret_1974</a>, từ <a href="https://pixabay.com/">Pixabay</a> (Pixabay Content License). Các hướng còn lại vẽ bằng CSS/SVG.</footer>
+</div>
+
+<script>
+const FRAMES = [
+  ['light-1280', 'Sáng 1280'], ['dark-1280', 'Tối 1280'], ['light-1280-sparse', 'Vắng 1280'], ['dark-1280-busy', 'Đông 1280'],
+  ['light-768', 'Tablet'], ['light-375', 'Phone sáng'], ['dark-375', 'Phone tối'], ['light-375-sparse', 'Phone vắng'],
+];
+const D = [
+  { id: 'r1-photo-hall', n: 'R1', t: 'Sảnh gỗ', idea: 'Dải ảnh hero (bàn cờ gỗ chụp thấp) mang 4 con số sống và 2 lối vào (mã phòng, Tạo phòng). Dưới là lưới thẻ bàn: ván đang đấu hiện bàn cờ thu nhỏ, bàn trống hiện bàn rỗng với nút "Ngồi vào" to.',
+    fn: 'Đủ cả 5. Tạo phòng và mã phòng chuyển lên hero; online thành dãy avatar cạnh tab.', be: 'Bàn cờ thu nhỏ (cần gửi nước đi trong lobby), rating, thời gian ván.', risk: 'Ảnh cần có lớp phủ tối để chữ đủ tương phản; hero chiếm khoảng 40% màn hình điện thoại.' },
+  { id: 'r2-tea-side', n: 'R2', t: 'Trà & cờ', idea: 'Danh sách dòng bên trái, nút hành động to bên phải mỗi dòng. Cột phải là "bàn lễ tân": ảnh trà + quân cờ, form tạo phòng ngay tại chỗ (không còn modal), mã phòng, người online kèm trạng thái.',
+    fn: 'Đủ cả 5. Tạo phòng nằm luôn trên trang (modal chỉ còn cho tuỳ chọn sâu).', be: 'Rating, thời gian ván, thời gian chờ, trạng thái từng người online.', risk: 'Trên điện thoại form tạo phòng nằm trước danh sách, nên phải cuộn xuống mới thấy phòng.' },
+  { id: 'r3-floor-plan', n: 'R3', t: 'Sơ đồ sảnh', idea: 'Tab này chính là sảnh chơi nhìn từ trên xuống: mỗi phòng là một cái bàn, có bàn cờ ở giữa, hai ghế là avatar, ghế trống nhấp nháy chữ "Ngồi", chấm nhỏ là người xem. Góc phải là "lễ tân" (mã + tạo phòng), dưới cùng là "hành lang" với người online.',
+    fn: 'Đủ cả 5. Tab lọc thành chip chú giải có chấm màu.', be: 'Bàn cờ thu nhỏ.', risk: 'Chứa ít thông tin nhất trên mỗi màn hình; khi sảnh đông (16 bàn) phải cuộn nhiều.' },
+  { id: 'r4-tv-wall', n: 'R4', t: 'Màn hình TV', idea: 'Sảnh như một kênh trực tiếp: một ván nổi bật to (người chơi, đồng hồ, số người xem), tường các ván khác, và cột "Ghế trống" ưu tiên bên phải, mỗi bàn chỉ cách một chạm là vào chơi.',
+    fn: 'Đủ cả 5. Mã phòng trên điện thoại thu lại thành nút "Mã".', be: 'Thế cờ và đồng hồ trực tiếp trong lobby (thêm lưu lượng theo từng nước đi). Đây là hướng cần backend nhiều nhất.', risk: 'Khi không có ván nào, khối lớn nhất thành trạng thái trống.' },
+  { id: 'r5-two-lanes', n: 'R5', t: 'Hai làn', idea: 'Chia theo việc bạn làm được: làn "Ngồi vào là chơi" (thẻ to) và làn "Đang đấu, vào xem" (dòng gọn). Cột phải có 3 nút mở bàn nhanh (3\', 5+5, 10\'), ô mã và đám avatar online.',
+    fn: 'Tab Phòng/Bàn/Quan sát được thay bằng 2 làn trên desktop; trên điện thoại thành công tắc 2 nút "Vào chơi / Vào xem".', be: 'Rating, thời gian chờ, bàn cờ thu nhỏ (có thể bỏ được).', risk: 'Mất tab "Tất cả"; nút mở nhanh là luồng mới (preset), cần chốt bộ preset.' },
+  { id: 'r6-departures', n: 'R6', t: 'Bảng khởi hành', idea: 'Danh sách là một bảng lật chữ ở nhà ga: mã phòng từng ô, cột kỳ thủ, luật, bàn, giờ, trạng thái (LÊN BÀN nhấp nháy). Bảng đen trên nền giấy ở cả hai chế độ, dải chữ chạy liệt kê người online.',
+    fn: 'Đủ cả 5, đổi tên tab: Tất cả / Lên bàn / Đang đấu.', be: 'Không cần. Dùng đúng dữ liệu đang có.', risk: 'Phong cách mạnh, lệch với Home (M4); dải chữ chạy cần tắt khi bật giảm chuyển động.' },
+  { id: 'r7-sentence-filter', n: 'R7', t: 'Câu lọc', idea: 'Cùng ngôn ngữ với Home: câu lớn chính là bộ lọc, "Tìm bàn [có ghế trống], chơi [Luật 1] trên [15×15], [5 phút]". Câu này cũng là cấu hình để tạo phòng: không có bàn khớp thì bấm "Mở đúng bàn này".',
+    fn: 'Đủ cả 5. Tab vẫn giữ dưới câu; mã phòng và online ở cột phải.', be: 'Không bắt buộc (lọc chạy ở client). "Khớp 4/4" chỉ là phép so sánh ở client.', risk: 'Lọc theo nhiều chiều trên vài phòng có thể ra 0 kết quả; câu lọc phải nới dần (tự gỡ bớt điều kiện).' },
+  { id: 'r8-bento', n: 'R8', t: 'Bento sảnh', idea: 'Bảng ô to nhỏ khác nhau: ô lớn "Ghế trống" với con số, ô "Ván nóng nhất", ô mã phòng, ô mở bàn một chạm (nền đậm), ô danh sách đầy đủ có tab, ô online. Ô nào cũng có trạng thái trống để buổi tối vắng vẫn trông có chủ đích.',
+    fn: 'Đủ cả 5.', be: 'Bàn cờ của ván nóng nhất, rating.', risk: 'Nhiều ô có cùng trọng lượng thị giác, mắt không biết bắt đầu từ đâu nếu không giữ ô Ghế trống nổi bật.' },
+];
+const toc = document.getElementById('toc'), cards = document.getElementById('cards');
+for (const d of D) {
+  const a = document.createElement('a'); a.href = '#' + d.n.toLowerCase(); a.textContent = d.n + ' ' + d.t; toc.append(a);
+  const c = document.createElement('section'); c.className = 'card'; c.id = d.n.toLowerCase();
+  c.innerHTML = `<div><h2><span class="id">${d.n}</span>${d.t}</h2><dl>
+    <div><dt>Ý tưởng</dt><dd>${d.idea}</dd></div><div><dt>5 chức năng</dt><dd>${d.fn}</dd></div>
+    <div><dt>Cần backend</dt><dd>${d.be}</dd></div><div><dt>Rủi ro</dt><dd>${d.risk}</dd></div></dl></div>
+    <div class="shot"><div class="views" role="group" aria-label="Khung hình ${d.n}"></div><div class="frame"><img alt="${d.n} ${d.t}" loading="lazy"></div></div>`;
+  const views = c.querySelector('.views'), frame = c.querySelector('.frame'), img = c.querySelector('img');
+  const show = (k) => {
+    img.src = `shots/${d.id}-${k}.jpg`;
+    frame.className = 'frame' + (k.includes('375') ? ' phone' : k.includes('768') ? ' tablet' : '');
+    views.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
+  };
+  for (const [k, label] of FRAMES) { const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.textContent = label; b.onclick = () => show(k); views.append(b); }
+  show('light-1280');
+  cards.append(c);
+}
+</script>

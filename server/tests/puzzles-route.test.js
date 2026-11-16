@@ -29,6 +29,7 @@ const express = require('express');
 const http = require('http');
 const database = require('../db/database');
 const puzzlesRouter = require('../routes/puzzles');
+const dmText = require('../managers/DmText');
 
 const NOW = '2026-10-10T00:00:00.000Z';
 const db = database.db;
@@ -296,13 +297,215 @@ describe('solving', () => {
 });
 
 describe('editing', () => {
-  it('only the author edits; editing an approved puzzle returns it to pending and clears solves', async () => {
-    const id = (await call('GET', '/api/puzzles?level=hard')).body.puzzles[0].id;
+  const progressCount = (id) => db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n;
+  let id;
+  beforeAll(async () => { id = (await call('GET', '/api/puzzles?level=hard')).body.puzzles[0].id; });
+
+  it('only the author edits; 404 for a missing puzzle', async () => {
     expect((await call('PUT', `/api/puzzles/${id}`, 'other', good())).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await call('PUT', '/api/puzzles/nope', 'author', good())).status).toBe(404);
+  });
+
+  it('#332: a text/level edit returns it to pending but keeps solves and attempts', async () => {
+    expect(progressCount(id)).toBeGreaterThan(0);
+    const attempts = db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n;
     expect((await call('PUT', `/api/puzzles/${id}`, 'author', good({ title: 'Mở bốn v2', level: 'medium' }))).body.status).toBe('pending');
     expect((await call('GET', '/api/puzzles?level=hard')).body.puzzles).toHaveLength(0);
+    expect(progressCount(id)).toBeGreaterThan(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n).toBe(attempts);
+  });
+
+  it('#332: changing stones or answers clears solves and attempts of an approved puzzle', async () => {
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    const answersOnly = await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']] }));
+    expect(answersOnly.body.status).toBe('pending');
+    expect(progressCount(id)).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n).toBe(0);
+  });
+
+  it('#332: re-saving identical position/answers (even with moved stone order) keeps solves', async () => {
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+    await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']], stones: [...POSITION].reverse(), tags: ['defense'] }));
+    expect(progressCount(id)).toBe(1);
+  });
+
+  it('#338: a position edit made while still pending clears solves kept from the approved version', async () => {
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+    expect((await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [['K8']], title: 'Chỉ đổi chữ' }))).body.status).toBe('pending');
+    expect(progressCount(id)).toBe(1); // text-only edit keeps them (#332)
+    await call('PUT', `/api/puzzles/${id}`, 'author', good({ answers: [[{ x: 6, y: 7 }]] })); // now the position/answers change, still pending
+    expect(progressCount(id)).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE puzzle_id = ?').get(id).n).toBe(0);
+  });
+});
+
+describe('#333 puzzle number', () => {
+  it('numbers are sequential, shown in the list and detail, and a number resolves like the id', async () => {
+    const list = (await call('GET', '/api/puzzles')).body.puzzles;
+    expect(list.every((p) => Number.isInteger(p.number) && p.number >= 1)).toBe(true);
+    const nums = db.prepare('SELECT number FROM puzzles ORDER BY number').all().map((r) => r.number);
+    expect(nums).toEqual([...new Set(nums)]); // ascending and unique; deletes may leave gaps
+    const p = list[0];
+    const byNum = await call('GET', `/api/puzzles/${p.number}`);
+    expect(byNum.body.puzzle.id).toBe(p.id);
+    expect(byNum.body.puzzle.number).toBe(p.number);
+    expect((await call('GET', '/api/puzzles/987654')).status).toBe(404);
+  });
+
+  it('a new puzzle gets max+1 even when earlier ones were rejected; the UUID id is unchanged', async () => {
+    const before = db.prepare('SELECT MAX(number) m FROM puzzles').get().m;
+    const r = await submit('solver', good());
+    expect(db.prepare('SELECT number FROM puzzles WHERE id = ?').get(r.body.id).number).toBe(before + 1);
+    expect(r.body.id).toMatch(/-/);
+    await call('POST', `/api/puzzles/${r.body.id}/review`, 'boss', { decision: 'reject', note: 'x' });
+    const r2 = await submit('solver', good());
+    expect(db.prepare('SELECT number FROM puzzles WHERE id = ?').get(r2.body.id).number).toBe(before + 2);
+  });
+});
+
+describe('#334 rename', () => {
+  let id;
+  beforeAll(async () => {
+    id = (await submit('author', good({ title: 'Cũ' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+  });
+  const rename = (as, title) => call('PATCH', `/api/puzzles/${id}/title`, as, { title });
+
+  it('the author renames an approved puzzle: status and solves stay', async () => {
+    expect((await rename('author', 'Mới <b>')).status).toBe(200);
+    const row = db.prepare('SELECT title, status FROM puzzles WHERE id = ?').get(id);
+    expect(row.status).toBe('approved');
+    expect(row.title).toBe(dmText.clean('Mới <b>'));
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n).toBe(1);
+  });
+  it('a reviewer may rename; another member gets 403; guests 403; bad titles 400; missing 404', async () => {
+    expect((await rename('boss', 'Của mod')).status).toBe(200);
+    expect((await rename('other', 'x')).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await rename('guest', 'x')).status).toBe(403);
+    expect((await rename('author', '')).body.code).toBe('PUZZLE_TITLE_INVALID');
+    expect((await rename('author', 'a'.repeat(61))).body.code).toBe('PUZZLE_TITLE_INVALID');
+    expect((await call('PATCH', '/api/puzzles/nope/title', 'author', { title: 'x' })).status).toBe(404);
+    expect(db.prepare('SELECT title FROM puzzles WHERE id = ?').get(id).title).toBe('Của mod');
+  });
+});
+
+describe('delete puzzle', () => {
+  let id;
+  const del = (as, pid) => call('DELETE', `/api/puzzles/${pid || id}`, as);
+  beforeEach(async () => {
+    id = (await submit('author', good({ title: 'Xoá tôi' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+    await call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves: ['K8'] });
+  });
+
+  it('the author deletes it: row, tags and solves are gone', async () => {
+    expect((await del('author')).status).toBe(200);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzles WHERE id = ?').get(id).n).toBe(0);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_tags WHERE puzzle_id = ?').get(id).n).toBe(0);
     expect(db.prepare('SELECT COUNT(*) n FROM puzzle_progress WHERE puzzle_id = ?').get(id).n).toBe(0);
-    expect((await call('PUT', '/api/puzzles/nope', 'author', good())).status).toBe(404);
+    expect((await call('GET', `/api/puzzles/${id}`, 'author')).status).toBe(404);
+  });
+
+  it('a reviewer may delete; another member gets 403; guests 403; missing 404', async () => {
+    expect((await del('other')).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await del('guest')).status).toBe(403);
+    expect((await del('author', 'nope')).status).toBe(404);
+    expect((await del('boss')).status).toBe(200);
+  });
+
+  it('a deleted highest #number is never handed out again', async () => {
+    const number = db.prepare('SELECT number FROM puzzles WHERE id = ?').get(id).number;
+    await del('author');
+    const next = (await submit('author', good({ title: 'Mới' }))).body.id;
+    expect(db.prepare('SELECT number FROM puzzles WHERE id = ?').get(next).number).toBeGreaterThan(number);
+  });
+});
+
+describe('#337 rename log', () => {
+  let id;
+  beforeAll(async () => {
+    id = (await submit('author', good({ title: 'Gốc' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+  });
+  const rename = (as, title) => call('PATCH', `/api/puzzles/${id}/title`, as, { title });
+  const log = (as) => call('GET', '/api/puzzles/renames', as);
+
+  it('each real rename leaves one row (old → new, who); an unchanged title leaves none', async () => {
+    const before = db.prepare('SELECT COUNT(*) n FROM puzzle_renames WHERE puzzle_id = ?').get(id).n;
+    await rename('author', 'Gốc');
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_renames WHERE puzzle_id = ?').get(id).n).toBe(before);
+    await rename('author', 'Tên hai');
+    await rename('boss', 'Tên ba');
+    const rows = db.prepare('SELECT old_title, new_title, user_id FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id').all(id);
+    expect(rows.slice(-2)).toEqual([
+      { old_title: 'Gốc', new_title: 'Tên hai', user_id: U.author },
+      { old_title: 'Tên hai', new_title: 'Tên ba', user_id: U.boss },
+    ]);
+  });
+  it('only reviewers read the log; newest first with number, status and who', async () => {
+    expect((await log('author')).body.code).toBe('PUZZLE_FORBIDDEN');
+    expect((await log('guest')).status).toBe(403);
+    expect((await call('GET', '/api/puzzles/renames')).status).toBe(401);
+    const r = await log('boss');
+    expect(r.status).toBe(200);
+    expect(r.body.renames[0]).toMatchObject({ puzzleId: id, oldTitle: 'Tên hai', newTitle: 'Tên ba', status: 'approved', by: { username: 'boss' } });
+    expect(r.body.renames[0].number).toBeGreaterThan(0);
+    expect(r.body.pagination.total).toBeGreaterThanOrEqual(2);
+  });
+  it('keeps only the newest 50 rows per puzzle', async () => {
+    for (let i = 0; i < 55; i++) await rename('author', `T${i}`);
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_renames WHERE puzzle_id = ?').get(id).n).toBe(50);
+    expect(db.prepare('SELECT new_title FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id DESC LIMIT 1').get(id).new_title).toBe('T54');
+  });
+  it('a rename never changes status or progress (#334 stays free)', async () => {
+    expect(db.prepare('SELECT status FROM puzzles WHERE id = ?').get(id).status).toBe('approved');
+  });
+});
+
+describe('#335 attempt limit + #336 attempt record', () => {
+  let id;
+  beforeAll(async () => {
+    id = (await submit('author', good({ title: 'Giới hạn' }))).body.id;
+    await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' });
+  });
+  const solve = (as, moves) => call('POST', `/api/puzzles/${id}/solve`, as, { moves });
+
+  it('3 wrong tries lock the member out (429, attemptsLeft 0); others are unaffected', async () => {
+    const r1 = await solve('other', ['A1']);
+    expect(r1.body).toMatchObject({ correct: false, attemptsUsed: 1, attemptsLeft: 2, maxAttempts: 3 });
+    await solve('other', ['A2']);
+    expect((await solve('other', ['A3'])).body.attemptsLeft).toBe(0);
+    const blocked = await solve('other', ['K8']);
+    expect(blocked.status).toBe(429);
+    expect(blocked.body).toMatchObject({ code: 'PUZZLE_ATTEMPTS_EXCEEDED', attemptsLeft: 0 });
+    expect(db.prepare('SELECT COUNT(*) n FROM puzzle_attempts WHERE user_id = ? AND puzzle_id = ?').get(U.other, id).n).toBe(3);
+    expect((await solve('solver', ['K8'])).body.correct).toBe(true);
+  });
+
+  it('malformed moves do not use a try; a solved puzzle is exempt from the cap', async () => {
+    const used = (await solve('author', ['A1'])).body.attemptsUsed;
+    expect((await solve('author', [])).status).toBe(400);
+    expect((await solve('author', ['A2'])).body.attemptsUsed).toBe(used + 1);
+    expect((await solve('solver', ['A5'])).body.attemptsLeft).toBeNull();
+    for (let i = 0; i < 4; i++) expect((await solve('solver', ['A6'])).status).toBe(200);
+  });
+
+  it('GET /attempts returns only my own tries, newest first, with the moves; login needed', async () => {
+    const mine = (await call('GET', `/api/puzzles/${id}/attempts`, 'other')).body;
+    expect(mine.attempts.map((a) => a.moves[0].y)).toEqual([12, 13, 14]); // A3, A2, A1 (rows count from the bottom)
+    expect((await call('GET', `/api/puzzles/${id}/attempts`)).status).toBe(401);
+  });
+
+  it('GET /solvers is public: who solved and in how many tries (up to the first correct)', async () => {
+    const r = await call('GET', `/api/puzzles/${id}/solvers`);
+    expect(r.status).toBe(200);
+    expect(r.body.total).toBe(1);
+    expect(r.body.solvers).toEqual([expect.objectContaining({ username: 'solver', tries: 1 })]);
+    expect(JSON.stringify(r.body)).not.toMatch(/moves/);
+    expect((await call('GET', '/api/puzzles/nope/solvers')).status).toBe(404);
   });
 });
 
@@ -368,5 +571,37 @@ describe('GET /mine paging (#279)', () => {
     expect(r.puzzles).toEqual([]);
     addUser('nopuz');
     expect((await call('GET', '/api/puzzles/mine', 'nopuz')).body.pagination.total).toBe(0);
+  });
+});
+
+describe('#331 engine verdicts: review queue hint + alternative forced wins solve', () => {
+  // Black to move. Row 8: W C8, black D8 E8 F8 (a closed three). Row 13: black F13 G13 H13 (an open three).
+  const pos = [
+    stone(2, 7, 'WHITE'), stone(3, 7, 'BLACK'), stone(4, 7, 'BLACK'), stone(5, 7, 'BLACK'),
+    stone(5, 12, 'BLACK'), stone(6, 12, 'BLACK'), stone(7, 12, 'BLACK'),
+    stone(0, 0, 'WHITE'), stone(2, 0, 'WHITE'), stone(4, 0, 'WHITE'), stone(6, 0, 'WHITE'), stone(8, 0, 'WHITE'),
+  ];
+  let id;
+  beforeAll(async () => {
+    addUser('vcf');
+    id = (await submit('vcf', good({ title: 'VCF', tags: ['vcf'], stones: pos, answers: [[{ x: 8, y: 12 }], [{ x: 13, y: 13 }]] }))).body.id;
+  });
+
+  it('the queue carries one verdict per stored line; a quiet line is unchecked, not rejected', async () => {
+    const p = (await call('GET', '/api/puzzles/review', 'boss')).body.puzzles.find((q) => q.id === id);
+    expect(p.verification).toEqual([
+      { status: 'verified', step: 1, reason: 'open_four' },
+      { status: 'unchecked', step: 1, reason: 'not_forcing' },
+    ]);
+  });
+
+  it('after approval, a forced win that is not stored solves; a non-win or a line past its win does not', async () => {
+    expect((await call('POST', `/api/puzzles/${id}/review`, 'boss', { decision: 'approve' })).status).toBe(200);
+    const solve = (moves) => call('POST', `/api/puzzles/${id}/solve`, 'solver', { moves }).then((r) => r.body.correct);
+    expect(await solve([{ x: 4, y: 12 }])).toBe(true);                    // other end of the open three
+    expect(await solve([{ x: 6, y: 7 }, { x: 8, y: 12 }])).toBe(true);    // four, forced block, open four
+    expect(await solve([{ x: 9, y: 12 }])).toBe(false);                   // quiet move
+    expect(await solve([{ x: 6, y: 7 }, { x: 7, y: 7 }])).toBe(false);    // lands on the forced block
+    expect(await solve([{ x: 8, y: 12 }, { x: 9, y: 12 }])).toBe(false);  // moves past the win
   });
 });

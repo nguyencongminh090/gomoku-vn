@@ -25,83 +25,195 @@
   const SHELL = () => window.PlatformShell;
   /** Leading sprite icon on an action button (B212); profile actions all carry one (B213). */
   const BADGE_ICONS = { first_win: 'ph-regular-flag-checkered', wins_100: 'ph-regular-medal', wins_1000: 'ph-regular-medal', top_500: 'ph-regular-trophy', top_10: 'ph-regular-trophy' };
+  // Lower tier is hidden when its higher tier is earned (B342).
+  const BADGE_SUPERSEDED_BY = { top_500: ['top_10'], wins_100: ['wins_1000'] };
   const withIcon = (node, name) => { if (name) node.prepend(SHELL().icon(name)); return node; };
 
   function setAvatar(url, name) {
-    $('pf-avatar').replaceWith(Object.assign(SHELL().avatar(url, name, 'pav--xl'), { id: 'pf-avatar' }));
+    $('pf-avatar').replaceWith(Object.assign(SHELL().avatar(url, name, 'pav--xl pf-av'), { id: 'pf-avatar' }));
+  }
+
+  const lang = () => document.documentElement.lang || undefined;
+  /** Level bar width (visual only): 1200 → 8 %, 2200+ → 100 %. */
+  const level = (r) => Math.max(8, Math.min(100, ((r - 1200) / 1000) * 100));
+  const PUZZLE_LEVELS = ['easy', 'medium', 'hard', 'expert'];
+  const fmtDelta = (d) => (d > 0 ? '+' + d : String(d));
+
+  /** "Thể loại chính" = the variant with the most rated games (ties: CATEGORIES order). */
+  function mainRating(ratings) {
+    let best = null;
+    for (const c of CATEGORIES) {
+      const r = ratings.find((x) => x.category === c);
+      if (r && (!best || r.games > best.games)) best = r;
+    }
+    return best;
+  }
+
+  function fact(label, value, cls) {
+    const d = document.createElement('div');
+    d.append(el('dt', label), el('dd', value, cls));
+    return d;
+  }
+
+  function renderSide(p, main) {
+    $('pf-side-name').textContent = p.displayName;
+    const tag = $('pf-tag');
+    tag.replaceChildren();
+    tag.hidden = !main;
+    if (main) {
+      tag.append(el('span', t('profile.tag_player', { cat: t('rankings.cat_' + main.category) })));
+      if (main.rank) tag.append(el('b', '#' + main.rank, 'num'));
+    }
+
+    const country = p.country && window.Countries ? window.Countries.name(p.country, lang() || 'vi') : '';
+    const where = [p.city, country].filter(Boolean).join(', ');
+    const joined = t('profile.joined', { date: new Date(p.createdAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' }) });
+    $('pf-joined').replaceChildren(
+      withIcon(el('span', '@' + p.username, 'pf-ell'), 'ph-regular-user-circle'),
+      ...(where ? [withIcon(el('span', where, 'pf-ell'), 'ph-regular-map-pin')] : []),
+      withIcon(el('span', joined), 'ph-regular-calendar'));
+
+    const box = $('pf-ratings');
+    box.setAttribute('aria-label', t('profile.ratings'));
+    box.replaceChildren();
+    if (!p.ratings.length) box.appendChild(el('p', t('profile.no_ratings'), 'pf-side-note'));
+    let i = 0;
+    for (const c of CATEGORIES) {
+      const r = p.ratings.find((x) => x.category === c);
+      if (!r) continue;
+      const item = el('div', undefined, 'pf-skill');
+      const head = el('div', undefined, 'pf-skill__r');
+      head.append(el('span', t('rankings.cat_' + c)), el('b', String(r.rating) + (r.provisional ? '?' : ''), 'num'));
+      const bar = el('div', undefined, 'pf-lv');
+      bar.setAttribute('role', 'img');
+      bar.setAttribute('aria-label', t('rankings.cat_' + c) + ' ' + r.rating);
+      const fill = el('i');
+      fill.style.width = level(r.rating) + '%';
+      fill.style.setProperty('--i', String(i++));
+      bar.appendChild(fill);
+      const foot = el('small', undefined, 'pf-skill__m');
+      const where = r.provisional ? t('profile.provisional_hint') : r.rank ? t('profile.rank', { rank: r.rank }) : t('profile.unranked_short');
+      foot.append(el('span', where, r.provisional ? 'pprov' : undefined), el('span', t('profile.games_n', { n: r.games }), 'num'));
+      item.append(head, bar, foot);
+      box.appendChild(item);
+    }
+  }
+
+  function renderFacts(main) {
+    const dl = $('pf-facts');
+    dl.replaceChildren();
+    dl.hidden = !main;
+    if (!main) return;
+    dl.append(fact(t('profile.fact_main'), t('rankings.cat_' + main.category)));
+    if (main.rank) dl.append(fact(t('profile.fact_rank'), '#' + main.rank, 'num'));
+    dl.append(fact(t('profile.fact_rating'), String(main.rating) + (main.provisional ? '?' : ''), 'num'));
+    if (main.delta7) {
+      dl.append(fact(t('profile.fact_week'), fmtDelta(main.delta7), 'num pf-delta ' + (main.delta7 > 0 ? 'up' : 'dn')));
+    }
+  }
+
+  function renderStats(p) {
+    const nums = $('pf-stats');
+    const note = $('pf-stats-note');
+    const wdl = $('pf-wdl');
+    nums.replaceChildren();
+    wdl.replaceChildren();
+    wdl.hidden = true;
+    note.hidden = !!p.stats;
+    if (!p.stats) { note.textContent = t('profile.history_hidden'); return; }
+    const s = p.stats;
+    const pct = s.games ? Math.round((s.wins / s.games) * 100) + '%' : '—';
+    const add = (label, v) => { const d = document.createElement('div'); d.append(el('dd', v, 'num'), el('dt', t('profile.' + label))); nums.appendChild(d); };
+    add('stats_games', String(s.games));
+    add('win_rate', pct);
+    add('stats_draws', String(s.draws));
+    if (p.streak && p.streak.best > 0) {
+      // Two plain numbers, not "3 (cao nhất 4)" (B213).
+      add('streak', String(p.streak.current));
+      add('streak_best', String(p.streak.best));
+    }
+    if (s.games > 0) {
+      const losses = Math.max(0, s.games - s.wins - s.draws);
+      for (const [cls, n] of [['w', s.wins], ['d', s.draws], ['l', losses]]) {
+        const seg = el('i', undefined, cls);
+        seg.style.width = (n / s.games) * 100 + '%';
+        wdl.appendChild(seg);
+      }
+      wdl.setAttribute('aria-label', t('profile.wdl_aria', { w: s.wins, d: s.draws, l: losses }));
+      wdl.hidden = false;
+    }
+  }
+
+  function renderBadges(p) {
+    const box = $('pf-badges');
+    box.replaceChildren();
+    // Display filter only (B342): a higher tier in the same family makes the lower one redundant.
+    const shown = (p.badges || []).filter((id) => !(BADGE_SUPERSEDED_BY[id] || []).some((hi) => (p.badges || []).includes(hi)));
+    for (const id of shown) {
+      const item = withIcon(el('div', undefined, 'pbadge'), BADGE_ICONS[id] || 'ph-regular-medal');
+      item.appendChild(el('b', t('badge.' + id)));
+      box.appendChild(item);
+    }
+    $('pf-badges-sec').hidden = !shown.length;
+  }
+
+  function renderOrg(p) {
+    // Puzzle record (7b): public, shown once the member has solved anything. No level → no dots.
+    const pz = p.puzzles && p.puzzles.solved > 0 ? p.puzzles : null;
+    const box = $('pf-puzzle-box');
+    box.replaceChildren();
+    $('pf-puzzles').hidden = !pz;
+    if (pz) {
+      const row = el('div', undefined, 'pf-skill__r');
+      row.append(el('span', pz.level ? t('profile.puzzles_level_v', { level: t('puzzles.level_' + pz.level) }) : t('profile.puzzles_solved')),
+        el('b', String(pz.solved), 'num'));
+      box.appendChild(row);
+      const idx = PUZZLE_LEVELS.indexOf(pz.level);
+      if (idx >= 0) {
+        const dots = el('div', undefined, 'pf-dots');
+        dots.setAttribute('role', 'img');
+        dots.setAttribute('aria-label', t('profile.puzzles_level_v', { level: t('puzzles.level_' + pz.level) }));
+        PUZZLE_LEVELS.forEach((_, i) => dots.appendChild(el('i', undefined, i <= idx ? 'on' : '')));
+        box.append(dots, el('small', t('profile.puzzles_solved'), 'pf-side-note'));
+      } else {
+        const hint = el('small', t('profile.puzzles_level_hint', { n: pz.threshold }), 'pf-side-note');
+        box.appendChild(hint);
+      }
+    }
+
+    const clubs = p.clubs || [];
+    $('pf-clubs-panel').hidden = clubs.length === 0;
+    $('pf-clubs').replaceChildren(...clubs.map((c) => {
+      const a = el('a', undefined, 'pf-club');
+      a.href = '/c/' + encodeURIComponent(c.slug);
+      const body = el('span', undefined, 'pf-club__b');
+      body.append(el('span', c.name, 'pf-ell pf-club__n'), el('small', t('clubs.role_' + c.role)));
+      const cnt = el('span', String(c.members), 'pf-club__cnt num');
+      cnt.title = t('clubs.members', { n: c.members });
+      a.append(SHELL().avatar(c.avatarUrl, c.name, 'pav--sq pf-club__av'), body, cnt);
+      return a;
+    }));
+    $('pf-org').hidden = !pz && clubs.length === 0;
   }
 
   function render(p) {
     document.title = 'Play3CR — ' + p.displayName;
     $('pf-name').textContent = p.displayName;
-    const country = p.country && window.Countries ? window.Countries.name(p.country, document.documentElement.lang || 'vi') : '';
-    const where = [p.city, country].filter(Boolean).join(', ');
-    const joined = t('profile.joined', { date: new Date(p.createdAt).toLocaleDateString(undefined, { month: '2-digit', year: 'numeric' }) });
-    $('pf-joined').replaceChildren(withIcon(el('span', joined), 'ph-regular-calendar'),
-      ...(where ? [withIcon(el('span', where), 'ph-regular-map-pin')] : []));
     setAvatar(p.avatarUrl, p.displayName);
+    const main = mainRating(p.ratings);
+    renderSide(p, main);
+    renderFacts(main);
 
     const bio = $('pf-bio');
     if (p.bio) bio.textContent = p.bio;
     else bio.textContent = p.isSelf && p.privacy && p.privacy.hideBio ? t('profile.bio_hidden') : (p.bio === null ? '' : t('profile.no_bio'));
+    bio.classList.toggle('pnote', !p.bio);
     $('pf-actions').hidden = !p.isSelf;
     if (p.isSelf && SHELL().setActive) SHELL().setActive('me'); // mockup: Tôi is active on the viewer's own profile
     renderSocial(p);
-
-    const stats = $('pf-stats');
-    stats.replaceChildren();
-    if (p.stats) {
-      const pct = p.stats.games ? Math.round((p.stats.wins / p.stats.games) * 100) + '%' : '—';
-      for (const [label, v] of [['stats_games', String(p.stats.games)], ['win_rate', pct], ['stats_draws', String(p.stats.draws)]]) {
-        const d = document.createElement('div');
-        d.append(el('dt', t('profile.' + label)), el('dd', v));
-        stats.appendChild(d);
-      }
-    }
-
-    const badgeBox = $('pf-badges');
-    badgeBox.replaceChildren();
-    for (const id of p.badges || []) badgeBox.appendChild(withIcon(el('span', t('badge.' + id), 'pbadge'), BADGE_ICONS[id] || 'ph-regular-medal'));
-    badgeBox.hidden = !badgeBox.childElementCount;
-    if (p.streak && (p.streak.best > 0)) {
-      // Two plain numbers, not "3 (cao nhất 4)" — that wrapped under its label on phones (B213).
-      for (const [label, v] of [['streak', p.streak.current], ['streak_best', p.streak.best]]) {
-        const d = document.createElement('div');
-        d.append(el('dt', t('profile.' + label)), el('dd', String(v)));
-        stats.appendChild(d);
-      }
-    }
-    // Puzzle record (7b): public, shown once the member has solved anything.
-    if (p.puzzles && p.puzzles.solved > 0) {
-      // No level yet: no empty "—" tile; the unlock hint moves to the solved tile.
-      const rows = [['puzzles_solved', String(p.puzzles.solved)]];
-      if (p.puzzles.level) rows.push(['puzzles_level', t('puzzles.level_' + p.puzzles.level)]);
-      for (const [label, v] of rows) {
-        const d = document.createElement('div');
-        d.append(el('dt', t('profile.' + label)), el('dd', v));
-        if (label === 'puzzles_solved' && !p.puzzles.level) d.title = t('profile.puzzles_level_hint', { n: p.puzzles.threshold });
-        stats.appendChild(d);
-      }
-    }
-
-    const cards = $('pf-ratings');
-    cards.setAttribute('aria-label', t('profile.ratings'));
-    cards.replaceChildren();
-    if (!p.ratings.length) cards.appendChild(el('p', t('profile.no_ratings'), 'pnote'));
-    for (const c of CATEGORIES) {
-      const r = p.ratings.find((x) => x.category === c);
-      if (!r) continue;
-      const card = el('div', undefined, 'pcard');
-      card.append(
-        el('span', t('rankings.cat_' + c)),
-        el('b', String(r.rating) + (r.provisional ? '?' : '')),
-        el('small', r.rank ? t('profile.rank', { rank: r.rank }) : t('profile.unranked', { games: r.games }))
-      );
-      if (r.delta7 != null) {
-        card.appendChild(el('small', t('profile.delta_week', { n: r.delta7 > 0 ? '+' + r.delta7 : String(r.delta7) }), r.delta7 > 0 ? 'up' : r.delta7 < 0 ? 'dn' : ''));
-      }
-      cards.appendChild(card);
-    }
+    renderStats(p);
+    renderBadges(p);
+    renderOrg(p);
 
     const list = $('pf-recent');
     const note = $('pf-recent-note');
@@ -115,22 +227,12 @@
       note.textContent = t('profile.no_recent');
     }
     list.append(...p.recent.map(gameRow));
+    $('pf-recent-tbl').hidden = !p.recent.length;
+    $('pf-ref').hidden = !p.recent.length;
     gamesPage = 1;
     // Show the button only when more finished games exist than the first page carried.
     $('pf-more').hidden = !p.stats || p.stats.games <= p.recent.length;
-
-    const clubs = p.clubs || [];
-    // The card itself (not an inner div) is what hides, and the grid drops its empty side column.
-    $('pf-clubs-panel').hidden = clubs.length === 0;
-    $('pf-split').classList.toggle('psplit--solo', clubs.length === 0);
-    $('pf-clubs').replaceChildren(...clubs.map((c) => {
-      const a = el('a', undefined, 'prow');
-      a.href = '/c/' + encodeURIComponent(c.slug);
-      const body = el('div', undefined, 'prow__body');
-      body.append(el('div', c.name, 'prow__t'), el('div', t('clubs.role_' + c.role) + ' · ' + t('clubs.members', { n: c.members }), 'prow__m'));
-      a.append(SHELL().avatar(c.avatarUrl, c.name, 'pav--sm pav--sq'), body);
-      return a;
-    }));
+    if (p.stats) $('pf-more-label').textContent = t('profile.load_all', { n: p.stats.games });
 
     $('pf-content').hidden = false;
     drawChart(p);
@@ -139,15 +241,16 @@
 
   let gamesPage = 1;
 
+  /** One table row per game: Ngày, Đối thủ (link to the replay, stretched over the row), Kết quả (text + colour). */
   function gameRow(g) {
-    const a = el('a', undefined, 'prow');
+    const tr = el('tr', undefined, 'pf-game');
+    const when = g.endedAt ? new Date(g.endedAt).toLocaleDateString(lang(), { day: '2-digit', month: '2-digit' }) : '';
+    const opp = el('td', undefined, 'pf-game__o');
+    const a = el('a', g.opponent, 'pf-ell');
     a.href = '/replay/' + encodeURIComponent(g.id);
-    const body = el('div', undefined, 'prow__body');
-    const when = g.endedAt ? new Date(g.endedAt).toLocaleDateString(document.documentElement.lang || undefined) : '';
-    body.append(el('div', t('profile.' + g.result) + ' vs ' + g.opponent, 'prow__t'));
-    a.append(el('span', undefined, 'pdot' + (g.result === 'win' ? ' pdot--on' : g.result === 'loss' ? ' pdot--loss' : '')), body);
-    if (when) a.append(el('span', when, 'prow__m')); // one line per game: date on the right (B213)
-    return a;
+    opp.appendChild(a);
+    tr.append(el('td', when, 'num'), opp, el('td', t('profile.' + g.result), 'pf-res pf-res--' + g.result));
+    return tr;
   }
 
   async function loadMoreGames() {
@@ -187,7 +290,7 @@
         box.append(mk('friends.accept', 'POST', base + '/accept', 'pbtn--primary', 'ph-regular-check'), mk('friends.decline', 'DELETE', base, 'pbtn--ghost', 'ph-regular-x'));
         break;
       default:
-        if (!p.can || p.can.friend) box.append(mk('friends.add', 'POST', base, 'pbtn--primary', 'ph-regular-user-plus'));
+        if (!p.can || p.can.friend) box.append(mk('friends.add', 'POST', base, '', 'ph-regular-user-plus'));
         else box.append(el('span', t('privacy.no_friend'), 'pnote'));
     }
     challengeControls(p, box);
@@ -195,7 +298,8 @@
 
   /** "Thách đấu" button → ChallengeModal with this player preselected (#222: full rules, series, stake). */
   function challengeControls(p, box) {
-    const open = withIcon(el('button', t('challenge.btn'), 'pbtn'), 'ph-regular-boxing-glove');
+    // One filled button only (DESIGN.md Hồ sơ): Thách đấu, unless an incoming request's Đồng ý already is.
+    const open = withIcon(el('button', t('challenge.btn'), 'pbtn' + (p.friendship === 'incoming' ? '' : ' pbtn--primary')), 'ph-regular-boxing-glove');
     open.type = 'button';
     const note = el('span', '', 'pnote');
     open.addEventListener('click', () => {
@@ -208,7 +312,7 @@
     const msg = withIcon(el('a', t('dm.btn'), 'pbtn'), 'ph-regular-chat-circle');
     msg.href = '/social.html#dm=' + encodeURIComponent(p.username);
     const can = p.can || { dm: true, challenge: true };
-    if (can.challenge) box.append(open);
+    if (can.challenge) box.prepend(open);
     else box.append(el('span', t('privacy.no_challenge'), 'pnote'));
     if (can.dm) box.append(msg);
     else box.append(el('span', t('privacy.no_dm'), 'pnote'));
@@ -240,10 +344,8 @@
     tabs.replaceChildren();
     svg.setAttribute('hidden', ''); // SVG elements have no .hidden property — use the attribute
     note.textContent = '';
-    $('pf-chart-title').textContent = t('profile.chart_title', { cat: '' }).replace(/\s*·\s*$/, '');
     if (!cats.length) { note.textContent = t('profile.no_ratings'); return; }
     if (!cats.includes(chart.category)) chart.category = cats[0];
-    $('pf-chart-title').textContent = t('profile.chart_title', { cat: t('rankings.cat_' + chart.category) });
     tabs.replaceChildren(...cats.map((c) => {
       const b = el('button', t('rankings.cat_' + c), 'pchip');
       b.type = 'button';
@@ -272,9 +374,20 @@
     line.setAttribute('stroke-width', '1.6');
     line.setAttribute('vector-effect', 'non-scaling-stroke');
     svg.replaceChildren(line);
-    svg.setAttribute('aria-label', t('profile.chart_title', { cat: t('rankings.cat_' + chart.category) }));
+    svg.setAttribute('aria-label', t('profile.chart_title') + ' ' + t('rankings.cat_' + chart.category));
     svg.removeAttribute('hidden');
     note.textContent = t('profile.chart_caption', { days: chart.days, peak: h.peak });
+  }
+
+  /** Own profile: copy the public /u/<name> link (kept from PF7, user 2026-11-16). */
+  async function copyLink() {
+    const note = $('pf-copy-note');
+    try {
+      await navigator.clipboard.writeText(location.origin + '/u/' + encodeURIComponent(username));
+      note.textContent = t('profile.copied');
+    } catch (_) {
+      note.textContent = t('profile.copy_failed');
+    }
   }
 
   async function load() {
@@ -295,6 +408,7 @@
     if (!/^\/u\/./.test(location.pathname)) { location.replace('/'); return; }
     SHELL().build(null);
     $('pf-more').onclick = loadMoreGames;
+    $('pf-copy').onclick = copyLink;
     load();
   });
 })();

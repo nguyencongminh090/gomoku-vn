@@ -1,0 +1,138 @@
+<style>
+/* R2 — Trà & cờ: list left, a tall "host desk" right. The desk is a photo (tea + stones) with the
+   create-room form INLINE (no modal): pick rule / board / clock / mode, press Tạo phòng. Under it the
+   code box and who is online with what they are doing. Rows get a big right-side action. */
+body.mk-r2-tea-side::after { display: none; }
+.r2 .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 28px; align-items: start; padding-top: 26px; }
+.r2-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+.r2-head h1 { margin: 0; font-size: clamp(26px, 1.6vw + 12px, 36px); font-weight: 1000; letter-spacing: -.02em; }
+.r2-head p { margin: 2px 0 0; color: var(--c-ink-2); font-size: var(--text-sm); }
+.r2-list { display: grid; gap: 10px; }
+.r2-row { position: relative; display: grid; grid-template-columns: 6px 64px minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 12px 14px 12px 0; border-radius: 14px; background: var(--c-surface); box-shadow: var(--shadow-card); overflow: hidden; cursor: pointer; transition: transform var(--d-base) var(--e-out); }
+.r2-row:hover { transform: translateX(3px); }
+.r2-bar { align-self: stretch; background: var(--c-state-playing); }
+.r2-row--open .r2-bar { background: var(--c-state-waiting); }
+.r2-row--ready .r2-bar { background: var(--c-state-idle); }
+.r2-pair { position: relative; width: 64px; height: 44px; }
+.r2-pair .av { --s: 40px; position: absolute; top: 2px; }
+.r2-pair .av:first-child { left: 0; z-index: 1; }
+.r2-pair .av:last-child { left: 24px; }
+.r2-mid { min-width: 0; display: grid; gap: 4px; }
+.r2-names { display: flex; align-items: baseline; gap: 8px; font-size: var(--text-md); min-width: 0; }
+.r2-names b { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r2-names em { font-style: normal; font-size: var(--text-xs); font-weight: 900; color: var(--c-ink-2); }
+.r2-names .seat { color: var(--c-warning); font-weight: 800; }
+.r2-names small { font-size: var(--text-xs); color: var(--c-ink-2); font-weight: 700; }
+.r2-meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--text-xs); color: var(--c-ink-2); }
+.r2-meta .nm { font-weight: 700; margin-right: 4px; }
+.r2-right { display: flex; align-items: center; gap: 14px; }
+.r2-live { display: grid; justify-items: end; gap: 2px; font-size: var(--text-xs); color: var(--c-ink-2); font-weight: 700; }
+.r2-live b { display: inline-flex; align-items: center; gap: 6px; color: var(--c-state-playing); font-weight: 900; }
+.r2-live b i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: mk-pulse 1.6s infinite; }
+.r2-right .btn { min-width: 112px; }
+.r2-empty { flex-direction: column; align-items: center; gap: 6px; padding: 40px 16px; border-radius: 14px; border: 2px dashed var(--c-border); text-align: center; color: var(--c-ink-2); }
+.r2-empty b { color: var(--c-ink); font-size: 18px; }
+
+.r2-desk { position: sticky; top: 16px; display: grid; border-radius: 20px; overflow: hidden; background: var(--c-surface); box-shadow: var(--shadow-card); }
+.r2-photo { position: relative; isolation: isolate; height: 190px; display: flex; flex-direction: column; justify-content: flex-end; padding: 18px; color: #fff; }
+.r2-photo img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 50% 40%; }
+.r2-photo::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(0deg, rgba(12,11,9,.9), rgba(12,11,9,.15) 75%); }
+.r2-photo h2 { margin: 0; font-size: 24px; font-weight: 1000; letter-spacing: -.01em; }
+.r2-photo p { margin: 2px 0 0; font-size: var(--text-sm); color: rgba(255,255,255,.8); }
+.r2-form { display: grid; gap: 12px; padding: 16px 18px 18px; }
+.r2-f { display: grid; grid-template-columns: 76px minmax(0, 1fr); align-items: center; gap: 10px; }
+.r2-f > span { font-size: var(--text-xs); font-weight: 800; color: var(--c-ink-2); text-transform: uppercase; letter-spacing: .06em; }
+.r2-seg { display: flex; padding: 3px; border-radius: 999px; background: var(--c-fill); }
+.r2-seg button { flex: 1; min-height: 34px; border-radius: 999px; font-size: var(--text-sm); font-weight: 700 !important; color: var(--c-ink-2) !important; white-space: nowrap; }
+.r2-seg button[aria-pressed="true"] { background: var(--c-surface) !important; color: var(--c-ink) !important; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+.r2-form .btn--pri { width: 100%; min-height: 48px; font-size: var(--text-md); }
+.r2-sec { display: grid; gap: 10px; padding: 14px 18px 18px; border-top: 1px solid var(--c-border); }
+.r2-sec h3 { margin: 0; font-size: var(--text-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); display: flex; justify-content: space-between; }
+.r2-code { display: flex; align-items: center; gap: 6px; }
+.r2-code .btn { margin-left: auto; }
+.r2-people { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.r2-people li { display: flex; align-items: center; gap: 10px; font-size: var(--text-sm); }
+.r2-people .av { --s: 28px; }
+.r2-people small { margin-left: auto; font-size: var(--text-xs); color: var(--c-ink-2); }
+.r2-people small.busy { color: var(--c-state-playing); font-weight: 800; }
+.r2-mobile-desk { display: none; }
+@media (max-width: 860px) {
+  .r2 .wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 14px; }
+  .r2-desk { position: static; order: -1; }
+  .r2-head { order: -2; margin: 0; }
+  .r2-head h1 { font-size: 24px; }
+  .r2-main { display: contents; }
+  .r2-photo { height: 96px; padding: 12px 14px; }
+  .r2-photo p { display: none; }
+  .r2-photo h2 { font-size: 20px; }
+  .r2-form { padding: 12px 14px 14px; gap: 8px; }
+  .r2-f { grid-template-columns: 60px minmax(0, 1fr); }
+  .r2-f--more { display: none; }
+  .r2-sec--people { display: none; }
+  .r2-sec { padding: 12px 14px; }
+  .r2-main .tabs { display: flex; margin-bottom: 8px; }
+  .r2-row { grid-template-columns: 5px 52px minmax(0, 1fr); gap: 10px; padding-right: 12px; }
+  .r2-pair { width: 52px; height: 36px; } .r2-pair .av { --s: 32px; } .r2-pair .av:last-child { left: 20px; }
+  .r2-right { grid-column: 3; justify-content: space-between; }
+  .r2-right .btn { min-width: 0; min-height: 34px; }
+  .r2-names small { display: none; }
+  .r2-meta .nm { display: none; }
+}
+.r2-main .tabs { margin-bottom: 12px; }
+</style>
+<div class="mk mk-screen r2">
+  <div class="wrap">
+    <div class="r2-main">
+      <div class="r2-head rise">
+        <div><h1>Phòng & bàn chơi</h1><p><b class="num">{{n:open}}</b> bàn chờ đối thủ · <b class="num">{{n:live}}</b> ván đang đấu · <b class="num">{{n:online}}</b> online</p></div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Lọc phòng">
+        <button role="tab" aria-selected="true">Phòng<span class="n">{{n:all}}</span></button>
+        <button role="tab" aria-selected="false">Bàn<span class="n">{{n:open}}</span></button>
+        <button role="tab" aria-selected="false">Quan sát<span class="n">{{n:seated}}</span></button>
+      </div>
+      <div class="r2-list rise rise-2">
+        <template data-list="all">
+          <article class="r2-row r2-row--{{#open}}open{{/open}}{{#live}}live{{/live}}{{#ready}}ready{{/ready}}" tabindex="0">
+            <span class="r2-bar"></span>
+            <span class="r2-pair"><span class="av" style="--h:{{p1h}}">{{p1i}}</span>{{#p2}}<span class="av" style="--h:{{p2h}}">{{p2i}}</span>{{/p2}}{{^p2}}<span class="av av--empty"></span>{{/p2}}</span>
+            <div class="r2-mid">
+              <div class="r2-names"><b>{{p1}}</b><small data-be="rating">{{p1r}}</small><em>vs</em>{{#p2}}<b>{{p2}}</b><small>{{p2r}}</small>{{/p2}}{{^p2}}<span class="seat">ghế trống</span>{{/p2}}</div>
+              <div class="r2-meta"><span class="nm">{{name}} {{code}}</span><span class="tag">{{rule}}</span><span class="tag">{{size}}</span><span class="tag">{{time}}</span><span class="tag {{#rated}}tag--brand{{/rated}}">{{mode}}</span></div>
+            </div>
+            <div class="r2-right">
+              {{#live}}<span class="r2-live" data-be="elapsed"><b><i></i>Đang đấu {{elapsed}}</b><span>{{viewers}} người xem</span></span><button class="btn btn--sec btn--sm">{{i:eye}}Xem</button>{{/live}}
+              {{#open}}<span class="r2-live" data-be="wait"><span>chờ từ 2 phút</span></span><button class="btn btn--pri btn--sm">{{i:play}}Vào chơi</button>{{/open}}
+              {{#ready}}<span class="r2-live"><span>sắp bắt đầu</span></span><button class="btn btn--sec btn--sm">{{i:eye}}Xem</button>{{/ready}}
+            </div>
+          </article>
+        </template>
+      </div>
+    </div>
+
+    <aside class="r2-desk rise rise-2" aria-label="Mở bàn">
+      <div class="r2-photo">
+        <img src="{{img:1579841}}" alt="" width="1280" height="874">
+        <h2>Mở bàn của bạn</h2>
+        <p>Chọn luật, bấm một nút, chờ người ngồi vào.</p>
+      </div>
+      <div class="r2-form">
+        <div class="r2-f"><span>Luật</span><div class="r2-seg"><button aria-pressed="true">Luật 1</button><button aria-pressed="false">Luật 2</button><button aria-pressed="false">Ô khoá</button></div></div>
+        <div class="r2-f"><span>Thời gian</span><div class="r2-seg"><button aria-pressed="false">3'</button><button aria-pressed="true">5+5</button><button aria-pressed="false">10'</button><button aria-pressed="false">…</button></div></div>
+        <div class="r2-f r2-f--more"><span>Bàn</span><div class="r2-seg"><button aria-pressed="true">15×15</button><button aria-pressed="false">19×19</button></div></div>
+        <div class="r2-f r2-f--more"><span>Chế độ</span><div class="r2-seg"><button aria-pressed="true">Xếp hạng</button><button aria-pressed="false">Giao hữu</button></div></div>
+        <button class="btn btn--pri">{{i:plus-circle}}Tạo phòng</button>
+      </div>
+      <div class="r2-sec">
+        <h3>Vào bằng mã</h3>
+        <div class="r2-code"><span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span><button class="btn btn--ink btn--sm">Vào</button></div>
+      </div>
+      <div class="r2-sec r2-sec--people">
+        <h3><span>Đang online · {{n:online}}</span><span class="oname">xem tất cả</span></h3>
+        <ul class="r2-people">
+          <template data-list="online" data-max="6"><li><span class="av" style="--h:{{h}}">{{ini}}</span><span class="oname">{{name}}</span><small class="{{#busy}}busy{{/busy}}" data-be="status">{{st}}</small></li></template>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</div>

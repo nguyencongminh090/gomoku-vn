@@ -29,7 +29,7 @@ function boot(page, script, fetchImpl) {
   jest.resetModules();
   document.body.innerHTML = HTML[page];
   window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
-  window.PlatformShell = { build: jest.fn() };
+  window.PlatformShell = { build: jest.fn(), icon: () => document.createElement('svg') };
   renderers = [];
   window.BoardRenderer = class {
     constructor(canvas, opts) { this.opts = opts; this.state = null; renderers.push(this); }
@@ -239,6 +239,64 @@ describe('my puzzles', () => {
   });
 });
 
+describe('my puzzles — number + rename (#333/#334)', () => {
+  const MINE = [{ id: 'a', number: 7, title: 'Cũ', status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' }];
+  const bootMine = (patch) => boot('mine', '../js/puzzles-mine.js', (u, o) => (o && o.method === 'PATCH' ? patch(u, o)
+    : ok({ puzzles: MINE.map((p) => ({ ...p })), canReview: false, pagination: { page: 1, limit: 20, total: 1, totalPages: 1 } })));
+
+  it('shows "Title #n"; Rename PATCHes /title and updates the name in place without reloading', async () => {
+    bootMine((u, o) => ok({ id: 'a', title: JSON.parse(o.body).title }));
+    await settle();
+    const row = () => document.querySelector('#mn-list .prow');
+    expect(row().querySelector('b').textContent).toBe('Cũ #7');
+    [...row().querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    const input = row().querySelector('input.pz-rename');
+    expect(input.value).toBe('Cũ');
+    input.value = 'Mới';
+    [...row().querySelectorAll('button')].find((b) => b.textContent === 'puzzles.save').click();
+    await settle();
+    const patch = global.fetch.mock.calls.find(([, o]) => o && o.method === 'PATCH');
+    expect(patch[0]).toBe('/api/puzzles/a/title');
+    expect(JSON.parse(patch[1].body)).toEqual({ title: 'Mới' });
+    expect(row().querySelector('b').textContent).toBe('Mới #7');
+    expect(row().querySelector('input')).toBeNull();
+  });
+
+  it('rename editor: Cancel and Esc restore the name, Enter saves, row is flagged while editing', async () => {
+    bootMine((u, o) => ok({ id: 'a', title: JSON.parse(o.body).title }));
+    await settle();
+    const row = () => document.querySelector('#mn-list .prow');
+    const open = () => [...row().querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    open();
+    expect(row().classList.contains('pz-mine--editing')).toBe(true);
+    [...row().querySelectorAll('button')].find((b) => b.textContent === 'modal.btn_cancel').click();
+    expect(row().querySelector('input')).toBeNull();
+    expect(row().classList.contains('pz-mine--editing')).toBe(false);
+    open();
+    row().querySelector('input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(row().querySelector('input')).toBeNull();
+    open();
+    const input = row().querySelector('input');
+    input.value = 'Enter';
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await settle();
+    expect(row().querySelector('b').textContent).toBe('Enter #7');
+  });
+
+  it('a rejected rename shows the translated error and keeps the editor open', async () => {
+    bootMine(() => fail(400, { code: 'PUZZLE_TITLE_INVALID' }));
+    await settle();
+    const row = document.querySelector('#mn-list .prow');
+    [...row.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.rename').click();
+    [...row.querySelectorAll('button')].find((b) => b.textContent === 'puzzles.save').click();
+    await settle();
+    expect(row.textContent).toContain('err.puzzle_title_invalid');
+    expect(row.querySelector('input.pz-rename')).not.toBeNull();
+    expect(row.querySelector('input.pz-rename').getAttribute('aria-invalid')).toBe('true');
+    expect(row.querySelector('[role=alert]')).not.toBeNull();
+  });
+});
+
 describe('my puzzles — paging (#279)', () => {
   const row = (i) => ({ id: 'r' + i, title: 'T' + i, status: 'approved', level: 'easy', rule: 'caro', boardSize: 15, reviewNote: '' });
   const pageOf = (n) => ({ page: n, limit: 20, total: 45, totalPages: 3 });
@@ -317,6 +375,58 @@ describe('review queue', () => {
     expect(JSON.parse(opts.body)).toMatchObject({ decision: 'approve', level: 'hard' });
     expect($('rv-title').textContent).toBe('Hai');
     expect(document.querySelectorAll('#rv-list .prow')).toHaveLength(1);
+  });
+
+  it('delete asks first (cancel = no request); confirmed DELETE removes the puzzle and moves to the next', async () => {
+    reviewBoot((u, o) => (o && o.method === 'DELETE' ? ok({ id: 'q1', deleted: true }) : null)); await settle();
+    window.confirm = jest.fn(() => false);
+    $('rv-delete').click(); await settle();
+    expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'DELETE')).toBe(false);
+
+    window.confirm = jest.fn(() => true);
+    $('rv-delete').click(); await settle();
+    const [url] = global.fetch.mock.calls.find(([, o]) => o && o.method === 'DELETE');
+    expect(url).toBe('/api/puzzles/q1');
+    expect($('rv-title').textContent).toBe('Hai');
+    expect(document.querySelectorAll('#rv-list .prow')).toHaveLength(1);
+  });
+
+  it('#331: shows each answer line\'s verdict; a breaking line flags the puzzle (row badge + note)', async () => {
+    const withV = [
+      { ...Q[0], answers: [[{ x: 1, y: 6 }], [{ x: 2, y: 6 }], [{ x: 3, y: 6 }]],
+        verification: [{ status: 'verified', step: 3 }, { status: 'breaks', step: 2, reason: 'occupied' }, { status: 'unchecked', step: 1 }] },
+      { ...Q[1], verification: [{ status: 'unchecked', step: 1 }] },
+    ];
+    reviewBoot(() => ok({ puzzles: withV, pagination: { total: 2 } })); await settle();
+    const v = [...document.querySelectorAll('#rv-answers .pz-verdict')];
+    expect(v.map((n) => n.className)).toEqual(['pz-verdict pz-verdict--verified', 'pz-verdict pz-verdict--breaks', 'pz-verdict pz-verdict--unchecked']);
+    expect(v[1].textContent).toBe(' · puzzles.rv_v_breaks_occupied{"n":2}');
+    expect($('rv-verify').hidden).toBe(false);
+    const rows = document.querySelectorAll('#rv-list .prow');
+    expect(rows[0].textContent).toContain('puzzles.rv_v_flag_badge');
+    expect(rows[1].textContent).not.toContain('puzzles.rv_v_flag_badge');
+    rows[1].click();
+    expect($('rv-verify').hidden).toBe(true);
+  });
+});
+
+describe('review — recent renames (#337)', () => {
+  const R = { id: 1, puzzleId: 'p1', number: 7, status: 'approved', oldTitle: 'Cũ', newTitle: 'Mới', createdAt: '2026-10-23T01:00:00.000Z', by: { username: 'al', displayName: 'Al' } };
+  const bootWith = (renames, total) => boot('review', '../js/puzzles-review.js', (u) => (u.includes('/renames')
+    ? ok({ renames, pagination: { total } }) : ok({ puzzles: [], pagination: { total: 0 } })));
+
+  it('lists old → new with a link to the puzzle, and says how many older ones are hidden', async () => {
+    bootWith([R], 3); await settle();
+    expect($('rv-renames').hidden).toBe(false);
+    const row = $('rn-list').firstChild;
+    expect(row.textContent).toContain('Cũ');
+    expect(row.querySelector('a').textContent).toBe('Mới #7');
+    expect(row.querySelector('a').getAttribute('href')).toBe('/puzzle/p1');
+    expect($('rn-more').hidden).toBe(false);
+  });
+  it('stays hidden when there are no renames or the log is refused', async () => {
+    bootWith([], 0); await settle();
+    expect($('rv-renames').hidden).toBe(true);
   });
 });
 

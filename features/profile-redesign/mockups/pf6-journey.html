@@ -1,0 +1,89 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PF6 Hành trình</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* PF6 — the profile as a story: the rating curve is the road, numbered milestones sit on it,
+   and the same numbers appear in the timeline below (badges, peaks, streaks, weekly game groups). */
+.head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center;margin-top:28px}
+.head h1{font-size:clamp(28px,2.4vw + 10px,44px);font-weight:1000;letter-spacing:-.02em;line-height:1.1}
+.head .meta{color:var(--c-ink-2);font-weight:700;font-size:14px}
+.head .bio{margin-top:6px;max-width:60ch}
+.road{position:relative;margin-top:24px;background:var(--c-surface);border-radius:24px;padding:22px 24px 18px}
+.road .hd{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+.road .n{font-size:64px;font-weight:1000;line-height:1;letter-spacing:-.02em}
+.road .rk{font-weight:900;color:var(--c-brand-text)}
+.plot{position:relative}
+.pin{position:absolute;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:13px;font-weight:1000;background:var(--gold);color:var(--gold-ink);box-shadow:0 0 0 3px var(--c-surface);animation:pop var(--d-base) var(--e-out) backwards;animation-delay:calc(900ms + var(--i)*120ms)}
+.cap{margin-top:6px;color:var(--c-ink-2);font-size:13px}
+.cols{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:28px;margin-top:28px;align-items:start}
+.tl{position:relative;padding-left:44px}
+.tl::before{content:"";position:absolute;left:17px;top:8px;bottom:8px;width:2px;background:var(--c-border)}
+.mo{position:relative;margin:26px 0 12px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--c-ink-2)}
+.mo:first-child{margin-top:0}
+.mo::before{content:"";position:absolute;left:-32px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--c-bg);box-shadow:inset 0 0 0 2px var(--c-ink-2)}
+.ev{position:relative;margin-bottom:12px;padding:14px 16px;border-radius:16px;background:var(--c-surface);animation:rise var(--d-slow) var(--e-out) backwards;animation-delay:calc(var(--i)*70ms)}
+.ev .dot{position:absolute;left:-40px;top:12px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--c-surface);color:var(--c-ink-2);box-shadow:0 0 0 3px var(--c-bg)}
+.ev .dot .ico{width:16px;height:16px}
+.ev.ms{background:transparent;box-shadow:inset 0 0 0 1.5px var(--gold);}
+.ev.ms .dot{background:var(--gold);color:var(--gold-ink);font-size:13px;font-weight:1000}
+.ev b{font-size:17px;font-weight:900}.ev p{color:var(--c-ink-2);font-size:14px;font-weight:600}
+.ev .ln{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+details summary{list-style:none;cursor:pointer;min-height:44px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;justify-content:space-between}
+details summary::-webkit-details-marker{display:none}
+details summary .car{transition:transform var(--d-fast)}details[open] summary .car{transform:rotate(180deg)}
+.gm{display:grid;grid-template-columns:24px minmax(0,1fr) auto auto;gap:10px;align-items:center;min-height:44px;border-top:1px solid var(--c-border-light)}
+.gm .o{font-weight:800}.gm .d{color:var(--c-ink-2);font-size:13px}
+.rail{position:sticky;top:76px;display:grid;gap:16px}
+.pn{background:var(--c-surface);border-radius:20px;padding:18px}
+.pn h2{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2);margin-bottom:8px}
+.rt{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;padding:8px 0;border-top:1px solid var(--c-border-light)}
+.rt:first-of-type{border-top:0}.rt b{font-size:22px;font-weight:1000}.rt small{color:var(--c-ink-2);font-weight:700}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}
+.kv b{display:block;font-size:24px;font-weight:1000}.kv span{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--c-ink-2)}
+.club{display:flex;gap:10px;align-items:center;min-height:44px;font-weight:800}.club small{display:block;font-weight:600;color:var(--c-ink-2)}
+@media(max-width:860px){
+  .head{grid-template-columns:auto minmax(0,1fr);gap:12px;margin-top:16px}.head .av{--s:64px!important}
+  .head .bio{display:none}.head .acts{grid-column:1/-1}.head .acts .btn{flex:1}.head .acts .btn--pri{flex:1 1 100%}
+  .road{margin:16px -8px 0;padding:16px 12px 12px;border-radius:20px}.road .n{font-size:48px}
+  .pin{width:22px;height:22px;font-size:11px}
+  .cols{grid-template-columns:minmax(0,1fr);gap:20px;margin-top:20px}
+  .rail{position:static;order:-1}
+  .tl{padding-left:38px}.tl::before{left:13px}.ev .dot{left:-38px}.mo::before{left:-30px}
+}
+</style></head><body>
+<main class="wrap">
+ <header class="head rise" id="hd"></header>
+ <section class="road rise" style="--i:1" id="road"></section>
+ <div class="cols"><section class="tl" id="tl" aria-label="Dòng thời gian"></section><aside class="rail" id="rail"></aside></div>
+</main>
+<p class="mk-note">PF6 · Đường rating là "con đường"; mốc đánh số trên đường khớp với dòng thời gian bên dưới. Ngày đạt huy hiệu, mốc chuỗi thắng, nhóm ván theo tuần <span class="need">API</span>.</p>
+<script src="../icons.js"></script><script src="../data.js"></script><script>
+const {P,G,ic,av,dl,need,res,actions,chart,series,line,form}=PF;PF.top();const m=P.ratings[0],vals=series(m),W=900,H=250;
+const c=line(vals,W-40,H,10),pos=i=>`left:${(c.pts[i][0]+40)/W*100}%;top:${c.pts[i][1]/H*100}%`;
+const pins=[[78,1],[c.iHi,2],[40,3]];
+hd.innerHTML=`${av(P,96)}<div style="min-width:0"><h1 class="ell">${P.name}</h1><p class="meta">@${P.user} · ${PF.where} · tham gia ${P.joined}</p><p class="bio">${P.bio}</p></div><div class="acts">${actions()}</div>`;
+road.innerHTML=`<div class="hd"><div><span class="eyebrow">Rating · ${m.k}</span><div style="display:flex;gap:12px;align-items:baseline"><b class="n num" data-count>${m.r}</b><span class="rk">#${m.rank}</span>${dl(m.d,' / 7 ngày')}</div></div>
+ <div style="display:grid;gap:8px;justify-items:end"><div class="chips" role="tablist">${P.ratings.map((r,i)=>`<button class="chip" role="tab" aria-selected="${!i}">${r.k}</button>`).join('')}</div><div class="chips" role="tablist">${['30 ngày','90 ngày','Tất cả'].map((r,i)=>`<button class="chip" role="tab" aria-selected="${i==1}">${r}</button>`).join('')}</div></div></div>
+ <div class="plot">${chart(vals,{axis:1,w:W,h:H,end:false})}${pins.map((p,i)=>`<span class="pin num" style="${pos(p[0])};--i:${i}" title="Mốc ${p[1]}">${p[1]}</span>`).join('')}</div>
+ <p class="cap">Cao nhất ${m.peak} · "Tất cả" cần lịch sử dài hơn 90 ngày ${need()}</p>`;
+const ms=(n,i,t,s,k)=>`<div class="ev ms" style="--i:${k}"><span class="dot num">${n||ic(i)}</span><b>${t}</b><p>${s}</p></div>`;
+const grp=(t,s,gs,k,open)=>`<div class="ev" style="--i:${k}"><span class="dot">${ic('grid-four')}</span><details${open?' open':''}><summary><span><b>${t}</b><p>${s}</p></span><span style="display:flex;gap:10px;align-items:center">${gs.length?`<span class="form">${gs.map(res).reverse().join('')}</span>`:''}${ic('caret-down','car')}</span></summary>${gs.map(g=>`<a class="gm">${res(g)}<span class="o ell">${g.opp}</span><span class="d num">${g.date}</span>${dl(g.delta)}</a>`).join('')}</details></div>`;
+tl.innerHTML=`<h2 class="mo">Tháng 11 · 2026</h2>
+ ${grp('Tuần này · 6 ván','5 thắng · 1 thua · +40 điểm',G.slice(0,6),0,1)}
+ ${ms(1,'','Vào Top 10 · '+m.k,'Ngày 04/11 — vượt kaito để lên hạng #9, nay là #3.',1)}
+ ${grp('Tuần 2–8/11 · 6 ván','3 thắng · 1 hoà · 2 thua',G.slice(6,12),2)}
+ <h2 class="mo">Tháng 10 · 2026</h2>
+ ${ms(2,'','Đỉnh rating '+m.peak,'Cao nhất từ trước tới nay ở '+m.k+'.',3)}
+ ${ms(3,'','Chuỗi 11 thắng liên tiếp','Chuỗi dài nhất — kết thúc trước TranQuocBaoKhanhCaroVip1.',4)}
+ ${grp('Cả tháng · 38 ván','24 thắng · 2 hoà · 12 thua',[],5)}
+ <h2 class="mo">Tháng 2 · 2026</h2>
+ ${ms('','medal','100 thắng xếp hạng','Huy hiệu thứ hai.',6)}
+ <div class="ev" style="--i:7"><span class="dot">${ic('users-three')}</span><b>Gia nhập Hà Nội Gomoku</b><p>Nay là Phó chủ nhiệm · 128 thành viên</p></div>
+ <h2 class="mo">Tháng 3 · 2024</h2>
+ ${ms('','flag-checkered','Thắng xếp hạng đầu','Ván thứ 3 trên Play3CR.',8)}
+ <div class="ev" style="--i:9"><span class="dot">${ic('calendar')}</span><b>Tham gia Play3CR</b><p>Bắt đầu hành trình.</p></div>`;
+rail.innerHTML=`<div class="pn"><h2>Hiện tại</h2>${P.ratings.map(r=>`<div class="rt"><span>${r.k} <small>${r.rank?'#'+r.rank:'tạm tính'}</small></span><b class="num">${r.r}${r.prov?'?':''}</b>${dl(r.d)}</div>`).join('')}</div>
+ <div class="pn"><div class="kv"><div><b class="num">${P.stats.g}</b><span>Ván</span></div><div><b class="num">${P.pct}%</b><span>Thắng</span></div><div><b class="num">${P.streak.cur}</b><span>Chuỗi</span></div></div><div style="margin-top:12px">${PF.wdl()}</div></div>
+ <div class="pn"><h2>Puzzle</h2><b class="num" style="font-size:24px;font-weight:1000">${P.puzzles.solved}</b> <span class="muted">đã giải · level ${P.puzzles.level}</span></div>
+ <div class="pn"><h2>Hội nhóm</h2>${P.clubs.map(c=>`<a class="club">${av(c,36,'av--sq')}<span>${c.name}<small>${c.role} · ${c.n} thành viên</small></span></a>`).join('')}</div>`;
+PF.tabs();PF.count();
+</script></body></html>

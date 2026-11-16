@@ -63,55 +63,51 @@ function makeGuest(overrides) {
   };
 }
 
-describe('room-ui.js: viewer list reflects disconnected/away presence (TODO.md #157)', () => {
-  test('a normally-connected guest renders with no status dot', () => {
+// #373 supersedes #157's dots: the list shows only viewers actually watching (presence 'active');
+// 'away' / 'disconnected' viewers are left out of the list, the tab and the audience stack.
+describe('room-ui.js: viewer list shows only viewers who are watching (#373)', () => {
+  test('an active guest is listed, with no status dot', () => {
     setupPage();
     loadRoomUiModule({ state: 'waiting', users: [makeGuest({ presence: 'active' })] });
-
     window.RoomUI.renderUsersList();
-
     const li = document.querySelector('#users-list li');
     expect(li.textContent).toContain('Guest One');
     expect(li.querySelector('.ready-dot')).toBeNull();
   });
 
-  test('a disconnected guest renders the disconnected status dot', () => {
+  test('a guest with no presence field counts as active', () => {
     setupPage();
-    loadRoomUiModule({ state: 'waiting', users: [makeGuest({ presence: 'disconnected' })] });
-
+    loadRoomUiModule({ state: 'waiting', users: [makeGuest({ presence: undefined })] });
     window.RoomUI.renderUsersList();
-
-    const dot = document.querySelector('#users-list li .ready-dot');
-    expect(dot).not.toBeNull();
-    expect(dot.classList.contains('ready-dot--disconnected')).toBe(true);
+    expect(document.querySelectorAll('#users-list li')).toHaveLength(1);
   });
 
-  test('an away guest renders the away status dot', () => {
+  test.each(['away', 'disconnected'])('a %s guest is not listed; the list panel hides when nobody watches', (presence) => {
     setupPage();
-    loadRoomUiModule({ state: 'waiting', users: [makeGuest({ presence: 'away' })] });
-
+    loadRoomUiModule({ state: 'waiting', users: [makeGuest({ presence })] });
     window.RoomUI.renderUsersList();
-
-    const dot = document.querySelector('#users-list li .ready-dot');
-    expect(dot).not.toBeNull();
-    expect(dot.classList.contains('ready-dot--away')).toBe(true);
+    expect(document.querySelectorAll('#users-list li')).toHaveLength(0);
+    expect(document.getElementById('users-panel').style.display).toBe('none');
   });
 
-  test('mixed list: only the disconnected guest gets a dot, the active one does not', () => {
+  test('mixed list: only the watching guest is listed; audience stack gets the same list', () => {
     setupPage();
+    const audience = jest.fn();
+    window.RoomStage = { active: () => false, renderAudience: audience };
     loadRoomUiModule({
       state: 'waiting',
       users: [
         makeGuest({ userId: 'g-1', displayName: 'Active Guest', presence: 'active' }),
         makeGuest({ userId: 'g-2', displayName: 'Ghost Guest', presence: 'disconnected' }),
+        makeGuest({ userId: 'g-3', displayName: 'Away Guest', presence: 'away' }),
+        { userId: 'p-1', displayName: 'Seated', slot: 1, role: 'guest', presence: 'active' },
       ],
     });
-
     window.RoomUI.renderUsersList();
-
+    delete window.RoomStage;
     const items = document.querySelectorAll('#users-list li');
-    expect(items).toHaveLength(2);
-    expect(items[0].querySelector('.ready-dot')).toBeNull();
-    expect(items[1].querySelector('.ready-dot--disconnected')).not.toBeNull();
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain('Active Guest');
+    expect(audience).toHaveBeenCalledWith([expect.objectContaining({ userId: 'g-1' })]);
   });
 });

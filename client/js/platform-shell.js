@@ -8,13 +8,15 @@
  * for members it asks /api/rankings/me for the username and /api/admin/me for the staff entry (guests / signed-out never call them).
  * Members also get the notification bell (#198): /api/notifications polled every
  * 60 s while visible, plus live `notify:new` via PlatformShell.pushNotification.
+ * Left of the bell, a chat icon → social.html with the unread-DM badge (#370): `dmUnread` rides the
+ * same /api/notifications poll; the chat page pushes fresher counts via PlatformShell.setDmUnread.
  */
 
 'use strict';
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=421b7369'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=cd66da24'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -26,9 +28,9 @@
   ];
   const TABS = [
     { id: 'lobby', href: '/index.html', icon: 'ph-bold-house', key: 'shell.lobby' },
+    { id: 'rooms', href: '/index.html#rooms', icon: 'ph-regular-door-open', key: 'shell.rooms' },
     { id: 'rankings', href: '/rankings.html', icon: 'ph-regular-crown-simple', key: 'lobby.rankings' },
     { id: 'tournaments', href: '/index.html#tournaments', icon: 'ph-regular-trophy', key: 'shell.tournaments_short' },
-    { id: 'clubs', href: '/clubs.html', icon: 'ph-regular-users-three', key: 'shell.clubs_short' },
     { id: 'me', href: '/login.html', icon: 'ph-regular-user-circle', key: 'shell.me' },
   ];
   const CATS = ['caro', 'standard', 'freestyle'];
@@ -116,6 +118,8 @@
     },
     target: (n) => notifTarget(n),
     markRead: (id) => markRead(id),
+    /** Refetch now — e.g. reading a DM thread deletes its `dm` row server-side; don't wait for the 60 s poll. */
+    refresh: () => refreshBell(),
   };
 
   function notifTarget(n) {
@@ -150,13 +154,13 @@
       bell.panel.appendChild(a);
     }
     const all = el('a', t('notif.open_social'), 'pbell__all');
-    all.href = '/social.html';
+    all.href = '/social.html#notifs'; // #370: the chat page's notifications view
     bell.panel.appendChild(all);
   }
 
   function markRead(id) {
     fetch('/api/notifications/read', {
-      method: 'POST', credentials: 'same-origin',
+      method: 'POST', credentials: 'same-origin', keepalive: true, // the click also navigates away: don't let unload abort it
       headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(id == null ? {} : { id }),
     }).then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d) return;
@@ -201,7 +205,7 @@
     const first = bellPrimed ? Promise.resolve(null) : (bellPrimed = true, loadShell().then((b) => (b && b.notifications) || null));
     return first
       .then((pre) => pre || fetch('/api/notifications', { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)))
-      .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); } })
+      .then((d) => { if (d) { bell.items = d.items; bell.unread = d.unread; renderBell(); if (typeof d.dmUnread === 'number') setDmUnread(d.dmUnread); } })
       .catch(() => { /* offline: keep what we have */ });
   }
 
@@ -211,6 +215,30 @@
     bell.items = [n].concat(bell.items.filter((x) => x.id !== n.id));
     bell.unread = typeof n.unread === 'number' ? n.unread : bell.unread + 1;
     renderBell();
+  }
+
+  // ── Chat icon (#370) ──
+  const chat = { link: null, badge: null, unread: 0 };
+
+  function setDmUnread(n) {
+    chat.unread = Math.max(0, n | 0);
+    if (!chat.link) return;
+    chat.badge.textContent = chat.unread > 99 ? '99+' : String(chat.unread);
+    chat.badge.hidden = chat.unread === 0;
+    chat.link.setAttribute('aria-label', t('shell.chat') + (chat.unread ? ' (' + chat.unread + ')' : ''));
+  }
+
+  function mountChat(right, active) {
+    const a = el('a', undefined, 'pnav__mode pbell__btn pchat__btn');
+    a.href = '/social.html';
+    if (active === 'social') a.setAttribute('aria-current', 'page');
+    a.appendChild(icon('ph-regular-chat-circle'));
+    const badge = el('span', '0', 'pbell__badge');
+    badge.hidden = true;
+    a.appendChild(badge);
+    right.appendChild(a);
+    Object.assign(chat, { link: a, badge });
+    setDmUnread(chat.unread);
   }
 
   function mountBell(right) {
@@ -239,6 +267,39 @@
     renderBell();
     refreshBell();
     if (!bell.timer) bell.timer = setInterval(refreshBell, 60000);
+    startPresenceBeat();
+  }
+
+  // Site-wide presence (#372) for pages without a socket: members post active/away every 20s; the
+  // server drops a user whose beats stop (tab closed). Socket pages report over the socket as well —
+  // the server treats "present" as a union, so the two never disagree.
+  let beatTimer = null;
+  let beatAway = null;
+  let edgeTimer = null;
+  // mode: 'first' always sends; 'tick' = the 20s heartbeat (silent once away was reported);
+  // 'edge' = focus/blur/visibility — sends only when active/away actually flipped (the server
+  // rate-limits per member, and a 429 would silently drop us offline).
+  function beat(mode) {
+    const away = document.hidden || !document.hasFocus();
+    if (mode === 'edge' && away === beatAway) return;
+    if (mode === 'tick' && away && beatAway === true) return;
+    beatAway = away;
+    fetch('/api/presence', {
+      method: 'POST', credentials: 'same-origin', keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ presence: away ? 'away' : 'active' }),
+    }).catch(() => { /* offline: the server expires us */ });
+  }
+  function startPresenceBeat() {
+    if (beatTimer) return;
+    // Not on the page-load critical path (B269: one nav request): first beat shortly after load.
+    setTimeout(() => beat('first'), 3000);
+    beatTimer = setInterval(() => beat('tick'), 20000);
+    // blur + visibilitychange fire together on a tab switch: coalesce into one report.
+    const edge = () => { clearTimeout(edgeTimer); edgeTimer = setTimeout(() => beat('edge'), 250); };
+    document.addEventListener('visibilitychange', edge);
+    window.addEventListener('blur', edge);
+    window.addEventListener('focus', edge);
   }
 
   const chip = { av: null, name: '' };
@@ -356,9 +417,9 @@
       if (window.setColorMode && window.getColorMode) window.setColorMode(window.getColorMode() === 'light' ? 'dark' : 'light');
     });
     const user = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
-    // Mockup order: [mode] [bell] [me ▾]. Settings lives in the chip menu (B211), not a gear.
+    // Mockup order: [mode] [chat] [bell] [me ▾]. Settings lives in the chip menu (B211), not a gear.
     right.appendChild(mode);
-    if (user && !user.isGuest) mountBell(right);
+    if (user && !user.isGuest) { mountChat(right, active); mountBell(right); }
     if (user) {
       mountAccount(right, user);
     } else {
@@ -405,5 +466,5 @@
     return box;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, notifications, fetchMe };
+  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
 })();

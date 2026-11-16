@@ -1,0 +1,130 @@
+<style>
+/* R3 — Sơ đồ sảnh: the tab IS the hall, seen from above. Each room is a table: the board in the
+   middle (live position, or empty), a chair per seat — the player's avatar, or an empty chair that
+   says "Ngồi" — and small dots for the people watching. Reception desk (code + Tạo phòng) top right,
+   the corridor at the bottom lists who is walking around (online). Filter = legend chips. */
+body.mk-r3-floor-plan::before, body.mk-r3-floor-plan::after { display: none; }
+body.mk-r3-floor-plan { --floor: #e9dcc4; --floor-line: rgba(120,90,50,.13); --plate: #fffaf0; --plate-ink: #3b2e1d; }
+:root[data-mode="dark"] body.mk-r3-floor-plan { --floor: #1d1a15; --floor-line: rgba(255,230,190,.05); --plate: #2b261f; --plate-ink: #efe4d0; }
+.r3 { background:
+  repeating-linear-gradient(90deg, transparent 0 119px, var(--floor-line) 119px 121px),
+  repeating-linear-gradient(0deg, transparent 0 239px, var(--floor-line) 239px 241px), var(--floor); }
+.r3 .wrap { padding-top: 22px; }
+.r3-top { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 20px; }
+.r3-top h1 { margin: 0; font-size: clamp(26px, 1.6vw + 12px, 38px); font-weight: 1000; letter-spacing: -.02em; }
+.r3-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.r3-legend button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 14px; border-radius: 999px; background: var(--plate) !important; box-shadow: inset 0 0 0 1px var(--c-border); font-size: var(--text-sm); font-weight: 700 !important; color: var(--c-ink-2) !important; }
+.r3-legend button[aria-selected="true"] { box-shadow: inset 0 0 0 2px var(--c-ink); color: var(--c-ink) !important; }
+.r3-legend i { width: 10px; height: 10px; border-radius: 50%; }
+.r3-desk { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--plate); box-shadow: var(--shadow-card); }
+.r3-desk .lbl { font-size: var(--text-xs); font-weight: 800; color: var(--c-ink-2); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
+.r3-desk .code__box { width: 34px; height: 40px; font-size: 18px; }
+.r3-desk .sep { width: 1px; align-self: stretch; background: var(--c-border); margin: 0 4px; }
+
+.r3-hall { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 34px 28px; padding: 34px 0 28px; }
+.r3-t { position: relative; display: grid; justify-items: center; gap: 10px; cursor: pointer; }
+.r3-table { position: relative; width: 176px; padding: 12px; border-radius: 14px; background: linear-gradient(145deg, #8a5a2b, #6a4220); box-shadow: 0 18px 30px -14px rgba(40,25,10,.6), inset 0 1px 0 rgba(255,255,255,.15); transition: transform var(--d-base) var(--e-out); }
+.r3-t:hover .r3-table { transform: scale(1.03); }
+.r3-table .mb { border-radius: 4px; box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.r3-t--open .r3-table .mb { opacity: .8; }
+.r3-chair { position: absolute; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 2px; z-index: 2; }
+.r3-chair--n { top: -22px; } .r3-chair--s { bottom: -22px; }
+.r3-chair .av { --s: 40px; box-shadow: 0 0 0 3px var(--floor), 0 4px 10px rgba(0,0,0,.3); }
+.r3-chair--free .av { background: var(--floor) !important; box-shadow: inset 0 0 0 2px var(--c-state-waiting), 0 0 0 3px var(--floor); color: var(--c-warning); }
+.r3-chair--free .av::after { content: ''; position: absolute; width: 40px; height: 40px; border-radius: 50%; box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-state-waiting) 60%, transparent); animation: r3-ping 2s var(--e-out) infinite; }
+@keyframes r3-ping { to { box-shadow: 0 0 0 14px transparent; } }
+.r3-sit { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; }
+.r3-watch { position: absolute; right: -30px; top: 50%; transform: translateY(-50%); display: grid; gap: 4px; justify-items: center; font-size: 11px; font-weight: 800; color: var(--c-ink-2); }
+.r3-watch .dots { display: grid; grid-template-columns: repeat(2, 8px); gap: 4px; }
+.r3-watch .dots i { width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--c-ink) 35%, transparent); }
+.r3-plate { margin-top: 16px; display: grid; justify-items: center; gap: 4px; padding: 8px 12px; border-radius: 10px; background: var(--plate); color: var(--plate-ink); box-shadow: 0 2px 6px rgba(0,0,0,.08); max-width: 236px; text-align: center; }
+.r3-plate b { font-weight: 800; font-size: var(--text-sm); }
+.r3-plate .who { font-size: var(--text-xs); color: var(--c-ink-2); }
+.r3-plate .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.r3-plate .tag { min-height: 20px; padding: 0 6px; }
+.r3-state { position: absolute; top: -14px; left: calc(50% + 26px); font-size: 11px; font-weight: 900; padding: 2px 7px; border-radius: 999px; background: var(--c-state-playing); color: #fff; z-index: 3; }
+.r3-t--open .r3-state { background: var(--c-state-waiting); color: #1b1208; }
+.r3-t--ready .r3-state { background: var(--c-state-idle); }
+.r3-new .r3-table { background: transparent; box-shadow: inset 0 0 0 2px dashed; border: 2px dashed color-mix(in srgb, var(--c-ink) 30%, transparent); box-shadow: none; height: 176px; display: flex; align-items: center; justify-content: center; color: var(--c-ink-2); }
+.r3-new .r3-table .icon { width: 40px; height: 40px; }
+.r3-corridor { display: flex; align-items: center; gap: 14px; padding: 14px 18px; margin-bottom: 18px; border-radius: 16px; background: var(--plate); box-shadow: var(--shadow-card); overflow: hidden; }
+.r3-corridor h2 { margin: 0; font-size: var(--text-sm); font-weight: 900; white-space: nowrap; }
+.r3-walkers { display: flex; gap: 14px; overflow: hidden; mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.r3-walkers span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: var(--text-sm); }
+.r3-walkers .av { --s: 26px; }
+.r3-walkers small { color: var(--c-ink-2); font-size: var(--text-xs); }
+@media (max-width: 860px) {
+  .r3-top { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .r3-top h1 { font-size: 24px; }
+  .r3-legend { flex-wrap: nowrap; overflow-x: auto; margin-top: 8px; }
+  .r3-legend button { flex: none; min-height: 34px; padding: 0 12px; }
+  .r3-desk { padding: 8px 8px 8px 12px; gap: 6px; }
+  .r3-desk .lbl { display: none; }
+  .r3-desk .code__box { width: 30px; height: 36px; }
+  .r3-desk .btn--pri { margin-left: auto; padding: 0 12px; }
+  .r3-desk .btn--pri span { display: none; }
+  .r3-hall { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px 10px; padding-top: 30px; }
+  .r3-table { width: 124px; padding: 8px; }
+  .r3-chair .av, .r3-chair--free .av::after { --s: 32px; width: 32px; height: 32px; }
+  .r3-chair--n { top: -18px; } .r3-chair--s { bottom: -18px; }
+  .r3-watch { right: -22px; }
+  .r3-sit { min-height: 32px; padding: 0 10px; font-size: 12px; }
+  .r3-plate { margin-top: 12px; padding: 6px 8px; }
+  .r3-plate .tags .tag:nth-child(n+3) { display: none; }
+  .r3-state { top: -12px; left: calc(50% + 20px); font-size: 10px; }
+  .r3-new .r3-table { height: 124px; }
+  .r3-corridor { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .r3-walkers { flex-wrap: wrap; gap: 8px 12px; mask-image: none; }
+  .r3-walkers span:nth-child(n+7) { display: none; }
+}
+</style>
+<div class="mk mk-screen r3">
+  <div class="wrap">
+    <div class="r3-top rise">
+      <div>
+        <h1>Sảnh chơi</h1>
+        <div class="r3-legend" role="tablist" aria-label="Lọc phòng">
+          <button role="tab" aria-selected="true">Tất cả bàn · {{n:all}}</button>
+          <button role="tab" aria-selected="false"><i style="background:var(--c-state-waiting)"></i>Có ghế trống · {{n:open}}</button>
+          <button role="tab" aria-selected="false"><i style="background:var(--c-state-playing)"></i>Đang đấu, vào xem · {{n:seated}}</button>
+        </div>
+      </div>
+      <div class="r3-desk">
+        <span class="lbl">Lễ tân</span>
+        <span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span>
+        <button class="btn btn--ink btn--sm">Vào</button>
+        <span class="sep"></span>
+        <button class="btn btn--pri btn--sm">{{i:plus-circle}}<span>Tạo phòng</span></button>
+      </div>
+    </div>
+
+    <div class="r3-hall">
+      <template data-list="all">
+        <div class="r3-t r3-t--{{#open}}open{{/open}}{{#live}}live{{/live}}{{#ready}}ready{{/ready}}" tabindex="0">
+          <div class="r3-table">
+            <span class="r3-state">{{#live}}Đang đấu{{/live}}{{#open}}Chờ bạn{{/open}}{{#ready}}Sắp bắt đầu{{/ready}}</span>
+            <span class="r3-chair r3-chair--n"><span class="av" style="--h:{{p1h}}">{{p1i}}</span></span>
+            {{#live}}<div data-be="board">{{board}}</div>{{/live}}{{^live}}{{boardEmpty}}{{/live}}
+            {{#p2}}<span class="r3-chair r3-chair--s"><span class="av" style="--h:{{p2h}}">{{p2i}}</span></span>{{/p2}}
+            {{^p2}}<span class="r3-chair r3-chair--s r3-chair--free"><span class="av">+</span></span><button class="btn btn--pri btn--sm r3-sit">Ngồi</button>{{/p2}}
+            {{#viewers}}<span class="r3-watch"><span class="dots"><i></i><i></i><i></i><i></i></span>{{viewers}}</span>{{/viewers}}
+          </div>
+          <div class="r3-plate">
+            <b>{{name}}</b>
+            <span class="who">{{p1}} {{#p2}}· {{p2}}{{/p2}}{{^p2}}· ghế trống{{/p2}}</span>
+            <span class="tags"><span class="tag">{{rule}}</span><span class="tag">{{time}}</span><span class="tag">{{size}}</span></span>
+          </div>
+        </div>
+      </template>
+      <div class="r3-t r3-new" tabindex="0">
+        <div class="r3-table">{{i:plus-circle}}</div>
+        <div class="r3-plate"><b>Bàn của bạn</b><span class="who">bấm để mở bàn mới</span></div>
+      </div>
+    </div>
+
+    <section class="r3-corridor">
+      <h2>Hành lang · {{n:online}} online</h2>
+      <div class="r3-walkers"><template data-list="online"><span><span class="av" style="--h:{{h}}">{{ini}}</span><span class="oname">{{name}}</span><small>{{st}}</small></span></template></div>
+    </section>
+  </div>
+</div>

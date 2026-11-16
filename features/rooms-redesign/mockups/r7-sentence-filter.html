@@ -1,0 +1,84 @@
+<style>
+/* R7 — Câu lọc (same language as the Home sentence #358): the big sentence IS the filter —
+   "Tìm bàn [có ghế trống], [Luật 1], [5 phút]". Results drop below as ticket rows. When nothing
+   matches, the same sentence becomes the room you create: "Không có? Mở đúng bàn này". Right column:
+   code + online. One sentence = filter + create preset. */
+body.mk-r7-sentence-filter::after { display: none; }
+.r7 .wrap { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 40px; padding-top: 34px; align-items: start; }
+.r7-q { margin: 0; font-size: clamp(30px, 2.6vw + 8px, 52px); font-weight: 900; line-height: 1.22; letter-spacing: -.02em; text-wrap: balance; }
+.r7-q .bl { display: inline-flex; align-items: center; gap: .14em; padding: 0 .22em; border-radius: .22em; background: var(--c-brand-light) !important; color: var(--c-brand-text) !important; box-shadow: inset 0 -3px 0 currentColor; font: inherit !important; }
+.r7-q .bl::after { content: ''; width: .32em; height: .32em; border-right: .08em solid; border-bottom: .08em solid; transform: rotate(45deg) translate(-.06em, -.06em); }
+.r7-q .nw { white-space: nowrap; }
+.r7-sub { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; margin: 18px 0 20px; font-size: var(--text-md); color: var(--c-ink-2); }
+.r7-sub b { color: var(--c-ink); }
+.r7-sub .btn { margin-left: auto; }
+.r7-tabs { margin-bottom: 8px; }
+.r7-list { display: grid; }
+.r7-row { display: grid; grid-template-columns: 54px minmax(0, 1fr) auto auto; gap: 16px; align-items: center; padding: 14px 4px; border-top: 1px solid var(--c-border); cursor: pointer; }
+.r7-row:hover { background: var(--c-hover); }
+.r7-row .code { font-size: var(--text-sm); font-weight: 900; color: var(--c-ink-2); }
+.r7-row .mid { min-width: 0; display: grid; gap: 4px; }
+.r7-row .names { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 800; min-width: 0; }
+.r7-row .names .av { --s: 26px; }
+.r7-row .names em { font-style: normal; color: var(--c-ink-2); font-size: var(--text-xs); }
+.r7-row .names .free { color: var(--c-warning); }
+.r7-row .meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.r7-row .match { font-size: var(--text-xs); font-weight: 800; color: var(--c-brand-text); }
+.r7-row .stt { font-size: var(--text-sm); font-weight: 800; white-space: nowrap; }
+.r7-row--live .stt { color: var(--c-state-playing); }
+.r7-none { flex-direction: column; gap: 10px; padding: 28px; border-radius: 18px; background: var(--c-surface); box-shadow: var(--shadow-card); }
+.r7-none b { font-size: 22px; font-weight: 900; }
+.r7-none .btn { align-self: flex-start; }
+.r7-side { display: grid; gap: 16px; position: sticky; top: 16px; }
+.r7-card { display: grid; gap: 10px; padding: 18px; border-radius: 16px; background: var(--c-surface); box-shadow: var(--shadow-card); }
+.r7-card h2 { margin: 0; font-size: var(--text-xs); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+.r7-card .big { font-size: 40px; font-weight: 1000; line-height: 1; }
+.r7-card .code .btn { margin-left: auto; }
+.r7-card .names { font-size: var(--text-sm); line-height: 1.7; color: var(--c-ink-2); }
+.r7-card .names .oname { color: var(--c-ink); }
+@media (max-width: 860px) {
+  .r7 .wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 18px; }
+  .r7-q { font-size: 28px; }
+  .r7-sub { margin: 12px 0; font-size: var(--text-sm); }
+  .r7-sub .btn { margin-left: 0; width: 100%; }
+  .r7-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 0; }
+  .r7-row .code, .r7-row .match { display: none; }
+  .r7-row .names { font-size: 16px; }
+  .r7-row .meta .tag:first-child, .r7-row .meta .tag:last-child { display: none; }
+  .r7-side { position: static; order: -1; grid-template-columns: 1fr; }
+  .r7-card--online { display: none; }
+  .r7-card { padding: 12px 14px; }
+  .r7-card h2 { display: none; }
+}
+</style>
+<div class="mk mk-screen r7">
+  <div class="wrap">
+    <div>
+      <h1 class="r7-q rise">Tìm bàn <span class="nw"><button class="bl">có ghế trống</button>,</span> chơi <button class="bl">Luật 1</button> trên <span class="nw"><button class="bl">15×15</button>,</span> <span class="nw"><button class="bl">5 phút</button>.</span></h1>
+      <div class="r7-sub rise rise-2"><span><b class="num">{{n:open}}</b> bàn khớp · <b class="num">{{n:live}}</b> ván đang đấu · <b class="num">{{n:online}}</b> online</span><button class="btn btn--pri">{{i:plus-circle}}Mở đúng bàn này</button></div>
+      <div class="tabs r7-tabs" role="tablist" aria-label="Lọc phòng">
+        <button role="tab" aria-selected="true">Phòng<span class="n">{{n:all}}</span></button>
+        <button role="tab" aria-selected="false">Bàn<span class="n">{{n:open}}</span></button>
+        <button role="tab" aria-selected="false">Quan sát<span class="n">{{n:seated}}</span></button>
+      </div>
+      <div class="r7-list rise rise-3">
+        <template data-list="all">
+          <article class="r7-row r7-row--{{#open}}open{{/open}}{{#live}}live{{/live}}{{#ready}}ready{{/ready}}" tabindex="0">
+            <span class="code">{{code}}</span>
+            <div class="mid">
+              <div class="names"><span class="av" style="--h:{{p1h}}">{{p1i}}</span>{{p1}}<em>vs</em>{{#p2}}<span class="av" style="--h:{{p2h}}">{{p2i}}</span>{{p2}}{{/p2}}{{^p2}}<span class="free">ghế trống</span>{{/p2}}</div>
+              <div class="meta"><span class="tag">{{name}}</span><span class="tag">{{rule}}</span><span class="tag">{{size}}</span><span class="tag">{{time}}</span><span class="tag {{#rated}}tag--brand{{/rated}}">{{mode}}</span></div>
+            </div>
+            <span class="match">{{#open}}khớp 4/4{{/open}}</span>
+            {{#open}}<button class="btn btn--pri btn--sm">Ngồi vào</button>{{/open}}{{#live}}<span class="stt">● {{viewers}} đang xem</span>{{/live}}{{#ready}}<span class="stt muted">Sắp bắt đầu</span>{{/ready}}
+          </article>
+        </template>
+        <div class="r7-none if-empty"><b>Chưa có bàn nào như vậy.</b><span class="muted">Mở đúng bàn trong câu trên — người tìm giống bạn sẽ thấy nó đầu tiên.</span><button class="btn btn--pri">{{i:plus-circle}}Mở bàn: Luật 1 · 15×15 · 5 phút</button></div>
+      </div>
+    </div>
+    <aside class="r7-side rise rise-2">
+      <div class="r7-card"><h2>Bạn có mã phòng?</h2><div class="code"><span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span><button class="btn btn--ink btn--sm">Vào</button></div></div>
+      <div class="r7-card r7-card--online"><h2>Đang online</h2><span class="big num">{{n:online}}</span><span class="names"><template data-list="online" data-max="8"><span class="oname">{{name}}</span>, </template><span class="oname">và những người khác…</span></span></div>
+    </aside>
+  </div>
+</div>

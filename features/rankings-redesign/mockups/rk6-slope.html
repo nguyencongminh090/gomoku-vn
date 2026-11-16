@@ -1,0 +1,28 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK6 Dốc xếp hạng</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+h1{margin:32px 0 4px;font-size:clamp(28px,2.6vw+10px,46px);font-weight:1000;letter-spacing:-.02em}
+.f{margin:18px 0}
+.chart{background:var(--c-surface);border-radius:16px;padding:12px 8px 8px;margin-bottom:80px}
+.chart svg{display:block;width:100%;height:auto}
+.hd{display:flex;justify-content:space-between;padding:4px 16px 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-2)}
+.ln{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;animation:draw 900ms var(--e-out) forwards;opacity:.9}
+@keyframes draw{to{stroke-dashoffset:0}}
+.up{stroke:var(--c-success)}.dn{stroke:var(--c-error)}.eq{stroke:var(--c-ink-3)}
+.lb{font:800 13px Nunito;fill:var(--c-ink)}.lb2{font:600 11px Nunito;fill:var(--c-ink-2)}
+.leg{display:flex;gap:16px;flex-wrap:wrap;margin:0 0 12px;font-size:14px;font-weight:700}.leg i{display:inline-block;width:18px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+@media(max-width:600px){.lb{font-size:22px}.lb2{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.ln{stroke-dashoffset:0}}
+</style></head><body><main class="wrap"><p class="eyebrow" style="margin-top:28px">Tự do · Top 20</p><h1>Ai đổi chỗ trong 7 ngày?</h1>
+<div class="filters f" id="f"></div>
+<p class="leg"><span><i style="background:var(--c-success)"></i>Lên hạng</span><span><i style="background:var(--c-error)"></i>Xuống hạng</span><span><i style="background:var(--c-ink-3)"></i>Giữ nguyên</span></p>
+<div class="chart"><div class="hd"><span>7 ngày trước</span><span>Hôm nay</span></div><svg id="s" viewBox="0 0 700 640"></svg></div>
+<p class="note" style="margin-top:-60px">Hạng cũ được suy ra từ rating − delta7 (xấp xỉ). Hạng thật theo ngày cần API lịch sử (cần API sau). Phone: bảng rút còn danh sách + mũi tên.</p></main>
+<script src="../data.js"></script><script>RK.top();RK.chrome(f);const P=RK.players;
+const old=[...P].sort((a,b)=>(b.rating-b.d)-(a.rating-a.d));const oi=new Map(old.map((p,i)=>[p.name,i]));
+const y=i=>24+i*30;let g='';
+P.forEach((p,i)=>{const o=oi.get(p.name),c=o>i?'up':o<i?'dn':'eq';
+g+=`<path class="ln ${c}" pathLength="1" style="animation-delay:${i*40}ms" d="M250 ${y(o)} C 350 ${y(o)}, 350 ${y(i)}, 450 ${y(i)}"/>`;
+g+=`<text class="lb2" x="40" y="${y(o)+4}" text-anchor="end">${o+1}</text><text class="lb" x="52" y="${y(o)+4}">${old[o].name}</text><circle cx="250" cy="${y(o)}" r="4" fill="currentColor" class="${c}"/>`;
+g+=`<text class="lb2" x="660" y="${y(i)+4}" text-anchor="start">${i+1}</text><text class="lb" x="650" y="${y(i)+4}" text-anchor="end">${p.name} · ${p.rating}</text><circle cx="450" cy="${y(i)}" r="4" fill="currentColor" class="${c}"/>`;});
+s.innerHTML=g;</script></body></html>

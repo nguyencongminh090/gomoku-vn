@@ -1,0 +1,100 @@
+<!-- S3 "Trò chuyện": chat-first, like a messenger. Left: online friends strip (story style) + conversation list;
+     centre: the thread fills the height, challenges are cards INSIDE the chat; right: who you're talking to
+     (rating, head-to-head, last games). Phone: list → full-screen thread. -->
+<style>
+  .s3 { padding: 16px 0 0; }
+  .s3 .wrap { max-width: 1320px; }
+  .s3__app { display: grid; grid-template-columns: 320px minmax(0, 1fr) 280px; height: calc(100svh - var(--nav) - 32px); min-height: 560px; overflow: hidden; }
+  .s3__app > * { min-width: 0; min-height: 0; }
+  .pane { display: flex; flex-direction: column; min-height: 0; }
+  .pane + .pane { box-shadow: -1px 0 0 var(--c-border); }
+  .s3__top { padding: 16px 16px 8px; display: grid; gap: 10px; }
+  .s3__top h1 { font-size: 22px; font-weight: 900; display: flex; align-items: center; justify-content: space-between; }
+  .story { display: flex; gap: 12px; overflow-x: auto; padding: 4px 16px 12px; scrollbar-width: none; }
+  .story a { display: grid; justify-items: center; gap: 4px; width: 56px; flex: none; font-size: 11.5px; font-weight: 700; }
+  .story .av { --s: 48px; }
+  .story .av[data-st="play"] { box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--busy); }
+  .story .add .av { background: var(--c-fill); color: var(--c-ink-2); }
+  .story .nm { width: 100%; text-align: center; }
+  .clist { overflow: auto; flex: 1; padding: 0 8px 8px; }
+  .ci { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 8px; border-radius: 12px; }
+  .ci.is-on { background: var(--c-brand-light); }
+  .ci .av { --s: 44px; }
+  .ci small { display: block; font-size: 13px; color: var(--c-ink-2); }
+  .ci--u .nm, .ci--u small { font-weight: 900; color: var(--c-ink); }
+  .ci time { font-size: 11px; color: var(--c-ink-2); display: grid; justify-items: end; gap: 4px; }
+  .ci--req { background: color-mix(in srgb, var(--c-warning-bg) 70%, transparent); }
+  .th__head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; box-shadow: 0 1px 0 var(--c-border); }
+  .th__head .nm-box b { font-size: 17px; }
+  .th__head small { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--c-ink-2); }
+  .th__log { flex: 1; overflow: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .th__day { align-self: center; font-size: 11.5px; font-weight: 800; color: var(--c-ink-2); padding: 2px 10px; border-radius: 999px; background: var(--c-fill); margin: 6px 0; }
+  .gcard { align-self: flex-start; display: grid; grid-template-columns: 72px auto; gap: 12px; align-items: center; padding: 12px; border-radius: 16px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); max-width: 360px; }
+  .gcard b { font-size: 15px; } .gcard p { font-size: 12.5px; color: var(--c-ink-2); margin: 2px 0 8px; }
+  .gcard--res { align-self: center; grid-template-columns: auto; text-align: center; font-size: 13px; }
+  .th__form { display: flex; gap: 8px; padding: 12px 16px; box-shadow: 0 -1px 0 var(--c-border); }
+  .th__form .field { flex: 1; }
+  .who { padding: 20px 16px; display: grid; gap: 14px; align-content: start; justify-items: center; text-align: center; overflow: auto; }
+  .who .av { --s: 72px; font-size: 26px; }
+  .who h2 { font-size: 18px; font-weight: 900; width: 100%; }
+  .who .stat { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; gap: 6px; }
+  .who .stat div { padding: 8px 4px; border-radius: 12px; background: var(--c-fill); display: grid; }
+  .who .stat b { font-size: 18px; font-weight: 1000; } .who .stat span { font-size: 11px; color: var(--c-ink-2); font-weight: 700; }
+  .form5 { display: flex; gap: 4px; } .form5 i { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; font: 900 11px/1 Nunito; color: #fff; background: var(--on); } .form5 i.l { background: var(--c-error); }
+  .who__acts { display: grid; gap: 8px; width: 100%; }
+  .s3__empty { display: none; flex: 1; flex-direction: column; justify-content: center; align-items: center; gap: 12px; text-align: center; padding: 24px; }
+  .mk-sparse .s3__empty { display: flex; }
+  .mk-sparse .th__head, .mk-sparse .th__log, .mk-sparse .th__form, .mk-sparse .who > *:not(.who__sparse) { display: none; }
+  .who__sparse { display: none; }
+  .mk-sparse .who__sparse { display: grid; gap: 8px; width: 100%; text-align: left; }
+  @media (max-width: 1100px) { .s3__app { grid-template-columns: 300px minmax(0, 1fr); } .s3__app > .who { display: none; } }
+  @media (max-width: 860px) {
+    .s3 { padding: 0; } .s3 .wrap { padding: 0; }
+    .s3__app { display: block; height: auto; min-height: 0; border-radius: 0; box-shadow: none; background: transparent; overflow: visible; }
+    .s3__app > .pane:not(:first-child) { display: none; }
+    .clist { overflow: visible; }
+  }
+</style>
+<div class="mk-screen s3">
+  <div class="wrap">
+    <div class="s3__app card rise">
+      <div class="pane">
+        <div class="s3__top"><h1>Trò chuyện <button class="btn btn--sm btn--sec btn--icon" aria-label="Thêm bạn">{{i:user-plus}}</button></h1><span class="field">{{i:magnifying-glass}}<span>Tìm bạn hoặc thêm bằng tên#1234</span></span></div>
+        <div class="story hscroll" aria-label="Bạn đang online">
+          <a href="#" class="add"><span class="av">+</span><span class="nm">Thêm</span></a>
+          <template data-list="online"><a href="#"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><span class="nm">{{name}}</span></a></template>
+        </div>
+        <div class="clist">
+          <template data-list="chin"><a class="ci ci--req" href="#"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small class="nm">{{i:sword}} thách bạn {{rule}} · {{clock}}</small></div><time>{{ago}}</time></a></template>
+          <template data-list="incoming"><a class="ci ci--req" href="#"><span class="av" style="--h:{{h}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>muốn kết bạn</small></div><span style="display:flex;gap:4px"><button class="btn btn--sm btn--pri btn--icon" aria-label="Đồng ý">{{i:check}}</button></span></a></template>
+          <template data-list="convs"><a class="ci {{#unread}}ci--u{{/unread}}" href="#"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><span class="nm">{{name}}</span><small class="nm">{{#mine}}Bạn: {{/mine}}{{last}}</small></div><time>{{time}}{{#unread}}<span class="badge">{{unread}}</span>{{/unread}}</time></a></template>
+          <div class="s3__empty" style="display:none"></div>
+          <div class="only-sparse" style="padding:8px"><p class="muted" style="font-size:13px;margin:4px 8px 8px">Người đang online — kết bạn để nhắn tin:</p>
+            <template data-list="suggest"><div class="ci"><span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><span class="nm">{{name}}</span><small>{{why}}</small></div><button class="btn btn--sm btn--pri btn--icon" aria-label="Kết bạn">{{i:user-plus}}</button></div></template></div>
+        </div>
+      </div>
+      <div class="pane">
+        <div class="th__head"><span class="av" style="--h:330;--s:44px" data-st="play">L9</span><div class="nm-box"><b class="nm">Linh_99</b><small><span class="dot dot--play"></span>Đang chơi · 12:40</small></div><button class="btn btn--sm btn--sec">{{i:eye}} Xem ván</button><button class="btn btn--sm btn--pri">{{i:sword}} Thách đấu</button></div>
+        <div class="th__log">
+          <span class="th__day">Hôm qua</span>
+          <div class="gcard gcard--res" data-be="kết quả trong chat"><span>{{i:trophy}} <b>Bạn thắng</b> Linh_99 · 41 nước · Luật 1 — <a href="#" style="text-decoration:underline">xem lại</a></span></div>
+          <span class="th__day">Hôm nay</span>
+          <template data-list="thread"><div><p class="msg {{#me}}msg--me{{/me}}">{{text}}</p></div></template>
+          <div class="gcard"><svg class="mb" viewBox="0 0 15 15" aria-hidden="true"><rect class="mb-bg" width="15" height="15" rx=".4"/><path d="M.5 .5H14.5M.5 3.5H14.5M.5 7.5H14.5M.5 11.5H14.5M.5 14.5H14.5M.5 .5V14.5M3.5 .5V14.5M7.5 .5V14.5M11.5 .5V14.5M14.5 .5V14.5"/><circle class="b" cx="7.5" cy="7.5" r=".9"/></svg>
+            <div><b>Linh_99 thách đấu</b><p>Luật 1 · 15×15 · 5+5 · Xếp hạng</p><span style="display:flex;gap:6px"><button class="btn btn--sm btn--pri">Vào chơi</button><button class="btn btn--sm btn--ghost">Để sau</button></span></div></div>
+        </div>
+        <form class="th__form" onsubmit="return false"><span class="field"><span>Nhắn cho Linh_99…</span></span><button class="btn btn--icon btn--sec" aria-label="Gửi thách đấu">{{i:sword}}</button><button class="btn btn--pri">{{i:paper-plane-tilt}} Gửi</button></form>
+        <div class="s3__empty"><span class="st st--w" style="font-size:44px"></span><b style="font-size:20px">Chưa có cuộc trò chuyện</b><span class="muted">Kết bạn ở cột trái, rồi nhắn tin hoặc gửi thách đấu ngay trong chat.<br>Mã của bạn: <b>{{me}}{{mytag}}</b></span></div>
+      </div>
+      <aside class="pane who">
+        <span class="av" style="--h:330" data-st="play">L9</span>
+        <h2 class="nm">Linh_99</h2><span class="muted" style="margin-top:-10px;font-size:13px">@linh_99 · #1182</span>
+        <div class="stat" data-be="elo + đối đầu"><div><b>1702</b><span>Elo</span></div><div><b>7–5</b><span>Đối đầu</span></div><div><b>58%</b><span>Thắng</span></div></div>
+        <div style="display:grid;gap:6px;justify-items:center"><span class="muted" style="font-size:12px;font-weight:800">5 ván gần nhất với bạn</span><span class="form5" data-be="lịch sử"><i>T</i><i class="l">B</i><i>T</i><i>T</i><i class="l">B</i></span></div>
+        <div class="who__acts"><button class="btn btn--sec btn--sm">{{i:user-circle}} Hồ sơ</button><button class="btn btn--ghost btn--sm">{{i:user-minus}} Huỷ kết bạn</button></div>
+        <div class="who__sparse"><b>Mã của bạn</b><span style="font-size:22px;font-weight:900">{{me}}<span class="muted">{{mytag}}</span></span><button class="btn btn--sec btn--sm">Sao chép mã</button></div>
+      </aside>
+    </div>
+  </div>
+</div>
+{{sheet}}

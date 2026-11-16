@@ -138,12 +138,15 @@ class RoomManager extends EventEmitter {
       creatorIp: userInfo.ip || null,   // Per-IP quota bookkeeping; never serialized to clients
       users: new Map(),
       joinOrder: [],                    // For host transfer queue
+      memberIds: new Set(),             // #367: everyone ever admitted — gates the silent reconnect rejoin
       settings: validatedSettings,
       state: 'idle',                    // idle | playing | interrupted
       readyDeadline: null,              // epoch ms — Start-modal countdown deadline, or null
       readyMissCount: 0,                 // consecutive ready-window misses for the CURRENT seat pair (0-3)
       gameState: null,                  // Set in Phase 4 when game starts
       scoreTable: {},                   // Per-room cumulative scores
+      scoreHistory: [],                 // earlier pairs: { key, players:[{userId,name,win,loss,draw}] }, newest last
+      gameLog: [],                      // #368: one entry per scored game (GameHandler.handleGameEnd), capped
       lastActivity: Date.now(),
       createdAt: new Date().toISOString(),
     };
@@ -160,6 +163,7 @@ class RoomManager extends EventEmitter {
 
     room.users.set(userInfo.userId, userEntry);
     room.joinOrder.push(userInfo.userId);
+    room.memberIds.add(userInfo.userId);
 
     this.rooms.set(roomId, room);
     this.userRoomMap.set(userInfo.userId, roomId);
@@ -212,6 +216,7 @@ class RoomManager extends EventEmitter {
 
     room.users.set(userInfo.userId, userEntry);
     room.joinOrder.push(userInfo.userId);
+    room.memberIds.add(userInfo.userId);
     room.lastActivity = Date.now();
 
     this.userRoomMap.set(userInfo.userId, roomId);
@@ -264,6 +269,9 @@ class RoomManager extends EventEmitter {
       return { room, destroyed: true, hostTransferred: false };
     }
 
+    // #365: a quick-match player walking out ends the session for the other seat too.
+    if (room.matchmade && wasSeated) this.emit('match_abandoned', room, userId);
+
     if (wasSeated) this.resetReadyPair(room);
 
     // Host transfer if needed
@@ -279,6 +287,47 @@ class RoomManager extends EventEmitter {
     }
 
     return { room, destroyed: false, hostTransferred };
+  }
+
+  /**
+   * A disconnected user's grace window ran out (#367): free their seat but keep
+   * them in the room as a disconnected viewer, so the page's reconnect — however
+   * late — lands back in the same room instead of on ROOM_GONE. Seat side
+   * effects match leaveRoom (series/quick-match end, ready pair reset); host
+   * moves to the first still-connected occupant, if any.
+   *
+   * @param {string} userId
+   * @returns {{ room: object|null, wasSeated: boolean, hostTransferred: boolean }}
+   */
+  releaseSeat(userId) {
+    const room = this._getUserRoom(userId);
+    if (!room) return { room: null, wasSeated: false, hostTransferred: false };
+
+    const user = room.users.get(userId);
+    const wasSeated = user.slot !== null;
+    user.slot = null;
+    user.ready = false;
+    user.presence = 'disconnected';
+    room.lastActivity = Date.now();
+
+    if (room.series && !room.series.done && room.series.players.includes(userId)) {
+      this.emit('series_abandoned', room, userId);
+    }
+    if (room.matchmade && wasSeated) this.emit('match_abandoned', room, userId);
+    if (wasSeated) this.resetReadyPair(room);
+
+    let hostTransferred = false;
+    if (room.host === userId) {
+      const next = room.joinOrder.find(id => id !== userId && room.users.get(id) && room.users.get(id).presence !== 'disconnected');
+      if (next) {
+        room.host = next;
+        hostTransferred = true;
+        logger.info(`[RoomManager] Host transferred to ${room.users.get(next).displayName} in room ${room.roomId}`);
+      }
+    }
+
+    logger.info(`[RoomManager] ${user.displayName} seat released (disconnected) in room ${room.roomId}`);
+    return { room, wasSeated, hostTransferred };
   }
 
   // ---------------------------------------------------------------------------
@@ -305,6 +354,11 @@ class RoomManager extends EventEmitter {
     }
 
     const user = room.users.get(userId);
+
+    // #365: a quick-match room keeps its matched pair — no one else sits down.
+    if (room.matchmade && Array.isArray(room.matchPlayers) && !room.matchPlayers.includes(userId)) {
+      return { error: 'Trận chơi nhanh không cho đổi người chơi.', code: 'MATCH_SEAT_LOCKED' };
+    }
 
     // Already in this slot?
     if (user.slot === slot) return { room };
@@ -343,6 +397,11 @@ class RoomManager extends EventEmitter {
 
     if (room.state === 'playing') {
       return { error: 'Không thể đứng dậy khi đang chơi.', code: 'CANNOT_STAND_WHILE_PLAYING' };
+    }
+
+    // #365: a quick-match player leaves via "Về trang chủ" (room:leave), never by standing up.
+    if (room.matchmade) {
+      return { error: 'Trận chơi nhanh không cho đổi người chơi.', code: 'MATCH_SEAT_LOCKED' };
     }
 
     const user = room.users.get(userId);
@@ -384,8 +443,10 @@ class RoomManager extends EventEmitter {
     const user = room.users.get(userId);
     if (user.presence === 'disconnected') return { room };
 
-    user.presence = presence === 'away' ? 'away' : 'active';
-    return { room };
+    const next = presence === 'away' ? 'away' : 'active';
+    const changed = user.presence !== next;
+    user.presence = next;
+    return { room, changed };
   }
 
   // ---------------------------------------------------------------------------
@@ -461,6 +522,11 @@ class RoomManager extends EventEmitter {
       return { error: 'Bạn cần ngồi vào chỗ trước khi bắt đầu.', code: 'MUST_BE_SEATED_TO_START' };
     }
 
+    // #365: a quick-match session stops at matchMax games.
+    if (room.matchmade && (room.matchGames || 0) >= (room.matchMax || 1)) {
+      return { error: 'Đã chơi đủ số ván của trận ghép.', code: 'MATCH_LIMIT_REACHED' };
+    }
+
     if (!user.ready) {
       user.ready = true;
       room.lastActivity = Date.now();
@@ -507,6 +573,8 @@ class RoomManager extends EventEmitter {
     this.userRoomMap.delete(targetId);
     room.lastActivity = Date.now();
     if (wasSeated) this.resetReadyPair(room);
+    // A kicked user's page that was offline at kick time must not auto-rejoin on reconnect (#367).
+    if (room.memberIds) room.memberIds.delete(targetId);
 
     return { room, kicked: true };
   }
@@ -603,6 +671,8 @@ class RoomManager extends EventEmitter {
       kicked = { userId: notReadyUser.userId, displayName: notReadyUser.displayName };
       notReadyUser.slot = null;
       room.readyMissCount = 0;
+      // #365: a quick-match pair can't be refilled, so losing a seat ends the session.
+      if (room.matchmade) this.emit('match_abandoned', room, notReadyUser.userId);
     }
 
     slot1.ready = false;
@@ -629,50 +699,83 @@ class RoomManager extends EventEmitter {
    */
   listRooms() {
     const list = [];
-    for (const [, room] of this.rooms) {
-      const hostUser = room.users.get(room.host);
-      const playerCount = this._countPlayers(room);
-
-      // Ghost viewers: a spectator (slot === null) whose socket dropped has no
-      // cleanup timeout (see TODO.md #115) — they linger in room.users forever
-      // while any other occupant keeps the room alive. Exclude them from the
-      // lobby head-count so the room-card number reflects who's actually there.
-      // Seated players marked 'disconnected' during grace still count — they're
-      // mid-reconnect, not gone (TODO.md #158).
-      let userCount = 0;
-      // Seated players by slot (index 0 = seat #1, 1 = seat #2; null = empty) for the ticket title.
-      const players = [null, null];
-      for (const [, u] of room.users) {
-        if (u.slot === 1 || u.slot === 2) {
-          players[u.slot - 1] = {
-            displayName: u.displayName,
-            avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
-          };
-        }
-        if (u.slot === null && u.presence === 'disconnected') continue;
-        userCount++;
-      }
-
-      list.push({
-        roomId: room.roomId,
-        roomName: room.roomName,
-        hostName: hostUser ? hostUser.displayName : '—',
-        playerCount,                     // 0, 1, or 2 seated players
-        players,                         // [seat1, seat2] → { displayName, avatarUrl } | null
-        userCount,                       // People in room, minus ghost viewers
-        state: room.state,
-        boardSize: room.settings.boardSize,
-        ruleWall: room.settings.ruleWall,
-        rulePortal: room.settings.rulePortal,
-        winningRule: room.settings.winningRule,
-        ruleSwap2: room.settings.ruleSwap2,
-        timerMode: room.settings.timerMode,
-        timerSeconds: room.settings.timerSeconds,
-        timerIncrementSeconds: room.settings.timerIncrementSeconds,
-        ranked: room.settings.ranked !== false,
-      });
-    }
+    for (const room of this.rooms.values()) list.push(this.lobbyEntry(room));
     return list;
+  }
+
+  /**
+   * The cheap part of a lobby entry — no DB lookup, no moves copy (#382: the lobby counts and ranks
+   * every room, but builds full entries only for the page it mirrors). Same numbers as lobbyEntry().
+   * @returns {{ state: string, playerCount: number, userCount: number }}
+   */
+  lobbyStat(room) {
+    let playerCount = 0;
+    let userCount = 0;
+    for (const u of room.users.values()) {
+      if (u.slot === 1 || u.slot === 2) playerCount++;
+      if (u.slot === null && u.presence === 'disconnected') continue; // ghost viewer, see lobbyEntry
+      userCount++;
+    }
+    return { state: room.state, playerCount, userCount };
+  }
+
+  /**
+   * One room's lobby-list entry (#380: the lobby flush builds this for changed rooms only —
+   * it costs two DB lookups per seated player plus a copy of the game's moves).
+   */
+  lobbyEntry(room) {
+    const hostUser = room.users.get(room.host);
+    const playerCount = this._countPlayers(room);
+
+    // Ghost viewers: a spectator (slot === null) whose socket dropped has no
+    // cleanup timeout (see TODO.md #115) — they linger in room.users forever
+    // while any other occupant keeps the room alive. Exclude them from the
+    // lobby head-count so the room-card number reflects who's actually there.
+    // Seated players marked 'disconnected' during grace still count — they're
+    // mid-reconnect, not gone (TODO.md #158).
+    let userCount = 0;
+    // Seated players by slot (index 0 = seat #1, 1 = seat #2; null = empty) for the ticket title.
+    const players = [null, null];
+    for (const [, u] of room.users) {
+      if (u.slot === 1 || u.slot === 2) {
+        players[u.slot - 1] = {
+          displayName: u.displayName,
+          avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
+        };
+        // Rating in the room's rule pool (#364): { rating, provisional } from seat-rating.js; null for guests / unrated / no lookup wired.
+        const r = u.isGuest || !this.ratingLookup ? null : this.ratingLookup(u.userId, room.settings.winningRule);
+        players[u.slot - 1].rating = r ? r.rating : null;
+        players[u.slot - 1].provisional = !!(r && r.provisional);
+      }
+      if (u.slot === null && u.presence === 'disconnected') continue;
+      userCount++;
+    }
+
+    // Live position for the lobby mini board (#364): flat [x0,y0,x1,y1,…] in play order, plus the
+    // game's start time. null when no game is running, so the lobby diff sees the game end.
+    const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
+    const moves = game ? game.moveHistory.flatMap((m) => [m.x, m.y]) : null;
+
+    return {
+      roomId: room.roomId,
+      roomName: room.roomName,
+      hostName: hostUser ? hostUser.displayName : '—',
+      playerCount,                     // 0, 1, or 2 seated players
+      players,                         // [seat1, seat2] → { displayName, avatarUrl } | null
+      userCount,                       // People in room, minus ghost viewers
+      state: room.state,
+      boardSize: room.settings.boardSize,
+      ruleWall: room.settings.ruleWall,
+      rulePortal: room.settings.rulePortal,
+      winningRule: room.settings.winningRule,
+      ruleSwap2: room.settings.ruleSwap2,
+      timerMode: room.settings.timerMode,
+      timerSeconds: room.settings.timerSeconds,
+      timerIncrementSeconds: room.settings.timerIncrementSeconds,
+      ranked: room.settings.ranked !== false,
+      startedAt: game ? game.startedAt || null : null,
+      moves,
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -736,9 +839,14 @@ class RoomManager extends EventEmitter {
       serverTime: Date.now(),
       readyMissCount: room.readyMissCount || 0,
       matchmade: !!room.matchmade,
+      // #365: quick-match session = up to matchMax games; matchGames counts finished ones.
+      matchGames: room.matchmade ? (room.matchGames || 0) : 0,
+      matchMax: room.matchmade ? (room.matchMax || 0) : 0,
       series: ChallengeSeries.view(room.series),
       settings: { ...room.settings },
       scoreTable: { ...room.scoreTable },
+      scoreHistory: (room.scoreHistory || []).slice(), // finished-pair tallies; scoreTable is the CURRENT pair
+      gameLog: (room.gameLog || []).slice(), // #368 phone Tỉ số tab: big score, result dots, per-game rows
     };
   }
 
@@ -851,6 +959,7 @@ class RoomManager extends EventEmitter {
     room.joinOrder = [];
     room.gameState = null;
     room.scoreTable = null;
+    room.gameLog = null;
 
     this.rooms.delete(roomId);
     this.emit('room_destroyed', roomId);

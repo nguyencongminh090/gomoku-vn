@@ -38,7 +38,8 @@ function boot(results) {
   document.dispatchEvent(new Event('DOMContentLoaded'));
 }
 const type = (v) => { const i = document.getElementById('sc-add-q'); i.value = v; i.dispatchEvent(new Event('input')); };
-const rows = () => [...document.querySelectorAll('#sc-add-results .prow')];
+const rows = () => [...document.querySelectorAll('#sc-add-results .sc-ci')];
+const btn = (r) => r.querySelector('button');
 
 afterEach(() => { jest.useRealTimers(); });
 
@@ -51,13 +52,14 @@ describe('add friend search', () => {
     type('bo'); type('bob'); jest.advanceTimersByTime(400); await tick();
     expect(calls.filter((c) => c.includes('/search'))).toEqual(['GET /api/friends/search?q=bob']);
     const r = rows();
-    expect(r.map((x) => x.querySelector('.prow__t').textContent)).toEqual(['BOB', 'CAT', 'DAN', 'EVE', 'FAY']);
-    expect(r[0].querySelector('button').textContent).toBe('social.add_btn');
+    expect(r.map((x) => x.querySelector('.sc-ci__t').textContent)).toEqual(['BOB', 'CAT', 'DAN', 'EVE', 'FAY']);
+    expect(r.map((x) => x.querySelector('.sc-ci__t').title)).toEqual(['BOB', 'CAT', 'DAN', 'EVE', 'FAY']); // #370 name rule: full name in title
+    expect(btn(r[0]).getAttribute('aria-label')).toBe('social.add_btn');
     expect(r[1].querySelector('button')).toBeNull();
     expect(r[1].textContent).toContain('social.add_closed');
     expect(r[2].textContent).toContain('social.add_friends');
     expect(r[3].textContent).toContain('social.add_sent');
-    expect(r[4].querySelector('button').textContent).toBe('friends.accept');
+    expect(btn(r[4]).getAttribute('aria-label')).toBe('friends.accept');
   });
 
   it('clicking Add friend POSTs the username (URL-encoded) and refreshes', async () => {
@@ -96,10 +98,11 @@ describe('my friend code', () => {
 
 describe('css', () => {
   it('the add-friend form class is not shared with another component (a clash shrank the box to 180px)', () => {
-    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8') + fs.readFileSync(path.join(__dirname, '..', 'css', 'social.css'), 'utf8');
     const cls = /<form id="sc-add" class="([\w-]+)"/.exec(fs.readFileSync(path.join(__dirname, '..', 'social.html'), 'utf8'))[1];
     const defs = css.split('\n').filter((l) => new RegExp('^\\.' + cls + '[\\s{]').test(l));
-    expect(defs.length).toBe(2); // the form rule + its "input" rule, nothing else
+    expect(defs.length).toBeGreaterThanOrEqual(1); // #370: only social.css styles it
+    expect(fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8').split('\n').some((l) => new RegExp('^\\.' + cls + '[\\s{]').test(l))).toBe(false);
     expect(defs.every((l) => !/display:\s*flex|width:\s*180px/.test(l))).toBe(true);
   });
 });

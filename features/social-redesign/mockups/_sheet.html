@@ -1,0 +1,28 @@
+<!-- Shared phone DM thread: full screen above the tab bar (frame light-375-thread). Included via {{sheet}}. -->
+<style>
+  .sheet { display: none; }
+  @media (max-width: 860px) {
+    body.mk-thread .sheet { display: flex; flex-direction: column; position: fixed; inset: var(--nav) 0 var(--tab) 0; z-index: 40; background: var(--c-bg); }
+    .sheet__head { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--c-surface); box-shadow: 0 1px 0 var(--c-border); }
+    .sheet__head .nm-box { display: grid; gap: 1px; }
+    .sheet__head b { font-size: 16px; }
+    .sheet__head small { font-size: 12px; color: var(--c-ink-2); display: flex; align-items: center; gap: 6px; }
+    .sheet__log { flex: 1; overflow: auto; padding: 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+    .sheet__inv { align-self: center; display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); font-size: 13px; margin: 4px 0 8px; }
+    .sheet__form { display: flex; gap: 8px; padding: 10px 12px; background: var(--c-surface); box-shadow: 0 -1px 0 var(--c-border); }
+    .sheet__form .field { flex: 1; }
+  }
+</style>
+<div class="sheet" aria-label="Tin nhắn với Linh_99">
+  <div class="sheet__head">
+    <button class="btn--icon btn" aria-label="Quay lại">{{i:arrow-left}}</button>
+    <span class="av" style="--h:330" data-st="play">LI</span>
+    <div class="nm-box"><b class="nm">Linh_99</b><small><span class="dot dot--play"></span>Đang chơi · 12:40</small></div>
+    <button class="btn btn--sm btn--sec">{{i:eye}} Xem</button>
+  </div>
+  <div class="sheet__log">
+    <template data-list="thread"><div><p class="msg {{#me}}msg--me{{/me}}">{{text}}</p></div></template>
+    <div class="sheet__inv"><span class="st st--b"></span><span>Linh_99 mời bạn: <b>Luật 1 · 5+5</b></span><button class="btn btn--sm btn--pri">Nhận</button></div>
+  </div>
+  <form class="sheet__form" onsubmit="return false"><span class="field"><span>Nhập tin nhắn…</span></span><button class="btn btn--icon btn--sec" aria-label="Thách đấu">{{i:sword}}</button><button class="btn btn--icon btn--pri" aria-label="Gửi">{{i:paper-plane-tilt}}</button></form>
+</div>

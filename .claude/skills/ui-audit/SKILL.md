@@ -6,7 +6,7 @@ argument-hint: "[path or url]"
 
 # UI Audit
 
-Judge an existing UI against `DESIGN.md` (if present) and the visual-design rules. The audit is read-only: never edit project files except writing the report. Items outside the notes (animation duration thresholds, text overflow, palette and font catalogs) are not audited here; see the `ui-ux-pro-max` and `ux-audit` skills.
+Judge an existing UI against `DESIGN.md` (if present) and the visual-design rules. The audit is read-only: never edit project files except writing the report. Items outside the notes (text overflow, palette and font catalogs) are not audited here; see the `ui-ux-pro-max` and `ux-audit` skills.
 
 Note paths in this skill are under `${SKILLS_TREE:-/run/media/ngmint/Data/Programming/Programming/SKILLS/SKILLS_TREE}/knowledge/...` (set `SKILLS_TREE` when the tree lives elsewhere).
 
@@ -15,7 +15,7 @@ Note paths in this skill are under `${SKILLS_TREE:-/run/media/ngmint/Data/Progra
 1. **Baseline.** Look for `DESIGN.md` in the project root. Read its `Style:` (a `vstyle-*` note name), `## Tokens` and `## Forbidden` sections. No `DESIGN.md`: Baseline is `vbase-only` and the report header says so. `DESIGN.md` exists but has no `Style:` line: skip step 2, Baseline stays `DESIGN.md`.
 2. **Style notes.** With a style, read `knowledge/visual-design/items/<Style>.md` sections "Keep it usable", "Do not use when", "Common mistakes". Match headings by prefix: in some notes "Keep it usable" carries a suffix such as "(Sheikh 2025, ...)".
 3. **Collect the target.** No target given: audit the current project directory. List the files (CSS, SCSS, JSX/TSX, Vue, Svelte, HTML) or screenshots. If the target is a URL without a browser tool, or no screenshots are available, the Mode is `code-only` (with a browser tool a URL can be audited); never invent screenshots. Rules marked "visual" in `detect` are then reported as "not checked (code-only)", not as findings.
-4. **Run the rules.** Run every row of `references/rules.md` using its `detect` column, and read the cited `note#section` for the reasoning. For focus and contrast rules (PRI-FOCUS-VISIBLE, COL-CONTRAST-*) also read `a11y-wcag-essentials` (in `knowledge/web-development/items/`). Also check `DESIGN.md` Tokens (literals outside tokens) and each Forbidden item.
+4. **Run the rules.** Run every row of `references/rules.md` using its `detect` column, and read the cited `note#section` for the reasoning. For focus and contrast rules (PRI-FOCUS-VISIBLE, COL-CONTRAST-*) also read `a11y-wcag-essentials` (in `knowledge/web-development/items/`). Motion, 3D and stock-image rules cite `fe-web-animation`, `fe-web-3d` and `fe-stock-images` in the same folder; with `DESIGN.md`, also check animations against its `- Motion:` level and photos against `- Imagery:`. Also check `DESIGN.md` Tokens (literals outside tokens) and each Forbidden item.
 5. **Write the report** `ui-audit-YYYY-MM-DD.md` (YYYY-MM-DD is today) in the project root; overwrite it if it already exists. Format:
 
 ```

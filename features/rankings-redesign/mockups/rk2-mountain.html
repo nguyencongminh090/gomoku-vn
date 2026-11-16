@@ -1,0 +1,26 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK2 Leo núi Elo</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+.sky{position:relative;overflow:hidden;background:linear-gradient(#27405a,#e8a36a 78%);color:#fff;padding:44px 0 0}
+.sky h1{margin:0;font-size:clamp(30px,3vw+10px,50px);font-weight:1000;text-shadow:0 2px 12px rgba(0,0,0,.35)}.sky p{margin:6px 0 0;max-width:520px;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+.sky svg{display:block;width:100%;height:auto;margin-top:-20px}
+.flag{animation:wave 3s ease-in-out infinite;transform-origin:0 100%}@keyframes wave{50%{transform:skewY(-6deg)}}
+.f{margin:24px 0}
+.tier{margin:0 0 20px;border-radius:16px;background:var(--c-surface);overflow:hidden}
+.tier h2{margin:0;display:flex;justify-content:space-between;align-items:center;padding:12px 18px;font-size:15px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;color:#1b1208;background:var(--t)}
+.tier h2 span{font-weight:700;text-transform:none;letter-spacing:0}
+.pl{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:2px 16px;padding:10px 14px}
+.pl a{display:flex;align-items:center;gap:10px;min-height:52px;padding:4px 8px;border-radius:10px}.pl a:hover{background:var(--c-fill)}
+.pl b{display:block;line-height:1.2}.pl small{color:var(--c-ink-2)}.pl .r{margin-left:auto;font-weight:1000;text-align:right}
+.mine{position:relative;margin:6px 14px 12px;padding:14px 16px 14px 20px;border-radius:12px;background:var(--c-brand-light);border:2px dashed var(--c-brand-text);display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.mine::before{content:'';position:absolute;left:8px;top:10px;width:3px;bottom:10px;background:var(--c-brand-text);border-radius:2px}
+.bar{flex:1 1 160px;height:10px;border-radius:6px;background:var(--c-fill);overflow:hidden}.bar i{display:block;height:100%;width:72%;background:var(--c-brand-text);animation:grow 900ms var(--e-out) backwards}@keyframes grow{from{width:0}}
+</style></head><body>
+<section class="sky"><div class="wrap"><p class="eyebrow" style="color:#ffe9c9">Tự do · 1.284 người</p><h1>Leo núi Elo</h1><p>Mỗi bậc núi là một mốc rating. Cắm cờ của bạn lên cao hơn mỗi tuần.</p></div>
+<svg viewBox="0 0 1200 220" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path d="M0 220V150L170 80 290 140 470 40 640 130 800 70 980 140 1200 90V220Z" fill="#3b4f63"/><path d="M0 220V180L220 120 380 170 560 100 760 170 960 120 1200 170V220Z" fill="#2c3b4a"/><path d="M470 40l-38 40 24-10 14 14 16-16 22 12z" fill="#fff"/><g class="flag"><rect x="468" y="10" width="3" height="34" fill="#fff"/><path d="M471 10h30l-8 8 8 8h-30z" fill="#8bc34a"/></g></svg></section>
+<main class="wrap"><div class="filters f" id="f"></div><div id="t"></div><p class="note">Bậc (Kim cương, Vàng, Bạc, Đồng, Gỗ) là khái niệm mới, tính từ rating ở client; ngưỡng cần chốt (cần API sau nếu muốn lưu huy hiệu).</p></main>
+<script src="../data.js"></script><script>RK.top();document.body.prepend(document.querySelector('.mk-top'));RK.chrome(f);
+const T=[['Kim cương',2000,'#9fe0ff'],['Vàng',1700,'#f2c14e'],['Bạc',1500,'#c7ced6'],['Đồng',1300,'#d9955a']];
+const all=[...RK.players];t.innerHTML=T.map(([n,min,c],i)=>{const hi=i?T[i-1][1]:9999;const ps=all.filter(p=>p.rating>=min&&p.rating<hi);
+const me=RK.me.rating>=min&&RK.me.rating<hi?`<div class="mine">${RK.av(RK.me,40)}<div><b>Bạn · #47</b><br><small class="muted">Cờ của bạn cắm ở đây</small></div><div class="bar"><i></i></div><span class="muted">còn <b>64</b> điểm tới bậc ${T[i-1]?T[i-1][0]:''}</span></div>`:'';
+return `<section class="tier" style="--t:${c}"><h2>${n}<span>từ ${min} · ${ps.length} người</span></h2><div class="pl">${ps.map(p=>`<a>${RK.av(p,36)}<span><b>${p.name}</b><small>#${p.rank} · ${p.city}</small></span><span class="r num">${p.rating}<br>${RK.dl(p)}</span></a>`).join('')}</div>${me}</section>`}).join('')+`<section class="tier" style="--t:#b89a7a"><h2>Gỗ<span>dưới 1300 · 1.264 người</span></h2><div class="mine" style="border-style:solid">${RK.av(RK.me,40)}<div><b>Bạn · #47 · 1236</b></div><div class="bar"><i style="width:60%"></i></div><span class="muted">còn <b>64</b> điểm tới Đồng</span></div></section>`;</script></body></html>

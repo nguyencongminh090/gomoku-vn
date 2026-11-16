@@ -17,7 +17,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=7cb74e0c';
+import { client } from './lobby.js?v=f155548e';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -36,6 +36,52 @@ const windows = new Map();
 const order = [];
 
 let onlineUsers = [];               // [{ userId, displayName, isGuest }]
+
+// #381: with many people online the server sends only the first page of the list (`onlineTotal` is
+// the real count). Anyone beyond it is looked up on demand with `lobby:online_query`:
+//   remote      — the last name search shown in the modal ({ q, users, matched })
+//   extraOnline — chat partners outside the page that the server confirmed online
+let onlineTotal = 0;
+let remote = null;
+let remoteTimer = null;
+const extraOnline = new Set();
+let lastPartnerCheck = 0;
+const QUERY_TIMEOUT_MS = 5000;
+const SEARCH_DEBOUNCE_MS = 250;
+const PARTNER_RECHECK_MS = 20000;
+const listTruncated = () => onlineTotal > onlineUsers.length;
+const inPage = (userId) => onlineUsers.some(u => u.userId === userId);
+
+/** Ask the server which open-chat partners outside the page are online; `force` skips the rate limit. */
+function checkPartners(force) {
+  if (!listTruncated()) return;
+  const ids = [...windows.keys()].filter(id => !inPage(id));
+  if (!ids.length) return;
+  const now = Date.now();
+  if (!force && now - lastPartnerCheck < PARTNER_RECHECK_MS / 2) return;
+  lastPartnerCheck = now;
+  client.emitAck('lobby:online_query', { ids }, QUERY_TIMEOUT_MS, (err, res) => {
+    if (err || !res || !Array.isArray(res.online)) return;
+    for (const id of ids) {
+      if (res.online.includes(id)) extraOnline.add(id); else extraOnline.delete(id);
+      updateWindowStatus(id);
+    }
+  });
+}
+
+/** Debounced name search for the modal while the list is truncated. */
+function requestRemote(q) {
+  if (remote && remote.q === q) return;
+  clearTimeout(remoteTimer);
+  remoteTimer = setTimeout(() => {
+    client.emitAck('lobby:online_query', { q }, QUERY_TIMEOUT_MS, (err, res) => {
+      if (err || !res || !Array.isArray(res.users)) return;
+      remote = { q, users: res.users, matched: res.matched || res.users.length };
+      if (typeof res.total === 'number') onlineTotal = Math.max(res.total, onlineUsers.length);
+      if (modal && modal.classList.contains('visible') && (modalSearch.value || '').trim().toLowerCase() === q) renderModalList();
+    });
+  }, SEARCH_DEBOUNCE_MS);
+}
 
 // Live view of the current user. `session:me` can arrive AFTER this module
 // runs (see lobby.js), so a value captured once at init would stay null —
@@ -59,11 +105,12 @@ let container, modal, modalList, modalSearch, modalShortcut;
 // ---------------------------------------------------------------------------
 
 function isOnline(userId) {
-  return onlineUsers.some(u => u.userId === userId);
+  return inPage(userId) || extraOnline.has(userId);
 }
 
 function displayNameFor(userId, fallback) {
-  const u = onlineUsers.find(x => x.userId === userId);
+  const u = onlineUsers.find(x => x.userId === userId)
+    || (remote && remote.users.find(x => x.userId === userId)); // #381: opened from a search result
   return (u && u.displayName) || fallback || userId;
 }
 
@@ -202,7 +249,12 @@ async function loadHistory(userId) {
       w.log.scrollTop = w.log.scrollHeight;
     }
     if (messages.some((m) => !m.mine && !m.read)) {
-      fetch('/api/dm/id/' + encodeURIComponent(userId) + '/read', { method: 'POST', credentials: 'same-origin' }).catch(() => {});
+      fetch('/api/dm/id/' + encodeURIComponent(userId) + '/read', { method: 'POST', credentials: 'same-origin' })
+        .then(() => { // #371: server deleted the `dm` bell row — refetch now, not at the 60 s poll
+          const ps = window.PlatformShell;
+          if (ps && ps.notifications && ps.notifications.refresh) ps.notifications.refresh();
+        })
+        .catch(() => {});
     }
   } catch (_) { /* offline: the window works live-only, as before */ }
 }
@@ -213,10 +265,10 @@ function buildWindow(userId, name) {
   root.dataset.peerId = userId;
   root.innerHTML = `
     <div class="pm-window__header">
-      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-chat-circle"></use></svg>
+      <svg class="icon pm-window__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-chat-circle"></use></svg>
       <span class="pm-window__name"></span>
       <span class="pm-window__status"></span>
-      <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button type="button" class="pm-window__close" aria-label="${E().escapeAttr(t('private_chat.close'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="pm-window__log"></div>
     <div class="pm-notice" hidden></div>
@@ -224,7 +276,7 @@ function buildWindow(userId, name) {
       <input type="text" class="pm-input" maxlength="500" autocomplete="off"
              placeholder="${E().escapeAttr(t('private_chat.ph_input'))}" />
       <button type="button" class="pm-send-btn" title="${E().escapeAttr(t('private_chat.btn_send'))}" aria-label="${E().escapeAttr(t('private_chat.btn_send'))}">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-paper-plane-tilt"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-paper-plane-tilt"></use></svg>
       </button>
     </div>`;
 
@@ -279,6 +331,7 @@ function openChat(userId) {
   order.push(userId);
   container.appendChild(w.root);
   updateWindowStatus(userId);
+  if (!inPage(userId)) checkPartners(true); // #381: not on the first page — ask the server
   w.input.focus();
   loadHistory(userId);
 }
@@ -370,7 +423,7 @@ function renderCard(card, userId, fallbackName) {
   const x = cardNode('button', 'modal__close');
   x.type = 'button';
   x.setAttribute('aria-label', t('card.close'));
-  x.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg>';
+  x.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg>';
   x.addEventListener('click', closeCard);
   head.appendChild(x);
   box.appendChild(head);
@@ -464,10 +517,18 @@ function hueOf(str) {
 function renderModalList() {
   if (!modalList) return;
   const q = (modalSearch.value || '').trim().toLowerCase();
-  const rows = onlineUsers.filter(u => !q || u.displayName.toLowerCase().includes(q));
+  let rows = onlineUsers.filter(u => !q || u.displayName.toLowerCase().includes(q));
+  let matched = rows.length;
+  if (listTruncated()) {
+    // #381: the page is not the whole list — the server searches; until it answers, show the
+    // page matches (the full first page when there is no query).
+    if (remote && remote.q === q) { rows = remote.users; matched = remote.matched; }
+    else requestRemote(q);
+    if (!q) matched = Math.max(matched, onlineTotal);
+  }
 
   const countEl = document.getElementById('online-users-count');
-  if (countEl) countEl.textContent = String(onlineUsers.length);
+  if (countEl) countEl.textContent = String(Math.max(onlineTotal, onlineUsers.length));
 
   modalList.innerHTML = '';
 
@@ -519,7 +580,7 @@ function renderModalList() {
       btn.className = 'online-users-list__chat-btn';
       btn.title = t('private_chat.btn_chat');
       btn.setAttribute('aria-label', t('private_chat.btn_chat') + ' — ' + u.displayName);
-      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-chat-circle"></use></svg>';
+      btn.innerHTML = '<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-chat-circle"></use></svg>';
       li.appendChild(btn);
       // The chat button opens the chat directly; the rest of the row opens the profile card.
       btn.addEventListener('click', (e) => { e.stopPropagation(); openChat(u.userId); closeModal(); });
@@ -530,10 +591,18 @@ function renderModalList() {
     }
     modalList.appendChild(li);
   }
+
+  if (matched > rows.length) {
+    const li = document.createElement('li');
+    li.className = 'online-users-list__empty online-users-list__more';
+    li.textContent = t('private_chat.more_users', { shown: rows.length, n: matched });
+    modalList.appendChild(li);
+  }
 }
 
 function openModal() {
   if (!modal) return;
+  remote = null; // #381: a search result is only as fresh as the modal session
   modal.classList.add('visible');
   renderModalList();
   modalSearch.focus();
@@ -553,8 +622,10 @@ function toggleModal() {
 // Public API
 // ---------------------------------------------------------------------------
 
-function updateOnlineUsers(users) {
+function updateOnlineUsers(users, total) {
   onlineUsers = Array.isArray(users) ? users : [];
+  onlineTotal = typeof total === 'number' ? Math.max(total, onlineUsers.length) : onlineUsers.length;
+  if (listTruncated()) checkPartners(false); else extraOnline.clear();
   for (const userId of windows.keys()) updateWindowStatus(userId);
   if (modal && modal.classList.contains('visible')) renderModalList();
 }
@@ -680,10 +751,12 @@ function init() {
   const partnerOffline = (data) => {
     if (data && data.userId) {
       onlineUsers = onlineUsers.filter(u => u.userId !== data.userId);
+      extraOnline.delete(data.userId);
       updateWindowStatus(data.userId);
       if (modal.classList.contains('visible')) renderModalList();
     }
   };
+  setInterval(() => checkPartners(false), PARTNER_RECHECK_MS); // #381: a partner off the page gets no patch
   client.on('user:status', (d) => { if (d && d.status === 'offline') partnerOffline(d); });
   client.on('user:disconnected', partnerOffline);
 

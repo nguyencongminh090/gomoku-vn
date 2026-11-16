@@ -396,11 +396,10 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
   if (!match) return;
 
   const pairing = tournamentManager.getPairing(pairingId);
-  if (pairing) pairing.moves = match.engine.moveHistory;
 
   // Full per-game history (TODO.md #78) — one row per individual game,
-  // never overwritten (unlike pairing.moves above, which the NEXT game in a
-  // series clobbers). gameIndex mirrors startMatch()'s own computation:
+  // never overwritten. tournament_games owns replay data; the pairing keeps only
+  // the series summary (B345). gameIndex mirrors startMatch()'s own computation:
   // pairing.games.length BEFORE recordPairingResult() below pushes this
   // game's summary entry. Placed unconditionally, not inside `if (outcome)`
   // — _endMatch is only ever called from a genuinely finished GameEngine

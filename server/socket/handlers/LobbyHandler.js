@@ -12,6 +12,7 @@
 
 const logger      = require('../../utils/logger');
 const roomManager = require('../../managers/RoomManager');
+const database    = require('../../db/database');
 const {
   timerMap,
   emptyRoomGraceTimers,
@@ -19,10 +20,13 @@ const {
   broadcastRoomUpdate,
   sendLobbySnapshot,
   sendOnlineSnapshot,
+  queryOnlineUsers,
+  queryLobbyRooms,
   getClientIp,
 } = require('../state');
 
 const LOBBY_ROOM = 'lobby';
+const ONLINE_SEARCH_MIN_INTERVAL_MS = 200; // #381
 
 /**
  * Register lobby-domain event listeners on a socket.
@@ -32,6 +36,8 @@ const LOBBY_ROOM = 'lobby';
  */
 function register(io, socket) {
   const user = socket.user;
+  let lastOnlineSearchAt = 0;
+  let lastRoomsQueryAt = 0;
 
   socket.on('lobby:subscribe', () => {
     socket.join(LOBBY_ROOM);
@@ -40,6 +46,30 @@ function register(io, socket) {
     // until it has received this.
     sendLobbySnapshot(io, socket);
     sendOnlineSnapshot(io, socket); // #230: then lobby:online_patch deltas
+  });
+
+  // #381: the snapshot carries one page of the online list; search / "is this user online" is on demand.
+  socket.on('lobby:online_query', (payload, ack) => {
+    if (typeof ack !== 'function') return;
+    const query = payload && typeof payload === 'object' ? payload : {};
+    // A name search walks the whole online list; the client debounces at 250 ms, so anything
+    // faster than this is not typing. The id lookup is O(ids) and is not throttled.
+    if (!Array.isArray(query.ids)) {
+      const now = Date.now();
+      if (now - lastOnlineSearchAt < ONLINE_SEARCH_MIN_INTERVAL_MS) { ack({ error: 'RATE_LIMITED' }); return; }
+      lastOnlineSearchAt = now;
+    }
+    ack(queryOnlineUsers(query));
+  });
+
+  // #382: the lobby mirrors one page of rooms; "show more" fetches the next page of the ranking.
+  socket.on('lobby:rooms_query', (payload, ack) => {
+    if (typeof ack !== 'function') return;
+    const now = Date.now();
+    // Ranks every room: same throttle as the name search above (a click, not a stream).
+    if (now - lastRoomsQueryAt < ONLINE_SEARCH_MIN_INTERVAL_MS) { ack({ error: 'RATE_LIMITED' }); return; }
+    lastRoomsQueryAt = now;
+    ack(queryLobbyRooms(payload && typeof payload === 'object' ? payload : {}));
   });
 
   socket.on('lobby:unsubscribe', () => {
@@ -77,10 +107,17 @@ function register(io, socket) {
     }
 
     const room = result.room;
+    // F402: the create-room modal pre-fills with these next time. Members only (guests have no
+    // users row); best-effort — a failed write must never fail the room that was just created.
+    if (!user.isGuest) {
+      try { database.setLastRoomSettings(user.userId, room.settings); }
+      catch (err) { logger.warn('[Lobby] could not remember room settings', { err: err.message }); }
+    }
     socket.leave(LOBBY_ROOM);
     socket.join(room.roomId);
+    (socket.data || (socket.data = {})).roomPageId = room.roomId; // #373: this socket is the room page (RoomHandler onPresence reads it)
     socket.emit('room:joined', roomManager.serializeRoom(room));
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, room.roomId);
   });
 
   socket.on('room:join', (payload = {}) => {
@@ -102,6 +139,11 @@ function register(io, socket) {
     const room = result.room;
     socket.leave(LOBBY_ROOM);
     socket.join(room.roomId);
+    // #373: the room page itself asked — a returning member (reload, back from another page) is watching
+    // again, even if a non-room page had marked them away or their old socket left them 'disconnected'.
+    (socket.data || (socket.data = {})).roomPageId = room.roomId;
+    const me = room.users && room.users.get(user.userId);
+    if (me) me.presence = 'active';
 
     const joinPayload = roomManager.serializeRoom(room);
     // If a game is active, include game state so joining spectators can catch up
@@ -115,7 +157,7 @@ function register(io, socket) {
     }
     socket.emit('room:joined', joinPayload);
     broadcastRoomUpdate(io, room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, room.roomId);
 
     io.to(room.roomId).emit('chat:message', {
       from: null, fromId: null,

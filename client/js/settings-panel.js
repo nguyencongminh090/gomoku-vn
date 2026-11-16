@@ -59,6 +59,54 @@
     if (global.audioManager) global.audioManager.setMute(!on);
   }
 
+  // Per-kind volume, 0-100 (%). Kinds: move | tick | message (AudioManager.CHANNELS).
+  function getVolume(ch) {
+    const am = global.audioManager;
+    return am && am.getChannelVolume ? Math.round(am.getChannelVolume(ch) * 100) : 100;
+  }
+
+  function setVolume(ch, pct) {
+    const am = global.audioManager;
+    if (am && am.setChannelVolume) am.setChannelVolume(ch, Number(pct) / 100);
+  }
+
+  function previewVolume(ch) {
+    const am = global.audioManager;
+    if (am && am.preview) am.preview(ch);
+  }
+
+  const VOLUME_KINDS = [['move', 'settings.vol_move'], ['tick', 'settings.vol_tick'], ['message', 'settings.vol_message']];
+
+  // One labelled 0-100 range input; live value text; plays a sample on release.
+  function volumeSlider(ch, labelText, cls) {
+    const input = document.createElement('input');
+    input.type = 'range';
+    input.min = '0'; input.max = '100'; input.step = '5';
+    input.value = String(getVolume(ch));
+    input.className = cls || 'gset-range';
+    input.dataset.volume = ch;
+    input.setAttribute('aria-label', labelText);
+    const out = document.createElement('output');
+    out.className = 'gset-range__val';
+    out.textContent = input.value + '%';
+    input.addEventListener('input', () => { out.textContent = input.value + '%'; setVolume(ch, input.value); });
+    input.addEventListener('change', () => previewVolume(ch));
+    const wrap = document.createElement('span');
+    wrap.className = 'gset-range-wrap';
+    wrap.append(input, out);
+    return wrap;
+  }
+
+  function volumeRow(ch, labelText) {
+    const row = document.createElement('div');
+    row.className = 'gset-row';
+    const label = document.createElement('span');
+    label.className = 'gset-row__label';
+    label.textContent = labelText;
+    row.append(label, volumeSlider(ch, labelText));
+    return row;
+  }
+
   // ── Default placement mode (personal default; the active room's own
   //    Settings tab remains authoritative for a game already in progress) ──
   function getClickMode() {
@@ -209,6 +257,7 @@
     // Game: sound + board display mode + default placement mode
     body.appendChild(group(T('gset.game'), [
       toggleRow(T('settings.sound'), isSoundOn(), (on) => setSoundOn(on)),
+      ...VOLUME_KINDS.map(([ch, key]) => volumeRow(ch, T(key))),
       (() => {
         const row = document.createElement('div');
         row.className = 'gset-row';
@@ -353,7 +402,7 @@
     btn.className = 'topnav__btn topnav__btn--icon';
     btn.setAttribute('aria-label', T('gset.title'));
     btn.title = T('gset.title');
-    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-gear-six"></use></svg>';
+    btn.innerHTML = '<svg class="icon" style="font-size: 20px;"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-gear-six"></use></svg>';
     btn.addEventListener('click', openPanel);
     right.appendChild(btn);
   }
@@ -363,6 +412,6 @@
   global.openSettingsPanel = openPanel;
 
   // The /settings.html page (B211) drives the same stores, so it shares these accessors instead of re-implementing them.
-  global.GvnSettings = { getClickMode, setClickMode, getDisplayMode, setDisplayMode, isSoundOn, setSoundOn };
+  global.GvnSettings = { getClickMode, setClickMode, getDisplayMode, setDisplayMode, isSoundOn, setSoundOn, getVolume, setVolume, previewVolume, volumeSlider, VOLUME_KINDS };
 
 })(window);

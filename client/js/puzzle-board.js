@@ -32,5 +32,7 @@
       myColor: o.myColor || toMove,
     };
   }
-  return { state };
+  /** Display name of a puzzle: "Title #n" (#333). */
+  function name(p) { return p.number ? p.title + ' #' + p.number : p.title; }
+  return { state, name };
 }));

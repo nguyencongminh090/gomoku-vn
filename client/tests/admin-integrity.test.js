@@ -18,7 +18,7 @@ const ok = (b) => Promise.resolve({ ok: true, status: 200, json: () => Promise.r
 const DATA = {
   population: 12, activePlayers: 12, thresholds: { POP_MIN: 10, MIN_GAMES: 10 },
   players: [{ userId: 'u', displayName: 'Boost', games: 12, uniqueOpponents: 1, effectiveOpponents: 1, topOpponentName: 'Feeder', topGainShare: 1, flags: ['narrow_opponents', 'gain_from_one'], topOpponentFriend: true, topOpponentSameClub: false }],
-  pairs: [{ aName: 'Boost', bName: 'Feeder', games: 12, aWins: 12, bWins: 0, friends: true, sameClub: false }],
+  pairs: [{ aName: 'Boost', bName: 'Feeder', games: 12, aWins: 12, bWins: 0, z: 3.5, weakerWins: true, friends: true, sameClub: false }],
   groups: [],
 };
 
@@ -41,6 +41,7 @@ it('renders players, pairs and an empty groups section with friend context', asy
   expect(text).toContain('admin.i_flag_gain_from_one');
   expect(text).toContain('admin.i_friends');
   expect(text).toContain('admin.i_pair');
+  expect(text).toContain('admin.i_weaker');
   expect(text).toContain('admin.i_empty');
   expect($('ri-msg').hidden).toBe(true);
 });
@@ -94,5 +95,153 @@ describe('charts', () => {
     expect(circles[0].classList.contains('is-drag')).toBe(true);
     circles[0].dispatchEvent(ev('pointerup', 200, 150));
     expect(circles[0].classList.contains('is-drag')).toBe(false);
+  });
+  it('network: a dense 120-node graph settles with no overlapping circles', async () => {
+    const nodes = Array.from({ length: 120 }, (_, i) => N('n' + i, i % 8, 5 + (i % 30), 1500));
+    const edges = [];
+    for (let i = 0; i < 120; i++) for (let j = i + 1; j < 120; j += 7) edges.push({ a: 'n' + i, b: 'n' + j, games: 1 + ((i + j) % 9) });
+    await boot(() => ok({ ...DATA, viz: { ...VIZ, total: 120, shown: 120, communities: 8, nodes, edges } }));
+    document.querySelectorAll('.ri-seg button')[3].click(); // default view is suspect-first; "All" restores the 120
+    const c = [...document.querySelectorAll('.ri-svg--graph circle.ri-node')].map((e) => ({ x: +e.getAttribute('cx'), y: +e.getAttribute('cy'), r: +e.getAttribute('r'), k: e.getAttribute('class') }));
+    expect(c).toHaveLength(120);
+    let minGap = Infinity;
+    for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) minGap = Math.min(minGap, Math.hypot(c[i].x - c[j].x, c[i].y - c[j].y) - c[i].r - c[j].r);
+    expect(minGap).toBeGreaterThanOrEqual(0); // collision pass guarantees circles never touch (was 449 overlapping pairs)
+  });
+  it('network: zoom scales --ri-k so labels keep their on-screen size; 1:1 resets it', async () => {
+    await boot(() => ok({ ...DATA, viz: VIZ }));
+    const g = document.querySelector('.ri-svg--graph');
+    const [, inn, one] = document.querySelectorAll('.ri-zoom button');
+    inn.click();
+    expect(+g.style.getPropertyValue('--ri-k')).toBeCloseTo(1 / 1.4, 5);
+    one.click();
+    expect(+g.style.getPropertyValue('--ri-k')).toBe(1);
+  });
+  it('css: tools sit in flow on phones and the search box is styled like other admin inputs', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'puzzles.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 800px\) \{ \.adm \.ri-tools \{ position: static/);
+    expect(css).toMatch(/\.adm \.ri-search \{[^}]*border: 1px solid var\(--c-border-strong\)/);
+    expect(css).toMatch(/\.adm \.ri-label \{[^}]*var\(--ri-k, 1\)/);
+  });
+  it('network: zoom buttons narrow the viewBox, 1:1 restores it, and zoom stops at 6x', async () => {
+    await boot(() => ok({ ...DATA, viz: VIZ }));
+    const g = document.querySelector('.ri-svg--graph');
+    const [out, inn, one] = document.querySelectorAll('.ri-zoom button');
+    const vb = () => g.getAttribute('viewBox').split(' ').map(Number);
+    const w0 = vb()[2];
+    out.click();
+    expect(vb()[2]).toBe(w0); // already fully zoomed out
+    inn.click();
+    expect(vb()[2]).toBeLessThan(w0);
+    for (let i = 0; i < 20; i++) inn.click();
+    expect(vb()[2]).toBeCloseTo(w0 / 6, 5);
+    one.click();
+    expect(vb()).toEqual([0, 0, w0, vb()[3]]);
+    expect(inn.getAttribute('aria-label')).toBe('admin.i_viz_zoom_in');
+  });
+
+  describe('declutter (#353)', () => {
+    // flagged f1,f2 in group 0 with weak/strong links; group 1 has 4 players; 7 lone communities fold into "other"
+    const mk = (id, community, games = 10) => N(id, community, games, 1500);
+    const nodes = [mk('f1', 0, 30), mk('f2', 0, 25), mk('o1', 0), mk('o2', 0), mk('o3', 0), mk('q1', 1), mk('q2', 1), mk('q3', 1), mk('q4', 1),
+      ...[5, 6, 7].map((c) => mk('s' + c, c))];
+    const edges = [{ a: 'f1', b: 'f2', games: 20 }, { a: 'f1', b: 'o1', games: 6 }, { a: 'f1', b: 'o2', games: 4 }, { a: 'f1', b: 'o3', games: 1 },
+      { a: 'f2', b: 'q1', games: 3 }, { a: 'q1', b: 'q2', games: 5 }, { a: 'q2', b: 'q3', games: 5 }, { a: 'q3', b: 'q4', games: 5 }, { a: 'q4', b: 's5', games: 2 }];
+    const V = { total: 40, shown: nodes.length, communities: 5, nodes, edges, flagged: ['f1', 'f2'], ratingBins: [], gamesBins: [] };
+    const st = (o = {}) => ({ scope: 'suspect', level: 'players', focus: null, min: 2, cross: false, ...o });
+    const ids = (v) => v.nodes.map((n) => n.id).sort();
+    beforeEach(() => { window.t = (k, v) => k + (v ? JSON.stringify(v) : ''); require('../js/admin-integrity-viz.js'); });
+
+    it('suspect scope = flagged + their top 2 opponents; "all" shows every node', () => {
+      const b = window.IntegrityViz.buildView;
+      expect(ids(b(V, st()))).toEqual(['f1', 'f2', 'o1', 'q1']); // f1's top 2 = f2, o1 (o2 is 3rd); f2's top 2 = f1, q1
+      expect(b(V, st({ scope: 'all' })).nodes).toHaveLength(nodes.length);
+    });
+    it('edge filter hides weak edges and optionally in-group edges', () => {
+      const b = window.IntegrityViz.buildView;
+      const all = (o) => b(V, st({ scope: 'all', ...o })).edges;
+      expect(all({ min: 1 })).toHaveLength(edges.length);
+      expect(all({ min: 5 }).every((e) => e.games >= 5)).toBe(true);
+      expect(all({ min: 1, cross: true }).map((e) => e.a + e.b).sort()).toEqual(['f2q1', 'q4s5']);
+    });
+    it('group level: one bubble per community, groups past the palette fold into one, edges are summed', () => {
+      const v = window.IntegrityViz.buildView(V, st({ scope: 'all', level: 'groups', min: 1 }));
+      expect(v.nodes.every((n) => n.bubble)).toBe(true);
+      expect(v.nodes.map((n) => n.community).sort()).toEqual([0, 1, 5]);
+      expect(v.nodes.find((n) => n.community === 5)).toMatchObject({ members: 3 });
+      expect(v.edges.find((e) => e.a === 'g0' && e.b === 'g1').games).toBe(3);
+    });
+    it('focus keeps one group as players and folds the rest into bubbles', () => {
+      const v = window.IntegrityViz.buildView(V, st({ scope: 'all', focus: 1, min: 1 }));
+      expect(v.nodes.filter((n) => !n.bubble).map((n) => n.id).sort()).toEqual(['q1', 'q2', 'q3', 'q4']);
+      expect(v.nodes.filter((n) => n.bubble).map((n) => n.community).sort()).toEqual([0, 5]);
+    });
+    it('no flags → falls back to the most active players, never an empty graph', () => {
+      expect(window.IntegrityViz.buildView({ ...V, flagged: [] }, st()).nodes.length).toBeGreaterThan(0);
+    });
+    it('UI: default is the suspect view; clicking a bubble opens its group; click pins; search pans to a player', async () => {
+      await boot(() => ok({ ...DATA, viz: V }));
+      const g = () => document.querySelector('.ri-svg--graph');
+      expect(g().querySelectorAll('circle.ri-node')).toHaveLength(4);
+      const btns = document.querySelectorAll('.ri-seg button');
+      btns[3].click(); // All
+      expect(g().querySelectorAll('circle.ri-node')).toHaveLength(nodes.length);
+      btns[5].click(); // by group
+      const bubbles = g().querySelectorAll('circle.ri-node--bubble');
+      expect(bubbles).toHaveLength(3);
+      bubbles[1].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      expect(g().querySelectorAll('circle.ri-node:not(.ri-node--bubble)')).toHaveLength(4);
+      const c = g().querySelector('circle.ri-node:not(.ri-node--bubble)');
+      c.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      c.dispatchEvent(new MouseEvent('pointerleave', { bubbles: true }));
+      expect(document.querySelector('.ri-readout').textContent).toContain('Q'); // pinned: readout survives leaving
+      const input = document.querySelector('.ri-search');
+      input.value = 'f2';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(+g().getAttribute('viewBox').split(' ')[2]).toBeLessThan(1100);
+      expect(document.querySelector('.ri-readout').textContent).toContain('F2');
+    });
+    it('#354: clearing / Esc releases the pin and resets the camera; halo only for groups of 3+', async () => {
+      await boot(() => ok({ ...DATA, viz: V }));
+      document.querySelectorAll('.ri-seg button')[3].click(); // All
+      const g = () => document.querySelector('.ri-svg--graph');
+      const sizes = {}; nodes.forEach((n) => { sizes[n.community] = (sizes[n.community] || 0) + 1; });
+      expect(g().querySelectorAll('circle.ri-hull')).toHaveLength(Object.values(sizes).filter((k) => k >= 3).length);
+      const input = document.querySelector('.ri-search');
+      input.value = 'f2';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(+g().getAttribute('viewBox').split(' ')[2]).toBeLessThan(1100);
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(input.value).toBe('');
+      expect(g().getAttribute('viewBox')).toBe('0 0 1100 760');
+      expect(document.querySelector('.ri-readout').textContent).not.toContain('F2');
+    });
+    it('matrix: a narrow "other" strip gets an ellipsis, not the word that the SVG edge would clip', async () => {
+      const ns = [...Array.from({ length: 37 }, (_, i) => N('m' + i, 0, 12, 1500)), ...Array.from({ length: 3 }, (_, i) => N('o' + i, 5, 12, 1500))];
+      await boot(() => ok({ ...DATA, viz: { ...V, total: 40, shown: 40, communities: 2, nodes: ns, edges: [{ a: 'm0', b: 'o0', games: 4 }] } }));
+      document.querySelectorAll('.ri-seg button')[3].click();
+      document.querySelectorAll('.ri-seg button')[1].click();
+      const ticks = [...document.querySelectorAll('.ri-svg--matrix text.ri-tick')].map((e) => e.textContent);
+      expect(ticks).toContain('1');
+      expect(ticks).toContain('…');
+      expect(ticks).not.toContain('admin.i_viz_other');
+    });
+    it('#355: matrix view — one row/col per player, shade buckets, block outlines, hover fills the readout', async () => {
+      await boot(() => ok({ ...DATA, viz: V }));
+      document.querySelectorAll('.ri-seg button')[3].click(); // All
+      const toggle = document.querySelectorAll('.ri-seg button')[1];
+      toggle.click();
+      const m = document.querySelector('.ri-svg--matrix');
+      expect(m).not.toBeNull();
+      expect(document.querySelector('.ri-svg--graph')).toBeNull();
+      expect(m.querySelectorAll('.ri-mx-strip').length).toBe(2 * m.querySelectorAll('.ri-mx-block').length);
+      expect(m.querySelectorAll('path.ri-mx-cell').length).toBeGreaterThan(0);
+      const input = document.querySelector('.ri-search');
+      input.value = 'f2';
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      expect(document.querySelector('.ri-readout').textContent).toContain('F2');
+      document.querySelectorAll('.ri-seg button')[0].click();
+      expect(document.querySelector('.ri-svg--graph')).not.toBeNull();
+    });
   });
 });

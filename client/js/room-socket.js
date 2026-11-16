@@ -18,6 +18,15 @@
   const S = () => global.RoomState;
   const client = global.RoomClient;
 
+  // Where leaving the room goes (#365): a quick-match session always ends on Home; otherwise back to
+  // the tab the room was entered from (lobby.js adds ?from=rooms when entering from the Phòng tab).
+  function exitUrl() {
+    const st = S();
+    if (st && st.roomData && st.roomData.matchmade) return 'index.html';
+    const from = new URLSearchParams(global.location.search).get('from');
+    return from === 'rooms' ? 'index.html#rooms' : 'index.html';
+  }
+
   // Server error/status payloads carry a language-neutral `code` alongside a
   // Vietnamese `message` (for logs/back-compat) — see server/routes/auth.js's
   // equivalent pattern. Always prefer `code`'s i18n translation over the raw
@@ -46,10 +55,11 @@
   client.on('connect', () => {
     processRoomIntent();
   });
-  // Also fire immediately in case connect already fired before this listener
-  if (client.socket && client.socket.connected) {
-    processRoomIntent();
-  }
+  // The "connect already fired" case is handled at the END of this module
+  // (#391), not here: processRoomIntent() reads `intentProcessed`, a `let`
+  // declared further down, so calling it here threw a TDZ ReferenceError and
+  // aborted the whole module — reachable once socket-early.js opens the
+  // socket in <head> and it connects before this module evaluates.
 
   // ── Presence (slot status dot: leave-site vs disconnected) ─────────────────
 
@@ -59,11 +69,25 @@
   // DisconnectHandler.js). Only meaningful once actually in a room; the
   // server-side setPresence() is a safe no-op otherwise, but skipping here
   // avoids emitting on every lobby/login tab-switch too.
-  document.addEventListener('visibilitychange', () => {
+  // Strict presence: "away" = tab hidden OR the window lost focus (another window/program in front,
+  // even with this tab still visible) — a second client open during play must not read as online.
+  function isAway() { return document.hidden || !document.hasFocus(); }
+  let sentAway = null;
+  function reportPresence(force) {
     if (!S().roomData) return;
-    client.emit('room:presence', { presence: document.hidden ? 'away' : 'active' });
+    const away = isAway();
+    if (!force && away === sentAway) return;
+    sentAway = away;
+    client.emit('room:presence', { presence: away ? 'away' : 'active' });
+  }
+  document.addEventListener('visibilitychange', () => {
+    reportPresence();
     if (!document.hidden) resyncClockOnReturn();
   });
+  window.addEventListener('blur', () => reportPresence());
+  window.addEventListener('focus', () => reportPresence());
+  // blur/focus can be missed (devtools, OS focus stealing); cheap safety net.
+  setInterval(() => reportPresence(), 2000);
 
   // A backgrounded tab throttles setInterval, so the local countdown drifts
   // while hidden and `timer:sync` broadcasts received meanwhile were applied
@@ -106,6 +130,11 @@
     const st = S();
     st.roomData = data;
     syncClockFromServerTime(data.serverTime);
+    // #367: a later reconnect tells the server which room this page shows, so a
+    // user whose seat/place lapsed while offline is put back in, not sent home.
+    if (client.socket && data && data.roomId) {
+      client.socket.auth = Object.assign({}, client.socket.auth, { roomId: data.roomId });
+    }
 
     // Clear any not-yet-confirmed stone from a move still in flight
     // (TODO.md #153). This fires on first join too (boardRenderer doesn't
@@ -152,7 +181,7 @@
     // Cover the rare case of joining/reconnecting with the tab already
     // hidden (e.g. it was backgrounded through the whole page load) — the
     // visibilitychange listener above only fires on a state *change*.
-    if (document.hidden) client.emit('room:presence', { presence: 'away' });
+    reportPresence(true);
   });
 
   client.on('room:updated', (data) => {
@@ -197,24 +226,24 @@
   client.on('room:left', () => {
     cancelTurnWatchdog();
     cancelMoveConfirmWatchdog();
-    window.location.href = 'index.html';
+    window.location.href = exitUrl();
   });
 
   client.on('room:kicked', (data) => {
     showToast(data.code ? serverMessage(data) : (data.message || t('room.kicked')), 'error');
-    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+    setTimeout(() => { window.location.href = exitUrl(); }, 1500);
   });
 
   client.on('room:destroyed', (data) => {
     showToast(serverMessage(data), 'error');
-    setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+    setTimeout(() => { window.location.href = exitUrl(); }, 1500);
   });
 
   client.on('room:error', (data) => {
     const st = S();
     if (!st.roomData) {
       showToast(serverMessage(data), 'error');
-      setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+      setTimeout(() => { window.location.href = exitUrl(); }, 1500);
       return;
     }
     ChatUI.appendSystemMessage(`⚠ ${serverMessage(data)}`);
@@ -224,6 +253,11 @@
 
   client.on('chat:message', (msg) => {
     ChatUI.appendChatMessage(msg);
+  });
+
+  // #368: someone else tapped 👏 (the server skips the sender, who already played it).
+  client.on('room:react', (data) => {
+    if (window.RoomStage) window.RoomStage.onReact(data);
   });
 
   // Rating change after a ranked game (TODO.md #182). Everyone in the room
@@ -405,7 +439,12 @@
     armTurnWatchdog();
 
     GameUI.updateBoardState();
-    RoomUI.updateUI();
+    // #378: a move changes only board, turn and clocks — updateBoardState covers those
+    // (renderTimers → RoomUI.updateCardClocks repaints the cards' turn marker). The full
+    // RoomUI.updateUI() (cards, settings, users, score table: ~3.5 ms per move on a
+    // throttled phone) is for room data, which a move leaves alone. A game-ending move
+    // flips status (site links, card dots), so it still refreshes the room UI.
+    if (data.gameOver) RoomUI.updateUI();
   });
 
   client.on('game:swap2_state', (data) => {
@@ -493,9 +532,17 @@
    * display shave. A missing/NaN stamp is ignored — the offset keeps its last
    * value, or 0 if none yet, which is exactly today's behaviour.
    */
+  // Local time the packet being handled ARRIVED (#393): a packet replayed from
+  // SocketClient's hold was received replayAgeMs() ago, and reading Date.now()
+  // for it would skew the offset by that wait. Live packets: plain Date.now().
+  function receivedAt() {
+    const age = typeof client.replayAgeMs === 'function' ? client.replayAgeMs() : 0;
+    return Date.now() - age;
+  }
+
   function syncClockFromServerTime(serverTime) {
     if (typeof serverTime !== 'number' || !isFinite(serverTime)) return;
-    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(serverTime, Date.now());
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(serverTime, receivedAt());
   }
 
   /**
@@ -578,7 +625,7 @@
 
     // One `Date.now()` reading feeds both halves of the subtraction (it used
     // to be read twice, a millisecond apart) — same value, no double read.
-    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(sync.serverTime, Date.now());
+    clockOffsetMs = global.TimerSyncCore.clockOffsetMs(sync.serverTime, receivedAt());
 
     // Shave transit delay off the active player's opening value too, not just
     // the per-second ticks below — otherwise the first paint after every sync
@@ -829,6 +876,7 @@
     cancelTurnWatchdog();
     cancelMoveConfirmWatchdog();
     if (data.scoreTable && st.roomData) st.roomData.scoreTable = data.scoreTable;
+    if (data.scoreHistory && st.roomData) st.roomData.scoreHistory = data.scoreHistory;
     if (st.gameState) {
       st.gameState.status = 'finished';
       if (data.result) st.gameState.result = data.result;
@@ -928,6 +976,8 @@
   client.on('game:interrupted', (data) => {
     ChatUI.appendSystemMessage(t('room.disconnected', { name: data.playerName, seconds: data.secondsLeft }));
     if (S().gameState) S().gameState.status = 'interrupted';
+    // #398: the paused clock rides on this event (no separate timer:sync).
+    applyTimerSync(data.timerSync);
     // Not 'ongoing' any more, and the server pauses the clock — no deadlock to
     // detect while a player is inside disconnect grace (TODO.md #154).
     cancelTurnWatchdog();
@@ -935,12 +985,27 @@
     GameUI.updateBoardState();
   });
 
-  client.on('game:resumed', () => {
-    ChatUI.appendSystemMessage(t('room.reconnected'));
-    if (S().gameState) S().gameState.status = 'ongoing';
-    // Back to 'ongoing', so the watchdog can guard again. The server's resume
-    // sends a fresh timer:sync of its own; this only covers the case of that
-    // sync arriving before this event (TODO.md #154).
+  // #398: only the others in the room get this; the reconnecting socket gets game:init alone.
+  client.on('game:resumed', (data) => {
+    // #387: "Đối thủ" only fits the other player; a viewer gets the name, and a stray self
+    // copy (pre-#398 shape) adds nothing — game:init already resumed this tab.
+    const st = S();
+    const id = data && data.playerId;
+    const me = st.myUser && st.myUser.userId;
+    const players = (st.gameState && st.gameState.players) || [];
+    if (id !== me) {
+      if (players.some((p) => p.userId === me)) {
+        ChatUI.appendSystemMessage(t('room.reconnected'));
+      } else {
+        const u = ((st.roomData && st.roomData.users) || []).find((x) => x.userId === id)
+          || players.find((p) => p.userId === id);
+        ChatUI.appendSystemMessage(t('sys.player_reconnected_resumed', { name: (u && u.displayName) || '?' }));
+      }
+    }
+    if (st.gameState) st.gameState.status = 'ongoing';
+    // Back to 'ongoing', so the watchdog can guard again (TODO.md #154). The restarted clock rides
+    // on this event; applyTimerSync re-arms the watchdog, the explicit arm covers a sync-less payload.
+    if (data && data.timerSync) applyTimerSync(data.timerSync);
     armTurnWatchdog();
     GameUI.updateBoardState();
   });
@@ -949,35 +1014,19 @@
 
   let intentProcessed = false;
 
+  // The intent itself is read and sent by room-early-join.js (#393), usually on
+  // the early socket's `connect` before this module even ran; its send() is
+  // once-guarded, so this only acts when nothing was sent yet.
   function processRoomIntent() {
     if (intentProcessed) return;
     intentProcessed = true;
-
-    const raw = sessionStorage.getItem('gvn_room_intent');
-    sessionStorage.removeItem('gvn_room_intent');
-
-    if (raw) {
-      try {
-        const intent = JSON.parse(raw);
-        if (intent.action === 'create') {
-          client.emit('room:create', { settings: intent.settings || {} });
-        } else if (intent.action === 'join') {
-          client.emit('room:join', { roomId: intent.roomId });
-        }
-      } catch { /* ignore parse error */ }
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      const roomId = params.get('id');
-      if (roomId) {
-        client.emit('room:join', { roomId });
-      } else {
-        // No sessionStorage intent and no ?id= — e.g. a bare room.html link
-        // pasted/typed directly. Nothing will ever emit room:join/create, so
-        // room:joined will never arrive and #room-entry-overlay would stay up
-        // forever (see TODO.md #40 / instruction.md §40). Bounce back to the
-        // lobby instead of freezing there.
-        window.location.href = 'index.html';
-      }
+    if (!global.RoomIntent.send(client)) {
+      // No sessionStorage intent and no ?id= — e.g. a bare room.html link
+      // pasted/typed directly. Nothing will ever emit room:join/create, so
+      // room:joined will never arrive and #room-entry-overlay would stay up
+      // forever (see TODO.md #40 / instruction.md §40). Bounce back to the
+      // lobby instead of freezing there.
+      window.location.href = exitUrl();
     }
   }
 
@@ -993,7 +1042,18 @@
   // may have already needed it.
   global.RoomSocket = {
     serverMessage, requestResync, armMoveConfirmWatchdog,
-    refreshLocalTimer: tickLocal, serverNow,
+    refreshLocalTimer: tickLocal, serverNow, exitUrl,
   };
+
+  // #393: every handler is registered now — hand over what arrived while this
+  // module graph was loading (the join reply, on-connect pushes), in order.
+  if (typeof client.releaseEvents === 'function') client.releaseEvents();
+
+  // Early socket (#391): it may have connected before this module ran, so the
+  // 'connect' listener above never fires for this connection. Runs last, with
+  // every handler (room:joined, room:error…) already registered.
+  if (client.socket && client.socket.connected) {
+    processRoomIntent();
+  }
 
 })(window);

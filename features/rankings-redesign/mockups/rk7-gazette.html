@@ -1,0 +1,28 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK7 Báo tuần</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+.mast{border-bottom:4px double var(--c-ink);margin:28px 0 0;padding-bottom:10px;text-align:center}
+.mast h1{margin:0;font-size:clamp(34px,5vw+8px,76px);font-weight:1000;letter-spacing:-.03em;line-height:1}
+.mast p{margin:6px 0 0;display:flex;justify-content:space-between;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2);border-top:1px solid var(--c-border);padding-top:6px}
+.st{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:0;margin:24px 0}
+.st article{padding:0 22px;border-left:1px solid var(--c-border);animation:rise 500ms var(--e-out) backwards}.st article:first-child{padding-left:0;border:0}
+.st article:nth-child(2){animation-delay:120ms}.st article:nth-child(3){animation-delay:240ms}
+.tag{font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--c-brand-text)}.tag.dn{color:var(--c-error)}
+.st h2{margin:6px 0 10px;font-size:clamp(22px,2vw+6px,34px);font-weight:1000;line-height:1.1;letter-spacing:-.02em;text-wrap:balance}
+.st .big{font-size:clamp(54px,6vw,92px);font-weight:1000;line-height:1;color:var(--c-brand-text)}.st .big.dn{color:var(--c-error)}
+.st p{margin:8px 0 0;color:var(--c-ink-2)}
+.who{display:flex;align-items:center;gap:10px;margin-top:12px;font-weight:800}
+.tbl{margin:8px 0 80px;border-top:3px solid var(--c-ink)}
+.tr{display:grid;grid-template-columns:44px 1fr 120px 90px 70px;gap:10px;align-items:center;min-height:50px;border-bottom:1px solid var(--c-border)}
+.tr .k{font-weight:1000;font-size:18px}.tr .n{font-weight:800}.tr .r{font-weight:1000;text-align:right}.tr .c{color:var(--c-ink-2);font-size:14px}
+.f{margin:18px 0}
+@media(max-width:860px){.st{grid-template-columns:1fr;gap:18px}.st article{padding:0 0 18px;border:0;border-bottom:1px solid var(--c-border)}.tr{grid-template-columns:36px 1fr 70px 56px}.tr .c,.tr .g{display:none}}
+</style></head><body><main class="wrap"><header class="mast"><h1>Tin Xếp Hạng</h1><p><span>Số 46 · tuần 10–16/11</span><span>Tự do</span><span>1.284 kỳ thủ</span></p></header>
+<section class="st" id="st"></section><div class="filters f" id="f"></div><div class="tbl" id="t"></div></main>
+<script src="../data.js"></script><script>RK.top();RK.chrome(f);const P=RK.players;
+const up=[...P].sort((a,b)=>b.d-a.d)[0],dn=[...P].sort((a,b)=>a.d-b.d)[0],nw=P[19];
+st.innerHTML=`<article><div class="tag">Leo nhanh nhất tuần</div><h2>${up.name} bứt phá, thêm ${up.d} điểm trong 7 ngày</h2><div class="big num">+${up.d}</div><div class="who">${RK.av(up,40)}<span>${up.name} · hạng ${up.rank} · ${up.club||up.city}</span></div><p>Từ ${up.rating-up.d} lên ${up.rating} — thắng liền mạch ở luật Tự do.</p></article>
+<article><div class="tag dn">Rơi mạnh nhất</div><h2>${dn.name} mất ${-dn.d} điểm</h2><div class="big dn num">${dn.d}</div><div class="who">${RK.av(dn,32)}<span>${dn.name} · hạng ${dn.rank}</span></div></article>
+<article><div class="tag">Gương mặt mới</div><h2>${nw.name} vào bảng với ${nw.games} ván</h2><div class="big num">#${nw.rank}</div><div class="who">${RK.av(nw,32)}<span>${nw.rating} (tạm tính)</span></div><p>Dòng "chuyện" tính từ delta7 và cờ tạm tính; câu chữ tự sinh theo mẫu.</p></article>`;
+t.innerHTML=P.map(p=>`<div class="tr"><span class="k num">${p.rank}</span><span class="n">${p.name}</span><span class="c">${p.club||'—'}</span><span class="g c num">${p.games} ván</span><span class="r num">${p.rating}</span></div>`).join('').replace(/<\/div><\/div>/g,'</div>');
+</script></body></html>

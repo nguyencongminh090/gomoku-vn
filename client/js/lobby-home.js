@@ -2,7 +2,7 @@
  * lobby-home.js — the lobby's three screens and the "Chơi" dashboard (B195, R2).
  *
  * Screens follow the hash the shared Arena nav links to:
- *   ''            → home   (#screen-home: stats strip, news line, my games, learn, about, today, forum, live games)
+ *   ''            → home   (#screen-home, #358 M4: greeting + online, news line, resume strip, quick-match sentence + room code, count cards)
  *   '#rooms'      → rooms  (#panel-tables: the room list lobby.js renders)
  *   '#tournaments'→ tournaments (#panel-tournaments: tournaments.js)
  * Legacy `?tab=tournaments` (tournament.html's back link) still lands on tournaments.
@@ -15,13 +15,13 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=7cb74e0c';
+import { client, setHeroTab } from './lobby.js?v=f155548e';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
 const HASH = { home: '', rooms: '#rooms', tournaments: '#tournaments' };
 const NAV = { home: 'lobby', rooms: 'rooms', tournaments: 'tournaments' };
-const ACTION = { rooms: ['btn-create', 'btn-join-code'], tournaments: ['btn-create-tournament'] };
+const ACTION = { rooms: [], tournaments: ['btn-create-tournament'] }; // rooms: create = the grid's ghost card (#364)
 const ROOM_CODE = /^[A-HJ-NP-Z2-9]{3}$/; // RoomManager._generateRoomId: '#' + 3 chars, no I O 0 1
 const POLL_MS = 60000; // fallback only — stats + live list arrive by push (B225)
 
@@ -65,7 +65,6 @@ export function showScreen(name) {
       if (btn) btn.hidden = key !== name;
     }
   }
-  if (name !== 'rooms') closeJoinCode();
   const bar = document.getElementById('lobby-bar');
   if (bar) bar.hidden = name !== 'tournaments';
   setHeroTab(name === 'rooms' ? 'tables' : name);
@@ -77,39 +76,12 @@ export function showScreen(name) {
   setLobbySubscribed(name === 'rooms' && !document.hidden);
 }
 
-// ── Vào bằng mã (Phòng screen): type the 3-char room code, go straight to the room ──
-
-function closeJoinCode() {
-  const form = document.getElementById('join-code-form');
-  const btn = document.getElementById('btn-join-code');
-  if (form) form.hidden = true;
-  if (btn) btn.setAttribute('aria-expanded', 'false');
-}
+// ── Vào bằng mã: the same 3-box code form on Home (#358) and on the Phòng hero (#364) ──
 
 /** "#a3f" / "a3f " / "A3F" → "#A3F"; null when it cannot be a room code. */
 export function parseRoomCode(raw) {
   const code = String(raw || '').trim().replace(/^#/, '').toUpperCase();
   return ROOM_CODE.test(code) ? '#' + code : null;
-}
-
-function wireJoinCode() {
-  const btn = document.getElementById('btn-join-code');
-  const form = document.getElementById('join-code-form');
-  const input = document.getElementById('join-code');
-  const err = document.getElementById('join-code-error');
-  if (!btn || !form || !input) return;
-  btn.addEventListener('click', () => {
-    form.hidden = !form.hidden;
-    btn.setAttribute('aria-expanded', String(!form.hidden));
-    if (!form.hidden) input.focus();
-  });
-  input.addEventListener('input', () => { err.hidden = true; });
-  form.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const id = parseRoomCode(input.value);
-    if (!id) { err.textContent = t('lobby.join_code_invalid'); err.hidden = false; input.focus(); return; }
-    window.joinRoom(id);
-  });
 }
 
 // ── Formatting ──────────────────────────────────────────────────────────────
@@ -174,68 +146,74 @@ function renderMine(data) {
       location.href = 'tournament.html?id=' + encodeURIComponent(m.tournamentId);
     }, m.state === 'Ready'));
   }
-  if (!box.children.length) {
-    const empty = el('div', undefined, 'hempty');
-    const go = withIcon(el('button', t('home.find_room'), 'link-action'), 'ph-regular-magnifying-glass');
-    go.type = 'button';
-    go.addEventListener('click', () => showScreen('rooms'));
-    empty.append(el('p', t('home.no_games'), 'muted small'), go);
-    box.appendChild(empty);
-  }
+  const card = document.getElementById('home-mine-card');
+  if (card) card.hidden = !box.children.length; // nothing to resume → the card is gone, Home stays two buttons
 }
 
-/** #294: a card whose list is just its empty-state message collapses to one compact row (CSS .is-empty). */
-function flagEmpty(box) {
-  const card = box.closest('.ppanel');
-  if (card) card.classList.toggle('is-empty', !!box.querySelector('.hempty'));
-}
-
-function renderToday(data) {
-  const box = document.getElementById('home-today');
+/** Greeting row (#358): "Chào <b>name</b>" — the name is user text, so it goes in as a text node; guests get the plain greeting. */
+function renderHello() {
+  const box = document.getElementById('home-hello');
   if (!box) return;
-  box.replaceChildren();
-  for (const tr of data.tournaments || []) {
-    const meta = [t('home.status_' + tr.status), t('home.players', { n: tr.playerCount }), t('tournaments.format_' + tr.format)];
-    const act = tr.registered ? t('home.registered') : t(tr.status === 'draft' ? 'home.register' : 'home.view');
-    box.appendChild(row(tr.name, meta, act, () => {
-      location.href = 'tournament.html?id=' + encodeURIComponent(tr.tournamentId);
-    }));
-  }
-  if (!box.children.length) {
-    const empty = el('div', undefined, 'hempty');
-    const all = withIcon(el('a', t('home.see_tournaments'), 'link-action'), 'ph-regular-trophy');
-    all.href = '#tournaments';
-    empty.append(el('p', t('home.no_today'), 'muted small'), all);
-    box.appendChild(empty);
-  }
-  flagEmpty(box);
+  const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
+  if (!u || u.isGuest || !u.displayName) { box.textContent = t('home.hello_anon'); return; }
+  const [before, after = ''] = t('home.hello', { name: '%%name%%' }).split('%%name%%');
+  box.replaceChildren(before, el('b', u.displayName), after);
 }
 
+/**
+ * Counts (B223) → the desktop scoreboard (#366 "Bảng quán cờ"): one plate per digit (textContent stays the number;
+ * a 1-digit value gets a leading "0" plate from CSS), zero = dimmed plates (#292). Label always names what it counts.
+ */
 function renderStats(data) {
-  const box = document.getElementById('home-stats');
-  if (!box) return;
   const st = data.stats;
-  box.hidden = !st;
-  if (!st) return;
-  box.replaceChildren();
-  for (const [key, n] of [['online', st.online], ['playing', st.playing], ['searching', st.searching]]) {
-    const item = el('div', undefined, 'hstat' + (n ? '' : ' hstat--zero'));
-    item.append(el('strong', String(n || 0), 'hstat__n'), el('span', t('home.stat_' + key), 'hstat__l muted small'));
-    box.appendChild(item);
+  const online = document.getElementById('home-online');   // phone greeting-row tag (desktop hides it: the board shows the count)
+  if (online) {
+    online.hidden = !st || !st.online;
+    if (!online.hidden) online.replaceChildren(el('span', undefined, 'hq-online__dot'), el('span', t('home.online', { n: st.online })));
   }
+  const fill = (numId, labelId, n, parts) => {
+    const num = document.getElementById(numId);
+    if (!num) return;
+    const text = st ? String(n || 0) : '–';
+    num.replaceChildren(...[...text].map((c) => el('i', c)));
+    num.classList.toggle('is-zero', !n);
+    num.classList.toggle('is-1', text.length === 1);
+    const label = labelId && document.getElementById(labelId);
+    if (label) label.replaceChildren(...parts.filter(Boolean).map((p) => el('span', p)));
+  };
+  const eta = data.queueEta ? data.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
+  fill('home-n-online', null, st && st.online, []);
+  fill('home-n-search', 'home-n-search-l', st && st.searching, [t('home.pulse_searching'), st && st.searching && eta && t('home.eta_short', { s: eta })]);
+  fill('home-n-live', 'home-n-live-l', st && st.playing, [t('home.pulse_playing')]);
+  renderPulse(st);
+  const one = document.getElementById('home-live-one');
+  if (!one) return;
+  const g = (data.live || [])[0];
+  one.replaceChildren();
+  if (!g || !g.black || !g.white) return;
+  const b = el('button', undefined, 'hq-live');
+  b.type = 'button';
+  b.append(el('span', g.black + ' vs ' + g.white, 'hq-live__t'), el('span', t('home.moves', { n: g.moves || 0 }), 'hq-live__m'));
+  b.addEventListener('click', () => window.joinRoom(g.roomId));
+  one.appendChild(b);
 }
 
-/** Live games as text rows — no board drawing (B223: the old mini boards were the poll's main DOM cost). */
-function renderLive(data) {
-  const box = document.getElementById('home-live');
-  if (!box) return;
-  box.replaceChildren();
-  for (const g of data.live || []) {
-    const meta = [...ruleParts(g), t('home.moves', { n: g.moves || 0 }), g.viewers > 0 ? t('home.viewers', { n: g.viewers }) : ''];
-    box.appendChild(row(t('home.live_vs', { a: g.black || '?', b: g.white || '?' }), meta, t('home.view'), () => window.joinRoom(g.roomId)));
+/** #362 phone status line: same counts as the cards; "M ván đang chơi" links to Phòng › Quan sát only when M > 0. */
+function renderPulse(st) {   // no ETA here: #qm-line right under it already says "ước tính N giây"
+  const search = document.getElementById('home-pulse-search');
+  const live = document.getElementById('home-pulse-live');
+  if (!search || !live) return;
+  const num = (n) => { const b = el('b', st ? String(n || 0) : '–'); b.classList.toggle('is-zero', !n); return b; };
+  const ns = st && st.searching, nl = st && st.playing;
+  search.replaceChildren(num(ns), el('span', t('home.pulse_searching')));
+  live.replaceChildren(num(nl), el('span', t('home.pulse_playing')));
+  if (nl) {
+    live.href = '#rooms';
+    live.title = t('home.pulse_watch');
+  } else {
+    live.removeAttribute('href');
+    live.removeAttribute('title');
   }
-  if (!box.children.length) box.appendChild(el('p', t('home.no_live'), 'muted small hempty'));
-  flagEmpty(box);
 }
 
 /** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
@@ -256,58 +234,12 @@ function renderNews(data) {
   box.appendChild(line);
 }
 
-function renderForum(data) {
-  const box = document.getElementById('home-forum');
-  if (!box) return;
-  box.replaceChildren();
-  for (const th of data.forum || []) {
-    const meta = [t('forum.cat_' + th.category), t('forum.replies', { n: th.replyCount || 0 }), th.author];
-    box.appendChild(row(th.title, meta, t('home.view'), () => { location.href = '/forum/t/' + encodeURIComponent(th.id); }));
-  }
-  if (!box.children.length) box.appendChild(el('p', t('home.no_forum'), 'muted small hempty'));
-  // #301: with threads listed, each row already has its "Xem" pill — the footer is a quiet "all threads" text link, not a second outlined button; the empty state keeps the outlined entry button (#294).
-  const has = !!(data.forum && data.forum.length);
-  const all = withIcon(el('a', t(has ? 'home.forum_all_threads' : 'home.forum_all'), 'link-action hmore' + (has ? ' hmore--text' : '')), 'ph-regular-chat-circle');
-  all.href = '/forum';
-  box.appendChild(all);
-  flagEmpty(box);
-}
-
-function renderLearn(data) {
-  const box = document.getElementById('home-learn');
-  if (!box) return;
-  box.replaceChildren();
-  const l = data.learn;
-  if (!l) return;
-  const parts = [l.total ? t('home.learn_total', { n: l.total }) : t('home.learn_none')];
-  if (l.solved !== null && l.solved !== undefined && l.total) parts.push(t('home.learn_solved', { n: l.solved }));
-  box.appendChild(row(t('home.learn_title'), parts, t('home.view'), () => { location.href = '/puzzles'; }));
-  if (l.total && l.solved !== null && l.solved !== undefined) {
-    const pct = Math.min(100, Math.round((l.solved / l.total) * 100));
-    const bar = el('div', undefined, 'hprog');
-    const track = el('div', undefined, 'hprog__bar');
-    track.setAttribute('role', 'progressbar');
-    track.setAttribute('aria-valuemin', '0');
-    track.setAttribute('aria-valuemax', String(l.total));
-    track.setAttribute('aria-valuenow', String(l.solved));
-    const fill = el('i');
-    fill.style.width = pct + '%';
-    track.appendChild(fill);
-    bar.append(track, el('span', t('home.learn_progress', { s: l.solved, n: l.total }), 'muted small'));
-    box.appendChild(bar);
-  }
-}
-
 export function renderHome(data) {
   lastData = data;
   lastJson = JSON.stringify(data);
   renderStats(data);
   renderNews(data);
   renderMine(data);
-  renderLearn(data);
-  renderToday(data);
-  renderForum(data);
-  renderLive(data);
   renderQuickMatch(); // the "N đang chờ" count comes with /api/home
 }
 
@@ -357,7 +289,6 @@ function applyPush(key, value, render) {
 }
 
 client.on('home:stats', (st) => applyPush('stats', st, renderStats));
-client.on('home:live', (live) => applyPush('live', Array.isArray(live) ? live : [], renderLive));
 // A reconnect is a fresh server socket outside every room: subscribe again and resync the rest.
 client.on('disconnect', () => { subscribed = false; lobbySubscribed = false; });
 client.on('connect', () => {
@@ -367,43 +298,154 @@ client.on('connect', () => {
   loadHome();
 });
 
-// ── Quick match (B197) ──────────────────────────────────────────────────────
+// ── Quick match (B197) — #358 M4: the options are the blanks of one sentence ──
 
-const QM_RULES = ['freestyle', 'standard', 'caro'];
+const QM_RULES = ['freestyle', 'caro']; // Home menu: two rules (Standard stays reachable via rooms)
 const QM_TIMES_GAME = ['1+0', '1+1', '3+2', '5+3', '7+3', '10+0']; // total + increment per move
 const QM_TIMES_MOVE = ['m60', 'm45', 'm30', 'm5']; // seconds per move
 const QM_AUTO = 'auto'; // no clock preference: pairs with anyone, adopts the other side's clock (default 60s/nước)
-const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE];
+const QM_MENU_TIMES = [QM_AUTO, 'm45', 'm30', '1+1']; // Home menu: Auto + 45s / 30s per move + 1p+1s
+const QM_TIMES = [QM_AUTO, ...QM_TIMES_GAME, ...QM_TIMES_MOVE]; // still accepted from a saved pick
 const qmTimeLabel = (v) => (v === QM_AUTO ? t('qm.time_auto') : v[0] === 'm' ? t('home.per_move', { s: v.slice(1) }) : v);
 const QM_KEY = 'gvn_quickmatch';
-const qm = { rule: 'caro', time: QM_AUTO, wall: true, portal: false, searching: false, rated: false, startedAt: 0, inBucket: 0, error: '' };
+const qm = { rule: 'freestyle', time: QM_AUTO, wall: true, portal: false, rated: true, searching: false, startedAt: 0, inBucket: 0, error: '', notice: '' }; // notice: last challenge sent (#361)
 let qmTimer = null;
 
 try {
   const saved = JSON.parse(localStorage.getItem(QM_KEY) || 'null');
   if (saved && QM_RULES.includes(saved.rule)) qm.rule = saved.rule;
   if (saved && QM_TIMES.includes(saved.time)) qm.time = saved.time;
+  if (saved && typeof saved.rated === 'boolean') qm.rated = saved.rated;
   qm.wall = saved && typeof saved.wall === 'boolean' ? saved.wall : true;
   qm.portal = !!saved && saved.portal === true;
 } catch { /* per-viewer convenience only */ }
+
+function saveQm() {
+  try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time, wall: qm.wall, portal: qm.portal, rated: qm.rated })); } catch { /* ignore */ }
+}
 
 function isMember() {
   const u = window.GvnSession && window.GvnSession.getUser && window.GvnSession.getUser();
   return !!(u && !u.isGuest);
 }
 
-function chipRow(id, values, current, label, onPick) {
-  const box = document.getElementById(id);
-  if (!box) return;
-  box.replaceChildren();
-  for (const v of values) {
-    const b = el('button', label(v), 'pchip' + (v === current ? ' is-active' : ''));
+/** Per blank: the field it sets, the values offered (a saved pick outside the menu stays listed, nothing silently changes),
+ *  the label inside the listbox and the (lower-case, mid-sentence) label in the blank itself. */
+const QM_WALL = '+wall';
+function ruleWallLabel(v) {
+  const wall = v.endsWith(QM_WALL);
+  const name = t('rankings.cat_' + (wall ? v.slice(0, -QM_WALL.length) : v));
+  return wall ? name + ' (' + t('room.rule_wall') + ')' : name;
+}
+const blankValue = (spec) => (spec.get ? spec.get() : qm[spec.field]);
+
+const BLANKS = {
+  // Rule + Ô khoá share one blank: "Luật 1 (Ô khoá)" only when walls are on, plain "Luật 1" otherwise.
+  rule: { aria: 'qm.pick_rule', get: () => qm.rule + (qm.wall ? QM_WALL : ''),
+    set: (v) => { qm.wall = v.endsWith(QM_WALL); qm.rule = qm.wall ? v.slice(0, -QM_WALL.length) : v; },
+    values: () => (QM_RULES.includes(qm.rule) ? QM_RULES : [...QM_RULES, qm.rule]).flatMap((r) => [r, r + QM_WALL]),
+    option: ruleWallLabel, blank: ruleWallLabel },
+  time: { field: 'time', aria: 'qm.pick_time', values: () => (QM_MENU_TIMES.includes(qm.time) ? QM_MENU_TIMES : [...QM_MENU_TIMES, qm.time]),
+    option: qmTimeLabel, blank: (v) => (v === QM_AUTO ? t('qm.blank_time_auto') : qmTimeLabel(v)) },
+  mode: { field: 'rated', aria: 'qm.pick_mode', values: () => [true, false],
+    option: (v) => t(v ? 'qm.find_rated' : 'qm.find_casual'), blank: (v) => t(v ? 'qm.blank_rated' : 'qm.blank_casual') },
+};
+let openBlank = null; // key of BLANKS while #qm-pick is open
+
+/** "Tìm cho tôi một ván [rule], [time], [mode]." — the template comes from i18n, the blanks are buttons (listbox pattern).
+ *  Guests can only play casual, so their mode blank is plain text, not a control. */
+function renderSentence() {
+  const h = document.getElementById('home-q');
+  if (!h) return;
+  const member = isMember();
+  // The sentence is rebuilt on every render (1 s ticker, picks): keep keyboard focus on the same blank.
+  const focused = h.contains(document.activeElement) ? document.activeElement.dataset.blank : null;
+  const parts = t('home.q', { rule: '%%rule%%', time: '%%time%%', mode: '%%mode%%' }).split(/%%(rule|time|mode)%%/);
+  h.replaceChildren(...parts.map((p, i) => {
+    if (i % 2 === 0) return document.createTextNode(p);
+    const spec = BLANKS[p];
+    if (p === 'mode' && !member) return el('span', spec.blank(false), 'hq-blank hq-blank--fixed');
+    const b = el('button', spec.blank(blankValue(spec)), 'hq-blank');
     b.type = 'button';
+    b.dataset.blank = p;
     b.disabled = qm.searching;
-    b.setAttribute('aria-pressed', String(v === current));
-    b.addEventListener('click', () => onPick(v));
-    box.appendChild(b);
+    b.setAttribute('aria-haspopup', 'listbox');
+    b.setAttribute('aria-controls', 'qm-pick');
+    b.setAttribute('aria-expanded', String(openBlank === p));
+    b.addEventListener('click', (e) => { e.stopPropagation(); if (openBlank === p) closePick(true); else openPick(p); });
+    b.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openPick(p); } });
+    return b;
+  }));
+  if (focused && blankBtn(focused)) blankBtn(focused).focus();
+}
+
+const blankBtn = (key) => document.querySelector('#home-q [data-blank="' + key + '"]');
+
+/** Open the shared listbox for one blank: in flow under the sentence on desktop (pushes Chơi nhanh down, never covers it),
+ *  a bottom sheet on phones (CSS). Roving tabindex: only the selected option is tabbable. */
+function openPick(key) {
+  const list = document.getElementById('qm-pick');
+  if (!list || qm.searching) return;
+  const spec = BLANKS[key];
+  openBlank = key;
+  list.setAttribute('aria-label', t(spec.aria));
+  list.replaceChildren(...spec.values().map((v) => {
+    const o = el('li', spec.option(v), 'hq-opt');
+    o.setAttribute('role', 'option');
+    o.setAttribute('aria-selected', String(v === blankValue(spec)));
+    o.tabIndex = v === blankValue(spec) ? 0 : -1;
+    o.addEventListener('click', (e) => { e.stopPropagation(); choose(key, v); });
+    o.qmValue = v;
+    return o;
+  }));
+  list.hidden = false;
+  renderSentence(); // aria-expanded on the blank
+  const b = blankBtn(key);
+  const h = document.getElementById('home-q');
+  if (b && h) {
+    const x = b.getBoundingClientRect().left - h.getBoundingClientRect().left;
+    list.style.setProperty('--pick-x', Math.max(0, Math.min(x, h.clientWidth - 240)) + 'px');
   }
+  (list.querySelector('[aria-selected="true"]') || list.firstElementChild).focus();
+}
+
+function closePick(focusBlank) {
+  const list = document.getElementById('qm-pick');
+  const key = openBlank;
+  if (!list || !key) return;
+  openBlank = null;
+  list.hidden = true;
+  list.replaceChildren();
+  renderSentence();
+  if (focusBlank && blankBtn(key)) blankBtn(key).focus();
+}
+
+function choose(key, v) {
+  const spec = BLANKS[key];
+  if (spec.set) spec.set(v); else qm[spec.field] = v;
+  qm.error = '';
+  qm.notice = '';
+  saveQm();
+  closePick(true);
+  renderQuickMatch();
+}
+
+function wirePick() {
+  const list = document.getElementById('qm-pick');
+  if (!list) return;
+  list.addEventListener('keydown', (e) => {
+    const opts = [...list.children];
+    const i = opts.indexOf(document.activeElement);
+    const go = (j) => { e.preventDefault(); opts.forEach((o, k) => { o.tabIndex = k === j ? 0 : -1; }); opts[j].focus(); };
+    if (e.key === 'ArrowDown') go(Math.min(opts.length - 1, i + 1));
+    else if (e.key === 'ArrowUp') go(Math.max(0, i - 1));
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(opts.length - 1);
+    else if ((e.key === 'Enter' || e.key === ' ') && i >= 0) { e.preventDefault(); choose(openBlank, opts[i].qmValue); }
+    else if (e.key === 'Escape') { e.preventDefault(); closePick(true); }
+    else if (e.key === 'Tab') closePick(false);
+  });
+  document.addEventListener('click', (e) => { if (openBlank && !list.contains(e.target)) closePick(false); });
 }
 
 function elapsed() {
@@ -411,78 +453,70 @@ function elapsed() {
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
 
+/** Idle: the sentence + Chơi nhanh; #qm-line = facts for the picked rule|time (queue, ETA, guest note, error).
+ *  Searching: the button is swapped in place for the #qm-search pill (status, elapsed, queue, Huỷ tìm). */
 export function renderQuickMatch() {
-  const pick = (k) => (v) => {
-    qm[k] = v;
-    qm.error = '';
-    try { localStorage.setItem(QM_KEY, JSON.stringify({ rule: qm.rule, time: qm.time, wall: qm.wall, portal: qm.portal })); } catch { /* ignore */ }
-    renderQuickMatch();
-  };
-  chipRow('qm-rule', QM_RULES, qm.rule, (v) => t('rankings.cat_' + v), pick('rule'));
-  chipRow('qm-time', QM_TIMES, qm.time, qmTimeLabel, pick('time'));
-  const timeBox = document.getElementById('qm-time');
-  if (timeBox) {
-    const hint = document.getElementById('qm-time-hint');
-    if (hint) hint.hidden = qm.time !== QM_AUTO; // #298: display only, shown while Auto is the pick
-    timeBox.classList.toggle('is-auto', qm.time === QM_AUTO); // #293: the two clock groups read as secondary while Auto is chosen (still clickable)
-    // Auto chip first, then two labelled groups in the same row.
-    const grp = (k) => { const g = el('span', t('qm.grp_' + k), 'qm-grp'); g.setAttribute('aria-hidden', 'true'); return g; };
-    const firstMove = timeBox.children[QM_TIMES_GAME.length + 1]; // [auto, ...game, ...move]
-    if (firstMove) timeBox.insertBefore(grp('move'), firstMove);
-    if (timeBox.children[1]) timeBox.insertBefore(grp('game'), timeBox.children[1]);
-  }
-  const board = document.getElementById('qm-board');
-  if (board) {
-    board.replaceChildren();
-    for (const k of ['wall', 'portal']) {
-      const b = el('button', t('room.rule_' + k), 'pchip' + (qm[k] ? ' is-active' : ''));
-      b.type = 'button';
-      b.disabled = qm.searching;
-      b.setAttribute('aria-pressed', String(qm[k]));
-      b.addEventListener('click', () => pick(k)(!qm[k]));
-      board.appendChild(b);
-    }
-  }
+  renderHello();
+  if (qm.searching && openBlank) closePick(false);
+  renderSentence();
+  const member = isMember();
+  // #361 Thách đấu: members only; gone while searching (the pill takes the .hq-go row).
+  const chal = document.getElementById('qm-challenge');
+  if (chal) chal.hidden = !member || qm.searching;
+  if ((!member || qm.searching) && window.HomeChallenge && window.HomeChallenge.isOpen()) window.HomeChallenge.close();
+  const play = document.getElementById('qm-play');
+  const pill = document.getElementById('qm-search');
+  if (play) { play.hidden = qm.searching; play.disabled = qm.searching; }
+  if (pill) pill.hidden = !qm.searching;
 
   const acts = document.getElementById('qm-actions');
+  const status = document.getElementById('qm-status');
   const line = document.getElementById('qm-line');
-  if (!acts || !line) return;
-  acts.replaceChildren();
-  const btn = (key, cls, fn, iconName) => {
-    const b = withIcon(el('button', t(key), 'link-action' + (cls ? ' ' + cls : '')), iconName);
-    b.type = 'button';
-    b.addEventListener('click', fn);
-    acts.appendChild(b);
-    return b;
-  };
+  if (!acts || !line || !status) return;
   if (qm.searching) {
-    btn('qm.cancel', '', cancelSearch);
-    line.textContent = t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() })
-      + (qm.inBucket > 1 ? ' · ' + t('qm.in_queue', { n: qm.inBucket }) : '');
-  } else {
-    if (isMember()) btn('qm.find_rated', 'link-action--primary', () => startSearch(true), 'ph-regular-play');
-    btn('qm.find_casual', isMember() ? '' : 'link-action--primary', () => startSearch(false));
-    if (isMember()) { // mockup: Thách đấu bạn bè → the social page's friend picker (#222)
-      const a = withIcon(el('a', t('qm.challenge_friend'), 'link-action'), 'ph-regular-boxing-glove');
-      a.href = '/social.html#challenge';
-      acts.appendChild(a);
+    // Built once per search: the 1 s ticker re-renders, and a rebuilt button would drop keyboard focus.
+    if (!acts.firstElementChild) {
+      const b = el('button', t('qm.cancel'), 'link-action hq-cancel');
+      b.type = 'button';
+      b.addEventListener('click', cancelSearch);
+      acts.appendChild(b);
     }
-    // Who can pair with this pick: same clock, an auto waiter, and (for auto) everyone of the rule.
-    let waiting = 0;
-    for (const [k, n] of Object.entries((lastData && lastData.queue) || {})) {
-      const [rule, time] = k.split('|');
-      if (rule === qm.rule && (qm.time === QM_AUTO || time === QM_AUTO || time === qm.time)) waiting += n;
-    }
-    const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
-    line.textContent = qm.error || (t('qm.selected', { sel: t('rankings.cat_' + qm.rule) + ' · ' + qmTimeLabel(qm.time) + (qm.wall ? ' · ' + t('room.rule_wall') : '') + (qm.portal ? ' · ' + t('room.rule_portal') : '') })
-      + (waiting ? ' · ' + t('qm.in_queue', { n: waiting }) : '')
-      + (eta ? ' · ' + t('qm.eta', { s: eta }) : '')
-      + (isMember() ? '' : ' · ' + t('qm.guest_casual_only')));
+    setSegments(status, [t(qm.rated ? 'qm.searching_rated' : 'qm.searching_casual', { t: elapsed() }), qm.inBucket > 1 && t('qm.in_queue', { n: qm.inBucket })]);
+    line.replaceChildren();
+    return;
   }
+  acts.replaceChildren();
+  status.replaceChildren();
+  // Who can pair with this pick: same clock, an auto waiter, and (for auto) everyone of the rule.
+  let waiting = 0;
+  for (const [k, n] of Object.entries((lastData && lastData.queue) || {})) {
+    const [rule, time] = k.split('|');
+    if (rule === qm.rule && (qm.time === QM_AUTO || time === QM_AUTO || time === qm.time)) waiting += n;
+  }
+  const eta = lastData && lastData.queueEta ? lastData.queueEta[qm.rule + '|' + qm.time] || 0 : 0;
+  if (qm.error) line.textContent = qm.error;
+  else if (qm.notice) line.textContent = qm.notice;
+  else setSegments(line, [waiting && t('qm.in_queue', { n: waiting }), eta && t('qm.eta', { s: eta }), !member && { node: guestNote() }], 'rtag');
+  if (lastData) renderStats(lastData); // the searching card's ETA follows the picked rule|time
+}
+
+/** Status parts as separate spans spaced by CSS gap (ticket-rows.md: no "a · b · c" strings); `lead` = class of the first part, the rest are .rtag chips. */
+function setSegments(line, parts, lead = 'qm-line__lead') {
+  line.replaceChildren(...parts.filter(Boolean).map((p, i) => (p.node ? p.node : el('span', p, i ? 'rtag' : lead))));
+}
+
+/** Guest reason + a real link to act on it (ui-audit home F2: "đăng nhập" was plain text). */
+function guestNote() {
+  const note = el('span', t('qm.guest_casual_only') + ' — ', 'qm-line__note');
+  const a = el('a', t('qm.guest_login_rated'), 'qm-line__login');
+  a.href = '/login.html';
+  note.appendChild(a);
+  return note;
 }
 
 function startSearch(rated) {
   qm.error = '';
+  qm.notice = '';
   qm.rated = rated;
   client.emit('match:join', { rule: qm.rule, time: qm.time, rated, wall: qm.wall, portal: qm.portal });
 }
@@ -493,10 +527,14 @@ function cancelSearch() {
 
 function setSearching(on) {
   if (on && !qm.searching) qm.startedAt = Date.now();
+  const was = qm.searching;
   qm.searching = on;
   if (qmTimer) clearInterval(qmTimer);
   qmTimer = on ? setInterval(renderQuickMatch, 1000) : null;
   renderQuickMatch();
+  // The control under the user's finger swapped: keep focus on the replacement (pill's Huỷ tìm ↔ Chơi nhanh).
+  const target = on ? document.querySelector('#qm-actions button') : document.getElementById('qm-play');
+  if (was !== on && target && document.activeElement && (document.activeElement === document.body || !document.activeElement.isConnected || document.activeElement.closest('.hq-go'))) target.focus();
 }
 
 client.on('match:status', (st) => {
@@ -513,11 +551,87 @@ client.on('match:error', (e) => {
   setSearching(false);
 });
 client.on('match:found', () => {
-  // room:joined follows and lobby.js navigates; stop the ticking line meanwhile.
+  // room:joined follows and lobby.js navigates; stop the ticking status meanwhile.
   if (qmTimer) clearInterval(qmTimer);
-  const line = document.getElementById('qm-line');
-  if (line) line.textContent = t('qm.found');
+  const status = document.getElementById('qm-status');
+  if (status) status.textContent = t('qm.found');
 });
+
+// ── Vào phòng bằng mã on Home (#358): 3 boxes, auto-advance, paste "#a3f" fills all; same parse + join as the rooms form ──
+
+function wireCodeBoxes(formId, errId, boxSel) {
+  const form = document.getElementById(formId);
+  const err = document.getElementById(errId);
+  if (!form || !err) return;
+  const boxes = [...form.querySelectorAll(boxSel)];
+  const fill = (text, from) => {
+    let i = from;
+    for (const c of String(text).replace(/[^a-z0-9]/gi, '').toUpperCase()) {
+      if (i >= boxes.length) break;
+      boxes[i++].value = c;
+    }
+    boxes[Math.min(i, boxes.length - 1)].focus();
+  };
+  boxes.forEach((b, i) => {
+    b.addEventListener('focus', () => b.select());
+    b.addEventListener('input', () => {
+      err.hidden = true;
+      const v = b.value;
+      if (v.length > 1) { b.value = ''; fill(v, i); return; }
+      b.value = v.replace(/[^a-z0-9]/gi, '').toUpperCase();
+      if (b.value && i < boxes.length - 1) boxes[i + 1].focus();
+    });
+    b.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !b.value && i > 0) { e.preventDefault(); boxes[i - 1].value = ''; boxes[i - 1].focus(); }
+      else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); boxes[i - 1].focus(); }
+      else if (e.key === 'ArrowRight' && i < boxes.length - 1) { e.preventDefault(); boxes[i + 1].focus(); }
+    });
+    b.addEventListener('paste', (e) => {
+      const text = e.clipboardData ? e.clipboardData.getData('text') : '';
+      if (!text) return;
+      e.preventDefault();
+      err.hidden = true;
+      fill(text, i);
+    });
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const id = parseRoomCode(boxes.map((b) => b.value).join(''));
+    if (!id) {
+      err.textContent = t('lobby.join_code_invalid');
+      err.hidden = false;
+      (boxes.find((b) => !b.value) || boxes[0]).focus();
+      return;
+    }
+    window.joinRoom(id);
+  });
+}
+
+/** #361: Thách đấu → opponent picker (home-challenge.js) carrying the sentence's pick as a single game. */
+function openChallenge() {
+  const chal = document.getElementById('qm-challenge');
+  if (!chal || !window.HomeChallenge || qm.searching || !isMember()) return;
+  if (openBlank) closePick(false);
+  window.HomeChallenge.open({
+    anchor: chal,
+    pick: { rule: qm.rule, time: qm.time, rated: qm.rated, wall: qm.wall, portal: qm.portal },
+    ruleParts: ['rule', 'time', 'mode'].map((k) => BLANKS[k].option(blankValue(BLANKS[k]))),
+    onSent: (who) => { qm.error = ''; qm.notice = who && who.displayName ? t('home.ch_sent', { name: who.displayName }) : t('home.ch_sent_any'); renderQuickMatch(); },
+  });
+}
+
+function wireHub() {
+  const rooms = document.getElementById('hub-rooms');
+  if (rooms) rooms.addEventListener('click', (e) => { e.preventDefault(); showScreen('rooms'); });
+  const play = document.getElementById('qm-play');
+  if (play) play.addEventListener('click', () => startSearch(isMember() && qm.rated));
+  const chal = document.getElementById('qm-challenge');
+  if (chal) chal.addEventListener('click', openChallenge);
+  wirePick();
+  wireCodeBoxes('home-code', 'home-code-error', '.hq-code__box');
+  wireCodeBoxes('join-code-form', 'join-code-error', '.rh-code__box');
+}
+wireHub();
 
 // ── Wiring ──────────────────────────────────────────────────────────────────
 
@@ -533,8 +647,7 @@ document.addEventListener('visibilitychange', () => {
 document.querySelectorAll('#pl-shell a[data-tab="lobby"]').forEach((a) => a.addEventListener('click', (e) => {
   if (location.pathname.endsWith('/index.html') || location.pathname === '/') { e.preventDefault(); showScreen('home'); }
 }));
-window.addEventListener('langchange', () => { if (lastData) renderHome(lastData); renderQuickMatch(); });
+window.addEventListener('langchange', () => { const acts = document.getElementById('qm-actions'); if (acts) acts.replaceChildren(); if (lastData) renderHome(lastData); renderQuickMatch(); }); // acts: rebuild Huỷ tìm in the new language
 
-wireJoinCode();
 renderQuickMatch();
 showScreen(screenFromLocation());

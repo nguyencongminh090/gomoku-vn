@@ -5,16 +5,28 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Play3CR — Phòng chơi</title>
+
+  <!-- ── Socket handshake, started before anything else (#391, same as index.html #145) ──
+       These five MUST stay above every <link rel="stylesheet">: a classic script after a
+       stylesheet link waits for it to load. Order matters too: socket-client.js needs
+       GvnSession, socket-early.js needs io + SocketClient. room.js takes the same client
+       via SocketClient.shared(). See client/js/socket-early.js. room-early-join.js (#393)
+       emits room:join on connect and holds replies until room-socket.js releases them. -->
+  <script src="js/session.js?v=7d763f30"></script>
+  <script src="/vendor/socket.io/socket.io.min.js"></script>
+  <script src="js/socket-client.js?v=89ce4288"></script>
+  <script src="js/socket-early.js?v=a384ff9d"></script>
+  <script src="js/room-early-join.js?v=e4d87758"></script>
   <meta name="description" content="Play3CR — Phòng chơi Caro trực tuyến với luật Wall và Portal." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=237afa6e" />
-  <link rel="stylesheet" href="css/tokens.css?v=75d051bd" />
-  <link rel="stylesheet" href="css/lobby.css?v=64758c00" />
-  <link rel="stylesheet" href="css/room.css?v=70cf7510" />
-  <link rel="stylesheet" href="css/shell.css?v=524202cc" />
-  <link rel="stylesheet" href="css/game.css?v=e77e8c5b" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=33a2079d" />
-  <link rel="stylesheet" href="css/room-arena.css?v=55ad914e" />
+  <link rel="stylesheet" href="css/main.css?v=8aabd3f8" />
+  <link rel="stylesheet" href="css/tokens.css?v=db200088" />
+  <link rel="stylesheet" href="css/lobby.css?v=fd31e763" />
+  <link rel="stylesheet" href="css/room.css?v=6761990f" />
+  <link rel="stylesheet" href="css/shell.css?v=09cb623c" />
+  <link rel="stylesheet" href="css/game.css?v=4a01190d" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
+  <link rel="stylesheet" href="css/room-arena.css?v=0f6e4cd3" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
@@ -22,17 +34,16 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/room-entry.js's import list -->
-  <link rel="modulepreload" href="js/session.js?v=7d763f30" />
-  <link rel="modulepreload" href="js/i18n.js?v=7d67ef60" />
+  <link rel="modulepreload" href="js/i18n.js?v=3ab6807f" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
-  <link rel="modulepreload" href="js/socket-client.js?v=13b77de5" />
-  <link rel="modulepreload" href="js/board.js?v=e95b51b3" />
-  <link rel="modulepreload" href="js/room.js?v=d303980d" />
-  <link rel="modulepreload" href="js/chat-ui.js?v=c9347a46" />
-  <link rel="modulepreload" href="js/room-ui.js?v=6339f10d" />
-  <link rel="modulepreload" href="js/game-ui.js?v=40aa4bb0" />
-  <link rel="modulepreload" href="js/room-socket.js?v=c7acb632" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=7acad48e" />
+  <link rel="modulepreload" href="js/board.js?v=f4df4701" />
+  <link rel="modulepreload" href="js/room.js?v=36813fdf" />
+  <link rel="modulepreload" href="js/chat-ui.js?v=87065d01" />
+  <link rel="modulepreload" href="js/room-ui.js?v=ccffbeb5" />
+  <link rel="modulepreload" href="js/room-stage.js?v=07770a6a" />
+  <link rel="modulepreload" href="js/game-ui.js?v=823536da" />
+  <link rel="modulepreload" href="js/room-socket.js?v=3cfe0e77" />
 
 </head>
 
@@ -45,7 +56,7 @@
        real room data lands. See TODO.md #18 / instruction.md §B18. -->
   <div class="game-overlay visible" id="room-entry-overlay">
     <div class="game-overlay__card">
-      <div class="game-overlay__icon"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-hourglass"></use></svg></div>
+      <div class="game-overlay__icon"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-hourglass"></use></svg></div>
       <div class="game-overlay__result" data-i18n="room.entering">Đang vào phòng...</div>
       <div class="game-overlay__slow" data-i18n="conn.lagging">Đang tải… mạng chậm</div>
     </div>
@@ -55,28 +66,72 @@
   <div id="status-banner" class="status-banner" aria-live="polite"></div>
 
   <!-- ── Top Nav ──────────────────────────────────────────────────────────── -->
-  <nav class="topnav" role="navigation">
-    <a href="index.html" class="topnav__brand" aria-label="Play3CR">
+  <!-- #376 N1 "Thẻ bàn": brand … one segmented ticket [#code ⧉ | mode icon | Luật 2 · Ô khoá ⓘ] … Rời phòng · ≡.
+       Phones: the rules segment shortens ("Luật 2 +1") and Rời phòng is icon-only — it stays on the bar (user 2026-11-14).
+       No .topnav__right on purpose: settings-panel.js would mount its gear there — Cài đặt lives in the ≡ menu. -->
+  <nav class="topnav rnav" role="navigation">
+    <a href="index.html" class="topnav__brand rnav__brand" aria-label="Play3CR">
       <span class="topnav__title">Play<b>3CR</b></span>
     </a>
-    <!-- Site links (#191 item 6). room-ui.js hides them while you hold a seat in an ongoing game. -->
-    <nav id="room-site-links" class="topnav__links" data-i18n-aria="shell.nav" aria-label="Chính">
-      <a href="/index.html" data-i18n="shell.lobby">Chơi</a>
-      <a href="/index.html#rooms" data-i18n="shell.rooms">Phòng</a>
-      <a href="/index.html#tournaments" data-i18n="tabs.tournaments">Giải đấu</a>
-      <a href="/rankings.html" data-i18n="lobby.rankings">Xếp hạng</a>
-      <a href="/clubs.html" data-i18n="lobby.clubs">Câu lạc bộ</a>
-      <a href="/puzzles" data-i18n="shell.learn">Học</a>
-    </nav>
-    <div class="topnav__right">
-      <span id="room-id-nav" class="topnav__user topnav__room-id"></span>
-      <span id="room-mode-badge" class="mode-badge" hidden></span>
-      <button id="btn-leave" class="topnav__btn" type="button" data-i18n-title="nav.leave" title="Rời phòng">
-        <svg class="icon" style="font-size: 16px;"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-sign-out"></use></svg>
-        <span data-i18n="nav.leave" class="hide-on-mobile">Rời phòng</span>
+    <span class="rnav__spacer"></span>
+    <div class="rnav__ticket">
+      <span id="room-id-nav" class="rnav__code"></span>
+      <button id="btn-room-rules" class="rnav__meta" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="rules-pop" data-i18n-title="room.rules_open" title="Xem luật của ván này">
+        <span id="room-mode-badge" class="mode-badge" hidden></span>
+        <span id="room-rules-text" class="rnav__rules"></span>
+        <svg class="icon rnav__info" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-info"></use></svg>
       </button>
     </div>
+    <span class="rnav__spacer"></span>
+    <button id="btn-leave" class="topnav__btn rnav__leave" type="button" data-i18n-title="nav.leave" title="Rời phòng" data-i18n-aria="nav.leave" aria-label="Rời phòng">
+      <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-sign-out"></use></svg>
+      <span data-i18n="nav.leave" class="rnav__leave-text">Rời phòng</span>
+    </button>
+    <button id="btn-room-menu" class="topnav__btn rnav__menu" type="button" aria-haspopup="true" aria-expanded="false" aria-controls="room-menu" data-i18n-title="room.menu" data-i18n-aria="room.menu" title="Menu phòng" aria-label="Menu phòng">
+      <svg class="icon rnav__menu-open" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-list"></use></svg>
+      <svg class="icon rnav__menu-close" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-x"></use></svg>
+    </button>
+
+    <!-- ≡ menu (room-ui.js wires it): dropdown on desktop, bottom sheet on phones. -->
+    <div id="room-menu" class="rmenu" hidden>
+      <div id="room-menu-title" class="rmenu__title"></div>
+      <button id="btn-menu-rules" class="rmenu__item rmenu__item--rules" type="button">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-info"></use></svg>
+        <span data-i18n="rules.title">Luật của ván này</span><span id="room-menu-rules" class="rmenu__sub"></span>
+      </button>
+      <button id="btn-room-qr" class="rmenu__item" type="button">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-qr-code"></use></svg>
+        <span data-i18n="room.qr_title">Mã QR vào bàn</span>
+      </button>
+      <button id="btn-room-invite" class="rmenu__item" type="button">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-copy"></use></svg>
+        <span data-i18n="room.invite_copy">Chép link mời</span>
+      </button>
+      <button id="btn-room-settings" class="rmenu__item" type="button">
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-gear-six"></use></svg>
+        <span data-i18n="gset.title">Cài đặt</span>
+      </button>
+      <!-- Site links (#191 item 6). room-ui.js hides them while you hold a seat in an ongoing game. -->
+      <nav id="room-site-links" class="rmenu__go" data-i18n-aria="shell.nav" aria-label="Chính">
+        <div class="rmenu__head" data-i18n="room.go_to">Đi tới</div>
+        <div class="rmenu__grid">
+          <a href="/index.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-play"></use></svg><span data-i18n="shell.lobby">Chơi</span></a>
+          <a href="/index.html#rooms"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-grid-four"></use></svg><span data-i18n="shell.rooms">Phòng</span></a>
+          <a href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+          <a href="/rankings.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-ranking"></use></svg><span data-i18n="lobby.rankings">Xếp hạng</span></a>
+          <a href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+          <a href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        </div>
+      </nav>
+    </div>
+
+    <!-- Rules of this game (room-ui.js renderRules): popover on desktop, bottom sheet on phones. -->
+    <div id="rules-pop" class="rules-pop" role="dialog" aria-labelledby="rules-pop-title" hidden>
+      <h2 id="rules-pop-title" class="rules-pop__title" data-i18n="rules.title">Luật của ván này</h2>
+      <div id="rules-pop-body"></div>
+    </div>
   </nav>
+  <div id="rnav-scrim" class="rnav-scrim" hidden></div>
 
   <!-- ── Room (#216 "Arena Focus") ─────────────────────────────────────────
        Desktop: board | rail [opponent card · tabs · actions · my card].
@@ -88,7 +143,7 @@
     <section class="board-area-shell" id="board-area-shell">
       <div class="board-area" id="board-area">
         <div class="board-placeholder">
-          <div class="board-placeholder__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-checkerboard"></use></svg></div>
+          <div class="board-placeholder__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-checkerboard"></use></svg></div>
           <div class="board-placeholder__text" data-i18n="room.placeholder">Chờ người chơi ngồi vào và sẵn sàng...</div>
         </div>
       </div>
@@ -98,8 +153,8 @@
            #board-area's innerHTML on first render. -->
       <div class="start-modal" id="start-modal">
         <div class="start-modal__card">
-          <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-play-circle"></use></svg></div>
-          <div class="start-modal__title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
+          <div class="start-modal__icon"><svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-play-circle"></use></svg></div>
+          <div class="start-modal__title" id="start-modal-title" data-i18n="start_modal.title">Sẵn sàng vào trận?</div>
           <div class="start-modal__countdown" id="start-modal-countdown-wrap" style="display:none;">
             <span data-i18n="start_modal.countdown_label">Còn</span>
             <span id="start-modal-countdown">15</span>s
@@ -107,17 +162,24 @@
           <div class="start-modal__divider"></div>
           <button class="btn-primary" id="start-modal-btn" type="button" data-action="confirmStart" data-i18n="start_modal.btn_start">Bắt đầu</button>
           <div class="start-modal__waiting" id="start-modal-waiting" data-i18n="start_modal.waiting" style="display:none;">Đang chờ đối thủ bấm Bắt đầu...</div>
+          <!-- #365 quick-match only: "Về trang chủ" next to "Chơi tiếp" after each game -->
+          <button class="btn-secondary start-modal__home" id="start-modal-home" type="button" data-action="leaveMatch" data-i18n="match_end.home" style="display:none;">Về trang chủ</button>
         </div>
       </div>
     </section>
 
-    <!-- Desktop only (CSS): collapses the docked rail so the board gets the full width -->
-    <button class="rail-dock-toggle" id="rail-dock-toggle" type="button" aria-expanded="true" aria-controls="rail"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-caret-right"></use></svg></button>
 
     <aside class="rail" id="rail" aria-label="Ván đấu">
       <!-- Player cards: the opponent on top, you at the bottom (a spectator
            sees seat #2 on top, seat #1 at the bottom). RoomUI.renderPlayerCards. -->
       <div class="seatcard seatcard--top" id="seatcard-top" aria-live="polite"></div>
+
+      <!-- #369 desktop only (CSS): the score card under the opponent. room-stage.js moves #score-hero in here above
+           768px and back into the Tỉ số tab on phones; the empty line shows while the hero is empty. -->
+      <div class="scorecard" id="scorecard">
+        <div class="scorecard__title" data-i18n="room.tab_scores">Tỉ số</div>
+        <p class="scorecard__empty" data-i18n="room.score_empty">Chưa có ván nào kết thúc.</p>
+      </div>
 
       <div class="rpanel">
         <!-- Requests + confirm countdowns float over the top of the panel, never
@@ -129,18 +191,20 @@
           <div id="confirm-prompt-area"></div>
         </div>
 
-        <!-- Phones only (CSS): minimizes the panel to the quick chat bar -->
-        <button class="rpanel-toggle" id="rpanel-toggle" type="button" aria-expanded="false" aria-controls="tab-chat"><span class="rpanel-toggle__tri" aria-hidden="true"></span></button>
+        <!-- #368 phones: the tabs live in a bottom sheet opened from the dock (room-stage.js); desktop: display:contents -->
+        <div class="rsheet" id="rsheet">
+        <button class="rsheet__grab" id="rsheet-grab" type="button" data-i18n-aria="room.sheet_close" aria-label="Đóng"><span aria-hidden="true"></span></button>
 
         <div class="sidebar-tabs" role="tablist">
-          <button class="tab-btn" data-tab="tab-moves" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-list-numbers"></use></svg><span class="tab-btn__label" data-i18n="room.tab_moves">Nước đi</span></button>
-          <button class="tab-btn tab-btn--active" data-tab="tab-chat" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-chat-circle"></use></svg><span class="tab-btn__label" data-i18n="room.tab_chat">Chat</span></button>
-          <button class="tab-btn" data-tab="tab-users" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-eye"></use></svg><span class="tab-btn__label" data-i18n="room.tab_spectators">Khán giả</span></button>
-          <button class="tab-btn" data-tab="tab-settings" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-gear-six"></use></svg><span class="tab-btn__label" data-i18n="room.tab_settings">Cài đặt</span></button>
+          <button class="tab-btn" data-tab="tab-moves" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-list-numbers"></use></svg><span class="tab-btn__label" data-i18n="room.tab_moves">Nước đi</span></button>
+          <button class="tab-btn tab-btn--active" data-tab="tab-chat" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-chat-circle"></use></svg><span class="tab-btn__label" data-i18n="room.tab_chat">Chat</span></button>
+          <button class="tab-btn" data-tab="tab-users" role="tab"><svg class="icon tab-btn__icon--phone" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg><svg class="icon tab-btn__icon--desk" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-eye"></use></svg><span class="tab-btn__label tab-btn__label--desk" data-i18n="room.tab_spectators">Khán giả</span><span class="tab-btn__label tab-btn__label--phone" data-i18n="room.tab_scores">Tỉ số</span></button>
+          <button class="tab-btn" data-tab="tab-settings" role="tab"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-gear-six"></use></svg><span class="tab-btn__label" data-i18n="room.tab_settings">Cài đặt</span></button>
         </div>
 
         <div class="tab-content" id="tab-moves">
           <ol class="moves" id="moves-list"></ol>
+          <ol class="moves-grid" id="moves-grid"></ol>
         </div>
 
         <div class="tab-content tab-content--active" id="tab-chat">
@@ -150,13 +214,14 @@
               <input type="text" id="chat-input" data-i18n-placeholder="room.ph_chat" placeholder="Nhập tin nhắn..."
                 maxlength="500" autocomplete="off" />
               <button id="btn-send" type="button" data-i18n-title="room.btn_send" title="Gửi" aria-label="Gửi">
-                <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-paper-plane-tilt"></use></svg>
+                <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-paper-plane-tilt"></use></svg>
               </button>
             </div>
           </div>
         </div>
 
         <div class="tab-content" id="tab-users">
+          <div class="score-hero" id="score-hero"></div>
           <div class="score-panel" id="score-panel">
             <div class="score-panel__title" data-i18n="room.score_title">Bảng điểm</div>
             <table class="score-table">
@@ -170,7 +235,9 @@
               </thead>
               <tbody id="score-body"></tbody>
             </table>
+            <div class="score-history" id="score-history" hidden></div>
           </div>
+          <p class="score-empty" data-i18n="room.score_empty">Chưa có ván nào kết thúc.</p>
           <div id="users-panel" class="users-panel">
             <ul id="users-list" class="users-list"></ul>
           </div>
@@ -181,6 +248,7 @@
             <div class="settings-panel__body open" id="settings-body"></div>
           </div>
         </div>
+        </div><!-- /.rsheet -->
       </div>
 
       <!-- Action tiles: Lùi · Xin time (Giao hữu only) · Cầu hoà · Đầu hàng.
@@ -188,15 +256,33 @@
       <div class="game-controls" id="game-controls"></div>
 
       <div class="seatcard seatcard--bottom" id="seatcard-bottom" aria-live="polite"></div>
+
+      <!-- #368 phones: the live stage under the board and the dock. #369 desktop: the stage overlays the board, the dock
+           overlays the right column (audience stack on top, input + 👏 at the bottom).
+           Spectator lines and reactions float in the stage; every line is also in #chat-messages (sheet → Chat). -->
+      <div class="stage" id="stage" aria-hidden="true">
+        <button class="stage__handle" id="stage-handle" type="button" tabindex="-1"><span></span></button>
+        <div class="stage__fly" id="stage-fly"></div>
+        <div class="stage__reacts" id="stage-reacts"></div>
+      </div>
+      <div class="rdock" id="rdock">
+        <button class="aud" id="aud-stack" type="button" aria-expanded="false" aria-controls="aud-pop" hidden></button>
+        <!-- #chat-input-wrapper is moved here on phones by room-stage.js -->
+        <button class="rdock__btn rdock__btn--react" id="btn-react" type="button" data-i18n-title="room.react" data-i18n-aria="room.react" title="Vỗ tay" aria-label="Vỗ tay"><span aria-hidden="true">👏</span></button>
+        <button class="rdock__btn" id="btn-sheet" type="button" aria-expanded="false" aria-controls="rsheet" data-i18n-title="room.sheet_open" data-i18n-aria="room.sheet_open" title="Chat · Tỉ số · Nước đi" aria-label="Chat · Tỉ số · Nước đi"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-chat-circle"></use></svg><span class="rdock__badge" id="sheet-badge" hidden></span></button>
+        <div class="aud-pop" id="aud-pop" hidden></div>
+      </div>
     </aside>
+    <div class="rsheet-scrim" id="rsheet-scrim" hidden></div>
   </main>
 
   <!-- Float Messages (appear on top of game board) -->
   <div id="float-messages" class="float-messages"></div>
+  <!-- #368/#369: players' chat as speech bubbles next to their seat cards (position:fixed, never takes taps) -->
+  <div id="speech-layer" class="speech-layer" aria-hidden="true"></div>
 
-  <!-- Socket.io CDN -->
-  <script src="/vendor/socket.io/socket.io.min.js"></script>
   <!-- Application Scripts via Vite entry point -->
+  <script src="js/qrcode-generator.js"></script>
   <script src="js/escape-utils.js?v=05dffe1e"></script>
   <!-- Clock maths shared with the diagnostic page (TODO.md #168). Classic
        script, not an entry import: it is a UMD module and Vite's commonjs
@@ -204,9 +290,9 @@
        production build — the same trap escape-utils.js is loaded this way
        for (see room-entry.js's header comment). -->
   <script src="js/timer-sync-core.js?v=c56a5a16"></script>
-  <script src="js/audio-manager.js?v=f0ca2309"></script>
+  <script src="js/audio-manager.js?v=7f8d015d"></script>
   <script src="js/action-delegate.js?v=7420bbed"></script>
-  <script type="module" src="js/room-entry.js?v=64f260e3"></script>
+  <script type="module" src="js/room-entry.js?v=1023a765"></script>
 </body>
 
 </html>

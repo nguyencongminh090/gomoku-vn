@@ -1,0 +1,97 @@
+<title>Cột phải trang chủ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap">
+<style>
+/* Layout: one column gallery, current first, then A–D; each card = screenshot + verdict lines. Theme/width switch on top. */
+:root{--bg:#ecebe8;--surface:#fff;--ink:#2b2926;--ink2:#5f5b52;--line:rgba(0,0,0,.12);--brand:#4f7d1c;--brand-l:rgba(98,153,36,.14);--accent:#c2560f;
+  --f:'Nunito',system-ui,-apple-system,'Segoe UI',sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161512;--surface:#262421;--ink:#e8e6e1;--ink2:#a8a49b;--line:rgba(255,255,255,.12);--brand:#8bc34a;--brand-l:rgba(139,195,74,.14);--accent:#ee6a20;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161512;--surface:#262421;--ink:#e8e6e1;--ink2:#a8a49b;--line:rgba(255,255,255,.12);--brand:#8bc34a;--brand-l:rgba(139,195,74,.14);--accent:#ee6a20;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:600 15px/1.55 var(--f)}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+h1{margin:0;font-size:clamp(26px,3vw,38px);font-weight:900;letter-spacing:-.02em;text-wrap:balance}
+.lead{margin:6px 0 0;color:var(--ink2);max-width:70ch}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;position:sticky;top:env(safe-area-inset-top,0px);z-index:5;padding:10px 0;background:var(--bg)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:var(--surface);overflow:hidden}
+.seg button{min-height:40px;padding:0 16px;border:0;background:none;color:var(--ink2);font:800 14px var(--f);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--brand);outline-offset:-2px}
+.note{font-size:13px;color:var(--ink2)}
+.card{display:grid;gap:14px;padding:18px;border-radius:18px;background:var(--surface);border:1px solid var(--line)}
+.card.now{background:transparent;border-style:dashed}
+.head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px}
+.tag{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 8px;border-radius:10px;background:var(--brand-l);color:var(--brand);font-weight:900;font-size:18px}
+.now .tag{background:var(--line);color:var(--ink2)}
+h2{margin:0;font-size:22px;font-weight:900}
+.idea{flex-basis:100%;margin:0;color:var(--ink2);max-width:80ch}
+.shot{display:block;width:100%;height:auto;border-radius:12px;border:1px solid var(--line)}
+ul{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 24px}
+li{position:relative;padding-left:22px;min-width:0}
+li::before{position:absolute;left:0;font-weight:900}
+li.p::before{content:'+';color:var(--brand)} li.m::before{content:'–';color:var(--accent)}
+.ask{padding:18px;border-radius:18px;border:2px solid var(--brand);background:var(--brand-l)}
+.ask p{margin:0}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Trang chủ desktop: lời chào, đang online, Khám phá và số liệu</h1>
+    <p class="lead">Khối câu lệnh, Chơi nhanh, Thách đấu và vào phòng bằng mã giữ nguyên. Chỉ thay hàng chào (pill online + 4 icon) và hai thẻ số liệu bên phải. Mọi ảnh chụp từ trang thật (máy chủ thử, DB riêng), chỉ áp dụng khi màn hình rộng hơn 860px. Bố cục điện thoại không đổi.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="Chế độ xem">
+    <div class="seg" id="seg-mode"><button type="button" data-v="light" aria-pressed="true">Sáng</button><button type="button" data-v="dark" aria-pressed="false">Tối</button></div>
+    <div class="seg" id="seg-w"><button type="button" data-v="1440" aria-pressed="true">1440 px</button><button type="button" data-v="1280" aria-pressed="false">1280 px</button></div>
+    <span class="note">Số liệu mẫu, giống nhau ở mọi ảnh: 24 online, 3 đang tìm, 5 ván, 1 ván đang xem nhiều.</span>
+  </div>
+
+  <section class="card now" data-id="0-hien-tai">
+    <div class="head"><span class="tag">0</span><h2>Hiện tại</h2>
+      <p class="idea">Pill online cạnh lời chào, 4 icon không chữ ở góc phải, 2 thẻ trắng rời nhau bên phải.</p></div>
+    <img class="shot" alt="Trang chủ hiện tại" loading="lazy">
+  </section>
+
+  <section class="card" data-id="a-mot-cot">
+    <div class="head"><span class="tag">A</span><h2>Một cột bên</h2>
+      <p class="idea">Gộp hết vào một bảng: dòng “24 người đang online”, hai số chia đôi, ván đang xem nhiều, rồi mục Khám phá với 4 hàng có chữ và một dòng số liệu (12/240 thế cờ, chủ đề mới nhất, giải đang mở). Hàng chào chỉ còn “Chào …”.</p></div>
+    <img class="shot" alt="Phương án A" loading="lazy">
+    <ul><li class="p">Một khối duy nhất, hết rời rạc; cột phải dài ngang khối bên trái.</li><li class="p">Khám phá có chữ và có số liệu thật từ /api/home, không cần sửa backend.</li><li class="m">Khám phá nằm dưới số liệu, ít nổi hơn so với ô riêng.</li></ul>
+  </section>
+
+  <section class="card" data-id="b-thanh-nhip">
+    <div class="head"><span class="tag">B</span><h2>Thanh nhịp + ô Khám phá</h2>
+      <p class="idea">Ba con số thành một thanh trạng thái ở bên phải hàng chào. Cột phải là lưới 2×2 ô Khám phá (icon, tên, dòng số liệu), dưới đó là ván đang xem nhiều.</p></div>
+    <img class="shot" alt="Phương án B" loading="lazy">
+    <ul><li class="p">Số liệu gọn trong một dòng, luôn thấy ngay đầu trang.</li><li class="p">Ô Khám phá to, dễ bấm, giống hướng điện thoại.</li><li class="m">Ô 2×2 hơi chật ở 1280 px, chữ phụ xuống hai dòng.</li></ul>
+  </section>
+
+  <section class="card" data-id="c-bang-den">
+    <div class="head"><span class="tag">C</span><h2>Bảng đen quán cờ</h2>
+      <p class="idea">Ý tưởng mới: một bảng số kiểu bảng tỉ số quán cờ (nền mực, lưới ô cờ mờ, số trên từng tấm như bảng lật, chấm “trực tiếp” nhấp nháy), luôn tối ở cả hai chế độ. Khám phá là 4 nút viên thuốc có chữ.</p></div>
+    <img class="shot" alt="Phương án C" loading="lazy">
+    <ul><li class="p">Có cá tính riêng nhất, đúng chất trò chơi trực tiếp.</li><li class="p">Số online nổi bật nhưng không lấn khối Chơi nhanh.</li><li class="m">Ở chế độ tối bảng gần trùng nền, ít tương phản hơn.</li><li class="m">Khám phá không có dòng số liệu.</li></ul>
+  </section>
+
+  <section class="card" data-id="d-ke-duoi">
+    <div class="head"><span class="tag">D</span><h2>Kệ dưới</h2>
+      <p class="idea">Cột phải chỉ còn một thẻ “Đang diễn ra · 24 online” gồm hai số và ván đang xem nhiều. Khám phá thành một kệ 4 thẻ trải hết chiều ngang ở cuối trang, lấp phần trống bên dưới.</p></div>
+    <img class="shot" alt="Phương án D" loading="lazy">
+    <ul><li class="p">Lấp được nửa dưới trống; trang cân đối nhất.</li><li class="p">Khám phá có chữ và số liệu, thẳng hàng với lưới trang.</li><li class="m">Ở màn hình thấp (≤ 800 px) kệ có thể xuống dưới mép, cần cuộn.</li></ul>
+  </section>
+
+  <div class="ask"><p>Bạn chọn A, B, C, D hay ghép (vd. “C nhưng Khám phá như D”). Tôi sẽ ghi quyết định vào docs/todo rồi build trên nhánh <b>ui/</b> mới tách từ dev.</p></div>
+</div>
+
+<script>
+(function(){
+  var st={mode:'light',w:'1440'};
+  try{var s=JSON.parse(localStorage.getItem('dsv')||'{}');if(s.mode)st.mode=s.mode;if(s.w)st.w=s.w;}catch(e){}
+  function paint(){
+    document.querySelectorAll('.card').forEach(function(c){c.querySelector('.shot').src='shots/'+c.dataset.id+'-'+st.mode+'-'+st.w+'.png';});
+    [['seg-mode','mode'],['seg-w','w']].forEach(function(p){document.querySelectorAll('#'+p[0]+' button').forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.v===st[p[1]]));});});
+    try{localStorage.setItem('dsv',JSON.stringify(st));}catch(e){}
+  }
+  [['seg-mode','mode'],['seg-w','w']].forEach(function(p){document.getElementById(p[0]).addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;st[p[1]]=b.dataset.v;paint();});});
+  paint();
+})();
+</script>

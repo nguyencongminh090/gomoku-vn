@@ -34,6 +34,7 @@ const adminRouter    = require('./routes/admin');
 const clubsRouter    = require('./routes/clubs');
 const friendsRouter  = require('./routes/friends');
 const notificationsRouter = require('./routes/notifications');
+const presenceRouter = require('./routes/presence');
 const shellRouter = require('./routes/shell');
 const challengesRouter = require('./routes/challenges');
 const dmRouter = require('./routes/dm');
@@ -41,6 +42,7 @@ const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
 const { errorHandler } = require('./middleware/errorHandler');
+const { originGuard } = require('./middleware/origin-guard');
 const socketHandler  = require('./socket/SocketHandler');
 const diagNamespace  = require('./socket/diag-namespace');
 const sessionManager = require('./managers/SessionManager');
@@ -154,6 +156,9 @@ app.use('/vendor/socket.io', express.static(socketIoClientPath, socketIoClientOp
 // (`public, max-age=0`) was actively harmful here.
 app.use(express.static(clientPath, staticOptions));
 
+// Reject cross-site writes before any /api router (#350).
+app.use('/api', originGuard);
+
 // REST API routes
 app.use('/api/auth', authRouter);
 app.use('/api/games', gamesRouter);
@@ -166,6 +171,7 @@ app.use('/api/forum', forumRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/friends', friendsRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/presence', presenceRouter);
 app.use('/api/shell', shellRouter);
 app.use('/api/challenges', challengesRouter);
 app.use('/api/dm', dmRouter);

@@ -5,7 +5,7 @@ domain: gomoku-vn
 tags: broadcast,socket-io,debounce,delta,lobby,tournament,capacity,performance
 apply_when: "Before adding or changing any io.emit / io.to(...).emit, broadcastLobbyUpdate/broadcastRoomUpdate, tournament broadcasts, lobby rendering, or interpreting capacity/stress-test numbers"
 sources: "2026-08-02-backend-todo-phan-b-8/9/10 (B8/B9/B10), 2026-08-02-capacity-stress-testing-docs-stress-test-report-md, 2026-08-04-todo-md-41-debounce-lobby-online-users, 2026-08-04-todo-md-29-unexplained-8000-player-ceiling, 2026-08-06-todo-22-room-updated-join-burst-debounce, 2026-08-06-tournament-updated-entries-diff, 2026-08-09-todo-82/83/84/87, 2026-08-14-todo-117-lobby-render-incremental; docs/stress-test-report.md (grep only); TODO #8/#9/#10/#22/#29/#41/#82/#83/#84/#87/#117"
-last_reviewed: 2026-10-09
+last_reviewed: 2026-11-15
 confidence: medium
 ---
 # Broadcast fan-out and performance
@@ -27,6 +27,10 @@ Per-event cost grows with rooms x viewers x event rate. Each broadcast was first
 11. Tournament game history is paginated: `getTournamentGames(id, limit, offset)` + `getTournamentGameCount`, route caps `limit` at 50 (#84).
 12. Capacity: the apparent ~3000-4000 player ceiling was the Node `server.listen` backlog (default 511, `ListenOverflows`); fixed with `LISTEN_BACKLOG` (default 4096, `server/config.js`) -> 4000 connecting players 100% clean on default transport. Websocket-first transport was measured as a second fix; not applied in that entry, but `client/js/socket-client.js` now sets `transports: ['websocket', 'polling']` (verified 2026-10-09).
 13. Profiling with `node --cpu-prof` itself dropped a 6000-player run from ~100% to 97.6%. Never use one run as both the official success-rate measurement and the profiler capture. The ~8000 boundary was left unexplained (no non-perturbing profiler available).
+
+14. Lobby flush is O(changed rooms) (#380): `broadcastLobbyUpdate(io, roomId)` / `scheduleLobbyBoardUpdate(io, roomId)` name the room, the diff still reads live state at flush. No id → full pass; a full pass also runs ≤ every `LOBBY_FULL_RECONCILE_MS` (30 s). Always pass the room id at a new call site.
+15. Lobby clients mirror ONE PAGE, not the world (#381/#382): online list = first `ONLINE_PAGE_SIZE` (50) by name + `total`; rooms = `LOBBY_ROOM_PAGE_SIZE` (30) + `stats`. `total`/`stats` appear on the wire only while truncated, so small sites keep the old payload byte for byte. Everything else is pull: `lobby:online_query` (`{q,offset}` / `{ids}`), `lobby:rooms_query {offset}` (acks, 200 ms throttle). Supersedes rule 7's "still a full list".
+16. Never treat "not in the mirrored page" as "absent" on the client (DM window status asks `{ids}`; counts come from `total`/`stats`).
 
 ## Symptom -> real cause -> fix
 | Symptom | Real cause | Fix |

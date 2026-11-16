@@ -312,7 +312,7 @@ class TournamentManager extends EventEmitter {
         if (organizerInfo.isGuest) throw new Error('guest');
         clubId = clubService.staffClubId(organizerInfo.userId, clubSlug);
       } catch (_) {
-        return { error: 'Chỉ chủ nhiệm hoặc phó CLB mới tạo được giải của CLB.', code: 'TOURNAMENT_CLUB_FORBIDDEN' };
+        return { error: 'Chỉ chủ nhiệm hoặc phó nhóm mới tạo được giải của nhóm.', code: 'TOURNAMENT_CLUB_FORBIDDEN' };
       }
     }
 

@@ -1,0 +1,94 @@
+<title>Play3CR Bạn bè Mockups</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap">
+<style>
+/* Layout: one card per direction — notes column left, screenshot with a frame switcher right. Site tokens (Play3CR Arena). */
+:root { --bg: #ecebe8; --surface: #ffffff; --ink: #2b2926; --ink2: #5f5b52; --line: rgba(0,0,0,.12); --brand: #4d7c1f; --brand-ink: #3d6418; --chip: #f4f3f0; --be: #c2185b;
+  --font: 'Nunito', system-ui, -apple-system, 'Segoe UI', sans-serif; color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #161512; --surface: #262421; --ink: #e8e6e1; --ink2: #a8a49b; --line: rgba(255,255,255,.12); --brand: #4f7d1c; --brand-ink: #8bc34a; --chip: #2f2d29; --be: #f06292; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #161512; --surface: #262421; --ink: #e8e6e1; --ink2: #a8a49b; --line: rgba(255,255,255,.12); --brand: #4f7d1c; --brand-ink: #8bc34a; --chip: #2f2d29; --be: #f06292; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 16px/1.5 var(--font); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 32px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 24px; }
+header h1 { margin: 0; font-size: clamp(28px, 3vw, 40px); font-weight: 900; letter-spacing: -.02em; text-wrap: balance; }
+header p { margin: 8px 0 0; max-width: 75ch; color: var(--ink2); }
+header p b { color: var(--ink); }
+.be { display: inline-block; padding: 0 6px; border-radius: 6px; background: var(--be); color: #fff; font-size: 12px; font-weight: 800; }
+.toc { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.toc a { padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 700; font-size: 14px; }
+.toc a:focus-visible, .views button:focus-visible { outline: 3px solid var(--brand-ink); outline-offset: 2px; }
+.card { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 24px; padding: 20px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); scroll-margin-top: 16px; }
+.card h2 { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -.01em; display: flex; gap: 10px; align-items: baseline; text-wrap: balance; }
+.card h2 .id { font-size: 14px; font-weight: 800; color: var(--brand-ink); }
+.card dl { margin: 12px 0 0; display: grid; gap: 10px; }
+.card dt { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2); }
+.card dd { margin: 2px 0 0; font-size: 15px; }
+.views { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.views button { font: 700 13px/1 var(--font); min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--chip); color: var(--ink); cursor: pointer; }
+.views button[aria-pressed="true"] { background: var(--brand); border-color: var(--brand); color: #fff; }
+.shot { min-width: 0; }
+.frame { border-radius: 10px; border: 1px solid var(--line); overflow: auto; max-height: 820px; background: var(--chip); }
+.frame img { display: block; width: 100%; height: auto; }
+.frame.phone { max-width: 390px; margin: 0 auto; }
+.frame.tablet { max-width: 640px; margin: 0 auto; }
+footer { color: var(--ink2); font-size: 14px; }
+footer a { color: var(--brand-ink); }
+@media (max-width: 860px) { .card { grid-template-columns: minmax(0, 1fr); padding: 14px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Trang Bạn bè: 8 hướng thiết kế</h1>
+    <p>Mỗi mockup được chèn vào <b>trang social.html thật</b> (nav, màu, font thật) với cùng một bộ dữ liệu mẫu: 10 bạn (6 online: 2 đang chơi, 3 rảnh, 1 đang xem), 1 thách đấu, 2 lời mời kết bạn, 4 cuộc trò chuyện. Khung <b>Mới</b> = tài khoản mới, 0 bạn (trường hợp hay gặp nhất). Khung <b>Đông</b> = 28 bạn, 5 lời mời. <b>Phone chat</b> = mở một cuộc trò chuyện trên điện thoại (toàn màn hình). Nhãn <span class="be">cần backend</span> đánh dấu dữ liệu server chưa gửi.</p>
+    <p><b>Tên dài:</b> dữ liệu mẫu cố tình có tên 24 ký tự (giới hạn của server) như <i>Nguyễn Hoàng Phương Thảo</i> và tên không dấu cách <i>TranQuocBaoKhanhCaroVip1</i>. Mọi tên đều nằm trên 1 dòng, quá dài thì cắt thành <b>Tên…</b>, di chuột (hoặc nhấn giữ) để xem tên đầy đủ. Trang hiện tại (S0) đang để tên xuống 2 dòng và gãy giữa chữ. Cả 80 khung đều đã kiểm tra: không có thanh cuộn ngang.</p>
+    <p>Hướng nào cũng giữ đủ 6 chức năng: thông báo, thách đấu (gửi/nhận), lời mời kết bạn (nhận/đã gửi), thêm bạn (tìm + mã của bạn), danh sách bạn bè, tin nhắn.</p>
+    <nav class="toc" id="toc"></nav>
+  </header>
+  <main id="cards" style="display:grid;gap:24px"></main>
+  <footer>Ảnh S4: <a href="https://pixabay.com/photos/go-play-chess-backgammon-pieces-2259473/">ccxcn</a>, ảnh S5: <a href="https://pixabay.com/photos/go-tea-casual-1579841/">magaret_1974</a>, từ <a href="https://pixabay.com/">Pixabay</a> (Pixabay Content License). Các hướng còn lại vẽ bằng CSS/SVG. Mockup ở <code>features/social-redesign/</code>.</footer>
+</div>
+
+<script>
+const FRAMES = [
+  ['light-1280', 'Sáng 1280'], ['dark-1280', 'Tối 1280'], ['light-1280-sparse', 'Mới 1280'], ['dark-1280-busy', 'Đông 1280'],
+  ['light-768', 'Tablet'], ['light-375', 'Phone sáng'], ['dark-375', 'Phone tối'], ['light-375-sparse', 'Phone mới'], ['light-375-thread', 'Phone chat'],
+];
+const D = [
+  { id: 's0-current', n: 'S0', t: 'Hiện tại', idea: 'Trang đang chạy, cùng bộ dữ liệu, để so sánh. 6 hộp ngang hàng nhau, không có khối nào nổi lên làm chính.',
+    fn: 'Đủ cả 6.', be: 'Không cần.', risk: 'Không rõ việc chính; tên dài xuống dòng hoặc gãy giữa chữ; không thấy ai đang online; tin nhắn bị nhét vào một ô hẹp.' },
+  { id: 's1-presence-hall', n: 'S1', t: 'Sảnh bạn bè', idea: 'Lấy <b>bạn bè làm trung tâm</b>: mỗi bạn online là một thẻ lớn (avatar to, chấm trạng thái, Elo, tỉ số đối đầu), nút chính là Thách đấu (đang chơi thì là Xem). Người offline thu thành dòng mờ bên dưới. Cột phải hẹp: "Cần bạn trả lời" + tin nhắn gần đây.',
+    fn: 'Đủ cả 6. Ô tìm/thêm bạn và mã #4821 nằm ở tiêu đề.', be: 'Trạng thái chi tiết (đang chơi/đang xem; hiện server chỉ báo online có/không), Elo, tỉ số đối đầu.', risk: 'Khi có 0 bạn, trang chủ yếu là trạng thái trống (đã có gợi ý kết bạn).' },
+  { id: 's2-action-inbox', n: 'S2', t: 'Hộp việc', idea: 'Trang là <b>danh sách việc cần bạn trả lời</b>, sắp theo độ gấp: thách đấu (thẻ to, bàn cờ, vòng đếm ngược, nút Vào chơi) → lời mời kết bạn → tin nhắn chưa đọc. Bạn online là cột phụ bên phải. Hết việc thì hiện "Xong hết".',
+    fn: 'Đủ cả 6. Danh sách bạn đầy đủ chuyển ra link "Tất cả N bạn".', be: 'Thời hạn thách đấu (vòng đếm ngược), Elo, số bạn chung.', risk: 'Người chỉ muốn xem bạn bè phải đi thêm một bước.' },
+  { id: 's3-chat-first', n: 'S3', t: 'Trò chuyện', idea: 'Kiểu <b>Messenger</b>: cột trái có dải avatar bạn đang online (như story) + danh sách hội thoại (lời mời và thách đấu được ghim lên đầu). Giữa là khung chat cao hết màn hình, <b>thách đấu và kết quả ván hiện ngay trong chat</b>. Cột phải là hồ sơ người đang chat (Elo, đối đầu, 5 ván gần nhất).',
+    fn: 'Đủ cả 6. Thông báo/thách đấu là các dòng ghim trong danh sách hội thoại.', be: 'Thẻ thách đấu/kết quả trong chat, Elo, đối đầu, lịch sử ván.', risk: 'Thay đổi lớn nhất về luồng; khi chưa có ai để chat thì giữa trang trống.' },
+  { id: 's4-invite-card', n: 'S4', t: 'Thẻ kết bạn', idea: '<b>Kết bạn làm hero</b>: "thẻ kỳ thủ" có ảnh tay đặt quân, tên#mã, QR, nút Sao chép / Gửi link mời. Bên cạnh là ô tìm lớn, lời mời đang chờ và "Có thể bạn quen · đang online". Bạn bè là lưới gọn bên dưới; tin nhắn là nút nổi góc phải.',
+    fn: 'Đủ cả 6. Tin nhắn mở bằng nút nổi (ngăn kéo/toàn màn hình).', be: 'Gợi ý kết bạn (lý do: cùng CLB, vừa đấu, bạn chung), link mời.', risk: 'Người đã có nhiều bạn vẫn gặp hero kết bạn; có thể thu nhỏ hero khi đã có hơn 5 bạn.' },
+  { id: 's5-tea-lounge', n: 'S5', t: 'Quán trà', idea: 'Dải ảnh hero <b>trà + quân cờ</b>: "6 người bạn đang ở quán" kèm avatar và nút Rủ bạn chơi. Dưới là dải thẻ bạn đang online, rồi <b>bảng tin bạn bè</b> (thắng ván, mốc Elo, vào CLB) có nút Chúc mừng / Đấu thử. Cột phải: Chờ bạn + Tin nhắn.',
+    fn: 'Đủ cả 6.', be: 'Bảng tin hoạt động (sự kiện ván/Elo/CLB), lượt chúc mừng.', risk: 'Bảng tin cần backend mới hoàn toàn; ảnh chiếm khoảng 1/3 màn hình.' },
+  { id: 's6-friend-board', n: 'S6', t: 'Bàn cờ bạn bè', idea: 'Vòng bạn bè được vẽ thành <b>một bàn cờ</b>: bạn là quân đen ở giữa, bạn online đứng ở vòng trong (có nét nối), bạn offline là quân mờ ở mép. Chạm vào quân thì mở thẻ Thách / Nhắn. Có nút chuyển sang dạng Danh sách. Bên phải là tab Chờ bạn / Tin nhắn.',
+    fn: 'Đủ cả 6.', be: 'Elo, đối đầu (trong thẻ). Sơ đồ chỉ dùng online/offline nên làm được ngay.', risk: 'Lạ nhất, chỉ chứa khoảng 8 bạn online + 8 offline (phần còn lại thành "+N"); cần dạng danh sách cho trình đọc màn hình.' },
+  { id: 's7-sentence', n: 'S7', t: 'Câu lệnh', idea: 'Cùng ngôn ngữ với <b>Home (M4)</b>: một câu lớn "Thách [Tuấn Caro ▾] một ván [Luật 1 ▾] [5+5 ▾]" và nút đen to Gửi thách đấu. Dưới là "hoặc kết bạn bằng [ô tìm] · mã của bạn". Ba làn nhỏ: Online (chạm để điền vào câu), Chờ bạn, Tin nhắn.',
+    fn: 'Đủ cả 6. Thách đấu không còn mở modal mà nằm ngay trên trang.', be: 'Không bắt buộc (dùng modal thách đấu #222 có sẵn).', risk: 'Câu lớn chiếm chỗ cho một việc; danh sách bạn đầy đủ phải mở rộng từ làn Online.' },
+  { id: 's8-bento', n: 'S8', t: 'Bento', idea: 'Một màn hình gồm nhiều ô lớn nhỏ theo độ quan trọng: ô lớn Đang online (con số + bạn bè), ô đen Thách đấu đang chờ, ô Lời mời, ô xanh Mã của bạn + QR, ô Tin nhắn, ô gỗ <b>Đối thủ ruột</b> (11–9, nút Phục thù), ô Bạn bè dạo này.',
+    fn: 'Đủ cả 6.', be: 'Đối thủ ruột (đối đầu), bảng tin.', risk: 'Nhiều ô cùng trọng lượng; cần giữ ô Online và ô Thách đấu nổi bật nhất.' },
+];
+const toc = document.getElementById('toc'), cards = document.getElementById('cards');
+for (const d of D) {
+  const a = document.createElement('a'); a.href = '#' + d.n.toLowerCase(); a.textContent = d.n + ' ' + d.t; toc.append(a);
+  const c = document.createElement('section'); c.className = 'card'; c.id = d.n.toLowerCase();
+  c.innerHTML = `<div><h2><span class="id">${d.n}</span>${d.t}</h2><dl>
+    <div><dt>Ý tưởng</dt><dd>${d.idea}</dd></div><div><dt>6 chức năng</dt><dd>${d.fn}</dd></div>
+    <div><dt>Cần backend</dt><dd>${d.be}</dd></div><div><dt>Rủi ro</dt><dd>${d.risk}</dd></div></dl></div>
+    <div class="shot"><div class="views" role="group" aria-label="Khung hình ${d.n}"></div><div class="frame"><img alt="${d.n} ${d.t}" loading="lazy"></div></div>`;
+  const views = c.querySelector('.views'), frame = c.querySelector('.frame'), img = c.querySelector('img');
+  const show = (k) => {
+    img.src = `shots/${d.id}-${k}.jpg`;
+    frame.className = 'frame' + (k.includes('375') ? ' phone' : k.includes('768') ? ' tablet' : '');
+    views.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === k)));
+  };
+  for (const [k, label] of FRAMES) { if (d.id === 's0-current' && k.endsWith('thread')) continue; const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.textContent = label; b.onclick = () => show(k); views.append(b); }
+  show('light-1280');
+  cards.append(c);
+}
+</script>

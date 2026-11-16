@@ -139,7 +139,9 @@ class SocketClient {
     // ── Connection lifecycle ──────────────────────────────────────────
     this.socket.on('connect', () => {
       this._setStatus('connected');
+      this._reportPresence(true);
     });
+    this._bindPresence();
 
     // The server states who this connection belongs to (TODO.md #68). With an
     // HttpOnly credential the client has no way to work this out for itself,
@@ -237,6 +239,62 @@ class SocketClient {
     return this;
   }
 
+  /**
+   * Hold incoming events until the page's handlers exist (#393).
+   *
+   * room.html emits its join intent from <head> (room-early-join.js), so the
+   * reply — room:joined plus the on-connect pushes (game:init, timer:sync…) —
+   * can arrive before room-socket.js, the last deferred module, registers its
+   * handlers. socket.io delivers to whoever listens *now*, so those packets were
+   * lost. While held, every incoming event is recorded with the listeners that
+   * already received it live; `releaseEvents()` then hands each one, in arrival
+   * order, to the listeners registered since.
+   */
+  holdEvents() {
+    if (!this.socket || this._held) return;
+    this._held = [];
+    this._onAnyHeld = (event, ...args) => {
+      // onAny runs BEFORE the regular listeners (socket.io-client emitEvent),
+      // so `listeners(event)` here is exactly the set getting it live.
+      if (this._held.length < SocketClient.HOLD_MAX) {
+        this._held.push({ event, args, at: Date.now(), seen: this.socket.listeners(event).slice() });
+      }
+    };
+    this.socket.onAny(this._onAnyHeld);
+  }
+
+  /** Replay held events to late listeners, once, in arrival order; stop holding. */
+  releaseEvents() {
+    const held = this._held;
+    if (!held) return;
+    this._held = null;
+    if (this.socket) this.socket.offAny(this._onAnyHeld);
+    for (const { event, args, at, seen } of held) {
+      if (!this.socket) return;
+      const late = this.socket.listeners(event).filter((fn) => !seen.includes(fn));
+      // How long the packet sat in the hold: clock code subtracts it so a
+      // replayed serverTime isn't read as ~200 ms older than it is.
+      this._replayAgeMs = Date.now() - at;
+      for (const fn of late) {
+        // Live, each packet is its own callback and a throwing handler loses only
+        // that packet; keep it that way here, or one throw would drop every later
+        // held event (room:joined included → overlay stuck, #40). Rethrown async
+        // so the error is still reported.
+        try {
+          fn.apply(this.socket, args);
+        } catch (e) {
+          setTimeout(() => { throw e; });
+        }
+      }
+      this._replayAgeMs = 0;
+    }
+  }
+
+  /** ms the event being handled right now waited in the hold (0 for a live event). */
+  replayAgeMs() {
+    return this._replayAgeMs || 0;
+  }
+
   /** Emit an event to the server. */
   emit(event, data) {
     if (!this.socket) return;
@@ -285,6 +343,7 @@ class SocketClient {
     this._listeners = [];
     this.socket.disconnect();
     this.socket = null;
+    clearInterval(this._presenceTimer);
     // Release the shared slot too (TODO.md #145). Every caller of destroy()
     // navigates away immediately, so this is belt-and-braces — but a stale
     // dead client sitting in `shared()` would be handed to the next caller
@@ -337,6 +396,26 @@ class SocketClient {
     });
   }
 
+  // Site-wide presence (#372): on EVERY page, "away" = tab hidden or window unfocused. The server
+  // treats away like offline (online list, counts, DM push, challenge picker).
+  _bindPresence() {
+    if (this._presenceBound) return;
+    this._presenceBound = true;
+    const report = () => this._reportPresence();
+    document.addEventListener('visibilitychange', report);
+    window.addEventListener('blur', report);
+    window.addEventListener('focus', report);
+    this._presenceTimer = setInterval(report, 5000); // safety net: blur/focus can be missed
+  }
+
+  _reportPresence(force) {
+    if (!this.socket || !this.socket.connected) return;
+    const away = document.hidden || !document.hasFocus();
+    if (!force && away === this._sentAway) return;
+    this._sentAway = away;
+    this.socket.emit('presence:set', { presence: away ? 'away' : 'active' });
+  }
+
   _setStatus(status, detail) {
     // Drives the full-screen lag overlay (session.js), banner or not.
     window.dispatchEvent(new CustomEvent('gvn:conn', { detail: status }));
@@ -344,21 +423,39 @@ class SocketClient {
     this._lastStatus = status;
     this._lastDetail = detail;
 
-    switch (status) {
-      case 'connected':
-        this._statusEl.classList.remove('visible');
-        break;
-      case 'disconnected':
-        this._statusEl.textContent = t('conn.disconnected_retrying');
+    // #367: a short drop is repaired by the silent auto-rejoin, so the banner
+    // stays hidden unless the connection has been gone for BANNER_DELAY_MS —
+    // a flashing "Mất kết nối" on every blip reads as an unstable site.
+    if (status === 'connected') {
+      clearTimeout(this._bannerTimer);
+      this._bannerTimer = null;
+      this._statusEl.classList.remove('visible');
+      return;
+    }
+    if (status !== 'disconnected' && status !== 'reconnecting') return;
+    if (this._statusEl.classList.contains('visible')) {
+      this._renderBanner();
+    } else if (!this._bannerTimer) {
+      this._bannerTimer = setTimeout(() => {
+        this._bannerTimer = null;
+        if (this._lastStatus === 'connected') return;
+        this._renderBanner();
         this._statusEl.classList.add('visible');
-        break;
-      case 'reconnecting':
-        this._statusEl.textContent = t('conn.reconnecting_attempt', { n: detail });
-        this._statusEl.classList.add('visible');
-        break;
+      }, SocketClient.BANNER_DELAY_MS);
     }
   }
+
+  _renderBanner() {
+    this._statusEl.textContent = this._lastStatus === 'reconnecting'
+      ? t('conn.reconnecting_attempt', { n: this._lastDetail })
+      : t('conn.disconnected_retrying');
+  }
 }
+
+/** #367: how long a connection must stay lost before the top banner appears. */
+SocketClient.BANNER_DELAY_MS = 8000;
+/** #393: cap on held events — a page that never releases must not grow without bound. */
+SocketClient.HOLD_MAX = 500;
 
 // Expose to global scope for ESM module usage
 window.SocketClient = SocketClient;

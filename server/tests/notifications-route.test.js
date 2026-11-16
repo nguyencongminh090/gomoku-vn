@@ -137,6 +137,18 @@ describe('read / list', () => {
     expect((await mine('ann')).body.unread).toBe(1);
   });
 
+  it('#370: GET carries dmUnread (unread direct messages to me) for the header chat badge', async () => {
+    const dmdb = require('../db/database').db;
+    const ins = dmdb.prepare("INSERT INTO direct_messages (conv_key, sender_id, recipient_id, body, created_at, read_at) VALUES (?, ?, ?, 'x', ?, ?)");  // fresh: DMs older than 3 days do not count
+    const now = new Date().toISOString();
+    const run = (k, a, b, readAt) => ins.run(k, a, b, now, readAt);
+    run('k1', U.ann, U.bob, null); run('k2', U.cat, U.bob, null); run('k1', U.ann, U.bob, now); run('k1', U.bob, U.ann, null);
+    expect((await mine('bob')).body.dmUnread).toBe(2);
+    expect((await mine('ann')).body.dmUnread).toBe(1);
+    expect((await mine('cat')).body.dmUnread).toBe(0);
+    dmdb.prepare('DELETE FROM direct_messages').run();
+  });
+
   it("cannot mark someone else's notification read", async () => {
     const n = notif.push(U.ann, 'dm', U.cat, {});
     await call('POST', '/api/notifications/read', 'bob', { id: n.id });
@@ -144,7 +156,8 @@ describe('read / list', () => {
   });
 
   it('keeps only the newest MAX_PER_USER, newest first', () => {
-    for (let i = 0; i < notif.MAX_PER_USER + 5; i++) notif.push(U.bob, 'dm', `actor${i}`, { i });
+    for (let i = 0; i < notif.MAX_PER_USER + 5; i++) addUser(`actor${i}`); // actor_id is an FK to users (B346)
+    for (let i = 0; i < notif.MAX_PER_USER + 5; i++) notif.push(U.bob, 'dm', U[`actor${i}`], { i });
     const { items } = notif.list(U.bob, 500);
     expect(items).toHaveLength(notif.MAX_PER_USER);
     expect(items[0].payload.i).toBe(notif.MAX_PER_USER + 4);

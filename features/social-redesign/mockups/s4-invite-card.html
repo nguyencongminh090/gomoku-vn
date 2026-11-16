@@ -1,0 +1,74 @@
+<!-- S4 "Thẻ kết bạn": making friends is the hero. A player card (photo of a hand placing a stone) with your
+     name#code, QR, copy + share link; a big search; "Gợi ý" of people online now. Friends are a compact
+     grid below; requests sit inside the hero so they are never missed. -->
+<style>
+  .s4 { padding-top: 24px; }
+  .s4__hero { display: grid; grid-template-columns: 440px minmax(0, 1fr); gap: 28px; align-items: center; padding: 24px; border-radius: 24px; background: var(--c-surface); box-shadow: 0 1px 0 var(--c-border), 0 24px 48px -32px rgba(0,0,0,.5); }
+  .s4__hero > * { min-width: 0; }
+  .pcard { position: relative; aspect-ratio: 1.58; border-radius: 18px; overflow: hidden; color: #fff; display: grid; align-content: end; padding: 18px; box-sizing: border-box;
+    background: linear-gradient(180deg, rgba(10,8,4,.55) 0, rgba(10,8,4,.15) 30%, rgba(10,8,4,.65) 55%, rgba(10,8,4,.92)), var(--ph) center 60% / cover; box-shadow: 0 18px 40px -18px rgba(0,0,0,.6); }
+  .pcard__brand { position: absolute; top: 14px; left: 18px; font-weight: 900; font-size: 13px; letter-spacing: .1em; text-transform: uppercase; opacity: .9; }
+  .pcard__qr { position: absolute; top: 14px; right: 14px; width: 76px; height: 76px; border-radius: 10px; background: #fff; padding: 6px; box-sizing: border-box; }
+  .pcard__qr i { display: block; width: 100%; height: 100%; background:
+      conic-gradient(#111 25%, #fff 0 50%, #111 0 75%, #fff 0) 0 0 / 12px 12px; -webkit-mask: radial-gradient(circle, #000 60%, #0000 61%) 0 0 / 6px 6px; }
+  .pcard__name { font-size: 28px; font-weight: 1000; line-height: 1.1; }
+  .pcard__name .nm-tag { color: rgba(255,255,255,.75); font-size: 22px; }
+  .pcard__meta { display: flex; gap: 12px; font-size: 13px; font-weight: 700; opacity: .9; margin-top: 4px; }
+  .pcard__acts { display: flex; gap: 8px; margin-top: 12px; }
+  .pcard__acts .btn { background: rgba(255,255,255,.18) !important; color: #fff !important; backdrop-filter: blur(6px); }
+  .s4__find h1 { font-size: clamp(28px, 2.4vw + 8px, 42px); font-weight: 900; line-height: 1.15; }
+  .s4__find .field { min-height: 56px; font-size: 17px; border-radius: 16px; margin: 16px 0 14px; }
+  .s4__lab { font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); margin-bottom: 8px; display: flex; gap: 8px; align-items: center; }
+  .sg { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .sg__i { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--c-border); min-width: 0; }
+  .sg__i small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .req { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--c-warning-bg); margin-bottom: 8px; min-width: 0; }
+  .req small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .s4__list { margin-top: 28px; }
+  .s4__list h2 { font-size: 20px; font-weight: 900; display: flex; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .fg { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+  .fg__i { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: var(--c-surface); box-shadow: 0 1px 0 var(--c-border); }
+  .fg__i small { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--c-ink-2); }
+  .fg__a { display: flex; gap: 4px; }
+  .fg__i--off { background: transparent; box-shadow: inset 0 0 0 1px var(--c-border); }
+  .fg__i--off .fg__a { display: none; }
+  .s4__chat { position: fixed; right: 24px; bottom: 24px; z-index: 20; }
+  .s4__chat .badge { position: absolute; top: -4px; right: -4px; }
+  @media (max-width: 960px) { .s4__hero { grid-template-columns: minmax(0, 1fr); } .pcard { max-width: 420px; width: 100%; justify-self: center; } }
+  @media (max-width: 860px) {
+    .s4 { padding-top: 12px; } .s4__hero { padding: 14px; gap: 16px; border-radius: 20px; }
+    .pcard__name { font-size: 22px; } .pcard__qr { width: 60px; height: 60px; }
+    .s4__find .field { min-height: 48px; font-size: 15px; margin: 10px 0; }
+    .sg { grid-template-columns: minmax(0, 1fr); }
+    .s4__chat { right: 16px; bottom: calc(var(--tab) + 12px); }
+  }
+</style>
+<div class="mk-screen s4" style="--ph:url({{img:2259473}})">
+  <div class="wrap">
+    <section class="s4__hero rise">
+      <div class="pcard" role="img" aria-label="Thẻ kết bạn của minhcaro">
+        <span class="pcard__brand">Play3CR · Thẻ kỳ thủ</span>
+        <span class="pcard__qr" aria-hidden="true"><i></i></span>
+        <small style="position:absolute;right:12px;bottom:8px;font-size:10px;opacity:.7">Ảnh: Pixabay</small>
+        <div><div class="pcard__name">{{me}}<span class="nm-tag">{{mytag}}</span></div>
+          <div class="pcard__meta"><span>Elo 1650</span><span>{{n:friends}} bạn</span><span>Hà Nội</span></div>
+          <div class="pcard__acts"><button class="btn btn--sm">Sao chép mã</button><button class="btn btn--sm">{{i:paper-plane-tilt}} Gửi link mời</button></div></div>
+      </div>
+      <div class="s4__find">
+        <h1>Kết bạn để thách đấu, nhắn tin và xem nhau chơi</h1>
+        <span class="field">{{i:magnifying-glass}}<span>Tên đăng nhập, tên hiển thị hoặc tên#1234</span></span>
+        <div class="hide-empty" data-count="{{n:incoming}}"><p class="s4__lab">{{i:user-plus}} Lời mời cho bạn · {{n:incoming}}</p>
+          <template data-list="incoming" data-max="2"><div class="req"><span class="av" style="--h:{{h}};--s:36px">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{ago}}</small></div><button class="btn btn--sm btn--pri">Đồng ý</button><button class="btn btn--sm btn--ghost btn--icon" aria-label="Từ chối">{{i:x}}</button></div></template></div>
+        <p class="s4__lab" data-be="gợi ý"><span class="dot dot--on"></span> Có thể bạn quen · đang online</p>
+        <div class="sg"><template data-list="suggest"><div class="sg__i"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{why}}</small></div><button class="btn btn--sm btn--sec btn--icon" aria-label="Kết bạn">{{i:user-plus}}</button></div></template></div>
+      </div>
+    </section>
+    <section class="s4__list rise rise-2 hide-empty" data-count="{{n:friends}}">
+      <h2>Bạn bè <span class="muted" style="font-size:15px">{{n:online}} online / {{n:friends}}</span></h2>
+      <template data-list="chin"><div class="req" style="background:var(--c-brand-light)"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}} thách bạn</b><small>{{rule}} · {{clock}} · {{mode}}</small></div><button class="btn btn--sm btn--pri">{{i:play}} Vào chơi</button></div></template>
+      <div class="fg"><template data-list="friends"><div class="fg__i {{#off}}fg__i--off{{/off}}"><span class="av {{#off}}av--off{{/off}}" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{#on}}<span class="dot dot--{{st}}"></span>{{/on}}{{stText}}</small></div><span class="fg__a">{{#free}}<button class="btn btn--sm btn--pri btn--icon" aria-label="Thách đấu">{{i:sword}}</button>{{/free}}<button class="btn btn--sm btn--sec btn--icon" aria-label="Nhắn tin">{{i:chat-circle}}</button></span></div></template></div>
+    </section>
+  </div>
+  <button class="s4__chat btn btn--ink" aria-label="Tin nhắn">{{i:chat-circle}} Tin nhắn<span class="badge hide-empty" data-count="{{n:unread}}">{{n:unread}}</span></button>
+</div>
+{{sheet}}

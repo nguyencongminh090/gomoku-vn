@@ -3,7 +3,7 @@
 /** db/games.js — split out of database.js (#258); code moved verbatim. */
 
 const logger = require('../utils/logger');
-const { db } = require('./connection');
+const { db, stmt } = require('./connection');
 const { likeEscape } = require('./like');
 
 
@@ -24,7 +24,7 @@ function toWinnerColor(winner) {
  * @param {object} game  — full game state object from GameEngine
  */
 function saveGame(game) {
-  const insertGame = db.prepare(`
+  const insertGame = stmt(`
     INSERT OR REPLACE INTO games
       (id, room_id, black_player_id, white_player_id,
        black_player_name, white_player_name,
@@ -34,7 +34,7 @@ function saveGame(game) {
       (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  const insertPlayerGame = db.prepare(
+  const insertPlayerGame = stmt(
     'INSERT OR IGNORE INTO player_games (player_id, game_id) VALUES (?, ?)'
   );
 
@@ -97,7 +97,7 @@ function saveGame(game) {
  * @returns {Array}
  */
 function getPlayerHistory(playerId) {
-  return db.prepare(`
+  return stmt(`
     SELECT g.* FROM games g
     INNER JOIN player_games pg ON pg.game_id = g.id
     WHERE pg.player_id = ?
@@ -214,7 +214,7 @@ function buildGameFilters(filters = {}, extraClauses = []) {
  */
 function getRecentGames(limit = 20, offset = 0, filters = {}) {
   const { where, params } = buildGameFilters(filters);
-  const rows = db.prepare(`
+  const rows = stmt(`
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
            winner, winner_color, reason, board_size, rule_wall, rule_portal,
@@ -241,7 +241,7 @@ function getRecentGames(limit = 20, offset = 0, filters = {}) {
  * @returns {object|undefined}
  */
 function getGameById(gameId) {
-  const row = db.prepare(`
+  const row = stmt(`
     SELECT id, room_id, black_player_id, white_player_id,
            black_player_name, white_player_name,
            winner, winner_color, reason, board_size, rule_wall, rule_portal,
@@ -259,7 +259,7 @@ function getGameById(gameId) {
  */
 function getGameCount(filters = {}) {
   const { where, params } = buildGameFilters(filters);
-  return db.prepare(`SELECT COUNT(*) as count FROM games ${where}`).get(...params).count;
+  return stmt(`SELECT COUNT(*) as count FROM games ${where}`).get(...params).count;
 }
 
 /**
@@ -270,7 +270,7 @@ function getGameCount(filters = {}) {
  */
 function getGameStatsByDate(filters = {}) {
   const { where, params } = buildGameFilters(filters, ['ended_at IS NOT NULL']);
-  return db.prepare(`
+  return stmt(`
     SELECT substr(ended_at, 1, 10) as date, COUNT(*) as count
     FROM games
     ${where}
@@ -286,7 +286,7 @@ function getGameStatsByDate(filters = {}) {
  */
 function getGameStatsByResult(filters = {}) {
   const { where, params } = buildGameFilters(filters, ['ended_at IS NOT NULL']);
-  const row = db.prepare(`
+  const row = stmt(`
     SELECT
       SUM(CASE WHEN winner_color = 'DRAW' THEN 1 ELSE 0 END) as draw,
       SUM(CASE WHEN winner_color IN ('BLACK','WHITE') THEN 1 ELSE 0 END) as win,
@@ -297,4 +297,4 @@ function getGameStatsByResult(filters = {}) {
   return { win: row.win || 0, draw: row.draw || 0, total: row.total || 0 };
 }
 
-module.exports = { saveGame, getPlayerHistory, getRecentGames, getGameById, getGameCount, getGameStatsByDate, getGameStatsByResult, withWinnerName };
+module.exports = { saveGame, getPlayerHistory, getRecentGames, getGameById, getGameCount, getGameStatsByDate, getGameStatsByResult, withWinnerName, resolveWinnerSeat };

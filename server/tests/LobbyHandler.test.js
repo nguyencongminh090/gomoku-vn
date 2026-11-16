@@ -23,6 +23,10 @@ const mockRoomManager = {
 
 jest.mock('../managers/RoomManager', () => mockRoomManager);
 
+// F402: remembering the member's last room settings
+const mockDb = { setLastRoomSettings: jest.fn() };
+jest.mock('../db/database', () => mockDb);
+
 // Mock logger (suppress output during tests)
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
@@ -38,6 +42,7 @@ const mockState = {
   timerMap: new Map(),
   emptyRoomGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   // The real one sends the full room list and seeds the delta baseline; here
   // only the emit matters, which is what this suite asserts on.
@@ -47,6 +52,8 @@ const mockState = {
   sendOnlineSnapshot: jest.fn((io, socket) => {
     socket.emit('lobby:online_users', []);
   }),
+  queryOnlineUsers: jest.fn((query) => (Array.isArray(query.ids) ? { online: [] } : { total: 0, matched: 0, users: [] })),
+  queryLobbyRooms: jest.fn(() => ({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } })),
   getClientIp: actualState.getClientIp,
 };
 jest.mock('../socket/state', () => mockState);
@@ -172,6 +179,39 @@ describe('LobbyHandler — room:create', () => {
     expect(joined).toBeDefined();
     expect(socket.join).toHaveBeenCalledWith('room-xyz');
     expect(mockState.broadcastLobbyUpdate).toHaveBeenCalled();
+  });
+
+  describe('F402 remembers the creator\'s settings', () => {
+    const create = (socketUser, result) => {
+      const io = makeIo();
+      const socket = makeSocket('u1', 'Alice');
+      Object.assign(socket.user, socketUser);
+      const handlers = {};
+      socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+      mockRoomManager.createRoom.mockReturnValue(result);
+      LobbyHandler.register(io, socket);
+      handlers['room:create']({ settings: {} });
+      return socket;
+    };
+    const room = { roomId: 'r1', roomName: 'x', settings: { boardSize: 19, ranked: false } };
+
+    test('member: the validated room.settings are saved for their user id', () => {
+      create({}, { room });
+      expect(mockDb.setLastRoomSettings).toHaveBeenCalledWith('u1', room.settings);
+    });
+    test('guest: nothing is saved', () => {
+      create({ isGuest: true }, { room });
+      expect(mockDb.setLastRoomSettings).not.toHaveBeenCalled();
+    });
+    test('failed create: nothing is saved', () => {
+      create({}, { error: 'x', code: 'ROOM_LIMIT' });
+      expect(mockDb.setLastRoomSettings).not.toHaveBeenCalled();
+    });
+    test('a throwing save never fails the create', () => {
+      mockDb.setLastRoomSettings.mockImplementationOnce(() => { throw new Error('disk full'); });
+      const socket = create({}, { room });
+      expect(socket._emitted.find(e => e.event === 'room:joined')).toBeDefined();
+    });
   });
 
   test('emits room:error when createRoom returns an error', () => {
@@ -333,6 +373,21 @@ describe('LobbyHandler — room:join', () => {
     expect(socket.join).toHaveBeenCalledWith('room-abc');
   });
 
+  test('#373: room:join from the room page marks the socket as the room page and a returning member as watching', () => {
+    const io = makeIo();
+    const socket = makeSocket('u2', 'Bob');
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    const me = { userId: 'u2', presence: 'away' }; // set 'away' while they were on the lobby
+    mockRoomManager.joinRoom.mockReturnValue({ room: { roomId: 'room-abc', users: new Map([['u2', me]]) } });
+
+    LobbyHandler.register(io, socket);
+    handlers['room:join']({ roomId: 'room-abc' });
+
+    expect(me.presence).toBe('active');
+    expect(socket.data.roomPageId).toBe('room-abc');
+  });
+
   test('emits room:error when joinRoom fails', () => {
     const io = makeIo();
     const socket = makeSocket();
@@ -374,5 +429,88 @@ describe('LobbyHandler — room:join', () => {
     expect(joined.data.timer).toBeDefined();
 
     mockState.timerMap.delete('room-live');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #381: on-demand online lookup (the snapshot carries one page only)
+// ---------------------------------------------------------------------------
+describe('LobbyHandler — lobby:online_query', () => {
+  function setup() {
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(makeIo(), socket);
+    mockState.queryOnlineUsers.mockClear();
+    return handlers['lobby:online_query'];
+  }
+  afterEach(() => jest.useRealTimers());
+
+  test('answers through the ack with what state.queryOnlineUsers returns', () => {
+    const query = setup(); const ack = jest.fn();
+    query({ q: 'minh' }, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledWith({ q: 'minh' });
+    expect(ack).toHaveBeenCalledWith({ total: 0, matched: 0, users: [] });
+  });
+
+  test.each([[undefined], [null], ['x'], [42]])('payload %p is treated as an empty query, not a crash', (payload) => {
+    const query = setup(); const ack = jest.fn();
+    query(payload, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledWith({});
+    expect(ack).toHaveBeenCalledTimes(1);
+  });
+
+  test('no ack callback → ignored (nothing to answer on)', () => {
+    const query = setup();
+    expect(() => query({ q: 'a' })).not.toThrow();
+    expect(mockState.queryOnlineUsers).not.toHaveBeenCalled();
+  });
+
+  test('name searches faster than typing are refused; id lookups are never throttled', () => {
+    jest.useFakeTimers();
+    const query = setup(); const ack = jest.fn();
+    query({ q: 'a' }, ack);
+    query({ q: 'ab' }, ack);                 // same instant
+    expect(ack).toHaveBeenLastCalledWith({ error: 'RATE_LIMITED' });
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledTimes(1);
+    query({ ids: ['u9'] }, ack);
+    query({ ids: ['u9'] }, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledTimes(3);
+    jest.advanceTimersByTime(200);
+    query({ q: 'abc' }, ack);
+    expect(mockState.queryOnlineUsers).toHaveBeenCalledTimes(4);
+  });
+});
+
+// #382: "show more" — the next page of the room ranking
+describe('LobbyHandler — lobby:rooms_query', () => {
+  function setup() {
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(makeIo(), socket);
+    mockState.queryLobbyRooms.mockClear();
+    return handlers['lobby:rooms_query'];
+  }
+  afterEach(() => jest.useRealTimers());
+
+  test('answers through the ack; a missing/odd payload is an empty query; no ack → ignored', () => {
+    const query = setup(); const ack = jest.fn();
+    query({ offset: 30 }, ack);
+    expect(mockState.queryLobbyRooms).toHaveBeenLastCalledWith({ offset: 30 });
+    expect(ack).toHaveBeenCalledWith({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } });
+    expect(() => query({ offset: 30 })).not.toThrow();
+    expect(mockState.queryLobbyRooms).toHaveBeenCalledTimes(1);
+  });
+
+  test('a second request inside 200 ms is refused, the next one after it is served', () => {
+    jest.useFakeTimers();
+    const query = setup(); const ack = jest.fn();
+    query(null, ack);
+    query({ offset: 30 }, ack);
+    expect(ack).toHaveBeenLastCalledWith({ error: 'RATE_LIMITED' });
+    jest.advanceTimersByTime(200);
+    query({ offset: 30 }, ack);
+    expect(mockState.queryLobbyRooms.mock.calls).toEqual([[{}], [{ offset: 30 }]]);
   });
 });

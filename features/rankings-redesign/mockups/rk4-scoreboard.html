@@ -1,0 +1,26 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>RK4 Bảng điện tử</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+body{background:#0b0d0a;color:#e8f5d0}
+.mk-top{background:#12150f}
+.tick{overflow:hidden;white-space:nowrap;background:#12150f;border-bottom:1px solid #26301f;font-weight:800;font-size:14px;letter-spacing:.04em}
+.tick div{display:inline-block;padding:10px 0;animation:mq 40s linear infinite}.tick span{margin:0 28px}.tick .u{color:#8bc34a}.tick .d{color:#f77f7f}
+@keyframes mq{to{transform:translateX(-50%)}}
+h1{margin:32px 0 4px;font-size:clamp(30px,3vw+10px,52px);font-weight:1000;letter-spacing:.02em;text-transform:uppercase}
+.board{margin:22px 0 60px;border-radius:16px;background:#12150f;padding:8px 14px;box-shadow:inset 0 0 0 1px #26301f,0 0 60px -20px rgba(139,195,74,.35)}
+.row{display:grid;grid-template-columns:70px 1fr auto 80px;gap:14px;align-items:center;min-height:62px;border-bottom:1px solid #1e2619}
+.row:last-child{border:0}
+.k{font-size:30px;font-weight:1000;color:#8bc34a;text-align:center}.n{font-weight:900;font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.n small{display:block;font-weight:600;font-size:12px;color:#8fa278}
+.digits{display:flex;gap:4px;perspective:400px}
+.dg{width:34px;height:48px;border-radius:6px;background:linear-gradient(#222a1c 49%,#0b0d0a 50%,#1a2115);display:flex;align-items:center;justify-content:center;font-size:30px;font-weight:1000;font-variant-numeric:tabular-nums;color:#f4ffe0;animation:flip 700ms var(--e-out) backwards}
+@keyframes flip{from{transform:rotateX(-90deg);opacity:0}}
+.dl{text-align:right;font-size:16px}.row.me{background:rgba(139,195,74,.12);border-radius:10px}
+.f{margin:18px 0}.chip{color:#e8f5d0}.chip[aria-selected=true]{background:#8bc34a;color:#10170a}.scope button{color:#9db287}.scope button[aria-selected=true]{color:#fff}
+.search input{background:#12150f;color:#fff}
+@media(max-width:600px){.row{grid-template-columns:40px 1fr auto;gap:8px}.dl{display:none}.dg{width:24px;height:38px;font-size:22px}.k{font-size:20px}.n{font-size:16px}}
+</style></head><body><div class="tick"><div id="tk"></div></div>
+<main class="wrap"><h1>Bảng điện tử</h1><p class="muted" style="margin:0;color:#8fa278">Cập nhật trực tiếp · Tự do · 1.284 người</p><div class="filters f" id="f"></div><div class="board" id="bd"></div></main>
+<script src="../data.js"></script><script>RK.top();document.documentElement.dataset.mode='dark';RK.chrome(f);const P=RK.players;
+const s=P.filter(p=>p.d).sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)).slice(0,8).map(p=>`<span class="${p.d>0?'u':'d'}">${p.d>0?'LÊN':'XUỐNG'} · ${p.name.toUpperCase()} ${p.d>0?'+':''}${p.d}</span>`).join('');tk.innerHTML=s+s;
+const row=(p,me,i)=>`<div class="row${me?' me':''}"><span class="k num">${p.rank}</span><span class="n">${p.name}${me?' (bạn)':''}<small>${p.club||p.city}</small></span><span class="digits">${String(p.rating).split('').map((c,j)=>`<i class="dg" style="animation-delay:${i*60+j*90}ms;font-style:normal">${c}</i>`).join('')}</span>${RK.dl(p)}</div>`;
+bd.innerHTML=P.map((p,i)=>row(p,0,i)).join('')+`<div class="row" style="color:#6f8159"><span class="k">⋮</span><span class="n">1.263 người nữa</span></div>`+row(RK.me,1,20);</script></body></html>

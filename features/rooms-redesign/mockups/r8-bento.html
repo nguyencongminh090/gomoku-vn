@@ -1,0 +1,120 @@
+<style>
+/* R8 — Bento sảnh: the tab as a dashboard of tiles of different weight. Big tile "Ghế trống" (sit
+   now), tall tile with the hottest live game, small tiles for code / quick presets / online cloud,
+   then the full list as a wide tile with the Phòng/Bàn/Quan sát tabs. Every tile has an empty state
+   that invites, so a quiet evening still looks intentional. */
+body.mk-r8-bento::after { display: none; }
+.r8 .wrap { max-width: 1280px; padding-top: 22px; }
+.r8-h { margin: 0 0 14px; font-size: clamp(26px, 1.6vw + 12px, 36px); font-weight: 1000; letter-spacing: -.02em; }
+.r8-g { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-auto-rows: minmax(0, auto); gap: 14px; }
+.t { position: relative; display: grid; align-content: start; gap: 10px; padding: 18px; border-radius: 20px; background: var(--c-surface); box-shadow: var(--shadow-card); overflow: hidden; }
+.t > h2 { margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: var(--text-xs); font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+.t-seat { grid-column: span 5; grid-row: span 2; background: linear-gradient(160deg, color-mix(in srgb, var(--c-state-waiting) 18%, var(--c-surface)), var(--c-surface) 60%); }
+.t-seat .big { font-size: 64px; font-weight: 1000; line-height: .9; letter-spacing: -.04em; }
+.t-seat .big small { font-size: 18px; letter-spacing: 0; font-weight: 800; color: var(--c-ink-2); margin-left: 6px; }
+.t-seat .s { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border-radius: 14px; background: var(--c-surface); box-shadow: inset 0 0 0 1px var(--c-border); }
+.t-seat .s .av { --s: 38px; }
+.t-seat .s b { display: block; font-weight: 800; }
+.t-seat .s small { color: var(--c-ink-2); font-size: var(--text-xs); }
+.t-hot { grid-column: span 4; grid-row: span 2; }
+.t-hot .mb { border-radius: 10px; }
+.t-hot .vs { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.t-hot .vs .av { --s: 28px; }
+.t-hot .vs em { font-style: normal; color: var(--c-ink-2); font-size: var(--text-xs); }
+.t-hot .eye { position: absolute; top: 52px; right: 28px; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: rgba(20,18,15,.8); color: #fff; font-size: 12px; font-weight: 800; }
+.t-code { grid-column: span 3; }
+.t-code .code__box { width: 38px; }
+.t-code .btn { width: 100%; }
+.t-pre { grid-column: span 3; background: var(--c-ink); color: var(--c-on-ink); }
+.t-pre > h2 { color: color-mix(in srgb, var(--c-on-ink) 70%, transparent); }
+.t-pre .pp { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.t-pre .pp button { display: grid; gap: 2px; padding: 10px 4px; border-radius: 12px; background: color-mix(in srgb, var(--c-on-ink) 10%, transparent) !important; color: var(--c-on-ink) !important; text-align: center; }
+.t-pre .pp b { font-size: 20px; font-weight: 1000; }
+.t-pre .pp small { font-size: 11px; opacity: .75; }
+.t-pre .more { font-size: var(--text-xs); font-weight: 800; opacity: .8; }
+.t-list { grid-column: span 9; }
+.t-list .head { display: flex; align-items: center; justify-content: space-between; }
+.t-list .r { display: grid; grid-template-columns: 10px minmax(0, 1.3fr) minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 10px 6px; border-top: 1px solid var(--c-border); cursor: pointer; }
+.t-list .r:hover { background: var(--c-hover); }
+.t-list .r i { width: 9px; height: 9px; border-radius: 50%; background: var(--c-state-playing); }
+.t-list .r--open i { background: var(--c-state-waiting); } .t-list .r--ready i { background: var(--c-state-idle); }
+.t-list .r b { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.t-list .r .m { display: flex; gap: 6px; flex-wrap: wrap; }
+.t-list .r .x { font-size: var(--text-xs); color: var(--c-ink-2); font-weight: 700; white-space: nowrap; }
+.t-on { grid-column: span 3; }
+.t-on .big { font-size: 40px; font-weight: 1000; line-height: 1; }
+.t-on .cloud { display: flex; flex-wrap: wrap; gap: 6px; }
+.t-on .cloud span { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 3px; border-radius: 999px; background: var(--c-fill); font-size: var(--text-xs); }
+.t-on .cloud .av { --s: 22px; box-shadow: none; }
+.t-none .mb { max-width: 140px; }
+.t-none { flex-direction: column; gap: 6px; padding: 16px; border-radius: 14px; border: 2px dashed var(--c-border); color: var(--c-ink-2); }
+.t-none b { color: var(--c-ink); }
+@media (max-width: 1100px) { .t-seat { grid-column: span 7; } .t-hot { grid-column: span 5; } .t-code, .t-pre { grid-column: span 6; } .t-list { grid-column: span 12; } .t-on { grid-column: span 12; } }
+@media (max-width: 860px) {
+  .r8 .wrap { padding-top: 14px; }
+  .r8-h { font-size: 24px; margin-bottom: 10px; }
+  .r8-g { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .t { padding: 14px; border-radius: 16px; }
+  .t-seat { grid-column: span 2; grid-row: auto; }
+  .t-seat .big { font-size: 44px; }
+  .t-seat .s:nth-of-type(n+3) { display: none; }
+  .t-code, .t-pre { grid-column: span 1; }
+  .t-code .code { gap: 3px; } .t-code .code__hash { display: none; } .t-code .code__box { width: 30px; height: 38px; font-size: 18px; }
+  .t-pre .pp { grid-template-columns: 1fr; } .t-pre .pp button:nth-child(n+3) { display: none; } .t-pre .more { display: none; }
+  .t-hot { grid-column: span 2; grid-row: auto; order: 3; }
+  .t-hot .mb { max-height: 220px; }
+  .t-list { grid-column: span 2; order: 4; }
+  .t-list .r { grid-template-columns: 10px minmax(0, 1fr) auto; }
+  .t-list .r .m { display: none; }
+  .t-on { grid-column: span 2; order: 5; }
+}
+</style>
+<div class="mk mk-screen r8">
+  <div class="wrap">
+    <h1 class="r8-h rise">Phòng</h1>
+    <div class="r8-g">
+      <section class="t t-seat rise">
+        <h2>Ghế trống — ngồi là chơi</h2>
+        <div class="big num">{{n:open}}<small>bàn đang chờ</small></div>
+        <template data-list="open" data-max="3">
+          <div class="s"><span class="av" style="--h:{{p1h}}">{{p1i}}</span><span><b>{{p1}} <small data-be="rating">{{p1r}}</small></b><small>{{rule}} · {{time}} · {{mode}}</small></span><button class="btn btn--pri btn--sm">Ngồi</button></div>
+        </template>
+        <div class="t-none if-empty"><b>Chưa ai chờ.</b><span>Mở một bàn — bạn sẽ đứng đầu danh sách này.</span></div>
+      </section>
+      <section class="t t-hot rise rise-2">
+        <h2>Ván nóng nhất <span class="tag tag--brand">TRỰC TIẾP</span></h2>
+        <template data-list="live" data-max="1"><div data-be="board">{{board}}</div><span class="eye">{{i:eye}}{{viewers}}</span><div class="vs"><span class="av" style="--h:{{p1h}}">{{p1i}}</span>{{p1}}<em>vs</em>{{p2}}<span class="av" style="--h:{{p2h}}">{{p2i}}</span></div><span class="muted">{{rule}} · {{time}} · nước {{moves}}</span></template>
+        <div class="t-none if-empty">{{boardEmpty}}<b>Chưa có ván nào đang đấu.</b></div>
+      </section>
+      <section class="t t-code rise rise-2">
+        <h2>Có mã phòng?</h2>
+        <div class="code"><span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span></div>
+        <button class="btn btn--ink btn--sm">Vào phòng</button>
+      </section>
+      <section class="t t-pre rise rise-3">
+        <h2>Mở bàn một chạm</h2>
+        <div class="pp"><button><b>3'</b><small>Chớp</small></button><button><b>5+5</b><small>Chuẩn</small></button><button><b>10'</b><small>Thong thả</small></button></div>
+        <a class="more" href="#">+ Tuỳ chỉnh phòng</a>
+      </section>
+      <section class="t t-list rise rise-3">
+        <div class="head">
+          <div class="tabs" role="tablist" aria-label="Lọc phòng">
+            <button role="tab" aria-selected="true">Phòng<span class="n">{{n:all}}</span></button>
+            <button role="tab" aria-selected="false">Bàn<span class="n">{{n:open}}</span></button>
+            <button role="tab" aria-selected="false">Quan sát<span class="n">{{n:seated}}</span></button>
+          </div>
+        </div>
+        <div>
+          <template data-list="all">
+            <div class="r r--{{#open}}open{{/open}}{{#live}}live{{/live}}{{#ready}}ready{{/ready}}" tabindex="0"><i></i><b>{{p1}} · {{#p2}}{{p2}}{{/p2}}{{^p2}}<span class="muted">ghế trống</span>{{/p2}}</b><span class="m"><span class="tag">{{rule}}</span><span class="tag">{{size}}</span><span class="tag">{{time}}</span></span><span class="x">{{#live}}{{viewers}} xem{{/live}}{{#open}}Vào chơi →{{/open}}{{#ready}}sắp bắt đầu{{/ready}}</span></div>
+          </template>
+        </div>
+      </section>
+      <section class="t t-on rise rise-4">
+        <h2>Online <span class="oname">tất cả</span></h2>
+        <span class="big num">{{n:online}}</span>
+        <div class="cloud"><template data-list="online" data-max="9"><span><span class="av" style="--h:{{h}}">{{ini}}</span><span class="oname">{{name}}</span></span></template></div>
+      </section>
+    </div>
+  </div>
+</div>

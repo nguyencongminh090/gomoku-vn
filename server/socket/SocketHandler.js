@@ -22,23 +22,29 @@ const roomManager        = require('../managers/RoomManager');
 const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
 const database           = require('../db/database');
+const chatManager        = require('../managers/ChatHandler'); // #396: was required per disconnect
 
 // Room payloads carry each member's avatar URL (null for guests / no avatar) — same shape as profile.js.
-roomManager.avatarLookup = (userId) => {
-  const u = database.getUserById(userId);
-  return u && u.avatar_v ? `/api/profile/avatar/${u.id}.webp?v=${u.avatar_v}` : null;
-};
+roomManager.avatarLookup = require('../managers/avatar-lookup').avatarUrlFor;
+// Lobby cards show each seated member's rating in the room's rule pool (#364).
+roomManager.ratingLookup = require('../managers/seat-rating').seatRating;
 const {
   timerMap,
   sessions,
+  trackSocket,
+  untrackSocket,
   broadcastLobbyUpdate,
   broadcastOnlineUsers,
   setHideOnline,
   isVisiblyOnline,
+  hasPresentSocket,
+  awayUsers,
+  getOnlineUsersSorted,
   broadcastRoomUpdate,
   clearRoomUpdateSnapshot,
   cleanupRoomTimer,
   buildRoomStatePayload,
+  closeMatchRoom,
 } = require('./state');
 
 const LobbyHandler      = require('./handlers/LobbyHandler');
@@ -65,8 +71,11 @@ function init(io) {
   // Friend challenges (#198): a seated pair is redirected on whichever sockets are live;
   // socket-less pages rejoin by user id when room.html connects.
   require('../managers/ChallengeService').setHooks({
+    // Seat check only: "did they ever connect a socket?" — NOT presence (#372 review). An away
+    // room tab must keep its seat; a heartbeat from social.html is not a socket in the room.
     isOnline: (userId) => sessions.has(userId),
-    onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io); },
+    onlineUsers: () => getOnlineUsersSorted(), // #361 Home picker: visible presence only (ids — no avatar lookup per online user, #381)
+    onRoomChanged: (room) => { broadcastRoomUpdate(io, room); broadcastLobbyUpdate(io, room.roomId); },
     onSeated: (room, userIds) => {
       const payload = roomManager.serializeRoom(room);
       for (const uid of userIds) {
@@ -77,23 +86,33 @@ function init(io) {
         s.emit('room:joined', payload);
       }
       broadcastRoomUpdate(io, room);
-      broadcastLobbyUpdate(io);
+      broadcastLobbyUpdate(io, room.roomId);
     },
   });
 
   // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.
-  require('../managers/FriendService').setHooks({ isOnline: (userId) => isVisiblyOnline(userId) });
+  // + what they are doing (#370 chat page: playing / watching / free, with the room for "Xem ván").
+  const friendService = require('../managers/FriendService');
+  friendService.setHooks({
+    isOnline: (userId) => isVisiblyOnline(userId),
+    activityOf: (userId) => friendService.activityFromRoom(roomManager.getRoomByUser(userId), userId),
+  });
 
   // A series player left the room → close the challenge series on what was played (#222).
   // Re-init (tests) replaces the listener; stubbed RoomManagers without an emitter skip it.
   if (typeof roomManager.removeAllListeners === 'function') {
     roomManager.removeAllListeners('series_abandoned');
     roomManager.on('series_abandoned', (room) => GameHandler.finishSeries(io, room, 'abandoned'));
+    // A quick-match seat walked out (#365): close the session for whoever is left. Deferred so the
+    // leave path that triggered it finishes its own broadcasts against the still-existing room first.
+    roomManager.removeAllListeners('match_abandoned');
+    roomManager.on('match_abandoned', (room) => setImmediate(() => closeMatchRoom(io, room.roomId, 'MATCH_OPPONENT_LEFT')));
   }
 
   // Persisted DMs (#198 slice 4): the socket handler stores member↔member messages; REST sends push live.
   const DmService = require('../managers/DmService');
-  DmService.setHooks({ isOnline: (userId) => sessions.has(userId) });
+  // Live push needs a visible socket: away tab or heartbeat-only page (no socket) → bell entry too.
+  DmService.setHooks({ isOnline: (userId) => hasPresentSocket(userId), hasSocket: (userId) => sessions.has(userId) });
   PrivateChatHandler.setStore(DmService);
 
   // Live push for the bell (#198): one socket per user lives in `sessions`.
@@ -110,7 +129,7 @@ function init(io) {
     // other mutation. Emitting a full list straight to the lobby here (as this
     // did) both wasted the payload and left the delta baseline stale, so the
     // next patch re-announced a removal the lobby had already been told about.
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, roomId);
     // `_destroyRoom` is the single choke point for every teardown path (idle
     // cleanup, last member leaving, etc.), so this is the one place that needs
     // to drop the room's `room:updated` diff baseline — otherwise state.js's
@@ -192,9 +211,19 @@ function init(io) {
   io.on('connection', (socket) => {
     const user = socket.user;
     const { ip, geo } = clientInfoFromSocket(socket);
+    const handshakeAuth = (socket.handshake && socket.handshake.auth) || {};
     logger.info('[Socket] Connected', {
       user: user.displayName, uid: user.userId, sid: socket.id, ip, geo,
+      // #367: tells a page load apart from the same page re-establishing its transport.
+      ...(handshakeAuth.reconnect ? { reconnect: 1 } : {}),
+      ...(handshakeAuth.reconnect && typeof handshakeAuth.roomId === 'string' ? { room: handshakeAuth.roomId } : {}),
     });
+
+    // userId → sockets index (#383). Registered first, so it is already updated when the main
+    // 'disconnect' listener below asks DisconnectHandler "any other live socket?", and it is
+    // released even if the rest of this handler throws.
+    trackSocket(socket);
+    socket.on('disconnect', () => untrackSocket(socket));
 
     // ── Single-device-per-token enforcement ─────────────────────────────────
     // Exactly one live session per userId is allowed. The `sessions` map IS
@@ -278,6 +307,7 @@ function init(io) {
       setHideOnline(user.userId, !!(prof && prof.hide_online));
     }
     sessions.set(user.userId, socket);
+    awayUsers.delete(user.userId); // fresh socket: present until its page reports otherwise (#372)
     if (!wasOnline) {
       broadcastOnlineUsers(io);
     }
@@ -300,6 +330,12 @@ function init(io) {
       const existingRoom = roomManager.getRoomByUser(user.userId);
       if (existingRoom) {
         socket.join(existingRoom.roomId);
+        // #373: only the room page (auth.roomId, set by room-socket.js on room:joined) puts the member back
+        // to watching. Any other page (lobby, home…) of a member who never left: present on the site, not
+        // at the table — 'away', so the room's spectator list drops them. A fresh room-page load has no
+        // auth.roomId yet; its room:join (LobbyHandler) marks it active right after.
+        const onRoomPage = handshakeAuth.roomId === existingRoom.roomId;
+        if (onRoomPage) (socket.data || (socket.data = {})).roomPageId = existingRoom.roomId;
 
         // A fresh connection replacing one lost during an empty-room/spectator
         // grace window (see DisconnectHandler.js) left this user's own entry
@@ -307,16 +343,22 @@ function init(io) {
         // tell the room's other occupants before this reconnecter's own
         // `room:joined` payload is built, so it reflects 'active' too.
         const reconnectedUser = existingRoom.users.get(user.userId);
-        if (reconnectedUser && reconnectedUser.presence === 'disconnected') {
-          reconnectedUser.presence = 'active';
-          broadcastRoomUpdate(io, existingRoom);
+        if (reconnectedUser) {
+          const next = onRoomPage ? (reconnectedUser.presence === 'disconnected' ? 'active' : reconnectedUser.presence) : 'away';
+          if (next !== reconnectedUser.presence) {
+            reconnectedUser.presence = next;
+            broadcastRoomUpdate(io, existingRoom);
+          }
         }
 
         // Shared with game:resync (TODO.md #152) so both rebuild paths hand
         // the client byte-identical state — see buildRoomStatePayload().
         socket.emit('room:joined', buildRoomStatePayload(existingRoom));
-        logger.info(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
-      } else if (socket.handshake && socket.handshake.auth && socket.handshake.auth.reconnect) {
+        logger.debug(`[Socket] ${user.displayName} reconnected to room ${existingRoom.roomId}`);
+      } else if (handshakeAuth.reconnect && rejoinOnReconnect(io, socket, handshakeAuth.roomId)) {
+        // #367: a room page whose user lost their place (grace ran out, server
+        // restart kept the room) silently rejoins the room it is showing.
+      } else if (handshakeAuth.reconnect) {
         // Room state lives in memory only, so a server restart (or an idle
         // cleanup that ran while this client was offline) leaves a room page
         // attached to a room that no longer exists. Socket.io reconnects
@@ -332,6 +374,7 @@ function init(io) {
         // Manager's reconnect_attempt (see client/js/socket-client.js), so it
         // is only ever true for a connection that replaces an earlier one.
         socket.emit('room:destroyed', { message: 'Phòng không còn tồn tại. Bạn sẽ được đưa về sảnh chờ.', code: 'ROOM_GONE' });
+        logger.info(`[Socket] ${user.displayName} reconnected but room ${handshakeAuth.roomId || '?'} is gone — ROOM_GONE sent`);
       }
     }
 
@@ -362,13 +405,13 @@ function init(io) {
       // that already replaced it in the registry (see eviction above).
       if (sessions.get(user.userId) === socket) {
         sessions.delete(user.userId);
+        awayUsers.delete(user.userId);
         broadcastOnlineUsers(io);
       }
 
       DisconnectHandler.handleDisconnect(io, socket);
 
       // Clean up user's chat state
-      const chatManager = require('../managers/ChatHandler');
       chatManager.cleanupUser(user.userId);
       PrivateChatHandler.cleanupUser(io, user.userId);
     });
@@ -389,10 +432,44 @@ function init(io) {
     for (const [roomId] of timerMap) {
       if (!roomManager.getRoom(roomId)) {
         cleanupRoomTimer(roomId);
-        logger.info(`[Socket] Orphan timer cleaned for destroyed room ${roomId}`);
+        logger.debug(`[Socket] Orphan timer cleaned for destroyed room ${roomId}`);
       }
     }
   }, 60_000);
 }
 
-module.exports = { init };
+/**
+ * #367: a reconnecting room page whose user is no longer in any room rejoins the
+ * room it is showing (`auth.roomId`, set by room-socket.js on room:joined) as a
+ * viewer, if that room still exists, admitted them before and didn't kick them. Silent: no join chat
+ * line, since to everyone else this person never really left.
+ *
+ * @returns {boolean} true if the socket was put back into the room
+ */
+function rejoinOnReconnect(io, socket, roomId) {
+  if (typeof roomId !== 'string' || !roomId) return false;
+  const room = roomManager.getRoom(roomId);
+  if (!room) return false;
+  const user = socket.user;
+  // Only someone this room already admitted (and didn't kick) — an arbitrary roomId
+  // in the handshake must not become a silent, unannounced join.
+  if (!room.memberIds || !room.memberIds.has(user.userId)) return false;
+  const result = roomManager.joinRoom(
+    { userId: user.userId, displayName: user.displayName, isGuest: user.isGuest },
+    roomId,
+  );
+  if (result.error) {
+    logger.info(`[Socket] ${user.displayName} reconnect rejoin to room ${roomId} refused: ${result.code}`);
+    return false;
+  }
+  socket.leave('lobby');
+  socket.join(roomId);
+  (socket.data || (socket.data = {})).roomPageId = roomId; // #373
+  socket.emit('room:joined', buildRoomStatePayload(result.room));
+  broadcastRoomUpdate(io, result.room);
+  broadcastLobbyUpdate(io, roomId);
+  logger.debug(`[Socket] ${user.displayName} rejoined room ${roomId} on reconnect (as viewer)`);
+  return true;
+}
+
+module.exports = { init, _rejoinOnReconnect: rejoinOnReconnect };

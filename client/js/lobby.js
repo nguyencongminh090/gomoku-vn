@@ -55,7 +55,6 @@ const roomListEl    = document.getElementById('room-list');
 const heroEyebrow   = document.getElementById('hero-eyebrow');
 const heroSub       = document.getElementById('hero-sub');
 const heroTitle     = document.getElementById('hero-title');
-const btnCreate     = document.getElementById('btn-create');
 const modalOverlay  = document.getElementById('modal-create');
 const modalClose    = document.getElementById('modal-close');
 const modalCancel   = document.getElementById('modal-cancel');
@@ -111,6 +110,74 @@ function renderFromMap() {
   renderHero();
 }
 
+// ── #364 hero counts + tab counts ───────────────────────────────────────────
+// Watchers = people in a room who are not seated (userCount already drops ghost viewers, #158).
+const watchersOf = (room) => Math.max(0, (room.userCount || 0) - (room.playerCount || 0));
+// Write only on change: the hero counts sit in an aria-live region and patches arrive every 2.5 s during play.
+const setNum = (id, n) => { const el = document.getElementById(id); if (el && el.textContent !== String(n)) el.textContent = String(n); };
+// #382: with more rooms than one page the server mirrors only that page here and sends the counts
+// over ALL rooms as `stats` ({ rooms, open, live, watch }); null = the cards held are the whole list.
+let lobbyStats = null;
+let roomsMoreOffset = 0;   // where the next "show more" page starts in the server's ranking
+let roomsMoreBusy = false;
+function renderRoomStats() {
+  const rooms = currentRooms;
+  const s = lobbyStats || {
+    open: rooms.filter((r) => r.state !== 'playing' && r.playerCount < 2).length,
+    live: rooms.filter((r) => r.state === 'playing').length,
+    watch: rooms.reduce((a, r) => a + watchersOf(r), 0),
+  };
+  setNum('rh-n-open', s.open);
+  setNum('rh-n-live', s.live);
+  setNum('rh-n-watch', s.watch);
+  setNum('room-n-playing', s.live); // "Đang chơi · N" (user 2026-11-13: one label instead of Phòng/Bàn/Quan sát)
+  renderRoomsMore();
+}
+
+// "Show more" under the grid: only while the server holds rooms this page does not.
+// The cards it adds are a one-off copy (no live patches) — a click on a stale one fails cleanly
+// with the server's room:error.
+function renderRoomsMore() {
+  const rest = lobbyStats ? lobbyStats.rooms - currentRooms.length : 0;
+  let btn = document.getElementById('rooms-more');
+  if (rest <= 0) { if (btn) btn.hidden = true; return; }
+  if (!btn) {
+    if (typeof roomListEl === 'undefined' || !roomListEl) return;
+    btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'rooms-more';
+    btn.className = 'rooms-more';
+    btn.addEventListener('click', loadMoreRooms);
+    roomListEl.insertAdjacentElement('afterend', btn);
+  }
+  btn.hidden = false;
+  btn.disabled = roomsMoreBusy;
+  const label = t('lobby.rooms_more', { n: rest });
+  if (btn.textContent !== label) btn.textContent = label;
+}
+
+function loadMoreRooms() {
+  if (roomsMoreBusy) return;
+  roomsMoreBusy = true;
+  renderRoomsMore();
+  client.emitAck('lobby:rooms_query', { offset: roomsMoreOffset }, 5000, (err, res) => {
+    roomsMoreBusy = false;
+    if (err || !res || !Array.isArray(res.rooms)) { renderRoomsMore(); return; }
+    roomsMoreOffset += res.rooms.length;
+    if (res.stats) lobbyStats = res.stats;
+    // Rooms already on screen keep their live entry; the rest are appended like a patch upsert.
+    applyLobbyPatch({ upserts: res.rooms.filter((r) => !roomMap.has(r.roomId)), removed: [] });
+  });
+}
+
+// Registered before the list handlers below, so the counts are in place when those render.
+client.on('lobby:update', (data) => {
+  lobbyStats = (data && data.stats) || null;
+  roomsMoreOffset = ((data && data.rooms) || []).length;
+});
+// While the list is truncated every patch carries `stats`; one without them means it is whole again.
+client.on('lobby:patch', (data) => { lobbyStats = (data && data.stats) || null; });
+
 // ---------------------------------------------------------------------------
 // Hero line
 // ---------------------------------------------------------------------------
@@ -137,6 +204,7 @@ function renderGreeting() {
 }
 
 function renderHero() {
+  renderRoomStats(); // #364: every room-list change ends here (snapshot, patch, langchange)
   if (!heroTitle) return;
   if (heroTab === 'home') { renderGreeting(); return; }
   const tournaments = heroTab === 'tournaments';
@@ -177,7 +245,25 @@ renderHero();
 
 // Full snapshot — sent once on subscribe, and again on every reconnect, since
 // the client re-subscribes. Replaces the local map wholesale.
+// Server clock − local clock, from the lobby envelopes (#364): `startedAt` is a server epoch, so a
+// visitor whose clock is off by minutes must not see "Đang đấu · 07:12" on a game that just began.
+let serverClockOffset = 0;
+function noteServerTime(data) {
+  if (data && Number.isFinite(data.serverTime)) serverClockOffset = data.serverTime - Date.now();
+}
+
+// #377: a patch whose moves delta does not fit what we hold → ask for the full list again, once
+// until it arrives (lobby:subscribe answers with lobby:update; re-joining the lobby room is a no-op).
+let snapshotRequested = false;
+function requestLobbySnapshot() {
+  if (snapshotRequested) return;
+  snapshotRequested = true;
+  client.emit('lobby:subscribe');
+}
+
 client.on('lobby:update', (data) => {
+  snapshotRequested = false;
+  noteServerTime(data);
   roomMap = new Map((data.rooms || []).map(r => [r.roomId, r]));
   renderFromMap();
 });
@@ -194,6 +280,7 @@ client.on('lobby:update', (data) => {
 // animation — on each one scales with the *total* room count instead of the
 // (usually 1-2) rooms that actually changed.
 client.on('lobby:patch', (data) => {
+  noteServerTime(data);
   applyLobbyPatch(data);
 });
 
@@ -209,15 +296,17 @@ const onlineLineNamesEl = document.getElementById('online-line-names');
 const ONLINE_NAME_LIMIT = 6;
 
 let currentOnlineUsers = [];
+// #381: the server sends only the first page of the list; this is the real count when there are more.
+let currentOnlineTotal = 0;
 
 function renderOnlineLine() {
   if (!onlineLineEl) return;
   const users = currentOnlineUsers;
-  const count = users.length;
+  const count = Math.max(currentOnlineTotal, users.length);
 
   if (onlineCountEl) onlineCountEl.textContent = t('lobby.online_count_nav', { n: count });
   if (onlineLineCountEl) onlineLineCountEl.textContent = count;
-
+  setNum('rh-n-online', count);
   onlineLineEl.hidden = false;
   if (count === 0) {
     onlineLineNamesEl.textContent = t('lobby.no_one_online');
@@ -227,35 +316,18 @@ function renderOnlineLine() {
   const limit  = ONLINE_NAME_LIMIT;
   const shown  = users.slice(0, limit);
   const hidden = count - shown.length;
-  // Own name set in ink so you can find yourself in the line at a glance.
-  // Each user is `{ userId, displayName, isGuest }` (see server state.js
-  // getOnlineUsersList) — a click on a name opens a private chat (#159).
-  // Names render as plain ink text (not link-blue); the `.online-name` class
-  // just gives a pointer cursor + hover underline.
+  // #364: faces only (user 2026-11-13 — the names line was redundant next to the avatars). Each
+  // avatar is still the PM control (#159, [data-user-id] → private-chat.js); its name is the
+  // tooltip + accessible name. Your own face is not a button. "+N" opens the full list.
+  const avatar = (u) => (window.PlatformShell ? window.PlatformShell.avatar(u.avatarUrl, u.displayName, 'pav--sm').outerHTML : '');
   const parts = shown.map((u) => {
-    const name = escapeHtml(u.displayName);
-    if (u.userId === userInfo.userId) {
-      return u.displayName === userInfo.displayName ? `<b>${name}</b>` : name;
-    }
-    return `<span class="online-name" role="button" tabindex="0" data-user-id="${escapeHtml(u.userId)}">${name}</span>`;
+    const name = escapeAttr(u.displayName);
+    if (u.userId === userInfo.userId) return `<span class="online-av online-av--me" title="${name}">${avatar(u)}</span>`;
+    return `<span class="online-name online-av" role="button" tabindex="0" data-user-id="${escapeAttr(u.userId)}" title="${name}" aria-label="${name}">${avatar(u)}</span>`;
   });
-  let html = parts.join(', ');
-  // Only when the line actually had to truncate do we offer a "…and N others"
-  // affordance — clicking it opens the full online-users modal (#159). No
-  // permanent button when everyone already fits.
-  html += hidden > 0
-    ? ` <span class="online-name online-line__more" role="button" tabindex="0" data-open-users>${escapeHtml(t('lobby.online_more', { n: hidden }))}</span>`
-    : '.';
-  onlineLineNamesEl.innerHTML = html;
+  if (hidden > 0) parts.push(`<span class="online-name online-line__more" role="button" tabindex="0" data-open-users title="${escapeAttr(t('lobby.online_more', { n: hidden }))}">+${hidden}</span>`);
+  onlineLineNamesEl.innerHTML = parts.join('');
 }
-
-document.querySelectorAll('#room-tabs [data-room-tab]').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    roomTab = btn.dataset.roomTab;
-    document.querySelectorAll('#room-tabs [data-room-tab]').forEach((b) => b.setAttribute('aria-selected', String(b === btn)));
-    renderRoomList(currentRooms);
-  });
-});
 
 // Apply a `lobby:online_patch` ({ joined, left }) to an online list (#230).
 // Idempotent: a `joined` entry already held is replaced, a `left` id never
@@ -267,18 +339,20 @@ function applyOnlineUsersPatch(users, patch) {
   return [...byId.values()].sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
-function setOnlineUsers(users) {
+function setOnlineUsers(users, total) {
   currentOnlineUsers = users;
+  currentOnlineTotal = typeof total === 'number' && total > users.length ? total : users.length;
   renderOnlineLine();
   // Feed the private-chat module (#159) — it owns the online-users modal and
   // per-window presence. Safe if it hasn't finished init yet: it also reads
   // GvnSession directly and this event re-fires on every presence change.
-  if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users);
+  if (window.PrivateChat) window.PrivateChat.updateOnlineUsers(users, currentOnlineTotal);
 }
 
 // Full list once per lobby:subscribe (incl. after reconnect, #228), then deltas.
 client.on('lobby:online_users', (users) => setOnlineUsers(Array.isArray(users) ? users : []));
-client.on('lobby:online_patch', (patch) => setOnlineUsers(applyOnlineUsersPatch(currentOnlineUsers, patch)));
+// `total` rides on a patch only while the list is truncated (#381); without it the list is complete.
+client.on('lobby:online_patch', (patch) => setOnlineUsers(applyOnlineUsersPatch(currentOnlineUsers, patch), patch && patch.total));
 
 client.on('room:error', (data) => {
   // `code` is language-neutral; `message` is Vietnamese-only fallback for
@@ -288,89 +362,139 @@ client.on('room:error', (data) => {
 
 // Auto-redirect if server detects we are already in a room
 client.on('room:joined', (data) => {
-  window.location.replace(`room.html?id=${encodeURIComponent(data.roomId)}`);
+  window.location.replace(roomHref(data.roomId));
 });
+
+// room.html URL; entering from the Phòng tab adds ?from=rooms so leaving returns there (#365).
+function roomHref(roomId) {
+  const q = new URLSearchParams();
+  if (roomId) q.set('id', roomId);
+  if (window.location.hash === '#rooms') q.set('from', 'rooms');
+  const qs = q.toString();
+  return 'room.html' + (qs ? '?' + qs : '');
+}
 
 // ---------------------------------------------------------------------------
 // Room List Rendering
 // ---------------------------------------------------------------------------
 
-// Zen Minimal renders a room as a *row*, not a card: a state bullet, the room
-// name, one meta line reading "host · 1/2 · rules", and a text action. The
-// state that used to be spelled out in a badge is carried by the bullet; the
-// full label stays available as the row's title attribute.
-// Builds one row's markup. `animate` staggers the entrance animation by
-// `delayIndex` (used for a full render); a row created for a single new
-// arrival via a patch passes delayIndex 0. An in-place update (existing room,
-// changed fields) never calls this — see updateRoomRowNode — so it never
-// replays the entrance animation.
+// #364 R1 "Sảnh gỗ": a room is a TABLE CARD — mini board on top (the live position, or an empty
+// board with "Ngồi vào" for an open seat), state flag + elapsed time, watchers, then the players
+// (avatar · name · rating) and the meta tags. The whole card is the join/watch control (B219);
+// `.room-row` stays as the hook e2e specs and the keyboard handler use.
+// `animate` gives the entrance animation, staggered by `delayIndex`: only a card a patch creates asks
+// for it (delayIndex 0); a full snapshot paints at once (#390). An in-place update never replays it.
 function buildRoomRowHtml(room, { animate = false, delayIndex = 0 } = {}) {
-  const stateLabel  = getStateLabel(room.state, room.playerCount);
-  const bulletClass = getBulletClass(room.state, room.playerCount);
   const animClass = animate ? ' animate-fade-up' : '';
   const animStyle = animate ? ` style="animation-delay: ${(delayIndex * 0.04).toFixed(2)}s"` : '';
-
   return `
-    <div class="room-row${animClass}" data-room-id="${escapeAttr(room.roomId)}" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}"
-         role="button" tabindex="0" aria-label="${escapeAttr(rowActionLabel(room))}"${animStyle}>
-      <span class="room-row__bullet ${bulletClass}" title="${escapeAttr(stateLabel)}"></span>
-      <div class="room-row__body">
-        <div class="room-row__name">${buildRoomPlayers(room)}</div>
-        <div class="room-row__meta">${buildRoomMeta(room)}</div>
-      </div>
-    </div>
+    <div class="${cardClass(room)}${animClass}" data-room-id="${escapeAttr(room.roomId)}" data-action="joinRoom" data-arg="${escapeAttr(room.roomId)}"
+         role="button" tabindex="0" aria-label="${escapeAttr(rowActionLabel(room))}"${animStyle}>${buildRoomCardInner(room)}</div>
   `;
 }
 
-// Mockup tabs Phòng / Bàn / Quan sát (B210c) — filters over the one room list, not room kinds:
-// all = every room, open = a table waiting for an opponent (can join to play), watch = a game in
-// progress or a full table (spectate) — open and watch partition the list. The Map/patch plumbing is untouched; only what is drawn is filtered.
-let roomTab = 'all'; // 'all' | 'open' | 'watch'
-const ROOM_TAB_EMPTY = { all: 'lobby.no_rooms', open: 'lobby.no_tables', watch: 'lobby.no_watch' };
-function roomMatchesTab(room) {
-  if (roomTab === 'open') return room.state !== 'playing' && room.playerCount < 2;
-  if (roomTab === 'watch') return room.state === 'playing' || room.playerCount >= 2; // nothing left to sit in
-  return true;
+/** 'live' (game running), 'open' (a seat to take), 'ready' (both seated, not started). */
+function cardKind(room) {
+  if (room.state === 'playing') return 'live';
+  return room.playerCount >= 2 ? 'ready' : 'open';
 }
+function cardClass(room) { return `room-row rcard rcard--${cardKind(room)}`; }
+
+function buildRoomCardInner(room) {
+  const kind = cardKind(room);
+  const watchers = watchersOf(room);
+  const eye = window.PlatformShell ? window.PlatformShell.icon('ph-regular-eye').outerHTML : '';
+  const flag = kind === 'live'
+    ? `<i class="rcard__dot"></i>${escapeHtml(t('lobby.card_live'))}${room.startedAt ? `<span class="rcard__el" data-started="${Number(room.startedAt)}"> · ${formatElapsed(room.startedAt)}</span>` : ''}`
+    : escapeHtml(t(kind === 'open' ? 'lobby.card_open' : 'lobby.state_ready'));
+  return `
+      <div class="rcard__board">
+        ${miniBoardSvg(room.boardSize, kind === 'live' ? room.moves : null)}
+        <span class="rcard__flag">${flag}</span>
+        ${watchers ? `<span class="rcard__eye" title="${escapeAttr(t('lobby.card_watchers', { n: watchers }))}">${eye}${watchers}</span>` : ''}
+        ${kind === 'open' ? `<span class="rcard__sit">${escapeHtml(t('lobby.card_sit'))}</span>` : ''}
+      </div>
+      <div class="rcard__body">
+        <div class="room-row__name">${buildRoomPlayers(room)}</div>
+        <div class="room-row__meta">${buildRoomMeta(room)}</div>
+      </div>`;
+}
+
+/** "mm:ss" (or "h:mm:ss") since a server epoch; '' for a bad stamp. */
+function formatElapsed(startedAt) {
+  const sec = Math.max(0, Math.floor((Date.now() + serverClockOffset - Number(startedAt)) / 1000));
+  if (!Number.isFinite(sec)) return '';
+  const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, ss = sec % 60;
+  const two = (n) => String(n).padStart(2, '0');
+  return h ? `${h}:${two(m)}:${two(ss)}` : `${two(m)}:${two(ss)}`;
+}
+// One ticker for every live card's elapsed time; idle when the rooms screen is not showing.
+setInterval(() => {
+  if (document.hidden || !roomListEl.offsetParent) return;
+  for (const el of roomListEl.querySelectorAll('.rcard__el[data-started]')) el.textContent = ' · ' + formatElapsed(el.dataset.started);
+}, 1000);
+
+// Lobby mini board (#364): a small static SVG of the live position — NOT BoardRenderer (board lock).
+// `moves` is the flat [x0,y0,x1,y1,…] list from listRooms(), black first, alternating; the last
+// stone gets a ring. null/[] → empty board. Grid paths are cached per size.
+const _gridCache = new Map();
+function miniBoardSvg(size, moves) {
+  const n = Number(size) > 0 && Number(size) <= 25 ? Number(size) : 15;
+  let grid = _gridCache.get(n);
+  if (!grid) {
+    let d = '';
+    for (let i = 0; i < n; i++) d += `M.5 ${i + .5}H${n - .5}M${i + .5} .5V${n - .5}`;
+    grid = `<rect class="mb__bg" width="${n}" height="${n}" rx=".4"/><path class="mb__grid" d="${d}"/>`;
+    _gridCache.set(n, grid);
+  }
+  let stones = '';
+  const list = Array.isArray(moves) ? moves : [];
+  let lx = -1, ly = -1;
+  for (let i = 0; i + 1 < list.length; i += 2) {
+    const x = Number(list[i]), y = Number(list[i + 1]);
+    if (!(x >= 0 && y >= 0 && x < n && y < n)) continue;
+    stones += `<circle class="${(i / 2) % 2 ? 'mb__w' : 'mb__b'}" cx="${x + .5}" cy="${y + .5}" r=".42"/>`;
+    lx = x; ly = y;
+  }
+  const last = lx >= 0 ? `<circle class="mb__last" cx="${lx + .5}" cy="${ly + .5}" r=".2"/>` : '';
+  return `<svg class="mb" viewBox="0 0 ${n} ${n}" aria-hidden="true" focusable="false">${grid}${stones}${last}</svg>`;
+}
+
+// The ghost card at the start of the grid is the screen's only create-room entry (user 2026-11-13:
+// "Tạo phòng và Mở bàn mới là giống nhau"), so it carries the #btn-create id e2e specs click.
+const NEW_CARD_HTML = () => `<button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus">${window.PlatformShell ? window.PlatformShell.icon('ph-regular-plus-circle').outerHTML : '+'}</span><span>${escapeHtml(t('lobby.rh_new_table'))}</span></button>`;
+document.addEventListener('click', (e) => {
+  if (e.target.closest && e.target.closest('[data-create-room]')) openModal();
+});
 
 // Full rebuild — used for the initial/reconnect snapshot (lobby:update) and
 // for langchange, where every row's text genuinely needs to be
 // redone. NOT used for lobby:patch — see applyLobbyPatch below.
 function renderRoomList(allRooms) {
-  const rooms = allRooms.filter(roomMatchesTab);
+  const rooms = allRooms;
   if (rooms.length === 0) {
-    const sub = roomTab === 'all' ? `<span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>` : '';
     roomListEl.innerHTML = `
       <div class="room-list__empty">
-        <span class="room-list__empty-text">${t(ROOM_TAB_EMPTY[roomTab])}</span>
-        ${sub}
+        <span class="room-list__empty-text">${t('lobby.no_rooms')}</span>
+        <span class="room-list__empty-sub">${t('lobby.no_rooms_sub')}</span>
       </div>
-    `;
+    ` + NEW_CARD_HTML();
     return;
   }
 
+  // #390: no entrance here. This runs on every snapshot (first paint, each re-subscribe on tab switch /
+  // visible tab / reconnect, langchange); a staggered fadeUp kept 30 cards hidden for up to ~1.9 s.
   let html = '';
-  let i = 0;
-  for (const room of rooms) {
-    html += buildRoomRowHtml(room, { animate: true, delayIndex: i });
-    i++;
-  }
+  for (const room of rooms) html += buildRoomRowHtml(room);
 
-  roomListEl.innerHTML = html;
+  roomListEl.innerHTML = NEW_CARD_HTML() + html; // create first: it is the only create entry, never buried under 16 rooms
 }
 
 // Update an existing row's content in place — no DOM node replacement, no
 // entrance-animation replay.
 function updateRoomRowNode(node, room) {
-  const stateLabel  = getStateLabel(room.state, room.playerCount);
-  const bulletClass = getBulletClass(room.state, room.playerCount);
-
-  const bullet = node.querySelector('.room-row__bullet');
-  bullet.className = `room-row__bullet ${bulletClass}`;
-  bullet.title = stateLabel;
-
-  node.querySelector('.room-row__name').innerHTML = buildRoomPlayers(room);
-  node.querySelector('.room-row__meta').innerHTML = buildRoomMeta(room);
+  node.className = cardClass(room);
+  node.innerHTML = buildRoomCardInner(room);
   node.setAttribute('aria-label', rowActionLabel(room));
 }
 
@@ -393,7 +517,8 @@ function buildRoomPlayers(room) {
   const seat = (p) => {
     if (!p) return `<span class="rplayer rplayer--empty">${escapeHtml(t('lobby.seat_empty'))}</span>`;
     const av = window.PlatformShell ? window.PlatformShell.avatar(p.avatarUrl, p.displayName, 'pav--xs').outerHTML : '';
-    return `<span class="rplayer">${av}<span class="rplayer__name">${escapeHtml(p.displayName)}</span></span>`;
+    const rating = Number.isFinite(p.rating) ? `<small class="rplayer__rating">${p.rating}${p.provisional ? '?' : ''}</small>` : ''; // '?' = provisional, as on profile / user card
+    return `<span class="rplayer">${av}<span class="rplayer__who"><span class="rplayer__name">${escapeHtml(p.displayName)}</span>${rating}</span></span>`;
   };
   return `${seat(seats[0])}<span class="rvs">vs</span>${seat(seats[1])}`;
 }
@@ -407,16 +532,25 @@ function buildRoomPlayers(room) {
 // to a full render — it happens at most once per transition, not per patch.
 function applyLobbyPatch(patch) {
   const removed = patch.removed || [];
-  const upserts = patch.upserts || [];
-
-  const wasEmpty = currentRooms.length === 0;
+  // #377: an upsert may carry `moves` as a delta ({ movesFrom, moves }) — splice it onto the held entry.
+  // An entry that cannot take it (another game, too few moves held) is skipped and a fresh snapshot
+  // asked for; the snapshot (lobby:update) then replaces the whole map.
+  const upserts = [];
+  for (const raw of patch.upserts || []) {
+    const room = globalThis.LobbyMoves ? globalThis.LobbyMoves.applyDelta(roomMap.get(raw.roomId), raw) : raw;
+    if (room) upserts.push(room); else requestLobbySnapshot();
+  }
 
   for (const roomId of removed) roomMap.delete(roomId);
   for (const room of upserts) roomMap.set(room.roomId, room);
   currentRooms = Array.from(roomMap.values());
 
-  // A filtered tab can gain/lose rows on any patch (a room fills, a game starts), so it re-renders in full.
-  if (wasEmpty || currentRooms.length === 0 || roomTab !== 'all') {
+  // Crossing the empty <-> non-empty boundary swaps the empty-state markup for cards, so that edge
+  // (only) re-renders in full. Everything else is incremental (#364: live games patch every 2.5 s —
+  // a full re-render would replay every card's entrance animation and drop hover/keyboard focus).
+  const showingEmpty = !!roomListEl.querySelector('.room-list__empty');
+  const willBeEmpty = currentRooms.length === 0;
+  if (showingEmpty || willBeEmpty) {
     renderRoomList(currentRooms);
     renderHero();
     return;
@@ -444,19 +578,6 @@ function applyLobbyPatch(patch) {
   }
 
   renderHero();
-}
-
-function getStateLabel(state, playerCount) {
-  if (state === 'playing') return t('lobby.state_playing');
-  if (state === 'interrupted') return t('lobby.state_interrupted');
-  if (playerCount >= 2) return t('lobby.state_ready');
-  return t('lobby.state_waiting');
-}
-
-function getBulletClass(state, playerCount) {
-  if (state === 'playing') return 'room-row__bullet--playing';
-  if (playerCount >= 2) return 'room-row__bullet--ready';
-  return 'room-row__bullet--waiting';
 }
 
 // The meta line under the players: room name as plain text, everything else a tag chip (.rtag).
@@ -524,7 +645,7 @@ window.addEventListener('langchange', () => {
 window.joinRoom = function(roomId) {
   // Store intent and navigate — room.js will handle the actual join
   sessionStorage.setItem('gvn_room_intent', JSON.stringify({ action: 'join', roomId }));
-  window.location.href = `room.html?id=${encodeURIComponent(roomId)}`;
+  window.location.href = roomHref(roomId);
 };
 
 // ---------------------------------------------------------------------------
@@ -532,20 +653,51 @@ window.joinRoom = function(roomId) {
 // ---------------------------------------------------------------------------
 
 function openModal() {
-  // One-click, low-decision path — always start from the fixed preset rather
-  // than recalling last-used settings. The user can still open Advanced and
-  // tweak before hitting Quick Match/Confirm.
-  // Guests can only play friendly, so preselect it (re-evaluated on every open).
-  applySettingsToForm({ ...LITE_DEFAULT_SETTINGS, ranked: !userInfo.isGuest });
+  // F402: start from what the player used for their previous room (members: stored server-side,
+  // guests: this browser), else the fixed preset. Advanced stays collapsed; the summary line
+  // above "Tạo nhanh" says what a one-tap create will use.
+  // Guests can only play friendly, so it is forced for them (re-evaluated on every open).
+  modalTouched = false;
+  applySettingsToForm(rememberedSettings());
   applyModalMode();
   modalOverlay.classList.add('visible');
+  refreshRoomDefaults();
+}
+
+// ── Remembered settings (F402) ──────────────────────────────────────────────
+let serverRoomDefaults = null;   // members: GET /api/profile/prefs → roomDefaults (null = never created one)
+let modalTouched = false;        // the player changed a control since this open — don't overwrite their pick
+
+function readLocalSettings() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LAST_SETTINGS_KEY) || 'null');
+    return v && typeof v === 'object' ? v : null;
+  } catch (e) { return null; }
+}
+
+function rememberedSettings() {
+  if (userInfo.isGuest) return { ...LITE_DEFAULT_SETTINGS, ...(readLocalSettings() || {}), ranked: false };
+  return { ...LITE_DEFAULT_SETTINGS, ...(serverRoomDefaults || {}) };
+}
+
+// Members: pick up the server copy (another device may have created a room since). Applied only
+// when it differs from what is shown and the player has not started editing.
+function refreshRoomDefaults() {
+  if (!userInfo.signedIn || userInfo.isGuest) return;
+  fetch('/api/profile/prefs', { credentials: 'same-origin' })
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (!j) return;
+      serverRoomDefaults = j.roomDefaults || null;
+      if (!modalTouched && modalOverlay.classList.contains('visible')) applySettingsToForm(rememberedSettings());
+    })
+    .catch(() => { /* offline — the cached/default values stay */ });
 }
 
 function closeModal() {
   modalOverlay.classList.remove('visible');
 }
 
-btnCreate.addEventListener('click', openModal);
 modalClose.addEventListener('click', closeModal);
 modalCancel.addEventListener('click', closeModal);
 
@@ -567,32 +719,33 @@ const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
 
 // The form's own hardcoded defaults, used when nothing has been remembered yet.
 const DEFAULT_ROOM_SETTINGS = {
-  boardSize: 17, winningRule: 'freestyle', ranked: true,
+  boardSize: 19, winningRule: 'freestyle', ranked: true,
   ruleWall: false, rulePortal: false, ruleSwap2: false,
   timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
 };
 
-// Lite mode's fixed preset — Board 17x17 + WALL — applied on every modal
+// Lite mode's fixed preset — Board 19x19 + WALL — applied on every modal
 // open in Lite, regardless of any previously recalled settings.
 const LITE_DEFAULT_SETTINGS = { ...DEFAULT_ROOM_SETTINGS, ruleWall: true };
 
+// The create-room form's choices are native <select>s (F402), looked up by name.
+const pick = (name) => (document.querySelector(`select[name="${name}"]`) || {}).value;
+
 function readFormSettings() {
-  const boardSize = parseInt(
-    document.querySelector('input[name="boardSize"]:checked').value, 10
-  );
-  const timerMode = document.querySelector('input[name="timerMode"]:checked').value;
+  const boardSize = parseInt(pick('boardSize'), 10);
+  const timerMode = pick('timerMode');
   const timerSeconds = parseInt(document.getElementById('timer-seconds').value, 10) || 60;
   // Increment only takes effect in blitz mode (TimerManager.applyMove) — zero
   // it out otherwise so the stored/submitted setting doesn't imply it's active.
   const timerIncrementSeconds = timerMode === 'blitz'
     ? (parseInt(document.getElementById('timer-increment').value, 10) || 0)
     : 0;
-  const winningRule = (document.querySelector('input[name="winRule"]:checked') || {}).value || 'freestyle';
-  const ruleSwap2   = (document.querySelector('input[name="openRule"]:checked') || {}).value === 'swap2';
+  const winningRule = pick('winRule') || 'freestyle';
+  const ruleSwap2   = pick('openRule') === 'swap2';
   let   ruleWall    = document.getElementById('rule-wall').checked;
   let   rulePortal  = document.getElementById('rule-portal').checked;
   if (ruleSwap2) { ruleWall = false; rulePortal = false; } // Swap2 plays on a plain board
-  const ranked = (document.querySelector('input[name="roomMode"]:checked') || {}).value !== 'friendly';
+  const ranked = pick('roomMode') !== 'friendly';
   return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
@@ -604,12 +757,16 @@ function saveLastSettings(settings) {
 
 // Push a settings object back into the form controls.
 function applySettingsToForm(s) {
-  const check = (sel) => { const el = document.querySelector(sel); if (el) el.checked = true; };
-  check(`input[name="boardSize"][value="${s.boardSize}"]`);
-  check(`input[name="winRule"][value="${s.winningRule}"]`);
-  check(`input[name="roomMode"][value="${s.ranked === false ? 'friendly' : 'rated'}"]`);
-  check(`input[name="openRule"][value="${s.ruleSwap2 ? 'swap2' : 'none'}"]`);
-  check(`input[name="timerMode"][value="${s.timerMode}"]`);
+  // An unknown value (stale / hand-edited storage) leaves the select on its current option.
+  const choose = (name, value) => {
+    const el = document.querySelector(`select[name="${name}"]`);
+    if (el && [...el.options].some((o) => o.value === String(value))) el.value = String(value);
+  };
+  choose('boardSize', s.boardSize);
+  choose('winRule', s.winningRule);
+  choose('roomMode', s.ranked === false ? 'friendly' : 'rated');
+  choose('openRule', s.ruleSwap2 ? 'swap2' : 'none');
+  choose('timerMode', s.timerMode);
   const wall = document.getElementById('rule-wall');
   const portal = document.getElementById('rule-portal');
   if (wall) wall.checked = !!s.ruleWall;
@@ -617,8 +774,44 @@ function applySettingsToForm(s) {
   document.getElementById('timer-seconds').value = s.timerSeconds;
   document.getElementById('timer-increment').value = s.timerIncrementSeconds;
   // Re-run the Swap2 ⇄ board-setup interlock and the Blitz ⇄ increment interlock
-  document.querySelectorAll('input[name="openRule"]').forEach(r => r.dispatchEvent(new Event('change')));
-  document.querySelectorAll('input[name="timerMode"]').forEach(r => r.dispatchEvent(new Event('change')));
+  document.querySelectorAll('select[name="roomMode"], select[name="openRule"], select[name="timerMode"]')
+    .forEach(r => r.dispatchEvent(new Event('change')));
+  updateModeHint(); // the synthetic change above does not bubble to the modal's listener
+  updateModalSummary();
+}
+
+// One line saying what "Tạo nhanh" will create with the current form (selected option texts —
+// no extra i18n keys, and it follows a language change on the next open/edit).
+function updateModalSummary() {
+  const out = document.getElementById('modal-summary');
+  if (!out) return;
+  const text = (name) => {
+    const el = document.querySelector(`select[name="${name}"]`);
+    return el && el.selectedOptions[0] ? el.selectedOptions[0].textContent.trim() : '';
+  };
+  const s = readFormSettings();
+  const parts = [text('roomMode'), text('boardSize'), text('winRule')];
+  if (s.ruleSwap2) parts.push(text('openRule'));
+  if (s.ruleWall) parts.push(t('modal.rule_wall').replace(/\s*\(.*\)/, ''));
+  if (s.rulePortal) parts.push(t('modal.rule_portal').replace(/\s*\(.*\)/, ''));
+  // The clock is one setting → one chip ("Blitz 180s +2s").
+  parts.push(`${text('timerMode')} ${s.timerSeconds}s${s.timerMode === 'blitz' && s.timerIncrementSeconds ? ' +' + s.timerIncrementSeconds + 's' : ''}`);
+  // One chip per setting (ticket-rows rule: meta as separate spans, never "a · b · c").
+  out.replaceChildren(...parts.map((txt) => {
+    const chip = document.createElement('span');
+    chip.className = 'modal__chip';
+    chip.textContent = txt;
+    return chip;
+  }));
+}
+
+// Rated / friendly: the description under the select follows the choice.
+function updateModeHint() {
+  const hint = document.getElementById('rm-hint');
+  if (!hint) return;
+  const key = pick('roomMode') === 'friendly' ? 'modal.mode_friendly_desc' : 'modal.mode_rated_desc';
+  hint.setAttribute('data-i18n', key);
+  hint.textContent = t(key);
 }
 
 function submitCreate(settings) {
@@ -632,7 +825,7 @@ function submitCreate(settings) {
   }));
 
   closeModal();
-  window.location.href = 'room.html'; // Create room ID is assigned by server later
+  window.location.href = roomHref(null); // Create room ID is assigned by server later
 }
 
 // Confirm → create room
@@ -668,8 +861,7 @@ applyModalMode();
 // Swap2 (opening rule) is played on a plain board → disable & clear board setup.
 (function () {
   const sync = () => {
-    const swap2 = document.getElementById('or-swap2');
-    const disabled = !!(swap2 && swap2.checked);
+    const disabled = pick('openRule') === 'swap2';
     ['rule-wall', 'rule-portal'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -679,7 +871,7 @@ applyModalMode();
       if (trow) trow.style.opacity = disabled ? '0.45' : '';
     });
   };
-  document.querySelectorAll('input[name="openRule"]').forEach(r => r.addEventListener('change', sync));
+  document.querySelectorAll('select[name="openRule"]').forEach(r => r.addEventListener('change', sync));
   sync();
 })();
 
@@ -688,8 +880,7 @@ applyModalMode();
 // doesn't look active when it silently has no effect.
 (function () {
   const sync = () => {
-    const blitz = document.getElementById('tm-blitz');
-    const active = !!(blitz && blitz.checked);
+    const active = pick('timerMode') === 'blitz';
     const el = document.getElementById('timer-increment');
     if (!el) return;
     if (!active) el.value = 0;
@@ -697,9 +888,14 @@ applyModalMode();
     const row = document.getElementById('timer-increment-row');
     if (row) row.style.opacity = active ? '' : '0.45';
   };
-  document.querySelectorAll('input[name="timerMode"]').forEach(r => r.addEventListener('change', sync));
+  document.querySelectorAll('select[name="timerMode"]').forEach(r => r.addEventListener('change', sync));
   sync();
 })();
+
+// Any edit inside the form: stop a late server copy overwriting it; refresh hint + summary.
+modalOverlay.addEventListener('change', () => { modalTouched = true; updateModeHint(); updateModalSummary(); });
+modalOverlay.addEventListener('input', () => { modalTouched = true; updateModalSummary(); });
+window.addEventListener('langchange', () => { updateModeHint(); updateModalSummary(); });
 
 // ---------------------------------------------------------------------------
 // Utility

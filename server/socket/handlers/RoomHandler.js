@@ -28,6 +28,8 @@ const {
   findSocketsByUserId,
   clearReadyState,
   handleReadyClick,
+  setUserPresence,
+  sessions,
 } = require('../state');
 
 // Lazy-require GameHandler to avoid circular dependency at load time
@@ -59,6 +61,7 @@ function register(io, socket) {
             io.to(roomId).emit('game:ended', {
               result: gameResult,
               scoreTable: room.scoreTable,
+              scoreHistory: room.scoreHistory || [],
             });
             io.to(roomId).emit('chat:message', {
               from: null, fromId: null,
@@ -85,7 +88,7 @@ function register(io, socket) {
     if (result.destroyed) {
       cleanupRoomTimer(roomId);
       cleanupReadyTimer(roomId);
-      broadcastLobbyUpdate(io);
+      broadcastLobbyUpdate(io, roomId);
     } else if (result.room) {
       clearReadyState(io, result.room);
       broadcastRoomUpdate(io, result.room);
@@ -98,7 +101,7 @@ function register(io, socket) {
           timestamp: Date.now(), isSystem: true,
         });
       }
-      broadcastLobbyUpdate(io);
+      broadcastLobbyUpdate(io, roomId);
     }
   });
 
@@ -111,7 +114,7 @@ function register(io, socket) {
     }
     clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, result.room.roomId);
   });
 
   socket.on('room:stand', () => {
@@ -122,18 +125,29 @@ function register(io, socket) {
     }
     clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, result.room.roomId);
   });
 
   // Client-reported tab-visibility state (Page Visibility API) — drives the
   // "leaved site" (away) status dot on the slot cards. Silent on error: this
   // fires often (every tab switch) and isn't worth surfacing a toast for a
   // stale/out-of-room event.
-  socket.on('room:presence', (payload = {}) => {
-    const result = roomManager.setPresence(user.userId, payload.presence);
-    if (result.error) return;
+  // #372: one site-wide state per user (state.js); the room slot dot is derived from the same report.
+  const onPresence = (payload = {}) => {
+    // An evicted socket (replaced by a newer tab, still draining) must not overwrite the live one's state.
+    if (sessions.get(user.userId) !== socket) return;
+    const presence = payload.presence === 'away' ? 'away' : 'active';
+    setUserPresence(user.userId, presence);
+    // #373: the room member is "watching" only while this (their single) socket is the room page of that
+    // room. Any other page (lobby, home…) reports its own visibility, which says nothing about the table.
+    const onRoomPage = !!socket.data && socket.data.roomPageId === roomManager.getRoomIdByUser(user.userId);
+    const result = roomManager.setPresence(user.userId, onRoomPage ? presence : 'away');
+    if (result.error) return; // not in a room: the site-wide state above is all there is
+    if (result.changed === false) return; // repeat report: no room-wide fan-out
     broadcastRoomUpdate(io, result.room);
-  });
+  };
+  socket.on('room:presence', onPresence);
+  socket.on('presence:set', onPresence);
 
   socket.on('room:settings', (payload = {}) => {
     const result = roomManager.updateSettings(user.userId, payload.settings || {});
@@ -150,7 +164,7 @@ function register(io, socket) {
     // where they actually changed, and clients merge rather than replace, so
     // this is where they learn the new values. See RoomManager.serializeRoomUpdate.
     broadcastRoomUpdate(io, result.room, { settings: true });
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, result.room.roomId);
     if (!result.changes.length) return; // no-op save: nothing to announce (#286)
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
@@ -205,7 +219,7 @@ function register(io, socket) {
 
     clearReadyState(io, result.room);
     broadcastRoomUpdate(io, result.room);
-    broadcastLobbyUpdate(io);
+    broadcastLobbyUpdate(io, roomId);
   });
 }
 

@@ -171,9 +171,9 @@
   function mount(host) {
     if (!window.BoardPrefs || !window.BoardRenderer) return;
     if (!section) {
-      section = el('section', undefined, 'pboard');
+      section = el('section', undefined, 'pboard ptile ptile--wide');
       section.setAttribute('aria-labelledby', 'pboard-h');
-      const h = el('h2', t('board.section'), 'ph2 ph2--gap');
+      const h = el('h2', t('board.section'), 'ptile__h');
       h.id = 'pboard-h';
       const grid = el('div', undefined, 'pboard__grid');
       controls = el('div', undefined, 'pboard__controls');

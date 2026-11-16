@@ -47,8 +47,8 @@
     const players = d.players.map((p) => card(p.displayName,
       [...p.flags.map((f) => t('admin.i_flag_' + f)), ...context(p.topOpponentFriend, p.topOpponentSameClub)],
       t('admin.i_player', { games: p.games, eff: p.effectiveOpponents, uniq: p.uniqueOpponents, share: pct(p.topGainShare), top: p.topOpponentName || '?' })));
-    const pairs = d.pairs.map((p) => card(p.aName + ' – ' + p.bName, context(p.friends, p.sameClub),
-      t('admin.i_pair', { games: p.games, a: p.aName, aw: p.aWins, b: p.bName, bw: p.bWins })));
+    const pairs = d.pairs.map((p) => card(p.aName + ' – ' + p.bName, [p.weakerWins && t('admin.i_weaker'), ...context(p.friends, p.sameClub)].filter(Boolean),
+      t('admin.i_pair', { games: p.games, a: p.aName, aw: p.aWins, b: p.bName, bw: p.bWins, z: p.z })));
     const groups = d.groups.map((g) => card(g.names.join(', '), [], t('admin.i_group', { games: g.games, share: pct(g.internalShare) })));
     if (window.IntegrityViz) window.IntegrityViz.render($('ri-viz'), d.viz);
     $('ri-list').replaceChildren(section(t('admin.i_players'), players), section(t('admin.i_pairs'), pairs), section(t('admin.i_groups'), groups));

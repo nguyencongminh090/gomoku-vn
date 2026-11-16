@@ -1,0 +1,86 @@
+<style>
+/* M4 — Câu lệnh: the quick-play options are written as one big sentence whose blanks are the choices
+   ("Tìm cho tôi một ván [Caro VN], [30s mỗi nước], [xếp hạng]."). Big type fills the space with meaning.
+   Vào phòng = a giant 4-box room-code input right under it. */
+body.mk-m4-sentence::after { display: none; }
+body.mk-m4-sentence::before { mask: linear-gradient(180deg, #000 0%, transparent 70%); -webkit-mask: linear-gradient(180deg, #000 0%, transparent 70%); }
+.m4 { max-width: 1120px; margin: 0 auto; padding: 44px 40px 24px; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px 56px; align-content: start; }
+.m4-hello { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: var(--text-md); color: var(--c-ink-2); }
+.m4-hello b { color: var(--c-ink); }
+.m4-hello .icons { margin-left: auto; display: flex; gap: 4px; }
+.m4-q { margin: 0; font-size: clamp(34px, 3.3vw + 8px, 60px); line-height: 1.22; font-weight: 900; letter-spacing: -.025em; }
+.m4-blank { position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 0 .28em; margin: 0 .04em; border-radius: .22em; background: var(--c-brand-light) !important; color: var(--c-brand-text) !important; font: inherit !important; border-bottom: .07em solid var(--c-brand) !important; cursor: pointer; transition: background-color var(--d-fast); }
+.m4-blank::after { content: ''; width: .32em; height: .32em; border-right: .08em solid currentColor; border-bottom: .08em solid currentColor; transform: translateY(-.1em) rotate(45deg); opacity: .7; }
+.m4-blank:hover { background: color-mix(in srgb, var(--c-brand) 22%, transparent) !important; }
+.m4-pop { position: relative; display: inline-flex; vertical-align: top; }
+.m4-menu { display: none !important; position: absolute; left: 0; top: calc(100% + 8px); z-index: 4; display: grid; gap: 4px; min-width: 200px; padding: 8px; border-radius: 14px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-lg); font-size: 16px; letter-spacing: 0; line-height: 1.3; }
+.m4-menu span { padding: 10px 12px; border-radius: 10px; font-weight: 700; }
+.m4-menu span[aria-selected="true"] { background: var(--c-brand-light); color: var(--c-brand-text); }
+.m4-menu span::before { content: '✓ '; visibility: hidden; } .m4-menu span[aria-selected="true"]::before { visibility: visible; }
+.m4-go { margin-top: 26px; display: inline-flex; align-items: center; gap: 12px; min-height: 72px; padding: 0 36px 0 28px; border-radius: 999px; background: var(--c-ink) !important; color: var(--c-on-ink) !important; font-size: 26px !important; font-weight: 1000 !important; box-shadow: 0 18px 36px -16px rgba(0,0,0,.6); transition: transform var(--d-fast) var(--e-out); }
+.m4-go .icon { width: 30px; height: 30px; padding: 8px; border-radius: 50%; background: var(--c-brand); color: #fff; }
+.m4-go:hover { transform: translateX(4px); }
+.m4-or { display: flex; align-items: center; gap: 14px; margin: 34px 0 16px; font-size: var(--text-sm); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+.m4-or::after { content: ''; flex: 1; height: 1px; background: var(--c-border); }
+.m4-code { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.m4-code .hash { font-size: 44px; font-weight: 1000; color: var(--c-ink-2); }
+.m4-code input { width: 64px; height: 76px; text-align: center; border-radius: 16px; border: 2px solid var(--c-border); background: var(--c-surface); color: var(--c-ink); font-weight: 1000; font-size: 38px; line-height: 1; font-family: inherit; text-transform: uppercase; box-shadow: var(--shadow-card); }
+.m4-code input:focus-visible { border-color: var(--c-brand); }
+.m4-code .enter { min-height: 76px; padding: 0 26px; border-radius: 16px; border: 2px solid var(--c-ink) !important; font-size: 20px; font-weight: 900; display: inline-flex; align-items: center; gap: 8px; }
+.m4-code .list { font-weight: 800; color: var(--c-brand-text); margin-left: 8px; display: inline-flex; align-items: center; gap: 4px; }
+.m4-side { display: grid; gap: 14px; align-content: start; padding-top: 10px; }
+.m4-card { padding: 16px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); display: grid; gap: 10px; }
+.m4-card h2 { margin: 0; font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .08em; color: var(--c-ink-2); }
+.m4-num { display: flex; align-items: baseline; gap: 8px; }
+.m4-num b { font-size: 40px; font-weight: 1000; line-height: 1; }
+.m4-bar { display: flex; gap: 3px; height: 34px; align-items: flex-end; }
+.m4-bar i { flex: 1; border-radius: 3px; background: color-mix(in srgb, var(--c-brand) 55%, transparent); }
+.m4-search { margin-top: 26px; display: inline-flex; align-items: center; gap: 14px; min-height: 72px; padding: 0 12px 0 24px; border-radius: 999px; background: var(--c-surface); border: 2px solid var(--c-brand); font-size: 20px; font-weight: 900; }
+.m4-search .ring { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--c-brand-light); border-top-color: var(--c-brand); animation: mk-spin 1s linear infinite; }
+.m4-search button { min-height: 48px; padding: 0 18px; border-radius: 999px; background: var(--c-fill) !important; font-weight: 800; }
+.m4 .resume { grid-column: 1 / -1; }
+@media (max-width: 860px) {
+  .m4 { grid-template-columns: 1fr; padding: 18px 16px 24px; gap: 16px; }
+  .m4-hello .icons { margin-left: 0; width: 100%; justify-content: space-around; }
+  .m4-q { font-size: 30px; }
+  .m4-menu { display: none; }
+  .m4-go { width: 100%; justify-content: center; font-size: 22px !important; margin-top: 18px; }
+  .m4-search { width: 100%; box-sizing: border-box; font-size: 16px; }
+  .m4-or { margin: 22px 0 12px; }
+  .m4-code input { width: 52px; height: 62px; font-size: 30px; }
+  .m4-code .hash { font-size: 34px; }
+  .m4-code .enter { min-height: 62px; padding: 0 18px; }
+  .m4-code .list { width: 100%; margin: 6px 0 0; }
+  .m4-side { grid-template-columns: 1fr 1fr; padding: 0; }
+  .m4-num b { font-size: 30px; }
+  .m4 .resume > span:nth-child(2) { display: none; }
+  .m4 .resume { order: -1; }
+}
+</style>
+<div class="mk mk-screen m4">
+  <div class="m4-hello rise"><span>Chào <b>minhcaro</b></span><span class="tag">{{i:circle}} 128 đang online</span>
+    <nav class="icons" aria-label="Khám phá">
+      <a class="ico" href="/puzzles" aria-label="Học" data-tip="Học">{{i:target}}</a>
+      <a class="ico" href="/forum" aria-label="Diễn đàn" data-tip="Diễn đàn">{{i:chat-circle}}</a>
+      <a class="ico" href="#tournaments" aria-label="Giải đấu" data-tip="Giải đấu">{{i:trophy}}</a>
+      <a class="ico" href="/clubs.html" aria-label="Hội nhóm" data-tip="Hội nhóm">{{i:users-three}}</a>
+    </nav>
+  </div>
+  <div class="resume rise"><span class="resume__dot"></span><span>Phòng chơi</span><b>vs. Lan Anh</b><span class="tag tag--brand">Lượt của bạn</span><a class="resume__go" href="#">Vào ván</a></div>
+  <div class="m4-main">
+    <h1 class="m4-q rise rise-2">Tìm cho tôi một ván
+      <span class="m4-pop"><button class="m4-blank" aria-haspopup="listbox">Caro VN</button></span>,
+      <span class="m4-pop"><button class="m4-blank" aria-haspopup="listbox">30 giây mỗi nước</button>
+        <span class="m4-menu" role="listbox" aria-label="Thời gian"><span aria-selected="false">Tự động</span><span aria-selected="false">45 giây mỗi nước</span><span aria-selected="true">30 giây mỗi nước</span><span aria-selected="false">1 phút + 1 giây</span></span></span>,
+      <span class="m4-pop"><button class="m4-blank" aria-haspopup="listbox">xếp hạng</button></span>.
+    </h1>
+    <button class="m4-go when-idle rise rise-3">{{i:play}} Chơi nhanh</button>
+    <div class="m4-search when-search" aria-live="polite"><span class="ring"></span>Đang tìm đối thủ xếp hạng… 0:12<button>Huỷ tìm</button></div>
+    <div class="m4-or">hoặc vào phòng bằng mã</div>
+    <form class="m4-code rise rise-4" onsubmit="return false"><span class="hash">#</span><input aria-label="Ký tự 1" maxlength="1" value="A"><input aria-label="Ký tự 2" maxlength="1" value="3"><input aria-label="Ký tự 3" maxlength="1"><button class="enter">{{i:door-open}} Vào phòng</button><a class="list" href="#">Xem 12 phòng đang mở {{i:caret-right}}</a></form>
+  </div>
+  <aside class="m4-side rise rise-3">
+    <div class="m4-card"><h2>Đang tìm trận</h2><div class="m4-num"><b>6</b><span class="muted">người · ~20 giây</span></div><div class="m4-bar" aria-hidden="true"><i style="height:30%"></i><i style="height:45%"></i><i style="height:40%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:90%"></i><i style="height:75%"></i><i style="height:60%"></i></div></div>
+    <div class="m4-card"><h2>Đang chơi</h2><div class="m4-num"><b>23</b><span class="muted">ván</span></div><span class="muted">Khánh Linh vs quang.dv · 42 nước</span></div>
+  </aside>
+</div>

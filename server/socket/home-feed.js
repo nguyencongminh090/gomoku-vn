@@ -35,7 +35,7 @@ const _force = new WeakSet();
 function stats() {
   const queue = require('./handlers/MatchHandler').queueCounts();
   return {
-    online: require('./state').getOnlineUsersList().length,
+    online: require('./state').getOnlineUsersCount(),
     playing: playingCount(roomManager),
     searching: Object.values(queue).reduce((a, b) => a + b, 0),
   };

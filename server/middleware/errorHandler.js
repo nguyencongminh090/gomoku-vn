@@ -31,6 +31,11 @@ class AppError extends Error {
   }
 }
 
+const BODY_PARSER_ERRORS = {
+  'entity.too.large':    { status: 413, code: 'PAYLOAD_TOO_LARGE', message: 'Dữ liệu gửi lên quá lớn.' },
+  'entity.parse.failed': { status: 400, code: 'BODY_INVALID',      message: 'Dữ liệu gửi lên không hợp lệ.' },
+};
+
 /**
  * Express 4-argument error handler.
  * Catches errors passed via next(err) from any route.
@@ -41,6 +46,13 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
   if (err instanceof AppError) {
     // Known operational error — return structured response
     return res.status(err.statusCode).json({ error: err.message });
+  }
+
+  // body-parser (express.json) failures are the client's fault: carry err.type, not statusCode.
+  const bodyErr = BODY_PARSER_ERRORS[err && err.type];
+  if (bodyErr) {
+    logger.warn(`[Express] ${bodyErr.code} on ${req.method} ${req.path}`);
+    return res.status(bodyErr.status).json({ error: bodyErr.message, code: bodyErr.code });
   }
 
   // Unexpected error — log full stack, return generic message

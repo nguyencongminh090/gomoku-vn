@@ -1,0 +1,106 @@
+<!doctype html><html lang="vi" data-mode="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>PF1 Áp phích</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* PF1 — one hero band (who + the one number that matters), a stat strip, then tabs. Safe direction. */
+.hero{position:relative;background:var(--c-surface);border-bottom:1px solid var(--c-border);overflow:hidden}
+.hero::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.7;
+  background:linear-gradient(var(--c-border-light) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,var(--c-border-light) 1px,transparent 1px) 0 0/28px 28px;
+  mask-image:linear-gradient(100deg,transparent 30%,var(--st-b));-webkit-mask-image:linear-gradient(100deg,transparent 30%,var(--st-b))}
+.hero .wrap{position:relative;display:grid;grid-template-columns:auto 1fr auto;gap:28px;align-items:center;padding-block:36px 28px}
+.hero .av{box-shadow:0 0 0 4px var(--c-surface),0 0 0 6px var(--c-brand-text)}
+.who{min-width:0}
+.who h1{font-size:clamp(30px,2.6vw + 10px,46px);font-weight:1000;letter-spacing:-.02em;line-height:1.1}
+.who .meta{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:6px;color:var(--c-ink-2);font-size:14px;font-weight:700}
+.who .meta span{display:inline-flex;align-items:center;gap:5px}
+.who .bio{margin-top:10px;max-width:56ch}
+.who .chips{margin-top:12px}
+.who .acts{margin-top:18px}
+.main-r{text-align:right;min-width:230px}
+.main-r .big{display:block;font-size:clamp(56px,5vw + 16px,92px);font-weight:1000;line-height:.95;letter-spacing:-.03em}
+.main-r .sub{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:6px;font-weight:800}
+.main-r .rank{color:var(--c-brand-text)}
+.strip{display:grid;grid-template-columns:repeat(6,1fr) 1.6fr;gap:0;margin-top:20px;background:var(--c-surface);border-radius:16px;overflow:hidden}
+.strip>div{padding:14px 18px;box-shadow:inset -1px 0 0 var(--c-border-light)}
+.strip dt{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--c-ink-2)}
+.strip dd{margin:2px 0 0;font-size:26px;font-weight:1000}
+.strip .bar{display:flex;flex-direction:column;justify-content:center;gap:8px;box-shadow:none}
+.strip .bar small{display:flex;justify-content:space-between;font-size:12px;font-weight:800}
+.tabs{position:sticky;top:56px;z-index:10;display:flex;gap:4px;margin-top:20px;background:var(--c-bg);border-bottom:1px solid var(--c-border);overflow-x:auto;scrollbar-width:none}
+.tabs button{position:relative;min-height:48px;padding:0 16px;font-weight:800;color:var(--c-ink-2);white-space:nowrap}
+.tabs button::after{content:"";position:absolute;inset:auto 12px 0;height:3px;border-radius:3px 3px 0 0;background:var(--c-brand-text);transform:scaleX(.4);opacity:0;transition:transform var(--d-base) var(--e-out),opacity var(--d-fast)}
+.tabs button[aria-selected=true]{color:var(--c-ink)}.tabs button[aria-selected=true]::after{transform:none;opacity:1}
+.tabs small{margin-left:6px;color:var(--c-ink-2);font-weight:800}
+.cols{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:20px;margin-top:20px}
+.pn{background:var(--c-surface);border-radius:16px;padding:20px}
+.pn+.pn{margin-top:20px}
+.pn h2{font-size:18px;font-weight:900}
+.pn .hd{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:14px}
+.cap{margin-top:8px;font-size:13px;color:var(--c-ink-2)}
+.rt{display:grid;grid-template-columns:1fr auto auto;gap:4px 14px;align-items:baseline;padding:12px 0;border-top:1px solid var(--c-border-light)}
+.rt:first-of-type{border-top:0;padding-top:0}
+.rt b{font-size:24px;font-weight:1000}.rt small{grid-column:1/-1;color:var(--c-ink-2);font-size:13px}
+.gm{display:grid;grid-template-columns:24px 28px minmax(0,1fr) auto auto;gap:12px;align-items:center;min-height:52px;padding:6px 8px;margin-inline:-8px;border-radius:10px;transition:background var(--d-fast)}
+.gm:hover{background:var(--c-hover)}
+.gm .n{font-weight:800}.gm small{display:block;color:var(--c-ink-2);font-size:12px;font-weight:600}
+.gm .dt{color:var(--c-ink-2);font-size:13px}
+.club{display:flex;gap:12px;align-items:center;padding:8px 0}
+.club b{display:block}.club small{color:var(--c-ink-2)}
+.ach{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.ach div{display:flex;gap:12px;align-items:center;padding:14px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--c-border)}
+.ach .ico{width:32px;height:32px;color:var(--gold)}
+.ach .lock{opacity:.55}.ach .lock .ico{color:var(--c-ink-2)}
+.ach small{display:block;color:var(--c-ink-2)}
+.dock{display:none}
+@media(max-width:860px){
+  .hero .wrap{grid-template-columns:auto 1fr;gap:14px;padding-block:20px 16px}
+  .hero .av{--s:72px!important}
+  .who .bio,.who .chips,.who .acts{grid-column:1/-1}
+  .who{display:contents}.who>div:first-child{min-width:0;align-self:center}
+  .who .acts{display:none}
+  .main-r{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;text-align:left;min-width:0;padding-top:12px;border-top:1px solid var(--c-border-light)}
+  .main-r .big{font-size:52px}.main-r .sub{margin:0}
+  .strip{grid-template-columns:repeat(3,1fr);margin-top:16px}
+  .strip>div{padding:12px}.strip dd{font-size:22px}.strip .bar{grid-column:1/-1;box-shadow:inset 0 1px 0 var(--c-border-light)}
+  .strip>div:nth-child(-n+3){box-shadow:inset -1px -1px 0 var(--c-border-light)}
+  .tabs{top:52px;margin-inline:-16px;padding-inline:8px}
+  .cols{grid-template-columns:minmax(0,1fr)}
+  .pn{padding:16px}
+  .gm{grid-template-columns:24px 28px minmax(0,1fr) auto}.gm .dt{display:none}
+  /* thumb-zone action dock above the tab bar */
+  .dock{position:fixed;inset:auto 0 calc(60px + env(safe-area-inset-bottom));z-index:25;display:flex;gap:8px;padding:10px 16px;background:var(--c-surface);border-top:1px solid var(--c-border)}
+  .dock .btn--pri{flex:1}
+  body{padding-bottom:150px}
+}
+</style></head><body>
+<section class="hero"><div class="wrap" id="hero"></div></section>
+<main class="wrap">
+  <dl class="strip rise" style="--i:1" id="strip"></dl>
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <section data-p="ov"><div class="cols"><div id="colA"></div><div id="colB"></div></div></section>
+  <section data-p="gm" hidden><div class="pn" style="margin-top:20px"><div class="hd"><h2>Lịch sử ván</h2><div class="chips"><button class="chip" aria-selected="true">Tất cả</button><button class="chip">Thắng</button><button class="chip">Thua</button></div></div><div id="allg"></div><p style="margin-top:12px"><button class="btn">Xem thêm</button></p></div></section>
+  <section data-p="ac" hidden><div class="pn" style="margin-top:20px"><div class="hd"><h2>Thành tích</h2></div><div class="ach" id="ach"></div></div></section>
+  <section data-p="cl" hidden><div class="pn" style="margin-top:20px"><div class="hd"><h2>Hội nhóm</h2></div><div id="cl2"></div></div></section>
+</main>
+<div class="dock" id="dock"></div>
+<p class="mk-note">PF1 · Dùng đúng dữ liệu API hiện có, trừ các ô đánh dấu <span class="need">API</span>. Tab hoạt động thật trong mockup.</p>
+<script src="../icons.js"></script><script src="../data.js"></script><script>
+const {P,G,ic,av,dl,need,res,wdl,badges,actions,chart,series,form}=PF;PF.top();const m=P.ratings[0];
+hero.innerHTML=`${av(P,128)}
+ <div class="who"><div><h1 class="ell">${P.name}</h1><p class="meta"><span>@${P.user}</span><span>${ic('map-pin','ico--sm')}${PF.where}</span><span>${ic('calendar','ico--sm')}Tham gia ${P.joined}</span></p></div>
+  <p class="bio">${P.bio}</p><div class="chips">${badges()}</div><div class="acts">${actions()}</div></div>
+ <div class="main-r rise"><div><span class="eyebrow">${m.k} · rating</span><b class="big num" data-count>${m.r}</b></div><div class="sub"><span class="rank">Hạng #${m.rank}</span>${dl(m.d,' / 7 ngày')}</div></div>`;
+strip.innerHTML=[['Ván',P.stats.g],['Thắng',P.pct+'%'],['Hoà',P.stats.d],['Chuỗi thắng',P.streak.cur],['Chuỗi cao nhất',P.streak.best],['Puzzle đã giải',P.puzzles.solved]].map(a=>`<div><dt>${a[0]}</dt><dd class="num">${a[1]}</dd></div>`).join('')
+ +`<div class="bar"><small><span class="t-win">${P.stats.w} thắng</span><span class="t-draw">${P.stats.d} hoà</span><span class="t-loss">${P.stats.l} thua</span></small>${wdl()}</div>`;
+tabs.innerHTML=[['ov','Tổng quan'],['gm','Ván đấu',P.stats.g],['ac','Thành tích',P.badges.length],['cl','Hội nhóm',P.clubs.length]].map((t,i)=>`<button role="tab" data-t="${t[0]}" aria-selected="${!i}">${t[1]}${t[2]?`<small class="num">${t[2]}</small>`:''}</button>`).join('');
+const row=g=>`<a class="gm">${res(g)}${av(g,28)}<span class="n ell">${g.opp}<small>${g.rule} · ${g.moves} nước ${''}</small></span><span class="dt num">${g.date}</span>${dl(g.delta)}</a>`;
+colA.innerHTML=`<div class="pn rise" style="--i:2"><div class="hd"><h2>Biểu đồ rating</h2><div class="chips" role="tablist">${P.ratings.map((r,i)=>`<button class="chip" role="tab" aria-selected="${!i}">${r.k}</button>`).join('')}</div></div>${chart(series(m),{axis:1,peak:1,h:220})}<p class="cap">90 ngày gần nhất · cao nhất ${m.peak}</p></div>
+ <div class="pn rise" style="--i:3"><div class="hd"><h2>Ván gần đây</h2>${form(10)}</div>${G.slice(0,6).map(row).join('')}<p class="cap">Luật, số nước, ± điểm mỗi ván ${need()}</p></div>`;
+colB.innerHTML=`<div class="pn rise" style="--i:3"><div class="hd"><h2>Rating theo thể loại</h2></div>${P.ratings.map(r=>`<div class="rt"><span>${r.k}</span><b class="num">${r.r}${r.prov?'?':''}</b>${dl(r.d)}<small>${r.rank?`Hạng #${r.rank} · ${r.g} ván`:`Tạm tính · chưa vào bảng (${r.g} ván)`}</small></div>`).join('')}</div>
+ <div class="pn rise" style="--i:4"><div class="hd"><h2>Hội nhóm</h2></div>${P.clubs.map(c=>`<a class="club">${av(c,40,'av--sq')}<span><b>${c.name}</b><small>${c.role} · ${c.n} thành viên</small></span></a>`).join('')}</div>
+ <div class="pn rise" style="--i:5"><div class="hd"><h2>Puzzle</h2><span class="pill">Level ${P.puzzles.level}</span></div><b class="num" style="font-size:26px;font-weight:1000">${P.puzzles.solved}</b> <span class="muted">đã giải</span></div>`;
+allg.innerHTML=G.map(row).join('');
+ach.innerHTML=P.badges.map(b=>`<div>${ic(b.i)}<span><b>${b.t}</b><small>Đạt ${b.date} ${need()}</small></span></div>`).join('')+`<div class="lock">${ic('medal')}<span><b>1000 thắng xếp hạng</b><small>${P.stats.w}/1000 ${need()}</small></span></div>`;
+cl2.innerHTML=P.clubs.map(c=>`<a class="club">${av(c,48,'av--sq')}<span><b>${c.name}</b><small>${c.role} · ${c.n} thành viên</small></span></a>`).join('');
+dock.innerHTML=`<button class="btn btn--pri if-other">${ic('sword')}Thách đấu</button><button class="btn btn--ico if-other" aria-label="Nhắn tin">${ic('chat-circle')}</button><button class="btn btn--ico if-other" aria-label="Kết bạn">${ic('user-plus')}</button><a class="btn if-self" style="flex:1">${ic('pencil-simple')}Chỉnh sửa hồ sơ</a>`;
+PF.tabs();PF.count();
+</script></body></html>

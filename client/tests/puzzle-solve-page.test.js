@@ -57,7 +57,7 @@ describe('solve page', () => {
     scripts: ['../js/puzzle.js'],
     fetchImpl: (url, opts) => {
       if (over.fetch) { const r = over.fetch(url, opts); if (r) return r; }
-      if (url.includes('/solve')) return ok({ correct: false });
+      if (/\/solve$/.test(url)) return ok({ correct: false });
       if (url.includes('/rankings/me')) return ok({ userId: 'u1' });
       return ok({ puzzle: PUZZLE });
     },
@@ -88,18 +88,18 @@ describe('solve page', () => {
     document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
     expect(document.getElementById('pz-result').textContent).toBe('err.puzzle_moves_invalid');
-    expect(global.fetch.mock.calls.some(([u]) => u.includes('/solve'))).toBe(false);
+    expect(global.fetch.mock.calls.some(([u]) => /\/solve$/.test(u))).toBe(false);
 
     document.getElementById('pz-input').value = '122, 133';
     document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
-    const call = global.fetch.mock.calls.find(([u]) => u.includes('/solve'));
+    const call = global.fetch.mock.calls.find(([u]) => /\/solve$/.test(u));
     expect(JSON.parse(call[1].body)).toEqual({ moves: ['B9', 'M9'] }); // stride 20 on 15x15: 122 = row 7 col 2, 133 = row 7 col 13
     expect(document.getElementById('pz-result').textContent).toBe('puzzles.wrong');
   });
 
   it('a correct answer locks the board and offers the next puzzle', async () => {
-    solveBoot({ fetch: (u) => (u.includes('/solve') ? ok({ correct: true }) : null) }); await settle();
+    solveBoot({ fetch: (u) => (/\/solve$/.test(u) ? ok({ correct: true }) : null) }); await settle();
     renderers[0].opts.onCellClick(1, 6);
     document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
@@ -121,13 +121,60 @@ describe('solve page', () => {
     document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
     expect(document.getElementById('pz-login').hidden).toBe(false);
-    expect(global.fetch.mock.calls.some(([u]) => u.includes('/solve'))).toBe(false);
+    expect(global.fetch.mock.calls.some(([u]) => /\/solve$/.test(u))).toBe(false);
   });
 
   it('shows the translated error for an unknown puzzle', async () => {
     solveBoot({ fetch: (u) => (u.endsWith('/p1') ? fail(404, { code: 'PUZZLE_NOT_FOUND' }) : null) }); await settle();
     expect(document.getElementById('pz-error').hidden).toBe(false);
     expect(document.getElementById('pz-error').textContent).toBe('err.puzzle_not_found');
+  });
+});
+
+describe('solve page — attempts, solvers, number (#333/#335/#336)', () => {
+  const NUMBERED = { ...PUZZLE, number: 12, attemptsLeft: 3, attemptsUsed: 0, maxAttempts: 3 };
+  const base = (over) => (url, opts) => {
+    if (over && over(url, opts)) return over(url, opts);
+    if (/\/solve$/.test(url)) return ok({ correct: false, attemptsUsed: 1, attemptsLeft: 2, maxAttempts: 3 });
+    if (/\/solvers$/.test(url)) return ok({ total: 1, solvers: [{ username: 'bob', displayName: 'Bob', tries: 2, avatarUrl: null }] });
+    if (/\/attempts$/.test(url)) return ok({ attempts: [{ moves: [{ x: 1, y: 6 }], correct: false, createdAt: 't' }], attemptsLeft: 2 });
+    if (url.includes('/rankings/me')) return ok({ userId: 'u1' });
+    return ok({ puzzle: NUMBERED });
+  };
+  const submit = async () => {
+    renderers[0].opts.onCellClick(1, 6);
+    document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
+    await settle();
+  };
+
+  it('title carries "#n"; tries left, solvers (who + tries) and my history render as text', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base() }); await settle();
+    expect(document.getElementById('pz-title').textContent).toBe('<b>Bẫy</b> #12');
+    expect(document.getElementById('pz-attempts').textContent).toContain('puzzles.attempts_left{"n":2}'); // history refresh reports 2 left
+    expect(document.getElementById('pz-solvers-list').textContent).toContain('Bob');
+    expect(document.getElementById('pz-solvers-list').textContent).toContain('puzzles.solver_tries{"n":2}');
+    expect(document.getElementById('pz-history').hidden).toBe(false);
+    expect(document.getElementById('pz-history-list').textContent).toContain('B9');
+  });
+
+  it('a wrong try updates the tries left; at 0 the Check button is disabled', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (/\/solve$/.test(u) ? ok({ correct: false, attemptsLeft: 0 }) : /\/attempts$/.test(u) ? ok({ attempts: [], attemptsLeft: 0 }) : null)) }); await settle();
+    await submit();
+    expect(document.getElementById('pz-attempts').textContent).toContain('puzzles.attempts_none');
+    expect(document.getElementById('pz-submit').disabled).toBe(true);
+  });
+
+  it('a 429 from the server shows the out-of-tries message', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (/\/solve$/.test(u) ? fail(429, { code: 'PUZZLE_ATTEMPTS_EXCEEDED', attemptsLeft: 0 }) : null)) }); await settle();
+    await submit();
+    expect(document.getElementById('pz-result').textContent).toBe('puzzles.attempts_none');
+    expect(document.getElementById('pz-submit').disabled).toBe(true);
+  });
+
+  it('a guest still sees who solved it but gets no history request', async () => {
+    boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: base((u) => (u.includes('/rankings/me') ? fail(401, {}) : null)) }); await settle();
+    expect(document.getElementById('pz-solvers').hidden).toBe(false);
+    expect(global.fetch.mock.calls.some(([u]) => /\/attempts$/.test(u))).toBe(false);
   });
 });
 
@@ -220,7 +267,7 @@ describe('solve page — guest (#273/#275)', () => {
     renderers[0].opts.onCellClick(1, 6);
     document.getElementById('pz-form').dispatchEvent(new Event('submit', { cancelable: true }));
     await settle();
-    expect(global.fetch.mock.calls.some(([u]) => u.includes('/solve'))).toBe(false);
+    expect(global.fetch.mock.calls.some(([u]) => /\/solve$/.test(u))).toBe(false);
   });
   it('a member does not see the prompt', async () => {
     boot({ html: SOLVE_HTML, scripts: ['../js/puzzle.js'], fetchImpl: (u) => (u.includes('/rankings/me') ? ok({ userId: 'u1' }) : ok({ puzzle: PUZZLE })) });

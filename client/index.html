@@ -17,8 +17,8 @@
        session.js, so it runs before socket.io.min.js (~50 KB to fetch and parse) instead of after it. -->
   <script src="js/api-early.js?v=3c367911"></script>
   <script src="/vendor/socket.io/socket.io.min.js"></script>
-  <script src="js/socket-client.js?v=13b77de5"></script>
-  <script src="js/socket-early.js?v=dece3898"></script>
+  <script src="js/socket-client.js?v=89ce4288"></script>
+  <script src="js/socket-early.js?v=a384ff9d"></script>
   <!-- Nunito woff2, fetched with the CSS wave instead of after style.css parses (#263).
        crossorigin is required: fonts are CORS requests, a preload without it is never reused.
        Only the latin subset is preloaded: vietnamese/latin-ext are unicode-range-gated, so a page without those glyphs never uses a preload for them (browser "preloaded but not used" warning); they still load on demand via style.css. -->
@@ -26,14 +26,22 @@
 
   <meta name="description" content="Play3CR — Sảnh chờ và danh sách phòng chơi Caro trực tuyến." />
   <link rel="icon" type="image/svg+xml" href="assets/brand/logo-mark.svg" />
-  <link rel="stylesheet" href="css/main.css?v=237afa6e" />
-  <link rel="stylesheet" href="css/tokens.css?v=75d051bd" />
-  <link rel="stylesheet" href="css/lobby.css?v=64758c00" />
-  <link rel="stylesheet" href="css/lobby-zen.css?v=cb073ad1" />
-  <link rel="stylesheet" href="css/shell.css?v=524202cc" />
-  <link rel="stylesheet" href="css/platform-shell.css?v=c86085ef" />
-  <link rel="stylesheet" href="css/platform.css?v=c7ba5a99" />
-  <link rel="stylesheet" href="css/settings-panel.css?v=33a2079d" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/pwa/apple-touch-icon.png" />
+  <meta name="theme-color" content="#161512" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Play3CR" />
+  <link rel="stylesheet" href="css/main.css?v=8aabd3f8" />
+  <link rel="stylesheet" href="css/tokens.css?v=db200088" />
+  <link rel="stylesheet" href="css/lobby.css?v=fd31e763" />
+  <link rel="stylesheet" href="css/lobby-zen.css?v=543a22f1" />
+  <link rel="stylesheet" href="css/shell.css?v=09cb623c" />
+  <link rel="stylesheet" href="css/platform-shell.css?v=10e0e4bb" />
+  <link rel="stylesheet" href="css/platform.css?v=594eb7c6" />
+  <link rel="stylesheet" href="css/pwa-banner.css?v=c3eeb0e5" />
+  <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
+  <link rel="stylesheet" href="css/rooms-hall.css?v=b7e0b654" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
@@ -41,14 +49,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=7d67ef60" />
+  <link rel="modulepreload" href="js/i18n.js?v=3ab6807f" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
-  <link rel="modulepreload" href="js/settings-panel.js?v=014127cb" />
-  <link rel="modulepreload" href="js/platform-shell.js?v=86159d16" />
-  <link rel="modulepreload" href="js/lobby.js?v=7cb74e0c" />
-  <link rel="modulepreload" href="js/private-chat.js?v=4353d880" />
-  <link rel="modulepreload" href="js/tournaments.js?v=b48ec7cd" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=c0a8db7e" />
+  <link rel="modulepreload" href="js/settings-panel.js?v=7acad48e" />
+  <link rel="modulepreload" href="js/platform-shell.js?v=bd6fcdfc" />
+  <link rel="modulepreload" href="js/lobby.js?v=f155548e" />
+  <link rel="modulepreload" href="js/private-chat.js?v=0606a1fd" />
+  <link rel="modulepreload" href="js/tournaments.js?v=a7608bd9" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=dd3c2d33" />
 
 </head>
 <body class="zen-lobby">
@@ -75,7 +83,7 @@
     </div>
     <div class="lobby-bar__actions" id="lobby-bar">
       <button id="btn-create-tournament" hidden class="link-action link-action--primary" type="button">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-plus-circle"></use></svg>
         <span data-i18n="tournaments.btn_create">Tạo giải đấu</span>
       </button>
     </div>
@@ -83,89 +91,124 @@
 
   <!-- ══════════════════════ SCREEN: Chơi (home dashboard, B195) ════════════ -->
   <!-- Filled by js/lobby-home.js from GET /api/home. -->
-  <section class="lobby-home psplit" id="screen-home" aria-labelledby="hero-title">
-    <div class="hstats" id="home-stats" aria-live="off"></div>
+  <section class="lobby-home hq" id="screen-home" aria-labelledby="home-q">
+    <!-- #358 M4 "Câu lệnh" (DESIGN.md): greeting row → resume strip → sentence composer + Chơi nhanh → room code; right column = live counts. -->
+    <div class="hq-hello">
+      <span class="hq-hi" id="home-hello"></span>
+      <span class="hq-online" id="home-online" hidden></span><!-- phones only since #366 (desktop: board row #home-n-online) -->
+    </div>
     <div class="hnews" id="home-news" hidden></div>
-    <div class="hstack">
-      <div class="ppanel hp-qm">
-        <h2 class="ph2" data-i18n="qm.title">Ghép trận nhanh</h2>
-        <div class="qm-start">
-          <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
+    <div class="ppanel hp-mine" id="home-mine-card" hidden>
+      <h2 class="ph2" data-i18n="home.my_games">Phòng chơi</h2>
+      <div class="prows" id="home-mine"></div>
+    </div>
+    <div class="hq-main">
+      <!-- Static default sentence = the first render's shape (no reflow of a 60px h1); lobby-home.js rebuilds it with the saved pick. -->
+      <h1 class="hq-q" id="home-q">Tìm cho tôi một ván <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">Luật 1 (Ô khoá)</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">thời gian tự động</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">xếp hạng</button>.</h1>
+      <ul class="hq-menu" id="qm-pick" role="listbox" hidden></ul>
+      <div class="hq-go">
+        <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
+        <!-- #361 T2: twin of Chơi nhanh, members only; opens the opponent picker (home-challenge.js) with the sentence's rules. -->
+        <button type="button" class="hq-chal" id="qm-challenge" aria-haspopup="dialog" aria-expanded="false" hidden><span class="hq-chal__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-sword"></use></svg></span><span data-i18n="qm.challenge">Thách đấu</span></button>
+        <div class="hq-search" id="qm-search" hidden>
+          <span class="hq-ring" aria-hidden="true"></span>
+          <span class="hq-search__text" id="qm-status" aria-live="polite"></span>
           <div class="pactions" id="qm-actions"></div>
         </div>
-        <p class="qm-lbl" aria-hidden="true" data-i18n="qm.lbl_rule">Luật chơi</p>
-        <div class="pchips" id="qm-rule" role="group" aria-label="Luật" data-i18n-aria="qm.rule_aria"></div>
-        <p class="qm-lbl" aria-hidden="true" data-i18n="qm.lbl_time">Thời gian · mỗi người</p>
-        <div class="pchips" id="qm-time" role="group" aria-label="Thời gian" data-i18n-aria="qm.time_aria"></div>
-        <p class="qm-hint" id="qm-time-hint" data-i18n="qm.time_auto_hint">Tự động: hệ thống chọn thời gian. Chọn một mức ở trên để chỉnh tay.</p>
-        <p class="qm-lbl" aria-hidden="true" data-i18n="qm.lbl_board">Biến thể bàn cờ</p>
-        <div class="pchips" id="qm-board" role="group" aria-label="Bàn cờ" data-i18n-aria="qm.board_aria"></div>
       </div>
-      <div class="ppanel hp-learn">
-        <h2 class="ph2" data-i18n="home.learn">Học &amp; giải đố</h2>
-        <div class="prows" id="home-learn"></div>
-      </div>
+      <!-- #362 F: phones only (≤860px) — the two count cards become this one line under the play buttons; desktop keeps #home-stats. -->
+      <p class="hq-pulse" id="home-pulse">
+        <span class="hq-pulse__dot" aria-hidden="true"></span>
+        <span class="hq-pulse__part" id="home-pulse-search"><b>–</b><span data-i18n="home.pulse_searching">người đang tìm trận</span></span>
+        <span class="hq-pulse__sep" aria-hidden="true"></span>
+        <a class="hq-pulse__part" id="home-pulse-live"><b>–</b><span data-i18n="home.pulse_playing">ván đang chơi</span></a>
+      </p>
+      <p class="muted small qm-line" id="qm-line" aria-live="polite"></p>
+      <p class="hq-or" data-i18n="home.or_code">hoặc vào phòng bằng mã</p>
+      <form class="hq-code" id="home-code" novalidate>
+        <span class="hq-code__hash" aria-hidden="true">#</span>
+        <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
+        <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
+        <input class="hq-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
+        <button type="submit" class="hq-enter"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-door-open"></use></svg><span data-i18n="home.enter_room">Vào phòng</span></button>
+        <a class="hq-list" id="hub-rooms" href="#rooms"><span data-i18n="home.open_rooms">Xem phòng đang mở</span><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-caret-right"></use></svg></a>
+        <p class="hq-code__err" id="home-code-error" role="alert" hidden></p>
+      </form>
+      <!-- #360 N2: phones only (≤860px) — the greeting-row icons become 4 labelled tiles here; desktop keeps .hub-more. -->
+      <nav class="hq-tiles" aria-label="Khám phá" data-i18n-aria="home.more_aria">
+        <a class="hq-tile" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-tile" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-tile" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-tile" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+      </nav>
     </div>
-    <div class="hstack">
-      <div class="ppanel hp-mine">
-        <h2 class="ph2" data-i18n="home.my_games">Phòng chơi</h2>
-        <div class="prows" id="home-mine"></div>
-      </div>
-      <div class="ppanel hp-today">
-        <h2 class="ph2" data-i18n="home.today">Hôm nay</h2>
-        <div class="prows" id="home-today"></div>
-      </div>
-      <div class="ppanel hp-forum">
-        <h2 class="ph2" data-i18n="home.forum">Diễn đàn</h2>
-        <div class="prows" id="home-forum"></div>
-      </div>
-      <div class="ppanel hp-live">
-        <h2 class="ph2" data-i18n="home.live">Đang phát trực tiếp</h2>
-        <div class="hlives" id="home-live"></div>
-      </div>
+    <!-- #366 C "Bảng quán cờ": desktop only (hidden ≤860px, where .hq-pulse + .hq-tiles carry the same data/links). -->
+    <div class="hq-side" id="home-stats" role="group" aria-label="Đang diễn ra" data-i18n-aria="home.side_aria">
+      <section class="hq-board" aria-labelledby="home-board-h">
+        <h2 class="hq-board__top"><span id="home-board-h" data-i18n="home.board_title">Bảng quán cờ</span><span class="hq-board__live"><i aria-hidden="true"></i><span data-i18n="home.board_live">Trực tiếp</span></span></h2>
+        <p class="hq-row hq-row--on"><b class="hq-dig" id="home-n-online">–</b><span class="hq-row__l"><span data-i18n="home.board_online">người đang online</span></span></p>
+        <p class="hq-row"><b class="hq-dig" id="home-n-search">–</b><span class="hq-row__l" id="home-n-search-l"></span></p>
+        <p class="hq-row"><b class="hq-dig" id="home-n-live">–</b><span class="hq-row__l" id="home-n-live-l"></span></p>
+        <div id="home-live-one"></div>
+      </section>
+      <nav class="hub-more" aria-label="Khám phá" data-i18n-aria="home.more_aria">
+        <a class="hq-chip" href="/puzzles"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-target"></use></svg><span data-i18n="shell.learn">Học</span></a>
+        <a class="hq-chip" href="/forum"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-chat-circle"></use></svg><span data-i18n="home.forum">Diễn đàn</span></a>
+        <a class="hq-chip" href="/index.html#tournaments"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-trophy"></use></svg><span data-i18n="tabs.tournaments">Giải đấu</span></a>
+        <a class="hq-chip" href="/clubs.html"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg><span data-i18n="lobby.clubs">Hội nhóm</span></a>
+      </nav>
     </div>
   </section>
 
   <!-- ══════════════════════════ SCREEN: Phòng (room list) ══════════════════ -->
+  <!-- #364 R1 "Sảnh gỗ" (DESIGN.md): photo hero (live counts + room code) → tabs + who is online → table-card grid (lobby.js). -->
   <div class="tab-panel" id="panel-tables">
-    <!-- Arena .bar: tabs Phòng / Bàn / Quan sát (client-side filters over the one room list, B210c) left, the screen's actions right. -->
-    <div class="pbar room-bar">
-      <div class="ptabs" id="room-tabs" role="tablist" data-i18n-aria="lobby.tabs_aria" aria-label="Lọc phòng">
-        <button type="button" role="tab" class="ptab" data-room-tab="all" aria-selected="true" data-i18n="lobby.tab_rooms">Phòng</button>
-        <button type="button" role="tab" class="ptab" data-room-tab="open" aria-selected="false" data-i18n="lobby.tab_tables">Bàn</button>
-        <button type="button" role="tab" class="ptab" data-room-tab="watch" aria-selected="false" data-i18n="lobby.tab_watch">Quan sát</button>
+    <section class="rh" aria-labelledby="rh-title">
+      <img class="rh__img" src="assets/photos/rooms-hero-1280.webp" srcset="assets/photos/rooms-hero-640.webp 640w, assets/photos/rooms-hero-1280.webp 1280w" sizes="100vw" width="1280" height="707" alt="" fetchpriority="high" decoding="async" />
+      <div class="rh__in">
+        <div class="rh__text">
+          <p class="rh__eyebrow"><i aria-hidden="true"></i><span data-i18n="lobby.rh_eyebrow">Sảnh đang mở</span></p>
+          <h1 class="rh__title" id="rh-title" data-i18n="lobby.rh_title">Vào sảnh, giao lưu cùng mọi người.</h1>
+          <ul class="rh__stats" aria-live="polite">
+            <li><b id="rh-n-open">0</b><span data-i18n="lobby.rh_open">bàn chờ đối thủ</span></li>
+            <li><b id="rh-n-live">0</b><span data-i18n="lobby.rh_live">ván đang đấu</span></li>
+            <li><b id="rh-n-watch">0</b><span data-i18n="lobby.rh_watch">người đang xem</span></li>
+            <li><b id="rh-n-online">0</b><span data-i18n="lobby.rh_online">đang online</span></li>
+          </ul>
+        </div>
+        <div class="rh__act">
+          <form id="join-code-form" class="rh-code" novalidate autocomplete="off">
+            <label class="rh__lbl" for="join-code-1" data-i18n="lobby.join_code">Vào bằng mã</label>
+            <div class="rh-code__row">
+              <span class="rh-code__hash" aria-hidden="true">#</span>
+              <input class="rh-code__box" id="join-code-1" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
+              <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
+              <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
+              <button id="btn-join-code" class="rh-code__go" type="submit"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-door-open"></use></svg><span data-i18n="lobby.join_code_go">Vào</span></button>
+            </div>
+            <p id="join-code-error" class="rh-code__err" role="alert" hidden></p>
+          </form>
+        </div>
       </div>
-      <div class="lobby-bar__actions" id="room-actions">
-        <button id="btn-create" class="link-action link-action--primary" type="button">
-          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-plus-circle"></use></svg>
-          <span data-i18n="lobby.btn_create">Tạo phòng</span>
-        </button>
-        <button id="btn-join-code" hidden class="link-action" type="button" aria-expanded="false" aria-controls="join-code-form">
-          <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-door-open"></use></svg>
-          <span data-i18n="lobby.join_code">Vào bằng mã</span>
-        </button>
-        <form id="join-code-form" class="join-code" hidden autocomplete="off">
-          <input id="join-code" class="join-code__input" type="text" maxlength="4" inputmode="text" spellcheck="false" placeholder="#A3F" data-i18n-placeholder="lobby.join_code_ph" aria-label="Mã phòng" data-i18n-aria="lobby.join_code_aria" />
-          <button class="link-action link-action--primary" type="submit" data-i18n="lobby.join_code_go">Vào</button>
-          <span id="join-code-error" class="join-code__error" role="alert" hidden></span>
-        </form>
+      <p class="rh__credit"><span data-i18n="lobby.rh_photo">Ảnh</span>: <a href="https://pixabay.com/photos/go-board-game-board-games-game-3339748/" target="_blank" rel="noopener">OrcaTec / Pixabay</a></p>
+    </section>
+
+    <!-- "Đang chơi · N" (one label — the Phòng/Bàn/Quan sát filters were dropped 2026-11-13) + who is online as avatars (#159: an avatar opens a PM). -->
+    <div class="rbar">
+      <h2 class="rbar__h"><span data-i18n="lobby.rh_playing">Đang chơi</span><span class="ptab__n" id="room-n-playing">0</span></h2>
+      <div class="online-line" id="online-line" hidden>
+        <span class="online-line__names" id="online-line-names"></span>
+        <span class="online-line__title"><span id="online-line-count">0</span> <span data-i18n="lobby.rh_online">đang online</span></span>
       </div>
     </div>
-    <!-- Room list container -->
-    <div id="room-list" class="room-list">
+
+    <!-- Room cards (lobby.js renderRoomList); the last card opens the create modal. -->
+    <div id="room-list" class="room-list rgrid">
       <div class="room-list__empty">
         <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
         <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
       </div>
-    </div>
-
-    <!-- Online users — the mockup's flowing text line, replacing the old
-         sticky sidebar panel. Written by lobby.js on lobby:online_users. -->
-    <div class="online-line" id="online-line" hidden>
-      <span class="online-line__title">
-        <span data-i18n="lobby.online_title">Đang online</span> · <span id="online-line-count">0</span>
-      </span>
-      <span class="online-line__names" id="online-line-names"></span>
+      <button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-plus-circle"></use></svg></span><span data-i18n="lobby.rh_new_table">Mở bàn mới</span></button>
     </div>
   </div>
 
@@ -173,7 +216,7 @@
   <div class="tab-panel" id="panel-tournaments">
     <div id="live-matches-panel" class="live-matches-panel" style="display:none;">
       <div class="live-matches-panel__header">
-        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-broadcast"></use></svg>
+        <svg class="icon"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-broadcast"></use></svg>
         <span data-i18n="live_matches.title">Trận đang diễn ra</span>
       </div>
       <div id="live-matches-list" class="live-matches-panel__list"></div>
@@ -184,7 +227,7 @@
       <button class="filter-pill" data-filter="active" data-i18n="tournaments.filter_active">Đang diễn ra</button>
       <button class="filter-pill" data-filter="completed" data-i18n="tournaments.filter_done">Đã kết thúc</button>
       <button class="filter-pill" data-filter="all" data-i18n="tournaments.filter_all">Tất cả</button>
-      <button class="filter-pill" data-filter="mine_clubs" id="filter-my-clubs" hidden data-i18n="tournaments.filter_my_clubs">Của CLB</button>
+      <button class="filter-pill" data-filter="mine_clubs" id="filter-my-clubs" hidden data-i18n="tournaments.filter_my_clubs">Của nhÃ³m</button>
       <div class="filter-spacer"></div>
       <select id="tournament-format-filter" class="filter-select" aria-label="Lọc theo thể thức" data-i18n-aria="tournaments.filter_format_aria">
         <option value="" data-i18n="tournaments.filter_format_all">Mọi thể thức</option>
@@ -206,7 +249,7 @@
   <div class="modal">
     <div class="modal__header">
       <h2 id="modal-title" class="modal__title" data-i18n="modal.title">Tạo phòng mới</h2>
-      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button id="modal-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
 
@@ -220,23 +263,16 @@
 
       <!-- Mode: rated / friendly (room.settings.ranked) -->
       <div class="setting-row">
-        <span class="setting-label" id="mode-label" data-i18n="modal.mode">Chế độ</span>
-        <div class="mode-cards" role="radiogroup" aria-labelledby="mode-label">
-          <input type="radio" name="roomMode" id="rm-rated" value="rated" checked />
-          <label for="rm-rated" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-trophy"></use></svg>
-            <span class="mode-card__name" data-i18n="room.mode_rated">Xếp hạng</span>
-            <span class="mode-card__desc" data-i18n="modal.mode_rated_desc">Tính điểm Elo, không đi lại</span>
-          </label>
-          <input type="radio" name="roomMode" id="rm-friendly" value="friendly" />
-          <label for="rm-friendly" class="mode-card">
-            <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-handshake"></use></svg>
-            <span class="mode-card__name" data-i18n="room.mode_friendly">Giao hữu</span>
-            <span class="mode-card__desc" data-i18n="modal.mode_friendly_desc">Không tính điểm, được đi lại</span>
-          </label>
-        </div>
+        <label class="setting-label" for="rm-select" data-i18n="modal.mode">Chế độ</label>
+        <select class="setting-select" id="rm-select" name="roomMode">
+          <option value="rated" data-i18n="room.mode_rated">Xếp hạng</option>
+          <option value="friendly" data-i18n="room.mode_friendly">Giao hữu</option>
+        </select>
+        <p class="setting-hint" id="rm-hint" data-i18n="modal.mode_rated_desc">Tính điểm Elo, không đi lại</p>
         <p class="setting-hint" data-i18n="modal.mode_guest_note">Có khách ngồi chơi thì ván tự thành giao hữu.</p>
       </div>
+
+      <p id="modal-summary" class="modal__summary" aria-live="polite"></p>
 
       <!-- Lite: one-tap create with last-used (or default) settings -->
       <button id="btn-quick-match" class="btn btn-confirm modal__quick" type="button" data-i18n="modal.quick_match">Tạo nhanh</button>
@@ -251,43 +287,31 @@
 
       <div id="modal-advanced" class="modal__advanced">
 
-      <!-- Board size -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.board_size">Kích thước bàn</span>
-        <div class="pill-group">
-          <input type="radio" name="boardSize" id="bs-15" value="15" />
-          <label for="bs-15">15×15</label>
-          <input type="radio" name="boardSize" id="bs-17" value="17" checked />
-          <label for="bs-17">17×17</label>
-          <input type="radio" name="boardSize" id="bs-19" value="19" />
-          <label for="bs-19">19×19</label>
-          <input type="radio" name="boardSize" id="bs-20" value="20" />
-          <label for="bs-20">20×20</label>
-        </div>
+        <label class="setting-label" for="bs-select" data-i18n="modal.board_size">Kích thước bàn</label>
+        <select class="setting-select" id="bs-select" name="boardSize">
+          <option value="15">15×15</option>
+          <option value="17">17×17</option>
+          <option value="19" selected>19×19</option>
+          <option value="20">20×20</option>
+        </select>
       </div>
 
-      <!-- Winning rule (radio — pick one) -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.win_rule">Luật thắng</span>
-        <div class="pill-group">
-          <input type="radio" name="winRule" id="wr-freestyle" value="freestyle" checked />
-          <label for="wr-freestyle" data-i18n="rule.freestyle">Tự do</label>
-          <input type="radio" name="winRule" id="wr-standard" value="standard" />
-          <label for="wr-standard" data-i18n="rule.standard">Tiêu chuẩn</label>
-          <input type="radio" name="winRule" id="wr-caro" value="caro" />
-          <label for="wr-caro" data-i18n="rule.caro">Caro</label>
-        </div>
+        <label class="setting-label" for="wr-select" data-i18n="modal.win_rule">Luật thắng</label>
+        <select class="setting-select" id="wr-select" name="winRule">
+          <option value="freestyle" data-i18n="rule.freestyle">Luật 1</option>
+          <option value="standard" data-i18n="rule.standard">Tiêu chuẩn</option>
+          <option value="caro" data-i18n="rule.caro">Luật 2</option>
+        </select>
       </div>
 
-      <!-- Opening rule (radio — pick one) -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.opening">Luật mở đầu</span>
-        <div class="pill-group">
-          <input type="radio" name="openRule" id="or-none" value="none" checked />
-          <label for="or-none" data-i18n="rule.none">Không</label>
-          <input type="radio" name="openRule" id="or-swap2" value="swap2" />
-          <label for="or-swap2">Swap2</label>
-        </div>
+        <label class="setting-label" for="or-select" data-i18n="modal.opening">Luật mở đầu</label>
+        <select class="setting-select" id="or-select" name="openRule">
+          <option value="none" data-i18n="rule.none">Không</option>
+          <option value="swap2">Swap2</option>
+        </select>
       </div>
 
       <!-- Board setup (checkboxes — may combine) -->
@@ -309,17 +333,13 @@
         </div>
       </div>
 
-      <!-- Timer mode -->
       <div class="setting-row">
-        <span class="setting-label" data-i18n="modal.timer_mode">Bộ đếm giờ</span>
-        <div class="pill-group">
-          <input type="radio" name="timerMode" id="tm-move" value="per_move" checked />
-          <label for="tm-move" data-i18n="modal.per_move">Mỗi nước</label>
-          <input type="radio" name="timerMode" id="tm-game" value="per_game" />
-          <label for="tm-game" data-i18n="modal.per_game">Mỗi ván</label>
-          <input type="radio" name="timerMode" id="tm-blitz" value="blitz" />
-          <label for="tm-blitz" data-i18n="modal.blitz">Blitz</label>
-        </div>
+        <label class="setting-label" for="tm-select" data-i18n="modal.timer_mode">Bộ đếm giờ</label>
+        <select class="setting-select" id="tm-select" name="timerMode">
+          <option value="per_move" data-i18n="modal.per_move">Mỗi nước</option>
+          <option value="per_game" data-i18n="modal.per_game">Mỗi ván</option>
+          <option value="blitz" data-i18n="modal.blitz">Blitz</option>
+        </select>
       </div>
 
       <!-- Timer seconds + increment (increment only applies in Blitz; disabled otherwise via lobby.js) -->
@@ -356,7 +376,7 @@
   <div class="modal">
     <div class="modal__header">
       <h2 id="modal-tournament-title" class="modal__title" data-i18n="tournaments.modal_title">Tạo giải đấu mới</h2>
-      <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button id="modal-tournament-close" class="modal__close" type="button" data-i18n-aria="modal.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
       <p id="tournament-club-note" class="pnote" hidden></p>
@@ -402,11 +422,11 @@
         <span class="setting-label" data-i18n="modal.win_rule">Luật thắng</span>
         <div class="pill-group">
           <input type="radio" name="tWinRule" id="twr-freestyle" value="freestyle" checked />
-          <label for="twr-freestyle" data-i18n="rule.freestyle">Tự do</label>
+          <label for="twr-freestyle" data-i18n="rule.freestyle">Luật 1</label>
           <input type="radio" name="tWinRule" id="twr-standard" value="standard" />
           <label for="twr-standard" data-i18n="rule.standard">Tiêu chuẩn</label>
           <input type="radio" name="tWinRule" id="twr-caro" value="caro" />
-          <label for="twr-caro" data-i18n="rule.caro">Caro</label>
+          <label for="twr-caro" data-i18n="rule.caro">Luật 2</label>
         </div>
       </div>
 
@@ -553,15 +573,15 @@
   <div class="modal online-users-modal">
     <div class="modal__header">
       <span class="online-users-modal__title-wrap">
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-users-three"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-users-three"></use></svg>
         <h2 id="modal-online-users-title" class="modal__title" data-i18n="private_chat.modal_title">Danh sách người dùng online</h2>
         <span id="online-users-count" class="online-users-modal__count">0</span>
       </span>
-      <button id="modal-online-users-close" class="modal__close" type="button" data-i18n-aria="private_chat.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-bold-x"></use></svg></button>
+      <button id="modal-online-users-close" class="modal__close" type="button" data-i18n-aria="private_chat.close" aria-label="Đóng"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-bold-x"></use></svg></button>
     </div>
     <div class="modal__body">
       <div class="online-users-search-wrap">
-        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=421b7369#ph-regular-magnifying-glass"></use></svg>
+        <svg class="icon online-users-search__icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-magnifying-glass"></use></svg>
         <input type="text" id="online-users-search" class="online-users-search" autocomplete="off"
                data-i18n-placeholder="private_chat.modal_search_ph" placeholder="Tìm kiếm người dùng..." />
         <kbd class="online-users-search-shortcut"></kbd>
@@ -574,8 +594,11 @@
 <!-- Socket.io CDN -->
 <!-- socket.io.min.js now loads in <head> (TODO.md #145) -->
 <script src="js/escape-utils.js?v=05dffe1e"></script>
-<script src="js/audio-manager.js?v=f0ca2309"></script>
+<script src="js/lobby-moves.js?v=f3153a8a"></script>
+<script src="js/audio-manager.js?v=7f8d015d"></script>
 <script src="js/action-delegate.js?v=7420bbed"></script>
-<script type="module" src="js/index-entry.js?v=ad89776c"></script>
+<script src="js/challenge-modal.js?v=ef75733c"></script>
+<script src="js/home-challenge.js?v=a4c4bc5e"></script>
+<script type="module" src="js/index-entry.js?v=77ae7ff6"></script>
 </body>
 </html>

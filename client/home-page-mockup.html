@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home page — mockup</title>
+<style>
+/* Static mockup. Tokens from client/css/tokens.css (arena dark). Hub is centred; footer nav is pinned (position:absolute here = fixed in the app) so opening the menu never moves it. */
+:root{--bg:#161512;--s:#262421;--s2:#2f2d29;--bd:rgba(255,255,255,.10);--ink:#e8e6e1;--ink2:#a8a49b;--brand:#4f7d1c;--brand-d:#3f6516;--brand-t:#8bc34a;--r:20px}
+*{box-sizing:border-box}
+body{margin:0;background:#0e0d0b;color:var(--ink);font:15px/1.45 system-ui,sans-serif;padding:24px 16px 56px}
+h1{font-size:20px;margin:0 0 4px}.note{color:var(--ink2);margin:0 0 20px;max-width:90ch}
+.row{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.label{font-size:12px;color:var(--ink2);margin:0 0 6px;text-transform:uppercase;letter-spacing:.06em}
+.frame{position:relative;background:var(--bg);border:1px solid var(--bd);border-radius:12px;overflow:hidden;height:680px}
+.desk{width:560px}.mob{width:340px}
+.nav{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--s);border-bottom:1px solid var(--bd);font-weight:700}
+.nav span{margin-left:auto;color:var(--ink2);font-weight:400;font-size:13px}
+/* main: fixed top offset => hub never shifts vertically between states */
+.main{position:absolute;top:44px;bottom:72px;left:0;right:0;display:flex;flex-direction:column;align-items:center;padding:0 16px}
+.stat{margin:18px 0 22px;font-size:13px;color:var(--ink2)}.stat b{color:var(--ink);font-size:15px}
+.news{margin-bottom:14px;font-size:13px;color:var(--ink2)}.news em{color:var(--brand-t);font-style:normal;font-weight:700}
+.hub{width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;border-radius:var(--r);font-weight:700;border:1px solid var(--bd);background:var(--s);color:var(--ink);min-height:56px;padding:0 20px}
+.split{display:flex}.play{flex:1;background:var(--brand);border-color:transparent;color:#fff;font-size:18px;min-height:64px;border-radius:var(--r) 0 0 var(--r)}
+.opt{width:64px;min-height:64px;background:var(--s2);border-radius:0 var(--r) var(--r) 0;border-left:1px solid var(--brand-d)}
+.menu{background:var(--s);border:1px solid var(--bd);border-radius:var(--r);padding:12px 16px 14px;font-size:13px;color:var(--ink2)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}.chip{padding:5px 12px;border-radius:99px;border:1px solid var(--bd);background:var(--s2);color:var(--ink)}.chip.on{background:var(--brand);border-color:transparent;color:#fff}
+.line{text-align:center;color:var(--ink2);font-size:13px;min-height:20px}
+.cancel{border-color:var(--brand);color:var(--brand-t)}
+/* footer nav: pinned, equal-width cells, label always shown */
+.foot{position:absolute;left:0;right:0;bottom:0;height:72px;background:var(--s);border-top:1px solid var(--bd);display:flex;justify-content:center;gap:4px;padding:6px 8px}
+.foot a{flex:1;max-width:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:12px;color:var(--ink2);font-size:12px;text-decoration:none}
+.foot a i{font-style:normal;font-size:22px;line-height:1}
+.foot a.on{color:var(--ink);background:var(--s2)}
+.mob .stat{margin:14px 0 18px}
+.mob .foot a{font-size:11px}
+.pros{margin:10px 0 0;padding-left:18px;color:var(--ink2);font-size:13px;max-width:90ch}
+
+/* ref: Gomoku Rush — stacked outlined cards, icon left, title + subtitle, colour-coded */
+.title{margin:16px 0 2px;font-size:24px;font-weight:800;text-align:center}
+.sub{margin:0 0 16px;font-size:13px;color:var(--ink2);text-align:center}.sub b{color:var(--ink)}
+.card{display:flex;align-items:center;gap:16px;min-height:76px;padding:0 18px;border-radius:var(--r);background:var(--s);border:2px solid var(--bd);color:var(--ink)}
+.card i{font-style:normal;font-size:26px;width:34px;text-align:center;flex:none}
+.card b{display:block;font-size:18px}.card small{display:block;color:var(--ink2);font-size:12px;margin-top:1px}
+.card.play{border-color:var(--brand);background:var(--brand);color:#fff}.card.play small{color:#e6f3d4}
+.card.dash{border:2px dashed var(--brand-t);min-height:64px}.card.dash small{color:var(--ink2)}
+.card .gear{margin-left:auto;width:48px;height:48px;border-radius:12px;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:20px}
+.card.cancel{border-color:var(--brand-t);color:var(--brand-t)}
+.tools{display:flex;justify-content:space-between;width:100%;max-width:420px;padding:12px 2px 0;font-size:20px}
+.tools span{display:flex;gap:16px}.link{text-align:center;font-size:13px;color:var(--acc);margin-top:6px}
+.main{top:0}.nav{display:none}
+</style>
+</head>
+<body>
+<h1>Trang chủ — mockup để duyệt</h1>
+<p class="note">Chỉ 2 hành động: <b>Chơi nhanh</b> (kèm ⚙ tuỳ chọn) và <b>Phòng</b>. Tiêu đề nhỏ căn giữa + dòng số liệu; hàng icon tiện ích ở trên; footer cố định 5 mục có nhãn. 5 khung: desktop nghỉ / mở tuỳ chọn, mobile nghỉ / mở tuỳ chọn / đang tìm trận — hub và footer giữ nguyên vị trí. Mockup tĩnh, emoji thay cho icon Phosphor, chưa đụng code app.</p>
+
+<div class="row">
+ <div><p class="label">Desktop · nghỉ</p>
+ <div class="frame desk"><div class="nav">♟ Gomoku VN<span>Nguyễn · Elo 1480</span></div>
+  <div class="main"><div class="tools"><span>▦</span><span><i style="font-style:normal">⚙</i><i style="font-style:normal">⤴</i></span></div>
+   <div class="title">Gomoku VN</div><p class="sub"><b>128</b> online · <b>14</b> đang chơi</p>
+   <div class="hub"><div class="card play"><i>▶</i><div><b>Chơi nhanh</b><small>Xếp hạng · Luật tự do · 10+5</small></div><span class="gear" >⚙</span></div><div class="card"><i>🚪</i><div><b>Phòng</b><small>14 phòng · vào bằng mã</small></div></div></div></div>
+  <div class="foot"><a><i>🏅</i>Xếp hạng</a><a><i>👥</i>CLB</a><a><i>🏆</i>Giải đấu</a><a><i>🎯</i>Học</a><a><i>💬</i>Diễn đàn</a></div>
+ </div></div>
+
+ <div><p class="label">Desktop · mở tuỳ chọn</p>
+ <div class="frame desk"><div class="nav">♟ Gomoku VN<span>Nguyễn · Elo 1480</span></div>
+  <div class="main"><div class="tools"><span>▦</span><span><i style="font-style:normal">⚙</i><i style="font-style:normal">⤴</i></span></div>
+   <div class="title">Gomoku VN</div><p class="sub"><b>128</b> online · <b>14</b> đang chơi</p>
+   <div class="hub"><div class="card play"><i>▶</i><div><b>Chơi nhanh</b><small>Xếp hạng · Luật tự do · 10+5</small></div><span class="gear" style="background:rgba(0,0,0,.35)">⚙</span></div><div class="menu">Luật<div class="chips"><span class="chip on">Tự do</span><span class="chip">Chặn 2 đầu</span><span class="chip">Renju</span></div>Thời gian<div class="chips"><span class="chip">5+3</span><span class="chip on">10+5</span><span class="chip">15+10</span></div><span style="color:var(--brand-t)">⚔ Thách bạn bè</span></div><div class="card"><i>🚪</i><div><b>Phòng</b><small>14 phòng · vào bằng mã</small></div></div></div></div>
+  <div class="foot"><a><i>🏅</i>Xếp hạng</a><a><i>👥</i>CLB</a><a><i>🏆</i>Giải đấu</a><a><i>🎯</i>Học</a><a><i>💬</i>Diễn đàn</a></div>
+ </div></div>
+</div>
+
+<div class="row" style="margin-top:20px">
+ <div><p class="label">Mobile · nghỉ</p>
+ <div class="frame mob"><div class="nav">♟ Gomoku VN<span>☰</span></div>
+  <div class="main"><div class="tools"><span>▦</span><span><i style="font-style:normal">⚙</i><i style="font-style:normal">⤴</i></span></div>
+   <div class="title">Gomoku VN</div><p class="sub"><b>128</b> online · <b>14</b> đang chơi</p>
+   <div class="hub"><div class="card play"><i>▶</i><div><b>Chơi nhanh</b><small>Xếp hạng · Luật tự do · 10+5</small></div><span class="gear" >⚙</span></div><div class="card"><i>🚪</i><div><b>Phòng</b><small>14 phòng · vào bằng mã</small></div></div></div></div>
+  <div class="foot"><a><i>🏅</i>Xếp hạng</a><a><i>👥</i>CLB</a><a><i>🏆</i>Giải đấu</a><a><i>🎯</i>Học</a><a><i>💬</i>Diễn đàn</a></div>
+ </div></div>
+
+ <div><p class="label">Mobile · mở tuỳ chọn</p>
+ <div class="frame mob"><div class="nav">♟ Gomoku VN<span>☰</span></div>
+  <div class="main"><div class="tools"><span>▦</span><span><i style="font-style:normal">⚙</i><i style="font-style:normal">⤴</i></span></div>
+   <div class="title">Gomoku VN</div><p class="sub"><b>128</b> online · <b>14</b> đang chơi</p>
+   <div class="hub"><div class="card play"><i>▶</i><div><b>Chơi nhanh</b><small>Xếp hạng · Luật tự do · 10+5</small></div><span class="gear" style="background:rgba(0,0,0,.35)">⚙</span></div><div class="menu">Luật<div class="chips"><span class="chip on">Tự do</span><span class="chip">Chặn 2 đầu</span><span class="chip">Renju</span></div>Thời gian<div class="chips"><span class="chip">5+3</span><span class="chip on">10+5</span><span class="chip">15+10</span></div><span style="color:var(--brand-t)">⚔ Thách bạn bè</span></div><div class="card"><i>🚪</i><div><b>Phòng</b><small>14 phòng · vào bằng mã</small></div></div></div></div>
+  <div class="foot"><a><i>🏅</i>Xếp hạng</a><a><i>👥</i>CLB</a><a><i>🏆</i>Giải đấu</a><a><i>🎯</i>Học</a><a><i>💬</i>Diễn đàn</a></div>
+ </div></div>
+
+ <div><p class="label">Mobile · đang tìm trận</p>
+ <div class="frame mob"><div class="nav">♟ Gomoku VN<span>☰</span></div>
+  <div class="main"><div class="tools"><span>▦</span><span><i style="font-style:normal">⚙</i><i style="font-style:normal">⤴</i></span></div>
+   <div class="title">Gomoku VN</div><p class="sub"><b>128</b> online · <b>14</b> đang chơi</p>
+   <div class="hub"><div class="card play" style="opacity:.6"><i>⏳</i><div><b>Đang tìm… 0:12</b><small>Xếp hạng · Luật tự do · 10+5</small></div></div><div class="card cancel"><i>✕</i><div><b>Huỷ tìm trận</b></div></div></div></div>
+  <div class="foot"><a><i>🏅</i>Xếp hạng</a><a><i>👥</i>CLB</a><a><i>🏆</i>Giải đấu</a><a><i>🎯</i>Học</a><a><i>💬</i>Diễn đàn</a></div>
+ </div></div>
+</div>
+
+<ul class="pros"><li>Footer ghim đáy (<code>position:fixed</code> trong app) nên không nhảy khi mở menu hay tìm trận; hub cùng mốc đỉnh ở mọi trạng thái.</li><li>Mobile cần <code>padding-bottom</code> + <code>env(safe-area-inset-bottom)</code> cho nội dung phía trên footer.</li></ul>
+</body>
+</html>

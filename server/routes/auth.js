@@ -347,7 +347,9 @@ router.post('/login', async (req, res, next) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
+    // typeof, not just truthiness: a JSON object/array/number is truthy and
+    // would reach better-sqlite3 / bcrypt as a bind value and throw (#352).
+    if (typeof username !== 'string' || typeof password !== 'string' || !username || !password) {
       return res.status(400).json({
         error: 'Vui lòng nhập tên đăng nhập và mật khẩu.',
         code: 'MISSING_CREDENTIALS',
@@ -429,7 +431,12 @@ router.post('/guest', (req, res, next) => {
 router.post('/logout', (req, res, next) => {
   try {
     const sessionId = readSessionIdFromHeader(req.headers.cookie);
-    if (sessionId) sessionManager.revokeSession(sessionId);
+    if (sessionId) {
+      const live = sessionManager.getValidSession(sessionId);
+      sessionManager.revokeSession(sessionId);
+      // #372: a socket-less page's heartbeat would keep them "online" for up to BEAT_TTL_MS.
+      if (live && live.userId && !live.isGuest) require('../socket/state').dropHeartbeat(live.userId);
+    }
     clearSessionCookie(req, res);
     // 204 whether or not a session was found: "log me out" is satisfied either
     // way, and reporting which ids exist would leak session-id validity.

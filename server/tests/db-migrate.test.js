@@ -127,3 +127,20 @@ test.each([
   expect(() => run(db)).toThrow(/002_rebuild_player_games_and_games_fk\.sql/);
   expect(db.pragma('user_version', { simple: true })).toBe(0);
 });
+
+test('007 backfills puzzles.number by creation order (ties by id), unique, and creates puzzle_attempts', () => {
+  const real = path.join(__dirname, '../db/migrations');
+  fs.readdirSync(real).filter((f) => /^00[4-6]_.+\.sql$/.test(f)).forEach((f) => fs.copyFileSync(path.join(real, f), path.join(dir, f)));
+  const db = new Database(':memory:');
+  run(db); // schema + 004-006 (no puzzles yet, 007 not copied)
+  db.exec("INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES ('u', 'u', 'x', 'U', 't')");
+  const ins = db.prepare(`INSERT INTO puzzles (id, author_id, title, rule, board_size, stones, to_move, mode, answers, level, position_hash, created_at, updated_at)
+    VALUES (?, 'u', 't', 'freestyle', 15, '[]', 'BLACK', 'sequence', '[]', 'easy', 'h', ?, ?)`);
+  ins.run('c', '2026-01-03', '2026-01-03'); ins.run('a', '2026-01-01', '2026-01-01'); ins.run('b2', '2026-01-02', 'x'); ins.run('b1', '2026-01-02', 'x');
+  fs.copyFileSync(path.join(real, '007_puzzle_number_and_attempts.sql'), path.join(dir, '007_puzzle_number_and_attempts.sql'));
+  run(db);
+  expect(db.pragma('user_version', { simple: true })).toBe(7);
+  expect(db.prepare('SELECT id FROM puzzles ORDER BY number').all().map((r) => r.id)).toEqual(['a', 'b1', 'b2', 'c']);
+  expect(() => db.exec("UPDATE puzzles SET number = 1 WHERE id = 'c'")).toThrow(/UNIQUE/);
+  expect(cols(db, 'puzzle_attempts')).toEqual(expect.arrayContaining(['user_id', 'puzzle_id', 'moves', 'correct', 'created_at']));
+});

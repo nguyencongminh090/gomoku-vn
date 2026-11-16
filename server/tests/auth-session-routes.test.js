@@ -40,6 +40,7 @@ jest.mock('../db/database', () => ({
 }));
 
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+jest.mock('../socket/state', () => ({ dropHeartbeat: jest.fn() })); // logout drops the HTTP presence beat (#372)
 
 const express = require('express');
 const http    = require('http');
@@ -190,6 +191,22 @@ describe('POST /api/auth/logout', () => {
 
     expect(res.status).toBe(204);
     expect(db.revokeSession).toHaveBeenCalledWith('sess-1', expect.any(String));
+  });
+
+  test('drops the member\'s HTTP presence beat at once (#372) — not for a dead or guest session', async () => {
+    const { dropHeartbeat } = require('../socket/state');
+    const row = (over) => ({ id: 'sess-1', user_id: 'user-1', display_name: 'A', is_guest: 0, revoked_at: null,
+      expires_at: new Date(Date.now() + 60000).toISOString(), ...over });
+    db.getSessionById.mockReturnValueOnce(row());
+    await post('/api/auth/logout', { headers: { cookie: 'gvn_session=sess-1' } });
+    expect(dropHeartbeat).toHaveBeenCalledWith('user-1');
+
+    dropHeartbeat.mockClear();
+    db.getSessionById.mockReturnValueOnce(row({ user_id: 'guest_x', is_guest: 1 }));
+    await post('/api/auth/logout', { headers: { cookie: 'gvn_session=sess-1' } });
+    db.getSessionById.mockReturnValueOnce(undefined);
+    await post('/api/auth/logout', { headers: { cookie: 'gvn_session=sess-1' } });
+    expect(dropHeartbeat).not.toHaveBeenCalled();
   });
 
   test('clears the cookie with the SAME Path/SameSite it was set with', async () => {

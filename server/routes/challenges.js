@@ -4,6 +4,8 @@
  * challenges.js — REST API for friend challenges (#198 slice 3). Rules in ChallengeService.
  *
  * GET    /api/challenges               {incoming, outgoing}
+ * GET    /api/challenges/online        {players: [{userId, username, displayName, avatarUrl}]} — Home picker (#361):
+ *                                       visibly-online members I may challenge (one-shot, no lobby subscription)
  * POST   /api/challenges               {to: username, settings, games, stake} → challenge (#222;
  *                                       legacy {rule, time, rated} still accepted)
  * POST   /api/challenges/:id/accept    recipient → {roomId}
@@ -38,6 +40,11 @@ const h = (fn) => (req, res, next) => {
 router.get('/', h((req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(svc.list(req.user.userId));
+}));
+
+router.get('/online', h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ players: svc.onlineCandidates(req.user.userId) });
 }));
 
 router.post('/', writeLimiter, express.json({ limit: '1kb' }), h((req, res) => {

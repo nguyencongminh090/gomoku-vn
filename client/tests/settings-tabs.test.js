@@ -117,7 +117,7 @@ describe('settings page tabs', () => {
     const iconOf = (el) => el.querySelector('svg use').getAttribute('href').split('#')[1];
     expect(['st-hide-history', 'st-hide-bio', 'st-hide-online'].map((id) => iconOf($(id).closest('label'))))
       .toEqual(['ph-regular-clock-counter-clockwise', 'ph-regular-quotes', 'ph-regular-user-circle-dashed']);
-    expect(iconOf(document.querySelector('label[for="st-challenge"]'))).toBe('ph-regular-boxing-glove');
+    expect(iconOf(document.getElementById('st-challenge-lab'))).toBe('ph-regular-boxing-glove');
   });
 
   it('#214 review: CSS sizes — tabs 20px icon / 14px text, privacy heading is sentence case with a 20px icon', () => {
@@ -254,5 +254,14 @@ describe('floating back button drag', () => {
     const last = b[b.length - 1];
     expect(last.style.left).toBe('12px');
     expect(last.style.top).toBe('200px');
+  });
+
+  it('bento: Giao diện / Cài đặt / Tài khoản rows live in tiles; the guest row keeps name and badge as separate segments', () => {
+    boot(GUEST);
+    for (const id of ['p-look', 'p-game', 'p-account']) expect(document.querySelector('#' + id + ' .ptile > .ptile__h')).not.toBeNull();
+    expect(document.querySelectorAll('#p-game .ptile')).toHaveLength(2);
+    const who = document.querySelector('#p-account .psrow__who');
+    expect([...who.children].map((n) => n.textContent)).toEqual(['Khách_1', 'nav.guest_badge']);
+    expect(document.getElementById('p-account').textContent).not.toContain(' · ');
   });
 });

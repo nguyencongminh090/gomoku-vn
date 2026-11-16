@@ -9,8 +9,14 @@
  * GET    /api/puzzles/review?page=              pending queue (admin)
  * POST   /api/puzzles                           submit (→ pending)
  * GET    /api/puzzles/:id                       one puzzle; answers only for author/admin
- * PUT    /api/puzzles/:id                       author edit (→ pending again)
- * POST   /api/puzzles/:id/solve                 {moves: [{x,y}|"H8"|"122", ...]} → {correct}
+ * PUT    /api/puzzles/:id                       author edit (→ pending again; solves cleared only if position/answers changed)
+ * GET    /api/puzzles/renames                  reviewer: recent title changes (#337)
+ * PATCH  /api/puzzles/:id/title                 {title} rename by author/reviewer; keeps status + solves
+ * DELETE /api/puzzles/:id                      author or reviewer deletes it for good (solves/attempts go too)
+ * POST   /api/puzzles/:id/solve                 {moves: [{x,y}|"H8"|"122", ...]} → {correct, attemptsLeft, ...}; 429 PUZZLE_ATTEMPTS_EXCEEDED
+ * GET    /api/puzzles/:id/attempts              my own tries (member)
+ * GET    /api/puzzles/:id/solvers               who solved it and in how many tries (public)
+ * (:id is the UUID or the puzzle's #number)
  * POST   /api/puzzles/:id/review                {decision: approve|reject, level?, note?} (admin)
  */
 
@@ -36,7 +42,11 @@ const h = (fn) => (req, res, next) => {
   try {
     fn(req, res);
   } catch (err) {
-    if (err instanceof svc.PuzzleError) return res.status(err.status).json({ error: err.message, code: err.code });
+    if (err instanceof svc.PuzzleError) {
+      const body = { error: err.message, code: err.code };
+      if (err.attemptsLeft !== undefined) body.attemptsLeft = err.attemptsLeft;
+      return res.status(err.status).json(body);
+    }
     next(err);
   }
 };
@@ -60,6 +70,11 @@ router.get('/review', ...member, h((req, res) => {
   res.json(svc.reviewQueue(req.user.userId, req.query));
 }));
 
+router.get('/renames', ...member, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.renameLog(req.user.userId, req.query));
+}));
+
 router.post('/', ...write, h((req, res) => {
   res.status(201).json(svc.createPuzzle(req.user.userId, req.body));
 }));
@@ -71,6 +86,24 @@ router.get('/:id', h((req, res) => {
 
 router.put('/:id', ...write, h((req, res) => {
   res.json(svc.updatePuzzle(req.user.userId, req.params.id, req.body));
+}));
+
+router.patch('/:id/title', ...write, h((req, res) => {
+  res.json(svc.renamePuzzle(req.user.userId, req.params.id, (req.body || {}).title));
+}));
+
+router.delete('/:id', ...write, h((req, res) => {
+  res.json(svc.deletePuzzle(req.user.userId, req.params.id));
+}));
+
+router.get('/:id/attempts', ...member, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.myAttempts(req.user.userId, req.params.id));
+}));
+
+router.get('/:id/solvers', h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(svc.solvers(req.params.id));
 }));
 
 router.post('/:id/solve', ...write, h((req, res) => {

@@ -26,6 +26,7 @@ jest.mock('../config', () => ({ MAX_EVENTS_PER_SECOND: 50 }));
 
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
+  debug: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
 }));
@@ -48,6 +49,8 @@ jest.mock('../socket/handlers/DisconnectHandler', () => ({
 jest.mock('../socket/handlers/TournamentHandler', () => ({ init: jest.fn(), register: jest.fn() }));
 jest.mock('../socket/handlers/TournamentMatchHandler', () => ({ register: jest.fn(), resyncOnConnect: jest.fn() }));
 jest.mock('../managers/ChatHandler', () => ({ cleanupUser: jest.fn() }));
+// #367 rejoin path broadcasts a lobby update; keep home-feed (DB-backed) out of this unit test.
+jest.mock('../socket/home-feed', () => ({ register: jest.fn(), scheduleHomeUpdate: jest.fn() }));
 
 const { sessions, ONLINE_USERS_DEBOUNCE_MS } = require('../socket/state');
 const { init } = require('../socket/SocketHandler');
@@ -85,6 +88,7 @@ function makeSocket(io, id, userId, displayName = 'User', auth = {}) {
     _emitted: [],
     disconnected: false,
     join: jest.fn(),
+    leave: jest.fn(),
     emit: jest.fn(function (event, data) { this._emitted.push({ event, data }); }),
     on: jest.fn(function (event, cb) {
       (this._listeners[event] = this._listeners[event] || []).push(cb);
@@ -187,6 +191,33 @@ describe('SocketHandler — single-device-per-token enforcement', () => {
     expect(typeof fields).toBe('object');
     expect(fields.reason).toBe('ping timeout');
     expect(JSON.stringify(disconnectLog)).not.toContain('[object Object]');
+  });
+
+  test('#383: socket index follows connect/disconnect — the draining old socket still counts until it closes', () => {
+    const state = require('../socket/state');
+    const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
+    const noScan = { sockets: { get sockets() { throw new Error('scanned io.sockets.sockets'); } } };
+    const io = makeIo();
+    init(io);
+
+    const a = makeSocket(io, 'sockA', 'u383', 'Alice');
+    connectSocket(io, a);
+    const b = makeSocket(io, 'sockB', 'u383', 'Alice', { reconnect: true });
+    connectSocket(io, b);
+    // A was told to disconnect but its 'disconnect' has not fired yet: both are live.
+    expect(state.findSocketsByUserId(noScan, 'u383')).toEqual([a, b]);
+
+    // When A's disconnect runs, DisconnectHandler must see B (and not A itself).
+    let seen = null;
+    DisconnectHandler.handleDisconnect.mockImplementationOnce(() => { seen = state.findSocketsByUserId(noScan, 'u383'); });
+    fireDisconnect(a);
+    expect(seen).toEqual([b]);
+
+    // Last socket gone → nothing left, so leave / grace runs.
+    DisconnectHandler.handleDisconnect.mockImplementationOnce(() => { seen = state.findSocketsByUserId(noScan, 'u383'); });
+    fireDisconnect(b);
+    expect(seen).toEqual([]);
+    expect(state._userSockets.has('u383')).toBe(false);
   });
 
   test("the kicked socket's later disconnect does not erase the new session's online presence", () => {
@@ -369,6 +400,62 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(sockEmit(a, 'room:joined')).toBeUndefined();
   });
 
+  // #367: a room page whose user lost their place while offline (seat grace ran
+  // out, or was removed) sends the room it shows; the server puts them back in.
+  test('a reconnect naming a room that still exists rejoins it silently instead of ROOM_GONE (#367)', () => {
+    const io = makeIo();
+    init(io);
+    const room = { roomId: 'MLC', gameState: null, users: new Map(), memberIds: new Set(['u1']) };
+    mockRoomManager.getRoom.mockImplementation((id) => (id === 'MLC' ? room : null));
+    mockRoomManager.joinRoom = jest.fn(() => ({ room }));
+    mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'MLC' }));
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', { reconnect: true, roomId: 'MLC' });
+    connectSocket(io, a);
+
+    expect(mockRoomManager.joinRoom).toHaveBeenCalledWith(expect.objectContaining({ userId: 'u1' }), 'MLC');
+    expect(a.join).toHaveBeenCalledWith('MLC');
+    expect(sockEmit(a, 'room:joined')).toBeDefined();
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+    // Silent: nobody gets a "đã vào phòng" chat line.
+    expect((io._toEmitted.MLC || []).some(e => e.event === 'chat:message')).toBe(false);
+    mockRoomManager.getRoom.mockReset().mockReturnValue(null);
+  });
+
+  test.each([
+    ['the room is gone', null, {}],
+    ['the user was kicked from it', { kicked: true }, {}],
+    ['the user was never a member (arbitrary roomId)', { stranger: true }, {}],
+    ['joinRoom refuses (full)', {}, { error: 'full', code: 'ROOM_FULL' }],
+  ])('a reconnect naming a room still gets ROOM_GONE when %s (#367)', (_label, roomShape, joinResult) => {
+    const io = makeIo();
+    init(io);
+    const room = roomShape && {
+      roomId: 'MLC', gameState: null, users: new Map(),
+      memberIds: new Set(roomShape.kicked || roomShape.stranger ? [] : ['u1']),
+    };
+    mockRoomManager.getRoom.mockImplementation((id) => (id === 'MLC' ? room : null));
+    mockRoomManager.joinRoom = jest.fn(() => (joinResult.error ? joinResult : { room }));
+
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', { reconnect: true, roomId: 'MLC' });
+    connectSocket(io, a);
+
+    expect(sockEmit(a, 'room:destroyed')).toBeDefined();
+    expect(sockEmit(a, 'room:joined')).toBeUndefined();
+    if (roomShape && (roomShape.kicked || roomShape.stranger)) expect(mockRoomManager.joinRoom).not.toHaveBeenCalled();
+    mockRoomManager.getRoom.mockReset().mockReturnValue(null);
+  });
+
+  test('a FIRST connect naming a room does not auto-join it — only reconnects do (#367)', () => {
+    const io = makeIo();
+    init(io);
+    mockRoomManager.joinRoom = jest.fn();
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', { roomId: 'MLC' });
+    connectSocket(io, a);
+    expect(mockRoomManager.joinRoom).not.toHaveBeenCalled();
+    expect(sockEmit(a, 'room:destroyed')).toBeUndefined();
+  });
+
   test('a FIRST connect is never told the room is gone — it has not asked for one yet', () => {
     // Regression guard: the room page opens a socket *before* it sends
     // room:create / room:join, so a roomless first connect is the normal case,
@@ -411,6 +498,27 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(a.join).toHaveBeenCalledWith('r1');
   });
 
+  // #373: a member of a room connecting from ANOTHER page (lobby, home…) is not watching the table.
+  test.each([
+    // [case, auth, presence before, presence after]
+    ['other page, was disconnected', {}, 'disconnected', 'away'],
+    ['other page, was active', {}, 'active', 'away'],
+    ['other page reconnect naming no room', { reconnect: true }, 'active', 'away'],
+    ['room page of a different room', { reconnect: true, roomId: 'r2' }, 'active', 'away'],
+    ['room page reconnect, was disconnected', { reconnect: true, roomId: 'r1' }, 'disconnected', 'active'],
+    ['room page reconnect, was away', { reconnect: true, roomId: 'r1' }, 'away', 'away'],
+  ])('room member connect: %s → %s', (_c, auth, before, after) => {
+    const io = makeIo();
+    init(io);
+    const me = { userId: 'u1', presence: before };
+    mockRoomManager.getRoomByUser.mockReturnValueOnce({ roomId: 'r1', gameState: null, users: new Map([['u1', me]]) });
+    mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'r1' }));
+    const a = makeSocket(io, 'sockA', 'u1', 'Alice', auth);
+    connectSocket(io, a);
+    expect(me.presence).toBe(after);
+    expect(!!(a.data && a.data.roomPageId === 'r1')).toBe(auth.roomId === 'r1');
+  });
+
   test('a reconnect that resumes a disconnect-grace game is not told the room is gone', () => {
     const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
     DisconnectHandler.cancelDisconnectGrace.mockReturnValueOnce(true);
@@ -449,5 +557,45 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
 
     expect(graceCallOrder).toBeLessThan(rejoinCheckCallOrder);
     expect(spectatorGraceCallOrder).toBeLessThan(rejoinCheckCallOrder);
+  });
+});
+
+// #372 review: SocketHandler wires two different "online" predicates — they must not both be presence.
+describe('presence hooks wiring (#372 review)', () => {
+  const state = require('../socket/state');
+  let challengeHooks, dmHooks;
+  beforeAll(() => {
+    const Challenge = require('../managers/ChallengeService');
+    const Dm = require('../managers/DmService');
+    const c = jest.spyOn(Challenge, 'setHooks');
+    const d = jest.spyOn(Dm, 'setHooks');
+    init(makeIo());
+    challengeHooks = c.mock.calls.at(-1)[0];
+    dmHooks = d.mock.calls.at(-1)[0];
+    c.mockRestore(); d.mockRestore();
+  });
+  beforeEach(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
+  afterAll(() => { sessions.clear(); state.awayUsers.clear(); state.heartbeats.clear(); });
+  const u = { userId: 'p1', displayName: 'P1', isGuest: false };
+
+  test('challenge seat check = has a socket: an AWAY room tab keeps its seat', () => {
+    sessions.set('p1', { user: u });
+    state.awayUsers.add('p1');
+    expect(challengeHooks.isOnline('p1')).toBe(true);
+  });
+
+  test('challenge seat check: a heartbeat from a socket-less page is not a socket in the room', () => {
+    state.heartbeats.set('p1', { at: Date.now(), away: false, user: u });
+    expect(challengeHooks.isOnline('p1')).toBe(false);
+  });
+
+  test('DM live-push = a visible socket: heartbeat-only or away recipient gets the bell entry', () => {
+    state.heartbeats.set('p1', { at: Date.now(), away: false, user: u });
+    expect(dmHooks.isOnline('p1')).toBe(false);
+    sessions.set('p1', { user: u });
+    expect(dmHooks.isOnline('p1')).toBe(true);
+    state.awayUsers.add('p1');
+    expect(dmHooks.isOnline('p1')).toBe(false);
+    expect(dmHooks.hasSocket('p1')).toBe(true); // away tab still gets the live push
   });
 });

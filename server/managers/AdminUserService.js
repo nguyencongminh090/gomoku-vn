@@ -11,6 +11,7 @@ const database = require('../db/database');
 const roles = require('../utils/roles');
 const sessions = require('./SessionManager');
 const avatarStore = require('../utils/avatar-store');
+const userSearch = require('../db/user-search');
 
 const db = () => database.db;
 const PAGE = 20;
@@ -47,14 +48,13 @@ function findUser(id) {
   return row;
 }
 
-const escapeLike = (s) => s.replace(/[\\%_]/g, (c) => '\\' + c);
 
 function listUsers(adminId, { q, page } = {}) {
   requireManager(adminId);
   const pg = Math.max(1, parseInt(page, 10) || 1);
   const term = typeof q === 'string' ? q.trim().slice(0, 50) : '';
-  const where = term ? "WHERE username LIKE ? ESCAPE '\\' OR display_name LIKE ? ESCAPE '\\'" : '';
-  const params = term ? [`%${escapeLike(term)}%`, `%${escapeLike(term)}%`] : [];
+  const where = term ? 'WHERE id IN (SELECT value FROM json_each(?))' : '';
+  const params = term ? [JSON.stringify(userSearch.matchUserIds(term))] : [];
   const total = db().prepare(`SELECT COUNT(*) AS n FROM users ${where}`).get(...params).n;
   const rows = db().prepare(`SELECT ${COLS} FROM users ${where} ORDER BY created_at DESC, id LIMIT ? OFFSET ?`).all(...params, PAGE, (pg - 1) * PAGE);
   return { users: rows.map(shape), pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) } };
@@ -102,7 +102,9 @@ function setRole(adminId, id, role) {
  * Lazy require: the socket layer pulls in RoomManager & co., which this service must not load eagerly.
  */
 function kickLiveSocket(userId) {
-  const socket = require('../socket/state').sessions.get(userId);
+  const state = require('../socket/state');
+  state.dropHeartbeat(userId); // #372: a socket-less page must not keep a locked account "online"
+  const socket = state.sessions.get(userId);
   if (!socket) return;
   socket.emit('session:kicked', { message: 'Tài khoản đã bị khoá.', code: 'ACCOUNT_LOCKED' });
   socket.disconnect(true);

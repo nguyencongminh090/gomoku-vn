@@ -17,6 +17,8 @@ const mockRoomManager = {
   getRoomIdByUser: jest.fn(),
   getRoom: jest.fn(),
   leaveRoom: jest.fn(),
+  // #367: grace expiry frees the seat but keeps the user as a disconnected viewer.
+  releaseSeat: jest.fn(() => ({ room: null, wasSeated: false, hostTransferred: false })),
   serializeRoom: jest.fn((room) => ({ roomId: room.roomId, settings: {} })),
   // room:updated carries everything serializeRoom does except settings.
   serializeRoomUpdate: jest.fn((room) => ({ roomId: room.roomId })),
@@ -25,6 +27,7 @@ jest.mock('../managers/RoomManager', () => mockRoomManager);
 
 jest.mock('../utils/logger', () => ({
   info: jest.fn(),
+  debug: jest.fn(),
   warn: jest.fn(),
   error: jest.fn(),
 }));
@@ -40,6 +43,7 @@ const mockState = {
   emptyRoomGraceTimers: new Map(),
   spectatorGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
+  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   cleanupRoomTimer: jest.fn(),
   cleanupReadyTimer: jest.fn(),
@@ -71,8 +75,19 @@ function makeSocket(userId = 'u1', displayName = 'Alice') {
   return {
     user: { userId, displayName },
     _emitted: [],
+    // socket.to(room) = the room minus this socket (#398); recorded separately from io.to.
+    _toEmitted: {},
     join: jest.fn(),
     emit: jest.fn(function (event, data) { this._emitted.push({ event, data }); }),
+    to: jest.fn(function (room) {
+      const self = this;
+      return {
+        emit: jest.fn((event, data) => {
+          if (!self._toEmitted[room]) self._toEmitted[room] = [];
+          self._toEmitted[room].push({ event, data });
+        }),
+      };
+    }),
   };
 }
 
@@ -200,7 +215,7 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(resumed).toBe(true);
     expect(mockState.disconnectTimers.has('u1')).toBe(false);
     expect(reconnectSocket.join).toHaveBeenCalledWith('room1');
-    expect(toEmitted(io, 'room1', 'game:resumed')).toBeDefined();
+    expect(toEmitted(reconnectSocket, 'room1', 'game:resumed')).toBeDefined();
 
     // No server-side chat:message for this event either — the client's own
     // game:resumed handler already announces it in the chat panel (TODO #47).
@@ -230,7 +245,9 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(mockHandleGameEnd).toHaveBeenCalledWith(io, room, { noScore: true });
     expect(room.gameState.status).toBe('finished');
     expect(toEmitted(io, 'room1', 'game:ended')).toBeDefined();
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u1');
+    // #367: not evicted — the seat is released and they stay in the room.
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledWith('u1');
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u1');
   });
 
   test('a second disconnect grace call for the same user clears the stale timer instead of stacking two', () => {
@@ -425,11 +442,12 @@ describe('DisconnectHandler — spectator grace period', () => {
     expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
   });
 
-  test('grace expiring without a reconnect leaves for real, without destroying the room (others remain)', () => {
+  test('grace expiring without a reconnect releases the seat but keeps the user in the room (#367)', () => {
     const io = makeIo();
+    const released = { roomId: 'room1', users: new Map() };
     mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
     mockRoomManager.getRoom.mockReturnValue(sharedRoom());
-    mockRoomManager.leaveRoom.mockReturnValue({ room: { roomId: 'room1', users: new Map() }, destroyed: false });
+    mockRoomManager.releaseSeat.mockReturnValueOnce({ room: released, wasSeated: true, hostTransferred: false });
 
     DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
     expect(mockState.spectatorGraceTimers.has('u1')).toBe(true);
@@ -437,8 +455,9 @@ describe('DisconnectHandler — spectator grace period', () => {
     jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
 
     expect(mockState.spectatorGraceTimers.has('u1')).toBe(false);
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u1');
-    expect(mockState.broadcastRoomUpdate).toHaveBeenCalledWith(io, { roomId: 'room1', users: new Map() });
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledWith('u1');
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u1');
+    expect(mockState.broadcastRoomUpdate).toHaveBeenCalledWith(io, released);
     expect(mockState.broadcastLobbyUpdate).toHaveBeenCalled();
   });
 
@@ -454,7 +473,7 @@ describe('DisconnectHandler — spectator grace period', () => {
     expect(mockState.spectatorGraceTimers.size).toBe(1);
 
     jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledTimes(1);
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledTimes(1);
   });
 
   test('cancelSpectatorGrace returns false when nothing is pending for the user', () => {
@@ -515,7 +534,7 @@ describe('DisconnectHandler — viewer (slot === null) unlimited reconnect', () 
     expect(mockRoomManager.leaveRoom).not.toHaveBeenCalled();
   });
 
-  test('control case: a seated player (slot 1|2) whose game is not ongoing still gets evicted after 30s, unchanged', () => {
+  test('control case: a seated player (slot 1|2) whose game is not ongoing loses the seat after 30s but stays in the room (#367)', () => {
     const io = makeIo();
     const room = roomWithViewer();
     mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
@@ -529,7 +548,8 @@ describe('DisconnectHandler — viewer (slot === null) unlimited reconnect', () 
     jest.advanceTimersByTime(config.SPECTATOR_GRACE_MS);
 
     expect(mockState.spectatorGraceTimers.has('u2')).toBe(false);
-    expect(mockRoomManager.leaveRoom).toHaveBeenCalledWith('u2');
+    expect(mockRoomManager.releaseSeat).toHaveBeenCalledWith('u2');
+    expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u2');
   });
 });
 
@@ -562,6 +582,15 @@ describe('DisconnectHandler — room of disconnected viewers (TODO.md #186)', ()
         return { room, destroyed: true, hostTransferred: false };
       }
       return { room, destroyed: false, hostTransferred: false };
+    });
+    mockRoomManager.releaseSeat.mockImplementation((id) => {
+      const room = [...rooms.values()].find(r => r.users.has(id));
+      if (!room) return { room: null, wasSeated: false, hostTransferred: false };
+      const u = room.users.get(id);
+      const wasSeated = u.slot != null;
+      u.slot = null;
+      u.presence = 'disconnected';
+      return { room, wasSeated, hostTransferred: false };
     });
   });
   afterEach(() => {
@@ -746,12 +775,40 @@ describe('DisconnectHandler — both players disconnected', () => {
     timer.start.mockClear();
 
     DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'));
-    DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u2', 'Bob'));
+    const bob = makeSocket('u2', 'Bob');
+    DisconnectHandler.cancelDisconnectGrace(io, bob);
 
     expect(room.state).toBe('playing');
     expect(timer.start).toHaveBeenCalledTimes(1);
     expect(mockState.disconnectTimers.size).toBe(0);
-    expect(toEmitted(io, 'room1', 'game:resumed')).toBeDefined();
+    expect(toEmitted(bob, 'room1', 'game:resumed')).toBeDefined();
+  });
+
+  // #398: a reconnect storm paid ~4 redundant packets per pair. Drop = 1 room emit (clock on
+  // game:interrupted); resume = 1 emit to the others (clock on game:resumed) + game:init to self only.
+  test('#398 drop and resume each send one game event per side, the clock riding on it', () => {
+    const io = makeIo();
+    const room = twoPlayerRoom();
+    const timer = installTimer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    const dropEvents = (io._toEmitted.room1 || []).map(e => e.event);
+    expect(dropEvents).toEqual(['game:interrupted']);
+    expect(toEmitted(io, 'room1', 'game:interrupted').data.timerSync).toEqual(timer.getSync.mock.results[0].value);
+
+    io._toEmitted = {};
+    const alice = makeSocket('u1', 'Alice');
+    DisconnectHandler.cancelDisconnectGrace(io, alice);
+
+    // Nothing to the whole room (self included) any more — no timer:sync, no game:resumed.
+    expect(io._toEmitted.room1 || []).toEqual([]);
+    expect(alice._toEmitted.room1.map(e => e.event)).toEqual(['game:resumed']);
+    const resumedSync = toEmitted(alice, 'room1', 'game:resumed').data.timerSync;
+    expect(resumedSync).toMatchObject({ running: true, activeColor: 'black' });
+    expect(alice._emitted.map(e => e.event)).toEqual(['game:init']);
+    expect(alice._emitted[0].data.timerSync).toBe(resumedSync);
   });
 
   test('a single player reconnecting alone still resumes immediately', () => {
@@ -770,6 +827,31 @@ describe('DisconnectHandler — both players disconnected', () => {
 
     expect(room.state).toBe('playing');
     expect(timer.start).toHaveBeenCalledTimes(1);
+  });
+
+  // #396: a reconnect storm puts ~1 000 players in grace at once; every reconnect copied and scanned
+  // the whole map (1 000 × 1 000). The "other player still away" check only needs this room's seats.
+  test('#396 other rooms\' grace entries are neither scanned nor counted', () => {
+    const io = makeIo();
+    const room = twoPlayerRoom();
+    const timer = installTimer();
+    mockRoomManager.getRoomIdByUser.mockReturnValue('room1');
+    mockRoomManager.getRoom.mockReturnValue(room);
+    for (let i = 0; i < 1000; i++) mockState.disconnectTimers.set(`x${i}`, { timeout: null, countdown: null, roomId: `r${i}` });
+
+    DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
+    timer.start.mockClear();
+    const values = jest.spyOn(mockState.disconnectTimers, 'values');
+    const entries = jest.spyOn(mockState.disconnectTimers, 'entries');
+    const forEach = jest.spyOn(mockState.disconnectTimers, 'forEach');
+
+    expect(DisconnectHandler.cancelDisconnectGrace(io, makeSocket('u1', 'Alice'))).toBe(true);
+    expect(room.state).toBe('playing');
+    expect(timer.start).toHaveBeenCalledTimes(1);
+    expect(values).not.toHaveBeenCalled();
+    expect(entries).not.toHaveBeenCalled();
+    expect(forEach).not.toHaveBeenCalled();
+    values.mockRestore(); entries.mockRestore(); forEach.mockRestore();
   });
 });
 

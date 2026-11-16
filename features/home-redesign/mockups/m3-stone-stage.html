@@ -1,0 +1,71 @@
+<style>
+/* M3 — Sân khấu quân cờ: centred stage. The two actions ARE the two stones: black = Chơi nhanh,
+   white = Vào phòng, placed on one intersection of a huge faint board. Giant outlined word behind. */
+body.mk-m3-stone-stage::after { display: none; }
+body.mk-m3-stone-stage::before { opacity: .55; }
+.m3 { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; padding: 28px 16px 0; text-align: center; }
+.m3-word { position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%); margin: 0; font-size: clamp(160px, 26vw, 380px); font-weight: 1000; letter-spacing: -.06em; line-height: .8; color: transparent; -webkit-text-stroke: 2px color-mix(in srgb, var(--c-ink) 12%, transparent); white-space: nowrap; pointer-events: none; user-select: none; }
+.m3-hello { position: relative; margin: 0; font-size: clamp(22px, 1.4vw + 12px, 30px); font-weight: 900; letter-spacing: -.01em; }
+.m3-hello em { font-style: normal; color: var(--c-brand-text); }
+.m3-ticker { position: relative; display: inline-flex; gap: 16px; margin-top: 8px; font-size: var(--text-sm); color: var(--c-ink-2); }
+.m3-ticker b { color: var(--c-ink); font-weight: 900; }
+.m3-cross { position: relative; margin: 34px 0 10px; display: grid; grid-template-columns: auto auto; gap: 56px; align-items: center; }
+.m3-cross::before, .m3-cross::after { content: ''; position: absolute; background: color-mix(in srgb, var(--c-ink) 22%, transparent); z-index: 0; }
+.m3-cross::before { left: -40vw; right: -40vw; top: 50%; height: 2px; }
+.m3-cross::after { left: 50%; top: -120px; bottom: -120px; width: 2px; }
+.m3-stone { position: relative; z-index: 1; width: 230px; height: 230px; border-radius: 50%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; font-size: 26px !important; font-weight: 1000 !important; letter-spacing: -.01em; transition: transform var(--d-base) var(--e-out), box-shadow var(--d-base); }
+.m3-stone .icon { width: 40px; height: 40px; }
+.m3-stone small { font-size: 14px; font-weight: 700; opacity: .75; }
+.m3-stone--b { color: #fff !important; background: radial-gradient(circle at 34% 28%, #77736b 0, #2b2926 36%, #0b0a09 72%) !important; box-shadow: 0 30px 50px -18px rgba(0,0,0,.7), inset 0 -10px 30px rgba(0,0,0,.5); }
+.m3-stone--w { color: #23211e !important; background: radial-gradient(circle at 34% 28%, #fff 0, #f4f2ec 44%, #cdc8bd 100%) !important; box-shadow: 0 30px 50px -18px rgba(0,0,0,.45), inset 0 -10px 30px rgba(0,0,0,.12); }
+.m3-stone:hover { transform: translateY(-6px) scale(1.02); }
+.m3-stone--b::after { content: ''; position: absolute; inset: -14px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--c-brand-text) 70%, transparent); animation: mk-spin 24s linear infinite; }
+.m3-opts { position: relative; z-index: 1; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 10px; margin-top: 26px; padding: 10px 12px; border-radius: 999px; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
+.m3-opts .sep { width: 1px; height: 26px; background: var(--c-border); }
+.m3-opts .seg__b { min-height: 36px; }
+.m3 .resume { position: relative; z-index: 1; margin-top: 16px; }
+.m3-dock { position: relative; z-index: 1; display: flex; gap: 8px; margin: 26px 0 18px; padding: 8px; border-radius: 22px; background: color-mix(in srgb, var(--c-surface) 80%, transparent); backdrop-filter: blur(8px); border: 1px solid var(--c-border); box-shadow: var(--shadow-card); }
+.m3-dock .ico { border-radius: 14px; width: 52px; height: 52px; }
+@media (hover: hover) and (pointer: fine) { .m3-dock .ico:hover { transform: translateY(-4px) scale(1.12); } }
+.m3-searching { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.m3-stone--b .ring { position: absolute; inset: -14px; border-radius: 50%; border: 4px solid transparent; border-top-color: var(--c-brand-text); animation: mk-spin 1s linear infinite; }
+.mk-searching .m3-stone--b::after { display: none; }
+@media (max-width: 860px) {
+  .m3 { padding-top: 18px; }
+  .m3-word { font-size: 46vw; top: 40%; }
+  .m3-cross { gap: 22px; margin-top: 30px; }
+  .m3-stone { width: 156px; height: 156px; font-size: 19px !important; gap: 4px; }
+  .m3-stone .icon { width: 30px; height: 30px; }
+  .m3-stone small { font-size: 12px; }
+  .m3-opts { border-radius: 20px; margin: 22px 0 0; }
+  .m3-opts .sep { display: none; }
+  .m3-ticker { flex-wrap: wrap; justify-content: center; gap: 4px 12px; }
+  .m3 .resume > span:nth-child(2) { display: none; }
+}
+</style>
+<div class="mk mk-screen m3">
+  <p class="m3-word" aria-hidden="true">CARO</p>
+  <h1 class="m3-hello rise">Chào <em>minhcaro</em>, sẵn sàng một ván?</h1>
+  <div class="m3-ticker rise rise-2"><span><b>128</b> đang online</span><span><b>23</b> ván đang chơi</span><span><b>6</b> đang tìm trận</span></div>
+  <div class="m3-cross rise rise-2">
+    <button class="m3-stone m3-stone--b">
+      <span class="when-idle">{{i:play}}</span><span class="when-idle">Chơi nhanh</span><small class="when-idle">ghép trong vài giây</small>
+      <span class="ring when-search"></span><span class="when-search m3-searching" aria-live="polite">0:12<small>6 người đang chờ</small><small>chạm để huỷ</small></span>
+    </button>
+    <a class="m3-stone m3-stone--w" href="#">{{i:door-open}}<span>Vào phòng</span><small>12 phòng đang mở</small></a>
+  </div>
+  <div class="m3-opts rise rise-3" aria-label="Tuỳ chọn chơi nhanh">
+    <div class="seg"><button class="seg__b" aria-pressed="true">Caro VN</button><button class="seg__b" aria-pressed="false">Freestyle</button></div>
+    <span class="sep"></span>
+    <div class="seg"><button class="seg__b" aria-pressed="true">Tự động</button><button class="seg__b" aria-pressed="false">45s/nước</button><button class="seg__b" aria-pressed="false">30s/nước</button><button class="seg__b" aria-pressed="false">1+1</button></div>
+    <span class="sep"></span>
+    <div class="seg"><button class="seg__b" aria-pressed="true">Xếp hạng</button><button class="seg__b" aria-pressed="false">Giao hữu</button></div>
+  </div>
+  <div class="resume rise rise-4"><span class="resume__dot"></span><span>Phòng chơi</span><b>vs. Lan Anh</b><span class="tag tag--brand">Lượt của bạn</span><a class="resume__go" href="#">Vào ván</a></div>
+  <nav class="m3-dock rise rise-4" aria-label="Khám phá">
+    <a class="ico" href="/puzzles" aria-label="Học" data-tip="Học" data-tip-pos="up">{{i:target}}</a>
+    <a class="ico" href="/forum" aria-label="Diễn đàn" data-tip="Diễn đàn" data-tip-pos="up">{{i:chat-circle}}</a>
+    <a class="ico" href="#tournaments" aria-label="Giải đấu" data-tip="Giải đấu" data-tip-pos="up">{{i:trophy}}</a>
+    <a class="ico" href="/clubs.html" aria-label="Hội nhóm" data-tip="Hội nhóm" data-tip-pos="up">{{i:users-three}}</a>
+  </nav>
+</div>

@@ -41,6 +41,26 @@ function decl(d, ln,   p, v, c, n, a, b, la, lb, hi, lo, ratio) {
   if ((p == "animation" || p ~ /^animation-/ || p == "transition" || p ~ /^transition-/) && v !~ /^(none|0s?)$/ && !rm[depth]) {
     if (!("m" in L)) L["m"] = ln
   }
+  if (p == "transition" || p == "transition-property") {
+    nseg = split(v, segs, ",")
+    for (j = 1; j <= nseg; j++) {
+      t = segs[j]; gsub(QRE, "", t); sub(/^[ \t]+/, "", t); sub(/[ \t].*$/, "", t)
+      if (t == "all") note("DEP-COMPOSITOR-ONLY", ln, "transition: all also animates layout properties, list the properties")
+      else if (t ~ /^(width|height|top|left|right|bottom|margin|padding|min-|max-)/) note("DEP-COMPOSITOR-ONLY", ln, "transition on layout property " t ", animate transform or opacity")
+    }
+  }
+  if (kf[depth] && p ~ /^(width|height|top|left|right|bottom|margin|padding)/) note("DEP-COMPOSITOR-ONLY", ln, "@keyframes animates layout property " p)
+  if (p ~ /^(transition|transition-timing-function|animation|animation-timing-function)$/ && v ~ /(^|[ ,])ease-in([ ,]|$)/) note("DEP-MOTION-TIMING", ln, "ease-in on UI motion feels sluggish, use ease-out")
+  if (p == "transition" || p == "transition-duration") {
+    nt = split(v, tk2, /[ ,\t]+/)
+    for (j = 1; j <= nt; j++) {
+      dv = tk2[j]; gsub(QRE, "", dv); ms = -1
+      if (dv ~ /^[0-9.]+ms$/) ms = dv + 0; else if (dv ~ /^[0-9.]+s$/) ms = (dv + 0) * 1000
+      if (ms > 500) { note("DEP-MOTION-TIMING", ln, "transition time " dv " is over 500ms for UI motion"); break }
+    }
+  }
+  if (p == "animation-timeline" && v !~ /^(auto|none)/ && !sup[depth]) note("DEP-MOTION-FALLBACK", ln, "animation-timeline outside @supports (animation-timeline: ...)")
+  if ((p == "transform" && v ~ /scale(3d|x|y)?\(0(\.0+)?([ ]*,[ ]*0(\.0+)?)*\)/) || (p == "scale" && v ~ /^0(\.0+)?([ ]|$)/)) note("DEP-SCALE-FROM-ZERO", ln, "scale(0) entrance, start from scale(0.95) with opacity 0")
   if (tokens && p !~ /^--/ && !root[depth] && (v ~ /#[0-9a-f]+/ || v ~ /rgba?\(/)) {
     if (v ~ /rgba?\(/ || match(v, /#[0-9a-f]+/)) note("COL-TOKENS-ONLY", ln, "literal color " v " outside :root, use a token")
   }
@@ -54,10 +74,16 @@ function flush(upto,   t) {
     if (index(t, "prefers-reduced-motion")) hasrm = 1 }
   seg = upto + 1
 }
-BEGIN { depth = 0; buf = ""; incm = 0 }
+BEGIN { depth = 0; buf = ""; incm = 0
+  q = sprintf("%c", 39); QRE = "[\"`" q "]"
+  CB = "(^|[ \"`:" q "])"; CE = "([ \"`" q "]|$)" }
 {
   line = $0 ; tolower_line = tolower(line)
   n = length(tolower_line)
+  if (tolower_line ~ /cdn\.pixabay\.com|pixabay\.com\/get\//) note("LAY-STOCK-IMAGES", NR, "Pixabay image hotlinked, download it and record credits (ui-images)")
+  if (tolower_line ~ (CB "transition-all" CE)) note("DEP-COMPOSITOR-ONLY", NR, "transition-all class also animates layout properties")
+  if (tolower_line ~ (CB "ease-in" CE)) note("DEP-MOTION-TIMING", NR, "ease-in class on UI motion, use ease-out")
+  if (match(tolower_line, CB "duration-[0-9]+" CE)) { dd = substr(tolower_line, RSTART, RLENGTH); gsub(/[^0-9]/, "", dd); if (dd + 0 > 500) note("DEP-MOTION-TIMING", NR, "duration-" dd " class is over 500ms for UI motion") }
   seg = 1   # start of the pending run of ordinary characters
   for (i = 1; i <= n; i++) {
     ch = substr(tolower_line, i, 1); nx = substr(tolower_line, i + 1, 1)
@@ -70,6 +96,8 @@ BEGIN { depth = 0; buf = ""; incm = 0 }
       depth++; sel[depth] = s; fg[depth] = ""; bg[depth] = ""
       root[depth] = root[depth-1] || (s ~ /:root/)
       rm[depth] = rm[depth-1] || (s ~ /prefers-reduced-motion/)
+      kf[depth] = kf[depth-1] || (s ~ /^@(-webkit-)?keyframes/)
+      sup[depth] = sup[depth-1] || (s ~ /^@supports/ && s ~ /animation-timeline/)
       buf = ""
       seg = i + 1
     } else if (ch == ";") { decl(buf, NR); buf = ""; seg = i + 1 }
@@ -94,8 +122,8 @@ BEGIN { depth = 0; buf = ""; incm = 0 }
 END {
   if (("o" in L) && !hasfv) note("PRI-FOCUS-VISIBLE", L["o"], "outline removed without a :focus-visible style")
   if (("m" in L) && !hasrm) note("DEP-REDUCED-MOTION", L["m"], "animation/transition without prefers-reduced-motion")
-  split("TYP-BODY-SIZE PRI-FOCUS-VISIBLE DEP-REDUCED-MOTION COL-TOKENS-ONLY COL-CONTRAST-TEXT", ord, " ")
-  for (k = 1; k <= 5; k++) { r = ord[k]; if (r in M) print r "\t" L[r] "\t" M[r] }
+  nord = split("TYP-BODY-SIZE PRI-FOCUS-VISIBLE DEP-REDUCED-MOTION COL-TOKENS-ONLY COL-CONTRAST-TEXT LAY-STOCK-IMAGES DEP-COMPOSITOR-ONLY DEP-MOTION-FALLBACK DEP-MOTION-TIMING DEP-SCALE-FROM-ZERO", ord, " ")
+  for (k = 1; k <= nord; k++) { r = ord[k]; if (r in M) print r "\t" L[r] "\t" M[r] }
 }' "$file" 2>/dev/null) || exit 0
 [ -n "$res" ] || exit 0
 msg=""; count=0

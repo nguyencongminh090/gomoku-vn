@@ -1,0 +1,104 @@
+<!-- S1 "Sảnh bạn bè": presence-first. Friends are the page: big seat cards, online first, each with
+     Thách đấu + Nhắn. A slim "Cần bạn trả lời" rail and recent chats sit right. -->
+<style>
+  .s1 { padding-top: 28px; }
+  .s1__head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .s1__head h1 { font-size: clamp(28px, 2.2vw + 10px, 40px); font-weight: 900; letter-spacing: -.01em; }
+  .s1__head p { margin-top: 4px; font-weight: 700; color: var(--c-ink-2); display: flex; align-items: center; gap: 8px; }
+  .s1__add { display: flex; gap: 8px; align-items: center; flex: 0 1 460px; min-width: 0; }
+  .s1__add .field { flex: 1; }
+  .s1__grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 24px; align-items: start; }
+  .s1__seats { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 12px; }
+  .seat { padding: 16px; display: grid; gap: 10px; justify-items: center; text-align: center; position: relative; min-width: 0; }
+  .seat .av { --s: 64px; }
+  .seat__n { width: 100%; font-size: 16px; font-weight: 800; }
+  .seat__s { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--c-ink-2); }
+  .seat__meta { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .seat__act { display: flex; gap: 8px; width: 100%; }
+  .seat__act .btn--pri { flex: 1; }
+  .seat--play { box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--busy) 55%, transparent), 0 10px 28px -18px rgba(0,0,0,.35); }
+  .seat--off { background: transparent; box-shadow: inset 0 0 0 1px var(--c-border); }
+  .seat--off .seat__act { display: none; }
+  .s1__sub { margin: 24px 0 10px; font-size: 13px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; color: var(--c-ink-2); }
+  .s1__off { display: grid; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); gap: 8px; }
+  .offrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--c-border); min-width: 0; }
+  .offrow small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .s1__grid > * { min-width: 0; }
+  .rail { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; position: sticky; top: calc(var(--nav) + 16px); }
+  .rail .card { padding: 16px; }
+  .rail h2 { font-size: 15px; font-weight: 900; display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .ask { display: flex; align-items: center; gap: 10px; padding: 10px 0; min-width: 0; }
+  .ask + .ask { border-top: 1px solid var(--c-border); }
+  .ask small { display: block; font-size: 12px; color: var(--c-ink-2); }
+  .ask__b { display: flex; gap: 4px; }
+  .ask--ch { margin: -4px -8px 6px; padding: 12px; border-radius: 12px; background: var(--c-brand-light); }
+  .conv { display: flex; align-items: center; gap: 10px; padding: 8px 0; min-width: 0; }
+  .conv small { display: block; font-size: 12.5px; color: var(--c-ink-2); }
+  .conv--u .nm { font-weight: 900; } .conv--u small { color: var(--c-ink); font-weight: 700; }
+  .empty { display: none; grid-column: 1 / -1; flex-direction: column; align-items: center; gap: 12px; padding: 40px 16px; text-align: center; border-radius: 16px; box-shadow: inset 0 0 0 2px dashed var(--c-border); border: 2px dashed var(--c-border); }
+  .s1__seats[data-count="0"] > .empty { display: flex; }
+  .empty b { font-size: 20px; }
+  .code-chip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 12px; background: var(--c-fill); font-weight: 900; font-size: 18px; }
+  .sugg { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; width: 100%; max-width: 760px; text-align: left; }
+  @media (max-width: 1000px) { .s1__grid { grid-template-columns: 1fr; } .rail { position: static; order: -1; } }
+  @media (max-width: 860px) {
+    .s1 { padding-top: 16px; }
+    .s1__head { margin-bottom: 12px; }
+    .s1__add { flex-basis: 100%; }
+    .s1__seats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .seat { padding: 12px 10px; gap: 8px; } .seat .av { --s: 52px; }
+    .seat__meta { display: none; }
+    .seat__act .btn--pri .icon { display: none; } .seat__act .btn--pri, .seat__act .btn--sec { padding: 0 10px; min-width: 0; }
+    .rail .conv-card { display: none; }
+  }
+</style>
+<div class="mk-screen s1">
+  <div class="wrap">
+    <div class="s1__head rise">
+      <div><h1>Bạn bè</h1><p><span class="dot dot--on"></span><span><b class="num">{{n:online}}</b> đang online</span><span class="muted">· {{n:friends}} bạn</span></p></div>
+      <div class="s1__add">
+        <span class="field">{{i:magnifying-glass}}<span>Tìm hoặc thêm bạn: tên, tên#1234</span></span>
+        <button class="btn btn--sec btn--sm" title="Mã của bạn">{{mytag}}</button>
+      </div>
+    </div>
+    <div class="s1__grid">
+      <div>
+        <div class="s1__seats rise rise-2">
+          <template data-list="online">
+            <article class="card seat {{#play}}seat--play{{/play}}">
+              <span class="av" style="--h:{{h}}" data-st="{{st}}">{{ini}}</span>
+              <b class="seat__n nm">{{name}}</b>
+              <span class="seat__s" data-be="trạng thái"><span class="dot dot--{{st}}"></span>{{stText}}</span>
+              <span class="seat__meta"><span class="tag" data-be="elo">{{r}}</span><span class="tag tag--brand" data-be="đối đầu" title="Đối đầu: thắng–thua">{{h2h}}</span></span>
+              <span class="seat__act">{{#play}}<button class="btn btn--sm btn--sec" style="flex:1">{{i:eye}} Xem</button>{{/play}}{{^play}}<button class="btn btn--sm btn--pri">{{i:sword}} Thách đấu</button>{{/play}}<button class="btn btn--sm btn--sec btn--icon" aria-label="Nhắn tin">{{i:chat-circle}}</button></span>
+            </article>
+          </template>
+          <div class="empty">
+            <span class="st st--b" style="font-size:40px"></span>
+            <b>Chưa có bạn nào — mời một người để bắt đầu</b>
+            <span class="muted">Gửi mã của bạn, hoặc kết bạn với người đang online:</span>
+            <span class="code-chip">{{me}}<span class="muted">{{mytag}}</span></span>
+            <div class="sugg"><template data-list="suggest"><div class="offrow card"><span class="av" style="--h:{{h}};--s:32px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>{{why}}</small></div><button class="btn btn--sm btn--pri btn--icon" aria-label="Kết bạn">{{i:user-plus}}</button></div></template></div>
+          </div>
+        </div>
+        <div class="hide-empty" data-count="{{n:friends}}">
+          <h2 class="s1__sub">Ngoại tuyến</h2>
+          <div class="s1__off"><template data-list="offline"><div class="offrow"><span class="av av--off" style="--h:{{h}};--s:32px" data-st="off">{{ini}}</span><div class="nm-box"><span class="nm">{{name}}</span><small>{{stText}}</small></div></div></template></div>
+        </div>
+      </div>
+      <aside class="rail rise rise-3" aria-label="Cần bạn trả lời">
+        <section class="card hide-empty" data-count="{{n:todo}}">
+          <h2>{{i:bell}} Cần bạn trả lời <span class="badge">{{n:todo}}</span></h2>
+          <template data-list="chin"><div class="ask ask--ch"><span class="av" style="--h:{{h}};--s:32px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>thách {{rule}} · {{clock}}</small></div><span class="ask__b"><button class="btn btn--sm btn--pri">Chơi</button></span></div></template>
+          <template data-list="incoming"><div class="ask"><span class="av" style="--h:{{h}};--s:32px">{{ini}}</span><div class="nm-box"><b class="nm">{{name}}</b><small>muốn kết bạn · {{ago}}</small></div><span class="ask__b"><button class="btn btn--sm btn--pri btn--icon" aria-label="Đồng ý">{{i:check}}</button><button class="btn btn--sm btn--ghost btn--icon" aria-label="Từ chối">{{i:x}}</button></span></div></template>
+        </section>
+        <section class="card conv-card">
+          <h2>{{i:chat-circle}} Tin nhắn <span class="badge hide-empty" data-count="{{n:unread}}">{{n:unread}}</span></h2>
+          <div><template data-list="convs" data-max="4"><a class="conv {{#unread}}conv--u{{/unread}}" href="#"><span class="av" style="--h:{{h}};--s:36px" data-st="{{st}}">{{ini}}</span><div class="nm-box"><span class="nm">{{name}}</span><small class="nm">{{#mine}}Bạn: {{/mine}}{{last}}</small></div>{{#unread}}<span class="badge">{{unread}}</span>{{/unread}}</a></template>
+          <p class="if-empty muted" style="font-size:13px">Chưa có cuộc trò chuyện.</p></div>
+        </section>
+      </aside>
+    </div>
+  </div>
+</div>
+{{sheet}}

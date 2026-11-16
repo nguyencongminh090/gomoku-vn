@@ -38,7 +38,9 @@ function add(id, role) {
 const get = (p, as) => fetch(base + p, { headers: as ? { cookie: as } : {} }).then(async (r) => ({ status: r.status, body: await r.json() }));
 
 beforeAll(async () => {
-  add('mem', 'member'); add('mod', 'moderator'); add('adm', 'admin'); add('weird', 'superuser');
+  add('mem', 'member'); add('mod', 'moderator'); add('adm', 'admin');
+  // users.role has a CHECK since B347; bypass it once so roleOf's unknown-role fallback stays covered.
+  db.pragma('ignore_check_constraints = ON'); add('weird', 'superuser'); db.pragma('ignore_check_constraints = OFF');
   const app = express();
   app.use('/api/admin', adminRouter);
   app.use('/api/forum', forumRouter);

@@ -1,0 +1,107 @@
+<style>
+/* R6 — Bảng khởi hành: the room list as a station split-flap board. Every row is a "chuyến": code,
+   room, players, rule, clock, and a status flap (LÊN BÀN blinks for open seats). A black board on the
+   paper page in both modes; a ticker of who is online runs along the bottom. Bold, typographic,
+   fills the full width without decoration. */
+body.mk-r6-departures::after { display: none; }
+body.mk-r6-departures { --fb: #121212; --fb-row: #1b1b1b; --fb-cell: #0a0a0a; --fb-ink: #f4f1e8; --fb-dim: #8c877c; --fb-amber: #ffb627; --fb-green: #9be15d; }
+.r6 .wrap { padding-top: 22px; }
+.r6-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+.r6-top h1 { margin: 0; font-size: clamp(26px, 1.6vw + 12px, 38px); font-weight: 1000; letter-spacing: -.02em; }
+.r6-top .act { display: flex; align-items: center; gap: 10px; }
+.r6-top .code__box { width: 34px; height: 40px; font-size: 18px; }
+.r6-board { border-radius: 18px; background: var(--fb); color: var(--fb-ink); box-shadow: 0 30px 60px -30px rgba(0,0,0,.7), inset 0 0 0 1px rgba(255,255,255,.06); overflow: hidden; }
+.r6-bh { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.r6-bh .title { font-weight: 1000; letter-spacing: .14em; font-size: 15px; }
+.r6-bh .clock { margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 900; font-size: 20px; color: var(--fb-amber); }
+.r6-bh .tabs button { color: var(--fb-dim) !important; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; font-weight: 900; }
+.r6-bh .tabs button[aria-selected="true"] { color: var(--fb-ink) !important; }
+.r6-bh .tabs button[aria-selected="true"]::after { background: var(--fb-amber); }
+.r6-bh .tabs .n { color: var(--fb-dim); }
+.r6-cols, .r6-row { display: grid; grid-template-columns: 80px minmax(0, 1.2fr) minmax(0, 1.6fr) 110px 90px 70px 140px; gap: 12px; align-items: center; padding: 0 20px; }
+.r6-cols { padding-top: 10px; padding-bottom: 8px; font-size: 11px; font-weight: 900; letter-spacing: .14em; color: var(--fb-dim); text-transform: uppercase; }
+.r6-row { min-height: 54px; border-top: 1px solid rgba(255,255,255,.05); cursor: pointer; }
+.r6-row:nth-child(even) { background: var(--fb-row); }
+.r6-row:hover { background: #262626; }
+.flap { display: inline-flex; gap: 2px; }
+.flap i { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 28px; border-radius: 3px; background: var(--fb-cell); font-style: normal; font-weight: 1000; font-size: 17px; color: var(--fb-amber); box-shadow: inset 0 -1px 0 rgba(255,255,255,.06); }
+.flap i::after { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: rgba(0,0,0,.8); }
+.r6-room { font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.r6-pl { display: flex; align-items: center; gap: 8px; min-width: 0; font-weight: 700; white-space: nowrap; overflow: hidden; }
+.r6-pl .av { --s: 24px; box-shadow: none; }
+.r6-pl em { font-style: normal; color: var(--fb-dim); font-size: 12px; }
+.r6-pl .free { color: var(--fb-amber); }
+.r6-dim { color: var(--fb-dim); font-weight: 700; font-size: 14px; white-space: nowrap; }
+.r6-st { justify-self: end; display: inline-flex; align-items: center; justify-content: center; min-width: 124px; height: 30px; padding: 0 10px; border-radius: 4px; background: var(--fb-cell); font-weight: 1000; letter-spacing: .1em; font-size: 13px; }
+.r6-st--open { color: #111; background: var(--fb-amber); animation: mk-pulse 1.4s infinite; }
+.r6-st--live { color: var(--fb-green); }
+.r6-st--ready { color: var(--fb-ink); }
+.r6-fill { cursor: default; } .r6-fill:hover { background: inherit; }
+.r6-empty { flex-direction: column; align-items: center; gap: 6px; padding: 36px 20px; color: var(--fb-dim); text-align: center; }
+.r6-empty b { color: var(--fb-amber); letter-spacing: .1em; }
+.r6-ticker { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-top: 1px solid rgba(255,255,255,.08); font-size: 14px; white-space: nowrap; overflow: hidden; }
+.r6-ticker b { flex: none; position: relative; z-index: 1; background: var(--fb); padding-right: 10px; }
+.r6-ticker b { color: var(--fb-amber); letter-spacing: .12em; font-size: 12px; font-weight: 1000; }
+.r6-ticker .roll { display: flex; gap: 22px; animation: r6-roll 40s linear infinite; }
+.r6-ticker .roll span { color: var(--fb-dim); } .r6-ticker .roll .oname { color: var(--fb-ink); }
+@keyframes r6-roll { to { transform: translateX(-50%); } }
+@media (max-width: 1100px) { .r6-cols, .r6-row { grid-template-columns: 74px minmax(0, 1fr) minmax(0, 1.4fr) 90px 128px; } .r6-c-size, .r6-c-time { display: none; } }
+@media (max-width: 860px) {
+  .r6-top h1 { font-size: 24px; }
+  .r6-top { gap: 10px; }
+  .r6-top .act { width: 100%; }
+  .r6-top .act .btn--pri { margin-left: auto; }
+  .r6-bh { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+  .r6-bh .title { display: none; }
+  .r6-bh .clock { display: none; }
+  .r6-fill { display: none; }
+  .r6-bh .tabs { gap: 14px; }
+  .r6-cols { display: none; }
+  .r6-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "code room st" "code pl st" "code dim st"; gap: 2px 10px; padding: 10px 12px; }
+  .r6-row > .flap { grid-area: code; }
+  .r6-room { grid-area: room; font-size: 14px; }
+  .r6-pl { grid-area: pl; font-size: 13px; }
+  .r6-c-rule { grid-area: dim; font-size: 12px; }
+  .r6-st { grid-area: st; min-width: 0; font-size: 11px; height: 26px; padding: 0 8px; }
+  .flap i { width: 16px; height: 24px; font-size: 14px; }
+}
+</style>
+<div class="mk mk-screen r6">
+  <div class="wrap">
+    <div class="r6-top rise">
+      <h1>Phòng</h1>
+      <div class="act">
+        <span class="code__hash">#</span><span class="code__box">A</span><span class="code__box"></span><span class="code__box"></span><button class="btn btn--ink btn--sm">Vào</button>
+        <button class="btn btn--pri btn--sm">{{i:plus-circle}}Tạo phòng</button>
+      </div>
+    </div>
+    <section class="r6-board rise rise-2" aria-label="Bảng phòng">
+      <div class="r6-bh">
+        <span class="title">SẢNH PLAY3CR</span>
+        <div class="tabs" role="tablist" aria-label="Lọc phòng">
+          <button role="tab" aria-selected="true">Tất cả<span class="n">{{n:all}}</span></button>
+          <button role="tab" aria-selected="false">Lên bàn<span class="n">{{n:open}}</span></button>
+          <button role="tab" aria-selected="false">Đang đấu<span class="n">{{n:seated}}</span></button>
+        </div>
+        <span class="clock">09:41</span>
+      </div>
+      <div class="r6-cols"><span>Mã</span><span>Phòng</span><span>Kỳ thủ</span><span>Luật</span><span class="r6-c-size">Bàn</span><span class="r6-c-time">Giờ</span><span style="justify-self:end">Trạng thái</span></div>
+      <div class="r6-rows">
+        <template data-list="all">
+          <div class="r6-row" tabindex="0">
+            <span class="flap">{{flap}}</span>
+            <span class="r6-room">{{name}}</span>
+            <span class="r6-pl"><span class="av" style="--h:{{p1h}}">{{p1i}}</span>{{p1}}<em>vs</em>{{#p2}}{{p2}}{{/p2}}{{^p2}}<span class="free">— ghế trống —</span>{{/p2}}</span>
+            <span class="r6-dim r6-c-rule">{{rule}}</span>
+            <span class="r6-dim r6-c-size">{{size}}</span>
+            <span class="r6-dim r6-c-time">{{time}}</span>
+            <span class="r6-st r6-st--{{#open}}open{{/open}}{{#live}}live{{/live}}{{#ready}}ready{{/ready}}">{{#open}}LÊN BÀN{{/open}}{{#live}}ĐANG ĐẤU{{/live}}{{#ready}}SẮP CHẠY{{/ready}}</span>
+          </div>
+        </template>
+        <div class="r6-row r6-fill" aria-hidden="true"><span class="flap"><i></i><i></i><i></i></span><span></span><span></span><span></span><span class="r6-c-size"></span><span class="r6-c-time"></span><span class="r6-st"></span></div><div class="r6-row r6-fill" aria-hidden="true"><span class="flap"><i></i><i></i><i></i></span><span></span><span></span><span></span><span class="r6-c-size"></span><span class="r6-c-time"></span><span class="r6-st"></span></div><div class="r6-row r6-fill" aria-hidden="true"><span class="flap"><i></i><i></i><i></i></span><span></span><span></span><span></span><span class="r6-c-size"></span><span class="r6-c-time"></span><span class="r6-st"></span></div><div class="r6-row r6-fill" aria-hidden="true"><span class="flap"><i></i><i></i><i></i></span><span></span><span></span><span></span><span class="r6-c-size"></span><span class="r6-c-time"></span><span class="r6-st"></span></div>
+        <div class="r6-empty if-empty"><b>CHƯA CÓ CHUYẾN NÀO</b><span>Mở chuyến đầu tiên của hôm nay bằng nút Tạo phòng.</span></div>
+      </div>
+      <div class="r6-ticker"><b>ĐANG ONLINE · {{n:online}}</b><div class="roll"><template data-list="online"><span><span class="oname">{{name}}</span> {{st}}</span></template><template data-list="online"><span><span class="oname">{{name}}</span> {{st}}</span></template></div></div>
+    </section>
+  </div>
+</div>

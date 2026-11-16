@@ -7,9 +7,10 @@
  * decision 2026-10-10); an answer's moves are distinct empty cells, so it is bounded by the board.
  *
  * An answer is the SOLVER's moves only (the opponent's replies are never entered), so submit-time
- * validation is structural; whether the line really wins is the reviewer's call. Any one matching
- * answer solves the puzzle; `final_move` puzzles take a single decisive move. Answers are never sent
- * to solvers — comparison happens here.
+ * validation is structural. PuzzleVerifier replays forcing lines (#331): the review queue shows each
+ * line's verdict as a hint (never a reject), and a solver line that is not stored still solves the
+ * puzzle when it is a verified forced win. Any one matching answer solves the puzzle; `final_move`
+ * puzzles take a single decisive move. Answers are never sent to solvers — comparison happens here.
  *
  * Methods throw PuzzleError(code, status); routes translate it to JSON.
  */
@@ -19,6 +20,7 @@ const database = require('../db/database');
 const roles = require('../utils/roles');
 const dmText = require('./DmText');
 const coords = require('../../client/js/coords');
+const { verifyAnswers } = require('./PuzzleVerifier');
 
 const RULES = ['freestyle', 'standard', 'caro'];
 const LEVELS = ['easy', 'medium', 'hard', 'expert'];
@@ -32,6 +34,11 @@ const TITLE_MAX = 60;
 const PROMPT_MAX = 280;
 const NOTE_MAX = 200;
 const PAGE = 20;
+/** Rename log rows kept per puzzle (#337). */
+const RENAME_KEEP = 50;
+/** Wrong-or-right tries a member gets per puzzle, never reset (#335); a solved puzzle is exempt. */
+const MAX_ATTEMPTS = 3;
+const SOLVERS_MAX = 100;
 /** A member's puzzle level = the highest level at which they have solved at least this many (planning: N = 10). */
 const LEVEL_THRESHOLD = 10;
 
@@ -146,11 +153,16 @@ function validateAnswers(raw, mode, grid, size) {
   });
 }
 
+function cleanTitle(raw) {
+  const title = dmText.clean(typeof raw === 'string' ? raw : '');
+  if (!title || title.length > TITLE_MAX) throw bad('PUZZLE_TITLE_INVALID', `Tiêu đề dài 1–${TITLE_MAX} ký tự.`);
+  return title;
+}
+
 /** Validate + normalise author input. @returns the row fields (minus ids/status/timestamps). */
 function normalise(input) {
   const i = input || {};
-  const title = dmText.clean(typeof i.title === 'string' ? i.title : '');
-  if (!title || title.length > TITLE_MAX) throw bad('PUZZLE_TITLE_INVALID', `Tiêu đề dài 1–${TITLE_MAX} ký tự.`);
+  const title = cleanTitle(i.title);
   const prompt = dmText.clean(typeof i.prompt === 'string' ? i.prompt : '');
   if (prompt.length > PROMPT_MAX) throw bad('PUZZLE_PROMPT_INVALID', `Đề bài tối đa ${PROMPT_MAX} ký tự.`);
   if (!RULES.includes(i.rule)) throw bad('PUZZLE_RULE_INVALID', 'Luật không hợp lệ.');
@@ -188,15 +200,25 @@ function createPuzzle(userId, input) {
     }
     const id = crypto.randomUUID();
     const now = new Date().toISOString();
-    db().prepare(`INSERT INTO puzzles (id, author_id, title, prompt, rule, board_size, stones, layout, to_move, mode, answers, level, position_hash, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(id, userId, p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), JSON.stringify(p.layout), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, now, now);
+    // Never reused, even after a delete (#333): the sequence only grows.
+    db().prepare('UPDATE puzzle_number_seq SET last = MAX(last, (SELECT COALESCE(MAX(number), 0) FROM puzzles)) + 1 WHERE id = 1').run();
+    const number = db().prepare('SELECT last FROM puzzle_number_seq WHERE id = 1').get().last;
+    db().prepare(`INSERT INTO puzzles (id, number, author_id, title, prompt, rule, board_size, stones, layout, to_move, mode, answers, level, position_hash, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(id, number, userId, p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), JSON.stringify(p.layout), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, now, now);
     writeTags(id, p.tags);
     return { id, status: 'pending' };
   })();
 }
 
-/** Author edits; a changed approved/rejected puzzle goes back to pending and its solves are cleared. */
+/** What decides whether a stored solve is still right: everything but title/prompt/tags/level (#332). */
+const positionKey = (rule, size, toMove, mode, stones, walls, portals, answers) =>
+  JSON.stringify([rule, size, toMove, mode, stones, walls, portals, answers]);
+
+/**
+ * Author edits; a changed approved/rejected puzzle goes back to pending. Solves and attempts are cleared only
+ * when the position, layout or answers changed (#332), at any status (#338) — a title/prompt/tag/level edit keeps them.
+ */
 function updatePuzzle(userId, id, input) {
   const p = normalise(input);
   return db().transaction(() => {
@@ -210,9 +232,63 @@ function updatePuzzle(userId, id, input) {
       position_hash = ?, status = 'pending', review_note = '', reviewed_at = NULL, reviewed_by = NULL, updated_at = ? WHERE id = ?`)
       .run(p.title, p.prompt, p.rule, p.size, JSON.stringify(p.stones), JSON.stringify(p.layout), p.toMove, p.mode, JSON.stringify(p.answers), p.level, p.hash, new Date().toISOString(), row.id);
     writeTags(row.id, p.tags);
-    if (row.status === 'approved') db().prepare('DELETE FROM puzzle_progress WHERE puzzle_id = ?').run(row.id);
+    const lay = layoutOf(row);
+    const changed = positionKey(row.rule, row.board_size, row.to_move, row.mode, JSON.parse(row.stones), lay.walls, lay.portals, JSON.parse(row.answers))
+      !== positionKey(p.rule, p.size, p.toMove, p.mode, p.stones, p.layout.walls, p.layout.portals, p.answers);
+    // Whatever the current status: a pending/rejected puzzle can still carry solves from an earlier approved version (#338).
+    if (changed) {
+      db().prepare('DELETE FROM puzzle_progress WHERE puzzle_id = ?').run(row.id);
+      db().prepare('DELETE FROM puzzle_attempts WHERE puzzle_id = ?').run(row.id);
+    }
     return { id: row.id, status: 'pending' };
   })();
+}
+
+/** Title-only rename by the author (or a reviewer): keeps status, solves and attempts (#334); logged for reviewers (#337). */
+function renamePuzzle(userId, id, rawTitle) {
+  const title = cleanTitle(rawTitle);
+  return db().transaction(() => {
+    const row = db().prepare('SELECT id, author_id, title FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
+    if (!row) throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
+    if (row.author_id !== userId && !isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
+    const now = new Date().toISOString();
+    db().prepare('UPDATE puzzles SET title = ?, updated_at = ? WHERE id = ?').run(title, now, row.id);
+    if (title !== row.title) {
+      db().prepare('INSERT INTO puzzle_renames (puzzle_id, user_id, old_title, new_title, created_at) VALUES (?, ?, ?, ?, ?)')
+        .run(row.id, userId, row.title, title, now);
+      db().prepare(`DELETE FROM puzzle_renames WHERE puzzle_id = ? AND id NOT IN
+        (SELECT id FROM puzzle_renames WHERE puzzle_id = ? ORDER BY id DESC LIMIT ?)`).run(row.id, row.id, RENAME_KEEP);
+    }
+    return { id: row.id, title };
+  })();
+}
+
+/** Author or reviewer deletes a puzzle for good; tags, solves, attempts and rename log go with it (FK cascade). */
+function deletePuzzle(userId, id) {
+  return db().transaction(() => {
+    const row = db().prepare('SELECT id, author_id FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
+    if (!row) throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
+    if (row.author_id !== userId && !isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
+    db().prepare('DELETE FROM puzzles WHERE id = ?').run(row.id);
+    return { id: row.id, deleted: true };
+  })();
+}
+
+/** Recent title changes, newest first, for reviewers (#337). */
+function renameLog(adminId, { page } = {}) {
+  requireAdmin(adminId);
+  const pg = Math.max(1, parseInt(page, 10) || 1);
+  const total = db().prepare('SELECT COUNT(*) AS n FROM puzzle_renames').get().n;
+  const rows = db().prepare(`SELECT r.id, r.puzzle_id, r.old_title, r.new_title, r.created_at, p.number, p.status,
+      u.username, u.display_name FROM puzzle_renames r JOIN puzzles p ON p.id = r.puzzle_id JOIN users u ON u.id = r.user_id
+    ORDER BY r.id DESC LIMIT ? OFFSET ?`).all(PAGE, (pg - 1) * PAGE);
+  return {
+    renames: rows.map((r) => ({
+      id: r.id, puzzleId: r.puzzle_id, number: r.number, status: r.status, oldTitle: r.old_title, newTitle: r.new_title,
+      createdAt: r.created_at, by: { username: r.username, displayName: r.display_name },
+    })),
+    pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
+  };
 }
 
 function tagsOf(ids) {
@@ -230,7 +306,7 @@ function layoutOf(row) {
 
 function shape(row, tags, { answers = false, solved } = {}) {
   const out = {
-    id: row.id, title: row.title, prompt: row.prompt, rule: row.rule, boardSize: row.board_size,
+    id: row.id, number: row.number, title: row.title, prompt: row.prompt, rule: row.rule, boardSize: row.board_size,
     stones: JSON.parse(row.stones), walls: layoutOf(row).walls, portals: layoutOf(row).portals, toMove: row.to_move, mode: row.mode, level: row.level, status: row.status,
     tags, author: row.author_name ? { username: row.author_username, displayName: row.author_name } : undefined,
     createdAt: row.created_at,
@@ -238,6 +314,12 @@ function shape(row, tags, { answers = false, solved } = {}) {
   if (answers) out.answers = JSON.parse(row.answers);
   if (solved !== undefined) out.solved = solved;
   return out;
+}
+
+/** PuzzleVerifier verdicts for `answers` (default: the stored lines) on a stored puzzle row. */
+function verificationOf(row, answers = JSON.parse(row.answers)) {
+  const { walls, portals } = layoutOf(row);
+  return verifyAnswers({ size: row.board_size, rule: row.rule, toMove: row.to_move, stones: JSON.parse(row.stones), walls, portals }, answers);
 }
 
 const AUTHOR_JOIN = 'SELECT p.*, u.username AS author_username, u.display_name AS author_name FROM puzzles p JOIN users u ON u.id = p.author_id';
@@ -267,31 +349,95 @@ function listApproved(viewerId, { tag, level, rule, page } = {}) {
   };
 }
 
+/** A puzzle row (with author) by UUID, or by its #number when the id is all digits (#333). */
+function findRow(id) {
+  const key = String(id).slice(0, 64);
+  return /^\d{1,9}$/.test(key)
+    ? db().prepare(`${AUTHOR_JOIN} WHERE p.number = ?`).get(Number(key))
+    : db().prepare(`${AUTHOR_JOIN} WHERE p.id = ?`).get(key);
+}
+
 /** One puzzle. Not-approved ones are visible to their author and admins only (with answers). */
 function getPuzzle(viewerId, id) {
-  const row = db().prepare(`${AUTHOR_JOIN} WHERE p.id = ?`).get(String(id).slice(0, 64));
+  const row = findRow(id);
   const privileged = !!row && !!viewerId && (row.author_id === viewerId || isAdmin(viewerId));
   if (!row || (row.status !== 'approved' && !privileged)) throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
   const prog = viewerId ? db().prepare('SELECT solved_at FROM puzzle_progress WHERE user_id = ? AND puzzle_id = ?').get(viewerId, row.id) : null;
-  return shape(row, tagsOf([row.id]).get(row.id), { answers: privileged, solved: viewerId ? !!(prog && prog.solved_at) : undefined });
+  const out = shape(row, tagsOf([row.id]).get(row.id), { answers: privileged, solved: viewerId ? !!(prog && prog.solved_at) : undefined });
+  if (viewerId && row.status === 'approved') Object.assign(out, attemptInfo(viewerId, row.id));
+  return out;
 }
 
 /** Check a solver's moves against the accepted answers. Records an attempt (and the first solve). */
 function solve(userId, id, rawMoves) {
-  const row = db().prepare('SELECT id, status, mode, answers, author_id, board_size FROM puzzles WHERE id = ?').get(String(id).slice(0, 64));
+  const row = findRow(id);
   if (!row || row.status !== 'approved') throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
   const size = row.board_size;
   const moves = Array.isArray(rawMoves) && rawMoves.length <= size * size ? rawMoves.map((c) => toCell(c, size)) : null;
   if (!moves || !moves.length || moves.some((c) => !c)) throw bad('PUZZLE_MOVES_INVALID', 'Tọa độ không hợp lệ.');
   const same = (a, b) => a.length === b.length && a.every((c, k) => c.x === b[k].x && c.y === b[k].y);
-  const correct = JSON.parse(row.answers).some((a) => same(a, moves));
+  // Not a stored line: still solved when it is a forced win ending on its winning move (#331).
+  const forcedWin = () => {
+    if (row.mode === 'final_move' && moves.length !== 1) return false;
+    const v = verificationOf(row, [moves])[0];
+    return v.status === 'verified' && v.step === moves.length;
+  };
+  const prog = db().prepare('SELECT attempts, solved_at FROM puzzle_progress WHERE user_id = ? AND puzzle_id = ?').get(userId, row.id);
+  if (!(prog && prog.solved_at) && prog && prog.attempts >= MAX_ATTEMPTS) {
+    const e = new PuzzleError('PUZZLE_ATTEMPTS_EXCEEDED', 429, `Bạn đã dùng hết ${MAX_ATTEMPTS} lượt thử cho puzzle này.`);
+    e.attemptsLeft = 0;
+    throw e;
+  }
+  const correct = JSON.parse(row.answers).some((a) => same(a, moves)) || forcedWin();
   const now = new Date().toISOString();
   db().transaction(() => {
     db().prepare('INSERT OR IGNORE INTO puzzle_progress (user_id, puzzle_id) VALUES (?, ?)').run(userId, row.id);
     db().prepare('UPDATE puzzle_progress SET attempts = attempts + 1 WHERE user_id = ? AND puzzle_id = ?').run(userId, row.id);
     if (correct) db().prepare('UPDATE puzzle_progress SET solved_at = COALESCE(solved_at, ?) WHERE user_id = ? AND puzzle_id = ?').run(now, userId, row.id);
+    db().prepare('INSERT INTO puzzle_attempts (user_id, puzzle_id, moves, correct, created_at) VALUES (?, ?, ?, ?, ?)')
+      .run(userId, row.id, JSON.stringify(moves), correct ? 1 : 0, now);
   })();
-  return { correct };
+  return { correct, ...attemptInfo(userId, row.id) };
+}
+
+/** {attemptsUsed, attemptsLeft (null once solved: unlimited), maxAttempts} for one member and puzzle. */
+function attemptInfo(userId, puzzleId) {
+  const g = db().prepare('SELECT attempts, solved_at FROM puzzle_progress WHERE user_id = ? AND puzzle_id = ?').get(userId, puzzleId);
+  const used = g ? g.attempts : 0;
+  return { attemptsUsed: used, attemptsLeft: g && g.solved_at ? null : Math.max(0, MAX_ATTEMPTS - used), maxAttempts: MAX_ATTEMPTS };
+}
+
+/** The member's own tries on an approved puzzle, newest first (#336). Other members' moves are never exposed. */
+function myAttempts(userId, id) {
+  const row = findRow(id);
+  if (!row || row.status !== 'approved') throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
+  const attempts = db().prepare('SELECT moves, correct, created_at FROM puzzle_attempts WHERE user_id = ? AND puzzle_id = ? ORDER BY id DESC')
+    .all(userId, row.id).map((a) => ({ moves: JSON.parse(a.moves), correct: !!a.correct, createdAt: a.created_at }));
+  return { attempts, ...attemptInfo(userId, row.id) };
+}
+
+/**
+ * Who solved an approved puzzle and in how many tries (public, #336), earliest first. Tries = the attempts
+ * up to the first correct one; solves from before attempts were recorded fall back to the progress counter.
+ */
+function solvers(id) {
+  const row = findRow(id);
+  if (!row || row.status !== 'approved') throw new PuzzleError('PUZZLE_NOT_FOUND', 404, 'Không tìm thấy puzzle.');
+  const rows = db().prepare(`SELECT u.id, u.username, u.display_name, u.avatar_v, g.solved_at,
+      CASE WHEN fc.first_id IS NULL THEN g.attempts
+           ELSE (SELECT COUNT(*) FROM puzzle_attempts a WHERE a.user_id = g.user_id AND a.puzzle_id = g.puzzle_id AND a.id <= fc.first_id) END AS tries
+    FROM puzzle_progress g JOIN users u ON u.id = g.user_id
+    LEFT JOIN (SELECT user_id, puzzle_id, MIN(id) AS first_id FROM puzzle_attempts WHERE correct = 1 GROUP BY user_id, puzzle_id) fc
+      ON fc.user_id = g.user_id AND fc.puzzle_id = g.puzzle_id
+    WHERE g.puzzle_id = ? AND g.solved_at IS NOT NULL ORDER BY g.solved_at, u.id LIMIT ?`).all(row.id, SOLVERS_MAX);
+  const total = db().prepare('SELECT COUNT(*) AS n FROM puzzle_progress WHERE puzzle_id = ? AND solved_at IS NOT NULL').get(row.id).n;
+  return {
+    total,
+    solvers: rows.map((r) => ({
+      username: r.username, displayName: r.display_name, tries: r.tries, solvedAt: r.solved_at,
+      avatarUrl: r.avatar_v ? `/api/profile/avatar/${r.id}.webp?v=${r.avatar_v}` : null,
+    })),
+  };
 }
 
 /** The author's own puzzles, every status, with the reviewer's note. */
@@ -310,7 +456,7 @@ function requireAdmin(userId) {
   if (!isAdmin(userId)) throw new PuzzleError('PUZZLE_FORBIDDEN', 403, 'Bạn không có quyền.');
 }
 
-/** Pending puzzles, oldest first, each with how many OTHER puzzles share its position. */
+/** Pending puzzles, oldest first, each with how many OTHER puzzles share its position and its answers' verdicts (#331). */
 function reviewQueue(adminId, { page } = {}) {
   requireAdmin(adminId);
   const pg = Math.max(1, parseInt(page, 10) || 1);
@@ -319,7 +465,7 @@ function reviewQueue(adminId, { page } = {}) {
   const tags = tagsOf(rows.map((r) => r.id));
   const dup = db().prepare('SELECT COUNT(*) AS n FROM puzzles WHERE position_hash = ? AND id != ?');
   return {
-    puzzles: rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), duplicates: dup.get(r.position_hash, r.id).n })),
+    puzzles: rows.map((r) => ({ ...shape(r, tags.get(r.id), { answers: true }), duplicates: dup.get(r.position_hash, r.id).n, verification: verificationOf(r) })),
     pagination: { page: pg, limit: PAGE, total, totalPages: Math.ceil(total / PAGE) },
   };
 }
@@ -370,5 +516,5 @@ function learnSummary(userId) {
 module.exports = {
   statsFor, learnSummary, LEVEL_THRESHOLD,
   PuzzleError, RULES, LEVELS, TAGS, MODES, BOARD_SIZES, MAX_PENDING_PER_USER, isAdmin,
-  createPuzzle, updatePuzzle, listApproved, getPuzzle, solve, mine, reviewQueue, review,
+  MAX_ATTEMPTS, createPuzzle, updatePuzzle, deletePuzzle, renameLog, renamePuzzle, listApproved, getPuzzle, solve, myAttempts, solvers, mine, reviewQueue, review,
 };
