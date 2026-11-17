@@ -47,7 +47,7 @@ function render(settings = {}, { roomName } = {}) {
   window.RoomUI.updateUI();
 }
 
-const rulesLine = () => [...$('room-rules-text').querySelectorAll('.rnav__rules-full > span')].map((s) => s.textContent);
+const rulesLine = () => [...$('room-rules-text').querySelectorAll('.rnav__rules-full > .rpill')].map((s) => s.textContent);
 const rulesShort = () => $('room-rules-text').querySelector('.rnav__rules-short').textContent;
 const popRules = () => [...$('rules-pop-body').querySelectorAll('.rules-pop__rule')].map((s) => s.dataset.rule);
 
@@ -63,7 +63,11 @@ describe('rules line in the nav', () => {
     render(settings);
     expect(rulesLine()).toEqual(expected);
     expect(rulesShort()).toBe(expected[0] + (expected.length > 1 ? ' +' + (expected.length - 1) : ''));
-    expect($('room-menu-rules').textContent).toBe(expected.join(' · '));
+    // #414: one pill per rule, never a joined 'A · B' string; hidden ', ' only for screen readers
+    const menuPills = [expected[0]].concat(expected.length > 1 ? ['+' + (expected.length - 1)] : []); // win rule + count
+    expect([...$('room-menu-rules').querySelectorAll('.rpill')].map((p) => p.textContent)).toEqual(menuPills);
+    expect($('room-rules-text').textContent).not.toContain('·');
+    expect($('room-menu-rules').textContent).toBe(menuPills.join(', '));
   });
 
   test('the mode sits on the same button as the rules', () => {
@@ -194,8 +198,28 @@ describe('code segment + menu title', () => {
     expect($('room-id-nav').title).toContain('Phòng của Mai');
   });
 
-  test('the menu is headed "Bàn <code> · <mode>"', () => {
+  test('the menu is headed "Bàn <code>" + a mode pill (#414, no "·")', () => {
     render();
-    expect($('room-menu-title').textContent).toBe('Bàn #ABC · Giao hữu');
+    expect($('room-menu-title').querySelector('.rmenu__code').textContent).toBe('Bàn #ABC');
+    const pill = $('room-menu-title').querySelector('.rpill');
+    expect(pill.textContent).toBe('Giao hữu');
+    expect(pill.classList.contains('rpill--friendly')).toBe(true);
+    expect($('room-menu-title').textContent).not.toContain('·');
+  });
+});
+
+// #414: the room page shows no "A · B · C" joined strings (ticket-rows.md).
+describe('no middle-dot joins on the room page', () => {
+  const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
+  const code = (src) => src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  test.each(['js/room-ui.js', 'js/chat-ui.js', 'js/room-socket.js', 'js/room-stage.js'])('%s builds no " · " string', (f) => {
+    expect(code(read(f))).not.toMatch(/['"`][^'"`\n]*·/);
+  });
+  test('room.html has no visible "·" outside comments', () => {
+    expect(read('room.html').replace(/<!--[\s\S]*?-->/g, '')).not.toContain('·');
+  });
+  test('room/chat i18n strings carry no "·"', () => {
+    const bad = read('js/i18n.js').split('\n').filter((l) => /'(room|sys\.rating|sys\.room_settings)[a-z_.]*':.*·/.test(l));
+    expect(bad).toEqual([]);
   });
 });
