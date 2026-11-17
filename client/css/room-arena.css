@@ -486,6 +486,8 @@ body.arena-room .tab-btn > .tab-btn__icon--phone { display: none; }
   body.arena-room .chat-input { padding-top: 2px; padding-bottom: 2px; }
   body.arena-room .chat-input input, body.arena-room .chat-input button { min-height: 44px; }
   body.arena-room .chat-input button { min-width: 44px; }
+  /* #412: iOS Safari zooms the page on focusing an input below 16px and doesn't zoom back on blur */
+  body.arena-room .chat-input input { font-size: 16px; }
 }
 /* Only genuinely short screens (iPhone SE class) narrow the board further. svh, not dvh: the browser toolbar
    collapsing while scrolling must not resize the board (user: small when idle, full once scrolled). */

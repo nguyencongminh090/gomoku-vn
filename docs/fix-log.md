@@ -357,3 +357,4 @@
 | 2026-11-16 13:10 | #401 installable PWA (manifest, icons, sw offline page) + sticky install banner on home; sw/manifest no-cache; 8 tests | [detail](docs/fix-log/2026-11-16-401-pwa-install-banner.md) |
 | 2026-11-16 14:20 | #403 profile page rebuilt as PF7 CV sheet (profile.css, side+main+org grid), chart kept, no Quá trình, copy link; 8 new tests | [detail](docs/fix-log/2026-11-16-403-profile-cv.md) |
 | 2026-11-17 11:46 | #410 lobby Link header from index.html for CF Early Hints; module entry not hinted; real cause Rocket Loader → turned off on zone; 26 tests | [detail](docs/fix-log/2026-11-17-410-early-hints-link.md) |
+| 2026-11-17 15:47 | #412 phone room chat input 13px→16px: iOS Safari focus auto-zoom stuck the page zoomed; 1 regression test | [detail](docs/fix-log/2026-11-17-412-room-chat-ios-zoom.md) |

@@ -78,3 +78,4 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#409.** Solid page background: drop grid+leaves, light #fafaf8 / dark #121212 `[Model: Sonnet 5]` — [detail](docs/todo/F409-solid-background.md)
 - **#411.** Legacy-hostname redirect play3cr.dpdns.org → play3cr.win for installed PWAs (built+deployed; open until real PWA check) `[Model: Sonnet 5]` — [detail](docs/todo/F411-legacy-host-redirect.md)
+- **#412.** Room chat input zooms page on iPhone and stays zoomed `[Model: Haiku]` — [detail](docs/todo/B412-room-chat-ios-zoom.md)

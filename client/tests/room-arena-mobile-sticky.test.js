@@ -30,3 +30,7 @@ test('every phone caps the board so nav + cards + board + tiles + minimized bar 
   // the short-screen rule (more board room for the panel) still comes after it, so it wins below 600px
   expect(css.indexOf('max-height: 600px')).toBeGreaterThan(css.indexOf('var(--minbar-h))))'));
 });
+test('#412: phone chat input is >= 16px — iOS Safari zooms the page on focus below 16px and never zooms back (board pinch #400 eats pinch-out)', () => {
+  const phone = css.slice(css.indexOf('@media (max-width: 768px) {'));
+  expect(phone).toMatch(/body\.arena-room \.chat-input input \{[^}]*font-size: 16px/);
+});
