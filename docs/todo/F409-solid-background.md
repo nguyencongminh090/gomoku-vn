@@ -1,5 +1,5 @@
 # F409 — Solid page background (drop grid + leaves)
-**Status:** BUILT 2026-11-17 on ui/solid-bg (uncommitted): 4225 jest pass, ?v= OK, screenshots rankings+home light/dark desktop; no phone/other-skin pass. Leaves SVGs kept (mockups use them).
+**Status:** ✅ DONE 2026-11-17 (merged dev 77bce200; no phone/other-skin pass)
 **Area:** client/css/platform.css (grid+leaves block ~L10-35), client/css/tokens.css (--c-bg, --c-surface, --c-bg-grid*, --bg-leaf-*), lobby-zen.css, rooms-hall.css
 **From:** user 2026-11-17: "Trắng tinh / đen dịu" chosen from `client/bg-solid-mockup.html` (also compared: `client/bg-options-mockup.html`, 13 options incl. wood photos in `client/assets/stock-wood/`). **Depends:** —
 

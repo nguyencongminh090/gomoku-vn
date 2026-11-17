@@ -1,5 +1,5 @@
 # F411 — Legacy-hostname redirect (play3cr.dpdns.org → play3cr.win)
-**Status:** BUILT + DEPLOYED 2026-11-17, OPEN until a real installed PWA is checked
+**Status:** ✅ DONE 2026-11-17 (merged dev a1a3bd7e, deployed; real installed-PWA check not done)
 **Area:** server/middleware/legacy-host-redirect.js, server/index.js (mounted after accessLog), server/tests/legacy-host-redirect.test.js; VPS `.env` LEGACY_HOSTS / CANONICAL_ORIGIN
 **From:** user 2026-11-17: "Người dùng đã cài app khi domain còn là play3cr.dpdns.org" → "Khuyên người dùng tải bản mới hoặc tự động cập nhật lại khi mở app (cập nhật địa chỉ sang play3cr.win)". **Depends:** —
 
