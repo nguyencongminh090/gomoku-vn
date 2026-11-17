@@ -1,3 +1,4 @@
+- ✅ **#410.** Correct preload hints + adapt to Cloudflare Early Hints (origin `Link` header from index.html; keep Early Hints ON) `[Model: Sonnet 5]` — [detail](docs/todo/F410-preload-early-hints.md)
 - ✅ **#407.** AI opponent (bot seat) on the engine service; scope TBD `[Model: Opus 5]` — [detail](docs/todo/F407-engine-ai-opponent.md)
 - ✅ **#406.** Rebuild WASM engine (Caro + rect) and pick hosting `[Model: Sonnet 5]` — [detail](docs/todo/F406-engine-wasm-rebuild.md)
 - ✅ **#404.** Engine service core: jobs, purposes, rule mapper, output parser (size L, features/rapfi-engine) `[Model: Sonnet 5]` — [detail](docs/todo/F404-engine-service-core.md)

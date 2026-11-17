@@ -1,5 +1,5 @@
 # F410 — Correct preload hints + adapt to Cloudflare Early Hints
-**Status:** merged dev a0a9d5b + follow-up fix/410-entry-module-hint; CF Rocket Loader turned OFF 2026-11-17 (real cause). Awaiting user Console confirm.
+**Status:** ✅ CLOSED 2026-11-17 (Link header from index.html + CF Rocket Loader off; Chrome Console clean, confirmed by user)
 **Area:** server/index.js (new Link-header middleware for `/`, `/index.html`), client/index.html (head hints), scripts/cache-bust.js (hash source), CF zone `play3cr.win` setting `early_hints` (currently ON)
 **From:** user 2026-11-17, console on https://play3cr.win: "preloaded with link preload was not used within a few seconds" for index-entry.js, home-challenge.js, challenge-modal.js, action-delegate.js, audio-manager.js, lobby-moves.js, escape-utils.js, skin-preload.js, socket-early.js, socket-client.js, socket.io.min.js, api-early.js, session.js, nunito-latin.woff2. User wants Early Hints KEPT. **Depends:** —
 

@@ -77,4 +77,3 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#409.** Solid page background: drop grid+leaves, light #fafaf8 / dark #121212 `[Model: Sonnet 5]` — [detail](docs/todo/F409-solid-background.md)
-- **#410.** Correct preload hints + adapt to Cloudflare Early Hints (origin `Link` header from index.html; keep Early Hints ON) `[Model: Sonnet 5]` — [detail](docs/todo/F410-preload-early-hints.md)
