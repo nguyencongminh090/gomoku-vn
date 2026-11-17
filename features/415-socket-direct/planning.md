@@ -76,3 +76,35 @@ socket:     browser ─► direct.play3cr.win (DNS-only) ─► Caddy :443 ─�
 1. User OK on exposing the VPS IP. 2. Install Caddy (apt), this Caddyfile, ufw 443 (+80 or DNS-01).
 3. DNS-only A `direct.play3cr.win`. 4. Merge to dev, deploy with `DIRECT_SOCKET_URL` + restart (warn: rooms lost).
 5. Watch `route=direct` vs CF connects/disconnects for a few days; ask VN players on other ISPs.
+
+## Hide the VPS IP (user 2026-11-17: "No" to exposing it → research)
+Measured from the PC (Viettel), 23:44 +07, 30 fresh TLS GETs + 100 pings each:
+| Edge | IP | TCP connect p50 / p90 / max | ICMP loss | Note |
+|---|---|---|---|---|
+| Cloudflare free (play3cr.win) | 104.21.15.100 | 55 / 1069 / 1091 ms | 20 % | the problem |
+| **AWS CloudFront** | 108.157.34.x | **9 / 29 / 30 ms** | **0 %**, rtt 7 ms | edges in Hanoi + Saigon (AWS, 2022) |
+| Gcore | 92.223.95.95 | 54 / 1072 / 4154 ms | — | same loss pattern → out |
+| Bunny | 156.59.241.114 | 27 / 30 / 74 ms | 0 % | SG, paid only |
+| Fastly | 151.101.x | 90 / 100 / 105 ms | — | far, WS paid |
+| Akamai | 171.242.7.x (in Viettel) | 7 / 9 / 37 ms | — | enterprise only |
+| VPS direct | 157.66.101.59 | 7-16 ms | 0 % | needs IP exposed |
+
+Options, no IP in public DNS (the code above already fits them: trust-by-port, only the header source changes):
+- **C1 CloudFront → Cloudflare (recommended to try first):** `direct.` = CloudFront distribution, origin =
+  a CF-proxied hostname whose tunnel ingress → 127.0.0.1:3001. VPS IP never published, no Caddy, no ufw change.
+  Lossy Viettel→CF leg replaced by Viettel→AWS VN (0 %) + AWS→CF (backbone peering, unmeasured).
+  Expected RTT ~40-70 ms (vs 9 ms direct, vs 374 ms p50 today) — unmeasured until a distribution exists.
+  Real IP: CF-Connecting-IP becomes a CloudFront IP → on :3001 take `CloudFront-Viewer-Address`, accepted only
+  with a secret custom origin header (else anyone can go CF→:3001 and forge it). Needs a custom origin
+  request policy → **pay-as-you-go** (always-free 1 TB + 10M req/month), not the flat-rate Free plan
+  (custom origin request rules: Business+). Needs an AWS account (card).
+- **C2 CloudFront → VPS:** origin = unlisted hostname → VPS, Caddy, ufw 443 only from CloudFront's
+  origin-facing prefix list + secret header. ~10-15 ms. IP still findable (CT log of the origin cert name),
+  but only reachable from CloudFront; a volumetric flood on the IP stays possible.
+- **C3 Sacrificial relay VPS in VN:** cheap 2nd VPS runs Caddy, tunnels to origin (WireGuard); only the relay IP
+  is public. Relay flooded → clients fall back to CF, origin unaffected. +1 small bill, other ISPs unmeasured.
+- Rejected: Caddy on the origin with a DNS-only record (user: no); Gcore (same loss); Cloudflare-only tricks
+  (Workers/Spectrum/for-SaaS share the same free IP ranges or need Enterprise). "Check with Cloudflare" for
+  other ISPs: CF has no path-measurement tool for a free zone → skipped; `route=direct` logs after rollout instead.
+Sources: AWS CloudFront pricing / flat-rate plan docs, AWS "new edge locations in Vietnam" (2022-08),
+CloudFront WebSocket + CloudFront-Viewer-Address docs.
