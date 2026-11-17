@@ -46,6 +46,7 @@ const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
 const { errorHandler } = require('./middleware/errorHandler');
 const { originGuard } = require('./middleware/origin-guard');
+const { legacyHostRedirect } = require('./middleware/legacy-host-redirect');
 const socketHandler  = require('./socket/SocketHandler');
 const diagNamespace  = require('./socket/diag-namespace');
 const sessionManager = require('./managers/SessionManager');
@@ -109,6 +110,9 @@ app.use(express.json());
 // Cloudflare-resolved client IP + geo. Mounted before static/routes so it
 // covers every response. No-op with zero overhead when disabled.
 app.use(accessLog);
+
+// Old public hostname → canonical one for page navigations (no-op unless LEGACY_HOSTS + CANONICAL_ORIGIN are set).
+app.use(legacyHostRedirect({ hosts: process.env.LEGACY_HOSTS, canonical: process.env.CANONICAL_ORIGIN }));
 
 // `client/` is what ships, in every environment (TODO.md #109).
 //
