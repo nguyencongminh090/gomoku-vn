@@ -12,7 +12,9 @@
  * by scripts/cache-bust.js can never drift from a second hand-written list.
  * Mapping (a hint must match the real fetch mode or the browser refetches):
  *   <script src>               → rel=preload; as=script            (no crossorigin: same-origin classic)
- *   <script type=module src>   → rel=modulepreload
+ *   <script type=module src>   → none: the parser fetches the entry itself, and a
+ *                                 Link-header copy that lands later (e.g. via the
+ *                                 service worker) is a second, never-used preload
  *   <link rel=modulepreload>   → rel=modulepreload
  *   <link rel=stylesheet>      → rel=preload; as=style
  *   <link rel=preload …>       → copied (as / type / crossorigin)
@@ -53,8 +55,7 @@ function collectHints(html) {
     const a = parseAttrs(m[2]);
     if (m[1].toLowerCase() === 'script') {
       const href = toPath(a.src);
-      if (a.type === 'module') add({ href, rel: 'modulepreload' });
-      else add({ href, rel: 'preload', as: 'script' });
+      if (a.type !== 'module') add({ href, rel: 'preload', as: 'script' });
       continue;
     }
     const rel = typeof a.rel === 'string' ? a.rel.toLowerCase() : '';
