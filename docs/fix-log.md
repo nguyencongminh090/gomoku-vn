@@ -359,3 +359,4 @@
 | 2026-11-17 11:46 | #410 lobby Link header from index.html for CF Early Hints; module entry not hinted; real cause Rocket Loader → turned off on zone; 26 tests | [detail](docs/fix-log/2026-11-17-410-early-hints-link.md) |
 | 2026-11-17 15:47 | #412 phone room chat input 13px→16px: iOS Safari focus auto-zoom stuck the page zoomed; 1 regression test | [detail](docs/fix-log/2026-11-17-412-room-chat-ios-zoom.md) |
 | 2026-11-17 18:04 | #413 phone room: both seat cards in one row above the board (clock was under the thumb); long names ellipsis + clamp fonts; bubble under my card | [detail](docs/fix-log/2026-11-17-413-room-phone-clock-row.md) |
+| 2026-11-18 01:54 | #416 route cookie on SW-proxied navigations: isDocumentRequest accepts dest=empty + mode navigate/same-origin + Accept text/html (Chromium measured); 5 tests; prod check pending deploy | [detail](docs/fix-log/2026-11-18-416-sw-navigation-route-cookie.md) |

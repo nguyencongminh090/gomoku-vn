@@ -106,6 +106,22 @@ describe('routeCookieMiddleware', () => {
   ])('%s → no nonce', (_n, headers) => {
     expect(run(headers).cookie).not.toHaveBeenCalled();
   });
+  // #416: a navigation proxied by sw.js (`fetch(e.request)`) loses its destination. Chromium (measured
+  // 2026-11-18) sends dest=empty + mode=navigate; the Fetch spec says mode=same-origin (Firefox/Safari).
+  test.each([
+    ['Chromium', 'navigate'],
+    ['spec / Firefox / Safari', 'same-origin'],
+  ])('service-worker-proxied navigation (%s) → nonce', (_n, mode) => {
+    const res = run({ ...doc, 'sec-fetch-dest': 'empty', 'sec-fetch-mode': mode, accept: 'text/html,application/xhtml+xml,*/*;q=0.8' });
+    expect(res.cookie).toHaveBeenCalledTimes(1);
+  });
+  test.each([
+    ['JS fetch() of HTML (cors)', { 'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'cors', accept: 'text/html' }],
+    ['JS fetch()/XHR (*/*)', { 'sec-fetch-dest': 'empty', 'sec-fetch-mode': 'same-origin', accept: '*/*' }],
+    ['iframe', { 'sec-fetch-dest': 'iframe', 'sec-fetch-mode': 'navigate', accept: 'text/html' }],
+  ])('%s → no nonce', (_n, h) => {
+    expect(run({ ...doc, ...h }).cookie).not.toHaveBeenCalled();
+  });
   test('ineligible but holding an old one → cleared', () => {
     const res = run({ ...doc, 'cf-ipcountry': 'JP', cookie: `gvn_session=${SID}; gvn_sock=x` });
     expect(res.clearCookie).toHaveBeenCalledWith('gvn_sock', expect.objectContaining({ path: '/' }));
