@@ -141,6 +141,16 @@
   box-shadow: var(--shadow);
 }
 .btn-secondary:active { transform: translateY(0) scale(0.96) !important; }
+/* ui-audit R1: room.html (start modal, QR) uses .btn-primary but never loaded login.css where it lived. Same pill as .btn-secondary, brand fill. */
+.btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 20px; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; font-family: var(--font);
+  color: var(--c-on-brand); background: var(--c-brand); border: 1px solid transparent; border-radius: 9999px;
+  cursor: pointer; text-decoration: none; box-shadow: var(--shadow-sm);
+  transition: var(--duration-normal) var(--ease-spring); transition-property: background-color, color, box-shadow, transform, opacity;
+}
+.btn-primary:hover:not(:disabled) { background: var(--c-brand-dark); }
+.btn-primary:disabled { background: var(--c-ink-3); cursor: not-allowed; }
 .btn-secondary i { width: 18px; height: 18px; flex-shrink: 0; }
 
 /* ── Generic brand-filled pill button (TODO.md #73) ──────────────────────────
@@ -305,7 +315,7 @@
 }
 .state-badge--waiting {
   background: var(--c-warning-bg);
-  color: var(--c-state-waiting);
+  color: var(--c-warning);   /* ui-audit F2: state-waiting is a dot colour (4.2:1), text uses --c-warning */
 }
 
 /* Single plain-language rule summary chip */

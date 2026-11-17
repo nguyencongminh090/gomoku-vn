@@ -213,6 +213,7 @@ body.arena-room .board-canvas-wrap {
 body.arena-room .gboard {
   border-radius: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  outline: 1px solid var(--c-border-strong, var(--c-border));   /* ui-audit R2: cream board vs #fafaf8 page; board colours untouched */
   cursor: pointer;
   touch-action: none;
 }
@@ -232,7 +233,7 @@ body.arena-room .seatcard {
   min-height: 64px;
   padding: 10px 12px;
   background: var(--c-surface);
-  border: 2px solid transparent;
+  border: 2px solid var(--c-border);   /* ui-audit R2: white card on near-white page; --turn/--low override below */
   border-radius: var(--radius-lg);
 }
 body.arena-room .seatcard--empty { grid-template-columns: auto 1fr; }

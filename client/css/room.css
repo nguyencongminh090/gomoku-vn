@@ -560,8 +560,8 @@
 
 .chat-msg--system {
   align-items: center;
-  color: var(--c-ink-3);
-  font-size: 11.5px;
+  color: var(--c-ink-2);   /* ui-audit R5 */
+  font-size: 12px;
   font-style: italic;
   padding: 6px 0;
   margin-bottom: 4px;
@@ -637,7 +637,7 @@
 }
 .chat-input input:focus {
   border-color: var(--c-brand);
-  box-shadow: 0 0 0 3px rgba(15,118,110,0.08);
+  box-shadow: 0 0 0 3px var(--c-brand-light);   /* ui-audit F8: .08 ring was invisible */
 }
 .chat-input input::placeholder { color: var(--c-ink-3); }
 .chat-input button {
