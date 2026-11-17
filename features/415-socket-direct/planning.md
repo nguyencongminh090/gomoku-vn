@@ -134,3 +134,9 @@ CloudFront WebSocket + CloudFront-Viewer-Address docs.
   p50 158 / p99 363 ms vs CF 79 / 86. At peak CF was 374 / 4379 → direct still avoids multi-second stalls, but
   is slower off-peak. Fix = take Cloudflare out of the chain: CloudFront → VPS directly (C2, firewall 443 to
   CloudFront origin-facing ranges), or a relay.
+
+## C1 disabled 01:05 (`direct` CNAME deleted) → C2-A in progress (user chose HTTPS via DNS-01)
+VPS: Caddy (+caddy-dns/cloudflare, apt-held, stopped) for `*.play3cr.win:443` → host `o-8a45d0026e92` → :3001;
+ufw 443 only from 52 CLOUDFRONT_ORIGIN_FACING ranges (`ufw-cloudfront-sync`, weekly cron); DNS-only A
+`o-8a45d0026e92` → VPS. Waiting for the user's Cloudflare DNS-edit token in `/etc/caddy/cf-token.env`.
+Next: start Caddy → switch CloudFront origin → measure → re-add `direct` CNAME only if faster → drop `cfo-*`.
