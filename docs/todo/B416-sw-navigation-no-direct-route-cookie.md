@@ -1,5 +1,5 @@
 # B416 — Service-worker navigations never get the #415 route cookie
-**Status:** FIXED on fix/416-sw-navigation-route-cookie (server-side); prod check pending deploy
+**Status:** ✅ FIXED 2026-11-18 — deployed da531aec; SW-controlled normal reload → `route=direct` (Chrome, prod)
 **Area:** server/socket/direct-route.js (`isDocumentRequest`), client/sw.js, server/tests/direct-route.test.js
 **From:** browser check 2026-11-18 01:49 after C2 went live   **Depends:** #415
 

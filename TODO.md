@@ -77,4 +77,3 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — socket-direct (option B) favoured, undecided `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
-- **#416.** SW-proxied navigations get no #415 route cookie → users stay on Cloudflare `[Model: Opus 5]` — [detail](docs/todo/B416-sw-navigation-no-direct-route-cookie.md)

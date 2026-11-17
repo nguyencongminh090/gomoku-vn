@@ -19,3 +19,7 @@ sw.js untouched, offline fallback unchanged. The twin in `legacy-host-redirect.j
 direct-route.test.js: 2 SW shapes → nonce, 3 negatives (cors fetch of HTML, */* same-origin, iframe)
 → none; failed before the fix. `npm test` 4331 pass. NOT verified yet: prod "normal reload logs
 `route=direct`" — needs deploy to the VPS.
+## Prod verification (2026-11-18 02:00, after deploy da531aec)
+curl on play3cr.win with a guest session: dest document/navigate, empty/navigate, empty/same-origin → `gvn_sock` set;
+empty/cors → none. Real Chrome (logged in, VN): page SW-controlled, `location.reload()` with
+navigation `workerStart > 0` (went through sw.js) → pm2 `Connected … route=direct`. Firefox/Safari not checked.
