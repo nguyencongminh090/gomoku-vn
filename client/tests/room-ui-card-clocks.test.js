@@ -116,6 +116,15 @@ describe('seat order', () => {
     expect(bottom().querySelector('img')).toBeNull();
     expect(bottom().querySelector('.seatcard__name').textContent).toBe('<img src=x onerror=alert(1)>');
   });
+
+  test('#413: a long name keeps its full text in the tooltip (the phone cell cuts it with an ellipsis)', () => {
+    const long = 'Nguyễn Hoàng Long "Kỳ thủ" Đại Việt 2026';
+    setup({ gameState: null, users: [{ userId: 'me', displayName: long, slot: 1, role: 'player' }] });
+    window.RoomUI.renderPlayerCards();
+    const name = bottom().querySelector('.seatcard__name');
+    expect(name.textContent).toBe(long);
+    expect(name.getAttribute('title')).toBe(long);
+  });
 });
 
 describe('turn highlight follows predictedTurn (#166 carried over)', () => {
