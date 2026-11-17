@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play3CR Home Design · Round 3</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="shared.css">
+  <link rel="stylesheet" href="styles/c14-18.css">
+  <link rel="stylesheet" href="styles/c19-23.css">
+  <script src="data-boards.js" defer></script>
+  <script src="runtime.js" defer></script>
+  <script src="designs-14-18.js" defer></script>
+  <script src="designs-19-23.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.Play3CRRuntime) window.Play3CRRuntime.init();
+    });
+  </script>
+</head>
+<body>
+  <div id="home"></div>
+  <dialog id="p3-modal" aria-labelledby="p3-modal-title">
+    <div class="p3m-head">
+      <h2 id="p3-modal-title">Play3CR</h2>
+      <button type="button" class="p3m-close" data-modal-close aria-label="Đóng">×</button>
+    </div>
+    <div id="p3-modal-body" class="p3m-body"></div>
+  </dialog>
+</body>
+</html>

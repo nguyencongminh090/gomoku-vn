@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play3CR · Gallery Round 3 (10 Concept Mới)</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="gallery.css">
+  <script src="data-boards.js" defer></script>
+  <script src="runtime.js" defer></script>
+  <script src="designs-14-18.js" defer></script>
+  <script src="designs-19-23.js" defer></script>
+  <script src="gallery.js" defer></script>
+</head>
+<body>
+  <header class="gal-top">
+    <div class="gal-brand">
+      <img src="assets/logo-mark.svg" alt="" width="34" height="34">
+      <div>
+        <strong>Play3CR · Round 3</strong>
+        <small>10 hệ thống bố cục Trang chủ (14–23)</small>
+      </div>
+    </div>
+
+    <div class="gal-controls">
+      <div class="gal-seg" role="group" aria-label="Chế độ xem">
+        <button type="button" data-mode="single" aria-pressed="true">Xem chi tiết</button>
+        <button type="button" data-mode="compare" aria-pressed="false">So sánh nhanh</button>
+      </div>
+
+      <div class="gal-seg" role="group" aria-label="Kích thước màn hình">
+        <button type="button" data-vp="1440" aria-pressed="false">1440</button>
+        <button type="button" data-vp="1280" aria-pressed="true">Desktop 1280</button>
+        <button type="button" data-vp="768" aria-pressed="false">768</button>
+        <button type="button" data-vp="390" aria-pressed="false">Mobile 390</button>
+        <button type="button" data-vp="320" aria-pressed="false">320</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="gal-shell" id="gal-shell" data-mode="single">
+    <aside class="gal-sidebar" aria-label="Danh sách 10 concept">
+      <div class="gal-side-head">
+        <span>CONCEPT (14–23)</span>
+        <small>Phím ← / →</small>
+      </div>
+      <div id="design-list" class="gal-list" role="group" aria-label="Chọn thiết kế"></div>
+    </aside>
+
+    <main class="gal-main">
+      <section id="single-view" class="gal-single">
+        <div class="gal-caption">
+          <div class="gal-cap-info">
+            <div class="gal-cap-title-row">
+              <span id="cap-num" class="gal-cap-num">14</span>
+              <h1 id="cap-name">Grandmaster Editorial</h1>
+            </div>
+            <p id="cap-summary">Đang tải mô tả...</p>
+          </div>
+          <div class="gal-cap-actions">
+            <button type="button" id="btn-add-compare" class="gal-btn-pin" aria-pressed="false">+ Ghim so sánh</button>
+            <a id="open-standalone" class="gal-open-link" href="preview.html#editorial" target="_blank" rel="noopener">Mở toàn màn hình ↗</a>
+          </div>
+        </div>
+
+        <div class="gal-stage" id="gal-stage">
+          <div class="gal-viewport" id="gal-viewport" style="width:1280px">
+            <iframe id="preview-frame" title="Xem trước concept Trang chủ Play3CR"></iframe>
+          </div>
+        </div>
+      </section>
+
+      <section id="compare-view" class="gal-compare" hidden>
+        <div class="gal-cmp-toolbar">
+          <div>
+            <h2>So sánh nhanh các concept</h2>
+            <p id="cmp-subtitle">Đang hiển thị cả 10 bố cục (hoặc bấm "Ghim so sánh" ở các mẫu để lọc nhanh).</p>
+          </div>
+          <div class="gal-cmp-filters" role="group" aria-label="Bộ lọc so sánh">
+            <button type="button" data-cmp-filter="all" aria-pressed="true">Tất cả 10 mẫu</button>
+            <button type="button" data-cmp-filter="pinned" aria-pressed="false">Mẫu đã ghim (<span id="pin-count">0</span>)</button>
+            <button type="button" id="btn-clear-pins" class="gal-btn-clear">Bỏ ghim hết</button>
+          </div>
+        </div>
+        <div id="compare-grid" class="gal-cmp-grid"></div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

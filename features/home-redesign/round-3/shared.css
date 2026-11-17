@@ -1,0 +1,276 @@
+/* Shared base reset, font imports, accessibility, and interactive demo modal/toast styles for Play3CR Round 3 */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img, svg { display: block; max-width: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+
+[hidden] { display: none !important; }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Interactive board SVG sizing & crisp hit targets */
+.p3-board-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  touch-action: manipulation;
+}
+.p3-board-svg [data-cell] {
+  cursor: pointer;
+}
+.p3-board-svg [data-cell]:hover .p3-hover-ring {
+  opacity: 0.45;
+}
+.p3-hover-ring {
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+/* Shared inline search banner (shown inside concepts when user starts Quick Match) */
+.p3-searching-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  padding: 10px 14px;
+  border: 1px solid currentColor;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.p3-searching-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.p3-pulse-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+  animation: p3-pulse 1.3s ease-in-out infinite;
+}
+@keyframes p3-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p3-pulse-dot { animation: none; }
+}
+.p3-searching-actions {
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.p3-mini-btn {
+  padding: 5px 10px;
+  border: 1px solid currentColor;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 800;
+  min-height: 32px;
+}
+
+/* Shared Interactive Preview Dialog (Play3CR Demo Modal) */
+dialog#p3-modal {
+  width: min(500px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 0;
+  border: 1px solid #2b303a;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #14171c;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.38);
+  font-family: "Nunito", system-ui, sans-serif;
+}
+dialog#p3-modal::backdrop {
+  background: rgba(10, 12, 16, 0.65);
+  backdrop-filter: blur(3px);
+}
+.p3m-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+.p3m-head h2 {
+  font-size: 1.12rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.p3m-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.p3m-close:hover { background: #f3f4f6; }
+.p3m-body {
+  padding: 18px 20px 20px;
+  display: grid;
+  gap: 14px;
+  font-size: 0.94rem;
+  line-height: 1.5;
+}
+.p3m-grid {
+  display: grid;
+  gap: 10px;
+}
+.p3m-field {
+  display: grid;
+  gap: 5px;
+}
+.p3m-field label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #374151;
+}
+.p3m-field input,
+.p3m-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+}
+.p3m-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.p3m-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+.p3m-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.p3m-btn {
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 1px solid #111827;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-weight: 850;
+  font-size: 0.9rem;
+}
+.p3m-btn--ghost {
+  background: #ffffff;
+  color: #111827;
+  border-color: #cbd5e1;
+}
+.p3m-list {
+  display: grid;
+  gap: 8px;
+}
+.p3m-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+.p3m-item strong { display: block; font-size: 0.94rem; }
+.p3m-item small { display: block; color: #4b5563; font-size: 0.8rem; }
+.p3m-code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #111827;
+  color: #f9fafb;
+  font: 800 1.1rem/1 ui-monospace, Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+.p3m-note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f1f5f9;
+  color: #334155;
+  font-size: 0.84rem;
+}
+.p3m-board-wrap {
+  max-width: 280px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+/* Toast feedback */
+.p3-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 9999;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 11px 15px;
+  border-radius: 8px;
+  background: #111827;
+  color: #ffffff;
+  font-size: 0.87rem;
+  font-weight: 750;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+}
