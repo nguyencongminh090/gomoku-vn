@@ -125,3 +125,12 @@ CloudFront WebSocket + CloudFront-Viewer-Address docs.
   DIRECT_EDGE_SECRET=<~/.gvn-edge-secret>`; merge feature → dev, push, `update-gomoku.sh` (restart: rooms lost).
   Then measure `/diag` RTT via direct.play3cr.win (diag namespace has no auth) and watch `route=direct`.
 - Rollback: drop the env lines + restart, or delete the `direct` CNAME (clients fall back to CF).
+
+## Deployed 2026-11-18 00:57 (dev aad8b8fd) — C1 works but routes via the US
+- Works: route cookie on HTML (VN), nonce → direct WS connect, replay → AUTH_TICKET, normal CF path + AUTH_ORIGIN intact.
+- WAF trap: CloudFront's managed rules 403 any request **without User-Agent** (node test clients); browsers unaffected.
+- Problem: CloudFront edge (HAN50 / SGN50) reaches Cloudflare at **LAX / ATL** (`cf-ray` suffix), then tunnel →
+  SIN → VPS. Measured 01:00 (off-peak, CF currently clean): direct WS handshake p50 1922 ms vs CF 361; emit RTT
+  p50 158 / p99 363 ms vs CF 79 / 86. At peak CF was 374 / 4379 → direct still avoids multi-second stalls, but
+  is slower off-peak. Fix = take Cloudflare out of the chain: CloudFront → VPS directly (C2, firewall 443 to
+  CloudFront origin-facing ranges), or a relay.
