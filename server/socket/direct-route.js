@@ -45,6 +45,11 @@ function readConfig(env = process.env) {
     countries: new Set(String(env.DIRECT_SOCKET_COUNTRIES || 'VN').split(',')
       .map((c) => c.trim().toUpperCase()).filter(Boolean)),
     ttlMs: parseInt(env.DIRECT_SOCKET_TICKET_TTL_MS, 10) || 24 * 60 * 60 * 1000,
+    // 'caddy' (default): IP from X-Forwarded-For set by a Caddy on this box.
+    // 'cloudfront' (#415 C1): CloudFront → Cloudflare tunnel → this port; IP from CloudFront-Viewer-Address,
+    // trusted only with the secret origin header (anyone can reach the tunnel hostname through Cloudflare).
+    edge: String(env.DIRECT_SOCKET_EDGE || 'caddy').trim().toLowerCase(),
+    edgeSecret: String(env.DIRECT_EDGE_SECRET || ''),
   };
 }
 
@@ -97,6 +102,35 @@ function isDirectRequest(req, port) {
   return !!(req && req.socket && req.socket.localPort === port);
 }
 
+/** `CloudFront-Viewer-Address` is `ip:port` (IPv6 unbracketed) → ip. */
+function viewerIp(v) {
+  const s = String(v || '').trim();
+  const i = s.lastIndexOf(':');
+  return i > 0 ? s.slice(0, i) : null;
+}
+
+function secretOk(given, secret) {
+  if (!secret || typeof given !== 'string') return false;
+  const a = Buffer.from(given), b = Buffer.from(secret);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+/**
+ * Normalise the edge headers on the direct port so resolveClientIp() sees only what we vouch for:
+ * cf-* always deleted; in 'cloudfront' mode X-Forwarded-For := the viewer IP when the secret matches,
+ * else deleted (and the request gets no credential). @returns {boolean} edge trusted
+ */
+function normaliseEdgeHeaders(headers, cfg) {
+  stripCfHeaders(headers);
+  if (cfg.edge !== 'cloudfront') return true;
+  const ok = secretOk(headers['x-gvn-edge'], cfg.edgeSecret);
+  const ip = ok && viewerIp(headers['cloudfront-viewer-address']);
+  delete headers['x-gvn-edge'];
+  if (ok && ip) headers['x-forwarded-for'] = ip;
+  else delete headers['x-forwarded-for'];
+  return !!(ok && ip);
+}
+
 /** Delete every `cf-*` header: on the direct port none of them came from Cloudflare. */
 function stripCfHeaders(headers) {
   for (const name of Object.keys(headers)) if (name.startsWith('cf-')) delete headers[name];
@@ -114,7 +148,8 @@ function queryParam(req, name) {
 function engineMiddleware(cfg, sessionManager) {
   return (req, _res, next) => {
     if (!isDirectRequest(req, cfg.port)) return next();
-    stripCfHeaders(req.headers);
+    const edgeOk = normaliseEdgeHeaders(req.headers, cfg);
+    if (!edgeOk) return next(); // no credential → AUTH_TICKET at the socket.io layer
     if (queryParam(req, 'sid')) return next(); // later request of an existing engine connection
     const cookie = parseCookies(req.headers.cookie)[DIRECT_COOKIE];
     let t = cookie && open(cookie, KIND_DIRECT);
@@ -202,6 +237,8 @@ module.exports = {
   KIND_DIRECT,
   isDirectRequest,
   stripCfHeaders,
+  normaliseEdgeHeaders,
+  viewerIp,
   engineMiddleware,
   directCookieHeaders,
   expressGuard,

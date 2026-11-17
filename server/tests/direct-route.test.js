@@ -225,3 +225,54 @@ describe('withDirectConnectSrc (CSP)', () => {
     expect(base.connectSrc).toEqual(["'self'"]);
   });
 });
+
+describe('cloudfront edge mode (#415 C1)', () => {
+  const cfg = direct.readConfig({ DIRECT_SOCKET_URL: 'https://direct.example', DIRECT_SOCKET_EDGE: 'cloudfront', DIRECT_EDGE_SECRET: 's3cret-value' });
+  const viaEdge = (over = {}) => ({
+    'cf-connecting-ip': '54.239.1.1', 'cf-ipcountry': 'SG', // Cloudflare saw CloudFront, not the player
+    'x-forwarded-for': '6.6.6.6, 54.239.1.1',
+    'cloudfront-viewer-address': '113.161.2.3:51234', 'x-gvn-edge': 's3cret-value', ...over,
+  });
+
+  test.each([
+    ['113.161.2.3:51234', '113.161.2.3'],
+    ['2405:4802:1::5:443', '2405:4802:1::5'],
+    ['', null],
+    [undefined, null],
+  ])('viewerIp(%p) → %p', (v, ip) => expect(direct.viewerIp(v)).toBe(ip));
+
+  test('secret ok → XFF is exactly the viewer IP, cf-* and the secret removed', () => {
+    const h = viaEdge();
+    expect(direct.normaliseEdgeHeaders(h, cfg)).toBe(true);
+    expect(h['x-forwarded-for']).toBe('113.161.2.3');
+    expect(Object.keys(h).filter((k) => k.startsWith('cf-') || k === 'x-gvn-edge')).toEqual([]);
+  });
+  test.each([
+    ['missing secret', { 'x-gvn-edge': undefined }],
+    ['wrong secret', { 'x-gvn-edge': 's3cret-valuX' }],
+    ['wrong length', { 'x-gvn-edge': 's3cret' }],
+    ['no viewer address', { 'cloudfront-viewer-address': undefined }],
+  ])('%s → not trusted, XFF dropped', (_n, over) => {
+    const h = viaEdge(over);
+    expect(direct.normaliseEdgeHeaders(h, cfg)).toBe(false);
+    expect(h['x-forwarded-for']).toBeUndefined();
+  });
+  test('cloudfront mode without a configured secret never trusts', () => {
+    const noSecret = direct.readConfig({ DIRECT_SOCKET_URL: 'https://d', DIRECT_SOCKET_EDGE: 'cloudfront' });
+    expect(direct.normaliseEdgeHeaders(viaEdge({ 'x-gvn-edge': '' }), noSecret)).toBe(false);
+  });
+  test('engine middleware: untrusted edge gets no credential even with a valid nonce', () => {
+    const mw = direct.engineMiddleware({ ...cfg, port: 4999 }, sessionManager);
+    const req = { url: `/socket.io/?EIO=4&gvn_n=${direct.issueNonce(SID, 'VN')}`, socket: { localPort: 4999 }, headers: viaEdge({ 'x-gvn-edge': 'nope' }) };
+    mw(req, {}, () => {});
+    expect(req.gvnDirect).toBeUndefined();
+    const ok = { url: `/socket.io/?EIO=4&gvn_n=${direct.issueNonce(SID, 'VN')}`, socket: { localPort: 4999 }, headers: viaEdge() };
+    mw(ok, {}, () => {});
+    expect(ok.gvnDirect).toEqual({ sessionId: SID, country: 'VN' });
+  });
+  test('caddy mode (default) unchanged: XFF kept for resolveClientIp', () => {
+    const h = { 'x-forwarded-for': '203.0.113.7', 'cf-connecting-ip': '6.6.6.6' };
+    expect(direct.normaliseEdgeHeaders(h, direct.readConfig({ DIRECT_SOCKET_URL: 'https://d' }))).toBe(true);
+    expect(h).toEqual({ 'x-forwarded-for': '203.0.113.7' });
+  });
+});
