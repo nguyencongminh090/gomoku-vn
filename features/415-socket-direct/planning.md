@@ -108,3 +108,20 @@ Options, no IP in public DNS (the code above already fits them: trust-by-port, o
   other ISPs: CF has no path-measurement tool for a free zone → skipped; `route=direct` logs after rollout instead.
 Sources: AWS CloudFront pricing / flat-rate plan docs, AWS "new edge locations in Vietnam" (2022-08),
 CloudFront WebSocket + CloudFront-Viewer-Address docs.
+
+## C1 set up 2026-11-18 00:10-00:30 (user picked C1; nothing deployed yet)
+- AWS account 850470019077 (user signed up). ACM us-east-1 cert `direct.play3cr.win` (2389208a…, DNS-validated;
+  CF record `_d88d1210….direct` kept for renewal). CloudFront `E1086MRYTD5H5E` = `d3fkrz3mmqf6p0.cloudfront.net`,
+  **flat-rate Free plan ($0, no overage)** — PAYG rejected: uncapped bill under a flood. Free plan = managed
+  policies only: CachingDisabled + AllViewerExceptHostHeader; origin `cfo-d2dc719b4571.play3cr.win` HTTPS-only,
+  custom header `X-Gvn-Edge` (secret pasted by the user; VPS copy `~/.gvn-edge-secret`, PC copy scratchpad).
+  WAF rate limit 300 req/5 min/IP. Unused custom policy `gvn-socket-direct` left (Business-only).
+- Cloudflare: proxied CNAME `cfo-d2dc719b4571` → tunnel GomokuVPS, ingress → `http://localhost:3001`;
+  DNS-only CNAME `direct` → CloudFront. Prod hostnames untouched (verified 200).
+- Chain check (temp echo on VPS :3001, removed): secret matches; `CloudFront-Viewer-Address` forwarded by the
+  managed policy and overwrites a forged one; Host rewritten to origin; Origin kept; XFF
+  `forged, viewer, cloudfront`. Edge POP HAN50, ping 27 ms 0 % loss. WS upgrade not testable with the echo (502).
+- To enable: VPS `.env` += `DIRECT_SOCKET_URL=https://direct.play3cr.win DIRECT_SOCKET_EDGE=cloudfront
+  DIRECT_EDGE_SECRET=<~/.gvn-edge-secret>`; merge feature → dev, push, `update-gomoku.sh` (restart: rooms lost).
+  Then measure `/diag` RTT via direct.play3cr.win (diag namespace has no auth) and watch `route=direct`.
+- Rollback: drop the env lines + restart, or delete the `direct` CNAME (clients fall back to CF).
