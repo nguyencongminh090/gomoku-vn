@@ -1,5 +1,5 @@
 # F414 — Room page: no "A · B · C" joined strings
-**Status:** DONE (merged dev, deployed prod 2026-11-17; real-phone check open)
+**Status:** ✅ DONE 2026-11-17 (merged dev; real-phone check not done)
 **Area:** client/js/room-ui.js, client/js/chat-ui.js, client/js/i18n.js, client/room.html, client/css/room-arena.css
 **From:** user 2026-11-17 ("Redesign Table (bàn chơi) — khử style A · B · C")   **Depends:** —
 

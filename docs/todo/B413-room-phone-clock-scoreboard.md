@@ -1,5 +1,5 @@
 # B413 — Room phone clocks: one scoreboard row on top (K1)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-17 (merged dev; real-phone check not done)
 **Area:** client/css/room-arena.css, client/js/room-ui.js (seat cards/playerClock), room-stage.js (bubbles anchor to seat card)
 **From:** user report 2026-11-17 (hand covers clock on phone); mockup pick K1 in features/room-clock-mobile/   **Depends:** —
 

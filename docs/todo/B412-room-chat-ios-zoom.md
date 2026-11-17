@@ -1,5 +1,5 @@
 # B412 — Room chat input zooms the page on iPhone and it stays zoomed
-**Status:** OPEN (fix built on fix/412-room-chat-ios-zoom; awaiting real-iPhone check)
+**Status:** ✅ DONE 2026-11-17 (merged dev; real-phone check not done)
 **Area:** client/css/room-arena.css, client/tests/room-arena-mobile-sticky.test.js
 **From:** user report 2026-11-17 (iPhone, small screen), screenshot   **Depends:** —
 

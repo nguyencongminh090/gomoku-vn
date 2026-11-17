@@ -1,3 +1,6 @@
+- ✅ **#414.** Room page: replace "A · B · C" strings with pills/segments `[Model: Sonnet 5]` — [detail](docs/todo/F414-room-no-dots.md)
+- ✅ **#413.** Room phone clocks: one scoreboard row on top (hand covered my clock) `[Model: Sonnet 5]` — [detail](docs/todo/B413-room-phone-clock-scoreboard.md)
+- ✅ **#412.** Room chat input zooms page on iPhone and stays zoomed `[Model: Haiku]` — [detail](docs/todo/B412-room-chat-ios-zoom.md)
 - ✅ **#410.** Correct preload hints + adapt to Cloudflare Early Hints (origin `Link` header from index.html; keep Early Hints ON) `[Model: Sonnet 5]` — [detail](docs/todo/F410-preload-early-hints.md)
 - ✅ **#407.** AI opponent (bot seat) on the engine service; scope TBD `[Model: Opus 5]` — [detail](docs/todo/F407-engine-ai-opponent.md)
 - ✅ **#406.** Rebuild WASM engine (Caro + rect) and pick hosting `[Model: Sonnet 5]` — [detail](docs/todo/F406-engine-wasm-rebuild.md)
