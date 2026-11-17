@@ -44,6 +44,7 @@ class AudioManager {
             } else {
                 this.isUnlocked = true;
             }
+            this._loadMoveSample();
             window.removeEventListener('click', unlock);
             window.removeEventListener('touchstart', unlock);
             window.removeEventListener('keydown', unlock);
@@ -122,6 +123,20 @@ class AudioManager {
      * Synthesizes a tactile wooden stone click sound simulating Go/Gomoku stone placement
      * @param {boolean} isOpponent - pitch variation for opponent move
      */
+    /** Fetch + decode the recorded move click once (first user gesture); until it lands, the synth plays. */
+    _loadMoveSample() {
+        if (this.moveSample || this._moveSampleLoading || !this.ctx || typeof fetch !== 'function') return;
+        this._moveSampleLoading = true;
+        fetch(AudioManager.MOVE_SAMPLE_URL)
+            .then((r) => { if (!r.ok) throw new Error('move sample ' + r.status); return r.arrayBuffer(); })
+            .then((ab) => new Promise((ok, ko) => {
+                const p = this.ctx.decodeAudioData(ab, ok, ko); // callback form: old Safari has no promise
+                if (p && typeof p.then === 'function') p.then(ok, ko);
+            }))
+            .then((buf) => { this.moveSample = buf; })
+            .catch(() => { this._moveSampleLoading = false; });
+    }
+
     playMoveSound(isOpponent = false) {
         if (this.isMuted) return;
         const vol = this._vol('move');
@@ -133,6 +148,17 @@ class AudioManager {
         const masterGain = this.ctx.createGain();
         masterGain.gain.setValueAtTime(vol, now);
         masterGain.connect(this.ctx.destination);
+
+        if (this.moveSample) {
+            const src = this.ctx.createBufferSource();
+            src.buffer = this.moveSample;
+            // opponent's stone a touch lower so the two sides are told apart by ear
+            if (src.playbackRate) src.playbackRate.setValueAtTime(isOpponent ? 0.88 : 1, now);
+            src.connect(masterGain);
+            src.start(now);
+            return;
+        }
+        this._loadMoveSample();
 
         // 1. Resonant Wood Body (Sine / Lowpass filter)
         const osc = this.ctx.createOscillator();
@@ -334,6 +360,8 @@ class AudioManager {
 }
 
 AudioManager.CHANNELS = ['move', 'tick', 'message'];
+// Recorded wooden click (ElevenLabs SFX), the user-approved MP3 shipped as-is. Pages are all at the client root.
+AudioManager.MOVE_SAMPLE_URL = 'assets/sounds/move.mp3?v=f7742e30';
 
 // Export singleton instance globally or for ES6 modules
 if (typeof window !== 'undefined') {
