@@ -215,6 +215,7 @@ function init(io) {
     const handshakeAuth = (socket.handshake && socket.handshake.auth) || {};
     logger.info('[Socket] Connected', {
       user: user.displayName, uid: user.userId, sid: socket.id, ip, geo,
+      ...(socket.data && socket.data.route === 'direct' ? { route: 'direct' } : {}), // #415
       // #367: tells a page load apart from the same page re-establishing its transport.
       ...(handshakeAuth.reconnect ? { reconnect: 1 } : {}),
       ...(handshakeAuth.reconnect && typeof handshakeAuth.roomId === 'string' ? { room: handshakeAuth.roomId } : {}),

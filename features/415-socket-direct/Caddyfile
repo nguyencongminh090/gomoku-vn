@@ -1,0 +1,40 @@
+# #415 PROPOSAL ONLY — not installed. Caddy on the VPS for the DNS-only host direct.play3cr.win.
+# Needs: A record direct.play3cr.win -> VPS IP (grey cloud), ufw allow 80,443/tcp (80 = ACME HTTP-01;
+# or use the DNS-01 challenge with a CF token and keep 80 closed).
+# Node must run with DIRECT_SOCKET_URL=https://direct.play3cr.win (listener 127.0.0.1:3001).
+{
+	servers {
+		timeouts {
+			read_header 10s
+			idle 2m
+		}
+	}
+}
+
+direct.play3cr.win {
+	# Only socket.io. Everything else 404 here (node's expressGuard also refuses it).
+	@sock path /socket.io/*
+	handle @sock {
+		reverse_proxy 127.0.0.1:3001 {
+			# Real client IP for node (last XFF hop). Caddy already ignores untrusted incoming XFF.
+			header_up X-Forwarded-For {remote_host}
+			# Defence in depth; node also strips every cf-* header on this listener.
+			header_up -Cf-Connecting-Ip
+			header_up -Cf-Ipcountry
+			header_up -Cf-Ray
+			header_up -Cf-Visitor
+			header_up -True-Client-Ip
+		}
+	}
+	handle {
+		respond 404
+	}
+	# Per-IP connection/rate caps need the caddy-ratelimit plugin (xcaddy build) or nftables
+	# (e.g. `ct count over 20` per source on :443). Proposal: nftables, no custom Caddy build.
+	log {
+		output file /var/log/caddy/direct.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

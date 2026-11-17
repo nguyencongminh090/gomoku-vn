@@ -20,6 +20,7 @@ const logger = require('../utils/logger');
 const { clientInfoFromSocket } = require('../utils/geo');
 const sessionManager = require('../managers/SessionManager');
 const { readSessionIdFromHeader } = require('../utils/session-cookie');
+const directRoute = require('../socket/direct-route');
 
 // ---------------------------------------------------------------------------
 // Express middleware
@@ -109,6 +110,27 @@ function verifySocketToken(socket, next) {
   if (!isAllowedOrigin(origin)) {
     logger.warn('[Auth] Socket handshake rejected: bad origin', { origin, ip, geo });
     return next(new Error('AUTH_ORIGIN'));
+  }
+
+  // #415: a handshake on the direct listener authenticates with a ticket only (no cookie reaches
+  // that host). AUTH_TICKET, not AUTH_INVALID: the client falls back to the CF path, not to login.
+  const direct = directRoute.readConfig();
+  if (direct.enabled && directRoute.isDirectRequest(socket.request, direct.port)) {
+    const t = directRoute.readTicket(socket.handshake.auth && socket.handshake.auth.ticket);
+    const session = t && sessionManager.getValidSession(t.sessionId);
+    if (!session) {
+      logger.warn('[Auth] Direct socket rejected: ticket not valid', { ip, ticket: t ? 'session' : 'bad' });
+      return next(new Error('AUTH_TICKET'));
+    }
+    socket.user = session;
+    socket.sessionId = session.sessionId;
+    socket.data.route = 'direct';
+    socket.data.country = t.country;
+    // cf-* were stripped on this listener; restore the country the ticket carries (issued from a
+    // CF-IPCountry we could trust) so geo logging keeps working.
+    if (t.country) socket.handshake.headers['cf-ipcountry'] = t.country;
+    sessionManager.touchSession(session.sessionId);
+    return next();
   }
 
   const cookieHeader = socket.handshake.headers && socket.handshake.headers.cookie;

@@ -81,6 +81,10 @@ class SocketClient {
     // of the fallback get deleted together (planning.md step 12).
     const legacy = window.GvnSession.legacyToken();
     const auth = legacy ? { token: legacy } : {};
+    // #415: socket-direct route (VN on a lossy ISP→Cloudflare leg). Present only when the server
+    // set the `gvn_sock` cookie on this page's HTML; otherwise everything below is unchanged.
+    const direct = SocketClient.directRoute();
+    if (direct) auth.ticket = direct.t;
 
     //
     // `transports: ['websocket', 'polling']` tries a direct WebSocket upgrade
@@ -96,7 +100,7 @@ class SocketClient {
     // instead of failing the connection outright — this keeps the same
     // eventual-connectivity guarantee polling-first had, just with websocket
     // tried before polling instead of after.
-    this.socket = io({
+    const opts = {
       auth,
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -134,7 +138,16 @@ class SocketClient {
       // This does NOT fix the packet loss itself — that is upstream of the
       // premises, on a leg neither the server nor the client controls.
       timeout: 12000,
-    });
+    };
+    if (direct) {
+      // Direct handshakes take tens of ms; a hang means the path is blocked → fall back fast.
+      opts.timeout = SocketClient.DIRECT_TIMEOUT_MS;
+      opts.withCredentials = false; // the ticket is the credential; no cookie exists for that host
+      this.socket = io(direct.u, opts);
+      this._bindDirectRoute();
+    } else {
+      this.socket = io(opts);
+    }
 
     // ── Connection lifecycle ──────────────────────────────────────────
     this.socket.on('connect', () => {
@@ -225,6 +238,66 @@ class SocketClient {
       this.destroy();
       window.location.replace('login.html');
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Socket-direct route (#415)
+  // ---------------------------------------------------------------------------
+
+  /** `{u, t}` from the `gvn_sock` cookie, or null (no cookie, malformed, or a recent path failure in this tab). */
+  static directRoute() {
+    try {
+      const off = Number(sessionStorage.getItem(SocketClient.DIRECT_OFF_KEY));
+      if (off && Date.now() - off < SocketClient.DIRECT_OFF_MS) return null;
+      const m = document.cookie.match(/(?:^|;\s*)gvn_sock=([^;]+)/);
+      if (!m) return null;
+      const r = JSON.parse(decodeURIComponent(m[1]));
+      if (!r || typeof r.t !== 'string' || typeof r.u !== 'string' || !/^https?:\/\//.test(r.u)) return null;
+      return r;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
+   * One Socket, one Manager for the page's whole life: falling back only re-points the Manager's
+   * uri, so every listener stays attached and no second connection can exist (#145 #367 #391).
+   * Fallback when: the ticket is refused (any time), the first connect fails, or an
+   * already-connected direct socket fails DIRECT_MAX_FAILS reconnects in a row. Never flips back on
+   * this page; a path failure keeps the tab on CF for DIRECT_OFF_MS, a ticket refusal does not.
+   */
+  _bindDirectRoute() {
+    let everConnected = false;
+    let fails = 0;
+    this.socket.on('connect', () => { everConnected = true; fails = 0; });
+    this.socket.on('route:ticket', (ticket) => {
+      if (this.socket && typeof ticket === 'string') this.socket.auth = Object.assign({}, this.socket.auth, { ticket });
+    });
+    this.socket.on('connect_error', (err) => {
+      if (this._route === 'cf') return;
+      const ticketRefused = err && err.message === 'AUTH_TICKET';
+      fails++;
+      if (!ticketRefused && everConnected && fails < SocketClient.DIRECT_MAX_FAILS) return;
+      // Expired/refused ticket: this page only (the next page load brings a fresh one). A path
+      // failure: remember for DIRECT_OFF_MS so this tab's next pages don't each wait it out again.
+      this._fallbackToCf(!ticketRefused);
+      // A middleware refusal is not retried by socket.io's reconnect loop; transport errors are.
+      if (ticketRefused && this.socket) this.socket.connect();
+    });
+    this._route = 'direct';
+  }
+
+  _fallbackToCf(remember) {
+    this._route = 'cf';
+    if (remember) {
+      try { sessionStorage.setItem(SocketClient.DIRECT_OFF_KEY, String(Date.now())); } catch (_) { /* private mode */ }
+    }
+    if (!this.socket) return;
+    const auth = Object.assign({}, this.socket.auth);
+    delete auth.ticket;
+    this.socket.auth = auth;
+    this.socket.io.uri = window.location.origin;
+    this.socket.io.timeout(12000);
   }
 
   // ---------------------------------------------------------------------------
@@ -456,6 +529,11 @@ class SocketClient {
 SocketClient.BANNER_DELAY_MS = 8000;
 /** #393: cap on held events — a page that never releases must not grow without bound. */
 SocketClient.HOLD_MAX = 500;
+/** #415: per-tab "direct failed, stay on Cloudflare" flag; attempt timeout on the direct path. */
+SocketClient.DIRECT_OFF_KEY = 'gvn_sock_off';
+SocketClient.DIRECT_TIMEOUT_MS = 4000;
+SocketClient.DIRECT_MAX_FAILS = 5;
+SocketClient.DIRECT_OFF_MS = 15 * 60 * 1000;
 
 // Expose to global scope for ESM module usage
 window.SocketClient = SocketClient;
