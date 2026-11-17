@@ -24,6 +24,7 @@ const { cspDirectives, ENGINE_WORKER_PATH, ENGINE_WORKER_CSP, parseIsolatedPages
 const { createEngineFilesRouter } = require('./routes/engine-files');
 const EngineHandler = require('./socket/handlers/EngineHandler');
 const { staticOptions, socketIoClientOptions, setHtmlHeaders, REVALIDATE } = require('./config/staticCache');
+const { indexLinkHints } = require('./config/earlyHints');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -166,6 +167,8 @@ app.use('/engine', createEngineFilesRouter({
   buildId: config.ENGINE_BUILD_ID,
 }));
 
+// Lobby preload hints as an origin `Link` header, replayed by Cloudflare Early Hints as 103 (#410).
+app.use(indexLinkHints(clientPath));
 app.use(express.static(clientPath, staticOptions));
 
 // Reject cross-site writes before any /api router (#350).
