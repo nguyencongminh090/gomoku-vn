@@ -196,11 +196,16 @@ function withDirectConnectSrc(directives, cfg) {
 }
 
 // ── Route cookie on HTML responses ───────────────────────────────────────────
+// A navigation re-fetched by sw.js (`fetch(e.request)`) loses its destination (#416): Chromium sends
+// dest=empty + mode=navigate, the Fetch spec mode=same-origin. Page fetch()/XHR is mode=cors or Accept */*.
+const SW_NAV_MODES = new Set(['navigate', 'same-origin']);
 function isDocumentRequest(req) {
   if (req.method !== 'GET') return false;
   const dest = req.headers['sec-fetch-dest'];
+  const html = String(req.headers.accept || '').includes('text/html');
+  if (dest === 'empty') return html && SW_NAV_MODES.has(req.headers['sec-fetch-mode']);
   if (dest) return dest === 'document';
-  return String(req.headers.accept || '').includes('text/html');
+  return html;
 }
 
 /**
