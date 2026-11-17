@@ -161,8 +161,10 @@
       el.style.top = Math.round(r.bottom + 8) + 'px';
       el.style.left = Math.round(r.left + 12) + 'px';
     } else {
-      el.className = 'speech speech--bottom';
-      el.style.bottom = Math.round(global.innerHeight - r.top + 8) + 'px';
+      // #413: on phones both cards share the row above the board — the bottom-slot card is its right half,
+      // so its bubble hangs under it, right-aligned (over the board top, like the opponent's).
+      el.className = 'speech speech--top speech--right speech--mine';
+      el.style.top = Math.round(r.bottom + 8) + 'px';
       el.style.right = Math.round(global.innerWidth - r.right + 12) + 'px';
     }
     layer.appendChild(el);

@@ -395,7 +395,7 @@
     el.innerHTML = `
       <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
       <div class="seatcard__id">
-        <div class="seatcard__name">${escapeHtml(player.displayName)}</div>
+        <div class="seatcard__name" title="${escapeAttr(player.displayName)}">${escapeHtml(player.displayName)}</div>
         <div class="seatcard__meta">${renderStatusDot(player)}</div>
       </div>
       ${standBtn}

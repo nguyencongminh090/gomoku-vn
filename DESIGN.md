@@ -84,3 +84,10 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Layout: avatar tile (span 4, brand tint) + Giới thiệu + Nơi ở; Riêng tư (3 switch rows) + Ai được liên hệ (3 radio groups: everyone/friends/nobody; friend = everyone/nobody); sticky save bar. Panel max 1040px; ≤860px single column, save bar above the tab bar.
 - Rules from the user: no `A · B · C` strings; every button/div fill opaque (tints via color-mix on a solid surface; test in settings-page.test.js).
 - Motion: subtle; tile rise 240ms staggered 70ms, switch knob 240ms, segment colour 140ms; reduced motion → none.
+
+## Bàn chơi phone clocks (#413, K1 "Bảng tỉ số trên")
+- Chosen 2026-11-17 from 4 mockups (`features/room-clock-mobile/`, K0 = current). Problem: on phones my clock sat bottom-right under the thumb (user report: the hand covers the clock).
+- Layout (≤768px): one scoreboard row right under the nav, 2 equal cells: opponent left (avatar 32px, name, "Đối thủ", time), me right mirrored (time, name, "Bạn", avatar). Bottom seat card removed on phones; board gains its height. Nothing time-critical below the board.
+- Turn: the running cell is filled `--c-brand` + white text (not colour alone: also the filled shape); low time → `--c-error` fill, as now. Time 26px Nunito 800+ tabular.
+- Spectators: same row, seat #2 left, seat #1 right (same order as the old top/bottom cards).
+- Forbidden: any clock in the lower half on phones; names wrapping (ellipsis, `min-width:0`); the `A · B` pattern in cell labels.

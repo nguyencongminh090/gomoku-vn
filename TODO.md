@@ -79,3 +79,4 @@ in the detail file / fix-log).
 - **#409.** Solid page background: drop grid+leaves, light #fafaf8 / dark #121212 `[Model: Sonnet 5]` — [detail](docs/todo/F409-solid-background.md)
 - **#411.** Legacy-hostname redirect play3cr.dpdns.org → play3cr.win for installed PWAs (built+deployed; open until real PWA check) `[Model: Sonnet 5]` — [detail](docs/todo/F411-legacy-host-redirect.md)
 - **#412.** Room chat input zooms page on iPhone and stays zoomed `[Model: Haiku]` — [detail](docs/todo/B412-room-chat-ios-zoom.md)
+- **#413.** Room phone clocks: one scoreboard row on top (hand covered my clock) `[Model: Sonnet 5]` — [detail](docs/todo/B413-room-phone-clock-scoreboard.md)

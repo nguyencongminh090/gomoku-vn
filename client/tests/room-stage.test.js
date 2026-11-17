@@ -82,14 +82,17 @@ describe('chat routing', () => {
     expect($('float-messages').children).toHaveLength(0);
     expect($('chat-messages').textContent).toContain('Ván này căng đấy');
   });
-  test('my own message → bubble on the bottom card; a newer line from the same player replaces the old bubble', () => {
+  test('my own message → bubble under my card (#413: top-right of the seat row), right-aligned; a newer line replaces the old one', () => {
     load();
     chat('Minh', 'một', 'u-me');
     chat('Minh', 'hai', 'u-me');
     const bubbles = $('speech-layer').querySelectorAll('.speech');
     expect(bubbles).toHaveLength(1);
     expect(bubbles[0].textContent).toBe('hai');
-    expect(bubbles[0].classList.contains('speech--bottom')).toBe(true);
+    expect([...bubbles[0].classList]).toEqual(expect.arrayContaining(['speech--top', 'speech--right', 'speech--mine']));
+    expect(bubbles[0].style.top).not.toBe('');
+    expect(bubbles[0].style.right).not.toBe('');
+    expect(bubbles[0].style.bottom).toBe('');
   });
   test('bubbles fade after 4 s and leave the DOM', () => {
     jest.useFakeTimers();
