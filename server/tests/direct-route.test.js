@@ -3,10 +3,13 @@
 /**
  * direct-route.test.js — #415 socket-direct path.
  *
- * The risk that matters: the direct listener is reached through a public Caddy, so a client can
- * send any `CF-*` header. Those must be ignored THERE (IP from Caddy's X-Forwarded-For, country
- * from the server-issued ticket) while the Cloudflare listener keeps honouring them. Also pinned:
- * the ticket is the only credential on the direct port, and it can't be forged / replayed late.
+ * Pinned:
+ *  - The direct listener is reached through a public Caddy, so client `CF-*` headers must be ignored
+ *    THERE (IP from Caddy's XFF, country from the server-issued token) while the Cloudflare
+ *    listener keeps honouring them.
+ *  - JS never holds a replayable credential: the page gets a 60 s single-use nonce; the first direct
+ *    handshake swaps it for an HttpOnly cookie scoped to the direct host's /socket.io/.
+ *  - The session cookie is not a credential on the direct port, and nonce/ticket are not on the CF port.
  */
 
 jest.mock('../db/database', () => ({
@@ -30,6 +33,7 @@ const { verifySocketToken } = require('../middleware/auth');
 const { clientInfoFromSocket } = require('../utils/geo');
 
 const SID = 'sess-direct-1';
+let alive;
 const liveRow = () => ({
   id: SID, user_id: 'u1', display_name: 'Alice', is_guest: 0,
   expires_at: new Date(Date.now() + 3600e3).toISOString(), revoked_at: null,
@@ -37,25 +41,36 @@ const liveRow = () => ({
 
 beforeEach(() => {
   jest.clearAllMocks();
-  db.getSessionById.mockImplementation((id) => (id === SID ? liveRow() : undefined));
+  alive = true;
+  db.getSessionById.mockImplementation((id) => (id === SID && alive ? liveRow() : undefined));
 });
 
-describe('ticket', () => {
-  test('round-trips session id + country', () => {
-    expect(direct.readTicket(direct.issueTicket(SID, 'VN', 60e3))).toEqual({ sessionId: SID, country: 'VN' });
+describe('tokens', () => {
+  test('nonce round-trips session + country and does not expose the session id', () => {
+    const n = direct.issueNonce(SID, 'VN');
+    expect(Buffer.from(n, 'base64url').toString('latin1')).not.toContain(SID);
+    expect(direct.consumeNonce(n)).toMatchObject({ sessionId: SID, country: 'VN' });
   });
-  test('does not expose the session id in clear', () => {
-    const t = direct.issueTicket(SID, 'VN', 60e3);
-    expect(Buffer.from(t, 'base64url').toString('latin1')).not.toContain(SID);
+  test('nonce is single use', () => {
+    const n = direct.issueNonce(SID, 'VN');
+    expect(direct.consumeNonce(n)).not.toBeNull();
+    expect(direct.consumeNonce(n)).toBeNull();
+  });
+  test('nonce expires after 60 s', () => {
+    const n = direct.issueNonce(SID, 'VN', Date.now() - direct.NONCE_TTL_MS - 1);
+    expect(direct.consumeNonce(n)).toBeNull();
+  });
+  test('kinds do not cross: a direct ticket is not a nonce and vice versa', () => {
+    expect(direct.consumeNonce(direct.issueDirectTicket(SID, 'VN', 60e3))).toBeNull();
+    expect(direct.open(direct.issueNonce(SID, 'VN'), direct.KIND_DIRECT)).toBeNull();
   });
   test.each([
-    ['expired', () => direct.issueTicket(SID, 'VN', 1000, Date.now() - 2000)],
-    ['tampered', () => { const t = direct.issueTicket(SID, 'VN', 60e3); return t.slice(0, 30) + (t[30] === 'A' ? 'B' : 'A') + t.slice(31); }],
+    ['tampered', () => { const t = direct.issueNonce(SID, 'VN'); return t.slice(0, 30) + (t[30] === 'A' ? 'B' : 'A') + t.slice(31); }],
     ['garbage', () => 'x'.repeat(60)],
     ['too short', () => 'abc'],
     ['not a string', () => ({ s: SID })],
   ])('rejects %s', (_n, make) => {
-    expect(direct.readTicket(make())).toBeNull();
+    expect(direct.consumeNonce(make())).toBeNull();
   });
 });
 
@@ -71,15 +86,15 @@ describe('routeCookieMiddleware', () => {
   }
   const doc = { 'sec-fetch-dest': 'document', cookie: `gvn_session=${SID}`, 'cf-ipcountry': 'VN' };
 
-  test('VN + live session + page navigation → ticket cookie with url', () => {
+  test('VN + live session + page navigation → short-lived nonce cookie with url', () => {
     const res = run(doc);
     expect(res.cookie).toHaveBeenCalledTimes(1);
     const [name, value, opts] = res.cookie.mock.calls[0];
     expect(name).toBe('gvn_sock');
     const v = JSON.parse(value);
     expect(v.u).toBe('https://direct.example');
-    expect(direct.readTicket(v.t)).toEqual({ sessionId: SID, country: 'VN' });
-    expect(opts).toMatchObject({ httpOnly: false, sameSite: 'strict', secure: true, path: '/' });
+    expect(direct.consumeNonce(v.n)).toMatchObject({ sessionId: SID, country: 'VN' });
+    expect(opts).toMatchObject({ httpOnly: false, sameSite: 'strict', secure: true, path: '/', maxAge: direct.NONCE_TTL_MS });
     expect(opts.domain).toBeUndefined(); // host-only: never reaches dev.<domain>
   });
   test.each([
@@ -88,10 +103,10 @@ describe('routeCookieMiddleware', () => {
     ['no session', { ...doc, cookie: '' }],
     ['dead session', { ...doc, cookie: 'gvn_session=nope' }],
     ['not a document', { ...doc, 'sec-fetch-dest': 'script' }],
-  ])('%s → no ticket', (_n, headers) => {
+  ])('%s → no nonce', (_n, headers) => {
     expect(run(headers).cookie).not.toHaveBeenCalled();
   });
-  test('ineligible but holding an old ticket → cleared', () => {
+  test('ineligible but holding an old one → cleared', () => {
     const res = run({ ...doc, 'cf-ipcountry': 'JP', cookie: `gvn_session=${SID}; gvn_sock=x` });
     expect(res.clearCookie).toHaveBeenCalledWith('gvn_sock', expect.objectContaining({ path: '/' }));
   });
@@ -102,7 +117,7 @@ describe('routeCookieMiddleware', () => {
 });
 
 describe('two listeners, one server (integration)', () => {
-  let server, io, directListener, mainPort, directPort, seen;
+  let server, io, directListener, mainPort, directPort, seen, issued;
   const ORIGINAL = { ...process.env };
 
   beforeAll(async () => {
@@ -114,10 +129,14 @@ describe('two listeners, one server (integration)', () => {
     Object.assign(process.env, { DIRECT_SOCKET_URL: 'http://direct.test', DIRECT_SOCKET_PORT: String(directPort) });
     delete process.env.CORS_ORIGIN;
     process.env.NODE_ENV = 'test';
+    const cfg = direct.readConfig();
     app.use(direct.expressGuard(directPort));
     app.get('/', (_req, res) => res.send('page'));
     io = new Server(server);
-    io.engine.use(direct.engineMiddleware(directPort));
+    io.engine.use(direct.engineMiddleware(cfg, sessionManager));
+    io.engine.on('initial_headers', direct.directCookieHeaders(cfg));
+    // registered after → sees what the real hook wrote into the handshake response headers
+    io.engine.on('initial_headers', (h) => { if (h['set-cookie']) issued.push(h['set-cookie']); });
     io.use(verifySocketToken);
     io.on('connection', (s) => seen.push({ info: clientInfoFromSocket(s), route: s.data.route, user: s.user.userId }));
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -128,36 +147,63 @@ describe('two listeners, one server (integration)', () => {
     io.close();
     directListener.close();
   });
-  beforeEach(() => { seen = []; });
+  beforeEach(() => { seen = []; issued = []; });
 
-  function connect(port, { auth = {}, headers = {} } = {}) {
+  /** Connect once; resolve with the outcome and the Set-Cookie (if any) of its handshake response. */
+  function connect(port, { query = {}, headers = {} } = {}) {
     return new Promise((resolve) => {
-      const s = ioClient(`http://127.0.0.1:${port}`, { auth, extraHeaders: headers, transports: ['websocket'], reconnection: false, forceNew: true });
-      s.on('connect', () => { s.close(); setTimeout(() => resolve({ ok: true }), 20); });
-      s.on('connect_error', (e) => { s.close(); resolve({ ok: false, code: e.message }); });
+      const before = issued.length;
+      const setCookie = () => (issued.length > before ? issued[issued.length - 1] : null);
+      const s = ioClient(`http://127.0.0.1:${port}`, { query, extraHeaders: headers, transports: ['websocket'], reconnection: false, forceNew: true });
+      s.on('connect', () => { s.close(); setTimeout(() => resolve({ ok: true, setCookie: setCookie() }), 20); });
+      s.on('connect_error', (e) => { s.close(); resolve({ ok: false, code: e.message, setCookie: setCookie() }); });
     });
   }
+  const cookieValue = (sc) => String(sc).match(/gvn_dt=([^;]+)/)[1];
   const FORGED = { 'cf-connecting-ip': '6.6.6.6', 'cf-ipcountry': 'US', 'x-forwarded-for': '203.0.113.7' };
 
-  test('direct + ticket: forged CF headers ignored, IP from XFF, country from ticket', async () => {
-    const r = await connect(directPort, { auth: { ticket: direct.issueTicket(SID, 'VN', 60e3) }, headers: FORGED });
+  test('direct + nonce: forged CF headers ignored, IP from XFF, country from token, HttpOnly cookie issued', async () => {
+    const r = await connect(directPort, { query: { gvn_n: direct.issueNonce(SID, 'VN') }, headers: FORGED });
     expect(r.ok).toBe(true);
     expect(seen[0]).toMatchObject({ route: 'direct', user: 'u1' });
     expect(seen[0].info.ip).toBe('203.0.113.7');
     expect(seen[0].info.geoRaw.country).toBe('VN');
+    expect(String(r.setCookie)).toMatch(/^gvn_dt=[^;]+; Path=\/socket\.io\/; Max-Age=\d+; HttpOnly; SameSite=Lax/);
+  });
+  test('the nonce works once; the issued cookie carries every later handshake', async () => {
+    const nonce = direct.issueNonce(SID, 'VN');
+    const first = await connect(directPort, { query: { gvn_n: nonce } });
+    expect(first.ok).toBe(true);
+    expect(await connect(directPort, { query: { gvn_n: nonce } })).toMatchObject({ ok: false, code: 'AUTH_TICKET' });
+    const again = await connect(directPort, { query: { gvn_n: nonce }, headers: { cookie: `gvn_dt=${cookieValue(first.setCookie)}` } });
+    expect(again.ok).toBe(true);
+    expect(again.setCookie).not.toBeNull(); // sliding re-issue
+  });
+  test('logout/kick ends the direct cookie too (session row re-checked)', async () => {
+    const first = await connect(directPort, { query: { gvn_n: direct.issueNonce(SID, 'VN') } });
+    alive = false;
+    expect(await connect(directPort, { headers: { cookie: `gvn_dt=${cookieValue(first.setCookie)}` } }))
+      .toMatchObject({ ok: false, code: 'AUTH_TICKET' });
   });
   test.each([
-    ['no ticket', {}, {}],
-    ['bad ticket', { ticket: 'x'.repeat(60) }, {}],
-    ['cookie only', {}, { cookie: `gvn_session=${SID}` }],
-    ['ticket for a dead session', { ticket: direct.issueTicket('gone', 'VN', 60e3) }, {}],
-  ])('direct + %s → AUTH_TICKET', async (_n, auth, headers) => {
-    expect(await connect(directPort, { auth, headers })).toEqual({ ok: false, code: 'AUTH_TICKET' });
+    ['nothing', {}, {}],
+    ['bad nonce', { gvn_n: 'x'.repeat(60) }, {}],
+    ['session cookie only', {}, { cookie: `gvn_session=${SID}` }],
+    ['a direct ticket passed as nonce', { gvn_n: direct.issueDirectTicket(SID, 'VN', 60e3) }, {}],
+    ['a nonce passed as direct cookie', {}, { cookie: `gvn_dt=${direct.issueNonce(SID, 'VN')}` }],
+    ['nonce for a dead session', { gvn_n: direct.issueNonce('gone', 'VN') }, {}],
+  ])('direct + %s → AUTH_TICKET, no cookie', async (_n, query, headers) => {
+    const r = await connect(directPort, { query, headers });
+    expect(r).toMatchObject({ ok: false, code: 'AUTH_TICKET' });
+    expect(r.setCookie).toBeNull();
   });
-  test('Cloudflare listener unchanged: CF headers honoured, ticket alone is not a credential', async () => {
-    expect(await connect(mainPort, { auth: { ticket: direct.issueTicket(SID, 'VN', 60e3) } })).toEqual({ ok: false, code: 'AUTH_REQUIRED' });
+  test('Cloudflare listener unchanged: CF headers honoured, nonce/direct cookie are not credentials', async () => {
+    expect(await connect(mainPort, { query: { gvn_n: direct.issueNonce(SID, 'VN') } })).toMatchObject({ ok: false, code: 'AUTH_REQUIRED' });
+    const viaDirectCookie = await connect(mainPort, { headers: { cookie: `gvn_dt=${direct.issueDirectTicket(SID, 'VN', 60e3)}` } });
+    expect(viaDirectCookie).toMatchObject({ ok: false, code: 'AUTH_REQUIRED', setCookie: null });
     const r = await connect(mainPort, { headers: { ...FORGED, cookie: `gvn_session=${SID}` } });
     expect(r.ok).toBe(true);
+    expect(r.setCookie).toBeNull();
     expect(seen[0].route).toBeUndefined();
     expect(seen[0].info.ip).toBe('6.6.6.6');
   });

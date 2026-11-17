@@ -11,11 +11,14 @@
  *  - Trust boundary = the listener port, not a header. On the direct port every client-supplied
  *    `cf-*` header is deleted before anything reads it (Caddy is reached by the public; it cannot
  *    vouch for CF headers), so the IP falls back to Caddy's X-Forwarded-For via loopback.
- *  - Auth = a short-lived encrypted ticket, not the session cookie. The cookie stays host-only on
- *    play3cr.win (a Domain= cookie would also reach dev.play3cr.win). The ticket is handed out on
- *    HTML responses that came through Cloudflare (so CF-IPCountry is trustworthy there), carries
- *    the session id encrypted + the country, and is re-checked against the live session row on
- *    every handshake, so revocation still works.
+ *  - Credentials, two stages, so JS never holds a replayable credential:
+ *    1. HTML through Cloudflare (CF-IPCountry trustworthy there) → JS-readable `gvn_sock` cookie
+ *       with a NONCE: encrypted {session, country}, 60 s, single use.
+ *    2. First direct handshake presents it in the query → consumed → the response sets `gvn_dt`,
+ *       an HttpOnly cookie on the direct host only (Path=/socket.io/), sliding DIRECT_TTL.
+ *       Later handshakes (reconnects, other pages, other tabs) use that cookie.
+ *    Every handshake re-checks the live session row, so logout/kick/lock still end it. The session
+ *    cookie itself stays host-only on play3cr.win (a Domain= cookie would reach dev.play3cr.win).
  *  - Who goes direct: CF-IPCountry ∈ DIRECT_SOCKET_COUNTRIES (default VN), logged-in session.
  */
 
@@ -23,11 +26,15 @@ const crypto = require('crypto');
 const net = require('net');
 const config = require('../config');
 const logger = require('../utils/logger');
-const { readSessionIdFromHeader } = require('../utils/session-cookie');
+const { readSessionIdFromHeader, parseCookies } = require('../utils/session-cookie');
 const { geoFromHeaders } = require('../utils/geo');
 
-const ROUTE_COOKIE = 'gvn_sock';
-const TICKET_VERSION = 1;
+const ROUTE_COOKIE = 'gvn_sock';   // play3cr.win, JS-readable, {u: url, n: nonce}
+const DIRECT_COOKIE = 'gvn_dt';    // direct host, HttpOnly, long ticket
+const TICKET_VERSION = 2;
+const NONCE_TTL_MS = 60 * 1000;
+const KIND_NONCE = 'n';
+const KIND_DIRECT = 'd';
 
 function readConfig(env = process.env) {
   const url = String(env.DIRECT_SOCKET_URL || '').trim().replace(/\/+$/, '');
@@ -37,38 +44,52 @@ function readConfig(env = process.env) {
     port: parseInt(env.DIRECT_SOCKET_PORT, 10) || 3001,
     countries: new Set(String(env.DIRECT_SOCKET_COUNTRIES || 'VN').split(',')
       .map((c) => c.trim().toUpperCase()).filter(Boolean)),
-    ttlMs: parseInt(env.DIRECT_SOCKET_TICKET_TTL_MS, 10) || 30 * 60 * 1000,
+    ttlMs: parseInt(env.DIRECT_SOCKET_TICKET_TTL_MS, 10) || 24 * 60 * 60 * 1000,
   };
 }
 
-// ── Ticket: AES-256-GCM over {s: sessionId, c: country, e: expiry} ───────────
-// Encrypted (not just signed) because the cookie is JS-readable and must not expose the session id.
+// ── Tokens: AES-256-GCM over {k: kind, s: sessionId, c: country, e: expiry, j: id} ─────────────
+// Encrypted, not just signed: the nonce sits in a JS-readable cookie and a URL query.
 let _key = null;
 function key() {
-  if (!_key) _key = Buffer.from(crypto.hkdfSync('sha256', config.JWT_SECRET, '', 'gvn-socket-ticket-v1', 32));
+  if (!_key) _key = Buffer.from(crypto.hkdfSync('sha256', config.JWT_SECRET, '', 'gvn-socket-ticket-v2', 32));
   return _key;
 }
 
-function issueTicket(sessionId, country, ttlMs, now = Date.now()) {
+function seal(kind, sessionId, country, ttlMs, now = Date.now()) {
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key(), iv);
-  const body = Buffer.concat([cipher.update(JSON.stringify({ v: TICKET_VERSION, s: sessionId, c: country || null, e: now + ttlMs })), cipher.final()]);
+  const payload = { v: TICKET_VERSION, k: kind, s: sessionId, c: country || null, e: now + ttlMs, j: crypto.randomBytes(9).toString('base64url') };
+  const body = Buffer.concat([cipher.update(JSON.stringify(payload)), cipher.final()]);
   return Buffer.concat([iv, cipher.getAuthTag(), body]).toString('base64url');
 }
 
-/** @returns {{sessionId: string, country: string|null}|null} null = forged, corrupt or expired */
-function readTicket(ticket, now = Date.now()) {
-  if (typeof ticket !== 'string' || ticket.length < 40 || ticket.length > 512) return null;
+/** @returns {{kind, sessionId, country, exp, id}|null} null = forged, corrupt, expired or wrong kind */
+function open(token, kind, now = Date.now()) {
+  if (typeof token !== 'string' || token.length < 40 || token.length > 512) return null;
   try {
-    const raw = Buffer.from(ticket, 'base64url');
+    const raw = Buffer.from(token, 'base64url');
     const decipher = crypto.createDecipheriv('aes-256-gcm', key(), raw.subarray(0, 12));
     decipher.setAuthTag(raw.subarray(12, 28));
     const p = JSON.parse(Buffer.concat([decipher.update(raw.subarray(28)), decipher.final()]).toString('utf8'));
-    if (p.v !== TICKET_VERSION || typeof p.s !== 'string' || !(p.e > now)) return null;
-    return { sessionId: p.s, country: p.c || null };
+    if (p.v !== TICKET_VERSION || p.k !== kind || typeof p.s !== 'string' || !(p.e > now)) return null;
+    return { kind: p.k, sessionId: p.s, country: p.c || null, exp: p.e, id: p.j };
   } catch {
     return null;
   }
+}
+
+const issueNonce = (sessionId, country, now) => seal(KIND_NONCE, sessionId, country, NONCE_TTL_MS, now);
+const issueDirectTicket = (sessionId, country, ttlMs, now) => seal(KIND_DIRECT, sessionId, country, ttlMs, now);
+
+/** Single use: id → expiry. Lost on restart, which the 60 s expiry bounds. */
+const _usedNonces = new Map();
+function consumeNonce(token, now = Date.now()) {
+  const t = open(token, KIND_NONCE, now);
+  if (!t || _usedNonces.has(t.id)) return null;
+  _usedNonces.set(t.id, t.exp);
+  if (_usedNonces.size > 1000) for (const [id, exp] of _usedNonces) if (exp <= now) _usedNonces.delete(id);
+  return t;
 }
 
 // ── Listener discrimination ──────────────────────────────────────────────────
@@ -81,11 +102,35 @@ function stripCfHeaders(headers) {
   for (const name of Object.keys(headers)) if (name.startsWith('cf-')) delete headers[name];
 }
 
-/** engine.io middleware: runs on the polling handshake AND the websocket upgrade, before socket.io auth. */
-function engineMiddleware(port) {
+function queryParam(req, name) {
+  try { return new URL(req.url, 'http://x').searchParams.get(name); } catch { return null; }
+}
+
+/**
+ * engine.io middleware (polling handshake AND websocket upgrade, before socket.io auth). On the
+ * direct port: strip cf-*, then resolve the credential of a NEW engine connection — the HttpOnly
+ * direct cookie first, else a one-time nonce from `?gvn_n=` — onto `req.gvnDirect`.
+ */
+function engineMiddleware(cfg, sessionManager) {
   return (req, _res, next) => {
-    if (isDirectRequest(req, port)) stripCfHeaders(req.headers);
+    if (!isDirectRequest(req, cfg.port)) return next();
+    stripCfHeaders(req.headers);
+    if (queryParam(req, 'sid')) return next(); // later request of an existing engine connection
+    const cookie = parseCookies(req.headers.cookie)[DIRECT_COOKIE];
+    let t = cookie && open(cookie, KIND_DIRECT);
+    if (!(t && sessionManager.getValidSession(t.sessionId))) t = consumeNonce(queryParam(req, 'gvn_n'));
+    if (t && sessionManager.getValidSession(t.sessionId)) req.gvnDirect = { sessionId: t.sessionId, country: t.country };
     next();
+  };
+}
+
+/** `initial_headers`: (re)issue the HttpOnly direct cookie on the handshake response — sliding expiry. */
+function directCookieHeaders(cfg) {
+  const secure = cfg.url.startsWith('https:') ? '; Secure' : '';
+  return (headers, req) => {
+    if (!req.gvnDirect || !isDirectRequest(req, cfg.port)) return;
+    const value = issueDirectTicket(req.gvnDirect.sessionId, req.gvnDirect.country, cfg.ttlMs);
+    headers['set-cookie'] = `${DIRECT_COOKIE}=${value}; Path=/socket.io/; Max-Age=${Math.floor(cfg.ttlMs / 1000)}; HttpOnly; SameSite=Lax${secure}`;
   };
 }
 
@@ -124,7 +169,7 @@ function isDocumentRequest(req) {
 }
 
 /**
- * On page navigations that came through Cloudflare: eligible → set `gvn_sock` = {u: url, t: ticket};
+ * On page navigations that came through Cloudflare: eligible → set `gvn_sock` = {u: url, n: nonce};
  * not eligible but holding one → clear it. Client reads it in socket-client.js before io().
  */
 function routeCookieMiddleware(cfg, sessionManager) {
@@ -135,8 +180,8 @@ function routeCookieMiddleware(cfg, sessionManager) {
     const session = sid && country && cfg.countries.has(country) ? sessionManager.getValidSession(sid) : null;
     const base = { httpOnly: false, sameSite: 'strict', secure: !!req.secure, path: '/' };
     if (session) {
-      const value = JSON.stringify({ u: cfg.url, t: issueTicket(session.sessionId, country, cfg.ttlMs) });
-      res.cookie(ROUTE_COOKIE, value, { ...base, maxAge: cfg.ttlMs });
+      const value = JSON.stringify({ u: cfg.url, n: issueNonce(session.sessionId, country) });
+      res.cookie(ROUTE_COOKIE, value, { ...base, maxAge: NONCE_TTL_MS });
     } else if (String(req.headers.cookie || '').includes(`${ROUTE_COOKIE}=`)) {
       res.clearCookie(ROUTE_COOKIE, base);
     }
@@ -144,33 +189,23 @@ function routeCookieMiddleware(cfg, sessionManager) {
   };
 }
 
-/**
- * Keep a connected direct socket's ticket fresh, so socket.io's reconnect loop (which re-sends
- * `auth`) still has a valid one after a long session. Emitted over the direct socket itself — no
- * extra request on the lossy CF leg.
- */
-function attachTicketRefresh(io, cfg) {
-  io.on('connection', (socket) => {
-    if (!socket.data || socket.data.route !== 'direct') return;
-    const send = () => socket.emit('route:ticket', issueTicket(socket.sessionId, socket.data.country, cfg.ttlMs));
-    send();
-    const t = setInterval(send, Math.max(60_000, Math.floor(cfg.ttlMs / 3)));
-    if (t.unref) t.unref();
-    socket.on('disconnect', () => clearInterval(t));
-  });
-}
-
 module.exports = {
   ROUTE_COOKIE,
+  DIRECT_COOKIE,
+  NONCE_TTL_MS,
   readConfig,
-  issueTicket,
-  readTicket,
+  issueNonce,
+  issueDirectTicket,
+  consumeNonce,
+  open,
+  KIND_NONCE,
+  KIND_DIRECT,
   isDirectRequest,
   stripCfHeaders,
   engineMiddleware,
+  directCookieHeaders,
   expressGuard,
   startDirectListener,
   withDirectConnectSrc,
   routeCookieMiddleware,
-  attachTicketRefresh,
 };

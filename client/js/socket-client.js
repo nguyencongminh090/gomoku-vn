@@ -84,7 +84,6 @@ class SocketClient {
     // #415: socket-direct route (VN on a lossy ISP→Cloudflare leg). Present only when the server
     // set the `gvn_sock` cookie on this page's HTML; otherwise everything below is unchanged.
     const direct = SocketClient.directRoute();
-    if (direct) auth.ticket = direct.t;
 
     //
     // `transports: ['websocket', 'polling']` tries a direct WebSocket upgrade
@@ -142,7 +141,9 @@ class SocketClient {
     if (direct) {
       // Direct handshakes take tens of ms; a hang means the path is blocked → fall back fast.
       opts.timeout = SocketClient.DIRECT_TIMEOUT_MS;
-      opts.withCredentials = false; // the ticket is the credential; no cookie exists for that host
+      // One-time nonce (60 s, single use) for the first direct handshake; that handshake answers with
+      // an HttpOnly cookie for the direct host, which every later reconnect sends (withCredentials).
+      opts.query = { gvn_n: direct.n };
       this.socket = io(direct.u, opts);
       this._bindDirectRoute();
     } else {
@@ -244,7 +245,7 @@ class SocketClient {
   // Socket-direct route (#415)
   // ---------------------------------------------------------------------------
 
-  /** `{u, t}` from the `gvn_sock` cookie, or null (no cookie, malformed, or a recent path failure in this tab). */
+  /** `{u, n}` from the `gvn_sock` cookie, or null (no cookie, malformed, or a recent path failure in this tab). */
   static directRoute() {
     try {
       const off = Number(sessionStorage.getItem(SocketClient.DIRECT_OFF_KEY));
@@ -252,7 +253,7 @@ class SocketClient {
       const m = document.cookie.match(/(?:^|;\s*)gvn_sock=([^;]+)/);
       if (!m) return null;
       const r = JSON.parse(decodeURIComponent(m[1]));
-      if (!r || typeof r.t !== 'string' || typeof r.u !== 'string' || !/^https?:\/\//.test(r.u)) return null;
+      if (!r || typeof r.n !== 'string' || typeof r.u !== 'string' || !/^https?:\/\//.test(r.u)) return null;
       return r;
     } catch (_) {
       return null;
@@ -270,15 +271,13 @@ class SocketClient {
     let everConnected = false;
     let fails = 0;
     this.socket.on('connect', () => { everConnected = true; fails = 0; });
-    this.socket.on('route:ticket', (ticket) => {
-      if (this.socket && typeof ticket === 'string') this.socket.auth = Object.assign({}, this.socket.auth, { ticket });
-    });
     this.socket.on('connect_error', (err) => {
       if (this._route === 'cf') return;
       const ticketRefused = err && err.message === 'AUTH_TICKET';
       fails++;
       if (!ticketRefused && everConnected && fails < SocketClient.DIRECT_MAX_FAILS) return;
-      // Expired/refused ticket: this page only (the next page load brings a fresh one). A path
+      // Refused credential (nonce reused by another tab, direct cookie expired): this page only — the
+      // next page load brings a fresh nonce. A path
       // failure: remember for DIRECT_OFF_MS so this tab's next pages don't each wait it out again.
       this._fallbackToCf(!ticketRefused);
       // A middleware refusal is not retried by socket.io's reconnect loop; transport errors are.
@@ -293,9 +292,7 @@ class SocketClient {
       try { sessionStorage.setItem(SocketClient.DIRECT_OFF_KEY, String(Date.now())); } catch (_) { /* private mode */ }
     }
     if (!this.socket) return;
-    const auth = Object.assign({}, this.socket.auth);
-    delete auth.ticket;
-    this.socket.auth = auth;
+    this.socket.io.opts.query = {};
     this.socket.io.uri = window.location.origin;
     this.socket.io.timeout(12000);
   }

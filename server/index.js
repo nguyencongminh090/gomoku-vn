@@ -302,7 +302,10 @@ const io = new Server(server, {
 });
 
 // #415: strip client-supplied cf-* on the direct listener before anything reads them.
-if (directCfg.enabled) io.engine.use(directRoute.engineMiddleware(directCfg.port));
+if (directCfg.enabled) {
+  io.engine.use(directRoute.engineMiddleware(directCfg, sessionManager));
+  io.engine.on('initial_headers', directRoute.directCookieHeaders(directCfg));
+}
 
 // Apply JWT auth middleware to ALL socket connections
 io.use(verifySocketToken);
@@ -322,7 +325,6 @@ socketHandler.init(io);
 // unauthenticated without loosening anything for real players. It brings its
 // own per-IP limiter; see server/socket/diag-namespace.js.
 diagNamespace.register(io);
-if (directCfg.enabled) directRoute.attachTicketRefresh(io, directCfg);
 
 // Expired session rows do not clean themselves up the way an expired JWT did
 // (TODO.md #68) — sweep once at startup, then hourly.

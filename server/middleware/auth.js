@@ -112,23 +112,23 @@ function verifySocketToken(socket, next) {
     return next(new Error('AUTH_ORIGIN'));
   }
 
-  // #415: a handshake on the direct listener authenticates with a ticket only (no cookie reaches
-  // that host). AUTH_TICKET, not AUTH_INVALID: the client falls back to the CF path, not to login.
+  // #415: a handshake on the direct listener authenticates only with what direct-route's engine
+  // middleware resolved (HttpOnly direct cookie or one-time nonce) — no session cookie reaches that
+  // host. AUTH_TICKET, not AUTH_INVALID: the client falls back to the CF path, not to login.
   const direct = directRoute.readConfig();
   if (direct.enabled && directRoute.isDirectRequest(socket.request, direct.port)) {
-    const t = directRoute.readTicket(socket.handshake.auth && socket.handshake.auth.ticket);
-    const session = t && sessionManager.getValidSession(t.sessionId);
+    const d = socket.request.gvnDirect;
+    const session = d && sessionManager.getValidSession(d.sessionId);
     if (!session) {
-      logger.warn('[Auth] Direct socket rejected: ticket not valid', { ip, ticket: t ? 'session' : 'bad' });
+      logger.warn('[Auth] Direct socket rejected: no valid direct credential', { ip });
       return next(new Error('AUTH_TICKET'));
     }
     socket.user = session;
     socket.sessionId = session.sessionId;
     socket.data.route = 'direct';
-    socket.data.country = t.country;
-    // cf-* were stripped on this listener; restore the country the ticket carries (issued from a
+    // cf-* were stripped on this listener; restore the country the token carries (issued from a
     // CF-IPCountry we could trust) so geo logging keeps working.
-    if (t.country) socket.handshake.headers['cf-ipcountry'] = t.country;
+    if (d.country) socket.handshake.headers['cf-ipcountry'] = d.country;
     sessionManager.touchSession(session.sessionId);
     return next();
   }
