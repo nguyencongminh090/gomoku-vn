@@ -1,5 +1,5 @@
 # B415 — Prod lag: Viettel → Cloudflare free-plan IPs drop packets (undecided fix)
-**Status:** OPEN — root cause found 2026-11-17, solution recorded, user has NOT decided
+**Status:** OPEN — 2026-11-17 PoC of B (VN-only, ticket, port-trust) on `feature/415-socket-direct` (uncommitted), design `features/415-socket-direct/planning.md`; infra not touched, user has NOT decided
 **Area:** VPS (Caddy, ufw), Cloudflare DNS for play3cr.win, `server/utils/geo.js`, `server/socket/state.js`, `trust proxy` in `server/index.js` / `routes/auth.js` / `utils/session-cookie.js`
 **From:** user 2026-11-17 "web is a bit lag" + "nhiều người khác cũng báo cáo tương tự"   **Depends:** —
 

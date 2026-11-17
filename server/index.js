@@ -49,6 +49,7 @@ const { originGuard } = require('./middleware/origin-guard');
 const { legacyHostRedirect } = require('./middleware/legacy-host-redirect');
 const socketHandler  = require('./socket/SocketHandler');
 const diagNamespace  = require('./socket/diag-namespace');
+const directRoute    = require('./socket/direct-route');
 const sessionManager = require('./managers/SessionManager');
 const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
@@ -72,13 +73,17 @@ const app = express();
 // or the per-IP room quota.
 app.set('trust proxy', 'loopback');
 
+// #415: the direct (Caddy) listener serves socket.io only — refuse every Express route there.
+const directCfg = directRoute.readConfig();
+if (directCfg.enabled) app.use(directRoute.expressGuard(directCfg.port));
+
 // Security headers, CSP enforced (TODO.md #65 — was `contentSecurityPolicy:
 // false` because the client used to ship inline <script> IIFEs and a
 // non-pinned https://unpkg.com script; both are gone now, see
 // docs/fix-log.md). Directives live in ./config/csp.js so the policy itself
 // is unit-testable (server/tests/csp.test.js) without booting this server.
 app.use(helmet({
-  contentSecurityPolicy: { directives: cspDirectives },
+  contentSecurityPolicy: { directives: directRoute.withDirectConnectSrc(cspDirectives, directCfg) },
 }));
 
 // Compress text responses (TODO.md #105). Must be mounted BEFORE the static
@@ -170,6 +175,10 @@ app.use('/engine', createEngineFilesRouter({
   dir: config.ENGINE_FILES_DIR || undefined,
   buildId: config.ENGINE_BUILD_ID,
 }));
+
+// #415 socket-direct (off unless DIRECT_SOCKET_URL): the direct port serves socket.io only; page
+// navigations through Cloudflare get the route cookie (ticket) for eligible countries.
+if (directCfg.enabled) app.use(directRoute.routeCookieMiddleware(directCfg, sessionManager));
 
 // Lobby preload hints as an origin `Link` header, replayed by Cloudflare Early Hints as 103 (#410).
 app.use(indexLinkHints(clientPath));
@@ -292,6 +301,12 @@ const io = new Server(server, {
   },
 });
 
+// #415: strip client-supplied cf-* on the direct listener before anything reads them.
+if (directCfg.enabled) {
+  io.engine.use(directRoute.engineMiddleware(directCfg, sessionManager));
+  io.engine.on('initial_headers', directRoute.directCookieHeaders(directCfg));
+}
+
 // Apply JWT auth middleware to ALL socket connections
 io.use(verifySocketToken);
 
@@ -326,6 +341,7 @@ setInterval(() => dmService.pruneExpired(Date.now(), true), 3600 * 1000).unref()
 server.listen({ port: config.HTTP_PORT, backlog: config.LISTEN_BACKLOG }, () => {
   logger.info(`[Server] Play3CR listening on http://localhost:${config.HTTP_PORT}`);
 });
+const directListener = directCfg.enabled ? directRoute.startDirectListener(server, directCfg.port) : null;
 
 // Last-resort safety net: an error that escapes every other try/catch (e.g. a
 // bug in a socket handler not covered by SocketHandler.js's per-handler wrap)
@@ -344,6 +360,7 @@ const gracefulShutdown = () => {
   
   // Force close socket connections so the HTTP server can actually close
   io.disconnectSockets();
+  if (directListener) directListener.close();
 
   server.close(() => {
     try { db.close(); } catch (err) { logger.error('DB close error', err); }
