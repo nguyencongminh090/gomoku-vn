@@ -22,7 +22,6 @@ const INDEX_HTML = fs.readFileSync(path.join(clientPath, 'index.html'), 'utf8');
 describe('collectHints mapping', () => {
   test.each([
     ['classic script', '<script src="js/a.js?v=1"></script>', { href: '/js/a.js?v=1', rel: 'preload', as: 'script' }],
-    ['module script', '<script type="module" src="js/e.js?v=2"></script>', { href: '/js/e.js?v=2', rel: 'modulepreload' }],
     ['modulepreload link', '<link rel="modulepreload" href="js/m.js?v=3" />', { href: '/js/m.js?v=3', rel: 'modulepreload' }],
     ['stylesheet', '<link rel="stylesheet" href="css/x.css?v=4" />', { href: '/css/x.css?v=4', rel: 'preload', as: 'style' }],
     ['font preload', '<link rel="preload" href="f.woff2" as="font" type="font/woff2" crossorigin>',
@@ -40,6 +39,7 @@ describe('collectHints mapping', () => {
     ['protocol-relative', '<script src="//x.example/a.js"></script>'],
     ['commented out', '<!-- <script src="js/old.js"></script> -->'],
     ['preload without as', '<link rel="preload" href="a.js">'],
+    ['module entry script', '<script type="module" src="js/e.js?v=2"></script>'],
   ])('%s → no hint', (_n, html) => {
     expect(collectHints(html)).toEqual([]);
   });
@@ -59,13 +59,11 @@ describe('real client/index.html', () => {
   const byHref = new Map(hints.map((h) => [h.href, h]));
   const body = INDEX_HTML.replace(/<!--[\s\S]*?-->/g, '');
 
-  test('every <script src> is hinted with its exact ?v= and mode', () => {
-    const scripts = [...body.matchAll(/<script\b([^>]*)\bsrc="([^"]+)"/g)];
+  test('every classic <script src> is hinted as=script with its exact ?v=', () => {
+    const scripts = [...body.matchAll(/<script\b([^>]*)\bsrc="([^"]+)"/g)].filter(([, attrs]) => !/type="module"/.test(attrs));
     expect(scripts.length).toBeGreaterThan(5);
-    for (const [, attrs, src] of scripts) {
-      const h = byHref.get(src.startsWith('/') ? src : '/' + src);
-      expect(h).toBeDefined();
-      expect(h.rel).toBe(/type="module"/.test(attrs) ? 'modulepreload' : 'preload');
+    for (const [, , src] of scripts) {
+      expect(byHref.get(src.startsWith('/') ? src : '/' + src)).toEqual(expect.objectContaining({ rel: 'preload', as: 'script' }));
     }
   });
 
@@ -79,9 +77,11 @@ describe('real client/index.html', () => {
     for (const h of hints) expect(body).toContain(h.href.slice(1));
   });
 
-  test('index-entry.js is a modulepreload, never as=script (the #410 warning)', () => {
-    const entry = hints.find((h) => h.href.startsWith('/js/index-entry.js'));
-    expect(entry).toEqual({ href: expect.stringMatching(/\?v=[0-9a-f]+$/), rel: 'modulepreload' });
+  // Chrome on play3cr.win: "index-entry.js … preloaded using link preload but not used" — the
+  // <script type=module> already fetched it before the Link-header copy (via the SW) was processed.
+  test('module entry index-entry.js is not hinted at all (the #410 warning)', () => {
+    expect(body).toMatch(/<script type="module" src="js\/index-entry\.js\?v=/);
+    expect(hints.some((h) => h.href.startsWith('/js/index-entry.js'))).toBe(false);
   });
 
   test('font preload keeps crossorigin', () => {
