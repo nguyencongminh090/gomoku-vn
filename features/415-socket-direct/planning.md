@@ -140,3 +140,21 @@ VPS: Caddy (+caddy-dns/cloudflare, apt-held, stopped) for `*.play3cr.win:443` �
 ufw 443 only from 52 CLOUDFRONT_ORIGIN_FACING ranges (`ufw-cloudfront-sync`, weekly cron); DNS-only A
 `o-8a45d0026e92` → VPS. Waiting for the user's Cloudflare DNS-edit token in `/etc/caddy/cf-token.env`.
 Next: start Caddy → switch CloudFront origin → measure → re-add `direct` CNAME only if faster → drop `cfo-*`.
+
+## C2-A live 2026-11-18 01:20-01:31 (Caddy on, CloudFront origin switched; `direct` CNAME still absent)
+- Caddy enabled; wildcard `*.play3cr.win` issued via DNS-01 (token: CF "caddy-vps-dns01 play3cr.win", DNS Edit +
+  Zone Read, zone play3cr.win only). Listens :443 (+ admin 127.0.0.1:2019); outside → VPS:443 times out (ufw).
+- Caddyfile bug fixed: `reverse_proxy /socket.io/*` + bare `respond 404` in one handle → respond sorts first →
+  everything 404. Now two nested `handle` blocks (backup `Caddyfile.bak-404`).
+- CloudFront E1086MRYTD5H5E origin → `o-8a45d0026e92.play3cr.win` (HTTPS only, TLSv1.2, IPv4, X-Gvn-Edge kept);
+  responses now `via: 1.1 Caddy`, POP SGN50.
+- Measured 01:27 (off-peak, same PC/ISP, 20 handshakes + 300 emits each):
+  | path | WS hs p50 / p90 | emit RTT p50 / p99 / max |
+  |---|---|---|
+  | CloudFront → Caddy (C2) | 114 / 133 ms | 25 / 28 / 53 ms |
+  | Cloudflare (play3cr.win) | 343 / 364 ms | 98 / 104 / 111 ms |
+  | C2 repeat | 113 / 126 ms | 27 / 29 / 29 ms |
+  (C1 was 1922 ms hs / 158 ms RTT.) → C2 ~4x lower RTT than CF even off-peak.
+- Guest → `/api/auth/guest` → document GET → `gvn_sock` nonce → direct WS connect OK; replay → AUTH_TICKET;
+  pm2 log `route=direct ip=<real viewer IP> geo=VN` (secret + CloudFront-Viewer-Address path works via Caddy).
+- **ENABLED 01:35** (user "Turn on"): DNS-only CNAME `direct` → d3fkrz3mmqf6p0.cloudfront.net (TTL 60, id 15e5b64a…); verified cert + via Caddy + nonce connect/replay refused. C1 removed: tunnel GomokuVPS ingress `cfo-d2dc719b4571` (config v7) + its CNAME. play3cr.win / dpdns / CF socket still 200. Rollback: delete `direct` CNAME. Open: peak-hour check (~21:00, `route=direct` in pm2 logs), real browser pass.
