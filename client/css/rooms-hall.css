@@ -17,6 +17,12 @@
   --rh-chip: rgba(20,18,15,.8);
   --rh-wait: #f2a33a;
   --rh-on-wait: #1b1208;
+  --rh-ink: #1b1a17;                  /* dark text on the white go button */
+  --rh-go-hover: #e9e6df;
+  --rh-eyebrow: #cfe8a9;
+  --rh-err: #ffb4b4;
+  --rh-live-ring: rgba(139,195,74,.35);
+  --rh-photo-bg: #1b1712;
 }
 
 /* The page's own title bar is replaced by the hero on this screen. */
@@ -27,14 +33,14 @@ body.zen-lobby #panel-tables .rh {
   position: relative; isolation: isolate; overflow: hidden;
   width: 100vw; margin: -28px calc(50% - 50vw) 0;     /* .lobby has 28px top padding (shell.css) */
   min-height: 300px; display: flex; flex-direction: column; justify-content: flex-end;
-  color: var(--rh-on-photo); background: #1b1712;
+  color: var(--rh-on-photo); background: var(--rh-photo-bg);
 }
 .rh__img { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 50% 62%; }
 .rh::before { content: ''; position: absolute; inset: 0; z-index: -1;
   background: linear-gradient(90deg, var(--rh-scrim) 0%, var(--rh-scrim-2) 48%, rgba(14,12,9,.2) 100%), linear-gradient(0deg, rgba(14,12,9,.55), transparent 55%); }
 .rh__in { box-sizing: border-box; width: 100%; max-width: var(--zen-col, 1180px); margin: 0 auto; padding: 44px 24px 32px;
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 28px; }
-.rh__eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: var(--text-xs); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #cfe8a9; }
+.rh__eyebrow { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: var(--text-xs); font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--rh-eyebrow); }
 .rh__eyebrow i { width: 8px; height: 8px; border-radius: 50%; background: var(--rh-live); animation: rh-pulse 1.6s ease-in-out infinite; }
 .rh__title { margin: 0; font-family: var(--font-display); font-size: clamp(30px, 2.4vw + 10px, 46px); font-weight: 900; letter-spacing: -.02em; line-height: 1.08; text-wrap: balance; color: var(--rh-on-photo); }
 .rh__stats { display: flex; flex-wrap: wrap; gap: 8px 26px; margin: 16px 0 0; padding: 0; list-style: none; font-size: var(--text-sm); color: var(--rh-on-photo-2); }
@@ -46,11 +52,11 @@ body.zen-lobby #panel-tables .rh {
 .rh-code__hash { font-size: 22px; font-weight: 900; color: var(--rh-on-photo-2); }
 .rh-code__box { box-sizing: border-box; width: 42px; height: 48px; padding: 0; border-radius: 10px; border: 0; text-align: center; font: inherit; font-size: 22px; font-weight: 900; text-transform: uppercase;
   color: var(--rh-on-photo); background: rgba(255,255,255,.1); box-shadow: inset 0 0 0 1px rgba(255,255,255,.28); }
-.rh-code__box:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--rh-live), 0 0 0 3px rgba(139,195,74,.35); }
+.rh-code__box:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--rh-live), 0 0 0 3px var(--rh-live-ring); }
 .rh-code__go { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 16px; margin-left: 4px; border: 0; border-radius: 999px; cursor: pointer;
-  font: inherit; font-weight: 800; background: var(--rh-on-photo); color: #1b1a17; }
-.rh-code__go:hover { background: #e9e6df; }
-.rh-code__err { margin: 8px 0 0; font-size: var(--text-sm); color: #ffb4b4; }
+  font: inherit; font-weight: 800; background: var(--rh-on-photo); color: var(--rh-ink); }
+.rh-code__go:hover { background: var(--rh-go-hover); }
+.rh-code__err { margin: 8px 0 0; font-size: var(--text-sm); color: var(--rh-err); }
 .rh-code__err[hidden] { display: none; }
 .rh__credit { position: absolute; right: 10px; bottom: 6px; margin: 0; font-size: var(--text-xs); color: rgba(255,255,255,.6); }
 .rh__credit a { color: inherit; }
@@ -77,7 +83,7 @@ body.zen-lobby #panel-tables .online-line__more { display: inline-flex; align-it
 
 /* ── Card grid ─────────────────────────────────────────────────────────── */
 body.zen-lobby #panel-tables .rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 16px; padding-bottom: 8px; }
-body.zen-lobby #panel-tables .rcard { display: grid; grid-template-rows: auto 1fr; padding: 0; border-radius: 16px; overflow: hidden; background: var(--c-surface); box-shadow: var(--shadow-card);
+body.zen-lobby #panel-tables .rcard { display: grid; grid-template-rows: auto 1fr; padding: 0; border-radius: 16px; overflow: hidden; background: var(--c-surface); border: 1px solid var(--c-border); box-shadow: var(--shadow-card);
   transition: transform 240ms cubic-bezier(.2,.7,.2,1), box-shadow 240ms; }
 body.zen-lobby #panel-tables .rcard:hover { background: var(--c-surface); transform: translateY(-3px); }
 body.zen-lobby #panel-tables .rcard:focus-visible { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
@@ -87,7 +93,7 @@ body.zen-lobby #panel-tables .rcard:focus-visible { outline: 3px solid var(--c-b
 .mb__bg { fill: var(--rh-wood); }
 .mb__grid { stroke: var(--rh-wood-line); stroke-width: .06; fill: none; }
 .mb__b { fill: var(--rh-stone-b); }
-.mb__w { fill: var(--rh-stone-w); stroke: rgba(0,0,0,.35); stroke-width: .05; }
+.mb__w { fill: var(--rh-stone-w); stroke: rgba(40,22,5,.7); stroke-width: .1; }
 .mb__last { fill: none; stroke: var(--rh-last); stroke-width: .12; }
 .rcard__flag, .rcard__eye { position: absolute; top: 20px; display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; font-size: var(--text-xs); font-weight: 800; background: var(--rh-chip); color: var(--rh-on-photo); }
 .rcard__flag { left: 20px; }
@@ -97,7 +103,7 @@ body.zen-lobby #panel-tables .rcard:focus-visible { outline: 3px solid var(--c-b
 .rcard__el { font-variant-numeric: tabular-nums; }
 .rcard--open .rcard__flag { background: var(--rh-wait); color: var(--rh-on-wait); }
 .rcard__sit { position: absolute; left: 50%; top: 58%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; min-height: 38px; padding: 0 16px; border-radius: 999px;
-  font-weight: 800; font-size: var(--text-sm); background: var(--c-brand); color: var(--c-on-brand); box-shadow: 0 6px 16px -6px rgba(0,0,0,.55); }
+  font-weight: 800; font-size: var(--text-sm); background: var(--c-brand); color: var(--c-on-brand); box-shadow: 0 0 0 2px var(--c-surface), 0 6px 16px -6px rgba(0,0,0,.55); }
 .rcard__body { display: grid; align-content: start; gap: 10px; padding: 12px 14px 14px; min-width: 0; }
 /* Players: one row per seat (avatar · name … rating) so full names fit a 268px card. */
 body.zen-lobby #panel-tables .rcard .room-row__name { display: grid; gap: 6px; }
@@ -111,13 +117,13 @@ body.zen-lobby #panel-tables .rcard .rplayer--empty::before { width: 28px; heigh
 body.zen-lobby #panel-tables .rcard .room-row__meta { margin-top: 0; }
 body.zen-lobby #panel-tables .rcard .room-row__host { flex-basis: 100%; margin: 0; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.rcard-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 250px; border-radius: 16px; border: 0; background: var(--c-surface); cursor: pointer;
+.rcard-new { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 250px; border-radius: 16px; border: 1px solid var(--c-border); background: var(--c-surface); cursor: pointer;
   font: inherit; font-weight: 800; color: var(--c-ink-2); transition: border-color 140ms, color 140ms; }
 .rcard-new:hover { border-color: var(--c-brand-text); color: var(--c-ink); }
 .rcard-new:focus-visible { outline: 3px solid var(--c-brand-text); outline-offset: 2px; }
 .rcard-new__plus { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--c-brand-light); color: var(--c-brand-text); }
 .rcard-new__plus .icon { width: 28px; height: 28px; }
-body.zen-lobby #panel-tables .rgrid .room-list__empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; border-radius: 16px; background: var(--c-surface); text-align: center; }
+body.zen-lobby #panel-tables .rgrid .room-list__empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 28px 16px; border-radius: 16px; background: var(--c-surface); border: 1px solid var(--c-border); text-align: center; }
 body.zen-lobby #panel-tables .rgrid:has(.room-list__empty) .rcard-new { grid-column: 1 / -1; min-height: 96px; flex-direction: row; }
 
 @keyframes rh-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }

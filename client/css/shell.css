@@ -316,12 +316,6 @@ body.zen-lobby .hq[hidden] { display: none; }
 body.zen-lobby .hq > :is(.hq-hello, .hnews, #home-mine-card) { grid-column: 1 / -1; }
 /* The shared hero (lobby.js) is the rooms/tournaments title; Home has its own greeting row. */
 body.zen-lobby .lobby:has(#screen-home.is-active:not([hidden])) .zen-hero { display: none; }
-/* Home background: grid only (no leaves), faded out below the hero. */
-body.zen-lobby:has(#screen-home.is-active:not([hidden]))::after { display: none; }
-body.zen-lobby:has(#screen-home.is-active:not([hidden]))::before {
-  -webkit-mask-image: linear-gradient(180deg, #000 0, transparent 70%), linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(180deg, #000 0, transparent 70%), linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-composite: intersect; }
-
 body.zen-lobby .hq-hello { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: var(--text-md); color: var(--c-ink-2); }
 body.zen-lobby .hq-hi b { color: var(--c-ink); font-weight: 800; }
 body.zen-lobby .hq-online { display: inline-flex; align-items: center; gap: 8px; min-height: 28px; padding: 0 10px; border-radius: 6px; background: var(--c-fill); font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }

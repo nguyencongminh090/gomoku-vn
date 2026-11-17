@@ -30,6 +30,7 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 
 ## Tokens
 - Color roles: reuse tokens.css (dark default / light): background --c-bg, surface --c-surface, text --c-ink, muted --c-ink-2, primary --c-brand (#4f7d1c / #4d7c1f), brand text --c-brand-text (#8bc34a / #3d6418), blank fill --c-brand-light, main button --c-ink on --c-on-ink with a --c-brand play disc, danger --c-error.
+- Skins: zen/bento set `--c-brand` to neutral ink (deliberate, ui-audit F7); success/playing stay green.
 - Type scale: Nunito 200–1000; body 16px; sentence h1 clamp(34px, 3.3vw + 8px, 60px) w900, 30px on ≤860px; code boxes 38px (30px phone) w1000; card numbers 40px w1000; labels 12–14px w800 uppercase +.08em. Max three sizes per section.
 - Spacing unit: 4px base; scale 8/12/16/24/32/44.
 - Radius: blanks .22em, cards 16px, code boxes 16px, main button 999px.
