@@ -102,6 +102,10 @@ describe('seat order', () => {
     const sit = top().querySelector('[data-action="sitDown"]');
     expect(sit).not.toBeNull();
     expect(sit.getAttribute('data-arg')).toBe('2');
+    // #414: label + seat badge as separate parts, never "Ngồi vào · #2"
+    expect(sit.querySelector('.seatcard__no').textContent).toBe('#2');
+    expect(sit.textContent).not.toContain('·');
+    expect(sit.getAttribute('aria-label')).toMatch(/ #2$/);
 
     window.RoomState.roomData.state = 'playing';
     window.RoomUI.renderPlayerCards();

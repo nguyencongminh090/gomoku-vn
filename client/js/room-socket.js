@@ -274,7 +274,7 @@
       before: me.before,
       after: me.after,
       delta: sign + Math.abs(me.delta),
-      provisional: me.provisional ? ' ' + t('sys.rating_provisional') : '',
+      provisional: me.provisional ? t('sys.rating_provisional') : '', // "(+12, tạm tính)" — #414
     }));
   });
 

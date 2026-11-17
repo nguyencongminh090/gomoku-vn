@@ -327,7 +327,7 @@ describe('mockup C details', () => {
     $('stage').dispatchEvent(ev('pointerdown', 300)); $('stage').dispatchEvent(ev('pointerup', 250));
     expect(document.body.classList.contains('stage-sheet-open')).toBe(true);
   });
-  test('chat lines carry a face and "· người chơi" for seated players (shown only in the phone sheet)', () => {
+  test('chat lines carry a face and a "người chơi" pill for seated players (shown only in the phone sheet)', () => {
     load({ users: [{ ...ME, slot: 1 }, OPP, guest(1)] });
     window.RoomUI = { avatarInner: (u) => 'AV:' + u.displayName };
     chat('Hoàng Long', 'a', 'u-opp');
@@ -336,7 +336,7 @@ describe('mockup C details', () => {
     const [opp, g, me] = [...$('chat-messages').querySelectorAll('.chat-msg')];
     expect(opp.classList.contains('chat-msg--player')).toBe(true);
     expect(opp.querySelector('.chat-msg__av').textContent).toBe('AV:Hoàng Long');
-    expect(opp.querySelector('.chat-msg__tag').textContent).toBe(' · room.player_tag');
+    expect(opp.querySelector('.chat-msg__tag').textContent).toBe('room.player_tag'); // #414: pill, no '·'
     expect(g.querySelector('.chat-msg__tag')).toBeNull();
     expect(me.querySelector('.chat-msg__av')).toBeNull(); // mine: green bubble on the right, no face
     expect(CSS).toMatch(/body\.arena-room \.chat-msg__av, body\.arena-room \.chat-msg__tag, body\.arena-room \.scorecard/); // hidden outside .rsheet

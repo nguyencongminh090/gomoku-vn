@@ -73,9 +73,17 @@ body.arena-room .rnav__meta .mode-badge > span {
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
 }
 body.arena-room .rnav__rules { display: inline-flex; align-items: center; min-width: 0; padding: 0 4px 0 11px; overflow: hidden; }
-body.arena-room .rnav__rules-full { overflow: hidden; text-overflow: ellipsis; }
+body.arena-room .rnav__rules-full { display: flex; align-items: center; gap: 6px; min-width: 0; overflow: hidden; }
+/* #414 (ticket-rows.md): each fact is its own pill, spaced by gap — never an "A · B" string. */
+body.arena-room .rpill {
+  display: inline-flex; align-items: center; flex: none; height: 24px; padding: 0 9px; border-radius: 999px;
+  background: var(--c-fill); color: var(--c-ink-2); font-size: calc(12.5px * var(--fs-scale, 1)); font-weight: 700; white-space: nowrap;
+}
+body.arena-room .rnav__rules .rpill { background: var(--c-brand-light); color: var(--c-brand-text); }
+body.arena-room .rpill--rated { background: var(--c-brand); color: var(--c-on-brand); }
+/* Visually hidden ", " between pills so screen readers don't run the words together. */
+body.arena-room .rsr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 body.arena-room .rnav__rules-short { display: none; }
-body.arena-room .rnav__dot { font-style: normal; margin: 0 6px; color: var(--c-ink-3); }
 body.arena-room .rnav__info { flex: none; width: 16px; height: 16px; margin: auto 0; padding-right: 10px; box-sizing: content-box; }
 body.arena-room .rnav__leave { flex: none; gap: 7px; height: 36px; padding: 0 12px; border: 1px solid var(--c-border); }
 body.arena-room .rnav__leave .icon { width: 17px; height: 17px; }
@@ -113,9 +121,11 @@ body.arena-room .rmenu__grid a {
 }
 body.arena-room .rmenu__grid a:hover { background: var(--c-strong, var(--c-fill)); }
 body.arena-room .rmenu__grid .icon { width: 19px; height: 19px; color: var(--c-ink-2); }
-body.arena-room .rmenu__title { padding: 6px 10px 6px; font-size: calc(12px * var(--fs-scale, 1)); font-weight: 800; color: var(--c-ink-3); }
+body.arena-room .rmenu__title { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 10px 6px; font-size: calc(12px * var(--fs-scale, 1)); font-weight: 800; color: var(--c-ink-3); }
+body.arena-room .rmenu__title .rpill { height: 22px; font-size: calc(11.5px * var(--fs-scale, 1)); }
 body.arena-room .rmenu__item > span { white-space: nowrap; }
-body.arena-room .rmenu__sub { min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: auto; padding-left: 10px; font-size: calc(12px * var(--fs-scale, 1)); font-weight: 600; color: var(--c-ink-3); }
+body.arena-room .rmenu__sub { display: flex; gap: 4px; min-width: 0; overflow: hidden; margin-left: auto; padding-left: 10px; }
+body.arena-room .rmenu__sub .rpill { height: 22px; padding: 0 8px; font-size: calc(11.5px * var(--fs-scale, 1)); font-weight: 600; }
 body.arena-room .rmenu__item--rules .icon { color: var(--c-brand-text); }
 
 body.arena-room .rules-pop { left: var(--rules-x, 140px); width: 360px; max-width: calc(100vw - 32px); padding: 14px 16px; }
@@ -277,6 +287,12 @@ body.arena-room .seatcard__sit {
   background: var(--c-surface-2); color: var(--c-brand-text); font: inherit; font-weight: 700; cursor: pointer;
 }
 body.arena-room .seatcard__sit:hover { background: var(--c-brand-light); }
+body.arena-room .seatcard__sit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+/* Seat number as a small badge beside "Ngồi vào" (#414, was "Ngồi vào · #2"). */
+body.arena-room .seatcard__no {
+  display: inline-flex; align-items: center; height: 22px; padding: 0 7px; border-radius: 999px;
+  background: var(--c-brand-light); color: var(--c-brand-text); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
 body.arena-room .seatcard__seat { font-size: 13px; font-weight: 700; color: var(--c-ink-3); }
 body.arena-room .seatcard__empty { font-size: 14px; color: var(--c-ink-3); }
 
@@ -641,7 +657,10 @@ body.arena-room .rsheet .chat-msg__av img { width: 100%; height: 100%; object-fi
 body.arena-room .rsheet .chat-msg__bubble { max-width: none; padding: 6px 10px; border: 0; border-radius: 14px 14px 14px 4px; box-shadow: none; }
 body.arena-room .rsheet .chat-msg--self .chat-msg__bubble { max-width: 88%; border-radius: 14px 14px 4px 14px; }
 body.arena-room .rsheet .chat-msg__name { color: var(--c-ink-3); font-size: 11px; font-weight: 800; opacity: 1; }
-body.arena-room .rsheet .chat-msg__tag { display: inline; font-weight: 600; }
+body.arena-room .rsheet .chat-msg__tag {
+  display: inline-flex; align-items: center; height: 16px; margin-left: 6px; padding: 0 6px; border-radius: 999px; vertical-align: 1px;
+  background: var(--c-brand-light); color: var(--c-brand-text); font-size: 10px; font-weight: 700;
+}
 body.arena-room .rsheet .chat-msg__text { font-size: 13.5px; line-height: 1.35; }
 body.arena-room #score-panel { display: none; }
 body.arena-room .score-hero { display: block; padding: 4px 14px 12px; }
