@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play3CR · Round 4 Art Direction Reset</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="gallery.css">
+  <script src="board-engine.js" defer></script>
+  <script src="core.js" defer></script>
+  <script src="concepts.js" defer></script>
+  <script src="gallery.js" defer></script>
+</head>
+<body>
+  <header class="g4-top">
+    <div class="g4-brand">
+      <img src="assets/logo-mark.svg" alt="" width="32" height="32">
+      <div>
+        <strong>Play3CR · Round 4</strong>
+        <small>Gốc 4.0 + 3 phương án 5 vùng Hướng A + B &amp; C</small>
+      </div>
+    </div>
+
+    <div class="g4-tabs" id="concept-tabs" role="group" aria-label="Chọn 3 hướng nghệ thuật"></div>
+
+    <div class="g4-controls">
+      <div class="g4-seg" role="group" aria-label="Chế độ xem">
+        <button type="button" data-mode="single" aria-pressed="true">Xem &amp; Tương tác</button>
+        <button type="button" data-mode="compare" aria-pressed="false">So sánh 3 hướng</button>
+      </div>
+      <div class="g4-seg" role="group" aria-label="Kích thước">
+        <button type="button" data-vp="1440" aria-pressed="true">1440</button>
+        <button type="button" data-vp="1280" aria-pressed="false">1280</button>
+        <button type="button" data-vp="768" aria-pressed="false">768</button>
+        <button type="button" data-vp="390" aria-pressed="false">390</button>
+        <button type="button" data-vp="320" aria-pressed="false">320</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="g4-main">
+    <section id="single-pane">
+      <div class="g4-caption">
+        <div>
+          <h1 id="c-title">Hướng A · The Living Board</h1>
+          <p id="c-hook"></p>
+        </div>
+        <a id="c-open" href="preview.html#the-living-board" target="_blank" rel="noopener">Mở toàn màn hình ↗</a>
+      </div>
+      <div class="g4-stage" id="g4-stage">
+        <div class="g4-viewport" id="g4-viewport">
+          <iframe id="g4-frame" title="Xem trước concept Round 4"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="compare-pane" class="g4-compare" hidden>
+      <div id="compare-grid" class="g4-cmp-grid"></div>
+    </section>
+  </main>
+</body>
+</html>

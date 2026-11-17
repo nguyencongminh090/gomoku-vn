@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Play3CR · Round 4 Concept</title>
+  <link rel="icon" type="image/svg+xml" href="assets/logo-mark.svg">
+  <link rel="stylesheet" href="assets/fonts/fonts.css">
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="concepts.css">
+  <script src="board-engine.js" defer></script>
+  <script src="core.js" defer></script>
+  <script src="concepts.js" defer></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.Play3CR4Core) window.Play3CR4Core.init();
+    });
+  </script>
+</head>
+<body>
+  <div id="home"></div>
+  <dialog id="r4-modal" aria-labelledby="r4-modal-title">
+    <div class="r4m-head">
+      <h2 id="r4-modal-title">Play3CR</h2>
+      <button type="button" class="r4m-close" data-modal-close aria-label="Đóng">×</button>
+    </div>
+    <div id="r4-modal-body" class="r4m-body"></div>
+  </dialog>
+</body>
+</html>

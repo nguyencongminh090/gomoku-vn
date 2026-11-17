@@ -1,0 +1,172 @@
+/* Round 4 Art Director Gallery */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  padding: 0;
+  background: #F0EEE9;
+  color: #1A1B18;
+  font: 15px/1.45 "Nunito", system-ui, sans-serif;
+}
+button, a { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+
+.g4-top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  padding: 11px clamp(14px, 2.5vw, 28px);
+  background: #FAF9F6;
+  border-bottom: 1px solid #DCD9D0;
+}
+.g4-brand { display: flex; align-items: center; gap: 10px; }
+.g4-brand strong { display: block; font-size: 0.98rem; font-weight: 900; }
+.g4-brand small { display: block; font-size: 0.76rem; color: #56584F; }
+
+.g4-tabs, .g4-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.g4-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 5px 12px;
+  border: 1px solid #CFCBC1;
+  border-radius: 99px;
+  background: #FFFFFF;
+  font-size: 0.84rem;
+  font-weight: 850;
+}
+.g4-tab[aria-pressed="true"] {
+  background: #1A1B18;
+  color: #FFFFFF;
+  border-color: #1A1B18;
+}
+.g4-tab i { width: 8px; height: 8px; border-radius: 50%; }
+
+.g4-seg {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 9px;
+  border: 1px solid #D3CFC5;
+  background: #E6E4DD;
+  gap: 3px;
+}
+.g4-seg button {
+  min-height: 30px;
+  padding: 3px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 850;
+  color: #4F5149;
+}
+.g4-seg button[aria-pressed="true"] { background: #1A1B18; color: #FFFFFF; }
+
+.g4-main { padding: 14px clamp(12px, 2vw, 28px) 28px; max-width: 1800px; margin: 0 auto; }
+.g4-caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.g4-caption h1 { margin: 0; font-size: 1.2rem; font-weight: 900; }
+.g4-caption p { margin: 2px 0 0; font-size: 0.86rem; color: #4E5048; }
+.g4-caption a {
+  padding: 6px 12px;
+  border: 1px solid #C8C4B9;
+  border-radius: 8px;
+  background: #FFFFFF;
+  text-decoration: none;
+  font-weight: 850;
+  font-size: 0.84rem;
+}
+
+.g4-stage {
+  border: 1px solid #D2CEC4;
+  border-radius: 14px;
+  background: #DFDDD6;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.g4-viewport {
+  height: max(580px, calc(100dvh - 178px));
+  max-width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #FFFFFF;
+  box-shadow: 0 12px 36px rgba(20, 20, 16, 0.16);
+}
+.g4-viewport iframe {
+  display: block;
+  border: 0;
+  transform-origin: top left;
+}
+
+.g4-cmp-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.g4-cmp-card {
+  background: #FFFFFF;
+  border: 1px solid #CFCCC2;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+}
+.g4-cmp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #FAF9F6;
+  border-bottom: 1px solid #E5E2DA;
+}
+.g4-cmp-head button {
+  padding: 4px 10px;
+  border: 1px solid #C8C4B9;
+  border-radius: 6px;
+  background: #FFFFFF;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+.g4-cmp-desc {
+  padding: 8px 14px;
+  font-size: 0.8rem;
+  color: #4E5048;
+  border-bottom: 1px solid #EFECE6;
+}
+.g4-cmp-frame {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  overflow: hidden;
+  background: #E6E4DD;
+}
+.g4-cmp-frame[data-mob="true"] {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  height: 440px;
+}
+.g4-cmp-frame iframe {
+  border: 0;
+  pointer-events: none;
+  transform-origin: top left;
+}
+
+@media (max-width: 1080px) {
+  .g4-cmp-grid { grid-template-columns: 1fr; }
+}

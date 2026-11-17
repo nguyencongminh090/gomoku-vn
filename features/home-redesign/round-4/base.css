@@ -1,0 +1,213 @@
+/* Play3CR Round 4 — Shared Base Reset, Typography, Dialogs & Utility Layer */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  max-width: 100%;
+  font-family: "Nunito", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+img, svg { display: block; max-width: 100%; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: inherit; }
+h1, h2, h3, h4, p, ul, ol, dl, dd, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+[hidden] { display: none !important; }
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Interactive board base */
+.r4-board-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  user-select: none;
+  touch-action: manipulation;
+}
+.r4-board-svg [data-cell] { cursor: pointer; }
+.r4-board-svg [data-cell] .r4-ghost {
+  opacity: 0;
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+.r4-board-svg [data-cell]:hover .r4-ghost { opacity: 0.55; }
+
+@keyframes r4-beacon {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.16); opacity: 0.45; }
+}
+.r4-beacon {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: r4-beacon 2.2s ease-in-out infinite;
+}
+
+@keyframes r4-stone-drop {
+  0% { opacity: 0; transform: scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.r4-just-placed {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: r4-stone-drop 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .r4-beacon, .r4-just-placed { animation: none; }
+}
+
+/* Shared Clean Dialog (Settings / Create Room / Challenge / Nav Drawer / Room Preview) */
+dialog#r4-modal {
+  width: min(480px, calc(100vw - 24px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  padding: 0;
+  border: 1px solid rgba(25, 22, 18, 0.16);
+  border-radius: 18px;
+  background: #FCFBF8;
+  color: #1A1916;
+  box-shadow: 0 28px 70px rgba(14, 16, 18, 0.34);
+}
+dialog#r4-modal::backdrop {
+  background: rgba(14, 16, 18, 0.52);
+  backdrop-filter: blur(4px);
+}
+.r4m-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #EAE4D9;
+}
+.r4m-head h2 { font-size: 1.08rem; font-weight: 900; letter-spacing: -0.02em; }
+.r4m-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #DDD6C8;
+  border-radius: 50%;
+  background: #FFFFFF;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.r4m-body {
+  padding: 18px 20px 22px;
+  display: grid;
+  gap: 14px;
+  font-size: 0.94rem;
+}
+.r4m-group { display: grid; gap: 7px; }
+.r4m-lbl { font-size: 0.78rem; font-weight: 850; text-transform: uppercase; letter-spacing: 0.06em; color: #635B4E; }
+.r4m-pills { display: flex; flex-wrap: wrap; gap: 7px; }
+.r4m-pill {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid #D5CEC0;
+  border-radius: 99px;
+  background: #FFFFFF;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+.r4m-pill.is-on { background: #1B2820; border-color: #1B2820; color: #FFFFFF; }
+.r4m-field { display: grid; gap: 5px; }
+.r4m-field label { font-size: 0.82rem; font-weight: 800; color: #4A4338; }
+.r4m-field input, .r4m-field select {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #D2CBBF;
+  border-radius: 10px;
+  background: #FFFFFF;
+}
+.r4m-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.r4m-btn {
+  min-height: 44px;
+  padding: 10px 18px;
+  border: 1px solid #1B2820;
+  border-radius: 10px;
+  background: #1B2820;
+  color: #FFFFFF;
+  font-weight: 850;
+}
+.r4m-btn--ghost { background: #FFFFFF; color: #1B2820; border-color: #D2CBBF; }
+.r4m-list { display: grid; gap: 8px; }
+.r4m-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 13px;
+  border: 1px solid #E7E0D3;
+  border-radius: 12px;
+  background: #F7F3EA;
+  text-align: left;
+  width: 100%;
+}
+.r4m-row strong { display: block; font-size: 0.93rem; }
+.r4m-row small { display: block; font-size: 0.79rem; color: #5C5447; }
+.r4m-code {
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: #1B2820;
+  color: #FAF6EE;
+  font: 800 0.9rem/1 ui-monospace, Consolas, monospace;
+}
+.r4m-note {
+  padding: 10px 13px;
+  border-radius: 10px;
+  background: #F1ECE1;
+  color: #463F34;
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+.r4m-nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.r4m-nav-card {
+  padding: 12px;
+  border: 1px solid #E3DCCF;
+  border-radius: 12px;
+  background: #F9F6EE;
+  text-align: left;
+}
+.r4m-nav-card strong { display: block; font-size: 0.92rem; }
+.r4m-nav-card small { display: block; font-size: 0.78rem; color: #5C5447; }
+
+.r4-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 16px;
+  border-radius: 99px;
+  background: #181A18;
+  color: #FFFFFF;
+  font-size: 0.85rem;
+  font-weight: 800;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  text-align: center;
+}
