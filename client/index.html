@@ -42,7 +42,7 @@
   <link rel="stylesheet" href="css/pwa-banner.css?v=c3eeb0e5" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="css/rooms-hall.css?v=3d24aa72" />
-  <link rel="stylesheet" href="css/home-hero.css?v=ccd79f2f" />
+  <link rel="stylesheet" href="css/home-hero.css?v=496cd458" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
@@ -50,14 +50,14 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=e03aff66" />
+  <link rel="modulepreload" href="js/i18n.js?v=5e76a489" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=349e6629" />
   <link rel="modulepreload" href="js/platform-shell.js?v=7b801850" />
   <link rel="modulepreload" href="js/lobby.js?v=f155548e" />
   <link rel="modulepreload" href="js/private-chat.js?v=7128b3f0" />
   <link rel="modulepreload" href="js/tournaments.js?v=0f02fd9d" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=8a2c6d08" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=53a2a2ec" />
 
 </head>
 <body class="zen-lobby">
@@ -110,6 +110,8 @@
       <!-- Static default sentence = the first render's shape (no reflow of a 60px h1); lobby-home.js rebuilds it with the saved pick. -->
       <h1 class="hq-q" id="home-q">Tìm cho tôi một ván <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">Luật 1 (Ô khoá)</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">thời gian tự động</button>, <button type="button" class="hq-blank" aria-haspopup="listbox" aria-expanded="false">xếp hạng</button>.</h1>
       <ul class="hq-menu" id="qm-pick" role="listbox" hidden></ul>
+      <!-- #418: the sentence's three blanks as chips (lobby-home.js renderChips); they open the same #qm-pick sheet. -->
+      <div class="hh-chips" id="home-chips" role="group" aria-label="Tuỳ chọn ván" data-i18n-aria="home.chips_aria"></div>
       <div class="hq-go">
         <button type="button" class="hq-play" id="qm-play"><span class="hq-play__disc"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-fill-play"></use></svg></span><span data-i18n="qm.play">Chơi nhanh</span></button>
         <!-- #361 T2: twin of Chơi nhanh, members only; opens the opponent picker (home-challenge.js) with the sentence's rules. -->
@@ -120,8 +122,8 @@
           <div class="pactions" id="qm-actions"></div>
         </div>
       </div>
-      <!-- #418: the sentence's three blanks as chips (lobby-home.js renderChips); they open the same #qm-pick sheet. -->
-      <div class="hh-chips" id="home-chips" role="group" aria-label="Tuỳ chọn ván" data-i18n-aria="home.chips_aria"></div>
+      <!-- ui/home-phone-create-room: phone-only secondary button under Chơi nhanh; opens the create-room modal (lobby.js delegates [data-create-room]). -->
+      <button type="button" class="hh-create" id="hh-create" data-create-room><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-plus-circle"></use></svg><span data-i18n="home.create_room">Tạo phòng</span></button>
       <dl class="hh-stats" id="home-stats-phone">
         <div><dt data-i18n="home.s_online">đang online</dt><dd id="home-s-online">–</dd></div>
         <div><dt data-i18n="home.s_search">đang tìm trận</dt><dd id="home-s-search">–</dd></div>
@@ -618,6 +620,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=ef75733c"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=c0ada027"></script>
+<script type="module" src="js/index-entry.js?v=efa8da1b"></script>
 </body>
 </html>
