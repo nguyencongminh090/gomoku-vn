@@ -75,6 +75,6 @@ body.pshell:not(.zen-lobby) .lobby, body.pshell .history { max-width: 1180px; pa
   body.pshell:not(.zen-lobby) .lobby, body.pshell .history { padding: 16px 12px 24px; }
 }
 
-/* #421: phone tab swipe — motion tokens for the arrival slide (platform-shell.js slideIn, WAAPI on
+/* #421: phone tab swipe — motion tokens for the arrival slide (platform-shell.js drag-follow + settle, WAAPI on
    `translate`, so pages' own transform animations are untouched; reduced motion: no slide). */
-:root { --pswipe-dur: 240ms; --pswipe-ease: cubic-bezier(.2, .7, .2, 1); --pswipe-shift: 24px; }
+:root { --pswipe-dur: 240ms; --pswipe-ease: cubic-bezier(.2, .7, .2, 1); --pswipe-in: .3; }
