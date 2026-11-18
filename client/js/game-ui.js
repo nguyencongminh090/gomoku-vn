@@ -306,6 +306,7 @@
         showZones: st.gameState.walls.length > 0 && st.gameState.moveCount === 0,
         myColor:     myColorStr,
         interactive: !!myColorStr && st.gameState.status === 'ongoing',
+        peek:        !myColorStr, // viewers: tap/hover highlights a cell locally, sends nothing
         displayMode: st.boardDisplayMode,
         moveHistory: st.gameState.moveHistory || [],
       });
@@ -339,6 +340,7 @@
       isMyTurn:    st.gameState.currentTurn === st.myUser.userId && st.gameState.status === 'ongoing',
       showZones:   st.gameState.walls.length > 0 && st.gameState.moveCount === 0,
       interactive: !!myPlayer && st.gameState.status === 'ongoing',
+      peek:        !myPlayer,
       winLine:     st.gameState.result ? st.gameState.result.winLine : null,
       displayMode: st.boardDisplayMode,
       moveHistory: st.gameState.moveHistory || [],
