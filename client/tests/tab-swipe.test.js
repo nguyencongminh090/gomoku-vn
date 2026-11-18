@@ -26,20 +26,29 @@ function boot(active, { user = null, extra = '' } = {}) {
   document.querySelectorAll('.ptabbar a').forEach((a) => a.addEventListener('click', (e) => { e.preventDefault(); clicked.push(a.dataset.tab); }));
 }
 
+/** jsdom keeps `style.translate` as a plain expando (no CSS property support). */
+const tr = (n) => n.style.translate || '';
+
 function touch(type, target, x, y) {
-  const ev = new Event(type, { bubbles: true });
+  const ev = new Event(type, { bubbles: true, cancelable: type === 'touchmove' });
   const p = { clientX: x, clientY: y };
   Object.defineProperty(ev, 'touches', { value: type === 'touchend' ? [] : [p] });
   Object.defineProperty(ev, 'changedTouches', { value: [p] });
   target.dispatchEvent(ev);
+  return ev;
 }
 
-/** Finger from (x0,y) to (x1,y+dy) taking ms. */
-function swipe(target, x0, x1, { dy = 0, ms = 200, y = 300 } = {}) {
+/** Finger from (x0,y) to (x1,y+dy) in 10 steps over ms; returns the last touchmove event.
+ *  opts.end = false leaves the finger down (to inspect the drag). */
+function swipe(target, x0, x1, { dy = 0, ms = 200, y = 300, end = true } = {}) {
   touch('touchstart', target, x0, y);
-  touch('touchmove', target, (x0 + x1) / 2, y + dy / 2);
-  now += ms;
-  touch('touchend', target, x1, y + dy);
+  let last;
+  for (let i = 1; i <= 10; i++) {
+    now += ms / 10;
+    last = touch('touchmove', target, x0 + (x1 - x0) * i / 10, y + dy * i / 10);
+  }
+  if (end) touch('touchend', target, x1, y + dy);
+  return last;
 }
 
 beforeEach(() => {
@@ -49,7 +58,7 @@ beforeEach(() => {
   window.innerWidth = 390;
   sessionStorage.clear();
 });
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => { jest.restoreAllMocks(); delete window.matchMedia; });
 
 describe('#421 tab swipe', () => {
   it('swipe left = next tab, swipe right = previous tab', () => {
@@ -67,9 +76,8 @@ describe('#421 tab swipe', () => {
   });
 
   it.each([
-    ['too short and slow', { x0: 200, x1: 150, ms: 400 }],
-    ['mostly vertical (a scroll)', { x0: 300, x1: 200, dy: 120 }],
-    ['too slow (> 700 ms)', { x0: 300, x1: 100, ms: 900 }],
+    ['short and slow (< 30 % width, no flick)', { x0: 200, x1: 150, ms: 600 }],
+    ['mostly vertical (a scroll)', { x0: 300, x1: 200, dy: 160 }],
     ['starts on the left OS back-gesture edge', { x0: 10, x1: 200 }],
     ['starts on the right edge', { x0: 380, x1: 200 }],
   ])('ignored: %s', (_, g) => {
@@ -78,9 +86,50 @@ describe('#421 tab swipe', () => {
     expect(clicked).toEqual([]);
   });
 
+  it('a slow drag past 30 % of the width commits (no time limit)', () => {
+    boot('rankings');
+    swipe(document.querySelector('main'), 300, 160, { ms: 3000 }); // 140 px of 390, 0.05 px/ms
+    expect(clicked).toEqual(['tournaments']);
+  });
+
+  it('the page follows the finger while dragging, and the gesture blocks page scroll', () => {
+    boot('rankings', { extra: '<section id="a">a</section><section hidden>b</section>' });
+    const ev = swipe(document.querySelector('main'), 300, 220, { end: false });
+    expect(tr(document.getElementById('a'))).toBe('-80px 0');
+    expect(tr(document.querySelector('section[hidden]'))).toBe('');
+    expect(ev.defaultPrevented).toBe(true);
+    touch('touchend', document.querySelector('main'), 220, 300); // 80 px slow-ish → springs back
+    expect(clicked).toEqual([]);
+    expect(tr(document.getElementById('a'))).toBe('');
+  });
+
+  it('no tab that way: the drag rubber-bands at a quarter of the finger and springs back', () => {
+    boot('lobby', { extra: '<section id="a">a</section>' });
+    swipe(document.querySelector('main'), 100, 300, { end: false });
+    expect(tr(document.getElementById('a'))).toBe('50px 0');
+    touch('touchend', document.querySelector('main'), 300, 300);
+    expect(clicked).toEqual([]);
+    expect(tr(document.getElementById('a'))).toBe('');
+  });
+
+  it('a vertical scroll is never blocked', () => {
+    boot('rankings');
+    const ev = swipe(document.querySelector('main'), 200, 205, { dy: 200, end: false });
+    expect(ev.defaultPrevented).toBe(false);
+  });
+
+  it('reduced motion: the page does not follow, the swipe still navigates', () => {
+    window.matchMedia = (q) => ({ matches: /reduce/.test(q) });
+    boot('rankings', { extra: '<section id="a">a</section>' });
+    swipe(document.querySelector('main'), 300, 100, { end: false });
+    expect(tr(document.getElementById('a'))).toBe('');
+    touch('touchend', document.querySelector('main'), 100, 300);
+    expect(clicked).toEqual(['tournaments']);
+  });
+
   it('a short fast flick (≥ 40 px at ≥ 0.5 px/ms) counts', () => {
     boot('rankings');
-    swipe(document.querySelector('main'), 250, 200, { ms: 80 });
+    swipe(document.querySelector('main'), 250, 200, { ms: 80 }); // 50 px at 0.6 px/ms
     expect(clicked).toEqual(['tournaments']);
   });
 
@@ -133,18 +182,18 @@ describe('#421 tab swipe', () => {
     boot('rankings');
     swipe(document.querySelector('main'), 300, 100);
     expect(JSON.parse(sessionStorage.getItem('pswipe'))).toMatchObject({ dir: 1 });
-    const anim = jest.fn();
+    const anim = jest.fn(() => ({}));
     HTMLElement.prototype.animate = anim;
     window.matchMedia = () => ({ matches: false });
     boot('tournaments', { extra: '<section>a</section><section hidden>b</section>' });
     expect(sessionStorage.getItem('pswipe')).toBeNull();
     expect(anim).toHaveBeenCalledTimes(1); // the hidden child is skipped
-    expect(anim.mock.calls[0][0][0].translate).toBe('24px 0');
+    expect(anim.mock.calls[0][0][0].translate).toBe(390 * 0.3 + 'px 0'); // from --pswipe-in of the width
     delete HTMLElement.prototype.animate;
   });
 
   it('reduced motion: navigates, but no slide', () => {
-    const anim = jest.fn();
+    const anim = jest.fn(() => ({}));
     HTMLElement.prototype.animate = anim;
     window.matchMedia = (q) => ({ matches: /reduce/.test(q) });
     sessionStorage.setItem('pswipe', JSON.stringify({ dir: -1, at: now }));
