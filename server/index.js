@@ -338,8 +338,8 @@ setInterval(() => dmService.pruneExpired(Date.now(), true), 3600 * 1000).unref()
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
-server.listen({ port: config.HTTP_PORT, backlog: config.LISTEN_BACKLOG }, () => {
-  logger.info(`[Server] Play3CR listening on http://localhost:${config.HTTP_PORT}`);
+server.listen({ port: config.HTTP_PORT, host: config.LISTEN_HOST, backlog: config.LISTEN_BACKLOG }, () => {
+  logger.info(`[Server] Play3CR listening on http://${config.LISTEN_HOST || 'localhost'}:${config.HTTP_PORT}`);
 });
 const directListener = directCfg.enabled ? directRoute.startDirectListener(server, directCfg.port) : null;
 

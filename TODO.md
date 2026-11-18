@@ -77,3 +77,4 @@ in the detail file / fix-log).
 - **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — socket-direct (option B) favoured, undecided `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
+- **#417.** VPS DDoS hardening — VPS done, loopback bind awaiting deploy `[Model: Sonnet 5]` — [detail](docs/todo/F417-vps-ddos-hardening.md)

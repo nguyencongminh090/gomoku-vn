@@ -36,6 +36,7 @@ Notes are generic: `CLAUDE.md` and `.claude/rules/*` win on conflict. Check `app
 | [db-benchmarking-sqlite](db-benchmarking-sqlite.md) | measuring a query/index/pagination change: synthetic volume, ANALYZE, median of N runs, plan beside timing |
 | [db-constraints-check-fk-sqlite](db-constraints-check-fk-sqlite.md) | adding NOT NULL / CHECK / json_valid / STRICT / FK actions to the live schema, safe backfill order — #257, #259 |
 | [vps-production-topology](vps-production-topology.md) | production deploy/restart/rollback on the VPS, Cloudflare tunnel hostnames, CORS_ORIGIN, 502 / 'bad origin' on play3cr domains — skill `vps-deploy` |
+| [vps-ddos-self-defense](vps-ddos-self-defense.md) | hardening the VPS against DDoS/floods, per-IP connection limits, attack runbook |
 
 ## Reference (SKILLS_TREE, not copied)
 | Path under `K/` | Use when |
