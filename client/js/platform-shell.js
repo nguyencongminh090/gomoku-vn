@@ -440,6 +440,8 @@
     }
     host.append(nav, tabbar);
     document.body.classList.add('pshell');
+    wireSwipe();
+    arrivalSlide();
   }
 
   /** Move the active marker without rebuilding (lobby's Chơi ↔ Giải đấu tab switch). */
@@ -449,6 +451,110 @@
       a.classList.toggle('is-active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
+  }
+
+  // ── #421: phone swipe between the tab-bar pages (Sảnh ↔ Phòng ↔ Xếp hạng ↔ Giải đấu ↔ Tôi) ──
+  // Swipe left = next tab, right = previous; no wrap. Only while the tab bar is shown and the active
+  // page is one of its tabs. Gestures that belong to something else are left alone: inputs, the board,
+  // horizontal scrollers (live strip, brackets, tables), open dialogs, the OS back-gesture edges, zoom.
+  const SWIPE = { min: 72, minFast: 40, fast: 0.5, ratio: 2, maxMs: 700, edge: 24 };
+  const SWIPE_KEY = 'pswipe'; // sessionStorage: direction for the arrival slide on the next page
+  const NO_SWIPE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"], canvas, .gboard, [data-no-swipe], dialog, [role="dialog"], [aria-modal="true"]';
+
+  /** True when the touch starts inside something that scrolls sideways itself. */
+  function inHScroller(node) {
+    for (let n = node; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+      if (n.scrollWidth > n.clientWidth + 1) {
+        const ox = getComputedStyle(n).overflowX;
+        if (ox === 'auto' || ox === 'scroll') return true;
+      }
+    }
+    return false;
+  }
+
+  /** The tab link a swipe goes to, or null. dir = +1 (next, finger moved left) / -1 (previous). */
+  function swipeTarget(dir) {
+    const bar = document.querySelector('.ptabbar');
+    if (!bar || !bar.getClientRects().length) return null; // desktop: bar is display:none
+    const tabs = [...bar.querySelectorAll('a[data-tab]')];
+    const i = tabs.findIndex((a) => a.classList.contains('is-active'));
+    if (i < 0) return null; // clubs/learn/social/settings: not a tab-bar page
+    const to = tabs[i + dir];
+    if (!to) return null;
+    const href = to.getAttribute('href');
+    return href && href !== '#' ? to : null; // Tôi before /me answered
+  }
+
+  /** Short slide-in of the page's content from the swipe side. WAAPI on `translate` (not `transform`)
+   *  of <main>'s children: pages' own CSS animations keep running, fixed docks keep the viewport as
+   *  containing block, content is visible from the first frame. Reduced motion: no slide. */
+  function slideIn(dir) {
+    const main = document.querySelector('main');
+    if (!main || typeof main.animate !== 'function') return;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const cs = getComputedStyle(document.documentElement);
+    const dur = parseFloat(cs.getPropertyValue('--pswipe-dur')) || 240;
+    const ease = cs.getPropertyValue('--pswipe-ease').trim() || 'ease-out';
+    const shift = (parseFloat(cs.getPropertyValue('--pswipe-shift')) || 24) * dir;
+    for (const c of main.children) {
+      if (c.hidden) continue;
+      c.animate([{ translate: shift + 'px 0' }, { translate: '0 0' }], { duration: dur, easing: ease });
+    }
+  }
+
+  function wireSwipe() {
+    if (document.__pswipe) return; // one set of document listeners, even if the shell module loads twice
+    document.__pswipe = true;
+    let g = null;
+    document.addEventListener('touchstart', (e) => {
+      g = null;
+      if (e.touches.length !== 1) return;
+      const p = e.touches[0];
+      const w = window.innerWidth;
+      if (p.clientX < SWIPE.edge || p.clientX > w - SWIPE.edge) return;
+      if (window.visualViewport && window.visualViewport.scale > 1.01) return;
+      const tgt = e.target;
+      if (tgt.closest && tgt.closest(NO_SWIPE)) return;
+      // lobby modals stay in the DOM hidden by CSS (no `hidden`): only a visible one blocks
+      if ([...document.querySelectorAll('dialog[open], [aria-modal="true"]')].some((m) => m.getClientRects().length)) return;
+      if (inHScroller(tgt)) return;
+      g = { x: p.clientX, y: p.clientY, t: Date.now() };
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+      if (!g) return;
+      const p = e.touches[0];
+      const dx = Math.abs(p.clientX - g.x), dy = Math.abs(p.clientY - g.y);
+      if (dy > 12 && dy > dx) g = null; // a vertical scroll: never a page swipe
+    }, { passive: true });
+    document.addEventListener('touchend', (e) => {
+      if (!g) return;
+      const s = g;
+      g = null;
+      const p = e.changedTouches[0];
+      const dx = p.clientX - s.x, dy = p.clientY - s.y, dt = Math.max(1, Date.now() - s.t);
+      const ax = Math.abs(dx);
+      if (dt > SWIPE.maxMs || ax < SWIPE.ratio * Math.abs(dy)) return;
+      if (ax < SWIPE.min && !(ax >= SWIPE.minFast && ax / dt >= SWIPE.fast)) return;
+      const sel = window.getSelection && window.getSelection();
+      if (sel && String(sel)) return;
+      const dir = dx < 0 ? 1 : -1;
+      const to = swipeTarget(dir);
+      if (!to) return;
+      const samePage = new URL(to.href, location.href).pathname === location.pathname;
+      if (!samePage) {
+        try { sessionStorage.setItem(SWIPE_KEY, JSON.stringify({ dir, at: Date.now() })); } catch (_) { /* no slide */ }
+      }
+      to.click(); // same path as a tap: lobby screens switch by hash, other tabs navigate
+      if (samePage) slideIn(dir);
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => { g = null; }, { passive: true });
+  }
+
+  /** Arrival half of a cross-page swipe: slide in once, only if the swipe was just now. */
+  function arrivalSlide() {
+    let v = null;
+    try { v = JSON.parse(sessionStorage.getItem(SWIPE_KEY) || 'null'); sessionStorage.removeItem(SWIPE_KEY); } catch (_) { return; }
+    if (v && (v.dir === 1 || v.dir === -1) && Date.now() - v.at < 4000) slideIn(v.dir);
   }
 
   /** Avatar circle: image if the member has one, else initials. cls e.g. 'pav--xl pav--sq'. */
@@ -466,5 +572,5 @@
     return box;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
+  window.PlatformShell = { _swipeTarget: swipeTarget, build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
 })();
