@@ -1,5 +1,5 @@
 # F419 — /api/home live games: stone positions for thumbnails + news list
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-18 — isolated real-browser pass; real-phone check rides with #418
 **Area:** server/routes/home.js (liveOf), server/managers/NewsService.js, client/js/lobby-home.js
 **From:** F418 design (2026-11-18): template thumbnails show real stones; template news card lists 2 items   **Depends:** F418
 

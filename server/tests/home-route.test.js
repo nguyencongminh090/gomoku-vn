@@ -119,7 +119,7 @@ describe('buildHome — tournaments', () => {
 });
 
 describe('buildHome — live', () => {
-  it('playing rooms only, top 3 by viewers, move count (no stones), ghost viewers not counted, no user ids', () => {
+  it('playing rooms only, top 3 by viewers, move count, ghost viewers not counted, no user ids', () => {
     const mk = (id, viewers, moves) => room(id, [user('b' + id, 1), user('w' + id, 2),
       ...Array.from({ length: viewers }, (_, i) => user(id + 's' + i, null)), user(id + 'ghost', null, 'g', 'disconnected')],
     { state: 'playing', gameState: engine('b' + id, 'w' + id, moves, 'b' + id) });
@@ -130,9 +130,25 @@ describe('buildHome — live', () => {
     expect(JSON.stringify(live)).not.toMatch(/userId/);
   });
 
-  it('never sends stones', () => {
-    const r = room('r', [user('b', 1), user('w', 2)], { state: 'playing', gameState: engine('b', 'w', [[1, 1]], 'b') });
-    expect(buildHome(null, roomsOf([r]), EMPTY_TM).live[0]).not.toHaveProperty('stones');
+  it('#419 thumb: a 9x7 window of stones, not the move history', () => {
+    const r = room('r', [user('b', 1), user('w', 2)], { state: 'playing', gameState: engine('b', 'w', [[7, 7], [8, 7], [7, 8]], 'w') });
+    const g = buildHome(null, roomsOf([r]), EMPTY_TM).live[0];
+    expect(g).not.toHaveProperty('moveHistory');
+    expect(g.thumb).toMatchObject({ cols: 9, rows: 7, x: 4, y: 5 }); // bbox x7..8 y7..8 centred (centre 7.5 → start round(3.5))
+    const at = (x, y) => g.thumb.cells[(y - g.thumb.y) * 9 + (x - g.thumb.x)];
+    expect([at(7, 7), at(8, 7), at(7, 8), at(8, 8)]).toEqual(['b', 'w', 'b', '.']);
+    expect(g.thumb.cells.replace(/\./g, '')).toHaveLength(3);
+    expect(g.thumb.last).toBe((8 - 5) * 9 + (7 - 4));
+  });
+
+  it('#419 thumb: empty board centred; spread game follows the last move, clamped to the edge', () => {
+    const empty = room('e', [user('b', 1), user('w', 2)], { state: 'playing', gameState: engine('b', 'w', [], 'b') });
+    expect(buildHome(null, roomsOf([empty]), EMPTY_TM).live[0].thumb).toEqual({ x: 3, y: 4, cols: 9, rows: 7, cells: '.'.repeat(63), last: -1 });
+    const wide = room('s', [user('b', 1), user('w', 2)], { state: 'playing', gameState: engine('b', 'w', [[0, 0], [14, 14], [14, 0]], 'w') });
+    const t = buildHome(null, roomsOf([wide]), EMPTY_TM).live[0].thumb;
+    expect([t.x, t.y]).toEqual([6, 0]); // last move (14,0) → right edge, top edge
+    expect(t.cells[8]).toBe('b');
+    expect(t.last).toBe(8);
   });
 
   it('stats: online, all playing rooms (not just top 3), searchers summed over buckets', () => {
@@ -142,16 +158,16 @@ describe('buildHome — live', () => {
   });
 
   it('empty site → all empty', () => {
-    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {}, news: null, forum: [], learn: null });
+    expect(buildHome(null, roomsOf([]), EMPTY_TM)).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {}, news: [], forum: [], learn: null });
   });
 });
 
 describe('content blocks (#224)', () => {
   it('passes the injected news/forum/learn through and keys the content on the member id', () => {
     const seen = [];
-    const content = (member) => { seen.push(member); return { news: { id: 'n1', body: 'Hi' }, forum: [], learn: { total: 3, solved: null } }; };
+    const content = (member) => { seen.push(member); return { news: [{ id: 'n1', body: 'Hi' }], forum: [], learn: { total: 3, solved: null } }; };
     const h = buildHome(null, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0, content);
-    expect(h.news).toEqual({ id: 'n1', body: 'Hi' });
+    expect(h.news).toEqual([{ id: 'n1', body: 'Hi' }]);
     buildHome({ userId: 'g1', isGuest: true }, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0, content);
     buildHome(ME, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0, content);
     expect(seen).toEqual([null, null, 'u1']); // guests are never members
@@ -160,7 +176,7 @@ describe('content blocks (#224)', () => {
   it('DB unavailable → blocks empty, rest of the dashboard still served', () => {
     // ../db/database is mocked as {} in this file, so the real reader throws.
     const h = buildHome(ME, roomsOf([]), EMPTY_TM, () => ({}), () => ({}), () => 0);
-    expect(h).toMatchObject({ news: null, forum: [], learn: null, live: [] });
+    expect(h).toMatchObject({ news: [], forum: [], learn: null, live: [] });
   });
 });
 
@@ -190,7 +206,7 @@ describe('GET /api/home', () => {
     const out = await get();
     expect(out.status).toBe(200);
     expect(out.cc).toBe('no-store');
-    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {}, news: null, forum: [], learn: null });
+    expect(out.body).toEqual({ myGame: null, myMatches: [], tournaments: [], live: [], stats: { online: 0, playing: 0, searching: 0 }, queue: {}, queueEta: {}, news: [], forum: [], learn: null });
     const name = require('../config').SESSION_COOKIE_NAME;
     expect((await get(name + '=good')).body.myGame).toMatchObject({ roomId: 'r1', roomName: 'Mine' });
     expect((await get(name + '=forged')).body.myGame).toBeNull();

@@ -204,8 +204,22 @@ function renderStats(data) {
   one.appendChild(b);
 }
 
-/** #418 phone "Đang diễn ra": up to 3 live games (server order: most viewers first). The mini board is decorative —
- *  /api/home sends no stones (F419); `--v` picks one of three fixed stone patterns. Names are user text → textContent. */
+/** #419 real mini board from `thumb` ({cols, rows, cells: '.bw' row-major, last}); null when the payload has none/odd. */
+function miniBoard(th) {
+  if (!th || !(th.cols > 0) || !(th.rows > 0) || typeof th.cells !== 'string' || th.cells.length !== th.cols * th.rows) return null;
+  const mini = el('span', undefined, 'hh-mini hh-mini--real');
+  mini.style.setProperty('--cols', th.cols);
+  mini.style.setProperty('--rows', th.rows);
+  for (let i = 0; i < th.cells.length; i++) {
+    const c = th.cells[i];
+    mini.appendChild(el('span', undefined, (c === 'b' ? 'is-b' : c === 'w' ? 'is-w' : '') + (i === th.last && c !== '.' ? ' is-last' : '')));
+  }
+  return mini;
+}
+
+/** #418 phone "Đang diễn ra": up to 3 live games (server order: most viewers first). #419: the mini board shows the
+ *  real position window (`thumb`, refreshed by the poll — pushes only on game start/end); without one it falls back to
+ *  the #418 decorative pattern. Names are user text → textContent. */
 function renderLive(live) {
   const list = document.getElementById('home-live');
   if (!list) return;
@@ -215,7 +229,7 @@ function renderLive(live) {
     const b = el('button', undefined, 'hh-game');
     b.type = 'button';
     b.setAttribute('aria-label', t('home.live_aria', { black: g.black, white: g.white, n: g.viewers || 0 }));
-    const mini = el('span', undefined, 'hh-mini hh-mini--' + (i % 3));
+    const mini = miniBoard(g.thumb) || el('span', undefined, 'hh-mini hh-mini--' + (i % 3));
     mini.setAttribute('aria-hidden', 'true');
     const names = el('span', undefined, 'hh-game__p');
     names.append(el('span', g.black, 'hh-game__n'), el('span', t('home.live_vs_word'), 'hh-game__vs'), el('span', g.white, 'hh-game__n'));
@@ -250,14 +264,7 @@ function renderPulse(st) {   // no ETA here: #qm-line right under it already say
 /** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
 const SAFE_LINK = /^\/(?![/\\])[^\s\\]*$/;
 
-/** One admin news line (#224) under the stats strip; a link makes the whole line clickable. */
-function renderNews(data) {
-  const box = document.getElementById('home-news');
-  if (!box) return;
-  const n = data.news;
-  box.replaceChildren();
-  box.hidden = !(n && n.body);
-  if (box.hidden) return;
+function newsLine(n) {
   const line = SAFE_LINK.test(n.link || '') ? el('a', undefined, 'hnews__line') : el('p', undefined, 'hnews__line');
   if (line.tagName === 'A') line.href = n.link;
   line.append(el('span', t('home.news'), 'hnews__tag'), el('span', n.body, 'hnews__body'));
@@ -268,8 +275,20 @@ function renderNews(data) {
     time.dateTime = at.toISOString();
     line.appendChild(time);
   }
+  return line;
+}
+
+/** Admin news (#224) under the stats strip; a link makes the whole line clickable. #419: `news` is the newest ≤ 2 —
+ *  the phone card lists both, desktop CSS shows the first only. */
+function renderNews(data) {
+  const box = document.getElementById('home-news');
+  if (!box) return;
+  const items = (Array.isArray(data.news) ? data.news : []).filter((n) => n && n.body);
+  box.replaceChildren();
+  box.hidden = !items.length;
+  if (box.hidden) return;
   const head = withIcon(el('h2', t('home.news_title'), 'hnews__head'), 'ph-regular-megaphone'); // #418 phone card title; desktop hides it
-  box.append(head, line);
+  box.append(head, ...items.map(newsLine));
 }
 
 export function renderHome(data) {

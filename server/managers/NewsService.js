@@ -62,6 +62,12 @@ function latest() {
   return r ? shape(r) : null;
 }
 
+/** Newest `n` items for the dashboard (#419: the phone card lists 2), newest first. Public. */
+function recent(n) {
+  const k = Math.max(1, Math.min(10, n | 0));
+  return db().prepare('SELECT * FROM news ORDER BY created_at DESC, id DESC LIMIT ?').all(k).map(shape);
+}
+
 function list(adminId) {
   requireAdmin(adminId);
   return { items: db().prepare('SELECT * FROM news ORDER BY created_at DESC, id DESC LIMIT ?').all(LIST_LIMIT).map(shape) };
@@ -93,4 +99,4 @@ function remove(adminId, id) {
   return { ok: true };
 }
 
-module.exports = { NewsError, BODY_MAX, latest, list, create, update, remove };
+module.exports = { NewsError, BODY_MAX, latest, recent, list, create, update, remove };

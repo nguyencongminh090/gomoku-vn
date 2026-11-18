@@ -123,12 +123,14 @@ describe('admin news — CRUD', () => {
 });
 
 describe('/api/home content blocks', () => {
-  it('news = newest item only, or null', async () => {
-    expect(home(null).news).toBeNull();
+  it('#419 news = newest 2 items, newest first, or []', async () => {
+    expect(home(null).news).toEqual([]);
     const a = await call('POST', '/api/admin/news', 'boss', { body: 'old' });
     db.prepare('UPDATE news SET created_at = ? WHERE id = ?').run('2026-01-01T00:00:00.000Z', a.body.item.id);
     await call('POST', '/api/admin/news', 'boss', { body: 'new', link: '/forum' });
-    expect(home(null).news).toMatchObject({ body: 'new', link: '/forum' });
+    expect(home(null).news).toMatchObject([{ body: 'new', link: '/forum' }, { body: 'old' }]);
+    await call('POST', '/api/admin/news', 'boss', { body: 'newest' });
+    expect(home(null).news.map((n) => n.body)).toEqual(['newest', 'new']);
   });
 
   it('forum = 3 most recently active non-deleted threads, titles only (no body, no author id)', () => {
