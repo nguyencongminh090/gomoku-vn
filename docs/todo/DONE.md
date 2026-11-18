@@ -1,2 +1,5 @@
+- ✅ **#2.** Xác nhận biến môi trường khi deploy thật `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A02-xac-nhan-bien-moi-truong-khi-deploy-that.md)
+- ✅ **#3.** `npm install` không chạy được trên Node 24 tại máy đánh giá `[Model: Sonnet 5]` — [chi tiết](docs/todo/A03-npm-install-khong-chay-duoc-tren-node-24-tai-may-danh-gia.md)
+- ✅ **#67.** Xác minh HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không (claim của audit gốc sai — Helmet đã bật HSTS mặc định, cần đo thật trên deploy) `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A67-xac-minh-hsts-header-thuc-te-qua-cloudflare-tunnel.md)
 - ✅ **#417.** VPS DDoS hardening (SSH limit, sysctl, loopback bind, runbook) `[Model: Sonnet 5]` — [detail](docs/todo/F417-vps-ddos-hardening.md)
 - ✅ **#416.** SW-proxied navigations get no #415 route cookie → users stay on Cloudflare `[Model: Opus 5]` — [detail](docs/todo/B416-sw-navigation-no-direct-route-cookie.md)

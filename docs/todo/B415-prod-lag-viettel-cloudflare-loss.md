@@ -1,5 +1,5 @@
 # B415 — Prod lag: Viettel → Cloudflare free-plan IPs drop packets (undecided fix)
-**Status:** OPEN — 2026-11-17 PoC of B (VN-only, ticket, port-trust) on `feature/415-socket-direct` (uncommitted), design `features/415-socket-direct/planning.md`; infra not touched, user has NOT decided
+**Status:** OPEN — 2026-11-18 C2 LIVE: DNS-only `direct` CNAME → CloudFront → Caddy → :3001 (RTT p50 25 vs CF 98 ms); C1 removed; #416 cookie fix deployed (route=direct seen in prod logs). Remaining: peak-hour check (~21:00, `route=direct` share + RTT in pm2 logs) and a full real-browser game on the direct route. Rollback: delete `direct` CNAME. Design/measurements: `features/415-socket-direct/planning.md`. Earlier: 2026-11-17 PoC of B (VN-only, ticket, port-trust)
 **Area:** VPS (Caddy, ufw), Cloudflare DNS for play3cr.win, `server/utils/geo.js`, `server/socket/state.js`, `trust proxy` in `server/index.js` / `routes/auth.js` / `utils/session-cookie.js`
 **From:** user 2026-11-17 "web is a bit lag" + "nhiều người khác cũng báo cáo tương tự"   **Depends:** —
 

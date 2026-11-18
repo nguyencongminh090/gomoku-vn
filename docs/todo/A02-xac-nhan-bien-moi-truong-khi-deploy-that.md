@@ -1,5 +1,7 @@
 # Phần A #2. Xác nhận biến môi trường khi deploy thật
 
+**Status:** ✅ CLOSED 2026-11-18 — user decision. Prod (VPS, pm2) loads JWT_SECRET etc. from the VPS `.env` (chmod 600, not in git); config.js throws on the default JWT_SECRET outside test.
+
 **Nguồn:** `gomoku-vn-review(1).md` (2026-08-01, commit `87006c5`)
 
 **Recheck 2026-10-09 (code only):** code side verified: config.js:116 throws on default JWT_SECRET outside test. Only the real-deploy env check remains.
