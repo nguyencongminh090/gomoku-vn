@@ -129,8 +129,8 @@ describe('rating:update → own delta in the room log', () => {
     const text = window.ChatUI.appendSystemMessage.mock.calls[0][0];
     expect(text).toContain('Caro');
     expect(text).toContain('1200 → 1262');
-    expect(text).toContain('(+62)');
-    expect(text).toContain('provisional');
+    expect(text).toContain('(+62, provisional)'); // #414: inside the brackets, no '·'
+    expect(text).not.toContain('·');
     expect(text).not.toContain('1138');
   });
 

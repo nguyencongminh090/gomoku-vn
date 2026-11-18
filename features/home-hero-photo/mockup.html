@@ -1,0 +1,53 @@
+<section class="hh" aria-labelledby="hh-title">
+  <div class="hh-hero">
+    <img class="hh-hero__img" src="assets/photos/home-hero-720.webp" srcset="assets/photos/home-hero-720.webp 720w, assets/photos/home-hero-1280.webp 1280w" sizes="100vw" width="720" height="720" alt="" fetchpriority="high" />
+    <div class="hh-hero__in">
+      <h1 class="hh-title" id="hh-title">Play<b>3CR</b></h1>
+      <p class="hh-sub">Kết nối đam mê, thách thức trí tuệ</p>
+      <button type="button" class="hh-play">{{i:fill-play}}<span>Chơi nhanh</span></button>
+      <div class="hh-chips" role="group" aria-label="Tuỳ chọn ván">
+        <button type="button" class="hh-chip" aria-haspopup="listbox">{{i:regular-scales}}<span>Luật 1</span></button>
+        <button type="button" class="hh-chip" aria-haspopup="listbox">{{i:regular-timer}}<span>Tự động</span></button>
+        <button type="button" class="hh-chip" aria-haspopup="listbox">{{i:regular-trophy}}<span>Xếp hạng</span></button>
+      </div>
+      <dl class="hh-stats">
+        <div><dt>đang online</dt><dd>128</dd></div>
+        <div><dt>đang tìm trận</dt><dd>9</dd></div>
+        <div><dt>ván đang chơi</dt><dd>24</dd></div>
+      </dl>
+    </div>
+  </div>
+
+  <div class="hh-body">
+    <section class="hh-card" aria-labelledby="hh-live-h">
+      <header class="hh-card__top">
+        <h2 id="hh-live-h"><i class="hh-dot" aria-hidden="true"></i>Đang diễn ra</h2>
+        <a href="#rooms" class="hh-more">Xem tất cả {{i:regular-arrow-right}}</a>
+      </header>
+      <ul class="hh-live">
+        <li><a href="#" class="hh-game">
+          <span class="hh-mini" style="--n:23" aria-hidden="true"></span>
+          <span class="hh-game__p">Minh Khoa<br><span>vs</span> Thu Hà</span>
+          <span class="hh-game__w">{{i:regular-eye}}324</span>
+        </a></li>
+        <li><a href="#" class="hh-game">
+          <span class="hh-mini hh-mini--b" style="--n:14" aria-hidden="true"></span>
+          <span class="hh-game__p">Quốc Bảo<br><span>vs</span> Lan Anh</span>
+          <span class="hh-game__w">{{i:regular-eye}}217</span>
+        </a></li>
+        <li><a href="#" class="hh-game">
+          <span class="hh-mini hh-mini--c" style="--n:8" aria-hidden="true"></span>
+          <span class="hh-game__p">Minh Tú<br><span>vs</span> Thanh Hải</span>
+          <span class="hh-game__w">{{i:regular-eye}}23</span>
+        </a></li>
+      </ul>
+    </section>
+
+    <section class="hh-card" aria-labelledby="hh-news-h">
+      <header class="hh-card__top">
+        <h2 id="hh-news-h">{{i:regular-megaphone}}Tin mới</h2>
+      </header>
+      <a class="hh-news" href="#">{{i:regular-trophy}}<span>Giải đấu Mùa Thu 2025 mở đăng ký — 32 suất</span><time>15/11</time></a>
+    </section>
+  </div>
+</section>

@@ -377,7 +377,9 @@
       // One tab stop; arrows move a cursor, Enter/Space selects (#326). `application` so a screen
       // reader passes the keys through instead of announcing a picture.
       svg.setAttribute('role', 'application');
-      svg.style.touchAction = 'none';
+      // One finger scrolls the page while the board is at full size; pinch / zoomed pan are ours
+      // (touchmove below cancels them, _applyView switches to 'none' once zoomed).
+      svg.style.touchAction = 'pan-x pan-y';
       svg.style.display = 'block';
       svg.style.userSelect = 'none';
       this.svg = svg;
@@ -410,6 +412,7 @@
       // Pinch-zoom (touch only): a sub-rectangle of the base view, kept in user units.
       this._zoom = 1; this._zx = 0; this._zy = 0;
       this._ptrs = new Map(); this._gesture = false; this._lastTap = null;
+      this._t0 = null; this._scrolled = false; // one-finger drag at zoom 1 = page scroll, never a tap
 
       // A page that builds a new renderer on the same element (puzzle.js, per puzzle)
       // must not leave the previous handlers attached: one click would place twice.
@@ -418,16 +421,18 @@
       this._handlers = {
         pointerleave: () => this._onMouseLeave(),
         click: (e) => this._onClick(e),
+        touchstart: (e) => this._onTouchStart(e),
+        touchmove: (e) => this._onTouchMove(e),
         touchend: (e) => this._onTouchEnd(e),
-        touchcancel: () => { this._gesture = false; },
+        touchcancel: () => { this._gesture = false; this._scrolled = false; this._t0 = null; },
         pointerdown: (e) => this._onPtrDown(e),
         pointermove: (e) => { this._onPtrMove(e); this._onMouseMove(e); },
         pointerup: (e) => this._onPtrEnd(e),
-        pointercancel: (e) => this._onPtrEnd(e),
+        pointercancel: (e) => { if (this._ptrs.has(e.pointerId)) this._scrolled = true; this._onPtrEnd(e); }, // browser took the touch for a scroll
         keydown: (e) => this._onKey(e),
         blur: () => this._onBlur(),
       };
-      for (const [ev, fn] of Object.entries(this._handlers)) svg.addEventListener(ev, fn);
+      for (const [ev, fn] of Object.entries(this._handlers)) svg.addEventListener(ev, fn, ev === 'touchmove' ? { passive: false } : undefined);
 
       if (!this._pinnedPrefs) {
         this._onPrefs = () => { this.displayMode = this.prefs.theme; this._draw(); };
@@ -561,6 +566,8 @@
       const v = this._view();
       this._zx = v.x - this.geo.vx; this._zy = v.y - this.geo.vy;
       this.svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+      // Zoomed: one finger pans the board. Full size: one finger scrolls the page.
+      this.svg.style.touchAction = this._zoom > 1 ? 'none' : 'pan-x pan-y';
     }
 
     resetZoom() {
@@ -644,9 +651,25 @@
       if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
     }
 
+    _onTouchStart(e) {
+      const t = e.touches && e.touches[0];
+      if (e.touches && e.touches.length === 1 && t) { this._t0 = { x: t.clientX, y: t.clientY }; this._scrolled = false; }
+    }
+
+    _onTouchMove(e) {
+      const n = e.touches ? e.touches.length : 0;
+      // Pinch, or any drag on a zoomed board, is the board's gesture: keep the page still.
+      if ((n > 1 || this._zoom > 1 || this._gesture) && e.cancelable) { e.preventDefault(); return; }
+      const t = e.touches && e.touches[0];
+      if (n === 1 && t && this._t0 && Math.hypot(t.clientX - this._t0.x, t.clientY - this._t0.y) >= 10) this._scrolled = true;
+    }
+
     _onTouchEnd(e) {
-      // First, before any guard: stops the synthetic click/zoom/keyboard (#104).
-      e.preventDefault();
+      // First, before any guard: stops the synthetic click/zoom/keyboard (#104). After a page
+      // scroll the browser makes touchend non-cancelable; skip then (Chrome logs an intervention).
+      if (e.cancelable !== false) e.preventDefault();
+      // A page scroll that started on the board is not a tap either.
+      if (this._scrolled) { if (!(e.touches && e.touches.length)) { this._scrolled = false; this._t0 = null; } this._lastTap = null; return; }
       // A pinch / pan is not a tap: swallow every touchend of it, clear when the last finger lifts.
       if (this._gesture) { if (!(e.touches && e.touches.length)) this._gesture = false; this._lastTap = null; return; }
       const t = e.changedTouches && e.changedTouches[0];

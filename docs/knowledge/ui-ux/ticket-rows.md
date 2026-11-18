@@ -22,3 +22,6 @@ date: 2026-10-12
    (small pill, own background, padded). Put identity in the title, supporting facts in meta.
 4. Scope row styles to the page (`body.zen-lobby .hrow`) — `.prow` is shared with profile/club pages.
 5. Tests assert segments (`.hrow__meta > span`), not a concatenated string.
+6. Room page (#414): rules / mode / seat number are `.rpill`s (room-arena.css) with a visually hidden
+   `<span class="rsr">, </span>` between them so screen readers don't run words together; narrow rows
+   show the first pill + a "+N" pill instead of clipping. Chat/system prose uses commas, not "·".

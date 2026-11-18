@@ -79,12 +79,12 @@ describe('room.html structure', () => {
     expect(activeTab()).toBe('tab-chat');
   });
 
-  test('phones: the rail dissolves into the page column in the designed order', () => {
+  test('phones: the rail dissolves into the page column in the designed order (#413: both seat cards in the row above the board)', () => {
     const mobile = ARENA_CSS.slice(ARENA_CSS.indexOf('@media (max-width: 768px)'));
     expect(mobile).toMatch(/\.rail \{ display: contents; \}/);
     const order = (sel) => Number((mobile.match(new RegExp(sel.replace('.', '\\.') + ' \\{[^}]*order: (\\d)')) || [])[1]);
     expect([order('.seatcard--top'), order('.board-area-shell'), order('.seatcard--bottom'), order('.game-controls'), order('.gtoasts'), order('.rail > .stage'), order('.rail > .rdock')])
-      .toEqual([1, 2, 3, 4, 5, 6, 7]);
+      .toEqual([1, 2, 1, 4, 5, 6, 7]);
     expect(mobile).toMatch(/body\.arena-room \.rpanel \{ display: contents; \}/);
   });
 });

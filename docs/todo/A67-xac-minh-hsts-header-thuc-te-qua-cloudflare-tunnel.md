@@ -1,5 +1,7 @@
 # Phần A #67. Xác minh header HSTS thực tế có tới trình duyệt qua Cloudflare Tunnel không
 
+**Status:** ✅ VERIFIED 2026-11-18 — `curl -sI https://play3cr.win/` (prod VPS via Cloudflare Tunnel) returns `strict-transport-security: max-age=31536000; includeSubDomains`.
+
 **Nguồn:** báo cáo `network_security_audit.md` (Antigravity IDE, 2026-08-08)
 
 ## Vấn đề audit nêu — và điểm cần sửa lại

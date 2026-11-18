@@ -153,7 +153,7 @@
   max-width: 100%;
   height: auto;
   cursor: crosshair;
-  touch-action: none;
+  touch-action: pan-x pan-y; /* page scrolls under one finger; board.js switches to none when zoomed */
 }
 
 @media (max-width: 768px) {
@@ -218,8 +218,8 @@
   background: rgba(192,57,43,0.04);
 }
 .btn-game--resign:hover {
-  background: #c0392b;
-  border-color: #c0392b;
+  background: var(--c-danger-fill);
+  border-color: var(--c-danger-fill);
   color: #fff;
   box-shadow: var(--shadow);
 }
@@ -602,13 +602,13 @@
    ========================================================================== */
 
 .btn-game--time {
-  border-color: #2980b9;
-  color: #2980b9;
+  border-color: var(--c-time);
+  color: var(--c-time);
   background: var(--c-surface-2);
 }
 
 .btn-game--time:hover {
-  background: #2980b9;
+  background: var(--c-time-fill);
   color: #fff;
 }
 
@@ -622,13 +622,13 @@
    ========================================================================== */
 
 .btn-game--undo {
-  border-color: #8e44ad;
-  color: #8e44ad;
+  border-color: var(--c-undo);
+  color: var(--c-undo);
   background: var(--c-surface-2);
 }
 
 .btn-game--undo:hover {
-  background: #8e44ad;
+  background: var(--c-undo-fill);
   color: #fff;
 }
 

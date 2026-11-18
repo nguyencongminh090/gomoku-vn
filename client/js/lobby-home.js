@@ -52,6 +52,7 @@ function screenFromLocation() {
 export function showScreen(name) {
   if (!SCREENS[name]) name = 'home';
   current = name;
+  document.body.classList.toggle('is-home', name === 'home'); // #418: phone hero puts the shell nav over the photo
   for (const [key, id] of Object.entries(SCREENS)) {
     const node = document.getElementById(id);
     if (!node) continue;
@@ -186,6 +187,11 @@ function renderStats(data) {
   fill('home-n-search', 'home-n-search-l', st && st.searching, [t('home.pulse_searching'), st && st.searching && eta && t('home.eta_short', { s: eta })]);
   fill('home-n-live', 'home-n-live-l', st && st.playing, [t('home.pulse_playing')]);
   renderPulse(st);
+  for (const [id, n] of [['home-s-online', st && st.online], ['home-s-search', st && st.searching], ['home-s-live', st && st.playing]]) {
+    const dd = document.getElementById(id);
+    if (dd) dd.textContent = st ? String(n || 0) : '–';
+  }
+  renderLive(data.live || []);
   const one = document.getElementById('home-live-one');
   if (!one) return;
   const g = (data.live || [])[0];
@@ -196,6 +202,45 @@ function renderStats(data) {
   b.append(el('span', g.black + ' vs ' + g.white, 'hq-live__t'), el('span', t('home.moves', { n: g.moves || 0 }), 'hq-live__m'));
   b.addEventListener('click', () => window.joinRoom(g.roomId));
   one.appendChild(b);
+}
+
+/** #419 real mini board from `thumb` ({cols, rows, cells: '.bw' row-major, last}); null when the payload has none/odd. */
+function miniBoard(th) {
+  if (!th || !(th.cols > 0) || !(th.rows > 0) || typeof th.cells !== 'string' || th.cells.length !== th.cols * th.rows) return null;
+  const mini = el('span', undefined, 'hh-mini hh-mini--real');
+  mini.style.setProperty('--cols', th.cols);
+  mini.style.setProperty('--rows', th.rows);
+  for (let i = 0; i < th.cells.length; i++) {
+    const c = th.cells[i];
+    mini.appendChild(el('span', undefined, (c === 'b' ? 'is-b' : c === 'w' ? 'is-w' : '') + (i === th.last && c !== '.' ? ' is-last' : '')));
+  }
+  return mini;
+}
+
+/** #418 phone "Đang diễn ra": up to 3 live games (server order: most viewers first). #419: the mini board shows the
+ *  real position window (`thumb`, refreshed by the poll — pushes only on game start/end); without one it falls back to
+ *  the #418 decorative pattern. Names are user text → textContent. */
+function renderLive(live) {
+  const list = document.getElementById('home-live');
+  if (!list) return;
+  const games = live.filter((g) => g && g.black && g.white);
+  list.replaceChildren(...games.map((g, i) => {
+    const li = el('li');
+    const b = el('button', undefined, 'hh-game');
+    b.type = 'button';
+    b.setAttribute('aria-label', t('home.live_aria', { black: g.black, white: g.white, n: g.viewers || 0 }));
+    const mini = miniBoard(g.thumb) || el('span', undefined, 'hh-mini hh-mini--' + (i % 3));
+    mini.setAttribute('aria-hidden', 'true');
+    const names = el('span', undefined, 'hh-game__p');
+    names.append(el('span', g.black, 'hh-game__n'), el('span', t('home.live_vs_word'), 'hh-game__vs'), el('span', g.white, 'hh-game__n'));
+    const watch = withIcon(el('span', String(g.viewers || 0), 'hh-game__w'), 'ph-regular-eye');
+    watch.setAttribute('aria-hidden', 'true');
+    b.append(mini, names, watch);
+    b.addEventListener('click', () => window.joinRoom(g.roomId));
+    li.appendChild(b);
+    return li;
+  }));
+  if (!games.length) list.appendChild(el('li', t('home.live_empty'), 'hh-live__empty'));
 }
 
 /** #362 phone status line: same counts as the cards; "M ván đang chơi" links to Phòng › Quan sát only when M > 0. */
@@ -219,19 +264,31 @@ function renderPulse(st) {   // no ETA here: #qm-line right under it already say
 /** Same-site path only — the server already enforces it; this guards a stale/odd payload too. */
 const SAFE_LINK = /^\/(?![/\\])[^\s\\]*$/;
 
-/** One admin news line (#224) under the stats strip; a link makes the whole line clickable. */
-function renderNews(data) {
-  const box = document.getElementById('home-news');
-  if (!box) return;
-  const n = data.news;
-  box.replaceChildren();
-  box.hidden = !(n && n.body);
-  if (box.hidden) return;
+function newsLine(n) {
   const line = SAFE_LINK.test(n.link || '') ? el('a', undefined, 'hnews__line') : el('p', undefined, 'hnews__line');
   if (line.tagName === 'A') line.href = n.link;
   line.append(el('span', t('home.news'), 'hnews__tag'), el('span', n.body, 'hnews__body'));
   if (line.tagName === 'A') line.appendChild(el('span', '›', 'hnews__go'));
-  box.appendChild(line);
+  const at = n.createdAt ? new Date(n.createdAt) : null;
+  if (at && !isNaN(at)) { // #418 phone card shows the day; desktop hides it
+    const time = el('time', String(at.getDate()).padStart(2, '0') + '/' + String(at.getMonth() + 1).padStart(2, '0'), 'hnews__at');
+    time.dateTime = at.toISOString();
+    line.appendChild(time);
+  }
+  return line;
+}
+
+/** Admin news (#224) under the stats strip; a link makes the whole line clickable. #419: `news` is the newest ≤ 2 —
+ *  the phone card lists both, desktop CSS shows the first only. */
+function renderNews(data) {
+  const box = document.getElementById('home-news');
+  if (!box) return;
+  const items = (Array.isArray(data.news) ? data.news : []).filter((n) => n && n.body);
+  box.replaceChildren();
+  box.hidden = !items.length;
+  if (box.hidden) return;
+  const head = withIcon(el('h2', t('home.news_title'), 'hnews__head'), 'ph-regular-megaphone'); // #418 phone card title; desktop hides it
+  box.append(head, ...items.map(newsLine));
 }
 
 export function renderHome(data) {
@@ -289,6 +346,7 @@ function applyPush(key, value, render) {
 }
 
 client.on('home:stats', (st) => applyPush('stats', st, renderStats));
+client.on('home:live', (live) => applyPush('live', Array.isArray(live) ? live : [], renderStats)); // #418: the phone live card follows pushes
 // A reconnect is a fresh server socket outside every room: subscribe again and resync the rest.
 client.on('disconnect', () => { subscribed = false; lobbySubscribed = false; });
 client.on('connect', () => {
@@ -377,9 +435,51 @@ function renderSentence() {
     return b;
   }));
   if (focused && blankBtn(focused)) blankBtn(focused).focus();
+  renderChips();
 }
 
-const blankBtn = (key) => document.querySelector('#home-q [data-blank="' + key + '"]');
+/** #418 phone chips: the same three picks as the sentence blanks, short capitalised labels; open the same #qm-pick sheet. */
+const CHIP_ICON = { rule: 'ph-regular-scales', time: 'ph-regular-timer' };
+function chipLabel(key) {
+  if (key === 'rule') return t('rankings.cat_' + qm.rule);
+  if (key === 'time') return qmTimeLabel(qm.time);
+  return t(isMember() && qm.rated ? 'home.chip_rated' : 'home.chip_casual');
+}
+function renderChips() {
+  const box = document.getElementById('home-chips');
+  if (!box) return;
+  const member = isMember();
+  const focused = box.contains(document.activeElement) ? document.activeElement.dataset.chip : null;
+  box.replaceChildren(...['rule', 'time', 'mode'].map((key) => {
+    const spec = BLANKS[key];
+    const fixed = key === 'mode' && !member; // guests: casual only, not a control
+    const c = el(fixed ? 'span' : 'button', undefined, 'hh-chip');
+    c.appendChild(el('span', chipLabel(key), 'hh-chip__t'));
+    withIcon(c, CHIP_ICON[key] || (member && qm.rated ? 'ph-regular-trophy' : 'ph-regular-handshake'));
+    if (key === 'rule' && qm.wall) { // Ô khoá on: a lock after the rule name; the full name is the accessible name
+      c.appendChild(window.PlatformShell ? window.PlatformShell.icon('ph-regular-lock') : el('span'));
+      c.title = ruleWallLabel(blankValue(spec));
+    }
+    if (fixed) { c.classList.add('hh-chip--fixed'); return c; }
+    c.type = 'button';
+    c.dataset.chip = key;
+    c.disabled = qm.searching;
+    c.setAttribute('aria-label', t(spec.aria) + ': ' + spec.option(blankValue(spec)));
+    c.setAttribute('aria-haspopup', 'listbox');
+    c.setAttribute('aria-controls', 'qm-pick');
+    c.setAttribute('aria-expanded', String(openBlank === key));
+    c.addEventListener('click', (e) => { e.stopPropagation(); if (openBlank === key) closePick(true); else openPick(key); });
+    return c;
+  }));
+  if (focused) { const c = box.querySelector('[data-chip="' + focused + '"]'); if (c) c.focus(); }
+}
+
+/** The visible control for a pick: the chip on phones (#418, the sentence is hidden there), else the sentence blank. */
+const blankBtn = (key) => {
+  const chip = document.querySelector('#home-chips [data-chip="' + key + '"]');
+  if (chip && chip.offsetParent !== null) return chip;
+  return document.querySelector('#home-q [data-blank="' + key + '"]');
+};
 
 /** Open the shared listbox for one blank: in flow under the sentence on desktop (pushes Chơi nhanh down, never covers it),
  *  a bottom sheet on phones (CSS). Roving tabindex: only the selected option is tabbable. */
@@ -468,6 +568,8 @@ export function renderQuickMatch() {
   const pill = document.getElementById('qm-search');
   if (play) { play.hidden = qm.searching; play.disabled = qm.searching; }
   if (pill) pill.hidden = !qm.searching;
+  const create = document.getElementById('hh-create'); // phone Tạo phòng: no new room while queued
+  if (create) create.disabled = qm.searching;
 
   const acts = document.getElementById('qm-actions');
   const status = document.getElementById('qm-status');
@@ -623,6 +725,8 @@ function openChallenge() {
 function wireHub() {
   const rooms = document.getElementById('hub-rooms');
   if (rooms) rooms.addEventListener('click', (e) => { e.preventDefault(); showScreen('rooms'); });
+  const all = document.getElementById('home-live-all');
+  if (all) all.addEventListener('click', (e) => { e.preventDefault(); showScreen('rooms'); });
   const play = document.getElementById('qm-play');
   if (play) play.addEventListener('click', () => startSearch(isMember() && qm.rated));
   const chal = document.getElementById('qm-challenge');

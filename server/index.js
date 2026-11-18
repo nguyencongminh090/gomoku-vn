@@ -20,8 +20,11 @@ const { Server }   = require('socket.io');
 const path         = require('path');
 
 const config         = require('./config');
-const { cspDirectives } = require('./config/csp');
+const { cspDirectives, ENGINE_WORKER_PATH, ENGINE_WORKER_CSP, parseIsolatedPages, isolationMiddleware } = require('./config/csp');
+const { createEngineFilesRouter } = require('./routes/engine-files');
+const EngineHandler = require('./socket/handlers/EngineHandler');
 const { staticOptions, socketIoClientOptions, setHtmlHeaders, REVALIDATE } = require('./config/staticCache');
+const { indexLinkHints } = require('./config/earlyHints');
 const logger         = require('./utils/logger');
 const authRouter     = require('./routes/auth');
 const gamesRouter    = require('./routes/games');
@@ -43,8 +46,10 @@ const { verifySocketToken } = require('./middleware/auth');
 const { accessLog } = require('./middleware/accessLog');
 const { errorHandler } = require('./middleware/errorHandler');
 const { originGuard } = require('./middleware/origin-guard');
+const { legacyHostRedirect } = require('./middleware/legacy-host-redirect');
 const socketHandler  = require('./socket/SocketHandler');
 const diagNamespace  = require('./socket/diag-namespace');
+const directRoute    = require('./socket/direct-route');
 const sessionManager = require('./managers/SessionManager');
 const tournamentManager = require('./managers/tournament/TournamentManager');
 const { db }         = require('./db/database');
@@ -68,13 +73,17 @@ const app = express();
 // or the per-IP room quota.
 app.set('trust proxy', 'loopback');
 
+// #415: the direct (Caddy) listener serves socket.io only — refuse every Express route there.
+const directCfg = directRoute.readConfig();
+if (directCfg.enabled) app.use(directRoute.expressGuard(directCfg.port));
+
 // Security headers, CSP enforced (TODO.md #65 — was `contentSecurityPolicy:
 // false` because the client used to ship inline <script> IIFEs and a
 // non-pinned https://unpkg.com script; both are gone now, see
 // docs/fix-log.md). Directives live in ./config/csp.js so the policy itself
 // is unit-testable (server/tests/csp.test.js) without booting this server.
 app.use(helmet({
-  contentSecurityPolicy: { directives: cspDirectives },
+  contentSecurityPolicy: { directives: directRoute.withDirectConnectSrc(cspDirectives, directCfg) },
 }));
 
 // Compress text responses (TODO.md #105). Must be mounted BEFORE the static
@@ -106,6 +115,9 @@ app.use(express.json());
 // Cloudflare-resolved client IP + geo. Mounted before static/routes so it
 // covers every response. No-op with zero overhead when disabled.
 app.use(accessLog);
+
+// Old public hostname → canonical one for page navigations (no-op unless LEGACY_HOSTS + CANONICAL_ORIGIN are set).
+app.use(legacyHostRedirect({ hosts: process.env.LEGACY_HOSTS, canonical: process.env.CANONICAL_ORIGIN }));
 
 // `client/` is what ships, in every environment (TODO.md #109).
 //
@@ -154,6 +166,22 @@ app.use('/vendor/socket.io', express.static(socketIoClientPath, socketIoClientOp
 // revalidated) lives in ./config/staticCache so it is unit-testable without
 // booting this server — see TODO.md #106 for why the express.static default
 // (`public, max-age=0`) was actively harmful here.
+// Engine worker gets its own CSP (WASM compile), engine files are lease-gated (#405).
+app.use(ENGINE_WORKER_PATH, (req, res, next) => { res.setHeader('Content-Security-Policy', ENGINE_WORKER_CSP); next(); });
+// Multi-thread engine pages (#408): cross-origin isolation only where ENGINE_ISOLATED_PAGES lists it.
+app.use(isolationMiddleware(parseIsolatedPages(config.ENGINE_ISOLATED_PAGES)));
+app.use('/engine', createEngineFilesRouter({
+  getLeaseManager: EngineHandler.getLeaseManager,
+  dir: config.ENGINE_FILES_DIR || undefined,
+  buildId: config.ENGINE_BUILD_ID,
+}));
+
+// #415 socket-direct (off unless DIRECT_SOCKET_URL): the direct port serves socket.io only; page
+// navigations through Cloudflare get the route cookie (ticket) for eligible countries.
+if (directCfg.enabled) app.use(directRoute.routeCookieMiddleware(directCfg, sessionManager));
+
+// Lobby preload hints as an origin `Link` header, replayed by Cloudflare Early Hints as 103 (#410).
+app.use(indexLinkHints(clientPath));
 app.use(express.static(clientPath, staticOptions));
 
 // Reject cross-site writes before any /api router (#350).
@@ -273,6 +301,12 @@ const io = new Server(server, {
   },
 });
 
+// #415: strip client-supplied cf-* on the direct listener before anything reads them.
+if (directCfg.enabled) {
+  io.engine.use(directRoute.engineMiddleware(directCfg, sessionManager));
+  io.engine.on('initial_headers', directRoute.directCookieHeaders(directCfg));
+}
+
 // Apply JWT auth middleware to ALL socket connections
 io.use(verifySocketToken);
 
@@ -304,9 +338,10 @@ setInterval(() => dmService.pruneExpired(Date.now(), true), 3600 * 1000).unref()
 // ---------------------------------------------------------------------------
 // Start
 // ---------------------------------------------------------------------------
-server.listen({ port: config.HTTP_PORT, backlog: config.LISTEN_BACKLOG }, () => {
-  logger.info(`[Server] Play3CR listening on http://localhost:${config.HTTP_PORT}`);
+server.listen({ port: config.HTTP_PORT, host: config.LISTEN_HOST, backlog: config.LISTEN_BACKLOG }, () => {
+  logger.info(`[Server] Play3CR listening on http://${config.LISTEN_HOST || 'localhost'}:${config.HTTP_PORT}`);
 });
+const directListener = directCfg.enabled ? directRoute.startDirectListener(server, directCfg.port) : null;
 
 // Last-resort safety net: an error that escapes every other try/catch (e.g. a
 // bug in a socket handler not covered by SocketHandler.js's per-handler wrap)
@@ -325,6 +360,7 @@ const gracefulShutdown = () => {
   
   // Force close socket connections so the HTTP server can actually close
   io.disconnectSockets();
+  if (directListener) directListener.close();
 
   server.close(() => {
     try { db.close(); } catch (err) { logger.error('DB close error', err); }

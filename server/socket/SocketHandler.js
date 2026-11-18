@@ -55,6 +55,7 @@ const PrivateChatHandler = require('./handlers/PrivateChatHandler');
 const DisconnectHandler = require('./handlers/DisconnectHandler');
 const TournamentHandler      = require('./handlers/TournamentHandler');
 const TournamentMatchHandler = require('./handlers/TournamentMatchHandler');
+const EngineHandler     = require('./handlers/EngineHandler');
 const MatchHandler           = require('./handlers/MatchHandler');
 const HomeFeed               = require('./home-feed');
 
@@ -214,6 +215,7 @@ function init(io) {
     const handshakeAuth = (socket.handshake && socket.handshake.auth) || {};
     logger.info('[Socket] Connected', {
       user: user.displayName, uid: user.userId, sid: socket.id, ip, geo,
+      ...(socket.data && socket.data.route === 'direct' ? { route: 'direct' } : {}), // #415
       // #367: tells a page load apart from the same page re-establishing its transport.
       ...(handshakeAuth.reconnect ? { reconnect: 1 } : {}),
       ...(handshakeAuth.reconnect && typeof handshakeAuth.roomId === 'string' ? { room: handshakeAuth.roomId } : {}),
@@ -393,6 +395,7 @@ function init(io) {
     TournamentMatchHandler.register(io, socket);
     MatchHandler.register(io, socket);
     HomeFeed.register(io, socket);
+    EngineHandler.register(io, socket);
 
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {

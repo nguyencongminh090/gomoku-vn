@@ -119,3 +119,41 @@ describe('CSP — Cloudflare Web Analytics allowance (TODO.md #112)', () => {
     expect(cspDirectives.connectSrc).toEqual(["'self'", CF_INSIGHTS_REPORT]);
   });
 });
+
+describe('Engine worker CSP (#405)', () => {
+  const { ENGINE_WORKER_CSP, ENGINE_WORKER_PATH } = require('../config/csp');
+  test('page CSP stays without wasm-unsafe-eval / blob:', () => {
+    expect(cspDirectives.scriptSrc).not.toContain("'wasm-unsafe-eval'");
+    expect(cspDirectives.scriptSrc).not.toContain('blob:');
+  });
+  test('worker CSP: WASM compile + blob glue only, no network, no eval', () => {
+    expect(ENGINE_WORKER_PATH).toBe('/js/engine/engine.worker.js');
+    expect(ENGINE_WORKER_CSP).toMatch(/default-src 'none'/);
+    expect(ENGINE_WORKER_CSP).toMatch(/script-src 'self' blob: 'wasm-unsafe-eval'/);
+    expect(ENGINE_WORKER_CSP).toMatch(/connect-src 'none'/);
+    expect(ENGINE_WORKER_CSP).not.toMatch(/'unsafe-eval'|'unsafe-inline'|\*/);
+  });
+});
+
+describe('Cross-origin isolation opt-in (#408)', () => {
+  const { parseIsolatedPages, isolationMiddleware, ENGINE_COEP } = require('../config/csp');
+  const run = (pages, reqPath) => {
+    const h = {}; let nexted = false;
+    isolationMiddleware(pages)({ path: reqPath }, { setHeader: (k, v) => { h[k] = v; } }, () => { nexted = true; });
+    return { h, nexted };
+  };
+  test('parse: comma list, leading slash added, blanks dropped; default empty', () => {
+    expect([...parseIsolatedPages(' analysis.html, /replay.html ,,')]).toEqual(['/analysis.html', '/replay.html']);
+    expect(parseIsolatedPages(undefined).size).toBe(0);
+  });
+  test('listed page and engine worker get COEP require-corp; other pages untouched', () => {
+    const pages = parseIsolatedPages('/analysis.html');
+    expect(ENGINE_COEP).toBe('require-corp');
+    expect(run(pages, '/analysis.html').h).toEqual({ 'Cross-Origin-Embedder-Policy': 'require-corp', 'Cross-Origin-Opener-Policy': 'same-origin' });
+    expect(run(pages, '/js/engine/engine.worker.js').h['Cross-Origin-Embedder-Policy']).toBe('require-corp');
+    const other = run(pages, '/index.html');
+    expect(other.h).toEqual({});
+    expect(other.nexted).toBe(true);
+    expect(run(parseIsolatedPages(''), '/analysis.html').h).toEqual({}); // nothing isolated by default
+  });
+});

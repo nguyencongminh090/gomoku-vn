@@ -17,9 +17,9 @@
 :root {
   color-scheme: dark;
 
-  --c-bg:           #161512;
-  --c-surface:      #262421;
-  --c-surface-2:    #2f2d29;
+  --c-bg:           #121212;
+  --c-surface:      #1e1e1e;
+  --c-surface-2:    #282828;
   --c-border:       rgba(255,255,255,0.10);
   --c-border-light: rgba(255,255,255,0.06);
 
@@ -46,7 +46,7 @@
   --c-warning:      #f2a33a;
   --c-warning-bg:   rgba(242,163,58,0.12);
 
-  --c-state-idle:    #8a867c;
+  --c-state-idle:    #9a968c;   /* ui-audit F6: 4.59 -> 5.65:1 on surface */
   --c-state-playing: #8bc34a;
   --c-state-waiting: #f2a33a;
 
@@ -54,8 +54,18 @@
   --c-fill:         rgba(255,255,255,0.06);
   --c-hover:        rgba(255,255,255,0.04);
   --c-strong:       #ffffff;
-  --c-field:        #161512;
+  --c-field:        #121212;
   --c-scrim:        rgba(0,0,0,0.6);
+
+  /* ui-audit F3/F4/F5: game-action + medal colours as roles (text/border vs fill under white text) */
+  --c-danger-fill:  #c0392b;
+  --c-time:         #5dade2;
+  --c-time-fill:    #2471a3;
+  --c-undo:         #c39bd3;
+  --c-undo-fill:    #8e44ad;
+  --c-medal-gold:   rgba(242,190,58,.16);
+  --c-medal-silver: rgba(170,180,195,.18);
+  --c-medal-bronze: rgba(205,127,50,.16);
 
   --bg-glass:       #262421;
   --bg-glass-heavy: #262421;
@@ -66,10 +76,6 @@
   --shadow-sm:  none;
   --shadow:     0 2px 8px rgba(0,0,0,0.35);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.6);
-  --bg-grid: rgba(170,195,225,.13);   /* page paper grid: 48px cells (platform.css body::before) */
-  --bg-grid-minor: rgba(170,195,225,.11);
-  --bg-leaf-op: .28;   /* corner leaf line-art opacity */
-  --bg-leaf-filter: none;
   --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
@@ -78,7 +84,7 @@
 :root[data-mode="light"] {
   color-scheme: light;
 
-  --c-bg:           #ecebe8;
+  --c-bg:           #fafaf8;
   --c-surface:      #ffffff;
   --c-surface-2:    #f4f3f0;
   --c-border:       rgba(0,0,0,0.12);
@@ -104,7 +110,7 @@
   --c-warning:      #8f5500;
   --c-warning-bg:   rgba(178,106,0,0.08);
 
-  --c-state-idle:    #8a857b;
+  --c-state-idle:    #6b675e;   /* ui-audit F2: 3.2 -> 5.1:1 on surface-2 */
   --c-state-playing: #2e7d32;
   --c-state-waiting: #b26a00;
 
@@ -113,16 +119,20 @@
   --c-strong:       #000000;
   --c-field:        #f4f3f0;
   --c-scrim:        rgba(0,0,0,0.45);
+  --c-danger-fill:  #c62828;
+  --c-time:         #2471a3;
+  --c-time-fill:    #2471a3;
+  --c-undo:         #8e44ad;
+  --c-undo-fill:    #8e44ad;
+  --c-medal-gold:   rgba(214,150,0,.20);
+  --c-medal-silver: rgba(110,120,135,.18);
+  --c-medal-bronze: rgba(176,100,30,.18);
 
   --bg-glass:       #ffffff;
   --bg-glass-heavy: #ffffff;
 
   --shadow:     0 1px 3px rgba(0,0,0,0.10);
   --shadow-lg:  0 24px 48px -16px rgba(0,0,0,0.22);
-  --bg-grid: rgba(100,140,185,.26);   /* page paper grid: 48px cells (platform.css body::before) */
-  --bg-grid-minor: rgba(100,140,185,.24);
-  --bg-leaf-op: .55;   /* corner leaf line-art opacity */
-  --bg-leaf-filter: none;
   --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
 }
 
@@ -167,6 +177,14 @@
   --c-strong: #ffffff;
   --c-field: #121212;
   --c-scrim: rgba(0,0,0,0.65);
+  --c-danger-fill: #c0392b;
+  --c-time: #5dade2;
+  --c-time-fill: #2471a3;
+  --c-undo: #c39bd3;
+  --c-undo-fill: #8e44ad;
+  --c-medal-gold: rgba(242,190,58,.16);
+  --c-medal-silver: rgba(170,180,195,.18);
+  --c-medal-bronze: rgba(205,127,50,.16);
   --bg-glass: #1b1b1b;
   --bg-glass-heavy: #1b1b1b;
   --radius: 2px;
@@ -175,10 +193,6 @@
   --shadow-sm: none;
   --shadow: none;
   --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.6);
-  --bg-grid: rgba(255,255,255,.10);   /* page paper grid: 48px cells (platform.css body::before) */
-  --bg-grid-minor: rgba(255,255,255,.08);
-  --bg-leaf-op: .14;   /* corner leaf line-art opacity */
-  --bg-leaf-filter: grayscale(1);
   --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
@@ -219,6 +233,14 @@
   --c-strong: #000000;
   --c-field: #f1f1ef;
   --c-scrim: rgba(0,0,0,0.4);
+  --c-danger-fill: #c62828;
+  --c-time: #2471a3;
+  --c-time-fill: #2471a3;
+  --c-undo: #8e44ad;
+  --c-undo-fill: #8e44ad;
+  --c-medal-gold: rgba(214,150,0,.20);
+  --c-medal-silver: rgba(110,120,135,.18);
+  --c-medal-bronze: rgba(176,100,30,.18);
   --bg-glass: #ffffff;
   --bg-glass-heavy: #ffffff;
   --radius: 2px;
@@ -227,10 +249,6 @@
   --shadow-sm: none;
   --shadow: none;
   --shadow-lg: 0 24px 48px -16px rgba(0,0,0,0.2);
-  --bg-grid: rgba(0,0,0,.12);   /* page paper grid: 48px cells (platform.css body::before) */
-  --bg-grid-minor: rgba(0,0,0,.10);
-  --bg-leaf-op: .45;   /* corner leaf line-art opacity */
-  --bg-leaf-filter: grayscale(1);
   --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
@@ -271,6 +289,14 @@
   --c-strong: #ffffff;
   --c-field: #14151c;
   --c-scrim: rgba(0,0,0,0.6);
+  --c-danger-fill: #c0392b;
+  --c-time: #5dade2;
+  --c-time-fill: #2471a3;
+  --c-undo: #c39bd3;
+  --c-undo-fill: #8e44ad;
+  --c-medal-gold: rgba(242,190,58,.16);
+  --c-medal-silver: rgba(170,180,195,.18);
+  --c-medal-bronze: rgba(205,127,50,.16);
   --bg-glass: #1e202b;
   --bg-glass-heavy: #1e202b;
   --radius: 12px;
@@ -279,10 +305,6 @@
   --shadow-sm: none;
   --shadow: 0 6px 18px rgba(0,0,0,0.35);
   --shadow-lg: 0 28px 56px -16px rgba(0,0,0,0.6);
-  --bg-grid: rgba(170,195,225,.13);   /* page paper grid: 48px cells (platform.css body::before) */
-  --bg-grid-minor: rgba(170,195,225,.11);
-  --bg-leaf-op: .28;   /* corner leaf line-art opacity */
-  --bg-leaf-filter: none;
   --shadow-card: inset 0 1px 0 rgba(255,255,255,.06), 0 1px 2px rgba(0,0,0,.35), 0 6px 14px -4px rgba(0,0,0,.45), 0 22px 44px -14px rgba(0,0,0,.65);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
@@ -323,6 +345,14 @@
   --c-strong: #000000;
   --c-field: #f7f5f0;
   --c-scrim: rgba(31,36,51,0.45);
+  --c-danger-fill: #c62828;
+  --c-time: #2471a3;
+  --c-time-fill: #2471a3;
+  --c-undo: #8e44ad;
+  --c-undo-fill: #8e44ad;
+  --c-medal-gold: rgba(214,150,0,.20);
+  --c-medal-silver: rgba(110,120,135,.18);
+  --c-medal-bronze: rgba(176,100,30,.18);
   --bg-glass: #ffffff;
   --bg-glass-heavy: #ffffff;
   --radius: 12px;
@@ -331,14 +361,14 @@
   --shadow-sm: none;
   --shadow: 0 4px 14px rgba(31,36,51,0.08);
   --shadow-lg: 0 28px 56px -16px rgba(31,36,51,0.22);
-  --bg-grid: rgba(100,140,185,.26);   /* page paper grid: 48px cells (platform.css body::before) */
-  --bg-grid-minor: rgba(100,140,185,.24);
-  --bg-leaf-op: .55;   /* corner leaf line-art opacity */
-  --bg-leaf-filter: none;
   --shadow-card: inset 0 1px 0 rgba(255,255,255,.9), 0 1px 2px rgba(40,55,80,.08), 0 6px 14px -4px rgba(40,55,80,.12), 0 22px 44px -14px rgba(40,55,80,.28);   /* outer cards only (.ppanel/.phead/.ptbl-wrap/.pcard) */
   --shadow-glass: none;
   --shadow-glass-inset: none;
 }
+
+/* Mobile tab bar active item (#418, template amber): skin-independent, ≥ 4.5:1 on every skin's --c-bg (test: lobby-home #418). */
+:root { --c-tab-on: #ffc865; }
+:root[data-mode="light"] { --c-tab-on: #a85600; }
 
 /* Club avatar fills (#235): skin-independent, each ≥ 4.5:1 under --club-ink. Separate block so the per-skin token-set test ignores it. */
 :root {

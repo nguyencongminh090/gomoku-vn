@@ -161,8 +161,10 @@
       el.style.top = Math.round(r.bottom + 8) + 'px';
       el.style.left = Math.round(r.left + 12) + 'px';
     } else {
-      el.className = 'speech speech--bottom';
-      el.style.bottom = Math.round(global.innerHeight - r.top + 8) + 'px';
+      // #413: on phones both cards share the row above the board — the bottom-slot card is its right half,
+      // so its bubble hangs under it, right-aligned (over the board top, like the opponent's).
+      el.className = 'speech speech--top speech--right speech--mine';
+      el.style.top = Math.round(r.bottom + 8) + 'px';
       el.style.right = Math.round(global.innerWidth - r.right + 12) + 'px';
     }
     layer.appendChild(el);
@@ -316,7 +318,7 @@
     btn.title = label;
     const st = S();
     const canKick = st && st.myRole === 'host' && st.roomData && st.roomData.state !== 'playing';
-    pop.innerHTML = `<div class="aud-pop__title"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-eye"></use></svg>${esc(label)}</div><ul class="aud-pop__list">${list.map((g) => {
+    pop.innerHTML = `<div class="aud-pop__title"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-eye"></use></svg>${esc(label)}</div><ul class="aud-pop__list">${list.map((g) => {
       const kick = canKick && st.myUser && g.userId !== st.myUser.userId
         ? `<button class="btn-kick" type="button" data-action="kickUser" data-arg="${esc(g.userId)}">${esc(t('room.kick'))}</button>` : '';
       return `<li><span class="aud__av">${avatar(g)}</span><span class="aud-pop__name">${esc(g.displayName)}</span>${kick}</li>`;

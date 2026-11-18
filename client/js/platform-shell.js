@@ -16,7 +16,7 @@
 
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=cd66da24'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=d9575ee8'; // ?v=: /assets is immutable-cached
   // Mockup nav (Chơi / Phòng / Giải đấu are the lobby's three screens, B195).
   const ITEMS = [
     { id: 'lobby', href: '/index.html', key: 'shell.lobby' },
@@ -440,6 +440,8 @@
     }
     host.append(nav, tabbar);
     document.body.classList.add('pshell');
+    wireSwipe();
+    arrivalSlide();
   }
 
   /** Move the active marker without rebuilding (lobby's Chơi ↔ Giải đấu tab switch). */
@@ -449,6 +451,182 @@
       a.classList.toggle('is-active', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
+  }
+
+  // ── #421: phone swipe between the tab-bar pages (Sảnh ↔ Phòng ↔ Xếp hạng ↔ Giải đấu ↔ Tôi) ──
+  // The page follows the finger once the gesture locks horizontal; on release it either slides
+  // off and the next/previous tab opens (past 30 % of the width, or a flick), or springs back.
+  // No wrap: past the first/last tab the drag only rubber-bands. Only while the tab bar is shown and
+  // the active page is one of its tabs. Gestures that belong to something else are left alone:
+  // inputs, the board, horizontal scrollers (live strip, brackets, tables), open dialogs, the OS
+  // back-gesture edges, zoom. What moves: <main>'s visible children, via the `translate` property
+  // (pages' own transform animations keep running; fixed docks keep the viewport as containing block).
+  const SWIPE = { lock: 10, commit: 0.3, flickMin: 40, flick: 0.4, edge: 24, resist: 0.25 };
+  const SWIPE_KEY = 'pswipe'; // sessionStorage: direction for the arrival slide on the next page
+  const NO_SWIPE = 'input, textarea, select, [contenteditable=""], [contenteditable="true"], canvas, .gboard, [data-no-swipe], dialog, [role="dialog"], [aria-modal="true"]';
+
+  /** True when the touch starts inside something that scrolls sideways itself. */
+  function inHScroller(node) {
+    for (let n = node; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+      if (n.scrollWidth > n.clientWidth + 1) {
+        const ox = getComputedStyle(n).overflowX;
+        if (ox === 'auto' || ox === 'scroll') return true;
+      }
+    }
+    return false;
+  }
+
+  /** The tab link a swipe goes to, or null. dir = +1 (next, finger moved left) / -1 (previous). */
+  function swipeTarget(dir) {
+    const bar = document.querySelector('.ptabbar');
+    if (!bar || !bar.getClientRects().length) return null; // desktop: bar is display:none
+    const tabs = [...bar.querySelectorAll('a[data-tab]')];
+    const i = tabs.findIndex((a) => a.classList.contains('is-active'));
+    if (i < 0) return null; // clubs/learn/social/settings: not a tab-bar page
+    const to = tabs[i + dir];
+    if (!to) return null;
+    const href = to.getAttribute('href');
+    return href && href !== '#' ? to : null; // Tôi before /me answered
+  }
+
+  const reducedMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+  function motion() {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      dur: parseFloat(cs.getPropertyValue('--pswipe-dur')) || 240,
+      ease: cs.getPropertyValue('--pswipe-ease').trim() || 'ease-out',
+      inShift: parseFloat(cs.getPropertyValue('--pswipe-in')) || 0.3, // arrival starts this fraction of the width away
+    };
+  }
+
+  /** The parts of the page that move: visible children of <main>. */
+  function panes() {
+    const main = document.querySelector('main');
+    return main ? [...main.children].filter((c) => !c.hidden && c.getClientRects().length) : [];
+  }
+
+  /** Drop every swipe offset/animation (spring-back done, same-page switch, back from bfcache). */
+  function resetPanes() {
+    const main = document.querySelector('main');
+    if (!main) return;
+    for (const c of main.children) {
+      c.style.translate = '';
+      if (c.getAnimations) c.getAnimations().forEach((a) => { if (a.id === 'pswipe') a.cancel(); });
+    }
+  }
+
+  /** Animate the panes from x0 to x1 px; fill forwards (the caller resets). Calls done() at the end. */
+  function movePanes(list, x0, x1, dur, ease, done) {
+    if (!list.length || typeof list[0].animate !== 'function' || reducedMotion() || dur <= 0) { done(); return; }
+    let left = list.length;
+    for (const c of list) {
+      c.style.translate = '';
+      const a = c.animate([{ translate: x0 + 'px 0' }, { translate: x1 + 'px 0' }], { duration: dur, easing: ease, fill: 'forwards' });
+      a.id = 'pswipe';
+      a.onfinish = a.oncancel = () => { if (--left === 0) done(); };
+    }
+  }
+
+  /** Arrival: the new page's content slides in from the side the finger pushed it from. */
+  function slideIn(dir) {
+    if (reducedMotion()) return;
+    const m = motion();
+    const list = panes();
+    movePanes(list, dir * window.innerWidth * m.inShift, 0, m.dur, m.ease, () => list.forEach((c) => c.getAnimations && c.getAnimations().forEach((a) => { if (a.id === 'pswipe') a.cancel(); })));
+  }
+
+  /** Released past the threshold: slide the page off, then open the tab. */
+  function commitSwipe(to, dir, x) {
+    const m = motion();
+    const w = window.innerWidth;
+    const samePage = new URL(to.href, location.href).pathname === location.pathname;
+    const rest = Math.max(0, 1 - Math.abs(x) / w); // remaining distance → shorter settle
+    movePanes(panes(), x, -dir * w, Math.max(120, Math.round(m.dur * rest)), m.ease, () => {
+      if (!samePage) {
+        try { sessionStorage.setItem(SWIPE_KEY, JSON.stringify({ dir, at: Date.now() })); } catch (_) { /* no slide */ }
+        to.click(); // the page stays slid off until the next one paints (pageshow resets it on Back)
+        return;
+      }
+      to.click(); // lobby screens switch by hash
+      resetPanes();
+      slideIn(dir);
+    });
+  }
+
+  function wireSwipe() {
+    if (document.__pswipe) return; // one set of document listeners, even if the shell module loads twice
+    document.__pswipe = true;
+    let g = null;
+    const follow = (x) => { for (const c of g.panes) c.style.translate = x ? x + 'px 0' : ''; };
+    const springBack = (s, x) => {
+      const m = motion();
+      movePanes(s.panes, x, 0, m.dur, m.ease, resetPanes);
+    };
+    document.addEventListener('touchstart', (e) => {
+      g = null;
+      if (e.touches.length !== 1) return;
+      const p = e.touches[0];
+      const w = window.innerWidth;
+      if (p.clientX < SWIPE.edge || p.clientX > w - SWIPE.edge) return;
+      if (window.visualViewport && window.visualViewport.scale > 1.01) return;
+      const tgt = e.target;
+      if (tgt.closest && tgt.closest(NO_SWIPE)) return;
+      // lobby modals stay in the DOM hidden by CSS (no `hidden`): only a visible one blocks
+      if ([...document.querySelectorAll('dialog[open], [aria-modal="true"]')].some((m) => m.getClientRects().length)) return;
+      if (inHScroller(tgt)) return;
+      const t = Date.now();
+      g = { x: p.clientX, y: p.clientY, lock: false, dx: 0, lx: p.clientX, lt: t, v: 0 };
+    }, { passive: true });
+    // Not passive: once the gesture is ours, preventDefault keeps the page from also scrolling.
+    document.addEventListener('touchmove', (e) => {
+      if (!g) return;
+      const p = e.touches[0];
+      const dx = p.clientX - g.x, dy = p.clientY - g.y;
+      if (!g.lock) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < SWIPE.lock) return;
+        const sel = window.getSelection && window.getSelection();
+        if (Math.abs(dy) >= Math.abs(dx) || e.cancelable === false || (sel && String(sel))) { g = null; return; } // a scroll
+        g.next = swipeTarget(1);
+        g.prev = swipeTarget(-1);
+        if (!g.next && !g.prev) { g = null; return; } // not a tab page / desktop
+        g.lock = true;
+        g.reduce = reducedMotion();
+        g.panes = g.reduce ? [] : panes();
+      }
+      if (e.cancelable) e.preventDefault();
+      const t = Date.now();
+      if (t > g.lt) { g.v = 0.6 * ((p.clientX - g.lx) / (t - g.lt)) + 0.4 * g.v; g.lx = p.clientX; g.lt = t; }
+      g.dx = dx;
+      const to = dx < 0 ? g.next : g.prev;
+      follow(to ? dx : dx * SWIPE.resist); // no tab that way: rubber band
+    }, { passive: false });
+    document.addEventListener('touchend', (e) => {
+      const s = g;
+      g = null;
+      if (!s || !s.lock) return;
+      const x = e.changedTouches[0].clientX - s.x;
+      const dir = x < 0 ? 1 : -1;
+      const to = dir > 0 ? s.next : s.prev;
+      const far = Math.abs(x) >= SWIPE.commit * window.innerWidth;
+      const flick = Math.abs(x) >= SWIPE.flickMin && Math.abs(s.v) >= SWIPE.flick && Math.sign(s.v) === Math.sign(x);
+      if (to && (far || flick)) commitSwipe(to, dir, to ? x : x * SWIPE.resist);
+      else springBack(s, to ? x : x * SWIPE.resist);
+    }, { passive: true });
+    document.addEventListener('touchcancel', () => {
+      const s = g;
+      g = null;
+      if (s && s.lock) springBack(s, s.dx);
+    }, { passive: true });
+    // Back/forward cache restores the page as it was left: slid off. Put it back.
+    window.addEventListener('pageshow', (e) => { if (e.persisted) resetPanes(); });
+  }
+
+  /** Arrival half of a cross-page swipe: slide in once, only if the swipe was just now. */
+  function arrivalSlide() {
+    let v = null;
+    try { v = JSON.parse(sessionStorage.getItem(SWIPE_KEY) || 'null'); sessionStorage.removeItem(SWIPE_KEY); } catch (_) { return; }
+    if (v && (v.dir === 1 || v.dir === -1) && Date.now() - v.at < 4000) slideIn(v.dir);
   }
 
   /** Avatar circle: image if the member has one, else initials. cls e.g. 'pav--xl pav--sq'. */
@@ -466,5 +644,5 @@
     return box;
   }
 
-  window.PlatformShell = { build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
+  window.PlatformShell = { _swipeTarget: swipeTarget, build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
 })();

@@ -53,4 +53,41 @@ const cspDirectives = {
   frameAncestors: ["'self'"],
 };
 
-module.exports = { cspDirectives, CF_INSIGHTS_SCRIPT, CF_INSIGHTS_REPORT };
+/**
+ * Engine worker only (#405): a dedicated worker created from a same-origin URL runs under the CSP of ITS OWN
+ * response, so the WASM compile permission ('wasm-unsafe-eval') and the blob: glue script stay scoped to
+ * /js/engine/engine.worker.js. Page CSP is unchanged. The engine files are fetched by the page
+ * (connect-src 'self') and handed to the worker as buffers, so the worker needs no network at all.
+ */
+const ENGINE_WORKER_PATH = '/js/engine/engine.worker.js';
+const ENGINE_WORKER_CSP = "default-src 'none'; script-src 'self' blob: 'wasm-unsafe-eval'; connect-src 'none'";
+
+/**
+ * Cross-origin isolation, opt-in per page (#408). The multi-thread engine needs SharedArrayBuffer, which only a
+ * cross-origin isolated page gets: COOP same-origin (helmet already sends it site-wide) + COEP require-corp.
+ * COEP blocks every cross-origin subresource without CORP/CORS (e.g. the edge-injected Cloudflare beacon), so it is
+ * never site-wide: only the HTML paths listed in ENGINE_ISOLATED_PAGES. `require-corp`, not `credentialless`:
+ * Safari has no credentialless. The engine worker always carries COEP so an isolated page may create it.
+ */
+const ENGINE_COEP = 'require-corp';
+
+/** 'a.html, /b.html' → Set{'/a.html','/b.html'} */
+function parseIsolatedPages(raw) {
+  return new Set(String(raw || '').split(',').map((p) => p.trim()).filter(Boolean).map((p) => (p.startsWith('/') ? p : `/${p}`)));
+}
+
+/** Express middleware: COEP on the listed pages and on the engine worker script. */
+function isolationMiddleware(pages) {
+  return (req, res, next) => {
+    if (req.path === ENGINE_WORKER_PATH || pages.has(req.path)) {
+      res.setHeader('Cross-Origin-Embedder-Policy', ENGINE_COEP);
+      res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+    }
+    next();
+  };
+}
+
+module.exports = {
+  cspDirectives, CF_INSIGHTS_SCRIPT, CF_INSIGHTS_REPORT, ENGINE_WORKER_PATH, ENGINE_WORKER_CSP,
+  ENGINE_COEP, parseIsolatedPages, isolationMiddleware,
+};

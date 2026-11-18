@@ -9,7 +9,7 @@ input, button, textarea, select { font-family: inherit; }
 
 :root {
   /* Colours come from css/tokens.css (mode-aware); login-only aliases below. */
-  --c-border-strong: var(--c-border);
+  --c-border-strong: color-mix(in srgb, var(--c-ink) 55%, transparent);   /* ui-audit F8: input resting border >=3:1 (was the 12% divider) */
 
   /* Typography */
   --font:          'Nunito', system-ui, -apple-system, sans-serif;

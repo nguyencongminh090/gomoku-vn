@@ -30,11 +30,12 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 
 ## Tokens
 - Color roles: reuse tokens.css (dark default / light): background --c-bg, surface --c-surface, text --c-ink, muted --c-ink-2, primary --c-brand (#4f7d1c / #4d7c1f), brand text --c-brand-text (#8bc34a / #3d6418), blank fill --c-brand-light, main button --c-ink on --c-on-ink with a --c-brand play disc, danger --c-error.
+- Skins: zen/bento set `--c-brand` to neutral ink (deliberate, ui-audit F7); success/playing stay green.
 - Type scale: Nunito 200–1000; body 16px; sentence h1 clamp(34px, 3.3vw + 8px, 60px) w900, 30px on ≤860px; code boxes 38px (30px phone) w1000; card numbers 40px w1000; labels 12–14px w800 uppercase +.08em. Max three sizes per section.
 - Spacing unit: 4px base; scale 8/12/16/24/32/44.
 - Radius: blanks .22em, cards 16px, code boxes 16px, main button 999px.
 - Motion: subtle; fast 140ms / base 240ms / slow 600ms, ease cubic-bezier(.2,.7,.2,1); one load reveal (rise 14px + fade, staggered 80ms), popover fade+scale 140ms, spinner while searching; prefers-reduced-motion → no movement, spinner replaced by static text.
-- Imagery: none (no photos); background = paper grid only, leaves removed, faded out below the hero. Decorative stones/boards CSS only.
+- Imagery: none (no photos); background = paper grid only, leaves removed, faded out below the hero. Decorative stones/boards CSS only. Exception: phone Home (≤860px) hero photo, #418 (user-approved 2026-11-18; self-hosted webp + dark scrim, white text ≥4.5:1).
 
 ## Layout
 - Sections (top to bottom): greeting row (Chào name · online tag · 4 icon-only links right) → resume strip (only when the user has a game) → sentence composer h1 with 3 blanks → Chơi nhanh button (swaps to searching state in place) → "hoặc vào phòng bằng mã" + 3-box code input + Vào phòng + "Xem N phòng đang mở"; right column (desktop): Đang tìm trận card (queue, ETA, sparkline), Đang chơi card (count + one live game).
@@ -44,7 +45,7 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Removing signifiers: blanks must look clickable (fill + underline + chevron); primary action never a ghost button.
 - Thin content hidden by empty space (keep the right-column cards; empty state text when 0).
 - Emoji as icons; text labels on the 4 secondary links (user chose icon-only + tooltip + aria-label).
-- Photos/stock imagery, leaf background on home, animating stones/board.
+- Photos/stock imagery (except the #418 phone Home hero photo), leaf background on home, animating stones/board.
 
 ## Phòng tab (#364, R1 "Sảnh gỗ")
 - Chosen 2026-11-13 from 8 mockups (`features/rooms-redesign/`). Style: vstyle-flat-material with one photographic hero.
@@ -83,3 +84,21 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Layout: avatar tile (span 4, brand tint) + Giới thiệu + Nơi ở; Riêng tư (3 switch rows) + Ai được liên hệ (3 radio groups: everyone/friends/nobody; friend = everyone/nobody); sticky save bar. Panel max 1040px; ≤860px single column, save bar above the tab bar.
 - Rules from the user: no `A · B · C` strings; every button/div fill opaque (tints via color-mix on a solid surface; test in settings-page.test.js).
 - Motion: subtle; tile rise 240ms staggered 70ms, switch knob 240ms, segment colour 140ms; reduced motion → none.
+
+## Bàn chơi phone clocks (#413, K1 "Bảng tỉ số trên")
+- Chosen 2026-11-17 from 4 mockups (`features/room-clock-mobile/`, K0 = current). Problem: on phones my clock sat bottom-right under the thumb (user report: the hand covers the clock).
+- Layout (≤768px): one scoreboard row right under the nav, 2 equal cells: opponent left (avatar 32px, name, "Đối thủ", time), me right mirrored (time, name, "Bạn", avatar). Bottom seat card removed on phones; board gains its height. Nothing time-critical below the board.
+- Turn: the running cell is filled `--c-brand` + white text (not colour alone: also the filled shape); low time → `--c-error` fill, as now. Time 26px Nunito 800+ tabular.
+- Spectators: same row, seat #2 left, seat #1 right (same order as the old top/bottom cards).
+- Forbidden: any clock in the lower half on phones; names wrapping (ellipsis, `min-width:0`); the `A · B` pattern in cell labels.
+
+## Home phone: Tạo phòng button (B "Chip lên trên")
+- Chosen 2026-11-18 from 3 options (A literal under Chơi nhanh, B chips above, C 2:1 row). Scope: phone Home hero (#418, `body.zen-lobby`, ≤860px); desktop unchanged. Style: inherits #418 hero (vstyle-flat-material + photo).
+- Hard filters applied: task-critical (Chơi nhanh stays the one primary action), WCAG AA, no new tokens outside `--hh-*`.
+- Structure: hero = title → slogan → 3 chips (`.hh-chips`, moved up) → Chơi nhanh (amber, 64px) → **Tạo phòng** (new, full width) → stats. Chips stay touching the button they configure; Tạo phòng is the second stop, directly under Chơi nhanh.
+- Button: secondary "glass" — background rgba(255,255,255,.12) + blur(8px), 1.5px border `--hh-on-photo-2`, text/icon `--hh-on-photo` (white on ≥.6 dark scrim, ≥ 7:1), radius 999px, min-height 52px (< 64px of the primary), 16px w800, Phosphor `ph-regular-plus-circle`, gap 8px under Chơi nhanh. Focus: 3px white outline, offset 3px. Copy: "Tạo phòng" (sentence case, vi, reuse an existing i18n key if one fits).
+- Action: `[data-create-room]` → existing `openModal()` (lobby.js; guests forced friendly — already handled). Not `id="btn-create"` (e2e specs target the Phòng tab card).
+- Searching state: while Chơi nhanh shows `.hq-search`, Tạo phòng stays visible but disabled (opacity .55) — no create during a queue.
+- Motion: none new; press = existing button active state; reduced motion unaffected.
+- Defaults kept: full-width stacked buttons (thumb reach, one column on 360px).
+- Forbidden: amber/brand fill on Tạo phòng (two primaries); ghost text-link only (too weak on a photo); putting it between Chơi nhanh and the chips; emoji "+".

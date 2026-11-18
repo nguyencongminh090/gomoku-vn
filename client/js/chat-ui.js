@@ -47,7 +47,7 @@
   const systemText = (msg) => {
     if (!msg.code) return msg.text;
     if (msg.code === 'ROOM_SETTINGS_CHANGED' && msg.vars && Array.isArray(msg.vars.changes)) {
-      const detail = msg.vars.changes.map(c => settingLabel(c.k, c.v)).filter(Boolean).join(' · ');
+      const detail = msg.vars.changes.map(c => settingLabel(c.k, c.v)).filter(Boolean).join('; '); // #414: prose punctuation, not a middle dot
       if (detail) return t('sys.room_settings_changed_detail', { detail });
     }
     return t('sys.' + msg.code.toLowerCase(), msg.vars);
@@ -100,7 +100,7 @@
         if (isPlayer) {
           const tag = document.createElement('span');
           tag.className = 'chat-msg__tag';
-          tag.textContent = ' · ' + t('room.player_tag');
+          tag.textContent = t('room.player_tag'); // #414: a pill (room-arena.css), no middle-dot prefix
           nameSpan.appendChild(tag);
         }
         bubble.appendChild(nameSpan);

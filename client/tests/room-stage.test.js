@@ -82,14 +82,17 @@ describe('chat routing', () => {
     expect($('float-messages').children).toHaveLength(0);
     expect($('chat-messages').textContent).toContain('Ván này căng đấy');
   });
-  test('my own message → bubble on the bottom card; a newer line from the same player replaces the old bubble', () => {
+  test('my own message → bubble under my card (#413: top-right of the seat row), right-aligned; a newer line replaces the old one', () => {
     load();
     chat('Minh', 'một', 'u-me');
     chat('Minh', 'hai', 'u-me');
     const bubbles = $('speech-layer').querySelectorAll('.speech');
     expect(bubbles).toHaveLength(1);
     expect(bubbles[0].textContent).toBe('hai');
-    expect(bubbles[0].classList.contains('speech--bottom')).toBe(true);
+    expect([...bubbles[0].classList]).toEqual(expect.arrayContaining(['speech--top', 'speech--right', 'speech--mine']));
+    expect(bubbles[0].style.top).not.toBe('');
+    expect(bubbles[0].style.right).not.toBe('');
+    expect(bubbles[0].style.bottom).toBe('');
   });
   test('bubbles fade after 4 s and leave the DOM', () => {
     jest.useFakeTimers();
@@ -324,7 +327,7 @@ describe('mockup C details', () => {
     $('stage').dispatchEvent(ev('pointerdown', 300)); $('stage').dispatchEvent(ev('pointerup', 250));
     expect(document.body.classList.contains('stage-sheet-open')).toBe(true);
   });
-  test('chat lines carry a face and "· người chơi" for seated players (shown only in the phone sheet)', () => {
+  test('chat lines carry a face and a "người chơi" pill for seated players (shown only in the phone sheet)', () => {
     load({ users: [{ ...ME, slot: 1 }, OPP, guest(1)] });
     window.RoomUI = { avatarInner: (u) => 'AV:' + u.displayName };
     chat('Hoàng Long', 'a', 'u-opp');
@@ -333,7 +336,7 @@ describe('mockup C details', () => {
     const [opp, g, me] = [...$('chat-messages').querySelectorAll('.chat-msg')];
     expect(opp.classList.contains('chat-msg--player')).toBe(true);
     expect(opp.querySelector('.chat-msg__av').textContent).toBe('AV:Hoàng Long');
-    expect(opp.querySelector('.chat-msg__tag').textContent).toBe(' · room.player_tag');
+    expect(opp.querySelector('.chat-msg__tag').textContent).toBe('room.player_tag'); // #414: pill, no '·'
     expect(g.querySelector('.chat-msg__tag')).toBeNull();
     expect(me.querySelector('.chat-msg__av')).toBeNull(); // mine: green bubble on the right, no face
     expect(CSS).toMatch(/body\.arena-room \.chat-msg__av, body\.arena-room \.chat-msg__tag, body\.arena-room \.scorecard/); // hidden outside .rsheet

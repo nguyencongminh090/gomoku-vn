@@ -102,6 +102,10 @@ describe('seat order', () => {
     const sit = top().querySelector('[data-action="sitDown"]');
     expect(sit).not.toBeNull();
     expect(sit.getAttribute('data-arg')).toBe('2');
+    // #414: label + seat badge as separate parts, never "Ngồi vào · #2"
+    expect(sit.querySelector('.seatcard__no').textContent).toBe('#2');
+    expect(sit.textContent).not.toContain('·');
+    expect(sit.getAttribute('aria-label')).toMatch(/ #2$/);
 
     window.RoomState.roomData.state = 'playing';
     window.RoomUI.renderPlayerCards();
@@ -115,6 +119,15 @@ describe('seat order', () => {
     window.RoomUI.renderPlayerCards();
     expect(bottom().querySelector('img')).toBeNull();
     expect(bottom().querySelector('.seatcard__name').textContent).toBe('<img src=x onerror=alert(1)>');
+  });
+
+  test('#413: a long name keeps its full text in the tooltip (the phone cell cuts it with an ellipsis)', () => {
+    const long = 'Nguyễn Hoàng Long "Kỳ thủ" Đại Việt 2026';
+    setup({ gameState: null, users: [{ userId: 'me', displayName: long, slot: 1, role: 'player' }] });
+    window.RoomUI.renderPlayerCards();
+    const name = bottom().querySelector('.seatcard__name');
+    expect(name.textContent).toBe(long);
+    expect(name.getAttribute('title')).toBe(long);
   });
 });
 

@@ -86,3 +86,67 @@ describe('settings-panel volume rows', () => {
     expect(window.GvnSettings.getVolume('move')).toBe(35);
   });
 });
+
+describe('recorded move sample', () => {
+  test('plays the decoded sample (scaled, lower pitch for opponent) instead of the synth', () => {
+    const am = load();
+    const played = [];
+    const rates = [];
+    am.ctx.createBufferSource = () => ({
+      connect() {}, start() { played.push(this.buffer); }, buffer: null,
+      playbackRate: { setValueAtTime(v) { rates.push(v); } },
+    });
+    let oscs = 0;
+    const mkOsc = am.ctx.createOscillator;
+    am.ctx.createOscillator = () => { oscs++; return mkOsc(); };
+    const sample = { duration: 0.16 };
+    am.moveSample = sample;
+    am.setChannelVolume('move', 0.5);
+    am.playMoveSound(false);
+    am.playMoveSound(true);
+    expect(played).toEqual([sample, sample]);
+    expect(rates).toEqual([1, 0.88]);
+    expect(oscs).toBe(0);
+    expect(am.ctx.gains).toEqual([0.5, 0.5]);
+    am.setMute(true);
+    am.playMoveSound(false);
+    expect(played.length).toBe(2);
+  });
+
+  test('without a loaded sample the synth plays and a load is attempted once', () => {
+    const am = load();
+    const calls = [];
+    window.fetch = (u) => { calls.push(u); return new Promise(() => {}); };
+    am.playMoveSound(false);
+    am.playMoveSound(false);
+    expect(am.ctx.gains.length).toBeGreaterThan(0);
+    expect(calls.length).toBe(1);
+    expect(calls[0]).toMatch(/^assets\/sounds\/move\.mp3\?v=/);
+    delete window.fetch;
+  });
+
+  test('a failed load leaves the synth and allows a retry', async () => {
+    const am = load();
+    let n = 0;
+    window.fetch = () => { n++; return Promise.resolve({ ok: false, status: 404 }); };
+    am._loadMoveSample();
+    await new Promise((r) => setTimeout(r, 0));
+    expect(am.moveSample).toBeFalsy();
+    am._loadMoveSample();
+    expect(n).toBe(2);
+    delete window.fetch;
+  });
+});
+
+describe('move sample asset', () => {
+  test('the referenced MP3 exists and is a real MP3 file', () => {
+    const url = load().constructor.MOVE_SAMPLE_URL || '';
+    const rel = url.split('?')[0];
+    expect(rel).toBe('assets/sounds/move.mp3');
+    const buf = fs.readFileSync(path.join(__dirname, '..', rel));
+    const id3 = buf.toString('ascii', 0, 3) === 'ID3';
+    const sync = buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0;
+    expect(id3 || sync).toBe(true);
+    expect(buf.length).toBeLessThan(64 * 1024);
+  });
+});

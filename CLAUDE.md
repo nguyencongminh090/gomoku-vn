@@ -8,6 +8,7 @@ path-scoped `.claude/rules/*.md` (auto-load when you touch matching files) and s
 `npm test` (server+client jsdom, ~11 s) · `npx jest <file>` while iterating · `npm run test:e2e`
 (read `playwright-e2e-safety` first) · `node scripts/cache-bust.js [--write]` · `node scripts/track.js …`
 UI audit: skill `ux-audit`, site settings (URL, auth, pages, allowlist) in `.audit/README.md`.
+Environments: **production = `play3cr.win` on the VPS** (real DB). `dev.play3cr.win` = the app on the PC, stale DB, **test only** — never serves real users. → skill `vps-deploy`.
 
 ## Hard rules
 1. **Do only what was asked now.** A new requirement raised mid-conversation is *recorded*, not built
@@ -69,3 +70,4 @@ Precedence: this file, `.claude/rules/*` and user instructions > knowledge notes
 | Branching, merges, `dev`↔`main`, stash recovery | `git-workflow` skill |
 | Playwright / real-DB protection | `playwright-e2e-safety` skill |
 | New/redesigned UI screen | `design-workflow` skill |
+| Production deploy / restart / rollback on the VPS, `.env`, Cloudflare hostnames, `dev.play3cr.win` test route | `vps-deploy` skill + `docs/knowledge/vps-production-topology.md` |

@@ -226,20 +226,32 @@
       + `<span class="rex__verdict rex__verdict--${ex.ok ? 'ok' : 'no'}">${ex.ok ? '✓' : '✗'} ${escapeHtml(t(ex.key))}</span></div>`;
   }
 
-  /** The nav's rules line ("Luật 2 · Ô khoá") + the popover body. */
+  // #414 (ticket-rows.md): facts are separate pills spaced by CSS gap, never an "A · B" string.
+  // A visually hidden ", " between pills keeps screen readers from running the words together.
+  const SR_SEP = '<span class="rsr">, </span>';
+  const pillsHtml = (names, extra = '') => names.map((n) => `<span class="rpill${extra}">${escapeHtml(n)}</span>`).join(SR_SEP);
+
+  /** The nav's rules pills ([Luật 2] [Ô khoá]) + the popover body. */
   function renderRules() {
     const list = activeRules();
     const line = document.getElementById('room-rules-text');
-    // Full line on desktop; phones show the win rule + a count of the rest ("Luật 2 +1") — CSS picks one.
+    // Full pills on desktop; phones show the win rule + a count of the rest ("Luật 2 +1") — CSS picks one.
     if (line) {
-      line.innerHTML = `<span class="rnav__rules-full">${list.map((r) => `<span>${escapeHtml(r.name)}</span>`).join('<i class="rnav__dot" aria-hidden="true">·</i>')}</span>`
+      line.innerHTML = `<span class="rnav__rules-full">${pillsHtml(list.map((r) => r.name))}</span>`
         + `<span class="rnav__rules-short" aria-hidden="true">${escapeHtml(list[0].name)}${list.length > 1 ? ' +' + (list.length - 1) : ''}</span>`;
     }
     const sub = document.getElementById('room-menu-rules');
-    if (sub) sub.textContent = list.map((r) => r.name).join(' · ');
+    // The menu row is narrow: win-rule pill + a "+N" pill (the popover it opens lists them all),
+    // so a pill is never clipped mid-word.
+    if (sub) sub.innerHTML = pillsHtml([list[0].name].concat(list.length > 1 ? ['+' + (list.length - 1)] : []));
     const title = document.getElementById('room-menu-title');
     const code = roomIdNav && roomIdNav.dataset.code;
-    if (title && code) title.textContent = t('room.table_label', { code }) + ' · ' + t(isRatedNow() ? 'room.mode_rated' : 'room.mode_friendly');
+    // "Bàn #ABC" heading + the mode as its own pill.
+    if (title && code) {
+      const rated = isRatedNow();
+      title.innerHTML = `<span class="rmenu__code">${escapeHtml(t('room.table_label', { code }))}</span>${SR_SEP}`
+        + `<span class="rpill rpill--${rated ? 'rated' : 'friendly'}">${escapeHtml(t(rated ? 'room.mode_rated' : 'room.mode_friendly'))}</span>`;
+    }
     const body = document.getElementById('rules-pop-body');
     if (!body) return;
     body.innerHTML = list.map((r) => `
@@ -260,7 +272,7 @@
     // the title attribute (tap/long-press) — the code is what people type to join.
     const roomName = st.roomData.roomName || st.roomData.roomId;
     roomIdNav.innerHTML = `<span class="rnav__code-text">${escapeHtml(st.roomData.roomId)}</span>`
-      + '<svg class="icon rnav__copy" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-copy"></use></svg>';
+      + '<svg class="icon rnav__copy" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-copy"></use></svg>';
     roomIdNav.title = (roomName === st.roomData.roomId
       ? roomName
       : `${roomName} (${st.roomData.roomId})`) + ' — ' + t('room.link_copy');
@@ -377,7 +389,7 @@
       el.classList.add('seatcard--empty');
       delete el.dataset.clock;
       el.innerHTML = canSit
-        ? `<button class="seatcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number">${t('room.sit')} · #${slotNum}</button>`
+        ? `<button class="seatcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number" aria-label="${escapeHtml(t('room.sit'))} #${slotNum}"><span>${escapeHtml(t('room.sit'))}</span><span class="seatcard__no" aria-hidden="true">#${slotNum}</span></button>`
         : `<span class="seatcard__seat">#${slotNum}</span><span class="seatcard__empty">${t('room.slot_empty')}</span>`;
       return;
     }
@@ -390,12 +402,12 @@
       ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing' && !st.roomData.matchmade)
-      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-x"></use></svg></button>`
+      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
       <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
       <div class="seatcard__id">
-        <div class="seatcard__name">${escapeHtml(player.displayName)}</div>
+        <div class="seatcard__name" title="${escapeAttr(player.displayName)}">${escapeHtml(player.displayName)}</div>
         <div class="seatcard__meta">${renderStatusDot(player)}</div>
       </div>
       ${standBtn}
@@ -484,7 +496,7 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
     modeBadge.title = t(rated ? 'room.mode_rated' : 'room.mode_friendly'); // #376: icon-only in the ticket, text is sr-only
   }
 
@@ -688,7 +700,7 @@
       <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-caret-right"></use></svg>
       </a>
     `;
   }

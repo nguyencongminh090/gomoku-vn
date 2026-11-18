@@ -60,6 +60,7 @@ All environment variables below are optional and fall back to sensible defaults 
 | `MAX_USERS_PER_ROOM` | Max occupants per room | `40` |
 | `EMPTY_ROOM_GRACE_MS` | Grace period before an empty room is destroyed | `20000` |
 | `LISTEN_BACKLOG` | TCP accept-queue depth | `4096` |
+| `LISTEN_HOST` | Interface for `PORT`; production `127.0.0.1` (only local cloudflared reaches Node) | all interfaces |
 
 Put these in a `.env` file at the project root. It loads automatically on startup, and any variable already set in the real environment takes precedence over it.
 

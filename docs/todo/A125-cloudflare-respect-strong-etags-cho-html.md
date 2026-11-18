@@ -1,5 +1,7 @@
 # #125 — Cloudflare xoá `ETag` của HTML — cần bật "Respect Strong ETags" trên dashboard
 
+**Status:** ✅ CLOSED 2026-11-18 — user decision (not enabling "Respect Strong ETags"; Last-Modified still served, nothing broken).
+
 **Trạng thái:** chưa làm (không cần gấp)
 
 **Nguồn:** review vòng 4 (`gomoku-vn-review-2026-08-14.md` mục 13.9b) — đã đo trên site thật qua
