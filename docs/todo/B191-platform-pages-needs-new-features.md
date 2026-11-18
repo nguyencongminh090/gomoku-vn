@@ -1,5 +1,5 @@
 # B191 — Arena mockup items that need NEW features (B190 leftovers)
-**Status:** OPEN — all 6 items built (2026-10-10), on branch `ui/room-site-links`, awaiting review
+**Status:** ✅ CLOSED 2026-11-18 — user decision (closed without implementation). Earlier status: OPEN — all 6 items built (2026-10-10), on branch `ui/room-site-links`, awaiting review
 **Area:** server (friends/challenge/badges/geo), schema, client
 **From:** B190, 2026-10-09   **Depends:** B190
 

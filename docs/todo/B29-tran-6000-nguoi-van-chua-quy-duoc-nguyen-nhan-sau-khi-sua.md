@@ -1,5 +1,7 @@
 # Phần B #29. Trần >6000 người vẫn chưa quy được nguyên nhân — sau khi sửa backlog,
 
+**Status:** ✅ CLOSED 2026-11-18 — user decision (closed without implementation).
+
 **Nguồn:** truy nguyên trần kết nối (2026-08-02, xem `docs/stress-test-report.md` §10)
 
 
