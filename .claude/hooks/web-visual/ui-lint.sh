@@ -8,8 +8,11 @@ file=$(json_get_from "$input" file_path)
 case "${file##*.}" in css|scss|tsx|jsx|vue|svelte|html) ;; *) exit 0 ;; esac
 tokens=0
 [ -f "$(project_dir)/DESIGN.md" ] && grep -q '^## Tokens' "$(project_dir)/DESIGN.md" 2>/dev/null && tokens=1
+copy_en=0   # English typography check only when DESIGN.md sets an en-* locale under - Copy:
+[ -f "$(project_dir)/DESIGN.md" ] && grep -Eiq '^- Copy:.*(^|[^a-z])en-[a-z]{2}' "$(project_dir)/DESIGN.md" 2>/dev/null && copy_en=1
+markup=0; case "${file##*.}" in tsx|jsx|vue|svelte|html) markup=1 ;; esac
 
-res=$(awk -v tokens="$tokens" '
+res=$(awk -v tokens="$tokens" -v copy_en="$copy_en" -v markup="$markup" '
 function hv(c,   i) { i = index("0123456789abcdef", c); return i - 1 }
 function chan(h,   v) { v = h / 255; return (v <= 0.03928) ? v / 12.92 : ((v + 0.055) / 1.055) ^ 2.4 }
 function lum(x,   r, g, b) {   # x = hex digits, 3 or 6
@@ -81,6 +84,8 @@ BEGIN { depth = 0; buf = ""; incm = 0
   line = $0 ; tolower_line = tolower(line)
   n = length(tolower_line)
   if (tolower_line ~ /cdn\.pixabay\.com|pixabay\.com\/get\//) note("LAY-STOCK-IMAGES", NR, "Pixabay image hotlinked, download it and record credits (ui-images)")
+  if (tolower_line ~ /onpaste/ && tolower_line ~ /(preventdefault|return false)/) note("FRM-NO-PASTE-BLOCK", NR, "paste is blocked, let users paste (password managers, WCAG 2.2 3.3.8)")
+  if (copy_en && markup && tolower_line ~ /[a-z]\.\.\.[ ]*[<"`]/) note("CPY-EN-TYPOGRAPHY", NR, "three periods in UI text, use the ellipsis character …")
   if (tolower_line ~ (CB "transition-all" CE)) note("DEP-COMPOSITOR-ONLY", NR, "transition-all class also animates layout properties")
   if (tolower_line ~ (CB "ease-in" CE)) note("DEP-MOTION-TIMING", NR, "ease-in class on UI motion, use ease-out")
   if (match(tolower_line, CB "duration-[0-9]+" CE)) { dd = substr(tolower_line, RSTART, RLENGTH); gsub(/[^0-9]/, "", dd); if (dd + 0 > 500) note("DEP-MOTION-TIMING", NR, "duration-" dd " class is over 500ms for UI motion") }
@@ -122,7 +127,7 @@ BEGIN { depth = 0; buf = ""; incm = 0
 END {
   if (("o" in L) && !hasfv) note("PRI-FOCUS-VISIBLE", L["o"], "outline removed without a :focus-visible style")
   if (("m" in L) && !hasrm) note("DEP-REDUCED-MOTION", L["m"], "animation/transition without prefers-reduced-motion")
-  nord = split("TYP-BODY-SIZE PRI-FOCUS-VISIBLE DEP-REDUCED-MOTION COL-TOKENS-ONLY COL-CONTRAST-TEXT LAY-STOCK-IMAGES DEP-COMPOSITOR-ONLY DEP-MOTION-FALLBACK DEP-MOTION-TIMING DEP-SCALE-FROM-ZERO", ord, " ")
+  nord = split("TYP-BODY-SIZE PRI-FOCUS-VISIBLE DEP-REDUCED-MOTION COL-TOKENS-ONLY COL-CONTRAST-TEXT LAY-STOCK-IMAGES DEP-COMPOSITOR-ONLY DEP-MOTION-FALLBACK DEP-MOTION-TIMING DEP-SCALE-FROM-ZERO FRM-NO-PASTE-BLOCK CPY-EN-TYPOGRAPHY", ord, " ")
   for (k = 1; k <= nord; k++) { r = ord[k]; if (r in M) print r "\t" L[r] "\t" M[r] }
 }' "$file" 2>/dev/null) || exit 0
 [ -n "$res" ] || exit 0
