@@ -121,15 +121,15 @@
 
   .hh-live { display: flex; gap: 12px; margin: 0; padding: 0 16px 2px 0; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
   .hh-live::-webkit-scrollbar { display: none; }
-  .hh-live > li { flex: 0 0 152px; scroll-snap-align: start; }
+  .hh-live > li { flex: 0 0 152px; display: flex; scroll-snap-align: start; }
   .hh-live > li.hh-live__empty { flex: 1; padding: 8px 0; font-size: 15px; color: var(--hh-card-ink-2); }
-  .hh-game { display: flex; flex-direction: column; align-items: stretch; gap: 8px; width: 100%; padding: 8px 8px 10px; border: 1px solid var(--hh-card-line); border-radius: 16px; background: var(--hh-card-2); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .hh-game { display: flex; flex-direction: column; align-items: stretch; gap: 8px; flex: 1; min-width: 0; padding: 8px 8px 10px; border: 1px solid var(--hh-card-line); border-radius: 16px; background: var(--hh-card-2); color: inherit; font: inherit; text-align: left; cursor: pointer; }
   .hh-game:focus-visible { outline: 3px solid var(--hh-amber-2); outline-offset: 2px; }
-  .hh-game__p { display: flex; flex-wrap: wrap; column-gap: 5px; padding: 0 4px; font-size: 15px; font-weight: 700; line-height: 1.3; }
+  .hh-game__p { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 5px; padding: 0 4px; font-size: 15px; font-weight: 700; line-height: 1.3; }
   .hh-game__n { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .hh-game__n:first-child { flex-basis: 100%; }
+  .hh-game__n:first-child { grid-column: 1 / -1; }
   .hh-game__vs { font-weight: 600; color: var(--hh-card-ink-2); }
-  .hh-game__w { display: flex; align-items: center; gap: 6px; padding: 0 4px; font-size: 14px; font-weight: 600; color: var(--hh-card-ink-2); font-variant-numeric: tabular-nums; }
+  .hh-game__w { display: flex; margin-top: auto; align-items: center; gap: 6px; padding: 0 4px; font-size: 14px; font-weight: 600; color: var(--hh-card-ink-2); font-variant-numeric: tabular-nums; }
   .hh-game__w .icon { width: 18px; height: 18px; }
 
   /* mini board: decorative fallback; .hh-mini--real = #419 position window (one span per point, lines from the bg) */
