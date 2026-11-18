@@ -366,6 +366,10 @@
   --shadow-glass-inset: none;
 }
 
+/* Mobile tab bar active item (#418, template amber): skin-independent, ≥ 4.5:1 on every skin's --c-bg (test: lobby-home #418). */
+:root { --c-tab-on: #ffc865; }
+:root[data-mode="light"] { --c-tab-on: #a85600; }
+
 /* Club avatar fills (#235): skin-independent, each ≥ 4.5:1 under --club-ink. Separate block so the per-skin token-set test ignores it. */
 :root {
   --radius-pill: 999px;   /* #297: actions (pill) vs chips (rounded rect); skin-independent */
