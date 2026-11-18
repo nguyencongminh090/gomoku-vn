@@ -35,7 +35,7 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Spacing unit: 4px base; scale 8/12/16/24/32/44.
 - Radius: blanks .22em, cards 16px, code boxes 16px, main button 999px.
 - Motion: subtle; fast 140ms / base 240ms / slow 600ms, ease cubic-bezier(.2,.7,.2,1); one load reveal (rise 14px + fade, staggered 80ms), popover fade+scale 140ms, spinner while searching; prefers-reduced-motion → no movement, spinner replaced by static text.
-- Imagery: none (no photos); background = paper grid only, leaves removed, faded out below the hero. Decorative stones/boards CSS only.
+- Imagery: none (no photos); background = paper grid only, leaves removed, faded out below the hero. Decorative stones/boards CSS only. Exception: phone Home (≤860px) hero photo, #418 (user-approved 2026-11-18; self-hosted webp + dark scrim, white text ≥4.5:1).
 
 ## Layout
 - Sections (top to bottom): greeting row (Chào name · online tag · 4 icon-only links right) → resume strip (only when the user has a game) → sentence composer h1 with 3 blanks → Chơi nhanh button (swaps to searching state in place) → "hoặc vào phòng bằng mã" + 3-box code input + Vào phòng + "Xem N phòng đang mở"; right column (desktop): Đang tìm trận card (queue, ETA, sparkline), Đang chơi card (count + one live game).
@@ -45,7 +45,7 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Removing signifiers: blanks must look clickable (fill + underline + chevron); primary action never a ghost button.
 - Thin content hidden by empty space (keep the right-column cards; empty state text when 0).
 - Emoji as icons; text labels on the 4 secondary links (user chose icon-only + tooltip + aria-label).
-- Photos/stock imagery, leaf background on home, animating stones/board.
+- Photos/stock imagery (except the #418 phone Home hero photo), leaf background on home, animating stones/board.
 
 ## Phòng tab (#364, R1 "Sảnh gỗ")
 - Chosen 2026-11-13 from 8 mockups (`features/rooms-redesign/`). Style: vstyle-flat-material with one photographic hero.

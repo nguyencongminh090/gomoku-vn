@@ -24,6 +24,14 @@
   --hh-stone-b-hi: #555;
   --hh-stone-w: #d9d4cb;
   --hh-stone-w-hi: #fff;
+  --hh-shadow-title: rgba(0, 0, 0, .5);
+  --hh-shadow-sub: rgba(0, 0, 0, .6);
+  --hh-play-glow: rgba(243, 154, 30, .35);
+  --hh-play-hi: rgba(255, 255, 255, .55);
+  --hh-stat-line: rgba(255, 255, 255, .28);
+  --hh-live-ring: rgba(224, 53, 43, .18);
+  --hh-card-shadow: rgba(0, 0, 0, .25);
+  --hh-mini-edge: rgba(60, 35, 10, .25);
 }
 :root[data-mode="dark"] {
   --hh-card: rgba(40, 32, 24, .94);
@@ -60,15 +68,17 @@
 
   /* ── hero ── */
   body.zen-lobby #screen-home > .hq-main { position: relative; isolation: isolate; overflow: hidden; padding: 128px 20px 26px; color: var(--hh-on-photo); }
+  /* the hero is a stacking context (isolation), so the #qm-pick sheet's z-index stays inside it; lift the hero above the fixed tab bar while the sheet is open */
+  body.zen-lobby #screen-home > .hq-main:has(> .hq-menu:not([hidden])) { z-index: 70; }
   body.zen-lobby #screen-home > .hq-main::before { content: ""; position: absolute; inset: -8px; z-index: -2; filter: blur(2px) brightness(.9);
     background: var(--hh-night) image-set(url("../assets/photos/home-hero-720.webp?v=bc1706b4") 1x, url("../assets/photos/home-hero-1280.webp?v=f4684cee") 2x) 30% 20% / cover no-repeat; }
   body.zen-lobby #screen-home > .hq-main::after { content: ""; position: absolute; inset: 0; z-index: -1;
     background: linear-gradient(180deg, rgba(var(--hh-scrim), .6) 0%, rgba(var(--hh-scrim), .45) 25%, rgba(var(--hh-scrim), .62) 45%, rgba(var(--hh-scrim), .82) 70%, var(--hh-night) 100%); }
-  .hh-title { display: block; margin: 0; text-align: center; font-family: var(--font-display, inherit); font-size: 46px; font-weight: 900; line-height: 1; letter-spacing: -.02em; color: var(--hh-on-photo); text-shadow: 0 2px 18px rgba(0, 0, 0, .5); }
+  .hh-title { display: block; margin: 0; text-align: center; font-family: var(--font-display, inherit); font-size: 46px; font-weight: 900; line-height: 1; letter-spacing: -.02em; color: var(--hh-on-photo); text-shadow: 0 2px 18px var(--hh-shadow-title); }
   .hh-title b { color: var(--hh-amber-1); font-weight: 900; }
-  .hh-sub { display: block; margin: 10px 0 24px; text-align: center; font-size: 17px; font-weight: 600; color: var(--hh-on-photo-2); text-shadow: 0 1px 10px rgba(0, 0, 0, .6); text-wrap: balance; }
+  .hh-sub { display: block; margin: 10px 0 24px; text-align: center; font-size: 17px; font-weight: 600; color: var(--hh-on-photo-2); text-shadow: 0 1px 10px var(--hh-shadow-sub); text-wrap: balance; }
 
-  body.zen-lobby #screen-home .hq-play { justify-content: center; gap: 12px; min-height: 64px; padding: 0 20px; background: linear-gradient(180deg, var(--hh-amber-1), var(--hh-amber-2)); color: var(--hh-amber-ink); box-shadow: 0 10px 28px rgba(243, 154, 30, .35), inset 0 1px 0 rgba(255, 255, 255, .55); }
+  body.zen-lobby #screen-home .hq-play { justify-content: center; gap: 12px; min-height: 64px; padding: 0 20px; background: linear-gradient(180deg, var(--hh-amber-1), var(--hh-amber-2)); color: var(--hh-amber-ink); box-shadow: 0 10px 28px var(--hh-play-glow), inset 0 1px 0 var(--hh-play-hi); }
   body.zen-lobby #screen-home .hq-play:hover { transform: none; }
   body.zen-lobby #screen-home .hq-play:focus-visible { outline: 3px solid var(--hh-on-photo); outline-offset: 3px; }
   body.zen-lobby #screen-home .hq-play__disc { width: auto; height: auto; background: none; color: inherit; }
@@ -91,16 +101,16 @@
 
   .hh-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 24px 0 0; }
   .hh-stats > div { display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; min-width: 0; text-align: center; }
-  .hh-stats > div + div { border-left: 1px solid rgba(255, 255, 255, .28); }
+  .hh-stats > div + div { border-left: 1px solid var(--hh-stat-line); }
   .hh-stats dd { margin: 0; font-size: 30px; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; color: var(--hh-on-photo); }
   .hh-stats dt { font-size: 14px; font-weight: 600; color: var(--hh-on-photo-2); }
 
   /* ── cards ── */
-  .hh-card, body.zen-lobby #screen-home > .hnews:not([hidden]) { display: block; margin: 0 12px; padding: 14px 0 16px 16px; border-radius: 22px; background: var(--hh-card); color: var(--hh-card-ink); box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+  .hh-card, body.zen-lobby #screen-home > .hnews:not([hidden]) { display: block; margin: 0 12px; padding: 14px 0 16px 16px; border-radius: 22px; background: var(--hh-card); color: var(--hh-card-ink); box-shadow: 0 8px 24px var(--hh-card-shadow); }
   .hh-card__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-right: 12px; margin-bottom: 8px; }
   .hh-card h2, body.zen-lobby .hnews__head { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 18px; font-weight: 800; color: inherit; }
   body.zen-lobby .hnews__head .icon { width: 20px; height: 20px; }
-  .hh-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--hh-live-dot); box-shadow: 0 0 0 4px rgba(224, 53, 43, .18); }
+  .hh-dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--hh-live-dot); box-shadow: 0 0 0 4px var(--hh-live-ring); }
   .hh-more { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 700; color: inherit; text-decoration: underline; text-underline-offset: 3px; }
   .hh-more .icon { width: 16px; height: 16px; }
 
@@ -118,7 +128,7 @@
   .hh-game__w .icon { width: 18px; height: 18px; }
 
   /* mini board: decorative fallback; .hh-mini--real = #419 position window (one span per point, lines from the bg) */
-  .hh-mini { display: block; aspect-ratio: 4 / 3; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(60, 35, 10, .25);
+  .hh-mini { display: block; aspect-ratio: 4 / 3; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--hh-mini-edge);
     --b: radial-gradient(circle at 40% 35%, var(--hh-stone-b-hi) 0 18%, var(--hh-stone-b) 48%, transparent 52%);
     --w: radial-gradient(circle at 40% 35%, var(--hh-stone-w-hi) 0 25%, var(--hh-stone-w) 48%, transparent 52%);
     --s: 11% 14.5%;
@@ -142,7 +152,7 @@
   body.zen-lobby #screen-home .hnews__line + .hnews__line { display: flex; border-top: 1px solid var(--hh-card-line); }
 
   /* news (#home-news, one admin line) as a card */
-  body.zen-lobby #screen-home > .hnews { padding-right: 16px; }
+  body.zen-lobby #screen-home > .hnews:not([hidden]) { padding-right: 16px; }   /* :not([hidden]) = same specificity as the shared card rule above, else its 0 wins */
   body.zen-lobby .hnews__head { margin-bottom: 4px; }
   body.zen-lobby #screen-home .hnews__line { padding: 8px 0; border-radius: 0; background: none; box-shadow: none; color: inherit; font-size: 16px; font-weight: 600; }
   body.zen-lobby #screen-home a.hnews__line:hover { background: none; text-decoration: underline; }
