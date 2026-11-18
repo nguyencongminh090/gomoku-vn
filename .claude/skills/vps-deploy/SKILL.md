@@ -62,3 +62,8 @@ add the origin to `CORS_ORIGIN` + restart if it serves the app → 20× curl loo
 - Don't deploy with a dirty VPS tree, unpushed code, or without the user's go for the restart.
 - Don't delete the old DB/backup copies, or run a full-DB restore, unasked.
 - Don't print or copy secrets; don't `cat` the VPS `.env`.
+
+## 8. Engine build files (#405, not in git)
+`server/engine-files/<hex12>/` (rapfi-*.wasm/.js/.data) is gitignored, so `git pull` never brings it. To enable the engine on prod:
+`rsync -a server/engine-files/<hex12> deploy@$VPS:~/gomoku-vn/server/engine-files/` → VPS `.env` (§4): `ENGINE_FILES_DIR=/home/deploy/gomoku-vn/server/engine-files`,
+`ENGINE_LEASES_ENABLED=true`, optional `ENGINE_BUILD_ID=<hex12>` → restart (user's go). A new build = new hash dir; rsync it, switch `ENGINE_BUILD_ID`, restart; delete the old dir later.

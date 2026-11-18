@@ -75,3 +75,6 @@ docs/proposal/
 
 # local server logs (real usernames/IPs)
 log.txt
+
+# Rapfi engine builds (binary, ~3 MB each) — copied to the VPS by rsync, see skill vps-deploy §8
+server/engine-files/
