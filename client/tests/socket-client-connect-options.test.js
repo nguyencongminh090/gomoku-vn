@@ -122,14 +122,28 @@ describe('SocketClient connect options (TODO #131)', () => {
 
   test('keeps cookie-based handshake auth (TODO #68)', () => {
     expect(options.withCredentials).toBe(true);
-    expect(options.auth).toEqual({});
+    expect(options.auth).toEqual({ roomPage: false }); // no token; #422 page marker only
   });
 
   // ── Auth-payload edge cases ───────────────────────────────────────────────
   test('a leftover pre-#68 localStorage token still rides along as auth.token', () => {
     const { options: withLegacy } = constructAndCaptureOptions({ legacyToken: 'legacy-jwt' });
-    expect(withLegacy.auth).toEqual({ token: 'legacy-jwt' });
+    expect(withLegacy.auth).toEqual({ token: 'legacy-jwt', roomPage: false });
     expect(withLegacy.timeout).toBe(12000);
+  });
+
+  // #422: the server resumes an interrupted game only for the room page; any other page is bounced back.
+  test.each([
+    ['/room.html', true],
+    ['/room', true],
+    ['/', false],
+    ['/index.html', false],
+    ['/social.html', false],
+    ['/classroom.html', false],
+    ['/room.html/x', false],
+    ['', false],
+  ])('isRoomPage(%p) → %p', (pathname, expected) => {
+    expect(window.SocketClient.isRoomPage(pathname)).toBe(expected);
   });
 
   test('no believed session → redirects to login without opening a socket at all', () => {

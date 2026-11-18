@@ -250,7 +250,9 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     expect(mockRoomManager.leaveRoom).not.toHaveBeenCalledWith('u1');
   });
 
-  test('a second disconnect grace call for the same user clears the stale timer instead of stacking two', () => {
+  // #422: a second socket that never resumed the game (Back → lobby page, which bounces to the room)
+  // closing mid-grace keeps the running window — no second timer, no restart, no repeat interrupt.
+  test('a second disconnect during the same grace keeps the running window instead of stacking or restarting it', () => {
     const io = makeIo();
     const socket = makeSocket('u1', 'Alice');
     const room = activeGameRoom();
@@ -260,16 +262,15 @@ describe('DisconnectHandler — grace period lifecycle', () => {
     DisconnectHandler.handleDisconnect(io, socket);
     const firstEntry = mockState.disconnectTimers.get('u1');
 
-    // Simulate the same user disconnecting again before the first grace period ended
-    // (e.g. flaky network bouncing the socket) — a stale timer must be replaced, not stacked.
+    jest.advanceTimersByTime(40_000);
     DisconnectHandler.handleDisconnect(io, makeSocket('u1', 'Alice'));
-    const secondEntry = mockState.disconnectTimers.get('u1');
 
     expect(mockState.disconnectTimers.size).toBe(1);
-    expect(secondEntry).not.toBe(firstEntry);
+    expect(mockState.disconnectTimers.get('u1')).toBe(firstEntry);
+    expect((io._toEmitted.room1 || []).filter(e => e.event === 'game:interrupted')).toHaveLength(1);
 
-    // Only one game-end should ever fire once the (single, latest) timer expires.
-    jest.advanceTimersByTime(60_000);
+    // The ORIGINAL deadline still ends the game — a page bounce can't extend the grace.
+    jest.advanceTimersByTime(config.DISCONNECT_GRACE_MS - 40_000);
     expect(mockHandleGameEnd).toHaveBeenCalledTimes(1);
   });
 

@@ -533,6 +533,57 @@ describe('SocketHandler — connection with no surviving room (restart-hang)', (
     expect(mockRoomManager.getRoomByUser).not.toHaveBeenCalled();
   });
 
+  // #422: Back pressed mid-game → the room page's socket drops (grace starts) and the previous page
+  // (lobby/home) connects. It must not resume the game there; it gets room:joined so lobby.js
+  // navigates back into the room, whose own connection then resumes it.
+  describe('#422 a non-room page connecting during the in-game grace', () => {
+    const { disconnectTimers } = require('../socket/state');
+    afterEach(() => disconnectTimers.clear());
+
+    function graceRoom({ queueRoom = true } = {}) {
+      const me = { userId: 'u1', presence: 'disconnected' };
+      const room = { roomId: 'r1', gameState: { status: 'ongoing', serialize: () => ({}) }, users: new Map([['u1', me]]) };
+      disconnectTimers.set('u1', { roomId: 'r1' });
+      // A resumed connect never reaches getRoomByUser — a queued Once would leak into the next test.
+      if (queueRoom) mockRoomManager.getRoomByUser.mockReturnValueOnce(room);
+      mockRoomManager.serializeRoom = jest.fn(() => ({ roomId: 'r1' }));
+      return me;
+    }
+
+    test.each([
+      ['fresh lobby load', { roomPage: false }],
+      ['lobby socket.io reconnect (bfcache restore)', { roomPage: false, reconnect: true }],
+    ])('%s: gets room:joined, game not resumed, still disconnected', (_c, auth) => {
+      const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
+      const io = makeIo();
+      init(io);
+      const me = graceRoom();
+      const a = makeSocket(io, 'sockA', 'u1', 'Alice', auth);
+      connectSocket(io, a);
+
+      expect(DisconnectHandler.cancelDisconnectGrace).not.toHaveBeenCalled();
+      expect(sockEmit(a, 'room:joined')).toBeDefined();
+      expect(me.presence).toBe('disconnected'); // opponent keeps seeing "disconnected", not "away"
+    });
+
+    test.each([
+      ['fresh room page load', { roomPage: true }],
+      ['room page reconnect', { roomPage: true, reconnect: true, roomId: 'r1' }],
+      ['pre-#422 client (no roomPage flag)', {}],
+    ])('%s: resumes the game as before', (_c, auth) => {
+      const DisconnectHandler = require('../socket/handlers/DisconnectHandler');
+      DisconnectHandler.cancelDisconnectGrace.mockReturnValueOnce(true);
+      const io = makeIo();
+      init(io);
+      graceRoom({ queueRoom: false });
+      const a = makeSocket(io, 'sockA', 'u1', 'Alice', auth);
+      connectSocket(io, a);
+
+      expect(DisconnectHandler.cancelDisconnectGrace).toHaveBeenCalled();
+      expect(sockEmit(a, 'room:joined')).toBeUndefined();
+    });
+  });
+
   // TODO.md #42 / instruction.md §42: the DisconnectHandler unit tests only
   // ever call cancelEmptyRoomGrace() directly, so they can't catch the call
   // site here in SocketHandler.js being dropped — confirmed by a mutation
