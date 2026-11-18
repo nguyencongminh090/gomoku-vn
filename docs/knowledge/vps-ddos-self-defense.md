@@ -57,6 +57,22 @@ Hosts, IPs, distribution IDs: agent memory / `vps-deploy` skill — never in thi
 - `LISTEN_HOST=127.0.0.1` in VPS `.env` (code: `server/config.js`) — active after the next `pm2 restart --update-env`.
 - sshd already key-only (`sshd -T`: passwordauthentication no, permitrootlogin without-password).
 
+## Deferred (not TODO items — user opens one when needed, 2026-11-18)
+**Layer 2 — Cloudflare free features**
+- Rate-limit rule `/api/*`: start in *Log* action, read a week of hits, then pick a threshold that never
+  touches lobby load / polling; then switch to *Block*. 1 rule on the free plan.
+- Bot Fight Mode: free plan cannot skip it per path → risk of challenging `/socket.io` long-polling and the
+  Google OAuth callback. Try on `dev.play3cr.win` first.
+- Cache rule for public GETs: audit each endpoint for per-user output first (session cookie, `req.user`);
+  a wrong cache rule leaks one user's data to others.
+
+**Layer 7 — per-IP concurrent socket cap (Node)**
+- Key on `getClientIp()` (real client IP behind tunnel/CloudFront), count on connect, decrement on disconnect.
+- Ship log-only first (max sockets per IP per day), then enforce at a generous cap (≈20–30) because VN mobile
+  carriers share IPs (CGNAT). Reject with a clear error, never crash.
+- Also consider `maxHttpBufferSize` below the 1 MB default and `server.headersTimeout`/`requestTimeout`.
+- Size M: backend tests + browser pass + deploy (restart drops rooms).
+
 ## Traps
 - ufw on Ubuntu is iptables-nft; mixing hand-written `nft` tables with ufw makes rule order hard to reason
   about. Prefer ufw (`/etc/ufw/before.rules` for raw rate limits) unless replacing ufw entirely.
