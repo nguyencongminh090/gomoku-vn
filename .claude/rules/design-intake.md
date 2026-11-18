@@ -2,8 +2,6 @@
 paths:
   - "features/**"
   - "docs/templates/**"
-  - "security_report.md"
-  - "issue report.md"
 ---
 
 # `features/<slug>/` — design discussion before tracked work
