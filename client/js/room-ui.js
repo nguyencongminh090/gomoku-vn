@@ -272,7 +272,7 @@
     // the title attribute (tap/long-press) — the code is what people type to join.
     const roomName = st.roomData.roomName || st.roomData.roomId;
     roomIdNav.innerHTML = `<span class="rnav__code-text">${escapeHtml(st.roomData.roomId)}</span>`
-      + '<svg class="icon rnav__copy" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-copy"></use></svg>';
+      + '<svg class="icon rnav__copy" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-copy"></use></svg>';
     roomIdNav.title = (roomName === st.roomData.roomId
       ? roomName
       : `${roomName} (${st.roomData.roomId})`) + ' — ' + t('room.link_copy');
@@ -402,7 +402,7 @@
       ? global.boardPieceSvg(clock.stone === 'black' ? 1 : 2, 'seatcard__piece')
       : '';
     const standBtn = (isMe && st.roomData.state !== 'playing' && !st.roomData.matchmade)
-      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-x"></use></svg></button>`
+      ? `<button class="seatcard__stand" type="button" data-action="standUp" title="${escapeAttr(t('room.stand_up'))}" aria-label="${escapeAttr(t('room.stand_up'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-x"></use></svg></button>`
       : '';
     el.innerHTML = `
       <div class="seatcard__av${isMe ? ' seatcard__av--me' : ''}" aria-hidden="true">${avatarInner(player)}${piece}</div>
@@ -496,7 +496,7 @@
     const rated = isRatedNow();
     modeBadge.hidden = false;
     modeBadge.className = 'mode-badge ' + (rated ? 'mode-badge--rated' : 'mode-badge--friendly');
-    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
+    modeBadge.innerHTML = `<svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-${rated ? 'trophy' : 'handshake'}"></use></svg><span>${t(rated ? 'room.mode_rated' : 'room.mode_friendly')}</span>`;
     modeBadge.title = t(rated ? 'room.mode_rated' : 'room.mode_friendly'); // #376: icon-only in the ticket, text is sr-only
   }
 
@@ -700,7 +700,7 @@
       <a class="board-look-link" href="/settings.html?return=${encodeURIComponent(location.pathname + location.search)}#look">
         <span class="board-look-link__pv">${preview}</span>
         <span class="board-look-link__t"><b>${t('room.board_look')}</b><small>${t('room.board_look_hint')}</small></span>
-        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=cd66da24#ph-regular-caret-right"></use></svg>
+        <svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-caret-right"></use></svg>
       </a>
     `;
   }

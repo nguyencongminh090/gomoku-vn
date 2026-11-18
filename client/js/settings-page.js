@@ -7,7 +7,7 @@
  */
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
-  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=cd66da24'; // ?v=: /assets is immutable-cached
+  const SPRITE = '/assets/icons/phosphor-sprite.svg?v=d9575ee8'; // ?v=: /assets is immutable-cached
   const TABS = ['profile', 'look', 'game', 'account'];
   const S = () => window.GvnSettings || {};
 
