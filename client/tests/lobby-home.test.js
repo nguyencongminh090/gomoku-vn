@@ -212,8 +212,8 @@ describe('news, forum, learn, about (#224)', () => {
     { id: 't2', title: 'Two', category: 'general', replyCount: 0, lastPostAt: '2026-10-09T00:00:00Z', author: 'Sak' },
   ];
 
-  it('news line: text via textContent, link only for same-site paths, hidden when null', async () => {
-    await boot('/index.html', { ...EMPTY, news: { id: 'n', body: XSS, link: '/forum/t/abc' } });
+  it('news line: text via textContent, link only for same-site paths, hidden when empty/null', async () => {
+    await boot('/index.html', { ...EMPTY, news: [{ id: 'n', body: XSS, link: '/forum/t/abc' }] });
     const box = document.getElementById('home-news');
     expect(box.hidden).toBe(false);
     expect(box.querySelector('img')).toBeNull();
@@ -222,12 +222,14 @@ describe('news, forum, learn, about (#224)', () => {
     expect(a.querySelector('.hnews__body').textContent).toBe(XSS);
 
     for (const link of ['//evil.example', 'javascript:alert(1)', 'https://x.example', null]) {
-      await boot('/index.html', { ...EMPTY, news: { id: 'n', body: 'Hi', link } });
+      await boot('/index.html', { ...EMPTY, news: [{ id: 'n', body: 'Hi', link }] });
       expect(document.querySelector('#home-news a')).toBeNull();
       expect(document.querySelector('#home-news p.hnews__line .hnews__body').textContent).toBe('Hi');
     }
-    await boot('/index.html', { ...EMPTY, news: null });
-    expect(document.getElementById('home-news').hidden).toBe(true);
+    for (const news of [null, [], [{ id: 'n', body: '' }]]) {
+      await boot('/index.html', { ...EMPTY, news });
+      expect(document.getElementById('home-news').hidden).toBe(true);
+    }
     await boot('/index.html', EMPTY); // older payload without the key
     expect(document.getElementById('home-news').hidden).toBe(true);
   });
@@ -944,11 +946,32 @@ describe('#418 phone hero: chips, counts, live card, news card', () => {
   });
 
   it('news card: title + day/month of createdAt; a bad date shows no time', async () => {
-    await boot('/index.html', { ...EMPTY, news: { id: 1, body: 'Giải đấu', link: '/tournament.html', createdAt: '2026-11-15T08:00:00Z' } });
+    await boot('/index.html', { ...EMPTY, news: [{ id: 1, body: 'Giải đấu', link: '/tournament.html', createdAt: '2026-11-15T08:00:00Z' }] });
     expect(document.querySelector('#home-news .hnews__head').textContent).toBe('home.news_title');
     expect(document.querySelector('#home-news time').textContent).toBe('15/11');
-    await boot('/index.html', { ...EMPTY, news: { id: 1, body: 'x', link: null, createdAt: 'nope' } });
+    await boot('/index.html', { ...EMPTY, news: [{ id: 1, body: 'x', link: null, createdAt: 'nope' }] });
     expect(document.querySelector('#home-news time')).toBeNull();
+  });
+
+  it('#419 news card lists up to 2 items in server order; desktop CSS keeps one line', async () => {
+    await boot('/index.html', { ...EMPTY, news: [{ id: 2, body: 'B', link: '/forum' }, { id: 1, body: 'A', link: null }] });
+    expect([...document.querySelectorAll('#home-news .hnews__line')].map((l) => [l.tagName, l.querySelector('.hnews__body').textContent])).toEqual([['A', 'B'], ['P', 'A']]);
+    expect(document.querySelectorAll('#home-news .hnews__head')).toHaveLength(1);
+    expect(read('css/shell.css')).toMatch(/body\.zen-lobby \.hnews__line \+ \.hnews__line \{ display: none; \}/);
+    expect(read('css/home-hero.css')).toMatch(/#screen-home \.hnews__line \+ \.hnews__line \{ display: flex;/);
+  });
+
+  it('#419 live card: real mini board from thumb (stones, last move); bad/missing thumb → decorative', async () => {
+    const cells = '.'.repeat(30) + 'b' + 'w' + '.'.repeat(31);
+    const thumb = { x: 3, y: 4, cols: 9, rows: 7, cells, last: 31 };
+    await boot('/index.html', { ...EMPTY, live: [{ ...LIVE[0], thumb }, { ...LIVE[1], thumb: { ...thumb, cells: 'bw' } }] });
+    const [real, fake] = [...document.querySelectorAll('#home-live .hh-mini')];
+    expect(real.className).toBe('hh-mini hh-mini--real');
+    expect(real.getAttribute('aria-hidden')).toBe('true');
+    expect([real.style.getPropertyValue('--cols'), real.style.getPropertyValue('--rows')]).toEqual(['9', '7']);
+    expect(real.children).toHaveLength(63);
+    expect([real.children[30].className, real.children[31].className, real.children[0].className]).toEqual(['is-b', 'is-w is-last', '']);
+    expect(fake.className).toBe('hh-mini hh-mini--1');
   });
 
   it('i18n: no key defined twice in a locale (#418 shipped "{a} vs {b}": a later twin silently won)', () => {

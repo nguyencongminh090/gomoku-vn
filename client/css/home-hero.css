@@ -117,7 +117,7 @@
   .hh-game__w { display: flex; align-items: center; gap: 6px; padding: 0 4px; font-size: 14px; font-weight: 600; color: var(--hh-card-ink-2); font-variant-numeric: tabular-nums; }
   .hh-game__w .icon { width: 18px; height: 18px; }
 
-  /* decorative mini board (no real stones: /api/home sends none, F419) */
+  /* mini board: decorative fallback; .hh-mini--real = #419 position window (one span per point, lines from the bg) */
   .hh-mini { display: block; aspect-ratio: 4 / 3; border-radius: 10px; box-shadow: inset 0 0 0 1px rgba(60, 35, 10, .25);
     --b: radial-gradient(circle at 40% 35%, var(--hh-stone-b-hi) 0 18%, var(--hh-stone-b) 48%, transparent 52%);
     --w: radial-gradient(circle at 40% 35%, var(--hh-stone-w-hi) 0 25%, var(--hh-stone-w) 48%, transparent 52%);
@@ -131,6 +131,15 @@
       linear-gradient(135deg, var(--hh-wood-1), var(--hh-wood-2)); }
   .hh-mini--1 { background-position: 50% 25%, 60% 40%, 50% 40%, 40% 55%, 60% 55%, 70% 40%, 40% 70%, 30% 55%, 80% 25%, 0 0, 0 0, 0 0; }
   .hh-mini--2 { background-position: 40% 40%, 50% 40%, 50% 55%, 60% 55%, 30% 70%, 70% 25%, 60% 70%, 20% 40%, 80% 55%, 0 0, 0 0, 0 0; }
+  .hh-mini--real { display: grid; grid-template-columns: repeat(var(--cols), 1fr); aspect-ratio: var(--cols) / var(--rows);
+    background:
+      linear-gradient(90deg, transparent calc(50% - .5px), var(--hh-wood-line) 0 calc(50% + .5px), transparent 0) 0 0 / calc(100% / var(--cols)) 100%,
+      linear-gradient(0deg, transparent calc(50% - .5px), var(--hh-wood-line) 0 calc(50% + .5px), transparent 0) 0 0 / 100% calc(100% / var(--rows)),
+      linear-gradient(135deg, var(--hh-wood-1), var(--hh-wood-2)); }
+  .hh-mini--real > .is-b { background: var(--b); }
+  .hh-mini--real > .is-w { background: var(--w); }
+  .hh-mini--real > .is-last { border-radius: 50%; box-shadow: 0 0 0 1.5px var(--hh-amber-2); }
+  body.zen-lobby #screen-home .hnews__line + .hnews__line { display: flex; border-top: 1px solid var(--hh-card-line); }
 
   /* news (#home-news, one admin line) as a card */
   body.zen-lobby #screen-home > .hnews { padding-right: 16px; }

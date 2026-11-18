@@ -29,6 +29,42 @@ const tournamentManager = require('../managers/tournament/TournamentManager');
 const LIVE_LIMIT = 3;
 const TOURNAMENT_LIMIT = 5;
 const FORUM_LIMIT = 3;
+const NEWS_LIMIT = 2; // #419 phone news card lists 2
+const THUMB_COLS = 9; // #419 live thumbnail = a THUMB_COLS x THUMB_ROWS window of the board, not the whole history
+const THUMB_ROWS = 7;
+
+/** Axis start of a `len`-wide window over [0, size): centred on [lo, hi] when it fits, else on `focus`. */
+function windowStart(lo, hi, focus, len, size) {
+  if (size <= len) return 0;
+  const centre = hi - lo + 1 <= len ? (lo + hi) / 2 : focus;
+  return Math.max(0, Math.min(size - len, Math.round(centre - (len - 1) / 2)));
+}
+
+/**
+ * #419 live-card thumbnail: the stones in a fixed window that holds every stone when they fit,
+ * else the area round the last move. `cells` is row-major, '.' empty / 'b' / 'w'; `last` = index
+ * of the last move inside the window or -1. ~90 bytes per game, so the polled/pushed list stays small.
+ */
+function thumbOf(engine) {
+  const size = engine.boardSize || 15;
+  const cols = Math.min(THUMB_COLS, size);
+  const rows = Math.min(THUMB_ROWS, size);
+  const hist = engine.moveHistory || [];
+  const at = new Map(); // replay: a cell taken twice (undo/redo) keeps the later stone
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const m of hist) {
+    at.set(m.y * size + m.x, m.color === 'WHITE' ? 'w' : 'b');
+    x0 = Math.min(x0, m.x); x1 = Math.max(x1, m.x); y0 = Math.min(y0, m.y); y1 = Math.max(y1, m.y);
+  }
+  const last = hist[hist.length - 1];
+  const mid = (size - 1) / 2;
+  const x = last ? windowStart(x0, x1, last.x, cols, size) : Math.round(mid - (cols - 1) / 2);
+  const y = last ? windowStart(y0, y1, last.y, rows, size) : Math.round(mid - (rows - 1) / 2);
+  let cells = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) cells += at.get((y + r) * size + x + c) || '.';
+  const inWin = last && last.x >= x && last.x < x + cols && last.y >= y && last.y < y + rows;
+  return { x, y, cols, rows, cells, last: inWin ? (last.y - y) * cols + (last.x - x) : -1 };
+}
 
 function seatedPlayers(room) {
   return [...room.users.values()].filter((u) => u.slot === 1 || u.slot === 2);
@@ -119,6 +155,7 @@ function liveOf(rooms) {
       viewers,
       boardSize: engine.boardSize,
       moves: (engine.moveHistory || []).length,
+      thumb: thumbOf(engine),
       ...ruleOf(room),
     });
   }
@@ -136,7 +173,7 @@ const defaultQueueCounts = () => require('../socket/handlers/MatchHandler').queu
 const defaultOnline = () => require('../socket/state').getOnlineUsersCount();
 const defaultQueueEta = () => require('../socket/handlers/MatchHandler').queueEstimates();
 
-const EMPTY_CONTENT = (member) => ({ news: null, forum: [], learn: null });
+const EMPTY_CONTENT = (member) => ({ news: [], forum: [], learn: null });
 
 /**
  * DB-backed blocks (#224). Lazy requires, so tests that fake the managers never open the DB.
@@ -154,7 +191,7 @@ function defaultContent(member) {
 function readContent(member) {
   const database = require('../db/database');
   return {
-    news: require('../managers/NewsService').latest(),
+    news: require('../managers/NewsService').recent(NEWS_LIMIT),
     forum: require('../managers/ForumService').topThreads(FORUM_LIMIT)
       .map((t) => ({ id: t.id, title: t.title, category: t.category, replyCount: t.replyCount, lastPostAt: t.lastPostAt, author: t.author.displayName })),
     learn: require('../managers/PuzzleService').learnSummary(member),
