@@ -181,6 +181,9 @@ const HTTP_PORT = process.env.PORT || 3000;
 // The kernel caps this at net.core.somaxconn, so a value larger than the host
 // allows is silently clamped rather than failing — safe to leave high.
 const LISTEN_BACKLOG = parseInt(process.env.LISTEN_BACKLOG, 10) || 4096;
+// #417: interface for HTTP_PORT. Unset = all interfaces (dev/LAN). Production sets
+// 127.0.0.1 so only the local cloudflared can reach Node even if ufw is misconfigured.
+const LISTEN_HOST = (process.env.LISTEN_HOST || '').trim() || undefined;
 
 // --- Security ---
 const MAX_EVENTS_PER_SECOND = 50; // Socket flood protection
@@ -295,6 +298,7 @@ module.exports = {
   BCRYPT_ROUNDS,
   HTTP_PORT,
   LISTEN_BACKLOG,
+  LISTEN_HOST,
   MAX_EVENTS_PER_SECOND,
   FLOOD_DISCONNECT_STREAK,
   TOURNAMENT_FORMATS,
