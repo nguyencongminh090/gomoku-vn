@@ -1,5 +1,5 @@
 # F417 — VPS DDoS hardening (runbook, SSH limit, sysctl, loopback bind)
-**Status:** IN PROGRESS — VPS steps applied 2026-11-18; code on `fix/417-listen-host`, not deployed
+**Status:** ✅ DONE 2026-11-18 — deployed 3eaaa2f1; `ss` shows 127.0.0.1:3000, ws-check OK, route=direct reconnect seen
 **Area:** VPS ufw + sysctl, `server/config.js`, `server/index.js`, `docs/knowledge/vps-ddos-self-defense.md`
 **From:** user, 2026-11-18 ("could website be DDOS?" → research → "làm ngay 1 3 4 5")   **Depends:** —
 

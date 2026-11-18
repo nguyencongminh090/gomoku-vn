@@ -1,1 +1,2 @@
+- ✅ **#417.** VPS DDoS hardening (SSH limit, sysctl, loopback bind, runbook) `[Model: Sonnet 5]` — [detail](docs/todo/F417-vps-ddos-hardening.md)
 - ✅ **#416.** SW-proxied navigations get no #415 route cookie → users stay on Cloudflare `[Model: Opus 5]` — [detail](docs/todo/B416-sw-navigation-no-direct-route-cookie.md)
