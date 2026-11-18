@@ -407,6 +407,9 @@
 
       this._hoverCell = null;
       this._pendingCell = null;
+      // Peek (viewers): hover + tap draw a local highlight only — never onCellClick, never a move.
+      this.peek = false;
+      this._markCell = null;
       this.optimisticStone = null;
       this.geo = null; // { m, n, W, vx, vy, VW, VH }
       // Pinch-zoom (touch only): a sub-rectangle of the base view, kept in user units.
@@ -480,6 +483,8 @@
         else { this.svg.removeAttribute('tabindex'); this._kbCell = null; }
       }
       if (s.myColor !== undefined) this.myColor = s.myColor;
+      if (s.peek !== undefined) this.peek = !!s.peek;
+      if (!this._peeking()) this._markCell = null;
       // s.displayMode is ignored: the look comes from BoardPrefs (#216).
       // #378: one new stone (a move) patches the SVG; anything else redraws it whole.
       if (!this._drawMove()) this._draw();
@@ -626,9 +631,19 @@
     _isEmpty(c) { return !!(c && this.board && this.board[c.y] && this.board[c.y][c.x] === 0); }
 
     // ── Events ──
+    // A viewer's board: highlight-only taps/hover (overlay, nothing sent).
+    _peeking() { return this.peek && !this.interactive; }
+
+    _toggleMark(cell) {
+      if (!cell) return;
+      const m = this._markCell;
+      this._markCell = m && m.x === cell.x && m.y === cell.y ? null : { x: cell.x, y: cell.y };
+      this._drawOverlay();
+    }
+
     _onMouseMove(e) {
       if (e.pointerType === 'touch') return;
-      if (!this.interactive || !this.isMyTurn) {
+      if (!this._peeking() && (!this.interactive || !this.isMyTurn)) {
         if (this._hoverCell) { this._hoverCell = null; this._drawOverlay(); }
         return;
       }
@@ -646,6 +661,7 @@
     }
 
     _onClick(e) {
+      if (this._peeking()) { this._toggleMark(this._cellFromClient(e.clientX, e.clientY)); return; }
       if (!this.interactive || !this.isMyTurn || !this.onCellClick) return;
       const cell = this._cellFromClient(e.clientX, e.clientY);
       if (this._clickable(cell)) this._handleCellSelect(cell.x, cell.y);
@@ -683,6 +699,7 @@
         this._lastTap = null; this.resetZoom(); return;
       }
       if (acts) this._handleCellSelect(cell.x, cell.y);
+      else if (this._peeking()) this._toggleMark(cell);
     }
 
     // Keyboard path (#326): the cursor is the hover cell; selecting goes through the same
@@ -996,6 +1013,12 @@
         out.push(paper
           ? `<rect x="${m + h.x * P + 3}" y="${m + h.y * P + 3}" width="${P - 6}" height="${P - 6}" rx="4" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`
           : `<circle cx="${c(h.x)}" cy="${c(h.y)}" r="${P * 0.4}" fill="none" stroke="${accent}" stroke-width="2" stroke-dasharray="4 3" opacity=".7"/>`);
+      }
+      const mk = this._markCell;
+      if (mk) { // viewer's highlight: works on stones too (pointing at a move)
+        out.push(paper
+          ? `<rect class="gboard__mark" x="${m + mk.x * P + 2}" y="${m + mk.y * P + 2}" width="${P - 4}" height="${P - 4}" rx="3" fill="${PENDING}" fill-opacity=".14" stroke="${PENDING}" stroke-width="2.5"/>`
+          : `<circle class="gboard__mark" cx="${c(mk.x)}" cy="${c(mk.y)}" r="${P * 0.47}" fill="${PENDING}" fill-opacity=".14" stroke="${PENDING}" stroke-width="2.5"/>`);
       }
       const k = this._kbCell;
       if (k) { // keyboard cursor: visible on stones too, solid so it differs from the hover ghost

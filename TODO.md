@@ -70,3 +70,4 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - **#418.** Home (phone) redesign: hero photo from mobile template `[Model: Sonnet]` — [detail](docs/todo/F418-home-hero-photo-phone.md)
+- **#423.** Viewers tap/hover the room board: local highlight only `[Model: Sonnet]` — [detail](docs/todo/F423-viewer-board-peek.md)
