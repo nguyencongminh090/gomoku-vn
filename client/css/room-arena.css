@@ -225,7 +225,7 @@ body.arena-room .gboard {
   box-shadow: 0 2px 8px rgba(0,0,0,.35);
   outline: 1px solid var(--c-border-strong, var(--c-border));   /* ui-audit R2: cream board vs #fafaf8 page; board colours untouched */
   cursor: pointer;
-  touch-action: none;
+  touch-action: pan-x pan-y; /* page scrolls under one finger; board.js switches to none when zoomed */
 }
 body.arena-room .board-placeholder { color: var(--c-ink-3); }
 

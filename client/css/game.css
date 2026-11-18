@@ -153,7 +153,7 @@
   max-width: 100%;
   height: auto;
   cursor: crosshair;
-  touch-action: none;
+  touch-action: pan-x pan-y; /* page scrolls under one finger; board.js switches to none when zoomed */
 }
 
 @media (max-width: 768px) {
