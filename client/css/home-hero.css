@@ -146,18 +146,11 @@
       linear-gradient(135deg, var(--hh-wood-1), var(--hh-wood-2)); }
   .hh-mini--1 { background-position: 50% 25%, 60% 40%, 50% 40%, 40% 55%, 60% 55%, 70% 40%, 40% 70%, 30% 55%, 80% 25%, 0 0, 0 0, 0 0; }
   .hh-mini--2 { background-position: 40% 40%, 50% 40%, 50% 55%, 60% 55%, 30% 70%, 70% 25%, 60% 70%, 20% 40%, 80% 55%, 0 0, 0 0, 0 0; }
-  .hh-mini--real { display: grid; grid-template-columns: repeat(var(--cols), 1fr); aspect-ratio: var(--cols) / var(--rows);
-    background:
-      linear-gradient(90deg, transparent calc(50% - .5px), var(--hh-wood-line) 0 calc(50% + .5px), transparent 0) 0 0 / calc(100% / var(--cols)) 100%,
-      linear-gradient(0deg, transparent calc(50% - .5px), var(--hh-wood-line) 0 calc(50% + .5px), transparent 0) 0 0 / 100% calc(100% / var(--rows)),
-      linear-gradient(135deg, var(--hh-wood-1), var(--hh-wood-2)); }
-  /* stone = the cell span itself, 76% of a cell, square, centred on the line crossing (the shared --b/--w gradients
-     are off-centre "at 40% 35%", so their farthest-corner radius grew to ~0.9 cell, clipped square by the cell and
-     sat up-left of the crossing). Not % margins: grid resolves the vertical ones differently → oval stones. */
-  .hh-mini--real > :is(.is-b, .is-w) { width: 76%; aspect-ratio: 1; place-self: center; border-radius: 50%; }
-  .hh-mini--real > .is-b { background: radial-gradient(circle at 35% 30%, var(--hh-stone-b-hi), var(--hh-stone-b) 60%); }
-  .hh-mini--real > .is-w { background: radial-gradient(circle at 35% 30%, var(--hh-stone-w-hi) 20%, var(--hh-stone-w) 75%); box-shadow: inset 0 0 0 .5px var(--hh-mini-edge); }
-  .hh-mini--real > .is-last { box-shadow: 0 0 0 1.5px var(--hh-amber-2); }
+  /* real window = one SVG (lobby-home.js miniBoard): lines and stones share cell-centre coordinates, like the room board */
+  .hh-mini--real { width: 100%; height: auto; aspect-ratio: auto; background: linear-gradient(135deg, var(--hh-wood-1), var(--hh-wood-2)); }
+  .hh-mini__grid { fill: none; stroke: var(--hh-wood-line); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+  .hh-mini--real .is-w { stroke: var(--hh-mini-edge); stroke-width: .5px; vector-effect: non-scaling-stroke; }
+  .hh-mini--real .is-last { fill: none; stroke: var(--hh-amber-2); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
   body.zen-lobby #screen-home .hnews__line + .hnews__line { display: flex; border-top: 1px solid var(--hh-card-line); }
 
   /* news (#home-news, one admin line) as a card */

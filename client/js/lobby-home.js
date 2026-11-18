@@ -204,17 +204,40 @@ function renderStats(data) {
   one.appendChild(b);
 }
 
-/** #419 real mini board from `thumb` ({cols, rows, cells: '.bw' row-major, last}); null when the payload has none/odd. */
+/** #419 real mini board from `thumb` ({cols, rows, cells: '.bw' row-major, last}); null when the payload has none/odd.
+ *  Drawn like the room board (board.js): one SVG, grid lines and stones on the same cell-centre coordinates, so they
+ *  can't drift apart at any size (CSS-grid spans + background-tile lines rounded differently and looked off). */
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const MINI_CELL = 10;
+const MINI_STONE_R = 4.1; // 0.82 cell
+let miniUid = 0;
+function svgEl(tag, attrs) {
+  const n = document.createElementNS(SVG_NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+}
 function miniBoard(th) {
   if (!th || !(th.cols > 0) || !(th.rows > 0) || typeof th.cells !== 'string' || th.cells.length !== th.cols * th.rows) return null;
-  const mini = el('span', undefined, 'hh-mini hh-mini--real');
-  mini.style.setProperty('--cols', th.cols);
-  mini.style.setProperty('--rows', th.rows);
+  const P = MINI_CELL, W = th.cols * P, H = th.rows * P, c = (i) => i * P + P / 2;
+  const uid = 'hm' + (++miniUid);
+  const svg = svgEl('svg', { class: 'hh-mini hh-mini--real', viewBox: `0 0 ${W} ${H}`, 'data-cols': th.cols, 'data-rows': th.rows });
+  // same stone gradients as the room board's defsSvg()
+  svg.innerHTML = `<defs><radialGradient id="${uid}b" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#6e6e6e"/><stop offset=".35" stop-color="#262626"/><stop offset="1" stop-color="#050505"/></radialGradient>` +
+    `<radialGradient id="${uid}w" cx="36%" cy="30%" r="75%"><stop offset="0" stop-color="#fff"/><stop offset=".6" stop-color="#ececea"/><stop offset="1" stop-color="#b9b9b4"/></radialGradient></defs>`;
+  let d = '';
+  for (let x = 0; x < th.cols; x++) d += `M${c(x)} 0V${H}`;
+  for (let y = 0; y < th.rows; y++) d += `M0 ${c(y)}H${W}`;
+  svg.appendChild(svgEl('path', { class: 'hh-mini__grid', d }));
+  const stones = svgEl('g', { class: 'hh-mini__stones' });
   for (let i = 0; i < th.cells.length; i++) {
-    const c = th.cells[i];
-    mini.appendChild(el('span', undefined, (c === 'b' ? 'is-b' : c === 'w' ? 'is-w' : '') + (i === th.last && c !== '.' ? ' is-last' : '')));
+    const v = th.cells[i];
+    if (v !== 'b' && v !== 'w') continue;
+    const cx = c(i % th.cols), cy = c(Math.floor(i / th.cols));
+    stones.appendChild(svgEl('circle', { class: 'is-' + v, 'data-c': i, cx, cy, r: MINI_STONE_R, fill: `url(#${uid}${v})` }));
+    if (i === th.last) stones.appendChild(svgEl('circle', { class: 'is-last', cx, cy, r: MINI_STONE_R + 0.6 }));
   }
-  return mini;
+  svg.appendChild(stones);
+  return svg;
 }
 
 /** #418 phone "Đang diễn ra": up to 3 live games (server order: most viewers first). #419: the mini board shows the
