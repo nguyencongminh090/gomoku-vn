@@ -980,12 +980,31 @@ describe('#418 phone hero: chips, counts, live card, news card', () => {
     const thumb = { x: 3, y: 4, cols: 9, rows: 7, cells, last: 31 };
     await boot('/index.html', { ...EMPTY, live: [{ ...LIVE[0], thumb }, { ...LIVE[1], thumb: { ...thumb, cells: 'bw' } }] });
     const [real, fake] = [...document.querySelectorAll('#home-live .hh-mini')];
-    expect(real.className).toBe('hh-mini hh-mini--real');
+    expect(real.getAttribute('class')).toBe('hh-mini hh-mini--real');
     expect(real.getAttribute('aria-hidden')).toBe('true');
-    expect([real.style.getPropertyValue('--cols'), real.style.getPropertyValue('--rows')]).toEqual(['9', '7']);
-    expect(real.children).toHaveLength(63);
-    expect([real.children[30].className, real.children[31].className, real.children[0].className]).toEqual(['is-b', 'is-w is-last', '']);
+    expect(real.getAttribute('viewBox')).toBe('0 0 90 70');
+    const stones = [...real.querySelectorAll('.hh-mini__stones circle')].map((s) => [s.getAttribute('class'), s.getAttribute('data-c')]);
+    expect(stones).toEqual([['is-b', '30'], ['is-w', '31'], ['is-last', null]]);
     expect(fake.className).toBe('hh-mini hh-mini--1');
+  });
+
+  it('#419 mini board: every stone and the last-move ring sit exactly on a grid-line crossing (room-board geometry)', async () => {
+    const cells = 'b' + '.'.repeat(7) + 'w' + '.'.repeat(53) + 'b'; // corners + bottom-right
+    await boot('/index.html', { ...EMPTY, live: [{ ...LIVE[0], thumb: { x: 0, y: 0, cols: 9, rows: 7, cells, last: 62 } }] });
+    const svg = document.querySelector('#home-live .hh-mini--real');
+    const d = svg.querySelector('.hh-mini__grid').getAttribute('d');
+    const xs = new Set([...d.matchAll(/M([\d.]+) 0V/g)].map((m) => +m[1]));
+    const ys = new Set([...d.matchAll(/M0 ([\d.]+)H/g)].map((m) => +m[1]));
+    expect([xs.size, ys.size]).toEqual([9, 7]);
+    const circles = [...svg.querySelectorAll('.hh-mini__stones circle')];
+    expect(circles).toHaveLength(4);
+    for (const c of circles) {
+      expect(xs.has(+c.getAttribute('cx'))).toBe(true);
+      expect(ys.has(+c.getAttribute('cy'))).toBe(true);
+      expect(+c.getAttribute('r')).toBeLessThan(5); // smaller than half a cell (10)
+    }
+    // two boards on one page → distinct gradient ids
+    expect(svg.querySelector('radialGradient').id).toMatch(/^hm\d+b$/);
   });
 
   it('i18n: no key defined twice in a locale (#418 shipped "{a} vs {b}": a later twin silently won)', () => {

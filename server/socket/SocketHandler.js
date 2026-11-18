@@ -45,6 +45,7 @@ const {
   cleanupRoomTimer,
   buildRoomStatePayload,
   closeMatchRoom,
+  disconnectTimers,
 } = require('./state');
 
 const LobbyHandler      = require('./handlers/LobbyHandler');
@@ -324,8 +325,15 @@ function init(io) {
     // rejoin checks below.
     DisconnectHandler.cancelSpectatorGrace(user.userId);
 
+    // #422: a player who pressed Back mid-game is in the in-game grace and lands on another page
+    // (lobby/home). Resuming here ran their clock on a page with no board. Instead fall through to
+    // the existingRoom branch: its room:joined sends that page back into the room, and the room
+    // page's own connection resumes the game. `roomPage === false` is only sent by #422+ clients
+    // (socket-client.js); an older client (undefined) keeps the old resume-anywhere behaviour.
+    const awayFromGame = handshakeAuth.roomPage === false && disconnectTimers.has(user.userId);
+
     // Check if this is a reconnect during a disconnect grace period
-    if (DisconnectHandler.cancelDisconnectGrace(io, socket)) {
+    if (!awayFromGame && DisconnectHandler.cancelDisconnectGrace(io, socket)) {
       // Game resumed — nothing more to do
     } else {
       // Check if user was already in a room (normal page-refresh reconnect)
@@ -345,7 +353,7 @@ function init(io) {
         // tell the room's other occupants before this reconnecter's own
         // `room:joined` payload is built, so it reflects 'active' too.
         const reconnectedUser = existingRoom.users.get(user.userId);
-        if (reconnectedUser) {
+        if (reconnectedUser && !awayFromGame) { // #422: still in grace — the room keeps showing "disconnected"
           const next = onRoomPage ? (reconnectedUser.presence === 'disconnected' ? 'active' : reconnectedUser.presence) : 'away';
           if (next !== reconnectedUser.presence) {
             reconnectedUser.presence = next;

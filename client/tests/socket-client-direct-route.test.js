@@ -55,7 +55,7 @@ test('no route cookie → io(opts) unchanged, no ticket', () => {
   const { calls } = setup();
   expect(calls).toHaveLength(1);
   expect(calls[0]).toHaveLength(1);
-  expect(calls[0][0].auth).toEqual({});
+  expect(calls[0][0].auth).toEqual({ roomPage: false }); // #422 page marker only
   expect(calls[0][0].timeout).toBe(12000);
 });
 
@@ -63,7 +63,7 @@ test('route cookie → io(url, opts) with nonce in query, not auth, and short ti
   const { calls } = setup({ cookie: routeCookie() });
   expect(calls[0][0]).toBe('https://direct.example');
   expect(calls[0][1].query).toEqual({ gvn_n: 'NONCE1' });
-  expect(calls[0][1].auth).toEqual({});
+  expect(calls[0][1].auth).toEqual({ roomPage: false }); // #422 page marker; nonce stays out of auth
   expect(calls[0][1].withCredentials).toBe(true); // carries the direct host's HttpOnly cookie on reconnect
   expect(calls[0][1].timeout).toBe(window.SocketClient.DIRECT_TIMEOUT_MS);
   expect(calls[0][1].transports).toEqual(['websocket', 'polling']);

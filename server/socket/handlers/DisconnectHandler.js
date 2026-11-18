@@ -49,6 +49,12 @@ function handleDisconnect(io, socket) {
     return;
   }
 
+  // #422: already in this room's in-game grace — this socket never resumed the game (e.g. the lobby
+  // page Back landed on, now bouncing into the room). Keep the running window: restarting it would
+  // re-interrupt the opponent and let page bounces extend the grace forever.
+  const pending = disconnectTimers.get(user.userId);
+  if (pending && pending.roomId === roomId) return;
+
   // Start grace period if player is in an active game
   if (room && room.gameState && room.gameState.status === 'ongoing') {
     const isPlayer = room.gameState.players.some(p => p.userId === user.userId);

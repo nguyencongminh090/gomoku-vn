@@ -20,10 +20,10 @@
 import './i18n.js?v=5e76a489';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=349e6629';
-import './board.js?v=f68e69fd';
+import './board.js?v=ebbd4cf9';
 import './room.js?v=36813fdf';
 import './chat-ui.js?v=4584d258';
 import './room-ui.js?v=d88b25dc';
 import './room-stage.js?v=45ac8f75';
-import './game-ui.js?v=b7aca889';
+import './game-ui.js?v=7f3b82b8';
 import './room-socket.js?v=0d492d7d';

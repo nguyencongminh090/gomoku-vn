@@ -366,3 +366,5 @@
 | 2026-11-18 11:40 | #421 phone: swipe left/right moves between tab-bar pages (passive touch, skips inputs/board/scrollers/dialogs/edges); 24 px arrival slide, none under reduced motion; 18 tests | [detail](docs/fix-log/2026-11-18-421-tab-swipe.md) |
 | 2026-11-18 12:20 | #421 follow-up: swipe page follows the finger (drag-follow, 30 % / flick commit, spring back, rubber band, bfcache reset); 22 tests | [detail](docs/fix-log/2026-11-18-421-tab-swipe.md) |
 | 2026-11-18 15:20 | #419 follow-up: phone Home live-card mini board stones were ~0.9 cell, off-centre, clipped square → centred 76 % circles; 3 tests | [detail](docs/fix-log/2026-11-18-home-live-thumb-stones.md) |
+| 2026-11-18 16:10 | #419 follow-up round 2: mini board drawn as one SVG like the room board (lines + stones on shared cell-centre coordinates); grid/stone drift gone; 1 new + 2 updated tests | [detail](docs/fix-log/2026-11-18-home-live-thumb-stones.md) |
+| 2026-11-18 16:50 | #422 Back mid-game: lobby page no longer resumes the game; gets room:joined and returns to the room; page bounce keeps the running grace; 14 tests | [detail](docs/fix-log/2026-11-18-422-back-returns-to-room.md) |

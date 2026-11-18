@@ -81,6 +81,10 @@ class SocketClient {
     // of the fallback get deleted together (planning.md step 12).
     const legacy = window.GvnSession.legacyToken();
     const auth = legacy ? { token: legacy } : {};
+    // #422: tells the server whether this page shows the room board. A player who pressed Back
+    // mid-game lands on another page; the server then keeps the game paused and sends that page
+    // room:joined (lobby.js navigates back into the room) instead of resuming it there.
+    auth.roomPage = SocketClient.isRoomPage(window.location.pathname);
     // #415: socket-direct route (VN on a lossy ISP→Cloudflare leg). Present only when the server
     // set the `gvn_sock` cookie on this page's HTML; otherwise everything below is unchanged.
     const direct = SocketClient.directRoute();
@@ -239,6 +243,11 @@ class SocketClient {
       this.destroy();
       window.location.replace('login.html');
     });
+  }
+
+  /** #422: true on the room page (`/room.html`, or `/room` if served without the extension). */
+  static isRoomPage(pathname) {
+    return /\/room(\.html)?$/.test(String(pathname || ''));
   }
 
   // ---------------------------------------------------------------------------

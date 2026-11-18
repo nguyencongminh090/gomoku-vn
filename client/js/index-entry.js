@@ -14,5 +14,5 @@ import './platform-shell.js?v=7b801850';
 import './lobby.js?v=f155548e';
 import './private-chat.js?v=7128b3f0';
 import './tournaments.js?v=0f02fd9d';
-import './lobby-home.js?v=53a2a2ec';
+import './lobby-home.js?v=2d42bd2e';
 import './pwa-install.js';
