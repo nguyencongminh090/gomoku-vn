@@ -568,6 +568,8 @@ export function renderQuickMatch() {
   const pill = document.getElementById('qm-search');
   if (play) { play.hidden = qm.searching; play.disabled = qm.searching; }
   if (pill) pill.hidden = !qm.searching;
+  const create = document.getElementById('hh-create'); // phone Tạo phòng: no new room while queued
+  if (create) create.disabled = qm.searching;
 
   const acts = document.getElementById('qm-actions');
   const status = document.getElementById('qm-status');

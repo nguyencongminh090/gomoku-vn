@@ -91,3 +91,14 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Turn: the running cell is filled `--c-brand` + white text (not colour alone: also the filled shape); low time → `--c-error` fill, as now. Time 26px Nunito 800+ tabular.
 - Spectators: same row, seat #2 left, seat #1 right (same order as the old top/bottom cards).
 - Forbidden: any clock in the lower half on phones; names wrapping (ellipsis, `min-width:0`); the `A · B` pattern in cell labels.
+
+## Home phone: Tạo phòng button (B "Chip lên trên")
+- Chosen 2026-11-18 from 3 options (A literal under Chơi nhanh, B chips above, C 2:1 row). Scope: phone Home hero (#418, `body.zen-lobby`, ≤860px); desktop unchanged. Style: inherits #418 hero (vstyle-flat-material + photo).
+- Hard filters applied: task-critical (Chơi nhanh stays the one primary action), WCAG AA, no new tokens outside `--hh-*`.
+- Structure: hero = title → slogan → 3 chips (`.hh-chips`, moved up) → Chơi nhanh (amber, 64px) → **Tạo phòng** (new, full width) → stats. Chips stay touching the button they configure; Tạo phòng is the second stop, directly under Chơi nhanh.
+- Button: secondary "glass" — background rgba(255,255,255,.12) + blur(8px), 1.5px border `--hh-on-photo-2`, text/icon `--hh-on-photo` (white on ≥.6 dark scrim, ≥ 7:1), radius 999px, min-height 52px (< 64px of the primary), 16px w800, Phosphor `ph-regular-plus-circle`, gap 8px under Chơi nhanh. Focus: 3px white outline, offset 3px. Copy: "Tạo phòng" (sentence case, vi, reuse an existing i18n key if one fits).
+- Action: `[data-create-room]` → existing `openModal()` (lobby.js; guests forced friendly — already handled). Not `id="btn-create"` (e2e specs target the Phòng tab card).
+- Searching state: while Chơi nhanh shows `.hq-search`, Tạo phòng stays visible but disabled (opacity .55) — no create during a queue.
+- Motion: none new; press = existing button active state; reduced motion unaffected.
+- Defaults kept: full-width stacked buttons (thumb reach, one column on 360px).
+- Forbidden: amber/brand fill on Tạo phòng (two primaries); ghost text-link only (too weak on a photo); putting it between Chơi nhanh and the chips; emoji "+".

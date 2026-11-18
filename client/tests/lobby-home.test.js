@@ -877,6 +877,20 @@ describe('#418 phone hero: chips, counts, live card, news card', () => {
     expect(document.body.classList.contains('is-home')).toBe(false);
   });
 
+  it('ui/home-phone-create-room: Tạo phòng sits right after Chơi nhanh (chips above), carries data-create-room, locks while searching', async () => {
+    await boot('/index.html', EMPTY, member);
+    const main = document.querySelector('.hq-main');
+    const kids = [...main.children].map((n) => n.id || n.className);
+    expect(kids.indexOf('home-chips')).toBeLessThan(kids.indexOf('hq-go'));
+    expect(document.querySelector('.hq-go').nextElementSibling.id).toBe('hh-create');
+    const create = document.getElementById('hh-create');
+    expect(create.hasAttribute('data-create-room')).toBe(true);
+    expect(create.id).not.toBe('btn-create');
+    expect(create.disabled).toBe(false);
+    window.__lobbyStub.client.fire('match:status', { waiting: true, inBucket: 1, rated: true });
+    expect(create.disabled).toBe(true);
+  });
+
   it('member: three chip buttons with short labels; Ô khoá adds a lock + full-name title', async () => {
     await boot('/index.html', EMPTY, member);
     expect(['rule', 'time', 'mode'].map((k) => chip(k).querySelector('.hh-chip__t').textContent))
@@ -1002,7 +1016,7 @@ describe('#418 phone hero: chips, counts, live card, news card', () => {
   it('CSS: every .hh-* part is hidden on desktop; the photo loads only inside the phone media query', () => {
     const css = read('css/home-hero.css');
     const phoneAt = css.indexOf('@media (max-width: 860px)');
-    expect(css.slice(0, phoneAt)).toMatch(/\.hh-title, \.hh-sub, \.hh-chips, \.hh-stats, \.hh-card, \.hnews__head, \.hnews__at \{ display: none; \}/);
+    expect(css.slice(0, phoneAt)).toMatch(/\.hh-title, \.hh-sub, \.hh-chips, \.hh-create, \.hh-stats, \.hh-card, \.hnews__head, \.hnews__at \{ display: none; \}/);
     expect(css.indexOf('home-hero-720.webp')).toBeGreaterThan(phoneAt);
     expect(css.slice(phoneAt)).toMatch(/body\.zen-lobby\.is-home \.pnav \{/);
   });
