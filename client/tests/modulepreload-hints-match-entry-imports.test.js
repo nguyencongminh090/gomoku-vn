@@ -61,7 +61,7 @@ function asSortedKeys(entries) {
 // B193 added platform-shell.js (site-wide Arena header) as the 7th; B195 lobby-home.js the 8th.
 describe.each([
   ['room.html', 'room-entry.js', 10],
-  ['index.html', 'index-entry.js', 8],
+  ['index.html', 'index-entry.js', 9], // #424 home-lamp.js is the 9th
 ])('%s modulepreload hints vs %s imports (TODO.md #126)', (htmlFile, entryFile, expectedCount) => {
   test(`entry file has exactly ${expectedCount} static imports (sanity check on the count itself)`, () => {
     const imports = extractEntryImports(entryFile);

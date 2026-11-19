@@ -52,6 +52,7 @@ function screenFromLocation() {
 export function showScreen(name) {
   if (!SCREENS[name]) name = 'home';
   current = name;
+  document.documentElement.removeAttribute('data-lobby-start'); // #424: skin-preload.js kept Home's table off until now
   document.body.classList.toggle('is-home', name === 'home'); // #418: phone hero puts the shell nav over the photo
   for (const [key, id] of Object.entries(SCREENS)) {
     const node = document.getElementById(id);
@@ -187,7 +188,7 @@ function renderStats(data) {
   fill('home-n-search', 'home-n-search-l', st && st.searching, [t('home.pulse_searching'), st && st.searching && eta && t('home.eta_short', { s: eta })]);
   fill('home-n-live', 'home-n-live-l', st && st.playing, [t('home.pulse_playing')]);
   renderPulse(st);
-  for (const [id, n] of [['home-s-online', st && st.online], ['home-s-search', st && st.searching], ['home-s-live', st && st.playing]]) {
+  for (const [id, n] of [['home-s-online', st && st.online], ['home-s-search', st && st.searching], ['home-s-live', st && st.playing], ['home-lamp-live', st && st.playing]]) {
     const dd = document.getElementById(id);
     if (dd) dd.textContent = st ? String(n || 0) : '–';
   }
@@ -524,7 +525,8 @@ function openPick(key) {
   list.hidden = false;
   renderSentence(); // aria-expanded on the blank
   const b = blankBtn(key);
-  const h = document.getElementById('home-q');
+  // Measured against the row that holds the control: the sentence is hidden wherever the chips are shown.
+  const h = b && b.closest('#home-chips') ? b.parentElement : document.getElementById('home-q');
   if (b && h) {
     const x = b.getBoundingClientRect().left - h.getBoundingClientRect().left;
     list.style.setProperty('--pick-x', Math.max(0, Math.min(x, h.clientWidth - 240)) + 'px');

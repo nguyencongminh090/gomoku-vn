@@ -5,3 +5,5 @@
 - `home-hero-*.webp` (Home phone hero, #418): Go board corner + stone bowls, top-down — user "archudio", Pexels
   https://www.pexels.com/photo/38833008/ — Pexels License https://www.pexels.com/license/ — file supplied by the
   site owner 2026-11-18 (pexels-archudio-38833008.jpg), square top crop, WebP 720/1280.
+- `home-lamp-oak-*.webp` (Home desktop table, #424): oak surface generated with Codex image generation for this site
+  on 2026-11-19, prompt in `features/home-desktop-minimal/prompts/oak.md`; no stock source.
