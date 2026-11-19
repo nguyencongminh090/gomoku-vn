@@ -269,7 +269,7 @@ describe('home M4 "Câu lệnh" (#358)', () => {
   it('shape: greeting row, news, resume strip, sentence + Chơi nhanh + room code, count cards', async () => {
     await boot('/index.html', EMPTY, { userId: 'u', isGuest: false, displayName: 'Me' });
     const home = document.getElementById('screen-home');
-    expect([...home.children].map((n) => n.id || n.className)).toEqual(['hq-hello', 'home-news', 'home-mine-card', 'hq-main', 'home-live-card', 'home-stats']); // #418 adds the phone live card
+    expect([...home.children].map((n) => n.id || n.className)).toEqual(['home-lamp', 'hq-hello', 'hl-title', 'home-news', 'home-mine-card', 'hq-main', 'home-live-card', 'home-stats']); // #418 adds the phone live card
     expect(home.getAttribute('aria-labelledby')).toBe('home-q');
     expect(document.getElementById('home-q').tagName).toBe('H1');
     expect(document.getElementById('home-hello').textContent).toBe('home.hello{"name":"Me"}');

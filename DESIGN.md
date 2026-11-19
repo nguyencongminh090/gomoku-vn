@@ -1,12 +1,12 @@
 # DESIGN
 
-Scope: home page (`#screen-home`, #358). Other pages keep the Arena tokens in `client/css/tokens.css`.
+Scope: home page (`#screen-home`, #358). Desktop Home (≥861px) is now "Một ngọn đèn" (#424, section below), which overrides the #358 sections wherever they differ. Other pages keep the Arena tokens in `client/css/tokens.css`.
 
 ## Facts
 - Site type and main goal: online Caro/Gomoku game platform (Play3CR); home goal = start a game fast (Chơi nhanh) or join a friend's room (Vào phòng).
 - Audience: Vietnamese players, casual to club level; ~half on phones; returning users.
 - Brand words: nhanh, rõ ràng, thân thiện, bàn cờ giấy (paper-board), tự tin.
-- Constraints: existing Arena tokens + green brand, dark/light modes, WCAG AA, Nunito only (self-hosted, CSP blocks external fonts), Vietnamese diacritics, vanilla JS, no server change, BoardRenderer locked.
+- Constraints: existing Arena tokens + green brand, dark/light modes, WCAG AA, Nunito (+ self-hosted Playfair Display 500 on desktop Home only, #424; CSP blocks external fonts), Vietnamese diacritics, vanilla JS, no server change, BoardRenderer locked.
 - Longevity: product (years).
 - Hard filters applied: task-critical (both main actions visible in the first screen at 375×812), language coverage (Nunito covers vi), performance (no WebGL, no photo hero).
 
@@ -35,7 +35,7 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Spacing unit: 4px base; scale 8/12/16/24/32/44.
 - Radius: blanks .22em, cards 16px, code boxes 16px, main button 999px.
 - Motion: subtle; fast 140ms / base 240ms / slow 600ms, ease cubic-bezier(.2,.7,.2,1); one load reveal (rise 14px + fade, staggered 80ms), popover fade+scale 140ms, spinner while searching; prefers-reduced-motion → no movement, spinner replaced by static text.
-- Imagery: none (no photos); background = paper grid only, leaves removed, faded out below the hero. Decorative stones/boards CSS only. Exception: phone Home (≤860px) hero photo, #418 (user-approved 2026-11-18; self-hosted webp + dark scrim, white text ≥4.5:1).
+- Imagery: none (no photos); background = paper grid only, leaves removed, faded out below the hero. Decorative stones/boards CSS only. Exceptions: phone Home (≤860px) hero photo, #418 (user-approved 2026-11-18; self-hosted webp + dark scrim, white text ≥4.5:1); desktop Home oak table, #424 (user-approved 2026-11-19).
 
 ## Layout
 - Sections (top to bottom): greeting row (Chào name · online tag · 4 icon-only links right) → resume strip (only when the user has a game) → sentence composer h1 with 3 blanks → Chơi nhanh button (swaps to searching state in place) → "hoặc vào phòng bằng mã" + 3-box code input + Vào phòng + "Xem N phòng đang mở"; right column (desktop): Đang tìm trận card (queue, ETA, sparkline), Đang chơi card (count + one live game).
@@ -45,7 +45,16 @@ Reason: user picked M4 (2026-11-12) from 8 mockups in `features/home-redesign/`.
 - Removing signifiers: blanks must look clickable (fill + underline + chevron); primary action never a ghost button.
 - Thin content hidden by empty space (keep the right-column cards; empty state text when 0).
 - Emoji as icons; text labels on the 4 secondary links (user chose icon-only + tooltip + aria-label).
-- Photos/stock imagery (except the #418 phone Home hero photo), leaf background on home, animating stones/board.
+- Photos/stock imagery (except the #418 phone Home hero photo and the #424 desktop Home wood), leaf background on home, animating stones/board (the #424 lamp moves light over still stones).
+
+## Home desktop (#424, "Một ngọn đèn", ≥861px)
+Mockup m9 in `features/home-desktop-minimal/`, picked by the user 2026-11-19. Style stays minimal; the page is one dark oak table with a single lamp.
+- Color: always dark, also in light mode (a lamp needs a dark room). Tokens `--hl-*` in `client/css/home-lamp.css`; site `--c-*` are remapped inside `#screen-home`.
+- Type: Playfair Display 500 ("Home Serif") for the heading and the two actions; Nunito for everything else. Line-height ≥1.14 for Vietnamese marks.
+- Imagery: generated oak `home-lamp-oak-*.webp`. Grid and decorative stones are CSS and exist only inside the light.
+- Layout: greeting + "Bàn vẫn sáng đèn." left, news and resume card in the empty right side → one axis at 60% height: Chơi ngay (filled dark pill, largest) left, Phòng chơi (ivory pill, opens the Phòng tab) right → options along the bottom edge, forum link far right. The room-code entry and the "Bảng quán cờ" column are gone from desktop; code entry stays on the Phòng tab.
+- Motion: expressive. The lamp rests on Chơi ngay, follows the pointer along the table band and settles on a hovered or focused action; `transform` only, stops when settled. Reduced motion: no following, the light jumps to the focused action. Actions scale 1.02 on hover (320ms).
+- Forbidden: moving the stones or grid, a light Home variant, repaint-per-frame effects (mask or gradient position), a ghost Chơi ngay.
 
 ## Phòng tab (#364, R1 "Sảnh gỗ")
 - Chosen 2026-11-13 from 8 mockups (`features/rooms-redesign/`). Style: vstyle-flat-material with one photographic hero.
