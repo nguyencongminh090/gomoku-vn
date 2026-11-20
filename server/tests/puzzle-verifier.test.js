@@ -74,6 +74,24 @@ describe('PuzzleVerifier', () => {
     expect(verify(s, [at(1, 1)], { walls: [at(1, 1)] })).toEqual({ status: 'breaks', step: 1, reason: 'occupied' });
   });
 
+  describe('Renju', () => {
+    const dbl3 = [B(5, 7), B(6, 7), B(7, 5), B(7, 6), W(0, 0), W(0, 2)]; // (7,7) would be a double three
+    it('a forbidden Black move breaks the line', () => {
+      expect(verify(dbl3, [at(7, 7)], { rule: 'renju' })).toEqual({ status: 'breaks', step: 1, reason: 'forbidden' });
+    });
+    it('the same move is not flagged under freestyle', () => {
+      expect(verify(dbl3, [at(7, 7)]).reason).not.toBe('forbidden');
+    });
+    it('White (the solver) is never restricted', () => {
+      const s = [W(5, 7), W(6, 7), W(7, 5), W(7, 6), B(0, 0), B(0, 2)];
+      expect(verify(s, [at(7, 7)], { rule: 'renju', toMove: 'WHITE' }).reason).not.toBe('forbidden');
+    });
+    it('a five wins even from a forbidden shape; Black exactly five only', () => {
+      expect(verify([B(3, 7), B(4, 7), B(5, 7), B(6, 7)], [at(7, 7)], { rule: 'renju' })).toEqual({ status: 'verified', step: 1, reason: 'five' });
+      expect(verify([B(2, 7), B(3, 7), B(4, 7), B(6, 7), B(7, 7)], [at(5, 7)], { rule: 'renju' }).reason).toBe('forbidden');
+    });
+  });
+
   it('stops at the step budget across all lines of a puzzle', () => {
     const lines = Array.from({ length: MAX_STEPS + 1 }, () => [at(12, 2)]);
     const v = verifyAnswers({ size: 15, rule: 'freestyle', toMove: 'BLACK', stones: [B(0, 0), W(14, 14)] }, lines);

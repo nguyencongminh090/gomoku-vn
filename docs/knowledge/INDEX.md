@@ -77,3 +77,4 @@ Skills worth considering later (not copied): `skills/architecture-backend/items/
   (see `engineering-method-lessons.md`), and register it here in the same edit.
 - Notes marked `confidence: medium` (auth-session-oauth, realtime-reliability-resync, broadcast-fanout-perf)
   contain claims taken from fix-log text only; re-verify against code before relying on a number.
+- [Renju rules](renju-rif-rules.md) — RIF forbidden moves + opening procedures; Long Pro and 26 coordinates missing

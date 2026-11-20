@@ -102,7 +102,7 @@ describe('settings', () => {
     M.open({ to });
     expect(radios('modal.mode').map((i) => i.value)).toEqual(['rated', 'friendly']);
     expect(radios('modal.board_size').map((i) => i.value)).toEqual(['15', '17', '19', '20']);
-    expect(radios('modal.win_rule').map((i) => i.value)).toEqual(['freestyle', 'standard', 'caro']);
+    expect(radios('modal.win_rule').map((i) => i.value)).toEqual(['freestyle', 'standard', 'caro', 'renju']);
     expect(radios('modal.opening').map((i) => i.value)).toEqual(['none', 'swap2']);
     expect(radios('modal.special_rules')).toHaveLength(2);
     expect(radios('modal.timer_mode').map((i) => i.value)).toEqual(['per_move', 'per_game', 'blitz']);

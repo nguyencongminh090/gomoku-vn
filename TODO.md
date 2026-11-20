@@ -72,3 +72,4 @@ in the detail file / fix-log).
 - **#418.** Home (phone) redesign: hero photo from mobile template `[Model: Sonnet]` — [detail](docs/todo/F418-home-hero-photo-phone.md)
 - **#423.** Viewers tap/hover the room board: local highlight only `[Model: Sonnet]` — [detail](docs/todo/F423-viewer-board-peek.md)
 - **#424.** Home desktop redesign "Một ngọn đèn" `[Model: Opus]` — [detail](docs/todo/F424-home-desktop-lamp.md)
+- **#425.** Renju P1: rule core, forbidden = Black loses, enum/DB, rooms+tournaments+puzzles `[Model: Opus]` — [detail](docs/todo/F425-renju-p1-rule-core.md)

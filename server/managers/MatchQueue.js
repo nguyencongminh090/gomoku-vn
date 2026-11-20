@@ -11,7 +11,7 @@
  * casual is first-come-first-served. Oldest waiter is served first.
  */
 
-const RULES = ['freestyle', 'standard', 'caro'];
+const RULES = require('./rules').QUICK_RULES;
 
 /** Mockup time chips → the existing Fischer clock (`blitz`: total + increment per move). */
 const PRESETS = {

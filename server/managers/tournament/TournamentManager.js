@@ -32,6 +32,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const config = require('../../config');
+const { WINNING_RULES } = require('../rules');
 const logger = require('../../utils/logger');
 const database = require('../../db/database');
 const clubService = require('../ClubService');
@@ -1495,11 +1496,11 @@ class TournamentManager extends EventEmitter {
       ? ruleSet.boardSize
       : config.DEFAULT_BOARD_SIZE;
 
-    const VALID_WINNING = ['freestyle', 'standard', 'caro'];
-    r.winningRule = VALID_WINNING.includes(ruleSet.winningRule) ? ruleSet.winningRule : 'freestyle';
+    r.winningRule = WINNING_RULES.includes(ruleSet.winningRule) ? ruleSet.winningRule : 'freestyle';
 
     r.ruleWall   = ruleSet.ruleWall === true;
     r.rulePortal = ruleSet.rulePortal === true;
+    if (r.winningRule === 'renju') r.rulePortal = false; // see RoomManager._validateSettings (#425)
     r.ruleSwap2  = ruleSet.ruleSwap2 === true;
     if (r.ruleSwap2) { r.ruleWall = false; r.rulePortal = false; }
 

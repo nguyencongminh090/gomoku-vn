@@ -322,6 +322,17 @@
 
   // ── Board state update after move ─────────────────────────────────────────
 
+  /** Renju: the cells Black may not play, shown to Black while it is their turn (the server is the judge) (#425). */
+  function forbiddenCells(st, me) {
+    const R = global.Renju;
+    const rule = st.roomData && st.roomData.settings && st.roomData.settings.winningRule;
+    if (!R || rule !== 'renju' || !me || me.color !== 'BLACK') return [];
+    if (st.gameState.status !== 'ongoing' || st.gameState.currentTurn !== st.myUser.userId) return [];
+    try {
+      return R.forbiddenPoints(st.gameState.board.map((r) => r.slice())).map((p) => ({ x: p.x, y: p.y }));
+    } catch (_) { return []; }
+  }
+
   function updateBoardState() {
     const st = S();
     if (!st.boardRenderer || !st.gameState) return;
@@ -342,6 +353,7 @@
       interactive: !!myPlayer && st.gameState.status === 'ongoing',
       peek:        !myPlayer,
       winLine:     st.gameState.result ? st.gameState.result.winLine : null,
+      forbidden:   forbiddenCells(st, myPlayer),
       displayMode: st.boardDisplayMode,
       moveHistory: st.gameState.moveHistory || [],
     });

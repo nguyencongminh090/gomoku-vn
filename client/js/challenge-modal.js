@@ -15,7 +15,7 @@
 
   const t = (key, vars) => (typeof root.t === 'function' ? root.t(key, vars) : key);
   const BOARD_SIZES = [15, 17, 19, 20];
-  const RULES = ['freestyle', 'standard', 'caro'];
+  const RULES = ['freestyle', 'standard', 'caro', 'renju'];
   const TIMER_MODES = [['per_move', 'modal.per_move'], ['per_game', 'modal.per_game'], ['blitz', 'modal.blitz']];
   const GAMES = [1, 3, 5];
   const MAX_GAMES = 99;

@@ -22,7 +22,7 @@ const dmText = require('./DmText');
 const coords = require('../../client/js/coords');
 const { verifyAnswers } = require('./PuzzleVerifier');
 
-const RULES = ['freestyle', 'standard', 'caro'];
+const RULES = require('./rules').PUZZLE_RULES;
 const LEVELS = ['easy', 'medium', 'hard', 'expert'];
 const TAGS = ['attack', 'defense', 'trap', 'vct', 'vcf'];
 const MODES = ['sequence', 'final_move'];

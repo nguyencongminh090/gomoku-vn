@@ -347,6 +347,14 @@ function initBoard() {
   requestAnimationFrame(() => boardRenderer.resize());
 }
 
+/** Renju: cells Black may not play, shown to Black on their turn (the server is the judge) (#425). */
+function forbiddenCells() {
+  const R = window.Renju;
+  if (!R || !gameState || gameState.winningRule !== 'renju' || myColor !== 'BLACK') return [];
+  if (gameState.status !== 'ongoing' || gameState.currentTurn !== userInfo.userId) return [];
+  try { return R.forbiddenPoints(gameState.board.map((r) => r.slice())).map((p) => ({ x: p.x, y: p.y })); } catch (_) { return []; }
+}
+
 function updateBoardState() {
   if (!boardRenderer || !gameState) return;
   let lm = null;
@@ -366,6 +374,7 @@ function updateBoardState() {
     interactive: !!myPlayer() && gameState.status === 'ongoing',
     myColor,
     winLine: gameState.result ? gameState.result.winLine : null,
+    forbidden: forbiddenCells(),
     moveHistory: gameState.moveHistory || [],
     displayMode: boardDisplayMode(),
   });
@@ -716,6 +725,7 @@ function showResultOverlay(result, seriesOverride) {
   }
   if (result.reason === 'resign') sub = t('tmatch.reason_resign');
   else if (result.reason === 'timeout') sub = t('tmatch.reason_timeout');
+  else if (result.reason === 'forbidden') sub = t('tmatch.reason_forbidden', { kind: t('tmatch.forbidden_' + result.forbidden) });
   else if (result.reason === 'board_full') sub = t('tmatch.reason_board_full');
 
   document.getElementById('match-result-icon').querySelector('use').setAttribute('href', `assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-bold-${iconClass.slice(3)}`);

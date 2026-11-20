@@ -107,7 +107,7 @@ describe('send', () => {
   it('rejects self, unknown user, bad rule, bad time; guests 403; logged-out 401', async () => {
     expect((await send('ann', 'ann')).body.code).toBe('CANNOT_CHALLENGE_SELF');
     expect((await send('ann', 'nobody')).status).toBe(404);
-    expect((await send('ann', 'bob', { rule: 'renju' })).body.code).toBe('BAD_RULE');
+    expect((await send('ann', 'bob', { rule: 'chess' })).body.code).toBe('BAD_RULE');
     expect((await send('ann', 'bob', { time: '99+9' })).body.code).toBe('BAD_TIME');
     expect((await send('guest', 'bob')).status).toBe(403);
     expect((await send(undefined, 'bob')).status).toBe(401);
@@ -273,7 +273,7 @@ describe('#222 full settings, series, Swap Elo stake', () => {
   it.each([
     [{ boardSize: 16 }, 'BAD_SETTINGS'],
     [{ boardSize: '19' }, 'BAD_SETTINGS'],
-    [{ winningRule: 'renju' }, 'BAD_RULE'],
+    [{ winningRule: 'chess' }, 'BAD_RULE'],
     [{ ruleWall: 'yes' }, 'BAD_SETTINGS'],
     [{ ranked: undefined }, 'BAD_SETTINGS'],
     [{ timerMode: 'hourglass' }, 'BAD_TIME'],

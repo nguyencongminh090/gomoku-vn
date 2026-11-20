@@ -35,6 +35,7 @@ const RatingService   = require('../../managers/RatingService');
 const ChallengeSeries = require('../../managers/ChallengeSeries');
 const config          = require('../../config');
 const moveLag         = require('../../utils/move-lag'); // TEMP — TODO.md #167 measurement harness
+const FORBIDDEN_CODE = { overline: 'GAME_FORBIDDEN_OVERLINE', double_three: 'GAME_FORBIDDEN_DOUBLE_THREE', double_four: 'GAME_FORBIDDEN_DOUBLE_FOUR' }; // #425
 const {
   timerMap,
   broadcastLobbyUpdate,
@@ -185,6 +186,17 @@ function register(io, socket) {
     room.lastActivity = Date.now();
     scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364), throttled
 
+    if (engine.settings && engine.settings.winningRule === 'renju' && !engine.ruleSwap2 && engine.moveCount === 3) {
+      const o = engine.opening;
+      io.to(room.roomId).emit('chat:message', {
+        from: null, fromId: null,
+        text: o ? `Khai cuộc: ${o.name} (${o.no}).` : 'Khai cuộc tự do (free-open).',
+        code: o ? (o.group === 'indirect' ? 'GAME_OPENING_INDIRECT' : 'GAME_OPENING_DIRECT') : 'GAME_OPENING_FREE',
+        vars: o ? { name: o.name, no: o.no } : undefined,
+        timestamp: Date.now(), isSystem: true,
+      });
+    }
+
     if (result.won || result.draw) {
       const finalResult = engine.result;
       handleGameEnd(io, room);
@@ -197,6 +209,14 @@ function register(io, socket) {
       // §B36 removed #game-overlay) — this system-chat line is now the only
       // announcement of it, matching the wording already used for an agreed
       // draw (game:draw_accept below).
+      if (result.forbidden) {
+        io.to(room.roomId).emit('chat:message', {
+          from: null, fromId: null,
+          text: 'Đen đi nước cấm nên thua ván.',
+          code: FORBIDDEN_CODE[result.forbidden] || 'GAME_FORBIDDEN_OVERLINE',
+          timestamp: Date.now(), isSystem: true,
+        });
+      }
       if (result.draw) {
         io.to(room.roomId).emit('chat:message', {
           from: null, fromId: null,

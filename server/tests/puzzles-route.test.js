@@ -113,7 +113,7 @@ describe('submit + validation', () => {
     ['empty title', { title: '  ' }, 'PUZZLE_TITLE_INVALID'],
     ['long title', { title: 'x'.repeat(61) }, 'PUZZLE_TITLE_INVALID'],
     ['long prompt', { prompt: 'x'.repeat(281) }, 'PUZZLE_PROMPT_INVALID'],
-    ['bad rule', { rule: 'renju' }, 'PUZZLE_RULE_INVALID'],
+    ['bad rule', { rule: 'chess' }, 'PUZZLE_RULE_INVALID'],
     ['unsupported board size', { boardSize: 16 }, 'PUZZLE_RULE_INVALID'],
     ['bad level', { level: 'insane' }, 'PUZZLE_LEVEL_INVALID'],
     ['no tags', { tags: [] }, 'PUZZLE_TAGS_INVALID'],
@@ -252,7 +252,7 @@ describe('list filters', () => {
   it('GET /meta lists the allowed values', async () => {
     const m = (await call('GET', '/api/puzzles/meta')).body;
     expect(m.levels).toEqual(['easy', 'medium', 'hard', 'expert']);
-    expect(m.rules).toEqual(['freestyle', 'standard', 'caro']);
+    expect(m.rules).toEqual(['freestyle', 'standard', 'caro', 'renju']);
   });
 });
 

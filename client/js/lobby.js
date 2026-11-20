@@ -628,6 +628,7 @@ function buildRuleTitle(room) {
   const win = room.winningRule || 'freestyle';
   if (win === 'standard')  parts.push(t('rule.standard'));
   if (win === 'caro')      parts.push(t('rule.caro'));
+  if (win === 'renju')     parts.push(t('rule.renju'));
   if (win === 'freestyle') parts.push(t('rule.freestyle'));
   return parts.join(' · ');
 }

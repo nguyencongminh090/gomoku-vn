@@ -8,7 +8,7 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const LEVELS = ['easy', 'medium', 'hard', 'expert'];
-  const RULES = ['freestyle', 'standard', 'caro'];
+  const RULES = ['freestyle', 'standard', 'caro', 'renju'];
   const TAGS = ['attack', 'defense', 'trap', 'vct', 'vcf'];
 
   const levelsEl = document.getElementById('pz-levels');

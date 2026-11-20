@@ -34,6 +34,8 @@
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
 const { isRatedSetup } = require('./RatingService');
+const Renju = require('../../client/js/renju');
+const RenjuOpenings = require('../../client/js/renju-openings');
 
 // Board cell constants
 const EMPTY  =  0;
@@ -80,9 +82,11 @@ class GameEngine {
     this.walls     = opts.walls || [];
     this.portals   = opts.portals || [];
     this.firstMoveZones = opts.firstMoveZones || [];
-    // Winning rule: 'freestyle' (5+), 'standard' (exactly 5), 'caro' (5+, open ends).
+    // Winning rule: 'freestyle' (5+), 'standard' (exactly 5), 'caro' (5+, open ends),
+    // 'renju' (Black exactly 5 and loses on overline / 3-3 / 4-4; White 5+) — #425.
     this.settings  = { winningRule: opts.winningRule || 'freestyle' };
     this.ruleSwap2 = opts.ruleSwap2 === true;
+    this.opening   = null; // Renju: recognised opening { group, no, name } after move 3, else null = free-open (#425)
 
     // Initialize board
     this.board = this._createBoard();
@@ -189,7 +193,8 @@ class GameEngine {
     }
 
     // First-move zone enforcement (only when walls exist)
-    if (this.walls.length > 0 && this.moveCount === 0) {
+    const isRenju = this.settings.winningRule === 'renju';
+    if (!isRenju && this.walls.length > 0 && this.moveCount === 0) {
       const inZone = this.firstMoveZones.some(z => z.x === x && z.y === y);
       if (!inZone) {
         return { error: 'Nước đầu tiên phải đặt cạnh một ô tường.', code: 'SWAP2_FIRST_MOVE_MUST_BE_ADJACENT_WALL' };
@@ -205,7 +210,8 @@ class GameEngine {
     // (Chebyshev = max(|dx|, |dy|), i.e. king-move distance covering all 8 directions).
     // (only when WALL is enabled; does not apply during Swap2 opening, which blocks
     // normal moves via makeMove entirely — see check at the top of this method).
-    if (this.walls.length > 0 && userId === this.players[0].userId) {
+    // Renju + WALL skips this Long-Pro-style rule for now (#425).
+    if (!isRenju && this.walls.length > 0 && userId === this.players[0].userId) {
       const player1Moves = this.moveHistory.filter(m => m.color === colorStr);
       if (player1Moves.length === 1) {
         const first = player1Moves[0];
@@ -218,6 +224,10 @@ class GameEngine {
         }
       }
     }
+
+    // Renju: Black may not make an overline / double-three / double-four (unless the stone makes five).
+    // Checked before the stone is placed; a forbidden move is played and loses at once (RIF s.9.2).
+    const forbidden = isRenju && colorStr === 'BLACK' ? Renju.forbiddenReason(this.board, x, y) : null;
 
     // Undo requests don't block gameplay, but the requester continuing to
     // play instead of waiting auto-cancels their own pending request — the
@@ -237,6 +247,16 @@ class GameEngine {
 
     // Cancel any pending draw offer on move
     this.drawOffer = null;
+
+    if (isRenju && !this.ruleSwap2 && this.moveCount === 3) this.opening = RenjuOpenings.detectOpening(this.moveHistory, this.boardSize);
+
+    if (forbidden) {
+      const winner = this.players.find(p => p.userId !== userId);
+      this.status = 'finished';
+      this.result = { winner: winner.userId, reason: 'forbidden', forbidden };
+      logger.info(`[GameEngine] Game ${this.gameId}: ${player.displayName} (Black) lost on a forbidden move (${forbidden})`);
+      return { won: true, forbidden, color: colorStr, nextTurn: null };
+    }
 
     // Check win
     const winLine = this._checkWin(x, y, color);
@@ -774,6 +794,8 @@ class GameEngine {
       result: this.result,
       undoOffer: this.undoOffer,
       rated: this.isRated(),
+      winningRule: this.settings.winningRule,
+      opening: this.opening, // Renju only: { group, no, name } once move 3 is down, else null (free-open) (#425)
       swap2: {
         enabled: this.ruleSwap2 === true,
         openingPhase: this.openingPhase,
@@ -822,7 +844,9 @@ class GameEngine {
       const rule = (this.settings && this.settings.winningRule) || 'freestyle';
       // Standard wins only on EXACTLY 5 (overlines of 6+ do not win).
       // Freestyle and Caro win on 5 OR MORE.
-      const lengthWins = rule === 'standard' ? (deduped.length === 5) : (deduped.length >= 5);
+      // Renju: Black exactly 5 (its overline is forbidden, never a win), White 5 or more.
+      const lengthWins = rule === 'standard' || (rule === 'renju' && color === BLACK)
+        ? (deduped.length === 5) : (deduped.length >= 5);
 
       if (lengthWins) {
         // Caro (Luật 2 đầu): a row blocked by an OPPONENT stone on BOTH ends is not

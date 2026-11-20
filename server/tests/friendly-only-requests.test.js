@@ -81,7 +81,7 @@ describe('isRatedSetup — decision table', () => {
     ['room not ranked', { ranked: false, winningRule: 'caro', players: two }, false],
     ['ranked flag missing', { winningRule: 'caro', players: two }, false],
     ['a guest seated', { ranked: true, winningRule: 'caro', players: [{ id: 'a' }, { id: 'g', isGuest: true }] }, false],
-    ['unknown rule', { ranked: true, winningRule: 'renju', players: two }, false],
+    ['unknown rule', { ranked: true, winningRule: 'chess', players: two }, false],
     ['same player twice', { ranked: true, winningRule: 'caro', players: [{ id: 'a' }, { id: 'a' }] }, false],
     ['one player', { ranked: true, winningRule: 'caro', players: [{ id: 'a' }] }, false],
     ['null', null, false],
