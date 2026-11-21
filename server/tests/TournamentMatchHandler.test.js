@@ -1517,6 +1517,14 @@ describe('TournamentMatchHandler — Renju opening (#427)', () => {
     expect(match.engine.offerN).toBe(4);
   });
 
+  test('per_move: each Yamaguchi opening stone refreshes the mover\'s window (#427)', () => {
+    const { timer, s1, io } = setupRenju('yamaguchi');
+    timer.refreshPerMove = jest.fn(() => true);
+    for (const [x, y] of [[7, 7], [7, 6], [7, 5]]) fire(s1, 'tmatch:swap2_place', { tournamentId: 't1', pairingId: 'p1', x, y });
+    expect(timer.refreshPerMove.mock.calls).toEqual([['black'], ['black'], ['black']]);
+    expect(io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:timer_sync')).toHaveLength(3);
+  });
+
   test('B428: tmatch:swap2_state carries players, with colours once the opening ends', () => {
     const { io, s1, s2 } = setupRenju('yamaguchi');
     const P = { tournamentId: 't1', pairingId: 'p1' };

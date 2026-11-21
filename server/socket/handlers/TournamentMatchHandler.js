@@ -515,6 +515,18 @@ function forceCancelMatch(io, tournamentId, pairingId, reason = 'tournament_canc
  * @param {import('socket.io').Server} io
  * @param {import('socket.io').Socket} socket
  */
+/**
+ * per_move clock in a Renju opening (#427, user 2026-11-21): each completed step (stone, offered 5th,
+ * choice) refreshes the actor's window. Timer slots are entry-based (player1 = 'black'). Swap2 unchanged.
+ */
+function refreshOpeningClock(match, pairingId, userId) {
+  if (!match.engine.openingRule) return false;
+  const timer = tournamentState.tournamentTimerMap.get(pairingId);
+  const pairing = tournamentManager.getPairing(pairingId);
+  if (!timer || !pairing || typeof timer.refreshPerMove !== 'function') return false;
+  return timer.refreshPerMove(match.entryByUserId.get(userId) === pairing.player1EntryId ? 'black' : 'white');
+}
+
 function register(io, socket) {
   const user = socket.user;
 
@@ -685,6 +697,7 @@ function register(io, socket) {
       nextColor: r.nextColor,
     });
 
+    const refreshed = refreshOpeningClock(match, payload.pairingId, user.userId);
     if (r.currentTurn !== user.userId) {
       const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
       const pairing = tournamentManager.getPairing(payload.pairingId);
@@ -693,6 +706,9 @@ function register(io, socket) {
         timer.switchTurn(nextEntryId === pairing.player1EntryId ? 'black' : 'white');
         io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
       }
+    } else if (refreshed) {
+      const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
+      io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
     }
   });
 
@@ -725,6 +741,7 @@ function register(io, socket) {
       nextColor: r.done ? null : r.nextColor,
     });
 
+    const refreshed = refreshOpeningClock(match, payload.pairingId, user.userId);
     if (engine.openingRule && r.currentTurn !== user.userId) {
       // A Renju swap / choice can hand the move to the other player (#427).
       const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
@@ -734,7 +751,7 @@ function register(io, socket) {
         timer.switchTurn(nextEntryId === pairing.player1EntryId ? 'black' : 'white');
         io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
       }
-    } else if (r.done) {
+    } else if (r.done || refreshed) {
       const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
       if (timer) io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
     }

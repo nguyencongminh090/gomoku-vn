@@ -265,6 +265,7 @@ function register(io, socket) {
       return;
     }
 
+    const refreshed = refreshOpeningClock(room, engine, user.userId);
     if (r.done) { // a Renju opening ends on the picked 5th move (#427)
       finishOpening(io, room, engine, { x: r.x, y: r.y, color: r.color }, hadOwnUndoOffer);
       scheduleLobbyBoardUpdate(io, room.roomId);
@@ -286,6 +287,8 @@ function register(io, socket) {
         moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
         io.to(room.roomId).emit('timer:sync', timer.getSync());
       }
+    } else if (refreshed) {
+      io.to(room.roomId).emit('timer:sync', timerMap.get(room.roomId).getSync());
     }
 
     room.lastActivity = Date.now();
@@ -308,6 +311,7 @@ function register(io, socket) {
       return;
     }
 
+    const refreshed = refreshOpeningClock(room, engine, user.userId);
     if (r.done) {
       finishOpening(io, room, engine, null, hadOwnUndoOffer);
     } else {
@@ -322,6 +326,8 @@ function register(io, socket) {
           moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
           io.to(room.roomId).emit('timer:sync', timer.getSync());
         }
+      } else if (refreshed) {
+        io.to(room.roomId).emit('timer:sync', timerMap.get(room.roomId).getSync());
       }
     }
 
@@ -775,6 +781,19 @@ function finishOpening(io, room, engine, lastStone, hadOwnUndoOffer) {
     code: 'SWAP2_OPENING_DONE', vars: { name: whiteP ? whiteP.displayName : '—' },
     timestamp: Date.now(), isSystem: true,
   });
+}
+
+/**
+ * per_move clock in a Renju opening (#427, user 2026-11-21): each step the actor completes (one
+ * stone, one offered 5th, one choice) refreshes the actor's window, so ten Taraguchi offers do not
+ * share one window. Runs before switchTurn / remapForSwap2 (slots are still the placeholder
+ * first/second-player ones). Swap2 keeps its old behaviour. Returns true when the clock changed.
+ */
+function refreshOpeningClock(room, engine, userId) {
+  if (!engine.openingRule) return false;
+  const timer = timerMap.get(room.roomId);
+  if (!timer || typeof timer.refreshPerMove !== 'function') return false;
+  return timer.refreshPerMove(timer.blackPlayerId === userId ? 'black' : 'white');
 }
 
 /** Renju: name the opening once move 3 is down (#425; via the opening path for #427). */

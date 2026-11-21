@@ -370,3 +370,4 @@
 | 2026-11-18 16:50 | #422 Back mid-game: lobby page no longer resumes the game; gets room:joined and returns to the room; page bounce keeps the running grace; 14 tests | [detail](docs/fix-log/2026-11-18-422-back-returns-to-room.md) |
 | 2026-11-21 11:23 | B428 tournament match: swap2_state now carries players; page applies colours and switches to play rendering after Swap2/Renju openings; 4 tests | [detail](docs/fix-log/2026-11-21-b428-tmatch-opening-colours.md) |
 | 2026-11-21 12:08 | #429 room.html + tournament-match.html load js/renju.js?v=<hash> (was bare, stale under immutable cache); 2 tests | [detail](docs/fix-log/2026-11-21-429-renju-js-cache-bust.md) |
+| 2026-11-21 12:10 | #427 per_move clock: every Renju opening step (stone, offered 5th, choice) refreshes the actor window, room + tournament; Swap2 unchanged; 7 tests | [detail](docs/fix-log/2026-11-21-427-opening-clock-per-step.md) |
