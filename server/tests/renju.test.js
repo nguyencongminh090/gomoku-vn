@@ -100,4 +100,14 @@ describe('work cap', () => {
     expect(Date.now() - t0).toBeLessThan(2000);
     expect(again).toEqual(a);
   });
+
+  test('over budget fails closed and leaves the board untouched', () => {
+    const stones = [];
+    for (let y = 1; y < 14; y++) for (let x = 1; x < 14; x++) if ((x + 2 * y) % 3 !== 0) stones.push([x, y]);
+    const b = board({ B: stones });
+    const copy = JSON.stringify(b);
+    const pts = Renju.forbiddenPoints(b);
+    expect(JSON.stringify(b)).toBe(copy);
+    expect(pts.every((p) => ['overline', 'double_four', 'double_three'].includes(p.reason))).toBe(true);
+  });
 });

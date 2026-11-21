@@ -19,10 +19,12 @@
   const BLACK = 1;
   const DIRS = [[1, 0], [0, 1], [1, 1], [1, -1]];
   // Work cap per top-level check: the RIF 9.3 recursion is bounded by depth, but a crafted board (a user-authored puzzle)
-  // could still fan out. When the budget runs out the move is treated as NOT forbidden — deterministic, so server and
-  // client agree. Real positions use a few dozen nodes.
+  // could still fan out. When the budget runs out the move is treated as FORBIDDEN ('double_three', the shape that
+  // needs the recursion) — fail closed, deterministic, so server and client agree. The throw unwinds the whole
+  // recursion, so a cut-off never reads as "playable" inside isThree. Real positions use a few dozen nodes.
   const NODE_BUDGET = 4000;
   let budget = NODE_BUDGET;
+  const OVER_BUDGET = { overBudget: true };
   const REACH = 7; // cells read each side of the centre; a five spans <= 4, plus 2 beyond to measure the run
 
   /** The line through (x, y) as an array of 'B' / '.' / 'X' (blocker or off-board), centre at index REACH. */
@@ -102,7 +104,7 @@
   /** Reason Black may not have a stone at (x, y), the stone being placed on `board` for the call. */
   function reasonPlaced(board, x, y, depth) {
     if (board[y][x] !== EMPTY) return null;
-    if (--budget < 0) return null;
+    if (--budget < 0) throw OVER_BUDGET;
     board[y][x] = BLACK;
     try {
       if (placedFive(board, x, y)) return null; // five wins even when the shape is forbidden
@@ -121,8 +123,15 @@
   }
 
   function forbiddenReason(board, x, y) {
+    return topLevel(board, x, y);
+  }
+
+  function topLevel(board, x, y) {
     budget = NODE_BUDGET;
-    return reasonPlaced(board, x, y, 0);
+    try { return reasonPlaced(board, x, y, 0); } catch (e) {
+      if (e === OVER_BUDGET) return 'double_three';
+      throw e;
+    }
   }
 
   function exactFive(board, x, y) {
@@ -135,8 +144,7 @@
     const out = [];
     for (let y = 0; y < board.length; y++) {
       for (let x = 0; x < board.length; x++) {
-        budget = NODE_BUDGET;
-        const reason = board[y][x] === EMPTY ? reasonPlaced(board, x, y, 0) : null;
+        const reason = board[y][x] === EMPTY ? topLevel(board, x, y) : null;
         if (reason) out.push({ x, y, reason });
       }
     }
