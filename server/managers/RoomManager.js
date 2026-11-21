@@ -34,6 +34,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
+const { WINNING_RULES } = require('./rules');
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
 const ChallengeSeries = require('./ChallengeSeries');
@@ -909,14 +910,14 @@ class RoomManager extends EventEmitter {
       : config.DEFAULT_BOARD_SIZE;
 
     // Winning rule (radio): freestyle (5+) | standard (exactly 5) | caro (5+, open ends).
-    const VALID_WINNING = ['freestyle', 'standard', 'caro'];
-    if (VALID_WINNING.includes(settings.winningRule)) s.winningRule = settings.winningRule;
+    if (WINNING_RULES.includes(settings.winningRule)) s.winningRule = settings.winningRule;
     else if (settings.ruleDoubleOpen === true) s.winningRule = 'caro'; // backward-compat for old flag
     else s.winningRule = 'freestyle';
 
     // Board setup (checkboxes — may combine).
     s.ruleWall        = settings.ruleWall === true;
     s.rulePortal      = settings.rulePortal === true;
+    if (s.winningRule === 'renju') s.rulePortal = false; // portal lines make forbidden-move detection ill-defined (#425)
 
     // Opening rule. Swap2 is played on a plain board, so it disables board setup.
     s.ruleSwap2       = settings.ruleSwap2 === true;

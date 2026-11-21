@@ -396,6 +396,7 @@
       this.walls = [];
       this.portals = [];
       this.firstMoveZones = [];
+      this.forbidden = []; // Renju: cells Black may not play, drawn as no-entry sign while it is Black's turn (#425)
       this.showZones = false;
       this.lastMove = null;
       this.winLine = null;
@@ -473,6 +474,8 @@
       if (s.portals !== undefined) this.portals = s.portals;
       if (s.firstMoveZones !== undefined) this.firstMoveZones = s.firstMoveZones;
       if (s.showZones !== undefined) this.showZones = s.showZones;
+      const forbiddenChanged = s.forbidden !== undefined && JSON.stringify(s.forbidden) !== JSON.stringify(this.forbidden);
+      if (s.forbidden !== undefined) this.forbidden = s.forbidden;
       if (s.winLine !== undefined) this.winLine = s.winLine;
       if (s.moveHistory !== undefined) this.moveHistory = s.moveHistory || [];
       if (s.lastMove !== undefined) this.lastMove = s.lastMove;
@@ -488,6 +491,7 @@
       // s.displayMode is ignored: the look comes from BoardPrefs (#216).
       // #378: one new stone (a move) patches the SVG; anything else redraws it whole.
       if (!this._drawMove()) this._draw();
+      if (forbiddenChanged) this._drawOverlay();
     }
 
     /**
@@ -1007,6 +1011,13 @@
       const out = [];
       const mine = this.myColor === 'BLACK' ? 1 : this.myColor === 'WHITE' ? 2 : 0;
       const accent = paper ? (mine === 2 ? s.paper.oColor : s.paper.xColor) : LAST;
+
+      if (this.forbidden && this.forbidden.length) {
+        // "No entry" sign (ring + slash): unlike a ✕ it cannot be mistaken for Black's own paper-theme stones.
+        const r = P * 0.26, d = r * 0.7;
+        const sign = (f) => `<path d="M${c(f.x) + r} ${c(f.y)}A${r} ${r} 0 1 0 ${c(f.x) - r} ${c(f.y)}A${r} ${r} 0 1 0 ${c(f.x) + r} ${c(f.y)}M${c(f.x) - d} ${c(f.y) + d}L${c(f.x) + d} ${c(f.y) - d}"/>`;
+        out.push(`<g class="gboard__forbidden" fill="rgba(192,57,43,.14)" stroke="#c0392b" stroke-width="2" stroke-linecap="round" opacity=".9">${this.forbidden.filter(f => this._isEmpty(f)).map(sign).join('')}</g>`);
+      }
 
       const h = this._hoverCell;
       if (h && this._isEmpty(h) && !(this._pendingCell && this._pendingCell.x === h.x && this._pendingCell.y === h.y)) {

@@ -19,7 +19,7 @@
 
 const logger = require('../utils/logger');
 
-const CATEGORIES      = ['freestyle', 'standard', 'caro'];
+const CATEGORIES      = require('./rules').WINNING_RULES;
 const INITIAL_RATING  = 1200;
 const INITIAL_RD      = 350;
 const INITIAL_VOL     = 0.06;

@@ -14,7 +14,7 @@
 'use strict';
 
 (function () {
-  const CATEGORIES = ['freestyle', 'standard', 'caro'];
+  const CATEGORIES = ['freestyle', 'standard', 'caro', 'renju'];
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
 
   const tabsEl = document.getElementById('rk-tabs');     // rule chips (filter)

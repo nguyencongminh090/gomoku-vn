@@ -208,11 +208,12 @@
     freestyle: { cells: ['', 'x', 'x', 'x', 'x', 'x', 'x', ''], ok: true,  key: 'rules.ex_freestyle' },
     standard:  { cells: ['', 'x', 'x', 'x', 'x', 'x', 'x', ''], ok: false, key: 'rules.ex_standard' },
     caro:      { cells: ['o', 'x', 'x', 'x', 'x', 'x', 'o'],    ok: false, key: 'rules.ex_caro' },
+    renju:     { cells: ['', 'x', 'x', 'x', 'x', 'x', 'x', ''], ok: false, key: 'rules.ex_renju' },
   };
 
   function activeRules() {
     const s = (S() && S().roomData && S().roomData.settings) || {};
-    const win = ['freestyle', 'standard', 'caro'].includes(s.winningRule) ? s.winningRule : 'freestyle';
+    const win = ['freestyle', 'standard', 'caro', 'renju'].includes(s.winningRule) ? s.winningRule : 'freestyle';
     const list = [{ id: win, name: getWinningRuleLabel(win), kind: 'rules.kind_win', desc: `rules.${win}_desc` }];
     if (s.ruleWall)   list.push({ id: 'wall',   name: t('room.rule_wall'),   kind: 'rules.kind_variant', desc: 'rules.wall_desc' });
     if (s.rulePortal) list.push({ id: 'portal', name: t('room.rule_portal'), kind: 'rules.kind_variant', desc: 'rules.portal_desc' });
@@ -641,6 +642,7 @@
       freestyle: t('rule.freestyle'),
       standard:  t('rule.standard'),
       caro:      t('rule.caro'),
+      renju:     t('rule.renju'),
     }[key] || t('rule.freestyle');
   }
 
@@ -759,6 +761,7 @@
             <option value="freestyle" ${(s.winningRule || 'freestyle')==="freestyle" ? 'selected' : ''}>${t('rule.freestyle')}</option>
             <option value="standard" ${(s.winningRule || 'freestyle')==="standard" ? 'selected' : ''}>${t('rule.standard')}</option>
             <option value="caro" ${(s.winningRule || 'freestyle')==="caro" ? 'selected' : ''}>${t('rule.caro')}</option>
+            <option value="renju" ${(s.winningRule || 'freestyle')==="renju" ? 'selected' : ''}>${t('rule.renju')}</option>
           </select>
         </div>
         <div class="setting-row">

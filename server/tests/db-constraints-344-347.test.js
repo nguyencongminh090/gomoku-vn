@@ -129,7 +129,7 @@ describe('B347 enum and 0/1 CHECKs', () => {
     ['puzzles.status', "INSERT INTO puzzles (id, author_id, title, rule, board_size, stones, to_move, mode, answers, level, status, position_hash, created_at, updated_at) VALUES ('z4','u1','t','freestyle',15,'[]','BLACK','sequence','[]','easy','live','h','t','t')"],
     ['puzzles.mode', "INSERT INTO puzzles (id, author_id, title, rule, board_size, stones, to_move, mode, answers, level, position_hash, created_at, updated_at) VALUES ('z5','u1','t','freestyle',15,'[]','BLACK','final','[]','easy','h','t','t')"],
     ['puzzles.level', "INSERT INTO puzzles (id, author_id, title, rule, board_size, stones, to_move, mode, answers, level, position_hash, created_at, updated_at) VALUES ('z6','u1','t','freestyle',15,'[]','BLACK','sequence','[]','insane','h','t','t')"],
-    ['ratings.category', "INSERT INTO ratings (user_id, category, rating, rd, volatility, updated_at) VALUES ('u1', 'renju', 1500, 350, 0.06, 't')"],
+    ['ratings.category', "INSERT INTO ratings (user_id, category, rating, rd, volatility, updated_at) VALUES ('u1', 'chess', 1500, 350, 0.06, 't')"],
     ['forum_reports.target_type', "INSERT INTO forum_reports (id, target_type, target_id, thread_id, reporter_id, reason, created_at) VALUES ('f1', 'user', 'x', 'x', 'u1', 'r', 't')"],
     ['forum_threads.deleted', "INSERT INTO forum_threads (id, category, author_id, title, body, created_at, last_post_at, deleted) VALUES ('th1', 'general', 'u1', 't', 'b', 't', 't', 3)"],
     ['sessions.is_guest', "INSERT INTO sessions (id, user_id, display_name, is_guest, created_at, last_seen_at, expires_at) VALUES ('s1', 'u1', 'a', 2, 't', 't', 't')"],
@@ -144,7 +144,7 @@ describe('B347 enum and 0/1 CHECKs', () => {
     for (const v of ['Paired', 'Negotiating', 'Reported', 'Ready', 'InProgress', 'Completed', 'Walkover', 'DoubleNoShow', 'OrganizerAdjusted', 'Cancelled']) {
       run("UPDATE tournament_pairings SET state = ? WHERE id = 'p1'", v);
     }
-    for (const v of ['freestyle', 'standard', 'caro']) run("INSERT INTO ratings (user_id, category, rating, rd, volatility, updated_at) VALUES ('u2', ?, 1500, 350, 0.06, 't')", v);
+    for (const v of ['freestyle', 'standard', 'caro', 'renju']) run("INSERT INTO ratings (user_id, category, rating, rd, volatility, updated_at) VALUES ('u2', ?, 1500, 350, 0.06, 't')", v);
     run("INSERT INTO clubs (id, slug, name, join_policy, owner_id, created_at) VALUES ('c2', 'c2', 'C', 'invite', 'u1', 't')");
   });
   test('foreign_key_check is clean after the rebuilds', () => {

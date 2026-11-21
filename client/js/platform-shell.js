@@ -33,7 +33,7 @@
     { id: 'tournaments', href: '/index.html#tournaments', icon: 'ph-regular-trophy', key: 'shell.tournaments_short' },
     { id: 'me', href: '/login.html', icon: 'ph-regular-user-circle', key: 'shell.me' },
   ];
-  const CATS = ['caro', 'standard', 'freestyle'];
+  const CATS = ['caro', 'standard', 'freestyle', 'renju'];
 
   /** The member's most-played rating, e.g. "Caro VN 1612"; '' when unrated. */
   function bestRating(ratings) {

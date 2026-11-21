@@ -13,7 +13,7 @@
 (function () {
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
-  const RULES = ['freestyle', 'standard', 'caro'];
+  const RULES = ['freestyle', 'standard', 'caro', 'renju'];
   const LEVELS = ['easy', 'medium', 'hard', 'expert'];
   const TAGS = ['attack', 'defense', 'trap', 'vct', 'vcf'];
   const SIZES = [15, 17, 19, 20];

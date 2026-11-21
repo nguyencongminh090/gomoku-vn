@@ -431,14 +431,14 @@ describe('club upgrade (#235)', () => {
   it('weekly chip swaps the table: wins/played columns, rating table hidden; empty → note', async () => {
     await bootClub(FULL);
     const chips = document.querySelectorAll('#cb-tabs .pchip');
-    expect(chips).toHaveLength(4);
-    chips[3].click();
+    expect(chips).toHaveLength(5);
+    chips[4].click();
     expect(document.getElementById('cb-board-wrap').hidden).toBe(true);
     expect(document.getElementById('cb-weekly-wrap').hidden).toBe(false);
     expect([...document.querySelectorAll('#cb-weekly-body td')].map((x) => (x.querySelector('a') || x).textContent)).toEqual(['1', 'Mem', '4', '6']);
-    expect(chips[3].getAttribute('aria-selected')).toBe('true');
+    expect(chips[4].getAttribute('aria-selected')).toBe('true');
     await bootClub({ ...FULL, weekly: [] });
-    document.querySelectorAll('#cb-tabs .pchip')[3].click();
+    document.querySelectorAll('#cb-tabs .pchip')[4].click();
     expect(document.getElementById('cb-weekly-empty').hidden).toBe(false);
     expect(document.getElementById('cb-weekly-wrap').hidden).toBe(true);
   });

@@ -61,10 +61,10 @@ describe('glicko2 — matches Glickman\'s worked example', () => {
 });
 
 describe('categoryFor — pool = winning rule', () => {
-  test.each([['freestyle'], ['standard'], ['caro']])('%s is its own pool', (rule) => {
+  test.each([['freestyle'], ['standard'], ['caro'], ['renju']])('%s is its own pool', (rule) => {
     expect(RS.categoryFor(rule)).toBe(rule);
   });
-  test.each([[undefined], [''], ['renju']])('%p is not rated', (rule) => {
+  test.each([[undefined], [''], ['chess']])('%p is not rated', (rule) => {
     expect(RS.categoryFor(rule)).toBeNull();
   });
 });
@@ -92,7 +92,7 @@ describe('isRatedGame — decision table', () => {
     ['one player only',        (g) => { g.players.pop(); }],
     ['no result',              (g) => { g.result = null; }],
     ['winner not a player',    (g) => { g.result.winner = 'someone-else'; }],
-    ['unknown winning rule',   (g) => { g.winningRule = 'renju'; }],
+    ['unknown winning rule',   (g) => { g.winningRule = 'chess'; }],
   ])('%s → not rated', (_label, mutate) => {
     const g = base();
     mutate(g);

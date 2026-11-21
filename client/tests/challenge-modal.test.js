@@ -102,13 +102,23 @@ describe('settings', () => {
     M.open({ to });
     expect(radios('modal.mode').map((i) => i.value)).toEqual(['rated', 'friendly']);
     expect(radios('modal.board_size').map((i) => i.value)).toEqual(['15', '17', '19', '20']);
-    expect(radios('modal.win_rule').map((i) => i.value)).toEqual(['freestyle', 'standard', 'caro']);
+    expect(radios('modal.win_rule').map((i) => i.value)).toEqual(['freestyle', 'standard', 'caro', 'renju']);
     expect(radios('modal.opening').map((i) => i.value)).toEqual(['none', 'swap2']);
     expect(radios('modal.special_rules')).toHaveLength(2);
     expect(radios('modal.timer_mode').map((i) => i.value)).toEqual(['per_move', 'per_game', 'blitz']);
     expect(document.querySelectorAll('.pchal__num input')).toHaveLength(3); // seconds, increment, custom games
     expect(radios('challenge.games').map((i) => i.value)).toEqual(['1', '3', '5', 'custom']);
     expect(radios('challenge.stake').map((i) => i.value)).toEqual(['none', 'swap']);
+  });
+
+  test('#425 picking Renju moves the board to 15x15 (default), and the size stays editable', () => {
+    M.open({ to });
+    pick('modal.board_size', 19);
+    pick('modal.win_rule', 'renju');
+    radios('modal.win_rule').find((i) => i.value === 'renju').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(radios('modal.board_size').find((i) => i.checked).value).toBe('15');
+    pick('modal.board_size', 19);
+    expect(radios('modal.board_size').find((i) => i.checked).value).toBe('19');
   });
 
   test('dependencies: Swap2 disables wall/portal; increment only in blitz; stake only when rated; hint only for swap', () => {

@@ -13,7 +13,7 @@
   const $ = (id) => document.getElementById(id);
 
   const username = decodeURIComponent(location.pathname.replace(/^\/u\//, '').replace(/\/$/, ''));
-  const CATEGORIES = ['freestyle', 'standard', 'caro'];
+  const CATEGORIES = ['freestyle', 'standard', 'caro', 'renju'];
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);

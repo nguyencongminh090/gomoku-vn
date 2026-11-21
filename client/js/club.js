@@ -10,7 +10,7 @@
   const t = (key, vars) => (typeof window.t === 'function' ? window.t(key, vars) : key);
   const $ = (id) => document.getElementById(id);
   const slug = decodeURIComponent(location.pathname.replace(/^\/c\//, '').replace(/\/$/, ''));
-  const CATEGORIES = ['freestyle', 'standard', 'caro'];
+  const CATEGORIES = ['freestyle', 'standard', 'caro', 'renju'];
   const COLORS = ['blue', 'green', 'red', 'orange', 'purple', 'teal', 'pink', 'gray'];
   const state = { category: CATEGORIES[0], weekly: false, color: 'blue', club: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
   const CHAT_POLL_MS = 8000;

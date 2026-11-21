@@ -11,14 +11,16 @@
  *
  * Verdict per line:
  *   verified  — the line makes five, or leaves a four the opponent cannot stop, at `step` (1-based).
- *   breaks    — the line fails at `step`: `occupied` (the forced reply took that cell) or
- *               `opponent_five` (the opponent completes five first).
+ *   breaks    — the line fails at `step`: `occupied` (the forced reply took that cell),
+ *               `opponent_five` (the opponent completes five first) or `forbidden` (Renju: Black's move is a
+ *               forbidden overline / 3-3 / 4-4).
  *   unchecked — a move does not force a single reply (VCT, trap, defence, 4-3 fork…) or the step
  *               budget ran out; the reviewer decides.
  * Nothing here rejects a puzzle — breaks are shown to the reviewer as a flag.
  */
 
 const { GameEngine, EMPTY, BLACK, WHITE } = require('./GameEngine');
+const Renju = require('../../client/js/renju');
 
 /** Total replayed moves per puzzle; answers are uncapped, so past this the rest is `unchecked`. */
 const MAX_STEPS = 200;
@@ -76,6 +78,7 @@ function defences(engine, me, opp, points) {
 }
 
 function replay(engine, base, line, toMove, budget) {
+  const renju = engine.settings.winningRule === 'renju';
   engine.board = base.map((r) => r.slice());
   const me = COLOR[toMove];
   const opp = me === BLACK ? WHITE : BLACK;
@@ -84,6 +87,8 @@ function replay(engine, base, line, toMove, budget) {
     const m = line[i];
     const step = i + 1;
     if (engine.board[m.y][m.x] !== EMPTY) return { status: 'breaks', step, reason: 'occupied' };
+    // Renju: a Black solver move that is a forbidden overline / 3-3 / 4-4 loses on the spot (unless it makes five).
+    if (renju && me === BLACK && Renju.forbiddenReason(engine.board, m.x, m.y)) return { status: 'breaks', step, reason: 'forbidden' };
     engine.board[m.y][m.x] = me;
     if (engine._checkWin(m.x, m.y, me)) return { status: 'verified', step, reason: 'five' };
     if (completions(engine, opp).length) return { status: 'breaks', step, reason: 'opponent_five' };
