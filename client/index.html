@@ -41,24 +41,26 @@
   <link rel="stylesheet" href="css/platform.css?v=ae47d7cf" />
   <link rel="stylesheet" href="css/pwa-banner.css?v=c3eeb0e5" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
-  <link rel="stylesheet" href="css/rooms-hall.css?v=3d24aa72" />
+  <link rel="stylesheet" href="css/rules-guide.css?v=d385a4ef" />
+  <link rel="stylesheet" href="css/rooms-hall.css?v=d6cd30d0" />
   <link rel="stylesheet" href="css/home-hero.css?v=ea8e5925" />
   <link rel="stylesheet" href="css/home-lamp.css?v=3d83c4c7" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
 
-  <script src="js/skin-preload.js?v=1669100e"></script>
+  <script src="js/skin-preload.js?v=399486e6"></script>
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=dc047968" />
+  <link rel="modulepreload" href="js/i18n.js?v=0a6d6ba3" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=349e6629" />
   <link rel="modulepreload" href="js/platform-shell.js?v=f1ed8844" />
   <link rel="modulepreload" href="js/lobby.js?v=9040e3e4" />
   <link rel="modulepreload" href="js/private-chat.js?v=35bd3dc7" />
   <link rel="modulepreload" href="js/tournaments.js?v=daa705df" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=2b47ff50" />
+  <link rel="modulepreload" href="js/room-rules-guide.js?v=217cc7a6" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=8f869e0f" />
   <link rel="modulepreload" href="js/home-lamp.js?v=bbe72945" />
 
 </head>
@@ -227,13 +229,17 @@
 
     <!-- "Đang chơi · N" (one label — the Phòng/Bàn/Quan sát filters were dropped 2026-11-13) + who is online as avatars (#159: an avatar opens a PM). -->
     <div class="rbar">
-      <h2 class="rbar__h"><span data-i18n="lobby.rh_playing">Đang chơi</span><span class="ptab__n" id="room-n-playing">0</span></h2>
+      <div class="rbar__tabs" id="rooms-tabs" role="tablist" aria-label="Phòng chơi" data-i18n-aria="home.rooms_title">
+        <button class="rbar__tab" id="rtab-rooms" type="button" role="tab" aria-selected="true" aria-controls="rooms-main"><span data-i18n="lobby.rh_playing">Đang chơi</span><span class="ptab__n" id="room-n-playing">0</span></button>
+        <button class="rbar__tab" id="rtab-rules" type="button" role="tab" aria-selected="false" aria-controls="rooms-rules" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-scales"></use></svg><span data-i18n="lobby.rh_rules">Luật chơi</span></button>
+      </div>
       <div class="online-line" id="online-line" hidden>
         <span class="online-line__names" id="online-line-names"></span>
         <span class="online-line__title"><span id="online-line-count">0</span> <span data-i18n="lobby.rh_online">đang online</span></span>
       </div>
     </div>
 
+    <div id="rooms-main" role="tabpanel" aria-labelledby="rtab-rooms">
     <!-- Room cards (lobby.js renderRoomList); the last card opens the create modal. -->
     <div id="room-list" class="room-list rgrid">
       <div class="room-list__empty">
@@ -242,6 +248,8 @@
       </div>
       <button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-plus-circle"></use></svg></span><span data-i18n="lobby.rh_new_table">Mở bàn mới</span></button>
     </div>
+    </div>
+    <div class="rg" id="rooms-rules" role="tabpanel" aria-labelledby="rtab-rules" tabindex="0" hidden></div>
   </div>
 
   <!-- ══════════════════════════ SCREEN: Giải đấu (Tournaments) ═══════════ -->
@@ -642,6 +650,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=77805a23"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=0773be0c"></script>
+<script type="module" src="js/index-entry.js?v=0bbaf46b"></script>
 </body>
 </html>

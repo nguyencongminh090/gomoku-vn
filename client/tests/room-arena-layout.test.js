@@ -72,9 +72,9 @@ describe('room.html structure', () => {
     }
   });
 
-  test('tabs: Nước đi · Chat · Khán giả (score inside) · Cài đặt · Luật; Chat open by default', () => {
+  test('tabs: Nước đi · Chat · Khán giả (score inside) · Cài đặt; Chat open by default', () => {
     const tabs = [...document.querySelectorAll('.tab-btn')].map(b => b.dataset.tab);
-    expect(tabs).toEqual(['tab-moves', 'tab-chat', 'tab-users', 'tab-settings', 'tab-rules']);
+    expect(tabs).toEqual(['tab-moves', 'tab-chat', 'tab-users', 'tab-settings']);
     expect(document.getElementById('score-panel').closest('#tab-users')).not.toBeNull();
     expect(activeTab()).toBe('tab-chat');
   });

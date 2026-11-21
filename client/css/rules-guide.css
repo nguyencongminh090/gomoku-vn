@@ -1,0 +1,183 @@
+/* Lobby rules guide and its static teaching diagrams. */
+.rg {
+  --rg-paper: #f0d6a5;
+  --rg-line: #a98254;
+  --rg-ghost: #50633b;
+  --rg-wall: #665953;
+  --rg-portal: #422b58;
+  --rg-highlight: #fbe9be;
+  --rg-cell: 24px;
+  container-type: inline-size;
+  margin: 0 0 32px;
+  color: var(--c-ink);
+}
+.rg[hidden] { display: none; }
+
+.rg-intro {
+  display: grid;
+  gap: 16px;
+  padding: clamp(16px, 3vw, 32px);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+  box-shadow: var(--shadow-card);
+}
+.rg-intro h2 {
+  margin: 0 0 8px;
+  font: 800 clamp(24px, 4cqi, 36px)/1.15 var(--font-display);
+  letter-spacing: -.025em;
+}
+.rg-intro .rg-lead { max-width: 55ch; margin: 0 0 12px; color: var(--c-ink); }
+.rg-intro > .rg-ex {
+  --rg-cell: 24px;
+  place-self: center;
+  width: 100%;
+  max-width: 248px;
+  box-sizing: border-box;
+  text-align: center;
+}
+.rg-match { margin-top: 8px; }
+.rg-match > summary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  width: fit-content;
+  min-height: 44px;
+  color: var(--c-brand-text);
+  font-size: var(--text-sm);
+  font-weight: 800;
+}
+.rg-match[open] .rg-points { margin-top: 4px; }
+
+.rg-group { margin-top: 28px; }
+.rg-group__t {
+  margin: 0 0 10px;
+  font: 800 var(--text-lg)/1.3 var(--font-display);
+}
+.rg-group__rules { display: grid; align-items: start; gap: 10px; }
+.rg-group__rules:not(:has(> [open])) { align-items: stretch; }
+.rg-sec {
+  min-width: 0;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+}
+.rg-sec > summary {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-height: 56px;
+  padding: 12px 40px 12px 16px;
+  border-radius: inherit;
+}
+.rg summary { cursor: pointer; list-style: none; }
+.rg summary::-webkit-details-marker { display: none; }
+.rg summary::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border: solid var(--c-brand-text);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.rg details[open] > summary::after { transform: rotate(-135deg); }
+.rg-sec > summary::after { position: absolute; top: 22px; right: 18px; }
+.rg:focus-visible,
+.rg summary:focus-visible { outline: 2px solid var(--c-brand-text); outline-offset: 2px; }
+.rg-sec > summary:hover,
+.rg-sec[open] > summary { background: var(--c-surface-2); }
+.rg-sec[open] > summary { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.rg-sec__name { font-size: var(--text-md); font-weight: 800; line-height: 1.3; }
+.rg-live { color: var(--c-brand-text); font-size: var(--text-xs); }
+.rg-lead, .rg-points {
+  font-size: var(--text-md);
+  line-height: 1.55;
+  color: var(--c-ink-2);
+}
+.rg-points { max-width: 65ch; margin: 0; padding-inline-start: 1.35em; }
+.rg-points li + li { margin-top: 4px; }
+.rg-sec__body {
+  display: grid;
+  gap: 14px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--c-border);
+}
+.rg-exs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 188px), 1fr)); gap: 8px; }
+.rg-ex {
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  background: var(--c-surface-2);
+}
+.rg-ex figcaption { font-size: var(--text-sm); line-height: 1.45; color: var(--c-ink-2); }
+.rg-ex__mark { margin-inline-end: 6px; }
+.rg-ex--ok .rg-ex__mark { color: var(--c-success); }
+.rg-ex--no .rg-ex__mark { color: var(--c-error); }
+
+/* Draw the lattice through intersections so each stone sits on a crossing. */
+.rg-board {
+  display: grid;
+  grid-template-columns: repeat(var(--rg-cols), minmax(0, 1fr));
+  width: min(100%, calc(var(--rg-cols) * var(--rg-cell) + 16px));
+  box-sizing: border-box;
+  padding: 8px;
+  border-radius: 6px;
+  background: var(--rg-paper);
+  box-shadow: inset 0 0 0 1px var(--rg-line);
+}
+.rg-board--edge {
+  border-left: 3px solid var(--rg-line);
+  border-radius: 0 6px 6px 0;
+}
+.rg-c {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  background:
+    linear-gradient(var(--rg-line), var(--rg-line)) center / 100% 1px no-repeat,
+    linear-gradient(var(--rg-line), var(--rg-line)) center / 1px 100% no-repeat,
+    var(--rg-cell-fill, transparent);
+  font-size: 11px;
+}
+.rg-board--edge .rg-c:first-child { background-size: 50% 1px, 1px 100%, auto; background-position: right center, center, center; }
+.rg-c--x::before, .rg-c--o::before, .rg-c--ghost::before, .rg-c--wall::before, .rg-c--portal::before {
+  content: '';
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+}
+.rg-c--x::before { background: var(--rh-stone-b); }
+.rg-c--o::before { background: var(--rh-stone-w); box-shadow: inset 0 0 0 1px var(--rg-line); }
+.rg-c--win { --rg-cell-fill: var(--rg-highlight); }
+.rg-c--win::before { box-shadow: 0 0 0 1px var(--rg-highlight); }
+.rg-c--ghost::before { background: var(--rg-highlight); border: 2px dashed var(--rg-ghost); }
+.rg-c--wall::before { border-radius: 3px; background: var(--rg-wall); }
+.rg-c--portal::before { border: 3px double var(--rg-highlight); background: var(--rg-portal); }
+.rg-c b { position: relative; font-weight: 800; }
+.rg-c--x { color: var(--rh-stone-w); }
+.rg-c--o { color: var(--rh-stone-b); }
+.rg-c--z0, .rg-c--z1 { --rg-cell-fill: color-mix(in srgb, var(--rg-ghost) 35%, var(--rg-paper)); }
+.rg-c--z2 { --rg-cell-fill: color-mix(in srgb, var(--rg-ghost) 25%, var(--rg-paper)); }
+.rg-c--z3 { --rg-cell-fill: color-mix(in srgb, var(--rg-ghost) 15%, var(--rg-paper)); }
+.rg-c--z4 { --rg-cell-fill: color-mix(in srgb, var(--rg-ghost) 6%, var(--rg-paper)); }
+
+@container (min-width: 640px) {
+  .rg-intro { grid-template-columns: minmax(0, 1fr) minmax(0, 36%); align-items: center; gap: 24px; }
+  .rg-intro > .rg-ex { --rg-cell: 32px; max-width: 320px; }
+  .rg-group__rules { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rg-sec > summary { min-height: 80px; }
+}
+@media (max-width: 860px) {
+  .rg summary { scroll-margin-block-end: 80px; }
+}
+@container (min-width: 900px) {
+  [data-group="opening"] .rg-group__rules { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
