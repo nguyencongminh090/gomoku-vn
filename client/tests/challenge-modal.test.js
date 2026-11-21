@@ -51,6 +51,16 @@ describe('util', () => {
     expect(M.util.normalize({ timerMode: 'per_move', timerIncrementSeconds: 5 }).timerIncrementSeconds).toBe(0);
   });
 
+  test.each([
+    [{ winningRule: 'renju', boardSize: 15, openingRule: 'yamaguchi', ruleWall: true, ruleSwap2: true }, 'yamaguchi'],
+    [{ winningRule: 'renju', boardSize: 17, openingRule: 'yamaguchi' }, null],
+    [{ winningRule: 'caro', boardSize: 15, openingRule: 'taraguchi10' }, null],
+  ])('normalize: Renju opening needs Renju 15x15 and a plain board (#427) %#', (s, expected) => {
+    const out = M.util.normalize({ timerMode: 'per_move', ...s });
+    expect(out.openingRule).toBe(expected);
+    if (expected) expect(out).toMatchObject({ ruleWall: false, ruleSwap2: false });
+  });
+
   test('describe: legacy row and full row', () => {
     expect(M.util.describe({ rule: 'caro', time: '3+2', rated: true })).toBe('rankings.cat_caro · 3+2 · challenge.rated');
     const s = { boardSize: 15, winningRule: 'freestyle', ranked: false, ruleWall: true, rulePortal: false, ruleSwap2: false, timerMode: 'per_move', timerSeconds: 45, timerIncrementSeconds: 0 };
@@ -103,7 +113,7 @@ describe('settings', () => {
     expect(radios('modal.mode').map((i) => i.value)).toEqual(['rated', 'friendly']);
     expect(radios('modal.board_size').map((i) => i.value)).toEqual(['15', '17', '19', '20']);
     expect(radios('modal.win_rule').map((i) => i.value)).toEqual(['freestyle', 'standard', 'caro', 'renju']);
-    expect(radios('modal.opening').map((i) => i.value)).toEqual(['none', 'swap2']);
+    expect(radios('modal.opening').map((i) => i.value)).toEqual(['none', 'swap2', 'taraguchi10', 'yamaguchi']);
     expect(radios('modal.special_rules')).toHaveLength(2);
     expect(radios('modal.timer_mode').map((i) => i.value)).toEqual(['per_move', 'per_game', 'blitz']);
     expect(document.querySelectorAll('.pchal__num input')).toHaveLength(3); // seconds, increment, custom games
@@ -162,7 +172,7 @@ describe('settings', () => {
     expect(url).toBe('/api/challenges');
     expect(JSON.parse(opts.body)).toEqual({
       to: 'bob', games: 3, stake: 'swap',
-      settings: { boardSize: 19, winningRule: 'caro', ranked: true, ruleSwap2: false, ruleWall: false, rulePortal: true, timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 },
+      settings: { boardSize: 19, winningRule: 'caro', ranked: true, ruleSwap2: false, openingRule: null, ruleWall: false, rulePortal: true, timerMode: 'blitz', timerSeconds: 300, timerIncrementSeconds: 3 },
     });
     expect(modal()).toBeNull();
     expect(onSent).toHaveBeenCalledWith({ id: 'c1' });

@@ -211,6 +211,11 @@
     renju:     { cells: ['', 'x', 'x', 'x', 'x', 'x', 'x', ''], ok: false, key: 'rules.ex_renju' },
   };
 
+  /** The opening select's value for settings `s` (#427). */
+  function openValue(s) { return s.openingRule || (s.ruleSwap2 ? 'swap2' : 'none'); }
+  /** Taraguchi-10 / Yamaguchi need Renju on 15x15 (server/managers/rules.js applyOpeningRule). */
+  function renju15(s) { return s.winningRule === 'renju' && s.boardSize === 15; }
+
   function activeRules() {
     const s = (S() && S().roomData && S().roomData.settings) || {};
     const win = ['freestyle', 'standard', 'caro', 'renju'].includes(s.winningRule) ? s.winningRule : 'freestyle';
@@ -218,6 +223,7 @@
     if (s.ruleWall)   list.push({ id: 'wall',   name: t('room.rule_wall'),   kind: 'rules.kind_variant', desc: 'rules.wall_desc' });
     if (s.rulePortal) list.push({ id: 'portal', name: t('room.rule_portal'), kind: 'rules.kind_variant', desc: 'rules.portal_desc' });
     if (s.ruleSwap2)  list.push({ id: 'swap2',  name: 'Swap2',               kind: 'rules.kind_opening', desc: 'rules.swap2_desc' });
+    if (s.openingRule) list.push({ id: s.openingRule, name: t('rule.opening_' + s.openingRule), kind: 'rules.kind_opening', desc: `rules.${s.openingRule}_desc` });
     return list;
   }
 
@@ -765,17 +771,17 @@
           </select>
         </div>
         <div class="setting-row">
-          <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
+          <div class="toggle-row" ${s.ruleSwap2 || s.openingRule ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_wall')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-wall" aria-label="${t('modal.rule_wall')}" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
+              <input type="checkbox" id="r-wall" aria-label="${t('modal.rule_wall')}" ${s.ruleWall ? 'checked' : ''} ${s.ruleSwap2 || s.openingRule ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
-          <div class="toggle-row" ${s.ruleSwap2 ? 'style="opacity:0.45"' : ''}>
+          <div class="toggle-row" ${s.ruleSwap2 || s.openingRule ? 'style="opacity:0.45"' : ''}>
             <span class="toggle-name">${t('modal.rule_portal')}</span>
             <label class="toggle-switch">
-              <input type="checkbox" id="r-portal" aria-label="${t('modal.rule_portal')}" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 ? 'disabled' : ''} data-change-action="updateSettings" />
+              <input type="checkbox" id="r-portal" aria-label="${t('modal.rule_portal')}" ${s.rulePortal ? 'checked' : ''} ${s.ruleSwap2 || s.openingRule ? 'disabled' : ''} data-change-action="updateSettings" />
               <span class="toggle-slider"></span>
             </label>
           </div>
@@ -783,9 +789,12 @@
         <div class="setting-row">
           <label class="setting-label" for="r-openRule">${t('modal.opening')}</label>
           <select class="setting-select" id="r-openRule" data-change-action="updateSettings">
-            <option value="none" ${(s.ruleSwap2 ? 'swap2' : 'none')==="none" ? 'selected' : ''}>${t('rule.none')}</option>
-            <option value="swap2" ${(s.ruleSwap2 ? 'swap2' : 'none')==="swap2" ? 'selected' : ''}>Swap2</option>
+            <option value="none" ${openValue(s)==="none" ? 'selected' : ''}>${t('rule.none')}</option>
+            <option value="swap2" ${openValue(s)==="swap2" ? 'selected' : ''}>Swap2</option>
+            <option value="taraguchi10" ${openValue(s)==="taraguchi10" ? 'selected' : ''} ${renju15(s) ? '' : 'disabled'}>${t('rule.opening_taraguchi10')}</option>
+            <option value="yamaguchi" ${openValue(s)==="yamaguchi" ? 'selected' : ''} ${renju15(s) ? '' : 'disabled'}>${t('rule.opening_yamaguchi')}</option>
           </select>
+          ${s.winningRule === 'renju' && !renju15(s) ? `<small class="setting-hint">${t('modal.opening_renju_hint')}</small>` : ''}
         </div>
         <div class="setting-row">
           <div class="toggle-row" ${rankedBlocked ? 'style="opacity:0.45"' : ''}>
@@ -831,6 +840,7 @@
       if (s.ruleWall)  ruleNames.push(t('room.rule_wall'));
       if (s.rulePortal) ruleNames.push(t('room.rule_portal'));
       if (s.ruleSwap2) ruleNames.push('Swap2');
+      if (s.openingRule) ruleNames.push(t('rule.opening_' + s.openingRule));
       const ruleText  = ruleNames.length > 0 ? ruleNames.join(', ') : t('room.rule_basic');
       const timerText = getTimerSettingsText(s);
 
@@ -1043,6 +1053,8 @@
         ruleWall:              wallEl   ? wallEl.checked   : false,
         rulePortal:            portalEl ? portalEl.checked : false,
         ruleSwap2:             (document.getElementById('r-openRule') || {}).value === 'swap2',
+        // Renju Taraguchi-10 / Yamaguchi (#427); the server drops it unless Renju on 15x15.
+        openingRule:           ['taraguchi10', 'yamaguchi'].includes((document.getElementById('r-openRule') || {}).value) ? document.getElementById('r-openRule').value : null,
         ranked:                rankedEl ? rankedEl.checked : true,
         timerMode,
         timerSeconds:          timerEl          ? (parseInt(timerEl.value, 10) || 60)          : 60,

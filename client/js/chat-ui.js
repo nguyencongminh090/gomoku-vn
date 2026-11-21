@@ -37,6 +37,7 @@
       case 'ruleWall':      return t('modal.rule_wall') + ': ' + on;
       case 'rulePortal':    return t('modal.rule_portal') + ': ' + on;
       case 'ruleSwap2':     return 'Swap2: ' + on;
+      case 'openingRule':   return t('modal.opening') + ': ' + (v ? t('rule.opening_' + v) : t('rule.none')); // #427
       case 'ranked':        return t('room.ranked') + ': ' + on;
       case 'timerMode':     return t('modal.timer_mode') + ': ' + t('room.timer_' + v);
       case 'timerSeconds':  return t('sys.set_timer_seconds') + ': ' + v + 's';

@@ -1479,3 +1479,58 @@ describe('TournamentMatchHandler — broadcastLiveMatchesUpdate throttle + diff 
     expect(liveMatchesEmits(io)).toHaveLength(2);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Renju Taraguchi-10 / Yamaguchi opening over tmatch:swap2_* (#427)
+// ---------------------------------------------------------------------------
+
+describe('TournamentMatchHandler — Renju opening (#427)', () => {
+  function setupRenju(openingRule) {
+    const ctx = setupTournamentAndPairing({ boardSize: 15 });
+    ctx.tournament.ruleSet = ruleSet({ boardSize: 15, winningRule: 'renju', openingRule });
+    const timer = fakeTimer();
+    tournamentState.tournamentTimerMap.set('p1', timer);
+    const io = makeIo();
+    TournamentMatchHandler.startMatch(io, 't1', 'p1');
+    const s1 = makeSocket(io, 'u1', 'Player One');
+    const s2 = makeSocket(io, 'u2', 'Player Two');
+    TournamentMatchHandler.register(io, s1);
+    TournamentMatchHandler.register(io, s2);
+    return { ...ctx, io, timer, s1, s2, match: tournamentState.tournamentGameMap.get('p1') };
+  }
+
+  test('engine starts the opening with colours unassigned; swap moves the clock to the new mover', () => {
+    const { match, timer, s1, s2 } = setupRenju('taraguchi10');
+    expect(match.engine.openingRule).toBe('taraguchi10');
+    expect(match.engine.players.map((p) => p.color)).toEqual([null, null]);
+    fire(s1, 'tmatch:swap2_place', { tournamentId: 't1', pairingId: 'p1', x: 7, y: 7 });
+    expect(timer.switchTurn).toHaveBeenLastCalledWith('white');
+    fire(s2, 'tmatch:swap2_choice', { tournamentId: 't1', pairingId: 'p1', choice: 'swap' });
+    expect(match.engine.currentTurn).toBe('u1');
+    expect(timer.switchTurn).toHaveBeenLastCalledWith('black');
+  });
+
+  test('Yamaguchi declare passes payload.n through', () => {
+    const { match, s1 } = setupRenju('yamaguchi');
+    for (const [x, y] of [[7, 7], [7, 6], [7, 5]]) fire(s1, 'tmatch:swap2_place', { tournamentId: 't1', pairingId: 'p1', x, y });
+    fire(s1, 'tmatch:swap2_choice', { tournamentId: 't1', pairingId: 'p1', choice: 'declare', n: 4 });
+    expect(match.engine.offerN).toBe(4);
+  });
+
+  test('B428: tmatch:swap2_state carries players, with colours once the opening ends', () => {
+    const { io, s1, s2 } = setupRenju('yamaguchi');
+    const P = { tournamentId: 't1', pairingId: 'p1' };
+    for (const [x, y] of [[7, 7], [7, 6], [7, 5]]) fire(s1, 'tmatch:swap2_place', { ...P, x, y });
+    fire(s1, 'tmatch:swap2_choice', { ...P, choice: 'declare', n: 1 });
+    fire(s2, 'tmatch:swap2_choice', { ...P, choice: 'stay' });
+    fire(s2, 'tmatch:swap2_place', { ...P, x: 0, y: 0 });
+    fire(s1, 'tmatch:swap2_place', { ...P, x: 3, y: 3 });
+    fire(s2, 'tmatch:swap2_place', { ...P, x: 3, y: 3 });
+    const last = io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:swap2_state').pop().data;
+    expect(last.openingPhase).toBe('play');
+    expect(last.players).toEqual([
+      { userId: 'u1', displayName: 'Player One', color: 'BLACK' },
+      { userId: 'u2', displayName: 'Player Two', color: 'WHITE' },
+    ]);
+  });
+});

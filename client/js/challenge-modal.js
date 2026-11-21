@@ -17,6 +17,7 @@
   const BOARD_SIZES = [15, 17, 19, 20];
   const RULES = ['freestyle', 'standard', 'caro', 'renju'];
   const TIMER_MODES = [['per_move', 'modal.per_move'], ['per_game', 'modal.per_game'], ['blitz', 'modal.blitz']];
+  const OPENINGS = ['taraguchi10', 'yamaguchi'];
   const GAMES = [1, 3, 5];
   const MAX_GAMES = 99;
   const DEFAULTS = {
@@ -36,6 +37,9 @@
     normalize(s) {
       const out = { ...s };
       if (out.ruleSwap2) { out.ruleWall = false; out.rulePortal = false; }
+      // Renju Taraguchi-10 / Yamaguchi (#427): Renju on 15x15 only, plain board.
+      if (!(OPENINGS.includes(out.openingRule) && out.winningRule === 'renju' && out.boardSize === 15)) out.openingRule = null;
+      if (out.openingRule) { out.ruleSwap2 = false; out.ruleWall = false; out.rulePortal = false; }
       if (out.timerMode !== 'blitz') out.timerIncrementSeconds = 0;
       return out;
     },
@@ -49,6 +53,7 @@
       if (!s) return [t('rankings.cat_' + c.rule), c.time, c.rated ? t('challenge.rated') : ''].filter(Boolean);
       const parts = [t('rankings.cat_' + s.winningRule), s.boardSize + '×' + s.boardSize];
       if (s.ruleSwap2) parts.push('Swap2');
+      if (s.openingRule) parts.push(t('rule.opening_' + s.openingRule));
       if (s.ruleWall) parts.push(t('modal.rule_wall'));
       if (s.rulePortal) parts.push(t('modal.rule_portal'));
       parts.push(util.clock(s));
@@ -193,7 +198,8 @@
       const board = seg('board', t('modal.board_size'), BOARD_SIZES.map((n) => [n, n + '×' + n]), s.boardSize);
       const rule = seg('rule', t('modal.win_rule'), RULES.map((r) => [r, t('rule.' + r)]), s.winningRule);
       rule.inputs.forEach((i) => i.addEventListener('change', () => { if (i.checked && i.value === 'renju') board.set(15); })); // Renju default 15x15, still editable (#425)
-      const opening = seg('open', t('modal.opening'), [['none', t('rule.none')], ['swap2', 'Swap2']], 'none');
+      const opening = seg('open', t('modal.opening'),
+        [['none', t('rule.none')], ['swap2', 'Swap2'], ...OPENINGS.map((o) => [o, t('rule.opening_' + o)])], 'none');
       const specials = el('div', undefined, 'pchal__row');
       const wall = check(t('modal.rule_wall'), false);
       const portal = check(t('modal.rule_portal'), false);
@@ -216,8 +222,11 @@
       note.setAttribute('role', 'status');
 
       const sync = () => {
-        const swap2 = opening.get() === 'swap2';
-        for (const c of [wall, portal]) { c.input.disabled = swap2; if (swap2) c.input.checked = false; }
+        const renju15 = rule.get() === 'renju' && Number(board.get()) === 15;
+        opening.inputs.forEach((i) => { if (OPENINGS.includes(i.value)) i.disabled = !renju15; });
+        if (!renju15 && OPENINGS.includes(opening.get())) opening.set('none');
+        const plain = opening.get() !== 'none';
+        for (const c of [wall, portal]) { c.input.disabled = plain; if (plain) c.input.checked = false; }
         inc.input.disabled = timer.get() !== 'blitz';
         customGames.node.hidden = games.get() !== 'custom';
         const rated = mode.get() === 'rated';
@@ -225,7 +234,7 @@
         if (!rated) stake.set('none');
         stakeHint.hidden = stake.get() !== 'swap';
       };
-      for (const g of [mode, opening, timer, stake, games]) g.inputs.forEach((i) => i.addEventListener('change', sync));
+      for (const g of [mode, opening, timer, stake, games, rule, board]) g.inputs.forEach((i) => i.addEventListener('change', sync));
 
       const send = el('button', t('challenge.send'), 'pbtn pbtn--primary');
       send.type = 'submit';
@@ -255,7 +264,7 @@
         ev.preventDefault();
         const settingsOut = util.normalize({
           boardSize: Number(board.get()), winningRule: rule.get(), ranked: mode.get() === 'rated',
-          ruleSwap2: opening.get() === 'swap2', ruleWall: wall.input.checked, rulePortal: portal.input.checked,
+          ruleSwap2: opening.get() === 'swap2', openingRule: OPENINGS.includes(opening.get()) ? opening.get() : null, ruleWall: wall.input.checked, rulePortal: portal.input.checked,
           timerMode: timer.get(),
           timerSeconds: parseInt(secs.input.value, 10) || 0,
           timerIncrementSeconds: parseInt(inc.input.value, 10) || 0,

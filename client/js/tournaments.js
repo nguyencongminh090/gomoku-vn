@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=6f676825';
+import { client, setHeroTournamentCount } from './lobby.js?v=9040e3e4';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -399,10 +399,13 @@ function readTournamentRuleSet() {
     ? (parseInt(document.getElementById('t-timer-increment').value, 10) || 0)
     : 0;
   const winningRule = (document.querySelector('input[name="tWinRule"]:checked') || {}).value || 'freestyle';
-  const ruleSwap2   = (document.querySelector('input[name="tOpenRule"]:checked') || {}).value === 'swap2';
+  const openRule    = (document.querySelector('input[name="tOpenRule"]:checked') || {}).value;
+  const ruleSwap2   = openRule === 'swap2';
+  // Renju Taraguchi-10 / Yamaguchi (#427): Renju on 15x15 only (the server drops it otherwise).
+  const openingRule = (openRule === 'taraguchi10' || openRule === 'yamaguchi') && winningRule === 'renju' && boardSize === 15 ? openRule : null;
   let   ruleWall    = document.getElementById('t-rule-wall').checked;
   let   rulePortal  = document.getElementById('t-rule-portal').checked;
-  if (ruleSwap2) { ruleWall = false; rulePortal = false; }
+  if (ruleSwap2 || openingRule) { ruleWall = false; rulePortal = false; }
   const hours = parseInt(document.getElementById('t-scheduling-hours').value, 10) || 48;
 
   const seriesMode = (document.querySelector('input[name="tSeriesMode"]:checked') || {}).value || 'fixedCount';
@@ -417,7 +420,7 @@ function readTournamentRuleSet() {
   }
 
   return {
-    boardSize, winningRule, ruleWall, rulePortal, ruleSwap2,
+    boardSize, winningRule, ruleWall, rulePortal, ruleSwap2, openingRule,
     timerMode, timerSeconds, timerIncrementSeconds,
     schedulingWindowMs: hours * 60 * 60 * 1000,
     startsAt: document.getElementById('t-starts-at').value || null,
@@ -467,8 +470,20 @@ modalConfirm.addEventListener('click', () => {
 // Mirrors lobby.js's identical interlock for the room-create modal.
 (function () {
   const sync = () => {
-    const swap2 = document.getElementById('tor-swap2');
-    const disabled = !!(swap2 && swap2.checked);
+    // Taraguchi-10 / Yamaguchi need Renju on 15x15 (#427): disable them otherwise, falling back to "none".
+    const win = (document.querySelector('input[name="tWinRule"]:checked') || {}).value;
+    const b15 = document.getElementById('tbs-15');
+    const renju15 = win === 'renju' && !!(b15 && b15.checked);
+    for (const id of ['tor-taraguchi10', 'tor-yamaguchi']) {
+      const r = document.getElementById(id);
+      if (!r) continue;
+      r.disabled = !renju15;
+      if (!renju15 && r.checked) { r.checked = false; const none = document.getElementById('tor-none'); if (none) none.checked = true; }
+    }
+    const hint = document.getElementById('tor-renju-hint');
+    if (hint) hint.hidden = renju15 || win !== 'renju';
+    const checked = (id) => { const r = document.getElementById(id); return !!(r && r.checked); };
+    const disabled = checked('tor-swap2') || checked('tor-taraguchi10') || checked('tor-yamaguchi');
     ['t-rule-wall', 't-rule-portal'].forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -483,7 +498,7 @@ modalConfirm.addEventListener('click', () => {
     const b = document.getElementById('tbs-15');
     if (r.checked && r.value === 'renju' && b) b.checked = true;
   }));
-  document.querySelectorAll('input[name="tOpenRule"]').forEach((r) => r.addEventListener('change', sync));
+  document.querySelectorAll('input[name="tOpenRule"], input[name="tWinRule"], input[name="tBoardSize"]').forEach((r) => r.addEventListener('change', sync));
   sync();
 })();
 
