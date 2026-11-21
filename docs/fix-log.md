@@ -373,3 +373,4 @@
 | 2026-11-21 12:10 | #427 per_move clock: every Renju opening step (stone, offered 5th, choice) refreshes the actor window, room + tournament; Swap2 unchanged; 7 tests | [detail](docs/fix-log/2026-11-21-427-opening-clock-per-step.md) |
 | 2026-11-21 12:12 | #430 mid-opening game end (Swap2/Renju) recorded with provisional colours (Renju Black holder, Swap2 first player): winner colour + names, not raw id; 6 tests | [detail](docs/fix-log/2026-11-21-430-opening-end-record-colours.md) |
 | 2026-11-21 15:28 | #432 illustrated lobby Rules guide with corrected examples, keyboard tabs and #room alias | [detail](docs/fix-log/2026-11-21-432-lobby-rules-guide.md) |
+| 2026-11-21 16:00 | Rules guide vi title 'Cách chơi Gomoku' -> 'Cách chơi Caro'; 1 test | [detail](docs/fix-log/2026-11-21-guide-basics-caro-name.md) |
