@@ -88,3 +88,10 @@ describe('Luật tab', () => {
     expect(document.querySelector('#rules-guide img')).toBeNull();
   });
 });
+
+describe('Vietnamese basics title', () => {
+  test('uses the local name Caro, not Gomoku', () => {
+    const vi = SRC.match(/'guide\.basics_name': '([^']*)'/);
+    expect(vi[1]).toBe('Cách chơi Caro');
+  });
+});

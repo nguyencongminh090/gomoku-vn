@@ -46,7 +46,7 @@ const TRANSLATIONS = {
     'guide.group_win': 'Luật thắng',
     'guide.group_variant': 'Biến thể bàn cờ',
     'guide.group_opening': 'Khai cuộc',
-    'guide.basics_name': 'Cách chơi Gomoku',
+    'guide.basics_name': 'Cách chơi Caro',
     'guide.wall_p3': 'Với cùng điều kiện đó, nước thứ hai của người đi trước phải cách nước đầu ít nhất 4 ô theo hàng hoặc cột.',
     'guide.intro_caption': 'Năm quân Đen nối thành một hàng ngang.',
     'guide.match_details': 'Hoà, đồng hồ và xếp hạng',
