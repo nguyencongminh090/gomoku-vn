@@ -412,3 +412,21 @@ describe('no per-second timer broadcast remains', () => {
     expect(src).toMatch(/onTick:\s*\(\)\s*=>\s*\{\s*\}/);
   });
 });
+
+describe('TimerManager — refreshPerMove (#427 Renju opening steps)', () => {
+  it('per_move: resets only the named colour and keeps the running side', () => {
+    const timer = makeTimer({ mode: 'per_move' });
+    timer.black = 3; timer.white = 4; timer.activeColor = 'black';
+    expect(timer.refreshPerMove('black')).toBe(true);
+    expect(timer.black).toBe(10);
+    expect(timer.white).toBe(4);
+    expect(timer.activeColor).toBe('black');
+  });
+
+  it.each(['per_game', 'blitz'])('%s: no change, returns false', (mode) => {
+    const timer = makeTimer({ mode, incrementSeconds: 2 });
+    timer.black = 3;
+    expect(timer.refreshPerMove('black')).toBe(false);
+    expect(timer.black).toBe(3);
+  });
+});

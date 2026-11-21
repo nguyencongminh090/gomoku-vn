@@ -110,6 +110,19 @@ class TimerManager {
     }
   }
 
+  /**
+   * per_move only: give `color` a fresh window without changing whose clock runs. A Renju opening
+   * step (one stone, one offered 5th, one choice) counts as a move for the clock (#427).
+   * @param {'black'|'white'} color
+   * @returns {boolean} true when the clock changed
+   */
+  refreshPerMove(color) {
+    if (this.mode !== 'per_move') return false;
+    if (color === 'black') this.black = this.initialSeconds;
+    else this.white = this.initialSeconds;
+    return true;
+  }
+
   /** Get current timer values. */
   getTimers() {
     return { black: this.black, white: this.white };

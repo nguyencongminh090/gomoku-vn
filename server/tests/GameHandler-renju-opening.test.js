@@ -16,6 +16,7 @@ const mockState = {
 jest.mock('../socket/state', () => mockState);
 
 const GameHandler = require('../socket/handlers/GameHandler');
+const TimerManager = require('../managers/TimerManager');
 const { GameEngine } = require('../managers/GameEngine');
 
 function makeIo() {
@@ -26,7 +27,7 @@ function makeSocket(userId) {
   const handlers = {};
   return { user: { userId, displayName: userId }, handlers, emitted: [], on: (e, cb) => { handlers[e] = cb; }, emit(event, data) { this.emitted.push({ event, data }); } };
 }
-function setup(openingRule) {
+function setup(openingRule, realTimer = null) {
   const io = makeIo();
   const engine = new GameEngine({
     roomId: 'room1', boardSize: 15, walls: [], portals: [], firstMoveZones: [], winningRule: 'renju', openingRule,
@@ -34,7 +35,7 @@ function setup(openingRule) {
   });
   const room = { roomId: 'room1', gameState: engine };
   mockRoomManager.getRoomByUser.mockReturnValue(room);
-  const timer = { switchTurn: jest.fn(), remapForSwap2: jest.fn(), getSync: jest.fn(() => ({})) };
+  const timer = realTimer || { switchTurn: jest.fn(), remapForSwap2: jest.fn(), getSync: jest.fn(() => ({})) };
   mockState.timerMap.set('room1', timer);
   const s = { p1: makeSocket('p1'), p2: makeSocket('p2') };
   GameHandler.register(io, s.p1);
@@ -92,4 +93,55 @@ test('an out-of-zone stone is refused with its code', () => {
   const { s } = setup('taraguchi10');
   s.p1.handlers['game:swap2_place']({ x: 8, y: 7 });
   expect(s.p1.emitted.pop()).toMatchObject({ event: 'game:error', data: { code: 'OPENING_NOT_CENTRE' } });
+});
+
+// User 2026-11-21: per_move refreshes the actor's window on every opening step.
+describe('per_move clock refreshes per opening step (#427)', () => {
+  const perMove = (mode = 'per_move') => new TimerManager({ roomId: 'room1', mode, seconds: 60, blackPlayerId: 'p1', whitePlayerId: 'p2' });
+
+  test('Yamaguchi: each of the first player\'s 3 stones and the N declaration gets a fresh window', () => {
+    const timer = perMove();
+    const { io, s } = setup('yamaguchi', timer);
+    for (const [x, y] of [[7, 7], [7, 6], [7, 5]]) {
+      timer.black = 5;
+      s.p1.handlers['game:swap2_place']({ x, y });
+      expect(timer.black).toBe(60);
+      expect(timer.activeColor).toBe('black');
+      expect(events(io, 'timer:sync').pop().black).toBe(60);
+    }
+    timer.black = 5;
+    s.p1.handlers['game:swap2_choice']({ choice: 'declare', n: 3 });
+    expect(timer.black).toBe(60); // then the turn passed to p2
+    expect(timer.activeColor).toBe('white');
+  });
+
+  test('Taraguchi: each of the 10 offered 5th moves gets a fresh window', () => {
+    const timer = perMove();
+    const { engine, s } = setup('taraguchi10', timer);
+    s.p1.handlers['game:swap2_place']({ x: 7, y: 7 });
+    s.p2.handlers['game:swap2_choice']({ choice: 'stay' });
+    s.p2.handlers['game:swap2_place']({ x: 7, y: 6 });
+    s.p1.handlers['game:swap2_choice']({ choice: 'stay' });
+    s.p1.handlers['game:swap2_place']({ x: 7, y: 5 });
+    s.p2.handlers['game:swap2_choice']({ choice: 'stay' });
+    s.p2.handlers['game:swap2_place']({ x: 8, y: 5 });
+    s.p1.handlers['game:swap2_choice']({ choice: 'offer' });
+    expect(engine.openingPhase).toBe('rx_offer');
+    const cells = [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [0, 1], [1, 1], [2, 1]];
+    for (const [x, y] of cells.slice(0, 9)) {
+      timer.black = 5;
+      s.p1.handlers['game:swap2_place']({ x, y });
+      expect(s.p1.emitted.filter((e) => e.event === 'game:error')).toEqual([]);
+      expect(timer.black).toBe(60);
+    }
+    expect(engine.offers).toHaveLength(9);
+  });
+
+  test('per_game: opening steps do not refill the clock', () => {
+    const timer = perMove('per_game');
+    const { s } = setup('yamaguchi', timer);
+    timer.black = 5;
+    s.p1.handlers['game:swap2_place']({ x: 7, y: 7 });
+    expect(timer.black).toBe(5);
+  });
 });
