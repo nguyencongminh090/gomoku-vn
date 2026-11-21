@@ -1,3 +1,4 @@
+- ✅ **#427.** Renju P2: Taraguchi-10 + Yamaguchi openings (rooms, challenges, tournaments) `[Model: Opus]` — [detail](docs/todo/F427-renju-p2-taraguchi-yamaguchi.md)
 - ✅ **#430.** Game ending mid-opening (Swap2/Renju) saves winner as raw user id, colours null `[Model: Sonnet]` — [detail](docs/todo/B430-opening-end-record-colours.md)
 - ✅ **#429.** room.html / tournament-match.html load js/renju.js without ?v= cache-bust `[Model: Haiku]` — [detail](docs/todo/B429-renju-js-no-cache-bust.md)
 - ✅ **#419.** /api/home live thumbnails with real stones + news list `[Model: Sonnet]` — [detail](docs/todo/F419-home-live-thumb-stones.md)

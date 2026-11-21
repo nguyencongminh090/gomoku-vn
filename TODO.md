@@ -74,4 +74,3 @@ in the detail file / fix-log).
 - **#424.** Home desktop redesign "Một ngọn đèn" `[Model: Opus]` — [detail](docs/todo/F424-home-desktop-lamp.md)
 - **#425.** Renju P1: rule core, forbidden = Black loses, enum/DB, rooms+tournaments+puzzles `[Model: Opus]` — [detail](docs/todo/F425-renju-p1-rule-core.md)
 - **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)
-- **#427.** Renju P2: Taraguchi-10 + Yamaguchi openings (rooms, challenges, tournaments) `[Model: Opus]` — [detail](docs/todo/F427-renju-p2-taraguchi-yamaguchi.md)

@@ -1,5 +1,5 @@
 # F427 — Renju P2: Taraguchi-10 + Yamaguchi opening step machine
-**Status:** BUILT, uncommitted on feature/427-renju-openings (2026-11-21); awaiting review/commit
+**Status:** ✅ VERIFIED 2026-11-21 on dev at `d3b139cf`.
 **Area:** server/managers/GameEngine.js + RenjuOpening.js (new), GameHandler, TournamentMatchHandler, RoomManager/ChallengeService/TournamentManager settings, client game-ui/board/room-ui/lobby/challenge-modal/tournaments/tournament-match, i18n
 **From:** user "Continue P2" 2026-11-21 (after #425 P1); design features/renju/   **Depends:** #425
 
@@ -22,4 +22,12 @@ Timer placeholder slots = first/second player until remap; undo snapshots must c
 
 ## Built
 Engine: server/managers/RenjuOpening.js (step programs, offers off-board, symmetry via renju-openings.js fixingSymmetries), GameEngine hasOpening()/openingRule/undo snapshot. Settings: rules.js applyOpeningRule (room, challenge, tournament). Handlers: GameHandler finishOpening/emitOpeningName + clock follows swaps; tmatch same. Client: renju-opening-ui.js (shared hint/buttons/zone), board.js offers overlay, game-ui, tournament-match, pickers (lobby, room settings, challenge, tournament), i18n vi/en, OPENING_NOT_CENTRE/OUT_OF_ZONE/OFFER_SYMMETRIC/NOT_AN_OFFER.
-Verified: npm test 4567 green; real-browser pass (Chromium, :3101, temp DB) of one Taraguchi-10 (swap, offer-10, pick) and one Yamaguchi (declare 3, swap, offers, pick) game from the lobby modal to move 6. Phone 390x844 pass of both: fits. Also fixed B428 (tmatch colours after opening, fix-log 2026-11-21). Not verified in a browser: tournament match page, challenge modal, undo mid-opening. per_move clock: user 2026-11-21 chose refresh per step → done (fix-log 2026-11-21 opening-clock-per-step). Game ending mid-opening winner/colours → fixed as #430.
+Room browser checks covered both openings from the lobby through move 6 at desktop and 390×844. Taraguchi-10 used ten offers and Yamaguchi used three. B428 fixed tournament colour assignment. The per-move clock refreshes after each opening step. #430 records provisional colours if a game ends during the opening.
+
+## Final browser checks
+
+All 4,586 Jest tests passed across 261 suites. Chromium used two member sessions per game and a temporary SQLite database on loopback port 3101.
+
+- Tournament players completed Taraguchi-10 by keeping colours and Yamaguchi by declaring two offers and swapping. Both screens showed the assigned clock names and the moves played by White at 6 and Black at 7.
+- The challenge dialog selected 15×15 for Renju, enabled both openings and cleared the choice on 17×17. A friendly Taraguchi-10 challenge reached the recipient with the selected settings and opened a playable room.
+- Both players accepted undo requests in that room. Undoing the colour swap and then the centre stone restored the board, actor, held colours and opening step on both screens. The players then replayed the opening through move 2.
