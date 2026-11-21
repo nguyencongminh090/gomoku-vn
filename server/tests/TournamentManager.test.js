@@ -154,6 +154,7 @@ describe('TournamentManager — createTournament', () => {
       ruleWall: false,
       rulePortal: false,
       ruleSwap2: false,
+      openingRule: null, // #427
       timerMode: config.DEFAULT_TIMER_MODE,
       timerSeconds: config.DEFAULT_TIMER_SECONDS,
       timerIncrementSeconds: config.DEFAULT_TIMER_INCREMENT_SECONDS,

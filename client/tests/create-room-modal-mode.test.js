@@ -37,7 +37,7 @@ describe('create-room modal: rated / friendly', () => {
 describe('create-room modal: dropdowns + remembered settings (F402)', () => {
   const lobby = read('js/lobby.js');
   const html = read('index.html');
-  const DEFAULTS = { boardSize: 19, winningRule: 'freestyle', ranked: true, ruleWall: false, rulePortal: false, ruleSwap2: false, timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
+  const DEFAULTS = { boardSize: 19, winningRule: 'freestyle', ranked: true, ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: null, timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
   const LITE = { ...DEFAULTS, ruleWall: true };
 
   // Load the real helpers from lobby.js against the real form markup.
@@ -52,6 +52,7 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
       const pick = (name) => (document.querySelector(\`select[name="\${name}"]\`) || {}).value;
       let serverRoomDefaults = ${JSON.stringify(server)};
       const LAST_SETTINGS_KEY = 'k';
+      const RENJU_OPENINGS = ['taraguchi10', 'yamaguchi'];
       const userInfo = { isGuest: ${guest} };
       ${fn('readLocalSettings')} ${fn('rememberedSettings')} ${fn('readFormSettings')} ${fn('applySettingsToForm')}
       function updateModalSummary() {}
@@ -72,7 +73,7 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
   });
 
   test('member: remembered server settings round-trip through the form', () => {
-    const saved = { boardSize: 19, winningRule: 'caro', ranked: false, ruleWall: false, rulePortal: false, ruleSwap2: true, timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 };
+    const saved = { boardSize: 19, winningRule: 'caro', ranked: false, ruleWall: false, rulePortal: false, ruleSwap2: true, openingRule: null, timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 };
     const h = load({ server: saved });
     h.applySettingsToForm(h.rememberedSettings());
     expect(h.readFormSettings()).toEqual(saved);
@@ -88,6 +89,19 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
     const h = load({ server: { ranked: false } });
     h.applySettingsToForm(h.rememberedSettings());
     expect(h.hintCalls).toEqual(['friendly']);
+  });
+
+  test('Renju 15x15 + Taraguchi-10 round-trips; plain board forced (#427)', () => {
+    const saved = { boardSize: 15, winningRule: 'renju', ranked: true, ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: 'taraguchi10', timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
+    const h = load({ server: { ...saved, ruleWall: true } });
+    h.applySettingsToForm(h.rememberedSettings());
+    expect(h.readFormSettings()).toEqual(saved);
+  });
+
+  test('a Renju opening on a non-Renju rule reads back as none (#427)', () => {
+    const h = load({ server: { ...DEFAULTS, openingRule: 'yamaguchi' } });
+    h.applySettingsToForm(h.rememberedSettings());
+    expect(h.readFormSettings().openingRule).toBeNull();
   });
 
   test('member with nothing remembered → the fixed preset (19, wall)', () => {

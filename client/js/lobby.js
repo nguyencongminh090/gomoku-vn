@@ -610,7 +610,7 @@ function buildTimeSummary(room) {
 // One plain-language tag instead of the jargon cluster (Wall / Portal / Swap2 /
 // Caro); the full breakdown is in the tooltip (buildRuleTitle) (#253).
 function isCustomRules(room) {
-  return !!(room.ruleWall || room.rulePortal || room.ruleSwap2)
+  return !!(room.ruleWall || room.rulePortal || room.ruleSwap2 || room.openingRule)
     || (room.winningRule || 'freestyle') !== 'freestyle';
 }
 
@@ -625,6 +625,7 @@ function buildRuleTitle(room) {
   if (room.ruleWall)   parts.push(t('modal.rule_wall'));
   if (room.rulePortal) parts.push(t('modal.rule_portal'));
   if (room.ruleSwap2)  parts.push('Swap2');
+  if (room.openingRule) parts.push(t('rule.opening_' + room.openingRule)); // #427
   const win = room.winningRule || 'freestyle';
   if (win === 'standard')  parts.push(t('rule.standard'));
   if (win === 'caro')      parts.push(t('rule.caro'));
@@ -721,7 +722,7 @@ const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
 // The form's own hardcoded defaults, used when nothing has been remembered yet.
 const DEFAULT_ROOM_SETTINGS = {
   boardSize: 19, winningRule: 'freestyle', ranked: true,
-  ruleWall: false, rulePortal: false, ruleSwap2: false,
+  ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: null,
   timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
 };
 
@@ -731,6 +732,8 @@ const LITE_DEFAULT_SETTINGS = { ...DEFAULT_ROOM_SETTINGS, ruleWall: true };
 
 // The create-room form's choices are native <select>s (F402), looked up by name.
 const pick = (name) => (document.querySelector(`select[name="${name}"]`) || {}).value;
+
+const RENJU_OPENINGS = ['taraguchi10', 'yamaguchi'];
 
 function readFormSettings() {
   const boardSize = parseInt(pick('boardSize'), 10);
@@ -743,11 +746,13 @@ function readFormSettings() {
     : 0;
   const winningRule = pick('winRule') || 'freestyle';
   const ruleSwap2   = pick('openRule') === 'swap2';
+  // Renju Taraguchi-10 / Yamaguchi (#427): only with Renju on 15x15 (the server drops it otherwise).
+  const openingRule = RENJU_OPENINGS.includes(pick('openRule')) && winningRule === 'renju' && boardSize === 15 ? pick('openRule') : null;
   let   ruleWall    = document.getElementById('rule-wall').checked;
   let   rulePortal  = document.getElementById('rule-portal').checked;
-  if (ruleSwap2) { ruleWall = false; rulePortal = false; } // Swap2 plays on a plain board
+  if (ruleSwap2 || openingRule) { ruleWall = false; rulePortal = false; } // the opening plays on a plain board
   const ranked = pick('roomMode') !== 'friendly';
-  return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, timerMode, timerSeconds, timerIncrementSeconds };
+  return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, openingRule, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
 function saveLastSettings(settings) {
@@ -766,7 +771,7 @@ function applySettingsToForm(s) {
   choose('boardSize', s.boardSize);
   choose('winRule', s.winningRule);
   choose('roomMode', s.ranked === false ? 'friendly' : 'rated');
-  choose('openRule', s.ruleSwap2 ? 'swap2' : 'none');
+  choose('openRule', s.openingRule || (s.ruleSwap2 ? 'swap2' : 'none'));
   choose('timerMode', s.timerMode);
   const wall = document.getElementById('rule-wall');
   const portal = document.getElementById('rule-portal');
@@ -792,7 +797,7 @@ function updateModalSummary() {
   };
   const s = readFormSettings();
   const parts = [text('roomMode'), text('boardSize'), text('winRule')];
-  if (s.ruleSwap2) parts.push(text('openRule'));
+  if (s.ruleSwap2 || s.openingRule) parts.push(text('openRule'));
   if (s.ruleWall) parts.push(t('modal.rule_wall').replace(/\s*\(.*\)/, ''));
   if (s.rulePortal) parts.push(t('modal.rule_portal').replace(/\s*\(.*\)/, ''));
   // The clock is one setting → one chip ("Blitz 180s +2s").
@@ -865,10 +870,19 @@ document.querySelectorAll('select[name="winRule"]').forEach((sel) => sel.addEven
   if (sel.value === 'renju' && size && [...size.options].some((o) => o.value === '15')) size.value = '15';
 }));
 
-// Swap2 (opening rule) is played on a plain board → disable & clear board setup.
+// Swap2 / Taraguchi-10 / Yamaguchi (opening rules) are played on a plain board → disable & clear board setup.
+// The Renju openings need Renju on 15x15: their options are disabled otherwise (falls back to "none") (#427).
 (function () {
   const sync = () => {
-    const disabled = pick('openRule') === 'swap2';
+    const open = document.querySelector('select[name="openRule"]');
+    const renju15 = pick('winRule') === 'renju' && pick('boardSize') === '15';
+    if (open) {
+      [...open.options].forEach((o) => { if (RENJU_OPENINGS.includes(o.value)) o.disabled = !renju15; });
+      if (!renju15 && RENJU_OPENINGS.includes(open.value)) open.value = 'none';
+    }
+    const hint = document.getElementById('or-renju-hint');
+    if (hint) hint.hidden = renju15 || pick('winRule') !== 'renju'; // only explain to someone already on Renju
+    const disabled = pick('openRule') === 'swap2' || RENJU_OPENINGS.includes(pick('openRule'));
     ['rule-wall', 'rule-portal'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -878,7 +892,7 @@ document.querySelectorAll('select[name="winRule"]').forEach((sel) => sel.addEven
       if (trow) trow.style.opacity = disabled ? '0.45' : '';
     });
   };
-  document.querySelectorAll('select[name="openRule"]').forEach(r => r.addEventListener('change', sync));
+  document.querySelectorAll('select[name="openRule"], select[name="winRule"], select[name="boardSize"]').forEach(r => r.addEventListener('change', sync));
   sync();
 })();
 

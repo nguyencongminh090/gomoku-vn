@@ -186,15 +186,8 @@ function register(io, socket) {
     room.lastActivity = Date.now();
     scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364), throttled
 
-    if (engine.settings && engine.settings.winningRule === 'renju' && !engine.ruleSwap2 && engine.moveCount === 3) {
-      const o = engine.opening;
-      io.to(room.roomId).emit('chat:message', {
-        from: null, fromId: null,
-        text: o ? `Khai cuộc: ${o.name} (${o.no}).` : 'Khai cuộc tự do (free-open).',
-        code: o ? (o.group === 'indirect' ? 'GAME_OPENING_INDIRECT' : 'GAME_OPENING_DIRECT') : 'GAME_OPENING_FREE',
-        vars: o ? { name: o.name, no: o.no } : undefined,
-        timestamp: Date.now(), isSystem: true,
-      });
+    if (engine.settings && engine.settings.winningRule === 'renju' && !engine.hasOpening() && engine.moveCount === 3) {
+      emitOpeningName(io, room.roomId, engine);
     }
 
     if (result.won || result.draw) {
@@ -252,7 +245,7 @@ function register(io, socket) {
 
   socket.on('game:swap2_place', (payload = {}) => {
     const room = roomManager.getRoomByUser(user.userId);
-    if (!room || !room.gameState || !room.gameState.ruleSwap2) {
+    if (!room || !room.gameState || !room.gameState.hasOpening()) {
       socket.emit('game:error', { message: 'Không có ván Swap2 đang diễn ra.', code: 'NO_ACTIVE_SWAP2' });
       return;
     }
@@ -268,14 +261,21 @@ function register(io, socket) {
     const hadOwnUndoOffer = !!(engine.undoOffer && engine.undoOffer.from === user.userId);
     const r = engine.placeOpeningStone(user.userId, x, y);
     if (r.error) {
-      socket.emit('game:error', { message: r.error, code: r.code });
+      socket.emit('game:error', { message: r.error, code: r.code, vars: r.vars });
       return;
     }
 
-    const swap2State = buildSwap2State(engine, { x: r.x, y: r.y, color: r.color }, r.nextColor);
+    if (r.done) { // a Renju opening ends on the picked 5th move (#427)
+      finishOpening(io, room, engine, { x: r.x, y: r.y, color: r.color }, hadOwnUndoOffer);
+      scheduleLobbyBoardUpdate(io, room.roomId);
+      room.lastActivity = Date.now();
+      return;
+    }
+    const swap2State = buildSwap2State(engine, r.offered ? null : { x: r.x, y: r.y, color: r.color }, r.nextColor);
     if (hadOwnUndoOffer) swap2State.undoCancelled = true;
     io.to(room.roomId).emit('game:swap2_state', swap2State);
-    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): opening stones are moves too
+    if (!r.offered) scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): opening stones are moves too
+    if (r.openingNamed) emitOpeningName(io, room.roomId, engine);
 
     // Phase boundary (place3 → p2choice, or place2 → p1choice) hands the turn
     // to the other placeholder player — sync the timer to match.
@@ -295,47 +295,34 @@ function register(io, socket) {
 
   socket.on('game:swap2_choice', (payload = {}) => {
     const room = roomManager.getRoomByUser(user.userId);
-    if (!room || !room.gameState || !room.gameState.ruleSwap2) {
+    if (!room || !room.gameState || !room.gameState.hasOpening()) {
       socket.emit('game:error', { message: 'Không có ván Swap2 đang diễn ra.', code: 'NO_ACTIVE_SWAP2' });
       return;
     }
 
     const engine = room.gameState;
     const hadOwnUndoOffer = !!(engine.undoOffer && engine.undoOffer.from === user.userId);
-    const r = engine.swap2Choice(user.userId, payload.choice);
+    const r = engine.swap2Choice(user.userId, payload.choice, payload.n);
     if (r.error) {
       socket.emit('game:error', { message: r.error, code: r.code });
       return;
     }
 
     if (r.done) {
-      // Colors are resolved now — remap the timer's placeholder black/white
-      // slots to the real colors in place, rather than creating a fresh
-      // TimerManager (which would discard time already spent during the
-      // opening). See instruction.md §B37.
-      const timer = timerMap.get(room.roomId);
-      if (timer) {
-        const blackPlayer = engine.players.find(p => p.color === 'BLACK');
-        const whitePlayer = engine.players.find(p => p.color === 'WHITE');
-        timer.remapForSwap2(blackPlayer.userId, whitePlayer.userId);
-      }
-      const swap2State = buildSwap2State(engine, null, null);
-      if (hadOwnUndoOffer) swap2State.undoCancelled = true;
-      io.to(room.roomId).emit('game:swap2_state', swap2State);
-
-      if (timer) io.to(room.roomId).emit('timer:sync', timer.getSync());
-
-      const whiteP = engine.players.find(p => p.color === 'WHITE');
-      io.to(room.roomId).emit('chat:message', {
-        from: null, fromId: null,
-        text: `Khai cuộc kết thúc! ${whiteP ? whiteP.displayName : '—'} (Trắng) đi trước.`,
-        code: 'SWAP2_OPENING_DONE', vars: { name: whiteP ? whiteP.displayName : '—' },
-        timestamp: Date.now(), isSystem: true,
-      });
+      finishOpening(io, room, engine, null, hadOwnUndoOffer);
     } else {
       const swap2State = buildSwap2State(engine, null, r.nextColor);
       if (hadOwnUndoOffer) swap2State.undoCancelled = true;
       io.to(room.roomId).emit('game:swap2_state', swap2State);
+      // A Renju swap / choice can hand the move to the other player (#427); Swap2's 'place' never does.
+      if (r.currentTurn !== user.userId) {
+        const timer = timerMap.get(room.roomId);
+        if (timer) {
+          timer.switchTurn(r.currentTurn === engine.secondPlayerId ? 'white' : 'black');
+          moveLag.markTurnStart(room.roomId); // TEMP — TODO.md #167
+          io.to(room.roomId).emit('timer:sync', timer.getSync());
+        }
+      }
     }
 
     room.lastActivity = Date.now();
@@ -763,6 +750,46 @@ function startTimerForGame(io, room, engine, idOverride) {
 }
 
 /**
+ * The opening (Swap2 or a Renju procedure, #427) just assigned colours: remap the
+ * timer's placeholder black/white slots to the real colours in place, rather than
+ * creating a fresh TimerManager (which would discard time already spent during the
+ * opening — instruction.md §B37), broadcast the state and announce who moves.
+ */
+function finishOpening(io, room, engine, lastStone, hadOwnUndoOffer) {
+  const timer = timerMap.get(room.roomId);
+  if (timer) {
+    const blackPlayer = engine.players.find(p => p.color === 'BLACK');
+    const whitePlayer = engine.players.find(p => p.color === 'WHITE');
+    timer.remapForSwap2(blackPlayer.userId, whitePlayer.userId);
+  }
+  const swap2State = buildSwap2State(engine, lastStone, null);
+  if (hadOwnUndoOffer) swap2State.undoCancelled = true;
+  io.to(room.roomId).emit('game:swap2_state', swap2State);
+
+  if (timer) io.to(room.roomId).emit('timer:sync', timer.getSync());
+
+  const whiteP = engine.players.find(p => p.color === 'WHITE');
+  io.to(room.roomId).emit('chat:message', {
+    from: null, fromId: null,
+    text: `Khai cuộc kết thúc! ${whiteP ? whiteP.displayName : '—'} (Trắng) đi trước.`,
+    code: 'SWAP2_OPENING_DONE', vars: { name: whiteP ? whiteP.displayName : '—' },
+    timestamp: Date.now(), isSystem: true,
+  });
+}
+
+/** Renju: name the opening once move 3 is down (#425; via the opening path for #427). */
+function emitOpeningName(io, roomId, engine) {
+  const o = engine.opening;
+  io.to(roomId).emit('chat:message', {
+    from: null, fromId: null,
+    text: o ? `Khai cuộc: ${o.name} (${o.no}).` : 'Khai cuộc tự do (free-open).',
+    code: o ? (o.group === 'indirect' ? 'GAME_OPENING_INDIRECT' : 'GAME_OPENING_DIRECT') : 'GAME_OPENING_FREE',
+    vars: o ? { name: o.name, no: o.no } : undefined,
+    timestamp: Date.now(), isSystem: true,
+  });
+}
+
+/**
  * Build the payload for a game:swap2_state event.
  *
  * Sends the full board/players/swap2 state rather than a delta: the client
@@ -854,7 +881,7 @@ function startGame(io, room) {
   const whitePlayer = swapColors ? slot1Player : slot2Player;
 
   // ── Swap2 branch ─────────────────────────────────────────────────────────
-  if (settings.ruleSwap2) {
+  if (settings.ruleSwap2 || settings.openingRule) {
     const engine = new GameEngine({
       roomId,
       boardSize: settings.boardSize,
@@ -864,7 +891,8 @@ function startGame(io, room) {
       ],
       walls, portals, firstMoveZones,
       winningRule: settings.winningRule,
-      ruleSwap2: true,
+      ruleSwap2: settings.ruleSwap2 === true,
+      openingRule: settings.openingRule || null,
     });
     // Snapshot at start: the Ranked toggle can't change mid-game (updateSettings
     // refuses while playing), but the game end must not depend on that.
@@ -895,8 +923,11 @@ function startGame(io, room) {
     broadcastLobbyUpdate(io, room.roomId);
     io.to(roomId).emit('chat:message', {
       from: null, fromId: null,
-      text: `Swap2: ${blackPlayer.displayName} đặt 3 quân mở màn.`,
-      code: 'SWAP2_PLACED_OPENING', vars: { name: blackPlayer.displayName },
+      text: engine.openingRule
+        ? `${engine.openingRule === 'yamaguchi' ? 'Yamaguchi' : 'Taraguchi-10'}: ${blackPlayer.displayName} cầm Đen tạm thời.`
+        : `Swap2: ${blackPlayer.displayName} đặt 3 quân mở màn.`,
+      code: engine.openingRule ? 'RENJU_OPENING_START' : 'SWAP2_PLACED_OPENING',
+      vars: engine.openingRule ? { name: blackPlayer.displayName, rule: engine.openingRule === 'yamaguchi' ? 'Yamaguchi' : 'Taraguchi-10' } : { name: blackPlayer.displayName },
       timestamp: Date.now(), isSystem: true,
     });
     logger.info(`[Game] Swap2 opening started in room ${roomId}`);

@@ -241,8 +241,9 @@
           const gs = S().gameState;
           // Swap2 opening: route placements to opening handler
           if (gs && gs.swap2 && gs.swap2.enabled && gs.swap2.openingPhase !== 'play') {
+            const RX = global.RenjuOpeningUI;
             if (gs.currentTurn === st.myUser.userId
-                && (gs.swap2.openingPhase === 'place3' || gs.swap2.openingPhase === 'place2')) {
+                && (gs.swap2.openingPhase === 'place3' || gs.swap2.openingPhase === 'place2' || (RX && RX.clickActs(gs.swap2)))) {
               global.RoomClient.emit('game:swap2_place', { x, y });
             }
             return;
@@ -354,6 +355,7 @@
       peek:        !myPlayer,
       winLine:     st.gameState.result ? st.gameState.result.winLine : null,
       forbidden:   forbiddenCells(st, myPlayer),
+      offers:      [], // Renju opening offers vanish once White picks (#427)
       displayMode: st.boardDisplayMode,
       moveHistory: st.gameState.moveHistory || [],
     });
@@ -676,11 +678,16 @@
 
     const mine   = (st.gameState.currentTurn === st.myUser.userId);
     const phase  = st.gameState.swap2.openingPhase;
-    const placing = (phase === 'place3' || phase === 'place2');
+    // Renju Taraguchi-10 / Yamaguchi (#427): the step comes from swap2 itself (reconnect-safe).
+    const RX = global.RenjuOpeningUI;
+    const rx = !!(RX && RX.active(st.gameState.swap2));
+    const placing = rx ? RX.clickActs(st.gameState.swap2) : (phase === 'place3' || phase === 'place2');
 
     let previewColor = null;
-    if (st.gameState._nextColor === 'BLACK') previewColor = 'BLACK';
+    if (rx) previewColor = RX.previewColor(st.gameState.swap2);
+    else if (st.gameState._nextColor === 'BLACK') previewColor = 'BLACK';
     else if (st.gameState._nextColor === 'WHITE') previewColor = 'WHITE';
+    const zone = rx ? RX.zoneCells(st.gameState.boardSize, st.gameState.swap2.zone) : [];
 
     st.boardRenderer.setState({
       board:       st.gameState.board,
@@ -688,7 +695,9 @@
       isMyTurn:    mine && placing,
       myColor:     previewColor,
       lastMove:    st.gameState._lastStone || null,
-      showZones:   false,
+      firstMoveZones: rx ? zone : st.gameState.firstMoveZones,
+      showZones:   zone.length > 1, // the centre point alone needs no highlight
+      offers:      rx ? (st.gameState.swap2.offers || []) : [],
       winLine:     null,
       displayMode: st.boardDisplayMode,
       moveHistory: st.gameState.moveHistory || [],
@@ -711,7 +720,9 @@
     const isFirst  = st.gameState.swap2.firstPlayerId  === st.myUser.userId;
 
     let html = '';
-    if (placing && mine) {
+    if (rx) {
+      html = RX.controlsHtml(st.gameState.swap2, { mine, userId: st.myUser.userId, t });
+    } else if (placing && mine) {
       html = `<div class="swap2-hint">${t('game.swap2_place_title')}</div>`;
     } else if (placing && !mine) {
       html = `<div class="swap2-hint">${t('game.swap2_opponent_placing')}</div>`;
@@ -811,6 +822,12 @@
   global.doUndoAccept  = () => global.RoomClient.emit('game:undo_accept');
   global.doUndoDecline = () => global.RoomClient.emit('game:undo_decline');
   global.swap2Choose   = (c) => global.RoomClient.emit('game:swap2_choice', { choice: c });
+  // Yamaguchi: the first player declares how many 5th moves they will offer (#427).
+  global.rxDeclare     = () => {
+    const sel = document.querySelector('#game-controls .rx-declare-n');
+    const n = sel ? parseInt(sel.value, 10) : NaN;
+    if (n >= 1) global.RoomClient.emit('game:swap2_choice', { choice: 'declare', n });
+  };
 
   // ── Lang change listener ──────────────────────────────────────────────────
   // Swap2/draw/time/undo prompts are built as raw innerHTML strings (not

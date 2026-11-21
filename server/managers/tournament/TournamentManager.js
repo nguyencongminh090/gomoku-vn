@@ -32,7 +32,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const config = require('../../config');
-const { WINNING_RULES } = require('../rules');
+const { WINNING_RULES, applyOpeningRule } = require('../rules');
 const logger = require('../../utils/logger');
 const database = require('../../db/database');
 const clubService = require('../ClubService');
@@ -1503,6 +1503,7 @@ class TournamentManager extends EventEmitter {
     if (r.winningRule === 'renju') r.rulePortal = false; // see RoomManager._validateSettings (#425)
     r.ruleSwap2  = ruleSet.ruleSwap2 === true;
     if (r.ruleSwap2) { r.ruleWall = false; r.rulePortal = false; }
+    applyOpeningRule(r, ruleSet); // #427
 
     r.timerMode = (ruleSet.timerMode === 'per_move' || ruleSet.timerMode === 'per_game' || ruleSet.timerMode === 'blitz')
       ? ruleSet.timerMode

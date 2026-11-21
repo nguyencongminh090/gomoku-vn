@@ -34,7 +34,7 @@
 
 const { v4: uuidv4 } = require('uuid');
 const config = require('../config');
-const { WINNING_RULES } = require('./rules');
+const { WINNING_RULES, applyOpeningRule } = require('./rules');
 const logger = require('../utils/logger');
 const EventEmitter = require('events');
 const ChallengeSeries = require('./ChallengeSeries');
@@ -770,6 +770,7 @@ class RoomManager extends EventEmitter {
       rulePortal: room.settings.rulePortal,
       winningRule: room.settings.winningRule,
       ruleSwap2: room.settings.ruleSwap2,
+      openingRule: room.settings.openingRule || null,
       timerMode: room.settings.timerMode,
       timerSeconds: room.settings.timerSeconds,
       timerIncrementSeconds: room.settings.timerIncrementSeconds,
@@ -922,6 +923,7 @@ class RoomManager extends EventEmitter {
     // Opening rule. Swap2 is played on a plain board, so it disables board setup.
     s.ruleSwap2       = settings.ruleSwap2 === true;
     if (s.ruleSwap2) { s.ruleWall = false; s.rulePortal = false; }
+    applyOpeningRule(s, settings); // Renju Taraguchi-10 / Yamaguchi (#427)
 
     // Ranked toggle (TODO.md #175): default ON; only an explicit false makes it casual.
     s.ranked = settings.ranked !== false;

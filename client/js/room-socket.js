@@ -32,7 +32,7 @@
   // equivalent pattern. Always prefer `code`'s i18n translation over the raw
   // message so English-mode users don't see Vietnamese text (TODO #45).
   function serverMessage(data) {
-    if (data && data.code) return t('err.' + data.code.toLowerCase());
+    if (data && data.code) return t('err.' + data.code.toLowerCase(), data.vars);
     return (data && data.message) || '';
   }
 

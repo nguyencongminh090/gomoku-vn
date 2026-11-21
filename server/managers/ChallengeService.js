@@ -23,7 +23,7 @@ const roomManager = require('./RoomManager');
 const notifications = require('./NotificationService');
 const { seatPair } = require('./PairRoom');
 const { PRESETS } = require('./MatchQueue');
-const { WINNING_RULES: RULES } = require('./rules');
+const { WINNING_RULES: RULES, OPENING_RULES } = require('./rules');
 const privacyGate = require('./PrivacyGate');
 const ChallengeSeries = require('./ChallengeSeries');
 const RatingService = require('./RatingService');
@@ -90,6 +90,7 @@ function parseSettings(body) {
   if (!optBool(raw.ruleWall) || !optBool(raw.rulePortal) || !optBool(raw.ruleSwap2) || typeof raw.ranked !== 'boolean') {
     throw bad('Cài đặt không hợp lệ.');
   }
+  if (raw.openingRule !== undefined && raw.openingRule !== null && !OPENING_RULES.includes(raw.openingRule)) throw bad('Cài đặt không hợp lệ.');
   if (!TIMER_MODES.includes(raw.timerMode)) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
   if (!isInt(raw.timerSeconds, 5, 3600)) throw new ChallengeError('BAD_TIME', 400, 'Thời gian không hợp lệ.');
   const inc = raw.timerIncrementSeconds === undefined ? 0 : raw.timerIncrementSeconds;
@@ -97,6 +98,7 @@ function parseSettings(body) {
   return roomManager._validateSettings({
     boardSize: raw.boardSize, winningRule: raw.winningRule, ranked: raw.ranked,
     ruleWall: raw.ruleWall === true, rulePortal: raw.rulePortal === true, ruleSwap2: raw.ruleSwap2 === true,
+    openingRule: raw.openingRule,
     timerMode: raw.timerMode, timerSeconds: raw.timerSeconds,
     timerIncrementSeconds: raw.timerMode === 'blitz' ? inc : 0, // increment only ticks in blitz
   });

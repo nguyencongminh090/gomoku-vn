@@ -36,6 +36,7 @@ const logger = require('../utils/logger');
 const { isRatedSetup } = require('./RatingService');
 const Renju = require('../../client/js/renju');
 const RenjuOpenings = require('../../client/js/renju-openings');
+const RenjuOpening = require('./RenjuOpening');
 
 // Board cell constants
 const EMPTY  =  0;
@@ -86,6 +87,8 @@ class GameEngine {
     // 'renju' (Black exactly 5 and loses on overline / 3-3 / 4-4; White 5+) — #425.
     this.settings  = { winningRule: opts.winningRule || 'freestyle' };
     this.ruleSwap2 = opts.ruleSwap2 === true;
+    // Renju opening procedure (#427): 'taraguchi10' | 'yamaguchi' | null. Never together with Swap2.
+    this.openingRule = !this.ruleSwap2 && RenjuOpening.RULES.includes(opts.openingRule) ? opts.openingRule : null;
     this.opening   = null; // Renju: recognised opening { group, no, name } after move 3, else null = free-open (#425)
 
     // Initialize board
@@ -120,7 +123,7 @@ class GameEngine {
 
     // Swap2 opening state machine.
     // When enabled, colors are NOT yet assigned and the opening drives turn order.
-    if (this.ruleSwap2) {
+    if (this.ruleSwap2 || this.openingRule) {
       this.openingPhase   = 'place3';
       this.colorsAssigned = false;
       this.firstPlayerId  = this.players[0].userId;
@@ -136,6 +139,7 @@ class GameEngine {
       // and at/after which Undo uses the normal play rule instead. null
       // while still mid-opening.
       this.playPhaseStartIndex = null;
+      if (this.openingRule) RenjuOpening.init(this); // sets openingPhase / currentTurn / tentativeBlackId
     } else {
       this.openingPhase   = 'play';
       this.colorsAssigned = true;
@@ -165,7 +169,7 @@ class GameEngine {
    */
   makeMove(userId, x, y) {
     // Swap2: block normal moves until the opening is fully resolved.
-    if (this.ruleSwap2 && this.openingPhase !== 'play') {
+    if (this.hasOpening() && this.openingPhase !== 'play') {
       return { error: 'Đang trong giai đoạn khai cuộc Swap2.', code: 'SWAP2_IN_PROGRESS' };
     }
 
@@ -303,8 +307,13 @@ class GameEngine {
     if (this.status !== 'ongoing') {
       return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
     }
-    if (!this.ruleSwap2) {
+    if (!this.hasOpening()) {
       return { error: 'Luật Swap2 không được bật.', code: 'SWAP2_NOT_ENABLED' };
+    }
+    if (this.openingRule && this.openingPhase !== 'play') {
+      if (x < 0 || x >= this.boardSize || y < 0 || y >= this.boardSize) return { error: 'Vị trí ngoài bàn cờ.', code: 'OUT_OF_BOUNDS' };
+      if (this.board[y][x] !== EMPTY) return { error: 'Ô này đã có quân.', code: 'CELL_OCCUPIED' };
+      return RenjuOpening.place(this, userId, x, y);
     }
     if (this.openingPhase !== 'place3' && this.openingPhase !== 'place2') {
       return { error: 'Không trong giai đoạn đặt quân mở màn.', code: 'NOT_IN_OPENING_PHASE' };
@@ -378,12 +387,16 @@ class GameEngine {
    * @returns {{ error?: string, ok?: boolean, done?: boolean,
    *            openingPhase?: string, currentTurn?: string, nextColor?: string }}
    */
-  swap2Choice(userId, choice) {
+  swap2Choice(userId, choice, n) {
     if (this.status !== 'ongoing') {
       return { error: 'Ván đấu đã kết thúc.', code: 'GAME_OVER' };
     }
-    if (!this.ruleSwap2) {
+    if (!this.hasOpening()) {
       return { error: 'Luật Swap2 không được bật.', code: 'SWAP2_NOT_ENABLED' };
+    }
+    if (this.openingRule) {
+      if (this.openingPhase === 'play') return { error: 'Không trong giai đoạn lựa chọn.', code: 'NOT_IN_CHOICE_PHASE' };
+      return RenjuOpening.choose(this, userId, choice, n);
     }
 
     if (this.openingPhase === 'p2choice') {
@@ -457,6 +470,10 @@ class GameEngine {
       colorsAssigned: this.colorsAssigned,
       player0Color: this.players[0].color,
       player1Color: this.players[1].color,
+      rxStep: this._rxStep,
+      tentativeBlackId: this.tentativeBlackId,
+      offers: this.offers ? [...this.offers] : undefined,
+      offerN: this.offerN,
     };
   }
 
@@ -716,13 +733,21 @@ class GameEngine {
     this.players[0].color = snapshot.player0Color;
     this.players[1].color = snapshot.player1Color;
     this.playPhaseStartIndex = null;
+    if (this.openingRule) {
+      this._rxStep = snapshot.rxStep;
+      this.tentativeBlackId = snapshot.tentativeBlackId;
+      this.offers = snapshot.offers;
+      this.offerN = snapshot.offerN;
+      if (this.moveCount < 3) this.opening = null;
+    }
 
     // Color of the next stone to place, if we landed back in a placement
     // sub-phase — mirrors placeOpeningStone()'s own nextColor calculation,
     // exposed here so callers (GameHandler) don't need to reach into
     // _phaseStones directly.
     let nextColor = null;
-    if (this.openingPhase === 'place3' || this.openingPhase === 'place2') {
+    if (this.openingRule) nextColor = RenjuOpening.stepColor(this);
+    else if (this.openingPhase === 'place3' || this.openingPhase === 'place2') {
       const seq = this.openingPhase === 'place3' ? PLACE3 : PLACE2;
       const next = seq[this._phaseStones.length];
       nextColor = next === BLACK ? 'BLACK' : 'WHITE';
@@ -765,6 +790,9 @@ class GameEngine {
    * Whether this game will be rated when it ends (#216). Undo and extra time are
    * friendly-only ("Giao hữu"), so GameHandler refuses them when this is true.
    */
+  /** Swap2 or a Renju opening procedure (#427) drives the first moves. */
+  hasOpening() { return this.ruleSwap2 === true || !!this.openingRule; }
+
   isRated() {
     return isRatedSetup({
       ranked: this.ranked === true,
@@ -796,12 +824,16 @@ class GameEngine {
       rated: this.isRated(),
       winningRule: this.settings.winningRule,
       opening: this.opening, // Renju only: { group, no, name } once move 3 is down, else null (free-open) (#425)
+      openingRule: this.openingRule,
       swap2: {
-        enabled: this.ruleSwap2 === true,
+        // enabled = an opening step machine runs (Swap2, or a Renju opening #427); `rule` names which.
+        enabled: this.hasOpening(),
+        rule: this.openingRule || (this.ruleSwap2 ? 'swap2' : null),
         openingPhase: this.openingPhase,
         firstPlayerId: this.firstPlayerId || null,
         secondPlayerId: this.secondPlayerId || null,
         colorsAssigned: this.colorsAssigned !== false,
+        ...(this.openingRule ? RenjuOpening.describe(this) : {}),
       },
     };
   }

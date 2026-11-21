@@ -24,8 +24,9 @@ confidence: medium
 - Swap: P1 places 2B+1W anywhere; P2 stays or swaps. Swap2: current implementation.
 - RIF Renju (s.12): tentative Black places 3 stones (one of 26 patterns), tentative White picks side; W plays move 4 anywhere; Black proposes 2 non-equivalent 5th moves; White picks, plays 6; opening ends.
 - Soosyrv-8 (/rule/24): 26-pattern opening, swap right; W4 anywhere + declares N<=8; swap right; Black places N non-symmetric 5th moves; W picks one + plays 6.
-- Taraguchi-10 (/rule/25): B1 centre; W2 in 3x3; B3 in 5x5; W4 in 7x7; swap right after 1,2,3. Then (1) swap right, B5 in 9x9, swap right, W6 anywhere, or (2) Black places ten non-symmetric 5th moves, W picks one, plays 6.
-- Yamaguchi (/rule/5): 26-pattern opening; swap right; W4 anywhere; declares N (no fixed cap on page); Black places N non-symmetric 5ths; W picks, plays 6.
+- Taraguchi-10 (/rule/25, re-read 2026-11-21): B1 centre; "the other player may swap"; W2 in 3x3; swap; B3 in 5x5; swap; W4 in 7x7. "After the 4th move": choice 1 = swap, B5 in 9x9, swap, W6 anywhere; choice 2 = "Black puts ten 5th moves anywhere on board (symmetrical moves are not allowed)", W picks one + plays 6.
+- Yamaguchi (/rule/5, re-read 2026-11-21): "The first player puts one of the 26 openings and declares how many 5th moves will be offered"; "The next player has a right to swap"; W4 anywhere; Black offers the declared number of 5ths (no symmetric ones); W picks one + plays 6. No second swap, no cap (site: 1..10).
+- Neither page defines "symmetrical"; site meaning (#427): a board symmetry (8 dihedral) fixing stones 1-4 maps one offer onto another.
 - Sakata (/rule/3): 26-pattern; next player W4 in 7x7, W5(sic: 5th) in 9x9; first player may swap after. Tarannikov (/rule/4): Taraguchi choice 1 with swap after every move. Jonsson (/rule/6): Soosyrv with N in 1..3.
 
 ## NOT found (do not invent)

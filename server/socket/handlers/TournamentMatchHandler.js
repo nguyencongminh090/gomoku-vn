@@ -222,7 +222,7 @@ function startMatch(io, tournamentId, pairingId) {
   const engine = new GameEngine({
     roomId: pairingId,
     boardSize: ruleSet.boardSize,
-    players: ruleSet.ruleSwap2
+    players: ruleSet.ruleSwap2 || ruleSet.openingRule
       ? [
           { userId: first.userId, displayName: first.displayName, color: null, isGuest: first.isGuest },
           { userId: second.userId, displayName: second.displayName, color: null, isGuest: second.isGuest },
@@ -236,6 +236,7 @@ function startMatch(io, tournamentId, pairingId) {
     firstMoveZones: layout.firstMoveZones,
     winningRule: ruleSet.winningRule,
     ruleSwap2: ruleSet.ruleSwap2,
+    openingRule: ruleSet.openingRule || null, // Renju Taraguchi-10 / Yamaguchi (#427)
   });
 
   const entryByUserId = new Map([[entry1.userId, entry1.entryId], [entry2.userId, entry2.entryId]]);
@@ -650,7 +651,7 @@ function register(io, socket) {
 
   socket.on('tmatch:swap2_place', (payload = {}) => {
     const match = getOwnMatch(payload.pairingId, payload.tournamentId);
-    if (!match || !match.engine.ruleSwap2) {
+    if (!match || !match.engine.hasOpening()) {
       socket.emit('tmatch:error', { message: 'Không có ván Swap2 đang diễn ra.', code: 'NO_ACTIVE_SWAP2' });
       return;
     }
@@ -665,7 +666,7 @@ function register(io, socket) {
     const engine = match.engine;
     const r = engine.placeOpeningStone(user.userId, x, y);
     if (r.error) {
-      socket.emit('tmatch:error', { message: r.error, code: r.code });
+      socket.emit('tmatch:error', { message: r.error, code: r.code, vars: r.vars });
       return;
     }
 
@@ -678,7 +679,9 @@ function register(io, socket) {
       currentTurn: engine.currentTurn,
       openingPhase: engine.openingPhase,
       swap2: engine.serialize().swap2,
-      lastStone: { x: r.x, y: r.y, color: r.color },
+      // Colours are assigned when the opening ends — the page needs them to play on (#427 / B428).
+      players: engine.players.map((p) => ({ userId: p.userId, displayName: p.displayName, color: p.color })),
+      lastStone: r.offered ? null : { x: r.x, y: r.y, color: r.color }, // offered 5ths stay off the board (#427)
       nextColor: r.nextColor,
     });
 
@@ -695,13 +698,13 @@ function register(io, socket) {
 
   socket.on('tmatch:swap2_choice', (payload = {}) => {
     const match = getOwnMatch(payload.pairingId, payload.tournamentId);
-    if (!match || !match.engine.ruleSwap2) {
+    if (!match || !match.engine.hasOpening()) {
       socket.emit('tmatch:error', { message: 'Không có ván Swap2 đang diễn ra.', code: 'NO_ACTIVE_SWAP2' });
       return;
     }
 
     const engine = match.engine;
-    const r = engine.swap2Choice(user.userId, payload.choice);
+    const r = engine.swap2Choice(user.userId, payload.choice, payload.n);
     if (r.error) {
       socket.emit('tmatch:error', { message: r.error, code: r.code });
       return;
@@ -716,11 +719,22 @@ function register(io, socket) {
       currentTurn: engine.currentTurn,
       openingPhase: engine.openingPhase,
       swap2: engine.serialize().swap2,
+      // Colours are assigned when the opening ends — the page needs them to play on (#427 / B428).
+      players: engine.players.map((p) => ({ userId: p.userId, displayName: p.displayName, color: p.color })),
       lastStone: null,
       nextColor: r.done ? null : r.nextColor,
     });
 
-    if (r.done) {
+    if (engine.openingRule && r.currentTurn !== user.userId) {
+      // A Renju swap / choice can hand the move to the other player (#427).
+      const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
+      const pairing = tournamentManager.getPairing(payload.pairingId);
+      if (timer && pairing) {
+        const nextEntryId = match.entryByUserId.get(r.currentTurn);
+        timer.switchTurn(nextEntryId === pairing.player1EntryId ? 'black' : 'white');
+        io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
+      }
+    } else if (r.done) {
       const timer = tournamentState.tournamentTimerMap.get(payload.pairingId);
       if (timer) io.to(matchRoom(payload.pairingId)).emit('tmatch:timer_sync', { pairingId: payload.pairingId, ...timer.getSync() });
     }

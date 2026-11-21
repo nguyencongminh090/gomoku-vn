@@ -56,5 +56,28 @@
     return null;
   }
 
-  return { OPENINGS, detectOpening };
+  /**
+   * Board symmetries (about the centre) that map every stone in `stones` onto a stone of the same colour.
+   * stones = [{x, y, color}], y TOP-DOWN (the group is closed under the y-flip, so no conversion needed).
+   * Returns functions (x, y) → {x, y}; the identity is always included. (#427 "no symmetric 5th offers")
+   */
+  function fixingSymmetries(stones, size) {
+    const c = Math.floor(size / 2);
+    const key = (x, y) => x + ',' + y;
+    const at = new Map(stones.map((s) => [key(s.x, s.y), s.color]));
+    const out = [];
+    for (const m of SYMS) {
+      const f = (x, y) => { const [dx, dy] = apply(m, [x - c, y - c]); return { x: c + dx, y: c + dy }; };
+      if (stones.every((s) => { const p = f(s.x, s.y); return at.get(key(p.x, p.y)) === s.color; })) out.push(f);
+    }
+    return out;
+  }
+
+  /** True when `cand` equals an offer in `offers`, or is mapped onto one by a symmetry fixing `stones`. */
+  function isSymmetricOffer(cand, offers, stones, size) {
+    const syms = fixingSymmetries(stones, size);
+    return offers.some((o) => syms.some((f) => { const p = f(cand.x, cand.y); return p.x === o.x && p.y === o.y; }));
+  }
+
+  return { OPENINGS, detectOpening, fixingSymmetries, isSymmetricOffer };
 }));

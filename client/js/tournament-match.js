@@ -152,6 +152,8 @@ client.on('tmatch:init', (data) => {
   renderSwap2Banner();
   renderMoveList();
   updateBoardState();
+  // Reconnect mid-opening: draw the opening step (zone, offers, preview) over the plain board (#427).
+  if (gameState.swap2 && gameState.swap2.enabled && gameState.swap2.openingPhase !== 'play') renderSwap2Board();
 
   matchActionsEl.style.display = mp ? '' : 'none';
   renderDrawPrompt();
@@ -222,8 +224,20 @@ client.on('tmatch:swap2_state', (data) => {
   Object.assign(gameState.swap2, data.swap2);
   gameState._lastStone = data.lastStone;
   gameState._nextColor = data.nextColor;
+  // The opening assigns colours when it ends; without them White could not play move 6 and
+  // Black never saw Renju forbidden points (B428). Older servers sent no players.
+  if (data.players) {
+    gameState.players = data.players;
+    const mp = myPlayer();
+    myColor = mp ? mp.color : null;
+  }
 
-  renderSwap2Board();
+  if (data.openingPhase === 'play') {
+    updateBoardState();
+    renderHeader();
+  } else {
+    renderSwap2Board();
+  }
   renderSwap2Banner();
   renderMoveList();
 });
@@ -322,8 +336,9 @@ function initBoard() {
     onCellClick: (x, y) => {
       if (!gameState) return;
       if (gameState.swap2 && gameState.swap2.enabled && gameState.swap2.openingPhase !== 'play') {
+        const RX = window.RenjuOpeningUI;
         if (gameState.currentTurn === userInfo.userId
-            && (gameState.swap2.openingPhase === 'place3' || gameState.swap2.openingPhase === 'place2')) {
+            && (gameState.swap2.openingPhase === 'place3' || gameState.swap2.openingPhase === 'place2' || (RX && RX.clickActs(gameState.swap2)))) {
           client.emit('tmatch:swap2_place', { tournamentId, pairingId, x, y });
         }
         return;
@@ -375,6 +390,7 @@ function updateBoardState() {
     myColor,
     winLine: gameState.result ? gameState.result.winLine : null,
     forbidden: forbiddenCells(),
+    offers: [], // Renju opening offers vanish once White picks (#427)
     moveHistory: gameState.moveHistory || [],
     displayMode: boardDisplayMode(),
   });
@@ -384,10 +400,15 @@ function updateBoardState() {
 function renderSwap2Board() {
   if (!boardRenderer || !gameState) return;
   const mine = gameState.currentTurn === userInfo.userId;
-  const placing = gameState.swap2.openingPhase === 'place3' || gameState.swap2.openingPhase === 'place2';
+  // Renju Taraguchi-10 / Yamaguchi (#427): step, zone and offers come from swap2 (shared RenjuOpeningUI).
+  const RX = window.RenjuOpeningUI;
+  const rx = !!(RX && RX.active(gameState.swap2));
+  const placing = rx ? RX.clickActs(gameState.swap2) : (gameState.swap2.openingPhase === 'place3' || gameState.swap2.openingPhase === 'place2');
   let previewColor = null;
-  if (gameState._nextColor === 'BLACK') previewColor = 'BLACK';
+  if (rx) previewColor = RX.previewColor(gameState.swap2);
+  else if (gameState._nextColor === 'BLACK') previewColor = 'BLACK';
   else if (gameState._nextColor === 'WHITE') previewColor = 'WHITE';
+  const zone = rx ? RX.zoneCells(gameState.boardSize, gameState.swap2.zone) : [];
 
   boardRenderer.setState({
     board: gameState.board,
@@ -395,7 +416,9 @@ function renderSwap2Board() {
     isMyTurn: mine && placing,
     myColor: previewColor,
     lastMove: gameState._lastStone || null,
-    showZones: false,
+    firstMoveZones: zone,
+    showZones: zone.length > 1,
+    offers: rx ? (gameState.swap2.offers || []) : [],
     winLine: null,
     moveHistory: gameState.moveHistory || [],
     displayMode: boardDisplayMode(),
@@ -478,6 +501,18 @@ function renderSwap2Banner() {
   if (!gameState || !gameState.swap2 || !gameState.swap2.enabled) { swap2BannerSlot.innerHTML = ''; return; }
   const { openingPhase } = gameState.swap2;
   const mine = gameState.currentTurn === userInfo.userId;
+  const RX = window.RenjuOpeningUI;
+  if (RX && RX.active(gameState.swap2)) {
+    swap2BannerSlot.innerHTML = `<div class="swap2-banner swap2-banner--rx">${RX.controlsHtml(gameState.swap2, { mine, userId: userInfo.userId, t })}</div>`;
+    swap2BannerSlot.querySelectorAll('[data-action="swap2Choose"]').forEach((b) => b.addEventListener('click', () =>
+      client.emit('tmatch:swap2_choice', { tournamentId, pairingId, choice: b.dataset.arg })));
+    const declare = swap2BannerSlot.querySelector('[data-action="rxDeclare"]');
+    if (declare) declare.addEventListener('click', () => {
+      const n = parseInt(swap2BannerSlot.querySelector('.rx-declare-n').value, 10);
+      client.emit('tmatch:swap2_choice', { tournamentId, pairingId, choice: 'declare', n });
+    });
+    return;
+  }
 
   if ((openingPhase === 'p2choice' || openingPhase === 'p1choice') && mine) {
     swap2BannerSlot.innerHTML = `
