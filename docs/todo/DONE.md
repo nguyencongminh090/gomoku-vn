@@ -1,3 +1,4 @@
+- ✅ **#429.** room.html / tournament-match.html load js/renju.js without ?v= cache-bust `[Model: Haiku]` — [detail](docs/todo/B429-renju-js-no-cache-bust.md)
 - ✅ **#419.** /api/home live thumbnails with real stones + news list `[Model: Sonnet]` — [detail](docs/todo/F419-home-live-thumb-stones.md)
 - ✅ **#125.** Cloudflare xoá `ETag` của HTML khi tự nén lại — cần bật "Respect Strong ETags" trên dashboard Cloudflare để khôi phục; không hỏng gì hiện tại (`If-Modified-Since` vẫn trả 304), không gấp `[Model: Haiku 4.5]` — [chi tiết](docs/todo/A125-cloudflare-respect-strong-etags-cho-html.md)
 - ✅ **#191.** Arena mockup items needing new features (friends/challenge, country, badges, club chat/events, my-club scope) `[Model: Opus 5]` — [detail](docs/todo/B191-platform-pages-needs-new-features.md)

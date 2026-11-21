@@ -1,5 +1,5 @@
 # B429 — room.html / tournament-match.html load js/renju.js without ?v=
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-21 — both tags hashed; see docs/fix-log/2026-11-21-429-renju-js-cache-bust.md
 **Area:** client/room.html, client/tournament-match.html, scripts/cache-bust.js
 **From:** found 2026-11-21 while building #427   **Depends:** —
 
