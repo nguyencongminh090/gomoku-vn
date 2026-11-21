@@ -1000,6 +1000,11 @@ const GAME_LOG_MAX = 30;
  * Append one scored game to the room's log (phone Tỉ số tab: result dots + one row per game).
  * `n` keeps counting past the cap so "Ván 31" stays "Ván 31" after the oldest rows drop.
  */
+/** Colour to store for a player (#430); plain-object engines (tests, legacy) fall back to p.color. */
+function recordColor(engine, p) {
+  return typeof engine.recordColor === 'function' ? engine.recordColor(p.userId) : p.color;
+}
+
 function appendGameLog(room, engine) {
   if (!Array.isArray(room.gameLog)) room.gameLog = [];
   const prev = room.gameLog[room.gameLog.length - 1];
@@ -1009,7 +1014,7 @@ function appendGameLog(room, engine) {
     reason: engine.result.reason,
     moves: (engine.moveHistory || []).length,
     durationMs: typeof engine.startedAt === 'number' ? Math.max(0, Date.now() - engine.startedAt) : null,
-    players: engine.players.map((p) => ({ userId: p.userId, name: p.displayName, color: p.color })),
+    players: engine.players.map((p) => ({ userId: p.userId, name: p.displayName, color: recordColor(engine, p) })),
   });
   if (room.gameLog.length > GAME_LOG_MAX) room.gameLog.splice(0, room.gameLog.length - GAME_LOG_MAX);
 }
@@ -1078,7 +1083,7 @@ function handleGameEnd(io, room, opts = {}) {
     const players = engine.players.map(p => ({
       id: p.userId,
       name: p.displayName,
-      color: p.color,
+      color: recordColor(engine, p), // provisional colour if the game ended mid-opening (#430)
       isGuest: p.isGuest,
     }));
     const rated = RatingService.isRatedGame({

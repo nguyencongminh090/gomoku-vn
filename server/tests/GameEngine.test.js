@@ -925,3 +925,25 @@ describe('GameEngine — Undo (Swap2 opening mode)', () => {
     expect(g.board[2][2]).not.toBe(0);
   });
 });
+
+describe('GameEngine.recordColor (#430)', () => {
+  const mk = (opts) => new GameEngine({
+    roomId: 'r', boardSize: 15, walls: [], portals: [], firstMoveZones: [],
+    players: [{ userId: 'a', displayName: 'A', color: 'BLACK' }, { userId: 'b', displayName: 'B', color: 'WHITE' }],
+    ...opts,
+  });
+  it('returns the assigned colour when there is no opening', () => {
+    const e = mk({ winningRule: 'freestyle' });
+    expect([e.recordColor('a'), e.recordColor('b'), e.recordColor('zz')]).toEqual(['BLACK', 'WHITE', null]);
+  });
+  it('Swap2 mid-opening: first player is provisional Black; live colours stay null', () => {
+    const e = mk({ winningRule: 'freestyle', ruleSwap2: true });
+    expect([e.recordColor('a'), e.recordColor('b')]).toEqual(['BLACK', 'WHITE']);
+    expect(e.players.map((p) => p.color)).toEqual([null, null]);
+  });
+  it('Renju opening follows tentativeBlackId', () => {
+    const e = mk({ winningRule: 'renju', openingRule: 'yamaguchi' });
+    e.tentativeBlackId = 'b';
+    expect([e.recordColor('a'), e.recordColor('b')]).toEqual(['WHITE', 'BLACK']);
+  });
+});

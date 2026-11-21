@@ -416,7 +416,7 @@ function _endMatch(io, tournamentId, pairingId, engineResult) {
       players: match.engine.players.map((p) => ({
         id: p.userId,
         name: p.displayName,
-        color: p.color,
+        color: match.engine.recordColor(p.userId), // provisional colour if the game ended mid-opening (#430)
         isGuest: p.isGuest,
         entryId: match.entryByUserId.get(p.userId),
       })),

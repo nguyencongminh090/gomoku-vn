@@ -790,6 +790,22 @@ class GameEngine {
    * Whether this game will be rated when it ends (#216). Undo and extra time are
    * friendly-only ("Giao hữu"), so GameHandler refuses them when this is true.
    */
+  /**
+   * Colour to RECORD for a player (#430): the assigned colour, or — when the game ended before the
+   * opening assigned colours — the provisional one: Renju's current Black holder, else Swap2's first
+   * player (who placed Black 1). Live `players[].color` stays null for the opening UI.
+   * @param {string} userId
+   * @returns {'BLACK'|'WHITE'|null}
+   */
+  recordColor(userId) {
+    const p = this.players.find((q) => q.userId === userId);
+    if (!p) return null;
+    if (p.color) return p.color;
+    const black = this.tentativeBlackId || this.firstPlayerId;
+    if (!black) return null;
+    return userId === black ? 'BLACK' : 'WHITE';
+  }
+
   /** Swap2 or a Renju opening procedure (#427) drives the first moves. */
   hasOpening() { return this.ruleSwap2 === true || !!this.openingRule; }
 
