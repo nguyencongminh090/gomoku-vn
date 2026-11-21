@@ -192,6 +192,7 @@
       const mode = seg('mode', t('modal.mode'), [['rated', t('room.mode_rated')], ['friendly', t('room.mode_friendly')]], 'rated');
       const board = seg('board', t('modal.board_size'), BOARD_SIZES.map((n) => [n, n + '×' + n]), s.boardSize);
       const rule = seg('rule', t('modal.win_rule'), RULES.map((r) => [r, t('rule.' + r)]), s.winningRule);
+      rule.inputs.forEach((i) => i.addEventListener('change', () => { if (i.checked && i.value === 'renju') board.set(15); })); // Renju default 15x15, still editable (#425)
       const opening = seg('open', t('modal.opening'), [['none', t('rule.none')], ['swap2', 'Swap2']], 'none');
       const specials = el('div', undefined, 'pchal__row');
       const wall = check(t('modal.rule_wall'), false);

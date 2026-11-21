@@ -21,7 +21,7 @@
   ];
   const DIRECT = [
     ['Kansei', [0, 2]], ['Keigetsu', [1, 2]], ['Sosei', [2, 2]], ['Kagetsu', [1, 1]], ['Zangetsu', [2, 1]],
-    ['Ungetsu', [1, 0]], ['Kinsei', [2, 0]], ['Shogetsu', [0, -1]], ['Kyugetsu', [1, -1]], ['Shingetsu', [2, -1]],
+    ['Ugetsu', [1, 0]], ['Kinsei', [2, 0]], ['Shogetsu', [0, -1]], ['Kyugetsu', [1, -1]], ['Shingetsu', [2, -1]],
     ['Zuisei', [0, -2]], ['Sangetsu', [1, -2]], ['Yusei', [2, -2]],
   ];
 

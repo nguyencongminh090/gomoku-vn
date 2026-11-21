@@ -17,7 +17,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=cdce0a3a';
+import { client } from './lobby.js?v=6f676825';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;

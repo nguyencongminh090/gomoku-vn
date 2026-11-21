@@ -34,7 +34,7 @@
  *       list, updates on live_matches:list, row click navigates to the match
  */
 
-import { client, setHeroTournamentCount } from './lobby.js?v=cdce0a3a';
+import { client, setHeroTournamentCount } from './lobby.js?v=6f676825';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -478,6 +478,11 @@ modalConfirm.addEventListener('click', () => {
       if (trow) trow.style.opacity = disabled ? '0.45' : '';
     });
   };
+  // Renju's standard board is 15x15: picking it selects 15, still editable afterwards (#425).
+  document.querySelectorAll('input[name="tWinRule"]').forEach((r) => r.addEventListener('change', () => {
+    const b = document.getElementById('tbs-15');
+    if (r.checked && r.value === 'renju' && b) b.checked = true;
+  }));
   document.querySelectorAll('input[name="tOpenRule"]').forEach((r) => r.addEventListener('change', sync));
   sync();
 })();

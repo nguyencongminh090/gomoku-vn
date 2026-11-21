@@ -50,3 +50,9 @@ describe('free-open (null)', () => {
     expect(detectOpening(moves, SIZE).name).toBe('Chosei');
   });
 });
+
+test('the 26 opening names are unique; direct 6 is Ugetsu, indirect 6 is Ungetsu (user list 2026-11-21)', () => {
+  expect(new Set(OPENINGS.map((o) => o.name)).size).toBe(26);
+  expect(OPENINGS.find((o) => o.group === 'direct' && o.no === 6).name).toBe('Ugetsu');
+  expect(OPENINGS.find((o) => o.group === 'indirect' && o.no === 6).name).toBe('Ungetsu');
+});

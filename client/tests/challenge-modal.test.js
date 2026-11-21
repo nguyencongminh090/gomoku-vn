@@ -111,6 +111,16 @@ describe('settings', () => {
     expect(radios('challenge.stake').map((i) => i.value)).toEqual(['none', 'swap']);
   });
 
+  test('#425 picking Renju moves the board to 15x15 (default), and the size stays editable', () => {
+    M.open({ to });
+    pick('modal.board_size', 19);
+    pick('modal.win_rule', 'renju');
+    radios('modal.win_rule').find((i) => i.value === 'renju').dispatchEvent(new Event('change', { bubbles: true }));
+    expect(radios('modal.board_size').find((i) => i.checked).value).toBe('15');
+    pick('modal.board_size', 19);
+    expect(radios('modal.board_size').find((i) => i.checked).value).toBe('19');
+  });
+
   test('dependencies: Swap2 disables wall/portal; increment only in blitz; stake only when rated; hint only for swap', () => {
     M.open({ to });
     const [wall, portal] = radios('modal.special_rules');

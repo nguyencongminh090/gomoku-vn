@@ -859,6 +859,12 @@ modalAdvancedToggle.addEventListener('click', () => {
 
 applyModalMode();
 
+// Renju's standard board is 15x15: picking Renju moves the size select to 15 (#425). A user change only — the size stays free to edit after.
+document.querySelectorAll('select[name="winRule"]').forEach((sel) => sel.addEventListener('change', () => {
+  const size = document.querySelector('select[name="boardSize"]');
+  if (sel.value === 'renju' && size && [...size.options].some((o) => o.value === '15')) size.value = '15';
+}));
+
 // Swap2 (opening rule) is played on a plain board → disable & clear board setup.
 (function () {
   const sync = () => {
