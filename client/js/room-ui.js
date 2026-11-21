@@ -238,18 +238,6 @@
   const SR_SEP = '<span class="rsr">, </span>';
   const pillsHtml = (names, extra = '') => names.map((n) => `<span class="rpill${extra}">${escapeHtml(n)}</span>`).join(SR_SEP);
 
-  // #431 "Luật" tab: redrawn only when this table's rule set (or the language) changes, so sections the user
-  // opened or closed stay as they left them across the per-second room updates.
-  let guideKey = '';
-  function renderRulesGuide(ids) {
-    const box = document.getElementById('rules-guide');
-    if (!box || !global.RoomRulesGuide) return;
-    const key = ids.join(',') + '|' + (typeof global.getLanguage === 'function' ? global.getLanguage() : '');
-    if (key === guideKey) return;
-    guideKey = key;
-    global.RoomRulesGuide.render(box, { t, active: ids });
-  }
-
   /** The nav's rules pills ([Luật 2] [Ô khoá]) + the popover body. */
   function renderRules() {
     const list = activeRules();
@@ -271,7 +259,6 @@
       title.innerHTML = `<span class="rmenu__code">${escapeHtml(t('room.table_label', { code }))}</span>${SR_SEP}`
         + `<span class="rpill rpill--${rated ? 'rated' : 'friendly'}">${escapeHtml(t(rated ? 'room.mode_rated' : 'room.mode_friendly'))}</span>`;
     }
-    renderRulesGuide(list.map((r) => r.id));
     const body = document.getElementById('rules-pop-body');
     if (!body) return;
     body.innerHTML = list.map((r) => `

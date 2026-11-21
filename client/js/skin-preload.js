@@ -12,5 +12,5 @@
   r.setAttribute('data-mode', read(/(?:^|; )gvn_mode=([a-z]+)/, 'gvn_color_mode', ['dark', 'light']));
   // #424: lobby opening on another tab; lobby-home.js clears it.
   var l = location;
-  if (/^\/(index\.html)?$/.test(l.pathname) && /^#(rooms|tournaments)$|[?&]tab=tournaments(&|$)/.test(l.hash || l.search)) r.setAttribute('data-lobby-start', 'other');
+  if (/^\/(index\.html)?$/.test(l.pathname) && /^#(rooms?|tournaments)$|[?&]tab=tournaments(&|$)/.test(l.hash || l.search)) r.setAttribute('data-lobby-start', 'other');
 })();

@@ -60,8 +60,8 @@ function asSortedKeys(entries) {
 // #159 then added private-chat.js as a 6th index-entry import (+ its hint).
 // B193 added platform-shell.js (site-wide Arena header) as the 7th; B195 lobby-home.js the 8th.
 describe.each([
-  ['room.html', 'room-entry.js', 11], // #431 room-rules-guide.js is the 11th
-  ['index.html', 'index-entry.js', 9], // #424 home-lamp.js is the 9th
+  ['room.html', 'room-entry.js', 10],
+  ['index.html', 'index-entry.js', 10], // #424 home-lamp.js is the 9th, #432 room-rules-guide.js the 10th
 ])('%s modulepreload hints vs %s imports (TODO.md #126)', (htmlFile, entryFile, expectedCount) => {
   test(`entry file has exactly ${expectedCount} static imports (sanity check on the count itself)`, () => {
     const imports = extractEntryImports(entryFile);

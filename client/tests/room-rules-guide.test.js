@@ -1,5 +1,5 @@
 /**
- * #431 — the room's "Luật" tab: every rule documented with demo boards; the rules in use are flagged.
+ * #431/#432 — the rules guide (lobby Phòng screen): every rule documented with demo boards; the rules in use are flagged.
  *
  * @jest-environment jsdom
  */
@@ -8,7 +8,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const HTML = fs.readFileSync(path.join(__dirname, '..', 'room.html'), 'utf8');
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8');
 
 function load() {
@@ -19,11 +18,6 @@ function load() {
 const t = (k) => k;
 
 describe('Luật tab', () => {
-  test('room.html has the tab button and its panel', () => {
-    expect(HTML).toMatch(/data-tab="tab-rules"/);
-    expect(HTML).toMatch(/id="tab-rules"[\s\S]*id="rules-guide"/);
-  });
-
   test('every selectable rule has a section; the website rule ids are covered', () => {
     const G = load();
     const ids = G.SECTIONS.map((s) => s.id);
@@ -32,7 +26,7 @@ describe('Luật tab', () => {
 
   test('all guide keys exist in both languages (lead, points, captions, names)', () => {
     const G = load();
-    const keys = new Set(['room.tab_rules', 'guide.in_use']);
+    const keys = new Set(['guide.in_use', 'guide.match_details']);
     G.GROUPS.forEach((g) => keys.add(`guide.group_${g}`));
     for (const s of G.SECTIONS) {
       keys.add(`guide.${s.id}_lead`);
@@ -66,6 +60,26 @@ describe('Luật tab', () => {
       document.body.innerHTML = G.boardHtml(e.rows, { zones: e.zones });
       expect(document.querySelectorAll('.rg-c').length).toBe(e.rows.length * e.rows[0].length);
     }
+  });
+
+  test('starts with an illustrated overview and shows each winning condition before expansion', () => {
+    const G = load();
+    G.render(document.getElementById('rules-guide'), { t });
+    expect(document.querySelector('.rg-intro h2').textContent).toBe('guide.basics_name');
+    expect(document.querySelectorAll('.rg-intro .rg-c--win')).toHaveLength(5);
+    const rules = [...document.querySelectorAll('[data-group="win"] details')];
+    expect(rules.map((rule) => rule.querySelector('summary .rg-lead').textContent))
+      .toEqual(['guide.freestyle_lead', 'guide.standard_lead', 'guide.caro_lead', 'guide.renju_lead']);
+  });
+
+  test('opening diagrams show all moves described in their captions', () => {
+    const G = load();
+    G.render(document.getElementById('rules-guide'), { t });
+    const tara = document.querySelector('[data-rule="taraguchi10"]');
+    expect([...tara.querySelectorAll('.rg-c--o b')].map((stone) => stone.textContent)).toEqual(['2', '4']);
+    const yama = document.querySelector('[data-rule="yamaguchi"]');
+    expect(yama.querySelectorAll('.rg-c--num')).toHaveLength(4);
+    expect(yama.querySelectorAll('.rg-c--ghost')).toHaveLength(3);
   });
 
   test('captions are escaped (no raw HTML from t())', () => {

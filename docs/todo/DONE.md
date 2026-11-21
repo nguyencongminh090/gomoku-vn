@@ -1,4 +1,5 @@
 - ✅ **#427.** Renju P2: Taraguchi-10 + Yamaguchi openings (rooms, challenges, tournaments) `[Model: Opus]` — [detail](docs/todo/F427-renju-p2-taraguchi-yamaguchi.md)
+- ✅ **#432.** Lobby Phòng screen: "Luật chơi" tab (shared rules guide) `[Model: Sonnet]` — [detail](docs/todo/F432-lobby-rules-tab.md)
 - ✅ **#431.** Room "Luật" tab: every rule explained + demo boards `[Model: Sonnet]` — [detail](docs/todo/F431-room-rules-tab.md)
 - ✅ **#430.** Game ending mid-opening (Swap2/Renju) saves winner as raw user id, colours null `[Model: Sonnet]` — [detail](docs/todo/B430-opening-end-record-colours.md)
 - ✅ **#429.** room.html / tournament-match.html load js/renju.js without ?v= cache-bust `[Model: Haiku]` — [detail](docs/todo/B429-renju-js-no-cache-bust.md)
