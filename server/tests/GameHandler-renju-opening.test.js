@@ -145,3 +145,45 @@ describe('per_move clock refreshes per opening step (#427)', () => {
     expect(timer.black).toBe(5);
   });
 });
+
+// #430 — a game ending before the opening assigns colours is saved with provisional colours.
+describe('mid-opening game end records provisional colours (#430)', () => {
+  const database = require('../db/database');
+  function endByResign(engineOpts, actions) {
+    const io = makeIo();
+    const engine = new GameEngine({
+      roomId: 'room1', boardSize: 15, walls: [], portals: [], firstMoveZones: [],
+      players: [{ userId: 'p1', displayName: 'P1', color: null }, { userId: 'p2', displayName: 'P2', color: null }],
+      ...engineOpts,
+    });
+    const room = { roomId: 'room1', gameState: engine, scoreTable: {}, users: new Map(), state: 'playing' };
+    mockRoomManager.getRoomByUser.mockReturnValue(room);
+    const s = { p1: makeSocket('p1'), p2: makeSocket('p2') };
+    GameHandler.register(io, s.p1);
+    GameHandler.register(io, s.p2);
+    actions(s);
+    expect(engine.colorsAssigned).toBe(false);
+    s.p1.handlers['game:resign']();
+    return { saved: database.saveGame.mock.calls.pop()[0], room };
+  }
+
+  test('Renju Taraguchi: after a swap, p2 holds Black → p2 BLACK, p1 WHITE; game log agrees', () => {
+    const { saved, room } = endByResign({ winningRule: 'renju', openingRule: 'taraguchi10' }, (s) => {
+      s.p1.handlers['game:swap2_place']({ x: 7, y: 7 });
+      s.p2.handlers['game:swap2_choice']({ choice: 'swap' }); // swap → p2 takes over Black
+    });
+    expect(Object.fromEntries(saved.players.map((p) => [p.id, p.color]))).toEqual({ p1: 'WHITE', p2: 'BLACK' });
+    expect(saved.result.winner).toBe('p2');
+    expect(room.gameLog.pop().players.map((p) => p.color)).toEqual(['WHITE', 'BLACK']);
+  });
+
+  test('Swap2 place3: first player is the provisional Black', () => {
+    const { saved } = endByResign({ winningRule: 'freestyle', ruleSwap2: true }, (s) => {
+      s.p1.handlers['game:swap2_place']({ x: 7, y: 7 });
+    });
+    expect(saved.players).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'p1', color: 'BLACK' }),
+      expect.objectContaining({ id: 'p2', color: 'WHITE' }),
+    ]));
+  });
+});

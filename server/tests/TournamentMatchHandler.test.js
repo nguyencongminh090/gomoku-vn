@@ -1525,6 +1525,18 @@ describe('TournamentMatchHandler — Renju opening (#427)', () => {
     expect(io._toEmitted['tournament-match:p1'].filter((e) => e.event === 'tmatch:timer_sync')).toHaveLength(3);
   });
 
+  test('#430: resign mid-opening saves provisional colours and a colour winner, not a raw id', () => {
+    const { s1, s2 } = setupRenju('taraguchi10');
+    const P = { tournamentId: 't1', pairingId: 'p1' };
+    fire(s1, 'tmatch:swap2_place', { ...P, x: 7, y: 7 });
+    fire(s2, 'tmatch:swap2_choice', { ...P, choice: 'swap' }); // u2 takes over Black
+    fire(s1, 'tmatch:resign', P);
+    const game = database.getTournamentGames('t1').pop();
+    expect(game.black_player_name).toBe('Player Two');
+    expect(game.white_player_name).toBe('Player One');
+    expect(game.winner).toBe('BLACK');
+  });
+
   test('B428: tmatch:swap2_state carries players, with colours once the opening ends', () => {
     const { io, s1, s2 } = setupRenju('yamaguchi');
     const P = { tournamentId: 't1', pairingId: 'p1' };

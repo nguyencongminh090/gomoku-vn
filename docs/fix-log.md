@@ -371,3 +371,4 @@
 | 2026-11-21 11:23 | B428 tournament match: swap2_state now carries players; page applies colours and switches to play rendering after Swap2/Renju openings; 4 tests | [detail](docs/fix-log/2026-11-21-b428-tmatch-opening-colours.md) |
 | 2026-11-21 12:08 | #429 room.html + tournament-match.html load js/renju.js?v=<hash> (was bare, stale under immutable cache); 2 tests | [detail](docs/fix-log/2026-11-21-429-renju-js-cache-bust.md) |
 | 2026-11-21 12:10 | #427 per_move clock: every Renju opening step (stone, offered 5th, choice) refreshes the actor window, room + tournament; Swap2 unchanged; 7 tests | [detail](docs/fix-log/2026-11-21-427-opening-clock-per-step.md) |
+| 2026-11-21 12:12 | #430 mid-opening game end (Swap2/Renju) recorded with provisional colours (Renju Black holder, Swap2 first player): winner colour + names, not raw id; 6 tests | [detail](docs/fix-log/2026-11-21-430-opening-end-record-colours.md) |
