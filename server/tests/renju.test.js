@@ -87,3 +87,17 @@ describe('forbiddenPoints', () => {
     expect(JSON.stringify(b)).toBe(copy);
   });
 });
+
+describe('work cap', () => {
+  test('a dense crafted board is answered quickly and deterministically', () => {
+    // Black stones on a lattice that makes many threes available at every probe.
+    const stones = [];
+    for (let y = 1; y < 14; y++) for (let x = 1; x < 14; x++) if ((x + 2 * y) % 3 !== 0) stones.push([x, y]);
+    const b = board({ B: stones });
+    const t0 = Date.now();
+    const a = Renju.forbiddenPoints(b);
+    const again = Renju.forbiddenPoints(board({ B: stones }));
+    expect(Date.now() - t0).toBeLessThan(2000);
+    expect(again).toEqual(a);
+  });
+});
