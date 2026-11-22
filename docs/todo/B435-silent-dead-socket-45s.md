@@ -1,5 +1,5 @@
 # B435 — Silently dead socket: up to ~45 s of nothing, own chat lost, no banner
-**Status:** OPEN — fix built + deployed prod 2026-11-22 (4bdbebb7; steps 2+3, lab 39.9→8.7 s, [fix-log](../fix-log/2026-11-22-435-dead-socket-liveness.md)); step 1 prod measure + real-phone check open
+**Status:** OPEN — fix built + deployed prod 2026-11-22 (4bdbebb7; steps 2+3, lab 39.9→8.7 s, [fix-log](../fix-log/2026-11-22-435-dead-socket-liveness.md)); real-phone check open
 **Area:** client/js/socket-client.js (heartbeat / liveness), client/js/room-socket.js, room.js chat send
 **From:** user (viewer) 2026-11-22: "sau một thời gian, tôi bị lag (thời gian của người đang chơi về 0:00 + nhắn tin nhưng ko thấy tin nhắn của mình). Sau đó, tôi refresh … nhắn tin và hiện ngay lập tức."   **Depends:** #415, #434
 
@@ -15,6 +15,11 @@ Evidence (2026-11-22, `tools/perf/bhproxy.js` + `tools/perf/viewer-dead-socket.j
 bot chats every 2 s, existing connection blackholed at t=0, new connections allowed):
 `ping timeout` at 38.8 s → reconnect 39.9 s → chat flows at 40.1 s. Bot messages c2–c21 (≈40 s)
 never reached the viewer; the viewer's own message sent at t=1 s was lost.
+
+## Prod measure (step 1, pm2 out log 2026-11-17 → 11-22 14:04, before deploy)
+`ping timeout` = 187 of 3211 disconnects (5.8 %; 8.5 % of network-driven: transport close 2008, transport
+error 9); 36 of 104 users hit it, top 3 users = 66; 7–58/day. After the fix a dead old socket is mostly evicted
+by the reconnect (`server namespace disconnect`) before it times out — re-count to compare.
 
 ## Scope
 1. Measure prod: share of `reason="ping timeout"` disconnects (logs already carry `reason`).
