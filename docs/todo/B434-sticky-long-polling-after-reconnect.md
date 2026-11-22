@@ -1,5 +1,7 @@
 # B434 — Lag after long play: socket stuck on long-polling after a reconnect
-**Status:** OPEN — fix built 2026-11-22 on `fix/434-sticky-polling` (uncommitted; lab: polling → websocket without reload). Left: deploy, read prod `[Transport]` lines, real phone. [fix-log](../fix-log/2026-11-22-434-sticky-long-polling.md)
+**Status:** OPEN — fix merged dev 1e0486d5, deployed prod 2026-11-22 14:36 +07. Prod browser check (guest, 390 px, real 30 s backoff):
+ws broken on one reconnect → `polling` (server log `reconnect=1 transport=polling`); healed → `websocket` 30.2 s later, no reload, net:ping acked.
+Left: prod polling share from `[Transport]` lines (every 10 min), real phone. [fix-log](../fix-log/2026-11-22-434-sticky-long-polling.md)
 **Area:** client/js/socket-client.js (`_connect` opts), server/socket/SocketHandler.js (logging)
 **From:** user report 2026-11-22 "web lag sau khi chơi một thời gian dài"; "sau khi refresh lại ổn, mượt trở lại"   **Depends:** #415
 
