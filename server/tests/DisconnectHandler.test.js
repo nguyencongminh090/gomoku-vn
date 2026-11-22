@@ -95,6 +95,15 @@ function toEmitted(io, room, event) {
   return (io._toEmitted[room] || []).find(e => e.event === event);
 }
 
+// #433: some blocks run with real timers, so a started grace timer is a real Timeout that would outlive
+// the test (jest --detectOpenHandles flagged startSpectatorGrace). Clear every pending one after each test.
+afterEach(() => {
+  for (const m of [mockState.disconnectTimers, mockState.emptyRoomGraceTimers, mockState.spectatorGraceTimers]) {
+    for (const e of m.values()) { clearTimeout(e.timeout); clearInterval(e.countdown); }
+    m.clear();
+  }
+});
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockState.timerMap.clear();

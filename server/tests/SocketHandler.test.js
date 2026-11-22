@@ -650,3 +650,18 @@ describe('presence hooks wiring (#372 review)', () => {
     expect(dmHooks.hasSocket('p1')).toBe(true); // away tab still gets the live push
   });
 });
+
+// #433: the orphan-timer sweep started by init() is housekeeping — it must not keep the process alive.
+describe('orphan-timer sweep interval (#433)', () => {
+  test('init() unref()s its periodic orphan-timer sweep', () => {
+    jest.useRealTimers();
+    const spy = jest.spyOn(global, 'setInterval');
+    init(makeIo());
+    const handles = spy.mock.results.map((r) => r.value).filter((h) => h && typeof h.hasRef === 'function');
+    spy.mockRestore();
+    expect(handles.length).toBeGreaterThan(0);
+    const refed = handles.filter((h) => h.hasRef()).length;
+    for (const h of handles) clearInterval(h);
+    expect(refed).toBe(0);
+  });
+});

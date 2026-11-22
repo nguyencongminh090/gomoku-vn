@@ -438,8 +438,9 @@ function init(io) {
     logger.warn('[Socket] Connection error:', err.message);
   });
 
-  // Periodic cleanup: remove orphan timers for rooms that no longer exist
-  setInterval(() => {
+  // Periodic cleanup: remove orphan timers for rooms that no longer exist.
+  // #433: unref()d — housekeeping must not keep the process alive (the HTTP server does).
+  const orphanSweep = setInterval(() => {
     for (const [roomId] of timerMap) {
       if (!roomManager.getRoom(roomId)) {
         cleanupRoomTimer(roomId);
@@ -447,6 +448,7 @@ function init(io) {
       }
     }
   }, 60_000);
+  if (typeof orphanSweep.unref === 'function') orphanSweep.unref();
 }
 
 /**

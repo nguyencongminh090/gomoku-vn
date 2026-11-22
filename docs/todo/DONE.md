@@ -1,3 +1,4 @@
+- ✅ **#433.** Jest open handles: find and unref the remaining timers after the RoomManager fix `[Model: Sonnet]` — [detail](docs/todo/B433-jest-open-handles.md)
 - ✅ **#427.** Renju P2: Taraguchi-10 + Yamaguchi openings (rooms, challenges, tournaments) `[Model: Opus]` — [detail](docs/todo/F427-renju-p2-taraguchi-yamaguchi.md)
 - ✅ **#432.** Lobby Phòng screen: "Luật chơi" tab (shared rules guide) `[Model: Sonnet]` — [detail](docs/todo/F432-lobby-rules-tab.md)
 - ✅ **#431.** Room "Luật" tab: every rule explained + demo boards `[Model: Sonnet]` — [detail](docs/todo/F431-room-rules-tab.md)
