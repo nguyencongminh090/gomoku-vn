@@ -72,3 +72,4 @@ in the detail file / fix-log).
 - **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)
 - **#434.** Lag after long play: socket stuck on long-polling after a reconnect (reload fixes) `[Model: Opus]` — [detail](docs/todo/B434-sticky-long-polling-after-reconnect.md)
 - **#435.** Silently dead socket: up to ~45 s frozen room, own chat lost, no banner `[Model: Opus]` — [detail](docs/todo/B435-silent-dead-socket-45s.md)
+- **#437.** Cache-bust `/vendor/socket.io/socket.io.min.js` with `?v=` (stale bundle after socket.io bump) `[Model: Sonnet]` — [detail](docs/todo/B437-vendor-socketio-cache-bust.md)
