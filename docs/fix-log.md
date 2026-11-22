@@ -374,3 +374,5 @@
 | 2026-11-21 12:12 | #430 mid-opening game end (Swap2/Renju) recorded with provisional colours (Renju Black holder, Swap2 first player): winner colour + names, not raw id; 6 tests | [detail](docs/fix-log/2026-11-21-430-opening-end-record-colours.md) |
 | 2026-11-21 15:28 | #432 illustrated lobby Rules guide with corrected examples, keyboard tabs and #room alias | [detail](docs/fix-log/2026-11-21-432-lobby-rules-guide.md) |
 | 2026-11-21 16:00 | Rules guide vi title 'Cách chơi Gomoku' -> 'Cách chơi Caro'; 1 test | [detail](docs/fix-log/2026-11-21-guide-basics-caro-name.md) |
+| 2026-11-22 12:00 | RoomManager idle-scan setInterval unref()d (jest open-handle warning); 1 test | [detail](docs/fix-log/2026-11-22-roommanager-interval-unref.md) |
+| 2026-11-22 13:00 | #433 tournamentState + SocketHandler orphan-sweep intervals unref()d; DisconnectHandler test clears real grace timers; 2 tests | [detail](docs/fix-log/2026-11-22-433-jest-open-handles.md) |

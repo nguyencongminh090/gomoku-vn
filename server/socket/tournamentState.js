@@ -76,6 +76,8 @@ function _sweep() {
 // RoomManager's `this._idleCleanup()` pattern) actually intercepts what the
 // interval calls.
 const _sweepInterval = setInterval(() => module.exports._sweep(), config.TOURNAMENT_DEADLINE_SCAN_INTERVAL_MS);
+// #433: housekeeping must not keep the process alive (the HTTP server does); else every require() leaks a handle.
+if (typeof _sweepInterval.unref === 'function') _sweepInterval.unref();
 
 /** For clean process/test exit — mirrors RoomManager.shutdown(). */
 function shutdown() {
