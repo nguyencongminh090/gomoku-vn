@@ -48,6 +48,10 @@
 // a second client is a second socket, and the server evicts the player (#51).
 // ---------------------------------------------------------------------------
 window.RoomClient = SocketClient.shared();
+// #434: never drop the transport (to leave a stuck long-polling one) while I'm a seated player whose
+// game is unfinished (ongoing, or interrupted by the opponent's drop) or who pressed ready — the server
+// would pause the game / skip in-game grace. A viewer, or a seat between games, is fine.
+window.RoomClient.quietReconnectOk = () => SocketClient.seatIsQuiet(window.RoomState);
 
 // ---------------------------------------------------------------------------
 // Shared state singleton (read/written by all modules)

@@ -377,3 +377,4 @@
 | 2026-11-22 12:00 | RoomManager idle-scan setInterval unref()d (jest open-handle warning); 1 test | [detail](docs/fix-log/2026-11-22-roommanager-interval-unref.md) |
 | 2026-11-22 13:00 | #433 tournamentState + SocketHandler orphan-sweep intervals unref()d; DisconnectHandler test clears real grace timers; 2 tests | [detail](docs/fix-log/2026-11-22-433-jest-open-handles.md) |
 | 2026-11-22 14:02 | #435 dead socket: acked net:ping liveness probe (≤~10 s) + chat ack/retry/cid dedupe; lab 39.9→8.7 s; 28 tests | [detail](docs/fix-log/2026-11-22-435-dead-socket-liveness.md) |
+| 2026-11-22 14:13 | #434 stuck long-polling: close a polling engine at a quiet moment (30 s/2 m/10 m backoff) → ws-first reconnect; [Transport] prod log; 20 tests | [detail](docs/fix-log/2026-11-22-434-sticky-long-polling.md) |

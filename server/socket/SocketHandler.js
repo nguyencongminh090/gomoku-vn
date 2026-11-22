@@ -23,6 +23,11 @@ const sessionManager     = require('../managers/SessionManager');
 const config             = require('../config');
 const database           = require('../db/database');
 const chatManager        = require('../managers/ChatHandler'); // #396: was required per disconnect
+const { createTransportStats } = require('./transport-stats');
+
+// #434: share of sockets on long-polling, logged every TRANSPORT_LOG_MS.
+const transportStats = createTransportStats();
+const TRANSPORT_LOG_MS = 10 * 60 * 1000;
 
 // Room payloads carry each member's avatar URL (null for guests / no avatar) — same shape as profile.js.
 roomManager.avatarLookup = require('../managers/avatar-lookup').avatarUrlFor;
@@ -220,7 +225,10 @@ function init(io) {
       // #367: tells a page load apart from the same page re-establishing its transport.
       ...(handshakeAuth.reconnect ? { reconnect: 1 } : {}),
       ...(handshakeAuth.reconnect && typeof handshakeAuth.roomId === 'string' ? { room: handshakeAuth.roomId } : {}),
+      // #434: websocket-first client landed on polling = its websocket handshake failed.
+      ...(socket.conn && socket.conn.transport && socket.conn.transport.name === 'polling' ? { transport: 'polling' } : {}),
     });
+    transportStats.track(socket);
 
     // userId → sockets index (#383). Registered first, so it is already updated when the main
     // 'disconnect' listener below asks DisconnectHandler "any other live socket?", and it is
@@ -443,6 +451,8 @@ function init(io) {
   io.engine.on('connection_error', (err) => {
     logger.warn('[Socket] Connection error:', err.message);
   });
+
+  transportStats.start(io, TRANSPORT_LOG_MS); // #434
 
   // Periodic cleanup: remove orphan timers for rooms that no longer exist.
   // #433: unref()d — housekeeping must not keep the process alive (the HTTP server does).

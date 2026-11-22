@@ -158,6 +158,7 @@ class SocketClient {
     this.socket.on('connect', () => {
       this._setStatus('connected');
       this._reportPresence(true);
+      this._scheduleReupgrade(); // #434
     });
     this._bindPresence();
     this._bindLiveness();
@@ -425,6 +426,7 @@ class SocketClient {
     this.socket = null;
     clearInterval(this._presenceTimer);
     clearInterval(this._livenessTimer);
+    clearTimeout(this._reupTimer);
     // Release the shared slot too (TODO.md #145). Every caller of destroy()
     // navigates away immediately, so this is belt-and-braces — but a stale
     // dead client sitting in `shared()` would be handed to the next caller
@@ -519,6 +521,55 @@ class SocketClient {
     });
   }
 
+  /**
+   * #434: a reconnect whose websocket handshake errored lands on polling, and engine.io (tryAllTransports)
+   * dropped websocket from that engine's list, so it never probes an upgrade again — the page stays on
+   * long-polling (+1 RTT per back-to-back packet) until a reload. engine.io has no public "retry upgrade",
+   * so after a backoff close the engine: the SAME Manager (#145) builds a fresh engine, websocket first.
+   * Only at a quiet moment (tab visible, no liveness probe out, page not mid-game — `quietReconnectOk`),
+   * and capped by REUPGRADE_DELAYS_MS so a network that really blocks websocket isn't dropped forever.
+   */
+  _scheduleReupgrade() {
+    clearTimeout(this._reupTimer);
+    const sock = this.socket;
+    const engine = sock && sock.io && sock.io.engine;
+    const name = engine && engine.transport && engine.transport.name;
+    if (!name) return;
+    if (name !== 'polling') { this._reupStep = 0; return; }
+    const delays = SocketClient.REUPGRADE_DELAYS_MS;
+    const step = this._reupStep || 0;
+    if (step >= delays.length) return; // websocket keeps failing here: stay on polling
+    this._reupStep = step + 1;
+    this._reupTimer = setTimeout(() => this._tryReupgrade(sock, engine), delays[step]);
+  }
+
+  /**
+   * #434 page hook helper: false while a seated player (`mySlot` set) is ready or has an unfinished game
+   * (`ongoing`, or `interrupted` by the opponent's drop) — a transport drop then pauses the game or skips
+   * the server's in-game grace. `{gameState, mySlot, isReady}` = RoomState's shape.
+   */
+  static seatIsQuiet(st) {
+    if (!st || st.mySlot === null || st.mySlot === undefined) return true;
+    if (st.isReady) return false;
+    const status = st.gameState && st.gameState.status;
+    return status !== 'ongoing' && status !== 'interrupted';
+  }
+
+  _tryReupgrade(sock, engine) {
+    this._reupTimer = null;
+    if (this.socket !== sock || !sock.connected || sock.io.engine !== engine) return;
+    if (!engine.transport || engine.transport.name !== 'polling') return;
+    let quiet = !document.hidden && !this._probing;
+    if (quiet && typeof this.quietReconnectOk === 'function') {
+      try { quiet = this.quietReconnectOk() !== false; } catch (_) { quiet = false; }
+    }
+    if (!quiet) {
+      this._reupTimer = setTimeout(() => this._tryReupgrade(sock, engine), SocketClient.REUPGRADE_RECHECK_MS);
+      return;
+    }
+    engine.close();
+  }
+
   _reportPresence(force) {
     if (!this.socket || !this.socket.connected) return;
     const away = document.hidden || !document.hasFocus();
@@ -575,6 +626,10 @@ SocketClient.DIRECT_OFF_MS = 15 * 60 * 1000;
 /** #435: liveness probe cadence and ack deadline → a dead path is dropped within ~10 s, not ~45 s. */
 SocketClient.LIVENESS_EVERY_MS = 4000;
 SocketClient.LIVENESS_ACK_MS = 6000;
+/** #434: wait before each attempt to leave a stuck polling transport (one per polling connect); then give up. */
+SocketClient.REUPGRADE_DELAYS_MS = [30 * 1000, 2 * 60 * 1000, 10 * 60 * 1000];
+/** #434: recheck cadence while the moment isn't quiet (hidden tab, own game running). */
+SocketClient.REUPGRADE_RECHECK_MS = 15 * 1000;
 
 // Expose to global scope for ESM module usage
 window.SocketClient = SocketClient;
