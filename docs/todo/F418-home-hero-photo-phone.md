@@ -1,5 +1,5 @@
 # F418 — Home (phone) redesign "hero photo" from mobile template
-**Status:** OPEN — built uncommitted on ui/home-hero-photo 2026-11-18, awaiting review
+**Status:** ✅ DONE 2026-11-22 — merged to dev (95f3e348), deployed prod; real-phone check not done
 **Area:** client/index.html (#screen-home), client/js/lobby-home.js, client/css/home-hero.css (new), client/assets/photos/home-hero-*.webp, client/assets/icons/phosphor-sprite.svg, client/i18n.js
 **From:** user 2026-11-18 "Redesign Homepage" + mobile_template.png + pexels-archudio-38833008.jpg; mockup features/home-hero-photo/   **Depends:** —
 

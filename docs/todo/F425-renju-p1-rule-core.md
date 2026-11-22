@@ -1,5 +1,5 @@
 # F425 — Renju P1: rule core + enum/DB + free/Pro opening
-**Status:** BUILT + committed on feature/425-renju (4d14d1af, ca3f7956, 32e3c431; 2026-11-21); not merged to dev, not pushed
+**Status:** ✅ DONE 2026-11-22 — merged to dev (80b594fd), pushed origin/dev; prod-DB copy migration 018 passed; challenge modal browser pass not done; board clip tracked as #426
 **Area:** client/js/renju.js (new, shared), server/managers/GameEngine.js, RoomManager, ChallengeService, TournamentManager, PuzzleService/Verifier, server/engine/RuleMapper+constants, server/db (migration), RatingService, i18n
 **From:** user "Implement Renju Rule (support all variants)", 2026-11-20; design in features/renju/   **Depends:** —
 

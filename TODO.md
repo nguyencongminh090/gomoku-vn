@@ -69,8 +69,4 @@ in the detail file / fix-log).
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
-- **#418.** Home (phone) redesign: hero photo from mobile template `[Model: Sonnet]` — [detail](docs/todo/F418-home-hero-photo-phone.md)
-- **#423.** Viewers tap/hover the room board: local highlight only `[Model: Sonnet]` — [detail](docs/todo/F423-viewer-board-peek.md)
-- **#424.** Home desktop redesign "Một ngọn đèn" `[Model: Opus]` — [detail](docs/todo/F424-home-desktop-lamp.md)
-- **#425.** Renju P1: rule core, forbidden = Black loses, enum/DB, rooms+tournaments+puzzles `[Model: Opus]` — [detail](docs/todo/F425-renju-p1-rule-core.md)
 - **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)

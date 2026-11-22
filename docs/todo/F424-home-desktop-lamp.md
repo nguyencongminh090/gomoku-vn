@@ -1,5 +1,5 @@
 # F424 — Home desktop redesign "Một ngọn đèn"
-**Status:** OPEN (shipped to dev; open: real-mouse feel, Safari/Firefox)
+**Status:** ✅ DONE 2026-11-22 — merged to dev (b68bf649), deployed prod; real-mouse feel + Safari/Firefox not checked
 **Area:** client/index.html, client/css/home-lamp.css, client/js/home-lamp.js, client/js/lobby-home.js, client/js/skin-preload.js, client/js/i18n.js, DESIGN.md
 **From:** user picked mockup m9 on 2026-11-19 (`features/home-desktop-minimal/`): "Một ngọn đèn (Đèn trượt theo chuột)". Answers: update DESIGN.md and build; always dark; decorative stones.   **Depends:** —
 

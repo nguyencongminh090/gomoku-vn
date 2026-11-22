@@ -1,3 +1,7 @@
+- ✅ **#418.** Home (phone) redesign: hero photo from mobile template `[Model: Sonnet]` — [detail](docs/todo/F418-home-hero-photo-phone.md)
+- ✅ **#423.** Viewers tap/hover the room board: local highlight only `[Model: Sonnet]` — [detail](docs/todo/F423-viewer-board-peek.md)
+- ✅ **#424.** Home desktop redesign "Một ngọn đèn" `[Model: Opus]` — [detail](docs/todo/F424-home-desktop-lamp.md)
+- ✅ **#425.** Renju P1: rule core, forbidden = Black loses, enum/DB, rooms+tournaments+puzzles `[Model: Opus]` — [detail](docs/todo/F425-renju-p1-rule-core.md)
 - ✅ **#433.** Jest open handles: find and unref the remaining timers after the RoomManager fix `[Model: Sonnet]` — [detail](docs/todo/B433-jest-open-handles.md)
 - ✅ **#427.** Renju P2: Taraguchi-10 + Yamaguchi openings (rooms, challenges, tournaments) `[Model: Opus]` — [detail](docs/todo/F427-renju-p2-taraguchi-yamaguchi.md)
 - ✅ **#432.** Lobby Phòng screen: "Luật chơi" tab (shared rules guide) `[Model: Sonnet]` — [detail](docs/todo/F432-lobby-rules-tab.md)

@@ -1,5 +1,5 @@
 # F423 — Viewers can tap/hover the room board (highlight overlay only)
-**Status:** ✅ BUILT 2026-11-18 on ui/viewer-board-peek — jsdom tests; no real-browser pass yet
+**Status:** ✅ DONE 2026-11-22 — merged to dev (cdeba600), static-deployed; jsdom tests only, no real-browser pass
 **Area:** client/js/board.js (`peek`, `_peeking`, `_toggleMark`, `.gboard__mark`), client/js/game-ui.js (`peek: !myPlayer`)
 **From:** user 2026-11-18 "Allow viewer hover/click on board (overlay only) — cho phép khách nhấn lên bàn cờ trong lúc xem, hiển thị highlight."
 
