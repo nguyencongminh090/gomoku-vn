@@ -60,6 +60,9 @@ class RoomManager extends EventEmitter {
       () => this._idleCleanup(),
       config.IDLE_SCAN_INTERVAL_MS
     );
+    // Housekeeping must never be what keeps the process alive: the HTTP server does that. Without
+    // unref(), every module that merely require()s this singleton (tests, scripts) leaves an open handle.
+    if (typeof this._cleanupInterval.unref === 'function') this._cleanupInterval.unref();
 
     logger.info('[RoomManager] Initialized');
   }
