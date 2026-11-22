@@ -72,3 +72,4 @@ in the detail file / fix-log).
 - **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)
 - **#434.** Lag after long play: socket stuck on long-polling after a reconnect (reload fixes) `[Model: Opus]` — [detail](docs/todo/B434-sticky-long-polling-after-reconnect.md)
 - **#435.** Silently dead socket: up to ~45 s frozen room, own chat lost, no banner `[Model: Opus]` — [detail](docs/todo/B435-silent-dead-socket-45s.md)
+- **#436.** Upgrade socket.io stack (engine.io 6.6.9 high DoS advisory GHSA-2gc4-cqfq-p2gv) `[Model: Sonnet]` — [detail](docs/todo/B436-socketio-upgrade-engineio-dos.md)
