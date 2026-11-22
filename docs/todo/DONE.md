@@ -1,3 +1,4 @@
+- ✅ **#436.** Upgrade socket.io stack (engine.io 6.6.9 high DoS advisory GHSA-2gc4-cqfq-p2gv) `[Model: Sonnet]` — [detail](docs/todo/B436-socketio-upgrade-engineio-dos.md)
 - ✅ **#418.** Home (phone) redesign: hero photo from mobile template `[Model: Sonnet]` — [detail](docs/todo/F418-home-hero-photo-phone.md)
 - ✅ **#423.** Viewers tap/hover the room board: local highlight only `[Model: Sonnet]` — [detail](docs/todo/F423-viewer-board-peek.md)
 - ✅ **#424.** Home desktop redesign "Một ngọn đèn" `[Model: Opus]` — [detail](docs/todo/F424-home-desktop-lamp.md)
