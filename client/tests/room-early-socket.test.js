@@ -52,7 +52,7 @@ describe('#391 — room.html load order', () => {
   });
 
   test('socket.io.min.js is loaded once (not left at the foot of <body> too)', () => {
-    expect(ROOM_HTML.split('<script src="/vendor/socket.io/socket.io.min.js"').length - 1).toBe(1);
+    expect(ROOM_HTML.split('<script src="/vendor/socket.io/socket.io.min.js?v=').length - 1).toBe(1);
   });
 
   test('each asset has exactly one ?v= (cache-busting #265)', () => {

@@ -183,7 +183,7 @@ describe('#145 — index.html load order', () => {
   );
 
   test('socket.io.min.js is loaded once, not left behind at the foot of <body> too', () => {
-    const occurrences = INDEX_HTML.split('<script src="/vendor/socket.io/socket.io.min.js"').length - 1;
+    const occurrences = INDEX_HTML.split('<script src="/vendor/socket.io/socket.io.min.js?v=').length - 1;
     expect(occurrences).toBe(1);
   });
 

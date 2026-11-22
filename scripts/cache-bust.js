@@ -9,6 +9,8 @@
 // import changes gets a new URL too. Import cycles are hashed as one unit (every member shares the hash).
 // Resolution: HTML refs and non-relative JS strings (`/js/x.js`, `assets/…svg`) resolve against client/ (the
 // page URL); `./x.js` / `../x.js` resolve against the referencing module's own directory.
+// Mounted refs (#437): URLs served from outside client/ (e.g. /vendor/socket.io/* → node_modules/socket.io/client-dist)
+// are mapped explicitly via MOUNTS, so a package bump changes the hash and verify fails until --write.
 // Mockups are frozen and skipped. Only hex `?v=` is touched, so `?v=${ASSET_VERSION}` and prose are left alone.
 const fs = require('fs');
 const path = require('path');
@@ -17,6 +19,11 @@ const crypto = require('crypto');
 const ROOT = path.resolve(__dirname, '..', 'client');
 const RE = /([A-Za-z0-9_./-]+)\?v=([0-9a-f]+)(?![0-9A-Za-z_$])/g;
 const PLACEHOLDER = '?v=@';
+
+// URL prefix (relative to client/, as resolveRef returns it) → absolute directory it is served from (server/index.js).
+const MOUNTS = {
+  'vendor/socket.io/': path.join(path.dirname(require.resolve('socket.io/package.json')), 'client-dist'),
+};
 
 const hash = (s) => crypto.createHash('sha256').update(s).digest('hex').slice(0, 8);
 
@@ -109,10 +116,16 @@ function computeAll(sources, read) {
   return { out, hashes, errors };
 }
 
-function run(root, write) {
+/** Absolute path a resolved ref is read from: a MOUNTS entry wins over client/. */
+function filePathOf(root, rel, mounts = MOUNTS) {
+  for (const [prefix, dir] of Object.entries(mounts)) if (rel.startsWith(prefix)) return path.join(dir, rel.slice(prefix.length));
+  return path.join(root, rel);
+}
+
+function run(root, write, mounts = MOUNTS) {
   const sources = sourceFiles(root);
   const read = (rel) => {
-    const p = path.join(root, rel);
+    const p = filePathOf(root, rel, mounts);
     return fs.existsSync(p) && fs.statSync(p).isFile() ? fs.readFileSync(p, 'utf8') : null;
   };
   const { out, errors } = computeAll(sources, read);
@@ -122,7 +135,7 @@ function run(root, write) {
   return { ok: write || stale.length === 0, errors, stale };
 }
 
-module.exports = { computeAll, resolveRef, run, RE };
+module.exports = { computeAll, resolveRef, run, filePathOf, MOUNTS, RE };
 
 if (require.main === module) {
   const arg = process.argv[2];
