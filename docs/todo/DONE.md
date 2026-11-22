@@ -1,3 +1,4 @@
+- ✅ **#437.** Cache-bust `/vendor/socket.io/socket.io.min.js` with `?v=` (stale bundle after socket.io bump) `[Model: Sonnet]` — [detail](docs/todo/B437-vendor-socketio-cache-bust.md)
 - ✅ **#436.** Upgrade socket.io stack (engine.io 6.6.9 high DoS advisory GHSA-2gc4-cqfq-p2gv) `[Model: Sonnet]` — [detail](docs/todo/B436-socketio-upgrade-engineio-dos.md)
 - ✅ **#418.** Home (phone) redesign: hero photo from mobile template `[Model: Sonnet]` — [detail](docs/todo/F418-home-hero-photo-phone.md)
 - ✅ **#423.** Viewers tap/hover the room board: local highlight only `[Model: Sonnet]` — [detail](docs/todo/F423-viewer-board-peek.md)

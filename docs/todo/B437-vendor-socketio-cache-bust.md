@@ -1,5 +1,5 @@
 # B437 — `/vendor/socket.io/socket.io.min.js` has no `?v=`: stale bundle after a socket.io bump
-**Status:** DEPLOYED prod ad89d69a 2026-11-22 (public HTML + bundle ?v=d5d79a35, immutable; bare URL 1 day); open: real-browser load of index + room
+**Status:** ✅ VERIFIED 2026-11-22 — deployed prod ad89d69a; Chrome: index + room (#43E, test room left) load socket.io.min.js?v=d5d79a35, socket connected over websocket, 0 console errors
 **Area:** client/{index,room,tournament,tournament-match,diagnostic}.html, scripts/cache-bust.js, server/config/staticCache.js (`socketIoClientOptions`), server/index.js `/vendor/socket.io` mount
 **From:** #436 deploy, 2026-11-22 ("okay, TODO for ?v=")   **Depends:** —
 
