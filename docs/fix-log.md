@@ -378,3 +378,4 @@
 | 2026-11-22 13:00 | #433 tournamentState + SocketHandler orphan-sweep intervals unref()d; DisconnectHandler test clears real grace timers; 2 tests | [detail](docs/fix-log/2026-11-22-433-jest-open-handles.md) |
 | 2026-11-22 14:02 | #435 dead socket: acked net:ping liveness probe (≤~10 s) + chat ack/retry/cid dedupe; lab 39.9→8.7 s; 28 tests | [detail](docs/fix-log/2026-11-22-435-dead-socket-liveness.md) |
 | 2026-11-22 14:13 | #434 stuck long-polling: close a polling engine at a quiet moment (30 s/2 m/10 m backoff) → ws-first reconnect; [Transport] prod log; 20 tests | [detail](docs/fix-log/2026-11-22-434-sticky-long-polling.md) |
+| 2026-11-22 14:59 | #436 socket.io/-client 4.8.4 → engine.io 6.6.12 (GHSA-2gc4-cqfq-p2gv), engine.io-client 6.6.8; labs #434/#435 pass; 3 tests | [detail](docs/fix-log/2026-11-22-436-socketio-upgrade.md) |
