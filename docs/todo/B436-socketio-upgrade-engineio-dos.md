@@ -1,5 +1,5 @@
 # B436 — Upgrade socket.io stack: engine.io 6.6.9 has a high-severity DoS advisory
-**Status:** OPEN
+**Status:** OPEN — upgrade built 2026-11-22 on fix/436-socketio-upgrade (engine.io 6.6.12, labs pass, [fix-log](../fix-log/2026-11-22-436-socketio-upgrade.md)); prod deploy (step 4) open
 **Area:** package.json, package-lock.json (socket.io, socket.io-client → engine.io, engine.io-client); served `/vendor/socket.io/socket.io.min.js`
 **From:** #434 follow-up question "Should engine.io-client be updated?", 2026-11-22   **Depends:** #434, #435
 
