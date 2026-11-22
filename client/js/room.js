@@ -200,8 +200,30 @@ function sendChatFrom(inputEl) {
   // filterMessage() pass in ChatHandler.handleMessage is authoritative for
   // what other participants actually receive.
   const filtered = window.ProfanityFilter ? window.ProfanityFilter.filterMessage(text) : text;
-  window.RoomClient.emit('chat:message', { text: filtered });
+  sendChatReliably(filtered);
   inputEl.value = '';
+}
+
+// #435: fire-and-forget chat emitted into a silently dead socket was lost for good. Ask for an ack; on a
+// miss, resend the SAME client id once the socket is (re)connected (the server drops a repeated id, so a
+// copy that did land is not shown twice); after CHAT_TRIES misses say so instead of losing it silently.
+const CHAT_ACK_MS = 6000;
+const CHAT_TRIES = 3;
+function sendChatReliably(text, cid, tries) {
+  cid = cid || Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  tries = tries || 1;
+  const client = window.RoomClient;
+  client.emitAck('chat:message', { text, cid }, CHAT_ACK_MS, (err) => {
+    if (!err) return;
+    if (tries >= CHAT_TRIES) {
+      if (window.ChatUI) window.ChatUI.appendSystemMessage('⚠ ' + t('room.chat_not_sent', { text }));
+      return;
+    }
+    const retry = () => sendChatReliably(text, cid, tries + 1);
+    const sock = client.socket;
+    if (!sock) return;
+    if (sock.connected) retry(); else sock.once('connect', retry);
+  });
 }
 
 function sendChat() { sendChatFrom(chatInput); }

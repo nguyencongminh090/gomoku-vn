@@ -160,6 +160,7 @@ class SocketClient {
       this._reportPresence(true);
     });
     this._bindPresence();
+    this._bindLiveness();
 
     // The server states who this connection belongs to (TODO.md #68). With an
     // HttpOnly credential the client has no way to work this out for itself,
@@ -423,6 +424,7 @@ class SocketClient {
     this.socket.disconnect();
     this.socket = null;
     clearInterval(this._presenceTimer);
+    clearInterval(this._livenessTimer);
     // Release the shared slot too (TODO.md #145). Every caller of destroy()
     // navigates away immediately, so this is belt-and-braces — but a stale
     // dead client sitting in `shared()` would be handed to the next caller
@@ -487,6 +489,36 @@ class SocketClient {
     this._presenceTimer = setInterval(report, 5000); // safety net: blur/focus can be missed
   }
 
+  /**
+   * #435: a silently dead path (NAT rebinding, phone network switch, lossy VN→CF leg) leaves the socket
+   * `connected` with nothing flowing: engine.io only notices at pingInterval + pingTimeout (~45 s), and
+   * every emit meanwhile (own chat included) goes into the dead transport. Probe every LIVENESS_EVERY_MS
+   * while the tab is visible; no ack within LIVENESS_ACK_MS → close the engine, which makes the SAME
+   * Manager reconnect (no second socket, #145) and room-socket's silent rejoin resyncs the room.
+   * Hidden tabs skip the probe (timers are throttled there); becoming visible probes at once.
+   */
+  _bindLiveness() {
+    if (this._livenessBound) return;
+    this._livenessBound = true;
+    this._livenessTimer = setInterval(() => this._probeLiveness(), SocketClient.LIVENESS_EVERY_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) this._probeLiveness(); });
+  }
+
+  _probeLiveness() {
+    const sock = this.socket;
+    if (!sock || !sock.connected || document.hidden || this._probing) return;
+    const engine = sock.io && sock.io.engine;
+    if (!engine || typeof sock.timeout !== 'function') return;
+    this._probing = true;
+    // `{}` payload is required: the server's wrappedOn turns a bare first-arg ack fn into {} (lost ack).
+    sock.timeout(SocketClient.LIVENESS_ACK_MS).emit('net:ping', {}, (err) => {
+      this._probing = false;
+      // A disconnect also fails the ack early (socket.io clears acks) — then the Manager is already on it.
+      if (!err || this.socket !== sock || !sock.connected || sock.io.engine !== engine) return;
+      engine.close();
+    });
+  }
+
   _reportPresence(force) {
     if (!this.socket || !this.socket.connected) return;
     const away = document.hidden || !document.hasFocus();
@@ -540,6 +572,9 @@ SocketClient.DIRECT_OFF_KEY = 'gvn_sock_off';
 SocketClient.DIRECT_TIMEOUT_MS = 4000;
 SocketClient.DIRECT_MAX_FAILS = 5;
 SocketClient.DIRECT_OFF_MS = 15 * 60 * 1000;
+/** #435: liveness probe cadence and ack deadline → a dead path is dropped within ~10 s, not ~45 s. */
+SocketClient.LIVENESS_EVERY_MS = 4000;
+SocketClient.LIVENESS_ACK_MS = 6000;
 
 // Expose to global scope for ESM module usage
 window.SocketClient = SocketClient;
