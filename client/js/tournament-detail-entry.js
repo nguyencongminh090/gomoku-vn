@@ -6,5 +6,5 @@ import './i18n.js?v=b84cc827';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=349e6629';
 import './platform-shell.js?v=f1ed8844';
-import './socket-client.js?v=bf961f5c';
+import './socket-client.js?v=abc9a29e';
 import './tournament-detail.js?v=17d22439';

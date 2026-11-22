@@ -46,6 +46,8 @@
 })();
 
 const client = new SocketClient();
+// #434: no transport drop (leaving stuck long-polling) while I play this match's ongoing game.
+client.quietReconnectOk = () => SocketClient.seatIsQuiet({ gameState, mySlot: myPlayer() ? 1 : null });
 
 const params = new URLSearchParams(window.location.search);
 const tournamentId = params.get('tournamentId');
