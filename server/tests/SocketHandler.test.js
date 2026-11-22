@@ -665,3 +665,26 @@ describe('orphan-timer sweep interval (#433)', () => {
     expect(refed).toBe(0);
   });
 });
+
+describe('#435 net:ping liveness probe', () => {
+  test('client sends `{}` + ack → acked through the wrappedOn payload guard', () => {
+    const io = makeIo();
+    init(io);
+    const s = makeSocket(io, 'sockP', 'uP', 'P');
+    connectSocket(io, s);
+    const [listener] = s._listeners['net:ping'];
+    const ack = jest.fn();
+    listener({}, ack);
+    expect(ack).toHaveBeenCalledTimes(1);
+  });
+
+  test('a bare ack as first arg is coerced to {} by wrappedOn — why the client must send a payload', () => {
+    const io = makeIo();
+    init(io);
+    const s = makeSocket(io, 'sockQ', 'uQ', 'Q');
+    connectSocket(io, s);
+    const ack = jest.fn();
+    expect(() => s._listeners['net:ping'][0](ack)).not.toThrow();
+    expect(ack).not.toHaveBeenCalled();
+  });
+});

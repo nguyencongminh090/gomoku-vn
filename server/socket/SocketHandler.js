@@ -405,6 +405,12 @@ function init(io) {
     HomeFeed.register(io, socket);
     EngineHandler.register(io, socket);
 
+    // #435: client liveness probe. engine.io's own heartbeat only notices a silently dead path after
+    // pingInterval + pingTimeout (~45 s); the page sends this every few seconds and, with no ack in
+    // time, closes its engine so the same Manager reconnects. Ack only — no state, nothing logged.
+    // The client sends a `{}` payload: wrappedOn above coerces a non-object FIRST arg (an ack fn too) to {}.
+    socket.on('net:ping', (_payload, ack) => { if (typeof ack === 'function') ack(); });
+
     // ── Disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {
       logger.info('[Socket] Disconnected', {

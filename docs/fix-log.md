@@ -376,3 +376,4 @@
 | 2026-11-21 16:00 | Rules guide vi title 'Cách chơi Gomoku' -> 'Cách chơi Caro'; 1 test | [detail](docs/fix-log/2026-11-21-guide-basics-caro-name.md) |
 | 2026-11-22 12:00 | RoomManager idle-scan setInterval unref()d (jest open-handle warning); 1 test | [detail](docs/fix-log/2026-11-22-roommanager-interval-unref.md) |
 | 2026-11-22 13:00 | #433 tournamentState + SocketHandler orphan-sweep intervals unref()d; DisconnectHandler test clears real grace timers; 2 tests | [detail](docs/fix-log/2026-11-22-433-jest-open-handles.md) |
+| 2026-11-22 14:02 | #435 dead socket: acked net:ping liveness probe (≤~10 s) + chat ack/retry/cid dedupe; lab 39.9→8.7 s; 28 tests | [detail](docs/fix-log/2026-11-22-435-dead-socket-liveness.md) |

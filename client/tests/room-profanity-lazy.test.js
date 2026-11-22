@@ -22,7 +22,7 @@ function loadRoom() {
   window.GvnSession = { requireAuth: jest.fn(), getUser: jest.fn(() => ({ userId: 'u-1', displayName: 'T', isGuest: false })) };
   window.t = jest.fn((k) => k);
   window.requestAnimationFrame = jest.fn((cb) => cb());
-  window.SocketClient = class { constructor() { this.emit = jest.fn(); } on() {} bindStatusBanner() {} static shared() { return new this(); } };
+  window.SocketClient = class { constructor() { this.emit = jest.fn(); this.emitAck = jest.fn(); } on() {} bindStatusBanner() {} static shared() { return new this(); } };
   window.matchMedia = jest.fn(() => ({ matches: false, addEventListener: jest.fn(), removeEventListener: jest.fn() }));
   window.RoomState = { mySlot: null, roomData: { users: [] }, gameState: null };
   require('../js/room.js');
@@ -60,7 +60,7 @@ test('sending before the filter arrives emits the raw text', () => {
   loadRoom();
   input().value = 'hello';
   enter();
-  expect(window.RoomClient.emit).toHaveBeenCalledWith('chat:message', { text: 'hello' });
+  expect(window.RoomClient.emitAck.mock.calls[0][1]).toMatchObject({ text: 'hello' });
 });
 
 test('sending after the filter arrives emits the filtered text', () => {
@@ -68,5 +68,5 @@ test('sending after the filter arrives emits the filtered text', () => {
   window.ProfanityFilter = { filterMessage: (x) => x.replace('bad', '***') };
   input().value = 'bad word';
   enter();
-  expect(window.RoomClient.emit).toHaveBeenCalledWith('chat:message', { text: '*** word' });
+  expect(window.RoomClient.emitAck.mock.calls[0][1]).toMatchObject({ text: '*** word' });
 });
