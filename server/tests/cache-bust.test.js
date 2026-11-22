@@ -3,7 +3,9 @@
 /** #265 — scripts/cache-bust.js: per-file content-hash `?v=`, Merkle order, cycles hashed as a unit. */
 
 const path = require('path');
-const { computeAll, resolveRef, run } = require('../../scripts/cache-bust');
+const fs = require('fs');
+const os = require('os');
+const { computeAll, resolveRef, run, filePathOf, MOUNTS } = require('../../scripts/cache-bust');
 
 /** Runs computeAll over an in-memory tree; returns the rewritten tree (unchanged files kept). */
 function rewrite(tree) {
@@ -67,6 +69,40 @@ describe('computeAll', () => {
     expect(rewrite({ 'x.html': '<script src="js/missing.js?v=1">' }).errors).toHaveLength(1);
     const t = { 'x.html': 'a `?v=` b ?v=N c sprite.svg?v=${ASSET_VERSION}' };
     expect(rewrite(t).tree).toEqual(t);
+  });
+});
+
+describe('#437 mounted refs (/vendor/socket.io → node_modules)', () => {
+  it('maps vendor/socket.io/* to socket.io client-dist, everything else to client/', () => {
+    const dist = path.join(path.dirname(require.resolve('socket.io/package.json')), 'client-dist');
+    expect(filePathOf('/c', 'vendor/socket.io/socket.io.min.js')).toBe(path.join(dist, 'socket.io.min.js'));
+    expect(filePathOf('/c', 'vendor/fonts/nunito/style.css')).toBe(path.join('/c', 'vendor/fonts/nunito/style.css'));
+    expect(MOUNTS['vendor/socket.io/']).toBe(dist);
+  });
+
+  it('a bundle bump (new bytes in the mounted dir) makes verify fail and --write re-hash the ref', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'cb437-'));
+    const client = path.join(tmp, 'client'), pkg = path.join(tmp, 'dist');
+    fs.mkdirSync(client); fs.mkdirSync(pkg);
+    const mounts = { 'vendor/socket.io/': pkg };
+    const page = path.join(client, 'index.html');
+    fs.writeFileSync(path.join(pkg, 'socket.io.min.js'), '/*! Socket.IO v4.8.3 */');
+    fs.writeFileSync(page, '<script src="/vendor/socket.io/socket.io.min.js?v=0"></script>');
+    try {
+      expect(run(client, true, mounts).errors).toEqual([]);
+      const v1 = /\?v=([0-9a-f]+)/.exec(fs.readFileSync(page, 'utf8'))[1];
+      expect(run(client, false, mounts).ok).toBe(true);
+      fs.writeFileSync(path.join(pkg, 'socket.io.min.js'), '/*! Socket.IO v4.8.4 */');
+      const stale = run(client, false, mounts);
+      expect(stale.ok).toBe(false);
+      expect(stale.stale).toEqual(['index.html']);
+      run(client, true, mounts);
+      const v2 = /\?v=([0-9a-f]+)/.exec(fs.readFileSync(page, 'utf8'))[1];
+      expect(v2).toMatch(/^[0-9a-f]{8}$/);
+      expect(v2).not.toBe(v1);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 

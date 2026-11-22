@@ -1,5 +1,8 @@
 'use strict';
 
+const crypto = require('crypto');
+const fs = require('fs');
+
 /**
  * staticCache.js — Cache-Control policy for the static client assets
  * (TODO.md #106).
@@ -65,8 +68,24 @@ function setHtmlHeaders(res) {
  * One day is the compromise: it removes the per-page-load revalidation
  * round-trip that motivated #111, and any version skew self-heals within 24h
  * without anyone having to remember a cache-busting step.
+ * (Since #437 this is only the fallback for the bare / mismatched URL — see below.)
  */
 const SOCKET_IO_CLIENT = 'public, max-age=86400';
+
+/**
+ * #437: the pages now load the bundle as `socket.io.min.js?v=<hash>` (hash written by scripts/cache-bust.js from
+ * node_modules). Only a request whose `?v=` equals the hash of the bytes actually being served is pinned
+ * `IMMUTABLE`; the bare URL (old cached HTML) and a stale/mismatched `?v=` keep the one-day policy, so a URL never
+ * gets pinned to bytes it does not name.
+ */
+const fileHashes = new Map(); // abs path -> { mtimeMs, size, hash }
+function contentHash(filePath, stat) {
+  const hit = fileHashes.get(filePath);
+  if (hit && stat && hit.mtimeMs === stat.mtimeMs && hit.size === stat.size) return hit.hash;
+  const hash = crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex').slice(0, 8);
+  fileHashes.set(filePath, { mtimeMs: stat ? stat.mtimeMs : 0, size: stat ? stat.size : -1, hash });
+  return hash;
+}
 
 /**
  * setHeaders hook for express.static.
@@ -88,13 +107,16 @@ const staticOptions = { setHeaders: setStaticCacheHeaders };
 
 /** express.static options for the socket.io client mount (TODO.md #111). */
 const socketIoClientOptions = {
-  setHeaders(res) {
-    res.setHeader('Cache-Control', SOCKET_IO_CLIENT);
+  setHeaders(res, filePath, stat) {
+    const v = res.req && res.req.query ? res.req.query.v : undefined;
+    const pinned = typeof v === 'string' && v === contentHash(filePath, stat);
+    res.setHeader('Cache-Control', pinned ? IMMUTABLE : SOCKET_IO_CLIENT);
   },
   index: false,
 };
 
 module.exports = {
+  contentHash,
   staticOptions,
   setStaticCacheHeaders,
   setHtmlHeaders,

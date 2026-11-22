@@ -26,6 +26,8 @@ node scripts/cache-bust.js            # verify: must print "OK: every ?v= matche
 - Resolution: `./x.js` / `../x.js` → relative to the module; everything else (`js/…`, `/js/…`,
   `assets/…` in JS strings) → relative to `client/` (pages are all at the root). Unresolvable → FAIL.
 - Import cycles are hashed as one unit (all members share a hash).
+- Files served from outside `client/` are mapped in `MOUNTS` (#437): `/vendor/socket.io/*` →
+  `node_modules/socket.io/client-dist`. After `npm install` bumps socket.io, verify fails → `--write`.
 - Frozen, never touched: `*mockup*` pages. `?v=${ASSET_VERSION}` templates and prose are left alone.
 - After a merge/rebase with `?v=` conflicts: take either side, then `--write` — it recomputes from
   content, so there's no counter to get wrong.

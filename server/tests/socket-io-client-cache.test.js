@@ -30,6 +30,7 @@ const {
   staticOptions,
   SOCKET_IO_CLIENT,
   IMMUTABLE,
+  contentHash,
 } = require('../config/staticCache');
 
 const clientPath = path.join(__dirname, '..', '..', 'client');
@@ -112,6 +113,17 @@ describe('/vendor/socket.io/socket.io.min.js', () => {
     expect(res.headers['cache-control']).not.toMatch(/max-age=0/);
   });
 
+  test('#437: ?v=<content hash> is pinned immutable; a stale ?v= is not', async () => {
+    const h = contentHash(path.join(socketIoClientPath, 'socket.io.min.js'));
+    expect(h).toMatch(/^[0-9a-f]{8}$/);
+    const ok = await rawGet(`/vendor/socket.io/socket.io.min.js?v=${h}`);
+    expect(ok.status).toBe(200);
+    expect(ok.headers['cache-control']).toBe(IMMUTABLE);
+    const stale = await rawGet('/vendor/socket.io/socket.io.min.js?v=00000000');
+    expect(stale.status).toBe(200);
+    expect(stale.headers['cache-control']).toBe(SOCKET_IO_CLIENT);
+  });
+
   test('byte-identical to the file socket.io itself would have served', async () => {
     const res = await rawGet('/vendor/socket.io/socket.io.min.js');
     const onDisk = fs.readFileSync(path.join(socketIoClientPath, 'socket.io.min.js'));
@@ -148,12 +160,13 @@ describe('engine.io owns the /socket.io/ prefix', () => {
 // Wiring: the pages and the server must agree, or the site loads no socket
 // --------------------------------------------------------------------------
 describe('wiring', () => {
-  const pages = ['index.html', 'room.html', 'tournament.html', 'tournament-match.html'];
+  const pages = ['index.html', 'room.html', 'tournament.html', 'tournament-match.html', 'diagnostic.html'];
 
-  test.each(pages)('%s loads the client from the cacheable path', (page) => {
+  test.each(pages)('%s loads the client from the cacheable path, versioned with the bundle hash (#437)', (page) => {
     const html = fs.readFileSync(path.join(clientPath, page), 'utf8');
+    const h = contentHash(path.join(socketIoClientPath, 'socket.io.min.js'));
 
-    expect(html).toContain('src="/vendor/socket.io/socket.io.min.js"');
+    expect(html).toContain(`src="/vendor/socket.io/socket.io.min.js?v=${h}"`);
     // The old path must be gone from the shipped pages, otherwise the
     // round-trip this item removes silently comes back.
     expect(html).not.toContain('src="/socket.io/socket.io.min.js"');
