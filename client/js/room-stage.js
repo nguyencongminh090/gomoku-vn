@@ -303,7 +303,7 @@
         ${seat(right)}
       </div>
       ${dots.length ? `<div class="score-dots">${dots.join('')}</div>` : ''}
-      ${cross.rows.length ? `<table class="score-games"><thead><tr><th></th><th></th>${head}<th>${esc(t('room.cross_pts'))}</th></tr></thead><tbody>${body}</tbody></table>` : ''}`;
+      ${cross.rows.length ? `<div class="score-games-wrap"><table class="score-games"><thead><tr><th></th><th></th>${head}<th>${esc(t('room.cross_pts'))}</th></tr></thead><tbody>${body}</tbody></table></div>` : ''}`;
     bindImgFallback(box);
   }
 
