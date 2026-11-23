@@ -687,6 +687,9 @@ body.arena-room .score-games { width: 100%; border-collapse: collapse; font-size
 body.arena-room .score-games td { padding: 7px 4px; border-top: 1px solid var(--c-border); }
 body.arena-room .score-games__w { font-weight: 800; color: var(--c-brand-text); }
 body.arena-room .score-games__now td { color: var(--c-ink-3); }
+body.arena-room .score-games th { padding: 4px; font-size: 11.5px; font-weight: 700; color: var(--c-ink-3); text-align: center; }
+body.arena-room .score-games td { text-align: center; }
+body.arena-room .score-games .score-games__name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 body.arena-room #moves-list { display: none; }
 body.arena-room .moves-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 10px;

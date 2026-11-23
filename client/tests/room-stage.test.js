@@ -351,24 +351,44 @@ describe('Tỉ số tab (score hero)', () => {
     window.RoomStage.renderScores();
     expect($('score-hero').innerHTML).toBe('');
   });
-  test('opponent left, me right; wins from scoreTable; dots from the log (green = right won); one row per game + the live one', () => {
+  const pl = (id, name, win, loss, draw = 0) => ({ userId: id, name, win, loss, draw });
+  test('scorecard = seated pair head-to-head (opponent left, me right); dots from the log; crosstable sorted by points', () => {
     load();
     Object.assign(window.RoomState.roomData, {
-      scoreTable: { 'u-me': { win: 2 }, 'u-opp': { win: 1 } },
+      scoreTable: { 'u-me': { name: 'Minh', win: 2, loss: 1, draw: 1 }, 'u-opp': { name: 'Hoàng Long', win: 1, loss: 2, draw: 1 } },
       gameLog: [g(1, 'u-me'), g(2, 'u-opp', 27, 340000), g(3, 'draw', 55, 663000)],
     });
-    window.RoomState.gameState = { status: 'ongoing', moveHistory: [1, 2, 3, 4] };
     window.RoomStage.renderScores();
     const box = $('score-hero');
     expect([...box.querySelectorAll('.score-hero__name')].map((e) => e.textContent)).toEqual(['Hoàng Long', 'Minh']);
     expect(box.querySelector('.score-hero__num').textContent).toBe('1–2');
     expect([...box.querySelectorAll('.score-dot')].map((d) => d.className.replace('score-dot ', ''))).toEqual(['score-dot--r', 'score-dot--l', 'score-dot--d']);
-    const rows = [...box.querySelectorAll('tr')].map((tr) => [...tr.children].map((td) => td.textContent));
-    expect(rows[0]).toEqual(['room.game_n:1', 'room.game_won', 'room.game_moves:41', '8:12']);
-    expect(rows[1][3]).toBe('5:40');
-    expect(rows[2][1]).toBe('room.game_draw');
-    expect(rows[3][1]).toBe('room.game_playing');
-    expect(rows).toHaveLength(4);
+    const rows = [...box.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((td) => td.textContent));
+    expect(rows).toEqual([['1', 'Minh', '—', '2–1', '2.5'], ['2', 'Hoàng Long', '1–2', '—', '1.5']]);
+  });
+  test('one player left → 0–0, no duplicated name; the crosstable keeps both', () => {
+    load({ users: [{ ...ME, slot: 1 }] });
+    window.RoomState.roomData.scoreTable = { 'u-me': pl('u-me', 'Minh', 5, 6), 'u-opp': pl('u-opp', 'Hoàng Long', 6, 5) };
+    window.RoomState.roomData.gameLog = [g(1, 'u-me')];
+    window.RoomStage.renderScores();
+    const box = $('score-hero');
+    expect(box.querySelector('.score-hero__num').textContent).toBe('0–0');
+    expect([...box.querySelectorAll('.score-hero__name')].map((e) => e.textContent)).toEqual(['—', 'Minh']);
+    expect(box.querySelectorAll('tbody tr')).toHaveLength(2);
+  });
+  test('crosstable: finished pairs from scoreHistory, new player appended, sorted by points; a new seated pair shows 0–0', () => {
+    load();
+    Object.assign(window.RoomState.roomData, {
+      scoreHistory: [{ key: 'a', players: [pl('u-x', 'X', 1, 4), pl('u-y', 'Y', 4, 1)] }],
+      scoreTable: { 'u-me': pl('u-me', 'Minh', 3, 0), 'u-opp': pl('u-opp', 'Hoàng Long', 0, 3) },
+      gameLog: [g(1, 'u-me')],
+    });
+    window.RoomStage.renderScores();
+    const rows = [...$('score-hero').querySelectorAll('tbody tr')].map((tr) => tr.children[1].textContent + ':' + tr.lastChild.textContent);
+    expect(rows).toEqual(['Y:4', 'Minh:3', 'X:1', 'Hoàng Long:0']);
+    window.RoomState.roomData.users = [{ ...ME, slot: 1 }, { userId: 'u-z', displayName: 'Z', slot: 2 }];
+    window.RoomStage.renderScores();
+    expect($('score-hero').querySelector('.score-hero__num').textContent).toBe('0–0');
   });
   test('quick-match session: empty dots for the games still to play', () => {
     load();
@@ -382,12 +402,6 @@ describe('Tỉ số tab (score hero)', () => {
     window.RoomState.roomData.gameLog = [g(1, 'u-me')];
     window.RoomStage.renderScores();
     expect($('score-hero').querySelector('img')).toBeNull();
-  });
-  test('missing duration shows a dash', () => {
-    load();
-    window.RoomState.roomData.gameLog = [g(1, 'u-me', 9, null)];
-    window.RoomStage.renderScores();
-    expect($('score-hero').querySelector('td:last-child').textContent).toBe('—');
   });
 });
 
@@ -436,16 +450,6 @@ describe('#369 desktop "Sân khấu"', () => {
     const mqCalls = window.matchMedia.mock.results.map((r) => r.value).filter((m) => m.addEventListener.mock.calls.length);
     mqCalls[0].addEventListener.mock.calls[0][1]();
     expect(document.querySelector('.tab-content--active').id).toBe('tab-chat');
-  });
-  test('the live "Ván N · đang chơi" row follows the moves (observer on #moves-grid)', async () => {
-    load({ phone: false });
-    window.RoomState.roomData.gameLog = [];
-    window.RoomState.gameState = { status: 'ongoing', moveHistory: [1] };
-    window.RoomStage.renderScores();
-    window.RoomState.gameState.moveHistory = [1, 2, 3];
-    $('moves-grid').appendChild(document.createElement('li'));
-    await Promise.resolve();
-    expect($('score-hero').textContent).toContain('room.game_moves:3');
   });
   test('the docked/collapsible rail is gone (markup, JS, CSS, i18n)', () => {
     expect(html).not.toMatch(/rail-dock-toggle/);
