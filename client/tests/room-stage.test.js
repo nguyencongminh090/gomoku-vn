@@ -376,6 +376,15 @@ describe('Tỉ số tab (score hero)', () => {
     expect([...box.querySelectorAll('.score-hero__name')].map((e) => e.textContent)).toEqual(['—', 'Minh']);
     expect(box.querySelectorAll('tbody tr')).toHaveLength(2);
   });
+  test('nobody seated → scorecard still shows 0–0 with empty seats and the crosstable stays', () => {
+    load({ users: [{ ...ME, slot: null }] });
+    window.RoomState.roomData.scoreTable = { 'u-me': pl('u-me', 'Minh', 5, 6), 'u-opp': pl('u-opp', 'Hoàng Long', 6, 5) };
+    window.RoomStage.renderScores();
+    const box = $('score-hero');
+    expect(box.querySelector('.score-hero__num').textContent).toBe('0–0');
+    expect([...box.querySelectorAll('.score-hero__name')].map((e) => e.textContent)).toEqual(['—', '—']);
+    expect(box.querySelectorAll('tbody tr')).toHaveLength(2);
+  });
   test('crosstable: finished pairs from scoreHistory, new player appended, sorted by points; a new seated pair shows 0–0', () => {
     load();
     Object.assign(window.RoomState.roomData, {
