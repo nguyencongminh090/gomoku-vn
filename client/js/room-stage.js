@@ -271,7 +271,7 @@
     const cross = buildCross(rd);
     const gs = st && st.gameState;
     const playing = !!(gs && gs.status === 'ongoing');
-    if ((!left && !right) || (!cross.rows.length && !log.length && !playing)) { box.innerHTML = ''; return; }
+    if (!cross.rows.length && !log.length && !playing) { box.innerHTML = ''; return; }
     const cell = left && right ? cross.cells.get(left.userId + '|' + right.userId) : null;
     const pair = left && right
       ? log.filter((g) => g.players.some((p) => p.userId === left.userId) && g.players.some((p) => p.userId === right.userId))

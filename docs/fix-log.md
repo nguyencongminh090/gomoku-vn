@@ -383,3 +383,4 @@
 | 2026-11-24 03:10 | untracked room scorecard #1–#1 after a leave (ghost seat from gameLog) → seated-only 0–0; score-games → points-sorted crosstable; 3 tests | [detail](docs/fix-log/2026-11-24-room-scorecard-crosstable.md) |
 | 2026-11-24 03:40 | untracked crosstable scrolls sideways: .score-games-wrap overflow-x + min cell width; 1 test | [detail](docs/fix-log/2026-11-24-crosstable-hscroll.md) |
 | 2026-11-24 04:00 | untracked crosstable rank + name columns sticky while scrolling sideways; 1 test | [detail](docs/fix-log/2026-11-24-crosstable-sticky-names.md) |
+| 2026-11-24 04:20 | untracked scorecard + crosstable stay visible when no seat is taken (0–0, '—' seats); 1 test | [detail](docs/fix-log/2026-11-24-scorecard-empty-seats.md) |
