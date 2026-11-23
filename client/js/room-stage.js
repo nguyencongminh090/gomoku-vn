@@ -232,12 +232,30 @@
   }
 
   // ── Tỉ số tab (mockup C) ───────────────────────────────────────────────────
-  // Left = the top seat card's player, right = the bottom one (you, when seated) — the same sides as on screen.
-  // Big numbers = scoreTable wins (cumulative); dots + rows = room.gameLog (last games, server-capped).
-  function fmtDuration(ms) {
-    if (typeof ms !== 'number' || !isFinite(ms)) return '—';
-    const sec = Math.round(ms / 1000);
-    return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  // scorecard: the two SEATED players' head-to-head (0–0 when a seat is empty or the pair never finished a game).
+  // score-games: crosstable of everyone who finished a game here, sorted by points (win 1, draw ½).
+  // Data: room.scoreHistory (finished pairs) + room.scoreTable (the current pair). Dots = room.gameLog (last games).
+  function buildCross(rd) {
+    const pairs = (rd.scoreHistory || []).map((h) => h.players || []);
+    const cur = Object.entries(rd.scoreTable || {}).map(([userId, e]) => ({ userId, ...e }));
+    if (cur.length) pairs.push(cur);
+    const people = new Map();
+    const cells = new Map(); // "a|b" -> { w: a's wins, l: b's wins, d: draws }
+    for (const pl of pairs) {
+      if (pl.length < 2) continue;
+      for (const p of pl) {
+        const o = people.get(p.userId) || { userId: p.userId, name: p.name, win: 0, loss: 0, pts: 0 };
+        o.name = p.name || o.name;
+        o.win += p.win || 0; o.loss += p.loss || 0; o.pts += (p.win || 0) + (p.draw || 0) / 2;
+        people.set(p.userId, o);
+      }
+      const [x, y] = pl;
+      cells.set(x.userId + '|' + y.userId, { w: x.win || 0, l: y.win || 0, d: x.draw || 0 });
+      cells.set(y.userId + '|' + x.userId, { w: y.win || 0, l: x.win || 0, d: x.draw || 0 });
+    }
+    const rows = [...people.values()].sort((p, q) => q.pts - p.pts || q.win - p.win || p.loss - q.loss
+      || String(p.name || '').localeCompare(String(q.name || '')));
+    return { rows, cells };
   }
 
   function renderScores() {
@@ -247,38 +265,45 @@
     const rd = (st && st.roomData) || {};
     const users = rd.users || [];
     const log = Array.isArray(rd.gameLog) ? rd.gameLog : [];
-    const t = global.t || ((k) => k);
     const slotOf = (sel, dflt) => { const el = document.querySelector(sel); return el && el.dataset.slot ? Number(el.dataset.slot) : dflt; };
-    const last = log[log.length - 1];
-    const side = (slot, idx) => users.find((u) => u.slot === slot)
-      || (last && last.players[idx] ? { userId: last.players[idx].userId, displayName: last.players[idx].name, avatarUrl: null } : null);
-    const left = side(slotOf('.seatcard--top', 2), 1);
-    const right = side(slotOf('.seatcard--bottom', 1), 0);
+    const left = users.find((u) => u.slot === slotOf('.seatcard--top', 2)) || null;
+    const right = users.find((u) => u.slot === slotOf('.seatcard--bottom', 1)) || null;
+    const cross = buildCross(rd);
     const gs = st && st.gameState;
     const playing = !!(gs && gs.status === 'ongoing');
-    if (!left || !right || (!log.length && !playing)) { box.innerHTML = ''; return; }
-    const wins = (u) => ((rd.scoreTable || {})[u.userId] || {}).win || 0;
-    const pair = log.filter((g) => g.players.some((p) => p.userId === left.userId) && g.players.some((p) => p.userId === right.userId));
+    if ((!left && !right) || (!cross.rows.length && !log.length && !playing)) { box.innerHTML = ''; return; }
+    const cell = left && right ? cross.cells.get(left.userId + '|' + right.userId) : null;
+    const pair = left && right
+      ? log.filter((g) => g.players.some((p) => p.userId === left.userId) && g.players.some((p) => p.userId === right.userId))
+      : [];
     const dots = pair.slice(-DOTS_MAX).map((g) => {
       const cls = g.winnerId === 'draw' ? 'd' : g.winnerId === right.userId ? 'r' : 'l';
       return `<span class="score-dot score-dot--${cls}"></span>`;
     });
-    const future = rd.matchMax ? Math.max(0, rd.matchMax - pair.length) : 0;
+    const future = left && right && rd.matchMax ? Math.max(0, rd.matchMax - pair.length) : 0;
     for (let i = 0; i < future; i++) dots.push('<span class="score-dot"></span>');
-    const nameOf = (id, g) => { const p = g.players.find((x) => x.userId === id); return p ? p.name : '?'; };
-    const rows = pair.map((g) => `<tr><td>${esc(t('room.game_n', { n: g.n }))}</td>` +
-      (g.winnerId === 'draw' ? `<td>${esc(t('room.game_draw'))}</td>` : `<td class="score-games__w">${esc(t('room.game_won', { name: nameOf(g.winnerId, g) }))}</td>`) +
-      `<td>${esc(t('room.game_moves', { n: g.moves }))}</td><td>${fmtDuration(g.durationMs)}</td></tr>`).join('');
-    const now = playing
-      ? `<tr class="score-games__now"><td>${esc(t('room.game_n', { n: last ? last.n + 1 : 1 }))}</td><td>${esc(t('room.game_playing'))}</td><td>${esc(t('room.game_moves', { n: (gs.moveHistory || []).length }))}</td><td>—</td></tr>`
-      : '';
+    const t = global.t || ((k) => k);
+    const seat = (u) => u
+      ? `<div class="score-hero__p"><span class="score-hero__av">${avatar(u)}</span><span class="score-hero__name">${esc(u.displayName)}</span></div>`
+      : '<div class="score-hero__p"><span class="score-hero__av"></span><span class="score-hero__name">—</span></div>';
+    const fmt = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+    const seated = new Set([left, right].filter(Boolean).map((u) => u.userId));
+    const head = cross.rows.map((_, i) => `<th>${i + 1}</th>`).join('');
+    const body = cross.rows.map((r, i) => `<tr${seated.has(r.userId) ? ' class="score-games__now"' : ''}><td>${i + 1}</td>`
+      + `<td class="score-games__name">${esc(r.name || '—')}</td>`
+      + cross.rows.map((c) => {
+        if (c.userId === r.userId) return '<td>—</td>';
+        const x = cross.cells.get(r.userId + '|' + c.userId);
+        return `<td>${x ? x.w + '–' + x.l : ''}</td>`;
+      }).join('')
+      + `<td class="score-games__w">${fmt(r.pts)}</td></tr>`).join('');
     box.innerHTML = `<div class="score-hero__top">
-        <div class="score-hero__p"><span class="score-hero__av">${avatar(left)}</span><span class="score-hero__name">${esc(left.displayName)}</span></div>
-        <span class="score-hero__num">${wins(left)}–${wins(right)}</span>
-        <div class="score-hero__p"><span class="score-hero__av">${avatar(right)}</span><span class="score-hero__name">${esc(right.displayName)}</span></div>
+        ${seat(left)}
+        <span class="score-hero__num">${cell ? cell.w : 0}–${cell ? cell.l : 0}</span>
+        ${seat(right)}
       </div>
       ${dots.length ? `<div class="score-dots">${dots.join('')}</div>` : ''}
-      <table class="score-games"><tbody>${rows}${now}</tbody></table>`;
+      ${cross.rows.length ? `<table class="score-games"><thead><tr><th></th><th></th>${head}<th>${esc(t('room.cross_pts'))}</th></tr></thead><tbody>${body}</tbody></table>` : ''}`;
     bindImgFallback(box);
   }
 
@@ -343,9 +368,6 @@
     if (mq) {
       if (mq.addEventListener) mq.addEventListener('change', layout); else if (mq.addListener) mq.addListener(layout);
     }
-    // #369: the desktop score card is always on screen, so its "Ván N · đang chơi · X nước" row follows the moves.
-    const grid = $('moves-grid');
-    if (grid && global.MutationObserver) new global.MutationObserver(() => { if (!active()) renderScores(); }).observe(grid, { childList: true });
     const on = (id, fn) => { const el = $(id); if (el) el.addEventListener('click', fn); };
     on('btn-sheet', () => setSheetOpen(!document.body.classList.contains('stage-sheet-open')));
     on('rsheet-grab', () => setSheetOpen(false));
