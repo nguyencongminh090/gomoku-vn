@@ -5,7 +5,7 @@ description: "Finds, picks and downloads free stock photos from Pexels and Pixab
 
 # UI Images
 
-Fill a web UI with free stock photos that match `DESIGN.md`, within the license and API terms. The script `scripts/stock_search.py` (in this skill folder, `${CLAUDE_SKILL_DIR}` in Claude Code) does the API calls, the 24-hour cache, downloads and the credits file; run it, do not reimplement it.
+Fill a web UI with free stock photos that match `DESIGN.md`, within the license and API terms. Use `.claude/skills/ui-images/scripts/stock_search.py` from the project root for API calls, the 24-hour cache, downloads and the credits file.
 
 Notes are read in place, never copied, under `${SKILLS_TREE:-/run/media/ngmint/Data/Programming/Programming/SKILLS/SKILLS_TREE}/knowledge/web-development/items/`:
 - `fe-stock-images.md` - what the licenses allow, API rules (attribution, hotlinking, caching), picking images that fit
@@ -30,7 +30,7 @@ Copy this checklist into your reply and tick it off:
 3. **Search** per slot:
 
    ```bash
-   python3 "${CLAUDE_SKILL_DIR}/scripts/stock_search.py" search "mountain lake dawn" --orientation landscape --min-width 1920 --per-page 10
+   python3 .claude/skills/ui-images/scripts/stock_search.py search "mountain lake dawn" --orientation landscape --min-width 1920 --per-page 10
    ```
 
    Options: `--provider pexels|pixabay|all` (default all), `--color`, `--locale vi-VN`, `--page`, `--no-cache`. Output is JSON with `results` (provider, id, size, `page_url`, photographer, `alt_draft`, `avg_color`, `preview_url`). Exit 4 is a provider error (bad key, rate limit, network): read the message, switch provider or wait. Responses are cached for 24 hours as Pixabay requires; do not pass `--no-cache` in loops.
@@ -38,8 +38,8 @@ Copy this checklist into your reply and tick it off:
 5. **Download** each pick into the project's static folder:
 
    ```bash
-   python3 "${CLAUDE_SKILL_DIR}/scripts/stock_search.py" download pexels 2014422 --widths 640,1280,1920 --out-dir public/images/stock --url-prefix /images/stock --name hero-lake
-   python3 "${CLAUDE_SKILL_DIR}/scripts/stock_search.py" download pixabay 736885 --out-dir public/images/stock --url-prefix /images/stock --name about-forest
+   python3 .claude/skills/ui-images/scripts/stock_search.py download pexels 2014422 --widths 640,1280,1920 --out-dir public/images/stock --url-prefix /images/stock --name hero-lake
+   python3 .claude/skills/ui-images/scripts/stock_search.py download pixabay 736885 --out-dir public/images/stock --url-prefix /images/stock --name about-forest
    ```
 
    Pick `--out-dir` and `--url-prefix` from the framework (`public/` for Vite and Next.js, `static/` for SvelteKit and Hugo, `src/assets/` when the bundler should process images). The script refuses non-image responses, files over 25 MB and hosts other than Pexels and Pixabay (exit 5). It appends to `<out-dir>/stock-credits.json` (photographer, page URL, license URL, date) and prints an `<img>` snippet and a credit line. Never hotlink: Pixabay forbids it and its preview URLs expire.

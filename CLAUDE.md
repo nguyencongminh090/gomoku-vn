@@ -1,8 +1,9 @@
 # gomoku-vn — agent rules
 
 Node/Express + socket.io + SQLite server (`server/`), vanilla ES-module client (`client/`, Vite build →
-`dist/`). Loaded every session, so this file holds **hard rules and pointers only**. Detail lives in
-path-scoped `.claude/rules/*.md` (auto-load when you touch matching files) and skills (on demand).
+`dist/`). Loaded by Claude Code and by Codex through `AGENTS.md`, so this file holds **hard rules
+and pointers only**. Claude Code loads path-scoped rules from `.claude/rules/`. In Codex, check
+the rule files' `paths` frontmatter and read the matching rules before editing. Load skills on demand.
 
 ## Commands
 `npm test` (server+client jsdom, ~11 s) · `npx jest <file>` while iterating · `npm run test:e2e`
@@ -28,8 +29,8 @@ Environments: **production = `play3cr.win` on the VPS** (real DB). `dev.play3cr.
 7. **Feature "done"** needs backend tests + jsdom + a real-browser pass; **UI redesign** goes through
    `design-workflow`; **e2e/Playwright** through `playwright-e2e-safety`. Clock work (`TimerManager`,
    `room-socket`, `game-ui`, `timer-sync-core`, `client/js/diag/**`) → `.claude/rules/diagnostic-page-sync.md`.
-8. **Ambiguous prompt** (no item id / file / behaviour to act on): ask ONE `AskUserQuestion` with concrete
-   options before acting. Don't run `prompt-architect` for this — it is for explicit "improve this prompt".
+8. **Ambiguous prompt** (no item id / file / behaviour to act on): ask one question with concrete
+   options before acting. Use `prompt-architect` for explicit requests to improve a prompt.
    Already-clear short prompts ("run tests", "yes", "continue", "Do #B170") just execute.
 9. **Consistency:** one entity = one source. Avatars/images display identically on every page, and DB ↔
    file store change together (`?v=` bumped). → `.claude/rules/consistency.md`
@@ -41,8 +42,8 @@ Size L / hard-to-reverse decision → skill `deep-reasoning`.
 Precedence: this file, `.claude/rules/*` and user instructions > knowledge notes.
 
 ## Token / quota economy
-- **Locate before read.** `codegraph_explore` (or `codegraph explore "<names>"`) first — one call returns
-  source + callers. Then `Read` with `offset/limit`, never whole big files. `grep -n` > Read for lookups.
+- **Locate before reading.** Use `codegraph_explore` (or `codegraph explore "<names>"`) when available
+  to find source and callers. Use `rg -n` for text lookups and read focused ranges in large files.
 - **Never Read** `TODO.md`/`instruction.md`/`DONE.md`/`docs/fix-log.md`/`docs/archive/*` whole — use
   `scripts/track.js`. Never Read `package-lock.json`, `dist/`, `node_modules/`, `test-results/`, `docs/*.json`.
 - **Don't re-derive:** facts already in this conversation, or settled in a detail file, are not re-checked.

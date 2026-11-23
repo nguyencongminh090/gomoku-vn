@@ -10,7 +10,8 @@ documented note instead of habit — in this order, stop at the first hit:
    Holds what we use most: project-specific lessons + copied generic notes (each carries its `source:` path).
 2. **Reference** — same index lists rare/related SKILLS_TREE notes as **path only** (not copied). Read in place.
 3. **Unknown / external** — search the library, don't guess:
-   `tools/find` (SKILLS_TREE root and usage: see ~/.claude/CLAUDE.md)  `find "<need, plain English>" -k knowledge`
+   Run `tools/find "<need, plain English>" -k knowledge` from the SKILLS_TREE root. Use the
+   `SKILLS_TREE` environment variable or the default in `.claude/settings.json` to locate the root.
    (never `python3`; first run may take ~1 min). Read the 1–2 best notes in place; check their `apply_when`,
    **Do not use when** and `confidence` (`low` = verify first). 2+ queries or any copy → delegate to an Agent.
 - **Promote or reference:** a note used a 2nd time, or central to this codebase → copy into `docs/knowledge/`
