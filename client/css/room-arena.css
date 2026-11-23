@@ -683,12 +683,13 @@ body.arena-room .score-dot { width: 10px; height: 10px; border-radius: 50%; back
 body.arena-room .score-dot--r { background: var(--c-brand); border-color: var(--c-brand); }
 body.arena-room .score-dot--l { background: var(--c-error); border-color: var(--c-error); }
 body.arena-room .score-dot--d { background: var(--c-ink-3); border-color: var(--c-ink-3); }
-body.arena-room .score-games { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+body.arena-room .score-games-wrap { overflow-x: auto; max-width: 100%; }
+body.arena-room .score-games { min-width: 100%; width: max-content; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 body.arena-room .score-games td { padding: 7px 4px; border-top: 1px solid var(--c-border); }
 body.arena-room .score-games__w { font-weight: 800; color: var(--c-brand-text); }
 body.arena-room .score-games__now td { color: var(--c-ink-3); }
 body.arena-room .score-games th { padding: 4px; font-size: 11.5px; font-weight: 700; color: var(--c-ink-3); text-align: center; }
-body.arena-room .score-games td { text-align: center; }
+body.arena-room .score-games td { text-align: center; white-space: nowrap; min-width: 44px; }
 body.arena-room .score-games .score-games__name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
 body.arena-room #moves-list { display: none; }
 body.arena-room .moves-grid {

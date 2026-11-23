@@ -390,6 +390,14 @@ describe('Tỉ số tab (score hero)', () => {
     window.RoomStage.renderScores();
     expect($('score-hero').querySelector('.score-hero__num').textContent).toBe('0–0');
   });
+  test('crosstable scrolls sideways inside its own wrapper instead of overflowing', () => {
+    load();
+    window.RoomState.roomData.scoreTable = { 'u-me': pl('u-me', 'Minh', 1, 0), 'u-opp': pl('u-opp', 'Hoàng Long', 0, 1) };
+    window.RoomStage.renderScores();
+    expect($('score-hero').querySelector('.score-games-wrap > table.score-games')).not.toBeNull();
+    expect(CSS).toMatch(/\.score-games-wrap \{ overflow-x: auto;/);
+    expect(CSS).toMatch(/\.score-games \{ min-width: 100%; width: max-content;/);
+  });
   test('quick-match session: empty dots for the games still to play', () => {
     load();
     Object.assign(window.RoomState.roomData, { matchMax: 3, gameLog: [g(1, 'u-opp')] });
