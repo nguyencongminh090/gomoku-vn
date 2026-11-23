@@ -397,6 +397,8 @@ describe('Tỉ số tab (score hero)', () => {
     expect($('score-hero').querySelector('.score-games-wrap > table.score-games')).not.toBeNull();
     expect(CSS).toMatch(/\.score-games-wrap \{ overflow-x: auto;/);
     expect(CSS).toMatch(/\.score-games \{ min-width: 100%; width: max-content;/);
+    expect(CSS).toMatch(/\.score-games td:nth-child\(1\) \{ position: sticky; left: 0;/);
+    expect(CSS).toMatch(/\.score-games td:nth-child\(2\) \{ position: sticky; left: 28px;/);
   });
   test('quick-match session: empty dots for the games still to play', () => {
     load();

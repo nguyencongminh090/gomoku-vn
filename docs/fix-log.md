@@ -382,3 +382,4 @@
 | 2026-11-22 15:25 | #437 /vendor/socket.io bundle versioned: cache-bust.js MOUNTS → node_modules client-dist; 5 pages ?v=<hash>; matched ?v= served immutable, bare/stale 1 day; 4 tests | [detail](docs/fix-log/2026-11-22-437-vendor-socketio-cache-bust.md) |
 | 2026-11-24 03:10 | untracked room scorecard #1–#1 after a leave (ghost seat from gameLog) → seated-only 0–0; score-games → points-sorted crosstable; 3 tests | [detail](docs/fix-log/2026-11-24-room-scorecard-crosstable.md) |
 | 2026-11-24 03:40 | untracked crosstable scrolls sideways: .score-games-wrap overflow-x + min cell width; 1 test | [detail](docs/fix-log/2026-11-24-crosstable-hscroll.md) |
+| 2026-11-24 04:00 | untracked crosstable rank + name columns sticky while scrolling sideways; 1 test | [detail](docs/fix-log/2026-11-24-crosstable-sticky-names.md) |
