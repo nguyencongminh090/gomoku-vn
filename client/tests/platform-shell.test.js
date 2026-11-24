@@ -264,6 +264,14 @@ describe('club notifications (#235)', () => {
     expect(window.PlatformShell.notifications.target(n('club_request'))).toBe('/c/a%20b#ch=requests'); // #446: join requests are their own channel
   });
 
+  it('club_event (B450): reminder text carries the event title + start time, links to sự-kiện; no actor name', () => {
+    window.t = (k, v) => k + JSON.stringify(v);
+    const ev = { id: 2, type: 'club_event', read: false, payload: { club: { slug: 'caro', name: 'Caro' }, event: { id: 'e1', title: 'Giao hữu', startsAt: '2026-12-01T13:00:00.000Z' } } };
+    const time = new Date('2026-12-01T13:00:00.000Z').toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    expect(window.PlatformShell.notifications.text(ev)).toBe('notif.club_event' + JSON.stringify({ name: '', club: 'Caro', event: 'Giao hữu', time }));
+    expect(window.PlatformShell.notifications.target(ev)).toBe('/c/caro#ch=events');
+  });
+
   it('avatar takes tag + colour only when there is no image', () => {
     const a = window.PlatformShell.avatar(null, 'Caro Club', 'pav--sq', { color: 'teal', tag: 'CC' });
     expect([a.textContent, a.className]).toEqual(['CC', 'pav pav--sq pav--c-teal']);

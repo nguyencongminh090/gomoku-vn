@@ -199,6 +199,10 @@ a.cb-chat__name:hover { text-decoration: underline; }
 /* channel pages (tables and forms from the old tabs) */
 .cl-page .ptbl-wrap { margin: 0; }
 .cl-page .prows--tickets .prow > .icon { color: var(--cc-text); }
+.cl-evday { margin: var(--space-3, 12px) 0 0; font-size: 13px; font-weight: 800; color: var(--c-ink-2); }   /* B450: day heading in sự-kiện */
+.cl-evday:first-child { margin-top: 0; }
+.cl-event .prow__body { flex: 1; min-width: 0; }
+.cl-event__going { color: var(--c-ink-3); font-size: 12.5px; }
 .cl-danger { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--c-border); }
 .cl-page__top:not(:has(> :not([hidden]))) { display: none; }
 

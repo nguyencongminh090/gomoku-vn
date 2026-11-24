@@ -17,6 +17,8 @@
  * DELETE /api/clubs/:slug/invites/:username      staff revoke
  * POST   /api/clubs/:slug/events                   {title, startsAt} staff
  * DELETE /api/clubs/:slug/events/:id                staff
+ * POST   /api/clubs/:slug/events/:id/rsvp           members: "tham gia" (B450) → {id, going, mine}
+ * DELETE /api/clubs/:slug/events/:id/rsvp           members: take it back
  * GET    /api/clubs/:slug/messages?before=|after=[&polls=1,2]   members only (polling; polls = refresh those cards, B449)
  * POST   /api/clubs/:slug/messages                  {text} members only; /ghim, /giaohuu, /binhchon, @mentions (B447)
  * DELETE /api/clubs/:slug/messages/:id              staff
@@ -194,6 +196,14 @@ router.post('/:slug/events', ...write, h((req, res) => {
 router.delete('/:slug/events/:id', ...write, h((req, res) => {
   svc.deleteEvent(req.user.userId, req.params.slug, req.params.id);
   res.json({ ok: true });
+}));
+
+router.post('/:slug/events/:id/rsvp', ...write, h((req, res) => {
+  res.json(svc.rsvpEvent(req.user.userId, req.params.slug, req.params.id, true));
+}));
+
+router.delete('/:slug/events/:id/rsvp', ...write, h((req, res) => {
+  res.json(svc.rsvpEvent(req.user.userId, req.params.slug, req.params.id, false));
 }));
 
 const readAuth = [verifyToken, (req, res, next) => {
