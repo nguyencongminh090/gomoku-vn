@@ -17,6 +17,9 @@ const { CATEGORIES } = require('./RatingService');
 const dmText = require('./DmText');
 const { KINDS, removeImage } = require('../utils/club-image-store');
 const notifications = require('./NotificationService');
+const chat = require('./ClubChatCommands');
+const { PRESETS } = require('./MatchQueue');
+const { WINNING_RULES } = require('./rules');
 
 const MAX_MEMBERS = 500;
 const MAX_CLUBS_PER_USER = 3;
@@ -36,6 +39,8 @@ const MAX_INVITES = 50;
 const HISTORY_SHOWN = 30;
 const WEEKLY_SHOWN = 20;
 const WEEK_MS = 7 * 24 * 3600 * 1000;
+const NOTIFY_COOLDOWN_MS = 10 * 60 * 1000; // per club: one @all and one pin fan-out per 10 min (B447)
+const CHALLENGE_DEFAULTS = { rule: 'freestyle', time: '5+3' }; // /giaohuu with no extras (unrated)
 
 class ClubError extends Error {
   constructor(code, status, message) {
@@ -178,6 +183,11 @@ function updateClub(userId, slug, input) {
   const ident = validateIdentity(input);
   for (const k of ['color', 'tag', 'announcement']) {
     if (ident[k] !== undefined) db().prepare(`UPDATE clubs SET ${k} = ? WHERE id = ?`).run(ident[k], club.id);
+  }
+  if (input.chatSettings !== undefined) {
+    const merged = chat.mergeSettings(chat.readSettings(club.chat_settings), input.chatSettings);
+    if (!merged) throw new ClubError('CLUB_CHAT_SETTINGS_INVALID', 400, 'Cài đặt trò chuyện không hợp lệ.');
+    db().prepare('UPDATE clubs SET chat_settings = ? WHERE id = ?').run(JSON.stringify(merged), club.id);
   }
 }
 
@@ -457,30 +467,137 @@ function listMessages(userId, slug, { before, after } = {}) {
   let order = 'DESC';
   if (a > 0) { where += ' AND m.id > ?'; args.push(a); order = 'ASC'; } else if (b > 0) { where += ' AND m.id < ?'; args.push(b); }
   const rows = db().prepare(`
-    SELECT m.id, m.sender_id, m.body, m.created_at, u.username, u.display_name, u.avatar_v
+    SELECT m.id, m.sender_id, m.body, m.kind, m.meta, m.created_at, u.username, u.display_name, u.avatar_v
     FROM club_messages m JOIN users u ON u.id = m.sender_id
     WHERE ${where} ORDER BY m.id ${order} LIMIT ?`).all(...args, CHAT_PAGE);
   if (order === 'DESC') rows.reverse();
-  return rows.map((r) => ({
-    id: r.id, text: r.body, createdAt: r.created_at, mine: r.sender_id === userId,
-    username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.sender_id, r.avatar_v),
-  }));
+  return rows.map((r) => {
+    const out = {
+      id: r.id, kind: r.kind, text: r.body, createdAt: r.created_at, mine: r.sender_id === userId,
+      username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.sender_id, r.avatar_v),
+    };
+    if (r.meta) { try { out.meta = JSON.parse(r.meta); } catch (_) { /* corrupt meta: show the row bare */ } }
+    return out;
+  });
 }
 
+/** Insert one chat row and trim the club to the newest CHAT_KEEP. Call inside a transaction. */
+function insertMessage(clubId, userId, body, kind = 'text', meta = null) {
+  const { lastInsertRowid } = db().prepare('INSERT INTO club_messages (club_id, sender_id, body, kind, meta, created_at) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(clubId, userId, body, kind, meta ? JSON.stringify(meta) : null, now());
+  db().prepare(`DELETE FROM club_messages WHERE club_id = ? AND id <= (
+    SELECT id FROM club_messages WHERE club_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)`).run(clubId, clubId, CHAT_KEEP);
+  return Number(lastInsertRowid);
+}
+
+// clubId + ':all' | ':pin' → ms of the last whole-club fan-out (in memory: a restart only re-opens the window).
+const lastFanOut = new Map();
+const coolingDown = (key) => lastFanOut.has(key) && Date.now() - lastFanOut.get(key) < NOTIFY_COOLDOWN_MS;
+
+/** Confirmed members' ids, optionally only those whose lower-cased username is in `names`; never `exceptId`. */
+function memberIds(clubId, exceptId, names) {
+  const byName = names ? ` AND lower(u.username) IN (${names.map(() => '?').join(',')})` : '';
+  return db().prepare(`SELECT m.user_id FROM club_members m JOIN users u ON u.id = m.user_id
+    WHERE m.club_id = ? AND m.role != 'pending' AND m.user_id != ?${byName}`).all(clubId, exceptId, ...(names || []))
+    .map((r) => r.user_id);
+}
+
+function notifyMany(userIds, type, actorId, payload) {
+  if (!userIds.length) return;
+  db().transaction(() => { for (const id of userIds) notifications.push(id, type, actorId, payload); })();
+}
+
+function senderPayload(club, userId, messageId) {
+  const me = database.getUserById(userId);
+  return { from: { username: me.username, displayName: me.display_name }, club: { slug: club.slug, name: club.name }, messageId };
+}
+
+const rateLimit = (userId) => {
+  if (dmText.isRateLimited(userId)) throw new ClubError('CLUB_CHAT_RATE_LIMITED', 429, 'Bạn nhắn quá nhanh.');
+};
+
+/**
+ * Members only. Plain text, or a slash command (B447) the club's staff left enabled:
+ *   /ghim <text>            staff: set the pinned announcement (+ notify all when notifyPin)
+ *   /giaohuu @name [rule] [time]  unrated challenge to a confirmed member via ChallengeService
+ * Plain text: @username notifies that member (notifyMention); @all / @tatca from staff notifies the
+ * whole club (notifyAll, once per NOTIFY_COOLDOWN_MS). Unknown or disabled commands are refused.
+ */
 function postMessage(userId, slug, text) {
   const club = getClub(slug);
-  requireMember(club, userId);
-  const body = dmText.clean(typeof text === 'string' ? text : '');
+  const role = requireMember(club, userId);
+  const raw = typeof text === 'string' ? text : '';
+  const settings = chat.readSettings(club.chat_settings);
+  const cmd = chat.parseCommand(raw);
+  if (cmd) {
+    if (!cmd.kind) throw new ClubError('CLUB_COMMAND_UNKNOWN', 400, `Không có lệnh /${cmd.word}.`);
+    if (!settings[chat.COMMAND_TOGGLE[cmd.kind]]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
+    return cmd.kind === 'pin' ? pinCommand(club, role, userId, cmd.arg, settings) : challengeCommand(club, userId, cmd.arg);
+  }
+  const body = dmText.clean(raw);
   if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
-  if (dmText.isRateLimited(userId)) throw new ClubError('CLUB_CHAT_RATE_LIMITED', 429, 'Bạn nhắn quá nhanh.');
-  return db().transaction(() => {
-    const { lastInsertRowid } = db().prepare('INSERT INTO club_messages (club_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)')
-      .run(club.id, userId, body, new Date().toISOString());
-    db().prepare(`DELETE FROM club_messages WHERE club_id = ? AND id <= (
-      SELECT id FROM club_messages WHERE club_id = ? ORDER BY id DESC LIMIT 1 OFFSET ?)`).run(club.id, club.id, CHAT_KEEP);
-    return { id: Number(lastInsertRowid) };
-  })();
+  const mentions = chat.parseMentions(raw);
+  const toAll = mentions.all && isStaff(role) && settings.notifyAll;
+  if (toAll && coolingDown(club.id + ':all')) throw new ClubError('CLUB_NOTIFY_COOLDOWN', 429, 'Chỉ báo cả nhóm 1 lần mỗi 10 phút.');
+  rateLimit(userId);
+  const id = db().transaction(() => insertMessage(club.id, userId, body))();
+  if (toAll) {
+    lastFanOut.set(club.id + ':all', Date.now());
+    notifyMany(memberIds(club.id, userId), 'club_all', userId, senderPayload(club, userId, id));
+  } else if (settings.notifyMention && mentions.usernames.length) {
+    notifyMany(memberIds(club.id, userId, mentions.usernames), 'club_mention', userId, senderPayload(club, userId, id));
+  }
+  return { id };
 }
+
+function pinCommand(club, role, userId, arg, settings) {
+  if (!isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ ban quản trị ghim được thông báo.');
+  const body = dmText.clean(arg);
+  if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
+  const { announcement } = validateIdentity({ announcement: arg }); // stored raw like the settings form; ≤ DESC_MAX
+  rateLimit(userId);
+  const id = db().transaction(() => {
+    db().prepare('UPDATE clubs SET announcement = ? WHERE id = ?').run(announcement, club.id);
+    return insertMessage(club.id, userId, body, 'pin');
+  })();
+  // A re-pin within the window (typo fix) updates the pin but does not ping everyone again.
+  if (settings.notifyPin && !coolingDown(club.id + ':pin')) {
+    lastFanOut.set(club.id + ':pin', Date.now());
+    notifyMany(memberIds(club.id, userId), 'club_pin', userId, senderPayload(club, userId, id));
+  }
+  return { id, kind: 'pin', announcement };
+}
+
+function challengeCommand(club, userId, arg) {
+  const usage = () => new ClubError('CLUB_COMMAND_INVALID', 400, 'Cú pháp: /giaohuu @tên [luật] [thời gian].');
+  const parsed = chat.parseChallengeArg(arg);
+  if (!parsed) throw usage();
+  const opts = { ...CHALLENGE_DEFAULTS };
+  for (const x of parsed.extras) {
+    if (WINNING_RULES.includes(x.toLowerCase())) opts.rule = x.toLowerCase();
+    else if (PRESETS[x]) opts.time = x;
+    else throw usage();
+  }
+  const target = db().prepare(`SELECT u.id, u.username, u.display_name FROM club_members m JOIN users u ON u.id = m.user_id
+    WHERE m.club_id = ? AND m.role != 'pending' AND lower(u.username) = ?`).get(club.id, parsed.username.toLowerCase());
+  if (!target) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không phải thành viên.');
+  rateLimit(userId);
+  // Lazy: ChallengeService pulls in the room stack; club reads and tests never need it.
+  const challenges = require('./ChallengeService');
+  let sent;
+  try {
+    sent = challenges.send(userId, target.username, { rule: opts.rule, time: opts.time, rated: false });
+  } catch (err) {
+    if (err instanceof challenges.ChallengeError) throw new ClubError(err.code, err.status, err.message);
+    throw err;
+  }
+  const meta = { to: { username: target.username, displayName: target.display_name }, rule: opts.rule, time: opts.time };
+  const id = db().transaction(() => insertMessage(club.id, userId, '', 'challenge', meta))();
+  return { id, kind: 'challenge', challengeId: sent.id };
+}
+
+/** Test seam: forget the whole-club fan-out windows. */
+const _resetFanOut = () => lastFanOut.clear();
 
 function deleteMessage(userId, slug, messageId) {
   const club = getClub(slug);
@@ -544,6 +661,7 @@ function getClubDetail(slug, viewerId, category) {
     rank: clubRanks(category).get(club.id) || null,
     avgRating: avgRows.length ? Math.round(avgRows.reduce((s, r) => s + r.rating, 0) / avgRows.length) : null,
     myRole,
+    chat: chat.readSettings(club.chat_settings),
     events: upcomingEvents(club.id),
     tournaments: clubTournaments(club.id),
     leaderboard: rows.map((r, i) => ({
@@ -552,6 +670,11 @@ function getClubDetail(slug, viewerId, category) {
       rating: r.rating == null ? null : Math.round(r.rating), games: r.games || 0,
     })),
   };
+  if (myRole && myRole !== 'pending') {
+    // Unread-dot baseline (B447): newest message someone else sent (my own never count as unread).
+    const last = db().prepare('SELECT MAX(id) AS id FROM club_messages WHERE club_id = ? AND sender_id != ?').get(club.id, viewerId);
+    body.lastMessageId = (last && last.id) || 0;
+  }
   if (isStaff(myRole)) {
     body.pending = db().prepare(`
       SELECT u.username, u.display_name FROM club_members m JOIN users u ON u.id = m.user_id
@@ -583,6 +706,6 @@ function userIdByUsername(username) {
 module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
-  createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage,
+  createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

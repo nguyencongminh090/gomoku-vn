@@ -199,11 +199,14 @@
     while (stack.children.length > 5) stack.removeChild(stack.firstChild);
   }
 
+  /** Club notifications open the channel they are about (B447: chat ones land on trò-chuyện). */
+  const CLUB_HASH = { club_request: '#ch=requests', club_mention: '#ch=chat', club_all: '#ch=chat', club_pin: '#ch=chat' };
+
   function notifTarget(n) {
     const from = n.payload && n.payload.from;
     if (n.type === 'friend_accepted' && from) return '/u/' + encodeURIComponent(from.username);
     if (n.type === 'challenge_accepted' && n.payload && n.payload.roomId) return '/room.html?id=' + encodeURIComponent(n.payload.roomId);
-    if (n.type.startsWith('club_') && n.payload && n.payload.club) return '/c/' + encodeURIComponent(n.payload.club.slug) + (n.type === 'club_request' ? '#ch=requests' : '');
+    if (n.type.startsWith('club_') && n.payload && n.payload.club) return '/c/' + encodeURIComponent(n.payload.club.slug) + (CLUB_HASH[n.type] || '');
     if (n.type === 'dm' && from) return '/social.html#dm=' + encodeURIComponent(from.username);
     return '/social.html';
   }

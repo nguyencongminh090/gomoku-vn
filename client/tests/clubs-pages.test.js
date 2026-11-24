@@ -718,3 +718,256 @@ describe('club banner (#446): generated pattern when none; phone keeps a short s
     expect(phone).toMatch(/#cb-members-body td:nth-child\(3\) \{ grid-column: 1 \/ -1; display: flex; flex-wrap: wrap;/);
   });
 });
+
+describe('chat commands + notifications (B447)', () => {
+  const DEFAULTS = { cmdPin: true, cmdChallenge: true, notifyMention: true, notifyAll: false, notifyPin: false, unreadDot: true };
+  const LB = [
+    { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
+    { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0 },
+  ];
+  const clubAs = (role, extra = {}) => ({
+    ...CLUB, myRole: role, chat: DEFAULTS, lastMessageId: 0,
+    leaderboard: LB.map((x) => ({ ...x, mine: x.username === (role === 'member' ? 'mem' : 'own') })),
+    ...extra,
+  });
+  const input = () => document.getElementById('cb-chat-input');
+  const hints = () => [...document.querySelectorAll('#cb-chat-hints .cl-hint b')].map((b) => b.textContent);
+  const type = (v) => { input().value = v; input().dispatchEvent(new Event('input')); };
+  const key = (k) => input().dispatchEvent(new KeyboardEvent('keydown', { key: k, cancelable: true }));
+  const dot = () => document.getElementById('cb-chat-unread');
+
+  async function boot(club, msgs = []) {
+    await bootClub(club);
+    global.fetch = jest.fn((url, opts) => (String(url).includes('/messages')
+      ? ok(opts && opts.method === 'POST' ? { id: 99 } : { messages: typeof msgs === 'function' ? msgs(String(url)) : msgs })
+      : ok(club)));
+  }
+
+  beforeEach(() => { location.hash = ''; localStorage.clear(); });
+
+  describe('composer hints', () => {
+    it('"/" lists only enabled commands this member may use; /ghim is staff-only', async () => {
+      await boot(clubAs('member'));
+      type('/');
+      expect(hints()).toEqual(['/giaohuu']);
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
+      expect(input().getAttribute('aria-expanded')).toBe('true');
+      await boot(clubAs('officer'));
+      type('/');
+      expect(hints()).toEqual(['/ghim', '/giaohuu']);
+      type('/gh');
+      expect(hints()).toEqual(['/ghim']);
+    });
+
+    it('disabled commands are not offered; no hints once a space is typed or for plain text', async () => {
+      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false } }));
+      type('/');
+      expect(hints()).toEqual(['/ghim']);
+      type('/ghim hello');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      type('hello /');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false } }));
+      type('/');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      expect(input().getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('arrows move the selection, Enter fills the command (no submit), Escape closes', async () => {
+      await boot(clubAs('owner'));
+      type('/');
+      key('ArrowDown');
+      expect(document.querySelector('#cb-chat-hints [aria-selected="true"] b').textContent).toBe('/giaohuu');
+      expect(input().getAttribute('aria-activedescendant')).toBe('cb-hint-1');
+      key('Enter');
+      expect(input().value).toBe('/giaohuu ');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      expect(global.fetch.mock.calls.some(([, o]) => o && o.method === 'POST')).toBe(false);
+      type('/');
+      key('Escape');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+    });
+
+    it('keys during IME composition are left alone', async () => {
+      await boot(clubAs('owner'));
+      type('/');
+      const ev = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true, isComposing: true });
+      input().dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(false);
+      expect(input().value).toBe('/');
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
+    });
+  });
+
+  describe('staff toggles in cài-đặt-nhóm', () => {
+    it('reflect the club settings and are saved with the form', async () => {
+      await boot(clubAs('officer', { chat: { ...DEFAULTS, notifyAll: true } }));
+      const boxes = Object.fromEntries([...document.querySelectorAll('#cb-chatset input[data-chat]')].map((b) => [b.dataset.chat, b]));
+      expect(Object.keys(boxes).sort()).toEqual(Object.keys(DEFAULTS).sort());
+      expect(boxes.notifyAll.checked).toBe(true);
+      expect(boxes.notifyPin.checked).toBe(false);
+      expect(boxes.cmdPin.checked).toBe(true);
+      boxes.cmdPin.checked = false;
+      document.getElementById('cb-form').onsubmit(new Event('submit'));
+      await flush();
+      const put = global.fetch.mock.calls.find(([, o]) => o && o.method === 'PUT');
+      expect(JSON.parse(put[1].body).chatSettings).toEqual({ ...DEFAULTS, notifyAll: true, cmdPin: false });
+    });
+
+    it('members never see them', async () => {
+      await boot(clubAs('member'));
+      expect(document.getElementById('cb-manage').hidden).toBe(true);
+    });
+  });
+
+  describe('stream rows', () => {
+    const AT = '2026-10-10T10:00:00.000Z';
+    it('/ghim and /giaohuu render as system rows: icon tile, title, decoded text or term pills, no avatar', async () => {
+      await boot(clubAs('member'), [
+        { id: 1, kind: 'pin', text: 'Họp &lt;8h&gt;', createdAt: AT, username: 'own', displayName: 'Own' },
+        { id: 2, kind: 'challenge', text: '', createdAt: AT, username: 'mem', displayName: 'Mem', meta: { to: { username: 'own', displayName: 'Own' }, rule: 'caro', time: '3+2' } },
+      ]);
+      document.getElementById('cb-ch-events').click();
+      document.getElementById('cb-ch-chat').click();
+      await flush(); await flush();
+      const rows = [...document.querySelectorAll('.cb-chat__msg--sys')];
+      expect(rows).toHaveLength(2);
+      expect(rows[0].querySelector('.cb-chat__tile')).not.toBeNull();
+      expect(rows[0].querySelector('.cb-chat__sys-t').textContent).toContain('clubs.sys_pin{"name":"Own"}');
+      expect(rows[0].querySelector('.cb-chat__text').textContent).toBe('Họp <8h>');
+      expect(rows[1].querySelector('.cb-chat__sys-t').textContent).toContain('clubs.sys_challenge{"name":"Mem","to":"Own"}');
+      expect([...rows[1].querySelectorAll('.cb-chat__terms .cl-count')].map((n) => n.textContent)).toEqual(['rule.caro', '3+2', 'clubs.sys_unrated']);
+      expect(document.querySelector('.cb-chat__msg--sys .cl-av40')).toBeNull();
+    });
+
+    it('@member is highlighted (text nodes only); a mention of me marks the row; unknown names stay plain', async () => {
+      await boot(clubAs('member'), [
+        { id: 1, kind: 'text', text: 'hi @Mem and @own, mail a@own.vn @nobody &lt;b&gt;', createdAt: AT, username: 'own', displayName: 'Own', mine: false },
+        { id: 2, kind: 'text', text: 'plain', createdAt: AT, username: 'own', displayName: 'Own', mine: false },
+      ]);
+      document.getElementById('cb-ch-events').click();
+      document.getElementById('cb-ch-chat').click();
+      await flush(); await flush();
+      const [first, second] = document.querySelectorAll('.cb-chat__msg');
+      expect([...first.querySelectorAll('.cb-chat__at')].map((n) => [n.textContent, n.classList.contains('is-me')])).toEqual([['@Mem', true], ['@own', false]]);
+      expect(first.querySelector('.cb-chat__text').textContent).toBe('hi @Mem and @own, mail a@own.vn @nobody <b>');
+      expect(first.querySelector('.cb-chat__text b:not(.cb-chat__at)')).toBeNull();
+      expect(first.classList.contains('is-mentioned')).toBe(true);
+      expect(second.classList.contains('is-mentioned')).toBe(false);
+    });
+    it('@all is highlighted only from staff with notifyAll on (when the server notified)', async () => {
+      const at = (text, username, chat) => boot(clubAs('member', { chat }), [{ id: 1, kind: 'text', text, createdAt: AT, username, displayName: 'X', mine: false }]);
+      const open = async () => { document.getElementById('cb-ch-events').click(); document.getElementById('cb-ch-chat').click(); await flush(); await flush(); };
+      await at('@all họp', 'own', { ...DEFAULTS, notifyAll: true });
+      await open();
+      expect(document.querySelector('.cb-chat__msg').classList.contains('is-mentioned')).toBe(true);
+      for (const [who, chat] of [['own', DEFAULTS], ['mem', { ...DEFAULTS, notifyAll: true }]]) {
+        await at('@all họp', who, chat);
+        await open();
+        expect(document.querySelector('.cb-chat__at')).toBeNull();
+        expect(document.querySelector('.cb-chat__msg').classList.contains('is-mentioned')).toBe(false);
+      }
+    });
+  });
+
+  describe('unread dot', () => {
+    it('first visit: history is not unread; later visit with newer messages by others shows the dot until trò-chuyện is opened', async () => {
+      location.hash = '#ch=events';
+      await boot(clubAs('member', { lastMessageId: 5 }));
+      expect(dot().hidden).toBe(true);
+      expect(localStorage.getItem('gvn_club_seen_caro')).toBe('5');
+      await boot(clubAs('member', { lastMessageId: 9 }), [{ id: 9, kind: 'text', text: 'x', createdAt: '2026-10-10T10:00:00.000Z', username: 'own', displayName: 'Own' }]);
+      expect(dot().hidden).toBe(false);
+      document.getElementById('cb-ch-chat').click();
+      await flush(); await flush();
+      expect(dot().hidden).toBe(true);
+      expect(localStorage.getItem('gvn_club_seen_caro')).toBe('9');
+      document.getElementById('cb-ch-events').click();
+      expect(dot().hidden).toBe(true);
+    });
+
+    it('first visit to an empty chat still records the baseline, so later messages show the dot', async () => {
+      location.hash = '#ch=events';
+      await boot(clubAs('member', { lastMessageId: 0 }));
+      expect(localStorage.getItem('gvn_club_seen_caro')).toBe('0');
+      await boot(clubAs('member', { lastMessageId: 3 }));
+      expect(dot().hidden).toBe(false);
+    });
+
+    it('off in settings → never shown', async () => {
+      localStorage.setItem('gvn_club_seen_caro', '1');
+      location.hash = '#ch=events';
+      await boot(clubAs('member', { lastMessageId: 9, chat: { ...DEFAULTS, unreadDot: false } }));
+      expect(dot().hidden).toBe(true);
+    });
+
+    it('away from trò-chuyện the poll asks only for messages after the cursor; my own never light the dot', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        location.hash = '#ch=events';
+        localStorage.setItem('gvn_club_seen_caro', '4');
+        let reply = [{ id: 5, kind: 'text', text: 'mine', createdAt: '2026-10-10T10:00:00.000Z', username: 'mem', displayName: 'Mem', mine: true }];
+        await boot(clubAs('member', { lastMessageId: 4 }), () => reply);
+        expect(dot().hidden).toBe(true);
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/clubs/caro/messages?after=4');
+        expect(dot().hidden).toBe(true);
+        reply = [{ id: 6, kind: 'text', text: 'hi', createdAt: '2026-10-10T10:00:00.000Z', username: 'own', displayName: 'Own', mine: false }];
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/clubs/caro/messages?after=5');
+        expect(dot().hidden).toBe(false);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('opening trò-chuyện after the dot lit fetches the newer messages at once', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        let reply = [{ id: 4, kind: 'text', text: 'old', createdAt: '2026-10-10T10:00:00.000Z', username: 'own', displayName: 'Own', mine: false }];
+        await boot(clubAs('member', { lastMessageId: 4 }), () => reply);
+        document.getElementById('cb-ch-events').click();
+        document.getElementById('cb-ch-chat').click(); // loads the chat (newest)
+        await flush(); await flush();
+        document.getElementById('cb-ch-events').click();
+        reply = [{ id: 5, kind: 'text', text: 'new', createdAt: '2026-10-10T10:01:00.000Z', username: 'own', displayName: 'Own', mine: false }];
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(dot().hidden).toBe(false);
+        global.fetch.mockClear();
+        document.getElementById('cb-ch-chat').click();
+        await flush(); await flush();
+        expect(global.fetch.mock.calls.map(([u]) => u)).toEqual(['/api/clubs/caro/messages?after=4']);
+        expect([...document.querySelectorAll('.cb-chat__text')].map((n) => n.textContent)).toEqual(['old', 'new']);
+        expect(dot().hidden).toBe(true);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('visitors never poll and never see a dot', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        await boot({ ...CLUB, chat: DEFAULTS });
+        jest.advanceTimersByTime(16000);
+        await flush();
+        expect(global.fetch.mock.calls.some(([u]) => String(u).includes('/messages'))).toBe(false);
+        expect(dot().hidden).toBe(true);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+  });
+
+  it('chat notifications open the club on trò-chuyện; join requests still open đơn-xin-vào', async () => {
+    await bootClub(CLUB);
+    const target = window.PlatformShell.notifications.target;
+    for (const type of ['club_mention', 'club_all', 'club_pin']) {
+      expect(target({ type, payload: { club: { slug: 'caro', name: 'C' } } })).toBe('/c/caro#ch=chat');
+    }
+    expect(target({ type: 'club_request', payload: { club: { slug: 'caro' } } })).toBe('/c/caro#ch=requests');
+    expect(target({ type: 'club_invite', payload: { club: { slug: 'caro' } } })).toBe('/c/caro');
+  });
+});
