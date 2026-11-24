@@ -129,55 +129,74 @@
 
   /**
    * Accept / Decline for a room invite (F443). Accept → the room page, where the normal join makes you a
-   * spectator (no seat). 404 = the invite is gone (expired / server restarted): say so, mark the row read.
+   * spectator (no seat). 404 = the invite is gone (expired / server restarted / host left): say so, mark read.
+   * State per invite (busy / error / gone) lives here, not in the DOM: a poll or live push re-renders the
+   * panel mid-request and must neither unlock a pending Accept nor wipe its refusal (F444). Clicks only
+   * lock the buttons in place (a re-render would drop keyboard focus); the result re-renders once.
    */
-  const goneInvites = new Set(); // a re-render (markRead / poll) must not bring the buttons of a dead invite back
+  const inviteState = new Map(); // inviteId → { busy?, err?, gone? }
   function inviteActions(n) {
-    const path = '/api/room-invites/' + encodeURIComponent(n.payload.inviteId);
+    const id = n.payload.inviteId;
+    const st = inviteState.get(id) || {};
+    const path = '/api/room-invites/' + encodeURIComponent(id);
     const box = el('div', undefined, 'pbell__acts');
-    if (goneInvites.has(n.payload.inviteId)) { box.append(el('span', t('notif.room_gone'), 'pbell__err')); return box; }
-    const err = el('span', '', 'pbell__err');
-    err.setAttribute('role', 'status');
+    if (st.gone) { box.append(el('span', t('notif.room_gone'), 'pbell__err')); return box; }
     const mk = (act, key, cls) => {
       const b = el('button', t(key), 'pbell__act pbtn ' + cls);
       b.type = 'button';
       b.dataset.act = act;
+      b.disabled = !!st.busy;
       return b;
     };
     const ok = mk('accept', 'notif.room_accept', 'pbtn--primary');
     const no = mk('decline', 'notif.room_decline', '');
-    const lock = (busy) => { ok.disabled = busy; no.disabled = busy; };
+    const err = el('span', st.err || '', 'pbell__err');
+    err.setAttribute('role', 'status');
+    const begin = () => { inviteState.set(id, { busy: true }); ok.disabled = true; no.disabled = true; err.textContent = ''; };
+    const settle = (next) => { if (next) inviteState.set(id, next); else inviteState.delete(id); renderBell(); };
     const fail = async (res) => {
       const body = res ? await res.json().catch(() => ({})) : {};
-      err.textContent = body.error || t('notif.room_error');
-      lock(false);
+      settle({ err: body.error || t('notif.room_error') });
     };
     ok.addEventListener('click', async () => {
-      lock(true);
-      err.textContent = '';
+      begin();
       let res = null;
       try { res = await fetch(path + '/accept', { method: 'POST', credentials: 'same-origin' }); } catch (_) { /* offline */ }
       if (res && res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.roomId) return notifications.go('/room.html?id=' + encodeURIComponent(body.roomId));
       }
-      if (res && res.status === 404) {
-        goneInvites.add(n.payload.inviteId);
-        box.replaceChildren(el('span', t('notif.room_gone'), 'pbell__err'));
-        return markRead(n.id);
-      }
+      if (res && res.status === 404) { settle({ gone: true }); return markRead(n.id); }
       return fail(res);
     });
     no.addEventListener('click', async () => {
-      lock(true);
-      err.textContent = '';
+      begin();
       let res = null;
       try { res = await fetch(path, { method: 'DELETE', credentials: 'same-origin' }); } catch (_) { /* offline */ }
-      if (res && res.ok) return refreshBell();
+      if (res && res.ok) { inviteState.delete(id); return refreshBell(); }
       return fail(res);
     });
     box.append(ok, no, err);
     return box;
+  }
+
+  /**
+   * Small live toast for shell pages (the room page has its own in chat-ui.js, which these pages do not load);
+   * same `.toast` classes from main.css. Used by socket-client for room invites (F444).
+   */
+  function toast(message, type = 'info', duration = 4000) {
+    let stack = document.getElementById('toast-stack');
+    if (!stack) {
+      stack = el('div', undefined, 'toast-stack');
+      stack.id = 'toast-stack';
+      stack.setAttribute('aria-live', 'polite');
+      document.body.appendChild(stack);
+    }
+    const item = el('div', message, 'toast toast--' + type);
+    item.style.animationDelay = '0s, ' + Math.max(duration - 400, 0) + 'ms';
+    stack.appendChild(item);
+    setTimeout(() => { if (item.parentNode) item.remove(); }, duration);
+    while (stack.children.length > 5) stack.removeChild(stack.firstChild);
   }
 
   function notifTarget(n) {
@@ -708,5 +727,5 @@
     return box;
   }
 
-  window.PlatformShell = { _swipeTarget: swipeTarget, build, setActive, initials, avatar, meta, icon, pushNotification, setMyAvatar, setDmUnread, notifications, fetchMe };
+  window.PlatformShell = { _swipeTarget: swipeTarget, build, setActive, initials, avatar, meta, icon, pushNotification, toast, setMyAvatar, setDmUnread, notifications, fetchMe };
 })();

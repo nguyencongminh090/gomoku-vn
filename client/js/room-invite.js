@@ -28,7 +28,19 @@
     const menuBtn = document.getElementById('btn-room-menu');
     if (menuBtn) menuBtn.focus();
   }
-  function onKey(e) { if (e.key === 'Escape') close(); }
+  function onKey(e) {
+    if (e.key === 'Escape') return close();
+    if (e.key !== 'Tab' || !overlay) return;
+    // aria-modal: keep Tab / Shift+Tab inside the dialog
+    const f = [...overlay.querySelectorAll('input, button:not([disabled])')];
+    if (!f.length) return;
+    const first = f[0];
+    const last = f[f.length - 1];
+    // A button that just turned disabled (invite sent) drops focus to <body>: pull it back in.
+    if (!overlay.contains(document.activeElement)) { e.preventDefault(); (e.shiftKey ? last : first).focus(); }
+    else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }
 
   function open() {
     const st = global.RoomState;
@@ -54,6 +66,8 @@
     search.setAttribute('aria-label', t('room.invite_search'));
     const status = el('p', t('room.invite_loading'), 'rinv__status');
     status.setAttribute('role', 'status');
+    const err = el('p', null, 'rinv__err'); // a refused invite: kept until the next attempt (typing in search must not wipe it)
+    err.setAttribute('role', 'alert');
     const list = el('ul', null, 'rinv__list');
     const hint = el('p', t('room.invite_hint'), 'rinv__hint');
 
@@ -69,7 +83,7 @@
       b.disabled = sent.has(p.username);
       b.addEventListener('click', async () => {
         b.disabled = true;
-        status.textContent = '';
+        err.textContent = '';
         let res = null;
         try {
           res = await fetch('/api/room-invites', {
@@ -79,7 +93,7 @@
         } catch (_) { /* offline */ }
         if (res && res.ok) { sent.add(p.username); b.textContent = t('room.invite_sent'); return; }
         const body = res ? await res.json().catch(() => ({})) : {};
-        status.textContent = body.error || t('room.invite_error');
+        err.textContent = body.error || t('room.invite_error');
         b.disabled = false;
       });
       li.append(who, b);
@@ -95,7 +109,7 @@
     }
     search.addEventListener('input', render);
 
-    box.append(head, search, status, list, hint);
+    box.append(head, search, status, err, list, hint);
     overlay.appendChild(box);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
     document.addEventListener('keydown', onKey);

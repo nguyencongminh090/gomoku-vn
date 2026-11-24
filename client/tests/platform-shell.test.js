@@ -353,9 +353,50 @@ describe('room invite notifications (F443)', () => {
     expect(calls.filter((c) => c[1] === '/api/notifications').length).toBe(before + 1);
   });
 
+  it('an in-flight Accept keeps its lock across a bell re-render, and the refusal shows after it', async () => {
+    let release;
+    await bootBell([INV], (url) => (url.endsWith('/accept') ? new Promise((r) => { release = () => r({ ok: false, status: 409, json: () => Promise.resolve({ error: 'Bạn đang ở trong một phòng khác.' }) }); }) : reply(200, {})));
+    const before = btn('accept');
+    before.click();
+    expect(btn('accept')).toBe(before); // no re-render on click: the focused button stays in the DOM
+    window.PlatformShell.pushNotification({ id: 9, type: 'friend_request', read: false, unread: 2, payload: { from: { username: 'z', displayName: 'Z' } } }); // poll / live push re-renders the panel
+    expect(btn('accept')).not.toBe(before);
+    expect(btn('accept').disabled && btn('decline').disabled).toBe(true);
+    release();
+    await flush();
+    expect(btn('accept').disabled || btn('decline').disabled).toBe(false);
+    expect(row().querySelector('.pbell__err').textContent).toBe('Bạn đang ở trong một phòng khác.');
+  });
+
+  it('a decline notice reads "{name} declined … {room}"', async () => {
+    await bootBell([]);
+    window.t = (k, v) => k + JSON.stringify(v);
+    const n = { id: 3, type: 'room_invite_declined', payload: { roomName: '#ABC', from: { username: 'bob', displayName: 'BOB' } } };
+    expect(window.PlatformShell.notifications.text(n)).toBe('notif.room_invite_declined{"name":"BOB","room":"#ABC"}');
+  });
+
   it('a hostile room name stays text', async () => {
     await bootBell([{ ...INV, payload: { ...INV.payload, roomName: '<img src=x onerror=1>' } }]);
     expect(document.querySelector('.pbell__panel img')).toBeNull();
     expect(row().textContent).toContain('<img src=x onerror=1>');
+  });
+});
+
+describe('PlatformShell.toast (F444)', () => {
+  beforeEach(() => { boot(null); jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); document.getElementById('toast-stack')?.remove(); });
+
+  it('stacks a .toast--info line (text only), removes it after the duration, keeps at most 5', () => {
+    const T = window.PlatformShell.toast;
+    T('<b>hi</b>');
+    const stack = document.getElementById('toast-stack');
+    expect(stack.getAttribute('aria-live')).toBe('polite');
+    expect(stack.children[0].className).toBe('toast toast--info');
+    expect(stack.children[0].textContent).toBe('<b>hi</b>');
+    expect(stack.querySelector('b')).toBeNull();
+    jest.advanceTimersByTime(4001);
+    expect(stack.children).toHaveLength(0);
+    for (let i = 0; i < 7; i++) T('t' + i);
+    expect([...stack.children].map((c) => c.textContent)).toEqual(['t2', 't3', 't4', 't5', 't6']);
   });
 });

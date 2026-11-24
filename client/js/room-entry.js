@@ -17,13 +17,13 @@
 // them as classic <head> scripts so socket-early.js can open the socket while
 // the page parses. Importing them too would evaluate both a second time — the
 // #51 duplicate-socket bug.
-import './i18n.js?v=51edd35f';
+import './i18n.js?v=44e21116';
 import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=349e6629';
 import './board.js?v=91667397';
 import './room.js?v=499b9291';
 import './chat-ui.js?v=48746649';
-import './room-invite.js?v=48bcf51f';
+import './room-invite.js?v=9d126390';
 import './room-ui.js?v=e3e4a721';
 import './room-stage.js?v=90a7b600';
 import './game-ui.js?v=ba7d5275';

@@ -237,6 +237,13 @@ class SocketClient {
     // Bell (#198): pages that mount the Arena shell show it live.
     this.socket.on('notify:new', (n) => {
       if (window.PlatformShell && window.PlatformShell.pushNotification) window.PlatformShell.pushNotification(n);
+      // F444: a room invite / its decline also pops a toast — shell pages have PlatformShell.toast, the room page showToast.
+      if (n && (n.type === 'room_invite' || n.type === 'room_invite_declined') && typeof window.t === 'function') {
+        const p = n.payload || {};
+        const text = window.t('notif.' + n.type, { name: p.from ? p.from.displayName : '', room: p.roomName || '' });
+        if (window.PlatformShell && window.PlatformShell.toast) window.PlatformShell.toast(text);
+        else if (typeof window.showToast === 'function') window.showToast(text, 'info');
+      }
     });
 
     this.socket.on('session:kicked', (info) => {

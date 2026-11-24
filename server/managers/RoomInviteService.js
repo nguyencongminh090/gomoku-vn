@@ -21,6 +21,7 @@ const privacyGate = require('./PrivacyGate');
 
 const TTL_MS = 5 * 60 * 1000;
 const MAX_OUTGOING = 5;
+const RESEND_COOLDOWN_MS = 10 * 1000; // same sender → same target: one push per window (re-sends replace, so the cap alone never bites)
 
 class RoomInviteError extends Error {
   constructor(code, status, message) {
@@ -76,13 +77,15 @@ function send(fromId, username, roomId) {
   // No "target is in a room" check here: it would tell a host where a hidden-online user is. accept() guards it.
   if (isFull(room)) throw fail('ROOM_FULL', 409, 'Phòng đã đầy.');
 
-  for (const old of [...pending.values()]) if (old.from === fromId && old.to === target.id) remove(old); // re-send replaces
+  const prev = [...pending.values()].find((x) => x.from === fromId && x.to === target.id);
+  if (prev && Date.now() - prev.createdAt < RESEND_COOLDOWN_MS) throw fail('INVITE_TOO_SOON', 429, 'Bạn vừa mời người này, hãy chờ vài giây.');
+  if (prev) remove(prev); // re-send replaces
   if ([...pending.values()].filter((x) => x.from === fromId).length >= MAX_OUTGOING) {
     throw fail('TOO_MANY_INVITES', 429, 'Quá nhiều lời mời đang chờ.');
   }
 
   const me = database.getUserById(fromId);
-  const c = { id: crypto.randomUUID(), from: fromId, to: target.id, roomId: room.roomId, createdAt: Date.now() };
+  const c = { id: crypto.randomUUID(), from: fromId, to: target.id, roomId: room.roomId, roomName: room.roomName, createdAt: Date.now() };
   c.timer = setTimeout(() => remove(c), TTL_MS);
   if (c.timer.unref) c.timer.unref();
   pending.set(c.id, c);
@@ -99,6 +102,7 @@ function accept(userId, id) {
   if (c.to !== userId) throw fail('NOT_YOUR_INVITE', 403, 'Không phải lời mời của bạn.');
   const room = roomManager.getRoom(c.roomId);
   if (!room) { remove(c); throw fail('INVITE_GONE', 404, 'Phòng không còn tồn tại.'); }
+  if (!room.users.has(c.from)) { remove(c); throw fail('INVITE_GONE', 404, 'Người mời đã rời phòng.'); }
   const mine = roomManager.getRoomByUser(userId);
   if (mine && mine !== room) throw fail('ALREADY_IN_ANOTHER_ROOM', 409, 'Bạn đang ở trong một phòng khác.');
   if (!mine && isFull(room)) throw fail('ROOM_FULL', 409, 'Phòng đã đầy.');
@@ -112,6 +116,14 @@ function close(userId, id) {
   if (!c) return;
   if (c.to !== userId && c.from !== userId) throw fail('NOT_YOUR_INVITE', 403, 'Không phải lời mời của bạn.');
   remove(c);
+  if (c.to === userId) { // declined (not a sender cancel): tell the inviter
+    const me = database.getUserById(userId);
+    if (me) {
+      notifications.push(c.from, 'room_invite_declined', userId, {
+        from: { username: me.username, displayName: me.display_name }, roomId: c.roomId, roomName: c.roomName,
+      });
+    }
+  }
 }
 
 /**
@@ -141,4 +153,4 @@ function _reset() {
   pending.clear();
 }
 
-module.exports = { RoomInviteError, TTL_MS, MAX_OUTGOING, setHooks, send, accept, close, onlineCandidates, purgeStale, _reset };
+module.exports = { RoomInviteError, TTL_MS, MAX_OUTGOING, RESEND_COOLDOWN_MS, setHooks, send, accept, close, onlineCandidates, purgeStale, _reset };
