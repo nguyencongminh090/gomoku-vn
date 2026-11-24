@@ -1,0 +1,110 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CL3 Đội hình</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* CL3 "Đội hình" — the club IS a board: every member is a stone, the strongest at tengen, spiralling out by rating.
+   Stones are static (project rule: no stone/board motion); only the selection ring and the side card move. */
+html{--wood:#d9b77a;--wood-2:#c9a364;--wline:rgba(60,40,10,.55)}
+html[data-mode=dark]{--wood:#b8935a;--wood-2:#a07c45}
+.lay{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:32px;padding:28px 0 60px;align-items:start}
+.bwrap{position:sticky;top:76px}
+.boardbox{position:relative;border-radius:18px;padding:18px;background:linear-gradient(135deg,var(--wood),var(--wood-2));box-shadow:var(--shadow-card)}
+.bsvg{display:block;width:100%;height:auto}
+.bsvg .ln{stroke:var(--wline);stroke-width:.06;fill:none}.bsvg .hs{fill:var(--wline)}
+.st{cursor:pointer}
+.st circle.s{transition:transform var(--d-base) var(--e-out)}
+.st .b{fill:url(#gb)}.st .w{fill:url(#gw)}
+.st text{font-size:.34px;font-weight:1000;text-anchor:middle;dominant-baseline:central;pointer-events:none;font-family:Nunito}
+.st .tb{fill:#fff}.st .tw{fill:#222}
+.st .ring{fill:none;stroke:var(--cc);stroke-width:.1;opacity:0;transition:opacity var(--d-fast)}
+.st.staff .ring{opacity:1;stroke:#fff;stroke-dasharray:.2 .12}
+.st.me .ring{opacity:1;stroke:#f2be3a;stroke-width:.14}
+.st[aria-pressed=true] .ring{opacity:1;stroke:var(--cc-text);stroke-width:.16;animation:ringPulse 1.6s ease-in-out 3}
+@keyframes ringPulse{50%{opacity:.45}}
+.st:focus-visible{outline:none}.st:focus-visible .ring{opacity:1;stroke:#fff;stroke-width:.18}
+.st.online .dotp{fill:#43a047;stroke:#fff;stroke-width:.05}.st.playing .dotp{fill:#e08a1e;stroke:#fff;stroke-width:.05}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:14px;color:var(--c-ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-s{width:14px;height:14px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#666,#0b0a09 70%)}.lg-w{background:radial-gradient(circle at 35% 30%,#fff,#cfcac0 75%)}
+.lg-r{box-shadow:0 0 0 2px #f2be3a}
+.side>*+*{margin-top:18px}
+.idc{display:flex;gap:16px;align-items:center}.idc h1{font-size:30px;font-weight:1000;line-height:1.15}
+.idc .pill{margin-top:6px}
+.desc{color:var(--c-ink-2)}
+.nums{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.nums div{padding:12px 14px;border-radius:14px;background:var(--c-surface);box-shadow:var(--shadow-card)}.nums small{display:block;font-size:12px;font-weight:800;color:var(--c-ink-2)}.nums b{font-size:24px;font-weight:1000}
+.acts{display:flex;gap:10px;flex-wrap:wrap}
+.pick{border-radius:18px;padding:18px;background:var(--cc-tint);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--cc-text) 40%,transparent);animation:pop var(--d-base) var(--e-out) both}
+.pick .top{display:flex;gap:14px;align-items:center}.pick b.n{display:block;font-size:20px;font-weight:1000}
+.pick dl{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0 12px}.pick dt{font-size:12px;font-weight:800;color:var(--c-ink-2)}.pick dd{margin:0;font-size:20px;font-weight:1000}
+.pick .acts .btn{flex:1}
+.card{border-radius:18px;padding:18px;background:var(--c-surface);box-shadow:var(--shadow-card)}
+.card h2{font-size:16px;font-weight:900;margin-bottom:10px;display:flex;gap:8px;align-items:center}
+.ann{font-weight:700}
+.line{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--c-border)}.line:first-of-type{border-top:0}
+.line span:first-child{min-width:0}
+.req{display:flex;gap:10px;align-items:center;padding:6px 0}.req b{flex:1}
+.req button{width:40px;height:40px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--c-border)}
+/* discover */
+.dh{display:flex;align-items:end;gap:16px;flex-wrap:wrap;padding:30px 0 6px}.dh h1{font-size:34px;font-weight:1000;flex:1}
+.dh p{flex-basis:100%;color:var(--c-ink-2)}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:var(--c-field);box-shadow:inset 0 0 0 1px var(--c-border);width:260px}.search input{border:0;background:none;color:inherit;font:inherit;flex:1;min-width:0}
+.search:focus-within{outline:3px solid var(--c-brand-text);outline-offset:2px}.search input:focus{outline:0}
+.cg{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:22px;padding:22px 0 60px}
+.ck{display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:18px;background:var(--c-surface);box-shadow:var(--shadow-card);min-width:0;transition:transform var(--d-base) var(--e-out)}
+@media(hover:hover) and (pointer:fine){.ck:hover{transform:translateY(-3px)}}
+.ck .mb{border-radius:12px;padding:8px;background:linear-gradient(135deg,var(--wood),var(--wood-2));position:relative}
+.ck .mb .crest{position:absolute;right:10px;bottom:10px;box-shadow:0 0 0 3px var(--wood)}
+.ck h3{font-size:18px;font-weight:900}.ck .kv{display:flex;justify-content:space-between;font-size:14px;color:var(--c-ink-2)}.ck .kv b{color:var(--c-ink);font-size:16px}
+.ck.mine{box-shadow:var(--shadow-card),inset 0 0 0 2px var(--c-brand-text)}
+@media(max-width:860px){.lay{grid-template-columns:1fr;padding-top:16px}.bwrap{position:static}.idc h1{font-size:24px}.search{width:100%}.boardbox{padding:10px}.lay{display:flex;flex-direction:column;gap:18px}.side{display:contents}.side>*{margin-top:0!important}.idc{order:1}.desc{order:2}.bwrap{order:3}.nums{order:4}.side>.acts{order:5}#pick,.card{order:6}}
+</style></head><body>
+<main class="wrap" id="app"></main>
+<script src="../icons.js"></script><script src="../data.js"></script>
+<script>
+const { C, CLUBS, AS, PAGE, ROLE, esc, ic, need, av, ini, crest, primary, secondary, spiral, formChips, rng } = CL;
+CL.top();
+const app = document.getElementById('app');
+const defs = `<defs><radialGradient id="gb" cx=".35" cy=".3" r=".75"><stop offset="0" stop-color="#6d6a64"/><stop offset=".7" stop-color="#0b0a09"/></radialGradient><radialGradient id="gw" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="#fff"/><stop offset=".8" stop-color="#d4cfc4"/></radialGradient></defs>`;
+function board(n, members, size = 15, labels = true) {
+  let d = '';
+  for (let i = 0; i < size; i++) d += `M.5 ${i + .5}H${size - .5}M${i + .5} .5V${size - .5}`;
+  const hs = size === 15 ? [[3, 3], [11, 3], [7, 7], [3, 11], [11, 11]] : [[2, 2], [6, 2], [4, 4], [2, 6], [6, 6]];
+  const cells = spiral(n, size);
+  const st = cells.map(([x, y], i) => {
+    const m = members[i] || {}; const white = m.role && m.role !== 'member';
+    return `<g class="st${m.role && m.role !== 'member' ? ' staff' : ''}${m.mine ? ' me' : ''}${m.online === 'on' ? ' online' : m.online === 'playing' ? ' playing' : ''}" ${labels ? `tabindex="0" role="button" aria-pressed="${i === 0}" aria-label="${esc(m.displayName || '')}, hạng ${i + 1}, rating ${m.rating || ''}" data-i="${i}"` : ''} transform="translate(${x + .5} ${y + .5})">
+      <circle class="s ${white ? 'w' : 'b'}" r=".44"/>${labels ? `<text class="${white ? 'tw' : 'tb'}">${esc(ini(m.displayName || '?'))}</text>` : ''}<circle class="ring" r=".56"/>${labels && m.online ? '<circle class="dotp" cx=".32" cy="-.32" r=".12"/>' : ''}</g>`;
+  }).join('');
+  return `<svg class="bsvg" viewBox="0 0 ${size} ${size}" role="${labels ? 'group' : 'img'}" aria-label="${labels ? 'Đội hình: mỗi quân là một thành viên' : n + ' thành viên'}">${defs}<path class="ln" d="${d}"/>${hs.map(([x, y]) => `<circle class="hs" cx="${x + .5}" cy="${y + .5}" r=".1"/>`).join('')}${st}</svg>`;
+}
+function pickCard(i) {
+  const m = C.leaderboard[i];
+  return `<section class="pick" aria-live="polite"><div class="top">${av(m.displayName, 56)}<span style="min-width:0"><b class="n nm">${esc(m.displayName)}</b><span class="muted" style="display:block">Quân số ${i + 1}</span>${m.role !== 'member' ? `<span class="pill">${ROLE[m.role]}</span>` : ''}</span></div>
+    <dl><div><dt>Rating</dt><dd class="num">${m.rating}</dd></div><div><dt>Số ván</dt><dd class="num">${m.games}</dd></div><div><dt>7 ngày${need('7-day delta')}</dt><dd class="num" style="color:${m.d7 >= 0 ? 'var(--c-success)' : 'var(--c-error)'}">${m.d7 >= 0 ? '+' : ''}${m.d7}</dd></div></dl>
+    <div style="margin-bottom:12px">${formChips(m.form)}${need('last 5 results')}</div>
+    <div class="acts">${m.online === 'playing' ? `<button class="btn">${ic('eye')}Xem ván ${m.room}</button>` : `<button class="btn">${ic('sword')}Thách đấu</button>`}<button class="btn">${ic('user-circle')}Hồ sơ</button></div></section>`;
+}
+if (PAGE === 'club') {
+  app.innerHTML = `<div class="lay">
+    <div class="bwrap rv"><div class="boardbox">${board(C.members, C.leaderboard.concat(Array.from({ length: 18 }, (_, k) => ({ displayName: ['Lưu','Chu','Thái','Mai','La','Văn'][k%6]+' '+['An','Bình','Cường','Dũng','Giang','Hiếu','Khoa','Lộc','Nam'][k%9], rating: 1360 - k * 9, role: 'member' }))))}</div>
+      <div class="legend"><span><i class="lg-s"></i>Càng gần tâm, rating càng cao</span><span><i class="lg-s lg-w"></i>Quân trắng: ban quản trị</span><span><i class="lg-s lg-r"></i>Bạn</span><span><i class="dot"></i>Online${need('presence')}</span><span><i class="dot dot--busy"></i>Đang chơi</span></div></div>
+    <div class="side">
+      <div class="idc rv" style="--i:1">${crest(C, 72, 'shield')}<div style="min-width:0"><h1>${esc(C.name)}</h1><span class="pill pill--cc">${ic('globe', 'ico--sm')}Công khai</span> <span class="pill">Thành lập 03/2025</span></div></div>
+      <p class="desc rv" style="--i:2">${esc(C.description)}</p>
+      <div class="nums rv" style="--i:3"><div><small>Thành viên</small><b class="num" data-count>${C.members}</b></div><div><small>Hạng nhóm</small><b>#${C.rank}</b></div><div><small>Rating TB</small><b class="num">${C.avgRating}</b></div></div>
+      <div class="acts rv" style="--i:4">${primary()}${secondary()}</div>
+      <div id="pick">${pickCard(0)}</div>
+      ${AS === 'staff' ? `<section class="card"><h2>${ic('user-plus')}Chờ vào đội hình <span class="badge">3</span></h2>${C.pending.map((p) => `<div class="req">${av(p.displayName, 32)}<b class="nm">${esc(p.displayName)}</b><button aria-label="Duyệt">${ic('check')}</button><button aria-label="Từ chối">${ic('x')}</button></div>`).join('')}</section>` : ''}
+      ${AS !== 'visitor' ? `<section class="card"><h2>${ic('megaphone')}Thông báo</h2><p class="ann">${esc(C.announcement)}</p></section>` : ''}
+      <section class="card"><h2>${ic('calendar')}Sắp tới</h2>${C.events.map((e) => { const d = CL.when(e.startsAt); return `<div class="line"><span class="nm">${esc(e.title)}</span><b class="num">${d.dow} ${d.date}, ${d.time}</b></div>`; }).join('')}</section>
+      <section class="card"><h2>${ic('flag-checkered')}Giải của nhóm${need('round, winner')}</h2>${C.tournaments.map((t) => `<div class="line"><span class="nm">${esc(t.name)}</span><span class="pill">${{ running: 'Vòng ' + t.round + '/' + t.rounds, registering: 'Đang nhận đăng ký', finished: 'Vô địch: ' + t.winner }[t.status]}</span></div>`).join('')}</section>
+    </div></div>`;
+  const pick = document.getElementById('pick');
+  const sel = (g) => { document.querySelectorAll('.st[aria-pressed]').forEach((x) => x.setAttribute('aria-pressed', String(x === g))); const i = +g.dataset.i; if (i < C.leaderboard.length) pick.innerHTML = pickCard(i); };
+  document.querySelectorAll('.st[data-i]').forEach((g) => { g.addEventListener('click', () => sel(g)); g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sel(g); } }); });
+} else {
+  app.innerHTML = `<div class="dh"><h1>Hội nhóm</h1><label class="search">${ic('magnifying-glass')}<input placeholder="Tìm nhóm" aria-label="Tìm nhóm"></label><button class="btn btn--primary">${ic('plus-circle')}Tạo nhóm</button><p>Mỗi bàn là một nhóm: mỗi quân là một thành viên, quân ở tâm là người mạnh nhất. Bàn càng kín, nhóm càng đông.</p></div>
+  <div class="cg">${CLUBS.map((c, i) => { const R = rng(i + 3); const fake = Array.from({ length: 81 }, (_, k) => ({ displayName: 'x', role: R() < .08 ? 'officer' : 'member' })); return `<a class="ck rv${c.mine ? ' mine' : ''}" style="--i:${i};--cc:var(--club-${c.color})"><div class="mb">${board(Math.min(81, Math.round(c.members * .6)), fake, 9, false)}${crest(c, 44, 'shield')}</div><h3 class="nm">${esc(c.name)}</h3><div class="kv"><span><b>${c.members}</b> thành viên</span><span>TB <b>${c.avgRating}</b></span><span>Hạng <b>#${c.rank}</b></span></div>${c.mine ? '<span class="pill pill--cc">Nhóm của bạn</span>' : `<span class="pill">${c.joinPolicy === 'open' ? 'Công khai' : 'Cần duyệt'}</span>`}</a>`; }).join('')}</div>`;
+}
+CL.count();
+</script></body></html>

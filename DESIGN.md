@@ -111,3 +111,14 @@ Mockup m9 in `features/home-desktop-minimal/`, picked by the user 2026-11-19. St
 - Motion: none new; press = existing button active state; reduced motion unaffected.
 - Defaults kept: full-width stacked buttons (thumb reach, one column on 360px).
 - Forbidden: amber/brand fill on Tạo phòng (two primaries); ghost text-link only (too weak on a photo); putting it between Chơi nhanh and the chips; emoji "+".
+
+## Hội nhóm (#446, CL4 "Hội quán")
+- Chosen 2026-11-24 from 6 mockups (`features/club-redesign/`, source of truth `mockups/cl4-hoi-quan.html`). Style: vstyle-flat-material, messenger/server layout; one photo slot = the club's own banner (generated stone pattern on the club colour when none).
+- Layout (desktop, both `club.html` and `clubs.html`): app shell under the nav, full height. Rail 76px (my clubs as 48px crests from `/api/clubs/mine`, active = squircle + left bar; then Khám phá and Tạo nhóm) → channel pane 250px (banner 120px with name + member count on a dark scrim, channel list, staff group: đơn-xin-vào with count, cài-đặt-nhóm, nhật-ký; my row at the bottom) → centre (header: channel name + short purpose + the one primary; stream; composer) → members pane 270px grouped Đang chơi / Online / Ngoại tuyến (staff: Chờ duyệt with approve/reject on top). ≤1180px drops the members pane; ≤860px: rail and channels become horizontal scrollers above the stream, composer above the tab bar.
+- Channels map today's tabs: trò-chuyện (chat, members), sự-kiện, giải-đấu, xếp-hạng (weekly + rating board), thành-viên (table + role actions), staff channels = the old Quản lý panel split in three. Default channel: trò-chuyện for members, the join gate for visitors.
+- Stream: pinned announcement first (club tint + megaphone), day separators, messages (40px avatar, name + role in club colour + time), system cards (icon tile + title + one action) between messages.
+- Visitors: the centre shows a skeleton (never real messages: chat API is members-only) blurred behind a join card (crest 96px, name, description, 3 numbers, Tham gia / Xin vào).
+- Discover (`clubs.html`): same rail with Khám phá active; centre = title, search, filter chips, 3 featured banner cards, then one-line club rows (crest, name + description, members, action).
+- Club colour: `--cc` from `club.color` (`--club-*`) for crest, tint and role text; role text uses the lightened `--cc-text` in dark mode (AA).
+- Motion: subtle; message rise 240ms on arrival, crest corner morph 240ms on hover/active, hover lift on featured cards behind `(hover:hover)`; reduced motion → none.
+- Forbidden: the "A · B · C" pattern, also as comma-joined facts in one line; names wrapping (ellipsis, `min-width:0` on every ancestor); real chat content shown to non-members; more than one filled button per screen; emoji as icons.

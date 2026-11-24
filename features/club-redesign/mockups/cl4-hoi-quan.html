@@ -1,0 +1,134 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CL4 Hội quán</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* CL4 "Hội quán" — the club is a place you hang out in: rail of my clubs, channels, a live centre (chat + system cards), members by presence. */
+.shell{display:grid;grid-template-columns:76px 250px minmax(0,1fr) 270px;height:calc(100vh - 56px);min-height:640px}
+.rail{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 0;background:var(--c-bg);border-right:1px solid var(--c-border)}
+.rail a{position:relative;display:block;border-radius:50%;transition:border-radius var(--d-base) var(--e-out)}
+.rail a .crest{transition:border-radius var(--d-base) var(--e-out)}
+.rail a.on .crest,.rail a:hover .crest{border-radius:30%}
+.rail a.on::before{content:"";position:absolute;left:-14px;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:var(--c-ink)}
+.rail .add{width:48px;height:48px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:var(--c-surface);color:var(--c-brand-text)}
+.rail .add.on{border-radius:30%;background:var(--c-brand);color:#fff}
+.rail hr{width:32px;border:0;border-top:2px solid var(--c-border);margin:2px 0}
+.rail .un{position:absolute;right:-4px;bottom:-2px}
+.chan{display:flex;flex-direction:column;background:var(--c-surface);border-right:1px solid var(--c-border);min-width:0}
+.chan .bn{position:relative;height:120px;overflow:hidden;background:var(--cc)}.chan .bn img{width:100%;height:100%;object-fit:cover;display:block}
+.chan .bn::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 30%,rgba(0,0,0,.78))}
+.chan .bn h1{position:absolute;z-index:1;left:14px;right:14px;bottom:10px;color:#fff;font-size:19px;font-weight:1000;line-height:1.2}
+.chan .bn small{display:block;font-size:13px;font-weight:700;opacity:.9}
+.chan nav{padding:12px 8px;display:flex;flex-direction:column;gap:2px;overflow:auto;flex:1}
+.chan .grp{font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2);padding:12px 10px 4px}
+.chan nav a{display:flex;align-items:center;gap:10px;min-height:40px;padding:0 10px;border-radius:8px;font-weight:700;color:var(--c-ink-2)}
+.chan nav a:hover{background:var(--c-hover);color:var(--c-ink)}
+.chan nav a.on{background:var(--c-fill);color:var(--c-ink)}
+.chan nav a.unread{color:var(--c-ink);font-weight:900}.chan nav a .badge{margin-left:auto}
+.chan .me{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--c-surface-2)}
+.chan .me b{display:block;font-size:14px}.chan .me small{color:var(--c-ink-2);font-size:12px}
+.mid{display:flex;flex-direction:column;min-width:0;background:var(--c-bg)}
+.mhead{display:flex;align-items:center;gap:10px;min-height:56px;padding:0 18px;border-bottom:1px solid var(--c-border)}
+.mhead b{font-size:17px}.mhead .muted{font-size:14px;flex:1;min-width:0}
+.stream{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:4px}
+.pinned{display:flex;gap:12px;padding:12px 14px;border-radius:12px;background:var(--cc-tint);margin-bottom:10px}
+.pinned .ico{color:var(--cc-text)}.pinned b{display:block;font-size:13px;color:var(--cc-text)}
+.day{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:12px;font-weight:900;color:var(--c-ink-2)}.day::before,.day::after{content:"";flex:1;border-top:1px solid var(--c-border)}
+.msg{display:grid;grid-template-columns:40px minmax(0,1fr);gap:12px;padding:6px 0;animation:rise var(--d-base) var(--e-out) both}
+.msg .h{display:flex;gap:8px;align-items:baseline}.msg .h b{font-size:15px}.msg .h small{color:var(--c-ink-2);font-size:12px}
+.msg .h .role{color:var(--cc-text);font-size:12px;font-weight:900}
+.sys{display:flex;gap:12px;align-items:center;padding:12px 14px;margin:6px 0 6px 52px;border-radius:14px;background:var(--c-surface);box-shadow:var(--shadow-card)}
+.sys .ic{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--c-fill);flex:none}
+.sys .t{flex:1;min-width:0}.sys .t b{display:block}.sys .t span{font-size:14px;color:var(--c-ink-2)}
+.sys.live .ic{background:color-mix(in srgb,#e08a1e 22%,var(--c-surface));color:#e08a1e}
+.sys.ev .ic{background:var(--cc-tint);color:var(--cc-text)}
+.sys.win .ic{background:var(--c-success-bg);color:var(--c-success)}
+.compose{display:flex;gap:8px;padding:12px 18px 16px}
+.compose .box{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:48px;padding:0 8px 0 16px;border-radius:14px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-border)}
+.compose input{flex:1;min-width:0;border:0;background:none;color:inherit;font:inherit}.compose input:focus{outline:0}.compose .box:focus-within{box-shadow:inset 0 0 0 2px var(--c-brand-text)}
+.compose .ib{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--c-ink-2)}.compose .ib:hover{background:var(--c-fill);color:var(--c-ink)}
+.gate{margin:auto;max-width:440px;text-align:center;padding:28px;border-radius:20px;background:var(--c-surface);box-shadow:var(--shadow-card)}
+.gate .crest{margin:-60px auto 12px;box-shadow:0 0 0 6px var(--c-surface)}
+.gate h2{font-size:24px;font-weight:1000}.gate p{color:var(--c-ink-2);margin:8px 0 16px}
+.gate .kv{display:flex;justify-content:center;gap:22px;margin-bottom:18px}.gate .kv b{display:block;font-size:22px;font-weight:1000}.gate .kv small{color:var(--c-ink-2);font-size:13px}
+.blur{filter:blur(5px);opacity:.45;pointer-events:none;user-select:none}
+.mem{background:var(--c-surface);border-left:1px solid var(--c-border);overflow:auto;padding:8px 10px}
+.mem .grp{font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2);padding:14px 6px 6px}
+.mem .u{display:flex;align-items:center;gap:10px;min-height:48px;padding:4px 6px;border-radius:8px}
+.mem .u:hover{background:var(--c-hover)}
+.mem .u .avw{position:relative}.mem .u .avw .dot{position:absolute;right:-1px;bottom:-1px;box-shadow:0 0 0 3px var(--c-surface)}
+.mem .u span.x{min-width:0;flex:1}.mem .u b{display:block;font-size:15px}.mem .u small{display:block;font-size:12px;color:var(--c-ink-2)}
+.mem .u .btn{min-height:36px;padding:0 12px;font-size:13px}
+.mem .off{opacity:.62}
+.req{display:flex;gap:8px;align-items:center;padding:6px}.req b{flex:1;font-size:14px}.req button{width:36px;height:36px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--c-border)}
+/* discover centre */
+.dir{flex:1;overflow:auto;padding:22px}
+.dir h2{font-size:28px;font-weight:1000}.dir .lead{color:var(--c-ink-2);margin:4px 0 16px}
+.feat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.fc{position:relative;height:210px;border-radius:16px;overflow:hidden;background:var(--cc);color:#fff}
+.fc img,.fc .genb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.fc::after{content:"";position:absolute;inset:0;background:linear-gradient(transparent 20%,rgba(0,0,0,.85))}
+.fc .in{position:absolute;z-index:1;left:14px;right:14px;bottom:12px}.fc h3{font-size:19px;font-weight:1000;display:flex;gap:10px;align-items:center}
+.fc .live{display:flex;gap:12px;font-size:13px;font-weight:800;margin-top:6px}
+.list{margin-top:18px}
+.li{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:14px;align-items:center;padding:12px;border-radius:12px}
+.li:hover{background:var(--c-surface)}.li b{display:block}.li .d{font-size:14px;color:var(--c-ink-2)}
+.li .n{text-align:right;font-size:14px;color:var(--c-ink-2)}.li .n b{color:var(--c-ink)}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 14px;border-radius:12px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-border);margin-bottom:16px}.search input{border:0;background:none;color:inherit;font:inherit;flex:1;min-width:0}.search input:focus{outline:0}.search:focus-within{box-shadow:inset 0 0 0 2px var(--c-brand-text)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}.chip{min-height:40px;padding:0 14px;border-radius:999px;font-weight:800;box-shadow:inset 0 0 0 1px var(--c-border)}.chip[aria-pressed=true]{background:var(--c-ink);color:var(--c-on-ink);box-shadow:none}
+/* phone */
+.ptop{display:none}
+@media(max-width:1180px){.shell{grid-template-columns:76px 230px minmax(0,1fr)}.mem{display:none}}
+@media(max-width:860px){
+  .shell>*{min-width:0;max-width:100%}.shell{display:flex;flex-direction:column;height:calc(100vh - 82px - 64px);min-height:0}
+  .rail{flex-direction:row;padding:8px 12px;overflow-x:auto;border:0;border-bottom:1px solid var(--c-border);flex:none}.rail a.on::before{left:8px;right:8px;top:auto;bottom:-8px;width:auto;height:3px}.rail hr{width:2px;height:32px;border:0;border-left:2px solid var(--c-border)}
+  .chan{border:0;flex:none}.chan .bn{height:84px}.chan nav{flex-direction:row;overflow-x:auto;padding:8px}.chan nav a{flex:none;background:var(--c-fill)}.chan .grp,.chan .me{display:none}
+  .mhead{display:none}.blur{display:none}.gate{position:static!important;transform:none!important;margin:44px auto 16px!important}.stream{padding:12px}.sys{margin-left:0}.compose{padding:8px 12px 10px}.compose .ib{width:36px}
+  .feat{grid-template-columns:1fr}.fc{height:150px}.li{grid-template-columns:auto minmax(0,1fr) auto}.li .n:last-child{display:none}.dir{padding:14px}
+}
+</style></head><body>
+<main id="app"></main>
+<script src="../icons.js"></script><script src="../data.js"></script>
+<script>
+const { C, CLUBS, MINE, AS, PAGE, ROLE, esc, ic, need, av, crest, bannerImg, when, primary } = CL;
+CL.top();
+const app = document.getElementById('app');
+const rail = (onClub) => `<nav class="rail" aria-label="Nhóm của tôi">${MINE.map((c, i) => `<a class="${onClub && i === 0 ? 'on' : ''}" title="${esc(c.name)}" style="--cc:var(--club-${c.color})">${crest(c, 48)}${i === 0 && !onClub ? '<span class="badge un">12</span>' : ''}</a>`).join('')}${MINE.length ? '<hr>' : ''}${onClub && AS === 'visitor' ? `<a class="on" title="${esc(C.name)}">${crest(C, 48)}</a><hr>` : ''}<a class="add${onClub ? '' : ' on'}" title="Khám phá hội nhóm" aria-label="Khám phá">${ic('magnifying-glass', 'ico--lg')}</a><a class="add" title="Tạo nhóm" aria-label="Tạo nhóm">${ic('plus-circle', 'ico--lg')}</a></nav>`;
+const memRow = (m, extra = '') => `<div class="u${m.online ? '' : ' off'}"><span class="avw">${av(m.displayName, 36)}${m.online ? `<i class="dot${m.online === 'playing' ? ' dot--busy' : ''}"></i>` : ''}</span><span class="x"><b class="nm">${esc(m.displayName)}</b><small class="nm">${m.online === 'playing' ? 'Đang chơi ở phòng ' + m.room : 'Rating ' + m.rating}</small></span>${extra}</div>`;
+if (PAGE === 'club') {
+  const playing = C.leaderboard.filter((m) => m.online === 'playing'), on = C.leaderboard.filter((m) => m.online === 'on'), off = C.leaderboard.filter((m) => !m.online).slice(0, 8);
+  const e = C.events[0], d = when(e.startsAt);
+  const stream = `<div class="pinned">${ic('megaphone')}<div><b>Ghim bởi ban quản trị</b>${esc(C.announcement)}</div></div>
+    <div class="day">Hôm nay</div>
+    <div class="sys win">${'<span class="ic">' + ic('trophy') + '</span>'}<div class="t"><b class="nm">Phạm Đức Long thắng Quang của Hà Nội Blitz</b><span>+14 rating</span></div><button class="btn btn--sm">Xem lại</button>${need('activity feed')}</div>
+    ${C.chat.slice(0, 2).map((m) => msg(m)).join('')}
+    <div class="sys live"><span class="ic">${ic('broadcast')}</span><div class="t"><b class="nm">Trần Quốc Bảo đang chơi ở phòng K52Q</b><span>4 người đang xem</span></div><button class="btn btn--sm">${ic('eye', 'ico--sm')}Xem</button>${need('live games of members')}</div>
+    ${C.chat.slice(2).map((m) => msg(m)).join('')}
+    <div class="sys ev"><span class="ic">${ic('calendar')}</span><div class="t"><b class="nm">${esc(e.title)}</b><span>${d.dow} ${d.date}, ${d.time}</span></div><button class="btn btn--sm">Tôi sẽ đến</button>${need('RSVP')}</div>`;
+  function msg(m) { const L = C.leaderboard.find((x) => x.displayName === m.who) || {}; return `<div class="msg">${av(m.who, 40)}<div style="min-width:0"><div class="h"><b class="nm">${esc(m.who)}</b>${L.role && L.role !== 'member' ? `<span class="role">${ROLE[L.role]}</span>` : ''}<small>${m.at}</small></div><div>${esc(m.text.replace(' 😄', ''))}</div></div></div>`; }
+  const chan = [['chat-circle', 'trò-chuyện', 12], ['broadcast', 'đang-đấu', 0, 4], ['calendar', 'sự-kiện'], ['flag-checkered', 'giải-đấu'], ['ranking', 'xếp-hạng'], ['users-three', 'thành-viên']];
+  app.innerHTML = `<div class="shell">${rail(true)}
+    <aside class="chan"><div class="bn">${bannerImg(C)}<h1 class="nm">${esc(C.name)}<small>${C.members} thành viên</small></h1></div>
+      <nav aria-label="Kênh"><div class="grp">Kênh</div>${chan.map((c, i) => `<a class="${i === 0 ? 'on' : ''}${c[2] && AS !== 'visitor' ? ' unread' : ''}">${ic(c[0])}${c[1]}${c[2] && AS !== 'visitor' ? `<span class="badge">${c[2]}</span>` : c[3] ? `<span class="pill" style="margin-left:auto;min-height:22px">${c[3]} ván</span>` : ''}</a>`).join('')}
+      ${AS === 'staff' ? `<div class="grp">Quản lý</div><a>${ic('user-plus')}đơn-xin-vào<span class="badge">3</span></a><a>${ic('gear-six')}cài-đặt-nhóm</a><a>${ic('list-dashes')}nhật-ký</a>` : ''}</nav>
+      ${AS !== 'visitor' ? `<div class="me">${av(C.me.displayName, 36)}<span style="min-width:0;flex:1"><b class="nm">${esc(C.me.displayName)}</b><small>Hạng ${C.me.rank} trong nhóm</small></span><button class="btn btn--sm" aria-label="Cài đặt thông báo nhóm" style="width:40px;padding:0">${ic('bell')}</button></div>` : ''}</aside>
+    <section class="mid"><div class="mhead">${ic('chat-circle')}<b>trò-chuyện</b><span class="muted nm">Nói chuyện chung, hẹn ván, khoe ván hay</span>${AS === 'visitor' ? '' : primary('btn btn--primary btn--sm')}</div>
+      ${AS === 'visitor' ? `<div class="stream" style="position:relative"><div class="blur" aria-hidden="true">${stream}</div><div class="gate" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(440px,90%)">${crest(C, 96, 'round')}<h2>${esc(C.name)}</h2><p>${esc(C.description)}</p><div class="kv"><span><b>${C.members}</b><small>thành viên</small></span><span><b>${C.online.length}</b><small>đang online</small></span><span><b>${C.avgRating}</b><small>rating TB</small></span></div>${primary()}</div></div>`
+      : `<div class="stream" role="log" aria-live="polite">${stream}</div><form class="compose" onsubmit="return false"><div class="box"><input placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn"><button class="ib" type="button" title="Mời giao hữu" aria-label="Mời cả nhóm giao hữu">${ic('sword')}</button><button class="ib" type="button" title="Chia sẻ ván" aria-label="Chia sẻ một ván">${ic('checkerboard')}</button><button class="ib" aria-label="Gửi">${ic('paper-plane-tilt')}</button></div></form>`}
+    </section>
+    <aside class="mem" aria-label="Thành viên">
+      ${AS === 'staff' ? `<div class="grp">Chờ duyệt, 3</div>${C.pending.map((p) => `<div class="req">${av(p.displayName, 32)}<b class="nm">${esc(p.displayName)}</b><button aria-label="Duyệt">${ic('check')}</button><button aria-label="Từ chối">${ic('x')}</button></div>`).join('')}` : ''}
+      <div class="grp">Đang chơi, ${playing.length}${need('presence')}</div>${playing.map((m) => memRow(m, `<button class="btn">${ic('eye', 'ico--sm')}Xem</button>`)).join('')}
+      <div class="grp">Online, ${on.length}</div>${on.map((m) => memRow(m)).join('')}
+      <div class="grp">Ngoại tuyến</div>${off.map((m) => memRow(m)).join('')}
+    </aside></div>`;
+} else {
+  const feat = CLUBS.slice(1, 4);
+  app.innerHTML = `<div class="shell" style="grid-template-columns:76px minmax(0,1fr)">${rail(false)}
+    <section class="mid"><div class="dir">
+      <h2>Tìm một hội quán</h2><p class="lead">Nhóm đang sôi nổi nhất tuần này, rồi tất cả các nhóm.</p>
+      <label class="search">${ic('magnifying-glass')}<input placeholder="Tìm theo tên nhóm" aria-label="Tìm nhóm"></label>
+      <div class="chips" role="group" aria-label="Lọc"><button class="chip" aria-pressed="true">Tất cả</button><button class="chip" aria-pressed="false">Đang online nhiều</button><button class="chip" aria-pressed="false">Công khai</button><button class="chip" aria-pressed="false">Gần rating của tôi</button></div>
+      <div class="feat">${feat.map((c) => `<a class="fc rv" style="--cc:var(--club-${c.color})">${bannerImg(c)}<div class="in"><h3>${crest(c, 40)}<span class="nm">${esc(c.name)}</span></h3><div class="live"><span><i class="dot"></i> ${c.active} online${need('online count per club')}</span><span>${c.members} thành viên</span></div></div></a>`).join('')}</div>
+      <div class="list">${CLUBS.map((c) => `<a class="li" style="--cc:var(--club-${c.color})">${crest(c, 48)}<span style="min-width:0"><b class="nm">${esc(c.name)}</b><span class="d nm" style="display:block">${esc(c.desc)}</span></span><span class="n"><b>${c.members}</b> người<br><i class="dot"></i> ${c.active}</span><span class="n">${c.mine ? '<span class="pill pill--cc">Đã vào</span>' : `<button class="btn btn--sm">${c.joinPolicy === 'open' ? 'Ghé xem' : 'Xin vào'}</button>`}</span></a>`).join('')}</div>
+    </div></section></div>`;
+}
+</script></body></html>
