@@ -1,5 +1,5 @@
 # B446 — Club pages redesign: CL4 "Hội quán" (server-style shell)
-**Status:** OPEN — built on `ui/club-hoi-quan` 2026-11-24 (uncommitted), awaiting user review of `features/club-redesign/shots/impl/`
+**Status:** ✅ DONE 2026-11-24 — user approved ("approve 446"); `ui/club-hoi-quan` merged into `dev`
 **Area:** `client/club.html`, `client/clubs.html`, `client/js/club.js`, `client/js/clubs.js`, new `client/css/club.css`, `client/js/i18n.js`, `client/tests/`
 **From:** user pick 2026-11-24, `features/club-redesign/` (mockup `mockups/cl4-hoi-quan.html`, shots `shots/cl4-hoi-quan-*`)   **Depends:** —
 

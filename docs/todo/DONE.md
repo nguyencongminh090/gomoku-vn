@@ -1,3 +1,4 @@
+- ✅ **#446.** Club pages redesign: CL4 "Hội quán" shell (rail, channels, chat centre, members) `[Model: Opus 5]` — [detail](docs/todo/B446-club-hoi-quan-redesign.md)
 - ✅ **#447.** Club chat slash commands + notifications, admin toggles in club settings `[Model: Opus 5]` — [detail](docs/todo/B447-club-chat-slash-notify.md)
 - ✅ **#445.** Mojibake "nhÃ³m" left in client/*.html fallback text `[Model: Sonnet]` — [detail](docs/todo/B445-html-fallback-mojibake.md)
 - ✅ **#438.** Lobby seat alert: notify when a table matching my rule + filters opens `[Model: Sonnet]` — [detail](docs/todo/F438-lobby-seat-alert.md)
