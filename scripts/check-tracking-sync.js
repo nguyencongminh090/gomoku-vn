@@ -14,6 +14,7 @@
 //              manual/periodic audits (see .claude/rules/tracking-files.md).
 //   --hook     emits the Stop-hook JSON protocol on stdout instead of a plain
 //              report, and reads stop_hook_active from stdin to avoid looping.
+//   --codex    use Codex's Stop decision format with --hook.
 
 const fs = require('fs');
 const path = require('path');
@@ -127,18 +128,18 @@ function main() {
 
   if (isHook) {
     const list = mismatches.map((m) => `${m.code} (${m.reason})`).join(', ');
-    const response = {
+    const reason = `Newly ✅ item(s) lack a completion marker in docs/todo/<CODE>-*.md ` +
+      `(.claude/rules/tracking-files.md): ${list}. Add "**Status:** ✅ <DONE|FIXED|CLOSED|VERIFIED>" ` +
+      `+ a short summary/test note to each detail file now — or drop the ✅ if it was premature.`;
+    const systemMessage = `Tracking-sync check blocked stop: ${mismatches.length} newly ✅ item(s) ` +
+      `missing a detail-file status marker (${mismatches.map((m) => m.code).join(', ')}).`;
+    const response = process.argv.includes('--codex') ? { decision: 'block', reason, systemMessage } : {
       hookSpecificOutput: {
         hookEventName: 'Stop',
         permissionDecision: 'deny',
-        permissionDecisionReason:
-          `Newly ✅ item(s) lack a completion marker in docs/todo/<CODE>-*.md ` +
-          `(.claude/rules/tracking-files.md): ${list}. Add "**Status:** ✅ <DONE|FIXED|CLOSED|VERIFIED>" ` +
-          `+ a short summary/test note to each detail file now — or drop the ✅ if it was premature.`,
+        permissionDecisionReason: reason,
       },
-      systemMessage:
-        `Tracking-sync check blocked stop: ${mismatches.length} newly ✅ item(s) ` +
-        `missing a detail-file status marker (${mismatches.map((m) => m.code).join(', ')}).`,
+      systemMessage,
     };
     process.stdout.write(JSON.stringify(response));
     process.exit(0);

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stop hook: remind to run /ui-audit when UI files are newer than the newest of
+# Stop hook: remind to run ui-audit when UI files are newer than the newest of
 # {newest ui-audit-*.md in the project root, a per-session stamp file}.
 # The stamp is created on the first Stop of a session (silent run), so old untouched
 # files never nag. Warn-only; always exits 0.
@@ -29,5 +29,5 @@ args=()
 hit=$(find -H "$dir" \( -name node_modules -o -name .git -o -name dist -o -name build \) -prune -o \
   -type f \( -name '*.css' -o -name '*.scss' -o -name '*.tsx' -o -name '*.jsx' -o -name '*.vue' \
   -o -name '*.svelte' -o -name '*.html' \) "${args[@]}" -print -quit 2>/dev/null)
-[ -n "$hit" ] && emit_message "UI files changed since the last audit. Run /ui-audit."
+[ -n "$hit" ] && emit_message "UI files changed since the last audit. Run the ui-audit skill."
 exit 0
