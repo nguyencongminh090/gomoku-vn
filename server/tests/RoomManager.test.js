@@ -226,7 +226,7 @@ describe('RoomManager — per-IP room quota', () => {
     roomManager.sitDown(room.host, 2);
     const p = entry().players;
     expect(p[0]).toBeNull();
-    expect(p[1]).toEqual({ displayName: expect.any(String), avatarUrl: null, rating: null, provisional: false });
+    expect(p[1]).toEqual({ displayName: expect.any(String), avatarUrl: null, rating: null, provisional: false, isGuest: expect.any(Boolean) });
   });
 
   test('listRooms carries ranked (B219): true by default, false for a friendly room', () => {
@@ -250,6 +250,9 @@ describe('RoomManager — per-IP room quota', () => {
       expect(seen).toEqual([[room.host, 'caro']]);
       room.users.get(room.host).isGuest = true; // guests never get a rating
       expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).players[0].rating).toBeNull();
+      expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).players[0].isGuest).toBe(true); // #440 card "Khách"
+      room.users.get(room.host).isGuest = false;
+      expect(roomManager.listRooms().find((r) => r.roomId === room.roomId).players[0].isGuest).toBe(false);
     } finally {
       delete roomManager.ratingLookup;
     }

@@ -73,4 +73,3 @@ in the detail file / fix-log).
 - **#434.** Lag after long play: socket stuck on long-polling after a reconnect (reload fixes) `[Model: Opus]` — [detail](docs/todo/B434-sticky-long-polling-after-reconnect.md)
 - **#435.** Silently dead socket: up to ~45 s frozen room, own chat lost, no banner `[Model: Opus]` — [detail](docs/todo/B435-silent-dead-socket-45s.md)
 - **#438.** Lobby seat alert: notify when a table matching my rule + filters opens (idea) `[Model: Sonnet]` — [detail](docs/todo/F438-lobby-seat-alert.md)
-- **#440.** Rooms H UI: rule tabs, online rail, compact table cards (after #439) `[Model: Opus]` — [detail](docs/todo/F440-rooms-h-ui.md)
