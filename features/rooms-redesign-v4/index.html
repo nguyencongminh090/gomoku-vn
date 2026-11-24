@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phòng v4, thư viện mockup</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .g { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+    .g h1 { font-size: 26px; font-weight: 800; }
+    .g > p { max-width: 70ch; color: var(--c-ink-2); }
+    .g-card { margin-top: 28px; padding: 20px; border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
+    .g-card h2 { display: flex; align-items: baseline; gap: 12px; font-size: 20px; font-weight: 800; }
+    .g-card h2 a { margin-left: auto; font-size: var(--text-sm); color: var(--c-brand-text); }
+    .g-card p { margin: 6px 0 14px; color: var(--c-ink-2); font-size: var(--text-sm); max-width: 90ch; }
+    .g-shots { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 12px; align-items: start; }
+    .g-shots img { width: 100%; height: auto; border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+    @media (max-width: 860px) { .g-shots { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="g">
+    <h1>Phòng v4: ba hướng</h1>
+    <p>Cùng dữ liệu, cùng thứ tự: số online và đang chơi, danh sách người online, bàn theo từng luật, tab Luật chơi. Hạng ở mọi chỗ là hạng theo luật đang chọn. Không có bàn cờ thu nhỏ. Chi tiết và câu hỏi mở nằm trong planning.md.</p>
+    <section class="g-card"><h2>G Một cột <a href="g-mot-cot.html">Mở mockup</a></h2>
+      <p>Một cột. Thanh dính chứa số liệu và thẻ luật, nên thẻ luật nằm trên danh sách online (lệch thứ tự có chủ ý). Danh sách online thu gọn được. Bàn chia nhóm theo trạng thái.</p>
+      <div class="g-shots"><img src="shots/g-dark-1280.png" alt="G tối"><img src="shots/g-light-1280-empty.png" alt="G sảnh trống"><img src="shots/g-dark-390-renju.png" alt="G điện thoại"></div></section>
+    <section class="g-card"><h2>H Hai cột <a href="h-hai-cot.html">Mở mockup</a></h2>
+      <p>Danh sách online là cột trái dính, thu gọn thành cột ảnh đại diện. Bàn là thẻ gọn: mã, trạng thái và nút Vào trên cùng, hai dòng người chơi, thời gian ở chân thẻ. Điện thoại mở danh sách online dạng bảng trượt.</p>
+      <div class="g-shots"><img src="shots/h-light-1280.png" alt="H sáng"><img src="shots/h-dark-1280-renju.png" alt="H luật Renju"><img src="shots/h-light-390-sheet.png" alt="H điện thoại"></div></section>
+    <section class="g-card"><h2>I Bảng tra <a href="i-bang-tra.html">Mở mockup</a></h2>
+      <p>Giữ đúng thứ tự 1 → 4 ở mọi cỡ màn hình. Dày thông tin: top người online chia ba cột, bảng bàn sắp xếp theo cột, lọc và phân trang. Điện thoại đổi hàng thành thẻ.</p>
+      <div class="g-shots"><img src="shots/i-light-1280-many.png" alt="I sảnh đông"><img src="shots/i-dark-1280-rules.png" alt="I tab Luật chơi"><img src="shots/i-light-390.png" alt="I điện thoại"></div></section>
+  </main>
+</body>
+</html>

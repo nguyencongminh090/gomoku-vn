@@ -1,0 +1,60 @@
+/* G Một cột: the four blocks stacked in the asked order, one centred column, phone-first. */
+.g { max-width: 920px; margin: 0 auto; padding: 0 24px 96px; }
+
+/* sticky bar: counts + rule tabs, sits under the 56px platform nav */
+.g-bar { position: sticky; top: 56px; z-index: 5; margin: 0 -24px; padding: 12px 24px 0; background: var(--c-bg); border-bottom: 1px solid var(--c-border); }
+.g-bar__stats { display: flex; align-items: center; gap: 24px; }
+.g-bar__new { margin-left: auto; }
+.g-tabs { margin-top: 6px; }
+
+/* online panel */
+.g-online { margin-top: 20px; border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
+.g-online__head { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 16px; border: 0; background: none; text-align: left; cursor: pointer; }
+.g-online__t { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.g-online__t b { font-size: 16px; font-weight: 800; }
+.g-online__sub { font-size: var(--text-xs); font-weight: 700; color: var(--c-brand-text); }
+.g-online__faces { display: inline-flex; align-items: center; }
+.g-online__faces .pav { margin-left: -4px; box-shadow: 0 0 0 2px var(--c-surface); }
+.g-online__count { margin-left: 8px; font-size: var(--text-sm); font-weight: 800; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.g-online__caret { color: var(--c-ink-3); transition: transform .15s; }
+.g-online__head[aria-expanded="false"] .g-online__caret { transform: rotate(-90deg); }
+.g-online__body { padding: 0 8px 12px; }
+.g-online__search { margin: 0 8px 8px; }
+.g-online .vroster { max-height: 440px; overflow-y: auto; }
+
+/* tables */
+.g-tables { margin-top: 28px; }
+.g-tables__head { display: flex; flex-direction: column; gap: 10px; }
+.g-tables__head h2 { font-size: 20px; font-weight: 800; }
+.g-sec { display: flex; align-items: center; gap: 8px; margin: 20px 0 8px; font-size: var(--text-sm); font-weight: 800; color: var(--c-ink-2); }
+.g-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.g-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto auto; align-items: center; gap: 16px; padding: 12px 16px; border: 1px solid var(--c-border); border-radius: var(--radius-lg); background: var(--c-surface); }
+.g-row--waiting { border-left: 3px solid var(--c-state-waiting); }
+.g-row__id { display: flex; flex-direction: column; gap: 2px; }
+.g-row__seats { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; min-width: 0; }
+.g-row__vs { font-size: var(--text-xs); font-weight: 800; color: var(--c-ink-3); }
+.g-row__meta { justify-content: flex-end; }
+.g-rg { margin-top: 24px; }
+.vmore { margin-top: 8px; }
+
+@media (max-width: 640px) {
+  .g { padding: 0 12px 24px; }
+  .g-bar { margin: 0 -12px; padding: 8px 12px 0; }
+  .g-bar__stats { gap: 16px; }
+  .vstat b { font-size: 20px; }
+  .vtab--guide { margin-left: 0; }
+  .vtab { padding: 0 10px; font-size: 14px; }
+  .g-online__head { min-height: 52px; }
+  .g-online__faces .pav:nth-child(n+4) { display: none; }
+  .g-online { margin-top: 12px; }
+  .g-tables .vchips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; }
+  .g-online .vroster { max-height: none; }
+  /* row → ticket: id + state on top, seats stacked, time + Vào at the bottom */
+  .g-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "id go" "seats seats" "meta meta"; gap: 10px; padding: 12px; }
+  .g-row__id { grid-area: id; flex-direction: row; align-items: center; gap: 10px; }
+  .g-row__go { grid-area: go; }
+  .g-row__seats { grid-area: seats; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .g-row__vs { display: none; }
+  .g-row__meta { grid-area: meta; justify-content: flex-start; }
+  .vseat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+}

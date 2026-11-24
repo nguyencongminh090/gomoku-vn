@@ -1,0 +1,41 @@
+@media (min-width: 861px) {
+  body.z .z8 { --pad: clamp(36px, 5vw, 96px); background: linear-gradient(180deg, #f0c47a, #b9772f); }
+  body.z-m8 .pnav { --z-ink: #f7efe1; --z-sub: #dcd0bd; }
+  :root[data-mode="light"] body.z-m8 .pnav__right { --z-ink: #1f1811; --z-sub: #54483a; }
+
+  body.z-m8 .hq-go { position: absolute; inset: 0; padding-right: 40%; clip-path: var(--cl); background: url(/__min/assets/wood/charred.webp) center / cover; color: #f7efe1; transition: translate var(--z-slow) var(--z-ease); }
+  body.z-m8 .hq-go:hover, body.z-m8 .hq-go:focus-within { translate: -12px 0; }
+  body.z-m8 #qm-play { position: absolute; inset: 0; justify-content: flex-start; gap: clamp(18px, 2vw, 34px); padding: 0 0 4vh var(--pad); background: none; color: inherit; }
+  body.z-m8 #qm-play[hidden] { display: none; }
+  body.z-m8 .z-play__t { order: 1; font: 500 clamp(76px, 9.2vw, 164px)/1.14 var(--z-serif); letter-spacing: -.015em; }
+  body.z-m8 .hq-play__disc { order: 2; width: clamp(54px, 5vw, 84px); height: clamp(54px, 5vw, 84px); border-radius: 50%; background: #f0c47a; color: #1d140b; font-size: clamp(17px, 1.5vw, 25px); transition: scale var(--z-base) var(--z-ease); }
+  body.z-m8 .hq-go:hover .hq-play__disc { scale: 1.1; }
+
+  body.z-m8 #hub-rooms.z-rooms { position: absolute; inset: 0; display: grid; grid-template-columns: auto auto; justify-content: end; align-content: end; gap: 6px 18px; padding: 0 var(--pad) 17vh 0; clip-path: var(--cr); background: url(/__min/assets/m7/hinoki.webp) center / cover; color: #1f1811; transition: translate var(--z-slow) var(--z-ease); }
+  body.z-m8 #hub-rooms:hover, body.z-m8 #hub-rooms:focus-visible { translate: 12px 0; }
+  body.z-m8 .z-rooms__t { font: 500 clamp(44px, 4.7vw, 84px)/1.14 var(--z-serif); color: inherit; }
+  body.z-m8 .z-rooms__live { grid-row: 2; justify-self: end; color: #4c4134; font-size: 16px; }
+  body.z-m8 .z-rooms .icon { width: clamp(26px, 2.4vw, 40px); height: clamp(26px, 2.4vw, 40px); transition: translate var(--z-base) var(--z-ease); }
+  body.z-m8 #hub-rooms:hover .icon { translate: 6px 0; }
+  :root:not([data-mode="light"]) body.z-m8 #hub-rooms.z-rooms { background: linear-gradient(rgba(14, 9, 5, .62), rgba(14, 9, 5, .62)), url(/__min/assets/photo/walnut.webp) center / cover; color: #f7efe1; }
+  :root:not([data-mode="light"]) body.z-m8 .z-rooms__live { color: #dcd0bd; }
+
+  body.z .z8-seam { z-index: 2; width: 100%; height: 100%; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  body.z .z8-shade { stroke: rgba(20, 10, 3, .45); stroke-width: 9; filter: blur(5px); }
+  body.z .z8-glow { stroke: #f6b850; stroke-width: 18; opacity: .72; filter: blur(10px); }
+  body.z .z8-core { stroke: #f3c871; stroke-width: 4.5; stroke-dasharray: 1; animation: z8-draw 1.5s var(--z-ease) both; }
+  body.z .z8-run { stroke: #fff4d8; stroke-width: 4; stroke-dasharray: .12 1; opacity: 0; }
+  body.z .z8:has(.hq-go:hover) .z8-run { animation: z8-down 1.2s var(--z-ease); }
+  body.z .z8:has(#hub-rooms:hover) .z8-run { animation: z8-up 1.2s var(--z-ease); }
+  @keyframes z8-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  @keyframes z8-down { 0% { stroke-dashoffset: .12; opacity: 1; } 85% { opacity: 1; } 100% { stroke-dashoffset: -1; opacity: 0; } }
+  @keyframes z8-up { 0% { stroke-dashoffset: -1; opacity: 1; } 85% { opacity: 1; } 100% { stroke-dashoffset: .12; opacity: 0; } }
+
+  body.z .z8-ui { --z-ink: #f7efe1; --z-sub: #d8ccb9; --z-line: rgba(247, 239, 225, .24); --z-card: rgba(247, 239, 225, .09); --z-menu: #1e1812; --z-accent: #eec27a; position: absolute; z-index: 3; left: var(--pad); display: flex; flex-direction: column; gap: 10px; color: var(--z-ink); }
+  body.z .z8-top { top: clamp(92px, 13vh, 130px); width: min(38vw, 460px); }
+  body.z .z8-foot { bottom: clamp(26px, 5vh, 52px); width: 46vw; }
+}
+@media (min-width: 861px) { body.z-m8 .hq-go::before, body.z-m8 .hq-go::after { display: none; } }
+@media (min-width: 861px) { :root:not([data-mode="light"]) body.z .z8-glow { opacity: .42; } :root:not([data-mode="light"]) body.z .z8-core { stroke-width: 3; } }
+@media (min-width: 861px) { body.z-m8 #qm-play, body.z-m8 #qm-play:hover { box-shadow: none; transform: none; } }
+@media (min-width: 861px) { body.z-m8 #qm-play:focus-visible, body.z-m8 #hub-rooms:focus-visible { outline: 0; } body.z-m8 #qm-play:focus-visible .z-play__t, body.z-m8 #hub-rooms:focus-visible .z-rooms__t { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: .14em; } }

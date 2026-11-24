@@ -1,0 +1,35 @@
+@media (min-width: 861px) {
+  body.z .z10 { --pad: clamp(36px, 8vw, 150px); --floor: 19vh; --face: clamp(214px, 36vh, 400px); --kaya: url(/__min/assets/wood/kaya.webp); }
+  body.z .z10-wall { background: url(/__min/assets/m5/plaster.webp) center / cover; }
+  :root:not([data-mode="light"]) .z10-wall { filter: brightness(.19) sepia(.75) saturate(1.25); }
+  body.z .z10-floor { top: auto; height: var(--floor); background: linear-gradient(180deg, #d8ccb8, #e8dfd0 34%, #efe8db); box-shadow: 0 -1px 0 rgba(70, 50, 28, .22); }
+  :root:not([data-mode="light"]) .z10-floor { background: linear-gradient(180deg, #120d09, #1b140e); box-shadow: 0 -1px 0 rgba(245, 225, 190, .14); }
+
+  body.z .z10-head { position: absolute; left: var(--pad); top: clamp(82px, 12vh, 124px); display: flex; flex-direction: column; gap: 4px; width: min(50vw, 640px); }
+  body.z-m10 .z-title { font-size: clamp(34px, 3.7vw, 60px); }
+  body.z .z10-board { position: absolute; left: var(--pad); right: var(--pad); bottom: calc(var(--floor) - 12px); }
+  body.z .z10-board::after { content: ""; position: absolute; z-index: -1; left: 1%; right: 1%; bottom: -14px; height: 34px; border-radius: 50%; background: rgba(50, 32, 14, .4); filter: blur(14px); }
+  body.z .z10-stones { position: absolute; right: 7%; bottom: 100%; display: flex; align-items: flex-end; gap: 3px; }
+  body.z .z10-stones i { width: clamp(38px, 3.5vw, 58px); aspect-ratio: 2.5; border-radius: 50%; }
+  body.z .z10-stones .is-b { background: radial-gradient(ellipse at 40% 22%, #625a53, #231f1b 52%, #100e0c); }
+  body.z .z10-stones .is-w { background: radial-gradient(ellipse at 40% 22%, #fff, #efe7d8 60%, #cdc0aa); }
+  body.z .z10-slab { position: relative; display: grid; grid-template-columns: 1.72fr 1fr; gap: 12px; height: var(--face); padding: 14px; border-radius: 5px 5px 7px 7px; background: linear-gradient(180deg, rgba(255, 244, 214, .3), transparent 12%, rgba(70, 40, 12, .2)), var(--kaya) center / cover; box-shadow: inset 0 2px 0 rgba(255, 248, 228, .65), inset 0 -3px 5px rgba(70, 40, 12, .35), 0 26px 44px rgba(60, 38, 16, .26); perspective: 1500px; perspective-origin: 50% -60%; }
+  body.z .z10-legs { display: flex; justify-content: space-between; padding: 0 7%; }
+  body.z .z10-legs i { width: clamp(70px, 8vw, 128px); height: clamp(52px, 9vh, 92px); margin-top: -2px; border-radius: 40% 40% 48% 48% / 16% 16% 84% 84%; background: linear-gradient(90deg, rgba(55, 30, 9, .38), transparent 40%, rgba(55, 30, 9, .5)), var(--kaya) center / cover; }
+
+  body.z-m10 .hq-go, body.z-m10 #hub-rooms.z-rooms { position: relative; transform-style: preserve-3d; border-radius: 4px; transition: transform var(--z-slow) var(--z-ease), box-shadow var(--z-slow) var(--z-ease); box-shadow: 0 0 0 1px rgba(60, 34, 10, .5), inset 0 1px 0 rgba(255, 244, 220, .16); }
+  body.z-m10 .hq-go { background: url(/__min/assets/wood/charred.webp) center / cover; color: #f8f0e2; }
+  body.z-m10 .hq-go::before, body.z-m10 #hub-rooms::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 70px; transform-origin: top; transform: rotateX(-90deg); background: linear-gradient(180deg, #e4cd9f, #8d6a3a); pointer-events: none; }
+  body.z-m10 .hq-go:hover, body.z-m10 .hq-go:focus-within, body.z-m10 #hub-rooms:hover, body.z-m10 #hub-rooms:focus-visible { transform: translateZ(70px); box-shadow: 0 0 0 1px rgba(60, 34, 10, .5), 0 26px 30px rgba(30, 16, 5, .5); }
+  body.z-m10 #qm-play { width: 100%; height: 100%; justify-content: space-between; padding: 0 clamp(26px, 3.4vw, 60px); background: none; color: inherit; }
+  body.z-m10 .z-play__t { order: 1; font: 500 clamp(58px, 6.6vw, 118px)/1.14 var(--z-serif); letter-spacing: -.01em; }
+  body.z-m10 .hq-play__disc { order: 2; width: clamp(54px, 5vw, 84px); height: clamp(54px, 5vw, 84px); border-radius: 50%; background: radial-gradient(circle at 36% 28%, #fff, #f1e9da 60%, #d3c7b2); color: #17120d; font-size: 20px; box-shadow: 0 5px 10px rgba(0, 0, 0, .45); }
+  body.z-m10 #hub-rooms.z-rooms { display: grid; grid-template-columns: 1fr auto; align-content: center; gap: 4px 12px; padding: 0 clamp(20px, 2.4vw, 42px); background: url(/__min/assets/m7/hinoki.webp) center / cover; color: #1f1811; }
+  body.z-m10 .z-rooms__t { font: 500 clamp(32px, 3.3vw, 58px)/1.14 var(--z-serif); color: inherit; }
+  body.z-m10 .z-rooms__live { grid-row: 2; color: #4c4134; }
+  body.z-m10 .z-rooms .icon { grid-column: 2; grid-row: 1 / 3; align-self: center; width: 26px; height: 26px; }
+  body.z .z10-foot { position: absolute; left: var(--pad); right: var(--pad); bottom: clamp(14px, 3vh, 30px); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+}
+@media (min-width: 861px) { body.z-m10 .hq-go::after { display: none; } }
+@media (min-width: 861px) { body.z .z10-notes { position: absolute; right: var(--pad); top: clamp(76px, 10vh, 104px); width: min(30vw, 400px); } }
+@media (min-width: 861px) { body.z-m10 #qm-play, body.z-m10 #qm-play:hover { box-shadow: none; transform: none; } }

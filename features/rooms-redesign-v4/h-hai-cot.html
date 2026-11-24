@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>H Hai cột, Phòng v4</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/platform.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="h-hai-cot.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+  <main class="h">
+    <!-- 1. Sticky stats bar. On phones it also holds the "N online" button that opens the roster sheet. -->
+    <div class="h-bar">
+      <span class="vstat"><i aria-hidden="true"></i><b id="h-online">0</b><span>đang online</span></span>
+      <span class="vstat vstat--play"><i aria-hidden="true"></i><b id="h-playing">0</b><span>đang chơi</span></span>
+      <button type="button" class="vbtn vbtn--ghost h-bar__people" id="h-people-btn" aria-haspopup="dialog">Xem người online</button>
+      <button type="button" class="vbtn vbtn--primary h-bar__new">Mở bàn</button>
+    </div>
+
+    <div class="h-cols" id="h-cols">
+      <!-- 2. Online panel as a sticky rail (desktop). Collapses to a column of faces. -->
+      <aside class="h-rail" id="h-rail" aria-labelledby="h-rail-h">
+        <header class="h-rail__head">
+          <div class="h-rail__t"><h2 id="h-rail-h">Người đang online</h2><span class="h-rail__sub" id="h-rail-sub"></span></div>
+          <button type="button" class="vicon-btn" id="h-rail-toggle" aria-expanded="true" aria-controls="h-rail" aria-label="Thu gọn danh sách">
+            <svg class="icon icon--md" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-arrow-left"></use></svg></button>
+        </header>
+        <label class="vsearch h-rail__search"><svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg>
+          <span class="sr-only">Tìm người chơi</span><input id="h-q" placeholder="Tìm người chơi" autocomplete="off"></label>
+        <ul class="vroster h-rail__list" id="h-roster"></ul>
+      </aside>
+
+      <!-- 3. Rule tabs + seat cards. 4. "Luật chơi" is the last tab. -->
+      <section class="h-main" aria-label="Bàn chơi">
+        <div class="vtabs h-tabs" id="h-tabs" role="tablist" aria-label="Luật chơi"></div>
+        <div id="h-tables">
+          <div class="h-tools">
+            <div class="vchips" id="h-filters" role="group" aria-label="Lọc bàn"></div>
+            <label class="h-sort"><span>Sắp xếp</span><select class="vselect" id="h-sort">
+              <option value="state">Bàn chờ trước</option><option value="rank">Hạng cao trước</option><option value="time">Thời gian ngắn trước</option></select></label>
+          </div>
+          <div class="h-grid" id="h-grid"></div>
+        </div>
+        <section class="rg h-rg" id="rooms-rules" role="tabpanel" aria-label="Luật chơi" tabindex="0" hidden></section>
+      </section>
+    </div>
+  </main>
+  <div id="h-sheet-host"></div>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/platform-shell.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function () {
+    const V = V4;
+    const { qs, RULE, byId, STATS, TIME_FILTERS, esc, icon, avatar, rankChip, eloChip, eloOf, timeText, standing, tablesFor, rosterFor, stateChip, enterBtn, pills, emptyHtml } = V;
+    V.renderShell('h');
+    let rule = V.rule;
+    let tab = qs.get('tab') === 'rules' ? 'rules' : rule;
+    let q = '';
+    let sort = 'state';
+    const f = { open: qs.get('f') === 'open', near: false, time: new Set() };
+
+    document.getElementById('h-online').textContent = STATS.online;
+    document.getElementById('h-playing').textContent = STATS.playing;
+    V.wireTabs(document.getElementById('h-tabs'), (id) => { if (id === 'rules') tab = 'rules'; else { rule = id; tab = id; } render(); });
+
+    const row = (u) => `<li class="vrow${u.me ? ' vrow--me' : ''}" title="${esc(u.name)}">${avatar(u)}<span class="vrow__n">${esc(u.name)}</span>${eloOf(u, rule)}${rankChip(u, rule)}</li>`;
+    function rosterHtml(limit = 50) {
+      const { ranked, none, guests, total } = rosterFor(rule, q);
+      const all = [...ranked.map((u) => [u, 'r']), ...none.map((u) => [u, 'n']), ...guests.map((u) => [u, 'g'])].slice(0, limit);
+      let html = ''; let last = 'r';
+      for (const [u, g] of all) {
+        if (g !== last) html += `<li class="vgroup">${g === 'n' ? `Chưa có hạng ${esc(RULE[rule].label)}` : 'Khách'}</li>`;
+        last = g; html += row(u);
+      }
+      if (total > all.length) html += `<li><button type="button" class="vmore">Tải thêm ${Math.min(50, total - all.length)} người</button></li>`;
+      return html;
+    }
+    function renderRail() {
+      document.getElementById('h-rail-sub').textContent = `${STATS.online} người, hạng theo ${RULE[rule].label}`;
+      document.getElementById('h-roster').innerHTML = rosterHtml();
+    }
+    document.getElementById('h-q').addEventListener('input', (e) => { q = e.target.value; renderRail(); });
+    document.getElementById('h-rail-toggle').addEventListener('click', (e) => {
+      const b = e.currentTarget; const open = b.getAttribute('aria-expanded') !== 'true';
+      b.setAttribute('aria-expanded', open); b.setAttribute('aria-label', open ? 'Thu gọn danh sách' : 'Mở rộng danh sách');
+      document.getElementById('h-cols').classList.toggle('is-rail-min', !open);
+    });
+
+    function openSheet() {
+      document.getElementById('h-sheet-host').innerHTML = V.sheet('h-sheet', `${STATS.online} người đang online`, `Hạng theo ${esc(RULE[rule].label)}, luật bạn đang chọn.`,
+        `<label class="vsearch"><span class="sr-only">Tìm người chơi</span>${icon('magnifying-glass')}<input placeholder="Tìm người chơi"></label><ul class="vroster">${rosterHtml()}</ul>`);
+      const s = document.getElementById('h-sheet'); s.hidden = false; V.wireSheet(s);
+    }
+    document.getElementById('h-people-btn').addEventListener('click', openSheet);
+
+    function renderFilters() {
+      const chip = (key, label, on, off) => `<button type="button" class="vchip" data-f="${key}" aria-pressed="${on}"${off ? ` disabled title="${off}"` : ''}>${label}</button>`;
+      const noNear = V.canNear(rule) ? '' : `Bạn chưa có hạng ${RULE[rule].label}`;
+      document.getElementById('h-filters').innerHTML = chip('open', 'Còn ghế', f.open) + chip('near', 'Gần trình tôi', f.near && !noNear, noNear) + TIME_FILTERS.map(([k, l]) => chip('t:' + k, l, f.time.has(k))).join('');
+    }
+    document.getElementById('h-filters').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-f]'); if (!b) return; const k = b.dataset.f;
+      if (k === 'open') f.open = !f.open; else if (k === 'near') f.near = !f.near; else { const t = k.slice(2); f.time.has(t) ? f.time.delete(t) : f.time.add(t); }
+      renderFilters(); renderGrid();
+    });
+    document.getElementById('h-sort').addEventListener('change', (e) => { sort = e.target.value; renderGrid(); });
+
+    /** Compact card (user 2026-11-24: "gọn và thanh lịch", no "vs", Elo only, no coloured side stripe, never wraps).
+        Header = ID, state, viewers, Vào. Two seat lines. Footer = one-line spec strip: time | mode (no board size, user 2026-11-24). */
+    function seatLine(id) {
+      if (!id) return `<li class="h-seat h-seat--empty"><span class="h-seat__hole" aria-hidden="true"></span><span class="h-seat__n">Ghế trống</span></li>`;
+      const u = byId[id];
+      return `<li class="h-seat">${avatar(u, 'pav--xs')}<span class="h-seat__n">${esc(u.name)}</span>${eloChip(u, rule)}</li>`;
+    }
+    function spec(t) {
+      const seg = [`<span class="h-spec__i h-spec__time">${icon('timer')}<span>${esc(timeText(t))}</span></span>`];
+      seg.push(`<span class="h-spec__i">${t.ranked ? 'Tính điểm' : 'Giao hữu'}</span>`);
+      return seg.join('<span class="sr-only">, </span>');
+    }
+    function card(t) {
+      const eye = t.viewers ? `<span class="h-card__eye" title="${t.viewers} người xem">${icon('eye')}<span>${t.viewers}</span><span class="sr-only"> người xem</span></span>` : '';
+      return `<article class="h-card h-card--${t.state}" aria-label="Bàn ${t.code}">
+        <header class="h-card__top"><span class="vcode">#${t.code}</span>${stateChip(t)}${eye}${enterBtn(t)}</header>
+        <ul class="h-card__seats">${seatLine(t.p1)}${seatLine(t.p2)}</ul>
+        <footer class="h-card__foot">${spec(t)}</footer></article>`;
+    }
+    function bestRank(t) { const rs = [t.p1, t.p2].filter(Boolean).map((id) => (standing(byId[id], rule) || { rank: 1e9 }).rank); return Math.min(...rs, 1e9); }
+    function renderGrid() {
+      let list = tablesFor(rule, f);
+      if (sort === 'rank') list = list.slice().sort((a, b) => bestRank(a) - bestRank(b));
+      if (sort === 'time') list = list.slice().sort((a, b) => a.tm[1] - b.tm[1]);
+      const el = document.getElementById('h-grid');
+      if (!list.length) { el.innerHTML = emptyHtml(rule); return; }
+      const PAGE = 12;
+      el.innerHTML = list.slice(0, PAGE).map(card).join('') + (list.length > PAGE ? `<button type="button" class="vmore h-grid__more">Xem thêm ${list.length - PAGE} bàn</button>` : '');
+    }
+
+    function render() {
+      document.getElementById('h-tabs').innerHTML = V.ruleTabsHtml(rule, tab);
+      renderRail();
+      const rules = tab === 'rules';
+      document.getElementById('h-tables').hidden = rules;
+      const rg = document.getElementById('rooms-rules'); rg.hidden = !rules;
+      if (rules) V.renderRules(rg, rule); else { renderFilters(); renderGrid(); }
+    }
+    render();
+    if (qs.get('sheet') === '1') openSheet();
+  })();
+  </script>
+</body>
+</html>

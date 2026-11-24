@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>I Bảng tra, Phòng v4</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/platform.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="i-bang-tra.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+  <main class="i">
+    <!-- 1. Slim sticky stats bar. -->
+    <div class="i-bar">
+      <span class="vstat"><i aria-hidden="true"></i><b id="i-online">0</b><span>đang online</span></span>
+      <span class="vstat vstat--play"><i aria-hidden="true"></i><b id="i-playing">0</b><span>đang chơi</span></span>
+      <button type="button" class="vbtn vbtn--primary i-bar__new">Mở bàn</button>
+    </div>
+
+    <!-- 2. Online panel: a vertical list that flows into columns (top of the rule's ranking first). -->
+    <section class="i-online" aria-labelledby="i-online-h">
+      <header class="i-online__head">
+        <h2 id="i-online-h">Người đang online</h2>
+        <span class="i-online__sub" id="i-online-sub"></span>
+        <button type="button" class="vbtn vbtn--ghost i-online__all" id="i-online-all" aria-haspopup="dialog"></button>
+      </header>
+      <ol class="vroster i-online__list" id="i-roster"></ol>
+    </section>
+
+    <!-- 3. Rule tabs + a sortable, paged table. 4. "Luật chơi" tab last. -->
+    <section class="i-tables" aria-label="Bàn chơi">
+      <div class="vtabs i-tabs" id="i-tabs" role="tablist" aria-label="Luật chơi"></div>
+      <div id="i-body">
+        <div class="i-tools" role="group" aria-label="Lọc bàn">
+          <button type="button" class="vchip" id="i-open" aria-pressed="false">Còn ghế</button>
+          <label class="i-field"><span>Thời gian</span><select class="vselect" id="i-time"><option value="">Tất cả</option></select></label>
+          <label class="i-field"><span>Hạng</span><select class="vselect" id="i-near">
+            <option value="">Mọi hạng</option><option value="10">Có người trong top 10</option><option value="50">Có người trong top 50</option><option value="200">Có người trong top 200</option><option value="near">Gần trình tôi</option></select></label>
+          <span class="i-count" id="i-count" aria-live="polite"></span>
+        </div>
+        <div id="i-wrap"></div>
+      </div>
+      <section class="rg i-rg" id="rooms-rules" role="tabpanel" aria-label="Luật chơi" tabindex="0" hidden></section>
+    </section>
+  </main>
+  <div id="i-sheet-host"></div>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/platform-shell.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function () {
+    const V = V4;
+    const { qs, RULE, byId, STATS, STATE, TIME_FILTERS, esc, icon, avatar, rankChip, eloOf, standing, timeText, tablesFor, rosterFor, seat, stateChip, enterBtn, emptyHtml } = V;
+    V.renderShell('i');
+    let rule = V.rule;
+    let tab = qs.get('tab') === 'rules' ? 'rules' : rule;
+    let sortKey = 'state'; let sortDir = 1; let page = 0;
+    const PAGE = 10;
+    const f = { open: qs.get('f') === 'open', near: false, time: new Set() };
+    const phone = () => matchMedia('(max-width: 720px)').matches;
+
+    document.getElementById('i-online').textContent = STATS.online;
+    document.getElementById('i-playing').textContent = STATS.playing;
+    document.getElementById('i-time').insertAdjacentHTML('beforeend', TIME_FILTERS.map(([k, l]) => `<option value="${k}">${l}</option>`).join(''));
+    V.wireTabs(document.getElementById('i-tabs'), (id) => { if (id === 'rules') tab = 'rules'; else { rule = id; tab = id; page = 0; } render(); });
+
+    const row = (u) => `<li class="vrow${u.me ? ' vrow--me' : ''}">${avatar(u)}<span class="vrow__n">${esc(u.name)}</span>${rankChip(u, rule)}</li>`;
+    function renderOnline() {
+      const { ranked, none, guests, total } = rosterFor(rule);
+      document.getElementById('i-online-sub').textContent = `Xếp theo hạng ${RULE[rule].label}`;
+      document.getElementById('i-online-all').textContent = `Xem tất cả ${total}`;
+      const n = phone() ? 3 : 18; // phones: the top 3 as a teaser, the full list in the sheet
+      const top = [...ranked.map((u) => [u, 'r']), ...none.map((u) => [u, 'n']), ...guests.map((u) => [u, 'g'])].slice(0, n);
+      let html = ''; let last = 'r';
+      for (const [u, g] of top) {
+        if (g !== last) html += `<li class="vgroup">${g === 'n' ? `Chưa có hạng ${esc(RULE[rule].label)}` : 'Khách'}</li>`;
+        last = g; html += row(u);
+      }
+      document.getElementById('i-roster').innerHTML = html;
+    }
+    function openSheet() {
+      const { ranked, none, guests, total } = rosterFor(rule);
+      const list = ranked.slice(0, 50).map(row).join('') + (none.length ? `<li class="vgroup">Chưa có hạng ${esc(RULE[rule].label)}</li>` + none.slice(0, 10).map(row).join('') : '');
+      document.getElementById('i-sheet-host').innerHTML = V.sheet('i-sheet', `${total} người đang online`, `Hạng theo ${esc(RULE[rule].label)}.`,
+        `<label class="vsearch"><span class="sr-only">Tìm người chơi</span>${icon('magnifying-glass')}<input placeholder="Tìm người chơi"></label><ul class="vroster">${list}</ul>`
+        + (total > 60 ? `<button type="button" class="vmore">Tải thêm 50 người</button>` : ''));
+      const s = document.getElementById('i-sheet'); s.hidden = false; V.wireSheet(s);
+    }
+    document.getElementById('i-online-all').addEventListener('click', openSheet);
+
+    document.getElementById('i-open').addEventListener('click', (e) => { f.open = !f.open; e.currentTarget.setAttribute('aria-pressed', f.open); page = 0; renderTable(); });
+    document.getElementById('i-time').addEventListener('change', (e) => { f.time = new Set(e.target.value ? [e.target.value] : []); page = 0; renderTable(); });
+    document.getElementById('i-near').addEventListener('change', (e) => { const v = e.target.value; f.near = v === 'near'; f.top = /^\d+$/.test(v) ? Number(v) : 0; page = 0; renderTable(); });
+
+    const bestRank = (t) => Math.min(...[t.p1, t.p2].filter(Boolean).map((id) => (standing(byId[id], rule) || { rank: 1e9 }).rank), 1e9);
+    const SORT = { code: (a, b) => a.code.localeCompare(b.code), p: (a, b) => bestRank(a) - bestRank(b), time: (a, b) => a.tm[1] - b.tm[1], state: (a, b) => STATE[a.state].order - STATE[b.state].order };
+    const th = (key, label) => {
+      const on = sortKey === key;
+      return `<th scope="col" aria-sort="${on ? (sortDir > 0 ? 'ascending' : 'descending') : 'none'}"><button type="button" class="i-sort" data-sort="${key}">${label}${on ? icon('caret-down', sortDir > 0 ? '' : 'is-up') : ''}</button></th>`;
+    };
+    function renderTable() {
+      const all = tablesFor(rule, f).sort((a, b) => sortDir * SORT[sortKey](a, b));
+      document.getElementById('i-count').textContent = `${all.length} bàn`;
+      const wrap = document.getElementById('i-wrap');
+      if (!all.length) { wrap.innerHTML = emptyHtml(rule); return; }
+      const pages = Math.ceil(all.length / PAGE);
+      page = Math.min(page, pages - 1);
+      const rows = all.slice(page * PAGE, page * PAGE + PAGE).map((t) => `<tr class="i-tr i-tr--${t.state}">
+        <td class="i-td-code"><span class="vcode">#${t.code}</span></td>
+        <td class="i-td-p1">${seat(t.p1, rule)}</td><td class="i-td-p2">${seat(t.p2, rule)}</td>
+        <td class="i-td-time"><span class="vpill">${icon('timer')}${esc(timeText(t))}</span>${t.ranked ? '' : '<span class="vpill">Giao hữu</span>'}</td>
+        <td class="i-td-state">${stateChip(t)}</td><td class="i-td-go">${enterBtn(t)}</td></tr>`).join('');
+      wrap.innerHTML = `<table class="i-table"><caption class="sr-only">Bàn ${esc(RULE[rule].label)}, ${all.length} bàn</caption>
+        <thead><tr>${th('code', 'Bàn')}${th('p', 'Kỳ thủ, theo hạng')}<th scope="col"><span class="sr-only">Kỳ thủ 2</span></th>${th('time', 'Thời gian')}${th('state', 'Trạng thái')}<th scope="col"><span class="sr-only">Vào</span></th></tr></thead>
+        <tbody>${rows}</tbody></table>`
+        + (pages > 1 ? `<nav class="i-pager" aria-label="Trang"><button type="button" class="vbtn vbtn--ghost" data-page="-1" ${page === 0 ? 'disabled' : ''}>Trước</button>
+          <span>Trang <b>${page + 1}</b> trên <b>${pages}</b></span><button type="button" class="vbtn vbtn--ghost" data-page="1" ${page === pages - 1 ? 'disabled' : ''}>Sau</button></nav>` : '');
+    }
+    document.getElementById('i-wrap').addEventListener('click', (e) => {
+      const s = e.target.closest('[data-sort]');
+      if (s) { const k = s.dataset.sort; sortDir = sortKey === k ? -sortDir : 1; sortKey = k; renderTable(); return; }
+      const p = e.target.closest('[data-page]');
+      if (p) { page += Number(p.dataset.page); renderTable(); }
+    });
+
+    function render() {
+      document.getElementById('i-tabs').innerHTML = V.ruleTabsHtml(rule, tab);
+      renderOnline();
+      const near = document.querySelector('#i-near option[value="near"]');
+      near.disabled = !V.canNear(rule); near.textContent = V.canNear(rule) ? 'Gần trình tôi' : `Gần trình tôi (bạn chưa có hạng ${RULE[rule].label})`;
+      const rules = tab === 'rules';
+      document.getElementById('i-body').hidden = rules;
+      const rg = document.getElementById('rooms-rules'); rg.hidden = !rules;
+      if (rules) V.renderRules(rg, rule); else renderTable();
+    }
+    render();
+    if (qs.get('sheet') === '1') openSheet();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+/* C1 "Chữ sau quân cờ": table plate, ivory stone, headline, black stone in front. */
+@media (min-width: 861px) {
+  body.lx-c1 .lx1 { display: flex; flex-direction: column; justify-content: flex-end; --pad: clamp(24px, 3.4vw, 64px); --stone: min(23vw, 44vh); }
+  body.lx-c1 .lx1-table { inset: 0 -12px; background: #0c0906 url(/__luxe/assets/c1/table.webp) center bottom / auto 128% no-repeat; background-size: max(100vw + 24px, 128vh * 16 / 9) auto; filter: brightness(1.28) saturate(1.06); transition: translate 500ms var(--lx-ease); }
+  body.lx-c1 .lx1-shade { inset: 0; background:
+    linear-gradient(180deg, rgba(10, 7, 4, .66) 0, transparent 14%),
+    linear-gradient(0deg, rgba(10, 7, 4, .86) 0, rgba(10, 7, 4, .34) 19%, transparent 34%); }
+  body.lx-c1 .lx1-ivory { z-index: 1; left: 6%; top: 50.5vh; width: clamp(86px, 8vw, 160px); filter: blur(1.6px) brightness(.82) drop-shadow(-14px 10px 10px rgba(0, 0, 0, .6)); transition: translate 500ms var(--lx-ease); }
+  body.lx-c1 .lx1-head { position: absolute; z-index: 2; left: 0; right: 0; top: clamp(70px, 9.5vh, 120px); padding-inline: var(--pad); animation: lx-fade var(--lx-slow) var(--lx-ease) backwards; }
+  body.lx-c1 .lx1-title { margin: 0; color: var(--lx-ink); font: 500 min(17.4vw, 36vh)/1.08 var(--lx-serif); letter-spacing: -.025em; white-space: nowrap; text-shadow: 0 2px 40px rgba(0, 0, 0, .45); }
+  body.lx-c1 .lx1-title em { color: var(--lx-gold); }
+  /* The stone rests on the table: a contact shadow under it, the headline's lower edge behind it. */
+  body.lx-c1 .lx1-contact { z-index: 3; left: calc(39% - var(--stone) * .1); top: calc(min(19.6vw, 40.5vh) + var(--stone) * .565); width: calc(var(--stone) * 1.3); height: calc(var(--stone) * .2); border-radius: 50%; background: radial-gradient(closest-side, rgba(0, 0, 0, .9), rgba(0, 0, 0, .55) 58%, transparent); filter: blur(7px); transform: translate(-9%, 0); }
+  body.lx-c1 .lx1-stone { z-index: 3; left: 39%; top: min(19.6vw, 40.5vh); width: var(--stone); transition: translate 500ms var(--lx-ease); animation: lx-rise 900ms var(--lx-ease) backwards; }
+  body.lx-c1 .lx1-dock { position: relative; z-index: 4; display: grid; gap: 8px; padding: 0 var(--pad) 18px; }
+  body.lx-c1 .lx1-console { display: grid; gap: 12px; padding: 16px clamp(16px, 1.7vw, 26px) 12px; border: 1px solid var(--lx-line); border-top-color: var(--lx-gold); border-radius: 3px; background: linear-gradient(180deg, rgba(32, 23, 14, .93), rgba(15, 11, 7, .96)); box-shadow: 0 26px 70px rgba(0, 0, 0, .6), inset 0 1px 0 rgba(255, 240, 205, .14); animation: lx-rise 500ms var(--lx-ease) backwards; }
+  body.lx-c1 .lx1-main { display: flex; align-items: center; justify-content: space-between; gap: 14px 24px; }
+  body.lx-c1 .lx1-play { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  body.lx-c1 #home-chips { flex-wrap: nowrap; }
+  body.lx-c1 .lx1-code { flex: none; display: flex; align-items: center; gap: 12px; padding-left: 24px; border-left: 1px solid var(--lx-line); }
+  body.lx-c1 .lx1-code .lx-label { max-width: 76px; line-height: 1.25; }
+  body.lx-c1 .lx1-code .hq-list { display: none; }
+  body.lx-c1 #home-code { flex-wrap: nowrap; }
+  body.lx-c1 .lx1-sub { display: flex; align-items: center; justify-content: space-between; gap: 10px 24px; padding-top: 10px; border-top: 1px solid rgba(224, 191, 128, .16); }
+  body.lx-c1 .lx1-sub .hq-board { flex-wrap: nowrap; align-items: center; }
+  body.lx-c1 .lx1-sub .hq-row { display: flex; align-items: baseline; gap: 7px; }
+  body.lx-c1 .lx1-sub .hq-dig { font-size: 25px; }
+  body.lx-c1 .lx1-sub #home-live-one { display: none; }
+  body.lx-c1 .lx1-sub #qm-line:empty { display: none; }
+  @media (max-width: 1379px) {
+    body.lx-c1 .hh-chip { padding: 0 10px; }
+    body.lx-c1 .hh-chip > .icon:first-child { display: none; }
+    body.lx-c1 #qm-challenge { padding: 0 14px; }
+    body.lx-c1 .lx1-code .lx-label { display: none; }
+    body.lx-c1 .lx1-code { padding-left: 16px; }
+    body.lx-c1 .hq-enter { padding: 0 12px; }
+  }
+  @media (max-width: 1179px) {
+    body.lx-c1 .lx1-main { flex-wrap: wrap; }
+    body.lx-c1 .lx1-code { padding-left: 0; border-left: 0; }
+    body.lx-c1 .hq-code__box { height: 44px; }
+    body.lx-c1 .hq-enter { min-height: 44px; }
+    body.lx-c1 .lx1-sub .hub-more { gap: 14px; }
+    body.lx-c1 .lx1-sub .hq-row__l span + span { display: none; }
+  }
+}

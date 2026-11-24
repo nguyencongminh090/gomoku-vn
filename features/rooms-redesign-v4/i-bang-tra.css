@@ -1,0 +1,64 @@
+/* I Bảng tra: dense and sortable. Slim stats bar, a columned top-of-ranking roster, a real <table> with paging. */
+.i { max-width: 1180px; margin: 0 auto; padding: 0 24px 96px; }
+.i-bar { position: sticky; top: 56px; z-index: 5; display: flex; align-items: center; gap: 24px; margin: 0 -24px; padding: 10px 24px; background: var(--c-bg); border-bottom: 1px solid var(--c-border); }
+.i-bar .vstat b { font-size: 18px; }
+.i-bar__new { margin-left: auto; }
+
+/* online: vertical list flowing into 3 columns, ranked top-down */
+.i-online { margin-top: 20px; padding: 14px 12px 12px; border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
+.i-online__head { display: flex; align-items: baseline; gap: 12px; padding: 0 8px 8px; }
+.i-online__head h2 { font-size: 16px; font-weight: 800; }
+.i-online__sub { font-size: var(--text-xs); font-weight: 700; color: var(--c-brand-text); }
+.i-online__all { margin-left: auto; align-self: center; min-height: 32px; }
+.i-online__list { columns: 3; column-gap: 8px; }
+.i-online__list .vgroup { break-inside: avoid; break-after: avoid; }
+.i-online__list .vrow { break-inside: avoid; min-height: 40px; padding: 4px 8px; }
+
+/* tables */
+.i-tables { margin-top: 24px; }
+.i-tabs { border-bottom: 1px solid var(--c-border); }
+.i-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 14px 0; }
+.i-field { display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 700; color: var(--c-ink-2); }
+.i-count { margin-left: auto; font-size: var(--text-sm); font-weight: 700; color: var(--c-ink-3); }
+
+.i-table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); overflow: hidden; }
+.i-table th { padding: 0 8px; height: 40px; background: var(--c-surface-2); text-align: left; font-size: var(--text-xs); font-weight: 800; color: var(--c-ink-2); }
+.i-table td { padding: 10px 12px; border-top: 1px solid var(--c-border); vertical-align: middle; }
+.i-table tbody tr:hover td { background: var(--c-hover); }
+.i-sort { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0 4px; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+.i-sort .is-up { transform: rotate(180deg); }
+.i-td-code { width: 76px; }
+.i-td-p1, .i-td-p2 { max-width: 0; width: 26%; }
+.i-td-p1 .vseat, .i-td-p2 .vseat { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; }
+.i-td-time { white-space: nowrap; }
+.i-td-time .vpill + .vpill { margin-left: 4px; }
+.i-td-go { width: 88px; text-align: right; }
+.i-tr--waiting .i-td-code { box-shadow: inset 3px 0 0 var(--c-state-waiting); }
+.i-pager { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 14px; font-size: var(--text-sm); color: var(--c-ink-2); }
+.i-pager .vbtn[disabled] { opacity: .45; cursor: default; }
+.i-rg { margin-top: 20px; }
+
+@media (max-width: 1000px) { .i-online__list { columns: 2; } }
+@media (max-width: 720px) {
+  .i { padding: 0 12px 24px; }
+  .i-bar { margin: 0 -12px; padding: 8px 12px; gap: 16px; }
+  .i-online { margin-top: 12px; padding: 10px 6px 6px; }
+  .i-online__head { flex-wrap: wrap; row-gap: 0; }
+  .i-online__sub { order: 3; flex-basis: 100%; }
+  .i-online__list { columns: 1; }
+  .vtab { padding: 0 10px; font-size: 14px; }
+  .vtab--guide { margin-left: 0; }
+  .i-tools { gap: 8px; }
+  .i-count { margin-left: 0; }
+  /* table → tickets: code + state + Vào on row 1, the two seats, then the time */
+  .i-table, .i-table tbody { display: block; border: 0; background: none; }
+  .i-table thead { display: none; }
+  .i-table tr { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "code state go" "p1 p1 p1" "p2 p2 p2" "time time time"; align-items: center; gap: 6px 10px; margin-bottom: 8px; padding: 12px; border: 1px solid var(--c-border); border-radius: var(--radius-lg); background: var(--c-surface); }
+  .i-table td { padding: 0; border: 0; width: auto; max-width: none; }
+  .i-table tbody tr:hover td { background: none; }
+  .i-td-code { grid-area: code; } .i-td-state { grid-area: state; } .i-td-go { grid-area: go; }
+  .i-td-p1 { grid-area: p1; } .i-td-p2 { grid-area: p2; } .i-td-time { grid-area: time; display: flex; gap: 6px; }
+  .i-td-time .vpill + .vpill { margin-left: 0; }
+  .i-tr--waiting { border-left: 3px solid var(--c-state-waiting) !important; }
+  .i-tr--waiting .i-td-code { box-shadow: none; }
+}

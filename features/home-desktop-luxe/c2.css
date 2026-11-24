@@ -1,0 +1,38 @@
+/* C2 "Năm quân thắng": top-down board, five stones in a real diagonal, the fifth is Chơi nhanh. */
+@media (min-width: 861px) {
+  body.lx-c2 .lx2 { --c: min(9.4vh, 5.5vw); }
+  body.lx-c2 .lx2-wood { inset: 0; background: #0c0906 url(/__luxe/assets/c2/board.webp) center / cover no-repeat; filter: saturate(.8) brightness(.9); }
+  body.lx-c2 .lx2-shade { inset: 0; background: linear-gradient(90deg, rgba(10, 7, 4, .9) 0, rgba(10, 7, 4, .72) 30%, transparent 52%); }
+  body.lx-c2 .lx2-stage { position: absolute; z-index: 1; right: calc(var(--c) * .6); top: calc(50% - var(--c) * 4.7); width: calc(var(--c) * 10); height: calc(var(--c) * 9);
+    background:
+      repeating-linear-gradient(90deg, rgba(14, 7, 2, .9) 0 1px, rgba(255, 226, 170, .2) 1px 2px, transparent 2px var(--c)),
+      repeating-linear-gradient(0deg, rgba(14, 7, 2, .9) 0 1px, rgba(255, 226, 170, .2) 1px 2px, transparent 2px var(--c));
+    background-position: 0 0, 0 100%; -webkit-mask-image: none; }
+  body.lx-c2 .lx2-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; }
+  body.lx-c2 .lx2-pt { position: absolute; left: calc(var(--x) * var(--c)); top: calc(var(--y) * var(--c)); width: 0; height: 0; }
+  body.lx-c2 .lx2-foe::before, body.lx-c2 .lx2-link::before, body.lx-c2 .lx2-win #qm-play::before { content: ""; display: block; position: absolute; border-radius: 50%; background: center / contain no-repeat; }
+  body.lx-c2 .lx2-foe::before { --s: calc(var(--c) * .9); left: calc(var(--s) / -2); top: calc(var(--s) / -2); width: var(--s); height: var(--s); background-image: url(/__luxe/assets/c2/stone-black.webp); box-shadow: -7px 9px 12px rgba(0, 0, 0, .55); }
+  body.lx-c2 .lx2-link { position: absolute; left: calc(var(--c) * -.45); top: calc(var(--c) * -.45); display: flex; align-items: center; gap: 12px; width: max-content; min-height: calc(var(--c) * .9); padding: 0; color: var(--lx-ink); font-size: 15px; font-weight: 800; text-shadow: 0 1px 6px #000, 0 0 2px #000; }
+  body.lx-c2 .lx2-link::before { position: relative; flex: none; width: calc(var(--c) * .9); height: calc(var(--c) * .9); background-image: url(/__luxe/assets/c2/stone-ivory.webp); box-shadow: -7px 9px 12px rgba(0, 0, 0, .5); transition: scale var(--lx-fast) var(--lx-ease); }
+  body.lx-c2 .lx2-link .icon { display: none; }
+  body.lx-c2 .lx2-link:hover { color: var(--lx-gold-hi); }
+  body.lx-c2 .lx2-link:hover::before { scale: 1.05; }
+  body.lx-c2 .lx2-link span { padding: 4px 9px; border-radius: 3px; background: rgba(12, 8, 5, .82) !important; text-shadow: none; }
+  body.lx-c2 .lx2-go { position: absolute; left: calc(var(--c) * -.72); top: calc(var(--c) * -.72); width: max-content; align-items: flex-start; flex-direction: column; gap: 8px; }
+  body.lx-c2 .lx2-go #qm-play { position: relative; display: flex; gap: 14px; min-height: calc(var(--c) * 1.44); padding: 0; background: none; box-shadow: none; color: var(--lx-ink); font: 500 clamp(28px, 2.8vw, 44px)/1 var(--lx-serif); }
+  body.lx-c2 .lx2-go #qm-play::before { position: relative; flex: none; width: calc(var(--c) * 1.44); height: calc(var(--c) * 1.44); background-image: url(/__luxe/assets/c2/stone-glow.webp); box-shadow: -9px 12px 18px rgba(0, 0, 0, .55), 0 0 0 1px rgba(244, 223, 174, .7), 0 0 44px 8px rgba(240, 200, 120, .34); }
+  body.lx-c2 .lx2-go #qm-play .hq-play__disc { display: none; }
+  body.lx-c2 .lx2-go #qm-play > span:last-child { padding: 8px 16px 11px; border-radius: 3px; background: linear-gradient(180deg, var(--lx-gold-hi), var(--lx-gold)); color: var(--lx-on-gold); }
+  body.lx-c2 .lx2-go #qm-challenge { margin-left: calc(var(--c) * 1.44 + 14px); min-height: 44px; background: rgba(12, 8, 5, .82); }
+  body.lx-c2 .lx2-go:has(#qm-search:not([hidden]))::before { content: ""; position: absolute; left: 0; top: 0; width: calc(var(--c) * 1.44); height: calc(var(--c) * 1.44); border-radius: 50%; background: url(/__luxe/assets/c2/stone-glow.webp) center / contain no-repeat; box-shadow: -9px 12px 18px rgba(0, 0, 0, .55), 0 0 0 1px rgba(244, 223, 174, .7); }
+  body.lx-c2 .lx2-go #qm-search { margin: calc(var(--c) * .2) 0 0 calc(var(--c) * 1.44 + 14px); max-width: min(310px, 25vw); }
+  body.lx-c2 #qm-search .hq-search__text { white-space: normal; }
+  body.lx-c2 #qm-pick { top: calc(100% + 10px); bottom: auto; }
+
+  body.lx-c2 .lx2-copy { position: relative; z-index: 2; display: flex; flex-direction: column; justify-content: center; gap: clamp(14px, 2.4vh, 24px); width: min(41vw, 600px); min-height: max(100vh, 680px); padding: 72px 0 28px clamp(24px, 3.4vw, 64px); animation: lx-rise 500ms var(--lx-ease) backwards; }
+  body.lx-c2 .lx2-title { margin: 0; color: var(--lx-ink); font: 500 clamp(40px, min(4.8vw, 10vh), 92px)/1.14 var(--lx-serif); letter-spacing: -.015em; }
+  body.lx-c2 .lx2-title em { color: var(--lx-gold); }
+  body.lx-c2 .lx2-opts, body.lx-c2 .lx2-code { display: grid; gap: 8px; }
+  body.lx-c2 .lx2-now { padding-top: clamp(10px, 1.8vh, 18px); border-top: 1px solid var(--lx-line); }
+  body.lx-c2 .lx2-now #home-live-one { align-self: center; }
+}
