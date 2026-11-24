@@ -53,7 +53,7 @@ describe('platform shell', () => {
   it('member → Tôi tab and chip point at /u/<username>; menu header shows the most-played rating, chip stays name-only', async () => {
     boot(MEMBER, { username: 'zed', ratings: {
       freestyle: { rating: 1700.4, games: 3 }, caro: { rating: 1612.2, games: 80 }, standard: { rating: 1500, games: 20 } } });
-    expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('#');
+    expect(document.querySelector('.ptabbar a[data-tab="me"]').hasAttribute('href')).toBe(false);
     await flush();
     expect(document.querySelector('.ptabbar a[data-tab="me"]').getAttribute('href')).toBe('/u/zed');
     expect(document.querySelector('.pnav__menu .pnav__who small').textContent).toBe('rankings.cat_caro 1612');
@@ -70,6 +70,33 @@ describe('platform shell', () => {
     window.PlatformShell.build('clubs');
     await flush();
     expect(document.querySelector('.pnav__item[role="menuitem"]').getAttribute('href')).toBe('#');
+  });
+
+  it('#452: under <base href="/"> the member Tôi tab is inert until /me answers, and stays inert if /me fails', async () => {
+    const base = document.createElement('base');
+    base.href = '/';
+    document.head.appendChild(base);
+    try {
+      let answer;
+      boot(MEMBER, new Promise((r) => { answer = r; })); // /me still in flight
+      const tab = () => document.querySelector('.ptabbar a[data-tab="me"]');
+      expect(tab().hasAttribute('href')).toBe(false); // '#' would resolve to /# = lobby
+      expect(tab().getAttribute('aria-disabled')).toBe('true');
+      expect(tab().querySelector('span').textContent).toBe('shell.me');
+      answer({ username: 'zed' });
+      await flush();
+      expect(tab().getAttribute('href')).toBe('/u/zed');
+      expect(tab().hasAttribute('aria-disabled')).toBe(false);
+
+      boot(MEMBER);
+      global.fetch = jest.fn(() => Promise.reject(new Error('net')));
+      window.PlatformShell.build('clubs');
+      await flush();
+      expect(tab().hasAttribute('href')).toBe(false);
+      expect(tab().getAttribute('aria-disabled')).toBe('true');
+    } finally {
+      base.remove();
+    }
   });
 
   it('setActive() moves the marker in nav and tab bar without rebuilding', () => {
