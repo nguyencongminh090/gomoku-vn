@@ -691,11 +691,11 @@ function getClubDetail(slug, viewerId, category) {
 
 function clubsOfUser(userId) {
   return db().prepare(`
-    SELECT c.slug, c.name, c.avatar_v, m.role,
+    SELECT c.slug, c.name, c.color, c.tag, c.avatar_v, m.role,
            (SELECT COUNT(*) FROM club_members x WHERE x.club_id = c.id AND x.role != 'pending') AS members
     FROM club_members m JOIN clubs c ON c.id = m.club_id
     WHERE m.user_id = ? AND m.role != 'pending' ORDER BY m.joined_at`).all(userId)
-    .map((r) => ({ slug: r.slug, name: r.name, role: r.role, members: r.members, avatarUrl: imageUrl(r.slug, 'avatar', r.avatar_v) }));
+    .map((r) => ({ slug: r.slug, name: r.name, color: r.color, tag: r.tag, role: r.role, members: r.members, avatarUrl: imageUrl(r.slug, 'avatar', r.avatar_v) }));
 }
 
 function userIdByUsername(username) {

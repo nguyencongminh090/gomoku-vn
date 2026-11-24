@@ -207,6 +207,12 @@ describe('reads', () => {
     expect((await call('GET', '/api/clubs?q=%25')).body.clubs).toEqual([]);
     const mine = (await call('GET', '/api/clubs/mine', 'newbie')).body.clubs;
     expect(mine.map((c) => c.slug)).toContain('rated-club');
+    const row = mine.find((c) => c.slug === 'rated-club');
+    const dbRow = db.prepare("SELECT color, tag FROM clubs WHERE slug = 'rated-club'").get();
+    expect(row.color).toBe(dbRow.color);
+    expect(row.tag).toBe(dbRow.tag);
+    const listed = (await call('GET', '/api/clubs?q=rated')).body.clubs[0];
+    expect({ color: row.color, tag: row.tag }).toEqual({ color: listed.color, tag: listed.tag });
     expect((await call('GET', '/api/clubs/nope')).body.code).toBe('CLUB_NOT_FOUND');
   });
 

@@ -1,5 +1,5 @@
 # B448 — `/api/clubs/mine` lacks color/tag: rail crest differs from the club's crest
-**Status:** OPEN
+**Status:** ✅ (server; browser check pending)
 **Area:** `server/managers/ClubService.js` (`clubsOfUser`, maybe `listClubs`), `server/tests/`, `client/js/club-kit.js` (no change expected)
 **From:** #446 real-browser pass 2026-11-24 (`features/club-redesign/shots/impl/discover-dark-1280.png`); user chose a separate todo   **Depends:** B446
 
