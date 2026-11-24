@@ -1,3 +1,7 @@
+- ✅ **#435.** Silently dead socket: up to ~45 s frozen room, own chat lost, no banner `[Model: Opus]` — [detail](docs/todo/B435-silent-dead-socket-45s.md)
+- ✅ **#434.** Lag after long play: socket stuck on long-polling after a reconnect (reload fixes) `[Model: Opus]` — [detail](docs/todo/B434-sticky-long-polling-after-reconnect.md)
+- ✅ **#444.** Room invite follow-ups: departed-host guard, resend cooldown, stable accept lock, picker error+focus trap, invite/decline toasts `[Model: Sonnet]` — [detail](docs/todo/F444-room-invite-followups.md)
+- ✅ **#442.** Review archived Codex branch admin-ranking-review (auth/admin/ranking fixes) `[Model: Opus]` — [detail](docs/todo/B442-review-archived-admin-ranking-review.md)
 - ✅ **#443.** Invite an online player to my room: ≡ menu picker → accept/decline (invitee joins as spectator) `[Model: Sonnet]` — [detail](docs/todo/F443-room-invite.md)
 - ✅ **#441.** e2e suite stale: room URL wait (`?from=rooms`), hidden room users tab, reconnect banner text `[Model: Sonnet]` — [detail](docs/todo/B441-e2e-stale-room-url-wait.md)
 - ✅ **#440.** Rooms H UI: rule tabs, online rail, compact table cards (after #439) `[Model: Opus]` — [detail](docs/todo/F440-rooms-h-ui.md)
