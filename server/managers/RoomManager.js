@@ -753,6 +753,7 @@ class RoomManager extends EventEmitter {
         players[u.slot - 1] = {
           displayName: u.displayName,
           avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
+          isGuest: !!u.isGuest,          // #440: card v3 reads "Khách" instead of "Mới"
         };
         // Rating in the room's rule pool (#364): { rating, provisional } from seat-rating.js; null for guests / unrated / no lookup wired.
         const r = u.isGuest || !this.ratingLookup ? null : this.ratingLookup(u.userId, room.settings.winningRule);

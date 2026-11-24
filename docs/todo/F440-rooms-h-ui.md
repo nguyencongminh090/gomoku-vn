@@ -1,5 +1,5 @@
 # F440 — Rooms H UI: rule tabs, online rail, compact table cards
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-24
 **Area:** client/index.html (#screen-rooms), client/js/lobby.js, client/css/rooms-hall.css (+ new rooms-h.css), client/js/room-rules-guide.js, i18n
 **From:** features/rooms-redesign-v4 direction H + card v3, approved 2026-11-24   **Depends:** F439
 
@@ -37,4 +37,7 @@ Replace the #364 photo hall + mini-board cards with approved mockup `features/ro
   "Gần trình tôi" = one `/api/profile/card/<me>` read. Roster PM/card click via `[data-online-roster]` (private-chat.js).
 - Deviations: time chips follow the server buckets ("Nhanh ≤ 5 phút", "Chậm > 5 phút", not "≥ 10"); sort "Elo cao
   trước" (server sorts by Elo); footer mode = new keys "Tính điểm"/"Giao hữu"; filter-empty state "Bỏ lọc" added.
-- Open: seat "Khách" needs `isGuest` per seat in `lobbyEntry` (server, not sent today → guests read "Mới"); e2e not run.
+- Follow-up (`feature/440-seat-guest`): `lobbyEntry` seats carry `isGuest` → guest seats read "Khách" (RoomManager.test).
+- Real-browser pass (isolated :3101, throwaway DB, guest + 2 members, 3 tables): 1280 light/dark + 390 match `h-*`
+  shots; seats "Mới"/"Khách", tab counts 2/1/0/0, empty Renju state, rules tab, phone sheet; 0 console errors,
+  0 wrapping cards, no x-overflow, no join-by-code. `npm test` 4642/4642. Playwright e2e suite not run.
