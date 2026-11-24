@@ -73,3 +73,4 @@ in the detail file / fix-log).
 - **#434.** Lag after long play: socket stuck on long-polling after a reconnect (reload fixes) `[Model: Opus]` — [detail](docs/todo/B434-sticky-long-polling-after-reconnect.md)
 - **#435.** Silently dead socket: up to ~45 s frozen room, own chat lost, no banner `[Model: Opus]` — [detail](docs/todo/B435-silent-dead-socket-45s.md)
 - **#438.** Lobby seat alert: notify when a table matching my rule + filters opens (idea) `[Model: Sonnet]` — [detail](docs/todo/F438-lobby-seat-alert.md)
+- **#442.** Review archived Codex branch admin-ranking-review (auth/admin/ranking fixes) `[Model: Opus]` — [detail](docs/todo/B442-review-archived-admin-ranking-review.md)
