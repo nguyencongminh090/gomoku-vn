@@ -318,6 +318,9 @@ function createRatingQueue(getDb, schedule = setImmediate) {
       logger.error(`[Rating] Batch of ${batch.length} failed, nothing written:`, err.message);
       return;
     }
+    // #439: the lobby's in-memory ranks/Elo are rebuilt from the committed rows (lazy: rank-cache requires this module).
+    const rankCache = require('./rank-cache');
+    for (const { job } of batch) rankCache.invalidate(job.category);
     batch.forEach(({ onDone }, i) => {
       if (!onDone) return;
       try { onDone(results[i]); } catch (err) {

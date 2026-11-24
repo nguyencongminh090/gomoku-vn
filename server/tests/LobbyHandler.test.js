@@ -42,7 +42,6 @@ const mockState = {
   timerMap: new Map(),
   emptyRoomGraceTimers: new Map(),
   broadcastLobbyUpdate: jest.fn(),
-  scheduleLobbyBoardUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(),
   // The real one sends the full room list and seeds the delta baseline; here
   // only the emit matters, which is what this suite asserts on.
@@ -55,6 +54,11 @@ const mockState = {
   queryOnlineUsers: jest.fn((query) => (Array.isArray(query.ids) ? { online: [] } : { total: 0, matched: 0, users: [] })),
   queryLobbyRooms: jest.fn(() => ({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } })),
   getClientIp: actualState.getClientIp,
+  // #439 channel helpers: pure, taken from the real module.
+  LOBBY_ROOM: actualState.LOBBY_ROOM,
+  lobbyChannelOf: actualState.lobbyChannelOf,
+  lobbyRoomOf: actualState.lobbyRoomOf,
+  leaveLobby: actualState.leaveLobby,
 };
 jest.mock('../socket/state', () => mockState);
 
@@ -134,6 +138,45 @@ describe('LobbyHandler — lobby:subscribe', () => {
     expect(socket.join).toHaveBeenCalledWith('lobby');
     expect(updateEmit).toBeDefined();
   });
+
+  // #439 S5: one room page per rule tab.
+  test.each([
+    [{ rule: 'caro' }, 'caro', 'lobby:caro'],
+    [{ rule: 'renju' }, 'renju', 'lobby:renju'],
+    [undefined, '', 'lobby:all'],          // the pre-#439 client: every rule
+    [{ rule: 'nope' }, '', 'lobby:all'],
+    ['caro', '', 'lobby:all'],             // not an object
+  ])('subscribe %j → channel %j in socket room %s', (payload, channel, room) => {
+    const io = makeIo();
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(io, socket);
+    handlers['lobby:subscribe'](payload);
+    expect([...socket.rooms].sort()).toEqual(['lobby', room].sort());
+    expect(mockState.sendLobbySnapshot).toHaveBeenLastCalledWith(io, socket, channel);
+  });
+
+  test('switching tabs leaves the previous rule channel', () => {
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(makeIo(), socket);
+    handlers['lobby:subscribe']({ rule: 'caro' });
+    handlers['lobby:subscribe']({ rule: 'standard' });
+    expect([...socket.rooms].sort()).toEqual(['lobby', 'lobby:standard']);
+  });
+
+  test('entering a room leaves the lobby and its rule channel', () => {
+    const socket = makeSocket();
+    const handlers = {};
+    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
+    LobbyHandler.register(makeIo(), socket);
+    handlers['lobby:subscribe']({ rule: 'caro' });
+    mockRoomManager.joinRoom.mockReturnValueOnce({ room: { roomId: '#R1', users: new Map() } });
+    handlers['room:join']({ roomId: '#R1' });
+    expect([...socket.rooms]).toEqual(['#R1']);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -147,10 +190,11 @@ describe('LobbyHandler — lobby:unsubscribe', () => {
     socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
 
     LobbyHandler.register(io, socket);
-    handlers['lobby:subscribe']();   // join first
+    handlers['lobby:subscribe']({ rule: 'caro' });   // join first
     handlers['lobby:unsubscribe'](); // now leave
 
     expect(socket.leave).toHaveBeenCalledWith('lobby');
+    expect([...socket.rooms]).toEqual([]); // #439: the rule channel too
   });
 });
 
@@ -497,7 +541,7 @@ describe('LobbyHandler — lobby:rooms_query', () => {
   test('answers through the ack; a missing/odd payload is an empty query; no ack → ignored', () => {
     const query = setup(); const ack = jest.fn();
     query({ offset: 30 }, ack);
-    expect(mockState.queryLobbyRooms).toHaveBeenLastCalledWith({ offset: 30 });
+    expect(mockState.queryLobbyRooms).toHaveBeenLastCalledWith({ offset: 30 }, expect.objectContaining({ userId: 'u1' })); // #439: asker for `near`
     expect(ack).toHaveBeenCalledWith({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } });
     expect(() => query({ offset: 30 })).not.toThrow();
     expect(mockState.queryLobbyRooms).toHaveBeenCalledTimes(1);
@@ -511,6 +555,6 @@ describe('LobbyHandler — lobby:rooms_query', () => {
     expect(ack).toHaveBeenLastCalledWith({ error: 'RATE_LIMITED' });
     jest.advanceTimersByTime(200);
     query({ offset: 30 }, ack);
-    expect(mockState.queryLobbyRooms.mock.calls).toEqual([[{}], [{ offset: 30 }]]);
+    expect(mockState.queryLobbyRooms.mock.calls.map((c) => c[0])).toEqual([{}, { offset: 30 }]);
   });
 });

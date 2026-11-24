@@ -6,7 +6,7 @@
  * counts over all rooms as `stats`. lobby.js must show those counts (not counts of the cards it
  * holds) and offer "show more", which fetches the next page with `lobby:rooms_query`.
  * lobby.js opens a socket on import, so the block is cut from source and run against stubs
- * (same technique as lobby-moves-delta.test.js).
+ * (the usual jsdom slice technique).
  */
 const fs = require('fs');
 const path = require('path');

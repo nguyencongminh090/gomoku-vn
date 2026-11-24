@@ -39,7 +39,6 @@ const FORBIDDEN_CODE = { overline: 'GAME_FORBIDDEN_OVERLINE', double_three: 'GAM
 const {
   timerMap,
   broadcastLobbyUpdate,
-  scheduleLobbyBoardUpdate,
   broadcastRoomUpdate,
   cleanupRoomTimer,
   cleanupReadyTimer,
@@ -184,7 +183,6 @@ function register(io, socket) {
     io.to(room.roomId).emit('game:moved', movePayload);
     if (hasAck) ack({ ok: true, moveCount: movePayload.moveCount });
     room.lastActivity = Date.now();
-    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364), throttled
 
     if (engine.settings && engine.settings.winningRule === 'renju' && !engine.hasOpening() && engine.moveCount === 3) {
       emitOpeningName(io, room.roomId, engine);
@@ -268,14 +266,12 @@ function register(io, socket) {
     const refreshed = refreshOpeningClock(room, engine, user.userId);
     if (r.done) { // a Renju opening ends on the picked 5th move (#427)
       finishOpening(io, room, engine, { x: r.x, y: r.y, color: r.color }, hadOwnUndoOffer);
-      scheduleLobbyBoardUpdate(io, room.roomId);
       room.lastActivity = Date.now();
       return;
     }
     const swap2State = buildSwap2State(engine, r.offered ? null : { x: r.x, y: r.y, color: r.color }, r.nextColor);
     if (hadOwnUndoOffer) swap2State.undoCancelled = true;
     io.to(room.roomId).emit('game:swap2_state', swap2State);
-    if (!r.offered) scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): opening stones are moves too
     if (r.openingNamed) emitOpeningName(io, room.roomId, engine);
 
     // Phase boundary (place3 → p2choice, or place2 → p1choice) hands the turn
@@ -477,7 +473,6 @@ function register(io, socket) {
       socket.emit('game:error', { message: result.error, code: result.code });
       return;
     }
-    scheduleLobbyBoardUpdate(io, room.roomId); // lobby mini board (#364): the undone stones leave the lobby board too
 
     const timer = timerMap.get(room.roomId);
 

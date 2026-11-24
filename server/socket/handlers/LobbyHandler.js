@@ -4,8 +4,8 @@
  * LobbyHandler.js — Socket events for the lobby domain.
  *
  * Events handled:
- *   lobby:subscribe   — join the lobby Socket.io room and receive current state
- *   lobby:unsubscribe — leave the lobby room
+ *   lobby:subscribe   — {rule?}: join the lobby and that rule tab's channel (#439), receive its state
+ *   lobby:unsubscribe — leave the lobby and its channel
  *   room:create       — create a new room and join it
  *   room:join         — join an existing room by ID
  */
@@ -23,9 +23,12 @@ const {
   queryOnlineUsers,
   queryLobbyRooms,
   getClientIp,
+  LOBBY_ROOM,
+  lobbyChannelOf,
+  lobbyRoomOf,
+  leaveLobby,
 } = require('../state');
 
-const LOBBY_ROOM = 'lobby';
 const ONLINE_SEARCH_MIN_INTERVAL_MS = 200; // #381
 
 /**
@@ -39,12 +42,16 @@ function register(io, socket) {
   let lastOnlineSearchAt = 0;
   let lastRoomsQueryAt = 0;
 
-  socket.on('lobby:subscribe', () => {
+  socket.on('lobby:subscribe', (payload) => {
+    // #439: one room page per rule tab; a tab switch re-subscribes. No / unknown rule = every rule.
+    const channel = lobbyChannelOf(payload && typeof payload === 'object' ? payload.rule : undefined);
+    leaveLobby(socket);
     socket.join(LOBBY_ROOM);
+    socket.join(lobbyRoomOf(channel));
     // Full snapshot first — every later broadcast is only a delta against it,
     // so a client that joins mid-stream has nothing to apply patches to
     // until it has received this.
-    sendLobbySnapshot(io, socket);
+    sendLobbySnapshot(io, socket, channel);
     sendOnlineSnapshot(io, socket); // #230: then lobby:online_patch deltas
   });
 
@@ -63,17 +70,18 @@ function register(io, socket) {
   });
 
   // #382: the lobby mirrors one page of rooms; "show more" fetches the next page of the ranking.
+  // #439: per rule, with filters/sort ({rule, offset, open, time, near, sort}); `near` uses the asker's Elo.
   socket.on('lobby:rooms_query', (payload, ack) => {
     if (typeof ack !== 'function') return;
     const now = Date.now();
     // Ranks every room: same throttle as the name search above (a click, not a stream).
     if (now - lastRoomsQueryAt < ONLINE_SEARCH_MIN_INTERVAL_MS) { ack({ error: 'RATE_LIMITED' }); return; }
     lastRoomsQueryAt = now;
-    ack(queryLobbyRooms(payload && typeof payload === 'object' ? payload : {}));
+    ack(queryLobbyRooms(payload && typeof payload === 'object' ? payload : {}, user));
   });
 
   socket.on('lobby:unsubscribe', () => {
-    socket.leave(LOBBY_ROOM);
+    leaveLobby(socket);
   });
 
   socket.on('room:create', (payload = {}) => {
@@ -113,7 +121,7 @@ function register(io, socket) {
       try { database.setLastRoomSettings(user.userId, room.settings); }
       catch (err) { logger.warn('[Lobby] could not remember room settings', { err: err.message }); }
     }
-    socket.leave(LOBBY_ROOM);
+    leaveLobby(socket);
     socket.join(room.roomId);
     (socket.data || (socket.data = {})).roomPageId = room.roomId; // #373: this socket is the room page (RoomHandler onPresence reads it)
     socket.emit('room:joined', roomManager.serializeRoom(room));
@@ -137,7 +145,7 @@ function register(io, socket) {
     }
 
     const room = result.room;
-    socket.leave(LOBBY_ROOM);
+    leaveLobby(socket);
     socket.join(room.roomId);
     // #373: the room page itself asked — a returning member (reload, back from another page) is watching
     // again, even if a non-room page had marked them away or their old socket left them 'disconnected'.

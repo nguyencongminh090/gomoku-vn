@@ -255,18 +255,26 @@ describe('RoomManager — per-IP room quota', () => {
     }
   });
 
-  test('listRooms carries moves + startedAt only while a game is ongoing (#364)', () => {
+  test('lobby entries carry no moves / startedAt any more, even mid-game (#439 dropped the mini board)', () => {
     const { room } = roomManager.createRoom(user(IP_A));
-    const entry = () => roomManager.listRooms().find((r) => r.roomId === room.roomId);
-    expect(entry().moves).toBeNull();
-    expect(entry().startedAt).toBeNull();
     room.state = 'playing';
-    room.gameState = { status: 'ongoing', startedAt: 1234, moveHistory: [{ x: 7, y: 7, color: 'BLACK' }, { x: 8, y: 6, color: 'WHITE' }] };
-    expect(entry().moves).toEqual([7, 7, 8, 6]);
-    expect(entry().startedAt).toBe(1234);
-    room.gameState.status = 'finished';
-    expect(entry().moves).toBeNull();
-    expect(entry().startedAt).toBeNull();
+    room.gameState = { status: 'ongoing', startedAt: 1234, moveHistory: [{ x: 7, y: 7, color: 'BLACK' }] };
+    const entry = roomManager.listRooms().find((r) => r.roomId === room.roomId);
+    expect(entry).not.toHaveProperty('moves');
+    expect(entry).not.toHaveProperty('startedAt');
+  });
+
+  test('lobbyStat gives the rule, clock and seated members the lobby filters on (#439)', () => {
+    const { room } = roomManager.createRoom(user(IP_A));
+    roomManager.sitDown(room.host, 1);
+    room.users.set('g1', { userId: 'g1', displayName: 'Khách', isGuest: true, slot: 2, presence: 'active' });
+    room.users.set('v1', { userId: 'v1', displayName: 'Viewer', isGuest: false, slot: null, presence: 'active' });
+    room.settings.winningRule = 'renju';
+    expect(roomManager.lobbyStat(room)).toEqual({
+      state: room.state, playerCount: 2, userCount: 3, rule: 'renju',
+      timerMode: room.settings.timerMode, timerSeconds: room.settings.timerSeconds,
+      seatIds: [room.host], // guests have no Elo
+    });
   });
 });
 

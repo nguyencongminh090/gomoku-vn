@@ -19,6 +19,7 @@ const mockRoomManager = {
   getRoom: jest.fn(() => null),
   getRoomByUser: jest.fn(() => null),
   listRooms: jest.fn(() => []),
+  getRoomIdByUser: jest.fn(() => null),
 };
 jest.mock('../managers/RoomManager', () => mockRoomManager);
 
@@ -688,3 +689,21 @@ describe('#435 net:ping liveness probe', () => {
     expect(ack).not.toHaveBeenCalled();
   });
 });
+
+// #439: a rank-cache rebuild after a rating write must reach the lobby (online roster + seated cards).
+describe('rank-cache change → lobby', () => {
+  test('init subscribes to rank-cache changes and routes them to the lobby refresh', () => {
+    const rankCache = require('../managers/rank-cache');
+    const spy = jest.spyOn(rankCache, 'onChange');
+    try {
+      init(makeIo());
+      const listener = spy.mock.calls.at(-1)[0];
+      mockRoomManager.getRoomIdByUser.mockClear();
+      listener(new Set(['u-rated']));
+      expect(mockRoomManager.getRoomIdByUser).toHaveBeenCalledWith('u-rated');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+

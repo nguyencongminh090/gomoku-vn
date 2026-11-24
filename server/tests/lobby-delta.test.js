@@ -20,8 +20,10 @@ const mockRoomManager = {
   // Here a "room" IS its lobby entry, so every test keeps driving the list through listRooms().
   get rooms() { return new Map(mockRoomManager.listRooms().map((e) => [e.roomId, e])); },
   getRoom: jest.fn((id) => mockRoomManager.listRooms().find((e) => e.roomId === id)),
+  getRoomIdByUser: jest.fn(() => null),
   lobbyEntry: jest.fn((room) => room),
-  lobbyStat: jest.fn((room) => ({ state: room.state, playerCount: room.playerCount || 0, userCount: room.userCount || 0 })),
+  lobbyStat: jest.fn((room) => ({ state: room.state, playerCount: room.playerCount || 0, userCount: room.userCount || 0,
+    rule: room.winningRule, timerMode: room.timerMode, timerSeconds: room.timerSeconds, seatIds: room.seatIds || [] })),
   bothSeated: jest.fn(() => false),
   serializeRoomUpdate: jest.fn(room => ({ roomId: room.roomId })),
   registerReadyMiss: jest.fn(() => ({ kicked: null, missCount: 0 })),
@@ -37,8 +39,14 @@ jest.mock('../utils/logger', () => ({
 // B225: every lobby change also pokes the dashboard feed — its own timer, tested in home-feed.test.js.
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
 
-const LobbyMoves = require('../../client/js/lobby-moves');
-const { broadcastLobbyUpdate, sendLobbySnapshot, scheduleLobbyBoardUpdate, LOBBY_BOARD_THROTTLE_MS, LOBBY_ROOM_PAGE_SIZE: PAGE, queryLobbyRooms } = require('../socket/state');
+// #439: seat Elo for the rooms_query filters — `mockStandings[rule][userId] = [rating, rank|null, provisional]`.
+const mockStandings = {};
+jest.mock('../managers/rank-cache', () => ({
+  standingOf: (userId, rule) => (mockStandings[rule] && mockStandings[rule][userId]) || null,
+  ratingsOf: () => ({}),
+}));
+
+const { broadcastLobbyUpdate, sendLobbySnapshot, LOBBY_ROOM_PAGE_SIZE: PAGE, queryLobbyRooms, onRatingsChanged } = require('../socket/state');
 const homeFeed = require('../socket/home-feed');
 
 const DEBOUNCE_MS = 300;
@@ -100,7 +108,7 @@ describe('lobby delta — a new room', () => {
 
     expect(io.emitted).toHaveLength(1);
     const { event, data, room } = io.emitted[0];
-    expect(room).toBe('lobby');
+    expect(room).toBe('lobby:all'); // #439: the every-rule channel (no rule subscribed)
     expect(event).toBe('lobby:patch');
     expect(data.upserts).toHaveLength(1);
     expect(data.upserts[0]).toEqual(entry('#AAA'));
@@ -421,175 +429,6 @@ test('broadcastLobbyUpdate pokes the home feed (B225: playing count + live list)
   expect(homeFeed.scheduleHomeUpdate).toHaveBeenCalledWith(io);
 });
 
-describe('lobby mini-board throttle (#364)', () => {
-  test('a burst of moves yields one patch after the throttle window, with only the moved room', () => {
-    const io = makeIo();
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB')]);
-    flush(io);
-    io.emitted.length = 0;
-
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7, 8, 8, 6, 6] }), entry('#BBB')]);
-    for (let i = 0; i < 5; i++) scheduleLobbyBoardUpdate(io); // five moves
-    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS - 1);
-    expect(io.emitted).toHaveLength(0); // nothing per move
-    jest.advanceTimersByTime(1 + DEBOUNCE_MS);
-    expect(io.emitted).toHaveLength(1);
-    expect(io.emitted[0].data.upserts.map((r) => r.roomId)).toEqual(['#AAA']);
-  });
-
-  // #389: one move can land anywhere in the board window; its card must update within 1 s either way
-  // (was 0.3–2.8 s: 2.5 s window + the 300 ms seat debounce on top).
-  const BOUND_MS = 1000;
-  /** ms from now until a lobby:patch carrying `roomId` is emitted (stepping fake time 10 ms). */
-  function msUntilPatchFor(io, roomId, limit = 5000) {
-    for (let t = 0; t <= limit; t += 10) {
-      if (io.emitted.some((e) => e.event === 'lobby:patch' && e.data.upserts.some((r) => r.roomId === roomId))) return t;
-      jest.advanceTimersByTime(10);
-    }
-    return Infinity;
-  }
-  test.each([0, 10, 500, 990])('a move %i ms into an open window reaches the lobby within 1 s', (offset) => {
-    const io = makeIo();
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB', { moves: [3, 3] })]);
-    flush(io);
-    io.emitted.length = 0;
-
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB', { moves: [3, 3, 4, 4] })]);
-    scheduleLobbyBoardUpdate(io, '#BBB'); // opens the window
-    jest.advanceTimersByTime(offset);
-    io.emitted.length = 0;
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7, 8, 8] }), entry('#BBB', { moves: [3, 3, 4, 4] })]);
-    scheduleLobbyBoardUpdate(io, '#AAA');
-    expect(msUntilPatchFor(io, '#AAA')).toBeLessThanOrEqual(BOUND_MS);
-  });
-
-  test('a move made while a seat-change flush is pending still lands within 1 s', () => {
-    const io = makeIo();
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7] }), entry('#BBB')]);
-    flush(io);
-    io.emitted.length = 0;
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [7, 7, 8, 8] }), entry('#BBB', { playerCount: 1 })]);
-    broadcastLobbyUpdate(io, '#BBB');
-    scheduleLobbyBoardUpdate(io, '#AAA');
-    expect(msUntilPatchFor(io, '#AAA')).toBeLessThanOrEqual(BOUND_MS);
-  });
-
-  test('a stream of moves still coalesces: at most one board patch per window, never one per move', () => {
-    const io = makeIo();
-    mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [] })]);
-    flush(io);
-    io.emitted.length = 0;
-    const moves = [];
-    for (let i = 0; i < 100; i++) { // a move every 100 ms for 10 s
-      moves.push(i % 15, 0);
-      mockRoomManager.listRooms.mockReturnValue([entry('#AAA', { moves: [...moves] })]);
-      scheduleLobbyBoardUpdate(io, '#AAA');
-      jest.advanceTimersByTime(100);
-    }
-    jest.advanceTimersByTime(BOUND_MS);
-    const patches = io.emitted.filter((e) => e.event === 'lobby:patch').length;
-    expect(patches).toBeLessThanOrEqual(Math.ceil(10_000 / LOBBY_BOARD_THROTTLE_MS) + 1);
-    expect(patches).toBeGreaterThan(1);
-  });
-
-  test('does not poke the home feed (its counts do not change on a move)', () => {
-    homeFeed.scheduleHomeUpdate.mockClear();
-    const io = makeIo();
-    scheduleLobbyBoardUpdate(io);
-    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS + DEBOUNCE_MS);
-    expect(homeFeed.scheduleHomeUpdate).not.toHaveBeenCalled();
-  });
-});
-
-describe('moves delta (#377)', () => {
-  const playing = (moves, startedAt = 1000) => entry('#AAA', { state: 'playing', playerCount: 2, startedAt, moves });
-
-  function upsertAfter(before, after) {
-    const io = makeIo();
-    mockRoomManager.listRooms.mockReturnValue([before]);
-    flush(io);
-    io.emitted.length = 0;
-    mockRoomManager.listRooms.mockReturnValue([after]);
-    flush(io);
-    return io.emitted.length ? io.emitted[0].data.upserts[0] : undefined;
-  }
-
-  test('a continued game, nothing else changed: only roomId, startedAt and the new moves', () => {
-    const u = upsertAfter(playing([7, 7, 8, 8]), playing([7, 7, 8, 8, 6, 6, 9, 9]));
-    expect(u).toEqual({ roomId: '#AAA', startedAt: 1000, movesFrom: 4, moves: [6, 6, 9, 9] });
-  });
-
-  test('a continued game with another change: the whole entry, moves still as a delta', () => {
-    const u = upsertAfter(playing([7, 7]), { ...playing([7, 7, 8, 8]), userCount: 5 });
-    expect(u).toMatchObject({ roomName: 'Phòng #AAA', userCount: 5, movesFrom: 2, moves: [8, 8] });
-  });
-
-  test('undo sends the shared prefix length and the (shorter) tail', () => {
-    const u = upsertAfter(playing([7, 7, 8, 8, 6, 6]), playing([7, 7, 8, 8]));
-    expect(u).toMatchObject({ movesFrom: 4, moves: [] });
-  });
-
-  test.each([
-    ['a game starts (moves were null)', entry('#AAA'), playing([7, 7])],
-    ['a new game in the same room (startedAt changed)', playing([7, 7, 8, 8], 1000), playing([7, 7], 2000)],
-    ['the game ends (moves → null)', playing([7, 7]), entry('#AAA', { moves: null })],
-  ])('full entry, no movesFrom: %s', (_, before, after) => {
-    const u = upsertAfter(before, after);
-    expect(u).toEqual(after);
-    expect(u).not.toHaveProperty('movesFrom');
-  });
-
-  test('a static change with the same moves is still sent (without a moves delta cost)', () => {
-    const u = upsertAfter(playing([7, 7]), { ...playing([7, 7]), userCount: 5 });
-    expect(u.userCount).toBe(5);
-    expect(u.movesFrom).toBe(2);
-    expect(u.moves).toEqual([]);
-  });
-
-  test('the patch shrinks: 100-move game, one new move → bytes of one move, not 100', () => {
-    const long = Array.from({ length: 200 }, (_, i) => i % 15);
-    const u = upsertAfter(playing(long), playing([...long, 3, 4]));
-    expect(u.moves).toEqual([3, 4]);
-    expect(JSON.stringify(u).length).toBeLessThan(80);
-  });
-
-  test('snapshot + delta patches (with a mid-stream newer snapshot) reproduce the server state', () => {
-    const io = makeIo();
-    const states = [
-      [playing([1, 1])],
-      [playing([1, 1, 2, 2, 3, 3])],
-      [playing([1, 1, 2, 2])],              // undo
-      [playing([1, 1, 2, 2, 4, 4, 5, 5])],
-      [playing([6, 6], 2000)],              // rematch
-      [playing([6, 6, 7, 7], 2000)],
-    ];
-    mockRoomManager.listRooms.mockReturnValue(states[0]);
-    const s1 = makeSocket();
-    sendLobbySnapshot(io, s1);
-    let early = new Map(s1.emitted[0].data.rooms.map((r) => [r.roomId, r]));
-    let late = null;
-    const apply = (map, patch) => {
-      for (const id of patch.removed) map.delete(id);
-      for (const r of patch.upserts) map.set(r.roomId, LobbyMoves.applyDelta(map.get(r.roomId), r));
-    };
-    states.slice(1).forEach((state, i) => {
-      io.emitted.length = 0;
-      mockRoomManager.listRooms.mockReturnValue(state);
-      if (i === 2) { // a second viewer subscribes between flushes: its snapshot is newer than the baseline
-        const s2 = makeSocket();
-        sendLobbySnapshot(io, s2);
-        late = new Map(s2.emitted[0].data.rooms.map((r) => [r.roomId, r]));
-      }
-      flush(io);
-      for (const m of [early, late]) if (m && io.emitted.length) apply(m, io.emitted[0].data);
-      expect([...early.values()]).toEqual(state);
-      if (late) expect([...late.values()]).toEqual(state);
-    });
-  });
-});
-
-// #380: a flush used to rebuild every room (listRooms) on each move throttle / room change. Call
-// sites now name the room; the flush builds that room's entry only.
 describe('dirty rooms (#380)', () => {
   const { LOBBY_FULL_RECONCILE_MS } = require('../socket/state');
   let world;
@@ -608,7 +447,7 @@ describe('dirty rooms (#380)', () => {
   function seeded(n) {
     const io = makeIo();
     world.clear();
-    for (let i = 0; i < n; i++) set('#R' + i, { state: 'playing', startedAt: 5, moves: [7, 7] });
+    for (let i = 0; i < n; i++) set('#R' + i, { state: 'playing' });
     flush(io);
     io.emitted.length = 0;
     mockRoomManager.lobbyEntry.mockClear();
@@ -616,16 +455,16 @@ describe('dirty rooms (#380)', () => {
     return io;
   }
 
-  test('a move in one of 50 rooms builds one entry, not the whole list', () => {
+  test('a change in one of 50 rooms builds one entry, not the whole list', () => {
     const io = seeded(50);
-    set('#R3', { state: 'playing', startedAt: 5, moves: [7, 7, 8, 8] });
-    scheduleLobbyBoardUpdate(io, '#R3');
-    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS + DEBOUNCE_MS);
+    set('#R3', { state: 'playing', userCount: 6 });
+    broadcastLobbyUpdate(io, '#R3');
+    jest.advanceTimersByTime(DEBOUNCE_MS);
 
     expect(mockRoomManager.lobbyStat).toHaveBeenCalledTimes(1); // no pass over the 50 rooms
     expect(mockRoomManager.lobbyEntry).toHaveBeenCalledTimes(1);
     expect(io.emitted).toHaveLength(1);
-    expect(io.emitted[0].data.upserts).toEqual([{ roomId: '#R3', startedAt: 5, movesFrom: 2, moves: [8, 8] }]);
+    expect(io.emitted[0].data.upserts).toEqual([world.get('#R3')]);
     expect(io.emitted[0].data.removed).toEqual([]);
   });
 
@@ -677,7 +516,7 @@ describe('dirty rooms (#380)', () => {
 
   test('an unannounced change (rating, avatar) is caught by the periodic full reconcile', () => {
     const io = seeded(3);
-    set('#R1', { state: 'playing', startedAt: 5, moves: [7, 7], hostName: 'Renamed' }); // nobody names #R1
+    set('#R1', { state: 'playing', hostName: 'Renamed' }); // nobody names #R1
     set('#R0', { userCount: 2 });
     broadcastLobbyUpdate(io, '#R0');
     jest.advanceTimersByTime(DEBOUNCE_MS);
@@ -689,18 +528,6 @@ describe('dirty rooms (#380)', () => {
     jest.advanceTimersByTime(DEBOUNCE_MS);
     expect(io.emitted[1].data.upserts.map((r) => r.roomId).sort()).toEqual(['#R0', '#R1']);
   });
-
-  test('moves marked dirty are not lost when a lifecycle flush lands first', () => {
-    const io = seeded(3);
-    set('#R2', { state: 'playing', startedAt: 5, moves: [7, 7, 1, 1] });
-    scheduleLobbyBoardUpdate(io, '#R2');
-    set('#R0', { userCount: 4 });
-    broadcastLobbyUpdate(io, '#R0');
-    jest.advanceTimersByTime(DEBOUNCE_MS);
-    expect(io.emitted[0].data.upserts.map((r) => r.roomId).sort()).toEqual(['#R0', '#R2']);
-    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS + DEBOUNCE_MS);
-    expect(io.emitted).toHaveLength(1); // the throttle flush finds nothing left to send
-  });
 });
 
 // #382: every lobby subscriber used to get every room with all its moves (3 MB at 5 000 games).
@@ -710,7 +537,7 @@ describe('room list page (#382)', () => {
   let world;
   const set = (roomId, overrides) => world.set(roomId, entry(roomId, overrides));
   const open = (id) => set(id, { state: 'idle', playerCount: 1, userCount: 1 });
-  const live = (id, watchers = 0) => set(id, { state: 'playing', playerCount: 2, userCount: 2 + watchers, startedAt: 5, moves: [7, 7] });
+  const live = (id, watchers = 0) => set(id, { state: 'playing', playerCount: 2, userCount: 2 + watchers });
   const upsertIds = (e) => e.data.upserts.map((r) => r.roomId);
 
   beforeEach(() => {
@@ -751,7 +578,11 @@ describe('room list page (#382)', () => {
     open('#O1'); open('#O2');
     const data = snapshot(io);
     expect(data.rooms).toHaveLength(PAGE);
-    expect(data.stats).toEqual({ rooms: PAGE + 102, open: 2, live: PAGE + 100, watch: [...world.values()].reduce((a, r) => a + r.userCount - r.playerCount, 0) });
+    expect(data.stats).toEqual({
+      rooms: PAGE + 102, open: 2, live: PAGE + 100, watch: [...world.values()].reduce((a, r) => a + r.userCount - r.playerCount, 0),
+      playing: 2 * (PAGE + 100), // #439 S6: seated players of running games
+      byRule: { freestyle: { open: 2, total: PAGE + 102 }, standard: { open: 0, total: 0 }, caro: { open: 0, total: 0 }, renju: { open: 0, total: 0 } },
+    });
   });
 
   test('snapshot bytes and entries built stop growing with the room count', () => {
@@ -764,7 +595,7 @@ describe('room list page (#382)', () => {
       return { bytes, built: mockRoomManager.lobbyEntry.mock.calls.length };
     };
     const small = run(PAGE); const big = run(3000);
-    expect(big.bytes).toBeLessThan(small.bytes + 200);
+    expect(big.bytes).toBeLessThan(small.bytes + 400); // + the fixed-size stats (with #439 byRule/playing), not per room
     expect(big.built).toBeLessThanOrEqual(2 * PAGE); // baseline + snapshot, not 3000
   });
 
@@ -778,11 +609,11 @@ describe('room list page (#382)', () => {
     expect(ids).not.toContain('#L0');
   });
 
-  test('a move in a room outside the page sends nothing and builds nothing', () => {
+  test('a change in a room outside the page that moves no count sends nothing and builds nothing', () => {
     const io = seeded(PAGE + 10, (i) => i);
-    live('#L0', 0); world.get('#L0').moves = [7, 7, 8, 8];
-    scheduleLobbyBoardUpdate(io, '#L0');
-    jest.advanceTimersByTime(LOBBY_BOARD_THROTTLE_MS + DEBOUNCE_MS);
+    world.get('#L0').roomName = 'Renamed';
+    broadcastLobbyUpdate(io, '#L0');
+    jest.advanceTimersByTime(DEBOUNCE_MS);
     expect(io.emitted).toHaveLength(0);
     expect(mockRoomManager.lobbyEntry).not.toHaveBeenCalled();
   });
@@ -880,16 +711,16 @@ describe('room list page (#382)', () => {
   test('snapshot + patches replay to exactly the server page (create, move, destroy, evict)', () => {
     const io = makeIo();
     for (let i = 0; i < PAGE + 15; i++) live('#L' + i, i);
-    const client = new Map(snapshot(io).rooms.map((r) => [r.roomId, r]));
+    const client = new Map(snapshot(io).rooms.map((r) => [r.roomId, JSON.parse(JSON.stringify(r))]));
     const apply = () => {
       for (const { data } of io.emitted.splice(0)) {
         for (const id of data.removed) client.delete(id);
-        for (const raw of data.upserts) { const r = LobbyMoves.applyDelta(client.get(raw.roomId), raw); expect(r).toBeTruthy(); client.set(r.roomId, r); }
+        for (const r of data.upserts) client.set(r.roomId, JSON.parse(JSON.stringify(r)));
       }
     };
     const steps = [
       () => { open('#N1'); return ['#N1']; },
-      () => { world.get('#L40').moves = [7, 7, 8, 8]; return ['#L40']; },
+      () => { set('#L40', { ...world.get('#L40'), roomName: 'Renamed' }); return ['#L40']; },
       () => { world.delete('#L41'); world.delete('#L42'); return ['#L41', '#L42']; },
       () => { live('#N1', 3); open('#N2'); return ['#N1', '#N2']; },
     ];
@@ -920,5 +751,183 @@ describe('room list page (#382)', () => {
 
     test.each([[{ offset: -3 }, PAGE], [{ offset: 'x' }, PAGE], [{ offset: 1e9 }, 0], [undefined, PAGE], [{}, PAGE]])(
       'bad offset %j is clamped', (input, n) => { expect(queryLobbyRooms(input).rooms).toHaveLength(n); });
+  });
+});
+
+// #439: one mirrored page per rule tab, counts per rule (tab badges), seated players, server-side filters.
+describe('per-rule channels and stats (#439)', () => {
+  let world;
+  const set = (roomId, overrides) => world.set(roomId, entry(roomId, overrides));
+  const table = (id, rule, over = {}) => set(id, { winningRule: rule, ...over });
+  const liveT = (id, rule, over = {}) => table(id, rule, { state: 'playing', playerCount: 2, userCount: 2, ...over });
+  const snap = (io, key) => { const s = makeSocket(); sendLobbySnapshot(io, s, key); return s.emitted[0].data; };
+  const sentTo = (io, room) => io.emitted.filter((e) => e.room === room).map((e) => e.data);
+  const step = (io, ...ids) => { for (const id of ids) broadcastLobbyUpdate(io, id); jest.advanceTimersByTime(DEBOUNCE_MS); };
+
+  beforeEach(() => {
+    world = new Map();
+    mockRoomManager.listRooms.mockImplementation(() => [...world.values()]);
+    for (const k of Object.keys(mockStandings)) delete mockStandings[k];
+  });
+  afterEach(() => {
+    mockRoomManager.listRooms.mockReset();
+    mockRoomManager.listRooms.mockReturnValue([]);
+  });
+
+  test('a rule snapshot holds only that rule, and always carries the counts of every rule', () => {
+    const io = makeIo();
+    table('#C1', 'caro', { playerCount: 1 }); liveT('#C2', 'caro', { userCount: 5 }); table('#R1', 'renju');
+    liveT('#F1', 'freestyle', { playerCount: 1 }); // a game whose opponent left: one seated player
+    const data = snap(io, 'caro');
+    expect(data.rooms.map((r) => r.roomId)).toEqual(['#C1', '#C2']);
+    expect(data.stats).toEqual({
+      rooms: 2, open: 1, live: 1, watch: 3, playing: 3,
+      byRule: { freestyle: { open: 0, total: 1 }, standard: { open: 0, total: 0 }, caro: { open: 1, total: 2 }, renju: { open: 1, total: 1 } },
+    });
+    expect(snap(io, 'standard')).toMatchObject({ rooms: [], stats: { rooms: 0, playing: 3 } });
+    // The every-rule channel keeps the pre-#439 payload while everything fits one page.
+    expect(Object.keys(snap(io, '')).sort()).toEqual(['rooms', 'serverTime']);
+  });
+
+  test('a change reaches its own rule channel (and the every-rule one); other tabs get counts only when they moved', () => {
+    const io = makeIo();
+    table('#C1', 'caro'); table('#R1', 'renju');
+    for (const key of ['caro', 'renju', '']) snap(io, key);
+    table('#C1', 'caro', { roomName: 'Renamed' }); // no count moves
+    step(io, '#C1');
+    expect(sentTo(io, 'lobby:caro').map((p) => p.upserts.map((r) => r.roomId))).toEqual([['#C1']]);
+    expect(sentTo(io, 'lobby:all').map((p) => p.upserts.map((r) => r.roomId))).toEqual([['#C1']]);
+    expect(sentTo(io, 'lobby:renju')).toEqual([]);
+    io.emitted.length = 0;
+    table('#C2', 'caro'); // caro badge 1 → 2
+    step(io, '#C2');
+    expect(sentTo(io, 'lobby:caro')[0].upserts.map((r) => r.roomId)).toEqual(['#C2']);
+    const renju = sentTo(io, 'lobby:renju');
+    expect(renju).toHaveLength(1);
+    expect(renju[0]).toMatchObject({ upserts: [], removed: [], stats: { byRule: { caro: { open: 2, total: 2 } } } });
+  });
+
+  test('a table whose rule changes leaves the old tab and appears in the new one', () => {
+    const io = makeIo();
+    table('#X', 'caro'); table('#C', 'caro');
+    snap(io, 'caro'); snap(io, 'renju');
+    table('#X', 'renju');
+    step(io, '#X');
+    expect(sentTo(io, 'lobby:caro')[0]).toMatchObject({ upserts: [], removed: ['#X'] });
+    expect(sentTo(io, 'lobby:renju')[0].upserts.map((r) => r.roomId)).toEqual(['#X']);
+  });
+
+  test('each rule has its own page: a full caro page leaves renju tables alone', () => {
+    const io = makeIo();
+    for (let i = 0; i < PAGE + 5; i++) liveT('#C' + i, 'caro', { userCount: 2 + i });
+    table('#R1', 'renju'); table('#R2', 'renju');
+    const caro = snap(io, 'caro');
+    expect(caro.rooms).toHaveLength(PAGE);
+    expect(caro.rooms.every((r) => r.winningRule === 'caro')).toBe(true);
+    expect(caro.stats).toMatchObject({ rooms: PAGE + 5, live: PAGE + 5 });
+    world.delete(caro.rooms[0].roomId);
+    step(io, caro.rooms[0].roomId);
+    const [patch] = sentTo(io, 'lobby:caro');
+    expect(patch.removed).toEqual([caro.rooms[0].roomId]);
+    expect(patch.upserts).toHaveLength(1);
+    expect(patch.upserts[0].winningRule).toBe('caro'); // the free slot is not given to a renju table
+    expect(snap(io, 'renju').rooms.map((r) => r.roomId)).toEqual(['#R1', '#R2']);
+  });
+
+  test('a channel nobody listens to is dropped at the next flush, and reseeded by its next subscriber', () => {
+    const io = makeIo();
+    const members = new Map([['lobby:caro', new Set(['s1'])]]);
+    io.sockets = { adapter: { rooms: members } };
+    table('#C1', 'caro'); table('#R1', 'renju');
+    snap(io, 'caro'); snap(io, 'renju');
+    table('#C2', 'caro'); table('#R2', 'renju');
+    mockRoomManager.lobbyEntry.mockClear();
+    step(io, '#C2', '#R2');
+    expect(io.emitted.map((e) => e.room)).toEqual(['lobby:caro']); // renju + every-rule channels: empty
+    expect(mockRoomManager.lobbyEntry.mock.calls.map(([r]) => r.roomId)).toEqual(['#C2']);
+    members.set('lobby:renju', new Set(['s2']));
+    expect(snap(io, 'renju').rooms.map((r) => r.roomId)).toEqual(['#R1', '#R2']);
+  });
+
+  test('a rating change re-sends the card of the room its member sits in, and only that one', () => {
+    const io = makeIo();
+    table('#S', 'caro', { playerCount: 1, players: [{ displayName: 'An', rating: 1500, provisional: false }, null] });
+    table('#T', 'caro');
+    snap(io, 'caro');
+    world.get('#S').players[0].rating = 1520; // what lobbyEntry reads from the rebuilt cache
+    mockRoomManager.getRoomIdByUser.mockImplementation((id) => (id === 'an' ? '#S' : null));
+    onRatingsChanged(io, new Set(['an', 'not-seated']));
+    jest.advanceTimersByTime(DEBOUNCE_MS);
+    const [patch] = sentTo(io, 'lobby:caro');
+    expect(patch.upserts.map((r) => [r.roomId, r.players[0].rating])).toEqual([['#S', 1520]]);
+    mockRoomManager.getRoomIdByUser.mockReset();
+  });
+
+  describe('queryLobbyRooms filters and sorts (S5)', () => {
+    const ids = (res) => res.rooms.map((r) => r.roomId);
+    beforeEach(() => {
+      // [id, state, playerCount, timer, seconds, seated members]
+      const rows = [
+        ['#A', 'idle', 1, 'per_game', 180, ['u1500']],
+        ['#B', 'playing', 2, 'blitz', 300, ['u1900', 'u1100']],
+        ['#C', 'idle', 0, 'per_game', 600, []],
+        ['#D', 'idle', 1, 'per_move', 30, ['u2100']],
+        ['#E', 'playing', 2, 'per_game', 900, ['u1650', 'g']],
+      ];
+      for (const [id, state, playerCount, timerMode, timerSeconds, seatIds] of rows) {
+        table(id, 'caro', { state, playerCount, userCount: playerCount, timerMode, timerSeconds, seatIds });
+      }
+      table('#R', 'renju', { playerCount: 1, seatIds: ['u1500'] });
+      mockStandings.caro = { u1500: [1500, 9, false], u1900: [1900, 2, false], u1100: [1100, 30, true], u2100: [2100, 1, false], u1650: [1650, 5, false] };
+    });
+
+    test('rule only: that tab, default order = open tables first (the page order)', () => {
+      const res = queryLobbyRooms({ rule: 'caro' });
+      expect(ids(res)).toEqual(['#A', '#C', '#D', '#B', '#E']);
+      expect(res.matched).toBe(5);
+      expect(res.stats).toMatchObject({ rooms: 5, open: 3, live: 2, byRule: { renju: { open: 1, total: 1 } } });
+    });
+
+    test('open: tables with a free seat only', () => {
+      expect(ids(queryLobbyRooms({ rule: 'caro', open: true }))).toEqual(['#A', '#C', '#D']);
+    });
+
+    test.each([
+      [['fast'], ['#A']],            // ≤ 3 min
+      [['mid'], ['#B']],             // ≤ 5 min
+      [['slow'], ['#C', '#E']],      // longer
+      [['move'], ['#D']],            // per-move clock
+      [['fast', 'move'], ['#A', '#D']],
+      [['bogus'], ['#A', '#C', '#D', '#B', '#E']], // unknown buckets = no filter
+      ['fast', ['#A', '#C', '#D', '#B', '#E']],    // not an array = no filter
+    ])('time %j → %j', (time, want) => {
+      expect(ids(queryLobbyRooms({ rule: 'caro', time }))).toEqual(want);
+    });
+
+    test('near: a seated member within 200 Elo of the asker, in the tab rule', () => {
+      const me = { userId: 'me', isGuest: false };
+      mockStandings.caro.me = [1700, 4, false];
+      expect(ids(queryLobbyRooms({ rule: 'caro', near: true }, me))).toEqual(['#A', '#B', '#E']); // 1500, 1900, 1650
+      // Ignored without a rule, for an unrated asker, a guest, or a truthy non-boolean.
+      expect(queryLobbyRooms({ near: true }, me).matched).toBe(6);
+      expect(queryLobbyRooms({ rule: 'caro', near: true }, { userId: 'new', isGuest: false }).matched).toBe(5);
+      expect(queryLobbyRooms({ rule: 'caro', near: true }, { userId: 'me', isGuest: true }).matched).toBe(5);
+      expect(queryLobbyRooms({ rule: 'caro', near: 'yes' }, me).matched).toBe(5);
+    });
+
+    test('sort rank: best seated Elo first, tables without a rated member last', () => {
+      expect(ids(queryLobbyRooms({ rule: 'caro', sort: 'rank' }))).toEqual(['#D', '#B', '#E', '#A', '#C']);
+    });
+
+    test('sort time: shortest bucket first, then base time; per-move clocks last', () => {
+      expect(ids(queryLobbyRooms({ rule: 'caro', sort: 'time' }))).toEqual(['#A', '#B', '#C', '#E', '#D']);
+    });
+
+    test('filters combine; offset pages the filtered order; unknown sort = default', () => {
+      const res = queryLobbyRooms({ rule: 'caro', open: true, sort: 'rank', offset: 1 });
+      expect(ids(res)).toEqual(['#A', '#C']);
+      expect(res.matched).toBe(3);
+      expect(ids(queryLobbyRooms({ rule: 'caro', sort: '__proto__' }))).toEqual(['#A', '#C', '#D', '#B', '#E']);
+    });
   });
 });

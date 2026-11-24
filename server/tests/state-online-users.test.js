@@ -10,6 +10,7 @@
  */
 
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
+jest.mock('../managers/rank-cache', () => ({ standingOf: () => null, ratingsOf: () => ({}) }));
 
 const { sessions, getOnlineUsersList, getOnlineUsersCount } = require('../socket/state');
 const roomManager = require('../managers/RoomManager');
@@ -26,12 +27,12 @@ describe('getOnlineUsersList()', () => {
     expect(getOnlineUsersList()).toEqual([]);
   });
 
-  test('returns one object per session with exactly userId/displayName/isGuest/avatarUrl', () => {
+  test('returns one object per session with exactly userId/displayName/isGuest/avatarUrl/ratings (#439)', () => {
     sessions.set('u1', fakeSocket('u1', 'Alice', false));
     const list = getOnlineUsersList();
     expect(list).toHaveLength(1);
-    expect(list[0]).toEqual({ userId: 'u1', displayName: 'Alice', isGuest: false, avatarUrl: null });
-    expect(Object.keys(list[0]).sort()).toEqual(['avatarUrl', 'displayName', 'isGuest', 'userId']);
+    expect(list[0]).toEqual({ userId: 'u1', displayName: 'Alice', isGuest: false, avatarUrl: null, ratings: {} });
+    expect(Object.keys(list[0]).sort()).toEqual(['avatarUrl', 'displayName', 'isGuest', 'ratings', 'userId']);
   });
 
   // Lobby faces (#364) drew initials for everyone: the payload carried no avatarUrl.
