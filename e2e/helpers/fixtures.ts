@@ -14,9 +14,11 @@ import { test as base, BrowserContext } from '@playwright/test';
  * that closing it — whether the spec does it or Playwright's end-of-test
  * cleanup does — first makes each open page leave its room explicitly
  * (`room:leave`), which frees the room immediately instead of after the grace
- * period. (Playwright closes those contexts *before* fixture teardown, so a
- * teardown-time sweep would find no pages left.) The quota itself stays at 3
- * because leave-then-create-room.spec.ts asserts it.
+ * period. Playwright does NOT close contexts a test made with
+ * `browser.newContext()` (they live until the worker's browser closes), so a
+ * test that fails or forgets to close one would keep its room alive; fixture
+ * teardown therefore closes every still-open tracked context (#441). The quota
+ * itself stays at 3 because leave-then-create-room.spec.ts asserts it.
  */
 async function leaveRooms(ctx: BrowserContext) {
   for (const page of ctx.pages()) {
