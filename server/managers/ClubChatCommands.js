@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * ClubChatCommands — pure parsing for club chat (B447): staff toggles, slash commands, @mentions.
+ * ClubChatCommands — pure parsing for club chat (B447): staff toggles, slash commands, @mentions, polls (B449).
  * No DB. ClubService.postMessage applies the result (permissions, side effects, notifications).
  */
 
@@ -9,17 +9,22 @@
 const CHAT_DEFAULTS = Object.freeze({
   cmdPin: true,         // /ghim <text>   — staff set the pinned announcement
   cmdChallenge: true,   // /giaohuu @name — friendly (unrated) challenge to a member
+  cmdPoll: true,        // /binhchon q | a | b — any member opens a poll (B449)
   notifyMention: true,  // @username      — that member gets a bell notification
   notifyAll: false,     // @all / @tatca  — staff only, the whole club gets one
   notifyPin: false,     // /ghim also notifies the whole club
+  notifyPoll: false,    // /binhchon also notifies the whole club
   unreadDot: true,      // dot on the trò-chuyện channel for unread messages (club page only)
 });
 const CHAT_KEYS = Object.keys(CHAT_DEFAULTS);
 
 /** Command word → kind. Words are typed without diacritics (`/giaohữu` is not accepted). */
-const COMMANDS = Object.freeze({ ghim: 'pin', giaohuu: 'challenge' });
+const COMMANDS = Object.freeze({ ghim: 'pin', giaohuu: 'challenge', binhchon: 'poll' });
 /** Which toggle gates each command kind. */
-const COMMAND_TOGGLE = Object.freeze({ pin: 'cmdPin', challenge: 'cmdChallenge' });
+const COMMAND_TOGGLE = Object.freeze({ pin: 'cmdPin', challenge: 'cmdChallenge', poll: 'cmdPoll' });
+
+/** /binhchon limits (B449): raw lengths, before DmText.clean escapes anything. */
+const POLL = Object.freeze({ MIN_OPTIONS: 2, MAX_OPTIONS: 6, QUESTION_MAX: 140, OPTION_MAX: 50 });
 
 const ALL_WORDS = ['all', 'tatca'];
 const MAX_MENTIONS = 5;
@@ -71,6 +76,22 @@ function parseChallengeArg(arg) {
 }
 
 /**
+ * "/binhchon" arg "Câu hỏi | A | B" → { question, options } or { error } with
+ * error ∈ 'usage' | 'too_few' | 'too_many' | 'too_long' | 'duplicate'. Empty parts are dropped.
+ */
+function parsePollArg(arg) {
+  const parts = String(arg || '').split('|').map((x) => x.replace(/\s+/g, ' ').trim());
+  const question = parts.shift() || '';
+  const options = parts.filter(Boolean);
+  if (!question) return { error: 'usage' };
+  if (options.length < POLL.MIN_OPTIONS) return { error: 'too_few' };
+  if (options.length > POLL.MAX_OPTIONS) return { error: 'too_many' };
+  if (question.length > POLL.QUESTION_MAX || options.some((o) => o.length > POLL.OPTION_MAX)) return { error: 'too_long' };
+  if (new Set(options.map((o) => o.toLocaleLowerCase('vi'))).size !== options.length) return { error: 'duplicate' };
+  return { question, options };
+}
+
+/**
  * @mentions in raw text → { usernames: lower-cased, deduped, capped at MAX_MENTIONS; all: bool }.
  * `@all` / `@tatca` set `all` and are not usernames.
  */
@@ -86,6 +107,6 @@ function parseMentions(raw) {
 }
 
 module.exports = {
-  CHAT_DEFAULTS, CHAT_KEYS, COMMANDS, COMMAND_TOGGLE, MAX_MENTIONS,
-  readSettings, mergeSettings, parseCommand, parseChallengeArg, parseMentions,
+  CHAT_DEFAULTS, CHAT_KEYS, COMMANDS, COMMAND_TOGGLE, MAX_MENTIONS, POLL,
+  readSettings, mergeSettings, parseCommand, parseChallengeArg, parsePollArg, parseMentions,
 };

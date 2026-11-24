@@ -71,5 +71,5 @@ in the detail file / fix-log).
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)
 - **#448.** Club rail crest: `/api/clubs/mine` missing color/tag (rule 9) `[Model: Sonnet]` — [detail](docs/todo/B448-club-mine-crest-fields.md)
-- **#449.** Club chat: member polls (bình chọn) — size L, intake first `[Model: Opus 5]` — [detail](docs/todo/B449-club-polls.md)
+- **#449.** Club chat: member polls (bình chọn) — built on `feature/449-club-polls`, awaiting review `[Model: Opus 5]` — [detail](docs/todo/B449-club-polls.md)
 - **#450.** Club calendar + reminders for scheduled events `[Model: Opus 5]` — [detail](docs/todo/B450-club-calendar-reminders.md)

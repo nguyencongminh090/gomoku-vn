@@ -41,6 +41,16 @@ const WEEKLY_SHOWN = 20;
 const WEEK_MS = 7 * 24 * 3600 * 1000;
 const NOTIFY_COOLDOWN_MS = 10 * 60 * 1000; // per club: one @all and one pin fan-out per 10 min (B447)
 const CHALLENGE_DEFAULTS = { rule: 'freestyle', time: '5+3' }; // /giaohuu with no extras (unrated)
+const POLL_OPEN_MS = 24 * 3600 * 1000; // B449: a poll closes 24 h after creation (or earlier by creator/staff)
+const MAX_OPEN_POLLS = 3;              // per creator per club
+const POLL_REFRESH_MAX = 20;           // poll ids one chat tick may refresh
+const POLL_ERRORS = {
+  usage: 'Cú pháp: /binhchon Câu hỏi | Lựa chọn 1 | Lựa chọn 2.',
+  too_few: 'Bình chọn cần ít nhất 2 lựa chọn.',
+  too_many: 'Bình chọn có tối đa 6 lựa chọn.',
+  too_long: 'Câu hỏi tối đa 140 ký tự, mỗi lựa chọn tối đa 50 ký tự.',
+  duplicate: 'Các lựa chọn không được trùng nhau.',
+};
 
 class ClubError extends Error {
   constructor(code, status, message) {
@@ -459,7 +469,7 @@ const avatarOf = (id, v) => (v ? `/api/profile/avatar/${id}.webp?v=${v}` : null)
  */
 function listMessages(userId, slug, { before, after } = {}) {
   const club = getClub(slug);
-  requireMember(club, userId);
+  const role = requireMember(club, userId);
   const b = Number.parseInt(before, 10);
   const a = Number.parseInt(after, 10);
   let where = 'm.club_id = ?';
@@ -471,14 +481,101 @@ function listMessages(userId, slug, { before, after } = {}) {
     FROM club_messages m JOIN users u ON u.id = m.sender_id
     WHERE ${where} ORDER BY m.id ${order} LIMIT ?`).all(...args, CHAT_PAGE);
   if (order === 'DESC') rows.reverse();
+  const polls = pollStates(club.id, userId, isStaff(role), rows.filter((r) => r.kind === 'poll').map((r) => r.id));
   return rows.map((r) => {
     const out = {
       id: r.id, kind: r.kind, text: r.body, createdAt: r.created_at, mine: r.sender_id === userId,
       username: r.username, displayName: r.display_name, avatarUrl: avatarOf(r.sender_id, r.avatar_v),
     };
     if (r.meta) { try { out.meta = JSON.parse(r.meta); } catch (_) { /* corrupt meta: show the row bare */ } }
+    if (polls.has(r.id)) out.poll = polls.get(r.id);
     return out;
   });
+}
+
+// --- polls (B449). Closed = closed_at set, or 24 h passed (lazy: no timer). Counts are computed here, per viewer. ---
+const pollClosed = (p) => !!p.closed_at || Date.now() >= Date.parse(p.closes_at);
+
+/** message id → { options, counts, total, myOption, closesAt, closed, canClose } for this club's polls among `ids`. */
+function pollStates(clubId, viewerId, staff, ids) {
+  const out = new Map();
+  if (!ids.length) return out;
+  const q = ids.map(() => '?').join(',');
+  const polls = db().prepare(`SELECT p.* FROM club_polls p JOIN club_messages m ON m.id = p.message_id
+    WHERE m.club_id = ? AND p.message_id IN (${q})`).all(clubId, ...ids);
+  if (!polls.length) return out;
+  const counts = db().prepare(`SELECT message_id, option, COUNT(*) AS n FROM club_poll_votes
+    WHERE message_id IN (${q}) GROUP BY message_id, option`).all(...ids);
+  const mine = new Map(db().prepare(`SELECT message_id, option FROM club_poll_votes WHERE user_id = ? AND message_id IN (${q})`)
+    .all(viewerId, ...ids).map((v) => [v.message_id, v.option]));
+  for (const p of polls) {
+    const options = JSON.parse(p.options);
+    const c = options.map(() => 0);
+    for (const row of counts) if (row.message_id === p.message_id && row.option < c.length) c[row.option] = row.n;
+    out.set(p.message_id, {
+      options, counts: c, total: c.reduce((a, b) => a + b, 0),
+      myOption: mine.has(p.message_id) ? mine.get(p.message_id) : null,
+      closesAt: p.closed_at || p.closes_at, closed: pollClosed(p),
+      canClose: !pollClosed(p) && (staff || p.creator_id === viewerId),
+    });
+  }
+  return out;
+}
+
+/** Fresh state of open poll cards on screen (`ids` = "1,2,3" from the chat tick), at most POLL_REFRESH_MAX. */
+function refreshPolls(userId, slug, ids) {
+  const club = getClub(slug);
+  const role = requireMember(club, userId);
+  const list = [...new Set(String(ids || '').split(',').map((x) => Number.parseInt(x, 10)).filter((n) => n > 0))].slice(0, POLL_REFRESH_MAX);
+  return Object.fromEntries(pollStates(club.id, userId, isStaff(role), list));
+}
+
+/** Member + poll of this club, or throws. */
+function pollFor(userId, slug, messageId) {
+  const club = getClub(slug);
+  const role = requireMember(club, userId);
+  const id = Number.parseInt(messageId, 10) || 0;
+  const poll = db().prepare(`SELECT p.* FROM club_polls p JOIN club_messages m ON m.id = p.message_id
+    WHERE m.club_id = ? AND p.message_id = ?`).get(club.id, id);
+  if (!poll) throw new ClubError('CLUB_POLL_NOT_FOUND', 404, 'Không tìm thấy bình chọn.');
+  return { club, role, poll, id };
+}
+
+const pollState = (club, userId, role, id) => pollStates(club.id, userId, isStaff(role), [id]).get(id);
+
+/** Vote for option `option` (0-based), or `null` to take the vote back. One vote per member; changing replaces it. */
+function votePoll(userId, slug, messageId, option) {
+  const { club, role, poll, id } = pollFor(userId, slug, messageId);
+  if (pollClosed(poll)) throw new ClubError('CLUB_POLL_CLOSED', 409, 'Bình chọn đã đóng.');
+  if (option === null) {
+    db().prepare('DELETE FROM club_poll_votes WHERE message_id = ? AND user_id = ?').run(id, userId);
+  } else {
+    if (!Number.isInteger(option) || option < 0 || option >= JSON.parse(poll.options).length) {
+      throw new ClubError('CLUB_POLL_BAD_OPTION', 400, 'Lựa chọn không hợp lệ.');
+    }
+    db().prepare(`INSERT INTO club_poll_votes (message_id, user_id, option, voted_at) VALUES (?, ?, ?, ?)
+      ON CONFLICT (message_id, user_id) DO UPDATE SET option = excluded.option, voted_at = excluded.voted_at`).run(id, userId, option, now());
+  }
+  return pollState(club, userId, role, id);
+}
+
+/** Creator or staff close a poll early. Closing a closed poll is a no-op. */
+function closePoll(userId, slug, messageId) {
+  const { club, role, poll, id } = pollFor(userId, slug, messageId);
+  if (poll.creator_id !== userId && !isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ người tạo hoặc ban quản trị đóng được bình chọn.');
+  if (!pollClosed(poll)) db().prepare('UPDATE club_polls SET closed_at = ? WHERE message_id = ?').run(now(), id);
+  return pollState(club, userId, role, id);
+}
+
+/** Named votes (decided 2026-11-24): who picked each option, oldest vote first. Members only, on demand. */
+function pollVoters(userId, slug, messageId) {
+  const { poll, id } = pollFor(userId, slug, messageId);
+  const options = JSON.parse(poll.options).map(() => []);
+  for (const v of db().prepare(`SELECT v.option, v.user_id, u.username, u.display_name, u.avatar_v FROM club_poll_votes v
+    JOIN users u ON u.id = v.user_id WHERE v.message_id = ? ORDER BY v.voted_at, v.user_id`).all(id)) {
+    if (options[v.option]) options[v.option].push({ username: v.username, displayName: v.display_name, avatarUrl: avatarOf(v.user_id, v.avatar_v) });
+  }
+  return options;
 }
 
 /** Insert one chat row and trim the club to the newest CHAT_KEEP. Call inside a transaction. */
@@ -520,6 +617,7 @@ const rateLimit = (userId) => {
  * Members only. Plain text, or a slash command (B447) the club's staff left enabled:
  *   /ghim <text>            staff: set the pinned announcement (+ notify all when notifyPin)
  *   /giaohuu @name [rule] [time]  unrated challenge to a confirmed member via ChallengeService
+ *   /binhchon q | a | b     any member: a poll card (B449); + notify all when notifyPoll
  * Plain text: @username notifies that member (notifyMention); @all / @tatca from staff notifies the
  * whole club (notifyAll, once per NOTIFY_COOLDOWN_MS). Unknown or disabled commands are refused.
  */
@@ -532,7 +630,9 @@ function postMessage(userId, slug, text) {
   if (cmd) {
     if (!cmd.kind) throw new ClubError('CLUB_COMMAND_UNKNOWN', 400, `Không có lệnh /${cmd.word}.`);
     if (!settings[chat.COMMAND_TOGGLE[cmd.kind]]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
-    return cmd.kind === 'pin' ? pinCommand(club, role, userId, cmd.arg, settings) : challengeCommand(club, userId, cmd.arg);
+    if (cmd.kind === 'pin') return pinCommand(club, role, userId, cmd.arg, settings);
+    if (cmd.kind === 'poll') return pollCommand(club, role, userId, cmd.arg, settings);
+    return challengeCommand(club, userId, cmd.arg);
   }
   const body = dmText.clean(raw);
   if (!body) throw new ClubError('CLUB_MESSAGE_EMPTY', 400, 'Tin nhắn trống.');
@@ -594,6 +694,27 @@ function challengeCommand(club, userId, arg) {
   const meta = { to: { username: target.username, displayName: target.display_name }, rule: opts.rule, time: opts.time };
   const id = db().transaction(() => insertMessage(club.id, userId, '', 'challenge', meta))();
   return { id, kind: 'challenge', challengeId: sent.id };
+}
+
+function pollCommand(club, role, userId, arg, settings) {
+  const parsed = chat.parsePollArg(arg);
+  if (parsed.error) throw new ClubError('CLUB_POLL_INVALID', 400, POLL_ERRORS[parsed.error]);
+  const open = db().prepare(`SELECT COUNT(*) AS n FROM club_polls p JOIN club_messages m ON m.id = p.message_id
+    WHERE m.club_id = ? AND p.creator_id = ? AND p.closed_at IS NULL AND p.closes_at > ?`).get(club.id, userId, now()).n;
+  if (open >= MAX_OPEN_POLLS) throw new ClubError('CLUB_POLL_LIMIT', 409, `Bạn đang có ${MAX_OPEN_POLLS} bình chọn chưa đóng.`);
+  rateLimit(userId);
+  const options = parsed.options.map((o) => dmText.clean(o));
+  const id = db().transaction(() => {
+    const mid = insertMessage(club.id, userId, dmText.clean(parsed.question), 'poll');
+    db().prepare('INSERT INTO club_polls (message_id, creator_id, options, closes_at) VALUES (?, ?, ?, ?)')
+      .run(mid, userId, JSON.stringify(options), new Date(Date.now() + POLL_OPEN_MS).toISOString());
+    return mid;
+  })();
+  if (settings.notifyPoll && !coolingDown(club.id + ':poll')) {
+    lastFanOut.set(club.id + ':poll', Date.now());
+    notifyMany(memberIds(club.id, userId), 'club_poll', userId, senderPayload(club, userId, id));
+  }
+  return { id, kind: 'poll', poll: pollState(club, userId, role, id) };
 }
 
 /** Test seam: forget the whole-club fan-out windows. */
@@ -707,5 +828,6 @@ module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
+  refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

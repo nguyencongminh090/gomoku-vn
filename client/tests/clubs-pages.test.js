@@ -720,7 +720,7 @@ describe('club banner (#446): generated pattern when none; phone keeps a short s
 });
 
 describe('chat commands + notifications (B447)', () => {
-  const DEFAULTS = { cmdPin: true, cmdChallenge: true, notifyMention: true, notifyAll: false, notifyPin: false, unreadDot: true };
+  const DEFAULTS = { cmdPin: true, cmdChallenge: true, cmdPoll: true, notifyMention: true, notifyAll: false, notifyPin: false, notifyPoll: false, unreadDot: true };
   const LB = [
     { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
     { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0 },
@@ -749,25 +749,27 @@ describe('chat commands + notifications (B447)', () => {
     it('"/" lists only enabled commands this member may use; /ghim is staff-only', async () => {
       await boot(clubAs('member'));
       type('/');
-      expect(hints()).toEqual(['/giaohuu']);
+      expect(hints()).toEqual(['/giaohuu', '/binhchon']);
       expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
       expect(input().getAttribute('aria-expanded')).toBe('true');
       await boot(clubAs('officer'));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/giaohuu']);
+      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon']);
+      type('/b');
+      expect(hints()).toEqual(['/binhchon']);
       type('/gh');
       expect(hints()).toEqual(['/ghim']);
     });
 
     it('disabled commands are not offered; no hints once a space is typed or for plain text', async () => {
-      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false } }));
+      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false, cmdPoll: false } }));
       type('/');
       expect(hints()).toEqual(['/ghim']);
       type('/ghim hello');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       type('hello /');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
-      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false } }));
+      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false, cmdPoll: false } }));
       type('/');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       expect(input().getAttribute('aria-expanded')).toBe('false');
@@ -866,6 +868,143 @@ describe('chat commands + notifications (B447)', () => {
         await open();
         expect(document.querySelector('.cb-chat__at')).toBeNull();
         expect(document.querySelector('.cb-chat__msg').classList.contains('is-mentioned')).toBe(false);
+      }
+    });
+  });
+
+  describe('polls (B449)', () => {
+    const AT = '2026-10-10T10:00:00.000Z';
+    const POLL = { options: ['20h', '21h &lt;tối&gt;'], counts: [1, 3], total: 4, myOption: null, closesAt: '2026-10-11T10:00:00.000Z', closed: false, canClose: false };
+    const row = (poll, extra = {}) => ({ id: 7, kind: 'poll', text: 'Mấy giờ &lt;?&gt;', createdAt: AT, username: 'own', displayName: 'Own', poll, ...extra });
+    const card = () => document.querySelector('.cb-poll');
+    const opts = () => [...document.querySelectorAll('.cb-poll__opt')];
+    const links = () => [...document.querySelectorAll('.cb-poll__link')].map((b) => b.textContent);
+    const openChat = async () => { document.getElementById('cb-ch-events').click(); document.getElementById('cb-ch-chat').click(); await flush(); await flush(); };
+
+    /** fetch stub: GET messages → `msgs`, POST vote/close → `{poll: next(body)}`, voters → `voters`. */
+    function stub(club, msgs, { next, voters, polls } = {}) {
+      global.fetch = jest.fn((url, o) => {
+        const u = String(url);
+        if (u.endsWith('/voters')) return ok({ voters });
+        if (u.endsWith('/vote') || u.endsWith('/close')) return ok({ poll: next(o.body ? JSON.parse(o.body) : null, u) });
+        if (u.includes('/messages')) return ok({ messages: typeof msgs === 'function' ? msgs(u) : msgs, ...(polls ? { polls: polls(u) } : {}) });
+        return ok(club);
+      });
+    }
+
+    it('renders as a system row: title, decoded question, option buttons with server counts as bars; no voter names', async () => {
+      await boot(clubAs('member'), [row(POLL)]);
+      await openChat();
+      const r = document.querySelector('.cb-chat__msg--sys');
+      expect(r.querySelector('.cb-chat__sys-t').textContent).toContain('clubs.sys_poll{"name":"Own"}');
+      expect(r.querySelector('.cb-poll__q').textContent).toBe('Mấy giờ <?>');
+      expect(opts().map((b) => b.querySelector('.cb-poll__label').textContent)).toEqual(['20h', '21h <tối>']);
+      expect(opts().map((b) => b.querySelector('.cb-poll__n').textContent)).toEqual(['clubs.poll_votes{"n":1}', 'clubs.poll_votes{"n":3}']);
+      expect(opts().map((b) => b.style.getPropertyValue('--pct'))).toEqual(['25%', '75%']);
+      expect(opts().map((b) => b.getAttribute('aria-pressed'))).toEqual(['false', 'false']);
+      expect(card().dataset.open).toBe('1');
+      expect(links()).toEqual(['clubs.poll_voters']); // not creator/staff → no close
+      expect(r.querySelector('.cb-poll b')).toBeNull();
+      expect(r.querySelector('.cb-poll [href]')).toBeNull();
+    });
+
+    it('tap votes; tapping my own option sends null (take back); card repaints from the server reply only', async () => {
+      await boot(clubAs('member'), [row(POLL)]);
+      stub(clubAs('member'), [row(POLL)], { next: (b) => (b.option === null ? POLL : { ...POLL, counts: [2, 3], total: 5, myOption: 0 }) });
+      await openChat();
+      opts()[0].click();
+      await flush(); await flush();
+      const post = global.fetch.mock.calls.find(([u]) => String(u).includes('/vote'));
+      expect(post[0]).toBe('/api/clubs/caro/messages/7/vote');
+      expect(JSON.parse(post[1].body)).toEqual({ option: 0 });
+      expect(opts()[0].getAttribute('aria-pressed')).toBe('true');
+      expect(opts()[0].classList.contains('is-mine')).toBe(true);
+      expect(opts()[0].querySelector('.cb-poll__n').textContent).toBe('clubs.poll_votes{"n":2}');
+      opts()[0].click();
+      await flush(); await flush();
+      expect(JSON.parse(global.fetch.mock.calls.filter(([u]) => String(u).includes('/vote')).at(-1)[1].body)).toEqual({ option: null });
+      expect(opts()[0].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('closed poll: buttons disabled, "closed" label, no close button, not refreshed on the tick', async () => {
+      await boot(clubAs('owner'), [row({ ...POLL, closed: true, myOption: 1 })]);
+      await openChat();
+      expect(opts().every((b) => b.disabled)).toBe(true);
+      expect(card().dataset.open).toBe('0');
+      expect([...document.querySelectorAll('.cb-poll__foot .cl-count')].map((n) => n.textContent)).toEqual(['clubs.poll_total{"n":4}', 'clubs.poll_closed']);
+      expect(links()).toEqual(['clubs.poll_voters']);
+    });
+
+    it('creator/staff get "close"; confirming posts /close and repaints closed', async () => {
+      await boot(clubAs('owner'), [row({ ...POLL, canClose: true })]);
+      stub(clubAs('owner'), [row({ ...POLL, canClose: true })], { next: () => ({ ...POLL, closed: true }) });
+      await openChat();
+      expect(links()).toEqual(['clubs.poll_voters', 'clubs.poll_close']);
+      window.confirm = jest.fn(() => true);
+      document.querySelectorAll('.cb-poll__link')[1].click();
+      await flush(); await flush();
+      expect(window.confirm).toHaveBeenCalledWith('clubs.confirm_poll_close');
+      expect(global.fetch.mock.calls.some(([u, o]) => u === '/api/clubs/caro/messages/7/close' && o.method === 'POST')).toBe(true);
+      expect(opts().every((b) => b.disabled)).toBe(true);
+    });
+
+    it('"who voted" fetches names on demand and lists them per option as profile links', async () => {
+      await boot(clubAs('member'), [row(POLL)]);
+      stub(clubAs('member'), [row(POLL)], { voters: [[{ username: 'own', displayName: 'Own' }], [{ username: 'mem', displayName: 'Mem' }, { username: 'x_y', displayName: '<X>' }]] });
+      await openChat();
+      document.querySelector('.cb-poll__link').click();
+      await flush(); await flush();
+      expect(global.fetch.mock.calls.some(([u]) => u === '/api/clubs/caro/messages/7/voters')).toBe(true);
+      const rows = [...document.querySelectorAll('.cb-poll__whorow')];
+      expect(rows.map((r) => r.textContent)).toEqual(['20hOwn', '21h <tối>Mem, <X>']);
+      expect(rows[1].querySelector('a').getAttribute('href')).toBe('/u/mem');
+      expect(document.querySelector('.cb-poll__link').getAttribute('aria-expanded')).toBe('true');
+      document.querySelector('.cb-poll__link').click();
+      expect(document.querySelector('.cb-poll__who')).toBeNull();
+    });
+
+    it('chat tick asks for fresh state of open cards only and patches them in place', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        const list = [row(POLL), row({ ...POLL, closed: true }, { id: 8 })];
+        await boot(clubAs('member'), list);
+        stub(clubAs('member'), (u) => (u.includes('after=') ? [] : list), { polls: () => ({ 7: { ...POLL, counts: [4, 3], total: 7 } }) });
+        await openChat();
+        const before = card();
+        jest.advanceTimersByTime(8000);
+        await flush(); await flush();
+        expect(global.fetch.mock.calls.at(-1)[0]).toBe('/api/clubs/caro/messages?after=8&polls=7');
+        expect(card()).toBe(before);
+        expect(opts()[0].querySelector('.cb-poll__n').textContent).toBe('clubs.poll_votes{"n":4}');
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('a tick reply that lands after my vote does not repaint the card with the older state', async () => {
+      jest.useFakeTimers({ doNotFake: ['setTimeout', 'clearTimeout', 'setImmediate', 'nextTick'] });
+      try {
+        await boot(clubAs('member'), [row(POLL)]);
+        let releaseTick;
+        global.fetch = jest.fn((url, o) => {
+          const u = String(url);
+          if (u.endsWith('/vote')) return ok({ poll: { ...POLL, counts: [2, 3], total: 5, myOption: 0 } });
+          if (u.includes('polls=')) return new Promise((r) => { releaseTick = () => r({ ok: true, status: 200, json: () => Promise.resolve({ messages: [], polls: { 7: POLL } }) }); });
+          if (u.includes('/messages')) return ok({ messages: [row(POLL)] });
+          return ok(clubAs('member'));
+        });
+        await openChat();
+        jest.advanceTimersByTime(8000); // tick goes out with the pre-vote state pending
+        await flush();
+        opts()[0].click();
+        await flush(); await flush();
+        expect(opts()[0].getAttribute('aria-pressed')).toBe('true');
+        releaseTick();
+        await flush(); await flush();
+        expect(opts()[0].getAttribute('aria-pressed')).toBe('true');
+        expect(opts()[0].querySelector('.cb-poll__n').textContent).toBe('clubs.poll_votes{"n":2}');
+      } finally {
+        jest.useRealTimers();
       }
     });
   });
