@@ -104,11 +104,25 @@ describe('send', () => {
   it('a re-send to the same player replaces the old invite: one pending, one notification', () => {
     const room = mkRoom('alice');
     const a = svc.send(U.alice, 'bob', room.roomId);
+    jest.advanceTimersByTime(svc.RESEND_COOLDOWN_MS + 1);
     const b = svc.send(U.alice, 'bob', room.roomId);
     expect(b.id).not.toBe(a.id);
     expect(invites('bob')).toHaveLength(1);
     expect(code(() => svc.accept(U.bob, a.id))).toBe('INVITE_GONE');
     expect(svc.accept(U.bob, b.id)).toEqual({ roomId: room.roomId });
+  });
+});
+
+describe('re-send cooldown', () => {
+  it('a second invite to the same player within RESEND_COOLDOWN_MS is refused (INVITE_TOO_SOON); allowed after; other targets unaffected', () => {
+    const room = mkRoom('alice');
+    const a = svc.send(U.alice, 'bob', room.roomId);
+    expect(code(() => svc.send(U.alice, 'bob', room.roomId))).toBe('INVITE_TOO_SOON');
+    expect(code(() => svc.send(U.alice, 'carol', room.roomId))).toBeNull();
+    expect(invites('bob')).toHaveLength(1);
+    expect(code(() => svc.accept(U.bob, a.id))).toBeNull(); // the first invite is untouched by the refused re-send
+    jest.advanceTimersByTime(svc.RESEND_COOLDOWN_MS + 1);
+    expect(code(() => svc.send(U.alice, 'bob', room.roomId))).toBeNull();
   });
 });
 
@@ -151,6 +165,16 @@ describe('accept', () => {
     expect(code(() => svc.accept(U.bob, v.id))).toBe('ROOM_FULL');
   });
 
+  it('INVITE_GONE (and the invite is dropped) when the inviter has left the room', () => {
+    const room = mkRoom('alice');
+    join('carol', room);
+    const v = svc.send(U.alice, 'bob', room.roomId);
+    roomManager.leaveRoom(U.alice); // carol inherits the room
+    expect(roomManager.getRoom(room.roomId)).toBeTruthy();
+    expect(code(() => svc.accept(U.bob, v.id))).toBe('INVITE_GONE');
+    expect(invites('bob')).toHaveLength(0);
+  });
+
   it('an invite expires after TTL_MS and takes its notification with it', () => {
     const v = svc.send(U.alice, 'bob', mkRoom('alice').roomId);
     jest.advanceTimersByTime(svc.TTL_MS + 1);
@@ -166,6 +190,21 @@ describe('close (decline / cancel)', () => {
     expect(invites('bob')).toHaveLength(0);
     expect(code(() => svc.accept(U.bob, v.id))).toBe('INVITE_GONE');
     expect(code(() => svc.close(U.bob, v.id))).toBeNull();
+  });
+
+  it('declining tells the inviter (room_invite_declined, once); cancelling or expiring does not', () => {
+    const room = mkRoom('alice');
+    const declined = () => notif.list(U.alice, 50).items.filter((n) => n.type === 'room_invite_declined');
+    const a = svc.send(U.alice, 'bob', room.roomId);
+    svc.close(U.bob, a.id);
+    svc.close(U.bob, a.id); // idempotent: no second notice
+    expect(declined()).toHaveLength(1);
+    expect(declined()[0].payload).toMatchObject({ roomId: room.roomId, roomName: room.roomName, from: { username: 'bob', displayName: 'BOB' } });
+    const b = svc.send(U.alice, 'carol', room.roomId);
+    svc.close(U.alice, b.id); // sender cancels
+    svc.send(U.alice, 'dave', room.roomId);
+    jest.advanceTimersByTime(svc.TTL_MS + 1); // expiry
+    expect(declined()).toHaveLength(1);
   });
 
   it('sender may cancel; a third party may not (NOT_YOUR_INVITE)', () => {

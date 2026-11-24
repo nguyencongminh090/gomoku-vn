@@ -22,6 +22,7 @@ const PLAYERS = [
 let calls;
 
 function render({ role = 'host', isGuest = false, players = PLAYERS, post = () => reply(201, { id: 'i1' }) } = {}) {
+  if (window.RoomInvite) window.RoomInvite.close(); // drop the previous module instance's document keydown listener
   document.body.innerHTML = BODY_HTML;
   window.t = jest.fn((key) => key);
   window.showToast = jest.fn();
@@ -121,8 +122,61 @@ describe('picker dialog', () => {
     await open();
     rows()[0].querySelector('button').click();
     await flush();
-    expect(dialog().querySelector('[role="status"]').textContent).toBe('Người này đang ở trong một phòng.');
+    expect(dialog().querySelector('.rinv__err').textContent).toBe('Người này đang ở trong một phòng.');
+    expect(dialog().querySelector('.rinv__err').getAttribute('role')).toBe('alert');
     expect(rows()[0].querySelector('button').disabled).toBe(false);
+  });
+
+  it('the error survives typing in the search box and clears on the next invite attempt', async () => {
+    let refuse = true;
+    render({ post: () => (refuse ? reply(429, { error: 'Bạn vừa mời người này, hãy chờ vài giây.' }) : reply(201, { id: 'i1' })) });
+    await open();
+    rows()[0].querySelector('button').click();
+    await flush();
+    const q = dialog().querySelector('input[type="search"]');
+    q.value = 'c';
+    q.dispatchEvent(new Event('input'));
+    expect(dialog().querySelector('.rinv__err').textContent).toBe('Bạn vừa mời người này, hãy chờ vài giây.');
+    refuse = false;
+    rows()[0].querySelector('button').click();
+    await flush();
+    expect(dialog().querySelector('.rinv__err').textContent).toBe('');
+  });
+
+  it('Tab / Shift+Tab stay inside the dialog (focus trap)', async () => {
+    render();
+    await open();
+    const focusables = [...dialog().querySelectorAll('input, button:not([disabled])')];
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    last.focus();
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(first);
+    const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(back);
+    expect(back.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(last);
+    const mid = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    first.focus();
+    document.dispatchEvent(mid);
+    expect(mid.defaultPrevented).toBe(false); // normal tabbing inside is left alone
+  });
+
+  it('focus trap also catches focus that fell out of the dialog (a clicked button turns disabled and blurs to <body>)', async () => {
+    render();
+    await open();
+    document.activeElement.blur();
+    expect(dialog().contains(document.activeElement)).toBe(false);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    document.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    document.activeElement.blur();
+    const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(back);
+    expect(dialog().contains(document.activeElement)).toBe(true);
   });
 
   it('a failed list load shows the generic error', async () => {
