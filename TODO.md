@@ -74,4 +74,3 @@ in the detail file / fix-log).
 - **#449.** Club chat: member polls (bình chọn) — built on `feature/449-club-polls`, awaiting review `[Model: Opus 5]` — [detail](docs/todo/B449-club-polls.md)
 - **#450.** Club calendar + reminders for scheduled events — merged to dev, not deployed `[Model: Opus 5]` — [detail](docs/todo/B450-club-calendar-reminders.md)
 - **#451.** Club channel links rewrite the URL to `/#ch=…` (`<base href="/">`); reload lands on home — fixed, merged to dev `[Model: Sonnet]` — [detail](docs/todo/B451-club-channel-hash-base-href.md)
-- **#452.** Phone tab bar "Tôi" placeholder `href="#"` goes to `/` under `<base href="/">` before `/me` answers `[Model: Sonnet]` — [detail](docs/todo/B452-shell-me-tab-hash-placeholder.md)

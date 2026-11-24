@@ -1,5 +1,5 @@
 # B452 — Phone tab bar "Tôi" placeholder `href="#"` resolves to `/` under `<base href="/">`
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 — fix/452-me-tab-placeholder → dev; jsdom + real-browser tap verified ([fix-log](../fix-log/2026-11-25-452-me-tab-placeholder.md))
 **Area:** `client/js/platform-shell.js` (tab bar build, ~l.437; `/me` handler ~l.382), `client/tests/` shell suite
 **From:** #451 grep of `<base>` pages, 2026-11-25   **Depends:** —
 
