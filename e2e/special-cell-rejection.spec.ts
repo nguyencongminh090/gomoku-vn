@@ -1,5 +1,6 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TEST-MATRIX.md rows 4 & 5 — placing directly on a wall cell (`-1`) or a
@@ -57,7 +58,7 @@ test.describe('Special-rule cell rejection', () => {
       if (!el.checked) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');

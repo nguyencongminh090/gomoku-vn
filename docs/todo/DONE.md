@@ -1,3 +1,4 @@
+- ✅ **#441.** e2e suite stale: room URL wait (`?from=rooms`), hidden room users tab, reconnect banner text `[Model: Sonnet]` — [detail](docs/todo/B441-e2e-stale-room-url-wait.md)
 - ✅ **#439.** Rooms H backend: per-rule roster ratings/rank, per-rule table pages, counts, playing players `[Model: Opus]` — [detail](docs/todo/F439-rooms-h-backend.md)
 - ✅ **#437.** Cache-bust `/vendor/socket.io/socket.io.min.js` with `?v=` (stale bundle after socket.io bump) `[Model: Sonnet]` — [detail](docs/todo/B437-vendor-socketio-cache-bust.md)
 - ✅ **#436.** Upgrade socket.io stack (engine.io 6.6.9 high DoS advisory GHSA-2gc4-cqfq-p2gv) `[Model: Sonnet]` — [detail](docs/todo/B436-socketio-upgrade-engineio-dos.md)

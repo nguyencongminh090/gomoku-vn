@@ -149,9 +149,11 @@ test.describe('real-player gameplay simulation', () => {
     record('PlayerB', 'room_joined', { roomId, ms: Date.now() - tStart });
 
     // Both should now see each other in the room (sanity check presence sync).
-    await A.page.click('[data-tab="tab-users"]');
-    await expect(A.page.locator('#users-list')).toContainText(B.displayName, { timeout: 10000 });
-    await A.page.click('[data-tab="tab-chat"]');
+    // #369 desktop moved unseated viewers from the hidden tab-users tab into the
+    // dock's audience stack (#aud-stack → #aud-pop).
+    await A.page.click('#aud-stack');
+    await expect(A.page.locator('#aud-pop')).toContainText(B.displayName, { timeout: 10000 });
+    await A.page.click('#aud-stack');
     record('system', 'presence_sync_ok', { seenBy: 'PlayerA', of: 'PlayerB' });
 
     // ── Both sit down in their slots ──

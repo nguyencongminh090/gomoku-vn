@@ -54,45 +54,47 @@ async function geometry(page: Page) {
       y: Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)),
     });
     const overlay = box('#start-modal')!;
-    const rail = box('.rail')!;
+    const rpanel = box('.rpanel')!;
     const top = box('#seatcard-top')!;
     const bottom = box('#seatcard-bottom')!;
     return {
       overlay,
       card: box('.start-modal__card')!,
       canvas: box('#game-canvas')!,
-      rail: overlap(overlay, rail),
+      rpanelOverlap: overlap(overlay, rpanel),
+      rpanelLeft: rpanel.left,
       top: overlap(overlay, top),
       bottom: overlap(overlay, bottom),
-      railLeft: rail.left,
+      leftColRight: Math.max(top.right, bottom.right),
     };
   });
 }
 
 test.describe('Start Modal overlay stays over the board, not over the other room chrome', () => {
-  test('desktop: card centres on the board and the overlay clears the rail', async ({ browser }) => {
+  test('desktop: card centres on the board and the overlay clears both side columns', async ({ browser }) => {
     test.setTimeout(60_000);
     const { A, B } = await roomWithStartModal(browser, DESKTOP);
 
     const g = await geometry(A.page);
     expect(Math.abs(g.card.cx - g.canvas.cx)).toBeLessThanOrEqual(2);
-    expect(g.rail.x, 'overlay must not reach into the rail column').toBe(0);
-    expect(g.overlay.right).toBeLessThanOrEqual(g.railLeft + 1);
+    expect(g.top.x, 'overlay must not reach into the left seatcard column').toBe(0);
+    expect(g.bottom.x, 'overlay must not reach into the left seatcard column').toBe(0);
+    expect(g.overlay.left).toBeGreaterThanOrEqual(g.leftColRight - 1);
+    expect(g.rpanelOverlap.x, 'overlay must not reach into the right panel column').toBe(0);
+    expect(g.overlay.right).toBeLessThanOrEqual(g.rpanelLeft + 1);
 
     await A.ctx.close();
     await B.ctx.close();
   });
 
-  for (const expanded of [false, true]) {
-    test(`phone, chat panel ${expanded ? 'expanded' : 'minimized'}: overlay is full-width and clears both player cards`, async ({ browser }) => {
+  for (const sheetOpen of [false, true]) {
+    test(`phone, bottom sheet ${sheetOpen ? 'open' : 'closed'}: overlay is full-width and clears both player cards`, async ({ browser }) => {
       test.setTimeout(60_000);
       const { A, B } = await roomWithStartModal(browser, MOBILE);
-      if (expanded) {
-        await A.page.click('#rpanel-toggle');
-        await expect(A.page.locator('#rpanel-toggle')).toHaveAttribute('aria-expanded', 'true');
-        await A.page.waitForTimeout(500); // 240ms height animation
-        // Expanded un-pins the stack; the board may have scrolled — bring it back.
-        await A.page.locator('#start-modal').scrollIntoViewIfNeeded();
+      if (sheetOpen) {
+        await A.page.click('#btn-sheet');
+        await expect(A.page.locator('#btn-sheet')).toHaveAttribute('aria-expanded', 'true');
+        await A.page.waitForTimeout(350); // 260ms bottom-sheet slide animation (#368)
       }
 
       const g = await geometry(A.page);

@@ -1,4 +1,5 @@
 import { test, expect, Page, BrowserContext } from './helpers/fixtures';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TODO.md #326 — the room board is playable with the keyboard alone.
@@ -65,7 +66,7 @@ async function setUpGame(browser: any, guestFactory: typeof makeGuest): Promise<
     if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
   });
   await A.page.click('#btn-quick-match');
-  await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+  await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
   const roomId = new URL(A.page.url()).searchParams.get('id')!;
 
   const B = await guestFactory(browser, 'PlayerB');
@@ -89,26 +90,31 @@ async function setUpGame(browser: any, guestFactory: typeof makeGuest): Promise<
 test('Tab reaches the board; arrows + Enter place a stone seen by both clients (#326)', async ({ browser }) => {
   test.setTimeout(90_000);
   const [A, B] = await setUpGame(browser, makeGuest);
-  const mover = await A.page.evaluate(() => (window as any).RoomState.boardRenderer.isMyTurn) ? A : B;
-  const other = mover === A ? B : A;
-  const svg = mover.page.locator('#board-area svg.gboard');
-  await expect(svg).toHaveAttribute('role', 'application');
-  await expect(svg).toHaveAttribute('tabindex', '0');
-  // Reach the board by Tab only (walk forward until it holds focus).
-  await mover.page.locator('body').click({ position: { x: 1, y: 1 } });
-  let focused = false;
-  for (let i = 0; i < 60 && !focused; i++) {
-    await mover.page.keyboard.press('Tab');
-    focused = await svg.evaluate((el) => el === document.activeElement);
-  }
-  expect(focused, 'board reachable with Tab').toBe(true);
-  const n = await mover.page.evaluate(() => (window as any).RoomState.gameState.boardSize);
-  const c = (n - 1) >> 1;
-  await mover.page.keyboard.press('ArrowRight'); // lands on the centre
-  await expect(svg.locator('.gboard__kbcursor')).toHaveCount(1);
-  await mover.page.keyboard.press('Enter');
-  for (const p of [mover, other]) {
-    await p.page.waitForFunction(
-      ([x, y]) => (window as any).RoomState.gameState.board[y][x] !== 0, [c, c], { timeout: 10000 });
+  try {
+    const mover = await A.page.evaluate(() => (window as any).RoomState.boardRenderer.isMyTurn) ? A : B;
+    const other = mover === A ? B : A;
+    const svg = mover.page.locator('#board-area svg.gboard');
+    await expect(svg).toHaveAttribute('role', 'application');
+    await expect(svg).toHaveAttribute('tabindex', '0');
+    // Reach the board by Tab only (walk forward until it holds focus).
+    await mover.page.locator('body').click({ position: { x: 1, y: 1 } });
+    let focused = false;
+    for (let i = 0; i < 60 && !focused; i++) {
+      await mover.page.keyboard.press('Tab');
+      focused = await svg.evaluate((el) => el === document.activeElement);
+    }
+    expect(focused, 'board reachable with Tab').toBe(true);
+    const n = await mover.page.evaluate(() => (window as any).RoomState.gameState.boardSize);
+    const c = (n - 1) >> 1;
+    await mover.page.keyboard.press('ArrowRight'); // lands on the centre
+    await expect(svg.locator('.gboard__kbcursor')).toHaveCount(1);
+    await mover.page.keyboard.press('Enter');
+    for (const p of [mover, other]) {
+      await p.page.waitForFunction(
+        ([x, y]) => (window as any).RoomState.gameState.board[y][x] !== 0, [c, c], { timeout: 10000 });
+    }
+  } finally {
+    await A.ctx.close();
+    await B.ctx.close();
   }
 });

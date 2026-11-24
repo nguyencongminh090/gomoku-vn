@@ -28,11 +28,11 @@ async function member(browser: Browser, displayName: string) {
   return { ctx, page };
 }
 
-/** Every card's content must stay inside the card, and the card inside the rail. */
+/** Every card's content must stay inside the card, and the left column must not widen into the board (#369 dissolved .rail via display:contents). */
 async function railGeometry(page: Page) {
   return await page.evaluate(() => {
     const box = (el: Element) => el.getBoundingClientRect();
-    const rail = box(document.querySelector('.rail')!);
+    const board = box(document.querySelector('.board-area-shell')!);
     const cards = [...document.querySelectorAll('.seatcard')].map((card) => {
       const c = box(card);
       const inner = [...card.querySelectorAll('.seatcard__av, .seatcard__id, .seatcard__stand, .seatcard__clock, .seatcard__sit')]
@@ -45,17 +45,24 @@ async function railGeometry(page: Page) {
         scrollOverflow: (card as HTMLElement).scrollWidth - (card as HTMLElement).clientWidth,
       };
     });
-    return { railWidth: +rail.width.toFixed(1), railRight: +rail.right.toFixed(1), cards, vw: innerWidth };
+    const colWidth = cards.length ? Math.max(...cards.map((c) => c.cardWidth)) : 0;
+    return {
+      railWidth: colWidth,
+      boardLeft: +board.left.toFixed(1),
+      boardWidth: +board.width.toFixed(1),
+      cards,
+      vw: innerWidth,
+    };
   });
 }
 
 function expectRailIntact(g: Awaited<ReturnType<typeof railGeometry>>, when: string, railW?: number) {
-  if (railW !== undefined) expect(g.railWidth, `rail must keep its width (${when})`).toBe(railW);
-  expect(g.railRight, `rail must stay inside the viewport (${when})`).toBeLessThanOrEqual(g.vw);
+  if (railW !== undefined) expect(g.railWidth, `card column must keep its width (${when})`).toBe(railW);
   for (const c of g.cards) {
+    expect(c.cardRight, `card must stay inside the viewport (${when})`).toBeLessThanOrEqual(g.vw);
     expect(c.childOverflow, `card content must stay inside the card (${when})`).toBeLessThanOrEqual(1);
     expect(c.scrollOverflow, `card must not scroll horizontally (${when})`).toBeLessThanOrEqual(1);
-    expect(c.cardRight, `card must stay inside the rail (${when})`).toBeLessThanOrEqual(g.railRight + 1);
+    expect(c.cardRight, `card must stay left of the board (${when})`).toBeLessThanOrEqual(g.boardLeft + 1);
   }
 }
 

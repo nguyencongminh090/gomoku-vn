@@ -118,10 +118,13 @@ test.describe('Room lifecycle — ready-window cancel and host transfer', () => 
       { timeout: 10000 }
     );
 
-    // Client-visible host badge follows the promotion. B is unseated (a
-    // spectator here), so the badge renders in the spectators list as "CP".
-    await B.page.click('.tab-btn[data-tab="tab-users"]');
-    await expect(B.page.locator('#users-list .slot-card__role--host')).toBeVisible({ timeout: 10000 });
+    // Client-visible host state follows the promotion (#369 hides tab-users on
+    // desktop, so host privileges surface in RoomState.myRole and the editable
+    // room settings controls in tab-settings).
+    const bRole = await B.page.evaluate(() => (window as any).RoomState.myRole);
+    expect(bRole).toBe('host');
+    await B.page.click('.tab-btn[data-tab="tab-settings"]');
+    await expect(B.page.locator('#r-boardSize')).toBeVisible({ timeout: 10000 });
 
     await A.ctx.close();
     await B.ctx.close();

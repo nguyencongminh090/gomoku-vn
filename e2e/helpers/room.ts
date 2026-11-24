@@ -1,6 +1,12 @@
 import { Page, expect } from '@playwright/test';
 
 /**
+ * Matches room.html once `?id=` (or `&id=` after `?from=rooms`, #365) has landed.
+ * Use this instead of `/room\.html\?id=/` in every spec.
+ */
+export const ROOM_URL_WITH_ID = /room\.html\?(?:[^#]*&)?id=[^&#]+/;
+
+/**
  * Create a room through the lobby UI ("Tạo phòng" → Tạo nhanh) and wait for
  * room.html?id=… — `?id=` lands a tick after the navigation, and a second
  * player needs the full URL or bounces back to the lobby (TODO.md #141).
@@ -17,7 +23,7 @@ export async function createRoom(page: Page, opts: { wall?: boolean } = {}): Pro
     });
   }
   await page.click('#btn-quick-match');
-  await page.waitForURL(/room\.html\?id=/, { timeout: 20000 });
+  await page.waitForURL(ROOM_URL_WITH_ID, { timeout: 20000 });
   return page.url();
 }
 

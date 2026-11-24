@@ -1,6 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
 import { cellPosition } from './helpers/board';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TEST-MATRIX.md row 15 — a user who joins a room without sitting (`room:sit`)
@@ -31,7 +32,7 @@ test.describe('Spectator join', () => {
       if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');
@@ -50,9 +51,10 @@ test.describe('Spectator join', () => {
     expect(cState.mySlot, 'a user who never called room:sit should have no seat').toBeNull();
     expect(cState.myRole, 'an unseated room member is role "guest"').toBe('guest');
 
-    // Spectator shows up in the spectators tab, not in a slot.
-    await C.page.click('.tab-btn[data-tab="tab-users"]');
-    await expect(C.page.locator('#users-list')).toContainText(C.displayName, { timeout: 10000 });
+    // Spectator shows up in the audience stack/popover (#369), not in a slot.
+    await C.page.click('#aud-stack');
+    await expect(C.page.locator('#aud-pop')).toContainText(C.displayName, { timeout: 10000 });
+    await C.page.click('#aud-stack');
 
     // A and B sit, ready up, and start a game — the spectator should observe
     // the game state flip to 'ongoing' without ever sitting.

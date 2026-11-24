@@ -1,6 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { io as ioClient } from 'socket.io-client';
 import { authAsGuest } from './helpers/auth';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TEST-MATRIX.md rows 19, 21 — authorization boundary (a user with no
@@ -36,7 +37,7 @@ test.describe('Security boundary', () => {
     await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');
@@ -101,7 +102,7 @@ test.describe('Security boundary', () => {
     await A.page.goto('/index.html#rooms');
     await A.page.click('#btn-create');
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
 
     const B = await makeGuest(browser, 'PlayerB');

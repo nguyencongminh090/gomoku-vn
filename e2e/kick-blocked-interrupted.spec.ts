@@ -1,6 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { dropConnection } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TEST-MATRIX.md row 18 — kicking a user is blocked while the room is
@@ -41,7 +42,7 @@ test.describe('Kick blocked during interrupted state', () => {
       if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await B.page.click('#btn-quick-match');
-    await B.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await B.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(B.page.url()).searchParams.get('id');
 
     const A = await makeGuest(browser, 'PlayerA');

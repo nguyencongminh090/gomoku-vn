@@ -1,6 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
 import { waitForEmptyLobby } from './helpers/lobby';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TODO.md #117 — a busy lobby (many concurrent rooms/players) used to feel
@@ -31,7 +32,7 @@ test.describe('Lobby patch incremental render (B117)', () => {
       await page.goto('/index.html#rooms');
       await page.click('#btn-create');
       await page.click('#btn-quick-match');
-      await page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+      await page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
       seeders.push({ ctx, page });
     }
 
