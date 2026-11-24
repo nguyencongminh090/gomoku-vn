@@ -210,6 +210,8 @@
     const y = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
     if (dayKey(iso) === dayKey(today.toISOString())) return t('clubs.day_today');
     if (dayKey(iso) === dayKey(y.toISOString())) return t('clubs.day_yesterday');
+    const tm = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1); // B450: sự-kiện looks ahead
+    if (dayKey(iso) === dayKey(tm.toISOString())) return t('clubs.day_tomorrow');
     return d.toLocaleDateString(lang(), { weekday: 'long', day: '2-digit', month: '2-digit' });
   }
 
@@ -494,6 +496,47 @@
     else if (state.latestOther > state.chat.lastId) fetchChat('newer'); // the unread dot saw these: show them now, not on the next poll
   }
 
+  // --- sự-kiện channel (B450): grouped by the viewer's local day, RSVP "tham gia" for reminders ---
+  function eventRow(e, staff) {
+    const row = el('div', undefined, 'prow cl-event' + (e.mine ? ' is-going' : ''));
+    row.dataset.event = e.id;
+    const body = el('div', undefined, 'prow__body');
+    body.append(el('div', e.title, 'prow__t'),
+      window.PlatformShell.meta(new Date(e.startsAt).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' })),
+      el('div', e.going ? t('clubs.event_going_n', { n: e.going }) : t('clubs.event_going_none'), 'prow__m cl-event__going'));
+    row.append(window.PlatformShell.icon('ph-regular-calendar'), body);
+    if (isMember()) {
+      const b = el('button', t(e.mine ? 'clubs.event_going' : 'clubs.event_join'), 'pbtn pbtn--sm' + (e.mine ? ' pbtn--primary' : ''));
+      b.type = 'button';
+      b.setAttribute('aria-pressed', String(!!e.mine));
+      b.title = t('clubs.event_join_hint');
+      b.onclick = async () => {
+        b.disabled = true;
+        const r = await act(e.mine ? 'DELETE' : 'POST', '/events/' + encodeURIComponent(e.id) + '/rsvp');
+        if (r) {
+          Object.assign(e, { going: r.going, mine: r.mine });
+          const fresh = eventRow(e, staff);
+          row.replaceWith(fresh);
+          fresh.querySelector('button').focus();
+        } else b.disabled = false;
+      };
+      row.append(b);
+    }
+    if (staff) row.append(mini(t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
+    return row;
+  }
+
+  function renderEvents(events, staff) {
+    if (!events.length) { $('cb-events').replaceChildren(el('p', t('clubs.no_events'), 'pnote')); return; }
+    const out = [];
+    let last = '';
+    for (const e of events) {
+      if (dayKey(e.startsAt) !== last) { last = dayKey(e.startsAt); out.push(el('h3', dayLabel(e.startsAt), 'cl-evday')); }
+      out.push(eventRow(e, staff));
+    }
+    $('cb-events').replaceChildren(...out);
+  }
+
   // --- composer command hints (B447): only commands this club enabled and this member may use ---
   function commandHints() {
     const c = chatSet();
@@ -501,6 +544,7 @@
     if (c.cmdPin && isStaff()) out.push({ cmd: '/ghim', args: t('clubs.cmd_pin_args'), desc: t('clubs.cmd_pin') });
     if (c.cmdChallenge) out.push({ cmd: '/giaohuu', args: t('clubs.cmd_challenge_args'), desc: t('clubs.cmd_challenge') });
     if (c.cmdPoll) out.push({ cmd: '/binhchon', args: t('clubs.cmd_poll_args'), desc: t('clubs.cmd_poll') });
+    if (c.cmdCalendar) out.push({ cmd: '/lich', args: isStaff() ? t('clubs.cmd_calendar_args') : '', desc: t(isStaff() ? 'clubs.cmd_calendar_staff' : 'clubs.cmd_calendar'), bare: true });
     return out;
   }
 
@@ -546,6 +590,9 @@
     if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
       state.hint = (state.hint + (ev.key === 'ArrowDown' ? 1 : -1) + n) % n;
       renderHints();
+    } else if (ev.key === 'Enter' && state.hints[state.hint].bare && $('cb-chat-input').value.toLowerCase() === state.hints[state.hint].cmd) {
+      hideHints(); // B450: "/lich" is complete on its own — Enter sends it instead of only filling it in
+      return;
     } else if (ev.key === 'Enter' || ev.key === 'Tab') {
       pickHint(state.hint);
     } else if (ev.key === 'Escape') {
@@ -716,15 +763,7 @@
 
     $('cb-events-count').hidden = !c.events.length;
     $('cb-events-count').textContent = String(c.events.length);
-    $('cb-events').replaceChildren(...(c.events.length ? c.events.map((e) => {
-      const row = el('div', undefined, 'prow');
-      const body = el('div', undefined, 'prow__body');
-      body.append(el('div', e.title, 'prow__t'),
-        window.PlatformShell.meta(new Date(e.startsAt).toLocaleString(lang(), { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })));
-      row.append(window.PlatformShell.icon('ph-regular-calendar'), body);
-      if (staff) row.append(mini(t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
-      return row;
-    }) : [el('p', t('clubs.no_events'), 'pnote')]));
+    renderEvents(c.events, staff);
     $('cb-event-box').hidden = !staff;
 
     $('cb-tournaments').replaceChildren(...(c.tournaments.length ? c.tournaments.map((x) => {
@@ -912,6 +951,12 @@
       if (sent) {
         $('cb-chat-input').value = '';
         if (sent.kind === 'pin') load(); // the pinned bar above the stream shows the new text
+        if (sent.kind === 'calendar' || sent.kind === 'event') { // B450: /lich stores nothing in chat; show the events channel
+          if (sent.kind === 'event') await load();
+          else renderEvents(sent.events, isStaff()); // fresh list from the reply
+          showChannel('events', { updateHash: true });
+          return;
+        }
         await fetchChat('newer');
         const s = $('cb-stream');
         s.scrollTop = s.scrollHeight;

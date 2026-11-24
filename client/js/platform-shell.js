@@ -115,6 +115,10 @@
       const vars = { name: n.payload && n.payload.from ? n.payload.from.displayName : '' };
       if (n.payload && n.payload.club) vars.club = n.payload.club.name;
       if (n.payload && n.payload.roomName) vars.room = n.payload.roomName;
+      if (n.payload && n.payload.event) { // B450 reminder: title + start time in the viewer's clock
+        vars.event = n.payload.event.title;
+        vars.time = new Date(n.payload.event.startsAt).toLocaleTimeString(document.documentElement.lang || undefined, { hour: '2-digit', minute: '2-digit' });
+      }
       return t('notif.' + n.type, vars);
     },
     /** Inline answer buttons for notifications you act on (F443 room_invite), else null. */
@@ -200,7 +204,7 @@
   }
 
   /** Club notifications open the channel they are about (B447: chat ones land on trò-chuyện). */
-  const CLUB_HASH = { club_request: '#ch=requests', club_mention: '#ch=chat', club_all: '#ch=chat', club_pin: '#ch=chat', club_poll: '#ch=chat' };
+  const CLUB_HASH = { club_request: '#ch=requests', club_mention: '#ch=chat', club_all: '#ch=chat', club_pin: '#ch=chat', club_poll: '#ch=chat', club_event: '#ch=events' };
 
   function notifTarget(n) {
     const from = n.payload && n.payload.from;

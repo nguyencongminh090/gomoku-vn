@@ -384,13 +384,20 @@ function listClubs({ q, page, limit, category }) {
 }
 
 /** Club page payload; pending requests are visible to staff only. */
-/** Upcoming events (starts_at >= now), soonest first, capped. */
-function upcomingEvents(clubId) {
+/**
+ * Upcoming events (starts_at >= now), soonest first, capped. B450: `going` = RSVP count among confirmed members,
+ * `mine` = the viewer RSVP'd (false for no viewer).
+ */
+function upcomingEvents(clubId, viewerId = null) {
   return db().prepare(`
-    SELECT id, title, starts_at, kind FROM club_events
-    WHERE club_id = ? AND starts_at >= ? ORDER BY starts_at, id LIMIT ?`)
-    .all(clubId, new Date().toISOString(), MAX_UPCOMING_EVENTS)
-    .map((e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, kind: e.kind }));
+    SELECT e.id, e.title, e.starts_at, e.kind,
+      (SELECT COUNT(*) FROM club_event_rsvps r JOIN club_members m ON m.club_id = e.club_id AND m.user_id = r.user_id
+        WHERE r.event_id = e.id AND m.role != 'pending') AS going,
+      EXISTS (SELECT 1 FROM club_event_rsvps r WHERE r.event_id = e.id AND r.user_id = ?) AS mine
+    FROM club_events e
+    WHERE e.club_id = ? AND e.starts_at >= ? ORDER BY e.starts_at, e.id LIMIT ?`)
+    .all(viewerId || '', clubId, new Date().toISOString(), MAX_UPCOMING_EVENTS)
+    .map((e) => ({ id: e.id, title: e.title, startsAt: e.starts_at, kind: e.kind, going: e.going, mine: !!e.mine }));
 }
 
 function requireStaff(club, userId) {
@@ -424,6 +431,50 @@ function deleteEvent(userId, slug, eventId) {
   requireStaff(club, userId);
   const r = db().prepare('DELETE FROM club_events WHERE id = ? AND club_id = ?').run(String(eventId).slice(0, 64), club.id);
   if (!r.changes) throw new ClubError('CLUB_EVENT_NOT_FOUND', 404, 'Không tìm thấy sự kiện.');
+}
+
+/** RSVP "tham gia" (going=true) or take it back (B450). Members only; started events are closed. */
+function rsvpEvent(userId, slug, eventId, going) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  const ev = db().prepare('SELECT id, starts_at FROM club_events WHERE id = ? AND club_id = ?').get(String(eventId).slice(0, 64), club.id);
+  if (!ev || ev.starts_at < now()) throw new ClubError('CLUB_EVENT_NOT_FOUND', 404, 'Không tìm thấy sự kiện.');
+  if (going) {
+    db().prepare('INSERT OR IGNORE INTO club_event_rsvps (event_id, user_id, created_at) VALUES (?, ?, ?)').run(ev.id, userId, now());
+  } else {
+    db().prepare('DELETE FROM club_event_rsvps WHERE event_id = ? AND user_id = ?').run(ev.id, userId);
+  }
+  return upcomingEvents(club.id, userId).find((e) => e.id === ev.id) || { id: ev.id, going: 0, mine: false };
+}
+
+const REMIND_LEAD_MS = 30 * 60 * 1000;
+
+/**
+ * Reminder sweep (B450), run on boot and every minute. Events starting within the next 30 min that were not yet
+ * claimed get `reminded_at` set (claim = conditional UPDATE, so a double run never sends twice) and each confirmed
+ * member who RSVP'd gets a `club_event` notification. Events that already started (e.g. during downtime) are
+ * skipped, never reminded late. Clubs with `remindEvents` off are skipped without claiming, so switching it back on
+ * inside the window still reminds. Returns the number of notifications pushed.
+ */
+function remindDueEvents(nowMs = Date.now()) {
+  const from = new Date(nowMs).toISOString();
+  const to = new Date(nowMs + REMIND_LEAD_MS).toISOString();
+  const due = db().prepare(`SELECT e.id, e.title, e.starts_at, c.id AS club_id, c.slug, c.name, c.chat_settings
+    FROM club_events e JOIN clubs c ON c.id = e.club_id
+    WHERE e.reminded_at IS NULL AND e.starts_at > ? AND e.starts_at <= ? ORDER BY e.starts_at`).all(from, to);
+  let sent = 0;
+  for (const e of due) {
+    if (!chat.readSettings(e.chat_settings).remindEvents) continue;
+    const claimed = db().prepare('UPDATE club_events SET reminded_at = ? WHERE id = ? AND reminded_at IS NULL').run(from, e.id).changes;
+    if (!claimed) continue;
+    const ids = db().prepare(`SELECT r.user_id FROM club_event_rsvps r
+      JOIN club_members m ON m.club_id = ? AND m.user_id = r.user_id AND m.role != 'pending'
+      WHERE r.event_id = ? ORDER BY r.created_at`).all(e.club_id, e.id).map((r) => r.user_id);
+    // actorId null: push() de-dupes by (type, actor) — two events must not erase each other's reminder.
+    notifyMany(ids, 'club_event', null, { club: { slug: e.slug, name: e.name }, event: { id: e.id, title: e.title, startsAt: e.starts_at } });
+    sent += ids.length;
+  }
+  return sent;
 }
 
 /** Club id if `userId` is its owner/officer, else throws. Used by the tournament flow. */
@@ -618,6 +669,7 @@ const rateLimit = (userId) => {
  *   /ghim <text>            staff: set the pinned announcement (+ notify all when notifyPin)
  *   /giaohuu @name [rule] [time]  unrated challenge to a confirmed member via ChallengeService
  *   /binhchon q | a | b     any member: a poll card (B449); + notify all when notifyPoll
+ *   /lich [dd/mm HH:MM Tên] list upcoming events (caller only); staff with args: create one (B450)
  * Plain text: @username notifies that member (notifyMention); @all / @tatca from staff notifies the
  * whole club (notifyAll, once per NOTIFY_COOLDOWN_MS). Unknown or disabled commands are refused.
  */
@@ -632,6 +684,7 @@ function postMessage(userId, slug, text) {
     if (!settings[chat.COMMAND_TOGGLE[cmd.kind]]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
     if (cmd.kind === 'pin') return pinCommand(club, role, userId, cmd.arg, settings);
     if (cmd.kind === 'poll') return pollCommand(club, role, userId, cmd.arg, settings);
+    if (cmd.kind === 'calendar') return calendarCommand(club, role, userId, cmd.arg);
     return challengeCommand(club, userId, cmd.arg);
   }
   const body = dmText.clean(raw);
@@ -717,6 +770,25 @@ function pollCommand(club, role, userId, arg, settings) {
   return { id, kind: 'poll', poll: pollState(club, userId, role, id) };
 }
 
+const EVENT_ERRORS = {
+  usage: 'Cú pháp: /lich ngày/tháng giờ:phút Tên sự kiện (vd. /lich 25/12 20:00 Giao hữu).',
+  date: 'Ngày giờ không hợp lệ.',
+  past: 'Thời gian sự kiện phải ở tương lai.',
+};
+
+/**
+ * /lich (B450): no arg → upcoming events for the caller only (nothing stored in chat);
+ * "/lich dd/mm HH:MM Tên" → staff create an event (Vietnam time). Neither posts a chat row.
+ */
+function calendarCommand(club, role, userId, arg) {
+  if (!arg) return { kind: 'calendar', events: upcomingEvents(club.id, userId) };
+  if (!isStaff(role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Chỉ chủ nhiệm/phó nhóm tạo sự kiện.');
+  const parsed = chat.parseEventArg(arg);
+  if (parsed.error) throw new ClubError('CLUB_EVENT_INVALID', 400, EVENT_ERRORS[parsed.error]);
+  const { id } = createEvent(userId, club.slug, { title: parsed.title, startsAt: parsed.startsAt });
+  return { kind: 'event', eventId: id, startsAt: parsed.startsAt };
+}
+
 /** Test seam: forget the whole-club fan-out windows. */
 const _resetFanOut = () => lastFanOut.clear();
 
@@ -783,7 +855,7 @@ function getClubDetail(slug, viewerId, category) {
     avgRating: avgRows.length ? Math.round(avgRows.reduce((s, r) => s + r.rating, 0) / avgRows.length) : null,
     myRole,
     chat: chat.readSettings(club.chat_settings),
-    events: upcomingEvents(club.id),
+    events: upcomingEvents(club.id, viewerId),
     tournaments: clubTournaments(club.id),
     leaderboard: rows.map((r, i) => ({
       rank: i + 1, username: r.username, displayName: r.display_name, role: r.role, mine: r.user_id === viewerId,
@@ -827,7 +899,7 @@ function userIdByUsername(username) {
 module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
-  createEvent, deleteEvent, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
+  createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
   refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

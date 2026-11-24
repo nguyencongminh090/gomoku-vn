@@ -306,14 +306,64 @@ describe('club page', () => {
       await bootClub({ ...CLUB, myRole: 'member', events: EVENTS });
       expect(document.querySelector('#cb-events .prow__t').textContent).toBe('<b>Giao hữu</b>');
       expect(document.querySelector('#cb-events b')).toBeNull();
-      expect(document.querySelectorAll('#cb-events button')).toHaveLength(0);
+      expect([...document.querySelectorAll('#cb-events button')].map((b) => b.textContent)).toEqual(['clubs.event_join']); // RSVP only, no delete
+      await bootClub({ ...CLUB, myRole: null, events: EVENTS });
+      expect(document.querySelectorAll('#cb-events button')).toHaveLength(0); // visitors: no RSVP
+    });
+
+    it('B450: grouped under a day heading per local day (Hôm nay / Ngày mai / date)', async () => {
+      const at = (dayOffset, h) => { const d = new Date(); d.setDate(d.getDate() + dayOffset); d.setHours(h, 0, 0, 0); return d.toISOString(); };
+      const evs = [
+        { id: 'a', title: 'A', startsAt: at(0, 23), going: 0, mine: false },
+        { id: 'b', title: 'B', startsAt: at(1, 20), going: 3, mine: true },
+        { id: 'c', title: 'C', startsAt: at(1, 21), going: 1, mine: false },
+        { id: 'd', title: 'D', startsAt: at(5, 9), going: 0, mine: false },
+      ];
+      await bootClub({ ...CLUB, myRole: 'member', events: evs });
+      const seq = [...document.getElementById('cb-events').children].map((x) => (x.matches('.cl-evday') ? '#' + x.textContent : x.dataset.event));
+      const d5 = new Date(evs[3].startsAt).toLocaleDateString(undefined, { weekday: 'long', day: '2-digit', month: '2-digit' });
+      expect(seq).toEqual(['#clubs.day_today', 'a', '#clubs.day_tomorrow', 'b', 'c', '#' + d5, 'd']);
+      const b = document.querySelector('[data-event="b"]');
+      expect(b.querySelector('.cl-event__going').textContent).toBe('clubs.event_going_n{"n":3}');
+      expect(b.querySelector('button').textContent).toBe('clubs.event_going');
+      expect(b.querySelector('button').getAttribute('aria-pressed')).toBe('true');
+      expect(document.querySelector('[data-event="a"] .cl-event__going').textContent).toBe('clubs.event_going_none');
+    });
+
+    it('B450: Tham gia posts the RSVP and re-renders the row from the reply; again takes it back', async () => {
+      await bootClub({ ...CLUB, myRole: 'member', events: [{ ...EVENTS[0], going: 0, mine: false }] });
+      global.fetch = jest.fn(() => ok({ id: 'e1', going: 1, mine: true }));
+      document.querySelector('#cb-events button').click();
+      await flush(); await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/events/e1/rsvp');
+      expect(global.fetch.mock.calls[0][1].method).toBe('POST');
+      const btn = document.querySelector('#cb-events button');
+      expect([btn.textContent, btn.getAttribute('aria-pressed')]).toEqual(['clubs.event_going', 'true']);
+      expect(document.activeElement).toBe(btn);
+      expect(document.querySelector('.cl-event__going').textContent).toBe('clubs.event_going_n{"n":1}');
+      global.fetch = jest.fn(() => ok({ id: 'e1', going: 0, mine: false }));
+      btn.click();
+      await flush(); await flush();
+      expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+      expect(document.querySelector('#cb-events button').textContent).toBe('clubs.event_join');
+    });
+
+    it('B450: a refused RSVP keeps the row and re-enables the button', async () => {
+      await bootClub({ ...CLUB, myRole: 'member', events: [{ ...EVENTS[0], going: 0, mine: false }] });
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({ error: 'Không tìm thấy sự kiện.' }) }));
+      const btn = document.querySelector('#cb-events button');
+      btn.click();
+      await flush(); await flush();
+      expect(document.querySelector('#cb-events button')).toBe(btn);
+      expect(btn.disabled).toBe(false);
+      expect(document.getElementById('cb-msg').textContent).not.toBe('');
     });
 
     it('staff delete sends DELETE /events/:id after confirm', async () => {
       await bootClub({ ...CLUB, myRole: 'officer', events: EVENTS });
       window.confirm = jest.fn(() => true);
       global.fetch.mockClear();
-      document.querySelector('#cb-events button').click();
+      [...document.querySelectorAll('#cb-events button')].find((b) => b.textContent === 'clubs.delete_event').click();
       await flush();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/events/e1');
       expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
@@ -720,7 +770,7 @@ describe('club banner (#446): generated pattern when none; phone keeps a short s
 });
 
 describe('chat commands + notifications (B447)', () => {
-  const DEFAULTS = { cmdPin: true, cmdChallenge: true, cmdPoll: true, notifyMention: true, notifyAll: false, notifyPin: false, notifyPoll: false, unreadDot: true };
+  const DEFAULTS = { cmdPin: true, cmdChallenge: true, cmdPoll: true, cmdCalendar: true, notifyMention: true, notifyAll: false, notifyPin: false, notifyPoll: false, remindEvents: true, unreadDot: true };
   const LB = [
     { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
     { rank: 2, username: 'mem', displayName: 'Mem', role: 'member', rating: null, games: 0 },
@@ -749,12 +799,12 @@ describe('chat commands + notifications (B447)', () => {
     it('"/" lists only enabled commands this member may use; /ghim is staff-only', async () => {
       await boot(clubAs('member'));
       type('/');
-      expect(hints()).toEqual(['/giaohuu', '/binhchon']);
+      expect(hints()).toEqual(['/giaohuu', '/binhchon', '/lich']);
       expect(document.getElementById('cb-chat-hints').hidden).toBe(false);
       expect(input().getAttribute('aria-expanded')).toBe('true');
       await boot(clubAs('officer'));
       type('/');
-      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon']);
+      expect(hints()).toEqual(['/ghim', '/giaohuu', '/binhchon', '/lich']);
       type('/b');
       expect(hints()).toEqual(['/binhchon']);
       type('/gh');
@@ -762,14 +812,14 @@ describe('chat commands + notifications (B447)', () => {
     });
 
     it('disabled commands are not offered; no hints once a space is typed or for plain text', async () => {
-      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false, cmdPoll: false } }));
+      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
       type('/');
       expect(hints()).toEqual(['/ghim']);
       type('/ghim hello');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       type('hello /');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
-      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false, cmdPoll: false } }));
+      await boot(clubAs('owner', { chat: { ...DEFAULTS, cmdPin: false, cmdChallenge: false, cmdPoll: false, cmdCalendar: false } }));
       type('/');
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       expect(input().getAttribute('aria-expanded')).toBe('false');
@@ -814,6 +864,57 @@ describe('chat commands + notifications (B447)', () => {
       await flush();
       const put = global.fetch.mock.calls.find(([, o]) => o && o.method === 'PUT');
       expect(JSON.parse(put[1].body).chatSettings).toEqual({ ...DEFAULTS, notifyAll: true, cmdPin: false });
+    });
+
+    it('B450: /lich hint text differs for staff (create args) and members (list only)', async () => {
+      await boot(clubAs('member'));
+      type('/l');
+      expect(document.querySelector('#cb-chat-hints .cl-hint__desc').textContent).toBe('clubs.cmd_calendar');
+      expect(document.querySelector('#cb-chat-hints .cl-hint__args').textContent).toBe('');
+      await boot(clubAs('officer'));
+      type('/l');
+      expect(document.querySelector('#cb-chat-hints .cl-hint__desc').textContent).toBe('clubs.cmd_calendar_staff');
+      expect(document.querySelector('#cb-chat-hints .cl-hint__args').textContent).toBe('clubs.cmd_calendar_args');
+    });
+
+    it('B450: Enter on a fully typed "/lich" is not swallowed by the hint (it sends); "/l" + Enter still completes', async () => {
+      await boot(clubAs('member'));
+      type('/l');
+      key('Enter');
+      expect(input().value).toBe('/lich ');
+      type('/lich');
+      const ev = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+      input().dispatchEvent(ev);
+      expect(ev.defaultPrevented).toBe(false); // the form's submit runs
+      expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
+      type('/binhchon'); // commands that need arguments still only fill in
+      key('Enter');
+      expect(input().value).toBe('/binhchon ');
+    });
+
+    it('B450: /lich reply opens sự-kiện with the returned list; nothing is added to chat', async () => {
+      await boot(clubAs('member'));
+      const evs = [{ id: 'z', title: 'Từ lệnh', startsAt: new Date(Date.now() + 3600e3).toISOString(), going: 2, mine: false }];
+      global.fetch = jest.fn((url, opts) => (opts && opts.method === 'POST' ? ok({ kind: 'calendar', events: evs }) : ok({ messages: [] })));
+      input().value = '/lich';
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush(); await flush();
+      expect(location.hash).toBe('#ch=events');
+      expect(document.getElementById('cb-panel-events').hidden).toBe(false);
+      expect(document.querySelector('[data-event="z"] .prow__t').textContent).toBe('Từ lệnh');
+      expect(input().value).toBe('');
+    });
+
+    it('B450: staff /lich create reloads the club and opens sự-kiện', async () => {
+      await boot(clubAs('owner'));
+      const created = clubAs('owner', { events: [{ id: 'n', title: 'Mới', startsAt: new Date(Date.now() + 864e5).toISOString(), going: 0, mine: false }] });
+      global.fetch = jest.fn((url, opts) => (opts && opts.method === 'POST' ? ok({ kind: 'event', eventId: 'n' }) : ok(created)));
+      input().value = '/lich 25/12 20:00 Mới';
+      document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
+      await flush(); await flush(); await flush();
+      expect(global.fetch.mock.calls.some(([u, o]) => u.startsWith('/api/clubs/caro?') && !o.method)).toBe(true);
+      expect(location.hash).toBe('#ch=events');
+      expect(document.querySelector('[data-event="n"]')).not.toBeNull();
     });
 
     it('members never see them', async () => {

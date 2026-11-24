@@ -1,16 +1,17 @@
 # B450 — Club calendar + reminders for scheduled events
-**Status:** OPEN — idea only; size L, resolve `features/club-calendar/planning.md` open questions before any code
-**Area:** `server/managers/ClubService.js` (club_events), a reminder scheduler, `NotificationService` (new type), `client/js/club.js` (sự-kiện channel, composer), tests
-**From:** [features/club-calendar](../../features/club-calendar/planning.md) (user answer during #447, 2026-11-24: "Calendar, notify cho lịch hẹn")   **Depends:** B447
+**Status:** BUILT, merged to `dev` 2026-11-25 — tests + real-browser pass (incl. 020+021 on a copy of the PC DB, en locale, bell); decided 2026-11-25 (see [planning](../../features/club-calendar/planning.md#decisions-user-2026-11-25--all-recommended-options)); not deployed
+**Area:** migration 021, `ClubChatCommands` (`/lich`, `parseEventArg`), `ClubService` (RSVP, `remindDueEvents`), `routes/clubs`, `NotificationService` (`club_event`), `server/index.js` sweep, `client/js/club.js` + `club.html`, `platform-shell.js`, i18n, tests
+**From:** [features/club-calendar](../../features/club-calendar/planning.md)   **Depends:** B447
 
-## Problem
-Club events (sự-kiện) exist but there is no calendar view, no way to schedule from chat, and nobody is reminded when an event starts.
-## Scope
-1. Ask the user: month/week calendar view vs the current list; `/lich` command (list or create); who gets reminders (all members vs "tham gia" RSVP) and when (e.g. 30 min before); staff toggle in cài-đặt-nhóm.
-2. Reminder delivery reuses `NotificationService.push`; the scheduler must survive restarts (derive from `club_events.starts_at`, not in-memory timers only).
+## Approach
+- 021: `club_events.reminded_at` + partial index on `starts_at WHERE reminded_at IS NULL`; `club_event_rsvps` (PK event,user; cascades).
+- Sweep on boot + every 60 s: events with `now < starts_at <= now+30 min`, claimed by conditional UPDATE (never twice, restart-safe); started events are never reminded late; `remindEvents` off = skip without claiming.
+- Notify confirmed members who RSVP'd; `actorId` null (push de-dupes by type+actor). `/c/<slug>#ch=events`.
+- `/lich` stores no chat row (avoids another club_messages rebuild). Enter on a fully typed `/lich` sends (hint doesn't swallow it).
 ## Don't
-- New socket on the club page.
+- New socket on the club page; in-memory timers.
 ## Traps
-- In-memory timers are lost on restart / deploy; a sweep on boot + interval is needed.
+- `push()` drops older rows with the same (type, actor) → reminders must pass a null actor.
+- Event created < 30 min before start is claimed on the next tick; RSVPs after that get no reminder (they just acted).
 ## Done when
-- Decided with the user, then backend + jsdom + real-browser pass.
+- Backend + jsdom + real-browser pass ✅ (2026-11-25); user review → commit/merge.
