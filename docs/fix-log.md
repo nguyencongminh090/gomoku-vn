@@ -387,3 +387,4 @@
 | 2026-11-24 13:26 | #441 e2e suite green (56/56 Chromium, 6.0 m): shared ROOM_URL_WITH_ID, #367/#368/#369 spec updates, board-keyboard ctx leak + fixtures teardown | [detail](docs/fix-log/2026-11-24-441-e2e-stale-specs.md) |
 | 2026-11-24 14:00 | #445 mojibake "nhÃ³m" removed from club/clubs/index.html fallback text; test now scans client/*.html | [detail](docs/fix-log/2026-11-24-445-html-fallback-mojibake.md) |
 | 2026-11-24 15:00 | #448 `/api/clubs/mine` now returns color+tag (rail crest == list crest); 1 test | [detail](docs/fix-log/2026-11-24-448-club-mine-crest-fields.md) |
+| 2026-11-25 10:00 | #451 club tab / social DM hash kept the page path under `<base href="/">` (was `/#…` → lobby on reload); 2 tests | [detail](docs/fix-log/2026-11-25-451-hash-base-href.md) |

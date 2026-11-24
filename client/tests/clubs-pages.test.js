@@ -139,6 +139,17 @@ describe('club page', () => {
       expect(current()).toEqual(['board']);
     });
 
+    it('#451: under <base href="/"> the channel hash stays on /c/<slug> (reload/share keeps the club)', async () => {
+      const base = document.head.appendChild(document.createElement('base'));
+      base.href = '/';
+      try {
+        await bootClub(CLUB);
+        click('board');
+        expect(location.pathname).toBe('/c/caro');
+        expect(location.hash).toBe('#ch=board');
+      } finally { base.remove(); }
+    });
+
     it('legacy #tab= links still land: overview → chat, members → members, manage → requests (staff only); #ch=requests too', async () => {
       for (const [hash, role, want] of [['#tab=overview', null, 'chat'], ['#tab=members', null, 'members'], ['#tab=manage', null, 'chat'], ['#tab=manage', 'officer', 'requests'], ['#ch=requests', 'owner', 'requests'], ['#tab=nope', null, 'chat']]) {
         location.hash = hash;

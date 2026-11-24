@@ -1,5 +1,5 @@
 # B451 — Club channel links rewrite the URL to `/#ch=…` (base href)
-**Status:** OPEN — root cause known
+**Status:** ✅ DONE 2026-11-25 — merged to dev; jsdom + headless-Chrome stub check, full-app reload not run
 **Area:** `client/js/club.js` (`showChannel`), `client/club.html` (`<base href="/">`), `client/tests/clubs-pages.test.js`
 **From:** B450 real-browser pass, 2026-11-25   **Depends:** —
 

@@ -189,7 +189,7 @@
     $('cb-head-title').textContent = t('clubs.ch_' + name);
     $('cb-head-sub').textContent = t('clubs.chsub_' + name);
     $('cb-msg').textContent = '';
-    if (updateHash && currentChannel() !== name) history.replaceState(null, '', '#ch=' + name);
+    if (updateHash && currentChannel() !== name) history.replaceState(null, '', location.pathname + location.search + '#ch=' + name); // <base href="/"> would resolve a bare '#x' to "/#x" (#451)
     if (name === 'chat') openChat();
     syncUnread();
   }
