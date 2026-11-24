@@ -1,5 +1,5 @@
 # F444 — Room invite follow-ups (review minors of #443)
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-24 — backend jest (service +4), jsdom (room-invite +3, platform-shell +3, notify-toast 3), `npm test` 271 suites/4698 tests, real-browser pass 1280 (3 users, isolated DB): invite→lobby toast, focus trap, 10 s cooldown error survives search, decline→room-page toast, host-left→"hết hạn".
 **Area:** server/managers/RoomInviteService.js, NotificationService.js, client/js/platform-shell.js, socket-client.js, room-invite.js, i18n.js
 **From:** user 2026-11-24 "Approve" on the deferred minors list of #443   **Depends:** #443 (merged)
 
