@@ -388,3 +388,4 @@
 | 2026-11-24 14:00 | #445 mojibake "nhÃ³m" removed from club/clubs/index.html fallback text; test now scans client/*.html | [detail](docs/fix-log/2026-11-24-445-html-fallback-mojibake.md) |
 | 2026-11-24 15:00 | #448 `/api/clubs/mine` now returns color+tag (rail crest == list crest); 1 test | [detail](docs/fix-log/2026-11-24-448-club-mine-crest-fields.md) |
 | 2026-11-25 10:00 | #451 club tab / social DM hash kept the page path under `<base href="/">` (was `/#…` → lobby on reload); 2 tests | [detail](docs/fix-log/2026-11-25-451-hash-base-href.md) |
+| 2026-11-25 06:52 | #452 phone tab "Tôi" inert (no href, aria-disabled) until /me answers — `#` placeholder was `/#` → lobby under `<base href="/">`; 1 new + 1 updated test | [detail](docs/fix-log/2026-11-25-452-me-tab-placeholder.md) |

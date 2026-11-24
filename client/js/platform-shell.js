@@ -471,7 +471,7 @@
         if (m.username) {
           profile.href = '/u/' + encodeURIComponent(m.username);
           const tab = document.querySelector('.ptabbar a[data-tab="me"]');
-          if (tab) tab.setAttribute('href', profile.getAttribute('href'));
+          if (tab) { tab.setAttribute('href', profile.getAttribute('href')); tab.removeAttribute('aria-disabled'); }
         }
       })
       .catch(() => { /* chip stays inert */ });
@@ -524,7 +524,8 @@
     tabbar.setAttribute('aria-label', t('shell.nav_mobile'));
     for (const it of TABS) {
       const a = link(it, active);
-      if (it.id === 'me' && user && !user.isGuest) a.href = '#'; // set to /u/<name> once /me answers
+      // #452: inert until /me gives /u/<name> — '#' resolves to /# (lobby) under <base href="/">
+      if (it.id === 'me' && user && !user.isGuest) { a.removeAttribute('href'); a.setAttribute('aria-disabled', 'true'); }
       a.append(icon(it.icon), el('span', t(it.key)));
       tabbar.appendChild(a);
     }
