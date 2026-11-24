@@ -1,5 +1,5 @@
 # B435 — Silently dead socket: up to ~45 s of nothing, own chat lost, no banner
-**Status:** OPEN — fix built + deployed prod 2026-11-22 (4bdbebb7; steps 2+3, lab 39.9→8.7 s, [fix-log](../fix-log/2026-11-22-435-dead-socket-liveness.md)); real-phone check open
+**Status:** ✅ CLOSED 2026-11-24 (fix on dev, deployed prod; closed on user request, real-phone check not done) — fix built + deployed prod 2026-11-22 (4bdbebb7; steps 2+3, lab 39.9→8.7 s, [fix-log](../fix-log/2026-11-22-435-dead-socket-liveness.md)); real-phone check open
 **Area:** client/js/socket-client.js (heartbeat / liveness), client/js/room-socket.js, room.js chat send
 **From:** user (viewer) 2026-11-22: "sau một thời gian, tôi bị lag (thời gian của người đang chơi về 0:00 + nhắn tin nhưng ko thấy tin nhắn của mình). Sau đó, tôi refresh … nhắn tin và hiện ngay lập tức."   **Depends:** #415, #434
 

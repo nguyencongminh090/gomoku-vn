@@ -660,6 +660,90 @@ function queryLobbyRooms({ rule, offset, open, time, near, sort } = {}, viewer =
   return { rooms, matched: hits.length, stats: _lobbyStats(tally, key) };
 }
 
+// ── #438 seat alert ─────────────────────────────────────────────────────────────────────────────
+// "Báo khi có bàn": a socket registers its lobby filters (rule tab + near / time buckets); when a table of
+// that rule turns open (new room, a seat freed, a game over) and matches, the server pushes ONE
+// `lobby:seat_alert { room }` per table. Computed here, not by the client, because a client only mirrors one
+// page of a rule (#382) and a shell page holds no lobby channel at all. In memory on the socket
+// (`socket.data.seatAlert`), nothing stored: a reload re-registers from the client's localStorage.
+const SEAT_ALERT_ROOM = 'seat-alert';
+const SEAT_ALERT_NOTIFIED_CAP = 200;
+
+/** `{ key, near, time:Set, notified:Set }` from a client payload, or null when the rule is missing/unknown. */
+function _seatAlertFilter(payload) {
+  const p = payload && typeof payload === 'object' ? payload : {};
+  if (!LOBBY_RULES.includes(p.rule)) return null;
+  const time = Array.isArray(p.time) ? p.time.slice(0, LOBBY_TIME_BUCKETS.length).filter((t) => LOBBY_TIME_BUCKETS.includes(t)) : [];
+  return { key: p.rule, near: p.near === true, time: new Set(time), notified: new Set() };
+}
+
+/**
+ * Register / replace (a valid `payload`) or clear (anything else) this socket's seat alert.
+ * Tables already open now count as seen, so enabling it (or re-registering after a reconnect) never
+ * replays the lobby: only a table that opens afterwards alerts.
+ * @returns {boolean} whether an alert is now armed
+ */
+function setSeatAlert(socket, payload) {
+  const filter = _seatAlertFilter(payload);
+  const data = socket.data || (socket.data = {});
+  if (!filter) { clearSeatAlert(socket); return false; }
+  for (const [roomId, room] of roomManager.rooms) {
+    if (_lobbyRank(roomManager.lobbyStat(room)).open) filter.notified.add(roomId);
+  }
+  data.seatAlert = filter;
+  socket.join(SEAT_ALERT_ROOM);
+  return true;
+}
+
+function clearSeatAlert(socket) {
+  if (socket.data) delete socket.data.seatAlert;
+  socket.leave(SEAT_ALERT_ROOM);
+}
+
+/** Same predicates as the lobby's filters (queryLobbyRooms): rule, time bucket, a seated member near my Elo. */
+function _seatAlertMatches(alert, user, room, stat) {
+  if (stat.rule !== alert.key) return false;
+  if (alert.time.size && !alert.time.has(_timeBucket(stat))) return false;
+  if (alert.near && user && !user.isGuest) {
+    const mine = rankCache.standingOf(user.userId, alert.key);
+    if (!mine) return false;
+    const near = (stat.seatIds || []).some((id) => {
+      const s = rankCache.standingOf(id, stat.rule);
+      return s && Math.abs(s[0] - mine[0]) <= LOBBY_NEAR_ELO;
+    });
+    if (!near) return false;
+  }
+  return true;
+}
+
+/** `opened` = ids of rooms that were not open before this flush and are now. */
+function _notifySeatAlerts(io, opened) {
+  if (!opened.size) return;
+  const rooms = io && io.sockets && io.sockets.adapter && io.sockets.adapter.rooms;
+  const members = rooms && typeof rooms.get === 'function' ? rooms.get(SEAT_ALERT_ROOM) : null;
+  if (!members || members.size === 0) return;
+  const stats = new Map();
+  for (const sid of members) {
+    const sock = io.sockets.sockets && io.sockets.sockets.get(sid);
+    const alert = sock && sock.data && sock.data.seatAlert;
+    if (!alert) continue;
+    if (alert.notified.size > SEAT_ALERT_NOTIFIED_CAP) {
+      for (const id of alert.notified) if (!roomManager.getRoom(id)) alert.notified.delete(id);
+    }
+    const mine = sock.user ? roomManager.getRoomIdByUser(sock.user.userId) : null;
+    for (const roomId of opened) {
+      if (alert.notified.has(roomId) || roomId === mine) continue;
+      const room = roomManager.getRoom(roomId);
+      if (!room) continue;
+      let stat = stats.get(roomId);
+      if (!stat) { stat = roomManager.lobbyStat(room); stats.set(roomId, stat); }
+      if (!_seatAlertMatches(alert, sock.user, room, stat)) continue;
+      alert.notified.add(roomId);
+      sock.emit('lobby:seat_alert', { room: roomManager.lobbyEntry(room) });
+    }
+  }
+}
+
 /**
  * #380: which rooms the pending flush must look at — `st.dirty`, a Set of room ids, or 'all' once any
  * caller did not name a room. The diff itself still reads live state at flush time — callers say
@@ -756,15 +840,25 @@ function _flushLobbyNow(io) {
   st.dirty = undefined;
   const now = Date.now();
   const full = !st.tally || !(dirty instanceof Set) || now - st.lastFull >= LOBBY_FULL_RECONCILE_MS;
+  const opened = new Set(); // #438: rooms that turned open in this flush
   if (full) {
+    const before = st.tally ? st.tally.per : null;
     st.tally = _countAllRooms();
     st.lastFull = now;
+    for (const [roomId, rank] of st.tally.per) {
+      const was = before && before.get(roomId);
+      if (rank.open && !(was && was.open)) opened.add(roomId);
+    }
   } else {
     for (const roomId of dirty) {
       const room = roomManager.getRoom(roomId);
-      _tallySet(st.tally, roomId, room ? _lobbyRank(roomManager.lobbyStat(room)) : null);
+      const was = st.tally.per.get(roomId);
+      const rank = room ? _lobbyRank(roomManager.lobbyStat(room)) : null;
+      _tallySet(st.tally, roomId, rank);
+      if (rank && rank.open && !(was && was.open)) opened.add(roomId);
     }
   }
+  _notifySeatAlerts(io, opened);
   for (const [key, ch] of st.channels) {
     if (_lobbyChannelEmpty(io, key)) { st.channels.delete(key); continue; } // its next subscriber reseeds it
     const { upserts, removed } = full || !ch.page ? _diffLobbyFull(st.tally, ch, key) : _diffLobbyDirty(st.tally, ch, key, dirty);
@@ -1374,6 +1468,8 @@ module.exports = {
   lobbyChannelOf,
   lobbyRoomOf,
   leaveLobby,
+  setSeatAlert,
+  clearSeatAlert,
   LOBBY_NEAR_ELO,
   onRatingsChanged,
   LOBBY_FULL_RECONCILE_MS,

@@ -1,5 +1,5 @@
 # B442 — Review archived Codex branch admin-ranking-review (auth/admin/ranking fixes)
-**Status:** OPEN
+**Status:** ✅ CLOSED 2026-11-24 — closed by user request without per-commit review; tag `archive/codex-admin-ranking-review` kept (not deleted).
 **Area:** server/routes/{admin,auth,rankings}.js, server/utils/legacy-auth.js, TournamentManager, package*.json, server/tests
 **From:** branch cleanup 2026-11-24; branch deleted, kept as tag `archive/codex-admin-ranking-review` (93a83665)   **Depends:** —
 
