@@ -32,15 +32,6 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 /* ── Panels / split ──────────────────────────────────────────────────────── */
 .psplit { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
 .ppanel { background: var(--c-surface); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-card); }
-.cb-panel > .ppanel { margin-bottom: 20px; }
-.cb-chat { display: flex; flex-direction: column; gap: 12px; }
-.cb-chat__log { display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow-y: auto; }
-.cb-chat__msg { display: flex; gap: 10px; align-items: flex-start; }
-.cb-chat__body { min-width: 0; flex: 1; }
-.cb-chat__who { font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-3); }
-.cb-chat__text { font-size: calc(14px * var(--fs-scale, 1)); overflow-wrap: anywhere; }
-.cb-chat__form { display: flex; gap: 10px; }
-.cb-chat__form input { flex: 1; min-width: 0; padding: 10px 12px; font-size: calc(14px * var(--fs-scale, 1)); border: 1px solid var(--c-border-strong); border-radius: var(--radius); background: var(--c-field); }
 .ph2 { margin: 0 0 14px; font-size: calc(14px * var(--fs-scale, 1)); font-weight: 700; letter-spacing: .02em; color: var(--c-ink); }
 .ph2--gap { margin-top: 28px; }
 .pcode { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-2); user-select: all; }
@@ -136,11 +127,6 @@ body.pl { margin: 0; background: var(--c-bg); color: var(--c-ink); font-family: 
 .prow:last-child { border-bottom: 0; }
 a.prow:hover { background: var(--c-hover); }
 .prow__body { flex: 1; min-width: 0; }
-@media (max-width: 480px) {   /* B322: a badge drops under the name instead of squeezing it */
-  #cl-list .prow { flex-wrap: wrap; row-gap: 6px; }
-  #cl-list .prow__body { flex: 1 1 60%; }
-  #cl-list .prow .pbadge { margin-left: calc(28px + 14px); }
-}
 .prow__t { font-size: calc(15px * var(--fs-scale, 1)); font-weight: 500; overflow-wrap: anywhere; }
 .prow__m { margin-top: 2px; font-size: calc(14px * var(--fs-scale, 1)); color: var(--c-ink-3); overflow-wrap: anywhere; }
 #cl-list .prow__desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }   /* B321: full text stays on the club page */
@@ -179,7 +165,6 @@ a.prow:hover { background: var(--c-hover); }
   .phead h1 { font-size: calc(22px * var(--fs-scale, 1)); }
   .pav--xl { width: 64px; height: 64px; font-size: calc(20px * var(--fs-scale, 1)); }
   .ppanel { padding: 14px; }
-  .cb-panel > .ppanel { margin-bottom: 16px; }
 }
 
 /* Challenge form on a profile (#198 slice 3) */
@@ -388,23 +373,14 @@ a.prow:hover { background: var(--c-hover); }
 .pswatches { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .pswatch { width: 28px; height: 28px; padding: 0; border: 2px solid transparent; border-radius: 50%; cursor: pointer; forced-color-adjust: none; }   /* forced-colors (Firefox on a high-contrast GTK theme) would repaint the fill ButtonFace grey; the colour IS the control */
 .pswatch[aria-checked="true"] { border-color: var(--c-ink); outline: 2px solid var(--c-surface); outline-offset: -4px; }
-.cb-announce { margin-bottom: var(--space-4); }
-.cb-announce p { margin: 0; font-size: calc(14px * var(--fs-scale, 1)); overflow-wrap: anywhere; white-space: pre-line; }
-.cb-announce .ph2 { margin-bottom: var(--space-2); }
 .cb-inline { display: flex; gap: var(--space-2); }
 .cb-inline input { flex: 1; min-width: 0; padding: 10px 12px; font-size: calc(14px * var(--fs-scale, 1)); border: 1px solid var(--c-border-strong); border-radius: var(--radius); background: var(--c-field); }
 .cb-inline { margin-bottom: var(--space-3); }
-@media (max-width: 860px) {
-  #cb-tablist { flex-wrap: nowrap; overflow-x: auto; }
-  #cb-tablist .ptab { flex: none; }
-}
 /* Wide variant for the club banner editor (#250): 4:1 viewport, rectangular frame */
 .pcrop__dlg--wide { max-width: 700px; }
 .pcrop__dlg--wide .pcrop__view { width: 640px; }
 .pcrop__ring--rect { border-radius: var(--radius); box-shadow: inset 0 0 0 2px var(--c-on-brand); }
 /* Club banner + image controls (#250) */
-.cb-banner { width: 100%; aspect-ratio: 4 / 1; margin-bottom: 12px; border-radius: var(--radius-lg); background: var(--c-surface-2) center / cover no-repeat; }
-@media (max-width: 600px) { .cb-banner { aspect-ratio: 3 / 1; } }   /* 4:1 is ~90px on a phone: crop the sides (cover) for a taller strip */
 .cb-sugg { margin-bottom: var(--space-3); border: 1px solid var(--c-border); border-radius: var(--radius); }
 .cb-sugg__item { width: 100%; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--c-border-light); font: inherit; cursor: pointer; color: inherit; }
 .cb-sugg__item:last-child { border-bottom: 0; }
@@ -416,7 +392,7 @@ a.prow:hover { background: var(--c-hover); }
 
 @media (max-width: 860px) { .pseg__opt, .pboard__controls .pseg__opt, .pchal__search, .pchal__seg input[type="radio"] + span, .pchal__check, .pchal__num input, .pboard__color, .pboard__check { min-height: 44px; } }   /* B306: touch targets */
 @media (max-width: 860px) { .pswatch { width: 44px; height: 44px; } }   /* B306: touch target (user ok 2026-10-22) */
-@media (max-width: 860px) { .pform input:not([type="checkbox"]):not([type="file"]), .pform textarea, .pform select, .cb-chat__form input, .cb-inline input, .padd input, .pdm__form input { font-size: 16px; } }   /* F2: iOS Safari zooms on focus below 16px */
+@media (max-width: 860px) { .pform input:not([type="checkbox"]):not([type="file"]), .pform textarea, .pform select, .cb-inline input, .padd input, .pdm__form input { font-size: 16px; } }   /* F2: iOS Safari zooms on focus below 16px */
 
 /* ── Settings › Hồ sơ: bento tiles (ui/settings-profile-bento, SB) ──────────────────────────────────
    Every fill is opaque (tints are color-mix against a solid surface); no transparent button/div. */

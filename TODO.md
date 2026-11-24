@@ -70,3 +70,6 @@ in the detail file / fix-log).
 - **#236.** Club-vs-club team tournament (size L; answer planning questions first) `[Model: Opus 5]` — [detail](docs/todo/B236-club-team-tournament.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 - **#426.** Tournament match board wider than 390px phone viewport (clipped both sides) `[Model: Sonnet]` — [detail](docs/todo/B426-tmatch-board-wider-than-phone.md)
+- **#446.** Club pages redesign: CL4 "Hội quán" shell (rail, channels, chat centre, members) `[Model: Opus 5]` — [detail](docs/todo/B446-club-hoi-quan-redesign.md)
+- **#447.** Club chat slash commands + notifications, admin toggles in club settings `[Model: Opus 5]` — [detail](docs/todo/B447-club-chat-slash-notify.md)
+- **#448.** Club rail crest: `/api/clubs/mine` missing color/tag (rule 9) `[Model: Sonnet]` — [detail](docs/todo/B448-club-mine-crest-fields.md)

@@ -1,0 +1,106 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CL2 Bảng tin</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* CL2 "Bảng tin" — the club house notice board: cork wall, do-paper notes pinned at slight angles.
+   Paper is a fixed material (cream + dark ink in both modes); only the cork darkens in dark mode. */
+html{--paper:#f7f1e3;--paper-ink:#2b2620;--paper-ink-2:#5c5345;--paper-line:rgba(60,45,20,.16);--note:#ffe98a;--pin:#c0392b;--seal:#b3261e}
+body{background:#6b4a2b url(../img/cork.webp) center/700px repeat}
+html[data-mode=dark] body{background-image:linear-gradient(rgba(20,14,8,.42),rgba(20,14,8,.42)),url(../img/cork.webp)}
+.board{columns:3 330px;column-gap:28px;padding:34px 0 70px}
+.note{position:relative;break-inside:avoid;margin:0 0 30px;padding:26px 22px 20px;background:var(--paper) url(../img/paper.webp) center/600px;color:var(--paper-ink);border-radius:3px;
+  box-shadow:0 1px 1px rgba(0,0,0,.15),0 10px 22px -8px rgba(0,0,0,.55);transform:rotate(var(--rot,0deg));transition:transform var(--d-base) var(--e-out),box-shadow var(--d-base);animation:pinIn .5s var(--e-out) both;animation-delay:calc(var(--i,0)*80ms)}
+@keyframes pinIn{from{opacity:0;transform:translateY(-18px) rotate(calc(var(--rot,0deg)*3)) scale(1.03)}}
+@media(hover:hover) and (pointer:fine){.note:hover{transform:rotate(0) translateY(-2px);box-shadow:0 1px 1px rgba(0,0,0,.15),0 18px 30px -10px rgba(0,0,0,.6)}}
+.note::before{content:"";position:absolute;top:8px;left:50%;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a7a,var(--pin) 55%,#6e1610);box-shadow:0 3px 4px rgba(0,0,0,.45)}
+.note.tape::before{top:-10px;width:96px;height:26px;margin-left:-48px;border-radius:2px;background:rgba(255,255,255,.55);box-shadow:none;transform:rotate(-2deg)}
+.note h2{font-size:15px;font-weight:1000;letter-spacing:.14em;text-transform:uppercase;color:var(--paper-ink-2);margin-bottom:12px;display:flex;gap:8px;align-items:center}
+.note .muted{color:var(--paper-ink-2)}
+.title h1{padding-right:84px;font-size:34px;font-weight:1000;line-height:1.12;margin:6px 0 10px}
+.title .seal{position:absolute;right:18px;top:22px;transform:rotate(8deg)}
+.title .seal .crest{--cc:var(--seal)!important;border-radius:10px;box-shadow:inset 0 0 0 3px rgba(255,255,255,.5);opacity:.92}
+.title p{color:var(--paper-ink-2);max-width:40ch}
+.title .facts{display:grid;grid-template-columns:repeat(3,1fr);margin:16px 0;border-top:1.5px dashed var(--paper-line);border-bottom:1.5px dashed var(--paper-line)}
+.title .facts div{padding:10px 0}.title .facts small{display:block;font-size:12px;font-weight:900;color:var(--paper-ink-2);text-transform:uppercase;letter-spacing:.08em}.title .facts b{font-size:26px;font-weight:1000}
+.acts{display:flex;flex-wrap:wrap;gap:10px}
+.note .btn{background:transparent;color:var(--paper-ink);box-shadow:inset 0 0 0 1.5px rgba(43,38,32,.55)}
+.note .btn--primary{background:#2b2620;color:#fff8e8;box-shadow:none}
+.sticky{background:var(--note);background-image:none;border-radius:2px 2px 14px 2px;font-size:18px;font-weight:700;line-height:1.5}
+.sticky b{display:block;font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#6b5600;margin-bottom:6px}
+.sticky .by{margin-top:10px;font-size:14px;color:#6b5600;text-align:right}
+/* ticket stubs */
+.tk{display:grid;grid-template-columns:78px 1fr;margin:0 -8px 12px;border-radius:8px;background:#fff9ec;box-shadow:inset 0 0 0 1px var(--paper-line);overflow:hidden}
+.tk .d{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;background:var(--cc);color:#fff;border-right:2px dashed #fff9ec}
+.tk .d b{font-size:28px;font-weight:1000;line-height:1}.tk .d small{font-size:12px;font-weight:800}
+.tk .b{padding:10px 14px;min-width:0}.tk .b b{display:block}.tk .b span{font-size:14px;color:var(--paper-ink-2)}
+/* scoresheet */
+.sheet{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.sheet td{padding:8px 4px;border-bottom:1px solid var(--paper-line);white-space:nowrap}
+.sheet td:first-child{width:28px;font-weight:1000;color:var(--paper-ink-2)}.sheet td:last-child{text-align:right;font-weight:1000}
+.tally{display:inline-flex;gap:3px;margin-left:8px;vertical-align:middle}.tally i{width:3px;height:14px;background:var(--paper-ink-2);border-radius:2px;display:inline-block}
+.sheet tr.me td{background:rgba(255,233,138,.55)}
+/* polaroids */
+.pola{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.pola figure{margin:0;padding:8px 8px 10px;background:#fffdf7;box-shadow:0 4px 10px -4px rgba(0,0,0,.4);transform:rotate(var(--r));text-align:center;min-width:0}
+.pola .av{border-radius:4px;width:100%;height:auto;aspect-ratio:1;font-size:26px}
+.pola figcaption{margin-top:6px;font-size:13px;font-weight:800;min-width:0}.pola figcaption small{display:block;color:var(--paper-ink-2);font-weight:700}
+.pola .on{position:absolute}
+.more{display:block;margin-top:12px;font-weight:900;color:var(--paper-ink)}
+/* messages */
+.msg{padding:10px 0;border-bottom:1px dashed var(--paper-line)}.msg b{font-size:14px}.msg span{font-size:12px;color:var(--paper-ink-2);margin-left:6px}
+.compose{display:flex;gap:8px;margin-top:12px}.compose input{flex:1;min-width:0;min-height:44px;border:0;border-bottom:2px solid var(--paper-ink-2);background:transparent;font:inherit;color:var(--paper-ink)}
+.compose input:focus-visible{outline:3px solid #2b2620;outline-offset:2px}
+.bracket .r{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--paper-line)}
+.bar{height:10px;border-radius:9px;background:var(--paper-line);overflow:hidden;margin:10px 0}.bar i{display:block;height:100%;width:60%;background:var(--paper-ink)}
+.req{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--paper-line)}.req b{flex:1}
+.req button{width:40px;height:40px;border-radius:50%;box-shadow:inset 0 0 0 1.5px rgba(43,38,32,.55);color:var(--paper-ink)}
+/* discover: flyers with tear-off tabs */
+.dtop{display:flex;align-items:center;gap:14px;padding:30px 0 10px;flex-wrap:wrap}
+.dtop .note{margin:0;flex:1 1 360px;--rot:-1deg}
+.dtop h1{font-size:34px;font-weight:1000}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;margin-top:12px;border-radius:999px;background:#fffdf7;box-shadow:inset 0 0 0 1.5px var(--paper-line)}.search input{border:0;background:none;font:inherit;flex:1;min-width:0;color:var(--paper-ink)}
+.search:focus-within{outline:3px solid #2b2620;outline-offset:2px}.search input:focus{outline:0}
+.flyers{columns:4 250px;column-gap:24px;padding:24px 0 70px}
+.fl{padding:0 0 0;overflow:visible}
+.fl .ph{height:120px;margin:0 0 14px;overflow:hidden;border-radius:3px 3px 0 0;background:var(--cc)}.fl .ph img{width:100%;height:100%;object-fit:cover;display:block}
+.fl .in{padding:0 18px}.fl h3{font-size:20px;font-weight:1000;line-height:1.15;display:flex;align-items:center;gap:10px}
+.fl p{font-size:14px;color:var(--paper-ink-2);margin:8px 0}
+.fl .kv{display:flex;gap:16px;font-size:13px;color:var(--paper-ink-2);padding-bottom:12px}.fl .kv b{display:block;font-size:18px;color:var(--paper-ink)}
+.tabs-tear{display:grid;grid-template-columns:repeat(6,1fr);border-top:2px dashed var(--paper-line)}
+.tabs-tear button{height:86px;white-space:nowrap;writing-mode:vertical-rl;transform:rotate(180deg);font-size:12px;font-weight:800;color:var(--paper-ink-2);border-left:1px dashed var(--paper-line);transition:transform var(--d-base) var(--e-out),opacity var(--d-base)}
+.tabs-tear button.gone{transform:rotate(180deg) translateY(-40px) rotate(14deg);opacity:0}
+.tabs-tear button:first-child{border-left:0}
+.mine{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}.mine a{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 6px;border-radius:999px;background:#fffdf7;box-shadow:inset 0 0 0 1px var(--paper-line);font-weight:800;min-width:0;max-width:280px}
+@media(max-width:860px){.board{columns:1;padding-top:20px}.note{--rot:0deg!important}.title h1{font-size:28px}.flyers{columns:1}.title .seal{top:14px;right:12px}.title .seal .crest{--s:56px!important}}
+</style></head><body>
+<main class="wrap" id="app"></main>
+<script src="../icons.js"></script><script src="../data.js"></script>
+<script>
+const { C, CLUBS, MINE, AS, PAGE, ROLE, esc, ic, need, av, crest, bannerImg, when, primary, secondary } = CL;
+CL.top();
+const app = document.getElementById('app');
+const N = (i, rot, cls, body) => `<section class="note ${cls}" style="--i:${i};--rot:${rot}deg">${body}</section>`;
+if (PAGE === 'club') {
+  const ws = C.weekly.map((w, i) => `<tr${w.displayName === 'Lê Thu Hà' ? ' class="me"' : ''}><td>${i + 1}</td><td><span class="nm" style="display:inline-block;max-width:150px;vertical-align:middle">${esc(w.displayName)}</span><span class="tally" aria-hidden="true">${'<i></i>'.repeat(Math.min(5, Math.round(w.wins / 3)))}</span></td><td>${w.wins}/${w.played}</td></tr>`).join('');
+  const pol = C.leaderboard.slice(0, 6).map((m, i) => `<figure style="--r:${[-3, 2, -1, 3, -2, 1][i]}deg">${av(m.displayName, 80)}<figcaption><span class="nm" style="display:block">${esc(m.displayName)}</span><small>${m.rating}</small>${m.role !== 'member' ? `<small>${m.role === 'owner' ? 'Chủ nhiệm' : 'Phó CN'}</small>` : ''}</figcaption></figure>`).join('');
+  const t = C.tournaments[0];
+  app.innerHTML = `<div class="board">
+    ${N(0, -1.2, 'title tape', `<span class="seal">${crest(C, 76, 'square')}</span><span class="eyebrow" style="color:var(--paper-ink-2)">Hội nhóm Luật 1</span><h1>${esc(C.name)}</h1><p>${esc(C.description)}</p>
+      <div class="facts"><div><small>Thành viên</small><b class="num" data-count>${C.members}</b></div><div><small>Hạng nhóm</small><b>#${C.rank}</b></div><div><small>Rating TB</small><b class="num">${C.avgRating}</b></div></div>
+      <div class="acts">${primary()}${secondary()}</div>`)}
+    ${AS !== 'visitor' ? N(1, 2.2, 'sticky', `<b>${ic('megaphone', 'ico--sm')} Thông báo</b>${esc(C.announcement)}`) : ''}
+    ${AS === 'staff' ? N(2, -1.5, '', `<h2>${ic('user-plus')}Đơn xin vào <span class="badge">3</span></h2>${C.pending.map((p) => `<div class="req">${av(p.displayName, 32)}<b class="nm">${esc(p.displayName)}</b><button aria-label="Duyệt">${ic('check')}</button><button aria-label="Từ chối">${ic('x')}</button></div>`).join('')}`) : ''}
+    ${N(3, 1, '', `<h2>${ic('calendar')}Lịch sinh hoạt</h2>${C.events.map((e) => { const d = when(e.startsAt); return `<div class="tk"><div class="d"><small>${d.dow}</small><b>${d.day}</b><small>${d.mon}</small></div><div class="b"><b class="nm">${esc(e.title)}</b><span style="display:block">${d.time}</span><span style="display:block">${e.going} người sẽ đến${need('RSVP')}</span></div></div>`; }).join('')}`)}
+    ${N(4, -2, 'tape', `<h2>${ic('trophy')}Bảng ghi tuần này</h2><table class="sheet">${ws}</table><p class="muted" style="font-size:13px;margin-top:8px">Mỗi vạch là 3 ván thắng. Bảng xoá mỗi thứ Hai.</p>`)}
+    ${N(5, 1.6, '', `<h2>${ic('users-three')}Thành viên</h2><div class="pola">${pol}</div><a class="more">Cả ${C.members} người ${ic('arrow-right', 'ico--sm')}</a>`)}
+    ${N(6, -0.8, 'bracket', `<h2>${ic('flag-checkered')}Giải đang đấu${need('round, leader')}</h2><b style="font-size:20px">${esc(t.name)}</b><div class="bar"><i></i></div><div class="r"><span>Vòng</span><b>${t.round} / ${t.rounds}</b></div><div class="r"><span>Thể thức</span><b>${t.format}</b></div><div class="r"><span>Dẫn đầu</span><b>${esc(t.leader)}</b></div>`)}
+    ${AS !== 'visitor' ? N(7, 1.2, '', `<h2>${ic('chat-circle')}Lời nhắn</h2>${C.chat.slice(-3).map((m) => `<div class="msg"><b>${esc(m.who)}</b><span>${m.at}</span><div>${esc(m.text)}</div></div>`).join('')}<form class="compose" onsubmit="return false"><input placeholder="Ghim một lời nhắn…" aria-label="Lời nhắn"><button class="btn btn--sm" style="min-height:44px">Ghim</button></form>`) : ''}
+  </div>`;
+} else {
+  app.innerHTML = `<div class="dtop">${N(0, -1, 'tape', `<h1>Hội nhóm</h1><p class="muted">Mỗi tờ là một nhóm. Xé một mẩu ở chân tờ để tham gia.</p><label class="search">${ic('magnifying-glass')}<input placeholder="Tìm nhóm" aria-label="Tìm nhóm"></label>
+    ${MINE.length ? `<div class="mine">${MINE.map((c) => `<a>${crest(c, 32)}<span class="nm">${esc(c.name)}</span></a>`).join('')}</div>` : ''}<div class="acts" style="margin-top:14px"><button class="btn btn--primary">${ic('plus-circle')}Dán tờ của nhóm bạn</button></div>`)}</div>
+  <div class="flyers">${CLUBS.map((c, i) => N(i + 1, [1.5, -2, 1, -1.2, 2, -1.6, .8, -1][i], 'fl', `<div class="ph" style="--cc:var(--club-${c.color})">${bannerImg(c)}</div><div class="in"><h3>${crest(c, 36, 'square')}<span class="nm">${esc(c.name)}</span></h3><p>${esc(c.desc)}</p><div class="kv"><span><b>${c.members}</b>thành viên</span><span><b>${c.avgRating}</b>rating TB</span><span><b>#${c.rank}</b>hạng</span></div></div>
+    <div class="tabs-tear" aria-label="${c.joinPolicy === 'open' ? 'Xé để tham gia' : 'Xé để xin vào'}">${Array.from({ length: 6 }, (_, k) => `<button aria-label="${c.joinPolicy === 'open' ? 'Tham gia' : 'Xin vào'} ${esc(c.name)}"${k === 0 && i === 2 ? ' class="gone"' : ''}>${c.joinPolicy === 'open' ? 'Tham gia' : 'Xin vào'}</button>`).join('')}</div>`)).join('')}</div>`;
+  document.querySelectorAll('.tabs-tear button').forEach((b) => b.addEventListener('click', () => b.classList.add('gone')));
+}
+CL.count();
+</script></body></html>

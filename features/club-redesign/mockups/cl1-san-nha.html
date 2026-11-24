@@ -1,0 +1,129 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CL1 Sân nhà</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* CL1 "Sân nhà" — safe: banner hero, crest, stat strip, sticky tabs, two-column overview. */
+.hero{position:relative;height:300px;overflow:hidden;background:var(--cc)}
+.hero img,.hero .genb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;animation:heroIn var(--d-slow) var(--e-out) both}
+@keyframes heroIn{from{transform:scale(1.06)}}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,var(--c-bg) 100%)}
+.id{position:relative;z-index:2;margin-top:-66px;display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:start}.id>div{padding-top:80px}
+.id .crest{box-shadow:0 0 0 6px var(--c-bg),0 12px 30px -8px rgba(0,0,0,.5)}
+.id h1{font-size:40px;font-weight:1000;line-height:1.12;letter-spacing:-.01em}
+.id .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.id .desc{margin-top:10px;color:var(--c-ink-2);max-width:62ch}
+.acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);margin-top:28px;border-radius:16px;background:var(--c-surface);box-shadow:var(--shadow-card)}
+.stats>div{padding:16px 20px;min-width:0}.stats>div+div{border-left:1px solid var(--c-border)}
+.stats dt{font-size:13px;font-weight:800;color:var(--c-ink-2)}.stats dd{margin:2px 0 0;font-size:30px;font-weight:1000;line-height:1.1;display:flex;align-items:baseline;gap:6px}
+.stats dd small{font-size:15px;font-weight:800;color:var(--c-ink-2)}
+.ann{display:flex;gap:14px;align-items:flex-start;margin-top:18px;padding:14px 18px;border-radius:14px;background:var(--cc-tint);box-shadow:inset 4px 0 0 var(--cc-text)}
+.ann .ico{color:var(--cc-text);margin-top:2px}.ann b{display:block;font-size:13px;color:var(--cc-text)}
+.tabs{position:sticky;top:56px;z-index:10;display:flex;gap:4px;margin-top:22px;background:var(--c-bg);border-bottom:1px solid var(--c-border);overflow-x:auto}
+.tabs button{min-height:48px;padding:0 16px;font-weight:800;color:var(--c-ink-2);border-bottom:3px solid transparent;white-space:nowrap}
+.tabs button[aria-selected=true]{color:var(--c-ink);border-color:var(--cc-text)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:22px;padding:24px 0 60px}
+.card{background:var(--c-surface);border-radius:16px;padding:20px;box-shadow:var(--shadow-card);min-width:0}
+.card+.card{margin-top:18px}
+.card h2{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:900;margin-bottom:14px}.card h2 a{margin-left:auto;font-size:14px;color:var(--cc-text)}
+.pod{display:grid;grid-template-columns:1fr 1.15fr 1fr;gap:12px;align-items:end}
+.pod>div{border-radius:14px;padding:16px 12px 14px;text-align:center;background:var(--c-surface-2);min-width:0}
+.pod>div:nth-child(2){padding-top:24px;background:var(--cc-tint)}
+.pod .pl{font-size:13px;font-weight:900;color:var(--c-ink-2)}.pod .av{margin:8px auto}.pod b{display:block}
+.pod .w{font-size:26px;font-weight:1000;line-height:1.1}.pod .w small{font-size:13px;color:var(--c-ink-2);font-weight:800}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+td,th{padding:10px 8px;text-align:left;border-top:1px solid var(--c-border);white-space:nowrap}
+th{font-size:12px;font-weight:900;color:var(--c-ink-2);text-transform:uppercase;letter-spacing:.08em;border:0}
+td.n{width:44px;color:var(--c-ink-2);font-weight:900}.r{text-align:right;width:84px}
+.who{display:flex;align-items:center;gap:10px;min-width:0}.who>span:last-child{min-width:0}
+.who b{display:block}.who small{display:block;color:var(--c-ink-2);font-size:13px}
+tr.me td{background:var(--c-brand-light)}
+.ev{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center;padding:10px 0}.ev+.ev{border-top:1px solid var(--c-border)}
+.date{border-radius:12px;background:var(--c-surface-2);text-align:center;padding:6px 0}.date b{display:block;font-size:22px;font-weight:1000;line-height:1.1}.date small{font-size:12px;font-weight:800;color:var(--c-ink-2)}
+.ev .t{font-weight:800}.ev .s{color:var(--c-ink-2);font-size:14px;display:flex;gap:12px}
+.tour .bar{height:8px;border-radius:9px;background:var(--c-fill);margin:10px 0 6px;overflow:hidden}.tour .bar i{display:block;height:100%;width:60%;background:var(--cc-text);transform-origin:left;animation:wipe .9s var(--e-out) both}
+@keyframes wipe{from{transform:scaleX(0)}}
+.row2{display:flex;justify-content:space-between;gap:12px;font-size:14px;color:var(--c-ink-2)}
+.staff{display:flex;align-items:center;gap:10px;padding:8px 0}.staff b{display:block}
+.req{display:flex;align-items:center;gap:10px;padding:8px 0}.req+.req{border-top:1px solid var(--c-border)}.req b{flex:1}
+.req button{width:36px;height:36px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--c-border)}
+/* discover */
+.dhead{display:flex;align-items:end;gap:16px;padding:32px 0 18px;flex-wrap:wrap}.dhead h1{font-size:36px;font-weight:1000;flex:1}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:var(--c-field);box-shadow:inset 0 0 0 1px var(--c-border);width:280px}.search:focus-within{outline:3px solid var(--c-brand-text);outline-offset:2px}.search input{border:0;background:none;color:inherit;font:inherit;flex:1;min-width:0;outline:0}
+.mine{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px}
+.mine a{display:flex;align-items:center;gap:12px;padding:12px 18px 12px 12px;border-radius:999px;background:var(--c-surface);box-shadow:var(--shadow-card);min-width:0;flex:none;max-width:320px}
+.mine b{display:block}.mine small{color:var(--c-ink-2);font-size:13px}
+.sec{font-size:18px;font-weight:900;margin:28px 0 14px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:18px;padding-bottom:60px}
+.cc{position:relative;background:var(--c-surface);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-card);display:flex;flex-direction:column;min-width:0;transition:transform var(--d-base) var(--e-out)}
+@media(hover:hover) and (pointer:fine){.cc:hover{transform:translateY(-3px)}}
+.cc .bn{height:110px;background:var(--cc)}.cc .bn img{width:100%;height:100%;object-fit:cover;display:block}
+.cc .crest{position:absolute;top:78px;left:16px;box-shadow:0 0 0 4px var(--c-surface)}
+.cc .bd{padding:34px 16px 16px;display:flex;flex-direction:column;gap:8px;flex:1;min-width:0}
+.cc h3{font-size:18px;font-weight:900}.cc p{color:var(--c-ink-2);font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cc .f{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto;padding-top:6px}
+.cc>.need{position:absolute;top:12px;left:12px;margin:0}.cc .rk{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);color:#fff;border-radius:999px;padding:3px 10px;font-size:13px;font-weight:900}
+@media(max-width:860px){
+  .hero{height:180px}.id{grid-template-columns:auto 1fr;margin-top:-56px;gap:14px}.id .crest{--s:72px!important}.id h1{font-size:26px}
+  .id{margin-top:-40px!important}.id>div{padding-top:44px}.id>.acts{padding-top:0}.id .desc,.id .meta{grid-column:1/-1}.acts{grid-column:1/-1;justify-content:stretch}.acts .btn{flex:1}
+  .stats{grid-template-columns:1fr 1fr}.stats>div:nth-child(3){border-left:0}.stats>div:nth-child(n+3){border-top:1px solid var(--c-border)}.stats dd{font-size:24px}
+  .tabs{top:var(--mk-h,82px)}.grid{grid-template-columns:1fr}.pod .w{font-size:20px}.search{width:100%}.dhead h1{font-size:28px}
+  .col-g{display:none}
+}
+</style></head><body>
+<main id="app"></main>
+<script src="../icons.js"></script><script src="../data.js"></script>
+<script>
+const { C, CLUBS, MINE, AS, PAGE, ROLE, esc, ic, need, av, crest, bannerImg, when, primary, secondary, sparkline } = CL;
+CL.top();
+const app = document.getElementById('app');
+if (PAGE === 'club') {
+  const w = C.weekly, pod = [w[1], w[0], w[2]];
+  const ev = C.events.map((e) => { const d = when(e.startsAt); return `<div class="ev"><div class="date"><small>${d.dow}</small><b>${d.day}</b><small>${d.mon}</small></div><div style="min-width:0"><div class="t nm">${esc(e.title)}</div><div class="s"><span>${ic('timer', 'ico--sm')} ${d.time}</span><span>${ic('users-three', 'ico--sm')} ${e.going} sẽ đến${need('RSVP count')}</span></div></div></div>`; }).join('');
+  const t = C.tournaments[0];
+  app.innerHTML = `
+  <div class="hero">${bannerImg(C)}</div>
+  <div class="wrap">
+    <section class="id rv">
+      ${crest(C, 132, 'round')}
+      <div style="min-width:0"><h1 class="nm">${esc(C.name)}</h1>
+        <div class="meta"><span class="pill pill--cc">${ic('globe', 'ico--sm')}Công khai</span><span class="pill">Thành lập 03/2025</span>${AS !== 'visitor' ? `<span class="pill">${ic('check-circle', 'ico--sm')}Bạn là ${AS === 'staff' ? 'Phó chủ nhiệm' : 'thành viên'}</span>` : ''}</div>
+        <p class="desc">${esc(C.description)}</p></div>
+      <div class="acts">${primary()}${secondary()}</div>
+    </section>
+    <dl class="stats rv" style="--i:1">
+      <div><dt>Thành viên</dt><dd><span class="num" data-count>${C.members}</span></dd></div>
+      <div><dt>Hạng nhóm (Luật 1)</dt><dd>#<span class="num">${C.rank}</span><small>/ ${C.clubsTotal}</small>${need('ranked club count')}</dd></div>
+      <div><dt>Rating trung bình</dt><dd><span class="num" data-count>${C.avgRating}</span><span class="col-g">${sparkline(C.avgTrend, 90, 28)}</span>${need('12-week club avg trend')}</dd></div>
+      <div><dt>Đang online</dt><dd><span class="num">${C.online.length}</span><small>người</small>${need('presence of members')}</dd></div>
+    </dl>
+    ${AS !== 'visitor' ? `<div class="ann rv" style="--i:2">${ic('megaphone')}<div><b>Thông báo của ban quản trị</b>${esc(C.announcement)}</div></div>` : ''}
+    <div data-tabs>
+    <div class="tabs" role="tablist"><button role="tab" aria-selected="true">Tổng quan</button><button role="tab">Thành viên ${C.members}</button><button role="tab">Giải đấu</button><button role="tab">Bảng xếp hạng</button>${AS !== 'visitor' ? '<button role="tab">Trò chuyện</button>' : ''}</div>
+    <div class="grid">
+      <div>
+        <section class="card rv" style="--i:3"><h2>${ic('trophy')}Top tuần này<a>Cả bảng</a></h2>
+          <div class="pod">${pod.map((p, i) => `<div><div class="pl">Hạng ${[2, 1, 3][i]}</div>${av(p.displayName, i === 1 ? 64 : 52)}<b class="nm">${esc(p.displayName)}</b><div class="w num">${p.wins}<small> thắng / ${p.played}</small></div></div>`).join('')}</div>
+        </section>
+        <section class="card rv" style="--i:4"><h2>${ic('ranking')}Rating trong nhóm<a>Xem tất cả ${C.members}</a></h2>
+          <table><thead><tr><th style="width:44px">#</th><th>Người chơi</th><th class="r">Rating</th><th class="r col-g">Ván</th></tr></thead><tbody>
+          ${C.leaderboard.slice(0, 8).map((m) => `<tr${m.mine ? ' class="me"' : ''}><td class="n num">${m.rank}</td><td><span class="who">${av(m.displayName, 32)}<span><b class="nm">${esc(m.displayName)}</b>${m.role !== 'member' ? `<small>${ROLE[m.role]}</small>` : ''}</span></span></td><td class="r num"><b>${m.rating}</b></td><td class="r num muted col-g">${m.games}</td></tr>`).join('')}
+          </tbody></table></section>
+      </div>
+      <aside>
+        ${AS === 'staff' ? `<section class="card rv" style="--i:3"><h2>${ic('user-plus')}Yêu cầu tham gia <span class="badge">3</span></h2>${C.pending.map((p) => `<div class="req">${av(p.displayName, 32)}<b class="nm">${esc(p.displayName)}</b><button aria-label="Duyệt">${ic('check')}</button><button aria-label="Từ chối">${ic('x')}</button></div>`).join('')}</section>` : ''}
+        <section class="card rv" style="--i:4"><h2>${ic('calendar')}Sắp tới</h2>${ev}</section>
+        <section class="card tour rv" style="--i:5"><h2>${ic('flag-checkered')}Giải đang diễn ra${need('round, rounds, leader')}</h2><b>${esc(t.name)}</b><div class="bar"><i></i></div><div class="row2"><span>Vòng ${t.round}/${t.rounds}</span><span>${t.players} kỳ thủ</span></div><div class="row2" style="margin-top:6px"><span>Đang dẫn đầu</span><b style="color:var(--c-ink)">${esc(t.leader)}</b></div></section>
+        <section class="card rv" style="--i:6"><h2>${ic('shield-check')}Ban quản trị</h2>${C.staff.map((m) => `<div class="staff">${av(m.displayName, 40)}<span style="min-width:0"><b class="nm">${esc(m.displayName)}</b><small class="muted">${ROLE[m.role]}</small></span></div>`).join('')}</section>
+      </aside>
+    </div></div>
+  </div>`;
+} else {
+  app.innerHTML = `<div class="wrap">
+    <div class="dhead"><h1>Hội nhóm</h1><label class="search">${ic('magnifying-glass')}<input placeholder="Tìm nhóm" aria-label="Tìm nhóm"></label><button class="btn btn--primary">${ic('plus-circle')}Tạo nhóm</button></div>
+    ${MINE.length ? `<div class="sec">Nhóm của bạn</div><div class="mine">${MINE.map((c) => `<a>${crest(c, 44)}<span style="min-width:0"><b class="nm">${esc(c.name)}</b><small>${c.role === 'officer' ? 'Phó chủ nhiệm' : 'Thành viên'}</small></span></a>`).join('')}</div>` : ''}
+    <div class="sec">Khám phá</div>
+    <div class="cards">${CLUBS.map((c, i) => `<a class="cc rv" style="--cc:var(--club-${c.color});--i:${i}"><div class="bn">${bannerImg(c)}</div>${c.banner ? need('bannerUrl in list') : ''}<span class="rk">Hạng #${c.rank}</span>${crest(c, 56)}<div class="bd"><h3 class="nm">${esc(c.name)}</h3><p>${esc(c.desc)}</p><div class="f"><span class="pill">${ic('users-three', 'ico--sm')}${c.members}</span><span class="pill">TB ${c.avgRating}</span><span class="pill">${c.joinPolicy === 'open' ? 'Công khai' : ic('lock', 'ico--sm') + 'Cần duyệt'}</span></div></div></a>`).join('')}</div>
+  </div>`;
+}
+CL.tabs(); CL.count();
+</script></body></html>

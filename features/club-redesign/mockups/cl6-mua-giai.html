@@ -1,0 +1,133 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CL6 Mùa giải</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* CL6 "Mùa giải" — a sports-club page: match-day countdown first, then fixtures/results, the league table, a squad of numbered shirts and rivals.
+   Discover becomes a matchmaker: clubs ranked by how well they fit YOU (rating closeness, activity, open door). */
+.md{position:relative;margin-top:22px;border-radius:22px;overflow:hidden;background:#0f1512;color:#fff;box-shadow:var(--shadow-card)}
+.md img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.md::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,10,8,.92) 0%,rgba(6,10,8,.75) 45%,rgba(6,10,8,.2) 100%)}
+.md .in{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:end;padding:28px 30px}
+.md .club{display:flex;align-items:center;gap:14px}.md .club b{font-size:20px;font-weight:1000}.md .club small{display:block;opacity:.85;font-size:14px}
+.md .eb{margin-top:22px;font-size:13px;font-weight:900;letter-spacing:.18em;text-transform:uppercase;color:#a8e06a}
+.md h1{font-size:40px;font-weight:1000;line-height:1.1;margin:6px 0}
+.md .when{font-size:17px;opacity:.92}
+.cd{display:flex;gap:10px;margin-top:18px}
+.cd div{min-width:78px;padding:10px 0;text-align:center;border-radius:12px;background:rgba(255,255,255,.1);box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}
+.cd b{display:block;font-size:34px;font-weight:1000;line-height:1;font-variant-numeric:tabular-nums}.cd small{font-size:12px;font-weight:800;opacity:.85}
+.md .acts{display:flex;flex-direction:column;gap:10px;align-items:stretch;min-width:230px}
+.md .btn{background:rgba(255,255,255,.08);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.55)}
+.md .btn--primary{background:var(--c-brand);box-shadow:none}
+.md .going{display:flex;align-items:center;gap:8px;font-size:14px}.md .going .av{box-shadow:0 0 0 2px #0f1512;margin-left:-10px}.md .going .av:first-child{margin-left:0}
+.strip{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:16px 0 4px}
+.strip div{padding:14px 16px;border-radius:14px;background:var(--c-surface);box-shadow:var(--shadow-card);min-width:0}
+.strip small{display:block;font-size:13px;font-weight:800;color:var(--c-ink-2)}.strip b{font-size:26px;font-weight:1000;font-variant-numeric:tabular-nums}
+.ann{margin-top:14px;padding:12px 16px;border-radius:12px;background:var(--cc-tint);display:flex;gap:10px}.ann .ico{color:var(--cc-text)}
+.g3{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:22px;padding:22px 0}
+.card{background:var(--c-surface);border-radius:18px;padding:20px;box-shadow:var(--shadow-card);min-width:0}
+.card h2{display:flex;align-items:center;gap:8px;font-size:18px;font-weight:1000;margin-bottom:12px}.card h2 a{margin-left:auto;font-size:14px;color:var(--cc-text)}
+.fx{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid var(--c-border)}
+.fx:first-of-type{border-top:0}.fx .d{font-size:13px;font-weight:900;color:var(--c-ink-2)}.fx .d b{display:block;font-size:20px;color:var(--c-ink)}
+.fx .t b{display:block}.fx .t span{font-size:14px;color:var(--c-ink-2)}
+.res{display:inline-flex;align-items:center;gap:6px;font-weight:1000;font-variant-numeric:tabular-nums}
+.res i{font-style:normal;width:24px;height:24px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px}
+.tbl{width:100%;border-collapse:collapse;table-layout:fixed}
+.tbl th{font-size:12px;font-weight:900;color:var(--c-ink-2);text-transform:uppercase;letter-spacing:.08em;text-align:left;padding:6px 6px}
+.tbl td{padding:9px 6px;border-top:1px solid var(--c-border);white-space:nowrap}.tbl .n{text-align:right;font-variant-numeric:tabular-nums}
+.tbl tr.me td{background:var(--c-brand-light)}
+.squad{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+.shirt{position:relative;padding:14px 12px 12px;border-radius:16px;background:var(--c-surface-2);text-align:center;min-width:0;transition:transform var(--d-base) var(--e-out)}
+@media(hover:hover) and (pointer:fine){.shirt:hover{transform:translateY(-3px)}}
+.shirt svg{display:block;width:84px;height:76px;margin:0 auto 6px}
+.shirt .body{fill:var(--cc)}.shirt .trim{fill:none;stroke:rgba(255,255,255,.55);stroke-width:2}
+.shirt text{fill:#fff;font-weight:1000;font-size:26px;text-anchor:middle;font-family:Nunito}
+.shirt b{display:block}.shirt small{display:block;font-size:13px;color:var(--c-ink-2)}
+.shirt .cap{position:absolute;top:10px;left:10px;width:26px;height:26px;border-radius:6px;background:#f2be3a;color:#1b1208;font-weight:1000;font-size:13px;display:flex;align-items:center;justify-content:center}
+.shirt.me{box-shadow:inset 0 0 0 2px var(--c-brand-text)}
+.shirt .st{position:absolute;top:12px;right:12px}
+.riv{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--c-border)}.riv:first-of-type{border-top:0}
+.riv .sc{font-size:24px;font-weight:1000;font-variant-numeric:tabular-nums}.riv .bar{grid-column:1/-1;display:flex;height:8px;border-radius:8px;overflow:hidden;background:var(--c-fill)}
+.riv .bar i{background:var(--cc-text)}.riv .bar u{background:var(--c-error);opacity:.75}
+.req{display:flex;gap:10px;align-items:center;padding:8px 0}.req b{flex:1}.req button{width:40px;height:40px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--c-border)}
+/* discover: matchmaker */
+.mm{display:grid;grid-template-columns:330px minmax(0,1fr);gap:26px;padding:28px 0 70px;align-items:start}
+.pref{position:sticky;top:76px;padding:20px;border-radius:18px;background:var(--c-surface);box-shadow:var(--shadow-card)}
+.pref h1{font-size:28px;font-weight:1000;line-height:1.15}.pref p{color:var(--c-ink-2);margin:6px 0 16px}
+.pref .me{display:flex;gap:12px;align-items:center;padding:12px;border-radius:14px;background:var(--c-surface-2);margin-bottom:16px}.pref .me b{display:block;font-size:22px}
+.pref fieldset{border:0;padding:0;margin:0 0 14px}.pref legend{font-size:13px;font-weight:900;color:var(--c-ink-2);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{min-height:40px;padding:0 14px;border-radius:999px;font-weight:800;box-shadow:inset 0 0 0 1px var(--c-border)}.chip[aria-pressed=true]{background:var(--c-ink);color:var(--c-on-ink);box-shadow:none}
+.res-list{display:flex;flex-direction:column;gap:14px}
+.fit{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:18px;align-items:center;padding:16px 18px;border-radius:18px;background:var(--c-surface);box-shadow:var(--shadow-card);min-width:0}
+.ring{position:relative;width:88px;height:88px}.ring svg{width:88px;height:88px;transform:rotate(-90deg)}.ring .bg{stroke:var(--c-fill)}.ring .fg{stroke:var(--cc-text);stroke-linecap:round;transition:stroke-dashoffset .9s var(--e-out)}
+.ring b{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;font-weight:1000;line-height:1}.ring b small{font-size:11px;font-weight:800;color:var(--c-ink-2);margin-top:2px}
+.fit h3{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:1000;min-width:0}
+.why{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:3px;font-size:14px;color:var(--c-ink-2)}.why li{display:flex;gap:6px;align-items:center}.why .ico{color:var(--c-success)}
+.fit .side{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+@media(max-width:860px){.md .in{grid-template-columns:1fr;padding:20px}.md h1{font-size:28px}.cd div{min-width:0;flex:1}.cd b{font-size:26px}.md .acts{min-width:0}
+  .strip{grid-template-columns:1fr 1fr}.strip div:last-child{grid-column:1/-1}.g3{grid-template-columns:1fr}.squad{grid-template-columns:repeat(2,1fr)}
+  .mm{grid-template-columns:1fr}.pref{position:static}.fit{grid-template-columns:72px minmax(0,1fr)}.ring,.ring svg{width:72px;height:72px}.fit .side{grid-column:1/-1;flex-direction:row;justify-content:space-between;align-items:center}}
+</style></head><body>
+<main class="wrap" id="app"></main>
+<script src="../icons.js"></script><script src="../data.js"></script>
+<script>
+const { C, CLUBS, AS, PAGE, ROLE, esc, ic, need, av, crest, bannerImg, when, daysTo, MY_RATING } = CL;
+CL.top();
+const app = document.getElementById('app');
+const shirt = (no) => `<svg viewBox="0 0 84 76" aria-hidden="true"><path class="body" d="M22 4 L34 2 Q42 10 50 2 L62 4 L82 18 L72 34 L64 30 L64 74 L20 74 L20 30 L12 34 L2 18 Z"/><path class="trim" d="M34 2 Q42 10 50 2"/><text x="42" y="58">${no}</text></svg>`;
+if (PAGE === 'club') {
+  const e = C.events[0], d = when(e.startsAt), left = new Date(e.startsAt) - new Date('2026-11-24T21:00');
+  const dd = Math.floor(left / 864e5), hh = Math.floor(left / 36e5) % 24, mm = Math.floor(left / 6e4) % 60;
+  const cta = AS === 'visitor' ? `<button class="btn btn--primary">${ic('user-plus')}Tham gia nhóm</button><button class="btn">${ic('copy')}Sao chép liên kết</button>`
+    : `<button class="btn btn--primary">${ic('check-circle')}Tôi sẽ đến</button><button class="btn">${ic('copy')}Mời bạn</button>${AS === 'staff' ? `<button class="btn">${ic('gear-six')}Quản lý <span class="badge">3</span></button>` : ''}`;
+  app.innerHTML = `
+  <section class="md rv">${bannerImg({ ...C, banner: 'banner-lantern' })}<div class="in"><div>
+    <div class="club">${crest(C, 52, 'shield')}<span style="min-width:0"><b class="nm" style="display:block">${esc(C.name)}</b><small>Hạng ${C.rank} toàn quốc</small></span></div>
+    <div class="eb">Buổi tiếp theo</div><h1>${esc(e.title)}</h1><div class="when">${d.dow} ${d.date}, ${d.time}</div>
+    <div class="cd" role="timer" aria-label="Còn ${dd} ngày ${hh} giờ ${mm} phút"><div><b>${dd}</b><small>ngày</small></div><div><b>${String(hh).padStart(2, '0')}</b><small>giờ</small></div><div><b>${String(mm).padStart(2, '0')}</b><small>phút</small></div></div></div>
+    <div class="acts">${cta}<div class="going">${C.leaderboard.slice(0, 4).map((m) => av(m.displayName, 28)).join('')}<span>${e.going} người sẽ đến${need('RSVP')}</span></div></div></div></section>
+  <div class="strip">
+    <div><small>Hạng nhóm</small><b>#${C.rank}</b> <span class="muted">/ ${C.clubsTotal}</span>${need('ranked club count')}</div><div><small>Rating TB</small><b data-count>${C.avgRating}</b></div><div><small>Thành viên</small><b data-count>${C.members}</b></div>
+    <div><small>Ván trong tuần${need('club games per week')}</small><b>186</b></div><div><small>Thắng : thua đối kháng${need('club vs club results')}</small><b>19 : 17</b></div></div>
+  ${AS !== 'visitor' ? `<div class="ann">${ic('megaphone')}<span>${esc(C.announcement)}</span></div>` : ''}
+  <div class="g3">
+    <section class="card rv"><h2>${ic('calendar')}Lịch và kết quả<a>Tất cả</a></h2>
+      ${C.events.slice(1).map((x) => { const w = when(x.startsAt); return `<div class="fx"><div class="d">${w.dow}<b>${w.date}</b></div><div class="t"><b class="nm">${esc(x.title)}</b><span>${w.time}</span></div><span class="pill">Còn ${daysTo(x.startsAt)} ngày</span></div>`; }).join('')}
+      <div class="fx"><div class="d">Thứ 5<b>04/12</b></div><div class="t"><b class="nm">${esc(C.tournaments[1].name)}</b><span>${C.tournaments[1].players} đã đăng ký</span></div><button class="btn btn--sm">Đăng ký</button></div>
+      <div class="fx"><div class="d">Đang đấu<b>V${C.tournaments[0].round}/${C.tournaments[0].rounds}</b></div><div class="t"><b class="nm">${esc(C.tournaments[0].name)}</b><span>Dẫn đầu: ${esc(C.tournaments[0].leader)}${need('round, leader')}</span></div><span class="pill pill--cc">Trực tiếp</span></div>
+      <div class="fx"><div class="d">CN<b>23/11</b></div><div class="t"><b class="nm">Đối kháng với Hà Nội Blitz</b><span>8 bàn, đấu tay đôi theo thứ tự rating${need('club vs club (#236)')}</span></div><span class="res"><i class="f-T">T</i>5 : 3</span></div>
+      <div class="fx"><div class="d">CN<b>16/11</b></div><div class="t"><b class="nm">Đối kháng với Sài Gòn Ngũ Tử</b><span>6 bàn</span></div><span class="res"><i class="f-B">B</i>2 : 4</span></div>
+    </section>
+    <section class="card rv" style="--i:1"><h2>${ic('trophy')}Bảng tuần<a>Bảng rating</a></h2>
+      <table class="tbl"><thead><tr><th style="width:34px">#</th><th>Kỳ thủ</th><th class="n" style="width:56px">Thắng</th><th class="n" style="width:46px">Ván</th><th style="width:120px">Phong độ${need('last 5')}</th></tr></thead><tbody>
+      ${C.weekly.map((w, i) => { const L = C.leaderboard.find((x) => x.displayName === w.displayName); return `<tr${L.mine ? ' class="me"' : ''}><td class="num">${i + 1}</td><td class="nm">${esc(w.displayName)}</td><td class="n"><b>${w.wins}</b></td><td class="n muted">${w.played}</td><td>${CL.formChips(L.form)}</td></tr>`; }).join('')}</tbody></table>
+      ${AS === 'staff' ? `<h2 style="margin-top:20px">${ic('user-plus')}Xin vào đội <span class="badge">3</span></h2>${C.pending.map((p) => `<div class="req">${av(p.displayName, 32)}<b class="nm">${esc(p.displayName)}</b><button aria-label="Duyệt">${ic('check')}</button><button aria-label="Từ chối">${ic('x')}</button></div>`).join('')}` : ''}
+    </section>
+  </div>
+  <section class="card rv" style="--i:2"><h2>${ic('users-three')}Đội hình<a>Cả ${C.members} người</a></h2>
+    <div class="squad">${C.leaderboard.slice(0, 12).map((m) => `<div class="shirt${m.mine ? ' me' : ''}">${m.role === 'owner' ? '<span class="cap" title="Chủ nhiệm">C</span>' : ''}${m.online ? `<i class="dot st${m.online === 'playing' ? ' dot--busy' : ''}" title="${m.online === 'playing' ? 'Đang chơi' : 'Online'}"></i>` : ''}${shirt(m.rank)}<b class="nm">${esc(m.displayName)}</b><small>${m.rating}</small>${m.role === 'officer' ? '<small>Phó CN</small>' : ''}</div>`).join('')}</div>
+    <p class="muted" style="font-size:13px;margin-top:10px">Số áo là thứ hạng rating trong nhóm, đổi khi bảng đổi. C: chủ nhiệm.</p></section>
+  <div class="g3"><section class="card"><h2>${ic('boxing-glove')}Kình địch${need('club vs club record')}</h2>
+    ${C.rivals.map((r) => `<div class="riv">${crest(r, 44)}<span style="min-width:0"><b class="nm" style="display:block">${esc(r.name)}</b><span class="muted" style="font-size:14px">${r.w + r.l} ván giữa hai nhóm</span></span><span class="sc">${r.w} : ${r.l}</span><div class="bar"><i style="width:${(r.w / (r.w + r.l)) * 100}%"></i><u style="flex:1"></u></div></div>`).join('')}</section>
+    <section class="card"><h2>${ic('medal')}Tủ cúp</h2>
+      <div class="fx"><div class="d">10/2026<b>${ic('trophy', 'ico--lg')}</b></div><div class="t"><b class="nm">${esc(C.tournaments[2].name)}</b><span>Vô địch: ${esc(C.tournaments[2].winner)}${need('winner')}</span></div><span class="pill">Swiss</span></div>
+      <div class="fx"><div class="d">08/2026<b>${ic('medal', 'ico--lg')}</b></div><div class="t"><b class="nm">Hạng 2 toàn quốc mùa hè</b><span>Bảng hội nhóm Luật 1${need('season history')}</span></div></div></section></div>
+  <div style="height:50px"></div>`;
+} else {
+  const fit = (c) => Math.round(Math.max(30, 100 - Math.abs(c.avgRating - MY_RATING) / 4 - (c.joinPolicy === 'open' ? 0 : 8) + Math.min(8, c.active / 8)));
+  const S = CLUBS.map((c) => ({ ...c, fit: fit(c) })).sort((a, b) => b.fit - a.fit);
+  const C2 = 2 * Math.PI * 38;
+  app.innerHTML = `<div class="mm">
+    <aside class="pref"><h1>Tìm nhóm hợp với bạn</h1><p>Xếp theo độ hợp: trình độ gần bạn, nhóm đang sôi nổi, vào được ngay.</p>
+      <div class="me">${av('Lê Thu Hà', 44)}<span><small class="muted">Rating Luật 1 của bạn</small><b class="num">${MY_RATING}</b></span></div>
+      <fieldset><legend>Tôi muốn</legend><div class="chips"><button class="chip" aria-pressed="true">Đối thủ ngang tầm</button><button class="chip" aria-pressed="false">Người kèm cặp</button><button class="chip" aria-pressed="false">Chơi cho vui</button></div></fieldset>
+      <fieldset><legend>Cỡ nhóm</legend><div class="chips"><button class="chip" aria-pressed="false">Nhỏ, ấm cúng</button><button class="chip" aria-pressed="true">Bất kỳ</button><button class="chip" aria-pressed="false">Đông vui</button></div></fieldset>
+      <fieldset><legend>Hay chơi lúc${need('activity hours per club')}</legend><div class="chips"><button class="chip" aria-pressed="false">Trưa</button><button class="chip" aria-pressed="true">Tối</button><button class="chip" aria-pressed="false">Cuối tuần</button></div></fieldset>
+      <button class="btn" style="width:100%">${ic('plus-circle')}Hoặc tự lập nhóm</button></aside>
+    <div class="res-list">${S.map((c, i) => `<article class="fit rv" style="--cc:var(--club-${c.color});--i:${i}"><div class="ring"><svg viewBox="0 0 88 88" aria-hidden="true"><circle class="bg" cx="44" cy="44" r="38" fill="none" stroke-width="8"/><circle class="fg" cx="44" cy="44" r="38" fill="none" stroke-width="8" stroke-dasharray="${C2}" stroke-dashoffset="${C2 * (1 - c.fit / 100)}"/></svg><b>${c.fit}%<small>hợp</small></b></div>
+      <div style="min-width:0"><h3>${crest(c, 32)}<span class="nm">${esc(c.name)}</span></h3><ul class="why">
+        <li>${ic('check', 'ico--sm')}Rating TB ${c.avgRating}: ${Math.abs(c.avgRating - MY_RATING) < 60 ? 'ngang bạn' : c.avgRating > MY_RATING ? 'cao hơn bạn ' + (c.avgRating - MY_RATING) : 'thấp hơn bạn ' + (MY_RATING - c.avgRating)}</li>
+        <li>${ic('check', 'ico--sm')}${c.active} người chơi tuần này${i === 0 ? need('weekly active per club') : ''}</li>
+        <li>${ic(c.joinPolicy === 'open' ? 'check' : 'lock', 'ico--sm')}${c.joinPolicy === 'open' ? 'Vào ngay, không cần duyệt' : 'Cần ban quản trị duyệt'}</li></ul></div>
+      <div class="side"><span class="pill">Hạng #${c.rank}</span>${c.mine ? '<span class="pill pill--cc">Bạn đã ở đây</span>' : `<button class="btn btn--sm">${c.joinPolicy === 'open' ? 'Xem nhóm' : 'Xin vào'}</button>`}</div></article>`).join('')}</div></div>`;
+}
+CL.count();
+</script></body></html>

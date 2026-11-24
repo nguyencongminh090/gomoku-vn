@@ -1,0 +1,106 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CL5 Cờ hiệu</title>
+<link rel="stylesheet" href="../../../client/vendor/fonts/nunito/style.css"><link rel="stylesheet" href="../../../client/css/tokens.css"><link rel="stylesheet" href="../common.css">
+<style>
+/* CL5 "Cờ hiệu" — editorial poster. One loud zone: the club's own colour floods the head with its tag as giant type;
+   the rest is a Swiss sheet (rules, numerals, a team-sheet roster). No photos. */
+.flag{position:relative;overflow:hidden;background:var(--cc);color:#fff}
+.flag .big{position:absolute;right:-2vw;bottom:-6vw;font-size:clamp(160px,24vw,340px);font-weight:1000;line-height:.8;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:2px rgba(255,255,255,.28);white-space:nowrap;pointer-events:none;animation:slideTag var(--d-slow) var(--e-out) both}
+@keyframes slideTag{from{transform:translateX(8%);opacity:0}}
+.flag .in{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;padding-block:44px 40px}
+.flag .eb{font-size:13px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;opacity:.92}
+.flag h1{font-size:clamp(40px,5.4vw,76px);font-weight:1000;line-height:1.04;letter-spacing:-.02em;margin:10px 0 14px;max-width:12ch}
+.flag p{max-width:52ch;font-size:18px;opacity:.95}
+.flag .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.flag .btn{background:transparent;color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.75)}
+.flag .btn--primary{background:#fff;color:#111;box-shadow:none}
+.flag .btn--primary:hover{background:#f2f2f2}
+.flag .ann{max-width:52ch;margin-top:22px;padding:12px 16px;border-left:4px solid #fff;background:rgba(0,0,0,.22);font-weight:700}
+.flag .ann b{display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.pen{align-self:start;transform-origin:top center;animation:sway 1.2s ease-in-out 1 both}
+@keyframes sway{0%{transform:rotate(-5deg)}50%{transform:rotate(2deg)}100%{transform:rotate(0)}}
+.pen .crest{--cc:#fff!important;color:var(--cc-pen);box-shadow:none;font-size:30px}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:3px solid var(--c-ink)}
+.facts div{padding:22px 20px 20px 0;min-width:0}.facts div+div{padding-left:20px;border-left:1px solid var(--c-border)}
+.facts small{display:block;font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-2)}
+.facts b{display:block;font-size:48px;font-weight:1000;line-height:1.05;font-variant-numeric:tabular-nums}
+.facts span{font-size:14px;color:var(--c-ink-2)}
+.cols{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:48px;padding:30px 0 70px}
+.h{display:flex;align-items:center;gap:12px;font-size:13px;font-weight:900;letter-spacing:.2em;text-transform:uppercase;margin:0 0 6px}
+.h::after{content:"";flex:1;border-top:1px solid var(--c-border)}
+.h + .sub{color:var(--c-ink-2);font-size:14px;margin-bottom:10px}
+.roster{list-style:none;margin:0;padding:0}
+.roster li{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--c-border)}
+.roster .no{font-size:34px;font-weight:1000;line-height:1;color:var(--c-ink-2);font-variant-numeric:tabular-nums}
+.roster li:nth-child(-n+3) .no{color:var(--cc-text)}
+.roster .nmw{min-width:0}.roster b{display:block;font-size:20px;font-weight:900}.roster small{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-2)}
+.roster .r{font-size:24px;font-weight:1000;font-variant-numeric:tabular-nums;text-align:right}.roster .r small{display:block;text-align:right;letter-spacing:0;text-transform:none;font-weight:700;font-size:13px}
+.roster li.me{background:var(--c-brand-light);box-shadow:inset 3px 0 0 var(--c-brand-text)}
+.more{display:inline-flex;gap:6px;align-items:center;margin-top:14px;font-weight:900}
+.blk+.blk{margin-top:34px}
+.ev{display:grid;grid-template-columns:78px minmax(0,1fr);gap:14px;padding:12px 0;border-bottom:1px solid var(--c-border)}
+.ev .d b{display:block;font-size:30px;font-weight:1000;line-height:1}.ev .d small{font-size:12px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--c-ink-2)}
+.ev .t b{display:block;font-size:17px}.ev .t span{color:var(--c-ink-2);font-size:14px}
+.tr{display:flex;justify-content:space-between;gap:14px;padding:12px 0;border-bottom:1px solid var(--c-border)}.tr b{display:block}.tr span{color:var(--c-ink-2);font-size:14px}
+.wk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 12px;align-items:center}
+.wk .bar{grid-column:1/-1;height:6px;background:var(--c-fill);margin-bottom:8px}.wk .bar i{display:block;height:100%;background:var(--cc-text);transform-origin:left;animation:wipe .9s var(--e-out) both;animation-delay:calc(var(--i)*80ms)}
+@keyframes wipe{from{transform:scaleX(0)}}
+.req{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--c-border)}.req b{flex:1}.req button{width:40px;height:40px;border-radius:50%;box-shadow:inset 0 0 0 1.5px var(--c-border)}
+/* discover: league table of clubs */
+.lh{padding:44px 0 18px;border-bottom:3px solid var(--c-ink);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end}
+.lh h1{font-size:clamp(40px,6vw,80px);font-weight:1000;line-height:1;letter-spacing:-.02em}.lh p{color:var(--c-ink-2);margin-top:10px;max-width:56ch}
+.lh .tools{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--c-border);width:240px}.search input{border:0;background:none;color:inherit;font:inherit;flex:1;min-width:0}.search input:focus{outline:0}.search:focus-within{box-shadow:inset 0 0 0 2px var(--c-brand-text)}
+.sort{display:flex;gap:4px;padding:16px 0 6px}.sort button{min-height:44px;padding:0 12px;font-weight:800;color:var(--c-ink-2);border-bottom:3px solid transparent}.sort button[aria-pressed=true]{color:var(--c-ink);border-color:var(--c-ink)}
+.top3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;padding:16px 0}
+.slab{position:relative;overflow:hidden;min-height:200px;padding:18px;background:var(--cc);color:#fff;display:flex;flex-direction:column;justify-content:space-between}
+.slab .pos{font-size:96px;font-weight:1000;line-height:.8;letter-spacing:-.04em;-webkit-text-stroke:2px rgba(255,255,255,.55);color:transparent}
+.slab h3{font-size:24px;font-weight:1000;line-height:1.1}.slab .kv{display:flex;gap:18px;font-size:14px;font-weight:800;margin-top:8px}.slab .kv b{display:block;font-size:22px}
+.slab .tag{position:absolute;right:16px;top:16px;font-weight:1000;letter-spacing:.1em;font-size:14px;padding:4px 10px;border:1.5px solid rgba(255,255,255,.7)}
+.lt{width:100%;border-collapse:collapse}
+.lt th{font-size:12px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--c-ink-2);text-align:left;padding:10px 8px;border-bottom:1px solid var(--c-border)}
+.lt td{padding:12px 8px;border-bottom:1px solid var(--c-border);white-space:nowrap}
+.lt .pos{font-size:26px;font-weight:1000;width:60px;font-variant-numeric:tabular-nums}
+.lt .club{display:flex;align-items:center;gap:12px;min-width:0}.lt .club b{font-size:18px}
+.lt .stripe{width:8px;height:40px;background:var(--cc);flex:none}
+.lt .num{text-align:right;font-weight:800}
+.lt .rbar{display:flex;align-items:center;gap:10px;justify-content:flex-end}.lt .rbar i{display:block;width:110px;height:6px;background:var(--c-fill)}.lt .rbar i b{display:block;height:100%;background:var(--cc)}
+.lt tr.mine td{background:var(--c-brand-light)}
+@media(max-width:860px){.flag .in{grid-template-columns:1fr;padding-block:28px}.pen{display:none}.facts{grid-template-columns:1fr 1fr}.facts div:nth-child(3){padding-left:0;border-left:0}.facts b{font-size:34px}.cols{grid-template-columns:1fr;gap:34px}.roster li{grid-template-columns:44px minmax(0,1fr) auto}.roster .no{font-size:26px}.roster b{font-size:17px}
+  .lh{grid-template-columns:1fr}.lh .tools{justify-content:stretch}.search{width:100%}.top3{grid-template-columns:1fr}.slab{min-height:150px}.lt .hide{display:none}.lt .rbar i{display:none}}
+</style></head><body>
+<main id="app"></main>
+<script src="../icons.js"></script><script src="../data.js"></script>
+<script>
+const { C, CLUBS, AS, PAGE, ROLE, esc, ic, need, av, crest, when, primary, secondary } = CL;
+CL.top();
+const app = document.getElementById('app');
+if (PAGE === 'club') {
+  app.innerHTML = `<header class="flag" style="--cc-pen:var(--club-${C.color})"><div class="big" aria-hidden="true">${esc(C.tag)}</div>
+    <div class="wrap in"><div><div class="eb">Hội nhóm Luật 1</div><h1>${esc(C.name)}</h1><p>${esc(C.description)}</p>
+      <div class="acts">${primary()}${secondary()}</div>
+      ${AS !== 'visitor' ? `<div class="ann"><b>Thông báo</b>${esc(C.announcement)}</div>` : ''}</div>
+      <div class="pen">${crest(C, 130, 'pennant')}</div></div></header>
+  <div class="wrap">
+    <div class="facts"><div><small>Thành viên</small><b data-count>${C.members}</b><span>${C.online.length} đang online${need('presence')}</span></div><div><small>Hạng nhóm</small><b>#${C.rank}</b><span>trên ${C.clubsTotal} nhóm${need('ranked club count')}</span></div><div><small>Rating TB</small><b data-count>${C.avgRating}</b><span>+72 trong 12 tuần${need('club avg trend')}</span></div><div><small>Thành lập</small><b>2025</b><span>tháng 3</span></div></div>
+    <div class="cols">
+      <section><div class="h">Danh sách đội</div><p class="sub">Xếp theo rating Luật 1. Ba số đầu là đội hình chính.</p>
+        <ol class="roster">${C.leaderboard.slice(0, 10).map((m) => `<li${m.mine ? ' class="me"' : ''}><span class="no">${String(m.rank).padStart(2, '0')}</span><span class="nmw"><b class="nm">${esc(m.displayName)}</b><small>${m.role === 'member' ? (m.mine ? 'Bạn' : '&nbsp;') : ROLE[m.role]}</small></span><span class="r">${m.rating}<small>${m.games} ván</small></span></li>`).join('')}</ol>
+        <a class="more">Cả ${C.members} thành viên ${ic('arrow-right', 'ico--sm')}</a></section>
+      <aside>
+        ${AS === 'staff' ? `<section class="blk"><div class="h">Chờ duyệt <span class="badge">3</span></div>${C.pending.map((p) => `<div class="req">${av(p.displayName, 32)}<b class="nm">${esc(p.displayName)}</b><button aria-label="Duyệt">${ic('check')}</button><button aria-label="Từ chối">${ic('x')}</button></div>`).join('')}</section>` : ''}
+        <section class="blk"><div class="h">Lịch</div>${C.events.map((e) => { const d = when(e.startsAt); return `<div class="ev"><div class="d"><small>${d.dow}</small><b>${d.day}.${d.mon.slice(2)}</b></div><div class="t"><b class="nm">${esc(e.title)}</b><span>${d.time}</span></div></div>`; }).join('')}</section>
+        <section class="blk"><div class="h">Giải${need('round, rounds')}</div>${C.tournaments.map((t) => `<div class="tr"><span style="min-width:0"><b class="nm">${esc(t.name)}</b><span>${t.players} kỳ thủ</span></span><b>${{ running: 'Vòng ' + t.round + '/' + t.rounds, registering: 'Mở đăng ký', finished: 'Đã xong' }[t.status]}</b></div>`).join('')}</section>
+        <section class="blk"><div class="h">Thắng nhiều tuần này</div><div class="wk">${C.weekly.map((w, i) => `<b class="nm">${esc(w.displayName)}</b><span class="num">${w.wins}</span><div class="bar"><i style="--i:${i};width:${(w.wins / C.weekly[0].wins) * 100}%"></i></div>`).join('')}</div></section>
+      </aside></div></div>`;
+} else {
+  const S = [...CLUBS].sort((a, b) => a.rank - b.rank), mx = Math.max(...S.map((c) => c.avgRating)), mn = 1350;
+  app.innerHTML = `<div class="wrap">
+    <div class="lh"><div><h1>Bảng hội nhóm</h1><p>Xếp theo rating trung bình của thành viên đã có hạng, Luật 1. Bấm một nhóm để xem đội hình.</p></div><div class="tools"><label class="search">${ic('magnifying-glass')}<input placeholder="Tìm nhóm" aria-label="Tìm nhóm"></label><button class="btn btn--primary">${ic('plus-circle')}Tạo nhóm</button></div></div>
+    <div class="sort" role="group" aria-label="Xếp theo"><button aria-pressed="true">Hạng</button><button aria-pressed="false">Đông nhất</button><button aria-pressed="false">Mới lập</button><button aria-pressed="false">Luật 1</button><button aria-pressed="false">Standard</button></div>
+    <div class="top3">${S.slice(0, 3).map((c, i) => `<a class="slab rv" style="--cc:var(--club-${c.color});--i:${i}"><span class="tag">${esc(c.tag)}</span><span class="pos">${i + 1}</span><div><h3 class="nm">${esc(c.name)}</h3><div class="kv"><span><b>${c.avgRating}</b>rating TB</span><span><b>${c.members}</b>thành viên</span></div></div></a>`).join('')}</div>
+    <table class="lt"><thead><tr><th>#</th><th>Nhóm</th><th class="num hide">Thành viên</th><th class="num">Rating TB</th><th class="num hide">Tham gia</th></tr></thead><tbody>
+    ${S.slice(3).map((c) => `<tr class="${c.mine ? 'mine' : ''}" style="--cc:var(--club-${c.color})"><td class="pos">${c.rank}</td><td style="max-width:0;width:50%"><span class="club"><i class="stripe"></i><b class="nm">${esc(c.name)}</b></span></td><td class="num hide">${c.members}</td><td class="num"><span class="rbar"><i><b style="width:${((c.avgRating - mn) / (mx - mn)) * 100}%"></b></i>${c.avgRating}</span></td><td class="num hide">${c.joinPolicy === 'open' ? 'Công khai' : 'Cần duyệt'}</td></tr>`).join('')}
+    </tbody></table><div style="height:60px"></div></div>`;
+}
+CL.count();
+</script></body></html>

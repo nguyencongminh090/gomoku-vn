@@ -1,5 +1,6 @@
 /**
  * TODO.md #178 — clubs list + club page: text-only rendering, role-based controls.
+ * #446: the page is the "Hội quán" shell (rail, channels, centre, members pane); tabs became channels.
  *
  * @jest-environment jsdom
  * @jest-environment-options {"url": "http://localhost/c/caro"}
@@ -41,6 +42,7 @@ async function bootClub(club) {
   global.fetch = jest.fn(() => ok(club));
   window.EscapeUtils = require('../js/escape-utils.js');
   require('../js/platform-shell.js');
+  require('../js/club-kit.js');
   require('../js/club.js');
   document.dispatchEvent(new Event('DOMContentLoaded'));
   await flush(); await flush();
@@ -55,7 +57,10 @@ describe('club page', () => {
     expect(document.getElementById('cb-join').hidden).toBe(false);
     expect(document.getElementById('cb-join').textContent).toBe('clubs.request');
     expect([...document.querySelectorAll('#cb-stats dd')].map((d) => d.textContent)).toEqual(['2', '1500', '#3']);
+    expect(document.getElementById('cb-gate-name').textContent).toBe('<i>Caro</i>');
     expect(document.getElementById('cb-manage').hidden).toBe(true);
+    expect(document.getElementById('cb-gate').hidden).toBe(false);
+    expect(document.getElementById('cb-chat').hidden).toBe(true);
     expect(document.querySelectorAll('#cb-body tr')).toHaveLength(2);
     expect(document.querySelectorAll('#cb-body tr')[1].children[2].textContent).toBe('—');
     expect(document.querySelectorAll('#cb-members-body tr')).toHaveLength(2);
@@ -80,104 +85,215 @@ describe('club page', () => {
     expect(document.querySelectorAll('#cb-members-body tr')[1].querySelectorAll('button')).toHaveLength(1);
   });
 
-  it('pending requester can cancel', async () => {
+  it('pending requester sees the note + cancel in the gate (no join, no leave); cancel POSTs /leave without confirm', async () => {
     await bootClub({ ...CLUB, myRole: 'pending' });
-    expect(document.getElementById('cb-leave').hidden).toBe(false);
-    expect(document.getElementById('cb-leave').textContent).toBe('clubs.cancel_request');
+    expect(document.getElementById('cb-join').hidden).toBe(true);
+    expect(document.getElementById('cb-leave').hidden).toBe(true);
+    expect(document.getElementById('cb-pending-note').hidden).toBe(false);
+    expect(document.getElementById('cb-cancel').hidden).toBe(false);
+    window.confirm = jest.fn(() => false);
+    global.fetch.mockClear();
+    document.getElementById('cb-cancel').click();
+    await flush();
+    expect(window.confirm).not.toHaveBeenCalled();
+    expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/leave');
   });
 
-  describe('tabs (#200)', () => {
-    const shown = () => ['overview', 'members', 'board'].filter((n) => !document.getElementById('cb-panel-' + n).hidden);
-    const selected = () => ['overview', 'members', 'board'].filter((n) => document.getElementById('cb-tab-' + n).getAttribute('aria-selected') === 'true');
-    const click = (n) => document.getElementById('cb-tab-' + n).click();
+  it('members get a leave button in their row; the owner never does', async () => {
+    const lb = (role) => CLUB.leaderboard.map((m) => ({ ...m, mine: m.role === role }));
+    await bootClub({ ...CLUB, myRole: 'member', leaderboard: lb('member') });
+    expect(document.getElementById('cb-me').hidden).toBe(false);
+    expect(document.getElementById('cb-me-name').textContent).toBe('Mem');
+    expect(document.getElementById('cb-leave').hidden).toBe(false);
+    await bootClub({ ...CLUB, myRole: 'owner', leaderboard: lb('owner') });
+    expect(document.getElementById('cb-me').hidden).toBe(false);
+    expect(document.getElementById('cb-leave').hidden).toBe(true);
+  });
+
+  describe('channels (#446, were tabs #200)', () => {
+    const PUBLIC = ['chat', 'events', 'tournaments', 'board', 'members'];
+    const ALL = [...PUBLIC, 'requests', 'settings', 'log'];
+    const shown = () => ALL.filter((n) => !document.getElementById('cb-panel-' + n).hidden);
+    const current = () => ALL.filter((n) => document.getElementById('cb-ch-' + n).getAttribute('aria-current') === 'true');
+    const click = (n) => document.getElementById('cb-ch-' + n).click();
 
     beforeEach(() => { location.hash = ''; });
 
-    it('opens on Tổng quan by default; exactly one panel shown and one tab selected', async () => {
+    it('opens on trò-chuyện; exactly one panel shown and one channel current; header names it', async () => {
       await bootClub(CLUB);
-      expect(shown()).toEqual(['overview']);
-      expect(selected()).toEqual(['overview']);
+      expect(shown()).toEqual(['chat']);
+      expect(current()).toEqual(['chat']);
+      expect(document.getElementById('cb-head-title').textContent).toBe('clubs.ch_chat');
+      expect(document.getElementById('cb-head-sub').textContent).toBe('clubs.chsub_chat');
     });
 
-    it('clicking a tab swaps the panel and writes #tab=; reload restores it', async () => {
+    it('clicking a channel swaps the panel and writes #ch=; reload restores it', async () => {
       await bootClub(CLUB);
       click('board');
       expect(shown()).toEqual(['board']);
-      expect(location.hash).toBe('#tab=board');
+      expect(document.getElementById('cb-app').dataset.ch).toBe('board');
+      expect(location.hash).toBe('#ch=board');
+      expect(document.getElementById('cb-head-title').textContent).toBe('clubs.ch_board');
       await bootClub(CLUB);
       expect(shown()).toEqual(['board']);
-      expect(selected()).toEqual(['board']);
+      expect(current()).toEqual(['board']);
     });
 
-    it('Tổng quan = ranking table (top rows) + aside with Sắp tới and Ban quản trị (mockup)', async () => {
-      await bootClub(CLUB);
-      const ov = document.getElementById('cb-panel-overview');
-      expect(ov.querySelectorAll('#cb-ov-body tr')).toHaveLength(2);
-      expect(ov.querySelector('aside #cb-events')).not.toBeNull();
-      expect(ov.querySelector('aside #cb-staff')).not.toBeNull();
-      expect(document.getElementById('cb-ov-title').textContent).toBe('clubs.boardrankings.cat_freestyle');
-      expect(document.querySelector('#cb-ov-title .pbadge').textContent).toBe('rankings.cat_freestyle');
-      expect(ov.querySelectorAll('tbody button')).toHaveLength(0);
+    it('legacy #tab= links still land: overview → chat, members → members, manage → requests (staff only); #ch=requests too', async () => {
+      for (const [hash, role, want] of [['#tab=overview', null, 'chat'], ['#tab=members', null, 'members'], ['#tab=manage', null, 'chat'], ['#tab=manage', 'officer', 'requests'], ['#ch=requests', 'owner', 'requests'], ['#tab=nope', null, 'chat']]) {
+        location.hash = hash;
+        await bootClub({ ...CLUB, myRole: role });
+        expect(shown()).toEqual([want]);
+      }
     });
 
-    it('Quản lý button: staff only; toggles the manage panel, no tab selected while it is open; non-staff #tab=manage → overview', async () => {
-      await bootClub(CLUB);
-      expect(document.getElementById('cb-manage-btn').hidden).toBe(true);
-      location.hash = '#tab=manage';
-      await bootClub(CLUB);
-      expect(document.getElementById('cb-panel-manage').hidden).toBe(true);
-      expect(document.getElementById('cb-panel-overview').hidden).toBe(false);
-
+    it('staff channels exist for owner/officer only; #ch=settings for others falls back to chat', async () => {
+      for (const role of [null, 'pending', 'member']) {
+        location.hash = '#ch=settings';
+        await bootClub({ ...CLUB, myRole: role });
+        expect(['requests', 'settings', 'log'].map((n) => document.getElementById('cb-ch-' + n).hidden)).toEqual([true, true, true]);
+        expect(document.getElementById('cb-staff-grp').hidden).toBe(true);
+        expect(shown()).toEqual(['chat']);
+      }
       location.hash = '';
-      await bootClub({ ...CLUB, myRole: 'officer' });
-      const btn = document.getElementById('cb-manage-btn');
-      expect(btn.hidden).toBe(false);
-      btn.click();
-      expect(document.getElementById('cb-panel-manage').hidden).toBe(false);
-      expect(document.getElementById('cb-panel-overview').hidden).toBe(true);
-      expect(btn.getAttribute('aria-pressed')).toBe('true');
-      expect(selected()).toEqual([]);
-      expect(location.hash).toBe('#tab=manage');
-      click('members');
-      expect(document.getElementById('cb-panel-manage').hidden).toBe(true);
-      expect(btn.getAttribute('aria-pressed')).toBe('false');
-      btn.click();
-      btn.click(); // second press goes back to Tổng quan
-      expect(shown()).toEqual(['overview']);
+      await bootClub({ ...CLUB, myRole: 'officer', pending: [{ username: 'p', displayName: 'P' }, { username: 'q', displayName: 'Q' }] });
+      expect(['requests', 'settings', 'log'].map((n) => document.getElementById('cb-ch-' + n).hidden)).toEqual([false, false, false]);
+      expect(document.getElementById('cb-pending-count').hidden).toBe(false);
+      expect(document.getElementById('cb-pending-count').textContent).toBe('2');
     });
 
-    it('unknown #tab falls back to overview', async () => {
-      location.hash = '#tab=chat';
+    it('arrow keys move focus through the visible channels and wrap', async () => {
       await bootClub(CLUB);
-      expect(shown()).toEqual(['overview']);
+      const nav = document.getElementById('cb-channels');
+      document.getElementById('cb-ch-chat').focus();
+      nav.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      expect(document.activeElement.id).toBe('cb-ch-events');
+      document.getElementById('cb-ch-chat').focus();
+      nav.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      expect(document.activeElement.id).toBe('cb-ch-members'); // staff channels hidden for visitors
     });
 
-    it('arrow keys move between tabs and wrap; only the active tab is tabbable', async () => {
-      await bootClub(CLUB);
-      const list = document.getElementById('cb-tablist');
-      list.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
-      expect(shown()).toEqual(['members']);
-      list.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-      list.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
-      expect(shown()).toEqual(['board']);
-      expect(['overview', 'members', 'board'].map((n) => document.getElementById('cb-tab-' + n).tabIndex)).toEqual([-1, -1, 0]);
-    });
-
-    it('staff tools live in the Quản lý panel (not Tổng quan), member management in Thành viên, ratings only in the board', async () => {
+    it('staff tools live in the staff channels, member management in thành-viên, ratings only in xếp-hạng', async () => {
       await bootClub({ ...CLUB, myRole: 'owner', pending: [] });
-      expect(document.getElementById('cb-panel-overview').contains(document.getElementById('cb-manage'))).toBe(false);
-      expect(document.getElementById('cb-panel-manage').contains(document.getElementById('cb-manage'))).toBe(true);
-      expect(document.getElementById('cb-panel-manage').contains(document.getElementById('cb-delete'))).toBe(true);
-      expect(document.getElementById('cb-panel-members').querySelectorAll('button').length).toBeGreaterThan(0);
-      expect(document.getElementById('cb-panel-board').querySelectorAll('tbody button')).toHaveLength(0);
+      const panel = (n) => document.getElementById('cb-panel-' + n);
+      expect(panel('settings').contains(document.getElementById('cb-manage'))).toBe(true);
+      expect(panel('settings').contains(document.getElementById('cb-delete'))).toBe(true);
+      expect(panel('requests').contains(document.getElementById('cb-pending'))).toBe(true);
+      expect(panel('requests').contains(document.getElementById('cb-invite-form'))).toBe(true);
+      expect(panel('log').contains(document.getElementById('cb-history'))).toBe(true);
+      expect(panel('events').contains(document.getElementById('cb-event-form'))).toBe(true);
+      expect(panel('members').querySelectorAll('button').length).toBeGreaterThan(0);
+      expect(panel('board').querySelectorAll('tbody button')).toHaveLength(0);
     });
 
-    it('a reload of the data (e.g. after kick) keeps the current tab', async () => {
+    it('a reload of the data (e.g. after kick) keeps the current channel', async () => {
       await bootClub({ ...CLUB, myRole: 'owner' });
       click('members');
       document.getElementById('cb-form').onsubmit(new Event('submit'));
       await flush(); await flush();
       expect(shown()).toEqual(['members']);
+    });
+
+    it('action errors show in the centre status line', async () => {
+      await bootClub({ ...CLUB, myRole: 'member' });
+      global.fetch = jest.fn(() => Promise.resolve({ ok: false, status: 409, json: async () => ({ code: 'CLUB_X', error: 'Không rời được.' }) }));
+      window.confirm = () => true;
+      document.getElementById('cb-leave').click();
+      await flush(); await flush();
+      expect(document.getElementById('cb-msg').textContent).toBe('Không rời được.');
+      expect(document.getElementById('cb-msg').closest('.cl-mid')).not.toBeNull();
+    });
+  });
+
+  describe('members pane (#446: role groups, no presence API yet)', () => {
+    const LB = [
+      { rank: 1, username: 'own', displayName: 'Own', role: 'owner', rating: 1600, games: 30 },
+      { rank: 2, username: 'off', displayName: 'Off', role: 'officer', rating: 1550, games: 30 },
+      { rank: 3, username: 'mem', displayName: '<b>Mem</b>', role: 'member', rating: 1500, games: 30 },
+      { rank: 4, username: 'new', displayName: 'New', role: 'member', rating: null, games: 0 },
+    ];
+    const names = (id) => [...document.querySelectorAll('#' + id + ' .cl-u b')].map((b) => b.textContent);
+
+    it('groups Ban quản trị then Thành viên with counts, rows link to profiles, names stay text', async () => {
+      await bootClub({ ...CLUB, members: 4, leaderboard: LB });
+      expect(names('cb-staff')).toEqual(['Own', 'Off']);
+      expect(names('cb-plain')).toEqual(['<b>Mem</b>', 'New']);
+      expect(document.querySelector('#cb-plain b b')).toBeNull();
+      expect(document.getElementById('cb-staff-n').textContent).toBe('2');
+      expect(document.getElementById('cb-plain-n').textContent).toBe('2');
+      expect([...document.querySelectorAll('#cb-plain .cl-u small')].map((x) => x.textContent)).toEqual(['clubs.rating_n{"n":1500}', 'clubs.unrated']);
+      expect(document.querySelector('#cb-staff .cl-u a').getAttribute('href')).toBe('/u/own');
+      expect(document.getElementById('cb-mem-pending').hidden).toBe(true);
+    });
+
+    it('staff see Chờ duyệt on top with approve/reject; visitors and members never do', async () => {
+      const pending = [{ username: 'p q', displayName: 'P' }];
+      for (const role of [null, 'member']) {
+        await bootClub({ ...CLUB, myRole: role, pending });
+        expect(document.getElementById('cb-mem-pending').hidden).toBe(true);
+      }
+      await bootClub({ ...CLUB, myRole: 'officer', pending });
+      expect(document.getElementById('cb-mem-pending').hidden).toBe(false);
+      const btns = document.querySelectorAll('#cb-mem-pending-list button');
+      expect([...btns].map((b) => b.getAttribute('aria-label'))).toEqual(['clubs.approve', 'clubs.reject']);
+      global.fetch.mockClear();
+      btns[0].click();
+      await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/members/p%20q/approve');
+      expect(global.fetch.mock.calls[0][1].method).toBe('POST');
+      global.fetch.mockClear();
+      btns[1].click();
+      await flush();
+      expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/members/p%20q');
+      expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');
+    });
+
+    it('a big club shows the first 50 plain members and a button to the thành-viên channel', async () => {
+      const many = Array.from({ length: 60 }, (_, k) => ({ rank: k + 2, username: 'u' + k, displayName: 'U' + k, role: 'member', rating: null, games: 0 }));
+      await bootClub({ ...CLUB, leaderboard: [LB[0], ...many] });
+      expect(document.querySelectorAll('#cb-plain .cl-u')).toHaveLength(50);
+      const more = document.getElementById('cb-mem-more');
+      expect(more.hidden).toBe(false);
+      more.click();
+      expect(document.getElementById('cb-panel-members').hidden).toBe(false);
+    });
+  });
+
+  describe('rail (#446)', () => {
+    it('signed out: no /mine request; the rail shows this club (active) and Khám phá, no Tạo nhóm', async () => {
+      localStorage.removeItem('gvn_user');
+      await bootClub({ ...CLUB, color: 'red', tag: 'HN' });
+      expect(global.fetch.mock.calls.some(([u]) => String(u).includes('/mine'))).toBe(false);
+      const clubs = document.querySelectorAll('#cb-rail .cl-rail__club');
+      expect(clubs).toHaveLength(1);
+      expect(clubs[0].getAttribute('aria-current')).toBe('page');
+      expect(clubs[0].getAttribute('aria-label')).toBe('<i>Caro</i>');
+      expect(clubs[0].textContent).toBe('HN');
+      expect(document.querySelector('#cb-rail a[href="/clubs.html"]')).not.toBeNull();
+      expect(document.getElementById('cl-rail-create')).toBeNull();
+    });
+
+    it('signed in: detail is fetched first, then /mine; my clubs fill the rail, this one marked current', async () => {
+      localStorage.setItem('gvn_user', '{"userId":1}');
+      jest.resetModules();
+      for (const [target, type, fn] of bound.splice(0)) {
+        if (type === 'DOMContentLoaded' || type === 'hashchange') target.removeEventListener(type, fn);
+      }
+      document.body.innerHTML = body('club.html');
+      window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
+      global.fetch = jest.fn((u) => (String(u).includes('/mine')
+        ? ok({ clubs: [{ slug: 'other', name: 'Other', role: 'member', members: 3, avatarUrl: null }, { slug: 'caro', name: '<i>Caro</i>', role: 'member', members: 2, avatarUrl: null }] })
+        : ok({ ...CLUB, myRole: 'member' })));
+      require('../js/platform-shell.js'); require('../js/club-kit.js'); require('../js/club.js');
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+      await flush(); await flush(); await flush();
+      expect(global.fetch.mock.calls[0][0]).toContain('/api/clubs/caro?category=');
+      expect(global.fetch.mock.calls[1][0]).toBe('/api/clubs/mine');
+      const clubs = [...document.querySelectorAll('#cb-rail .cl-rail__club')];
+      expect(clubs.map((a) => a.getAttribute('href'))).toEqual(['/c/other', '/c/caro']);
+      expect(clubs.map((a) => a.getAttribute('aria-current'))).toEqual([null, 'page']);
+      expect(document.getElementById('cl-rail-create').getAttribute('href')).toBe('/clubs.html#create');
+      localStorage.removeItem('gvn_user');
     });
   });
 
@@ -221,7 +337,7 @@ describe('club page', () => {
       { id: 7, text: 'hi &lt;b&gt;x&lt;/b&gt;', createdAt: '2026-10-10T10:00:00.000Z', mine: false, username: 'mem', displayName: 'Mem', avatarUrl: null },
       { id: 8, text: 'second', createdAt: '2026-10-10T10:01:00.000Z', mine: true, username: 'own', displayName: 'Own', avatarUrl: null },
     ];
-    const tab = () => document.getElementById('cb-tab-chat');
+    const tab = () => document.getElementById('cb-ch-chat');
     const log = () => document.getElementById('cb-chat-log');
     // club JSON for everything except /messages
     async function bootChat(role, msgs = MSGS) {
@@ -233,33 +349,58 @@ describe('club page', () => {
 
     beforeEach(() => { location.hash = ''; });
 
-    it('tab is hidden for non-members/pending and #tab=chat falls back to overview', async () => {
+    it('non-members/pending get the gate over a skeleton and no /messages request, ever', async () => {
       for (const role of [null, 'pending']) {
-        location.hash = '#tab=chat';
+        location.hash = '#ch=chat';
         await bootClub({ ...CLUB, myRole: role });
-        expect(tab().hidden).toBe(true);
-        expect(document.getElementById('cb-panel-chat').hidden).toBe(true);
-        expect(document.getElementById('cb-panel-overview').hidden).toBe(false);
+        expect(document.getElementById('cb-panel-chat').hidden).toBe(false);
+        expect(document.getElementById('cb-gate').hidden).toBe(false);
+        expect(document.getElementById('cb-chat').hidden).toBe(true);
+        expect(document.querySelector('.cl-skel').getAttribute('aria-hidden')).toBe('true');
+        tab().click();
+        await flush();
+        expect(global.fetch.mock.calls.some(([u]) => String(u).includes('/messages'))).toBe(false);
+        expect(document.querySelectorAll('#cb-chat-log > *')).toHaveLength(0);
       }
     });
 
-    it('members get the tab; opening it loads messages once, rendered as decoded text', async () => {
+    it('members get the stream; opening it loads messages once, rendered as decoded text', async () => {
       await bootChat('member');
-      expect(tab().hidden).toBe(false);
+      expect(document.getElementById('cb-gate').hidden).toBe(true);
+      expect(document.getElementById('cb-chat').hidden).toBe(false);
+      document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
       expect(global.fetch.mock.calls.filter(([u]) => String(u).includes('/messages'))).toHaveLength(1);
       expect([...document.querySelectorAll('.cb-chat__text')].map((n) => n.textContent)).toEqual(['hi <b>x</b>', 'second']);
       expect(log().querySelector('b')).toBeNull();
       expect(document.querySelectorAll('.cb-chat__msg button')).toHaveLength(0);
-      document.getElementById('cb-tab-members').click();
+      document.getElementById('cb-ch-members').click();
       tab().click();
       await flush();
       expect(global.fetch.mock.calls.filter(([u]) => String(u).includes('/messages'))).toHaveLength(1);
     });
 
+    it('author role shows for owner/officer only; one day separator per local day', async () => {
+      const msgs = [
+        { ...MSGS[0], id: 1, username: 'own', displayName: 'Own', createdAt: '2026-10-09T10:00:00.000Z' },
+        { ...MSGS[0], id: 2, username: 'mem', displayName: 'Mem', createdAt: '2026-10-10T10:00:00.000Z' },
+        { ...MSGS[0], id: 3, username: 'mem', displayName: 'Mem', createdAt: '2026-10-10T10:05:00.000Z' },
+      ];
+      await bootChat('member', msgs);
+      document.getElementById('cb-ch-events').click();
+      tab().click();
+      await flush(); await flush();
+      const rows = [...document.querySelectorAll('.cb-chat__msg')];
+      expect(rows.map((r) => (r.querySelector('.cl-role') || {}).textContent)).toEqual(['clubs.role_owner', undefined, undefined]);
+      expect(document.querySelectorAll('#cb-chat-log .cl-day')).toHaveLength(2);
+      expect(log().firstElementChild.classList.contains('cl-day')).toBe(true);
+      expect(rows[0].querySelector('a.cb-chat__name').getAttribute('href')).toBe('/u/own');
+    });
+
     it('staff see a delete button per message; delete sends DELETE then reloads', async () => {
       await bootChat('officer');
+      document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
       expect(document.querySelectorAll('.cb-chat__msg button')).toHaveLength(2);
@@ -273,6 +414,7 @@ describe('club page', () => {
 
     it('send posts {text}, clears the input, then fetches only newer messages', async () => {
       await bootChat('member');
+      document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
       global.fetch.mockClear();
@@ -288,12 +430,14 @@ describe('club page', () => {
 
     it('empty chat shows the empty note; a full page offers older messages', async () => {
       await bootChat('member', []);
+      document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
       expect(document.getElementById('cb-chat-empty').hidden).toBe(false);
       expect(document.getElementById('cb-chat-older').hidden).toBe(true);
       const full = Array.from({ length: 50 }, (_, k) => ({ ...MSGS[0], id: 100 + k }));
       await bootChat('member', full);
+      document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
       expect(document.getElementById('cb-chat-older').hidden).toBe(false);
@@ -536,9 +680,41 @@ describe('club colour swatches are painted (fix: Manage "Màu" swatches were gre
   });
 });
 
-describe('club banner is taller on phones (fix: 6:1 banner was ~60px at 360px wide)', () => {
-  it('platform.css switches .cb-banner to 3:1 at <=600px', () => {
-    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
-    expect(css).toMatch(/@media \(max-width: 600px\) \{ \.cb-banner \{ aspect-ratio: 3 \/ 1; \}/);
+describe('club banner (#446): generated pattern when none; phone keeps a short strip', () => {
+  it('no banner → a seeded stone-pattern SVG on the club colour, same for the same slug; a banner hides it', async () => {
+    await bootClub({ ...CLUB, color: 'teal', bannerUrl: null });
+    const gen = document.getElementById('cb-banner-gen');
+    expect(gen.hidden).toBe(false);
+    const svg = gen.querySelector('svg.cl-genb');
+    expect(svg.getAttribute('aria-hidden')).toBe('true');
+    expect(svg.style.getPropertyValue('--cc')).toBe('var(--club-teal)');
+    const first = svg.innerHTML;
+    await bootClub({ ...CLUB, color: 'teal', bannerUrl: null });
+    expect(document.querySelector('#cb-banner-gen svg').innerHTML).toBe(first);
+    await bootClub({ ...CLUB, bannerUrl: '/api/clubs/caro/banner?v=4' });
+    expect(document.getElementById('cb-banner-gen').hidden).toBe(true);
+    expect(document.getElementById('cb-banner-gen').children).toHaveLength(0);
+    expect(document.getElementById('cb-name').textContent).toBe('<i>Caro</i>');
+    expect(document.getElementById('cb-count').textContent).toBe('clubs.members{"n":2}');
+  });
+
+  it('the shell sets --cc from the club colour (unknown colour → blue)', async () => {
+    await bootClub({ ...CLUB, color: 'purple' });
+    expect(document.getElementById('cb-app').style.getPropertyValue('--cc')).toBe('var(--club-purple)');
+    await bootClub({ ...CLUB, color: 'url(x)' });
+    expect(document.getElementById('cb-app').style.getPropertyValue('--cc')).toBe('var(--club-blue)');
+  });
+
+  it('club.css: phone banner 72px, members pane dropped at <=1180px, shell sized to end at the tab bar', () => {
+    const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'club.css'), 'utf8');
+    expect(css).toMatch(/@media \(max-width: 1180px\) \{[^@]*\.cl-mem \{ display: none; \}/);
+    const phone = css.slice(css.indexOf('@media (max-width: 860px)'));
+    expect(phone).toMatch(/\.cl-banner \{ height: 72px; \}/);
+    expect(phone).toMatch(/body\.pshell\.cl-body \{ padding-bottom: 0; \}/);
+    expect(phone).toMatch(/height: calc\(100dvh - var\(--cl-nav-h\) - var\(--ptabbar-h\) - env\(safe-area-inset-bottom\)\)/);
+    expect(css).toMatch(/prefers-reduced-motion: reduce\) \{\s*\.cl-hq \*[^}]*animation: none !important/);
+    // thành-viên is the only role/kick UI below 1180px: on phones each member is a card, actions wrap below (no offscreen buttons)
+    expect(phone).toMatch(/#cb-members-body tr \{ display: grid;/);
+    expect(phone).toMatch(/#cb-members-body td:nth-child\(3\) \{ grid-column: 1 \/ -1; display: flex; flex-wrap: wrap;/);
   });
 });
