@@ -200,7 +200,7 @@
   }
 
   /** Club notifications open the channel they are about (B447: chat ones land on trò-chuyện). */
-  const CLUB_HASH = { club_request: '#ch=requests', club_mention: '#ch=chat', club_all: '#ch=chat', club_pin: '#ch=chat' };
+  const CLUB_HASH = { club_request: '#ch=requests', club_mention: '#ch=chat', club_all: '#ch=chat', club_pin: '#ch=chat', club_poll: '#ch=chat' };
 
   function notifTarget(n) {
     const from = n.payload && n.payload.from;

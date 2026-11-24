@@ -138,6 +138,28 @@ a.cb-chat__name:hover { text-decoration: underline; }
 .cl-hint__args { color: var(--c-ink-2); font-family: var(--font-mono, monospace); font-size: 13px; }
 .cl-hint__desc { flex-basis: 100%; color: var(--c-ink-2); font-size: 13px; }
 .cl-dot { flex: none; width: 8px; height: 8px; margin-left: auto; border-radius: 50%; background: var(--c-ink); }
+
+/* B449: poll card. The bar is the button's own background (--pct set inline from server counts). */
+.cb-poll__q { margin-top: 2px; font-weight: 700; }
+.cb-poll { display: flex; flex-direction: column; gap: 8px; max-width: 520px; margin-top: 8px; }
+.cb-poll__opts { display: flex; flex-direction: column; gap: 6px; }
+.cb-poll__opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 8px 14px; border: 0; border-radius: 10px; color: var(--c-ink); font: inherit; text-align: left; cursor: pointer;
+  background: linear-gradient(90deg, var(--cc-tint) var(--pct, 0%), var(--c-fill) var(--pct, 0%)); box-shadow: inset 0 0 0 1px var(--c-border); }
+.cb-poll__opt:hover:not(:disabled) { box-shadow: inset 0 0 0 1px var(--cc-text); }
+.cb-poll__opt.is-mine { box-shadow: inset 0 0 0 2px var(--cc-text); font-weight: 800; }
+.cb-poll__opt:disabled { cursor: default; }
+.cb-poll__label { display: inline-flex; align-items: center; gap: 6px; min-width: 0; overflow-wrap: anywhere; }
+.cb-poll__label .icon { flex: none; color: var(--cc-text); }
+.cb-poll__n { flex: none; font-size: 13px; font-weight: 800; color: var(--c-ink-2); font-variant-numeric: tabular-nums; }
+.cb-poll__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.cb-poll__open { color: var(--cc-text); }
+.cb-poll__link { min-height: 32px; padding: 0 4px; border: 0; background: none; color: var(--c-brand-text); font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.cb-poll__link:hover { text-decoration: underline; }
+.cb-poll__who { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--c-fill); font-size: 14px; }
+.cb-poll__whorow { display: flex; flex-wrap: wrap; gap: 4px 8px; }
+.cb-poll__whorow b { flex: none; }
+.cb-poll__names { color: var(--c-ink-2); overflow-wrap: anywhere; }
+.cb-poll__names a { color: inherit; }
 .cl-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .cl-toggles { display: grid; gap: 2px; max-width: none; margin-top: 8px; }
 

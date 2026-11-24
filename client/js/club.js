@@ -266,8 +266,99 @@
     return body;
   }
 
+  // --- polls (B449): tallies come from the server only; open cards refresh on the 8 s chat tick ---
+  const pollCards = () => [...$('cb-chat-log').querySelectorAll('.cb-poll[data-open="1"]')];
+  /** Bumped before every vote/close POST, so a chat tick sent earlier can't repaint the card with older state. */
+  const bumpPoll = (card) => { card.dataset.v = String((Number(card.dataset.v) || 0) + 1); };
+
+  /** Fill (or refill) a poll card from server state `p`. Options are buttons; tapping my own option takes the vote back. */
+  function renderPoll(card, p) {
+    const id = card.dataset.id;
+    card.dataset.open = p.closed ? '0' : '1';
+    const opts = el('div', undefined, 'cb-poll__opts');
+    p.options.forEach((text, i) => {
+      const n = p.counts[i] || 0;
+      const pct = p.total ? Math.round((n / p.total) * 100) : 0;
+      const b = el('button', undefined, 'cb-poll__opt' + (p.myOption === i ? ' is-mine' : ''));
+      b.type = 'button';
+      b.disabled = p.closed;
+      b.setAttribute('aria-pressed', String(p.myOption === i));
+      b.style.setProperty('--pct', pct + '%');
+      const label = el('span', undefined, 'cb-poll__label');
+      if (p.myOption === i) label.append(icon('check-circle'));
+      label.append(decode(text));
+      b.append(label, el('span', t('clubs.poll_votes', { n }), 'cb-poll__n'));
+      b.setAttribute('aria-label', decode(text) + ', ' + t('clubs.poll_votes', { n }));
+      b.onclick = async () => {
+        bumpPoll(card);
+        const res = await act('POST', '/messages/' + id + '/vote', { option: p.myOption === i ? null : i });
+        if (res && res.poll) { renderPoll(card, res.poll); if (card.querySelector('.cb-poll__who')) showVoters(card); }
+      };
+      opts.append(b);
+    });
+    const foot = el('div', undefined, 'cb-poll__foot');
+    foot.append(el('span', t('clubs.poll_total', { n: p.total }), 'cl-count'),
+      el('span', p.closed ? t('clubs.poll_closed') : t('clubs.poll_until', { when: fmtWhen(p.closesAt) }), 'cl-count' + (p.closed ? '' : ' cb-poll__open')));
+    if (p.total) {
+      const who = el('button', t('clubs.poll_voters'), 'cb-poll__link');
+      who.type = 'button';
+      who.setAttribute('aria-expanded', String(!!card.querySelector('.cb-poll__who')));
+      who.onclick = () => { if (card.querySelector('.cb-poll__who')) { card.querySelector('.cb-poll__who').remove(); who.setAttribute('aria-expanded', 'false'); } else showVoters(card); };
+      foot.append(who);
+    }
+    if (p.canClose) {
+      const end = el('button', t('clubs.poll_close'), 'cb-poll__link');
+      end.type = 'button';
+      end.onclick = async () => {
+        bumpPoll(card);
+        const res = await act('POST', '/messages/' + id + '/close', null, 'clubs.confirm_poll_close');
+        if (res && res.poll) renderPoll(card, res.poll);
+      };
+      foot.append(end);
+    }
+    const voters = card.querySelector('.cb-poll__who');
+    card.replaceChildren(opts, foot);
+    if (voters) card.append(voters);
+  }
+
+  /** Named votes (decided 2026-11-24): fetched on demand, never part of the 8 s poll. */
+  async function showVoters(card) {
+    const res = await fetch(base() + '/messages/' + card.dataset.id + '/voters', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const { voters } = await res.json();
+    const box = el('div', undefined, 'cb-poll__who');
+    [...card.querySelectorAll('.cb-poll__opt')].forEach((b, i) => {
+      const list = voters[i] || [];
+      if (!list.length) return;
+      const row = el('div', undefined, 'cb-poll__whorow');
+      row.append(el('b', b.querySelector('.cb-poll__label').textContent));
+      const names = el('span', undefined, 'cb-poll__names');
+      list.forEach((v, j) => {
+        const a = el('a', v.displayName, 'cl-nm');
+        a.href = '/u/' + encodeURIComponent(v.username);
+        names.append(a);
+        if (j < list.length - 1) names.append(', ');
+      });
+      row.append(names);
+      box.append(row);
+    });
+    const old = card.querySelector('.cb-poll__who');
+    if (old) old.replaceWith(box); else card.append(box);
+    const btn = [...card.querySelectorAll('.cb-poll__link')].find((x) => x.hasAttribute('aria-expanded'));
+    if (btn) btn.setAttribute('aria-expanded', 'true');
+  }
+
+  function pollBody(m) {
+    const body = el('div', undefined, 'cb-chat__body');
+    const card = el('div', undefined, 'cb-poll');
+    card.dataset.id = String(m.id);
+    body.append(el('div', t('clubs.sys_poll', { name: m.displayName }), 'cb-chat__sys-t'), el('div', decode(m.text), 'cb-chat__text cb-poll__q'), card);
+    if (m.poll) renderPoll(card, m.poll);
+    return body;
+  }
+
   function chatRow(m) {
-    const sys = m.kind === 'pin' || m.kind === 'challenge';
+    const sys = m.kind === 'pin' || m.kind === 'challenge' || m.kind === 'poll';
     const row = el('div', undefined, 'cb-chat__msg' + (sys ? ' cb-chat__msg--sys' : ''));
     row.dataset.id = String(m.id);
     row.dataset.day = dayKey(m.createdAt);
@@ -278,8 +369,8 @@
     let body;
     if (sys) {
       const tile = el('span', undefined, 'cb-chat__tile');
-      tile.append(icon(m.kind === 'pin' ? 'megaphone' : 'handshake'));
-      body = systemBody(m);
+      tile.append(icon({ pin: 'megaphone', challenge: 'handshake', poll: 'check-square' }[m.kind]));
+      body = m.kind === 'poll' ? pollBody(m) : systemBody(m);
       body.firstChild.append(time);
       row.append(tile, body);
     } else {
@@ -369,10 +460,14 @@
     if (c.busy || !isMember()) return;
     c.busy = true;
     try {
-      const q = mode === 'older' ? '?before=' + c.firstId : mode === 'newer' ? '?after=' + c.lastId : '';
+      let q = mode === 'older' ? '?before=' + c.firstId : mode === 'newer' ? '?after=' + c.lastId : '';
+      const open = mode === 'newer' ? pollCards().slice(-20) : [];
+      const sentV = open.map((n) => n.dataset.v);
+      if (open.length) q += '&polls=' + open.map((n) => n.dataset.id).join(',');
       const res = await fetch(base() + '/messages' + q, { credentials: 'same-origin' });
       if (!res.ok) return;
-      const { messages } = await res.json();
+      const { messages, polls } = await res.json();
+      if (polls) open.forEach((card, i) => { if (polls[card.dataset.id] && card.dataset.v === sentV[i]) renderPoll(card, polls[card.dataset.id]); });
       const log = $('cb-chat-log');
       const scroller = $('cb-stream');
       const stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40;
@@ -405,6 +500,7 @@
     const out = [];
     if (c.cmdPin && isStaff()) out.push({ cmd: '/ghim', args: t('clubs.cmd_pin_args'), desc: t('clubs.cmd_pin') });
     if (c.cmdChallenge) out.push({ cmd: '/giaohuu', args: t('clubs.cmd_challenge_args'), desc: t('clubs.cmd_challenge') });
+    if (c.cmdPoll) out.push({ cmd: '/binhchon', args: t('clubs.cmd_poll_args'), desc: t('clubs.cmd_poll') });
     return out;
   }
 

@@ -17,9 +17,12 @@
  * DELETE /api/clubs/:slug/invites/:username      staff revoke
  * POST   /api/clubs/:slug/events                   {title, startsAt} staff
  * DELETE /api/clubs/:slug/events/:id                staff
- * GET    /api/clubs/:slug/messages?before=|after=   members only (polling)
- * POST   /api/clubs/:slug/messages                  {text} members only; /ghim, /giaohuu, @mentions (B447)
+ * GET    /api/clubs/:slug/messages?before=|after=[&polls=1,2]   members only (polling; polls = refresh those cards, B449)
+ * POST   /api/clubs/:slug/messages                  {text} members only; /ghim, /giaohuu, /binhchon, @mentions (B447)
  * DELETE /api/clubs/:slug/messages/:id              staff
+ * POST   /api/clubs/:slug/messages/:id/vote         {option: 0-based | null} members (B449)
+ * POST   /api/clubs/:slug/messages/:id/close        poll creator or staff
+ * GET    /api/clubs/:slug/messages/:id/voters       members: names per option
  * GET    /api/clubs/:slug/avatar | /banner         image (immutable; URL carries ?v=)
  * POST   /api/clubs/:slug/avatar | /banner         raw image body, staff (#250) — DELETE removes
  */
@@ -200,7 +203,9 @@ const readAuth = [verifyToken, (req, res, next) => {
 
 router.get('/:slug/messages', ...readAuth, h((req, res) => {
   res.set('Cache-Control', 'no-store');
-  res.json({ messages: svc.listMessages(req.user.userId, req.params.slug, req.query) });
+  const body = { messages: svc.listMessages(req.user.userId, req.params.slug, req.query) };
+  if (req.query.polls) body.polls = svc.refreshPolls(req.user.userId, req.params.slug, req.query.polls);
+  res.json(body);
 }));
 
 router.post('/:slug/messages', ...write, h((req, res) => {
@@ -210,6 +215,20 @@ router.post('/:slug/messages', ...write, h((req, res) => {
 router.delete('/:slug/messages/:id', ...write, h((req, res) => {
   svc.deleteMessage(req.user.userId, req.params.slug, req.params.id);
   res.json({ ok: true });
+}));
+
+router.post('/:slug/messages/:id/vote', ...write, h((req, res) => {
+  const option = (req.body || {}).option;
+  res.json({ poll: svc.votePoll(req.user.userId, req.params.slug, req.params.id, option === undefined ? NaN : option) });
+}));
+
+router.post('/:slug/messages/:id/close', ...write, h((req, res) => {
+  res.json({ poll: svc.closePoll(req.user.userId, req.params.slug, req.params.id) });
+}));
+
+router.get('/:slug/messages/:id/voters', ...readAuth, h((req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ voters: svc.pollVoters(req.user.userId, req.params.slug, req.params.id) });
 }));
 
 module.exports = router;
