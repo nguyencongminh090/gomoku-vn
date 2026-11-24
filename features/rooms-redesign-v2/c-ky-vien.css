@@ -1,0 +1,474 @@
+/* Direction C — "Kỳ viện" (Left Vertical Online Rail + Compact Split-Seat Cards)
+   Notes: vstyle-minimalism-swiss, ux-responsive-mobile-first, ticket-rows */
+
+.c-page {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 20px 24px 64px;
+}
+
+/* Mobile-only compact live count strip (desktop shows counts at top of Left Rail) */
+.c-mstats {
+  display: none;
+}
+
+/* ── 2-column Club Shell: Left Vertical Rail (284px) + Right Stage (1fr) ── */
+.c-shell {
+  display: grid;
+  grid-template-columns: 284px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* ── Left Vertical Online Rail ── */
+.c-rail {
+  position: sticky;
+  top: 74px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  overflow: hidden;
+}
+
+.c-pulse {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--c-border);
+  background: var(--c-surface-2);
+}
+.c-pulse__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+}
+.c-pulse__cell + .c-pulse__cell {
+  border-left: 1px solid var(--c-border);
+}
+.c-pulse__top {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.c-pulse__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-success);
+  animation: mk-pulse 1.8s ease-in-out infinite;
+}
+.c-pulse__icon { color: var(--c-warning); }
+.c-pulse__num {
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.1;
+  color: var(--c-ink);
+}
+.c-pulse__lbl {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--c-ink-3);
+}
+
+.c-rail__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--c-border-light);
+}
+.c-rail__search { position: relative; }
+.c-rail__search .icon {
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  color: var(--c-ink-3);
+  pointer-events: none;
+}
+.c-rail__search input {
+  width: 100%;
+  min-height: 34px;
+  padding: 5px 10px 5px 30px;
+  border-radius: var(--radius);
+  border: 1px solid var(--c-border);
+  background: var(--c-field);
+  color: var(--c-ink);
+  font-size: var(--text-sm);
+}
+
+.c-rail__pills {
+  display: flex;
+  gap: 4px;
+}
+.c-pill {
+  flex: 1;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-ink-2);
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.c-pill.is-on {
+  background: var(--c-brand-light);
+  border-color: color-mix(in srgb, var(--c-brand-text) 40%, transparent);
+  color: var(--c-brand-text);
+}
+
+.c-rail__caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px 4px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--c-ink-3);
+}
+
+.c-ulist {
+  margin: 0;
+  padding: 2px 0 6px;
+  list-style: none;
+  max-height: calc(100vh - 305px);
+  overflow-y: auto;
+}
+.c-user {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 46px;
+  padding: 7px 12px;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+.c-user:hover { background: var(--c-hover); }
+.c-user:focus-visible { outline: 2px solid var(--c-brand-text); outline-offset: -2px; }
+.c-user--me { cursor: default; }
+.c-user--me:hover { background: none; }
+
+.c-user__mid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.c-user__name {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c-user__sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--c-ink-3);
+}
+.c-user__rule {
+  color: var(--c-ink-2);
+  font-weight: 700;
+}
+.c-user__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+}
+.c-user__rank {
+  font-size: var(--text-xs);
+  font-weight: 900;
+  color: var(--c-ink);
+}
+.c-user__elo {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--c-ink-3);
+}
+
+.c-rail__foot {
+  padding: 8px 12px;
+  border-top: 1px solid var(--c-border-light);
+  text-align: center;
+}
+.c-rail__more {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius);
+  background: var(--c-fill);
+  color: var(--c-ink-2);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ── Right Main Stage ── */
+.c-stage { min-width: 0; }
+
+.c-stage__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  padding-bottom: 12px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--c-border);
+}
+.c-tabs {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+.c-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 4px 0 8px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -13px;
+  background: none;
+  font-size: var(--text-md);
+  font-weight: 800;
+  color: var(--c-ink-2);
+  cursor: pointer;
+}
+.c-tab:hover { color: var(--c-ink); }
+.c-tab[aria-selected="true"] {
+  color: var(--c-ink);
+  border-bottom-color: var(--c-brand-text);
+}
+.c-tab:focus-visible { outline: 2px solid var(--c-brand-text); outline-offset: 2px; }
+.c-tab__n {
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--c-fill);
+  color: var(--c-ink-2);
+  font-size: var(--text-xs);
+  font-weight: 800;
+}
+.c-tab[aria-selected="true"] .c-tab__n {
+  background: var(--c-brand-light);
+  color: var(--c-brand-text);
+}
+.c-tab--mobile { display: none; }
+
+.c-panel[hidden] { display: none; }
+
+/* ── Compact Split-Seat Cards (2-col on wide desktop, 1-col on narrow) ── */
+.c-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.c-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 13px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  cursor: pointer;
+  transition: border-color 140ms ease, transform 140ms ease;
+}
+.c-card:hover {
+  border-color: color-mix(in srgb, var(--c-brand-text) 50%, var(--c-border));
+  transform: translateY(-1px);
+}
+.c-card:focus-visible { outline: 2px solid var(--c-brand-text); outline-offset: 2px; }
+
+.c-card--open {
+  border-top: 2px solid var(--c-brand);
+}
+
+.c-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.c-card__top-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.c-card__name {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--c-ink-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c-card__top-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--c-ink-3);
+}
+.c-card__watch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Tactile black/white stone seat rows (pure CSS stones, never BoardRenderer) */
+.c-seats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--c-surface-2);
+}
+.c-seat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+.c-seat__who {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.c-stone {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: none;
+}
+.c-stone--black {
+  background: var(--rh-stone-b);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .28);
+}
+.c-stone--white {
+  background: var(--rh-stone-w);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .28);
+}
+.c-stone--empty {
+  border: 1.5px dashed var(--c-ink-3);
+  background: transparent;
+}
+.c-seat__name {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: var(--c-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c-seat__name--empty {
+  color: var(--c-brand-text);
+  font-weight: 700;
+}
+.c-seat__elo {
+  font-size: var(--text-xs);
+  font-weight: 800;
+  color: var(--c-ink-2);
+  flex: none;
+}
+
+.c-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+}
+.c-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 5px;
+  min-width: 0;
+}
+.c-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 13px;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  flex: none;
+  white-space: nowrap;
+}
+.c-act--sit {
+  background: var(--c-brand);
+  color: var(--c-on-brand);
+}
+.c-act--watch {
+  border: 1px solid var(--c-border);
+  background: var(--c-fill);
+  color: var(--c-ink);
+}
+
+/* ── Breakpoints ── */
+@media (max-width: 1120px) {
+  .c-cards { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 860px) {
+  .c-page { padding: 14px 12px 32px; }
+  .c-mstats {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .c-mstats__pair {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: var(--text-sm);
+    color: var(--c-ink-2);
+  }
+  .c-mstats__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .c-mstats__item strong { color: var(--c-ink); font-weight: 900; }
+  .c-shell { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .c-rail { position: static; order: 2; }
+  .c-rail[data-mobile-hidden="true"] { display: none; }
+  .c-pulse { display: none; }
+  .c-ulist { max-height: none; }
+  .c-stage { order: 1; }
+  .c-stage__bar { margin-bottom: 14px; }
+  .c-stage__bar .mk-btn-primary { display: none; }
+  .c-tab--mobile { display: inline-flex; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-pulse__dot { animation: none; }
+  .c-card { transition: none; }
+  .c-card:hover { transform: none; }
+}

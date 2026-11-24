@@ -1,0 +1,70 @@
+<title>Home Desktop Luxe</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@500;700;800&family=Playfair+Display:ital,wght@0,500;1,500&subset=vietnamese&display=swap">
+<style>
+/* Layout: a dark viewing room. One large plate, three concept tabs, state thumbnails below. */
+:root { color-scheme: dark; --bg: #0e0a07; --panel: #1a130d; --ink: #f7efdf; --sub: #cfc2a9; --gold: #e0bf80; --line: #4a3a26; --serif: "Playfair Display", Georgia, serif; --sans: Nunito, system-ui, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 500 16px/1.55 var(--sans); }
+.wrap { display: grid; gap: 22px; max-width: 1500px; margin: 0 auto; padding-block: 36px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2 { margin: 0; font-family: var(--serif); font-weight: 500; line-height: 1.16; text-wrap: balance; }
+h1 { font-size: clamp(34px, 5vw, 64px); }
+h1 em, h2 em { color: var(--gold); }
+h2 { font-size: clamp(26px, 3vw, 40px); }
+p { margin: 0; max-width: 68ch; color: var(--sub); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+.tab { min-height: 46px; padding: 0 18px; border: 1px solid var(--line); border-radius: 4px; background: transparent; font-weight: 800; }
+.tab[aria-selected="true"] { border-color: var(--gold); background: var(--gold); color: #1a1209; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.stage { margin: 0; border: 1px solid var(--line); background: #000; }
+.stage img { display: block; width: 100%; height: auto; }
+.stage figcaption { padding: 9px 14px; color: var(--sub); font-size: 14px; }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 8px; }
+.thumb { display: grid; gap: 5px; padding: 0 0 7px; border: 1px solid var(--line); border-radius: 3px; background: var(--panel); color: var(--sub); font-size: 13px; font-weight: 700; text-align: center; overflow: hidden; }
+.thumb img { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; }
+.thumb[aria-pressed="true"] { border-color: var(--gold); color: var(--ink); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px; padding-top: 18px; border-top: 1px solid var(--line); }
+.notes > div { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.notes b { color: var(--gold); font-size: 14px; }
+.foot { padding-top: 18px; border-top: 1px solid var(--line); font-size: 14px; }
+</style>
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <h1>Ba hướng cho <em>Home desktop</em></h1>
+    <p>Dựng trên trang Home thật của Play3CR, dùng các nút và ô nhập thật. Số người chơi và tên ván là dữ liệu mẫu.</p>
+  </header>
+  <div class="tabs" role="tablist" aria-label="Chọn hướng thiết kế" id="tabs"></div>
+  <div style="display:grid;gap:6px"><h2 id="name"></h2><p id="idea"></p></div>
+  <figure class="stage"><img id="main" alt="" width="1440" height="900"><figcaption id="cap"></figcaption></figure>
+  <div class="thumbs" id="thumbs"></div>
+  <section class="notes">
+    <div><b>Điểm mạnh</b><p id="good"></p></div>
+    <div><b>Rủi ro</b><p id="risk"></p></div>
+    <div><b>Chuyển động</b><p id="motion"></p></div>
+  </section>
+  <p class="foot">Đã đo trên 4 cỡ màn hình từ 1024 đến 1920 px: không tràn ngang, tiêu đề, nhãn và menu trên ảnh đạt tương phản từ 6,98:1 trở lên. Chưa kiểm tra màn hẹp hơn 1024 px, tài khoản khách và tiếng Anh. Ảnh chụp tĩnh chưa thể hiện chuyển động.</p>
+</div>
+<script>
+const STATES = [['1440', 'Mặc định 1440'], ['1024', 'Laptop 1024'], ['1280', 'Màn 1280'], ['1920', 'Màn 1920'], ['pick', 'Đang chọn giờ'], ['search', 'Đang tìm trận'], ['busy', 'Có ván dở + tin'], ['light', 'Chế độ sáng']];
+const C = {
+  c1: { tab: 'Chữ sau quân cờ', name: 'Chữ sau <em>quân cờ</em>', idea: 'Mặt bàn gỗ trải hết màn hình, chữ Chơi ngay khổng lồ đứng giữa bàn và quân đen ở tiền cảnh. Mọi thao tác gom vào một bảng điều khiển dưới đáy.', good: 'Ấn tượng ngay giây đầu và có chiều sâu thật. Chơi nhanh nằm cùng hàng với tuỳ chọn, thao tác nhanh nhất trong ba hướng.', risk: 'Tiêu đề chiếm nhiều diện tích nên ván đang diễn ra chỉ còn con số. Khi có ván dở và tin mới, bảng dưới đáy cao lên và che bớt mặt bàn.', motion: 'Quân đen và mặt bàn lệch nhẹ theo chuột, chữ đứng yên. Khi tải trang, quân đen nhích vào chỗ một lần.' },
+  c2: { tab: 'Năm quân thắng', name: 'Năm quân <em>thắng</em>', idea: 'Bàn cờ nhìn từ trên xuống, năm quân trắng tạo thành đường thắng thật. Bốn quân đầu là Học, Diễn đàn, Giải đấu, Hội nhóm, quân thứ năm phát sáng là Chơi nhanh.', good: 'Ý tưởng gắn chặt với luật Caro và khó nhầm với site khác. Đường chéo dẫn mắt thẳng tới nút chính.', risk: 'Tuỳ chọn ván ở bên trái còn nút Chơi ở bên phải, nên chuột phải đi xa hơn. Quân cờ làm nút là kiểu thao tác mới, cần xem người chơi có hiểu ngay không.', motion: 'Quân link phóng nhẹ khi rê chuột. Không có quân nào tự di chuyển trên bàn.' },
+  c3: { tab: 'Bình phong sơn mài', name: 'Bình phong <em>sơn mài</em>', idea: 'Một bức sơn mài vàng lá trải qua ba tấm bình phong: Chơi nhanh, Vào phòng, Đang diễn ra. Tấm đang rê chuột mở rộng và bắt sáng.', good: 'Đậm bản sắc Việt và sang nhất. Là hướng duy nhất hiện đủ danh sách ván đang diễn ra ngay màn đầu.', risk: 'Rời xa hình ảnh bàn cờ gỗ và màu xanh thương hiệu. Ba khối ngang hàng nên nút chính ít nổi bật hơn hai hướng kia. Tấm giãn ra khi rê chuột nên vị trí nút có thể dịch dưới con trỏ.', motion: 'Tấm được rê chuột mở rộng trong 480 ms, vệt sáng đi theo chuột. Ảnh nền đứng yên.' },
+};
+const $ = (id) => document.getElementById(id);
+let cur = 'c1', state = '1440';
+function show() {
+  const list = STATES.concat(cur === 'c3' ? [['hover', 'Rê chuột tấm 3']] : []), c = C[cur], s = list.find((x) => x[0] === state);
+  $('name').innerHTML = c.name; $('idea').textContent = c.idea; $('good').textContent = c.good; $('risk').textContent = c.risk; $('motion').textContent = c.motion;
+  $('main').src = `img/${cur}-${state}.jpg`; $('main').alt = `${c.tab}, ${s[1]}`; $('cap').textContent = s[1];
+  document.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.c === cur)));
+  $('thumbs').replaceChildren(...list.map(([k, label]) => {
+    const b = document.createElement('button'); b.className = 'thumb'; b.type = 'button'; b.setAttribute('aria-pressed', String(k === state));
+    const i = new Image(); i.src = `img/${cur}-${k}.jpg`; i.alt = ''; i.loading = 'lazy';
+    b.append(i, label); b.onclick = () => { state = k; show(); }; return b;
+  }));
+}
+$('tabs').append(...Object.entries(C).map(([k, c]) => { const b = document.createElement('button'); b.className = 'tab'; b.type = 'button'; b.role = 'tab'; b.dataset.c = k; b.textContent = c.tab; b.onclick = () => { cur = k; if (state === 'hover') state = '1440'; show(); }; return b; }));
+show();
+</script>

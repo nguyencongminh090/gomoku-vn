@@ -1,0 +1,7 @@
+# Images, video and fonts stay local (repo is public; see features/rooms-redesign/.gitignore)
+*.jpg
+*.jpeg
+*.webp
+*.webm
+*.woff2
+shots/

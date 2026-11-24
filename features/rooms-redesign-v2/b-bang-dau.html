@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Direction B: Bảng đấu — Play3CR Rooms Mockup</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="b-bang-dau.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+
+  <main class="b-page" role="main">
+    <!-- Compact utility header -->
+    <header class="b-head">
+      <div class="b-head__left">
+        <h1 class="b-title">Phòng chơi</h1>
+        <div class="b-kpis" aria-label="Số người trực tuyến">
+          <span class="b-kpi">
+            <span class="b-kpi__dot" aria-hidden="true"></span>
+            <strong class="num" id="b-kpi-online">24</strong>
+            <span>đang online</span>
+          </span>
+          <span class="b-kpi">
+            <svg class="icon b-kpi__icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-sword"></use></svg>
+            <strong class="num" id="b-kpi-playing">10</strong>
+            <span>đang chơi</span>
+          </span>
+        </div>
+      </div>
+
+      <button type="button" class="mk-btn-primary" id="btn-create" data-create-room>
+        <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>
+        <span>Tạo bàn</span>
+      </button>
+    </header>
+
+    <!-- Sub-bar: tabs + quick filter -->
+    <div class="b-subbar">
+      <div class="b-tabs" role="tablist" aria-label="Mục sảnh phòng">
+        <button class="b-tab" id="btab-tables" type="button" role="tab" aria-selected="true" aria-controls="bpanel-tables">
+          <span>Bàn chơi</span>
+          <span class="b-tab__n num" id="b-tab-n">9</span>
+        </button>
+        <button class="b-tab b-tab--mobile" id="btab-online-m" type="button" role="tab" aria-selected="false" aria-controls="b-desk" tabindex="-1">
+          <span>Online</span>
+          <span class="b-tab__n num">24</span>
+        </button>
+        <button class="b-tab" id="btab-rules" type="button" role="tab" aria-selected="false" aria-controls="bpanel-rules" tabindex="-1">
+          <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-scales"></use></svg>
+          <span>Luật chơi</span>
+        </button>
+      </div>
+
+      <div class="b-filters" id="b-filters" role="group" aria-label="Lọc bàn">
+        <button type="button" class="b-fbtn is-active" data-filter="all"><span>Tất cả</span><span class="num" id="bf-all">9</span></button>
+        <button type="button" class="b-fbtn" data-filter="open"><span>Chờ người</span><span class="num" id="bf-open">3</span></button>
+        <button type="button" class="b-fbtn" data-filter="live"><span>Đang đấu</span><span class="num" id="bf-live">6</span></button>
+      </div>
+    </div>
+
+    <!-- Main 2-column split: Tabular Ledger + Ranked Online Desk -->
+    <div class="b-grid">
+      <div class="b-main">
+        <section class="b-panel" id="bpanel-tables" role="tabpanel" aria-labelledby="btab-tables"></section>
+        <section class="b-panel mk-rules-wrap" id="bpanel-rules" role="tabpanel" aria-labelledby="btab-rules" hidden>
+          <div class="rg" id="rooms-rules"></div>
+        </section>
+      </div>
+
+      <aside class="b-desk" id="b-desk" aria-labelledby="b-desk-h" data-mobile-hidden="true">
+        <div class="b-desk__head">
+          <h2 class="b-desk__title" id="b-desk-h">
+            <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg>
+            <span>Kỳ thủ online</span>
+            <span class="b-desk__count num">24</span>
+          </h2>
+          <div class="b-sort" role="group" aria-label="Sắp xếp danh sách">
+            <button type="button" class="is-on" data-sort="rank">Hạng</button>
+            <button type="button" data-sort="name">Tên</button>
+          </div>
+        </div>
+        <div class="b-desk__search">
+          <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg>
+          <input type="search" id="b-user-search" placeholder="Tìm kỳ thủ..." aria-label="Tìm kỳ thủ online" />
+        </div>
+        <div class="b-desk__cols" aria-hidden="true">
+          <span>Hạng</span>
+          <span>Kỳ thủ</span>
+          <span>Elo</span>
+          <span></span>
+        </div>
+        <ul class="b-ulist" id="b-ulist"></ul>
+        <div class="b-desk__foot">
+          <span>Hiển thị 15 / 24 (thể loại chính)</span>
+          <button type="button" class="b-desk__more" id="b-more">Xem thêm</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    (function () {
+      const M = window.RoomsMockup;
+      M.renderShell('b');
+      M.renderRulesInto(document.getElementById('rooms-rules'));
+
+      const tablesHost = document.getElementById('bpanel-tables');
+      const ulistHost = document.getElementById('b-ulist');
+      const filtersBar = document.getElementById('b-filters');
+      let currentFilter = 'all';
+      let currentSort = 'rank';
+      let searchQuery = '';
+      let showEmpty = false;
+
+      function playerSpan(p) {
+        if (!p) return `<span class="b-p b-p--empty">Chờ đối thủ</span>`;
+        const elo = Number.isFinite(p.rating) ? `<span class="b-p__elo num">${p.rating}${p.provisional ? '?' : ''}</span>` : '';
+        return `<span class="b-p"><span class="b-p__name" title="${M.esc(p.displayName)}">${M.esc(p.displayName)}</span>${elo}</span>`;
+      }
+
+      function renderLedger() {
+        const all = showEmpty ? [] : M.TABLES;
+        const openCount = all.filter((t) => t.kind === 'open').length;
+        const liveCount = all.filter((t) => t.kind !== 'open').length;
+        document.getElementById('b-tab-n').textContent = String(all.length);
+        document.getElementById('bf-all').textContent = String(all.length);
+        document.getElementById('bf-open').textContent = String(openCount);
+        document.getElementById('bf-live').textContent = String(liveCount);
+        document.getElementById('b-kpi-playing').textContent = showEmpty ? '0' : String(M.STATS.playingPlayers);
+
+        const list = all.filter((t) => {
+          if (currentFilter === 'open') return t.kind === 'open';
+          if (currentFilter === 'live') return t.kind !== 'open';
+          return true;
+        });
+
+        if (list.length === 0) {
+          tablesHost.innerHTML = `
+            <div class="mk-empty">
+              <span class="mk-empty__icon">${M.iconSvg('ph-regular-checkerboard', 'icon--lg')}</span>
+              <h2 class="mk-empty__title">Không có bàn phù hợp</h2>
+              <p class="mk-empty__sub">Tạo bàn mới hoặc đổi bộ lọc để xem các bàn khác.</p>
+              <button type="button" class="mk-btn-primary" data-create-room>${M.iconSvg('ph-regular-plus-circle')}<span>Tạo bàn mới</span></button>
+            </div>
+          `;
+          return;
+        }
+
+        const rows = list.map((t) => {
+          const isOpen = t.kind === 'open';
+          const stCls = isOpen ? 'mstatus--open' : t.kind === 'ready' ? 'mstatus--ready' : 'mstatus--live';
+          const stLabel = isOpen ? 'Chờ người' : t.kind === 'ready' ? 'Sắp bắt đầu' : 'Đang đấu';
+          return `
+            <div class="b-row ${isOpen ? 'b-row--open' : ''}" role="button" tabindex="0" data-room-id="${M.esc(t.roomId)}">
+              <div class="b-col-who">
+                <div class="b-pair">
+                  ${playerSpan(t.players[0])}
+                  <span class="b-vs">vs</span>
+                  ${playerSpan(t.players[1])}
+                </div>
+                <div class="b-subrow">
+                  <span class="b-rname" title="${M.esc(t.roomName)}">${M.esc(t.roomName)}</span>
+                  <span class="mchip ${t.ranked ? 'mchip--rated' : 'mchip--friendly'}">${t.ranked ? 'Xếp hạng' : 'Giao hữu'}</span>
+                </div>
+              </div>
+              <div class="b-col-rule">
+                <span class="mchip mchip--rule">${M.esc(t.ruleLabel)}</span>
+                <span class="mchip num">${M.esc(t.boardSize)}</span>
+                ${t.variant ? `<span class="mchip">${M.esc(t.variant)}</span>` : ''}
+              </div>
+              <div class="b-col-clock num">
+                ${M.iconSvg('ph-regular-timer')}
+                <span>${M.esc(t.clock)}</span>
+              </div>
+              <div class="b-col-state">
+                <span class="mstatus ${stCls}"><span class="mstatus__dot" aria-hidden="true"></span><span>${stLabel}</span></span>
+                <span class="b-state-sub num">
+                  ${t.elapsed ? `<span class="b-state-sub__item">${M.esc(t.elapsed)}</span>` : ''}
+                  ${t.watchers > 0 ? `<span class="b-state-sub__item" title="${t.watchers} người đang xem">${M.iconSvg('ph-regular-eye')}<span>${t.watchers}</span></span>` : ''}
+                </span>
+              </div>
+              <div class="b-col-act">
+                <span class="b-act ${isOpen ? 'b-act--sit' : 'b-act--watch'}">${isOpen ? 'Ngồi' : 'Xem'}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        tablesHost.innerHTML = `
+          <div class="b-ledger">
+            <div class="b-lhead" aria-hidden="true">
+              <span>Kỳ thủ &amp; bàn</span>
+              <span>Luật</span>
+              <span>Thời gian</span>
+              <span>Trạng thái</span>
+              <span class="b-lhead__act">Vào bàn</span>
+            </div>
+            ${rows}
+          </div>
+        `;
+      }
+
+      function renderRoster() {
+        const q = searchQuery.trim().toLowerCase();
+        let users = M.ONLINE_USERS.filter((u) => !q || u.displayName.toLowerCase().includes(q));
+        users = users.slice().sort((a, b) => {
+          if (currentSort === 'name') return a.displayName.localeCompare(b.displayName, 'vi');
+          const ra = a.rank || 99999;
+          const rb = b.rank || 99999;
+          if (ra !== rb) return ra - rb;
+          return (b.rating || 0) - (a.rating || 0);
+        });
+
+        if (users.length === 0) {
+          ulistHost.innerHTML = `<li style="padding:18px 12px;font-size:13px;color:var(--c-ink-3);text-align:center">Không tìm thấy kỳ thủ.</li>`;
+          return;
+        }
+
+        ulistHost.innerHTML = users.map((u) => {
+          const st = M.STATUS_META[u.status] || M.STATUS_META.free;
+          const medalCls = u.rank && u.rank <= 3 ? ` b-rank--${u.rank}` : '';
+          const rankText = u.rank ? `#${u.rank}` : '—';
+          const eloText = u.isGuest ? 'Khách' : `${u.rating}${u.provisional ? '?' : ''}`;
+          return `
+            <li class="b-urow">
+              <span class="b-rank num${medalCls}" title="${u.mainRule ? 'Hạng ' + u.mainRule : 'Chưa xếp hạng'}">${rankText}</span>
+              <span class="b-uwho">
+                <span class="b-uname" title="${M.esc(u.displayName)}">${M.esc(u.displayName)}${u.isMe ? ' (Bạn)' : ''}</span>
+                <span class="b-umeta">
+                  ${u.mainRule ? `<span class="b-urule">${M.esc(u.mainRule)}</span>` : ''}
+                  <span class="mpres ${st.cls}">${M.iconSvg(st.icon)}<span>${st.label}</span></span>
+                </span>
+              </span>
+              <span class="b-uelo num${u.isGuest ? ' b-uelo--muted' : ''}">${eloText}</span>
+              ${u.isMe ? '<span></span>' : `<button type="button" class="b-dm" data-user-id="${M.esc(u.userId)}" aria-label="Nhắn tin với ${M.esc(u.displayName)}" title="Nhắn tin">${M.iconSvg('ph-regular-chat-circle')}</button>`}
+            </li>
+          `;
+        }).join('');
+      }
+
+      // Wire filters, sort, tabs
+      filtersBar.addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-filter]');
+        if (!btn) return;
+        currentFilter = btn.dataset.filter;
+        filtersBar.querySelectorAll('.b-fbtn').forEach((b) => b.classList.toggle('is-active', b === btn));
+        renderLedger();
+      });
+
+      document.querySelector('.b-sort').addEventListener('click', (e) => {
+        const btn = e.target.closest('[data-sort]');
+        if (!btn) return;
+        currentSort = btn.dataset.sort;
+        document.querySelectorAll('.b-sort button').forEach((b) => b.classList.toggle('is-on', b === btn));
+        renderRoster();
+      });
+
+      document.getElementById('b-user-search').addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderRoster();
+      });
+      document.getElementById('b-more').addEventListener('click', () => M.showToast('Tải thêm kỳ thủ đang online…'));
+
+      const tabTables = document.getElementById('btab-tables');
+      const tabOnlineM = document.getElementById('btab-online-m');
+      const tabRules = document.getElementById('btab-rules');
+      const panelTables = document.getElementById('bpanel-tables');
+      const panelRules = document.getElementById('bpanel-rules');
+      const desk = document.getElementById('b-desk');
+
+      function selectTab(which) {
+        const isMobile = window.matchMedia('(max-width: 860px)').matches;
+        [tabTables, tabOnlineM, tabRules].forEach((b) => {
+          const on = (which === 'tables' && b === tabTables)
+            || (which === 'online' && b === tabOnlineM)
+            || (which === 'rules' && b === tabRules);
+          b.setAttribute('aria-selected', String(on));
+          b.tabIndex = on ? 0 : -1;
+        });
+        panelTables.hidden = which !== 'tables';
+        panelRules.hidden = which !== 'rules';
+        filtersBar.hidden = which !== 'tables';
+        desk.dataset.mobileHidden = isMobile && which !== 'online' ? 'true' : 'false';
+      }
+
+      tabTables.addEventListener('click', () => selectTab('tables'));
+      tabOnlineM.addEventListener('click', () => selectTab('online'));
+      tabRules.addEventListener('click', () => selectTab('rules'));
+
+      renderLedger();
+      renderRoster();
+      M.wireMockupInteractions({
+        onEmptyToggle(empty) { showEmpty = empty; renderLedger(); },
+      });
+    })();
+  </script>
+</body>
+</html>

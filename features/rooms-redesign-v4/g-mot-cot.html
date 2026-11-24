@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>G Một cột, Phòng v4</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/platform.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="g-mot-cot.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+  <main class="g" id="main">
+    <!-- 1. Sticky bar: the two counts, then the rule tabs. The tabs sit above BOTH lists because they set the rank shown in both. -->
+    <div class="g-bar" id="g-bar">
+      <div class="g-bar__stats" aria-live="polite">
+        <span class="vstat"><i aria-hidden="true"></i><b id="g-online">0</b><span>đang online</span></span>
+        <span class="vstat vstat--play"><i aria-hidden="true"></i><b id="g-playing">0</b><span>đang chơi</span></span>
+        <button type="button" class="vbtn vbtn--primary g-bar__new">Mở bàn</button>
+      </div>
+      <div class="vtabs g-tabs" id="g-tabs" role="tablist" aria-label="Luật chơi"></div>
+    </div>
+
+    <!-- 2. Online panel: a vertical list, ranks in the selected rule, capped then expandable. -->
+    <section class="g-online" aria-labelledby="g-online-h">
+      <button type="button" class="g-online__head" id="g-online-toggle" aria-expanded="true" aria-controls="g-online-body">
+        <span class="g-online__t"><b id="g-online-h">Người đang online</b><span class="g-online__sub" id="g-online-sub"></span></span>
+        <span class="g-online__faces" id="g-online-faces" aria-hidden="true"></span>
+        <svg class="icon icon--md g-online__caret" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-caret-down"></use></svg>
+      </button>
+      <div class="g-online__body" id="g-online-body">
+        <label class="vsearch g-online__search">
+          <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg>
+          <span class="sr-only">Tìm người chơi</span><input id="g-q" placeholder="Tìm người chơi" autocomplete="off"></label>
+        <ul class="vroster" id="g-roster"></ul>
+        <button type="button" class="vmore" id="g-roster-more"></button>
+      </div>
+    </section>
+
+    <!-- 3. Tables of the selected rule, in three state sections. -->
+    <section class="g-tables" id="g-tables" aria-labelledby="g-tables-h">
+      <header class="g-tables__head">
+        <h2 id="g-tables-h"></h2>
+        <div class="vchips" id="g-filters" role="group" aria-label="Lọc bàn"></div>
+      </header>
+      <div id="g-list"></div>
+    </section>
+
+    <!-- 4. Rules guide (the real RoomRulesGuide), opened on the selected rule. -->
+    <section class="rg g-rg" id="rooms-rules" role="tabpanel" aria-label="Luật chơi" tabindex="0" hidden></section>
+  </main>
+  <div id="g-sheet-host"></div>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/platform-shell.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function () {
+    const V = V4;
+    const { qs, RULE, USERS, STATS, STATE, TIME_FILTERS, esc, icon, avatar, rankChip, eloOf, tablesFor, rosterFor, seat, stateChip, enterBtn, pills, emptyHtml } = V;
+    V.renderShell('g');
+    let rule = V.rule;
+    let tab = qs.get('tab') === 'rules' ? 'rules' : rule;
+    let q = '';
+    let expanded = false;
+    const f = { open: qs.get('f') === 'open', near: false, time: new Set() };
+    const phone = () => matchMedia('(max-width: 640px)').matches;
+    const CAP = 6;
+
+    document.getElementById('g-online').textContent = STATS.online;
+    document.getElementById('g-playing').textContent = STATS.playing;
+
+    function renderTabs() {
+      const el = document.getElementById('g-tabs');
+      el.innerHTML = V.ruleTabsHtml(rule, tab);
+    }
+    V.wireTabs(document.getElementById('g-tabs'), (id) => {
+      if (id === 'rules') tab = 'rules'; else { rule = id; tab = id; }
+      render();
+    });
+
+    function rosterRow(u) {
+      return `<li class="vrow${u.me ? ' vrow--me' : ''}">${avatar(u)}<span class="vrow__n">${esc(u.name)}</span>${eloOf(u, rule)}${rankChip(u, rule)}</li>`;
+    }
+    function rosterHtml(limit) {
+      const { ranked, none, guests } = rosterFor(rule, q);
+      let n = 0; let html = '';
+      const take = (arr) => { const out = []; for (const u of arr) { if (n >= limit) break; out.push(u); n++; } return out; };
+      const a = take(ranked); const b = take(none); const c = take(guests);
+      html += a.map(rosterRow).join('');
+      if (b.length) html += `<li class="vgroup">Chưa có hạng ${esc(RULE[rule].label)}</li>` + b.map(rosterRow).join('');
+      if (c.length) html += '<li class="vgroup">Khách</li>' + c.map(rosterRow).join('');
+      return { html, shown: n, total: ranked.length + none.length + guests.length };
+    }
+    function renderOnline() {
+      document.getElementById('g-online-sub').textContent = `Hạng theo ${RULE[rule].label}`;
+      const top = rosterFor(rule).ranked.slice(0, 4);
+      document.getElementById('g-online-faces').innerHTML = top.map((u) => avatar(u)).join('') + `<span class="g-online__count">${STATS.online}</span>`;
+      const limit = expanded ? 50 : CAP;
+      const r = rosterHtml(limit);
+      document.getElementById('g-roster').innerHTML = r.html || '<li class="vgroup">Không tìm thấy ai.</li>';
+      const more = document.getElementById('g-roster-more');
+      const rest = r.total - r.shown;
+      more.hidden = rest <= 0 && !expanded;
+      // Desktop expands in place (50 per page, the server page size); phones open the full list as a sheet.
+      more.textContent = expanded && rest <= 0 ? 'Thu gọn' : expanded ? `Tải thêm ${Math.min(50, rest)} người` : `Xem tất cả ${r.total} người`;
+    }
+    document.getElementById('g-roster-more').addEventListener('click', () => {
+      if (phone() && !expanded) { openSheet(); return; }
+      const all = rosterFor(rule, q).total;
+      expanded = !(expanded && all <= 50); // mockup: "Tải thêm" would fetch the next server page
+      renderOnline();
+    });
+    document.getElementById('g-q').addEventListener('input', (e) => { q = e.target.value; renderOnline(); });
+    const toggle = document.getElementById('g-online-toggle');
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', open);
+      document.getElementById('g-online-body').hidden = !open;
+    });
+
+    function openSheet() {
+      const r = rosterHtml(50);
+      document.getElementById('g-sheet-host').innerHTML = V.sheet('g-sheet', `${STATS.online} người đang online`, `Hạng theo ${esc(RULE[rule].label)}. Đổi luật ở thanh trên.`,
+        `<label class="vsearch"><span class="sr-only">Tìm người chơi</span>${icon('magnifying-glass')}<input placeholder="Tìm người chơi"></label><ul class="vroster">${r.html}</ul>`
+        + (r.total > r.shown ? `<button type="button" class="vmore">Tải thêm ${Math.min(50, r.total - r.shown)} người</button>` : ''));
+      const s = document.getElementById('g-sheet'); s.hidden = false; V.wireSheet(s);
+    }
+
+    function renderFilters() {
+      const chip = (key, label, on, off) => `<button type="button" class="vchip" data-f="${key}" aria-pressed="${on}"${off ? ` disabled title="${off}"` : ''}>${label}</button>`;
+      const noNear = V.canNear(rule) ? '' : `Bạn chưa có hạng ${RULE[rule].label}`;
+      document.getElementById('g-filters').innerHTML = chip('open', 'Còn ghế', f.open) + chip('near', 'Gần trình tôi', f.near && !noNear, noNear)
+        + TIME_FILTERS.map(([k, l]) => chip('t:' + k, l, f.time.has(k))).join('');
+    }
+    document.getElementById('g-filters').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-f]'); if (!b) return;
+      const k = b.dataset.f;
+      if (k === 'open') f.open = !f.open; else if (k === 'near') f.near = !f.near; else { const t = k.slice(2); f.time.has(t) ? f.time.delete(t) : f.time.add(t); }
+      renderFilters(); renderList();
+    });
+
+    function row(t) {
+      return `<li class="g-row g-row--${t.state}">
+        <span class="g-row__id"><span class="vcode">#${t.code}</span>${stateChip(t)}</span>
+        <span class="g-row__seats">${seat(t.p1, rule)}<span class="g-row__vs" aria-hidden="true">vs</span>${seat(t.p2, rule)}</span>
+        <span class="g-row__meta vpills">${pills(t)}</span>
+        <span class="g-row__go">${enterBtn(t)}</span></li>`;
+    }
+    function renderList() {
+      const list = tablesFor(rule, f);
+      document.getElementById('g-tables-h').textContent = `Bàn ${RULE[rule].label}`;
+      const el = document.getElementById('g-list');
+      if (!list.length) { el.innerHTML = emptyHtml(rule); return; }
+      const PAGE = 8;
+      el.innerHTML = ['waiting', 'ready', 'live'].map((st) => {
+        const part = list.filter((t) => t.state === st);
+        if (!part.length) return '';
+        const shown = part.slice(0, PAGE);
+        return `<h3 class="g-sec"><span>${STATE[st].label}</span><span class="vtab__n">${part.length}</span></h3><ul class="g-rows">${shown.map(row).join('')}</ul>`
+          + (part.length > PAGE ? `<button type="button" class="vmore">Xem thêm ${part.length - PAGE} bàn</button>` : '');
+      }).join('');
+    }
+
+    function render() {
+      renderTabs();
+      renderOnline();
+      const rules = tab === 'rules';
+      document.getElementById('g-tables').hidden = rules;
+      const rg = document.getElementById('rooms-rules');
+      rg.hidden = !rules;
+      if (rules) V.renderRules(rg, rule); else { renderFilters(); renderList(); }
+    }
+    // Phones start collapsed: the panel is one line (faces + count) so the tables are on the first screen.
+    if (phone()) { toggle.setAttribute('aria-expanded', 'false'); document.getElementById('g-online-body').hidden = true; }
+    render();
+    if (qs.get('sheet') === '1') openSheet();
+  })();
+  </script>
+</body>
+</html>

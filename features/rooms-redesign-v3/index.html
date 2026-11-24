@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phòng v3, thư viện mockup</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <style>
+    .g { max-width: 1200px; margin: 0 auto; padding: 32px 24px 64px; }
+    .g h1 { font-size: 26px; font-weight: 800; }
+    .g > p { max-width: 70ch; color: var(--c-ink-2); }
+    .g-card { margin-top: 28px; padding: 20px; border: 1px solid var(--c-border); border-radius: var(--radius-xl); background: var(--c-surface); }
+    .g-card h2 { display: flex; align-items: baseline; gap: 12px; font-size: 20px; font-weight: 800; }
+    .g-card h2 a { margin-left: auto; font-size: var(--text-sm); color: var(--c-brand-text); }
+    .g-card p { margin: 6px 0 14px; color: var(--c-ink-2); font-size: var(--text-sm); max-width: 90ch; }
+    .g-shots { display: grid; grid-template-columns: 2fr 2fr 1fr; gap: 12px; align-items: start; }
+    .g-shots img { width: 100%; height: auto; border: 1px solid var(--c-border); border-radius: var(--radius-lg); }
+    @media (max-width: 860px) { .g-shots { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <main class="g">
+    <h1>Phòng v3: ba hướng</h1>
+    <p>Mỗi hướng có đủ 4 yêu cầu: số online và đang chơi, bàn chơi, danh sách kỳ thủ online theo chiều dọc có hạng theo luật chính, và tab Luật chơi. Khác nhau ở cách sắp xếp trang. Chi tiết và câu hỏi mở nằm trong planning.md.</p>
+    <section class="g-card"><h2>D Trục luật <a href="d-truc-luat.html">Mở mockup</a></h2>
+      <p>Bộ chọn luật là trục của trang: lọc bàn, xếp lại danh sách kỳ thủ theo Elo luật đó, mở tab Luật chơi đúng mục luật đó.</p>
+      <div class="g-shots"><img src="shots/d-dark-1280.png" alt="D tối"><img src="shots/d-dark-1280-caro.png" alt="D chọn Luật 2"><img src="shots/d-light-390.png" alt="D điện thoại"></div></section>
+    <section class="g-card"><h2>E Xem trước <a href="e-xem-truoc.html">Mở mockup</a></h2>
+      <p>Ba cột: danh sách bàn, xem trước bàn đang chọn (thế cờ, hạng hai người theo luật của bàn, giải thích từng thiết lập), danh sách kỳ thủ. Bấm một kỳ thủ để xem bàn họ đang ngồi.</p>
+      <div class="g-shots"><img src="shots/e-light-1280.png" alt="E sáng"><img src="shots/e-dark-1280-waiting.png" alt="E bàn chờ"><img src="shots/e-dark-390-sheet.png" alt="E điện thoại"></div></section>
+    <section class="g-card"><h2>F Kỳ thủ trước <a href="f-ky-thu.html">Mở mockup</a></h2>
+      <p>Danh sách kỳ thủ là cột chính, nhóm theo việc họ đang làm, mỗi người một nút hành động, hiện mọi luật họ có hạng. Bàn chơi ở cột phụ.</p>
+      <div class="g-shots"><img src="shots/f-dark-1280.png" alt="F tối"><img src="shots/f-light-1280-empty.png" alt="F sảnh trống"><img src="shots/f-light-390.png" alt="F điện thoại"></div></section>
+  </main>
+</body>
+</html>

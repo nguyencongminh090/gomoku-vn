@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play3CR — Rooms (#rooms) Redesign v2 Mockups</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 32px clamp(16px, 4vw, 48px) 64px;
+      background: var(--c-bg);
+      color: var(--c-ink);
+      font-family: 'Nunito', system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    .gal-head {
+      max-width: 1360px;
+      margin: 0 auto 28px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--c-border);
+    }
+    .gal-eyebrow {
+      margin: 0 0 4px;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--c-brand-text);
+    }
+    h1 { margin: 0; font-size: clamp(24px, 2.2vw, 34px); font-weight: 900; letter-spacing: -0.02em; }
+    .gal-sub { margin: 6px 0 0; color: var(--c-ink-2); font-size: 15px; max-width: 66ch; }
+    .gal-controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    .gal-btn {
+      min-height: 36px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--c-border);
+      background: var(--c-surface);
+      color: var(--c-ink);
+      font: inherit;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .gal-btn.is-on {
+      background: var(--c-brand-light);
+      border-color: color-mix(in srgb, var(--c-brand-text) 45%, transparent);
+      color: var(--c-brand-text);
+    }
+    .gal-grid {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+    }
+    .gal-card {
+      display: flex;
+      flex-direction: column;
+      border-radius: 14px;
+      border: 1px solid var(--c-border);
+      background: var(--c-surface);
+      overflow: hidden;
+    }
+    .gal-shot {
+      display: block;
+      aspect-ratio: 16 / 10;
+      background: var(--c-surface-2);
+      border-bottom: 1px solid var(--c-border);
+      overflow: hidden;
+    }
+    .gal-shot img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+    }
+    .gal-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 16px 18px 18px;
+      flex: 1;
+    }
+    .gal-tag {
+      display: inline-flex;
+      align-self: flex-start;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--c-brand-light);
+      color: var(--c-brand-text);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    h2 { margin: 0; font-size: 20px; font-weight: 900; }
+    .gal-desc { margin: 0; font-size: 14px; color: var(--c-ink-2); }
+    .gal-pts {
+      margin: 4px 0 12px;
+      padding-left: 18px;
+      font-size: 13px;
+      color: var(--c-ink-2);
+    }
+    .gal-pts li + li { margin-top: 4px; }
+    .gal-links {
+      margin-top: auto;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .gal-open {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 16px;
+      border-radius: 999px;
+      background: var(--c-brand);
+      color: var(--c-on-brand);
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .gal-open:hover { background: var(--c-brand-dark); }
+    .gal-open--alt {
+      background: var(--c-fill);
+      color: var(--c-ink);
+      border: 1px solid var(--c-border);
+    }
+    .gal-open--alt:hover { background: var(--c-surface-2); }
+    @media (max-width: 1020px) {
+      .gal-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="gal-head">
+    <div>
+      <p class="gal-eyebrow">Play3CR — Stage 3 Mockup Candidates</p>
+      <h1>Redesign <code>index.html#rooms</code></h1>
+      <p class="gal-sub">Minimalist, dense competitive hall (PlayOK / Lichess / KGS inspired): live online &amp; playing counts, compact tables, vertical online players panel with main-rule rank, and interactive Rules tab. Join-by-code removed.</p>
+    </div>
+    <div class="gal-controls" role="group" aria-label="Chế độ ảnh xem trước">
+      <button type="button" class="gal-btn is-on" data-shot="dark">Desktop (Tối)</button>
+      <button type="button" class="gal-btn" data-shot="light">Desktop (Sáng)</button>
+      <button type="button" class="gal-btn" data-shot="mobile">Mobile (390px)</button>
+    </div>
+  </header>
+
+  <main class="gal-grid">
+    <article class="gal-card">
+      <a class="gal-shot" href="a-sanh-ban.html"><img data-id="a" src="shots/a-dark.png" alt="Direction A: Sảnh bàn" /></a>
+      <div class="gal-body">
+        <span class="gal-tag">Direction A</span>
+        <h2>Sảnh bàn — Swiss Ticket Hall</h2>
+        <p class="gal-desc">Clean underline tabs, inline live counts, grouped padded ticket rows (open seats above live games), sticky right online roster.</p>
+        <ul class="gal-pts">
+          <li>Grouped: <strong>Bàn chờ đối thủ</strong> vs <strong>Đang thi đấu</strong></li>
+          <li>Right panel: avatar + status icon + main-rule + <code>#rank</code> &amp; Elo</li>
+          <li>Lowest visual noise; strongest alignment with Play3CR ticket-rows</li>
+        </ul>
+        <div class="gal-links">
+          <a class="gal-open" href="a-sanh-ban.html">Mở bản tương tác (Tối)</a>
+          <a class="gal-open gal-open--alt" href="a-sanh-ban.html?mode=light">Bản Sáng</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="gal-card">
+      <a class="gal-shot" href="b-bang-dau.html"><img data-id="b" src="shots/b-dark.png" alt="Direction B: Bảng đấu" /></a>
+      <div class="gal-body">
+        <span class="gal-tag">Direction B</span>
+        <h2>Bảng đấu — Lichess Tabular Ledger</h2>
+        <p class="gal-desc">Maximum scan speed: columnar lobby table with status filters, paired with a ranked right roster featuring <code>Hạng / Tên</code> sort.</p>
+        <ul class="gal-pts">
+          <li>True columns: Kỳ thủ &amp; bàn / Luật / Thời gian / Trạng thái / Vào bàn</li>
+          <li>Right desk: fixed <code>#rank</code> medal badge, main-rule, Elo, quick DM</li>
+          <li>Fastest scanning when 10–30+ tables are active</li>
+        </ul>
+        <div class="gal-links">
+          <a class="gal-open" href="b-bang-dau.html">Mở bản tương tác (Tối)</a>
+          <a class="gal-open gal-open--alt" href="b-bang-dau.html?mode=light">Bản Sáng</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="gal-card">
+      <a class="gal-shot" href="c-ky-vien.html"><img data-id="c" src="shots/c-dark.png" alt="Direction C: Kỳ viện" /></a>
+      <div class="gal-body">
+        <span class="gal-tag">Direction C</span>
+        <h2>Kỳ viện — Left Club Rail</h2>
+        <p class="gal-desc">Left vertical online rail with live hall stats &amp; status filters; right main stage with compact 2-column split-seat tickets using black/white stone dots.</p>
+        <ul class="gal-pts">
+          <li>Left rail anchors club presence (F-pattern) + <code>Tất cả / Rảnh / Đang đấu</code></li>
+          <li>Subtle black/white stone indicators give immediate Caro/Go identity</li>
+          <li>2-column compact tickets show more tables above the fold on wide screens</li>
+        </ul>
+        <div class="gal-links">
+          <a class="gal-open" href="c-ky-vien.html">Mở bản tương tác (Tối)</a>
+          <a class="gal-open gal-open--alt" href="c-ky-vien.html?mode=light">Bản Sáng</a>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <script>
+    document.querySelector('.gal-controls').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-shot]');
+      if (!btn) return;
+      const mode = btn.dataset.shot;
+      document.querySelectorAll('.gal-btn').forEach((b) => b.classList.toggle('is-on', b === btn));
+      if (mode === 'light') document.documentElement.setAttribute('data-mode', 'light');
+      else document.documentElement.removeAttribute('data-mode');
+      document.querySelectorAll('.gal-shot img').forEach((img) => {
+        img.src = `shots/${img.dataset.id}-${mode}.png`;
+      });
+    });
+  </script>
+</body>
+</html>

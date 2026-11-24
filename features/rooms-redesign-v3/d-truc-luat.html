@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>D Trục luật, Phòng v3</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="d-truc-luat.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+  <main class="d">
+    <header class="d-head">
+      <div class="d-head__t">
+        <h1>Phòng chơi</h1>
+        <div class="d-stats" aria-live="polite" id="d-stats"></div>
+      </div>
+      <div class="d-head__act" id="d-act"></div>
+    </header>
+
+    <div class="d-rail" id="d-rail" role="group" aria-label="Chọn luật"></div>
+    <p class="d-lead" id="d-lead" hidden></p>
+
+    <div class="d-tabs mtabs" id="d-tabs" role="tablist" aria-label="Phòng chơi">
+      <button class="mtab" role="tab" data-tab="tables" aria-selected="true" aria-controls="d-tables" id="d-tab-tables">Bàn chơi <span class="mtab__n" id="d-n-tables">0</span></button>
+      <button class="mtab d-only-m" role="tab" data-tab="people" aria-selected="false" aria-controls="d-people" tabindex="-1" id="d-tab-people">Kỳ thủ <span class="mtab__n" id="d-n-people">0</span></button>
+      <button class="mtab" role="tab" data-tab="rules" aria-selected="false" aria-controls="rooms-rules" tabindex="-1" id="d-tab-rules"><svg class="icon icon--md" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-scales"></use></svg>Luật chơi</button>
+    </div>
+
+    <div class="d-body" id="d-body" data-view="tables">
+      <section class="d-tables" id="d-tables" role="tabpanel" aria-labelledby="d-tab-tables"></section>
+      <aside class="d-people" id="d-people" aria-labelledby="d-people-h"></aside>
+    </div>
+    <section class="rg d-rg" id="rooms-rules" role="tabpanel" aria-labelledby="d-tab-rules" tabindex="0" hidden></section>
+  </main>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function () {
+    const { qs, RULES, RULE, USERS, TABLES, STATS, ACT, STATE, esc, icon, avatar, rankBadge, eloText, standing, metaPills, renderShell, toast, renderRules, codeForm, wireTabs } = V3;
+    renderShell('d');
+    let rule = RULE[qs.get('rule')] ? qs.get('rule') : 'all';
+    let q = '';
+
+    document.getElementById('d-stats').innerHTML =
+      `<span class="mstat"><i aria-hidden="true"></i><b>${STATS.online}</b><span>đang online</span></span>`
+      + `<span class="mstat"><b>${STATS.playing}</b><span>đang chơi</span></span>`
+      + `<span class="mstat"><b>${STATS.waiting}</b><span>bàn chờ đối thủ</span></span>`;
+    document.getElementById('d-act').innerHTML = codeForm('d-code')
+      + `<button class="mbtn mbtn--primary mbtn--lg" type="button" data-create>${icon('plus-circle', 'icon--md')}Tạo bàn</button>`;
+
+    function rail() {
+      const opts = [{ id: 'all', label: 'Tất cả' }, ...RULES];
+      document.getElementById('d-rail').innerHTML = opts.map((r) => {
+        const tabs = r.id === 'all' ? TABLES : TABLES.filter((t) => t.rule === r.id);
+        const open = tabs.filter((t) => t.state === 'waiting').length;
+        const ppl = r.id === 'all' ? USERS.length : USERS.filter((u) => u.ratings[r.id]).length;
+        return `<button type="button" class="d-rule${r.id === rule ? ' is-on' : ''}" aria-pressed="${r.id === rule}" data-rule="${r.id}">`
+          + `<span class="d-rule__name">${esc(r.label)}</span>`
+          + `<span class="d-rule__meta"><span><b class="num">${tabs.length}</b> bàn</span><span class="${open ? 'is-open' : ''}"><b class="num">${open}</b> chờ</span>`
+          + `<span><b class="num">${ppl}</b> ${r.id === 'all' ? 'online' : 'có hạng'}</span></span></button>`;
+      }).join('');
+      const lead = document.getElementById('d-lead');
+      lead.hidden = rule === 'all';
+      if (rule !== 'all') lead.innerHTML = `<b>${esc(RULE[rule].label)}:</b> <span>${esc(RULE[rule].lead)}</span> <button type="button" class="d-link" data-go-rules>Xem luật đầy đủ ${icon('caret-right')}</button>`;
+    }
+
+    function seat(uid, stone, t) {
+      if (!uid) return `<div class="d-seat d-seat--empty"><span class="d-stone d-stone--${stone}" aria-hidden="true"></span><span class="d-seat__ghost">Ghế trống</span></div>`;
+      const u = V3.byId[uid];
+      return `<div class="d-seat"><span class="d-stone d-stone--${stone}" aria-hidden="true"></span>${avatar(u, 'xs')}`
+        + `<span class="d-seat__name">${esc(u.name)}${u.me ? ' <em>(bạn)</em>' : ''}</span>${rankBadge(u, t.rule)}${eloText(u, t.rule)}</div>`;
+    }
+    function card(t) {
+      const st = STATE[t.state];
+      const act = t.state === 'waiting'
+        ? `<button class="mbtn mbtn--primary" type="button" data-room="${t.code}">Ngồi vào</button>`
+        : `<button class="mbtn mbtn--ghost" type="button" data-room="${t.code}">${icon('eye')}Xem</button>`;
+      const right = t.state === 'live'
+        ? `<span class="d-card__clock num">${esc(t.elapsed)}</span><span class="mact">${icon('eye')}<span class="num">${t.viewers}</span></span>`
+        : t.state === 'waiting' ? `<span class="d-card__wait">chờ ${t.waitMin} phút</span>` : '';
+      return `<article class="d-card ${st.cls}"><div class="d-card__top"><span class="mstate ${st.cls}">${st.label}</span>`
+        + `<h3 class="d-card__name">${esc(t.name)}</h3><span class="d-card__code">#${t.code}</span><span class="d-card__right">${right}</span></div>`
+        + `<div class="d-seats">${seat(t.p1, 'b', t)}${seat(t.p2, 'w', t)}</div>`
+        + `<div class="d-card__foot"><div class="mpills">${metaPills(t, { rule: rule === 'all' })}</div>${act}</div></article>`;
+    }
+    function tables() {
+      const list = rule === 'all' ? TABLES : TABLES.filter((t) => t.rule === rule);
+      document.getElementById('d-n-tables').textContent = list.length;
+      const el = document.getElementById('d-tables');
+      if (!list.length) {
+        el.innerHTML = `<div class="mempty"><b>${rule === 'all' ? 'Chưa có bàn nào' : `Chưa có bàn ${esc(RULE[rule].label)}`}</b>`
+          + `<span>${STATS.online} kỳ thủ đang online. Mở một bàn, người khác sẽ thấy ngay.</span><br>`
+          + `<button class="mbtn mbtn--primary" type="button" data-create>${icon('plus-circle')}Tạo bàn${rule === 'all' ? '' : ' ' + esc(RULE[rule].label)}</button></div>`;
+        return;
+      }
+      const groups = [['Chờ đối thủ', list.filter((t) => t.state === 'waiting')], ['Đang đấu', list.filter((t) => t.state !== 'waiting')]];
+      el.innerHTML = groups.filter(([, g]) => g.length).map(([h, g]) =>
+        `<section class="d-group"><h2 class="d-group__h">${h} <span class="num">${g.length}</span></h2><div class="d-grid">${g.map(card).join('')}</div></section>`).join('');
+    }
+
+    function person(u) {
+      const a = ACT[u.activity];
+      const s = standing(u, rule === 'all' ? null : rule);
+      const sub = `<span class="mact ${a.cls}">${icon(a.icon)}${a.label}${u.table ? ` <span class="num">#${u.table}</span>` : ''}</span>`
+        ;
+      const btn = u.me ? '' : u.activity === 'free'
+        ? `<button class="d-p__btn" type="button" aria-label="Thách đấu ${esc(u.name)}" data-challenge="${u.id}">${icon('boxing-glove')}</button>`
+        : u.table ? `<button class="d-p__btn" type="button" aria-label="${u.activity === 'waiting' ? 'Ngồi vào bàn' : 'Xem bàn'} #${u.table}" data-room="${u.table}">${icon(u.activity === 'waiting' ? 'door-open' : 'eye')}</button>` : '';
+      const rk = rule === 'all' && s ? `<span class="d-rk">${rankBadge(u)}<span class="d-rk__rule">${esc(RULE[s.cat].label)}</span></span>` : rankBadge(u, rule === 'all' ? null : rule);
+      return `<li class="d-p${u.me ? ' is-me' : ''}">${rk}`
+        + `<span class="mav-wrap">${avatar(u)}<span class="mav-dot ${a.cls}" aria-hidden="true"></span></span>`
+        + `<span class="d-p__main"><span class="d-p__name">${esc(u.name)}${u.me ? ' <em>Bạn</em>' : ''}${u.friend ? ' <em class="d-p__fr">Bạn bè</em>' : ''}</span><span class="d-p__sub">${sub}</span></span>`
+        + `${eloText(u, rule === 'all' ? null : rule)}${btn}</li>`;
+    }
+    function people() {
+      const cat = rule === 'all' ? null : rule;
+      const hit = (u) => !q || u.name.toLowerCase().includes(q);
+      const members = USERS.filter((u) => !u.guest && hit(u));
+      // one rule: by Elo; "Tất cả": by rank in each player's own main rule (#1 Luật 1, #2 Luật 2, …)
+      const rated = members.filter((u) => standing(u, cat)).sort((a, b) => (cat ? 0 : standing(a).rank - standing(b).rank) || standing(b, cat).rating - standing(a, cat).rating);
+      const unrated = members.filter((u) => !standing(u, cat));
+      const guests = USERS.filter((u) => u.guest && hit(u));
+      document.getElementById('d-n-people').textContent = USERS.length;
+      const el = document.getElementById('d-people');
+      const sortTxt = cat ? `Xếp theo Elo ${esc(RULE[cat].label)}` : 'Hạng và Elo theo luật chính của từng người';
+      el.innerHTML = `<div class="d-people__head"><h2 id="d-people-h">${icon('users-three', 'icon--md')}Kỳ thủ online <span class="mtab__n">${USERS.length}</span></h2>`
+        + `<p class="d-people__sub">${sortTxt} <span class="mneed">cần backend</span></p>`
+        + `<label class="msearch">${icon('magnifying-glass')}<span class="sr-only">Tìm kỳ thủ</span><input id="d-q" placeholder="Tìm kỳ thủ online" value="${esc(q)}"></label></div>`
+        + `<ol class="d-plist">${rated.map(person).join('')}</ol>`
+        + (unrated.length ? `<h3 class="d-plist__h">${cat ? `Chưa có hạng ${esc(RULE[cat].label)}` : 'Chưa có hạng'} <span class="num">${unrated.length}</span></h3><ul class="d-plist">${unrated.map(person).join('')}</ul>` : '')
+        + (guests.length ? `<h3 class="d-plist__h">Khách <span class="num">${guests.length}</span></h3><ul class="d-plist">${guests.map(person).join('')}</ul>` : '');
+      const inp = document.getElementById('d-q');
+      inp.addEventListener('input', () => { q = inp.value.trim().toLowerCase(); people(); const n = document.getElementById('d-q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); });
+    }
+
+    function show(view) {
+      document.getElementById('d-body').dataset.view = view;
+      const rules = view === 'rules';
+      document.getElementById('d-body').hidden = rules;
+      document.getElementById('rooms-rules').hidden = !rules;
+      if (rules) renderRules(document.getElementById('rooms-rules'), rule === 'all' ? [] : [rule]);
+    }
+    function selectTab(id) { document.getElementById('d-tab-' + id).click(); }
+    function all() { rail(); tables(); people(); if (!document.getElementById('rooms-rules').hidden) show('rules'); }
+
+    wireTabs(document.getElementById('d-tabs'), show);
+    document.addEventListener('click', (e) => {
+      const r = e.target.closest('[data-rule]');
+      if (r) { rule = r.dataset.rule; all(); return; }
+      if (e.target.closest('[data-go-rules]')) { selectTab('rules'); return; }
+      if (e.target.closest('[data-create]')) { toast(`Mở hộp thoại Tạo bàn${rule === 'all' ? '' : ', luật ' + RULE[rule].label + ' chọn sẵn'}`); return; }
+      const room = e.target.closest('[data-room]');
+      if (room) { toast(`Vào bàn #${room.dataset.room}`); return; }
+      const ch = e.target.closest('[data-challenge]');
+      if (ch) toast(`Thách đấu ${V3.byId[ch.dataset.challenge].name}`);
+    });
+    all();
+    if (qs.get('tab')) selectTab(qs.get('tab'));
+  })();
+  </script>
+</body>
+</html>

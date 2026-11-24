@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>F Kỳ thủ trước, Phòng v3</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="f-ky-thu.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+  <main class="f">
+    <header class="f-head">
+      <h1 class="f-head__t" id="f-title" aria-live="polite"></h1>
+      <div class="f-head__act" id="f-act"></div>
+    </header>
+
+    <div class="f-tabs mtabs" id="f-tabs" role="tablist" aria-label="Phòng chơi">
+      <button class="mtab" role="tab" data-tab="people" aria-selected="true" aria-controls="f-body" id="f-tab-people">Kỳ thủ <span class="mtab__n" id="f-n-people">0</span></button>
+      <button class="mtab f-only-m" role="tab" data-tab="tables" aria-selected="false" aria-controls="f-body" tabindex="-1" id="f-tab-tables">Bàn chơi <span class="mtab__n" id="f-n-tables">0</span></button>
+      <button class="mtab" role="tab" data-tab="rules" aria-selected="false" aria-controls="rooms-rules" tabindex="-1" id="f-tab-rules"><svg class="icon icon--md" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-scales"></use></svg>Luật chơi</button>
+    </div>
+
+    <div class="f-body" id="f-body" data-view="people">
+      <section class="f-people" aria-labelledby="f-tab-people">
+        <div class="f-tools">
+          <label class="msearch"><svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg><span class="sr-only">Tìm kỳ thủ</span><input id="f-q" placeholder="Tìm kỳ thủ online"></label>
+          <div class="f-sort" role="group" aria-label="Sắp xếp" id="f-sort"></div>
+        </div>
+        <div id="f-groups"></div>
+      </section>
+      <aside class="f-tables" id="f-tables" aria-labelledby="f-tables-h"></aside>
+    </div>
+    <section class="rg f-rg" id="rooms-rules" role="tabpanel" aria-labelledby="f-tab-rules" tabindex="0" hidden></section>
+  </main>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function () {
+    const { qs, RULES, RULE, USERS, TABLES, STATS, ACT, STATE, esc, icon, avatar, rankBadge, standing, miniBoard, metaPills, renderShell, toast, renderRules, codeForm, wireTabs, tableOf } = V3;
+    renderShell('f');
+    let sort = 'status';
+    let q = '';
+
+    document.getElementById('f-title').innerHTML =
+      `<span class="f-big"><i aria-hidden="true"></i><b class="num">${STATS.online}</b> kỳ thủ online</span>`
+      + `<span class="f-big"><b class="num">${STATS.playing}</b> đang chơi</span>`
+      + `<span class="f-big f-big--wait"><b class="num">${USERS.filter((u) => u.activity === 'waiting').length}</b> đang chờ đối thủ</span>`;
+    document.getElementById('f-act').innerHTML = codeForm('f-code') + `<button class="mbtn mbtn--primary mbtn--lg" type="button" data-create>${icon('plus-circle', 'icon--md')}Tạo bàn</button>`;
+
+    /** Every rule the player is rated in, main rule first and highlighted. */
+    function ratings(u) {
+      if (u.guest) return '<span class="f-r f-r--none">Khách, chưa tính hạng</span>';
+      const cats = RULES.filter((r) => u.ratings[r.id]).sort((a, b) => (a.id === u.main ? -1 : b.id === u.main ? 1 : 0));
+      if (!cats.length) return '<span class="f-r f-r--none">Chưa có ván xếp hạng</span>';
+      return cats.map((r) => {
+        const s = standing(u, r.id);
+        return `<span class="f-r${r.id === u.main ? ' is-main' : ''}"><span class="f-r__rule">${esc(r.label)}</span>${r.id === u.main ? `<b class="num f-r__mrk">#${s.rank}${s.prov ? '?' : ''}</b>` : `<b class="num">#${s.rank}${s.prov ? '?' : ''}</b>`}<span class="num">${s.rating}${r.id === u.main && s.prov ? '?' : ''}</span></span>`;
+      }).join('');
+    }
+    function action(u) {
+      if (u.me) return '<span class="f-you">Bạn</span>';
+      const t = u.table && tableOf(u.table);
+      if (u.activity === 'waiting') return `<button class="mbtn mbtn--primary" type="button" data-room="${t.code}">Ngồi vào</button>`;
+      if (u.activity === 'free') return `<button class="mbtn mbtn--ghost" type="button" data-challenge="${u.id}">${icon('boxing-glove')}Thách đấu</button>`;
+      return `<button class="mbtn mbtn--ghost" type="button" data-room="${t.code}">${icon('eye')}Xem</button>`;
+    }
+    function context(u) {
+      const t = u.table && tableOf(u.table);
+      if (!t) return '';
+      if (u.activity === 'waiting') return `<span class="f-ctx"><span class="f-ctx__lead">Chờ ${t.waitMin} phút ở <b>#${t.code}</b></span>${metaPills(t)}</span>`;
+      const opp = V3.byId[t.p1 === u.id ? t.p2 : t.p1];
+      if (u.activity === 'playing') return `<span class="f-ctx"><span class="f-ctx__lead">vs <b>${esc(opp ? opp.name : '…')}</b> ở #${t.code}</span><span class="mpill mpill--rule">${esc(RULE[t.rule].label)}</span>${t.elapsed ? `<span class="mpill">${icon('timer')}${esc(t.elapsed)}</span>` : ''}</span>`;
+      return `<span class="f-ctx"><span class="f-ctx__lead">Đang xem #${t.code}, ${esc(t.name)}</span></span>`;
+    }
+    function row(u) {
+      const a = ACT[u.activity];
+      return `<li class="f-p${u.me ? ' is-me' : ''}"><span class="f-p__rk">${rankBadge(u)}</span>`
+        + `<span class="mav-wrap">${avatar(u, 'md')}<span class="mav-dot ${a.cls}" aria-hidden="true"></span></span>`
+        + `<span class="f-p__main"><span class="f-p__line"><span class="f-p__name">${esc(u.name)}</span>${u.friend ? '<span class="f-tag">Bạn bè</span>' : ''}${u.provisional ? '<span class="f-tag">Elo tạm</span>' : ''}<span class="mact ${a.cls}">${icon(a.icon)}${a.label}</span></span>`
+        + `<span class="f-p__rates">${ratings(u)}</span>${context(u)}</span>`
+        + `<span class="f-p__act">${action(u)}${u.me ? '' : `<button class="f-ic" type="button" aria-label="Nhắn tin ${esc(u.name)}" data-dm="${u.id}">${icon('chat-circle', 'icon--md')}</button>`}</span></li>`;
+    }
+    const byRank = (a, b) => {
+      const sa = standing(a); const sb = standing(b);
+      if (!sa !== !sb) return sa ? -1 : 1;
+      return sa ? sa.rank - sb.rank : a.guest - b.guest;
+    };
+    function groups() {
+      document.getElementById('f-sort').innerHTML = [['status', 'Theo trạng thái'], ['rank', 'Theo hạng']].map(([id, l]) =>
+        `<button type="button" class="f-seg${sort === id ? ' is-on' : ''}" aria-pressed="${sort === id}" data-sort="${id}">${l}</button>`).join('');
+      const list = USERS.filter((u) => !q || u.name.toLowerCase().includes(q));
+      document.getElementById('f-n-people').textContent = USERS.length;
+      const G = sort === 'rank'
+        ? [['Hạng theo luật chính', '', list.slice().sort(byRank)]]
+        : [['Đang chờ đối thủ', 'Ngồi vào là chơi ngay', list.filter((u) => u.activity === 'waiting')],
+          ['Rảnh', 'Gửi lời thách đấu', list.filter((u) => u.activity === 'free')],
+          ['Đang đấu', '', list.filter((u) => u.activity === 'playing')],
+          ['Đang xem', '', list.filter((u) => u.activity === 'watching')]];
+      document.getElementById('f-groups').innerHTML = G.filter(([, , g]) => g.length).map(([h, sub, g]) =>
+        `<section class="f-group"><h2 class="f-group__h">${h} <span class="num">${g.length}</span>${sub ? `<span class="f-group__sub">${sub}</span>` : ''}</h2><ol class="f-list">${g.slice().sort(byRank).map(row).join('')}</ol></section>`).join('')
+        || '<div class="mempty"><b>Không thấy kỳ thủ nào</b><span>Thử tên khác.</span></div>';
+    }
+    function tables() {
+      document.getElementById('f-n-tables').textContent = TABLES.length;
+      const live = TABLES.filter((t) => t.state !== 'waiting');
+      const open = TABLES.filter((t) => t.state === 'waiting');
+      const el = document.getElementById('f-tables');
+      const tile = (t) => {
+        const p1 = V3.byId[t.p1]; const p2 = t.p2 && V3.byId[t.p2];
+        const st = STATE[t.state];
+        return `<li><button type="button" class="f-t" data-room="${t.code}">${t.state === 'waiting' ? `<span class="f-t__seat">${icon('door-open', 'icon--md')}</span>` : miniBoard(t, 'f-t__b')}`
+          + `<span class="f-t__main"><span class="f-t__top"><span class="mstate ${st.cls}">${st.label}</span><span class="f-t__code num">#${t.code}</span></span>`
+          + `<span class="f-t__who"><span>${esc(p1.name)}</span>${p2 ? `<span class="f-t__vs">vs</span><span>${esc(p2.name)}</span>` : ''}</span>`
+          + `<span class="f-t__meta"><span class="mpill mpill--rule">${esc(RULE[t.rule].label)}</span><span class="mpill">${icon('timer')}${esc(t.time)}</span>${t.viewers ? `<span class="mact">${icon('eye')}<span class="num">${t.viewers}</span></span>` : ''}</span></span></button></li>`;
+      };
+      el.innerHTML = `<div class="f-tables__head"><h2 id="f-tables-h">Bàn chơi <span class="mtab__n">${TABLES.length}</span></h2><button class="mbtn mbtn--ghost" type="button" data-create>${icon('plus-circle')}Mở bàn</button></div>`
+        + (TABLES.length ? (open.length ? `<h3 class="f-tables__h">Còn ghế trống <span class="num">${open.length}</span></h3><ul class="f-tlist">${open.map(tile).join('')}</ul>` : '')
+          + (live.length ? `<h3 class="f-tables__h">Đang đấu <span class="num">${live.length}</span></h3><ul class="f-tlist">${live.map(tile).join('')}</ul>` : '')
+          : `<div class="mempty"><b>Chưa có bàn nào</b><span>Thách đấu một người đang rảnh, hoặc mở bàn để ai cũng vào được.</span><br><button class="mbtn mbtn--primary" type="button" data-create>${icon('plus-circle')}Tạo bàn</button></div>`);
+    }
+    function show(view) {
+      const body = document.getElementById('f-body');
+      body.dataset.view = view;
+      body.hidden = view === 'rules';
+      document.getElementById('rooms-rules').hidden = view !== 'rules';
+      if (view === 'rules') renderRules(document.getElementById('rooms-rules'), []);
+    }
+    wireTabs(document.getElementById('f-tabs'), show);
+    document.getElementById('f-q').addEventListener('input', (e) => { q = e.target.value.trim().toLowerCase(); groups(); });
+    document.addEventListener('click', (e) => {
+      const s = e.target.closest('[data-sort]');
+      if (s) { sort = s.dataset.sort; groups(); return; }
+      if (e.target.closest('[data-create]')) { toast('Mở hộp thoại Tạo bàn'); return; }
+      const r = e.target.closest('[data-room]');
+      if (r) { toast(`Vào bàn #${r.dataset.room}`); return; }
+      const c = e.target.closest('[data-challenge]');
+      if (c) { toast(`Gửi lời thách đấu tới ${V3.byId[c.dataset.challenge].name}`); return; }
+      const d = e.target.closest('[data-dm]');
+      if (d) toast(`Nhắn tin ${V3.byId[d.dataset.dm].name}`);
+    });
+    groups(); tables();
+    if (qs.get('tab')) document.getElementById('f-tab-' + qs.get('tab')).click();
+  })();
+  </script>
+</body>
+</html>

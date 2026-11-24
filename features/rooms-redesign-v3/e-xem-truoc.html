@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>E Xem trước, Phòng v3</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="e-xem-truoc.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+  <main class="e">
+    <header class="e-bar">
+      <div class="e-tabs mtabs" id="e-tabs" role="tablist" aria-label="Phòng chơi">
+        <button class="mtab" role="tab" data-tab="tables" aria-selected="true" aria-controls="e-panes" id="e-tab-tables">Bàn chơi <span class="mtab__n" id="e-n-tables">0</span></button>
+        <button class="mtab e-only-m" role="tab" data-tab="people" aria-selected="false" aria-controls="e-panes" tabindex="-1" id="e-tab-people">Kỳ thủ <span class="mtab__n" id="e-n-people">0</span></button>
+        <button class="mtab" role="tab" data-tab="rules" aria-selected="false" aria-controls="rooms-rules" tabindex="-1" id="e-tab-rules"><svg class="icon icon--md" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-scales"></use></svg>Luật chơi</button>
+      </div>
+      <div class="e-stats" id="e-stats" aria-live="polite"></div>
+      <div class="e-act" id="e-act"></div>
+    </header>
+
+    <div class="e-panes" id="e-panes" data-view="tables">
+      <section class="e-list" aria-label="Danh sách bàn">
+        <div class="e-filter" id="e-filter" role="group" aria-label="Lọc bàn"></div>
+        <div id="e-rows"></div>
+      </section>
+      <section class="e-prev" id="e-prev" aria-live="polite" aria-label="Xem trước bàn"></section>
+      <aside class="e-people" id="e-people" aria-labelledby="e-people-h"></aside>
+    </div>
+    <div class="e-scrim" id="e-scrim" hidden></div>
+    <section class="rg e-rg" id="rooms-rules" role="tabpanel" aria-labelledby="e-tab-rules" tabindex="0" hidden></section>
+  </main>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+  (function () {
+    const { qs, RULE, USERS, TABLES, STATS, ACT, STATE, esc, icon, avatar, rankBadge, eloText, standing, miniBoard, renderShell, toast, renderRules, codeForm, wireTabs, tableOf } = V3;
+    renderShell('e');
+    const VARIANT = { 'Ô khoá': 'wall', 'Hố đen': 'portal', Swap2: 'swap2', 'Taraguchi-10': 'taraguchi10', Yamaguchi: 'yamaguchi' };
+    const tr = (k, fb) => (typeof t === 'function' && t(k) !== k ? t(k) : fb);
+    let filter = 'all';
+    let sel = tableOf(qs.get('sel')) ? qs.get('sel') : (TABLES.find((x) => x.state === 'live') || TABLES[0] || {}).code;
+
+    document.getElementById('e-stats').innerHTML =
+      `<span class="mstat"><i aria-hidden="true"></i><b>${STATS.online}</b><span>online</span></span>`
+      + `<span class="mstat"><b>${STATS.playing}</b><span>đang chơi</span></span>`
+      + `<span class="mstat"><b>${STATS.watching}</b><span>đang xem</span></span>`;
+    document.getElementById('e-act').innerHTML = codeForm('e-code') + `<button class="mbtn mbtn--primary" type="button" data-create>${icon('plus-circle')}Tạo bàn</button>`;
+
+    function rows() {
+      const F = [['all', 'Tất cả', TABLES.length], ['waiting', 'Chờ người', TABLES.filter((x) => x.state === 'waiting').length], ['live', 'Đang đấu', TABLES.filter((x) => x.state !== 'waiting').length]];
+      document.getElementById('e-filter').innerHTML = F.map(([id, l, n]) => `<button type="button" class="e-chip${id === filter ? ' is-on' : ''}" aria-pressed="${id === filter}" data-filter="${id}">${l} <span class="num">${n}</span></button>`).join('');
+      document.getElementById('e-n-tables').textContent = TABLES.length;
+      const list = TABLES.filter((x) => filter === 'all' || (filter === 'waiting' ? x.state === 'waiting' : x.state !== 'waiting'));
+      const el = document.getElementById('e-rows');
+      if (!list.length) { el.innerHTML = `<div class="mempty"><b>Chưa có bàn nào</b><span>Mở bàn đầu tiên, ${STATS.online} kỳ thủ đang online sẽ thấy.</span><br><button class="mbtn mbtn--primary" data-create type="button">${icon('plus-circle')}Tạo bàn</button></div>`; return; }
+      el.innerHTML = '<ul class="e-rows">' + list.map((x) => {
+        const st = STATE[x.state];
+        const p1 = V3.byId[x.p1]; const p2 = x.p2 && V3.byId[x.p2];
+        const right = x.state === 'live' ? `<span class="mact">${icon('eye')}<span class="num">${x.viewers}</span></span>` : x.state === 'waiting' ? `<span class="e-row__wait">${x.waitMin} ph</span>` : '';
+        return `<li><button type="button" class="e-row ${st.cls}${x.code === sel ? ' is-sel' : ''}" aria-current="${x.code === sel}" data-sel="${x.code}">`
+          + `<span class="e-row__top"><span class="mstate ${st.cls}">${st.label}</span><span class="e-row__name">${esc(x.name)}</span>${right}</span>`
+          + `<span class="e-row__who"><span>${esc(p1.name)}</span><span class="e-row__vs">vs</span><span class="${p2 ? '' : 'is-empty'}">${p2 ? esc(p2.name) : 'Ghế trống'}</span></span>`
+          + `<span class="e-row__meta"><span class="mpill mpill--rule">${esc(RULE[x.rule].label)}</span><span class="mpill">${icon('timer')}${esc(x.time)}</span>${x.variant ? `<span class="mpill">${esc(x.variant)}</span>` : ''}${x.ranked ? `<span class="mpill mpill--ranked">${icon('crown-simple')}Xếp hạng</span>` : ''}</span>`
+          + '</button></li>';
+      }).join('') + '</ul>';
+    }
+
+    function bar(uid, stone, x, empty) {
+      if (!uid) return `<div class="e-pl e-pl--empty"><span class="e-stone e-stone--${stone}" aria-hidden="true"></span><span class="e-pl__ghost">Ghế trống, cầm ${stone === 'w' ? 'Trắng' : 'Đen'}</span><button class="mbtn mbtn--primary" type="button" data-room="${x.code}">Ngồi vào</button></div>`;
+      const u = V3.byId[uid]; const a = ACT[u.activity];
+      return `<div class="e-pl"><span class="e-stone e-stone--${stone}" aria-hidden="true"></span>${avatar(u, 'md')}`
+        + `<span class="e-pl__main"><span class="e-pl__name">${esc(u.name)}</span><span class="e-pl__sub">${rankBadge(u, x.rule)}<span class="e-pl__cat">${esc(RULE[x.rule].label)}</span></span></span>`
+        + `<span class="e-pl__elo">${eloText(u, x.rule)}</span></div>`;
+    }
+    function preview() {
+      const el = document.getElementById('e-prev');
+      const x = tableOf(sel);
+      if (!x) { el.innerHTML = `<div class="e-prev__none">${icon('door-open', 'icon--lg')}<b>Chọn một bàn để xem trước</b><span>Hoặc mở bàn mới bằng nút Tạo bàn.</span></div>`; return; }
+      const st = STATE[x.state];
+      const vId = x.variant && VARIANT[x.variant];
+      const watchers = USERS.filter((u) => u.activity === 'watching' && u.table === x.code);
+      const board = x.state === 'waiting' ? miniBoard({ ...x, moves: 0 }, 'e-board__svg') : miniBoard(x, 'e-board__svg');
+      const act = x.state === 'waiting'
+        ? `<button class="mbtn mbtn--primary mbtn--lg" type="button" data-room="${x.code}">${icon('door-open', 'icon--md')}Ngồi vào bàn</button>`
+        : `<button class="mbtn mbtn--primary mbtn--lg" type="button" data-room="${x.code}">${icon('eye', 'icon--md')}Vào xem</button>`;
+      el.innerHTML = `<button type="button" class="e-sheet-x" data-close aria-label="Đóng">${icon('x', 'icon--md')}</button>`
+        + `<header class="e-prev__head"><span class="mstate ${st.cls}">${st.label}</span><h2>${esc(x.name)}</h2><span class="e-prev__code num">#${x.code}</span></header>`
+        + (x.state === 'live' ? `<p class="e-prev__live"><span class="num">Nước ${x.moves}</span><span class="num">${icon('timer')}${esc(x.elapsed)}</span><span class="mact">${icon('eye')}<span class="num">${x.viewers}</span></span></p>` : '')
+        + (x.state === 'ready' ? '<p class="e-prev__live"><span>Hai bên đã ngồi, sắp bắt đầu</span></p>' : '')
+        + `<div class="e-prev__grid"><div class="e-board">${bar(x.p2, 'w', x)}<div class="e-board__wrap">${board}`
+        + `</div>${bar(x.p1, 'b', x)}</div>`
+        + `<div class="e-info"><dl class="e-set">`
+        + `<div><dt>Luật</dt><dd><b>${esc(RULE[x.rule].label)}</b><span>${esc(RULE[x.rule].lead)}</span></dd></div>`
+        + (vId ? `<div><dt>Biến thể</dt><dd><b>${esc(x.variant)}</b><span>${esc(tr(`guide.${vId}_lead`, ''))}</span></dd></div>` : '')
+        + `<div><dt>Bàn</dt><dd><b>${x.size}×${x.size}</b></dd></div>`
+        + `<div><dt>Thời gian</dt><dd><b>${esc(x.time)}</b></dd></div>`
+        + `<div><dt>Loại ván</dt><dd><b>${x.ranked ? 'Xếp hạng' : 'Giao hữu'}</b><span>${x.ranked ? 'Thắng thua tính vào Elo ' + esc(RULE[x.rule].label) + '.' : 'Không tính Elo.'}</span></dd></div>`
+        + `</dl><button type="button" class="e-link" data-go-rules="${x.rule}${vId ? ',' + vId : ''}">${icon('scales')}Xem luật ${esc(RULE[x.rule].label)}${vId ? ' và ' + esc(x.variant) : ''}${icon('caret-right')}</button>`
+        + (x.viewers ? `<div class="e-watch"><span class="e-watch__faces">${watchers.slice(0, 4).map((u) => avatar(u, 'xs')).join('')}</span><span><b class="num">${x.viewers}</b> người đang xem</span></div>` : '')
+        + `<div class="e-cta">${act}</div></div></div>`;
+    }
+
+    function people() {
+      const sorted = USERS.slice().sort((a, b) => {
+        const sa = standing(a); const sb = standing(b);
+        if (!sa !== !sb) return sa ? -1 : 1;
+        return sa ? sa.rank - sb.rank || sb.rating - sa.rating : a.guest - b.guest;
+      });
+      document.getElementById('e-n-people').textContent = USERS.length;
+      document.getElementById('e-people').innerHTML = `<div class="e-people__head"><h2 id="e-people-h">Kỳ thủ online <span class="mtab__n">${USERS.length}</span></h2>`
+        + `<p>Hạng theo luật chính <span class="mneed">cần backend</span></p></div><ul class="e-plist">`
+        + sorted.map((u) => {
+          const a = ACT[u.activity]; const s = standing(u);
+          const linked = u.table && tableOf(u.table);
+          return `<li><${linked ? `button type="button" data-sel="${u.table}" title="Xem trước bàn #${u.table}"` : 'div'} class="e-p${u.me ? ' is-me' : ''}${linked && u.table === sel ? ' is-at' : ''}">`
+            + `<span class="mav-wrap">${avatar(u, 'sm')}<span class="mav-dot ${a.cls}" aria-hidden="true"></span></span>`
+            + `<span class="e-p__main"><span class="e-p__name">${esc(u.name)}</span><span class="e-p__sub"><span class="mact ${a.cls}">${a.label}</span>${s ? `<span class="e-p__cat">${esc(RULE[s.cat].label)}</span>` : ''}</span></span>`
+            + `<span class="e-p__rk">${rankBadge(u)}${eloText(u)}</span></${linked ? 'button' : 'div'}></li>`;
+        }).join('') + '</ul>';
+    }
+
+    function show(view) {
+      const panes = document.getElementById('e-panes');
+      panes.dataset.view = view;
+      panes.hidden = view === 'rules';
+      document.getElementById('rooms-rules').hidden = view !== 'rules';
+      if (view === 'rules') renderRules(document.getElementById('rooms-rules'), rulesActive);
+    }
+    let rulesActive = [];
+    const sheet = (on) => { document.body.classList.toggle('e-sheet-on', on); document.getElementById('e-scrim').hidden = !on; };
+    function all() { rows(); preview(); people(); }
+    wireTabs(document.getElementById('e-tabs'), show);
+    document.addEventListener('click', (e) => {
+      const s = e.target.closest('[data-sel]');
+      if (s) { sel = s.dataset.sel; all(); if (matchMedia('(max-width: 860px)').matches) sheet(true); return; }
+      const f = e.target.closest('[data-filter]');
+      if (f) { filter = f.dataset.filter; rows(); return; }
+      if (e.target.closest('[data-close]') || e.target.id === 'e-scrim') { sheet(false); return; }
+      const g = e.target.closest('[data-go-rules]');
+      if (g) { rulesActive = g.dataset.goRules.split(','); sheet(false); document.getElementById('e-tab-rules').click(); return; }
+      if (e.target.closest('[data-create]')) { toast('Mở hộp thoại Tạo bàn'); return; }
+      const r = e.target.closest('[data-room]');
+      if (r) toast(`Vào bàn #${r.dataset.room}`);
+    });
+    all();
+    if (qs.get('sheet')) sheet(true);
+    if (qs.get('tab')) document.getElementById('e-tab-' + qs.get('tab')).click();
+  })();
+  </script>
+</body>
+</html>

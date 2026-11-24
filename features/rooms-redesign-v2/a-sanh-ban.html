@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Direction A: Sảnh bàn — Play3CR Rooms Mockup</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="a-sanh-ban.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+
+  <main class="a-page" role="main">
+    <!-- Top Bar: tabs + live counters + single primary CTA -->
+    <header class="a-bar">
+      <div class="a-tabs" role="tablist" aria-label="Phòng chơi">
+        <button class="a-tab" id="tab-tables" type="button" role="tab" aria-selected="true" aria-controls="panel-tables">
+          <span>Bàn chơi</span>
+          <span class="a-tab__n num" id="a-tab-count">9</span>
+        </button>
+        <button class="a-tab a-tab--mobile" id="tab-online-m" type="button" role="tab" aria-selected="false" aria-controls="aside-online" tabindex="-1">
+          <span>Online</span>
+          <span class="a-tab__n num">24</span>
+        </button>
+        <button class="a-tab" id="tab-rules" type="button" role="tab" aria-selected="false" aria-controls="panel-rules" tabindex="-1">
+          <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-scales"></use></svg>
+          <span>Luật chơi</span>
+        </button>
+      </div>
+
+      <div class="a-bar__right">
+        <ul class="a-stats" aria-label="Thống kê trực tiếp">
+          <li class="a-stat">
+            <span class="a-stat__dot" aria-hidden="true"></span>
+            <strong class="a-stat__val num" id="a-stat-online">24</strong>
+            <span>đang online</span>
+          </li>
+          <li class="a-stat">
+            <svg class="icon a-stat__icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-sword"></use></svg>
+            <strong class="a-stat__val num" id="a-stat-playing">10</strong>
+            <span>đang chơi</span>
+          </li>
+        </ul>
+
+        <button type="button" class="mk-btn-primary" id="btn-create" data-create-room>
+          <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>
+          <span>Tạo bàn</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 2-column Swiss split: Tables / Rules left, Vertical Online Panel right -->
+    <div class="a-grid">
+      <div class="a-main">
+        <section class="a-panel" id="panel-tables" role="tabpanel" aria-labelledby="tab-tables"></section>
+        <section class="a-panel mk-rules-wrap" id="panel-rules" role="tabpanel" aria-labelledby="tab-rules" hidden>
+          <div class="rg" id="rooms-rules"></div>
+        </section>
+      </div>
+
+      <aside class="a-online" id="aside-online" aria-labelledby="a-online-h" data-mobile-hidden="true">
+        <div class="a-online__head">
+          <h2 class="a-online__title" id="a-online-h">
+            <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-users-three"></use></svg>
+            <span>Kỳ thủ online</span>
+          </h2>
+          <span class="a-online__count num">24</span>
+        </div>
+        <p class="a-online__sub">Hạng &amp; Elo theo thể loại chính</p>
+        <div class="a-search">
+          <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg>
+          <input type="search" id="a-user-search" placeholder="Tìm kỳ thủ..." aria-label="Tìm kỳ thủ online" />
+        </div>
+        <ul class="a-roster" id="a-roster"></ul>
+        <div class="a-online__foot">
+          <button type="button" class="a-online__more" id="a-online-more">+9 kỳ thủ khác</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    (function () {
+      const M = window.RoomsMockup;
+      M.renderShell('a');
+      M.renderRulesInto(document.getElementById('rooms-rules'));
+
+      const tablesHost = document.getElementById('panel-tables');
+      const rosterHost = document.getElementById('a-roster');
+      const searchInput = document.getElementById('a-user-search');
+      const tabCountEl = document.getElementById('a-tab-count');
+      const statPlayingEl = document.getElementById('a-stat-playing');
+      let showEmpty = false;
+
+      function seatHtml(p) {
+        if (!p) return `<span class="a-seat a-seat--empty">Chờ đối thủ</span>`;
+        const elo = Number.isFinite(p.rating)
+          ? `<span class="a-seat__elo num">${p.rating}${p.provisional ? '?' : ''}</span>`
+          : '';
+        return `<span class="a-seat">${M.avatarHtml(p.displayName, p.tone, 'pav--xs')}<span class="a-seat__name" title="${M.esc(p.displayName)}">${M.esc(p.displayName)}</span>${elo}</span>`;
+      }
+
+      function ticketHtml(t) {
+        const isOpen = t.kind === 'open';
+        const statusCls = isOpen ? 'mstatus--open' : t.kind === 'ready' ? 'mstatus--ready' : 'mstatus--live';
+        const statusText = isOpen ? 'Chờ người' : t.kind === 'ready' ? 'Sắp bắt đầu' : 'Đang đấu';
+        const elapsed = t.elapsed ? `<span class="mchip num">${M.esc(t.elapsed)}</span>` : '';
+        const watch = t.watchers > 0
+          ? `<span class="a-watch num" title="${t.watchers} người đang xem">${M.iconSvg('ph-regular-eye')}<span>${t.watchers}</span></span>`
+          : '';
+        return `
+          <article class="a-ticket ${isOpen ? 'a-ticket--open' : ''}" role="button" tabindex="0" data-room-id="${M.esc(t.roomId)}">
+            <div class="a-ticket__body">
+              <div class="a-players">
+                ${seatHtml(t.players[0])}
+                <span class="a-vs">vs</span>
+                ${seatHtml(t.players[1])}
+              </div>
+              <div class="a-meta">
+                <span class="a-room-name" title="${M.esc(t.roomName)}">${M.esc(t.roomName)}</span>
+                <span class="mchip mchip--rule">${M.esc(t.ruleLabel)}</span>
+                <span class="mchip num">${M.esc(t.boardSize)}</span>
+                ${t.variant ? `<span class="mchip">${M.esc(t.variant)}</span>` : ''}
+                <span class="mchip num">${M.esc(t.clock)}</span>
+                <span class="mchip ${t.ranked ? 'mchip--rated' : 'mchip--friendly'}">${t.ranked ? 'Xếp hạng' : 'Giao hữu'}</span>
+                ${elapsed}
+                ${watch}
+              </div>
+            </div>
+            <div class="a-ticket__side">
+              <span class="mstatus ${statusCls}"><span class="mstatus__dot" aria-hidden="true"></span><span>${statusText}</span></span>
+              <span class="a-act ${isOpen ? 'a-act--sit' : 'a-act--watch'}">${isOpen ? 'Ngồi vào' : 'Xem'}</span>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderTables() {
+        const list = showEmpty ? [] : M.TABLES;
+        tabCountEl.textContent = String(list.length);
+        statPlayingEl.textContent = showEmpty ? '0' : String(M.STATS.playingPlayers);
+
+        if (list.length === 0) {
+          tablesHost.innerHTML = `
+            <div class="mk-empty">
+              <span class="mk-empty__icon">${M.iconSvg('ph-regular-checkerboard', 'icon--lg')}</span>
+              <h2 class="mk-empty__title">Chưa có bàn nào đang mở</h2>
+              <p class="mk-empty__sub">Tạo bàn mới để mời mọi người vào giao lưu.</p>
+              <button type="button" class="mk-btn-primary" data-create-room>${M.iconSvg('ph-regular-plus-circle')}<span>Tạo bàn mới</span></button>
+            </div>
+          `;
+          return;
+        }
+
+        const open = list.filter((t) => t.kind === 'open');
+        const active = list.filter((t) => t.kind !== 'open');
+        tablesHost.innerHTML = `
+          <div class="a-group">
+            <h2 class="a-group__head"><span>Bàn chờ đối thủ</span><span class="a-group__count num">${open.length}</span></h2>
+            <div class="a-tickets">${open.map(ticketHtml).join('')}</div>
+          </div>
+          <div class="a-group">
+            <h2 class="a-group__head"><span>Đang thi đấu</span><span class="a-group__count num">${active.length}</span></h2>
+            <div class="a-tickets">${active.map(ticketHtml).join('')}</div>
+          </div>
+        `;
+      }
+
+      function renderRoster(query = '') {
+        const q = query.trim().toLowerCase();
+        const users = M.ONLINE_USERS.filter((u) => !q || u.displayName.toLowerCase().includes(q));
+        if (users.length === 0) {
+          rosterHost.innerHTML = `<li style="padding:18px 14px;font-size:13px;color:var(--c-ink-3);text-align:center">Không tìm thấy kỳ thủ phù hợp.</li>`;
+          return;
+        }
+        rosterHost.innerHTML = users.map((u) => {
+          const st = M.STATUS_META[u.status] || M.STATUS_META.free;
+          const rankBlock = u.isGuest
+            ? `<span class="a-user__guest">Khách</span>`
+            : `<span class="a-user__rank num">${u.rank ? '#' + u.rank : 'Mới'}</span><span class="a-user__elo num">${u.rating}${u.provisional ? '?' : ''}</span>`;
+          return `
+            <li>
+              <button type="button" class="a-user ${u.isMe ? 'a-user--me' : ''}" data-user-id="${M.esc(u.userId)}" title="${M.esc(u.displayName)}${u.mainRule ? ' — ' + u.mainRule : ''}">
+                ${M.avatarHtml(u.displayName, u.tone, 'pav--sm')}
+                <span class="a-user__info">
+                  <span class="a-user__name-row">
+                    <span class="a-user__name">${M.esc(u.displayName)}</span>
+                    ${u.isMe ? '<span class="a-user__me-tag">Bạn</span>' : ''}
+                  </span>
+                  <span class="a-user__meta">
+                    <span class="mpres ${st.cls}">${M.iconSvg(st.icon)}<span>${st.label}</span></span>
+                    ${u.mainRule ? `<span class="a-user__rule">${M.esc(u.mainRule)}</span>` : ''}
+                  </span>
+                </span>
+                <span class="a-user__rankcol">${rankBlock}</span>
+              </button>
+            </li>
+          `;
+        }).join('');
+      }
+
+      // Tabs (desktop: tables / rules; mobile: tables / online / rules)
+      const tabTables = document.getElementById('tab-tables');
+      const tabOnlineM = document.getElementById('tab-online-m');
+      const tabRules = document.getElementById('tab-rules');
+      const panelTables = document.getElementById('panel-tables');
+      const panelRules = document.getElementById('panel-rules');
+      const asideOnline = document.getElementById('aside-online');
+
+      function selectTab(which) {
+        const isMobile = window.matchMedia('(max-width: 860px)').matches;
+        [tabTables, tabOnlineM, tabRules].forEach((b) => {
+          const on = (which === 'tables' && b === tabTables)
+            || (which === 'online' && b === tabOnlineM)
+            || (which === 'rules' && b === tabRules);
+          b.setAttribute('aria-selected', String(on));
+          b.tabIndex = on ? 0 : -1;
+        });
+        panelTables.hidden = which !== 'tables';
+        panelRules.hidden = which !== 'rules';
+        asideOnline.dataset.mobileHidden = isMobile && which !== 'online' ? 'true' : 'false';
+      }
+
+      tabTables.addEventListener('click', () => selectTab('tables'));
+      tabOnlineM.addEventListener('click', () => selectTab('online'));
+      tabRules.addEventListener('click', () => selectTab('rules'));
+      searchInput.addEventListener('input', (e) => renderRoster(e.target.value));
+      document.getElementById('a-online-more').addEventListener('click', () => M.showToast('Tải thêm kỳ thủ đang online…'));
+
+      renderTables();
+      renderRoster();
+      M.wireMockupInteractions({
+        onEmptyToggle(empty) { showEmpty = empty; renderTables(); },
+      });
+    })();
+  </script>
+</body>
+</html>

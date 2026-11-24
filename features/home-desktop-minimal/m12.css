@@ -1,0 +1,31 @@
+@media (min-width: 861px) {
+  body.z .z12 { --pad: clamp(36px, 5vw, 96px); --beam: 72px; }
+  body.z .z12-wall { background: url(/__min/assets/m5/plaster.webp) center / cover; }
+  :root:not([data-mode="light"]) .z12-wall { filter: brightness(.19) sepia(.75) saturate(1.25); }
+  body.z .z12-beam { top: var(--beam); bottom: auto; height: 16px; background: linear-gradient(180deg, rgba(255, 244, 214, .3), rgba(70, 40, 12, .3)), url(/__min/assets/wood/kaya.webp) center / cover; box-shadow: 0 16px 24px rgba(60, 38, 16, .24); }
+  body.z .z12-hang { position: absolute; top: calc(var(--beam) + 12px); transform-origin: 50% 0; animation: z12-settle 2.2s var(--z-ease) both; }
+  body.z .z12-hang:hover, body.z .z12-hang:focus-within { animation: z12-swing 1.7s var(--z-ease); }
+  @keyframes z12-settle { 0% { rotate: -1.5deg; } 34% { rotate: .9deg; } 64% { rotate: -.35deg; } 100% { rotate: 0deg; } }
+  @keyframes z12-swing { 0% { rotate: 0deg; } 24% { rotate: 1deg; } 54% { rotate: -.55deg; } 78% { rotate: .2deg; } 100% { rotate: 0deg; } }
+  body.z .z12-a { --rope: 12vh; left: 9%; width: clamp(430px, 47vw, 800px); }
+  body.z .z12-b { --rope: 37vh; left: 63%; width: clamp(270px, 25vw, 430px); animation-delay: 120ms; }
+  body.z .z12-rope { position: absolute; top: 0; left: 13%; width: 3px; height: calc(var(--rope) + 16px); background: repeating-linear-gradient(160deg, #8d6f49 0 3px, #5f4729 3px 6px); box-shadow: 16px 18px 8px rgba(60, 38, 16, .16); }
+  body.z .z12-rope--r { left: auto; right: 13%; }
+  :root:not([data-mode="light"]) .z12-rope { background: repeating-linear-gradient(160deg, #a58a63 0 3px, #6d5536 3px 6px); }
+  body.z-m12 .hq-go, body.z-m12 #hub-rooms.z-rooms { position: relative; margin-top: var(--rope); border-radius: 16px 24px 18px 28px / 22px 15px 26px 17px; box-shadow: inset 0 2px 0 rgba(255, 244, 220, .2), inset 0 -4px 7px rgba(10, 5, 2, .4), 34px 44px 46px rgba(60, 38, 16, .3), 6px 9px 12px rgba(60, 38, 16, .26); }
+  :root:not([data-mode="light"]) body.z-m12 .hq-go, :root:not([data-mode="light"]) body.z-m12 #hub-rooms.z-rooms { box-shadow: inset 0 2px 0 rgba(255, 244, 220, .2), inset 0 0 0 1px rgba(255, 238, 210, .14), 34px 44px 46px rgba(0, 0, 0, .55); }
+  body.z-m12 .hq-go::before, body.z-m12 .hq-go::after, body.z-m12 #hub-rooms::before, body.z-m12 #hub-rooms::after { content: ""; position: absolute; top: 11px; left: calc(13% - 4px); width: 11px; height: 11px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #c9a874, #5f4729); }
+  body.z-m12 .hq-go::after, body.z-m12 #hub-rooms::after { left: auto; right: calc(13% - 4px); }
+  body.z-m12 .hq-go { height: clamp(190px, 31vh, 340px); background: url(/__min/assets/wood/charred.webp) center / cover; color: #f8f0e2; }
+  body.z-m12 #qm-play { width: 100%; height: 100%; gap: clamp(18px, 2vw, 32px); border-radius: inherit; background: none; color: inherit; }
+  body.z-m12 .z-play__t { order: 1; font: 500 clamp(62px, 7vw, 122px)/1.14 var(--z-serif); }
+  body.z-m12 .hq-play__disc { order: 2; width: clamp(46px, 4.2vw, 70px); height: clamp(46px, 4.2vw, 70px); border-radius: 50%; background: #f8f0e2; color: #17120d; font-size: 18px; }
+  body.z-m12 #hub-rooms.z-rooms { display: grid; grid-template-columns: auto auto; justify-content: center; align-content: center; gap: 3px 14px; height: clamp(136px, 20vh, 214px); background: linear-gradient(180deg, rgba(255, 250, 235, .24), transparent), url(/__min/assets/wood/kaya.webp) center / cover; color: #1f1811; }
+  body.z-m12 .z-rooms__t { font: 500 clamp(32px, 3.2vw, 54px)/1.14 var(--z-serif); color: inherit; }
+  body.z-m12 .z-rooms__live { grid-row: 2; color: #3f3326; }
+  body.z-m12 .z-rooms .icon { width: 22px; height: 22px; }
+  body.z .z12-foot { position: absolute; left: var(--pad); right: var(--pad); bottom: clamp(24px, 4.6vh, 48px); display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
+  body.z .z12-note { display: flex; flex-direction: column; gap: 8px; width: min(30vw, 400px); }
+  body.z .z12-ctl { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+}
+@media (min-width: 861px) { body.z-m12 #qm-play, body.z-m12 #qm-play:hover { box-shadow: none; transform: none; } }

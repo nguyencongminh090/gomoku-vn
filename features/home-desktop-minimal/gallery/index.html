@@ -1,0 +1,99 @@
+<title>Play3CR Home Desktop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;1,500&display=swap">
+<style>
+/* Layout: two contact strips (wood round first) above one large viewing stage. */
+:root { --bg: #efe9de; --panel: #f8f4ec; --fg: #211a13; --sub: #655949; --line: rgba(33, 26, 19, .16); --on: #211a13; --on-fg: #f8f4ec; --display: "Playfair Display", Georgia, serif; --body: "Be Vietnam Pro", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #15110d; --panel: #1f1a14; --fg: #f3ecdf; --sub: #c0b4a1; --line: rgba(243, 236, 223, .17); --on: #f3ecdf; --on-fg: #1a1510; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #15110d; --panel: #1f1a14; --fg: #f3ecdf; --sub: #c0b4a1; --line: rgba(243, 236, 223, .17); --on: #f3ecdf; --on-fg: #1a1510; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font: 400 16px/1.55 var(--body); }
+.wrap { max-width: 1320px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 24px; }
+h1 { margin: 0; font: 500 clamp(28px, 4vw, 42px)/1.2 var(--display); text-wrap: balance; }
+header p { margin: 0; color: var(--sub); font-size: 14px; }
+.group { display: grid; gap: 8px; }
+.group h3 { margin: 0; color: var(--sub); font: 600 13px/1.3 var(--body); }
+.strip { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); gap: 10px; }
+.pick { display: grid; gap: 6px; padding: 0; border: 0; background: none; color: var(--sub); font: 600 13px/1.3 var(--body); text-align: left; cursor: pointer; }
+.pick img { display: block; width: 100%; aspect-ratio: 1.6; object-fit: cover; object-position: top; border-radius: 8px; outline: 1px solid var(--line); outline-offset: -1px; }
+.pick[aria-current="true"] { color: var(--fg); }
+.pick[aria-current="true"] img { outline: 2px solid var(--on); outline-offset: 2px; }
+.pick:focus-visible, .tab:focus-visible, .nav:focus-visible { outline: 2px solid var(--on); outline-offset: 3px; border-radius: 8px; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 26px; align-items: start; }
+.stage { display: grid; gap: 10px; min-width: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.tab { min-height: 38px; padding: 0 14px; border: 1px solid transparent; border-radius: 999px; background: none; color: var(--sub); font: 600 14px/1 var(--body); cursor: pointer; }
+.tab[aria-selected="true"] { background: var(--on); color: var(--on-fg); }
+.view { width: 100%; aspect-ratio: 1.6; overflow: hidden; border-radius: 10px; background: var(--panel); outline: 1px solid var(--line); outline-offset: -1px; }
+.view img, .view video { display: block; width: 100%; height: 100%; object-fit: contain; }
+aside { display: grid; gap: 14px; min-width: 0; }
+h2 { margin: 0; font: 500 34px/1.2 var(--display); }
+aside p { margin: 0; }
+dl { display: grid; gap: 10px; margin: 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 14px; }
+dt { color: var(--sub); font-size: 13px; }
+dd { margin: 0; }
+.navs { display: flex; gap: 8px; }
+.nav { min-height: 40px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: none; color: var(--fg); font: 600 14px/1 var(--body); cursor: pointer; }
+@media (max-width: 900px) { .main { grid-template-columns: 1fr; } .strip { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+</style>
+<div class="wrap">
+  <header><h1>Trang chủ desktop, gỗ và bàn cờ</h1><p>Ảnh và video chụp trên trang Home thật, số liệu mẫu</p></header>
+  <nav class="group" aria-label="Mockup mới, gỗ và bàn cờ"><h3>Mới: gỗ và bàn cờ</h3><div class="strip" id="strip-new" style="--n:6"></div></nav>
+  <nav class="group" aria-label="Mockup vòng trước"><h3>Vòng trước</h3><div class="strip" id="strip-old" style="--n:7"></div></nav>
+  <main class="main">
+    <section class="stage">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Trạng thái"></div>
+      <div class="view" id="view"></div>
+    </section>
+    <aside>
+      <h2 id="name"></h2>
+      <p id="idea"></p>
+      <dl>
+        <div><dt>Chơi ngay</dt><dd id="play"></dd></div>
+        <div><dt>Phòng chơi</dt><dd id="rooms"></dd></div>
+        <div><dt>Chuyển động</dt><dd id="motion"></dd></div>
+        <div><dt>Cần cân nhắc</dt><dd id="risk"></dd></div>
+      </dl>
+      <div class="navs"><button class="nav" id="prev" type="button">Trước</button><button class="nav" id="next" type="button">Tiếp</button></div>
+    </aside>
+  </main>
+</div>
+<script>
+const C = [
+  ['m8', 'Mạch vàng', 'Hai mảnh gỗ, một cháy sẫm một sáng, được hàn lại bằng đường vàng chạy suốt trang.', 'Cả mảnh gỗ sẫm là nút, chữ lớn nhất trong nhóm.', 'Cả mảnh gỗ sáng là nút, chữ đặt ở góc dưới.', 'Đường vàng tự vẽ khi tải. Rê vào mảnh nào, mảnh đó tách ra và tia sáng chạy về phía nó.', 'Gần với Hai dòng về ý hai mảng lớn. Cả mảnh sẫm là nút nên bấm vào chỗ trống cũng bắt đầu tìm trận. Mép răng cưa có thể gợi tia sét ở chế độ tối.'],
+  ['m9', 'Một ngọn đèn', 'Mặt bàn tối với một quầng đèn. Lưới và quân cờ chỉ hiện ở nơi có ánh sáng.', 'Nút đen lớn, đèn nằm yên ở đây khi trang vừa mở.', 'Nút sáng ở đầu kia của đường kẻ, rê vào thì đèn trượt sang.', 'Đèn đi theo chuột trên mặt bàn, tới nút nào thì dừng ở nút đó.', 'Giao diện sáng vẫn tối. Mặt nạ toàn trang đổi theo chuột nên cần đo hiệu năng trên máy yếu.'],
+  ['m10', 'Mặt bên', 'Nhìn thẳng vào cạnh một tấm bàn cờ dày đặt trên chân gỗ, hai nút là hai ngăn kéo.', 'Ngăn kéo gỗ sẫm, rộng gần gấp đôi ngăn còn lại.', 'Ngăn kéo gỗ sáng cạnh bên.', 'Rê vào, ngăn kéo trượt ra về phía người xem và lộ mặt trên.', 'Có hình khối của đồ nội thất, cần xác nhận người chơi vẫn nhận ra đây là bàn cờ. Cặp nút gỗ sẫm và gỗ sáng giống Hộp trượt và Biển quán.'],
+  ['m11', 'Hộp trượt', 'Hộp gỗ đặt nghiêng trên bàn, mỗi nút là một nắp trượt.', 'Nắp sẫm phía trên, hé ra các quân cờ bên dưới.', 'Nắp sáng phía dưới, hé ra các bàn đang chơi thật.', 'Rê vào, nắp trượt sang phải và để lộ ngăn bên trong.', 'Toàn bộ chữ nghiêng 2,4 độ. Khi nắp trượt, phần cuối nắp bị che. Cặp nút giống Mặt bên và Biển quán.'],
+  ['m12', 'Biển quán', 'Hai tấm biển gỗ treo dưới xà như biển quán cờ, đổ bóng lên tường vôi.', 'Biển gỗ cháy lớn, treo cao.', 'Biển gỗ sáng nhỏ hơn, treo thấp bên phải.', 'Biển đung đưa rồi dừng khi tải trang, rê vào thì lắc nhẹ một lần.', 'Khoảng trống phía dưới khá lớn, trang sẽ ít thông tin. Cặp nút giống Mặt bên và Hộp trượt.'],
+  ['m13', 'Bát cờ', 'Nhìn từ trên xuống bàn tre: một bát quân đen và một nắp bát có quân trắng.', 'Chữ nằm trong lòng bát quân đen.', 'Nắp bát có mũi tên ở giữa, tên nằm ngay dưới.', 'Rê vào bát nào, phần còn lại của bàn tối đi một chút.', 'Phụ thuộc ảnh do AI tạo. Khi đổi cỡ màn hình, vị trí chữ phải bám theo ảnh.'],
+  ['m1', 'Nhật thực', 'Cả trang chỉ có một vật thể: viên đen che viên trắng như nhật thực.', 'Chính viên đá đen, chiếm gần hết chiều cao màn hình.', 'Vầng trăng khuyết của viên trắng, kèm số ván đang chơi.', 'Rê vào Phòng chơi, viên đen trượt đi và để lộ thêm viên trắng.', 'Vùng bấm Phòng chơi là hình lưỡi liềm, cần thử bằng chuột thật.'],
+  ['m2', 'Điểm chạm', 'Ảnh ván cờ của bạn thành giao diện, đường chỉ nối từ bàn cờ tới hai nút.', 'Thẻ đen nối với viên đá đang được đặt xuống.', 'Thẻ sáng nối với một điểm sao còn trống.', 'Đường chỉ tự vẽ khi tải trang, rê chuột thì ánh sáng dồn về điểm được chọn.', 'Luôn tối vì phụ thuộc ảnh. Nút nhỏ hơn các hướng khác.'],
+  ['m3', 'Hai dòng', 'Trang chỉ còn hai từ khổng lồ, chữ chính là nút.', 'Dải đặc toàn chiều ngang, nổi bật nhất trong bảy hướng.', 'Dải sáng bên dưới, có số ván và ba bàn cờ thu nhỏ.', 'Viên đá lăn dọc đường nối về phía dòng đang rê.', 'Rất mạnh nhưng ít chất liệu, cảm giác giống trang thương hiệu hơn sảnh game.'],
+  ['m4', 'Chân trời', 'Bàn cờ trải tới chân trời trong sương, trên đó có hai cánh cửa.', 'Cửa tối, ánh sáng ấm hắt từ chân cửa.', 'Cửa kính mờ, nhìn thấy các bàn đang chơi bên trong.', 'Sương trôi rất chậm, rê vào cửa thì cửa nhấc lên và sáng dần.', 'Phụ thuộc ảnh phối cảnh. Sương chạy liên tục nên bản thật cần nút tạm dừng.'],
+  ['m5', 'Vườn đá', 'Vườn đá cào cát: hai hòn cuội giữa những vòng sóng, có bóng lá nắng chiều.', 'Hòn cuội đen lớn, chữ dày và tròn.', 'Hòn cuội sáng nhỏ hơn ở phía trên bên phải.', 'Rê vào đá, một vòng sóng lan ra. Bóng lá đung đưa nhẹ.', 'Giàu cảm xúc nhất nhưng ít liên quan trực tiếp tới cờ.'],
+  ['m6', 'Vòng bàn', 'Một vòng bàn cờ xoay quanh hai nút, gần thì rõ, xa thì mờ.', 'Nút đặc lớn ở tâm, rê vào thì vòng chậm lại.', 'Nút kính cạnh bên, rê vào thì vòng quay nhanh hơn.', 'Vòng 3D xoay liên tục, tốc độ đổi theo nút đang rê.', 'Trang chỉ có 3 ván thật nên phần còn lại là bàn mẫu, cần quyết định lấy dữ liệu gì.'],
+  ['m7', 'Trang là bàn', 'Cả trang là một bàn cờ chơi được, mọi thành phần khớp theo lưới.', 'Tấm đen lớn nằm đúng trên các giao điểm.', 'Tấm sáng so le bên cạnh, cùng lưới.', 'Quân cờ mờ bám theo chuột, bấm để đặt quân đen và trắng luân phiên.', 'Gần ảnh tham khảo nhất, cả về chất liệu lẫn bố cục chữ bên trái, quân bên phải. Lưới phủ toàn trang nên nhiều chi tiết hơn.'],
+];
+const T = [['video', 'Chuyển động'], ['1440', 'Sáng'], ['dark', 'Tối'], ['search', 'Đang tìm trận'], ['busy', 'Có ván dở và tin'], ['1024', 'Màn 1024']];
+const $ = (id) => document.getElementById(id);
+let cur = 0, tab = '1440';
+const NEW = 6;
+C.forEach((c, i) => { const b = document.createElement('button'); b.className = 'pick'; b.type = 'button'; const m = new Image(); m.src = `img/${c[0]}-1440.jpg`; m.alt = ''; m.loading = 'lazy'; b.append(m, c[1]); b.onclick = () => go(i); $(i < NEW ? 'strip-new' : 'strip-old').append(b); });
+T.forEach(([k, l]) => { const b = document.createElement('button'); b.className = 'tab'; b.type = 'button'; b.role = 'tab'; b.textContent = l; b.dataset.k = k; b.onclick = () => { tab = k; draw(); }; $('tabs').append(b); });
+function draw() {
+  const c = C[cur];
+  document.querySelectorAll('.pick').forEach((b, i) => b.setAttribute('aria-current', i === cur));
+  [...$('tabs').children].forEach((b) => b.setAttribute('aria-selected', b.dataset.k === tab));
+  ['name', 'idea', 'play', 'rooms', 'motion', 'risk'].forEach((id, i) => { $(id).textContent = c[i + 1]; });
+  let n;
+  if (tab === 'video') { n = document.createElement('video'); n.src = `video/${c[0]}.webm`; n.poster = `img/${c[0]}-1440.jpg`; n.controls = n.loop = n.muted = n.playsInline = true; n.autoplay = !matchMedia('(prefers-reduced-motion: reduce)').matches; }
+  else { n = new Image(); n.src = `img/${c[0]}-${tab}.jpg`; n.alt = `${c[1]}, ${T.find((t) => t[0] === tab)[1]}`; }
+  $('view').replaceChildren(n);
+}
+function go(i) { cur = (i + C.length) % C.length; try { history.replaceState(null, '', '#' + C[cur][0]); } catch {} draw(); }
+$('prev').onclick = () => go(cur - 1); $('next').onclick = () => go(cur + 1);
+addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft') go(cur - 1); if (e.key === 'ArrowRight') go(cur + 1); });
+const start = C.findIndex((c) => '#' + c[0] === location.hash); cur = start < 0 ? 0 : start; draw();
+</script>

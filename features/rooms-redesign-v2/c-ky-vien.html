@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Direction C: Kỳ viện — Play3CR Rooms Mockup</title>
+  <link rel="stylesheet" href="../../client/vendor/fonts/nunito/style.css" />
+  <link rel="stylesheet" href="../../client/css/tokens.css" />
+  <link rel="stylesheet" href="../../client/css/platform-shell.css" />
+  <link rel="stylesheet" href="../../client/css/rules-guide.css" />
+  <link rel="stylesheet" href="shared.css" />
+  <link rel="stylesheet" href="c-ky-vien.css" />
+</head>
+<body class="pshell">
+  <div id="pl-shell"></div>
+
+  <main class="c-page" role="main">
+    <!-- Mobile-only live count + CTA bar -->
+    <div class="c-mstats">
+      <div class="c-mstats__pair">
+        <span class="c-mstats__item"><span class="c-pulse__dot" aria-hidden="true"></span><strong class="num">24</strong><span>online</span></span>
+        <span class="c-mstats__item"><svg class="icon c-pulse__icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-sword"></use></svg><strong class="num" id="c-m-playing">10</strong><span>đang chơi</span></span>
+      </div>
+      <button type="button" class="mk-btn-primary" data-create-room>
+        <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>
+        <span>Tạo bàn</span>
+      </button>
+    </div>
+
+    <div class="c-shell">
+      <!-- Left Sticky Vertical Online Rail -->
+      <aside class="c-rail" id="c-rail" aria-label="Kỳ thủ đang online" data-mobile-hidden="true">
+        <div class="c-pulse">
+          <div class="c-pulse__cell">
+            <span class="c-pulse__top">
+              <span class="c-pulse__dot" aria-hidden="true"></span>
+              <strong class="c-pulse__num num">24</strong>
+            </span>
+            <span class="c-pulse__lbl">Đang online</span>
+          </div>
+          <div class="c-pulse__cell">
+            <span class="c-pulse__top">
+              <svg class="icon c-pulse__icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-sword"></use></svg>
+              <strong class="c-pulse__num num" id="c-d-playing">10</strong>
+            </span>
+            <span class="c-pulse__lbl">Đang chơi</span>
+          </div>
+        </div>
+
+        <div class="c-rail__tools">
+          <div class="c-rail__search">
+            <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-magnifying-glass"></use></svg>
+            <input type="search" id="c-search" placeholder="Tìm kỳ thủ online..." aria-label="Tìm kỳ thủ online" />
+          </div>
+          <div class="c-rail__pills" id="c-rail-pills" role="group" aria-label="Lọc trạng thái kỳ thủ">
+            <button type="button" class="c-pill is-on" data-status="all">Tất cả</button>
+            <button type="button" class="c-pill" data-status="free">Rảnh</button>
+            <button type="button" class="c-pill" data-status="playing">Đang đấu</button>
+          </div>
+        </div>
+
+        <div class="c-rail__caption">
+          <span>Kỳ thủ</span>
+          <span>Hạng chính</span>
+        </div>
+        <ul class="c-ulist" id="c-ulist"></ul>
+        <div class="c-rail__foot">
+          <button type="button" class="c-rail__more" id="c-more">+9 kỳ thủ khác</button>
+        </div>
+      </aside>
+
+      <!-- Right Main Stage: Tabs + Split-Seat Cards / Rules -->
+      <div class="c-stage">
+        <header class="c-stage__bar">
+          <div class="c-tabs" role="tablist" aria-label="Phòng chơi">
+            <button class="c-tab" id="ctab-tables" type="button" role="tab" aria-selected="true" aria-controls="cpanel-tables">
+              <span>Bàn chơi</span>
+              <span class="c-tab__n num" id="c-tab-n">9</span>
+            </button>
+            <button class="c-tab c-tab--mobile" id="ctab-online-m" type="button" role="tab" aria-selected="false" aria-controls="c-rail" tabindex="-1">
+              <span>Online</span>
+              <span class="c-tab__n num">24</span>
+            </button>
+            <button class="c-tab" id="ctab-rules" type="button" role="tab" aria-selected="false" aria-controls="cpanel-rules" tabindex="-1">
+              <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-scales"></use></svg>
+              <span>Luật chơi</span>
+            </button>
+          </div>
+
+          <button type="button" class="mk-btn-primary" id="btn-create" data-create-room>
+            <svg class="icon" aria-hidden="true"><use href="../../client/assets/icons/phosphor-sprite.svg#ph-regular-plus-circle"></use></svg>
+            <span>Tạo bàn</span>
+          </button>
+        </header>
+
+        <section class="c-panel" id="cpanel-tables" role="tabpanel" aria-labelledby="ctab-tables"></section>
+        <section class="c-panel mk-rules-wrap" id="cpanel-rules" role="tabpanel" aria-labelledby="ctab-rules" hidden>
+          <div class="rg" id="rooms-rules"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="../../client/js/i18n.js"></script>
+  <script src="../../client/js/room-rules-guide.js"></script>
+  <script src="shared.js"></script>
+  <script>
+    (function () {
+      const M = window.RoomsMockup;
+      M.renderShell('c');
+      M.renderRulesInto(document.getElementById('rooms-rules'));
+
+      const tablesHost = document.getElementById('cpanel-tables');
+      const ulistHost = document.getElementById('c-ulist');
+      let statusFilter = 'all';
+      let query = '';
+      let showEmpty = false;
+
+      function seatRow(p, color) {
+        if (!p) {
+          return `
+            <div class="c-seat">
+              <span class="c-seat__who">
+                <span class="c-stone c-stone--empty" aria-hidden="true"></span>
+                <span class="c-seat__name c-seat__name--empty">Chờ đối thủ</span>
+              </span>
+            </div>
+          `;
+        }
+        const elo = Number.isFinite(p.rating)
+          ? `<span class="c-seat__elo num">${p.rating}${p.provisional ? '?' : ''}</span>`
+          : `<span class="c-seat__elo">Khách</span>`;
+        return `
+          <div class="c-seat">
+            <span class="c-seat__who">
+              <span class="c-stone c-stone--${color}" aria-hidden="true"></span>
+              <span class="c-seat__name" title="${M.esc(p.displayName)}">${M.esc(p.displayName)}</span>
+            </span>
+            ${elo}
+          </div>
+        `;
+      }
+
+      function renderTables() {
+        const list = showEmpty ? [] : M.TABLES;
+        document.getElementById('c-tab-n').textContent = String(list.length);
+        const playingVal = showEmpty ? '0' : String(M.STATS.playingPlayers);
+        document.getElementById('c-d-playing').textContent = playingVal;
+        document.getElementById('c-m-playing').textContent = playingVal;
+
+        if (list.length === 0) {
+          tablesHost.innerHTML = `
+            <div class="mk-empty">
+              <span class="mk-empty__icon">${M.iconSvg('ph-regular-checkerboard', 'icon--lg')}</span>
+              <h2 class="mk-empty__title">Chưa có bàn nào đang mở</h2>
+              <p class="mk-empty__sub">Mở bàn đầu tiên và mời các kỳ thủ đang online bên trái.</p>
+              <button type="button" class="mk-btn-primary" data-create-room>${M.iconSvg('ph-regular-plus-circle')}<span>Tạo bàn mới</span></button>
+            </div>
+          `;
+          return;
+        }
+
+        tablesHost.innerHTML = `<div class="c-cards">${list.map((t) => {
+          const isOpen = t.kind === 'open';
+          const stCls = isOpen ? 'mstatus--open' : t.kind === 'ready' ? 'mstatus--ready' : 'mstatus--live';
+          const stText = isOpen ? 'Chờ người' : t.kind === 'ready' ? 'Sắp bắt đầu' : 'Đang đấu';
+          return `
+            <article class="c-card ${isOpen ? 'c-card--open' : ''}" role="button" tabindex="0" data-room-id="${M.esc(t.roomId)}">
+              <div class="c-card__top">
+                <div class="c-card__top-left">
+                  <span class="mstatus ${stCls}"><span class="mstatus__dot" aria-hidden="true"></span><span>${stText}</span></span>
+                  <span class="c-card__name" title="${M.esc(t.roomName)}">${M.esc(t.roomName)}</span>
+                </div>
+                <div class="c-card__top-right num">
+                  ${t.elapsed ? `<span>${M.esc(t.elapsed)}</span>` : ''}
+                  ${t.watchers > 0 ? `<span class="c-card__watch" title="${t.watchers} người xem">${M.iconSvg('ph-regular-eye')}<span>${t.watchers}</span></span>` : ''}
+                </div>
+              </div>
+              <div class="c-seats">
+                ${seatRow(t.players[0], 'black')}
+                ${seatRow(t.players[1], 'white')}
+              </div>
+              <div class="c-card__foot">
+                <div class="c-chips">
+                  <span class="mchip mchip--rule">${M.esc(t.ruleLabel)}</span>
+                  <span class="mchip num">${M.esc(t.boardSize)}</span>
+                  ${t.variant ? `<span class="mchip">${M.esc(t.variant)}</span>` : ''}
+                  <span class="mchip num">${M.esc(t.clock)}</span>
+                  <span class="mchip ${t.ranked ? 'mchip--rated' : 'mchip--friendly'}">${t.ranked ? 'Xếp hạng' : 'Giao hữu'}</span>
+                </div>
+                <span class="c-act ${isOpen ? 'c-act--sit' : 'c-act--watch'}">${isOpen ? 'Ngồi vào' : 'Xem'}</span>
+              </div>
+            </article>
+          `;
+        }).join('')}</div>`;
+      }
+
+      function renderRoster() {
+        const q = query.trim().toLowerCase();
+        const users = M.ONLINE_USERS.filter((u) => {
+          if (q && !u.displayName.toLowerCase().includes(q)) return false;
+          if (statusFilter === 'free') return u.status === 'free' || u.status === 'waiting';
+          if (statusFilter === 'playing') return u.status === 'playing';
+          return true;
+        });
+
+        if (users.length === 0) {
+          ulistHost.innerHTML = `<li style="padding:18px 12px;font-size:13px;color:var(--c-ink-3);text-align:center">Không có kỳ thủ phù hợp.</li>`;
+          return;
+        }
+
+        ulistHost.innerHTML = users.map((u) => {
+          const st = M.STATUS_META[u.status] || M.STATUS_META.free;
+          const right = u.isGuest
+            ? `<span class="c-user__elo">Khách</span>`
+            : `<span class="c-user__rank num">${u.rank ? '#' + u.rank : 'Mới'}</span><span class="c-user__elo num">${u.rating}${u.provisional ? '?' : ''}</span>`;
+          return `
+            <li>
+              <button type="button" class="c-user ${u.isMe ? 'c-user--me' : ''}" data-user-id="${M.esc(u.userId)}" title="${M.esc(u.displayName)}">
+                ${M.avatarHtml(u.displayName, u.tone, 'pav--sm')}
+                <span class="c-user__mid">
+                  <span class="c-user__name">${M.esc(u.displayName)}${u.isMe ? ' (Bạn)' : ''}</span>
+                  <span class="c-user__sub">
+                    <span class="mpres ${st.cls}">${M.iconSvg(st.icon)}<span>${st.label}</span></span>
+                    ${u.mainRule ? `<span class="c-user__rule">${M.esc(u.mainRule)}</span>` : ''}
+                  </span>
+                </span>
+                <span class="c-user__right">${right}</span>
+              </button>
+            </li>
+          `;
+        }).join('');
+      }
+
+      document.getElementById('c-rail-pills').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-status]');
+        if (!b) return;
+        statusFilter = b.dataset.status;
+        document.querySelectorAll('#c-rail-pills .c-pill').forEach((x) => x.classList.toggle('is-on', x === b));
+        renderRoster();
+      });
+      document.getElementById('c-search').addEventListener('input', (e) => { query = e.target.value; renderRoster(); });
+      document.getElementById('c-more').addEventListener('click', () => M.showToast('Tải thêm kỳ thủ đang online…'));
+
+      const tabTables = document.getElementById('ctab-tables');
+      const tabOnlineM = document.getElementById('ctab-online-m');
+      const tabRules = document.getElementById('ctab-rules');
+      const panelTables = document.getElementById('cpanel-tables');
+      const panelRules = document.getElementById('cpanel-rules');
+      const rail = document.getElementById('c-rail');
+
+      function selectTab(which) {
+        const isMobile = window.matchMedia('(max-width: 860px)').matches;
+        [tabTables, tabOnlineM, tabRules].forEach((b) => {
+          const on = (which === 'tables' && b === tabTables)
+            || (which === 'online' && b === tabOnlineM)
+            || (which === 'rules' && b === tabRules);
+          b.setAttribute('aria-selected', String(on));
+          b.tabIndex = on ? 0 : -1;
+        });
+        panelTables.hidden = which !== 'tables';
+        panelRules.hidden = which !== 'rules';
+        rail.dataset.mobileHidden = isMobile && which !== 'online' ? 'true' : 'false';
+      }
+
+      tabTables.addEventListener('click', () => selectTab('tables'));
+      tabOnlineM.addEventListener('click', () => selectTab('online'));
+      tabRules.addEventListener('click', () => selectTab('rules'));
+
+      renderTables();
+      renderRoster();
+      M.wireMockupInteractions({
+        onEmptyToggle(empty) { showEmpty = empty; renderTables(); },
+      });
+    })();
+  </script>
+</body>
+</html>
