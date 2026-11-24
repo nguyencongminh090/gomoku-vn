@@ -13,7 +13,11 @@
   const slug = decodeURIComponent(location.pathname.replace(/^\/c\//, '').replace(/\/$/, ''));
   const CATEGORIES = ['freestyle', 'standard', 'caro', 'renju'];
   const COLORS = ['blue', 'green', 'red', 'orange', 'purple', 'teal', 'pink', 'gray'];
-  const state = { category: CATEGORIES[0], weekly: false, color: 'blue', club: null, mine: undefined, ch: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
+  const state = {
+    category: CATEGORIES[0], weekly: false, color: 'blue', club: null, mine: undefined, ch: null,
+    chat: { loaded: false, firstId: 0, lastId: 0, busy: false },
+    peekId: 0, latestOther: 0, hints: [], hint: 0, // B447: unread-dot poll cursor, newest message by others; command hints
+  };
   const CHAT_POLL_MS = 8000;
   const CHAT_PAGE = 50;
   const MEMBERS_PANE_MAX = 50;
@@ -187,6 +191,7 @@
     $('cb-msg').textContent = '';
     if (updateHash && currentChannel() !== name) history.replaceState(null, '', '#ch=' + name);
     if (name === 'chat') openChat();
+    syncUnread();
   }
 
   // --- club chat: REST polling only (a socket here would evict the lobby socket) ---
@@ -214,24 +219,83 @@
     return m ? m.role : null;
   }
 
+  const myUsername = () => {
+    const me = state.club && state.club.leaderboard.find((x) => x.mine);
+    return me ? me.username.toLowerCase() : null;
+  };
+
+  /**
+   * Decoded text as nodes; @username of a club member is highlighted (mine gets is-me). @all / @tatca only
+   * when the server would have notified for it (staff author, notifyAll on). Never innerHTML.
+   */
+  function textWithMentions(raw, author) {
+    const allCounts = !!chatSet().notifyAll && ['owner', 'officer'].includes(roleOf(author));
+    const box = el('div', undefined, 'cb-chat__text');
+    const text = decode(raw);
+    const members = new Set((state.club ? state.club.leaderboard : []).map((x) => x.username.toLowerCase()));
+    const me = myUsername();
+    let at = 0;
+    let mentionsMe = false;
+    for (const m of text.matchAll(/(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{3,20})(?![A-Za-z0-9_])/g)) {
+      const name = m[2].toLowerCase();
+      const all = name === 'all' || name === 'tatca';
+      if (all ? !allCounts : !members.has(name)) continue;
+      const startAt = m.index + m[1].length;
+      if (startAt > at) box.append(text.slice(at, startAt));
+      const isMe = all || name === me;
+      mentionsMe = mentionsMe || isMe;
+      box.append(el('b', '@' + m[2], 'cb-chat__at' + (isMe ? ' is-me' : '')));
+      at = startAt + 1 + m[2].length;
+    }
+    if (at < text.length) box.append(text.slice(at));
+    return { box, mentionsMe };
+  }
+
+  /** /ghim and /giaohuu rows: icon tile + one-line title, then the pinned text or the terms as pills. */
+  function systemBody(m) {
+    const meta = m.meta || {};
+    const body = el('div', undefined, 'cb-chat__body');
+    if (m.kind === 'pin') {
+      body.append(el('div', t('clubs.sys_pin', { name: m.displayName }), 'cb-chat__sys-t'), el('div', decode(m.text), 'cb-chat__text'));
+    } else {
+      const to = meta.to ? meta.to.displayName : '';
+      const terms = el('div', undefined, 'cb-chat__terms');
+      terms.append(el('span', t('rule.' + meta.rule), 'cl-count'), el('span', meta.time || '', 'cl-count'), el('span', t('clubs.sys_unrated'), 'cl-count'));
+      body.append(el('div', t('clubs.sys_challenge', { name: m.displayName, to }), 'cb-chat__sys-t'), terms);
+    }
+    return body;
+  }
+
   function chatRow(m) {
-    const row = el('div', undefined, 'cb-chat__msg');
+    const sys = m.kind === 'pin' || m.kind === 'challenge';
+    const row = el('div', undefined, 'cb-chat__msg' + (sys ? ' cb-chat__msg--sys' : ''));
     row.dataset.id = String(m.id);
     row.dataset.day = dayKey(m.createdAt);
     row.dataset.at = m.createdAt;
-    const body = el('div', undefined, 'cb-chat__body');
-    const who = el('div', undefined, 'cb-chat__who');
-    const name = el(m.username ? 'a' : 'b', m.displayName, 'cl-nm cb-chat__name');
-    if (m.username) name.href = '/u/' + encodeURIComponent(m.username);
-    who.append(name);
-    const role = roleOf(m.username);
-    if (role === 'owner' || role === 'officer') who.append(el('span', t('clubs.role_' + role), 'cl-role'));
     const time = el('time', new Date(m.createdAt).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }), 'cb-chat__time');
     time.dateTime = m.createdAt;
     time.title = fmtWhen(m.createdAt);
-    who.append(time);
-    body.append(who, el('div', decode(m.text), 'cb-chat__text'));
-    row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
+    let body;
+    if (sys) {
+      const tile = el('span', undefined, 'cb-chat__tile');
+      tile.append(icon(m.kind === 'pin' ? 'megaphone' : 'handshake'));
+      body = systemBody(m);
+      body.firstChild.append(time);
+      row.append(tile, body);
+    } else {
+      body = el('div', undefined, 'cb-chat__body');
+      const who = el('div', undefined, 'cb-chat__who');
+      const name = el(m.username ? 'a' : 'b', m.displayName, 'cl-nm cb-chat__name');
+      if (m.username) name.href = '/u/' + encodeURIComponent(m.username);
+      who.append(name);
+      const role = roleOf(m.username);
+      if (role === 'owner' || role === 'officer') who.append(el('span', t('clubs.role_' + role), 'cl-role'));
+      who.append(time);
+      const { box, mentionsMe } = textWithMentions(m.text, m.username);
+      if (mentionsMe && !m.mine) row.classList.add('is-mentioned');
+      body.append(who, box);
+      row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
+    }
     if (isStaff()) {
       row.append(iconBtn('trash', t('clubs.delete_message'), async () => {
         const ok = await act('DELETE', '/messages/' + m.id, null, 'clubs.confirm_delete_message');
@@ -240,6 +304,37 @@
       }, 'cb-chat__del'));
     }
     return row;
+  }
+
+  // --- unread dot (B447): last-seen id per club on this device; REST only ---
+  const SEEN_KEY = 'gvn_club_seen_' + slug;
+  const chatSet = () => (state.club && state.club.chat) || {};
+  function seenId() {
+    try { return Number(localStorage.getItem(SEEN_KEY)) || 0; } catch (_) { return 0; }
+  }
+  function setSeen(id) {
+    try { if (id > seenId()) localStorage.setItem(SEEN_KEY, String(id)); } catch (_) { /* private mode: dot just stays off-by-one */ }
+  }
+  /** Note messages we now know of: advances the peek cursor and the newest-by-others id. */
+  function noteMessages(list) {
+    for (const m of list) {
+      if (m.id > state.peekId) state.peekId = m.id;
+      if (!m.mine && m.id > state.latestOther) state.latestOther = m.id;
+    }
+  }
+  function syncUnread() {
+    const reading = state.ch === 'chat' && state.chat.loaded && !document.hidden;
+    if (reading) setSeen(Math.max(state.chat.lastId, state.latestOther));
+    $('cb-chat-unread').hidden = !(isMember() && chatSet().unreadDot && !reading && state.latestOther > seenId());
+  }
+  /** Away from trò-chuyện: ask only for messages after the cursor (usually none). */
+  async function peekUnread() {
+    try {
+      const res = await fetch(base() + '/messages?after=' + state.peekId, { credentials: 'same-origin' });
+      if (!res.ok) return;
+      noteMessages((await res.json()).messages || []);
+      syncUnread();
+    } catch (_) { /* next poll retries */ }
   }
 
   /** Day separators: one before the first message of each local day; rebuilt after every insert. */
@@ -287,17 +382,80 @@
         if (mode === 'older') log.prepend(...rows); else log.append(...rows);
         if (mode !== 'newer' || !c.firstId) c.firstId = messages[0].id;
         if (mode !== 'older') c.lastId = messages[messages.length - 1].id;
+        noteMessages(messages);
         markDays();
       }
       if (mode === 'newest') { c.loaded = true; scroller.scrollTop = scroller.scrollHeight; }
       else if (mode === 'newer' && stick) scroller.scrollTop = scroller.scrollHeight;
       else if (mode === 'older') scroller.scrollTop = scroller.scrollHeight - fromBottom; // keep the reading position
       syncChatChrome(mode === 'newer' ? undefined : messages.length >= CHAT_PAGE);
+      syncUnread();
     } catch (_) { /* next poll retries */ } finally { c.busy = false; }
   }
 
   function openChat() {
-    if (isMember() && !state.chat.loaded) fetchChat('newest');
+    if (!isMember()) return;
+    if (!state.chat.loaded) fetchChat('newest');
+    else if (state.latestOther > state.chat.lastId) fetchChat('newer'); // the unread dot saw these: show them now, not on the next poll
+  }
+
+  // --- composer command hints (B447): only commands this club enabled and this member may use ---
+  function commandHints() {
+    const c = chatSet();
+    const out = [];
+    if (c.cmdPin && isStaff()) out.push({ cmd: '/ghim', args: t('clubs.cmd_pin_args'), desc: t('clubs.cmd_pin') });
+    if (c.cmdChallenge) out.push({ cmd: '/giaohuu', args: t('clubs.cmd_challenge_args'), desc: t('clubs.cmd_challenge') });
+    return out;
+  }
+
+  function hideHints() {
+    state.hints = [];
+    $('cb-chat-hints').hidden = true;
+    $('cb-chat-input').setAttribute('aria-expanded', 'false');
+    $('cb-chat-input').removeAttribute('aria-activedescendant');
+  }
+
+  /** While the input is just "/word" (no space yet), list the matching commands. */
+  function renderHints() {
+    const m = /^\/([A-Za-z]*)$/.exec($('cb-chat-input').value);
+    const list = m ? commandHints().filter((h) => h.cmd.startsWith('/' + m[1].toLowerCase())) : [];
+    if (!list.length) { hideHints(); return; }
+    state.hints = list;
+    state.hint = Math.min(state.hint, list.length - 1);
+    $('cb-chat-hints').replaceChildren(...list.map((h, i) => {
+      const li = el('li', undefined, 'cl-hint');
+      li.id = 'cb-hint-' + i;
+      li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', String(i === state.hint));
+      li.append(el('b', h.cmd), el('span', h.args, 'cl-hint__args'), el('span', h.desc, 'cl-hint__desc'));
+      li.addEventListener('mousedown', (ev) => { ev.preventDefault(); pickHint(i); });
+      return li;
+    }));
+    $('cb-chat-hints').hidden = false;
+    $('cb-chat-input').setAttribute('aria-expanded', 'true');
+    $('cb-chat-input').setAttribute('aria-activedescendant', 'cb-hint-' + state.hint);
+  }
+
+  function pickHint(i) {
+    const h = state.hints[i];
+    if (!h) return;
+    $('cb-chat-input').value = h.cmd + ' ';
+    hideHints();
+    $('cb-chat-input').focus();
+  }
+
+  function hintKeys(ev) {
+    if (!state.hints.length || ev.isComposing || ev.keyCode === 229) return; // IME (Telex/VNI) composing: its Enter is not ours
+    const n = state.hints.length;
+    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+      state.hint = (state.hint + (ev.key === 'ArrowDown' ? 1 : -1) + n) % n;
+      renderHints();
+    } else if (ev.key === 'Enter' || ev.key === 'Tab') {
+      pickHint(state.hint);
+    } else if (ev.key === 'Escape') {
+      hideHints();
+    } else return;
+    ev.preventDefault();
   }
 
   function renderSwatches() {
@@ -430,6 +588,13 @@
 
   function render(c) {
     state.club = c;
+    if (c.lastMessageId !== undefined) {
+      // First visit on this device: history is not "unread". Written even when 0 (empty chat), else
+      // the next load would count as a first visit again and swallow what arrived in between.
+      try { if (localStorage.getItem(SEEN_KEY) === null) localStorage.setItem(SEEN_KEY, String(c.lastMessageId)); } catch (_) { /* no storage */ }
+      state.latestOther = Math.max(state.latestOther, c.lastMessageId);
+      state.peekId = Math.max(state.peekId, c.lastMessageId);
+    }
     document.title = 'Play3CR — ' + c.name;
     $('cb-app').style.setProperty('--cc', 'var(--club-' + window.ClubKit.colorKey(c.color) + ')');
     renderBanner(c);
@@ -482,6 +647,7 @@
       renderImages(c);
       $('cb-desc-input').value = c.description;
       $('cb-announce-input').value = c.announcement;
+      for (const box of document.querySelectorAll('#cb-chatset input[data-chat]')) box.checked = !!chatSet()[box.dataset.chat];
       $('cb-tag-input').value = c.tag;
       state.color = c.color;
       renderSwatches();
@@ -588,6 +754,10 @@
       ev.preventDefault();
       const body = { description: $('cb-desc-input').value, announcement: $('cb-announce-input').value, tag: $('cb-tag-input').value, color: state.color };
       if (state.club.myRole === 'owner') body.joinPolicy = $('cb-policy').value;
+      if (state.club.chat) {
+        body.chatSettings = {};
+        for (const box of document.querySelectorAll('#cb-chatset input[data-chat]')) body.chatSettings[box.dataset.chat] = box.checked;
+      }
       if (await act('PUT', '', body)) load();
     };
     $('cb-invite-form').onsubmit = async (ev) => {
@@ -641,16 +811,25 @@
       ev.preventDefault();
       const text = $('cb-chat-input').value.trim();
       if (!text) return;
-      if (await act('POST', '/messages', { text })) {
+      hideHints();
+      const sent = await act('POST', '/messages', { text });
+      if (sent) {
         $('cb-chat-input').value = '';
+        if (sent.kind === 'pin') load(); // the pinned bar above the stream shows the new text
         await fetchChat('newer');
         const s = $('cb-stream');
         s.scrollTop = s.scrollHeight;
       }
     };
+    $('cb-chat-input').addEventListener('input', () => { state.hint = 0; renderHints(); });
+    $('cb-chat-input').addEventListener('keydown', hintKeys);
+    $('cb-chat-input').addEventListener('blur', () => setTimeout(hideHints, 150)); // let a click on a hint land first
     setInterval(() => {
-      if (!document.hidden && state.ch === 'chat' && state.chat.loaded) fetchChat('newer');
+      if (document.hidden) return;
+      if (state.ch === 'chat' && state.chat.loaded) fetchChat('newer');
+      else if (isMember() && chatSet().unreadDot) peekUnread();
     }, CHAT_POLL_MS);
+    document.addEventListener('visibilitychange', syncUnread);
     window.addEventListener('hashchange', () => showChannel(currentChannel()));
     load();
     window.ClubKit.fetchMine().then((mine) => { state.mine = mine; renderRail(); });

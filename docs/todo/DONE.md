@@ -1,3 +1,4 @@
+- ✅ **#447.** Club chat slash commands + notifications, admin toggles in club settings `[Model: Opus 5]` — [detail](docs/todo/B447-club-chat-slash-notify.md)
 - ✅ **#445.** Mojibake "nhÃ³m" left in client/*.html fallback text `[Model: Sonnet]` — [detail](docs/todo/B445-html-fallback-mojibake.md)
 - ✅ **#438.** Lobby seat alert: notify when a table matching my rule + filters opens `[Model: Sonnet]` — [detail](docs/todo/F438-lobby-seat-alert.md)
 - ✅ **#435.** Silently dead socket: up to ~45 s frozen room, own chat lost, no banner `[Model: Opus]` — [detail](docs/todo/B435-silent-dead-socket-45s.md)

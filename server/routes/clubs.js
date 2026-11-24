@@ -18,7 +18,7 @@
  * POST   /api/clubs/:slug/events                   {title, startsAt} staff
  * DELETE /api/clubs/:slug/events/:id                staff
  * GET    /api/clubs/:slug/messages?before=|after=   members only (polling)
- * POST   /api/clubs/:slug/messages                  {text} members only
+ * POST   /api/clubs/:slug/messages                  {text} members only; /ghim, /giaohuu, @mentions (B447)
  * DELETE /api/clubs/:slug/messages/:id              staff
  * GET    /api/clubs/:slug/avatar | /banner         image (immutable; URL carries ?v=)
  * POST   /api/clubs/:slug/avatar | /banner         raw image body, staff (#250) — DELETE removes

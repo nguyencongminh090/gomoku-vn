@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
   <link rel="stylesheet" href="css/platform.css?v=a7da945b" />
-  <link rel="stylesheet" href="css/club.css?v=563a9554" />
+  <link rel="stylesheet" href="css/club.css?v=d0591320" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
@@ -33,7 +33,7 @@
       </div>
       <nav class="cl-chans" id="cb-channels" aria-label="Kênh" data-i18n-aria="clubs.ch_nav">
         <div class="cl-grp" data-i18n="clubs.ch_group">Kênh</div>
-        <button type="button" class="cl-ch" id="cb-ch-chat" data-ch="chat"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-chat-circle"></use></svg><span class="cl-nm" data-i18n="clubs.ch_chat">trò-chuyện</span></button>
+        <button type="button" class="cl-ch" id="cb-ch-chat" data-ch="chat"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-chat-circle"></use></svg><span class="cl-nm" data-i18n="clubs.ch_chat">trò-chuyện</span><span class="cl-dot" id="cb-chat-unread" hidden><span class="cl-sr" data-i18n="clubs.chat_unread">Có tin nhắn mới</span></span></button>
         <button type="button" class="cl-ch" id="cb-ch-events" data-ch="events"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-calendar"></use></svg><span class="cl-nm" data-i18n="clubs.ch_events">sự-kiện</span><span class="cl-count" id="cb-events-count" hidden></span></button>
         <button type="button" class="cl-ch" id="cb-ch-tournaments" data-ch="tournaments"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-flag-checkered"></use></svg><span class="cl-nm" data-i18n="clubs.ch_tournaments">giải-đấu</span></button>
         <button type="button" class="cl-ch" id="cb-ch-board" data-ch="board"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-ranking"></use></svg><span class="cl-nm" data-i18n="clubs.ch_board">xếp-hạng</span></button>
@@ -93,8 +93,9 @@
             <p id="cb-chat-empty" class="pnote cl-empty" data-i18n="clubs.chat_empty" hidden>Chưa có tin nhắn nào.</p>
           </div>
           <form id="cb-chat-form" class="cl-compose">
+            <ul id="cb-chat-hints" class="cl-hints" role="listbox" aria-label="Lệnh" data-i18n-aria="clubs.cmd_list" hidden></ul>
             <div class="cl-compose__box">
-              <input id="cb-chat-input" type="text" maxlength="500" autocomplete="off" data-i18n-placeholder="clubs.chat_placeholder" placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn" data-i18n-aria="clubs.chat_label">
+              <input id="cb-chat-input" type="text" maxlength="500" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="cb-chat-hints" aria-expanded="false" data-i18n-placeholder="clubs.chat_placeholder" placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn" data-i18n-aria="clubs.chat_label">
               <button type="submit" class="cl-send" aria-label="Gửi" title="Gửi" data-i18n-aria="clubs.chat_send" data-i18n-title="clubs.chat_send"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-paper-plane-tilt"></use></svg></button>
             </div>
           </form>
@@ -189,6 +190,15 @@
               <option value="open" data-i18n="clubs.policy_open">Công khai — ai cũng vào được</option>
               <option value="invite" data-i18n="clubs.policy_invite">Theo lời mời — cần duyệt</option>
             </select>
+            <div class="pset cl-toggles" id="cb-chatset" role="group" aria-labelledby="cb-chatset-label">
+              <span class="pform__label" id="cb-chatset-label" data-i18n="clubs.chatset">Trò chuyện</span>
+              <label class="pcheck"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-megaphone"></use></svg><span data-i18n="clubs.chatset_cmdPin">Lệnh /ghim: ban quản trị ghim thông báo từ khung chat</span><input type="checkbox" data-chat="cmdPin"></label>
+              <label class="pcheck"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-handshake"></use></svg><span data-i18n="clubs.chatset_cmdChallenge">Lệnh /giaohuu: mời một thành viên đánh giao hữu</span><input type="checkbox" data-chat="cmdChallenge"></label>
+              <label class="pcheck"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-user-circle"></use></svg><span data-i18n="clubs.chatset_notifyMention">Báo cho người được @nhắc tên</span><input type="checkbox" data-chat="notifyMention"></label>
+              <label class="pcheck"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-broadcast"></use></svg><span data-i18n="clubs.chatset_notifyAll">Ban quản trị dùng @all để báo cả nhóm</span><input type="checkbox" data-chat="notifyAll"></label>
+              <label class="pcheck"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-bell"></use></svg><span data-i18n="clubs.chatset_notifyPin">Báo cả nhóm khi có thông báo ghim mới</span><input type="checkbox" data-chat="notifyPin"></label>
+              <label class="pcheck"><svg class="icon" width="18" height="18" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-circle"></use></svg><span data-i18n="clubs.chatset_unreadDot">Chấm báo tin chưa đọc trên kênh trò-chuyện</span><input type="checkbox" data-chat="unreadDot"></label>
+            </div>
             <div class="pform__row"><button type="submit" class="pbtn pbtn--primary" data-i18n="profile.save">Lưu</button></div>
           </form>
           <div class="cl-danger" id="cb-danger" hidden>
@@ -217,16 +227,16 @@
   </div>
 </main>
 
-<script src="js/i18n.js?v=e685de7e"></script>
+<script src="js/i18n.js?v=53fb2010"></script>
 <script src="js/escape-utils.js?v=05dffe1e"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/session.js?v=7d763f30"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
 <script src="js/settings-panel.js?v=349e6629"></script>
-<script src="js/platform-shell.js?v=46ab0a29"></script>
+<script src="js/platform-shell.js?v=7b0631fa"></script>
 <script src="js/challenge-modal.js?v=77805a23"></script>
 <script src="js/avatar-crop.js?v=2f613ebf"></script>
 <script src="js/club-kit.js?v=4cccc3ae"></script>
-<script src="js/club.js?v=b0a06e31"></script>
+<script src="js/club.js?v=b1cd4c77"></script>
 </body>
 </html>
