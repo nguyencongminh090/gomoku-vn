@@ -384,3 +384,4 @@
 | 2026-11-24 03:40 | untracked crosstable scrolls sideways: .score-games-wrap overflow-x + min cell width; 1 test | [detail](docs/fix-log/2026-11-24-crosstable-hscroll.md) |
 | 2026-11-24 04:00 | untracked crosstable rank + name columns sticky while scrolling sideways; 1 test | [detail](docs/fix-log/2026-11-24-crosstable-sticky-names.md) |
 | 2026-11-24 04:20 | untracked scorecard + crosstable stay visible when no seat is taken (0–0, '—' seats); 1 test | [detail](docs/fix-log/2026-11-24-scorecard-empty-seats.md) |
+| 2026-11-24 13:26 | #441 e2e suite green (56/56 Chromium, 6.0 m): shared ROOM_URL_WITH_ID, #367/#368/#369 spec updates, board-keyboard ctx leak + fixtures teardown | [detail](docs/fix-log/2026-11-24-441-e2e-stale-specs.md) |

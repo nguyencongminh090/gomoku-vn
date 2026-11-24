@@ -44,18 +44,30 @@ export async function dropConnection(ctx: BrowserContext) {
 export const test = base.extend<{ _leaveRoomsOnClose: void }>({
   _leaveRoomsOnClose: [async ({ browser }, use) => {
     const original = browser.newContext.bind(browser);
+    const opened = new Set<BrowserContext>();
     (browser as any).newContext = async (...args: any[]) => {
       const ctx: BrowserContext = await (original as any)(...args);
+      opened.add(ctx);
       const close = ctx.close.bind(ctx);
       let leaving = false;
       (ctx as any).close = async (...a: any[]) => {
+        opened.delete(ctx);
         if (!leaving && !(ctx as any).__dropWithoutLeaving) { leaving = true; await leaveRooms(ctx); }
         return (close as any)(...a);
       };
       return ctx;
     };
-    await use();
-    (browser as any).newContext = original;
+    try {
+      await use();
+    } finally {
+      (browser as any).newContext = original;
+      // Close any manually created contexts that a test failed before closing
+      // (or forgot to close) so their rooms emit room:leave immediately instead
+      // of lingering in empty-room grace and starving later specs of MAX_ROOMS_PER_IP.
+      for (const ctx of [...opened]) {
+        await ctx.close().catch(() => {});
+      }
+    }
   }, { auto: true }],
 });
 

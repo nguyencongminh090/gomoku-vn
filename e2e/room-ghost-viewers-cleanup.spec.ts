@@ -1,5 +1,6 @@
 import { test, expect } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TODO.md #186 — a host who never sat plus a joining viewer both drop their
@@ -14,7 +15,7 @@ test('room of two unseated users, both crashed, disappears after the empty-room 
   const hostCtx = await browser.newContext(); const host = await hostCtx.newPage();
   await authAsGuest(hostCtx, host);
   await host.goto('/index.html#rooms'); await host.click('#btn-create'); await host.click('#btn-quick-match');
-  await host.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+  await host.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
   const roomId = new URL(host.url()).searchParams.get('id')!;
   const jCtx = await browser.newContext(); const joiner = await jCtx.newPage();
   await authAsGuest(jCtx, joiner);

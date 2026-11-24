@@ -1,5 +1,6 @@
 import { test, expect, Page, BrowserContext } from './helpers/fixtures';
 import { cellPosition } from './helpers/board';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TODO.md #154 — the two-player deadlock #152's gap check could not break.
@@ -104,7 +105,7 @@ test.describe('turn watchdog breaks the two-player deadlock (TODO.md #154)', () 
     });
     await A.page.locator('#timer-seconds').fill('30');
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id')!;
 
     const B = await makeGuest('PlayerB');

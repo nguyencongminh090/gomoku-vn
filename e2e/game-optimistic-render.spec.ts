@@ -1,5 +1,6 @@
 import { test, expect, Page, BrowserContext } from './helpers/fixtures';
 import { cellPosition } from './helpers/board';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TODO.md #153 — optimistic render for the mover's own stone.
@@ -121,7 +122,7 @@ async function setUpGame(browser: any, guestFactory: typeof makeGuest): Promise<
     if (el.checked) { el.checked = false; el.dispatchEvent(new Event('change', { bubbles: true })); }
   });
   await A.page.click('#btn-quick-match');
-  await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+  await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
   const roomId = new URL(A.page.url()).searchParams.get('id')!;
 
   const B = await guestFactory(browser, 'PlayerB');
@@ -264,7 +265,7 @@ test.describe('optimistic render for the mover\'s own stone (TODO.md #153)', () 
       if (!el.checked) { el.checked = true; el.dispatchEvent(new Event('change', { bubbles: true })); }
     });
     await C.page.click('#btn-quick-match');
-    await C.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await C.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(C.page.url()).searchParams.get('id')!;
 
     const D = await makeGuest(browser, 'PlayerD');

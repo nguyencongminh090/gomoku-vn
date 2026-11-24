@@ -31,8 +31,8 @@ Read the `playwright-e2e-safety` skill first. The server has **no DB path overri
 - Shell gotcha: `pkill -f "playwright test"` inside a bash command also matches (and kills) that
   shell. Kill by PID.
 
-## Known state (2026-10-17)
-Chromium, isolated server (`PORT`, `GOMOKU_DB_PATH`, `CORS_ORIGIN`, `PLAYWRIGHT_BASE_URL`, `PW_CHROMIUM_PATH` if the revision differs),
-55 specs: **55 pass** (7 min). Specs reach room actions via `goto('/index.html#rooms')` (`helpers/room.ts`
-`createRoom/joinRoom/sit`), `helpers/board.ts` `cellPosition`, `helpers/actions.ts` `act/confirmAct`. Sign in with a FRESH
+## Known state (2026-11-24)
+Chromium, isolated server (`PORT=3102`, `GOMOKU_DB_PATH=/tmp/…`, `CORS_ORIGIN`, `AUTH_LIMITER_MAX=5000`, `PLAYWRIGHT_BASE_URL`, `PW_CHROMIUM_PATH` if the revision differs),
+56 specs: **56 pass** (6.0 min). Specs reach room actions via `goto('/index.html#rooms')` (`helpers/room.ts`
+`ROOM_URL_WITH_ID`/`createRoom`/`joinRoom`/`sit`), `helpers/board.ts` `cellPosition`, `helpers/actions.ts` `act`/`confirmAct`, and `helpers/fixtures.ts` (auto-leaves rooms and closes any unclosed contexts on teardown). Sign in with a FRESH
 page load (`authAsGuest/authAsMember` before `goto`); registering through the login UI and then `goto('#rooms')` on mobile stayed on home.

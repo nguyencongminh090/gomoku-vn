@@ -1,6 +1,7 @@
 import { test, expect, Page } from './helpers/fixtures';
 import { authAsGuest } from './helpers/auth';
 import { cellPosition } from './helpers/board';
+import { ROOM_URL_WITH_ID } from './helpers/room';
 
 /**
  * TEST-MATRIX.md row 3/4 — Wall rule: the first move of the game must land in
@@ -35,7 +36,7 @@ test.describe('Wall rule — first-move zone enforcement', () => {
     await A.page.click('#btn-create');
     // Leave Wall ON (lite default) — do NOT toggle it off here, unlike other specs.
     await A.page.click('#btn-quick-match');
-    await A.page.waitForURL(/room\.html\?id=/, { timeout: 15000 });
+    await A.page.waitForURL(ROOM_URL_WITH_ID, { timeout: 15000 });
     const roomId = new URL(A.page.url()).searchParams.get('id');
     expect(roomId).toBeTruthy();
 
