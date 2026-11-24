@@ -272,3 +272,90 @@ describe('club notifications (#235)', () => {
     expect(window.PlatformShell.avatar(null, 'Caro Club').textContent).toBe('CA');
   });
 });
+
+describe('room invite notifications (F443)', () => {
+  const INV = { id: 7, type: 'room_invite', read: false, createdAt: 'x',
+    payload: { inviteId: 'inv1', roomId: '#ABC', roomName: '#ABC', from: { username: 'alice', displayName: 'ALICE' } } };
+  const reply = (status, body) => Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) });
+  let calls;
+
+  /** Member page whose bell holds `items`; `routes(url, init)` answers everything except the bell reads. */
+  async function bootBell(items, routes = () => reply(200, {})) {
+    boot(null);
+    window.t = (k, v) => Object.entries(v || {}).reduce((s, [a, b]) => s.replace(`{${a}}`, b), { 'notif.room_invite': '{name} mời bạn vào bàn {room}' }[k] || k);
+    window.GvnSession = { getUser: () => MEMBER };
+    calls = [];
+    global.fetch = jest.fn((url, init = {}) => {
+      calls.push([init.method || 'GET', url, init.body]);
+      if (url === '/api/shell') return reply(200, { me: { username: 'zed' }, admin: { permissions: [] }, notifications: { items, unread: items.length } });
+      if (url === '/api/notifications') return reply(200, { items, unread: items.length });
+      if (url === '/api/notifications/read') return reply(200, { unread: 0 });
+      return routes(url, init);
+    });
+    window.PlatformShell.build('clubs');
+    window.PlatformShell.notifications.go = jest.fn();
+    await flush();
+  }
+  const row = () => document.querySelector('.pbell__panel .pbell__item--invite');
+  const btn = (which) => row().querySelector(`[data-act="${which}"]`);
+
+  it('text carries the room name', async () => {
+    await bootBell([]);
+    expect(window.PlatformShell.notifications.text(INV)).toBe('ALICE mời bạn vào bàn #ABC');
+  });
+
+  it('bell shows an invite as a non-link row with Accept / Decline; other types stay links', async () => {
+    await bootBell([INV, { id: 8, type: 'friend_request', read: true, payload: { from: { username: 'b', displayName: 'B' } } }]);
+    const r = row();
+    expect(r.tagName).toBe('DIV');
+    expect(r.querySelector('a')).toBeNull();
+    expect(r.textContent).toContain('ALICE mời bạn vào bàn #ABC');
+    expect([...r.querySelectorAll('button')].map((b) => b.dataset.act)).toEqual(['accept', 'decline']);
+    expect(document.querySelectorAll('.pbell__panel a.pbell__item')).toHaveLength(1);
+  });
+
+  it('Accept: buttons lock during the call, 200 → navigates to the room page (spectator join happens there)', async () => {
+    let release;
+    await bootBell([INV], (url) => (url === '/api/room-invites/inv1/accept' ? new Promise((r) => { release = () => r({ ok: true, status: 200, json: () => Promise.resolve({ roomId: '#ABC' }) }); }) : reply(200, {})));
+    btn('accept').click();
+    expect(btn('accept').disabled && btn('decline').disabled).toBe(true);
+    expect(calls).toContainEqual(['POST', '/api/room-invites/inv1/accept', undefined]);
+    release();
+    await flush();
+    expect(window.PlatformShell.notifications.go).toHaveBeenCalledWith('/room.html?id=%23ABC');
+  });
+
+  it('Accept 409 (already in another room): shows the server message, re-enables, does not navigate', async () => {
+    await bootBell([INV], (url) => (url.endsWith('/accept') ? reply(409, { error: 'Bạn đang ở trong một phòng khác.', code: 'ALREADY_IN_ANOTHER_ROOM' }) : reply(200, {})));
+    btn('accept').click();
+    await flush();
+    expect(row().querySelector('.pbell__err').textContent).toBe('Bạn đang ở trong một phòng khác.');
+    expect(btn('accept').disabled || btn('decline').disabled).toBe(false);
+    expect(window.PlatformShell.notifications.go).not.toHaveBeenCalled();
+  });
+
+  it('Accept 404 (stale invite): buttons replaced by the expired text, notification marked read, no navigation', async () => {
+    await bootBell([INV], (url) => (url.endsWith('/accept') ? reply(404, { error: 'x', code: 'INVITE_GONE' }) : reply(200, {})));
+    btn('accept').click();
+    await flush();
+    expect(row().querySelector('button')).toBeNull();
+    expect(row().textContent).toContain('notif.room_gone');
+    expect(calls).toContainEqual(['POST', '/api/notifications/read', JSON.stringify({ id: 7 })]);
+    expect(window.PlatformShell.notifications.go).not.toHaveBeenCalled();
+  });
+
+  it('Decline: DELETE then refetches the list', async () => {
+    await bootBell([INV]);
+    const before = calls.filter((c) => c[1] === '/api/notifications').length;
+    btn('decline').click();
+    await flush();
+    expect(calls).toContainEqual(['DELETE', '/api/room-invites/inv1', undefined]);
+    expect(calls.filter((c) => c[1] === '/api/notifications').length).toBe(before + 1);
+  });
+
+  it('a hostile room name stays text', async () => {
+    await bootBell([{ ...INV, payload: { ...INV.payload, roomName: '<img src=x onerror=1>' } }]);
+    expect(document.querySelector('.pbell__panel img')).toBeNull();
+    expect(row().textContent).toContain('<img src=x onerror=1>');
+  });
+});

@@ -238,6 +238,23 @@ describe('social page (#370 chat-first)', () => {
       expect(rows()[1].querySelector('.pdot--on')).toBeNull();
     });
 
+    it('F443: a room invite row is not a link and carries Accept / Decline; Decline sends DELETE', async () => {
+      const inv = { id: 5, type: 'room_invite', read: false, createdAt: 'x',
+        payload: { inviteId: 'inv9', roomId: '#ABC', roomName: '<i>R</i>', from: { username: 'ann', displayName: 'Ann' } } };
+      const dels = [];
+      location.hash = '#notifs';
+      await bootPage({ 'GET /api/notifications': () => json({ unread: 1, items: [inv] }),
+        'DELETE /api/room-invites/inv9': () => { dels.push('inv9'); return json({ ok: true }); } });
+      const row = rows()[0];
+      expect(row.tagName).toBe('DIV');
+      expect(row.querySelector('a')).toBeNull();
+      expect(row.querySelector('i')).toBeNull(); // room name is text
+      expect([...row.querySelectorAll('button')].map((b) => b.dataset.act)).toEqual(['accept', 'decline']);
+      row.querySelector('[data-act="decline"]').click();
+      await tick();
+      expect(dels).toEqual(['inv9']);
+    });
+
     it('opening an unread row marks it read; Back closes the view', async () => {
       const reads = [];
       location.hash = '#notifs';

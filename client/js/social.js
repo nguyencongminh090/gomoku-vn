@@ -672,13 +672,15 @@
     const box = $('sc-notifs');
     const N = PS().notifications;
     box.replaceChildren(...(items.length ? items.slice(0, 30).map((n) => {
-      const a = el('a', undefined, 'prow');
-      a.href = N.target(n);
+      const acts = N.actions(n); // F443 room invite: answered by its own buttons, so the row is not a link
+      const a = el(acts ? 'div' : 'a', undefined, 'prow');
+      if (!acts) a.href = N.target(n);
       a.append(el('span', undefined, 'pdot' + (n.read ? '' : ' pdot--on')));
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', N.text(n), 'prow__t' + (n.read ? '' : ' is-unread')));
+      if (acts) body.append(acts);
       a.append(body);
-      a.addEventListener('click', () => { if (!n.read) N.markRead(n.id); });
+      if (!acts) a.addEventListener('click', () => { if (!n.read) N.markRead(n.id); });
       return a;
     }) : [el('p', t('notif.empty'), 'pnote')]));
   }

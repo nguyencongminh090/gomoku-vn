@@ -46,6 +46,11 @@
 .pbell__item { display: block; padding: 10px 8px; border-radius: var(--radius); font-size: var(--text-sm); color: var(--c-ink-2); }
 .pbell__item.is-unread { color: var(--c-strong); font-weight: 600; background: var(--c-fill); }
 .pbell__item:hover { background: var(--c-fill); }
+.pbell__item--invite:hover { background: transparent; }
+.pbell__item--invite.is-unread:hover { background: var(--c-fill); }
+.pbell__acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.pbell__act { min-height: 36px; padding: 6px 14px; font-weight: 600; }
+.pbell__err { font-size: var(--text-xs); font-weight: 400; color: var(--c-ink-3); }
 .pbell__empty { margin: 0; padding: 14px 8px; font-size: var(--text-sm); color: var(--c-ink-3); }
 .pbell__all { display: block; padding: 8px; text-align: center; font-size: var(--text-xs); font-weight: 600; color: var(--c-ink-2); }
 

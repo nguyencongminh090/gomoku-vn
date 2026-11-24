@@ -1,3 +1,4 @@
+- ✅ **#443.** Invite an online player to my room: ≡ menu picker → accept/decline (invitee joins as spectator) `[Model: Sonnet]` — [detail](docs/todo/F443-room-invite.md)
 - ✅ **#441.** e2e suite stale: room URL wait (`?from=rooms`), hidden room users tab, reconnect banner text `[Model: Sonnet]` — [detail](docs/todo/B441-e2e-stale-room-url-wait.md)
 - ✅ **#440.** Rooms H UI: rule tabs, online rail, compact table cards (after #439) `[Model: Opus]` — [detail](docs/todo/F440-rooms-h-ui.md)
 - ✅ **#439.** Rooms H backend: per-rule roster ratings/rank, per-rule table pages, counts, playing players `[Model: Opus]` — [detail](docs/todo/F439-rooms-h-backend.md)

@@ -40,6 +40,7 @@ const notificationsRouter = require('./routes/notifications');
 const presenceRouter = require('./routes/presence');
 const shellRouter = require('./routes/shell');
 const challengesRouter = require('./routes/challenges');
+const roomInvitesRouter = require('./routes/room-invites');
 const dmRouter = require('./routes/dm');
 const tournamentGamesRouter = require('./routes/tournamentGames');
 const { verifySocketToken } = require('./middleware/auth');
@@ -202,6 +203,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/presence', presenceRouter);
 app.use('/api/shell', shellRouter);
 app.use('/api/challenges', challengesRouter);
+app.use('/api/room-invites', roomInvitesRouter);
 app.use('/api/dm', dmRouter);
 
 // Public profile page: /u/<username> — same HTML for every name; profile.js reads the path.

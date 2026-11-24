@@ -195,6 +195,12 @@
     const code = roomIdNav && roomIdNav.dataset.code;
     if (code && await copyText(joinUrl(code)) && window.showToast) window.showToast(t('room.invite_copied'), 'success', 1800);
   });
+  // F443: the host picks an online player to invite (room-invite.js). Shown by updateUI() to the host only.
+  const invitePlayerBtn = document.getElementById('btn-room-invite-player');
+  if (invitePlayerBtn) invitePlayerBtn.addEventListener('click', () => {
+    closeNavPops();
+    if (global.RoomInvite) global.RoomInvite.open();
+  });
   const settingsBtn = document.getElementById('btn-room-settings');
   if (settingsBtn) settingsBtn.addEventListener('click', () => {
     closeNavPops();
@@ -290,6 +296,8 @@
     st.myRole  = me ? me.role  : null;
     st.mySlot  = me ? me.slot  : null;
     st.isReady = me ? me.ready : false;
+
+    if (invitePlayerBtn) invitePlayerBtn.hidden = !(st.myRole === 'host' && !(st.myUser && st.myUser.isGuest));
 
     // Site links leave the room, so a seated player loses them mid-game (same
     // condition as the Rời phòng confirm in room.js) — #191 item 6.
