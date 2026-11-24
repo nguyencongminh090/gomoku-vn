@@ -114,13 +114,71 @@
     text: (n) => {
       const vars = { name: n.payload && n.payload.from ? n.payload.from.displayName : '' };
       if (n.payload && n.payload.club) vars.club = n.payload.club.name;
+      if (n.payload && n.payload.roomName) vars.room = n.payload.roomName;
       return t('notif.' + n.type, vars);
     },
+    /** Inline answer buttons for notifications you act on (F443 room_invite), else null. */
+    actions: (n) => (n.type === 'room_invite' && n.payload && n.payload.inviteId ? inviteActions(n) : null),
+    /** Page change after accepting; a seam so tests can observe it. */
+    go: (url) => window.location.assign(url),
     target: (n) => notifTarget(n),
     markRead: (id) => markRead(id),
     /** Refetch now — e.g. reading a DM thread deletes its `dm` row server-side; don't wait for the 60 s poll. */
     refresh: () => refreshBell(),
   };
+
+  /**
+   * Accept / Decline for a room invite (F443). Accept → the room page, where the normal join makes you a
+   * spectator (no seat). 404 = the invite is gone (expired / server restarted): say so, mark the row read.
+   */
+  const goneInvites = new Set(); // a re-render (markRead / poll) must not bring the buttons of a dead invite back
+  function inviteActions(n) {
+    const path = '/api/room-invites/' + encodeURIComponent(n.payload.inviteId);
+    const box = el('div', undefined, 'pbell__acts');
+    if (goneInvites.has(n.payload.inviteId)) { box.append(el('span', t('notif.room_gone'), 'pbell__err')); return box; }
+    const err = el('span', '', 'pbell__err');
+    err.setAttribute('role', 'status');
+    const mk = (act, key, cls) => {
+      const b = el('button', t(key), 'pbell__act pbtn ' + cls);
+      b.type = 'button';
+      b.dataset.act = act;
+      return b;
+    };
+    const ok = mk('accept', 'notif.room_accept', 'pbtn--primary');
+    const no = mk('decline', 'notif.room_decline', '');
+    const lock = (busy) => { ok.disabled = busy; no.disabled = busy; };
+    const fail = async (res) => {
+      const body = res ? await res.json().catch(() => ({})) : {};
+      err.textContent = body.error || t('notif.room_error');
+      lock(false);
+    };
+    ok.addEventListener('click', async () => {
+      lock(true);
+      err.textContent = '';
+      let res = null;
+      try { res = await fetch(path + '/accept', { method: 'POST', credentials: 'same-origin' }); } catch (_) { /* offline */ }
+      if (res && res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.roomId) return notifications.go('/room.html?id=' + encodeURIComponent(body.roomId));
+      }
+      if (res && res.status === 404) {
+        goneInvites.add(n.payload.inviteId);
+        box.replaceChildren(el('span', t('notif.room_gone'), 'pbell__err'));
+        return markRead(n.id);
+      }
+      return fail(res);
+    });
+    no.addEventListener('click', async () => {
+      lock(true);
+      err.textContent = '';
+      let res = null;
+      try { res = await fetch(path, { method: 'DELETE', credentials: 'same-origin' }); } catch (_) { /* offline */ }
+      if (res && res.ok) return refreshBell();
+      return fail(res);
+    });
+    box.append(ok, no, err);
+    return box;
+  }
 
   function notifTarget(n) {
     const from = n.payload && n.payload.from;
@@ -147,8 +205,14 @@
     bell.panel.appendChild(head);
     if (!bell.items.length) bell.panel.appendChild(el('p', t('notif.empty'), 'pbell__empty'));
     for (const n of bell.items.slice(0, 8)) {
-      const name = n.payload && n.payload.from ? n.payload.from.displayName : '';
-      const a = el('a', t('notif.' + n.type, { name }), 'pbell__item' + (n.read ? '' : ' is-unread'));
+      const acts = notifications.actions(n);
+      if (acts) { // not a link: the row's own buttons answer it
+        const row = el('div', undefined, 'pbell__item pbell__item--invite' + (n.read ? '' : ' is-unread'));
+        row.append(el('span', notifications.text(n)), acts);
+        bell.panel.appendChild(row);
+        continue;
+      }
+      const a = el('a', notifications.text(n), 'pbell__item' + (n.read ? '' : ' is-unread'));
       a.href = notifTarget(n);
       a.addEventListener('click', () => { if (!n.read) markRead(n.id); });
       bell.panel.appendChild(a);

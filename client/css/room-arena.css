@@ -101,6 +101,7 @@ body.arena-room .rmenu, body.arena-room .rules-pop {
 }
 body.arena-room .rmenu[hidden], body.arena-room .rules-pop[hidden], body.arena-room .rmenu__go[hidden], body.arena-room .rnav-scrim[hidden] { display: none; }
 body.arena-room .rmenu { right: 16px; width: 320px; padding: 8px; }
+body.arena-room .rmenu__item[hidden] { display: none; }   /* F443: host-only item (updateUI toggles hidden) */
 body.arena-room .rmenu__item {
   display: flex; align-items: center; gap: 12px; width: 100%; min-height: 40px; padding: 8px 10px;
   border: 0; border-radius: 9px; background: none; text-align: left; cursor: pointer;

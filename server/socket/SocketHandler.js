@@ -102,6 +102,10 @@ function init(io) {
     },
   });
 
+  // Room invites (F443): the host's picker lists visible presence only (ids — no avatar lookup per online user, #381).
+  require('../managers/RoomInviteService').setHooks({ onlineUsers: () => getOnlineUsersSorted() });
+  require('../managers/RoomInviteService').purgeStale(); // invites are in-memory: rows from before this boot can never be answered
+
   // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.
   // + what they are doing (#370 chat page: playing / watching / free, with the room for "Xem ván").
   const friendService = require('../managers/FriendService');
