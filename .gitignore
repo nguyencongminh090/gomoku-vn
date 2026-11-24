@@ -1,6 +1,20 @@
 node_modules
 .venv/
-.agents/
+.agents/*
+!.agents/skills/
+.agents/skills/*
+# Codex discovers these shared project skills through links to .claude/skills.
+!.agents/skills/deep-reasoning
+!.agents/skills/design-workflow
+!.agents/skills/git-workflow
+!.agents/skills/playwright-e2e-safety
+!.agents/skills/ui-audit
+!.agents/skills/ui-brief
+!.agents/skills/ui-fix
+!.agents/skills/ui-images
+!.agents/skills/ui-motion
+!.agents/skills/ui-style/
+!.agents/skills/vps-deploy
 # .claude/ is shared via source control (project skills), except personal/local bits:
 .claude/settings.local.json
 # Most .claude/skills/* entries are symlinks into .agents/ (Antigravity IDE's local, gitignored
