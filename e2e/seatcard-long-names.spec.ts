@@ -29,7 +29,7 @@ async function member(browser: Browser, displayName: string) {
 }
 
 /** Every card's content must stay inside the card, and the left column must not widen into the board (#369 dissolved .rail via display:contents). */
-async function railGeometry(page: Page) {
+async function cardColumnGeometry(page: Page) {
   return await page.evaluate(() => {
     const box = (el: Element) => el.getBoundingClientRect();
     const board = box(document.querySelector('.board-area-shell')!);
@@ -47,7 +47,7 @@ async function railGeometry(page: Page) {
     });
     const colWidth = cards.length ? Math.max(...cards.map((c) => c.cardWidth)) : 0;
     return {
-      railWidth: colWidth,
+      colWidth,
       boardLeft: +board.left.toFixed(1),
       boardWidth: +board.width.toFixed(1),
       cards,
@@ -56,8 +56,8 @@ async function railGeometry(page: Page) {
   });
 }
 
-function expectRailIntact(g: Awaited<ReturnType<typeof railGeometry>>, when: string, railW?: number) {
-  if (railW !== undefined) expect(g.railWidth, `card column must keep its width (${when})`).toBe(railW);
+function expectCardColumnIntact(g: Awaited<ReturnType<typeof cardColumnGeometry>>, when: string, colW?: number) {
+  if (colW !== undefined) expect(g.colWidth, `card column must keep its width (${when})`).toBe(colW);
   for (const c of g.cards) {
     expect(c.cardRight, `card must stay inside the viewport (${when})`).toBeLessThanOrEqual(g.vw);
     expect(c.childOverflow, `card content must stay inside the card (${when})`).toBeLessThanOrEqual(1);
@@ -72,19 +72,19 @@ test.describe('rail player cards: long names never widen the rail (TODO.md #142)
     const A = await member(browser, NAME_A);
     const roomUrl = await createRoom(A.page);
 
-    const empty = await railGeometry(A.page);
-    expectRailIntact(empty, 'nobody seated');
+    const empty = await cardColumnGeometry(A.page);
+    expectCardColumnIntact(empty, 'nobody seated');
 
     await sit(A.page, 1);
     await expect(A.page.locator('[data-slot="1"] .seatcard__name')).toHaveText(NAME_A, { timeout: 15000 });
-    expectRailIntact(await railGeometry(A.page), 'one long name seated', empty.railWidth);
+    expectCardColumnIntact(await cardColumnGeometry(A.page), 'one long name seated', empty.colWidth);
 
     const B = await member(browser, NAME_B);
     await joinRoom(B.page, roomUrl);
     await sit(B.page, 2);
     await expect(A.page.locator('[data-slot="2"] .seatcard__name')).toHaveText(NAME_B, { timeout: 15000 });
     await expect(A.page.locator('#start-modal')).toHaveClass(/visible/, { timeout: 20000 });
-    expectRailIntact(await railGeometry(A.page), 'both long names seated, start modal up', empty.railWidth);
+    expectCardColumnIntact(await cardColumnGeometry(A.page), 'both long names seated, start modal up', empty.colWidth);
 
     await A.ctx.close();
     await B.ctx.close();
@@ -100,7 +100,7 @@ test.describe('rail player cards: long names never widen the rail (TODO.md #142)
 
     // The server caps names at 24 chars and those fit the 340px rail, so force
     // the overflow: a 60-char name in the same box.
-    const before = await railGeometry(A.page);
+    const before = await cardColumnGeometry(A.page);
     const m = await nameEl.evaluate((el) => {
       el.textContent = 'W'.repeat(60);
       return {
@@ -114,7 +114,7 @@ test.describe('rail player cards: long names never widen the rail (TODO.md #142)
     expect(m.scrollWidth).toBeGreaterThan(m.clientWidth);
     expect(m.textOverflow).toBe('ellipsis');
 
-    expectRailIntact(await railGeometry(A.page), 'ellipsised name', before.railWidth);
+    expectCardColumnIntact(await cardColumnGeometry(A.page), 'ellipsised name', before.colWidth);
     await A.ctx.close();
   });
 });
