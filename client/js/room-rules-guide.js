@@ -3,7 +3,8 @@
 /**
  * room-rules-guide.js — the lobby's Rules tab (#432), with illustrated examples of the rules Play3CR offers.
  *
- * Window API: RoomRulesGuide.render(container, { t, active: ['freestyle', 'wall', …] })
+ * Window API: RoomRulesGuide.render(container, { t, active: ['freestyle', 'wall', …], badgeKey })
+ *             badgeKey = the marker on an active rule (default 'guide.in_use'; the lobby says 'guide.selected', #440).
  *             RoomRulesGuide.SECTIONS / boardHtml(rows) — exported for tests.
  *
  * Demo board strings (one string per row):
@@ -144,15 +145,15 @@
       + pointsHtml(sec, t, 3) + `</details></div>${exampleHtml(sec.examples[0], t)}</section>`;
   }
 
-  function sectionHtml(sec, t, live, open) {
-    const badge = live ? ` <span class="rg-live">${esc(t('guide.in_use'))}</span>` : '';
+  function sectionHtml(sec, t, live, open, badgeKey) {
+    const badge = live ? ` <span class="rg-live">${esc(t(badgeKey))}</span>` : '';
     return `<details class="rg-sec" data-rule="${sec.id}"${open ? ' open' : ''}>`
       + `<summary><span class="rg-sec__name">${esc(t(sec.nameKey))}${badge}</span>`
       + `<span class="rg-lead">${esc(t(`guide.${sec.id}_lead`))}</span></summary>`
       + `<div class="rg-sec__body">${pointsHtml(sec, t)}<div class="rg-exs">${sec.examples.map((ex) => exampleHtml(ex, t)).join('')}</div></div></details>`;
   }
 
-  function render(container, { t, active = [] }) {
+  function render(container, { t, active = [], badgeKey = 'guide.in_use' }) {
     if (!container) return;
     const prior = new Map([...container.querySelectorAll('details[data-rule]')].map((node) => [node.dataset.rule, node.open]));
     const focusedRule = container.contains(document.activeElement) ? document.activeElement.closest('details')?.dataset.rule : null;
@@ -160,7 +161,7 @@
       const secs = SECTIONS.filter((s) => s.group === g);
       return `<section class="rg-group" data-group="${g}" aria-labelledby="rg-${g}"><h3 id="rg-${g}" class="rg-group__t">${esc(t(`guide.group_${g}`))}</h3>`
         + '<div class="rg-group__rules">'
-        + secs.map((s) => sectionHtml(s, t, active.includes(s.id), prior.get(s.id) ?? active.includes(s.id))).join('') + '</div></section>';
+        + secs.map((s) => sectionHtml(s, t, active.includes(s.id), prior.get(s.id) ?? active.includes(s.id), badgeKey)).join('') + '</div></section>';
     }).join('');
     if (focusedRule) container.querySelector(`[data-rule="${focusedRule}"] > summary`)?.focus({ preventScroll: true });
   }

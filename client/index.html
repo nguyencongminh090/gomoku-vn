@@ -42,7 +42,8 @@
   <link rel="stylesheet" href="css/pwa-banner.css?v=c3eeb0e5" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="css/rules-guide.css?v=d385a4ef" />
-  <link rel="stylesheet" href="css/rooms-hall.css?v=d6cd30d0" />
+  <link rel="stylesheet" href="css/rooms-hall.css?v=3aa2d39f" />
+  <link rel="stylesheet" href="css/rooms-h.css?v=57f26d3f" />
   <link rel="stylesheet" href="css/home-hero.css?v=ea8e5925" />
   <link rel="stylesheet" href="css/home-lamp.css?v=3d83c4c7" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
@@ -52,15 +53,15 @@
   <!-- Phosphor Icons -->
 
   <!-- modulepreload hints (TODO.md #126) — must exactly match js/index-entry.js's import list -->
-  <link rel="modulepreload" href="js/i18n.js?v=30b5f4b1" />
+  <link rel="modulepreload" href="js/i18n.js?v=ec94f227" />
   <link rel="modulepreload" href="js/ui-mode.js?v=3e1ff171" />
   <link rel="modulepreload" href="js/settings-panel.js?v=349e6629" />
   <link rel="modulepreload" href="js/platform-shell.js?v=f1ed8844" />
-  <link rel="modulepreload" href="js/lobby.js?v=aeefee1f" />
-  <link rel="modulepreload" href="js/private-chat.js?v=6a958523" />
-  <link rel="modulepreload" href="js/tournaments.js?v=c5eed2e0" />
-  <link rel="modulepreload" href="js/room-rules-guide.js?v=217cc7a6" />
-  <link rel="modulepreload" href="js/lobby-home.js?v=7fa2f134" />
+  <link rel="modulepreload" href="js/lobby.js?v=7a02f9d9" />
+  <link rel="modulepreload" href="js/private-chat.js?v=dd9f40ff" />
+  <link rel="modulepreload" href="js/tournaments.js?v=a0b08f0e" />
+  <link rel="modulepreload" href="js/room-rules-guide.js?v=69333b4f" />
+  <link rel="modulepreload" href="js/lobby-home.js?v=50999328" />
   <link rel="modulepreload" href="js/home-lamp.js?v=bbe72945" />
 
 </head>
@@ -195,61 +196,54 @@
   </section>
 
   <!-- ══════════════════════════ SCREEN: Phòng (room list) ══════════════════ -->
-  <!-- #364 R1 "Sảnh gỗ" (DESIGN.md): photo hero (live counts + room code) → tabs + who is online → table-card grid (lobby.js). -->
+  <!-- #440 direction H (features/rooms-redesign-v4/h-hai-cot.html): sticky counts bar → online rail (desktop) +
+       rule tabs, filters, compact table cards. Rendered by js/rooms-h.js; counts / tabs / cards / roster fill in live. -->
   <div class="tab-panel" id="panel-tables">
-    <section class="rh" aria-labelledby="rh-title">
-      <img class="rh__img" src="assets/photos/rooms-hero-1280.webp" srcset="assets/photos/rooms-hero-640.webp 640w, assets/photos/rooms-hero-1280.webp 1280w" sizes="100vw" width="1280" height="707" alt="" fetchpriority="high" decoding="async" />
-      <div class="rh__in">
-        <div class="rh__text">
-          <p class="rh__eyebrow"><i aria-hidden="true"></i><span data-i18n="lobby.rh_eyebrow">Sảnh đang mở</span></p>
-          <h1 class="rh__title" id="rh-title" data-i18n="lobby.rh_title">Vào sảnh, giao lưu cùng mọi người.</h1>
-          <ul class="rh__stats" aria-live="polite">
-            <li><b id="rh-n-open">0</b><span data-i18n="lobby.rh_open">bàn chờ đối thủ</span></li>
-            <li><b id="rh-n-live">0</b><span data-i18n="lobby.rh_live">ván đang đấu</span></li>
-            <li><b id="rh-n-watch">0</b><span data-i18n="lobby.rh_watch">người đang xem</span></li>
-            <li><b id="rh-n-online">0</b><span data-i18n="lobby.rh_online">đang online</span></li>
-          </ul>
-        </div>
-        <div class="rh__act">
-          <form id="join-code-form" class="rh-code" novalidate autocomplete="off">
-            <label class="rh__lbl" for="join-code-1" data-i18n="lobby.join_code">Vào bằng mã</label>
-            <div class="rh-code__row">
-              <span class="rh-code__hash" aria-hidden="true">#</span>
-              <input class="rh-code__box" id="join-code-1" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 1 của mã phòng" data-i18n-aria="home.code_char_1" />
-              <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 2 của mã phòng" data-i18n-aria="home.code_char_2" />
-              <input class="rh-code__box" maxlength="1" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" aria-label="Ký tự 3 của mã phòng" data-i18n-aria="home.code_char_3" />
-              <button id="btn-join-code" class="rh-code__go" type="submit"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-door-open"></use></svg><span data-i18n="lobby.join_code_go">Vào</span></button>
-            </div>
-            <p id="join-code-error" class="rh-code__err" role="alert" hidden></p>
-          </form>
-        </div>
-      </div>
-      <p class="rh__credit"><span data-i18n="lobby.rh_photo">Ảnh</span>: <a href="https://pixabay.com/photos/go-board-game-board-games-game-3339748/" target="_blank" rel="noopener">OrcaTec / Pixabay</a></p>
-    </section>
-
-    <!-- "Đang chơi · N" (one label — the Phòng/Bàn/Quan sát filters were dropped 2026-11-13) + who is online as avatars (#159: an avatar opens a PM). -->
-    <div class="rbar">
-      <div class="rbar__tabs" id="rooms-tabs" role="tablist" aria-label="Phòng chơi" data-i18n-aria="home.rooms_title">
-        <button class="rbar__tab" id="rtab-rooms" type="button" role="tab" aria-selected="true" aria-controls="rooms-main"><span data-i18n="lobby.rh_playing">Đang chơi</span><span class="ptab__n" id="room-n-playing">0</span></button>
-        <button class="rbar__tab" id="rtab-rules" type="button" role="tab" aria-selected="false" aria-controls="rooms-rules" tabindex="-1"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-scales"></use></svg><span data-i18n="lobby.rh_rules">Luật chơi</span></button>
-      </div>
-      <div class="online-line" id="online-line" hidden>
-        <span class="online-line__names" id="online-line-names"></span>
-        <span class="online-line__title"><span id="online-line-count">0</span> <span data-i18n="lobby.rh_online">đang online</span></span>
-      </div>
+    <div class="rooms-bar">
+      <span class="vstat"><i aria-hidden="true"></i><b id="rooms-n-online">0</b><span data-i18n="rooms.online">đang online</span></span>
+      <span class="vstat vstat--play"><i aria-hidden="true"></i><b id="rooms-n-playing">0</b><span data-i18n="rooms.playing">đang chơi</span></span>
+      <button type="button" class="vbtn vbtn--ghost rooms-bar__people" id="rooms-people" aria-haspopup="dialog" aria-controls="rooms-sheet" data-i18n="rooms.people">Xem người online</button>
+      <button type="button" class="vbtn vbtn--primary rooms-bar__new" id="btn-create" data-create-room><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-plus-circle"></use></svg><span data-i18n="rooms.new">Mở bàn</span></button>
     </div>
 
-    <div id="rooms-main" role="tabpanel" aria-labelledby="rtab-rooms">
-    <!-- Room cards (lobby.js renderRoomList); the last card opens the create modal. -->
-    <div id="room-list" class="room-list rgrid">
-      <div class="room-list__empty">
-        <span class="room-list__empty-text" data-i18n="lobby.no_rooms">Chưa có phòng nào.</span>
-        <span class="room-list__empty-sub" data-i18n="lobby.no_rooms_sub">Hãy tạo phòng mới để bắt đầu!</span>
+    <div class="rooms-cols" id="rooms-cols">
+      <section class="rooms-rail" id="rooms-rail" aria-labelledby="rooms-rail-h">
+        <header class="rooms-rail__head">
+          <div class="rooms-rail__t"><h2 id="rooms-rail-h" data-i18n="rooms.rail_title">Người đang online</h2><span class="rooms-rail__sub" id="rooms-rail-sub"></span></div>
+          <button type="button" class="vicon-btn" id="rooms-rail-toggle" aria-expanded="true" aria-controls="rooms-rail" aria-label="Thu gọn danh sách"><svg class="icon icon--md" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-arrow-left"></use></svg></button>
+        </header>
+        <label class="vsearch rooms-rail__search"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-magnifying-glass"></use></svg>
+          <span class="sr-only" data-i18n="rooms.search">Tìm người chơi</span><input id="rooms-q" type="search" placeholder="Tìm người chơi" data-i18n-placeholder="rooms.search" autocomplete="off" /></label>
+        <ul class="vroster rooms-rail__list" id="rooms-roster" data-online-roster></ul>
+      </section>
+
+      <section class="rooms-main-col" aria-labelledby="rtab-freestyle">
+        <div class="vtabs rooms-tabs" id="rooms-tabs" role="tablist" aria-label="Luật chơi" data-i18n-aria="rooms.tabs_aria"></div>
+        <div id="rooms-main" role="tabpanel">
+          <div class="rooms-tools">
+            <div class="vchips" id="rooms-filters" role="group" aria-label="Lọc bàn" data-i18n-aria="rooms.filters_aria"></div>
+            <label class="rooms-sort"><span data-i18n="rooms.sort">Sắp xếp</span><select class="vselect" id="rooms-sort"></select></label>
+          </div>
+          <div id="room-list" class="rooms-grid" aria-live="off"></div>
+          <button type="button" class="vmore rooms-more" id="rooms-more" hidden></button>
+        </div>
+        <section class="rg rooms-rg" id="rooms-rules" role="tabpanel" aria-labelledby="rtab-rules" tabindex="0" hidden></section>
+      </section>
+    </div>
+
+    <!-- Phones: the roster is a bottom sheet behind "Xem người online". -->
+    <div class="vsheet" id="rooms-sheet" role="dialog" aria-modal="true" aria-labelledby="rooms-sheet-h" hidden>
+      <div class="vsheet__scrim" data-sheet-close></div>
+      <div class="vsheet__panel"><span class="vsheet__grip" aria-hidden="true"></span>
+        <header class="vsheet__head"><div><h2 id="rooms-sheet-h"></h2><p id="rooms-sheet-sub"></p></div>
+          <button type="button" class="vicon-btn" data-sheet-close aria-label="Đóng" data-i18n-aria="modal.close"><svg class="icon icon--md" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-x"></use></svg></button></header>
+        <div class="vsheet__body">
+          <label class="vsearch"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-magnifying-glass"></use></svg>
+            <span class="sr-only" data-i18n="rooms.search">Tìm người chơi</span><input id="rooms-sheet-q" type="search" placeholder="Tìm người chơi" data-i18n-placeholder="rooms.search" autocomplete="off" /></label>
+          <ul class="vroster" id="rooms-sheet-list" data-online-roster></ul>
+        </div>
       </div>
-      <button type="button" class="rcard-new" id="btn-create" data-create-room><span class="rcard-new__plus"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-plus-circle"></use></svg></span><span data-i18n="lobby.rh_new_table">Mở bàn mới</span></button>
     </div>
-    </div>
-    <div class="rg" id="rooms-rules" role="tabpanel" aria-labelledby="rtab-rules" tabindex="0" hidden></div>
   </div>
 
   <!-- ══════════════════════════ SCREEN: Giải đấu (Tournaments) ═══════════ -->
@@ -649,6 +643,6 @@
 <script src="js/action-delegate.js?v=7420bbed"></script>
 <script src="js/challenge-modal.js?v=77805a23"></script>
 <script src="js/home-challenge.js?v=a4c4bc5e"></script>
-<script type="module" src="js/index-entry.js?v=5e350fd5"></script>
+<script type="module" src="js/index-entry.js?v=f916fb56"></script>
 </body>
 </html>

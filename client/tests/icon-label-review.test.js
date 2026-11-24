@@ -63,7 +63,8 @@ describe('icon + label review (#212)', () => {
   });
 
   test('one icon per concept: join-by-code is a door, not the challenge sword', () => {
-    expect(iconOf(parse('index.html').getElementById('btn-join-code'))).toBe('ph-regular-door-open');
+    // #440 dropped the Phòng hero copy; the Home code form is the one left.
+    expect(iconOf(parse('index.html').querySelector('#home-code .hq-enter'))).toBe('ph-regular-door-open');
   });
 
   test('settings: Account tab is not the admin shield; who-can-DM is a chat bubble, not the bio icon', () => {
