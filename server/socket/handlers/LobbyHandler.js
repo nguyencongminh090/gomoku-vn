@@ -27,6 +27,8 @@ const {
   lobbyChannelOf,
   lobbyRoomOf,
   leaveLobby,
+  setSeatAlert,
+  clearSeatAlert,
 } = require('../state');
 
 const ONLINE_SEARCH_MIN_INTERVAL_MS = 200; // #381
@@ -79,6 +81,14 @@ function register(io, socket) {
     lastRoomsQueryAt = now;
     ack(queryLobbyRooms(payload && typeof payload === 'object' ? payload : {}, user));
   });
+
+  // #438: "Báo khi có bàn" — arm / replace ({rule, near, time[]}) or clear (no payload) this socket's seat alert.
+  // Independent of lobby:subscribe: it works from any page that holds a socket.
+  socket.on('lobby:alert_set', (payload, ack) => {
+    const armed = setSeatAlert(socket, payload);
+    if (typeof ack === 'function') ack({ ok: true, armed });
+  });
+  socket.on('lobby:alert_clear', () => { clearSeatAlert(socket); });
 
   socket.on('lobby:unsubscribe', () => {
     leaveLobby(socket);

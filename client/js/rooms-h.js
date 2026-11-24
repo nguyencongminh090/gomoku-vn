@@ -16,6 +16,7 @@
  * Window API: RoomsH.create({ root, client, t, avatar, icon, me, joinRoom, openCreate, fetchJson, storage })
  *   avatar(url, name, cls) / icon(name) → HTML string; me() → { userId, isGuest }; joinRoom(roomId);
  *   openCreate(rule); fetchJson(url) → Promise<json|null>.
+ *   seatAlert (optional): SeatAlert.create(...) instance (#438) — adds the "Báo khi có bàn" chip to the filters.
  * Returns { rule(), setOnline(total), refreshRoster(), render() }.
  */
 (function (global) {
@@ -160,11 +161,34 @@
       const noNear = canNear() ? '' : t('rooms.near_off', { rule: ruleLabel() });
       $('rooms-filters').innerHTML = chip('open', t('rooms.f_open'), f.open)
         + chip('near', t('rooms.f_near'), f.near && !noNear, noNear)
-        + TIMES.map((k) => chip('t:' + k, t('rooms.t_' + k), f.time.has(k))).join('');
+        + TIMES.map((k) => chip('t:' + k, t('rooms.t_' + k), f.time.has(k))).join('')
+        + alertChip();
       const sel = $('rooms-sort');
       sel.innerHTML = SORTS.map((s) => `<option value="${s}"${s === sort ? ' selected' : ''}>${esc(t('rooms.sort_' + s))}</option>`).join('');
     }
+    /** #438: not a filter but a saved copy of the current rule + filters; lit while an alert is armed (any rule). */
+    function alertChip() {
+      const sa = opts.seatAlert;
+      if (!sa) return '';
+      const a = sa.get();
+      let tip = t('rooms.alert_tip_off');
+      if (a) {
+        const what = [ruleLabel(a.rule)].concat(a.near ? [t('rooms.f_near')] : [], TIMES.filter((k) => a.time.includes(k)).map((k) => t('rooms.t_' + k))).join(', ');
+        tip = t('rooms.alert_tip', { what });
+        const until = sa.mutedUntil();
+        if (until) tip += ' ' + t('rooms.alert_muted', { time: new Date(until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
+      }
+      return `<button type="button" class="vchip vchip--alert" data-f="alert" aria-pressed="${!!a}" title="${esc(tip)}">${icon('ph-regular-bell')}${esc(t('rooms.f_alert'))}</button>`;
+    }
     function onFilter(key) {
+      if (key === 'alert') {
+        const sa = opts.seatAlert;
+        if (!sa) return;
+        if (sa.get()) sa.disarm();
+        else sa.arm({ rule, near: f.near && canNear(), time: [...f.time] });
+        renderFilters(); // the chip only — no refetch
+        return;
+      }
       if (key === 'open') f.open = !f.open;
       else if (key === 'near') { if (!canNear()) return; f.near = !f.near; }
       else if (key.startsWith('t:')) { const k = key.slice(2); if (f.time.has(k)) f.time.delete(k); else f.time.add(k); }
@@ -493,6 +517,8 @@
       const onWide = () => { if (wide.matches) closeSheet(); };
       if (wide.addEventListener) wide.addEventListener('change', onWide); else if (wide.addListener) wide.addListener(onWide);
     }
+    // The toast's "Tắt 10 phút" (or a second tab) changes the alert: redraw the chip's tooltip.
+    if (opts.seatAlert) global.addEventListener('seatalert:change', () => { if (tab !== 'rules') renderFilters(); });
     render();
 
     return {

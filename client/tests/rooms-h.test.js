@@ -31,7 +31,7 @@ function fakeClient() {
   };
 }
 
-function mount({ me = { userId: 'me', isGuest: false }, myRatings = [], rule = null } = {}) {
+function mount({ me = { userId: 'me', isGuest: false }, myRatings = [], rule = null, seatAlert = null } = {}) {
   document.body.innerHTML = BODY;
   window.eval(GUIDE);
   window.eval(SRC);
@@ -42,6 +42,7 @@ function mount({ me = { userId: 'me', isGuest: false }, myRatings = [], rule = n
   return window.RoomsH.create({
     root: document.getElementById('panel-tables'),
     client,
+    seatAlert,
     t,
     avatar: (url, name, cls) => `<span class="pav ${cls}" data-url="${url || ''}" aria-hidden="true"></span>`, // PlatformShell.avatar: initials/photo, no name text
     icon: (n) => `<svg class="icon" data-i="${n}"></svg>`,
@@ -365,5 +366,55 @@ describe('static guards', () => {
   it('the bars sit under the 56px nav; body overflow-x is never hidden (#215 sticky)', () => {
     expect(css).toMatch(/\.rooms-bar \{ position: sticky; top: 56px;/);
     expect(css).not.toMatch(/overflow-x: hidden/);
+  });
+});
+
+describe('#438 "Báo khi có bàn" chip', () => {
+  const fakeAlert = (armed = null) => {
+    const sa = { cur: armed, calls: [], muted: 0 };
+    sa.get = () => sa.cur;
+    sa.arm = (f) => { sa.calls.push(['arm', f]); sa.cur = f; window.dispatchEvent(new CustomEvent('seatalert:change')); return true; };
+    sa.disarm = () => { sa.calls.push(['disarm']); sa.cur = null; window.dispatchEvent(new CustomEvent('seatalert:change')); };
+    sa.mutedUntil = () => sa.muted;
+    return sa;
+  };
+  const chip = () => document.querySelector('[data-f="alert"]');
+
+  it('no chip without a seatAlert (the rooms suites above keep their filter row)', () => {
+    mount();
+    expect(chip()).toBeNull();
+  });
+
+  it('off by default; a click arms the CURRENT rule + filters, a second click disarms; no table refetch', () => {
+    const sa = fakeAlert();
+    mount({ rule: 'caro', seatAlert: sa, myRatings: [] });
+    expect(chip().getAttribute('aria-pressed')).toBe('false');
+    document.querySelector('[data-f="t:fast"]').click();
+    client.acks.length = 0;
+    chip().click();
+    expect(sa.calls).toEqual([['arm', { rule: 'caro', near: false, time: ['fast'] }]]);
+    expect(chip().getAttribute('aria-pressed')).toBe('true');
+    expect(client.acks).toEqual([]);
+    chip().click();
+    expect(sa.calls[1]).toEqual(['disarm']);
+    expect(chip().getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('near rides along only when the player can use it (has an Elo in this rule)', async () => {
+    const sa = fakeAlert();
+    mount({ rule: 'freestyle', seatAlert: sa, myRatings: [] });
+    document.querySelector('[data-f="near"]').click(); // disabled: no Elo
+    chip().click();
+    expect(sa.calls[0][1].near).toBe(false);
+  });
+
+  it('lit while armed (even for another rule) and the tooltip names what is saved; redraws on seatalert:change', () => {
+    const sa = fakeAlert({ rule: 'renju', near: true, time: ['mid', 'fast'] });
+    mount({ rule: 'freestyle', seatAlert: sa });
+    expect(chip().getAttribute('aria-pressed')).toBe('true');
+    expect(chip().title).toBe('rooms.alert_tip(what=rule.renju, rooms.f_near, rooms.t_fast, rooms.t_mid)');
+    sa.cur = null;
+    window.dispatchEvent(new CustomEvent('seatalert:change'));
+    expect(chip().getAttribute('aria-pressed')).toBe('false');
   });
 });
