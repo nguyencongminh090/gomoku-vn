@@ -368,3 +368,4 @@
 | 2026-11-18 15:20 | #419 follow-up: phone Home live-card mini board stones were ~0.9 cell, off-centre, clipped square → centred 76 % circles; 3 tests | [detail](docs/fix-log/2026-11-18-home-live-thumb-stones.md) |
 | 2026-11-18 16:10 | #419 follow-up round 2: mini board drawn as one SVG like the room board (lines + stones on shared cell-centre coordinates); grid/stone drift gone; 1 new + 2 updated tests | [detail](docs/fix-log/2026-11-18-home-live-thumb-stones.md) |
 | 2026-11-18 16:50 | #422 Back mid-game: lobby page no longer resumes the game; gets room:joined and returns to the room; page bounce keeps the running grace; 14 tests | [detail](docs/fix-log/2026-11-18-422-back-returns-to-room.md) |
+| 2026-11-25 10:00 | #451 club tab / social DM hash kept the page path under `<base href="/">` (was `/#…` → lobby on reload); 2 tests | [detail](docs/fix-log/2026-11-25-451-hash-base-href.md) |

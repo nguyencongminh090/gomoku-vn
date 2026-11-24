@@ -409,6 +409,18 @@ describe('social page (#370 chat-first)', () => {
       expect(location.hash).toBe('#dm=bob');
     });
 
+    it('#451: under <base href="/"> opening a chat keeps /social.html in the URL', async () => {
+      const base = document.head.appendChild(document.createElement('base'));
+      base.href = '/';
+      try {
+        const two = [CONV[0], { ...CONV[0], with: P('eve'), unread: 0 }];
+        history.replaceState(null, '', '/social.html');
+        await bootPage({ 'GET /api/dm': () => json({ conversations: two }), 'GET /api/dm/bob': () => json(THREAD), 'POST /api/dm/bob/read': () => json({ unread: 0 }) });
+        expect(location.pathname).toBe('/social.html');
+        expect(location.hash).toBe('#dm=bob');
+      } finally { base.remove(); }
+    });
+
     it('desktop with no link opens the newest conversation; #dm=<username> wins over it', async () => {
       const two = [CONV[0], { ...CONV[0], with: P('eve'), unread: 0 }];
       await bootPage({ 'GET /api/dm': () => json({ conversations: two }), 'GET /api/dm/bob': () => json(THREAD), 'POST /api/dm/bob/read': () => json({ unread: 0 }),

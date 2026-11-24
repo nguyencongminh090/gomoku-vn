@@ -153,7 +153,7 @@
       btn.tabIndex = on || (name === 'manage' && tab === TABS[0]) ? 0 : -1;
     }
     $('cb-manage-btn').setAttribute('aria-pressed', String(name === 'manage'));
-    if (updateHash && currentTab() !== name) history.replaceState(null, '', '#tab=' + name);
+    if (updateHash && currentTab() !== name) history.replaceState(null, '', location.pathname + location.search + '#tab=' + name); // <base href="/"> would resolve a bare '#x' to "/#x" (#451)
     if (name === 'chat') openChat();
   }
 

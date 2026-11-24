@@ -109,6 +109,17 @@ describe('club page', () => {
       expect(selected()).toEqual(['board']);
     });
 
+    it('#451: under <base href="/"> the tab hash stays on /c/<slug> (reload/share keeps the club)', async () => {
+      const base = document.head.appendChild(document.createElement('base'));
+      base.href = '/';
+      try {
+        await bootClub(CLUB);
+        click('board');
+        expect(location.pathname).toBe('/c/caro');
+        expect(location.hash).toBe('#tab=board');
+      } finally { base.remove(); }
+    });
+
     it('Tổng quan = ranking table (top rows) + aside with Sắp tới and Ban quản trị (mockup)', async () => {
       await bootClub(CLUB);
       const ov = document.getElementById('cb-panel-overview');

@@ -684,11 +684,14 @@
   }
 
   // ── Routing: #dm=<username> · #notifs · #challenge ──
+  // <base href="/"> would resolve a bare '#x' to "/#x" (the lobby) — always keep this page's path (#451).
+  const here = () => location.pathname + location.search;
   function go(username) {
     const hash = '#dm=' + enc(username);
+    const url = here() + hash;
     if (location.hash === hash) { openThread(username); return; }
     // Phone: push so the system Back returns to the list; desktop: replace (no history spam).
-    if (isPhone() && !pushed) { history.pushState(null, '', hash); pushed = true; } else history.replaceState(null, '', hash);
+    if (isPhone() && !pushed) { history.pushState(null, '', url); pushed = true; } else history.replaceState(null, '', url);
     route();
   }
 
@@ -720,7 +723,7 @@
   /** Desktop with no deep link: open the newest conversation. Phone starts on the list. */
   function openInitial() {
     if (location.hash) { route(); return; }
-    if (isWide() && state.convs.length) { history.replaceState(null, '', '#dm=' + enc(state.convs[0].with.username)); route(); return; }
+    if (isWide() && state.convs.length) { history.replaceState(null, '', here() + '#dm=' + enc(state.convs[0].with.username)); route(); return; }
     renderEmpty();
   }
 
