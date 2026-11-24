@@ -54,6 +54,7 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
       const LAST_SETTINGS_KEY = 'k';
       const RENJU_OPENINGS = ['taraguchi10', 'yamaguchi'];
       const userInfo = { isGuest: ${guest} };
+      let modalRule = null;
       ${fn('readLocalSettings')} ${fn('rememberedSettings')} ${fn('readFormSettings')} ${fn('applySettingsToForm')}
       function updateModalSummary() {}
       function updateModeHint() { hintCalls.push(pick('roomMode')); }
@@ -124,7 +125,7 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
   });
 
   test('guest default is computed on each open, not once at init', () => {
-    expect(lobby).toMatch(/function openModal\(\) \{[\s\S]*?rememberedSettings\(\)/);
-    expect(lobby).toMatch(/userInfo\.isGuest\) return \{[^\n]*ranked: false/);
+    expect(lobby).toMatch(/function openModal\([^)]*\) \{[\s\S]*?rememberedSettings\(\)/);
+    expect(lobby).toMatch(/userInfo\.isGuest\s*\? \{[^\n]*ranked: false/);
   });
 });

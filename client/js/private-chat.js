@@ -17,7 +17,7 @@
  *   on    user:status / user:disconnected  — a chat partner went offline
  */
 
-import { client } from './lobby.js?v=aeefee1f';
+import { client } from './lobby.js?v=7a02f9d9';
 
 const MAX_WINDOWS = 3;
 const TITLE_FLASH_MS = 1200;
@@ -719,25 +719,21 @@ function init() {
     });
   }
 
-  // Delegated interaction on the lobby online line ONLY: a name opens the profile card,
-  // the "…and N others" affordance opens the full modal. Scoped to
-  // #online-line-names so it can never match the [data-peer-id] on a chat
-  // window root (that collision reopened a window the moment its ✕ was
-  // clicked). Both targets are role="button" spans → keyboard works too.
-  const onlineLine = document.getElementById('online-line-names');
+  // Delegated interaction on the lobby online roster ONLY (#440: the rail and the phone sheet, both
+  // [data-online-roster]): a name opens the profile card, [data-open-users] opens the full modal.
+  // Scoped to those lists so it can never match the [data-peer-id] on a chat window root (that
+  // collision reopened a window the moment its ✕ was clicked). Rows are role="button" → keyboard works too.
   const onlineLineAction = (e) => {
     const el = e.target.closest && e.target.closest('[data-user-id], [data-open-users]');
-    if (!el || !onlineLine || !onlineLine.contains(el)) return;
+    if (!el || !el.closest('[data-online-roster]')) return;
     if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     if (el.hasAttribute('data-open-users')) { openModal(); return; }
     const uid = el.getAttribute('data-user-id');
     if (uid) showCard(uid);
   };
-  if (onlineLine) {
-    onlineLine.addEventListener('click', onlineLineAction);
-    onlineLine.addEventListener('keydown', onlineLineAction);
-  }
+  document.addEventListener('click', onlineLineAction);
+  document.addEventListener('keydown', onlineLineAction);
 
   const restoreFocus = () => { if (!tabHidden()) clearTitleFlash(); };
   window.addEventListener('focus', restoreFocus);

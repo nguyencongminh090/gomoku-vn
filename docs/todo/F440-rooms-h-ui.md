@@ -29,3 +29,12 @@ Replace the #364 photo hall + mini-board cards with approved mockup `features/ro
 ## Done when
 - jsdom tests (tabs, rank per rule, filters, card markup, no wrap classes), cache-bust OK, real-browser pass at 1280 + 390
   compared with `features/rooms-redesign-v4/shots/h-*.png`.
+
+## Built 2026-11-24 (`ui/rooms-h`, uncommitted)
+- `js/rooms-h.js` (window.RoomsH, jsdom-tested in `rooms-h.test.js`) owns the screen; lobby.js keeps modal + online feed.
+  Subscribe `{rule}` from lobby-home.js; tab switch → `rooms:rule` event → re-subscribe. Rule remembered (`gvn_rooms_rule`).
+- Filters/sort non-default → grid = `rooms_query` answer (patches update held cards, add none). Own Elo for
+  "Gần trình tôi" = one `/api/profile/card/<me>` read. Roster PM/card click via `[data-online-roster]` (private-chat.js).
+- Deviations: time chips follow the server buckets ("Nhanh ≤ 5 phút", "Chậm > 5 phút", not "≥ 10"); sort "Elo cao
+  trước" (server sorts by Elo); footer mode = new keys "Tính điểm"/"Giao hữu"; filter-empty state "Bỏ lọc" added.
+- Open: seat "Khách" needs `isGuest` per seat in `lobbyEntry` (server, not sent today → guests read "Mới"); e2e not run.

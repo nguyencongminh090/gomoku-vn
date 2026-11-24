@@ -12,7 +12,7 @@ const path = require('path');
 
 const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
 const BODY = read('index.html').match(/<body[^>]*>([\s\S]*)<\/body>/i)[1].replace(/<script[\s\S]*?<\/script>/g, '');
-const strip = (s) => s.replace(/^export (const|function) /gm, '$1 ');
+const strip = (s) => s.replace(/^export (const|function) /gm, '$1 ').replace(/^import [^\n]*\n/gm, '');
 const LOBBY = strip(read('js/lobby.js'));
 const TOURN = read('js/tournaments.js').replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { client, setHeroTournamentCount } = window.__stub;\n');
 

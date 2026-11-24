@@ -18,7 +18,7 @@ const CARD = { userId: 'u2', username: 'bob', displayName: 'Bob', avatarUrl: nul
   can: { dm: true, friend: true }, ratings: [{ category: 'freestyle', rating: 1500, rank: 7, provisional: false }], stats: { games: 10, wins: 4 } };
 
 function boot({ user = { userId: 'me', displayName: 'Me', isGuest: false }, fetchImpl }) {
-  document.body.innerHTML = '<div id="online-line-names"><span data-user-id="u2" class="online-name">Bob</span></div>'
+  document.body.innerHTML = '<ul data-online-roster><li data-user-id="u2" role="button" class="vrow">Bob</li></ul>'
     + '<div id="private-chat-container"></div><div id="modal-online-users"><ul id="online-users-list"></ul><input id="online-users-search"></div>';
   window.__client = { on: jest.fn(), emit: jest.fn() };
   window.GvnSession = { getUser: () => user };

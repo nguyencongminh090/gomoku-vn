@@ -17,7 +17,7 @@ const SHELL = read('js/platform-shell.js');
 const HCH = read('js/home-challenge.js'); // #361 classic script, loaded before the index-entry module
 // ES module → classic script: swap the lobby.js import for a stub, expose the exports.
 const HOME = read('js/lobby-home.js')
-  .replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { client, setHeroTab } = window.__lobbyStub;\n')
+  .replace(/^import [^\n]*lobby\.js[^\n]*\n/m, 'const { client, setHeroTab, roomsRule } = window.__lobbyStub;\n')
   .replace(/^export (function|async function) (\w+)/gm, (m, kw, name) => `window.__home = window.__home || {}; window.__home.${name} = ${name};\n${kw} ${name}`);
 
 const EMPTY = { myGame: null, myMatches: [], tournaments: [], live: [] };
@@ -41,7 +41,7 @@ async function boot(url = '/index.html', data = EMPTY, user = null, opts = {}) {
   window.joinRoom = jest.fn();
   const handlers = {};
   window.__lobbyStub = {
-    setHeroTab: jest.fn(),
+    setHeroTab: jest.fn(), roomsRule: () => window.__roomsRule || null,
     client: { emitted: [], on(ev, fn) { handlers[ev] = fn; }, emit(ev, d) { this.emitted.push([ev, d]); }, fire(ev, d) { handlers[ev](d); } },
   };
   try { localStorage.clear(); } catch { /* ignore */ }
@@ -512,30 +512,18 @@ describe('quick-match waiting count (B210)', () => {
   });
 });
 
-describe('Vào bằng mã (Phòng screen, B210 → #364 hero boxes)', () => {
+describe('Phòng screen entry points (#440: join-by-code dropped, B210 → #364 → #440)', () => {
   const $ = (id) => document.getElementById(id);
-  const boxes = () => [...$('join-code-form').querySelectorAll('.rh-code__box')];
-  const submit = (value) => {
-    boxes().forEach((b, i) => { b.value = value[i] || ''; });
-    $('join-code-form').dispatchEvent(new Event('submit', { cancelable: true }));
-  };
 
-  it('#364: the code form sits open in the Phòng hero (3 boxes, no toggle); the only create entry is the grid card #btn-create', async () => {
+  it('#440: no code form on Phòng; the only create entry is "Mở bàn" #btn-create in the stats bar', async () => {
     await boot('/index.html#rooms', EMPTY, null);
-    expect($('join-code-form').hidden).toBe(false);
-    expect(boxes()).toHaveLength(3);
-    expect($('btn-join-code').type).toBe('submit');
-    expect($('btn-create').classList.contains('rcard-new')).toBe(true);
-    expect($('btn-create').closest('#room-list')).not.toBeNull();
-    expect(document.querySelector('.rh').textContent).not.toContain('Tạo phòng');
-  });
-
-  it('#364: pasting "#a3f" into the first box fills all three', async () => {
-    await boot('/index.html#rooms', EMPTY, null);
-    const ev = new Event('paste', { cancelable: true });
-    ev.clipboardData = { getData: () => '#a3f' };
-    boxes()[0].dispatchEvent(ev);
-    expect(boxes().map((b) => b.value)).toEqual(['A', '3', 'F']);
+    expect($('join-code-form')).toBeNull();
+    expect($('join-code-1')).toBeNull();
+    expect($('btn-join-code')).toBeNull();
+    expect($('btn-create').closest('.rooms-bar')).not.toBeNull();
+    expect($('btn-create').hasAttribute('data-create-room')).toBe(true);
+    expect(document.querySelectorAll('#panel-tables [data-create-room]')).toHaveLength(1);
+    expect($('home-code')).not.toBeNull(); // Home keeps its own code form (#358)
   });
 
   it('parseRoomCode accepts "#a3f", "a3f", " A3F " and rejects ambiguous / wrong-length codes', async () => {
@@ -543,18 +531,6 @@ describe('Vào bằng mã (Phòng screen, B210 → #364 hero boxes)', () => {
     const { parseRoomCode } = window.__home;
     expect(['#a3f', 'a3f', ' A3F ', '#A3F'].map(parseRoomCode)).toEqual(['#A3F', '#A3F', '#A3F', '#A3F']);
     for (const bad of ['', 'A3', 'A3FF', 'A0F', 'A1F', 'AIF', 'AOF', '#', 'A F', null, undefined]) expect(parseRoomCode(bad)).toBeNull();
-  });
-
-  it('valid code joins that room; invalid code shows an error and joins nothing', async () => {
-    await boot('/index.html#rooms', EMPTY, null);
-    submit('a0f'); // 0 is never generated
-    expect(window.joinRoom).not.toHaveBeenCalled();
-    expect($('join-code-error').hidden).toBe(false);
-    expect($('join-code-error').textContent).toBe('lobby.join_code_invalid');
-    boxes()[0].dispatchEvent(new Event('input'));
-    expect($('join-code-error').hidden).toBe(true);
-    submit('a3f');
-    expect(window.joinRoom).toHaveBeenCalledWith('#A3F');
   });
 
   it('home: Thách đấu (twin of Chơi nhanh) for members only — hidden for guests (#361)', async () => {
@@ -629,6 +605,20 @@ describe('live push (B225)', () => {
     it('starting on #rooms subscribes once', async () => {
       await boot('/index.html#rooms');
       expect(lsubs()).toEqual(['lobby:subscribe']);
+    });
+
+    it('#440: subscribe carries the rule tab; a tab switch (rooms:rule) re-subscribes only while on rooms', async () => {
+      window.__roomsRule = 'renju';
+      await boot('/index.html#rooms');
+      const sent = () => window.__lobbyStub.client.emitted.filter(([ev]) => ev.startsWith('lobby:'));
+      expect(sent()).toEqual([['lobby:subscribe', { rule: 'renju' }]]);
+      window.__roomsRule = 'caro';
+      window.dispatchEvent(new CustomEvent('rooms:rule', { detail: { rule: 'caro' } }));
+      expect(sent()).toEqual([['lobby:subscribe', { rule: 'renju' }], ['lobby:subscribe', { rule: 'caro' }]]);
+      window.__home.showScreen('home');
+      window.dispatchEvent(new CustomEvent('rooms:rule', { detail: { rule: 'standard' } }));
+      expect(sent().map(([ev]) => ev)).toEqual(['lobby:subscribe', 'lobby:subscribe', 'lobby:unsubscribe']);
+      window.__roomsRule = null;
     });
 
     it('hidden tab leaves, visible rejoins; reconnect rejoins only on rooms', async () => {

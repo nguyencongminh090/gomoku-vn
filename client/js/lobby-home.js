@@ -15,7 +15,7 @@
  * which lobby.js already follows into room.html. All text goes in via textContent.
  */
 
-import { client, setHeroTab } from './lobby.js?v=aeefee1f';
+import { client, setHeroTab, roomsRule } from './lobby.js?v=7a02f9d9';
 
 const t = (k, v) => window.t(k, v);
 const SCREENS = { home: 'screen-home', rooms: 'panel-tables', tournaments: 'panel-tournaments' };
@@ -78,7 +78,7 @@ export function showScreen(name) {
   setLobbySubscribed(name === 'rooms' && !document.hidden);
 }
 
-// ── Vào bằng mã: the same 3-box code form on Home (#358) and on the Phòng hero (#364) ──
+// ── Vào bằng mã: the 3-box code form on Home (#358; the Phòng hero copy was dropped in #440) ──
 
 /** "#a3f" / "a3f " / "A3F" → "#A3F"; null when it cannot be a room code. */
 export function parseRoomCode(raw) {
@@ -358,8 +358,14 @@ function setSubscribed(on) {
 function setLobbySubscribed(on) {
   if (on === lobbySubscribed) return;
   lobbySubscribed = on;
-  client.emit(on ? 'lobby:subscribe' : 'lobby:unsubscribe'); // subscribe answers with a full snapshot
+  // subscribe answers with a full snapshot of the rule tab's channel (#439/#440)
+  if (on) client.emit('lobby:subscribe', { rule: roomsRule() || undefined });
+  else client.emit('lobby:unsubscribe');
 }
+// #440: a rule tab switch moves the subscription to that rule's channel (the server leaves the old one).
+window.addEventListener('rooms:rule', () => {
+  if (lobbySubscribed) client.emit('lobby:subscribe', { rule: roomsRule() || undefined });
+});
 
 /** Merge one pushed field into the last /api/home payload and redraw only its section. */
 function applyPush(key, value, render) {
@@ -747,46 +753,7 @@ function openChallenge() {
   });
 }
 
-// #432: "Đang chơi" / "Luật chơi" tabs on the Phòng screen. The rule guide is drawn on first open (and on a language change).
-function wireRoomsTabs() {
-  const buttons = [...document.querySelectorAll('#rooms-tabs [role="tab"]')];
-  if (!buttons.length) return;
-  const panels = buttons.map((button) => document.getElementById(button.getAttribute('aria-controls')));
-  const guide = document.getElementById('rooms-rules');
-  const online = document.getElementById('online-line');
-  const drawGuide = () => window.RoomRulesGuide.render(guide, { t });
-  function select(index) {
-    const showRules = panels[index] === guide;
-    if (showRules && !guide.firstElementChild) drawGuide();
-    buttons.forEach((button, i) => {
-      const selected = i === index;
-      button.setAttribute('aria-selected', String(selected));
-      button.tabIndex = selected ? 0 : -1;
-      panels[i].hidden = !selected;
-    });
-    if (online) online.classList.toggle('is-off', showRules);
-  }
-  buttons.forEach((button, i) => {
-    button.addEventListener('click', () => select(i));
-    button.addEventListener('keydown', (event) => {
-      let next;
-      switch (event.key) {
-        case 'ArrowLeft': next = (i - 1 + buttons.length) % buttons.length; break;
-        case 'ArrowRight': next = (i + 1) % buttons.length; break;
-        case 'Home': next = 0; break;
-        case 'End': next = buttons.length - 1; break;
-        default: return;
-      }
-      event.preventDefault();
-      select(next);
-      buttons[next].focus();
-    });
-  });
-  window.addEventListener('langchange', () => { if (guide.firstElementChild) drawGuide(); });
-}
-
 function wireHub() {
-  wireRoomsTabs();
   const rooms = document.getElementById('hub-rooms');
   if (rooms) rooms.addEventListener('click', (e) => { e.preventDefault(); showScreen('rooms'); });
   const all = document.getElementById('home-live-all');
@@ -797,7 +764,6 @@ function wireHub() {
   if (chal) chal.addEventListener('click', openChallenge);
   wirePick();
   wireCodeBoxes('home-code', 'home-code-error', '.hq-code__box');
-  wireCodeBoxes('join-code-form', 'join-code-error', '.rh-code__box');
 }
 wireHub();
 
