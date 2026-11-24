@@ -51,6 +51,8 @@ const {
   buildRoomStatePayload,
   closeMatchRoom,
   disconnectTimers,
+  leaveLobby,
+  onRatingsChanged,
 } = require('./state');
 
 const LobbyHandler      = require('./handlers/LobbyHandler');
@@ -75,6 +77,9 @@ function init(io) {
   // TournamentHandler.js's header for why this is init(), not register().
   TournamentHandler.init(io);
 
+  // #439: after a rating write the rank cache rebuilds on a timer; the lobby re-sends what shows it.
+  require('../managers/rank-cache').onChange((changedUserIds) => onRatingsChanged(io, changedUserIds));
+
   // Friend challenges (#198): a seated pair is redirected on whichever sockets are live;
   // socket-less pages rejoin by user id when room.html connects.
   require('../managers/ChallengeService').setHooks({
@@ -88,7 +93,7 @@ function init(io) {
       for (const uid of userIds) {
         const s = sessions.get(uid);
         if (!s) continue;
-        s.leave('lobby');
+        leaveLobby(s);
         s.join(room.roomId);
         s.emit('room:joined', payload);
       }
@@ -491,7 +496,7 @@ function rejoinOnReconnect(io, socket, roomId) {
     logger.info(`[Socket] ${user.displayName} reconnect rejoin to room ${roomId} refused: ${result.code}`);
     return false;
   }
-  socket.leave('lobby');
+  leaveLobby(socket);
   socket.join(roomId);
   (socket.data || (socket.data = {})).roomPageId = roomId; // #373
   socket.emit('room:joined', buildRoomStatePayload(result.room));

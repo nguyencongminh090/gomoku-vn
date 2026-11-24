@@ -13,7 +13,8 @@ const config      = require('../config');
 const roomManager = require('../managers/RoomManager');
 const TimerManager = require('../managers/TimerManager');
 const { resolveClientIp } = require('../utils/get-client-ip');
-const LobbyMoves = require('../../client/js/lobby-moves'); // #377: shared with the lobby client
+const rankCache   = require('../managers/rank-cache');
+const { WINNING_RULES } = require('../managers/rules');
 
 // ---------------------------------------------------------------------------
 // Shared state maps
@@ -191,9 +192,13 @@ function getOnlineUsersCount() {
   return _visibleOnlineUsers().length;
 }
 
-/** Wire shape of one online user. Costs one avatar lookup for a member. */
+/**
+ * Wire shape of one online user. Costs one avatar lookup for a member.
+ * #439 S2: members also carry `ratings: { rule: [rating, rank|null, provisional] }` for every rule they
+ * are rated in (from rank-cache, no DB read), so a rule-tab switch needs no refetch.
+ */
 function _onlineEntry(u) {
-  return {
+  const entry = {
     userId: u.userId,
     displayName: u.displayName,
     isGuest: !!u.isGuest,
@@ -201,9 +206,28 @@ function _onlineEntry(u) {
     // drew initials for everyone while this was missing.
     avatarUrl: u.isGuest || !roomManager.avatarLookup ? null : roomManager.avatarLookup(u.userId),
   };
+  if (!u.isGuest) entry.ratings = rankCache.ratingsOf(u.userId);
+  return entry;
 }
 
 const _byName = (a, b) => a.displayName.localeCompare(b.displayName);
+
+/**
+ * #439 S3 roster order in a rule: ranked members by rank, then members without a rank there by name,
+ * then guests by name.
+ */
+function _rosterCmp(rule) {
+  const group = (u) => {
+    if (u.isGuest) return [2, 0];
+    const s = rankCache.standingOf(u.userId, rule);
+    return s && s[1] != null ? [0, s[1]] : [1, 0];
+  };
+  return (a, b) => {
+    const ga = group(a);
+    const gb = group(b);
+    return ga[0] - gb[0] || ga[1] - gb[1] || _byName(a, b);
+  };
+}
 
 function getOnlineUsersList() {
   return _visibleOnlineUsers().map(_onlineEntry).sort(_byName);
@@ -221,15 +245,15 @@ function getOnlineUsersSorted() {
  */
 const ONLINE_PAGE_SIZE = config.ONLINE_PAGE_SIZE;
 
-/** The `limit` raw users that sort first by name, without sorting the whole list. */
-function _firstByName(users, limit) {
-  if (users.length <= limit) return users.slice().sort(_byName);
-  const top = users.slice(0, limit).sort(_byName);
+/** The `limit` raw users that sort first by `cmp` (default: name), without sorting the whole list. */
+function _firstByName(users, limit, cmp = _byName) {
+  if (users.length <= limit) return users.slice().sort(cmp);
+  const top = users.slice(0, limit).sort(cmp);
   for (let i = limit; i < users.length; i++) {
     const u = users[i];
-    if (_byName(u, top[limit - 1]) >= 0) continue;
+    if (cmp(u, top[limit - 1]) >= 0) continue;
     let lo = 0, hi = limit - 1;
-    while (lo < hi) { const mid = (lo + hi) >> 1; if (_byName(u, top[mid]) < 0) hi = mid; else lo = mid + 1; }
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (cmp(u, top[mid]) < 0) hi = mid; else lo = mid + 1; }
     top.splice(lo, 0, u);
     top.pop();
   }
@@ -245,10 +269,11 @@ function getOnlineUsersPage() {
 /**
  * #381 on-demand lookup for what the first page does not carry.
  * `ids`: which of these users are visibly online (DM window status). Otherwise a name search:
- * `{ q, offset }` → one page of matches by name.
+ * `{ q, offset }` → one page of matches by name; with a known `rule` (#439 S3) the page is in roster
+ * order for that rule (see _rosterCmp).
  * @returns {{ online: string[] } | { total: number, matched: number, users: object[] }}
  */
-function queryOnlineUsers({ q, offset, ids } = {}) {
+function queryOnlineUsers({ q, offset, ids, rule } = {}) {
   if (Array.isArray(ids)) {
     const online = ids.slice(0, ONLINE_PAGE_SIZE).filter((id) => typeof id === 'string' && isVisiblyOnline(id));
     return { online }; // O(ids): no pass over the online list
@@ -257,7 +282,8 @@ function queryOnlineUsers({ q, offset, ids } = {}) {
   const needle = typeof q === 'string' ? q.trim().toLowerCase().slice(0, 40) : '';
   const hits = needle ? visible.filter((u) => String(u.displayName).toLowerCase().includes(needle)) : visible;
   const from = Math.min(Math.max(parseInt(offset, 10) || 0, 0), hits.length);
-  const users = (from === 0 ? _firstByName(hits, ONLINE_PAGE_SIZE) : hits.slice().sort(_byName).slice(from, from + ONLINE_PAGE_SIZE)).map(_onlineEntry);
+  const cmp = LOBBY_RULES.includes(rule) ? _rosterCmp(rule) : _byName;
+  const users = (from === 0 ? _firstByName(hits, ONLINE_PAGE_SIZE, cmp) : hits.slice().sort(cmp).slice(from, from + ONLINE_PAGE_SIZE)).map(_onlineEntry);
   return { total: visible.length, matched: hits.length, users };
 }
 
@@ -326,189 +352,132 @@ const ONLINE_USERS_DEBOUNCE_MS = 1_500;
 const _onlineUsersTimers = new WeakMap();
 
 /**
- * Per-io record of what lobby clients were last told: roomId → serialized
- * entry. Diffing against this at flush time is what makes the delta possible
- * without touching the ~15 call sites: they say "something changed", and the
- * flush works out what, by comparing against real state. A call site cannot
- * describe the change wrongly or forget to, because it never describes it.
+ * #439: the lobby mirrors one page of rooms PER RULE TAB. `lobby:subscribe {rule}` puts the socket in
+ * that rule's channel; no (or an unknown) rule = the every-rule channel, i.e. the pre-#439 lobby (kept
+ * for the current client until the H lobby ships). Socket rooms: 'lobby' = everyone in the lobby
+ * (online-list patches), `lobby:<rule>` / 'lobby:all' = that channel's room patches.
  */
-const _lobbySnapshots = new WeakMap();
-
-/**
- * Baseline record for one entry: everything but `moves` as a JSON string, plus the `moves` array
- * itself (listRooms() builds a fresh array per call, so holding the reference is safe).
- */
-function _lobbyBaseline(entry) {
-  const { moves, ...rest } = entry;
-  return { json: JSON.stringify(rest), startedAt: rest.startedAt, moves: moves === undefined ? null : moves };
-}
-
-function _sameMoves(a, b) {
-  if (a === b) return true;
-  if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
-  return true;
+const LOBBY_RULES = WINNING_RULES;
+const LOBBY_ALL = '';
+const LOBBY_ROOM = 'lobby';
+/** Channel key for a requested rule: the rule id, or LOBBY_ALL. */
+function lobbyChannelOf(rule) { return LOBBY_RULES.includes(rule) ? rule : LOBBY_ALL; }
+function lobbyRoomOf(key) { return key ? `lobby:${key}` : 'lobby:all'; }
+const LOBBY_ROOMS = [LOBBY_ROOM, lobbyRoomOf(LOBBY_ALL), ...LOBBY_RULES.map(lobbyRoomOf)];
+/** Leave the lobby and every rule channel (entering a room, re-subscribing to another tab). */
+function leaveLobby(socket) {
+  for (const room of LOBBY_ROOMS) socket.leave(room);
 }
 
 /**
- * Compare the live room list against what lobby clients were last sent.
- *
- * #377: an upsert for a room whose game continued carries `moves` as a delta — `{ movesFrom, moves }`,
- * the moves since the shared prefix with the baseline (LobbyMoves.applyDelta splices it client side).
- * When nothing else in the entry changed, the upsert is just `{ roomId, startedAt, movesFrom, moves }` (the
- * other ~500 B — names, avatars, ratings, settings — dominated the patch). A new room, a new game
- * (`startedAt` changed) or no shared prefix → the full entry, as before.
- * @returns {{ upserts: object[], removed: string[] }}
+ * Per-io lobby state. `tally` = counts over ALL rooms (roomId → rank, plus sums overall, per rule and
+ * the seated players of running games), kept incrementally by dirty flushes and rebuilt by full ones.
+ * `channels` = channel key → `{ page, statsKey }`: `page` is what that channel's clients were last told,
+ * roomId → `{ json, rank }`. Diffing against it at flush time is what makes the delta possible without
+ * touching the ~15 call sites: they say "something changed", and the flush works out what, by comparing
+ * against real state. A call site cannot describe the change wrongly or forget to.
  */
-function _diffLobbyRooms(io) {
-  const previous = _lobbySnapshots.get(io);
-  const dirty = _lobbyDirty.get(io);
-  _lobbyDirty.delete(io);
-  const now = Date.now();
-  const full = !previous || !(dirty instanceof Set)
-    || now - (_lobbyLastFull.get(io) || 0) >= LOBBY_FULL_RECONCILE_MS;
-  const result = full ? _diffLobbyFull(io, previous || new Map(), now) : _diffLobbyDirty(io, previous, dirty);
+const _lobbyIo = new WeakMap();
 
-  // #382: counts ride along only while the page is not the whole list, so a lobby that fits one
-  // page keeps the exact pre-#382 payload.
-  const tally = _lobbyTallies.get(io);
-  const page = _lobbySnapshots.get(io);
-  const stats = tally.sum.rooms > page.size ? { ...tally.sum } : null;
-  const statsKey = stats ? `${stats.rooms}|${stats.open}|${stats.live}|${stats.watch}` : '';
-  result.statsChanged = statsKey !== (_lobbyStatsSent.get(io) || '');
-  _lobbyStatsSent.set(io, statsKey);
-  if (stats) result.stats = stats;
-  return result;
+function _lobbyState(io) {
+  let st = _lobbyIo.get(io);
+  if (!st) {
+    // The every-rule channel exists from the start (a flush before any subscribe seeds its baseline,
+    // as the single pre-#439 channel did); a channel nobody listens to is dropped at the next flush.
+    st = { tally: null, dirty: undefined, lastFull: 0, channels: new Map([[LOBBY_ALL, { page: null, statsKey: '' }]]) };
+    _lobbyIo.set(io, st);
+  }
+  return st;
 }
 
-/** #380: only the rooms a call site named — O(changed rooms), not O(all rooms), per flush. */
-function _diffLobbyDirty(io, page, dirty) {
-  const tally = _lobbyTallies.get(io);
-  const upserts = [];
-  const removed = [];
-  let freed = false;
-  for (const roomId of dirty) {
-    const room = roomManager.getRoom(roomId);
-    if (!room) {
-      _tallySet(tally, roomId, null);
-      if (page.delete(roomId)) { removed.push(roomId); freed = true; }
-      continue;
-    }
-    const rank = _lobbyRank(roomManager.lobbyStat(room));
-    _tallySet(tally, roomId, rank);
-    if (!page.has(roomId)) {
-      if (page.size >= LOBBY_ROOM_PAGE_SIZE) {
-        // #382 full page: only a table someone can sit at displaces a card, and only a non-open one.
-        const victim = rank.open ? _lobbyEvictable(page) : null;
-        if (!victim) continue;
-        page.delete(victim);
-        removed.push(victim);
-      }
-    }
-    const upsert = _lobbyUpsert(page.get(roomId), roomManager.lobbyEntry(room), page, rank);
-    if (upsert) upserts.push(upsert);
-  }
-  // A card left the page and rooms are waiting outside it → pull the best ones in (one pass over
-  // the tally, only on this edge).
-  if (freed && tally.sum.rooms > page.size) {
-    for (const roomId of _lobbyBestOutside(tally, page, LOBBY_ROOM_PAGE_SIZE - page.size)) {
-      const room = roomManager.getRoom(roomId);
-      if (!room) continue;
-      upserts.push(_lobbyUpsert(undefined, roomManager.lobbyEntry(room), page, tally.per.get(roomId)));
-    }
-  }
-  // A card updated earlier in this pass may have been evicted later in it; clients apply removals
-  // first, so its upsert would put it back.
-  return { upserts: removed.length ? upserts.filter((u) => page.has(u.roomId)) : upserts, removed };
-}
-
-/** Every room re-counted and re-ranked; entries are built for the page only. */
-function _diffLobbyFull(io, before, now) {
-  const tally = { per: new Map(), sum: { rooms: 0, open: 0, live: 0, watch: 0 } };
-  const rooms = new Map();
-  for (const room of roomManager.rooms.values()) {
-    rooms.set(room.roomId, room);
-    _tallySet(tally, room.roomId, _lobbyRank(roomManager.lobbyStat(room)));
-  }
-  _lobbyTallies.set(io, tally);
-
-  let ids;
-  if (rooms.size <= LOBBY_ROOM_PAGE_SIZE) {
-    // One page or less: every room, in the rooms' own (creation) order — as the lobby always listed them.
-    ids = [...rooms.keys()];
-  } else {
-    // Page membership is sticky: a card already shown stays while its room lives, so the list does
-    // not reshuffle under the reader. Free slots go to the best-ranked rooms outside, and an open
-    // table waiting outside takes the place of the least-watched card that is not open.
-    ids = [];
-    for (const roomId of before.keys()) if (rooms.has(roomId) && ids.length < LOBBY_ROOM_PAGE_SIZE) ids.push(roomId);
-    const kept = new Set(ids);
-    for (const roomId of _lobbyBestOutside(tally, kept, LOBBY_ROOM_PAGE_SIZE)) {
-      if (ids.length < LOBBY_ROOM_PAGE_SIZE) { ids.push(roomId); continue; }
-      if (!tally.per.get(roomId).open) break;
-      let victim = -1;
-      for (let i = 0; i < ids.length; i++) {
-        const r = tally.per.get(ids[i]);
-        if (!r.open && (victim < 0 || r.watch < tally.per.get(ids[victim]).watch)) victim = i;
-      }
-      if (victim < 0) break;
-      ids[victim] = roomId;
-    }
-  }
-
-  const next = new Map();
-  const upserts = [];
-  for (const roomId of ids) {
-    const upsert = _lobbyUpsert(before.get(roomId), roomManager.lobbyEntry(rooms.get(roomId)), next, tally.per.get(roomId));
-    if (upsert) upserts.push(upsert);
-  }
-  const removed = [];
-  for (const roomId of before.keys()) {
-    if (!next.has(roomId)) removed.push(roomId);
-  }
-
-  _lobbySnapshots.set(io, next);
-  _lobbyLastFull.set(io, now);
-  return { upserts, removed };
+/** True only when the adapter says nobody is in the channel's socket room (test doubles have no adapter). */
+function _lobbyChannelEmpty(io, key) {
+  const rooms = io && io.sockets && io.sockets.adapter && io.sockets.adapter.rooms;
+  if (!rooms || typeof rooms.get !== 'function') return false;
+  const members = rooms.get(lobbyRoomOf(key));
+  return !members || members.size === 0;
 }
 
 /**
- * #382: the lobby mirrors at most this many rooms live (snapshot + patches). With more rooms than
- * that, clients also get `stats` (the counts over ALL rooms) and page the rest on demand
- * (`queryLobbyRooms`). The full list per subscriber was O(rooms) bytes each (3 MB at 5 000 games).
+ * #382: the lobby mirrors at most this many rooms live per channel (snapshot + patches). With more rooms
+ * than that, clients page the rest on demand (`queryLobbyRooms`). The full list per subscriber was
+ * O(rooms) bytes each (3 MB at 5 000 games).
  */
 const LOBBY_ROOM_PAGE_SIZE = config.LOBBY_ROOM_PAGE_SIZE;
 
-/**
- * Per-io counts over every room: roomId → rank, plus the running sums. Kept incrementally by the
- * dirty diff, rebuilt by the full one.
- */
-const _lobbyTallies = new WeakMap();
-/** Per-io `stats` key last sent, to emit a stats-only patch when just the counts moved. */
-const _lobbyStatsSent = new WeakMap();
+const _zeroSum = () => ({ rooms: 0, open: 0, live: 0, watch: 0 });
+function _newTally() {
+  const rule = {};
+  for (const r of LOBBY_RULES) rule[r] = _zeroSum();
+  return { per: new Map(), all: _zeroSum(), rule, playing: 0 };
+}
 
 /** What a room counts as, and how it ranks for a page slot — same predicates as the lobby client. */
 function _lobbyRank(stat) {
   const live = stat.state === 'playing';
-  return { open: !live && stat.playerCount < 2, live, watch: Math.max(0, stat.userCount - stat.playerCount) };
+  return {
+    open: !live && stat.playerCount < 2,
+    live,
+    watch: Math.max(0, stat.userCount - stat.playerCount),
+    rule: stat.rule,
+    seated: live ? stat.playerCount : 0, // #439 S6: "đang chơi" counts players, not games
+  };
 }
 
+function _sumAdd(sum, r, k) {
+  sum.rooms += k; sum.open += r.open ? k : 0; sum.live += r.live ? k : 0; sum.watch += r.watch * k;
+}
+function _tallyAdd(tally, r, k) {
+  _sumAdd(tally.all, r, k);
+  if (tally.rule[r.rule]) _sumAdd(tally.rule[r.rule], r, k);
+  tally.playing += r.seated * k;
+}
 function _tallySet(tally, roomId, rank) {
   const old = tally.per.get(roomId);
-  if (old) { tally.sum.rooms--; tally.sum.open -= old.open ? 1 : 0; tally.sum.live -= old.live ? 1 : 0; tally.sum.watch -= old.watch; }
+  if (old) _tallyAdd(tally, old, -1);
   if (!rank) { tally.per.delete(roomId); return; }
-  tally.per.set(roomId, rank);
-  tally.sum.rooms++; tally.sum.open += rank.open ? 1 : 0; tally.sum.live += rank.live ? 1 : 0; tally.sum.watch += rank.watch;
+  tally.per.set(roomId, rank); // an existing key keeps its (creation-order) position
+  _tallyAdd(tally, rank, 1);
+}
+
+function _countAllRooms() {
+  const tally = _newTally();
+  for (const room of roomManager.rooms.values()) _tallySet(tally, room.roomId, _lobbyRank(roomManager.lobbyStat(room)));
+  return tally;
+}
+
+const _inChannel = (rank, key) => !key || rank.rule === key;
+const _channelSum = (tally, key) => (key ? tally.rule[key] : tally.all);
+
+/**
+ * The counts a channel's clients get: its own rule's (or all) `{ rooms, open, live, watch }`, plus
+ * `playing` (seated players in running games, S6) and `byRule` (`{ rule: { open, total } }`, the tab
+ * badges, S4), both over ALL rooms.
+ */
+function _lobbyStats(tally, key) {
+  const byRule = {};
+  for (const r of LOBBY_RULES) byRule[r] = { open: tally.rule[r].open, total: tally.rule[r].rooms };
+  return { ..._channelSum(tally, key), playing: tally.playing, byRule };
+}
+
+/**
+ * Stats to send with a channel's snapshot/patch. A rule channel always carries them (the tabs need the
+ * other rules' counts even when this rule fits one page). The every-rule channel keeps the #382 rule:
+ * only while its page is not the whole list, so a small lobby keeps the pre-#382 payload.
+ */
+function _channelStats(tally, ch, key) {
+  if (!key && tally.all.rooms <= ch.page.size) return null;
+  return _lobbyStats(tally, key);
 }
 
 /** Open tables first (someone can sit), then the most watched; ties keep creation order. */
 const _lobbyBetter = (a, b) => (a.open !== b.open ? a.open : a.watch > b.watch);
 
-/** The `count` best-ranked room ids that are not in `exclude` (a Map or Set of ids). */
-function _lobbyBestOutside(tally, exclude, count) {
+/** The `count` best-ranked room ids of channel `key` that are not in `exclude` (a Map or Set of ids). */
+function _lobbyBestOutside(tally, exclude, count, key) {
   const best = []; // [roomId, rank], best first
   for (const [roomId, rank] of tally.per) {
-    if (exclude.has(roomId)) continue;
+    if (exclude.has(roomId) || !_inChannel(rank, key)) continue;
     if (best.length === count && !_lobbyBetter(rank, best[count - 1][1])) continue;
     let i = best.length;
     while (i > 0 && _lobbyBetter(rank, best[i - 1][1])) i--;
@@ -530,80 +499,224 @@ function _lobbyEvictable(page) {
   return victim;
 }
 
-/**
- * #382 on-demand page of the room list beyond what the lobby mirrors: rooms ranked as for the
- * page, `offset` into that order. Entries are a one-off copy — no patches follow for them.
- * @returns {{ rooms: object[], stats: { rooms: number, open: number, live: number, watch: number } }}
- */
-function queryLobbyRooms({ offset } = {}) {
-  const tally = { per: new Map(), sum: { rooms: 0, open: 0, live: 0, watch: 0 } };
-  for (const room of roomManager.rooms.values()) _tallySet(tally, room.roomId, _lobbyRank(roomManager.lobbyStat(room)));
-  const from = Math.min(Math.max(parseInt(offset, 10) || 0, 0), tally.sum.rooms);
-  // Array.prototype.sort is stable, so ties keep creation order — the same order _lobbyBestOutside gives.
-  const ids = [...tally.per].sort((a, b) => (_lobbyBetter(a[1], b[1]) ? -1 : _lobbyBetter(b[1], a[1]) ? 1 : 0))
-    .slice(from, from + LOBBY_ROOM_PAGE_SIZE).map(([roomId]) => roomId);
-  const rooms = [];
+/** Record `entry` as the new baseline in `into`; return what to send for it (null = unchanged). */
+function _lobbyUpsert(prev, entry, into, rank) {
+  const json = JSON.stringify(entry);
+  into.set(entry.roomId, { json, rank });
+  return prev && prev.json === json ? null : entry;
+}
+
+/** #380: only the rooms a call site named — O(changed rooms), not O(all rooms), per flush. */
+function _diffLobbyDirty(tally, ch, key, dirty) {
+  const page = ch.page;
+  const upserts = [];
+  const removed = [];
+  let freed = false;
+  for (const roomId of dirty) {
+    const rank = tally.per.get(roomId);
+    const room = rank ? roomManager.getRoom(roomId) : null;
+    if (!room || !_inChannel(rank, key)) { // gone, or its rule moved it to another tab
+      if (page.delete(roomId)) { removed.push(roomId); freed = true; }
+      continue;
+    }
+    if (!page.has(roomId) && page.size >= LOBBY_ROOM_PAGE_SIZE) {
+      // #382 full page: only a table someone can sit at displaces a card, and only a non-open one.
+      const victim = rank.open ? _lobbyEvictable(page) : null;
+      if (!victim) continue;
+      page.delete(victim);
+      removed.push(victim);
+    }
+    const upsert = _lobbyUpsert(page.get(roomId), roomManager.lobbyEntry(room), page, rank);
+    if (upsert) upserts.push(upsert);
+  }
+  // A card left the page and rooms are waiting outside it → pull the best ones in (one pass over
+  // the tally, only on this edge).
+  if (freed && _channelSum(tally, key).rooms > page.size) {
+    for (const roomId of _lobbyBestOutside(tally, page, LOBBY_ROOM_PAGE_SIZE - page.size, key)) {
+      const room = roomManager.getRoom(roomId);
+      if (!room) continue;
+      upserts.push(_lobbyUpsert(undefined, roomManager.lobbyEntry(room), page, tally.per.get(roomId)));
+    }
+  }
+  // A card updated earlier in this pass may have been evicted later in it; clients apply removals
+  // first, so its upsert would put it back.
+  return { upserts: removed.length ? upserts.filter((u) => page.has(u.roomId)) : upserts, removed };
+}
+
+/** Every room of the channel re-ranked from the tally; entries are built for the page only. */
+function _diffLobbyFull(tally, ch, key) {
+  const before = ch.page || new Map();
+  let ids;
+  if (_channelSum(tally, key).rooms <= LOBBY_ROOM_PAGE_SIZE) {
+    // One page or less: every room, in the rooms' own (creation) order — as the lobby always listed them.
+    ids = [];
+    for (const [roomId, rank] of tally.per) if (_inChannel(rank, key)) ids.push(roomId);
+  } else {
+    // Page membership is sticky: a card already shown stays while its room lives, so the list does
+    // not reshuffle under the reader. Free slots go to the best-ranked rooms outside, and an open
+    // table waiting outside takes the place of the least-watched card that is not open.
+    ids = [];
+    for (const roomId of before.keys()) {
+      const rank = tally.per.get(roomId);
+      if (rank && _inChannel(rank, key) && ids.length < LOBBY_ROOM_PAGE_SIZE) ids.push(roomId);
+    }
+    const kept = new Set(ids);
+    for (const roomId of _lobbyBestOutside(tally, kept, LOBBY_ROOM_PAGE_SIZE, key)) {
+      if (ids.length < LOBBY_ROOM_PAGE_SIZE) { ids.push(roomId); continue; }
+      if (!tally.per.get(roomId).open) break;
+      let victim = -1;
+      for (let i = 0; i < ids.length; i++) {
+        const r = tally.per.get(ids[i]);
+        if (!r.open && (victim < 0 || r.watch < tally.per.get(ids[victim]).watch)) victim = i;
+      }
+      if (victim < 0) break;
+      ids[victim] = roomId;
+    }
+  }
+
+  const next = new Map();
+  const upserts = [];
   for (const roomId of ids) {
+    const room = roomManager.getRoom(roomId);
+    if (!room) continue;
+    const upsert = _lobbyUpsert(before.get(roomId), roomManager.lobbyEntry(room), next, tally.per.get(roomId));
+    if (upsert) upserts.push(upsert);
+  }
+  const removed = [];
+  for (const roomId of before.keys()) {
+    if (!next.has(roomId)) removed.push(roomId);
+  }
+  ch.page = next;
+  return { upserts, removed };
+}
+
+// #439 S5 filters of `lobby:rooms_query`. Time buckets as the H mockup: per-move clocks are their own
+// bucket, otherwise by the base time.
+const LOBBY_TIME_BUCKETS = ['fast', 'mid', 'slow', 'move'];
+const LOBBY_SORTS = ['state', 'rank', 'time'];
+/** "Gần trình tôi": a seated member within this many Elo of the asker, in the tab's rule. */
+const LOBBY_NEAR_ELO = 200;
+function _timeBucket(stat) {
+  if (stat.timerMode === 'per_move') return 'move';
+  return stat.timerSeconds <= 180 ? 'fast' : stat.timerSeconds <= 300 ? 'mid' : 'slow';
+}
+
+/**
+ * #382/#439 on-demand page of a rule's tables, filtered and sorted on the server.
+ * - `rule`: tab (unknown/absent = every rule); `offset` into the filtered order.
+ * - `open: true`: tables with a free seat. `time`: array of LOBBY_TIME_BUCKETS (any of them).
+ * - `near: true`: a seated member within LOBBY_NEAR_ELO of `viewer` in `rule` (ignored without a rule
+ *   or when the viewer is unrated there).
+ * - `sort`: 'state' (default) = the page order (open first, then most watched); 'rank' = best seated
+ *   Elo first, tables without a rated member last; 'time' = shortest time bucket, then base time.
+ * Entries are a one-off copy — no patches follow for them. Ratings come from rank-cache (no DB).
+ * @returns {{ rooms: object[], matched: number, stats: object }}
+ */
+function queryLobbyRooms({ rule, offset, open, time, near, sort } = {}, viewer = null) {
+  const key = lobbyChannelOf(rule);
+  const tally = _newTally();
+  const rows = [];
+  for (const room of roomManager.rooms.values()) {
+    const stat = roomManager.lobbyStat(room);
+    const rank = _lobbyRank(stat);
+    _tallySet(tally, room.roomId, rank);
+    if (_inChannel(rank, key)) rows.push({ roomId: room.roomId, rank, stat });
+  }
+
+  const buckets = Array.isArray(time) ? new Set(time.slice(0, LOBBY_TIME_BUCKETS.length).filter((t) => LOBBY_TIME_BUCKETS.includes(t))) : null;
+  const mine = near === true && key && viewer && !viewer.isGuest ? rankCache.standingOf(viewer.userId, key) : null;
+  const elos = (stat) => {
+    const out = [];
+    for (const id of stat.seatIds || []) {
+      const s = rankCache.standingOf(id, stat.rule);
+      if (s) out.push(s[0]);
+    }
+    return out;
+  };
+  let hits = rows;
+  if (open === true) hits = hits.filter((r) => r.rank.open);
+  if (buckets && buckets.size) hits = hits.filter((r) => buckets.has(_timeBucket(r.stat)));
+  if (mine) hits = hits.filter((r) => elos(r.stat).some((e) => Math.abs(e - mine[0]) <= LOBBY_NEAR_ELO));
+
+  // Array.prototype.sort is stable, so ties keep creation order — the same order _lobbyBestOutside gives.
+  const byState = (a, b) => (_lobbyBetter(a.rank, b.rank) ? -1 : _lobbyBetter(b.rank, a.rank) ? 1 : 0);
+  const how = LOBBY_SORTS.includes(sort) ? sort : 'state';
+  if (how === 'rank') {
+    for (const r of hits) r.best = Math.max(-Infinity, ...elos(r.stat));
+    hits = hits.slice().sort((a, b) => (a.best === b.best ? byState(a, b) : b.best - a.best));
+  } else if (how === 'time') {
+    const order = (r) => LOBBY_TIME_BUCKETS.indexOf(_timeBucket(r.stat));
+    hits = hits.slice().sort((a, b) => order(a) - order(b) || a.stat.timerSeconds - b.stat.timerSeconds || byState(a, b));
+  } else {
+    hits = hits.slice().sort(byState);
+  }
+
+  const from = Math.min(Math.max(parseInt(offset, 10) || 0, 0), hits.length);
+  const rooms = [];
+  for (const { roomId } of hits.slice(from, from + LOBBY_ROOM_PAGE_SIZE)) {
     const room = roomManager.getRoom(roomId);
     if (room) rooms.push(roomManager.lobbyEntry(room));
   }
-  return { rooms, stats: { ...tally.sum } };
-}
-
-/** Record `entry` as the new baseline in `into`; return what to send for it (null = unchanged). */
-function _lobbyUpsert(prev, entry, into, rank) {
-  const base = _lobbyBaseline(entry);
-  base.rank = rank;
-  into.set(entry.roomId, base);
-  if (!prev) return entry;
-  if (prev.json === base.json && _sameMoves(prev.moves, base.moves)) return null;
-  const movesFrom = prev.startedAt === base.startedAt ? LobbyMoves.sharedPrefix(prev.moves, base.moves) : 0;
-  if (movesFrom === 0) return entry;
-  const delta = { movesFrom, moves: base.moves.slice(movesFrom) };
-  // Board-only change (the mini-board flush, ≤ 1 s since #389): the rest of the entry is what the client holds.
-  return prev.json === base.json ? { roomId: entry.roomId, startedAt: entry.startedAt, ...delta } : { ...entry, ...delta };
+  return { rooms, matched: hits.length, stats: _lobbyStats(tally, key) };
 }
 
 /**
- * #380: which rooms the pending flush must look at. A Set of room ids, or 'all' once any caller did
- * not name a room. The diff itself still reads live state at flush time — callers say *which* room
- * may have changed, never *what* changed.
- */
-const _lobbyDirty = new WeakMap();
-/** Per-io time of the last full diff. */
-const _lobbyLastFull = new WeakMap();
-/**
- * A dirty-only flush cannot see a change nobody announced (a seated player's new avatar or rating),
- * so a flush this long after the last full diff is a full one again.
+ * #380: which rooms the pending flush must look at — `st.dirty`, a Set of room ids, or 'all' once any
+ * caller did not name a room. The diff itself still reads live state at flush time — callers say
+ * *which* room may have changed, never *what* changed. One dirty set per io serves every channel.
+ *
+ * A dirty-only flush cannot see a change nobody announced (a seated player's new avatar), so a flush
+ * this long after the last full diff is a full one again.
  */
 const LOBBY_FULL_RECONCILE_MS = 30_000;
 
 function _markLobbyDirty(io, roomId) {
-  const cur = _lobbyDirty.get(io);
-  if (cur === 'all') return;
-  if (typeof roomId !== 'string' || !roomId) { _lobbyDirty.set(io, 'all'); return; }
-  if (cur) cur.add(roomId); else _lobbyDirty.set(io, new Set([roomId]));
+  const st = _lobbyState(io);
+  if (st.dirty === 'all') return;
+  if (typeof roomId !== 'string' || !roomId) { st.dirty = 'all'; return; }
+  if (st.dirty) st.dirty.add(roomId); else st.dirty = new Set([roomId]);
 }
 
 /**
- * Send the full room list to one socket, and seed the delta baseline.
+ * Send channel `key`'s page to one socket, and seed that channel's delta baseline.
  *
  * A client joining mid-stream must receive a complete snapshot once before any
  * patch can mean anything — see LobbyHandler's `lobby:subscribe`.
  */
-function sendLobbySnapshot(io, socket) {
-  // No baseline yet → build it exactly as a flush would (its upserts are discarded: nobody holds
-  // anything to patch). The snapshot is then the page's rooms, read live.
-  if (!_lobbySnapshots.has(io)) _diffLobbyRooms(io);
+function sendLobbySnapshot(io, socket, key = LOBBY_ALL) {
+  const st = _lobbyState(io);
+  if (!st.tally) { st.tally = _countAllRooms(); st.lastFull = Date.now(); } // a full count, as a full flush
+  let ch = st.channels.get(key);
+  if (!ch) { ch = { page: null, statsKey: '' }; st.channels.set(key, ch); }
+  if (!ch.page) {
+    // No baseline yet → build it as a full flush would (its upserts are discarded: nobody holds anything
+    // to patch). Rooms changed since the last flush are still in st.dirty for the next one.
+    _diffLobbyFull(st.tally, ch, key);
+    const stats = _channelStats(st.tally, ch, key);
+    ch.statsKey = stats ? JSON.stringify(stats) : '';
+  }
   const rooms = [];
-  for (const roomId of _lobbySnapshots.get(io).keys()) {
+  for (const roomId of ch.page.keys()) {
     const room = roomManager.getRoom(roomId);
     if (room) rooms.push(roomManager.lobbyEntry(room)); // destroyed since the last flush: its `removed` is on the way
   }
-  const payload = { rooms, serverTime: Date.now() }; // serverTime: clock offset for the cards' elapsed time (#364, as B170)
-  const tally = _lobbyTallies.get(io);
-  if (tally.sum.rooms > rooms.length) payload.stats = { ...tally.sum }; // #382
+  const payload = { rooms, serverTime: Date.now() };
+  const stats = _channelStats(st.tally, ch, key);
+  if (stats) payload.stats = stats;
   socket.emit('lobby:update', payload);
+}
+
+/**
+ * #439: rank-cache rebuilt after a rating write. The online roster carries every member's rank/Elo
+ * (any rank may have moved, the diff finds which), and a seated member's card shows their Elo.
+ * @param {Set<string>|string[]} changedUserIds  members whose Elo / provisional flag changed
+ */
+function onRatingsChanged(io, changedUserIds) {
+  broadcastOnlineUsers(io);
+  for (const userId of changedUserIds) {
+    const roomId = roomManager.getRoomIdByUser(userId);
+    if (roomId) broadcastLobbyUpdate(io, roomId);
+  }
 }
 
 // home-feed requires this module, so it can't be a top-level require; memoized because a cached
@@ -614,14 +727,13 @@ function _homeFeed() { return _homeFeedMod || (_homeFeedMod = require('./home-fe
 /**
  * Broadcast what changed in the room list to everyone in the lobby (debounced).
  *
- * Sends `lobby:patch` — `{ upserts, removed }` — instead of the whole list.
+ * Sends `lobby:patch` — `{ upserts, removed, stats? }` — per channel instead of the whole list.
  * Both operations are idempotent by design: re-sending an entry a client
  * already has is a no-op, and removing a roomId it never had is a no-op. That
  * matters because a socket that subscribes between two flushes gets a snapshot
  * which may already include a change the next patch also carries.
  *
- * Emits nothing at all when nothing actually changed — the old code sent a
- * full list every time regardless.
+ * Emits nothing to a channel when nothing in it (or its counts) changed.
  */
 function broadcastLobbyUpdate(io, roomId) {
   _homeFeed().scheduleHomeUpdate(io); // B225: playing count + live list
@@ -629,49 +741,47 @@ function broadcastLobbyUpdate(io, roomId) {
   _scheduleLobbyFlush(io);
 }
 
-/** The debounced diff + `lobby:patch` emit shared by broadcastLobbyUpdate and the board throttle. */
 function _scheduleLobbyFlush(io) {
   if (_lobbyUpdateTimers.has(io)) return; // a broadcast is already scheduled for this burst
   const timeout = setTimeout(() => _flushLobbyNow(io), LOBBY_UPDATE_DEBOUNCE_MS);
   _lobbyUpdateTimers.set(io, timeout);
 }
 
-/** Diff + emit now; also absorbs a pending debounced flush (it would find nothing new). */
+/** Update the counts once, then diff + emit each channel. */
 function _flushLobbyNow(io) {
   const pending = _lobbyUpdateTimers.get(io);
   if (pending) { clearTimeout(pending); _lobbyUpdateTimers.delete(io); }
-  const { upserts, removed, stats, statsChanged } = _diffLobbyRooms(io);
-  if (upserts.length === 0 && removed.length === 0 && !statsChanged) return;
-  const patch = { upserts, removed, serverTime: Date.now() };
-  if (stats) patch.stats = stats; // #382: counts over all rooms while the page is not the whole list
-  io.to('lobby').emit('lobby:patch', patch);
-}
-
-/**
- * Lobby mini boards (#364): a move changes `moves` in listRooms(), but nothing else would tell the
- * lobby. GameHandler calls this after each move; at most one flush per LOBBY_BOARD_THROTTLE_MS per
- * server carries every game's position at once (diffed, so only rooms that moved are sent). Home
- * feed is not poked — its counts don't change on a move.
- * #389: the window closes straight into a flush (no extra 300 ms debounce), so a move reaches the
- * cards ≤ LOBBY_BOARD_THROTTLE_MS later wherever it falls in the window (was 0.3–2.8 s). 1 s is
- * affordable because #382 bounds each flush to the 30 mirrored rooms and #377 sends only new moves.
- */
-const LOBBY_BOARD_THROTTLE_MS = 1_000;
-const _lobbyBoardTimers = new WeakMap();
-function scheduleLobbyBoardUpdate(io, roomId) {
-  _markLobbyDirty(io, roomId); // #380
-  if (_lobbyBoardTimers.has(io)) return;
-  const timeout = setTimeout(() => {
-    _lobbyBoardTimers.delete(io);
-    _flushLobbyNow(io);
-  }, LOBBY_BOARD_THROTTLE_MS);
-  if (timeout.unref) timeout.unref();
-  _lobbyBoardTimers.set(io, timeout);
+  const st = _lobbyState(io);
+  const dirty = st.dirty;
+  st.dirty = undefined;
+  const now = Date.now();
+  const full = !st.tally || !(dirty instanceof Set) || now - st.lastFull >= LOBBY_FULL_RECONCILE_MS;
+  if (full) {
+    st.tally = _countAllRooms();
+    st.lastFull = now;
+  } else {
+    for (const roomId of dirty) {
+      const room = roomManager.getRoom(roomId);
+      _tallySet(st.tally, roomId, room ? _lobbyRank(roomManager.lobbyStat(room)) : null);
+    }
+  }
+  for (const [key, ch] of st.channels) {
+    if (_lobbyChannelEmpty(io, key)) { st.channels.delete(key); continue; } // its next subscriber reseeds it
+    const { upserts, removed } = full || !ch.page ? _diffLobbyFull(st.tally, ch, key) : _diffLobbyDirty(st.tally, ch, key, dirty);
+    const stats = _channelStats(st.tally, ch, key);
+    const statsKey = stats ? JSON.stringify(stats) : '';
+    const statsChanged = statsKey !== ch.statsKey;
+    ch.statsKey = statsKey;
+    if (upserts.length === 0 && removed.length === 0 && !statsChanged) continue;
+    const patch = { upserts, removed, serverTime: Date.now() };
+    if (stats) patch.stats = stats;
+    io.to(lobbyRoomOf(key)).emit('lobby:patch', patch);
+  }
 }
 
 /**
  * Per-io record of what lobby clients were last told about online users:
- * userId → serialized entry. Same technique as `_lobbySnapshots` (#230).
+ * userId → serialized entry. Same technique as the lobby room pages (`_lobbyIo`, #230).
  */
 const _onlineSnapshots = new WeakMap();
 
@@ -779,7 +889,7 @@ function broadcastOnlineUsers(io) {
     _onlineUsersTimers.delete(io);
     const { patch, changed } = _diffOnlineUsers(io);
     if (!changed) return;
-    io.to('lobby').emit('lobby:online_patch', patch);
+    io.to(LOBBY_ROOM).emit('lobby:online_patch', patch);
   }, ONLINE_USERS_DEBOUNCE_MS);
   _onlineUsersTimers.set(io, timeout);
 }
@@ -1259,8 +1369,13 @@ module.exports = {
   BEAT_TTL_MS,
   getClientIp,
   broadcastLobbyUpdate,
-  scheduleLobbyBoardUpdate,
-  LOBBY_BOARD_THROTTLE_MS,
+  LOBBY_ROOM,
+  LOBBY_RULES,
+  lobbyChannelOf,
+  lobbyRoomOf,
+  leaveLobby,
+  LOBBY_NEAR_ELO,
+  onRatingsChanged,
   LOBBY_FULL_RECONCILE_MS,
   LOBBY_ROOM_PAGE_SIZE,
   queryLobbyRooms,

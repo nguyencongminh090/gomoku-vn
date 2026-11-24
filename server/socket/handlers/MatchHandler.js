@@ -24,13 +24,13 @@ const {
   broadcastLobbyUpdate,
   broadcastRoomUpdate,
   getClientIp,
+  leaveLobby,
 } = require('../state');
 const { scheduleHomeUpdate } = require('../home-feed');
 
 const TICK_MS = 1000;
 const STATUS_EVERY_TICKS = 2;
 const INITIAL_RATING = 1200; // RatingService's start value, for members with no games in a pool
-const LOBBY_ROOM = 'lobby';
 
 const queue = new MatchQueue();
 let ticker = null;
@@ -85,7 +85,7 @@ function makeRoom(a, b) {
   room.matchGames = 0;
   room.matchMax = MATCH_MAX_GAMES;
   for (const s of [sa, sb]) {
-    s.leave(LOBBY_ROOM);
+    leaveLobby(s);
     s.join(room.roomId);
   }
   const payload = roomManager.serializeRoom(room);

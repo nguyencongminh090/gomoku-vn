@@ -12,6 +12,16 @@ jest.useFakeTimers();
 
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
+// #439: standings driven per test — `mockStandings[rule][userId] = [rating, rank|null, provisional]`.
+const mockStandings = {};
+jest.mock('../managers/rank-cache', () => ({
+  standingOf: (userId, rule) => (mockStandings[rule] && mockStandings[rule][userId]) || null,
+  ratingsOf: (userId) => {
+    const out = {};
+    for (const rule of Object.keys(mockStandings)) if (mockStandings[rule][userId]) out[rule] = mockStandings[rule][userId];
+    return out;
+  },
+}));
 
 const {
   sessions, setHideOnline, broadcastOnlineUsers, sendOnlineSnapshot, ONLINE_USERS_DEBOUNCE_MS,
@@ -41,7 +51,7 @@ function apply(users, { joined, left }) {
   return [...m.values()];
 }
 
-beforeEach(() => { sessions.clear(); setHideOnline('h', false); });
+beforeEach(() => { sessions.clear(); setHideOnline('h', false); for (const k of Object.keys(mockStandings)) delete mockStandings[k]; });
 afterAll(() => sessions.clear());
 
 describe('lobby:online_patch', () => {
@@ -50,7 +60,7 @@ describe('lobby:online_patch', () => {
     online('a'); online('b');
     sendOnlineSnapshot(io, s);
     expect(s.emitted).toEqual([{ event: 'lobby:online_users', data: [
-      { userId: 'a', displayName: 'a', isGuest: false, avatarUrl: null }, { userId: 'b', displayName: 'b', isGuest: false, avatarUrl: null },
+      { userId: 'a', displayName: 'a', isGuest: false, avatarUrl: null, ratings: {} }, { userId: 'b', displayName: 'b', isGuest: false, avatarUrl: null, ratings: {} },
     ] }]);
   });
 
@@ -60,7 +70,7 @@ describe('lobby:online_patch', () => {
     sendOnlineSnapshot(io, makeSocket());
     online('new'); sessions.delete('u3');
     flush(io);
-    expect(patches(io)).toEqual([{ joined: [{ userId: 'new', displayName: 'new', isGuest: false, avatarUrl: null }], left: ['u3'] }]);
+    expect(patches(io)).toEqual([{ joined: [{ userId: 'new', displayName: 'new', isGuest: false, avatarUrl: null, ratings: {} }], left: ['u3'] }]);
   });
 
   test('nothing changed → nothing emitted', () => {
@@ -127,7 +137,7 @@ describe('lobby:online_patch', () => {
     jest.advanceTimersByTime(ONLINE_USERS_DEBOUNCE_MS);
     expect(patches(io)).toEqual([
       { joined: [], left: ['h'] },
-      { joined: [{ userId: 'h', displayName: 'h', isGuest: false, avatarUrl: null }], left: [] },
+      { joined: [{ userId: 'h', displayName: 'h', isGuest: false, avatarUrl: null, ratings: {} }], left: [] },
     ]);
   });
 
@@ -146,7 +156,7 @@ describe('lobby:online_patch', () => {
     sendOnlineSnapshot(io, makeSocket());
     online('a', 'Alicia');
     flush(io);
-    expect(patches(io)).toEqual([{ joined: [{ userId: 'a', displayName: 'Alicia', isGuest: false, avatarUrl: null }], left: [] }]);
+    expect(patches(io)).toEqual([{ joined: [{ userId: 'a', displayName: 'Alicia', isGuest: false, avatarUrl: null, ratings: {} }], left: [] }]);
   });
 });
 
@@ -244,7 +254,7 @@ describe('first page only (#381)', () => {
       const r = queryOnlineUsers({ q: ' MINH ' });
       expect(r.users.map(u => u.userId)).toEqual(['x1', 'x2']);
       expect(r).toMatchObject({ total: 122, matched: 2 });
-      expect(Object.keys(r.users[0]).sort()).toEqual(['avatarUrl', 'displayName', 'isGuest', 'userId']);
+      expect(Object.keys(r.users[0]).sort()).toEqual(['avatarUrl', 'displayName', 'isGuest', 'ratings', 'userId']);
     });
 
     test('offset pages through an unfiltered list without overlap', () => {
@@ -263,5 +273,56 @@ describe('first page only (#381)', () => {
       expect(queryOnlineUsers({ ids: ['x1', 'x2', 'nobody', 42, pad(119)] })).toEqual({ online: ['x1', pad(119)] });
       setHideOnline('x2', false);
     });
+  });
+});
+
+describe('#439 roster per rule (S2/S3)', () => {
+  const guest = (userId, displayName = userId) => {
+    sessions.set(userId, { id: 'sock-' + userId, user: { userId, displayName, isGuest: true } });
+  };
+  const rate = (rule, userId, rating, rank, prov = false) => {
+    (mockStandings[rule] || (mockStandings[rule] = {}))[userId] = [rating, rank, prov];
+  };
+
+  test('members carry ratings for every rule they are rated in; guests carry none', () => {
+    const s = makeSocket();
+    online('m', 'Mai'); guest('g', 'Khách 1');
+    rate('caro', 'm', 1890, 3); rate('renju', 'm', 1203, 40, true);
+    sendOnlineSnapshot(makeIo(), s);
+    const byId = Object.fromEntries(s.emitted[0].data.map(u => [u.userId, u]));
+    expect(byId.m.ratings).toEqual({ caro: [1890, 3, false], renju: [1203, 40, true] });
+    expect(byId.g).not.toHaveProperty('ratings');
+  });
+
+  test('a rating change re-sends that member in the next patch', () => {
+    const io = makeIo();
+    online('a'); online('b');
+    sendOnlineSnapshot(io, makeSocket());
+    rate('caro', 'a', 1500, 1);
+    flush(io);
+    expect(patches(io)).toEqual([{ joined: [{ userId: 'a', displayName: 'a', isGuest: false, avatarUrl: null, ratings: { caro: [1500, 1, false] } }], left: [] }]);
+  });
+
+  test('order in a rule: ranked by rank, then unranked members by name, then guests by name', () => {
+    online('r2', 'Zed'); online('r1', 'Yen'); online('n2', 'Binh'); online('n1', 'An'); online('z0', 'Cuong');
+    guest('g2', 'Khách B'); guest('g1', 'Khách A');
+    rate('caro', 'r1', 2000, 1); rate('caro', 'r2', 1900, 7, true);
+    rate('caro', 'z0', 1600, null); // rated row but no ranked game yet → "no rank" group
+    rate('renju', 'n1', 1700, 1);   // ranked in another rule only
+    expect(queryOnlineUsers({ rule: 'caro' }).users.map(u => u.userId)).toEqual(['r1', 'r2', 'n1', 'n2', 'z0', 'g1', 'g2']);
+    expect(queryOnlineUsers({ rule: 'renju' }).users.map(u => u.userId)).toEqual(['n1', 'n2', 'z0', 'r1', 'r2', 'g1', 'g2']);
+    // Unknown / absent rule keeps the plain name order.
+    expect(queryOnlineUsers({ rule: 'nope' }).users.map(u => u.displayName)).toEqual(['An', 'Binh', 'Cuong', 'Khách A', 'Khách B', 'Yen', 'Zed']);
+  });
+
+  test('search and paging keep the rule order; hidden-online members stay out', () => {
+    for (let i = 0; i < 60; i++) { online('p' + i, 'Player ' + String(i).padStart(2, '0')); rate('standard', 'p' + i, 2000 - i, 60 - i); }
+    setHideOnline('p59', true); // rank 1 — must not appear anywhere
+    const first = queryOnlineUsers({ rule: 'standard' });
+    const second = queryOnlineUsers({ rule: 'standard', offset: ONLINE_PAGE_SIZE });
+    expect(first.users[0].userId).toBe('p58'); // rank 2 = best visible
+    expect([...first.users, ...second.users].map(u => u.userId)).toEqual(Array.from({ length: 59 }, (_, i) => 'p' + (58 - i)));
+    expect(queryOnlineUsers({ rule: 'standard', q: 'player 0' }).users.map(u => u.userId)).toEqual(['p9', 'p8', 'p7', 'p6', 'p5', 'p4', 'p3', 'p2', 'p1', 'p0']);
+    setHideOnline('p59', false);
   });
 });

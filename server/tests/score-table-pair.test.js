@@ -4,7 +4,7 @@ jest.useFakeTimers();
 jest.mock('../utils/logger', () => ({ info: jest.fn(), warn: jest.fn(), error: jest.fn() }));
 jest.mock('../db/database', () => ({ saveGame: jest.fn() }));
 jest.mock('../socket/state', () => ({
-  timerMap: new Map(), broadcastLobbyUpdate: jest.fn(), scheduleLobbyBoardUpdate: jest.fn(),
+  timerMap: new Map(), broadcastLobbyUpdate: jest.fn(),
   broadcastRoomUpdate: jest.fn(), cleanupRoomTimer: jest.fn(), cleanupReadyTimer: jest.fn(),
 }));
 jest.mock('../managers/RatingService', () => ({ ...jest.requireActual('../managers/RatingService'), recordGame: jest.fn(() => true) }));

@@ -710,22 +710,30 @@ class RoomManager extends EventEmitter {
   /**
    * The cheap part of a lobby entry — no DB lookup, no moves copy (#382: the lobby counts and ranks
    * every room, but builds full entries only for the page it mirrors). Same numbers as lobbyEntry().
-   * @returns {{ state: string, playerCount: number, userCount: number }}
+   * #439: also what the lobby filters and sorts on (rule tab, time bucket, seated members' Elo), so
+   * state.js never reads room internals.
+   * @returns {{ state: string, playerCount: number, userCount: number, rule: string, timerMode: string,
+   *   timerSeconds: number, seatIds: string[] }}  seatIds = seated members (guests left out)
    */
   lobbyStat(room) {
     let playerCount = 0;
     let userCount = 0;
+    const seatIds = [];
     for (const u of room.users.values()) {
-      if (u.slot === 1 || u.slot === 2) playerCount++;
+      if (u.slot === 1 || u.slot === 2) {
+        playerCount++;
+        if (!u.isGuest) seatIds.push(u.userId);
+      }
       if (u.slot === null && u.presence === 'disconnected') continue; // ghost viewer, see lobbyEntry
       userCount++;
     }
-    return { state: room.state, playerCount, userCount };
+    const s = room.settings;
+    return { state: room.state, playerCount, userCount, rule: s.winningRule, timerMode: s.timerMode, timerSeconds: s.timerSeconds, seatIds };
   }
 
   /**
    * One room's lobby-list entry (#380: the lobby flush builds this for changed rooms only —
-   * it costs two DB lookups per seated player plus a copy of the game's moves).
+   * it costs an avatar lookup per seated player; the rating comes from rank-cache, #439).
    */
   lobbyEntry(room) {
     const hostUser = room.users.get(room.host);
@@ -755,11 +763,6 @@ class RoomManager extends EventEmitter {
       userCount++;
     }
 
-    // Live position for the lobby mini board (#364): flat [x0,y0,x1,y1,…] in play order, plus the
-    // game's start time. null when no game is running, so the lobby diff sees the game end.
-    const game = room.state === 'playing' && room.gameState && room.gameState.status === 'ongoing' ? room.gameState : null;
-    const moves = game ? game.moveHistory.flatMap((m) => [m.x, m.y]) : null;
-
     return {
       roomId: room.roomId,
       roomName: room.roomName,
@@ -778,8 +781,6 @@ class RoomManager extends EventEmitter {
       timerSeconds: room.settings.timerSeconds,
       timerIncrementSeconds: room.settings.timerIncrementSeconds,
       ranked: room.settings.ranked !== false,
-      startedAt: game ? game.startedAt || null : null,
-      moves,
     };
   }
 
