@@ -1,5 +1,5 @@
 /**
- * TODO.md #178 — clubs discover page. (Separate file from clubs-pages.test.js:
+ * TODO.md #178 — clubs discover page (#446: Khám phá centre of the "Hội quán" shell). (Separate file from clubs-pages.test.js:
  * club.js's DOMContentLoaded listener would otherwise leak into this document.)
  *
  * @jest-environment jsdom
@@ -24,7 +24,8 @@ describe('clubs list page', () => {
     global.fetch = jest.fn((url) => (url.includes('/mine')
       ? Promise.resolve({ ok: false, status: 401 })
       : ok({ clubs: [{ slug: 'a-b', name: '<b>X</b>', description: '', joinPolicy: 'open', members: 3, avgRating: 1500, description: 'hi', rank: 2 }], pagination: { page: 1, totalPages: 1 } })));
-  require('../js/platform-shell.js');
+    require('../js/platform-shell.js');
+    require('../js/club-kit.js');
     require('../js/clubs.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     await flush(); await flush();
@@ -47,7 +48,8 @@ describe('clubs list page', () => {
       if (o && o.method === 'POST') return post;
       return url.includes('/mine') ? ok({ clubs: [] }) : ok({ clubs: listClubs, pagination: { page: 1, totalPages: 1 } });
     });
-    require('../js/platform-shell.js');
+      require('../js/platform-shell.js');
+    require('../js/club-kit.js');
     require('../js/clubs.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     await flush(); await flush();
@@ -106,7 +108,7 @@ describe('clubs list page', () => {
     document.body.innerHTML = body('clubs.html');
     window.t = (k) => k;
     global.fetch = jest.fn((url) => (url.includes('/mine') ? Promise.resolve({ ok: false, status: 401 }) : ok({ clubs: [], pagination: { page: 1, totalPages: 1 } })));
-    require('../js/platform-shell.js'); require('../js/clubs.js');
+    require('../js/platform-shell.js'); require('../js/club-kit.js'); require('../js/clubs.js');
     document.dispatchEvent(new Event('DOMContentLoaded'));
     await flush(); await flush();
     expect(document.querySelectorAll('#cl-tabs .ptab')).toHaveLength(1);
@@ -138,5 +140,73 @@ describe('clubs list page', () => {
     expect(b.querySelector('.prow__desc')).toBeNull();
     const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'platform.css'), 'utf8');
     expect(css).toMatch(/#cl-list \.prow__desc\s*\{[^}]*-webkit-line-clamp:\s*2/);
+  });
+
+  describe('#446 Hội quán discover', () => {
+    const mk = (n, extra) => ({ slug: 's' + n, name: 'C' + n, joinPolicy: 'open', members: 10 - n, avgRating: 0, description: '', color: 'green', tag: 'T' + n, ...extra });
+    afterEach(() => { localStorage.removeItem('gvn_user'); location.hash = ''; });
+
+    it('featured: 3 banner cards on the unfiltered first page only (needs >= 3 clubs); names as text', async () => {
+      await boot([mk(1, { name: '<b>One</b>' }), mk(2), mk(3), mk(4)]);
+      const cards = document.querySelectorAll('#cl-feat .cl-fc');
+      expect(document.getElementById('cl-feat').hidden).toBe(false);
+      expect(cards).toHaveLength(3);
+      expect(cards[0].getAttribute('href')).toBe('/c/s1');
+      expect(cards[0].querySelector('.cl-nm').textContent).toBe('<b>One</b>');
+      expect(cards[0].querySelector('b')).toBeNull();
+      expect(cards[0].querySelector('svg.cl-genb')).not.toBeNull();
+      expect(cards[0].style.getPropertyValue('--cc')).toBe('var(--club-green)');
+      await boot([mk(1), mk(2)]);
+      expect(document.getElementById('cl-feat').hidden).toBe(true);
+    });
+
+    it('card and rail link colours out-rank `.pl a { color: inherit }` (0,1,1) — card names were ink on the dark scrim', () => {
+      const css = fs.readFileSync(path.join(__dirname, '..', 'css', 'club.css'), 'utf8');
+      expect(css).toMatch(/\.cl-hq \.cl-fc \{ color: var\(--cl-on-cc\); \}/);
+      expect(css).toMatch(/\.cl-hq \.cl-rail__btn \{[^}]*color: var\(--c-brand-text\)/);
+      expect(css).not.toMatch(/(^|\n)\.cl-fc \{[^}]*color:/);
+    });
+
+    it('a search hides the featured cards', async () => {
+      await boot([mk(1), mk(2), mk(3)]);
+      document.getElementById('cl-q').value = 'C';
+      document.getElementById('cl-q').dispatchEvent(new Event('input'));
+      await new Promise((r) => setTimeout(r, 300)); await flush();
+      expect(document.getElementById('cl-feat').hidden).toBe(true);
+    });
+
+    it('rows: crest with the tag, action label by policy, "Đã vào" for my clubs (no nested buttons)', async () => {
+      localStorage.setItem('gvn_user', '{"userId":1}');
+      jest.resetModules();
+      document.body.innerHTML = body('clubs.html');
+      window.t = (k, v) => k + (v ? JSON.stringify(v) : '');
+      global.fetch = jest.fn((url) => (url.includes('/mine')
+        ? ok({ clubs: [{ slug: 's2', name: 'C2', role: 'member', members: 8, avatarUrl: null }] })
+        : ok({ clubs: [mk(1), mk(2), mk(3, { joinPolicy: 'invite' })], pagination: { page: 1, totalPages: 1 } })));
+      require('../js/platform-shell.js'); require('../js/club-kit.js'); require('../js/clubs.js');
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+      await flush(); await flush(); await flush();
+      const rows = [...document.querySelectorAll('#cl-list .prow')];
+      expect(rows[0].querySelector('.cl-crest').textContent).toBe('T1');
+      expect(rows.map((r) => (r.querySelector('.cl-act, .cl-pill') || {}).textContent)).toEqual(['clubs.visit', 'clubs.joined', 'clubs.ask']);
+      expect(document.querySelectorAll('#cl-list button')).toHaveLength(0);
+      // rail: my club + Khám phá (current) + Tạo nhóm
+      expect([...document.querySelectorAll('#cb-rail .cl-rail__club')].map((a) => a.getAttribute('href'))).toEqual(['/c/s2']);
+      expect(document.querySelector('#cb-rail a[href="/clubs.html"]').getAttribute('aria-current')).toBe('page');
+      expect(document.getElementById('cl-rail-create')).not.toBeNull();
+    });
+
+    it('#create opens the create form for signed-in users; the toggle reports aria-expanded', async () => {
+      localStorage.setItem('gvn_user', '{"userId":1}');
+      location.hash = '#create';
+      await boot([]);
+      expect(document.getElementById('cl-create-panel').hidden).toBe(false);
+      expect(document.getElementById('cl-create-toggle').getAttribute('aria-expanded')).toBe('true');
+      document.getElementById('cl-create-toggle').click();
+      expect(document.getElementById('cl-create-panel').hidden).toBe(true);
+      localStorage.removeItem('gvn_user');
+      await boot([]);
+      expect(document.getElementById('cl-create-panel').hidden).toBe(true);
+    });
   });
 });

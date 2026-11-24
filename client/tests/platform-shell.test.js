@@ -261,7 +261,7 @@ describe('club notifications (#235)', () => {
     expect(window.PlatformShell.notifications.text(n('club_invite'))).toBe('notif.club_invite{"name":"Xi","club":"Caro"}');
     expect(window.PlatformShell.notifications.target(n('club_invite'))).toBe('/c/a%20b');
     expect(window.PlatformShell.notifications.target(n('club_approved'))).toBe('/c/a%20b');
-    expect(window.PlatformShell.notifications.target(n('club_request'))).toBe('/c/a%20b#tab=manage');
+    expect(window.PlatformShell.notifications.target(n('club_request'))).toBe('/c/a%20b#ch=requests'); // #446: join requests are their own channel
   });
 
   it('avatar takes tag + colour only when there is no image', () => {

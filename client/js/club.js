@@ -1,7 +1,8 @@
 /**
- * club.js — /c/<slug> club page (#178): info, join/leave, member leaderboard,
- * staff management. Permissions are enforced server-side; the UI just hides
- * what the caller can't do. User-supplied text only via textContent.
+ * club.js — /c/<slug> club page, "Hội quán" shell (#446; was tabs, #178/#200/#235/#250):
+ * rail of my clubs, channel pane, centre (chat stream or a channel page), members pane.
+ * Permissions are enforced server-side; the UI just hides what the caller can't do.
+ * User-supplied text only via textContent.
  */
 
 'use strict';
@@ -12,10 +13,21 @@
   const slug = decodeURIComponent(location.pathname.replace(/^\/c\//, '').replace(/\/$/, ''));
   const CATEGORIES = ['freestyle', 'standard', 'caro', 'renju'];
   const COLORS = ['blue', 'green', 'red', 'orange', 'purple', 'teal', 'pink', 'gray'];
-  const state = { category: CATEGORIES[0], weekly: false, color: 'blue', club: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
+  const state = { category: CATEGORIES[0], weekly: false, color: 'blue', club: null, mine: undefined, ch: null, chat: { loaded: false, firstId: 0, lastId: 0, busy: false } };
   const CHAT_POLL_MS = 8000;
-  const OVERVIEW_ROWS = 10;
   const CHAT_PAGE = 50;
+  const MEMBERS_PANE_MAX = 50;
+
+  /** Public channels, then staff-only ones (the old Quản lý panel split in three). */
+  const CHANNELS = ['chat', 'events', 'tournaments', 'board', 'members'];
+  const STAFF_CHANNELS = ['requests', 'settings', 'log'];
+  const ALL_CHANNELS = [...CHANNELS, ...STAFF_CHANNELS];
+  const CH_ICON = {
+    chat: 'chat-circle', events: 'calendar', tournaments: 'flag-checkered', board: 'ranking',
+    members: 'users-three', requests: 'user-plus', settings: 'gear-six', log: 'list-dashes',
+  };
+  /** Old `#tab=` links keep working (bookmarks from the tab layout). */
+  const TAB_ALIAS = { overview: null, manage: 'requests', chat: 'chat', members: 'members', tournaments: 'tournaments', board: 'board' }; // manage → its actionable part (join-request notifications)
 
   function el(tag, text, cls) {
     const n = document.createElement(tag);
@@ -23,6 +35,8 @@
     if (cls) n.className = cls;
     return n;
   }
+
+  const icon = (name) => window.PlatformShell.icon('ph-regular-' + name);
 
   function errMsg(body) {
     const k = 'clubs.err_' + (body && body.code);
@@ -122,6 +136,17 @@
     return b;
   }
 
+  /** Round icon button (members pane approve/reject, chat delete): the label lives in aria-label + title. */
+  function iconBtn(iconName, label, fn, cls) {
+    const b = el('button', undefined, 'cl-ib' + (cls ? ' ' + cls : ''));
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    b.title = label;
+    b.append(icon(iconName));
+    b.onclick = async () => { if (await fn()) load(); };
+    return b;
+  }
+
   function userRow(username, displayName, avatarUrl, meta) {
     const a = el('a', undefined, 'prow');
     a.href = '/u/' + encodeURIComponent(username);
@@ -132,58 +157,104 @@
     return a;
   }
 
-  const TABS = ['overview', 'members', 'tournaments', 'board', 'chat'];
-  // 'manage' is a panel without a tab: staff reach it from the header Quản lý button (mockup), #tab=manage works too.
-  const PANELS = [...TABS, 'manage'];
-  const visibleTabs = () => TABS.filter((tab) => !$('cb-tab-' + tab).hidden);
-  /** Active tab from `#tab=<name>`; unknown/missing/hidden (chat for non-members) → overview. */
-  function currentTab() {
-    const m = /(?:^|[#&])tab=([a-z]+)/.exec(location.hash);
-    if (m && m[1] === 'manage' && isStaff()) return 'manage';
-    return m && visibleTabs().includes(m[1]) ? m[1] : TABS[0];
+  // --- roles ---
+  const isMember = () => !!state.club && ['owner', 'officer', 'member'].includes(state.club.myRole);
+  const isStaff = () => !!state.club && ['owner', 'officer'].includes(state.club.myRole);
+
+  // --- channels ---
+  /** Channel from `#ch=<name>` (or a legacy `#tab=`); staff channels for staff only; default trò-chuyện. */
+  function currentChannel() {
+    const m = /(?:^|[#&])(ch|tab)=([a-z]+)/.exec(location.hash);
+    let name = m ? (m[1] === 'tab' ? (TAB_ALIAS[m[2]] === undefined ? m[2] : TAB_ALIAS[m[2]]) : m[2]) : null;
+    if (STAFF_CHANNELS.includes(name) && !isStaff()) name = null;
+    return ALL_CHANNELS.includes(name) ? name : CHANNELS[0];
   }
 
-  function showTab(name, { updateHash = false } = {}) {
-    state.shown = name;
-    for (const panel of PANELS) $('cb-panel-' + panel).hidden = panel !== name;
-    for (const tab of TABS) {
-      const on = tab === name;
-      const btn = $('cb-tab-' + tab);
-      btn.setAttribute('aria-selected', String(on));
-      btn.tabIndex = on || (name === 'manage' && tab === TABS[0]) ? 0 : -1;
+  const visibleChannels = () => ALL_CHANNELS.filter((ch) => !$('cb-ch-' + ch).hidden);
+
+  function showChannel(name, { updateHash = false } = {}) {
+    state.ch = name;
+    $('cb-app').dataset.ch = name; // phone CSS shows my row (leave) with thành-viên only
+    for (const ch of ALL_CHANNELS) {
+      $('cb-panel-' + ch).hidden = ch !== name;
+      const btn = $('cb-ch-' + ch);
+      if (ch === name) btn.setAttribute('aria-current', 'true'); else btn.removeAttribute('aria-current');
+      btn.classList.toggle('is-on', ch === name);
     }
-    $('cb-manage-btn').setAttribute('aria-pressed', String(name === 'manage'));
-    if (updateHash && currentTab() !== name) history.replaceState(null, '', '#tab=' + name);
+    $('cb-head-icon').replaceChildren(icon(CH_ICON[name]));
+    $('cb-head-title').textContent = t('clubs.ch_' + name);
+    $('cb-head-sub').textContent = t('clubs.chsub_' + name);
+    $('cb-msg').textContent = '';
+    if (updateHash && currentChannel() !== name) history.replaceState(null, '', '#ch=' + name);
     if (name === 'chat') openChat();
   }
 
   // --- club chat: REST polling only (a socket here would evict the lobby socket) ---
-  const isMember = () => !!state.club && ['owner', 'officer', 'member'].includes(state.club.myRole);
-  const isStaff = () => !!state.club && ['owner', 'officer'].includes(state.club.myRole);
   const decode = (txt) => (window.EscapeUtils ? window.EscapeUtils.decodeChatText(txt) : txt);
+  const lang = () => document.documentElement.lang || undefined;
+  const dayKey = (iso) => { const d = new Date(iso); return d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate(); };
 
   function fmtWhen(iso) {
     const d = new Date(iso);
-    const lang = document.documentElement.lang || undefined;
-    return d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' }) + ', ' + d.toLocaleDateString(lang, { day: '2-digit', month: '2-digit' });
+    return d.toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }) + ', ' + d.toLocaleDateString(lang(), { day: '2-digit', month: '2-digit' });
+  }
+
+  function dayLabel(iso) {
+    const d = new Date(iso);
+    const today = new Date();
+    const y = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+    if (dayKey(iso) === dayKey(today.toISOString())) return t('clubs.day_today');
+    if (dayKey(iso) === dayKey(y.toISOString())) return t('clubs.day_yesterday');
+    return d.toLocaleDateString(lang(), { weekday: 'long', day: '2-digit', month: '2-digit' });
+  }
+
+  /** Role of a chat author from the club payload (owner/officer get a coloured label). */
+  function roleOf(username) {
+    const m = state.club && state.club.leaderboard.find((x) => x.username === username);
+    return m ? m.role : null;
   }
 
   function chatRow(m) {
     const row = el('div', undefined, 'cb-chat__msg');
     row.dataset.id = String(m.id);
+    row.dataset.day = dayKey(m.createdAt);
+    row.dataset.at = m.createdAt;
     const body = el('div', undefined, 'cb-chat__body');
-    body.append(
-      Object.assign(window.PlatformShell.meta([m.displayName, fmtWhen(m.createdAt)]), { className: 'cb-chat__who prow__meta' }),
-      el('div', decode(m.text), 'cb-chat__text'));
-    row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), body);
+    const who = el('div', undefined, 'cb-chat__who');
+    const name = el(m.username ? 'a' : 'b', m.displayName, 'cl-nm cb-chat__name');
+    if (m.username) name.href = '/u/' + encodeURIComponent(m.username);
+    who.append(name);
+    const role = roleOf(m.username);
+    if (role === 'owner' || role === 'officer') who.append(el('span', t('clubs.role_' + role), 'cl-role'));
+    const time = el('time', new Date(m.createdAt).toLocaleTimeString(lang(), { hour: '2-digit', minute: '2-digit' }), 'cb-chat__time');
+    time.dateTime = m.createdAt;
+    time.title = fmtWhen(m.createdAt);
+    who.append(time);
+    body.append(who, el('div', decode(m.text), 'cb-chat__text'));
+    row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
     if (isStaff()) {
-      row.append(mini(t('clubs.delete_message'), async () => {
+      row.append(iconBtn('trash', t('clubs.delete_message'), async () => {
         const ok = await act('DELETE', '/messages/' + m.id, null, 'clubs.confirm_delete_message');
         if (ok) { resetChat(); openChat(); }
         return false;
-      }));
+      }, 'cb-chat__del'));
     }
     return row;
+  }
+
+  /** Day separators: one before the first message of each local day; rebuilt after every insert. */
+  function markDays() {
+    const log = $('cb-chat-log');
+    log.querySelectorAll('.cl-day').forEach((n) => n.remove());
+    let prev = null;
+    for (const row of [...log.children]) {
+      if (row.dataset.day !== prev) {
+        const sep = el('div', dayLabel(row.dataset.at), 'cl-day');
+        sep.setAttribute('role', 'separator');
+        log.insertBefore(sep, row);
+        prev = row.dataset.day;
+      }
+    }
   }
 
   function resetChat() {
@@ -192,7 +263,7 @@
   }
 
   function syncChatChrome(pageFull) {
-    const n = $('cb-chat-log').children.length;
+    const n = $('cb-chat-log').querySelectorAll('.cb-chat__msg').length;
     $('cb-chat-empty').hidden = n > 0;
     if (pageFull !== undefined) $('cb-chat-older').hidden = !pageFull;
   }
@@ -208,14 +279,19 @@
       if (!res.ok) return;
       const { messages } = await res.json();
       const log = $('cb-chat-log');
-      const stick = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+      const scroller = $('cb-stream');
+      const stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40;
+      const fromBottom = scroller.scrollHeight - scroller.scrollTop;
       if (messages.length) {
         const rows = messages.map(chatRow);
         if (mode === 'older') log.prepend(...rows); else log.append(...rows);
         if (mode !== 'newer' || !c.firstId) c.firstId = messages[0].id;
         if (mode !== 'older') c.lastId = messages[messages.length - 1].id;
+        markDays();
       }
-      if (mode === 'newest') { c.loaded = true; log.scrollTop = log.scrollHeight; } else if (mode === 'newer' && stick) log.scrollTop = log.scrollHeight;
+      if (mode === 'newest') { c.loaded = true; scroller.scrollTop = scroller.scrollHeight; }
+      else if (mode === 'newer' && stick) scroller.scrollTop = scroller.scrollHeight;
+      else if (mode === 'older') scroller.scrollTop = scroller.scrollHeight - fromBottom; // keep the reading position
       syncChatChrome(mode === 'newer' ? undefined : messages.length >= CHAT_PAGE);
     } catch (_) { /* next poll retries */ } finally { c.busy = false; }
   }
@@ -223,7 +299,6 @@
   function openChat() {
     if (isMember() && !state.chat.loaded) fetchChat('newest');
   }
-
 
   function renderSwatches() {
     $('cb-colors').replaceChildren(...COLORS.map((key) => {
@@ -248,7 +323,7 @@
     return row;
   }
 
-  /** Board tab: rating categories or "this week" (wins in 7 days, from the same payload). */
+  /** Board channel: rating categories or "this week" (wins in 7 days, from the same payload). */
   function renderBoardMode() {
     const week = state.weekly;
     const rows = state.club.weekly || [];
@@ -267,55 +342,136 @@
     [...$('cb-tabs').children].forEach((b, i) => b.setAttribute('aria-selected', String(i === CATEGORIES.length ? week : !week && CATEGORIES[i] === state.category)));
   }
 
-  function render(c) {
-    state.club = c;
-    document.title = 'Play3CR — ' + c.name;
-    $('cb-avatar').replaceWith(Object.assign(window.PlatformShell.avatar(c.avatarUrl, c.name, 'pav--xl pav--sq', { color: c.color, tag: c.tag }), { id: 'cb-avatar' }));
-    $('cb-banner').hidden = !c.bannerUrl;
-    $('cb-banner').style.backgroundImage = c.bannerUrl ? 'url("' + c.bannerUrl + '")' : '';
-    $('cb-banner').setAttribute('aria-label', c.name);
-    $('cb-name').textContent = c.name;
-    $('cb-policy-badge').textContent = t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short');
-    $('cb-desc').textContent = c.description;
-    $('cb-announce').hidden = !c.announcement;
-    $('cb-announce-text').textContent = c.announcement;
+  function renderRail() {
+    const c = state.club;
+    window.ClubKit.renderRail($('cb-rail'), {
+      mine: state.mine || null, active: c ? c.slug : slug,
+      current: c ? { slug: c.slug, name: c.name, color: c.color, tag: c.tag, avatarUrl: c.avatarUrl } : null,
+    });
+  }
 
+  function renderBanner(c) {
+    const img = $('cb-banner');
+    const gen = $('cb-banner-gen');
+    img.hidden = !c.bannerUrl;
+    img.style.backgroundImage = c.bannerUrl ? 'url("' + c.bannerUrl + '")' : '';
+    gen.hidden = !!c.bannerUrl;
+    gen.replaceChildren(...(c.bannerUrl ? [] : [window.ClubKit.genBanner(c.slug, c.color)]));
+    $('cb-name').textContent = c.name;
+    $('cb-count').textContent = t('clubs.members', { n: c.members });
+  }
+
+  /** Visitor / invited / pending: crest, name, description, three numbers and the one primary. */
+  function renderGate(c) {
+    const role = c.myRole;
+    $('cb-avatar').replaceWith(Object.assign(window.ClubKit.crest(c, 'cl-crest--xl'), { id: 'cb-avatar' }));
+    $('cb-gate-name').textContent = c.name;
+    $('cb-desc').textContent = c.description;
+    $('cb-desc').hidden = !c.description;
+    $('cb-policy-badge').textContent = t(c.joinPolicy === 'open' ? 'clubs.policy_open_short' : 'clubs.policy_invite_short');
     const stats = $('cb-stats');
     stats.replaceChildren();
     for (const [label, v] of [['clubs.members_stat', String(c.members)], ['clubs.avg_stat', c.avgRating ? String(c.avgRating) : '—'], ['clubs.rank_stat', c.rank ? '#' + c.rank : '—']]) {
       const d = document.createElement('div');
-      d.append(el('dt', t(label)), el('dd', v));
+      d.append(el('dd', v), el('dt', t(label)));
       stats.appendChild(d);
     }
+    $('cb-join').hidden = !!role;
+    $('cb-join').textContent = t(c.invited ? 'clubs.accept_invite' : c.joinPolicy === 'open' ? 'clubs.join' : 'clubs.request');
+    $('cb-pending-note').hidden = $('cb-cancel').hidden = role !== 'pending';
+  }
+
+  /** My row at the bottom of the channel pane: who I am here + leave (never for the owner). */
+  function renderMe(c) {
+    const me = c.leaderboard.find((m) => m.mine);
+    $('cb-me').hidden = !isMember() || !me;
+    $('cb-leave').hidden = !isMember() || c.myRole === 'owner';
+    if (!me) return;
+    $('cb-me-av').replaceChildren(window.PlatformShell.avatar(me.avatarUrl, me.displayName, 'cl-av36'));
+    $('cb-me-name').textContent = me.displayName;
+    $('cb-me-sub').textContent = me.rating == null ? t('clubs.role_' + me.role) : t('clubs.my_rank', { n: me.rank });
+  }
+
+  function paneRow(m, sub, extra) {
+    const row = el('div', undefined, 'cl-u');
+    const a = el('a', undefined, 'cl-u__link');
+    a.href = '/u/' + encodeURIComponent(m.username);
+    const x = el('span', undefined, 'cl-u__x');
+    x.append(el('b', m.displayName, 'cl-nm'));
+    if (sub) x.append(el('small', sub, 'cl-nm'));
+    a.append(window.PlatformShell.avatar(m.avatarUrl || null, m.displayName, 'cl-av36'), x);
+    row.append(a, ...(extra || []));
+    return row;
+  }
+
+  /** Members pane (no presence API yet, #446 decision): Chờ duyệt (staff), Ban quản trị, Thành viên. */
+  function renderMembersPane(c) {
+    const pending = isStaff() ? (c.pending || []) : [];
+    $('cb-mem-pending').hidden = !pending.length;
+    $('cb-mem-pending-n').textContent = String(pending.length);
+    $('cb-mem-pending-list').replaceChildren(...pending.map((p) => {
+      const enc = encodeURIComponent(p.username);
+      return paneRow(p, null, [
+        iconBtn('check', t('clubs.approve'), () => act('POST', '/members/' + enc + '/approve'), 'cl-ib--ring'),
+        iconBtn('x', t('clubs.reject'), () => act('DELETE', '/members/' + enc), 'cl-ib--ring'),
+      ]);
+    }));
+    const staff = c.leaderboard.filter((m) => m.role !== 'member');
+    const plain = c.leaderboard.filter((m) => m.role === 'member');
+    const ratingSub = (m) => (m.rating == null ? t('clubs.unrated') : t('clubs.rating_n', { n: m.rating }));
+    $('cb-staff-n').textContent = String(staff.length);
+    $('cb-staff').replaceChildren(...staff.map((m) => paneRow(m, t('clubs.role_' + m.role))));
+    $('cb-plain-n').textContent = String(plain.length);
+    $('cb-plain').replaceChildren(...plain.slice(0, MEMBERS_PANE_MAX).map((m) => paneRow(m, ratingSub(m))));
+    const more = $('cb-mem-more');
+    more.hidden = plain.length <= MEMBERS_PANE_MAX;
+    more.textContent = t('clubs.members_all', { n: plain.length });
+  }
+
+  function render(c) {
+    state.club = c;
+    document.title = 'Play3CR — ' + c.name;
+    $('cb-app').style.setProperty('--cc', 'var(--club-' + window.ClubKit.colorKey(c.color) + ')');
+    renderBanner(c);
+    renderGate(c);
+    renderRail();
 
     const role = c.myRole;
     const staff = role === 'owner' || role === 'officer';
-    $('cb-join').hidden = !!role;
-    $('cb-join').textContent = t(c.invited ? 'clubs.accept_invite' : c.joinPolicy === 'open' ? 'clubs.join' : 'clubs.request');
-    $('cb-leave').hidden = !role || role === 'owner';
-    $('cb-leave').textContent = role === 'pending' ? t('clubs.cancel_request') : t('clubs.leave');
-    $('cb-delete').hidden = role !== 'owner';
-    $('cb-manage-btn').hidden = !staff;
+    for (const ch of STAFF_CHANNELS) $('cb-ch-' + ch).hidden = !staff;
+    $('cb-staff-grp').hidden = !staff;
+    const pendingN = staff ? (c.pending || []).length : 0;
+    $('cb-pending-count').hidden = !pendingN;
+    $('cb-pending-count').textContent = String(pendingN);
+    $('cb-pending-count').setAttribute('aria-label', t('clubs.pending_n', { n: pendingN }));
+    $('cb-delete').hidden = $('cb-danger').hidden = role !== 'owner';
+    renderMe(c);
 
-    $('cb-staff').replaceChildren(...c.leaderboard.filter((m) => m.role !== 'member')
-      .map((m) => userRow(m.username, m.displayName, m.avatarUrl, t('clubs.role_' + m.role))));
+    // Chat channel: members get the stream; everyone else the gate over a skeleton (never real messages).
+    $('cb-gate').hidden = isMember();
+    $('cb-chat').hidden = !isMember();
+    $('cb-announce').hidden = !c.announcement;
+    $('cb-announce-text').textContent = c.announcement;
 
+    $('cb-events-count').hidden = !c.events.length;
+    $('cb-events-count').textContent = String(c.events.length);
     $('cb-events').replaceChildren(...(c.events.length ? c.events.map((e) => {
       const row = el('div', undefined, 'prow');
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', e.title, 'prow__t'),
-        window.PlatformShell.meta(new Date(e.startsAt).toLocaleString(document.documentElement.lang || undefined, { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })));
-      row.append(body);
+        window.PlatformShell.meta(new Date(e.startsAt).toLocaleString(lang(), { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })));
+      row.append(window.PlatformShell.icon('ph-regular-calendar'), body);
       if (staff) row.append(mini(t('clubs.delete_event'), () => act('DELETE', '/events/' + encodeURIComponent(e.id), null, 'clubs.confirm_delete_event')));
       return row;
     }) : [el('p', t('clubs.no_events'), 'pnote')]));
+    $('cb-event-box').hidden = !staff;
 
     $('cb-tournaments').replaceChildren(...(c.tournaments.length ? c.tournaments.map((x) => {
       const a = el('a', undefined, 'prow');
       a.href = '/tournament.html?id=' + encodeURIComponent(x.id);
       const body = el('div', undefined, 'prow__body');
       body.append(el('div', x.name, 'prow__t'),
-        window.PlatformShell.meta([t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(document.documentElement.lang || undefined)]));
+        window.PlatformShell.meta([t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(lang())]));
       a.append(body);
       return a;
     }) : [el('p', t('clubs.no_tournaments'), 'pnote')]));
@@ -367,19 +523,20 @@
           td.append(ch, ' ');
         }
         if (staff) {
-        const canKick = m.role !== 'owner' && (role === 'owner' || m.role === 'member');
-        if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
-        if (role === 'owner' && m.role !== 'owner') {
-          td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
-            () => act('PUT', '/members/' + enc + '/role', { role: m.role === 'officer' ? 'member' : 'officer' })));
-          td.append(' ', mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
-        }
+          // Officers can't act on staff; nobody removes the owner (the server enforces the same).
+          const canKick = m.role !== 'owner' && (role === 'owner' || m.role === 'member');
+          if (canKick) td.append(mini(t('clubs.kick'), () => act('DELETE', '/members/' + enc, null, 'clubs.confirm_kick')));
+          if (role === 'owner' && m.role !== 'owner') {
+            td.append(' ', mini(t(m.role === 'officer' ? 'clubs.demote' : 'clubs.promote'),
+              () => act('PUT', '/members/' + enc + '/role', { role: m.role === 'officer' ? 'member' : 'officer' })));
+            td.append(' ', mini(t('clubs.transfer'), () => act('PUT', '/members/' + enc + '/role', { role: 'owner' }, 'clubs.confirm_transfer')));
+          }
         }
         tr.append(td);
       }
       return tr;
     }));
-    const boardRow = (m) => {
+    $('cb-body').replaceChildren(...c.leaderboard.map((m) => {
       const tr = document.createElement('tr');
       const name = document.createElement('td');
       const link = el('a', m.displayName);
@@ -387,11 +544,7 @@
       name.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'pav--sm'), link);
       tr.append(el('td', String(m.rank)), name, el('td', m.rating == null ? '—' : String(m.rating), 'num'));
       return tr;
-    };
-    $('cb-body').replaceChildren(...c.leaderboard.map(boardRow));
-    // Tổng quan (mockup): the same ranking table, top of the list; the full board + rule chips stay in their tab.
-    $('cb-ov-title').replaceChildren(t('clubs.board'), el('span', t('rankings.cat_' + state.category), 'pbadge'));
-    $('cb-ov-body').replaceChildren(...c.leaderboard.slice(0, OVERVIEW_ROWS).map(boardRow));
+    }));
 
     const chips = CATEGORIES.map((cat) => {
       const b = el('button', t('rankings.cat_' + cat), 'pchip');
@@ -406,10 +559,10 @@
     weekChip.onclick = () => { state.weekly = true; renderBoardMode(); };
     $('cb-tabs').replaceChildren(...chips, weekChip);
     renderBoardMode();
-    $('cb-tab-chat').hidden = !isMember();
+    renderMembersPane(c);
     if (!isMember() && state.chat.loaded) resetChat();
     $('cb-content').hidden = false;
-    showTab(currentTab());
+    showChannel(currentChannel());
   }
 
   async function load() {
@@ -426,9 +579,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     window.PlatformShell.build('clubs');
+    renderRail();
     $('cb-join').onclick = async () => { if (await act('POST', '/join')) load(); };
     $('cb-leave').onclick = async () => { if (await act('POST', '/leave', null, 'clubs.confirm_leave')) load(); };
-    $('cb-manage-btn').onclick = () => showTab(state.shown === 'manage' ? 'overview' : 'manage', { updateHash: true });
+    $('cb-cancel').onclick = async () => { if (await act('POST', '/leave')) load(); };
     $('cb-delete').onclick = async () => { if (await act('DELETE', '', null, 'clubs.confirm_delete')) location.href = '/clubs.html'; };
     $('cb-form').onsubmit = async (ev) => {
       ev.preventDefault();
@@ -441,7 +595,8 @@
       const name = $('cb-invite-name').value.trim();
       if (!name) return;
       const ok = await act('POST', '/invites/' + encodeURIComponent(name), {});
-      $('cb-invite-msg').textContent = ok ? '' : $('cb-msg').textContent; // error beside the field, not at page top
+      $('cb-invite-msg').textContent = ok ? '' : $('cb-msg').textContent; // error beside the field
+      if (!ok) $('cb-msg').textContent = '';
       if (ok) {
         $('cb-invite-form').reset();
         $('cb-invite-sugg').hidden = true;
@@ -462,19 +617,20 @@
         load();
       }
     };
-    for (const tab of TABS) {
-      $('cb-tab-' + tab).addEventListener('click', () => showTab(tab, { updateHash: true }));
+    for (const ch of ALL_CHANNELS) {
+      $('cb-ch-' + ch).addEventListener('click', () => showChannel(ch, { updateHash: true }));
     }
-    // Arrow keys move between tabs (WAI-ARIA tabs pattern).
-    $('cb-tablist').addEventListener('keydown', (ev) => {
-      const d = ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowLeft' ? -1 : 0;
+    // Up/Down (and Left/Right on the phone's horizontal strip) move focus between channels.
+    $('cb-channels').addEventListener('keydown', (ev) => {
+      const d = ev.key === 'ArrowDown' || ev.key === 'ArrowRight' ? 1 : ev.key === 'ArrowUp' || ev.key === 'ArrowLeft' ? -1 : 0;
       if (!d) return;
-      const tabs = visibleTabs();
-      const next = tabs[(tabs.indexOf(currentTab()) + d + tabs.length) % tabs.length];
-      showTab(next, { updateHash: true });
-      $('cb-tab-' + next).focus();
+      const list = visibleChannels();
+      const at = list.indexOf(document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.ch : state.ch);
+      const next = list[(at + d + list.length) % list.length];
+      $('cb-ch-' + next).focus();
       ev.preventDefault();
     });
+    $('cb-mem-more').onclick = () => showChannel('members', { updateHash: true });
     // Hand the club to the tournament create modal (sessionStorage: lobby-home strips the query string).
     $('cb-tournament-new').onclick = () => {
       sessionStorage.setItem('gvn_club_tournament', slug);
@@ -488,14 +644,15 @@
       if (await act('POST', '/messages', { text })) {
         $('cb-chat-input').value = '';
         await fetchChat('newer');
-        const log = $('cb-chat-log');
-        log.scrollTop = log.scrollHeight;
+        const s = $('cb-stream');
+        s.scrollTop = s.scrollHeight;
       }
     };
     setInterval(() => {
-      if (!document.hidden && currentTab() === 'chat' && state.chat.loaded) fetchChat('newer');
+      if (!document.hidden && state.ch === 'chat' && state.chat.loaded) fetchChat('newer');
     }, CHAT_POLL_MS);
-    window.addEventListener('hashchange', () => showTab(currentTab()));
+    window.addEventListener('hashchange', () => showChannel(currentChannel()));
     load();
+    window.ClubKit.fetchMine().then((mine) => { state.mine = mine; renderRail(); });
   });
 })();

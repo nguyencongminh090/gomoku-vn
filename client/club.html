@@ -10,81 +10,170 @@
   <link rel="stylesheet" href="css/main.css?v=8aabd3f8" />
   <link rel="stylesheet" href="css/tokens.css?v=bd768e32" />
   <link rel="stylesheet" href="css/platform-shell.css?v=174b5103" />
-  <link rel="stylesheet" href="css/platform.css?v=ae47d7cf" />
+  <link rel="stylesheet" href="css/platform.css?v=a7da945b" />
+  <link rel="stylesheet" href="css/club.css?v=563a9554" />
   <link rel="stylesheet" href="css/settings-panel.css?v=c3360643" />
   <link rel="stylesheet" href="vendor/fonts/nunito/style.css">
 
   <script src="js/skin-preload.js?v=399486e6"></script>
 </head>
-<body class="pl">
+<body class="pl cl-body">
 <div id="pl-shell"></div>
 
-<main class="papp" role="main">
-  <p id="cb-status" class="pnote" role="status"></p>
+<main class="cl-hq" id="cb-app" role="main">
+  <nav class="cl-rail" id="cb-rail" aria-label="Nhóm của tôi" data-i18n-aria="clubs.rail"></nav>
+  <p id="cb-status" class="pnote cl-status" role="status"></p>
 
-  <div id="cb-content" hidden>
-    <div class="cb-banner" id="cb-banner" role="img" hidden></div>
-    <header class="phead">
-      <span id="cb-avatar"></span>
-      <div>
-        <h1><span id="cb-name"></span> <span class="pbadge" id="cb-policy-badge"></span></h1>
-        <p class="phead__bio" id="cb-desc"></p>
-        <div class="pactions">
-          <button type="button" class="pbtn pbtn--primary" id="cb-join"></button>
-          <button type="button" class="pbtn" id="cb-leave" data-i18n="clubs.leave" hidden>Rời nhóm</button>
-          <button type="button" class="pbtn pbtn--ghost" id="cb-copy" data-i18n="clubs.copy_link">Sao chép liên kết</button>
-          <button type="button" class="pbtn pbtn--ghost" id="cb-manage-btn" aria-pressed="false" data-i18n="clubs.manage" hidden>Quản lý</button>
-        </div>
-        <p id="cb-msg" class="pnote" role="status"></p>
+  <div id="cb-content" class="cl-content" hidden>
+    <aside class="cl-chan">
+      <div class="cl-banner">
+        <div class="cl-banner__img" id="cb-banner" hidden></div>
+        <span id="cb-banner-gen" class="cl-banner__gen"></span>
+        <h1 class="cl-banner__name"><span id="cb-name" class="cl-nm"></span><small id="cb-count"></small></h1>
       </div>
-      <dl class="pstats" id="cb-stats"></dl>
-    </header>
+      <nav class="cl-chans" id="cb-channels" aria-label="Kênh" data-i18n-aria="clubs.ch_nav">
+        <div class="cl-grp" data-i18n="clubs.ch_group">Kênh</div>
+        <button type="button" class="cl-ch" id="cb-ch-chat" data-ch="chat"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-chat-circle"></use></svg><span class="cl-nm" data-i18n="clubs.ch_chat">trò-chuyện</span></button>
+        <button type="button" class="cl-ch" id="cb-ch-events" data-ch="events"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-calendar"></use></svg><span class="cl-nm" data-i18n="clubs.ch_events">sự-kiện</span><span class="cl-count" id="cb-events-count" hidden></span></button>
+        <button type="button" class="cl-ch" id="cb-ch-tournaments" data-ch="tournaments"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-flag-checkered"></use></svg><span class="cl-nm" data-i18n="clubs.ch_tournaments">giải-đấu</span></button>
+        <button type="button" class="cl-ch" id="cb-ch-board" data-ch="board"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-ranking"></use></svg><span class="cl-nm" data-i18n="clubs.ch_board">xếp-hạng</span></button>
+        <button type="button" class="cl-ch" id="cb-ch-members" data-ch="members"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-users-three"></use></svg><span class="cl-nm" data-i18n="clubs.ch_members">thành-viên</span></button>
+        <div class="cl-grp" id="cb-staff-grp" data-i18n="clubs.manage" hidden>Quản lý</div>
+        <button type="button" class="cl-ch" id="cb-ch-requests" data-ch="requests" hidden><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-user-plus"></use></svg><span class="cl-nm" data-i18n="clubs.ch_requests">đơn-xin-vào</span><span class="cl-badge" id="cb-pending-count" hidden></span></button>
+        <button type="button" class="cl-ch" id="cb-ch-settings" data-ch="settings" hidden><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-gear-six"></use></svg><span class="cl-nm" data-i18n="clubs.ch_settings">cài-đặt-nhóm</span></button>
+        <button type="button" class="cl-ch" id="cb-ch-log" data-ch="log" hidden><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-list-dashes"></use></svg><span class="cl-nm" data-i18n="clubs.ch_log">nhật-ký</span></button>
+      </nav>
+      <div class="cl-me" id="cb-me" hidden>
+        <span id="cb-me-av"></span>
+        <span class="cl-me__x"><b id="cb-me-name" class="cl-nm"></b><small id="cb-me-sub" class="cl-nm"></small></span>
+        <button type="button" class="cl-ib" id="cb-leave" aria-label="Rời nhóm" title="Rời nhóm" data-i18n-aria="clubs.leave" data-i18n-title="clubs.leave" hidden><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-sign-out"></use></svg></button>
+      </div>
+    </aside>
 
-    <div class="ptabs" id="cb-tablist" role="tablist">
-      <button type="button" class="ptab" role="tab" id="cb-tab-overview" data-tab="overview" aria-controls="cb-panel-overview" data-i18n="clubs.tab_overview">Tổng quan</button>
-      <button type="button" class="ptab" role="tab" id="cb-tab-members" data-tab="members" aria-controls="cb-panel-members" data-i18n="clubs.tab_members">Thành viên</button>
-      <button type="button" class="ptab" role="tab" id="cb-tab-tournaments" data-tab="tournaments" aria-controls="cb-panel-tournaments" data-i18n="clubs.tab_tournaments">Giải của nhóm</button>
-      <button type="button" class="ptab" role="tab" id="cb-tab-board" data-tab="board" aria-controls="cb-panel-board" data-i18n="clubs.tab_board">Bảng xếp hạng</button>
-      <button type="button" class="ptab" role="tab" id="cb-tab-chat" data-tab="chat" aria-controls="cb-panel-chat" data-i18n="clubs.tab_chat" hidden>Trò chuyện</button>
-    </div>
+    <section class="cl-mid" aria-labelledby="cb-head-title">
+      <header class="cl-head">
+        <span id="cb-head-icon" class="cl-head__icon"></span>
+        <h2 id="cb-head-title" class="cl-head__title cl-nm"></h2>
+        <span id="cb-head-sub" class="cl-head__sub cl-nm"></span>
+        <button type="button" class="cl-ib" id="cb-copy" aria-label="Sao chép liên kết" title="Sao chép liên kết" data-i18n-aria="clubs.copy_link" data-i18n-title="clubs.copy_link"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-copy"></use></svg></button>
+      </header>
+      <p id="cb-msg" class="cl-msg" role="status"></p>
 
-    <section id="cb-panel-overview" role="tabpanel" aria-labelledby="cb-tab-overview" class="cb-panel">
-      <section class="ppanel cb-announce" id="cb-announce" hidden>
-        <h2 class="ph2" data-i18n="clubs.announcement">Thông báo</h2>
-        <p id="cb-announce-text"></p>
-      </section>
-      <div class="psplit">
-        <section class="ppanel">
-          <h2 class="ph2" id="cb-ov-title"></h2>
-          <div class="ptbl-wrap">
-            <table class="ptbl">
-              <thead><tr>
-                <th scope="col">#</th>
-                <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
-                <th scope="col" class="num" data-i18n="rankings.col_rating">Rating</th>
-              </tr></thead>
-              <tbody id="cb-ov-body"></tbody>
-            </table>
+      <section id="cb-panel-chat" class="cl-panel cl-panel--chat" aria-labelledby="cb-ch-chat">
+        <div id="cb-gate" class="cl-gate-wrap" hidden>
+          <div class="cl-skel" aria-hidden="true">
+            <div class="cl-skel__pin"></div>
+            <div class="cl-skel__row"><i></i><span><b></b><em></em></span></div>
+            <div class="cl-skel__row"><i></i><span><b></b><em class="is-long"></em></span></div>
+            <div class="cl-skel__card"></div>
+            <div class="cl-skel__row"><i></i><span><b></b><em></em></span></div>
+            <div class="cl-skel__row"><i></i><span><b></b><em class="is-long"></em></span></div>
           </div>
+          <div class="cl-gate">
+            <span id="cb-avatar"></span>
+            <h2 id="cb-gate-name" class="cl-gate__name"></h2>
+            <p id="cb-desc" class="cl-gate__desc"></p>
+            <dl class="cl-kv" id="cb-stats"></dl>
+            <span class="pbadge" id="cb-policy-badge"></span>
+            <div class="cl-gate__act">
+              <button type="button" class="pbtn pbtn--primary cl-gate__join" id="cb-join"></button>
+              <p id="cb-pending-note" class="pnote" data-i18n="clubs.pending_note" hidden>Đã gửi yêu cầu, chờ ban quản trị duyệt.</p>
+              <button type="button" class="pbtn" id="cb-cancel" data-i18n="clubs.cancel_request" hidden>Huỷ yêu cầu</button>
+            </div>
+          </div>
+        </div>
+        <div id="cb-chat" class="cl-chat" hidden>
+          <div class="cl-stream" id="cb-stream">
+            <div class="cl-pinned" id="cb-announce" hidden>
+              <svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-megaphone"></use></svg>
+              <div><b data-i18n="clubs.pinned">Ghim bởi ban quản trị</b><p id="cb-announce-text"></p></div>
+            </div>
+            <button type="button" class="pbtn pbtn--sm cl-older" id="cb-chat-older" data-i18n="clubs.chat_older" hidden>Tin cũ hơn</button>
+            <div id="cb-chat-log" class="cl-log" role="log" aria-live="polite"></div>
+            <p id="cb-chat-empty" class="pnote cl-empty" data-i18n="clubs.chat_empty" hidden>Chưa có tin nhắn nào.</p>
+          </div>
+          <form id="cb-chat-form" class="cl-compose">
+            <div class="cl-compose__box">
+              <input id="cb-chat-input" type="text" maxlength="500" autocomplete="off" data-i18n-placeholder="clubs.chat_placeholder" placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn" data-i18n-aria="clubs.chat_label">
+              <button type="submit" class="cl-send" aria-label="Gửi" title="Gửi" data-i18n-aria="clubs.chat_send" data-i18n-title="clubs.chat_send"><svg class="icon" width="20" height="20" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-paper-plane-tilt"></use></svg></button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section id="cb-panel-events" class="cl-panel cl-page" aria-labelledby="cb-ch-events" hidden>
+        <div id="cb-events" class="prows prows--tickets"></div>
+        <section class="cl-card" id="cb-event-box" hidden>
+          <h3 class="cl-h3" data-i18n="clubs.add_event">Thêm sự kiện</h3>
+          <form id="cb-event-form" class="pform">
+            <label for="cb-event-title" data-i18n="clubs.event_title">Tên sự kiện</label>
+            <input id="cb-event-title" type="text" maxlength="60" required>
+            <label for="cb-event-when" data-i18n="clubs.event_when">Thời gian</label>
+            <input id="cb-event-when" type="datetime-local" required>
+            <div class="pform__row"><button type="submit" class="pbtn" data-i18n="clubs.add">Thêm</button></div>
+          </form>
         </section>
+      </section>
 
-        <aside>
-          <section class="ppanel">
-            <h2 class="ph2" data-i18n="clubs.upcoming">Sắp tới</h2>
-            <div id="cb-events" class="prows prows--tickets"></div>
-          </section>
-          <section class="ppanel">
-            <h2 class="ph2" data-i18n="profile.members_admin">Ban quản trị</h2>
-            <div id="cb-staff" class="prows prows--tickets"></div>
-          </section>
-        </aside>
-      </div>
-    </section>
+      <section id="cb-panel-tournaments" class="cl-panel cl-page" aria-labelledby="cb-ch-tournaments" hidden>
+        <div class="pform__row cl-page__top"><button type="button" class="pbtn pbtn--primary" id="cb-tournament-new" data-i18n="clubs.tournament_new" hidden>Tạo giải của nhóm</button></div>
+        <div id="cb-tournaments" class="prows prows--tickets"></div>
+      </section>
 
-    <section id="cb-panel-manage" role="region" aria-labelledby="cb-manage-btn" class="cb-panel" hidden>
-      <div class="psplit">
-        <section class="ppanel" id="cb-manage" hidden>
-          <h2 class="ph2" data-i18n="clubs.manage">Quản lý</h2>
+      <section id="cb-panel-board" class="cl-panel cl-page" aria-labelledby="cb-ch-board" hidden>
+        <div id="cb-tabs" class="pchips" role="tablist"></div>
+        <div class="ptbl-wrap" id="cb-weekly-wrap" hidden>
+          <table class="ptbl">
+            <thead><tr>
+              <th scope="col">#</th>
+              <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
+              <th scope="col" class="num" data-i18n="clubs.col_wins">Thắng</th>
+              <th scope="col" class="num" data-i18n="clubs.col_played">Ván</th>
+            </tr></thead>
+            <tbody id="cb-weekly-body"></tbody>
+          </table>
+        </div>
+        <p id="cb-weekly-empty" class="pnote" data-i18n="clubs.weekly_empty" hidden>Tuần này chưa có ván thắng nào.</p>
+        <div class="ptbl-wrap" id="cb-board-wrap">
+          <table class="ptbl">
+            <thead><tr>
+              <th scope="col">#</th>
+              <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
+              <th scope="col" class="num" data-i18n="rankings.col_rating">Rating</th>
+            </tr></thead>
+            <tbody id="cb-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="cb-panel-members" class="cl-panel cl-page" aria-labelledby="cb-ch-members" hidden>
+        <div class="ptbl-wrap">
+          <table class="ptbl">
+            <thead><tr>
+              <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
+              <th scope="col" data-i18n="clubs.col_role">Vai trò</th>
+              <th scope="col" id="cb-actions-th"></th>
+            </tr></thead>
+            <tbody id="cb-members-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="cb-panel-requests" class="cl-panel cl-page" aria-labelledby="cb-ch-requests" hidden>
+        <h3 class="cl-h3" data-i18n="clubs.pending">Yêu cầu tham gia</h3>
+        <div id="cb-pending" class="prows prows--tickets"></div>
+        <h3 class="cl-h3" data-i18n="clubs.invite_title">Mời thành viên</h3>
+        <form id="cb-invite-form" class="cb-inline">
+          <input id="cb-invite-name" type="text" maxlength="40" required autocomplete="off" placeholder="Tên đăng nhập" data-i18n-placeholder="clubs.invite_ph" aria-label="Tên đăng nhập" data-i18n-aria="clubs.invite_ph">
+          <button type="submit" class="pbtn" data-i18n="clubs.invite_btn">Mời</button>
+        </form>
+        <p id="cb-invite-msg" class="pnote" role="status"></p>
+        <div id="cb-invite-sugg" class="prows cb-sugg" hidden></div>
+        <div id="cb-invites" class="prows prows--tickets"></div>
+      </section>
+
+      <section id="cb-panel-settings" class="cl-panel cl-page" aria-labelledby="cb-ch-settings" hidden>
+        <section id="cb-manage" hidden>
           <div id="cb-images" class="cb-images"></div>
           <form id="cb-form" class="pform">
             <label for="cb-desc-input" data-i18n="clubs.desc">Mô tả</label>
@@ -102,105 +191,42 @@
             </select>
             <div class="pform__row"><button type="submit" class="pbtn pbtn--primary" data-i18n="profile.save">Lưu</button></div>
           </form>
-          <h2 class="ph2 ph2--gap" data-i18n="clubs.add_event">Thêm sự kiện</h2>
-          <form id="cb-event-form" class="pform">
-            <label for="cb-event-title" data-i18n="clubs.event_title">Tên sự kiện</label>
-            <input id="cb-event-title" type="text" maxlength="60" required>
-            <label for="cb-event-when" data-i18n="clubs.event_when">Thời gian</label>
-            <input id="cb-event-when" type="datetime-local" required>
-            <div class="pform__row"><button type="submit" class="pbtn" data-i18n="clubs.add">Thêm</button></div>
-          </form>
-          <h2 class="ph2 ph2--gap" data-i18n="clubs.pending">Yêu cầu tham gia</h2>
-          <div id="cb-pending" class="prows prows--tickets"></div>
-          <h2 class="ph2 ph2--gap" data-i18n="clubs.invite_title">Mời thành viên</h2>
-          <form id="cb-invite-form" class="cb-inline">
-            <input id="cb-invite-name" type="text" maxlength="40" required autocomplete="off" placeholder="Tên đăng nhập" data-i18n-placeholder="clubs.invite_ph" aria-label="Tên đăng nhập">
-            <button type="submit" class="pbtn" data-i18n="clubs.invite_btn">Mời</button>
-          </form>
-          <p id="cb-invite-msg" class="pnote" role="status"></p>
-          <div id="cb-invite-sugg" class="prows cb-sugg" hidden></div>
-          <div id="cb-invites" class="prows prows--tickets"></div>
-          <h2 class="ph2 ph2--gap" data-i18n="clubs.history">Nhật ký</h2>
-          <div id="cb-history" class="prows prows--tickets"></div>
+          <div class="cl-danger" id="cb-danger" hidden>
+            <h3 class="cl-h3" data-i18n="clubs.danger">Vùng nguy hiểm</h3>
+            <button type="button" class="pbtn pbtn--danger" id="cb-delete" data-i18n="clubs.delete" hidden>Xoá nhóm</button>
+          </div>
         </section>
-        <section class="ppanel">
-          <h2 class="ph2" data-i18n="clubs.danger">Vùng nguy hiểm</h2>
-          <button type="button" class="pbtn pbtn--danger" id="cb-delete" data-i18n="clubs.delete" hidden>Xoá nhóm</button>
-        </section>
-      </div>
-    </section>
+      </section>
 
-    <section id="cb-panel-members" role="tabpanel" aria-labelledby="cb-tab-members" class="cb-panel" hidden>
-      <div class="ptbl-wrap">
-        <table class="ptbl">
-          <thead><tr>
-            <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
-            <th scope="col" data-i18n="clubs.col_role">Vai trò</th>
-            <th scope="col" id="cb-actions-th"></th>
-          </tr></thead>
-          <tbody id="cb-members-body"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="cb-panel-tournaments" role="tabpanel" aria-labelledby="cb-tab-tournaments" class="cb-panel" hidden>
-      <section class="ppanel">
-        <h2 class="ph2" data-i18n="clubs.tab_tournaments">Giải của nhóm</h2>
-        <div id="cb-tournaments" class="prows prows--tickets"></div>
-        <div class="pform__row"><button type="button" class="pbtn pbtn--primary" id="cb-tournament-new" data-i18n="clubs.tournament_new" hidden>Tạo giải của nhóm</button></div>
+      <section id="cb-panel-log" class="cl-panel cl-page" aria-labelledby="cb-ch-log" hidden>
+        <div id="cb-history" class="prows prows--tickets"></div>
       </section>
     </section>
 
-    <section id="cb-panel-board" role="tabpanel" aria-labelledby="cb-tab-board" class="cb-panel" hidden>
-      <h2 class="ph2" data-i18n="clubs.board">Bảng xếp hạng nhóm</h2>
-      <div id="cb-tabs" class="pchips" role="tablist"></div>
-      <div class="ptbl-wrap" id="cb-weekly-wrap" hidden>
-        <table class="ptbl">
-          <thead><tr>
-            <th scope="col">#</th>
-            <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
-            <th scope="col" class="num" data-i18n="clubs.col_wins">Thắng</th>
-            <th scope="col" class="num" data-i18n="clubs.col_played">Ván</th>
-          </tr></thead>
-          <tbody id="cb-weekly-body"></tbody>
-        </table>
+    <aside class="cl-mem" id="cb-mem" aria-label="Thành viên" data-i18n-aria="clubs.ch_members_label">
+      <div id="cb-mem-pending" hidden>
+        <div class="cl-grp"><span data-i18n="clubs.role_pending">Chờ duyệt</span><span class="cl-count" id="cb-mem-pending-n"></span></div>
+        <div id="cb-mem-pending-list"></div>
       </div>
-      <p id="cb-weekly-empty" class="pnote" data-i18n="clubs.weekly_empty" hidden>Tuần này chưa có ván thắng nào.</p>
-      <div class="ptbl-wrap" id="cb-board-wrap">
-        <table class="ptbl">
-          <thead><tr>
-            <th scope="col">#</th>
-            <th scope="col" data-i18n="rankings.col_player">Người chơi</th>
-            <th scope="col" class="num" data-i18n="rankings.col_rating">Rating</th>
-          </tr></thead>
-          <tbody id="cb-body"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="cb-panel-chat" role="tabpanel" aria-labelledby="cb-tab-chat" class="cb-panel" hidden>
-      <section class="ppanel cb-chat">
-        <button type="button" class="pbtn pbtn--sm" id="cb-chat-older" data-i18n="clubs.chat_older" hidden>Tin cũ hơn</button>
-        <div id="cb-chat-log" class="cb-chat__log" role="log" aria-live="polite"></div>
-        <p id="cb-chat-empty" class="pnote" data-i18n="clubs.chat_empty" hidden>Chưa có tin nhắn nào.</p>
-        <form id="cb-chat-form" class="cb-chat__form">
-          <input id="cb-chat-input" type="text" maxlength="500" autocomplete="off" data-i18n-placeholder="clubs.chat_placeholder" placeholder="Nhắn cho cả nhóm…" aria-label="Tin nhắn">
-          <button type="submit" class="pbtn pbtn--primary" data-i18n="clubs.chat_send">Gửi</button>
-        </form>
-      </section>
-    </section>
+      <div class="cl-grp"><span data-i18n="profile.members_admin">Ban quản trị</span><span class="cl-count" id="cb-staff-n"></span></div>
+      <div id="cb-staff"></div>
+      <div class="cl-grp"><span data-i18n="clubs.role_member_plural">Thành viên</span><span class="cl-count" id="cb-plain-n"></span></div>
+      <div id="cb-plain"></div>
+      <button type="button" class="pbtn pbtn--sm cl-mem__more" id="cb-mem-more" hidden></button>
+    </aside>
   </div>
 </main>
 
-<script src="js/i18n.js?v=4197ccd6"></script>
+<script src="js/i18n.js?v=e685de7e"></script>
 <script src="js/escape-utils.js?v=05dffe1e"></script>
 <script src="js/ui-mode.js?v=3e1ff171"></script>
 <script src="js/session.js?v=7d763f30"></script>
 <script src="js/audio-manager.js?v=05f3d9fe"></script>
 <script src="js/settings-panel.js?v=349e6629"></script>
-<script src="js/platform-shell.js?v=2914e34c"></script>
+<script src="js/platform-shell.js?v=46ab0a29"></script>
 <script src="js/challenge-modal.js?v=77805a23"></script>
 <script src="js/avatar-crop.js?v=2f613ebf"></script>
-<script src="js/club.js?v=1201b92a"></script>
+<script src="js/club-kit.js?v=4cccc3ae"></script>
+<script src="js/club.js?v=b0a06e31"></script>
 </body>
 </html>
