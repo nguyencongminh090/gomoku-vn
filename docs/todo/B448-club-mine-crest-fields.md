@@ -1,5 +1,5 @@
 # B448 — `/api/clubs/mine` lacks color/tag: rail crest differs from the club's crest
-**Status:** ✅ (server; browser check pending)
+**Status:** ✅ DONE 2026-11-25 — server merged to `dev` (c6d88922); real-browser check 2026-11-25: rail crest == list crest (`KDH` on red), shot `features/club-redesign/shots/impl/b448-discover-dark-1280.png`. Scope 3 (`listClubs` bannerUrl) not done (optional, ask first). Not deployed.
 **Area:** `server/managers/ClubService.js` (`clubsOfUser`, maybe `listClubs`), `server/tests/`, `client/js/club-kit.js` (no change expected)
 **From:** #446 real-browser pass 2026-11-24 (`features/club-redesign/shots/impl/discover-dark-1280.png`); user chose a separate todo   **Depends:** B446
 
