@@ -1,5 +1,5 @@
 # B461 — Club unban/unmute ignores who issued the sanction
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 on `fix/club-unban-rank` — fix-log 2026-11-25-461 (10 server tests)
 **Area:** server/managers/ClubService.js (moderate), server/db/migrations/025_*, server/tests/clubs-*.test.js
 **From:** automated push security review of dev 2ac8de39, verified 2026-11-25   **Depends:** B455
 

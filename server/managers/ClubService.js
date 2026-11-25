@@ -261,7 +261,14 @@ function moderate(actorId, slug, { action, usernames, minutes }) {
       const target = userIdByUsername(name);
       const role = roleOf(club.id, target);
       if (!policy.canModerate(actor, role)) throw new ClubError('CLUB_FORBIDDEN', 403, 'Bạn không có quyền với người này.');
-      if (action === 'unban' || action === 'unmute') {
+      // B461: a banned user has no role (rank 0), so also outrank whoever issued the existing sanction.
+      // Lifting needs it; overwriting needs it unless the old sanction is an expired mute. NULL = legacy = owner.
+      const prior = db().prepare('SELECT kind, until_at, actor_role FROM club_sanctions WHERE club_id=? AND user_id=?').get(club.id, target);
+      const lifting = action === 'unban' || action === 'unmute';
+      const live = prior && (prior.kind === 'ban' || prior.until_at > now());
+      if (prior && (lifting || live) && policy.rank(actor) < policy.rank(prior.actor_role || 'owner'))
+        throw new ClubError('CLUB_FORBIDDEN', 403, 'Hạn chế này do cấp cao hơn đặt.');
+      if (lifting) {
         const changed = db().prepare('DELETE FROM club_sanctions WHERE club_id=? AND user_id=? AND kind=?')
           .run(club.id, target, action === 'unban' ? 'ban' : 'mute').changes;
         if (changed) log(club.id, action, actorId, target);
@@ -269,8 +276,8 @@ function moderate(actorId, slug, { action, usernames, minutes }) {
       }
       if (!policy.isMember(role)) throw new ClubError('CLUB_NOT_MEMBER', 404, 'Người này không phải thành viên.');
       if (action === 'kick') { remove(actorId, slug, target); continue; }
-      db().prepare('INSERT INTO club_sanctions (club_id,user_id,kind,until_at) VALUES (?,?,?,?) ON CONFLICT(club_id,user_id) DO UPDATE SET kind=excluded.kind,until_at=excluded.until_at')
-        .run(club.id, target, action, until);
+      db().prepare('INSERT INTO club_sanctions (club_id,user_id,kind,until_at,actor_role) VALUES (?,?,?,?,?) ON CONFLICT(club_id,user_id) DO UPDATE SET kind=excluded.kind,until_at=excluded.until_at,actor_role=excluded.actor_role')
+        .run(club.id, target, action, until, actor);
       if (action === 'ban') {
         db().prepare('DELETE FROM club_members WHERE club_id=? AND user_id=?').run(club.id, target);
         db().prepare('DELETE FROM club_invites WHERE club_id=? AND user_id=?').run(club.id, target);
