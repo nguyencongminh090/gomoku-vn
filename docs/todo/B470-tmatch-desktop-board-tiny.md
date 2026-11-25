@@ -1,5 +1,5 @@
 # B470 — Tournament match board renders at 150 px on desktop
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 — desktop board-area stretches, shell height auto (fix-log 2026-11-25-470)
 **Area:** client/css/room.css (.board-area), client/css/tournament.css (.match-board-canvas-wrap), client/js/board.js resize()
 **From:** #467 follow-up verification 2026-11-25   **Depends:** —
 

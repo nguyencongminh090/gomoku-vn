@@ -1,3 +1,5 @@
+- ✅ **#470.** Tournament match board renders at 150 px on desktop `[Model: Sonnet]` — [detail](docs/todo/B470-tmatch-desktop-board-tiny.md)
+
 - ✅ **#464.** Tournament sub-tabs wrap to 2 lines on mobile `[Model: Sonnet]` — [detail](docs/todo/B464-tournament-subtabs-wrap-mobile.md)
 
 - ✅ **#463.** club.html loads js/club-policy.js without ?v= cache-bust hash `[Model: Sonnet]` — [detail](docs/todo/B463-club-policy-cache-bust.md)

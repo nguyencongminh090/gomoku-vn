@@ -268,6 +268,20 @@
 .match-board-canvas-wrap { width: 100%; display: flex; justify-content: center; }
 #match-canvas { touch-action: pan-x pan-y; display: block; }
 
+/* #470: on desktop room.css leaves .board-area `flex: 0 0 auto` inside the centred column shell, so it is
+   shrink-to-fit — room.html only gets a real box from body.arena-room (width/height 100%), which this page
+   doesn't have. BoardRenderer.resize() hides the svg to measure #board-wrap, found ~0 px and fell to its
+   160 px floor (150 px after cell rounding). Give the board area the shell's full width. The shell's
+   room.css height (100dvh - 76px) assumes it starts right under the nav; here the match header and
+   clocks sit above it, so a height-filling board ran ~90-170 px below the fold. Height is left to
+   content instead: the hidden-svg measurement then finds no height and resize() takes its own
+   "fit the viewport below my top" branch (board.js). Mobile already sets .board-area width:100% /
+   height:auto (room.css @768) and is left alone. */
+@media (min-width: 769px) {
+  .room .board-area-shell { height: auto; }
+  .room .board-area { align-self: stretch; box-sizing: border-box; }
+}
+
 /* Layout comes from .game-controls (game.css, shared with room.html) now —
    .match-actions only needs to stay addressable for the mobile bleed-cancel
    rule below. */
