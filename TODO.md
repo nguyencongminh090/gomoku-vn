@@ -71,6 +71,5 @@ in the detail file / fix-log).
 - **#462.** #461 follow-up: test that sanction rank survives owner transfer `[Model: Sonnet]` — [detail](docs/todo/B462-club-sanction-owner-transfer-test.md)
 - **#463.** club.html loads js/club-policy.js without ?v= cache-bust hash `[Model: Sonnet]` — [detail](docs/todo/B463-club-policy-cache-bust.md)
 - **#464.** Tournament sub-tabs wrap to 2 lines on mobile `[Model: Sonnet]` — [detail](docs/todo/B464-tournament-subtabs-wrap-mobile.md)
-- **#465.** Verify club member filter bar in light theme `[Model: Sonnet]` — [detail](docs/todo/B465-club-filter-light-theme-check.md)
-- **#466.** Verify team tournament page in English locale `[Model: Sonnet]` — [detail](docs/todo/B466-team-tournament-english-check.md)
-- **#467.** Verify full 2-round team event e2e + restart hydration `[Model: Opus]` — [detail](docs/todo/B467-team-event-e2e-restart-check.md)
+- **#468.** Bare local script/style refs escape cache-bust (admin, room, profile) + verify guard `[Model: Sonnet]` — [detail](docs/todo/B468-bare-local-refs-cache-bust-guard.md)
+- **#469.** Team pairing card: black stone dot near-invisible in dark mode `[Model: Sonnet]` — [detail](docs/todo/B469-team-black-stone-dot-dark.md)

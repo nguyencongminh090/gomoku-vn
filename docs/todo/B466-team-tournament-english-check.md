@@ -1,5 +1,5 @@
 # B466 — Verify: team tournament page in English locale
-**Status:** OPEN
+**Status:** ✅ VERIFIED 2026-11-25 — English team page OK, no raw keys or Vietnamese UI strings
 **Area:** client/js i18n (tdetail.team_*), tournament page
 **From:** club-platform handoff (memory), 2026-11-25   **Depends:** B460
 
@@ -9,3 +9,11 @@
 
 ## Done when
 - Screenshots checked and result recorded.
+
+## Result (2026-11-25, dev fc980764, `verify.cjs en`, temp DB)
+- Static: 43 `tdetail.team_*` keys in vi, same 43 in en.
+- Browser (`play3cr_lang=en`): roster, boards and standings after 1 played board. Page text scan: 0 raw
+  `tdetail.|tournaments.|err.` keys, 0 Vietnamese UI words; club/user names stay as entered.
+  Labels read "Club Team Match", "Live", "2/2 clubs", "2 boards per team", "Board 1", "Rank #1",
+  "1 won 0 drawn 0 lost", tabs "Pairings / Standings / Games History", nav "Events".
+- Shots: `features/club-platform/screenshots/verify/en-team-{roster,boards,standings}-{desktop,mobile}.png`.

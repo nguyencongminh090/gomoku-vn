@@ -1,3 +1,9 @@
+- ✅ **#467.** Verify full 2-round team event e2e + restart hydration `[Model: Opus]` — [detail](docs/todo/B467-team-event-e2e-restart-check.md)
+
+- ✅ **#466.** Verify team tournament page in English locale `[Model: Sonnet]` — [detail](docs/todo/B466-team-tournament-english-check.md)
+
+- ✅ **#465.** Verify club member filter bar in light theme `[Model: Sonnet]` — [detail](docs/todo/B465-club-filter-light-theme-check.md)
+
 - ✅ **#461.** Club unban/unmute ignores who issued the sanction (officer can lift owner ban) `[Model: Sonnet]` — [detail](docs/todo/B461-club-unban-rank-check.md)
 
 - ✅ **#460.** Club team tournament UI: create, captain roster & standings `[Model: Sonnet]` — [detail](docs/todo/B460-club-team-tournament-ui.md)
