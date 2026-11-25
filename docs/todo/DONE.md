@@ -1,3 +1,4 @@
+- ✅ **#470.** Tournament match board renders at 150 px on desktop `[Model: Sonnet]` — [detail](docs/todo/B470-tmatch-desktop-board-tiny.md)
 - ✅ **#469.** Team pairing card: black stone dot near-invisible in dark mode `[Model: Sonnet]` — [detail](docs/todo/B469-team-black-stone-dot-dark.md)
 - ✅ **#468.** Bare local script/style refs escape cache-bust (admin, room, profile) + verify guard `[Model: Sonnet]` — [detail](docs/todo/B468-bare-local-refs-cache-bust-guard.md)
 

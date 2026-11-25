@@ -183,7 +183,7 @@ async function run() {
         const probe = async (pg, tag) => console.log('PROBE', tag, await pg.evaluate(() => { const svg = document.querySelector('#board-wrap svg'); const r = svg.getBoundingClientRect(); const p = svg.parentElement; const a = document.getElementById('board-area'); return JSON.stringify({ svg: [Math.round(r.left), Math.round(r.top), Math.round(r.width)], wrap: [p.clientWidth, p.clientHeight], area: a ? [a.clientWidth, a.clientHeight] : null }); }));
         for (let k = 0; k < 4; k++) { await probe(P.trucmai.page, 't' + k * 500); await P.trucmai.page.waitForTimeout(500); }
         if (process.env.PROBE_ONLY) {
-          await P.trucmai.page.setViewportSize({ width: 1366, height: 900 }); await P.trucmai.page.waitForTimeout(500); await probe(P.trucmai.page, 'after-resize');
+          await P.trucmai.page.setViewportSize({ width: +(process.env.PROBE_W || 1366), height: +(process.env.PROBE_H || 900) }); await P.trucmai.page.waitForTimeout(500); await probe(P.trucmai.page, 'after-resize');
           await P.trucmai.page.reload(); await P.trucmai.page.waitForTimeout(1500); await probe(P.trucmai.page, 'after-reload');
           await P.trucmai.page.screenshot({ path: path.join(SHOTS, 'debug-after-reload.png') });
           const mob = P.baonam.page; await mob.setViewportSize({ width: 390, height: 844 }); await mob.reload(); await mob.waitForTimeout(1500); await probe(mob, 'mobile-reload');
