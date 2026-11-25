@@ -7,4 +7,4 @@ import './ui-mode.js?v=3e1ff171';
 import './settings-panel.js?v=349e6629';
 import './platform-shell.js?v=a00af3b1';
 import './socket-client.js?v=e101aa47';
-import './tournament-detail.js?v=bc90b3c8';
+import './tournament-detail.js?v=d44cfb9d';

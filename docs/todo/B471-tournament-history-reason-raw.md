@@ -1,5 +1,5 @@
 # B471 — Tournament games history shows raw reason codes ("won — win")
-**Status:** OPEN
+**Status:** ✅ FIXED 2026-11-25 — engine codes win/agreement mapped in tournament history + replay (fix-log 2026-11-25-471)
 **Area:** client/js/tournament-detail.js (GAME_REASON_KEY, gameResultText), server/managers/GameEngine.js
 **From:** #466 follow-up verification 2026-11-25   **Depends:** —
 

@@ -1621,7 +1621,10 @@ let gamesHistory = null; // cached last-fetched list, re-rendered on langchange 
 let gamesPagination = null; // cached last-fetched pagination, re-rendered on langchange without refetching
 let currentGamesPage = 1;
 
+// #471: GameEngine writes 'win' (five in a row) and 'agreement' (draw); the older names stay for legacy rows.
 const GAME_REASON_KEY = {
+  win: 'history.reason_normal',
+  agreement: 'history.reason_draw_agreement',
   normal: 'history.reason_normal',
   resign: 'game.btn_resign',
   timeout: 'history.reason_timeout',

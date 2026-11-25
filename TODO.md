@@ -68,5 +68,4 @@ in the detail file / fix-log).
   khách −8,4s đo được ở cùng lượt → tách thành **#170**, không gộp.
   `[Model: Sonnet 5]` — [chi tiết](docs/todo/B167-khao-sat-server-side-lag-compensation-move.md)
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
-- **#471.** Tournament games history shows raw reason codes ("won — win") `[Model: Haiku]` — [detail](docs/todo/B471-tournament-history-reason-raw.md)
 - **#472.** Match page keeps the aborted game live after a server restart `[Model: Opus]` — [detail](docs/todo/B472-tmatch-stale-after-restart.md)
