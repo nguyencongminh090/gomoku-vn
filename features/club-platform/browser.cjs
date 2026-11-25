@@ -131,6 +131,20 @@ async function run() {
       await page.getByRole('button', { name: 'Khóa nhóm', exact: true }).click();
       await page.getByRole('button', { name: 'Mở khóa', exact: true }).waitFor();
       assert.equal((await member.request.post(base + '/api/clubs/' + club.slug + '/messages', { data: { text: 'hi' } })).status(), 403);
+    } else if (slice === 'activity') {
+      await joinMember('hoamai', 'Hoa Mai');
+      const db = require('better-sqlite3')(path.join(dir, 'browser.db'), { fileMustExist: true });
+      const a = db.prepare('SELECT id FROM users WHERE username=?').get(credentials.username).id;
+      const b = db.prepare("SELECT id FROM users WHERE username='hoamai'").get().id;
+      const when = new Date().toISOString();
+      db.prepare(`INSERT INTO games (id,room_id,black_player_id,white_player_id,black_player_name,white_player_name,winner,winner_color,board_size,started_at,ended_at)
+        VALUES ('demo','test',?,?,'Trúc Mai','Hoa Mai',?,'BLACK',15,?,?)`).run(a,b,a,when,when);
+      db.close();
+      await page.reload();
+      await page.locator('#cb-ch-board').click();
+      await page.locator('#cb-recent').getByText('Trúc Mai – Hoa Mai').waitFor();
+      await page.locator('#cb-activity').scrollIntoViewIfNeeded();
+      await shoot('activity');
     } else throw new Error('Unknown slice');
   } finally {
     try { if (browser) await browser.close(); } finally { app.kill('SIGTERM'); }

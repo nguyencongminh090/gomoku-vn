@@ -1,5 +1,5 @@
 # B458 — Club activity
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-25 — full Jest (4899/4899), cache-bust OK, and desktop/mobile Chromium passed. See features/club-platform/screenshots/activity-{desktop,mobile}.png.
 **From:** features/club-platform/planning.md
 **Area:** club routes, services and client panels
 

@@ -190,3 +190,54 @@ describe('weekly board', () => {
     expect((await call('GET', '/api/clubs/quiet-club')).body.weekly).toEqual([]);
   });
 });
+
+describe('club activity (B458)', () => {
+  it('enforces confirmed-member auth, hides hidden clubs from non-members, respects hide_history/joined_at, and bounds rows', async () => {
+    await create('newbie', 'Stats Club', { joinPolicy: 'invite' });
+    await call('POST', '/api/clubs/stats-club/invites/mem', 'newbie');
+    await call('POST', '/api/clubs/stats-club/join', 'mem');
+    await call('POST', '/api/clubs/stats-club/join', 'extra'); // pending
+    db.prepare('UPDATE users SET avatar_v = 7 WHERE id = ?').run(U.mem);
+    const url = '/api/clubs/stats-club/activity';
+
+    // Permission checks across all roles
+    expect((await call('GET', url)).status).toBe(401);
+    expect((await call('GET', url, 'guest')).status).toBe(403);
+    expect((await call('GET', url, 'stranger')).status).toBe(403);
+    expect((await call('GET', url, 'extra')).status).toBe(403); // pending denied
+
+    // Pre-join game excluded; post-join games bounded to 12 recent
+    const preJoin = new Date(Date.now() - 3600000).toISOString();
+    db.prepare(`INSERT INTO games (id,room_id,black_player_id,white_player_id,black_player_name,white_player_name,winner,board_size,started_at,ended_at)
+      VALUES ('prejoin','r',?,?,'A','B','BLACK',15,?,?)`).run(U.newbie, U.mem, preJoin, preJoin);
+    for (let i = 0; i < 15; i++) {
+      const at = new Date(Date.now() + (i + 1) * 1000).toISOString();
+      db.prepare(`INSERT INTO games (id,room_id,black_player_id,white_player_id,black_player_name,white_player_name,winner,board_size,started_at,ended_at)
+        VALUES (?,'r',?,?,'A','B',?,15,?,?)`).run(`int-${i}`, U.newbie, U.mem, i === 14 ? 'draw' : 'BLACK', at, at);
+    }
+
+    const stats = (await call('GET', url, 'mem')).body;
+    expect(stats.recent).toHaveLength(12);
+    expect(stats.recent[0]).toMatchObject({ id: 'int-14', black: 'NEWBIE', white: 'MEM', result: 'DRAW' });
+    expect(stats.recent.some((g) => g.id === 'prejoin')).toBe(false);
+    expect(stats.activity).toEqual([
+      { username: 'mem', displayName: 'MEM', avatarUrl: `/api/profile/avatar/${U.mem}.webp?v=7`, games: 15 },
+      { username: 'newbie', displayName: 'NEWBIE', avatarUrl: null, games: 15 },
+    ]);
+
+    // Hidden club returns 404 to non-members/pending/logged-out, 200 to confirmed members
+    db.prepare("UPDATE clubs SET hidden=1 WHERE slug='stats-club'").run();
+    expect((await call('GET', url)).status).toBe(404);
+    expect((await call('GET', url, 'stranger')).status).toBe(404);
+    expect((await call('GET', url, 'extra')).status).toBe(404);
+    expect((await call('GET', url, 'mem')).status).toBe(200);
+    db.prepare("UPDATE clubs SET hidden=0 WHERE slug='stats-club'").run();
+
+    // hide_history excludes player from both recent internal games and activity
+    db.prepare('UPDATE users SET hide_history=1 WHERE id=?').run(U.mem);
+    const afterHide = (await call('GET', url, 'newbie')).body;
+    expect(afterHide.recent).toEqual([]);
+    expect(afterHide.activity.map((p) => p.username)).toEqual(['newbie']);
+    db.prepare('UPDATE users SET hide_history=0, avatar_v=0 WHERE id=?').run(U.mem);
+  });
+});
