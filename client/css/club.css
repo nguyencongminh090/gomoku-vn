@@ -41,6 +41,7 @@
 .cl-av36 { width: 36px; height: 36px; font-size: 13px; }
 .cl-av40 { width: 40px; height: 40px; font-size: 14px; }
 .cl-h3 { font-size: 16px; font-weight: 800; margin: 6px 0 10px; }
+.cl-card > .prows + .cl-h3 { margin-top: 20px; } /* second heading in one card (activity panel) needs air above it */
 .cl-card { padding: 16px; border-radius: var(--radius-lg); background: var(--c-surface); }
 
 /* crest: the club avatar (tag on the club colour, or its image) */

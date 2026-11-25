@@ -20,7 +20,8 @@ let sock;
 function setup({ user = { userId: 'u_cap', displayName: 'Captain', isGuest: false }, fetchImpl } = {}) {
   document.body.innerHTML = BODY_HTML;
   window.GvnSession = { requireAuth: jest.fn(), getUser: jest.fn(() => user) };
-  window.t = jest.fn((key, p) => (p ? `${key}:${Object.values(p).join(',')}` : key));
+  // Real dictionary: the team UI strings live in i18n.js (no hardcoded copy), so assert on the Vietnamese text.
+  window.eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8'));
   window.EscapeUtils = require('../js/escape-utils.js');
   require('../js/platform-shell.js');
   window.fetch = fetchImpl || jest.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({ clubs: [] }) }));
@@ -153,5 +154,19 @@ describe('B460 — tournament-detail team tournament UI', () => {
     const ranks = [...document.querySelectorAll('#team-standings-table .rank-cell')].map((c) => c.textContent.trim());
     expect(ranks).toEqual(['1', '1']);
     expect(document.getElementById('team-standings-table').textContent).toContain('Đồng hạng nhất');
+    // Per-board record is spelled out, one span per fact — not the cryptic "1T / 0H / 0B".
+    const firstRow = document.querySelector('#team-boards-breakdown .team-roster-row__meta');
+    expect([...firstRow.querySelectorAll('span')].map((s) => s.textContent)).toEqual(['1 thắng', '0 hòa', '0 thua']);
+    expect(document.getElementById('team-boards-breakdown').textContent).not.toMatch(/\dT \/|\d đ(?!i)/);
+  });
+
+  it('keeps every team-UI string in i18n.js with both vi and en entries', () => {
+    const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'tournament-detail.js'), 'utf8');
+    const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
+    expect(code).not.toMatch(/[À-ỹđĐ]/);
+    const dict = fs.readFileSync(path.join(__dirname, '..', 'js', 'i18n.js'), 'utf8');
+    const keys = [...new Set([...src.matchAll(/'(tdetail\.team_[a-z_]+)'/g)].map((m) => m[1]))];
+    expect(keys.length).toBeGreaterThan(30);
+    for (const k of keys) expect(dict.split(`'${k}':`).length - 1).toBe(2);
   });
 });
