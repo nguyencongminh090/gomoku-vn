@@ -86,6 +86,7 @@ function setupPage(sessionUserId) {
       lastSocketClient = this;
     }
     emit() {}
+    onReconnect() {}
     on(event, cb) {
       (this._handlers[event] = this._handlers[event] || []).push(cb);
     }

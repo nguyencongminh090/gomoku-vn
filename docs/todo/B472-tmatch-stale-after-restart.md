@@ -1,5 +1,5 @@
 # B472 — Match page keeps the aborted game live after a server restart
-**Status:** OPEN
+**Status:** ✅ FIXED — 2026-11-25, fix-log 2026-11-25-472; client re-subscribes on reconnect, server answer unchanged
 **Area:** client/js/tournament-match.js (reconnect / tmatch:subscribe), server TournamentMatchHandler, TournamentManager._hydratePairing
 **From:** #467 follow-up verification 2026-11-25   **Depends:** —
 
