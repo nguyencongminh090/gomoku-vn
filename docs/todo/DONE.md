@@ -1,3 +1,5 @@
+- ✅ **#463.** club.html loads js/club-policy.js without ?v= cache-bust hash `[Model: Sonnet]` — [detail](docs/todo/B463-club-policy-cache-bust.md)
+
 - ✅ **#462.** #461 follow-up: test that sanction rank survives owner transfer `[Model: Sonnet]` — [detail](docs/todo/B462-club-sanction-owner-transfer-test.md)
 
 - ✅ **#467.** Verify full 2-round team event e2e + restart hydration `[Model: Opus]` — [detail](docs/todo/B467-team-event-e2e-restart-check.md)
