@@ -140,7 +140,7 @@ describe('B347 enum and 0/1 CHECKs', () => {
     for (const v of ['everyone', 'friends', 'nobody']) run('UPDATE users SET who_can_dm = ?, who_can_challenge = ?, who_can_friend = ? WHERE id = ?', v, v, v, 'u1');
     for (const v of ['member', 'moderator', 'admin']) run("UPDATE users SET role = ? WHERE id = 'u1'", v);
     for (const v of ['draft', 'active', 'completed', 'cancelled']) run("UPDATE tournaments SET status = ? WHERE id = 't1'", v);
-    for (const v of ['swiss', 'round_robin', 'double_elim']) run("UPDATE tournaments SET format = ? WHERE id = 't1'", v);
+    for (const v of ['swiss', 'round_robin', 'double_elim', 'team']) run("UPDATE tournaments SET format = ? WHERE id = 't1'", v);
     for (const v of ['Paired', 'Negotiating', 'Reported', 'Ready', 'InProgress', 'Completed', 'Walkover', 'DoubleNoShow', 'OrganizerAdjusted', 'Cancelled']) {
       run("UPDATE tournament_pairings SET state = ? WHERE id = 'p1'", v);
     }

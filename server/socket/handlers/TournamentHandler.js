@@ -352,6 +352,41 @@ function register(io, socket) {
     broadcastTournamentListUpdate(io);
   });
 
+  socket.on('tournament:register_team', (payload = {}) => {
+    if (!payload.tournamentId) {
+      socket.emit('tournament:error', { message: 'Thiếu mã giải đấu.', code: 'MISSING_TOURNAMENT_ID' });
+      return;
+    }
+    const result = tournamentManager.registerTeam(
+      { userId: user.userId, displayName: user.displayName, isGuest: user.isGuest },
+      payload.tournamentId,
+      { clubSlug: payload.clubSlug, usernames: payload.usernames }
+    );
+    if (result.error) {
+      socket.emit('tournament:error', { message: result.error, code: result.code });
+      return;
+    }
+    socket.join(tournamentRoom(payload.tournamentId));
+    socket.emit('tournament:team_registered', { tournamentId: payload.tournamentId, teamId: result.teamId });
+    _queueTournamentDetailUpdate(io, result.tournament);
+    broadcastTournamentListUpdate(io);
+  });
+
+  socket.on('tournament:unregister_team', (payload = {}) => {
+    if (!payload.tournamentId) {
+      socket.emit('tournament:error', { message: 'Thiếu mã giải đấu.', code: 'MISSING_TOURNAMENT_ID' });
+      return;
+    }
+    const result = tournamentManager.unregisterTeam(user.userId, payload.tournamentId, payload.clubSlug);
+    if (result.error) {
+      socket.emit('tournament:error', { message: result.error, code: result.code });
+      return;
+    }
+    socket.emit('tournament:team_unregistered', { tournamentId: payload.tournamentId, clubSlug: payload.clubSlug });
+    _queueTournamentDetailUpdate(io, result.tournament);
+    broadcastTournamentListUpdate(io);
+  });
+
   socket.on('tournament:start', (payload = {}) => {
     if (!payload.tournamentId) {
       socket.emit('tournament:error', { message: 'Thiếu mã giải đấu.', code: 'MISSING_TOURNAMENT_ID' });

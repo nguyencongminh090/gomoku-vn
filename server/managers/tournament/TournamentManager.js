@@ -42,6 +42,7 @@ const PairingLifecycle = require('./PairingLifecycle');
 const swissPairing = require('./pairing/swiss');
 const roundRobinPairing = require('./pairing/roundRobin');
 const doubleElimPairing = require('./pairing/doubleElim');
+const teamPairing = require('./pairing/team');
 const standingsModule = require('./standings');
 const seriesModule = require('./series');
 const tournamentState = require('../../socket/tournamentState');
@@ -116,6 +117,7 @@ class TournamentManager extends EventEmitter {
       ruleSet: row.rule_set,
       status: row.status,
       entries: new Map(),
+      teams: new Map(),
       createdAt: row.created_at,
       startedAt: row.started_at,
       completedAt: row.completed_at,
@@ -134,6 +136,37 @@ class TournamentManager extends EventEmitter {
         withdrawn: !!playerRow.withdrawn,
         hadBye: false, // set below, from reloaded bye pairings
       });
+    }
+
+    if (tournament.format === 'team') {
+      const rosterByTeam = new Map();
+      for (const r of database.getTournamentTeamRoster(row.id)) {
+        const entry = tournament.entries.get(r.entry_id);
+        if (entry) {
+          entry.teamId = r.team_id;
+          entry.boardNumber = r.board_number;
+          entry.ratingAtReg = r.rating_at_reg ?? null;
+        }
+        if (!rosterByTeam.has(r.team_id)) rosterByTeam.set(r.team_id, []);
+        rosterByTeam.get(r.team_id).push(r.entry_id);
+      }
+      for (const tRow of database.getTournamentTeams(row.id)) {
+        tournament.teams.set(tRow.id, {
+          teamId: tRow.id,
+          tournamentId: tRow.tournament_id,
+          clubId: tRow.club_id,
+          clubSlug: tRow.club_slug,
+          clubName: tRow.club_name,
+          clubTag: tRow.club_tag || '',
+          clubColor: tRow.club_color || 'blue',
+          captainId: tRow.captain_id,
+          captainName: tRow.captain_name,
+          teamOrder: tRow.team_order,
+          finalRank: tRow.final_rank ?? null,
+          createdAt: tRow.created_at,
+          rosterEntryIds: rosterByTeam.get(tRow.id) || [],
+        });
+      }
     }
 
     if (tournament.status === 'draft') return tournament; // never started: no rounds/pairings yet
@@ -276,6 +309,16 @@ class TournamentManager extends EventEmitter {
         }
       }
       tournament.bracketRoundId = roundsById.keys().next().value ?? null; // DE has exactly one round row
+    } else if (tournament.format === 'team') {
+      const orderedTeams = this._orderedTeams(tournament);
+      tournament.totalRounds = tournament.ruleSet.teamRounds || 2;
+      tournament.allRounds = orderedTeams.length === 2
+        ? teamPairing.generateTeamRounds(orderedTeams[0].rosterEntryIds, orderedTeams[1].rosterEntryIds, tournament.totalRounds)
+        : [];
+      tournament.currentRoundIndex = maxRoundIndex;
+      tournament.currentRoundPairingIds = new Set(
+        tournamentPairings().filter((p) => p.roundIndex === maxRoundIndex).map((p) => p.pairingId)
+      );
     }
 
     // Self-heal a crash that happened between "last pairing completed" and
@@ -319,7 +362,7 @@ class TournamentManager extends EventEmitter {
 
     const tournamentId = uuidv4();
     const tournamentName = name ? String(name).slice(0, 60) : `Giải đấu của ${organizerInfo.displayName}`;
-    const validatedRuleSet = this._validateRuleSet(ruleSet || {});
+    const validatedRuleSet = this._validateRuleSet(ruleSet || {}, format);
     const createdAt = new Date().toISOString();
 
     const tournament = {
@@ -334,6 +377,7 @@ class TournamentManager extends EventEmitter {
       ruleSet: validatedRuleSet,
       status: 'draft',      // draft | active | completed | cancelled
       entries: new Map(),   // entryId → entry
+      teams: new Map(),     // teamId → team (format === 'team')
       createdAt,
       startedAt: null,
       completedAt: null,
@@ -369,10 +413,16 @@ class TournamentManager extends EventEmitter {
    * tournament — dates only gate registration.
    * @returns {{ error: string, code: string } | null}
    */
-  _registrationBlock(tournament, nowMs = Date.now()) {
+  _registrationBlock(tournament, nowMs = Date.now(), { ignoreCapacity = false } = {}) {
     const rs = tournament.ruleSet || {};
-    if (rs.maxPlayers && tournament.entries.size >= rs.maxPlayers) {
-      return { error: 'Giải đấu đã đủ người chơi.', code: 'TOURNAMENT_FULL' };
+    if (!ignoreCapacity) {
+      if (tournament.format === 'team') {
+        if (tournament.teams.size >= 2) {
+          return { error: 'Giải đồng đội chỉ dành cho 2 hội nhóm.', code: 'TOURNAMENT_FULL' };
+        }
+      } else if (rs.maxPlayers && tournament.entries.size >= rs.maxPlayers) {
+        return { error: 'Giải đấu đã đủ người chơi.', code: 'TOURNAMENT_FULL' };
+      }
     }
     const today = new Date(nowMs).toISOString().slice(0, 10);
     const lastDay = [rs.registrationClosesAt, rs.endsAt].filter(Boolean).sort()[0];
@@ -380,6 +430,10 @@ class TournamentManager extends EventEmitter {
       return { error: 'Đã hết hạn đăng ký giải đấu này.', code: 'REGISTRATION_CLOSED' };
     }
     return null;
+  }
+
+  _orderedTeams(tournament) {
+    return Array.from(tournament.teams.values()).sort((a, b) => a.teamOrder - b.teamOrder);
   }
 
   /**
@@ -394,6 +448,9 @@ class TournamentManager extends EventEmitter {
     const tournament = this.tournaments.get(tournamentId);
     if (!tournament) {
       return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
+    }
+    if (tournament.format === 'team') {
+      return { error: 'Giải đồng đội chỉ nhận đăng ký đội hình từ ban quản trị hội nhóm.', code: 'TEAM_CAPTAIN_ONLY' };
     }
 
     if (tournament.status !== 'draft') {
@@ -454,6 +511,9 @@ class TournamentManager extends EventEmitter {
     if (!tournament) {
       return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
     }
+    if (tournament.format === 'team') {
+      return { error: 'Giải đồng đội chỉ nhận đăng ký đội hình từ ban quản trị hội nhóm.', code: 'TEAM_CAPTAIN_ONLY' };
+    }
 
     if (tournament.status !== 'draft') {
       return { error: 'Giải đấu đã bắt đầu, không thể huỷ đăng ký.', code: 'TOURNAMENT_ALREADY_STARTED' };
@@ -478,6 +538,180 @@ class TournamentManager extends EventEmitter {
     }
 
     logger.info(`[TournamentManager] User ${userId} unregistered from tournament ${tournamentId}`);
+    return { tournament };
+  }
+
+  /**
+   * Register or update a club's roster in a draft team tournament (B236).
+   * Captain must be owner/officer of the club; roster length must match ruleSet.boardCount;
+   * boards are ordered by category rating DESC then username ASC.
+   */
+  registerTeam(userInfo, tournamentId, { clubSlug, usernames } = {}) {
+    const tournament = this.tournaments.get(tournamentId);
+    if (!tournament) {
+      return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
+    }
+    if (tournament.format !== 'team') {
+      return { error: 'Giải đấu này không phải thể thức đồng đội.', code: 'INVALID_FORMAT' };
+    }
+    if (tournament.status !== 'draft') {
+      return { error: 'Giải đấu đã bắt đầu, đội hình đã được khóa.', code: 'TOURNAMENT_ALREADY_STARTED' };
+    }
+    if (!userInfo || userInfo.isGuest || !userInfo.userId) {
+      return { error: 'Khách không thể đăng ký đội hình hội nhóm.', code: 'GUEST_FORBIDDEN' };
+    }
+    if (typeof clubSlug !== 'string' || !clubSlug.trim()) {
+      return { error: 'Thiếu mã hội nhóm.', code: 'CLUB_REQUIRED' };
+    }
+
+    let validated;
+    try {
+      validated = clubService.clubRosterForTournament(
+        userInfo.userId,
+        clubSlug.trim(),
+        usernames,
+        tournament.ruleSet.winningRule
+      );
+    } catch (err) {
+      return { error: err.message || 'Không thể chọn đội hình hội nhóm.', code: err.code || 'TOURNAMENT_CLUB_FORBIDDEN' };
+    }
+
+    const { club, roster } = validated;
+    const boardCount = tournament.ruleSet.boardCount || 3;
+    if (roster.length !== boardCount) {
+      return { error: `Đội hình cần đúng ${boardCount} thành viên chính thức.`, code: 'INVALID_ROSTER_SIZE' };
+    }
+
+    let existingTeam = null;
+    for (const t of tournament.teams.values()) {
+      if (t.clubId === club.id) { existingTeam = t; break; }
+    }
+
+    const blocked = this._registrationBlock(tournament, Date.now(), { ignoreCapacity: !!existingTeam });
+    if (blocked) return blocked;
+
+    // A dual-club member cannot play on both clubs' rosters in the same tournament.
+    for (const [entryId, entry] of tournament.entries) {
+      if (existingTeam && entry.teamId === existingTeam.teamId) void entryId;
+      else if (roster.some((r) => r.userId === entry.userId)) {
+        return { error: 'Thành viên đã nằm trong đội hình nhóm đối thủ.', code: 'PLAYER_IN_OTHER_TEAM' };
+      }
+    }
+
+    const nowIso = new Date().toISOString();
+    const usedOrders = new Set(Array.from(tournament.teams.values()).map((t) => t.teamOrder));
+    const teamId = existingTeam ? existingTeam.teamId : uuidv4();
+    const teamOrder = existingTeam ? existingTeam.teamOrder : ([1, 2].find((o) => !usedOrders.has(o)) || 1);
+
+    const newEntries = roster.map((r) => ({
+      entryId: uuidv4(),
+      userId: r.userId,
+      displayName: r.displayName,
+      isGuest: false,
+      seed: null,
+      finalRank: null,
+      withdrawn: false,
+      hadBye: false,
+      teamId,
+      boardNumber: r.boardNumber,
+      ratingAtReg: r.ratingAtReg,
+      registeredAt: nowIso,
+    }));
+
+    const teamObj = {
+      teamId,
+      tournamentId,
+      clubId: club.id,
+      clubSlug: club.slug,
+      clubName: club.name,
+      clubTag: club.tag || '',
+      clubColor: club.color || 'blue',
+      captainId: userInfo.userId,
+      captainName: userInfo.displayName,
+      teamOrder,
+      finalRank: null,
+      createdAt: existingTeam ? existingTeam.createdAt : nowIso,
+      rosterEntryIds: newEntries.map((e) => e.entryId),
+    };
+
+    database.saveTournamentTeamRoster({
+      team: teamObj,
+      entries: newEntries,
+      previousTeamId: existingTeam ? existingTeam.teamId : null,
+    });
+
+    if (existingTeam) {
+      for (const oldEntryId of existingTeam.rosterEntryIds) {
+        const old = tournament.entries.get(oldEntryId);
+        tournament.entries.delete(oldEntryId);
+        if (old && old.userId) {
+          const set = this.userTournamentMap.get(old.userId);
+          if (set) {
+            set.delete(tournamentId);
+            if (set.size === 0) this.userTournamentMap.delete(old.userId);
+          }
+        }
+      }
+    }
+
+    for (const e of newEntries) {
+      tournament.entries.set(e.entryId, e);
+      if (!this.userTournamentMap.has(e.userId)) this.userTournamentMap.set(e.userId, new Set());
+      this.userTournamentMap.get(e.userId).add(tournamentId);
+    }
+    tournament.teams.set(teamId, teamObj);
+
+    logger.info(`[TournamentManager] Club ${club.slug} registered roster (${newEntries.length}) in tournament ${tournamentId}`);
+    return { tournament, teamId };
+  }
+
+  /**
+   * Remove a club's team from a draft team tournament (captain of that club or tournament organizer).
+   */
+  unregisterTeam(userId, tournamentId, clubSlug) {
+    const tournament = this.tournaments.get(tournamentId);
+    if (!tournament) {
+      return { error: 'Giải đấu không tồn tại.', code: 'TOURNAMENT_NOT_FOUND' };
+    }
+    if (tournament.format !== 'team') {
+      return { error: 'Giải đấu này không phải thể thức đồng đội.', code: 'INVALID_FORMAT' };
+    }
+    if (tournament.status !== 'draft') {
+      return { error: 'Giải đấu đã bắt đầu, không thể rút đội hình.', code: 'TOURNAMENT_ALREADY_STARTED' };
+    }
+    const slugNorm = typeof clubSlug === 'string' ? clubSlug.trim().toLowerCase() : '';
+    let targetTeam = null;
+    for (const t of tournament.teams.values()) {
+      if (t.clubSlug === slugNorm) { targetTeam = t; break; }
+    }
+    if (!targetTeam) {
+      return { error: 'Hội nhóm chưa đăng ký giải đấu này.', code: 'NOT_REGISTERED' };
+    }
+
+    if (userId !== tournament.organizerId) {
+      try {
+        if (!userId) throw new Error('unauth');
+        clubService.staffClubId(userId, targetTeam.clubSlug);
+      } catch (_) {
+        return { error: 'Chỉ ban quản trị hội nhóm hoặc người tổ chức mới rút được đội hình.', code: 'TOURNAMENT_CLUB_FORBIDDEN' };
+      }
+    }
+
+    database.deleteTournamentTeam(targetTeam.teamId);
+    for (const entryId of targetTeam.rosterEntryIds) {
+      const entry = tournament.entries.get(entryId);
+      tournament.entries.delete(entryId);
+      if (entry && entry.userId) {
+        const set = this.userTournamentMap.get(entry.userId);
+        if (set) {
+          set.delete(tournamentId);
+          if (set.size === 0) this.userTournamentMap.delete(entry.userId);
+        }
+      }
+    }
+    tournament.teams.delete(targetTeam.teamId);
+
+    logger.info(`[TournamentManager] Club ${targetTeam.clubSlug} unregistered from tournament ${tournamentId}`);
     return { tournament };
   }
 
@@ -516,9 +750,13 @@ class TournamentManager extends EventEmitter {
       return { error: `Chưa đến ngày bắt đầu giải đấu (${startsAt}).`, code: 'TOURNAMENT_NOT_YET' };
     }
 
-    // Fewer than 2 entries can never produce a pairing, so the tournament would
-    // sit 'active' with nothing to play or complete (only cancel).
-    if (tournament.entries.size < 2) {
+    if (tournament.format === 'team') {
+      const orderedTeams = this._orderedTeams(tournament);
+      const boardCount = tournament.ruleSet.boardCount || 3;
+      if (orderedTeams.length !== 2 || orderedTeams.some((t) => t.rosterEntryIds.length !== boardCount)) {
+        return { error: `Cần đủ 2 hội nhóm với ${boardCount} bàn mỗi đội để bắt đầu giải.`, code: 'NOT_ENOUGH_TEAMS' };
+      }
+    } else if (tournament.entries.size < 2) {
       return { error: 'Cần ít nhất 2 người chơi để bắt đầu giải đấu.', code: 'NOT_ENOUGH_PLAYERS' };
     }
 
@@ -526,7 +764,26 @@ class TournamentManager extends EventEmitter {
     tournament.startedAt = new Date().toISOString();
     database.updateTournamentStatus(tournamentId, 'active', { startedAt: tournament.startedAt });
 
-    tournament.completedPairings = []; // for standings.js (Swiss/Round robin)
+    tournament.completedPairings = []; // for standings.js (Swiss/Round robin/Team)
+    if (tournament.format === 'team') {
+      const [team1, team2] = this._orderedTeams(tournament);
+      let seed = 0;
+      for (const entryId of [...team1.rosterEntryIds, ...team2.rosterEntryIds]) {
+        const entry = tournament.entries.get(entryId);
+        if (entry) {
+          entry.seed = ++seed;
+          database.updateTournamentPlayerSeed(entry.entryId, entry.seed);
+        }
+      }
+      tournament.totalRounds = tournament.ruleSet.teamRounds || 2;
+      tournament.allRounds = teamPairing.generateTeamRounds(team1.rosterEntryIds, team2.rosterEntryIds, tournament.totalRounds);
+      tournament.currentRoundIndex = 1;
+      this._materializeRound(tournament, tournament.allRounds[0] || []);
+      this.emit('tournament_started', tournamentId);
+      logger.info(`[TournamentManager] Team tournament ${tournamentId} started`);
+      return { tournament };
+    }
+
     // Seeds = registration order, fixed and persisted now so a reload rebuilds
     // the identical bracket (#242); hydrate orders entries by seed.
     let seed = 0;
@@ -895,10 +1152,16 @@ class TournamentManager extends EventEmitter {
     // (walkover) instead of voiding again, so absent players can't stall forever.
     if (outcome.action === 'void_replay') {
       if ((pairing.noShowCount || 0) >= NO_SHOW_REPLAY_CAP) {
-        outcome.action = 'walkover';
-        outcome.winnerEntryId = this._higherSeedEntryId(tournament, pairing.player1EntryId, pairing.player2EntryId);
-        pairing.state = 'Walkover';
-        pairing.result = { winnerEntryId: outcome.winnerEntryId, reason: 'noshow_cap' };
+        if (tournament.format === 'team') {
+          outcome.action = 'double_noshow_cap';
+          pairing.state = 'DoubleNoShow';
+          pairing.result = { winnerEntryId: null, reason: 'noshow_cap' };
+        } else {
+          outcome.action = 'walkover';
+          outcome.winnerEntryId = this._higherSeedEntryId(tournament, pairing.player1EntryId, pairing.player2EntryId);
+          pairing.state = 'Walkover';
+          pairing.result = { winnerEntryId: outcome.winnerEntryId, reason: 'noshow_cap' };
+        }
       } else {
         pairing.noShowCount = (pairing.noShowCount || 0) + 1;
       }
@@ -907,6 +1170,8 @@ class TournamentManager extends EventEmitter {
 
     if (outcome.action === 'walkover') {
       this._recordCompletion(tournament, pairing, outcome.winnerEntryId);
+      this._advanceIfRoundComplete(tournament);
+    } else if (outcome.action === 'double_noshow_cap') {
       this._advanceIfRoundComplete(tournament);
     } else if (outcome.action === 'void_replay') {
       this._createReplayPairing(tournament, pairing);
@@ -1041,6 +1306,13 @@ class TournamentManager extends EventEmitter {
       }
       tournament.currentRoundIndex = nextIndex;
       this._materializeRound(tournament, tournament.allRounds[nextIndex]);
+    } else if (tournament.format === 'team') {
+      if (tournament.currentRoundIndex >= tournament.totalRounds) {
+        this._completeTournament(tournament);
+        return;
+      }
+      tournament.currentRoundIndex += 1;
+      this._materializeRound(tournament, tournament.allRounds[tournament.currentRoundIndex - 1] || []);
     }
   }
 
@@ -1126,7 +1398,15 @@ class TournamentManager extends EventEmitter {
       const e1 = tournament.entries.get(pairing.player1EntryId);
       const e2 = tournament.entries.get(pairing.player2EntryId);
       if (e1?.withdrawn || e2?.withdrawn) {
-        this._forfeitPairing(tournament, pairing, this._forfeitWinner(tournament, pairing), 'withdrawn', { deferAdvance: true });
+        if (tournament.format === 'team' && e1?.withdrawn && e2?.withdrawn) {
+          tournamentState.untrackDeadline(pairingId);
+          pairing.state = 'DoubleNoShow';
+          pairing.result = { winnerEntryId: null, reason: 'withdrawn' };
+          pairing.endedAt = now.toISOString();
+          this._persistPairing(pairing);
+        } else {
+          this._forfeitPairing(tournament, pairing, this._forfeitWinner(tournament, pairing), 'withdrawn', { deferAdvance: true });
+        }
       }
     }
 
@@ -1291,6 +1571,25 @@ class TournamentManager extends EventEmitter {
 
     if (tournament.format === 'double_elim') {
       this._assignDoubleElimFinalRanks(tournament);
+    } else if (tournament.format === 'team') {
+      const orderedTeams = this._orderedTeams(tournament);
+      const { teams: rankedTeams, entryStats } = teamPairing.computeTeamStandings(orderedTeams, tournament.completedPairings || []);
+      for (const rt of rankedTeams) {
+        const tObj = tournament.teams.get(rt.teamId);
+        if (tObj) {
+          tObj.finalRank = rt.rank;
+          database.updateTournamentTeamRank(tObj.teamId, rt.rank);
+        }
+      }
+      const entryScores = Array.from(tournament.entries.values())
+        .map((e) => ({ entry: e, score: entryStats.get(e.entryId)?.score || 0 }))
+        .sort((a, b) => b.score - a.score || (a.entry.seed || 0) - (b.entry.seed || 0));
+      let rank = 1;
+      entryScores.forEach((item, idx) => {
+        if (idx > 0 && entryScores[idx - 1].score !== item.score) rank = idx + 1;
+        item.entry.finalRank = rank;
+        database.updateTournamentPlayerRank(item.entry.entryId, rank);
+      });
     } else {
       const entries = Array.from(tournament.entries.values()).map((e) => ({ id: e.entryId }));
       const standings = standingsModule.computeStandings(entries, tournament.completedPairings);
@@ -1364,6 +1663,7 @@ class TournamentManager extends EventEmitter {
     const clubs = clubService.tournamentClubs();
     for (const [, tournament] of this.tournaments) {
       const club = clubs.get(tournament.tournamentId) || null;
+      const isTeam = tournament.format === 'team';
       list.push({
         tournamentId: tournament.tournamentId,
         name: tournament.name,
@@ -1371,12 +1671,17 @@ class TournamentManager extends EventEmitter {
         organizerId: tournament.organizerId,
         organizerName: tournament.organizerName,
         playerCount: tournament.entries.size,
-        maxPlayers: tournament.ruleSet?.maxPlayers ?? null,
+        maxPlayers: isTeam ? 2 * (tournament.ruleSet?.boardCount || 3) : (tournament.ruleSet?.maxPlayers ?? null),
         registrationOpen: tournament.status === 'draft' && !this._registrationBlock(tournament),
         status: tournament.status,
         // Club-hosted (#200): lets the lobby's "Của CLB" tab filter by the viewer's clubs (B210).
         clubSlug: club ? club.slug : null,
         clubName: club ? club.name : null,
+        ...(isTeam ? {
+          teamCount: tournament.teams.size,
+          boardCount: tournament.ruleSet?.boardCount || 3,
+          clubSlugs: club ? club.slugs : [],
+        } : {}),
         // Lets the lobby card show "you're registered"/"you organize this"
         // without a round-trip per card — the list summary otherwise has no
         // per-entry detail at all.
@@ -1397,6 +1702,7 @@ class TournamentManager extends EventEmitter {
 
   /** Full snapshot, including ruleSet. */
   serializeTournament(tournament) {
+    const isTeam = tournament.format === 'team';
     const entries = [];
     for (const [, e] of tournament.entries) {
       entries.push({
@@ -1407,6 +1713,52 @@ class TournamentManager extends EventEmitter {
         seed: e.seed,
         finalRank: e.finalRank,
         withdrawn: e.withdrawn,
+        ...(isTeam ? {
+          teamId: e.teamId ?? null,
+          boardNumber: e.boardNumber ?? null,
+          ratingAtReg: e.ratingAtReg ?? null,
+        } : {}),
+      });
+    }
+    let teams = null;
+    if (isTeam) {
+      const ordered = this._orderedTeams(tournament);
+      const { teams: ranked, entryStats } = teamPairing.computeTeamStandings(ordered, tournament.completedPairings || []);
+      const statsByTeam = new Map(ranked.map((r) => [r.teamId, r]));
+      teams = ordered.map((t) => {
+        const st = statsByTeam.get(t.teamId) || { score: 0, wins: 0, draws: 0, losses: 0, rank: 1 };
+        return {
+          teamId: t.teamId,
+          teamOrder: t.teamOrder,
+          clubSlug: t.clubSlug,
+          clubName: t.clubName,
+          clubTag: t.clubTag,
+          clubColor: t.clubColor,
+          captainId: t.captainId,
+          captainName: t.captainName,
+          finalRank: t.finalRank,
+          rank: t.finalRank ?? st.rank,
+          score: st.score,
+          wins: st.wins,
+          draws: st.draws,
+          losses: st.losses,
+          roster: t.rosterEntryIds.map((entryId) => {
+            const e = tournament.entries.get(entryId);
+            const es = entryStats.get(entryId) || { score: 0, wins: 0, draws: 0, losses: 0 };
+            return e ? {
+              entryId: e.entryId,
+              userId: e.userId,
+              displayName: e.displayName,
+              boardNumber: e.boardNumber,
+              ratingAtReg: e.ratingAtReg ?? null,
+              withdrawn: e.withdrawn,
+              score: es.score,
+              wins: es.wins,
+              draws: es.draws,
+              losses: es.losses,
+            } : null;
+          }).filter(Boolean),
+        };
       });
     }
     return {
@@ -1418,18 +1770,21 @@ class TournamentManager extends EventEmitter {
       ruleSet: { ...tournament.ruleSet },
       status: tournament.status,
       entries,
+      ...(isTeam ? { teams } : {}),
       createdAt: tournament.createdAt,
       startedAt: tournament.startedAt,
       completedAt: tournament.completedAt,
       cancelledAt: tournament.cancelledAt ?? null,
       cancelReason: tournament.cancelReason ?? null,
-      // Swiss/Round robin only — lets the client show "Round 2 / 4" and group
+      // Swiss/Round robin/Team — lets the client show "Round 2 / 4" and group
       // pairings by round. Double Elimination has no analogous single number
       // (a bracket has depth, not a round count), left null/undefined.
       currentRoundIndex: tournament.currentRoundIndex ?? null,
       totalRounds: tournament.format === 'swiss'
         ? (tournament.totalRounds ?? null)
-        : (tournament.format === 'round_robin' ? (tournament.allRounds ? tournament.allRounds.length : null) : null),
+        : (tournament.format === 'round_robin'
+            ? (tournament.allRounds ? tournament.allRounds.length : null)
+            : (isTeam ? (tournament.totalRounds ?? tournament.ruleSet?.teamRounds ?? null) : null)),
       // Double Elimination only — the bracket skeleton (match ids + slot sources) so the client can draw
       // the full tree, including matches not yet created as pairings.
       bracket: tournament.format === 'double_elim' && tournament.bracket ? tournament.bracket : null,
@@ -1452,12 +1807,17 @@ class TournamentManager extends EventEmitter {
 
   /** Socket-safe pairing snapshot — readyPlayers (a Set) becomes a plain array. */
   serializePairing(pairing) {
+    const tournament = this.tournaments.get(pairing.tournamentId);
+    const boardNumber = tournament?.format === 'team'
+      ? (tournament.entries.get(pairing.player1EntryId)?.boardNumber ?? null)
+      : undefined;
     return {
       pairingId: pairing.pairingId,
       tournamentId: pairing.tournamentId,
       roundId: pairing.roundId,
       roundIndex: pairing.roundIndex ?? null,
       bracketMatchId: pairing.bracketMatchId ?? null,
+      ...(boardNumber !== undefined ? { boardNumber } : {}),
       player1EntryId: pairing.player1EntryId,
       player2EntryId: pairing.player2EntryId,
       state: pairing.state,
@@ -1489,7 +1849,7 @@ class TournamentManager extends EventEmitter {
    * fields mirror RoomManager._validateSettings's validation exactly, plus
    * tournament-specific scheduling/tiebreak fields.
    */
-  _validateRuleSet(ruleSet) {
+  _validateRuleSet(ruleSet, format = null) {
     const r = {};
 
     r.boardSize = config.VALID_BOARD_SIZES.includes(ruleSet.boardSize)
@@ -1586,6 +1946,20 @@ class TournamentManager extends EventEmitter {
     r.seriesGameCount = seriesGameCount;
     r.seriesTargetScore = seriesTargetScore;
     r.seriesMargin = seriesMargin;
+
+    if (format === 'team') {
+      r.boardCount = Number.isInteger(ruleSet.boardCount) && ruleSet.boardCount >= 1 && ruleSet.boardCount <= 30
+        ? ruleSet.boardCount
+        : 3;
+      r.teamRounds = Number.isInteger(ruleSet.teamRounds) && ruleSet.teamRounds >= 1 && ruleSet.teamRounds <= 10
+        ? ruleSet.teamRounds
+        : 2;
+      // Each completed board in a team round is scored once (1 / 0.5 / 0).
+      r.seriesMode = 'single';
+      r.seriesGameCount = null;
+      r.seriesTargetScore = null;
+      r.seriesMargin = null;
+    }
 
     return r;
   }

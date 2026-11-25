@@ -144,3 +144,58 @@ test('007 backfills puzzles.number by creation order (ties by id), unique, and c
   expect(() => db.exec("UPDATE puzzles SET number = 1 WHERE id = 'c'")).toThrow(/UNIQUE/);
   expect(cols(db, 'puzzle_attempts')).toEqual(expect.arrayContaining(['user_id', 'puzzle_id', 'moves', 'correct', 'created_at']));
 });
+
+test('024 rebuilds tournaments for team format while preserving pre-024 rows, FKs, and indexes', () => {
+  const real = path.join(__dirname, '../db/migrations');
+  fs.readdirSync(real)
+    .filter((f) => /^0(?:0[4-9]|1\d|2[0-3])_.+\.sql$/.test(f))
+    .forEach((f) => fs.copyFileSync(path.join(real, f), path.join(dir, f)));
+  const db = new Database(':memory:');
+  db.pragma('foreign_keys = ON');
+  run(db);
+  expect(db.pragma('user_version', { simple: true })).toBe(23);
+
+  db.exec(`
+    INSERT INTO users (id, username, password_hash, display_name, created_at) VALUES
+      ('u1', 'alice', 'x', 'Alice', '2026-10-01T00:00:00Z'),
+      ('u2', 'bob', 'x', 'Bob', '2026-10-01T00:00:00Z');
+    INSERT INTO clubs (id, slug, name, join_policy, owner_id, created_at) VALUES
+      ('c1', 'club-one', 'Club One', 'open', 'u1', '2026-10-01T00:00:00Z');
+    INSERT INTO tournaments (id, name, format, organizer_id, organizer_name, rule_set, status, created_at, started_at, club_id) VALUES
+      ('t-swiss', 'Swiss Cup', 'swiss', 'u1', 'Alice', '{"boardSize":15}', 'active', '2026-10-02T00:00:00Z', '2026-10-02T01:00:00Z', 'c1'),
+      ('t-rr', 'RR Cup', 'round_robin', 'u1', 'Alice', '{"boardSize":17}', 'completed', '2026-10-03T00:00:00Z', '2026-10-03T01:00:00Z', NULL),
+      ('t-de', 'DE Cup', 'double_elim', NULL, 'GuestOrg', '{"boardSize":19}', 'draft', '2026-10-04T00:00:00Z', NULL, NULL);
+    INSERT INTO tournament_rounds (id, tournament_id, round_index) VALUES ('r1', 't-swiss', 1);
+    INSERT INTO tournament_players (entry_id, tournament_id, player_id, display_name, seed, registered_at) VALUES
+      ('e1', 't-swiss', 'u1', 'Alice', 1, '2026-10-02T00:10:00Z'),
+      ('e2', 't-swiss', 'u2', 'Bob', 2, '2026-10-02T00:11:00Z');
+    INSERT INTO tournament_pairings (id, round_id, tournament_id, player1_entry_id, player2_entry_id, state, deadline, paired_at, result, games)
+      VALUES ('p1', 'r1', 't-swiss', 'e1', 'e2', 'Completed', '2026-10-03T00:00:00Z', '2026-10-02T01:00:00Z', '{"winnerEntryId":"e1","reason":"normal"}', '[{"index":0,"winnerEntryId":"e1","endedAt":"2026-10-02T01:30:00Z"}]');
+    INSERT INTO tournament_games (id, tournament_id, pairing_id, game_index, black_entry_id, white_entry_id, black_player_name, white_player_name, winner, reason, board_size, moves, started_at, ended_at)
+      VALUES ('g1', 't-swiss', 'p1', 0, 'e1', 'e2', 'Alice', 'Bob', 'BLACK', 'normal', 15, '[]', '2026-10-02T01:05:00Z', '2026-10-02T01:30:00Z');
+  `);
+  expect(() => db.exec("INSERT INTO tournaments (id, name, format, rule_set, status, created_at) VALUES ('t-team', 'Team Cup', 'team', '{}', 'draft', '2026-10-05T00:00:00Z')")).toThrow(/CHECK/);
+
+  fs.copyFileSync(path.join(real, '024_club_team_tournament.sql'), path.join(dir, '024_club_team_tournament.sql'));
+  run(db);
+  run(db); // idempotent re-run
+
+  expect(db.pragma('user_version', { simple: true })).toBe(24);
+  expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
+  expect(db.pragma('foreign_key_check')).toEqual([]);
+  expect(db.pragma('integrity_check', { simple: true })).toBe('ok');
+
+  expect(db.prepare('SELECT id, format, club_id FROM tournaments ORDER BY created_at').all()).toEqual([
+    { id: 't-swiss', format: 'swiss', club_id: 'c1' },
+    { id: 't-rr', format: 'round_robin', club_id: null },
+    { id: 't-de', format: 'double_elim', club_id: null },
+  ]);
+  expect(db.prepare('SELECT id FROM tournament_games WHERE tournament_id = ?').all('t-swiss')).toEqual([{ id: 'g1' }]);
+  expect(() => db.exec("INSERT INTO tournaments (id, name, format, rule_set, status, created_at) VALUES ('t-team', 'Team Cup', 'team', '{}', 'draft', '2026-10-05T00:00:00Z')")).not.toThrow();
+  expect(() => db.exec("INSERT INTO tournaments (id, name, format, rule_set, status, created_at) VALUES ('t-bad', 'Bad Cup', 'knockout', '{}', 'draft', '2026-10-05T00:00:00Z')")).toThrow(/CHECK/);
+
+  db.exec("INSERT INTO tournament_teams (id, tournament_id, club_id, club_slug, club_name, captain_id, captain_name, team_order, created_at) VALUES ('tm1', 't-team', 'c1', 'club-one', 'Club One', 'u1', 'Alice', 1, '2026-10-05T00:01:00Z')");
+  db.exec("DELETE FROM clubs WHERE id = 'c1'");
+  expect(db.prepare("SELECT club_id FROM tournaments WHERE id = 't-swiss'").get().club_id).toBeNull();
+  expect(db.prepare("SELECT club_id, club_slug FROM tournament_teams WHERE id = 'tm1'").get()).toEqual({ club_id: null, club_slug: 'club-one' });
+});

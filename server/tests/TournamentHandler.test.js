@@ -24,6 +24,8 @@ const mockTournamentManager = {
   createTournament: jest.fn(),
   registerPlayer: jest.fn(),
   unregisterPlayer: jest.fn(),
+  registerTeam: jest.fn(),
+  unregisterTeam: jest.fn(),
   startTournament: jest.fn(),
   getTournament: jest.fn(),
   listTournaments: jest.fn(() => []),
@@ -656,5 +658,31 @@ describe('TournamentHandler — broadcastTournamentDetail entries diff', () => {
 
     expect(() => TournamentHandler.broadcastTournamentDetail(io, { tournamentId: 'te-no-entries' })).not.toThrow();
     expect(io._toEmitted['tournament:te-no-entries'][0].data).not.toHaveProperty('entries');
+  });
+});
+
+describe('tournament:register_team and tournament:unregister_team (B236)', () => {
+  test('validates tournamentId, forwards payload, emits ack, and propagates errors', () => {
+    const io = makeIo();
+    const socket = makeSocket('u1', 'Captain');
+    TournamentHandler.register(io, socket);
+
+    fire(socket, 'tournament:register_team', {});
+    expect(sockEmit(socket, 'tournament:error').data.code).toBe('MISSING_TOURNAMENT_ID');
+
+    socket._emitted.length = 0;
+    mockTournamentManager.registerTeam.mockReturnValueOnce({ error: 'nope', code: 'CLUB_FORBIDDEN' });
+    fire(socket, 'tournament:register_team', { tournamentId: 't1', clubSlug: 'clb-a', usernames: ['a', 'b'] });
+    expect(sockEmit(socket, 'tournament:error').data.code).toBe('CLUB_FORBIDDEN');
+
+    socket._emitted.length = 0;
+    mockTournamentManager.registerTeam.mockReturnValueOnce({ tournament: { tournamentId: 't1', status: 'draft' }, teamId: 'tm1' });
+    fire(socket, 'tournament:register_team', { tournamentId: 't1', clubSlug: 'clb-a', usernames: ['a', 'b'] });
+    expect(sockEmit(socket, 'tournament:team_registered').data).toEqual({ tournamentId: 't1', teamId: 'tm1' });
+    expect(socket.rooms.has('tournament:t1')).toBe(true);
+
+    mockTournamentManager.unregisterTeam.mockReturnValueOnce({ tournament: { tournamentId: 't1', status: 'draft' } });
+    fire(socket, 'tournament:unregister_team', { tournamentId: 't1', clubSlug: 'clb-a' });
+    expect(sockEmit(socket, 'tournament:team_unregistered').data).toEqual({ tournamentId: 't1', clubSlug: 'clb-a' });
   });
 });

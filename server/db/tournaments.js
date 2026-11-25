@@ -3,7 +3,7 @@
 /** db/tournaments.js — split out of database.js (#258); code moved verbatim. */
 
 const logger = require('../utils/logger');
-const { stmt } = require('./connection');
+const { db, stmt } = require('./connection');
 const { withWinnerName } = require('./games');
 
 
@@ -329,4 +329,64 @@ function getTournamentGameById(id) {
   return row;
 }
 
-module.exports = { createTournament, getTournamentById, getAllTournaments, updateTournamentStatus, saveTournamentPlayer, deleteTournamentPlayer, getTournamentPlayers, updateTournamentPlayerRank, setTournamentPlayerWithdrawn, updateTournamentPlayerSeed, createTournamentRound, getTournamentRounds, savePairing, getPairingsByTournament, saveTournamentGame, getTournamentGames, getTournamentGameCount, getTournamentGameById };
+/**
+ * Insert or replace a club's team entry and ordered board roster in one transaction (B236).
+ */
+function saveTournamentTeamRoster({ team, entries, previousTeamId = null }) {
+  db.transaction(() => {
+    if (previousTeamId) {
+      stmt('DELETE FROM tournament_players WHERE entry_id IN (SELECT entry_id FROM tournament_team_roster WHERE team_id = ?)').run(previousTeamId);
+      stmt(`
+        UPDATE tournament_teams
+        SET club_slug = ?, club_name = ?, club_tag = ?, club_color = ?, captain_id = ?, captain_name = ?
+        WHERE id = ?
+      `).run(team.clubSlug, team.clubName, team.clubTag, team.clubColor, team.captainId, team.captainName, previousTeamId);
+    } else {
+      stmt(`
+        INSERT INTO tournament_teams
+          (id, tournament_id, club_id, club_slug, club_name, club_tag, club_color, captain_id, captain_name, team_order, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        team.teamId, team.tournamentId, team.clubId, team.clubSlug, team.clubName,
+        team.clubTag || '', team.clubColor || 'blue', team.captainId, team.captainName,
+        team.teamOrder, team.createdAt
+      );
+    }
+    const targetTeamId = previousTeamId || team.teamId;
+    for (const e of entries) {
+      saveTournamentPlayer({
+        entryId: e.entryId,
+        tournamentId: team.tournamentId,
+        playerId: e.userId,
+        guestId: null,
+        displayName: e.displayName,
+        registeredAt: e.registeredAt,
+      });
+      stmt(`
+        INSERT INTO tournament_team_roster (entry_id, tournament_id, team_id, board_number, rating_at_reg)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(e.entryId, team.tournamentId, targetTeamId, e.boardNumber, e.ratingAtReg ?? null);
+    }
+  })();
+}
+
+function deleteTournamentTeam(teamId) {
+  db.transaction(() => {
+    stmt('DELETE FROM tournament_players WHERE entry_id IN (SELECT entry_id FROM tournament_team_roster WHERE team_id = ?)').run(teamId);
+    stmt('DELETE FROM tournament_teams WHERE id = ?').run(teamId);
+  })();
+}
+
+function getTournamentTeams(tournamentId) {
+  return stmt('SELECT * FROM tournament_teams WHERE tournament_id = ? ORDER BY team_order ASC').all(tournamentId);
+}
+
+function getTournamentTeamRoster(tournamentId) {
+  return stmt('SELECT * FROM tournament_team_roster WHERE tournament_id = ? ORDER BY board_number ASC').all(tournamentId);
+}
+
+function updateTournamentTeamRank(teamId, finalRank) {
+  stmt('UPDATE tournament_teams SET final_rank = ? WHERE id = ?').run(finalRank, teamId);
+}
+
+module.exports = { createTournament, getTournamentById, getAllTournaments, updateTournamentStatus, saveTournamentPlayer, deleteTournamentPlayer, getTournamentPlayers, updateTournamentPlayerRank, setTournamentPlayerWithdrawn, updateTournamentPlayerSeed, createTournamentRound, getTournamentRounds, savePairing, getPairingsByTournament, saveTournamentGame, getTournamentGames, getTournamentGameCount, getTournamentGameById, saveTournamentTeamRoster, deleteTournamentTeam, getTournamentTeams, getTournamentTeamRoster, updateTournamentTeamRank };
