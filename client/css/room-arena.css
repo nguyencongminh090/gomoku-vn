@@ -288,6 +288,9 @@ body.arena-room .seatcard__sit {
   background: var(--c-surface-2); color: var(--c-brand-text); font: inherit; font-weight: 700; cursor: pointer;
 }
 body.arena-room .seatcard__sit:hover { background: var(--c-brand-light); }
+/* F453: viewer outside the creator's clubs — same cell, muted, not clickable. */
+body.arena-room .seatcard__sit--locked, body.arena-room .seatcard__sit--locked:hover { background: var(--c-surface-2); color: var(--c-ink-3); cursor: not-allowed; }
+body.arena-room .seatcard__sit--locked .seatcard__no { background: var(--c-border); color: var(--c-ink-3); }
 body.arena-room .seatcard__sit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
 /* Seat number as a small badge beside "Ngồi vào" (#414, was "Ngồi vào · #2"). */
 body.arena-room .seatcard__no {
@@ -489,6 +492,10 @@ body.arena-room .tab-btn > .tab-btn__icon--phone { display: none; }
   /* Empty seat: "Ngồi vào · #2" / "#2 Ghế trống" across the cell */
   body.arena-room .seatcard--empty { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: none; gap: 0 6px; }
   body.arena-room .seatcard--empty .seatcard__sit { grid-column: 1 / -1; min-height: 40px; font-size: 13px; }
+  /* F453 locked seat: one line in the narrow cell; the seat badge goes (the cell position says which seat). */
+  body.arena-room .seatcard__sit--locked { gap: 6px; padding: 0 8px; min-width: 0; }
+  body.arena-room .seatcard__sit--locked > span:not(.seatcard__no) { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.arena-room .seatcard__sit--locked .seatcard__no { display: none; }
   body.arena-room .seatcard--empty:has(.seatcard__sit)::before { border-color: transparent; background: none; } /* the dashed button is the cell */
   body.arena-room .seatcard__empty { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 

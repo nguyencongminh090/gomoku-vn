@@ -33,6 +33,8 @@ const TRANSPORT_LOG_MS = 10 * 60 * 1000;
 roomManager.avatarLookup = require('../managers/avatar-lookup').avatarUrlFor;
 // Lobby cards show each seated member's rating in the room's rule pool (#364).
 roomManager.ratingLookup = require('../managers/seat-rating').seatRating;
+// F453: "Club members" rooms — who may take a seat.
+roomManager.clubIdsOf = require('../managers/club-ids-lookup').clubIdsOf;
 const {
   timerMap,
   sessions,
@@ -103,7 +105,10 @@ function init(io) {
   });
 
   // Room invites (F443): the host's picker lists visible presence only (ids — no avatar lookup per online user, #381).
-  require('../managers/RoomInviteService').setHooks({ onlineUsers: () => getOnlineUsersSorted() });
+  require('../managers/RoomInviteService').setHooks({
+    onlineUsers: () => getOnlineUsersSorted(),
+    onRoomChanged: (room) => broadcastRoomUpdate(io, room), // F453: an accepted invite unlocks a seat for a viewer already inside
+  });
   require('../managers/RoomInviteService').purgeStale(); // invites are in-memory: rows from before this boot can never be answered
 
   // Friend list presence (#222 picker): online friends first; hidden-online stays hidden.

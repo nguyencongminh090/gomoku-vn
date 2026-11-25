@@ -581,8 +581,9 @@ describe('every room:updated emit site', () => {
   // 24 → 25 (#367): grace expiry now releases the seat via finalizeSeatRelease
   // (replacing startDisconnectGrace's own post-leave broadcast) and SocketHandler's
   // rejoinOnReconnect puts a lapsed user back in — net +1.
-  test('all 25 sites are still accounted for, now via broadcastRoomUpdate (22 + 2 challenge hooks #198, +1 #367)', () => {
-    expect(callSites).toHaveLength(25);
+  // 25 → 26 (F453): the room-invite hook re-broadcasts when an accepted invite unlocks a viewer's seat.
+  test('all 26 sites are still accounted for, now via broadcastRoomUpdate (22 + 2 challenge hooks #198, +1 #367, +1 invite hook F453)', () => {
+    expect(callSites).toHaveLength(26);
   });
 
   test('passes { settings: true } at exactly the one settings-change site', () => {
@@ -591,7 +592,7 @@ describe('every room:updated emit site', () => {
     expect(withSettings).toHaveLength(1);
     expect(withSettings[0].file).toBe(path.join('handlers', 'RoomHandler.js'));
 
-    expect(callSites.length - withSettings.length).toBe(24);
+    expect(callSites.length - withSettings.length).toBe(25);
   });
 });
 

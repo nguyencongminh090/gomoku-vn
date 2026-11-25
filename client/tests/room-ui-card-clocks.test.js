@@ -112,6 +112,28 @@ describe('seat order', () => {
     expect(top().querySelector('[data-action="sitDown"]')).toBeNull();
   });
 
+  test('F453: a viewer outside the creator\'s clubs sees a locked seat with the reason, not "take seat"', () => {
+    setup({ mySlot: null, gameState: null, users: [
+      { userId: 'them', displayName: 'Foe', slot: 1, role: 'player', canSit: true },
+      { userId: 'me', displayName: 'Me', slot: null, role: 'guest', canSit: false },
+    ] });
+    window.RoomState.roomData.state = 'waiting';
+    window.RoomUI.renderPlayerCards();
+    expect(top().querySelector('[data-action="sitDown"]')).toBeNull();
+    const locked = top().querySelector('.seatcard__sit--locked');
+    expect(locked).not.toBeNull();
+    expect(locked.disabled).toBe(true);
+    expect(locked.textContent).toContain('Chỉ người trong nhóm'); // i18n.js is eval'd: real vi strings
+    expect(locked.getAttribute('title')).toMatch(/được mời/);
+    expect(locked.querySelector('.seatcard__no').textContent).toBe('#2');
+
+    // an accepted invite flips canSit → the normal button returns
+    window.RoomState.roomData.users[1].canSit = true;
+    window.RoomUI.renderPlayerCards();
+    expect(top().querySelector('[data-action="sitDown"]')).not.toBeNull();
+    expect(top().querySelector('.seatcard__sit--locked')).toBeNull();
+  });
+
   test('a name is rendered as text, never as markup', () => {
     setup({ gameState: null, users: [
       { userId: 'me', displayName: '<img src=x onerror=alert(1)>', slot: 1, role: 'player' },

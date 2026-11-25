@@ -401,9 +401,14 @@
     if (!player) {
       // #365: a quick-match pair is fixed — nobody else takes a seat.
       const canSit = st.mySlot === null && st.roomData.state !== 'playing' && !st.roomData.matchmade;
+      // F453: a "Club members" room tells each viewer whether they may sit (users[].canSit, absent elsewhere).
+      const me = st.myUser && st.roomData.users.find(u => u.userId === st.myUser.userId);
+      const clubLocked = !!(me && me.canSit === false);
       el.classList.add('seatcard--empty');
       delete el.dataset.clock;
-      el.innerHTML = canSit
+      el.innerHTML = canSit && clubLocked
+        ? `<button class="seatcard__sit seatcard__sit--locked" type="button" disabled title="${escapeAttr(t('err.seat_club_only'))}"><svg class="icon" aria-hidden="true"><use href="assets/icons/phosphor-sprite.svg?v=d9575ee8#ph-regular-lock"></use></svg><span>${escapeHtml(t('room.seat_club_only'))}</span><span class="seatcard__no" aria-hidden="true">#${slotNum}</span></button>`
+        : canSit
         ? `<button class="seatcard__sit" type="button" data-action="sitDown" data-arg="${slotNum}" data-arg-type="number" aria-label="${escapeHtml(t('room.sit'))} #${slotNum}"><span>${escapeHtml(t('room.sit'))}</span><span class="seatcard__no" aria-hidden="true">#${slotNum}</span></button>`
         : `<span class="seatcard__seat">#${slotNum}</span><span class="seatcard__empty">${t('room.slot_empty')}</span>`;
       return;

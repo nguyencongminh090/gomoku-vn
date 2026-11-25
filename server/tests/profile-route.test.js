@@ -240,6 +240,14 @@ describe('room defaults (F402)', () => {
     database.setLastRoomSettings(UID, { ...s, boardSize: 15 });
     expect((await prefs(UID)).boardSize).toBe(15);
   });
+  it('hasClubs (F453): true for a confirmed member, false for a pending applicant', async () => {
+    const { db } = database;
+    db.prepare("INSERT OR IGNORE INTO clubs (id, slug, name, description, join_policy, owner_id, created_at) VALUES ('c1', 'k1', 'K1', '', 'open', ?, ?)").run(UID, NOW);
+    db.prepare("INSERT OR IGNORE INTO club_members VALUES ('c1', ?, 'owner', ?)").run(UID, NOW);
+    db.prepare("INSERT OR IGNORE INTO club_members VALUES ('c1', ?, 'pending', ?)").run(OTHER, NOW);
+    expect((await req('GET', '/api/profile/prefs', { cookie: UID })).json.hasClubs).toBe(true);
+    expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.hasClubs).toBe(false);
+  });
   it('a corrupt stored value reads as null, not a 500', async () => {
     database.db.prepare('UPDATE users SET last_room_settings = ? WHERE id = ?').run('{nope', OTHER);
     expect((await req('GET', '/api/profile/prefs', { cookie: OTHER })).json.roomDefaults).toBeNull();

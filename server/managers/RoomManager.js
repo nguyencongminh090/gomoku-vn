@@ -135,10 +135,19 @@ class RoomManager extends EventEmitter {
     const roomName = settings.roomName ? settings.roomName.slice(0, 30) : roomId; // roomId already carries its '#' ("#A3F")
     const validatedSettings = this._validateSettings(settings);
 
+    // F453 player scope, kept OUTSIDE settings so updateSettings can never change it. 'clubs' needs a
+    // member with at least one club; anyone else (guest, clubless, no lookup wired) gets 'all'.
+    const creatorClubIds = settings.playerScope === 'clubs' && !userInfo.isGuest ? this._clubIdsOf(userInfo.userId) : [];
+    const playerScope = creatorClubIds.length ? 'clubs' : 'all';
+
     const room = {
       roomId,
       roomName,
       host: userInfo.userId,
+      creatorId: userInfo.userId,       // F453: never changes (host does) — the creator may always sit
+      playerScope,                      // F453: 'all' | 'clubs' — who may take a seat; fixed at creation
+      clubIds: new Set(creatorClubIds), // F453: creator's clubs, snapshotted; membership is read at join
+      invitedIds: new Set(),            // F453: accepted invites from an eligible inviter; kick removes
       creatorIp: userInfo.ip || null,   // Per-IP quota bookkeeping; never serialized to clients
       users: new Map(),
       joinOrder: [],                    // For host transfer queue
@@ -163,6 +172,7 @@ class RoomManager extends EventEmitter {
       slot: null,     // null = guest/spectator, 1 or 2 = player slot
       ready: false,
       presence: 'active',   // 'active' | 'away' | 'disconnected' — see setPresence()
+      canSit: true,         // F453: the creator is always eligible
     };
 
     room.users.set(userInfo.userId, userEntry);
@@ -216,6 +226,8 @@ class RoomManager extends EventEmitter {
       slot: null,
       ready: false,
       presence: 'active',
+      // F453: decided once per join and cached (a reconnect into the same entry keeps it).
+      canSit: this.isSeatEligible(room, userInfo.userId, userInfo.isGuest),
     };
 
     room.users.set(userInfo.userId, userEntry);
@@ -362,6 +374,11 @@ class RoomManager extends EventEmitter {
     // #365: a quick-match room keeps its matched pair — no one else sits down.
     if (room.matchmade && Array.isArray(room.matchPlayers) && !room.matchPlayers.includes(userId)) {
       return { error: 'Trận chơi nhanh không cho đổi người chơi.', code: 'MATCH_SEAT_LOCKED' };
+    }
+
+    // F453: a "Club members" room seats only the creator's club mates and invitees.
+    if (user.canSit === false) {
+      return { error: 'Chỉ người trong nhóm của chủ phòng (hoặc được mời) mới được ngồi chơi.', code: 'SEAT_CLUB_ONLY' };
     }
 
     // Already in this slot?
@@ -579,8 +596,47 @@ class RoomManager extends EventEmitter {
     if (wasSeated) this.resetReadyPair(room);
     // A kicked user's page that was offline at kick time must not auto-rejoin on reconnect (#367).
     if (room.memberIds) room.memberIds.delete(targetId);
+    if (room.invitedIds) room.invitedIds.delete(targetId); // F453: a kick revokes an invite's seat grant
 
     return { room, kicked: true };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Player scope (F453)
+  // ---------------------------------------------------------------------------
+
+  /** Club ids of a member via the injected lookup; [] when it is not wired (tests, scripts). */
+  _clubIdsOf(userId) {
+    if (typeof this.clubIdsOf !== 'function') return [];
+    try { return this.clubIdsOf(userId) || []; }
+    catch (err) { logger.warn('[RoomManager] club lookup failed', { err: err.message }); return []; }
+  }
+
+  /**
+   * May `userId` take a seat in `room`? Everyone in an 'all' room; in a 'clubs' room the creator,
+   * a member of one of the creator's clubs (read now), or an invitee.
+   */
+  isSeatEligible(room, userId, isGuest) {
+    if (room.playerScope !== 'clubs') return true;
+    if (userId === room.creatorId) return true;
+    if (room.invitedIds && room.invitedIds.has(userId)) return true;
+    if (isGuest) return false;
+    return this._clubIdsOf(userId).some((id) => room.clubIds.has(id));
+  }
+
+  /**
+   * An invite from `inviterId` was accepted by `inviteeId` (RoomInviteService.accept). Grants a seat only
+   * when the inviter may sit themselves — a host who got the room by transfer cannot widen access.
+   * @returns {boolean} true if a viewer already in the room was unlocked (the caller broadcasts)
+   */
+  grantInvite(room, inviterId, inviteeId) {
+    if (room.playerScope !== 'clubs') return false;
+    const inviter = room.users.get(inviterId);
+    if (!inviter || inviter.canSit === false) return false;
+    room.invitedIds.add(inviteeId);
+    const invitee = room.users.get(inviteeId);
+    if (invitee && invitee.canSit === false) { invitee.canSit = true; return true; }
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -782,6 +838,7 @@ class RoomManager extends EventEmitter {
       timerSeconds: room.settings.timerSeconds,
       timerIncrementSeconds: room.settings.timerIncrementSeconds,
       ranked: room.settings.ranked !== false,
+      ...(room.playerScope === 'clubs' ? { scope: 'clubs' } : {}), // F453: card badge "Nhóm"
     };
   }
 
@@ -827,6 +884,8 @@ class RoomManager extends EventEmitter {
         role: this.getUserRole(room, u.userId),
         avatarUrl: u.isGuest || !this.avatarLookup ? null : this.avatarLookup(u.userId),
       });
+      // F453: only "Club members" rooms carry it, so 'all' payloads stay as they were.
+      if (room.playerScope === 'clubs') users[users.length - 1].canSit = u.canSit !== false;
     }
 
     const hostUser = room.users.get(room.host);

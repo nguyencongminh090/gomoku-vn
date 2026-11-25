@@ -46,7 +46,7 @@
 export const client = SocketClient.shared();
 
 // #440: the Phòng screen controller (classic script → window.RoomsH; jsdom suites eval it directly).
-import './rooms-h.js?v=bf30992d';
+import './rooms-h.js?v=223eb904';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -271,6 +271,7 @@ function openModal({ rule = null } = {}) {
 let serverRoomDefaults = null;   // members: GET /api/profile/prefs → roomDefaults (null = never created one)
 let modalTouched = false;        // the player changed a control since this open — don't overwrite their pick
 let modalRule = null;            // #440: rule forced by the opener (empty rule tab), over the remembered one
+let hasClubs = false;            // F453: members — from /api/profile/prefs; "Club members" needs a club
 
 function readLocalSettings() {
   try {
@@ -281,7 +282,7 @@ function readLocalSettings() {
 
 function rememberedSettings() {
   const s = userInfo.isGuest
-    ? { ...LITE_DEFAULT_SETTINGS, ...(readLocalSettings() || {}), ranked: false }
+    ? { ...LITE_DEFAULT_SETTINGS, ...(readLocalSettings() || {}), ranked: false, playerScope: 'all' }
     : { ...LITE_DEFAULT_SETTINGS, ...(serverRoomDefaults || {}) };
   if (modalRule && modalRule !== s.winningRule) {
     s.winningRule = modalRule;
@@ -299,7 +300,9 @@ function refreshRoomDefaults() {
     .then((j) => {
       if (!j) return;
       serverRoomDefaults = j.roomDefaults || null;
+      hasClubs = !!j.hasClubs;
       if (!modalTouched && modalOverlay.classList.contains('visible')) applySettingsToForm(rememberedSettings());
+      else syncScopeOption(); // keep their picks, but (un)lock "Club members" now that we know
     })
     .catch(() => { /* offline — the cached/default values stay */ });
 }
@@ -329,7 +332,7 @@ const LAST_SETTINGS_KEY = 'gvn_room_last_settings';
 
 // The form's own hardcoded defaults, used when nothing has been remembered yet.
 const DEFAULT_ROOM_SETTINGS = {
-  boardSize: 19, winningRule: 'freestyle', ranked: true,
+  boardSize: 19, winningRule: 'freestyle', ranked: true, playerScope: 'all',
   ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: null,
   timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0,
 };
@@ -360,7 +363,8 @@ function readFormSettings() {
   let   rulePortal  = document.getElementById('rule-portal').checked;
   if (ruleSwap2 || openingRule) { ruleWall = false; rulePortal = false; } // the opening plays on a plain board
   const ranked = pick('roomMode') !== 'friendly';
-  return { boardSize, winningRule, ranked, ruleWall, rulePortal, ruleSwap2, openingRule, timerMode, timerSeconds, timerIncrementSeconds };
+  const playerScope = pick('playerScope') === 'clubs' ? 'clubs' : 'all'; // F453; the server downgrades a clubless creator too
+  return { boardSize, winningRule, ranked, playerScope, ruleWall, rulePortal, ruleSwap2, openingRule, timerMode, timerSeconds, timerIncrementSeconds };
 }
 
 function saveLastSettings(settings) {
@@ -379,6 +383,7 @@ function applySettingsToForm(s) {
   choose('boardSize', s.boardSize);
   choose('winRule', s.winningRule);
   choose('roomMode', s.ranked === false ? 'friendly' : 'rated');
+  choose('playerScope', s.playerScope === 'clubs' ? 'clubs' : 'all');
   choose('openRule', s.openingRule || (s.ruleSwap2 ? 'swap2' : 'none'));
   choose('timerMode', s.timerMode);
   const wall = document.getElementById('rule-wall');
@@ -391,7 +396,24 @@ function applySettingsToForm(s) {
   document.querySelectorAll('select[name="roomMode"], select[name="openRule"], select[name="timerMode"]')
     .forEach(r => r.dispatchEvent(new Event('change')));
   updateModeHint(); // the synthetic change above does not bubble to the modal's listener
+  syncScopeOption(); // after choose(): a remembered "clubs" must not stay selected on a disabled option
   updateModalSummary();
+}
+
+// F453: "Club members" only for a member in a club; otherwise disabled, with the reason as the hint.
+function syncScopeOption() {
+  const sel = document.querySelector('select[name="playerScope"]');
+  if (!sel) return;
+  const allowed = !userInfo.isGuest && hasClubs;
+  const clubs = [...sel.options].find((o) => o.value === 'clubs');
+  if (clubs) clubs.disabled = !allowed;
+  if (!allowed && sel.value === 'clubs') sel.value = 'all';
+  const hint = document.getElementById('ps-hint');
+  if (!hint) return;
+  const key = !allowed ? (userInfo.isGuest ? 'modal.scope_need_account' : 'modal.scope_need_club')
+    : sel.value === 'clubs' ? 'modal.scope_clubs_desc' : 'modal.scope_all_desc';
+  hint.setAttribute('data-i18n', key);
+  hint.textContent = t(key);
 }
 
 // One line saying what "Tạo nhanh" will create with the current form (selected option texts —
@@ -405,6 +427,7 @@ function updateModalSummary() {
   };
   const s = readFormSettings();
   const parts = [text('roomMode'), text('boardSize'), text('winRule')];
+  if (s.playerScope === 'clubs') parts.push(text('playerScope'));
   if (s.ruleSwap2 || s.openingRule) parts.push(text('openRule'));
   if (s.ruleWall) parts.push(t('modal.rule_wall').replace(/\s*\(.*\)/, ''));
   if (s.rulePortal) parts.push(t('modal.rule_portal').replace(/\s*\(.*\)/, ''));
@@ -522,9 +545,9 @@ document.querySelectorAll('select[name="winRule"]').forEach((sel) => sel.addEven
 })();
 
 // Any edit inside the form: stop a late server copy overwriting it; refresh hint + summary.
-modalOverlay.addEventListener('change', () => { modalTouched = true; updateModeHint(); updateModalSummary(); });
+modalOverlay.addEventListener('change', () => { modalTouched = true; updateModeHint(); syncScopeOption(); updateModalSummary(); });
 modalOverlay.addEventListener('input', () => { modalTouched = true; updateModalSummary(); });
-window.addEventListener('langchange', () => { updateModeHint(); updateModalSummary(); });
+window.addEventListener('langchange', () => { updateModeHint(); syncScopeOption(); updateModalSummary(); });
 
 // ---------------------------------------------------------------------------
 // Phòng screen (#440)

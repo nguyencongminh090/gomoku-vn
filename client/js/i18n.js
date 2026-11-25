@@ -277,6 +277,7 @@ const TRANSLATIONS = {
     'rooms.empty_sub': 'Mở một bàn, người chơi online sẽ thấy ngay.',
     'rooms.create_rule': 'Mở bàn {rule}',
     'rooms.mode_rated': 'Tính điểm',
+    'rooms.scope_clubs': 'Nhóm',
     'rooms.mode_friendly': 'Giao hữu',
 
     // ── Tables & Tournaments tabs ──────────────────────────────
@@ -523,6 +524,13 @@ const TRANSLATIONS = {
     'modal.mode_rated_desc': 'Tính điểm Elo, không đi lại',
     'modal.mode_friendly_desc': 'Không tính điểm, được đi lại',
     'modal.mode_guest_note': 'Có khách ngồi chơi thì ván tự thành giao hữu.',
+    'modal.player_scope': 'Phạm vi người chơi',
+    'modal.scope_all': 'Mọi người',
+    'modal.scope_clubs': 'Người trong nhóm',
+    'modal.scope_all_desc': 'Ai vào phòng cũng được ngồi chơi.',
+    'modal.scope_clubs_desc': 'Chỉ thành viên nhóm của bạn và người được mời mới ngồi chơi; người khác chỉ xem.',
+    'modal.scope_need_club': 'Tham gia một nhóm để chọn “Người trong nhóm”.',
+    'modal.scope_need_account': 'Khách không chọn được “Người trong nhóm”: cần tài khoản trong một nhóm.',
     'modal.win_rule': 'Luật thắng',
     'modal.opening': 'Luật mở đầu',
     'modal.close': 'Đóng',
@@ -620,6 +628,7 @@ const TRANSLATIONS = {
 
     // ── Room dynamic text ─────────────────────────────────────
     'room.slot_empty': 'Trống',
+    'room.seat_club_only': 'Chỉ người trong nhóm',
     'room.status_active': 'Đang chơi',
     'room.status_waiting': 'Đang chờ',
     'room.empty_slot': 'Trống',
@@ -1866,6 +1875,7 @@ const TRANSLATIONS = {
     'err.cannot_sit_while_playing': 'Không thể ngồi vào khi đang chơi.',
     'err.invalid_seat': 'Vị trí không hợp lệ.',
     'err.seat_taken': 'Vị trí này đã có người.',
+    'err.seat_club_only': 'Chỉ người trong nhóm của chủ phòng (hoặc được mời) mới được ngồi chơi.',
     'err.cannot_stand_while_playing': 'Không thể đứng dậy khi đang chơi.',
     'err.not_seated': 'Bạn chưa ngồi vào chỗ nào.',
     'err.host_only_settings': 'Chỉ chủ phòng mới có thể thay đổi cài đặt.',
@@ -2335,6 +2345,7 @@ const TRANSLATIONS = {
     'rooms.empty_sub': 'Open one, players online will see it right away.',
     'rooms.create_rule': 'New {rule} table',
     'rooms.mode_rated': 'Rated',
+    'rooms.scope_clubs': 'Club',
     'rooms.mode_friendly': 'Friendly',
 
     // ── Tables & Tournaments tabs ──────────────────────────────
@@ -2581,6 +2592,13 @@ const TRANSLATIONS = {
     'modal.mode_rated_desc': 'Counts toward rating, no undo',
     'modal.mode_friendly_desc': 'No rating change, undo allowed',
     'modal.mode_guest_note': 'If a guest takes a seat, the game becomes friendly.',
+    'modal.player_scope': 'Who can play',
+    'modal.scope_all': 'Everyone',
+    'modal.scope_clubs': 'Club members',
+    'modal.scope_all_desc': 'Anyone in the room can take a seat.',
+    'modal.scope_clubs_desc': 'Only members of your clubs and people you invite can play; everyone else watches.',
+    'modal.scope_need_club': 'Join a club to use “Club members”.',
+    'modal.scope_need_account': 'Guests can’t use “Club members”: it needs an account in a club.',
     'modal.win_rule': 'Winning rule',
     'modal.opening': 'Opening rule',
     'modal.close': 'Close',
@@ -2678,6 +2696,7 @@ const TRANSLATIONS = {
 
     // ── Room dynamic text ─────────────────────────────────────
     'room.slot_empty': 'Empty',
+    'room.seat_club_only': 'Club members only',
     'room.status_active': 'Playing',
     'room.status_waiting': 'Waiting',
     'room.empty_slot': 'Empty',
@@ -3924,6 +3943,7 @@ const TRANSLATIONS = {
     'err.cannot_sit_while_playing': 'Cannot sit down while a game is in progress.',
     'err.invalid_seat': 'Invalid seat.',
     'err.seat_taken': 'This seat is already taken.',
+    'err.seat_club_only': 'Only the room creator’s club members (or invited players) can play here.',
     'err.cannot_stand_while_playing': 'Cannot stand up while a game is in progress.',
     'err.not_seated': 'You haven\'t taken a seat.',
     'err.host_only_settings': 'Only the host can change settings.',

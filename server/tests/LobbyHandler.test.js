@@ -237,11 +237,11 @@ describe('LobbyHandler — room:create', () => {
       handlers['room:create']({ settings: {} });
       return socket;
     };
-    const room = { roomId: 'r1', roomName: 'x', settings: { boardSize: 19, ranked: false } };
+    const room = { roomId: 'r1', roomName: 'x', playerScope: 'clubs', settings: { boardSize: 19, ranked: false } };
 
     test('member: the validated room.settings are saved for their user id', () => {
       create({}, { room });
-      expect(mockDb.setLastRoomSettings).toHaveBeenCalledWith('u1', room.settings);
+      expect(mockDb.setLastRoomSettings).toHaveBeenCalledWith('u1', { ...room.settings, playerScope: 'clubs' }); // F453: the room's (post-downgrade) scope too
     });
     test('guest: nothing is saved', () => {
       create({ isGuest: true }, { room });
