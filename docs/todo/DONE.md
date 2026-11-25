@@ -1,5 +1,7 @@
 - ✅ **#453.** Create Room: player scope — only creator's club mates (or invitees) may sit `[Model: Sonnet]` — [detail](docs/todo/F453-club-only-seats.md)
 
+- ✅ **#457.** Site oversight and reporting `[Model: Sonnet]` — [detail](docs/todo/B457-site-oversight-and-reporting.md)
+
 - ✅ **#456.** Mentions `[Model: Sonnet]` — [detail](docs/todo/B456-mentions.md)
 
 - ✅ **#455.** Club moderation `[Model: Sonnet]` — [detail](docs/todo/B455-club-moderation.md)

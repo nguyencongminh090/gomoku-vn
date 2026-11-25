@@ -146,7 +146,7 @@ function getPrimaryClubs(userIds) {
   if (!userIds.length) return out;
   const rows = db.prepare(`
     SELECT m.user_id, c.slug, c.name FROM club_members m JOIN clubs c ON c.id = m.club_id
-    WHERE m.role != 'pending' AND m.user_id IN (${userIds.map(() => '?').join(',')})
+    WHERE c.hidden=0 AND m.role != 'pending' AND m.user_id IN (${userIds.map(() => '?').join(',')})
     ORDER BY m.joined_at, c.slug`).all(...userIds);
   for (const r of rows) if (!out.has(r.user_id)) out.set(r.user_id, { slug: r.slug, name: r.name });
   return out;

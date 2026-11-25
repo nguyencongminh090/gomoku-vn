@@ -390,6 +390,12 @@
       body.append(who, box);
       row.append(window.PlatformShell.avatar(m.avatarUrl, m.displayName, 'cl-av40'), body);
     }
+    if (isMember() && !m.mine) {
+      row.append(iconBtn('flag', 'Báo cáo tin nhắn', async () => {
+        const reason = window.prompt('Lý do báo cáo (tối đa 200 ký tự)');
+        if (reason && await act('POST', '/messages/' + m.id + '/report', { reason })) $('cb-msg').textContent = 'Đã gửi báo cáo.';
+      }, 'cb-chat__flag'));
+    }
     if (isStaff()) {
       row.append(iconBtn('trash', t('clubs.delete_message'), async () => {
         const ok = await act('DELETE', '/messages/' + m.id, null, 'clubs.confirm_delete_message');

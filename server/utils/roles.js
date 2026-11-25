@@ -18,6 +18,7 @@ const PERMISSIONS = {
   'user.manage': ['admin'],
   'news.manage': ['admin'],
   'rating.integrity': ['admin'],
+  'club.manage': ['admin'],
 };
 
 /** The user's role; 'member' for an unknown/missing id or an unrecognised stored value. */

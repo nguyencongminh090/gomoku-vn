@@ -435,7 +435,8 @@ describe('club page', () => {
       expect(global.fetch.mock.calls.filter(([u]) => String(u).includes('/messages'))).toHaveLength(1);
       expect([...document.querySelectorAll('.cb-chat__text')].map((n) => n.textContent)).toEqual(['hi <b>x</b>', 'second']);
       expect(log().querySelector('b')).toBeNull();
-      expect(document.querySelectorAll('.cb-chat__msg button')).toHaveLength(0);
+      expect(document.querySelectorAll('.cb-chat__msg .cb-chat__del')).toHaveLength(0);
+      expect(document.querySelectorAll('.cb-chat__flag')).toHaveLength(1);
       document.getElementById('cb-ch-members').click();
       tab().click();
       await flush();
@@ -464,10 +465,10 @@ describe('club page', () => {
       document.getElementById('cb-ch-events').click();
       tab().click();
       await flush(); await flush();
-      expect(document.querySelectorAll('.cb-chat__msg button')).toHaveLength(2);
+      expect(document.querySelectorAll('.cb-chat__msg .cb-chat__del')).toHaveLength(2);
       window.confirm = jest.fn(() => true);
       global.fetch.mockClear();
-      document.querySelector('.cb-chat__msg button').click();
+      document.querySelector('.cb-chat__msg .cb-chat__del').click();
       await flush(); await flush();
       expect(global.fetch.mock.calls[0][0]).toBe('/api/clubs/caro/messages/7');
       expect(global.fetch.mock.calls[0][1].method).toBe('DELETE');

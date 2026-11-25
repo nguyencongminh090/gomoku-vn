@@ -33,9 +33,18 @@
     <button type="button" role="tab" id="adm-tab-cheat" class="ptab" data-tab="cheat" data-perm="cheat.review" hidden><span data-i18n="admin.tab_cheat">Gian lận</span></button>
     <button type="button" role="tab" id="adm-tab-integrity" class="ptab" data-tab="integrity" data-perm="rating.integrity" hidden><span data-i18n="admin.tab_integrity">Toàn vẹn xếp hạng</span></button>
     <button type="button" role="tab" id="adm-tab-users" class="ptab" data-tab="users" data-perm="user.manage" hidden><span data-i18n="admin.tab_users">Người dùng</span></button>
+    <button type="button" role="tab" id="adm-tab-clubs" class="ptab" data-tab="clubs" data-perm="club.manage" hidden>Hội nhóm</button>
     <button type="button" role="tab" id="adm-tab-news" class="ptab" data-tab="news" data-perm="news.manage" hidden><span data-i18n="admin.tab_news">Tin tức</span></button>
   </div>
 
+  <section id="adm-clubs" role="tabpanel" hidden>
+    <form id="ac-search" class="pform"><label for="ac-query">Tìm hội nhóm</label>
+      <div class="pform__row"><input id="ac-query" type="search" maxlength="60"><button class="pbtn">Tìm</button></div></form>
+    <p id="ac-status" role="status"></p><div id="ac-list" class="prows"></div><div id="ac-pages" class="pactions"></div>
+    <h3>Báo cáo đang chờ</h3><div id="ac-reports" class="prows"></div>
+    <section id="ac-detail" class="ppanel" hidden></section>
+    <h3>Nhật ký quản trị</h3><div id="ac-audit"></div>
+  </section>
   <section id="adm-puzzles" role="tabpanel" hidden>
     <p id="rv-total" class="muted small"></p>
     <p id="rv-msg" class="pnote" hidden></p>
@@ -166,7 +175,8 @@
 <script src="js/admin-cheat.js?v=365644b9"></script>
 <script src="js/admin-integrity-viz.js?v=48d8bc91"></script>
 <script src="js/admin-integrity.js?v=5d14aae2"></script>
+<script src="js/admin-clubs.js"></script>
 <script src="js/admin-news.js?v=68970306"></script>
-<script src="js/admin.js?v=c5d5ef66"></script>
+<script src="js/admin.js?v=b538c535"></script>
 </body>
 </html>

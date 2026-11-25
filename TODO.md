@@ -74,6 +74,5 @@ in the detail file / fix-log).
 
 
 
-- **#457.** Site oversight and reporting `[Model: Sonnet]` — [detail](docs/todo/B457-site-oversight-and-reporting.md)
 
 - **#458.** Club activity `[Model: Sonnet]` — [detail](docs/todo/B458-club-activity.md)

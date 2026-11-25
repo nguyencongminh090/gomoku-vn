@@ -139,3 +139,12 @@ describe('admin shell', () => {
     expect($('adm-msg').textContent).toBe('admin.error');
   });
 });
+
+it('shows club oversight only to staff with club.manage', async () => {
+  window.AdminClubs = { init: jest.fn() };
+  await boot({ role: 'admin', permissions: ['club.manage'] }, 200, '#clubs');
+  expect($('adm-tab-clubs').hidden).toBe(false);
+  expect(window.AdminClubs.init).toHaveBeenCalled();
+  await boot(ME.moderator);
+  expect($('adm-tab-clubs').hidden).toBe(true);
+});

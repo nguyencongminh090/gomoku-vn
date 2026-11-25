@@ -79,6 +79,11 @@ function getClub(slug) {
   return club;
 }
 
+function checkAccess(club, viewerId, write = false) {
+  if (club.hidden && !policy.isMember(roleOf(club.id, viewerId))) throw new ClubError('CLUB_NOT_FOUND', 404, 'Không tìm thấy hội nhóm.');
+  if (write && club.locked) throw new ClubError('CLUB_LOCKED', 403, 'Hội nhóm đang bị khóa.');
+}
+
 function roleOf(clubId, userId) {
   if (!userId) return null;
   const r = db().prepare('SELECT role FROM club_members WHERE club_id = ? AND user_id = ?').get(clubId, userId);
@@ -408,14 +413,14 @@ function clubRanks(category) {
     FROM clubs c
     JOIN club_members m ON m.club_id = c.id AND m.role != 'pending'
     JOIN ratings r ON r.user_id = m.user_id AND r.category = ? AND r.games >= ?
-    GROUP BY c.id
+    WHERE c.hidden=0 GROUP BY c.id
     ORDER BY avg DESC, members DESC, c.slug`).all(category, database.RANKING_MIN_GAMES);
   return new Map(rows.map((r, i) => [r.id, i + 1]));
 }
 
 /** Discover list: newest/biggest first, optional name search. */
 function listClubs({ q, page, limit, category }) {
-  const where = q ? "WHERE c.name LIKE ? ESCAPE '\\'" : '';
+  const where = q ? "WHERE c.hidden=0 AND c.name LIKE ? ESCAPE '\\'" : 'WHERE c.hidden=0';
   const like = q ? [`%${q.replace(/[\\%_]/g, '\\$&')}%`] : [];
   const total = db().prepare(`SELECT COUNT(*) AS n FROM clubs c ${where}`).get(...like).n;
   const rows = db().prepare(`
@@ -530,6 +535,7 @@ function remindDueEvents(nowMs = Date.now()) {
 /** Club id if `userId` is its owner/officer, else throws. Used by the tournament flow. */
 function staffClubId(userId, slug) {
   const club = getClub(slug);
+  checkAccess(club, userId, true);
   requireStaff(club, userId);
   return club.id;
 }
@@ -541,7 +547,7 @@ function staffClubId(userId, slug) {
  */
 function tournamentClubs() {
   const map = new Map();
-  for (const r of db().prepare('SELECT t.id, c.slug, c.name FROM tournaments t JOIN clubs c ON c.id = t.club_id').all()) {
+  for (const r of db().prepare('SELECT t.id, c.slug, c.name FROM tournaments t JOIN clubs c ON c.id = t.club_id WHERE c.hidden=0').all()) {
     map.set(r.id, { slug: r.slug, name: r.name });
   }
   return map;
@@ -881,6 +887,21 @@ function calendarCommand(club, role, userId, arg) {
 /** Test seam: forget the whole-club fan-out windows. */
 const _resetFanOut = () => lastFanOut.clear();
 
+function reportMessage(userId, slug, messageId, reason) {
+  const club = getClub(slug);
+  requireMember(club, userId);
+  if (typeof reason !== 'string' || !reason.trim() || reason.trim().length > 200)
+    throw new ClubError('CLUB_REPORT_REASON', 400, 'Nhập lý do (1–200 ký tự).');
+  const msg = db().prepare('SELECT body,kind FROM club_messages WHERE club_id=? AND id=?').get(club.id, Number(messageId));
+  if (!msg) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
+  if (db().prepare('SELECT 1 FROM club_reports WHERE message_id=? AND reporter_id=?').get(Number(messageId), userId)) return;
+  const since = new Date(Date.now() - 3600000).toISOString();
+  if (db().prepare('SELECT count(*) AS n FROM club_reports WHERE reporter_id=? AND created_at>?').get(userId, since).n >= 5)
+    throw new ClubError('CLUB_REPORT_LIMIT', 429, 'Bạn đã gửi đủ 5 báo cáo trong giờ này.');
+  db().prepare('INSERT INTO club_reports(club_id,message_id,reporter_id,excerpt,reason,created_at) VALUES(?,?,?,?,?,?)')
+    .run(club.id, Number(messageId), userId, msg.body || msg.kind, reason.trim(), now());
+}
+
 function removedMessages(userId, slug, visible) {
   const club = getClub(slug);
   requireMember(club, userId);
@@ -889,11 +910,18 @@ function removedMessages(userId, slug, visible) {
   return ids.filter((id) => !retained.has(id));
 }
 
+function removeContent(club, messageId) {
+  const row = db().prepare('DELETE FROM club_messages WHERE club_id=? AND id=? RETURNING sender_id,body,kind').get(club.id, Number(messageId));
+  if (row?.kind === 'pin' && row.body === dmText.clean(club.announcement))
+    db().prepare("UPDATE clubs SET announcement='' WHERE id=?").run(club.id);
+  return row;
+}
+
 function deleteMessage(userId, slug, messageId) {
   const club = getClub(slug);
   requireStaff(club, userId);
   db().transaction(() => {
-    const row = db().prepare('DELETE FROM club_messages WHERE club_id=? AND id=? RETURNING sender_id').get(club.id, Number(messageId));
+    const row = removeContent(club, messageId);
     if (!row) throw new ClubError('CLUB_MESSAGE_NOT_FOUND', 404, 'Không tìm thấy tin nhắn.');
     log(club.id, 'delete_message', userId, row.sender_id, String(messageId));
   })();
@@ -984,12 +1012,12 @@ function getClubDetail(slug, viewerId, category) {
   return body;
 }
 
-function clubsOfUser(userId) {
+function clubsOfUser(userId, includeHidden = false) {
   return db().prepare(`
     SELECT c.slug, c.name, c.color, c.tag, c.avatar_v, m.role,
            (SELECT COUNT(*) FROM club_members x WHERE x.club_id = c.id AND x.role != 'pending') AS members
     FROM club_members m JOIN clubs c ON c.id = m.club_id
-    WHERE m.user_id = ? AND m.role != 'pending' ORDER BY m.joined_at`).all(userId)
+    WHERE m.user_id = ? AND m.role != 'pending' AND (c.hidden=0 OR ?=1) ORDER BY m.joined_at`).all(userId, Number(includeHidden))
     .map((r) => ({ slug: r.slug, name: r.name, color: r.color, tag: r.tag, role: r.role, members: r.members, avatarUrl: imageUrl(r.slug, 'avatar', r.avatar_v) }));
 }
 
@@ -999,7 +1027,7 @@ function userIdByUsername(username) {
 }
 
 module.exports = {
-  removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
+  removeContent, checkAccess, clubHistory, reportMessage, removedMessages, moderate, ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
   createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,

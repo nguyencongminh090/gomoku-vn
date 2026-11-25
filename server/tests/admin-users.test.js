@@ -247,3 +247,24 @@ describe('avatar removal', () => {
     expect(v('bob')).toBe(0);
   });
 });
+
+it('gates site oversight, hides clubs, removes reported content and retains deletion history', async () => {
+  const clubs = require('../managers/ClubService');
+  const { slug } = clubs.createClub('mem', { name: 'Admin club', joinPolicy: 'open' });
+  clubs.join('bob', slug);
+  const msg = clubs.postMessage('mem', slug, '/pin An announcement');
+  clubs.reportMessage('bob', slug, msg.id, 'Reason');
+  clubs.reportMessage('bob', slug, msg.id, 'Reason');
+  const list = await call('GET', '/api/admin/clubs', 'boss');
+  expect(list.body.reports).toHaveLength(1);
+  const act = (as, action, id) => call('POST', '/api/admin/clubs/' + slug + '/actions', as, { action, id });
+  expect((await act('mod', 'hide')).status).toBe(403);
+  await act('boss', 'hide');
+  expect(clubs.listClubs({ category: 'caro', page: 1, limit: 20 }).clubs).toEqual([]);
+  expect(() => clubs.checkAccess(clubs.getClub(slug), 'mod')).toThrow();
+  await act('boss', 'uphold', list.body.reports[0].id);
+  expect(clubs.getClub(slug).announcement).toBe('');
+  expect(clubs.listMessages('mem', slug)).toEqual([]);
+  await act('boss', 'delete');
+  expect(db.prepare("SELECT action FROM club_admin_log WHERE slug=? ORDER BY id DESC LIMIT 1").get(slug).action).toBe('delete');
+});
