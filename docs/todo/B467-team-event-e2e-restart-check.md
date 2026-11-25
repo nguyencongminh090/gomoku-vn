@@ -23,3 +23,14 @@
 - Not covered: restart while a game is InProgress (only Ready/negotiating state hydrated).
 - Shots: `features/club-platform/screenshots/verify/e2e-{r1-done,after-restart,final-standings}-{desktop,mobile}.png`.
 - Side observation → #469 (black stone dot invisible on dark pairing cards).
+
+## Follow-up 2026-11-25 (`verify.cjs e2e2`, run 3×, temp DB; real DB md5 unchanged)
+- Real moves via board clicks: R1 B1 black makes five in a row (17×17 freestyle) → "You won!", history
+  winner BLACK reason win; R1 B2 4 moves, draw offer → accept → "The game is a draw" → 1.5:0.5.
+- Restart **while InProgress** (R2 B1, 3 moves): server side correct — pairing hydrates to Ready, same
+  pairingId, both players must check in again, replay starts on an empty board, the aborted game is
+  not recorded (history has 4 games). Final 2.5:1.5, Champion Kỳ Hội Mùa Thu.
+- Client side bug → #472: the match page keeps showing the aborted game as live (3 moves, clock
+  ticking, board clickable, no banner) 12 s after the restart.
+- Found on the way → #470: desktop tournament-match board renders 150 px at 1365×900.
+- Shots (local, gitignored): `features/club-platform/screenshots/verify/e2e2-{five-win,r1-done,match-after-restart,after-midgame-restart,final-*}*.png`.

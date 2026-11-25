@@ -1,6 +1,7 @@
 'use strict';
 // One-off verification for #465/#466/#467 (2026-11-25). Run from the repo root:
-// PLAYWRIGHT_BROWSERS_PATH=... node features/club-platform/verify.cjs <light|en|e2e>  (temp GOMOKU_DB_PATH)
+// PLAYWRIGHT_BROWSERS_PATH=... node features/club-platform/verify.cjs <light|en|e2e|e2e2>  (temp GOMOKU_DB_PATH)
+// e2e2 = English, real moves (five in a row), draw by agreement, server restart mid-game, sub-tabs at 320 px.
 const REPO = process.cwd();
 const req = require('node:module').createRequire(REPO + '/package.json');
 const { chromium } = req('@playwright/test');
@@ -78,8 +79,8 @@ async function run() {
       console.log('LIGHT filter controls', JSON.stringify(styles));
       await own.page.locator('#cb-member-search').fill('hoa');
       await shoot(own.page, 'light-members-filtered');
-    } else if (mode === 'en' || mode === 'e2e') {
-      const init = mode === 'en' ? english : null;
+    } else if (mode === 'en' || mode === 'e2e' || mode === 'e2e2') {
+      const init = mode !== 'e2e' ? english : null;
       const P = {};
       P.trucmai = await user('trucmai', 'Trúc Mai', init);
       P.uyenvy = await user('uyenvy', 'Uyên Vy', init);
@@ -143,6 +144,141 @@ async function run() {
         await (loser === a ? b : a).page.locator('#match-result-overlay.visible').waitFor();
         for (const x of [a, b]) await x.page.goto(TURL);
       }
+      // Click a board cell twice (default click mode 'double' = preview then confirm).
+      async function clickCell(pg, x, y) {
+        await pg.waitForFunction(() => { const g = document.querySelector('#board-wrap svg')?.__gboard; return g && g.isMyTurn && g.interactive; });
+        const pt = await pg.evaluate(([cx, cy]) => {
+          const svg = document.querySelector('#board-wrap svg'); const g = svg.__gboard;
+          const v = g._view(); const r = svg.getBoundingClientRect();
+          return { x: r.left + (g._center(cx) - v.x) * r.width / v.w, y: r.top + (g._center(cy) - v.y) * r.height / v.h, n: g.boardSize };
+        }, [x, y]);
+        const hit = await pg.evaluate(([px, py]) => document.querySelector('#board-wrap svg').__gboard._cellFromClient(px, py), [pt.x, pt.y]);
+        if (!hit || hit.x !== x || hit.y !== y) console.log('MISAIM', x, y, JSON.stringify(hit));
+        await pg.mouse.click(pt.x, pt.y); await pg.waitForTimeout(150); await pg.mouse.click(pt.x, pt.y);
+        for (let k = 0; k < 3; k++) {
+          await pg.waitForTimeout(600);
+          const st = await pg.evaluate(([cx, cy]) => { const g = document.querySelector('#board-wrap svg').__gboard; return { placed: !g._isEmpty({ x: cx, y: cy }), pend: g._pendingCell }; }, [x, y]);
+          if (st.placed) break;
+          console.log('RETRY click', x, y, JSON.stringify(st));
+          await pg.mouse.click(pt.x, pt.y);
+        }
+        try { await pg.waitForFunction(([cx, cy]) => { const g = document.querySelector('#board-wrap svg').__gboard; return !g._isEmpty({ x: cx, y: cy }); }, [x, y]); }
+        catch (e) { await pg.screenshot({ path: path.join(SHOTS, 'debug-click.png') }); console.log('DEBUG', JSON.stringify(pt), await pg.evaluate(() => { const g = document.querySelector('#board-wrap svg').__gboard; return JSON.stringify({ turn: g.isMyTurn, pend: g._pendingCell, mode: g.clickMode }); })); throw e; }
+        return pt.n;
+      }
+      async function enterBoth(a, b) {
+        await cardWith(a.page, 'ready').locator('[data-action="ready"]').click();
+        await cardWith(b.page, 'ready').locator('[data-action="ready"]').click();
+        await a.page.waitForURL((u) => u.pathname.includes('tournament-match.html'));
+        await b.page.waitForURL((u) => u.pathname.includes('tournament-match.html'));
+        await a.page.locator('#match-canvas, #board-wrap svg').first().waitFor();
+        await b.page.locator('#board-wrap svg').waitFor();
+        await a.page.waitForTimeout(1000); // .board-area-shell fadeUp (0.7 s + delay) moves the board 12 px
+      }
+      if (mode === 'e2e2') {
+        const gamesOf = async () => (await (await page.request.get(base + '/api/tournaments/' + encodeURIComponent(tid) + '/games')).json().catch(() => null));
+        // R1 B1: Trúc Mai (black) makes five in a row on row 7; Bảo Nam answers on row 9.
+        await play(P.trucmai, P.baonam, null, { stopBeforeReady: true });
+        await enterBoth(P.trucmai, P.baonam);
+        const probe = async (pg, tag) => console.log('PROBE', tag, await pg.evaluate(() => { const svg = document.querySelector('#board-wrap svg'); const r = svg.getBoundingClientRect(); const p = svg.parentElement; const a = document.getElementById('board-area'); return JSON.stringify({ svg: [Math.round(r.left), Math.round(r.top), Math.round(r.width)], wrap: [p.clientWidth, p.clientHeight], area: a ? [a.clientWidth, a.clientHeight] : null }); }));
+        for (let k = 0; k < 4; k++) { await probe(P.trucmai.page, 't' + k * 500); await P.trucmai.page.waitForTimeout(500); }
+        if (process.env.PROBE_ONLY) {
+          await P.trucmai.page.setViewportSize({ width: 1366, height: 900 }); await P.trucmai.page.waitForTimeout(500); await probe(P.trucmai.page, 'after-resize');
+          await P.trucmai.page.reload(); await P.trucmai.page.waitForTimeout(1500); await probe(P.trucmai.page, 'after-reload');
+          await P.trucmai.page.screenshot({ path: path.join(SHOTS, 'debug-after-reload.png') });
+          const mob = P.baonam.page; await mob.setViewportSize({ width: 390, height: 844 }); await mob.reload(); await mob.waitForTimeout(1500); await probe(mob, 'mobile-reload');
+          return;
+        }
+        let n;
+        for (let i = 0; i < 5; i++) {
+          n = await clickCell(P.trucmai.page, 3 + i, 7);
+          if (i < 4) await clickCell(P.baonam.page, 3 + i, 9);
+        }
+        console.log('board size', n);
+        await P.trucmai.page.locator('#match-result-overlay.visible').waitFor();
+        await P.baonam.page.locator('#match-result-overlay.visible').waitFor();
+        console.log('R1B1 overlay:', (await P.trucmai.page.locator('#match-result-overlay').innerText()).replace(/\s+/g, ' '));
+        await P.trucmai.page.screenshot({ path: path.join(SHOTS, 'e2e2-five-win-desktop.png') });
+        // R1 B2: Lan Anh (black) v Uyên Vy, 4 moves, Lan Anh offers a draw, Uyên Vy accepts.
+        await play(P.lananh, P.uyenvy, null, { stopBeforeReady: true });
+        await enterBoth(P.lananh, P.uyenvy);
+        await clickCell(P.lananh.page, 8, 8); await clickCell(P.uyenvy.page, 9, 9);
+        await clickCell(P.lananh.page, 8, 9); await clickCell(P.uyenvy.page, 9, 8);
+        await P.lananh.page.locator('#btn-draw').click();
+        await P.uyenvy.page.locator('#draw-accept-btn').click();
+        await P.lananh.page.locator('#match-result-overlay.visible').waitFor();
+        await P.uyenvy.page.locator('#match-result-overlay.visible').waitFor(); await P.uyenvy.page.waitForTimeout(500);
+        console.log('R1B2 overlay:', (await P.uyenvy.page.locator('#match-result-overlay').innerText()).replace(/\s+/g, ' '));
+        for (const x of Object.values(P)) await x.page.goto(TURL);
+        await page.locator('#team-scoreboard').waitFor();
+        console.log('after R1 score', await score(page));
+        await shoot(page, 'e2e2-r1-done');
+        // R2 B1: Bảo Nam (black) v Trúc Mai — restart the server mid-game (InProgress, 3 moves on board).
+        await play(P.baonam, P.trucmai, null, { stopBeforeReady: true });
+        await enterBoth(P.baonam, P.trucmai);
+        await clickCell(P.baonam.page, 5, 5); await clickCell(P.trucmai.page, 6, 6); await clickCell(P.baonam.page, 5, 6);
+        const pid = new URL(P.baonam.page.url()).searchParams.get('pairingId');
+        await stopServer(); await startServer(); console.log('server restarted mid-game');
+        for (const sec of [3, 12]) {
+          await P.baonam.page.waitForTimeout(sec === 3 ? 3000 : 9000);
+          const st = await P.trucmai.page.evaluate(() => { const g = document.querySelector('#board-wrap svg').__gboard; return { moves: document.querySelectorAll('#move-list .move-list__row').length, myTurn: g.isMyTurn, interactive: g.interactive, banner: document.getElementById('status-banner')?.innerText.trim(), overlay: document.getElementById('match-result-overlay').className, clocks: [...document.querySelectorAll('.match-clock__time')].map((e) => e.innerText) }; });
+          console.log('match page', sec + 's after restart (Trúc Mai):', JSON.stringify(st), 'url', P.trucmai.page.url().includes('tournament-match'));
+        }
+        await P.baonam.page.screenshot({ path: path.join(SHOTS, 'e2e2-match-after-restart-desktop.png') });
+        console.log('match page after restart moves:', await P.baonam.page.locator('#move-list .move-list__row').count(),
+          'banner:', (await P.baonam.page.locator('#status-banner').innerText().catch(() => '')).trim());
+        for (const x of Object.values(P)) await x.page.goto(TURL);
+        await page.locator('#team-scoreboard').waitFor();
+        const b1 = P.baonam.page.locator('.pairing-card').filter({ has: P.baonam.page.locator('[data-action="ready"]') });
+        console.log('R2B1 card after restart:', (await b1.first().innerText()).replace(/\s+/g, ' '));
+        await shoot(page, 'e2e2-after-midgame-restart');
+        // Replay: both ready again; a fresh board; Trúc Mai resigns.
+        await enterBoth(P.baonam, P.trucmai);
+        console.log('replay board moves:', await P.baonam.page.locator('#move-list .move-list__row').count(), 'pairing same:', new URL(P.baonam.page.url()).searchParams.get('pairingId') === pid);
+        await clickCell(P.baonam.page, 7, 7);
+        P.trucmai.page.once('dialog', (d) => d.accept());
+        await P.trucmai.page.locator('#btn-resign').click();
+        await P.baonam.page.locator('#match-result-overlay.visible').waitFor();
+        // R2 B2: Uyên Vy (black) v Lan Anh, Lan Anh resigns.
+        await play(P.uyenvy, P.lananh, P.lananh);
+        for (const x of Object.values(P)) await x.page.goto(TURL);
+        await page.locator('#team-scoreboard').waitFor();
+        console.log('final score', await score(page));
+        await shoot(page, 'e2e2-final-pairings');
+        await page.locator('#sub-tab-standings').click();
+        await page.locator('#team-standings-table').waitFor();
+        console.log('final standings\n' + await page.locator('#team-standings-table').innerText());
+        await shoot(page, 'e2e2-final-standings');
+        await page.locator('#sub-tab-games').click();
+        await page.waitForTimeout(800);
+        console.log('games history\n' + (await page.locator('.sub-tab-panel.is-active').innerText()).slice(0, 900));
+        await shoot(page, 'e2e2-final-games');
+        const text = await page.locator('body').innerText();
+        const VI = /[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]/i;
+        const names = /Kỳ Hội Mùa (Thu|Xuân)|Trúc Mai|Uyên Vy|Bảo Nam|Lan Anh|Đại Chiến Hội Quán|XUÂN|KỲ/g;
+        console.log('EN finished screen: raw keys', JSON.stringify(text.match(/\b(tdetail|tournaments|err|history|game)\.[a-z_]+/g) || []),
+          'diacritic lines (names removed):', JSON.stringify(text.split('\n').map((l) => l.replace(names, '')).filter((l) => VI.test(l))));
+        // Sub-tabs at narrow widths on the real page (#464).
+        await page.locator('#sub-tab-pairings').click();
+        for (const [label, w, scale] of [['320', 320, null], ['390-fs130', 390, '1.3'], ['320-fs130', 320, '1.3']]) {
+          await page.setViewportSize({ width: w, height: 844 });
+          await page.evaluate((sc) => { if (sc) document.documentElement.style.setProperty('--fs-scale', sc); else document.documentElement.style.removeProperty('--fs-scale'); }, scale);
+          await page.locator('.sub-tabs').scrollIntoViewIfNeeded();
+          const m = await page.evaluate(() => {
+            const st = document.querySelector('.sub-tabs');
+            return { strip: [st.scrollWidth, st.clientWidth], page: [document.documentElement.scrollWidth, innerWidth],
+              heights: [...st.querySelectorAll('.sub-tabs__btn')].map((b) => Math.round(b.getBoundingClientRect().height)),
+              lines: [...st.querySelectorAll('.sub-tabs__btn span')].map((s) => s.getClientRects().length) };
+          });
+          console.log('subtabs', label, JSON.stringify(m));
+          await page.screenshot({ path: path.join(SHOTS, 'e2e2-subtabs-' + label + '.png'), animations: 'disabled' });
+          if (m.strip[0] > m.strip[1]) {
+            await page.evaluate(() => { document.querySelector('.sub-tabs').scrollLeft = 9999; });
+            await page.screenshot({ path: path.join(SHOTS, 'e2e2-subtabs-' + label + '-scrolled.png'), animations: 'disabled' });
+          }
+        }
+        console.log('games api', JSON.stringify(await gamesOf()).slice(0, 600));
+      } else {
       // Round 1: B1 trucmai(black) v baonam, B2 lananh(black) v uyenvy.
       await play(P.trucmai, P.baonam, P.baonam);
       if (mode === 'en') {
@@ -184,6 +320,7 @@ async function run() {
         await shoot(page, 'e2e-final-standings');
         const t = await (await page.request.get(base + '/api/tournaments/' + encodeURIComponent(tid))).json().catch(() => null);
         console.log('api status', t && (t.status || (t.tournament && t.tournament.status)));
+      }
       }
     } else throw new Error('mode?');
   } finally {

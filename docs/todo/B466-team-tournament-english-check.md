@@ -21,3 +21,8 @@
 - Static check (covers end states not rendered in English: finished, champion/runner-up, time agreed,
   confirm/dispute): 69 `tdetail.*`/`tournaments.*` team/champion/finish/agreed keys — every `en` value
   present, none contains Vietnamese diacritics. Not rendered in English: the finished event screen.
+- Follow-up 2026-11-25 (`verify.cjs e2e2`, whole event in English, finished): status "Finished",
+  "Champion (#1)" / "Runner-up (#2)", standings WON/DRAWN/LOST/SCORE, games history all English;
+  page scan (names removed) finds no Vietnamese diacritics and no raw keys. One bug: history reason
+  shows raw engine codes "won — win", "Draw — agreement" (both languages) → #471.
+  Shots (local, gitignored): `features/club-platform/screenshots/verify/e2e2-final-{pairings,standings,games}-*.png`.
