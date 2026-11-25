@@ -944,8 +944,15 @@
       const a = el('a', undefined, 'prow');
       a.href = '/tournament.html?id=' + encodeURIComponent(x.id);
       const body = el('div', undefined, 'prow__body');
-      body.append(el('div', x.name, 'prow__t'),
-        window.PlatformShell.meta([t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(lang())]));
+      const meta = x.format === 'team'
+        ? [
+            'Đấu đội CLB',
+            t('clubs.tstatus_' + x.status),
+            x.teams?.length === 2 ? `${x.teams[0].name} đấu ${x.teams[1].name}` : `${x.teams?.length || 0}/2 hội nhóm`,
+            new Date(x.startedAt || x.createdAt).toLocaleDateString(lang()),
+          ]
+        : [t('clubs.tstatus_' + x.status), x.players + ' ' + t('clubs.tplayers'), new Date(x.startedAt || x.createdAt).toLocaleDateString(lang())];
+      body.append(el('div', x.name, 'prow__t'), window.PlatformShell.meta(meta));
       a.append(body);
       return a;
     }) : [el('p', t('clubs.no_tournaments'), 'pnote')]));

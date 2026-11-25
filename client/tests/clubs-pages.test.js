@@ -1270,3 +1270,27 @@ it('loads activity on opening the board as a member with separate meta spans and
   expect(document.querySelectorAll('#cb-recent .prow__meta > span')).toHaveLength(2);
   expect(document.querySelector('#cb-recent .prow__meta > span').textContent).toBe('Own thắng');
 });
+
+it('lists club team tournaments in Giải của CLB with both club names and separate meta spans (B460)', async () => {
+  await bootClub({
+    ...CLUB,
+    myRole: 'member',
+    tournaments: [{
+      id: 'tm-1',
+      name: 'Giao lưu Bắc Nam',
+      format: 'team',
+      status: 'active',
+      createdAt: '2026-11-25T00:00:00Z',
+      startedAt: '2026-11-25T01:00:00Z',
+      players: 4,
+      teams: [{ slug: 'caro', name: 'CLB Caro' }, { slug: 'renju', name: 'CLB Renju' }],
+    }],
+  });
+  document.getElementById('cb-ch-tournaments').click();
+  const row = document.querySelector('#cb-tournaments a.prow');
+  expect(row.getAttribute('href')).toBe('/tournament.html?id=tm-1');
+  const spans = [...row.querySelectorAll('.prow__meta > span')].map((s) => s.textContent);
+  expect(spans).toContain('Đấu đội CLB');
+  expect(spans).toContain('CLB Caro đấu CLB Renju');
+  expect(row.textContent).not.toContain('·');
+});
