@@ -71,7 +71,6 @@ in the detail file / fix-log).
 - **#415.** Prod lag: Viettel packet loss to Cloudflare IPs — direct route (CloudFront→Caddy) LIVE; open: peak-hour check + real-browser game `[Model: Opus 5]` — [detail](docs/todo/B415-prod-lag-viettel-cloudflare-loss.md)
 
 
-- **#454.** Creation forms `[Model: Sonnet]` — [detail](docs/todo/B454-creation-forms.md)
 
 - **#455.** Club moderation `[Model: Sonnet]` — [detail](docs/todo/B455-club-moderation.md)
 

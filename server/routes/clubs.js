@@ -189,6 +189,10 @@ router.delete('/:slug/invites/:username', ...write, h((req, res) => {
   res.json({ ok: true });
 }));
 
+router.post('/:slug/polls', ...write, h((req, res) => {
+  res.status(201).json(svc.createPoll(req.user.userId, req.params.slug, req.body || {}));
+}));
+
 router.post('/:slug/events', ...write, h((req, res) => {
   res.status(201).json(svc.createEvent(req.user.userId, req.params.slug, req.body || {}));
 }));

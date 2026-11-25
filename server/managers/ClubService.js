@@ -688,7 +688,7 @@ function postMessage(userId, slug, text) {
     if (definition.toggle && !settings[definition.toggle]) throw new ClubError('CLUB_COMMAND_DISABLED', 403, `Lệnh /${cmd.word} đang tắt trong nhóm này.`);
     if (cmd.kind === 'help') return { kind: 'help', commands: policy.available(role, settings).map((c) => c.kind) };
     if (cmd.kind === 'pin') return pinCommand(club, role, userId, cmd.arg, settings);
-    if (cmd.kind === 'poll') return pollCommand(club, role, userId, cmd.arg, settings);
+    if (cmd.kind === 'poll') return storePoll(club, userId, role, chat.parsePollArg(cmd.arg), settings);
     if (cmd.kind === 'calendar') return calendarCommand(club, role, userId, cmd.arg);
     return challengeCommand(club, userId, cmd.arg);
   }
@@ -751,8 +751,16 @@ function challengeCommand(club, userId, arg) {
   return { id, kind: 'challenge', challengeId: sent.id };
 }
 
-function pollCommand(club, role, userId, arg, settings) {
-  const parsed = chat.parsePollArg(arg);
+function createPoll(userId, slug, input) {
+  const club = getClub(slug);
+  const role = requireMember(club, userId);
+  const settings = chat.readSettings(club.chat_settings);
+  if (!settings.cmdPoll) throw new ClubError('CLUB_COMMAND_DISABLED', 403, 'Bình chọn đang tắt.');
+  rateLimit(userId);
+  return storePoll(club, userId, role, chat.validatePoll(input.question, input.options), settings);
+}
+
+function storePoll(club, userId, role, parsed, settings) {
   if (parsed.error) throw new ClubError('CLUB_POLL_INVALID', 400, POLL_ERRORS[parsed.error]);
   const open = db().prepare(`SELECT COUNT(*) AS n FROM club_polls p JOIN club_messages m ON m.id = p.message_id
     WHERE m.club_id = ? AND p.creator_id = ? AND p.closed_at IS NULL AND p.closes_at > ?`).get(club.id, userId, now()).n;
@@ -901,6 +909,6 @@ module.exports = {
   ClubError, MAX_MEMBERS, MAX_CLUBS_PER_USER, slugify, log, LOG_KEEP,
   COLORS, createClub, updateClub, deleteClub, join, leave, approve, remove, setRole, invite, revokeInvite,
   createEvent, deleteEvent, rsvpEvent, remindDueEvents, staffClubId, tournamentClubs, listMessages, postMessage, deleteMessage, _resetFanOut,
-  refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
+  createPoll, refreshPolls, votePoll, closePoll, pollVoters, MAX_OPEN_POLLS,
   clubForImageEdit, setImageVersion, getClub, listClubs, getClubDetail, clubsOfUser, userIdByUsername,
 };

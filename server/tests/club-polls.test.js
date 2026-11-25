@@ -362,3 +362,11 @@ describe('migration 020 on a 019-era table', () => {
     x.close();
   });
 });
+
+it('accepts structured poll options containing pipes and rejects malformed options', async () => {
+  const url = '/api/clubs/' + SLUG + '/polls';
+  DmText.forget(U.mem);
+  expect((await call('POST', url, 'mem', { question: 'Q', options: ['a | b', 'c'] })).status).toBe(201);
+  expect((await call('POST', url, 'mem', { question: 'Q', options: [null, 'c'] })).status).toBe(400);
+  expect((await call('POST', url, 'out', { question: 'Q', options: ['a', 'b'] })).status).toBe(403);
+});

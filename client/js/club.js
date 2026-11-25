@@ -497,6 +497,47 @@
   }
 
   // --- sự-kiện channel (B450): grouped by the viewer's local day, RSVP "tham gia" for reminders ---
+  const options = () => [...$('cb-options').querySelectorAll('input')];
+  function previewPoll() {
+    const fields = options();
+    fields.forEach((field, index) => {
+      field.placeholder = t('clubs.option') + ' ' + (index + 1);
+      field.setAttribute('aria-label', field.placeholder);
+      field.nextElementSibling.disabled = fields.length <= 2;
+    });
+    $('cb-add-option').disabled = fields.length >= 6;
+    $('cb-poll-preview').textContent = [t('clubs.preview'), $('cb-question').value, ...fields.map((f) => f.value)].filter(Boolean).join(' · ');
+  }
+
+  function addOption(value) {
+    const row = el('div', undefined, 'pform__row');
+    const field = el('input');
+    field.required = true;
+    field.maxLength = 50;
+    field.value = value;
+    const remove = mini(t('clubs.remove_option'), () => { row.remove(); previewPoll(); });
+    row.append(field, remove);
+    $('cb-options').append(row);
+    previewPoll();
+    return field;
+  }
+
+  function openPoll(arg) {
+    const [question, ...values] = arg.split('|').map((v) => v.trim());
+    $('cb-question').value = question;
+    $('cb-options').replaceChildren();
+    while (values.length < 2) values.push('');
+    values.slice(0, 6).forEach(addOption);
+    $('cb-poll-error').textContent = '';
+    $('cb-poll-editor').showModal();
+    $('cb-question').focus();
+  }
+
+  function previewEvent() {
+    const when = $('cb-event-when').value;
+    $('cb-event-preview').textContent = [t('clubs.preview'), $('cb-event-title').value, when && fmtWhen(when)].filter(Boolean).join(' · ');
+  }
+
   function eventRow(e, staff) {
     const row = el('div', undefined, 'prow cl-event' + (e.mine ? ' is-going' : ''));
     row.dataset.event = e.id;
@@ -545,7 +586,7 @@
       const calendar = kind === 'calendar';
       const args = kind === 'help' || (calendar && !isStaff()) ? '' : t('clubs.cmd_' + kind + '_args');
       const desc = t('clubs.cmd_' + (calendar && isStaff() ? 'calendar_staff' : kind));
-      return [{ cmd: '/' + word, args, desc, aliases: words.filter((w) => w !== word), bare: calendar || kind === 'help' }];
+      return [{ cmd: '/' + word, args, desc, aliases: words.filter((w) => w !== word), bare: calendar || kind === 'poll' || kind === 'help' }];
     });
   }
 
@@ -766,6 +807,7 @@
     $('cb-events-count').hidden = !c.events.length;
     $('cb-events-count').textContent = String(c.events.length);
     renderEvents(c.events, staff);
+    $('cb-poll-new').hidden = !isMember() || !chatSet().cmdPoll;
     $('cb-event-box').hidden = !staff;
 
     $('cb-tournaments').replaceChildren(...(c.tournaments.length ? c.tournaments.map((x) => {
@@ -915,12 +957,31 @@
       const url = location.origin + '/c/' + encodeURIComponent(slug);
       try { await navigator.clipboard.writeText(url); $('cb-msg').textContent = t('clubs.link_copied'); } catch (_) { $('cb-msg').textContent = url; }
     };
+    $('cb-poll-new').onclick = () => openPoll('');
+    $('cb-poll-cancel').onclick = () => $('cb-poll-editor').close();
+    $('cb-add-option').onclick = () => addOption('').focus();
+    $('cb-poll-form').oninput = previewPoll;
+    $('cb-poll-form').onsubmit = async (ev) => {
+      ev.preventDefault();
+      const submit = $('cb-poll-form').querySelector('[type="submit"]');
+      if (submit.disabled) return;
+      submit.disabled = true;
+      try {
+        const result = await act('POST', '/polls', { question: $('cb-question').value, options: options().map((f) => f.value) });
+        if (!result) { $('cb-poll-error').textContent = $('cb-msg').textContent; return; }
+        $('cb-poll-editor').close();
+        $('cb-chat-input').value = '';
+        await fetchChat('newer');
+      } finally { submit.disabled = false; }
+    };
+    $('cb-event-form').oninput = previewEvent;
     $('cb-event-form').onsubmit = async (ev) => {
       ev.preventDefault();
       const when = new Date($('cb-event-when').value); // datetime-local = viewer's local time
       if (Number.isNaN(when.getTime())) return;
       if (await act('POST', '/events', { title: $('cb-event-title').value, startsAt: when.toISOString() })) {
         $('cb-event-form').reset();
+        $('cb-event-preview').textContent = '';
         load();
       }
     };
@@ -949,6 +1010,21 @@
       const text = $('cb-chat-input').value.trim();
       if (!text) return;
       hideHints();
+      const match = /^\/([a-z]+)(?:\s+([\s\S]*))?$/i.exec(text);
+      const kind = match && window.ClubPolicy.find(match[1])?.kind;
+      const arg = match?.[2] || '';
+      if (kind === 'poll' && chatSet().cmdPoll) { openPoll(arg); return; }
+      if (kind === 'calendar' && isStaff() && chatSet().cmdCalendar) {
+        const draft = window.ClubPolicy.parseEventArg(arg);
+        $('cb-event-title').value = draft.title || arg;
+        const at = draft.startsAt && new Date(draft.startsAt);
+        $('cb-event-when').value = at ? new Date(+at - at.getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '';
+        showChannel('events', { updateHash: true });
+        previewEvent();
+        $('cb-event-title').focus();
+        $('cb-chat-input').value = '';
+        return;
+      }
       const sent = await act('POST', '/messages', { text });
       if (sent) {
         $('cb-chat-input').value = '';
