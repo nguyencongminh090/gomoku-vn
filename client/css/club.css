@@ -199,6 +199,13 @@ a.cb-chat__name:hover { text-decoration: underline; }
 
 /* channel pages (tables and forms from the old tabs) */
 .cl-page .ptbl-wrap { margin: 0; }
+/* thành-viên filter bar: platform .psearch pill + .pform selects at one control height (CL4 .search, 44px). */
+.cl-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.cl-filter .psearch { flex: 1 1 220px; min-height: 44px; padding: 0 14px; }
+.cl-filter .psearch input { flex: 1; width: auto; min-width: 0; }
+.cl-filter .pform, .cl-filter__bulk { max-width: none; }
+.cl-filter select, .cl-filter__bulk select, .cl-filter__bulk input[type="number"] { min-height: 44px; }
+.cl-filter__bulk input[type="number"] { width: 110px; }
 .cl-page .prows--tickets .prow > .icon { color: var(--cc-text); }
 .cl-evday { margin: var(--space-3, 12px) 0 0; font-size: 13px; font-weight: 800; color: var(--c-ink-2); }   /* B450: day heading in sự-kiện */
 .cl-evday:first-child { margin-top: 0; }
