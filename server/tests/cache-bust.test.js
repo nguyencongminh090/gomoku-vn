@@ -5,7 +5,7 @@
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { computeAll, resolveRef, run, filePathOf, MOUNTS } = require('../../scripts/cache-bust');
+const { computeAll, resolveRef, run, filePathOf, bareRefs, MOUNTS } = require('../../scripts/cache-bust');
 
 /** Runs computeAll over an in-memory tree; returns the rewritten tree (unchanged files kept). */
 function rewrite(tree) {
@@ -111,5 +111,42 @@ describe('the real client/ tree', () => {
     const r = run(path.join(__dirname, '..', '..', 'client'), false);
     expect(r.errors).toEqual([]);
     expect(r.stale).toEqual([]);
+  });
+});
+
+describe('#468 bare local script/stylesheet refs', () => {
+  it('flags local script src / stylesheet href without ?v=, nothing else', () => {
+    const html = [
+      '<script src="js/a.js"></script>',                         // bare → flagged
+      '<script type="module" src="/js/b.js"></script>',          // bare (rooted) → flagged
+      '<link rel="stylesheet" href="css/p.css" />',              // bare → flagged
+      '<link href="css/q.css" rel="stylesheet">',                // rel after href → flagged
+      '<script src="js/ok.js?v=1a2b3c4d"></script>',
+      '<link rel="stylesheet" href="css/ok.css?v=0">',
+      '<link rel="stylesheet" href="vendor/fonts/nunito/style.css">', // exempt (B468 Don't)
+      '<link rel="icon" href="assets/logo-mark.svg">',           // not a stylesheet
+      '<link rel="manifest" href="manifest.json">',
+      '<script src="https://cdn.example/x.js"></script>',
+      '<script src="//cdn.example/y.js"></script>',
+      '<!-- <script src="js/commented.js"></script> -->',
+    ].join('\n');
+    expect(bareRefs(html)).toEqual(['js/a.js', '/js/b.js', 'css/p.css', 'css/q.css']);
+  });
+
+  it('makes run() fail on a page with a bare ref (fixture tree)', () => {
+    const client = fs.mkdtempSync(path.join(os.tmpdir(), 'cb468-'));
+    try {
+      fs.mkdirSync(path.join(client, 'js'));
+      fs.writeFileSync(path.join(client, 'js', 'a.js'), 'x');
+      fs.writeFileSync(path.join(client, 'p.html'), '<script src="js/a.js"></script>');
+      const r = run(client, false, {});
+      expect(r.ok).toBe(false);
+      expect(r.errors).toEqual(['p.html: bare local ref js/a.js (add ?v=0, then --write)']);
+      fs.writeFileSync(path.join(client, 'p.html'), '<script src="js/a.js?v=0"></script>');
+      expect(run(client, true, {}).errors).toEqual([]);
+      expect(run(client, false, {}).ok).toBe(true);
+    } finally {
+      fs.rmSync(client, { recursive: true, force: true });
+    }
   });
 });
