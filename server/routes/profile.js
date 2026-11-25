@@ -26,6 +26,7 @@ const { ipKeyGenerator } = require('express-rate-limit');
 const { getClientIpFromReq } = require('../utils/get-client-ip');
 const { optionalUserId } = require('../utils/optional-user');
 const clubService = require('../managers/ClubService');
+const { clubIdsOf } = require('../managers/club-ids-lookup');
 const puzzleService = require('../managers/PuzzleService');
 const friendService = require('../managers/FriendService');
 const privacyGate = require('../managers/PrivacyGate');
@@ -180,7 +181,9 @@ router.get('/prefs', verifyToken, requireMember, (req, res, next) => {
   try {
     res.set('Cache-Control', 'no-store');
     const u = database.getProfileById(req.user.userId);
-    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0], roomDefaults: database.getLastRoomSettings(req.user.userId), ...(u ? privacyOf(u) : {}) });
+    res.json({ uiSkin: database.getUiSkin(req.user.userId) || SKINS[0], roomDefaults: database.getLastRoomSettings(req.user.userId),
+      hasClubs: clubIdsOf(req.user.userId).length > 0, // F453: Create Room offers "Club members" only then
+      ...(u ? privacyOf(u) : {}) });
   } catch (err) {
     next(err);
   }

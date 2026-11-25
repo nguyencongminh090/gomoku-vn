@@ -193,7 +193,9 @@
       const seats = Array.isArray(room.players) ? room.players : [null, null];
       const time = timeText(room, t);
       const spec = (time ? `<span class="h-spec__i h-spec__time">${icon('ph-regular-timer')}<span>${esc(time)}</span></span><span class="sr-only">, </span>` : '')
-        + `<span class="h-spec__i">${esc(t(room.ranked === false ? 'rooms.mode_friendly' : 'rooms.mode_rated'))}</span>`;
+        + `<span class="h-spec__i">${esc(t(room.ranked === false ? 'rooms.mode_friendly' : 'rooms.mode_rated'))}</span>`
+        // F453: only the creator's club mates (or invitees) may sit — anyone can still enter and watch.
+        + (room.scope === 'clubs' ? `<span class="sr-only">, </span><span class="h-spec__i h-spec__club">${icon('ph-regular-users-three')}<span>${esc(t('rooms.scope_clubs'))}</span></span>` : '');
       return `<header class="h-card__top"><span class="vcode">${esc(code)}</span><span class="vstate is-${kind}">${esc(t('rooms.st_' + kind))}</span>${eye}`
         + `<button type="button" class="vbtn ${kind === 'open' ? 'vbtn--primary' : 'vbtn--ghost'}" data-action="joinRoom" data-arg="${esc(room.roomId)}" aria-label="${esc(t('rooms.enter_aria', { code }))}">${esc(t('lobby.btn_join'))}</button></header>`
         + `<ul class="h-card__seats">${seatHtml(seats[0])}${seatHtml(seats[1])}</ul>`

@@ -146,6 +146,18 @@ describe('cards (card v3)', () => {
     expect(html).not.toMatch(/animate-fade-up|animation-delay/); // #390: a snapshot paints at once
   });
 
+  it('F453: a "Club members" room adds a "Nhóm" item to the footer; other rooms do not', () => {
+    mount();
+    client.fire('lobby:update', { stats: stats(), rooms: [room('#C1B', { scope: 'clubs' }), room('#A11')] });
+    const [club, open] = document.querySelectorAll('#room-list .h-card');
+    const foot = (n) => [...n.querySelectorAll('.h-spec__i')].map((x) => x.textContent);
+    expect(foot(club)).toEqual(['rooms.per_move(t=rooms.sec(n=90))', 'rooms.mode_rated', 'rooms.scope_clubs']);
+    expect(club.querySelector('.h-spec__club')).not.toBeNull();
+    expect(open.querySelector('.h-spec__club')).toBeNull();
+    // still enterable: outsiders watch
+    expect(club.querySelector('.vbtn').dataset).toMatchObject({ action: 'joinRoom', arg: '#C1B' });
+  });
+
   it('names are escaped', () => {
     mount();
     client.fire('lobby:update', { stats: stats(), rooms: [room('#X', { players: [P('<img src=x onerror=alert(1)>'), null] })] });

@@ -6,7 +6,8 @@
  * An invite is in-memory state (id, from, to, roomId, expiry) plus a persisted `room_invite`
  * notification for the target (the bell shows Chấp nhận / Từ chối). Accepting never joins or seats
  * anyone: it returns `{ roomId }` and the client opens `room.html?id=…`, where the normal `room:join`
- * makes the invitee a spectator. Pending invites are lost on restart; a stale notification then
+ * makes the invitee a spectator. In a "Club members" room (F453) accepting also grants the
+ * invitee a seat (room.invitedIds) when the inviter may sit themselves. Pending invites are lost on restart; a stale notification then
  * answers INVITE_GONE and the client drops the row.
  *
  * Methods throw RoomInviteError(code, status); the route translates it to JSON.
@@ -34,11 +35,15 @@ const fail = (code, status, message) => new RoomInviteError(code, status, messag
 
 /** id → { id, from, to, roomId, createdAt, timer } */
 const pending = new Map();
-let hooks = { onlineUsers: () => [] };
+const NO_HOOKS = { onlineUsers: () => [], onRoomChanged: () => {} };
+let hooks = NO_HOOKS;
 
-/** @param {{onlineUsers?: () => Array<{userId: string, isGuest: boolean}>}} h  visible presence list (hidden-online excluded) */
+/**
+ * @param {{onlineUsers?: () => Array<{userId: string, isGuest: boolean}>, onRoomChanged?: (room: object) => void}} h
+ *   onlineUsers: visible presence list (hidden-online excluded); onRoomChanged: broadcast after a seat grant (F453)
+ */
 function setHooks(h) {
-  hooks = { onlineUsers: () => [], ...h };
+  hooks = { ...NO_HOOKS, ...h };
 }
 
 const publicUser = (u) => ({
@@ -106,6 +111,8 @@ function accept(userId, id) {
   const mine = roomManager.getRoomByUser(userId);
   if (mine && mine !== room) throw fail('ALREADY_IN_ANOTHER_ROOM', 409, 'Bạn đang ở trong một phòng khác.');
   if (!mine && isFull(room)) throw fail('ROOM_FULL', 409, 'Phòng đã đầy.');
+  // F453: in a "Club members" room the invite also unlocks a seat (only if the inviter may sit).
+  if (roomManager.grantInvite(room, c.from, userId)) hooks.onRoomChanged(room);
   remove(c);
   return { roomId: room.roomId };
 }

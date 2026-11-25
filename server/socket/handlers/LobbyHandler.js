@@ -118,7 +118,7 @@ function register(io, socket) {
     // F402: the create-room modal pre-fills with these next time. Members only (guests have no
     // users row); best-effort — a failed write must never fail the room that was just created.
     if (!user.isGuest) {
-      try { database.setLastRoomSettings(user.userId, room.settings); }
+      try { database.setLastRoomSettings(user.userId, { ...room.settings, playerScope: room.playerScope }); } // F453: post-downgrade scope
       catch (err) { logger.warn('[Lobby] could not remember room settings', { err: err.message }); }
     }
     leaveLobby(socket);

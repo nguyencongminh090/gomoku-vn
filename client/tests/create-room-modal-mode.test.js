@@ -23,7 +23,7 @@ describe('create-room modal: rated / friendly', () => {
   });
 
   test('lobby.js submits and restores `ranked`', () => {
-    expect(lobby).toMatch(/ranked,\s*ruleWall/);
+    expect(lobby).toMatch(/ranked, playerScope,\s*ruleWall/);
     expect(lobby).toMatch(/pick\('roomMode'\)/);
     expect(lobby).toMatch(/s\.ranked === false \? 'friendly' : 'rated'/);
   });
@@ -37,11 +37,11 @@ describe('create-room modal: rated / friendly', () => {
 describe('create-room modal: dropdowns + remembered settings (F402)', () => {
   const lobby = read('js/lobby.js');
   const html = read('index.html');
-  const DEFAULTS = { boardSize: 19, winningRule: 'freestyle', ranked: true, ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: null, timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
+  const DEFAULTS = { boardSize: 19, winningRule: 'freestyle', ranked: true, playerScope: 'all', ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: null, timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
   const LITE = { ...DEFAULTS, ruleWall: true };
 
   // Load the real helpers from lobby.js against the real form markup.
-  function load({ guest = false, server = null, local = null } = {}) {
+  function load({ guest = false, server = null, local = null, clubs = false } = {}) {
     document.body.innerHTML = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
     const fn = (name) => {
       const m = lobby.match(new RegExp(`(?:async )?function ${name}\\([^)]*\\) \\{[\\s\\S]*?\\n\\}\\n`));
@@ -55,17 +55,19 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
       const RENJU_OPENINGS = ['taraguchi10', 'yamaguchi'];
       const userInfo = { isGuest: ${guest} };
       let modalRule = null;
-      ${fn('readLocalSettings')} ${fn('rememberedSettings')} ${fn('readFormSettings')} ${fn('applySettingsToForm')}
+      let hasClubs = ${clubs};
+      const t = (k) => k;
+      ${fn('readLocalSettings')} ${fn('rememberedSettings')} ${fn('readFormSettings')} ${fn('applySettingsToForm')} ${fn('syncScopeOption')}
       function updateModalSummary() {}
       function updateModeHint() { hintCalls.push(pick('roomMode')); }
-      return { hintCalls, rememberedSettings, readFormSettings, applySettingsToForm };`;
+      return { hintCalls, rememberedSettings, readFormSettings, applySettingsToForm, setHasClubs: (v) => { hasClubs = v; }, syncScopeOption };`;
     return new Function('LITE_DEFAULT_SETTINGS', 'localStorage', src)(LITE, { getItem: () => (local ? JSON.stringify(local) : null) });
   }
 
   test('every choice is a select; no radio pills left in the room modal', () => {
     document.body.innerHTML = html.match(/<body[^>]*>([\s\S]*)<\/body>/i)[1];
     const modal = document.getElementById('modal-create');
-    for (const n of ['roomMode', 'boardSize', 'winRule', 'openRule', 'timerMode']) {
+    for (const n of ['roomMode', 'playerScope', 'boardSize', 'winRule', 'openRule', 'timerMode']) {
       expect(modal.querySelector(`select[name="${n}"]`)).not.toBeNull();
     }
     expect(modal.querySelectorAll('input[type="radio"]').length).toBe(0);
@@ -74,7 +76,7 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
   });
 
   test('member: remembered server settings round-trip through the form', () => {
-    const saved = { boardSize: 19, winningRule: 'caro', ranked: false, ruleWall: false, rulePortal: false, ruleSwap2: true, openingRule: null, timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 };
+    const saved = { boardSize: 19, winningRule: 'caro', ranked: false, playerScope: 'all', ruleWall: false, rulePortal: false, ruleSwap2: true, openingRule: null, timerMode: 'blitz', timerSeconds: 180, timerIncrementSeconds: 2 };
     const h = load({ server: saved });
     h.applySettingsToForm(h.rememberedSettings());
     expect(h.readFormSettings()).toEqual(saved);
@@ -93,7 +95,7 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
   });
 
   test('Renju 15x15 + Taraguchi-10 round-trips; plain board forced (#427)', () => {
-    const saved = { boardSize: 15, winningRule: 'renju', ranked: true, ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: 'taraguchi10', timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
+    const saved = { boardSize: 15, winningRule: 'renju', ranked: true, playerScope: 'all', ruleWall: false, rulePortal: false, ruleSwap2: false, openingRule: 'taraguchi10', timerMode: 'per_move', timerSeconds: 60, timerIncrementSeconds: 0 };
     const h = load({ server: { ...saved, ruleWall: true } });
     h.applySettingsToForm(h.rememberedSettings());
     expect(h.readFormSettings()).toEqual(saved);
@@ -128,4 +130,51 @@ describe('create-room modal: dropdowns + remembered settings (F402)', () => {
     expect(lobby).toMatch(/function openModal\([^)]*\) \{[\s\S]*?rememberedSettings\(\)/);
     expect(lobby).toMatch(/userInfo\.isGuest\s*\? \{[^\n]*ranked: false/);
   });
+
+  // F453: player scope "Everyone / Club members".
+  const scopeSel = () => document.querySelector('select[name="playerScope"]');
+  const clubsOpt = () => [...scopeSel().options].find((o) => o.value === 'clubs');
+  const hint = () => document.getElementById('ps-hint').getAttribute('data-i18n');
+
+  test('member in a club: "Club members" is enabled, round-trips and is remembered', () => {
+    const h = load({ clubs: true, server: { ...DEFAULTS, playerScope: 'clubs' } });
+    h.applySettingsToForm(h.rememberedSettings());
+    expect(clubsOpt().disabled).toBe(false);
+    expect(h.readFormSettings().playerScope).toBe('clubs');
+    expect(hint()).toBe('modal.scope_clubs_desc');
+  });
+
+  test('clubless member: option disabled with the reason; a remembered "clubs" falls back to all', () => {
+    const h = load({ clubs: false, server: { ...DEFAULTS, playerScope: 'clubs' } });
+    h.applySettingsToForm(h.rememberedSettings());
+    expect(clubsOpt().disabled).toBe(true);
+    expect(scopeSel().value).toBe('all');
+    expect(h.readFormSettings().playerScope).toBe('all');
+    expect(hint()).toBe('modal.scope_need_club');
+  });
+
+  test('the late prefs answer unlocks the option without touching the player\'s picks', () => {
+    const h = load({ clubs: false });
+    h.applySettingsToForm(h.rememberedSettings());
+    expect(clubsOpt().disabled).toBe(true);
+    h.setHasClubs(true);
+    h.syncScopeOption();
+    expect(clubsOpt().disabled).toBe(false);
+    expect(hint()).toBe('modal.scope_all_desc');
+  });
+
+  test('guest: always all, option disabled with the account reason (even with a stored "clubs")', () => {
+    const h = load({ guest: true, clubs: true, local: { playerScope: 'clubs' } });
+    expect(h.rememberedSettings().playerScope).toBe('all');
+    h.applySettingsToForm(h.rememberedSettings());
+    expect(clubsOpt().disabled).toBe(true);
+    expect(h.readFormSettings().playerScope).toBe('all');
+    expect(hint()).toBe('modal.scope_need_account');
+  });
+
+  test.each(['modal.player_scope', 'modal.scope_all', 'modal.scope_clubs', 'modal.scope_all_desc', 'modal.scope_clubs_desc',
+    'modal.scope_need_club', 'modal.scope_need_account', 'room.seat_club_only', 'err.seat_club_only', 'rooms.scope_clubs'])(
+    'i18n key %s exists in vi and en', (k) => {
+      expect(read('js/i18n.js').split(`'${k}':`).length - 1).toBe(2);
+    });
 });
