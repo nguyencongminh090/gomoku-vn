@@ -47,14 +47,6 @@ body.zen-lobby .lobby:has(#panel-tables.is-active) { max-width: 1240px; padding-
 .vtab[aria-selected="true"] .vtab__n { background: var(--c-brand-light); color: var(--c-brand-text); }
 .vtab--guide { margin-left: auto; }
 
-.vchips { display: flex; flex-wrap: wrap; gap: 6px; }
-.vchip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; border: 1px solid var(--c-border); border-radius: 999px;
-  background: var(--c-surface); font: inherit; font-size: var(--text-sm); font-weight: 700; color: var(--c-ink-2); cursor: pointer; white-space: nowrap; }
-.vchip:hover:not([disabled]) { color: var(--c-ink); }
-.vchip[disabled] { opacity: .5; cursor: not-allowed; }
-.vchip[aria-pressed="true"] { background: var(--c-brand-light); border-color: transparent; color: var(--c-brand-text); }
-.vchip--alert svg { width: 14px; height: 14px; flex: none; }
-
 /* #438: seat-alert toast (built by js/seat-alert.js on the shared .toast): text + "Vào" + "Tắt 10 phút". */
 .seat-toast { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 20px; text-align: left; }
 .seat-toast__text { flex: 1; min-width: 0; }
@@ -113,8 +105,7 @@ body.zen-lobby .lobby:has(#panel-tables.is-active) { max-width: 1240px; padding-
 
 /* ── 3. Tabs, 4. tools ────────────────────────────────────────────────── */
 .rooms-tabs { border-bottom: 1px solid var(--c-border); }
-.rooms-tools { display: flex; align-items: center; gap: 12px; margin: 14px 0; }
-.rooms-tools .vchips { flex: 1; }
+.rooms-tools { display: flex; align-items: center; justify-content: flex-end; margin: 14px 0; }
 .rooms-sort { display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 700; color: var(--c-ink-2); white-space: nowrap; }
 .rooms-rg { margin-top: 20px; }
 .rooms-more { margin-top: 12px; }
@@ -185,9 +176,6 @@ body.rooms-sheet-open { overflow: hidden; }
   .rooms-rail { display: none; } /* phones: the roster is the bottom sheet behind "Xem người online" */
   .vtab { padding: 0 10px; font-size: 14px; }
   .vtab--guide { margin-left: 0; }
-  .rooms-tools { flex-direction: column; align-items: stretch; gap: 8px; }
-  .rooms-tools .vchips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
-  .rooms-tools .vchips::-webkit-scrollbar { display: none; }
   .rooms-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   .h-card__top .vbtn { min-height: 36px; min-width: 64px; font-size: var(--text-sm); } /* thumb target */
 }

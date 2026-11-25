@@ -46,9 +46,7 @@
 export const client = SocketClient.shared();
 
 // #440: the Phòng screen controller (classic script → window.RoomsH; jsdom suites eval it directly).
-import './rooms-h.js?v=bd5d6a22';
-// #438: "Báo khi có bàn" (classic script → window.SeatAlert).
-import './seat-alert.js?v=eb6a36b8';
+import './rooms-h.js?v=bf30992d';
 
 // ---------------------------------------------------------------------------
 // Element refs
@@ -533,19 +531,14 @@ window.addEventListener('langchange', () => { updateModeHint(); updateModalSumma
 // ---------------------------------------------------------------------------
 if (window.RoomsH && document.getElementById('panel-tables')) {
   const shell = window.PlatformShell;
-  const seatAlert = window.SeatAlert
-    ? window.SeatAlert.create({ client, t: (k, v) => t(k, v), join: (roomId) => window.joinRoom(roomId) })
-    : null;
   roomsH = window.RoomsH.create({
     root: document.getElementById('panel-tables'),
     client,
-    seatAlert,
     t: (k, v) => t(k, v),
     avatar: (url, name, cls) => (shell ? shell.avatar(url, name, cls).outerHTML : ''),
     icon: (name) => (shell ? shell.icon(name).outerHTML : ''),
     me: () => ({ userId: userInfo.userId, isGuest: userInfo.isGuest }),
     openCreate: (rule) => openModal({ rule }),
-    fetchJson: (url) => fetch(url, { credentials: 'same-origin' }).then((r) => (r.ok ? r.json() : null)),
   });
   renderOnlineCount();
 }

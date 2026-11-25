@@ -6,26 +6,24 @@
  *   sticky stats bar (online, playing, "Xem người online" on phones, "Mở bàn")
  *   desktop: online roster rail (rank in the selected rule, search, groups, "Tải thêm"), collapsible to faces
  *   rule tabs Luật 1 / Luật 2 / Tiêu chuẩn / Renju (+ table counts) and "Luật chơi" (RoomRulesGuide)
- *   filters (Còn ghế, Gần trình tôi, time buckets) + sort → compact table cards (card v3)
+ *   sort → compact table cards (card v3)
  *
  * Data (#439): `lobby:subscribe {rule}` mirrors one page of that rule's tables (snapshot + patches, stats on
- * every message); `lobby:rooms_query` pages / filters / sorts on the server (one-off copies: held cards are
+ * every message); `lobby:rooms_query` pages / sorts on the server (one-off copies: held cards are
  * still updated in place by patches); `lobby:online_query {rule, q, offset}` = roster in rank order.
  * The subscribe itself lives in lobby-home.js (screen visibility); a tab switch fires `rooms:rule` on window.
  *
- * Window API: RoomsH.create({ root, client, t, avatar, icon, me, joinRoom, openCreate, fetchJson, storage })
+ * Window API: RoomsH.create({ root, client, t, avatar, icon, me, joinRoom, openCreate, storage })
  *   avatar(url, name, cls) / icon(name) → HTML string; me() → { userId, isGuest }; joinRoom(roomId);
- *   openCreate(rule); fetchJson(url) → Promise<json|null>.
- *   seatAlert (optional): SeatAlert.create(...) instance (#438) — adds the "Báo khi có bàn" chip to the filters.
+ *   openCreate(rule).
  * Returns { rule(), setOnline(total), refreshRoster(), render() }.
  */
 (function (global) {
   const RULES = ['freestyle', 'caro', 'standard', 'renju']; // tab order = the create-room rule select
-  const TIMES = ['fast', 'mid', 'slow', 'move'];             // server buckets (state.js _timeBucket)
   const SORTS = ['state', 'rank', 'time'];
   const RULE_KEY = 'gvn_rooms_rule';
   const ROSTER_REFRESH_MS = 1500;  // online patches arrive debounced 1.5 s server-side
-  const QUERY_DEBOUNCE_MS = 300;   // filter clicks → one rooms_query (server throttles at 200 ms)
+  const QUERY_DEBOUNCE_MS = 300;   // sort changes → one rooms_query (server throttles at 200 ms)
   const SEARCH_DEBOUNCE_MS = 250;
 
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
@@ -80,25 +78,22 @@
 
     let rule = (() => { try { const r = storage && storage.getItem(RULE_KEY); return RULES.includes(r) ? r : 'freestyle'; } catch (e) { return 'freestyle'; } })();
     let tab = rule;                       // a rule id, or 'rules'
-    const f = { open: false, near: false, time: new Set() };
     let sort = 'state';
     let stats = null;                     // last stats of this rule's channel ({rooms, open, live, watch, playing, byRule})
     let rooms = new Map();                // what the grid shows, in order
-    let matched = null;                   // filtered mode: how many tables match on the server
+    let matched = null;                   // sorted mode: how many tables match on the server
     let querySeq = 0;
     let queryTimer = null;
     let moreBusy = false;
-    let awaiting = false;                 // a tab / filter change is waiting for its first answer: draw no "empty" yet
+    let awaiting = false;                 // a tab / sort change is waiting for its first answer: draw no "empty" yet
     let rosterStale = false;              // presence changed while no roster was on screen (phone, sheet closed)
     let onlineTotal = 0;
-    let myRatings = null;                 // { rule: { rating, prov } } for "Gần trình tôi"; null = not loaded
-    let myRatingsAsked = false;
     const roster = { users: [], total: 0, matched: 0, q: '', seq: 0, busy: false, extra: false };
     let rosterTimer = null;
     let searchTimer = null;
     let sheetReturn = null;
 
-    const filtered = () => f.open || (f.near && canNear()) || f.time.size > 0 || sort !== 'state';
+    const sorted = () => sort !== 'state';  // a non-default order is asked from the server
     const ruleLabel = (r = rule) => t('rule.' + r);
 
     // ── Counts ────────────────────────────────────────────────────────────
@@ -132,14 +127,14 @@
       if (ruleChanged) {
         rule = id;
         try { if (storage) storage.setItem(RULE_KEY, rule); } catch (e) { /* private mode */ }
-        rooms = new Map(); matched = null; f.near = false; querySeq++; awaiting = true;
+        rooms = new Map(); matched = null; querySeq++; awaiting = true;
         roster.users = []; roster.extra = false; roster.seq++;
       }
       renderTabs();
       $('rooms-main').hidden = rulesTab;
       $('rooms-rules').hidden = !rulesTab;
       if (rulesTab) renderGuide();
-      else { renderFilters(); renderGrid(); }
+      else renderGrid();
       renderRail();
       if (focus) { const b = root.querySelector(`.vtab[data-tab="${id}"]`); if (b) b.focus(); }
       // lobby-home.js re-subscribes to the new rule's channel; its snapshot repaints the grid and roster.
@@ -149,53 +144,11 @@
       if (global.RoomRulesGuide) global.RoomRulesGuide.render($('rooms-rules'), { t, active: [rule], badgeKey: 'guide.selected' });
     }
 
-    // ── Filters + sort ────────────────────────────────────────────────────
-    function myStanding() {
-      const u = me();
-      if (!u || !u.userId || u.isGuest || !myRatings) return null;
-      return myRatings[rule] || null;
+    // ── Sort ──────────────────────────────────────────────────────────────
+    function renderSort() {
+      $('rooms-sort').innerHTML = SORTS.map((s) => `<option value="${s}"${s === sort ? ' selected' : ''}>${esc(t('rooms.sort_' + s))}</option>`).join('');
     }
-    const canNear = () => !!myStanding();
-    function renderFilters() {
-      const chip = (key, label, on, off) => `<button type="button" class="vchip" data-f="${key}" aria-pressed="${on}"${off ? ` disabled title="${esc(off)}"` : ''}>${esc(label)}</button>`;
-      const noNear = canNear() ? '' : t('rooms.near_off', { rule: ruleLabel() });
-      $('rooms-filters').innerHTML = chip('open', t('rooms.f_open'), f.open)
-        + chip('near', t('rooms.f_near'), f.near && !noNear, noNear)
-        + TIMES.map((k) => chip('t:' + k, t('rooms.t_' + k), f.time.has(k))).join('')
-        + alertChip();
-      const sel = $('rooms-sort');
-      sel.innerHTML = SORTS.map((s) => `<option value="${s}"${s === sort ? ' selected' : ''}>${esc(t('rooms.sort_' + s))}</option>`).join('');
-    }
-    /** #438: not a filter but a saved copy of the current rule + filters; lit while an alert is armed (any rule). */
-    function alertChip() {
-      const sa = opts.seatAlert;
-      if (!sa) return '';
-      const a = sa.get();
-      let tip = t('rooms.alert_tip_off');
-      if (a) {
-        const what = [ruleLabel(a.rule)].concat(a.near ? [t('rooms.f_near')] : [], TIMES.filter((k) => a.time.includes(k)).map((k) => t('rooms.t_' + k))).join(', ');
-        tip = t('rooms.alert_tip', { what });
-        const until = sa.mutedUntil();
-        if (until) tip += ' ' + t('rooms.alert_muted', { time: new Date(until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) });
-      }
-      return `<button type="button" class="vchip vchip--alert" data-f="alert" aria-pressed="${!!a}" title="${esc(tip)}">${icon('ph-regular-bell')}${esc(t('rooms.f_alert'))}</button>`;
-    }
-    function onFilter(key) {
-      if (key === 'alert') {
-        const sa = opts.seatAlert;
-        if (!sa) return;
-        if (sa.get()) sa.disarm();
-        else sa.arm({ rule, near: f.near && canNear(), time: [...f.time] });
-        renderFilters(); // the chip only — no refetch
-        return;
-      }
-      if (key === 'open') f.open = !f.open;
-      else if (key === 'near') { if (!canNear()) return; f.near = !f.near; }
-      else if (key.startsWith('t:')) { const k = key.slice(2); if (f.time.has(k)) f.time.delete(k); else f.time.add(k); }
-      renderFilters();
-      refetch();
-    }
-    /** Filters / sort changed: filtered mode asks the server; back to default waits for a fresh snapshot. */
+    /** Sort changed: a non-default order asks the server; back to default waits for a fresh snapshot. */
     function refetch() {
       rooms = new Map(); matched = null; querySeq++; awaiting = true;
       renderGrid();
@@ -204,9 +157,6 @@
     }
     function queryPayload(offset) {
       const p = { rule, offset };
-      if (f.open) p.open = true;
-      if (f.near && canNear()) p.near = true;
-      if (f.time.size) p.time = [...f.time];
       if (sort !== 'state') p.sort = sort;
       return p;
     }
@@ -221,7 +171,7 @@
         if (!err && res && res.error === 'RATE_LIMITED' && retry) { setTimeout(() => { if (seq === querySeq) queryRooms(offset, false); }, 300); return; }
         if (err || !res || !Array.isArray(res.rooms)) { renderMore(); return; }
         if (res.stats) stats = res.stats;
-        if (filtered()) matched = Number.isFinite(res.matched) ? res.matched : null;
+        if (sorted()) matched = Number.isFinite(res.matched) ? res.matched : null;
         if (offset === 0) { rooms = new Map(); awaiting = false; }
         const fresh = res.rooms.filter((r) => r.winningRule === rule && !rooms.has(r.roomId));
         for (const r of fresh) rooms.set(r.roomId, r);
@@ -266,10 +216,6 @@
     }
 
     function emptyHtml() {
-      if (filtered()) {
-        return `<div class="vempty">${icon('ph-regular-sliders-horizontal')}<b>${esc(t('rooms.empty_filtered'))}</b>`
-          + `<button type="button" class="vbtn vbtn--ghost vbtn--lg" data-clear-filters>${esc(t('rooms.clear_filters'))}</button></div>`;
-      }
       return `<div class="vempty">${icon('ph-regular-checkerboard')}<b>${esc(t('rooms.empty', { rule: ruleLabel() }))}</b>`
         + `<span>${esc(t('rooms.empty_sub'))}</span>`
         + `<button type="button" class="vbtn vbtn--primary vbtn--lg" data-create-rule="${rule}">${icon('ph-regular-plus-circle')}${esc(t('rooms.create_rule', { rule: ruleLabel() }))}</button></div>`;
@@ -295,7 +241,7 @@
     function renderMore() {
       const btn = $('rooms-more');
       if (!btn) return;
-      const total = filtered() ? matched : stats && Number.isFinite(stats.rooms) ? stats.rooms : null;
+      const total = sorted() ? matched : stats && Number.isFinite(stats.rooms) ? stats.rooms : null;
       const rest = total == null ? 0 : total - rooms.size;
       btn.hidden = rest <= 0 || tab === 'rules';
       btn.disabled = moreBusy;
@@ -305,8 +251,7 @@
     // ── Live data ─────────────────────────────────────────────────────────
     function onSnapshot(data) {
       if (data && data.stats) stats = data.stats;
-      loadMyRatings();
-      if (filtered()) { clearTimeout(queryTimer); queryRooms(0); }
+      if (sorted()) { clearTimeout(queryTimer); queryRooms(0); }
       else {
         awaiting = false;
         rooms = new Map(((data && data.rooms) || []).filter((r) => r.winningRule === rule).map((r) => [r.roomId, r]));
@@ -334,7 +279,7 @@
         if (rooms.has(room.roomId)) {
           rooms.set(room.roomId, room);
           const n = nodes.get(room.roomId); if (n) updateCard(n, room);
-        } else if (!filtered()) {
+        } else if (!sorted()) {
           rooms.set(room.roomId, room); added.push(room);
         }
       }
@@ -346,21 +291,6 @@
     }
     client.on('lobby:update', onSnapshot);
     client.on('lobby:patch', onPatch);
-
-    /** Own Elo per rule (members) for "Gần trình tôi" — one profile-card read per page load. */
-    function loadMyRatings() {
-      const u = me();
-      if (myRatingsAsked || !u || !u.userId || u.isGuest || !opts.fetchJson) return;
-      myRatingsAsked = true;
-      Promise.resolve(opts.fetchJson('/api/profile/card/' + encodeURIComponent(u.userId))).then((j) => {
-        const out = {};
-        for (const r of (j && Array.isArray(j.ratings) ? j.ratings : [])) {
-          if (r && RULES.includes(r.category) && Number.isFinite(r.rating)) out[r.category] = { rating: r.rating, prov: !!r.provisional };
-        }
-        myRatings = out;
-        if (tab !== 'rules') renderFilters();
-      }).catch(() => { myRatingsAsked = false; });
-    }
 
     // ── Roster (rail + phone sheet) ───────────────────────────────────────
     function loadRoster(offset, retry = true) {
@@ -464,11 +394,8 @@
       if (!tg) return;
       const tabBtn = tg.closest('.vtab[data-tab]');
       if (tabBtn) { selectTab(tabBtn.dataset.tab); return; }
-      const fb = tg.closest('[data-f]');
-      if (fb) { onFilter(fb.dataset.f); return; }
       const cr = tg.closest('[data-create-rule]');
       if (cr) { if (opts.openCreate) opts.openCreate(cr.dataset.createRule); return; }
-      if (tg.closest('[data-clear-filters]')) { f.open = false; f.near = false; f.time.clear(); sort = 'state'; renderFilters(); refetch(); return; }
       if (tg.closest('#rooms-more')) { if (!moreBusy) queryRooms(rooms.size); return; }
       if (tg.closest('[data-roster-more]')) { loadRoster(roster.users.length); return; }
       if (tg.closest('#rooms-people')) { openSheet(); return; }
@@ -504,7 +431,7 @@
       const rulesTab = tab === 'rules';
       $('rooms-main').hidden = rulesTab;
       $('rooms-rules').hidden = !rulesTab;
-      if (rulesTab) renderGuide(); else { renderFilters(); renderGrid(); }
+      if (rulesTab) renderGuide(); else { renderSort(); renderGrid(); }
       const b = $('rooms-rail-toggle');
       if (b) b.setAttribute('aria-label', t(b.getAttribute('aria-expanded') === 'true' ? 'rooms.rail_collapse' : 'rooms.rail_expand'));
       renderRail();
@@ -517,8 +444,6 @@
       const onWide = () => { if (wide.matches) closeSheet(); };
       if (wide.addEventListener) wide.addEventListener('change', onWide); else if (wide.addListener) wide.addListener(onWide);
     }
-    // The toast's "Tắt 10 phút" (or a second tab) changes the alert: redraw the chip's tooltip.
-    if (opts.seatAlert) global.addEventListener('seatalert:change', () => { if (tab !== 'rules') renderFilters(); });
     render();
 
     return {
@@ -529,5 +454,5 @@
     };
   }
 
-  global.RoomsH = { create, RULES, TIMES, SORTS, timeText, eloChip, cardKind, standingOf, groupOf };
+  global.RoomsH = { create, RULES, SORTS, timeText, eloChip, cardKind, standingOf, groupOf };
 })(typeof window !== 'undefined' ? window : globalThis);
