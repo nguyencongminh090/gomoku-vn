@@ -59,8 +59,6 @@ const mockState = {
   lobbyChannelOf: actualState.lobbyChannelOf,
   lobbyRoomOf: actualState.lobbyRoomOf,
   leaveLobby: actualState.leaveLobby,
-  setSeatAlert: jest.fn(() => true),
-  clearSeatAlert: jest.fn(),
 };
 jest.mock('../socket/state', () => mockState);
 
@@ -178,39 +176,6 @@ describe('LobbyHandler — lobby:subscribe', () => {
     mockRoomManager.joinRoom.mockReturnValueOnce({ room: { roomId: '#R1', users: new Map() } });
     handlers['room:join']({ roomId: '#R1' });
     expect([...socket.rooms]).toEqual(['#R1']);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// #438 lobby:alert_set / lobby:alert_clear
-// ---------------------------------------------------------------------------
-describe('LobbyHandler — seat alert (#438)', () => {
-  function setup() {
-    const socket = makeSocket();
-    const handlers = {};
-    socket.on = jest.fn((event, fn) => { handlers[event] = fn; });
-    LobbyHandler.register(makeIo(), socket);
-    return { socket, handlers };
-  }
-
-  test('lobby:alert_set arms the socket with the payload and acks the result', () => {
-    const { socket, handlers } = setup();
-    const ack = jest.fn();
-    handlers['lobby:alert_set']({ rule: 'caro', near: true }, ack);
-    expect(mockState.setSeatAlert).toHaveBeenCalledWith(socket, { rule: 'caro', near: true });
-    expect(ack).toHaveBeenCalledWith({ ok: true, armed: true });
-  });
-
-  test('lobby:alert_set works without an ack callback', () => {
-    const { handlers } = setup();
-    expect(() => handlers['lobby:alert_set']({ rule: 'caro' })).not.toThrow();
-  });
-
-  test('lobby:alert_clear disarms; it is independent of lobby:subscribe', () => {
-    const { socket, handlers } = setup();
-    handlers['lobby:alert_clear']();
-    expect(mockState.clearSeatAlert).toHaveBeenCalledWith(socket);
-    expect(socket.join).not.toHaveBeenCalled();
   });
 });
 
@@ -576,7 +541,7 @@ describe('LobbyHandler — lobby:rooms_query', () => {
   test('answers through the ack; a missing/odd payload is an empty query; no ack → ignored', () => {
     const query = setup(); const ack = jest.fn();
     query({ offset: 30 }, ack);
-    expect(mockState.queryLobbyRooms).toHaveBeenLastCalledWith({ offset: 30 }, expect.objectContaining({ userId: 'u1' })); // #439: asker for `near`
+    expect(mockState.queryLobbyRooms).toHaveBeenLastCalledWith({ offset: 30 });
     expect(ack).toHaveBeenCalledWith({ rooms: [], stats: { rooms: 0, open: 0, live: 0, watch: 0 } });
     expect(() => query({ offset: 30 })).not.toThrow();
     expect(mockState.queryLobbyRooms).toHaveBeenCalledTimes(1);

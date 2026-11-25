@@ -47,12 +47,6 @@ body.zen-lobby .lobby:has(#panel-tables.is-active) { max-width: 1240px; padding-
 .vtab[aria-selected="true"] .vtab__n { background: var(--c-brand-light); color: var(--c-brand-text); }
 .vtab--guide { margin-left: auto; }
 
-/* #438: seat-alert toast (built by js/seat-alert.js on the shared .toast): text + "Vào" + "Tắt 10 phút". */
-.seat-toast { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 20px; text-align: left; }
-.seat-toast__text { flex: 1; min-width: 0; }
-.seat-toast__btn { min-height: 32px; padding: 0 12px; border: 1px solid rgb(255 255 255 / .55); border-radius: 999px; background: transparent;
-  color: inherit; font: inherit; font-size: var(--text-sm); font-weight: 700; cursor: pointer; white-space: nowrap; }
-.seat-toast__btn--go { background: var(--c-on-ink, #fff); border-color: transparent; color: var(--c-ink); }
 .vselect { min-height: 32px; padding: 0 10px; border: 1px solid var(--c-border); border-radius: 999px; background: var(--c-field); color: var(--c-ink);
   font: inherit; font-size: var(--text-sm); font-weight: 700; }
 

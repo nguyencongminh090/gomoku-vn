@@ -710,7 +710,7 @@ class RoomManager extends EventEmitter {
   /**
    * The cheap part of a lobby entry — no DB lookup, no moves copy (#382: the lobby counts and ranks
    * every room, but builds full entries only for the page it mirrors). Same numbers as lobbyEntry().
-   * #439: also what the lobby filters and sorts on (rule tab, time bucket, seated members' Elo), so
+   * #439: also what the lobby sorts on (rule tab, time bucket, seated members' Elo), so
    * state.js never reads room internals.
    * @returns {{ state: string, playerCount: number, userCount: number, rule: string, timerMode: string,
    *   timerSeconds: number, seatIds: string[] }}  seatIds = seated members (guests left out)

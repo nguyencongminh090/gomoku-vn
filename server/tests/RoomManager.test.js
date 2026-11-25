@@ -267,7 +267,7 @@ describe('RoomManager — per-IP room quota', () => {
     expect(entry).not.toHaveProperty('startedAt');
   });
 
-  test('lobbyStat gives the rule, clock and seated members the lobby filters on (#439)', () => {
+  test('lobbyStat gives the rule, clock and seated members the lobby sorts on (#439)', () => {
     const { room } = roomManager.createRoom(user(IP_A));
     roomManager.sitDown(room.host, 1);
     room.users.set('g1', { userId: 'g1', displayName: 'Khách', isGuest: true, slot: 2, presence: 'active' });
