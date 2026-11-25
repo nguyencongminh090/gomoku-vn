@@ -59,6 +59,20 @@ async function run() {
       await input.fill('/announce Hẹn gặp cả nhóm tối nay');
       await input.press('Enter');
       await page.locator('#cb-chat-log').getByText('Hẹn gặp cả nhóm tối nay').waitFor();
+    } else if (slice === 'forms') {
+      await input.fill('/poll Họp ngày nào? | Thứ bảy | Chủ nhật');
+      await input.press('Enter');
+      await page.locator('#cb-add-option').click();
+      await page.locator('#cb-options input').last().fill('Thứ hai');
+      await shoot('poll-form');
+      await page.locator('#cb-poll-form [type=submit]').click();
+      await page.locator('#cb-chat-log').getByText('Họp ngày nào?', { exact: true }).waitFor();
+      await input.fill('/calendar 25/12 20:00 Giao lưu cuối năm');
+      await input.press('Enter');
+      await page.locator('#cb-event-preview').getByText(/Giao lưu cuối năm/).waitFor();
+      await shoot('event-form');
+      await page.locator('#cb-event-form [type=submit]').click();
+      await page.locator('#cb-events').getByText('Giao lưu cuối năm').waitFor();
     } else throw new Error('Unknown slice');
   } finally {
     try { if (browser) await browser.close(); } finally { app.kill('SIGTERM'); }

@@ -293,3 +293,7 @@ a.cb-chat__name:hover { text-decoration: underline; }
 @media (prefers-reduced-motion: reduce) {
   .cl-hq *, .cl-hq *::before, .cl-hq *::after { animation: none !important; transition: none !important; }
 }
+
+dialog.cl-editor { width: min(32rem, calc(100% - 2rem)); max-height: 85dvh; overflow: auto; margin: auto; color: var(--c-ink); background: var(--c-surface); }
+dialog.cl-editor::backdrop { background: rgb(0 0 0 / .5); }
+.cl-editor .pform__row input { flex: 1; min-width: 0; }

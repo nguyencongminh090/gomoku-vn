@@ -901,7 +901,7 @@ describe('chat commands + notifications (B447)', () => {
       expect(document.getElementById('cb-chat-hints').hidden).toBe(true);
       type('/binhchon'); // commands that need arguments still only fill in
       key('Enter');
-      expect(input().value).toBe('/binhchon ');
+      expect(input().value).toBe('/binhchon');
     });
 
     it('B450: /lich reply opens sự-kiện with the returned list; nothing is added to chat', async () => {
@@ -924,9 +924,10 @@ describe('chat commands + notifications (B447)', () => {
       input().value = '/lich 25/12 20:00 Mới';
       document.getElementById('cb-chat-form').onsubmit(new Event('submit'));
       await flush(); await flush(); await flush();
-      expect(global.fetch.mock.calls.some(([u, o]) => u.startsWith('/api/clubs/caro?') && !o.method)).toBe(true);
+      expect(global.fetch.mock.calls.some(([, o]) => o?.method === 'POST')).toBe(false);
       expect(location.hash).toBe('#ch=events');
-      expect(document.querySelector('[data-event="n"]')).not.toBeNull();
+      expect(document.getElementById('cb-event-title').value).toBe('Mới');
+      expect(document.getElementById('cb-event-preview').textContent).toContain('Mới');
     });
 
     it('members never see them', async () => {
