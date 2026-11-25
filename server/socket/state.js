@@ -590,29 +590,24 @@ function _diffLobbyFull(tally, ch, key) {
   return { upserts, removed };
 }
 
-// #439 S5 filters of `lobby:rooms_query`. Time buckets as the H mockup: per-move clocks are their own
+// #439 S5 sorts of `lobby:rooms_query`. Time buckets as the H mockup: per-move clocks are their own
 // bucket, otherwise by the base time.
 const LOBBY_TIME_BUCKETS = ['fast', 'mid', 'slow', 'move'];
 const LOBBY_SORTS = ['state', 'rank', 'time'];
-/** "Gần trình tôi": a seated member within this many Elo of the asker, in the tab's rule. */
-const LOBBY_NEAR_ELO = 200;
 function _timeBucket(stat) {
   if (stat.timerMode === 'per_move') return 'move';
   return stat.timerSeconds <= 180 ? 'fast' : stat.timerSeconds <= 300 ? 'mid' : 'slow';
 }
 
 /**
- * #382/#439 on-demand page of a rule's tables, filtered and sorted on the server.
- * - `rule`: tab (unknown/absent = every rule); `offset` into the filtered order.
- * - `open: true`: tables with a free seat. `time`: array of LOBBY_TIME_BUCKETS (any of them).
- * - `near: true`: a seated member within LOBBY_NEAR_ELO of `viewer` in `rule` (ignored without a rule
- *   or when the viewer is unrated there).
+ * #382/#439 on-demand page of a rule's tables, sorted on the server.
+ * - `rule`: tab (unknown/absent = every rule); `offset` into the sorted order.
  * - `sort`: 'state' (default) = the page order (open first, then most watched); 'rank' = best seated
  *   Elo first, tables without a rated member last; 'time' = shortest time bucket, then base time.
  * Entries are a one-off copy — no patches follow for them. Ratings come from rank-cache (no DB).
  * @returns {{ rooms: object[], matched: number, stats: object }}
  */
-function queryLobbyRooms({ rule, offset, open, time, near, sort } = {}, viewer = null) {
+function queryLobbyRooms({ rule, offset, sort } = {}) {
   const key = lobbyChannelOf(rule);
   const tally = _newTally();
   const rows = [];
@@ -623,8 +618,6 @@ function queryLobbyRooms({ rule, offset, open, time, near, sort } = {}, viewer =
     if (_inChannel(rank, key)) rows.push({ roomId: room.roomId, rank, stat });
   }
 
-  const buckets = Array.isArray(time) ? new Set(time.slice(0, LOBBY_TIME_BUCKETS.length).filter((t) => LOBBY_TIME_BUCKETS.includes(t))) : null;
-  const mine = near === true && key && viewer && !viewer.isGuest ? rankCache.standingOf(viewer.userId, key) : null;
   const elos = (stat) => {
     const out = [];
     for (const id of stat.seatIds || []) {
@@ -634,9 +627,6 @@ function queryLobbyRooms({ rule, offset, open, time, near, sort } = {}, viewer =
     return out;
   };
   let hits = rows;
-  if (open === true) hits = hits.filter((r) => r.rank.open);
-  if (buckets && buckets.size) hits = hits.filter((r) => buckets.has(_timeBucket(r.stat)));
-  if (mine) hits = hits.filter((r) => elos(r.stat).some((e) => Math.abs(e - mine[0]) <= LOBBY_NEAR_ELO));
 
   // Array.prototype.sort is stable, so ties keep creation order — the same order _lobbyBestOutside gives.
   const byState = (a, b) => (_lobbyBetter(a.rank, b.rank) ? -1 : _lobbyBetter(b.rank, a.rank) ? 1 : 0);
@@ -658,90 +648,6 @@ function queryLobbyRooms({ rule, offset, open, time, near, sort } = {}, viewer =
     if (room) rooms.push(roomManager.lobbyEntry(room));
   }
   return { rooms, matched: hits.length, stats: _lobbyStats(tally, key) };
-}
-
-// ── #438 seat alert ─────────────────────────────────────────────────────────────────────────────
-// "Báo khi có bàn": a socket registers its lobby filters (rule tab + near / time buckets); when a table of
-// that rule turns open (new room, a seat freed, a game over) and matches, the server pushes ONE
-// `lobby:seat_alert { room }` per table. Computed here, not by the client, because a client only mirrors one
-// page of a rule (#382) and a shell page holds no lobby channel at all. In memory on the socket
-// (`socket.data.seatAlert`), nothing stored: a reload re-registers from the client's localStorage.
-const SEAT_ALERT_ROOM = 'seat-alert';
-const SEAT_ALERT_NOTIFIED_CAP = 200;
-
-/** `{ key, near, time:Set, notified:Set }` from a client payload, or null when the rule is missing/unknown. */
-function _seatAlertFilter(payload) {
-  const p = payload && typeof payload === 'object' ? payload : {};
-  if (!LOBBY_RULES.includes(p.rule)) return null;
-  const time = Array.isArray(p.time) ? p.time.slice(0, LOBBY_TIME_BUCKETS.length).filter((t) => LOBBY_TIME_BUCKETS.includes(t)) : [];
-  return { key: p.rule, near: p.near === true, time: new Set(time), notified: new Set() };
-}
-
-/**
- * Register / replace (a valid `payload`) or clear (anything else) this socket's seat alert.
- * Tables already open now count as seen, so enabling it (or re-registering after a reconnect) never
- * replays the lobby: only a table that opens afterwards alerts.
- * @returns {boolean} whether an alert is now armed
- */
-function setSeatAlert(socket, payload) {
-  const filter = _seatAlertFilter(payload);
-  const data = socket.data || (socket.data = {});
-  if (!filter) { clearSeatAlert(socket); return false; }
-  for (const [roomId, room] of roomManager.rooms) {
-    if (_lobbyRank(roomManager.lobbyStat(room)).open) filter.notified.add(roomId);
-  }
-  data.seatAlert = filter;
-  socket.join(SEAT_ALERT_ROOM);
-  return true;
-}
-
-function clearSeatAlert(socket) {
-  if (socket.data) delete socket.data.seatAlert;
-  socket.leave(SEAT_ALERT_ROOM);
-}
-
-/** Same predicates as the lobby's filters (queryLobbyRooms): rule, time bucket, a seated member near my Elo. */
-function _seatAlertMatches(alert, user, room, stat) {
-  if (stat.rule !== alert.key) return false;
-  if (alert.time.size && !alert.time.has(_timeBucket(stat))) return false;
-  if (alert.near && user && !user.isGuest) {
-    const mine = rankCache.standingOf(user.userId, alert.key);
-    if (!mine) return false;
-    const near = (stat.seatIds || []).some((id) => {
-      const s = rankCache.standingOf(id, stat.rule);
-      return s && Math.abs(s[0] - mine[0]) <= LOBBY_NEAR_ELO;
-    });
-    if (!near) return false;
-  }
-  return true;
-}
-
-/** `opened` = ids of rooms that were not open before this flush and are now. */
-function _notifySeatAlerts(io, opened) {
-  if (!opened.size) return;
-  const rooms = io && io.sockets && io.sockets.adapter && io.sockets.adapter.rooms;
-  const members = rooms && typeof rooms.get === 'function' ? rooms.get(SEAT_ALERT_ROOM) : null;
-  if (!members || members.size === 0) return;
-  const stats = new Map();
-  for (const sid of members) {
-    const sock = io.sockets.sockets && io.sockets.sockets.get(sid);
-    const alert = sock && sock.data && sock.data.seatAlert;
-    if (!alert) continue;
-    if (alert.notified.size > SEAT_ALERT_NOTIFIED_CAP) {
-      for (const id of alert.notified) if (!roomManager.getRoom(id)) alert.notified.delete(id);
-    }
-    const mine = sock.user ? roomManager.getRoomIdByUser(sock.user.userId) : null;
-    for (const roomId of opened) {
-      if (alert.notified.has(roomId) || roomId === mine) continue;
-      const room = roomManager.getRoom(roomId);
-      if (!room) continue;
-      let stat = stats.get(roomId);
-      if (!stat) { stat = roomManager.lobbyStat(room); stats.set(roomId, stat); }
-      if (!_seatAlertMatches(alert, sock.user, room, stat)) continue;
-      alert.notified.add(roomId);
-      sock.emit('lobby:seat_alert', { room: roomManager.lobbyEntry(room) });
-    }
-  }
 }
 
 /**
@@ -840,25 +746,16 @@ function _flushLobbyNow(io) {
   st.dirty = undefined;
   const now = Date.now();
   const full = !st.tally || !(dirty instanceof Set) || now - st.lastFull >= LOBBY_FULL_RECONCILE_MS;
-  const opened = new Set(); // #438: rooms that turned open in this flush
   if (full) {
-    const before = st.tally ? st.tally.per : null;
     st.tally = _countAllRooms();
     st.lastFull = now;
-    for (const [roomId, rank] of st.tally.per) {
-      const was = before && before.get(roomId);
-      if (rank.open && !(was && was.open)) opened.add(roomId);
-    }
   } else {
     for (const roomId of dirty) {
       const room = roomManager.getRoom(roomId);
-      const was = st.tally.per.get(roomId);
       const rank = room ? _lobbyRank(roomManager.lobbyStat(room)) : null;
       _tallySet(st.tally, roomId, rank);
-      if (rank && rank.open && !(was && was.open)) opened.add(roomId);
     }
   }
-  _notifySeatAlerts(io, opened);
   for (const [key, ch] of st.channels) {
     if (_lobbyChannelEmpty(io, key)) { st.channels.delete(key); continue; } // its next subscriber reseeds it
     const { upserts, removed } = full || !ch.page ? _diffLobbyFull(st.tally, ch, key) : _diffLobbyDirty(st.tally, ch, key, dirty);
@@ -1468,9 +1365,6 @@ module.exports = {
   lobbyChannelOf,
   lobbyRoomOf,
   leaveLobby,
-  setSeatAlert,
-  clearSeatAlert,
-  LOBBY_NEAR_ELO,
   onRatingsChanged,
   LOBBY_FULL_RECONCILE_MS,
   LOBBY_ROOM_PAGE_SIZE,

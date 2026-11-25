@@ -39,7 +39,7 @@ jest.mock('../utils/logger', () => ({
 // B225: every lobby change also pokes the dashboard feed — its own timer, tested in home-feed.test.js.
 jest.mock('../socket/home-feed', () => ({ scheduleHomeUpdate: jest.fn() }));
 
-// #439: seat Elo for the rooms_query filters — `mockStandings[rule][userId] = [rating, rank|null, provisional]`.
+// #439: seat Elo for the rooms_query rank sort — `mockStandings[rule][userId] = [rating, rank|null, provisional]`.
 const mockStandings = {};
 jest.mock('../managers/rank-cache', () => ({
   standingOf: (userId, rule) => (mockStandings[rule] && mockStandings[rule][userId]) || null,
@@ -863,7 +863,7 @@ describe('per-rule channels and stats (#439)', () => {
     mockRoomManager.getRoomIdByUser.mockReset();
   });
 
-  describe('queryLobbyRooms filters and sorts (S5)', () => {
+  describe('queryLobbyRooms sorts (S5)', () => {
     const ids = (res) => res.rooms.map((r) => r.roomId);
     beforeEach(() => {
       // [id, state, playerCount, timer, seconds, seated members]
@@ -888,31 +888,10 @@ describe('per-rule channels and stats (#439)', () => {
       expect(res.stats).toMatchObject({ rooms: 5, open: 3, live: 2, byRule: { renju: { open: 1, total: 1 } } });
     });
 
-    test('open: tables with a free seat only', () => {
-      expect(ids(queryLobbyRooms({ rule: 'caro', open: true }))).toEqual(['#A', '#C', '#D']);
-    });
-
-    test.each([
-      [['fast'], ['#A']],            // ≤ 3 min
-      [['mid'], ['#B']],             // ≤ 5 min
-      [['slow'], ['#C', '#E']],      // longer
-      [['move'], ['#D']],            // per-move clock
-      [['fast', 'move'], ['#A', '#D']],
-      [['bogus'], ['#A', '#C', '#D', '#B', '#E']], // unknown buckets = no filter
-      ['fast', ['#A', '#C', '#D', '#B', '#E']],    // not an array = no filter
-    ])('time %j → %j', (time, want) => {
-      expect(ids(queryLobbyRooms({ rule: 'caro', time }))).toEqual(want);
-    });
-
-    test('near: a seated member within 200 Elo of the asker, in the tab rule', () => {
-      const me = { userId: 'me', isGuest: false };
-      mockStandings.caro.me = [1700, 4, false];
-      expect(ids(queryLobbyRooms({ rule: 'caro', near: true }, me))).toEqual(['#A', '#B', '#E']); // 1500, 1900, 1650
-      // Ignored without a rule, for an unrated asker, a guest, or a truthy non-boolean.
-      expect(queryLobbyRooms({ near: true }, me).matched).toBe(6);
-      expect(queryLobbyRooms({ rule: 'caro', near: true }, { userId: 'new', isGuest: false }).matched).toBe(5);
-      expect(queryLobbyRooms({ rule: 'caro', near: true }, { userId: 'me', isGuest: true }).matched).toBe(5);
-      expect(queryLobbyRooms({ rule: 'caro', near: 'yes' }, me).matched).toBe(5);
+    test('the retired open / time / near filters are ignored', () => {
+      const res = queryLobbyRooms({ rule: 'caro', open: true, time: ['fast'], near: true });
+      expect(ids(res)).toEqual(['#A', '#C', '#D', '#B', '#E']);
+      expect(res.matched).toBe(5);
     });
 
     test('sort rank: best seated Elo first, tables without a rated member last', () => {
@@ -923,10 +902,10 @@ describe('per-rule channels and stats (#439)', () => {
       expect(ids(queryLobbyRooms({ rule: 'caro', sort: 'time' }))).toEqual(['#A', '#B', '#C', '#E', '#D']);
     });
 
-    test('filters combine; offset pages the filtered order; unknown sort = default', () => {
-      const res = queryLobbyRooms({ rule: 'caro', open: true, sort: 'rank', offset: 1 });
+    test('offset pages the sorted order; unknown sort = default', () => {
+      const res = queryLobbyRooms({ rule: 'caro', sort: 'rank', offset: 3 });
       expect(ids(res)).toEqual(['#A', '#C']);
-      expect(res.matched).toBe(3);
+      expect(res.matched).toBe(5);
       expect(ids(queryLobbyRooms({ rule: 'caro', sort: '__proto__' }))).toEqual(['#A', '#C', '#D', '#B', '#E']);
     });
   });
