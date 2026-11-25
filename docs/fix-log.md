@@ -390,3 +390,4 @@
 | 2026-11-25 10:00 | #451 club tab / social DM hash kept the page path under `<base href="/">` (was `/#…` → lobby on reload); 2 tests | [detail](docs/fix-log/2026-11-25-451-hash-base-href.md) |
 | 2026-11-25 06:52 | #452 phone tab "Tôi" inert (no href, aria-disabled) until /me answers — `#` placeholder was `/#` → lobby under `<base href="/">`; 1 new + 1 updated test | [detail](docs/fix-log/2026-11-25-452-me-tab-placeholder.md) |
 | 2026-11-25 07:34 | #426 tournament-match phone board overshot viewport 16px/side: cancel room.css mobile shell bleed on this page; 1 e2e spec (360/375/390) | [detail](docs/fix-log/2026-11-25-426-tmatch-board-phone-width.md) |
+| 2026-11-25 07:40 | #426 follow-up: drop .board-area desktop frame on phone tournament-match (rounded edge exposed by the shell fix); spec tightened; live match pass 360/375/390 | [detail](docs/fix-log/2026-11-25-426-tmatch-board-phone-width.md) |

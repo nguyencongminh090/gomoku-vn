@@ -19,3 +19,12 @@ clocks/actions siblings (calc(100% - 32px) + 16px inset).
   Red on old CSS (shell left -16), green after. Run needs `PW_CHROMIUM_PATH` (installed headless shell 1243).
 - cache-bust OK. `npm test` 4893/4893.
 - Not done: live tournament match in a real browser (needs a seeded tournament); svg size follows the wrap via resize().
+
+## Follow-up 2026-11-25 07:40 — leftover .board-area frame (branch fix/426-board-area-frame)
+- Live pass (isolated server :3101, temp `GOMOKU_DB_PATH`, 2 registered users, real round-robin match, 5 corner/centre
+  moves, Chromium 360/375/390 touch @2x): board + all 34 labels inside the viewport, scrollWidth = vw, 0 console errors.
+- It also showed the shell fix exposing .board-area's desktop frame (room.css: 1px border, 2rem radius, shadow) as a
+  dark rounded edge behind the board's top corners (it used to sit off-screen at -16px). room.html drops it
+  (room-arena.css); tournament.css ≤768px now does too: `.room .board-area { border:0; border-radius:0; box-shadow:none; background:none }`.
+- Spec tightened: wrap width == vw and #board-area frame computed as 0px/0px/none; red without the rule, green with.
+  Live rerun: wrap 0..vw, svg 0.3..389.7 at 390. cache-bust OK, `npm test` 4893/4893.

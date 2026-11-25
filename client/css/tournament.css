@@ -272,6 +272,10 @@
      already spans the full phone width, so the clocks/actions take 100% of
      it (their old calc(100% - 32px) + 16px inset only undid the bleed). */
   .room .board-area-shell { width: 100%; margin-left: 0; }
+  /* With the shell back on-screen, .board-area's desktop frame (room.css:
+     1px border, 2rem radius, shadow) showed as a dark rounded edge behind
+     the board's corners — room.html drops it too (room-arena.css). */
+  .room .board-area { border: 0; border-radius: 0; box-shadow: none; background: none; }
   .match-clocks, .match-actions { align-self: flex-start; width: 100%; margin-left: 0; }
 }
 
