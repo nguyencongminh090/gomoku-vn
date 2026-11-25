@@ -319,6 +319,19 @@ class SocketClient {
   // Public API
   // ---------------------------------------------------------------------------
 
+  /**
+   * Run `callback` on every connect that follows a disconnect (not the first connect). Not the
+   * Manager's 'reconnect' event: the #227 manual `sock.connect()` after `io server disconnect`
+   * (graceful restart) never fires it (#472).
+   */
+  onReconnect(callback) {
+    if (!this.socket) return this;
+    let dropped = false;
+    this.socket.on('disconnect', () => { dropped = true; });
+    this.socket.on('connect', () => { if (dropped) { dropped = false; callback(); } });
+    return this;
+  }
+
   /** Register an event listener. Returns this for chaining. */
   on(event, callback) {
     if (!this.socket) return this;

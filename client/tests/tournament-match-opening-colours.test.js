@@ -30,6 +30,7 @@ function setup(userId) {
   window.SocketClient = class {
     constructor() { this._h = {}; client = this; }
     emit() {}
+    onReconnect() {}
     on(e, cb) { (this._h[e] = this._h[e] || []).push(cb); }
     bindStatusBanner() {}
     trigger(e, p) { (this._h[e] || []).forEach((cb) => cb(p)); }

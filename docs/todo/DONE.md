@@ -1,3 +1,5 @@
+- ✅ **#472.** Match page keeps the aborted game live after a server restart `[Model: Opus]` — [detail](docs/todo/B472-tmatch-stale-after-restart.md)
+
 - ✅ **#471.** Tournament games history shows raw reason codes ("won — win") `[Model: Haiku]` — [detail](docs/todo/B471-tournament-history-reason-raw.md)
 
 - ✅ **#470.** Tournament match board renders at 150 px on desktop `[Model: Sonnet]` — [detail](docs/todo/B470-tmatch-desktop-board-tiny.md)

@@ -219,14 +219,14 @@ async function run() {
         await clickCell(P.baonam.page, 5, 5); await clickCell(P.trucmai.page, 6, 6); await clickCell(P.baonam.page, 5, 6);
         const pid = new URL(P.baonam.page.url()).searchParams.get('pairingId');
         await stopServer(); await startServer(); console.log('server restarted mid-game');
-        for (const sec of [3, 12]) {
-          await P.baonam.page.waitForTimeout(sec === 3 ? 3000 : 9000);
-          const st = await P.trucmai.page.evaluate(() => { const g = document.querySelector('#board-wrap svg').__gboard; return { moves: document.querySelectorAll('#moves-list li:not(.moves__empty) span:not(.moves__n):not(:empty)').length, myTurn: g.isMyTurn, interactive: g.interactive, banner: document.getElementById('status-banner')?.innerText.trim(), overlay: document.getElementById('match-result-overlay').className, clocks: [...document.querySelectorAll('.seatcard__clock')].map((e) => e.innerText) }; });
-          console.log('match page', sec + 's after restart (Trúc Mai):', JSON.stringify(st), 'url', P.trucmai.page.url().includes('tournament-match'));
-        }
-        await P.baonam.page.screenshot({ path: path.join(SHOTS, 'e2e2-match-after-restart-desktop.png') });
-        console.log('match page after restart moves:', await P.baonam.page.locator('#moves-grid li:not(.moves__empty)').count(),
-          'banner:', (await P.baonam.page.locator('#status-banner').innerText().catch(() => '')).trim());
+        // #472: both match pages must notice the reset and leave on their own.
+        const dialogs = [];
+        const onDialog = (d) => { dialogs.push(d.message()); d.dismiss().catch(() => {}); };
+        for (const x of [P.baonam, P.trucmai]) x.page.on('dialog', onDialog);
+        for (const x of [P.baonam, P.trucmai]) await x.page.waitForURL((u) => !u.pathname.includes('tournament-match'), { timeout: 15000 });
+        for (const x of [P.baonam, P.trucmai]) x.page.off('dialog', onDialog);
+        console.log('#472 both match pages left after restart; dialogs:', JSON.stringify(dialogs));
+        assert.equal(dialogs.length, 2);
         for (const x of Object.values(P)) await x.page.goto(TURL);
         await page.locator('#team-scoreboard').waitFor();
         const b1 = P.baonam.page.locator('.pairing-card').filter({ has: P.baonam.page.locator('[data-action="ready"]') });

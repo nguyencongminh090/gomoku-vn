@@ -119,6 +119,9 @@ function myPlayer() {
 }
 
 client.emit('tmatch:subscribe', { tournamentId, pairingId });
+// #472: ask again after every reconnect. A server restart drops the live match
+// (pairing replays from Ready); the answer is then NO_ACTIVE_MATCH → leave below.
+client.onReconnect(() => client.emit('tmatch:subscribe', { tournamentId, pairingId }));
 
 client.on('tmatch:error', (data) => {
   alert(data.code ? t('err.' + data.code.toLowerCase()) : data.message);
