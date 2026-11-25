@@ -53,7 +53,7 @@ for (const width of [360, 375, 390]) {
         scrollW: document.documentElement.scrollWidth,
         shell: box('#board-area-shell'),
         wrap: box('#board-wrap'),
-        clocks: box('.match-clocks'),
+        card: box('#seatcard-top'),
         frame: (() => {
           const cs = getComputedStyle(document.querySelector('#board-area')!);
           return { border: cs.borderLeftWidth, radius: cs.borderTopLeftRadius, shadow: cs.boxShadow };
@@ -61,7 +61,7 @@ for (const width of [360, 375, 390]) {
       };
     });
 
-    for (const [name, r] of [['shell', m.shell], ['wrap', m.wrap], ['clocks', m.clocks]] as const) {
+    for (const [name, r] of [['shell', m.shell], ['wrap', m.wrap], ['seat card', m.card]] as const) {
       expect(r.left, `${name} must not start left of the viewport`).toBeGreaterThanOrEqual(0);
       expect(r.right, `${name} must not end past the viewport`).toBeLessThanOrEqual(m.vw);
     }

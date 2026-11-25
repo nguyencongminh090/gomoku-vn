@@ -231,87 +231,41 @@
   border-radius: 10px; padding: 12px 14px; font-size: calc(13px * var(--fs-scale, 1)); margin-bottom: 4px;
 }
 
-/* TODO.md #52 (full refactor, per user request "Make as Room, user get used
-   to is better"): the match-play screen used to be a bespoke .match-shell
-   grid that had to independently re-solve every layout problem room.css's
-   .room grid already solves (2-col synced height, mobile stacking, dead
-   space). It now reuses room.css's .room/.board-area-shell/.board-area/
-   .panel-right-shell/.panel-right/.panel-players/.slot-card/.score-panel/
-   .sidebar-tabs/.tab-content classes directly (see tournament-match.html) —
-   this file only adds what's genuinely match-specific: the header strip
-   above .room, the clocks bar, and small static-player-card tweaks. */
-.match-page-header {
-  width: 100%;
-  max-width: 1400px;
-  box-sizing: border-box;
-  margin: 0 auto;
-  padding-inline: clamp(6px, 2.5vw, 16px);
-  padding-top: 12px;
-  padding-bottom: 12px;
-}
-
-.match-clocks { display: flex; gap: 12px; width: 100%; max-width: 480px; margin-bottom: 16px; }
-.match-clock { flex: 1; border: 1px solid var(--c-border); border-radius: 12px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
-.match-clock.is-active { border-color: var(--c-brand); background: var(--c-brand-light); }
-.match-clock__name { font-size: calc(13px * var(--fs-scale, 1)); font-weight: 700; color: var(--c-ink); display: flex; align-items: center; gap: 6px; }
-.match-clock__time { font-size: calc(18px * var(--fs-scale, 1)); font-weight: 800; font-variant-numeric: tabular-nums; color: var(--c-ink); }
-.match-clock__time.is-low { color: var(--c-error, #EF4444); animation: timer-pulse 0.6s ease-in-out infinite alternate; }
+/* Team black/white dot (tournament-detail.js pairing cards). */
 .match-stone-dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 .match-stone-dot--black { background: #1a1a1a; border: 1px solid var(--c-ink-3); } /* #469: ring so the dot shows on dark cards */
 .match-stone-dot--white { background: #f5f5f5; border: 1px solid #999; }
 
-/* No max-width here: let BoardRenderer.resize() (board.js) size the canvas
-   the same way it does on room.html, up to its own ~860px desktop cap —
-   `.board-canvas-wrap` (game.css) already supplies overflow:hidden. A fixed
-   640px cap here fought that JS-computed size and made the tournament board
-   noticeably smaller/inconsistent than the casual-room board. */
-.match-board-canvas-wrap { width: 100%; display: flex; justify-content: center; }
-#match-canvas { touch-action: pan-x pan-y; display: block; }
-
-/* #470: on desktop room.css leaves .board-area `flex: 0 0 auto` inside the centred column shell, so it is
-   shrink-to-fit — room.html only gets a real box from body.arena-room (width/height 100%), which this page
-   doesn't have. BoardRenderer.resize() hides the svg to measure #board-wrap, found ~0 px and fell to its
-   160 px floor (150 px after cell rounding). Give the board area the shell's full width. The shell's
-   room.css height (100dvh - 76px) assumes it starts right under the nav; here the match header and
-   clocks sit above it, so a height-filling board ran ~90-170 px below the fold. Height is left to
-   content instead: the hidden-svg measurement then finds no height and resize() takes its own
-   "fit the viewport below my top" branch (board.js). Mobile already sets .board-area width:100% /
-   height:auto (room.css @768) and is left alone. */
+/* Match page = room.html's layout (body.arena-room, room-arena.css). Only what this page has differently is
+   here, scoped to body.tmatch-room. */
+body.arena-room.tmatch-room .tm-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+body.arena-room.tmatch-room .tm-ticket { align-items: center; padding: 0 6px 0 11px; }
+body.arena-room.tmatch-room .tm-meta, body.arena-room.tmatch-room .tm-meta__lead { display: flex; align-items: center; gap: 6px; min-width: 0; }
+body.arena-room.tmatch-room .tm-meta { overflow: hidden; }
+body.arena-room.tmatch-room .tm-meta .icon { flex: none; width: 17px; height: 17px; color: var(--c-brand-text); }
+body.arena-room.tmatch-room .tm-meta__text { overflow: hidden; text-overflow: ellipsis; }
+body.arena-room.tmatch-room .topnav__right { margin-left: 8px; }
+body.arena-room.tmatch-room .rnav__leave { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; margin: 0; }
+body.arena-room.tmatch-room .scorecard[hidden] { display: none; }
+body.arena-room.tmatch-room .rdock > .chat-input { grid-column: 1 / -1; }
+body.arena-room.tmatch-room .swap2-banner { max-width: none; pointer-events: auto; background: var(--c-surface-2); box-shadow: var(--shadow-lg); }
+body.arena-room.tmatch-room #swap2-banner-slot:empty { display: none; }
+/* No score tab here: the third tab stays "spectators" at every width (the room moves them to its dock). */
+body.arena-room.tmatch-room .tab-btn[data-tab="tab-users"] { display: flex; }
+/* Three tiles in the two-column grid: the last one spans the row. */
+@media (min-width: 769px) and (min-aspect-ratio: 3/2) and (min-width: 1100px) {
+  body.arena-room.tmatch-room .game-controls .act:last-child { grid-column: 1 / -1; }
+}
+/* The room keeps 70px above its tabs for the audience stack, which this page doesn't have. */
 @media (min-width: 769px) {
-  .room .board-area-shell { height: auto; }
-  .room .board-area { align-self: stretch; box-sizing: border-box; }
+  body.arena-room.tmatch-room .rpanel { padding-top: 12px; }
+  body.arena-room.tmatch-room .gtoasts { top: 58px; }
 }
-
-/* Layout comes from .game-controls (game.css, shared with room.html) now —
-   .match-actions only needs to stay addressable for the mobile bleed-cancel
-   rule below. */
-
 @media (max-width: 768px) {
-  /* TODO.md #426: room.css's mobile full-bleed on .board-area-shell
-     (width:calc(100% + 32px); margin-left:-16px) assumes a 16px .room
-     padding, but the same mobile block sets .room padding to 0 — so the
-     shell overshot the viewport 16px per side and BoardRenderer.resize()
-     sized the board to that too-wide box (clipped labels at both edges).
-     room.html cancels it in room-arena.css; do the same here. The shell
-     already spans the full phone width, so the clocks/actions take 100% of
-     it (their old calc(100% - 32px) + 16px inset only undid the bleed). */
-  .room .board-area-shell { width: 100%; margin-left: 0; }
-  /* With the shell back on-screen, .board-area's desktop frame (room.css:
-     1px border, 2rem radius, shadow) showed as a dark rounded edge behind
-     the board's corners — room.html drops it too (room-arena.css). */
-  .room .board-area { border: 0; border-radius: 0; box-shadow: none; background: none; }
-  .match-clocks, .match-actions { align-self: flex-start; width: 100%; margin-left: 0; }
+  body.arena-room.tmatch-room #users-panel { display: block; }
+  body.arena-room.tmatch-room .tm-meta .tm-meta__text, body.arena-room.tmatch-room .tm-meta__target { display: none; }
+  body.arena-room.tmatch-room .tm-meta__lead:only-child .tm-meta__text { display: inline; }
 }
-
-.move-list { max-height: 320px; overflow-y: auto; font-size: calc(12px * var(--fs-scale, 1)); }
-.move-list__row { display: flex; justify-content: space-between; padding: 4px 8px; border-radius: 6px; }
-.move-list__row:nth-child(odd) { background: var(--c-surface-2); }
-
-/* .slot-card is normally clickable (room.html: sit down/stand up) — here the
-   pairing already fixed who's playing, so drop the pointer affordance and
-   center the static name/color-dot content instead. */
-.room #slot-1, .room #slot-2 { cursor: default; text-align: center; }
-.room .slot-card__label { display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
 
 .swap2-banner {
   display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
