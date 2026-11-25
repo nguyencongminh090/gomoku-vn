@@ -50,6 +50,14 @@ async function run() {
       }
       await page.setViewportSize({ width: 1365, height: 900 });
     }
+    async function joinMember(username, displayName) {
+      const member = await browser.newContext();
+      const created = await member.request.post(base + '/api/auth/register', { data: { ...credentials, username, displayName } });
+      assert.ok(created.ok(), await created.text());
+      const joined = await member.request.post(base + '/api/clubs/' + club.slug + '/join');
+      assert.ok(joined.ok(), await joined.text());
+      return member;
+    }
     const slice = process.argv[2];
     if (slice === 'commands') {
       await input.fill('/help');
@@ -73,6 +81,21 @@ async function run() {
       await shoot('event-form');
       await page.locator('#cb-event-form [type=submit]').click();
       await page.locator('#cb-events').getByText('Giao lưu cuối năm').waitFor();
+    } else if (slice === 'moderation') {
+      const member = await joinMember('hoamai', 'Hoa Mai');
+      await page.reload();
+      await page.locator('#cb-ch-members').click();
+      await page.locator('#cb-member-search').fill('hoa');
+      await page.locator('#cb-members-body input').check();
+      page.once('dialog', (dialog) => dialog.accept());
+      await page.locator('#cb-bulk button').click();
+      await page.locator('#cb-sanctions').getByText(/hoamai/).waitFor();
+      await shoot('moderation');
+      assert.equal((await member.request.post(base + '/api/clubs/' + club.slug + '/messages', { data: { text: 'xin chào' } })).status(), 403);
+      await page.locator('#cb-ch-log').click();
+      await page.locator('#cb-log-search').fill('mute');
+      await page.locator('#cb-history').getByText(/Hoa Mai/).waitFor();
+      await shoot('moderation-log');
     } else throw new Error('Unknown slice');
   } finally {
     try { if (browser) await browser.close(); } finally { app.kill('SIGTERM'); }

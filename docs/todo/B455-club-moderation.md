@@ -1,5 +1,5 @@
 # B455 — Club moderation
-**Status:** OPEN
+**Status:** ✅ DONE 2026-11-25 — full Jest and desktop/mobile Chromium passed. See features/club-platform/screenshots/.
 **From:** features/club-platform/planning.md
 **Area:** club routes, services and client panels
 
