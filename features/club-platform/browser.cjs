@@ -46,7 +46,9 @@ async function run() {
     async function shoot(name) {
       for (const [device,width,height] of [['desktop',1365,900],['mobile',390,844]]) {
         await page.setViewportSize({ width, height });
-        await page.screenshot({ path: path.join(__dirname, 'screenshots', name + '-' + device + '.png') });
+        // Finish CSS transitions first: a shot right after a click otherwise shows the pre-click
+        // state (e.g. the 150 ms sub-tab colour fade kept "Cặp đấu" highlighted over standings).
+        await page.screenshot({ path: path.join(__dirname, 'screenshots', name + '-' + device + '.png'), animations: 'disabled' });
       }
       await page.setViewportSize({ width: 1365, height: 900 });
     }
@@ -237,6 +239,7 @@ async function run() {
       await shoot('team-boards');
       await page.locator('#sub-tab-standings').click();
       await page.locator('#team-standings-table').getByText('Kỳ Hội Mùa Thu').waitFor();
+      assert.deepEqual(await page.locator('.sub-tabs__btn[aria-selected="true"]').evaluateAll((b) => b.map((x) => x.id)), ['sub-tab-standings']);
       await shoot('team-standings');
 
       // Verify BOTH clubs list the event in "Giải của CLB" (giải-đấu channel)

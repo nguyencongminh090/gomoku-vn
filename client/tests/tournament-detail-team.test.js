@@ -160,6 +160,49 @@ describe('B460 — tournament-detail team tournament UI', () => {
     expect(document.getElementById('team-boards-breakdown').textContent).not.toMatch(/\dT \/|\d đ(?!i)/);
   });
 
+  it('switching sub-tabs on a team tournament highlights the tab whose panel is visible', async () => {
+    setup();
+    const entries = [
+      { entryId: 'a1', userId: 'ua1', displayName: 'A1', teamId: 'tm1', boardNumber: 1, withdrawn: false },
+      { entryId: 'b1', userId: 'ub1', displayName: 'B1', teamId: 'tm2', boardNumber: 1, withdrawn: false },
+    ];
+    const teams = [
+      { teamId: 'tm1', teamOrder: 1, clubSlug: 'hn', clubName: 'CLB Hà Nội', clubTag: 'HN', clubColor: 'blue',
+        roster: [{ entryId: 'a1', userId: 'ua1', displayName: 'A1', boardNumber: 1 }] },
+      { teamId: 'tm2', teamOrder: 2, clubSlug: 'sg', clubName: 'CLB Sài Gòn', clubTag: 'SG', clubColor: 'orange',
+        roster: [{ entryId: 'b1', userId: 'ub1', displayName: 'B1', boardNumber: 1 }] },
+    ];
+    const pairing = { pairingId: 'p1', roundIndex: 1, boardNumber: 1, player1EntryId: 'a1', player2EntryId: 'b1', state: 'Completed', result: { winnerEntryId: 'a1', reason: 'normal' }, readyPlayers: [], pairedAt: '2026-11-25T01:00:00Z' };
+    sock.trigger('tournament:detail', {
+      tournament: {
+        tournamentId: 'team-t1', name: 'Giao hữu', format: 'team', organizerId: 'u_org', organizerName: 'Org',
+        ruleSet: { boardCount: 1, teamRounds: 2 }, status: 'active', currentRoundIndex: 1, totalRounds: 2, entries, teams,
+      },
+      pairings: [pairing],
+    });
+    await flush();
+
+    const state = () => ({
+      tabs: [...document.querySelectorAll('.sub-tabs__btn.is-active')].map((b) => b.id),
+      selected: [...document.querySelectorAll('.sub-tabs__btn[aria-selected="true"]')].map((b) => b.id),
+      panels: [...document.querySelectorAll('.sub-tab-panel.is-active')].map((p) => p.id),
+    });
+    expect(state()).toEqual({ tabs: ['sub-tab-pairings'], selected: ['sub-tab-pairings'], panels: ['subtab-pairings'] });
+
+    document.getElementById('sub-tab-standings').click();
+    expect(state()).toEqual({ tabs: ['sub-tab-standings'], selected: ['sub-tab-standings'], panels: ['subtab-standings'] });
+    expect(document.getElementById('subtab-standings').contains(document.getElementById('team-standings-table'))).toBe(true);
+
+    // A live update (re-render) must not move the highlight back to "Cặp đấu".
+    sock.trigger('tournament:pairings_patch', { tournamentId: 'team-t1', pairings: [pairing] });
+    sock.trigger('tournament:updated', { tournamentId: 'team-t1', status: 'active' });
+    await flush();
+    expect(state()).toEqual({ tabs: ['sub-tab-standings'], selected: ['sub-tab-standings'], panels: ['subtab-standings'] });
+
+    document.getElementById('sub-tab-pairings').click();
+    expect(state()).toEqual({ tabs: ['sub-tab-pairings'], selected: ['sub-tab-pairings'], panels: ['subtab-pairings'] });
+  });
+
   it('keeps every team-UI string in i18n.js with both vi and en entries', () => {
     const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'tournament-detail.js'), 'utf8');
     const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
