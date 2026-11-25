@@ -54,6 +54,10 @@ for (const width of [360, 375, 390]) {
         shell: box('#board-area-shell'),
         wrap: box('#board-wrap'),
         clocks: box('.match-clocks'),
+        frame: (() => {
+          const cs = getComputedStyle(document.querySelector('#board-area')!);
+          return { border: cs.borderLeftWidth, radius: cs.borderTopLeftRadius, shadow: cs.boxShadow };
+        })(),
       };
     });
 
@@ -61,9 +65,10 @@ for (const width of [360, 375, 390]) {
       expect(r.left, `${name} must not start left of the viewport`).toBeGreaterThanOrEqual(0);
       expect(r.right, `${name} must not end past the viewport`).toBeLessThanOrEqual(m.vw);
     }
-    // The board gets the full phone width (no new side inset) — minus only
-    // .board-area's 1px frame border on each side (room.css) …
-    expect(m.wrap.right - m.wrap.left).toBeGreaterThanOrEqual(m.vw - 2);
+    // The board gets the full phone width: no side inset and no leftover
+    // .board-area desktop frame (its rounded border peeked past the board) …
+    expect(m.wrap.right - m.wrap.left).toBe(m.vw);
+    expect(m.frame).toEqual({ border: '0px', radius: '0px', shadow: 'none' });
     // … and the page itself never scrolls sideways.
     expect(m.scrollW).toBeLessThanOrEqual(m.vw);
     await ctx.close();
